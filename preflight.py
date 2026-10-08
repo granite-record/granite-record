@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.473
+# GRANITE_VERSION: 2026-09-04.474
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -22049,7 +22049,7 @@ def _numbers_every_section(learn_numbers):
 # further down holds the section's own words to the dump.
 LEARN_STATUTE_CLAIMS = [
     # (page, phrase on the page, section cited, phrase in the section)
-    ("county-government", "by 1 September if it is on an optional fiscal year",
+    ("county-government", "by September 1 if it is on an optional fiscal year",
      "24:14", "not later than September 1"),
     ("county-government", "every state court except the Supreme Court",
      "104:5", "in all state courts, except the supreme court"),
@@ -23790,7 +23790,7 @@ def _conference_folded(build_site_v2):
     if html_ is not None:
         assert "No recording matched" not in html_, (
             "HB 485's page still says no recording matched its conference of 16 June 2025")
-        assert "2025-06-16 at 09:30 · LOB 206-208" in html_, (
+        assert "Jun 16, 2025 at 9:30 AM · LOB 206-208" in html_, (
             "HB 485's conference is not headed with the time and room its notice gives")
     return "ok", ("HB 485's conference of 16 June 2025 is one station, 09:30 in LOB 206-208, "
                   "playing its recording; HB 1709's is one per recording and SB 108's one; "
@@ -24132,37 +24132,37 @@ def _journey_reads(build_site_v2):
     want(run("HB131", ev("H", "2026-07-02", "Signed by Governor Ayotte 07/02/2026; Chapter 205; "
                          "eff. I. Sec 3 1/1/2027 II. Rem eff 8/1/2026", "governor"),
              chapter="205")[1][-1][3],
-         "Chapter 205, in effect in parts: section 3 on 1 Jan 2027, the rest on 1 Aug 2026",
+         "Chapter 205, in effect in parts: section 3 on Jan 1, 2027, the rest on Aug 1, 2026",
          "HB131 2026")
     want(run("HB337", ev("H", "2007-07-20", "Signed by the Governor on 07/13/07; Chapter 0296; "
                          "I. Sections 5 & 6 Eff. 07/01/2011", "governor"),
              ev("H", "2007-07-20", "II. Remainder Eff. 08/12/2007", "other"),
              chapter="296")[1][-1][3],
-         "Chapter 296, in effect in parts: sections 5 and 6 on 1 Jul 2011, the rest on 12 Aug "
+         "Chapter 296, in effect in parts: sections 5 and 6 on Jul 1, 2011, the rest on Aug 12, "
          "2007", "HB337 2007")
     # Docket.txt's own rows: HB 1300's line, SB 56's three rows, and a part
     # that waits on another section.
     want(run("HB1300", ev("H", "2026-07-15", "Signed by Governor Ayotte 07/15/2026; Chapter 324; "
                           "eff. I. Sec 3 eff 01/01/2032 II. Rem eff 09/01/2026", "governor"),
              chapter="324")[1][-1][3],
-         "Chapter 324, in effect in parts: section 3 on 1 Jan 2032, the rest on 1 Sep 2026",
+         "Chapter 324, in effect in parts: section 3 on Jan 1, 2032, the rest on Sep 1, 2026",
          "HB1300 2026")
     want(run("SB56", ev("S", "2026-07-15", "Signed by the Governor on 07/15/2026; Chapter 335",
                         "governor"),
              ev("S", "2026-07-15", "I. Section 24 Effective 07/01/2031", "other"),
              ev("S", "2026-07-15", "II. Remainder Effective 07/01/2026", "other"),
              chapter="335")[1][-1][3],
-         "Chapter 335, in effect in parts: section 24 on 1 Jul 2031, the rest on 1 Jul 2026",
+         "Chapter 335, in effect in parts: section 24 on Jul 1, 2031, the rest on Jul 1, 2026",
          "SB56 2026")
     want(run("HB557", ev("H", "2025-08-01", "Signed by Governor Ayotte 08/01/2025; Chapter 281; "
                          "eff. I. Sec 1 & 2 eff as provided in Sec 3 II. Rem eff 08/01/2025",
                          "governor"), chapter="281")[1][-1][3],
          "Chapter 281, in effect in parts: sections 1 and 2 as section 3 provides, the rest on "
-         "1 Aug 2025", "HB557 2025")
+         "Aug 1, 2025", "HB557 2025")
     # The day straight after the chapter, with no "eff" (HB 227 of 2025).
     want(run("HB227", ev("H", "2025-06-02", "Signed by Governor Ayotte 06/02/2025; Chapter 59; "
                          "08/01/2025", "governor"), chapter="59")[1][-1][3],
-         "Chapter 59, in effect 1 Aug 2025", "HB227 2025")
+         "Chapter 59, in effect Aug 1, 2025", "HB227 2025")
     # A part that does not say plainly what it covers states none of them:
     # "I Sec 1-3-5" (HB 655 of 2025) and "Sec I" (HB 1584 of 2026).
     want(run("HB655", ev("H", "2025-07-15", "Signed by Governor Ayotte 07/15/2025; Chapter 202; "
@@ -24199,7 +24199,7 @@ def _journey_reads(build_site_v2):
              chapter="263")[1][-1][3], "Chapter 263", "HB2 2007, part IV")
     want(run("SB151", ev("S", "2025-07-15", "Signed by the Governor on 07/15/2025; Chapter 0238; "
                          "Effective 01/01/2026", "governor"), chapter="238")[1][-1][3],
-         "Chapter 238, in effect 1 Jan 2026", "SB151 2025")
+         "Chapter 238, in effect Jan 1, 2026", "SB151 2025")
     # THE DAY THE LINE GIVES, not the day it was entered.
     want(run("HB101", ev("H", "2007-06-12", "Signed by the Governor on 06/11/07; Eff. Date "
                          "08/10/07; Chapter 0069", "governor"))[1][0][0], "2007-06-11",
@@ -24297,12 +24297,12 @@ def _journey_reads(build_site_v2):
              ev("S", "1994-05-17", "SEN MACDONALD MOVED TO RECONSIDER REQ TO ACCEDE, MA VV"),
              ev("S", "1994-05-17", "SEN ACCEDED TO REQ FOR CONF COMM, SEN MACDONALD MA VV"))[1],
          [("1994-05-12", "S", "conf_refused", "Refused a committee of conference on a voice "
-           "vote, reconsidered on 17 May")], "HB628 1994")
+           "vote, reconsidered on May 17")], "HB628 1994")
     want(run("SCR6", ev("H", "2006-04-12", "ITL, MA, RC (149-147)"),
              ev("H", "2006-04-19", "(Rep. Graham) Reconsideration, MA, Div (174-160)", "other"),
              ev("H", "2006-04-19", "ITL, ML, RC (144-190)"),
              ev("H", "2006-04-19", "Passed with AM {1725h}, MA, RC (198-140)"))[1],
-         [("2006-04-12", "H", "killed", "Killed, 149–147, reconsidered on 19 Apr"),
+         [("2006-04-12", "H", "killed", "Killed, 149–147, reconsidered on Apr 19"),
           ("2006-04-19", "H", "passed", "Adopted with an amendment, 198–140")], "SCR6 2006")
     # Not a decision the motion does not name, nor, where it names none, one
     # the chamber has voted past: HB 1025 of 1992's House reconsidered its
@@ -24361,7 +24361,7 @@ def _journey_reads(build_site_v2):
                                "NEC 2/3"),
                             ev("H", "1989-04-25", "REP FLANAGAN RECONSIDER MA VV; REP FLANAGAN SUB "
                                "OTP/AM MA VV"))[1]][:1],
-         ["Sent back to committee, reconsidered on 25 Apr"], "HB462 1989")
+         ["Sent back to committee, reconsidered on Apr 25"], "HB462 1989")
     # A THIRD READING RECONSIDERED AND READ AGAIN THAT DAY is the passage it
     # was: HB 1282 of 2012 kept its 180-133 and no "reconsidered". HB 1659,
     # divided out of that third reading and sent to a second committee, was
@@ -24384,12 +24384,12 @@ def _journey_reads(build_site_v2):
                 "Objection", "other"),
              ev("H", "2012-03-28", "Ought to Pass with Amendment #1482h: MA RC 185-138"))[1],
          [("2012-03-14", "H", "passed", "Passed with an amendment, 189–151, reconsidered on "
-           "15 Mar"),
+           "Mar 15"),
           ("2012-03-28", "H", "passed", "Passed with an amendment, 185–138")], "HB1659 2012")
     want(run("HB1331", ev("S", "1990-03-29", "PASSED/ADOPTED"),
              ev("S", "1990-04-03", "MOTION OF RECONSIDERATION/ADOPTED", "other"),
              ev("S", "1990-04-03", "REFERRED TO FINANCE (RULE 24)", "rereferred"))[1],
-         [("1990-03-29", "S", "passed", "Passed, reconsidered on 3 Apr")], "HB1331 1990")
+         [("1990-03-29", "S", "passed", "Passed, reconsidered on Apr 3")], "HB1331 1990")
     # A semicolon in a list of amendments is not the end of the motion: HB
     # 1636 of 2018's refusal lost its count, and the failed motion before it
     # read as a refusal too.
@@ -24751,20 +24751,24 @@ process.stdout.write("\\n@@" + JSON.stringify(out));
 # "voice vote, amended" running into "postponed" -- while every check passed,
 # because the only ones on the rail asked whether two CSS rules were there.
 #
-# This lays a rail out the way app.css does, in Verdana's advance widths (a
-# face wider than the site's own, measured in Chrome at 1000px), so a rail
-# that passes here has room in any narrower face: the stops share the width
+# This lays a rail out the way app.css does, in the advance widths of the
+# faces it is drawn in (_RAIL_FACE, below; Verdana's until the words went to
+# 14px on 8 October 2026), so a rail that passes here has room in the face
+# that loads and in the one it falls back to: the stops share the width
 # equally; under each one its words are centred and wrapped at spaces inside
 # the stop less its gutter either side (.rail.dated small's padding-inline),
 # with a word wider than that overflowing both ways as Chrome centres it; its
-# label sits on one line above, at 12px; and the lines of neighbouring stops
+# label sits on one line above, at 14px, with its day under it at 14px and,
+# on a rail under 552px, the day's year on a line of its own; and the lines
+# of neighbouring stops
 # share rows. The narrowest gap between two stops' words on one row is the
 # answer. Chrome also breaks after a dash, "197–" over "149,", which this
 # does not, so it errs narrow.
 #
 # A stop's words have been its day alone since the same evening (the person:
 # "only have dates for the actions under each of the items"): "8 Jan 2025",
-# never "voice vote, amended" (_rail_drawn). The rails below keep the words
+# never "voice vote, amended" (_rail_drawn), and month first with its year
+# since 8 October 2026, "Jan 8, 2025". The rails below keep the words
 # their index rows carry, which a card says and no longer draws.
 _VERDANA = dict(zip(map(chr, range(32, 127)), (
     352, 394, 459, 818, 636, 1076, 727, 269, 454, 454, 636, 818, 364, 454, 364, 454, 636, 636,
@@ -24773,6 +24777,20 @@ _VERDANA = dict(zip(map(chr, range(32, 127)), (
     684, 989, 685, 615, 685, 454, 454, 454, 818, 636, 636, 601, 623, 521, 623, 596, 352, 623,
     633, 274, 344, 592, 274, 973, 633, 607, 623, 623, 427, 521, 394, 633, 592, 818, 592, 592,
     525, 635, 454, 635, 818)), **{"–": 636, "—": 1000})
+# THE FACES THE RAIL IS DRAWN IN, since its words went to 14px (8 October
+# 2026): per character the wider of Public Sans, the site's face, and Segoe
+# UI, the system face it falls back to on Windows, in thousandths of an em,
+# measured in Chrome (canvas measureText at 1000px). Verdana, above, is wider
+# than any face in the stack and was the model at 11 and 12px, when it left
+# room; at 14px it set "Introduced" over "Senate" where neither real face
+# does, so it no longer stands for what a reader can be shown.
+_RAIL_FACE = dict(zip(map(chr, range(32, 127)), (
+    274, 284, 426, 603, 659, 904, 800, 248, 303, 309, 417, 684, 242, 400, 225, 390, 612, 539,
+    596, 630, 629, 641, 623, 601, 648, 625, 226, 240, 684, 684, 684, 521, 955, 710, 671, 689,
+    701, 621, 594, 733, 766, 283, 389, 682, 578, 898, 754, 754, 637, 754, 677, 670, 594, 701,
+    673, 954, 688, 607, 637, 303, 379, 303, 684, 518, 268, 553, 597, 544, 597, 567, 396, 623,
+    577, 248, 263, 562, 303, 865, 577, 586, 596, 596, 391, 506, 389, 581, 504, 780, 565, 535,
+    481, 328, 263, 332, 684)), **{"–": 555, "—": 1117})
 _RAIL_LABEL = {"I": "Introduced", "H": "House", "S": "Senate", "G": "Governor", "L": "Law",
                "V": "Voters"}
 # The narrowest a phone's rail may set two stops' words: more than a word
@@ -24812,40 +24830,42 @@ def _rail_phone(css):
         pad = float(root.get(t.group(1), 0)) if t else float((re.match(r"[\d.]+", v) or ["0"])[0])
     back = re.search(r"\.card:not\(\.focus\) \.chead \.rail\.dated\{width:calc\(100% \+ 46px "
                      r"- var\(--sp-6\)\)", css)
-    return 334 - 16 - (16 if back else 46), pad
+    # On a phone the rail takes half the card's padding either side
+    # (8 October 2026), 8px of the head's 16 on each hand.
+    phone = re.search(r"@media \(max-width:30em\)\{\s*\.chead \.rail\.dated\{margin-inline:"
+                      r"calc\(-1 \* var\(--(sp-\d+)\)\)\}\s*\.card:not\(\.focus\) \.chead "
+                      r"\.rail\.dated\{width:calc\(100% \+ 46px\);margin-left:calc\(-1 \* "
+                      r"var\(--\1\)\)\}", css)
+    take = 2 * float(root.get(phone.group(1), 0)) if phone else 0
+    return 334 - 16 - (16 if back else 46) + take, pad
 
 
 def _rail_drawn(rail):
     """What a card draws under each stop of `rail` (an index row's stops):
-    its day, with the year on the first and wherever it changes, or nothing.
-    Never the stop's words (the person, 5 October 2026: "only have dates for
-    the actions under each of the items") -- _rail_on_a_phone holds app.js's
+    its day, month first and with its year on every stop (the person, 8
+    October 2026: the year was on the first and wherever it changed, so one
+    bill's rail carried it on some stops and not others), or nothing. Never
+    the stop's words (the person, 5 October 2026: "only have dates for the
+    actions under each of the items") -- _rail_on_a_phone holds app.js's
     datedRail to exactly this."""
-    mon = "Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec".split()
-    was, out = "", []
-    for cell in rail:
-        day = (list(cell) + [""])[1]
-        if day:
-            y, m, d = day.split("-")
-            out.append(f"{int(d)} {mon[int(m) - 1]}" + (f" {y}" if y != was else ""))
-            was = y
-        else:
-            out.append("")
-    return out
+    import shell as S
+    return [S.date_words(cell[1]) if len(cell) > 1 and cell[1] else "" for cell in rail]
 
 
 def _rail_gap(rail, width, pad):
     """The narrowest gap, in px, between two neighbouring stops' words on one
     row of `rail` (an index row's stops) laid out `width` wide, as a card
-    draws them (_rail_drawn)."""
+    draws them (_rail_drawn): the stop's name over its day, both at the type
+    scale's 14px since 8 October 2026, and on a rail under 552px (34.5em, the
+    container query in app.css) the day's year on a line of its own."""
     def w(s, px):
-        return sum(_VERDANA.get(c, 1000) for c in s) * px / 1000
+        return sum(_RAIL_FACE.get(c, 1000) for c in s) * px / 1000
 
     def wrap(text, room):
         lines, cur = [], ""
         for word in text.split():
             t = f"{cur} {word}" if cur else word
-            if cur and w(t, 11) > room:
+            if cur and w(t, 14) > room:
                 lines.append(cur)
                 cur = word
             else:
@@ -24856,8 +24876,9 @@ def _rail_gap(rail, width, pad):
     slot = width / len(rail)
     for cell, drawn in zip(rail, _rail_drawn(rail)):
         stop = cell[0]
-        lines = wrap(drawn, slot - 2 * pad) if drawn else []
-        rows.append([w(_RAIL_LABEL.get(stop[:1], stop), 12)] + [w(ln, 11) for ln in lines])
+        parts = [drawn[:-5], drawn[-4:]] if drawn and width < 552 else [drawn] if drawn else []
+        lines = [ln for part in parts for ln in wrap(part, slot - 2 * pad)]
+        rows.append([w(_RAIL_LABEL.get(stop[:1], stop), 14)] + [w(ln, 14) for ln in lines])
     return min([slot - (a[i] + b[i]) / 2 for a, b in zip(rows, rows[1:])
                 for i in range(min(len(a), len(b)))] or [slot])
 
@@ -24899,13 +24920,14 @@ def _rail_on_a_phone():
     drew = "node is not here to draw them"
     if got is not None:
         for (name, rail), html in zip(rails, got):
-            stops = re.findall(r'<span class="stop [^"]*">(.*?)</span>', html, re.S)
-            drawn = [" ".join(re.sub(r"<[^>]+>", " ", (re.findall(r"<small>(.*?)</small>", s, re.S)
-                                                       or [""])[0]).split()) for s in stops]
+            stops = re.split(r'<span class="stop ', html)[1:]
+            drawn = ["".join(re.sub(r"<[^>]+>", "", (re.findall(r"<small>(.*?)</small>", s, re.S)
+                                                     or [""])[0]).split("\n")).strip()
+                     for s in stops]
             assert drawn == _rail_drawn(rail), (
                 f"{name}'s rail draws {drawn!a} under its stops, where a card draws the "
                 f"day alone: {_rail_drawn(rail)!a}")
-            assert all(re.fullmatch(r"(?:\d{1,2} [A-Z][a-z]{2}(?: \d{4})?)?", d) for d in drawn), (
+            assert all(re.fullmatch(r"(?:[A-Z][a-z]{2} \d{1,2}, \d{4})?", d) for d in drawn), (
                 f"{name}'s rail draws words under a stop: {drawn!a}")
         drew = (f"app.js draws the day alone under each stop of {len(rails)} rails, and "
                 "nothing under a stop with no day")
@@ -24923,7 +24945,7 @@ def _rail_on_a_phone():
     worst = min((_rail_gap(r, width, pad), n) for n, r in _RAIL_WORST)
     return "ok", (f"{width}px with {pad:g}px either side of each stop's words; the six "
                   f"tightest rails of the review are {worst[0]:.1f}px apart at least "
-                  f"({worst[1]}), in Verdana's widths; {drew}")
+                  f"({worst[1]}), in the wider of Public Sans' and Segoe UI's widths; {drew}")
 
 
 @check("data", "every index rail keeps its stops' words apart on a phone")
@@ -25285,22 +25307,24 @@ process.stdout.write("\\n@@" + JSON.stringify(out));
     want = {
         # The Law stop's day: the day the law took effect, and the day a bill
         # was killed under a Law it never reached (F13, 7 October 2026).
-        "HB57": ("✓ Introduced 8 Jan 2025 ✓ House 13 Feb ✓ Senate 22 May ✓ Governor 15 Jul "
-                 "✓ Law 11 Jan 2026",
-                 ["✓ House Passed on a voice vote 13 Feb 2025",
-                  "✓ Senate Passed with an amendment, 16–8 22 May 2025",
-                  "✓ House Agreed to the Senate's amendment, 192–153 12 Jun 2025",
-                  "✓ Governor Signed 15 Jul 2025",
-                  "✓ Law Chapter 160, in effect 11 Jan 2026"],
-                 "Introduced 8 January 2025; House: passed on a voice vote, 13 February 2025; "
-                 "Senate: passed with an amendment, 16 to 8, 22 May 2025; Governor: signed, "
-                 "15 July 2025; Law: chapter 160, in effect 11 January 2026"),
-        "HB68": ("✓ Introduced 8 Jan 2025 ✓ House 20 Mar ✕ Senate 7 Jan 2026 Governor ✕ Law 7 Jan",
-                 ["✓ House Passed with an amendment, 217–156 20 Mar 2025",
-                  "↺ Senate Sent back to committee on a voice vote 1 May 2025",
-                  "✕ Senate Killed on a voice vote 7 Jan 2026"], None),
-        "CACR13": ("✓ Introduced 7 Jan 2026 ✓ House 5 Feb ✓ Senate 26 Mar Voters",
-                   ["✓ House Passed, 325–15 5 Feb 2026", "✓ Senate Passed, 23–1 26 Mar 2026"],
+        # Month first, and every stop with its year (D6, 8 October 2026).
+        "HB57": ("✓ Introduced Jan 8, 2025 ✓ House Feb 13, 2025 ✓ Senate May 22, 2025 "
+                 "✓ Governor Jul 15, 2025 ✓ Law Jan 11, 2026",
+                 ["✓ House Passed on a voice vote Feb 13, 2025",
+                  "✓ Senate Passed with an amendment, 16–8 May 22, 2025",
+                  "✓ House Agreed to the Senate's amendment, 192–153 Jun 12, 2025",
+                  "✓ Governor Signed Jul 15, 2025",
+                  "✓ Law Chapter 160, in effect Jan 11, 2026"],
+                 "Introduced January 8, 2025; House: passed on a voice vote, February 13, 2025; "
+                 "Senate: passed with an amendment, 16 to 8, May 22, 2025; Governor: signed, "
+                 "July 15, 2025; Law: chapter 160, in effect January 11, 2026"),
+        "HB68": ("✓ Introduced Jan 8, 2025 ✓ House Mar 20, 2025 ✕ Senate Jan 7, 2026 Governor "
+                 "✕ Law Jan 7, 2026",
+                 ["✓ House Passed with an amendment, 217–156 Mar 20, 2025",
+                  "↺ Senate Sent back to committee on a voice vote May 1, 2025",
+                  "✕ Senate Killed on a voice vote Jan 7, 2026"], None),
+        "CACR13": ("✓ Introduced Jan 7, 2026 ✓ House Feb 5, 2026 ✓ Senate Mar 26, 2026 Voters",
+                   ["✓ House Passed, 325–15 Feb 5, 2026", "✓ Senate Passed, 23–1 Mar 26, 2026"],
                    None),
     }
     for bid, (rail_text, lines, aria) in want.items():
@@ -25338,7 +25362,7 @@ process.stdout.write("\\n@@" + JSON.stringify(out));
             m = re.search(r'<span class="rail dated".*?</span>\s*</button>', g[where], re.S)
             under = [re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", s)).strip()
                      for s in re.findall(r"<small>(.*?)</small>", m.group(0) if m else "", re.S)]
-            words = [u for u in under if not re.fullmatch(r"\d{1,2} [A-Z][a-z]{2}(?: \d{4})?", u)]
+            words = [u for u in under if not re.fullmatch(r"[A-Z][a-z]{2} \d{1,2}, \d{4}", u)]
             assert under and not words, (
                 f"{bid}'s rail on its {where} draws {words or under!a} under its stops, "
                 "where it draws a day and nothing else")
@@ -25358,12 +25382,12 @@ process.stdout.write("\\n@@" + JSON.stringify(out));
     # words do not already say how it went -- "Governor: signed", not
     # "Governor: passed, signed" -- and every date in full, "November 2026"
     # with the rest.
-    for bid, said in (("HB57", "Introduced 8 January 2025; House: passed, voice vote, 13 "
-                               "February 2025; Senate: passed, 16 to 8, amended, 22 May 2025; "
-                               "Governor: signed, 15 July 2025; Law: chapter 160, in effect "
-                               "11 January 2026"),
-                      ("CACR13", "Introduced 7 January 2026; House: passed, 325 to 15, 5 "
-                                 "February 2026; Senate: passed, 23 to 1, 26 March 2026; "
+    for bid, said in (("HB57", "Introduced January 8, 2025; House: passed, voice vote, "
+                               "February 13, 2025; Senate: passed, 16 to 8, amended, May 22, "
+                               "2025; Governor: signed, July 15, 2025; Law: chapter 160, in "
+                               "effect January 11, 2026"),
+                      ("CACR13", "Introduced January 7, 2026; House: passed, 325 to 15, "
+                                 "February 5, 2026; Senate: passed, 23 to 1, March 26, 2026; "
                                  "Voters: is here now, November 2026")):
         assert rail_of(got[bid]["card"])[0] == said, (
             f"{bid}'s list card says {rail_of(got[bid]['card'])[0]!a}, not {said!a}")
@@ -27147,9 +27171,9 @@ catch (e) { console.log("LOAD " + e.constructor.name + ": " + e.message); proces
         f"a member's vote reads as day {got['iso']} and chamber {got['ch']}")
     assert '<a href="session/H/2026-05-21.html">May 21, 2026</a>' in got["rc"], (
         "a roll call on a bill does not link its day to the sitting")
-    assert '<a href="session/S/2026-05-14.html">5/14/2026</a>' in got["row"], (
+    assert '<a href="session/S/2026-05-14.html">May 14, 2026</a>' in got["row"], (
         "a row of a member's votes does not link its day to the sitting")
-    assert "session/" not in got["rowOff"] and "5/15/2026" in got["rowOff"], (
+    assert "session/" not in got["rowOff"] and "May 15, 2026" in got["rowOff"], (
         "a row of a member's votes links a day with no sitting page")
     return "ok", ("a date is a link to session/<body>/<date> where days.json lists the "
                   "day, text otherwise, and the list is asked once; pages are built up to "
@@ -30841,19 +30865,19 @@ _OVERRIDES_SAID = {
                      "so the bill became law.",
     ("SB434", "H"): "the veto was sustained, so the bill did not become law.",
     ("SB434", "S"): "the veto was overridden in this chamber.",
-    ("SB88", "S"): "the veto was overridden in this chamber and, on 14 September 2011, in the House, "
+    ("SB88", "S"): "the veto was overridden in this chamber and, on September 14, 2011, in the House, "
                    "so the bill became law.",
-    ("SB88", "H"): "the veto was overridden in this chamber and, on 7 September 2011, in the Senate, "
+    ("SB88", "H"): "the veto was overridden in this chamber and, on September 7, 2011, in the Senate, "
                    "so the bill became law.",
-    ("HB455", "H"): "the veto was overridden in this chamber and, on 30 May 2019, in the Senate, "
+    ("HB455", "H"): "the veto was overridden in this chamber and, on May 30, 2019, in the Senate, "
                     "so the bill became law.",
-    ("HB455", "S"): "the veto was overridden in this chamber and, on 23 May 2019, in the House, "
+    ("HB455", "S"): "the veto was overridden in this chamber and, on May 23, 2019, in the House, "
                     "so the bill became law.",
     # The House's row and its roll call agree on 4 January 2012, the day the
     # row says the vote was done (decision 59h), so both pages say the day.
-    ("SB57", "H"): "the veto was overridden in this chamber and, on 7 September 2011, in the Senate, "
+    ("SB57", "H"): "the veto was overridden in this chamber and, on September 7, 2011, in the Senate, "
                    "so the bill became law.",
-    ("SB57", "S"): "the veto was overridden in this chamber and, on 4 January 2012, in the House, "
+    ("SB57", "S"): "the veto was overridden in this chamber and, on January 4, 2012, in the House, "
                    "so the bill became law.",
 }
 
@@ -31141,10 +31165,10 @@ def _session_sustained_then_overridden(SD, V):
     days = _sitting_fixture(SD, narr, {})
     said = {(it.bill, key): it.outcome_words for key, d in days.items() for it in d.items if it.veto}
     want = {("HB542", ("H", "2011-11-30")):
-            "the veto was sustained that day; the chamber overrode it on 4 January 2012, "
+            "the veto was sustained that day; the chamber overrode it on January 4, 2012, "
             "and the bill became law.",
             ("HB542", ("H", "2012-01-04")):
-            "the veto was overridden in this chamber and, on 7 September 2011, in the Senate, "
+            "the veto was overridden in this chamber and, on September 7, 2011, in the Senate, "
             "so the bill became law.",
             ("SB434", ("H", "2026-08-19")): "the veto was sustained, so the bill did not become law."}
     for k, w in want.items():
@@ -32261,7 +32285,7 @@ def _session_recess_and_rule_days(SD, BSP):
         assert not dangling, f"a link still reaches a day that is gone: {dangling}"
         page = pages.get("2013-06-05", "")
         assert "Done in the recess of this sitting" in page and \
-            "Wednesday 12 June 2013" in page, (
+            "Wednesday, June 12, 2013" in page, (
             "the 5 June 2013 page does not say HB 224 was done in its recess and "
             "entered on 12 June, the date the bill's own history gives")
         return "ok", ("recess rows on their sitting with the docket's date beside "
@@ -37205,14 +37229,14 @@ def _calendar_documents():
         got = {sid: {y: [d.label for d in ds] for y, ds in ys.items()} for sid, ys in by.items()}
         dash = "—"
         want = {
-            "hc": {"2026": ["HC 33", f"HC 32 {dash} 4 September 2026", "No30 August 14 2026"],
+            "hc": {"2026": ["HC 33", f"HC 32 {dash} September 4, 2026", "No30 August 14 2026"],
                    "2025": ["No 02 December 12 2025", "No 51 November 21 2025"]},
             "hj": {"2026": ["HJ 16 August 19, 2026"],
                    "2011": ["Daily Journal No 25 11-30-11 Final"]},
-            "sc": {"2026": [f"SC 29 {dash} 3 September 2026", "No 28 August 20 2026"],
-                   "2010": [f"43 {dash} 23 November 2010"], "2008": ["44"],
+            "sc": {"2026": [f"SC 29 {dash} September 3, 2026", "No 28 August 20 2026"],
+                   "2010": [f"43 {dash} November 23, 2010"], "2008": ["44"],
                    "2007": ["SC 24", "SC 24 (2)"]},
-            "sj": {"2026": [f"SJ 15 {dash} 19 August 2026", "SJ 14 June 4, 2026"],
+            "sj": {"2026": [f"SJ 15 {dash} August 19, 2026", "SJ 14 June 4, 2026"],
                    "2018": ["SPJ 2018 - Verbatim"]},
         }
         assert got == want, f"the picker's sets, years, labels and order read as {got}"
@@ -37357,8 +37381,8 @@ def _calendar_documents():
             f"mark: {jl.group(0) if jl else 'no jpdf link'}")
         for sid, label, url in (("hc", "HC 33", rows[0][4]),
                                 ("hj", "HJ 16 August 19, 2026", rows[8][4]),
-                                ("sc", f"SC 29 {dash} 3 September 2026", rows[9][4]),
-                                ("sj", f"SJ 15 {dash} 19 August 2026", rows[15][4])):
+                                ("sc", f"SC 29 {dash} September 3, 2026", rows[9][4]),
+                                ("sj", f"SJ 15 {dash} August 19, 2026", rows[15][4])):
             assert (f'<span class="cdset">{CD.ONE[sid]}</span> <a class="out" '
                     f'href="{_h.escape(url)}" target="_blank" rel="noopener">'
                     f'{_h.escape(label)} (PDF)</a>') in block, (
@@ -37398,7 +37422,7 @@ def _calendar_documents():
                                     ("Senate", "https://gc.nh.gov/senate/calendars_journals/")] \
             and all(any(u.startswith(page) for u in recorded) for _n, page in CD.sources(docs)), (
             "the General Court's own pages are not the folders its recorded addresses are in")
-        assert ("The latest date on a document here is 4 September 2026; anything published "
+        assert ("The latest date on a document here is September 4, 2026; anything published "
                 "since is on the General Court&rsquo;s own pages for "
                 '<a href="https://gc.nh.gov/house/calendars_journals/" rel="noopener">the House</a> '
                 'and <a href="https://gc.nh.gov/senate/calendars_journals/" rel="noopener">'
@@ -47526,6 +47550,185 @@ def _cal_node():
     return shutil.which("node") or shutil.which("node.exe")
 
 
+# ---- one date formatter in each language (8 October 2026) -------------------------
+#
+# The person chose month first (D6 of the polish plan): "May 21, 2026", and
+# "10:00 AM" for a time. The site wrote its own dates in twelve forms from six
+# formatters in the builders and four in app.js; shell.date_words() and
+# app.js's dateWords() are the one of each now. These are the ways a
+# formatter has been written here, so a new one is caught where it is written
+# rather than on a page: a strftime or a format spec with a month or a
+# weekday in it, a day number written before a month, a month list indexed to
+# write one, and the browser's own toLocaleDateString, which wrote "Wed 7 Oct"
+# in one reader's browser and "Wed, Oct 7" in another's. What is left out is
+# named with its reason.
+_DATE_EXEMPT = {
+    # Not a date in the site's voice: what a parser reads, a machine's
+    # format, a citation's style.
+    "shell.py": ("def cite_day", "CITE_MONTHS"),
+    "build_feeds.py": ("def rfc822",),
+    "app.js": ("function citeDay", "CITE_MONTHS"),
+    # The moment the data was rebuilt, in the reader's own clock and zone,
+    # which only the browser has: month first, as dateWords writes a day. And
+    # the home page's floor-session titles, "August 19th, 2026" (F3), the
+    # person's own exception.
+    "build_pages.py": ('.toLocaleDateString("en-US",{year:"numeric",month:"long",day:"numeric"})',
+                       'return DW_MONTHS[m-1]+" "+ordinal(dd)'),
+    # A month and its year ("October 2026") over the month's grid: not a day.
+    "build_calendar.py": ('monthWords(m){ return MONTH[',),
+    "bills.html": ('.toLocaleDateString("en-US",{year:"numeric",month:"long",day:"numeric"})',),
+}
+_DATE_IDIOMS = (
+    (r"strftime\(\s*[\"'][^\"']*%[aAbB]", "a strftime that writes a month or a weekday"),
+    (r"\{[^{}]*:%[aAbB][^{}]*\}", "a format spec that writes a month or a weekday"),
+    (r"\{[\w.\[\]()]*\.day\}\s*(?:&nbsp;)?\s*\{", "a day number written before a month"),
+    (r"toLocaleDateString\(", "the browser's own date format"),
+    (r"(?:MONTHS?|MON|RAILMON|RAILMONTH)\[[^\]]+\]\s*\+?\s*[\"'`]?\s*\+?\s*[\"' ]",
+     "a month list indexed to write a date"),
+)
+
+
+@check("frontend", "every date the site writes is month first, from one formatter in Python and "
+                   "one in the browser that agree on every form, and no builder or script "
+                   "writes one any other way")
+def _one_date_formatter():
+    """shell.date_words() and app.js's dateWords(), and date_span() and
+    dateSpan(), give the same words for the same day in every form (long,
+    full, medium, short, day, wkd) across a leap day, the turns of the year
+    and of a month, and what is not a date; the two pages that do not load
+    app.js (the home page's script and the Calendar's) carry app.js's own
+    text, between its DATEWORDS markers, and not a copy of it; narrative.py's
+    strftime, which writes the bills' stories, says what date_words' full form
+    says; nothing in a builder, app.js or find.js formats a date another way
+    (_DATE_IDIOMS, less _DATE_EXEMPT); and the fixture site's pages, as a
+    reader without script gets them, carry no date written day first but a
+    citation's."""
+    import datetime as _dt
+    import html as _h
+    try:
+        import shell as S
+    except ImportError:
+        return "skip", "shell.py will not import"
+    days = ["2026-02-19", "2024-02-29", "2026-01-01", "2025-12-31", "2026-05-21",
+            "2026-09-04", "2026-10-07", "1989-01-04", "2026-11-03"]
+    fixed = {("2026-02-19", "long"): "Thursday, February 19, 2026",
+             ("2026-02-19", "full"): "February 19, 2026",
+             ("2026-02-19", "medium"): "Feb 19, 2026",
+             ("2026-02-19", "short"): "Feb 19",
+             ("2026-02-19", "day"): "Thursday, February 19",
+             ("2026-02-19", "wkd"): "Thu, Feb 19",
+             ("2024-02-29", "long"): "Thursday, February 29, 2024",
+             ("2026-09-04", "medium"): "Sep 4, 2026"}
+    for (d, f), w in fixed.items():
+        assert S.date_words(d, f) == w, f"date_words({d!r}, {f!r}) is {S.date_words(d, f)!r}, not {w!r}"
+    assert S.date_words("2026-02-30") == "2026-02-30" and S.date_words("TBA") == "TBA" \
+        and S.date_words(None) == "" and S.date_words(_dt.date(2026, 2, 19), "full") == \
+        "February 19, 2026", "date_words does not give back what is not a date as it came"
+    spans = [("2026-10-05", "2026-10-11"), ("2026-09-28", "2026-10-04"),
+             ("2026-12-28", "2027-01-03"), ("2026-10-05", "2026-10-05")]
+    want_spans = ["October 5–11, 2026", "September 28 – October 4, 2026",
+                  "December 28, 2026 – January 3, 2027", "October 5, 2026"]
+    got_spans = [S.date_span(a, b) for a, b in spans]
+    assert got_spans == want_spans, f"date_span: {got_spans}"
+    want = {f"{d}|{f}": S.date_words(d, f) for d in days + ["x", "2026-13-01", ""]
+            for f in S.DATE_FORMS}
+
+    # The two copies are app.js's own text.
+    block = S.dates_js()
+    import build_pages as BP
+    import build_calendar as BC
+    assert block in BP.HOME_JS and "__DATEWORDS__" not in BP.HOME_JS, (
+        "the home page's script does not carry app.js's dateWords as app.js writes it")
+    assert block in BC.WEEK_JS and "__DATEWORDS__" not in BC.WEEK_JS, (
+        "the Calendar's script does not carry app.js's dateWords as app.js writes it")
+
+    # The browser's, run in node.
+    node = shutil.which("node") or shutil.which("node.exe")
+    if node:
+        root = Path(tempfile.mkdtemp())
+        try:
+            (root / "go.js").write_text(
+                block + "\nconst W=" + json.dumps(list(want)) + ", P=" + json.dumps(spans) + ";\n"
+                "console.log(JSON.stringify({words:Object.fromEntries(W.map(k=>{"
+                "const [d,f]=k.split('|');return [k,dateWords(d,f)];})),"
+                "spans:P.map(([a,b])=>dateSpan(a,b))}));\n", encoding="utf-8")
+            r = _run([node, "go.js"], cwd=root, capture_output=True, text=True, timeout=60)
+            assert r.returncode == 0, (r.stderr or r.stdout)[-300:]
+            got = json.loads(r.stdout.strip().splitlines()[-1])
+        finally:
+            shutil.rmtree(root, ignore_errors=True)
+        off = [f"{k}: {got['words'].get(k)!r} / {v!r}" for k, v in want.items()
+               if got["words"].get(k) != v]
+        assert not off, "app.js and shell.py write a date differently: " + "; ".join(off[:6])
+        assert got["spans"] == want_spans, f"dateSpan: {got['spans']}"
+
+    # The stories' own formatter, which narrative.py keeps: the same words.
+    try:
+        import narrative as N
+        for d in days:
+            x = _dt.datetime.strptime(d, "%Y-%m-%d")
+            assert x.strftime(N.MONTH) == S.date_words(d, "full"), (
+                f"narrative.py writes {x.strftime(N.MONTH)!r} where date_words writes "
+                f"{S.date_words(d, 'full')!r}")
+    except ImportError:
+        pass
+
+    # Nothing else writes one.
+    bad = []
+    for name, src in _front_sources():
+        text = src
+        for keep in _DATE_EXEMPT.get(name, ()):
+            for m in list(re.finditer(re.escape(keep), text)):
+                # The exempt line, or the exempt function to its end.
+                end = text.find("\n\n", m.start()) if keep.startswith(("def ", "function ")) \
+                    else text.find("\n", m.start())
+                text = text[:m.start()] + " " * ((end if end > 0 else len(text)) - m.start()) \
+                    + text[(end if end > 0 else len(text)):]
+        a = text.find("// DATEWORDS:START")
+        if name == "app.js" and a >= 0:
+            b = text.find("// DATEWORDS:END", a)
+            text = text[:a] + " " * (b - a) + text[b:]
+        if name == "shell.py" and "def date_words" in text:
+            a = text.index("# A DATE, ONE WAY")
+            b = text.index("def dates_js")
+            text = text[:a] + " " * (b - a) + text[b:]
+        for pat, what in _DATE_IDIOMS:
+            for m in re.finditer(pat, text):
+                line = text[text.rfind("\n", 0, m.start()) + 1:text.find("\n", m.start())]
+                if line.lstrip().startswith(("#", "//", "*")):
+                    continue
+                bad.append(f"{name}:{_line_of(text, m.start())} {what}: {line.strip()[:70]}")
+    assert not bad, (f"{len(bad)} dates written outside the formatter: " + "; ".join(bad[:8])
+                     + (f" (+{len(bad) - 8} more)" if len(bad) > 8 else ""))
+
+    # And the pages, as a reader without script is given them.
+    day_first = re.compile(r"\b\d{1,2}(?:st|nd|rd|th)?(?:\s|&nbsp;)+(?:January|February|March|"
+                           r"April|May|June|July|August|September|October|November|December|"
+                           r"Jan|Feb|Mar|Apr|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec)\b")
+    shared, _base, _ran, _days = _fixture_site_shared()
+    seen, found = 0, []
+    for f in sorted((shared / "site").rglob("*.html")):
+        t = f.read_text(encoding="utf-8", errors="replace")
+        # A citation keeps its own style (MLA's "24 Sept. 2026"); a bill's
+        # own text and the docket's lines are the General Court's words.
+        t = re.sub(r'<div class="pageacts".*?</dl>|<span class="citeday">.*?</span>|'
+                   r"<!--.*?-->|<script\b.*?</script>|<style\b.*?</style>|<pre\b.*?</pre>|"
+                   r'<div class="(?:billbody|docket)".*?</div>', " ", t, flags=re.S)
+        seen += 1
+        # A tag is a boundary, not a space: "SC 9</span>...<span>Mar 10" is
+        # two things, not "9 Mar".
+        for m in day_first.finditer(_h.unescape(re.sub(r"<[^>]+>", " | ", t))):
+            found.append(f"{f.relative_to(shared / 'site')}: {m.group(0)!r}")
+    assert seen > 20, f"only {seen} pages in the fixture site"
+    assert not found, (f"{len(found)} dates written day first on the fixture's pages: "
+                       + "; ".join(found[:8]))
+    return "ok", (f"{len(want)} days and forms and {len(spans)} spans alike in shell.py and "
+                  f"app.js{'' if node else ' (node is not installed: Python only)'}; the home "
+                  f"and Calendar scripts carry app.js's own text; the stories' strftime agrees; "
+                  f"no other formatter in {len(_front_sources())} builders and scripts; no day "
+                  f"written first on {seen} fixture pages")
+
+
 @check("frontend", "the Calendar page is a month, filters and three views over a week that reads whole without script")
 def _calendar_page_shape():
     """The person's description of 24 September 2026, as markup and files.
@@ -47828,7 +48031,7 @@ ok(names(F({q:"hb 4"})).join()==="House Commerce" && names(F({q:"judic"})).join(
 ok(names(F({q:"aging"})).join()==="Commission on Aging,Commission on Aging" && names(F({q:"hb 4",cats:["hearing"]})).length===0,
    "the search: a study committee found by name with its box unticked, and a bill in an unticked kind: "+names(F({q:"aging"})));
 ok(C.countLine({total:1,shown:0,seen:0},"this week")==="The one sitting this week does not match.", "one sitting, none shown");
-ok(C.countLine(C.tally(days["2026-03-11"].cards,F({})),"on "+C.dayWords("2026-03-11"))==="2 sittings on Wednesday 11 March.",
+ok(C.countLine(C.tally(days["2026-03-11"].cards,F({})),"on "+C.dayWords("2026-03-11"))==="2 sittings on Wednesday, March 11.",
    "the Day view's count: "+C.countLine(C.tally(days["2026-03-11"].cards,F({})),"on "+C.dayWords("2026-03-11")));
 ok(C.narrowed(F({}))===0 && C.narrowed(ON)===1 && C.narrowed(F({cats:["hearing"],q:"x"}))===2
    && C.narrowed(F({cats:["exec","hearing","work","floor","conf"]}))===0,
@@ -47888,16 +48091,16 @@ ok(/class="cmday cmpast" data-d="2026-03-09"/.test(g) && /class="cmday cmpast cm
    && /class="cmday" data-d="2026-03-12"/.test(g), "the past is not greyed, or the future is");
 ok(/data-d="2026-02-23"[^>]*aria-disabled="true"/.test(g), "a day before the calendar's first is offered");
 const cellOf=(h,d)=>{ const m=new RegExp('data-d="'+d+'"[^>]*>(.*?)</td>').exec(h); return m&&m[1]; };
-ok(/<i class="k-hearing"><\/i><i class="k-exec"><\/i><\/span><span class="sr">Tuesday 10 March 2026, 2 sittings</.test(cellOf(g,"2026-03-10")),
+ok(/<i class="k-hearing"><\/i><i class="k-exec"><\/i><\/span><span class="sr">Tuesday, March 10, 2026, 2 sittings</.test(cellOf(g,"2026-03-10")),
    "10 March in the grid: "+cellOf(g,"2026-03-10"));
-ok(/cmdots" aria-hidden="true"><\/span><span class="sr">Friday 13 March 2026, no sittings</.test(cellOf(g,"2026-03-13")),
+ok(/cmdots" aria-hidden="true"><\/span><span class="sr">Friday, March 13, 2026, no sittings</.test(cellOf(g,"2026-03-13")),
    "a study committee's day for a new reader: "+cellOf(g,"2026-03-13"));
 const gOn=C.gridHtml({view:"2026-03",sel:"2026-03-10",focus:"2026-03-10",today:"2026-03-11",first:"2026-03-02",last:"2026-04-05",days,f:ON});
-ok(/cmdots" aria-hidden="true"><i class="k-study"><\/i><\/span><span class="sr">Friday 13 March 2026, 1 sitting</.test(cellOf(gOn,"2026-03-13")),
+ok(/cmdots" aria-hidden="true"><i class="k-study"><\/i><\/span><span class="sr">Friday, March 13, 2026, 1 sitting</.test(cellOf(gOn,"2026-03-13")),
    "a study committee's dot: "+cellOf(gOn,"2026-03-13"));
-ok(/cmdots" aria-hidden="true"><\/span><span class="sr">Saturday 14 March 2026, no sittings, 1 cancelled</.test(cellOf(gOn,"2026-03-14")),
+ok(/cmdots" aria-hidden="true"><\/span><span class="sr">Saturday, March 14, 2026, no sittings, 1 cancelled</.test(cellOf(gOn,"2026-03-14")),
    "a cancelled meeting's day: "+cellOf(gOn,"2026-03-14"));
-ok(/Monday 9 March 2026, no sittings/.test(cellOf(g,"2026-03-09")), "an empty day: "+cellOf(g,"2026-03-09"));
+ok(/Monday, March 9, 2026, no sittings/.test(cellOf(g,"2026-03-09")), "an empty day: "+cellOf(g,"2026-03-09"));
 const g2=C.gridHtml({view:"2026-03",sel:"2026-03-10",focus:"2026-03-10",today:"2026-03-11",first:"2026-03-02",last:"2026-04-05",days,f:F({cats:["study"]})});
 ok(!/data-d="2026-03-10"[^>]*><span class="cmn" aria-hidden="true">10<\/span><span class="cmdots" aria-hidden="true"><i/.test(g2), "the grid's dots do not follow the boxes");
 ok(C.barsOf([{kinds:["other"]},{kinds:["study"]},{kinds:["floor"]},{kinds:["conf"]},{kinds:["meet"]},{kinds:["exec"]},{kinds:["hearing"]}]).join()
@@ -48257,7 +48460,7 @@ const CLOCK=new RegExp("^\\d{1,2}:\\d\\d"+NB+"(AM|PM)(–\\d{1,2}:\\d\\d"+NB+"(A
   ok(W.sel()==="2026-03-11", "the tab did not open on the reader's today: "+W.sel());
   ok((Q('td[aria-current="date"]',$("cmgrid"))||{getAttribute:()=>null}).getAttribute("data-d")==="2026-03-11", "today is not aria-current=date");
   ok(QA("tr.cmsel td",$("cmgrid")).map(t=>t.getAttribute("data-d")).join()===[0,1,2,3,4,5,6].map(i=>C.addDays("2026-03-09",i)).join(),
-     "the band is not Monday 9 to Sunday 15 March");
+     "the band is not Monday, March 9 to Sunday, March 15");
   ok(W.ticked()==="hearing,exec,work,conf,floor", "a new reader's boxes: "+W.ticked());
   // STUDY COMMITTEES ARE OFF FOR A NEW READER: the page's own list, less the
   // Commission on Aging's two cards.
@@ -48281,7 +48484,7 @@ const CLOCK=new RegExp("^\\d{1,2}:\\d\\d"+NB+"(AM|PM)(–\\d{1,2}:\\d\\d"+NB+"(A
   Q('td[data-d="2026-03-18"]',$("cmgrid")).click(); await W.step();
   ok(W.addr()==="/calendar?week=2026-W12", "a day in another week, the one it opens on, is at "+W.addr());
   ok(W.G.history.length===h0+1, "choosing a day is not one step of history");
-  ok(Q(".calhead h1").textContent==="The week of 16–22 March 2026", "the heading: "+Q(".calhead h1").textContent);
+  ok(Q(".calhead h1").textContent==="The week of March 16–22, 2026", "the heading: "+Q(".calhead h1").textContent);
   ok(W.keys().join()==="2026-03-18|House Judiciary,2026-03-18|Senate Finance", "the week of 16 March lists "+W.keys());
   ok((Q(".calday.calsel",$("calview"))||{getAttribute:()=>null}).getAttribute("data-d")==="2026-03-18", "the list does not mark the day chosen");
   ok(QA(".calhead .wknav a").map(a=>a.getAttribute("href")).join()==="/calendar,/calendar,/calendar/2026-W13",
@@ -48294,8 +48497,8 @@ const CLOCK=new RegExp("^\\d{1,2}:\\d\\d"+NB+"(AM|PM)(–\\d{1,2}:\\d\\d"+NB+"(A
     ogt:Q('meta[property="og:title"]').getAttribute("content"), ld:Q('script[type="application/ld+json"]').textContent,
     skip:Q("a.skip").getAttribute("href"), days:QA(".pcite .citeday").length});
   let nm=named();
-  ok(nm.canon==="https://graniterecord.org/calendar/2026-W12" && nm.og===nm.canon && nm.ogt==="The week of 16–22 March 2026"
-     && /“The week of 16–22 March 2026\.” Granite Record, https:\/\/graniterecord\.org\/calendar\/2026-W12\. Accessed/.test(nm.cite)
+  ok(nm.canon==="https://graniterecord.org/calendar/2026-W12" && nm.og===nm.canon && nm.ogt==="The week of March 16–22, 2026"
+     && /“The week of March 16–22, 2026\.” Granite Record, https:\/\/graniterecord\.org\/calendar\/2026-W12\. Accessed/.test(nm.cite)
      && /@misc\{calendar-2026-W12,/.test(nm.cite) && !/9–15 March|calendar,|\/calendar\./.test(nm.cite)
      && /"@id":"https:\/\/graniterecord\.org\/calendar\/2026-W12"/.test(nm.ld) && !/9–15 March/.test(nm.ld) && nm.days===4,
      "another week's page still names the week it was loaded as: "+JSON.stringify(nm));
@@ -48306,9 +48509,9 @@ const CLOCK=new RegExp("^\\d{1,2}:\\d\\d"+NB+"(AM|PM)(–\\d{1,2}:\\d\\d"+NB+"(A
   W.G.history.back(); await W.step();
   ok(W.addr()==="/calendar?week=2026-W12" && W.sel()==="2026-03-18", "Back did not return to 18 March: "+W.addr()+" "+W.sel());
   W.G.history.back(); await W.step();
-  ok(W.sel()==="2026-03-11" && W.addr()==="/calendar" && Q(".calhead h1").textContent==="The week of 9–15 March 2026", "Back did not return to 11 March");
+  ok(W.sel()==="2026-03-11" && W.addr()==="/calendar" && Q(".calhead h1").textContent==="The week of March 9–15, 2026", "Back did not return to 11 March");
   nm=named();
-  ok(nm.canon==="https://graniterecord.org/calendar" && /“The week of 9–15 March 2026\.” Granite Record, https:\/\/graniterecord\.org\/calendar\. Accessed/.test(nm.cite)
+  ok(nm.canon==="https://graniterecord.org/calendar" && /“The week of March 9–15, 2026\.” Granite Record, https:\/\/graniterecord\.org\/calendar\. Accessed/.test(nm.cite)
      && /@misc\{calendar,/.test(nm.cite) && nm.skip==="/calendar#results", "Back did not name this week again: "+JSON.stringify(nm));
   // THE ARROWS KEEP FOCUS. The week after, from the head's arrows, then This
   // week from the foot's: the same arrow in the new ones, and the heading
@@ -48336,7 +48539,7 @@ const CLOCK=new RegExp("^\\d{1,2}:\\d\\d"+NB+"(AM|PM)(–\\d{1,2}:\\d\\d"+NB+"(A
   W.view("day").click(); await W.settle();
   ok(QA(".calday",$("calview")).length===1 && W.keys().join()==="2026-03-11|Committee of conference on HB 3,2026-03-11|House floor"
      && QA(".calmeet",$("calview")).every(m=>m.open), "the Day view is not 11 March's two entries, open: "+W.keys());
-  ok($("wkcount").textContent==="2 sittings on Wednesday 11 March.", "the day's count: "+$("wkcount").textContent);
+  ok($("wkcount").textContent==="2 sittings on Wednesday, March 11.", "the day's count: "+$("wkcount").textContent);
   ok(W.addr()==="/calendar?week=2026-W11&view=day", "the Day view's address: "+W.addr());
   W.view("list").click(); await W.settle();
   // ---- the boxes ----
@@ -48434,11 +48637,11 @@ const CLOCK=new RegExp("^\\d{1,2}:\\d\\d"+NB+"(AM|PM)(–\\d{1,2}:\\d\\d"+NB+"(A
   const cell=(d)=>Q(`td[data-d="${d}"]`,$("cmgrid"));
   Q(".cmn",cell("2026-04-01")).dispatchEvent(W.ev("pointerover",{pointerType:"mouse"}));
   W.advance(499); ok($("calpeek").hidden, "the preview opens before half a second's rest");
-  W.advance(2); ok(!$("calpeek").hidden && /Wednesday 1 April/.test($("calpeek").textContent) && /Education/.test($("calpeek").textContent), "no preview after half a second: "+$("calpeek").textContent);
+  W.advance(2); ok(!$("calpeek").hidden && /Wednesday, April 1/.test($("calpeek").textContent) && /Education/.test($("calpeek").textContent), "no preview after half a second: "+$("calpeek").textContent);
   ok((Q(".pkt",$("calpeek"))||{textContent:""}).textContent==="10:00"+NB+"AM", "the preview's time is not a reader's: "+$("calpeek").textContent);
   Q(".cmn",cell("2026-04-02")).dispatchEvent(W.ev("pointerover",{pointerType:"mouse"}));
   ok(!$("calpeek").hidden, "the preview closed on the way to the next day");
-  W.advance(81); ok(/Thursday 2 April/.test($("calpeek").textContent), "the preview does not follow the pointer");
+  W.advance(81); ok(/Thursday, April 2/.test($("calpeek").textContent), "the preview does not follow the pointer");
   D.dispatchEvent(W.ev("keydown",{key:"Escape"})); ok($("calpeek").hidden, "Escape does not put the preview away");
   Q(".cmn",cell("2026-04-01")).dispatchEvent(W.ev("pointerover",{pointerType:"mouse"})); W.advance(501);
   ok(!$("calpeek").hidden, "another day does not bring it back");
@@ -48482,7 +48685,7 @@ const CLOCK=new RegExp("^\\d{1,2}:\\d\\d"+NB+"(AM|PM)(–\\d{1,2}:\\d\\d"+NB+"(A
   ok(W.sel()==="2026-04-01" && $("calpeek").hidden,
      "a day that moved under a still pointer after a click opened its preview: "+$("calpeek").textContent);
   cell("2026-03-31").dispatchEvent(W.ev("pointerover",at(300,452))); W.advance(501);
-  ok(!$("calpeek").hidden && /Tuesday 31 March/.test($("calpeek").textContent),
+  ok(!$("calpeek").hidden && /Tuesday, March 31/.test($("calpeek").textContent),
      "a real move into a day no longer opens its preview: "+$("calpeek").textContent);
   $("cmgrid").dispatchEvent(W.ev("pointerleave",{bubbles:false})); W.advance(200);
   // And a preview still waiting when a day is clicked is cancelled with it.
@@ -48493,11 +48696,11 @@ const CLOCK=new RegExp("^\\d{1,2}:\\d\\d"+NB+"(AM|PM)(–\\d{1,2}:\\d\\d"+NB+"(A
   // ---- the reader's today, not the build's ----
   const W2=world("calendar.html","/calendar",{today:[2026,3,18]});
   await W2.run();
-  ok(W2.sel()==="2026-03-18" && W2.Q(".calhead h1").textContent==="The week of 16–22 March 2026"
+  ok(W2.sel()==="2026-03-18" && W2.Q(".calhead h1").textContent==="The week of March 16–22, 2026"
      && W2.keys().join()==="2026-03-18|House Judiciary,2026-03-18|Senate Finance", "a reader a week after the build is not shown their own week: "+W2.sel());
   ok(W2.Q('td[aria-current="date"]',W2.$("cmgrid")).getAttribute("data-d")==="2026-03-18", "today is the build's, not the reader's");
   ok(W2.Q('link[rel="canonical"]').getAttribute("href")==="https://graniterecord.org/calendar/2026-W12"
-     && /^“The week of 16–22 March 2026\.” Granite Record, https:\/\/graniterecord\.org\/calendar\/2026-W12\./.test(W2.QA(".pcite dd")[0].textContent),
+     && /^“The week of March 16–22, 2026\.” Granite Record, https:\/\/graniterecord\.org\/calendar\/2026-W12\./.test(W2.QA(".pcite dd")[0].textContent),
      "the tab shows the reader's week and cites the build's: "+W2.QA(".pcite dd")[0].textContent);
   ok(W2.addr()==="/calendar", "the tab opened on the reader's week wrote an address: "+W2.addr());
   // THE DAY A WEEK OPENS ON IS ITS FIRST SITTING THE FILTERS SHOW. That
@@ -48567,27 +48770,27 @@ const CLOCK=new RegExp("^\\d{1,2}:\\d\\d"+NB+"(AM|PM)(–\\d{1,2}:\\d\\d"+NB+"(A
   const n6=W6.Q(".calhead .wknav a.wknext"); n6.focus(); n6.dispatchEvent(W6.ev("click",{button:0,detail:0}));
   await W6.step();
   const said6=W6.Q("p.calempty",W6.$("calview")), link6=said6&&W6.Q("a",said6);
-  ok(W6.addr()==="/calendar?week=2026-W12" && W6.Q(".calhead h1").textContent==="The week of 16–22 March 2026"
-     && W6.doc.title==="The week of 16–22 March 2026 | Granite Record"
+  ok(W6.addr()==="/calendar?week=2026-W12" && W6.Q(".calhead h1").textContent==="The week of March 16–22, 2026"
+     && W6.doc.title==="The week of March 16–22, 2026 | Granite Record"
      && W6.Q('link[rel="canonical"]').getAttribute("href")==="https://graniterecord.org/calendar/2026-W12"
-     && /“The week of 16–22 March 2026\.” Granite Record, https:\/\/graniterecord\.org\/calendar\/2026-W12\./.test(W6.QA(".pcite dd")[0].textContent),
+     && /“The week of March 16–22, 2026\.” Granite Record, https:\/\/graniterecord\.org\/calendar\/2026-W12\./.test(W6.QA(".pcite dd")[0].textContent),
      "a week whose file failed is at "+W6.addr()+" under the heading "+W6.Q(".calhead h1").textContent
        +", canonical "+W6.Q('link[rel="canonical"]').getAttribute("href"));
   ok(W6.Q(".calhead p.src").textContent==="The sittings of this week could not be loaded here."
      && W6.$("wkcount").textContent==="The sittings could not be loaded.",
      "the lead and the count of a week that did not load: "+W6.Q(".calhead p.src").textContent+" / "+W6.$("wkcount").textContent);
-  ok(said6 && said6.textContent==="The week of 16–22 March 2026 could not be loaded here. Open it on its own page."
+  ok(said6 && said6.textContent==="The week of March 16–22, 2026 could not be loaded here. Open it on its own page."
      && link6 && link6.getAttribute("href")==="/calendar/2026-W12",
      "the panel of a week that did not load says "+(said6&&said6.textContent));
   W6.view("day").click(); await W6.settle();
   const day6=W6.Q("p.calempty",W6.$("calview"));
-  ok(day6 && day6.textContent==="Monday 16 March could not be loaded here. Open its week on its own page.",
+  ok(day6 && day6.textContent==="Monday, March 16 could not be loaded here. Open its week on its own page.",
      "the Day view of a week that did not load says "+(day6&&day6.textContent));
   // ---- an address sent to somebody: a week, a day, a view and a box ----
   const W3=world("calendar.html","/calendar",{search:"?week=2026-W10&day=2026-03-03&view=day&kinds=hearing"});
   await W3.run();
   ok(W3.sel()==="2026-03-03" && W3.view("day").getAttribute("aria-pressed")==="true" && W3.ticked()==="hearing"
-     && W3.keys().join()==="2026-03-03|House Commerce" && W3.Q(".calhead h1").textContent==="The week of 2–8 March 2026",
+     && W3.keys().join()==="2026-03-03|House Commerce" && W3.Q(".calhead h1").textContent==="The week of March 2–8, 2026",
      "a shared address does not open on its week, day, view and box: "+W3.sel()+" "+W3.keys());
   ok(W3.addr()==="/calendar?week=2026-W10&day=2026-03-03&view=day&kinds=hearing" && W3.G.history.length===1,
      "a shared address was rewritten: "+W3.addr());
@@ -48614,7 +48817,7 @@ const CLOCK=new RegExp("^\\d{1,2}:\\d\\d"+NB+"(AM|PM)(–\\d{1,2}:\\d\\d"+NB+"(A
      "the address before the reload: "+before);
   ok(R.addr()===before && R.sel()==="2026-03-19" && R.view("week").getAttribute("aria-pressed")==="true"
      && R.ticked()==="hearing,exec,work,conf,floor,study" && R.Q('[data-body="H"]',R.$("wkfilter")).getAttribute("aria-pressed")==="true"
-     && R.keys().join()===W7.keys().join() && R.Q(".calhead h1").textContent==="The week of 16–22 March 2026",
+     && R.keys().join()===W7.keys().join() && R.Q(".calhead h1").textContent==="The week of March 16–22, 2026",
      "a reload does not open what was on the screen: "+R.addr()+" "+R.sel()+" "+R.keys());
   // And Back after a reload is the browser's own: the calendar reads it.
   // The Study Committee box, once ticked, is this browser's choice too: the
@@ -48651,7 +48854,7 @@ const CLOCK=new RegExp("^\\d{1,2}:\\d\\d"+NB+"(AM|PM)(–\\d{1,2}:\\d\\d"+NB+"(A
   ok(WA.addr()==="/calendar?week=2026-W11" && WA.sel()==="2026-03-11" && WA.G.history.length===2,
      "the first move from a week's own page is at "+WA.addr());
   WA.G.history.back(); await WA.step();
-  ok(WA.addr()==="/calendar/2026-W10" && WA.sel()==="2026-03-03" && WA.Q(".calhead h1").textContent==="The week of 2–8 March 2026"
+  ok(WA.addr()==="/calendar/2026-W10" && WA.sel()==="2026-03-03" && WA.Q(".calhead h1").textContent==="The week of March 2–8, 2026"
      && WA.keys().join()==="2026-03-03|House Commerce", "Back to a week's own page: "+WA.addr()+" "+WA.sel());
   // Reached by its file's name, as a preview served from the folder has it,
   // the calendar keeps to that name, so a reload there finds the page.
@@ -49307,7 +49510,7 @@ def _floor_session_titles():
     import build_pages as BP
     js = BP.HOME_JS
     o = re.search(r"const ordinal=.*?;\n", js)
-    f = re.search(r"const fdo=.*?\n.*?\n.*?;};\n", js)
+    f = re.search(r"const fdo=.*?;};\n", js, re.S)
     assert o and f, "HOME_JS has no ordinal() or fdo() for the floor sessions' titles"
     assert '${esc(v.chamber||"")} Session</b>' in js and "(${dayLink(v)})" in js \
         and "fdo(v.date)" in js, (
@@ -49322,7 +49525,10 @@ def _floor_session_titles():
     node = shutil.which("node") or shutil.which("node.exe")
     if not node:
         return "ok", "the block names the pattern; node is not here to run fdo()"
-    prog = (o.group(0) + f.group(0)
+    # fdo takes the month's name from app.js's own list (DW_MONTHS), which
+    # HOME_JS carries with dateWords (shell.dates_js, 8 October 2026).
+    import shell as _S
+    prog = (_S.dates_js() + "\n" + o.group(0) + f.group(0)
             + "process.stdout.write(JSON.stringify(" + json.dumps(list(cases))
             + ".map(fdo)));")
     r = _run([node, "-e", prog], capture_output=True, text=True, timeout=60)
@@ -72000,7 +72206,7 @@ def _town_board_drawn(B):
         if who not in lyme:
             bad.append(f"Lyme's own board is drawn without {who}")
     if 'href="https://www.lymenh.gov/pages/select-board"' not in lyme or \
-            "20 September 2026" not in lyme:
+            "September 20, 2026" not in lyme:
         bad.append("Lyme's own board does not say where it was read, and when")
     if "tel:+16037954000" not in lyme:
         bad.append("Ben Kilham lost the phone the directory gives him")
@@ -72067,7 +72273,7 @@ def _town_board_drawn(B):
         "_councils": {"dover": council}}, "https://x.test", tmpl))
     if "Robert Carrier" in dover or "Dennis Shanahan" not in dover:
         bad.append("Dover's page names the directory's mayor, not its own")
-    if "listed the mayor and council when this site read it on 20 September " \
+    if "listed the mayor and council when this site read it on September 20, " \
             "2026" not in dover or "Dover’s own website" not in dover:
         bad.append("Dover's own council does not say where it was read, and "
                    "when, or the sources line does not credit the city")
@@ -74910,9 +75116,9 @@ def _chapters_settled(EC, N, B):
         _intro, steps = B.journey(narr, bid, (), chapter, law_line, term, **kw)
         return [s["text"] for s in steps if s["act"] == "law"]
     assert law(narr28, "SB28", 31, line, "2009-2010") == [
-        "Chapter 31, in effect 7 Jul 2009"], law(narr28, "SB28", 31, line, "2009-2010")
+        "Chapter 31, in effect Jul 7, 2009"], law(narr28, "SB28", 31, line, "2009-2010")
     assert law(narr28, "SB28", 31, line, "2009-2010", db_effective="2009-07-14") == [
-        "Chapter 31, in effect 14 Jul 2009"], (
+        "Chapter 31, in effect Jul 14, 2009"], (
         "SB 28 of 2009 is not drawn in effect on the database's day: "
         f"{law(narr28, 'SB28', 31, line, '2009-2010', db_effective='2009-07-14')}")
     # The same day from both: nothing changes. And a line that states no day
@@ -74920,7 +75126,7 @@ def _chapters_settled(EC, N, B):
     # none: the database's is one date where the law may have several. (The
     # event's own day below is made up; only the line is read.)
     assert law(narr28, "SB28", 31, line, "2009-2010", db_effective="2009-07-07") == [
-        "Chapter 31, in effect 7 Jul 2009"]
+        "Chapter 31, in effect Jul 7, 2009"]
     bare = {"events": [{"date": "2006-06-01", "type": "governor", "body": "H",
                         "cancelled": False, "raw": "Chapter 0263"}]}
     assert law(bare, "HB1417", 262, "Chapter 0263", "2005-2006",
@@ -75411,7 +75617,7 @@ def _chapters_settled_data():
     if page is not None:
         law = [s.get("text") for s in (page.get("journey") or {}).get("steps") or []
                if s.get("act") == "law"]
-        assert law == ["Chapter 31, in effect 14 Jul 2009"], (
+        assert law == ["Chapter 31, in effect Jul 14, 2009"], (
             "SB 28 of 2009's enrolled text says \"Effective Date: July 14, 2009\", and its "
             f"page says {law}")
         said += "; SB 28 of 2009 in effect 14 July 2009, not the 7 July of SB 109's line"

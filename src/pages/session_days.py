@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-19.27
+# GRANITE_VERSION: 2026-09-19.28
 """
 A sitting day of the House or Senate, assembled from what is already parsed.
 
@@ -65,6 +65,7 @@ import re
 from datetime import date as _date
 
 import build_date
+import shell
 import narrative
 
 NARRATIVES = "narratives.json"
@@ -956,7 +957,7 @@ def _became_law(days):
             if sure and known:
                 try:
                     d = _date.fromisoformat(when)
-                    said = "" if when == day else f"{d.day} {d:%B %Y}"
+                    said = "" if when == day else shell.date_words(d, "full")
                 except ValueError:
                     said = None
             it.law = ({"H": "House", "S": "Senate"}[other], said)
@@ -972,7 +973,7 @@ def _became_law(days):
                 day, x = later[0]
                 try:
                     dd = _date.fromisoformat(day)
-                    words = f"{dd.day} {dd:%B %Y}"
+                    words = shell.date_words(dd, "full")
                 except ValueError:
                     words = ""
                 it.overturned = (words, bool(x.law))

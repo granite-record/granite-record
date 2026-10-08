@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.218 */
+/* GRANITE_VERSION: 2026-09-07.219 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -1586,6 +1586,16 @@ letter-spacing:-.005em;line-height:1.25}
    centred in the card rather than 15px left of its middle. */
 .card:not(.focus) .chead .rail.dated{width:calc(100% + 46px - var(--sp-6));
 margin-left:max(0px,calc((100% + 46px - var(--sp-6) - 560px) / 2))}
+/* AND ON A PHONE IT TAKES HALF THE CARD'S PADDING EACH SIDE (8 October 2026).
+   The stops' names went from 12px to 14px with the type scale, and on a
+   360px phone's 302px rail a Senate bill's "Introduced" and "Senate" stood
+   2px apart in Public Sans, under a word space. 318px -- 8px of the card's
+   16 on either hand -- puts 5px between them, which preflight holds
+   (_rail_on_a_phone), on the list card and the bill's own page alike. */
+@media (max-width:30em){
+  .chead .rail.dated{margin-inline:calc(-1 * var(--sp-4))}
+  .card:not(.focus) .chead .rail.dated{width:calc(100% + 46px);margin-left:calc(-1 * var(--sp-4))}
+}
 /* An opened card in the list shows the same tabs as the bill's own page, so
    its rail is the page's rail, centred (the person, 24 September). */
 .stop{flex:1 1 0;position:relative;display:flex;justify-content:center;
@@ -1650,6 +1660,15 @@ text-align:center}
 .rail.dated small{display:block;margin-top:var(--sp-1);font-size:var(--t-sm);
 line-height:1.35;color:var(--ink-2);font-variant-numeric:tabular-nums;
 padding-inline:var(--sp-2)}
+/* EVERY STOP'S YEAR, AND ALIKE (8 October 2026). Each date carries its year
+   now, month first, and "Sep 13, 2026" is about 93px of a 14px line with its
+   padding: five stops hold it on one line from a rail of about 34.5em. Under
+   that every stop puts its year on a line of its own, decided by the rail's
+   own width -- the same card is 560px in a bill's head and 320 on a phone --
+   so the stops always match rather than one wrapping beside four that do not
+   (option E's rule, measured there at 768px). */
+.rail.dated{container:rail / inline-size}
+@container rail (max-width:34.5em){.rail.dated small .ry{display:block}}
 .cstat{margin-left:auto;font-size:var(--t-sm);font-weight:600;padding:var(--sp-1) var(--sp-4);border-radius:var(--r-in);white-space:nowrap}
 /* ONE CHIP SHAPE ACROSS THE SITE. A person is drawn as .mchip -- a 3px
    radius, a 1px edge, and a 3px bar down the left in the colour of the thing

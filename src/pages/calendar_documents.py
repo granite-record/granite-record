@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-01.7
+# GRANITE_VERSION: 2026-10-01.8
 """
 The General Court's calendars and journals, as the PDFs the General Court
 serves: the list the Calendar page's picker reads.
@@ -98,6 +98,7 @@ import re
 from collections import Counter, OrderedDict, defaultdict, namedtuple
 
 import build_date
+import shell
 
 QUEUE = Path("archive") / "queue.csv"
 
@@ -237,9 +238,8 @@ def _date(y, m, d):
 
 
 def day_words(iso):
-    """"4 September 2026", the way this site writes a day."""
-    d = datetime.date.fromisoformat(iso)
-    return f"{d.day} {MONTHS[d.month - 1]} {d.year}"
+    """"September 4, 2026", the way this site writes a day (shell.date_words)."""
+    return shell.date_words(datetime.date.fromisoformat(iso), "full")
 
 
 def number_of(name):

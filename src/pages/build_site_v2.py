@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.179
+# GRANITE_VERSION: 2026-09-05.180
 """
 Generate the faceted site from real General Court data.
 
@@ -30,6 +30,7 @@ import _paths  # noqa: E402,F401
 
 import argparse
 import build_date
+import shell as _shell
 import caption_span
 import committee_names as CN
 # Where the recordings this site links begin: one constant, which about.html
@@ -1576,12 +1577,12 @@ UNTOLD_FOR = {"Died when the conference report was rejected": "conf_rejected",
 
 
 def _long_date(iso):
-    """"2001-06-26" -> "June 26, 2001", or ""."""
+    """"2001-06-26" -> "June 26, 2001", or "": shell.date_words."""
     try:
         d = _date.fromisoformat(iso)
     except (TypeError, ValueError):
         return ""
-    return f"{d.strftime('%B')} {d.day}, {d.year}"
+    return _shell.date_words(d, "full")
 
 
 def untold_ending(label, steps, untold):
@@ -4461,12 +4462,13 @@ J_PASSING = {"passed", "adopted", "referred"}
 
 
 def _j_prose_date(iso, year=True):
-    """"2026-01-11" -> "11 Jan 2026"."""
+    """"2026-01-11" -> "Jan 11, 2026", or "Jan 11" without the year:
+    shell.date_words, month first like every date the site writes."""
     try:
-        y, m, d = (int(x) for x in iso.split("-"))
-    except (AttributeError, ValueError):
+        _date(*(int(x) for x in iso.split("-")))
+    except (AttributeError, TypeError, ValueError):
         return ""
-    return f"{d} {J_MON[m - 1]}" + (f" {y}" if year else "")
+    return _shell.date_words(iso, "medium" if year else "short")
 
 
 def _j_iso(m, d, y):
@@ -8083,12 +8085,9 @@ def bill_documents(b, bid, st, narr, sources, rep_written, rep_docket):
 
 
 def _long_day(iso):
-    """"2025-02-06" -> "February 6, 2025", as the narratives write a day."""
-    try:
-        y, m, d = (int(x) for x in str(iso).split("-"))
-        return f"{MONTHS[m - 1].capitalize()} {d}, {y}"
-    except (ValueError, IndexError):
-        return str(iso or "")
+    """"2025-02-06" -> "February 6, 2025", as the narratives write a day:
+    shell.date_words."""
+    return _shell.date_words(str(iso or ""), "full")
 
 
 def journal_story(b, jkeys):

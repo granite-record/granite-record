@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-18.26
+# GRANITE_VERSION: 2026-09-18.27
 """
 The General Court's week, one page per week.
 
@@ -112,10 +112,6 @@ import structured as LD
 # the record and reachable through a bill or a committee, but nobody pages a
 # calendar back to 1998 and sixty-odd files is enough to carry the arrows.
 FROM = "2025-01-01"
-
-DAYNAME = "Monday Tuesday Wednesday Thursday Friday Saturday Sunday".split()
-MONTH = ("January February March April May June July August September "
-         "October November December").split()
 
 # A ROW WITH NO COMMITTEE IS NOT AUTOMATICALLY THE FLOOR, and treating it as
 # one put 4,370 committee meetings on this site under the heading "House
@@ -538,9 +534,12 @@ WEEK_JS = r"""
   //
   // Dates are ISO strings, "2026-09-23", and all arithmetic is in UTC: a day
   // is a date, not a moment, and a reader's time zone must not move one.
-  var DAYNAME=["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];
-  var MONTH=["January","February","March","April","May","June","July",
-             "August","September","October","November","December"];
+  // A DATE IN WORDS is app.js's dateWords() and dateSpan(), month first,
+  // put here by build_calendar out of app.js itself (shell.dates_js), so the
+  // browser has one formatter: the Calendar's own script runs before app.js
+  // is there to ask. The names of the days and months are its lists.
+__DATEWORDS__
+  var DAYNAME=DW_DAYS, MONTH=DW_MONTHS;
   // THE KINDS OF MEETING A READER SHOWS OR HIDES, in the order of the row of
   // boxes above the schedule (build_calendar.CATEGORIES), which is the key to
   // the colours and the filter at once. All of them are on for a new reader
@@ -609,17 +608,12 @@ WEEK_JS = r"""
     var m=addMonths(month(s),n);
     return m+"-"+pad(Math.min(+s.slice(8),daysIn(m)));
   }
-  function dayWords(s){ return DAYNAME[weekday(s)]+" "+(+s.slice(8))+" "+MONTH[+s.slice(5,7)-1]; }
-  // A week's name from its key alone: build_calendar.span_words, "9–15
-  // March 2026" or "30 March – 5 April 2026". For a week whose month
+  function dayWords(s){ return dateWords(s,"day"); }
+  // A week's name from its key alone: build_calendar.span_words, "March
+  // 9–15, 2026" or "March 30 – April 5, 2026". For a week whose month
   // file did not come, so the heading can still name the week the address
   // does; preflight holds the two to the same words.
-  function weekLabel(k){
-    var a=keyMonday(k), b=addDays(a,6), ma=MONTH[+a.slice(5,7)-1], mb=MONTH[+b.slice(5,7)-1];
-    if(ma===mb) return (+a.slice(8))+"–"+(+b.slice(8))+" "+mb+" "+b.slice(0,4);
-    if(a.slice(0,4)===b.slice(0,4)) return (+a.slice(8))+" "+ma+" – "+(+b.slice(8))+" "+mb+" "+b.slice(0,4);
-    return (+a.slice(8))+" "+ma+" "+a.slice(0,4)+" – "+(+b.slice(8))+" "+mb+" "+b.slice(0,4);
-  }
+  function weekLabel(k){ var a=keyMonday(k); return dateSpan(a,addDays(a,6)); }
   function monthWords(m){ return MONTH[+m.slice(5,7)-1]+" "+m.slice(0,4); }
   // build_calendar.day_words's rule, in the reader's clock.
   function relWord(s,today){
@@ -928,7 +922,7 @@ WEEK_JS = r"""
     var on=d>=c.first&&d<=c.last, day=c.days[d],
         vis=day?day.cards.filter(function(e){ return matches(e,c.f); }):[],
         live=vis.filter(function(e){ return !e.cancelled; }).length,
-        cls=["cmday"], name=dayWords(d)+" "+d.slice(0,4);
+        cls=["cmday"], name=dateWords(d,"long");
     if(month(d)!==c.view) cls.push("cmout");
     if(d<c.today) cls.push("cmpast");
     if(d===c.today) cls.push("cmnow");
@@ -1310,7 +1304,7 @@ WEEK_JS = r"""
         return '<th scope="col" class="wkcol'+(d===SEL?" wksel":"")+(d<TODAY?" wkpast":"")+'"'
           +(d===TODAY?' aria-current="date"':"")+'><button type="button" class="wkday" data-d="'+d+'">'
           +'<span class="wkdn">'+DAYNAME[weekday(d)].slice(0,3)+'</span> '
-          +'<span class="wkdd">'+(+d.slice(8))+" "+MONTH[+d.slice(5,7)-1].slice(0,3)+'</span>'
+          +'<span class="wkdd">'+dateWords(d,"short")+'</span>'
           +'<span class="sr">: open '+esc(dayWords(d))+'</span></button></th>'; }).join("")
       +'</tr></thead><tbody>';
     if(!rows.length)
@@ -1860,6 +1854,10 @@ WEEK_JS = r"""
   });
 })();
 """
+# app.js's own date formatter, read out of app.js (shell.dates_js): the
+# Calendar's script runs before app.js is there to ask, and the browser has
+# one formatter however many pages carry it.
+WEEK_JS = WEEK_JS.replace("__DATEWORDS__", S.dates_js(), 1)
 
 
 def week_key(d):
@@ -1872,14 +1870,9 @@ def monday(d):
 
 
 def span_words(a, b):
-    """21-27 September 2026, or 29 September - 5 October 2026."""
-    if a.month == b.month:
-        return f"{a.day}–{b.day} {MONTH[b.month - 1]} {b.year}"
-    if a.year == b.year:
-        return (f"{a.day} {MONTH[a.month - 1]} – "
-                f"{b.day} {MONTH[b.month - 1]} {b.year}")
-    return (f"{a.day} {MONTH[a.month - 1]} {a.year} – "
-            f"{b.day} {MONTH[b.month - 1]} {b.year}")
+    """September 21–27, 2026, or September 29 – October 5, 2026: shell's
+    date_span, month first (D6, 8 October 2026)."""
+    return S.date_span(a, b)
 
 
 def href_for(key, today):
@@ -2169,7 +2162,7 @@ def sitting_pages(site):
 
 
 def day_words(d, today):
-    """("Monday 21 September", "in 3 days") -- a day's heading and how far off
+    """("Monday, September 21", "in 3 days") -- a day's heading and how far off
     it is from `today`. The page's script writes the second part again in the
     reader's own clock; this is what a reader without script is given."""
     x = datetime.date.fromisoformat(d)
@@ -2178,7 +2171,7 @@ def day_words(d, today):
     # with no label at all until the script wrote one.
     rel = ("today" if off == 0 else "tomorrow" if off == 1
            else f"in {off} days" if 0 < off <= 14 else "")
-    return f"{DAYNAME[x.weekday()]} {x.day} {MONTH[x.month - 1]}", rel
+    return S.date_words(x, "day"), rel
 
 
 def week_facts(key, weeks, today):

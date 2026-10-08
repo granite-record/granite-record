@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.160
+// GRANITE_VERSION: 2026-09-07.161
 // What each kind of document actually is, said once rather than in every row.
 const DOCWHAT={text:"the bill as it currently stands",
   status:"the page this site takes a bill's status from",
@@ -2139,8 +2139,45 @@ function whyLine(b){
 function scoreOf(b){
   return matchScore(b,groupsFor(query.trim()));
 }
-const fdate=d=>{if(!d)return"";const[y,m,dd]=d.split("-");
-  return new Date(y,m-1,dd).toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"});};
+// DATEWORDS:START
+// A DATE, ONE WAY, MONTH FIRST (8 October 2026, the person's D6): shell.py's
+// date_words() in the browser, and preflight holds the two to one answer on
+// every form. build_pages and build_calendar put this text, read out of this
+// file between its markers, into the two pages that do not load app.js, so
+// it is written once. A date is "YYYY-MM-DD" at the start of a string; what
+// is not one comes back as it came. The forms: long "Thursday, February 19,
+// 2026"; full "February 19, 2026"; medium "Feb 19, 2026", the default; short
+// "Feb 19"; day "Thursday, February 19"; wkd "Thu, Feb 19".
+var DW_MONTHS=["January","February","March","April","May","June","July",
+  "August","September","October","November","December"];
+var DW_DAYS=["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];
+function dateWords(iso,form){
+  var s=iso==null?"":String(iso), m=/^(\d{4})-(\d\d)-(\d\d)/.exec(s);
+  if(!m)return s;
+  var y=+m[1], mo=+m[2], d=+m[3], t=new Date(Date.UTC(y,mo-1,d));
+  if(t.getUTCFullYear()!==y||t.getUTCMonth()!==mo-1||t.getUTCDate()!==d)return s;
+  var M=DW_MONTHS[mo-1], Mo=M.slice(0,3), W=DW_DAYS[(t.getUTCDay()+6)%7];
+  switch(form){
+    case "long": return W+", "+M+" "+d+", "+y;
+    case "full": return M+" "+d+", "+y;
+    case "short": return Mo+" "+d;
+    case "day": return W+", "+M+" "+d;
+    case "wkd": return W.slice(0,3)+", "+Mo+" "+d;
+    default: return Mo+" "+d+", "+y;
+  }
+}
+// Two days as one span: "October 5–11, 2026", "September 28 – October
+// 4, 2026", "December 28, 2026 – January 3, 2027" -- shell.date_span.
+function dateSpan(a,b){
+  if(String(a).slice(0,10)===String(b).slice(0,10))return dateWords(a,"full");
+  var fa=dateWords(a,"full"), fb=dateWords(b,"full");
+  if(fa===String(a)||fb===String(b))return fa+" – "+fb;
+  var x=fa.replace(",","").split(" "), z=fb.replace(",","").split(" ");
+  if(x[2]!==z[2])return fa+" – "+fb;
+  if(x[0]!==z[0])return x[0]+" "+x[1]+" – "+z[0]+" "+z[1]+", "+z[2];
+  return x[0]+" "+x[1]+"–"+z[1]+", "+z[2];
+}
+// DATEWORDS:END
 const $=s=>document.querySelector(s);
 
 let IDX=[],META={},term=null,query="",sortBy="num",sortChosen=false;
@@ -3371,7 +3408,7 @@ function journeyList(b,d){
   const line=(s,i)=>`<li class="j-${esc(s.mark)}"${hide(i)?" hidden":""}><span class="jg"
     aria-hidden="true">${JMARK[s.mark]||""}</span><span class="jb">${
     esc(JBODY[s.body]||s.body)}</span><span class="jt">${esc(s.text)}</span><span
-    class="jd">${s.date?esc(railDay(s.date,true)):""}</span></li>`;
+    class="jd">${s.date?esc(dateWords(s.date)):""}</span></li>`;
   const rows=st.map(line);
   if(cut)rows.splice(st.length-(JOURNEY_SHOWN-2),0,
     `<li class="jmore"><button type="button" class="link" data-jmore="${esc(k)}">Show ${
@@ -3477,12 +3514,12 @@ function factsTable(b,d){
 function endNote(d){
   const s=d.study_report,out=[];
   if(s)out.push(`<p class="note"><b>Interim study report${s.date?`, ${
-    esc(fdate(s.date))}`:""}:</b> the committee ${s.recommended
+    esc(dateWords(s.date))}`:""}:</b> the committee ${s.recommended
       ?"recommended the subject for future legislation"
       :"did not recommend the subject for future legislation"}${
       s.vote?`, ${esc(s.vote)}`:""}.</p>`);
   if(d.session_over)out.push(`<p class="note">The chambers do not sit again
-    this term: the last session day was ${esc(fdate(d.session_over))}. A bill
+    this term: the last session day was ${esc(dateWords(d.session_over))}. A bill
     that had not passed by then did not advance, whatever its last recorded
     status says.</p>`);
   return out.join("");
@@ -3538,7 +3575,7 @@ ${d._error?`<div class="loaderr"><b>This bill's detail did not
       <p class="note">Every action the General Court recorded, in its own words
         and in the order it recorded them.</p>
       <ul class="tl">${d.events.filter(e=>!e.cancelled).map(e=>`<li>
-        <span class="d">${e.date?esc(fdate(e.date)):""}</span>
+        <span class="d">${e.date?esc(dateWords(e.date)):""}</span>
         <span class="w">${esc(e.text||"")}${e.cite?` <span class="cite">${
           e.cite_url?`<a href="${esc(e.cite_url)}" target="_blank"
           rel="noopener">${esc(e.cite)}</a>`:esc(e.cite)}</span>`:""}${
@@ -3613,7 +3650,7 @@ function renderVotes(b,d){
     return `<section class="rc">
       <div class="rchead"><h2 class="rcq">${esc(rc.question)}${
         rc.amendment?` <span class="ramd">${esc(rc.amendment)}</span>`:""}</h2>
-      <span class="rcd">${sittingLink(rc.body==="H"?"H":"S",rc.date,fdate(rc.date))} · ${
+      <span class="rcd">${sittingLink(rc.body==="H"?"H":"S",rc.date,dateWords(rc.date))} · ${
         rc.body==="H"?"House":"Senate"}${AVK[vk]?` · ${AVK[vk]}`:""}</span>
       <span class="rcres ${rc.passed?'pass':'fail'}">${rc.passed?"Adopted":"Failed"}</span></div>
       ${rc.mover?`<p class="rcby">Moved by ${esc(rc.mover)}</p>`:""}
@@ -3689,21 +3726,21 @@ function ballotCard(d){
   const v=d.ballot;
   if(!v)return "";
   const head=res=>`<div class="rchead"><h2 class="rcq">The voters</h2>
-      <span class="rcd">${esc(fdate(v.date))} · State general election</span>${res}</div>`;
+      <span class="rcd">${esc(dateWords(v.date))} · State general election</span>${res}</div>`;
   const lab=String(v.label||"");
   const listed=/^\(.*\)$/.test(lab)?esc(lab.slice(1,-1).replace(/;\s*/g,", "))
     :`&ldquo;${esc(lab)}&rdquo;`;
   const cited=[v.by,v.cite].filter(Boolean).join(", ")||v.source;
   const src=`<p class="src">Source: <a href="${esc(v.source)}" target="_blank"
       rel="noopener">${esc(cited)}</a>, read
-      ${esc(fdate(v.read))}, which lists it as ${listed}.</p>`;
+      ${esc(dateWords(v.read))}, which lists it as ${listed}.</p>`;
   // An election to come, and one past whose count is not in the file yet
   // (v.over, build_site_v2.ballot_card): the status says "went to the voters"
   // the day after, and so does this.
   if(v.pending)return `<section class="rc ballot">${head("")}
     <p class="bout">${v.over
-      ?`The vote was on ${esc(fdate(v.date))}; its count is not recorded here yet.`
-      :`The vote is on ${esc(fdate(v.date))}.`}</p>
+      ?`The vote was on ${esc(dateWords(v.date))}; its count is not recorded here yet.`
+      :`The vote is on ${esc(dateWords(v.date))}.`}</p>
     <p class="note">This ${v.over?"was":"is"} the statewide public vote, at the general
       election. An amendment to the constitution needs two thirds of the votes cast
       on it.</p>
@@ -3738,7 +3775,7 @@ function docketDiffers(v){
 // Hearing, Mar 12, 2025". `when` is the record's own date, drawn as every
 // other date here is where it is one and as it came where it is not.
 function recTitle(what,when){
-  const day=/^\d{4}-\d\d-\d\d$/.test(String(when||""))?fdate(when):String(when||"");
+  const day=/^\d{4}-\d\d-\d\d$/.test(String(when||""))?dateWords(when):String(when||"");
   return `Recording of ${what}${day?`, ${day}`:""}`;
 }
 
@@ -3833,10 +3870,10 @@ function hearingReport(r,video){
     <div class="hrb">
     ${r.subject?`<p class="hrsrc"><b>Heard:</b> ${esc(r.subject)}</p>`:""}
     <p class="hrsrc">What each person said, as summarized in the ${esc(cmte)}’s
-      hearing report${when?` of ${fdate(when)}`:""}. The report is the committee
+      hearing report${when?` of ${dateWords(when)}`:""}. The report is the committee
       staff’s summary of the hearing, not a transcript${video
         ?"; the recording above is the hearing itself":""}.</p>
-    <dl class="hrfacts">${fact("Hearing",times?`${fdate(r.heard)}, ${times}`:fdate(r.heard))}${
+    <dl class="hrfacts">${fact("Hearing",times?`${dateWords(r.heard)}, ${times}`:dateWords(r.heard))}${
       fact("Members present",r.present)}${fact("Members absent",r.absent)}</dl>
     ${pos.length?`<h2>Who took a position</h2><dl class="hrfacts">${
       pos.map(p=>fact(p[0],p[1])).join("")}</dl>`:""}
@@ -4143,7 +4180,7 @@ function renderHearings(b,d){
     // pending dot while an unlocated estimate wore the finished one. It now
     // follows the branch that actually ran.
     return `<div class="stn ${placed?"done":"pend"}">
-      <div class="w">${esc(s.when)}${s.time?" at "+esc(s.time):""}${s.venue?" · "+esc(s.venue):""}</div>
+      <div class="w">${esc(dateWords(s.when))}${s.time?" at "+esc(clock(s.time)):""}${s.venue?" · "+esc(s.venue):""}</div>
       <div class="t">${esc(stationTitle(b,s))}</div>${
         signins(s.testimony)}${inner}${(s.reports||[]).map(r=>
           hearingReport(r,inner.includes('class="player"'))).join("")}</div>`;}).join("")
@@ -4196,11 +4233,11 @@ function renderReports(b,d,rsa){
   (d.report_actions||[]).forEach(a=>{(acts[a.before]=acts[a.before]||[]).push(a);});
   const between=key=>(acts[key]||[]).map(a=>
     `<p class="note" style="margin:0 0 16px">Between these reports the docket
-      records, on ${esc(fdate(a.date))}: <em>${esc(a.text)}</em></p>`).join("");
+      records, on ${esc(dateWords(a.date))}: <em>${esc(a.text)}</em></p>`).join("");
   // The day the committee signed its report, where the docket states it; the
   // day the calendar carrying it was published, where it does not. Saying
   // which is the difference between a fact and a stand-in for one.
-  const when=r=>!r.date?"":`<span class="secsub">${esc(fdate(r.date))}</span>`
+  const when=r=>!r.date?"":`<span class="secsub">${esc(dateWords(r.date))}</span>`
       +(r.dated==="printed"?` <span class="repas">as printed</span>`:"");
   const cited=r=>{
     if(!r.cite)return "";
@@ -4333,7 +4370,7 @@ function veto(d){
     <h2 class="amdsec">The governor&rsquo;s veto message</h2>
     ${v.text.map(p=>`<p>${esc(p)}</p>`).join("")}
     <p class="vsig">${esc(v.governor||"")}${
-      v.date?` <span class="secsub">${esc(fdate(v.date))}</span>`:""}</p>
+      v.date?` <span class="secsub">${esc(dateWords(v.date))}</span>`:""}</p>
     ${v.date?`<p class="note" style="margin:6px 0 0">The message carries its own
       date, which is the day the governor signed it. The docket records the day
       the veto reached the House, and on three of these the two are days
@@ -4490,7 +4527,7 @@ function renderBillText(b,d,rsa){
       <div class="amdhead"><span class="amdn">${esc(x.num)}</span>
         <span class="amdk">${esc(x.kind||"Amendment")}</span>
         ${state?`<span class="cstat ${state==="adopted"?"s-law":"s-done"}">${state}</span>`:""}
-        <span class="amdd">${x.date?esc(fdate(x.date)):""}${
+        <span class="amdd">${x.date?esc(dateWords(x.date)):""}${
           AVK[x.vote_kind]?` \u00b7 ${AVK[x.vote_kind]}`:""}</span></div>
       ${who?`<p class="amdby">${esc(who)}</p>`:""}
       ${(x.targets||[]).length?`<p class="amdt">Changes ${
@@ -4597,7 +4634,7 @@ function renderDocuments(b,d){
            // notice it cancels.
            const acts=(d.events||[]).filter(e=>e.cite&&e.cite===x.label&&!e.called_off);
            const src=x.kind==="record"?citeSource(x.label):"";
-           const when=acts.length?fdate(acts[0].date):"";
+           const when=acts.length?dateWords(acts[0].date):"";
            const of=[src,when].filter(Boolean).join(" \u00b7 ");
            return `<li class="doc doc-${esc(x.kind)}">
            <a href="${esc(x.url)}" target="_blank" rel="noopener">${esc(x.label)}</a>
@@ -5434,16 +5471,13 @@ function rail(b){
 // 2026). Opening a card changes nothing about its rail, seen or heard; a row
 // with no stops is the one card that still waits for the record's.
 //
-// A stop not reached has no date. The year is on the first date and wherever
-// it changes, so "8 Jan 2025 ... 13 Feb ... 7 Jan 2026" reads without a key.
-const RAILMON=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-const RAILMONTH=["January","February","March","April","May","June","July",
-  "August","September","October","November","December"];
-function railDay(iso,year,long){
-  const m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(iso||"");
-  if(!m)return "";
-  return `${+m[3]} ${(long?RAILMONTH:RAILMON)[+m[2]-1]}${year?` ${m[1]}`:""}`;
-}
+// A stop not reached has no date. EVERY DATE CARRIES ITS YEAR, month first
+// (the person, 8 October 2026: some stops carried the year and some did not,
+// on the same bill -- "8 Jan 2025 ... 13 Feb ... 7 Jan 2026"). The year is
+// its own span, so where the rail is too narrow for "Jan 8, 2025" on one
+// line every stop sets its year on a line of its own alike (app.css, .ry),
+// rather than one stop wrapping where its neighbours did not.
+const RAIL_MON=DW_MONTHS.map(m=>m.slice(0,3));
 const RAILSTOP={I:"Introduced",H:"House",S:"Senate",G:"Governor",L:"Law",V:"Voters"};
 function railStops(b,d){
   const own=((d||{}).journey||{}).rail||[];
@@ -5454,15 +5488,13 @@ function railStops(b,d){
 function datedRail(b,d){
   const st=railStops(b,d);
   if(!st.length)return rail(b);
-  let was="";
   const cells=st.map(s=>{
-    const y=(s.date||"").slice(0,4);
-    const day=s.date?railDay(s.date,y!==was):"";
-    if(s.date)was=y;
+    const day=s.date?dateWords(s.date):"";
     // The day and nothing else: s.short is said below, never drawn.
     return `<span class="stop s-${esc(s.mark==="-"?"o":s.mark)}"><b>${
       RAILMARK[s.mark]||""}</b><i>${esc(s.stop)}</i>${day
-      ?`<small>${esc(day)}</small>`:""}</span>`;
+      ?`<small>${esc(day.slice(0,-5))}<span class="ry">${esc(day.slice(-5))}</span></small>`
+      :""}</span>`;
   });
   // The same facts as a sentence, for a reader who hears the page: every
   // date in full and a tally read "16 to 8" rather than a dash. The Law
@@ -5470,7 +5502,7 @@ function datedRail(b,d){
   // as that -- "in effect 11 January 2026" -- and not a second time where
   // its words already say it.
   const said=st.map(s=>{
-    const when=s.date?railDay(s.date,true,true):"";
+    const when=s.date?dateWords(s.date,"full"):"";
     const lawDay=s.stop==="Law"&&s.mark==="p";
     // From the index, before the record is here, the mark's word and the
     // stop's own: "House: passed, voice vote, 13 February 2025". The
@@ -5480,10 +5512,11 @@ function datedRail(b,d){
     const own=s.short&&/^(Governor|Law|Voters)$/.test(s.stop)&&/^[px]$/.test(s.mark);
     const what=(s.say||(own?s.short:[RAILSAY[s.mark],s.short].filter(Boolean).join(", ")))
       .replace(/(\d)–(\d)/g,"$1 to $2")
-      .replace(/\b(\d{1,2}) (Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) (\d{4})\b/g,
-        (_m,d,mo,y)=>`${d} ${RAILMONTH[RAILMON.indexOf(mo)]} ${y}`)
+      .replace(/\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) (\d{1,2}), (\d{4})\b/g,
+        (_m,mo,d,y)=>dateWords(`${y}-${String(RAIL_MON.indexOf(mo)+1).padStart(2,"0")}-${
+          String(d).padStart(2,"0")}`,"full"))
       .replace(/\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) (\d{4})\b/g,
-        (_m,mo,y)=>`${RAILMONTH[RAILMON.indexOf(mo)]} ${y}`);
+        (_m,mo,y)=>`${DW_MONTHS[RAIL_MON.indexOf(mo)]} ${y}`);
     const tail=!when?"":!lawDay?`, ${when}`:/in effect/.test(what)?"":`, in effect ${when}`;
     return s.stop==="Introduced"
       ?`Introduced${when?` ${when}`:""}`
@@ -6030,7 +6063,8 @@ function voteRow(r){
   const tallies=rc&&rc.y!=null&&rc.n!=null
     ? ` <i>${rc.y}–${rc.n}</i>`:"";
   return `<tr>
-    <td class="d" data-l="Date">${sittingLink(voteChamber(x),voteIso(x),esc(x.d||""))}${
+    <td class="d" data-l="Date">${sittingLink(voteChamber(x),voteIso(x),
+      esc(voteIso(x)?dateWords(voteIso(x)):x.d||""))}${
       r.ch?`<span class="vch">${
       esc(CHAMBER_SHORT[r.ch]||r.ch)}</span>`:""}</td>
     <td class="b" data-l="On">${x.b&&x.y
@@ -6241,7 +6275,7 @@ function sessionHtml(s,si){
   // it changes when the term picker moves. The date does neither.
   return `<section class="cday" id="${esc(dayId(s.date))}">
     <h3><a class="daylink" href="#${esc(dayId(s.date))}"
-      title="A link to this sitting">${esc(fdate(s.date))}</a></h3>
+      title="A link to this sitting">${esc(dateWords(s.date))}</a></h3>
     <p class="cnarr">${esc(s.narrative||"")}</p>
     ${player}
     <ul class="tl">${items.map(i=>{
@@ -6406,8 +6440,7 @@ function calendarBlock(rows,heading){
     if(isNaN(dd))return [d,""];
     const off=Math.round((dd-today)/86400000);
     const rel=off===0?"today":off===1?"tomorrow":(off>0&&off<14)?`in ${off} days`:"";
-    return [dd.toLocaleDateString(undefined,
-      {weekday:"short",day:"numeric",month:"short"}),rel];
+    return [dateWords(d,"wkd"),rel];
   };
   const out=[`<section class="cal"><h2>${esc(heading)}</h2>`];
   days.forEach((ks,date)=>{

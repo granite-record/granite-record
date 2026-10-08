@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-09.23
+# GRANITE_VERSION: 2026-09-09.24
 """
 A page per town and ward: everyone who represents the people who live there.
 
@@ -364,11 +364,10 @@ COUNCIL_ROW = re.compile(r"council|alder", re.I)
 
 
 def long_date(stamp):
-    """"2026-09-20T22:22:15-0400" as "20 September 2026"."""
-    m = re.match(r"(\d{4})-(\d\d)-(\d\d)", stamp or "")
-    if not m:
+    """"2026-09-20T22:22:15-0400" as "September 20, 2026": shell.date_words."""
+    if not re.match(r"\d{4}-\d\d-\d\d", stamp or ""):
         return ""
-    return f"{int(m.group(3))} {MONTHS[int(m.group(2)) - 1]} {m.group(1)}"
+    return S.date_words(stamp, "full")
 
 
 def own_board_rows(board, officials, council=False):
@@ -723,21 +722,13 @@ def _is_address(host):
     return bool(host) and "." in host and " " not in host and "@" not in host
 
 
-MONTHS = ("January", "February", "March", "April", "May", "June", "July",
-          "August", "September", "October", "November", "December")
-
-
-def ordinal(n):
-    return f"{n}{'th' if 11 <= n % 100 <= 13 else {1: 'st', 2: 'nd', 3: 'rd'}.get(n % 10, 'th')}"
-
-
 def election_line(raw):
     """"11/03/2026-STATE GENERAL ELECTION" as a date in a heading.
 
-    Returns the parenthetical for the section title: "November 3rd". The year
-    is added only when it is not this one, because a reader looking at a page
-    in 2026 does not need to be told that November is in 2026 and does need
-    to be told when it is not.
+    Returns the parenthetical for the section title: "November 3, 2026",
+    month first and with its year like every date the site writes
+    (shell.date_words, 8 October 2026). It was "November 3rd", with the year
+    only when it was not this one.
 
     It says "Next Election" only while the date is ahead of the build. After
     that it says "Election on file": a heading still promising "next" in
@@ -750,9 +741,10 @@ def election_line(raw):
     if not 1 <= mm <= 12:
         return ""
     today = build_date.today()
-    when = f"{MONTHS[mm - 1]} {ordinal(dd)}"
-    if yy != today.year:
-        when += f", {yy}"
+    try:
+        when = S.date_words(f"{yy:04d}-{mm:02d}-{dd:02d}", "full")
+    except ValueError:
+        return ""
     ahead = (yy, mm, dd) >= (today.year, today.month, today.day)
     return f"{'Next Election' if ahead else 'Election on file'}: {when}"
 

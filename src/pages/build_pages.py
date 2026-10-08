@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.163
+# GRANITE_VERSION: 2026-09-04.164
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -805,7 +805,7 @@ def calendar_html(out, today=None, rows=None):
     code = committee_codes(out)
 
     def when(d):
-        """Tue 15 Sep, and how far off it is -- the part a reader acts on."""
+        """Tue, Sep 15, and how far off it is -- the part a reader acts on."""
         try:
             dd = _dt.date.fromisoformat(d)
         except ValueError:
@@ -813,7 +813,7 @@ def calendar_html(out, today=None, rows=None):
         off = (dd - today).days
         rel = ("today" if off == 0 else "tomorrow" if off == 1
                else f"in {off} days" if 0 < off <= 14 else "")
-        return dd.strftime("%a %d %b").replace(" 0", " "), rel
+        return _shell.date_words(dd, "wkd"), rel
 
     # A day's committees in the order they start, by the week page's own
     # ordering, so the two list them the same way round.
@@ -2513,20 +2513,21 @@ Promise.all([fetch(DATA("districts.json")).then(r=>r.json()).catch(()=>({})),
 HOME_JS = """
 <script>
 const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-const fd=d=>{if(!d)return"";const[y,m,dd]=d.split("-");
-  return new Date(y,m-1,dd).toLocaleDateString("en-US",{month:"short",day:"numeric"});};
-// With the year, for the status box: out of session, the last floor day and
-// the summary's date can be months back, and across a new year "Aug 19" is
-// ambiguous. The server-rendered copy below writes the same form.
-const fdy=d=>{if(!d)return"";const[y,m,dd]=d.split("-");
-  return new Date(y,m-1,dd).toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"});};
+__DATEWORDS__
+// The day without its year where the year goes without saying ("Oct 7" in
+// Latest activity), and with it for the status box: out of session, the last
+// floor day and the summary's date can be months back, and across a new year
+// "Aug 19" is ambiguous. app.js's dateWords(), above, writes both, and the
+// server-rendered copy below writes the same with shell.date_words().
+const fd=d=>dateWords(d||"","short");
+const fdy=d=>dateWords(d||"");
 // THE FLOOR SESSION'S OWN TITLE, "House Session (August 19th, 2026)": the
 // person's pattern (7 October 2026, F3), the month in full and the day as an
-// ordinal. 11th, 12th and 13th are the exceptions to 1st, 2nd and 3rd.
+// ordinal, the one date on the site that is not dateWords()'s. 11th, 12th and
+// 13th are the exceptions to 1st, 2nd and 3rd.
 const ordinal=n=>n+((n%100>=11&&n%100<=13)?"th":({1:"st",2:"nd",3:"rd"}[n%10]||"th"));
 const fdo=d=>{if(!d)return"";const[y,m,dd]=d.split("-").map(Number);
-  return new Date(y,m-1,dd).toLocaleDateString("en-US",{month:"long"})
-    +" "+ordinal(dd)+", "+y;};
+  return DW_MONTHS[m-1]+" "+ordinal(dd)+", "+y;};
 // If the nightly build stops running, nobody should be reading month-old data
 // believing it is current. The banner degrades into saying so.
 // Anchored to the site root, not to the page. legislators.html is served at
@@ -2692,8 +2693,7 @@ fetch(DATA("home.json")).then(r=>r.json()).then(H=>{
     if(up&&up.dataset.updated){
       const p=up.dataset.updated.split("-").map(Number);
       const age=Math.round((now-new Date(p[0],p[1]-1,p[2]))/86400000);
-      const nice=new Date(p[0],p[1]-1,p[2]).toLocaleDateString("en-US",
-        {month:"short",day:"numeric",year:"numeric"});
+      const nice=dateWords(up.dataset.updated);
       if(age>45){
         up.className="statenote stalewarn";
         up.style.color="var(--st-veto)";
@@ -2807,6 +2807,9 @@ document.getElementById("hgo").addEventListener("click",()=>{
   goBills(document.getElementById("hq").value);
 });
 </script>"""
+# The home page loads no app.js, so its script carries app.js's own date
+# formatter, read out of app.js (shell.dates_js) rather than written again.
+HOME_JS = HOME_JS.replace("__DATEWORDS__", _shell.dates_js(), 1)
 
 
 def sitting_days():
@@ -3022,14 +3025,8 @@ def main():
                 .replace(">", "&gt;").replace('"', "&quot;"))
 
     def fd(d):
-        if not d or len(str(d)) < 10:
-            return esc(d)
-        m = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep",
-             "Oct", "Nov", "Dec"]
-        try:
-            return f"{m[int(d[5:7]) - 1]} {int(d[8:10])}"
-        except (ValueError, IndexError):
-            return esc(d)
+        """"Aug 19", the form HOME_JS's fd() writes: shell.date_words."""
+        return esc(_shell.date_words(d or "", "short"))
 
     static_state = ""
     if S.get("headline") or S.get("phase"):
@@ -3042,10 +3039,7 @@ def main():
 
         def fdy(d):
             """"Aug 19, 2026", the form HOME_JS's fdy() writes."""
-            try:
-                return f"{fd(d)}, {int(d[:4])}"
-            except (TypeError, ValueError):
-                return esc(d or "")
+            return esc(_shell.date_words(d or ""))
         stale = (S.get("stale_days") or 0) > 45
         # THE SAME BOX THE SCRIPT DRAWS, line for line. This copy is what a
         # reader without JavaScript and every crawler get. It once had no last

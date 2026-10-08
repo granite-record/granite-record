@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-14.10
+# GRANITE_VERSION: 2026-09-14.11
 """
 The record in numbers: a Learn page of statistics computed from the site's own data.
 
@@ -53,6 +53,7 @@ from pathlib import Path
 import adopted_amendments as AA
 import ballot_source as BS
 import build_date
+import shell
 import committee_names as CN
 import later_referrals as LR
 import narrative
@@ -102,12 +103,13 @@ def _bill_link(term, bid, year=None):
 
 
 def _day(iso):
-    """"2025-02-10" -> "10 Feb 2025"."""
+    """"2025-02-10" -> "Feb 10, 2025", held together by no-break spaces in a
+    table's cell: shell.date_words."""
     try:
         d = _date.fromisoformat(iso)
     except (TypeError, ValueError):
         return E(iso)
-    return f"{d.day}&nbsp;{d:%b}&nbsp;{d:%Y}"
+    return E(shell.date_words(d)).replace(" ", "&nbsp;")
 
 
 def _cat(text):

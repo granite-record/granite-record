@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-10.37
+# GRANITE_VERSION: 2026-09-10.38
 """
 The record as CSV, for anyone who wants to work with it rather than read it.
 
@@ -765,7 +765,7 @@ def data_page(site, out, tables, base, cov=()):
       <a href="legislators.json">legislators.json</a>; and
       <a href="rollcalls_index.json">rollcalls_index.json</a>. Every
       term&#39;s file together is every bill. One file of all of them,
-      index.json, was retired on 5 October 2026, when it had grown to nine
+      index.json, was retired on October 5, 2026, when it had grown to nine
       tenths of the largest file this site&#39;s host will serve; the same
       bills are bills.csv above, in one table.</p>
 

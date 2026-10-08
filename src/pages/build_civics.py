@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.33
+# GRANITE_VERSION: 2026-09-08.34
 """
 The civics section: a hub and one page per topic, in order.
 
@@ -37,6 +37,7 @@ import re
 import unicodedata
 from collections import Counter
 
+import build_date
 import civics
 import learn_numbers
 import proceedings as P
@@ -513,8 +514,9 @@ def record_figures(site, root=Path(".")):
         "law_no_rollcall": sum(1 for r in cur if r.get("kind") == "law"
                                and not (r.get("nrc") or 0)),
         # Said instead of "rebuilt every night", which no schedule on this
-        # machine made true: the page states the one date it can know.
-        "built_on": S.BUILT,
+        # machine made true: the page states the one date it can know. In
+        # the site's own words, month first; S.BUILT is a citation's form.
+        "built_on": S.date_words(build_date.today(), "full"),
     }
     # THE WORKED EXAMPLE on the finding-your-representatives page, drawn from
     # the map rather than typed: the diagram, and every fact the prose beside

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.29
+# GRANITE_VERSION: 2026-09-04.30
 """
 Write RSS feeds so people can follow bills without a login.
 
@@ -193,17 +193,10 @@ def slug(s):
     return re.sub(r"-+", "-", re.sub(r"[^a-z0-9]+", "-", (s or "").lower())).strip("-")
 
 
-FULL_MONTHS = ["January", "February", "March", "April", "May", "June", "July",
-               "August", "September", "October", "November", "December"]
-
-
 def long_date(d):
-    """2026-02-12 -> 12 February 2026, the way a feed title reads aloud."""
-    try:
-        y, m, dd = (int(x) for x in d[:10].split("-"))
-        return f"{dd} {FULL_MONTHS[m - 1]} {y}"
-    except (ValueError, IndexError):
-        return d
+    """2026-02-12 -> February 12, 2026, the way a feed title reads aloud:
+    shell.date_words, month first like every date the site writes."""
+    return S.date_words(d, "full")
 
 
 def prune(root, keep, allow, fall=0.25):

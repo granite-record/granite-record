@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.28
+# GRANITE_VERSION: 2026-09-08.29
 """
 The topics of the civics section: their order, their names, and their prose.
 
@@ -793,15 +793,15 @@ requests that can run to thousands of pages. Opponents said a fee that tracks
 staff time can be set high enough to price an ordinary resident out of
 oversight.</p>
 <p>It shows how little a first vote settles. The House Judiciary Committee
-heard it on 17 January 2024 and split 12&ndash;8 for passing it with an
-amendment, and on 1 February the House agreed, <b>193 to 179</b>: 63
+heard it on January 17, 2024 and split 12&ndash;8 for passing it with an
+amendment, and on February 1 the House agreed, <b>193 to 179</b>: 63
 Republicans for and 125 against, 128 Democrats for and 53 against. A week
 later the House voted 195 to 183 to reopen that vote, and sent the bill back
 to the committee, which now split 11&ndash;9 for referring it to interim
 study, a recommendation that would have ended it for the term. The House
 refused, 105 to 266, adopted an amendment offered from the floor rather than
 by the committee, 345 to 24, and passed the bill 268 to 106. The Senate passed
-it on a voice vote, and Governor Sununu signed it into law on 14 June 2024.
+it on a voice vote, and Governor Sununu signed it into law on June 14, 2024.
 Five of its proceedings are on video: the House hearing, both House executive
 sessions, the work session between them, and the Senate hearing.</p>
 
@@ -1209,11 +1209,11 @@ to a newspaper circulating in the county at least 7 days beforehand
 sequence. Two bodies act, in turn, and the order is what decides who can
 change what.</p>
 
-<p><b>The commissioners propose.</b> Before 1 December each year they deliver
+<p><b>The commissioners propose.</b> Before December 1 each year they deliver
 their recommended budget to every member of the convention, to the chair of
 the selectmen of every town and the mayor of every city in the county, and to
 the Secretary of State (RSA 24:21-a, I). A county on an optional fiscal year
-does this before 1 June instead (RSA 24:21-a, II).</p>
+does this before June 1 instead (RSA 24:21-a, II).</p>
 
 <p><b>There is a public hearing.</b> It is held not earlier than 5 nor later
 than 20 days after that statement is mailed, and the clerk of the convention
@@ -1235,7 +1235,7 @@ detail and the clerk keeps the record of them (RSA 24:14, I).</p>
 
 <p><b>Missing the deadline has a consequence.</b> The convention must adopt
 the budget within 90 days after the fiscal year begins if the county runs on a
-calendar year, or by 1 September if it is on an optional fiscal year. A
+calendar year, or by September 1 if it is on an optional fiscal year. A
 convention that has not adopted one by then does not get an extension. The
 budget as recommended by the commissioners takes effect as the county budget
 (RSA 24:14, II).</p>
@@ -1309,7 +1309,7 @@ good faith (RSA 477:3-a, 478:4). The register keeps the records safe in the
 office the county provides (RSA 478:1).</p>
 
 <p><b>Register of probate:</b> still elected, though almost all of the duties
-are gone. On 1 July 2011 the probate court became the probate division of the
+are gone. On July 1, 2011 the probate court became the probate division of the
 Circuit Court (RSA 490-F:3), and the registers' duties passed to the circuit
 court clerks, apart from a few the statute leaves with the register
 (RSA 490-F:13). Among those, the register works with the Secretary of State

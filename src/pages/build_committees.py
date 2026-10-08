@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-07.48
+# GRANITE_VERSION: 2026-09-07.49
 """
 A page's worth of data for every committee.
 
@@ -83,17 +83,9 @@ PLURAL = {
     "work session": "work sessions",
     "committee of conference": "committees of conference",
 }
-MONTHS = ["January", "February", "March", "April", "May", "June", "July",
-          "August", "September", "October", "November", "December"]
-
-
 def fdate(d):
-    if not d or len(d) < 10:
-        return d or ""
-    try:
-        return f"{MONTHS[int(d[5:7]) - 1]} {int(d[8:10])}, {d[:4]}"
-    except (ValueError, IndexError):
-        return d
+    """"March 3, 2026", in a sentence: shell.date_words."""
+    return S.date_words(d or "", "full")
 
 
 def plain_name(nm):

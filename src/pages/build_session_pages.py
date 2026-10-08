@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-19.24
+# GRANITE_VERSION: 2026-09-19.25
 """
 A page for every day the House sat.
 
@@ -65,9 +65,6 @@ import journal_days
 import shell as S
 import structured as LD
 
-DAYNAME = "Monday Tuesday Wednesday Thursday Friday Saturday Sunday".split()
-MONTH = ("January February March April May June July August September "
-         "October November December").split()
 
 CHAMBER = {"H": "House", "S": "Senate"}
 
@@ -78,10 +75,9 @@ JOURNAL_FROM = "1997-01-01"
 
 
 def words(iso):
-    y, m, d = (int(x) for x in iso.split("-"))
-    import datetime
-    wd = datetime.date(y, m, d).weekday()
-    return f"{DAYNAME[wd]} {d} {MONTH[m - 1]} {y}"
+    """"Thursday, February 19, 2026": a session day's own title, and the
+    directory's, by shell.date_words."""
+    return S.date_words(iso, "long")
 
 
 def load_titles(site):
