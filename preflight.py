@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.453
+# GRANITE_VERSION: 2026-09-04.454
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -2601,6 +2601,63 @@ def _senate_rule_3_23_told(N):
     assert not bad, "\n".join(bad)
     return "ok", ("SB 131 of 2025, HB 1101 of 2020 and HB 135 of 2013 end with the Senate's Rule "
                   "3-23, on the Senate floor")
+
+
+# A DEATH ON THE TABLE (the launch audit of 7 October 2026). Real rows:
+# Docket.txt lines 1457, 2897, 4592, 4655, 5602-5603, 6642 and 13404 (HB 761
+# of 2025); Docket_2019-2020.txt 20-26 (CACR 11 of 2019).
+_DOCKET_TABLE_DEATH_STAGE = {
+    ("HB761", "2025-2026"): [
+        "2025|0898|1/23/2025 9:14:02 AM|HB761|H|  Introduced (in recess of) 01/09/2025 and referred to Science, Technology and Energy  HJ 3  P. 26|2/18/2025 3:41:50 PM",
+        "2025|0898|2/12/2025 1:01:59 PM|HB761|H|Public Hearing: 02/18/2025 10:00 am LOB 302-304|2/12/2025 1:01:59 PM",
+        "2025|0898|3/6/2025 8:53:04 AM|HB761|H|Executive Session: 03/10/2025 01:00 pm LOB 302-304|3/6/2025 8:53:04 AM",
+        "2025|0898|3/6/2025 8:53:01 AM|HB761|H|  Full Committee Work Session: 03/10/2025 09:00 am LOB 302-304|3/6/2025 8:53:01 AM",
+        "2025|0898|3/14/2025 11:29:26 AM|HB761|H|Majority Committee Report: Inexpedient to Legislate  03/10/2025 (Vote 10-8; RC)  HC 17  P. 42|3/21/2025 10:45:22 AM",
+        "2025|0898|3/14/2025 11:29:49 AM|HB761|H|Minority Committee Report: Ought to Pass|3/14/2025 11:29:49 AM",
+        "2025|0898|3/26/2025 3:13:36 PM|HB761|H|Lay HB761 on Table (Rep. Vose): MA VV 03/26/2025  HJ 10  P. 90|5/14/2025 9:38:04 AM",
+        "2025|0898|12/18/2025 9:51:24 AM|HB761|H|Died on Table, Session ended 12/17/2025  HJ 18|12/18/2025 9:51:24 AM"],
+    ("CACR11", "2019-2020"): [
+        "2019|0613|1/16/2019 12:00:00 AM|CACR11|H|Public Hearing: 01/24/2019 02:00 pm LOB 202|1/16/2019 12:00:00 AM",
+        "2019|0613|2/15/2019 12:00:00 AM|CACR11|H|Majority Committee Report: Inexpedient to Legislate for 03/07/2019 (Vote 12-8; RC) HC 14 P. 21|2/15/2019 12:00:00 AM",
+        "2019|0613|3/14/2019 12:00:00 AM|CACR11|H|Lay on Table (Rep. Cali-Pitts): MA RC 158-151 03/14/2019 HJ 9 P. 48|3/14/2019 12:00:00 AM",
+        "2019|0613|1/9/2020 12:00:00 AM|CACR11|H|Died on Table|1/9/2020 12:00:00 AM"],
+}
+
+
+@check("narrative", "a bill that died on the table is told so on the floor that tabled it, "
+                    "and once",
+       needs=("narrative",))
+def _died_on_the_floor(N):
+    """The launch audit's wording finding: "Died on Table, Session ended
+    12/17/2025" (HB 761 of 2025) fell through stage_of to the committee, so
+    130 histories of 2025-2026 told the death under "In House committee",
+    after the floor's tabling it ends, and the note "The bill was set aside
+    during the session and never taken back up, so it died when the session
+    ended." said the sentence again beneath it. The death is the floor's,
+    and told once. A bare "Died on Table" (CACR 11 of 2019), which no
+    pattern reads, keeps the note, the only telling it has."""
+    note = N.NUANCE["died on table"]
+    bad = []
+    keep = N.MEMBERS
+    try:
+        N.MEMBERS = {}
+        rec = _narrated(N, "2025-2026", "HB761", _DOCKET_TABLE_DEATH_STAGE[("HB761", "2025-2026")])
+        last = rec["stages"][-1]
+        died = ("The bill died on the table when the session ended on December 17, 2025, having "
+                "been set aside and never taken back up.")
+        if last["label"] != "On the House floor" or not last["text"].endswith(died) \
+                or "Lay HB761 on Table" not in last["text"]:
+            bad.append(f"HB 761 of 2025's last stage: {last['label']!r}: {last['text']!r}")
+        if any(note in st["notes"] for st in rec["stages"]):
+            bad.append("HB 761 of 2025 says its death on the table twice, in the note too")
+        rec = _narrated(N, "2019-2020", "CACR11", _DOCKET_TABLE_DEATH_STAGE[("CACR11", "2019-2020")])
+        if not any(note in st["notes"] for st in rec["stages"]):
+            bad.append(f"CACR 11 of 2019's bare \"Died on Table\" lost its note: {rec['stages']!r}")
+    finally:
+        N.MEMBERS = keep
+    assert not bad, "\n".join(bad)
+    return "ok", ("HB 761 of 2025 dies on the House floor's table, said once; CACR 11 of 2019's bare "
+                  "row keeps its note")
 
 
 @check("narrative", "veto and enactment sentences render", needs=("narrative",))

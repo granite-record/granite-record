@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.98
+# GRANITE_VERSION: 2026-09-04.99
 """
 Turn a bill's docket entries into a plain-language history.
 
@@ -2382,10 +2382,17 @@ def stage_of(ev):
     if t in ("signed", "vetoed", "chaptered", "governor", "enrolled",
              "enrolled_amendment", "unsigned_law"):
         return ("G", "governor")
-    if t in ("conf_report", "senate_rule_kill"):
+    if t in ("conf_report", "senate_rule_kill", "died"):
         # Each chamber's own vote on the conferees' report, on its floor, as
         # the 1989-2006 readers tell the same rows; and the Senate's rule that
         # ends a bill still lying on its table.
+        #
+        # AND A DEATH ON THE TABLE IS THE FLOOR'S (the launch audit of 7
+        # October 2026). "Died on Table, Session ended 12/17/2025" (HB 761 of
+        # 2025) fell through to the committee below, and 130 histories of
+        # 2025-2026 told it under "In House committee", after the floor's
+        # tabling it ends. Not in FLOOR_TYPES, which build() also reads for
+        # the days a chamber sat.
         return (body, "floor")
     if t in ("conference", "conference_meeting"):
         return ("C", "conference")
@@ -5626,7 +5633,15 @@ def build(bill, rows, introduction=None):
         # gone, and this fires only the most specific match so the next
         # overlapping pair cannot double up either.
         raw = ev["_raw"].lower()
-        hits = [k for k in NUANCE if k in raw]
+        # Not the note a "died" row's own sentence already says: "The bill
+        # died on the table when the session ended ..., having been set aside
+        # and never taken back up." was followed by "The bill was set aside
+        # during the session and never taken back up, so it died when the
+        # session ended." on 130 histories of 2025-2026. A bare "Died on
+        # Table" that no pattern reads (CACR 11 of 2019) keeps it, being told
+        # by nothing else.
+        hits = [k for k in NUANCE if k in raw
+                and not (k == "died on table" and ev["_type"] == "died")]
         if hits:
             _note(NUANCE[max(hits, key=len)])
 
