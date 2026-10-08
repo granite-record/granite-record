@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.449
+# GRANITE_VERSION: 2026-09-04.450
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -21942,14 +21942,51 @@ def _journey_reads(build_site_v2):
                                  "HJ30,P1078", "other"))[1]],
          [("referred", "Approved with an amendment and sent to Finance on a voice vote")],
          "HB1162 1996")
-    # A LAW WITH SEVERAL EFFECTIVE DATES HAS NO ONE DATE TO STATE.
+    # A LAW WITH SEVERAL EFFECTIVE DATES HAS NO ONE DATE TO STATE, and states
+    # each, part by part (the audit of 7 October 2026, cause 12): 92 of the
+    # 649 laws of 2025-2026 stated none at all.
     want(run("HB131", ev("H", "2026-07-02", "Signed by Governor Ayotte 07/02/2026; Chapter 205; "
                          "eff. I. Sec 3 1/1/2027 II. Rem eff 8/1/2026", "governor"),
-             chapter="205")[1][-1][3], "Chapter 205", "HB131 2026")
+             chapter="205")[1][-1][3],
+         "Chapter 205, in effect in parts: section 3 on 1 Jan 2027, the rest on 1 Aug 2026",
+         "HB131 2026")
     want(run("HB337", ev("H", "2007-07-20", "Signed by the Governor on 07/13/07; Chapter 0296; "
                          "I. Sections 5 & 6 Eff. 07/01/2011", "governor"),
              ev("H", "2007-07-20", "II. Remainder Eff. 08/12/2007", "other"),
-             chapter="296")[1][-1][3], "Chapter 296", "HB337 2007")
+             chapter="296")[1][-1][3],
+         "Chapter 296, in effect in parts: sections 5 and 6 on 1 Jul 2011, the rest on 12 Aug "
+         "2007", "HB337 2007")
+    # Docket.txt's own rows: HB 1300's line, SB 56's three rows, and a part
+    # that waits on another section.
+    want(run("HB1300", ev("H", "2026-07-15", "Signed by Governor Ayotte 07/15/2026; Chapter 324; "
+                          "eff. I. Sec 3 eff 01/01/2032 II. Rem eff 09/01/2026", "governor"),
+             chapter="324")[1][-1][3],
+         "Chapter 324, in effect in parts: section 3 on 1 Jan 2032, the rest on 1 Sep 2026",
+         "HB1300 2026")
+    want(run("SB56", ev("S", "2026-07-15", "Signed by the Governor on 07/15/2026; Chapter 335",
+                        "governor"),
+             ev("S", "2026-07-15", "I. Section 24 Effective 07/01/2031", "other"),
+             ev("S", "2026-07-15", "II. Remainder Effective 07/01/2026", "other"),
+             chapter="335")[1][-1][3],
+         "Chapter 335, in effect in parts: section 24 on 1 Jul 2031, the rest on 1 Jul 2026",
+         "SB56 2026")
+    want(run("HB557", ev("H", "2025-08-01", "Signed by Governor Ayotte 08/01/2025; Chapter 281; "
+                         "eff. I. Sec 1 & 2 eff as provided in Sec 3 II. Rem eff 08/01/2025",
+                         "governor"), chapter="281")[1][-1][3],
+         "Chapter 281, in effect in parts: sections 1 and 2 as section 3 provides, the rest on "
+         "1 Aug 2025", "HB557 2025")
+    # The day straight after the chapter, with no "eff" (HB 227 of 2025).
+    want(run("HB227", ev("H", "2025-06-02", "Signed by Governor Ayotte 06/02/2025; Chapter 59; "
+                         "08/01/2025", "governor"), chapter="59")[1][-1][3],
+         "Chapter 59, in effect 1 Aug 2025", "HB227 2025")
+    # A part that does not say plainly what it covers states none of them:
+    # "I Sec 1-3-5" (HB 655 of 2025) and "Sec I" (HB 1584 of 2026).
+    want(run("HB655", ev("H", "2025-07-15", "Signed by Governor Ayotte 07/15/2025; Chapter 202; "
+                         "eff. I Sec 1-3-5 eff 09/13/2025 II. Rem eff 07/15/2025  HJ 18",
+                         "governor"), chapter="202")[1][-1][3], "Chapter 202", "HB655 2025")
+    want(run("HB1584", ev("H", "2026-07-15", "Signed by Governor Ayotte 07/15/2026; Chapter 328; "
+                          "eff. I. Sec I eff 10/13/2026 II. Rem eff 01/01/2027", "governor"),
+             chapter="328")[1][-1][3], "Chapter 328", "HB1584 2026")
     want(run("SB151", ev("S", "2025-07-15", "Signed by the Governor on 07/15/2025; Chapter 0238; "
                          "Effective 01/01/2026", "governor"), chapter="238")[1][-1][3],
          "Chapter 238, in effect 1 Jan 2026", "SB151 2025")
