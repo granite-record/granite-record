@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.452
+# GRANITE_VERSION: 2026-09-04.453
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -2542,6 +2542,65 @@ def _conference_report_told(N):
     assert not bad, "\n".join(bad)
     return "ok", ("HB 1300 of 2026's two adoptions, HB 1 of 2025's rejection and adoption, and CACR "
                   "12 of 2012's rejection short of three fifths are told on their floors")
+
+
+# SENATE RULE 3-23 (the launch audit of 7 October 2026, cause 11). Real rows:
+# Docket_2019-2020.txt lines 368-370 (HB 1101 of 2020); Docket_db_2013-2014.txt
+# 1435-1438 (HB 135 of 2013); SB 131 of 2025's are _DOCKET_TABLED_BEFORE_THIRD's.
+_DOCKET_RULE_3_23 = {
+    ("HB1101", "2019-2020"): [
+        "2020|2003|3/12/2020 12:00:00 AM|HB1101|S|Introduced 03/11/2020 and Referred to Judiciary; SJ 7|3/12/2020 12:00:00 AM",
+        "2020|2003|6/16/2020 12:00:00 AM|HB1101|S|Vacated from Committee and Laid on Table, MA, VV; 06/16/2020 SJ 8|6/16/2020 12:00:00 AM",
+        "2020|2003|9/9/2021 12:00:00 AM|HB1101|S|Inexpedient to Legislate, Senate Rule 3-23, Adjournment 09/16/2020; SJ 10|9/9/2021 12:00:00 AM"],
+    ("HB135", "2013-2014"): [
+        "2013|0281|05/10/2013 01:18:48 PM|HB135|S|Committee Report: Inexpedient to Legislate, 5/23/13; SC21|05/10/2013 01:18:48 PM",
+        "2013|0281|05/23/2013 02:32:37 PM|HB135|S|Inexpedient to Legislate Not Voted On;|05/23/2013 02:32:37 PM",
+        "2013|0281|05/23/2013 02:33:04 PM|HB135|S|Sen. Forrester Moved Laid on Table, RC 19Y-5N, MA;|05/23/2013 02:33:04 PM",
+        "2013|0281|09/03/2013 08:10:58 AM|HB135|S|Inexpedient to Legislate, 2013 Adjournment, Senate Rule 3-23|09/03/2013 08:10:58 AM"],
+    ("SB131", "2025-2026"): _DOCKET_TABLED_BEFORE_THIRD[("SB131", "2025-2026")],
+}
+
+
+@check("narrative", "a bill Senate Rule 3-23 ended, still on the table, is told so on the "
+                    "Senate floor, on the day its row states",
+       needs=("narrative",))
+def _senate_rule_3_23_told(N):
+    """The launch audit's cause 11: "Inexpedient to Legislate, Senate Rule
+    3-23, 10/31/2025" (SB 131 of 2025) was read by no pattern, so the 67
+    histories of 2025-2026 that end that way -- and 657 of 2013-2024 -- never
+    said how the bill ended, while the rail drew it; SB 131's ended with the
+    Senate's tabling. It is now told in the sentence a death on the table
+    has, in the status chip's words, under the Senate floor's heading, dated
+    as before by the day its row states: "at adjournment" where it says so,
+    and with no day where it gives none (HB 135 of 2013)."""
+    want = {
+        "SB131": ("2025-10-31", "The bill died on the table under Senate Rule 3-23 on October 31, "
+                                "2025, having been set aside and never taken back up."),
+        "HB1101": ("2020-09-16", "The bill died on the table under Senate Rule 3-23 at "
+                                 "adjournment on September 16, 2020, having been set aside and "
+                                 "never taken back up."),
+        "HB135": ("2013-09-03", "The bill died on the table under Senate Rule 3-23 at "
+                                "adjournment, having been set aside and never taken back up."),
+    }
+    bad = []
+    keep = N.MEMBERS
+    try:
+        N.MEMBERS = {}
+        for (bill, term), rows in _DOCKET_RULE_3_23.items():
+            rec = _narrated(N, term, bill, rows)
+            day, s = want[bill]
+            last = rec["stages"][-1] if rec["stages"] else {}
+            if last.get("label") != "On the Senate floor" or not last.get("text", "").endswith(s):
+                bad.append(f"{bill} of {term} does not end, on the Senate floor, {s!r}: "
+                           f"{[(st['label'], st['text'][-160:]) for st in rec['stages']]!r}")
+            got = [(e["type"], e["date"]) for e in rec["events"] if "3-23" in e["raw"]]
+            if got != [("senate_rule_kill", day)]:
+                bad.append(f"{bill} of {term}'s Rule 3-23 row is read as {got}")
+    finally:
+        N.MEMBERS = keep
+    assert not bad, "\n".join(bad)
+    return "ok", ("SB 131 of 2025, HB 1101 of 2020 and HB 135 of 2013 end with the Senate's Rule "
+                  "3-23, on the Senate floor")
 
 
 @check("narrative", "veto and enactment sentences render", needs=("narrative",))

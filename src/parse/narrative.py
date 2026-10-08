@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.97
+# GRANITE_VERSION: 2026-09-04.98
 """
 Turn a bill's docket entries into a plain-language history.
 
@@ -631,7 +631,7 @@ def _stated(m):
 def stated_day(ev, r):
     """Date a row no pattern reads by the day it states, where that is the
     day of what it records (STATES_ITS_DAY)."""
-    if ev.get("_type") not in ("other", "conf_report") or ev.get("date"):
+    if ev.get("_type") not in ("other", "conf_report", "senate_rule_kill") or ev.get("date"):
         return ev
     created = r.get("created")
     for kind, pat in STATES_ITS_DAY:
@@ -1353,6 +1353,18 @@ DIED_RE = re.compile(r"^Died on Table[,;]?\s*Session ended\s*(?P<date>\d{1,2}/\d
 CONF_REPORT_RE = re.compile(
     r"^Conference\s+Committee\s+Report\s*#?\s*(?P<num>(?:\d{4}-)?\d{3,4}[a-z])\b"
     r"(?!.*\bFiled\b).*?\b(?P<outcome>Adopted|Failed)\b", re.I)
+# A BILL ENDED BY SENATE RULE 3-23 (the launch audit of 7 October 2026, cause
+# 11): "Inexpedient to Legislate, Senate Rule 3-23, 10/31/2025" (SB 131 of
+# 2025), "..., Adjournment 09/16/2020" (HB 1101 of 2020), "Inexpedient to
+# Legislate, 2013 Adjournment, Senate Rule 3-23" (HB 135 of 2013). Read by no
+# pattern, so 67 histories of 2025-2026 never said how the bill ended, while
+# the rail drew it; SB 131's ended with the Senate's tabling. 723 of the 724
+# rows on disk follow a Senate tabling. Dated by stated_day ("adjournment"),
+# as it was while it was read by nothing. Its own type, not "died": the rail's
+# reader passes over a "died" row as no floor action.
+SENATE_RULE_KILL_RE = re.compile(
+    r"^Inexpedient\s+to\s+Legislate,?\s*(?:\d{4}\s+Adjournment,?\s*)?"
+    r"Senate\s+Rule\s+3-23\b", re.I)
 REREF_RE = re.compile(r"^Referred to\s+(?P<committee>[A-Z][A-Za-z,&\-\s]+?)\s+"
                       r"(?P<date>\d{1,2}/\d{1,2}/\d{4})", re.I)
 
@@ -1528,6 +1540,7 @@ PATTERNS = [
         r"(?=\s*(?:#|\d{1,2}/\d{1,2}/\d{4}|[,;(]|\bVote\b|$))"
         r"(?P<rest>.*)$", re.I)),
     ("conf_report", CONF_REPORT_RE),
+    ("senate_rule_kill", SENATE_RULE_KILL_RE),
     ("veto_override", VETO_HOUSE_RE),
     ("veto_override", VETO_SENATE_RE),
     ("unsigned_law", UNSIGNED_RE),
@@ -2369,9 +2382,10 @@ def stage_of(ev):
     if t in ("signed", "vetoed", "chaptered", "governor", "enrolled",
              "enrolled_amendment", "unsigned_law"):
         return ("G", "governor")
-    if t == "conf_report":
+    if t in ("conf_report", "senate_rule_kill"):
         # Each chamber's own vote on the conferees' report, on its floor, as
-        # the 1989-2006 readers tell the same rows.
+        # the 1989-2006 readers tell the same rows; and the Senate's rule that
+        # ends a bill still lying on its table.
         return (body, "floor")
     if t in ("conference", "conference_meeting"):
         return ("C", "conference")
@@ -3098,6 +3112,17 @@ def describe(ev, body, seen_intro=False):
     if t == "died":
         when = f" when the session ended on {fdate(ev['date'])}" if ev.get("date") else " when the session ended"
         return f"The bill died on the table{when}, having been set aside and never taken back up."
+
+    if t == "senate_rule_kill":
+        # The sentence above, under the rule that ended it, and in the status
+        # chip's words for it, "Died on the table": "The bill died on the
+        # table under Senate Rule 3-23 on October 31, 2025, having been set
+        # aside and never taken back up." "on" a day only where the row
+        # states one (stated_day).
+        adj = " at adjournment" if re.search(r"\badjournment\b", ev.get("_raw") or "", re.I) else ""
+        when = f" on {fdate(ev['date'])}" if ev.get("date") else ""
+        return (f"The bill died on the table under Senate Rule 3-23{adj}{when}, having been "
+                "set aside and never taken back up.")
 
     if t == "rereferred":
         # THE CLERK DOES NOT ALWAYS NAME IT. HB 246 of 1999 reads
