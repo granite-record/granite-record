@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.30
+# GRANITE_VERSION: 2026-09-04.34
 """
 Parse the NH General Court Docket.txt bulk dump into normalized "scheduled
 proceedings" -- the input to video alignment.
@@ -245,6 +245,25 @@ def house_time(m):
 # to another. All 47 distinct values it takes were printed and read; every one
 # is punctuation or a flag residue, none is a fact.
 SENATE_MER = r"[ap]\s?\.?\s?m\.?"
+# THE CLERK'S "2;50" (the person's decision of 8 October 2026, on the review of
+# the archived manifests). A semicolon typed for the colon of a clock time, on
+# six meeting lines of 1999-2005 and nowhere else a meeting is set:
+#   "==TIME CHANGE== Hearing, Feb. 8, Room 104, LOB, 2;50 p.m."  SB 362 of 2000
+#   "Hearing  April 4, Room 102, LOB, 2;00 p.m."                 HB 1337 of 2000
+#   "Hearing; May 29 ,2001, Room 105-A, SH, 2;30 p.m."           HB 677 of 2001
+#   "Hearing; February 18, 2003, Room 104, LOB, 1;30 p.m."       SB 171 of 2003
+#   "Hearing; April 5, 2005, Room 103, LOB, 2;20 p.m."           HB 199 of 2005
+#   "Hearing  Feb 9  2;00  Rm205,LOB"                            HB 452 of 1999
+# No pattern read the hour, so SB 362's hearing kept its notice's 3:00 and the
+# other five, which each bill's history tells, had no row in the table at all.
+# HB 677's still has none: its day, "May 29 ,2001", with a space before the
+# comma, is a gap of _parse_date's own that this does not touch.
+# The Senate's and the rescheduling row's patterns want a meridiem after it,
+# and the legacy House line a meeting word and a day right before it, which is
+# what keeps a chaptering row's "Sections 5;7;9;11" (HB 1817 of 2018,
+# Docket_2017-2018.txt line 7918) from reading as a time. Every reader of the
+# hour reads it as the colon (_parse_time, _legacy_time).
+CLOCK_SEP = r"[:;]"
 MONTH_WORD = (r"(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)"
               r"[a-z]*\.?")
 
@@ -268,7 +287,8 @@ SENATE_SCHED_RE = re.compile(
     # half to go the engine backtracks and reads 9:00 as the start. It is only
     # five rows, and all five are the HB1 and HB2 budget hearings, which are
     # among the most-read pages on the site. A wrong time is worse than none.
-    r"(?P<time>\d{1,2}:\d{2})(?::\d{2})?\s*"
+    # A SEMICOLON FOR THE COLON (CLOCK_SEP, above): "2;50 p.m.".
+    r"(?P<time>\d{1,2}" + CLOCK_SEP + r"\d{2})(?::\d{2})?\s*"
     r"(?:[-–]\s*\d{1,2}:\d{2}(?::\d{2})?\s*)?"
     r"(?P<mer>" + SENATE_MER + r")"
     r"(?P<rest>.*)$",
@@ -411,7 +431,7 @@ LEGACY_SCHED_RE = re.compile(
     r"|\d{1,2}\s*/\s*\d{1,2}|[A-Za-z]{3,9}\.?\s*\d{1,2})"
     r"(?=\D|\d{1,2}:\d{2}|$)"
     # NOON is a time. It is written 39 times and means exactly midday.
-    r"\s{0,8}(?P<time>\d{1,2}:\d{2}|NOON)"
+    r"\s{0,8}(?P<time>\d{1,2}" + CLOCK_SEP + r"\d{2}|NOON)"
     # AND NOT A MERIDIEM AFTER IT, which is what keeps this pattern to the era
     # it is for. Tried first -- and it has to be tried first, or it loses
     # 1989-1990 its times, rooms and committees -- a widened kind list makes
@@ -539,7 +559,7 @@ def _legacy_time(s):
     if (s or "").strip().upper() == "NOON":
         return time(12, 0)
     try:
-        h, mi = (int(x) for x in s.split(":"))
+        h, mi = (int(x) for x in s.replace(";", ":").split(":"))
     except (ValueError, AttributeError):
         return None
     if not (0 <= mi < 60):
@@ -680,7 +700,7 @@ def _parse_time(s):
     # spaces left every one of them returning None. A rescued hearing would
     # then publish a date and no time, which is the D-no-time confidence band
     # and cannot be aligned against a recording at all.
-    s = s.strip().replace(" ", "").replace(".", "").upper()
+    s = s.strip().replace(" ", "").replace(".", "").replace(";", ":").upper()
     try:
         got = datetime.strptime(s, "%I:%M%p").time()
     except ValueError:
@@ -923,7 +943,8 @@ def cancelled(desc):
 CANCELLED_AND_RESCHEDULED = re.compile(
     r"=+\s*CANCELL?ED\s*=+\s*RESCHEDULED\s*=+\s*(?=[A-Z][a-z]+\.?\s+\d|\d{1,2}/\d)", re.I)
 RESCHEDULED_YEARS = (1999, 2006)
-RESCHEDULED_TIME = re.compile(r"(?P<time>\d{1,2}:\d{2})\s*(?P<mer>" + r"[ap]\s?\.?\s?m\.?" + r")",
+RESCHEDULED_TIME = re.compile(r"(?P<time>\d{1,2}" + CLOCK_SEP + r"\d{2})\s*(?P<mer>"
+                              + r"[ap]\s?\.?\s?m\.?" + r")",
                               re.I)
 try:
     import docket_era_1999 as _E1999
@@ -997,6 +1018,27 @@ def reconvened_to(r):
 # row's hour is the meeting's.
 TIME_CHANGED_ROW = re.compile(r"\bTIME\s+CHANGE\b|\bNEW\s+TIME\b", re.I)
 
+# AND THE ROOM THE LATEST ROOM CHANGE OR TIME CHANGE ROW GAVE IT (the person's
+# decision of 8 October 2026, on the review of the archived manifests). SB 339
+# of 2004 was noticed for SH 105-A on 13 January and moved the day before by
+# "Hearing; === ROOM CHANGE === January 13, 2004, Room 102, LOB, 10:15 a.m.";
+# SB 342 of 2006 for LOB 102 on 19 January, and moved by "Hearing; === TIME
+# CHANGE === ROOM CHANGE === January 19, 2006, Room 100, LOB, 1:30 p.m.".
+# build_proceedings folds a hearing's rows into one and keeps the first it
+# reads, which is the notice, so 32 Senate sittings of 2001-2006 were in the
+# room their notice gave and not the one the docket moved them to, and SB
+# 342's, once its notice took the later row's hour, became one of them. Every
+# row of the sitting now carries the room of the last row entered -- the row
+# itself or a later one of the same bill and chamber -- that is marked ROOM
+# CHANGE, TIME CHANGE or NEW TIME, names the day, states a room, and is not a
+# cancellation. The marks themselves are read off before the room is: "Hearing
+# April 24 == ROOM CHANGE 201-203, LOB == 10:00 a.m." (HB 1548 of 2000) is LOB
+# 201-203, where senate_venue read "LOB CHANGE 201-203".
+ROOM_CHANGED_ROW = re.compile(r"\bROOM\s+(?:AND\s+TIME\s+)?CHANGE\b", re.I)
+CHANGE_WORDS = re.compile(
+    r"(?:\bPLEASE\s+)?(?:\bNOTE\s+)?\b(?:ROOM\s+(?:AND\s+TIME\s+)?|TIME\s+)CHANGE\b"
+    r"|\bNEW\s+TIME\b", re.I)
+
 
 def _created(r):
     try:
@@ -1030,6 +1072,36 @@ def _time_changed_to(r, day, later_rows):
     return best[1] if best else None
 
 
+def _room_changed_to(r, day, rows):
+    """The room the last row of `rows` -- the same bill's rows in the same
+    chamber -- that is `r` or was entered after it, is marked ROOM CHANGE,
+    TIME CHANGE or NEW TIME, names `day`, states a room and calls nothing off,
+    gives that day's sitting (ROOM_CHANGED_ROW, above); else None."""
+    if _E1999 is None or not hasattr(_E1999, "DTXT"):
+        return None
+    mine, best = _created(r), None
+    if mine is None:
+        return None
+    for o in rows or ():
+        when = _created(o)
+        desc = o.get("desc") or ""
+        if (when is None or (o is not r and when <= mine)
+                or not (ROOM_CHANGED_ROW.search(desc) or TIME_CHANGED_ROW.search(desc))
+                or cancelled(desc)):
+            continue
+        m = re.search(_E1999.DTXT, desc, re.I)
+        named = _E1999.full_date(m.group(0), when, forward=True) if m else None
+        if not named or datetime.strptime(named, "%m/%d/%Y").date() != day:
+            continue
+        said = re.sub(r"\s{2,}", " ", CHANGE_WORDS.sub(" ", extract_flags(desc[m.end():])[1]))
+        at = RESCHEDULED_TIME.search(said)
+        room = (senate_venue(said[:at.start()], said[at.end():]) if at
+                else senate_venue(said, ""))
+        if room and (best is None or (when, o.get("lineno") or 0) >= best[0]):
+            best = ((when, o.get("lineno") or 0), room)
+    return best[1] if best else None
+
+
 def rescheduled_proceeding(r, flags, day, timeline, later_rows=None):
     """The Senate hearing a row read by rescheduled_to gives notice of: its
     day, and the hour and room the row states after it -- or the hour a later
@@ -1050,7 +1122,7 @@ def rescheduled_proceeding(r, flags, day, timeline, later_rows=None):
     return Proceeding(
         bill=r["bill"], body=r["body"], lsr=r["lsr"], kind="hearing",
         sched_date=day.isoformat(), sched_time=t.strftime("%H:%M") if t else None,
-        venue=senate_venue(between, after),
+        venue=_room_changed_to(r, day, later_rows) or senate_venue(between, after),
         flags=[f for f in flags if "CANCEL" not in str(f).upper()],
         committee=committee_on(timeline, r["bill"], day, r["body"]),
         raw=r["desc"].strip(), row_created=r["created"], row_updated=r["updated"])
@@ -1061,6 +1133,37 @@ def extract_flags(desc):
     clean = FLAG_RE.sub(" ", desc).strip()
     clean = re.sub(r"\s{2,}", " ", clean)
     return flags, clean
+
+
+# A NOTICE AND ITS OWN CANCELLED TWIN, ENTERED AT ONE MOMENT (the person's
+# decision of 8 October 2026: a cancelled meeting is not told). HB 355 of
+# 2022's docket gives its conference of 16 May twice, word for word, at the
+# same stamp: "Conference Committee Meeting: 05/16/2022 09:00 am LOB 202-204"
+# and, on the next row, "==CANCELLED== Conference Committee Meeting:
+# 05/16/2022 09:00 am LOB 202-204" (Docket_2021-2022.txt lines 10239-10240).
+# The first was read as a meeting held and drawn as one; nothing reads a
+# conference out as a notice later (proceedings.notice_only never hides one),
+# and a history cannot order two rows of one stamp. A row whose word-for-word
+# twin -- the same bill, chamber and words once the marks are read off, the
+# same marks but for the cancellation -- carries a cancellation, was entered
+# at the same moment, and follows it in the docket, is that notice called off.
+# Across every docket on this disk it is HB 355's alone: a notice cancelled by
+# a twin entered later is the history's to void (narrative.overtaken), and a
+# twin entered before it is a meeting set down again.
+def cancelled_twins(rows):
+    """{id(row)} of each row a later row of one stamp cancels word for word
+    (above)."""
+    plain, out = defaultdict(list), set()
+    for r in rows:
+        flags, clean = extract_flags(r.get("desc") or "")
+        off = [f for f in flags if "CANCEL" in f.upper()]
+        key = (r["bill"], r["body"], (r.get("created") or "").strip(), clean,
+               tuple(f for f in flags if "CANCEL" not in f.upper()))
+        if off:
+            out.update(id(x) for x in plain.get(key, ()))
+        elif not cancelled(r.get("desc") or ""):
+            plain[key].append(r)
+    return out
 
 
 def build_referral_timeline(rows):
@@ -1424,6 +1527,7 @@ def parse_proceedings(rows, timeline):
     out = []
     referred = None      # {(bill, chamber): [its referral committees]}, read at the first legacy hearing
     by_bill = None       # {(bill, chamber): its rows}, read at the first row rescheduled_to reads
+    twins = None         # cancelled_twins(rows), read at the first meeting row
     for r in rows:
         flags, clean = extract_flags(r["desc"])
         # .upper(), because the body code is not always upper case. 65 rows of
@@ -1520,6 +1624,12 @@ def parse_proceedings(rows, timeline):
         if cancelled(r["desc"]) and not any("CANCEL" in str(f).upper()
                                             for f in flags) and moved_to is None:
             flags = list(flags) + ["CANCELLED"]
+        # And a notice its own cancelled twin of one stamp calls off
+        # (cancelled_twins).
+        if twins is None:
+            twins = cancelled_twins(rows)
+        if id(r) in twins and not any("CANCEL" in str(f).upper() for f in flags):
+            flags = list(flags) + ["CANCELLED"]
 
         if kind not in VIDEO_KINDS:
             continue
@@ -1583,6 +1693,9 @@ def parse_proceedings(rows, timeline):
                 moved = _time_changed_to(r, d, by_bill.get((r["bill"], "S")))
                 if moved:
                     t = datetime.strptime(moved, "%H:%M").time()
+                # And the room the latest ROOM CHANGE or TIME CHANGE row gave
+                # it (ROOM_CHANGED_ROW).
+                venue = _room_changed_to(r, d, by_bill.get((r["bill"], "S"))) or venue
 
         # The legacy line names its own committee -- "FOR: EXEC DEPTS & ADM"
         # -- which is a better answer than the referral timeline, because that

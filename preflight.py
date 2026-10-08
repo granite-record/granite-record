@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.464
+# GRANITE_VERSION: 2026-09-04.465
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -6962,6 +6962,376 @@ def _senate_time_change_table():
                and r["kind"] == "hearing"}
     assert got == want, f"proceedings.csv gives {got!r}, not {want!r}"
     return "ok", "2:00 on 22 February 2005 and 1:45 on 23 February 2000"
+
+
+# Real rows: Docket_db_2003-2004.txt 16476-16478 (SB 339 of 2004) and
+# 16830-16834 (SB 427 of 2004), Docket_db_2005-2006.txt 17879-17882 (SB 342 of
+# 2006), Docket_db_2001-2002.txt 6354 and 6373-6376 (SB 164 of 2001) and
+# 10049-10051 (SB 146 of 2001), Docket_db_1999-2000.txt 14367-14370 (HB 1548 of
+# 2000).
+_DOCKET_ROOM_CHANGE = [
+    '2004|3037|01/07/2004 05:22:48 PM|SB339|S|Introduced and Referred to Judiciary; SJ 1, Pg.3|01/07/2004 05:22:48 PM',
+    '2004|3037|01/08/2004 10:46:19 AM|SB339|S|Hearing; January 13, 2004, Room 105-A, SH, 10:15 a.m.; SC2|01/08/2004 10:46:19 AM',
+    '2004|3037|01/12/2004 03:08:59 PM|SB339|S|Hearing; === ROOM CHANGE === January 13, 2004, Room 102, LOB, 10:15 a.m.|01/12/2004 03:08:59 PM',
+    '2004|3066|01/07/2004 06:17:19 PM|SB427|S|Introduced and Referred to Public Institutions, Health & Human Services; SJ 1, Pg.8|01/07/2004 06:17:19 PM',
+    '2004|3066|02/02/2004 03:54:42 PM|SB427|S|Hearing; February 17, 2004, Room 103, SH, 3:30 p.m.; SC6|02/02/2004 03:54:42 PM',
+    '2004|3066|02/11/2004 04:39:40 PM|SB427|S|Hearing; === TIME CHANGE === February 17, 2004, Room 103, SH, 1:00 p.m.; SC7|02/11/2004 04:39:40 PM',
+    '2004|3066|02/12/2004 12:45:27 PM|SB427|S|Hearing; === ROOM CHANGE === February 17, 2004, Room 100, SH, 1:00 p.m.; SC7|02/12/2004 12:45:27 PM',
+    '2004|3066|02/13/2004 02:35:24 PM|SB427|S|Hearing; === ROOM CHANGE === February 17, 2004, Rooms 205-207, LOB 1:00 p.m.|02/13/2004 02:35:24 PM',
+    '2006|2717|01/04/2006 12:18:47 PM|SB342|S|Introduced and Referred to Executive Departments and Administration; SJ 1, Pg.12|01/04/2006 12:18:47 PM',
+    '2006|2717|01/04/2006 01:47:17 PM|SB342|S|Hearing; January 18, 2006, Room 102, LOB, 2:10 p.m.|01/04/2006 01:47:17 PM',
+    '2006|2717|01/04/2006 02:54:29 PM|SB342|S|Hearing; === RESCHEDULED === January 19, 2006, Room 102, LOB, 2:10 p.m.; SC1A|01/04/2006 02:54:29 PM',
+    '2006|2717|01/12/2006 12:39:12 PM|SB342|S|Hearing; === TIME CHANGE === ROOM CHANGE === January 19, 2006, Room 100, LOB, 1:30 p.m.; SC2|01/12/2006 12:39:12 PM',
+    '2001|0824|02/22/2001 02:46:22 PM|SB164|S|Introduced and Ref. to Education; SJ 5, Pg.57|02/22/2001 02:46:22 PM',
+    '2001|0824|06/14/2001 06:16:09 PM|SB164|S|Conference Committee Meeting; June 18, 2001, Room 105-A, SH, 10:00 a.m.|06/14/2001 06:16:09 PM',
+    '2001|0824|06/19/2001 04:02:00 PM|SB164|S|Conference Committee Meeting; June 20, 2001, Room 103, SH, 9:00 a.m.|06/19/2001 04:02:00 PM',
+    '2001|0824|06/20/2001 09:47:45 AM|SB164|S|Conference  Committe === ROOM AND TIME CHANGE === Meeting June 20, 2001, Room 207, LOB, 11:00 a.m|06/20/2001 09:47:45 AM',
+    '2001|0824|06/20/2001 04:24:53 PM|SB164|S|Conference Committee Meeting; June 21, 2001, Room 207, LOB, 10:00 a.m.|06/20/2001 04:24:53 PM',
+    '2002|0430|02/15/2001 11:37:29 AM|SB146|S|Introduced and Ref. to Wildlife & Recreation; SJ 4, Pg.46|02/15/2001 11:37:29 AM',
+    '2002|0430|02/21/2001 06:07:59 PM|SB146|S|Hearing; March 6, 2001, Room 101, LOB, 10:15 a.m.; SC9|02/21/2001 06:07:59 PM',
+    '2002|0430|02/28/2001 01:57:59 PM|SB146|S|Hearing; ===== ROOM CHANGE===== March 6, 2001, Representatives Hall, SH, 10:15 a.m.; SC10|02/28/2001 01:57:59 PM',
+    '2000|2203|03/16/2000 11:33:33 AM|HB1548|S|Introduced and Ref. to Judiciary; SJ 6, Pg.196|03/16/2000 11:33:33 AM',
+    '2000|2203|03/27/2000 05:08:28 PM|HB1548|S|Hearing ==CANCELLED==  April 17, Rooms 306 -- 308, LOB, 10:00 a.m.; SC19,|03/27/2000 05:08:28 PM',
+    '2000|2203|03/31/2000 03:28:07 PM|HB1548|S|Hearing  == RESCHEDULED ==  April 24, Room Change  305 - 307, LOB, 10:00 a.m.; SC21, Pg.13|03/31/2000 03:28:07 PM',
+    '2000|2203|04/19/2000 03:48:44 PM|HB1548|S|Hearing  April 24  == ROOM CHANGE  201-203, LOB == 10:00 a.m.; SC24|04/19/2000 03:48:44 PM',
+]
+
+# The sittings _senate_room_change reads, with the room each was moved to.
+_ROOM_CHANGED = {("2003-2004", "SB339", "2004-01-13"): "LOB 102",
+                 ("2003-2004", "SB427", "2004-02-17"): "LOB 205-207",
+                 ("2005-2006", "SB342", "2006-01-19"): "LOB 100",
+                 ("2001-2002", "SB164", "2001-06-20"): "LOB 207",
+                 ("2001-2002", "SB146", "2001-03-06"): "Representatives Hall",
+                 ("1999-2000", "HB1548", "2000-04-24"): "LOB 201-203"}
+
+
+@check("build", "a Senate sitting of 1999-2006 is in the room the latest ROOM CHANGE or TIME "
+                "CHANGE row gave its day, on every row of it",
+       needs=("docket_parser",))
+def _senate_room_change(D):
+    """The person's decision of 8 October 2026, on the review of the archived
+    manifests. SB 339 of 2004 was noticed for SH 105-A on 13 January and moved
+    by "Hearing; === ROOM CHANGE === January 13, 2004, Room 102, LOB"; SB 342
+    of 2006 by "=== TIME CHANGE === ROOM CHANGE === January 19, 2006, Room 100,
+    LOB, 1:30 p.m.", whose hour its notice took and whose room it did not.
+    build_proceedings folds a sitting's rows into the first it reads, the
+    notice, so 32 Senate sittings of 2001-2006 were in the room their notice
+    gave. Every row of each now carries the room of the last such row, two
+    room changes in a row (SB 427 of 2004) the second, a conference (SB 164 of
+    2001) as well as a hearing, a hall (SB 146 of 2001) as well as a room, and
+    the marks read off before the room is: HB 1548 of 2000's "== ROOM CHANGE
+    201-203, LOB ==" was the room "LOB CHANGE 201-203"."""
+    tmp = Path(tempfile.mkdtemp(prefix="gr-room-change-"))
+    try:
+        (tmp / "Docket.txt").write_text("\n".join(_DOCKET_ROOM_CHANGE) + "\n", encoding="utf-8")
+        rows = D.parse_rows(str(tmp / "Docket.txt"))
+        procs = D.parse_proceedings(rows, D.build_referral_timeline(rows))
+        D.build_sittings(procs)
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    live = [p for p in procs if p.confidence != "X-cancelled"]
+    bad = []
+    for (_, bill, day), room in _ROOM_CHANGED.items():
+        got = [p.venue for p in live if p.bill == bill and p.sched_date == day]
+        if len(got) < 2 or set(got) != {room}:
+            bad.append(f"{bill}'s sitting of {day} is read in {got!r}, not {room!r} on every row")
+    hours = {(p.bill, p.sched_date): p.sched_time for p in live}
+    for k, want in ((("SB342", "2006-01-19"), "13:30"), (("SB164", "2001-06-20"), "11:00"),
+                    (("SB427", "2004-02-17"), "13:00")):
+        if hours.get(k) != want:
+            bad.append(f"{k[0]}'s sitting of {k[1]} is at {hours.get(k)!r}, not {want}")
+    # The sittings no change row names keep their notice's room.
+    for bill, day, room in (("SB342", "2006-01-18", "LOB 102"), ("SB164", "2001-06-18", "SH 105-A"),
+                            ("SB164", "2001-06-21", "LOB 207")):
+        got = [p.venue for p in live if p.bill == bill and p.sched_date == day]
+        if got != [room]:
+            bad.append(f"{bill}'s sitting of {day} is read in {got!r}, not {room!r}")
+    assert not bad, "\n".join(bad)
+    return "ok", (f"{len(_ROOM_CHANGED)} sittings in the room their latest change row gave them, "
+                  "on every row")
+
+
+@check("data", "the Senate sittings of 1999-2006 a ROOM CHANGE or TIME CHANGE row moved are in "
+               "that room in their term's manifest")
+def _senate_room_change_manifests():
+    """_senate_room_change, in the files on disk: a manifest built before it
+    keeps each sitting's notice row in the room the notice gave, and
+    build_proceedings, keeping the first row, puts the hearing there. A full
+    rebuild of the term's manifest puts it right."""
+    bad, n = [], 0
+    for term in sorted({t for t, _, _ in _ROOM_CHANGED}):
+        f = Path(f"verification_manifest_{term}.csv")
+        if not f.exists():
+            return "skip", f"no {f.name} here"
+        with f.open(encoding="utf-8", newline="") as fh:
+            rows = [r for r in csv.DictReader(fh) if r["body"].upper() == "S"]
+        for (t, bill, day), room in _ROOM_CHANGED.items():
+            if t != term:
+                continue
+            n += 1
+            got = sorted({r["venue"] for r in rows if r["bill"] == bill and r["sched_date"] == day})
+            if got != [room]:
+                bad.append(f"{f.name} has {bill}'s Senate sitting of {day} in {got!r}, not {room!r}")
+    assert not bad, "\n".join(bad)
+    return "ok", f"{n} sittings in the room their latest change row gave them"
+
+
+# Real rows: Docket_2021-2022.txt 10218, 10231 and 10236-10242 (HB 355 of
+# 2022), and Docket_2023-2024.txt 12396-12397 (HB 417 of 2023).
+_DOCKET_CANCELLED_TWIN = [
+    "2022|0518|1/9/2021 12:00:00 AM|HB355|H|Introduced (in recess of) 01/06/2021 and referred to Ways and Means HJ 2 P. 44|1/9/2021 12:00:00 AM",
+    "2022|0518|1/18/2022 12:00:00 AM|HB355|S|Introduced 01/05/2022 and Referred to Ways and Means; SJ 2|1/18/2022 12:00:00 AM",
+    "2022|0518|5/10/2022 12:00:00 AM|HB355|H|House Non-Concurs with Senate Amendment 2022-1131s and Requests CofC (Reps. Abrami, Spilsbury, Janigian, Ames): MA VV 05/05/2022 HJ 12|5/10/2022 12:00:00 AM",
+    "2022|0518|5/12/2022 12:00:00 AM|HB355|S|Sen. Giuda Accedes to House Request for Committee of Conference, MA, VV; 05/12/2022; SJ 12|5/12/2022 12:00:00 AM",
+    "2022|0518|5/12/2022 12:00:00 AM|HB355|S|President Appoints: Senators Giuda, Daniels, D'Allesandro; 05/12/2022; SJ 12|5/12/2022 12:00:00 AM",
+    "2022|0518|5/16/2022 12:00:00 AM|HB355|H|Conference Committee Meeting: 05/16/2022 09:00 am LOB 202-204|5/16/2022 12:00:00 AM",
+    "2022|0518|5/16/2022 12:00:00 AM|HB355|H|==CANCELLED== Conference Committee Meeting: 05/16/2022 09:00 am LOB 202-204|5/16/2022 12:00:00 AM",
+    "2022|0518|5/17/2022 12:00:00 AM|HB355|H|==RECESSED== Conference Committee Meeting: 05/17/2022 11:00 am LOB 202-204|5/17/2022 12:00:00 AM",
+    "2022|0518|5/18/2022 12:00:00 AM|HB355|H|Conference Committee Meeting: 05/18/2022 12:00 pm LOB 202-204|5/18/2022 12:00:00 AM",
+]
+_DOCKET_TWIN_SET_AGAIN = [
+    "2023|0257|3/8/2023 12:00:00 AM|HB417|H|==CANCELLED== Executive Session: 03/15/2023 10:15 am LOB 305-307|3/8/2023 12:00:00 AM",
+    "2023|0257|3/13/2023 12:00:00 AM|HB417|H|Executive Session: 03/15/2023 10:15 am LOB 305-307|3/13/2023 12:00:00 AM",
+]
+
+
+@check("build", "a notice its own cancelled twin of one stamp follows is a meeting called off, in "
+                "the table and the history, and a twin entered before it is not",
+       needs=("docket_parser", "narrative"))
+def _cancelled_twin(D, N):
+    """The person's decision of 8 October 2026: a cancelled meeting is not
+    told. HB 355 of 2022's conference of 16 May is given twice at one stamp,
+    plain and then "==CANCELLED==", word for word. The plain row was a
+    conference drawn on the bill's page and the Calendar, which
+    proceedings.notice_only never hides, and the history said a committee of
+    conference "met on May 16, 2022, May 17, 2022 and May 18, 2022", since
+    overtaken() reads no conference and no row of a midnight stamp is entered
+    before another. HB 417 of 2023's executive session of 15 March was
+    cancelled on 8 March and set down again on the 13th, and sat."""
+    bad = []
+    for lines, bill, want in ((_DOCKET_CANCELLED_TWIN, "HB355",
+                               [("2022-05-17", "11:00"), ("2022-05-18", "12:00")]),
+                              (_DOCKET_TWIN_SET_AGAIN, "HB417", [("2023-03-15", "10:15")])):
+        tmp = Path(tempfile.mkdtemp(prefix="gr-twin-"))
+        try:
+            (tmp / "Docket.txt").write_text("\n".join(lines) + "\n", encoding="utf-8")
+            rows = D.parse_rows(str(tmp / "Docket.txt"))
+            procs = D.parse_proceedings(rows, D.build_referral_timeline(rows))
+            D.build_sittings(procs)
+        finally:
+            shutil.rmtree(tmp, ignore_errors=True)
+        live = [(p.sched_date, p.sched_time) for p in procs
+                if p.confidence != "X-cancelled" and p.body == "H"]
+        if live != want:
+            bad.append(f"{bill}'s House meetings are read as {live!r}, not {want!r}")
+    narr = _told_from_rows(N, "2021-2022", "HB355", _DOCKET_CANCELLED_TWIN)
+    if "May 16, 2022" in narr["narrative"] or "May 17, 2022" not in narr["narrative"]:
+        bad.append("HB 355's history tells the conference of 16 May or not that of the 17th: "
+                   + narr["narrative"][narr["narrative"].find("committee of conference"):][:160])
+    plain = [e for e in narr["events"] if e["date"] == "2022-05-16"
+             and e["type"] == "conference_meeting"]
+    if len(plain) != 2 or not all(e["cancelled"] for e in plain) \
+            or not any(e.get("notice") and e.get("overtaken") == "cancelled" for e in plain):
+        bad.append(f"HB 355's rows of 16 May are carried as {plain!r}, not a notice its twin "
+                   "cancels beside the twin")
+    narr = _told_from_rows(N, "2023-2024", "HB417", _DOCKET_TWIN_SET_AGAIN)
+    if "March 15, 2023" not in narr["narrative"]:
+        bad.append("HB 417's executive session of 15 March 2023, set down again after its "
+                   "cancellation, is not told: " + narr["narrative"][:200])
+    assert not bad, "\n".join(bad)
+    return "ok", ("HB 355 of 2022's conference of 16 May called off by its twin, in the table and "
+                  "the history; HB 417 of 2023's executive session set down again and told")
+
+
+@check("data", "HB 355 of 2022's conference of 16 May, which its twin cancels, is not in the "
+               "2021-2022 manifest")
+def _cancelled_twin_manifest():
+    """_cancelled_twin, in the file on disk: a manifest built before it holds
+    the conference, and every page that reads the table draws it. A full
+    rebuild of the term's manifest takes it out and keeps the 17th and 18th."""
+    f = Path("verification_manifest_2021-2022.csv")
+    if not f.exists():
+        return "skip", f"no {f.name} here"
+    with f.open(encoding="utf-8", newline="") as fh:
+        got = sorted((r["sched_date"], r["sched_time"]) for r in csv.DictReader(fh)
+                     if r["bill"] == "HB355" and r["proceeding"] == "committee of conference")
+    want = [("2022-05-17", "11:00"), ("2022-05-18", "12:00")]
+    assert got == want, f"{f.name} has HB 355's conferences as {got!r}, not {want!r}"
+    return "ok", "the 17th and the 18th, and not the 16th"
+
+
+# Real rows: Docket_db_1999-2000.txt 18729-18731 (SB 362 of 2000), 13023-13024
+# (HB 1337 of 2000) and 2267 and 2269 (HB 452 of 1999), Docket_db_2003-2004.txt
+# 9175-9176 (SB 171 of 2003) and Docket_db_2005-2006.txt 4415-4416 (HB 199 of
+# 2005).
+_DOCKET_CLOCK_SEMICOLON = [
+    "2000|2650|01/05/2000 12:10:17 PM|SB362|S|Introduced and Ref. to Transportation; SJ Convening Day, Pg. 10|01/05/2000 12:10:17 PM",
+    "2000|2650|01/06/2000 03:23:09 PM|SB362|S|Hearing , Feb. 8 , Room 104 , LOB , 3:00 p.m.; SC1, Pg.8|01/06/2000 03:23:09 PM",
+    "2000|2650|01/28/2000 12:55:52 PM|SB362|S|==TIME CHANGE== Hearing, Feb. 8, Room 104, LOB, 2;50 p.m.; SC6, Pg.4|01/28/2000 12:55:52 PM",
+    "2000|2061|02/03/2000 11:47:25 AM|HB1337|S|Introduced and Ref. to Public Institutions, Health & Human Services; SJ 2, [ See Perm. Journal ]|02/03/2000 11:47:25 AM",
+    "2000|2061|02/23/2000 02:19:41 PM|HB1337|S|Hearing  April 4, Room 102, LOB, 2;00 p.m.; SC13, Pg.4|02/23/2000 02:19:41 PM",
+    "1999|0278|01/28/1999 09:05:54 AM|HB452|H|Introduced and ref to Health HS&EA;  HJ18, p270|01/28/1999 09:05:54 AM",
+    "1999|0278|02/04/1999 02:08:03 PM|HB452|H|Hearing  Feb 9  2;00  Rm205,LOB|02/04/1999 02:08:03 PM",
+    "2003|1139|01/30/2003 10:18:09 AM|SB171|S|Introduced and Ref. to Wildlife & Recreation; SJ 3, Pg.39|01/30/2003 10:18:09 AM",
+    "2003|1139|02/07/2003 02:55:07 PM|SB171|S|Hearing; February 18, 2003, Room 104, LOB, 1;30 p.m.; SC9|02/07/2003 02:55:07 PM",
+    "2005|0607|03/17/2005 10:44:32 AM|HB199|S|Introduced and Referred to Environment and Wildlife; SJ 9, Pg.139|03/17/2005 10:44:32 AM",
+    "2005|0607|03/29/2005 08:04:39 AM|HB199|S|Hearing; April 5, 2005, Room 103, LOB, 2;20 p.m.; SC14|03/29/2005 08:04:39 AM",
+]
+
+# The hearings _clock_semicolon reads: (term, bill, chamber, day) -> the hour.
+_CLOCK_SEMICOLON = {("1999-2000", "SB362", "S", "2000-02-08"): "14:50",
+                    ("1999-2000", "HB1337", "S", "2000-04-04"): "14:00",
+                    ("1999-2000", "HB452", "H", "1999-02-09"): "14:00",
+                    ("2003-2004", "SB171", "S", "2003-02-18"): "13:30",
+                    ("2005-2006", "HB199", "S", "2005-04-05"): "14:20"}
+
+
+@check("build", "a meeting's hour typed with a semicolon for the colon is read, and the hearing "
+                "it sets is in the table at that hour", needs=("docket_parser",))
+def _clock_semicolon(D):
+    """The person's decision of 8 October 2026, on the review of the archived
+    manifests. "==TIME CHANGE== Hearing, Feb. 8, Room 104, LOB, 2;50 p.m."
+    (SB 362 of 2000) was read by no pattern, so the hearing kept its notice's
+    3:00; HB 1337 of 2000's "2;00 p.m.", SB 171 of 2003's "1;30 p.m.", HB 199
+    of 2005's "2;20 p.m." and HB 452 of 1999's House "Hearing  Feb 9  2;00
+    Rm205,LOB" were hearings each bill's history tells and the table had no
+    row for. Every row of each now gives the hour as the colon would."""
+    tmp = Path(tempfile.mkdtemp(prefix="gr-semicolon-"))
+    try:
+        (tmp / "Docket.txt").write_text("\n".join(_DOCKET_CLOCK_SEMICOLON) + "\n", encoding="utf-8")
+        rows = D.parse_rows(str(tmp / "Docket.txt"))
+        procs = D.parse_proceedings(rows, D.build_referral_timeline(rows))
+        D.build_sittings(procs)
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    got = sorted({(p.bill, p.body, p.sched_date, p.sched_time) for p in procs
+                  if p.confidence != "X-cancelled"})
+    want = sorted((b, ch, d, t) for (_, b, ch, d), t in _CLOCK_SEMICOLON.items())
+    assert got == want, f"the hearings are read as {got!r}, not {want!r}"
+    return "ok", f"{len(want)} hearings at the hour their semicolon gives"
+
+
+@check("data", "the hearings whose hour the clerk typed with a semicolon are in their term's "
+               "manifest at that hour")
+def _clock_semicolon_manifests():
+    """_clock_semicolon, in the files on disk: a manifest built before it has
+    SB 362 of 2000's hearing at 3:00 and no row for the other four. A full
+    rebuild of the term's manifest puts them in."""
+    bad = []
+    for term in sorted({t for t, _, _, _ in _CLOCK_SEMICOLON}):
+        f = Path(f"verification_manifest_{term}.csv")
+        if not f.exists():
+            return "skip", f"no {f.name} here"
+        with f.open(encoding="utf-8", newline="") as fh:
+            rows = list(csv.DictReader(fh))
+        for (t, bill, ch, day), hour in _CLOCK_SEMICOLON.items():
+            if t != term:
+                continue
+            got = sorted({r["sched_time"] for r in rows if r["bill"] == bill
+                          and r["body"].upper() == ch and r["sched_date"] == day
+                          and r["proceeding"] == "hearing"})
+            if got != [hour]:
+                bad.append(f"{f.name} has {bill}'s hearing of {day} at {got!r}, not {hour}")
+    assert not bad, "\n".join(bad)
+    return "ok", f"{len(_CLOCK_SEMICOLON)} hearings at the hour their semicolon gives"
+
+
+@check("data", "SB 107 of 2023's House hearing of 5 April 2023 carries no recording time in the "
+               "2023-2024 manifest until the timestamp pass has scored one")
+def _sb107_time_held():
+    """HELD FOR THE TIMESTAMP PASS (the person's decision of 8 October 2026).
+    A full rebuild of 2023-2024 works out the recording match that the
+    meridiem fix of 18 September (82181fa) left as the kit had it: the docket
+    says "Public Hearing: 04/05/2023 01:30 am LOB 306-308" (Docket_2023-2024.txt
+    line 16093), read as 1:30 in the afternoon, and at that minute only one of
+    House Executive Departments and Administration's two recordings of the day
+    was on air, so the rebuilt row picks uU3lVfuRJAc and an approximate offset
+    of 3:26:49. Nobody has scored that time against the recording, and nothing
+    about timestamps goes on the site before probe_alignment has, so the
+    manifest sent carries the row's time fields as the kit's copy has them --
+    two recordings that day, pick manually, no video and no offset -- and a
+    rebuild that puts the time back is held here. When the dedicated
+    timestamp pass has scored it, this check goes with that pass."""
+    f = Path("verification_manifest_2023-2024.csv")
+    if not f.exists():
+        return "skip", f"no {f.name} here"
+    with f.open(encoding="utf-8", newline="") as fh:
+        got = [(r["match"], r["video_id"], r["stream_start"], r["predicted_offset"], r["watch_url"])
+               for r in csv.DictReader(fh)
+               if r["bill"] == "SB107" and r["body"].upper() == "H"
+               and r["proceeding"] == "public hearing" and r["sched_date"] == "2023-04-05"]
+    want = [("2 videos that day - pick manually", "", "", "", "")]
+    assert got == want, (f"{f.name} gives SB 107's House hearing of 5 April 2023 {got!r}: a time "
+                         "nobody has scored. Put back the kit's row for it (its line in the copy "
+                         "the bucket holds) until the timestamp pass decides it")
+    return "ok", "no recording time on it, as the kit has it, until the timestamp pass"
+
+
+# Real rows: Docket_db_1999-2000.txt 1440-1441 (HB 208 of 1999) and 1815-1816
+# (HB 214 of 1999), Docket_db_2001-2002.txt 3249-3251 (HB 390 of 2001).
+_DOCKET_CLERKS_COMMITTEES = [
+    "1999|0188|04/14/1999 01:41:38 PM|HB208|S|Introduction and referring to Energy & Economic Department;  SJ 13, P 284|04/14/1999 01:41:38 PM",
+    "1999|0188|04/21/1999 10:31:56 AM|HB208|S|Hearing, 4/27/99, Room 105-A, SH, 2:45 p.m.|04/21/1999 10:31:56 AM",
+    "1999|0233|03/23/1999 02:13:14 PM|HB214|S|Introduction and referring to Public Institutions & Health Humans Services; SJ 8, P 111|03/23/1999 02:13:14 PM",
+    "1999|0233|04/02/1999 08:33:10 AM|HB214|S|Hearing, 4/27/99, Room 102, LOB, 1:20 p.m.|04/02/1999 08:33:10 AM",
+    "2001|0455|04/05/2001 03:56:48 PM|HB390|S|Introduced and Ref. to Judiciary; SJ 8, Pg.100|04/05/2001 03:56:48 PM",
+    "2001|0455|05/09/2001 06:21:23 PM|HB390|S|Sen. Gordon Motion to Vacate HB390 From Judiciary to P I, H & H S;  MA, VV; SJ 12, Pg.232|05/09/2001 06:21:23 PM",
+    "2001|0455|05/10/2001 03:15:56 PM|HB390|S|Hearing, May 29, 2001, Room 101, LOB, 1:45 p.m.; SC23-A|05/10/2001 03:15:56 PM",
+]
+
+# (term, bill, day) -> the committee each hearing above is filed under.
+_CLERKS_COMMITTEES = {("1999-2000", "HB208", "1999-04-27"): "Energy and Economic Development",
+                      ("1999-2000", "HB214", "1999-04-27"):
+                          "Public Institutions, Health and Human Services",
+                      ("2001-2002", "HB390", "2001-05-29"):
+                          "Public Institutions, Health and Human Services"}
+
+
+@check("build", "the three Senate hearings of 1999-2001 whose committee the clerk misspelled or "
+                "shortened are filed under the committee's name", needs=("docket_parser", "committee_names"))
+def _clerks_committee_names(D, CN):
+    """The review of the archived manifests (8 October 2026): docket_parser
+    now reads the Senate of 1999-2006's introductions and vacates, so three
+    hearings name their committee in the clerk's words -- "Public
+    Institutions and Health Humans Services" (HB 214 of 1999), "Energy and
+    Economic Department" (HB 208 of 1999) and "P I, H and H S" (HB 390 of
+    2001, "From Judiciary to P I, H & H S") -- which committee_names.official
+    gave back as written, so the hearing card printed the clerk's words and
+    linked to no committee's page. The General Court files each under S14 or
+    S18 (db/past/PastLegislation.psv); the aliases write the names those
+    codes carried. On main before the night that reads the manifests sent
+    with them, or the cards print the shorthand until it is."""
+    tmp = Path(tempfile.mkdtemp(prefix="gr-clerks-committees-"))
+    try:
+        (tmp / "Docket.txt").write_text("\n".join(_DOCKET_CLERKS_COMMITTEES) + "\n", encoding="utf-8")
+        rows = D.parse_rows(str(tmp / "Docket.txt"))
+        procs = D.parse_proceedings(rows, D.build_referral_timeline(rows))
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    term = {"HB208": "1999-2000", "HB214": "1999-2000", "HB390": "2001-2002"}
+    got = {(term[p.bill], p.bill, p.sched_date): CN.official(p.committee, "S", term[p.bill])
+           for p in procs}
+    assert got == _CLERKS_COMMITTEES, f"the hearings are filed under {got!r}"
+    return "ok", "three hearings under the names their committees had then"
+
+
+@check("data", "the three Senate hearings of 1999-2001 whose committee the clerk misspelled or "
+               "shortened are filed in proceedings.csv under the committee's name")
+def _clerks_committee_names_table():
+    """_clerks_committee_names, in the table on disk: built from manifests
+    that hold the clerk's words and before the aliases, it prints "P I, H and
+    H S" on HB 390 of 2001's hearing card; built from manifests older than
+    the parser batch, it names no committee for two of them and Judiciary for
+    the third."""
+    f = Path("proceedings.csv")
+    if not f.exists():
+        return "skip", "no proceedings.csv here"
+    with f.open(encoding="utf-8", newline="") as fh:
+        got = {(r["term"], r["bill"], r["date"]): r["committee"] for r in csv.DictReader(fh)
+               if (r["term"], r["bill"], r["date"]) in _CLERKS_COMMITTEES and r["body"] == "S"
+               and r["kind"] == "hearing"}
+    assert got == _CLERKS_COMMITTEES, f"proceedings.csv files them under {got!r}"
+    return "ok", "three hearings under the names their committees had then"
 
 
 @check("data", "SB 373 of 2002 and SB 79 and SB 395 of 1999-2000 each have the hearing their "

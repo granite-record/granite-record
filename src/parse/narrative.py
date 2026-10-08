@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.104
+# GRANITE_VERSION: 2026-09-04.105
 """
 Turn a bill's docket entries into a plain-language history.
 
@@ -4072,6 +4072,26 @@ def _calendars_moved(ev, o, evs):
                 or P.same_minute(at, r.get("time"))) for r in rows))
 
 
+def _cancelled_twin(ev, evs):
+    """Is there a row of the same chamber and kind, in the same words, entered
+    at the same moment and after this one in the docket, that the clerk's own
+    mark calls off (build(), on HB 355 of 2022)?"""
+    stamp = ev.get("_entered")
+    if not isinstance(stamp, datetime):
+        return False
+    # After ev in evs, which build() has put in the order the rows were
+    # entered within a day (day_order, hold_in_order).
+    after = False
+    for o in evs:
+        if o is ev:
+            after = True
+        elif (after and o["cancelled"] and not o.get("_void")
+              and o["body"] == ev["body"] and o["_type"] == ev["_type"]
+              and o.get("_raw") == ev.get("_raw") and o.get("_entered") == stamp):
+            return True
+    return False
+
+
 # WHAT A VOIDED NOTICE LEAVES OFF IS ITS MEETING, NOT ITS DAY (7 October 2026).
 # The day of a notice a later row cancelled or moved was carried out of build()
 # whole, and only where nothing the history tells fell on it, since
@@ -5190,6 +5210,20 @@ def build(bill, rows, introduction=None):
     for e, why in over:
         if why:
             e["_void"], e["_unheld_day"], e["cancelled"] = why, e["when"].date(), True
+    # AND A NOTICE ITS OWN CANCELLED TWIN OF ONE STAMP CALLS OFF (the person's
+    # decision of 8 October 2026). HB 355 of 2022's conference of 16 May is
+    # given twice, word for word and at one stamp, plain and then marked
+    # "==CANCELLED==" (Docket_2021-2022.txt lines 10239-10240), and the
+    # history said a committee of conference "met on May 16, 2022, May 17,
+    # 2022 and May 18, 2022": overtaken() reads no conference, and
+    # _entered_before cannot order two rows of one stamp. The row that follows
+    # in the docket is the later one; docket_parser.cancelled_twins reads the
+    # pair the same way, so the table has no meeting that day either.
+    for e in evs:
+        if (not e["cancelled"] and not e.get("_void")
+                and e["_type"] in ROW_MEETINGS + ("conference_meeting",)
+                and _cancelled_twin(e, evs)):
+            e["_void"], e["_unheld_day"], e["cancelled"] = "cancelled", e["when"].date(), True
     # AND A RECESSED HEARING'S NEXT DAY THAT FELL AFTER THE COMMITTEE HAD
     # REPORTED THE BILL (the review of decision 59g, 7 October 2026). HB 1218
     # of 2002's Senate hearing of 9 April was entered on the 9th as "Hearing;
