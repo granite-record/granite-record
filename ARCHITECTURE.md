@@ -20,9 +20,11 @@ name: the pipeline (`build_all.py`), the night (`nightly.py`), the kit
 job (`laptop_evening.py`), the pull of reader reports (`compile_reports.py`),
 the first commands of a working session (`inventory.py`, `preflight.py`,
 `handoff.py`), the refusal tools (`refusal.py`, `netcheck.py`) and the
-deploy (`publish.bat`); beside them `_paths.py`, the front end with the
-`dom_stub.js` that `preflight` loads it against, the config and the data. Everything else is
-under `src/`, one folder per job. `src/README.md` has the tree and the rule
+deploy (`publish.bat`); beside them `_paths.py`, the config and the data.
+Everything else is under `src/`, one folder per job: the front end
+(`bills.html`, `app.js`, `find.js`, `app.css`) is in `src/pages/` beside the
+builders that read it, and the `dom_stub.js` that `preflight` loads it
+against is in `tests/`. `src/README.md` has the tree and the rule
 for where a new file goes, and each folder's own README says what it holds:
 
     src/fetch/gc_web/    asks gc.nh.gov's web server

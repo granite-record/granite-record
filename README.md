@@ -153,11 +153,12 @@ outside the repository runs by name — `build_all.py`, `nightly.py`,
 `cloud.py`, `livestreams.py`, `laptop_evening.py`, `compile_reports.py`, the
 session's first commands (`inventory.py`, `preflight.py`, `handoff.py`) and
 the refusal tools (`refusal.py`, `netcheck.py`), and `publish.bat` — with
-`_paths.py`, the front end (`bills.html`, `app.js`, `find.js`, `app.css`) and
-the `dom_stub.js` that `preflight` loads it against, the config, the
-documents and the data. Everything else is under `src/`, in one folder per
-job: `fetch/` (one folder per whose server it asks), `parse/`,
-`towns/`, `hearings/`, `pages/`, `checks/` and `lib/`.
+`_paths.py`, the config, the documents and the data. Everything else is
+under `src/`, in one folder per job: `fetch/` (one folder per whose server
+it asks), `parse/`, `towns/`, `hearings/`, `pages/`, `checks/` and `lib/`.
+The front end (`bills.html`, `app.js`, `find.js`, `app.css`) is in
+`src/pages/` with the builders that read it, and the `dom_stub.js` that
+`preflight` loads it against is in `tests/`.
 [`src/README.md`](src/README.md) has the tree, what each folder holds, and
 where a new file goes. Run a script under `src/` from the root by its path
 (`python3 src/parse/narrative.py`); imports and the pipeline's steps use bare
@@ -209,9 +210,10 @@ record — narrowly, on identical names with non-overlapping service — and
 `careers.json` is the result.
 
 **Where a bill page comes from.** `src/pages/build_bill_pages.py` writes
-`/bill/<year>/<id>.html` using `src/pages/shell.py`, which is `bills.html` with one
-record open. The record itself travels inside the page, in a
-`<script type="application/json" id="gr-data">` block, and `app.js` renders it.
+`/bill/<year>/<id>.html` using `src/pages/shell.py`, which is
+`src/pages/bills.html` with one record open. The record itself travels inside
+the page, in a `<script type="application/json" id="gr-data">` block, and
+`src/pages/app.js` renders it.
 A bill page and a search result cannot disagree about a bill, because they are
 the same code reading the same JSON.
 
@@ -236,10 +238,10 @@ want:
 
 | I want to change… | The file |
 |---|---|
-| how any record page looks | `app.js` — one `render…` function per tab (`renderSummary`, `renderVotes`, `renderHearings`…); `BILL_TABS` maps slug → tab |
+| how any record page looks | `src/pages/app.js` — one `render…` function per tab (`renderSummary`, `renderVotes`, `renderHearings`…); `BILL_TABS` maps slug → tab |
 | what data a bill page *has* | `src/pages/build_site_v2.py`, which assembles the payload |
 | the frame every record page is built in | `src/pages/shell.py` — every page builder in `src/pages/` imports it |
-| what the search does | `bills.html` + `app.js` (the lines between its `BILLMATCH` marks, which `src/pages/build_pages.py` cuts into `billmatch.js` for the header's `find.js`); what each bill is about, `src/pages/build_search_index.py` |
+| what the search does | `src/pages/bills.html` + `src/pages/app.js` (the lines between its `BILLMATCH` marks, which `src/pages/build_pages.py` cuts into `billmatch.js` for the header's `src/pages/find.js`); what each bill is about, `src/pages/build_search_index.py` |
 | the plain-English history under a bill | `src/parse/narrative.py` (sitting terms), `src/parse/narrate_archive.py` (archived) |
 | which subject a bill is filed under | `src/parse/topic_model.py`, and `src/parse/topics.py`, the baseline it imports |
 | committee, member or town pages | `src/pages/build_committees.py`, `src/pages/build_legislator_pages.py`, `src/pages/build_town_pages.py` |
@@ -251,7 +253,7 @@ want:
 | where a hearing sits in a recording | `src/hearings/segment_markers.py`, scored by `src/hearings/probe_alignment.py` |
 | which rows exist at all | `src/parse/build_data.py` → `data/`, then `src/pages/build_site_v2.py` → `site/*.json` |
 | towns, districts and their officials | `src/towns/` |
-| look and type | `app.css`; `style.css` in `site/` is generated from it |
+| look and type | `src/pages/app.css`; `style.css` in `site/` is generated from it |
 | the pipeline, or its order | `build_all.py` — one `Step(...)` per entry in `plan()` |
 | the night on GitHub | `nightly.py`, and `.github/workflows/nightly.yml` that runs it |
 | what counts as correct | `preflight.py` — each check's docstring names the incident behind it |

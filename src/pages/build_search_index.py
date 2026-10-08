@@ -1,20 +1,20 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-01.7
+# GRANITE_VERSION: 2026-10-01.8
 """
 What each bill is about, in its own words, as a file the search can ask.
 
     python3 src/pages/build_search_index.py                       # every term; writes site/sidx/
     python3 src/pages/build_search_index.py --terms 2025-2026     # that term's file only
     python3 src/pages/build_search_index.py --idx D:/nh/site/idx --bill-text D:/nh/bill_text.json \\
-        --archive-text D:/nh/archive_text.json --app app.js --out scratch/sidx
+        --archive-text D:/nh/archive_text.json --app src/pages/app.js --out scratch/sidx
     python3 src/pages/build_search_index.py --fixture tests/search_cases.json   # preflight's copy
 
 No network. Standard library only. It reads the index build_site_v2 wrote
 (site/idx/<term>.json), the text of the bills (bill_text.json for the current
-term, archive_text.json for the terms before it) and app.js, and writes one
-file per term, site/sidx/<term>.json, plus site/sidx/manifest.json with what
-each holds and what it weighs, and site/sidx/words.json: every word the bills
-use (EVERY WORD, below).
+term, archive_text.json for the terms before it) and src/pages/app.js, and
+writes one file per term, site/sidx/<term>.json, plus site/sidx/manifest.json
+with what each holds and what it weighs, and site/sidx/words.json: every word
+the bills use (EVERY WORD, below).
 
 WHY IT EXISTS
 
@@ -1032,7 +1032,7 @@ def main():
     ap.add_argument("--out", default="site/sidx")
     ap.add_argument("--bill-text", default="bill_text.json")
     ap.add_argument("--archive-text", default="archive_text.json")
-    ap.add_argument("--app", default="app.js",
+    ap.add_argument("--app", default="src/pages/app.js",
                     help="where the search's tables are, for the phrases it can ask for")
     ap.add_argument("--terms", nargs="*",
                     help="only these terms (the others' files are left alone)")
