@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-12.4
+// GRANITE_VERSION: 2026-09-12.5
 // A MEETING BELONGS TO ONE COMMITTEE, AND THE NAME DOES NOT SAY WHICH.
 //
 // home.json's `upcoming` gives a committee NAME and no chamber, and seven
@@ -19,9 +19,10 @@
 // Run by preflight; run alone with:  node tests/test_cmte_match.js
 
 // Extracted from app.js by source text, so it cannot drift from what the
-// browser actually runs.
+// browser actually runs. Run from the repository root, where src/pages/app.js
+// and site/ are.
 const fs = require("fs");
-const src = fs.readFileSync("app.js", "utf8");
+const src = fs.readFileSync("src/pages/app.js", "utf8");
 const m = src.match(/function cmteUpcoming\(c\)\{[\s\S]*?\n\}/);
 if (!m) { console.error("cmteUpcoming not found in app.js"); process.exit(1); }
 let UPCOMING = null;

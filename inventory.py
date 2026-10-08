@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.6
+# GRANITE_VERSION: 2026-09-04.7
 """
 Report what is actually on disk, and which scripts are out of date.
 
@@ -130,13 +130,16 @@ def main():
 
     # Every script wherever it sits: the root's and src/'s by their bare names,
     # as versions.json lists them, so a script moved under src/ is still found
-    # and one nobody listed is still noticed (_paths.SCRIPT_DIRS).
+    # and one nobody listed is still noticed (_paths.SCRIPT_DIRS). The
+    # browser's files are found by their bare names too, in src/pages/ and
+    # tests/ (_paths.BROWSER).
     old, absent, unstamped = [], [], []
     scripts = {p.name for p in _paths.code_files("*.py", root=root, dirs=_paths.SCRIPT_DIRS)}
     for name in sorted(set(expected) | scripts | {"bills.html"}):
         f = _paths.locate(name, root=root)
         if not f.exists():
-            # The search page lives in site/, not beside the scripts.
+            # A page that is not among the code: site/ holds the built copy,
+            # which is all a machine given only the built site has.
             alt = root / "site" / name if name.endswith(".html") else None
             if alt and alt.exists():
                 f = alt

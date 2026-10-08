@@ -16,7 +16,7 @@ src/
   parse/          decides the record from what is already on disk
   towns/          towns, districts, counties and their officials
   hearings/       proceedings, their recordings, timestamps and the scorer
-  pages/          writes what a reader gets in site/
+  pages/          writes what a reader gets in site/, and the browser's files
   checks/         looks at something and reports
   lib/            the few modules every stage shares
 functions/        Cloudflare Pages Functions (must stay at the root)
@@ -51,11 +51,13 @@ that the night, the weekly or the laptop's evening job runs by name:
 `freeze_term` to `lib/`, `dayfiles_from_db` to `parse/`, `probe_alignment`
 to `hearings/`, the night's and the weekly's fetchers to `fetch/gc_web/` and
 `fetch/gc_db/` with `probe_db`, and `check_site`, `check_live` and
-`gc_changes` to `checks/`, with `publish.bat`'s two lines. What is left at
-the root is what something outside the repository names (below). Each stage
-moved a group of files without changing an import, a build step or a lane
-line that names them; a command line a person types names the path, and
-changed in the same commit.
+`gc_changes` to `checks/`, with `publish.bat`'s two lines. Stage 5 (8 October
+2026) moved the front end, `bills.html`, `app.js`, `find.js` and `app.css`, to
+`pages/` beside the builders that read and copy it, and `dom_stub.js` to
+`tests/`. What is left at the root is what something outside the repository
+names (below). Each stage moved a group of files without changing an import,
+a build step or a lane line that names them; a command line a person types
+names the path, and changed in the same commit.
 
 ## How a script here is run, and imports
 

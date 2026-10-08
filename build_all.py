@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.55
+# GRANITE_VERSION: 2026-09-05.56
 """
 Run the whole pipeline in the right order.
 
@@ -747,7 +747,7 @@ def plan(a):
         # and nothing on it would say what was missing.
         Step("what each bill's own analysis and text are about, for the search",
              ["build_search_index.py", "--idx", "site/idx", "--out", "site/sidx"],
-             needs=["site/idx", "bill_text.json", "archive_text.json", "app.js"],
+             needs=["site/idx", "bill_text.json", "archive_text.json", "src/pages/app.js"],
              produces=["site/sidx/manifest.json"], kit_required=True,
              note="one file per term, fetched only when somebody searches: "
                   "the words each bill's analysis and text are about, so a "

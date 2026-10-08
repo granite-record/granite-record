@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.157
+# GRANITE_VERSION: 2026-09-04.158
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -12,6 +12,10 @@ the bill search, which is the part that works.
 
 Writes a shared style.css these pages link to. index.html keeps its own inline
 styles and is untouched.
+
+The browser's files -- bills.html, app.css, app.js and find.js -- are read
+from src/pages/ under the folder the build runs in, where they sit beside this
+file, and copied into the site as they are.
 """
 
 # The bootstrap: _paths.py, found above this file, puts every code folder on the import path.
@@ -36,7 +40,7 @@ from collections import OrderedDict, defaultdict, namedtuple
 # that used to live here had already drifted: --st-veto was #7C2D3A in one
 # file and #8C4A2F in the other, the same token name naming a plum and a rust,
 # and nothing could see it because each file was internally consistent.
-def palette(src="app.css"):
+def palette(src="src/pages/app.css"):
     """The palette: the light block and the dark block that follows it.
 
     This used to stop at the first `}` after --sans, which was the whole
@@ -58,7 +62,7 @@ def palette(src="app.css"):
 
 
 
-def themer(part, src="bills.html"):
+def themer(part, src="src/pages/bills.html"):
     """One piece of the theme control, read out of bills.html.
 
     READ, NOT COPIED, for the same reason palette() reads app.css. bills.html
@@ -77,7 +81,7 @@ def themer(part, src="bills.html"):
     return text[a:b].split("-->", 1)[1].strip()
 
 
-def shared(src="app.css"):
+def shared(src="src/pages/app.css"):
     """The rules both stylesheets need, read rather than copied.
 
     Same reason as palette(): a component pasted into two files diverges on
@@ -92,7 +96,7 @@ def shared(src="app.css"):
     return text[a:b].rstrip()
 
 
-def pages_region(src="app.css"):
+def pages_region(src="src/pages/app.css"):
     """The rules only the pages this file writes need, read out of app.css.
 
     THERE IS NO SECOND STYLESHEET. These pages once had 24 KB of CSS of their
@@ -149,7 +153,7 @@ BRAND_FILES = ("favicon.ico", "icon.svg", "icon-32.png", "icon-180.png",
 HEADER_MARK = "mark.png"
 
 
-def mark_region(src="app.css"):
+def mark_region(src="src/pages/app.css"):
     """The header mark's rule, read out of app.css like the regions above.
 
     From the MARK:START marker to the end of the MARK:END line. It is outside
@@ -2922,7 +2926,7 @@ def main():
 
     # bills.html and the files it loads are written by hand rather than
     # generated, and nothing in the pipeline copied them into the output
-    # folder -- so an edit sat at the project root while the deploy shipped
+    # folder -- so an edit sat in the code while the deploy shipped
     # whatever was in site/, which looks exactly like the edit having no
     # effect and cost a round more than once. app.css and app.js are files of
     # their own rather than a <style> and a <script> inside the page, so a
@@ -2935,7 +2939,7 @@ def main():
     # build has no header mark, app.css goes into the site without the block
     # that draws it (without_mark), for the same reason style.css does.
     for name in ("bills.html", "app.css", "app.js", "find.js"):
-        src = Path(name)
+        src = Path("src/pages") / name
         if not src.exists():
             continue
         dst = out / name
@@ -2948,9 +2952,9 @@ def main():
 
     # The bill matcher, cut out of app.js for the header search on the pages
     # that do not load app.js. See bill_matcher_js.
-    if Path("app.js").exists():
+    if Path("src/pages/app.js").exists():
         body = bill_matcher_js(
-            Path("app.js").read_text(encoding="utf-8")).encode("utf-8")
+            Path("src/pages/app.js").read_text(encoding="utf-8")).encode("utf-8")
         dst = out / "billmatch.js"
         if not dst.exists() or dst.read_bytes() != body:
             dst.write_bytes(body)

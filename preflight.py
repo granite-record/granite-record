@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.448
+# GRANITE_VERSION: 2026-09-04.449
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -850,13 +850,16 @@ def _scripts_run():
 def _code_name_clashes(root=None):
     """{bare name: [its paths]} for every name two code files share: any
     file under src/ but a README.md, and every .py of the root, watchers/ and
-    tests/ (which also hold data, whose names are not the question)."""
+    tests/ (which also hold data, whose names are not the question), and every
+    browser's file there (_paths.BROWSER), which _paths.locate finds by its
+    bare name as it finds a script: dom_stub.js is in tests/."""
     base = Path(root).resolve() if root is not None else _paths.ROOT
     seen = {}
     for d in _paths.code_dirs(base):
         in_src = d != base and d.relative_to(base).parts[0] == "src"
         for f in sorted(d.iterdir()):
-            if f.is_file() and f.name != "README.md" and (in_src or f.suffix == ".py"):
+            if f.is_file() and f.name != "README.md" and (
+                    in_src or f.suffix == ".py" or f.suffix in _paths.BROWSER):
                 seen.setdefault(f.name, []).append(f.relative_to(base).as_posix())
     return {n: ps for n, ps in sorted(seen.items()) if len(ps) > 1}
 
@@ -913,8 +916,9 @@ def _code_names_unique():
                      "watchers/c.py": "", "tests/c.py": "", "notes.json": "",
                      "tests/notes.json": "", "src/extra/d.py": ""})
         got = _code_name_clashes(tmp)
-        assert got == {"a.py": ["a.py", "src/parse/a.py"], "c.py": ["watchers/c.py", "tests/c.py"]}, \
-            f"the reader of names found {got} in a tree made to share two"
+        assert got == {"a.py": ["a.py", "src/parse/a.py"], "b.js": ["src/pages/b.js", "tests/b.js"],
+                       "c.py": ["watchers/c.py", "tests/c.py"]}, \
+            f"the reader of names found {got} in a tree made to share three"
         assert _code_dirs_unlisted(tmp) == ["src/extra"], _code_dirs_unlisted(tmp)
         off = _src_dirs_off_list(("", "src/parse", "src/extra", "watchers"), ("src/parse",))
         assert off == ["src/extra"], f"the reader of the lists found {off}"
@@ -6469,7 +6473,7 @@ def _ballot_source_named(build_site_v2):
     but Ballotpedia; and on a label in parentheses, the file's description of
     how the source lists it, quoted as though it were the source's words."""
     B = build_site_v2
-    js, stub = Path("app.js"), Path("dom_stub.js")
+    js, stub = Path("src/pages/app.js"), Path("tests/dom_stub.js")
     node = shutil.which("node") or shutil.which("node.exe")
     if not (js.exists() and stub.exists() and node):
         return "skip", "app.js, dom_stub.js or node is not here"
@@ -14207,7 +14211,7 @@ def _ls_ignored():
 
 # ============================================================ code: front end ==
 
-def page_source(name="bills.html"):
+def page_source(name="src/pages/bills.html"):
     """bills.html together with the app.css and app.js it loads.
 
     The page was one file with a <style> and a <script> in it. It is three
@@ -14223,7 +14227,7 @@ def page_source(name="bills.html"):
     """
     p = Path(name)
     if not p.exists():
-        p = Path("site") / name
+        p = Path("site") / p.name
     if not p.exists():
         return "", None
     out = p.read_text(encoding="utf-8")
@@ -14236,7 +14240,7 @@ def page_source(name="bills.html"):
 
 @check("frontend", "bills.html carries the changes and its tags balance")
 def _bills_html():
-    p = Path("bills.html")
+    p = Path("src/pages/bills.html")
     if not p.exists():
         p = Path("site/bills.html")
     if not p.exists():
@@ -14831,7 +14835,7 @@ def _version_index_gate():
     file, 0 false either way across the whole built site. hasVersionIndex is
     that predicate, and both the render and the fetch consult it.
     """
-    p = Path("app.js")
+    p = Path("src/pages/app.js")
     if not p.exists():
         return "skip", "app.js not in this directory"
     t = p.read_text(encoding="utf-8")
@@ -14865,7 +14869,7 @@ def _bill_text_in_its_tab():
     "sometimes just doesn't display anything"). The pane now carries the text
     for such a bill, and the block below the tabs is kept for bills with a
     version history only, so nothing is drawn twice."""
-    p = Path("app.js")
+    p = Path("src/pages/app.js")
     if not p.exists():
         return "skip", "app.js not in this directory"
     t = p.read_text(encoding="utf-8")
@@ -15101,7 +15105,7 @@ def _cite_up_and_copied():
         import shell as S
     except ImportError:
         return "skip", "shell.py will not import"
-    if not Path("bills.html").exists():
+    if not Path("src/pages/bills.html").exists():
         return "skip", "bills.html is not here"
     page = S.page(S.template(), path="/bill/2026/hb1.html", base="https://graniterecord.org",
                   title="HB 1 (2026): relative to the state budget. | Granite Record",
@@ -15140,8 +15144,8 @@ def _cite_up_and_copied():
         return "skip", "node is not installed"
     root = Path(tempfile.mkdtemp())
     try:
-        (root / "app.js").write_text(Path("app.js").read_text(encoding="utf-8"), encoding="utf-8")
-        (root / "stub.js").write_text(Path("dom_stub.js").read_text(encoding="utf-8"),
+        (root / "app.js").write_text(Path("src/pages/app.js").read_text(encoding="utf-8"), encoding="utf-8")
+        (root / "stub.js").write_text(Path("tests/dom_stub.js").read_text(encoding="utf-8"),
                                       encoding="utf-8")
         (root / "dates.json").write_text(json.dumps(dates), encoding="utf-8")
         (root / "go.js").write_text(_CITE_APP, encoding="utf-8")
@@ -15188,7 +15192,7 @@ def _find_all_results():
     Both halves are read from source rather than from a build, so this runs
     under --code with nothing on disk.
     """
-    js, bp = Path("find.js"), _paths.locate("build_pages.py")
+    js, bp = Path("src/pages/find.js"), _paths.locate("build_pages.py")
     if not js.exists() or not bp.exists():
         return "skip", "find.js or build_pages.py not in this directory"
     t = js.read_text(encoding="utf-8")
@@ -15606,7 +15610,7 @@ def _header_keyboard():
     the list does, and is silent while the bills are still being counted and
     when the box is empty.
     """
-    js, stub = Path("find.js"), Path("dom_stub.js")
+    js, stub = Path("src/pages/find.js"), Path("tests/dom_stub.js")
     node = shutil.which("node") or shutil.which("node.exe")
     if not (js.exists() and stub.exists() and node):
         return "skip", "find.js, dom_stub.js or node is not here"
@@ -15695,10 +15699,10 @@ def _find_bills(BP):
     """
     if not shutil.which("node"):
         return "skip", "node is not installed"
-    need = [Path(f) for f in ("app.js", "find.js", "dom_stub.js")]
+    need = [Path(f) for f in ("src/pages/app.js", "src/pages/find.js", "tests/dom_stub.js")]
     if not all(f.exists() for f in need):
         return "skip", "app.js, find.js or dom_stub.js not in this directory"
-    app = Path("app.js").read_text(encoding="utf-8")
+    app = Path("src/pages/app.js").read_text(encoding="utf-8")
     try:
         matcher = BP.bill_matcher_js(app)
     except SystemExit as e:
@@ -15708,9 +15712,9 @@ def _find_bills(BP):
     assert m, "build_pages.SEARCH_JS carries no <script>"
     root = Path(tempfile.mkdtemp())
     try:
-        files = {"stub.js": Path("dom_stub.js").read_text(encoding="utf-8"),
+        files = {"stub.js": Path("tests/dom_stub.js").read_text(encoding="utf-8"),
                  "app.js": app, "billmatch.js": matcher,
-                 "find.js": Path("find.js").read_text(encoding="utf-8"),
+                 "find.js": Path("src/pages/find.js").read_text(encoding="utf-8"),
                  "search.js": m.group(1),
                  "fixture.json": json.dumps(_find_bills_fixture()),
                  "queries.json": json.dumps(_FIND_BILLS_QUERIES),
@@ -16258,10 +16262,10 @@ def _best_match_words(BP):
     """
     if not shutil.which("node"):
         return "skip", "node is not installed"
-    need = [Path(f) for f in ("app.js", "find.js", "dom_stub.js")]
+    need = [Path(f) for f in ("src/pages/app.js", "src/pages/find.js", "tests/dom_stub.js")]
     if not all(f.exists() for f in need):
         return "skip", "app.js, find.js or dom_stub.js not in this directory"
-    app = Path("app.js").read_text(encoding="utf-8")
+    app = Path("src/pages/app.js").read_text(encoding="utf-8")
     try:
         matcher = BP.bill_matcher_js(app)
     except SystemExit as e:
@@ -16270,9 +16274,9 @@ def _best_match_words(BP):
     fx = _best_match_fixture()
     root = Path(tempfile.mkdtemp())
     try:
-        files = {"stub.js": Path("dom_stub.js").read_text(encoding="utf-8"),
+        files = {"stub.js": Path("tests/dom_stub.js").read_text(encoding="utf-8"),
                  "app.js": app, "billmatch.js": matcher,
-                 "find.js": Path("find.js").read_text(encoding="utf-8"),
+                 "find.js": Path("src/pages/find.js").read_text(encoding="utf-8"),
                  "fixture.json": json.dumps(fx),
                  "queries.json": json.dumps(list(_BEST_MATCH_WORDS)),
                  "names.json": json.dumps(list(_BEST_MATCH_NAMES)),
@@ -16566,7 +16570,7 @@ done();
 
 def _search_cases_node(BP, idx_files=(), text_at="tests/search_index.json"):
     """tests/search_cases.json through the cut matcher: what the script found."""
-    app = Path("app.js").read_text(encoding="utf-8")
+    app = Path("src/pages/app.js").read_text(encoding="utf-8")
     try:
         matcher = BP.bill_matcher_js(app)
     except SystemExit as e:
@@ -16712,7 +16716,7 @@ def _search_cases(BP):
     """
     if not shutil.which("node"):
         return "skip", "node is not installed"
-    if not (Path("app.js").exists() and Path("tests/search_cases.json").exists()):
+    if not (Path("src/pages/app.js").exists() and Path("tests/search_cases.json").exists()):
         return "skip", "app.js or tests/search_cases.json not in this directory"
     # Not a skip: with the cases here and their index gone, the searches that
     # only a bill's own text answers would stop being checked, quietly.
@@ -16766,7 +16770,7 @@ def _search_cases_real(BP):
     if not shutil.which("node"):
         return "skip", "node is not installed"
     cases = Path("tests/search_cases.json")
-    if not (Path("app.js").exists() and cases.exists()):
+    if not (Path("src/pages/app.js").exists() and cases.exists()):
         return "skip", "app.js or tests/search_cases.json not in this directory"
     term = json.loads(cases.read_text(encoding="utf-8"))["term"]
     own = Path("site/idx") / f"{term}.json"
@@ -16871,7 +16875,7 @@ def _search_index_builds(BP, SI):
     if not shutil.which("node"):
         return "skip", "node is not installed"
     texts_f = Path("tests/search_texts.json")
-    if not (Path("app.js").exists() and Path("tests/search_cases.json").exists()):
+    if not (Path("src/pages/app.js").exists() and Path("tests/search_cases.json").exists()):
         return "skip", "app.js or tests/search_cases.json not in this directory"
     # Not a skip, for the reason given in the check above.
     lost = [f for f in ("tests/search_texts.json", "tests/search_index.json")
@@ -16880,7 +16884,7 @@ def _search_index_builds(BP, SI):
         f"tests/search_cases.json is here and {', '.join(lost)} is not: "
         "python3 src/pages/build_search_index.py --fixture tests/search_cases.json "
         "writes them")
-    app = Path("app.js").read_text(encoding="utf-8")
+    app = Path("src/pages/app.js").read_text(encoding="utf-8")
     fx = json.loads(texts_f.read_text(encoding="utf-8"))
     term, bills = fx["term"], fx["bills"]
     table = SI.table_terms(app)
@@ -17257,12 +17261,13 @@ def _search_work():
     """
     if not shutil.which("node"):
         return "skip", "node is not installed"
-    need = ("app.js", "dom_stub.js", "tests/search_cases.json", "tests/search_index.json")
+    need = ("src/pages/app.js", "tests/dom_stub.js", "tests/search_cases.json",
+            "tests/search_index.json")
     if not all(Path(f).exists() for f in need):
         return "skip", "app.js, dom_stub.js or the search cases are not here"
     root = Path(tempfile.mkdtemp())
     try:
-        for name, src in (("stub.js", "dom_stub.js"), ("app.js", "app.js"),
+        for name, src in (("stub.js", "tests/dom_stub.js"), ("app.js", "src/pages/app.js"),
                           ("cases.json", "tests/search_cases.json"),
                           ("sidx.json", "tests/search_index.json")):
             (root / name).write_text(Path(src).read_text(encoding="utf-8"),
@@ -17374,7 +17379,7 @@ def _find_details(BP):
     """
     if not shutil.which("node"):
         return "skip", "node is not installed"
-    if not (Path("find.js").exists() and Path("dom_stub.js").exists()):
+    if not (Path("src/pages/find.js").exists() and Path("tests/dom_stub.js").exists()):
         return "skip", "find.js or dom_stub.js not in this directory"
     rows = [
         ["town", "Sandwich", "Carroll County", "town/sandwich", "Carroll"],
@@ -17388,8 +17393,8 @@ def _find_details(BP):
     ]
     root = Path(tempfile.mkdtemp())
     try:
-        (root / "stub.js").write_text(Path("dom_stub.js").read_text(encoding="utf-8"), encoding="utf-8")
-        (root / "find.js").write_text(Path("find.js").read_text(encoding="utf-8"), encoding="utf-8")
+        (root / "stub.js").write_text(Path("tests/dom_stub.js").read_text(encoding="utf-8"), encoding="utf-8")
+        (root / "find.js").write_text(Path("src/pages/find.js").read_text(encoding="utf-8"), encoding="utf-8")
         (root / "rows.json").write_text(json.dumps(rows), encoding="utf-8")
         (root / "go.js").write_text(_FIND_DETAILS_JS, encoding="utf-8")
         r = _run(["node", "go.js"], cwd=root, capture_output=True, text=True, timeout=60)
@@ -17474,7 +17479,7 @@ def _search_index_main(SI, CS):
     import hashlib
     import io
     texts_at, cases_at = Path("tests/search_texts.json"), Path("tests/search_cases.json")
-    if not (texts_at.exists() and cases_at.exists() and Path("app.js").exists()):
+    if not (texts_at.exists() and cases_at.exists() and Path("src/pages/app.js").exists()):
         return "skip", "tests/search_texts.json, the cases or app.js not here"
     held = json.loads(texts_at.read_text(encoding="utf-8"))
     bills = json.loads(cases_at.read_text(encoding="utf-8"))["bills"]
@@ -17505,7 +17510,7 @@ def _search_index_main(SI, CS):
                     "sys.argv = ['build_search_index.py'] + sys.argv[1:]\n"
                     "SI.main()\n")
             return _run([sys.executable, "-c", code, "--idx", str(root / "idx"),
-                         "--out", str(to or out), "--app", str(here / "app.js"),
+                         "--out", str(to or out), "--app", str(here / "src/pages/app.js"),
                          "--names", *args],
                         cwd=here, capture_output=True, text=True, timeout=300)
 
@@ -18377,7 +18382,7 @@ def _palette():
         x, y = sorted((lum(a), lum(b)), reverse=True)
         return (x + 0.05) / (y + 0.05)
 
-    css = Path("app.css")
+    css = Path("src/pages/app.css")
     if not css.exists():
         return "skip", "app.css is not there"
     text = css.read_text(encoding="utf-8")
@@ -18524,7 +18529,7 @@ def _rings_edges_opacity():
     Neither rule carries an opacity now, and --ink-2 on the band -- pine mixed
     16% into the page -- is computed here for both themes and held to 4.5:1.
     """
-    css = Path("app.css")
+    css = Path("src/pages/app.css")
     if not css.exists():
         return "skip", "app.css is not there"
     text = css.read_text(encoding="utf-8")
@@ -18632,7 +18637,7 @@ def _print_is_light():
     something it asks the ground for (print-color-adjust:exact). Read from
     the rules, so the next white label on a filled ground cannot be missed.
     """
-    css = Path("app.css")
+    css = Path("src/pages/app.css")
     if not css.exists():
         return "skip", "app.css is not there"
     text = css.read_text(encoding="utf-8")
@@ -18725,9 +18730,9 @@ def _audit_minor(BSP, seating, BP):
     M20  a name and the comma after it are one item of a speaker line.
     M22  the seat map is a group with one Tab stop and arrow keys within it.
     """
-    css = Path("app.css").read_text(encoding="utf-8")
+    css = Path("src/pages/app.css").read_text(encoding="utf-8")
     bare = re.sub(r"/\*.*?\*/", "", css, flags=re.S)
-    js = Path("app.js").read_text(encoding="utf-8")
+    js = Path("src/pages/app.js").read_text(encoding="utf-8")
     bad = []
 
     # M1
@@ -18894,7 +18899,7 @@ def _shared_region():
     if not sheets:
         return "skip", ("site/style.css not built, and the builders are not here to "
                         "build the fixture's")
-    src = Path("app.css").read_text(encoding="utf-8")
+    src = Path("src/pages/app.css").read_text(encoding="utf-8")
     a, b = src.index("/* SHARED:START"), src.index("/* SHARED:END")
     region = src[a:b].rstrip()
     for what, site in sheets:
@@ -19120,7 +19125,7 @@ def _placeholder_colour():
     stylesheets get it from one definition.
     """
     want = "::placeholder{color:var(--ink-2)"
-    src = Path("app.css").read_text(encoding="utf-8")
+    src = Path("src/pages/app.css").read_text(encoding="utf-8")
     assert want in src, (
         "app.css has no ::placeholder colour. The browser's default is "
         "#757575, which is 3.04:1 on --surface in dark -- below the 4.5 a "
@@ -20032,7 +20037,7 @@ def _nowrap():
     So: keep nowrap on classes. `.votes td.o .thr` needed the exception and
     now carries `white-space:normal` explicitly, which is also allowed.
     """
-    css = Path("app.css")
+    css = Path("src/pages/app.css")
     if not css.exists():
         return "skip", "app.css is not there"
     text = re.sub(r"/\*.*?\*/", "", css.read_text(encoding="utf-8"), flags=re.S)
@@ -20460,7 +20465,7 @@ def _cmte_match_chamber():
     test reads it.
     """
     node = shutil.which("node") or shutil.which("node.exe")
-    js = Path("app.js")
+    js = Path("src/pages/app.js")
     if not (node and js.exists()):
         return "skip", "app.js or node is not here"
     m = re.search(r"function cmteUpcoming\(c\)\{[\s\S]*?\n\}", js.read_text(encoding="utf-8"))
@@ -20589,7 +20594,7 @@ def _runs():
     calls render(). It does not prove the page looks right -- nothing here can
     -- but it proves the code path that draws every bill actually runs.
     """
-    f, stub = Path("bills.html"), Path("dom_stub.js")
+    f, stub = Path("src/pages/bills.html"), Path("tests/dom_stub.js")
     if not f.exists():
         f = Path("site/bills.html")
     if not f.exists():
@@ -21410,7 +21415,7 @@ def _app_js(expr, names=("renderHearings", "archivedNote")):
     The value is printed after a marker, so anything app.js itself logs while
     it loads cannot be mistaken for it.
     """
-    js, stub = Path("app.js"), Path("dom_stub.js")
+    js, stub = Path("src/pages/app.js"), Path("tests/dom_stub.js")
     if not (js.exists() and stub.exists() and shutil.which("node")):
         return None
     root = Path(tempfile.mkdtemp())
@@ -21625,7 +21630,7 @@ def _hearing_report_drawn(build_site_v2, senate_hearing_reports):
     over their own points; and a report that could not be split is drawn as
     the text it is, with no name put over anything.
     """
-    ext, stub = Path("app.js"), Path("dom_stub.js")
+    ext, stub = Path("src/pages/app.js"), Path("tests/dom_stub.js")
     if not (ext.exists() and stub.exists()):
         return "skip", "app.js or dom_stub.js not here"
     if not shutil.which("node"):
@@ -22345,11 +22350,11 @@ def _ballot_card_drawn():
     style inside the card, on an election past with no count still "is on",
     and on the Documents tab crediting the status page with the voters'
     answer it does not give."""
-    js, stub = Path("app.js"), Path("dom_stub.js")
+    js, stub = Path("src/pages/app.js"), Path("tests/dom_stub.js")
     node = shutil.which("node") or shutil.which("node.exe")
     if not (js.exists() and stub.exists() and node):
         return "skip", "app.js, dom_stub.js or node is not here"
-    css = Path("app.css").read_text(encoding="utf-8") if Path("app.css").exists() else ""
+    css = Path("src/pages/app.css").read_text(encoding="utf-8") if Path("src/pages/app.css").exists() else ""
     assert re.search(r"\.ballot \.lrow \.c\{[^}]*white-space:nowrap", css), (
         "app.css does not keep a voters' count on one line (.ballot .lrow .c)")
     # As build_site_v2.ballot_card writes them since 7 October 2026: whose
@@ -22642,7 +22647,7 @@ def _rail_on_a_phone():
     2026). datedRail is run in node over those rails and the ones with words
     and no day; a stop that draws "voice vote", "Chapter 140" or "Nov 2026"
     again fails here."""
-    css = Path("app.css").read_text(encoding="utf-8") if Path("app.css").exists() else ""
+    css = Path("src/pages/app.css").read_text(encoding="utf-8") if Path("src/pages/app.css").exists() else ""
     if not css:
         return "skip", "app.css is not here"
     rails = _RAIL_WORST + _RAIL_UNDATED
@@ -22686,7 +22691,7 @@ def _rails_on_a_phone():
     (_rail_drawn, which _rail_on_a_phone holds app.js to). The words a row
     carries beside its days are said and not drawn, so they take no room."""
     idx = Path("site/idx")
-    css = Path("app.css").read_text(encoding="utf-8") if Path("app.css").exists() else ""
+    css = Path("src/pages/app.css").read_text(encoding="utf-8") if Path("src/pages/app.css").exists() else ""
     if not (idx.is_dir() and css):
         return "skip", "no built idx/, or no app.css"
     width, pad = _rail_phone(css)
@@ -22975,7 +22980,7 @@ def _journey_drawn(build_site_v2):
     give way to How it got here, one line per decision, the same lines the
     rail is dated from. A signed bill, a bill killed in the second chamber and
     a CACR, whose route ends at the voters rather than the governor."""
-    js, stub = Path("app.js"), Path("dom_stub.js")
+    js, stub = Path("src/pages/app.js"), Path("tests/dom_stub.js")
     if not (js.exists() and stub.exists() and shutil.which("node")):
         return "skip", "app.js, dom_stub.js or node is not here"
     bills = _journey_bills(build_site_v2)
@@ -23102,7 +23107,7 @@ process.stdout.write("\\n@@" + JSON.stringify(out));
     # The same rail closed as open, so the same width: and its labels on one
     # line from the top, which centring each stop's words in the tallest
     # stop's height did not give (app.css, .rail.dated .stop).
-    css = Path("app.css").read_text(encoding="utf-8") if Path("app.css").exists() else ""
+    css = Path("src/pages/app.css").read_text(encoding="utf-8") if Path("src/pages/app.css").exists() else ""
     assert re.search(r"(?:^|[,}\s])\.rail\.dated\{max-width:560px", css), (
         "app.css does not give the dated rail one width on every card (.rail.dated)")
     assert re.search(r"\.rail\.dated \.stop\{[^}]*justify-content:flex-start", css), (
@@ -23855,23 +23860,26 @@ def _built_site(here, root, brand=True, env=None):
     """
     _site_fixture(root)
     (root / "site").mkdir(exist_ok=True)
-    shutil.copy2(here / "bills.html", root / "site" / "bills.html")
+    shutil.copy2(here / "src/pages/bills.html", root / "site" / "bills.html")
     # What build_pages reads from its working directory, and the drawn
     # assets it copies into site/: without them every page links an icon
-    # that is not there.
+    # that is not there. The browser's files go into src/pages/ under the
+    # fixture, as they sit in the repository, because that is where the
+    # builders read them (_paths, THE BROWSER'S FILES).
     # find.js is in this list because the link check below went looking for it:
     # build_pages writes <script src="/find.js"> on every page and copies the
-    # file from its working directory, so a fixture without it built 33 pages
-    # asking for a script that was not there.
+    # file from src/pages/, so a fixture without it built 33 pages asking for
+    # a script that was not there.
     # alignment_score.json is here because about.html states this site's own
     # timing accuracy and about_figures.py refuses to publish a sentence it
     # has no number for -- so without it build_pages exits, and the fixture
     # build fails on a file that has nothing to do with the fixture. It is
     # small, tracked, and written by `probe_alignment.py --truth --score-out`,
     # which is the gate every timestamp method passes before it ships.
-    for name in ("app.css", "app.js", "bills.html", "find.js", "officials.json",
-                 "alignment_score.json"):
+    for name in ("src/pages/app.css", "src/pages/app.js", "src/pages/bills.html",
+                 "src/pages/find.js", "officials.json", "alignment_score.json"):
         if (here / name).exists():
+            (root / name).parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(here / name, root / name)
     _fixture_brand(here, root, brand)
     # The fixture's House committee, as data/committees.json names one, so
@@ -24069,9 +24077,9 @@ def _chain():
 
     A fixture has to carry what each builder reads, or the chain fails on the
     fixture rather than on the code: build_pages wants app.css, app.js and
-    bills.html in its working directory and copies assets/ beside the pages,
-    and later builders want a committee list, a district map and the offices
-    file. All ten run.
+    bills.html in src/pages/ under its working directory and copies assets/
+    beside the pages, and later builders want a committee list, a district map
+    and the offices file. All ten run.
     """
     here = Path(".").resolve()
     absent = [x for x in CHAIN_NEEDS if not _paths.locate(x).exists()]
@@ -24240,7 +24248,7 @@ def _chain():
         sm = (root / "site" / "sitemap.xml").read_text(encoding="utf-8")
         assert re.search(r"<lastmod>\d{4}-\d{2}-\d{2}</lastmod>", sm), "the sitemap carries no dates"
         red = (root / "site" / "_redirects").read_text(encoding="utf-8")
-        js = (here / "app.js").read_text(encoding="utf-8")
+        js = (here / "src/pages/app.js").read_text(encoding="utf-8")
         for name, slugs in (("BILL_TABS", BP.BILL_TAB_SLUGS), ("MEMBER_TABS", BP.MEMBER_TAB_SLUGS),
                             ("COMMITTEE_TABS", BP.COMMITTEE_TAB_SLUGS)):
             got = re.search(r"const " + name + r"=\{([^}]*)\}", js)
@@ -24709,7 +24717,7 @@ def _links_resolve():
             "built with no lockup.png, the home page's heading is not the "
             "site's name as text: a mask whose file is missing is drawn as "
             "nothing, so the heading would be an empty band")
-        cut = BP.without_mark((here / "app.css").read_bytes())
+        cut = BP.without_mark((here / "src/pages/app.css").read_bytes())
         assert (site / "app.css").read_bytes() == cut, (
             "built with no header mark, site/app.css is not app.css less its "
             "MARK region")
@@ -24768,7 +24776,7 @@ def _links_resolve():
             "same name in the site")
         assert (site / BP.HEADER_MARK).is_file(), (
             f"assets/licensed/{BP.HEADER_MARK} was not put in the site")
-        assert (site / "app.css").read_bytes() == (here / "app.css").read_bytes(), (
+        assert (site / "app.css").read_bytes() == (here / "src/pages/app.css").read_bytes(), (
             "with the header mark placed, site/app.css is not app.css as it is")
         for css in ("style.css", "app.css"):
             assert f"url(/{BP.HEADER_MARK})" in (site / css).read_text(encoding="utf-8"), (
@@ -24836,7 +24844,7 @@ def _sitting_links(BSP):
     finally:
         shutil.rmtree(root, ignore_errors=True)
 
-    js, stub = Path("app.js"), Path("dom_stub.js")
+    js, stub = Path("src/pages/app.js"), Path("tests/dom_stub.js")
     node = shutil.which("node") or shutil.which("node.exe")
     if not (js.exists() and stub.exists() and node):
         return "skip", "app.js, dom_stub.js or node is not here"
@@ -25390,7 +25398,7 @@ def _session_misfiled_row(N, B):
             e.get("row_note") for e in lines), "the page's docket lines lost the misfiled row"
         assert "taken off" in said, f"the applied entry was not reported: {said!r}"
         # And the page draws the note under the line, as it draws a date's.
-        js, stub = Path("app.js"), Path("dom_stub.js")
+        js, stub = Path("src/pages/app.js"), Path("tests/dom_stub.js")
         if js.exists() and stub.exists() and shutil.which("node"):
             row = {"id": "HB1364", "year": 2026, "term": "2025-2026", "title": "",
                    "status": "Died when the session ended", "kind": "done", "passage": "Hx--x"}
@@ -25546,7 +25554,7 @@ def _docket_keeps_called_off_rows(N, B, BF):
         assert len(told) == len(rows) - 3 and len(set(told)) == len(told) \
             and not any("CANCELLED" in t for t in told), (
                 f"a feed tells a row the docket cancelled, as the notice it cancels: {told}")
-        js, stub = Path("app.js"), Path("dom_stub.js")
+        js, stub = Path("src/pages/app.js"), Path("tests/dom_stub.js")
         if js.exists() and stub.exists() and shutil.which("node"):
             row = {"id": "HB1001", "year": 2026, "term": "2025-2026", "title": "",
                    "status": "In committee", "kind": "active", "passage": "H---"}
@@ -29981,10 +29989,11 @@ def _session_recess_and_rule_days(SD, BSP):
             "the Senate adopting joint rules was read as a bill dying under one")
 
         here = Path(".").resolve()
-        if not (here / "bills.html").exists():
+        if not (here / "src/pages/bills.html").exists():
             return "ok", "sittings as the journal holds them; no bills.html to build pages"
         site = root / "site"
-        shutil.copy2(here / "bills.html", root / "bills.html")
+        (root / "src" / "pages").mkdir(parents=True, exist_ok=True)
+        shutil.copy2(here / "src/pages/bills.html", root / "src/pages/bills.html")
         base = "https://graniterecord.org"
         gone = ["2013-06-12", "2014-05-21", "1990-07-01", "1995-07-01"]
         (site / "session" / "H").mkdir(parents=True)
@@ -30209,13 +30218,14 @@ def _session_pages_pruned(BSP):
     """
     import datetime
     here = Path(".").resolve()
-    if not (here / "bills.html").exists():
+    if not (here / "src/pages/bills.html").exists():
         return "skip", "no bills.html here to build a page from"
     root = Path(tempfile.mkdtemp())
     try:
         site = root / "site"
         (site / "session" / "S").mkdir(parents=True)
-        shutil.copy2(here / "bills.html", root / "bills.html")
+        (root / "src" / "pages").mkdir(parents=True, exist_ok=True)
+        shutil.copy2(here / "src/pages/bills.html", root / "src/pages/bills.html")
         ahead = (datetime.date.today() + datetime.timedelta(days=12)).isoformat()
 
         def floor(date):
@@ -30312,7 +30322,7 @@ def _vote_category_text(BSP, shell):
     The labels themselves are not checked: whether "Excused absence" and
     "Absent, not excused" should be renamed is the person's decision.
     """
-    src = Path("app.js").read_text(encoding="utf-8")
+    src = Path("src/pages/app.js").read_text(encoding="utf-8")
     m = re.search(r"const OTHER=\[(.*?)\];", src, re.S)
     assert m, "app.js no longer defines OTHER, the vote categories' text"
     strs = re.findall(r'"((?:[^"\\]|\\.)*)"', m.group(1))
@@ -31858,7 +31868,7 @@ def _member_feed_links():
     try:
         site = root / "site"
         (site / "legislators").mkdir(parents=True)
-        shutil.copy2(here / "bills.html", site / "bills.html")
+        shutil.copy2(here / "src/pages/bills.html", site / "bills.html")
         _bill_index_write(site, [{"id": "HB9999", "n": "HB 9999", "year": 2023,
                                   "term": "2023-2024", "title": "nobody's bill"}])
         members = [
@@ -31980,7 +31990,7 @@ def _directory_pages():
             "Acworth": [{"county": "Sullivan", "ward": "0"}]}), encoding="utf-8")
         for slug in ("concord-ward-1", "concord-ward-2", "acworth"):
             (site / "town" / f"{slug}.html").write_text("<p>town</p>", encoding="utf-8")
-        shutil.copy(here / "bills.html", site / "bills.html")
+        shutil.copy(here / "src/pages/bills.html", site / "bills.html")
         (site / "sitemap.xml").write_text("<urlset>\n</urlset>\n", encoding="utf-8")
         r = _run([sys.executable, _paths.script("build_indexes.py"), "--site", "site",
                   "--base", "https://x.test"], cwd=root, capture_output=True, text=True, timeout=120)
@@ -32026,7 +32036,7 @@ def _directory_pages():
         # footer must link the Data page, and the Data page must link the
         # directory. Asserting the old shape would have made a deliberate
         # change look like a regression.
-        foot = (here / "bills.html").read_text(encoding="utf-8")
+        foot = (here / "src/pages/bills.html").read_text(encoding="utf-8")
         assert 'href="data.html"' in foot, (
             "the footer does not link the Data page, which is now the route "
             "to the directory and so to every record")
@@ -32245,13 +32255,14 @@ def _committee_not_a_notice(BC, P, B, BE, BV):
 
     # Through main().
     here = Path(".").resolve()
-    if not _paths.locate("build_committees.py").exists() or not (here / "bills.html").exists():
+    if not _paths.locate("build_committees.py").exists() or not (here / "src/pages/bills.html").exists():
         return "skip", "build_committees.py or bills.html not here"
     root = Path(tempfile.mkdtemp(prefix="gr-cmte-notice-"))
     try:
         (root / "site").mkdir()
         (root / "data").mkdir()
-        shutil.copy2(here / "bills.html", root / "bills.html")
+        (root / "src" / "pages").mkdir(parents=True, exist_ok=True)
+        shutil.copy2(here / "src/pages/bills.html", root / "src/pages/bills.html")
         (root / "data" / "committees.json").write_text(json.dumps({
             "H07": {"code": "H07", "name": "Executive Departments and Administration",
                     "abbr": "ED&A"},
@@ -32438,7 +32449,7 @@ def _committees_archived(BC):
     src = _paths.locate("build_committees.py").read_text(encoding="utf-8")
     assert 'rec["archived"] = {"years": runs(c["span"])}' in src, \
         "archived committees' JSON no longer carries the years"
-    head = Path("app.js").read_text(encoding="utf-8")
+    head = Path("src/pages/app.js").read_text(encoding="utf-8")
     head = head[head.find("function renderCommitteeHead"):][:1200]
     assert "c.archived" in head, "a committee's page no longer says it is not on the list today"
     return "ok", "not listed and ended before this term; no record means no claim"
@@ -32493,7 +32504,7 @@ def _committee_details_survive_the_weekly(CD, FC, FCD):
     sentence saying what to do, rather than building every page without them.
     """
     here = Path(".").resolve()
-    if not _paths.locate("build_committees.py").exists() or not (here / "bills.html").exists():
+    if not _paths.locate("build_committees.py").exists() or not (here / "src/pages/bills.html").exists():
         return "skip", "build_committees.py or bills.html not here"
     rows = FC.parse(_CMTE_LISTING, "H")
     assert len(rows) == 1 and rows[0]["chair"] == "Jane Doe", (
@@ -32513,7 +32524,8 @@ def _committee_details_survive_the_weekly(CD, FC, FCD):
     try:
         (root / "site").mkdir()
         (root / "data").mkdir()
-        shutil.copy2(here / "bills.html", root / "bills.html")
+        (root / "src" / "pages").mkdir(parents=True, exist_ok=True)
+        shutil.copy2(here / "src/pages/bills.html", root / "src/pages/bills.html")
         (root / "data" / "committees.json").write_text(json.dumps(
             {"H43": {"code": "H43", "name": "Fixture Affairs", "abbr": "FIXTURE"}}),
             encoding="utf-8")
@@ -33230,7 +33242,7 @@ def _committee_older_names(committee_names, build_committees, build_site_v2):
         "a retired committee's title no longer carries its years")
 
     # And the page: the name as the bill carries it, to the page of its term.
-    ext, stub = Path("app.js"), Path("dom_stub.js")
+    ext, stub = Path("src/pages/app.js"), Path("tests/dom_stub.js")
     if not (ext.exists() and stub.exists()) or not shutil.which("node"):
         return "skip", "resolved and mapped; app.js, dom_stub.js or node not here to draw it"
     root = Path(tempfile.mkdtemp())
@@ -33481,7 +33493,7 @@ def _former_heading(BL):
     try:
         site = root / "site"
         site.mkdir()
-        shutil.copy2(here / "bills.html", site / "bills.html")
+        shutil.copy2(here / "src/pages/bills.html", site / "bills.html")
         (site / "legislators.json").write_text(json.dumps(M["sitting"]), encoding="utf-8")
         (site / "former.json").write_text(json.dumps(M["former"]), encoding="utf-8")
         r = _run([sys.executable, _paths.script("build_legislator_pages.py"), "--site", "site",
@@ -33492,8 +33504,8 @@ def _former_heading(BL):
                  for m in M["former"] + M["sitting"]}
         drawn = None
         if shutil.which("node"):
-            for f, text in (("app.js", (here / "app.js").read_text(encoding="utf-8")),
-                            ("stub.js", (here / "dom_stub.js").read_text(encoding="utf-8")),
+            for f, text in (("app.js", (here / "src/pages/app.js").read_text(encoding="utf-8")),
+                            ("stub.js", (here / "tests/dom_stub.js").read_text(encoding="utf-8")),
                             ("members.json", json.dumps(M)), ("go.js", _FORMER_HEADING_JS)):
                 (root / f).write_text(text, encoding="utf-8")
             r = _run(["node", "go.js"], cwd=root, capture_output=True, text=True, timeout=60)
@@ -33698,7 +33710,7 @@ def _brand_files():
             continue        # it draws them; it does not ask for them
         for g in set(card.findall(code(f))):
             named.setdefault(g, f)
-    css = re.sub(r"/\*.*?\*/", "", Path("app.css").read_text(encoding="utf-8"), flags=re.S)
+    css = re.sub(r"/\*.*?\*/", "", Path("src/pages/app.css").read_text(encoding="utf-8"), flags=re.S)
     for g in set(re.findall(r"url\(/([^)\s\"']+)\)", css)):
         named.setdefault(g, "app.css")
     manifest = Path("assets/site.webmanifest")
@@ -33787,7 +33799,7 @@ def _header_mark():
     import struct
     import build_pages as BP
     import build_brand as BB
-    css = Path("app.css").read_text(encoding="utf-8")
+    css = Path("src/pages/app.css").read_text(encoding="utf-8")
     for m in ("/* MARK:START", "/* MARK:END"):
         assert css.count(m) == 1, f"app.css has {css.count(m)} of {m!r}, not one"
     a, b = css.index("/* MARK:START"), css.index("/* MARK:END")
@@ -33834,7 +33846,7 @@ def _header_mark():
     assert BP.HEADER_MARK not in plain, "stylesheet(False) still names the mark"
     left = sorted(set(re.findall(r"__[A-Z][A-Z_]*__", drawn + plain)))
     assert not left, "the stylesheet has unfilled slots: " + ", ".join(left)
-    raw = Path("app.css").read_bytes()
+    raw = Path("src/pages/app.css").read_bytes()
     cut = BP.without_mark(raw)
     i = raw.find(b"/* MARK:START")
     assert cut != raw and cut[:i] == raw[:i] and raw.endswith(cut[i:]), (
@@ -34074,10 +34086,10 @@ def _calendar_documents():
     import build_calendar as BC
     import calendar_documents as CD
     import shell as S
-    if not Path("bills.html").exists():
+    if not Path("src/pages/bills.html").exists():
         return "skip", "bills.html is not here"
     # ---- the stylesheet: one row, and it fits ----
-    css = Path("app.css").read_text(encoding="utf-8")
+    css = Path("src/pages/app.css").read_text(encoding="utf-8")
     at = css.find("/* THE GENERAL COURT'S OWN CALENDARS AND JOURNALS, AS PDFs")
     assert at > css.find("/* THE CALENDAR, AS A CALENDAR") > 0, (
         "app.css has no rules for the Calendars & Journals section in the calendar's region")
@@ -34451,7 +34463,7 @@ def _calendar_documents():
         # ---- a build: the pages, the two files, the sitemap ----
         site = root / "site"
         site.mkdir()
-        shutil.copy(Path("bills.html"), site / "bills.html")
+        shutil.copy(Path("src/pages/bills.html"), site / "bills.html")
         base = "https://graniterecord.org"
         (site / "sitemap.xml").write_text(
             '<?xml version="1.0" encoding="UTF-8"?>\n<urlset>\n'
@@ -34501,7 +34513,7 @@ def _calendar_documents():
             "the list page was not written with its body, its heading and its own address")
         bare = (root / "bare")
         bare.mkdir()
-        shutil.copy(Path("bills.html"), bare / "bills.html")
+        shutil.copy(Path("src/pages/bills.html"), bare / "bills.html")
         with contextlib.redirect_stdout(io.StringIO()):
             BC.week_page(bare, base, order[0], weeks, order, 0, {}, {}, {}, [], cal_today,
                          set(), study=True)
@@ -34626,7 +34638,7 @@ def _one_stylesheet():
     one, so this fails if build_pages.py grows rules of its own again.
     """
     src = _paths.locate("build_pages.py").read_text(encoding="utf-8")
-    app = Path("app.css").read_text(encoding="utf-8")
+    app = Path("src/pages/app.css").read_text(encoding="utf-8")
     i = src.find('CSS = """')
     assert i > 0, "build_pages.py has no CSS template"
     block = src[i:src.index('"""', i + 9)]
@@ -34701,7 +34713,7 @@ def _tab_keyboard():
     press lost the keyboard's place, on every tabbed view. PAGE_TAB outlived the
     page it belonged to, so a committee opened after a member's Votes tab drew
     nothing. And the version picker declared role="tablist" with no tabs."""
-    js = Path("app.js").read_text(encoding="utf-8")
+    js = Path("src/pages/app.js").read_text(encoding="utf-8")
     handler = js[js.find('e.key==="ArrowLeft"'):][:900]
     assert "next.click()" in handler and ".focus()" in handler and \
         handler.find("next.click()") < handler.find("(fresh||next).focus()"), \
@@ -34879,7 +34891,7 @@ def _bill_page_start_and_exit():
     the box names one that is not the newest; and Return on the list writes
     the search into the list's address, which is run here, not read.
     """
-    js, stub = Path("app.js"), Path("dom_stub.js")
+    js, stub = Path("src/pages/app.js"), Path("tests/dom_stub.js")
     node = shutil.which("node") or shutil.which("node.exe")
     if not (js.exists() and stub.exists() and node):
         return "skip", "app.js, dom_stub.js or node is not here"
@@ -35074,7 +35086,7 @@ def _focus_survives():
     focus on something the redraw does not replace -- the search box while
     the list narrows -- is not moved.
     """
-    js, stub = Path("app.js"), Path("dom_stub.js")
+    js, stub = Path("src/pages/app.js"), Path("tests/dom_stub.js")
     node = shutil.which("node") or shutil.which("node.exe")
     if not (js.exists() and stub.exists() and node):
         return "skip", "app.js, dom_stub.js or node is not here"
@@ -35166,7 +35178,7 @@ def _chip_drawn():
     veto that stood; Sort by status heads each group with its word; and a
     member's or a committee's select, labelled "Bill status", offers the words
     and filters by them."""
-    js, stub = Path("app.js"), Path("dom_stub.js")
+    js, stub = Path("src/pages/app.js"), Path("tests/dom_stub.js")
     node = shutil.which("node") or shutil.which("node.exe")
     if not (js.exists() and stub.exists() and node):
         return "skip", "app.js, dom_stub.js or node is not here"
@@ -35265,9 +35277,9 @@ def _review_of_audit_fixes(BP):
     the panel that clips them; the home page's activity is a list with no
     bullets; and the roster says what its finder found.
     """
-    css = Path("app.css").read_text(encoding="utf-8")
+    css = Path("src/pages/app.css").read_text(encoding="utf-8")
     bare = re.sub(r"/\*.*?\*/", "", css, flags=re.S)
-    js, stub = Path("app.js"), Path("dom_stub.js")
+    js, stub = Path("src/pages/app.js"), Path("tests/dom_stub.js")
     node = shutil.which("node") or shutil.which("node.exe")
     if not (js.exists() and stub.exists() and node):
         return "skip", "app.js, dom_stub.js or node is not here"
@@ -42995,7 +43007,7 @@ def _plate_agrees():
     node = shutil.which("node") or shutil.which("node.exe")
     if not node:
         return "skip", "node is not on PATH, so the JavaScript copies cannot be run"
-    js = Path("app.js").read_text(encoding="utf-8", errors="replace")
+    js = Path("src/pages/app.js").read_text(encoding="utf-8", errors="replace")
     bp = _paths.locate("build_pages.py").read_text(encoding="utf-8", errors="replace")
     grab = lambda src, name: re.search(
         r"function plate\(\w+\)\{.*?\n(?:\s*)\}", src, re.S)
@@ -43039,7 +43051,7 @@ def _meet_kind_agrees():
     session", uncoloured, on another -- for the same meeting.
     """
     py = _paths.locate("build_pages.py").read_text(encoding="utf-8", errors="replace")
-    js = Path("app.js").read_text(encoding="utf-8", errors="replace")
+    js = Path("src/pages/app.js").read_text(encoding="utf-8", errors="replace")
     m = re.search(r"^MEET_KIND = (\{[^}]*\})", py, re.M)
     assert m, "build_pages.py has no MEET_KIND"
     table = {k: list(v) for k, v in ast.literal_eval(m.group(1)).items()}
@@ -43094,7 +43106,7 @@ def _meet_kind_colours():
     assert got == want, ("meeting kinds take the wrong colour: "
                          + ", ".join(f"{k} is {got[k]!r}, not {want[k]!r}"
                                      for k in want if got[k] != want[k]))
-    css = Path("app.css").read_text(encoding="utf-8")
+    css = Path("src/pages/app.css").read_text(encoding="utf-8")
     tok = {"k-hearing": "hear", "k-exec": "exec", "k-meet": "meet",
            "k-conf": "conf", "k-floor": "floor", "k-study": "study"}
     for cls, t in tok.items():
@@ -43122,7 +43134,7 @@ def _meet_kind_colours():
     import io
     import build_calendar as BC
     here = Path(".").resolve()
-    if not (here / "bills.html").exists():
+    if not (here / "src/pages/bills.html").exists():
         return "skip", "bills.html is not here"
     rows = [{"term": "2025-2026", "bill": "HB1", "body": "H", "kind": k,
              "date": "2026-03-05", "time": t, "committee": c, "venue": ""}
@@ -43138,7 +43150,7 @@ def _meet_kind_colours():
     try:
         site = tmp / "site"
         site.mkdir()
-        shutil.copy(here / "bills.html", site / "bills.html")
+        shutil.copy(here / "src/pages/bills.html", site / "bills.html")
         with contextlib.redirect_stdout(io.StringIO()):
             BC.week_page(site, "https://graniterecord.org", order[0], weeks, order, 0,
                          {}, {}, {}, [], _dt.date(2026, 9, 24), set())
@@ -43200,7 +43212,7 @@ def _bill_order_matches_app(BO):
     assert sorted(BILL_SCRAMBLED, key=BO.bill_key) == BILL_ORDER, (
         "bill_order.bill_key puts bills in "
         + ", ".join(sorted(BILL_SCRAMBLED, key=BO.bill_key)))
-    js, stub = Path("app.js"), Path("dom_stub.js")
+    js, stub = Path("src/pages/app.js"), Path("tests/dom_stub.js")
     node = shutil.which("node") or shutil.which("node.exe")
     if not (js.exists() and stub.exists() and node):
         return "skip", "app.js, dom_stub.js or node is not here"
@@ -43379,7 +43391,7 @@ def _calendar_every_week():
     import io
     import build_calendar as BC
     here = Path(".").resolve()
-    if not (here / "bills.html").exists():
+    if not (here / "src/pages/bills.html").exists():
         return "skip", "bills.html is not here"
     rows = [{"term": "2025-2026", "bill": b, "body": "H", "kind": "public hearing",
              "date": d, "time": "10:00", "committee": "Commerce", "venue": "LOB 302"}
@@ -43406,7 +43418,7 @@ def _calendar_every_week():
     try:
         site = tmp / "site"
         site.mkdir()
-        shutil.copy(here / "bills.html", site / "bills.html")
+        shutil.copy(here / "src/pages/bills.html", site / "bills.html")
         urls = []
         with contextlib.redirect_stdout(io.StringIO()):
             for i, k in enumerate(order):
@@ -43455,7 +43467,7 @@ def _calendar_every_weekday():
     import io
     import build_calendar as BC
     here = Path(".").resolve()
-    if not (here / "bills.html").exists():
+    if not (here / "src/pages/bills.html").exists():
         return "skip", "bills.html is not here"
     rows = [{"term": "2025-2026", "bill": b, "body": "H", "kind": "public hearing",
              "date": d, "time": "10:00", "committee": "Commerce", "venue": "LOB 302"}
@@ -43468,7 +43480,7 @@ def _calendar_every_weekday():
     try:
         site = tmp / "site"
         site.mkdir()
-        shutil.copy(here / "bills.html", site / "bills.html")
+        shutil.copy(here / "src/pages/bills.html", site / "bills.html")
         with contextlib.redirect_stdout(io.StringIO()):
             for i, k in enumerate(order):
                 BC.week_page(site, "https://graniterecord.org", k, weeks, order, i,
@@ -43547,7 +43559,7 @@ def _calendar_study_committees():
     import io
     import build_calendar as BC
     here = Path(".").resolve()
-    if not (here / "bills.html").exists():
+    if not (here / "src/pages/bills.html").exists():
         return "skip", "bills.html is not here"
 
     def det(cid, year, bill, name, status):
@@ -43671,7 +43683,7 @@ def _calendar_study_committees():
 
         site = tmp / "site"
         site.mkdir()
-        shutil.copy(here / "bills.html", site / "bills.html")
+        shutil.copy(here / "src/pages/bills.html", site / "bills.html")
         order = sorted(weeks)
         with contextlib.redirect_stdout(io.StringIO()):
             for i, k in enumerate(order):
@@ -43939,7 +43951,7 @@ def _calendar_chambers():
     import build_calendar as BC
     import build_pages as BP
     here = Path(".").resolve()
-    if not (here / "bills.html").exists():
+    if not (here / "src/pages/bills.html").exists():
         return "skip", "bills.html is not here"
     M = BP.Meet
 
@@ -43997,7 +44009,7 @@ def _calendar_chambers():
     try:
         site = tmp / "site"
         site.mkdir()
-        shutil.copy(here / "bills.html", site / "bills.html")
+        shutil.copy(here / "src/pages/bills.html", site / "bills.html")
         (site / "committees.json").write_text(json.dumps([
             {"code": "H34", "name": "Finance", "chamber": "H"},
             {"code": "S07", "name": "Finance", "chamber": "S"},
@@ -44126,7 +44138,7 @@ def _calendar_counts_bills():
     import build_calendar as BC
     import build_pages as BP
     here = Path(".").resolve()
-    if not (here / "bills.html").exists():
+    if not (here / "src/pages/bills.html").exists():
         return "skip", "bills.html is not here"
 
     def r(d, bill, kind, time, cmte, venue):
@@ -44168,7 +44180,7 @@ def _calendar_counts_bills():
     try:
         site = tmp / "site"
         site.mkdir()
-        shutil.copy(here / "bills.html", site / "bills.html")
+        shutil.copy(here / "src/pages/bills.html", site / "bills.html")
         today = _dt.date(2025, 1, 21)
         BC.every_week(weeks, today)
         wk = sorted(weeks)
@@ -44194,7 +44206,7 @@ def _calendar_counts_bills():
         assert "13 bills" not in rail and "(8 bills)" in rail, "Coming up still counts items"
 
         node = _cal_node()
-        js, stub = here / "app.js", here / "dom_stub.js"
+        js, stub = here / "src/pages/app.js", here / "tests/dom_stub.js"
         if not (node and js.exists() and stub.exists()):
             return "ok", ("House Housing says (8 bills) over its thirteen items on the card, the "
                           "week, the month file and Coming up; node not on PATH, so calendarBlock "
@@ -44258,7 +44270,7 @@ def _calendar_clock():
     assert BP.clock_span("10:00", "12:15") == f"10:00{nb}AM\u201312:15{nb}PM" \
         and BP.clock_span("09:00", "09:00") == f"9:00{nb}AM", BP.clock_span("10:00", "12:15")
     shape = re.compile(r"^\d{1,2}:\d\d" + nb + r"(AM|PM)(\u2013\d{1,2}:\d\d" + nb + r"(AM|PM))?$")
-    if not Path("bills.html").exists():
+    if not Path("src/pages/bills.html").exists():
         return "skip", "bills.html is not here"
     root = Path(tempfile.mkdtemp(prefix="gr-calclock-"))
     try:
@@ -44282,7 +44294,7 @@ def _calendar_clock():
         assert f"10:00{nb}AM\u20131:00{nb}PM" in texts["the week page"], (
             "House Judiciary's hearing at 10:00 and vote at 13:00 are not one span, 10:00 AM-1:00 PM")
         node = _cal_node()
-        js, stub = Path("app.js"), Path("dom_stub.js")
+        js, stub = Path("src/pages/app.js"), Path("tests/dom_stub.js")
         if not (node and js.exists() and stub.exists()):
             return "ok", f"{seen} times in three kinds of page; node not on PATH, so the scripts were not run"
         import build_calendar as BC
@@ -44420,7 +44432,7 @@ def _cal_fixture(root):
     order = sorted(weeks)
     site = root / "site"
     site.mkdir(parents=True)
-    shutil.copy(Path("bills.html"), site / "bills.html")
+    shutil.copy(Path("src/pages/bills.html"), site / "bills.html")
     urls = []
     with contextlib.redirect_stdout(io.StringIO()):
         for i, k in enumerate(order):
@@ -44458,7 +44470,7 @@ def _calendar_page_shape():
     a card, a link or an empty day.
     """
     import build_calendar as BC
-    if not Path("bills.html").exists():
+    if not Path("src/pages/bills.html").exists():
         return "skip", "bills.html is not here"
     root = Path(tempfile.mkdtemp(prefix="gr-calshape-"))
     try:
@@ -44626,7 +44638,7 @@ def _calendar_core():
     if not node:
         return "skip", "node is not on PATH"
     import build_calendar as BC
-    if not Path("bills.html").exists():
+    if not Path("src/pages/bills.html").exists():
         return "skip", "bills.html is not here"
     root = Path(tempfile.mkdtemp(prefix="gr-calcore-"))
     try:
@@ -44926,7 +44938,7 @@ def _calendar_in_a_dom():
     node = _cal_node()
     if not node:
         return "skip", "node is not on PATH"
-    if not Path("bills.html").exists():
+    if not Path("src/pages/bills.html").exists():
         return "skip", "bills.html is not here"
     root = Path(tempfile.mkdtemp(prefix="gr-caldom-"))
     try:
@@ -45631,7 +45643,7 @@ def _calendar_layout():
     rather than removed, so a pointer, Space and a screen reader reach it;
     the box shows where focus is; and the row is hidden without script.
     """
-    css = Path("app.css").read_text(encoding="utf-8")
+    css = Path("src/pages/app.css").read_text(encoding="utf-8")
     a = css.find("/* THE CALENDAR, AS A CALENDAR")
     assert a >= 0, "app.css has no calendar block"
     block = css[a:css.index("/* HOW THE DAY BEGAN.", a)]
@@ -46034,7 +46046,7 @@ def _coming_up_scrolls():
     assert page.index("<h2>Coming up</h2>") < page.index('class="calscroll"'), (
         "the Coming up heading is not above the box")
 
-    css = re.sub(r"/\*.*?\*/", "", Path("app.css").read_text(encoding="utf-8"), flags=re.S)
+    css = re.sub(r"/\*.*?\*/", "", Path("src/pages/app.css").read_text(encoding="utf-8"), flags=re.S)
     m = re.search(r":where\(body\.pg\) \.calscroll\{([^}]*)\}", css)
     assert m, "app.css has no :where(body.pg) .calscroll rule"
     depth = css[:m.start()].count("{") - css[:m.start()].count("}")
@@ -46349,7 +46361,7 @@ def _legislators_page_tabs():
     assert '.classList.toggle("all"' not in page, (
         "the finder marks its list as the whole list of towns, for columns down the page")
     css = (site / "style.css").read_text(encoding="utf-8")
-    for sheet, text in (("style.css", css), ("app.css", Path("app.css").read_text(encoding="utf-8"))):
+    for sheet, text in (("style.css", css), ("app.css", Path("src/pages/app.css").read_text(encoding="utf-8"))):
         rules = [(sel.strip(), body) for sel, body in re.findall(
             r"([^{}]*)\{([^{}]*)\}", re.sub(r"/\*.*?\*/", "", text, flags=re.S))]
         win = [body for sel, body in rules if sel == ":where(body.pg) .lmatch"]
@@ -46372,7 +46384,7 @@ def _legislators_page_tabs():
                  ".twntabs:not([hidden]) ~ .twnpane > .twnph{position:absolute"):
         assert rule in css, (f"style.css has no {rule}: the strip's rules are not in the "
                              "region both stylesheets take")
-    app = Path("app.css").read_text(encoding="utf-8")
+    app = Path("src/pages/app.css").read_text(encoding="utf-8")
     assert app.count(".twntabs{display:flex") == 1, "app.css draws the strip twice"
     assert app.index(".twntabs{display:flex") < app.index("/* SHARED:END"), (
         "the strip's rules are not in app.css's shared region")
@@ -46445,7 +46457,7 @@ def _seat_list_by_division():
         "the Speaker is not above the five columns")
     assert html.count('class="seatrow"') == len(seats), "a member is missing from the seat list"
     assert BP.seat_columns([{"name": "x"}], lambda m: "<li></li>").count("No seat on file") == 1
-    css = Path("app.css").read_text(encoding="utf-8")
+    css = Path("src/pages/app.css").read_text(encoding="utf-8")
     # FIVE ABREAST FROM 1180px, AND BELOW IT ONE DIVISION UNDER THE NEXT (the
     # look of 7 October 2026). A grid that wrapped five into rows of four or
     # three started a row under the longest division above it: at 1024px
@@ -46551,7 +46563,7 @@ def _seat_chart_turned():
     assert re.search(r'<div class="seatstage">\s*<div class="seatwrap"><svg [^>]*class="seatmap"'
                      r'.*?</svg></div>\s*<p class="seatnote" id="seatnote"', page, re.S), (
         "the readout is not the chart's stage's next row after its scrolling floor")
-    css = re.sub(r"/\*.*?\*/", "", Path("app.css").read_text(encoding="utf-8"), flags=re.S)
+    css = re.sub(r"/\*.*?\*/", "", Path("src/pages/app.css").read_text(encoding="utf-8"), flags=re.S)
     on_screen = re.sub(r"@media print\{(?:[^{}]*\{[^{}]*\})*\s*\}", "", css)
     note = [(sel.strip(), body) for sel, body in re.findall(r"([^{}]*)\{([^{}]*)\}", on_screen)
             if ".seatnote" in sel]
@@ -46580,7 +46592,7 @@ def _seat_chart_prints_whole():
     at the same weight, sets the chart to the page's width over the script's
     inline width -- which only !important does -- and lets the box neither
     clip nor stop at 78vh."""
-    css = re.sub(r"/\*.*?\*/", "", Path("app.css").read_text(encoding="utf-8"), flags=re.S)
+    css = re.sub(r"/\*.*?\*/", "", Path("src/pages/app.css").read_text(encoding="utf-8"), flags=re.S)
     box = css.find(":where(body.pg) .seatwrap{")
     assert box >= 0, "app.css has no rule for the chart's box"
     blocks = [(m.start(), m.group(1)) for m in re.finditer(
@@ -46615,7 +46627,7 @@ def _committee_notes_fill():
         at = src.index(head)
         assert "'<p class=\"src fill\">" in src[at:at + 200], (
             f"the note under {head} is held to the measure")
-    css = Path("app.css").read_text(encoding="utf-8")
+    css = Path("src/pages/app.css").read_text(encoding="utf-8")
     assert ".src.fill{max-width:none}" in css and css.index(".src.fill{max-width:none}") \
         < css.index("/* SHARED:END") and css.index(".src.fill{max-width:none}") \
         > css.index(".src,.lead{max-width:var(--measure)}"), (
@@ -46700,7 +46712,7 @@ process.stdout.write(JSON.stringify(out));
     # on the card's surface and the neighbours' are on the page; the band, the
     # hover and the chosen day are written after the neighbours' rule, at the
     # same weight, so they still win.
-    css = Path("app.css").read_text(encoding="utf-8")
+    css = Path("src/pages/app.css").read_text(encoding="utf-8")
     tile = re.search(r"\.cmgrid td\{[^}]*background:var\(--surface\)\}", css)
     out = css.find(".cmgrid td.cmout{background:none}")
     assert tile and out > tile.start(), (
@@ -46827,7 +46839,7 @@ def _bill_text_opens_whole():
         want = ["vblk vblk-ln vrule"] * 5 + ["vblk vblk-ln"] * 2
         assert cls == want, f"the rule lines are classed {cls}"
     assert ".vblk.vrule{white-space:nowrap;overflow:hidden}" in \
-        Path("app.css").read_text(encoding="utf-8"), "a rule line may still wrap"
+        Path("src/pages/app.css").read_text(encoding="utf-8"), "a rule line may still wrap"
     return "ok", ("the newest printing, in full text; What changed one press away; a rule "
                   "drawn in characters kept to one line")
 
@@ -49117,7 +49129,7 @@ def _report_box_fallback():
     and the box must offer the address for it too, saying the site is taking
     no more reports rather than that it could not save one.
     """
-    fn, app, stub = Path("functions/api/report.js"), Path("app.js"), Path("dom_stub.js")
+    fn, app, stub = Path("functions/api/report.js"), Path("src/pages/app.js"), Path("tests/dom_stub.js")
     absent = [str(p) for p in (fn, app, stub) if not p.exists()]
     if absent:
         return "skip", "not here: " + ", ".join(absent)
@@ -49266,7 +49278,7 @@ def _report_agree(CR):
     if not fn.exists():
         return "skip", "no functions/api/report.js here"
     js = fn.read_text(encoding="utf-8")
-    app = Path("app.js").read_text(encoding="utf-8")
+    app = Path("src/pages/app.js").read_text(encoding="utf-8")
     m = re.search(r"const FIELDS = new Set\(\[(.*?)\]\)", js, re.S)
     fn_fields = re.findall(r'"(\w+)"', m.group(1))
     box = re.search(r"const REPORT_FIELDS=\[(.*?)\];", app, re.S)
@@ -49408,7 +49420,7 @@ def _about_reports():
     feedback through a Google form, a day after the report box went live, and
     nothing deleted a report at all. The promise is held to the code now: the
     box named as app.js labels it, and the week as compile_reports deletes."""
-    bp, app, cr = _paths.locate("build_pages.py"), Path("app.js"), _paths.locate("compile_reports.py")
+    bp, app, cr = _paths.locate("build_pages.py"), Path("src/pages/app.js"), _paths.locate("compile_reports.py")
     absent = [str(p) for p in (bp, app, cr) if not p.exists()]
     if absent:
         return "skip", "not here: " + ", ".join(absent)
@@ -49503,7 +49515,7 @@ def _about_data_claims(build_pages, about_figures, build_site_v2):
 
         # ---- Data page and manifest, built by build_exports on a fixture ---
         (root / "data").mkdir()
-        shutil.copy2(here / "bills.html", root / "site" / "bills.html")
+        shutil.copy2(here / "src/pages/bills.html", root / "site" / "bills.html")
         passages = {"HB1": "Hpppp", "SB2": "Spxx-", "HB3": "Hphh-",
                     "HR4": "Hpp", "HB5": ""}
         _bill_index_write(root / "site", [
@@ -67161,13 +67173,13 @@ def _find_classes_shared(BP):
     page region. A class nothing styles is left alone: it is a hook, not a
     component.
     """
-    need = [Path(f) for f in ("find.js", "app.css")]
+    need = [Path(f) for f in ("src/pages/find.js", "src/pages/app.css")]
     if not all(f.exists() for f in need):
         return "skip", "find.js or app.css not in this directory"
-    css = Path("app.css").read_text(encoding="utf-8")
+    css = Path("src/pages/app.css").read_text(encoding="utf-8")
     sheet = BP.stylesheet(False)
     drawn = set()
-    for src in (Path("find.js").read_text(encoding="utf-8"), BP.SEARCH_JS):
+    for src in (Path("src/pages/find.js").read_text(encoding="utf-8"), BP.SEARCH_JS):
         for m in re.finditer(r'class(?:Name)?\s*=\s*\\?"([^"$\\]+)\\?"', src):
             drawn.update(c for c in m.group(1).split() if re.fullmatch(r"[a-z][\w-]*", c))
     assert {"fdym", "fwhy", "fname", "fbills"} <= drawn, (
@@ -68731,7 +68743,7 @@ def _town_tabs(B, BP):
         bad.append("How to vote calls a city's website the town's, or a "
                    "town's the city's")
 
-    css = Path("app.css").read_text(encoding="utf-8")
+    css = Path("src/pages/app.css").read_text(encoding="utf-8")
     strip = re.search(r"\.twntabs\{[^}]*\}", css)
     grid = re.search(r"\.twngrid\{[^}]*\}", css)
     if not strip or "overflow-x:auto" not in strip.group(0):
@@ -68783,7 +68795,7 @@ const keyed = k => { let held = false;
 document.activeElement = tabEls[0]; out.end = keyed("End"); out.home = keyed("Home");
 process.stdout.write(JSON.stringify(out));
 """ % (tabs, script)
-        stub = Path("dom_stub.js").read_text(encoding="utf-8")
+        stub = Path("tests/dom_stub.js").read_text(encoding="utf-8")
         for hsh, first in (("#vote", "vote"), ("", "representatives"),
                            ("#results", "representatives")):
             r = subprocess.run([node, "-e", stub + "\n" + harness, "x", hsh],
@@ -69281,7 +69293,7 @@ def _pchip_agrees():
     if not node:
         return "skip", "node is not on PATH, so the JavaScript copy cannot be run"
 
-    js = Path("app.js").read_text(encoding="utf-8", errors="replace")
+    js = Path("src/pages/app.js").read_text(encoding="utf-8", errors="replace")
     e = re.search(r"^const esc=.*?;$", js, re.M)
     c = re.search(r"^const pchip=m=>\{.*?\n(?:\s*)m\.slug\?.*?\};$", js,
                   re.M | re.S)

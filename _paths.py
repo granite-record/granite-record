@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-06.3
+# GRANITE_VERSION: 2026-10-06.4
 """
 Where the code lives, so that every script and module is found by its bare name.
 
@@ -56,6 +56,18 @@ lane's queue never has to change: rewriting a line would run it again.
 PATHS FOUND FROM A FILE. A module that needs the repository root uses ROOT,
 not Path(__file__).parent, which is the root only while the file sits at it.
 
+THE BROWSER'S FILES. bills.html, the template every record page is built
+from, and the app.js, app.css and find.js it loads are code a builder reads
+rather than runs. Since the folder move's stage 5 (8 October 2026) they sit in
+src/pages/ beside the builders that read them, and dom_stub.js, the stand-in
+for a browser that preflight runs app.js against in node, sits in tests/. A
+builder reads them at src/pages/ under the folder it runs in, as it reads the
+data, so that a fixture is built from the copies laid out in it. locate()
+finds each by its bare name, as it finds a script (BROWSER), so that
+versions.json, inventory and preflight name them as they did at the root; a
+name with a folder in it is taken as written, because site/bills.html is the
+built copy and not the source.
+
 Nothing here reads data, asks the network or writes anything.
 """
 
@@ -89,6 +101,10 @@ CODE_DIRS = ("",) + SRC_DIRS + ("watchers", "tests")
 # lives. Before src/ existed they were all at the root, so a guard that read
 # the root's *.py reads these, and reads the same files after a move.
 SCRIPT_DIRS = ("",) + SRC_DIRS
+
+# The kinds of file locate() finds by a bare name besides a script: the
+# browser's (see THE BROWSER'S FILES), in src/pages/ and tests/.
+BROWSER = (".js", ".css", ".html")
 
 # The lines every runnable script carries, word for word (see THE BOOTSTRAP).
 BOOTSTRAP = (
@@ -147,12 +163,13 @@ def script(name, root=None):
 
 def locate(name, root=None):
     """Where the file `name` is: a script or module (.py) by its bare name, in
-    whichever code folder holds it; anything else, and a .py that is not
-    here, at `name` under the root. For a tool that reads a file and says
-    when it is not here, so that it reads the same file before a move and
-    after it."""
+    whichever code folder holds it, and one of the browser's files (BROWSER)
+    the same way where it is named bare; anything else, a browser's file named
+    with a folder, and a file that is not here, at `name` under the root. For
+    a tool that reads a file and says when it is not here, so that it reads
+    the same file before a move and after it."""
     n = str(name)
-    if n.endswith(".py"):
+    if n.endswith(".py") or (n.endswith(BROWSER) and "/" not in n and "\\" not in n):
         hit = find(n, root)
         if hit is not None:
             return hit

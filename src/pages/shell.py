@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-07.22
+# GRANITE_VERSION: 2026-09-07.23
 """
 The page every record's own address is: bills.html, with one record open.
 
@@ -18,8 +18,9 @@ missing any of them is a blank screen that reports nothing. Three generators
 each with their own copy of that markup is three chances for one of them to
 drift, silently, across thousands of files.
 
-So the template IS bills.html, read at build time, and the substitutions assert
-that what they are replacing was actually there.
+So the template IS bills.html, read at build time from src/pages/ (beside this
+file) under the folder the build runs in, and the substitutions assert that
+what they are replacing was actually there.
 """
 
 import html
@@ -66,14 +67,15 @@ BINDS = ('id="q"', 'id="qgo"', 'id="year"', 'id="sort"',
 
 
 def template(site=Path("site")):
-    """bills.html, checked for everything the substitutions rely on."""
-    for p in (Path("bills.html"), Path(site) / "bills.html"):
+    """bills.html, checked for everything the substitutions rely on: the
+    one in src/pages/, or failing that the copy in the site folder."""
+    for p in (Path("src/pages/bills.html"), Path(site) / "bills.html"):
         if p.exists():
             t = p.read_text(encoding="utf-8")
             break
     else:
         raise SystemExit(
-            "bills.html is not in the project root or in the site folder, and "
+            "bills.html is not in src/pages/ or in the site folder, and "
             "it is the template every record's page is made from.")
     absent = [k for k, v in NEEDS.items() if v not in t]
     assert not absent, (
