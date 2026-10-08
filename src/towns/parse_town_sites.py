@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-20.11
+# GRANITE_VERSION: 2026-09-20.12
 """
 Who a New Hampshire town says holds its offices, out of the town's own pages.
 
     python3 src/towns/parse_town_sites.py --report        # what it found, writes nothing
     python3 src/towns/parse_town_sites.py --show lyme     # one town, in detail
-    python3 src/towns/parse_town_sites.py                 # -> town_officials_web.json
+    python3 src/towns/parse_town_sites.py                 # -> collected/town_officials_web.json
 
 Reads only what `town_sites.py` saved under `town_sites/`. Touches no
 network, so it is free to be wrong.
@@ -87,7 +87,7 @@ import re
 # reads is the root's.
 ROOT = _paths.ROOT
 STORE = ROOT / "town_sites"
-OUT = ROOT / "town_officials_web.json"
+OUT = ROOT / "collected" / "town_officials_web.json"
 
 ROSTER_MAX = 80          # pairs on one page; above this it is not a roster
 SEAT_MAX = 25            # people under one office heading in one run

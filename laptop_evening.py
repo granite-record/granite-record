@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-30.7
+# GRANITE_VERSION: 2026-09-30.8
 """
 The laptop's evening job: the night's list of new livestreams down, captions
 for the recordings YouTube would not give GitHub's machine, and their start
@@ -20,12 +20,12 @@ the recordings, and this reads them.
 
 WHAT IT RUNS, IN ORDER, STOPPING AT THE FIRST THAT FAILS
 
-  1. cloud.py pull
+  1. src/ops/cloud.py pull
        the night's files, and its livestream state (archive/livestreams.json),
        which says which recordings wait for captions. The state must be under
        two days old, or nothing is captioned: an older list is a night that
        has not run, and the catch-up would be working from a stale one.
-  2. livestreams.py --catch-up
+  2. src/ops/livestreams.py --catch-up
        captions the waiting recordings -- whatever is waiting, the oldest
        first and twenty at most in an evening, a minute or two apart, one
        caption track each -- and reads the chair's boundaries out of them.
@@ -42,7 +42,7 @@ WHAT IT RUNS, IN ORDER, STOPPING AT THE FIRST THAT FAILS
        catch-up reads new recordings with the same method, so this should
        never fire; it is here because an unattended loop is where a quiet
        regression would otherwise go out every night.
-  4. cloud.py seed-kit --only candidate_segments.json caption_spans.json work/*/segments.json
+  4. src/ops/cloud.py seed-kit --only candidate_segments.json caption_spans.json work/*/segments.json
        the caption results and nothing else. Whatever else the laptop has
        changed -- a data file re-read on dev, not yet released -- stays here:
        it reaches the site with a release, never by this back door.

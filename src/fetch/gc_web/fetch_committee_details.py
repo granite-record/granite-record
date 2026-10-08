@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-07.11
+# GRANITE_VERSION: 2026-09-07.12
 """
 Each committee's own page: the clerk, the staff, and what the committee is for.
 
@@ -449,7 +449,7 @@ def main():
     CD.write_details(details, a.out)
     print(f"-> {a.out} ({after} committees, {before} on file before)")
     print("\nRun build_committees.py to put the clerk and the purpose on the "
-          "pages, and `python3 cloud.py seed-kit` so the nightly's kit has "
+          "pages, and `python3 src/ops/cloud.py seed-kit` so the nightly's kit has "
           "them.")
     return 2 if refused else 0
 

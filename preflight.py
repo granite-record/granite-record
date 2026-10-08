@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.468
+# GRANITE_VERSION: 2026-09-04.469
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -889,6 +889,15 @@ def _src_dirs_off_list(code_dirs, src_dirs):
     return [d for d in code_dirs if d.startswith("src/") and d not in src_dirs]
 
 
+def _mk(p):
+    """`p`, with its folder made: a fixture's tree is new, and the root
+    tidy's folders (corrections/, collected/, records/...) are not in it until a
+    file is put in one."""
+    p = Path(p)
+    p.parent.mkdir(parents=True, exist_ok=True)
+    return p
+
+
 def _plant(root, files):
     """A tree for a reader to be proved on: {relative path: text}."""
     for rel, text in files.items():
@@ -1045,9 +1054,10 @@ def _runner_names_resolve():
     _paths.script, which fails at four in the morning on a name that finds no
     file or finds two. So each name is resolved here, now. The workflows and
     publish.bat run a script by its path, from the root: those must be where
-    they are written, which is why livestreams.py stays at the root -- the
-    nightly's `Test-Path livestreams.py` would otherwise skip its step without
-    a word."""
+    they are written. When livestreams.py moved to src/ops/ (the root tidy,
+    8 October 2026) the nightly's `Test-Path livestreams.py` moved with it, to
+    `Test-Path src/ops/livestreams.py`: left behind, it would have skipped its
+    step without a word."""
     tmp = Path(tempfile.mkdtemp(prefix="gr-runners-"))
     try:
         _plant(tmp, {
@@ -1055,13 +1065,13 @@ def _runner_names_resolve():
             "build_all.py": 'Step("a", ["moved.py", "--x"])\nStep("b", ["gone.py"] + more)\n',
             "nightly.py": 'run(["twice.py"], "t")\nx = ["moved.py", "y"]\n',
             "watchers/gc_lane.queue": "# c\ndaily 06:00 moved.py --a\nhandover gone.py\n",
-            ".github/workflows/nightly.yml": "run: python livestreams.py\n# python old.py\n",
+            ".github/workflows/nightly.yml": "run: python streams.py\n# python old.py\n",
             "publish.bat": "REM python3 old.py\npython3 checks.py --site site\n",
-            "src/parse/moved.py": "", "src/checks/checks.py": "", "src/pages/livestreams.py": "",
+            "src/parse/moved.py": "", "src/checks/checks.py": "", "src/pages/streams.py": "",
             "src/parse/twice.py": "", "src/pages/twice.py": ""})
         got = _runner_problems(tmp)
         want = ["build_all.py names gone.py", "nightly.py names twice.py",
-                "watchers/gc_lane.queue names gone.py", "nightly.yml runs livestreams.py",
+                "watchers/gc_lane.queue names gone.py", "nightly.yml runs streams.py",
                 "publish.bat runs checks.py"]
         assert len(got) == len(want) and all(any(w in g for g in got) for w in want), \
             f"the reader of runners found {got} in a tree made to break five ways"
@@ -1579,15 +1589,23 @@ def _dash_c_imports_paths():
 
 # THE NETWORK LINES, BY FOLDER (src/fetch/README.md). Read from what a file
 # does, so that they hold wherever it sits. The root is allowed all of them:
-# it holds the entry points that ask (nightly, livestreams, netcheck, cloud)
-# and, until each moves, the files the move has not reached yet; the
-# refusal guard holds every script there to refusal.check() all the same.
+# it holds the entry points that ask (nightly, netcheck); the refusal guard
+# holds every script there to refusal.check() all the same. src/ops/ asks the
+# services it operates -- R2 through boto3 and the reports database through
+# wrangler, which these patterns do not read -- and its livestreams.py is the
+# one script outside src/fetch/youtube/ that asks YouTube, as it was while it
+# sat at the root.
 _GC_HOST = re.compile(r"""["']https?://gc\.nh\.gov""")
 _SQL = re.compile(r"^\s*(?:import probe_db\b|from probe_db import)", re.M)
 _YOUTUBE = re.compile(r"yt_dlp|googleapis\.com/youtube|youtube/v3")
 _ASKS = re.compile(r"urlopen|urlretrieve|urllib\.request\.Request|requests\.(?:get|post)"
                    r"|http\.client")
 _URL = re.compile(r"""["'](https?://[^/"'\s]+)""")
+
+
+# The night's livestream step: the one script outside src/fetch/youtube/ that
+# asks YouTube (src/fetch/youtube/README.md).
+_LIVESTREAMS = "src/ops/livestreams.py"
 
 
 def _calls_refusal_check(tree):
@@ -1604,8 +1622,8 @@ def _boundary_problems(root=None, dirs=_paths.CODE_DIRS):
       - only src/fetch/gc_db/ (and, at the root, nightly and preflight; and
         tests/rehearse_turn.py) open the General Court's SQL host, through
         probe_db;
-      - only src/fetch/youtube/ (and livestreams.py at the root) use yt-dlp
-        or the YouTube API;
+      - only src/fetch/youtube/ (and src/ops/livestreams.py, the night's
+        livestream step) use yt-dlp or the YouTube API;
       - src/checks asks only graniterecord.org, and every other folder under
         src/ that is not in src/fetch/ asks nobody.
     The last is by default, not by a list of folders, so that a folder added
@@ -1633,10 +1651,10 @@ def _boundary_problems(root=None, dirs=_paths.CODE_DIRS):
         if (_SQL.search(src) or f.name == "probe_db.py") and folder != "src/fetch/gc_db" \
                 and rel != "tests/rehearse_turn.py":
             bad.append(f"{rel} opens the General Court's SQL host: it belongs in src/fetch/gc_db/")
-        if _YOUTUBE.search(src) and folder != "src/fetch/youtube":
+        if _YOUTUBE.search(src) and folder != "src/fetch/youtube" and rel != _LIVESTREAMS:
             bad.append(f"{rel} uses yt-dlp or the YouTube API: it belongs in src/fetch/youtube/")
         if folder.startswith("src/") and not folder.startswith("src/fetch/") \
-                and folder != "src/checks" and _ASKS.search(src):
+                and folder != "src/checks" and rel != _LIVESTREAMS and _ASKS.search(src):
             bad.append(f"{rel} makes a request, and {folder}/ asks nobody")
         if folder == "src/checks" and _ASKS.search(src):
             hosts = {u for u in _URL.findall(src)
@@ -1677,15 +1695,18 @@ def _network_boundaries():
             "src/checks/away.py": 'U = "https://example.org"\n' + ask,
             "src/fetch/other/sos.py": 'U = "https://app.sos.nh.gov"\n' + ask,
             "src/later/new.py": 'U = "https://app.sos.nh.gov"\n' + ask,
+            "src/ops/livestreams.py": 'import yt_dlp\nU = "https://www.googleapis.com/youtube/v3"\n' + ask,
+            "src/ops/elsewhere.py": "import yt_dlp\n",
             "nightly.py": "import probe_db\nimport yt_dlp\n"})
         # src/later stands for a folder listed after this check was written.
         got = _boundary_problems(tmp, dirs=_paths.CODE_DIRS + ("src/later",))
         want = ["unchecked.py is in src/fetch/gc_web/ and never calls",
                 "checked.py calls refusal.check()", "sql.py opens", "yt.py uses yt-dlp",
                 "asks.py makes a request", "away.py asks https://example.org",
-                "new.py makes a request, and src/later/ asks nobody"]
+                "new.py makes a request, and src/later/ asks nobody",
+                "elsewhere.py uses yt-dlp"]
         assert len(got) == len(want) and all(any(w in g for g in got) for w in want), \
-            f"the reader of the network lines found {got} in a tree made to cross seven"
+            f"the reader of the network lines found {got} in a tree made to cross eight"
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
     bad = _boundary_problems()
@@ -3959,7 +3980,7 @@ def _person_corrected(N, P):
     taken off SB 286's history, whose last stage said it was enrolled on its
     way to the governor, and noted on SB 268's own row of that enrolment,
     whose rows carry the term's other session year (2026)."""
-    path = Path("docket_corrections.json")
+    path = Path("corrections/docket_corrections.json")
     assert path.exists(), "docket_corrections.json is not here"
     dates, moved = N.load_corrections(path), N.load_corrections(path, "misfiled")
     bad = []
@@ -7720,7 +7741,7 @@ def _ballot_file():
     """ballot_results.json's rows by (term, bill). The file is tracked, the
     person's own (HANDMADE), and the night's clone carries it, so a check of
     what it holds runs with the code checks."""
-    f = Path("ballot_results.json")
+    f = Path("corrections/ballot_results.json")
     assert f.exists(), "ballot_results.json is not here"
     return {(r.get("term"), r.get("bill")): r
             for r in json.loads(f.read_text(encoding="utf-8"))["rows"]}
@@ -13899,6 +13920,69 @@ def _manifest_prefers_aired(build_manifest):
         shutil.rmtree(root, ignore_errors=True)
 
 
+@check("pipeline", "every video index reaches the build: the channel indexes in "
+                   "collected/videos/ and the night's livestreams at the root, both, by "
+                   "file name", needs=("build_all", "proceedings"))
+def _video_indexes_both_places(build_all, proceedings):
+    """THE ROOT TIDY (8 October 2026) put the channel indexes git keeps in
+    collected/videos/ and left the night's videos_*_livestreams.csv at the
+    root, where the kit has always carried them, so that no bucket key
+    changed. proceedings.video_indexes() is how build_all, build_manifest's
+    message, build_proceedings, build_calendar, caption_span, livestreams and
+    these checks find both. A reader of one place alone would lose either
+    every committed recording or every recording the night found since, and
+    the manifest would come out shorter without an error. When the review of
+    the move took the root out of video_indexes(), checks of the livestreams
+    and the captions failed by their symptoms, and none named the cause. So
+    the function is held to a planted tree, build_all's plan to handing both
+    to the manifest and the floor index, and no other code file may glob for
+    a video index of its own."""
+    import io
+    import contextlib
+    tmp = Path(tempfile.mkdtemp(prefix="gr-vids-"))
+    here = os.getcwd()
+
+    class A:
+        key = None
+        session = "2026"
+        base = "https://graniterecord.org"
+        archive = "nh-archive"
+
+    try:
+        _plant(tmp, {"collected/videos/videos_senate_2026-01-01_to_2026-12-31.csv": "x\n",
+                     "collected/videos/videos_house_2026-01-01_to_2026-06-30.csv": "x\n",
+                     "collected/videos/channel_index_full.json": "{}\n",
+                     "videos_house_livestreams.csv": "x\n",
+                     "videos_senate_livestreams.csv": "x\n",
+                     "elsewhere/videos_house_2025-01-01_to_2025-12-31.csv": "x\n"})
+        want = ["collected/videos/videos_house_2026-01-01_to_2026-06-30.csv",
+                "videos_house_livestreams.csv",
+                "collected/videos/videos_senate_2026-01-01_to_2026-12-31.csv",
+                "videos_senate_livestreams.csv"]
+        got = [p.relative_to(tmp).as_posix() for p in proceedings.video_indexes(tmp)]
+        assert got == want, f"proceedings.video_indexes read {got}, not {want}"
+        os.chdir(tmp)
+        with contextlib.redirect_stdout(io.StringIO()):
+            steps = build_all.plan(A())
+    finally:
+        os.chdir(here)
+        shutil.rmtree(tmp, ignore_errors=True)
+    for script in ("build_manifest.py", "build_floor_index.py"):
+        step = next((s for s in steps if s.args[:1] == [script]), None)
+        assert step is not None, f"build_all's plan has no {script} step"
+        handed = [a for a in step.args if a.endswith(".csv") and "videos_" in a]
+        assert handed == want, f"build_all hands {script} {handed}, not {want}"
+    own = [f"{f.relative_to(_paths.ROOT).as_posix()}"
+           for f in _paths.code_files("*.py")
+           if f.name not in ("proceedings.py", "preflight.py")
+           and re.search(r"""\.glob\(\s*f?["']videos_""",
+                         f.read_text(encoding="utf-8", errors="replace"))]
+    assert not own, ("these glob for a video index of their own rather than taking "
+                     "proceedings.video_indexes(): " + ", ".join(own))
+    return "ok", ("both places read, in file-name order, and handed to the manifest and the "
+                  "floor index; no other code file globs for an index")
+
+
 # ======================================================== code: livestreams ==
 
 def _ls_env():
@@ -15457,7 +15541,8 @@ def _ls_rows(livestreams):
     assert ast.literal_eval(m.group(1)) == livestreams.COLS, \
         "livestreams.COLS is not fetch_channel_index's column list"
     n, bad = 0, []
-    for f in sorted(Path(".").glob("videos_*.csv")):
+    import proceedings as _P
+    for f in _P.video_indexes():
         if f.name.endswith("_livestreams.csv"):
             continue
         with open(f, encoding="utf-8", newline="") as fh:
@@ -18429,8 +18514,8 @@ def _search_index_builds(BP, SI):
             "them for sidx/words.json")
     odd = sorted(w for w in known if len(w) < 5 or not re.fullmatch(r"[a-z]+", w))
     assert not odd, f"words.json would carry {odd[:5]}: not words as the page reads one"
-    names, _said = SI.name_words(["careers.json", "places.json"])
-    if Path("careers.json").exists() and Path("places.json").exists():
+    names, _said = SI.name_words(["generated/careers.json", "generated/places.json"])
+    if Path("generated/careers.json").exists() and Path("generated/places.json").exists():
         lost = [w for w in ("concord", "londonderry", "allen", "moore") if w not in names]
         assert not lost, (
             f"{lost} are names of towns or members in careers.json and "
@@ -20374,7 +20459,7 @@ def _no_control_bytes():
     # and not while two sessions are in the same tree.
     skip = ("site/", "work/", "archive/", "obsolete/", "logs/", "data/", "db/",
             "docket_pages/", "bill_text/", "legislation/", "captions/",
-            "review/", ".git/", "sources/", "brand/", "assets/",
+            "review/", ".git/", "records/sources/", "brand/", "assets/",
             "town_sites/")
     #
     # GIT'S LIST, WHICH IS THAT CHANGE (2 October 2026). The walk was every
@@ -21187,7 +21272,7 @@ def _numbers_ballots(learn_numbers):
     def drawn(rows):
         with _tf.TemporaryDirectory() as tmp:
             _bill_index_write(tmp, idx)
-            (Path(tmp) / "ballot_results.json").write_text(json.dumps({"rows": rows}),
+            _mk(Path(tmp) / "corrections" / "ballot_results.json").write_text(json.dumps({"rows": rows}),
                                                            encoding="utf-8")
             page = learn_numbers.body(Path(tmp), Path(tmp), strict=False)
             return page, list(learn_numbers.HELD)
@@ -21706,25 +21791,39 @@ def _record_untouched():
 
     The 35 hand-marked times are the only measurement of this system a person
     made, and they were lost twice while they lived as two columns in a file
-    that rebuilds overwrite. They live in ground_truth.csv now, which a person
-    edits and every generator only reads.
+    that rebuilds overwrite. They live in review/ground_truth.csv now, which a
+    person edits and every generator only reads.
 
     The list has grown since, and each addition is a file that cost somebody
     an evening and cannot be rebuilt from anything:
 
-      ground_truth.csv        35 proceedings timed with a stopwatch
-      review/checked.jsonl    the bench's judgments, append-only
-      bill_notes.json         written explanations of bills that recur under
-                              one number every term, like the budget
-      officials.json          offices filled by hand from four official sources
-      member_corrections.json a name a generator got wrong, and the evidence
-      place_corrections.json  a polling place the Secretary of State's own
-                              list states wrongly, and the second source
-      docket_corrections.json a date the docket states wrongly, and the
-                              journal and roll call that settle it
+      review/ground_truth.csv        35 proceedings timed with a stopwatch
+      review/checked.jsonl           the bench's judgments, append-only
+      corrections/bill_notes.json    written explanations of bills that recur
+                                     under one number every term, like the budget
+      corrections/officials.json     offices filled by hand from four official
+                                     sources
+      corrections/member_corrections.json  a name a generator got wrong, and
+                                     the evidence
+      corrections/place_corrections.json   a polling place the Secretary of
+                                     State's own list states wrongly, and the
+                                     second source
+      corrections/docket_corrections.json  a date the docket states wrongly,
+                                     and the journal and roll call that settle it
+      corrections/ballot_results.json      the voters' answer on each amendment
+      corrections/status/            the session's state and the Executive
+                                     Council, which no published file gives
 
     Naming only the first one meant the check grew stale as quietly as the
-    thing it guards against: most of these had no guard at all.
+    thing it guards against: most of these had no guard at all. So since the
+    root tidy (8 October 2026) the list is two folders, read as they stand:
+    corrections/, what a person corrects or adds to the record by hand, and
+    review/, a person's checks of the site's own work. A file put in either
+    is guarded the day it is put there, with no list here to remember to
+    grow; launch_register.json, the person's own and untracked, stays where
+    the morning triage reads it and is named beside them. A build_ or fetch_
+    script that so much as writes into either folder fails too, whatever
+    file it names.
 
     THE BENCH'S RECORD IS HELD TO MORE, in the same reading of the scripts
     (2 October 2026; a check of its own until then, "no generator writes the
@@ -21735,18 +21834,74 @@ def _record_untouched():
     the network: it shows unpublished judgments about named people, and it
     binds the loopback address for that reason.
     """
-    HANDMADE = ["ground_truth.csv", "review/checked.jsonl", "bill_notes.json",
-                "officials.json", "member_corrections.json",
-                "place_corrections.json", "launch_register.json",
-                "docket_corrections.json", "ballot_results.json"]
+    HANDMADE_DIRS = ("corrections", "review")
+    HANDMADE = sorted(f.relative_to(_paths.ROOT).as_posix()
+                      for d in HANDMADE_DIRS if (_paths.ROOT / d).is_dir()
+                      for f in (_paths.ROOT / d).rglob("*")
+                      if f.is_file() and f.name != "README.md" and not f.name.startswith("."))
+    # A FLOOR for the folders: the ten tracked files they took on 8 October
+    # 2026. Read from nowhere, the list would be empty and pass.
+    assert len(HANDMADE) >= 10, (
+        f"only {len(HANDMADE)} hand-made files were found in {' and '.join(HANDMADE_DIRS)}/, "
+        "and ten were there on 8 October 2026: the folders are not being read")
+    HANDMADE.append("launch_register.json")
+    # Writing into either folder at all, by its name in a path: "corrections/x"
+    # in one string, or "corrections" as a part of its own (ROOT / "review" /
+    # ...), opened with "w" or written through a Path.
+    dirs = "|".join(HANDMADE_DIRS)
+    INTO = re.compile(r'open\s*\([^)]*["\'](?:%s)(?:[/\\]|["\'])[^)]*["\']w|'
+                      r'["\'](?:%s)(?:[/\\][^"\'\n]*)?["\'][^\n]{0,60}\.write_(?:text|bytes)'
+                      % (dirs, dirs))
+    # ... or through a name a line of its own gives such a path, which is how
+    # most scripts here name what they write (OUT = ROOT / "corrections" /
+    # "x.json", and OUT.write_text(...) further down): written, opened for
+    # writing, or put there whole by a rename or a copy, the way a careful
+    # writer finishes (os.replace(tmp, OUT)). The review of 8 October 2026
+    # planted both shapes in a build_ script and the reader above passed them.
+    HELD = re.compile(r'^[ \t]*([A-Za-z_]\w*)[ \t]*(?::[^=\n]*)?=[^=\n][^\n]*'
+                      r'["\'](?:%s)(?:[/\\][^"\'\n]*)?["\']' % dirs, re.M)
+
+    def writes_into(src):
+        if INTO.search(src):
+            return True
+        for held in set(HELD.findall(src)):
+            n = re.escape(held)
+            if re.search(r'\b%s\s*\.\s*(?:write_text|write_bytes)\s*\('
+                         r'|\b%s\s*\.\s*open\s*\(\s*(?:mode\s*=\s*)?["\'][wax]'
+                         r'|\bopen\s*\(\s*%s\s*,\s*(?:mode\s*=\s*)?["\'][wax]'
+                         r'|\.(?:replace|rename)\s*\(\s*%s\s*\)'
+                         r'|\b(?:os\.replace|os\.rename|shutil\.(?:copy\w*|move))'
+                         r'\s*\([^)\n]*,\s*%s\s*\)' % (n, n, n, n, n), src):
+                return True
+        return False
+
+    for text, writes in (('open("corrections/x.json", "w")', True),
+                         ('open(ROOT / "corrections" / "x.json", "w", encoding="utf-8")', True),
+                         ('Path("review/ground_truth.csv").write_text(t)', True),
+                         ('(Path("review") / "a.csv").write_text(t)', True),
+                         ('OUT = ROOT / "corrections" / "x.json"\nOUT.write_text(t)', True),
+                         ('T = Path("review") / "a.csv"\nos.replace(tmp, T)', True),
+                         ('NOTES: Path = Path("corrections/n.json")\nwith NOTES.open("w") as fh:', True),
+                         ('json.loads(Path("corrections/bill_notes.json").read_text())', False),
+                         ('open(ROOT / "corrections" / "x.json", encoding="utf-8")', False),
+                         ('gt = Path("review/ground_truth.csv")\nrows = read_any(gt)\n'
+                          'with open(gt, encoding="ascii") as fh:', False),
+                         ('Path("site/review.json").write_text(t)', False)):
+        assert writes_into(text) == writes, (
+            f"the reader of writes into {' and '.join(HANDMADE_DIRS)}/ reads {text!r} as "
+            + ("no write" if writes else "a write"))
     bad, names = [], []
     scanned = _paths.code_files("build_*.py") + _paths.code_files("fetch_*.py")
     for f in scanned:
         src = f.read_text(encoding="utf-8", errors="replace")
         if "checked.jsonl" in src:
             names.append(f.name)
+        if writes_into(src):
+            bad.append(f"{f.name} writes into {' or '.join(d + '/' for d in HANDMADE_DIRS)}")
         for name in HANDMADE:
-            stem = re.escape(name.split("/")[-1])
+            # Bounded on the left, so that status.txt is not bill_status.txt
+            # and officials.json is not town_officials.json.
+            stem = r"(?<![\w-])" + re.escape(name.split("/")[-1])
             if not re.search(stem, src):
                 continue
             # Opened for writing, written through a Path, or through a
@@ -21785,10 +21940,11 @@ def _record_untouched():
         said.append(f"only {len(scanned)} build_ and fetch_ scripts were read, and 56 were "
                     "on 7 October: the code folders are not being read (_paths.code_files)")
     assert not said, "; and ".join(said)
-    present = [n for n in HANDMADE if Path(n).exists()]
-    return "ok", (f"{len(present)} hand-made file(s) here, and only a person "
-                  "writes them: " + ", ".join(present) + "; no generator names "
-                  "the bench's record, and the bench is not on the network")
+    present = [n for n in HANDMADE if (_paths.ROOT / n).exists()]
+    return "ok", (f"{len(present)} hand-made file(s) here, in corrections/ and review/, and "
+                  "only a person writes them: " + ", ".join(present) + "; no generator "
+                  "names the bench's record or writes into either folder, and the bench "
+                  "is not on the network")
 
 
 @check("markers", "every phrasing read from a transcript still matches")
@@ -22863,7 +23019,7 @@ def _stream_start(build_site_v2, about_figures):
     # WHERE THE CHANNELS BEGIN, from the index of both of them. Tracked, so
     # this runs on a fresh clone; a date the index does not bear out is a
     # claim about the General Court's recordings that nothing supports.
-    idx = Path("channel_index_full.json")
+    idx = Path("collected/videos/channel_index_full.json")
     first = None
     if idx.exists():
         d = json.loads(idx.read_text(encoding="utf-8"))
@@ -24579,7 +24735,7 @@ def _ballot_built(build_site_v2):
                 "stages": [{"hand": h} for h in ("H:committee", "H:floor", "S:committee",
                                                  "S:floor")],
                 "events": both + extra}}))
-        (root / "ballot_results.json").write_text(json.dumps({"rows": [
+        _mk(root / "corrections" / "ballot_results.json").write_text(json.dumps({"rows": [
             _voters_row("2025-2026", "CACR5", "2026-11-03", 452307, 237221),
             _voters_row("2025-2026", "CACR7", "2026-11-03", 119104, 169439, "Question 1",
                         _MANUAL_1999)]}),
@@ -24730,7 +24886,7 @@ def _ballot_said_built():
     try:
         base, _ran = _fixture_site_whole(root)
         sos, bp, uncited, pending = _ballot_mixed_rows()
-        (root / "ballot_results.json").write_text(
+        _mk(root / "corrections" / "ballot_results.json").write_text(
             json.dumps({"rows": [sos, bp, uncited, pending]}), encoding="utf-8")
         said = {}
         for s in ("build_civics.py", "build_exports.py"):
@@ -25689,7 +25845,7 @@ def _built_site(here, root, brand=True, env=None):
     # small, tracked, and written by `probe_alignment.py --truth --score-out`,
     # which is the gate every timestamp method passes before it ships.
     for name in ("src/pages/app.css", "src/pages/app.js", "src/pages/bills.html",
-                 "src/pages/find.js", "officials.json", "alignment_score.json"):
+                 "src/pages/find.js", "corrections/officials.json", "generated/alignment_score.json"):
         if (here / name).exists():
             (root / name).parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(here / name, root / name)
@@ -30662,11 +30818,11 @@ def _organization_day_votes(P, BD, SD, BSP):
                                                  encoding="utf-8")
         (tmp / "RollCallHistory.txt").write_text(
             "2026|H|400|123456|10001|x|1|\n2027|H|1|123456|10001|x|1|\n", encoding="utf-8")
-        (tmp / "rollcalls").mkdir()
-        (tmp / "rollcalls" / "RollCallSummary_2026.txt").write_text(
+        (tmp / "records" / "rollcalls").mkdir(parents=True)
+        (tmp / "records" / "rollcalls" / "RollCallSummary_2026.txt").write_text(
             "2026|H|300|8/19/2026 2:58:41 PM|SB434|165|140|0|95|||Override|relative to school materials|\n",
             encoding="utf-8")
-        (tmp / "rollcalls" / "RollCallHistory_2026.txt").write_text(
+        (tmp / "records" / "rollcalls" / "RollCallHistory_2026.txt").write_text(
             "2026|H|300|123456|10001|x|1|\n", encoding="utf-8")
         left = Counter()
         import contextlib, io
@@ -30684,7 +30840,7 @@ def _organization_day_votes(P, BD, SD, BSP):
             bad.append(f"Organization Day's roll call is counted as a row left out: {dict(left)}")
         # rollcall_parser keys each roll call by its term, as rollcalls.json is.
         r = _run([sys.executable, _paths.script("rollcall_parser.py"), "--file",
-                  "RollCallSummary.txt", "--dir", "rollcalls", "--all", "--out", "rollcalls.json"],
+                  "RollCallSummary.txt", "--dir", "records/rollcalls", "--all", "--out", "rollcalls.json"],
                  cwd=str(tmp), capture_output=True)
         got = json.loads((tmp / "rollcalls.json").read_text(encoding="utf-8")) \
             if (tmp / "rollcalls.json").exists() else {}
@@ -40330,7 +40486,7 @@ def _kit_unmatched_says(CL, unmatched):
             + ('If the files do not exist yet, add "optional": true to that entry; if they '
                "should exist, the laptop job that makes them has not run."
                if e["owner"] == "laptop" else
-               "The night's files reach this laptop with python3 cloud.py pull; if no night "
+               "The night's files reach this laptop with python3 src/ops/cloud.py pull; if no night "
                'has made them yet, add "optional": true to that entry.'))
     return lines
 
@@ -45362,7 +45518,7 @@ def _site_chips(B):
         rows += [r for r in json.loads(f.read_text(encoding="utf-8")) if not r.get("lsr")]
     terms = sorted({r.get("term") or "" for r in rows} - {""})
     current = terms[-1] if terms else ""
-    over = B.session_over_in(B.session_over("status/status.txt"), current)
+    over = B.session_over_in(B.session_over("corrections/status/status.txt"), current)
     six = set(B.CHIP_WORDS)
     bad, n, per = [], Counter(), Counter()
     unbuilt = [f"{r.get('term')} {r.get('id')}" for r in rows if "chip" not in r]
@@ -50225,7 +50381,8 @@ def _video_starts_on_the_right_clock(fetch_channel_index):
     """
     import csv as _csv
     bad, n = [], 0
-    for p in sorted(Path(".").glob("videos_*.csv")):
+    import proceedings as _P
+    for p in _P.video_indexes():
         rows = list(_csv.DictReader(p.open(encoding="utf-8", newline="")))
         if not rows or "actual_start_utc" not in rows[0] or "start_eastern" not in rows[0]:
             continue
@@ -50571,7 +50728,7 @@ def _every_fetcher_notes_refusal():
         # the LSR fetch did not notice the block page, and on its postback
         # asked for the results page next. Two roll calls, a chamber each.
         "fetch_rollcall_parties": (["--budget", "5", "--delay", "0"], files(**{
-            "rollcalls/RollCallSummary_2004.txt":
+            "records/rollcalls/RollCallSummary_2004.txt":
                 "2004|H|46|x|HB1|200|150|0|50|x\n2004|S|12|x|SB1|20|4|0|0|x\n"}),
             {"403": 1, "503": 1, "block": 1, "drop": 2}),
         "fetch_lsrs": ([], None, {"403": 1, "503": 1, "block": 1}),
@@ -51787,7 +51944,7 @@ def _running_oneliner():
     # running must see them.
     for want in (r"python3 watchers\gc_lane.py", "python3 nightly.py --no-fetch",
                  "python3 src/fetch/gc_web/fetch_legislation.py --all", "python3 src/fetch/gc_web/snapshot_gencourt.py",
-                 r"cmd /c publish.bat", "python3 cloud.py pull",
+                 r"cmd /c publish.bat", "python3 src/ops/cloud.py pull",
                  r"python3 watchers\captions_watch.py", "python3 probe_archive.py",
                  "python3 src/fetch/gc_db/probe_db.py --sample", "python3 src/fetch/gc_web/resolve_members.py"):
         assert pattern.search(want), f"the one-liner would not list: {want}"
@@ -52787,7 +52944,7 @@ def _triage_file_name(CR, NI):
     # September 2026, so a clone and GitHub's machine check the other two.
     rules = [d for d in ("reports/TRIAGE.md",) if Path(d).exists()]
     for doc in ("nightly.py", *rules, "compile_reports.py"):
-        text = Path(doc).read_text(encoding="utf-8")
+        text = _paths.locate(doc).read_text(encoding="utf-8")
         named = re.findall(r"reports/(triage-[A-Za-z0-9<>_-]+\.md)", text)
         assert named, f"{doc} no longer names the triage file"
         for n in named:
@@ -56009,7 +56166,7 @@ def _freeze_term(FT, P):
 
         FT.freeze_session(T)
         for p in (f"Docket_{T}.txt", f"verification_manifest_{T}.csv",
-                  "rollcalls/RollCallSummary_2026.txt", "rollcalls/RollCallHistory_2026.txt",
+                  "records/rollcalls/RollCallSummary_2026.txt", "records/rollcalls/RollCallHistory_2026.txt",
                   f"frozen/{T}/day/Members.txt", f"frozen/{T}/manifest.json"):
             assert Path(p).exists(), f"--session did not write {p}"
         assert FT.intact(".", T) == [] and FT.ready()[0], FT.ready()
@@ -56331,7 +56488,8 @@ def _turn_on_a_fixture(FT, P, BA, FTD, BPR, RC, TFD):
                             sponsors, ["2025|0001|1|1|1", "2026|0002|1|3|1"], summary, history))
         Path("verification_manifest.csv").write_text("bill,sched_date\nHB1,2025-01-05\n",
                                                      encoding="utf-8")
-        shutil.copy2(here / "member_corrections.json", "member_corrections.json")
+        shutil.copy2(here / "corrections" / "member_corrections.json",
+                     _mk(Path("corrections") / "member_corrections.json"))
         # A bill the House withdrew, which the General Court's files do not
         # carry, its sponsor as the House Journal printed him (member 4).
         Path("journal_bills.json").write_text(json.dumps({T: {"HB9": {
@@ -56640,8 +56798,8 @@ def _sponsors_who_left():
             files[name] = _turn_day(fx[name])
         for n, b in files.items():
             (tmp / n).write_bytes(b)
-        (tmp / "rollcalls").mkdir()
-        (tmp / "rollcalls" / "RollCallHistory_2024.txt").write_bytes(
+        (tmp / "records" / "rollcalls").mkdir(parents=True)
+        (tmp / "records" / "rollcalls" / "RollCallHistory_2024.txt").write_bytes(
             _turn_day(fx["RollCallHistory_2024.txt"]))
         db = tmp / "db"
         db.mkdir()
@@ -56655,7 +56813,8 @@ def _sponsors_who_left():
             encoding="utf-8")
         for name in ("former_members.json", "past_members.json", "bill_status.json"):
             (tmp / name).write_text(json.dumps(fx[name]), encoding="utf-8")
-        shutil.copy2(here / "member_corrections.json", tmp / "member_corrections.json")
+        shutil.copy2(here / "corrections" / "member_corrections.json",
+                     _mk(tmp / "corrections" / "member_corrections.json"))
         (tmp / "verification_manifest.csv").write_text("bill,sched_date\n", encoding="utf-8")
         r = _run([sys.executable, _paths.script("build_data.py"), "--dir", ".", "--out", "data"],
                  cwd=tmp, capture_output=True, text=True, encoding="utf-8", errors="replace",
@@ -56836,7 +56995,7 @@ def _session_over_current(P, BSV):
     line left in ends no 2027 bill; this is the reminder, the CACR 13
     paragraph's kind, that once the session's files are the next term's the
     line, the headline, the phase and the note are last term's words."""
-    day = BSV.session_over("status/status.txt")
+    day = BSV.session_over("corrections/status/status.txt")
     if not day:
         return "skip", "no session_over line in status/status.txt"
     sess = P.session_term(".")
@@ -64077,7 +64236,7 @@ def _workflows_site_handoff():
             for verb, into in (("site-up", up), ("site-down", down)):
                 if f"cloud.py {verb}" not in body:
                     continue
-                assert re.search(rf"python cloud\.py {verb} --run \$env:RUN_ID\s*$", body, re.M) \
+                assert re.search(rf"python src/ops/cloud\.py {verb} --run \$env:RUN_ID\s*$", body, re.M) \
                     and "RUN_ID: ${{ github.run_id }}" in body, (
                         f"{f.name}: job {j} runs cloud.py {verb} under a name that is not "
                         "the run's own id")
@@ -64102,12 +64261,12 @@ NEW_TERM_FLAG = "          if ($env:NEW_TERM -eq 'true') { $flags += '--new-term
 # this order, and nothing else of New term anywhere.
 NEW_TERM_HOLD = ["          $hold = @()",
                  "          if ($env:NEW_TERM -eq 'true') { $hold = @('--hold', $env:RUN_ID) }",
-                 "          python cloud.py kit-up @hold",
+                 "          python src/ops/cloud.py kit-up @hold",
                  "          exit $LASTEXITCODE"]
 NEW_TERM_RELEASE_IF = "        if: env.NEW_TERM == 'true'"
-NEW_TERM_RELEASE = ["          python cloud.py kit-release --run $env:RUN_ID",
+NEW_TERM_RELEASE = ["          python src/ops/cloud.py kit-release --run $env:RUN_ID",
                     "          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }",
-                    "          python cloud.py state-up",
+                    "          python src/ops/cloud.py state-up",
                     "          exit $LASTEXITCODE"]
 RUN_ID_ENV = "          RUN_ID: ${{ github.run_id }}"
 
@@ -65163,7 +65322,7 @@ def _pulled_night_findings(logs, cloud, now, since=None):
     if not rec and not verdict:
         grace, ago = _grace(since, now)
         said = (f"this laptop stood down {ago}, and nothing has been pulled from the bucket "
-                "since: python3 cloud.py pull brings GitHub's nights here, and this check "
+                "since: python3 src/ops/cloud.py pull brings GitHub's nights here, and this check "
                 "reads them")
         if grace:
             return None, said + f" (it skips for {STANDDOWN_GRACE_HOURS} hours after the stand-down)"
@@ -65195,7 +65354,7 @@ def _pulled_night_findings(logs, cloud, now, since=None):
     problems = []
     if newest is None:
         problems.append(
-            f"The last pull ({since}) brought no night's log or verdict here. python3 cloud.py "
+            f"The last pull ({since}) brought no night's log or verdict here. python3 src/ops/cloud.py "
             "pull brings them; if it finds none, the nightly on GitHub has not sent any (its "
             "Actions tab says why), and starting it is the person's decision. It clears when a "
             "pull brings a night from the last 48 hours.")
@@ -65206,9 +65365,9 @@ def _pulled_night_findings(logs, cloud, now, since=None):
             problems.append(
                 f"The newest night this laptop has, from {what}, started "
                 f"{newest:%Y-%m-%d %H:%M}, {hours:.0f} hours ago. "
-                + ("The last pull from the bucket was " + since + ": python3 cloud.py pull "
+                + ("The last pull from the bucket was " + since + ": python3 src/ops/cloud.py pull "
                    "brings the nights since. " if old_pull else
-                   f"python3 cloud.py pull ran {since} and found nothing newer, so the nightly "
+                   f"python3 src/ops/cloud.py pull ran {since} and found nothing newer, so the nightly "
                    "on GitHub has stopped, or stopped reaching kit-up, which sends its log: its "
                    "Actions tab says which. Starting it again is the person's decision; do not "
                    "run nightly.py here, which refuses on a stood-down laptop anyway. ")
@@ -65249,7 +65408,7 @@ def _pulled_night_selftest():
         assert _pulled_night_findings(logs, cloud, now, now - timedelta(hours=20))[0] is None, \
             "never pulled, the day after the stand-down, was not a skip"
         p = _pulled_night_findings(logs, cloud, now, now - timedelta(hours=49))[0]
-        assert p and len(p) == 1 and "python3 cloud.py pull" in p[0], \
+        assert p and len(p) == 1 and "python3 src/ops/cloud.py pull" in p[0], \
             f"never pulled, 49 hours after the stand-down, did not fail naming the pull: {p}"
         assert _pulled_night_findings(logs, cloud, now, None)[0], \
             "never pulled, with no stand-down date to go by, was a skip"
@@ -65257,7 +65416,7 @@ def _pulled_night_selftest():
         assert _pulled_night_findings(logs, cloud, now)[0] == [], "a night from this morning failed"
         pulled(now - timedelta(days=3), "2026-09-27")
         p = _pulled_night_findings(logs, cloud, now)[0]
-        assert len(p) == 1 and "python3 cloud.py pull brings" in p[0], p
+        assert len(p) == 1 and "python3 src/ops/cloud.py pull brings" in p[0], p
         pulled(now - timedelta(hours=1), "2026-09-27")
         p = _pulled_night_findings(logs, cloud, now)[0]
         assert len(p) == 1 and "Actions tab" in p[0] and "found nothing newer" in p[0], p
@@ -65286,7 +65445,7 @@ def _full_pull_findings(cloud, now, since):
     that only ever triages keeps the night's files -- proceedings.csv, the
     narratives, the day's data -- as they were on the last FULL pull, which
     pull.json records ("full"). Older than FULL_PULL_HOURS is a failure
-    naming python3 cloud.py pull; never is a skip for STANDDOWN_GRACE_HOURS
+    naming python3 src/ops/cloud.py pull; never is a skip for STANDDOWN_GRACE_HOURS
     after the stand-down and a failure after, as the nightly check's is."""
     from datetime import datetime
     try:
@@ -65300,7 +65459,7 @@ def _full_pull_findings(cloud, now, since):
                 "on this laptop are as they were then")
         if grace:
             return None, said + f" (this skips for {STANDDOWN_GRACE_HOURS} hours after the stand-down)"
-        return [said[0].upper() + said[1:] + ". python3 cloud.py pull brings them (it reads the "
+        return [said[0].upper() + said[1:] + ". python3 src/ops/cloud.py pull brings them (it reads the "
                 "bucket only; --changes-only does not bring them). It clears on the first full "
                 "pull."], said
     at = datetime.fromtimestamp(float(full["epoch"]))
@@ -65309,7 +65468,7 @@ def _full_pull_findings(cloud, now, since):
     if hours > FULL_PULL_HOURS:
         return [said[0].upper() + said[1:] + f", more than {FULL_PULL_HOURS}: this laptop's "
                 "copies of the night's files are that old, and a build or a check here reads "
-                "them. python3 cloud.py pull brings them (it reads the bucket only; "
+                "them. python3 src/ops/cloud.py pull brings them (it reads the bucket only; "
                 "--changes-only does not bring them). It clears on the next full pull."], said
     return [], said
 
@@ -65323,7 +65482,7 @@ def _full_pull_selftest():
         assert _full_pull_findings(tmp, now, now - timedelta(hours=10))[0] is None, \
             "no full pull, the morning after the stand-down, was not a skip"
         p = _full_pull_findings(tmp, now, now - timedelta(hours=50))[0]
-        assert p and "python3 cloud.py pull" in p[0], p
+        assert p and "python3 src/ops/cloud.py pull" in p[0], p
         (tmp / "pull.json").write_text(json.dumps(
             {"epoch": now.timestamp(), "mode": "changes-only"}), encoding="utf-8")
         assert _full_pull_findings(tmp, now, now - timedelta(hours=50))[0], \
@@ -65334,7 +65493,7 @@ def _full_pull_selftest():
         (tmp / "pull.json").write_text(json.dumps(
             {"full": {"epoch": (now - timedelta(hours=49)).timestamp()}}), encoding="utf-8")
         p = _full_pull_findings(tmp, now, None)[0]
-        assert p and "49 hours ago" in p[0] and "python3 cloud.py pull" in p[0], p
+        assert p and "49 hours ago" in p[0] and "python3 src/ops/cloud.py pull" in p[0], p
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
 
@@ -65343,7 +65502,7 @@ def _full_pull_selftest():
 def _full_pull_fresh():
     """On a laptop that has stood down, the night's files -- the day's data,
     the carried outputs, the snapshots -- change on GitHub every night and
-    reach this laptop only through a full `python3 cloud.py pull`. The
+    reach this laptop only through a full `python3 src/ops/cloud.py pull`. The
     morning triage's --changes-only brings the change list and not them, so
     the laptop's data can grow old while every morning looks attended to.
     Fails when the last full pull is over 48 hours old (or, 48 hours after the
@@ -65387,12 +65546,12 @@ def _refusal_reached_the_bucket():
         raise AssertionError(
             f"{p} says a refusal met on this laptop at {d.get('at', '?')} is not in the "
             f"bucket: {why}. The night is stopped by the bucket's for now. python3 "
-            "cloud.py pull says where things stand; python3 refusal.py --clear removes the "
+            "src/ops/cloud.py pull says where things stand; python3 refusal.py --clear removes the "
             "marker with the refusal, if a person has decided it is over.")
     raise AssertionError(
         f"{p} says a refusal met on this laptop at {d.get('at', '?')} never reached the "
         "bucket" + (f" ({why})" if why else "") + ", so GitHub's night would still ask the "
-        "General Court. python3 cloud.py send-refusal sends it (the bucket, not the General "
+        "General Court. python3 src/ops/cloud.py send-refusal sends it (the bucket, not the General "
         "Court); python3 refusal.py --clear removes the marker with the refusal, if a "
         "person has decided it is over.")
 
@@ -65433,9 +65592,9 @@ def _nightly_logs():
     fail here forever. What it reads instead is what `cloud.py pull` brought:
     the pulled nightly logs and archive/cloud/last-night.json
     (_pulled_night_findings). Never pulled is a skip that says so for 48
-    hours after the stand-down, and a failure naming python3 cloud.py pull
+    hours after the stand-down, and a failure naming python3 src/ops/cloud.py pull
     after that -- a laptop that never pulled once skipped this for good; a
-    newest night older than 48 hours fails, with python3 cloud.py pull as the
+    newest night older than 48 hours fails, with python3 src/ops/cloud.py pull as the
     remedy when the pull is what is old, and the Actions tab when the pull is
     fresh and the night is not.
     """
@@ -65834,7 +65993,7 @@ def _no_phantom_sittings():
     today = datetime.date.today()
     days = SD.load(narr)
     rc = SD.read_rollcall_dates(
-        [p for p in sorted(Path("rollcalls").glob("RollCallSummary_*.txt"))
+        [p for p in sorted(Path("records/rollcalls").glob("RollCallSummary_*.txt"))
          + [Path("RollCallSummary.txt")] if p.exists()])
     flags = SD.doubtful(days, today, rc)
     new, warn = [], []
@@ -66379,7 +66538,7 @@ def _corrections_still_match():
     weekday in term time is not doubtful on its face. So an entry that
     matches no row fails here whenever its term's docket is on disk.
     """
-    f = Path("docket_corrections.json")
+    f = Path("corrections/docket_corrections.json")
     if not f.exists():
         return "skip", "no docket_corrections.json here"
     import narrative as N
@@ -67032,7 +67191,8 @@ def _manifest_chamber():
     if not mans:
         return "skip", "no manifest on disk"
     body_of = {}
-    for f in glob.glob("videos_*.csv"):
+    import proceedings as _P
+    for f in map(str, _P.video_indexes()):
         b = "S" if "senate" in f.lower() else "H"
         with open(f, encoding="utf-8", newline="") as fh:
             for r in csv.DictReader(fh):
@@ -67927,7 +68087,7 @@ def _sponsors_on_record():
                    if ln.strip()}
     sat = set()
     for f in [Path("RollCallHistory.txt"),
-              *(Path("rollcalls") / f"RollCallHistory_{y}.txt" for y in sorted(years))]:
+              *(Path("records/rollcalls") / f"RollCallHistory_{y}.txt" for y in sorted(years))]:
         if f.exists():
             for ln in f.read_text(encoding="utf-8-sig", errors="replace").splitlines():
                 p = ln.split("|")
@@ -67992,10 +68152,10 @@ def _vote_identity():
     people's votes, none of them named. Distinct Employeenos must stay
     distinct members however little else is known about them.
     """
-    rc = Path("rollcalls")
+    rc = Path("records/rollcalls")
     hist = sorted(rc.glob("RollCallHistory_*.txt")) if rc.exists() else []
     if not hist:
-        return "skip", "no rollcalls/RollCallHistory_*.txt here"
+        return "skip", "no records/rollcalls/RollCallHistory_*.txt here"
     # The id build_data will key a voter on, per Employeeno: the PersonID the
     # join supplied, or the Employeeno itself when it supplied none.
     by_emp = {}
@@ -68183,7 +68343,7 @@ def _careers():
     nobody holds two seats at once -- and the two shared names whose service
     DOES overlap are two different people, which is the case this guards.
     """
-    p = Path("careers.json")
+    p = Path("generated/careers.json")
     if not p.exists():
         return "skip", "careers.json is not built"
     d = json.loads(p.read_text(encoding="utf-8"))
@@ -68504,7 +68664,7 @@ def _rollcall_once(build_data, rollcall_parser):
     import contextlib
     tmp = Path(tempfile.mkdtemp(prefix="gr-rollonce-"))
     try:
-        (tmp / "rollcalls").mkdir()
+        (tmp / "records" / "rollcalls").mkdir(parents=True)
 
         def put(name, lines):
             (tmp / name).write_text("\ufeff" + "\n".join(lines) + "\n", encoding="utf-8")
@@ -68513,18 +68673,18 @@ def _rollcall_once(build_data, rollcall_parser):
             ["2026|H|1|1/7/2026 10:15:33 AM|HB1|1|1|0|0|||Passage|the download|||"])
         # The archive holds the same roll call with other ballots, one the
         # download lacks, and a year of its own.
-        put("rollcalls/RollCallHistory_2026.txt",
+        put("records/rollcalls/RollCallHistory_2026.txt",
             ["2026|H|1|100|11||Nay|", "2026|H|1|101|12||Nay|", "2026|H|1|102|13||Yea|",
              "2026|H|2|100|11||Yea|"])
-        put("rollcalls/RollCallSummary_2026.txt",
+        put("records/rollcalls/RollCallSummary_2026.txt",
             ["2026|H|1|1/7/2026 10:15:33 AM|HB1|1|2|0|0|||Passage|the archive|||",
              "2026|H|2|1/7/2026 11:00:00 AM|HB2|1|0|0|0|||Passage|the archive|||"])
-        put("rollcalls/RollCallHistory_2025.txt", ["2025|H|1|100|11||Yea|"])
+        put("records/rollcalls/RollCallHistory_2025.txt", ["2025|H|1|100|11||Yea|"])
         with contextlib.redirect_stdout(io.StringIO()):
             hist = build_data.rows_all(tmp, "RollCallHistory", 8)
             summ = build_data.rows_all(tmp, "RollCallSummary")
             counts = rollcall_parser.ballot_counts(current=tmp / "RollCallHistory.txt",
-                                                   extra_dir=tmp / "rollcalls")
+                                                   extra_dir=tmp / "records" / "rollcalls")
         by = Counter(tuple(r[:3]) for r in hist)
         assert by == {("2026", "H", "1"): 2, ("2026", "H", "2"): 1, ("2025", "H", "1"): 1}, by
         assert [r[6] for r in hist if tuple(r[:3]) == ("2026", "H", "1")] == ["Yea", "Nay"], \
@@ -68563,7 +68723,7 @@ def _floor_every_year(build_floor_index):
         "site, which waits for a bench sample of those years (see its docstring)")
     tmp = Path(tempfile.mkdtemp(prefix="gr-floor-"))
     try:
-        (tmp / "rollcalls").mkdir()
+        (tmp / "records" / "rollcalls").mkdir(parents=True)
 
         def put(name, lines):
             (tmp / name).write_text("\ufeff" + "\n".join(lines) + "\n", encoding="utf-8")
@@ -68574,13 +68734,13 @@ def _floor_every_year(build_floor_index):
         put("RollCallSummary.txt", [
             "2026|H|1|1/7/2026 10:15:33 AM||321|2|34|38|||Call of the Roll|||",
             "2025|H|3|2/6/2025 10:20:00 AM|HB60|140|217|10|32|||The download's copy|tenancy|||"])
-        put("rollcalls/RollCallSummary_2025.txt", [
+        put("records/rollcalls/RollCallSummary_2025.txt", [
             "2025|H|2|2/6/2025 10:10:00 AM|HRULE64|300|50|0|0|||Adopt|rules|||",
             "2025|H|3|2/6/2025 10:20:00 AM|HB60|140|217|10|32|||Adopt Floor Amendment|tenancy|||",
             "2025|H|4|2/6/2025 10:30:00 AM|HB60|217|139|11|32|||OTP|tenancy|||",
             # typed with a space, as 2017 S 198 typed "HB 315": still HB72's
             "2025|H|5|2/6/2025 10:40:00 AM|HB 72|200|150|10|32|||ITL|x|||"])
-        put("rollcalls/RollCallSummary_2023.txt", [
+        put("records/rollcalls/RollCallSummary_2023.txt", [
             "2023|H|5|3/9/2023 11:00:00 AM|HB10|200|150|0|0|||OTP|x|||"])
         floor = lambda d, kind: {"type": "floor", "date": d, "body": "H",
                                  "vote_kind": kind, "action": "OTP"}
@@ -70559,9 +70719,9 @@ def _floterials_overlay():
     error in its most obvious form and a reader of the failure deserves to be
     told which kind they have.
     """
-    src = Path("districts/house.txt")
+    src = Path("records/districts/house.txt")
     if not src.exists():
-        return "skip", "no districts/house.txt here"
+        return "skip", "no records/districts/house.txt here"
 
     head = re.compile(r"^([A-Za-z]+) County District (\d+)(.*)$")
     districts, cur = [], None
@@ -70670,7 +70830,7 @@ def _county_officers_sane():
     Both are properties of the output, so they are checked here whatever the
     parser becomes.
     """
-    p = Path("county_officials.json")
+    p = Path("collected/county_officials.json")
     if not p.exists():
         return "skip", "no county_officials.json here"
     recs = json.loads(p.read_text(encoding="utf-8"))["officers"]
@@ -70731,12 +70891,12 @@ def _town_officials_sane():
     when, and no office holds more people than it can. Both are properties of
     the output, so they hold however the parser is rewritten.
     """
-    if not Path("town_officials_web.json").exists():
+    if not Path("collected/town_officials_web.json").exists():
         return "skip", "no town_officials_web.json here"
     m = imp("parse_town_sites")
     if m is None:
         return "skip", "parse_town_sites.py does not import"
-    data = json.loads(Path("town_officials_web.json").read_text(encoding="utf-8"))
+    data = json.loads(Path("collected/town_officials_web.json").read_text(encoding="utf-8"))
 
     import collections as _c
     bad, n = [], 0
@@ -70794,7 +70954,7 @@ def _town_boards_sane():
     The words below are deliberately NOT town_boards.py's screen: a check
     built from the screen's own vocabulary can only agree with it.
     """
-    p = Path("town_boards.json")
+    p = Path("collected/town_boards.json")
     if not p.exists():
         return "skip", "no town_boards.json here"
     T = imp("town_boards")
@@ -70803,7 +70963,7 @@ def _town_boards_sane():
     data = json.loads(p.read_text(encoding="utf-8"))
     boards = data.get("boards") or {}
     councils = data.get("councils") or {}
-    dotf = Path("town_officials.json")
+    dotf = Path("collected/town_officials.json")
     dot = json.loads(dotf.read_text(encoding="utf-8")) if dotf.exists() else {}
     bad, n = [], 0
     for key, b in sorted(councils.items()):
@@ -71536,13 +71696,13 @@ def _town_boards_decide(T, P):
     # of State gives them in capitals, so their case is the rule
     # parse_clerks.namecase applied, not anybody's spelling.
     root = Path(tempfile.mkdtemp(prefix="gr-spell-"))
-    (root / "careers.json").write_text(json.dumps(
+    _mk(root / "generated" / "careers.json").write_text(json.dumps(
         {"a": {"name": "Paul LeClerc"}, "b": {"name": "Ann DiPietro"}}),
         encoding="utf-8")
-    (root / "town_officials.json").write_text(json.dumps(
+    _mk(root / "collected" / "town_officials.json").write_text(json.dumps(
         {"x": {"officials": [{"name": "Brian Leclerc"},
                              {"name": "Tom Macdonald"}]}}), encoding="utf-8")
-    (root / "town_clerks.json").write_text(json.dumps(
+    _mk(root / "collected" / "town_clerks.json").write_text(json.dumps(
         {"y": {"clerk": "Joe MacHado", "clerk_raw": "JOE MACHADO"}}),
         encoding="utf-8")
     ks = T.known_spellings(root)
@@ -72153,9 +72313,9 @@ def _officials_restream():
     the PDF's own order. This reads the directory itself -- it is in git --
     and holds the four rows to what the PDF prints.
     """
-    pdf = Path("sources/nh-municipal-officials-2025-09-01.pdf")
+    pdf = Path("records/sources/nh-municipal-officials-2025-09-01.pdf")
     if not pdf.exists():
-        return "skip", "the NHDOT directory is not in sources/"
+        return "skip", "the NHDOT directory is not in records/sources/"
     try:
         import pdfplumber                                    # noqa: F401
     except Exception:
@@ -72202,7 +72362,7 @@ def _town_officials_cells():
     extension if it has one, or one of the four cells NHDOT prints that are
     not -- each named below.
     """
-    f = Path("town_officials.json")
+    f = Path("collected/town_officials.json")
     if not f.exists():
         return "skip", "no town_officials.json here"
     P = imp("parse_officials")
@@ -72296,16 +72456,16 @@ def _corrections_still_apply():
     with a stale one. Neither is caught by anything downstream, because the
     output looks exactly as intended either way.
     """
-    if not Path("place_corrections.json").exists():
+    if not Path("corrections/place_corrections.json").exists():
         return "skip", "no place_corrections.json here"
-    src = Path("sources/sos-clerks-and-polling-places-2026-09-20.csv")
+    src = Path("records/sources/sos-clerks-and-polling-places-2026-09-20.csv")
     if not src.exists():
-        return "skip", "the clerk list export is not in sources/"
+        return "skip", "the clerk list export is not in records/sources/"
     m = imp("parse_clerks_csv")
     if m is None:
         return "skip", "parse_clerks_csv.py does not import"
 
-    fixes = json.loads(Path("place_corrections.json").read_text(encoding="utf-8"))
+    fixes = json.loads(Path("corrections/place_corrections.json").read_text(encoding="utf-8"))
     towns = m.load_towns("site")
     import csv as _csv
     with open(src, encoding="utf-8-sig", newline="") as fh:
@@ -72343,8 +72503,8 @@ def _granit_carries_our_districts():
     Skips when the zips are absent: they are 4.2 MB, not in git, and
     re-fetchable from ftp.granit.unh.edu.
     """
-    if not Path("sources/gis/NHHouseDistricts2022_Base.zip").exists():
-        return "skip", "sources/gis/ has no GRANIT zips"
+    if not Path("records/sources/gis/NHHouseDistricts2022_Base.zip").exists():
+        return "skip", "records/sources/gis/ has no GRANIT zips"
     g = imp("parse_granit")
     if g is None:
         return "skip", "parse_granit.py does not import"
@@ -72389,8 +72549,8 @@ def _districts_match_sos():
     of the table: any of them should be a decision somebody makes, not a
     difference that appears.
     """
-    if not Path("sources/sos-towns-and-wards-districted-2023-04-26.pdf").exists():
-        return "skip", "the Secretary of State's table is not in sources/"
+    if not Path("records/sources/sos-towns-and-wards-districted-2023-04-26.pdf").exists():
+        return "skip", "the Secretary of State's table is not in records/sources/"
     m = imp("parse_sos_districts")
     if m is None:
         return "skip", "parse_sos_districts.py does not import"
@@ -72439,14 +72599,14 @@ def _places_reconcile():
     This recomputes from the sources rather than trusting places.json, so a
     stale places.json fails rather than agreeing with itself.
     """
-    if not Path("places.json").exists():
+    if not Path("generated/places.json").exists():
         return "skip", "no places.json here; run build_places.py"
     bp = imp("build_places")
     if bp is None:
         return "skip", "build_places.py does not import"
 
     places, disagree, synthetic, _ = bp.build()
-    saved = json.loads(Path("places.json").read_text(encoding="utf-8"))["places"]
+    saved = json.loads(Path("generated/places.json").read_text(encoding="utf-8"))["places"]
 
     assert not disagree, (
         "the four district files no longer name the same places: "
@@ -72464,8 +72624,8 @@ def _places_reconcile():
     in_off = sum(1 for p in places.values()
                  if p["named_by"]["nhdot_officials"]["present"])
 
-    clerks = json.loads(Path("town_clerks.json").read_text(encoding="utf-8")) \
-        if Path("town_clerks.json").exists() else None
+    clerks = json.loads(Path("collected/town_clerks.json").read_text(encoding="utf-8")) \
+        if Path("collected/town_clerks.json").exists() else None
 
     bad = []
     if gc_rows != 320:
@@ -75975,7 +76135,7 @@ def main():
             print(f"  {g}/{n}: {m}")
     if not bad:
         print("\nEverything that can be checked without the network is working.")
-        print("What is left needs real data: run inventory.py, then align_all,")
+        print("What is left needs real data: run src/ops/inventory.py, then align_all,")
         print("then src/hearings/segment_markers.py --all --data data, and score the result:")
         print("  src/hearings/probe_alignment.py --truth --candidate candidate_segments.json")
         print("Do not run src/hearings/apply_markers.py --apply. It is the superseded")

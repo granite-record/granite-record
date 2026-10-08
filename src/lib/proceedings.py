@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.12
+# GRANITE_VERSION: 2026-09-05.13
 """
 Read proceedings.csv. Every tool that needs to know what happened on which
 recording imports this and nothing else.
@@ -51,7 +51,7 @@ recording. Columns:
   notice_times    calendar rows: 10:00;13:00 when the notice gives the bill more
                   than one time that day, and time is then empty
 
-Hand-marked times are NOT here. They are in ground_truth.csv and join on
+Hand-marked times are NOT here. They are in review/ground_truth.csv and join on
 (video_id, bill, kind).
 
 GRANITE_PROCEEDINGS, when set, names the file to read and write in place of
@@ -72,6 +72,24 @@ from pathlib import Path
 
 # The live table, or the candidate GRANITE_PROCEEDINGS names (see above).
 PATH = Path(os.environ.get("GRANITE_PROCEEDINGS") or "proceedings.csv")
+
+# WHERE THE VIDEO INDEXES ARE (the root tidy, 8 October 2026). The channel
+# indexes fetch_channel_index.py writes, which git keeps, are in
+# collected/videos/. The night's new livestreams, which livestreams.py
+# writes and the kit carries from one night to the next and git never
+# holds, are videos_<chamber>_livestreams.csv at the root, beside the
+# day's other files. Every reader takes both, through video_indexes().
+VIDEO_DIR = Path("collected") / "videos"
+
+
+def video_indexes(root="."):
+    """Every video index here: collected/videos/videos_*.csv and any
+    videos_*.csv at the root (the night's livestreams), in the order of
+    their file names -- the order one glob of the root gave while both
+    were there, which decides the first of two rows for one recording."""
+    root = Path(root)
+    found = list((root / VIDEO_DIR).glob("videos_*.csv")) + list(root.glob("videos_*.csv"))
+    return sorted((p for p in found if p.is_file()), key=lambda p: (p.name, p.as_posix()))
 
 COLS = ["term", "bill", "body", "kind", "date", "time", "committee", "venue",
         "video_id", "video_title", "stream_start", "predicted_offset", "match",

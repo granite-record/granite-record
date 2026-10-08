@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-18.25
+# GRANITE_VERSION: 2026-09-18.26
 """
 The General Court's week, one page per week.
 
@@ -313,7 +313,8 @@ def _where(loc):
 # with no bill has no page here to lead to -- its card says so -- so where the
 # House or Senate channel published a recording named for it, the card leads
 # to that. The recording is found in the video index every reader globs
-# (videos_*.csv, the nightly's new livestreams among them) by its own date and
+# (proceedings.video_indexes: collected/videos/ and the nightly's new
+# livestreams at the root) by its own date and
 # its committee: the words of the recording's committee and the meeting's must
 # mostly agree both ways, a Dice score of REC_MATCH, because a one-word title
 # such as "House Education" would otherwise take a long name that merely
@@ -337,9 +338,9 @@ def _rec_words(s):
 
 def recordings_by_day(root=Path(".")):
     """{date: [(video_id, title, the words of its committee)]} out of every
-    videos_*.csv here."""
+    video index here (proceedings.video_indexes)."""
     out = defaultdict(list)
-    for f in sorted(Path(root).glob("videos_*.csv")):
+    for f in proceedings.video_indexes(root):
         try:
             with open(f, encoding="utf-8", newline="") as fh:
                 for r in csv.DictReader(fh):

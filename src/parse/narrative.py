@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.106
+# GRANITE_VERSION: 2026-09-04.107
 """
 Turn a bill's docket entries into a plain-language history.
 
@@ -2543,7 +2543,7 @@ TERM = ""
 # P. 48" was written at 2:27 PM on 19 August, four journal pages after that
 # afternoon's veto vote, and it published a House sitting on a Saturday in
 # September that never happened.
-CORRECTIONS_FILE = "docket_corrections.json"
+CORRECTIONS_FILE = "corrections/docket_corrections.json"
 CORRECTIONS = []
 CORRECTED = set()
 SIBLINGS = []

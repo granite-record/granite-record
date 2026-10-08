@@ -5,7 +5,7 @@ repository root are what people, workflows and schedulers run by name;
 everything they call is here.
 
 ```
-(root)            entry points, config, docs and all data
+(root)            entry points, config and docs; the day's files, untracked
 _paths.py         puts every code folder on the import path
 src/
   fetch/          asks other servers, one folder per whose server
@@ -19,6 +19,13 @@ src/
   pages/          writes what a reader gets in site/, and the browser's files
   checks/         looks at something and reports
   lib/            the few modules every stage shares
+  ops/            keeps the site running: the bucket, the livestreams, the
+                  reader reports, a session's first commands
+corrections/      what a person corrects or adds to the record by hand
+review/           a person's checks: the stopwatch times and the bench
+records/          official lists and documents as published
+collected/        what was gathered from outside sources, kept
+generated/        what is computed ahead of time, kept
 functions/        Cloudflare Pages Functions (must stay at the root)
 workers/          Cloudflare Workers deployed on their own
 watchers/         the General Court fetch lane
@@ -32,8 +39,9 @@ disk; `towns/` builds the reference files for the places members are
 elected from and the officials who govern them; `hearings/` finds and times
 proceedings in their recordings; `pages/` writes what a reader gets in
 `site/`; `checks/` looks and reports; `lib/` holds the few modules every
-stage shares. Each folder's README says what is in it, what runs it, and
-what does not belong there.
+stage shares; `ops/` holds the tools the workflows, the morning triage and a
+person run by path to keep the site running. Each folder's README says what
+is in it, what runs it, and what does not belong there.
 
 **The move is in stages.** Stage 0 made the code able to live here and moved
 nothing. Stage 1 (7 October 2026) moved the 49 scripts nothing the night
@@ -54,8 +62,12 @@ to `hearings/`, the night's and the weekly's fetchers to `fetch/gc_web/` and
 `gc_changes` to `checks/`, with `publish.bat`'s two lines. Stage 5 (8 October
 2026) moved the front end, `bills.html`, `app.js`, `find.js` and `app.css`, to
 `pages/` beside the builders that read and copy it, and `dom_stub.js` to
-`tests/`. What is left at the root is what something outside the repository
-names (below). Each stage moved a group of files without changing an import,
+`tests/`. Stage 6, the root tidy (8 October 2026), moved `cloud.py`,
+`livestreams.py`, `compile_reports.py`, `inventory.py` and `handoff.py` to
+`ops/`, with the workflows' and the documents' commands, and the data git
+keeps into five folders at the root (`corrections/`, `review/`, `records/`,
+`collected/`, `generated/`; README.md's "What's where"). What is left at the
+root is what something outside the repository names (below). Each stage moved a group of files without changing an import,
 a build step or a lane line that names them; a command line a person types
 names the path, and changed in the same commit.
 
@@ -116,7 +128,8 @@ folder (`python3 x.py`, or a backticked `x.py --flag` in a document), when a nam
 `build_all`, the night, the lane, the evening job, a workflow or `publish.bat`
 uses finds no file or two, when a file sits in the folder of a network it
 does not ask (a `refusal.check()` outside `fetch/gc_web/`, the SQL host
-outside `fetch/gc_db/`, yt-dlp outside `fetch/youtube/`, a request from any
-folder outside `fetch/` but one from `checks/` to graniterecord.org), and
+outside `fetch/gc_db/`, yt-dlp outside `fetch/youtube/` but the night's
+`ops/livestreams.py`, a request from any folder outside `fetch/` but one
+from `checks/` to graniterecord.org and the livestreams'), and
 when git cannot see a file of code. Asking nobody is the default: a new
 folder outside `fetch/` is held to it the day it is listed.

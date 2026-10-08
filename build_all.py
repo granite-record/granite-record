@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.57
+# GRANITE_VERSION: 2026-09-05.58
 """
 Run the whole pipeline in the right order.
 
@@ -43,6 +43,7 @@ import subprocess
 import threading
 import time
 import build_date
+import proceedings
 import child
 from datetime import datetime
 
@@ -273,7 +274,9 @@ def session_roster():
 
 
 def plan(a):
-    vids = sorted(str(p) for p in Path(".").glob("videos_*.csv"))
+    # The committed indexes in collected/videos/ and the night's livestreams
+    # at the root, by file name (proceedings.video_indexes).
+    vids = [p.as_posix() for p in proceedings.video_indexes()]
 
     def manifest_videos():
         """Every index covering the session, both chambers.
@@ -298,9 +301,9 @@ def plan(a):
              note="cannot be done retroactively; run it daily"),
 
         Step("parse district files",
-             ["parse_districts.py", "--dir", "districts",
+             ["parse_districts.py", "--dir", "records/districts",
               "--towns", "site/towns.json", "--out", "site/districts.json"],
-             needs=["districts/house.txt"], produces=["site/districts.json"],
+             needs=["records/districts/house.txt"], produces=["site/districts.json"],
              note="house.txt carries the floterial districts HouseDistricts.txt omits"),
 
         Step("roll call tallies and thresholds",
@@ -1004,7 +1007,7 @@ def main():
     # its cache on each caption file's size and date, so with none it would
     # work out every recording again from whatever else it could find, and
     # published timestamps would change without the comparison against
-    # ground_truth.csv that CLAUDE.md requires first. So the step is skipped,
+    # review/ground_truth.csv that CLAUDE.md requires first. So the step is skipped,
     # by name, and candidate_segments.json comes from the laptop's caption job.
     if a.no_captions:
         dropped = [s for s in steps if s.captions]

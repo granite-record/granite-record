@@ -69,8 +69,8 @@ both machines now. On a stood-down laptop:
   stopped, so queue a long one to start after the window closes.
 - **No request starts until the bucket's refusal record has been read since
   the last window closed**, because a refusal the night meets is recorded in
-  the bucket, not here. `python3 cloud.py pull --changes-only` reads it (a
-  full `python3 cloud.py pull` does too), and brings the refusal down as
+  the bucket, not here. `python3 src/ops/cloud.py pull --changes-only` reads it (a
+  full `python3 src/ops/cloud.py pull` does too), and brings the refusal down as
   `archive/refused.json` if the night met one -- which then stops the lane
   and every fetch here, as a refusal met here always has. Only a read of the
   real bucket counts: a pull from a `--local-bucket` folder is a test.
@@ -78,7 +78,7 @@ both machines now. On a stood-down laptop:
   fetchers that record one), so the night stops too. If the bucket cannot be
   reached, or already holds an older refusal this one waits behind, the fetch
   says so loudly, and `archive/cloud/refusal-unsent.json` stays until the
-  bucket holds this refusal -- `python3 cloud.py send-refusal` sends it once
+  bucket holds this refusal -- `python3 src/ops/cloud.py send-refusal` sends it once
   the bucket holds none -- or a person lifts it here.
 
 `python3 refusal.py` says whether the window is open, when the bucket was last
@@ -89,7 +89,7 @@ it asks `hold().still()`. On the night into a Monday both come earlier,
 because the weekly's window opens at midnight EDT (11 p.m. EST on the
 Sunday): the last step starts before 11:30 p.m. EDT on the Sunday (10:30 p.m.
 EST), and a running fetch stops at midnight EDT (11 p.m. EST on the Sunday).
-The next morning, after the window, the lane wants `python3 cloud.py pull
+The next morning, after the window, the lane wants `python3 src/ops/cloud.py pull
 --changes-only` and a restart.
 
 ---

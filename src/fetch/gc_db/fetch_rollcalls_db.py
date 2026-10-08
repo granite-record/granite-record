@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-06.6
+# GRANITE_VERSION: 2026-09-06.7
 """
 The roll calls for one session year, from the General Court's own database.
 
@@ -22,12 +22,12 @@ rollcallsummary and rollcallhistory both span 1999 to 2026: 9,565 votes and
 WHAT IT WRITES
 
 Files in exactly the shape the bulk downloads have, one pair per year, under
-rollcalls/. The parsers already read that shape; giving them a second file to
+records/rollcalls/. The parsers already read that shape; giving them a second file to
 read is a smaller change than teaching them a second format, and it means the
 database and the download can never disagree about what a row means.
 
-    rollcalls/RollCallSummary_2025.txt
-    rollcalls/RollCallHistory_2025.txt
+    records/rollcalls/RollCallSummary_2025.txt
+    records/rollcalls/RollCallHistory_2025.txt
 
 The rows are written by the database bridge straight to those files and never
 pass through this process. A first attempt handed them back as JSON and did
@@ -180,7 +180,7 @@ def compare(name, mine, disk, year):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--year", type=int, required=True)
-    ap.add_argument("--out", default="rollcalls",
+    ap.add_argument("--out", default="records/rollcalls",
                     help="directory for the per-year files")
     ap.add_argument("--check", action="store_true",
                     help="diff against the download for a year already on disk "

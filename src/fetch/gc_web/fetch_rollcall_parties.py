@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-10.6
+# GRANITE_VERSION: 2026-09-10.7
 """The party of everyone who voted before 2017, from one roll call a chamber a year.
 
     python3 src/fetch/gc_web/fetch_rollcall_parties.py --plan     # which votes, no network
@@ -41,7 +41,7 @@ covered, and only then asks for a second where a year is still short.
 HOW IT JOINS
 
 Not by name against a roster, which is the guess this project keeps having to
-undo. The page and `rollcalls/RollCallHistory_<year>.txt` describe THE SAME
+undo. The page and `records/rollcalls/RollCallHistory_<year>.txt` describe THE SAME
 VOTE, so the two lists are aligned within it: our side has Employeeno and a
 name, the page has a name and a party, and the pair (name, district) settles
 the handful of members who share a surname and forename -- "Adams, Jarvis"
@@ -76,7 +76,7 @@ import refusal
 
 URL = ("https://gc.nh.gov/bill_status/legacy/bs2016/Roll_calls/"
        "billstatus_rcdetails.aspx?sy={year}&vs={vs}&lb={body}")
-RC = Path("rollcalls")
+RC = Path("records/rollcalls")
 OUT = Path("rollcall_party_pages")
 RESULT = Path("member_party.json")
 UA = {"User-Agent": "granite-record/1.0 (civic transparency project; "
@@ -286,7 +286,7 @@ def solve():
     on this disk:
 
       a printed row must be one of THAT roll call's voters -- the page and
-      rollcalls/RollCallHistory_<year>.txt describe the same vote;
+      records/rollcalls/RollCallHistory_<year>.txt describe the same vote;
       it must have cast the vote the page prints beside the name;
       and a person printed on several pages must be the same employeeno on
       every one of them.

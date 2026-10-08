@@ -47,7 +47,7 @@ refusal.gc_turn() before it starts each step, daily ones included, and stops
 at that boundary -- exit 4, the stand-down's status, with the reason in its
 log -- inside GitHub's night window (refusal.NIGHT_WINDOWS, the one
 definition), in the half hour before it, or when this laptop has not read the
-bucket's refusal record since the last window closed, which `python3 cloud.py
+bucket's refusal record since the last window closed, which `python3 src/ops/cloud.py
 pull --changes-only` does. A refusal the night met is in the bucket, not here,
 until that read brings it down. It stops rather than waits: a lane that
 outlived a night would need that read anyway, and reading the bucket is a

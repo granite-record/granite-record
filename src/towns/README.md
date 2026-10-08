@@ -8,13 +8,13 @@ folder the places it is elected from.
 
 | What | Files |
 |---|---|
-| The places themselves | `build_places` (`places.json`, one list reconciling the five on this disk) |
+| The places themselves | `build_places` (`generated/places.json`, one list reconciling the five on this disk) |
 | Districts | `parse_districts` (`site/districts.json`), `parse_sos_districts` (the Secretary of State's own table, held against ours), `parse_granit` (NH GRANIT's geometry) |
-| Clerks and polling places | `parse_clerks_csv` (`town_clerks.json`), and `parse_clerks`, the PDF reader it supersedes |
-| Officials | `parse_officials` (NHDOT's directory, `town_officials.json`), `parse_town_sites` and `town_boards` (the towns' own websites), `parse_county_roster` (`county_officials.json`) |
+| Clerks and polling places | `parse_clerks_csv` (`collected/town_clerks.json`), and `parse_clerks`, the PDF reader it supersedes |
+| Officials | `parse_officials` (NHDOT's directory, `collected/town_officials.json`), `parse_town_sites` and `town_boards` (the towns' own websites), `parse_county_roster` (`collected/county_officials.json`) |
 
 Nothing here asks the network. What these read was put on disk under
-`sources/` and `districts/`, or saved under `town_sites/` by `town_sites`,
+`records/sources/` and `records/districts/`, or saved under `town_sites/` by `town_sites`,
 which is in `fetch/other/` with `fetch_town_clerks`.
 
 Run by: `build_all.py`'s `plan()` for `parse_districts`, every night. The

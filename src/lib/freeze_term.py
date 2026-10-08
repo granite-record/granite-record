@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-05.7
+# GRANITE_VERSION: 2026-10-05.8
 """
 A finished term's inputs, frozen before the General Court turns its files over.
 
@@ -8,7 +8,7 @@ A finished term's inputs, frozen before the General Court turns its files over.
     python3 src/lib/freeze_term.py --session   the day files as installed, into
                                                frozen/<term>/day/, with Docket_<term>.txt,
                                                verification_manifest_<term>.csv and the
-                                               roll calls' rollcalls/<file>_<year>.txt
+                                               roll calls' records/rollcalls/<file>_<year>.txt
     python3 src/lib/freeze_term.py --check     writes nothing: is each freeze whole, and
                                                is it the files installed?
 
@@ -57,7 +57,7 @@ WHAT IT WRITES
               and build_manifest read once the term is not the session's;
               verification_manifest_<term>.csv, the night's manifest with its
               hand-marked times, which build_proceedings reads then; and
-              rollcalls/RollCallSummary_<year>.txt and RollCallHistory_<year>.txt
+              records/rollcalls/RollCallSummary_<year>.txt and RollCallHistory_<year>.txt
               where they are not already the installed files. Those two are
               TRACKED: when this writes one it says so, and it must be
               committed and merged to main before the switch
@@ -118,13 +118,13 @@ only through a merge to main.
      only copy of 2025's 847 bill records in the database's own shape, and
      the late-November download writes over db/ (R2 keeps a replaced copy 30
      days). Then
-         python3 cloud.py seed-kit --only "db/term/*/*"
+         python3 src/ops/cloud.py seed-kit --only "db/term/*/*"
   2. Straight after the late-November database download that is the
      person's to start: --views again, and the same seed-kit.
   3. Before Organization Day (2 December 2026), while the installed roster
      is still the term's: --session and --check, commit any roll-call copy it
      wrote, and
-         python3 cloud.py seed-kit --only "frozen/**" Docket_2025-2026.txt verification_manifest_2025-2026.csv
+         python3 src/ops/cloud.py seed-kit --only "frozen/**" Docket_2025-2026.txt verification_manifest_2025-2026.csv
      From Organization Day the roster is the next House; a night that would
      install it before the term's roster is frozen installs nothing
      (snapshot_gencourt.judge, "roster"), and the term's own members are
@@ -550,7 +550,7 @@ def rollcall_copies(root, data_by_name):
         years = session_years(data_by_name[name], name)
         if len(years) == 1:
             y = next(iter(years))
-            out[name] = (root / "rollcalls" / f"{name[:-4]}_{y}.txt", y)
+            out[name] = (root / "records" / "rollcalls" / f"{name[:-4]}_{y}.txt", y)
     return out
 
 
@@ -574,11 +574,11 @@ SPONSOR_ID = {"LsrsOnly.txt": 1, "LsrSponsors.txt": 3, "RollCallHistory.txt": 4}
 def roster_strangers(data, term, root=Path(".")):
     """The members on `data`'s legislators.txt who sponsored nothing and cast
     no vote in `term` by its own files (`data`, {name: bytes}, and the roll
-    calls of the term's years under rollcalls/ in `root`)."""
+    calls of the term's years under records/rollcalls/ in `root`)."""
     seen, want = set(), term_years(term)
     sources = [(name, data.get(name) or b"") for name in SPONSOR_ID]
     for y in sorted(want):
-        p = Path(root) / "rollcalls" / f"RollCallHistory_{y}.txt"
+        p = Path(root) / "records" / "rollcalls" / f"RollCallHistory_{y}.txt"
         if p.exists():
             sources.append(("RollCallHistory.txt", p.read_bytes()))
     for name, b in sources:

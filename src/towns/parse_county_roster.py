@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-22.4
+# GRANITE_VERSION: 2026-09-22.5
 """
 New Hampshire's elected county officers, out of the Secretary of State's roster.
 
     python3 src/towns/parse_county_roster.py --report   # what it found, writes nothing
-    python3 src/towns/parse_county_roster.py            # -> county_officials.json
+    python3 src/towns/parse_county_roster.py            # -> collected/county_officials.json
 
 WHICH OFFICES, AND WHY THESE. RSA 655:9 names them: county commissioner,
 sheriff, county attorney, county treasurer, register of deeds and register of
@@ -14,7 +14,7 @@ before this file: not in NHDOT's directory, not in the clerk list, not in the
 town-website sweep. The person named county officials, and sheriffs in
 particular, as part of what they meant by municipal officials.
 
-THE SOURCE. `sources/sos-county-roster-2025-2026.pdf`, "COUNTY ROSTER
+THE SOURCE. `records/sources/sos-county-roster-2025-2026.pdf`, "COUNTY ROSTER
 2025-2026", from the Secretary of State's Election Division -- the election
 authority's own list of who won the 2024 county elections, in one document
 for all ten counties. Its embedded CreationDate is D:20241205110929-05'00',
@@ -63,8 +63,8 @@ import re
 # The repository root, wherever this file sits (_paths.py): the data it
 # reads is the root's.
 ROOT = _paths.ROOT
-PDF = ROOT / "sources" / "sos-county-roster-2025-2026.pdf"
-OUT = ROOT / "county_officials.json"
+PDF = ROOT / "records" / "sources" / "sos-county-roster-2025-2026.pdf"
+OUT = ROOT / "collected" / "county_officials.json"
 
 SOURCE_URL = ("https://www.sos.nh.gov/sites/g/files/ehbemt561/files/documents/"
               "2024-12/roster-county-offices-2024.pdf")
@@ -227,7 +227,7 @@ def main():
     ap.add_argument("--report", action="store_true")
     a = ap.parse_args()
     if not PDF.exists():
-        print(f"  {PDF.name} is not in sources/")
+        print(f"  {PDF.name} is not in records/sources/")
         return 1
     rows, notes = read(PDF)
     recs = build(rows)

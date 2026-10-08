@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-26.4
+# GRANITE_VERSION: 2026-09-26.5
 """
 What each committee's own page adds to the listing: committee_details.json.
 
@@ -145,7 +145,7 @@ def load(path=FILE, quiet=False, strict=True, writing=False):
         f"{p} is here and {why}, so the committee pages cannot be given their "
         "clerks and purposes, and building on would drop them as quietly as a "
         "missing file does. Mend it, or put back a good copy -- the laptop's "
-        "is the one fetch_committee_details.py keeps, and `python3 cloud.py "
+        "is the one fetch_committee_details.py keeps, and `python3 src/ops/cloud.py "
         "seed-kit` sends it to the nightly's kit -- or move it aside to build "
         "without them, which the build then says.")
 
@@ -388,7 +388,7 @@ def main():
     write_details(book, out)
     print(f"-> {out}: {n} committees, {clerk} with a clerk, {purp} with a "
           f"purpose, from {cp}. Nothing was asked of anybody.")
-    print("Then `python3 cloud.py seed-kit`, so the nightly's kit carries it.")
+    print("Then `python3 src/ops/cloud.py seed-kit`, so the nightly's kit carries it.")
     return 0
 
 

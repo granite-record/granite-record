@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.182
+# GRANITE_VERSION: 2026-09-05.183
 """
 Generate the faceted site from real General Court data.
 
@@ -869,7 +869,7 @@ NEVER_INTRODUCED = {"Refused introduction", WITHDRAWN_PRIOR, PROPOSED_ONLY, NOT_
 # chip column all print that.
 #
 # Tabled and Vetoed need a session with days left (`live`: the current term,
-# with no session_over in status/status.txt). A bill left on the table when
+# with no session_over in corrections/status/status.txt). A bill left on the table when
 # the session ended died there; a veto never put to a vote stood. A bill
 # still moving keeps its stage, and a resolution adopted, a constitutional
 # amendment's ballot, a bill only proposed for a special session, one the
@@ -3302,14 +3302,14 @@ def build_composition(a, legs):
         if gov:
             comp["governor"] = gov
         if not named and not gov:
-            print("  status/officials.txt is unedited \u2014 the Executive Council "
+            print("  corrections/status/officials.txt is unedited \u2014 the Executive Council "
                   "and governor are omitted from the page")
 
     return comp, vac
 
 
 def session_over(path):
-    """The day the current term ran out of session days, as status/status.txt
+    """The day the current term ran out of session days, as corrections/status/status.txt
     states it, or "".
 
     Read on its own and before the bills are built, because it decides whether a
@@ -3392,7 +3392,7 @@ def build_status(a, index, procs, floor, today, latest_by_body, upcoming):
             age = (build_date.today() - _date.fromisoformat(status["updated"])).days
             status["stale_days"] = age
             if age > 45:
-                print(f"  status/status.txt was last updated {age} days ago "
+                print(f"  corrections/status/status.txt was last updated {age} days ago "
                       "\u2014 the page will say so")
     # Latest sitting of either chamber, from the per-chamber map that replaced
     # the old single "most recent session".
@@ -7353,7 +7353,7 @@ def election_day(year):
 # CACR 6 of 2024, the judicial retirement age, won 452,307 to 237,221 --
 # 65.6% -- and was not ratified. In whole numbers, so that exactly two
 # thirds is two thirds.
-BALLOTS = "ballot_results.json"
+BALLOTS = "corrections/ballot_results.json"
 RATIFIED = "Passed both chambers, ratified by the voters"
 NOT_RATIFIED = "Passed both chambers, not ratified by the voters"
 ISO_DAY = re.compile(r"^\d{4}-\d{2}-\d{2}$")
@@ -7999,7 +7999,7 @@ def bill_disposition(b, bid, st, narr, rcs, term, current, law_line="",
     # closed term the bill did not go on from there, so it is finished
     # rather than moving. The current term is untouched -- a bill laid on
     # the table in 2026 may yet be taken up -- UNTIL THE TERM RUNS OUT OF
-    # SESSION DAYS, which status/status.txt states as session_over: with no
+    # SESSION DAYS, which corrections/status/status.txt states as session_over: with no
     # session days left, every bill has concluded, tabled ones included. 107
     # bills of 2025-2026 were still counted as moving, 50 of them laid on the
     # table and 46 where one chamber had not concurred, and the home page
@@ -9905,7 +9905,7 @@ def parse_args():
     ap.add_argument("--data", default="data")
     ap.add_argument("--narratives", default="narratives.json")
     ap.add_argument("--rollcalls", default="rollcalls.json")
-    ap.add_argument("--notes", default="bill_notes.json",
+    ap.add_argument("--notes", default="corrections/bill_notes.json",
                     help="hand-written standing notes about particular bills")
     ap.add_argument("--markers", default="candidate_segments.json",
                     help="boundaries a chair stated, from segment_markers.py")
@@ -9935,9 +9935,9 @@ def parse_args():
                     help="the chapter each bill became, from "
                          "extract_chapters.py; skipped if not there")
 
-    ap.add_argument("--status", default="status/status.txt")
+    ap.add_argument("--status", default="corrections/status/status.txt")
     ap.add_argument("--districts", default="site/districts.json")
-    ap.add_argument("--officials", default="status/officials.txt")
+    ap.add_argument("--officials", default="corrections/status/officials.txt")
     ap.add_argument("--out", default="site")
     return ap.parse_args()
 
