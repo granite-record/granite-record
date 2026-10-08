@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.156
+# GRANITE_VERSION: 2026-09-04.157
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -1709,10 +1709,16 @@ SEATING_JS = """
   // A seat and its row light together, whichever one the reader reached for,
   // so the answer to "where does my rep sit" and "who sits there" is one
   // gesture either way.
+  // The Speaker's circle carries no number: the <g> round it and the word
+  // "Speaker" does (seating.svg), so choosing the Speaker named him and lit
+  // his row and never his chair (the review of 7 October 2026). A circle
+  // with no number of its own takes its group's.
   function mark(seat){
     rows.forEach(function(r){r.classList.toggle("on",!!seat&&r.dataset.seat===seat);});
     if(svg)[].forEach.call(svg.querySelectorAll(".seat"),function(c){
-      c.classList.toggle("on",!!seat&&c.getAttribute("data-seat")===seat);});
+      var p=c.parentNode, n=c.getAttribute("data-seat")||
+        (p&&p.getAttribute?p.getAttribute("data-seat"):null);
+      c.classList.toggle("on",!!seat&&n===seat);});
   }
   // Built as nodes rather than markup: a member's name is theirs, and it is
   // not going through innerHTML on my say-so.

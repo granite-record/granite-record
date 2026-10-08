@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.445
+# GRANITE_VERSION: 2026-09-04.446
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -33531,11 +33531,17 @@ def _review_of_audit_fixes(BP):
             or abs(float(shown[:-1] or 0) - 1100 / 349 * 100) > 1e-6 or not hid.get("letGo"):
         bad.append("a seat map drawn in a hidden tab does not wait for its box's width to "
                    f"zoom a 349px phone in, and then stop watching: {hid}")
+    # THE SPEAKER'S CHAIR LIGHTS (the review of 7 October 2026): his number
+    # is on the group round the circle, and choosing him named him and lit his
+    # row but never the chair.
+    if got.get("speakerLit") != {"chair": True, "floor": False, "after": [False, True]}:
+        bad.append("choosing the Speaker does not light his chair, or choosing another seat "
+                   f"leaves it lit: {got.get('speakerLit')}")
     assert not bad, "; ".join(bad[:5])
     return "ok", ("Show more leaves the keyboard on the first row it brought, on the list and "
                   "on a member's votes; Play and a long analysis move focus when clicked; the "
-                  "seat map's svg hears no focus, its note keeps its link and in a hidden tab "
-                  "it zooms once its box has a width; a marked box is a "
+                  "seat map's svg hears no focus, its note keeps its link, in a hidden tab "
+                  "it zooms once its box has a width and the Speaker's chair lights; a marked box is a "
                   "stop only while it scrolls; the header's two widths are one, 1100px; and 7 "
                   "rules of the stylesheet and the pages stand")
 
@@ -33717,6 +33723,26 @@ document.querySelectorAll = all;
   hidden.letGo = watched.every(o => o.off);
   delete globalThis.ResizeObserver;
   out.seatHidden = hidden;
+
+  // THE SPEAKER'S CHAIR, whose number is on the group round it and the word
+  // "Speaker", not on the circle: choosing him lights the circle.
+  const lit = c => { c.classList = {on: {}, toggle(k, v) { this.on[k] = !!v; }, add() {}, remove() {}};
+    return c; };
+  const grp = node("g", {"data-seat": "6002", "data-slug": "sp", "data-name": "Rep. Speaker"});
+  const chair = lit(node("circle", {})), floor1 = lit(node("circle",
+    {"data-seat": "1001", "data-slug": "m1", "data-name": "Rep. 1"}));
+  chair.parentNode = grp;
+  const svg3 = node("svg"), wrap3 = node("div");
+  svg3.querySelectorAll = q => q === ".seat" ? [floor1, chair] : q === "[data-slug]" ? [floor1, grp] : [];
+  const doc3 = Object.assign({}, doc, {
+    getElementById: id => ({seatlist: node("div"), seatnote: node("p")})[id] || null,
+    querySelector: q => ({".seatmap": svg3, ".seatwrap": wrap3})[q] || null});
+  new Function("document", "DATA", fs.readFileSync("./seat.js", "utf8"))(doc3, f => "/" + f);
+  svg3.fire("click", {target: grp});
+  const speaker = {chair: !!chair.classList.on.on, floor: !!floor1.classList.on.on};
+  svg3.fire("click", {target: floor1});
+  speaker.after = [!!chair.classList.on.on, !!floor1.classList.on.on];
+  out.speakerLit = speaker;
 })();
 process.stdout.write("\n@@" + JSON.stringify(out));
 """
