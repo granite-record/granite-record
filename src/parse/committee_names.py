@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-24.6
+# GRANITE_VERSION: 2026-09-24.7
 """One name per committee: the name it had at the time.
 
     import committee_names as CN
@@ -454,6 +454,12 @@ ALIASES = [
      "Election Law and Veterans' Affairs"),                     # 1 card, 1 hearing
     ("S", 1999, 2006, r"enery and economic development",
      "Energy and Economic Development"),                        # 1 card
+    # 1 hearing: HB 208 of 1999's "Introduction and referring to Energy &
+    # Economic Department" (Docket_db_1999-2000.txt line 1440), the only such
+    # line on disk. CODE: db/past/PastLegislation.psv files its Senate referral
+    # and its hearing of 27 April 1999, 14:45, RM 105A SH, under S18, which
+    # CODES places here; data/bills.json names the committee so.
+    ("S", 1999, 2006, r"energy and economic department", "Energy and Economic Development"),
     # 1 card, TEXT 1 of 1; and "En", the legacy hearing line's (7 hearings,
     # SAME 7 of 7), only in years when the Senate had no committee called
     # Energy anything.
@@ -514,6 +520,18 @@ ALIASES = [
      r"pub(?:l|lic)? in(?:s|st|stit|t|stitutions)"
      r"|(?:pi|p(?:ub(?:l|lic)?)?(?: in(?:s|st|stit|t|stitutions|stitutitions))?)"
      r"(?: and)? h(?:ealth|elath)?(?: and)? h(?:uman)? ?s(?:ervices)?",
+     "Public Institutions, Health and Human Services"),
+    # Two hearings whose committee the clerk wrote another way, each the only
+    # such line on disk (the review of the archived manifests, 8 October
+    # 2026): HB 214 of 1999's "Introduction and referring to Public
+    # Institutions & Health Humans Services" (Docket_db_1999-2000.txt line
+    # 1815) and HB 390 of 2001's "Motion to Vacate HB390 From Judiciary to P
+    # I, H & H S" (Docket_db_2001-2002.txt line 3250). CODE: the General
+    # Court's db/past/PastLegislation.psv files each bill's Senate referral,
+    # and the hearing it gives at that hour and room (27 April 1999, 13:20, RM
+    # 102 LOB; 29 May 2001, 13:45, RM 101 LOB), under S14, which CODES places
+    # here; data/bills.json names the committee so for both.
+    ("S", 1989, 2004, r"public institutions and health humans services|p i h and h s",
      "Public Institutions, Health and Human Services"),
     ("S", 1989, 2004, r"trans(?:p|po|por|port|portion|portation)?",
      "Transportation"),                                         # 1 card

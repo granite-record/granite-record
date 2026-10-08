@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.452
+# GRANITE_VERSION: 2026-09-04.453
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -6254,6 +6254,73 @@ def _sb107_time_held():
                          "nobody has scored. Put back the kit's row for it (its line in the copy "
                          "the bucket holds) until the timestamp pass decides it")
     return "ok", "no recording time on it, as the kit has it, until the timestamp pass"
+
+
+# Real rows: Docket_db_1999-2000.txt 1440-1441 (HB 208 of 1999) and 1815-1816
+# (HB 214 of 1999), Docket_db_2001-2002.txt 3249-3251 (HB 390 of 2001).
+_DOCKET_CLERKS_COMMITTEES = [
+    "1999|0188|04/14/1999 01:41:38 PM|HB208|S|Introduction and referring to Energy & Economic Department;  SJ 13, P 284|04/14/1999 01:41:38 PM",
+    "1999|0188|04/21/1999 10:31:56 AM|HB208|S|Hearing, 4/27/99, Room 105-A, SH, 2:45 p.m.|04/21/1999 10:31:56 AM",
+    "1999|0233|03/23/1999 02:13:14 PM|HB214|S|Introduction and referring to Public Institutions & Health Humans Services; SJ 8, P 111|03/23/1999 02:13:14 PM",
+    "1999|0233|04/02/1999 08:33:10 AM|HB214|S|Hearing, 4/27/99, Room 102, LOB, 1:20 p.m.|04/02/1999 08:33:10 AM",
+    "2001|0455|04/05/2001 03:56:48 PM|HB390|S|Introduced and Ref. to Judiciary; SJ 8, Pg.100|04/05/2001 03:56:48 PM",
+    "2001|0455|05/09/2001 06:21:23 PM|HB390|S|Sen. Gordon Motion to Vacate HB390 From Judiciary to P I, H & H S;  MA, VV; SJ 12, Pg.232|05/09/2001 06:21:23 PM",
+    "2001|0455|05/10/2001 03:15:56 PM|HB390|S|Hearing, May 29, 2001, Room 101, LOB, 1:45 p.m.; SC23-A|05/10/2001 03:15:56 PM",
+]
+
+# (term, bill, day) -> the committee each hearing above is filed under.
+_CLERKS_COMMITTEES = {("1999-2000", "HB208", "1999-04-27"): "Energy and Economic Development",
+                      ("1999-2000", "HB214", "1999-04-27"):
+                          "Public Institutions, Health and Human Services",
+                      ("2001-2002", "HB390", "2001-05-29"):
+                          "Public Institutions, Health and Human Services"}
+
+
+@check("build", "the three Senate hearings of 1999-2001 whose committee the clerk misspelled or "
+                "shortened are filed under the committee's name", needs=("docket_parser", "committee_names"))
+def _clerks_committee_names(D, CN):
+    """The review of the archived manifests (8 October 2026): docket_parser
+    now reads the Senate of 1999-2006's introductions and vacates, so three
+    hearings name their committee in the clerk's words -- "Public
+    Institutions and Health Humans Services" (HB 214 of 1999), "Energy and
+    Economic Department" (HB 208 of 1999) and "P I, H and H S" (HB 390 of
+    2001, "From Judiciary to P I, H & H S") -- which committee_names.official
+    gave back as written, so the hearing card printed the clerk's words and
+    linked to no committee's page. The General Court files each under S14 or
+    S18 (db/past/PastLegislation.psv); the aliases write the names those
+    codes carried. On main before the night that reads the manifests sent
+    with them, or the cards print the shorthand until it is."""
+    tmp = Path(tempfile.mkdtemp(prefix="gr-clerks-committees-"))
+    try:
+        (tmp / "Docket.txt").write_text("\n".join(_DOCKET_CLERKS_COMMITTEES) + "\n", encoding="utf-8")
+        rows = D.parse_rows(str(tmp / "Docket.txt"))
+        procs = D.parse_proceedings(rows, D.build_referral_timeline(rows))
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    term = {"HB208": "1999-2000", "HB214": "1999-2000", "HB390": "2001-2002"}
+    got = {(term[p.bill], p.bill, p.sched_date): CN.official(p.committee, "S", term[p.bill])
+           for p in procs}
+    assert got == _CLERKS_COMMITTEES, f"the hearings are filed under {got!r}"
+    return "ok", "three hearings under the names their committees had then"
+
+
+@check("data", "the three Senate hearings of 1999-2001 whose committee the clerk misspelled or "
+               "shortened are filed in proceedings.csv under the committee's name")
+def _clerks_committee_names_table():
+    """_clerks_committee_names, in the table on disk: built from manifests
+    that hold the clerk's words and before the aliases, it prints "P I, H and
+    H S" on HB 390 of 2001's hearing card; built from manifests older than
+    the parser batch, it names no committee for two of them and Judiciary for
+    the third."""
+    f = Path("proceedings.csv")
+    if not f.exists():
+        return "skip", "no proceedings.csv here"
+    with f.open(encoding="utf-8", newline="") as fh:
+        got = {(r["term"], r["bill"], r["date"]): r["committee"] for r in csv.DictReader(fh)
+               if (r["term"], r["bill"], r["date"]) in _CLERKS_COMMITTEES and r["body"] == "S"
+               and r["kind"] == "hearing"}
+    assert got == _CLERKS_COMMITTEES, f"proceedings.csv files them under {got!r}"
+    return "ok", "three hearings under the names their committees had then"
 
 
 @check("data", "SB 373 of 2002 and SB 79 and SB 395 of 1999-2000 each have the hearing their "
