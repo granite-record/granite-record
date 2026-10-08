@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.466
+# GRANITE_VERSION: 2026-09-04.467
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -21777,10 +21777,23 @@ def _record_untouched():
         f"only {len(HANDMADE)} hand-made files were found in {' and '.join(HANDMADE_DIRS)}/, "
         "and ten were there on 8 October 2026: the folders are not being read")
     HANDMADE.append("launch_register.json")
-    # Writing into either folder at all, by its name in a path.
-    INTO = re.compile(r'open\s*\([^)]*["\'](?:%s)[/\\][^)]*["\']w|'
-                      r'["\'](?:%s)[/\\][^"\'\n]*["\'][^\n]{0,60}\.write_(?:text|bytes)'
-                      % ("|".join(HANDMADE_DIRS), "|".join(HANDMADE_DIRS)))
+    # Writing into either folder at all, by its name in a path: "corrections/x"
+    # in one string, or "corrections" as a part of its own (ROOT / "review" /
+    # ...), opened with "w" or written through a Path.
+    dirs = "|".join(HANDMADE_DIRS)
+    INTO = re.compile(r'open\s*\([^)]*["\'](?:%s)(?:[/\\]|["\'])[^)]*["\']w|'
+                      r'["\'](?:%s)(?:[/\\][^"\'\n]*)?["\'][^\n]{0,60}\.write_(?:text|bytes)'
+                      % (dirs, dirs))
+    for text, writes in (('open("corrections/x.json", "w")', True),
+                         ('open(ROOT / "corrections" / "x.json", "w", encoding="utf-8")', True),
+                         ('Path("review/ground_truth.csv").write_text(t)', True),
+                         ('(Path("review") / "a.csv").write_text(t)', True),
+                         ('json.loads(Path("corrections/bill_notes.json").read_text())', False),
+                         ('open(ROOT / "corrections" / "x.json", encoding="utf-8")', False),
+                         ('Path("site/review.json").write_text(t)', False)):
+        assert bool(INTO.search(text)) == writes, (
+            f"the reader of writes into {' and '.join(HANDMADE_DIRS)}/ reads {text!r} as "
+            + ("no write" if writes else "a write"))
     bad, names = [], []
     scanned = _paths.code_files("build_*.py") + _paths.code_files("fetch_*.py")
     for f in scanned:
