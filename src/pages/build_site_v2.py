@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.179
+# GRANITE_VERSION: 2026-09-05.180
 """
 Generate the faceted site from real General Court data.
 
@@ -4971,25 +4971,44 @@ J_CHAPTER_THEN_DAY = re.compile(r"\bchapter\s*\d+\s*;\s*(?=\d{1,2}/\d{1,2}/\d{2,
 # (SB 56): 92 of the term's 649 laws stated no date at all, because a law in
 # effect on several dates had no one date to state. Each part is read only
 # where it names what it covers and gives one date, or the section that
-# provides its date; anything else -- "I Sec 1-3-5", "Sec I", a line the
-# docket cut short, "eff.06/05/20256" -- states none, as before. The reason
-# for the old rule stands: no date is stated that the line does not give for
-# that part.
-J_EFF_PART = re.compile(r"(?:(?<=[\s.;,])|^)(?:I{1,3}|IV|VI{0,3})\s*\.?\s*"
-                        r"(?=(?:Secs?|Sections?|Rem\w*|RSA)\b)", re.I)
+# provides its date; anything else -- "I Sec 1-3-5", a line the docket cut
+# short, "eff.06/05/20256" -- states none, as before. The reason for the old
+# rule stands: no date is stated that the line does not give for that part.
+#
+# PARTS PAST VIII (the effective dates review of 8 October 2026). HB 282 of
+# 2025 runs to "XII. Rem eff 7/1/25"; read to VIII, part VIII ran on into
+# four more parts and their dates, and the law stated none. Numbered to XX.
+J_EFF_PART = re.compile(r"(?:(?<=[\s.;,])|^)(?:XX|XIX|XIV|XV?I{0,3}|IX|IV|VI{0,3}|I{1,3})"
+                        r"\s*\.?\s*(?=(?:Secs?|Sections?|Rem\w*|RSA)\b)", re.I)
 J_EFF_PROVIDED = re.compile(r"\bas\s+(?:prov(?:ided)?\.?\s+(?:in\s+)?|in\s+)?"
                             r"sec(?:tion)?s?\.?\s*(\d+)\b"
                             r"|\beff\.?\s+prov(?:ided)?\.?\s+(?:in\s+)?sec(?:tion)?\.?\s*(\d+)",
                             re.I)
+# What a part covers ends where its date begins -- a whole date, not a
+# figure and a slash: "I. RSA 193:13/ I-X as inserted by Sec. 1 Eff:
+# 07/01/2021" (HB 1558 of 2020) was labelled "RSA 193:".
 J_EFF_WHAT = re.compile(r"^\s*(?P<what>(?:Secs?|Sections?)\.?\s*(?P<nums>[\dI][\d\s,&+.\-and]*?)"
                         r"|Rem\w*\.?|RSA\s+.+?)\s*(?:of\s+this\s+act\s+)?"
-                        r"(?=\beff|\bshall\b|\bas\s|\d{1,2}/|$)", re.I)
+                        r"(?=\beff|\bshall\b|\bas\s|\d{1,2}\s*/\s*\d{1,2}\s*/\s*\d{2}|$)", re.I)
 
 
 def _j_sections(s):
     """"1.2.5.6" -> "sections 1, 2, 5 and 6", "5-8" -> "sections 5 to 8",
     "3" -> "section 3"; "" where it is not plainly a list of numbers."""
     s = re.sub(r"\band\b", "&", s, flags=re.I).strip(" .")
+    # A RANGE WRITTEN WITH SPACES IS A RANGE in a list too: "Sec 26 27 - 33
+    # 35 - 38 & 52" (HB 282 of 2025), "Sections 26, 27 through 33, 35
+    # through 38, and 52" in its chaptered text. "1-3-5" stays unread: one
+    # range or two numbers, the line cannot say which (HB 655 of 2025).
+    s = re.sub(r"\s*-\s*", "-", s)
+    # "SEC I" IS SECTION 1. An act's sections are numbered 1, 2, 3; the clerk's
+    # capital I for the figure 1, alone after "Sec", is section 1 in every
+    # line that writes it -- "I. Sec I eff 10/13/2026" (HB 1584 of 2026,
+    # "I. Section 1 effective October 13, 2026" in its chaptered text), and
+    # "Sec.I" and "SecI" on SB 50 and SB 97 of 2007 and SB 204 of 2009, each
+    # "Section 1" in its own. Alone only: "Sec I-3" or "Sec II" is not read.
+    if s == "I":
+        s = "1"
     if re.fullmatch(r"\d+\s*-\s*\d+", s):
         a, b = re.split(r"\s*-\s*", s)
         return f"sections {a} to {b}"
@@ -5008,12 +5027,27 @@ def _j_effective_parts(*lines):
     2032, the rest on 1 Sep 2026", or "" where any part does not say plainly
     what it covers and when. `lines` are the governor's row, the rows that
     carry it on and the chapter's line, each distinct line read once."""
+    seen = list(dict.fromkeys(re.sub(r"\s+", " ", x).strip()
+                              for x in lines if x and x.strip()))
+    # A LINE CUT SHORT IS THE LINE IT BEGINS. chapters.json keeps the
+    # chapter's line to its first 200 characters, and HB 282 of 2025's ends
+    # "V. Sec 13 21 &" where the governor's row goes on to part XII: read
+    # beside the row, the cut part stated no date and took every other part
+    # with it. A line that is the start of another line read is that line.
+    seen = [x for x in seen if not any(y != x and y.startswith(x) for y in seen)]
     tails = []
-    for x in dict.fromkeys(x.strip() for x in lines if x and x.strip()):
+    for x in seen:
         m = re.search(r"\bchapter\s*\d+\s*[;,.]?", x, re.I)
         tails.append(x[m.end():] if m else x)
     pieces = J_EFF_PART.split(" ".join(tails))
     if len(pieces) < 3:
+        return ""
+    # A DATE BEFORE THE FIRST PART READ IS A PART NOT READ. "eff. I. Sec4 eff
+    # 6/24/22 II. Sec 5 and 6 eff 7/1/25 III Rem eff 7/1/22" (HB 481 of
+    # 2022): "Sec4" is no part this reads, and section 4, in effect on 24
+    # June, would have been stated as part of "the rest", on 1 July.
+    m = J_EFF_ANY.search(pieces[0])
+    if m and J_DAY.search(pieces[0], m.start()):
         return ""
     out = []
     for p in pieces[1:]:

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.465
+# GRANITE_VERSION: 2026-09-04.466
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -23373,13 +23373,18 @@ def _journey_reads(build_site_v2):
                          "08/01/2025", "governor"), chapter="59")[1][-1][3],
          "Chapter 59, in effect 1 Aug 2025", "HB227 2025")
     # A part that does not say plainly what it covers states none of them:
-    # "I Sec 1-3-5" (HB 655 of 2025) and "Sec I" (HB 1584 of 2026).
+    # "I Sec 1-3-5" (HB 655 of 2025). "Sec I" is section 1 (HB 1584 of 2026,
+    # "I. Section 1 effective October 13, 2026" in its chaptered text); the
+    # rest of what the effective dates review of 8 October 2026 taught is
+    # in _effective_parts_read below.
     want(run("HB655", ev("H", "2025-07-15", "Signed by Governor Ayotte 07/15/2025; Chapter 202; "
                          "eff. I Sec 1-3-5 eff 09/13/2025 II. Rem eff 07/15/2025  HJ 18",
                          "governor"), chapter="202")[1][-1][3], "Chapter 202", "HB655 2025")
     want(run("HB1584", ev("H", "2026-07-15", "Signed by Governor Ayotte 07/15/2026; Chapter 328; "
                           "eff. I. Sec I eff 10/13/2026 II. Rem eff 01/01/2027", "governor"),
-             chapter="328")[1][-1][3], "Chapter 328", "HB1584 2026")
+             chapter="328")[1][-1][3],
+         "Chapter 328, in effect in parts: section 1 on 13 Oct 2026, the rest on 1 Jan 2027",
+         "HB1584 2026")
     # EVERY ROW THAT CARRIES THE GOVERNOR'S ON, not the first seven (the
     # review of 8 October 2026). HB 2 of 2007's row and the fifteen after it
     # in Docket_db_2007-2008.txt run to part XVI; read to part VIII, the stop
@@ -23744,6 +23749,142 @@ def _journey_reads(build_site_v2):
                   "motion not to adopt, a reconsidered defeat, a kill at adjournment, a "
                   "conference report filed and a chaptered override, each as the docket "
                   "has it")
+
+
+@check("status", "a law's dates in effect are read part by part, and only where its lines "
+                 "give each", needs=("build_site_v2",))
+def _effective_parts_read(build_site_v2):
+    """The effective dates review of 8 October 2026: seven laws of 2025-2026
+    stated no date in effect, and of the forms they showed, the ones the
+    line itself settles are read, each checked against the law's chaptered
+    text, while the ones it does not settle state none, as before.
+
+    Read: parts past VIII (HB 282 of 2025 runs to XII), a range written with
+    spaces ("27 - 33"), "Sec I" alone as section 1, and the governor's row in
+    full beside chapters.json's copy of it, which keeps 200 characters. Not
+    read, on purpose: "Sec 1-3-5" (one range or two numbers), "20256" (a
+    year the line does not give), the glued "PIIIII." (HB 307 of 2025), and
+    the Article 44 line's "June 6", which is the day HB 1256 of 2026 became
+    law, not the day it took effect -- its text says 60 days after.
+
+    And what the same review found the reader had been stating wrongly: a
+    part it could not split was left before the first one it could and
+    dropped, so SB 530 of 2008, SB 313 of 2018 and SB 91 of 2021 told
+    sections in effect on other days as "the rest"; and the same row read
+    twice, once with the docket's double spaces, made SB 21 of 2011's one
+    part into two and dated it by the other's day."""
+    B = build_site_v2
+
+    def ev(body, date, raw, typ="other"):
+        return {"body": body, "date": date, "raw": raw, "type": typ, "cancelled": False}
+
+    def law(bid, *evs, chapter, line=""):
+        steps = B.journey({"events": list(evs)}, bid, [], chapter, line, "")[1]
+        return [s["text"] for s in steps if s["body"] == "L"][-1]
+
+    bad = []
+
+    def want(got, expect, what):
+        if got != expect:
+            bad.append(f"{what}: {got!a}")
+
+    # Docket.txt line 10744, as the docket writes it; narratives.json keeps
+    # the row with its spaces closed up, and chapters.json its first 200
+    # characters, which end "V. Sec 13 21 &".
+    hb282 = ("Signed by Governor Ayotte 06/27/2025; Chapter 142; I. Sec 4 8 9 & 43 eff 1/1/26.  "
+             "II. Sec 2 10 18 & 44 eff 7/1/26.  III. Sec 3 11 19 40 & 45 eff 7/1/27.  IV. Sec 12 "
+             "20 & 46 eff 7/1/28.  V. Sec 13 21 & 47 eff 7/1/29.  VI. Sec 14 22 & 48 eff 7/1/30.  "
+             "VII. Sec 15 23 & 49 eff 7/1/31.  VIII. Sec 16 24 & 50 eff 7/1/32.  IX. Sec 17 25 27 "
+             "& 51 eff 7/1/33.  X. Sec 26 27 - 33 35 - 38 & 52 eff 7/1/34.  XI. Sec 1 eff "
+             "8/26/25.  XII. Rem eff 7/1/25.")
+    want(law("HB282", ev("H", "2025-06-27", " ".join(hb282.split()), "governor"),
+             chapter="142", line=hb282[:200]),
+         "Chapter 142, in effect in parts: sections 4, 8, 9 and 43 on 1 Jan 2026, sections 2, "
+         "10, 18 and 44 on 1 Jul 2026, sections 3, 11, 19, 40 and 45 on 1 Jul 2027, sections "
+         "12, 20 and 46 on 1 Jul 2028, sections 13, 21 and 47 on 1 Jul 2029, sections 14, 22 "
+         "and 48 on 1 Jul 2030, sections 15, 23 and 49 on 1 Jul 2031, sections 16, 24 and 50 "
+         "on 1 Jul 2032, sections 17, 25, 27 and 51 on 1 Jul 2033, sections 26, 27 to 33, 35 "
+         "to 38 and 52 on 1 Jul 2034, section 1 on 26 Aug 2025, the rest on 1 Jul 2025",
+         "HB282 2025")
+    # The 200 characters alone are a line cut short, and state none.
+    want(law("HB282", chapter="142", line=hb282[:200]), "Chapter 142", "HB282 2025, cut short")
+    # "Section I" on a row of its own: Docket_db_2007-2008.txt lines 22435-22437.
+    want(law("HB1508", ev("H", "2008-06-06", "Signed by the Governor 06/03/2008; Chapter 0118",
+                          "governor"),
+             ev("H", "2008-06-06", "I. Section I Effective 07/01/2008"),
+             ev("H", "2008-06-06", "II. Remainder Effective 06/03/2008"), chapter="118"),
+         "Chapter 118, in effect in parts: section 1 on 1 Jul 2008, the rest on 3 Jun 2008",
+         "HB1508 2008")
+    # Docket_2019-2020.txt line 4889, past its first 200 characters: the RSA
+    # part ends at its date, not at "13/".
+    hb1558 = ("Signed by Governor Sununu 07/29/2020; Chapter 38; I. RSA 193:13/ I-X as inserted "
+              "by Sec. 1 Eff: 07/01/2021 II. Sec. 3-5 & 8-10 Eff: 07/01/2020 III.Sec 6 & 7 Eff: "
+              "06/30/2020 IV. Sec. 17 and 31-36 Eff: 01/01/2021 V. Sec. 11-16 and 18-30 Eff: "
+              "09/27/2020 VI. Rem. Eff: 07/29/2020")
+    want(law("HB1558", ev("H", "2020-07-29", hb1558, "governor"), chapter="38",
+             line=hb1558[:200]),
+         "Chapter 38, in effect in parts: RSA 193:13/ I-X on 1 Jul 2021, sections 3 to 5 and 8 "
+         "to 10 on 1 Jul 2020, sections 6 and 7 on 30 Jun 2020, sections 17 and 31 to 36 on 1 "
+         "Jan 2021, sections 11 to 16 and 18 to 30 on 27 Sep 2020, the rest on 29 Jul 2020",
+         "HB1558 2020")
+
+    # A PART NOT READ IS NOT "THE REST". Docket_2021-2022.txt line 11477,
+    # Docket_db_2007-2008.txt lines 26882-26887, Docket_2021-2022.txt lines
+    # 19464-19469.
+    want(law("HB481", ev("H", "2022-06-24", "Signed by Governor Sununu 06/24/2022; Chapter 250; "
+                         "eff. I. Sec4 eff 6/24/22 II. Sec 5 and 6 eff 7/1/25 III Rem eff 7/1/22",
+                         "governor"), chapter="250"), "Chapter 250", "HB481 2022")
+    want(law("SB530", ev("S", "2008-07-16", "Signed by the Governor On 07/11/08", "governor"),
+             ev("S", "2008-07-16", "I. Paragraph I of Section 6 Eff. 06/30/08"),
+             ev("S", "2008-07-16", "II. Paragraph II of Section 6 Eff. 07/01/13"),
+             ev("S", "2008-07-16", "III. Section 5 Eff. 07/01/09 at 12:01 a.m"),
+             ev("S", "2008-07-16", "IV. Remainder Eff. 07/11/08"), chapter="384",
+             line="Chapter 0384"), "Chapter 384", "SB530 2008")
+    want(law("SB91", ev("S", "2021-08-26", "Signed by the Governor on 08/26/2021; Chapter 0228",
+                        "governor"),
+             *[ev("S", "2021-08-30", x) for x in (
+                 "Part I Effective 10/25/2021", "Part II Effective 08/26/2021",
+                 "Part III Effective 10/25/2021", "Part IV. I. Section 2 Effective 11/01/2021",
+                 "Part IV. II. Remainder Effective 08/26/2021")], chapter="228"),
+         "Chapter 228", "SB91 2021")
+    # ONE ROW, ONE READING, whatever its spaces. Docket_db_2011-2012.txt line
+    # 6805 writes "0195I.  Section"; narratives.json closes the space up.
+    sb21 = ("Signed by the Governor on 06/14/10; Chapter 0195I.  Section 2 & 3 Effective as Prov. "
+            "in Sec. 4II. Remainder Effective 08/13/11")
+    want(law("SB21", ev("S", "2011-06-14", " ".join(sb21.split()), "governor"), chapter="195",
+             line=sb21), "Chapter 195", "SB21 2011")
+    # And one part is not parts: HB 25 of 2023's row names part I alone
+    # (Docket_2023-2024.txt line 10300).
+    want(law("HB25", ev("H", "2023-06-30", "Signed by Governor Sununu 06/30/2023; Chapter 113; "
+                        "Eff: I. Sec 24 eff 6/30/23", "governor"), chapter="113",
+             line="Signed by Governor Sununu 06/30/2023; Chapter 113; Eff: I. Sec 24 eff "
+                  "6/30/23 HJ 17"), "Chapter 113", "HB25 2023")
+
+    # WHAT THE LINE DOES NOT SETTLE states none: Docket.txt lines 24269, 9567
+    # and 24272, the rows as the docket has them.
+    want(law("HB1388", ev("H", "2026-06-05", "Signed by Governor Ayotte 06/05/2026; Chapter 121; "
+                          "eff.06/05/20256", "governor"), chapter="121"),
+         "Chapter 121", "HB1388 2026")
+    want(law("HB307", ev("H", "2025-05-29", "Signed by Governor Ayotte 05/29/2025; Chapter 46; "
+                         "I. Sec 1 & 3 eff. as in sec 5 P I   II. Sec 2 & 4 eff as in sec 5 "
+                         "PIIIII. Rem eff 07/28/2025", "governor"), chapter="46"),
+         "Chapter 46", "HB307 2025")
+    want(law("HB1256", ev("H", "2026-06-05", "Law Without Signature 06/05/2026; Chapter 128; "
+                          "eff.Enacted in accordance with Article 44 Part II of the N.H. "
+                          "Constitutionwithout the signature of the governor June 6",
+                          "unsigned_law"), chapter="128"),
+         "Chapter 128", "HB1256 2026")
+
+    # The narrow edges, on the list reader itself: "Sec I" is section 1
+    # alone, and a dash between three numbers is not read.
+    for s, expect in (("I", "section 1"), ("II", ""), ("I-3", ""), ("1-3-5", ""),
+                      ("26 27 - 33 35 - 38 & 52", "sections 26, 27 to 33, 35 to 38 and 52"),
+                      ("4 8 9 & 43", "sections 4, 8, 9 and 43"), ("5 - 8", "sections 5 to 8")):
+        want(B._j_sections(s), expect, f"_j_sections({s!r})")
+    assert not bad, "; ".join(bad)
+    return "ok", ("parts to XII, spaced ranges, \"Sec I\" and a row read whole are read; a "
+                  "part not read, a row read twice, a typed year, a glued numeral and the "
+                  "Article 44 day state none")
 
 
 @check("status", "an amendment offered before it was adopted keeps its outcome",
