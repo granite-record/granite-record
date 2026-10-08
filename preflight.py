@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.448
+# GRANITE_VERSION: 2026-09-04.450
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -31901,6 +31901,479 @@ def _member_feed_links():
         shutil.rmtree(root, ignore_errors=True)
 
 
+# ---- the changes files the email sender reads ----------------------------------
+#
+# follow_changes.py (7 October 2026). The contract is the email-follow branch's
+# workers/follow/CHANGES_FORMAT.md, and the sender's own reader of it is that
+# branch's workers/follow/changes.js, which tests/follow/check_changes.js puts
+# a folder through. Where both are in the tree and node is here, every folder
+# below goes through it as well as through follow_changes.check(), the same
+# rules in Python; where they are not -- on a branch without the sender -- the
+# Python half holds alone, and the check says so.
+
+CHANGES_JS = ("tests/follow/check_changes.js", "workers/follow/changes.js")
+
+
+def _changes_node(folder):
+    """None where the sender's checker is not here to run; else its problems
+    with `folder`, as it prints them ([] for a folder it passes)."""
+    node = shutil.which("node") or shutil.which("node.exe")
+    if not node or not all(Path(p).is_file() for p in CHANGES_JS):
+        return None
+    r = _run([node, CHANGES_JS[0], str(folder)], capture_output=True, text=True, timeout=60)
+    said = (r.stdout or "") + (r.stderr or "")
+    return [] if r.returncode == 0 else [ln.strip() for ln in said.splitlines() if ln.strip()]
+
+
+def _changes_scenario(FC):
+    """Sixteen nights of a followable world, as build_feeds hands it over: a
+    bill, a second bill that concludes, a member who leaves, a committee, a
+    topic; a late docket row, a hearing scheduled ahead, a same-day rebuild,
+    a build that lost its lists, and the turn of a term. Every record is
+    invented. Returns [{built, term, followable, lists, upcoming, hints}]."""
+    def it(guid, day, kind, said, url="/bill/2026/hb9901", term="2025-2026", **kw):
+        return FC.item(guid, day, kind, said, url, term, **kw)
+    HB = "bill:2026/HB9901"
+    a = it("2025-2026:HB9901:2026-09-25:introduced", "2026-09-25", "action", "HB 9901 — Introduced")
+    b = it("2025-2026:HB9901:2026-09-30:otp", "2026-09-30", "vote",
+           "HB 9901 — Ought to Pass: MA RC 200-150 09/30/2026")
+    c = it("2025-2026:HB9901:2026-10-01:hearing", "2026-10-01", "hearing",
+           "HB 9901 — Public Hearing: 10/01/2026 10:00 am LOB 205")
+    d = it("2025-2026:HB9901:2026-10-05:exec", "2026-10-05", "scheduled",
+           "HB 9901 — Executive Session: 10/05/2026 10:00 am LOB 205")
+    late = it("2025-2026:HB9901:2026-09-27:report", "2026-09-27", "report",
+              "HB 9901 — Committee Report: Ought to Pass 09/27/2026 (Vote 11-9; RC)")
+    e = it("2025-2026:HB9901:2026-10-02:study", "2026-10-02", "study",
+           "HB 9901 — Interim Study Report: Recommended for Future Legislation 10/02/2026",
+           study=True, recommends=True)
+    v = it("vote:990001:2026-H-9001", "2026-09-30", "vote", "HB 9901 — yes on Ought to Pass")
+    s = it("committee:H90:2026-09-29", "2026-09-29", "sitting",
+           "House Example — 29 September 2026", url="/committee/H90")
+    n1 = it("2027-2028:HB9901:2026-12-03:introduced", "2026-12-03", "action",
+            "HB 9901 — Introduced", url="/bill/2027/hb9901", term="2027-2028")
+    # A hearing announced ahead: its bill's feed carries it from the night it
+    # is scheduled, the topic's (what has happened) from the day it sits.
+    n2 = "2027-2028:HB9901:2026-10-08:public-hearing"
+    n2s = it(n2, "2026-10-08", "scheduled", "HB 9901 — Public Hearing: 10/08/2026 10:00 am LOB 205",
+             url="/bill/2027/hb9901", term="2027-2028")
+    n2h = dict(n2s, kind="hearing")
+    row = FC.upcoming_row("2026-10-03", "public hearing", "10:00", "House Example", "LOB 205")
+    old = FC.upcoming_row("2026-09-30", "public hearing", "10:00", "House Example", "LOB 205")
+    whole = {HB: {"label": "HB 9901", "title": "relative to an invented question",
+                  "url": "/bill/2026/hb9901"},
+             "bill:2026/HB9902": {"label": "HB 9902"},
+             "member:990001": {"label": "Rep. Pat Example (Merrimack 99)"},
+             "committee:H90": {"label": "House Example", "url": "/committee/H90"},
+             "topic:housing": {"label": "Housing", "url": "/bills?topic=Housing"}}
+    after = {k: whole[k] for k in (HB, "committee:H90")}
+    turned = {"bill:2027/HB9901": {"label": "HB 9901"}, "committee:H90": whole["committee:H90"],
+              "topic:housing": whole["topic:housing"]}
+    closing = {"bill:2026/HB9902": {"closing": {
+        "how": "law", "summary": "HB 9902 was signed into law.", "date": "2026-10-02",
+        "guid": "2025-2026:HB9902:closed:law"}}}
+
+    def night(built, followable, lists, term="2025-2026", **kw):
+        return dict(built=built, term=term, followable=followable, lists=lists,
+                    upcoming=kw.get("upcoming", {}), hints=kw.get("hints", {}))
+    out = [
+        night("2026-10-01T08:20:00Z", whole,
+              {HB: [d, c, b, a], "member:990001": [v], "committee:H90": [s],
+               "topic:housing": [b, a]},
+              upcoming={"committee:H90": [row, row, old], "bill:2026/HB9901": [row]}),
+        # The topic's list carries the hearing twice, as a feed does where two
+        # items share a guid (build_feeds' COLLIDED): one item to the sender.
+        night("2026-10-02T08:20:00Z", whole,
+              {HB: [d, c, b, late, a], "member:990001": [v], "committee:H90": [s],
+               "topic:housing": [c, c, b, late, a]}),
+        night("2026-10-02T15:00:00Z", whole,
+              {HB: [e, d, c, b, late, a], "member:990001": [v], "committee:H90": [s],
+               "topic:housing": [e, c, b, late, a]}),
+        night("2026-10-03T08:20:00Z", after,
+              {HB: [e, d, c, b, late, a], "committee:H90": [s], "bill:2026/HB9902": []},
+              hints=closing),
+        night("2026-10-04T08:20:00Z", {"committee:H90": whole["committee:H90"]},
+              {"committee:H90": []}),
+        night("2026-10-05T08:20:00Z", after, {HB: [e, d, c, b, late, a], "committee:H90": [s]}),
+        night("2026-10-06T08:20:00Z", turned,
+              {"bill:2027/HB9901": [n1], "committee:H90": [s], "topic:housing": [n1],
+               HB: [e, d, c, b, late, a]}, term="2027-2028"),
+    ]
+    out.append(night("2026-10-07T08:20:00Z", turned,
+                     {"bill:2027/HB9901": [n2s, n1], "committee:H90": [s], "topic:housing": [n1]},
+                     term="2027-2028"))
+    out += [night(f"2026-10-{dd:02d}T08:20:00Z", turned,
+                  {"bill:2027/HB9901": [n2h, n1], "committee:H90": [s],
+                   "topic:housing": [n2h, n1]},
+                  term="2027-2028") for dd in range(8, 17)]
+    return out
+
+
+def _changes_run(FC, root, n):
+    """One night of the scenario through follow_changes.write, the ledger it
+    leaves kept as nightly.py keeps an accepted night's. (said, {file: JSON})."""
+    led, why = FC.load(root / "archive" / "first-seen.json", n["built"][:10])
+    said = FC.write(root / "site", built=n["built"], sitting_term=n["term"],
+                    followable=json.loads(json.dumps(n["followable"])), lists=n["lists"],
+                    upcoming=n["upcoming"], hints=n["hints"], led=led, why=why,
+                    ledger_out=root / "archive" / "first-seen.next.json")
+    os.replace(root / "archive" / "first-seen.next.json", root / "archive" / "first-seen.json")
+    return said, {p.name: json.loads(p.read_text(encoding="utf-8"))
+                  for p in sorted((root / "site" / "changes").glob("*.json"))}
+
+
+# The scenario replayed in a child of its own, for the bytes under another
+# PYTHONHASHSEED: argv is the folder holding follow_changes.py and the run's.
+CHANGES_REPLAY = """
+import json, os, sys
+from pathlib import Path
+sys.path.insert(0, sys.argv[1])
+import follow_changes as FC
+root = Path(sys.argv[2])
+for n in json.loads((root / "nights.json").read_text(encoding="utf-8")):
+    led, why = FC.load(root / "archive" / "first-seen.json", n["built"][:10])
+    FC.write(root / "site", built=n["built"], sitting_term=n["term"], followable=n["followable"],
+             lists=n["lists"], upcoming=n["upcoming"], hints=n["hints"], led=led, why=why,
+             ledger_out=root / "archive" / "first-seen.next.json")
+    os.replace(root / "archive" / "first-seen.next.json", root / "archive" / "first-seen.json")
+"""
+
+
+def _changes_bytes(root):
+    return {p.relative_to(root).as_posix(): p.read_bytes()
+            for d in ("site/changes", "archive") for p in sorted((root / d).glob("*.json"))}
+
+
+@check("pipeline", "the changes files the email sender reads keep to their contract night after "
+       "night: first-seen with a ledger, the record's own dates and a warning without one, a "
+       "late row the next morning, endings told once and taken back, the turn of a term, a "
+       "bounded ledger, and the same bytes under any hash seed", needs=("follow_changes",))
+def _changes_nights(FC):
+    """The person's decision of 7 October 2026: "new" is the night an item
+    first appears, kept in a first-seen ledger carried between nights, and
+    the files rewrite the last eight nights every night. Sixteen invented
+    nights, through follow_changes.write as build_feeds calls it:
+
+      1  no ledger: every file by record-date, each night exactly the items
+         dated the day before it, a WARNING, and the ledger seeded with
+         nothing dated tonight or later -- so nothing floods, and nothing is
+         lost: the hearing dated tonight and the session scheduled ahead are
+         tomorrow's news. current.json's upcoming keeps one row a sitting,
+         from tonight on
+      2  first-seen in every file: the docket row entered late, the hearing
+         and the scheduled session are tonight's, carrying tonight's "seen",
+         and the earlier nights keep the build that first published them; an
+         item a list carries twice under one guid is one item
+      2b the same day again: one more item, a later "seen", and the earlier
+         ones as they were; the study report is the bill's "study"
+      3  a bill concludes (its feed's closing item is its ending), a member
+         leaves ("left"), a topic leaves with no ending owed; every record
+         last night listed and tonight does not carries an ending tonight
+      4,5 a build that lost its lists and its bill, then a good one: nothing
+         is new, and the ending the bad night told is taken back
+      6  the turn of a term: the old bill ends "term-ended", the topic carries
+         the new term's item alone, nothing of the old term is new
+      7,8 a hearing announced ahead: its bill's news the night it is
+         scheduled, its topic's the night it sits and the topic's feed takes
+         it (the ledger knows an item by record, not by guid alone)
+      9-16 quiet nights: each written with empty refs, and the ledger lets go
+         of what no feed carries and no kept night files
+    Every folder passes follow_changes.check() and, where the sender's code
+    is in the tree, its own check_changes.js; and the whole run, replayed in
+    two children under different PYTHONHASHSEED, gives the same bytes.
+    """
+    nights = _changes_scenario(FC)
+    root = Path(tempfile.mkdtemp(prefix="gr-changes-"))
+    node_ran = 0
+    try:
+        (root / "archive").mkdir()
+        seen = []
+        for i, n in enumerate(nights):
+            said, f = _changes_run(FC, root, n)
+            probs = FC.check(root / "site" / "changes")
+            assert not probs, (f"night {n['built']}: the files break the contract", probs[:4])
+            js = _changes_node(root / "site" / "changes")
+            if js is not None:
+                node_ran += 1
+                assert not js, (f"night {n['built']}: check_changes.js refuses them", js[:4])
+            assert len(f) == 9 and "current.json" in f, sorted(f)
+            seen.append((said, f))
+        HB = "bill:2026/HB9901"
+
+        def guids(f, day, key):
+            return [x["guid"] for x in ((f[f"{day}.json"]["refs"].get(key) or {}).get("items") or [])]
+
+        # 1: no ledger, so the record's own dates, and said.
+        said, f = seen[0]
+        assert {o["new_by"] for o in f.values()} == {"record-date"}, "night 1 not by record-date"
+        assert any("WARNING" in s and "record's dates" in s for s in said), said
+        assert guids(f, "2026-10-01", HB) == ["2025-2026:HB9901:2026-09-30:otp"] and \
+            guids(f, "2026-09-26", HB) == ["2025-2026:HB9901:2026-09-25:introduced"] and \
+            guids(f, "2026-09-30", "committee:H90") == ["committee:H90:2026-09-29"], \
+            "under record-date a night holds other than the items dated the day before it"
+        led = json.loads((root / "archive" / "first-seen.json").read_text(encoding="utf-8"))
+        known = {g for by in led["carried"].values() for gs in by.values() for g in gs}
+        assert "2025-2026:HB9901:2026-10-01:hearing" not in known and \
+            "2025-2026:HB9901:2026-10-05:exec" not in known, \
+            "the ledger was seeded with an item record-date had not placed: it would never be sent"
+        up = f["current.json"]["upcoming"]
+        assert up["committee:H90"] == [{"date": "2026-10-03", "what": "public hearing",
+                                        "time": "10:00", "committee": "House Example",
+                                        "venue": "LOB 205"}], \
+            ("upcoming is not one row a sitting from tonight on", up)
+        # 2: first-seen, the late row and tonight's, and what earlier nights keep.
+        said, f = seen[1]
+        assert {o["new_by"] for o in f.values()} == {"first-seen"}, "night 2 not first-seen throughout"
+        items = {x["guid"]: x for x in f["2026-10-02.json"]["refs"][HB]["items"]}
+        assert set(items) == {"2025-2026:HB9901:2026-10-05:exec", "2025-2026:HB9901:2026-10-01:hearing",
+                              "2025-2026:HB9901:2026-09-27:report"} and \
+            {x["seen"] for x in items.values()} == {"2026-10-02T08:20:00Z"}, (
+                "the late docket row, tonight's hearing and the session scheduled ahead are not "
+                "night 2's, or something else is", sorted(items))
+        assert items["2025-2026:HB9901:2026-10-05:exec"]["kind"] == "scheduled"
+        n1 = f["2026-10-01.json"]
+        assert n1["built"] == "2026-10-01T08:20:00Z" and \
+            n1["refs"][HB]["items"][0]["seen"] == "2026-10-01T08:20:00Z", \
+            "night 1 lost the build that first published it"
+        # 2b: the same day again.
+        said, f = seen[2]
+        n2 = f["2026-10-02.json"]
+        assert n2["built"] == "2026-10-02T15:00:00Z" and \
+            n2["refs"][HB].get("study") == {"recommends": True, "summary": "HB 9901 — Interim Study "
+                                        "Report: Recommended for Future Legislation 10/02/2026",
+                                        "date": "2026-10-02",
+                                        "guid": "2025-2026:HB9901:2026-10-02:study",
+                                        "seen": "2026-10-02T15:00:00Z"} and \
+            {x["seen"] for x in n2["refs"][HB]["items"]} == {"2026-10-02T08:20:00Z"}, \
+            ("a rebuild of the same night did not add its one item with a later seen", n2["refs"][HB])
+        assert [x["kind"] for x in n2["refs"]["topic:housing"]["items"]][0] == "study"
+        # 3: endings, owed and told once.
+        last = f["current.json"]
+        said, f = seen[3]
+        refs = f["2026-10-03.json"]["refs"]
+        assert refs.get("bill:2026/HB9902") == {"ended": closing_of(nights)} and \
+            (refs.get("member:990001") or {}).get("ended", {}).get("how") == "left" and \
+            "topic:housing" not in refs, ("a record that left tonight was not told its ending", refs)
+        assert FC.ended_owed(last, f["current.json"], f["2026-10-03.json"]) == [], \
+            "a record last night listed left without an ending"
+        # 4, 5: a bad night and a good one.
+        assert (seen[4][1]["2026-10-04.json"]["refs"].get(HB) or {}).get("ended", {}).get("how") \
+            == "done", "the bill the bad night lost was not told an ending that night"
+        said, f = seen[5]
+        assert f["2026-10-05.json"]["refs"] == {} and f["2026-10-04.json"]["refs"] == {}, (
+            "a good night after a bad one sent something again, or kept an ending the bad night "
+            "told", f["2026-10-05.json"]["refs"], f["2026-10-04.json"]["refs"])
+        assert any("taken back" in s for s in said), said
+        # 6: the turn of a term.
+        said, f = seen[6]
+        refs = f["2026-10-06.json"]["refs"]
+        assert refs[HB] == {"ended": {"how": "term-ended",
+                                      "summary": "HB 9901 ended with the 2025-2026 term.",
+                                      "date": "2026-10-06",
+                                      "guid": "2025-2026:HB9901:closed:term-ended"}}, refs.get(HB)
+        assert [x["term"] for x in refs["topic:housing"]["items"]] == ["2027-2028"] and \
+            not [g for k, r in refs.items() for g in (x["guid"] for x in r.get("items", []))
+                 if g.startswith("2025-2026")], ("the turn of the term sent the old term's items "
+                                                 "as new", refs)
+        assert f["2026-10-06.json"]["sitting_term"] == "2027-2028" and \
+            f["2026-10-05.json"]["sitting_term"] == "2025-2026"
+        # 7, 8: a hearing announced ahead is its bill's news the night it is
+        # scheduled, and its topic's the night the topic's feed takes it --
+        # not never, as when the ledger knew a guid once for every record.
+        n2 = "2027-2028:HB9901:2026-10-08:public-hearing"
+        f = seen[7][1]
+        assert guids(f, "2026-10-07", "bill:2027/HB9901") == [n2] and \
+            "topic:housing" not in f["2026-10-07.json"]["refs"], f["2026-10-07.json"]["refs"]
+        f = seen[8][1]
+        assert f["2026-10-08.json"]["refs"] == {"topic:housing": {"items": [{
+            "guid": n2, "date": "2026-10-08", "kind": "hearing",
+            "summary": "HB 9901 — Public Hearing: 10/08/2026 10:00 am LOB 205",
+            "url": "/bill/2027/hb9901", "term": "2027-2028", "seen": "2026-10-08T08:20:00Z"}]}} \
+            and guids(f, "2026-10-07", "bill:2027/HB9901") == [n2], (
+                "a hearing its bill's feed carried ahead was not its topic's news when the "
+                "topic's feed took it, or was its bill's twice", f["2026-10-08.json"]["refs"])
+        # 9-16: quiet, written, and bounded.
+        said, f = seen[-1]
+        assert all(o["refs"] == {} for k, o in f.items() if k != "current.json"), \
+            "a quiet night was not written with empty refs"
+        led = json.loads((root / "archive" / "first-seen.json").read_text(encoding="utf-8"))
+        assert led["carried"] == {"2026-10-16": {
+            "bill:2027/HB9901": [n2, "2027-2028:HB9901:2026-12-03:introduced"],
+            "committee:H90": ["committee:H90:2026-09-29"],
+            "topic:housing": [n2, "2027-2028:HB9901:2026-12-03:introduced"]}} and \
+            sorted(led["nights"]) == [f"2026-10-{d:02d}" for d in range(9, 17)], \
+            ("the ledger keeps what no feed carries and no kept night files", led["carried"])
+        # A ledger dated after tonight is not read as one, nor one of the
+        # first shape, which knew a guid once for every record.
+        assert FC.load(root / "archive" / "first-seen.json", "2026-10-15")[0] is None
+        (root / "old.json").write_text(json.dumps(dict(led, format=1)), encoding="utf-8")
+        assert FC.load(root / "old.json", "2026-10-17")[0] is None and \
+            FC.load(root / "archive" / "first-seen.json", "2026-10-17")[0] is not None, \
+            "a ledger of format 1 was read as this one, or this one was not"
+
+        # The same bytes, under two hash seeds, as here.
+        mine = _changes_bytes(root)
+        (root / "replay.py").write_text(CHANGES_REPLAY, encoding="utf-8")
+        here = _paths.locate("follow_changes.py").resolve().parent
+        for seed in ("1", "2"):
+            run = root / f"seed{seed}"
+            (run / "archive").mkdir(parents=True)
+            (run / "nights.json").write_text(json.dumps(nights), encoding="utf-8")
+            r = _run([sys.executable, str(root / "replay.py"), str(here), str(run)],
+                     capture_output=True, text=True, timeout=120,
+                     env={"PYTHONHASHSEED": seed})
+            assert r.returncode == 0, (r.stderr or r.stdout)[-300:]
+            assert _changes_bytes(run) == mine, (
+                f"under PYTHONHASHSEED={seed} the changes files or the ledger came out different")
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    return "ok", (f"{len(nights)} nights, every folder to the contract by follow_changes.check"
+                  + (f" and by check_changes.js ({node_ran} folders)" if node_ran else
+                     "; the sender's check_changes.js is not on this branch, so the Python "
+                     "rules held alone")
+                  + ", the same bytes under two hash seeds")
+
+
+def closing_of(nights):
+    """The ending the scenario's concluding bill is owed: its closing item."""
+    return next(n["hints"]["bill:2026/HB9902"]["closing"] for n in nights
+                if "bill:2026/HB9902" in n["hints"])
+
+
+@check("build", "build_feeds writes the changes files on the fixture: eight nights and "
+       "current.json to their contract, by the record's dates with no ledger and by first-seen "
+       "with the one it left, a night with nothing new written empty, and the same feeds, files "
+       "and ledger under two hash seeds", needs=("follow_changes",))
+def _changes_on_fixture(FC):
+    """The fixture site as the chain built it, and build_feeds alone over a
+    copy of it for three more nights, each at a stated moment: 7 March 2026,
+    the day after the fixture's roll call, with no ledger; the 8th with the
+    ledger the 7th left, kept as nightly.py keeps an accepted night's; the
+    9th, with nothing new, twice, under PYTHONHASHSEED 1 and 2; and the 10th,
+    after the bill is signed, the member leaves and the topic's other bill
+    becomes an older term's. Every folder goes through follow_changes.check()
+    and, where it is here, check_changes.js; last night's keys that tonight
+    lacks carry an ending, a hearing is filed under the committee that will
+    sit, and a topic carries its sitting term's items alone."""
+    absent = [x for x in CHAIN_NEEDS if not _paths.locate(x).exists()]
+    if absent:
+        return "skip", "not here: " + ", ".join(absent)
+    root = Path(tempfile.mkdtemp(prefix="gr-changes-fx-"))
+    try:
+        _fixture_site_whole(root)
+        ch = root / "site" / "changes"
+        names = sorted(p.name for p in ch.glob("*.json"))
+        cur = json.loads((ch / "current.json").read_text(encoding="utf-8"))
+        assert len(names) == 9 and cur["new_by"] == "record-date" and \
+            (root / "archive" / "first-seen.next.json").is_file(), (
+                "the chain's build_feeds did not write eight nights and current.json by the "
+                "record's dates, with a ledger beside them", names)
+        assert {"bill:2026/HB1442", "member:377204", "committee:H43", "topic:insurance"} <= \
+            set(cur["followable"]), sorted(cur["followable"])
+        probs = FC.check(ch) + (_changes_node(ch) or [])
+        assert not probs, probs[:4]
+
+        def feeds(when, seed="0", keep=True):
+            r = _run([sys.executable, _paths.script("build_feeds.py"), "--site", "site"],
+                     cwd=root, capture_output=True, text=True, timeout=180,
+                     env={"GRANITE_BUILD_DATE": when, "PYTHONHASHSEED": seed})
+            assert r.returncode == 0, (r.stderr or r.stdout).strip()[-300:]
+            out = {p.relative_to(root).as_posix(): p.read_bytes()
+                   for d in ("site/changes", "site/feed") for p in sorted((root / d).rglob("*"))
+                   if p.is_file()}
+            nxt = root / "archive" / "first-seen.next.json"
+            out["archive/first-seen.next.json"] = nxt.read_bytes()
+            files = {p.name: json.loads(p.read_text(encoding="utf-8")) for p in ch.glob("*.json")}
+            probs = FC.check(ch) + (_changes_node(ch) or [])
+            assert not probs, (when, probs[:4])
+            if keep:
+                os.replace(nxt, root / "archive" / "first-seen.json")
+            return r.stdout, out, files
+
+        said, _, f7 = feeds("2026-03-07T09:00:00")
+        assert {o["new_by"] for o in f7.values()} == {"record-date"} and "WARNING" in said and \
+            "vote:377204:2026-H-310" in [x["guid"] for x in f7["2026-03-07.json"]["refs"]
+                                          ["member:377204"]["items"]], \
+            "the 7th did not hold the roll call of the 6th by the record's dates"
+        said, _, f8 = feeds("2026-03-08T09:00:00")
+        assert {o["new_by"] for o in f8.values()} == {"first-seen"} and "WARNING" not in said, said
+        _, one, f9 = feeds("2026-03-09T09:00:00", "1", keep=False)
+        _, two, _ = feeds("2026-03-09T09:00:00", "2", keep=False)
+        assert f9["2026-03-09.json"]["refs"] == {}, \
+            ("a night with nothing new did not get its file with empty refs",
+             f9["2026-03-09.json"]["refs"])
+        assert FC.ended_owed(f8["current.json"], f9["current.json"], f9["2026-03-09.json"]) == []
+        differ = sorted(k for k in set(one) | set(two) if one.get(k) != two.get(k))
+        assert not differ, f"under PYTHONHASHSEED 1 and 2 these came out different: {differ[:5]}"
+        # What build_feeds hands over, read off the files (the review of 7
+        # October 2026: every check above held with these three broken). The
+        # hearing of the committee that will sit is filed under it, by
+        # chamber and name, on the day the fixture's manifest gives it --
+        # three days from the clock when the fixture was built (_site_fixture),
+        # which is why it is read here rather than written down: written as
+        # 2026-10-10 on 7 October, this failed every day after.
+        with open(root / "verification_manifest.csv", newline="", encoding="utf-8") as fh:
+            ahead = [r["sched_date"] for r in csv.DictReader(fh) if r.get("bill") == "HB1443"]
+        assert len(ahead) == 1, ("the fixture's hearing still to come is not one row", ahead)
+        assert f7["current.json"]["upcoming"] == {"committee:H43": [{
+            "date": ahead[0], "what": "subcommittee work session", "time": "09:30",
+            "committee": "House Commerce", "venue": "LOB 302"}]}, \
+            ("a hearing was not filed under the committee that will sit",
+             f7["current.json"]["upcoming"])
+        # ... and on the 10th the record moves on: the bill is signed, the
+        # member leaves, and one bill is an older term's, under a topic no
+        # bill of the sitting term carries. Each record that left is told in
+        # its record's own words that night, and a topic is followable, with
+        # its sitting term's items alone, only where a bill of that term
+        # carries it.
+        sd = root / "site"
+        meta = json.loads((sd / "meta.json").read_text(encoding="utf-8"))
+        rows = json.loads((sd / "idx" / "2025-2026.json").read_text(encoding="utf-8"))
+        for r in rows:
+            r["kind"] = "law" if r["id"] == "HB1442" else r["kind"]
+        older = [dict(r, term="2023-2024", topic="Taxation") for r in rows if r["id"] == "SB900"]
+        assert older and "Taxation" not in {r.get("topic") for r in rows}, older
+        (sd / "idx" / "2025-2026.json").write_text(
+            json.dumps([r for r in rows if r["id"] != "SB900"]), encoding="utf-8")
+        (sd / "idx" / "2023-2024.json").write_text(json.dumps(older), encoding="utf-8")
+        (sd / "meta.json").write_text(json.dumps(dict(meta, terms=meta["terms"] + ["2023-2024"])),
+                                      encoding="utf-8")
+        roster = json.loads((sd / "legislators.json").read_text(encoding="utf-8"))
+        (sd / "legislators.json").write_text(json.dumps(
+            [dict(m, former=True) if str(m.get("id")) == "377204" else m for m in roster]),
+            encoding="utf-8")
+        _, _, f10 = feeds("2026-03-10T09:00:00")
+        refs = f10["2026-03-10.json"]["refs"]
+        # The topic's one item tonight is the bill's report dated the 10th,
+        # its bill's news on the 8th and the topic's once its day has come.
+        assert {k: r for k, r in refs.items() if k != "topic:insurance"} == {
+            "bill:2026/HB1442": {"ended": {
+                "how": "law", "summary": "HB 1442 was signed into law.", "date": "2026-03-10",
+                "guid": "2025-2026:HB1442:closed:law"}},
+            "member:377204": {"ended": {
+                "how": "left", "date": "2026-03-10", "guid": "member:377204:ended:left",
+                "summary": "Rep. Jodi Nelson (R - Rock 13) is no longer among the sitting "
+                           "legislators."}}} and \
+            [x["date"] for x in refs.get("topic:insurance", {}).get("items", [])] == ["2026-03-10"], \
+            ("the 10th did not tell the signed bill and the member who left in their own "
+             "words, or told something else", refs)
+        assert FC.ended_owed(f9["current.json"], f10["current.json"], f10["2026-03-10.json"]) == []
+        led = json.loads((root / "archive" / "first-seen.json").read_text(encoding="utf-8"))
+        misc = led["carried"]["2026-03-10"].get("topic:miscellaneous") or []
+        assert "topic:miscellaneous" in f10["current.json"]["followable"] and misc and \
+            all(g.startswith("2025-2026:") for g in misc) and \
+            "topic:taxation" not in f10["current.json"]["followable"], \
+            ("a topic carried an older term's items, or one only an older term's bill carries "
+             "was offered", misc, sorted(f10["current.json"]["followable"]))
+        js = "" if _changes_node(ch) is not None else \
+            "; check_changes.js is not on this branch, so the Python rules held alone"
+        return "ok", (f"9 files on the fixture by record-date, then first-seen; the 9th empty; "
+                      f"{len(one):,} feeds, files and ledger the same under two seeds; a hearing "
+                      "under the committee that sits; a signed bill and a member who left told "
+                      "so on the 10th; a topic of its own term's items" + js)
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+
+
 @check("build", "a page's structured data says what it is, stays inside its script, and names no contact details",
        needs=("structured", "shell"))
 def _structured_data(LD, S):
@@ -36906,15 +37379,18 @@ def _cloud_dry_night(CL, BA, SG):
         whose bytes are what its name says -- and never a day's file, the
         archive's index, its day records or the database nights' copies; and
         of the state a refusal, a hold on the SQL host and its own verdict,
-        never the census or the night's verdict -- and no night file else
+        never the census, the night's verdict, the week's or the first-seen
+        ledger (since 7 October 2026, follow_changes.py) -- and no night
+        file else
       - driven on a folder bucket: the blob of tonight's docket goes up, and
         the docket the run installed, the archive's index and day records,
         from-db/, a blob kit-down brought and one whose bytes are not its
         name all stay; a carried output, the bill requests and a removal stay
         as they were; the logs go to logs/<day>/dry-run/, which pull does not
-        take; the census and the night's verdict stay as they were while a
-        refusal and the dry run's own verdict go up; and the next real night
-        takes down main's outputs and main's docket, with tonight's blob
+        take; the census, the night's verdict and the first-seen ledger stay
+        as they were while a refusal and the dry run's own verdict go up; and
+        the next real night takes down main's outputs and main's docket, with
+        tonight's blob
 
     THE REVIEW OF 7 OCTOBER 2026. Until then a dry night also sent the day's
     files as the run installed them, wherever the store held their bytes, and
@@ -36937,10 +37413,12 @@ def _cloud_dry_night(CL, BA, SG):
             f"code's choice ({d.get('served')}, {d.get('globs')})")
     # A refusal, a hold, and a dry run's own verdict -- the night's or, since a
     # weekly off main is one too, the week's -- and never the census, the
-    # night's verdict or the week's (7 October 2026).
+    # night's verdict or the week's (7 October 2026), nor the first-seen
+    # ledger of what the email sender has been told is new (follow_changes.py).
     assert set(d.get("state", [])) == {"refused.json", "sql-held.json", "last-dry-run.json",
                                        "last-dry-weekly.json"} and \
-        set(CL.DRY_NEVER) == {"census.json", "last-night.json", "last-weekly.json"}, \
+        set(CL.DRY_NEVER) == {"census.json", "last-night.json", "last-weekly.json",
+                              "first-seen.json"}, \
         (d.get("state"), CL.DRY_NEVER)
     # Every night file a dry night sends is an archived copy of what was served.
     store_sha = hashlib.sha256(b"x").hexdigest()
@@ -36989,7 +37467,7 @@ def _cloud_dry_night(CL, BA, SG):
             {"what": "pages", "owner": "laptop", "globs": ["legislation/**"]}],
             "state": [{"path": f"archive/{k}", "key": k, "what": "x"} for k in
                       ("census.json", "refused.json", "sql-held.json", "last-night.json",
-                       "last-dry-run.json")],
+                       "last-dry-run.json", "first-seen.json")],
             "logs": {"globs": ["logs/*", "reports/gc-changes-*.md"]},
             "dry_run": {"store": "nh-archive/store", "globs": ["nh-archive/store/*"],
                         "state": ["refused.json", "sql-held.json", "last-dry-run.json"]},
@@ -37023,10 +37501,12 @@ def _cloud_dry_night(CL, BA, SG):
             "nh-archive/snapshots/2026-10-01/manifest.json": "{}",
             "legislation/2026/HB1.html": "<p>1</p>",
             "archive/census.json": "{\"census\": {\"bills\": 100}}",
+            "archive/first-seen.json": "{\"format\": 1, \"main\": 1}",
             "archive/last-night.json": "{\"run_id\": \"700\", \"kind\": \"nightly\"}"})
         assert call(laptop, "seed-kit")[0] == 0 and call(laptop, "state-up")[0] == 0
         census, night_v = remote("state/census.json"), remote("state/last-night.json")
-        assert census and night_v
+        ledger = remote("state/first-seen.json")
+        assert census and night_v and ledger
 
         # A dry run that fetched: the export's docket, archived and installed;
         # and everything its own code made, chose or changed beside it -- the
@@ -37049,6 +37529,7 @@ def _cloud_dry_night(CL, BA, SG):
                           (f"logs/nightly-{today}.log", b"the dry run's log"),
                           (f"reports/gc-changes-{today}.md", b"what the dry run saw"),
                           ("archive/census.json", b"{\"census\": {\"bills\": 1}}"),
+                          ("archive/first-seen.json", b"{\"format\": 1, \"dev\": 1}"),
                           ("archive/last-night.json", b"{\"run_id\": \"701\"}"),
                           ("archive/last-dry-run.json", b"{\"run_id\": \"701\"}"),
                           ("archive/refused.json", b"{\"where\": \"docket\"}")):
@@ -37087,6 +37568,9 @@ def _cloud_dry_night(CL, BA, SG):
             remote("state/refused.json"), (
                 "a dry run's state-up sent the census or the night's verdict, or kept back its "
                 "own verdict or a refusal")
+        assert remote("state/first-seen.json") == ledger, (
+            "a dry run sent back the first-seen ledger its branch's build left: main's next "
+            "night would read dev's idea of what the email sender has been told")
         assert "kept back" in out and "narratives.json" in out, out[-600:]
 
         # A database night's docket, rebuilt by the run's own code, stays too.
@@ -37097,7 +37581,8 @@ def _cloud_dry_night(CL, BA, SG):
         # ... and state-up alone, under the word, sends the same and no more.
         (dry / "archive/sql-held.json").write_bytes(b"{\"held\": true}")
         assert call(dry, "state-up")[0] == 0 and remote("state/sql-held.json") and \
-            remote("state/census.json") == census and remote("state/last-night.json") == night_v
+            remote("state/census.json") == census and remote("state/last-night.json") == night_v \
+            and remote("state/first-seen.json") == ledger
         os.environ.pop(CL.DRY_ENV, None)
         # ... and the ref alone: a run of dev with Dry run unticked, no DRY_RUN
         # and no --dry-night, is a dry night all the same (7 October 2026, the
@@ -37108,24 +37593,28 @@ def _cloud_dry_night(CL, BA, SG):
         (dry / "narratives.json").write_bytes(b"{\"dev\": 2}")
         (dry / "archive/census.json").write_bytes(b"{\"census\": {\"bills\": 2}}")
         (dry / "archive/last-night.json").write_bytes(b"{\"run_id\": \"702\"}")
+        (dry / "archive/first-seen.json").write_bytes(b"{\"format\": 1, \"dev\": 2}")
         code, out = call(dry, "kit-up")
         assert code == 0 and remote("kit/narratives.json") == b"{\"main\": 1}" and \
             remote("state/census.json") == census and remote("state/last-night.json") == night_v \
-            and "a dry run" in out, (
+            and remote("state/first-seen.json") == ledger and "a dry run" in out, (
                 "a kit-up on GitHub's machine for a run of dev with Dry run unticked sent back "
-                "what dev's code made, the census or the night's verdict", out[-400:])
+                "what dev's code made, the census, the night's verdict or the first-seen ledger",
+                out[-400:])
         # ... with a built site here and its night's verdict beside it, so
         # that only the ref can be what refuses it. (THE REVIEW OF 7 OCTOBER
         # 2026: with no site here, "no built site" refused it whatever
         # site-up made of the ref.)
         (dry / "site").mkdir()
         (dry / "site" / "index.html").write_bytes(b"<p>dev's build</p>")
+        (dry / CL.FIRST_SEEN_NEXT).write_bytes(b"{\"format\": 1, \"dev\": 3}")
         code, out = call(dry, "site-up", "--run", "702")
         assert code == 1 and "sends no site for production" in out and \
             not (bucket / "nights").exists(), (
-                "a run of a branch other than main sent its site for production, or was refused "
-                "for something else", out[-300:])
+                "a run of a branch other than main sent its site, or the first-seen ledger its "
+                "build left, for production, or was refused for something else", out[-300:])
         shutil.rmtree(dry / "site")
+        (dry / CL.FIRST_SEEN_NEXT).unlink()
         os.environ[CL.REF_ENV] = CL.MAIN_REF
         # A New term run ticked with Dry run (the box is ticked unless a person
         # unticks it) is refused by nightly.py, and the workflow still gives its
@@ -37175,7 +37664,113 @@ def _cloud_dry_night(CL, BA, SG):
                   "against its name, its logs under dry-run/, a refusal, a hold and its own "
                   f"verdict; the {len(day_files)} day files it installed, the archive's index "
                   "and day records, from-db/, a carried output, the bill requests, a removal, "
-                  "the census and the night's verdict stay, and the next night takes down main's")
+                  "the census, the night's verdict and the first-seen ledger stay, and the next "
+                  "night takes down main's")
+
+
+@check("cloud", "the first-seen ledger travels as the census does: in the night's state, never "
+                "from a dry run, and with a New term run's site to the publish job, whole or not "
+                "at all", needs=("cloud", "nightly", "follow_changes"))
+def _first_seen_travels(CL, NI, FC):
+    """7 October 2026. The ledger of what the changes files have told the
+    email sender is new (follow_changes.py) is carried between nights the way
+    archive/census.json is: in cloud_kit.json's state list, under one name in
+    the three programs that handle it, and never among what a dry run may send
+    (DRY_NEVER, which load_kit holds the kit's "dry_run" to). A New term run's
+    is kept only when its deploy lands, on the publish job's machine, so
+    site-up sends the ledger the night's build left beside its site and
+    site-down brings it back to where nightly.py keeps it -- byte for byte,
+    or the site-down fails before the verdict that would let it deploy."""
+    assert FC.LEDGER.as_posix() == NI.FIRST_SEEN.as_posix() == "archive/first-seen.json" and \
+        FC.CANDIDATE.as_posix() == NI.FIRST_SEEN_NEXT.as_posix() == CL.FIRST_SEEN_NEXT, (
+            "follow_changes, nightly and cloud name the ledger differently",
+            FC.LEDGER, NI.FIRST_SEEN, FC.CANDIDATE, NI.FIRST_SEEN_NEXT, CL.FIRST_SEEN_NEXT)
+    real = CL.load_kit(".")
+    state = {s["key"]: s["path"] for s in real.get("state", [])}
+    assert state.get("first-seen.json") == NI.FIRST_SEEN.as_posix(), \
+        f"{CL.KIT_FILE}'s state list does not carry the first-seen ledger: {sorted(state)}"
+    assert "first-seen.json" in CL.DRY_NEVER and \
+        "first-seen.json" not in (real.get("dry_run") or {}).get("state", []), CL.DRY_NEVER
+    tmp = Path(tempfile.mkdtemp(prefix="gr-firstseen-"))
+    try:
+        bad = json.loads(json.dumps(real))
+        bad["dry_run"]["state"] = list(bad["dry_run"]["state"]) + ["first-seen.json"]
+        (tmp / "cloud_kit.json").write_text(json.dumps(bad), encoding="utf-8")
+        try:
+            CL.load_kit(tmp)
+            refused = False
+        except CL.Failed:
+            refused = True
+        assert refused, f"a {CL.KIT_FILE} whose dry run sends the first-seen ledger was taken"
+        (tmp / "cloud_kit.json").unlink()
+
+        bucket = tmp / "bucket"
+        night, publish, bare = tmp / "night", tmp / "publish", tmp / "bare"
+        night.mkdir()
+        _cloud_fixture(night, real)
+        shutil.rmtree(night / "site")
+        for d in (publish, bare):
+            d.mkdir()
+            shutil.copy(night / "cloud_kit.json", d / "cloud_kit.json")
+        B = ["--local-bucket", str(bucket)]
+
+        def call(root, *argv):
+            return _cloud_call(CL, *argv, "--root", str(root), *B)
+        site = night / "site"
+        (site / "changes").mkdir(parents=True)
+        (site / "changes" / "current.json").write_text("{}", encoding="utf-8")
+        (night / CL.NIGHT_VERDICT).write_text(json.dumps(
+            {"run_id": "4242", "kind": "nightly", "publishable": True,
+             "asked": {"dry_run": False, "new_term": True}}), encoding="utf-8")
+        ledger = b'{"format": 1, "date": "2026-12-02", "sitting_term": "2027-2028"}\n'
+        (night / CL.FIRST_SEEN_NEXT).write_bytes(ledger)
+        # A dry run's -- by the workflow's word, or as every run off main is,
+        # by its ref alone -- goes nowhere: site-up refuses it, ledger and all.
+        saved_env = {k: os.environ.get(k) for k in ("GITHUB_ACTIONS", CL.DRY_ENV, CL.REF_ENV)}
+        try:
+            for env in ({CL.DRY_ENV: "true", CL.REF_ENV: CL.MAIN_REF},
+                        {CL.REF_ENV: "refs/heads/dev"}):
+                for k in saved_env:
+                    os.environ.pop(k, None)
+                os.environ.update(GITHUB_ACTIONS="true", **env)
+                code, out = call(night, "site-up", "--run", "4242")
+                assert code == 1 and not (bucket / "nights").exists(), \
+                    ("a dry run sent its site, or the ledger its build left, for production",
+                     env, out[-300:])
+        finally:
+            for k, val in saved_env.items():
+                os.environ.pop(k, None) if val is None else os.environ.__setitem__(k, val)
+        code, out = call(night, "site-up", "--run", "4242")
+        assert code == 0 and (bucket / "nights/4242/first-seen.json").read_bytes() == ledger, \
+            ("site-up did not send the ledger the night's build left beside its site", out[-300:])
+        code, out = call(publish, "site-down", "--run", "4242")
+        assert code == 0 and (publish / CL.FIRST_SEEN_NEXT).read_bytes() == ledger and \
+            (publish / CL.SITE_VERDICT).is_file(), \
+            ("site-down did not bring the ledger back to where nightly.py keeps it", out[-300:])
+        # One that is not the ledger site.json names stops the site-down
+        # before the verdict that would let the publish job deploy.
+        (bucket / "nights/4242/first-seen.json").write_bytes(ledger.replace(b"2027", b"2025"))
+        code, out = call(bare, "site-down", "--run", "4242")
+        assert code == 1 and not (bare / CL.FIRST_SEEN_NEXT).exists() and \
+            not (bare / CL.SITE_VERDICT).exists(), \
+            ("site-down took a ledger that is not the one its night sent", out[-300:])
+        # A night that left none sends none, and its site comes down without.
+        (night / CL.FIRST_SEEN_NEXT).unlink()
+        (night / CL.NIGHT_VERDICT).write_text(json.dumps(
+            {"run_id": "4243", "kind": "nightly", "publishable": True,
+             "asked": {"dry_run": False}}), encoding="utf-8")
+        assert call(night, "site-up", "--run", "4243")[0] == 0 and \
+            not (bucket / "nights/4243/first-seen.json").exists()
+        shutil.rmtree(publish / "site")
+        (publish / CL.FIRST_SEEN_NEXT).unlink()
+        code, out = call(publish, "site-down", "--run", "4243")
+        assert code == 0 and not (publish / CL.FIRST_SEEN_NEXT).exists(), out[-300:]
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    return "ok", ("one name in follow_changes, nightly, cloud and the kit's state list; never a "
+                  "dry run's to send, by its box or off main; with a New term run's site to the "
+                  "publish job byte for byte, a changed one refused before the verdict, none "
+                  "where none was left")
 
 
 @check("cloud", "a weekly off main sends back none of the lists it took -- only its logs, apart, "
@@ -50511,11 +51106,13 @@ def _nightly_reports_loud(NI):
 # running it too is the stand-down. Everything here is driven in a throwaway
 # folder with every step faked: no network, no fetch, no deploy.
 
-def _runner_site(n_bills, legislators=40, feeds=5, terms=None):
+def _runner_site(n_bills, legislators=40, feeds=5, terms=None, changes="first-seen"):
     """A built site as small as the census can count. The bills are rows of a
     term's file, as the pages read them, with meta.json naming the terms:
     `n_bills` of 2025-2026, or, where `terms` is {term: bills}, that many of
-    each -- the census by term counts each term's own file."""
+    each -- the census by term counts each term's own file. And the email
+    sender's changes/current.json as build_feeds writes it, saying how it
+    decided "new" (`changes`; None writes none), which the verdict reads."""
     site = Path("site")
     site.mkdir(exist_ok=True)
     (site / "legislators.json").write_text(json.dumps([{"l": i} for i in range(legislators)]),
@@ -50532,6 +51129,14 @@ def _runner_site(n_bills, legislators=40, feeds=5, terms=None):
             old.unlink()
         for i in range(n):
             (site / d / f"{i}.{ext}").write_text("x", encoding="utf-8")
+    cur = site / "changes" / "current.json"
+    cur.unlink(missing_ok=True)
+    if changes:
+        cur.parent.mkdir(exist_ok=True)
+        cur.write_text(json.dumps(
+            {"format": 1, "date": "2026-10-06", "built": "2026-10-06T08:20:00Z",
+             "sitting_term": max(terms or {"2025-2026": 0}), "new_by": changes,
+             "followable": {}, "upcoming": {}}), encoding="utf-8")
 
 
 def _runner_fake_views(args, cwd, rows=None):
@@ -50695,7 +51300,8 @@ def _nightly_runner(NI):
         assert "a line the step printed" not in out, "a step's own output reached GitHub's public log"
         assert not NIGHTLY_REPORTS_RAN.search(log) and NIGHTLY_STARTED.search(log), \
             "the runner's log does not read as a nightly's, or claims a reports step"
-        assert Path(f"logs/site-{today}.sha256").read_text(encoding="utf-8").count("\n") == 18, \
+        # 19: _runner_site's files, changes/current.json among them.
+        assert Path(f"logs/site-{today}.sha256").read_text(encoding="utf-8").count("\n") == 19, \
             "the list of every built file, for the comparison with the laptop, is wrong"
         assert all(str(p).replace("\\", "/").startswith("archive/")
                    for p in (NI.CENSUS, NI.VERDICT, NI.DRY_VERDICT, NI.WEEKLY_VERDICT,
@@ -51068,7 +51674,7 @@ class _GateNights:
 
     def build(self):
         h = self.how
-        _runner_site(h["bills"], terms=h["terms"])
+        _runner_site(h["bills"], terms=h["terms"], changes=h.get("changes", "first-seen"))
         site = Path("site")
         meta = json.loads((site / "meta.json").read_text(encoding="utf-8"))
         newest = max(meta["terms"])
@@ -51086,6 +51692,12 @@ class _GateNights:
         if h["record"]:
             rec.write_text(json.dumps({"finished": "2026-10-06T03:00:00", "ok": True,
                                        "steps": []}, indent=2), encoding="utf-8")
+        # ... and the first-seen ledger build_feeds leaves beside the one it
+        # read, numbered by build, for nightly.py to keep or not.
+        self.builds = getattr(self, "builds", 0) + 1
+        if h.get("changes", "first-seen"):
+            Path("archive/first-seen.next.json").write_text(
+                json.dumps({"format": 1, "build": self.builds}), encoding="utf-8")
 
     def fake(self, args, label, cwd=None):
         self.NI.say(f"\n--- {label} ---")
@@ -52291,6 +52903,98 @@ def _nightly_dry_run_apart(NI, CL):
                   "other than main alone, which its page names; production "
                   "deploys a run by its own verdict, never a dry run's, and an older night only "
                   "when no newer night built a site fit for production")
+
+
+@check("build", "the night keeps the first-seen ledger its build left exactly where it writes the "
+       "census -- a real night the gates accept, a New term run once its deploy lands -- and "
+       "its verdict says when the changes files went by the record's dates or were not written",
+       needs=("nightly",))
+def _nightly_keeps_first_seen(NI):
+    """7 October 2026. build_feeds reads archive/first-seen.json and leaves
+    its own beside it (follow_changes.py). Kept by a night the gates stop, a
+    bad build's endings and its forgetting would be what the next night told
+    the email sender; kept by a dry run, dev's code would decide main's; kept
+    by a New term run before the person approves it, a rejected switch would
+    have ended every follow of the old term. So it is kept where the census
+    is written and nowhere else, and the verdict carries what the build said
+    of the changes files, with a warning when they went by the record's dates
+    (no ledger: the first night, or a lost state) or were not written."""
+    with _GateNights(NI) as g:
+        def kept():
+            v = NI.load_json(NI.FIRST_SEEN)
+            return v.get("build") if isinstance(v, dict) else None
+
+        def left():
+            v = NI.load_json(NI.FIRST_SEEN_NEXT)
+            return v.get("build") if isinstance(v, dict) else None
+
+        g.night("--runner", "--no-fetch", run_id="601")         # the baseline
+        v = g.verdict()
+        assert kept() == 1 and left() is None, \
+            ("a real night the gates accepted did not keep the ledger its build left", kept())
+        assert v["changes"] == {"written": True, "new_by": "first-seen", "date": "2026-10-06",
+                                "followable": 0} and \
+            not any("email changes" in w for w in v["warnings"]), (v["changes"], v["warnings"])
+        g.how["touch"] = 3
+        code, _ = g.night("--runner", "--no-fetch", "--dry-run", run_id="602")
+        assert code == 0 and kept() == 1 and left() == 2, \
+            "a dry run kept the ledger its branch's build left"
+        g.how["bills"] = 10
+        code, _ = g.night("--runner", "--no-fetch", run_id="603")
+        assert code == 1 and kept() == 1 and g.verdict()["gates"].startswith("blocked"), \
+            ("a night the gates stopped kept its ledger", g.verdict().get("gates"))
+        g.how["bills"] = 100
+        g.how["changes"] = "record-date"
+        code, _ = g.night("--runner", "--no-fetch", run_id="604")
+        v = g.verdict()
+        said = [w for w in v["warnings"] if "email changes files" in w]
+        assert kept() == 4 and len(said) == 1 and "record's dates" in said[0] and \
+            "the email changes files by the record's dates" in v["warning_kinds"], \
+            ("a night by the record's dates did not say so in its verdict", v["warnings"])
+        g.how["changes"] = None
+        code, _ = g.night("--runner", "--no-fetch", run_id="605")
+        v = g.verdict()
+        assert v["changes"] == {"written": False} and kept() == 4 and \
+            any("wrote no changes/current.json" in w for w in v["warnings"]), \
+            ("a night that wrote no changes files was silent about it", v["warnings"])
+        del g.how["changes"]
+
+        # A New term run: kept only once its build is published.
+        g.how["touch"] = 5
+        code, _ = g.night("--runner", run_id="611")
+        g.publish("611")
+        before = kept()
+        assert before == 6, before
+        g.how["touch"] = 6
+        code, _ = g.night("--runner", "--new-term", run_id="612")
+        v = g.verdict()
+        assert code == 0 and v["publishable"] and kept() == before and left() == 7, (
+            "a New term run kept its ledger before its build was published",
+            kept(), left(), v.get("not_clean"))
+        g.publish("612")
+        assert kept() == 7 and left() is None and \
+            NI.load_json(NI.CENSUS).get("new_term"), \
+            ("a New term run's ledger was not kept when its deploy landed", kept(), left())
+
+        # EVERY RUN OFF MAIN IS A DRY RUN (7 October 2026, the person's
+        # decision): a run of dev on GitHub's machine with Dry run unticked --
+        # no --dry-run, no DRY_RUN, only the ref -- keeps none either.
+        g.how["touch"] = 7
+        os.environ["GITHUB_REF"] = "refs/heads/dev"
+        try:
+            code, _ = g.night("--runner", "--no-fetch", run_id="613", sha=GATE_SHA[1],
+                              github=True)
+        finally:
+            os.environ[CHECKS_REF[0]] = CHECKS_REF[1]
+        d = g.dry_verdict()
+        assert code == 0 and d["run_id"] == "613" and d.get("off_main") == "refs/heads/dev" and \
+            kept() == 7 and left() == 8, (
+                "a run of dev with Dry run unticked kept the ledger its branch's build left",
+                d.get("off_main"), kept(), left())
+        assert not g.stray, f"the nights asked something other than production: {g.stray}"
+    return "ok", ("kept by an accepted night and a landed New term deploy; not by a dry run, by "
+                  "its box or off main, a stopped night or a New term run waiting; the record's "
+                  "dates and no files said in the verdict")
 
 
 @check("build", "the weekly fetches replace a file only when it arrived whole", needs=("nightly",))

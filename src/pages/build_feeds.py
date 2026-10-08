@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.28
+# GRANITE_VERSION: 2026-09-04.29
 """
 Write RSS feeds so people can follow bills without a login.
 
@@ -26,6 +26,12 @@ on a deployment with a ceiling, and a subscriber to it waits for nothing.
 The hearings feed is the one that can change what somebody does. A person who
 learns on Tuesday that a hearing is on Thursday can turn up and testify; the
 same person reading about it afterwards cannot.
+
+AND WHAT THE EMAIL SENDER READS (7 October 2026). The same items, record by
+record, go to follow_changes.py as each feed is written, and it writes
+/changes/current.json and one file a night under /changes/, deciding what is
+new by the first-seen ledger (archive/first-seen.json, carried in the night's
+state; --ledger and --ledger-out name it). follow_changes.py says how.
 """
 
 # The bootstrap: _paths.py, found above this file, puts every code folder on the import path.
@@ -36,6 +42,7 @@ import _paths  # noqa: E402,F401
 
 import argparse
 import build_date
+import follow_changes as FC
 import json
 import proceedings as P
 import re
@@ -43,9 +50,15 @@ import shell as S
 import site_read as SR
 from collections import Counter
 from datetime import datetime, timedelta, timezone
+from urllib.parse import quote
 from xml.sax.saxutils import escape
 
-TODAY = build_date.utcnow().strftime("%Y-%m-%d")
+# One moment for the whole build: the day it decides "past" and "to come" by,
+# and the changes files' night and their "built" (follow_changes), which must
+# be the same day.
+NOW = build_date.utcnow()
+TODAY = NOW.strftime("%Y-%m-%d")
+BUILT = FC.stamp(NOW)
 
 # The first day a reader could have been following a bill and had it end under
 # them: nobody was subscribed by RSS before it. A bill that concluded before
@@ -263,8 +276,38 @@ def main():
     ap.add_argument("--per-feed", type=int, default=60)
     ap.add_argument("--allow-prune", action="store_true",
                     help="remove stale feeds even when more than a quarter of a folder")
+    ap.add_argument("--ledger", default=str(FC.LEDGER),
+                    help="the first-seen ledger the last accepted night left")
+    ap.add_argument("--ledger-out", default=str(FC.CANDIDATE),
+                    help="where this build leaves its own, for nightly.py to keep or not")
     a = ap.parse_args()
     site, base = Path(a.site), a.base.rstrip("/")
+    # THE CHANGES FILES' SIDE OF EVERY FEED (follow_changes.py). Each record a
+    # reader may follow tonight, under its key, with its feed's own items;
+    # the ledger the last accepted night left; and the records it listed,
+    # whose items are wanted too: one that leaves tonight takes its last
+    # items with its ending.
+    led, led_why = FC.load(a.ledger, TODAY)
+    want = FC.wanted(led, TODAY)
+    followable, lists, upcoming, hints = {}, {}, {}, {}
+    fc_items = {}                       # guid -> its item, for every bill row's
+
+    def path_of(url):
+        """A feed's link as the path on the site the changes files carry."""
+        return url[len(base):] or "/" if url.startswith(base) else ""
+
+    def fc_list(feed_items, *pools):
+        """A feed's items, in its order, as follow_changes items: each found
+        by its guid in the first of `pools` that has it, and once. Two items
+        of one feed under one guid (COLLIDED, below) are one to a feed reader,
+        and one to the sender, which refuses an item twice in a night."""
+        out, had = [], set()
+        for t in feed_items:
+            it = next((p[t[4]] for p in pools if t[4] in p), None)
+            if it and it["guid"] not in had:
+                had.add(it["guid"])
+                out.append(it)
+        return out
     # Every bill's row, from the term files the pages read (site_read).
     idx = SR.bill_index_or_stop(site, "build_feeds.py")
     # Keyed on (term, bill), because a bill number is unique within a term and
@@ -313,7 +356,7 @@ def main():
     written = []
 
     all_items, by_topic, nbill = [], {}, 0
-    bill_items = {}
+    bill_items, topics_now = {}, {}
     # How a concluded bill's closing feed item names its ending. The index's
     # own `kind`, put into a sentence -- the record's word for what happened is
     # already on the page, and this is the feed saying the same thing once.
@@ -370,6 +413,11 @@ def main():
                     (b, url, bool(sp.get("prime")), filed))
 
         items = []
+        # The changes files want these for the sitting term's bills, whose
+        # items reach the bill, topic and committee records, and for a bill
+        # the ledger listed, which may be leaving tonight.
+        key = f"bill:{b.get('year')}/{b['id'].upper()}"
+        on_record = (b.get("term") or "") == current or key in want
         for e in events:
             items.append((
                 f"{b['n']} \u2014 {clip(e.get('text',''))}",
@@ -379,6 +427,14 @@ def main():
                 e["date"],
                 f"{b.get('term','')}:{b['id']}:{e['date']}:"
                 f"{slug(e.get('text',''))[:40]}"))
+            if on_record:
+                t = items[-1]
+                it = FC.item(t[4], t[3][:10], FC.event_kind(e.get("text"), t[3][:10], TODAY),
+                             t[0], path_of(url), b.get("term") or "",
+                             study=FC.STUDY_REPORT.match(str(e.get("text") or "").strip()) is not None,
+                             recommends=FC.study_says(e.get("text")))
+                if it:
+                    fc_items[t[4]] = it
 
         # A BILL THAT HAS FINISHED GETS ONE LAST ITEM, AND THEN NOTHING: one
         # final update on how it ended, and the feed retires after that.
@@ -421,6 +477,25 @@ def main():
                 events[0]["date"],
                 f"{b.get('term','')}:{b['id']}:closed:{(b.get('kind') or '')}"))
             retired += 1
+            # The same ending, in the changes files' words: the closing item's
+            # guid, and the index's own word for how.
+            hints[key] = {"closing": {
+                "how": (b.get("kind") or "").lower() if FC.HOW.match((b.get("kind") or "").lower())
+                else "done",
+                "summary": f"{b['n']} {_end}.", "date": events[0]["date"][:10],
+                "guid": items[0][4]}}
+        elif key in want:
+            hints[key] = {"kind": (b.get("kind") or "").lower(), "term": b.get("term") or "",
+                          "said": f"{b['n']} "
+                                  f"{OUTCOME.get((b.get('kind') or '').lower(), 'has concluded')}."}
+        if on_record and S.still_moving(b, current) and str(b.get("year") or "").strip():
+            followable[key] = {"label": FC.line(b["n"], 120),
+                               "title": FC.line(b.get("title") or "", 300),
+                               "url": path_of(url)}
+            if not followable[key]["title"]:
+                del followable[key]["title"]
+        if on_record and (key in followable or key in want):
+            lists[key] = fc_list(items[:a.per_feed], fc_items)
 
         if items and (b.get("term") or "") != current:
             skipped_closed += 1
@@ -469,9 +544,19 @@ def main():
         bill_items[(str(b.get("year") or ""), b["id"].upper())] = past[:3]
         if b.get("topic"):
             by_topic.setdefault(b["topic"], []).extend(past[:3])
+            # A topic is followed for the sitting term only, and carries that
+            # term's items alone (CHANGES_FORMAT.md): the same three a bill.
+            if (b.get("term") or "") == current:
+                topics_now.setdefault(b["topic"], []).extend(past[:3])
 
     def newest(items):
         return sorted(items, key=lambda x: x[3], reverse=True)[:a.per_feed]
+
+    for name, its in topics_now.items():
+        key = f"topic:{slug(name)}"
+        followable[key] = {"label": FC.line(name, 120),
+                           "url": "/bills?topic=" + quote(name, safe="")}
+        lists[key] = fc_list(newest(its), fc_items)
 
     (fd / "all.xml").write_text(
         feed("Granite Record — all activity",
@@ -491,18 +576,26 @@ def main():
     # A committee with bills and no sitting day on record gets its bills'
     # newest actions instead.
     ncmte = 0
+    # (chamber, lower-cased name) -> code, for filing a hearing under the
+    # committee that will sit: the same key build_pages.committee_codes
+    # gives a calendar card, read here off the records already open.
+    cmte_code = {}
     for cj in sorted((site / "committee").glob("*.json")) if (site / "committee").is_dir() else []:
         try:
             c = json.loads(cj.read_text(encoding="utf-8"))
         except ValueError:
             continue
-        if not S.committee_followable(c):
-            continue
         code = str(c.get("code") or cj.stem)
+        if not S.committee_followable(c):
+            if f"committee:{code}" in want:
+                hints[f"committee:{code}"] = {"archived": bool(c.get("archived"))}
+            continue
         chamber = {"H": "House", "S": "Senate"}.get(code[:1].upper(), "")
         who = f"{chamber} {c.get('name') or code}".strip()
         page = base + S.canon(f"/committee/{code}.html")
-        items = []
+        if c.get("name"):
+            cmte_code[(code[:1].upper(), c["name"].strip().lower())] = code
+        items, mine = [], {}
         for s in c.get("sessions") or []:
             d = s.get("date") or ""
             if not d or d > TODAY:
@@ -515,10 +608,17 @@ def main():
                    + (f" and {len(taken) - 15} more" if len(taken) > 15 else "")
                    if taken else ""),
                 d, f"committee:{code}:{d}"))
+            it = FC.item(items[-1][4], d[:10], "sitting", items[-1][0], path_of(page),
+                         s.get("term") or P.term_of(d))
+            if it:
+                mine[it["guid"]] = it
         if not items:
             for rows in (c.get("bills") or {}).values():
                 for r in rows or []:
                     items += bill_items.get((str(r.get("year") or ""), str(r.get("id") or "").upper()), [])
+        key = f"committee:{code}"
+        followable[key] = {"label": FC.line(who, 120), "url": path_of(page)}
+        lists[key] = fc_list(newest(items), mine, fc_items)
         # Written empty rather than skipped: the committee's page names this
         # feed on the same test, and an address a page offers must answer.
         out = fd / "committee" / f"{code}.xml"
@@ -564,6 +664,20 @@ def main():
                   "also sign in online to register a position and submit written "
                   "testimony.",
                 when, f"hearing:{u.get('bill')}:{when}:{u.get('time','')}"))
+            # current.json's upcoming: the same row, filed under its bill and
+            # under the committee that will sit, by chamber and name.
+            body = str(u.get("body") or "").strip().upper()
+            name = str(u.get("committee") or "").strip()
+            sits = cmte_code.get((body, name.lower()))
+            word = CHAMBER.get(body, "")
+            row = FC.upcoming_row(
+                when[:10], u.get("what") or "hearing", u.get("time") or "",
+                f"{word} {name}".strip() if name and not name.startswith(word) else name,
+                u.get("venue") or "")
+            if row:
+                for k in ([f"bill:{b.get('year')}/{b['id'].upper()}"] if b else []) + \
+                        ([f"committee:{sits}"] if sits else []):
+                    upcoming.setdefault(k, []).append(row)
         nhear = len(items)
         (fd / "hearings.xml").write_text(
             feed("Granite Record — upcoming hearings",
@@ -596,7 +710,7 @@ def main():
             if not S.member_followable(m):
                 continue
             who = m.get("display") or m.get("name") or f"Member #{mid}"
-            items = []
+            items, mine = [], {}
             vp = site / "legislators" / f"{mid}.json"
             if vp.exists():
                 rec = json.loads(vp.read_text(encoding="utf-8"))
@@ -649,6 +763,10 @@ def main():
                         # The roll call's own key, so two ballots cast on one
                         # bill on one day are two items. See vote_guid.
                         vote_guid(mid, v, q)))
+                    it = FC.item(items[-1][4], day, "vote", items[-1][0], path_of(items[-1][1]),
+                                 (bb or {}).get("term") or P.term_of(day))
+                    if it:
+                        mine[it["guid"]] = it
             for bb, burl, prime, filed in sponsored.get(mid, []):
                 role = "prime sponsor" if prime else "co-sponsor"
                 items.append((
@@ -656,6 +774,17 @@ def main():
                     burl,
                     f"{bb.get('title', '')}\n\n{who} is the {role} of this bill.",
                     filed, f"sponsor:{mid}:{bb['id']}"))
+                it = FC.item(items[-1][4], (filed or "")[:10], "sponsor", items[-1][0],
+                             path_of(burl), bb.get("term") or "")
+                if it:
+                    mine[it["guid"]] = it
+            key = f"member:{mid}"
+            followable[key] = {"label": FC.line(m.get("display_full") or who, 120),
+                               "url": path_of(base + S.canon(f"/legislator/{m.get('slug')}.html"))
+                               if m.get("slug") else ""}
+            if not followable[key]["url"]:
+                del followable[key]["url"]
+            lists[key] = fc_list(newest(items), mine)
             if not items:
                 # The roster counts a vote or a sponsorship that neither the
                 # member's file nor any bill page carries: a site built in
@@ -678,6 +807,19 @@ def main():
         pruned += n
         if note:
             notes.append(note)
+
+    # The changes files, from the items every feed above was written with.
+    # A key the sender would refuse is left out and named, not sent.
+    unkeyed = sorted(k for k in followable if not FC.key_ok(k))
+    for k in unkeyed:
+        followable.pop(k)
+        lists.pop(k, None)
+    changes_said = FC.write(site, built=BUILT, sitting_term=current, followable=followable,
+                            lists=lists, upcoming=upcoming, hints=hints, led=led, why=led_why,
+                            ledger_out=a.ledger_out)
+    if unkeyed:
+        changes_said.append(f"  WARNING: {len(unkeyed):,} records are not followable because "
+                            f"their key is not one the sender reads: {unkeyed[:5]}")
 
     total = sum(p.stat().st_size for p in fd.rglob("*.xml"))
     print(f"{nbill:,} bill feeds")
@@ -724,6 +866,9 @@ def main():
     print(f"all.xml: {len(newest(all_items))} items")
     print(f"hearings.xml: {nhear} upcoming")
     print(f"\n{total/1e6:.1f} MB of XML -> {fd}/")
+    print()
+    for ln in changes_said:
+        print(ln)
     print(f"\nSubscribe links:\n  {base}/feed/all.xml\n  {base}/feed/hearings.xml")
 
 

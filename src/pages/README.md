@@ -2,7 +2,8 @@
 
 Reads the record (`data/`, the root JSON, `proceedings.csv`) and writes
 `site/`: each bill's payload (`build_site_v2`), every page and the frame
-around it (`shell.py`), the feeds, the CSV downloads and the search index.
+around it (`shell.py`), the feeds and the changes files the email sender reads
+beside them (`follow_changes.py`), the CSV downloads and the search index.
 After the optional front-end stage, the browser's files (`app.js`,
 `find.js`, `app.css`, `bills.html`) are here too.
 
