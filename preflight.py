@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.467
+# GRANITE_VERSION: 2026-09-04.468
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -19833,10 +19833,15 @@ def _palette():
     TEXT = [("ink", "surface"), ("ink", "paper"),
             ("ink-2", "surface"), ("ink-2", "paper"), ("ink-2", "wash"),
             ("pine", "surface"), ("pine", "paper")]
-    for st in ("active", "law", "done", "study", "veto"):
+    for st in ("active", "law", "done", "study", "veto", "table"):
         TEXT += [(f"st-{st}", f"st-{st}-bg"), ("ink-2", f"st-{st}-bg")]
     BOUND = [("edge", "surface"), ("edge", "paper"),
              ("pine", "surface"), ("pine", "paper")]
+    # The rail's discs are graphics on the card and the page, and their white
+    # glyph -- check, cross, "~", two bars -- is the card's own colour on them
+    # (8 October 2026: interim study's orange and the table's graphite).
+    for st in ("law", "done", "study", "table"):
+        BOUND += [(f"st-{st}", "surface"), (f"st-{st}", "paper")]
     # A meeting's kind: its ink is the chip's text on its tint, and it is also
     # the card's edge bar and the chip's edge on the card and the page -- and,
     # since 25 September 2026, the Calendar's box for that kind, whose tick
@@ -24281,6 +24286,214 @@ def _rail_on_a_phone():
     return "ok", (f"{width}px with {pad:g}px either side of each stop's words; the six "
                   f"tightest rails of the review are {worst[0]:.1f}px apart at least "
                   f"({worst[1]}), in Verdana's widths; {drew}")
+
+
+# Real rows: Docket.txt 11893, 14650, 15189, 16344-16345, 19814-19815, 20127,
+# 20993, 22314 and 22842-22846 (HB 1043 of 2026: passed by the House, laid on
+# the Senate's table on 7 May 2026, and dead there when the session ended).
+# HB 561's are _CONSENT_REREFERRED's.
+_TABLED_ROWS = [
+    "2026|2396|11/7/2025 11:41:06 AM|HB1043|H|  Introduced 01/07/2026 and referred to Labor, Industrial and Rehabilitative Services  HJ 1  P. 3|3/24/2026 2:05:02 PM",
+    "2026|2396|1/21/2026 3:57:54 PM|HB1043|H|Public Hearing: 01/27/2026 11:30 am GP 159|1/21/2026 3:57:54 PM",
+    "2026|2396|1/28/2026 4:17:53 PM|HB1043|H|Executive Session: 02/03/2026 10:00 am GP 159|1/28/2026 4:17:53 PM",
+    "2026|2396|2/9/2026 1:58:27 PM|HB1043|H|Majority Committee Report: Ought to Pass with Amendment # 2026-0386h   02/03/2026 (Vote 11-9; RC)  HC 10  P. 60|3/16/2026 10:38:14 AM",
+    "2026|2396|2/9/2026 1:58:29 PM|HB1043|H|Minority Committee Report: Inexpedient to Legislate|2/9/2026 1:58:29 PM",
+    "2026|2396|3/12/2026 9:58:30 AM|HB1043|H|Amendment # 2026-0386h: AA DV 341-4 03/12/2026  HJ 8  P. 14|6/23/2026 2:24:11 PM",
+    "2026|2396|3/12/2026 10:00:52 AM|HB1043|H|Ought to Pass with Amendment 2026-0386h: MA RC 189-155 03/12/2026  HJ 8  P. 14|6/23/2026 2:24:19 PM",
+    "2026|2396|3/17/2026 11:51:22 AM|HB1043|S|  Introduced 03/12/2026 and Referred to Commerce;  SJ 7|3/17/2026 11:51:26 AM",
+    "2026|2396|3/31/2026 2:02:13 PM|HB1043|S|  Hearing: 04/14/2026, Room 100, SH, 10:25 am;  SC 13|4/2/2026 9:08:49 AM",
+    "2026|2396|4/28/2026 1:07:26 PM|HB1043|S|Committee Report: Ought to Pass, 05/07/2026, Vote 3-2;  SC 17|4/28/2026 1:07:26 PM",
+    "2026|2396|5/7/2026 9:36:50 AM|HB1043|S|Ought to Pass: DIV 9Y-12N, MF; 05/07/2026;  SJ 11|5/7/2026 9:36:50 AM",
+    "2026|2396|5/7/2026 9:37:04 AM|HB1043|S|Sen. Murphy Moved Laid on Table, MA, VV; 05/07/2026;  SJ 11|5/7/2026 9:37:04 AM",
+    "2026|2396|5/7/2026 9:37:39 AM|HB1043|S|No Pending Motion; 05/07/2026  SJ 11|5/7/2026 9:37:39 AM",
+]
+# Real rows: Docket_db_1999-2000.txt 16527-16539 (HB 1171 of 2000: passed by
+# the House, killed by the Senate on 20 April 2000, the kill reconsidered on
+# 18 May and the bill sent to interim study the same day).
+_KILLED_THEN_STUDIED = [
+    "2000|2440|01/05/2000 01:03:53 PM|HB1171|H|Introduced and ref to Judiciary;  HJ5, p89|01/05/2000 01:03:53 PM",
+    "2000|2440|01/05/2000 01:28:07 PM|HB1171|H|Copy to Chairman on   12/22/1999|01/05/2000 01:28:07 PM",
+    "2000|2440|01/05/2000 01:33:29 PM|HB1171|H|Hearing  Feb 8  11:00  RM208,LOB|01/05/2000 01:33:29 PM",
+    "2000|2440|02/22/2000 04:26:27 PM|HB1171|H|Maj Report   OTP   for   Mar  9      (vote 10-3;CC)|02/22/2000 04:26:27 PM",
+    "2000|2440|03/09/2000 11:04:31 AM|HB1171|H|Passed (Cons Cal by 2/3VV);  HJ22, p626 + 658|03/09/2000 11:04:31 AM",
+    "2000|2440|03/16/2000 10:54:22 AM|HB1171|S|Introduced and Ref. to Finance; SJ 6, Pg.195|03/16/2000 10:54:22 AM",
+    "2000|2440|03/22/2000 09:57:33 AM|HB1171|S|Hearing March 31, Room 103, SH, 1:30 p.m.., SC18, Pg.24|03/22/2000 09:57:33 AM",
+    "2000|2440|04/19/2000 04:02:24 PM|HB1171|S|Committee Report Inexpedient to Legislate, 4/20/2000 ; SC24|04/19/2000 04:02:24 PM",
+    "2000|2440|04/20/2000 01:01:59 PM|HB1171|S|Inexpedient to Legislate, MA, VV ==KILLED==; SJ 11, Pg.305|04/20/2000 01:01:59 PM",
+    "2000|2440|04/27/2000 10:45:31 AM|HB1171|S|Sen. J. King served notice of reconsideration; SJ 12, Pg.325|04/27/2000 10:45:31 AM",
+    "2000|2440|05/18/2000 01:01:14 PM|HB1171|S|Sen. Trombly Moved Reconsideration, MA, VV; Sen. J. King Ought to Pass, MA, VV; SJ 15, Pg.476|05/18/2000 01:01:14 PM",
+    "2000|2440|05/18/2000 01:02:55 PM|HB1171|S|Sen. J. King Floor Amendment{4465},[New Title],not voted on; SJ 15, Pg.476-477|05/18/2000 01:02:55 PM",
+    "2000|2440|05/18/2000 06:19:39 PM|HB1171|S|Sen. Franoueur Moved Interim Study, MA, VV; SJ 15, Pg.478|05/18/2000 06:19:39 PM",
+]
+
+
+@check("frontend", "interim study is the rail's orange \"~\" and a bill on the table now its graphite "
+                   "pause, a dead bill's cross kept; apart by shape, said aloud and drawn in forced "
+                   "colours, and the two chips in the same inks",
+       needs=("narrative", "build_site_v2"))
+def _rail_study_and_table_marks(N, B):
+    """THE PERSON'S MARKS OF 8 OCTOBER 2026, and the two chips' inks with them.
+    A chamber that held a bill for
+    interim study drew the red cross of a bill killed; a bill lying on a
+    table it could still come off drew the ring of a bill moving. Now:
+
+      * HB 561 of 2026, sent to interim study by the House on 7 January 2026,
+        has an orange disc with a white "~" on the House stop, on its list
+        card and on its own page, and the same "~", bare, on its How it got
+        here line; a reader who hears the rail hears "sent to interim study".
+      * HB 1043 of 2026, laid on the Senate's table on 7 May 2026, drawn as it
+        stood while the session still sat (live, its chip Tabled), has a
+        graphite disc with two white bars there and on the line that laid it
+        there, and is heard "on the table". Drawn as it stands, dead on the
+        table when the session ended, it keeps the red cross and the line's
+        turning arrow.
+      * The four filled marks differ in shape -- check, cross, wave, two bars
+        -- which is what tells them apart in greyscale, where their inks sit
+        within a few points of lightness; forced colours keep the wave's disc
+        and the pause's bars in the system's text colour; print keeps their
+        ground; and the Interim Study and Tabled chips take the orange and the
+        graphite.
+    Built from the real rows through narrative.build, the journey, passage,
+    chip_word and journey_rail, and drawn by app.js in node."""
+    term = "2025-2026"
+    cases = {}
+    for name, bill, lines, kind, status, live in (
+            ("study", "HB561", _CONSENT_REREFERRED[("HB561", term)], "study",
+             "Referred for interim study", True),
+            ("table", "HB1043", _TABLED_ROWS, "active", "Laid on the table", True),
+            ("died", "HB1043", _TABLED_ROWS, "done", "Died on the table", False)):
+        narr = _narrated(N, term, bill, lines)
+        intro, steps = B.journey(narr, bill, [], "", "")
+        passed = {c for c in "HS" if B.journey_state(steps, c) == "p"}
+        acted = list(dict.fromkeys(s["body"] for s in steps if s["body"] in "HS"))
+        rail = B.passage(narr["stages"], kind, status, bill, passed, acted)
+        chip = B.chip_word(kind, status, live)
+        jrail = B.journey_rail(intro, steps, rail, bill, status, chip=chip)
+        cells = B.index_rail(jrail)
+        for s in steps + jrail:
+            s.pop("short", None)
+            s.pop("effective", None)
+        cases[name] = {"id": bill, "passage": rail, "chip": chip, "cells": cells,
+                       "steps": steps, "jrail": jrail}
+    bad = []
+    marks = {k: [(s["stop"], s["mark"]) for s in c["jrail"]] for k, c in cases.items()}
+    lines = {k: [(s["act"], s["mark"]) for s in c["steps"] if s["body"] in "HS"]
+             for k, c in cases.items()}
+    if (cases["study"]["chip"], cases["study"]["passage"]) != ("Interim Study", "Hx---") or \
+            ("House", "s") not in marks["study"] or ("study", "s") not in lines["study"]:
+        bad.append(f"HB 561's rail and lines are {marks['study']} {lines['study']}, chip "
+                   f"{cases['study']['chip']!r}, passage {cases['study']['passage']!r}")
+    if cases["table"]["chip"] != "Tabled" or ("Senate", "t") not in marks["table"] or \
+            lines["table"][-1:] != [("tabled", "t")]:
+        bad.append(f"HB 1043 on the table now reads {marks['table']} {lines['table'][-2:]}, "
+                   f"chip {cases['table']['chip']!r}")
+    if cases["died"]["chip"] != "Died" or ("Senate", "x") not in marks["died"] or \
+            ("tabled", "h") not in lines["died"] or any(m in ("s", "t") for _s, m in marks["died"]):
+        bad.append(f"HB 1043 dead on the table reads {marks['died']} {lines['died'][-2:]}")
+    if [c[0] for c in cases["study"]["cells"]][:2] != ["Ip", "Hs"] or \
+            [c[0] for c in cases["table"]["cells"]][2] != "St":
+        bad.append("the list card's stops do not carry the marks: "
+                   f"{cases['study']['cells']} {cases['table']['cells']}")
+    # THE STOP SAYS WHAT ITS MARK SAYS (the review of 8 October 2026): HB 1171
+    # of 2000, killed by the Senate on 20 April 2000, the kill reconsidered,
+    # and sent to interim study on 18 May, drew the "~" over the kill's words
+    # and day. Its "~" is dated and worded from the interim study line.
+    narr = _narrated(N, "1999-2000", "HB1171", _KILLED_THEN_STUDIED)
+    intro, steps = B.journey(narr, "HB1171", [], "", "")
+    passed = {c for c in "HS" if B.journey_state(steps, c) == "p"}
+    acted = list(dict.fromkeys(s["body"] for s in steps if s["body"] in "HS"))
+    rail = B.passage(narr["stages"], "study", "Referred for interim study", "HB1171", passed, acted)
+    jrail = B.journey_rail(intro, steps, rail, "HB1171", "Referred for interim study",
+                           chip=B.chip_word("study", "Referred for interim study", False))
+    sen = next((s for s in jrail if s["stop"] == "Senate"), {})
+    if (sen.get("mark"), sen.get("date")) != ("s", "2000-05-18") or \
+            "interim study" not in (sen.get("say") or "").lower() or \
+            "killed" in (sen.get("say") or "").lower():
+        bad.append(f"HB 1171 of 2000's Senate stop is {sen!a}, not the \"~\" of 18 May 2000 in "
+                   "the interim study line's words")
+    if ["Ss", "2000-05-18"] != (B.index_rail(jrail)[2][:2] if len(jrail) > 2 else None):
+        bad.append(f"HB 1171 of 2000's list card reads {B.index_rail(jrail)!a}")
+
+    data = json.dumps({k: {kk: c[kk] for kk in ("id", "passage", "chip", "cells", "steps", "jrail")}
+                       for k, c in cases.items()})
+    got = _app_js(
+        "(x => Object.fromEntries(Object.entries(x).map(([k, c]) => [k, {"
+        "card: scope.datedRail({id: c.id, passage: c.passage, chip: c.chip, rail: c.cells}),"
+        "page: scope.datedRail({id: c.id, passage: c.passage, chip: c.chip},"
+        " {journey: {steps: c.steps, rail: c.jrail}}),"
+        "bare: scope.rail({id: c.id, passage: c.passage, chip: c.chip}),"
+        "how: scope.journeyList({id: c.id}, {journey: {steps: c.steps}})}])))(" + data + ")",
+        names=("datedRail", "rail", "journeyList"))
+    drew = "node is not here to draw them"
+    if got is not None:
+        wave = '<b><svg class="wave"'
+        stop = lambda html, cls: re.search(rf'<span class="stop {cls}"[^>]*>\s*(<b>.*?</b>)', html, re.S)
+        for where in ("card", "page", "bare"):
+            st, tb, dd = got["study"][where], got["table"][where], got["died"][where]
+            if not (stop(st, "s-istudy") and wave in st and 'class="stop s-x"' not in st):
+                bad.append(f"HB 561's {where} rail is not the orange \"~\": {st[:300]!a}")
+            m = stop(tb, "s-ontable")
+            if not (m and m.group(1) == "<b></b>"):
+                bad.append(f"HB 1043's {where} rail on the table now is not the pause: {tb[:300]!a}")
+            if not (stop(dd, "s-x") and "✕" in dd and "s-ontable" not in dd):
+                bad.append(f"HB 1043's {where} rail, dead on the table, has lost its cross: {dd[:300]!a}")
+        said = {k: (re.search(r'aria-label="([^"]*)"', got[k]["card"]) or [None, ""])[1] for k in got}
+        if "House: sent to interim study, 7 January 2026" not in said["study"] or \
+                "interim study, interim study" in said["study"]:
+            bad.append(f"HB 561's card is heard {said['study']!a}")
+        if "Senate: on the table, 7 May 2026" not in said["table"]:
+            bad.append(f"HB 1043's card on the table is heard {said['table']!a}")
+        if "sent to interim study" not in (re.search(r'aria-label="([^"]*)"', got["study"]["page"])
+                                           or [None, ""])[1].lower():
+            bad.append("HB 561's page does not say interim study to a reader who hears it")
+        if not re.search(r'<li class="j-istudy"><span class="jg"\s*aria-hidden="true"><svg class="wave"',
+                         got["study"]["how"]):
+            bad.append(f"HB 561's How it got here line is not the bare \"~\": {got['study']['how'][-400:]!a}")
+        if not re.search(r'<li class="j-ontable"><span class="jg"\s*aria-hidden="true"></span>'
+                         r'<span class="jb">Senate', got["table"]["how"]):
+            bad.append(f"HB 1043's line on the table now is not the pause: {got['table']['how'][-400:]!a}")
+        if not re.search(r'<li class="j-h"><span class="jg"\s*aria-hidden="true">↺</span>'
+                         r'<span class="jb">Senate', got["died"]["how"]):
+            bad.append(f"HB 1043's line, dead on the table, lost its arrow: {got['died']['how'][-400:]!a}")
+        drew = "app.js draws them on the card, the page, the bare rail and How it got here"
+
+    # SHAPE, NOT INK ALONE: four filled marks, four glyphs.
+    js = Path("src/pages/app.js").read_text(encoding="utf-8")
+    css = Path("src/pages/app.css").read_text(encoding="utf-8")
+    flat = re.sub(r"/\*.*?\*/", "", css, flags=re.S)
+    mk = re.search(r'const RAILMARK=\{p:"\\u2713", x:"\\u2715", h:"", "-":"", s:WAVE, t:""\};', js)
+    if not (mk and re.search(r"const WAVE='<svg class=\"wave\"[^;]*<path ", js)):
+        bad.append("the rail's marks are not check, cross and a drawn wave, with the pause's bars drawn by CSS")
+    if not re.search(r"\.stop\.s-ontable b::after\{[^}]*border-left:2px solid var\(--surface\);"
+                     r"border-right:2px solid var\(--surface\)", flat):
+        bad.append("the pause's two bars are not drawn")
+    for sel, ink in ((".stop.s-istudy b", "st-study"), (".stop.s-ontable b", "st-table")):
+        if not re.search(re.escape(sel) + r"\{background:var\(--" + ink + r"\);border-color:var\(--"
+                         + ink + r"\)", flat):
+            bad.append(f"{sel} is not a disc filled in --{ink}")
+    if not re.search(r'"Interim Study":"s-study",\s*"Tabled":"s-table"', js) or \
+            not re.search(r"\.s-table\{background:var\(--st-table-bg\);color:var\(--st-table\)\}", flat):
+        bad.append("the Interim Study and Tabled chips are not in the marks' inks")
+    fc = re.findall(r"@media \(forced-colors: active\)\{(.*?)\n\}", css, re.S)
+    if not any(re.search(r"\.stop\.s-istudy b\{forced-color-adjust:none;background:CanvasText", b)
+               and re.search(r"\.stop\.s-ontable b::after\{border-color:CanvasText", b) for b in fc):
+        bad.append("in forced colours the \"~\" or the pause becomes the empty ring of a stop not reached")
+    pr = re.findall(r"([^{}]+)\{\s*-webkit-print-color-adjust:exact;print-color-adjust:exact\}", flat)
+    if not any(".stop.s-istudy b" in g and ".stop.s-ontable b" in g for g in pr):
+        bad.append("on paper the \"~\" or the pause prints as an empty ring")
+    # THE INKS, light and dark: the sheet's.
+    want = {"st-study": ("#B9420B", "#F59A55"), "st-table": ("#56616C", "#B3BDC7")}
+    blocks = (css[css.index(":root{"):css.index("/* DARK:OS")],
+              css[css.index("/* DARK:OS"):css.index("/* DARK:CHOSEN")],
+              css[css.index("/* DARK:CHOSEN"):css.index("/* PALETTE END")])
+    for tok, (light, dark) in want.items():
+        for blk, hexv in zip(blocks, (light, dark, dark)):
+            if not re.search(rf"--{tok}:{hexv};", blk, re.I):
+                bad.append(f"--{tok} is not {hexv} where the sheet says")
+    assert not bad, "; ".join(bad[:4])
+    return "ok", ("HB 561's House stop and line are the orange \"~\", HB 1043 on the table now "
+                  "the graphite pause, dead on the table the cross; check, cross, wave and bars; "
+                  f"forced colours, print and the two chips kept; {drew}")
 
 
 @check("data", "every index rail keeps its stops' words apart on a phone")
@@ -30144,6 +30357,184 @@ def _session_clause_names_question(SD, BSP):
                   "clause; a Senate amendment row's third reading and a motion to divide "
                   "drawn as themselves; a counted division never a voice vote; no ballots "
                   "pointer without a roll call; a removal said and no more")
+
+
+# Real rows: Docket.txt 259, 1263, 2361, 3183, 11673 and 13226 (SB 39 of 2025,
+# re-referred on the Senate's consent calendar of 13 February 2025 and sent to
+# interim study on 7 January 2026); Docket_2015-2016.txt 17031-17034 (SB 18 of
+# 2015, re-referred on 12 February 2015); Docket.txt 907, 3843, 11604 and 13115
+# (HB 561, sent to interim study on the House's consent calendar of 7 January
+# 2026).
+_CONSENT_REREFERRED = {
+    ("SB39", "2025-2026"): [
+        "2026|0488|1/7/2025 1:25:06 PM|SB39|S|  Introduced 01/08/2025 and Referred to Transportation;  SJ 2|1/8/2025 11:28:18 AM",
+        "2026|0488|1/22/2025 4:01:45 PM|SB39|S| Hearing: 01/28/2025, Room 101, LOB, 01:00 pm;  SC 7|1/22/2025 4:01:45 PM",
+        "2026|0488|2/5/2025 3:28:48 PM|SB39|S|Committee Report: Rereferred to Committee, 02/13/2025; Vote 5-0; CC; SC 9|2/5/2025 3:28:48 PM",
+        "2026|0488|2/13/2025 2:01:33 PM|SB39|S|Rereferred to Committee, MA, VV; 02/13/2025;  SJ 5|2/13/2025 2:01:33 PM",
+        "2026|0488|10/29/2025 2:57:50 PM|SB39|S|Committee Report: Referred to Interim Study, 01/07/2026; Vote 5-0; CC;  SC 46|12/9/2025 2:09:44 PM",
+        "2026|0488|1/7/2026 11:46:13 AM|SB39|S|Refer to Interim Study, MA, VV; 01/07/2026;  SJ 1|1/7/2026 11:46:13 AM"],
+    ("SB18", "2015-2016"): [
+        "2016|0886|1/7/2015 12:00:00 AM|SB18|S|Introduced and Referred to Commerce; SJ 2|1/7/2015 12:00:00 AM",
+        "2016|0886|1/15/2015 12:00:00 AM|SB18|S|Hearing: 1/22/15, Room 101, LOB, 9:00 a.m.; SC6|1/15/2015 12:00:00 AM",
+        "2016|0886|2/5/2015 12:00:00 AM|SB18|S|Committee Report: Rereferred to Committee, 2/12/15; Vote 5-0; CC; SC9|2/5/2015 12:00:00 AM",
+        "2016|0886|2/12/2015 12:00:00 AM|SB18|S|Rereferred to Committee, MA, VV, SJ 5|2/12/2015 12:00:00 AM"],
+    ("HB561", "2025-2026"): [
+        "2026|0001|1/16/2025 9:07:34 AM|HB561|H|  Introduced (in recess of) 01/09/2025 and referred to Public Works and Highways  HJ 3  P. 16|2/18/2025 2:56:59 PM",
+        "2026|0001|2/25/2025 10:06:33 AM|HB561|H|Retained in Committee|2/25/2025 10:06:33 AM",
+        "2026|0001|10/20/2025 2:38:48 PM|HB561|H| Committee Report: Refer for Interim Study  10/14/2025 (Vote 16-0; CC)  HC 51  P. 16|12/19/2025 2:00:07 PM",
+        "2026|0001|1/7/2026 11:32:01 AM|HB561|H|Refer for Interim Study: MA VV 01/07/2026  HJ 1  P. 77|3/27/2026 3:15:36 PM"],
+}
+
+
+@check("session", "a re-referral on a consent calendar is listed as sent back to committee, "
+                  "and only a referral to interim study as sent to interim study",
+       needs=("narrative", "session_days", "build_session_pages"))
+def _consent_rereferral_not_study(N, SD, BSP):
+    """THE REVIEW OF 8 OCTOBER 2026. The consent calendar's list on a sitting
+    page groups its bills by what the motion did (build_session_pages.SHORT),
+    and "re-refer" and "rerefer" were in the interim study row: every Senate
+    "Rereferred to Committee, MA, VV" was listed under "Sent to interim
+    study" -- 160 entries on the Senate's pages, 32 of them this term -- for
+    bills the Senate had sent back to the committee that reported them, as
+    each bill's own How it got here says ("Sent back to committee"). SB 39 of
+    2025 was re-referred on 13 February 2025 and sent to interim study on 7
+    January 2026, and each day's list says its own. Read from the real rows,
+    through the reader and the sitting's Item, as the build reads them."""
+    import html as _html
+    got, bad = {}, []
+    for (bill, term), lines in _CONSENT_REREFERRED.items():
+        told = _narrated(N, term, bill, lines)
+        for e in told["events"]:
+            if e.get("type") != "floor" or e.get("cancelled"):
+                continue
+            it = SD.Item(bill, term, e, 0)
+            it.consent = True
+            page = BSP.consent_html([it], [], {}, {(term, bill): int(term[5:])}, _html.escape)
+            heads = re.findall(r'<h3 class="slab">(.*?) &mdash; \d+</h3>', page)
+            got[(bill, e.get("date"))] = heads
+    want = {("SB39", "2025-02-13"): ["Sent back to committee"],
+            ("SB18", "2015-02-12"): ["Sent back to committee"],
+            ("HB561", "2026-01-07"): ["Sent to interim study"]}
+    for k, heads in want.items():
+        if got.get(k) != heads:
+            bad.append(f"{k[0]} on {k[1]} is listed under {got.get(k)}, not {heads}")
+    if any(h == ["Sent to interim study"] for (b, d), h in got.items()
+           if (b, d) in (("SB39", "2025-02-13"), ("SB18", "2015-02-12"))):
+        bad.append("a Senate re-referral is listed as sent to interim study")
+    for words, head in (("Rerefer to Interim Study", "Sent to interim study"),
+                        ("Re-Refer to Committee", "Sent back to committee")):
+        it = SD.Item("SB1", "2025-2026", {"type": "floor", "body": "S", "action": words,
+                                          "motion": "MA", "vote_kind": "VV", "raw": words}, 0)
+        if BSP.short_outcome(it) != head:
+            bad.append(f"{words!r} is listed under {BSP.short_outcome(it)!r}, not {head!r}")
+    assert not bad, "; ".join(bad)
+    return "ok", ("SB 39 of 2025 and SB 18 of 2015, re-referred on the Senate's consent "
+                  "calendar, are listed as sent back to committee; HB 561's referral to "
+                  "interim study as sent to interim study")
+
+
+# Real rows, from the enrolment on: Docket.txt 23929, 23976, 24543, 25150,
+# 25151 and 25228 (SB 468 of 2026, "Law Without Signature"); 24809, 24853,
+# 25064, 25128, 25153 and 25229 (HB 1102, "Enacted in accordance with Article
+# 44 ..."); Docket_db_1999-2000.txt 12073-12079 (SB 153 of 2000: "Vetoed by the
+# Govenor", "Governers", "= VETO OVERRIDE="); Docket_db_2003-2004.txt 4184-4189
+# (HB 724 of 2003, "Veto Override,SJ 22") and 11055-11061 (HB 520 of 2004, the
+# Senate's answer on a row under its question); Docket.txt 10295, 10336 and
+# 10677 (HB 81 of 2025, which the governor neither signed nor returned).
+_OVERRIDDEN_LAWS = {
+    ("SB468", "2025-2026"): [
+        "2026|2244|5/28/2026 9:44:36 AM|SB468|S|Enrolled Adopted, VV, (In recess 05/21/2026);  SJ 14|5/28/2026 2:01:27 PM",
+        "2026|2244|5/28/2026 1:58:49 PM|SB468|H|Enrolled (in recess of) 05/21/2026  HJ 14  P. 34|7/27/2026 12:57:17 PM",
+        "2026|2244|6/19/2026 3:37:48 PM|SB468|S|Vetoed by Governor 06/12/2026|6/19/2026 3:37:48 PM",
+        "2026|2244|8/19/2026 3:23:03 PM|SB468|S|Notwithstanding the Governor's Veto, Shall SB 468 Become Law: RC 16Y-8N, Veto Overridden by necessary two-thirds vote; 08/19/2026;  SJ 15|8/19/2026 3:30:05 PM",
+        "2026|2244|8/19/2026 3:23:15 PM|SB468|H|Veto Overridden 08/19/2026: RC 257-44 by Required Two-Thirds Vote  HJ 16  P. 58|9/4/2026 11:12:45 AM",
+        "2026|2244|8/20/2026 3:32:29 PM|SB468|S|Law Without Signature 08/19/2026; Chapter 344; Effective 08/19/2026; Art 44, Pt II, NH Constitution|8/20/2026 3:32:29 PM"],
+    ("HB1102", "2025-2026"): [
+        "2026|2492|6/30/2026 10:45:10 AM|HB1102|S|Enrolled Adopted, VV, (In recess 06/04/2026);  SJ 15|6/30/2026 10:45:10 AM",
+        "2026|2492|7/1/2026 9:07:05 AM|HB1102|H|Enrolled (in recess of) 06/04/2026  HJ 15  P. 56|8/31/2026 10:51:04 AM",
+        "2026|2492|7/16/2026 1:44:58 PM|HB1102|H|Vetoed by Governor Ayotte 07/10/2026|7/16/2026 1:44:58 PM",
+        "2026|2492|8/19/2026 11:23:40 AM|HB1102|H|Veto Overridden 08/19/2026: RC 231-88 by Required Two-Thirds Vote  HJ 16  P. 21|9/4/2026 10:05:34 AM",
+        "2026|2492|8/19/2026 3:24:12 PM|HB1102|S|Notwithstanding the Governor's Veto, Shall HB 1102 Become Law: RC 24Y-0N, Veto Overridden by necessary two-thirds vote; 08/19/2026;  SJ 15|8/19/2026 3:24:12 PM",
+        "2026|2492|8/20/2026 4:26:09 PM|HB1102|H|Enacted in accordance with Article 44 PartII of the N.H. Constitution without the signature of the governor. Chapter 338;eff.  I. Sec 2 eff 1/1/27  II. Sec 3 eff 1/1/27   III. Rem eff 1/1/28|8/20/2026 4:26:09 PM"],
+    ("SB153", "1999-2000"): [
+        "2000|0879|05/31/2000 03:29:03 PM|SB153|S|Enrolled Bill, Adopted; SJ 16, Pg.624|05/31/2000 03:29:03 PM",
+        "2000|0879|05/31/2000 03:54:21 PM|SB153|H|Enrolled;  HJ50, p1567|05/31/2000 03:54:21 PM",
+        "2000|0879|07/05/2000 10:29:40 AM|SB153|S|Vetoed by the Govenor;|07/05/2000 10:29:40 AM",
+        "2000|0879|07/12/2000 04:39:41 PM|SB153|S|Notwithstanding the Governers Veto Shall the Bill Pass;          RC 18y - 5n;   = VETO OVERRIDE=|07/12/2000 04:39:41 PM",
+        "2000|0879|07/12/2000 04:51:48 PM|SB153|S|SJ 17, Pg.628-629|07/12/2000 04:51:48 PM",
+        "2000|0879|07/12/2000 09:14:36 PM|SB153|H|Governor's Veto Overridden RC(243-71);  HJ56, p1756-1757|07/12/2000 09:14:36 PM",
+        "2000|0879|07/12/2000 09:21:52 PM|SB153|S|Became Law Without Signature on   7/12/2000   Eff:  7/1/2001   Chap:  0328|07/12/2000 09:21:52 PM"],
+    ("HB724", "2003-2004"): [
+        "2003|0538|06/24/2003 10:27:21 AM|HB724|S|Enrolled; SJ 20, Pg.828|06/24/2003 10:27:21 AM",
+        "2003|0538|06/24/2003 10:45:34 AM|HB724|H|Enrolled;  HJ 51, p1615|06/24/2003 10:45:34 AM",
+        "2003|0538|07/08/2003 09:49:19 AM|HB724|H|Vetoed by the Governor on 7/8/2003;  (Veto message printed  HC 53, p1655-1656)|07/08/2003 09:49:19 AM",
+        "2003|0538|09/04/2003 10:52:49 AM|HB724|H|Veto Overridden  RC(251-101);  HJ 74, p 1896-1898|09/04/2003 10:52:49 AM",
+        "2003|0538|09/04/2003 11:36:36 AM|HB724|S|Notwithstanding the Governors Veto Shall the Bill Become Law, RC 23Y- 1N,Veto Override,SJ 22, Pg.875|09/04/2003 11:36:36 AM",
+        "2003|0538|09/04/2003 02:31:36 PM|HB724|H|Became Law Without Signature on 9/4/2003 Eff: 6/30/2003 Chap: 0320|09/04/2003 02:31:36 PM"],
+    ("HB520", "2003-2004"): [
+        "2004|0399|05/06/2004 01:19:38 PM|HB520|S|Enrolled; SJ 15, Pg.449|05/06/2004 01:19:38 PM",
+        "2004|0399|05/06/2004 03:22:47 PM|HB520|H|Enrolled;  HJ 39, p 1541|05/06/2004 03:22:47 PM",
+        "2004|0399|05/17/2004 02:15:35 PM|HB520|H|Vetoed by the Governor;  (Veto message printed:  HC 40, p 1566)|05/17/2004 02:15:35 PM",
+        "2004|0399|06/17/2004 11:02:39 AM|HB520|H|Veto Overridden RC(290-52);  HJ 46, p 1655-1657|06/17/2004 11:02:39 AM",
+        "2004|0399|06/17/2004 11:11:33 AM|HB520|S|Notwithstanding the Governors Veto Shall the Bill Become Law; SJ 17, Pg.584|06/17/2004 11:11:33 AM",
+        "2004|0399|06/17/2004 11:50:41 AM|HB520|S|2/3 nec. RC 18Y-6N, Veto Overridden; SJ 17, Pg.584|06/17/2004 11:50:41 AM",
+        "2004|0399|06/17/2004 12:51:56 PM|HB520|H|Became Law Without Signature on   6/17/2004   Eff:  1/1/2005   Chap: 0261|06/17/2004 12:51:56 PM"],
+    ("HB81", "2025-2026"): [
+        "2025|0105|6/16/2025 9:18:15 AM|HB81|S|Enrolled Adopted, VV, (In recess 06/12/2025);  SJ 17|6/16/2025 9:18:15 AM",
+        "2025|0105|6/16/2025 10:16:37 AM|HB81|H|Enrolled (in recess of) 06/12/2025  HJ 17  P. 24|7/15/2025 10:47:26 AM",
+        "2025|0105|6/27/2025 11:32:38 AM|HB81|H|Enacted in accordance with Article 44 Part II of the N.H. Constitution without the signature of the governor June 26 2025|6/27/2025 11:32:38 AM"],
+}
+# The override each chamber cast, as the history says it: (chamber, tally).
+_OVERRIDDEN_TOLD = {"SB468": [("Senate", "16–8"), ("House", "257–44")],
+                    "HB1102": [("House", "231–88"), ("Senate", "24–0")],
+                    "SB153": [("Senate", "18–5"), ("House", "243–71")],
+                    "HB724": [("House", "251–101"), ("Senate", "23–1")],
+                    "HB520": [("House", "290–52"), ("Senate", "18–6")]}
+
+
+@check("narrative", "a law the chambers made over a veto is told as vetoed and overridden in "
+                    "each chamber, never as one the governor neither signed nor returned",
+       needs=("narrative",))
+def _override_is_not_a_pocket_law(N):
+    """THE REVIEW OF 8 OCTOBER 2026. Part II, Article 44 makes a bill law two
+    ways -- the governor keeps it past five days, or returns it with a veto
+    two thirds of each chamber then overrule -- and the docket records both in
+    the same words: "Law Without Signature" (SB 468 of 2026), "Enacted in
+    accordance with Article 44 ... without the signature of the governor"
+    (HB 1102), "Became Law Without Signature" (the 1999-2006 readers). Every
+    such row was told "The governor neither signed it nor returned it", on 17
+    histories whose veto the chambers had overridden, 7 of them this term. And
+    on the seven of 1999-2004 the Senate's override was read by nothing: its
+    clerk wrote "Governers", "= VETO OVERRIDE=", "Veto Override", or the
+    answer on a row under its question (docket_era_1999.VETO_S_OLD and
+    VETO_S_OLD_ANSWER). Each is told from its real rows here: both chambers'
+    overrides with their counts, and the law as made over the veto; and a
+    bill the governor did neither sign nor return keeps the sentence that is
+    true of it."""
+    bad = []
+    for (bill, term), lines in _OVERRIDDEN_LAWS.items():
+        told = _narrated(N, term, bill, lines)
+        text = " ".join(s["text"] for s in told["stages"])
+        last = told["stages"][-1]["text"] if told["stages"] else ""
+        if bill == "HB81":
+            if "neither signed it nor returned it" not in last or "veto" in text.lower():
+                bad.append(f"HB 81 of 2025, a law the governor let pass, reads {last[:120]!r}")
+            continue
+        if "neither signed it nor returned it" in text:
+            bad.append(f"{bill} of {term} says the governor neither signed nor returned it")
+        if not last.startswith("It became law over the governor's veto"):
+            bad.append(f"{bill} of {term} ends {last[:90]!r}")
+        for chamber, tally in _OVERRIDDEN_TOLD[bill]:
+            if f"the {chamber} voted {tally} to override the governor's veto" not in text:
+                bad.append(f"{bill} of {term} does not tell the {chamber}'s override, {tally}")
+        order = " and the ".join(c for c, _t in _OVERRIDDEN_TOLD[bill])
+        if f"the {order} each overrode the veto" not in last:
+            bad.append(f"{bill} of {term}'s last sentence does not name both chambers, "
+                       f"in the order they overrode it: {last[:160]!r}")
+    assert not bad, "; ".join(bad)
+    return "ok", ("SB 468 and HB 1102 of 2026, SB 153 of 2000, HB 724 of 2003 and HB 520 of "
+                  "2004 each tell both chambers' overrides and a law made over the veto; "
+                  "HB 81 of 2025 keeps the governor's silence")
 
 
 # Real rows, as narrative.py reads them (body, date, the type the reader gives
@@ -37507,7 +37898,9 @@ def _chip_drawn():
     assert "threw" not in got, f"drawing the chips threw {got['threw']}"
     bad = []
     chips = re.findall(r'<span class="cstat ([^"]*)">([^<]*)</span>', got["list"])
-    want = {("s-done", "Died"), ("s-active", "Tabled"), ("s-active", "In committee"),
+    # Tabled in the graphite of the rail's pause (8 October 2026), not the
+    # amber of a stage still moving.
+    want = {("s-done", "Died"), ("s-table", "Tabled"), ("s-active", "In committee"),
             ("s-done", "Withdrawn"), ("s-law", "Became Law"), ("s-veto", "Vetoed"),
             ("s-study", "Interim Study")}
     if set(chips) != want or len(chips) != 8:
@@ -49192,7 +49585,18 @@ def _using_this_site_tabs(civics):
     votes = votes[:votes.index("</li>")]
     assert "appear in the narrative" not in votes and "voice or division vote" in votes, (
         "Using this site says the voice and division votes are not on the Votes tab: " + votes)
-    return "ok", f"names {', '.join(named)}, each a tab the page draws"
+    # AND EVERY OTHER CIVICS PAGE (the review of 8 October 2026). Using this
+    # site was mended and two pages were not: State agencies said "the bill's
+    # Videos tab links the recording", and Testifying "the Videos tab links
+    # it", of a tab the page calls Hearings. Every "the bill's X tab" and "the
+    # X tab" in civics' prose names a tab app.js draws.
+    prose = " ".join(v for k, v in vars(civics).items()
+                     if k.startswith("BODY_") and isinstance(v, str))
+    said = set(re.findall(r"\bthe (?:bill's )?((?:[A-Z][a-z]+ )?[A-Z][a-z]+) tab\b", prose))
+    stale = sorted(t for t in said if t not in drawn and t != "Bill Text")
+    assert not stale, f"the civics pages name tabs a bill's page does not have: {stale}"
+    return "ok", (f"names {', '.join(named)}, each a tab the page draws, and the other civics "
+                  f"pages name {', '.join(sorted(said)) or 'no tab'}")
 
 
 @check("frontend", "each count of bills filed in a term says what it counts: the bills and "
@@ -51538,6 +51942,12 @@ ok("the Co-sponsored tab is accepted", validate({ ...good, tab: "Co-sponsored (1
    validate({ ...good, tab: "Co-sponsored (12)" }).tab === "Co-sponsored");
 ok("a count in another locale's digits", validate({ ...good, tab: "Votes (1.081)" }) !== null);
 ok("a tab the pages do not render", validate({ ...good, tab: "Owner verified close all" }) === null);
+// The bill's Hearings tab by its name (8 October 2026), and by the name it had
+// on a page loaded before the rename, stored as the name it has now.
+ok("the Hearings tab is accepted as itself", validate({ ...good, tab: "Hearings (3)" }) &&
+   validate({ ...good, tab: "Hearings (3)" }).tab === "Hearings");
+ok("the tab's old name is stored as Hearings", validate({ ...good, tab: "Videos (3)" }) &&
+   validate({ ...good, tab: "Videos (3)" }).tab === "Hearings");
 ok("a variation selector is hidden text",
    cleanNote("the date" + String.fromCodePoint(0xFE0F) + " is wrong").hidden === true);
 const full = { DB: { prepare: sql => ({ bind: () => ({ first: async () => null,
@@ -51994,9 +52404,32 @@ def _report_agree(CR):
     rendered = set(re.findall(r'\["(Prime sponsored|Co-sponsored|Votes|Bills|Sessions)"', app))
     rendered |= {t for t in ("Summary", "Bill Text", "Votes", "Videos", "Reports", "Sponsors", "Documents")
                  if re.search(rf">{t}(\$\{{|<)", app)}
+    # READ OFF THE BUTTONS, NOT OFF A LIST OF NAMES (8 October 2026). The
+    # names above were the tabs as they stood on 12 September; when the bill's
+    # third tab became Hearings the list still said Videos, found no Videos
+    # drawn, and passed while the box sent no tab from Hearings. Every bill
+    # tab's button is `data-t="N">Label`, so the label is read from there.
+    rendered |= set(re.findall(r'role="tab"[^>]*data-t="\d+">([A-Z][A-Za-z ]*?)(?:\$\{|<)', app))
+    assert "Hearings" in rendered, "the bill's Hearings tab is no longer found among the tabs drawn"
     assert rendered <= box_tabs, f"a tab the pages render is missing from the report list: {sorted(rendered - box_tabs)}"
+    # A TAB'S OLD NAME (report.js RENAMED_TABS): a page loaded before a rename
+    # still sends it, and a report stored under it stays readable, under the
+    # name the tab has now.
+    rm = re.search(r"const RENAMED_TABS = new Map\(\[(.*?)\]\);", js, re.S)
+    assert rm, "report.js has no RENAMED_TABS"
+    fn_renamed = dict(re.findall(r'\[\s*"([^"]+)"\s*,\s*"([^"]+)"\s*\]', rm.group(1)))
+    assert fn_renamed == CR.RENAMED_TABS, (fn_renamed, CR.RENAMED_TABS)
+    assert all(new in fn_tabs and old not in fn_tabs and old not in rendered
+               for old, new in fn_renamed.items()), fn_renamed
+    stored = {"id": 7, "at": "2026-09-30T12:00:00.000Z", "record": "bill:2026/HB100",
+              "kind": "bill", "url": "/bill/2026/hb100", "tab": "Videos", "field": "hearing",
+              "note": "The hearing was on the 3rd.", "build": "", "hidden": 0}
+    assert CR.well_formed(stored), "a report stored from the Videos tab is set aside as malformed"
+    assert [r["tab"] for r, _why, _page in CR.judge([stored], {})[0]] == ["Hearings"], (
+        "a report stored from the Videos tab is not shown as the Hearings tab's")
     return "ok", (f"{len(fn_fields)} fields, one record shape, {len(sent)} keys sent and read, "
-                  f"{len(box_tabs)} tabs the same in all three")
+                  f"{len(box_tabs)} tabs the same in all three, {len(rendered)} drawn; "
+                  f"{', '.join(sorted(fn_renamed))} read as {', '.join(fn_renamed[k] for k in sorted(fn_renamed))}")
 
 
 REPORT_PAGES_TEST = r"""
@@ -66912,8 +67345,18 @@ def _journey_story(records, rows, B):
         if not why and p and rail:
             other = "Senate" if p[0] == "H" else "House"
             own = "House" if p[0] == "H" else "Senate"
+            # The rail's own marks for interim study and the table now refine
+            # the passage letter they stand in for (B.RAIL_REFINES), and
+            # only on the chip that draws them (B.RAIL_MARK_OF_CHIP).
+            mine = {v: k for k, v in B.RAIL_MARK_OF_CHIP.items()}
             for stop, m in zip((own, other, "Governor", "Law"), p[1:]):
-                if stop in marks and marks[stop] != m:
+                drawn = marks.get(stop)
+                if drawn in mine and (row.get("chip") != mine[drawn]
+                                      or stop not in ("House", "Senate")):
+                    why = (f"the bill's own rail marks {stop} {drawn!r} on a bill whose "
+                           f"chip is {row.get('chip')!r}")
+                    break
+                if stop in marks and B.RAIL_REFINES.get(drawn, drawn) != m:
                     why = f"the bill's own rail marks {stop} {marks[stop]!r} and the list card {m!r}"
                     break
         n["empty" if not steps else "disagree" if why else "agree"] += 1

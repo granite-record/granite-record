@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.215 */
+/* GRANITE_VERSION: 2026-09-07.216 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -103,11 +103,21 @@
    -- which is parked rather than dead. A veto keeps its own deeper red: the
    legislature did not kill it, and the two are worth telling apart.
    Every pair holds at least 5.4:1 against its own chip, which is why the
-   audit left them alone. */
+   audit left them alone.
+   INTERIM STUDY'S ORANGE AND THE TABLE'S GRAPHITE (the person, 8 October
+   2026, from a sheet that measures them). The study ink was a
+   brown, #94500E, and is the orange of the rail's "~" now: 4.66:1 as chip
+   text on its tint, 5.28:1 under the white wave on a card, 4.53:1 on the
+   page. --st-table is a bill lying on the table while the session sits: the
+   rail's pause and the Tabled chip, which was the amber of a stage still
+   moving and under protanopia the orange's twin. Graphite is near no other
+   ink on the site: 34 (CIEDE2000) from the orange and 32 from the kill red,
+   30 and 24 under protanopia; 4.99:1 as chip text, 6.11:1 under the bars. */
 --st-active:#7A5A00;--st-active-bg:#FBF2D9;
 --st-law:#1E5B3C;--st-law-bg:#E3EFE7;
 --st-done:#9E2B25;--st-done-bg:#FAE7E5;
---st-study:#94500E;--st-study-bg:#FCEEDF;
+--st-study:#B9420B;--st-study-bg:#FCEADB;
+--st-table:#56616C;--st-table-bg:#E0E5EA;
 --st-veto:#7C2D3A;--st-veto-bg:#F7E4E7;
 /* A MEETING'S KIND, in the General Court's own colours, because staff read
    its schedule by them: blue a hearing, green a work session, orange an
@@ -227,7 +237,8 @@ color-scheme:light}
 --st-active:#E3C46A;--st-active-bg:#3A3116;
 --st-law:#7FCB9C;--st-law-bg:#1C3A28;
 --st-done:#F0938C;--st-done-bg:#43211F;
---st-study:#EDAE6E;--st-study-bg:#402C14;
+--st-study:#F59A55;--st-study-bg:#45280F;
+--st-table:#B3BDC7;--st-table-bg:#2C3338;
 --st-veto:#EE9BA8;--st-veto-bg:#41222A;
 --cal-hear:#8FB4E8;--cal-hear-bg:#22304A;
 --cal-meet:#7FCB9C;--cal-meet-bg:#1C3A28;
@@ -275,7 +286,8 @@ color-scheme:dark}
 --st-active:#E3C46A;--st-active-bg:#3A3116;
 --st-law:#7FCB9C;--st-law-bg:#1C3A28;
 --st-done:#F0938C;--st-done-bg:#43211F;
---st-study:#EDAE6E;--st-study-bg:#402C14;
+--st-study:#F59A55;--st-study-bg:#45280F;
+--st-table:#B3BDC7;--st-table-bg:#2C3338;
 --st-veto:#EE9BA8;--st-veto-bg:#41222A;
 --cal-hear:#8FB4E8;--cal-hear-bg:#22304A;
 --cal-meet:#7FCB9C;--cal-meet-bg:#1C3A28;
@@ -1145,7 +1157,8 @@ line-height:1.1}
   --film:#000;--film-stub:#14181A;--film-stub-ink:#C8CFD1;--film-stub-hot:#1D2225;
   --edge:#767E86;--pine:#14514C;--pine-soft:#DFEBEA;
   --st-active:#7A5A00;--st-active-bg:#FBF2D9;--st-law:#1E5B3C;--st-law-bg:#E3EFE7;
-  --st-done:#9E2B25;--st-done-bg:#FAE7E5;--st-study:#94500E;--st-study-bg:#FCEEDF;
+  --st-done:#9E2B25;--st-done-bg:#FAE7E5;--st-study:#B9420B;--st-study-bg:#FCEADB;
+  --st-table:#56616C;--st-table-bg:#E0E5EA;
   --st-veto:#7C2D3A;--st-veto-bg:#F7E4E7;
   --cal-hear:#1F5594;--cal-hear-bg:#E3ECF7;--cal-meet:#1E5B3C;--cal-meet-bg:#E3EFE7;
   --cal-exec:#94500E;--cal-exec-bg:#FCEEDF;--cal-conf:#9E2B25;--cal-conf-bg:#FAE7E5;
@@ -1185,7 +1198,8 @@ line-height:1.1}
      printed as an empty band with the name nowhere on the sheet. The ground
      is part of what these say, so it is asked for. preflight holds every
      rule that sets type in --on-pine to this list or to the one above. */
-  .stop.s-p b,.stop.s-x b,.fhead .badge,.wkchips button[aria-pressed="true"],
+  .stop.s-p b,.stop.s-x b,.stop.s-istudy b,.stop.s-ontable b,
+  .fhead .badge,.wkchips button[aria-pressed="true"],
   .cmgrid td.cmpick,.calviews button[aria-pressed="true"],.cdopen,
   .calcat input:checked + .cbx,.searchbig button,.wbtn.sel,h1.lockup,
   .rtabs [role=tab][aria-selected=true]{
@@ -1519,6 +1533,36 @@ color:var(--surface)}
 color:var(--surface)}
 .stop.s-h b{background:var(--surface);border-color:var(--pine);border-width:3px;
 box-shadow:0 0 0 3px var(--pine-soft)}
+/* THE RAIL'S OWN TWO MARKS (the person, 8 October 2026, from a measured
+   sheet of the marks). A chamber that held the bill for interim
+   study is an orange disc with a white "~", and one whose table the bill
+   lies on while the session sits a graphite disc with two white bars: each a
+   filled disc of the check's and the cross's weight with a glyph of its own,
+   so greyscale -- where the four discs sit within a few points of lightness
+   -- still tells check, cross, wave and bars apart, and neither is ever the
+   empty ring of a stop not reached. The "~" is an SVG (app.js WAVE), so it
+   centres at any size; the bars are drawn here. A bill that died on the
+   table keeps the cross. */
+.stop.s-istudy b{background:var(--st-study);border-color:var(--st-study);
+color:var(--surface);display:grid;place-items:center;font-size:0}
+.stop b .wave{display:block;width:11px;height:11px}
+.stop.s-ontable b{background:var(--st-table);border-color:var(--st-table);
+display:grid;place-items:center;font-size:0}
+.stop.s-ontable b::after{content:"";display:block;width:6px;height:7px;box-sizing:border-box;
+border-left:2px solid var(--surface);border-right:2px solid var(--surface)}
+/* IN FORCED COLOURS the system paints every ground in its own colour, so a
+   filled disc would print as the empty ring of a stop not reached. The "~"
+   keeps its disc in the system's text colour with the wave cut out of it,
+   as the check and the cross keep their glyphs; the pause keeps its two
+   bars in the text colour inside the ring. */
+@media (forced-colors: active){
+  .stop.s-istudy b{forced-color-adjust:none;background:CanvasText !important;
+  border-color:CanvasText !important;color:Canvas !important}
+  .stop.s-ontable b{border-color:CanvasText !important}
+  .stop.s-ontable b::after{border-color:CanvasText;width:7px;height:8px;
+  border-left-width:2.5px;border-right-width:2.5px}
+  .jl .j-ontable .jg::after{border-color:CanvasText}
+}
 /* The three rules that set these labels to --ink-2 are gone: every stop's
    label is --ink-2 now, so there is nothing left for them to change. */
 /* A card head is a button, and the rail inside it must not look clickable. */
@@ -1581,6 +1625,8 @@ letter-spacing:.01em}
 .s-done{background:var(--st-done-bg);color:var(--st-done)}
 .s-veto{background:var(--st-veto-bg);color:var(--st-veto)}
 .s-study{background:var(--st-study-bg);color:var(--st-study)}
+/* The Tabled chip in its mark's graphite, as Interim Study is in its orange. */
+.s-table{background:var(--st-table-bg);color:var(--st-table)}
 /* An adopted resolution succeeded, so it reads like a bill that became
    law -- but it did not become law, and saying so would be false. Same
    colour, different word. */
@@ -2563,6 +2609,16 @@ column-gap:var(--sp-3);align-items:baseline;padding:var(--sp-1) 0}
 .jl .j-p .jg{color:var(--st-law)}
 .jl .j-x .jg{color:var(--st-done)}
 .jl .j-h .jg{color:var(--pine)}
+/* The rail's own two marks, bare, as the check and the cross are here: an
+   orange wave on the line that sent the bill to interim study, two graphite
+   bars on the line that laid it on the table it still lies on. */
+.jl .j-istudy .jg{color:var(--st-study);display:flex;align-items:center;
+justify-content:center;align-self:start;height:1.5em}
+.jl .j-istudy .jg .wave{width:1em;height:1em}
+.jl .j-ontable .jg{display:flex;align-items:center;justify-content:center;
+align-self:start;height:1.5em}
+.jl .j-ontable .jg::after{content:"";display:block;width:8px;height:.7em;box-sizing:border-box;
+border-left:2.5px solid var(--st-table);border-right:2.5px solid var(--st-table)}
 .jl .jb{font-weight:600}
 .jl .jd{color:var(--ink-2);font-size:var(--t-sm);white-space:nowrap;
 font-variant-numeric:tabular-nums}

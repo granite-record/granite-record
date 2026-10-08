@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-11.13
+# GRANITE_VERSION: 2026-09-11.14
 """
 The 1999-2006 docket's own vocabulary, mapped onto narrative.py's events.
 
@@ -367,10 +367,28 @@ REPORT_S_SIDE2 = re.compile(   # "Committee Majority Report, Ought to Pass W/Ame
     r"(?P<rec>[A-Z][^\[{(;,0-9]*?)(?:\s*[{(]\s*#?(?P<amend>\d{4}[a-z]?)\s*[})])?"
     r"(?=\s*(?:[\[{(;,]|\d|\bVote\b|$))(?P<rest>.*)$", re.I)
 # "Notwithstanding the Governors Veto Shall the Bill Pass, RC 10y - 14n, Veto Sustained"
+# AND THE SENATE'S OTHER WAYS OF WRITING THE ANSWER (8 October 2026). Read as
+# nothing, each was an override the history never told, on a bill whose last
+# line then said the governor had neither signed it nor returned it:
+# "Notwithstanding the Governers Veto Shall the Bill Pass; RC 18y - 5n; = VETO
+# OVERRIDE=" (SB 153 of 2000, Docket_db_1999-2000.txt line 12076), "...; RC
+# 14y-7n; =VETO OVERRIDE=" (HB 648 and HB 1343 of 2000), "..., RC 23Y- 1N,Veto
+# Override,SJ 22, Pg.875" (HB 724 of 2003). "Override" is the answer only
+# where it ends the row, its "=" mark or the words before the journal's
+# page, and normalise() reads it as "Overridden".
 VETO_S_OLD = re.compile(
-    r"^Notwithstanding\s+the\s+Governor'?s\s+Veto,?\s*Shall\s+the\s+Bill\s+(?:Pass|Become\s+Law)"
+    r"^Notwithstanding\s+the\s+Govern[eo]r'?s\s+Veto,?\s*Shall\s+the\s+Bill\s+(?:Pass|Become\s+Law)"
     r"[,;:=\s]*(?:(?P<vote>RC|VV|DV)\s*(?P<y>\d+)\s*Y?\s*[-–]\s*(?P<n>\d+)\s*N?)?[,;:=\s]*"
-    r"Veto\s+(?P<outcome>Sustained|Overridden)", re.I)
+    r"Veto\s+(?P<outcome>Sustained|Overridden|Override(?=\s*(?:=|$|[,;]\s*SJ\b)))", re.I)
+# The answer on a row of its own, under the question the row before asks:
+# "Notwithstanding the Governors Veto Shall the Bill Become Law; SJ 17,
+# Pg.584" and then "2/3 nec. RC 18Y-6N, Veto Overridden; SJ 17, Pg.584" (HB
+# 520 of 2004, lines 11059-11060), as HB 2004 and SB 470 of 2004 have it too,
+# and "2/3 nec. RC 12-11; Veto Sustained" of the vetoes the Senate of 2003 to
+# 2006 sustained. The question row stays unread: it decided nothing.
+VETO_S_OLD_ANSWER = re.compile(
+    r"^2/3\s*nec\.?\s*,?\s*(?P<vote>RC|VV|DV)\s*(?P<y>\d+)\s*Y?\s*[-–]\s*(?P<n>\d+)\s*N?"
+    r"\s*[,;]?\s*Veto\s+(?P<outcome>Sustained|Overridden)\b", re.I)
 # a special order with no vote recorded on the line: "Special Order to February 3, 2000"
 FLOOR_H_SPECIAL = re.compile(
     r"^(?!.*\b(?:MA|ML|MF)\b)(?:Without\s+Objection,?\s*)?"
@@ -392,6 +410,7 @@ OLD = [
     ("exec", EXEC),
     ("conference_meeting", CONF_MEET),
     ("veto_override", VETO_S_OLD),
+    ("veto_override", VETO_S_OLD_ANSWER),
     ("unsigned_law", UNSIGNED_OLD),
     ("amendment", AMEND_OLD),
     ("enrolled", ENROLLED_OLD),
@@ -881,6 +900,10 @@ def normalise(ev, created):
     # a line's clauses were. narrative.describe words this kind as the
     # committee minority's, and stage_of puts it on the floor, where the
     # minority offers it.
+    # The Senate's "= VETO OVERRIDE=" is the veto overridden (VETO_S_OLD), in
+    # the word narrative.describe reads.
+    if t == "veto_override" and (ev.get("outcome") or "").strip().lower() == "override":
+        ev["outcome"] = "Overridden"
     if t == "amendment":
         ev["what"] = amendment_kind(ev.get("what"))
     if t == "amendment" and ev.get("_era") == CLAUSE_AMENDMENT and not ev.get("vote"):
