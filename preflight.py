@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.442
+# GRANITE_VERSION: 2026-09-04.443
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -44619,10 +44619,31 @@ def _seat_chart_turned():
     assert svg, "the fixture's legislators page draws no seating chart"
     bad = upright(svg.group(0))
     assert not bad, "on the built page: " + "; ".join(bad)
+    # THE READOUT IS UNDER THE FLOOR, NOT ON IT (the review of 7 October
+    # 2026). Turned, the foot of the box is Division 3's back rows and its
+    # caption, and the strip that names a member was laid over it: wherever
+    # the box is shorter than the drawing -- 1366 by 900 -- it covered
+    # "Division 3". The note is the stage's last row, after the scrolling
+    # floor and in the flow, and it keeps its line when empty, so naming a
+    # member moves nothing on the page.
+    assert re.search(r'<div class="seatstage">\s*<div class="seatwrap"><svg [^>]*class="seatmap"'
+                     r'.*?</svg></div>\s*<p class="seatnote" id="seatnote"', page, re.S), (
+        "the readout is not the chart's stage's next row after its scrolling floor")
+    css = re.sub(r"/\*.*?\*/", "", Path("app.css").read_text(encoding="utf-8"), flags=re.S)
+    on_screen = re.sub(r"@media print\{(?:[^{}]*\{[^{}]*\})*\s*\}", "", css)
+    note = [(sel.strip(), body) for sel, body in re.findall(r"([^{}]*)\{([^{}]*)\}", on_screen)
+            if ".seatnote" in sel]
+    over = [sel for sel, body in note
+            if re.search(r"position:(absolute|fixed|sticky)|display:none|pointer-events:none", body)]
+    assert not over, f"the readout is laid over the floor or dropped when empty: {over}"
+    own = [body for sel, body in note if sel == ":where(body.pg) .seatnote"]
+    assert len(own) == 1 and "min-height:calc(1lh + 2 * var(--sp-3) + 2px)" in own[0], (
+        "the readout's row is not one line high whether or not it names anyone")
     return "ok", ("the rostrum at the top, Division 1 to 5 from left to right at mean x "
                   + ", ".join(f"{mean[d]:.0f}" for d in order)
                   + ", the seats in number order for the arrow keys, five captions and "
-                    "\"Speaker\" upright, on the chart and on the built page")
+                    "\"Speaker\" upright, on the chart and on the built page, and the readout "
+                    "a row under the floor")
 
 
 @check("frontend", "a note that stands for a section of the committees' pages takes the width it has")

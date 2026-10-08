@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.212 */
+/* GRANITE_VERSION: 2026-09-07.213 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -5269,7 +5269,8 @@ font-weight:600;color:var(--pine);text-decoration:none}
 :where(body.pg) .seatwrap{margin:var(--sp-4) 0 0;overflow:auto;
 touch-action:pan-x pan-y;cursor:grab;
 -webkit-overflow-scrolling:touch;max-height:78vh;
-border:1px solid var(--rule);border-radius:var(--r-in);background:var(--surface)}
+border:1px solid var(--rule);border-bottom:0;border-radius:var(--r-in) var(--r-in) 0 0;
+background:var(--surface)}
 /* NO MINIMUM WIDTH. It was 680px inside a sideways-scrolling box, which on a
    390px screen drew a seat about five pixels across -- under half the
    smallest thing a thumb reliably hits, and the whole floor visible is no use
@@ -5324,16 +5325,25 @@ justify-content:space-between;gap:var(--sp-3) var(--sp-5);margin-top:var(--sp-5)
    which on a phone put it off the top of the screen the moment a reader
    zoomed in and started moving about -- so the one thing a tap is for was
    the one thing they could not see. The stage holds the scrolling floor and
-   pins the readout across the bottom of it, out of the scroll. */
+   the readout is its last row, out of the scroll.
+
+   UNDER THE FLOOR, NOT ON IT. The readout was laid over the bottom of the
+   box, which was the rostrum while the chart was drawn as the plan is; with
+   the chart turned (7 October 2026) the bottom is Division 3's back rows and
+   its caption, and wherever the box is shorter than the drawing -- 1366 by
+   900, where 78vh is 702px and the floor 731px -- naming a member covered
+   "Division 3" (the review of 7 October 2026). So the box ends in a row of
+   its own, which is there when it is empty too, so that naming a member
+   moves nothing on the page -- one line high, padding and border included,
+   whether or not it names anyone -- and empty, it is the box's foot, with no
+   rule. */
 :where(body.pg) .seatstage{position:relative}
-:where(body.pg) .seatnote{position:absolute;left:0;right:0;bottom:0;
-margin:0;padding:var(--sp-3) var(--sp-5);min-height:1.5em;text-align:center;
-color:var(--ink-2);font-size:var(--t-ui);pointer-events:none;
-background:color-mix(in srgb, var(--surface) 88%, transparent);
-border-top:1px solid var(--rule);
+:where(body.pg) .seatnote{margin:0;padding:var(--sp-3) var(--sp-5);
+min-height:calc(1lh + 2 * var(--sp-3) + 2px);text-align:center;color:var(--ink-2);font-size:var(--t-ui);
+background:var(--surface);border:1px solid var(--rule);
 border-radius:0 0 var(--r-in) var(--r-in)}
-:where(body.pg) .seatnote:empty{display:none}
-:where(body.pg) .seatnote a{font-weight:600;color:var(--ink);pointer-events:auto}
+:where(body.pg) .seatnote:empty{border-top-color:var(--surface)}
+:where(body.pg) .seatnote a{font-weight:600;color:var(--ink)}
 :where(body.pg) .seatzoom{display:flex;gap:var(--sp-2);flex:0 0 auto}
 :where(body.pg) .seatzoom button{font:inherit;font-size:var(--t-ui);
 min-width:40px;min-height:40px;padding:0 var(--sp-4);cursor:pointer;
