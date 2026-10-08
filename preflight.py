@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.451
+# GRANITE_VERSION: 2026-09-04.452
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -6223,6 +6223,37 @@ def _clock_semicolon_manifests():
                 bad.append(f"{f.name} has {bill}'s hearing of {day} at {got!r}, not {hour}")
     assert not bad, "\n".join(bad)
     return "ok", f"{len(_CLOCK_SEMICOLON)} hearings at the hour their semicolon gives"
+
+
+@check("data", "SB 107 of 2023's House hearing of 5 April 2023 carries no recording time in the "
+               "2023-2024 manifest until the timestamp pass has scored one")
+def _sb107_time_held():
+    """HELD FOR THE TIMESTAMP PASS (the person's decision of 8 October 2026).
+    A full rebuild of 2023-2024 works out the recording match that the
+    meridiem fix of 18 September (82181fa) left as the kit had it: the docket
+    says "Public Hearing: 04/05/2023 01:30 am LOB 306-308" (Docket_2023-2024.txt
+    line 16093), read as 1:30 in the afternoon, and at that minute only one of
+    House Executive Departments and Administration's two recordings of the day
+    was on air, so the rebuilt row picks uU3lVfuRJAc and an approximate offset
+    of 3:26:49. Nobody has scored that time against the recording, and nothing
+    about timestamps goes on the site before probe_alignment has, so the
+    manifest sent carries the row's time fields as the kit's copy has them --
+    two recordings that day, pick manually, no video and no offset -- and a
+    rebuild that puts the time back is held here. When the dedicated
+    timestamp pass has scored it, this check goes with that pass."""
+    f = Path("verification_manifest_2023-2024.csv")
+    if not f.exists():
+        return "skip", f"no {f.name} here"
+    with f.open(encoding="utf-8", newline="") as fh:
+        got = [(r["match"], r["video_id"], r["stream_start"], r["predicted_offset"], r["watch_url"])
+               for r in csv.DictReader(fh)
+               if r["bill"] == "SB107" and r["body"].upper() == "H"
+               and r["proceeding"] == "public hearing" and r["sched_date"] == "2023-04-05"]
+    want = [("2 videos that day - pick manually", "", "", "", "")]
+    assert got == want, (f"{f.name} gives SB 107's House hearing of 5 April 2023 {got!r}: a time "
+                         "nobody has scored. Put back the kit's row for it (its line in the copy "
+                         "the bucket holds) until the timestamp pass decides it")
+    return "ok", "no recording time on it, as the kit has it, until the timestamp pass"
 
 
 @check("data", "SB 373 of 2002 and SB 79 and SB 395 of 1999-2000 each have the hearing their "
