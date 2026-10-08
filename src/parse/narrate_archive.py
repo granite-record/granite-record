@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-11.11
+# GRANITE_VERSION: 2026-09-11.12
 """
 Plain-language histories for every archived term whose docket is on disk.
 
@@ -146,7 +146,7 @@ def main():
         for line in (r.stdout or "").splitlines():
             if "docket_corrections.json" in line or "rows by LSR" in line:
                 print("    " + line.strip())
-            if "whole-day rule not applied" in line:
+            if "whole-day rule not applied" in line or "moved-session rule not applied" in line:
                 print("    " + line.strip())
                 unchecked.append(f"{term}: {line.strip()}")
             said = LSR_SAID.search(line)

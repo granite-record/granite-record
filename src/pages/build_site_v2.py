@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.173
+# GRANITE_VERSION: 2026-09-05.178
 """
 Generate the faceted site from real General Court data.
 
@@ -175,7 +175,51 @@ FRONT = re.compile(
 EXPLANATION = re.compile(r"^\s*Explanation:.*$", re.M | re.I)
 
 
-def bill_text_block(rec):
+# THE AMENDMENTS A TEXT SAYS IT CARRIES, BY THEIR OWN NUMBERS (the polish
+# survey of 7 October 2026). The text prints them short, "20Mar2025 0103h",
+# and fetch_bill_text gives each the year of the session its page is of:
+# HB 68 of 2025-2026, carried over into 2026, read "includes 2026-0103h",
+# where its history and docket say 2025-0103h, adopted on 20 March 2025 -- 76
+# numbers on 54 bills. The number the bill's own docket gives with that
+# short form is the amendment's: as its amendment and report rows give it,
+# or, where they give none, as any of its rows does -- once, so that a
+# clerk's slip elsewhere ("House Concurs with Senate Amendment 2026-3030s"
+# on HB 126, whose amendment rows say 2025-3030s) does not choose. One the
+# docket does not name is left as the page gave it. And one the text lists
+# twice (HB 126's heading repeats its two) is listed once.
+def amendments_in_text(stamps, narr):
+    """The text's [{"date", "short", "num"}] with each num the bill's
+    docket's own where the docket names that short form once (above), and
+    each amendment once."""
+    own, anywhere = defaultdict(set), defaultdict(set)
+
+    def put(to, num):
+        m = re.fullmatch(r"\d{4}-0*(\d+)([a-z])", (num or "").strip())
+        if m:
+            to[(int(m.group(1)), m.group(2))].add(num.strip())
+
+    for e in (narr or {}).get("events", []):
+        if e.get("type") in ("amendment", "report"):
+            put(own, e.get("amendment"))
+        for num in AMEND_ANY.findall(e.get("raw") or ""):
+            put(anywhere, num)
+    out, seen = [], set()
+    for s in stamps or []:
+        s = dict(s)
+        m = re.fullmatch(r"0*(\d+)([a-z])", (s.get("short") or "").strip())
+        key = (int(m.group(1)), m.group(2)) if m else None
+        full = own.get(key) or anywhere.get(key)
+        if full and len(full) == 1:
+            s["num"] = next(iter(full))
+        key = s.get("num") or s.get("short")
+        if key in seen:
+            continue
+        seen.add(key)
+        out.append(s)
+    return out
+
+
+def bill_text_block(rec, narr=None):
     """The analysis and the text itself, told apart."""
     if not rec:
         return None
@@ -207,7 +251,7 @@ def bill_text_block(rec):
             "analysis": analysis,
             **({"fiscal": note} if note else {}),
             "body": rest.strip(),
-            "in_text": rec.get("amendments_in_text") or [],
+            "in_text": amendments_in_text(rec.get("amendments_in_text"), narr),
             "chars": len(body)}
 
 
@@ -385,6 +429,19 @@ def vote_chronology(rcs, narr):
     wrong vote -- so nothing is claimed and the votes fall back to their own
     numbering.
 
+    AND AN AMENDMENT IS NAMED BY THE ROW WHOSE COUNT IS ITS ROLL CALL'S (the
+    launch audit's recheck of 7 October 2026). The counts of a day can agree
+    and its order not: HB 1711 of 2024's floor amendment 2024-1358h, "FLAM #
+    2024-1358h ...: AF RC 101-252", was entered the day after the passage it
+    preceded, so the docket's order put it second, and roll call 197 -- the
+    passage, 204-149 -- was named as that amendment; HB 2 of 2025's 1526h and
+    1560h were entered in the other order from their votes, 195-175 and
+    203-167, and each roll call carried the other's number. On 38 days of 37
+    bills a row so paired states a count its roll call does not have. The
+    order is still the docket's sequence; the name is the row's whose count,
+    and kind (an amendment or not), the roll call carries (_paired_by_count),
+    and a row whose count no roll call of the day carries names nothing.
+
     Returns (order, names) keyed by (body, roll call number).
     """
     lines = defaultdict(list)
@@ -407,13 +464,70 @@ def vote_chronology(rcs, narr):
                       key=lambda r: int(r.get("number") or 0))
         if len(rc_lines) != len(mine):
             continue
-        for (i, raw), r in zip(rc_lines, mine):
+        said = _paired_by_count([raw for _i, raw in rc_lines], mine)
+        for j, ((i, raw), r) in enumerate(zip(rc_lines, mine)):
             k = (r.get("body"), r.get("number"))
             order[k] = i
-            am = AMEND_NUM.search(raw)
+            row = said.get(j)
+            am = AMEND_NUM.search(rc_lines[row][1]) if row is not None else None
             if am and "amendment" in (r.get("question") or "").lower():
                 names[k] = am.group(1)
     return order, names
+
+
+# A roll call's count as a docket row states it: "RC 171-162" (the House),
+# "RC 16Y-8N" (the Senate).
+RC_TALLY = re.compile(r"\bRC\s*\(?\s*(\d{1,3})\s*Y?\s*[-–]\s*(\d{1,3})\s*N?\b", re.I)
+AMENDMENT_ROW = re.compile(r"\b(?:FLAM|Amendment)\b", re.I)
+PASSAGE_Q = re.compile(r"^\s*(?:Ought\s+to\s+Pass|OTP)\b", re.I)
+
+
+def _paired_by_count(raws, mine):
+    """{position in mine: position in raws}: each roll call of a day (mine,
+    in their numbering) and the docket row (raws, in the docket's order) it
+    is. In order, except where a pair's counts disagree: those rows and roll
+    calls are paired again by count and kind -- an amendment, a passage or
+    another motion -- in order within each; one row and one roll call left
+    over, of one kind, are each other (a count mistyped); any other left over
+    is paired with nothing."""
+    def tally(raw):
+        m = RC_TALLY.search(raw or "")
+        return (int(m.group(1)), int(m.group(2))) if m else None
+
+    def kind(s, question=False):
+        s = s or ""
+        if PASSAGE_Q.match(s):
+            return "passage"
+        if ("amendment" in s.lower()) if question else AMENDMENT_ROW.search(s):
+            return "amendment"
+        return "other"
+
+    def counted(r):
+        try:
+            return (int(r.get("yeas")), int(r.get("nays")))
+        except (TypeError, ValueError):
+            return None
+
+    out = {j: j for j in range(min(len(raws), len(mine)))}
+    off = [j for j in out if tally(raws[j]) and counted(mine[j])
+           and tally(raws[j]) != counted(mine[j])]
+    if not off:
+        return out
+    for j in off:
+        out.pop(j)
+    rows, rcs = defaultdict(list), defaultdict(list)
+    for j in off:
+        rows[tally(raws[j]) + (kind(raws[j]),)].append(j)
+        rcs[counted(mine[j]) + (kind(mine[j].get("question"), True),)].append(j)
+    for key, idx in rows.items():
+        if len(rcs.get(key, ())) == len(idx):
+            out.update(zip(rcs[key], idx))
+    left_rows = [j for j in off if j not in out.values()]
+    left_rcs = [j for j in off if j not in out]
+    if (len(left_rows) == len(left_rcs) == 1
+            and kind(raws[left_rows[0]]) == kind(mine[left_rcs[0]].get("question"), True)):
+        out[left_rcs[0]] = left_rows[0]
+    return out
 
 
 # The year a published volume is from, out of the path in its own link. Two
@@ -3433,6 +3547,28 @@ def committee_reports(recs, narr, sources, house_cmte, senate_cmte):
         # line again says nothing new.
         if e.get("side") and any(x.get("side") == e["side"]
                                  for r in recs for x in (r.get("reports") or [])):
+            continue
+        # A HOUSE REPORT ROW THE CLERK ENTERED WITH NO CALENDAR CITED is the
+        # calendar's written report of the same committee, recommendation and
+        # vote, printed within sixty days after the day the row says it was
+        # signed: "Committee Report: Inexpedient to Legislate 03/03/2025 (Vote
+        # 18-0; CC)" on HB 125 of 2025 is House Calendar 15's report of 7
+        # March, and was shown again below it saying its calendar had not been
+        # read (the launch audit of 7 October 2026: 180 bills of 2025-2026).
+        # Not SB 110 of 2025's Ways and Means report, 15-1 like Resources' a
+        # month before it.
+        signed_on = _mdy(e.get("report_date")) or e.get("date", "")
+        if (e.get("body") == "H" and not e.get("cite") and signed_on
+                and any((r.get("body") or "H") == "H" and r.get("date")
+                        and 0 <= _j_days(r["date"][:10], signed_on[:10]) <= 60
+                        and any(rec_key(r.get("minority_recommendation" if x.get("side") == "Minority"
+                                              else "majority_recommendation"))
+                                == rec_key(e.get("recommendation"))
+                                and x.get("committee") == e.get("committee")
+                                and str(x.get("vote_yeas")) == str(e.get("yeas"))
+                                and str(x.get("vote_nays")) == str(e.get("nays"))
+                                for x in (r.get("reports") or []))
+                        for r in out)):
             continue
         docket.append({
             "date": _mdy(e.get("report_date")) or e.get("date", ""),
@@ -8295,28 +8431,62 @@ def bill_rollcalls(bid, term, rcs, narr, votes_by_bill, legs, unnamed):
     # which side sounded louder; a division records the count but not who
     # voted which way. Both decide bills, and leaving them off the votes tab
     # makes a bill look as though nothing happened on the floor.
+    #
+    # AND A DIVISION ON AN AMENDMENT, AND A VOTE ON A CONFERENCE REPORT (the
+    # launch audit of 7 October 2026, cause 16). "Amendment # 2025-2406h: AF
+    # DV 153-185" (SB 222 of 2025) and "FLAM # 2026-1971h(NT) ...: AA DV" are
+    # counted votes of the floor, and the tab took floor motions alone, so 105
+    # divisions on amendments of 2025-2026 had no card; nor did a chamber's
+    # voice or division vote on a conference report, which narrative.py now
+    # reads ("conf_report"). Asked in the roll call file's own words for the
+    # same questions, "Adopt Floor Amendment", "Adopt Committee Amendment",
+    # "Adopt Amendment", "Adopt Conference Committee Report", with the
+    # number beside it. An amendment's voice vote is not drawn: 1,508 of
+    # 2025-2026, most a committee's amendment adopted without a word; nor a
+    # vote on part of one, whose question is not the amendment's.
     VK = {"VV": ("voice vote", False), "DV": ("division vote", False)}
     for _i, e in enumerate((narr or {}).get("events", [])):
-        if e.get("type") != "floor" or e.get("cancelled"):
+        if e.get("cancelled"):
             continue
-        kind = VK.get(e.get("vote_kind"))
+        vk = "DV" if (e.get("vote_kind") or "").upper() in ("DV", "DIV") else e.get("vote_kind")
+        number = None
+        if e.get("type") == "amendment":
+            said = _amendment_said(e)
+            if (vk != "DV" or not (e.get("yeas") and e.get("nays")) or said is None
+                    or e.get("part") == "some"):
+                continue
+            k = (e.get("amend_kind") or "").lower()
+            question = ("Adopt Floor Amendment" if "floor" in k
+                        else "Adopt Committee Amendment" if "committee" in k
+                        else "Adopt Amendment")
+            passed, number = said, (e.get("amendment") or "").strip() or None
+        elif e.get("type") == "conf_report":
+            question = "Adopt Conference Committee Report"
+            passed, number = e.get("motion") == "MA", (e.get("amendment") or "").strip() or None
+        elif e.get("type") == "floor":
+            question = e.get("action") or "Floor action"
+            passed = e.get("motion") in ("MA", "AA")
+        else:
+            continue
+        kind = VK.get(vk)
         if not kind:
             continue          # RC is already covered by the roll call file
         label, _ = kind
         y, n = e.get("yeas"), e.get("nays")
         rc_out.append({
             "date": e["date"], "body": e.get("body"),
-            "question": e.get("action") or "Floor action",
+            "question": question,
             # Who made the motion, split off the question by narrative.py so
             # the Senate's "Sen. Abbas Moved Laid on Table" reads as a motion
             # to lay on the table, moved by Abbas. Roll calls from the roll
             # call file never carry one; the page prints it only when present.
             "mover": e.get("mover") or "",
             "yeas": int(y) if y else None, "nays": int(n) if n else None,
-            "passed": e.get("motion") in ("MA", "AA"),
-            "vote_kind": e.get("vote_kind"), "vote_kind_label": label,
+            "passed": passed,
+            "vote_kind": vk, "vote_kind_label": label,
             "threshold_note": None, "tally": {}, "members": [],
-            "amendment": None, "_ord": (e["date"], _i),
+            # The amendment's or the report's number, beside the question.
+            "amendment": number, "_ord": (e["date"], _i),
         })
     # By the docket's own sequence, not by the wording of the motion.
     rc_out.sort(key=lambda r: r["_ord"])
@@ -8534,7 +8704,13 @@ CANCELLED_NOT_TOLD = ("A cancellation. The history does not tell a meeting the d
 # CANCELLED_ROW_NOT_TOLD beside them, which does not call them a meeting.
 CANCELLED_ROW_NOT_TOLD = ("A cancellation. The history does not tell a row the docket "
                           "marked cancelled.")
-CALLED_OFF_KINDS = ("hearing", "exec", "worksession", "conference_meeting", "other")
+CALLED_OFF_KINDS = ("hearing", "exec", "worksession", "conference_meeting", "other",
+                    # A hearing on a proposed non-germane amendment, which
+                    # narrative.py reads as a kind of its own (the launch
+                    # audit of 7 October 2026, cause 15): "==CANCELLED==
+                    # Public Hearing on non-germane Amendment # 2025-0707h"
+                    # (HB 555 of 2025) is a meeting called off.
+                    "nongermane_hearing")
 
 
 def called_off(e):
@@ -9073,7 +9249,7 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
                 docs.append({"label": _lab, "url": _url, "kind": "record"})
 
         bill_amds = bill_amendments(narr, amend_texts, claims.get(term, {}))
-        btext = bill_text_block(P.per_term(bill_texts, term, current).get(bid))
+        btext = bill_text_block(P.per_term(bill_texts, term, current).get(bid), narr)
 
         rc_out = bill_rollcalls(bid, term, rcs, narr,
                                 votes_by_bill, legs, unnamed)
