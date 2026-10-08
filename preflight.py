@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.466
+# GRANITE_VERSION: 2026-09-04.467
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -23859,6 +23859,13 @@ def _effective_parts_read(build_site_v2):
                         "Eff: I. Sec 24 eff 6/30/23", "governor"), chapter="113",
              line="Signed by Governor Sununu 06/30/2023; Chapter 113; Eff: I. Sec 24 eff "
                   "6/30/23 HJ 17"), "Chapter 113", "HB25 2023")
+    # The same part again on a row of its own, which is no copy of the
+    # governor's row by its start, is still the one part (the review of the
+    # effective dates fix, 8 October 2026).
+    want(law("HB25", ev("H", "2023-06-30", "Signed by Governor Sununu 06/30/2023; Chapter 113; "
+                        "Eff: I. Sec 24 eff 6/30/23", "governor"),
+             ev("H", "2023-06-30", "I. Sec 24 eff 6/30/23"), chapter="113"),
+         "Chapter 113", "HB25 2023, its part on a row of its own")
 
     # WHAT THE LINE DOES NOT SETTLE states none: Docket.txt lines 24269, 9567
     # and 24272, the rows as the docket has them.

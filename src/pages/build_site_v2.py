@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.180
+# GRANITE_VERSION: 2026-09-05.181
 """
 Generate the faceted site from real General Court data.
 
@@ -5081,7 +5081,12 @@ def _j_effective_parts(*lines):
         else:
             return ""
     out = list(dict.fromkeys(out))
-    if len({w for w, _ in out}) != len(out):
+    # ONE PART IS NOT PARTS. A law in effect in parts has two at least, so a
+    # single part read is half of what the law says: HB 25 of 2023's row
+    # names part I, section 24 on 30 June 2023, and nothing of the remainder
+    # its chaptered text puts on 1 July; and a part read twice, by a row and
+    # a copy of it the reader does not know for one, is still one part.
+    if len(out) < 2 or len({w for w, _ in out}) != len(out):
         return ""
     out.sort(key=lambda x: x[0] == "the rest")
     return ", ".join(f"{w} {d}" for w, d in out)
