@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-16.16
+// GRANITE_VERSION: 2026-09-16.17
 /* FIND ANYTHING, FROM THE HEADER (16 September, asked for in these words:
    "a search icon in the header that lets you search for anything including
    legislators, committees, towns, and bills ... searching Litchfield would
@@ -912,4 +912,24 @@ document.addEventListener("click",function(e){
   if(!r)return;
   if(!r.hasAttribute("tabindex"))r.setAttribute("tabindex","-1");
   setTimeout(function(){if(document.activeElement!==r)r.focus({preventScroll:true});},0);
+},true);
+
+// A LINK THAT LEAVES THE SITE OPENS A NEW TAB (8 October 2026, the person's
+// D20: "outside links open in a new tab, generally"). At the moment of the
+// click, so that it reaches every link a page draws -- the ones app.js writes
+// after the page has loaded among them -- without each of the writers
+// remembering, and here because this is the one script every page runs.
+// app.css marks the same links, by the same test of the address, with the
+// arrow and the words a screen reader says. A link that names its own target
+// keeps it.
+function leavesSite(a,here){
+  return !!a&&/^https?:$/.test(a.protocol||"")&&!!a.host&&a.host!==here
+    &&a.host!=="graniterecord.org";
+}
+document.addEventListener("click",function(e){
+  var a=e.target&&e.target.closest&&e.target.closest("a[href]");
+  if(!leavesSite(a,location.host)||a.getAttribute("target"))return;
+  a.setAttribute("target","_blank");
+  if(!/\bnoopener\b/.test(a.getAttribute("rel")||""))
+    a.setAttribute("rel",((a.getAttribute("rel")||"")+" noopener").trim());
 },true);

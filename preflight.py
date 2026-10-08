@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.474
+# GRANITE_VERSION: 2026-09-04.475
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -47727,6 +47727,67 @@ def _one_date_formatter():
                   f"and Calendar scripts carry app.js's own text; the stories' strftime agrees; "
                   f"no other formatter in {len(_front_sources())} builders and scripts; no day "
                   f"written first on {seen} fixture pages")
+
+
+@check("frontend", "every link that leaves the site carries the outside-link mark, says it opens a "
+                   "new tab, and opens one, whoever wrote it")
+def _outside_links():
+    """The person's D20 (8 October 2026): outside links open in a new tab,
+    generally, and keep their mark. The mark was drawn by class (a.out), so a
+    link written without the class left the site unmarked -- the RSA chapters
+    on a bill, the General Court's pages from the Calendar, a town's own
+    website, the footer's credit -- and four writers put the arrow in as text
+    instead. Now app.css marks a link by its address, with the words a screen
+    reader says; find.js, which every page runs, opens such a link in a new
+    tab at the moment it is followed, so a link app.js draws after the page
+    has loaded is reached too; and no writer puts the arrow in as text, which
+    would draw it twice. The one arrow left is the list card's corner link to
+    the bill's own page (an inside link, which D17 replaces with the number)."""
+    css = Path("src/pages/app.css")
+    find = Path("src/pages/find.js")
+    if not css.exists() or not find.exists():
+        return "skip", "app.css or find.js is not here"
+    text = css.read_text(encoding="utf-8")
+    rule = re.search(r':is\(a\[href\^="https:"\],a\[href\^="http:"\]\):not\(\[href\^='
+                     r'"https://graniterecord\.org"\]\)::after\{([^}]*)\}', text)
+    assert rule, "app.css does not mark a link that leaves the site by its address"
+    assert 'content:"\\2197" / " (opens in a new tab)"' in rule.group(1) \
+        and rule.group(1).find('content:"\\2197";') < rule.group(1).find("/"), (
+        "the outside-link mark does not say it opens a new tab, or has no plain arrow to "
+        "fall back on in a browser that cannot read the words")
+    bad = []
+    for name, src in _front_sources():
+        for m in re.finditer(r"&#8599;|\\u2197|↗|&nearr;", src):
+            line = src[src.rfind("\n", 0, m.start()) + 1:src.find("\n", m.start())]
+            if line.lstrip().startswith(("#", "//", "*", "/*")) or "Open the standalone page" in line:
+                continue
+            bad.append(f"{name}:{_line_of(src, m.start())} {line.strip()[:60]}")
+    assert not bad, ("an arrow written as text beside a link, which app.css now draws itself: "
+                     + "; ".join(bad[:6]))
+    js = find.read_text(encoding="utf-8")
+    fn = re.search(r"function leavesSite\(a,here\)\{.*?\n\}", js, re.S)
+    hook = re.search(r'document\.addEventListener\("click",function\(e\)\{\s*var a=e\.target&&'
+                     r'e\.target\.closest&&e\.target\.closest\("a\[href\]"\);\s*if\(!leavesSite\(a,'
+                     r'location\.host\)\|\|a\.getAttribute\("target"\)\)return;\s*a\.setAttribute\('
+                     r'"target","_blank"\);', js)
+    assert fn and hook, "find.js does not open a link that leaves the site in a new tab"
+    cases = [("https://gc.nh.gov/rsa/html/674.htm", True), ("http://www.goffstownnh.gov/", True),
+             ("https://graniterecord.org/bills.html", False), ("https://127.0.0.1:8000/x", False),
+             ("mailto:a@b.c", False), ("tel:+16032713125", False)]
+    node = shutil.which("node") or shutil.which("node.exe")
+    if node:
+        prog = (fn.group(0) + "\nconst C=" + json.dumps([c for c, _w in cases])
+                + ";\nprocess.stdout.write(JSON.stringify(C.map(h=>{const u=new URL(h);"
+                "return leavesSite({protocol:u.protocol,host:u.host},'127.0.0.1:8000');})));")
+        r = _run([node, "-e", prog], capture_output=True, text=True, timeout=60)
+        assert r.returncode == 0, "leavesSite() would not run: " + (r.stderr or "")[-300:]
+        got = json.loads(r.stdout)
+        off = [h for (h, w), g in zip(cases, got) if g != w]
+        assert not off, f"leavesSite() is wrong about {off}"
+    return "ok", ("app.css marks every link that leaves the site by its address and says it "
+                  "opens a new tab; find.js opens it in one"
+                  + (f", right about {len(cases)} addresses" if node else "")
+                  + "; no writer puts the arrow in as text")
 
 
 @check("frontend", "the Calendar page is a month, filters and three views over a week that reads whole without script")

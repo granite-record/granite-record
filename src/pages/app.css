@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.219 */
+/* GRANITE_VERSION: 2026-09-07.220 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -1128,7 +1128,20 @@ footer .attrib b{color:var(--ink);font-weight:600}
    generally; it was never implemented, so "Source on GitHub" and the feedback
    button looked like internal links. The arrow is lighter than the label it
    follows so it reads as a mark rather than as part of the word. */
-a.out::after{content:"\2197";font-weight:400;margin-left:3px;font-size:.92em}
+/* EVERY LINK THAT LEAVES THE SITE SAYS SO (8 October 2026, the person's D20:
+   outside links open a new tab, generally, and keep their mark). The mark
+   was drawn by class, so a link written without the class -- the RSA
+   chapters on a bill, the General Court's pages from the Calendar, a town's
+   own website, the footer's credit -- left the site unmarked, and four
+   writers put the arrow in as text instead, three of them inside the link
+   and one outside it. Now the address decides: a link to anywhere but this
+   site carries the arrow, and a screen reader is told what it means, since
+   find.js opens every such link in a new tab. The second content line is
+   the one with words for a screen reader; a browser that cannot read it
+   keeps the first. */
+:is(a[href^="https:"],a[href^="http:"]):not([href^="https://graniterecord.org"])::after{
+content:"\2197";content:"\2197" / " (opens in a new tab)";
+font-weight:400;margin-left:3px;font-size:.92em}
 .flinks a{font-weight:600}
 .flinks{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;
 gap:var(--sp-3)}

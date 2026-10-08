@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-09.24
+# GRANITE_VERSION: 2026-09-09.25
 """
 A page per town and ward: everyone who represents the people who live there.
 
@@ -713,8 +713,8 @@ def weblink(url, label=None):
     if not _is_address(re.sub(r"^https?://", "", url, flags=re.I).split("/")[0]):
         return ""
     host = re.sub(r"^https?://(?:www\.)?", "", url).rstrip("/").split("/")[0]
-    return (f'<a href="{E(url)}" rel="noopener">{E(label or host)}'
-            " &#8599;</a>")
+    return (f'<a href="{E(url)}" target="_blank" rel="noopener">{E(label or host)}'
+            "</a>")
 
 
 def _is_address(host):

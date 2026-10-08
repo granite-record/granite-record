@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.34
+# GRANITE_VERSION: 2026-09-08.35
 """
 The civics section: a hub and one page per topic, in order.
 
@@ -568,8 +568,7 @@ def sources_block(sources):
     def one(label, u):
         away = u.startswith("http")
         mark = ' target="_blank" rel="noopener"' if away else ""
-        arrow = " &#8599;" if away else ""
-        return f'<li><a href="{E(u)}"{mark}>{E(label)}</a>{arrow}</li>'
+        return f'<li><a href="{E(u)}"{mark}>{E(label)}</a></li>'
 
     items = "".join(one(label, u) for label, u in sources)
     return (f'<section class="srcs"><h2>Where this comes from</h2>'

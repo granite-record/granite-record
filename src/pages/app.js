@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.161
+// GRANITE_VERSION: 2026-09-07.162
 // What each kind of document actually is, said once rather than in every row.
 const DOCWHAT={text:"the bill as it currently stands",
   status:"the page this site takes a bill's status from",
@@ -3497,7 +3497,7 @@ function factsTable(b,d){
         +`<tr class="wide"><td colspan="2">${v}</td></tr>`
       :`<tr><th scope="row">${esc(k)}</th><td>${v}</td></tr>`).join("")}</tbody></table>
     ${d.docket_url?`<p class="src"><a href="${esc(d.docket_url)}" target="_blank"
-      rel="noopener">This bill on gencourt &#8599;</a></p>`:""}</section>`;
+      rel="noopener">This bill on gencourt</a></p>`:""}</section>`;
 }
 
 // HOW A BILL ENDED WHEN NOTHING WAS VOTED ON IT. Two lines, both from the
@@ -6206,7 +6206,7 @@ function renderCommitteeHead(c){
       <p class="src">${esc(rule.rule||"")}, as the General Court publishes it.</p>
       </div>`:""}
     ${c.url?`<p class="src"><a href="${esc(c.url)}" target="_blank"
-      rel="noopener">This committee on gencourt &#8599;</a></p>`:""}
+      rel="noopener">This committee on gencourt</a></p>`:""}
   </div>`;
 }
 
