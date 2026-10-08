@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.449
+# GRANITE_VERSION: 2026-09-04.450
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -32307,9 +32307,15 @@ def _changes_on_fixture(FC):
         # What build_feeds hands over, read off the files (the review of 7
         # October 2026: every check above held with these three broken). The
         # hearing of the committee that will sit is filed under it, by
-        # chamber and name...
+        # chamber and name, on the day the fixture's manifest gives it --
+        # three days from the clock when the fixture was built (_site_fixture),
+        # which is why it is read here rather than written down: written as
+        # 2026-10-10 on 7 October, this failed every day after.
+        with open(root / "verification_manifest.csv", newline="", encoding="utf-8") as fh:
+            ahead = [r["sched_date"] for r in csv.DictReader(fh) if r.get("bill") == "HB1443"]
+        assert len(ahead) == 1, ("the fixture's hearing still to come is not one row", ahead)
         assert f7["current.json"]["upcoming"] == {"committee:H43": [{
-            "date": "2026-10-10", "what": "subcommittee work session", "time": "09:30",
+            "date": ahead[0], "what": "subcommittee work session", "time": "09:30",
             "committee": "House Commerce", "venue": "LOB 302"}]}, \
             ("a hearing was not filed under the committee that will sit",
              f7["current.json"]["upcoming"])
