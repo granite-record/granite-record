@@ -113,6 +113,16 @@ either workflow waits behind any other in a group of the workflows' own
 level, `dry-runs`, before its job joins `gc-night`, because GitHub keeps one
 waiting run per group and a second dry run queued there cancelled a
 scheduled night waiting behind the first.
+The rebuild also writes `/changes/`, what the email sender reads
+(`src/pages/follow_changes.py`, from the feeds' own items), deciding what is
+new by a first-seen ledger: `build_feeds.py` reads `archive/first-seen.json`
+and leaves its own beside it, and the night keeps that only where it writes
+the census -- a build the gates accept, or a New term run's once its deploy
+has landed, for which `site-up` carries it with the site -- so a stopped
+night, a dry run -- every run off `main` among them -- or a rejected switch
+changes nothing the next night reads.
+With no ledger it goes by the record's own dates for that night, and the
+verdict says so.
 The second job deploys to production. It sits behind GitHub's `production`
 environment, so it waits for a person's approval, and
 `nightly.py --deploy-to production` deploys a run's own build by that night's
@@ -215,9 +225,9 @@ overwritten or deleted outright: the old copy goes to `replaced/<date>/`,
 which the bucket keeps for 30 days. Every file is checked against its size
 and sha256 on the way down, and the list's `never` entries -- secrets, and
 what readers typed -- are applied to every command. The small state the night
-must remember (`refused.json`, `census.json`, the verdicts) lives under
-`state/`, so a refusal the night meets outlives its machine and stops the
-laptop's fetches too.
+must remember (`refused.json`, `census.json`, `first-seen.json`, the verdicts)
+lives under `state/`, so a refusal the night meets outlives its machine and
+stops the laptop's fetches too.
 
 ---
 

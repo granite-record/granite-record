@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.59
+# GRANITE_VERSION: 2026-09-04.60
 """
 The nightly run. Fetch the day's bulk files, rebuild, check, compile what
 readers reported and what changed -- and publish only if told to.
@@ -165,11 +165,12 @@ of this may depend on remembering not to start one:
   its preview         https://dry-run.graniterecord.pages.dev
                       (DRY_PREVIEW_BRANCH), never the night's preview, where
                       a night waiting for approval is looked at
-  what it leaves      archive/last-night.json, archive/census.json and the
-                      gate's records in the verdict -- the warning kinds, the
-                      published kinds, the release commit read off
-                      production -- exactly as the last real night left
-                      them. A dry run is judged against them and writes none
+  what it leaves      archive/last-night.json, archive/census.json, the
+                      first-seen ledger (FIRST_SEEN) and the gate's records
+                      in the verdict -- the warning kinds, the published
+                      kinds, the release commit read off production --
+                      exactly as the last real night left them. A dry run is
+                      judged against them and writes none
   how it is known     --dry-run, or on GitHub's machine the workflow's
                       DRY_RUN (DRY_ENV), which every step of a run inherits:
                       a step that forgets the flag is a dry run's all the same
@@ -532,6 +533,18 @@ WRANGLER = "wrangler@4.140.0"
 # prefix and back (cloud_kit.json's "state" list). The refusal record travels
 # the same way, and is refusal.MARK itself.
 CENSUS = Path("archive/census.json")          # the last good build's counts and fingerprint
+# THE FIRST-SEEN LEDGER of the changes files the email sender reads
+# (src/pages/follow_changes.py, 7 October 2026): what has been told as new, and
+# when. build_feeds reads FIRST_SEEN and leaves its own at FIRST_SEEN_NEXT, and
+# it is kept exactly where the census is written -- a real night's build that
+# the gates accept, or a New term run's once its deploy has landed -- so a
+# night that is stopped, a dry run, or a switch the person rejects leaves the
+# last good night's ledger as it was. cloud_kit.json's state list carries it;
+# a dry night never sends it (cloud.DRY_NEVER), and site-up carries a New term
+# run's to the publish job (cloud.FIRST_SEEN_NEXT, which preflight holds to this).
+FIRST_SEEN = Path("archive/first-seen.json")
+FIRST_SEEN_NEXT = Path("archive/first-seen.next.json")
+CHANGES_CURRENT = "changes/current.json"       # under the site: what tonight's build said
 # A finished term's rows that tonight's files still carried, counted and left
 # out by build_data, with the bills they name (build_data.LEFT_OUT, under its
 # --out; preflight holds the two names together). A night with none has none.
@@ -1727,6 +1740,29 @@ def write_json(path, obj):
     tmp.write_text(json.dumps(obj, indent=1, sort_keys=True) + "\n", encoding="utf-8",
                    newline="\n")
     os.replace(tmp, path)
+
+
+def changes_said(site):
+    """What tonight's build wrote for the email sender, off its
+    changes/current.json: how it decided "new" and for how many records; or
+    that it wrote none. The verdict carries it, and warned() says when it is
+    not first-seen."""
+    c = load_json(Path(site) / CHANGES_CURRENT)
+    if not isinstance(c, dict) or not isinstance(c.get("followable"), dict):
+        return {"written": False}
+    return {"written": True, "new_by": c.get("new_by"), "date": c.get("date"),
+            "followable": len(c["followable"])}
+
+
+def keep_first_seen():
+    """The first-seen ledger tonight's build left becomes the one the next
+    build reads (FIRST_SEEN). Called only where the census is written.
+    Returns what to say."""
+    if not FIRST_SEEN_NEXT.is_file():
+        return (f"no {FIRST_SEEN_NEXT.as_posix()} was left to keep: {FIRST_SEEN.as_posix()} "
+                "is as it was")
+    os.replace(FIRST_SEEN_NEXT, FIRST_SEEN)
+    return f"the first-seen ledger this build left is kept: {FIRST_SEEN.as_posix()}"
 
 
 def github(name, default=""):
@@ -3604,7 +3640,7 @@ class Night:
         """
         v, a = self.v, self.a
         v.update(build="passed", check_site="passed", built=True, census=after,
-                 changed=changed)
+                 changed=changed, changes=changes_said(site))
         fp = fingerprint(site)
         v["fingerprint"] = fp
         # Tonight's commit goes out with the build (BUILD_RECORD), before the
@@ -3676,19 +3712,25 @@ class Night:
             # NOT WRITTEN TONIGHT. Written here, the lower counts were the
             # baseline before anyone had approved the switch, and the next
             # scheduled night passed its gates against them.
-            v["new_term"]["kept"] = ("nothing yet: the smaller files, the study views and "
-                                     "tonight's counts are kept for later nights once this "
-                                     "build is published, and not before")
+            v["new_term"]["kept"] = ("nothing yet: the smaller files, the study views, "
+                                     "tonight's counts and the first-seen ledger are kept for "
+                                     "later nights once this build is published, and not before")
             say(f"  {CENSUS} is left as it was: a New term run's counts become the baseline "
                 "when its build is published")
+            say(f"  {FIRST_SEEN.as_posix()} is left as it was: the ledger this build left goes "
+                "to the publish job with its site, and is kept when the deploy lands")
         elif not stop and a.dry_run:
             # A DRY RUN IS KEPT APART: its counts are its branch's build's, and
             # the next real night is gated against the last real night's.
             say(f"  {CENSUS} is left as the last real night left it: a dry run sets no baseline")
+            say(f"  {FIRST_SEEN.as_posix()} is left as the last real night left it: a dry run "
+                "read it and keeps none")
         elif not stop:
             write_json(CENSUS, {"census": after, "fingerprint": fp, "day": self.day,
                                 "run_id": v["run_id"], "sha": v["sha"]})
             say(f"  tonight's counts are the baseline now: {CENSUS}")
+            # ... and what tonight told the email sender is new, beside them.
+            say("  " + keep_first_seen())
         n = site_manifest(site, Path("logs") / f"site-{self.day}.sha256")
         say(f"  logs/site-{self.day}.sha256 lists all {n:,} files, with their sha256")
 
@@ -3833,6 +3875,20 @@ class Night:
                         "the study committees' meetings were not asked for: the General Court's "
                         "database did not give the day's files earlier tonight, and it is not "
                         "asked again the same night"))
+        # The files the email sender reads (follow_changes.py): none at all, or
+        # "new" decided by the record's dates because there was no ledger --
+        # the first night, or a lost state. Short: the page cuts at 300.
+        changes = self.v.get("changes")
+        if isinstance(changes, dict) and not changes.get("written", True):
+            out.append(("the email changes files not written",
+                        "the build wrote no changes/current.json, so the email sender would "
+                        "find no night tonight and wait"))
+        elif isinstance(changes, dict) and changes.get("new_by") == "record-date":
+            out.append(("the email changes files by the record's dates",
+                        "the email changes files went by the record's dates tonight, not "
+                        f"first-seen: there was no ledger ({FIRST_SEEN.as_posix()}), so an item "
+                        "that arrived late is not sent. The ledger this build left is kept if "
+                        "the gates accept it"))
         lsrs = self.v.get("lsrs")
         if lsrs and not str(lsrs).startswith("installed"):
             out.append(("next session's bill requests: " + kind_of(lsrs),
@@ -4085,6 +4141,10 @@ def runner_deploy(a):
                             "published": datetime.now().isoformat(timespec="seconds")})
         say(f"\n  {NEW_TERM_BOX}: this build is published, so its counts are the baseline "
             f"now: {CENSUS}")
+        # And the first-seen ledger its build left, which site-down brought
+        # with the site: the old term's endings and the new term's first
+        # items are what the next night reads as told.
+        say("  " + keep_first_seen())
     if where == "preview":
         v["preview"] = {"at": datetime.now().isoformat(timespec="seconds"),
                         "base": base, "landed": landed}

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.56
+# GRANITE_VERSION: 2026-09-05.57
 """
 Run the whole pipeline in the right order.
 
@@ -853,10 +853,13 @@ def plan(a):
         # --allow-prune is the New term night's (nightly.py --new-term), when
         # the last term's moving bills stop being current and more than a
         # quarter of a feed folder can rightly go at once. Never otherwise.
+        # And the changes files the email sender reads (follow_changes.py),
+        # from the same items; the night's verdict says when there are none.
         Step("RSS feeds",
              ["build_feeds.py", "--site", "site", "--base", a.base]
              + (["--allow-prune"] if getattr(a, "allow_prune", False) else []),
-             needs=["site/meta.json"], produces=["site/feed/all.xml"],
+             needs=["site/meta.json"],
+             produces=["site/feed/all.xml", "site/changes/current.json"],
              note="following a bill without an account, an email address or a "
                   "list that could leak"),
 

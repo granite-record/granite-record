@@ -249,6 +249,7 @@ want:
 | the civics explainers under `/learn` | `src/pages/build_civics.py` |
 | the CSV downloads and `/data` | `src/pages/build_exports.py` |
 | the RSS feeds | `src/pages/build_feeds.py` |
+| what changed each night, for the email updates | `src/pages/follow_changes.py`, called by `build_feeds.py` |
 | where a hearing sits in a recording | `src/hearings/segment_markers.py`, scored by `src/hearings/probe_alignment.py` |
 | which rows exist at all | `src/parse/build_data.py` → `data/`, then `src/pages/build_site_v2.py` → `site/*.json` |
 | towns, districts and their officials | `src/towns/` |
@@ -273,6 +274,7 @@ addresses:
 | `/rollcalls_index.json` | every recorded vote — tally, whether it passed, party split, and a plain-English question where one could be made |
 | `/committees.json`, `/towns.json`, `/districts.json` | membership and geography |
 | `/feed/*.xml` | RSS: everything, upcoming hearings, and one feed each per topic, per legislator, per bill still moving, and per committee that is not archived and has a sitting day or a bill on record — so `/feed/committee/` holds fewer feeds than `/committees.json` has rows. An archived committee's would never change again |
+| `/changes/current.json`, `/changes/<date>.json` | what changed, night by night: what can be followed tonight and what is scheduled, and for each of the last eight nights what was new for each bill, member, committee and topic — the feeds' own items and ids, filed under the night each first appeared. Rewritten every night, and nothing in them is about a reader |
 
 Every table is also downloadable as CSV from
 **[graniterecord.org/data](https://graniterecord.org/data)** — bills, votes,
