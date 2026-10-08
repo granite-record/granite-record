@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.154
+// GRANITE_VERSION: 2026-09-07.155
 // What each kind of document actually is, said once rather than in every row.
 const DOCWHAT={text:"the bill as it currently stands",
   status:"the page this site takes a bill's status from",
@@ -3673,14 +3673,30 @@ const votesDrawn=d=>(d.rollcalls||[]).length+(d.ballot&&!d.ballot.pending?1:0);
 // ONE DATE STYLE IN THE CARD, the head's: "Nov 3, 2026" over "The vote is on
 // 3 November 2026" and "read 5 October 2026" was two in four lines (the
 // review of 5 October 2026), and the head's is every vote card's above it.
+//
+// WHOSE COUNT IT IS COMES WITH THE RECORD (v.by, v.cite, v.whose, from the
+// row's own source: build_site_v2.ballot_card, ballot_source.py). This said
+// "Ballotpedia, List of New Hampshire ballot measures" on every card, and on
+// 7 October 2026 the person made the Secretary of State the source of every
+// amendment the voters have decided -- "Secretary of State, Manual for the
+// General Court 1993, p. 442 (NHPR's scan)" -- keeping Ballotpedia for the
+// one still to come. A label in parentheses is the file's description of
+// how the source lists it, "(the only question; unnumbered)" as the reading
+// of 7 October 2026 wrote it, not its words, and is said in the card's own
+// sentence, without quotation marks and with a comma for its semicolon:
+// "which lists it as the only question, unnumbered".
 function ballotCard(d){
   const v=d.ballot;
   if(!v)return "";
   const head=res=>`<div class="rchead"><h2 class="rcq">The voters</h2>
       <span class="rcd">${esc(fdate(v.date))} · State general election</span>${res}</div>`;
+  const lab=String(v.label||"");
+  const listed=/^\(.*\)$/.test(lab)?esc(lab.slice(1,-1).replace(/;\s*/g,", "))
+    :`&ldquo;${esc(lab)}&rdquo;`;
+  const cited=[v.by,v.cite].filter(Boolean).join(", ")||v.source;
   const src=`<p class="src">Source: <a href="${esc(v.source)}" target="_blank"
-      rel="noopener">Ballotpedia, List of New Hampshire ballot measures</a>, read
-      ${esc(fdate(v.read))}, which lists it as &ldquo;${esc(v.label)}&rdquo;.</p>`;
+      rel="noopener">${esc(cited)}</a>, read
+      ${esc(fdate(v.read))}, which lists it as ${listed}.</p>`;
   // An election to come, and one past whose count is not in the file yet
   // (v.over, build_site_v2.ballot_card): the status says "went to the voters"
   // the day after, and so does this.
@@ -3707,13 +3723,15 @@ function ballotCard(d){
 // WHICH FIGURE DIFFERS, AND WHOSE THE CARD'S ARE. "The docket records this vote
 // as 249,759 to 204,475" under "No 204,457" left a transposition for the reader
 // to find and did not say which of the two the card drew (the review of 5
-// October 2026).
+// October 2026). Whose they are is the row's source (v.whose): "the Secretary
+// of State's" under CACR 22 of 1998, whose docket says 159,439 against the
+// Manual's 169,439.
 function docketDiffers(v){
   const [dy,dn]=v.docket;
   const side=(got,ours,word)=>got===ours?"":`${thou(got)} votes ${word}, not ${thou(ours)}`;
   const said=[side(dy,v.yes,"for"),side(dn,v.no,"against")].filter(Boolean).join(", and ");
   return `The General Court&#39;s docket records ${said}. The counts above are
-      Ballotpedia&#39;s, and How it got here gives the docket&#39;s.`;
+      ${esc(v.whose||"its source's")}, and How it got here gives the docket&#39;s.`;
 }
 
 // What a player's frame is titled: "Recording of HB 2 - House Finance Public
