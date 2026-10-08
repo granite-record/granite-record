@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-07.46
+# GRANITE_VERSION: 2026-09-07.47
 """
 A page's worth of data for every committee.
 
@@ -155,6 +155,12 @@ def recommendation(reports, term, bill, committee=""):
     return "", "", ""
 
 
+def is_ahead(date):
+    """Whether a committee day is still to come on the day the site is built:
+    scheduled, not met."""
+    return str(date or "")[:10] > build_date.today().isoformat()
+
+
 def narrate(name, chamber, date, items, reports):
     """One committee day, in sentences, from the rows themselves."""
     by_kind = collections.defaultdict(list)
@@ -180,7 +186,7 @@ def narrate(name, chamber, date, items, reports):
     # ahead of time -- a committee's executive session booked for the end of
     # the month -- and the page said the committee "met" on a day seventeen
     # days off.
-    ahead = str(date)[:10] > build_date.today().isoformat()
+    ahead = is_ahead(date)
     met, held = (("is scheduled to meet", "It is also scheduled to hold") if ahead
                  else ("met", "It also held"))
     out.append(f"{who} {met} on {fdate(date)} for {art}{noun} on {bills}.")
@@ -898,7 +904,14 @@ def main():
                                   if i["video_id"]), ""),
                 "narrative": narrate(said, chamber, date, items, reports),
                 "items": items,
+                # A DAY STILL TO COME IS NOT A DAY IT MET (the survey of 7
+                # October 2026). The docket books sittings ahead of time, and
+                # Commerce's Sessions tab said "56 days this committee met in
+                # 2025-2026" over a 14 October 2026 still to come. The day is
+                # listed, told as scheduled (narrate), and counted apart.
+                **({"ahead": True} if is_ahead(date) else {}),
             })
+        met_days = sum(1 for s in sessions if not s.get("ahead"))
 
         # THE NAMES IT CARRIED BEFORE, with the years each covers on this
         # record. A reader who followed "Corrections and Criminal Justice" off
@@ -947,7 +960,7 @@ def main():
                 if code in retired and span_of[code] else "")
         desc = (f"The {chamber_word} Committee on {name}{when}. "
                 f"{towns}{sum(len(v) for v in rec['bills'].values()):,} bills "
-                f"referred and {len(sessions):,} sitting days, each with what "
+                f"referred and {met_days:,} sitting days, each with what "
                 "was taken up and when. From the New Hampshire General Court's "
                 "own records.")
         nos = ('<noscript><div class="wrap" style="max-width:70ch;'
@@ -995,7 +1008,7 @@ def main():
             "code": code, "name": name, "chamber": chamber,
             "chair": rec["chair"], "n_members": len(members),
             "n_bills": sum(len(v) for v in rec["bills"].values()),
-            "n_sessions": len(sessions),
+            "n_sessions": met_days,
             "terms": sorted(rec["bills"]),
             **({"formerly": [n["name"] for n in formerly]} if formerly else {}),
         })

@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.155
+// GRANITE_VERSION: 2026-09-07.156
 // What each kind of document actually is, said once rather than in every row.
 const DOCWHAT={text:"the bill as it currently stands",
   status:"the page this site takes a bill's status from",
@@ -6227,6 +6227,9 @@ function sessionHtml(s,si){
          its recordings each sitting belongs to has not been established &mdash;
          a committee can sit in divisions that stream separately. Each bill
          below links the recordings it could be.</p>`
+      // A day still to come has no recording yet, and its sentence above
+      // already says it is scheduled.
+      : s.ahead ? ""
       : `<p class="note">No recording of this day is on file.</p>`);
   // A DAY IS SOMETHING YOU CAN LINK TO. It had no id at all, so a calendar
   // entry could name the committee and not the sitting, and the only per-day
@@ -6262,8 +6265,14 @@ function renderCommitteeSessions(c){
     handled still have somewhere to point.</p>`;
   if(!ss.length)return `<p class="src fill">No day of this committee is on record in
     the ${esc(t)} term.</p>`;
-  return `<p class="src">${ss.length.toLocaleString()} day${ss.length===1?"":"s"}
-      this committee met in ${esc(t)}, newest first. Each is the day's recording
+  // A DAY STILL TO COME IS NOT ONE IT MET (the survey of 7 October 2026):
+  // "56 days this committee met" counted 14 October 2026, booked ahead. The
+  // build marks such a day `ahead`; it is listed, told as scheduled, and
+  // counted apart.
+  const met=ss.filter(s=>!s.ahead).length, ahead=ss.length-met;
+  return `<p class="src">${met.toLocaleString()} day${met===1?"":"s"}
+      this committee met in ${esc(t)}${ahead?`, and ${ahead.toLocaleString()} still
+      to come`:""}, newest first. Each is the day's recording
       with the moment every bill was taken up, composed from the record rather
       than written.</p>`
     + ss.map(sessionHtml).join("");

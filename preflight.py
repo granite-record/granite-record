@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.451
+# GRANITE_VERSION: 2026-09-04.452
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -46866,6 +46866,54 @@ def _committee_notes_fill():
         "a committee page's \"no day on record\" note is held to the measure")
     return "ok", ("the index's two section notes and a committee page's own fill the width "
                   "they have")
+
+
+@check("frontend", "a committee's Sessions tab counts the days it met, and a day still to "
+                   "come apart", needs=("build_committees",))
+def _committee_days_met(BCM):
+    """"56 days this committee met in 2025-2026" over a list whose first day,
+    14 October 2026, was still to come (the survey of 7 October 2026, on
+    Commerce and Consumer Affairs). The docket books sittings ahead of time;
+    the day's own sentence already said "is scheduled to meet", and the
+    count, the committees index and the page's description counted it as
+    met. build_committees marks a day after the build `ahead` and counts the
+    days met; app.js counts the two apart and gives a day to come no "No
+    recording of this day is on file"."""
+    import inspect
+    was = os.environ.get("GRANITE_BUILD_DATE")
+    os.environ["GRANITE_BUILD_DATE"] = "2026-10-08"
+    try:
+        got = [BCM.is_ahead(d) for d in ("2026-10-14", "2026-10-08", "2026-09-30", "")]
+    finally:
+        if was is None:
+            os.environ.pop("GRANITE_BUILD_DATE", None)
+        else:
+            os.environ["GRANITE_BUILD_DATE"] = was
+    assert got == [True, False, False, False], f"days still to come read {got}"
+    src = inspect.getsource(BCM)
+    assert '**({"ahead": True} if is_ahead(date) else {})' in src, (
+        "build_committees does not mark a day still to come")
+    assert '"n_sessions": met_days' in src and "{met_days:,} sitting days" in src, (
+        "the committees index or the page's description counts days still to come as met")
+    day = lambda d, ahead, said: {
+        "date": d, "term": "2025-2026", "video_id": "", "narrative": said,
+        "items": [{"bill": "SB256", "n": "SB 256-FN", "year": 2025, "kind": "work session",
+                   "start": None, "state": ""}], **({"ahead": True} if ahead else {})}
+    sess = _app_js("scope.renderCommitteeSessions({sessions:" + json.dumps([
+        day("2026-10-14", True, "The Committee on Commerce and Consumer Affairs is scheduled "
+            "to meet on October 14, 2026 for a work session on SB 256-FN."),
+        day("2026-10-07", False, "The Committee on Commerce and Consumer Affairs met on "
+            "October 7, 2026 for a work session on SB 256-FN.")]) + "})",
+        names=("renderCommitteeSessions",))
+    if sess is None:
+        return "ok", "build_committees counts the days met; node is not here to draw the tab"
+    flat = re.sub(r"\s+", " ", sess)
+    assert "1 day this committee met in" in flat and "and 1 still to come, newest first" in flat, (
+        "the Sessions tab's count reads: " + flat[:200])
+    assert flat.count("No recording of this day is on file.") == 1, (
+        "a day still to come is said to have no recording on file")
+    return "ok", ("a day after the build is marked and counted apart, on the tab, the index "
+                  "and the description")
 
 
 @check("frontend", "the Calendar's month shows six weeks, the days of the months either side greyed and chosen like any other")
