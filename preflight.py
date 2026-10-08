@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.469
+# GRANITE_VERSION: 2026-09-04.470
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -20388,6 +20388,215 @@ def _colours_from_palette():
     return "ok", (f"{read} declarations of app.css and the inline styles, SVG paint and strings "
                   f"of {len(_front_sources())} builders and scripts: every colour a token, and "
                   f"the {themed} theme-colors the palette's page")
+
+
+# A ground is what text sits on: an ink in a rule that gives none of its own
+# is read on each of these. --on-X is the ink for X, and --X-ink the ink on X,
+# so each is read on its X alone.
+_GROUNDS = ("--paper", "--surface", "--wash")
+# Tokens that draw no mark of their own: hairlines (no contrast asked of
+# them, as the palette's notes say), grounds and tints.
+_NOT_MARKS = re.compile(r"^--(?:rule|rule-2|paper|surface|wash|shadow|film|film-stub|"
+                        r"film-stub-hot)$|-(?:bg|soft)$")
+
+
+def _grounds_for(ink, default=_GROUNDS):
+    m = re.fullmatch(r"--on-(.+)", ink) or re.fullmatch(r"--(.+)-ink", ink)
+    return ["--" + m.group(1)] if m else list(default)
+
+
+def _css_token_colour(spec, scheme):
+    """(r, g, b) for a token or a color-mix of two tokens in srgb, or None."""
+    if "|" in spec:
+        a, pct, b = spec.split("|")
+        ca, cb = _css_token_colour(a, scheme), _css_token_colour(b, scheme)
+        if not ca or not cb:
+            return None
+        k = float(pct) / 100
+        return tuple(x * k + y * (1 - k) for x, y in zip(ca, cb))
+    v = scheme.get(spec, "")
+    return _css_hex(v) if re.fullmatch(r"#[0-9A-Fa-f]{3}|#[0-9A-Fa-f]{6}", v.strip()) else None
+
+
+def _token_pairs(text, sources):
+    """{(ink, ground, need): [where]}: every pair of tokens the site draws
+    one on the other, read from app.css's rules and the builders' and
+    scripts' inline styles and SVG, and the contrast each must have: 4.5 for
+    text, 3 for large text and for a mark (a bar, an edge, a ring, a
+    swatch). A ground mixed from two tokens in srgb is "a|N|b".
+
+    A rule's text is read on the ground the same rule gives it, and
+    otherwise on _grounds_for(ink). A mark -- a fill, a stroke, a border, an
+    outline -- is read on the ground outside it, the page and a card
+    (_grounds_for(token, ...)), never on its own rule's background: a
+    button's edge is seen against what is around the button. A component's
+    own variable (`.calcat.k-exec{--cat:var(--cal-exec)}`) stands for every
+    token it is given."""
+    pal = _css_palette(text)["light"]
+    rules = [r for r in _css_rules(text)
+             if not any(c.startswith("@media print") or "forced-colors" in c for c in r[0])]
+    local = {}
+    for _, _, body, _ in rules:
+        for k, v in _css_decls(body):
+            if k.startswith("--") and k not in pal:
+                local.setdefault(k, set()).update(re.findall(r"var\(\s*(--[\w-]+)", v))
+
+    def refs(v, seen=()):
+        out = []
+        for t in re.findall(r"var\(\s*(--[\w-]+)", v):
+            if t in pal:
+                out.append(t)
+            elif t in local and t not in seen:
+                out += refs(" ".join(f"var({x})" for x in sorted(local[t])), seen + (t,))
+        return out
+
+    def ground_of(v):
+        v = " ".join(v.split())
+        if re.fullmatch(r"var\(--[\w-]+\)", v):
+            return (refs(v) or [None])[0]
+        m = re.fullmatch(r"color-mix\(in srgb,\s*var\((--[\w-]+)\)\s+(\d+)%,\s*var\((--[\w-]+)\)\)", v)
+        return f"{m.group(1)}|{m.group(2)}|{m.group(3)}" if m else None
+
+    pairs = {}
+
+    def add(ink, grounds, need, where):
+        for g in grounds:
+            pairs.setdefault((ink, g, need), []).append(where)
+
+    for ctx, sel, body, ln in rules:
+        ds = _css_decls(body)
+        got = dict(ds)
+        size = next((s for s in (_css_font_size(k, v) for k, v in ds) if s), None)
+        px = _css_px(size, pal)[0] if size else None
+        bold = got.get("font-weight", "") in ("700", "800", "900", "bold")
+        large = px is not None and (px >= 24 or (px >= 18.66 and bold))
+        ground = next((ground_of(got[k]) for k in ("background-color", "background") if k in got),
+                      None)
+        where = f"app.css:{ln} {sel[:40]}"
+        for k in ("color", "-webkit-text-fill-color"):
+            v = got.get(k, "").strip()
+            if re.fullmatch(r"var\(--[\w-]+\)", v):
+                for ink in refs(v):
+                    add(ink, [ground] if ground else _grounds_for(ink), 3.0 if large else 4.5, where)
+        for k, v in ds:
+            if k in ("fill", "stroke") or (k.startswith(("border", "outline"))
+                                           and k not in ("border-radius", "outline-offset")):
+                for t in refs(v):
+                    if not _NOT_MARKS.search(t):
+                        add(t, _grounds_for(t, ("--paper", "--surface")),
+                            4.5 if (k == "fill" and px is not None) else 3.0, where)
+    for name, src in sources:
+        # app.js draws its graphics inside a card: the bill's, a member's,
+        # a committee's. A builder's may sit on the page.
+        marks_on = ("--surface",) if name == "app.js" else ("--paper", "--surface")
+        for m in re.finditer(r"\bstyle\s*=\s*([\"'])(.*?)\1", src, re.S):
+            got = dict(_css_decls(m.group(2)))
+            where = f"{name}:{_line_of(src, m.start())}"
+            inks = refs(got.get("color", "")) if re.fullmatch(
+                r"var\(--[\w-]+\)", got.get("color", "").strip()) else []
+            for ink in inks:
+                add(ink, _grounds_for(ink), 4.5, where)
+            if not inks and re.fullmatch(r"var\(--[\w-]+\)", got.get("background", "").strip()):
+                for t in refs(got["background"]):
+                    if not _NOT_MARKS.search(t):
+                        add(t, _grounds_for(t, marks_on), 3.0, where)
+        for m in re.finditer(r"<(text|tspan|circle|line|polygon|polyline|path|rect|ellipse)\b"
+                             r"([^>]*)>([^<]*)", src):
+            where = f"{name}:{_line_of(src, m.start())}"
+            words = m.group(1) in ("text", "tspan")
+            # A text whose own words are only a separator (the thin-spaced
+            # bar between a ring's two counts) reads nothing; a ${...} is
+            # words the script puts there.
+            if words and not re.search(r"[A-Za-z0-9$]",
+                                       re.sub(r"\\u[0-9A-Fa-f]{4}", "", m.group(3))):
+                continue
+            for k, v in re.findall(r"\b(fill|stroke)=\"(var\(--[\w-]+\))\"", m.group(2)):
+                for t in refs(v):
+                    if _NOT_MARKS.search(t) and not words:
+                        continue
+                    big = re.search(r"\bfont-size=\"(\d+)\"", m.group(2))
+                    text_ink = words and k == "fill"
+                    need = (3.0 if big and int(big.group(1)) >= 24 else 4.5) if text_ink else 3.0
+                    add(t, _grounds_for(t, marks_on), need, where)
+    return pairs
+
+
+@check("frontend", "every pair of tokens the site draws one on the other -- read from app.css's "
+                   "rules and the builders' and scripts' inline styles and SVG, not listed by "
+                   "hand -- measures up in both themes")
+def _token_pairs_measure():
+    """_palette measures the pairs somebody listed; this measures the pairs
+    the code draws, so a new token pair cannot arrive unmeasured.
+
+    Read from each rule of app.css: its text colour on its own ground where
+    the rule gives one (a token, or two mixed in srgb), and otherwise on the
+    grounds text sits on (_GROUNDS; --on-pine on pine, --film-stub-ink on
+    the still); its fills, strokes and borders as marks on the page and a
+    card. Hairlines, grounds and tints draw no mark and are not held
+    (_NOT_MARKS). The same from the inline styles of the builders, app.js
+    and find.js, and from their SVG: a text's fill is text, a shape's fill
+    or stroke a mark, and a swatch's background a mark.
+
+    WCAG 2.1: 4.5:1 for text, 3:1 for large text (24px, or 18.66px bold) and
+    for the parts of a graphic needed to read it. Not read: a token whose
+    name is built (`var(--ink${won?"":"-2"})`), a print or forced-colours
+    rule (_print_is_light and the sweep), and a ground an ancestor gives."""
+    css = Path("src/pages/app.css")
+    if not css.exists():
+        return "skip", "app.css is not there"
+    text = css.read_text(encoding="utf-8")
+    pal = _css_palette(text)
+    pairs = _token_pairs(text, _front_sources())
+    assert len(pairs) >= 60, (f"only {len(pairs)} pairs were read from the rules; there were "
+                              "more than 60 on 8 October 2026, so the reader has stopped reading")
+    bad, low = [], None
+    for (ink, ground, need), where in sorted(pairs.items()):
+        for name in ("light", "dark"):
+            a, b = _css_token_colour(ink, pal[name]), _css_token_colour(ground, pal[name])
+            if a is None or b is None:
+                bad.append(f"{ink} on {ground.replace('|', ' ')} cannot be measured in {name} "
+                           f"({where[0]})")
+                continue
+            r = _css_ratio(a, b)
+            if low is None or r / need < low[0] / low[1]:
+                low = (r, need, ink, ground, name)
+            if r < need:
+                bad.append(f"{ink} on {ground.replace('|', ' ')} is {r:.2f}:1 in {name}, and "
+                           f"needs {need:g} ({where[0]}" + (f" and {len(where) - 1} more"
+                                                             if len(where) > 1 else "") + ")")
+    assert not bad, f"{len(bad)} pairs: " + "; ".join(bad[:10])
+    r, need, ink, ground, name = low
+    return "ok", (f"{len(pairs)} pairs drawn, both themes; the closest is {ink} on "
+                  f"{ground.replace('|', ' ')} in {name}, {r:.2f}:1 against {need:g}")
+
+
+@check("frontend", "party and a vote's two sides are told apart by lightness as well as hue, in "
+                   "both themes: Republican and Democratic 1.7:1, yes and no 2:1",
+       expect_fail="the darker party inks and the dark theme's yes and no are in the palette")
+def _inks_apart():
+    """A seat on the chart and a district on the map are too small for a
+    letter, and a print, a photocopy or a reader who cannot tell red from
+    blue sees only lightness. So the two party inks must differ in it, and
+    so must the vote ring's yes and no: measured as a contrast ratio of the
+    one ink against the other. The floors are this site's own, not WCAG's:
+    1.7:1 for the parties, the gap the approved inks were chosen to clear,
+    and 2:1 for yes and no, which the light pair has always met (2.19:1)."""
+    css = Path("src/pages/app.css")
+    if not css.exists():
+        return "skip", "app.css is not there"
+    pal = _css_palette(css.read_text(encoding="utf-8"))
+    bad, said = [], []
+    for name in ("light", "dark"):
+        for a, b, need in (("--rep", "--dem", 1.7), ("--yes", "--no", 2.0)):
+            ca, cb = _css_token_colour(a, pal[name]), _css_token_colour(b, pal[name])
+            assert ca and cb, f"{a} or {b} is not a colour this can read in {name}"
+            r = _css_ratio(ca, cb)
+            said.append(f"{a[2:]}/{b[2:]} {r:.2f}:1 in {name}")
+            if r < need:
+                bad.append(f"{a} and {b} are {r:.2f}:1 apart in {name}, under {need:g}:1 "
+                           f"({pal[name][a]} and {pal[name][b]})")
+    assert not bad, "; ".join(bad)
+    return "ok", "; ".join(said)
 
 
 @check("frontend", "a focus ring is not cut off by the box around its control, a text box's edge is "
