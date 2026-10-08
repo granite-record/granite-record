@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.107
+# GRANITE_VERSION: 2026-09-04.108
 """
 Turn a bill's docket entries into a plain-language history.
 
@@ -2835,7 +2835,8 @@ def describe(ev, body, seen_intro=False):
         if seen_intro and ev.get("_crossed_late"):
             # Told after the vote that sent it (crossing_order), and with no
             # day: the chamber introduced it in recess and dates it by the
-            # session it was in recess of, a day before the vote. The event,
+            # session it was in recess of, a day earlier than the vote (HB
+            # 1460 of 2026: 5 February, a week before it). The event,
             # the docket list and the rail keep that day; the sentence says
             # only that it crossed (the person's wording, 8 October 2026).
             return f"It crossed to the {chamber} and was referred to {to}."
