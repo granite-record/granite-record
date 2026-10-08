@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.446
+# GRANITE_VERSION: 2026-09-04.447
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -44492,9 +44492,12 @@ def _legislators_page_tabs():
         win = [body for sel, body in rules if sel == ":where(body.pg) .lmatch"]
         assert len(win) == 1 and "max-height:260px" in win[0] and "overflow-y:auto" in win[0], (
             f"{sheet} does not hold the finder's list in its 260px window")
-        lifted = [sel for sel, body in rules if ".lmatch" in sel
+        # By its class, its id or an attribute naming either (the review of 7
+        # October 2026: a rule on #lmatch passed while this read the class).
+        lifted = [sel for sel, body in rules
+                  if re.search(r"\.lmatch\b|#lmatch\b|\[(?:id|class)[~|^$*]?=\W?lmatch", sel)
                   and sel != ":where(body.pg) .lmatch"
-                  and re.search(r"max-height|overflow|columns", body)]
+                  and re.search(r"max-height|overflow|columns|column-(?:count|width)", body)]
         assert not lifted, f"{sheet} lifts or widens the finder's window: {lifted}"
     # And the roster's three arrangements are a view switch, not a second row
     # of underlined tabs under the page's own.
