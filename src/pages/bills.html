@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- GRANITE_VERSION: 2026-09-05.60 -->
+<!-- GRANITE_VERSION: 2026-09-05.61 -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -73,17 +73,23 @@ if(t==="dark"||t==="light")document.documentElement.dataset.theme=t;}catch(e){}
      aria-label="Search">&#8629;</button>
   </div>
 </div>
-<div class="qhint"><!-- role=status AND aria-live: a screen reader was never told the result
+<div class="qhint"><!-- THE SORT COMES FIRST, under the term picker and as wide as it
+     (the person, 8 October 2026: "The best match/sort by should be to the
+     left of the number of matching bills ... and the width of the dropdown
+     boxes for the term selector and sort by should be the same size"). It
+     sat after the count, so the count arriving with the first letter typed
+     pushed it along the row; at the start of the row nothing before it can
+     move it.
+     role=status AND aria-live: a screen reader was never told the result
      set had changed. Typing a search, ticking a facet or switching term
      redraws the list silently, so a reader who cannot see it had no way
-     to know whether anything happened. This span already carries the one
-     sentence worth hearing -- "31 of 2,234 bills in the 2025-2026 term",
-     or "loading 2023-2024" while a term arrives -- and it is deliberately
-     EMPTY until something narrows the list, so it announces when there is
-     news and stays quiet when there is not. aria-atomic because the whole
-     sentence is replaced at once and half of it read aloud would be
-     worse than none. -->
-<span id="count" role="status" aria-live="polite" aria-atomic="true">Loading…</span>
+     to know whether anything happened. The count carries the one sentence
+     worth hearing -- "2,243 bills in the 2025-2026 term", "31 of 2,243
+     bills in the 2025-2026 term", or "loading 2023-2024" while a term
+     arrives -- and since the same evening it is never empty under a list:
+     with nothing narrowing it, it says the term's whole count. aria-atomic
+     because the whole sentence is replaced at once and half of it read
+     aloud would be worse than none. -->
 <label for="sort" style="position:absolute;left:-9999px">Sort order</label>
 <select id="sort">
   <option value="best">Best match</option>
@@ -91,6 +97,7 @@ if(t==="dark"||t==="light")document.documentElement.dataset.theme=t;}catch(e){}
   <option value="recent">Most recent action</option>
   <option value="status">Status</option>
 </select>
+<span id="count" role="status" aria-live="polite" aria-atomic="true">Loading…</span>
 <span id="synhint"></span></div>
 </div></div>
 <div class="shell"><button class="ftoggle" id="ftoggle" type="button"
