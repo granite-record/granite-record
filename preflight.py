@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.484
+# GRANITE_VERSION: 2026-09-04.485
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -53269,6 +53269,10 @@ ok("a report from a former member's page with no seat number is stored",
 // (25 September 2026): /committee/S03-1989, beside Appropriations' /committee/S03.
 const cmte = { ...good, record: "committee:H05", url: "/committee/H05", tab: "Sessions" };
 ok("a committee's page is accepted", validate(cmte) !== null);
+// The Meetings tab was Sessions until D19 (8 October 2026): a committee page
+// loaded before then still sends that, and it is stored as the tab's name now.
+ok("a committee's Sessions tab is stored as Meetings", validate(cmte) &&
+   validate(cmte).tab === "Meetings" && validate({ ...cmte, tab: "Meetings (28)" }).tab === "Meetings");
 ok("a committee's page at its code and first year is accepted",
    validate({ ...cmte, record: "committee:S03-1989", url: "/committee/S03-1989" }) !== null);
 for (const [rec, url] of [["committee:S03-1989", "/committee/S03"],
@@ -53685,6 +53689,14 @@ def _report_agree(CR):
     rendered |= set(re.findall(r'role="tab"[^>]*data-t="\d+">([A-Z][A-Za-z ]*?)(?:\$\{|<)', app))
     assert "Hearings" in rendered, "the bill's Hearings tab is no longer found among the tabs drawn"
     assert rendered <= box_tabs, f"a tab the pages render is missing from the report list: {sorted(rendered - box_tabs)}"
+    # AND NOTHING THE PAGES NO LONGER DRAW (the merge of dev into the polish,
+    # 8 October 2026). A committee's Sessions tab became Meetings (D19) and the
+    # three lists kept "Sessions" beside it, so a report from a page loaded
+    # before the rename was stored, and compiled, under a tab no page has. A
+    # tab's old name belongs in RENAMED_TABS, which stores it as the new one.
+    assert box_tabs <= rendered, (f"the report list names a tab no page draws: "
+                                  f"{sorted(box_tabs - rendered)}; a renamed tab's old name "
+                                  "goes in report.js RENAMED_TABS")
     # A TAB'S OLD NAME (report.js RENAMED_TABS): a page loaded before a rename
     # still sends it, and a report stored under it stays readable, under the
     # name the tab has now.
@@ -53700,6 +53712,11 @@ def _report_agree(CR):
     assert CR.well_formed(stored), "a report stored from the Videos tab is set aside as malformed"
     assert [r["tab"] for r, _why, _page in CR.judge([stored], {})[0]] == ["Hearings"], (
         "a report stored from the Videos tab is not shown as the Hearings tab's")
+    stored = dict(stored, id=8, record="committee:H05", kind="committee", url="/committee/H05",
+                  tab="Sessions", field="other", note="The meeting was in room 201.")
+    assert CR.well_formed(stored), "a report stored from the Sessions tab is set aside as malformed"
+    assert [r["tab"] for r, _why, _page in CR.judge([stored], {})[0]] == ["Meetings"], (
+        "a report stored from the Sessions tab is not shown as the Meetings tab's")
     return "ok", (f"{len(fn_fields)} fields, one record shape, {len(sent)} keys sent and read, "
                   f"{len(box_tabs)} tabs the same in all three, {len(rendered)} drawn; "
                   f"{', '.join(sorted(fn_renamed))} read as {', '.join(fn_renamed[k] for k in sorted(fn_renamed))}")

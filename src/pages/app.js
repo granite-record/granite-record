@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.168
+// GRANITE_VERSION: 2026-09-07.169
 // What each kind of document actually is, said once rather than in every row.
 const DOCWHAT={text:"the bill as it currently stands",
   status:"the page this site takes a bill's status from",
@@ -5094,9 +5094,10 @@ const REPORT_TO="contact@graniterecord.org";
 // HEARINGS, AS THE TAB IS NAMED (8 October 2026). The bill's third tab was
 // renamed from Videos and this list was not, so a report sent from it named
 // no tab at all. The Function still takes "Videos" from a page loaded before
-// the rename and stores it as "Hearings" (report.js RENAMED_TABS).
+// the rename and stores it as "Hearings" (report.js RENAMED_TABS), and a
+// committee's "Sessions", the Meetings tab's name before D19, as "Meetings".
 const REPORT_TABS=new Set(["Summary","Bill Text","Votes","Hearings","Reports","Sponsors",
-  "Documents","Prime sponsored","Co-sponsored","Bills","Sessions","Meetings"]);
+  "Documents","Prime sponsored","Co-sponsored","Bills","Meetings"]);
 let reportBuild=null;       // site/build.json's "finished", fetched once, on first open
 
 function reportBox(kind,ref){

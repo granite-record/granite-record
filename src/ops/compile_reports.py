@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-12.9
+# GRANITE_VERSION: 2026-09-12.10
 """
 What readers reported, compiled for a person and for the session that triages.
 
@@ -128,12 +128,12 @@ PATH = re.compile(r"^/(bill/\d{4}/[a-z]{2,6}\d{1,4}|legislator/[a-z0-9-]{1,80}|c
 # The tabs the pages render, and nothing else: a tab is a label, and a
 # free-text tab was 24 letters of a reader's own words outside the quotation.
 TABS = ("", "Summary", "Bill Text", "Votes", "Hearings", "Reports", "Sponsors",
-        "Documents", "Prime sponsored", "Co-sponsored", "Bills", "Sessions", "Meetings")
+        "Documents", "Prime sponsored", "Co-sponsored", "Bills", "Meetings")
 # A TAB'S OLD NAME, AND ITS NAME NOW (8 October 2026): functions/api/report.js
-# RENAMED_TABS. A bill's Hearings tab was Videos, and a report stored before
-# the Function learnt the new name carries the old one. It is read, and shown,
-# under the name the tab has.
-RENAMED_TABS = {"Videos": "Hearings"}
+# RENAMED_TABS. A bill's Hearings tab was Videos and a committee's Meetings tab
+# was Sessions, and a report stored before the Function learnt the new name
+# carries the old one. It is read, and shown, under the name the tab has.
+RENAMED_TABS = {"Videos": "Hearings", "Sessions": "Meetings"}
 
 
 def renamed_tab(r):

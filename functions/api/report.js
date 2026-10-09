@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-12.8
+// GRANITE_VERSION: 2026-09-12.9
 /*
  * POST /api/report -- a reader says something on a page is wrong.
  *
@@ -54,13 +54,13 @@ export const FIELDS = new Set(["date", "status", "sponsor", "vote", "hearing",
 // The tabs the pages render. compile_reports.TABS is the same list, and
 // preflight holds the two together.
 export const TABS = new Set(["", "Summary", "Bill Text", "Votes", "Hearings", "Reports",
-  "Sponsors", "Documents", "Prime sponsored", "Co-sponsored", "Bills", "Sessions",
-  "Meetings"]);
+  "Sponsors", "Documents", "Prime sponsored", "Co-sponsored", "Bills", "Meetings"]);
 // A TAB'S OLD NAME, AND ITS NAME NOW (8 October 2026). A bill's Hearings tab
-// was Videos, and a page loaded before it was renamed still sends that; it is
-// stored under the name the tab has. compile_reports.RENAMED_TABS is the same
-// map, for the reports already stored under the old one.
-export const RENAMED_TABS = new Map([["Videos", "Hearings"]]);
+// was Videos, and a committee's Meetings tab was Sessions (the person's words,
+// D19), and a page loaded before either was renamed still sends the old name;
+// it is stored under the name the tab has. compile_reports.RENAMED_TABS is the
+// same map, for the reports already stored under the old one.
+export const RENAMED_TABS = new Map([["Videos", "Hearings"], ["Sessions", "Meetings"]]);
 
 // What a page can be, and the one shape its record takes. Measured from the
 // built site on 12 September: bills 2026/HB100, members by numeric id,
