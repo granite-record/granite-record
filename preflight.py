@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.475
+# GRANITE_VERSION: 2026-09-04.476
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -38767,6 +38767,111 @@ def _bill_status_select_categories():
     return "ok", ("the select offers the search's categories a bill of the tab is in, each in "
                   "its chip's class, filters by them with each card keeping its word, is "
                   "painted by its choice, and keeps a choice made elsewhere at none")
+
+
+# A member's two bills tabs and a committee's, as renderMemberBills and
+# renderCommitteeBills draw them, in node: the index rows from rows.json,
+# and the Bill status select set to each value in turn.
+_BILL_STATUS_NOTE_HARNESS = r"""
+require("./stub.js");
+const fs = require("fs");
+let s;
+try { s = (0, eval)(fs.readFileSync("./page.js", "utf8")
+  + "; ({renderMemberBills, renderCommitteeBills, IDX, setPage: (p) => { PAGE = p; }})"); }
+catch (e) { console.log("LOAD " + e.constructor.name + ": " + e.message); process.exit(1); }
+const fx = JSON.parse(fs.readFileSync("./fx.json", "utf8"));
+s.IDX.length = 0; fx.rows.forEach(r => s.IDX.push(r));
+const out = {};
+const page = (kind, status, data) => s.setPage({kind, status, terms: ["2025-2026"],
+  term: "2025-2026", data, vfilter: "", vparty: "", vshow: 0});
+try {
+  for (const st of ["", "Withdrawn", "Died"]) {
+    page("member", st, fx.member);
+    out["prime|" + st] = s.renderMemberBills(fx.member, true);
+    out["co|" + st] = s.renderMemberBills(fx.member, false);
+    for (const [k, c] of Object.entries(fx.committees)) {
+      page("committee", st, c);
+      out[k + "|" + st] = s.renderCommitteeBills(c);
+    }
+  }
+} catch (e) { out.threw = e.constructor.name + ": " + e.message; }
+process.stdout.write("\n@@" + JSON.stringify(out));
+"""
+
+
+@check("frontend", "under a member's or a committee's Bill status select, the note says how "
+                   "many of the tab's bills it lists -- 24 of 137 -- and never the bills listed "
+                   "as the whole of the record")
+def _bill_status_note_counts_the_tab():
+    """The note under the Bill status select (app.js billPane, its sentence
+    renderMemberBills' and renderCommitteeBills') was given the bills listed
+    alone, so narrowed it said what was not true of the record: "24 bills
+    referred to this committee in 2025-2026" under Passed beside a tab
+    reading "Bills (137)", and -- once a choice made on one tab was kept on
+    another, the person's "Same categories" of 8 October 2026 -- "0 bills
+    co-sponsored in 2025-2026" under Withdrawn beside "Co-sponsored (37)"
+    (the review of 8 October 2026). Narrowed it says "24 of 137 bills", as
+    the search's count says "31 of 2,243 bills" once something narrows it;
+    with Any, the tab's own count alone. Run in node over a member with three
+    bills prime sponsored (one withdrawn) and two co-sponsored (none), a
+    committee of five (two died), one of a single bill and one of 1,001 (all
+    but one died), with Any, Withdrawn and Died chosen. Held: each note's
+    leading words, the cards under it as many as it says it lists, and the
+    thousands separated."""
+    def row(bid, kind, chip, status=None):
+        return {"id": bid, "n": re.sub(r"^([A-Z]+)", r"\1 ", bid), "title": "a bill",
+                "kind": kind, "status": status or chip, "chip": chip, "committees": [],
+                "committee": "", "topic": "", "sponsor": "", "term": "2025-2026",
+                "year": 2026, "passage": "", "votedays": [], "nrc": 0, "last_action": ""}
+    rows = [row("HB1", "law", "Became Law", "Signed into law"),
+            row("HB2", "done", "Died", "Killed"),
+            row("HB3", "done", "Withdrawn"),
+            row("HB4", "law", "Became Law", "Signed into law"),
+            row("HB5", "study", "Interim Study", "Referred for interim study"),
+            row("SB6", "done", "Died", "Killed")] \
+        + [row(f"HB{1000 + i}", "done", "Died", "Killed") for i in range(1000)]
+    ref = lambda ids: [{"id": i, "term": "2025-2026"} for i in ids]
+    member = {"sponsored": [{"bill": b, "term": "2025-2026", "prime": p}
+                            for b, p in (("HB1", True), ("HB2", True), ("HB3", True),
+                                         ("HB4", False), ("HB5", False))]}
+    committees = {"five": {"bills": {"2025-2026": ref(["HB1", "HB2", "HB4", "HB5", "SB6"])}},
+                  "one": {"bills": {"2025-2026": ref(["HB4"])}},
+                  "big": {"bills": {"2025-2026": ref(["HB1"] + [f"HB{1000 + i}"
+                                                                 for i in range(1000)])}}}
+    got = _node_app(_BILL_STATUS_NOTE_HARNESS,
+                    {"fx.json": json.dumps({"rows": rows, "member": member,
+                                            "committees": committees})})
+    if got is None:
+        return "skip", "app.js, dom_stub.js or node is not here"
+    assert "threw" not in got, f"a bills tab threw {got['threw']}"
+    want = {
+        "prime|": ("3 bills prime sponsored in 2025-2026.", 3),
+        "prime|Withdrawn": ("1 of 3 bills prime sponsored in 2025-2026.", 1),
+        "prime|Died": ("1 of 3 bills prime sponsored in 2025-2026.", 1),
+        "co|": ("2 bills co-sponsored in 2025-2026.", 2),
+        "co|Withdrawn": ("0 of 2 bills co-sponsored in 2025-2026.", 0),
+        "co|Died": ("0 of 2 bills co-sponsored in 2025-2026.", 0),
+        "five|": ("5 bills referred to this committee in 2025-2026.", 5),
+        "five|Withdrawn": ("0 of 5 bills referred to this committee in 2025-2026.", 0),
+        "five|Died": ("2 of 5 bills referred to this committee in 2025-2026.", 2),
+        "one|": ("1 bill referred to this committee in 2025-2026.", 1),
+        "one|Died": ("0 of 1 bill referred to this committee in 2025-2026.", 0),
+        "big|": ("1,001 bills referred to this committee in 2025-2026.", 1001),
+        "big|Died": ("1,000 of 1,001 bills referred to this committee in 2025-2026.", 1000),
+    }
+    bad = []
+    for k, (words, n) in want.items():
+        html = got.get(k, "")
+        note = re.search(r'<p class="src">(.*?)</p>', html, re.S)
+        said = re.sub(r"\s+", " ", note.group(1)).strip() if note else None
+        if not said or not said.startswith(words):
+            bad.append(f"{k or 'Any'} says {said!r}, not {words!r}")
+        cards = len(re.findall(r'<article class="card[^"]*" data-id=', html))
+        if cards != n:
+            bad.append(f"{k} lists {cards} cards under a note of {n}")
+    assert not bad, "; ".join(bad[:8])
+    return "ok", ("narrowed, the note says how many of the tab's bills it lists (1 of 3, 0 of 2, "
+                  "1,000 of 1,001), and with Any the tab's own count, the cards as many")
 
 
 @check("frontend", "the bill search always says how many bills it lists -- the term's whole "

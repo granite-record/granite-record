@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.165
+// GRANITE_VERSION: 2026-09-07.166
 // What each kind of document actually is, said once rather than in every row.
 const DOCWHAT={text:"the bill as it currently stands",
   status:"the page this site takes a bill's status from",
@@ -5830,6 +5830,15 @@ function idxRow(b){
 // offer on another with no bill in it (PAGE.status is the page's, not the
 // tab's), so the empty list reads as its doing and it can be put back to
 // Any where it was chosen; the cards keep their own words.
+// THE NOTE UNDER IT SAYS HOW MANY OF THE TAB'S BILLS IT LISTS: `note` is
+// given the bills listed and the tab's whole count, and says "24 of 137
+// bills referred to this committee", as the search's count says "31 of 2,243
+// bills" once something narrows it (billsOf). It was given the bills listed
+// alone and said "24 bills referred to this committee in 2025-2026" under
+// Passed beside a tab reading "Bills (137)", and "0 bills co-sponsored in
+// 2025-2026" under a Withdrawn kept from the Prime sponsored tab beside
+// "Co-sponsored (37)" (the review of 8 October 2026): a count of the member's
+// or the committee's record that was not true of it.
 function billPane(rows,note){
   rows=rows.slice().sort((a,b)=>billCmp(a.id,b.id));
   const cats=catsOffered(new Set(rows.map(statusCat).filter(Boolean)),
@@ -5840,9 +5849,12 @@ function billPane(rows,note){
       <select data-pf="status"${on?` class="${on}"`:""}><option value="">Any</option>
       ${cats.map(x=>`<option value="${esc(x)}" class="${CATCLASS[x]||""}"${
         x===PAGE.status?" selected":""}>${esc(x)}</option>`).join("")}</select></label></div>
-    <p class="src">${note(shown.length)}</p>
+    <p class="src">${note(shown.length,rows.length)}</p>
     <div class="cards">${shown.map(b=>b.lsr?lsrCardHtml(b):cardHtml(b,false)).join("")}</div>`;
 }
+// "137 bills", or "24 of 137 bills" where fewer than all are listed.
+const billsOf=(n,of)=>`${n===of?"":`${n.toLocaleString()} of `}${
+  of.toLocaleString()} bill${of===1?"":"s"}`;
 
 // The term, above the tabs, because it governs all of them.
 function termControl(){
@@ -6101,7 +6113,7 @@ function renderMemberBills(m, prime){
   const t=pageTerm();
   if(!rows.length)return `<p class="src">No bills ${prime?"prime sponsored"
     :"co-sponsored"} in the ${esc(t)} term.</p>`;
-  return billPane(rows,n=>`${n.toLocaleString()} bill${n===1?"":"s"}${
+  return billPane(rows,(n,of)=>`${billsOf(n,of)}${
     prime?" prime sponsored":" co-sponsored"} in ${esc(t)}. Sponsoring a bill is
     putting a name to it, which is not the same as voting for it and is not
     counted as one here.`);
@@ -6426,7 +6438,7 @@ function renderCommitteeBills(c){
   // .fill on the notes that stand in for an empty pane: the width it has (F9).
   if(!rows.length)return `<p class="src fill">No bills were referred to this
     committee in the ${esc(t)} term.</p>`;
-  return billPane(rows,n=>`${n.toLocaleString()} bill${n===1?"":"s"} referred to
+  return billPane(rows,(n,of)=>`${billsOf(n,of)} referred to
     this committee in ${esc(t)}.`);
 }
 
