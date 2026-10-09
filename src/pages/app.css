@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.223 */
+/* GRANITE_VERSION: 2026-09-07.224 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -4800,7 +4800,10 @@ table.cov{border-collapse:collapse;font-size:var(--t-sm);width:100%;min-width:42
   .offhow{align-items:center}
   .offhow a{display:inline-flex;align-items:center;min-height:44px;padding:0}
   :is(.civics,.civhead,.sesspage) .crumb a{display:inline-block;position:relative}
-  :is(.civics,.civhead,.sesspage) .crumb a::after{content:"";position:absolute;
+  /* The tap area is drawn by ::before: ::after is where a link that leaves
+     the site carries its mark, and an empty ::after here would take it off
+     (preflight's outside-link check). */
+  :is(.civics,.civhead,.sesspage) .crumb a::before{content:"";position:absolute;
   left:0;right:0;top:-2px;bottom:-14px}
 }
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.480
+# GRANITE_VERSION: 2026-09-04.481
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -20220,14 +20220,20 @@ def _sizes_follow_the_reader():
         return "skip", "app.css is not there"
     text = css.read_text(encoding="utf-8")
     bad, sizes, queries = [], 0, 0
+    # A size is read through var() to what it is: a token of any name holding
+    # a px size is a px size wherever it is used (the review of 8 October
+    # 2026 hid "--note-size:15px" behind var() and this passed it).
+    tokens = _css_palette(text)["light"]
     for ctx, sel, body, ln in _css_rules(text):
         for k, v in _css_decls(body):
             size = _css_font_size(k, v) if not k.startswith("--t-") else v
             if size is None:
                 continue
             sizes += 1
-            if re.search(r"\d(px|pt)\b", size):
-                bad.append(f"app.css:{ln} {sel[:40]} sets {k} in {re.search(r'(px|pt)', size).group(1)}")
+            how = _css_px(size, tokens)[1] if size.startswith("var(") else ""
+            if re.search(r"\d(px|pt)\b", size) or how in ("px", "pt"):
+                bad.append(f"app.css:{ln} {sel[:40]} sets {k} in "
+                           f"{how or re.search(r'(px|pt)', size).group(1)}")
     for m in re.finditer(r"@(media|container)([^{]*)\{", re.sub(r"/\*.*?\*/", "", text, flags=re.S)):
         if re.search(r"(?:min|max)-(?:width|height)", m.group(2)):
             queries += 1
@@ -20249,6 +20255,15 @@ def _sizes_follow_the_reader():
         for m in re.finditer(r"matchMedia\(\s*[\"'`]([^\"'`]*)", src):
             if re.search(r"(?:min|max)-width\s*:\s*[\d.]+px", m.group(1)):
                 bad.append(f"{name}:{_line_of(src, m.start())} asks matchMedia({m.group(1)}) in px")
+        # And a size a script sets as it runs: .style.fontSize, setProperty
+        # and cssText, which no rule above reads.
+        for m in re.finditer(r"\.style\.fontSize\s*=\s*([^;\n]+)|setProperty\(\s*[\"'`]font-size"
+                             r"[\"'`]\s*,\s*([^)\n]+)|cssText\s*\+?=\s*([^;\n]+)", src):
+            val = next(g for g in m.groups() if g is not None)
+            if m.group(3) is not None and not re.search(r"font(?:-size)?\s*:", val):
+                continue
+            if re.search(r"\d(px|pt)\b", val):
+                bad.append(f"{name}:{_line_of(src, m.start())} sets text in px from a script")
     assert sizes > 300 and queries > 40, (
         f"only {sizes} sizes and {queries} width queries were read in app.css; there were "
         "445 and 59 on 8 October 2026, so the reader has stopped reading")
@@ -20443,6 +20458,16 @@ def _colours_from_palette():
                              rest):
             bad.append(f"{name}:{_line_of(rest, m.start())} holds the colour {m.group(2)} "
                        "as a string")
+        # A colour a script sets as it runs: .style.<property>, setProperty
+        # and cssText (the review of 8 October 2026 put "background:#fafafa"
+        # into a cssText and this passed it).
+        for m in re.finditer(r"\.style\.\w+\s*=\s*([^;\n]+)|setProperty\(([^)\n]+)\)|"
+                             r"cssText\s*\+?=\s*([^;\n]+)", rest):
+            val = next(g for g in m.groups() if g is not None)
+            lit = _colour_literals(re.sub(r"[\"'`]", " ", val))
+            if lit:
+                bad.append(f"{name}:{_line_of(rest, m.start())} sets {', '.join(lit)} from a "
+                           "script")
     assert themed >= 2, (f"only {themed} theme-color lines were found; bills.html and "
                          "build_pages.py each write two, and this reads them")
     assert not bad, (f"{len(bad)} colours outside the palette: " + "; ".join(bad[:12])
@@ -38273,7 +38298,8 @@ def _review_of_audit_fixes(BP):
                       css, re.S)
     crumb = re.sub(r"/\*.*?\*/", "", phone.group(1), flags=re.S) if phone else ""
     link = re.search(r":is\(\.civics,\.civhead,\.sesspage\) \.crumb a\{([^}]*)\}", crumb)
-    over = re.search(r":is\(\.civics,\.civhead,\.sesspage\) \.crumb a::after\{([^}]*)\}", crumb)
+    # ::before since 8 October 2026: ::after is the outside-link mark's.
+    over = re.search(r":is\(\.civics,\.civhead,\.sesspage\) \.crumb a::before\{([^}]*)\}", crumb)
     if not (link and over):
         bad.append("on a phone the line above a heading is no bigger a target than its words")
     else:
@@ -47780,6 +47806,32 @@ def _outside_links():
                 continue
             bad.append(f"{name}:{_line_of(src, m.start())} {line.strip()[:60]}")
     assert not bad, ("an arrow written as text beside a link, which app.css now draws itself: "
+                     + "; ".join(bad[:6]))
+    # NOTHING TAKES THE MARK OFF, AND NOTHING KEEPS A LINK IN THE TAB. A later
+    # rule giving a link's ::after no content, or hiding it, unmarks every
+    # outside link it reaches; and a link that names its own target is one
+    # find.js leaves alone. The review of 8 October 2026 did both and this
+    # passed them. The list card's corner arrow is an inside link's, drawn by
+    # .detail's own text, and is not an ::after.
+    for ctx, sel, body, ln in _css_rules(text):
+        if "::after" not in sel or not re.search(r"(?:^|[\s,>+~(])a(?:[.:\[#]|::|$|[\s,)])", sel):
+            continue
+        if any(c.startswith("@media print") for c in ctx):
+            continue
+        for k, v in _css_decls(body):
+            if (k == "content" and re.fullmatch(r"none|normal|[\"']\s*[\"']", v.strip())) \
+                    or (k == "display" and v.strip() == "none"):
+                bad.append(f"app.css:{ln} {sel[:60]} takes the outside-link mark off ({k}: {v})")
+    for name, src in _front_sources():
+        for m in re.finditer(r"target\s*=\s*\\?[\"'](?:_self|_top|_parent)\\?[\"']|"
+                             r"setAttribute\(\s*[\"']target[\"']\s*,\s*[\"'](?:_self|_top|_parent)",
+                             src):
+            line = src[src.rfind("\n", 0, m.start()) + 1:src.find("\n", m.start())]
+            if line.lstrip().startswith(("#", "//", "*", "/*")):
+                continue
+            bad.append(f"{name}:{_line_of(src, m.start())} keeps a link in the tab: "
+                       f"{line.strip()[:60]}")
+    assert not bad, ("an outside link that is not marked or does not open a new tab: "
                      + "; ".join(bad[:6]))
     js = find.read_text(encoding="utf-8")
     fn = re.search(r"function leavesSite\(a,here\)\{.*?\n\}", js, re.S)
