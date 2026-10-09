@@ -23,7 +23,15 @@
     "Wheeler R, Pappas D, Goodlander D. That is a person's statement rather",
     "than a page's, which is the whole reason this file is a person's file.",
     "A party chip is a visible claim about a real person; if one of these is",
-    "wrong, it is wrong here and nowhere else."
+    "wrong, it is wrong here and nowhere else.",
+    "",
+    "SINCE 9 OCTOBER 2026, ALSO THE SECRETARY OF STATE, THE STATE TREASURER AND",
+    "THE ATTORNEY GENERAL, read that day from each office's own pages, whose",
+    "addresses each record carries. The person approved the three names in chat",
+    "the same day. None of the three pages states a party, so none is recorded.",
+    "The Secretary of State and the Treasurer are elected by the General Court",
+    "for each biennium, so both are read again after the new General Court",
+    "chooses them in December."
   ],
   "_checked": "2026-09-09",
   "governor": {
@@ -131,6 +139,51 @@
         "phone_dc": "(202) 224-3324",
         "official_url": "https://hassan.senate.gov"
       }
+    ]
+  },
+  "secretary_of_state": {
+    "office": "Secretary of State",
+    "scope": "statewide",
+    "name": "David M. Scanlan",
+    "party": "",
+    "phone": "(603) 271-3242",
+    "email": "administration@sos.nh.gov",
+    "official_url": "https://www.sos.nh.gov/",
+    "contact_url": "https://www.sos.nh.gov/contact-us",
+    "source": "https://www.sos.nh.gov/contact-us",
+    "read": "2026-10-09",
+    "about": [
+      "As chief election official, the Secretary of State oversees all state elections. The office also keeps the state's corporations, securities, archives and vital records. The Secretary is elected by a joint session of the House and Senate."
+    ]
+  },
+  "treasurer": {
+    "office": "State Treasurer",
+    "scope": "statewide",
+    "name": "Monica Mezzapelle",
+    "party": "",
+    "phone": "(603) 271-2621",
+    "email": "info@treasury.nh.gov",
+    "official_url": "https://www.treasury.nh.gov/",
+    "contact_url": "https://www.treasury.nh.gov/contact-us",
+    "source": "https://www.treasury.nh.gov/about-us/state-treasurer",
+    "read": "2026-10-09",
+    "about": [
+      "The State Treasurer oversees the state's finances, including investments and debt management. Part 2, Article 67 of the New Hampshire Constitution establishes the office, and the Treasurer is elected by a joint session of the Senate and the House."
+    ]
+  },
+  "attorney_general": {
+    "office": "Attorney General",
+    "scope": "statewide",
+    "name": "John Formella",
+    "party": "",
+    "phone": "(603) 271-3658",
+    "email": "",
+    "official_url": "https://www.doj.nh.gov/",
+    "contact_url": "https://www.doj.nh.gov/contact-us",
+    "source": "https://www.doj.nh.gov/",
+    "read": "2026-10-09",
+    "about": [
+      "The Attorney General is the State's chief legal officer and chief law enforcement officer, and heads the Department of Justice."
     ]
   }
 }
