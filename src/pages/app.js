@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.164
+// GRANITE_VERSION: 2026-09-07.165
 // What each kind of document actually is, said once rather than in every row.
 const DOCWHAT={text:"the bill as it currently stands",
   status:"the page this site takes a bill's status from",
@@ -81,10 +81,15 @@ const chipCmp=(a,b)=>{const x=CHIPORDER.indexOf(a),y=CHIPORDER.indexOf(b);
    options of their own.
    FILTER ONLY, which is what the person answered the same evening: a card's
    chip keeps its own word (Became Law, Adopted by the House, In committee,
-   Tabled), and only the sidebar's Status filter and the Status sort's
-   headings use these. Withdrawn and Vetoed are their own, offered only where
-   a bill is one: Vetoed only while an override vote is still to come, since a
-   veto that stood is already Died.
+   Tabled), and only the sidebar's Status filter, the Status sort's headings
+   and a member's or a committee's Bill status select (billPane) use these.
+   Withdrawn and Vetoed are their own: Vetoed only while an override vote is
+   still to come, since a veto that stood is already Died. A bill passed and
+   awaiting the governor is In Progress, which the person confirmed the same
+   evening: the governor has yet to act on it.
+   Each is OFFERED ONLY WHERE A BILL IS ONE ("Hide at zero", the person's
+   answer of 8 October 2026), in this order whichever are offered; a category
+   a reader has chosen stays on offer at none, so it can be undone.
    Read by the chip first and then by its kind (build_site_v2.chip_word), so a
    word this table has never seen -- a stage the General Court names tomorrow
    -- still lands somewhere: preflight walks every row of the nineteen terms
@@ -92,8 +97,10 @@ const chipCmp=(a,b)=>{const x=CHIPORDER.indexOf(a),y=CHIPORDER.indexOf(b);
    Tables a word from an address is looked up in have no prototype (A WORD
    SOMEBODY TYPES IS NOT A PROPERTY OF AN OBJECT, below). */
 const STATUSCATS=["In Progress","Passed","Tabled","Interim Study","Died","Withdrawn","Vetoed"];
-// Offered in every term, even at none: the last two only where a bill is one.
-const STATUSCATS_ALWAYS=5;
+// What is offered: the categories some bill listed is in (`have`), and any a
+// reader has chosen (`chosen`, a Set), in STATUSCATS' order.
+const catsOffered=(have,chosen)=>STATUSCATS.filter(c=>have.has(c)||chosen.has(c));
+// Each in its chip's class, in the sidebar and in a record page's select.
 const CATCLASS=Object.assign(Object.create(null),{"In Progress":"s-active",
   "Passed":"s-law","Tabled":"s-table","Interim Study":"s-study","Died":"s-done",
   "Withdrawn":"s-done","Vetoed":"s-veto"});
@@ -2870,19 +2877,20 @@ function renderFacets(){
   // the biennium, and splitting one term into its two filing years was a
   // second control for a distinction the card prints on its own. (The
   // <select id="year"> is the TERM picker, despite its id, and stays.)
-  // THE CATEGORIES (statusCat, above), each in its own chip's colour: In
-  // Progress, Passed, Tabled, Interim Study and Died in every term, so the
-  // list of them does not change shape from one term to the next, and
-  // Withdrawn and Vetoed only where a bill is one. It offered the chip's
-  // words, a stage at a time, and before that four kinds -- In progress,
-  // Became law, Killed, Vetoed -- with no way to ask for interim study. Not
-  // at all for the requests, which have no status yet -- unless one is ticked
-  // there, carried from a term the reader left: then the group stays, the
-  // tick on it at none, so the empty list can be seen to be its doing and
-  // undone where it was done.
-  const cats=new Set(present("status"));
-  if(cats.size||sel.status.size)h+=fgroup("status","Status",
-    STATUSCATS.filter((c,i)=>i<STATUSCATS_ALWAYS||cats.has(c)||sel.status.has(c)),
+  // THE CATEGORIES (statusCat, above), each in its own chip's colour and in
+  // their one order, and only those a bill of this term is in (all of them
+  // on All Terms): the person, 8 October 2026, "Hide at zero". The first
+  // five were offered in every term at first, so that the list kept its
+  // shape, and an ended term offered In Progress and Tabled at none. A
+  // category a reader has ticked stays, at none, wherever they take it --
+  // into a term with no bill in it, or into the requests, which have no
+  // status yet and are otherwise offered no Status filter at all -- so the
+  // empty list can be seen to be its doing and undone where it was done. It
+  // offered the chip's words, a stage at a time, and before that four kinds
+  // -- In progress, Became law, Killed, Vetoed -- with no way to ask for
+  // interim study.
+  const cats=catsOffered(new Set(present("status")),sel.status);
+  if(cats.length)h+=fgroup("status","Status",cats,
     cnt("status","status"),false,v=>CATCLASS[v]||"");
   // WHAT KIND OF MEASURE (TYPE_NAME), in the person's order (TYPEORDER), each
   // as its letters and its name. A type ticked in another term stays on
@@ -2894,7 +2902,9 @@ function renderFacets(){
       TYPE_NAME[v]?`<span>${esc(TYPE_NAME[v])}</span>`:""}</span>`);
   const days={};inYear.filter(b=>matches(b,"voteday")).forEach(b=>(b.votedays||[]).forEach(d=>days[d]=(days[d]||0)+1));
   const allDays=[...new Set(inYear.flatMap(b=>b.votedays||[]))].sort().reverse();
-  if(allDays.length)h+=fgroup("voteday","Floor vote day",allDays,days);
+  // "Floor Vote Day", in the Title Case of the headings above it (Prime
+  // Sponsor, Bill Type): decided 8 October 2026.
+  if(allDays.length)h+=fgroup("voteday","Floor Vote Day",allDays,days);
   if(Object.values(sel).some(s=>s.size))h+=`<button class="link" id="clear" style="margin-top:12px">Clear all filters</button>`;
   // Replacing innerHTML resets scrollTop to zero. Capture it first and put it
   // back in the same tick, before anything is painted, or every tick of a
@@ -5807,18 +5817,29 @@ function idxRow(b){
           status:b.status||"",kind:b.kind||"",chip:b.chip||"",sponsor:"",committees:[]};
 }
 
-// The bills of one tab, as cards, with the outcome filter above them: the
-// chip's words, as the bill search's Status filter offers them. "Bill
+// The bills of one tab, as cards, with the outcome filter above them. "Bill
 // status", not "Status": on a legislator's page a bare "Status: Died" sits
 // under the member's own name and facts, and the word is a bill's.
+// THE SEARCH'S CATEGORIES (the person, 8 October 2026, "Same categories"):
+// In Progress, Passed, Tabled, Interim Study, Died, Withdrawn and Vetoed, in
+// that order, only those a bill of this tab is in, and each option in its
+// chip's colours as the sidebar paints it, the select itself too once one
+// is chosen. It offered each chip's word -- Became Law, Adopted by the
+// House, In committee, Re-referred to committee, each a choice of its own,
+// in another order than the search's. A category chosen on one tab stays on
+// offer on another with no bill in it (PAGE.status is the page's, not the
+// tab's), so the empty list reads as its doing and it can be put back to
+// Any where it was chosen; the cards keep their own words.
 function billPane(rows,note){
   rows=rows.slice().sort((a,b)=>billCmp(a.id,b.id));
-  const statuses=[...new Set(rows.map(chipOf).filter(Boolean))].sort(chipCmp);
-  const shown=rows.filter(b=>!PAGE.status||chipOf(b)===PAGE.status);
+  const cats=catsOffered(new Set(rows.map(statusCat).filter(Boolean)),
+    new Set(PAGE.status?[PAGE.status]:[]));
+  const shown=rows.filter(b=>!PAGE.status||statusCat(b)===PAGE.status);
+  const on=CATCLASS[PAGE.status]||"";
   return `<div class="bfilt"><label>Bill status
-      <select data-pf="status"><option value="">Any</option>
-      ${statuses.map(x=>`<option value="${esc(x)}"${x===PAGE.status?" selected":""}>${
-        esc(x)}</option>`).join("")}</select></label></div>
+      <select data-pf="status"${on?` class="${on}"`:""}><option value="">Any</option>
+      ${cats.map(x=>`<option value="${esc(x)}" class="${CATCLASS[x]||""}"${
+        x===PAGE.status?" selected":""}>${esc(x)}</option>`).join("")}</select></label></div>
     <p class="src">${note(shown.length)}</p>
     <div class="cards">${shown.map(b=>b.lsr?lsrCardHtml(b):cardHtml(b,false)).join("")}</div>`;
 }
@@ -7116,13 +7137,19 @@ function render(more){
     $("#summary").textContent=fb?"":(ids&&ids.length>1
       ?`Showing ${rows.length} of the ${ids.length} bills you listed.`:"");
   }
-  // Counted over what is on screen, not over the whole result set, so the
-  // number beside a heading always matches the cards under it.
   // A heading is a category of the Status filter (statusCat), and a request,
   // which has none, is headed by its own word.
+  // COUNTED OVER THE WHOLE RESULT, not over the cards drawn so far: the
+  // person, 8 October 2026, "Full totals" -- each heading's number is how
+  // many of the list are in that category, "Passed 686" as the sidebar's
+  // Passed says 686. It was counted over what is on screen, so that the
+  // number matched the cards under it, and the hundred drawn first in the
+  // 2025-2026 term (the build of 7 October: one In Progress, then Passed)
+  // headed its 686 "Passed 99", a number that grew as the reader scrolled
+  // and agreed with nothing else on the page.
   const grpOf=b=>statusCat(b)||chipOf(b);
   const grpN={};
-  if(sortBy==="status")for(const b of shown)grpN[grpOf(b)]=(grpN[grpOf(b)]||0)+1;
+  if(sortBy==="status")for(const b of rows)grpN[grpOf(b)]=(grpN[grpOf(b)]||0)+1;
   // A LINK, TO THE BILL SEARCH. It was a button that called history.back(),
   // under a label that names a place: opened directly, a bill's page left
   // the site; reached from a member's page, "Back to bill search" went back
@@ -7133,7 +7160,7 @@ function render(more){
     bill search</a>`:"")+((rows.length||fb)?shown.map((b,gi,arr)=>`
     ${!fb&&sortBy==="status"&&(gi===0||grpOf(arr[gi-1])!==grpOf(b))
       ?`<h2 class="grp">${esc(grpOf(b)||"No status recorded")}
-         <span>${grpN[grpOf(b)]}</span></h2>`:""}
+         <span>${(grpN[grpOf(b)]||0).toLocaleString()}</span></h2>`:""}
     ${b.lsr?lsrCardHtml(b):cardHtml(b,!!fb)}`).join("")+((!fb&&rows.length>SHOWN)?`<p class="more" id="more">Showing ${
       shown.length.toLocaleString()} of ${rows.length.toLocaleString()} — <button
       class="link" data-more="1">show ${Math.min(PAGE_SIZE,rows.length-SHOWN)} more</button></p>`:"")

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.474
+# GRANITE_VERSION: 2026-09-04.475
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -38026,8 +38026,8 @@ process.stdout.write("\n@@" + JSON.stringify(out));
 
 
 @check("frontend", "a bill's card, the Status filter, the status grouping and a record page's "
-                   "Bill status select never say how the bill ended: the card and the select "
-                   "the chip's word, the filter and the grouping its category")
+                   "Bill status select never say how the bill ended: the card the chip's word, "
+                   "the filter, the grouping and the select its category")
 def _chip_drawn():
     """The chip is the six words of 5 October 2026 and a still-moving bill's
     stage (build_site_v2.chip_word); the status -- "Killed", "Vetoed,
@@ -38035,12 +38035,15 @@ def _chip_drawn():
     runs app.js in node: each card's chip is its word, coloured by the word,
     so a veto that stood is Died in Died's colour; the Status filter offers
     the categories of 8 October 2026 (the person: one In Progress, then
-    Passed, Tabled, Interim Study and Died, and Withdrawn and Vetoed where a
-    bill is one) -- it offered the six words first and then each stage until
-    then, and that is the one line here the person changed; ticking Died
+    Passed, Tabled, Interim Study and Died, and Withdrawn and Vetoed) -- it
+    offered the six words first and then each stage until then; ticking Died
     lists the killed bill and the veto that stood; Sort by status heads the
     two with Died; and a member's or a committee's select, labelled "Bill
-    status", offers the words and filters by them, as before."""
+    status", offers the same categories in the same order and filters by
+    them -- the person's "Same categories" of the same evening, where it
+    offered the words as the filter did. Those two lines, the filter's and
+    the select's, are the ones here the person changed;
+    _bill_status_select_categories holds the rest of the select."""
     js, stub = Path("src/pages/app.js"), Path("tests/dom_stub.js")
     node = shutil.which("node") or shutil.which("node.exe")
     if not (js.exists() and stub.exists() and node):
@@ -38086,9 +38089,11 @@ def _chip_drawn():
     listed = re.findall(r'class="card[^"]*" data-id="([^"]*)"', got["died"])
     if sorted(listed) != ["HB1", "HB2"]:
         bad.append(f"ticking Died lists {listed}")
+    # The search's categories since the person's "Same categories" of 8
+    # October 2026; the six words first and then the stages until then.
     opts = re.findall(r'<option value="([^"]*)"', got["pane"])
-    if opts != ["", "Became Law", "Died", "Interim Study", "Tabled", "Vetoed", "Withdrawn",
-                "In committee"]:
+    if opts != ["", "In Progress", "Passed", "Tabled", "Interim Study", "Died", "Withdrawn",
+                "Vetoed"]:
         bad.append(f"a record page's Status select offers {opts}")
     shown = re.findall(r'class="card[^"]*" data-id="([^"]*)"', got["paneDied"])
     if sorted(shown) != ["HB1", "HB2"]:
@@ -38101,9 +38106,9 @@ def _chip_drawn():
         bad.append(f"a record page's select is labelled {label and label.group(1).strip()!r}, "
                    "not 'Bill status'")
     assert not bad, "; ".join(bad)
-    return "ok", ("each card says its word in its word's colour, the filter offers the seven "
-                  "categories and a record page's select the six words first, and Died lists "
-                  "the killed bill and the veto that stood")
+    return "ok", ("each card says its word in its word's colour, the filter and a record "
+                  "page's select offer the seven categories, and Died lists the killed bill and "
+                  "the veto that stood")
 
 
 # THE STATUS FILTER'S CATEGORIES, chip word by chip word (the person, 8
@@ -38331,7 +38336,8 @@ Object.defineProperty(countEl, "textContent", {get() { return countText; },
   set(v) { countText = String(v); countWrites++; }});
 let s;
 try { s = (0, eval)(fs.readFileSync("./page.js", "utf8")
-  + "; ({render, sel, getTerm: () => term, setQuery: (q) => { query = q; }})"); }
+  + "; ({render, sel, getTerm: () => term, setQuery: (q) => { query = q; },"
+  + " more: () => { SHOWN += PAGE_SIZE; render(true); }})"); }
 catch (e) { console.log("LOAD " + e.constructor.name + ": " + e.message); process.exit(1); }
 const $ = (q) => document.querySelector(q);
 const look = () => {
@@ -38346,7 +38352,8 @@ const look = () => {
     groups: [...f.matchAll(/data-g="([^"]+)"/g)].map(m => m[1]),
     labels: [...f.matchAll(/data-g="([^"]+)"\s*aria-expanded="[^"]*"><span>([^<]*)<\/span>/g)]
       .map(m => [m[1], m[2]]),
-    heads: [...r.matchAll(/<h2 class="grp">([^<]*?)\s*<span>(\d+)<\/span>/g)].map(m => [m[1].trim(), +m[2]]),
+    heads: [...r.matchAll(/<h2 class="grp">([^<]*?)\s*<span>([\d,]+)<\/span>/g)]
+      .map(m => [m[1].trim(), +m[2].replace(/,/g, "")]),
     cards: [...r.matchAll(/<article class="card[^"]*" data-id="([^"]+)"/g)].map(m => m[1])};
 };
 (async () => {
@@ -38364,10 +38371,19 @@ const look = () => {
     s.sel.status.add("Died"); s.render(); out.cacrDied = look();
     clear();
     const so = $("#sort"); so.value = "status"; so.fire("change"); out.byStatus = look();
+    // A page further down the list, and then narrowed by a status and by a
+    // type: each heading's number is the whole result's, every time.
+    s.more(); out.byStatusMore = look();
+    s.sel.status.add("Passed"); s.render(); out.byStatusPassed = look();
+    s.sel.status.clear(); s.sel.type.add("HB"); s.render(); out.byStatusHB = look();
+    clear();
     so.value = "num"; so.fire("change");
     const ys = $("#year");
     const term = async (t) => { ys.value = t; ys.fire("change"); await ticks(40); return look(); };
     out.older = await term("2023-2024");
+    // A category ticked where no bill of the term is in it: still on offer.
+    s.sel.status.add("Tabled"); s.render(); out.olderTicked = look(); s.sel.status.clear();
+    s.render();
     out.all = await term("all");
     out.requests = await term("2027-requests");
     // A status ticked in a term with statuses, carried into the requests.
@@ -38383,17 +38399,21 @@ const look = () => {
 """
 
 
-def _search_groups_fixture():
+def _search_groups_fixture(passed=0):
     """meta.json, two terms and the requests, for _SEARCH_GROUPS_HARNESS:
     every chip the current term can carry while its session sits, and an
-    earlier term with neither a withdrawal nor a veto."""
+    earlier term with no bill still moving, tabled, withdrawn or vetoed, nor
+    sent to interim study. `passed` more laws in the current term, HB 100 on,
+    make its list longer than the hundred cards drawn at first. One bill was
+    voted on the floor, so the Floor Vote Day filter is drawn."""
     def row(bid, kind, chip, term="2025-2026", status=None):
         return {"id": bid, "n": re.sub(r"^([A-Z]+)", r"\1 ", bid), "title": "a bill",
                 "kind": kind, "status": status or chip, "chip": chip, "committees": [],
                 "committee": "", "topic": "", "sponsor": "", "term": term,
                 "year": int(term[-4:]), "passage": "", "votedays": [], "nrc": 0,
                 "last_action": ""}
-    now = [row("HB1", "law", "Became Law", status="Signed into law"),
+    now = [dict(row("HB1", "law", "Became Law", status="Signed into law"),
+                votedays=["2026-03-05"]),
            row("HB2", "done", "Died", status="Killed"),
            row("HB3", "active", "Tabled", status="Laid on the table"),
            row("HB4", "active", "In committee"),
@@ -38412,7 +38432,9 @@ def _search_groups_fixture():
            row("PET17", "done", "Died", status="Killed"),
            row("SSHB18", "law", "Became Law", status="Signed into law"),
            row("HCO19", "done", "Died", status="Refused introduction"),
-           row("ZZ20", "done", "Died", status="Killed")]
+           row("ZZ20", "done", "Died", status="Killed")] \
+        + [row(f"HB{100 + i}", "law", "Became Law", status="Signed into law")
+           for i in range(passed)]
     old = [row("HB1", "law", "Became Law", "2023-2024", "Signed into law"),
            row("HB2", "done", "Died", "2023-2024", "Killed"),
            row("SB3", "veto", "Died", "2023-2024", "Vetoed, override failed")]
@@ -38427,33 +38449,41 @@ def _search_groups_fixture():
             "/idx/2027-requests.json": req}
 
 
-@check("frontend", "the bill search's Status filter offers the categories in the person's "
-                   "order in their chips' colours, a Bill Type filter offers each kind of "
-                   "measure by its letters and name, and Sort by status heads the list "
-                   "with the categories")
+@check("frontend", "the bill search's Status filter offers the categories a bill of the term "
+                   "is in, in the person's order and their chips' colours, a Bill Type filter "
+                   "offers each kind of measure by its letters and name, and Sort by status "
+                   "heads the list with the categories")
 def _status_and_type_filters():
     """The person, 8 October 2026: one In Progress to tick for the bills that
     have not concluded, separate from Passed, Tabled, Interim Study and Died;
-    Withdrawn and Vetoed their own, offered only where a bill is one; and "a
-    way to sort by bill type like sorting between HB, SB, HR, SR, HCR, SCR,
-    CACR". Run in node over a fixture term carrying every chip a sitting
-    session can, an earlier term with no withdrawal and no veto, and the
-    requests. Held: the Status filter's options, their order and each one's
-    chip class, and their counts adding up to the term's; ticking In Progress
-    lists the stages, the bill awaiting the governor and the amendment going
-    to the voters, and nothing else; the Bill Type filter's options in the
-    person's order with their names, a code with none shown as its letters,
-    ticking CACR listing the two amendments, and the two filters together;
-    Sort by status heading the list with the categories in order and their
-    counts; the earlier term offering the five and not Withdrawn or Vetoed;
-    the requests offering no status and their types by what each asks for --
-    and, where a status ticked in another term is carried into them, the
-    Status filter with that tick on it, at none, so the empty list can be
-    undone where it was done (the review of 8 October 2026); the Status and
-    Bill Type filters shown whole, never in a box that scrolls (the review:
-    a phone's 210px showed six of the current term's seven kinds); and
-    ?status= and ?type= in the address ticking the filters, a chip's own
-    word read as its category."""
+    Withdrawn and Vetoed their own; and "a way to sort by bill type like
+    sorting between HB, SB, HR, SR, HCR, SCR, CACR". And their answer the
+    same evening, "Hide at zero": a category no bill of the term is in is
+    not offered, the order stays fixed, and a box someone has ticked stays
+    so it can be unticked. Until then In Progress, Passed, Tabled, Interim
+    Study and Died were offered in every term, an ended one's In Progress
+    and Tabled at none, and this check held that; that is the line here the
+    person changed. Run in node over a fixture term carrying every chip a
+    sitting session can, an earlier term with no bill moving, tabled,
+    withdrawn, vetoed or at interim study, and the requests. Held: the Status
+    filter's options, their order and each one's chip class, and their
+    counts adding up to the term's; ticking In Progress lists the stages,
+    the bill awaiting the governor (In Progress, the person confirmed that
+    evening) and the amendment going to the voters, and nothing else; the
+    Bill Type filter's options in the person's order with their names, a
+    code with none shown as its letters, ticking CACR listing the two
+    amendments, and the two filters together; Sort by status heading the
+    list with the categories in order and their counts; the earlier term
+    offering Passed and Died alone, and Tabled, ticked there, at none in its
+    place between them; the requests offering no status and their types by
+    what each asks for -- and, where a status ticked in another term is
+    carried into them, the Status filter with that tick on it alone, at
+    none, so the empty list can be undone where it was done (the review of
+    8 October 2026); the Status and Bill Type filters shown whole, never in
+    a box that scrolls (the review: a phone's 210px showed six of the
+    current term's seven kinds); every filter headed in Title Case, Floor
+    Vote Day among them (decided 8 October); and ?status= and ?type= in the
+    address ticking the filters, a chip's own word read as its category."""
     fx = _search_groups_fixture()
     got = _node_app(_SEARCH_GROUPS_HARNESS, {"fixture.json": json.dumps(fx)},
                     args=("?status=Became%20Law&status=in%20committee&status=constructor"
@@ -38504,6 +38534,12 @@ def _status_and_type_filters():
     if labels.get("status") != "Status" or labels.get("type") != "Bill Type":
         bad.append(f"the two filters are headed {labels.get('status')!r} and "
                    f"{labels.get('type')!r}, not 'Status' and 'Bill Type'")
+    if labels.get("voteday") != "Floor Vote Day":
+        bad.append(f"the floor vote filter is headed {labels.get('voteday')!r}, not "
+                   "'Floor Vote Day'")
+    lower = [lab for _g, lab in n["labels"] if any(w[:1].islower() for w in lab.split())]
+    if lower:
+        bad.append(f"a filter's heading is not in Title Case: {lower}")
     if sorted(got["progress"]["cards"]) != ["CACR7", "HB4", "HB5", "SB6"]:
         bad.append(f"In Progress lists {got['progress']['cards']}, not the two stages, the "
                    "bill awaiting the governor and the amendment going to the voters")
@@ -38515,21 +38551,27 @@ def _status_and_type_filters():
     heads = [tuple(h) for h in got["byStatus"]["heads"]]
     if heads != want_status:
         bad.append(f"Sort by status heads the list {heads}, not {want_status}")
-    older = [v for v, _l, _c in got["older"]["status"]]
-    if older != ["In Progress", "Passed", "Tabled", "Interim Study", "Died"]:
-        bad.append(f"a term with no withdrawal and no veto offers {older}")
-    if any(c for v, _l, c in got["older"]["status"] if v in ("In Progress", "Tabled")):
-        bad.append("the earlier term counts a bill In Progress or Tabled")
+    older = [(v, c) for v, _l, c in got["older"]["status"]]
+    if older != [("Passed", 1), ("Died", 2)]:
+        bad.append(f"a term whose bills passed or died offers {older}, not Passed 1 and Died 2: "
+                   "a category no bill is in is not offered (the person: \"Hide at zero\")")
+    ot = got["olderTicked"]
+    if [(v, c) for v, _l, c in ot["status"]] != [("Passed", 1), ("Tabled", 0), ("Died", 2)] \
+            or "status=Tabled" not in ot["ticked"]:
+        bad.append(f"Tabled ticked in a term with no bill tabled offers "
+                   f"{[(v, c) for v, _l, c in ot['status']]}, ticked {ot['ticked']}: not "
+                   "Tabled at none in its place, to be unticked")
     allv = [v for v, _l, _c in got["all"]["status"]]
     if allv != _STATUS_CATS:
         bad.append(f"All Terms offers {allv}")
     if "status" in got["requests"]["groups"]:
         bad.append("the requests are offered a Status filter: they have no status yet")
     rt = got["requestsTicked"]
-    if "status=Passed" not in rt["ticked"] or ("Passed", 0) not in [(v, c) for v, _l, c in
-                                                                  rt["status"]]:
-        bad.append(f"Passed ticked and carried into the requests is not on offer to untick: "
-                   f"the filters are {rt['groups']}, ticked {rt['ticked']}")
+    if "status=Passed" not in rt["ticked"] or [(v, c) for v, _l, c in rt["status"]] \
+            != [("Passed", 0)]:
+        bad.append(f"Passed ticked and carried into the requests is not on offer to untick, "
+                   f"alone: the filters are {rt['groups']}, offering {rt['status']}, ticked "
+                   f"{rt['ticked']}")
     if sorted(n["whole"]) != ["status", "type"]:
         bad.append(f"the filters shown whole are {n['whole']}, not Status and Bill Type")
     if [(v, c) for v, _l, c in got["requests"]["type"]] != [("HB", 2), ("SB", 1)]:
@@ -38537,8 +38579,194 @@ def _status_and_type_filters():
     assert not bad, "; ".join(bad)
     return "ok", ("the Status filter offers the seven in order, painted, adding to the term; "
                   "Bill Type offers twelve kinds by letters and name; the two filter alone and "
-                  "together; Sort by status heads with the categories; an earlier term, All "
-                  "Terms, the requests and an address each get what is theirs")
+                  "together; Sort by status heads with the categories; an earlier term offers "
+                  "only the two its bills are in, and a ticked one at none; All Terms, the "
+                  "requests and an address each get what is theirs")
+
+
+@check("frontend", "sorted by Status, each heading's number is how many of the whole list are "
+                   "in that category, the number the Status filter beside it gives, however "
+                   "few of the cards are drawn yet")
+def _status_heads_full_totals():
+    """The person, 8 October 2026, "Full totals": when sorting by Status,
+    each heading's number is the count of that category in the whole result,
+    not of the cards loaded so far -- "Passed 686", matching the sidebar. It
+    was counted over the cards on screen, so the first hundred of the
+    2025-2026 term (one In Progress, then Passed) headed its 686 "Passed 99".
+    Run in node over _search_groups_fixture with 130 more laws, 150 bills in
+    the term: the first hundred drawn are headed In Progress 4 and Passed
+    136, a page further every category is headed with the same numbers, and
+    each is the Status filter's own count for it; and narrowed, by Passed
+    ticked and by HB, each heading is still the sidebar's number. A heading
+    of a thousand or more carries its separator, as the filter's count
+    does."""
+    fx = _search_groups_fixture(passed=130)
+    got = _node_app(_SEARCH_GROUPS_HARNESS, {"fixture.json": json.dumps(fx)})
+    if got is None:
+        return "skip", "app.js, dom_stub.js or node is not here"
+    assert "threw" not in got, f"the bill search threw {got['threw']}"
+    bad = []
+    side = {v: c for v, _l, c in got["byStatus"]["status"]}
+    first = [tuple(h) for h in got["byStatus"]["heads"]]
+    if first != [("In Progress", 4), ("Passed", 136)] or len(got["byStatus"]["cards"]) != 100:
+        bad.append(f"the first hundred of 150 are headed {first} over "
+                   f"{len(got['byStatus']['cards'])} cards, not In Progress 4 and Passed 136 "
+                   "over 100: a heading counts the cards drawn, not the list")
+    more = [tuple(h) for h in got["byStatusMore"]["heads"]]
+    want = [("In Progress", 4), ("Passed", 136), ("Tabled", 1), ("Interim Study", 1),
+            ("Died", 6), ("Withdrawn", 1), ("Vetoed", 1)]
+    if more != want:
+        bad.append(f"a page further the list is headed {more}, not {want}")
+    differ = [(h, c, side.get(h)) for h, c in more if side.get(h) != c]
+    if differ:
+        bad.append(f"a heading and the Status filter disagree (heading, its number, the "
+                   f"filter's): {differ}")
+    for k, what in (("byStatusPassed", "Passed ticked"), ("byStatusHB", "HB ticked")):
+        side_k = {v: c for v, _l, c in got[k]["status"]}
+        heads = [tuple(h) for h in got[k]["heads"]]
+        wrong = [(h, c, side_k.get(h)) for h, c in heads if side_k.get(h) != c]
+        if not heads or wrong:
+            bad.append(f"with {what} the headings {heads} are not the filter's numbers: {wrong}")
+    if [tuple(h) for h in got["byStatusPassed"]["heads"]] != [("Passed", 136)]:
+        bad.append(f"Passed ticked is headed {got['byStatusPassed']['heads']}, not Passed 136")
+    js = Path("src/pages/app.js").read_text(encoding="utf-8")
+    if not re.search(r"<span>\$\{\(grpN\[grpOf\(b\)\]\|\|0\)\.toLocaleString\(\)\}</span>", js):
+        bad.append("a heading's number is not written with toLocaleString: \"Passed 12873\" "
+                   "beside the filter's \"12,873\" on All Terms")
+    assert not bad, "; ".join(bad)
+    return "ok", ("the first hundred of 150 are headed In Progress 4 and Passed 136, the whole "
+                  "list each category by the filter's own number, narrowed or not")
+
+
+# A member's or a committee's Bills tab as billPane draws it, in node: the
+# rows from rows.json, and the select set to each value in turn.
+_BILL_STATUS_SELECT_HARNESS = r"""
+require("./stub.js");
+const fs = require("fs");
+let s;
+try { s = (0, eval)(fs.readFileSync("./page.js", "utf8")
+  + "; ({billPane, setPage: (p) => { PAGE = p; }})"); }
+catch (e) { console.log("LOAD " + e.constructor.name + ": " + e.message); process.exit(1); }
+const rows = JSON.parse(fs.readFileSync("./rows.json", "utf8"));
+const out = {};
+try {
+  for (const st of ["", "Passed", "In Progress", "Died", "Tabled"]) {
+    s.setPage({kind: "member", status: st, terms: [], term: "", data: null});
+    out[st || "Any"] = s.billPane(rows.slice(), n => n + " bills");
+  }
+} catch (e) { out.threw = e.constructor.name + ": " + e.message; }
+process.stdout.write("\n@@" + JSON.stringify(out));
+"""
+
+
+@check("frontend", "a member's or a committee's Bill status select offers the bill search's "
+                   "categories, in its order, only those a bill of the tab is in, each painted "
+                   "in its chip's colours, and filters by them")
+def _bill_status_select_categories():
+    """The person, 8 October 2026, "Same categories": the "Bill status"
+    dropdown on a committee's and a member's page (app.js billPane, its rows
+    the index's or build_committees' chip and kind) offers what the search's
+    Status filter does -- the same categories, in the same order, hidden at
+    zero -- painted as in the search. It offered each chip's word, Became
+    Law and Adopted by the House and every stage a choice of its own. Run in
+    node over a tab of eight bills with no bill tabled or vetoed. Held: Any
+    and then In Progress, Passed, Interim Study, Died and Withdrawn, Tabled
+    and Vetoed not offered; each option carrying its category's chip class
+    (CATCLASS, as the sidebar paints it) and Any none; Passed listing the law
+    and the adopted resolution, each card keeping its own word; In Progress
+    the bill in committee and the one awaiting the governor; Died the bill
+    killed and the veto that stood; the select itself in the chosen
+    category's class and in none on Any; and Tabled, chosen on another tab
+    (PAGE.status is the page's), still offered in its place and selected,
+    with an empty list, so the select says why the list is empty. And in
+    app.css: each class the select can carry painted with its chip's own
+    ground and ink, and Any's option in the page's."""
+    def row(bid, kind, chip, status=None):
+        return {"id": bid, "n": re.sub(r"^([A-Z]+)", r"\1 ", bid), "title": "a bill",
+                "kind": kind, "status": status or chip, "chip": chip, "committees": [],
+                "committee": "", "topic": "", "sponsor": "", "term": "2025-2026",
+                "year": 2026, "passage": "", "votedays": [], "nrc": 0, "last_action": ""}
+    rows = [row("HB1", "law", "Became Law", "Signed into law"),
+            row("HR2", "adopted", "Adopted by the House"),
+            row("HB3", "active", "In committee"),
+            row("SB4", "active", "Passed, awaiting the governor"),
+            row("HB5", "study", "Interim Study", "Referred for interim study"),
+            row("HB6", "done", "Died", "Killed"),
+            row("HB7", "veto", "Died", "Vetoed, override failed"),
+            row("HB8", "done", "Withdrawn")]
+    got = _node_app(_BILL_STATUS_SELECT_HARNESS, {"rows.json": json.dumps(rows)})
+    if got is None:
+        return "skip", "app.js, dom_stub.js or node is not here"
+    assert "threw" not in got, f"billPane threw {got['threw']}"
+    cls_of = {"In Progress": "s-active", "Passed": "s-law", "Tabled": "s-table",
+              "Interim Study": "s-study", "Died": "s-done", "Withdrawn": "s-done",
+              "Vetoed": "s-veto"}
+
+    def read(html):
+        sel = re.search(r'<select data-pf="status"([^>]*)>(.*?)</select>', html, re.S)
+        opts = []
+        for m in re.finditer(r'<option value="([^"]*)"([^>]*)>([^<]*)</option>',
+                             sel.group(2) if sel else ""):
+            c = re.search(r'class="([^"]*)"', m.group(2))
+            opts.append((m.group(1), c.group(1) if c else "", "selected" in m.group(2),
+                         m.group(3).strip()))
+        own = re.search(r'class="([^"]*)"', sel.group(1)) if sel else None
+        cards = re.findall(r'<article class="card[^"]*" data-id="([^"]*)"', html)
+        chips = re.findall(r'<span class="cstat [^"]*">([^<]*)</span>', html)
+        return {"opts": opts, "own": own.group(1) if own else "", "cards": cards,
+                "chips": chips, "note": re.search(r'<p class="src">(\d+) bills</p>', html)}
+    bad = []
+    a = read(got["Any"])
+    want = ["", "In Progress", "Passed", "Interim Study", "Died", "Withdrawn"]
+    if [o[0] for o in a["opts"]] != want:
+        bad.append(f"Any offers {[o[0] for o in a['opts']]}, not {want}: not the search's "
+                   "categories, in its order, hidden at zero")
+    for v, c, _s, text in a["opts"]:
+        if v and (c != cls_of.get(v) or text != v):
+            bad.append(f"the option {v!r} reads {text!r} in {c!r}, not in {cls_of.get(v)!r}")
+        if not v and (c or text != "Any"):
+            bad.append(f"the first option is {text!r} in {c!r}, not Any in the page's ink")
+    if a["own"]:
+        bad.append(f"the select on Any is painted {a['own']!r}")
+    if len(a["cards"]) != len(rows) or not a["note"] or a["note"].group(1) != str(len(rows)):
+        bad.append(f"Any lists {a['cards']}")
+    for st, ids, chips in (("Passed", ["HB1", "HR2"], ["Became Law", "Adopted by the House"]),
+                           ("In Progress", ["HB3", "SB4"],
+                            ["In committee", "Passed, awaiting the governor"]),
+                           ("Died", ["HB6", "HB7"], ["Died", "Died"]),
+                           ("Tabled", [], [])):
+        r = read(got[st])
+        if r["cards"] != ids:
+            bad.append(f"{st} lists {r['cards']}, not {ids}")
+        if r["chips"] != chips:
+            bad.append(f"under {st} the cards say {r['chips']}, not their own words {chips}")
+        if r["own"] != cls_of[st]:
+            bad.append(f"the select on {st} is painted {r['own']!r}, not {cls_of[st]!r}")
+        chosen = [o[0] for o in r["opts"] if o[2]]
+        if chosen != [st]:
+            bad.append(f"the select on {st} has {chosen} selected")
+        if not r["note"] or r["note"].group(1) != str(len(ids)):
+            bad.append(f"the note under {st} says {r['note'] and r['note'].group(0)!r}")
+    t = [o[0] for o in read(got["Tabled"])["opts"]]
+    if t != ["", "In Progress", "Passed", "Tabled", "Interim Study", "Died", "Withdrawn"]:
+        bad.append(f"Tabled chosen on another tab, with no bill tabled here, offers {t}: not "
+                   "in its place, so the select cannot say why the list is empty")
+    css = re.sub(r"/\*.*?\*/", "", Path("src/pages/app.css").read_text(encoding="utf-8"),
+                 flags=re.S)
+    rules = {sel_.strip(): body for sel_, body in re.findall(r"([^{}]+)\{([^{}]*)\}", css)}
+    for c in sorted(set(cls_of.values())):
+        chip = rules.get(f".{c}", "")
+        mine = rules.get(f".bfilt select.{c}", "")
+        decl = lambda b: sorted(x.strip().replace(" ", "") for x in b.split(";") if x.strip())
+        if not chip or decl(mine) != decl(chip):
+            bad.append(f".bfilt select.{c} is {mine!r}, not its chip's {chip!r}")
+    plain = rules.get(".bfilt option:not([class])", "").replace(" ", "")
+    if "background:var(--paper)" not in plain or "color:var(--ink)" not in plain:
+        bad.append(f"Any's option is not in the page's ground and ink: {plain!r}")
+    assert not bad, "; ".join(bad[:8])
+    return "ok", ("the select offers the search's categories a bill of the tab is in, each in "
+                  "its chip's class, filters by them with each card keeping its word, is "
+                  "painted by its choice, and keeps a choice made elsewhere at none")
 
 
 @check("frontend", "the bill search always says how many bills it lists -- the term's whole "
@@ -38592,7 +38820,7 @@ def _search_count_always():
 
 
 @check("frontend", "the Sort sits before the count, under the term picker and exactly as wide "
-                   "as it at every width, and nothing else sets either's width")
+                   "as it at every width and text size, and nothing else sets either's width")
 def _sort_beside_count():
     """The person, 8 October 2026: "The best match/sort by should be to the
     left of the number of matching bills ... and the width of the dropdown
@@ -38607,6 +38835,15 @@ def _sort_beside_count():
     the count, never wider than the Sort leaves it, wraps under itself beside
     it. Measured in Chrome on 8 October from 1366 to 360: both 172px, the
     Sort not moving when a search is typed, and no sideways scroll.
+    THE ONE WIDTH IN REM, decided the same evening: "the selects' shared
+    width in rem rather than px, so it grows with text-only zoom while both
+    stay equal". This check held it in pixels until then, which is the line
+    here that moved. Measured in Chrome with the browser's text at 24px: both
+    258px at 1366, 768 and 375, and no sideways scroll. That left the count
+    61px beside the Sort at 375, six lines tall, so where the room beside the
+    Sort (--room) is under 8em the count takes a line of its own under it:
+    held here as the count's cap, max(var(--room), calc((8em - var(--room))
+    * N)), and the room defined from --pickw wherever the row is.
     And what the search read (#synhint) is not a line of its own whatever
     the room: from 1024px up "also matching: education, student, teacher,
     classroom" fits after the count, and as a line of its own it pushed the
@@ -38630,8 +38867,9 @@ def _sort_beside_count():
     if len(shared) != 1 or not re.search(r"(?:^|;)\s*width:var\(--pickw\)", shared[0][1]):
         bad.append(f"#year and #sort do not share one width rule: {shared}")
     defs = re.findall(r"--pickw\s*:\s*([^;}]+)", flat)
-    if len(defs) != 1 or not re.fullmatch(r"\d+px", defs[0].strip()):
-        bad.append(f"--pickw is defined {defs}: once, in pixels, is one width at every size")
+    if len(defs) != 1 or not re.fullmatch(r"\d+(?:\.\d+)?rem", defs[0].strip()):
+        bad.append(f"--pickw is defined {defs}: once, in rem, is one width at every size that "
+                   "grows with the reader's text")
     # The pages build_pages writes (body.pg) carry no term picker and no Sort,
     # so what their block says of #year sizes nothing on the bill search.
     for sel_, body in rules:
@@ -38641,22 +38879,29 @@ def _sort_beside_count():
         if re.search(r"(?:^|;)\s*(?:min-|max-)?width\s*:", body):
             bad.append(f"{sel_.strip()} sets a width of its own: {body.strip()[:80]}")
     q = [(sel_, body) for sel_, body in rules if sel_.strip() == ".qhint"]
-    if not q or "align-items:flex-start" not in q[0][1].replace(" ", ""):
+    if not any("align-items:flex-start" in b.replace(" ", "") for _s, b in q):
         bad.append("the .qhint row does not hold the Sort at its top: a count that wraps "
                    "would move it")
+    room = [re.search(r"--room\s*:\s*([^;]+)", b) for _s, b in q]
+    room = [m.group(1).strip() for m in room if m]
+    if not room or not all(re.fullmatch(r"calc\(100% - var\(--pickw\) - var\(--sp-\d+\)\)", r)
+                           for r in room):
+        bad.append(f"the room beside the Sort (--room) is not what the Sort leaves of its row: "
+                   f"{room}")
     c = [body for sel_, body in rules if sel_.strip() == ".qhint #count"]
     held = [b for b in c if "max-width" in b]
     if not held or not all(
-            re.search(r"max-width:calc\(100% - var\(--pickw\) - var\(--sp-\d+\)\)", b)
+            re.search(r"max-width:max\(var\(--room\),\s*"
+                      r"calc\(\(8em - var\(--room\)\) \* \d+\)\)", b)
             for b in held):
-        bad.append("the count is not held to what the Sort leaves of its row: a long one would "
-                   f"drop under the Sort: {c}")
+        bad.append("the count is not held to the room the Sort leaves it, or to a line of its "
+                   f"own under 8em of room: {c}")
     h = [body for sel_, body in rules if sel_.strip() == ".qhint #synhint"]
     if not h or any(re.search(r"flex:\s*\d+\s+\d+\s+100%|flex-basis:\s*100%", b) for b in h):
         bad.append(f"what the search read is a line of its own at every width: {h}")
     assert not bad, "; ".join(bad)
-    return "ok", ("the Sort comes before the count, and #year and #sort share --pickw and "
-                  "nothing else sizes either")
+    return "ok", ("the Sort comes before the count, #year and #sort share --pickw, in rem, and "
+                  "nothing else sizes either, and the count keeps beside the Sort while 8em fits")
 
 
 @check("frontend", "what the review of the audit's fixes found stays found: focus after Show more, "
