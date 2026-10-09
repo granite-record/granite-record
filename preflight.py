@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.483
+# GRANITE_VERSION: 2026-09-04.484
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -20520,6 +20520,16 @@ _GROUNDS = ("--paper", "--surface", "--wash")
 # them, as the palette's notes say), grounds and tints.
 _NOT_MARKS = re.compile(r"^--(?:rule|rule-2|paper|surface|wash|shadow|film|film-stub|"
                         r"film-stub-hot)$|-(?:bg|soft)$")
+# A RULE WHOSE COLOUR DRAWS A MARK AND NO WORDS: the element it colours holds
+# only an SVG stroked in currentColor, so its colour is a graphic's, held to
+# 3:1 on the page and a card (WCAG 1.4.11) as a stroke is, and not to text's
+# 4.5:1 on every ground. Named one by one, each with what draws it, and
+# _token_pairs_measure fails if the rule or its drawing changes. How it got
+# here's orange "~" on the line that sent a bill to interim study (app.js
+# JMARK.s, the WAVE svg; the person's marks of 8 October 2026): --st-study
+# is 4.53:1 on the page and 4.17:1 on --wash, where no list of decisions is
+# drawn, and the wave is a stroke, not a letter.
+_COLOR_DRAWS_A_MARK = {".jl .j-istudy .jg": ("JMARK", "s", "WAVE")}
 
 
 def _grounds_for(ink, default=_GROUNDS):
@@ -20595,11 +20605,16 @@ def _token_pairs(text, sources):
         ground = next((ground_of(got[k]) for k in ("background-color", "background") if k in got),
                       None)
         where = f"app.css:{ln} {sel[:40]}"
+        drawn = " ".join(sel.split()) in _COLOR_DRAWS_A_MARK
         for k in ("color", "-webkit-text-fill-color"):
             v = got.get(k, "").strip()
             if re.fullmatch(r"var\(--[\w-]+\)", v):
                 for ink in refs(v):
-                    add(ink, [ground] if ground else _grounds_for(ink), 3.0 if large else 4.5, where)
+                    if drawn:
+                        add(ink, _grounds_for(ink, ("--paper", "--surface")), 3.0, where)
+                    else:
+                        add(ink, [ground] if ground else _grounds_for(ink),
+                            3.0 if large else 4.5, where)
         for k, v in ds:
             if k in ("fill", "stroke") or (k.startswith(("border", "outline"))
                                            and k not in ("border-radius", "outline-offset")):
@@ -20654,8 +20669,9 @@ def _token_pairs_measure():
     the rule gives one (a token, or two mixed in srgb), and otherwise on the
     grounds text sits on (_GROUNDS; --on-pine on pine, --film-stub-ink on
     the still); its fills, strokes and borders as marks on the page and a
-    card. Hairlines, grounds and tints draw no mark and are not held
-    (_NOT_MARKS). The same from the inline styles of the builders, app.js
+    card, and so the colour of a rule that colours only a drawing
+    (_COLOR_DRAWS_A_MARK, each held here to what it names). Hairlines,
+    grounds and tints draw no mark and are not held (_NOT_MARKS). The same from the inline styles of the builders, app.js
     and find.js, and from their SVG: a text's fill is text, a shape's fill
     or stroke a mark, and a swatch's background a mark.
 
@@ -20672,6 +20688,21 @@ def _token_pairs_measure():
     assert len(pairs) >= 60, (f"only {len(pairs)} pairs were read from the rules; there were "
                               "more than 60 on 8 October 2026, so the reader has stopped reading")
     bad, low = [], None
+    # A colour read as a mark's is a mark's only while the rule is there and
+    # what it colours is still the drawing named (_COLOR_DRAWS_A_MARK).
+    sels = {" ".join(sel.split()) for _, sel, _, _ in _css_rules(text)}
+    js = Path("src/pages/app.js").read_text(encoding="utf-8") if Path("src/pages/app.js").exists() else ""
+    for sel, (table, key, svg) in _COLOR_DRAWS_A_MARK.items():
+        drawing = re.search(rf"\bconst {svg}\s*=\s*((?:'[^']*'\s*\+?\s*)+);", js)
+        if sel not in sels:
+            bad.append(f"{sel} is no longer a rule of app.css; take it off _COLOR_DRAWS_A_MARK")
+        elif not re.search(rf"\bconst {table}\s*=\s*\{{[^}}]*\b{key}\s*:\s*{svg}\b", js):
+            bad.append(f"app.js {table}.{key} is no longer {svg}, so {sel}'s colour may be "
+                       "words again, and words need 4.5:1")
+        elif not drawing or 'stroke="currentColor"' not in drawing.group(1) \
+                or re.search(r"<text\b", drawing.group(1)):
+            bad.append(f"app.js {svg} is no longer an SVG stroked in currentColor with no "
+                       f"text, so {sel}'s colour is not a mark's")
     for (ink, ground, need), where in sorted(pairs.items()):
         for name in ("light", "dark"):
             a, b = _css_token_colour(ink, pal[name]), _css_token_colour(ground, pal[name])
@@ -25403,8 +25434,10 @@ def _rail_study_and_table_marks(N, B):
     mk = re.search(r'const RAILMARK=\{p:"\\u2713", x:"\\u2715", h:"", "-":"", s:WAVE, t:""\};', js)
     if not (mk and re.search(r"const WAVE='<svg class=\"wave\"[^;]*<path ", js)):
         bad.append("the rail's marks are not check, cross and a drawn wave, with the pause's bars drawn by CSS")
-    if not re.search(r"\.stop\.s-ontable b::after\{[^}]*border-left:2px solid var\(--surface\);"
-                     r"border-right:2px solid var\(--surface\)", flat):
+    # The bars in rem, as the disc is, so they grow with it (the merge with
+    # option E's foundation): 2px at the browser's default text size.
+    if not re.search(r"\.stop\.s-ontable b::after\{[^}]*border-left:\.125rem solid var\(--surface\);"
+                     r"\s*border-right:\.125rem solid var\(--surface\)", flat):
         bad.append("the pause's two bars are not drawn")
     for sel, ink in ((".stop.s-istudy b", "st-study"), (".stop.s-ontable b", "st-table")):
         if not re.search(re.escape(sel) + r"\{background:var\(--" + ink + r"\);border-color:var\(--"

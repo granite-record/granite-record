@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.226 */
+/* GRANITE_VERSION: 2026-09-07.227 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -170,8 +170,10 @@
    and a bill in committee are two colours as well as two words. The blue was
    chosen by measure: 16 or more (CIEDE2000) from every other status ink in
    both themes, in normal vision and under protanopia and deuteranopia, and
-   7.5 from the nearest ink of any kind, the Independents' violet and the
-   Democrats' blue, which are a person's colours and never a chip's word. The study ink was a
+   6.6 or more from every ink of any kind: 7.5 from the nearest in light, the
+   Independents' violet, and 6.6 in dark from the Democrats' blue as D5
+   lifted it to #A9C6F0 the same day (7.5 from the #8FB4E8 it was chosen
+   beside) -- a person's colours, which are never a chip's word. The study ink was a
    brown, #94500E, and is the orange of the rail's "~" now: 4.66:1 as chip
    text on its tint, 5.28:1 under the white wave on a card, 4.53:1 on the
    page. --st-table is a bill lying on the table while the session sits: the
@@ -1696,14 +1698,21 @@ box-shadow:0 0 0 3px var(--pine-soft)}
    -- still tells check, cross, wave and bars apart, and neither is ever the
    empty ring of a stop not reached. The "~" is an SVG (app.js WAVE), so it
    centres at any size; the bars are drawn here. A bill that died on the
-   table keeps the cross. */
+   table keeps the cross.
+   IN rem, AS THE DISC IS, so the wave and the bars grow with it at a
+   reader's larger text size (the rail's marks grow with their words, the
+   foundation's rule): at the browser's default 16px they are the 11px
+   wave and the 6 by 7px bars of 2px the person chose. And no font-size:0
+   here: the disc holds no words, only the SVG or the ::after, so there is
+   nothing to hide, and the type floor reads every size that is written. */
 .stop.s-istudy b{background:var(--st-study);border-color:var(--st-study);
-color:var(--surface);display:grid;place-items:center;font-size:0}
-.stop b .wave{display:block;width:11px;height:11px}
+color:var(--surface);display:grid;place-items:center}
+.stop b .wave{display:block;width:.6875rem;height:.6875rem}
 .stop.s-ontable b{background:var(--st-table);border-color:var(--st-table);
-display:grid;place-items:center;font-size:0}
-.stop.s-ontable b::after{content:"";display:block;width:6px;height:7px;box-sizing:border-box;
-border-left:2px solid var(--surface);border-right:2px solid var(--surface)}
+display:grid;place-items:center}
+.stop.s-ontable b::after{content:"";display:block;width:.375rem;height:.4375rem;
+box-sizing:border-box;border-left:.125rem solid var(--surface);
+border-right:.125rem solid var(--surface)}
 /* IN FORCED COLOURS the system paints every ground in its own colour, so a
    filled disc would print as the empty ring of a stop not reached. The "~"
    keeps its disc in the system's text colour with the wave cut out of it,
@@ -1713,8 +1722,8 @@ border-left:2px solid var(--surface);border-right:2px solid var(--surface)}
   .stop.s-istudy b{forced-color-adjust:none;background:CanvasText !important;
   border-color:CanvasText !important;color:Canvas !important}
   .stop.s-ontable b{border-color:CanvasText !important}
-  .stop.s-ontable b::after{border-color:CanvasText;width:7px;height:8px;
-  border-left-width:2.5px;border-right-width:2.5px}
+  .stop.s-ontable b::after{border-color:CanvasText;width:.4375rem;height:.5rem;
+  border-left-width:.15625rem;border-right-width:.15625rem}
   .jl .j-ontable .jg::after{border-color:CanvasText}
 }
 /* The three rules that set these labels to --ink-2 are gone: every stop's
@@ -2842,8 +2851,8 @@ justify-content:center;align-self:start;height:1.5em}
 .jl .j-istudy .jg .wave{width:1em;height:1em}
 .jl .j-ontable .jg{display:flex;align-items:center;justify-content:center;
 align-self:start;height:1.5em}
-.jl .j-ontable .jg::after{content:"";display:block;width:8px;height:.7em;box-sizing:border-box;
-border-left:2.5px solid var(--st-table);border-right:2.5px solid var(--st-table)}
+.jl .j-ontable .jg::after{content:"";display:block;width:.5rem;height:.7em;box-sizing:border-box;
+border-left:.15625rem solid var(--st-table);border-right:.15625rem solid var(--st-table)}
 .jl .jb{font-weight:600}
 .jl .jd{color:var(--ink-2);font-size:var(--t-sm);white-space:nowrap;
 font-variant-numeric:tabular-nums}
