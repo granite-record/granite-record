@@ -45,6 +45,15 @@ names whose it is from that row's own source. The counts are facts, and no
 claim is made over them; no source's page is reproduced here. Like the files
 above, no script writes it.
 
+One more is from outside the record, and is drawn rather than read. The
+district map's boundaries (generated/district_geometry.json, published inside
+/district_map.json) are NH GRANIT's 2022 district layers and its town
+outlines, from the University of New Hampshire, made small by
+src/towns/build_district_geometry.py. GRANIT's metadata states no access
+constraints and "Not for legal use", and the map says so under it: the
+Secretary of State's published district definitions are the legal text. The
+shapes are GRANIT's; nothing here is claimed over them.
+
 WHAT EACH PUBLISHED FILE HOLDS
 
 The site's own JSON and feeds are listed, with what each holds, in README.md

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.58
+# GRANITE_VERSION: 2026-09-05.59
 """
 Run the whole pipeline in the right order.
 
@@ -798,6 +798,22 @@ def plan(a):
                   "representatives and senator from the roster, and the "
                   "executive council, US House and Senate districts that were "
                   "in districts.json all along and had never been shown"),
+
+        # AFTER the town pages, which will mount the map (Polish 3), and after
+        # the district files and the roster it reads. Its geometry is
+        # generated/district_geometry.json, which a person builds from the
+        # GIS zips on the laptop and commits, so GitHub's machine has it from
+        # git; kit_required, so a night that cannot write the map's data
+        # stops rather than publishing pages that fetch a file nobody wrote.
+        Step("the district map's data, script and stylesheet",
+             ["build_district_map.py", "--site", "site"],
+             needs=["generated/district_geometry.json", "site/districts.json",
+                    "site/legislators.json"],
+             produces=["site/district_map.json"], kit_required=True,
+             note="the boundaries, every town and ward and its districts, and "
+                  "who sits for each district with the party it is filled "
+                  "with, in one file the map draws; and map.js and map.css "
+                  "beside it"),
 
         Step("the whole record, as lists",
              ["build_indexes.py", "--site", "site", "--base", a.base],

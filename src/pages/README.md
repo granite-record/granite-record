@@ -8,7 +8,10 @@ The browser's files are here too, since stage 5: `bills.html`, the template
 every record page is built from, and the `app.js`, `app.css` and `find.js` it
 loads. `build_pages.py` copies all four into `site/` as they are, and the
 builders read them here under the folder they run in, so a fixture lays out
-its own copies the same way. Edit them here; `site/` holds copies.
+its own copies the same way. Edit them here; `site/` holds copies. The
+district map is a module of its own: `map.js` and `map.css`, which
+`build_district_map.py` copies beside `/district_map.json`, the one file the
+map draws, and which a page mounts with `GRMap.mount()`.
 
 Run by: `build_all.py`'s `plan()`, after the record is built. A new page is
 `build_<page>.py` on `shell.py` plus one `Step()`.

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.484
+# GRANITE_VERSION: 2026-09-04.485
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -26393,7 +26393,8 @@ CHAIN_NEEDS = ["build_site_v2.py", "build_search_index.py", "build_pages.py",
                "build_legislator_pages.py", "build_committees.py",
                "build_civics.py", "build_town_pages.py", "build_indexes.py",
                "build_exports.py", "build_feeds.py", "check_site.py",
-               "app.css", "app.js", "bills.html"]
+               "app.css", "app.js", "bills.html",
+               "build_district_map.py", "map.js", "map.css"]
 
 
 def _stand_in_png():
@@ -26486,8 +26487,11 @@ def _built_site(here, root, brand=True, env=None):
     # build fails on a file that has nothing to do with the fixture. It is
     # small, tracked, and written by `probe_alignment.py --truth --score-out`,
     # which is the gate every timestamp method passes before it ships.
+    # The district map's module and its committed geometry, which
+    # build_district_map publishes with the map's data (9 October 2026).
     for name in ("src/pages/app.css", "src/pages/app.js", "src/pages/bills.html",
-                 "src/pages/find.js", "corrections/officials.json", "generated/alignment_score.json"):
+                 "src/pages/find.js", "corrections/officials.json", "generated/alignment_score.json",
+                 "src/pages/map.js", "src/pages/map.css", "generated/district_geometry.json"):
         if (here / name).exists():
             (root / name).parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(here / name, root / name)
@@ -26540,6 +26544,8 @@ def _built_site(here, root, brand=True, env=None):
                                  "--base", base], "site/committees.json"),
         ("build_civics.py", ["--site", "site", "--base", base], "site/learn.html"),
         ("build_town_pages.py", ["--site", "site", "--base", base], "site/town"),
+        # The district map's data, after the town pages, as in build_all.
+        ("build_district_map.py", ["--site", "site"], "site/district_map.json"),
         ("build_indexes.py", ["--site", "site", "--base", base],
          "site/directory.html"),
         # Before the calendar, whose floor cards link to these, and after the
@@ -26698,6 +26704,14 @@ def _chain():
     root = Path(tempfile.mkdtemp())
     try:
         base, steps = _fixture_site_whole(root)
+        # The district map's file, script and stylesheet (9 October 2026):
+        # published by the night, though no page mounts the map yet.
+        dm = json.loads((root / "site" / "district_map.json").read_text(encoding="utf-8"))
+        assert dm["places"] and dm["fill"]["base"] and dm["arcs"], \
+            "build_district_map wrote a district_map.json with nothing in it"
+        for name in ("map.js", "map.css"):
+            assert (root / "site" / name).read_bytes() == (here / "src/pages" / name).read_bytes(), \
+                f"site/{name} is not src/pages/{name}"
         # llms.txt (24 September): it exists, says the one thing that must
         # never move -- this is not the General Court's official record --
         # and the example bill address it gives is a page that was built.
@@ -74704,6 +74718,363 @@ def _granit_carries_our_districts():
                   f"layers; {len(hc['granit_base'])} base and "
                   f"{len(hc['granit_floterial'])} floterial House districts "
                   f"agreeing with districts/house.txt")
+
+
+# ========================================================== the district map ==
+#
+# MAP V1 (9 October 2026): src/pages/map.js and map.css, a module a page
+# mounts, drawing one file, /district_map.json, which build_district_map.py
+# writes every night from generated/district_geometry.json (a person builds
+# that from the GIS zips on the laptop and commits it), the district files,
+# the roster and the officials file. The design is the person's, settled in
+# private/design/polish/map_v2/ and the decisions of 8 and 9 October; these
+# hold the parts of it a change could quietly undo: the label toggle and its
+# default, labels that never overlap, every district filled from the record's
+# party, and a geometry no older than its inputs.
+
+def _map_data(roster=()):
+    """/district_map.json as build_district_map.build() makes it, from the
+    tracked files alone: the committed geometry, records/districts/ through
+    parse_districts.combine() (which is what the night's site/districts.json
+    is), the officials file, and `roster` for the members. None where one of
+    them is not here."""
+    import build_district_map as BDM
+    import parse_districts as PD
+    geom, off = Path("generated/district_geometry.json"), Path("corrections/officials.json")
+    if not (geom.exists() and off.exists() and Path("records/districts/house.txt").exists()):
+        return None
+    districts = PD.combine("records/districts", say=lambda *a, **k: None)
+    return BDM.build(geom.read_bytes(), districts, list(roster),
+                     json.loads(off.read_text(encoding="utf-8")))
+
+
+# map.js mounted on dom_stub.js's element, its data never arriving: what is
+# held is the markup mount() writes and the api it returns before any data.
+_MAP_TOGGLE_JS = r"""
+require("./stub.js");
+globalThis.fetch = () => new Promise(() => {});
+const G = require("./map.js");
+function mount(opts) {
+  const root = document.createElement("div");
+  const api = G.mount(root, opts);
+  return { html: root.innerHTML, api };
+}
+const out = { labels: G.LABELS, def: G.DEFAULT_LABELS };
+const a = mount({});
+out.plain = { html: a.html, labels: a.api.labels() };
+a.api.setLabels("none"); out.afterNone = a.api.labels();
+a.api.setLabels("numbers"); out.afterNumbers = a.api.labels();
+a.api.setLabels("bogus"); out.afterBogus = a.api.labels();
+const b = mount({ labels: "numbers" });
+out.numbers = { html: b.html, labels: b.api.labels() };
+out.bogus = mount({ labels: "bogus" }).api.labels();
+console.log(JSON.stringify(out));
+"""
+
+
+@check("frontend", "the district map's label toggle offers town names, district numbers and no "
+                   "labels, as one group of radio buttons, with town names chosen first")
+def _map_label_toggle():
+    """The person, 9 October 2026: "Toggle to switch between viewing district
+    numbers, town names, and no labels for the interactive map with the default
+    being town names."
+
+    map.js mounted in node: the three modes in map.js's LABELS, in the order
+    drawn, with the words drawn; DEFAULT_LABELS "names"; the toggle written as
+    native radio buttons sharing one name inside a radiogroup labelled for a
+    screen reader, so arrow keys move within it and it is read as "1 of 3",
+    with only Town names checked on a plain mount and only District numbers
+    when a page asks for them; a mode a page names that is not one of the
+    three falls back to town names; and setLabels() changes the mode to each
+    of the three and refuses anything else.
+    """
+    if not shutil.which("node"):
+        return "skip", "node is not installed"
+    js, stub = Path("src/pages/map.js"), Path("tests/dom_stub.js")
+    if not (js.exists() and stub.exists()):
+        return "skip", "map.js or dom_stub.js is not in this directory"
+    root = Path(tempfile.mkdtemp(prefix="gr-map-"))
+    try:
+        for name, text in (("map.js", js.read_text(encoding="utf-8")),
+                           ("stub.js", stub.read_text(encoding="utf-8")),
+                           ("toggle.js", _MAP_TOGGLE_JS)):
+            (root / name).write_text(text, encoding="utf-8")
+        r = _run(["node", "toggle.js"], cwd=root, capture_output=True, text=True, timeout=60)
+        said = (r.stdout or "").strip().splitlines()
+        assert r.returncode == 0 and said, (
+            "map.js did not mount under node: " + ((r.stderr or r.stdout or "").strip()[-300:]))
+        out = json.loads(said[-1])
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+
+    want = [["names", "Town names"], ["numbers", "District numbers"], ["none", "No labels"]]
+    assert out["labels"] == want, f"map.js's LABELS are {out['labels']}, not {want}"
+    assert out["def"] == "names", f"the default is {out['def']!r}, not town names"
+
+    def toggle(html):
+        m = re.search(r'<div class="gmseg" role="radiogroup" aria-label="Labels on the map">'
+                      r'(.*?)</div>', html, re.S)
+        assert m, "mount() writes no radiogroup labelled \"Labels on the map\""
+        radios = re.findall(r'<input type="radio" name="([^"]+)" value="([^"]+)"( checked)?>'
+                            r'<span>([^<]+)</span>', m.group(1))
+        assert len({n for n, _, _, _ in radios}) == 1, \
+            "the label toggle's radio buttons do not share one name, so they are not one group"
+        return [[v, w] for _, v, _, w in radios], [v for _, v, c, _ in radios if c]
+
+    drawn, checked = toggle(out["plain"]["html"])
+    assert drawn == want, f"the toggle draws {drawn}, not {want}"
+    assert checked == ["names"], f"a plain mount checks {checked}, not town names alone"
+    assert out["plain"]["labels"] == "names", f"a plain mount's mode is {out['plain']['labels']!r}"
+    _, checked = toggle(out["numbers"]["html"])
+    assert checked == ["numbers"] and out["numbers"]["labels"] == "numbers", (
+        f"a mount asking for numbers checks {checked} and is in {out['numbers']['labels']!r}")
+    assert out["bogus"] == "names", f"a mode that is not one of the three gives {out['bogus']!r}"
+    assert (out["afterNone"], out["afterNumbers"], out["afterBogus"]) == ("none", "numbers", "numbers"), (
+        "setLabels() went none, numbers, bogus -> "
+        f"{out['afterNone']}, {out['afterNumbers']}, {out['afterBogus']}")
+    return "ok", "Town names, District numbers, No labels: one radio group, town names chosen"
+
+
+@check("frontend", "the district map's labels never overlap, in any of its three modes (the "
+                   "label rule run in node on the real geometry)")
+def _map_labels_never_overlap():
+    """tests/test_map_labels.js loads map.js in node and lays out the labels of
+    every layer in every mode -- Town names, District numbers, No labels --
+    over the whole state and twelve places at four zooms each, in the map's
+    box at 1366, 768 and 375 pixels wide, and in Town names with a town and
+    its district chosen too: some three thousand layouts, on the map's data
+    built here from the tracked files.
+
+    Held: no two labels overlap (the chosen district's tag among them); no
+    town name lies outside the view or under the zoom buttons; a mode draws
+    only its own kind of label and No labels draws none. And what the design
+    says each mode shows: the five Executive Council and two US House numbers
+    at full view at every width; no State House number at full view, where
+    they cannot all fit (the person, 8 October: only when "all numbers can be
+    displayed without overlapping"); town names at full view; and Manchester's
+    wards numbered, and named, within eight presses of +, so neither rule
+    leaves the state's largest city unlabelled at every zoom.
+    """
+    if not shutil.which("node"):
+        return "skip", "node is not installed"
+    js, harness = Path("src/pages/map.js"), Path("tests/test_map_labels.js")
+    if not (js.exists() and harness.exists()):
+        return "skip", "map.js or tests/test_map_labels.js is not in this directory"
+    data = _map_data()
+    if data is None:
+        return "skip", "the geometry, the district files or the officials file is not here"
+    root = Path(tempfile.mkdtemp(prefix="gr-maplabels-"))
+    try:
+        (root / "district_map.json").write_text(json.dumps(data), encoding="utf-8")
+        r = _run(["node", str(harness.resolve()), str(js.resolve()), str(root / "district_map.json")],
+                 cwd=root, capture_output=True, text=True, timeout=240)
+        said = (r.stdout or "").strip().splitlines()
+        assert r.returncode == 0 and said, (
+            "the label rule did not run: " + ((r.stderr or r.stdout or "").strip()[-300:]))
+        out = json.loads(said[-1])
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+
+    assert out["layouts"] >= 2000, f"only {out['layouts']} layouts were run"
+    assert not out["overlaps"], "labels overlap:\n    " + "\n    ".join(out["overlaps"][:8])
+    assert not out["outside"], "labels drawn off the view:\n    " + "\n    ".join(out["outside"][:8])
+    assert not out["wrongKind"], "labels of the wrong kind:\n    " + "\n    ".join(out["wrongKind"][:8])
+    full, bad = out["full"], []
+    for w in ("660", "734", "341"):
+        for layer, mode, ok, what in (
+                ("exec", "numbers", lambda n: n == 5, "all five"),
+                ("cong", "numbers", lambda n: n == 2, "both"),
+                ("base", "numbers", lambda n: n == 0, "none"),
+                ("base", "names", lambda n: n >= 8, "at least eight"),
+                ("base", "none", lambda n: n == 0, "none")):
+            n = full.get(f"{w} {layer} {mode}")
+            if n is None or not ok(n):
+                bad.append(f"{layer} in {mode} at full view in a {w}px box shows {n}, not {what}")
+    for k, presses in out["manchester"].items():
+        if presses is None:
+            bad.append(f"Manchester's wards are never labelled ({k}) within eight presses")
+    assert not bad, "\n  ".join(bad)
+    return "ok", (f"{out['layouts']:,} layouts, none overlapping; Manchester's wards numbered "
+                  f"after {out['manchester'].get('660 numbers')} presses and named after "
+                  f"{out['manchester'].get('660 names')} at 1366")
+
+
+@check("build", "every district on the map is filled from the record's party, and a vacant "
+                "one is not filled", needs=("build_district_map",))
+def _map_fills_from_the_record(BDM):
+    """A district is filled with the party of who sits for it (the D5 inks):
+    its sitting members' parties, Republican, then Democratic, then
+    Independent, drawn as equal stripes where there are two or more; a
+    district every seat of which is vacant is filled with nothing, and the map
+    hatches it. A base district by its OWN members (method (a), 8 October
+    2026) and a floterial by its own, framed. The Executive Council and the US
+    House from corrections/officials.json.
+
+    Built from the tracked files with a roster of real seats: Manchester ward 1
+    (Hillsborough 21) with a Republican and a Democrat, Rochester ward 3
+    (Strafford 7) with an Independent, the floterial Hillsborough 40 with two
+    Democrats, who must fill the floterial and not the wards under it, Senate
+    16 with a Republican, and Coos 6 with nobody. Then every district of every
+    filled layer against the members the build put there, every member in
+    exactly one district, and counties and towns filled with nothing.
+    """
+    def rep(name, county, d, party, chamber="H"):
+        return {"name": name, "chamber": chamber, "county": county, "district": str(d),
+                "party": party, "slug": name.lower().replace(" ", "-"),
+                "display_full": f"Rep. {name} ({party[0]} - x)", "sort": name}
+    roster = [rep("Ann Ray", "Hillsborough", 21, "Republican"),
+              rep("Bo Dee", "Hillsborough", 21, "Democrat"),
+              rep("Cy Indy", "Strafford", 7, "Independent"),
+              rep("Di Flo", "Hillsborough", 40, "Democrat"),
+              rep("Ed Flo", "Hillsborough", 40, "Democrat"),
+              rep("Fay Sen", "Hillsborough", 16, "Republican", chamber="S")]
+    data = _map_data(roster)
+    if data is None:
+        return "skip", "the geometry, the district files or the officials file is not here"
+    f = data["fill"]
+    want = {("base", "HI21"): "RD", ("base", "ST7"): "I", ("float", "HI40"): "D",
+            ("senate", "16"): "R", ("base", "CO6"): "", ("senate", "1"): "",
+            ("base", "HI22"): ""}
+    got = {k: f[k[0]].get(k[1]) for k in want}
+    assert got == want, f"the fills are {got}, not {want}"
+    assert "county" not in f and "towns" not in f, "counties or towns are filled by party"
+    placed = [p["n"] for k, ps in data["who"].items() if not k.startswith(("exec|", "cong|"))
+              for p in ps]
+    assert sorted(placed) == sorted(m["display_full"] for m in roster), (
+        f"the roster's members are not each in one district: {placed}")
+    off = json.loads(Path("corrections/officials.json").read_text(encoding="utf-8"))
+    for lk, office in (("exec", "council"), ("cong", "us_house")):
+        for num, o in off[office]["districts"].items():
+            assert f[lk][str(int(num))] == o["party"][:1].upper(), (
+                f"{lk} {num} is filled {f[lk][str(int(num))]!r}; officials.json says {o['party']}")
+    wrong = []
+    for lk in ("base", "float", "senate", "exec", "cong"):
+        assert set(f[lk]) == set(data["layers"][lk]["f"]), f"{lk}: a district has no fill entry"
+        for fid, v in f[lk].items():
+            ps = {p["p"] for p in data["who"].get(f"{lk}|{fid}", [])}
+            if v != "".join(x for x in "RDI" if x in ps) + "".join(sorted(ps - set("RDI"))):
+                wrong.append(f"{lk} {fid}: {v!r} for {sorted(ps)}")
+    assert not wrong, "filled otherwise than its members' parties: " + "; ".join(wrong[:6])
+    return "ok", (f"{sum(len(v) for v in f.values())} districts filled from their members; "
+                  "stripes, an Independent, a floterial apart and a vacancy as the record has them")
+
+
+@check("files", "the district map's geometry is as fresh as its inputs",
+       needs=("build_district_geometry",))
+def _map_geometry_fresh(BDG):
+    """generated/district_geometry.json is built by a person from NH GRANIT's
+    zips (src/towns/build_district_geometry.py), which only the laptop holds,
+    and committed; the night publishes it. So nothing rebuilds it when an
+    input moves, and this is what notices.
+
+    Held always: the file names the builder's own stamp, so a builder changed
+    since it was run fails until it is run again; its State House base and
+    floterial codes, Senate, Executive Council and US House numbers, ten
+    counties and every town are exactly records/districts/'s, so a
+    redistricting that changes the district files without the map fails here
+    instead of drawing old lines quietly; and every feature has rings that
+    name arcs the file holds and a label point inside the map. Held where the
+    zips are on this disk: each one's sha256 is the one the file was built
+    from.
+    """
+    p = Path("generated/district_geometry.json")
+    if not p.exists():
+        return "skip", "generated/district_geometry.json is not here"
+    g = json.loads(p.read_text(encoding="utf-8"))
+    src = _paths.locate("build_district_geometry.py").read_text(encoding="utf-8")
+    stamp = re.search(r"GRANITE_VERSION:\s*(\S+)", src).group(1)
+    assert g.get("_builder") == stamp, (
+        f"the geometry was written by build_district_geometry.py {g.get('_builder')}, and the "
+        f"builder is now {stamp}: run python3 src/towns/build_district_geometry.py where the "
+        "GIS zips are, and commit what it writes")
+    rec = BDG.record_names()
+    bad = [f"{lk}: only in the geometry {sorted(set(g['layers'][lk]['f']) - rec[lk])[:6]}, "
+           f"only in records/districts {sorted(rec[lk] - set(g['layers'][lk]['f']))[:6]}"
+           for lk in BDG.LAYERS if set(g["layers"][lk]["f"]) != rec[lk]]
+    assert not bad, "the geometry and the district files disagree:\n  " + "\n  ".join(bad)
+    counts = {lk: len(g["layers"][lk]["f"]) for lk in BDG.LAYERS}
+    assert counts == {"base": 164, "float": 39, "senate": 24, "exec": 5, "cong": 2,
+                      "county": 10, "towns": 259}, f"the layers hold {counts}"
+    n, broken = len(g["arcs"]), []
+    for lk in BDG.LAYERS:
+        for fid, f in g["layers"][lk]["f"].items():
+            refs = [r if r >= 0 else ~r for ring in f["r"] for r in ring]
+            x, y = f["l"]
+            if not f["r"] or any(r >= n for r in refs) or not (0 <= x <= g["w"] and 0 <= y <= g["h"]):
+                broken.append(f"{lk} {fid}")
+        if any(a >= n for a in g["layers"][lk]["m"]):
+            broken.append(f"{lk}'s borders")
+    assert not broken, "features with no rings, arcs not in the file or a label off the map: " \
+        + ", ".join(broken[:8])
+    gis = Path("records/sources/gis")
+    here = {z: d for z, d in g["_inputs"].items() if (gis / z).exists()}
+    import hashlib
+    moved = [z for z, d in here.items() if hashlib.sha256((gis / z).read_bytes()).hexdigest() != d]
+    assert not moved, (f"{', '.join(moved)} changed since the geometry was built: run "
+                       "python3 src/towns/build_district_geometry.py and commit what it writes")
+    return "ok", (f"built by {stamp}; {sum(counts.values())} features agreeing with "
+                  f"records/districts; " + (f"all {len(here)} zips' digests agree" if len(here) == len(g["_inputs"])
+                                            else "the GIS zips are not on this disk, so their digests "
+                                                 "were not compared"))
+
+
+@check("data", "the district map's published file is the committed geometry, with every "
+               "district filled from the roster's party")
+def _map_published():
+    """The night's site/district_map.json, read against what it was made from,
+    each side read here rather than through build_district_map.py: its
+    geometry the committed file's, byte for byte by digest and in its arcs and
+    layers; every district's fill the letters of the parties of the members
+    site/legislators.json seats there (a floterial's members by
+    site/districts.json's floterial codes) or of the councillor or
+    representative corrections/officials.json names; and map.js and map.css
+    the copies of src/pages/'s.
+    """
+    pub, geo = Path("site/district_map.json"), Path("generated/district_geometry.json")
+    legs, dist = Path("site/legislators.json"), Path("site/districts.json")
+    if not all(p.exists() for p in (pub, geo, legs, dist)):
+        return "skip", "site/district_map.json and what it is made from are not all here"
+    import hashlib
+    d = json.loads(pub.read_text(encoding="utf-8"))
+    gb = geo.read_bytes()
+    g = json.loads(gb)
+    assert d["_geometry"] == hashlib.sha256(gb).hexdigest() and d["arcs"] == g["arcs"] \
+        and d["layers"] == g["layers"], (
+        "site/district_map.json was not built from generated/district_geometry.json as it stands")
+    code = {"Belknap": "BE", "Carroll": "CA", "Cheshire": "CH", "Coos": "CO", "Grafton": "GR",
+            "Hillsborough": "HI", "Merrimack": "ME", "Rockingham": "RO", "Strafford": "ST",
+            "Sullivan": "SU"}
+    flo = {f"{code[h['county']]}{h['district']}" for t in json.loads(dist.read_text(encoding="utf-8")).values()
+           for w in t.values() for h in w["house"] if h["floterial"]}
+    seen = {}
+    roster = json.loads(legs.read_text(encoding="utf-8"))
+    for m in roster if isinstance(roster, list) else roster.values():
+        if m.get("chamber") == "H":
+            c = f"{code[m['county']]}{int(m['district'])}"
+            k = ("float", c) if c in flo else ("base", c)
+        else:
+            k = ("senate", str(int(m["district"])))
+        seen.setdefault(k, set()).add(str(m.get("party") or "X")[:1].upper())
+    off = json.loads(Path("corrections/officials.json").read_text(encoding="utf-8"))
+    for lk, office in (("exec", "council"), ("cong", "us_house")):
+        for num, o in off[office]["districts"].items():
+            if o.get("name"):
+                seen[(lk, str(int(num)))] = {str(o.get("party") or "X")[:1].upper()}
+    wrong = []
+    for lk in ("base", "float", "senate", "exec", "cong"):
+        for fid in g["layers"][lk]["f"]:
+            ps = seen.get((lk, fid), set())
+            want = "".join(x for x in "RDI" if x in ps) + "".join(sorted(ps - set("RDI")))
+            if d["fill"][lk].get(fid) != want:
+                wrong.append(f"{lk} {fid}: {d['fill'][lk].get(fid)!r}, the record {want!r}")
+    assert not wrong, f"{len(wrong)} districts filled otherwise than the record: " + "; ".join(wrong[:6])
+    for name in ("map.js", "map.css"):
+        site, src = Path("site") / name, Path("src/pages") / name
+        assert site.exists() and site.read_bytes() == src.read_bytes(), \
+            f"site/{name} is not src/pages/{name}"
+    vac = sum(1 for v in d["fill"]["base"].values() if not v)
+    return "ok", (f"{sum(len(v) for v in d['fill'].values())} districts filled as the roster "
+                  f"and officials.json have them; {vac} base districts with every seat vacant")
 
 
 @check("files", "our district files still say what the Secretary of State's do")
