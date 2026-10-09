@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-07.50
+# GRANITE_VERSION: 2026-09-07.51
 """
 A page's worth of data for every committee.
 
@@ -987,7 +987,7 @@ def main():
                 if code in retired and span_of[code] else "")
         desc = (f"The {chamber_word} Committee on {name}{when}. "
                 f"{towns}{sum(len(v) for v in rec['bills'].values()):,} bills "
-                f"referred and {met_days:,} sitting days, each with what "
+                f"referred and {met_days:,} meetings, each with what "
                 "was taken up and when. From the New Hampshire General Court's "
                 "own records.")
         nos = ('<noscript><div class="wrap" style="max-width:70ch;'
@@ -998,8 +998,8 @@ def main():
                + ".</p>"
                + (f"<p>{S.E(rec['purpose']['text'])}</p>"
                   if rec.get("purpose") else "")
-               + "<p>This page draws the committee's bills and sitting "
-                 "days in the browser, so it needs JavaScript. Everything it "
+               + "<p>This page draws the committee's bills and meetings "
+                 "in the browser, so it needs JavaScript. Everything it "
                  "shows comes from the file linked below, which needs none.</p>"
                  f'<ul><li><a href="/committee/{S.E(code)}.json">this page\'s '
                  "data as JSON</a></li>"
@@ -1116,7 +1116,7 @@ def main():
         body.append('<h2>No bills or meetings on record</h2>'
                     '<p class="src fill">These committees have a roster, and in '
                     "some cases a chair, but no bill referred to them and no "
-                    "session in the proceedings this site holds. Whether each "
+                    "meeting in the proceedings this site holds. Whether each "
                     "still meets is not something those records say."
                     '</p><div class="ccards">'
                     + "".join(_card(c) for c in
@@ -1139,7 +1139,7 @@ def main():
         body.append('<h2 id="archived">Not on the General Court&rsquo;s list today</h2>'
                     '<p class="src fill">Committees on this record that the General '
                     "Court does not list among its committees now, with the "
-                    "years their bills and sitting days cover. The records "
+                    "years their bills and meetings cover. The records "
                     "show when a committee stops appearing, not why&thinsp;&mdash;&thinsp;it may "
                     "have been renamed, divided, merged or ended&thinsp;&mdash;&thinsp;and this "
                     "page does not guess which. Where the General Court&rsquo;s "

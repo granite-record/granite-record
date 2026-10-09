@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.166
+# GRANITE_VERSION: 2026-09-04.167
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -1592,9 +1592,9 @@ across [[station_bills]] bills. What the site can say about each one depends
 almost entirely on whether there is a recording of it to link.</p>
 <p>For [[no_recording]] of them, there is no recording to offer. The recordings
 this site links are on the General Court's YouTube channels, which begin in
-[[stream_start]]; [[prestream]] of these sittings happened before that, which
+[[stream_start]]; [[prestream]] of these meetings happened before that, which
 is [[prestream_pct]] of the whole record, and the other [[unmatched]] are
-sittings since then that no recording has been matched to. Most carry the
+meetings since then that no recording has been matched to. Most carry the
 date, the committee and the room, and nothing to play.</p>
 <p>[[recorded]] have a recording. On [[placed]] of them &#8212;
 [[placed_pct]] &#8212; the page opens the recording at the moment the bill

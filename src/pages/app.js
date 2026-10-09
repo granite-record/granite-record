@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.164
+// GRANITE_VERSION: 2026-09-07.165
 // What each kind of document actually is, said once rather than in every row.
 const DOCWHAT={text:"the bill as it currently stands",
   status:"the page this site takes a bill's status from",
@@ -3977,7 +3977,7 @@ function renderHearings(b,d){
         "start time not identified yet")
         +`<p class="note" style="margin-top:8px">Matching proceedings to the
         moment they begin is ongoing work, and this one is not done. The
-        recording is the whole sitting; hearings run behind, so the bill is
+        recording is the whole meeting; hearings run behind, so the bill is
         usually after the scheduled time rather than before it.${
         s.candidate?` An automatic pass suggested ${hms(s.candidate)}, but not
         confidently enough to publish as fact.`:""}</p>`;
@@ -4055,7 +4055,7 @@ function renderHearings(b,d){
       // a lone recording is simply matched.
       const n=["","one","two","three","four","five"][ids.length]||ids.length;
       inner=`<div class="vbox"><p><b>This committee was recorded that day.
-        Which of its recordings is this sitting has not been established.</b>
+        Which of its recordings is this meeting has not been established.</b>
         There are ${n} recordings of it for that day, nothing in the record
         says which one took this bill up, and this site will not pick one.
         They are all here: ${links}</p>
@@ -4145,7 +4145,7 @@ function renderHearings(b,d){
       "moment not identified")
       +`<p class="note" style="margin-top:8px">A voice or division vote leaves no
       timestamp in the record, so there is nothing to point at within the
-      sitting. The whole session is here.</p>`;
+      session day. The whole session is here.</p>`;
     // A HEARING DATED BY THE SENATE COMMITTEE'S OWN REPORT, where the docket
     // has no Senate hearing of the bill that day (report_station, in
     // build_site_v2). Shown, as the person decided on 24 September, and saying
@@ -4164,7 +4164,8 @@ function renderHearings(b,d){
     // The month is about_figures.STREAM_START_WORDS, and preflight holds the
     // two to each other.
     else if(s.state==="prestream")inner=`<div class="vbox"><p><b>No recording to link.</b>
-      The General Court&rsquo;s YouTube channels, where this site finds its recordings, begin in May 2020, and this sitting was earlier.</p></div>`;
+      The General Court&rsquo;s YouTube channels, where this site finds its recordings, begin in May 2020, and this ${
+      /^floor/i.test(s.what||"")?"session day":"meeting"} was earlier.</p></div>`;
     // Defensive: if a proceeding carries a video id but an unrecognised state,
     // still offer the recording. Saying "no recording" when one is right there
     // is the worst possible failure -- it hides working data and looks like the
@@ -6179,14 +6180,14 @@ function renderCommitteeHead(c){
     <h1>${esc(c.name||"")}</h1>
     <p class="pmeta">${esc(c.chamber==="S"?"State Senate":"House of Representatives")}</p>
     ${c.archived?`<p class="src fill">Not on the General Court&rsquo;s list of committees today.
-      Its bills and sitting days on this record run ${esc(c.archived.years||"")}; the
+      Its bills and meetings on this record run ${esc(c.archived.years||"")}; the
       records do not say whether it was renamed, divided, merged or ended.</p>`:""}
     ${/* The names it carried before, so a reader who followed an older name
          here from a bill knows this is the committee it was. The bills and
          sittings below keep the name they were given at the time. */
       (c.names||[]).length?`<p class="src">Named ${c.names.map(n=>
         `<b>${esc(n.name)}</b> (${esc(n.years||"")})`).join(" and ")} on this
-      record&rsquo;s earlier bills and sittings, which the General Court&rsquo;s
+      record&rsquo;s earlier bills and meetings, which the General Court&rsquo;s
       own records file under this committee.</p>`:""}
     ${sameCode(c)}
     <div class="cinfo">
@@ -6265,7 +6266,7 @@ function sessionHtml(s,si){
     // state was created to remove from bill pages, still standing here.
     : (items.some(i=>i.state==="candidates")
       ? `<p class="note">This committee was recorded on this day, and which of
-         its recordings each sitting belongs to has not been established &mdash;
+         its recordings each meeting belongs to has not been established &mdash;
          a committee can sit in divisions that stream separately. Each bill
          below links the recordings it could be.</p>`
       // A day still to come has no recording yet, and its sentence above

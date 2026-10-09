@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.478
+# GRANITE_VERSION: 2026-09-04.479
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -50029,7 +50029,8 @@ def _committee_days_met(BCM):
     src = inspect.getsource(BCM)
     assert '**({"ahead": True} if is_ahead(date) else {})' in src, (
         "build_committees does not mark a day still to come")
-    assert '"n_sessions": met_days' in src and "{met_days:,} sitting days" in src, (
+    # "meetings", the person's word for a committee's days (D19, 8 October 2026).
+    assert '"n_sessions": met_days' in src and "{met_days:,} meetings" in src, (
         "the committees index or the page's description counts days still to come as met")
     day = lambda d, ahead, said: {
         "date": d, "term": "2025-2026", "video_id": "", "narrative": said,
