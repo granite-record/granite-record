@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.478
+# GRANITE_VERSION: 2026-09-04.479
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -285,7 +285,8 @@ def _site_bills(site="site"):
 # asks site_read itself.
 _RECORD_WHOLE = ("id", "term", "archived", "veto_message", "vote_note", "next_step",
                  "journey", "ballot",
-                 "status_source")   # whose a CACR's voters' line is (_ballots_shown)
+                 "status_source",   # whose a CACR's voters' line is (_ballots_shown)
+                 "study_report")    # the report's line (_rail_endings_on_the_site)
 _RECORD_KEPT = _RECORD_WHOLE + (
     "rollcalls",        # kept as whether the page has any
     "reports")          # kept as each report's cite_url and source
@@ -68885,6 +68886,94 @@ def _journey_agrees(build_site_v2):
     return "ok", (f"{n['agree']:,} bills agree; {len(old)} of the older terms do not, "
                   f"each a gap, a misfiled row or a status word in the docket itself; "
                   f"{n['empty']:,} have no floor decision on record")
+
+
+@check("data", "every bill that died on the table is paused where it was tabled and crossed at Law "
+               "on the day it died, and every interim study bill of a finished session is "
+               "crossed at Law with a line saying why",
+       needs=("build_site_v2",))
+def _rail_endings_on_the_site(B):
+    """THE RAIL'S ENDINGS ON EVERY BILL (the person, 8 and 9 October 2026),
+    read from the built pages and the index, as _rail_endings holds them on
+    real rows:
+
+      * A Died bill whose rail pauses a chamber has that chamber's tabling
+        line with the pause in How it got here, a line of the death with the
+        cross after it, and a Law stop crossed on a day no earlier than the
+        tabling.
+      * No Died bill whose chamber's last line is a tabling keeps the cross
+        there on the day it was tabled: on 7 October 2026, 1,449 of the 2,170
+        that died on a table did.
+      * An Interim Study bill whose session is over -- every archived term,
+        and the current one once corrections/status/status.txt names its
+        session_over -- has Law crossed, on the day of its line "Still in
+        interim study when the ... last sat"; while the session sits, Law is
+        not reached and no such line is drawn.
+      * A report's line is the orange arrow exactly where the report
+        recommended the subject for future legislation."""
+    every = _site_bills() if Path("site/bill").is_dir() else None
+    if every is None:
+        return "skip", "no built index and bill pages"
+    rows = {(r.get("term"), r.get("id")): r for r in every}
+    current = max((t for t, _b in rows if re.fullmatch(r"\d{4}-\d{4}", t or "")), default="")
+    over_now = bool(B.session_over_in(B.session_over("corrections/status/status.txt"), current))
+    n, bad = Counter(), []
+    for _y, bid, rec in _site_records():
+        term = rec.get("term") or ""
+        row = rows.get((term, bid)) or {}
+        j = rec.get("journey") or {}
+        steps, stops = j.get("steps") or [], {s.get("stop"): s for s in j.get("rail") or []}
+        law = stops.get("Law") or {}
+        chip = row.get("chip")
+        if chip == "Died":
+            paused = [c for c in ("House", "Senate") if (stops.get(c) or {}).get("mark") == "t"]
+            hs = [s for s in steps if s.get("body") in ("H", "S")]
+            if paused:
+                n["paused"] += 1
+                b = paused[0][0]
+                at = next((i for i in range(len(hs) - 1, -1, -1)
+                           if hs[i].get("body") == b and hs[i].get("act") == "tabled"), None)
+                if at is None or hs[at].get("mark") != "t" or not any(
+                        s.get("act") == "died" and s.get("mark") == "x" for s in hs[at + 1:]):
+                    bad.append(f"{term} {bid}: the {paused[0]} is paused with no tabling line "
+                               "paused and no death after it")
+                elif law and (law.get("mark") != "x" or (law.get("date") or "9")
+                              < (hs[at].get("date") or "")):
+                    bad.append(f"{term} {bid}: Law is {law.get('mark')!r} {law.get('date')!r}, "
+                               f"before its tabling of {hs[at].get('date')}")
+            elif hs and hs[-1].get("act") == "tabled":
+                tab = hs[-1]
+                own = stops.get({"H": "House", "S": "Senate"}.get(tab.get("body")))
+                if own and own.get("mark") == "x" and own.get("date") == tab.get("date"):
+                    bad.append(f"{term} {bid}: the {own['stop']} is crossed on the day it was "
+                               "tabled")
+        elif chip == "Interim Study":
+            over = term != current or over_now
+            said = [s for s in steps if s.get("act") == "died"
+                    and (s.get("text") or "").startswith("Still in interim study when")]
+            n["study over" if over else "study sitting"] += 1
+            if not over:
+                if said or law.get("mark") not in (None, "-"):
+                    bad.append(f"{term} {bid}: held for interim study while the session sits, "
+                               f"and Law is {law.get('mark')!r} beside {len(said)} line of its death")
+            elif law and (law.get("mark") != "x" or not said
+                          or (law.get("date") or "") != (said[-1].get("date") or "")):
+                bad.append(f"{term} {bid}: held for interim study in a session that is over, "
+                           f"and Law is {law.get('mark')!r} {law.get('date')!r} beside "
+                           f"{[s.get('date') for s in said]}")
+            rep = [s for s in steps if s.get("act") == "study_report"]
+            sr = rec.get("study_report") or {}
+            if rep and (rep[-1].get("mark") == "f") != (sr.get("rec") == "rec"):
+                bad.append(f"{term} {bid}: the report's line is {rep[-1].get('mark')!r} and "
+                           f"the report {sr.get('rec')!r}")
+            n["reports"] += bool(rep)
+    if not (n["paused"] or n["study over"] or n["study sitting"]):
+        return "skip", "no bill record carries a rail's ending yet"
+    assert not bad, f"{len(bad)} bills: {'; '.join(bad[:4])!a}"
+    return "ok", (f"{n['paused']:,} bills that died on a table paused where tabled and crossed "
+                  f"at Law; {n['study over']:,} interim study bills of a finished session crossed "
+                  f"at Law, {n['reports']:,} with the report's line; {n['study sitting']:,} "
+                  "still sitting, Law not reached")
 
 
 @check("data", "the list card's rail is the bill's own rail, stop for stop",
