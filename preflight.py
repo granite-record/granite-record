@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.483
+# GRANITE_VERSION: 2026-09-04.484
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -27423,15 +27423,20 @@ def _surname_links_serving_members(BSP):
         (root / "legislators.json").write_text(json.dumps([
             {"slug": "kimberly-rice", "name": "Rice, Kimberly", "chamber": "H"},
             {"slug": "a-smith", "name": "Smith, Anne", "chamber": "H"},
-            {"slug": "b-smith", "name": "Smith, Bob", "chamber": "H"}]), encoding="utf-8")
+            {"slug": "b-smith", "name": "Smith, Bob", "chamber": "H"},
+            {"slug": "mark-pearson-rock-34", "name": "Pearson, Mark", "chamber": "H"}]),
+            encoding="utf-8")
         (root / "former.json").write_text(json.dumps([
             {"slug": "thomas-rice", "name": "Rice, Thomas", "chamber": "H",
-             "served": {"terms": ["1999-2000", "2001-2002"]}}]), encoding="utf-8")
+             "served": {"terms": ["1999-2000", "2001-2002"]}},
+            {"slug": "mark-pearson-rock-4", "name": "Pearson, Mark", "chamber": "H",
+             "served": {"terms": ["2007-2008"]}}]), encoding="utf-8")
         m = BSP.Members(root)
-        got = {}
-        for term in ("2025-2026", "1999-2000", ""):
+        got, pearson = {}, {}
+        for term in ("2025-2026", "1999-2000", "2007-2008", ""):
             m.term = term
             got[term] = (m.slug("H", "Rice"), m.slug("H", "Smith"), m.slug("H", "Kimberly Rice"))
+            pearson[term] = m.slug("H", "Mark Pearson")
     finally:
         shutil.rmtree(root, ignore_errors=True)
     bad = []
@@ -27443,6 +27448,11 @@ def _surname_links_serving_members(BSP):
                    f"{got['1999-2000'][0]!r}: two serving members bear it, so it must stay unlinked")
     if got[""][0] is not None:
         bad.append("with no term set Rice links, which is the old all-time match changed silently")
+    # A FULL NAME too: the live site sent every 2026 "Rep. Mark Pearson" to the
+    # Mark Pearson of 2007-2008.
+    if pearson["2025-2026"] != "mark-pearson-rock-34" or pearson["2007-2008"] is not None:
+        bad.append(f"Mark Pearson links to {pearson['2025-2026']!r} in 2025-2026 and "
+                   f"{pearson['2007-2008']!r} in 2007-2008, not the sitting member and nobody")
     # Organization Day belongs to the next term, as everywhere else.
     if PR.vote_term("2026", "2026-12-02") != "2027-2028" or PR.vote_term("2026", "2026-08-19") != "2025-2026":
         bad.append("a session day's term is not its biennium's (Organization Day the next term's)")

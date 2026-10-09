@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-19.27
+# GRANITE_VERSION: 2026-09-19.28
 """
 A page for every day the House sat.
 
@@ -138,7 +138,12 @@ class Members:
 
     def __init__(self, site):
         self.by_last = collections.defaultdict(list)
-        self.by_full = {}
+        # A FULL NAME IS NOT ALWAYS ONE PERSON EITHER: the sitting Mark Pearson
+        # (Rock 34) and the Mark Pearson of 2007-2008 (Rock 4) share one, and
+        # the former member, loaded second, took every "Rep. Mark Pearson" on
+        # 38 House session days, 2026's among them -- a wrong link. Full names
+        # are matched among the members serving the term, as surnames are.
+        self.by_full = collections.defaultdict(list)
         self.term = ""
         for f, in (("legislators.json",), ("former.json",)):
             p = site / f
@@ -157,20 +162,21 @@ class Members:
                 terms = (set((r.get("served") or {}).get("terms") or [])
                          if f == "former.json" else None)
                 self.by_last[(ch, last.lower())].append((slug, terms))
-                self.by_full[(ch, f"{first} {last}".lower())] = slug
+                self.by_full[(ch, f"{first} {last}".lower())].append((slug, terms))
                 # "Peter Schmidt" where the record holds "Schmidt, Peter E."
                 bare = first.split()[0] if first.split() else ""
-                if bare:
-                    self.by_full.setdefault(
-                        (ch, f"{bare} {last}".lower()), slug)
+                if bare and bare != first:
+                    self.by_full[(ch, f"{bare} {last}".lower())].append((slug, terms))
 
     def slug(self, body, name):
         n = re.sub(r"\s+", " ", (name or "").strip()).strip(".")
         if not n:
             return None
-        hit = self.by_full.get((body, n.lower()))
-        if hit:
-            return hit
+        full = self.serving(self.by_full.get((body, n.lower()), []))
+        if len(full) == 1:
+            return full[0]
+        if full:
+            return None
         # A surname of two words is the whole name: the Senate Journal's
         # "Senator Fuller Clark" and "Senator Perkins Kwoka", whose last word
         # alone is someone else's surname or no one's.
@@ -188,8 +194,8 @@ class Members:
         """The slugs of `cands` who served `self.term`: every sitting member,
         and a former member only where their record names that term. With no
         term set, everyone, as before."""
-        return [s for s, terms in cands
-                if terms is None or not self.term or self.term in terms]
+        return list(dict.fromkeys(s for s, terms in cands
+                                  if terms is None or not self.term or self.term in terms))
 
 
 def base_bill(bid):
