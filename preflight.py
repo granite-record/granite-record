@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.471
+# GRANITE_VERSION: 2026-09-04.472
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -38014,8 +38014,8 @@ const out = {};
 try {
   s.render(); out.list = document.querySelector("#results").innerHTML;
   s.renderFacets(); out.facets = document.querySelector("#facets").innerHTML;
-  s.sel.chip.add("Died"); s.render(); out.died = document.querySelector("#results").innerHTML;
-  s.sel.chip.clear();
+  s.sel.status.add("Died"); s.render(); out.died = document.querySelector("#results").innerHTML;
+  s.sel.status.clear();
   s.setPage({kind: "committee", status: ""});
   out.pane = s.billPane(s.IDX.slice(), n => String(n));
   s.setPage({kind: "committee", status: "Died"});
@@ -38026,17 +38026,21 @@ process.stdout.write("\n@@" + JSON.stringify(out));
 
 
 @check("frontend", "a bill's card, the Status filter, the status grouping and a record page's "
-                   "Bill status select say the chip's word, never how the bill ended")
+                   "Bill status select never say how the bill ended: the card and the select "
+                   "the chip's word, the filter and the grouping its category")
 def _chip_drawn():
     """The chip is the six words of 5 October 2026 and a still-moving bill's
     stage (build_site_v2.chip_word); the status -- "Killed", "Vetoed,
     override failed" -- is the record's, and the card does not print it. This
     runs app.js in node: each card's chip is its word, coloured by the word,
     so a veto that stood is Died in Died's colour; the Status filter offers
-    the words, the six first; ticking Died lists the killed bill and the
-    veto that stood; Sort by status heads each group with its word; and a
-    member's or a committee's select, labelled "Bill status", offers the words
-    and filters by them."""
+    the categories of 8 October 2026 (the person: one In Progress, then
+    Passed, Tabled, Interim Study and Died, and Withdrawn and Vetoed where a
+    bill is one) -- it offered the six words first and then each stage until
+    then, and that is the one line here the person changed; ticking Died
+    lists the killed bill and the veto that stood; Sort by status heads the
+    two with Died; and a member's or a committee's select, labelled "Bill
+    status", offers the words and filters by them, as before."""
     js, stub = Path("src/pages/app.js"), Path("tests/dom_stub.js")
     node = shutil.which("node") or shutil.which("node.exe")
     if not (js.exists() and stub.exists() and node):
@@ -38071,10 +38075,12 @@ def _chip_drawn():
     heads = re.findall(r'<h2 class="grp">([^<]*?)\s*<span>(\d+)</span>', got["list"])
     if ("Died", "2") not in [(h.strip(), c) for h, c in heads]:
         bad.append(f"Sort by status does not head the two that died 'Died 2': {heads}")
-    offered = re.findall(r'data-f="chip" value="([^"]*)"', got["facets"])
-    if offered != ["Became Law", "Died", "Interim Study", "Tabled", "Vetoed", "Withdrawn",
-                   "In committee"]:
+    offered = re.findall(r'data-f="status" value="([^"]*)"', got["facets"])
+    if offered != ["In Progress", "Passed", "Tabled", "Interim Study", "Died", "Withdrawn",
+                   "Vetoed"]:
         bad.append(f"the Status filter offers {offered}")
+    if re.search(r'data-f="chip"', got["facets"]):
+        bad.append("the Status filter still offers the chip's words")
     if re.search(r'data-f="kind"', got["facets"]):
         bad.append("the Status filter still filters on the kind")
     listed = re.findall(r'class="card[^"]*" data-id="([^"]*)"', got["died"])
@@ -38095,9 +38101,416 @@ def _chip_drawn():
         bad.append(f"a record page's select is labelled {label and label.group(1).strip()!r}, "
                    "not 'Bill status'")
     assert not bad, "; ".join(bad)
-    return "ok", ("each card says its word in its word's colour, the filter and a record "
-                  "page's select offer the six first, and Died lists the killed bill and the "
-                  "veto that stood")
+    return "ok", ("each card says its word in its word's colour, the filter offers the seven "
+                  "categories and a record page's select the six words first, and Died lists "
+                  "the killed bill and the veto that stood")
+
+
+# THE STATUS FILTER'S CATEGORIES, chip word by chip word (the person, 8
+# October 2026): "one In Progress selection ... for bills that haven't
+# concluded, separate to those that Passed, Died, were sent to Interim Study,
+# or those that are Tabled", every bill that became law and every resolution
+# that passed as Passed, and Withdrawn and Vetoed their own. Written out here,
+# not read from app.js, so that the page filing a word anywhere else fails
+# until this table moves with it.
+_STATUS_CATEGORY = {
+    "Became Law": "Passed", "Died": "Died", "Interim Study": "Interim Study",
+    "Tabled": "Tabled", "Vetoed": "Vetoed", "Withdrawn": "Withdrawn",
+    # Not concluded: the governor has yet to act, the voters have yet to vote.
+    "Passed, awaiting the governor": "In Progress",
+    "Passed both chambers, goes to the voters": "In Progress",
+    "Passed both chambers, goes to the voters in November 2026": "In Progress",
+    "Passed both chambers, goes to the voters in November 2028": "In Progress",
+    # Ended: never introduced, only proposed for the 2006 special session
+    # (HB 3, whose record says nothing after it), turned down at the ballot.
+    "Proposed for the special session": "Died", "Not introduced": "Died",
+    "Passed both chambers, not ratified by the voters": "Died",
+    "Passed both chambers, ratified by the voters": "Passed",
+    "Adopted by the House": "Passed", "Adopted by the Senate": "Passed",
+    "Adopted by both chambers": "Passed",
+    **{s: "In Progress" for s in _CHIP_STAGES},
+}
+# EVERY (chip, kind) THE NINETEEN TERMS CARRIED, read off site/idx on 8
+# October 2026: 33,717 bills, and the 302 requests of 2027, which have no
+# chip and no category. The data check below reads the built site's rows
+# themselves whenever there is one; this is what a run of the code checks,
+# which has none, still holds.
+_STATUS_REAL_PAIRS = {
+    ("Died", "done"): 18100, ("Became Law", "law"): 12107,
+    ("Interim Study", "study"): 2392, ("Adopted by the House", "adopted"): 448,
+    ("Died", "veto"): 309, ("Adopted by both chambers", "adopted"): 169,
+    ("Adopted by the Senate", "adopted"): 144, ("Withdrawn", "done"): 22,
+    ("Passed both chambers, not ratified by the voters", "adopted"): 12,
+    ("Not introduced", "done"): 7, ("Passed both chambers, ratified by the voters", "adopted"): 5,
+    ("Proposed for the special session", "done"): 1,
+    ("Passed both chambers, goes to the voters in November 2026", "adopted"): 1,
+}
+_STATUS_CATS = ["In Progress", "Passed", "Tabled", "Interim Study", "Died", "Withdrawn",
+                "Vetoed"]
+
+# Runs beside page.js (app.js) and stub.js: each {chip, kind} through
+# statusCat, with whether its chip's word or its kind decided it, and each
+# word through catOfWord, as ?status= in an address is read.
+_STATUSCAT_HARNESS = r"""
+require("./stub.js");
+const fs = require("fs");
+let s;
+try { s = (0, eval)(fs.readFileSync("./page.js", "utf8")
+  + "; ({statusCat, catOfChip, catOfWord, CAT_OF_KIND, STATUSCATS})"); }
+catch (e) { console.log("LOAD " + e.constructor.name + ": " + e.message); process.exit(1); }
+const pairs = JSON.parse(fs.readFileSync("./pairs.json", "utf8"));
+const words = JSON.parse(fs.readFileSync("./words.json", "utf8"));
+const out = {cats: s.STATUSCATS, pairs: [], words: []};
+try {
+  for (const [chip, kind] of pairs)
+    out.pairs.push([chip, kind, s.statusCat({chip, kind}), !!s.catOfChip(chip),
+                    !!s.CAT_OF_KIND[kind]]);
+  // A list, not an object: "__proto__" is one of the words.
+  for (const w of words) out.words.push([w, s.catOfWord(w, [])]);
+  out.request = s.statusCat({id: "LSR20270001", status: "Filed as a request", kind: ""});
+} catch (e) { out.threw = e.constructor.name + ": " + e.message; }
+process.stdout.write("\n@@" + JSON.stringify(out));
+"""
+
+
+def _node_app(harness, files=None, args=()):
+    """Run `harness` in node beside page.js (app.js), stub.js (dom_stub.js)
+    and `files` ({name: text}); what it printed after "@@", as JSON. None
+    where node, app.js or the stub is not here."""
+    js, stub = Path("src/pages/app.js"), Path("tests/dom_stub.js")
+    node = shutil.which("node") or shutil.which("node.exe")
+    if not (js.exists() and stub.exists() and node):
+        return None
+    root = Path(tempfile.mkdtemp())
+    try:
+        (root / "page.js").write_text(js.read_text(encoding="utf-8"), encoding="utf-8")
+        (root / "stub.js").write_text(stub.read_text(encoding="utf-8"), encoding="utf-8")
+        for name, text in (files or {}).items():
+            (root / name).write_text(text, encoding="utf-8")
+        (root / "go.js").write_text(harness, encoding="utf-8")
+        r = _run([node, "go.js", *args], cwd=root, capture_output=True, text=True, timeout=120)
+        assert r.returncode == 0 and "@@" in (r.stdout or ""), (
+            "app.js did not run under node: " + (r.stderr or r.stdout or "")[-300:])
+        return json.loads(r.stdout.rsplit("@@", 1)[1])
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+
+
+@check("frontend", "the Status filter files every word a chip can say under one of seven "
+                   "categories -- In Progress, Passed, Tabled, Interim Study, Died, Withdrawn, "
+                   "Vetoed -- by its word or its kind, and an address naming a chip's word "
+                   "finds its category", needs=("build_site_v2",))
+def _status_categories(B):
+    """The person, 8 October 2026, and their answers the same evening: the
+    Status filter and the Status sort's headings use categories, and a card's
+    chip keeps its own word. Held here: every word build_site_v2.chip_word
+    gives, for every ending this file's chip table names, in session and
+    after it, every adopted resolution's and constitutional amendment's word,
+    and every (chip, kind) the nineteen terms carried on 8 October
+    (_STATUS_REAL_PAIRS), is filed by app.js's statusCat where
+    _STATUS_CATEGORY says, and decided by its word or its kind -- never by
+    the last line, which a word and a kind statusCat had never seen would
+    reach; a request is in none. And ?status= in an address, read through
+    catOfWord: a category in any case, every chip word -- what the filter
+    offered before 8 October, so an address written then still finds its
+    bills -- and nothing for a word that is neither, "constructor" among
+    them."""
+    pairs = set(_STATUS_REAL_PAIRS)
+    tables = list(_CHIP_FINISHED.items()) + list(_CHIP_LIVE.items())
+    for kind, table in tables:
+        for status in table:
+            for live in (False, True):
+                pairs.add((B.chip_word(kind, status, live), kind))
+    for w in ("Adopted by the House", "Adopted by the Senate", "Adopted by both chambers",
+              "Passed both chambers, goes to the voters",
+              "Passed both chambers, ratified by the voters",
+              "Passed both chambers, not ratified by the voters"):
+        for live in (False, True):
+            pairs.add((B.chip_word("adopted", w, live), "adopted"))
+    unknown = sorted({c for c, _k in pairs if c not in _STATUS_CATEGORY})
+    assert not unknown, (f"chip_word gives words this check files nowhere: {unknown}; "
+                         "add each to _STATUS_CATEGORY with the category the person would "
+                         "put it in")
+    words = sorted(_STATUS_CATEGORY) + _STATUS_CATS + [c.lower() for c in _STATUS_CATS] \
+        + ["IN PROGRESS", "  Passed ", "", "Killed", "constructor", "__proto__", "toString",
+           "Filed as a request", "nonsense", "in committee", "became law",
+           "adopted by the house", "passed both chambers, goes to the voters in november 2030"]
+    lower = {k.lower(): v for k, v in _STATUS_CATEGORY.items()}
+    lower["passed both chambers, goes to the voters in november 2030"] = "In Progress"
+    got = _node_app(_STATUSCAT_HARNESS, {
+        "pairs.json": json.dumps(sorted(pairs)), "words.json": json.dumps(words)})
+    if got is None:
+        return "skip", "app.js, dom_stub.js or node is not here"
+    assert "threw" not in got, f"statusCat threw {got['threw']}"
+    bad = []
+    if got["cats"] != _STATUS_CATS:
+        bad.append(f"the categories run {got['cats']}, not {_STATUS_CATS}")
+    for chip, kind, cat, by_word, by_kind in got["pairs"]:
+        want = _STATUS_CATEGORY[chip]
+        if cat != want:
+            bad.append(f"{chip!r} ({kind}) is filed under {cat!r}, not {want!r}")
+        if not (by_word or by_kind):
+            bad.append(f"{chip!r} ({kind}) is filed by statusCat's last line: neither its "
+                       "word nor its kind is known to it")
+    if got["request"] != "":
+        bad.append(f"a request is filed under {got['request']!r}: it is not a bill yet")
+    read = dict((w, c) for w, c in got["words"])
+    for w in words:
+        want = (_STATUS_CATEGORY.get(w) or next((c for c in _STATUS_CATS
+                                                if c.lower() == w.strip().lower()), "")
+                or lower.get(w.strip().lower(), ""))
+        if read.get(w) != want:
+            bad.append(f"?status={w!r} reads as {read.get(w)!r}, not {want!r}")
+    assert not bad, "; ".join(bad[:8]) + (f"; and {len(bad) - 8} more" if len(bad) > 8 else "")
+    return "ok", (f"{len(got['pairs'])} chip words and kinds, every ending in and out of "
+                  "session and every pair the nineteen terms carry, are each filed by word or "
+                  f"kind under one of the seven; ?status= reads {len(words)} words as it should")
+
+
+@check("data", "every bill of every term the built site lists is filed under one of the "
+               "Status filter's categories by its chip's word or its kind")
+def _status_categories_built():
+    """_status_categories over the built site's own rows rather than the
+    pairs written down on 8 October 2026 (_STATUS_REAL_PAIRS): every
+    (chip, kind) that site/idx carries, for every term meta.json names and
+    the requests, through app.js's statusCat. Each is to be decided by its
+    word or its kind, never by the last line, and filed where
+    _STATUS_CATEGORY says; a word this file does not know -- a stage the
+    General Court names tomorrow -- fails here, so that the person decides
+    which category it is in before a reader finds it in the wrong one. A
+    request has no chip and is in none. On 8 October: 33,717 bills, 13
+    pairs, none reaching the last line."""
+    rows = _site_bills()
+    if rows is None:
+        return "skip", "site is not built"
+    from collections import Counter
+    pairs = Counter((r.get("chip"), r.get("kind") or "") for r in rows if r.get("chip"))
+    bills = sum(pairs.values())
+    unknown = sorted({c for c, _k in pairs if c not in _STATUS_CATEGORY})
+    got = _node_app(_STATUSCAT_HARNESS, {"pairs.json": json.dumps(sorted(pairs)),
+                                         "words.json": "[]"})
+    if got is None:
+        return "skip", "app.js, dom_stub.js or node is not here"
+    assert "threw" not in got, f"statusCat threw {got['threw']}"
+    bad = [f"{len(unknown)} chip word(s) no category is written down for here: {unknown[:4]}"
+           ] if unknown else []
+    for chip, kind, cat, by_word, by_kind in got["pairs"]:
+        n = pairs[(chip, kind)]
+        if not (by_word or by_kind):
+            bad.append(f"{n:,} bill(s) with the chip {chip!r} ({kind or 'no kind'}) are filed "
+                       f"by statusCat's last line, as {cat!r}")
+        elif chip in _STATUS_CATEGORY and cat != _STATUS_CATEGORY[chip]:
+            bad.append(f"{n:,} bill(s) with the chip {chip!r} are filed under {cat!r}, not "
+                       f"{_STATUS_CATEGORY[chip]!r}")
+    assert not bad, "; ".join(bad[:6])
+    return "ok", (f"{bills:,} bills of the built site, {len(pairs)} pairs of chip and kind, "
+                  "each filed by its word or its kind")
+
+
+# The bill search as bills.html runs it, in node: meta.json and three terms'
+# rows answered from the fixture, the address from argv[2], and then the
+# reader's steps -- a status ticked, a type ticked, Sort by status, another
+# term, All Terms, the requests, a number -- each read off the count line, the
+# filters and the list.
+_SEARCH_GROUPS_HARNESS = r"""
+require("./stub.js");
+const fs = require("fs");
+const FIX = JSON.parse(fs.readFileSync("./fixture.json", "utf8"));
+globalThis.fetch = async (u) => { const p = decodeURIComponent(new URL(u).pathname);
+  if (!(p in FIX)) return { ok: false, status: 404, statusText: "Not Found",
+                            json: async () => { throw new Error("404"); } };
+  return { ok: true, status: 200, json: async () => JSON.parse(JSON.stringify(FIX[p])) }; };
+const ticks = async (n) => { for (let i = 0; i < n; i++) await new Promise(r => setImmediate(r)); };
+location.search = process.argv[2] || "";
+const box = document.querySelector("#q"); box.disabled = true;
+let s;
+try { s = (0, eval)(fs.readFileSync("./page.js", "utf8")
+  + "; ({render, sel, getTerm: () => term, setQuery: (q) => { query = q; }})"); }
+catch (e) { console.log("LOAD " + e.constructor.name + ": " + e.message); process.exit(1); }
+const $ = (q) => document.querySelector(q);
+const look = () => {
+  const f = $("#facets").innerHTML, r = $("#results").innerHTML;
+  const opts = (key) => [...f.matchAll(new RegExp('<input type="checkbox" data-f="' + key
+    + '" value="([^"]*)"[^>]*>\\s*<span>([\\s\\S]*?)</span>\\s*<span class="c">([\\d,]+)</span>', "g"))]
+    .map(m => [m[1], m[2].replace(/\s+/g, " ").trim(), +m[3].replace(/,/g, "")]);
+  return {count: $("#count").textContent, status: opts("status"), type: opts("type"),
+    groups: [...f.matchAll(/data-g="([^"]+)"/g)].map(m => m[1]),
+    labels: [...f.matchAll(/data-g="([^"]+)"\s*aria-expanded="[^"]*"><span>([^<]*)<\/span>/g)]
+      .map(m => [m[1], m[2]]),
+    heads: [...r.matchAll(/<h2 class="grp">([^<]*?)\s*<span>(\d+)<\/span>/g)].map(m => [m[1].trim(), +m[2]]),
+    cards: [...r.matchAll(/<article class="card[^"]*" data-id="([^"]+)"/g)].map(m => m[1])};
+};
+(async () => {
+  for (let i = 0; i < 400 && box.disabled !== false; i++) await ticks(1);
+  if (box.disabled !== false) { console.log("app.js never finished loading the fixture"); process.exit(1); }
+  const out = {year: $("#year").innerHTML, arrived: {status: [...s.sel.status], type: [...s.sel.type]}};
+  try {
+    out.start = look();
+    const clear = () => { Object.values(s.sel).forEach(x => x.clear()); };
+    clear(); s.render(); out.none = look();
+    s.sel.status.add("In Progress"); s.render(); out.progress = look();
+    clear(); s.sel.type.add("CACR"); s.render(); out.cacr = look();
+    s.sel.status.add("Died"); s.render(); out.cacrDied = look();
+    clear();
+    const so = $("#sort"); so.value = "status"; so.fire("change"); out.byStatus = look();
+    so.value = "num"; so.fire("change");
+    const ys = $("#year");
+    const term = async (t) => { ys.value = t; ys.fire("change"); await ticks(40); return look(); };
+    out.older = await term("2023-2024");
+    out.all = await term("all");
+    out.requests = await term("2027-requests");
+    await term("2025-2026");
+    box.value = "HB 2"; box.fire("input"); await ticks(20); out.number = look();
+  } catch (e) { out.threw = e.constructor.name + ": " + e.message + " " + (e.stack || "").split("\n")[1]; }
+  process.stdout.write("\n@@" + JSON.stringify(out));
+})().catch(e => { console.log("RUN " + e.message); process.exit(1); });
+"""
+
+
+def _search_groups_fixture():
+    """meta.json, two terms and the requests, for _SEARCH_GROUPS_HARNESS:
+    every chip the current term can carry while its session sits, and an
+    earlier term with neither a withdrawal nor a veto."""
+    def row(bid, kind, chip, term="2025-2026", status=None):
+        return {"id": bid, "n": re.sub(r"^([A-Z]+)", r"\1 ", bid), "title": "a bill",
+                "kind": kind, "status": status or chip, "chip": chip, "committees": [],
+                "committee": "", "topic": "", "sponsor": "", "term": term,
+                "year": int(term[-4:]), "passage": "", "votedays": [], "nrc": 0,
+                "last_action": ""}
+    now = [row("HB1", "law", "Became Law", status="Signed into law"),
+           row("HB2", "done", "Died", status="Killed"),
+           row("HB3", "active", "Tabled", status="Laid on the table"),
+           row("HB4", "active", "In committee"),
+           row("HB5", "active", "Re-referred to committee"),
+           row("SB6", "active", "Passed, awaiting the governor"),
+           row("CACR7", "adopted", "Passed both chambers, goes to the voters in November 2026"),
+           row("CACR8", "adopted", "Passed both chambers, not ratified by the voters"),
+           row("HR9", "adopted", "Adopted by the House"),
+           row("SR10", "adopted", "Adopted by the Senate"),
+           row("HCR11", "adopted", "Adopted by both chambers"),
+           row("SCR12", "done", "Died", status="Killed"),
+           row("SB13", "study", "Interim Study", status="Referred for interim study"),
+           row("HB14", "veto", "Vetoed", status="Vetoed, awaiting an override vote"),
+           row("HB15", "done", "Withdrawn"),
+           row("HJR16", "law", "Became Law", status="Signed into law"),
+           row("PET17", "done", "Died", status="Killed"),
+           row("SSHB18", "law", "Became Law", status="Signed into law"),
+           row("HCO19", "done", "Died", status="Refused introduction"),
+           row("ZZ20", "done", "Died", status="Killed")]
+    old = [row("HB1", "law", "Became Law", "2023-2024", "Signed into law"),
+           row("HB2", "done", "Died", "2023-2024", "Killed"),
+           row("SB3", "veto", "Died", "2023-2024", "Vetoed, override failed")]
+    req = [{"id": f"LSR2027000{i}", "n": f"LSR 2027-000{i}", "year": 2027, "title": "a request",
+            "sponsor": "", "body": body, "committee": "", "committees": [], "topic": "",
+            "kind": "", "status": "Filed as a request", "term": "2027-requests", "lsr": True,
+            "last_action": "", "nrc": 0, "votedays": []}
+           for i, body in ((1, "HB"), (2, "SB"), (3, "HB"))]
+    meta = {"terms": ["2025-2026", "2023-2024"], "topics": [], "committee_codes": {},
+            "requests": {"term": "2027-requests", "label": "2027 Bill Requests"}}
+    return {"/meta.json": meta, "/idx/2025-2026.json": now, "/idx/2023-2024.json": old,
+            "/idx/2027-requests.json": req}
+
+
+@check("frontend", "the bill search's Status filter offers the categories in the person's "
+                   "order in their chips' colours, a Bill Type filter offers each kind of "
+                   "measure by its letters and name, and Sort by status heads the list "
+                   "with the categories")
+def _status_and_type_filters():
+    """The person, 8 October 2026: one In Progress to tick for the bills that
+    have not concluded, separate from Passed, Tabled, Interim Study and Died;
+    Withdrawn and Vetoed their own, offered only where a bill is one; and "a
+    way to sort by bill type like sorting between HB, SB, HR, SR, HCR, SCR,
+    CACR". Run in node over a fixture term carrying every chip a sitting
+    session can, an earlier term with no withdrawal and no veto, and the
+    requests. Held: the Status filter's options, their order and each one's
+    chip class, and their counts adding up to the term's; ticking In Progress
+    lists the stages, the bill awaiting the governor and the amendment going
+    to the voters, and nothing else; the Bill Type filter's options in the
+    person's order with their names, a code with none shown as its letters,
+    ticking CACR listing the two amendments, and the two filters together;
+    Sort by status heading the list with the categories in order and their
+    counts; the earlier term offering the five and not Withdrawn or Vetoed;
+    the requests offering no status and their types by what each asks for;
+    and ?status= and ?type= in the address ticking the filters, a chip's own
+    word read as its category."""
+    fx = _search_groups_fixture()
+    got = _node_app(_SEARCH_GROUPS_HARNESS, {"fixture.json": json.dumps(fx)},
+                    args=("?status=Became%20Law&status=in%20committee&status=constructor"
+                          "&type=cacr&type=zz9",))
+    if got is None:
+        return "skip", "app.js, dom_stub.js or node is not here"
+    assert "threw" not in got, f"the bill search threw {got['threw']}"
+    bad = []
+    if sorted(got["arrived"]["status"]) != ["In Progress", "Passed"] \
+            or got["arrived"]["type"] != ["CACR"]:
+        bad.append(f"?status=Became Law&status=in committee&status=constructor&type=cacr"
+                   f"&type=zz9 ticks {got['arrived']}, not Passed and In Progress, and CACR")
+    n = got["none"]
+    total = len(fx["/idx/2025-2026.json"])
+    want_status = [("In Progress", 4), ("Passed", 6), ("Tabled", 1), ("Interim Study", 1),
+                   ("Died", 6), ("Withdrawn", 1), ("Vetoed", 1)]
+    if [(v, c) for v, _lab, c in n["status"]] != want_status:
+        bad.append(f"the Status filter offers {[(v, c) for v, _l, c in n['status']]}, "
+                   f"not {want_status}")
+    classes = {v: re.search(r'class="cstat ([^"]*)"', lab) for v, lab, _c in n["status"]}
+    want_cls = {"In Progress": "s-active", "Passed": "s-law", "Tabled": "s-table",
+                "Interim Study": "s-study", "Died": "s-done", "Withdrawn": "s-done",
+                "Vetoed": "s-veto"}
+    for v, cls in want_cls.items():
+        m = classes.get(v)
+        if not m or m.group(1) != cls:
+            bad.append(f"{v} is painted {m and m.group(1)!r}, not {cls!r}")
+    if sum(c for _v, _l, c in n["status"]) != total:
+        bad.append(f"the Status filter's counts add to {sum(c for _v, _l, c in n['status'])}, "
+                   f"not the term's {total}")
+    want_type = [("HB", "House Bill", 7), ("SB", "Senate Bill", 2), ("HR", "House Resolution", 1),
+                 ("SR", "Senate Resolution", 1), ("HCR", "House Concurrent Resolution", 1),
+                 ("SCR", "Senate Concurrent Resolution", 1),
+                 ("CACR", "Constitutional Amendment Concurrent Resolution", 2),
+                 ("HJR", "House Joint Resolution", 1), ("HCO", "House Concurrent Order", 1),
+                 ("PET", "Petition", 1), ("SSHB", "Special Session House Bill", 1),
+                 ("ZZ", "", 1)]
+    seen = [(v, re.sub(r"<[^>]+>", " ", lab).replace(v, "", 1).strip(), c)
+            for v, lab, c in n["type"]]
+    if seen != want_type:
+        bad.append(f"the Bill Type filter offers {seen}, not {want_type}")
+    if any('class="tcode"' not in lab for _v, lab, _c in n["type"]):
+        bad.append("a Bill Type option does not set its letters apart (tcode)")
+    groups = n["groups"]
+    if "type" not in groups or groups.index("type") != groups.index("status") + 1:
+        bad.append(f"the filters run {groups}: Bill Type is not beside Status")
+    labels = dict(n["labels"])
+    if labels.get("status") != "Status" or labels.get("type") != "Bill Type":
+        bad.append(f"the two filters are headed {labels.get('status')!r} and "
+                   f"{labels.get('type')!r}, not 'Status' and 'Bill Type'")
+    if sorted(got["progress"]["cards"]) != ["CACR7", "HB4", "HB5", "SB6"]:
+        bad.append(f"In Progress lists {got['progress']['cards']}, not the two stages, the "
+                   "bill awaiting the governor and the amendment going to the voters")
+    if sorted(got["cacr"]["cards"]) != ["CACR7", "CACR8"]:
+        bad.append(f"CACR lists {got['cacr']['cards']}")
+    if got["cacrDied"]["cards"] != ["CACR8"]:
+        bad.append(f"CACR and Died together list {got['cacrDied']['cards']}, not the amendment "
+                   "the voters turned down")
+    heads = [tuple(h) for h in got["byStatus"]["heads"]]
+    if heads != want_status:
+        bad.append(f"Sort by status heads the list {heads}, not {want_status}")
+    older = [v for v, _l, _c in got["older"]["status"]]
+    if older != ["In Progress", "Passed", "Tabled", "Interim Study", "Died"]:
+        bad.append(f"a term with no withdrawal and no veto offers {older}")
+    if any(c for v, _l, c in got["older"]["status"] if v in ("In Progress", "Tabled")):
+        bad.append("the earlier term counts a bill In Progress or Tabled")
+    allv = [v for v, _l, _c in got["all"]["status"]]
+    if allv != _STATUS_CATS:
+        bad.append(f"All Terms offers {allv}")
+    if "status" in got["requests"]["groups"]:
+        bad.append("the requests are offered a Status filter: they have no status yet")
+    if [(v, c) for v, _l, c in got["requests"]["type"]] != [("HB", 2), ("SB", 1)]:
+        bad.append(f"the requests' Bill Type filter offers {got['requests']['type']}")
+    assert not bad, "; ".join(bad)
+    return "ok", ("the Status filter offers the seven in order, painted, adding to the term; "
+                  "Bill Type offers twelve kinds by letters and name; the two filter alone and "
+                  "together; Sort by status heads with the categories; an earlier term, All "
+                  "Terms, the requests and an address each get what is theirs")
 
 
 @check("frontend", "what the review of the audit's fixes found stays found: focus after Show more, "

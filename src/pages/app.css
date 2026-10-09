@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.218 */
+/* GRANITE_VERSION: 2026-09-07.219 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -1396,6 +1396,15 @@ overflow-y:auto;overflow-x:hidden}
    at 2.3:1 while still being clickable; opacity also multiplies through
    to the count beside them, which was already the lightest text here. */
 .fopt.off{color:var(--ink-2)}.fopt.off .c{color:var(--ink-2)}
+/* The Bill Type filter's options: the letters in a column of their own and
+   the name beside them, so a name that wraps -- "Constitutional Amendment
+   Concurrent Resolution" in a 250px column -- wraps under itself and not
+   under the letters. 3.4em holds the longest, SSHCR. The box and the count
+   stand on the first line, beside the letters, rather than in the middle of
+   a name three lines long. */
+.fopt .tname{display:flex;gap:var(--sp-3);align-items:baseline}
+.fopt .tcode{flex:0 0 3.4em;font-weight:600}
+.fopt:has(.tname){align-items:baseline}
 .sbox{width:100%;height:32px;padding:0 var(--sp-4);font:inherit;font-size:var(--t-ui);
 border:1px solid var(--edge);border-radius:var(--r-in);margin-bottom:var(--sp-3)}
 .chosen{display:flex;flex-wrap:wrap;gap:var(--sp-2);margin-bottom:var(--sp-3)}
