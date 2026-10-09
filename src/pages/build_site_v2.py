@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.187
+# GRANITE_VERSION: 2026-09-05.188
 """
 Generate the faceted site from real General Court data.
 
@@ -6960,10 +6960,12 @@ def table_death_told(narr, tab, day, how, line=None, ending=None):
 # (Vote 8-2; )", "Interim Study Report: No Recommendation" (HB 1592 of
 # 2014). STUDY_REPORT read the last two wordings alone, 751 of the 1,534
 # reports.
-INTERIM_REPORT_ROW = re.compile(r"\b(?:in?terim|int\.?)\s+study\s+(?:(?:maj|min)\w*\s+)?rep",
-                                re.I)
-INTERIM_REPORT_TALLY = re.compile(r"\(\s*v\w?te\s*:?\s*\(?\s*P?(\d+)\s*-\s*(\d+)", re.I)
-INTERIM_REPORT_YEAR = re.compile(r"\b(?:IN|FOR)\s+((?:19|20)\d\d)\b", re.I)
+# The interim study report's row, its tally and the year it names, read as
+# the committee pages read them: committee_acts holds the patterns, and
+# study_said what a report recommends, so that one row is read one way on
+# both (9 October 2026).
+from committee_acts import (INTERIM_REPORT_ROW, INTERIM_REPORT_TALLY,  # noqa: E402
+                            INTERIM_REPORT_YEAR, study_said)
 
 
 def interim_report(narr, term=""):
@@ -6979,9 +6981,7 @@ def interim_report(narr, term=""):
     maj = [e for e in reps if not re.search(r"\bMIN\b", e.get("raw") or "", re.I)] or reps
     e = max(maj, key=lambda x: x.get("date") or "")
     raw = e.get("raw") or ""
-    rec = ("without" if re.search(r"\b(?:without|no)\s+recom", raw, re.I) else
-           "not" if re.search(r"\bnot\s+re+c|\bITL\b|inexpedient", raw, re.I) else
-           "rec" if re.search(r"\brec|\bOTP\b|ought\s+to\s+pass", raw, re.I) else "")
+    rec = study_said(raw)
     t = INTERIM_REPORT_TALLY.search(raw)
     y = INTERIM_REPORT_YEAR.search(raw)
     nxt = term_years(term)[1] + 1 if term else 0

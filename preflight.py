@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.484
+# GRANITE_VERSION: 2026-09-04.485
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -78206,6 +78206,290 @@ def _journal_intros_on_record():
                          "in data/bills.json: " + "; ".join(missing[:6]))
     return "ok", (f"all {len(intros):,} House measures the journals introduce are on "
                   "the record")
+
+
+# ------------------------------------------- the cards' data (9 October 2026) --
+#
+# What the next visual stages draw a bill's card from on a committee's
+# meeting, a session day and a member's term, decided once, upstream, in
+# Python (the component plan's C4; the person's feedback of 9 October 2026,
+# items 1, 7, 12 and 18 and v7, v8, v12, v13, v15, v16 and v18).
+
+# Real rows, copied from Docket.txt on 9 October 2026: HB 1681 (lines 13162,
+# 16668, 17316, 18930, 19540-19541, 19565, 19770, 20150, 21797, 22429, 22580,
+# 22619, 23615), HB 1652 (13009, 16693, 17461-17462, 18573, 25340, 25396),
+# HB 65 (35, 470, 2121, 11346, 11932-11933, 13095, 25331, 25388), HB 572 (918,
+# 1163, 4014, 4466, 5137, 5530-5531, 6009, 6569, 7285, 11425, 11544,
+# 11839-11840, 13904), HB 1525 (12883, 14107, 15739, 16298, 17229) and
+# HB 1705 (13186, 15195, 15828, 16694-16695, 17609-17612).
+_CARD_DOCKETS = {
+    ('HB1681', "2025-2026"): [
+        "2026|3110|12/12/2025 9:34:08 AM|HB1681|H|  Introduced 01/07/2026 and referred to Housing  HJ 1  P. 31|3/25/2026 3:13:36 PM",
+        "2026|3110|2/11/2026 11:35:54 AM|HB1681|H|Public Hearing: 02/17/2026 01:00 pm GP 231|2/11/2026 11:35:54 AM",
+        "2026|3110|2/17/2026 3:32:21 PM|HB1681|H|Executive Session: 03/03/2026 10:00 am GP 231|2/17/2026 3:32:21 PM",
+        "2026|3110|3/4/2026 5:21:40 PM|HB1681|H| Committee Report: Ought to Pass with Amendment # 2026-0998h   03/03/2026 (Vote 17-0; CC)  HC 10  P. 25|3/16/2026 9:53:57 AM",
+        "2026|3110|3/11/2026 8:13:48 PM|HB1681|H|Amendment # 2026-0998h: AA VV 03/11/2026  HJ 7  P. 226|6/23/2026 1:19:20 PM",
+        "2026|3110|3/11/2026 8:15:00 PM|HB1681|H|Ought to Pass with Amendment 2026-0998h: MA DV 231-99 03/11/2026  HJ 7  P. 228|6/23/2026 1:19:34 PM",
+        "2026|3110|3/10/2026 10:08:37 AM|HB1681|H|Removed from Consent (Reps. Turcotte, Sheehan, Hill, Verville, T. Walsh, Corcoran, Gilman, Stavis, Mandelbaum, Maggiore) 03/09/2026  HJ 7  P. 1|6/23/2026 3:07:53 PM",
+        "2026|3110|3/11/2026 8:13:40 PM|HB1681|H|Special Order to the next order of business (Rep. Alexander Jr.): MA DV 299-28 03/11/2026  HJ 7  P. 226|6/23/2026 1:18:49 PM",
+        "2026|3110|3/17/2026 11:53:26 AM|HB1681|S|  Introduced 03/12/2026 and Referred to Commerce;  SJ 7|3/17/2026 11:53:30 AM",
+        "2026|3110|4/16/2026 9:13:48 AM|HB1681|S| Hearing: 04/21/2026, Room 100, SH, 10:30 am;  SC 15|4/16/2026 9:13:48 AM",
+        "2026|3110|4/30/2026 9:18:33 AM|HB1681|S|Committee Report: Ought to Pass with Amendment # 2026-1709s, 05/07/2026; Vote 4-1; CC;  SC 17|4/30/2026 9:18:33 AM",
+        "2026|3110|5/5/2026 9:54:46 AM|HB1681|S|Committee Amendment # 2026-1709s, AA, VV; 05/07/2026;  SJ 11|5/7/2026 9:33:04 AM",
+        "2026|3110|5/5/2026 10:23:02 AM|HB1681|S|Ought to Pass with Amendment # 2026-1709s, MA, VV; OT3rdg; 05/07/2026;  SJ 11|5/7/2026 9:33:09 AM",
+        "2026|3110|5/21/2026 12:01:21 PM|HB1681|H|House Concurs with Senate Amendment 2026-1709s (Rep. Alexander Jr.): MA RC 242-102 05/21/2026  HJ 14  P. 14|7/24/2026 3:57:46 PM",
+    ],
+    ('HB1652', "2025-2026"): [
+        "2026|3100|12/10/2025 1:33:38 PM|HB1652|H|  Introduced 01/07/2026 and referred to Housing  HJ 1  P. 30|3/25/2026 3:07:05 PM",
+        "2026|3100|2/11/2026 11:36:24 AM|HB1652|H|Public Hearing: 02/17/2026 02:00 pm GP 231|2/11/2026 11:36:24 AM",
+        "2026|3100|2/18/2026 3:28:33 PM|HB1652|H|  Executive Session: 02/17/2026 02:00 pm GP 231|2/18/2026 3:28:33 PM",
+        "2026|3100|2/18/2026 3:28:52 PM|HB1652|H| Committee Report: Refer for Interim Study  02/17/2026 (Vote 12-0; CC)  HC 9  P. 17|3/3/2026 11:44:46 AM",
+        "2026|3100|3/5/2026 10:21:35 AM|HB1652|H|Refer for Interim Study: MA VV 03/05/2026  HJ 6  P. 20|6/9/2026 1:57:42 PM",
+        "2026|3100|9/22/2026 1:40:01 PM|HB1652|H|Executive Session: 10/01/2026 10:00 am GP 231|9/22/2026 1:40:01 PM",
+        "2026|3100|10/5/2026 12:43:18 PM|HB1652|H| Interim Study Report: Recommended for Future Legislation  10/01/2026 (Vote 8-1; )|10/5/2026 12:43:18 PM",
+    ],
+    ('HB65', "2025-2026"): [
+        "2026|0045|12/23/2024 3:26:13 PM|HB65|H|  Introduced 01/08/2025 and referred to Housing  HJ 2  P. 4|1/21/2025 1:23:35 PM",
+        "2026|0045|1/9/2025 10:45:23 AM|HB65|H|  Public Hearing: 01/21/2025 11:30 am LOB 210-211|1/17/2025 2:44:45 PM",
+        "2026|0045|1/31/2025 10:50:41 AM|HB65|H|Retained in Committee|1/31/2025 10:50:41 AM",
+        "2026|0045|8/28/2025 11:01:36 AM|HB65|H|  Full Committee Work Session: 09/23/2025 10:00 am GP 231|8/28/2025 11:01:36 AM",
+        "2026|0045|11/12/2025 8:33:46 AM|HB65|H|  Executive Session: 09/23/2025 10:00 am GP 231|11/12/2025 8:33:46 AM",
+        "2026|0045|11/12/2025 8:34:17 AM|HB65|H| Committee Report: Refer for Interim Study  09/23/2025 (Vote 16-0; CC)  HC 51  P. 12|12/19/2025 12:14:25 PM",
+        "2026|0045|1/7/2026 11:23:14 AM|HB65|H|Refer for Interim Study: MA VV 01/07/2026  HJ 1  P. 73|3/27/2026 3:04:43 PM",
+        "2026|0045|9/22/2026 1:38:37 PM|HB65|H|Executive Session: 10/01/2026 10:00 am GP 231|9/22/2026 1:38:37 PM",
+        "2026|0045|10/5/2026 12:22:52 PM|HB65|H| Interim Study Report: Not Recommended for Future Legislation  09/30/2026 (Vote 5-4; )|10/5/2026 12:22:52 PM",
+    ],
+    ('HB572', "2025-2026"): [
+        "2026|0095|1/16/2025 9:11:19 AM|HB572|H|  Introduced (in recess of) 01/09/2025 and referred to Housing  HJ 3  P. 17|2/18/2025 2:59:38 PM",
+        "2026|0095|1/22/2025 1:41:28 PM|HB572|H|Public Hearing: 01/28/2025 10:00 am LOB 305|1/22/2025 1:41:28 PM",
+        "2026|0095|2/26/2025 9:43:34 AM|HB572|H|Executive Session: 03/04/2025 10:00 am LOB 305|2/26/2025 9:43:34 AM",
+        "2026|0095|3/5/2025 12:10:23 PM|HB572|H| Committee Report: Ought to Pass with Amendment # 2025-0560h (NT)  03/04/2025 (Vote 16-0; RC)|3/5/2025 12:10:23 PM",
+        "2026|0095|3/13/2025 3:51:27 PM|HB572|H|Referred to Finance 03/13/2025  HJ 8  P. 79|4/21/2025 3:36:55 PM",
+        "2026|0095|3/13/2025 3:50:45 PM|HB572|H|Amendment # 2025-0560h (NT): AA VV 03/13/2025  HJ 8  P. 78|4/21/2025 3:36:24 PM",
+        "2026|0095|3/13/2025 3:51:24 PM|HB572|H|Ought to Pass with Amendment 2025-0560h: MA VV 03/13/2025  HJ 8  P. 79|4/21/2025 3:36:50 PM",
+        "2026|0095|3/19/2025 12:41:51 PM|HB572|H|  Division I Work Session: 03/24/2025 09:00 am LOB 212|3/20/2025 12:55:16 PM",
+        "2026|0095|3/26/2025 12:41:27 PM|HB572|H|Executive Session: 04/01/2025 10:00 am LOB 210-211|3/26/2025 12:41:27 PM",
+        "2026|0095|4/2/2025 11:20:47 AM|HB572|H|Retained in Committee|4/2/2025 11:20:47 AM",
+        "2026|0095|9/18/2025 3:39:04 PM|HB572|H|  Division I Work Session: 10/02/2025 01:00 pm GP 230|9/18/2025 3:39:04 PM",
+        "2026|0095|10/14/2025 11:40:15 AM|HB572|H|Executive Session: 10/30/2025 10:00 am GP 230|10/14/2025 11:40:15 AM",
+        "2026|0095|11/6/2025 2:47:28 PM|HB572|H|Majority Committee Report: Inexpedient to Legislate  10/30/2025 (Vote 14-11; RC)  HC 51  P. 35|12/19/2025 2:15:36 PM",
+        "2026|0095|11/6/2025 2:47:54 PM|HB572|H|Minority Committee Report: Ought to Pass with Amendment # 2025-2956h (NT)|11/6/2025 2:47:54 PM",
+        "2026|0095|1/8/2026 9:56:39 AM|HB572|H|Inexpedient to Legislate: MA RC 191-156 01/08/2026  HJ 2  P. 6|3/30/2026 2:30:51 PM",
+    ],
+    ('HB1525', "2025-2026"): [
+        "2026|2678|12/10/2025 11:50:05 AM|HB1525|H|  Introduced 01/07/2026 and referred to Housing  HJ 1  P. 24|3/25/2026 1:13:49 PM",
+        "2026|2678|1/14/2026 11:28:09 AM|HB1525|H|Public Hearing: 01/22/2026 01:00 pm GP 231|1/14/2026 11:28:09 AM",
+        "2026|2678|2/3/2026 2:33:31 PM|HB1525|H|  Executive Session: 01/22/2026 01:00 pm GP 231|2/3/2026 2:35:42 PM",
+        "2026|2678|2/6/2026 12:37:00 PM|HB1525|H| Committee Report: Inexpedient to Legislate  02/22/2026 (Vote 15-0; CC)  HC 7  P. 15|2/18/2026 10:20:21 AM",
+        "2026|2678|2/19/2026 10:43:49 AM|HB1525|H|Inexpedient to Legislate: MA VV 02/19/2026  HJ 5  P. 24|5/12/2026 9:00:48 AM",
+    ],
+    ('HB1705', "2025-2026"): [
+        "2026|2393|12/12/2025 9:43:06 AM|HB1705|H|  Introduced 01/07/2026 and referred to Labor, Industrial and Rehabilitative Services  HJ 1  P. 32|3/25/2026 3:21:39 PM",
+        "2026|2393|1/28/2026 4:19:31 PM|HB1705|H|Public Hearing: 02/03/2026 01:30 pm GP 159|1/28/2026 4:19:31 PM",
+        "2026|2393|2/5/2026 8:22:59 AM|HB1705|H|Executive Session: 02/10/2026 10:00 am GP 159|2/5/2026 8:22:59 AM",
+        "2026|2393|2/11/2026 11:07:18 AM|HB1705|H|Majority Committee Report: Refer for Interim Study  02/10/2026 (Vote 11-9; RC)  HC 7  P. 36|2/18/2026 11:04:37 AM",
+        "2026|2393|2/11/2026 11:08:02 AM|HB1705|H|Minority Committee Report: Ought to Pass with Amendment # 2026-0531h|2/11/2026 11:08:02 AM",
+        "2026|2393|2/19/2026 2:09:56 PM|HB1705|H|Refer for Interim Study: MF DV 167-174 02/19/2026  HJ 5  P. 93|5/12/2026 10:13:46 AM",
+        "2026|2393|2/19/2026 2:10:23 PM|HB1705|H|Amendment # 2026-0531h: AA VV 02/19/2026  HJ 5  P. 93|5/12/2026 10:13:54 AM",
+        "2026|2393|2/19/2026 2:11:12 PM|HB1705|H|Ought to Pass with Amendment 2026-0531h: MA RC 194-154 02/19/2026  HJ 5  P. 93|5/12/2026 10:14:05 AM",
+        "2026|2393|2/19/2026 2:11:30 PM|HB1705|H|Referred to Finance 02/19/2026  HJ 5  P. 95|5/12/2026 10:14:22 AM",
+    ],
+}
+
+
+def _card_events(N):
+    """{bill: events} for _CARD_DOCKETS, as narrative.build tells them."""
+    keep = N.MEMBERS
+    try:
+        N.MEMBERS = {}
+        return {b: _narrated(N, t, b, rows)["events"]
+                for (b, t), rows in _CARD_DOCKETS.items()}
+    finally:
+        N.MEMBERS = keep
+
+
+@check("build", "a committee's meeting says what happened to each bill there, by the day the "
+                "docket dates the committee's vote, and its Bills tab dates each report by "
+                "the meeting it was voted at", needs=("committee_acts", "narrative"))
+def _committee_meeting_outcomes(CA, N):
+    """The person, 9 October 2026, item 12: a committee's Meetings tab should
+    make clear "what changed on each bill at that meeting, if anything did";
+    and v8: an interim study report not recommending future legislation is
+    listed as killed, with what the committee voted. committee_acts reads it
+    off each bill's docket, by the day the docket dates the vote -- "03/03/2026
+    (Vote 17-0; CC)" -- not the day the row was entered, which made the
+    prototype's first draft say "no vote" on the day of a vote. Real rows
+    (_CARD_DOCKETS), at House Housing (H64), House Finance (H34) and Senate
+    Commerce (S37):
+
+      HB 1681, 17 Feb 2026: heard, 7 signed in for and 6 against (the
+        sign-in record's own count for that hearing), and voted on 3 March,
+        a meeting of the committee: Ought to Pass with Amendment 2026-0998h,
+        17-0. Its Senate hearing of 21 April is heard, and the Senate's
+        report is dated 7 May, the sitting that took it up, and is placed at
+        no meeting.
+      HB 1652-FN, 17 Feb 2026, a hearing and an executive session: voted,
+        Interim Study, 12-0; and on 1 October its interim study report,
+        recommended for future legislation, 8-1.
+      HB 65, 1 Oct 2026: the study report dated 30 September, not
+        recommended, 5-4: killed, at the meeting of the 1st.
+      HB 572: Housing's report of 4 March 2025, 16-0; the retention of
+        2 April is Finance's, after its executive session of the 1st, and
+        so is the ITL of 30 October, 14-11, with the minority's Ought to
+        Pass with Amendment 2025-2956h -- none of it on Housing's page.
+      HB 1525, 22 Jan 2026: an executive session with no report dated that
+        day; the docket dates it 22 February, no meeting of the committee,
+        and it is not moved to the nearest one."""
+    ev = _card_events(N)
+    codes = {("H", "housing"): "H64", ("H", "finance"): "H34", ("S", "commerce"): "S37"}
+
+    def code_of(name, body):
+        return codes.get((body, (name or "").strip().lower()))
+
+    meetings = {
+        "HB1681": [("2026-02-17", "H64", ["public hearing"]),
+                   ("2026-03-03", "H64", ["executive session"]),
+                   ("2026-04-21", "S37", ["hearing"])],
+        "HB1652": [("2026-02-17", "H64", ["public hearing", "executive session"]),
+                   ("2026-10-01", "H64", ["executive session"])],
+        "HB65": [("2025-01-21", "H64", ["public hearing"]),
+                 ("2025-09-23", "H64", ["executive session", "full committee work session"]),
+                 ("2026-10-01", "H64", ["executive session"])],
+        "HB572": [("2025-01-28", "H64", ["public hearing"]),
+                  ("2025-03-04", "H64", ["executive session"]),
+                  ("2025-04-01", "H34", ["executive session"]),
+                  ("2025-10-30", "H34", ["executive session"])],
+        "HB1525": [("2026-01-22", "H64", ["public hearing", "executive session"])],
+    }
+
+    def at(bill, code, date, signins=None):
+        acts = CA.acts(ev[bill])
+        own = CA.owners(acts, meetings[bill], code_of)
+        mine = {d: k for d, c, k in meetings[bill] if c == code}
+        return CA.outcome(code, date, mine[date], acts, own, mine, signins)
+
+    def rep(bill, code):
+        acts = CA.acts(ev[bill])
+        own = CA.owners(acts, meetings[bill], code_of)
+        return CA.reported(code, acts, own, {d: k for d, c, k in meetings[bill] if c == code})
+
+    bad = []
+
+    def want(got, **kw):
+        miss = {k: (got.get(k), v) for k, v in kw.items() if got.get(k) != v}
+        if miss:
+            bad.append(f"{miss} in {got}")
+
+    signed = {"date": "2026-02-17", "total": 13, "support": 7, "oppose": 6, "neutral": 0,
+              "dated": True}
+    want(at("HB1681", "H64", "2026-02-17", signed), outcome="heard",
+         signins={"for": 7, "against": 6, "neutral": 0, "total": 13},
+         voted={"act": "report", "date": "2026-03-03", "meeting": "2026-03-03"})
+    got = at("HB1681", "H64", "2026-03-03")
+    want(got, outcome="voted")
+    want((got.get("votes") or [{}])[0], act="report", code="OTPA", amendment="2026-0998h",
+         yeas=17, nays=0, dated="vote", meeting="2026-03-03")
+    want(at("HB1681", "S37", "2026-04-21"), outcome="heard",
+         voted={"act": "report", "date": "2026-05-07"})
+    want(rep("HB1681", "S37")[0], dated="sitting", code="OTPA", yeas=4, nays=1)
+    if "meeting" in rep("HB1681", "S37")[0]:
+        bad.append("the Senate's report of HB 1681 is placed at a meeting")
+    got = at("HB1652", "H64", "2026-02-17")
+    want(got, outcome="voted")
+    want((got.get("votes") or [{}])[0], code="IS", recommendation="Interim Study",
+         yeas=12, nays=0)
+    got = at("HB1652", "H64", "2026-10-01")
+    want((got.get("votes") or [{}])[0], act="study report", said="rec", killed=False,
+         yeas=8, nays=1)
+    got = at("HB65", "H64", "2026-10-01")
+    want(got, outcome="voted")
+    want((got.get("votes") or [{}])[0], act="study report", said="not", killed=True,
+         yeas=5, nays=4, date="2026-09-30", meeting="2026-10-01")
+    want(at("HB65", "H64", "2025-01-21"), outcome="heard",
+         voted={"act": "retained", "date": "2025-01-31"})
+    housing = [(a["act"], a.get("code")) for a in rep("HB572", "H64")]
+    finance = rep("HB572", "H34")
+    if housing != [("report", "OTPA")]:
+        bad.append(f"House Housing's acts on HB 572: {housing}")
+    if [a["act"] for a in finance] != ["retained", "report"]:
+        bad.append(f"House Finance's acts on HB 572: {finance}")
+    else:
+        want(finance[1], code="ITL", yeas=14, nays=11, minority_code="OTPA",
+             minority_amendment="2025-2956h", meeting="2025-10-30")
+    want(at("HB1525", "H64", "2026-01-22"), outcome="heard",
+         voted={"act": "report", "date": "2026-02-22"})
+    if CA.study_said("Interim Study Report: Without Recomendation (Vote 10-10)") != "without":
+        bad.append("a study report without a recommendation is not read as one")
+    assert not bad, "; ".join(bad[:6])
+    return "ok", ("HB 1681 heard on 17 Feb 2026 (7 for, 6 against) and voted on 3 March, 17-0; "
+                  "HB 1652-FN Interim Study, 12-0; HB 65's study report not recommended, 5-4, "
+                  "killed; HB 572's Finance acts on Finance's page alone")
+
+
+@check("data", "a committee's meetings on the built site say what happened to each bill, "
+               "and a vote is placed only at a meeting the docket dates it to")
+def _meeting_outcomes_on_the_site():
+    """The built committee records (committee_acts by way of
+    build_committees). House Housing's real meetings: on 17 February 2026
+    HB 1681 was heard, 7 signing in for it and 6 against (testimony_db.json's
+    count for that hearing), and voted on 3 March, 17-0, Ought to Pass with
+    Amendment 2026-0998h; HB 1652-FN was recommended for interim study,
+    12-0. And over every committee: each meeting's outcomes name the bills
+    its items do, once each; a vote is given only at the meeting the docket
+    dates it to, and never a Senate report's (dated by its sitting); a Bills
+    tab act placed at a meeting is at one of the committee's meetings on
+    that bill."""
+    folder = Path("site/committee")
+    if not (folder / "H64.json").exists():
+        return "skip", "site/committee is not built"
+    bad, n_meet, n_out, n_voted = [], 0, 0, 0
+    for f in sorted(folder.glob("*.json")):
+        c = json.loads(f.read_text(encoding="utf-8"))
+        met = {(s.get("date"), it.get("bill")) for s in c.get("sessions") or []
+               for it in s.get("items") or []}
+        for s in c.get("sessions") or []:
+            n_meet += 1
+            outs = s.get("outcomes")
+            if outs is None:
+                bad.append(f"{f.stem} {s.get('date')}: no outcomes")
+                continue
+            items = list(dict.fromkeys(it.get("bill") for it in s.get("items") or []))
+            if [o.get("bill") for o in outs] != items:
+                bad.append(f"{f.stem} {s.get('date')}: outcomes for {[o.get('bill') for o in outs]}"
+                           f", items {items}")
+            for o in outs:
+                n_out += 1
+                if o.get("outcome") not in ("voted", "heard", "no vote", "worked", "scheduled"):
+                    bad.append(f"{f.stem} {s.get('date')} {o.get('bill')}: {o.get('outcome')!r}")
+                for v in o.get("votes") or []:
+                    n_voted += 1
+                    if v.get("meeting") != s.get("date") or v.get("dated") == "sitting":
+                        bad.append(f"{f.stem} {s.get('date')} {o.get('bill')}: a vote of "
+                                   f"{v.get('date')} ({v.get('dated')}) placed here")
+        for rows in (c.get("bills") or {}).values():
+            for r in rows:
+                for a in r.get("reported") or []:
+                    if a.get("meeting") and (a["meeting"], r.get("id")) not in met:
+                        bad.append(f"{f.stem}: {r.get('id')}'s {a.get('act')} placed at "
+                                   f"{a['meeting']}, no meeting of the committee on it")
+    h64 = {s["date"]: {o["bill"]: o for o in s.get("outcomes") or []}
+           for s in json.loads((folder / "H64.json").read_text(encoding="utf-8"))["sessions"]}
+    o = (h64.get("2026-02-17") or {}).get("HB1681") or {}
+    if (o.get("outcome"), o.get("signins"), (o.get("voted") or {}).get("meeting")) != (
+            "heard", {"for": 7, "against": 6, "neutral": 0, "total": 13}, "2026-03-03"):
+        bad.append(f"HB 1681 at House Housing on 17 Feb 2026: {o}")
+    o = (h64.get("2026-02-17") or {}).get("HB1652") or {}
+    v = (o.get("votes") or [{}])[0]
+    if (o.get("outcome"), v.get("code"), v.get("yeas"), v.get("nays")) != ("voted", "IS", 12, 0):
+        bad.append(f"HB 1652-FN at House Housing on 17 Feb 2026: {o}")
+    o = (h64.get("2026-03-03") or {}).get("HB1681") or {}
+    v = (o.get("votes") or [{}])[0]
+    if (v.get("code"), v.get("amendment"), v.get("yeas"), v.get("nays")) != (
+            "OTPA", "2026-0998h", 17, 0):
+        bad.append(f"HB 1681 at House Housing on 3 Mar 2026: {o}")
+    assert not bad, f"{len(bad)} wrong: " + "; ".join(bad[:6])
+    return "ok", (f"{n_out:,} bills at {n_meet:,} meetings, {n_voted:,} votes each at the meeting "
+                  "the docket dates it to; HB 1681 heard 17 Feb 2026 (7 for, 6 against)")
 
 
 # ======================================================================= main ==
