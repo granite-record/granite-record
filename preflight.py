@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.482
+# GRANITE_VERSION: 2026-09-04.483
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -24305,7 +24305,7 @@ def _journey_reads(build_site_v2):
     want(run("HB1584", ev("H", "2026-07-15", "Signed by Governor Ayotte 07/15/2026; Chapter 328; "
                           "eff. I. Sec I eff 10/13/2026 II. Rem eff 01/01/2027", "governor"),
              chapter="328")[1][-1][3],
-         "Chapter 328, in effect in parts: section 1 on 13 Oct 2026, the rest on 1 Jan 2027",
+         "Chapter 328, in effect in parts: section 1 on Oct 13, 2026, the rest on Jan 1, 2027",
          "HB1584 2026")
     # EVERY ROW THAT CARRIES THE GOVERNOR'S ON, not the first seven (the
     # review of 8 October 2026). HB 2 of 2007's row and the fifteen after it
@@ -24721,12 +24721,12 @@ def _effective_parts_read(build_site_v2):
              "8/26/25.  XII. Rem eff 7/1/25.")
     want(law("HB282", ev("H", "2025-06-27", " ".join(hb282.split()), "governor"),
              chapter="142", line=hb282[:200]),
-         "Chapter 142, in effect in parts: sections 4, 8, 9 and 43 on 1 Jan 2026, sections 2, "
-         "10, 18 and 44 on 1 Jul 2026, sections 3, 11, 19, 40 and 45 on 1 Jul 2027, sections "
-         "12, 20 and 46 on 1 Jul 2028, sections 13, 21 and 47 on 1 Jul 2029, sections 14, 22 "
-         "and 48 on 1 Jul 2030, sections 15, 23 and 49 on 1 Jul 2031, sections 16, 24 and 50 "
-         "on 1 Jul 2032, sections 17, 25, 27 and 51 on 1 Jul 2033, sections 26, 27 to 33, 35 "
-         "to 38 and 52 on 1 Jul 2034, section 1 on 26 Aug 2025, the rest on 1 Jul 2025",
+         "Chapter 142, in effect in parts: sections 4, 8, 9 and 43 on Jan 1, 2026, sections 2, "
+         "10, 18 and 44 on Jul 1, 2026, sections 3, 11, 19, 40 and 45 on Jul 1, 2027, sections "
+         "12, 20 and 46 on Jul 1, 2028, sections 13, 21 and 47 on Jul 1, 2029, sections 14, 22 "
+         "and 48 on Jul 1, 2030, sections 15, 23 and 49 on Jul 1, 2031, sections 16, 24 and 50 "
+         "on Jul 1, 2032, sections 17, 25, 27 and 51 on Jul 1, 2033, sections 26, 27 to 33, 35 "
+         "to 38 and 52 on Jul 1, 2034, section 1 on Aug 26, 2025, the rest on Jul 1, 2025",
          "HB282 2025")
     # The 200 characters alone are a line cut short, and state none.
     want(law("HB282", chapter="142", line=hb282[:200]), "Chapter 142", "HB282 2025, cut short")
@@ -24735,7 +24735,7 @@ def _effective_parts_read(build_site_v2):
                           "governor"),
              ev("H", "2008-06-06", "I. Section I Effective 07/01/2008"),
              ev("H", "2008-06-06", "II. Remainder Effective 06/03/2008"), chapter="118"),
-         "Chapter 118, in effect in parts: section 1 on 1 Jul 2008, the rest on 3 Jun 2008",
+         "Chapter 118, in effect in parts: section 1 on Jul 1, 2008, the rest on Jun 3, 2008",
          "HB1508 2008")
     # Docket_2019-2020.txt line 4889, past its first 200 characters: the RSA
     # part ends at its date, not at "13/".
@@ -24745,9 +24745,9 @@ def _effective_parts_read(build_site_v2):
               "09/27/2020 VI. Rem. Eff: 07/29/2020")
     want(law("HB1558", ev("H", "2020-07-29", hb1558, "governor"), chapter="38",
              line=hb1558[:200]),
-         "Chapter 38, in effect in parts: RSA 193:13/ I-X on 1 Jul 2021, sections 3 to 5 and 8 "
-         "to 10 on 1 Jul 2020, sections 6 and 7 on 30 Jun 2020, sections 17 and 31 to 36 on 1 "
-         "Jan 2021, sections 11 to 16 and 18 to 30 on 27 Sep 2020, the rest on 29 Jul 2020",
+         "Chapter 38, in effect in parts: RSA 193:13/ I-X on Jul 1, 2021, sections 3 to 5 and 8 "
+         "to 10 on Jul 1, 2020, sections 6 and 7 on Jun 30, 2020, sections 17 and 31 to 36 on "
+         "Jan 1, 2021, sections 11 to 16 and 18 to 30 on Sep 27, 2020, the rest on Jul 29, 2020",
          "HB1558 2020")
 
     # A PART NOT READ IS NOT "THE REST". Docket_2021-2022.txt line 11477,
@@ -25377,10 +25377,10 @@ def _rail_study_and_table_marks(N, B):
             if not (stop(dd, "s-x") and "✕" in dd and "s-ontable" not in dd):
                 bad.append(f"HB 1043's {where} rail, dead on the table, has lost its cross: {dd[:300]!a}")
         said = {k: (re.search(r'aria-label="([^"]*)"', got[k]["card"]) or [None, ""])[1] for k in got}
-        if "House: sent to interim study, 7 January 2026" not in said["study"] or \
+        if "House: sent to interim study, January 7, 2026" not in said["study"] or \
                 "interim study, interim study" in said["study"]:
             bad.append(f"HB 561's card is heard {said['study']!a}")
-        if "Senate: on the table, 7 May 2026" not in said["table"]:
+        if "Senate: on the table, May 7, 2026" not in said["table"]:
             bad.append(f"HB 1043's card on the table is heard {said['table']!a}")
         if "sent to interim study" not in (re.search(r'aria-label="([^"]*)"', got["study"]["page"])
                                            or [None, ""])[1].lower():
