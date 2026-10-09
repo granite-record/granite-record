@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.32
+# GRANITE_VERSION: 2026-09-08.33
 """
 The topics of the civics section: their order, their names, and their prose.
 
@@ -1780,8 +1780,8 @@ and this site's own pages: typing Litchfield offers both the town and the
 representative of that name. Anything else goes to
 <a href="bills.html">the bill search</a>, which takes a bill number, several
 separated by commas, or words from a title, sponsor or committee. It covers
-one term at a time and narrows by committee, topic, prime sponsor, status and
-floor vote day. <a href="legislators.html">Every sitting member</a> and
+one term, or all of them at once, and narrows by committee, topic, prime
+sponsor, status, bill type and floor vote day. <a href="legislators.html">Every sitting member</a> and
 <a href="committees.html">every committee</a> has a page of their own.</p>
 
 <h2>What a bill's page holds</h2>

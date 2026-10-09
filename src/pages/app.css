@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.230 */
+/* GRANITE_VERSION: 2026-09-07.231 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -1465,6 +1465,28 @@ b,strong,h1,h2,h3,h4{font-weight:600}button{font:inherit;color:inherit;backgroun
    long before that and the eye has nothing to land on. The hint line
    under it is capped to match so the two read as one control. */
 .qline{display:flex;gap:var(--sp-4);max-width:840px}
+/* THE TERM PICKER AND THE SORT ARE ONE WIDTH, at every width of screen (the
+   person, 8 October 2026: "the width of the dropdown boxes for the term
+   selector and sort by should be the same size"). Each sized itself to its
+   longest option, so the two stood one above the other at two widths. One
+   length for both, set here once, wide enough for the longest of either --
+   "2027 Bill Requests" and "Most recent action", 123px and 121px of 14px
+   Public Sans in Chrome on 8 October 2026, inside 154px and 162px of box
+   with the arrow beside them -- at every width from 1366 to 360, where the
+   whole row is 312px. preflight holds the one rule: no other sets either
+   width.
+   IN REM, decided on 8 October 2026: a reader who has set their browser's
+   text larger gets both selects wider together, where a length in pixels
+   stayed the same whatever they set.
+   11.875rem AT THE INTERFACE'S 16px (the merge into the foundation, 9
+   October 2026): 10.75rem, 172px, was measured with the selects' words at
+   14px, and at the foundation's 16px the term picker asks for 179px
+   ("2027 Bill Requests", 140px of words and 39px of padding, border and
+   arrow, in Chrome) and showed "2025-2026 Tern" and "2027 Bill Reques";
+   the Sort asks for 169px. 190px leaves the 10px or so the 14px width left,
+   and 285px at 24px, where the picker asks for 249px. */
+.searchrow{--pickw:11.875rem}
+#year,#sort{width:var(--pickw);max-width:100%;flex:0 0 auto}
 #sort{height:26px;padding:0 var(--sp-2);font:inherit;font-size:var(--t-ui);border:1px solid var(--edge);
 border-radius:var(--r-in);background:var(--surface);color:var(--ink-2);cursor:pointer}
 #year{height:42px;padding:0 var(--sp-4);font:inherit;font-size:var(--t-ui);border:1px solid var(--edge);
@@ -1490,15 +1512,44 @@ line-height:1;border:1px solid transparent;border-radius:var(--r-out);background
 color:var(--ink-2);cursor:pointer}
 #qgo:hover{border-color:var(--edge);background:var(--wash);color:var(--pine)}
 #qgo:disabled{opacity:.35;cursor:default}
-.qhint{font-size:var(--t-ui);color:var(--ink-2);margin:var(--sp-3) var(--sp-1) 0;display:flex;gap:var(--sp-6);flex-wrap:wrap;max-width:840px}
-/* THE COUNT IS EMPTY UNTIL A SEARCH NARROWS THE LIST, and an empty item in
-   this row still took the row's gap: at 360px the Sort select stood 10px to
-   the right of the search box above it (the review of 2 October 2026). Out
-   of the row while empty, and not display:none -- it is the live region that
+/* THE SORT FIRST, THEN THE COUNT (bills.html, 8 October 2026). Flush with
+   the term picker above it, which is why the row has no side margin of its
+   own, and held at the top of the row: when the count wraps to a second or
+   third line on a phone, it is the count that grows downward, not the Sort
+   that moves. The count's own line is centred on the Sort beside it. */
+.qhint{font-size:var(--t-ui);color:var(--ink-2);margin:var(--sp-3) 0 0;display:flex;align-items:flex-start;
+gap:var(--sp-3) var(--sp-6);flex-wrap:wrap;max-width:840px}
+/* The count beside the Sort: never wider than the room the Sort leaves of
+   the row (--room, its width and the gap), so it wraps under itself rather
+   than dropping under the Sort; and no wider than its own words, so that
+   what the search read can follow it on the same line.
+   UNLESS THAT ROOM IS UNDER 8em, and then a line of its own under the Sort.
+   With the Sort in rem, a phone set to 24px text left the count 61px of a
+   375px screen, "364 of 2,243 bills in the 2025-2026 term" six lines tall
+   beside a 258px Sort (Chrome, 8 October 2026). The second term of the max()
+   is how that is said without a media query, which cannot see the row:
+   below 8em of room it is many times the row, so the cap is lifted, the
+   count's words no longer fit beside the Sort and the row wraps them under
+   it, at its full width; at 8em or more it is negative and the room is the
+   cap. 8em is 128px of the count's 16px (the foundation's interface size),
+   which a 375px phone at the browser's own 16px leaves beside the Sort
+   (129px); at 360 it is 114px, and the count takes the line under it. */
+.qhint{--room:calc(100% - var(--pickw) - var(--sp-6))}
+.qhint #count{flex:0 1 auto;min-width:0;max-width:max(var(--room),calc((8em - var(--room)) * 999));
+align-self:center}
+/* A bill opened in the list says nothing here: out of the row while empty,
+   so it takes no gap, and not display:none -- it is the live region that
    says the list has changed, and a region that is not there when the
    sentence arrives is not read out. */
 .qhint #count:empty{position:absolute;width:1px;height:1px;overflow:hidden;
 clip-path:inset(50%)}
+/* What the search read beside what was typed: after the count, on the same
+   line wherever 20em of it fits there, and a line of its own under the Sort
+   and the count where it does not. On a line of its own it pushed the list
+   down by a line whenever a search read a synonym -- "school" at 1366px --
+   which is the list moving under the reader as they type. */
+.qhint #synhint{flex:1 1 20em;min-width:0;align-self:center}
+.qhint #synhint:empty{display:none}
 .link{color:var(--pine);font-size:var(--t-ui)}
 /* THE FILTERS' COLUMN IS SIZED BY ITS TEXT: 17rem, 272px at the browser's
    16px. It was 250px when its words were 14px, and at 16px the same 250px
@@ -1517,6 +1568,10 @@ overflow-y:auto;overflow-x:hidden}
 .fgroup.open .chev{transform:rotate(90deg)}
 .fhead .badge{background:var(--pine);color:var(--on-pine);font-size:var(--t-sm);padding:1px var(--sp-3);border-radius:var(--r-pill);font-weight:600}
 .fbody{padding:0 var(--sp-1) var(--sp-5);max-height:340px;overflow-y:auto;overflow-x:hidden}.fbody[hidden]{display:none}
+/* The Status filter and the Bill Type filter, whole (fgroup's .whole): a few
+   words, the same ones every term, and nothing of them in a box that
+   scrolls. */
+.fbody.whole{max-height:none}
 /* THE CONTROL THAT OPENS THE PANEL ON A PHONE. Nothing above 720px: there
    the panel is a column of its own beside the results and always open. It
    carries the same chevron and count badge .fhead does, scoped the same way
@@ -1534,6 +1589,17 @@ overflow-y:auto;overflow-x:hidden}
    at 2.3:1 while still being clickable; opacity also multiplies through
    to the count beside them, which was already the lightest text here. */
 .fopt.off{color:var(--ink-2)}.fopt.off .c{color:var(--ink-2)}
+/* The Bill Type filter's options: the letters in a column of their own and
+   the name beside them, so a name that wraps -- "Constitutional Amendment
+   Concurrent Resolution" in a 250px column -- wraps under itself and not
+   under the letters. 3.7em holds the longest, SSHCR: 49.4px of 600-weight
+   14px Public Sans in Chrome on 8 October 2026, where 3.4em was 47.6px and
+   pushed its name 2px out of line with the rest. The box and the count
+   stand on the first line, beside the letters, rather than in the middle of
+   a name three lines long. */
+.fopt .tname{display:flex;gap:var(--sp-3);align-items:baseline}
+.fopt .tcode{flex:0 0 3.7em;font-weight:600}
+.fopt:has(.tname){align-items:baseline}
 .sbox{width:100%;height:32px;padding:0 var(--sp-4);font:inherit;font-size:var(--t-ui);
 border:1px solid var(--edge);border-radius:var(--r-in);margin-bottom:var(--sp-3)}
 .chosen{display:flex;flex-wrap:wrap;gap:var(--sp-2);margin-bottom:var(--sp-3)}
@@ -1707,7 +1773,8 @@ box-shadow:0 0 0 3px var(--pine-soft)}
    -- still tells check, cross, wave and bars apart, and neither is ever the
    empty ring of a stop not reached. The "~" is an SVG (app.js WAVE), so it
    centres at any size; the bars are drawn here. A bill that died on the
-   table keeps the cross.
+   table is the pause where it was tabled, and the cross at Law on the day it
+   died (the person, 8 October 2026).
    IN rem, AS THE DISC IS, so the wave and the bars grow with it at a
    reader's larger text size (the rail's marks grow with their words, the
    foundation's rule): at the browser's default 16px they are the 11px
@@ -2738,13 +2805,17 @@ text-align:center;color:var(--ink-2);font-size:var(--t-ui)}
   .searchbig button{padding:var(--sp-5) var(--sp-7)}
   /* The term selector and the search box share a flex row, and at 375px the
      selector was squeezed to 68px -- "2025-2026 term" showing as "2025".
-     Wrapping gives each a full row, which there is now room for since the
-     filters below them collapse on a phone. */
+     Wrapping gives each a row of its own, which there is now room for since
+     the filters below them collapse on a phone. The selector keeps the width
+     it shares with the Sort (--pickw, above) rather than taking the whole
+     row, so the two stand one above the other at one width on a phone too,
+     with the count beside the Sort; the box takes the whole row. */
   .qline{flex-wrap:wrap}
-  #year{width:100%}
+  .qline .qbox{flex:1 0 100%}
   /* The last filter group's rule and the block's own rule sat together. */
   .facets .fgroup:last-child{border-bottom:0}
-  .qhint{flex-wrap:wrap;gap:var(--sp-4)}
+  /* And the count's room beside the Sort, at this row's narrower gap. */
+  .qhint{flex-wrap:wrap;gap:var(--sp-4);--room:calc(100% - var(--pickw) - var(--sp-4))}
   .crow{flex-wrap:wrap;gap:var(--sp-2)}
   /* The status is pushed to the right of the row by margin-left:auto, which
      is right while the row is a row. Wrapped onto a line of its own at
@@ -2895,10 +2966,15 @@ column-gap:var(--sp-3);align-items:baseline;padding:var(--sp-1) 0}
 .jl .j-h .jg{color:var(--pine)}
 /* The rail's own two marks, bare, as the check and the cross are here: an
    orange wave on the line that sent the bill to interim study, two yellow
-   bars on the line that laid it on the table it still lies on. */
-.jl .j-istudy .jg{color:var(--st-study);display:flex;align-items:center;
+   bars on the line that laid it on the table -- it still lies there, or it
+   died there and the line after says so with the cross. And the interim
+   study committee's report that recommended the subject for future
+   legislation, once the session is over: a bare orange arrow (app.js
+   ARROW, the person's option (d) of 9 October 2026), the wave's ink and
+   size, which the rail never draws. */
+.jl .j-istudy .jg,.jl .j-ifuture .jg{color:var(--st-study);display:flex;align-items:center;
 justify-content:center;align-self:start;height:1.5em}
-.jl .j-istudy .jg .wave{width:1em;height:1em}
+.jl .j-istudy .jg .wave,.jl .j-ifuture .jg .arrow{width:1em;height:1em}
 .jl .j-ontable .jg{display:flex;align-items:center;justify-content:center;
 align-self:start;height:1.5em}
 .jl .j-ontable .jg::after{content:"";display:block;width:.5rem;height:.7em;box-sizing:border-box;
@@ -3166,6 +3242,24 @@ background:var(--paper);
    committee pages. The control is what must fit; the option text is the
    browser's to shorten. */
 max-width:100%}
+/* THE BILL STATUS SELECT IS PAINTED AS THE SEARCH'S STATUS FILTER IS (the
+   person, 8 October 2026: the same categories as the search, on a member's
+   and a committee's page). Each option carries its category's chip class
+   (app.js CATCLASS), which paints it wherever the browser draws the list of
+   options in the page's colours -- Chrome does, looked at on 8 October 2026
+   -- and leaves it plain where the browser draws a list of its own; Any
+   stays the page's ink. The select itself takes the chosen category's chip --
+   its ground, its ink and the 3px bar of .cstat -- so the closed control
+   says what it is narrowed to in the colour the cards under it carry. */
+.bfilt option:not([class]){background:var(--paper);color:var(--ink)}
+.bfilt select.s-active{background:var(--st-active-bg);color:var(--st-active)}
+.bfilt select.s-law{background:var(--st-law-bg);color:var(--st-law)}
+.bfilt select.s-table{background:var(--st-table-bg);color:var(--st-table)}
+.bfilt select.s-study{background:var(--st-study-bg);color:var(--st-study)}
+.bfilt select.s-done{background:var(--st-done-bg);color:var(--st-done)}
+.bfilt select.s-veto{background:var(--st-veto-bg);color:var(--st-veto)}
+.bfilt select:is(.s-active,.s-law,.s-table,.s-study,.s-done,.s-veto){
+border-left:3px solid currentColor;font-weight:600}
 
 /* A bill on a member's or a committee's page is .card, the same one the
    search list draws, so it expands where it stands. The flatter .bcard that

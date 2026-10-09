@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.488
+# GRANITE_VERSION: 2026-09-04.489
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -311,7 +311,8 @@ def _site_bills(site="site"):
 # asks site_read itself.
 _RECORD_WHOLE = ("id", "term", "archived", "veto_message", "vote_note", "next_step",
                  "journey", "ballot",
-                 "status_source")   # whose a CACR's voters' line is (_ballots_shown)
+                 "status_source",   # whose a CACR's voters' line is (_ballots_shown)
+                 "study_report")    # the report's line (_rail_endings_on_the_site)
 _RECORD_KEPT = _RECORD_WHOLE + (
     "rollcalls",        # kept as whether the page has any
     "reports")          # kept as each report's cite_url and source
@@ -20562,8 +20563,26 @@ _NOT_MARKS = re.compile(r"^--(?:rule|rule-2|paper|surface|wash|shadow|film|film-
 # here's orange "~" on the line that sent a bill to interim study (app.js
 # JMARK.s, the WAVE svg; the person's marks of 8 October 2026): --st-study
 # is 4.53:1 on the page and 4.17:1 on --wash, where no list of decisions is
-# drawn, and the wave is a stroke, not a letter.
-_COLOR_DRAWS_A_MARK = {".jl .j-istudy .jg": ("JMARK", "s", "WAVE")}
+# drawn, and the wave is a stroke, not a letter. And since dev's rail endings
+# (merged 9 October 2026) the interim study report's orange arrow, the same
+# ink in the same rule (app.js JMARK.f, the ARROW svg). A rule naming several
+# selectors draws a mark only where every one of them is named here.
+_COLOR_DRAWS_A_MARK = {".jl .j-istudy .jg": ("JMARK", "s", "WAVE"),
+                       ".jl .j-ifuture .jg": ("JMARK", "f", "ARROW")}
+
+
+def _css_selectors(sel):
+    """A rule's selector list, each one with its spaces made single. A comma
+    inside :is() or :not() does not part it."""
+    out, depth, cur = [], 0, ""
+    for ch in sel:
+        depth += (ch == "(") - (ch == ")")
+        if ch == "," and depth == 0:
+            out.append(cur)
+            cur = ""
+        else:
+            cur += ch
+    return [" ".join(s.split()) for s in out + [cur] if s.strip()]
 
 
 def _grounds_for(ink, default=_GROUNDS):
@@ -20639,7 +20658,7 @@ def _token_pairs(text, sources):
         ground = next((ground_of(got[k]) for k in ("background-color", "background") if k in got),
                       None)
         where = f"app.css:{ln} {sel[:40]}"
-        drawn = " ".join(sel.split()) in _COLOR_DRAWS_A_MARK
+        drawn = all(s in _COLOR_DRAWS_A_MARK for s in _css_selectors(sel))
         for k in ("color", "-webkit-text-fill-color"):
             v = got.get(k, "").strip()
             if re.fullmatch(r"var\(--[\w-]+\)", v):
@@ -20724,7 +20743,7 @@ def _token_pairs_measure():
     bad, low = [], None
     # A colour read as a mark's is a mark's only while the rule is there and
     # what it colours is still the drawing named (_COLOR_DRAWS_A_MARK).
-    sels = {" ".join(sel.split()) for _, sel, _, _ in _css_rules(text)}
+    sels = {s for _, sel, _, _ in _css_rules(text) for s in _css_selectors(sel)}
     js = Path("src/pages/app.js").read_text(encoding="utf-8") if Path("src/pages/app.js").exists() else ""
     for sel, (table, key, svg) in _COLOR_DRAWS_A_MARK.items():
         drawing = re.search(rf"\bconst {svg}\s*=\s*((?:'[^']*'\s*\+?\s*)+);", js)
@@ -25597,9 +25616,56 @@ _KILLED_THEN_STUDIED = [
 ]
 
 
-@check("frontend", "interim study is the rail's orange \"~\" and a bill on the table now its yellow "
-                   "pause, a dead bill's cross kept; apart by shape, said aloud and drawn in forced "
-                   "colours, and the two chips in the same inks",
+# Real rows, of the days a chamber last sat: Docket.txt 25149 (the Senate's
+# veto votes of 19 August 2026, SJ 15) and 25123 (the House's, HJ 16);
+# Docket_db_1995-1996.txt 8654 (the House, 13 June 1996); Docket_2019-2020.txt
+# 14625 (the Senate, 16 September 2020); Docket_db_2013-2014.txt 128 (the
+# Senate, 26 June 2013).
+_LAST_SITTING_ROWS = {
+    ("SB434", "2025-2026"): ["2026|2030|8/19/2026 3:22:53 PM|SB434|S|Notwithstanding the Governor's Veto, Shall SB 434 Become Law: RC 16Y-8N, Veto Overridden by necessary two-thirds vote; 08/19/2026;  SJ 15|8/19/2026 4:55:32 PM"],
+    ("HB221", "2025-2026"): ["2026|0263|8/19/2026 10:43:37 AM|HB221|H|Veto Sustained 08/19/2026: RC 152-167 Lacking Necessary Two-Thirds Vote  HJ 16  P. 8|9/4/2026 9:42:34 AM"],
+    ("HB445", "1995-1996"): ["1996|0061|06/13/1996 01:33:01 PM|HB445|H|INDEF POSTPONED [PER JT RULE 23B], REPS SCANLAN & TROMBLY MA VV;|06/13/1996 01:33:01 PM"],
+    ("SB124", "2019-2020"): ["2020|0979|9/16/2020 12:00:00 AM|SB124|S|Notwithstanding the Governor's Veto, Shall SB 124 Become Law: RC 14Y-10N, Veto Sustained, lacking the necessary two-thirds vote; 09/16/2020; SJ 10|9/16/2020 12:00:00 AM"],
+    ("HB635", "2013-2014"): ["2013|0026|06/26/2013 12:16:38 PM|HB635|S|Conference Committee Report 2068c; Adopted, VV|06/26/2013 12:16:38 PM"],
+}
+
+
+def _sittings_of(N, B, rows=None):
+    """build_site_v2.chamber_sittings over the narratives of real rows,
+    {(bill, term): [docket lines]}: the days each chamber sat, as the build
+    reads them from every bill's floor rows."""
+    by = {}
+    for (bill, term), lines in (rows or _LAST_SITTING_ROWS).items():
+        by.setdefault(term, {})[bill] = _narrated(N, term, bill, lines)
+    return B.chamber_sittings(by)
+
+
+def _ended(N, B, term, bill, lines, kind, status, live, sittings, lsrs=None, sat=None):
+    """One bill as build_bills makes it, from its real rows: the journey, the
+    passage (with whether its session is over), the chip, the endings the
+    session's end makes (session_endings) and the rail. `sat` stands in for
+    the chamber's journals, none of which a check reads."""
+    narr = _narrated(N, term, bill, lines)
+    intro, steps = B.journey(narr, bill, [], "", "", term)
+    passed = {c for c in "HS" if B.journey_state(steps, c) == "p"}
+    acted = list(dict.fromkeys(s["body"] for s in steps if s["body"] in "HS"))
+    rail = B.passage(narr["stages"], kind, status, bill, passed, acted, over=not live)
+    chip = B.chip_word(kind, status, live)
+    tabled, ending = B.session_endings(narr, steps, rail, chip, status, term, not live,
+                                       sittings, lsrs, None, sat=sat)
+    jrail = B.journey_rail(intro, steps, rail, bill, status, chip=chip, tabled=tabled)
+    cells = B.index_rail(jrail)
+    for s in steps + jrail:
+        s.pop("short", None)
+        s.pop("effective", None)
+    return {"id": bill, "passage": rail, "chip": chip, "cells": cells, "steps": steps,
+            "jrail": jrail, "ending": ending, "narr": narr}
+
+
+@check("frontend", "interim study is the rail's orange \"~\" and a bill on the table its yellow "
+                   "pause -- while the session sits, and where it died there, with the cross at "
+                   "Law; apart by shape, said aloud and drawn in forced colours, and the two "
+                   "chips in the same inks",
        needs=("narrative", "build_site_v2"))
 def _rail_study_and_table_marks(N, B):
     """THE PERSON'S MARKS OF 8 OCTOBER 2026, and the two chips' inks with them.
@@ -25608,15 +25674,24 @@ def _rail_study_and_table_marks(N, B):
     table it could still come off drew the ring of a bill moving. Now:
 
       * HB 561 of 2026, sent to interim study by the House on 7 January 2026,
-        has an orange disc with a white "~" on the House stop, on its list
-        card and on its own page, and the same "~", bare, on its How it got
-        here line; a reader who hears the rail hears "sent to interim study".
+        drawn as it stood while the session still sat, has an orange disc
+        with a white "~" on the House stop, on its list card and on its own
+        page, and the same "~", bare, on its How it got here line; a reader
+        who hears the rail hears "sent to interim study". Law is not reached.
       * HB 1043 of 2026, laid on the Senate's table on 7 May 2026, drawn as it
         stood while the session still sat (live, its chip Tabled), has a
         yellow disc with two white bars there and on the line that laid it
-        there, and is heard "on the table". Drawn as it stands, dead on the
-        table when the session ended, it keeps the red cross and the line's
-        turning arrow.
+        there, and is heard "on the table".
+      * DRAWN AS IT STANDS, DEAD ON THE TABLE (the person, 8 October 2026:
+        "Show the body it was tabled in with the yellow pause, and show the
+        red x mark on the law once it died when the session ended"), its
+        Senate stop is still the pause of 7 May, heard "laid on the table";
+        Law is the cross on 19 August 2026, the Senate's last sitting (the
+        person, 9 October 2026), heard "stopped here, August 19, 2026"; and How
+        it got here has the pause on the tabling's line and a line with the
+        cross after it, "Still on the table when the Senate last sat; died
+        there when the session ended". This check held, until then, that it
+        kept the cross on the Senate and the turning arrow on the line.
       * The four filled marks differ in shape -- check, cross, wave, two bars
         -- which is what tells them apart in greyscale, where their inks sit
         within a few points of lightness; forced colours keep the wave's disc
@@ -25624,46 +25699,50 @@ def _rail_study_and_table_marks(N, B):
         ground; and the Interim Study and Tabled chips take the orange and the
         yellow.
     Built from the real rows through narrative.build, the journey, passage,
-    chip_word and journey_rail, and drawn by app.js in node."""
+    chip_word, session_endings and journey_rail, and drawn by app.js in node."""
     term = "2025-2026"
+    sittings = _sittings_of(N, B)
+    if (sittings.get(("S", "2026")) or [""])[-1] != "2026-08-19":
+        raise AssertionError(f"the Senate's last sitting of 2026 reads {sittings.get(('S', '2026'))}")
     cases = {}
     for name, bill, lines, kind, status, live in (
             ("study", "HB561", _CONSENT_REREFERRED[("HB561", term)], "study",
              "Referred for interim study", True),
             ("table", "HB1043", _TABLED_ROWS, "active", "Laid on the table", True),
-            ("died", "HB1043", _TABLED_ROWS, "done", "Died on the table", False)):
-        narr = _narrated(N, term, bill, lines)
-        intro, steps = B.journey(narr, bill, [], "", "")
-        passed = {c for c in "HS" if B.journey_state(steps, c) == "p"}
-        acted = list(dict.fromkeys(s["body"] for s in steps if s["body"] in "HS"))
-        rail = B.passage(narr["stages"], kind, status, bill, passed, acted)
-        chip = B.chip_word(kind, status, live)
-        jrail = B.journey_rail(intro, steps, rail, bill, status, chip=chip)
-        cells = B.index_rail(jrail)
-        for s in steps + jrail:
-            s.pop("short", None)
-            s.pop("effective", None)
-        cases[name] = {"id": bill, "passage": rail, "chip": chip, "cells": cells,
-                       "steps": steps, "jrail": jrail}
+            ("died", "HB1043", _TABLED_ROWS, "done", "Laid on the table", False)):
+        cases[name] = _ended(N, B, term, bill, lines, kind, status, live, sittings)
     bad = []
     marks = {k: [(s["stop"], s["mark"]) for s in c["jrail"]] for k, c in cases.items()}
     lines = {k: [(s["act"], s["mark"]) for s in c["steps"] if s["body"] in "HS"]
              for k, c in cases.items()}
     if (cases["study"]["chip"], cases["study"]["passage"]) != ("Interim Study", "Hx---") or \
-            ("House", "s") not in marks["study"] or ("study", "s") not in lines["study"]:
+            ("House", "s") not in marks["study"] or ("study", "s") not in lines["study"] or \
+            lines["study"][-1:] != [("study", "s")]:
         bad.append(f"HB 561's rail and lines are {marks['study']} {lines['study']}, chip "
                    f"{cases['study']['chip']!r}, passage {cases['study']['passage']!r}")
     if cases["table"]["chip"] != "Tabled" or ("Senate", "t") not in marks["table"] or \
-            lines["table"][-1:] != [("tabled", "t")]:
+            lines["table"][-1:] != [("tabled", "t")] or ("Law", "-") not in marks["table"]:
         bad.append(f"HB 1043 on the table now reads {marks['table']} {lines['table'][-2:]}, "
                    f"chip {cases['table']['chip']!r}")
-    if cases["died"]["chip"] != "Died" or ("Senate", "x") not in marks["died"] or \
-            ("tabled", "h") not in lines["died"] or any(m in ("s", "t") for _s, m in marks["died"]):
-        bad.append(f"HB 1043 dead on the table reads {marks['died']} {lines['died'][-2:]}")
+    died = cases["died"]
+    dstop = {s["stop"]: (s["mark"], s["date"]) for s in died["jrail"]}
+    dline = died["steps"][-1]
+    if died["chip"] != "Died" or dstop.get("Senate") != ("t", "2026-05-07") or \
+            dstop.get("Law") != ("x", "2026-08-19") or \
+            lines["died"][-2:] != [("tabled", "t"), ("died", "x")] or \
+            (dline["text"], dline["date"]) != (
+                "Still on the table when the Senate last sat; died there when the session "
+                "ended", "2026-08-19"):
+        bad.append(f"HB 1043 dead on the table reads {dstop} {lines['died'][-2:]} {dline!a}")
+    if (died["ending"] or {}).get("text") != (
+            "It was still on the Senate's table when the Senate last sat, on August 19, 2026, "
+            "and it died there when the session ended."):
+        bad.append(f"HB 1043's history ends {died['ending']!a}")
     if [c[0] for c in cases["study"]["cells"]][:2] != ["Ip", "Hs"] or \
-            [c[0] for c in cases["table"]["cells"]][2] != "St":
+            [c[0] for c in cases["table"]["cells"]][2] != "St" or \
+            died["cells"][2] != ["St", "2026-05-07", "tabled"] or died["cells"][4] != ["Lx", "2026-08-19"]:
         bad.append("the list card's stops do not carry the marks: "
-                   f"{cases['study']['cells']} {cases['table']['cells']}")
+                   f"{cases['study']['cells']} {cases['table']['cells']} {died['cells']}")
     # THE STOP SAYS WHAT ITS MARK SAYS (the review of 8 October 2026): HB 1171
     # of 2000, killed by the Senate on 20 April 2000, the kill reconsidered,
     # and sent to interim study on 18 May, drew the "~" over the kill's words
@@ -25698,6 +25777,8 @@ def _rail_study_and_table_marks(N, B):
     if got is not None:
         wave = '<b><svg class="wave"'
         stop = lambda html, cls: re.search(rf'<span class="stop {cls}"[^>]*>\s*(<b>.*?</b>)', html, re.S)
+        named = lambda html, cls, name: re.search(
+            rf'<span class="stop {cls}"[^>]*>\s*<b>[^<]*</b><i>{name}</i>', html)
         for where in ("card", "page", "bare"):
             st, tb, dd = got["study"][where], got["table"][where], got["died"][where]
             if not (stop(st, "s-istudy") and wave in st and 'class="stop s-x"' not in st):
@@ -25705,16 +25786,31 @@ def _rail_study_and_table_marks(N, B):
             m = stop(tb, "s-ontable")
             if not (m and m.group(1) == "<b></b>"):
                 bad.append(f"HB 1043's {where} rail on the table now is not the pause: {tb[:300]!a}")
-            if not (stop(dd, "s-x") and "✕" in dd and "s-ontable" not in dd):
-                bad.append(f"HB 1043's {where} rail, dead on the table, has lost its cross: {dd[:300]!a}")
+            if where == "bare":
+                # THE KNOWN LIMIT: the bare rail, drawn only for a row that
+                # carries no stops, has the passage alone, which cannot say a
+                # Died bill was tabled; it keeps the cross where it stopped.
+                if not named(dd, "s-x", "Senate"):
+                    bad.append(f"HB 1043's bare rail, dead on the table, is not the passage's: {dd[:300]!a}")
+            elif not (named(dd, "s-ontable", "Senate") and named(dd, "s-x", "Law")
+                      and not named(dd, "s-x", "Senate")):
+                bad.append(f"HB 1043's {where} rail, dead on the table, is not the pause at the "
+                           f"Senate and the cross at Law: {dd[:400]!a}")
         said = {k: (re.search(r'aria-label="([^"]*)"', got[k]["card"]) or [None, ""])[1] for k in got}
+        heard = {k: (re.search(r'aria-label="([^"]*)"', got[k]["page"]) or [None, ""])[1] for k in got}
         if "House: sent to interim study, January 7, 2026" not in said["study"] or \
-                "interim study, interim study" in said["study"]:
+                "interim study, interim study" in said["study"] or \
+                "Law: never reached" not in said["study"]:
             bad.append(f"HB 561's card is heard {said['study']!a}")
         if "Senate: on the table, May 7, 2026" not in said["table"]:
             bad.append(f"HB 1043's card on the table is heard {said['table']!a}")
-        if "sent to interim study" not in (re.search(r'aria-label="([^"]*)"', got["study"]["page"])
-                                           or [None, ""])[1].lower():
+        if "Senate: laid on the table, May 7, 2026" not in said["died"] or \
+                "Law: stopped here, August 19, 2026" not in said["died"]:
+            bad.append(f"HB 1043's card, dead on the table, is heard {said['died']!a}")
+        if "Senate: laid on the table on a voice vote, May 7, 2026" not in heard["died"] or \
+                "Law: did not become law, August 19, 2026" not in heard["died"]:
+            bad.append(f"HB 1043's page, dead on the table, is heard {heard['died']!a}")
+        if "sent to interim study" not in heard["study"].lower():
             bad.append("HB 561's page does not say interim study to a reader who hears it")
         if not re.search(r'<li class="j-istudy"><span class="jg"\s*aria-hidden="true"><svg class="wave"',
                          got["study"]["how"]):
@@ -25722,9 +25818,15 @@ def _rail_study_and_table_marks(N, B):
         if not re.search(r'<li class="j-ontable"><span class="jg"\s*aria-hidden="true"></span>'
                          r'<span class="jb">Senate', got["table"]["how"]):
             bad.append(f"HB 1043's line on the table now is not the pause: {got['table']['how'][-400:]!a}")
-        if not re.search(r'<li class="j-h"><span class="jg"\s*aria-hidden="true">↺</span>'
-                         r'<span class="jb">Senate', got["died"]["how"]):
-            bad.append(f"HB 1043's line, dead on the table, lost its arrow: {got['died']['how'][-400:]!a}")
+        if not re.search(r'<li class="j-ontable"><span class="jg"\s*aria-hidden="true"></span>'
+                         r'<span class="jb">Senate</span><span class="jt">Laid on the table on a '
+                         r'voice vote</span><span\s*class="jd">May 7, 2026</span></li>'
+                         r'<li class="j-x"><span class="jg"\s*aria-hidden="true">✕</span>'
+                         r'<span class="jb">Senate</span><span class="jt">Still on the table when '
+                         r'the Senate last sat; died there when the session ended</span><span\s*'
+                         r'class="jd">Aug 19, 2026</span></li>', got["died"]["how"]):
+            bad.append(f"HB 1043's lines, dead on the table, are not the pause and then the "
+                       f"cross: {got['died']['how'][-600:]!a}")
         drew = "app.js draws them on the card, the page, the bare rail and How it got here"
 
     # SHAPE, NOT INK ALONE: four filled marks, four glyphs.
@@ -25765,8 +25867,624 @@ def _rail_study_and_table_marks(N, B):
                 bad.append(f"--{tok} is not {hexv} where the sheet says")
     assert not bad, "; ".join(bad[:4])
     return "ok", ("HB 561's House stop and line are the orange \"~\", HB 1043 on the table now "
-                  "the yellow pause, dead on the table the cross; check, cross, wave and bars; "
+                  "the yellow pause, and dead on the table the pause of 7 May with the cross at "
+                  "Law on 19 August 2026 and a line saying so; check, cross, wave and bars; "
                   f"forced colours, print and the two chips kept; {drew}")
+
+
+# Real rows of the bills whose endings _rail_endings holds, copied from the
+# dockets on disk.
+_ENDING_ROWS = {
+    # Docket.txt lines 66-13354, 8 rows
+    ("HB96", "2025-2026"): [
+        "2025|0131|12/23/2024 3:38:22 PM|HB96|H|  Introduced 01/08/2025 and referred to Executive Departments and Administration  HJ 2  P. 5|1/21/2025 1:47:40 PM",
+        "2025|0131|1/15/2025 12:51:48 PM|HB96|H|Public Hearing: 01/22/2025 02:00 pm LOB 306-308|1/15/2025 12:51:48 PM",
+        "2025|0131|1/23/2025 11:21:48 AM|HB96|H|   Subcommittee Work Session: 01/28/2025 10:15 am LOB 104|1/23/2025 11:21:48 AM",
+        "2025|0131|3/5/2025 4:22:26 PM|HB96|H|Executive Session: 03/12/2025 11:00 am LOB 306-308|3/5/2025 4:22:26 PM",
+        "2025|0131|3/18/2025 9:03:40 AM|HB96|H|Majority Committee Report: Inexpedient to Legislate  03/12/2025 (Vote 12-4; RC)  HC 17  P. 31|3/21/2025 10:37:29 AM",
+        "2025|0131|3/18/2025 9:03:56 AM|HB96|H|Minority Committee Report: Ought to Pass|3/18/2025 9:03:56 AM",
+        "2025|0131|3/26/2025 1:23:51 PM|HB96|H|Lay HB96 on Table (Rep. C. McGuire): MA RC 199-135 03/26/2025  HJ 10  P. 59|5/13/2025 3:37:17 PM",
+        "2025|0131|12/18/2025 9:32:54 AM|HB96|H|Died on Table, Session ended 12/17/2025  HJ 19|12/18/2025 9:32:54 AM",
+    ],
+    # Docket.txt lines 955-25169, 29 rows
+    ("HB609", "2025-2026"): [
+        "2026|0889|1/16/2025 9:25:16 AM|HB609|H|  Introduced (in recess of) 01/09/2025 and referred to Criminal Justice and Public Safety  HJ 3  P. 18|2/18/2025 3:08:19 PM",
+        "2026|0889|1/22/2025 3:39:26 PM|HB609|H|Public Hearing: 01/30/2025 04:00 pm LOB 202-204|1/22/2025 3:39:26 PM",
+        "2026|0889|3/6/2025 8:58:45 AM|HB609|H|==CANCELLED== Executive Session: 03/14/2025 10:00 am LOB 202-204|3/10/2025 11:52:58 AM",
+        "2026|0889|3/10/2025 11:53:06 AM|HB609|H|  Executive Session: 03/19/2025 10:00 am LOB 202-204|3/10/2025 11:53:06 AM",
+        "2026|0889|3/19/2025 1:21:14 PM|HB609|H|Retained in Committee|3/19/2025 1:21:14 PM",
+        "2026|0889|10/3/2025 12:55:11 PM|HB609|H| ==RESCHEDULED== Executive Session: 10/22/2025 01:00 pm GP 230|10/8/2025 11:06:42 AM",
+        "2026|0889|10/3/2025 12:52:30 PM|HB609|H| ==RESCHEDULED==  Full Committee Work Session: 10/22/2025 10:00 am GP 230|10/8/2025 11:06:29 AM",
+        "2026|0889|11/13/2025 12:40:37 PM|HB609|H|Majority Committee Report: Ought to Pass  10/22/2025 (Vote 9-7; RC)  HC 51  P. 21|12/19/2025 2:06:23 PM",
+        "2026|0889|11/13/2025 12:40:52 PM|HB609|H|Minority Committee Report: Inexpedient to Legislate|11/13/2025 12:40:52 PM",
+        "2026|0889|1/7/2026 12:24:41 PM|HB609|H|FLAM # 2026-0019h (Rep. Farrington): AA RC 193-152 01/07/2026  HJ 1  P. 87|3/30/2026 9:40:54 AM",
+        "2026|0889|1/7/2026 12:25:29 PM|HB609|H|Ought to Pass with Amendment 2026-0019h: MA RC 193-151 01/07/2026  HJ 1  P. 92|3/30/2026 9:41:58 AM",
+        "2026|0889|1/30/2026 9:15:02 AM|HB609|S|  Introduced 01/29/2026 and Referred to Judiciary;  SJ 3|1/30/2026 9:15:02 AM",
+        "2026|0889|3/9/2026 2:22:39 PM|HB609|S| Hearing: 03/10/2026, Room 100, SH, 01:30 pm;  SC 9|4/28/2026 2:22:39 PM",
+        "2026|0889|5/12/2026 3:05:50 PM|HB609|S|Committee Report: Ought to Pass with Amendment # 2026-1917s, 05/14/2026, Vote 3-2;  SC 18A|5/12/2026 3:05:50 PM",
+        "2026|0889|5/14/2026 8:27:35 PM|HB609|S|Committee Amendment # 2026-1917s, AF, VV; 05/14/2026;  SJ 12|5/14/2026 8:27:35 PM",
+        "2026|0889|5/14/2026 8:27:53 PM|HB609|S|Sen. Abbas Floor Amendment # 2026-1987s, AA, VV; 05/14/2026;  SJ 12|5/14/2026 8:27:53 PM",
+        "2026|0889|5/14/2026 9:17:28 PM|HB609|S|Ought to Pass with Amendment # 2026-1987s, MA, VV; OT3rdg; 05/14/2026;  SJ 12|5/14/2026 9:17:28 PM",
+        "2026|0889|5/18/2026 2:30:52 PM|HB609|H|House Non-Concurs with Senate Amendment 2026-1987s and Requests CofC (Rep. Roy): MA VV 05/14/2026  HJ 13  P. 147|7/24/2026 11:36:19 AM",
+        "2026|0889|5/18/2026 2:32:21 PM|HB609|H|Speaker Appoints: Reps. Roy, Rhodes, Paquette, Osborne 05/14/2026  HJ 13  P. 147|7/24/2026 11:36:26 AM",
+        "2026|0889|5/20/2026 4:35:59 PM|HB609|S|Sen. Gannon Accedes to House Request for Committee of Conference, MA, VV; (In recess 05/14/2026);  SJ 13|5/26/2026 3:47:02 PM",
+        "2026|0889|5/20/2026 4:39:21 PM|HB609|S|President Appoints: Senators Abbas, Gannon, Reardon; (In Recess 05/14/2026);  SJ 13|5/20/2026 4:39:21 PM",
+        "2026|0889|5/21/2026 4:08:32 PM|HB609|H|Conferee Change: Rep. Layon Replaces Rep. Osborne 05/21/2026  HJ 14  P. 32|7/27/2026 12:53:24 PM",
+        "2026|0889|5/27/2026 12:00:00 AM|HB609|H|Conference Committee Meeting: 05/27/2026 11:00 am GP 234|5/21/2026 4:45:07 PM",
+        "2026|0889|5/27/2026 9:02:42 AM|HB609|S|Conferee Change; Senator Lang Replaces Senator Gannon;  SJ 14|5/27/2026 9:02:42 AM",
+        "2026|0889|5/28/2026 12:00:00 AM|HB609|H|Conference Committee Meeting: 05/28/2026 10:00 am GP 231|5/27/2026 12:22:36 PM",
+        "2026|0889|5/28/2026 4:03:03 PM|HB609|S|Conference Committee Report Filed, # 2026-2114c; 06/04/2026|5/28/2026 4:03:03 PM",
+        "2026|0889|6/4/2026 11:29:30 AM|HB609|S|Conference Committee Report # 2026-2114c; RC 15Y-8N, Adopted; 06/04/2026;  SJ 14|6/4/2026 11:29:30 AM",
+        "2026|0889|6/4/2026 2:29:29 PM|HB609|H|Lay HB609 on Table (Rep. Wilhelm): MA RC 182-160 06/04/2026  HJ 15  P. 29|8/28/2026 2:42:43 PM",
+        "2026|0889|8/20/2026 12:21:04 PM|HB609|H|Died on Table, Session ended 08/19/2026  HJ 16|8/20/2026 12:21:04 PM",
+    ],
+    # Docket.txt lines 1406-11727, 9 rows
+    ("SB131", "2025-2026"): [
+        "2025|1064|1/22/2025 6:07:48 PM|SB131|S|  Introduced 01/09/2025 and Referred to Health and Human Services;  SJ 3|1/22/2025 6:07:48 PM",
+        "2025|1064|2/5/2025 4:24:45 PM|SB131|S| Hearing: 02/12/2025, Room 101, LOB, 09:45 am;  SC 9|2/5/2025 4:24:45 PM",
+        "2025|1064|2/13/2025 3:13:22 PM|SB131|S|Committee Report: Ought to Pass, 03/06/2025; Vote 5-0; CC;  SC 11|2/19/2025 12:33:54 PM",
+        "2025|1064|3/6/2025 6:56:31 PM|SB131|S|Ought to Pass: MA, VV; Refer to Finance Rule 4-5; 03/06/2025;  SJ 6|3/6/2025 6:56:31 PM",
+        "2025|1064|3/18/2025 4:28:12 PM|SB131|S|Committee Report: Ought to Pass, 03/27/2025, Vote 6-0;  SC 14|3/18/2025 4:28:12 PM",
+        "2025|1064|3/27/2025 1:45:29 PM|SB131|S|Ought to Pass: MA, VV; 03/27/2025;  SJ 9|3/27/2025 1:45:29 PM",
+        "2025|1064|3/27/2025 1:45:49 PM|SB131|S|Sen. Gray Moved Laid on Table, MA, VV; 03/27/2025;  SJ 9|3/27/2025 1:45:48 PM",
+        "2025|1064|3/27/2025 1:46:11 PM|SB131|S|Pending Motion OT3rdg; 03/27/2025;  SJ 9|3/27/2025 1:46:11 PM",
+        "2025|1064|11/3/2025 1:17:34 PM|SB131|S|Inexpedient to Legislate, Senate Rule 3-23, 10/31/2025;  SJ 1|11/3/2025 1:17:34 PM",
+    ],
+    # Docket.txt lines 12265-25352, 12 rows
+    ("SB570", "2025-2026"): [
+        "2026|2191|11/24/2025 2:21:20 PM|SB570|S|  Introduced 01/07/2026 and Referred to Executive Departments and Administration;  SJ 1|1/8/2026 1:43:25 PM",
+        "2026|2191|1/20/2026 3:53:49 PM|SB570|S| Hearing: 01/28/2026, Room 103, SH, 09:10 am;  SC 3|1/20/2026 3:53:49 PM",
+        "2026|2191|3/27/2026 11:59:16 AM|SB570|H|  Introduced (in recess of) 03/26/2026 and referred to Legislative Administration  HJ 5  P. 54|6/26/2026 10:28:06 AM",
+        "2026|2191|3/19/2026 10:39:27 AM|SB570|S|Committee Report: Ought to Pass with Amendment # 2026-1228s, 03/26/2026; Vote 5-0; CC;  SC 11|3/19/2026 10:39:27 AM",
+        "2026|2191|3/23/2026 8:56:38 AM|SB570|S|Committee Amendment # 2026-1228s, AA, VV; 03/26/2026;  SJ 7|3/26/2026 9:31:04 AM",
+        "2026|2191|3/23/2026 8:57:00 AM|SB570|S|Ought to Pass with Amendment #2026-1228s, MA, VV; OT3rdg; 03/26/2026;  SJ 7|3/26/2026 9:31:08 AM",
+        "2026|2191|4/7/2026 3:34:24 PM|SB570|H|Public Hearing: 04/15/2026 10:00 am GP 234|4/7/2026 3:34:24 PM",
+        "2026|2191|4/30/2026 9:54:00 AM|SB570|H|  Executive Session: 05/06/2026 01:00 pm GP 232|5/5/2026 12:09:30 PM",
+        "2026|2191|5/6/2026 2:39:56 PM|SB570|H| Committee Report: Refer for Interim Study  05/06/2026 (Vote 12-0; CC)  HC 19  P. 15|5/11/2026 11:51:35 AM",
+        "2026|2191|5/14/2026 10:39:41 AM|SB570|H|Refer for Interim Study: MA VV 05/14/2026  HJ 13  P. 25|7/22/2026 4:25:05 PM",
+        "2026|2191|8/27/2026 11:21:33 AM|SB570|H|Executive Session: 09/15/2026 10:00 am GP 234|8/27/2026 11:21:33 AM",
+        "2026|2191|9/29/2026 12:41:48 PM|SB570|H| Interim Study Report: Recommended for Future Legislation  09/28/2026 (Vote 9-0; )|9/29/2026 12:41:48 PM",
+    ],
+    # Docket.txt lines 907-25355, 10 rows
+    ("HB561", "2025-2026"): [
+        "2026|0001|1/16/2025 9:07:34 AM|HB561|H|  Introduced (in recess of) 01/09/2025 and referred to Public Works and Highways  HJ 3  P. 16|2/18/2025 2:56:59 PM",
+        "2026|0001|1/29/2025 10:05:52 AM|HB561|H|Public Hearing: 02/04/2025 10:00 am LOB 201|1/29/2025 10:05:52 AM",
+        "2026|0001|2/4/2025 4:02:57 PM|HB561|H|Executive Session: 02/11/2025 10:00 am LOB 201|2/4/2025 4:02:57 PM",
+        "2026|0001|2/25/2025 10:06:33 AM|HB561|H|Retained in Committee|2/25/2025 10:06:33 AM",
+        "2026|0001|9/8/2025 4:18:25 PM|HB561|H|  Full Committee Work Session: 10/14/2025 10:00 am GP 228|9/8/2025 4:18:25 PM",
+        "2026|0001|9/8/2025 4:20:16 PM|HB561|H|  Executive Session: 10/14/2025 10:15 am GP 228|9/8/2025 4:20:16 PM",
+        "2026|0001|10/20/2025 2:38:48 PM|HB561|H| Committee Report: Refer for Interim Study  10/14/2025 (Vote 16-0; CC)  HC 51  P. 16|12/19/2025 2:00:07 PM",
+        "2026|0001|1/7/2026 11:32:01 AM|HB561|H|Refer for Interim Study: MA VV 01/07/2026  HJ 1  P. 77|3/27/2026 3:15:36 PM",
+        "2026|0001|9/15/2026 3:58:38 PM|HB561|H|   Full Committee Work Session: 09/29/2026 10:00 am GP 228|9/15/2026 3:58:38 PM",
+        "2026|0001|9/30/2026 1:13:25 PM|HB561|H| Interim Study Report: Not Recommended for Future Legislation  09/29/2026 (Vote 8-2; )|9/30/2026 1:13:25 PM",
+    ],
+    # Docket.txt lines 1120-13211, 13 rows
+    ("HB741", "2025-2026"): [
+        "2026|0782|1/22/2025 8:16:42 AM|HB741|H|  Introduced (in recess of) 01/09/2025 and referred to Education Policy and Administration  HJ 3  P. 25|2/18/2025 3:37:46 PM",
+        "2026|0782|2/12/2025 3:33:03 PM|HB741|H|Public Hearing: 02/18/2025 03:15 pm LOB 202-204|2/12/2025 3:33:03 PM",
+        "2026|0782|3/12/2025 2:44:04 PM|HB741|H|Executive Session: 03/17/2025 09:30 am LOB 205-207|3/12/2025 2:44:04 PM",
+        "2026|0782|3/19/2025 1:29:17 PM|HB741|H|Majority Committee Report: Ought to Pass with Amendment # 2025-0336h   03/17/2025 (Vote 10-8; RC)  HC 17  P. 53|3/21/2025 10:51:15 AM",
+        "2026|0782|3/19/2025 1:29:33 PM|HB741|H|Minority Committee Report: Inexpedient to Legislate|3/19/2025 1:29:33 PM",
+        "2026|0782|3/27/2025 10:23:53 AM|HB741|H|Amendment # 2025-0336h: AA VV 03/27/2025  HJ 11  P. 14|5/14/2025 10:22:44 AM",
+        "2026|0782|3/27/2025 10:24:21 AM|HB741|H|Ought to Pass with Amendment 2025-0336h: MA RC 198-174 03/27/2025  HJ 11  P. 14|5/14/2025 10:22:53 AM",
+        "2026|0782|3/28/2025 2:05:46 PM|HB741|S|  Introduced 03/27/2025 and Referred to Education;  SJ 10|3/28/2025 2:05:46 PM",
+        "2026|0782|4/3/2025 11:00:55 AM|HB741|S| Hearing: 04/10/2025, Room 101, LOB, 09:45 am;  SC 16|4/3/2025 11:00:55 AM",
+        "2026|0782|4/24/2025 11:26:36 AM|HB741|S|Committee Report: Rereferred to Committee, 05/01/2025, Vote 4-1, CC  SC 19|4/24/2025 11:26:36 AM",
+        "2026|0782|5/1/2025 1:37:20 PM|HB741|S|Rereferred to Committee, MA, VV; 05/01/2025;  SJ 11|5/1/2025 1:37:20 PM",
+        "2026|0782|11/20/2025 10:35:42 AM|HB741|S|Committee Report: Referred to Interim Study, 01/07/2026; Vote 5-0; CC;  SC 46|12/9/2025 1:47:20 PM",
+        "2026|0782|1/7/2026 10:54:12 AM|HB741|S|Refer to Interim Study, MA, VV; 01/07/2026;  SJ 1|1/7/2026 10:54:12 AM",
+    ],
+    # Docket_db_1995-1996.txt lines 14111-14124, 14 rows
+    ("HB1179", "1995-1996"): [
+        "1996|2331|01/03/1996 10:00:00 AM|HB1179|H|INTRODUCED AND REF TO EDUCATION; HJ4,P126|01/03/1996 10:00:00 AM",
+        "1996|2331|01/03/1996 01:21:07 PM|HB1179|H|COPY TO CHAIRMAN ON 12/12/95  DUE ON  02/22/96|01/03/1996 01:21:07 PM",
+        "1996|2331|01/03/1996 01:22:00 PM|HB1179|H|HEARING JAN24 10:00 RM202,LOB    FOR: EDUCATION|01/03/1996 01:22:00 PM",
+        "1996|2331|01/30/1996 05:25:20 PM|HB1179|H|MAJ REPORT  REF FOR STUDY  FOR FEB01  (VOTE 17-1)|01/30/1996 05:25:20 PM",
+        "1996|2331|02/01/1996 11:30:21 AM|HB1179|H|REFERRED TO EDUCATION FOR INTERIM STUDY VV; HJ19,P558|02/01/1996 11:30:21 AM",
+        "1996|2331|04/02/1996 02:33:51 PM|HB1179|H|//CANCELLED//INT STUDY SUBCOM WORK SESSION APR10 09:30 RM202,LOB|04/02/1996 02:33:51 PM",
+        "1996|2331|04/02/1996 02:34:02 PM|HB1179|H|(SUBCOM CHR:  REP SPEAR)|04/02/1996 02:34:02 PM",
+        "1996|2331|05/02/1996 09:59:13 AM|HB1179|H|INT STUDY SUBCOM WK SESS MAY09 10:00 RM202,LOB    FOR: EDUC|05/02/1996 09:59:13 AM",
+        "1996|2331|05/09/1996 12:12:40 PM|HB1179|H|INT STUDY SUBCOM WK SESS MAY22 10:00 RM202,LOB    FOR: EDUC|05/09/1996 12:12:40 PM",
+        "1996|2331|06/19/1996 12:30:42 PM|HB1179|H|INT STUDY SUBCOM WORK SESSION JUL10 09:00 RM202,LOB    FOR: EDUC|06/19/1996 12:30:42 PM",
+        "1996|2331|06/20/1996 02:45:28 PM|HB1179|H|INT STUDY SUBCOM WORK SESSION JUL17 09:00 RM202,LOB    FOR: EDUC|06/20/1996 02:45:28 PM",
+        "1996|2331|08/29/1996 12:38:28 PM|HB1179|H|INTERIM STUDY SUBCOM WORK SESS SEPT18 9:00 RM202,LOB :EDUCATION|08/29/1996 12:38:28 PM",
+        "1996|2331|10/29/1996 08:52:21 AM|HB1179|H|INT STUDY REPT:  REC FOR LEG IN 1997  (VOTE 17-0) <LSR 97-0155>|10/29/1996 08:52:21 AM",
+        "1996|2331|06/18/1997 04:36:14 PM|HB1179|H|{LSR 0155, HB 154, CH. 183, 1997  SIGNED BY GOV 6/18/97}|06/18/1997 04:36:14 PM",
+    ],
+    # Docket_db_2013-2014.txt lines 1421-1438, 18 rows
+    ("HB135", "2013-2014"): [
+        "2013|0281|01/03/2013 09:38:14 AM|HB135|H|Introduced 1/3/2013 and Referred to Criminal Justice and Public Safety; HJ 12, PG.183|01/03/2013 09:38:14 AM",
+        "2013|0281|01/15/2013 11:12:10 AM|HB135|H|Public Hearing: 1/22/2013 1:30 PM LOB 204|01/15/2013 11:12:10 AM",
+        "2013|0281|02/20/2013 02:15:07 PM|HB135|H|Executive Session: 2/28/2013 10:00 AM LOB 204|02/20/2013 02:15:07 PM",
+        "2013|0281|03/01/2013 08:28:09 AM|HB135|H|Majority Committee Report: Ought to Pass with Amendment #0341h for Mar 27 (Vote 12-6; RC); HC 25, PG.707|03/01/2013 08:28:09 AM",
+        "2013|0281|03/01/2013 08:28:30 AM|HB135|H|Proposed Majority Committee Amendment #2013-0341h; HC 25, PG.722|03/01/2013 08:28:30 AM",
+        "2013|0281|03/01/2013 08:29:45 AM|HB135|H|Minority Committee Report: Inexpedient to Legislate; HC 25, PG.707|03/01/2013 08:29:45 AM",
+        "2013|0281|03/21/2013 11:33:18 AM|HB135|H|Special Order to Regular Place on Mar 27 Calendar (Rep Shurtleff): MA VV; HJ29, PG.975-976|03/21/2013 11:33:18 AM",
+        "2013|0281|03/27/2013 10:18:25 AM|HB135|H|Amendment #0341h: AA DIV 217-115; HJ31, PG.1026|03/27/2013 10:18:25 AM",
+        "2013|0281|03/27/2013 10:28:20 AM|HB135|H|Floor Amendment #2013-1031h(NT) (Rep Itse): AF RC 103-254; HJ31, PG.1026-1029|03/27/2013 10:28:20 AM",
+        "2013|0281|03/27/2013 10:36:12 AM|HB135|H|Floor Amendment #2013-1033h(NT) (Rep Itse): AF RC 146-213; HJ31, PG.1029-1031|03/27/2013 10:36:12 AM",
+        "2013|0281|03/27/2013 12:03:53 PM|HB135|H|Ought to Pass with Amendment #0341h: MA RC 189-184; HJ31, PG.1026-1033|03/27/2013 12:03:53 PM",
+        "2013|0281|03/27/2013 12:04:30 PM|HB135|H|Reconsideration (Rep G.Richardson): MF RC 175-198; HJ31, PG.1033-1035|03/27/2013 12:04:30 PM",
+        "2013|0281|03/28/2013 04:09:57 PM|HB135|S|Introduced and Referred to Judiciary|03/28/2013 04:09:57 PM",
+        "2013|0281|04/17/2013 09:42:23 AM|HB135|S|Hearing: 4/23/13, Room 100, SH, 9:00 a.m.; SC17|04/17/2013 09:42:23 AM",
+        "2013|0281|05/10/2013 01:18:48 PM|HB135|S|Committee Report: Inexpedient to Legislate, 5/23/13; SC21|05/10/2013 01:18:48 PM",
+        "2013|0281|05/23/2013 02:32:37 PM|HB135|S|Inexpedient to Legislate Not Voted On;|05/23/2013 02:32:37 PM",
+        "2013|0281|05/23/2013 02:33:04 PM|HB135|S|Sen. Forrester Moved Laid on Table, RC 19Y-5N, MA;|05/23/2013 02:33:04 PM",
+        "2013|0281|09/03/2013 08:10:58 AM|HB135|S|Inexpedient to Legislate, 2013 Adjournment, Senate Rule 3-23|09/03/2013 08:10:58 AM",
+    ],
+}
+# Real report rows, one of each wording the docket has used (the review of
+# interim study, 8 October 2026).
+_STUDY_REPORT_ROWS = [
+    # Docket_db_1989-1990.txt 11894
+    ("1989-1990", "1990|2044|09/26/1990 02:56:40 PM|HB1045|H|INT STUDY REPORT OTP FOR 1991 SESSION  (VOTE 13-0)|09/26/1990 02:56:40 PM"),
+    # Docket_db_1991-1992.txt 12902
+    ("1991-1992", "1992|2007|04/02/1992 02:42:45 PM|HB1467|H|INT STUDY REPORT (ITL) FILED (VOTE 11-0)|04/02/1992 02:42:45 PM"),
+    # Docket_db_1993-1994.txt 13273
+    ("1993-1994", "1994|2064|10/19/1994 02:44:58 PM|HB1561|H|INT STUDY REPORT: MAJ-NOT REC FOR 1995 LEGISLATION  (VOTE: 10-4)|10/19/1994 02:44:58 PM"),
+    # Docket_db_1993-1994.txt 13274
+    ("1993-1994", "1994|2064|10/19/1994 03:22:59 PM|HB1561|H|INT STUDY REPORT:  MIN-REC FOR 1995 LEGISLATION (VOTE 4-10)|10/19/1994 03:22:59 PM"),
+    # Docket_db_1993-1994.txt 15150
+    ("1993-1994", "1994|2223|10/26/1994 03:12:42 PM|HB1465|H|INT STUDY REPORT:  NOT REEC FOR 1995 LEGISLATION  (VOTE:12-0)|10/26/1994 03:12:42 PM"),
+    # Docket_db_1999-2000.txt 14635
+    ("1999-2000", "2000|2232|07/12/2000 04:49:16 PM|HB1152|H|Int Study Report:  REC FOR LEGIS IN  2001   (vote 14-0)|07/12/2000 04:49:16 PM"),
+    # Docket_db_2005-2006.txt 12176
+    ("2005-2006", "2006|2043|09/19/2006 03:10:49 PM|HB1133|H|Interim Study Report:  NOT REC FOR LEGIS (vote 11-0)|09/19/2006 03:10:49 PM"),
+    # Docket_db_2007-2008.txt 17092
+    ("2007-2008", "2008|2081|09/23/2008 03:46:44 PM|HB1358|H|Interim Study Report: Recommended for Future Legislation in 2009 (Vote 11-0); HC 62, PG.2369|09/23/2008 03:46:44 PM"),
+    # Docket_db_2011-2012.txt 16044
+    ("2011-2012", "2012|2416|06/27/2012 04:01:50 PM|HB1473|H|Interim Study Report: Not Recommended for Legislation in 2013 (Vote 10-0)|06/27/2012 04:01:50 PM"),
+    # Docket_db_2013-2014.txt 15380
+    ("2013-2014", "2014|2448|10/31/2014 09:17:17 AM|HB1592|H|Interim Study Report: No Recommendation|10/31/2014 09:17:17 AM"),
+    # Docket_2023-2024.txt 5172
+    ("2023-2024", "2024|2472|10/31/2024 12:00:00 AM|HB1383|H|Interim Study Report: Without Recomendation (Vote 10-10)|10/31/2024 12:00:00 AM"),
+]
+
+
+@check("frontend", "a bill that died on the table is paused where it was tabled and crossed at "
+                   "Law on the day it died, and an interim study bill whose session is over "
+                   "crossed at Law on its chamber's last sitting, with its report's line",
+       needs=("narrative", "build_site_v2"))
+def _rail_endings(N, B):
+    """THE RAIL'S ENDINGS, from real rows (the person, 8 and 9 October 2026:
+    "Show the body it was tabled in with the yellow pause, and show the red x
+    mark on the law once it died when the session ended, same goes for
+    interim study bills that weren't recommended for future legislation by
+    showing the orange icon in the body it was studied in"; and for a
+    recommended one option (d), "the report gets its own How it got here line
+    with an orange arrow").
+
+    THE DAY A BILL LEFT ON THE TABLE DIED (build_site_v2.table_death):
+      * HB 96 of 2025, laid on the House's table on 26 March 2025, "Died on
+        Table, Session ended 12/17/2025": the pause of 26 March, Law crossed
+        on 17 December 2025, the row's own day.
+      * HB 609 of 2026, which both chambers had passed before the House laid
+        it on the table on 4 June: the House keeps its check, the tabling's
+        line is the pause, Law is crossed on 19 August 2026, the day its row
+        states.
+      * SB 131 of 2025, under Senate Rule 3-23 ("Inexpedient to Legislate,
+        Senate Rule 3-23, 10/31/2025"): the Senate's pause of 27 March, Law
+        crossed on 31 October 2025, and the rule's own line, not a second one.
+      * HB 135 of 2013, "Inexpedient to Legislate, 2013 Adjournment, Senate
+        Rule 3-23", which no pattern read: now the rule's line, dated by the
+        day the Senate adjourned -- 3 September 2013, where its journal opens
+        a sitting that day, the day the row was entered, and 26 June 2013, its
+        last floor sitting, where no journal says so.
+      * HB 201 of 2020, whose row says "Adjournment 09/16/2021", a day after
+        it was entered and outside the term: the line and Law on 16 September
+        2020, the Senate's adjournment of 2020, where both had no day.
+      * HB 1043 of 2026 is _rail_study_and_table_marks'.
+    AN INTERIM STUDY BILL WHOSE SESSION IS OVER (study_ending):
+      * SB 570 of 2026, sent to interim study by the House on 14 May, the
+        report of 28 September 2026 "Recommended for Future Legislation" 9-0:
+        the House's "~", Law crossed on 19 August 2026, the House's last
+        sitting, a line of the death and the report's with the orange arrow.
+      * HB 561 of 2026, "Not Recommended for Future Legislation" 8-2 on 29
+        September: the report's line keeps the "~". Drawn as it stood while
+        the session sat, nothing of this.
+      * HB 741 of 2026, studied by the Senate, no report: crossed at Law on
+        19 August 2026, the Senate's last sitting, and no report's line.
+      * HB 1179 of 1996, "INT STUDY REPT: REC FOR LEG IN 1997 (VOTE 17-0) <LSR
+        97-0155>", "{LSR 0155, HB 154, CH. 183, ...}": crossed at Law on 13
+        June 1996, the House's last sitting, and the report's line names and
+        links HB 154 of 1997, which data/bills.json files under LSR 155 of
+        1997.
+    And the report read in every wording, majority over minority."""
+    sittings = _sittings_of(N, B)
+    want_days = {("S", "2026"): "2026-08-19", ("H", "2026"): "2026-08-19",
+                 ("H", "1996"): "1996-06-13", ("S", "2020"): "2020-09-16",
+                 ("S", "2013"): "2013-06-26"}
+    bad = [f"{k} last sat {(sittings.get(k) or [''])[-1]!r}, not {v}"
+           for k, v in want_days.items() if (sittings.get(k) or [""])[-1] != v]
+    # HB 154 of 1997, as data/bills.json has it.
+    lsrs = B.lsr_bills({"1997-1998": {"HB154": {"lsr": "1997-155", "lsr_year": "1997",
+                                                  "lsr_num": "155"}}})
+    R = _ENDING_ROWS
+    journal = lambda body, day: (body, day) == ("S", "2013-09-03")
+    c = {
+        "HB96": _ended(N, B, "2025-2026", "HB96", R[("HB96", "2025-2026")], "done",
+                       "Died on the table", False, sittings),
+        "HB609": _ended(N, B, "2025-2026", "HB609", R[("HB609", "2025-2026")], "done",
+                        "Died on the table", False, sittings),
+        "SB131": _ended(N, B, "2025-2026", "SB131", R[("SB131", "2025-2026")], "done",
+                        "Died on the table", False, sittings),
+        "HB135": _ended(N, B, "2013-2014", "HB135", R[("HB135", "2013-2014")], "done",
+                        "Died on the table", False, sittings, sat=journal),
+        "HB135 unread": _ended(N, B, "2013-2014", "HB135", R[("HB135", "2013-2014")], "done",
+                               "Died on the table", False, sittings),
+        "HB201": _ended(N, B, "2019-2020", "HB201", _DOCKET_STATES_ITS_DAY[("2019-2020", "HB201")],
+                        "done", "Died on the table", False, sittings),
+        "SB570": _ended(N, B, "2025-2026", "SB570", R[("SB570", "2025-2026")], "study",
+                        "Referred for interim study", False, sittings),
+        "HB561": _ended(N, B, "2025-2026", "HB561", R[("HB561", "2025-2026")], "study",
+                        "Referred for interim study", False, sittings),
+        "HB561 live": _ended(N, B, "2025-2026", "HB561", R[("HB561", "2025-2026")], "study",
+                             "Referred for interim study", True, sittings),
+        "HB741": _ended(N, B, "2025-2026", "HB741", R[("HB741", "2025-2026")], "study",
+                        "Referred for interim study", False, sittings),
+        "HB1179": _ended(N, B, "1995-1996", "HB1179", R[("HB1179", "1995-1996")], "study",
+                         "Referred for interim study", False, sittings, lsrs),
+    }
+    stops = {k: {s["stop"]: (s["mark"], s["date"]) for s in v["jrail"]} for k, v in c.items()}
+    tail = {k: [(s["body"], s["act"], s["mark"], s["date"], s["text"]) for s in v["steps"]][-3:]
+            for k, v in c.items()}
+
+    def expect(k, stop, mark, day):
+        if stops[k].get(stop) != (mark, day):
+            bad.append(f"{k}'s {stop} is {stops[k].get(stop)}, not {(mark, day)}")
+
+    for k, stop, mark, day in (
+            ("HB96", "House", "t", "2025-03-26"), ("HB96", "Law", "x", "2025-12-17"),
+            ("HB609", "House", "p", "2026-01-07"), ("HB609", "Law", "x", "2026-08-19"),
+            ("SB131", "Senate", "t", "2025-03-27"), ("SB131", "Law", "x", "2025-10-31"),
+            ("HB135", "Senate", "t", "2013-05-23"), ("HB135", "Law", "x", "2013-09-03"),
+            ("HB135 unread", "Law", "x", "2013-06-26"),
+            ("HB201", "Senate", "t", "2020-06-16"), ("HB201", "Law", "x", "2020-09-16"),
+            ("SB570", "House", "s", "2026-05-14"), ("SB570", "Law", "x", "2026-08-19"),
+            ("HB561", "House", "s", "2026-01-07"), ("HB561", "Law", "x", "2026-08-19"),
+            ("HB561 live", "Law", "-", ""),
+            ("HB741", "Senate", "s", "2026-01-07"), ("HB741", "Law", "x", "2026-08-19"),
+            ("HB1179", "House", "s", "1996-02-01"), ("HB1179", "Law", "x", "1996-06-13")):
+        expect(k, stop, mark, day)
+    death = "Died on the table when the session ended"
+    for k, want in (
+            ("HB96", [("H", "tabled", "t", "2025-03-26", "Laid on the table, 199–135"),
+                      ("H", "died", "x", "2025-12-17", death)]),
+            ("HB609", [("S", "conf_adopted", "p", "2026-06-04", "Adopted the conference report, 15–8"),
+                       ("H", "tabled", "t", "2026-06-04", "Laid on the table, 182–160"),
+                       ("H", "died", "x", "2026-08-19", death)]),
+            ("SB131", [("S", "tabled", "t", "2025-03-27", "Laid on the table on a voice vote"),
+                       ("S", "died", "x", "2025-10-31",
+                        "Killed under Senate Rule 3-23, still on the table")]),
+            ("HB135", [("S", "tabled", "t", "2013-05-23", "Laid on the table, 19–5"),
+                       ("S", "died", "x", "2013-09-03",
+                        "Killed under Senate Rule 3-23, still on the table at adjournment")]),
+            ("HB201", [("S", "tabled", "t", "2020-06-16", "Laid on the table on a voice vote"),
+                       ("S", "died", "x", "2020-09-16",
+                        "Killed under Senate Rule 3-23, still on the table at adjournment")]),
+            ("SB570", [("H", "study", "s", "2026-05-14", "Sent to interim study on a voice vote"),
+                       ("H", "died", "x", "2026-08-19", "Still in interim study when the House last "
+                                                        "sat; died when the session ended"),
+                       ("H", "study_report", "f", "2026-09-28", "Interim study report: recommended "
+                                                                 "for future legislation, 9–0")]),
+            ("HB561", [("H", "study", "s", "2026-01-07", "Sent to interim study on a voice vote"),
+                       ("H", "died", "x", "2026-08-19", "Still in interim study when the House last "
+                                                        "sat; died when the session ended"),
+                       ("H", "study_report", "s", "2026-09-29", "Interim study report: not "
+                                                                 "recommended for future legislation, 8–2")]),
+            ("HB741", [("S", "study", "s", "2026-01-07", "Sent to interim study on a voice vote"),
+                       ("S", "died", "x", "2026-08-19", "Still in interim study when the Senate last "
+                                                        "sat; died when the session ended")]),
+            ("HB1179", [("H", "study", "s", "1996-02-01", "Sent to interim study on a voice vote"),
+                        ("H", "died", "x", "1996-06-13", "Still in interim study when the House last "
+                                                         "sat; died when the session ended"),
+                        ("H", "study_report", "f", "1996-10-29", "Interim study report: recommended "
+                                                                  "for legislation in 1997, 17–0; filed "
+                                                                  "again as HB 154 of 1997")])):
+        if tail[k][-len(want):] != want:
+            bad.append(f"{k}'s last lines are {tail[k]!a}")
+    if [s["act"] for s in c["HB561 live"]["steps"]][-1:] != ["study"]:
+        bad.append(f"HB 561 while the session sat has lines {tail['HB561 live']!a}")
+    if sum(s["act"] == "died" for s in c["SB131"]["steps"]) != 1:
+        bad.append("SB 131 of 2025 has a second line of its death beside the rule's")
+    link = (c["HB1179"]["steps"][-1].get("link") or {})
+    if link != {"text": "HB 154 of 1997", "href": "bill/1997/hb154.html"}:
+        bad.append(f"HB 1179 of 1996's report names {link!a}")
+    # THE HISTORY: the death's sentence where it is not told, and none where
+    # it is (HB 96's row is narrative.py's own "died").
+    if c["HB96"]["ending"] is not None or (c["SB131"]["ending"] or {}).get("text") not in (
+            None, "The bill died on the table under Senate Rule 3-23 on October 31, 2025, having "
+                  "been set aside and never taken back up."):
+        bad.append(f"the histories end {c['HB96']['ending']!a} {c['SB131']['ending']!a}")
+    if (c["HB201"]["ending"] or {}).get("text") not in (
+            None, "The bill died on the table under Senate Rule 3-23 at adjournment on "
+                  "September 16, 2020, having been set aside and never taken back up."):
+        bad.append(f"HB 201 of 2020's history ends {c['HB201']['ending']!a}")
+    # The report, read in every wording; the majority's over the minority's.
+    read = []
+    for term, row in _STUDY_REPORT_ROWS:
+        bill = row.split("|")[3]
+        r = B.interim_report(_narrated(N, term, bill, [row]), term) or {}
+        read.append((bill, r.get("rec"), r.get("vote"), r.get("year")))
+    want = [("HB1045", "rec", "13–0", "1991"), ("HB1467", "not", "11–0", ""),
+            ("HB1561", "not", "10–4", "1995"), ("HB1561", "rec", "4–10", "1995"),
+            ("HB1465", "not", "12–0", "1995"), ("HB1152", "rec", "14–0", "2001"),
+            ("HB1133", "not", "11–0", ""), ("HB1358", "rec", "11–0", "2009"),
+            ("HB1473", "not", "10–0", "2013"), ("HB1592", "without", "", ""),
+            ("HB1383", "without", "10–10", "")]
+    if read != want:
+        bad.append(f"the reports read {read!a}")
+    both = [r for t, r in _STUDY_REPORT_ROWS if "|HB1561|" in r]
+    maj = B.interim_report(_narrated(N, "1993-1994", "HB1561", both), "1993-1994") or {}
+    if (maj.get("rec"), maj.get("vote")) != ("not", "10–4"):
+        bad.append(f"HB 1561 of 1994's two reports read as {maj!a}, not the majority's")
+
+    data = json.dumps({k: {kk: v[kk] for kk in ("id", "passage", "chip", "cells", "steps", "jrail")}
+                       for k, v in c.items() if k in ("SB570", "HB561", "HB1179", "HB96")})
+    got = _app_js(
+        "Object.assign((x => Object.fromEntries(Object.entries(x).map(([k, c]) => [k, {"
+        "card: scope.datedRail({id: c.id, passage: c.passage, chip: c.chip, rail: c.cells}),"
+        "how: scope.journeyList({id: c.id}, {journey: {steps: c.steps}})}])))(" + data + "),"
+        " {note: scope.endNote({study_report: {date: '2024-10-31', rec: 'without',"
+        " recommended: false, vote: '10–10'}})})",
+        names=("datedRail", "journeyList", "endNote"))
+    drew = "node is not here to draw them"
+    if got is not None:
+        line = lambda k, cls, glyph, words: re.search(
+            rf'<li class="j-{cls}"><span class="jg"\s*aria-hidden="true">{glyph}</span>'
+            rf'<span class="jb">House</span><span class="jt">{words}</span>', got[k]["how"])
+        # The tally held whole (tallyWhole, the foundation's, 9 October 2026).
+        if not line("SB570", "ifuture", r'<svg class="arrow"[^>]*><path [^>]*/></svg>',
+                    'Interim study report: recommended for future legislation, '
+                    '<span class="tally">9–0</span>'):
+            bad.append(f"SB 570's report is not the orange arrow's line: {got['SB570']['how'][-500:]!a}")
+        if not line("HB561", "istudy", r'<svg class="wave"[^>]*><path [^>]*/></svg>',
+                    'Interim study report: not recommended for future legislation, '
+                    '<span class="tally">8–2</span>'):
+            bad.append(f"HB 561's report is not the \"~\"'s line: {got['HB561']['how'][-500:]!a}")
+        if not line("HB1179", "ifuture", r'<svg class="arrow"[^>]*><path [^>]*/></svg>',
+                    r'Interim study report: recommended for legislation in 1997, '
+                    r'<span class="tally">17–0</span>; filed again '
+                    r'as <a href="bill/1997/hb154.html">HB 154 of 1997</a>'):
+            bad.append(f"HB 1179 of 1996's report does not link HB 154 of 1997: "
+                       f"{got['HB1179']['how'][-500:]!a}")
+        said = (re.search(r'aria-label="([^"]*)"', got["SB570"]["card"]) or [None, ""])[1]
+        if "House: sent to interim study, May 14, 2026" not in said or \
+                "Law: stopped here, August 19, 2026" not in said:
+            bad.append(f"SB 570's card is heard {said!a}")
+        if "the committee reported without a recommendation, 10–10." not in (got.get("note") or ""):
+            bad.append(f"a report without a recommendation is noted {got.get('note')!a}")
+        drew = "app.js draws the arrow, the \"~\", the link and the note"
+    assert not bad, "; ".join(bad[:4])
+    return "ok", ("HB 96, HB 609, SB 131, HB 135 of 2013 and HB 201 of 2020 paused where tabled "
+                  "and crossed at Law on the day each died; SB 570, HB 561, HB 741 and HB 1179 of "
+                  "1996 crossed at Law on their chamber's last sitting, with the report's line, "
+                  f"the arrow where recommended and HB 154 of 1997 named; eleven report wordings read; {drew}")
+
+
+# Real rows of the days the review of the rail's endings (9 October 2026)
+# found read wrongly as a chamber's last sitting, and of the bills dated by
+# them: Docket_db_2005-2006.txt 20892-20901 (SB 1 of the special session of
+# 26 September 2006), 10173-10174 (HB 646, the House's last sitting of 2006),
+# 8786 (HB 76, the Senate's last floor row of 2006) and 20827-20836 (SB 401,
+# left on the Senate's table on 9 March 2006); Docket_db_1989-1990.txt 9979
+# and 10383 (Joint Rule 24(b), Sunday 1 July 1990), 17590 (HB 1182, the
+# House's veto day of 3 May 1990) and 18528 (HB 1506, the Senate's sitting
+# of 19 April 1990); Docket_db_2003-2004.txt 10982-10992 (SB 112, "Died on
+# Table at End of Session", entered 1 December 2004) and 10113-10114 (HB 134,
+# sent to interim study by the Senate on 7 January 2004); Docket_2021-2022.txt
+# 1494-1502 (HB 111) and 9158-9162 (HB 266).
+_SESSION_END_ROWS = {
+    ("SB1", "2005-2006"): [
+        "2006|4001|09/26/2006 01:16:31 PM|SB1|S|Sen. Clegg Moved to Adopt Rules for Special Session; MA, VV; SJ, Special Session;Pg.794|09/26/2006 01:16:31 PM",
+        "2006|4001|09/26/2006 01:20:55 PM|SB1|S|Sen. Clegg Introduced and Moved by a Motion of Ought to Pass; RC 14Y-9N, MA; OT3rdg; Pg.798|09/26/2006 01:20:55 PM",
+        "2006|4001|09/26/2006 01:40:06 PM|SB1|S|Passed by Third Reading Resolution;SJ,Special Session; Pg.798|09/26/2006 01:40:06 PM",
+        "2006|4001|09/26/2006 01:58:41 PM|SB1|H|Introduced, MA VV; 2006 Special Session HJ 1, p.18|09/26/2006 01:58:41 PM",
+        "2006|4001|09/26/2006 02:00:53 PM|SB1|H|Rep Vaillancourt moved lay on table; MF VV; 2006 Spec Sess HJ 1, p.18|09/26/2006 02:00:53 PM",
+        "2006|4001|09/26/2006 02:03:12 PM|SB1|H|Rep O'Neil moved Ought to Pass; 2006 Spec Sess HJ 1, p.18|09/26/2006 02:03:12 PM",
+        "2006|4001|09/26/2006 02:03:57 PM|SB1|H|Rep Chandler Proposed Floor Amendment {2421h}; 2006 Spec Sess HJ 1, p.18|09/26/2006 02:03:57 PM",
+        "2006|4001|09/26/2006 02:07:18 PM|SB1|H|Rep David Campbell: Divide question lines 1-8 from remainder of amendment; 2006 Spec Sess HJ 1, p.18|09/26/2006 02:07:18 PM",
+        "2006|4001|09/26/2006 02:09:13 PM|SB1|H|Adopt Section I Floor Amendment {2421h}; AA RC 193-140; 2006 Spec Sess HJ 1, p.18-20|09/26/2006 02:09:13 PM",
+        "2006|4001|09/26/2006 02:11:22 PM|SB1|H|Adopt Remainder Floor Amendment {2421h}; AA VV; 2006 Spec Sess HJ 1, p.20|09/26/2006 02:11:22 PM",
+    ],
+    ("HB646", "2005-2006"): [
+        "2006|0608|01/04/2006 02:22:23 PM|HB646|H|Majority AM {0190} AA VV; Lay on Table MA VV   HJ 7, pg 413-414|01/04/2006 02:22:23 PM",
+        "2006|0608|06/28/2006 02:00:13 PM|HB646|H|Reps. O'Neil and Craig move ITL all bills on table,  MA, VV|06/28/2006 02:00:13 PM",
+    ],
+    ("HB76", "2005-2006"): [
+        "2006|0102|05/24/2006 07:59:42 AM|HB76|S|Conference Committee Report(2359}; Senate Amendment + New Amendment ,Adopted, VV; SJ 16, Pg.683-686|05/24/2006 07:59:42 AM",
+    ],
+    ("SB401", "2005-2006"): [
+        "2006|3063|02/02/2006 07:48:23 AM|SB401|S|Introduced and Referred to Judiciary; SJ 3, Pg.80|02/02/2006 07:48:23 AM",
+        "2006|3063|02/09/2006 03:40:42 PM|SB401|S|Hearing; February 14, 2006, Room 103, State House, 1:00 p.m.; SC6|02/09/2006 03:40:42 PM",
+        "2006|3063|02/27/2006 12:17:55 PM|SB401|S|Committee Report; Ought to Pass with Amendment{1231}(New Title) [03/09/06]; SC9, Pg.11-12|02/27/2006 12:17:55 PM",
+        "2006|3063|03/09/2006 04:22:21 PM|SB401|S|Committee Amendment{1231}(New Title) [Not Voted On]; SJ 7, Pg.175-176|03/09/2006 04:22:21 PM",
+        "2006|3063|03/09/2006 04:23:26 PM|SB401|S|Sen. Boyce Moved Lay On Table, MA, VV; SJ 7, Pg.176|03/09/2006 04:23:26 PM",
+        "2006|3063|03/09/2006 04:24:20 PM|SB401|S|Sen. Flanders Moved Remove From Table, MA, VV; SJ 7, Pg.176|03/09/2006 04:24:20 PM",
+        "2006|3063|03/09/2006 04:25:04 PM|SB401|S|Committee Amendment{1231}(New Title), AA, VV; SJ 7, Pg.176|03/09/2006 04:25:04 PM",
+        "2006|3063|03/09/2006 04:25:25 PM|SB401|S|Sen. Burling Floor Amendment{1306}(2nd New Title), AF, VV; SJ 7, Pg.176|03/09/2006 04:25:25 PM",
+        "2006|3063|03/09/2006 04:26:01 PM|SB401|S|Ought to Pass with Amendment{1231}(New Title) [Not Voted On]; SJ 7, Pg.176|03/09/2006 04:26:01 PM",
+        "2006|3063|03/09/2006 04:31:05 PM|SB401|S|Sen. Boyce Moved Lay On Table, MA, VV; SJ 7, Pg.176-177|03/09/2006 04:31:05 PM",
+    ],
+    ("HB575", "1989-1990"): [
+        "1990|0034|07/01/1990 11:07:33 AM|HB575|H|INDEFINITELY POSTPONED PER JT. RULE 24 (B)|07/01/1990 11:07:33 AM",
+    ],
+    ("SB57", "1989-1990"): [
+        "1990|0449|07/01/1990 11:06:08 AM|SB57|S|INDEFINITELY POSTPONED PER JT. RULE 24 (B)|07/01/1990 11:06:08 AM",
+    ],
+    ("HB1182", "1989-1990"): [
+        "1990|2629|05/03/1990 04:15:17 PM|HB1182|H|GOV'S VETO SUSTAINED RC(75-266); HJ68,P1855-1859|05/03/1990 04:15:17 PM",
+    ],
+    ("HB1506", "1989-1990"): [
+        "1990|2746|04/19/1990 09:58:34 AM|HB1506|S|PASSED/ADOPTED WITH AM|04/19/1990 09:58:34 AM",
+    ],
+    ("SB112", "2003-2004"): [
+        "2004|0360|01/30/2003 05:08:17 PM|SB112|S|Introduced and Ref. to Public Affairs; SJ 3, Pg.35|01/30/2003 05:08:17 PM",
+        "2004|0360|02/04/2003 11:59:09 AM|SB112|S|Hearing; February 12, 2003, Room 105-A, SH, 8:30 a.m.; SC8|02/04/2003 11:59:09 AM",
+        "2004|0360|03/07/2003 11:30:01 AM|SB112|S|Committee Report; Inexpedient to Legislate [03/13/03]; SC13, Pg.4|03/07/2003 11:30:01 AM",
+        "2004|0360|03/13/2003 11:43:53 AM|SB112|S|Inexpedient to Legislate, MF, VV; SJ 8, Pg.92|03/13/2003 11:43:53 AM",
+        "2004|0360|03/13/2003 11:45:13 AM|SB112|S|Sen. Morse Moved Rerefer to Committee, MA, VV; SJ 8, Pg.92|03/13/2003 11:45:13 AM",
+        "2004|0360|01/05/2004 08:55:30 AM|SB112|S|Committee Report; Referred to Interim Study, [01/07/04]; SC1|01/05/2004 08:55:30 AM",
+        "2004|0360|01/07/2004 03:09:18 PM|SB112|S|Interim Study [Not Voted On]; SJ 1, Pg.24|01/07/2004 03:09:18 PM",
+        "2004|0360|01/07/2004 03:09:51 PM|SB112|S|Sen. Roberge Moved Laid On Table, MA, VV; SJ 1, Pg.24|01/07/2004 03:09:51 PM",
+        "2004|0360|03/17/2004 03:32:42 PM|SB112|S|Sen. Cohen Moved Remove From Table Division 9Y-14N, MF, 2/3 nec.; SJ 9, Pg.231|03/17/2004 03:32:42 PM",
+        "2004|0360|12/01/2004 02:59:47 PM|SB112|S|Died on Table at End of Session|12/01/2004 02:59:47 PM",
+    ],
+    ("HB134", "2003-2004"): [
+        "2004|0080|01/09/2003 11:13:35 AM|HB134|H|Introduced and ref to Judiciary;  HJ8, p108|01/09/2003 11:13:35 AM",
+        "2004|0080|03/25/2003 03:11:47 PM|HB134|H|Passed with Am;  HJ 29-pt 1, p875 +  pt 2, p966|03/25/2003 03:11:47 PM",
+        "2004|0080|04/03/2003 09:48:46 AM|HB134|S|Introduced and Ref. to Judiciary; SJ 11, Pg.273|04/03/2003 09:48:46 AM",
+        "2004|0080|05/22/2003 08:54:09 AM|HB134|S|Rerefer to Committee, MA, VV; SJ 17, Pg.464|05/22/2003 08:54:09 AM",
+        "2004|0080|01/05/2004 08:39:58 AM|HB134|S|Committee Report; Referred to Interim Study, [01/07/04]; SC1|01/05/2004 08:39:58 AM",
+        "2004|0080|01/07/2004 01:09:40 PM|HB134|S|Refer to Interim Study, MA, VV; SJ 1, Pg.18|01/07/2004 01:09:40 PM",
+    ],
+    ("HB111", "2021-2022"): [
+        "2021|0089|1/4/2021 12:00:00 AM|HB111|H|Introduced (in recess of) 01/06/2021 and referred to Judiciary HJ 2 P. 35|1/4/2021 12:00:00 AM",
+        "2021|0089|3/9/2021 12:00:00 AM|HB111|H|Committee Report: Ought to Pass (Vote 19-2; CC) HC 18 P. 17|3/9/2021 12:00:00 AM",
+        "2021|0089|4/9/2021 12:00:00 AM|HB111|H|Lay on Table (Rep. B. Griffin): MF RC 180-188 04/09/2021 HJ 7 P. 79|4/9/2021 12:00:00 AM",
+        "2021|0089|4/9/2021 12:00:00 AM|HB111|H|Ought to Pass: MF RC 178-184 04/09/2021 HJ 7 P. 81|4/9/2021 12:00:00 AM",
+        "2021|0089|4/9/2021 12:00:00 AM|HB111|H|Lay on Table (Rep. Alexander Jr.): MA VV 04/09/2021 HJ 7 P. 83|4/9/2021 12:00:00 AM",
+        "2021|0089|1/6/2022 12:00:00 AM|HB111|H|Died on Table, Session ended 01/05/2022|1/6/2022 12:00:00 AM",
+    ],
+    # Docket_2019-2020.txt 224-229 (HB 101 of 2019, "Died on Table" entered
+    # 9 January 2020), 7497 (HB 251, the House's sitting of 8 January 2020)
+    # and 1060 (HB 1166, its veto day of 16 September 2020).
+    ("HB101", "2019-2020"): [
+        "2019|0002|12/26/2018 12:00:00 AM|HB101|H|Introduced 01/02/2019 and referred to Education HJ 2 P. 37|12/26/2018 12:00:00 AM",
+        "2019|0002|2/20/2019 12:00:00 AM|HB101|H|Committee Report: Inexpedient to Legislate for 02/27/2019 (Vote 14-5; RC) HC 13 P. 28|2/20/2019 12:00:00 AM",
+        "2019|0002|2/28/2019 12:00:00 AM|HB101|H|Lay on Table (Rep. Cali-Pitts): MA RC 232-109 02/28/2019 HJ 7 P. 52|2/28/2019 12:00:00 AM",
+        "2019|0002|1/9/2020 12:00:00 AM|HB101|H|Died on Table|1/9/2020 12:00:00 AM",
+    ],
+    ("HB251", "2019-2020"): [
+        "2020|0319|1/8/2020 12:00:00 AM|HB251|H|Ought to Pass with Amendment 2019-2776h (NT): MA VV 01/08/2020 HJ 1 P. 36|1/8/2020 12:00:00 AM",
+    ],
+    ("HB1166", "2019-2020"): [
+        "2020|2209|9/17/2020 12:00:00 AM|HB1166|H|Veto Sustained 09/16/2020: RC 193-145 Lacking Necessary Two-Thirds Vote HJ 11 P. 26|9/17/2020 12:00:00 AM",
+    ],
+    ("HB266", "2021-2022"): [
+        "2021|0196|1/9/2021 12:00:00 AM|HB266|H|Introduced (in recess of) 01/06/2021 and referred to Municipal and County Government HJ 2 P. 41|1/9/2021 12:00:00 AM",
+        "2021|0196|3/12/2021 12:00:00 AM|HB266|H|Majority Committee Report: Ought to Pass (Vote 10-9; RC) HC 18 P. 56|3/12/2021 12:00:00 AM",
+        "2021|0196|3/12/2021 12:00:00 AM|HB266|H|Minority Committee Report: Inexpedient to Legislate|3/12/2021 12:00:00 AM",
+        "2021|0196|4/9/2021 12:00:00 AM|HB266|H|Lay on Table (Rep. Dolan): MA VV 04/09/2021 HJ 7 P. 29|4/9/2021 12:00:00 AM",
+    ],
+}
+
+
+@check("frontend", "the day a session ended is a day its chamber sat in its regular session: not a "
+                   "special session's, not a row that records no sitting, and with the sittings "
+                   "only the journal records; a bill whose own row of its death is missing takes "
+                   "the day its chamber's other rows state",
+       needs=("narrative", "build_site_v2"))
+def _rail_endings_sittings(N, B):
+    """THE REVIEW OF THE RAIL'S ENDINGS, 9 October 2026, of the last sitting
+    each death the session's end made is dated by (build_site_v2.
+    chamber_sittings, with_journals, table_session_ends):
+
+      * 26 SEPTEMBER 2006 WAS A SPECIAL SESSION, on SB 1 -- a bill whose number
+        does not say so, whose rows say "2006 Special Session" and "2006 Spec
+        Sess", and one of whose rows that day says neither. Read as the
+        regular session's last sitting it dated 154 bills of 2006; the House's
+        last sitting of 2006 is 28 June, when it killed "all bills on table".
+      * SUNDAY 1 JULY 1990 IS JOINT RULE 24(b)'s "INDEFINITELY POSTPONED PER
+        JT. RULE 24 (B)", with no motion and no vote: no sitting. The House's
+        last of 1990 is its veto day of 3 May (HJ 68), the Senate's 19 April.
+      * THE SENATE SAT ON 28 JUNE 2006 AND 17 JUNE 2004 with no floor row on
+        the docket; its journals open both sittings, and SJ 17 of 2004 lists
+        SB 112 among the "Senate Bills [that] remained on the table in the
+        Senate" "at the time of adjournment on June 17, 2004". with_journals
+        adds them, and not a special session's journal day nor the
+        organization day of December 2010. SB 401 of 2006, left on the
+        Senate's table, died on 28 June 2006; SB 112 of 2004 ("Died on Table
+        at End of Session", entered 1 December 2004) and HB 134 of 2004, in
+        interim study, on 17 June 2004.
+      * HB 266 OF 2021 HAS NO ROW OF ITS DEATH; HB 111, laid on the House's
+        table the same day, "Died on Table, Session ended 01/05/2022", the day
+        the House adjourned from its 2021 session. HB 266 dies that day, not
+        on 24 June 2021. The Senate's bills of 2026 keep 19 August 2026 (the
+        person, 9 October 2026), the Senate's 2025 rows notwithstanding.
+      * THE HOUSE'S 2019 SESSION, RECESSED, ENDED ON 8 JANUARY 2020: "The
+        recessed Session of September 25, 2019 was called to order by the
+        Speaker on January 8, 2020" and adjourned (HJ 23 cont.). HB 101 of
+        2019, "Died on Table" entered 9 January 2020, died on 8 January
+        2020, the House's first sitting of 2020, not 25 September 2019."""
+    R = _SESSION_END_ROWS
+    sit = _sittings_of(N, B, {k: v for k, v in R.items()
+                              if k[0] in ("SB1", "HB646", "HB76", "HB575", "SB57", "HB1182",
+                                          "HB1506")})
+    bad = []
+    for k, want in ((("H", "2006"), "2006-06-28"), (("S", "2006"), "2006-05-24"),
+                    (("H*", "2006"), "2006-09-26"), (("S*", "2006"), "2006-09-26"),
+                    (("H", "1990"), "1990-05-03"), (("S", "1990"), "1990-04-19")):
+        if (sit.get(k) or [""])[-1] != want:
+            bad.append(f"{k} last sat {sit.get(k)}, not {want}")
+    journal = {("S", "2006"): {"2006-06-28", "2006-09-26"}, ("S", "2004"): {"2004-06-17"},
+               ("H", "2010"): {"2010-12-01", "2010-06-09"}, ("S", "2013"): {"2013-11-07"}}
+    merged = B.with_journals({**sit, ("S", "2004"): ["2004-05-25"], ("H*", "2013"): ["2013-11-07"],
+                              ("S", "2013"): ["2013-06-26"], ("H", "2010"): ["2010-10-13"]},
+                             journal)
+    for k, want in ((("S", "2006"), "2006-06-28"), (("S", "2004"), "2004-06-17"),
+                    (("H", "2010"), "2010-10-13"), (("S", "2013"), "2013-06-26"),
+                    (("H", "2006"), "2006-06-28")):
+        if (merged.get(k) or [""])[-1] != want:
+            bad.append(f"with the journals {k} last sat {merged.get(k)}, not {want}")
+    if B.SPECIAL_JOURNAL.search("SJ 17") or not all(
+            B.SPECIAL_JOURNAL.search(n) for n in ("SJ SS", "SJ SS November 07, 2013",
+                                                  "HJ_SS 1 November 18 2015")):
+        bad.append("a special session's journal is not told from a regular one by its name")
+    merged = {**merged, ("S", "2004"): ["2004-01-07", "2004-03-17", "2004-06-17"]}
+    sb401 = _ended(N, B, "2005-2006", "SB401", R[("SB401", "2005-2006")], "done",
+                   "Laid on the table", False, merged)
+    sb112 = _ended(N, B, "2003-2004", "SB112", R[("SB112", "2003-2004")], "done",
+                   "Died on the table", False, merged)
+    hb134 = _ended(N, B, "2003-2004", "HB134", R[("HB134", "2003-2004")], "study",
+                   "Referred for interim study", False, merged)
+    law = lambda c: next((s["mark"], s["date"]) for s in c["jrail"] if s["stop"] == "Law")
+    for name, c, want in (("SB 401 of 2006", sb401, "2006-06-28"),
+                          ("SB 112 of 2004", sb112, "2004-06-17"),
+                          ("HB 134 of 2004", hb134, "2004-06-17")):
+        if law(c) != ("x", want):
+            bad.append(f"{name}'s Law is {law(c)}, not crossed on {want}")
+    # HB 266 of 2021, by HB 111's row; and the Senate's 2026 by its last sitting.
+    peers = {"2021-2022": {b: _narrated(N, "2021-2022", b, R[(b, "2021-2022")])
+                           for b in ("HB111", "HB266")},
+             "2025-2026": {"SB131": _narrated(N, "2025-2026", "SB131",
+                                              _ENDING_ROWS[("SB131", "2025-2026")])}}
+    ends = B.table_session_ends(peers)
+    if ends.get(("H", "2021-2022", "2021")) != "2022-01-05" or ("S", "2025-2026", "2026") in ends:
+        bad.append(f"the chambers' own rows state {ends}")
+    sit21 = {("H", "2021"): ["2021-04-09", "2021-06-24"], ("H", "2022"): ["2022-01-05", "2022-09-15"]}
+    for bill in ("HB266", "HB111"):
+        narr = peers["2021-2022"][bill]
+        intro, steps = B.journey(narr, bill, [], "", "", "2021-2022")
+        tab = next(s for s in reversed(steps) if s.get("act") == "tabled")
+        day, row = B.table_death(narr, tab, "2021-2022", sit21, sat=None, ends=ends)
+        if day != "2022-01-05":
+            bad.append(f"{bill} of 2021 died on {day!r}, not 5 January 2022")
+        if bill == "HB266" and B.table_death(narr, tab, "2021-2022", sit21, sat=None)[0] != "2021-06-24":
+            bad.append("HB 266 of 2021 without its peers' rows is not dated by the House's last sitting")
+    sit19 = {**_sittings_of(N, B, {k: v for k, v in R.items() if k[0] in ("HB251", "HB1166")}),
+             ("H", "2019"): ["2019-02-28", "2019-09-25"]}
+    if sit19.get(("H", "2020")) != ["2020-01-08", "2020-09-16"]:
+        bad.append(f"the House sat in 2020 on {sit19.get(('H', '2020'))}")
+    hb101 = _ended(N, B, "2019-2020", "HB101", R[("HB101", "2019-2020")], "done",
+                   "Died on the table", False, sit19)
+    if law(hb101) != ("x", "2020-01-08") or hb101["steps"][-1]["date"] != "2020-01-08":
+        bad.append(f"HB 101 of 2019's Law is {law(hb101)}, its line {hb101['steps'][-1]!a}")
+    hb1043 = _ended(N, B, "2025-2026", "HB1043", _TABLED_ROWS, "done", "Laid on the table", False,
+                    _sittings_of(N, B))
+    if law(hb1043) != ("x", "2026-08-19"):
+        bad.append(f"HB 1043 of 2026's Law is {law(hb1043)}")
+    narr = _narrated(N, "2025-2026", "HB1043", _TABLED_ROWS)
+    intro, steps = B.journey(narr, "HB1043", [], "", "", "2025-2026")
+    tab = next(s for s in reversed(steps) if s.get("act") == "tabled")
+    if B.table_death(narr, tab, "2025-2026", _sittings_of(N, B), sat=None, ends=ends)[0] != "2026-08-19":
+        bad.append("HB 1043 of 2026 took a day from the Senate's rows of 2025")
+    assert not bad, "; ".join(bad[:4])
+    return "ok", ("26 September 2006 a special session's and 1 July 1990 no sitting; the Senate's "
+                  "17 June 2004 and 28 June 2006 from its journals, SB 401 of 2006, SB 112 and "
+                  "HB 134 of 2004 crossed on them; HB 266 of 2021 on 5 January 2022 by HB 111's "
+                  "row, HB 101 of 2019 on 8 January 2020 when the recessed session ended, HB 1043 "
+                  "of 2026 still on 19 August 2026")
 
 
 @check("data", "every index rail keeps its stops' words apart on a phone")
@@ -39147,8 +39865,8 @@ const out = {};
 try {
   s.render(); out.list = document.querySelector("#results").innerHTML;
   s.renderFacets(); out.facets = document.querySelector("#facets").innerHTML;
-  s.sel.chip.add("Died"); s.render(); out.died = document.querySelector("#results").innerHTML;
-  s.sel.chip.clear();
+  s.sel.status.add("Died"); s.render(); out.died = document.querySelector("#results").innerHTML;
+  s.sel.status.clear();
   s.setPage({kind: "committee", status: ""});
   out.pane = s.billPane(s.IDX.slice(), n => String(n));
   s.setPage({kind: "committee", status: "Died"});
@@ -39159,17 +39877,24 @@ process.stdout.write("\n@@" + JSON.stringify(out));
 
 
 @check("frontend", "a bill's card, the Status filter, the status grouping and a record page's "
-                   "Bill status select say the chip's word, never how the bill ended")
+                   "Bill status select never say how the bill ended: the card the chip's word, "
+                   "the filter, the grouping and the select its category")
 def _chip_drawn():
     """The chip is the six words of 5 October 2026 and a still-moving bill's
     stage (build_site_v2.chip_word); the status -- "Killed", "Vetoed,
     override failed" -- is the record's, and the card does not print it. This
     runs app.js in node: each card's chip is its word, coloured by the word,
     so a veto that stood is Died in Died's colour; the Status filter offers
-    the words, the six first; ticking Died lists the killed bill and the
-    veto that stood; Sort by status heads each group with its word; and a
-    member's or a committee's select, labelled "Bill status", offers the words
-    and filters by them."""
+    the categories of 8 October 2026 (the person: one In Progress, then
+    Passed, Tabled, Interim Study and Died, and Withdrawn and Vetoed) -- it
+    offered the six words first and then each stage until then; ticking Died
+    lists the killed bill and the veto that stood; Sort by status heads the
+    two with Died; and a member's or a committee's select, labelled "Bill
+    status", offers the same categories in the same order and filters by
+    them -- the person's "Same categories" of the same evening, where it
+    offered the words as the filter did. Those two lines, the filter's and
+    the select's, are the ones here the person changed;
+    _bill_status_select_categories holds the rest of the select."""
     js, stub = Path("src/pages/app.js"), Path("tests/dom_stub.js")
     node = shutil.which("node") or shutil.which("node.exe")
     if not (js.exists() and stub.exists() and node):
@@ -39204,18 +39929,22 @@ def _chip_drawn():
     heads = re.findall(r'<h2 class="grp">([^<]*?)\s*<span>(\d+)</span>', got["list"])
     if ("Died", "2") not in [(h.strip(), c) for h, c in heads]:
         bad.append(f"Sort by status does not head the two that died 'Died 2': {heads}")
-    offered = re.findall(r'data-f="chip" value="([^"]*)"', got["facets"])
-    if offered != ["Became Law", "Died", "Interim Study", "Tabled", "Vetoed", "Withdrawn",
-                   "In committee"]:
+    offered = re.findall(r'data-f="status" value="([^"]*)"', got["facets"])
+    if offered != ["In Progress", "Passed", "Tabled", "Interim Study", "Died", "Withdrawn",
+                   "Vetoed"]:
         bad.append(f"the Status filter offers {offered}")
+    if re.search(r'data-f="chip"', got["facets"]):
+        bad.append("the Status filter still offers the chip's words")
     if re.search(r'data-f="kind"', got["facets"]):
         bad.append("the Status filter still filters on the kind")
     listed = re.findall(r'class="card[^"]*" data-id="([^"]*)"', got["died"])
     if sorted(listed) != ["HB1", "HB2"]:
         bad.append(f"ticking Died lists {listed}")
+    # The search's categories since the person's "Same categories" of 8
+    # October 2026; the six words first and then the stages until then.
     opts = re.findall(r'<option value="([^"]*)"', got["pane"])
-    if opts != ["", "Became Law", "Died", "Interim Study", "Tabled", "Vetoed", "Withdrawn",
-                "In committee"]:
+    if opts != ["", "In Progress", "Passed", "Tabled", "Interim Study", "Died", "Withdrawn",
+                "Vetoed"]:
         bad.append(f"a record page's Status select offers {opts}")
     shown = re.findall(r'class="card[^"]*" data-id="([^"]*)"', got["paneDied"])
     if sorted(shown) != ["HB1", "HB2"]:
@@ -39229,8 +39958,906 @@ def _chip_drawn():
                    "not 'Bill status'")
     assert not bad, "; ".join(bad)
     return "ok", ("each card says its word in its word's colour, the filter and a record "
-                  "page's select offer the six first, and Died lists the killed bill and the "
-                  "veto that stood")
+                  "page's select offer the seven categories, and Died lists the killed bill and "
+                  "the veto that stood")
+
+
+# THE STATUS FILTER'S CATEGORIES, chip word by chip word (the person, 8
+# October 2026): "one In Progress selection ... for bills that haven't
+# concluded, separate to those that Passed, Died, were sent to Interim Study,
+# or those that are Tabled", every bill that became law and every resolution
+# that passed as Passed, and Withdrawn and Vetoed their own. Written out here,
+# not read from app.js, so that the page filing a word anywhere else fails
+# until this table moves with it.
+_STATUS_CATEGORY = {
+    "Became Law": "Passed", "Died": "Died", "Interim Study": "Interim Study",
+    "Tabled": "Tabled", "Vetoed": "Vetoed", "Withdrawn": "Withdrawn",
+    # Not concluded: the governor has yet to act, the voters have yet to vote.
+    "Passed, awaiting the governor": "In Progress",
+    "Passed both chambers, goes to the voters": "In Progress",
+    "Passed both chambers, goes to the voters in November 2026": "In Progress",
+    "Passed both chambers, goes to the voters in November 2028": "In Progress",
+    # Ended: never introduced, only proposed for the 2006 special session
+    # (HB 3, whose record says nothing after it), turned down at the ballot.
+    "Proposed for the special session": "Died", "Not introduced": "Died",
+    "Passed both chambers, not ratified by the voters": "Died",
+    "Passed both chambers, ratified by the voters": "Passed",
+    "Adopted by the House": "Passed", "Adopted by the Senate": "Passed",
+    "Adopted by both chambers": "Passed",
+    **{s: "In Progress" for s in _CHIP_STAGES},
+}
+# EVERY (chip, kind) THE NINETEEN TERMS CARRIED, read off site/idx on 8
+# October 2026: 33,717 bills, and the 302 requests of 2027, which have no
+# chip and no category. The data check below reads the built site's rows
+# themselves whenever there is one; this is what a run of the code checks,
+# which has none, still holds.
+_STATUS_REAL_PAIRS = {
+    ("Died", "done"): 18100, ("Became Law", "law"): 12107,
+    ("Interim Study", "study"): 2392, ("Adopted by the House", "adopted"): 448,
+    ("Died", "veto"): 309, ("Adopted by both chambers", "adopted"): 169,
+    ("Adopted by the Senate", "adopted"): 144, ("Withdrawn", "done"): 22,
+    ("Passed both chambers, not ratified by the voters", "adopted"): 12,
+    ("Not introduced", "done"): 7, ("Passed both chambers, ratified by the voters", "adopted"): 5,
+    ("Proposed for the special session", "done"): 1,
+    ("Passed both chambers, goes to the voters in November 2026", "adopted"): 1,
+}
+_STATUS_CATS = ["In Progress", "Passed", "Tabled", "Interim Study", "Died", "Withdrawn",
+                "Vetoed"]
+
+# Runs beside page.js (app.js) and stub.js: each {chip, kind} through
+# statusCat, with whether its chip's word or its kind decided it, and each
+# word through catOfWord, as ?status= in an address is read.
+_STATUSCAT_HARNESS = r"""
+require("./stub.js");
+const fs = require("fs");
+let s;
+try { s = (0, eval)(fs.readFileSync("./page.js", "utf8")
+  + "; ({statusCat, catOfChip, catOfWord, CAT_OF_KIND, STATUSCATS})"); }
+catch (e) { console.log("LOAD " + e.constructor.name + ": " + e.message); process.exit(1); }
+const pairs = JSON.parse(fs.readFileSync("./pairs.json", "utf8"));
+const words = JSON.parse(fs.readFileSync("./words.json", "utf8"));
+const out = {cats: s.STATUSCATS, pairs: [], words: []};
+try {
+  for (const [chip, kind] of pairs)
+    out.pairs.push([chip, kind, s.statusCat({chip, kind}), !!s.catOfChip(chip),
+                    !!s.CAT_OF_KIND[kind]]);
+  // A list, not an object: "__proto__" is one of the words.
+  for (const w of words) out.words.push([w, s.catOfWord(w, [])]);
+  out.request = s.statusCat({id: "LSR20270001", status: "Filed as a request", kind: ""});
+} catch (e) { out.threw = e.constructor.name + ": " + e.message; }
+process.stdout.write("\n@@" + JSON.stringify(out));
+"""
+
+
+def _node_app(harness, files=None, args=()):
+    """Run `harness` in node beside page.js (app.js), stub.js (dom_stub.js)
+    and `files` ({name: text}); what it printed after "@@", as JSON. None
+    where node, app.js or the stub is not here."""
+    js, stub = Path("src/pages/app.js"), Path("tests/dom_stub.js")
+    node = shutil.which("node") or shutil.which("node.exe")
+    if not (js.exists() and stub.exists() and node):
+        return None
+    root = Path(tempfile.mkdtemp())
+    try:
+        (root / "page.js").write_text(js.read_text(encoding="utf-8"), encoding="utf-8")
+        (root / "stub.js").write_text(stub.read_text(encoding="utf-8"), encoding="utf-8")
+        for name, text in (files or {}).items():
+            (root / name).write_text(text, encoding="utf-8")
+        (root / "go.js").write_text(harness, encoding="utf-8")
+        r = _run([node, "go.js", *args], cwd=root, capture_output=True, text=True, timeout=120)
+        assert r.returncode == 0 and "@@" in (r.stdout or ""), (
+            "app.js did not run under node: " + (r.stderr or r.stdout or "")[-300:])
+        return json.loads(r.stdout.rsplit("@@", 1)[1])
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+
+
+@check("frontend", "the Status filter files every word a chip can say under one of seven "
+                   "categories -- In Progress, Passed, Tabled, Interim Study, Died, Withdrawn, "
+                   "Vetoed -- by its word or its kind, and an address naming a chip's word "
+                   "finds its category", needs=("build_site_v2",))
+def _status_categories(B):
+    """The person, 8 October 2026, and their answers the same evening: the
+    Status filter and the Status sort's headings use categories, and a card's
+    chip keeps its own word. Held here: every word build_site_v2.chip_word
+    gives, for every ending this file's chip table names, in session and
+    after it, every adopted resolution's and constitutional amendment's word,
+    and every (chip, kind) the nineteen terms carried on 8 October
+    (_STATUS_REAL_PAIRS), is filed by app.js's statusCat where
+    _STATUS_CATEGORY says, and decided by its word or its kind -- never by
+    the last line, which a word and a kind statusCat had never seen would
+    reach; a request is in none. And ?status= in an address, read through
+    catOfWord: a category in any case, every chip word -- what the filter
+    offered before 8 October, so an address written then still finds its
+    bills -- and nothing for a word that is neither, "constructor" among
+    them."""
+    pairs = set(_STATUS_REAL_PAIRS)
+    tables = list(_CHIP_FINISHED.items()) + list(_CHIP_LIVE.items())
+    for kind, table in tables:
+        for status in table:
+            for live in (False, True):
+                pairs.add((B.chip_word(kind, status, live), kind))
+    for w in ("Adopted by the House", "Adopted by the Senate", "Adopted by both chambers",
+              "Passed both chambers, goes to the voters",
+              "Passed both chambers, ratified by the voters",
+              "Passed both chambers, not ratified by the voters"):
+        for live in (False, True):
+            pairs.add((B.chip_word("adopted", w, live), "adopted"))
+    unknown = sorted({c for c, _k in pairs if c not in _STATUS_CATEGORY})
+    assert not unknown, (f"chip_word gives words this check files nowhere: {unknown}; "
+                         "add each to _STATUS_CATEGORY with the category the person would "
+                         "put it in")
+    words = sorted(_STATUS_CATEGORY) + _STATUS_CATS + [c.lower() for c in _STATUS_CATS] \
+        + ["IN PROGRESS", "  Passed ", "", "Killed", "constructor", "__proto__", "toString",
+           "Filed as a request", "nonsense", "in committee", "became law",
+           "adopted by the house", "passed both chambers, goes to the voters in november 2030"]
+    lower = {k.lower(): v for k, v in _STATUS_CATEGORY.items()}
+    lower["passed both chambers, goes to the voters in november 2030"] = "In Progress"
+    got = _node_app(_STATUSCAT_HARNESS, {
+        "pairs.json": json.dumps(sorted(pairs)), "words.json": json.dumps(words)})
+    if got is None:
+        return "skip", "app.js, dom_stub.js or node is not here"
+    assert "threw" not in got, f"statusCat threw {got['threw']}"
+    bad = []
+    if got["cats"] != _STATUS_CATS:
+        bad.append(f"the categories run {got['cats']}, not {_STATUS_CATS}")
+    for chip, kind, cat, by_word, by_kind in got["pairs"]:
+        want = _STATUS_CATEGORY[chip]
+        if cat != want:
+            bad.append(f"{chip!r} ({kind}) is filed under {cat!r}, not {want!r}")
+        if not (by_word or by_kind):
+            bad.append(f"{chip!r} ({kind}) is filed by statusCat's last line: neither its "
+                       "word nor its kind is known to it")
+    if got["request"] != "":
+        bad.append(f"a request is filed under {got['request']!r}: it is not a bill yet")
+    read = dict((w, c) for w, c in got["words"])
+    for w in words:
+        want = (_STATUS_CATEGORY.get(w) or next((c for c in _STATUS_CATS
+                                                if c.lower() == w.strip().lower()), "")
+                or lower.get(w.strip().lower(), ""))
+        if read.get(w) != want:
+            bad.append(f"?status={w!r} reads as {read.get(w)!r}, not {want!r}")
+    assert not bad, "; ".join(bad[:8]) + (f"; and {len(bad) - 8} more" if len(bad) > 8 else "")
+    return "ok", (f"{len(got['pairs'])} chip words and kinds, every ending in and out of "
+                  "session and every pair the nineteen terms carry, are each filed by word or "
+                  f"kind under one of the seven; ?status= reads {len(words)} words as it should")
+
+
+@check("data", "every bill of every term the built site lists is filed under one of the "
+               "Status filter's categories by its chip's word or its kind")
+def _status_categories_built():
+    """_status_categories over the built site's own rows rather than the
+    pairs written down on 8 October 2026 (_STATUS_REAL_PAIRS): every
+    (chip, kind) that site/idx carries, for every term meta.json names and
+    the requests, through app.js's statusCat. Each is to be decided by its
+    word or its kind, never by the last line, and filed where
+    _STATUS_CATEGORY says; a word this file does not know -- a stage the
+    General Court names tomorrow -- fails here, so that the person decides
+    which category it is in before a reader finds it in the wrong one. A
+    request has no chip and is in none. On 8 October: 33,717 bills, 13
+    pairs, none reaching the last line."""
+    rows = _site_bills()
+    if rows is None:
+        return "skip", "site is not built"
+    from collections import Counter
+    pairs = Counter((r.get("chip"), r.get("kind") or "") for r in rows if r.get("chip"))
+    bills = sum(pairs.values())
+    unknown = sorted({c for c, _k in pairs if c not in _STATUS_CATEGORY})
+    got = _node_app(_STATUSCAT_HARNESS, {"pairs.json": json.dumps(sorted(pairs)),
+                                         "words.json": "[]"})
+    if got is None:
+        return "skip", "app.js, dom_stub.js or node is not here"
+    assert "threw" not in got, f"statusCat threw {got['threw']}"
+    bad = [f"{len(unknown)} chip word(s) no category is written down for here: {unknown[:4]}"
+           ] if unknown else []
+    for chip, kind, cat, by_word, by_kind in got["pairs"]:
+        n = pairs[(chip, kind)]
+        if not (by_word or by_kind):
+            bad.append(f"{n:,} bill(s) with the chip {chip!r} ({kind or 'no kind'}) are filed "
+                       f"by statusCat's last line, as {cat!r}")
+        elif chip in _STATUS_CATEGORY and cat != _STATUS_CATEGORY[chip]:
+            bad.append(f"{n:,} bill(s) with the chip {chip!r} are filed under {cat!r}, not "
+                       f"{_STATUS_CATEGORY[chip]!r}")
+    assert not bad, "; ".join(bad[:6])
+    return "ok", (f"{bills:,} bills of the built site, {len(pairs)} pairs of chip and kind, "
+                  "each filed by its word or its kind")
+
+
+# The bill search as bills.html runs it, in node: meta.json and three terms'
+# rows answered from the fixture, the address from argv[2], and then the
+# reader's steps -- a status ticked, a type ticked, Sort by status, another
+# term, All Terms, the requests, a number -- each read off the count line, the
+# filters and the list.
+_SEARCH_GROUPS_HARNESS = r"""
+require("./stub.js");
+const fs = require("fs");
+const FIX = JSON.parse(fs.readFileSync("./fixture.json", "utf8"));
+globalThis.fetch = async (u) => { const p = decodeURIComponent(new URL(u).pathname);
+  if (!(p in FIX)) return { ok: false, status: 404, statusText: "Not Found",
+                            json: async () => { throw new Error("404"); } };
+  return { ok: true, status: 200, json: async () => JSON.parse(JSON.stringify(FIX[p])) }; };
+const ticks = async (n) => { for (let i = 0; i < n; i++) await new Promise(r => setImmediate(r)); };
+location.search = process.argv[2] || "";
+const box = document.querySelector("#q"); box.disabled = true;
+// Each write to the count, which is a live region: a sentence written over
+// the same sentence can be read out again.
+const countEl = document.querySelector("#count");
+let countText = "", countWrites = 0;
+Object.defineProperty(countEl, "textContent", {get() { return countText; },
+  set(v) { countText = String(v); countWrites++; }});
+let s;
+try { s = (0, eval)(fs.readFileSync("./page.js", "utf8")
+  + "; ({render, sel, getTerm: () => term, setQuery: (q) => { query = q; },"
+  + " more: () => { SHOWN += PAGE_SIZE; render(true); }})"); }
+catch (e) { console.log("LOAD " + e.constructor.name + ": " + e.message); process.exit(1); }
+const $ = (q) => document.querySelector(q);
+const look = () => {
+  const f = $("#facets").innerHTML, r = $("#results").innerHTML;
+  const opts = (key) => [...f.matchAll(new RegExp('<input type="checkbox" data-f="' + key
+    + '" value="([^"]*)"[^>]*>\\s*<span>([\\s\\S]*?)</span>\\s*<span class="c">([\\d,]+)</span>', "g"))]
+    .map(m => [m[1], m[2].replace(/\s+/g, " ").trim(), +m[3].replace(/,/g, "")]);
+  return {count: $("#count").textContent, status: opts("status"), type: opts("type"),
+    whole: [...f.matchAll(/<button class="fhead" data-g="([^"]+)"[\s\S]*?<div class="fbody( whole)?"/g)]
+      .filter(m => m[2]).map(m => m[1]),
+    ticked: [...f.matchAll(/data-f="([^"]+)" value="([^"]*)" checked/g)].map(m => m[1] + "=" + m[2]),
+    groups: [...f.matchAll(/data-g="([^"]+)"/g)].map(m => m[1]),
+    labels: [...f.matchAll(/data-g="([^"]+)"\s*aria-expanded="[^"]*"><span>([^<]*)<\/span>/g)]
+      .map(m => [m[1], m[2]]),
+    heads: [...r.matchAll(/<h2 class="grp">([^<]*?)\s*<span>([\d,]+)<\/span>/g)]
+      .map(m => [m[1].trim(), +m[2].replace(/,/g, "")]),
+    cards: [...r.matchAll(/<article class="card[^"]*" data-id="([^"]+)"/g)].map(m => m[1])};
+};
+(async () => {
+  for (let i = 0; i < 400 && box.disabled !== false; i++) await ticks(1);
+  if (box.disabled !== false) { console.log("app.js never finished loading the fixture"); process.exit(1); }
+  const out = {year: $("#year").innerHTML, arrived: {status: [...s.sel.status], type: [...s.sel.type]}};
+  try {
+    out.start = look();
+    const clear = () => { Object.values(s.sel).forEach(x => x.clear()); };
+    clear(); s.render(); out.none = look();
+    let w = countWrites; s.render(); s.render(); s.render(); out.rewritesWhole = countWrites - w;
+    s.sel.status.add("In Progress"); s.render(); out.progress = look();
+    w = countWrites; s.render(); s.render(); out.rewritesNarrowed = countWrites - w;
+    clear(); s.sel.type.add("CACR"); s.render(); out.cacr = look();
+    s.sel.status.add("Died"); s.render(); out.cacrDied = look();
+    clear();
+    const so = $("#sort"); so.value = "status"; so.fire("change"); out.byStatus = look();
+    // A page further down the list, and then narrowed by a status and by a
+    // type: each heading's number is the whole result's, every time.
+    s.more(); out.byStatusMore = look();
+    s.sel.status.add("Passed"); s.render(); out.byStatusPassed = look();
+    s.sel.status.clear(); s.sel.type.add("HB"); s.render(); out.byStatusHB = look();
+    clear();
+    so.value = "num"; so.fire("change");
+    const ys = $("#year");
+    const term = async (t) => { ys.value = t; ys.fire("change"); await ticks(40); return look(); };
+    out.older = await term("2023-2024");
+    // A category ticked where no bill of the term is in it: still on offer.
+    s.sel.status.add("Tabled"); s.render(); out.olderTicked = look(); s.sel.status.clear();
+    s.render();
+    out.all = await term("all");
+    out.requests = await term("2027-requests");
+    // A status ticked in a term with statuses, carried into the requests.
+    s.sel.status.add("Passed"); s.render(); out.requestsTicked = look(); s.sel.status.clear();
+    s.render();
+    // All Terms with the requests already fetched: the terms' bills alone.
+    out.allAfterRequests = await term("all");
+    await term("2025-2026");
+    box.value = "HB 2"; box.fire("input"); await ticks(20); out.number = look();
+  } catch (e) { out.threw = e.constructor.name + ": " + e.message + " " + (e.stack || "").split("\n")[1]; }
+  process.stdout.write("\n@@" + JSON.stringify(out));
+})().catch(e => { console.log("RUN " + e.message); process.exit(1); });
+"""
+
+
+def _search_groups_fixture(passed=0):
+    """meta.json, two terms and the requests, for _SEARCH_GROUPS_HARNESS:
+    every chip the current term can carry while its session sits, and an
+    earlier term with no bill still moving, tabled, withdrawn or vetoed, nor
+    sent to interim study. `passed` more laws in the current term, HB 100 on,
+    make its list longer than the hundred cards drawn at first. One bill was
+    voted on the floor, so the Floor Vote Day filter is drawn."""
+    def row(bid, kind, chip, term="2025-2026", status=None):
+        return {"id": bid, "n": re.sub(r"^([A-Z]+)", r"\1 ", bid), "title": "a bill",
+                "kind": kind, "status": status or chip, "chip": chip, "committees": [],
+                "committee": "", "topic": "", "sponsor": "", "term": term,
+                "year": int(term[-4:]), "passage": "", "votedays": [], "nrc": 0,
+                "last_action": ""}
+    now = [dict(row("HB1", "law", "Became Law", status="Signed into law"),
+                votedays=["2026-03-05"]),
+           row("HB2", "done", "Died", status="Killed"),
+           row("HB3", "active", "Tabled", status="Laid on the table"),
+           row("HB4", "active", "In committee"),
+           row("HB5", "active", "Re-referred to committee"),
+           row("SB6", "active", "Passed, awaiting the governor"),
+           row("CACR7", "adopted", "Passed both chambers, goes to the voters in November 2026"),
+           row("CACR8", "adopted", "Passed both chambers, not ratified by the voters"),
+           row("HR9", "adopted", "Adopted by the House"),
+           row("SR10", "adopted", "Adopted by the Senate"),
+           row("HCR11", "adopted", "Adopted by both chambers"),
+           row("SCR12", "done", "Died", status="Killed"),
+           row("SB13", "study", "Interim Study", status="Referred for interim study"),
+           row("HB14", "veto", "Vetoed", status="Vetoed, awaiting an override vote"),
+           row("HB15", "done", "Withdrawn"),
+           row("HJR16", "law", "Became Law", status="Signed into law"),
+           row("PET17", "done", "Died", status="Killed"),
+           row("SSHB18", "law", "Became Law", status="Signed into law"),
+           row("HCO19", "done", "Died", status="Refused introduction"),
+           row("ZZ20", "done", "Died", status="Killed")] \
+        + [row(f"HB{100 + i}", "law", "Became Law", status="Signed into law")
+           for i in range(passed)]
+    old = [row("HB1", "law", "Became Law", "2023-2024", "Signed into law"),
+           row("HB2", "done", "Died", "2023-2024", "Killed"),
+           row("SB3", "veto", "Died", "2023-2024", "Vetoed, override failed")]
+    req = [{"id": f"LSR2027000{i}", "n": f"LSR 2027-000{i}", "year": 2027, "title": "a request",
+            "sponsor": "", "body": body, "committee": "", "committees": [], "topic": "",
+            "kind": "", "status": "Filed as a request", "term": "2027-requests", "lsr": True,
+            "last_action": "", "nrc": 0, "votedays": []}
+           for i, body in ((1, "HB"), (2, "SB"), (3, "HB"))]
+    meta = {"terms": ["2025-2026", "2023-2024"], "topics": [], "committee_codes": {},
+            "requests": {"term": "2027-requests", "label": "2027 Bill Requests"}}
+    return {"/meta.json": meta, "/idx/2025-2026.json": now, "/idx/2023-2024.json": old,
+            "/idx/2027-requests.json": req}
+
+
+@check("frontend", "the bill search's Status filter offers the categories a bill of the term "
+                   "is in, in the person's order and their chips' colours, a Bill Type filter "
+                   "offers each kind of measure by its letters and name, and Sort by status "
+                   "heads the list with the categories")
+def _status_and_type_filters():
+    """The person, 8 October 2026: one In Progress to tick for the bills that
+    have not concluded, separate from Passed, Tabled, Interim Study and Died;
+    Withdrawn and Vetoed their own; and "a way to sort by bill type like
+    sorting between HB, SB, HR, SR, HCR, SCR, CACR". And their answer the
+    same evening, "Hide at zero": a category no bill of the term is in is
+    not offered, the order stays fixed, and a box someone has ticked stays
+    so it can be unticked. Until then In Progress, Passed, Tabled, Interim
+    Study and Died were offered in every term, an ended one's In Progress
+    and Tabled at none, and this check held that; that is the line here the
+    person changed. Run in node over a fixture term carrying every chip a
+    sitting session can, an earlier term with no bill moving, tabled,
+    withdrawn, vetoed or at interim study, and the requests. Held: the Status
+    filter's options, their order and each one's chip class, and their
+    counts adding up to the term's; ticking In Progress lists the stages,
+    the bill awaiting the governor (In Progress, the person confirmed that
+    evening) and the amendment going to the voters, and nothing else; the
+    Bill Type filter's options in the person's order with their names, a
+    code with none shown as its letters, ticking CACR listing the two
+    amendments, and the two filters together; Sort by status heading the
+    list with the categories in order and their counts; the earlier term
+    offering Passed and Died alone, and Tabled, ticked there, at none in its
+    place between them; the requests offering no status and their types by
+    what each asks for -- and, where a status ticked in another term is
+    carried into them, the Status filter with that tick on it alone, at
+    none, so the empty list can be undone where it was done (the review of
+    8 October 2026); the Status and Bill Type filters shown whole, never in
+    a box that scrolls (the review: a phone's 210px showed six of the
+    current term's seven kinds); every filter headed in Title Case, Floor
+    Vote Day among them (decided 8 October); and ?status= and ?type= in the
+    address ticking the filters, a chip's own word read as its category."""
+    fx = _search_groups_fixture()
+    got = _node_app(_SEARCH_GROUPS_HARNESS, {"fixture.json": json.dumps(fx)},
+                    args=("?status=Became%20Law&status=in%20committee&status=constructor"
+                          "&type=cacr&type=zz9",))
+    if got is None:
+        return "skip", "app.js, dom_stub.js or node is not here"
+    assert "threw" not in got, f"the bill search threw {got['threw']}"
+    bad = []
+    if sorted(got["arrived"]["status"]) != ["In Progress", "Passed"] \
+            or got["arrived"]["type"] != ["CACR"]:
+        bad.append(f"?status=Became Law&status=in committee&status=constructor&type=cacr"
+                   f"&type=zz9 ticks {got['arrived']}, not Passed and In Progress, and CACR")
+    n = got["none"]
+    total = len(fx["/idx/2025-2026.json"])
+    want_status = [("In Progress", 4), ("Passed", 6), ("Tabled", 1), ("Interim Study", 1),
+                   ("Died", 6), ("Withdrawn", 1), ("Vetoed", 1)]
+    if [(v, c) for v, _lab, c in n["status"]] != want_status:
+        bad.append(f"the Status filter offers {[(v, c) for v, _l, c in n['status']]}, "
+                   f"not {want_status}")
+    classes = {v: re.search(r'class="cstat ([^"]*)"', lab) for v, lab, _c in n["status"]}
+    want_cls = {"In Progress": "s-active", "Passed": "s-law", "Tabled": "s-table",
+                "Interim Study": "s-study", "Died": "s-done", "Withdrawn": "s-done",
+                "Vetoed": "s-veto"}
+    for v, cls in want_cls.items():
+        m = classes.get(v)
+        if not m or m.group(1) != cls:
+            bad.append(f"{v} is painted {m and m.group(1)!r}, not {cls!r}")
+    if sum(c for _v, _l, c in n["status"]) != total:
+        bad.append(f"the Status filter's counts add to {sum(c for _v, _l, c in n['status'])}, "
+                   f"not the term's {total}")
+    want_type = [("HB", "House Bill", 7), ("SB", "Senate Bill", 2), ("HR", "House Resolution", 1),
+                 ("SR", "Senate Resolution", 1), ("HCR", "House Concurrent Resolution", 1),
+                 ("SCR", "Senate Concurrent Resolution", 1),
+                 ("CACR", "Constitutional Amendment Concurrent Resolution", 2),
+                 ("HJR", "House Joint Resolution", 1), ("HCO", "House Concurrent Order", 1),
+                 ("PET", "Petition", 1), ("SSHB", "Special Session House Bill", 1),
+                 ("ZZ", "", 1)]
+    seen = [(v, re.sub(r"<[^>]+>", " ", lab).replace(v, "", 1).strip(), c)
+            for v, lab, c in n["type"]]
+    if seen != want_type:
+        bad.append(f"the Bill Type filter offers {seen}, not {want_type}")
+    if any('class="tcode"' not in lab for _v, lab, _c in n["type"]):
+        bad.append("a Bill Type option does not set its letters apart (tcode)")
+    groups = n["groups"]
+    if "type" not in groups or groups.index("type") != groups.index("status") + 1:
+        bad.append(f"the filters run {groups}: Bill Type is not beside Status")
+    labels = dict(n["labels"])
+    if labels.get("status") != "Status" or labels.get("type") != "Bill Type":
+        bad.append(f"the two filters are headed {labels.get('status')!r} and "
+                   f"{labels.get('type')!r}, not 'Status' and 'Bill Type'")
+    if labels.get("voteday") != "Floor Vote Day":
+        bad.append(f"the floor vote filter is headed {labels.get('voteday')!r}, not "
+                   "'Floor Vote Day'")
+    lower = [lab for _g, lab in n["labels"] if any(w[:1].islower() for w in lab.split())]
+    if lower:
+        bad.append(f"a filter's heading is not in Title Case: {lower}")
+    if sorted(got["progress"]["cards"]) != ["CACR7", "HB4", "HB5", "SB6"]:
+        bad.append(f"In Progress lists {got['progress']['cards']}, not the two stages, the "
+                   "bill awaiting the governor and the amendment going to the voters")
+    if sorted(got["cacr"]["cards"]) != ["CACR7", "CACR8"]:
+        bad.append(f"CACR lists {got['cacr']['cards']}")
+    if got["cacrDied"]["cards"] != ["CACR8"]:
+        bad.append(f"CACR and Died together list {got['cacrDied']['cards']}, not the amendment "
+                   "the voters turned down")
+    heads = [tuple(h) for h in got["byStatus"]["heads"]]
+    if heads != want_status:
+        bad.append(f"Sort by status heads the list {heads}, not {want_status}")
+    older = [(v, c) for v, _l, c in got["older"]["status"]]
+    if older != [("Passed", 1), ("Died", 2)]:
+        bad.append(f"a term whose bills passed or died offers {older}, not Passed 1 and Died 2: "
+                   "a category no bill is in is not offered (the person: \"Hide at zero\")")
+    ot = got["olderTicked"]
+    if [(v, c) for v, _l, c in ot["status"]] != [("Passed", 1), ("Tabled", 0), ("Died", 2)] \
+            or "status=Tabled" not in ot["ticked"]:
+        bad.append(f"Tabled ticked in a term with no bill tabled offers "
+                   f"{[(v, c) for v, _l, c in ot['status']]}, ticked {ot['ticked']}: not "
+                   "Tabled at none in its place, to be unticked")
+    allv = [v for v, _l, _c in got["all"]["status"]]
+    if allv != _STATUS_CATS:
+        bad.append(f"All Terms offers {allv}")
+    if "status" in got["requests"]["groups"]:
+        bad.append("the requests are offered a Status filter: they have no status yet")
+    rt = got["requestsTicked"]
+    if "status=Passed" not in rt["ticked"] or [(v, c) for v, _l, c in rt["status"]] \
+            != [("Passed", 0)]:
+        bad.append(f"Passed ticked and carried into the requests is not on offer to untick, "
+                   f"alone: the filters are {rt['groups']}, offering {rt['status']}, ticked "
+                   f"{rt['ticked']}")
+    if sorted(n["whole"]) != ["status", "type"]:
+        bad.append(f"the filters shown whole are {n['whole']}, not Status and Bill Type")
+    if [(v, c) for v, _l, c in got["requests"]["type"]] != [("HB", 2), ("SB", 1)]:
+        bad.append(f"the requests' Bill Type filter offers {got['requests']['type']}")
+    assert not bad, "; ".join(bad)
+    return "ok", ("the Status filter offers the seven in order, painted, adding to the term; "
+                  "Bill Type offers twelve kinds by letters and name; the two filter alone and "
+                  "together; Sort by status heads with the categories; an earlier term offers "
+                  "only the two its bills are in, and a ticked one at none; All Terms, the "
+                  "requests and an address each get what is theirs")
+
+
+@check("frontend", "sorted by Status, each heading's number is how many of the whole list are "
+                   "in that category, the number the Status filter beside it gives, however "
+                   "few of the cards are drawn yet")
+def _status_heads_full_totals():
+    """The person, 8 October 2026, "Full totals": when sorting by Status,
+    each heading's number is the count of that category in the whole result,
+    not of the cards loaded so far -- "Passed 686", matching the sidebar. It
+    was counted over the cards on screen, so the first hundred of the
+    2025-2026 term (one In Progress, then Passed) headed its 686 "Passed 99".
+    Run in node over _search_groups_fixture with 130 more laws, 150 bills in
+    the term: the first hundred drawn are headed In Progress 4 and Passed
+    136, a page further every category is headed with the same numbers, and
+    each is the Status filter's own count for it; and narrowed, by Passed
+    ticked and by HB, each heading is still the sidebar's number. A heading
+    of a thousand or more carries its separator, as the filter's count
+    does."""
+    fx = _search_groups_fixture(passed=130)
+    got = _node_app(_SEARCH_GROUPS_HARNESS, {"fixture.json": json.dumps(fx)})
+    if got is None:
+        return "skip", "app.js, dom_stub.js or node is not here"
+    assert "threw" not in got, f"the bill search threw {got['threw']}"
+    bad = []
+    side = {v: c for v, _l, c in got["byStatus"]["status"]}
+    first = [tuple(h) for h in got["byStatus"]["heads"]]
+    if first != [("In Progress", 4), ("Passed", 136)] or len(got["byStatus"]["cards"]) != 100:
+        bad.append(f"the first hundred of 150 are headed {first} over "
+                   f"{len(got['byStatus']['cards'])} cards, not In Progress 4 and Passed 136 "
+                   "over 100: a heading counts the cards drawn, not the list")
+    more = [tuple(h) for h in got["byStatusMore"]["heads"]]
+    want = [("In Progress", 4), ("Passed", 136), ("Tabled", 1), ("Interim Study", 1),
+            ("Died", 6), ("Withdrawn", 1), ("Vetoed", 1)]
+    if more != want:
+        bad.append(f"a page further the list is headed {more}, not {want}")
+    differ = [(h, c, side.get(h)) for h, c in more if side.get(h) != c]
+    if differ:
+        bad.append(f"a heading and the Status filter disagree (heading, its number, the "
+                   f"filter's): {differ}")
+    for k, what in (("byStatusPassed", "Passed ticked"), ("byStatusHB", "HB ticked")):
+        side_k = {v: c for v, _l, c in got[k]["status"]}
+        heads = [tuple(h) for h in got[k]["heads"]]
+        wrong = [(h, c, side_k.get(h)) for h, c in heads if side_k.get(h) != c]
+        if not heads or wrong:
+            bad.append(f"with {what} the headings {heads} are not the filter's numbers: {wrong}")
+    if [tuple(h) for h in got["byStatusPassed"]["heads"]] != [("Passed", 136)]:
+        bad.append(f"Passed ticked is headed {got['byStatusPassed']['heads']}, not Passed 136")
+    js = Path("src/pages/app.js").read_text(encoding="utf-8")
+    if not re.search(r"<span>\$\{\(grpN\[grpOf\(b\)\]\|\|0\)\.toLocaleString\(\)\}</span>", js):
+        bad.append("a heading's number is not written with toLocaleString: \"Passed 12873\" "
+                   "beside the filter's \"12,873\" on All Terms")
+    assert not bad, "; ".join(bad)
+    return "ok", ("the first hundred of 150 are headed In Progress 4 and Passed 136, the whole "
+                  "list each category by the filter's own number, narrowed or not")
+
+
+# A member's or a committee's Bills tab as billPane draws it, in node: the
+# rows from rows.json, and the select set to each value in turn.
+_BILL_STATUS_SELECT_HARNESS = r"""
+require("./stub.js");
+const fs = require("fs");
+let s;
+try { s = (0, eval)(fs.readFileSync("./page.js", "utf8")
+  + "; ({billPane, setPage: (p) => { PAGE = p; }})"); }
+catch (e) { console.log("LOAD " + e.constructor.name + ": " + e.message); process.exit(1); }
+const rows = JSON.parse(fs.readFileSync("./rows.json", "utf8"));
+const out = {};
+try {
+  for (const st of ["", "Passed", "In Progress", "Died", "Tabled"]) {
+    s.setPage({kind: "member", status: st, terms: [], term: "", data: null});
+    out[st || "Any"] = s.billPane(rows.slice(), n => n + " bills");
+  }
+} catch (e) { out.threw = e.constructor.name + ": " + e.message; }
+process.stdout.write("\n@@" + JSON.stringify(out));
+"""
+
+
+@check("frontend", "a member's or a committee's Bill status select offers the bill search's "
+                   "categories, in its order, only those a bill of the tab is in, each painted "
+                   "in its chip's colours, and filters by them")
+def _bill_status_select_categories():
+    """The person, 8 October 2026, "Same categories": the "Bill status"
+    dropdown on a committee's and a member's page (app.js billPane, its rows
+    the index's or build_committees' chip and kind) offers what the search's
+    Status filter does -- the same categories, in the same order, hidden at
+    zero -- painted as in the search. It offered each chip's word, Became
+    Law and Adopted by the House and every stage a choice of its own. Run in
+    node over a tab of eight bills with no bill tabled or vetoed. Held: Any
+    and then In Progress, Passed, Interim Study, Died and Withdrawn, Tabled
+    and Vetoed not offered; each option carrying its category's chip class
+    (CATCLASS, as the sidebar paints it) and Any none; Passed listing the law
+    and the adopted resolution, each card keeping its own word; In Progress
+    the bill in committee and the one awaiting the governor; Died the bill
+    killed and the veto that stood; the select itself in the chosen
+    category's class and in none on Any; and Tabled, chosen on another tab
+    (PAGE.status is the page's), still offered in its place and selected,
+    with an empty list, so the select says why the list is empty. And in
+    app.css: each class the select can carry painted with its chip's own
+    ground and ink, and Any's option in the page's."""
+    def row(bid, kind, chip, status=None):
+        return {"id": bid, "n": re.sub(r"^([A-Z]+)", r"\1 ", bid), "title": "a bill",
+                "kind": kind, "status": status or chip, "chip": chip, "committees": [],
+                "committee": "", "topic": "", "sponsor": "", "term": "2025-2026",
+                "year": 2026, "passage": "", "votedays": [], "nrc": 0, "last_action": ""}
+    rows = [row("HB1", "law", "Became Law", "Signed into law"),
+            row("HR2", "adopted", "Adopted by the House"),
+            row("HB3", "active", "In committee"),
+            row("SB4", "active", "Passed, awaiting the governor"),
+            row("HB5", "study", "Interim Study", "Referred for interim study"),
+            row("HB6", "done", "Died", "Killed"),
+            row("HB7", "veto", "Died", "Vetoed, override failed"),
+            row("HB8", "done", "Withdrawn")]
+    got = _node_app(_BILL_STATUS_SELECT_HARNESS, {"rows.json": json.dumps(rows)})
+    if got is None:
+        return "skip", "app.js, dom_stub.js or node is not here"
+    assert "threw" not in got, f"billPane threw {got['threw']}"
+    cls_of = {"In Progress": "s-active", "Passed": "s-law", "Tabled": "s-table",
+              "Interim Study": "s-study", "Died": "s-done", "Withdrawn": "s-done",
+              "Vetoed": "s-veto"}
+
+    def read(html):
+        sel = re.search(r'<select data-pf="status"([^>]*)>(.*?)</select>', html, re.S)
+        opts = []
+        for m in re.finditer(r'<option value="([^"]*)"([^>]*)>([^<]*)</option>',
+                             sel.group(2) if sel else ""):
+            c = re.search(r'class="([^"]*)"', m.group(2))
+            opts.append((m.group(1), c.group(1) if c else "", "selected" in m.group(2),
+                         m.group(3).strip()))
+        own = re.search(r'class="([^"]*)"', sel.group(1)) if sel else None
+        cards = re.findall(r'<article class="card[^"]*" data-id="([^"]*)"', html)
+        chips = re.findall(r'<span class="cstat [^"]*">([^<]*)</span>', html)
+        return {"opts": opts, "own": own.group(1) if own else "", "cards": cards,
+                "chips": chips, "note": re.search(r'<p class="src">(\d+) bills</p>', html)}
+    bad = []
+    a = read(got["Any"])
+    want = ["", "In Progress", "Passed", "Interim Study", "Died", "Withdrawn"]
+    if [o[0] for o in a["opts"]] != want:
+        bad.append(f"Any offers {[o[0] for o in a['opts']]}, not {want}: not the search's "
+                   "categories, in its order, hidden at zero")
+    for v, c, _s, text in a["opts"]:
+        if v and (c != cls_of.get(v) or text != v):
+            bad.append(f"the option {v!r} reads {text!r} in {c!r}, not in {cls_of.get(v)!r}")
+        if not v and (c or text != "Any"):
+            bad.append(f"the first option is {text!r} in {c!r}, not Any in the page's ink")
+    if a["own"]:
+        bad.append(f"the select on Any is painted {a['own']!r}")
+    if len(a["cards"]) != len(rows) or not a["note"] or a["note"].group(1) != str(len(rows)):
+        bad.append(f"Any lists {a['cards']}")
+    for st, ids, chips in (("Passed", ["HB1", "HR2"], ["Became Law", "Adopted by the House"]),
+                           ("In Progress", ["HB3", "SB4"],
+                            ["In committee", "Passed, awaiting the governor"]),
+                           ("Died", ["HB6", "HB7"], ["Died", "Died"]),
+                           ("Tabled", [], [])):
+        r = read(got[st])
+        if r["cards"] != ids:
+            bad.append(f"{st} lists {r['cards']}, not {ids}")
+        if r["chips"] != chips:
+            bad.append(f"under {st} the cards say {r['chips']}, not their own words {chips}")
+        if r["own"] != cls_of[st]:
+            bad.append(f"the select on {st} is painted {r['own']!r}, not {cls_of[st]!r}")
+        chosen = [o[0] for o in r["opts"] if o[2]]
+        if chosen != [st]:
+            bad.append(f"the select on {st} has {chosen} selected")
+        if not r["note"] or r["note"].group(1) != str(len(ids)):
+            bad.append(f"the note under {st} says {r['note'] and r['note'].group(0)!r}")
+    t = [o[0] for o in read(got["Tabled"])["opts"]]
+    if t != ["", "In Progress", "Passed", "Tabled", "Interim Study", "Died", "Withdrawn"]:
+        bad.append(f"Tabled chosen on another tab, with no bill tabled here, offers {t}: not "
+                   "in its place, so the select cannot say why the list is empty")
+    css = re.sub(r"/\*.*?\*/", "", Path("src/pages/app.css").read_text(encoding="utf-8"),
+                 flags=re.S)
+    rules = {sel_.strip(): body for sel_, body in re.findall(r"([^{}]+)\{([^{}]*)\}", css)}
+    for c in sorted(set(cls_of.values())):
+        chip = rules.get(f".{c}", "")
+        mine = rules.get(f".bfilt select.{c}", "")
+        decl = lambda b: sorted(x.strip().replace(" ", "") for x in b.split(";") if x.strip())
+        if not chip or decl(mine) != decl(chip):
+            bad.append(f".bfilt select.{c} is {mine!r}, not its chip's {chip!r}")
+    plain = rules.get(".bfilt option:not([class])", "").replace(" ", "")
+    if "background:var(--paper)" not in plain or "color:var(--ink)" not in plain:
+        bad.append(f"Any's option is not in the page's ground and ink: {plain!r}")
+    assert not bad, "; ".join(bad[:8])
+    return "ok", ("the select offers the search's categories a bill of the tab is in, each in "
+                  "its chip's class, filters by them with each card keeping its word, is "
+                  "painted by its choice, and keeps a choice made elsewhere at none")
+
+
+# A member's two bills tabs and a committee's, as renderMemberBills and
+# renderCommitteeBills draw them, in node: the index rows from rows.json,
+# and the Bill status select set to each value in turn.
+_BILL_STATUS_NOTE_HARNESS = r"""
+require("./stub.js");
+const fs = require("fs");
+let s;
+try { s = (0, eval)(fs.readFileSync("./page.js", "utf8")
+  + "; ({renderMemberBills, renderCommitteeBills, IDX, setPage: (p) => { PAGE = p; }})"); }
+catch (e) { console.log("LOAD " + e.constructor.name + ": " + e.message); process.exit(1); }
+const fx = JSON.parse(fs.readFileSync("./fx.json", "utf8"));
+s.IDX.length = 0; fx.rows.forEach(r => s.IDX.push(r));
+const out = {};
+const page = (kind, status, data) => s.setPage({kind, status, terms: ["2025-2026"],
+  term: "2025-2026", data, vfilter: "", vparty: "", vshow: 0});
+try {
+  for (const st of ["", "Withdrawn", "Died"]) {
+    page("member", st, fx.member);
+    out["prime|" + st] = s.renderMemberBills(fx.member, true);
+    out["co|" + st] = s.renderMemberBills(fx.member, false);
+    for (const [k, c] of Object.entries(fx.committees)) {
+      page("committee", st, c);
+      out[k + "|" + st] = s.renderCommitteeBills(c);
+    }
+  }
+} catch (e) { out.threw = e.constructor.name + ": " + e.message; }
+process.stdout.write("\n@@" + JSON.stringify(out));
+"""
+
+
+@check("frontend", "under a member's or a committee's Bill status select, the note says how "
+                   "many of the tab's bills it lists -- 24 of 137 -- and never the bills listed "
+                   "as the whole of the record")
+def _bill_status_note_counts_the_tab():
+    """The note under the Bill status select (app.js billPane, its sentence
+    renderMemberBills' and renderCommitteeBills') was given the bills listed
+    alone, so narrowed it said what was not true of the record: "24 bills
+    referred to this committee in 2025-2026" under Passed beside a tab
+    reading "Bills (137)", and -- once a choice made on one tab was kept on
+    another, the person's "Same categories" of 8 October 2026 -- "0 bills
+    co-sponsored in 2025-2026" under Withdrawn beside "Co-sponsored (37)"
+    (the review of 8 October 2026). Narrowed it says "24 of 137 bills", as
+    the search's count says "31 of 2,243 bills" once something narrows it;
+    with Any, the tab's own count alone. Run in node over a member with three
+    bills prime sponsored (one withdrawn) and two co-sponsored (none), a
+    committee of five (two died), one of a single bill and one of 1,001 (all
+    but one died), with Any, Withdrawn and Died chosen. Held: each note's
+    leading words, the cards under it as many as it says it lists, and the
+    thousands separated."""
+    def row(bid, kind, chip, status=None):
+        return {"id": bid, "n": re.sub(r"^([A-Z]+)", r"\1 ", bid), "title": "a bill",
+                "kind": kind, "status": status or chip, "chip": chip, "committees": [],
+                "committee": "", "topic": "", "sponsor": "", "term": "2025-2026",
+                "year": 2026, "passage": "", "votedays": [], "nrc": 0, "last_action": ""}
+    rows = [row("HB1", "law", "Became Law", "Signed into law"),
+            row("HB2", "done", "Died", "Killed"),
+            row("HB3", "done", "Withdrawn"),
+            row("HB4", "law", "Became Law", "Signed into law"),
+            row("HB5", "study", "Interim Study", "Referred for interim study"),
+            row("SB6", "done", "Died", "Killed")] \
+        + [row(f"HB{1000 + i}", "done", "Died", "Killed") for i in range(1000)]
+    ref = lambda ids: [{"id": i, "term": "2025-2026"} for i in ids]
+    member = {"sponsored": [{"bill": b, "term": "2025-2026", "prime": p}
+                            for b, p in (("HB1", True), ("HB2", True), ("HB3", True),
+                                         ("HB4", False), ("HB5", False))]}
+    committees = {"five": {"bills": {"2025-2026": ref(["HB1", "HB2", "HB4", "HB5", "SB6"])}},
+                  "one": {"bills": {"2025-2026": ref(["HB4"])}},
+                  "big": {"bills": {"2025-2026": ref(["HB1"] + [f"HB{1000 + i}"
+                                                                 for i in range(1000)])}}}
+    got = _node_app(_BILL_STATUS_NOTE_HARNESS,
+                    {"fx.json": json.dumps({"rows": rows, "member": member,
+                                            "committees": committees})})
+    if got is None:
+        return "skip", "app.js, dom_stub.js or node is not here"
+    assert "threw" not in got, f"a bills tab threw {got['threw']}"
+    want = {
+        "prime|": ("3 bills prime sponsored in 2025-2026.", 3),
+        "prime|Withdrawn": ("1 of 3 bills prime sponsored in 2025-2026.", 1),
+        "prime|Died": ("1 of 3 bills prime sponsored in 2025-2026.", 1),
+        "co|": ("2 bills co-sponsored in 2025-2026.", 2),
+        "co|Withdrawn": ("0 of 2 bills co-sponsored in 2025-2026.", 0),
+        "co|Died": ("0 of 2 bills co-sponsored in 2025-2026.", 0),
+        "five|": ("5 bills referred to this committee in 2025-2026.", 5),
+        "five|Withdrawn": ("0 of 5 bills referred to this committee in 2025-2026.", 0),
+        "five|Died": ("2 of 5 bills referred to this committee in 2025-2026.", 2),
+        "one|": ("1 bill referred to this committee in 2025-2026.", 1),
+        "one|Died": ("0 of 1 bill referred to this committee in 2025-2026.", 0),
+        "big|": ("1,001 bills referred to this committee in 2025-2026.", 1001),
+        "big|Died": ("1,000 of 1,001 bills referred to this committee in 2025-2026.", 1000),
+    }
+    bad = []
+    for k, (words, n) in want.items():
+        html = got.get(k, "")
+        note = re.search(r'<p class="src">(.*?)</p>', html, re.S)
+        said = re.sub(r"\s+", " ", note.group(1)).strip() if note else None
+        if not said or not said.startswith(words):
+            bad.append(f"{k or 'Any'} says {said!r}, not {words!r}")
+        cards = len(re.findall(r'<article class="card[^"]*" data-id=', html))
+        if cards != n:
+            bad.append(f"{k} lists {cards} cards under a note of {n}")
+    assert not bad, "; ".join(bad[:8])
+    return "ok", ("narrowed, the note says how many of the tab's bills it lists (1 of 3, 0 of 2, "
+                  "1,000 of 1,001), and with Any the tab's own count, the cards as many")
+
+
+@check("frontend", "the bill search always says how many bills it lists -- the term's whole "
+                   "count with nothing narrowing it -- and its term picker says All Terms")
+def _search_count_always():
+    """The person, 8 October 2026: "The bill search should always show what
+    number of bills are currently matching the search, even if there are no
+    filters to show the total number of bills for that term, and it also
+    prevents the best match from shifting when you search." The count was
+    empty until something narrowed the list (A COUNT THAT SAYS N OF N SAYS
+    NOTHING, app.js, now THE COUNT IS ALWAYS THERE); nothing held that, so
+    nothing here is relaxed. Held, in node over _search_groups_fixture: the
+    list with nothing narrowing it says "20 bills in the 2025-2026 term", a
+    filter "4 of 20 bills in the 2025-2026 term", another term its own
+    whole count, All Terms "23 bills across all terms", a number search "1
+    matching in the 2025-2026 term", and the requests "3 bill requests for
+    2027" -- they said nothing until something narrowed them, which the
+    review of 8 October 2026 read as short of "always" -- and All Terms
+    opened after the requests still "23 bills across all terms": the
+    requests are no term's, and with them fetched All Terms listed them too,
+    the always-said count then 302 over the real one. And the count, a live
+    region, is not written again with the sentence it already says: render()
+    runs for each hundred rows scrolled to, a card opened, the Sort, and the
+    same sentence written over itself can be read out each time. And the
+    picker's first option is "All Terms", in the Title Case of the terms
+    under it."""
+    fx = _search_groups_fixture()
+    got = _node_app(_SEARCH_GROUPS_HARNESS, {"fixture.json": json.dumps(fx)})
+    if got is None:
+        return "skip", "app.js, dom_stub.js or node is not here"
+    assert "threw" not in got, f"the bill search threw {got['threw']}"
+    want = {"start": "20 bills in the 2025-2026 term", "none": "20 bills in the 2025-2026 term",
+            "progress": "4 of 20 bills in the 2025-2026 term",
+            "older": "3 bills in the 2023-2024 term", "all": "23 bills across all terms",
+            "requests": "3 bill requests for 2027", "allAfterRequests": "23 bills across all terms",
+            "number": "1 matching in the 2025-2026 term"}
+    bad = [f"{k}: {got[k]['count']!r}, not {v!r}" for k, v in want.items()
+           if got[k]["count"] != v]
+    for k, what in (("rewritesWhole", "with nothing narrowing the list"),
+                    ("rewritesNarrowed", "with a filter ticked")):
+        if got[k]:
+            bad.append(f"the count is written {got[k]} more time(s) {what} with the sentence it "
+                       "already says: a live region, read out again")
+    opts = re.findall(r'<option value="([^"]*)">([^<]*)</option>', got["year"])
+    if not opts or opts[0] != ("all", "All Terms"):
+        bad.append(f"the term picker's first option is {opts[:1]}, not All Terms")
+    assert not bad, "the count line says " + "; ".join(bad)
+    return "ok", ("the count is the term's whole count with nothing narrowing it, n of N when "
+                  "something does, across all terms on All Terms and for the requests, written "
+                  "only when it changes, and the picker says All Terms")
+
+
+@check("frontend", "the Sort sits before the count, under the term picker and exactly as wide "
+                   "as it at every width and text size, and nothing else sets either's width")
+def _sort_beside_count():
+    """The person, 8 October 2026: "The best match/sort by should be to the
+    left of the number of matching bills ... and the width of the dropdown
+    boxes for the term selector and sort by should be the same size." The
+    Sort followed the count, so the count arriving with the first letter
+    typed pushed it along the row. Held, from the files: in bills.html the
+    Sort's label and select come before the count, which comes before the
+    search hint, in the one .qhint row; in app.css #year and #sort take one
+    width from one custom property, defined once, and no other rule -- at any
+    width, in any media query -- gives either a width of its own (the phone's
+    #year{width:100%} was one); and the row holds the Sort at its start while
+    the count, never wider than the Sort leaves it, wraps under itself beside
+    it. Measured in Chrome on 8 October from 1366 to 360: both 172px, the
+    Sort not moving when a search is typed, and no sideways scroll.
+    THE ONE WIDTH IN REM, decided the same evening: "the selects' shared
+    width in rem rather than px, so it grows with text-only zoom while both
+    stay equal". This check held it in pixels until then, which is the line
+    here that moved. Measured in Chrome with the browser's text at 24px: both
+    258px at 1366, 768 and 375, and no sideways scroll. That left the count
+    61px beside the Sort at 375, six lines tall, so where the room beside the
+    Sort (--room) is under 8em the count takes a line of its own under it:
+    held here as the count's cap, max(var(--room), calc((8em - var(--room))
+    * N)), and the room defined from --pickw wherever the row is.
+    And what the search read (#synhint) is not a line of its own whatever
+    the room: from 1024px up "also matching: education, student, teacher,
+    classroom" fits after the count, and as a line of its own it pushed the
+    list down 28px at the first synonym typed (the review of 8 October)."""
+    html = Path("src/pages/bills.html").read_text(encoding="utf-8")
+    css = Path("src/pages/app.css").read_text(encoding="utf-8")
+    bad = []
+    hint = re.search(r'<div class="qhint">(.*?)</div>', html, re.S)
+    if not hint:
+        return "FAIL", "bills.html has no .qhint row"
+    row = re.sub(r"<!--.*?-->", "", hint.group(1), flags=re.S)
+    order = [m.group(0) for m in re.finditer(
+        r'<label for="sort"|<select id="sort"|<span id="count"|<span id="synhint"', row)]
+    if order != ['<label for="sort"', '<select id="sort"', '<span id="count"',
+                 '<span id="synhint"']:
+        bad.append(f"the .qhint row runs {order}: the Sort is not before the count")
+    flat = re.sub(r"/\*.*?\*/", "", css, flags=re.S)
+    rules = re.findall(r"([^{}]+)\{([^{}]*)\}", flat)
+    shared = [(sel_, body) for sel_, body in rules
+              if re.fullmatch(r"\s*#year\s*,\s*#sort\s*", sel_)]
+    if len(shared) != 1 or not re.search(r"(?:^|;)\s*width:var\(--pickw\)", shared[0][1]):
+        bad.append(f"#year and #sort do not share one width rule: {shared}")
+    defs = re.findall(r"--pickw\s*:\s*([^;}]+)", flat)
+    if len(defs) != 1 or not re.fullmatch(r"\d+(?:\.\d+)?rem", defs[0].strip()):
+        bad.append(f"--pickw is defined {defs}: once, in rem, is one width at every size that "
+                   "grows with the reader's text")
+    # The pages build_pages writes (body.pg) carry no term picker and no Sort,
+    # so what their block says of #year sizes nothing on the bill search.
+    for sel_, body in rules:
+        if not re.search(r"#(?:year|sort)\b", sel_) or "body.pg" in sel_ \
+                or re.fullmatch(r"\s*#year\s*,\s*#sort\s*", sel_):
+            continue
+        if re.search(r"(?:^|;)\s*(?:min-|max-)?width\s*:", body):
+            bad.append(f"{sel_.strip()} sets a width of its own: {body.strip()[:80]}")
+    q = [(sel_, body) for sel_, body in rules if sel_.strip() == ".qhint"]
+    if not any("align-items:flex-start" in b.replace(" ", "") for _s, b in q):
+        bad.append("the .qhint row does not hold the Sort at its top: a count that wraps "
+                   "would move it")
+    room = [re.search(r"--room\s*:\s*([^;]+)", b) for _s, b in q]
+    room = [m.group(1).strip() for m in room if m]
+    if not room or not all(re.fullmatch(r"calc\(100% - var\(--pickw\) - var\(--sp-\d+\)\)", r)
+                           for r in room):
+        bad.append(f"the room beside the Sort (--room) is not what the Sort leaves of its row: "
+                   f"{room}")
+    c = [body for sel_, body in rules if sel_.strip() == ".qhint #count"]
+    held = [b for b in c if "max-width" in b]
+    if not held or not all(
+            re.search(r"max-width:max\(var\(--room\),\s*"
+                      r"calc\(\(8em - var\(--room\)\) \* \d+\)\)", b)
+            for b in held):
+        bad.append("the count is not held to the room the Sort leaves it, or to a line of its "
+                   f"own under 8em of room: {c}")
+    h = [body for sel_, body in rules if sel_.strip() == ".qhint #synhint"]
+    if not h or any(re.search(r"flex:\s*\d+\s+\d+\s+100%|flex-basis:\s*100%", b) for b in h):
+        bad.append(f"what the search read is a line of its own at every width: {h}")
+    assert not bad, "; ".join(bad)
+    return "ok", ("the Sort comes before the count, #year and #sort share --pickw, in rem, and "
+                  "nothing else sizes either, and the count keeps beside the Sort while 8em fits")
 
 
 @check("frontend", "what the review of the audit's fixes found stays found: focus after Show more, "
@@ -68954,16 +70581,22 @@ def _journey_story(records, rows, B):
             own = "House" if p[0] == "H" else "Senate"
             # The rail's own marks for interim study and the table now refine
             # the passage letter they stand in for (B.RAIL_REFINES), and
-            # only on the chip that draws them (B.RAIL_MARK_OF_CHIP).
+            # only on the chip that draws them (B.RAIL_MARK_OF_CHIP) -- and
+            # the pause on a Died bill, where it died on the table, refines
+            # the cross (B.RAIL_DEAD_TABLE; the person, 8 October 2026: "Show
+            # the body it was tabled in with the yellow pause, and show the
+            # red x mark on the law once it died when the session ended").
             mine = {v: k for k, v in B.RAIL_MARK_OF_CHIP.items()}
             for stop, m in zip((own, other, "Governor", "Law"), p[1:]):
                 drawn = marks.get(stop)
-                if drawn in mine and (row.get("chip") != mine[drawn]
-                                      or stop not in ("House", "Senate")):
+                dead = ((drawn, m) == B.RAIL_DEAD_TABLE and row.get("chip") == "Died"
+                        and stop in ("House", "Senate"))
+                if drawn in mine and not dead and (row.get("chip") != mine[drawn]
+                                                   or stop not in ("House", "Senate")):
                     why = (f"the bill's own rail marks {stop} {drawn!r} on a bill whose "
                            f"chip is {row.get('chip')!r}")
                     break
-                if stop in marks and B.RAIL_REFINES.get(drawn, drawn) != m:
+                if stop in marks and not dead and B.RAIL_REFINES.get(drawn, drawn) != m:
                     why = f"the bill's own rail marks {stop} {marks[stop]!r} and the list card {m!r}"
                     break
         n["empty" if not steps else "disagree" if why else "agree"] += 1
@@ -69000,6 +70633,126 @@ def _journey_agrees(build_site_v2):
     return "ok", (f"{n['agree']:,} bills agree; {len(old)} of the older terms do not, "
                   f"each a gap, a misfiled row or a status word in the docket itself; "
                   f"{n['empty']:,} have no floor decision on record")
+
+
+@check("data", "every bill that died on the table is paused where it was tabled and crossed at Law "
+               "on the day it died, and every interim study bill of a finished session is "
+               "crossed at Law with a line saying why",
+       needs=("build_site_v2",))
+def _rail_endings_on_the_site(B):
+    """THE RAIL'S ENDINGS ON EVERY BILL (the person, 8 and 9 October 2026),
+    read from the built pages and the index, as _rail_endings holds them on
+    real rows:
+
+      * A Died bill whose rail pauses a chamber has that chamber's tabling
+        line with the pause in How it got here, a line of the death with the
+        cross after it, and a Law stop crossed on a day no earlier than the
+        tabling.
+      * No Died bill whose chamber's last line is a tabling keeps the cross
+        there on the day it was tabled: on 7 October 2026, 1,449 of the 2,170
+        that died on a table did.
+      * An Interim Study bill whose session is over -- every archived term,
+        and the current one once corrections/status/status.txt names its
+        session_over -- has Law crossed, on the day of its line "Still in
+        interim study when the ... last sat"; while the session sits, Law is
+        not reached and no such line is drawn.
+      * A report's line is the orange arrow exactly where the report
+        recommended the subject for future legislation.
+      * THE DAY A SESSION'S END IS DATED BY (the review of the rail's
+        endings, 9 October 2026) is never a Saturday or a Sunday -- 82
+        interim study bills of 1989-1990 were dated Sunday 1 July 1990, the
+        day Joint Rule 24(b)'s postponements were entered -- and a line
+        saying the Senate last sat, in a year its journals are on disk, is
+        dated no earlier than the last sitting they open outside a special
+        session's journal and a December of the second year (B.
+        journal_sittings): 45 bills of 2004 read 25 May 2004 where SJ 17 has
+        the Senate adjourn on 17 June with them on its table."""
+    every = _site_bills() if Path("site/bill").is_dir() else None
+    if every is None:
+        return "skip", "no built index and bill pages"
+    rows = {(r.get("term"), r.get("id")): r for r in every}
+    current = max((t for t, _b in rows if re.fullmatch(r"\d{4}-\d{4}", t or "")), default="")
+    over_now = bool(B.session_over_in(B.session_over("corrections/status/status.txt"), current))
+    from datetime import date as _date
+    n, bad, senate = Counter(), [], {}
+    for _y, bid, rec in _site_records():
+        term = rec.get("term") or ""
+        row = rows.get((term, bid)) or {}
+        j = rec.get("journey") or {}
+        steps, stops = j.get("steps") or [], {s.get("stop"): s for s in j.get("rail") or []}
+        law = stops.get("Law") or {}
+        chip = row.get("chip")
+        if chip == "Died":
+            paused = [c for c in ("House", "Senate") if (stops.get(c) or {}).get("mark") == "t"]
+            hs = [s for s in steps if s.get("body") in ("H", "S")]
+            if paused:
+                n["paused"] += 1
+                b = paused[0][0]
+                at = next((i for i in range(len(hs) - 1, -1, -1)
+                           if hs[i].get("body") == b and hs[i].get("act") == "tabled"), None)
+                if at is None or hs[at].get("mark") != "t" or not any(
+                        s.get("act") == "died" and s.get("mark") == "x" for s in hs[at + 1:]):
+                    bad.append(f"{term} {bid}: the {paused[0]} is paused with no tabling line "
+                               "paused and no death after it")
+                elif law and (law.get("mark") != "x" or (law.get("date") or "9")
+                              < (hs[at].get("date") or "")):
+                    bad.append(f"{term} {bid}: Law is {law.get('mark')!r} {law.get('date')!r}, "
+                               f"before its tabling of {hs[at].get('date')}")
+            elif hs and hs[-1].get("act") == "tabled":
+                tab = hs[-1]
+                own = stops.get({"H": "House", "S": "Senate"}.get(tab.get("body")))
+                if own and own.get("mark") == "x" and own.get("date") == tab.get("date"):
+                    bad.append(f"{term} {bid}: the {own['stop']} is crossed on the day it was "
+                               "tabled")
+        elif chip == "Interim Study":
+            over = term != current or over_now
+            said = [s for s in steps if s.get("act") == "died"
+                    and (s.get("text") or "").startswith("Still in interim study when")]
+            n["study over" if over else "study sitting"] += 1
+            if not over:
+                if said or law.get("mark") not in (None, "-"):
+                    bad.append(f"{term} {bid}: held for interim study while the session sits, "
+                               f"and Law is {law.get('mark')!r} beside {len(said)} line of its death")
+            elif law and (law.get("mark") != "x" or not said
+                          or (law.get("date") or "") != (said[-1].get("date") or "")):
+                bad.append(f"{term} {bid}: held for interim study in a session that is over, "
+                           f"and Law is {law.get('mark')!r} {law.get('date')!r} beside "
+                           f"{[s.get('date') for s in said]}")
+            rep = [s for s in steps if s.get("act") == "study_report"]
+            sr = rec.get("study_report") or {}
+            if rep and (rep[-1].get("mark") == "f") != (sr.get("rec") == "rec"):
+                bad.append(f"{term} {bid}: the report's line is {rep[-1].get('mark')!r} and "
+                           f"the report {sr.get('rec')!r}")
+            n["reports"] += bool(rep)
+        for s in steps:
+            if not B.session_end_line(s) or s.get("act") != "died" or not s.get("date"):
+                continue
+            d = s["date"]
+            try:
+                weekday = _date.fromisoformat(d).weekday()
+            except ValueError:
+                bad.append(f"{term} {bid}: a session's end dated {d!r}")
+                continue
+            if weekday >= 5:
+                bad.append(f"{term} {bid}: a session's end dated on a {('Saturday', 'Sunday')[weekday - 5]}, {d}")
+            if s.get("body") == "S" and "the Senate last sat" in (s.get("text") or ""):
+                senate.setdefault(d[:4], []).append((term, bid, d))
+    if senate:
+        days = B.journal_sittings()
+        for y, said in senate.items():
+            opened = [d for d in days.get(("S", y), ()) if d[:4] == y
+                      and not (d[5:7] == "12" and int(y) % 2 == 0)]
+            for term, bid, d in said:
+                if opened and d < max(opened):
+                    bad.append(f"{term} {bid}: the Senate last sat on {d}, and its journal opens "
+                               f"a sitting on {max(opened)}")
+    if not (n["paused"] or n["study over"] or n["study sitting"]):
+        return "skip", "no bill record carries a rail's ending yet"
+    assert not bad, f"{len(bad)} bills: {'; '.join(bad[:4])!a}"
+    return "ok", (f"{n['paused']:,} bills that died on a table paused where tabled and crossed "
+                  f"at Law; {n['study over']:,} interim study bills of a finished session crossed "
+                  f"at Law, {n['reports']:,} with the report's line; {n['study sitting']:,} "
+                  "still sitting, Law not reached")
 
 
 @check("data", "the list card's rail is the bill's own rail, stop for stop",
