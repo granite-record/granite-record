@@ -10,7 +10,7 @@ sponsor, a committee) is fixed here; a right fact shown wrongly is fixed in
 | The day's files and the dump | `build_data`, `dayfiles_from_db`, `docket_from_db`, `document_versions_from_db`, `rollcalls_from_db`, `testimony_from_db` |
 | Dockets and histories | `narrative`, `narrate_archive`, `docket_vocab`, `docket_era_1989`, `docket_era_1999`, `docket_era_2007`, `referrals`, `extract_chapters`, `committee_names`, `names`, `committee_details` |
 | Votes | `rollcall_parser`, `rollcall_outcomes`, `member_links` |
-| People and sponsors | `past_members`, `past_sponsors`, `text_sponsors`, `build_careers` |
+| People and sponsors | `past_members`, `past_sponsors`, `text_sponsors`, `build_careers`, `officers` |
 | Texts, versions and topics | `archive_text`, `bill_blocks`, `build_bill_versions`, `fiscal`, `topic_model`, `topics` |
 | Calendars, journals and reports | `extract_calendar_text`, `extract_amendments`, `extract_vetoes`, `journal_bills`, `journal_days`, `report_check`, `senate_hearing_reports` |
 | UNH's scanned journals (no step reads them yet) | `unh_extract`, `unh_measure`, `unh_parse`, `unh_repair`, `unh_rollcalls`, `unh_roster` |

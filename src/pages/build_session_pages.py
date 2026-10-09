@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-19.25
+# GRANITE_VERSION: 2026-09-19.26
 """
 A page for every day the House sat.
 
@@ -62,6 +62,7 @@ import bill_order as BO
 import build_date
 import session_days
 import journal_days
+import officers
 import shell as S
 import structured as LD
 
@@ -938,8 +939,9 @@ def consent_html(cons, removed, titles, years, esc, calendar=()):
     return "".join(H)
 
 
-def render(day, narrative, titles, years, members, esc):
-    """The day, as HTML."""
+def render(day, narrative, titles, years, members, esc, chair=None):
+    """The day, as HTML. `chair` heads a printed debate's turns in the chair
+    (_debate_html); without it they are printed as the journal heads them."""
     H = []
     body = day.body
     attrs = narrative.get("attributions") or []
@@ -1095,7 +1097,7 @@ def render(day, narrative, titles, years, members, esc):
         d = debates.get(base_bill(bill))
         if d and d["speeches"] and own and id(d) not in drawn:
             drawn.add(id(d))
-            H.append(_debate_html(d, body, members, esc))
+            H.append(_debate_html(d, body, members, esc, chair=chair))
         H.append("</article>")
     if seq_items:
         H.append("</section>")
@@ -1111,7 +1113,7 @@ def render(day, narrative, titles, years, members, esc):
         H.append('<section class="sday"><h2>Also printed in the permanent '
                  "journal</h2>")
         for d in loose:
-            H.append(_debate_html(d, body, members, esc, head=True))
+            H.append(_debate_html(d, body, members, esc, head=True, chair=chair))
         H.append("</section>")
 
     uc = narrative.get("unanimous_consent") or []
@@ -1130,11 +1132,20 @@ def render(day, narrative, titles, years, members, esc):
     return "".join(H), payloads
 
 
-def _debate_html(d, body, members, esc, head=False):
+def _debate_html(d, body, members, esc, head=False, chair=None):
     """A printed debate: the opening, and the rest behind a disclosure.
 
     They run long -- 5,507 speeches across 298 debates -- so the page shows
     enough to know what it is and opens on request.
+
+    THE CHAIR BY THE OFFICE THEY HELD THAT DAY (the person, 9 October 2026:
+    "he is the deputy speaker and sometimes fills in for Sherman Packard").
+    The journal heads whoever is in the chair "Speaker", so the Deputy
+    Speaker was printed "Speaker Steven Smith". `chair` is
+    officers.chair_label for the day: the Speaker's heading stands, and
+    anyone else in the chair is "Deputy Speaker Steven Smith" where the
+    record gives them the office and "Rep. Kofalt, in the chair" where it
+    does not. Without it the headings are printed as the journal has them.
     """
     sp = d["speeches"]
     # THE CHAIR IS NOT A SPEAKER IN THE DEBATE. "Speaker Chandler: The question
@@ -1165,7 +1176,9 @@ def _debate_html(d, body, members, esc, head=False):
     for who, said in sp:
         nm = re.sub(r"^(Rep(?:resentative)?\.?|Speaker|Deputy Speaker)\s+",
                     "", who).strip()
-        link = (member_html(body, nm, members, esc)
+        said_by = chair(who) if chair else who
+        link = (f"<span>{esc(said_by)}</span>" if said_by != who
+                else member_html(body, nm, members, esc)
                 if not who.lower().startswith("speaker")
                 else f"<span>{esc(who)}</span>")
         out.append(f'<p class="sdsp">{link}<span class="sdtx">{esc(said)}</span></p>')
@@ -1299,6 +1312,11 @@ def main():
 
     titles, years = load_titles(site)
     members = Members(site)
+    # WHO HELD THE CHAIR'S OFFICES, read from the journals and calendars on
+    # disk (officers.py), for the headings of the turns the chair takes in
+    # a printed debate. The House's alone: the Senate's pages print none.
+    tenures = officers.load()[0] if body == "H" else []
+    retitled = collections.Counter()
     out_dir = site / "session" / body
     out_dir.mkdir(parents=True, exist_ok=True)
 
@@ -1337,7 +1355,14 @@ def main():
                     linked += 1
                 else:
                     unlinked += 1
-        block, payloads = render(day, narrative, titles, years, members, S.E)
+        def chair(who, _date=date):
+            got = officers.chair_label(who, _date, tenures)
+            if got != who:
+                retitled[next((t for t in ("Deputy Speaker", "Speaker Pro Tempore")
+                               if got.startswith(t)), "a member in the chair")] += 1
+            return got
+        block, payloads = render(day, narrative, titles, years, members, S.E,
+                                 chair=chair if tenures else None)
         label = f"The {CHAMBER[body]}, {words(date)}"
         lead = _lead(day, narrative, date, body)
         prev_ = order[n - 1][1] if n > 0 else ""
@@ -1417,6 +1442,13 @@ def main():
     # Printed so that none at all, which is what a moved journal folder or a
     # changed opening looks like, cannot pass as a quiet chamber.
     print(f"    {excused:,} name the members the journal excused for the day")
+    if body == "H":
+        # The chair by the office held that day: none at all, with the
+        # journals here, is the patterns no longer reading them.
+        print(f"    {sum(retitled.values()):,} turn(s) in the chair the journal heads "
+              "\"Speaker\" given to someone not the Speaker that day: "
+              + (", ".join(f"{n:,} {k}" for k, n in sorted(retitled.items())) or "none")
+              + f" ({len(tenures)} officers' tenures read)")
     named = linked + unlinked
     if named:
         # A WRONG LINK IS WORSE THAN NO LINK, so this number is meant to be

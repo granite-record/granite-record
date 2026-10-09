@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.17
+# GRANITE_VERSION: 2026-09-04.18
 """
 An address for every sitting legislator, and the sitemap entries for them.
 
@@ -145,9 +145,26 @@ def heading(m):
     return f"Former {who}" if m.get("former") and re.match(r"(Rep|Sen)\. ", who) else who
 
 
+# The honorific in full, as the roster's own title field gives it.
+HONORIFIC_FULL = {"Rep.": "Representative", "Sen.": "Senator"}
+
+
+def head_name(m):
+    """The heading at the top of the member's own page: heading() with the
+    honorific in full -- "Representative James Spillane (R - Rock 2)",
+    "Senator Sharon Carson (R - SD14)", "Former Representative Michael
+    Gunski (R - Hills 6)" -- as the person asked on 9 October 2026 ("Member
+    pages should list their title along with their name at the top like
+    Senator Sharon Carson or Representative James Spillane"). app.js's
+    fullTitle draws the page's heading the same way. The page's title and
+    link card keep heading()'s short form, as every list does."""
+    return re.sub(r"^(Former )?(Rep\.|Sen\.) ",
+                  lambda g: f"{g.group(1) or ''}{HONORIFIC_FULL[g.group(2)]} ", heading(m))
+
+
 def noscript(m):
     """What a reader without JavaScript is told, and where to go instead."""
-    who = E(heading(m))
+    who = E(head_name(m))
     towns = m.get("towns") or []
     yrs = _served_years(m) if m.get("former") else ""
     # The heading says "Former" where it can, so the line under it gives only
