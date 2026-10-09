@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.166
+// GRANITE_VERSION: 2026-09-07.167
 // What each kind of document actually is, said once rather than in every row.
 const DOCWHAT={text:"the bill as it currently stands",
   status:"the page this site takes a bill's status from",
@@ -3111,13 +3111,19 @@ const OUTLINE=/(?<=[.:])\s+(?=(?:[IVXL]{1,5}\.(?:\([a-z]\))?|\([a-z]\)|\d{1,3}:\
 // has already written, so "RSA 91-A" matched inside the anchor just built for
 // "RSA 91-A:4". Longest first inside the alternation keeps the longer
 // citation winning where both could match.
+// THE LINK TAKES THE CITATION'S WHOLE TOKEN. A key is a chapter ("RSA 275")
+// and the text may go on past it ("RSA 275:1", or the calendar's "RSA
+// 275E:3"); the link was the key alone, and since every link that leaves the
+// site carries its mark (D20, 8 October 2026) the mark landed inside the
+// citation, "RSA 275↗E:3" (the review of the polish foundation). The rest of
+// the token is in the link's words now, and where it points is unchanged.
 function makeRsa(d){
   return (s)=>{const m=d.rsa||{},ks=Object.keys(m);
     if(!ks.length)return s;
-    const re=new RegExp(ks.sort((a,b)=>b.length-a.length)
-      .map(k=>k.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")).join("|"),"g");
-    return s.replace(re,k=>`<a href="${esc(m[k])}" target="_blank" rel="noopener"`
-      +` class="rsa">${esc(k)}</a>`);};
+    const re=new RegExp("("+ks.sort((a,b)=>b.length-a.length)
+      .map(k=>k.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")).join("|")+")([\\w:.-]*\\w)?","g");
+    return s.replace(re,(all,k)=>`<a href="${esc(m[k])}" target="_blank" rel="noopener"`
+      +` class="rsa">${esc(all)}</a>`);};
 }
 
 // Quoted from the General Court's own bill status page, in the order that page
