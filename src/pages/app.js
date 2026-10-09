@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.160
+// GRANITE_VERSION: 2026-09-07.161
 // What each kind of document actually is, said once rather than in every row.
 const DOCWHAT={text:"the bill as it currently stands",
   status:"the page this site takes a bill's status from",
@@ -53,9 +53,11 @@ const KIND={active:"s-active",law:"s-law",done:"s-done",veto:"s-veto",
 // kind's. "Became law" is wrong for a resolution, which is adopted and is
 // not law: its chip is its own word, "Adopted by the House".
 // Interim Study and Tabled take their rail marks' inks (the person, 8 October
-// 2026): the orange of the "~" and the yellow of the pause, which is a stage
-// still moving's (graphite for a day). Under protanopia the yellow is near the
-// orange, so the chip's word and the rail's shape tell them apart.
+// 2026): the orange of the "~" and the yellow of the pause (graphite for a
+// day). A stage still moving -- "In committee" and the rest, KIND.active --
+// is slate blue since the same evening, so Tabled and In committee are two
+// colours. Under protanopia the yellow is near the orange, so the chip's
+// word and the rail's shape tell them apart.
 const CHIPCLASS={"Became Law":"s-law","Died":"s-done","Interim Study":"s-study",
   "Tabled":"s-table","Vetoed":"s-veto","Withdrawn":"s-done"};
 const CHIPORDER=Object.keys(CHIPCLASS);

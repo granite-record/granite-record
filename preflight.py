@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.470
+# GRANITE_VERSION: 2026-09-04.471
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -24638,7 +24638,8 @@ def _rail_study_and_table_marks(N, B):
     if not any(".stop.s-istudy b" in g and ".stop.s-ontable b" in g for g in pr):
         bad.append("on paper the \"~\" or the pause prints as an empty ring")
     # THE INKS, light and dark: the sheet's.
-    want = {"st-study": ("#B9420B", "#F59A55"), "st-table": ("#7A5A00", "#E3C46A")}
+    want = {"st-study": ("#B9420B", "#F59A55"), "st-table": ("#7A5A00", "#E3C46A"),
+            "st-active": ("#566290", "#A9B5E0")}
     blocks = (css[css.index(":root{"):css.index("/* DARK:OS")],
               css[css.index("/* DARK:OS"):css.index("/* DARK:CHOSEN")],
               css[css.index("/* DARK:CHOSEN"):css.index("/* PALETTE END")])
@@ -38055,7 +38056,8 @@ def _chip_drawn():
     bad = []
     chips = re.findall(r'<span class="cstat ([^"]*)">([^<]*)</span>', got["list"])
     # Tabled in the yellow of the rail's pause (8 October 2026: graphite at
-    # first, then the person's yellow), the same ink as a stage still moving.
+    # first, then the person's yellow), and a stage still moving in slate blue
+    # from the same evening, so the two are not one ink.
     want = {("s-done", "Died"), ("s-table", "Tabled"), ("s-active", "In committee"),
             ("s-done", "Withdrawn"), ("s-law", "Became Law"), ("s-veto", "Vetoed"),
             ("s-study", "Interim Study")}
