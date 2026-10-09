@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-14.11
+# GRANITE_VERSION: 2026-09-14.12
 """
 The record in numbers: a Learn page of statistics computed from the site's own data.
 
@@ -951,7 +951,7 @@ def body(site=Path("site"), root=Path("."), strict=True):
     close.sort(key=lambda x: (x[0], x[1]))
     crow = [[_bill_link(current, b, str(r.get("year") or "")), NAME.get(r.get("body"), ""),
              E(r.get("question_plain") or r.get("question") or ""), f"{r['yeas']}&ndash;{r['nays']}",
-             E(r.get("date") or "")] for _m, b, r in close[:10]]
+             _day(r.get("date") or "")] for _m, b, r in close[:10]]
     out.append(f"<h2>The closest votes of {_t(current)}</h2><p>The ten "
                "roll calls on bills decided by the fewest votes, procedural motions and votes "
                "that needed more than a majority left out.</p>"

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-17.4
+# GRANITE_VERSION: 2026-09-17.5
 """
 The figures about.html states, counted rather than typed.
 
@@ -46,6 +46,8 @@ import _paths  # noqa: E402,F401
 
 import json
 import re
+
+import shell as S
 
 # The date the General Court's YouTube channels begin: the House's first
 # upload is of 14 May 2020 and the Senate's of 29 May, as
@@ -148,7 +150,9 @@ def figures(site="site", root="."):
             "worst": _mmss(cand.get("worst")),
             "within_minute": _n(within_min),
             "over_ten": _n(cand.get("over_ten_minutes") or 0),
-            "measured": (sc or {}).get("measured") or "",
+            # The day the score was taken, month first like every date the
+            # site writes (shell.date_words; it read "2026-09-17").
+            "measured": S.date_words((sc or {}).get("measured") or "", "full"),
         })
     if sched:
         f["schedule_median"] = _mmss(sched.get("median"))

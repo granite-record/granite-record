@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.479
+# GRANITE_VERSION: 2026-09-04.480
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -23907,7 +23907,7 @@ fs.writeFileSync("./out.json", JSON.stringify(out));
     # docket's, and does not call itself a recording that failed to match.
     dated = re.sub(r"\s+", " ", out["dated"])
     assert "Dated by the committee’s own report" in dated.replace("&rsquo;", "’") \
-        and "records one on 2025-01-14" in dated and 'class="hrep"' in dated \
+        and "records one on January 14, 2025" in dated and 'class="hrep"' in dated \
         and "No recording matched" not in dated, (
         "a report under its own date does not say where the date came from: "
         + dated[:300])
@@ -47583,8 +47583,16 @@ _DATE_IDIOMS = (
     (r"\{[^{}]*:%[aAbB][^{}]*\}", "a format spec that writes a month or a weekday"),
     (r"\{[\w.\[\]()]*\.day\}\s*(?:&nbsp;)?\s*\{", "a day number written before a month"),
     (r"toLocaleDateString\(", "the browser's own date format"),
-    (r"(?:MONTHS?|MON|RAILMON|RAILMONTH)\[[^\]]+\]\s*\+?\s*[\"'`]?\s*\+?\s*[\"' ]",
+    # Any list of months, by whatever name (the review of 8 October 2026 wrote
+    # MONTH_NAMES[d.getMonth()] and the narrower name list passed it).
+    (r"\b(?:[A-Z_]*MON[A-Z_]*|\w*[Mm]onths?\w*)\[[^\]]+\]\s*\+?\s*[\"'`]?\s*\+?\s*[\"' ]",
      "a month list indexed to write a date"),
+    (r"getDate\(\)\s*\+\s*[\"'`]", "a day number written before a month"),
+    # A date in figures, "2/19/2026", which reads two ways (the review of
+    # 8 October 2026 wrote one with an f-string and this passed it).
+    (r"strftime\(\s*[\"'][^\"']*%-?[mdYy]\s*/\s*%-?[mdYy]", "a date written in figures"),
+    (r"\{[^{}]*(?:\.month|\[5:7\]|\.day|\[8:10\])[^{}]*\}\s*/\s*\{", "a date written in figures"),
+    (r"getMonth\(\)\s*\+\s*1\s*\)?\s*\+\s*[\"'`]\s*/", "a date written in figures"),
 )
 
 
@@ -47705,6 +47713,7 @@ def _one_date_formatter():
     day_first = re.compile(r"\b\d{1,2}(?:st|nd|rd|th)?(?:\s|&nbsp;)+(?:January|February|March|"
                            r"April|May|June|July|August|September|October|November|December|"
                            r"Jan|Feb|Mar|Apr|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec)\b")
+    figures = re.compile(r"\b\d{1,2}/\d{1,2}/\d{2,4}\b|\b(?:19|20)\d\d-[01]\d-[0-3]\d\b")
     shared, _base, _ran, _days = _fixture_site_shared()
     seen, found = 0, []
     for f in sorted((shared / "site").rglob("*.html")):
@@ -47718,6 +47727,14 @@ def _one_date_formatter():
         # A tag is a boundary, not a space: "SC 9</span>...<span>Mar 10" is
         # two things, not "9 Mar".
         for m in day_first.finditer(_h.unescape(re.sub(r"<[^>]+>", " | ", t))):
+            found.append(f"{f.relative_to(shared / 'site')}: {m.group(0)!r}")
+        # Nor a date in figures, "2026-09-17" or "8/19/2026", but the docket's
+        # own line under a bill on the home page (.actw), which is the clerk's
+        # words, and an address or a file's name in <code>. The review of
+        # 8 October 2026 found About's "Last measured 2026-09-17" and By the
+        # numbers' closest votes dated "2025-04-17" here.
+        t2 = re.sub(r'<span class="actw">.*?</span>|<code\b.*?</code>', " ", t, flags=re.S)
+        for m in figures.finditer(_h.unescape(re.sub(r"<[^>]+>", " | ", t2))):
             found.append(f"{f.relative_to(shared / 'site')}: {m.group(0)!r}")
     assert seen > 20, f"only {seen} pages in the fixture site"
     assert not found, (f"{len(found)} dates written day first on the fixture's pages: "

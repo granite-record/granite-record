@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-19.26
+# GRANITE_VERSION: 2026-09-19.27
 """
 A page for every day the House sat.
 
@@ -72,6 +72,16 @@ CHAMBER = {"H": "House", "S": "Senate"}
 # before that get the record and say plainly that there is no journal for them,
 # rather than looking like a day on which nobody spoke.
 JOURNAL_FROM = "1997-01-01"
+
+
+def said_clock(t):
+    """"10:00 a.m." as the journal prints it, "10:00 AM" as this site writes a
+    time (the person's D6, 8 October 2026, and build_pages.clock's form, the
+    no-break space included). Anything else comes back as it came."""
+    m = re.fullmatch(r"\s*(\d{1,2}):(\d\d)\s*([ap])\.?\s*m\.?\s*", t or "", re.I)
+    if not m or not 1 <= int(m.group(1)) <= 12:
+        return t or ""
+    return f"{int(m.group(1))}:{m.group(2)}\u00a0{m.group(3).upper()}M"
 
 
 def words(iso):
@@ -735,7 +745,7 @@ def opening_html(narrative, body, members, esc):
         return ""
     bits = []
     if o.get("assembled"):
-        bits.append(f"The {CHAMBER[body]} assembled at {esc(o['assembled'])}")
+        bits.append(f"The {CHAMBER[body]} assembled at {esc(said_clock(o['assembled']))}")
     say = []
     if o.get("prayer"):
         say.append("a prayer was offered")

@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.165
+// GRANITE_VERSION: 2026-09-07.166
 // What each kind of document actually is, said once rather than in every row.
 const DOCWHAT={text:"the bill as it currently stands",
   status:"the page this site takes a bill's status from",
@@ -4154,7 +4154,7 @@ function renderHearings(b,d){
     else if(s.dated_by==="report")inner=`<div class="vbox"><p><b>Dated by the
       committee&rsquo;s own report.</b> The docket records no Senate hearing of
       this bill on this day${(s.docket_heard||[]).length?`; it records one on
-      ${s.docket_heard.map(esc).join(" and ")}`:""}. This is the date the Senate
+      ${s.docket_heard.map(x=>esc(dateWords(x,"full"))).join(" and ")}`:""}. This is the date the Senate
       committee&rsquo;s hearing report gives, and the report is below as the
       Senate filed it. No recording is linked to it.</p></div>`;
     // WHERE THIS SITE'S RECORDINGS BEGIN, not where recording began. The
@@ -4755,6 +4755,16 @@ function vmarked(bs,ms){
   return `<div class="vdoc">${out.join("")}</div>`;
 }
 
+// A VERSION'S DAY AS THE RECORD STAMPS IT, "12/11/2025 16:02:08", said the
+// way every date on the site is (dateWords, month first): the Bill Text tab
+// printed "12/11/2025" under each version and "Amendment of 05/07/2026" until
+// the review of the polish foundation (8 October 2026). Anything else is cut
+// at its first space, as it was.
+function recordDay(s){
+  const m=/^(\d{1,2})\/(\d{1,2})\/(\d{4})\b/.exec(String(s||""));
+  return m?dateWords(`${m[3]}-${m[1].padStart(2,"0")}-${m[2].padStart(2,"0")}`)
+    :String(s||"").split(" ")[0];
+}
 function renderVersions(b,d){
   const key=verKey(b), ix=VERS[key];
   // Nothing to load, so nothing to say about loading it. The bill's own text
@@ -4776,7 +4786,7 @@ function renderVersions(b,d){
   // tabs, and no key handler moved through it.
   const vbtn=(v,j)=>`<button class="vbtn${j===i?" sel":""}" data-ver="${esc(key)}|${j}"
       aria-pressed="${j===i?"true":"false"}">${esc(v.title)}<i>${
-      esc((v.date||"").split(" ")[0])}</i></button>`;
+      esc(recordDay(v.date))}</i></button>`;
 
   // NO BARS. There used to be a proportional bar between each pair of
   // versions, drawn to the bill at its longest, showing how many words went
@@ -4874,7 +4884,7 @@ function renderVersions(b,d){
     its own document, naming the statute it amends and what it replaces. These
     are those, not versions of the bill.</p>
     <ul class="vamds">${amds.map((a,j)=>`<li><button class="link"
-      data-vamd="${esc(key)}|${j}">Amendment of ${esc((a.date||"").split(" ")[0])}</button>
+      data-vamd="${esc(key)}|${j}">Amendment of ${esc(recordDay(a.date))}</button>
       <span class="dim">${(a.chars||0).toLocaleString()} characters</span>${
       VTEXT[a.text_url]!==undefined
         ? `<pre class="vtext">${esc(String(VTEXT[a.text_url]))}</pre>` : ""}</li>`
