@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.228 */
+/* GRANITE_VERSION: 2026-09-07.229 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -67,7 +67,8 @@
      replaced, which is how the change was proven: the same screenshots. */
 /* THE SCALE BY ROLE, 8 October 2026 (the person approved it as D3 of the
    polish plan). The browser's default is 16px and every value is said at
-   it. The floors: nothing under 13px, and 13px only in capitals; 14px for
+   it. The floors: nothing under 13px, and 13px only in capitals (and a
+   phone card's rail, --t-rail, below); 14px for
    what is read in passing; 16px for anything read as text and for every
    control (which is also what stops a phone zooming into a field); 18px
    for reading prose in the serif. Before this the interface was 14px,
@@ -89,6 +90,14 @@
 --t-read:1.125rem;  /* 18: reading, in the serif -- the analysis, a bill's
                        story and its text, Learn, About; and a bill's
                        title on its card and its row */
+/* THE PHONE'S BILL CARD, two sizes of its own (the person, 8 October 2026:
+   "I preferred the old bill card previews on mobile"). Under 37.5em a card
+   in a list is compact (.card:not(.focus), below .rail.dated): */
+--t-card:1.0625rem; /* 17: a bill's title on a phone's card, in the serif */
+--t-rail:.8125rem;  /* 13: a phone card's rail, its stops' names and days --
+                       the floor, and the one place 13px is mixed case:
+                       preflight's _type_floor allows it there and nowhere
+                       else */
 /* A HEADING OUTRANKS WHAT IT HEADS. On 23 September 2026 the person named
    the defect: headings in boxes read no larger than the text under them,
    or smaller -- the footer set its column heads at 11px over 14px links,
@@ -1770,27 +1779,41 @@ padding-inline:var(--sp-2)}
    (option E's rule, measured there at 768px). */
 .rail.dated{container:rail / inline-size;flex-wrap:wrap}
 @container rail (max-width:34.5em){.rail.dated small .ry{display:block}}
-/* AND WHERE FIVE STOPS DO NOT FIT ACROSS, THE RAIL STANDS UP: one stop a
-   line, its mark, its name and its day (the plan's D3, drawn as option D's
-   320px rail). The stops' words grow with the reader's text size and the
-   phone does not, so at a 24px browser setting on a 375px phone the rail is
-   14em across and "Introduced", "House", "Senate" and "Governor" were drawn
-   over each other with "Introduced" cut at the card's edge (the rendered
-   sweep's text-on-text measure, 8 October 2026: every rail on a phone). The
-   width is the rail's own, in em of its text, so the same rule holds at any
-   text size: a 360px phone at 16px (19.9em) keeps the rail across and a
-   320px one stands it up. A query cannot restyle its own container, so the
-   rail always wraps and each stop takes the whole line here; the half
-   padding the phone's rail borrows (above) is given back to the stops. */
+/* AND WHERE FIVE STOPS' NAMES DO NOT FIT ACROSS, THE RAIL STAYS ACROSS, ITS
+   NAMES TAKE TURNS OVER AND UNDER THE LINE, AND THE DAYS STEP OUT (the
+   person, 8 October 2026). The stops' words grow with the reader's text
+   size and the phone does not, so at a 24px browser setting a 375px phone's
+   rail is 14em across, and the foundation stood it up there, one stop a
+   line with its day -- "I don't like the new design of the rails being
+   stacked vertically on mobile". Decided with them the same evening: at a
+   large text setting the rail stays horizontal with the stop names and
+   marks only. The days are still in How it got here, and the rail's own
+   label (app.js datedRail, role=img) says every stop with its day in full,
+   so a reader who hears the page is told the same as before.
+   NAMES ONLY ARE STILL TOO WIDE FOR ONE ROW. At 24px on a 375px phone a
+   card's five names are 341px drawn on a 333px rail, and set in one row
+   centred under their marks "Introduced" ran 12px into "House", "Senate"
+   8px into "Governor", and "Introduced" was cut 7px at the card's edge
+   (measured in Chrome, 9 October 2026). So the first, third
+   and fifth name sit under the line and the second and fourth over it, each
+   with two stops' room on its row; and the first is set from the rail's
+   start, where "Introduced" centred on its mark would be cut at the card's
+   edge. The last stop's name is short ("Law", "Voters") and stays centred.
+   The names take the phone card's 13px (--t-rail) on a bill's own page
+   too: at its 14px a 320px phone set "Introduced" 2px into "Senate" at a
+   24px setting, where the card's size leaves 8px between them (Chrome).
+   preflight lays this out (_rail_large_text).
+   The width is the rail's own, in em of its text, so the same rule holds
+   at any text size: a 360px phone at 16px (19.9em) keeps the dated rail
+   and a 320px one takes this. A query cannot restyle its own container,
+   so the room over the line is the stops' margin. */
 @container rail (max-width:19.5em){
-  .rail.dated .stop{flex:0 0 100%;flex-direction:row;flex-wrap:wrap;align-items:center;
-  justify-content:flex-start;text-align:left;gap:0 var(--sp-4);padding:var(--sp-1) 0;
-  margin-inline:var(--sp-4)}
-  .rail.dated .stop b{position:relative;top:auto;left:auto;margin:0;flex:0 0 .9375rem}
-  .rail.dated .stop:before{top:50%;bottom:-50%;left:calc(.46875rem - .5px);right:auto;
-  width:1px;height:auto}
-  .rail.dated small{margin-top:0;padding-inline:0}
-  .rail.dated small .ry{display:inline}
+  .rail.dated small{display:none}
+  .rail.dated .stop{margin-top:1.25rem}
+  .rail.dated .stop i{font-size:var(--t-rail);line-height:1.25rem}
+  .rail.dated .stop:nth-child(even) i{position:absolute;bottom:100%;left:50%;
+  transform:translateX(-50%)}
+  .rail.dated .stop:first-child i{align-self:flex-start}
 }
 /* IN FORCED COLOURS THE RING IS DRAWN ROUND THE GLYPH IN THE SAME INK, so the
    check needs the room its 13px takes: a 17px ring where the others draw 15,
@@ -1798,7 +1821,28 @@ padding-inline:var(--sp-2)}
    on a filled disc and what crosses the edge is not seen. */
 @media (forced-colors:active){
   .stop b{width:1.0625rem;height:1.0625rem;margin-left:-.53125rem;top:0}
-  .rail.dated .stop b{flex-basis:1.0625rem}
+}
+/* THE PHONE'S CARD, COMPACT (the person, 8 October 2026, looking at the
+   foundation's phone screenshots: "I think the mobile text scaling might be
+   a bit off and I preferred the old bill card previews on mobile"). The
+   foundation set a card in a list at the scale's sizes -- an 18px title, a
+   16px sponsor line and chip, a 14px rail -- and HB 1-A of 2025's card at
+   375px went from the live site's 306px to 359. Decided with them the same
+   evening: under 600px a card in a list sets its title at 17px in the
+   serif, its sponsor and committee line and its status chip at 14px, and
+   its rail's names and days at 13px, the approved floor, nothing under it;
+   and the year stays on every stop. In rem, and the query in em, so a
+   reader's larger text grows all of it and reaches it at a wider window.
+   Wherever the card is drawn in a list -- the bill search, a committee's
+   and a member's bills -- and closed or opened alike, since opening a card
+   changes nothing about its head; a bill's own page keeps its head as it
+   is. The line under the sponsor's that says why a bill is listed takes the
+   sponsor line's size, as its own rule says it is that line's quiet type. */
+@media (max-width:37.5em){
+  .card:not(.focus) .chead .ctitle{font-size:var(--t-card)}
+  .card:not(.focus) .chead :is(.cmeta,.cwhy){font-size:var(--t-sm)}
+  .card:not(.focus) .crow .cstat{font-size:var(--t-sm)}
+  .card:not(.focus) .rail.dated :is(.stop i,small){font-size:var(--t-rail)}
 }
 .cstat{margin-left:auto;font-size:var(--t-sm);font-weight:600;padding:var(--sp-1) var(--sp-4);border-radius:var(--r-in);white-space:nowrap}
 /* ONE CHIP SHAPE ACROSS THE SITE. A person is drawn as .mchip -- a 3px

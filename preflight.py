@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.486
+# GRANITE_VERSION: 2026-09-04.487
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -20193,6 +20193,20 @@ def _css_font_size(prop, value):
 
 _FLOOR_PX = 13          # nothing smaller, and this size only in capitals
 
+# THE ONE PLACE 13px IS MIXED CASE (the person, 8 October 2026). Looking at the
+# foundation's phone screenshots -- "I think the mobile text scaling might be a
+# bit off and I preferred the old bill card previews on mobile" -- they chose a
+# compact phone card whose rail sets its stops' names and days at 13px, "the
+# approved floor; nothing under 13px"; and where the rail is too narrow for its
+# days, at a large text setting, its names keep that size on a bill's own page
+# too. The floor stands: these rules are allowed 13px in mixed case, under
+# exactly these queries and by exactly this token, and nothing else is.
+_MIXED_13_TOKEN = "--t-rail"
+_MIXED_13 = {
+    (("@media (max-width:37.5em)",), ".card:not(.focus) .rail.dated :is(.stop i,small)"),
+    (("@container rail (max-width:19.5em)",), ".rail.dated .stop i"),
+}
+
 # What a builder may write that is not the palette's, and why. A file named
 # with None is left out whole; with a string, from that string on.
 _FRONT_EXEMPT = {
@@ -20309,7 +20323,8 @@ def _sizes_follow_the_reader():
                   "measure and the vote ring's box in rem")
 
 
-@check("frontend", "no text is set under the 13px floor, and 13px only in capitals: not by a "
+@check("frontend", "no text is set under the 13px floor, and 13px only in capitals and the phone "
+                   "card's rail: not by a "
                    "token or a rule of app.css, an inline style of a builder, app.js or find.js, "
                    "nor an SVG's font-size")
 def _type_floor():
@@ -20323,7 +20338,9 @@ def _type_floor():
     a var() nothing defines is a size this cannot vouch for, and fails (the
     browser drops the declaration and the text takes its parent's size,
     which is how --t-h3 went unnoticed). 13px is the floor for capitals
-    only, so a rule at 13px must set text-transform: uppercase itself.
+    only, so a rule at 13px must set text-transform: uppercase itself --
+    except the phone card's rail (_MIXED_13, the person's choice of 8 October
+    2026), sized by --t-rail, which nothing else may use.
 
     Outside app.css: the inline styles of every builder in src/pages/, of
     app.js and find.js, and the font-size attribute of SVG text, which no
@@ -20337,9 +20354,14 @@ def _type_floor():
     low = {k: px for k, (px, _) in ((k, _css_px(v, tokens)) for k, v in tokens.items()
                                      if k.startswith("--t-")) if px is not None and px < _FLOOR_PX}
     bad, uses, read, relative = [], Counter(), 0, 0
+    allowed = set()
     for ctx, sel, body, ln in _css_rules(text):
         ds = _css_decls(body)
         caps = any(k == "text-transform" and "uppercase" in v for k, v in ds)
+        if any(_MIXED_13_TOKEN in v for k, v in ds if _css_font_size(k, v) is not None) \
+                and (ctx, sel) not in _MIXED_13:
+            bad.append(f"app.css:{ln} {sel[:48]} is sized by {_MIXED_13_TOKEN}, which is the "
+                       "phone card's rail's and nothing else's")
         for k, v in ds:
             size = _css_font_size(k, v)
             if size is None:
@@ -20360,9 +20382,20 @@ def _type_floor():
             elif px < _FLOOR_PX:
                 bad.append(f"app.css:{ln} {sel[:48]} is set at {px:g}px")
             elif px < 14 and not caps:
+                if (ctx, sel) in _MIXED_13 and tok and tok.group(1) == _MIXED_13_TOKEN:
+                    allowed.add((ctx, sel))
+                    continue
                 bad.append(f"app.css:{ln} {sel[:48]} is {px:g}px in mixed case, and 13px is "
                            "for capitals only")
     bad[:0] = [f"{k} is {px:g}px and sizes {uses[k]} rules" for k, px in sorted(low.items())]
+    # An allowance nothing uses is a door left open: say so, so it is closed.
+    bad += [f"_MIXED_13 allows {' '.join(c)} {s} 13px in mixed case, and app.css has no "
+            f"such rule at {_MIXED_13_TOKEN}: take it out of the allowance"
+            for c, s in sorted(_MIXED_13 - allowed)]
+    rail_px = _css_px(f"var({_MIXED_13_TOKEN})", tokens)[0]
+    if rail_px != _FLOOR_PX:
+        bad.append(f"{_MIXED_13_TOKEN} is {rail_px}px, where the person chose the {_FLOOR_PX}px "
+                   "floor for the phone card's rail")
     inline = svg = 0
     for name, src in _front_sources():
         for m in re.finditer(r"font-size\s*:\s*([^;\"'`}<>]+)", src):
@@ -20389,7 +20422,8 @@ def _type_floor():
     return "ok", (f"{read} sizes in app.css ({relative} relative to their parent, which the "
                   f"rendered sweep measures), {inline} inline and {svg} SVG font-size attributes "
                   f"in the builders and scripts: none under {_FLOOR_PX}px, and {_FLOOR_PX}px "
-                  "only in capitals")
+                  f"only in capitals but for the phone card's rail ({len(allowed)} rules, "
+                  f"{_MIXED_13_TOKEN})")
 
 
 # The colours CSS knows by name, which are as much a colour written out as a hex.
@@ -25167,7 +25201,10 @@ def _rail_gap(rail, width, pad):
     row of `rail` (an index row's stops) laid out `width` wide, as a card
     draws them (_rail_drawn): the stop's name over its day, both at the type
     scale's 14px since 8 October 2026, and on a rail under 552px (34.5em, the
-    container query in app.css) the day's year on a line of its own."""
+    container query in app.css) the day's year on a line of its own. A card in
+    a list on a phone draws them at 13px since that evening (the compact card,
+    _phone_card_compact); 14px is a bill's own page's, the tighter of the two,
+    so it is what is laid out here."""
     def w(s, px):
         return sum(_RAIL_FACE.get(c, 1000) for c in s) * px / 1000
 
@@ -25256,6 +25293,208 @@ def _rail_on_a_phone():
     return "ok", (f"{width}px with {pad:g}px either side of each stop's words; the six "
                   f"tightest rails of the review are {worst[0]:.1f}px apart at least "
                   f"({worst[1]}), in the wider of Public Sans' and Segoe UI's widths; {drew}")
+
+
+# THE RAIL AT A LARGE TEXT SIZE (the person, 8 October 2026). Where a rail is
+# too narrow for its days -- at a 24px browser setting a 375px phone's is 14em
+# across -- the foundation stood it up, one stop a line with its day, and the
+# person said "I don't like the new design of the rails being stacked
+# vertically on mobile". Decided with them the same evening: the rail stays
+# horizontal with the stop names and marks only; the days step out of it, and
+# stay in How it got here and in what a screen reader hears.
+#
+# Five names alone are still too wide for one row there: 341px drawn on a
+# 333px rail, "Introduced" 12px into "House" and cut 7px at the card's edge
+# (Chrome, 9 October 2026). So they take turns, the first, third and fifth
+# under the line and the second and fourth over it, the first set from the
+# rail's start and the rest centred on their marks (app.css's narrow rail).
+# This lays that out in _RAIL_FACE's widths, as _rail_gap does the dated rail.
+_RAIL_PHONES = (320, 360, 375, 414)      # the phones a rail is laid out on
+_RAIL_TEXT = (16, 18, 20, 24)            # and the browser's text sizes
+
+
+def _rail_names(rail):
+    """The names a rail draws over its marks, from an index row's stops."""
+    return [_RAIL_LABEL.get(cell[0][:1], cell[0]) for cell in rail]
+
+
+def _rail_names_turn(names, width, px):
+    """(the narrowest gap, in px, between two names on one row; how far a
+    name runs past either end of the rail, 0 where none does) for a rail
+    `width` wide too narrow for its days, its names at `px` taking turns
+    under and over the line: the first from the rail's start, the rest
+    centred on their marks, each stop a share of the width."""
+    slot = width / len(names)
+    spans = []
+    for i, name in enumerate(names):
+        w = sum(_RAIL_FACE.get(c, 1000) for c in name) * px / 1000
+        left = 0.0 if i == 0 else (i + .5) * slot - w / 2
+        spans.append((left, left + w))
+    gap = min([spans[i + 2][0] - spans[i][1] for i in range(len(spans) - 2)] or [width])
+    past = max(0.0, -min(a for a, _ in spans), max(b for _, b in spans) - width)
+    return gap, past
+
+
+def _rail_narrow_em(css):
+    """The width, in em of the rail's text, under which app.css takes a
+    rail's days away (the container query that hides .rail.dated small), or
+    None."""
+    for ctx, sel, body, _ln in _css_rules(css):
+        m = re.fullmatch(r"@container rail \(max-width:([\d.]+)em\)", ctx[-1] if ctx else "")
+        if m and sel == ".rail.dated small" and ("display", "none") in _css_decls(body):
+            return float(m.group(1))
+    return None
+
+
+def _rail_narrow_views(css):
+    """[(phone, text size, rail width)] for each phone of _RAIL_PHONES and
+    text size of _RAIL_TEXT whose rail app.css draws without its days. A
+    phone's rail is as wide on a list card as on a bill's own page
+    (_rail_phone), and the query reads it in em of the rail's text, which is
+    the browser's size."""
+    em = _rail_narrow_em(css)
+    if em is None:
+        return []
+    w360 = _rail_phone(css)[0]
+    return [(w, std, w360 + (w - 360)) for w in _RAIL_PHONES for std in _RAIL_TEXT
+            if (w360 + (w - 360)) / std <= em]
+
+
+@check("frontend", "at a large text size a phone's rail stays across, its names and marks only: "
+                   "no stop stood on a line of its own, the days in How it got here and said aloud")
+def _rail_large_text():
+    """The person's answer of 8 October 2026 ("I don't like the new design of
+    the rails being stacked vertically on mobile"): where a rail is too
+    narrow for its days, app.css keeps every stop in the row, hides the days,
+    and sets the names in turns over and under the line from the rail's
+    start; no rule there stands a stop on a line of its own, as the
+    foundation's did (flex:0 0 100% and a row per stop). Laid out in
+    _RAIL_FACE's widths, which are wider than the faces a reader is shown,
+    every run of names a rail can have stays apart and inside the rail on
+    every phone and text size where that is so -- the 375px phone at 24px
+    among them, and never a 360px phone at the browser's default, which keeps
+    its days. The days are still drawn in How it got here, and the rail still
+    says each in full to a reader who hears it (its aria-label)."""
+    css = Path("src/pages/app.css").read_text(encoding="utf-8") if Path("src/pages/app.css").exists() else ""
+    if not css:
+        return "skip", "app.css is not here"
+    em = _rail_narrow_em(css)
+    assert em, "app.css no longer takes a narrow rail's days away (@container rail ... " \
+               ".rail.dated small{display:none})"
+    rules = {sel: dict(_css_decls(body)) for ctx, sel, body, _ln in _css_rules(css)
+             if ctx and ctx[-1] == f"@container rail (max-width:{em:g}em)"}
+    stood = [f"{sel} {k}:{v}" for sel, ds in rules.items() for k, v in ds.items()
+             if (k in ("flex", "flex-basis") and "100%" in v) or k == "flex-direction"]
+    assert not stood, ("the narrow rail stands its stops up again, a line each, where the "
+                       f"person asked for it across: {stood}")
+    up = rules.get(".rail.dated .stop:nth-child(even) i", {})
+    assert up.get("position") == "absolute" and up.get("bottom") == "100%", (
+        "the narrow rail's second and fourth names are not set over the line "
+        f"(.rail.dated .stop:nth-child(even) i is {up})")
+    assert rules.get(".rail.dated .stop:first-child i", {}).get("align-self") == "flex-start", (
+        "the narrow rail's first name is centred on its mark, where \"Introduced\" is cut at "
+        "the card's edge")
+    assert rules.get(".rail.dated .stop", {}).get("margin-top"), (
+        "the narrow rail leaves no room over the line for the names set there")
+    views = _rail_narrow_views(css)
+    assert (375, 24) in {(w, s) for w, s, _ in views}, (
+        "a 375px phone at a 24px setting keeps its rail's days, and the rail is 14em there")
+    assert (360, 16) not in {(w, s) for w, s, _ in views}, (
+        "a 360px phone at the browser's 16px loses its rail's days")
+    shapes = {tuple(_rail_names(r)): n for n, r in _RAIL_WORST + _RAIL_UNDATED}
+    shapes.update({("Introduced", "House"): "a resolution", ("Introduced", "Senate", "House"):
+                   "a resolution of two chambers"})
+    bad = [(round(g, 1), round(past, 1), w, std, who) for names, who in shapes.items()
+           for w, std, rw in views for g, past in [_rail_names_turn(names, rw, 13 * std / 16)]
+           if g < _RAIL_GAP or past > 0]
+    assert not bad, (f"where the days step out, names on one row under {_RAIL_GAP}px apart or "
+                     f"past the rail's end (gap, past, phone, text size, rail): {sorted(bad)[:5]}")
+    worst = min((_rail_names_turn(names, rw, 13 * std / 16)[0], w, std)
+                for names in shapes for w, std, rw in views)
+    # The days a reader is not shown here are told: the rail's label says
+    # each in full, and How it got here draws them.
+    rail = [["Ip", "2025-01-08"], ["Hp", "2025-02-13", "voice vote"],
+            ["Sp", "2025-05-22", "16–8, amended"], ["Gp", "2025-07-15", "signed"],
+            ["Lp", "", "Chapter 160"]]
+    got = _app_js("[scope.datedRail({id: 'HB57', passage: '', rail: " + json.dumps(rail) + "}), "
+                  "scope.journeyList({id: 'HB57'}, {journey: {steps: [{mark: 'p', body: 'H', "
+                  "text: 'Passed on a voice vote', date: '2025-02-13'}]}})]",
+                  names=("datedRail", "journeyList"))
+    told = "node is not here to draw them"
+    if got is not None:
+        said = re.search(r'aria-label="([^"]*)"', got[0])
+        assert said and all(d in said.group(1) for d in (
+            "January 8, 2025", "February 13, 2025", "May 22, 2025", "July 15, 2025")), (
+            f"the rail no longer says its days to a reader who hears it: {said and said.group(1)!a}")
+        assert 'role="img"' in got[0], "the rail is no longer one image with its label"
+        assert re.search(r'<span\s+class="jd">Feb 13, 2025</span>', got[1]), (
+            f"How it got here does not draw the day: {got[1]!a}")
+        told = "the rail says every day in full, and How it got here draws it"
+    return "ok", (f"under {em:g}em the rail keeps its stops across, its days out, its names in "
+                  f"turns: {len(views)} phone views of {len(_RAIL_PHONES) * len(_RAIL_TEXT)}, "
+                  f"{len(shapes)} runs of names, at least {worst[0]:.1f}px apart ({worst[1]}px "
+                  f"phone, {worst[2]}px text); {told}")
+
+
+# THE PHONE'S BILL CARD, COMPACT (the person, 8 October 2026). Looking at the
+# foundation's phone screenshots: "I think the mobile text scaling might be a
+# bit off and I preferred the old bill card previews on mobile". Decided with
+# them the same evening, under 600px (37.5em) at the browser's own size:
+_PHONE_CARD = {
+    ".card:not(.focus) .chead .ctitle": ("--t-card", 17),           # the title, in the serif
+    ".card:not(.focus) .chead :is(.cmeta,.cwhy)": ("--t-sm", 14),   # sponsor and committee
+    ".card:not(.focus) .crow .cstat": ("--t-sm", 14),               # the status chip
+    ".card:not(.focus) .rail.dated :is(.stop i,small)": ("--t-rail", 13),  # the rail, the floor
+}
+
+
+@check("frontend", "a bill's card in a list on a phone is compact: a 17px serif title, a 14px "
+                   "sponsor line and chip, a 13px rail with the year on every stop, all in rem")
+def _phone_card_compact():
+    """The card on the bill search and a committee's or a member's page (app.js
+    cardHtml, closed or opened -- a bill's own page, .focus, keeps its head),
+    under 37.5em: each size of _PHONE_CARD by its token, each token the size
+    the person chose and in rem, so the browser's text setting still grows
+    them; the title in the serif; and the year on every dated stop (app.js
+    datedRail), which no rule hides but the narrow rail's, where the days
+    step out whole (_rail_large_text)."""
+    css = Path("src/pages/app.css").read_text(encoding="utf-8") if Path("src/pages/app.css").exists() else ""
+    if not css:
+        return "skip", "app.css is not here"
+    tokens = _css_palette(css)["light"]
+    rules = {sel: dict(_css_decls(body)) for ctx, sel, body, _ln in _css_rules(css)
+             if ctx == ("@media (max-width:37.5em)",)}
+    bad = []
+    for sel, (tok, px) in _PHONE_CARD.items():
+        size = rules.get(sel, {}).get("font-size")
+        if size != f"var({tok})":
+            bad.append(f"{sel} is {size or 'not set'} under 37.5em, not var({tok})")
+        got = _css_px(f"var({tok})", tokens)
+        if got != (px, "rem"):
+            bad.append(f"{tok} is {got[0]}px ({got[1]}), where the person chose {px}px in rem")
+    serif = [sel for _c, sel, body, _l in _css_rules(css)
+             if ".ctitle" in [s.strip() for s in sel.split(",")]
+             and dict(_css_decls(body)).get("font-family") == "var(--serif)"]
+    if not serif:
+        bad.append("a card's title is no longer set in the serif")
+    hid = [f"{' '.join(ctx)} {sel}" for ctx, sel, body, _l in _css_rules(css)
+           if re.search(r"\.ry\b|\.rail\.dated small\b", sel)
+           and ("display", "none") in _css_decls(body)
+           and not (ctx and ctx[-1].startswith("@container rail") and sel == ".rail.dated small")]
+    if hid:
+        bad.append(f"a rule hides a stop's year: {hid}")
+    assert not bad, "; ".join(bad)
+    rail = [["Ip", "2025-01-08"], ["Hp", "2026-01-07"], ["Sx", "2026-05-07"], ["G-"], ["Lx"]]
+    html = _app_js("scope.datedRail({id: 'X', passage: '', rail: " + json.dumps(rail) + "})",
+                   names=("datedRail",))
+    drew = "node is not here to draw it"
+    if html is not None:
+        years = re.findall(r'<small>[^<]*<span class="ry">\s*(\d{4})</span></small>', html)
+        assert years == ["2025", "2026", "2026"], (
+            f"a card's rail does not carry the year on every dated stop: {html!a}")
+        drew = "the year on each of three dated stops"
+    return "ok", (f"under 37.5em: {', '.join(f'{tok} {px}px' for tok, px in _PHONE_CARD.values())}"
+                  f" in rem, the title in the serif; {drew}")
 
 
 @check("frontend", "a tally in How it got here stays on one line, never broken after its dash")
@@ -25513,7 +25752,7 @@ def _rails_on_a_phone():
     if not (idx.is_dir() and css):
         return "skip", "no built idx/, or no app.css"
     width, pad = _rail_phone(css)
-    n, tight = 0, []
+    n, tight, names = 0, [], {}
     for f in sorted(idx.glob("*.json")):
         if not re.match(r"\d{4}-\d{4}$", f.stem):
             continue
@@ -25524,12 +25763,26 @@ def _rails_on_a_phone():
             g = _rail_gap(r["rail"], width, pad)
             if g < _RAIL_GAP:
                 tight.append((round(g, 1), f"{f.stem} {r.get('id')}"))
+            names.setdefault(tuple(_rail_names(r["rail"])), f"{f.stem} {r.get('id')}")
     if not n:
         return "skip", "no index row carries a rail"
     tight.sort()
     assert not tight, (f"{len(tight):,} of {n:,} rails set two stops' words under "
                        f"{_RAIL_GAP}px apart on a {width}px rail: {tight[:5]}")
-    return "ok", f"{n:,} rails, each stop's words at least {_RAIL_GAP:g}px from the next's at {width}px"
+    # And with its names alone, taking turns over and under the line, where
+    # the rail is too narrow for its days (_rail_large_text): every run of
+    # names the index carries, on each phone and text size that is so.
+    narrow = _rail_narrow_views(css)
+    turns = [(round(g, 1), round(past, 1), w, std, who)
+             for names_, who in names.items() for w, std, rw in narrow
+             for g, past in [_rail_names_turn(names_, rw, 13 * std / 16)]
+             if g < _RAIL_GAP or past > 0]
+    assert not turns, (f"{len(turns)} rails set two names under {_RAIL_GAP}px apart, or a "
+                       f"name past the rail's end, where the days step out (gap, past, phone, "
+                       f"text size, bill): {sorted(turns)[:5]}")
+    return "ok", (f"{n:,} rails, each stop's words at least {_RAIL_GAP:g}px from the next's at "
+                  f"{width}px; their {len(names)} runs of names apart and inside the rail on the "
+                  f"{len(narrow)} phone views too narrow for the days")
 
 
 @check("build", "a CACR with a ballot row is built with the voters' vote, its outcome and its source",
