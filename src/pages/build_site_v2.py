@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.185
+# GRANITE_VERSION: 2026-09-05.186
 """
 Generate the faceted site from real General Court data.
 
@@ -9631,8 +9631,8 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
                             "date_note": e.get("date_note") or (
                                 "The General Court's online docket gives "
                                 "another date for this; the journal and the "
-                                "other records of the sitting place it on the "
-                                "date shown.")}
+                                "other records of that session day place it "
+                                "on the date shown.")}
                            if e.get("date_as_recorded") else {}),
                         # An "Enrolled" row on a bill a chamber ended, with
                         # why the history does not tell it (enrolled_untold).

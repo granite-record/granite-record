@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.31
+# GRANITE_VERSION: 2026-09-08.32
 """
 The topics of the civics section: their order, their names, and their prose.
 
@@ -1814,7 +1814,7 @@ used.</li>
 <li>Otherwise the time is estimated from where the bill falls in the recording
 and marked <b>approximate</b>. It can be several minutes out.</li>
 <li>Where no moment has been found, the page says so and offers the whole
-sitting.</li>
+recording.</li>
 </ul>
 <p>Captions are never quoted here. Automatic transcription renders "HB 1381"
 as "HP 1381" often enough that a quotation would be a transcription error
@@ -1844,7 +1844,7 @@ would cost</td></tr>
 
 <h2>Following a bill</h2>
 <p>A bill still moving through the General Court carries an RSS feed, and so
-does every sitting member, every committee still sitting, and every topic. The
+does every sitting member, every current committee, and every topic. The
 <b>Follow</b> control on a record's page gives the address where there is one.
 There are also feeds for the record's newest actions and for hearings coming
 up. A bill's feed ends once the bill is settled. There is no email option yet.
