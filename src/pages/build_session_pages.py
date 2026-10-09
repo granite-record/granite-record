@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-19.26
+# GRANITE_VERSION: 2026-09-19.27
 """
 A page for every day the House sat.
 
@@ -63,6 +63,7 @@ import build_date
 import session_days
 import journal_days
 import officers
+import proceedings
 import shell as S
 import structured as LD
 
@@ -123,11 +124,22 @@ class Members:
     matters -- it prints the first name when two sitting members share a
     surname -- so "Peter Schmidt" resolves where "Schmidt" cannot, which is
     the convention this follows rather than a rule invented here.
+
+    ONLY THE MEMBERS WHO SERVED THAT TERM COUNT (the person, 9 October 2026,
+    of the House's 19 August 2026 excused list). Gary Daniels, Ron Dunn,
+    Kimberly Rice and Len Turcotte were left unlinked because a former member
+    who left years ago shares each surname -- Eric Daniels, J. Timothy Dunn,
+    three former Rices, Alan and Alisson Turcotte -- and nobody who had left
+    could have been excused that day. A former member counts only for the
+    terms their record gives (`served.terms`); a sitting member always counts.
+    Two members serving the same term with one surname still leave the name
+    unlinked, as before. `term` is set for each day before it is drawn.
     """
 
     def __init__(self, site):
         self.by_last = collections.defaultdict(list)
         self.by_full = {}
+        self.term = ""
         for f, in (("legislators.json",), ("former.json",)):
             p = site / f
             if not p.exists():
@@ -142,7 +154,9 @@ class Members:
                 if not slug or "," not in name:
                     continue
                 last, first = (x.strip() for x in name.split(",", 1))
-                self.by_last[(ch, last.lower())].append(slug)
+                terms = (set((r.get("served") or {}).get("terms") or [])
+                         if f == "former.json" else None)
+                self.by_last[(ch, last.lower())].append((slug, terms))
                 self.by_full[(ch, f"{first} {last}".lower())] = slug
                 # "Peter Schmidt" where the record holds "Schmidt, Peter E."
                 bare = first.split()[0] if first.split() else ""
@@ -160,15 +174,22 @@ class Members:
         # A surname of two words is the whole name: the Senate Journal's
         # "Senator Fuller Clark" and "Senator Perkins Kwoka", whose last word
         # alone is someone else's surname or no one's.
-        cand = self.by_last.get((body, n.lower()), [])
+        cand = self.serving(self.by_last.get((body, n.lower()), []))
         if len(cand) == 1:
             return cand[0]
         parts = n.split()
         if parts:
-            cand = self.by_last.get((body, parts[-1].lower()), [])
+            cand = self.serving(self.by_last.get((body, parts[-1].lower()), []))
             if len(cand) == 1:
                 return cand[0]
         return None
+
+    def serving(self, cands):
+        """The slugs of `cands` who served `self.term`: every sitting member,
+        and a former member only where their record names that term. With no
+        term set, everyone, as before."""
+        return [s for s, terms in cands
+                if terms is None or not self.term or self.term in terms]
 
 
 def base_bill(bid):
@@ -1329,6 +1350,9 @@ def main():
     for n, key in enumerate(order):
         day = days[key]
         date = day.date
+        # Names are matched among the members serving this day's term
+        # (Members: ONLY THE MEMBERS WHO SERVED THAT TERM COUNT).
+        members.term = proceedings.vote_term(str(date)[:4], str(date))
         # THE SENATE JOURNAL IS READ FOR ONE THING: WHO WAS EXCUSED. Across
         # all 491 Senate files there are no UNANIMOUS CONSENT sections, no
         # REMARKS, no PERSONAL PRIVILEGE, and "spoke in favor" appears in three

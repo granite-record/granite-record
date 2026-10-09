@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.482
+# GRANITE_VERSION: 2026-09-04.483
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -27406,6 +27406,52 @@ def _links_resolve():
                       "with the files placed, the lockup and the mark are drawn")
     finally:
         shutil.rmtree(root, ignore_errors=True)
+
+
+@check("session", "a surname on a session day links to the one member serving that term who bears it, "
+                   "never to a member who had left, and never where two serving members share it",
+       needs=("build_session_pages",))
+def _surname_links_serving_members(BSP):
+    """The person, 9 October 2026, of the House's 19 August 2026 excused list:
+    Rep. Daniels, Dunn, Rice and Turcotte had no link, because former members
+    who left years before share each surname (Members: ONLY THE MEMBERS WHO
+    SERVED THAT TERM COUNT). Built on a small site: a sitting Kimberly Rice, a
+    former Thomas Rice of 1999-2000 only, and two sitting Smiths."""
+    import proceedings as PR
+    root = Path(tempfile.mkdtemp(prefix="gr-surnames-"))
+    try:
+        (root / "legislators.json").write_text(json.dumps([
+            {"slug": "kimberly-rice", "name": "Rice, Kimberly", "chamber": "H"},
+            {"slug": "a-smith", "name": "Smith, Anne", "chamber": "H"},
+            {"slug": "b-smith", "name": "Smith, Bob", "chamber": "H"}]), encoding="utf-8")
+        (root / "former.json").write_text(json.dumps([
+            {"slug": "thomas-rice", "name": "Rice, Thomas", "chamber": "H",
+             "served": {"terms": ["1999-2000", "2001-2002"]}}]), encoding="utf-8")
+        m = BSP.Members(root)
+        got = {}
+        for term in ("2025-2026", "1999-2000", ""):
+            m.term = term
+            got[term] = (m.slug("H", "Rice"), m.slug("H", "Smith"), m.slug("H", "Kimberly Rice"))
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    bad = []
+    if got["2025-2026"] != ("kimberly-rice", None, "kimberly-rice"):
+        bad.append(f"in 2025-2026 Rice, Smith and Kimberly Rice link to {got['2025-2026']}, not "
+                   "the sitting Kimberly Rice, nobody, and Kimberly Rice")
+    if got["1999-2000"][0] is not None or got["1999-2000"][1] is not None:
+        bad.append(f"in 1999-2000, when a Rice who has since left also served, Rice links to "
+                   f"{got['1999-2000'][0]!r}: two serving members bear it, so it must stay unlinked")
+    if got[""][0] is not None:
+        bad.append("with no term set Rice links, which is the old all-time match changed silently")
+    # Organization Day belongs to the next term, as everywhere else.
+    if PR.vote_term("2026", "2026-12-02") != "2027-2028" or PR.vote_term("2026", "2026-08-19") != "2025-2026":
+        bad.append("a session day's term is not its biennium's (Organization Day the next term's)")
+    src = Path(_paths.locate("build_session_pages.py")).read_text(encoding="utf-8")
+    if "members.term = proceedings.vote_term(" not in src:
+        bad.append("the day loop no longer sets the day's term before drawing names")
+    assert not bad, "; ".join(bad)
+    return "ok", ("a surname links only among the members serving that day's term: the sitting "
+                  "Rice in 2026, nobody where two serving members share it")
 
 
 @check("session", "a vote's date leads to that chamber's sitting where the sitting has a page, and nowhere else",
