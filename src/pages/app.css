@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.224 */
+/* GRANITE_VERSION: 2026-09-07.225 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -1787,6 +1787,27 @@ line-height:1.5}
 .cbody{border-top:1px solid var(--rule);padding:0 var(--sp-6) var(--sp-7)}
 .cbody[hidden]{display:none}
 .tabs{display:flex;gap:var(--sp-7);border-bottom:1px solid var(--rule);margin:0 0 var(--sp-6);flex-wrap:wrap}
+/* ONE ROW ON A TABLET TOO (8 October 2026). At the interface's 16px a bill's
+   seven tabs no longer fit a 768px card -- 687px of tabs and gaps in 686 --
+   and Documents wrapped onto a row of its own 44px under the rest, where it
+   read as something below the strip rather than part of it (the review of
+   the polish foundation). Between the phone's width and the desktop's the
+   card's strip is the phone's (below): one row that scrolls, with the edge
+   that says so, which the person chose for the strip on 16 September. It
+   asks for no width of its own (width 0, at least the card's), or its tabs'
+   width would be the least the page could draw at. A committee's or a
+   member's two or three tabs fit, and keep their rule. */
+@media (min-width:45.0625em) and (max-width:68.75em){
+  .card .tabs{flex-wrap:nowrap;gap:0 var(--sp-6);overflow-x:auto;scrollbar-width:none;
+  width:0;min-width:100%;
+  background:
+    linear-gradient(var(--surface),var(--surface)) 0 0/24px 100% local no-repeat,
+    linear-gradient(var(--surface),var(--surface)) 100% 0/24px 100% local no-repeat,
+    linear-gradient(to right,var(--shadow),transparent) 0 0/16px 100% no-repeat,
+    linear-gradient(to left,var(--shadow),transparent) 100% 0/16px 100% no-repeat}
+  .card .tabs::-webkit-scrollbar{display:none}
+  .card .tabs [role=tab]{white-space:nowrap;flex:0 0 auto}
+}
 .tab{padding:var(--sp-5) 0 var(--sp-4);font-size:var(--t-ui);color:var(--ink-2);border-bottom:2px solid transparent;margin-bottom:-1px}
 .tab[aria-selected=true]{color:var(--ink);border-bottom-color:var(--pine);font-weight:600}
 .pane[hidden]{display:none}
