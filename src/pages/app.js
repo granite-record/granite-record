@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.163
+// GRANITE_VERSION: 2026-09-07.164
 // What each kind of document actually is, said once rather than in every row.
 const DOCWHAT={text:"the bill as it currently stands",
   status:"the page this site takes a bill's status from",
@@ -2272,7 +2272,12 @@ let IDX=[],META={},term=null,query="",sortBy="num",sortChosen=false;
 // unique only within a term, so in that list a card is not opened in place --
 // two HB 1s would share one card's state -- and goes to its own page instead.
 const ALL_TERMS="all";
-const inTermOf=b=>term===ALL_TERMS||!term||!b.term||b.term===term;
+// The terms' bills and not the requests, which are no term's and not bills:
+// All Terms fetches META.terms alone, but a reader who had opened the
+// requests first found their 302 rows in it as well -- "34,019 bills across
+// all terms", 302 more than there are, once the count was always said (the
+// review of 8 October 2026).
+const inTermOf=b=>(term===ALL_TERMS&&!b.lsr)||!term||!b.term||b.term===term;
 // "in the 2027-requests term" is not English and not what that list is, so
 // the picker's own label speaks for it: "among the 2027 bill requests". The
 // word "bills" the count puts before this is wrong for them too, which is why
@@ -2832,18 +2837,24 @@ function fgroup(key,label,vals,counts,searchable,paint,show){
       <input class="sbox" id="sbox" aria-label="Find a prime sponsor by name" placeholder="Type a name…" value="${esc(sponsorFilter)}" autocomplete="off">`
       +(shown.map(v=>`<label class="fopt ${!counts[v]?'off':''}"><input type="checkbox" data-f="${key}"
         value="${esc(v)}" ${chosen.has(v)?"checked":""}><span>${esc(v)}</span>
-        <span class="c">${counts[v]||0}</span></label>`).join("")
+        <span class="c">${(counts[v]||0).toLocaleString()}</span></label>`).join("")
         ||(sponsorFilter?`<p style="font-size:12.5px;color:var(--ink-2)">No match</p>`:""));
   }else{
     inner=vals.map(v=>`<label class="fopt ${!counts[v]&&!chosen.has(v)?'off':''}">
       <input type="checkbox" data-f="${key}" value="${esc(v)}" ${chosen.has(v)?"checked":""}>
       <span>${paint?`<span class="cstat ${paint(v)}" style="padding:1px 8px;white-space:normal;display:inline-block">${
         esc(v)}</span>`:show?show(v):esc(v)}</span>
-      <span class="c">${counts[v]||0}</span></label>`).join("");
+      <span class="c">${(counts[v]||0).toLocaleString()}</span></label>`).join("");
   }
+  // A short list that is the same few words in every term -- the Status
+  // filter's categories, the kinds of measure -- is shown whole (.whole):
+  // in the box that scrolls, a phone's 210px showed six of the 2025-2026
+  // term's seven kinds and none of All Terms' after SCR, CACR among them,
+  // with nothing to say the list went on.
+  const whole=key==="status"||key==="type";
   return `<div class="fgroup ${open?'open':''}"><button class="fhead" data-g="${key}"
     aria-expanded="${open}"><span>${label}</span>${chosen.size?`<span class="badge">${chosen.size}</span>`:""}
-    <span class="chev">▸</span></button><div class="fbody" ${open?"":"hidden"}>${inner}</div></div>`;
+    <span class="chev">▸</span></button><div class="fbody${whole?" whole":""}" ${open?"":"hidden"}>${inner}</div></div>`;
 }
 
 function renderFacets(){
@@ -2865,9 +2876,12 @@ function renderFacets(){
   // Withdrawn and Vetoed only where a bill is one. It offered the chip's
   // words, a stage at a time, and before that four kinds -- In progress,
   // Became law, Killed, Vetoed -- with no way to ask for interim study. Not
-  // at all for the requests, which have no status yet.
+  // at all for the requests, which have no status yet -- unless one is ticked
+  // there, carried from a term the reader left: then the group stays, the
+  // tick on it at none, so the empty list can be seen to be its doing and
+  // undone where it was done.
   const cats=new Set(present("status"));
-  if(cats.size)h+=fgroup("status","Status",
+  if(cats.size||sel.status.size)h+=fgroup("status","Status",
     STATUSCATS.filter((c,i)=>i<STATUSCATS_ALWAYS||cats.has(c)||sel.status.has(c)),
     cnt("status","status"),false,v=>CATCLASS[v]||"");
   // WHAT KIND OF MEASURE (TYPE_NAME), in the person's order (TYPEORDER), each
@@ -7046,19 +7060,25 @@ function render(more){
   // reader's eye. With nothing narrowing the list it is the term's whole
   // count, "2,243 bills in the 2025-2026 term" ("33,717 bills across all
   // terms" on the build of 7 October); narrowed, "31 of 2,243 bills in the
-  // 2025-2026 term". The requests keep what they had, nothing until
-  // something narrows them: their explainer above the list already says
-  // what they are.
+  // 2025-2026 term". The requests too, "302 bill requests for 2027": the
+  // person said always, and their explainer says what a request is, not how
+  // many there are.
+  // WRITTEN ONLY WHEN IT SAYS SOMETHING NEW. The count is a live region, and
+  // render() runs for far more than a new list -- each hundred rows the
+  // reader scrolls to, a card opened, a tab in a card, the Sort. While the
+  // count was empty with nothing narrowing the list, writing "" over "" was
+  // no change at all; a sentence written over the same sentence replaces its
+  // text node, and a screen reader may read it out again each time.
   const narrowed=rows.length!==inTerm;
-  const reqTerm=!!(META.requests&&term===META.requests.term);
-  $("#count").textContent=focused?""
+  const said=focused?""
     :ids0
     ?`${rows.length} matching ${termPhrase()}`
     :narrowed
     ?`${rows.length.toLocaleString()} of ${inTerm.toLocaleString()} ${termNoun()} ${termPhrase()}`
-    :reqTerm?""
     :`${inTerm.toLocaleString()} ${inTerm===1?termNoun().replace(/s$/,""):termNoun()} ${
       termPhrase()}`;
+  const ce=$("#count");
+  if(ce.textContent!==said)ce.textContent=said;
   // Same number, different term: say so instead of an empty page.
   const elsewhere=ids0&&!rows.length
     ? IDX.filter(b=>ids0.includes(b.id.toUpperCase())&&b.term&&b.term!==term)

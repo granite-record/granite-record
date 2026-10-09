@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.220 */
+/* GRANITE_VERSION: 2026-09-07.221 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -1381,17 +1381,23 @@ color:var(--ink-2);cursor:pointer}
    that moves. The count's own line is centred on the Sort beside it. */
 .qhint{font-size:var(--t-ui);color:var(--ink-2);margin:var(--sp-3) 0 0;display:flex;align-items:flex-start;
 gap:var(--sp-3) var(--sp-6);flex-wrap:wrap;max-width:840px}
-.qhint #count{flex:1 1 0;min-width:0;align-self:center}
-/* A request's list says nothing here until something narrows it, and a bill
-   opened in the list says nothing at all: out of the row while empty, so it
-   takes no gap, and not display:none -- it is the live region that says the
-   list has changed, and a region that is not there when the sentence
-   arrives is not read out. */
+/* The count beside the Sort at any width: never wider than what the Sort
+   leaves of the row (its width and the gap), so it wraps under itself
+   rather than dropping under the Sort; and no wider than its own words, so
+   that what the search read can follow it on the same line. */
+.qhint #count{flex:0 1 auto;min-width:0;max-width:calc(100% - var(--pickw) - var(--sp-6));align-self:center}
+/* A bill opened in the list says nothing here: out of the row while empty,
+   so it takes no gap, and not display:none -- it is the live region that
+   says the list has changed, and a region that is not there when the
+   sentence arrives is not read out. */
 .qhint #count:empty{position:absolute;width:1px;height:1px;overflow:hidden;
 clip-path:inset(50%)}
-/* What the search read beside what was typed: a line of its own, under the
-   Sort and the count rather than squeezed beside them. */
-.qhint #synhint{flex:1 0 100%}
+/* What the search read beside what was typed: after the count, on the same
+   line wherever 20em of it fits there, and a line of its own under the Sort
+   and the count where it does not. On a line of its own it pushed the list
+   down by a line whenever a search read a synonym -- "school" at 1366px --
+   which is the list moving under the reader as they type. */
+.qhint #synhint{flex:1 1 20em;min-width:0;align-self:center}
 .qhint #synhint:empty{display:none}
 .link{color:var(--pine);font-size:var(--t-ui)}
 .shell{max-width:1180px;margin:0 auto;padding:var(--sp-7) var(--sp-8) var(--sp-12);display:grid;
@@ -1404,6 +1410,10 @@ overflow-y:auto;overflow-x:hidden}
 .fgroup.open .chev{transform:rotate(90deg)}
 .fhead .badge{background:var(--pine);color:var(--on-pine);font-size:var(--t-sm);padding:1px var(--sp-3);border-radius:var(--r-pill);font-weight:600}
 .fbody{padding:0 var(--sp-1) var(--sp-5);max-height:340px;overflow-y:auto;overflow-x:hidden}.fbody[hidden]{display:none}
+/* The Status filter and the Bill Type filter, whole (fgroup's .whole): a few
+   words, the same ones every term, and nothing of them in a box that
+   scrolls. */
+.fbody.whole{max-height:none}
 /* THE CONTROL THAT OPENS THE PANEL ON A PHONE. Nothing above 720px: there
    the panel is a column of its own beside the results and always open. It
    carries the same chevron and count badge .fhead does, scoped the same way
@@ -1421,11 +1431,13 @@ overflow-y:auto;overflow-x:hidden}
 /* The Bill Type filter's options: the letters in a column of their own and
    the name beside them, so a name that wraps -- "Constitutional Amendment
    Concurrent Resolution" in a 250px column -- wraps under itself and not
-   under the letters. 3.4em holds the longest, SSHCR. The box and the count
+   under the letters. 3.7em holds the longest, SSHCR: 49.4px of 600-weight
+   14px Public Sans in Chrome on 8 October 2026, where 3.4em was 47.6px and
+   pushed its name 2px out of line with the rest. The box and the count
    stand on the first line, beside the letters, rather than in the middle of
    a name three lines long. */
 .fopt .tname{display:flex;gap:var(--sp-3);align-items:baseline}
-.fopt .tcode{flex:0 0 3.4em;font-weight:600}
+.fopt .tcode{flex:0 0 3.7em;font-weight:600}
 .fopt:has(.tname){align-items:baseline}
 .sbox{width:100%;height:32px;padding:0 var(--sp-4);font:inherit;font-size:var(--t-ui);
 border:1px solid var(--edge);border-radius:var(--r-in);margin-bottom:var(--sp-3)}
@@ -2503,6 +2515,8 @@ text-align:center;color:var(--ink-2);font-size:var(--t-ui)}
   /* The last filter group's rule and the block's own rule sat together. */
   .facets .fgroup:last-child{border-bottom:0}
   .qhint{flex-wrap:wrap;gap:var(--sp-4)}
+  /* The count's room beside the Sort, at this row's narrower gap. */
+  .qhint #count{max-width:calc(100% - var(--pickw) - var(--sp-4))}
   .crow{flex-wrap:wrap;gap:var(--sp-2)}
   /* The status is pushed to the right of the row by margin-left:auto, which
      is right while the row is a row. Wrapped onto a line of its own at

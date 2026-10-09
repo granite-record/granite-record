@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.473
+# GRANITE_VERSION: 2026-09-04.474
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -38323,6 +38323,12 @@ globalThis.fetch = async (u) => { const p = decodeURIComponent(new URL(u).pathna
 const ticks = async (n) => { for (let i = 0; i < n; i++) await new Promise(r => setImmediate(r)); };
 location.search = process.argv[2] || "";
 const box = document.querySelector("#q"); box.disabled = true;
+// Each write to the count, which is a live region: a sentence written over
+// the same sentence can be read out again.
+const countEl = document.querySelector("#count");
+let countText = "", countWrites = 0;
+Object.defineProperty(countEl, "textContent", {get() { return countText; },
+  set(v) { countText = String(v); countWrites++; }});
 let s;
 try { s = (0, eval)(fs.readFileSync("./page.js", "utf8")
   + "; ({render, sel, getTerm: () => term, setQuery: (q) => { query = q; }})"); }
@@ -38334,6 +38340,9 @@ const look = () => {
     + '" value="([^"]*)"[^>]*>\\s*<span>([\\s\\S]*?)</span>\\s*<span class="c">([\\d,]+)</span>', "g"))]
     .map(m => [m[1], m[2].replace(/\s+/g, " ").trim(), +m[3].replace(/,/g, "")]);
   return {count: $("#count").textContent, status: opts("status"), type: opts("type"),
+    whole: [...f.matchAll(/<button class="fhead" data-g="([^"]+)"[\s\S]*?<div class="fbody( whole)?"/g)]
+      .filter(m => m[2]).map(m => m[1]),
+    ticked: [...f.matchAll(/data-f="([^"]+)" value="([^"]*)" checked/g)].map(m => m[1] + "=" + m[2]),
     groups: [...f.matchAll(/data-g="([^"]+)"/g)].map(m => m[1]),
     labels: [...f.matchAll(/data-g="([^"]+)"\s*aria-expanded="[^"]*"><span>([^<]*)<\/span>/g)]
       .map(m => [m[1], m[2]]),
@@ -38348,7 +38357,9 @@ const look = () => {
     out.start = look();
     const clear = () => { Object.values(s.sel).forEach(x => x.clear()); };
     clear(); s.render(); out.none = look();
+    let w = countWrites; s.render(); s.render(); s.render(); out.rewritesWhole = countWrites - w;
     s.sel.status.add("In Progress"); s.render(); out.progress = look();
+    w = countWrites; s.render(); s.render(); out.rewritesNarrowed = countWrites - w;
     clear(); s.sel.type.add("CACR"); s.render(); out.cacr = look();
     s.sel.status.add("Died"); s.render(); out.cacrDied = look();
     clear();
@@ -38359,6 +38370,11 @@ const look = () => {
     out.older = await term("2023-2024");
     out.all = await term("all");
     out.requests = await term("2027-requests");
+    // A status ticked in a term with statuses, carried into the requests.
+    s.sel.status.add("Passed"); s.render(); out.requestsTicked = look(); s.sel.status.clear();
+    s.render();
+    // All Terms with the requests already fetched: the terms' bills alone.
+    out.allAfterRequests = await term("all");
     await term("2025-2026");
     box.value = "HB 2"; box.fire("input"); await ticks(20); out.number = look();
   } catch (e) { out.threw = e.constructor.name + ": " + e.message + " " + (e.stack || "").split("\n")[1]; }
@@ -38430,8 +38446,13 @@ def _status_and_type_filters():
     ticking CACR listing the two amendments, and the two filters together;
     Sort by status heading the list with the categories in order and their
     counts; the earlier term offering the five and not Withdrawn or Vetoed;
-    the requests offering no status and their types by what each asks for;
-    and ?status= and ?type= in the address ticking the filters, a chip's own
+    the requests offering no status and their types by what each asks for --
+    and, where a status ticked in another term is carried into them, the
+    Status filter with that tick on it, at none, so the empty list can be
+    undone where it was done (the review of 8 October 2026); the Status and
+    Bill Type filters shown whole, never in a box that scrolls (the review:
+    a phone's 210px showed six of the current term's seven kinds); and
+    ?status= and ?type= in the address ticking the filters, a chip's own
     word read as its category."""
     fx = _search_groups_fixture()
     got = _node_app(_SEARCH_GROUPS_HARNESS, {"fixture.json": json.dumps(fx)},
@@ -38504,6 +38525,13 @@ def _status_and_type_filters():
         bad.append(f"All Terms offers {allv}")
     if "status" in got["requests"]["groups"]:
         bad.append("the requests are offered a Status filter: they have no status yet")
+    rt = got["requestsTicked"]
+    if "status=Passed" not in rt["ticked"] or ("Passed", 0) not in [(v, c) for v, _l, c in
+                                                                  rt["status"]]:
+        bad.append(f"Passed ticked and carried into the requests is not on offer to untick: "
+                   f"the filters are {rt['groups']}, ticked {rt['ticked']}")
+    if sorted(n["whole"]) != ["status", "type"]:
+        bad.append(f"the filters shown whole are {n['whole']}, not Status and Bill Type")
     if [(v, c) for v, _l, c in got["requests"]["type"]] != [("HB", 2), ("SB", 1)]:
         bad.append(f"the requests' Bill Type filter offers {got['requests']['type']}")
     assert not bad, "; ".join(bad)
@@ -38526,9 +38554,17 @@ def _search_count_always():
     list with nothing narrowing it says "20 bills in the 2025-2026 term", a
     filter "4 of 20 bills in the 2025-2026 term", another term its own
     whole count, All Terms "23 bills across all terms", a number search "1
-    matching in the 2025-2026 term", and the requests, as before, nothing
-    until something narrows them. And the picker's first option is "All
-    Terms", in the Title Case of the terms under it."""
+    matching in the 2025-2026 term", and the requests "3 bill requests for
+    2027" -- they said nothing until something narrowed them, which the
+    review of 8 October 2026 read as short of "always" -- and All Terms
+    opened after the requests still "23 bills across all terms": the
+    requests are no term's, and with them fetched All Terms listed them too,
+    the always-said count then 302 over the real one. And the count, a live
+    region, is not written again with the sentence it already says: render()
+    runs for each hundred rows scrolled to, a card opened, the Sort, and the
+    same sentence written over itself can be read out each time. And the
+    picker's first option is "All Terms", in the Title Case of the terms
+    under it."""
     fx = _search_groups_fixture()
     got = _node_app(_SEARCH_GROUPS_HARNESS, {"fixture.json": json.dumps(fx)})
     if got is None:
@@ -38537,15 +38573,22 @@ def _search_count_always():
     want = {"start": "20 bills in the 2025-2026 term", "none": "20 bills in the 2025-2026 term",
             "progress": "4 of 20 bills in the 2025-2026 term",
             "older": "3 bills in the 2023-2024 term", "all": "23 bills across all terms",
-            "requests": "", "number": "1 matching in the 2025-2026 term"}
+            "requests": "3 bill requests for 2027", "allAfterRequests": "23 bills across all terms",
+            "number": "1 matching in the 2025-2026 term"}
     bad = [f"{k}: {got[k]['count']!r}, not {v!r}" for k, v in want.items()
            if got[k]["count"] != v]
+    for k, what in (("rewritesWhole", "with nothing narrowing the list"),
+                    ("rewritesNarrowed", "with a filter ticked")):
+        if got[k]:
+            bad.append(f"the count is written {got[k]} more time(s) {what} with the sentence it "
+                       "already says: a live region, read out again")
     opts = re.findall(r'<option value="([^"]*)">([^<]*)</option>', got["year"])
     if not opts or opts[0] != ("all", "All Terms"):
         bad.append(f"the term picker's first option is {opts[:1]}, not All Terms")
     assert not bad, "the count line says " + "; ".join(bad)
     return "ok", ("the count is the term's whole count with nothing narrowing it, n of N when "
-                  "something does, across all terms on All Terms, and the picker says All Terms")
+                  "something does, across all terms on All Terms and for the requests, written "
+                  "only when it changes, and the picker says All Terms")
 
 
 @check("frontend", "the Sort sits before the count, under the term picker and exactly as wide "
@@ -38561,9 +38604,13 @@ def _sort_beside_count():
     width from one custom property, defined once, and no other rule -- at any
     width, in any media query -- gives either a width of its own (the phone's
     #year{width:100%} was one); and the row holds the Sort at its start while
-    the count takes the rest and wraps under itself. Measured in Chrome on 8
-    October from 1366 to 360: both 172px, the Sort not moving when a search
-    is typed, and no sideways scroll."""
+    the count, never wider than the Sort leaves it, wraps under itself beside
+    it. Measured in Chrome on 8 October from 1366 to 360: both 172px, the
+    Sort not moving when a search is typed, and no sideways scroll.
+    And what the search read (#synhint) is not a line of its own whatever
+    the room: from 1024px up "also matching: education, student, teacher,
+    classroom" fits after the count, and as a line of its own it pushed the
+    list down 28px at the first synonym typed (the review of 8 October)."""
     html = Path("src/pages/bills.html").read_text(encoding="utf-8")
     css = Path("src/pages/app.css").read_text(encoding="utf-8")
     bad = []
@@ -38597,9 +38644,16 @@ def _sort_beside_count():
     if not q or "align-items:flex-start" not in q[0][1].replace(" ", ""):
         bad.append("the .qhint row does not hold the Sort at its top: a count that wraps "
                    "would move it")
-    c = [(sel_, body) for sel_, body in rules if sel_.strip() == ".qhint #count"]
-    if not c or not re.search(r"flex:1 1 0", c[0][1]):
-        bad.append("the count does not take the rest of the Sort's row")
+    c = [body for sel_, body in rules if sel_.strip() == ".qhint #count"]
+    held = [b for b in c if "max-width" in b]
+    if not held or not all(
+            re.search(r"max-width:calc\(100% - var\(--pickw\) - var\(--sp-\d+\)\)", b)
+            for b in held):
+        bad.append("the count is not held to what the Sort leaves of its row: a long one would "
+                   f"drop under the Sort: {c}")
+    h = [body for sel_, body in rules if sel_.strip() == ".qhint #synhint"]
+    if not h or any(re.search(r"flex:\s*\d+\s+\d+\s+100%|flex-basis:\s*100%", b) for b in h):
+        bad.append(f"what the search read is a line of its own at every width: {h}")
     assert not bad, "; ".join(bad)
     return "ok", ("the Sort comes before the count, and #year and #sort share --pickw and "
                   "nothing else sizes either")
