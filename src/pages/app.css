@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.222 */
+/* GRANITE_VERSION: 2026-09-07.223 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -574,6 +574,15 @@ box-shadow:inset 0 -2px 0 var(--pine)}
 }
 @media (max-width:45em){
   nav.top .in{gap:var(--sp-3) var(--sp-5);padding:var(--sp-4) var(--sp-5)}
+  /* THE NAME GIVES WAY, NOT THE MENU. At a 24px browser text size the name
+     is 33px and the bar's three things no longer fit a 375px phone, and the
+     menu button, last in the row, wrapped alone onto a second one (the
+     rendered sweep, 8 October 2026). The name may take two lines instead,
+     so the controls stay where a reader looks for them: the row does not
+     wrap here, where the sections are folded into the panel and the bar is
+     only the name and two buttons. */
+  nav.top .in{flex-wrap:nowrap}
+  nav.top .brand{flex:0 1 auto;min-width:0;white-space:normal}
   nav.top a{min-height:44px;padding:0 var(--sp-5)}
   .themer{min-height:44px}
   /* The search button joined the header on 16 September and pushed the theme
@@ -1620,16 +1629,25 @@ margin-left:max(0px,calc((100% + 46px - var(--sp-6) - 560px) / 2))}
 }
 /* An opened card in the list shows the same tabs as the bill's own page, so
    its rail is the page's rail, centred (the person, 24 September). */
+/* THE MARK IS SIZED IN rem, WITH ITS GLYPH (8 October 2026). The circle was
+   15px and its check or cross went from 11px to 14px with the type scale's
+   floor: 14px of glyph in a 15px circle broke through the ring in forced
+   colours, where the ring is drawn round it, and at a 24px text setting the
+   21px glyph stood out of a circle that stayed 15px (the review of the
+   polish foundation). The circle, the line through it, the room above the
+   stop's name and the glyph now follow the reader's text size together,
+   each as it was at 16px, and the glyph is the floor's 13px (a check or a
+   cross has no case; the capitals are what the floor asks of 13px). */
 .stop{flex:1 1 0;position:relative;display:flex;justify-content:center;
-padding-top:var(--sp-7);min-width:0}
+padding-top:1.25rem;min-width:0}
 /* The line between stops, behind them, stopping at the last one. */
-.stop:before{content:"";position:absolute;top:8px;left:50%;right:-50%;
+.stop:before{content:"";position:absolute;top:.5rem;left:50%;right:-50%;
 height:1px;background:var(--rule-2)}
 .stop:last-child:before{display:none}
-.stop b{position:absolute;top:1px;left:50%;width:15px;height:15px;
-margin-left:-7.5px;border-radius:50%;border:1.5px solid var(--edge);
-background:var(--paper);box-sizing:border-box;font-size:var(--t-sm);font-weight:600;
-line-height:12px;text-align:center;color:transparent}
+.stop b{position:absolute;top:.0625rem;left:50%;width:.9375rem;height:.9375rem;
+margin-left:-.46875rem;border-radius:50%;border:1.5px solid var(--edge);
+background:var(--paper);box-sizing:border-box;font-size:var(--t-label);font-weight:600;
+line-height:.75rem;text-align:center;color:transparent;text-transform:uppercase}
 /* --edge IS THE BOUNDARY TOKEN, AND THIS IS TEXT. The stop it never reached
    had its label in --edge, which is specified for the outline of a control
    and carries a 3:1 requirement; as 12px words it needs 4.5:1 and gets
@@ -1689,8 +1707,38 @@ padding-inline:var(--sp-2)}
    own width -- the same card is 560px in a bill's head and 320 on a phone --
    so the stops always match rather than one wrapping beside four that do not
    (option E's rule, measured there at 768px). */
-.rail.dated{container:rail / inline-size}
+.rail.dated{container:rail / inline-size;flex-wrap:wrap}
 @container rail (max-width:34.5em){.rail.dated small .ry{display:block}}
+/* AND WHERE FIVE STOPS DO NOT FIT ACROSS, THE RAIL STANDS UP: one stop a
+   line, its mark, its name and its day (the plan's D3, drawn as option D's
+   320px rail). The stops' words grow with the reader's text size and the
+   phone does not, so at a 24px browser setting on a 375px phone the rail is
+   14em across and "Introduced", "House", "Senate" and "Governor" were drawn
+   over each other with "Introduced" cut at the card's edge (the rendered
+   sweep's text-on-text measure, 8 October 2026: every rail on a phone). The
+   width is the rail's own, in em of its text, so the same rule holds at any
+   text size: a 360px phone at 16px (19.9em) keeps the rail across and a
+   320px one stands it up. A query cannot restyle its own container, so the
+   rail always wraps and each stop takes the whole line here; the half
+   padding the phone's rail borrows (above) is given back to the stops. */
+@container rail (max-width:19.5em){
+  .rail.dated .stop{flex:0 0 100%;flex-direction:row;flex-wrap:wrap;align-items:center;
+  justify-content:flex-start;text-align:left;gap:0 var(--sp-4);padding:var(--sp-1) 0;
+  margin-inline:var(--sp-4)}
+  .rail.dated .stop b{position:relative;top:auto;left:auto;margin:0;flex:0 0 .9375rem}
+  .rail.dated .stop:before{top:50%;bottom:-50%;left:calc(.46875rem - .5px);right:auto;
+  width:1px;height:auto}
+  .rail.dated small{margin-top:0;padding-inline:0}
+  .rail.dated small .ry{display:inline}
+}
+/* IN FORCED COLOURS THE RING IS DRAWN ROUND THE GLYPH IN THE SAME INK, so the
+   check needs the room its 13px takes: a 17px ring where the others draw 15,
+   centred where the 15px one was. Elsewhere the glyph is the ground's colour
+   on a filled disc and what crosses the edge is not seen. */
+@media (forced-colors:active){
+  .stop b{width:1.0625rem;height:1.0625rem;margin-left:-.53125rem;top:0}
+  .rail.dated .stop b{flex-basis:1.0625rem}
+}
 .cstat{margin-left:auto;font-size:var(--t-sm);font-weight:600;padding:var(--sp-1) var(--sp-4);border-radius:var(--r-in);white-space:nowrap}
 /* ONE CHIP SHAPE ACROSS THE SITE. A person is drawn as .mchip -- a 3px
    radius, a 1px edge, and a 3px bar down the left in the colour of the thing
@@ -2849,7 +2897,11 @@ border-radius:var(--r-out);background:var(--surface)}
 .cinfo:not(:has(*)){display:none}
 .cinfo dl{margin:0}
 .cinfo dl>div{display:flex;gap:var(--sp-5);padding:var(--sp-1) 0;font-size:var(--t-ui)}
-.cinfo dt{flex:0 0 118px;color:var(--ink-2);font-size:var(--t-sm);letter-spacing:.04em;
+/* A FIELD'S NAME, AT THE LABEL SIZE (D3: "Field names (CHAIR, SEAT)", 13px
+   capitals), in a column sized in rem: at the meta size in a 118px column
+   "Committee aide" broke over two lines beside a one-line name (the review
+   of the polish foundation, 8 October 2026). */
+.cinfo dt{flex:0 0 8.5rem;color:var(--ink-2);font-size:var(--t-label);letter-spacing:.04em;
 text-transform:uppercase;font-weight:600;padding-top:var(--sp-1)}
 .cinfo dd{margin:0;color:var(--ink)}
 /* The officers' chips: the label beside the chip where the row has room for
@@ -3015,7 +3067,7 @@ margin-top:var(--sp-1)}
 @media(max-width:38.75em){
   .phead h1{font-size:var(--t-title)}
   .cinfo{padding:var(--sp-5) var(--sp-5);gap:0}
-  .cinfo dt{flex:0 0 106px}
+  .cinfo dt{flex:0 0 6.625rem}
   .croster .mlist{grid-template-columns:1fr}
   .bc-s{justify-self:start}
 }
@@ -3088,7 +3140,11 @@ margin-top:var(--sp-1)}
    100px from her name and Jim Snodgrass's 200px from his -- so the pair read
    as two unrelated things that happened to share a line. Both columns start
    at the same x in every row now, which is what makes it a table. */
-.offrow{display:grid;grid-template-columns:minmax(0,290px) minmax(0,1fr);
+/* The name's column in rem, 290px at the browser's 16px: in px it held a
+   chip that grows with the reader's text size, and at 24px a member's chip
+   ran under the e-mail address beside it (the rendered sweep, 8 October
+   2026). */
+.offrow{display:grid;grid-template-columns:minmax(0,18.125rem) minmax(0,1fr);
 gap:var(--sp-1) var(--sp-7);align-items:baseline;padding:var(--sp-4) 0;
 border-bottom:1px solid var(--rule);font-size:var(--t-ui);line-height:1.55}
 .offrow:last-child{border-bottom:0}
@@ -4472,7 +4528,13 @@ text-decoration-color:var(--rule-2);text-underline-offset:3px}
 .vblk-item{margin-left:var(--sp-7)}
 /* A rule the document draws in characters (U+2500 box-drawing, "- - -", "____"): one
    line, cut at the column's edge, never wrapped into three (app.js, VRULE). */
-.vblk.vrule{white-space:nowrap;overflow:hidden}
+/* AND IT ASKS FOR NO WIDTH OF ITS OWN (width 0, at least the column): a line
+   that never wraps is as wide as its characters, and that width was the
+   least the whole bill page would draw at, so the Bill Text tab scrolled
+   sideways by 105px at 768 before the polish and by 151px after it, when the
+   text went to 18px (the review of 8 October 2026, which first opened the
+   tab in the rendered sweep). */
+.vblk.vrule{white-space:nowrap;overflow:hidden;width:0;min-width:100%}
 /* NO HIGHLIGHT BEHIND IT. Bold italic is what the Court prints and what the
    bill's own legend tells the reader to look for; a coloured wash on top
    would be this site's convention laid over the Court's, and the comment
@@ -4511,8 +4573,8 @@ text-decoration-color:var(--rule-2);text-underline-offset:3px}
    goes to what the vote was on, because that is the half a reader is here
    for; the rest is a date, a word and a tally. */
 .votes.vfull{table-layout:fixed}
-.vfull th:nth-child(1){width:9%}
-.vfull th:nth-child(2){width:49%}
+.vfull th:nth-child(1){width:11%}
+.vfull th:nth-child(2){width:47%}
 .vfull th:nth-child(3){width:18%}
 .vfull th:nth-child(4){width:24%}
 /* THE DATE IS NEVER NARROWER THAN A DATE. 9% of the 720px table at 768 is
@@ -4522,9 +4584,15 @@ text-decoration-color:var(--rule-2);text-underline-offset:3px}
    fixed-layout table ignored it and split the width evenly between the first
    two columns. Below 720 the table is blocks and none of this applies. */
 @media (max-width:68.75em){
-  .vfull th:nth-child(1){width:14%}
-  .vfull th:nth-child(2){width:44%}
+  .vfull th:nth-child(1){width:16%}
+  .vfull th:nth-child(2){width:42%}
 }
+/* MONTH FIRST, AND ON ONE LINE (8 October 2026). The date went from
+   "8/19/2026" at 12px to "Aug 19, 2026" at 16px with the type scale and the
+   one formatter, and in 9% of the table every row's date broke after its
+   comma, an underlined link on two lines down the whole column. 11% and 16%
+   hold it from a 1,100px window down to the 720px the table stops at. */
+.vfull td.d > a{white-space:nowrap}
 /* TWO LINES OF TITLE, NOT SIX. A legislator's Votes tab is a scanning
    surface -- 591 rows for Rep. Daniels, 200 of them rendered at once -- and
    the bill title was the only thing setting the row height. Measured before:

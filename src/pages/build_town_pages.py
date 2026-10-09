@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-09.25
+# GRANITE_VERSION: 2026-09-09.26
 """
 A page per town and ward: everyone who represents the people who live there.
 
@@ -201,7 +201,12 @@ def maillink(addr):
     a = (addr or "").strip()
     if not EMAIL_OK.match(a):
         return ""
-    return f'<a href="mailto:{E(a)}">{E(a)}</a>'
+    # A LINE MAY BREAK AFTER THE @, and so the address breaks there rather
+    # than wherever the column runs out: at the interface's 16px a select
+    # board member's address in a town card's contact column read
+    # "Jim.Craig@GoffstownNH.g" over "ov" (the review of the polish
+    # foundation, 8 October 2026). Only the words drawn; the address is whole.
+    return f'<a href="mailto:{E(a)}">{E(a).replace("@", "@<wbr>", 1)}</a>'
 
 
 # Words in a printed name that are not the person's first or last name.

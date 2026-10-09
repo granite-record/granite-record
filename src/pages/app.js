@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.163
+// GRANITE_VERSION: 2026-09-07.164
 // What each kind of document actually is, said once rather than in every row.
 const DOCWHAT={text:"the bill as it currently stands",
   status:"the page this site takes a bill's status from",
@@ -6078,7 +6078,11 @@ function voteRow(r){
       b&&b.title?`<span class="vt">${esc(b.title)}</span>`:""}
       <span class="vq">${question}</span></td>
     <td class="v" data-l="Their vote"><span class="vcast v-${
-      esc(String(x.v||"").slice(0,3).toLowerCase())}">${esc(x.v||"")}</span>${
+      esc(String(x.v||"").slice(0,3).toLowerCase())}">${
+      /* "Not Voting/Excused" may break after its slash: on a phone at a
+         24px text size the half row it has was narrower than the word, which
+         ran into the tally beside it (the review of 8 October 2026). */
+      esc(x.v||"").replace("/","/<wbr>")}</span>${
       r.mark?`<i class="pm${r.mark.agreed?"":" broke"}">${
         r.mark.agreed?"with":"against"} ${esc(r.mark.word)}</i>`:""}</td>
     <td class="o" data-l="Outcome">${rc

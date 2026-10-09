@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.477
+# GRANITE_VERSION: 2026-09-04.478
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -50444,8 +50444,12 @@ def _bill_text_opens_whole():
     if cls is not None:
         want = ["vblk vblk-ln vrule"] * 5 + ["vblk vblk-ln"] * 2
         assert cls == want, f"the rule lines are classed {cls}"
-    assert ".vblk.vrule{white-space:nowrap;overflow:hidden}" in \
-        Path("src/pages/app.css").read_text(encoding="utf-8"), "a rule line may still wrap"
+    # And it asks for no width of its own (8 October 2026): its characters
+    # had been the least the bill page would draw at, 151px past a 768px
+    # window.
+    assert re.search(r"\.vblk\.vrule\{white-space:nowrap;overflow:hidden;width:0;min-width:100%\}",
+                     Path("src/pages/app.css").read_text(encoding="utf-8")), (
+        "a rule line may still wrap, or its width widens the page")
     return "ok", ("the newest printing, in full text; What changed one press away; a rule "
                   "drawn in characters kept to one line")
 
