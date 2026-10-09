@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.222 */
+/* GRANITE_VERSION: 2026-09-07.223 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -1609,7 +1609,8 @@ box-shadow:0 0 0 3px var(--pine-soft)}
    -- still tells check, cross, wave and bars apart, and neither is ever the
    empty ring of a stop not reached. The "~" is an SVG (app.js WAVE), so it
    centres at any size; the bars are drawn here. A bill that died on the
-   table keeps the cross. */
+   table is the pause where it was tabled, and the cross at Law on the day it
+   died (the person, 8 October 2026). */
 .stop.s-istudy b{background:var(--st-study);border-color:var(--st-study);
 color:var(--surface);display:grid;place-items:center;font-size:0}
 .stop b .wave{display:block;width:11px;height:11px}
@@ -2682,10 +2683,15 @@ column-gap:var(--sp-3);align-items:baseline;padding:var(--sp-1) 0}
 .jl .j-h .jg{color:var(--pine)}
 /* The rail's own two marks, bare, as the check and the cross are here: an
    orange wave on the line that sent the bill to interim study, two yellow
-   bars on the line that laid it on the table it still lies on. */
-.jl .j-istudy .jg{color:var(--st-study);display:flex;align-items:center;
+   bars on the line that laid it on the table -- it still lies there, or it
+   died there and the line after says so with the cross. And the interim
+   study committee's report that recommended the subject for future
+   legislation, once the session is over: a bare orange arrow (app.js
+   ARROW, the person's option (d) of 9 October 2026), the wave's ink and
+   size, which the rail never draws. */
+.jl .j-istudy .jg,.jl .j-ifuture .jg{color:var(--st-study);display:flex;align-items:center;
 justify-content:center;align-self:start;height:1.5em}
-.jl .j-istudy .jg .wave{width:1em;height:1em}
+.jl .j-istudy .jg .wave,.jl .j-ifuture .jg .arrow{width:1em;height:1em}
 .jl .j-ontable .jg{display:flex;align-items:center;justify-content:center;
 align-self:start;height:1.5em}
 .jl .j-ontable .jg::after{content:"";display:block;width:8px;height:.7em;box-sizing:border-box;
