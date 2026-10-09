@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.487
+# GRANITE_VERSION: 2026-09-04.488
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -25396,6 +25396,16 @@ def _rail_large_text():
         "the card's edge")
     assert rules.get(".rail.dated .stop", {}).get("margin-top"), (
         "the narrow rail leaves no room over the line for the names set there")
+    # The room over the line holds a name's whole line: a name taller than
+    # the stop's margin runs up into the sponsor line over the rail (a
+    # line-height of 2.5rem over a 1.25rem margin passed; the review of
+    # 9 October 2026).
+    toks = _css_palette(css)["light"]
+    room = _css_px(rules[".rail.dated .stop"]["margin-top"], toks)[0]
+    tall = _css_px(rules.get(".rail.dated .stop i", {}).get("line-height", ""), toks)[0]
+    assert room is not None and tall is not None and room >= tall, (
+        f"the narrow rail's names over the line are {tall}px tall in {room}px of room "
+        "(.rail.dated .stop margin-top, .rail.dated .stop i line-height, in rem or px)")
     views = _rail_narrow_views(css)
     assert (375, 24) in {(w, s) for w, s, _ in views}, (
         "a 375px phone at a 24px setting keeps its rail's days, and the rail is 14em there")
@@ -25444,6 +25454,7 @@ _PHONE_CARD = {
     ".card:not(.focus) .chead .ctitle": ("--t-card", 17),           # the title, in the serif
     ".card:not(.focus) .chead :is(.cmeta,.cwhy)": ("--t-sm", 14),   # sponsor and committee
     ".card:not(.focus) .crow .cstat": ("--t-sm", 14),               # the status chip
+    ".card:not(.focus) .crow .cyear": ("--t-sm", 14),               # "carried over", a chip too
     ".card:not(.focus) .rail.dated :is(.stop i,small)": ("--t-rail", 13),  # the rail, the floor
 }
 
@@ -25477,9 +25488,23 @@ def _phone_card_compact():
              and dict(_css_decls(body)).get("font-family") == "var(--serif)"]
     if not serif:
         bad.append("a card's title is no longer set in the serif")
+    # AND NOTHING SETS IT IN ANOTHER FACE: a rule that reaches the title on a
+    # phone alone ("...ctitle{font-family:var(--sans)}" under 37.5em) left
+    # the rule above standing and passed (the review of 9 October 2026).
+    other = sorted({f"{' '.join(ctx)} {sel}" for ctx, sel, body, _l in _css_rules(css)
+                    if any(re.search(r"\.ctitle\b[^\s>+~]*$", s.strip()) for s in sel.split(","))
+                    for k, v in _css_decls(body)
+                    if k in ("font-family", "font") and v != "var(--serif)"})
+    if other:
+        bad.append(f"a card's title is set in another face: {other}")
+    # A year hidden any way a rule can hide it -- not drawn, not seen or
+    # transparent -- on the stop's year or the day that holds it (a rule at
+    # visibility:hidden, or on `.rail small`, passed; the same review).
     hid = [f"{' '.join(ctx)} {sel}" for ctx, sel, body, _l in _css_rules(css)
-           if re.search(r"\.ry\b|\.rail\.dated small\b", sel)
-           and ("display", "none") in _css_decls(body)
+           if re.search(r"\.ry\b|\.rail\b[^,{]*\bsmall\b", sel)
+           and any((k, v) in (("display", "none"), ("visibility", "hidden"),
+                              ("visibility", "collapse"), ("opacity", "0"))
+                   for k, v in _css_decls(body))
            and not (ctx and ctx[-1].startswith("@container rail") and sel == ".rail.dated small")]
     if hid:
         bad.append(f"a rule hides a stop's year: {hid}")
@@ -25508,9 +25533,12 @@ def _tally_whole():
     css = Path("src/pages/app.css").read_text(encoding="utf-8") if Path("src/pages/app.css").exists() else ""
     if not css:
         return "skip", "app.css is not here"
-    assert any(sel == ".jl .tally" and ("white-space", "nowrap") in _css_decls(body)
-               for _c, sel, body, _l in _css_rules(css)), (
-        "app.css does not keep a How it got here tally on one line (.jl .tally)")
+    # At every width, so outside any query: the break was on a phone, and a
+    # rule kept for wide windows alone passed (the review of 9 October 2026).
+    assert any(not ctx and sel == ".jl .tally" and ("white-space", "nowrap") in _css_decls(body)
+               for ctx, sel, body, _l in _css_rules(css)), (
+        "app.css does not keep a How it got here tally on one line at every width "
+        "(.jl .tally, outside any @media)")
     texts = ["Passed with an amendment, 231–99", "Killed, 170–163, reconsidered on May 3",
              "Not ratified, 355,054–266,883 (the Secretary of State's count)",
              "Killed under Senate Rule 3-23, still on the table at adjournment",

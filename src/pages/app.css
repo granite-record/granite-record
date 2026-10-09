@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.229 */
+/* GRANITE_VERSION: 2026-09-07.230 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -1837,11 +1837,17 @@ padding-inline:var(--sp-2)}
    and a member's bills -- and closed or opened alike, since opening a card
    changes nothing about its head; a bill's own page keeps its head as it
    is. The line under the sponsor's that says why a bill is listed takes the
-   sponsor line's size, as its own rule says it is that line's quiet type. */
+   sponsor line's size, as its own rule says it is that line's quiet type.
+   AND THE "carried over" BESIDE THE NUMBER IS A CHIP TOO (app.js cardHtml,
+   .cyear .chip), so it takes the status chip's 14px: left at the scale's
+   16px it stood larger than the chip and the sponsor line under it, where
+   the old card set it at 14px (the review of 9 October 2026, HB 65 of
+   2026 at 375px). */
 @media (max-width:37.5em){
   .card:not(.focus) .chead .ctitle{font-size:var(--t-card)}
   .card:not(.focus) .chead :is(.cmeta,.cwhy){font-size:var(--t-sm)}
   .card:not(.focus) .crow .cstat{font-size:var(--t-sm)}
+  .card:not(.focus) .crow .cyear{font-size:var(--t-sm)}
   .card:not(.focus) .rail.dated :is(.stop i,small){font-size:var(--t-rail)}
 }
 .cstat{margin-left:auto;font-size:var(--t-sm);font-weight:600;padding:var(--sp-1) var(--sp-4);border-radius:var(--r-in);white-space:nowrap}
