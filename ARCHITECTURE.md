@@ -46,6 +46,8 @@ for where a new file goes, and each folder's own README says what it holds:
     src/towns/           towns, districts, counties and their officials
     src/hearings/        proceedings, their recordings, timestamps and the scorer
     src/pages/           writes what a reader gets in site/
+      words/             the words the pages say, as JSON: the chips, the kinds
+                         of meeting, the votes, the glossary (data, not code)
     src/checks/          looks at something and reports
     src/lib/             the few modules every stage shares
     src/ops/             keeps the site running: the bucket, the livestreams,

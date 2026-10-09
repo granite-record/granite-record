@@ -1,0 +1,25 @@
+{
+  "_about": [
+    "THE GLOSSARY, written once (the component plan's C3 and C9, approved 9 October 2026): the record's shorthand, each term with its name in full and what it means. components.py reads this file and the build writes it into site/components.js, between the WORDBOOK markers, as WORDBOOK.glossary. A key starting with '_' is a note and goes to neither.",
+    "NOTHING DRAWS THESE YET. The term popovers come in the component plan's step 6: a writer in either language marks a term <span data-term=\"ITL\">, choosing the key by context -- RC is a roll call on a vote and the Regular Calendar in a committee's report, so the second is keyed RC-calendar -- and components.js makes the first on the page a button that opens its entry, on a tap, a hover held about half a second or keyboard focus, staying while the pointer moves onto it and closing on Escape (WCAG 1.4.13; the person, 9 October 2026). FN, A and LOCAL are the suffixes on a bill's number.",
+    "THE WORDS ARE THE SITE'S OWN, as already published, and 'from' says where: Learn's 'Using this site' (its table 'Reading the shorthand'), 'How a bill becomes law' (its table under 'How committees work'), the vote words the person approved on 8 October 2026 (only OTP, OTPA, ITL and IS are spelled as abbreviations on a vote), and the General Court's own docket key (records/docket_abbrev.json). 'says' is empty where the source gives the name alone."
+  ],
+  "OTP": {"name": "Ought to Pass", "says": "a motion to pass the bill", "from": "using-this-site"},
+  "OTPA": {"name": "Ought to Pass with Amendment", "says": "", "from": "using-this-site"},
+  "ITL": {"name": "Inexpedient to Legislate", "says": "a motion to kill it", "from": "using-this-site"},
+  "IS": {"name": "Interim Study", "says": "second year only, and the bill dies with the term", "from": "how-a-bill-becomes-law"},
+  "Retain": {"name": "Retain", "says": "Hold the bill in the committee — first year only, and it returns in the second", "from": "how-a-bill-becomes-law"},
+  "MA": {"name": "Motion Adopted", "says": "", "from": "using-this-site"},
+  "MF": {"name": "Motion Failed", "says": "", "from": "using-this-site"},
+  "VV": {"name": "Voice vote", "says": "no count and no names", "from": "using-this-site"},
+  "DV": {"name": "Division vote", "says": "counted, names not recorded", "from": "using-this-site"},
+  "RC": {"name": "Roll call", "says": "each member recorded by name", "from": "using-this-site"},
+  "RC-calendar": {"name": "Regular Calendar", "says": "", "from": "docket key"},
+  "CC": {"name": "Consent Calendar", "says": "the committee's recommendation, to pass, to kill or to send to interim study, adopted with the whole calendar in one vote, without floor debate", "from": "using-this-site"},
+  "OT3rdg": {"name": "Ordered to a third reading", "says": "", "from": "using-this-site"},
+  "HJ": {"name": "House Journal", "says": "the chamber's own record of the day, cited by issue and sometimes page", "from": "using-this-site"},
+  "SJ": {"name": "Senate Journal", "says": "the chamber's own record of the day, cited by issue and sometimes page", "from": "using-this-site"},
+  "FN": {"name": "Fiscal note", "says": "an estimate of what the bill would cost", "from": "using-this-site"},
+  "A": {"name": "Appropriation", "says": "the bill contains one", "from": "using-this-site"},
+  "LOCAL": {"name": "Local fiscal impact", "says": "on towns or schools", "from": "using-this-site"}
+}

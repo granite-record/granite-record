@@ -17,6 +17,7 @@ src/
   towns/          towns, districts, counties and their officials
   hearings/       proceedings, their recordings, timestamps and the scorer
   pages/          writes what a reader gets in site/, and the browser's files
+    words/        the words the pages say, as JSON, for both languages
   checks/         looks at something and reports
   lib/            the few modules every stage shares
   ops/            keeps the site running: the bucket, the livestreams, the

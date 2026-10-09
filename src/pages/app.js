@@ -1,6 +1,8 @@
-// GRANITE_VERSION: 2026-09-07.172
+// GRANITE_VERSION: 2026-09-07.173
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
-// which every page loads before this file (the component plan's C1 and C2).
+// which every page loads before this file (the component plan's C1 and C2),
+// and so is WORDBOOK, the words of src/pages/words/ that the build writes into
+// it: the chip's classes and the kinds of meeting are read from there (C3).
 // What each kind of document actually is, said once rather than in every row.
 const DOCWHAT={text:"the bill as it currently stands",
   status:"the page this site takes a bill's status from",
@@ -43,8 +45,11 @@ const PARTY_RANK={R:0,D:1};
 const partyRank=p=>(p in PARTY_RANK)?PARTY_RANK[p]:2;
 const byParty=(a,b)=>partyRank(a)-partyRank(b)||String(a).localeCompare(String(b));
 const yeaFirst=(a,b)=>a===b?0:(a==="Yea"?-1:1);
-const KIND={active:"s-active",law:"s-law",done:"s-done",veto:"s-veto",
-            study:"s-study",adopted:"s-adopted"};
+// A chip's class by the bill's kind, for a word that is not one of the six.
+// It and CHIPCLASS below are words, written once (the component plan's C3,
+// 9 October 2026): src/pages/words/chips.json, which components.js carries
+// as WORDBOOK and the builders read through components.py.
+const KIND=WORDBOOK.chips.kind;
 // THE CHIP: six words for where a bill stands, and a still-moving bill's
 // stage (the person, 5 October 2026). build_site_v2.chip_word chooses the
 // word and the index carries it as `chip`; this only draws it. The status --
@@ -60,8 +65,8 @@ const KIND={active:"s-active",law:"s-law",done:"s-done",veto:"s-veto",
 // is slate blue since the same evening, so Tabled and In committee are two
 // colours. Under protanopia the yellow is near the orange, so the chip's
 // word and the rail's shape tell them apart.
-const CHIPCLASS={"Became Law":"s-law","Died":"s-done","Interim Study":"s-study",
-  "Tabled":"s-table","Vetoed":"s-veto","Withdrawn":"s-done"};
+// The six and their classes are chips.json's "chip", in the person's order.
+const CHIPCLASS=WORDBOOK.chips.chip;
 const CHIPORDER=Object.keys(CHIPCLASS);
 // A request's row has no chip, and its status is its word.
 const chipOf=b=>(b&&(b.chip||b.status))||"";
@@ -97,15 +102,15 @@ const chipCmp=(a,b)=>{const x=CHIPORDER.indexOf(a),y=CHIPORDER.indexOf(b);
    -- still lands somewhere: preflight walks every row of the nineteen terms
    and fails if one reaches the last line.
    Tables a word from an address is looked up in have no prototype (A WORD
-   SOMEBODY TYPES IS NOT A PROPERTY OF AN OBJECT, below). */
-const STATUSCATS=["In Progress","Passed","Tabled","Interim Study","Died","Withdrawn","Vetoed"];
+   SOMEBODY TYPES IS NOT A PROPERTY OF AN OBJECT, below).
+   The categories, in this order, each with its chip's class, are words:
+   chips.json's "category" (WORDBOOK.chips.category; the component plan's C3). */
+const STATUSCATS=Object.keys(WORDBOOK.chips.category);
 // What is offered: the categories some bill listed is in (`have`), and any a
 // reader has chosen (`chosen`, a Set), in STATUSCATS' order.
 const catsOffered=(have,chosen)=>STATUSCATS.filter(c=>have.has(c)||chosen.has(c));
 // Each in its chip's class, in the sidebar and in a record page's select.
-const CATCLASS=Object.assign(Object.create(null),{"In Progress":"s-active",
-  "Passed":"s-law","Tabled":"s-table","Interim Study":"s-study","Died":"s-done",
-  "Withdrawn":"s-done","Vetoed":"s-veto"});
+const CATCLASS=Object.assign(Object.create(null),WORDBOOK.chips.category);
 // Each word a chip can say that is not a stage, and what it is. Not
 // introduced, and the one bill only proposed for the 2006 special session
 // (HB 3, whose record says nothing after the proposal), ended there; a
@@ -6612,19 +6617,15 @@ function plate(s){
   return s.length>3 ? s.slice(0,s.length-3)+"-"+s.slice(-3) : s;
 }
 
-const MEET_KIND={"public hearing":["Public Hearing","k-hearing"],
-                 "hearing":["Public Hearing","k-hearing"],
-                 "executive session":["Executive Session","k-exec"],
-                 "work session":["Work Session","k-meet"],
-                 "subcommittee work session":["Subcommittee Work Session","k-meet"],
-                 "full committee work session":["Full Committee Work Session","k-meet"],
-                 "study committee":["Study Committee","k-study"],
-                 "statutory committee":["Statutory Committee","k-study"],
-                 "committee of conference":["Committee of Conference","k-conf"],
-                 "floor debate":["Floor Session","k-floor"]};
+// THE KINDS OF MEETING: the schedule's word, lower case, to [what a reader
+// sees, the class that colours it]. Words, written once (the component plan's
+// C3, 9 October 2026): src/pages/words/meeting_kinds.json, which components.js
+// carries as WORDBOOK and build_pages draws the home page's calendar with. It
+// was a table here and another there, held alike by a check that read both.
+const MEET_KIND=WORDBOOK.meeting_kinds.kinds;
 // Title case, as build_pages.kind_title: the chips are names, like the
 // Calendar's boxes, and a small word after the first stays small.
-const KIND_SMALL=new Set(["a","an","and","at","by","for","in","of","on","or","the","to"]);
+const KIND_SMALL=new Set(WORDBOOK.meeting_kinds.small);
 const kindTitle=k=>String(k||"").split(/\s+/).filter(Boolean)
   .map((w,i)=>(i&&KIND_SMALL.has(w.toLowerCase()))||!/^[a-z]/i.test(w)?w:w.charAt(0).toUpperCase()+w.slice(1))
   .join(" ")||"Meeting";

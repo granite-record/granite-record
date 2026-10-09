@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-10-09.1
+// GRANITE_VERSION: 2026-10-09.2
 /* THE SITE'S COMPONENTS, IN THE BROWSER. Published as site/components.js and
    loaded by every page, in its head, before app.js, find.js and any page's
    own script, so each of them draws a person, a committee, a date or a time
@@ -26,6 +26,19 @@
    Moved here unchanged on 9 October 2026 from app.js, which drew with them
    already, and from the copies the home page's and the Calendar's scripts
    carried because they ran without app.js. */
+
+/* THE WORDS, WRITTEN ONCE (C3). The chip's words and classes, the kinds of
+   meeting, the vote words and the glossary are JSON files in
+   src/pages/words/, which components.py reads for the builders. The build
+   writes the same here, between the two markers below, as one const --
+   WORDBOOK.chips, .meeting_kinds, .votes and .glossary -- which the browser's
+   scripts draw with (build_pages.with_words). So this file as it sits in
+   src/pages/ holds none of them and the site's copy holds all of them, and
+   no table of words is typed twice. A marker missing, doubled or out of
+   order stops the build, and preflight holds node's WORDBOOK to
+   components.py's byte for byte. (Not WORDS: app.js has that name.) */
+// WORDBOOK:START
+// WORDBOOK:END
 
 const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 

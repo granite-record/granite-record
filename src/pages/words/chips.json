@@ -1,0 +1,34 @@
+{
+  "_about": [
+    "THE CHIP'S WORDS AND THEIR CLASSES, written once (the component plan's C3, approved 9 October 2026). components.py reads this file and the build writes it into site/components.js, between the WORDBOOK markers, as WORDBOOK.chips, which app.js draws with; build_site_v2.chip_word chooses each bill's word from 'chip'. A key starting with '_' is a note and goes to neither.",
+    "'chip' is the six words for where a bill stands, in their order, each with the class that colours it (the person, 5 October 2026: \"Became Law, Died, Interim Study, Tabled, ... Vetoed ... and Withdrawn\"). The order is the person's and is the order the bill search sorts the six in. The colour is the word's, so every Died is one colour whether the bill was killed or its veto stood. Interim Study and Tabled take their rail marks' inks (the person, 8 October 2026): the orange of the '~' and the pause's.",
+    "'kind' is the class of a word that is not one of the six -- a stage still moving ('In committee' and the rest, slate blue since 8 October 2026, so Tabled and In committee are two colours), a resolution adopted, a constitutional amendment's ballot -- by the kind build_site_v2's bill_disposition gives the bill.",
+    "'category' is the bill search's Status filter (the person, 8 October 2026: In Progress, Passed, Tabled, Interim Study, Died, Withdrawn, Vetoed), in the order the filter offers them and the Status sort heads them, each in its chip's class. It asks a question the chip does not, and a card's chip keeps its own word; app.js says which chip and which kind fall in which category.",
+    "preflight holds the six to the person's words (_chip_words), and app.js, components.js and the builders to this one copy (_words_written_once, _components_agree)."
+  ],
+  "chip": {
+    "Became Law": "s-law",
+    "Died": "s-done",
+    "Interim Study": "s-study",
+    "Tabled": "s-table",
+    "Vetoed": "s-veto",
+    "Withdrawn": "s-done"
+  },
+  "kind": {
+    "active": "s-active",
+    "law": "s-law",
+    "done": "s-done",
+    "veto": "s-veto",
+    "study": "s-study",
+    "adopted": "s-adopted"
+  },
+  "category": {
+    "In Progress": "s-active",
+    "Passed": "s-law",
+    "Tabled": "s-table",
+    "Interim Study": "s-study",
+    "Died": "s-done",
+    "Withdrawn": "s-done",
+    "Vetoed": "s-veto"
+  }
+}

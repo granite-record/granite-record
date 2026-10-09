@@ -20,6 +20,17 @@ both on every case in `tests/components_cases.json` and fails where they
 answer differently, where one has a helper the other has not, and where any
 part of a helper is reached by no case.
 
+The words the pages say are in `words/`, one JSON file to a kind (9 October
+2026): `chips.json` (the chip's words and the class that colours each, and
+the Status filter's categories), `meeting_kinds.json` (the kinds of meeting and
+their colours), `votes.json` (the vote words the person approved) and
+`glossary.json` (the record's shorthand, for the term popovers). Each keeps
+its reasons under `_about`. `components.py` reads them as `WORDBOOK`, and the
+build writes the same into `site/components.js` between its `WORDBOOK:START`
+and `WORDBOOK:END` lines (`build_pages.with_words`), so the copy here holds
+none of them and nothing types a table of words twice. Change a word in its
+file; `preflight` holds the browser's `WORDBOOK` to Python's.
+
 Run by: `build_all.py`'s `plan()`, after the record is built. A new page is
 `build_<page>.py` on `shell.py` plus one `Step()`.
 

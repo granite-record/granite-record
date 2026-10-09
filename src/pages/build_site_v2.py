@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.187
+# GRANITE_VERSION: 2026-09-05.188
 """
 Generate the faceted site from real General Court data.
 
@@ -38,6 +38,8 @@ import committee_names as CN
 from about_figures import STREAM_START
 # The Speaker's chair, whose occupant's page names the office (member_office).
 from seating import SPEAKER_SEAT
+# The words the pages say, src/pages/words/: here, the chip's six (CHIP_WORDS).
+from components import WORDBOOK as _WORDBOOK
 import narrative as N
 import fiscal
 import proceedings as P
@@ -877,9 +879,15 @@ NEVER_INTRODUCED = {"Refused introduction", WITHDRAWN_PRIOR, PROPOSED_ONLY, NOT_
 # House did not introduce and one awaiting the governor keep their own words
 # (CHIP_KEEPS): none of them is among the six, and which word they take is
 # the person's to say.
-BECAME_LAW, DIED, INTERIM_STUDY, TABLED, VETOED, WITHDRAWN = (
-    "Became Law", "Died", "Interim Study", "Tabled", "Vetoed", "Withdrawn")
-CHIP_WORDS = (BECAME_LAW, DIED, INTERIM_STUDY, TABLED, VETOED, WITHDRAWN)
+#
+# THE SIX ARE WORDS, WRITTEN ONCE (the component plan's C3, 9 October 2026):
+# src/pages/words/chips.json's "chip", in the person's order, each with the
+# class app.js colours it by, which components.py reads and the build writes
+# into components.js. A seventh word there, or one fewer, stops the build
+# here rather than shifting a word onto the wrong ending; _chip_words holds
+# the six to the person's.
+CHIP_WORDS = tuple(_WORDBOOK["chips"]["chip"])
+BECAME_LAW, DIED, INTERIM_STUDY, TABLED, VETOED, WITHDRAWN = CHIP_WORDS
 # A withdrawal the record states: the chamber's, and one before introduction.
 WITHDRAWN_ENDINGS = frozenset({"Withdrawn", WITHDRAWN_PRIOR})
 # A veto whose override vote is still to come, in bill_disposition's words:

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.490
+# GRANITE_VERSION: 2026-09-04.491
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -892,9 +892,12 @@ def _code_name_clashes(root=None):
 
 
 def _code_dirs_unlisted(root=None):
-    """Folders under src/ that hold a file other than a README and are not on
-    _paths.SRC_DIRS: what is in one is on nobody's import path, and no guard
-    that reads every script (SCRIPT_DIRS) reads it."""
+    """Folders under src/ that hold code -- a script, or a browser's file
+    (_paths.BROWSER) -- and are not on _paths.SRC_DIRS: what is in one is on
+    nobody's import path, and no guard that reads every script (SCRIPT_DIRS)
+    reads it. A folder that holds data a module reads by its own path, as
+    components.py reads src/pages/words/ (9 October 2026), holds no code, is
+    imported by nobody, and is not one."""
     base = Path(root).resolve() if root is not None else _paths.ROOT
     listed = {(base / d).resolve() for d in _paths.SRC_DIRS}
     src = base / "src"
@@ -903,7 +906,7 @@ def _code_dirs_unlisted(root=None):
     return [d.relative_to(base).as_posix()
             for d in sorted(p for p in src.rglob("*") if p.is_dir() and p.name != "__pycache__")
             if d.resolve() not in listed
-            and any(f.is_file() and f.name != "README.md" and f.suffix != ".pyc"
+            and any(f.is_file() and (f.suffix == ".py" or f.suffix in _paths.BROWSER)
                     for f in d.iterdir())]
 
 
@@ -950,12 +953,13 @@ def _code_names_unique():
         _plant(tmp, {"_paths.py": "", "a.py": "", "src/parse/a.py": "", "src/parse/README.md": "",
                      "src/pages/README.md": "", "src/pages/b.js": "", "tests/b.js": "",
                      "watchers/c.py": "", "tests/c.py": "", "notes.json": "",
-                     "tests/notes.json": "", "src/extra/d.py": ""})
+                     "tests/notes.json": "", "src/extra/d.py": "", "src/web/e.js": "",
+                     "src/pages/words/w.json": "", "src/pages/words/README.md": ""})
         got = _code_name_clashes(tmp)
         assert got == {"a.py": ["a.py", "src/parse/a.py"], "b.js": ["src/pages/b.js", "tests/b.js"],
                        "c.py": ["watchers/c.py", "tests/c.py"]}, \
             f"the reader of names found {got} in a tree made to share three"
-        assert _code_dirs_unlisted(tmp) == ["src/extra"], _code_dirs_unlisted(tmp)
+        assert _code_dirs_unlisted(tmp) == ["src/extra", "src/web"], _code_dirs_unlisted(tmp)
         off = _src_dirs_off_list(("", "src/parse", "src/extra", "watchers"), ("src/parse",))
         assert off == ["src/extra"], f"the reader of the lists found {off}"
     finally:
@@ -25852,7 +25856,10 @@ def _rail_study_and_table_marks(N, B):
         if not re.search(re.escape(sel) + r"\{background:var\(--" + ink + r"\);border-color:var\(--"
                          + ink + r"\)", flat):
             bad.append(f"{sel} is not a disc filled in --{ink}")
-    if not re.search(r'"Interim Study":"s-study",\s*"Tabled":"s-table"', js) or \
+    # The chip's classes are words, chips.json's (the component plan's C3).
+    import components as _C
+    chipcls = _C.WORDBOOK.get("chips", {}).get("chip", {})
+    if (chipcls.get("Interim Study"), chipcls.get("Tabled")) != ("s-study", "s-table") or \
             not re.search(r"\.s-table\{background:var\(--st-table-bg\);color:var\(--st-table\)\}", flat):
         bad.append("the Interim Study and Tabled chips are not in the marks' inks")
     fc = re.findall(r"@media \(forced-colors: active\)\{(.*?)\n\}", css, re.S)
@@ -39187,7 +39194,7 @@ def _calendar_documents():
         site = root / "site"
         site.mkdir()
         shutil.copy(Path("src/pages/bills.html"), site / "bills.html")
-        shutil.copy(Path("src/pages/components.js"), site / "components.js")
+        (site / "components.js").write_text(_components_js(), encoding="utf-8", newline="\n")
         base = "https://graniterecord.org"
         (site / "sitemap.xml").write_text(
             '<?xml version="1.0" encoding="UTF-8"?>\n<urlset>\n'
@@ -48795,41 +48802,211 @@ def _plate_agrees():
     return "ok", f"three plate() copies agree on {len(cases)} seats, 4017 -> {want[0]}"
 
 
-@check("frontend", "the two calendar renderers agree on what a meeting is called")
-def _meet_kind_agrees():
-    """MEET_KIND is written twice, and nothing held the copies together.
+# THE WORDS A RENDERER USED TO TYPE FOR ITSELF, as the copy would be written
+# again: (what it is, a pattern made from the words that finds it). Read over
+# every builder, script and template in src/pages/, the words' own files aside.
+def _word_copies(W):
+    pats = []
+    for k, (word, cls) in W["meeting_kinds"]["kinds"].items():
+        pats.append((f"the meeting kind {k!r}",
+                     rf'"{re.escape(k)}"\s*:\s*[\[(]\s*"{re.escape(word)}"\s*,\s*"{re.escape(cls)}"'))
+    for cls, word in W["meeting_kinds"]["legend"]:
+        pats.append((f"the key's {word!r}",
+                     rf'[\[(]\s*"{re.escape(cls)}"\s*,\s*"{re.escape(word)}"\s*[\])]'))
+    pats.append(("the small words of a meeting's title",
+                 r'\s*,\s*'.join(f'"{re.escape(w)}"' for w in W["meeting_kinds"]["small"][:4])))
+    for table in ("chip", "category"):
+        for word, cls in W["chips"][table].items():
+            pats.append((f"the {table} {word!r}",
+                         rf'"{re.escape(word)}"\s*:\s*"{re.escape(cls)}"'))
+    for kind, cls in W["chips"]["kind"].items():
+        pats.append((f"the kind {kind!r}'s class",
+                     rf'(?<![\w"]){re.escape(kind)}\s*:\s*"{re.escape(cls)}"|"{re.escape(kind)}"\s*:\s*"{re.escape(cls)}"'))
+    for table, what in (("chip", "the six chip words"), ("category", "the Status filter's categories")):
+        pats.append((what, r'[\[(]\s*' + r'\s*,\s*'.join(f'"{re.escape(w)}"' for w in W["chips"][table])))
+    return [(what, re.compile(p)) for what, p in pats]
 
-    The calendar card exists in two renderers: build_pages.calendar_html
-    draws the home page's, and app.js's calendarBlock draws the one on every
-    committee page. app.js already carries a comment saying its markup must
-    match the other, which is a hand-kept invariant with no check under it --
-    and the nav, which is also written twice, has already drifted once: Data
-    was added to bills.html and not to build_pages, so three pages lacked a
-    link the other 34,000 had.
 
-    Drift here is quiet in the same way. The two tables turn a schedule's
-    word into what a reader sees and which colour the chip takes, so a copy
-    left behind shows "Executive session" on one page and "executive
-    session", uncoloured, on another -- for the same meeting.
+@check("frontend", "the words are written once: src/pages/words/ read by Python, written into "
+                   "components.js between its markers by the build, and copied by no renderer",
+       needs=("build_site_v2",))
+def _words_written_once(B):
+    """The component plan's C3 (approved 9 October 2026; step 2): the chip's
+    words and classes, the kinds of meeting, the vote words and the glossary
+    are JSON in src/pages/words/. components.py reads them as WORDBOOK for the
+    builders, and the build writes the same into site/components.js between
+    its WORDBOOK markers (build_pages.with_words), where app.js reads them.
+
+    IT REPLACED _meet_kind_agrees, which held two copies alike: MEET_KIND
+    was typed in build_pages.py and again in app.js, the calendar card drawn
+    by both, and a copy left behind would have shown "Executive session" on
+    one page and "executive session", uncoloured, on another, for the same
+    meeting. There is one copy now, so this holds that it stays one:
+
+      - every words file is a JSON object with notes ("_about"), and
+        components.WORDBOOK is each of them by name, the notes left out;
+      - the builders read them: build_pages.MEET_KIND, MEET_LEGEND and the
+        small words of kind_title, and build_site_v2's six chip words;
+      - app.js reads its chip classes and meeting kinds from WORDBOOK, and no
+        builder, script or template in src/pages/ types any of these words
+        out again as a table (_word_copies);
+      - components.js in src/pages/ carries one WORDBOOK:START line and one
+        WORDBOOK:END line after it with nothing between, so the words are not
+        typed into it either;
+      - with_words writes them between the markers in the file's own line
+        ending and changes nothing else, and refuses -- a ValueError, which
+        stops the build -- a marker missing, doubled, reversed or not
+        beginning its line;
+      - the run's fixture build put exactly that into site/components.js.
+
+    That the browser's WORDBOOK equals Python's, byte for byte, is
+    _components_agree's, which runs the file in node.
     """
-    py = _paths.locate("build_pages.py").read_text(encoding="utf-8", errors="replace")
-    js = Path("src/pages/app.js").read_text(encoding="utf-8", errors="replace")
-    m = re.search(r"^MEET_KIND = (\{[^}]*\})", py, re.M)
-    assert m, "build_pages.py has no MEET_KIND"
-    table = {k: list(v) for k, v in ast.literal_eval(m.group(1)).items()}
-    m2 = re.search(r"^const MEET_KIND=(\{.*?\});", js, re.S | re.M)
-    assert m2, "app.js has no MEET_KIND"
-    other = {}
-    for k, word, cls in re.findall(r'"([^"]+)"\s*:\s*\["([^"]*)"\s*,\s*"([^"]*)"\]',
-                                   m2.group(1)):
-        other[k] = [word, cls]
-    assert other, "app.js's MEET_KIND did not parse"
-    assert table == other, (
-        "the two calendar renderers disagree about meeting kinds: "
-        f"only in build_pages {sorted(set(table) - set(other))}, "
-        f"only in app.js {sorted(set(other) - set(table))}, "
-        f"different {sorted(k for k in set(table) & set(other) if table[k] != other[k])}")
-    return "ok", f"{len(table)} meeting kinds, the same in both renderers"
+    import build_pages as BP
+    import components as C
+    wd = Path("src/pages/words")
+    files = sorted(wd.glob("*.json"))
+    assert files, f"{wd.as_posix()}/ holds no words"
+    bad, read = [], {}
+    for f in files:
+        try:
+            d = json.loads(f.read_text(encoding="utf-8"))
+        except ValueError as e:
+            bad.append(f"{f.name} is not JSON: {e}")
+            continue
+        if not isinstance(d, dict) or not d.get("_about"):
+            bad.append(f"{f.name} is not an object with its notes under _about")
+            continue
+        read[f.stem] = {k: v for k, v in d.items() if not k.startswith("_")}
+    missing = {"chips", "meeting_kinds", "votes", "glossary"} - set(read)
+    if missing:
+        bad.append(f"no words file for {', '.join(sorted(missing))}")
+    if C.WORDBOOK != read or list(C.WORDBOOK) != list(read):
+        differ = [k for k in set(C.WORDBOOK) | set(read) if C.WORDBOOK.get(k) != read.get(k)]
+        bad.append(f"components.WORDBOOK is not the words files as they stand, the notes left "
+                   f"out: it holds {list(C.WORDBOOK)}, the folder {list(read)}, and they differ "
+                   f"in {sorted(differ) or 'their order'}")
+    assert not bad, " | ".join(bad)
+    W = C.WORDBOOK
+
+    # The builders read them.
+    if BP.MEET_KIND != {k: tuple(v) for k, v in W["meeting_kinds"]["kinds"].items()}:
+        bad.append("build_pages.MEET_KIND is not meeting_kinds.json's kinds")
+    if BP.MEET_LEGEND != tuple(tuple(x) for x in W["meeting_kinds"]["legend"]):
+        bad.append("build_pages.MEET_LEGEND is not meeting_kinds.json's legend")
+    if set(BP._SMALL) != set(W["meeting_kinds"]["small"]):
+        bad.append("build_pages.kind_title's small words are not meeting_kinds.json's")
+    if tuple(B.CHIP_WORDS) != tuple(W["chips"]["chip"]):
+        bad.append(f"build_site_v2.CHIP_WORDS is {B.CHIP_WORDS}, not chips.json's "
+                   f"{tuple(W['chips']['chip'])}")
+
+    # The browser reads them, and nothing types them again.
+    app = Path("src/pages/app.js").read_text(encoding="utf-8")
+    for want in ("const KIND=WORDBOOK.chips.kind;", "const CHIPCLASS=WORDBOOK.chips.chip;",
+                 "const STATUSCATS=Object.keys(WORDBOOK.chips.category);",
+                 "const CATCLASS=Object.assign(Object.create(null),WORDBOOK.chips.category);",
+                 "const MEET_KIND=WORDBOOK.meeting_kinds.kinds;",
+                 "const KIND_SMALL=new Set(WORDBOOK.meeting_kinds.small);"):
+        if want not in app:
+            bad.append(f"app.js does not read its words from components.js: no {want!r}")
+    pats = _word_copies(W)
+    srcs = sorted(p for p in Path("src/pages").iterdir()
+                  if p.is_file() and p.suffix in (".py", ".js", ".html"))
+    copies = [f"{p.name}: {what}" for p in srcs
+              for what, pat in pats if pat.search(p.read_text(encoding="utf-8"))]
+    if copies:
+        bad.append(f"{len(copies)} words typed out again, which src/pages/words/ holds: "
+                   + "; ".join(copies[:6]))
+    # ...and the patterns would find a copy, were one typed: the tables as
+    # they stood in app.js and build_pages.py until 9 October 2026.
+    old = ('const MEET_KIND={"public hearing":["Public Hearing","k-hearing"],\n'
+           '                 "hearing":["Public Hearing","k-hearing"]};\n'
+           'MEET_LEGEND = (("k-hearing", "Public Hearing"),\n               ("k-exec", "Executive Session"))\n'
+           '_SMALL = {"a", "an", "and", "at", "by"}\n'
+           'const KIND={active:"s-active",law:"s-law",done:"s-done"};\n'
+           'const CHIPCLASS={"Became Law":"s-law","Died":"s-done","Interim Study":"s-study",\n'
+           '  "Tabled":"s-table","Vetoed":"s-veto","Withdrawn":"s-done"};\n'
+           'const STATUSCATS=["In Progress","Passed","Tabled","Interim Study","Died","Withdrawn","Vetoed"];\n'
+           'const CATCLASS=Object.assign(Object.create(null),{"In Progress":"s-active",\n'
+           '  "Passed":"s-law"});\n'
+           'BECAME_LAW, DIED, INTERIM_STUDY, TABLED, VETOED, WITHDRAWN = (\n'
+           '    "Became Law", "Died", "Interim Study", "Tabled", "Vetoed", "Withdrawn")\n'
+           'MEET_KIND = {"public hearing": ("Public Hearing", "k-hearing")}\n')
+    unfound = [what for what, pat in pats
+               if what in ("the meeting kind 'public hearing'", "the key's 'Public Hearing'",
+                           "the small words of a meeting's title", "the chip 'Tabled'",
+                           "the category 'In Progress'", "the kind 'active''s class",
+                           "the six chip words", "the Status filter's categories")
+               and not pat.search(old)]
+    if len([w for w, _p in pats if w in ("the meeting kind 'public hearing'", "the chip 'Tabled'",
+                                         "the category 'In Progress'", "the six chip words",
+                                         "the Status filter's categories")]) != 5:
+        bad.append("the search for copies no longer looks for a meeting kind, a chip, a "
+                   "category and the two lists by the names this check tries them by")
+    if unfound:
+        bad.append("the search for copies misses the old tables: " + ", ".join(unfound))
+
+    # The markers, and nothing typed between them.
+    src = Path("src/pages/components.js").read_text(encoding="utf-8")
+    a, b = src.find(BP.WORDBOOK_START), src.find(BP.WORDBOOK_END)
+    if (src.count(BP.WORDBOOK_START), src.count(BP.WORDBOOK_END)) != (1, 1) or not -1 < a < b:
+        bad.append(f"components.js does not hold one {BP.WORDBOOK_START} and one {BP.WORDBOOK_END} "
+                   "after it")
+    elif src[a + len(BP.WORDBOOK_START):b].strip():
+        bad.append("components.js in src/pages/ has words typed between its markers, which the "
+                   "build writes there from src/pages/words/: "
+                   + src[a + len(BP.WORDBOOK_START):b].strip()[:80])
+
+    # with_words: the words in, nothing else moved, in either line ending.
+    for nl in ("\n", "\r\n"):
+        text = src.replace("\n", nl)
+        try:
+            got = BP.with_words(text)
+        except ValueError as e:
+            bad.append(f"with_words refused components.js itself: {e}")
+            continue
+        block = BP.words_js(nl)
+        s = text.index(BP.WORDBOOK_START)
+        if got != text[:text.index(nl, s) + len(nl)] + block + text[text.index(BP.WORDBOOK_END):]:
+            bad.append(f"with_words did not write the words alone between the markers ({nl!r})")
+        if not block.startswith("const WORDBOOK={" + nl) or (nl == "\n" and "\r" in block):
+            bad.append(f"with_words wrote {block[:40]!r}, not one const WORDBOOK in the file's line "
+                       f"ending ({nl!r})")
+    broken = {
+        "no START": src.replace(BP.WORDBOOK_START, "// WORDBOOK"),
+        "no END": src.replace(BP.WORDBOOK_END, "// WORDBOOK"),
+        "START twice": src.replace(BP.WORDBOOK_START, BP.WORDBOOK_START + "\n" + BP.WORDBOOK_START),
+        "END twice": src.replace(BP.WORDBOOK_END, BP.WORDBOOK_END + "\n" + BP.WORDBOOK_END),
+        "END before START": src.replace(BP.WORDBOOK_START, "@@").replace(BP.WORDBOOK_END, BP.WORDBOOK_START)
+                                .replace("@@", BP.WORDBOOK_END),
+        "END inside a line": src.replace("\n" + BP.WORDBOOK_END, " " + BP.WORDBOOK_END),
+        "START inside a line": src.replace("\n" + BP.WORDBOOK_START, " " + BP.WORDBOOK_START),
+    }
+    took = []
+    for what, text in broken.items():
+        try:
+            BP.with_words(text)
+            took.append(what)
+        except ValueError:
+            pass
+    if took:
+        bad.append("with_words wrote the words into a components.js with "
+                   + ", ".join(took) + ", where it should stop the build")
+
+    # The build wrote them.
+    shared, _base, _ran, _days = _fixture_site_shared()
+    built = shared / "site" / "components.js"
+    if not built.exists():
+        bad.append("the fixture build wrote no site/components.js")
+    elif built.read_bytes().decode("utf-8").replace("\r\n", "\n") != BP.with_words(src):
+        bad.append("the fixture build's site/components.js is not src/pages/components.js with "
+                   "the words written between its markers")
+    assert not bad, " | ".join(bad)
+    n = {k: len(v) for k, v in W.items()}
+    return "ok", (f"{len(W)} files of words ({', '.join(f'{k} {v}' for k, v in n.items())} "
+                  f"entries) read by components.py, build_pages and build_site_v2 and by app.js "
+                  f"from components.js; none typed again in {len(srcs)} files of src/pages/; "
+                  f"the markers hold, and the build wrote the words between them")
 
 
 @check("frontend", "a meeting takes the General Court's colour for its kind, a study committee its own, and the week carries the key")
@@ -49772,7 +49949,7 @@ def _calendar_chambers():
         site = tmp / "site"
         site.mkdir()
         shutil.copy(here / "src/pages/bills.html", site / "bills.html")
-        shutil.copy(here / "src/pages/components.js", site / "components.js")
+        (site / "components.js").write_text(_components_js(here), encoding="utf-8", newline="\n")
         (site / "committees.json").write_text(json.dumps([
             {"code": "H34", "name": "Finance", "chamber": "H"},
             {"code": "S07", "name": "Finance", "chamber": "S"},
@@ -50192,7 +50369,7 @@ def _cal_fixture(root):
     site = root / "site"
     site.mkdir(parents=True)
     shutil.copy(Path("src/pages/bills.html"), site / "bills.html")
-    shutil.copy(Path("src/pages/components.js"), site / "components.js")
+    (site / "components.js").write_text(_components_js(), encoding="utf-8", newline="\n")
     urls = []
     with contextlib.redirect_stdout(io.StringIO()):
         for i, k in enumerate(order):
@@ -50220,11 +50397,16 @@ def _cal_node():
 # replaced the separate checks the person chip, clock() and the dates each had.
 
 def _components_js(here="."):
-    """components.js, which every page loads in its head before any script of
-    its own. "" where it is not here, so a harness then fails on the name it
-    lacks, which says what is missing."""
+    """components.js as every page loads it in its head before any script of
+    its own: the file in src/pages/ with the words of src/pages/words/
+    written between its markers, as the build writes it into the site
+    (build_pages.with_words). "" where it is not here, so a harness then
+    fails on the name it lacks, which says what is missing."""
     p = Path(here) / "src/pages/components.js"
-    return p.read_text(encoding="utf-8") if p.exists() else ""
+    if not p.exists():
+        return ""
+    import build_pages as BP
+    return BP.with_words(p.read_text(encoding="utf-8"))
 
 
 def _with_components(js, here="."):
@@ -50349,14 +50531,16 @@ for (const [name, cases] of Object.entries(job.cases)) {
     catch (e) { return {threw: e.constructor.name + ": " + e.message}; }
   });
 }
+// The words the build wrote between the markers, as the browser holds them.
+out.words = vm.runInThisContext('typeof WORDBOOK === "undefined" ? null : JSON.stringify(WORDBOOK)');
 process.stdout.write("\n@@" + JSON.stringify(out));
 """
 
 
 @check("frontend", "every component gives the same answer in Python and in the browser, on "
-                   "every case, and every part of each is run")
+                   "every case, every part of each is run, and the words are the same in both")
 def _components_agree():
-    """components.py and components.js, held to one answer.
+    """components.py and components.js, held to one answer and one set of words.
 
     The helpers each file defines (a function in components.py whose name
     does not start with "_"; a name components.js declares at its top level
@@ -50371,6 +50555,14 @@ def _components_agree():
     coverage, which counts the two sides of a ?: or an || apart). So a helper
     cannot be added to one file alone, nor a branch to either without the
     case that runs it.
+
+    THE WORDS (the component plan's C3, step 2, 9 October 2026). components.js
+    runs here as the site gets it, with the words of src/pages/words/ written
+    between its markers (_components_js, build_pages.with_words), and the
+    WORDBOOK it then holds must be components.py's WORDBOOK byte for byte, as
+    compact JSON in the files' own order: every table, every word and every
+    class, and the order of the six chip words, which is the bill search's.
+    _words_written_once holds the rest -- the markers, the copies gone.
 
     It replaced three checks, each holding one pair together: the person
     chip (_pchip_agrees), the clock (part of _calendar_clock) and the dates
@@ -50388,7 +50580,7 @@ def _components_agree():
              if not k.startswith("_")}
     py = {n: f for n, f in vars(C).items()
           if inspect.isfunction(f) and f.__module__ == C.__name__ and not n.startswith("_")}
-    js_text = js_f.read_text(encoding="utf-8")
+    js_text = _components_js()
     declared = [a or b for a, b in re.findall(
         r"^(?:function\s+(\w+)\s*\(|(?:const|let|var)\s+(\w+)\s*=)", js_text, re.M)]
     bad = []
@@ -50425,14 +50617,19 @@ def _components_agree():
                                      for c in cases.get(n, [])] for n in py}}
         (root / "job.json").write_text(json.dumps(job), encoding="utf-8")
         (root / "go.js").write_text(_COMPONENTS_NODE, encoding="utf-8")
+        # The file as the site gets it, under its own name, which the
+        # coverage is read back by.
+        site_js = root / "site" / js_f.name
+        site_js.parent.mkdir()
+        site_js.write_text(js_text, encoding="utf-8", newline="\n")
         cov = root / "cov"
-        r = _run([node, "go.js", str(js_f.resolve()), "job.json"], cwd=root, capture_output=True,
+        r = _run([node, "go.js", str(site_js), "job.json"], cwd=root, capture_output=True,
                  text=True, encoding="utf-8", timeout=60,
                  env=dict(os.environ, NODE_V8_COVERAGE=str(cov)))
         assert r.returncode == 0 and "@@" in (r.stdout or ""), (
             "components.js did not run under node: " + (r.stderr or r.stdout or "")[-300:])
         got_js = json.loads(r.stdout.rsplit("@@", 1)[1])
-        js_missed = _js_coverage(cov, js_f)
+        js_missed = _js_coverage(cov, site_js)
     finally:
         shutil.rmtree(root, ignore_errors=True)
 
@@ -50466,11 +50663,24 @@ def _components_agree():
     if py_missed or js_missed:
         bad.append(f"{len(py_missed) + len(js_missed)} parts of the components no case "
                    "reaches: " + "; ".join((py_missed + js_missed)[:6]))
+    words_py = json.dumps(C.WORDBOOK, ensure_ascii=False, separators=(",", ":"))
+    words_js = got_js.get("words")
+    if words_js is None:
+        bad.append("components.js, as the site gets it, defines no WORDBOOK")
+    elif words_js != words_py:
+        at = next((i for i, (x, y) in enumerate(zip(words_py, words_js)) if x != y),
+                  min(len(words_py), len(words_js)))
+        bad.append(f"the words differ from character {at:,}: Python "
+                   f"...{words_py[max(0, at - 40):at + 40]!r}, the browser "
+                   f"...{words_js[max(0, at - 40):at + 40]!r}")
+    if not C.WORDBOOK:
+        bad.append("components.py read no words from src/pages/words/")
     assert not bad, " | ".join(bad)
     n_cases = sum(len(v) for v in cases.values())
     return "ok", (f"{len(py)} helpers ({', '.join(sorted(py))}), {n_cases} cases, the same "
                   "answer byte for byte in Python and in node; every line and branch of "
-                  "components.py and every block of components.js run")
+                  "components.py and every block of components.js run; the words "
+                  f"({', '.join(C.WORDBOOK)}, {len(words_py):,} characters) the same in both")
 
 
 @check("frontend", "every fixture record and tab, and every page that draws part of itself, is "

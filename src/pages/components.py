@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-09.1
+# GRANITE_VERSION: 2026-10-09.2
 """
 The site's components, in Python: what the builders draw a person, a
-committee, a date and a time with.
+committee, a date and a time with, and the words they say.
 
     import components as C
     C.date_words("2026-02-19", "full")     # "February 19, 2026"
     C.clock("13:30")                       # "1:30 PM", a no-break space before PM
     C.pchip(member)                        # one legislator, as every page draws one
+    C.WORDBOOK["meeting_kinds"]["kinds"]   # the words, from src/pages/words/
 
 ONE FILE IN EACH LANGUAGE, THE SAME NAMES (the component plan's C1, approved
 9 October 2026). components.js, beside this file and published as
@@ -37,10 +38,32 @@ seat held at the time -- happens upstream, once, and a helper only draws.
 Moved here unchanged on 9 October 2026: esc, clock and pchip from
 build_pages.py, date_words and date_span from shell.py, which keep their old
 names for the builders that import them from there.
+
+THE WORDS ARE WRITTEN ONCE (C3). The chip's words and classes, the kinds of
+meeting, the vote words and the glossary are JSON files in
+src/pages/words/, one to a kind. WORDBOOK below is each file by its name --
+WORDBOOK["chips"], ["meeting_kinds"], ["votes"], ["glossary"] -- a key starting
+with "_" being a note left out. The builders read them here, and the build
+writes the same into site/components.js between its WORDBOOK markers
+(build_pages.with_words), where the browser's scripts read them as
+WORDBOOK. So there is one copy of each table, where there were two kept
+alike by hand; preflight holds the browser's WORDBOOK to this one byte for
+byte. (Not WORDS, which app.js already names the spelling list's state.)
 """
 
+import _paths
 import datetime
+import json
 import re
+
+WORDBOOK_DIR = _paths.ROOT / "src" / "pages" / "words"
+WORDBOOK = {p.stem: {k: v for k, v in json.loads(p.read_text(encoding="utf-8")).items()
+                     if not k.startswith("_")}
+            for p in sorted(WORDBOOK_DIR.glob("*.json"))}
+if not WORDBOOK:
+    # Not an empty table and a page that draws every chip without its colour.
+    raise ImportError(f"components.py: no words in {WORDBOOK_DIR}, which holds what the "
+                      "pages say: the chips, the kinds of meeting, the votes, the glossary")
 
 
 def esc(s):

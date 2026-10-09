@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.168
+# GRANITE_VERSION: 2026-09-04.169
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -15,7 +15,8 @@ styles and is untouched.
 
 The browser's files -- bills.html, app.css, components.js, app.js and find.js --
 are read from src/pages/ under the folder the build runs in, where they sit
-beside this file, and copied into the site as they are.
+beside this file, and copied into the site as they are, components.js with
+the words of src/pages/words/ written between its markers (with_words).
 """
 
 # The bootstrap: _paths.py, found above this file, puts every code folder on the import path.
@@ -30,7 +31,7 @@ import bill_order as BO
 import build_date
 import html as _html
 import shell as _shell
-from components import clock, pchip
+from components import WORDBOOK, clock, pchip
 import seating
 import json
 import re
@@ -380,37 +381,25 @@ def recent_href(r):
     year, bid = str(r.get("year") or ""), str(r.get("bill") or "")
     return f"bill/{year}/{bid.lower()}.html" if year and bid else f"bills.html#{bid}"
 
-# THE COLOURS ARE THE GENERAL COURT'S OWN, because staff already read its
-# schedule by them: blue a hearing, green a work session, orange an executive
-# session, red a committee of conference -- the legend fetch_schedule.py
-# quotes. The floor, which that schedule does not colour, has one of its own.
-# Until 24 September a hearing was gold and every work session, conference
-# and floor sitting fell to the orange that means executive session there. A
-# kind not named here keeps the neutral k-other rather than borrowing a colour
-# that means something else.
-#
-# STUDY AND STATUTORY COMMITTEES HAVE THEIR OWN COLOUR, a raspberry, though
-# the General Court's schedule greens them with the work sessions. The
-# person asked on 25 September 2026 for the two not to be grouped: the
-# Calendar's colours are now also its filter, and a study commission and a
-# House subcommittee's work session are different things for a reader to
-# show or hide. app.css says why the colour is that one.
-MEET_KIND = {"public hearing": ("Public Hearing", "k-hearing"),
-             "hearing": ("Public Hearing", "k-hearing"),
-             "executive session": ("Executive Session", "k-exec"),
-             "work session": ("Work Session", "k-meet"),
-             "subcommittee work session": ("Subcommittee Work Session", "k-meet"),
-             "full committee work session": ("Full Committee Work Session", "k-meet"),
-             "study committee": ("Study Committee", "k-study"),
-             "statutory committee": ("Statutory Committee", "k-study"),
-             "committee of conference": ("Committee of Conference", "k-conf"),
-             "floor debate": ("Floor Session", "k-floor")}
+# THE KINDS OF MEETING: the schedule's word, lower case, to what a reader sees
+# and the class that colours it. THE COLOURS ARE THE GENERAL COURT'S OWN,
+# because staff already read its schedule by them: blue a hearing, green a
+# work session, orange an executive session, red a committee of conference
+# -- the legend fetch_schedule.py quotes; the floor has one of its own, a
+# study or statutory committee its own raspberry (the person, 25 September
+# 2026), and a kind not named keeps the neutral k-other. The table is words,
+# written once since 9 October 2026 (the component plan's C3): it is
+# src/pages/words/meeting_kinds.json, whose notes say the rest, and app.js draws
+# a committee's calendar with the same file, from components.js. It was a
+# table here and another in app.js, held alike by a check that read both.
+MEET_KIND = {k: tuple(v) for k, v in WORDBOOK["meeting_kinds"]["kinds"].items()}
 
 # THE CHIPS ARE NAMES TOO, in title case like the boxes above the schedule
 # (the person, 25 September 2026: capitalise the chips to match). A kind the
 # table does not know -- "cancelled", or a phrase the docket invents -- is
 # set the same way, its small words left small: "Committee of Conference".
-_SMALL = {"a", "an", "and", "at", "by", "for", "in", "of", "on", "or", "the", "to"}
+# The small words are meeting_kinds.json's, which app.js's kindTitle reads too.
+_SMALL = frozenset(WORDBOOK["meeting_kinds"]["small"])
 
 
 def kind_title(k):
@@ -423,13 +412,8 @@ def kind_title(k):
 # title case, as the person asked on 25 September 2026: "Public Hearing or
 # Executive Session". "Work Session" also covers the chamber committees'
 # other meetings, and "Study Committee" the statutory ones, whose chips
-# say which they are.
-MEET_LEGEND = (("k-hearing", "Public Hearing"),
-               ("k-exec", "Executive Session"),
-               ("k-meet", "Work Session"),
-               ("k-conf", "Committee of Conference"),
-               ("k-floor", "Floor Session"),
-               ("k-study", "Study Committee"))
+# say which they are. meeting_kinds.json's "legend".
+MEET_LEGEND = tuple(tuple(kc) for kc in WORDBOOK["meeting_kinds"]["legend"])
 
 
 def clock_span(a, b):
@@ -2036,6 +2020,46 @@ def bill_matcher_js(app_js):
             + ",".join(BILLMATCH_EXPORTS) + "};\n})();\n")
 
 
+# THE WORDS INTO components.js (the component plan's C3, approved 9 October
+# 2026). The chip's words and classes, the kinds of meeting, the vote words
+# and the glossary are JSON in src/pages/words/, which components.py reads as
+# WORDBOOK for the builders. The browser has them from site/components.js: its
+# copy in src/pages/ marks where they go and holds none of them, and the
+# build writes them there, so each table is written once where there were
+# two kept alike by hand. A marker missing, doubled, out of order or sharing
+# a line stops the build rather than publishing a components.js without the
+# words, where app.js would meet WORDBOOK as a name never defined and draw no
+# bill, member or committee at all.
+WORDBOOK_START, WORDBOOK_END = "// WORDBOOK:START", "// WORDBOOK:END"
+
+
+def words_js(nl="\n"):
+    """The words as site/components.js carries them: one const, WORDBOOK, each
+    file of src/pages/words/ on a line of its own, as compact JSON, which is
+    a JavaScript literal of the same value."""
+    return ("const WORDBOOK={" + nl
+            + ("," + nl).join(json.dumps(k) + ":" + json.dumps(v, ensure_ascii=False,
+                                                                separators=(",", ":"))
+                              for k, v in WORDBOOK.items())
+            + "};" + nl)
+
+
+def with_words(js):
+    """components.js as the site gets it: `js`, the file in src/pages/, with
+    the words written between its two markers, each of which begins a line
+    of its own, in the file's own line ending. Raises ValueError where a
+    marker is missing, doubled, out of order or does not begin its line."""
+    a, b = js.find(WORDBOOK_START), js.find(WORDBOOK_END)
+    eol = js.find("\n", a)
+    if (js.count(WORDBOOK_START), js.count(WORDBOOK_END)) != (1, 1) or not (-1 < a < eol < b) \
+            or (a and js[a - 1] != "\n") or js[b - 1] != "\n":
+        raise ValueError(
+            f"components.js must hold one {WORDBOOK_START} line and one {WORDBOOK_END} line "
+            f"after it, each beginning its line, for the build to write the words between "
+            f"(it holds {js.count(WORDBOOK_START)} and {js.count(WORDBOOK_END)})")
+    return js[:eol + 1] + words_js("\r\n" if "\r\n" in js else "\n") + js[b:]
+
+
 # THE ALL-RESULTS PAGE. find.js's panel is a dropdown: it shows eight rows and
 # hands the rest on. Until 19 September it handed them to the BILL search,
 # which indexes bills and nothing else -- so "See all search results for
@@ -2883,9 +2907,10 @@ def main():
     #
     # Copied as they are. Nothing is rewritten on the way through any more:
     # the version query these three used to gain is a header now, written
-    # below. ONE EXCEPTION, and it only ever takes something out: where the
-    # build has no header mark, app.css goes into the site without the block
-    # that draws it (without_mark), for the same reason style.css does.
+    # below. TWO EXCEPTIONS. Where the build has no header mark, app.css goes
+    # into the site without the block that draws it (without_mark), for the
+    # same reason style.css does. And components.js gains the words between
+    # its markers (with_words), so they are written once, in src/pages/words/.
     for name in ("bills.html", "app.css", "components.js", "app.js", "find.js"):
         src = Path("src/pages") / name
         if not src.exists():
@@ -2894,6 +2919,8 @@ def main():
         body = src.read_bytes()
         if name == "app.css" and not has_mark:
             body = without_mark(body)
+        if name == "components.js":
+            body = with_words(body.decode("utf-8")).encode("utf-8")
         if not dst.exists() or dst.read_bytes() != body:
             dst.write_bytes(body)
             print(f"copied {name} into the site folder")
