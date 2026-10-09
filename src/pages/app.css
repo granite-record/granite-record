@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.227 */
+/* GRANITE_VERSION: 2026-09-07.228 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -2854,6 +2854,8 @@ align-self:start;height:1.5em}
 .jl .j-ontable .jg::after{content:"";display:block;width:.5rem;height:.7em;box-sizing:border-box;
 border-left:.15625rem solid var(--st-table);border-right:.15625rem solid var(--st-table)}
 .jl .jb{font-weight:600}
+/* A tally on one line, "231–99" never "231–" over "99" (app.js tallyWhole). */
+.jl .tally{white-space:nowrap}
 .jl .jd{color:var(--ink-2);font-size:var(--t-sm);white-space:nowrap;
 font-variant-numeric:tabular-nums}
 /* The lines "Show 3 more" holds back. `.jl li` sets display:grid, which

@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.169
+// GRANITE_VERSION: 2026-09-07.170
 // What each kind of document actually is, said once rather than in every row.
 const DOCWHAT={text:"the bill as it currently stands",
   status:"the page this site takes a bill's status from",
@@ -3422,6 +3422,13 @@ const JMARK={p:"✓",x:"✕",h:"↺",s:WAVE,t:""};
 const JCLASS={s:"istudy",t:"ontable"};
 const JBODY={H:"House",S:"Senate",G:"Governor",L:"Law",V:"Voters"};
 const JOURNEY_SHOWN=6;
+// A TALLY IS ONE WORD (9 October 2026). A browser may break a line after an
+// en dash, and on a phone How it got here set "Passed with an amendment,
+// 231–" over "99" and "189–" over "155" (the review of the merge). Held
+// whole, the tally takes the next line together. Only a count either side
+// of the dash: "355,054–266,883" whole, the comma after it left to break.
+const tallyWhole=h=>h.replace(/\d+(?:,\d{3})*–\d+(?:,\d{3})*/g,
+  m=>`<span class="tally">${m}</span>`);
 function journeyList(b,d){
   const st=((d.journey||{}).steps)||[];
   if(!st.length)return "";
@@ -3430,7 +3437,7 @@ function journeyList(b,d){
   const hide=i=>cut&&i>=2&&i<st.length-(JOURNEY_SHOWN-2);
   const line=(s,i)=>`<li class="j-${esc(JCLASS[s.mark]||s.mark)}"${hide(i)?" hidden":""}><span class="jg"
     aria-hidden="true">${JMARK[s.mark]||""}</span><span class="jb">${
-    esc(JBODY[s.body]||s.body)}</span><span class="jt">${esc(s.text)}</span><span
+    esc(JBODY[s.body]||s.body)}</span><span class="jt">${tallyWhole(esc(s.text))}</span><span
     class="jd">${s.date?esc(dateWords(s.date)):""}</span></li>`;
   const rows=st.map(line);
   if(cut)rows.splice(st.length-(JOURNEY_SHOWN-2),0,

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.485
+# GRANITE_VERSION: 2026-09-04.486
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -25256,6 +25256,39 @@ def _rail_on_a_phone():
     return "ok", (f"{width}px with {pad:g}px either side of each stop's words; the six "
                   f"tightest rails of the review are {worst[0]:.1f}px apart at least "
                   f"({worst[1]}), in the wider of Public Sans' and Segoe UI's widths; {drew}")
+
+
+@check("frontend", "a tally in How it got here stays on one line, never broken after its dash")
+def _tally_whole():
+    """A browser may break a line after an en dash, and on a phone How it got
+    here set "Passed with an amendment, 231–" over "99", and "189–" over
+    "155" (the review of the merge, 8 October 2026). app.js holds each tally
+    in a span app.css keeps on one line (tallyWhole, .jl .tally): a count
+    either side of the dash, thousands and all, and nothing else -- not a
+    rule's number, "Senate Rule 3-23", nor the comma after a tally."""
+    css = Path("src/pages/app.css").read_text(encoding="utf-8") if Path("src/pages/app.css").exists() else ""
+    if not css:
+        return "skip", "app.css is not here"
+    assert any(sel == ".jl .tally" and ("white-space", "nowrap") in _css_decls(body)
+               for _c, sel, body, _l in _css_rules(css)), (
+        "app.css does not keep a How it got here tally on one line (.jl .tally)")
+    texts = ["Passed with an amendment, 231–99", "Killed, 170–163, reconsidered on May 3",
+             "Not ratified, 355,054–266,883 (the Secretary of State's count)",
+             "Killed under Senate Rule 3-23, still on the table at adjournment",
+             "Passed on a voice vote"]
+    steps = [{"mark": "p", "body": "H", "text": x, "date": "2026-03-11"} for x in texts]
+    html = _app_js("scope.journeyList({id: 'HB9'}, {journey: {steps: " + json.dumps(steps) + "}})",
+                   names=("journeyList",))
+    if html is None:
+        return "skip", "node or app.js is not here"
+    held = re.findall(r'<span class="tally">(.*?)</span>', html)
+    assert held == ["231–99", "170–163", "355,054–266,883"], (
+        f"How it got here holds {held!a} whole, not each tally and nothing else")
+    words =[re.sub(r"<[^>]+>", "", m) for m in
+             re.findall(r'<span class="jt">(.*?)</span><span\s+class="jd">', html, re.S)]
+    assert words == texts, f"a tally's span changed the words How it got here says: {words!a}"
+    return "ok", ("three tallies each held on one line, thousands and all; Senate Rule 3-23 "
+                  "and the words around them as they were")
 
 
 # Real rows: Docket.txt 11893, 14650, 15189, 16344-16345, 19814-19815, 20127,
