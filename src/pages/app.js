@@ -1,4 +1,6 @@
-// GRANITE_VERSION: 2026-09-07.171
+// GRANITE_VERSION: 2026-09-07.172
+// esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
+// which every page loads before this file (the component plan's C1 and C2).
 // What each kind of document actually is, said once rather than in every row.
 const DOCWHAT={text:"the bill as it currently stands",
   status:"the page this site takes a bill's status from",
@@ -210,8 +212,6 @@ const OTHER=[["Presiding","Presiding",
   "Recorded as excused from this vote. An excuse can cover a whole day, part of a day or a single vote, so a member excused here may have cast other votes the same day."],
  ["Not Voting/Not Excused","Absent, not excused",
   "Recorded as not voting and not excused. The roll call does not say why, or whether the member was in the chamber."]];
-
-const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 
 /* THE BILL MATCHER IS SHARED WITH THE HEADER SEARCH. Every line between a
    "BILLMATCH:BEGIN" and the "BILLMATCH:END" after it is copied by
@@ -2270,45 +2270,6 @@ function whyLine(b){
 function scoreOf(b){
   return matchScore(b,groupsFor(query.trim()));
 }
-// DATEWORDS:START
-// A DATE, ONE WAY, MONTH FIRST (8 October 2026, the person's D6): shell.py's
-// date_words() in the browser, and preflight holds the two to one answer on
-// every form. build_pages and build_calendar put this text, read out of this
-// file between its markers, into the two pages that do not load app.js, so
-// it is written once. A date is "YYYY-MM-DD" at the start of a string; what
-// is not one comes back as it came. The forms: long "Thursday, February 19,
-// 2026"; full "February 19, 2026"; medium "Feb 19, 2026", the default; short
-// "Feb 19"; day "Thursday, February 19"; wkd "Thu, Feb 19".
-var DW_MONTHS=["January","February","March","April","May","June","July",
-  "August","September","October","November","December"];
-var DW_DAYS=["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];
-function dateWords(iso,form){
-  var s=iso==null?"":String(iso), m=/^(\d{4})-(\d\d)-(\d\d)/.exec(s);
-  if(!m)return s;
-  var y=+m[1], mo=+m[2], d=+m[3], t=new Date(Date.UTC(y,mo-1,d));
-  if(t.getUTCFullYear()!==y||t.getUTCMonth()!==mo-1||t.getUTCDate()!==d)return s;
-  var M=DW_MONTHS[mo-1], Mo=M.slice(0,3), W=DW_DAYS[(t.getUTCDay()+6)%7];
-  switch(form){
-    case "long": return W+", "+M+" "+d+", "+y;
-    case "full": return M+" "+d+", "+y;
-    case "short": return Mo+" "+d;
-    case "day": return W+", "+M+" "+d;
-    case "wkd": return W.slice(0,3)+", "+Mo+" "+d;
-    default: return Mo+" "+d+", "+y;
-  }
-}
-// Two days as one span: "October 5–11, 2026", "September 28 – October
-// 4, 2026", "December 28, 2026 – January 3, 2027" -- shell.date_span.
-function dateSpan(a,b){
-  if(String(a).slice(0,10)===String(b).slice(0,10))return dateWords(a,"full");
-  var fa=dateWords(a,"full"), fb=dateWords(b,"full");
-  if(fa===String(a)||fb===String(b))return fa+" – "+fb;
-  var x=fa.replace(",","").split(" "), z=fb.replace(",","").split(" ");
-  if(x[2]!==z[2])return fa+" – "+fb;
-  if(x[0]!==z[0])return x[0]+" "+x[1]+" – "+z[0]+" "+z[1]+", "+z[2];
-  return x[0]+" "+x[1]+"–"+z[1]+", "+z[2];
-}
-// DATEWORDS:END
 const $=s=>document.querySelector(s);
 
 let IDX=[],META={},term=null,query="",sortBy="num",sortChosen=false;
@@ -3698,8 +3659,8 @@ function factsTable(b,d){
         ch.length} chapters</span><span class="open">Show fewer</span></summary>`
       +`<span class="rsaset">${ch.slice(RSA_SHOWN).map(rsaLink).join(", ")}</span>`
       +`</details>`);
-  if(d.house_committee) add("House Committee", cmteLink("House "+d.house_committee,b.term));
-  if(d.senate_committee) add("Senate Committee", cmteLink("Senate "+d.senate_committee,b.term));
+  if(d.house_committee) add("House Committee", cmteLink("House "+d.house_committee,b.term,META.committee_codes));
+  if(d.senate_committee) add("Senate Committee", cmteLink("Senate "+d.senate_committee,b.term,META.committee_codes));
   // THE TOPIC MODEL'S REFUSAL IS NOT A SUBJECT. "Miscellaneous" is what
   // topic_model.py returns below its confidence floor -- its own way of
   // declining to answer -- and the General Court's 46 subject codes do not
@@ -5568,23 +5529,6 @@ const termOfYear=y=>{
     return a&&b&&n>=a&&n<=b;})||"";
 };
 
-// A committee named on a bill, as a link to its page where there is one.
-// 3,967 mentions across the site were plain text, so the reader who wanted
-// "what else did this committee do" had nowhere to click.
-//
-// THE NAME AS THE BILL CARRIES IT, TO THE COMMITTEE IT WAS. A name is not
-// always one committee: 1995's Corrections and Criminal Justice sits today as
-// Criminal Justice and Public Safety, and the Senate's Election Law and
-// Internal Affairs of 2007-2008 is not the committee of that name formed for
-// 2017-2018. meta.json carries such a name as {"": page, "<term>": page}, and
-// the term decides; the label is never changed to the later name.
-function cmteLink(name,term){
-  const v=(META&&META.committee_codes||{})[name];
-  const code=typeof v==="string"?v
-    :v?((term&&Object.prototype.hasOwnProperty.call(v,term))?v[term]:v[""]):"";
-  return code?`<a href="committee/${esc(code)}.html">${esc(name)}</a>`:esc(name);
-}
-
 // THE BYLINE UNDER A CARD'S TITLE: sponsor, committees, subject. The middot
 // used to be glued to the front of each item rather than set between them, so
 // a bill with no sponsor opened with a separator and nothing before it --
@@ -5602,7 +5546,7 @@ function cmteLink(name,term){
 // bill and stays.
 function cmeta(b){
   return [esc(b.sponsor_label||b.sponsor||""),
-    ...(b.committees||[b.committee]).filter(Boolean).map(c=>cmteLink(c,b.term)),
+    ...(b.committees||[b.committee]).filter(Boolean).map(c=>cmteLink(c,b.term,META.committee_codes)),
     b.topic?esc(b.topic):""].filter(Boolean).join(" · ");
 }
 
@@ -6012,32 +5956,7 @@ function pagePane(html){
   return `<div class="pane" role="tabpanel" id="ppane" aria-labelledby="ptab_${PAGE_TAB}" tabindex="0">${html}</div>`;
 }
 
-// ONE CHIP FOR A PERSON, wherever they appear. A committee's members were
-// drawn in party colour and a bill's sponsors were not: the sponsor pill was
-// pine green for everyone, so the same member read as one party on a
-// committee page and as no party on a bill. Prime sponsorship stays bold and
-// a committee role stays in the corner; nothing else differs between them.
-//
-// The party comes from party_code where the roster supplied one and from the
-// first letter of party where only the word is there, because the sponsor
-// records carry "Republican" and the roster carries "R".
-const pchip=m=>{
-  const code=String(m.party_code||m.party||"").toUpperCase().slice(0,1)||"X";
-  // THE PARTY AND DISTRICT ARE ONE UNIT: "(R - Rock 2)" is a span app.css
-  // keeps on one line, so a chip that has to wrap does so before it rather
-  // than inside it (build_pages.CHIP_TAG, which this matches).
-  const full=String(m.display_full||m.label||m.name||"");
-  const tag=full.match(/^(.*\S)\s+(\([^()]*\))$/);
-  const who=tag?`${esc(tag[1])} <span class="mtag">${esc(tag[2])}</span>`:esc(full);
-  // A LABEL, NOT BOLD. A committee roster has always labelled its Chair, Vice
-  // Chair and Clerk through the <i> below, and the prime sponsor was marked
-  // with bold alone -- which is not a label, cannot be told from emphasis, and
-  // is nothing at all to a screen reader. It reuses the mechanism that was
-  // already there rather than adding a second one.
-  const role=(m.role&&m.role!=="Member")?m.role:(m.prime?"Prime":"");
-  return `<span class="mchip p-${esc(code)}">${
-    m.slug?`<a href="legislator/${esc(m.slug)}.html">${who}</a>`:who}${
-    role?` <i>${esc(role)}</i>`:""}</span>`;};
+// ONE CHIP FOR A PERSON is components.js's pchip, which every page loads.
 const mchip=pchip;
 
 // ---------------------------------------------------------------- member ---
@@ -6193,7 +6112,7 @@ function renderMemberHead(m){
       `<p class="ptowns note">The towns in this district are not on file.</p>`)}
     ${(m.committees||[]).length?`<p class="pcmte"><b>Committees</b> ${
       m.committees.map(c=>cmteLink(
-        (m.chamber==="S"?"Senate ":"House ")+c)).join(" &middot; ")}</p>`:""}
+        (m.chamber==="S"?"Senate ":"House ")+c,"",META.committee_codes)).join(" &middot; ")}</p>`:""}
     ${m.seat?`<p class="pseat"><b>Seat</b> ${esc(plate(m.seat))}</p>`:""}
     ${(!former&&m.email)?`<p class="pmeta"><b>Email</b> <a href="mailto:${
       esc(m.email)}">${esc(m.email)}</a></p>`:""}
@@ -6709,16 +6628,6 @@ const KIND_SMALL=new Set(["a","an","and","at","by","for","in","of","on","or","th
 const kindTitle=k=>String(k||"").split(/\s+/).filter(Boolean)
   .map((w,i)=>(i&&KIND_SMALL.has(w.toLowerCase()))||!/^[a-z]/i.test(w)?w:w.charAt(0).toUpperCase()+w.slice(1))
   .join(" ")||"Meeting";
-
-// "13:30" -> "1:30 PM", as a reader says a time: build_pages.clock, and the
-// Calendar page's own, which preflight holds this to. A no-break space keeps
-// AM or PM with its time; anything that is not a time comes back as it was.
-function clock(t){
-  const m=/^(\d{1,2}):(\d\d)/.exec(String(t||""));
-  if(!m||+m[1]>23)return String(t||"");
-  const h=+m[1];
-  return (h%12||12)+":"+m[2]+"\u00a0"+(h<12?"AM":"PM");
-}
 
 // THE MARKUP HERE MUST MATCH build_pages.py's calendar_html(). Both emit the
 // same component against one set of rules in app.css's SHARED region, and

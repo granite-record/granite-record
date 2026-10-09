@@ -14,6 +14,10 @@ Scripts that write no record and no page, only a verdict or a report:
 - how complete the archive is (`archive_status`);
 - how near launch is (`readiness`);
 - dead CSS (`audit_css`);
+- what the browser draws on a built site's record pages, tab by tab, and on
+  the pages that draw part of themselves (`drawn_pages`, which runs each
+  page's scripts in node against `tests/dom_stub.js`), so that two builds
+  meant to look the same are compared by what a reader is shown;
 - the bench (`review.py`), where a person judges one sample at a time and
   `review/checked.jsonl` grows.
 

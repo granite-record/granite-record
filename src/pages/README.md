@@ -5,10 +5,20 @@ Reads the record (`data/`, the root JSON, `proceedings.csv`) and writes
 around it (`shell.py`), the feeds and the changes files the email sender reads
 beside them (`follow_changes.py`), the CSV downloads and the search index.
 The browser's files are here too, since stage 5: `bills.html`, the template
-every record page is built from, and the `app.js`, `app.css` and `find.js` it
-loads. `build_pages.py` copies all four into `site/` as they are, and the
-builders read them here under the folder they run in, so a fixture lays out
-its own copies the same way. Edit them here; `site/` holds copies.
+every record page is built from, and the `components.js`, `app.js`, `app.css`
+and `find.js` it loads. `build_pages.py` copies all five into `site/` as they
+are, and the builders read them here under the folder they run in, so a
+fixture lays out its own copies the same way. Edit them here; `site/` holds
+copies.
+
+The components are in two files with the same helpers under the same names
+(9 October 2026): `components.py`, which the builders draw a person, a
+committee, a date and a time with, and `components.js`, which every page
+loads in its head before any script of its own, for what the browser draws.
+A helper is pure and thin: a plain value in, a string out. `preflight` runs
+both on every case in `tests/components_cases.json` and fails where they
+answer differently, where one has a helper the other has not, and where any
+part of a helper is reached by no case.
 
 Run by: `build_all.py`'s `plan()`, after the record is built. A new page is
 `build_<page>.py` on `shell.py` plus one `Step()`.

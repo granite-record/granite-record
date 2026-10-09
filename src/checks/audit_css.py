@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-19.5
+# GRANITE_VERSION: 2026-09-19.6
 """
 Which components are stranded, and which rules are dead.
 
@@ -31,11 +31,12 @@ mean two things.
 
 WHAT IT CANNOT SEE. Classes a script adds after load. app.js builds the
 committee roster, the bill detail and the vote rings in the browser, so their
-classes are read out of app.js as well as out of the HTML; anything it composes
-from a variable rather than a literal is invisible here and is listed as such.
+classes are read out of app.js, and components.js which it draws with, as well
+as out of the HTML; anything it composes from a variable rather than a literal
+is invisible here and is listed as such.
 
-It reads app.css, app.js and find.js from src/pages/, where they sit, and the
-built pages from --site.
+It reads app.css, components.js, app.js and find.js from src/pages/, where they
+sit, and the built pages from --site.
 """
 
 # The bootstrap: _paths.py, found above this file, puts every code folder on the import path.
@@ -158,7 +159,7 @@ def main():
     for v in by_sheet.values():
         for f in v[:400]:
             everything |= classes_in(f.read_text(encoding="utf-8", errors="replace"))
-    for js in ("app.js", "find.js"):
+    for js in ("components.js", "app.js", "find.js"):
         p = Path("src/pages") / js
         if p.exists():
             everything |= classes_in(p.read_text(encoding="utf-8", errors="replace"))

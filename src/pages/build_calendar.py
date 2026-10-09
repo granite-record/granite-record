@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-18.29
+# GRANITE_VERSION: 2026-09-18.30
 """
 The General Court's week, one page per week.
 
@@ -535,11 +535,9 @@ WEEK_JS = r"""
   //
   // Dates are ISO strings, "2026-09-23", and all arithmetic is in UTC: a day
   // is a date, not a moment, and a reader's time zone must not move one.
-  // A DATE IN WORDS is app.js's dateWords() and dateSpan(), month first,
-  // put here by build_calendar out of app.js itself (shell.dates_js), so the
-  // browser has one formatter: the Calendar's own script runs before app.js
-  // is there to ask. The names of the days and months are its lists.
-__DATEWORDS__
+  // A DATE IN WORDS is components.js's dateWords() and dateSpan(), month
+  // first, and a time its clock(); the page loads that file in its head,
+  // before this script. The names of the days and months are its lists.
   var DAYNAME=DW_DAYS, MONTH=DW_MONTHS;
   // THE KINDS OF MEETING A READER SHOWS OR HIDES, in the order of the row of
   // boxes above the schedule (build_calendar.CATEGORIES), which is the key to
@@ -622,23 +620,8 @@ __DATEWORDS__
     return off===0?"today":off===1?"tomorrow":(off>0&&off<=14)?"in "+off+" days":"";
   }
   function plural(n,w){ return n+" "+w+(n===1?"":"s"); }
-  // TWELVE HOURS, AS A READER SAYS A TIME: "9:00 AM", "1:30 PM", noon
-  // "12:00 PM" -- build_pages.clock, which draws the cards, and app.js's;
-  // preflight holds the three to one answer. The cards' data-time keeps the
-  // record's "13:30", which is what this reads. A no-break space keeps AM or
-  // PM with its time where a column wraps.
-  function clock(t){
-    var m=/^(\d{1,2}):(\d\d)/.exec(String(t||""));
-    if(!m||+m[1]>23) return String(t||"");
-    var h=+m[1];
-    return (h%12||12)+":"+m[2]+"\u00a0"+(h<12?"AM":"PM");
-  }
   // An hour of the week at a glance: "9 AM", "1 PM".
   function hourWord(h){ var n=+h; return (n%12||12)+"\u00a0"+(n<12?"AM":"PM"); }
-  function esc(s){
-    return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;")
-      .replace(/>/g,"&gt;").replace(/"/g,"&quot;");
-  }
   function unesc(s){
     return String(s).replace(/&(amp|lt|gt|quot|#x27|#39);/g,function(_m,e){
       return {amp:"&",lt:"<",gt:">",quot:'"',"#x27":"'","#39":"'"}[e]; });
@@ -1855,10 +1838,6 @@ __DATEWORDS__
   });
 })();
 """
-# app.js's own date formatter, read out of app.js (shell.dates_js): the
-# Calendar's script runs before app.js is there to ask, and the browser has
-# one formatter however many pages carry it.
-WEEK_JS = WEEK_JS.replace("__DATEWORDS__", S.dates_js(), 1)
 
 
 def week_key(d):

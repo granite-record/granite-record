@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-07.24
+# GRANITE_VERSION: 2026-09-07.25
 """
 The page every record's own address is: bills.html, with one record open.
 
@@ -29,6 +29,7 @@ import re
 from pathlib import Path
 
 import build_date
+from components import date_span, date_words  # noqa: F401 (the builders ask for them here)
 
 E = html.escape
 
@@ -110,87 +111,11 @@ def cite_day(d):
     return f"{d.day} {CITE_MONTHS[d.month - 1]} {d.year}"
 
 
-# A DATE, ONE WAY, MONTH FIRST (8 October 2026: the person's D6 of the polish
-# plan, "May 21, 2026" and "10:00 AM"). The site wrote its own dates in
-# twelve forms -- "8 Jan 2025" and then "13 Feb" on one rail, "Thursday 19
-# February 2026" over a session day, "WED 7 OCT" on the home page,
-# "8/19/2026" in a member's votes, "2025-01-22 at 15:00" on the Hearings tab
-# -- from six formatters here and four in app.js. date_words() is the one in
-# Python and app.js's dateWords() the one in the browser; build_pages and
-# build_calendar put app.js's own text into the two pages that do not load
-# it (dates_js), and preflight holds the two to one answer for every form and
-# fails a builder or script that writes a date some other way. A time is
-# build_pages.clock()'s "10:00 AM".
-#
-# What keeps its own style, because it follows somebody else's: a
-# citation's date (cite_day, MLA's "24 Sept. 2026"), a feed's RFC 822 date,
-# the docket's own lines as the clerk wrote them, and the home page's floor
-# session titles ("August 19th, 2026"), which the person chose.
-MONTHS = ("January", "February", "March", "April", "May", "June", "July",
-          "August", "September", "October", "November", "December")
-WEEKDAYS = ("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday")
-DATE_FORMS = ("long", "full", "medium", "short", "day", "wkd")
-
-
-def date_words(iso, form="medium"):
-    """A day as the site writes it. `iso` is a date, or a string that starts
-    "YYYY-MM-DD" (what follows is ignored); anything else comes back as it
-    came, as clock() gives back what is not a time.
-
-        long    Thursday, February 19, 2026   a day's own title
-        full    February 19, 2026             in a sentence
-        medium  Feb 19, 2026                  a row, a list, the rail
-        short   Feb 19                        where the year is already said
-        day     Thursday, February 19         a day inside a week that says its year
-        wkd     Thu, Feb 19                   the same, where the room is short
-    """
-    import datetime
-    if isinstance(iso, datetime.datetime):
-        iso = iso.date()
-    if isinstance(iso, datetime.date):
-        d = iso
-    else:
-        m = re.match(r"(\d{4})-(\d\d)-(\d\d)", str(iso or ""))
-        try:
-            d = datetime.date(int(m.group(1)), int(m.group(2)), int(m.group(3))) if m else None
-        except ValueError:
-            d = None
-        if d is None:
-            return "" if iso is None else str(iso)
-    month, mon, wd = MONTHS[d.month - 1], MONTHS[d.month - 1][:3], WEEKDAYS[d.weekday()]
-    return {"long": f"{wd}, {month} {d.day}, {d.year}",
-            "full": f"{month} {d.day}, {d.year}",
-            "short": f"{mon} {d.day}",
-            "day": f"{wd}, {month} {d.day}",
-            "wkd": f"{wd[:3]}, {mon} {d.day}"}.get(form, f"{mon} {d.day}, {d.year}")
-
-
-def date_span(a, b):
-    """Two days as one span, month first: "October 5–11, 2026", "September 28
-    – October 4, 2026", "December 28, 2026 – January 3, 2027"; one day where
-    the two are the same. app.js's dateSpan() says the same."""
-    if str(a)[:10] == str(b)[:10]:
-        return date_words(a, "full")
-    fa, fb = date_words(a, "full"), date_words(b, "full")
-    if fa == str(a) or fb == str(b):
-        return f"{fa} – {fb}"
-    (ma, da, ya), (mb, db, yb) = (x.replace(",", "").split() for x in (fa, fb))
-    if ya != yb:
-        return f"{fa} – {fb}"
-    if ma != mb:
-        return f"{ma} {da} – {mb} {db}, {yb}"
-    return f"{ma} {da}–{db}, {yb}"
-
-
-def dates_js():
-    """app.js's dateWords() and dateSpan(), as written there: the text
-    between its DATEWORDS markers, for the two pages that do not load app.js
-    (the home page's script and the Calendar's). Read, not copied, so the
-    browser has one formatter however many pages carry it."""
-    import _paths
-    src = _paths.locate("app.js").read_text(encoding="utf-8")
-    a, b = src.index("// DATEWORDS:START"), src.index("// DATEWORDS:END")
-    return src[a:b + len("// DATEWORDS:END")]
+# A DATE, ONE WAY, MONTH FIRST: components.py's date_words() and
+# date_span(), imported above, which the builders have always asked for here
+# (S.date_words); components.js's dateWords() and dateSpan() are the same in
+# the browser, and every page loads that file, so no page's script carries a
+# copy of its own any more.
 
 
 # The day the site was built, as the fallback date in a citation. A file on

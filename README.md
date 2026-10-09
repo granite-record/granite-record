@@ -184,8 +184,8 @@ per job: `fetch/` (one folder per whose server it asks), `parse/`, `towns/`,
 `livestreams.py`, `compile_reports.py` and the session's first commands
 (`inventory.py`, `handoff.py`), which the workflows and a person run by
 their path.
-The front end (`bills.html`, `app.js`, `find.js`, `app.css`) is in
-`src/pages/` with the builders that read it, and the `dom_stub.js` that
+The front end (`bills.html`, `components.js`, `app.js`, `find.js`,
+`app.css`) is in `src/pages/` with the builders that read it, and the `dom_stub.js` that
 `preflight` loads it against is in `tests/`.
 [`src/README.md`](src/README.md) has the tree, what each folder holds, and
 where a new file goes. Run a script under `src/` from the root by its path
@@ -268,6 +268,7 @@ want:
 |---|---|
 | how any record page looks | `src/pages/app.js` — one `render…` function per tab (`renderSummary`, `renderVotes`, `renderHearings`…); `BILL_TABS` maps slug → tab |
 | what data a bill page *has* | `src/pages/build_site_v2.py`, which assembles the payload |
+| how a person, a committee, a date or a time is drawn, on every page | `src/pages/components.py` for the pages built in Python and `src/pages/components.js` for the ones drawn in the browser: the same helpers under the same names, which `preflight` holds to one answer on `tests/components_cases.json` |
 | the frame every record page is built in | `src/pages/shell.py` — every page builder in `src/pages/` imports it |
 | what the search does | `src/pages/bills.html` + `src/pages/app.js` (the lines between its `BILLMATCH` marks, which `src/pages/build_pages.py` cuts into `billmatch.js` for the header's `src/pages/find.js`); what each bill is about, `src/pages/build_search_index.py` |
 | the plain-English history under a bill | `src/parse/narrative.py` (sitting terms), `src/parse/narrate_archive.py` (archived) |

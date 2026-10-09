@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.167
+# GRANITE_VERSION: 2026-09-04.168
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -13,9 +13,9 @@ the bill search, which is the part that works.
 Writes a shared style.css these pages link to. index.html keeps its own inline
 styles and is untouched.
 
-The browser's files -- bills.html, app.css, app.js and find.js -- are read
-from src/pages/ under the folder the build runs in, where they sit beside this
-file, and copied into the site as they are.
+The browser's files -- bills.html, app.css, components.js, app.js and find.js --
+are read from src/pages/ under the folder the build runs in, where they sit
+beside this file, and copied into the site as they are.
 """
 
 # The bootstrap: _paths.py, found above this file, puts every code folder on the import path.
@@ -30,6 +30,7 @@ import bill_order as BO
 import build_date
 import html as _html
 import shell as _shell
+from components import clock, pchip
 import seating
 import json
 import re
@@ -244,6 +245,8 @@ HEADERS = """# Written by build_pages.py. Not an asset; Pages reads it.
   Cache-Control: public, max-age=0, must-revalidate
 /find.js
   Cache-Control: public, max-age=0, must-revalidate
+/components.js
+  Cache-Control: public, max-age=0, must-revalidate
 /billmatch.js
   Cache-Control: public, max-age=0, must-revalidate
 # The two files a page reads to say what is true today: the home page's own
@@ -427,25 +430,6 @@ MEET_LEGEND = (("k-hearing", "Public Hearing"),
                ("k-conf", "Committee of Conference"),
                ("k-floor", "Floor Session"),
                ("k-study", "Study Committee"))
-
-
-def clock(t):
-    """"13:30" -> "1:30 PM": a time as a reader says it.
-
-    Asked for on 25 September 2026: "I'd also prefer if times were listed
-    with AM and PM instead of 13:00." Noon is "12:00 PM" and midnight "12:00
-    AM". Only what is printed changes: a card's data-time keeps the record's
-    own "13:30", which the Calendar's script and the add-to-calendar links
-    read. A no-break space keeps AM or PM with its time when a narrow column
-    wraps the line. build_calendar's WEEK_JS and app.js each carry the same
-    function, and preflight holds the three to one answer. Anything that is
-    not a time is given back as it came.
-    """
-    m = re.match(r"^(\d{1,2}):(\d\d)", t or "")
-    if not m or int(m.group(1)) > 23:
-        return t or ""
-    h = int(m.group(1))
-    return f"{h % 12 or 12}:{m.group(2)}\u00a0{'AM' if h < 12 else 'PM'}"
 
 
 def clock_span(a, b):
@@ -844,39 +828,12 @@ def calendar_html(out, today=None, rows=None):
     return "".join(html) + cal_notes(up, missing, esc)
 
 
-# ONE CHIP FOR A PERSON, AND THIS IS THE SECOND COPY OF IT.
+# ONE CHIP FOR A PERSON is components.py's pchip, imported above: the
+# legislators page builds two of its three rosters here, in Python, because
+# they are the only listing a crawler and a reader without JavaScript can
+# walk, and components.js's pchip draws the same chip wherever a page is
+# drawn in the browser.
 #
-# app.js's `pchip` draws a legislator wherever the page is built in the
-# browser -- a bill's sponsors, a committee's members. The legislators page
-# builds two of its three rosters in PYTHON, on purpose: they are the only
-# listing a crawler and a reader without JavaScript can walk, and this page
-# used to be a search box that showed nothing until somebody typed.
-#
-# So the chip exists twice, which this repository otherwise refuses. It is
-# allowed here for the same reason plate() is allowed to: the two copies are
-# held together by a check that runs BOTH and compares their output, rather
-# than by a comment asking the next person to remember. preflight's
-# "the person chip is drawn the same in both" is that check. Change one and
-# it fails until you change the other.
-#
-# The party code reads party_code first and the first letter of party second,
-# because sponsor records carry "Republican" and the roster carries "R", and
-# a member must not read as one party on a bill and another on the roster --
-# which is the bug that made this one component in the first place.
-def _cesc(s):
-    """app.js's esc, exactly: ampersand, the angles and the double quote.
-
-    NOT shell.E, which is html.escape and also turns an apostrophe into
-    &#x27;. The two render identically, so the difference is invisible on the
-    page and would be invisible in a diff of the two chips as well -- which is
-    how a check that was meant to hold them together would come to be relaxed
-    until it held nothing. The chip escapes for itself so the comparison can
-    stay byte for byte.
-    """
-    return (str("" if s is None else s).replace("&", "&amp;")
-            .replace("<", "&lt;").replace(">", "&gt;").replace('"', "&quot;"))
-
-
 # THE PARTY PILL HAS ITS OWN PREFIX NOW: pt-R, not p-R.
 #
 # `.p-R` was three components in this codebase -- the left edge of a member
@@ -891,29 +848,6 @@ def _cesc(s):
 # the pill's tint won wherever a member chip appeared on a page built here: the
 # roster's chips arrived tinted and unpadded. That was patched by specificity
 # first; this is the real fix.
-#
-# THE PARTY AND DISTRICT ARE ONE UNIT (the look of 7 October 2026). Where a
-# chip has to wrap -- the House by seat in five columns, any chip on a phone --
-# it broke wherever a space fell, so a line ended "Rep. Jason Osborne (R" and
-# the next began "- Rock 2)". The trailing "(R - Rock 2)" is its own span,
-# which app.css keeps on one line, so a chip that wraps does so between the
-# name and the tag. The text is unchanged; app.js's pchip does the same.
-CHIP_TAG = re.compile(r"(.*\S)\s+(\([^()]*\))")
-
-
-def pchip(m, esc=_cesc):
-    """One legislator, as the site draws them everywhere else."""
-    code = str(m.get("party_code") or m.get("party") or "").upper()[:1] or "X"
-    full = str(m.get("display_full") or m.get("label") or m.get("name") or "")
-    tag = CHIP_TAG.fullmatch(full)
-    who = (f'{esc(tag.group(1))} <span class="mtag">{esc(tag.group(2))}</span>'
-           if tag else esc(full))
-    role = m.get("role") if (m.get("role") and m.get("role") != "Member") else (
-        "Prime" if m.get("prime") else "")
-    slug = m.get("slug") or ""
-    inner = (f'<a href="legislator/{esc(slug)}.html">{who}</a>' if slug else who)
-    return (f'<span class="mchip p-{esc(code)}">{inner}'
-            + (f" <i>{esc(role)}</i>" if role else "") + "</span>")
 
 
 def is_cancelled(rows):
@@ -1333,6 +1267,7 @@ def shell(title, current, body, wide=False, script="", desc="",
     return f"""<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>{title}</title>{HEAD_SEO}{FONTS}{BRAND_HEAD}{themer("HEAD")}<link rel="stylesheet" href="style.css">
+<script src="/components.js"></script>
 <!-- body.pg is what the page half of app.css is scoped to: the record pages
      load app.css and must not take these rules. -->
 <link rel="alternate" type="application/rss+xml" title="Granite Record — all activity"
@@ -2512,12 +2447,10 @@ Promise.all([fetch(DATA("districts.json")).then(r=>r.json()).catch(()=>({})),
 
 HOME_JS = """
 <script>
-const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-__DATEWORDS__
 // The day without its year where the year goes without saying ("Oct 7" in
 // Latest activity), and with it for the status box: out of session, the last
 // floor day and the summary's date can be months back, and across a new year
-// "Aug 19" is ambiguous. app.js's dateWords(), above, writes both, and the
+// "Aug 19" is ambiguous. components.js's dateWords() writes both, and the
 // server-rendered copy below writes the same with shell.date_words().
 const fd=d=>dateWords(d||"","short");
 const fdy=d=>dateWords(d||"");
@@ -2807,9 +2740,8 @@ document.getElementById("hgo").addEventListener("click",()=>{
   goBills(document.getElementById("hq").value);
 });
 </script>"""
-# The home page loads no app.js, so its script carries app.js's own date
-# formatter, read out of app.js (shell.dates_js) rather than written again.
-HOME_JS = HOME_JS.replace("__DATEWORDS__", _shell.dates_js(), 1)
+# The home page loads no app.js. Its script draws with components.js's esc and
+# dateWords, which every page loads in its head.
 
 
 def sitting_days():
@@ -2954,7 +2886,7 @@ def main():
     # below. ONE EXCEPTION, and it only ever takes something out: where the
     # build has no header mark, app.css goes into the site without the block
     # that draws it (without_mark), for the same reason style.css does.
-    for name in ("bills.html", "app.css", "app.js", "find.js"):
+    for name in ("bills.html", "app.css", "components.js", "app.js", "find.js"):
         src = Path("src/pages") / name
         if not src.exists():
             continue

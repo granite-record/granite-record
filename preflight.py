@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.489
+# GRANITE_VERSION: 2026-09-04.490
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -7913,7 +7913,7 @@ def _ballot_source_named(build_site_v2):
             "pending": B.ballot_card(pending, None, today=B._date(2026, 10, 5))}
     root = Path(tempfile.mkdtemp())
     try:
-        (root / "page.js").write_text(js.read_text(encoding="utf-8"), encoding="utf-8")
+        (root / "page.js").write_text(_with_components(js.read_text(encoding="utf-8")), encoding="utf-8")
         (root / "stub.js").write_text(stub.read_text(encoding="utf-8"), encoding="utf-8")
         (root / "recs.json").write_text(json.dumps(recs), encoding="utf-8")
         (root / "go.js").write_text("""
@@ -15657,7 +15657,7 @@ def _ls_ignored():
 # ============================================================ code: front end ==
 
 def page_source(name="src/pages/bills.html"):
-    """bills.html together with the app.css and app.js it loads.
+    """bills.html together with the app.css, components.js and app.js it loads.
 
     The page was one file with a <style> and a <script> in it. It is three
     files now, so a bill's own page can load the SAME renderer rather than a
@@ -15676,7 +15676,7 @@ def page_source(name="src/pages/bills.html"):
     if not p.exists():
         return "", None
     out = p.read_text(encoding="utf-8")
-    for asset in ("app.css", "app.js"):
+    for asset in ("app.css", "components.js", "app.js"):
         f = p.parent / asset
         if f.exists():
             out += "\n" + f.read_text(encoding="utf-8")
@@ -15695,7 +15695,7 @@ def _bills_html():
     # by finding nothing to disagree with -- so the page is read together with
     # the files it pulls in, and it is an error if those are missing.
     t = p.read_text(encoding="utf-8")
-    for asset in ("app.css", "app.js"):
+    for asset in ("app.css", "components.js", "app.js"):
         f = p.parent / asset
         assert f.exists(), (f"bills.html loads {asset} and it is not next to "
                             f"it in {p.parent}/")
@@ -16383,14 +16383,17 @@ def _class_collisions():
         "phead", "pmeta", "cbn", "cbt",
         # the feedback box
         "fbk", "fbknote",
-        # a person chip's "(R - Rock 2)", which pchip writes in app.js and in
-        # build_pages alike, held together by "the person chip is drawn the
-        # same in both" (the look of 7 October 2026)
+        # a person chip's "(R - Rock 2)", which pchip writes in components.js
+        # and in components.py alike, held together by "every component gives
+        # the same answer in Python and in the browser" (the look of 7 October
+        # 2026)
         "mtag",
     }
     here = Path(".")
-    app_side = ["app.js", "find.js", "bills.html"]
-    bld_side = [f.name for f in _paths.code_files("build_*.py")] + ["shell.py"]
+    # The components draw on both sides by design: components.js with the
+    # browser's files, components.py with the builders.
+    app_side = ["components.js", "app.js", "find.js", "bills.html"]
+    bld_side = [f.name for f in _paths.code_files("build_*.py")] + ["shell.py", "components.py"]
     if not all(_paths.locate(f).exists() for f in app_side + ["shell.py"]) or not bld_side:
         return "skip", "not all renderers are in this directory"
 
@@ -16589,7 +16592,8 @@ def _cite_up_and_copied():
         return "skip", "node is not installed"
     root = Path(tempfile.mkdtemp())
     try:
-        (root / "app.js").write_text(Path("src/pages/app.js").read_text(encoding="utf-8"), encoding="utf-8")
+        (root / "app.js").write_text(_with_components(Path("src/pages/app.js").read_text(encoding="utf-8")),
+                                     encoding="utf-8")
         (root / "stub.js").write_text(Path("tests/dom_stub.js").read_text(encoding="utf-8"),
                                       encoding="utf-8")
         (root / "dates.json").write_text(json.dumps(dates), encoding="utf-8")
@@ -17158,7 +17162,7 @@ def _find_bills(BP):
     root = Path(tempfile.mkdtemp())
     try:
         files = {"stub.js": Path("tests/dom_stub.js").read_text(encoding="utf-8"),
-                 "app.js": app, "billmatch.js": matcher,
+                 "app.js": _with_components(app), "billmatch.js": matcher,
                  "find.js": Path("src/pages/find.js").read_text(encoding="utf-8"),
                  "search.js": m.group(1),
                  "fixture.json": json.dumps(_find_bills_fixture()),
@@ -17720,7 +17724,7 @@ def _best_match_words(BP):
     root = Path(tempfile.mkdtemp())
     try:
         files = {"stub.js": Path("tests/dom_stub.js").read_text(encoding="utf-8"),
-                 "app.js": app, "billmatch.js": matcher,
+                 "app.js": _with_components(app), "billmatch.js": matcher,
                  "find.js": Path("src/pages/find.js").read_text(encoding="utf-8"),
                  "fixture.json": json.dumps(fx),
                  "queries.json": json.dumps(list(_BEST_MATCH_WORDS)),
@@ -18715,7 +18719,8 @@ def _search_work():
         for name, src in (("stub.js", "tests/dom_stub.js"), ("app.js", "src/pages/app.js"),
                           ("cases.json", "tests/search_cases.json"),
                           ("sidx.json", "tests/search_index.json")):
-            (root / name).write_text(Path(src).read_text(encoding="utf-8"),
+            text = Path(src).read_text(encoding="utf-8")
+            (root / name).write_text(_with_components(text) if name == "app.js" else text,
                                      encoding="utf-8")
         (root / "go.js").write_text(_SEARCH_WORK_JS, encoding="utf-8")
         r = _run(["node", "go.js"], cwd=root, capture_output=True, text=True,
@@ -19660,7 +19665,7 @@ def _asset_headers():
                           "to tell a browser they changed")
     text = hdr.read_text(encoding="utf-8")
     want = "max-age=0, must-revalidate"
-    missing = [a for a in ("/app.js", "/app.css", "/style.css")
+    missing = [a for a in ("/app.js", "/app.css", "/style.css", "/components.js")
                if not re.search(re.escape(a) + r"\s*\n\s*Cache-Control:[^\n]*"
                                 + re.escape(want), text)]
     assert not missing, (f"site/_headers does not give {', '.join(missing)} "
@@ -19724,6 +19729,8 @@ def _bill_shell():
                 "draws nothing and says nothing about why.")
         # The src carries a content hash now, so match the prefix.
         assert 'src="app.js' in t, f"{f} does not load app.js"
+        assert -1 < t.find('<script src="/components.js"></script>') < t.find('src="app.js'), (
+            f"{f} does not load components.js before app.js, which draws with it")
         assert f"window.{glob_name}=" in t, (
             f"{f} never says which record it is, so app.js opens none of them")
         assert '<base href="/">' in t, (
@@ -20218,10 +20225,10 @@ _FRONT_EXEMPT = {
 
 def _front_sources(root="."):
     """[(name, text)] of every file whose markup reaches a page besides
-    app.css: app.js, find.js, bills.html and every builder in src/pages/,
-    each cut where _FRONT_EXEMPT says."""
+    app.css: components.js, app.js, find.js, bills.html and every builder in
+    src/pages/ (components.py among them), each cut where _FRONT_EXEMPT says."""
     base = Path(root)
-    files = [base / "src/pages/app.js", base / "src/pages/find.js",
+    files = [base / "src/pages/components.js", base / "src/pages/app.js", base / "src/pages/find.js",
              base / "src/pages/bills.html"] + sorted((base / "src/pages").glob("*.py"))
     out = []
     for f in files:
@@ -23006,7 +23013,7 @@ def _runs():
     assert js.strip(), f"no script in {ext if ext.exists() else f}"
     root = Path(tempfile.mkdtemp())
     try:
-        (root / "page.js").write_text(js, encoding="utf-8")
+        (root / "page.js").write_text(_with_components(js), encoding="utf-8")
         (root / "stub.js").write_text(stub.read_text(encoding="utf-8"),
                                       encoding="utf-8")
         (root / "go.js").write_text("""
@@ -23814,7 +23821,7 @@ def _app_js(expr, names=("renderHearings", "archivedNote")):
         return None
     root = Path(tempfile.mkdtemp())
     try:
-        (root / "page.js").write_text(js.read_text(encoding="utf-8"), encoding="utf-8")
+        (root / "page.js").write_text(_with_components(js.read_text(encoding="utf-8")), encoding="utf-8")
         (root / "stub.js").write_text(stub.read_text(encoding="utf-8"), encoding="utf-8")
         (root / "go.js").write_text(
             'require("./stub.js");\n'
@@ -24040,7 +24047,7 @@ def _hearing_report_drawn(build_site_v2, senate_hearing_reports):
     sb160 = B.hearing_report_for_page(got["SB160"][0], idx, S.name_part)[0]
     root = Path(tempfile.mkdtemp())
     try:
-        (root / "page.js").write_text(ext.read_text(encoding="utf-8"),
+        (root / "page.js").write_text(_with_components(ext.read_text(encoding="utf-8")),
                                       encoding="utf-8")
         (root / "stub.js").write_text(stub.read_text(encoding="utf-8"),
                                       encoding="utf-8")
@@ -24984,7 +24991,7 @@ def _ballot_card_drawn():
     }
     root = Path(tempfile.mkdtemp())
     try:
-        (root / "page.js").write_text(js.read_text(encoding="utf-8"), encoding="utf-8")
+        (root / "page.js").write_text(_with_components(js.read_text(encoding="utf-8")), encoding="utf-8")
         (root / "stub.js").write_text(stub.read_text(encoding="utf-8"), encoding="utf-8")
         (root / "recs.json").write_text(json.dumps(recs), encoding="utf-8")
         (root / "go.js").write_text("""
@@ -26803,7 +26810,7 @@ def _journey_drawn(build_site_v2):
     bills = _journey_bills(build_site_v2)
     root = Path(tempfile.mkdtemp())
     try:
-        (root / "page.js").write_text(js.read_text(encoding="utf-8"), encoding="utf-8")
+        (root / "page.js").write_text(_with_components(js.read_text(encoding="utf-8")), encoding="utf-8")
         (root / "stub.js").write_text(stub.read_text(encoding="utf-8"), encoding="utf-8")
         (root / "bills.json").write_text(json.dumps(bills), encoding="utf-8")
         (root / "go.js").write_text("""
@@ -27695,8 +27702,9 @@ def _built_site(here, root, brand=True, env=None):
     # build fails on a file that has nothing to do with the fixture. It is
     # small, tracked, and written by `probe_alignment.py --truth --score-out`,
     # which is the gate every timestamp method passes before it ships.
-    for name in ("src/pages/app.css", "src/pages/app.js", "src/pages/bills.html",
-                 "src/pages/find.js", "corrections/officials.json", "generated/alignment_score.json"):
+    for name in ("src/pages/app.css", "src/pages/components.js", "src/pages/app.js",
+                 "src/pages/bills.html", "src/pages/find.js", "corrections/officials.json",
+                 "generated/alignment_score.json"):
         if (here / name).exists():
             (root / name).parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(here / name, root / name)
@@ -28669,7 +28677,7 @@ def _sitting_links(BSP):
         return "skip", "app.js, dom_stub.js or node is not here"
     root = Path(tempfile.mkdtemp())
     try:
-        (root / "page.js").write_text(js.read_text(encoding="utf-8"), encoding="utf-8")
+        (root / "page.js").write_text(_with_components(js.read_text(encoding="utf-8")), encoding="utf-8")
         (root / "stub.js").write_text(stub.read_text(encoding="utf-8"), encoding="utf-8")
         (root / "go.js").write_text("""
 require("./stub.js");
@@ -29224,7 +29232,7 @@ def _session_misfiled_row(N, B):
             d = {**row, "events": [{"date": e["date"], "text": e["raw"],
                                     **({"row_note": e["row_note"]} if e.get("row_note") else {})}
                                    for e in lines]}
-            (root / "page.js").write_text(js.read_text(encoding="utf-8"), encoding="utf-8")
+            (root / "page.js").write_text(_with_components(js.read_text(encoding="utf-8")), encoding="utf-8")
             (root / "stub.js").write_text(stub.read_text(encoding="utf-8"), encoding="utf-8")
             (root / "d.json").write_text(json.dumps([row, d]), encoding="utf-8")
             (root / "go.js").write_text("""
@@ -29385,7 +29393,7 @@ def _docket_keeps_called_off_rows(N, B, BF):
                                    for e in rows],
                  "documents": [{"label": "HC 5", "kind": "record",
                                 "url": "https://gc.nh.gov/house/calendars_journals/x.pdf"}]}
-            (root / "page.js").write_text(js.read_text(encoding="utf-8"), encoding="utf-8")
+            (root / "page.js").write_text(_with_components(js.read_text(encoding="utf-8")), encoding="utf-8")
             (root / "stub.js").write_text(stub.read_text(encoding="utf-8"), encoding="utf-8")
             (root / "d.json").write_text(json.dumps([row, d]), encoding="utf-8")
             (root / "go.js").write_text("""
@@ -37884,7 +37892,7 @@ def _committee_older_names(committee_names, build_committees, build_site_v2):
         "Wildlife and Recreation", "Wildlife, Fish and Game and Agriculture",
         "Rules and Enrolled Bills"), last
 
-    # meta.json's map, which the page's cmteLink reads.
+    # meta.json's map, which the page hands cmteLink.
     links = B.committee_links([
         {"term": "1995-1996", "committees": ["House Corrections and Criminal Justice"]},
         {"term": "2003-2004", "committees": ["House Commerce"]},
@@ -37956,7 +37964,7 @@ def _committee_older_names(committee_names, build_committees, build_site_v2):
         return "skip", "resolved and mapped; app.js, dom_stub.js or node not here to draw it"
     root = Path(tempfile.mkdtemp())
     try:
-        (root / "page.js").write_text(ext.read_text(encoding="utf-8"), encoding="utf-8")
+        (root / "page.js").write_text(_with_components(ext.read_text(encoding="utf-8")), encoding="utf-8")
         (root / "stub.js").write_text(stub.read_text(encoding="utf-8"), encoding="utf-8")
         (root / "links.json").write_text(json.dumps(links), encoding="utf-8")
         (root / "go.js").write_text("""
@@ -37966,16 +37974,20 @@ const src = fs.readFileSync("./page.js", "utf8");
 let scope;
 try { scope = (0, eval)(src + "; ({cmteLink, cmeta, renderCommitteeHead, setMeta: m => { META = m; }});"); }
 catch (e) { console.log("LOAD " + e.message); process.exit(1); }
-scope.setMeta({committee_codes: JSON.parse(fs.readFileSync("./links.json", "utf8"))});
+// meta.json's map: the page's META, which a card's byline hands cmteLink, and
+// what cmteLink is handed here.
+const CODES = JSON.parse(fs.readFileSync("./links.json", "utf8"));
+scope.setMeta({committee_codes: CODES});
+const link = (name, term) => scope.cmteLink(name, term, CODES);
 const E = "Senate Election Law and Internal Affairs";
 const out = {
-  old: scope.cmteLink("House Corrections and Criminal Justice", "1995-1996"),
-  s33: scope.cmteLink(E, "2007-2008"), s50: scope.cmteLink(E, "2017-2018"),
-  none: scope.cmteLink(E), reb: scope.cmteLink("Senate Rules and Enrolled Bills", "2005-2006"),
-  ia92: scope.cmteLink("Senate Internal Affairs", "1991-1992"),
-  ia12: scope.cmteLink("Senate Internal Affairs", "2011-2012"),
-  wr: scope.cmteLink("Senate Wildlife and Recreation", "2001-2002"),
-  dre: scope.cmteLink("Senate Development, Recreation and Environment", "1989-1990"),
+  old: link("House Corrections and Criminal Justice", "1995-1996"),
+  s33: link(E, "2007-2008"), s50: link(E, "2017-2018"),
+  none: link(E), reb: link("Senate Rules and Enrolled Bills", "2005-2006"),
+  ia92: link("Senate Internal Affairs", "1991-1992"),
+  ia12: link("Senate Internal Affairs", "2011-2012"),
+  wr: link("Senate Wildlife and Recreation", "2001-2002"),
+  dre: link("Senate Development, Recreation and Environment", "1989-1990"),
   card: scope.cmeta({term: "2007-2008", committees: [E, "House Commerce"]}),
   head: scope.renderCommitteeHead({code: "H26", name: "Criminal Justice and Public Safety",
     chamber: "H", names: [{name: "Corrections and Criminal Justice", years: "1993 to 1996"}]}),
@@ -38213,7 +38225,8 @@ def _former_heading(BL):
                  for m in M["former"] + M["sitting"]}
         drawn = None
         if shutil.which("node"):
-            for f, text in (("app.js", (here / "src/pages/app.js").read_text(encoding="utf-8")),
+            for f, text in (("app.js", _with_components(
+                                (here / "src/pages/app.js").read_text(encoding="utf-8"), here)),
                             ("stub.js", (here / "tests/dom_stub.js").read_text(encoding="utf-8")),
                             ("members.json", json.dumps(M)), ("go.js", _FORMER_HEADING_JS)):
                 (root / f).write_text(text, encoding="utf-8")
@@ -38597,7 +38610,7 @@ def _header_mark():
 
 # The reader, for _calendar_documents: the section's own script, run on the
 # section a build wrote, in _calendar_in_a_dom's DOM (_CAL_DOM).
-_CD_DRIVE = r"""const {makeWorld}=require("./minidom.js");
+_CD_DRIVE = r"""const {makeWorld, runPage}=require("./minidom.js");
 const fs=require("fs"), vm=require("vm"), path=require("path");
 const SITE=process.argv[2], fails=[];
 const ok=(c,m)=>{ if(!c) fails.push(m); };
@@ -38614,7 +38627,7 @@ function world(files){
   W.asked=[];
   // start() runs the section's script and returns before the list has come;
   // run() waits for it.
-  W.start=()=>vm.runInContext(text.slice(s2+8,e2),vm.createContext(Object.assign({console},W.G)));
+  W.start=()=>runPage(W,text,SITE,s2,text.slice(s2+8,e2));
   W.run=async()=>{ W.start(); await W.settle(); };
   W.$=(id)=>W.doc.getElementById(id);
   W.opts=(id)=>W.$(id).querySelectorAll("option").map(o=>o.textContent);
@@ -39174,6 +39187,7 @@ def _calendar_documents():
         site = root / "site"
         site.mkdir()
         shutil.copy(Path("src/pages/bills.html"), site / "bills.html")
+        shutil.copy(Path("src/pages/components.js"), site / "components.js")
         base = "https://graniterecord.org"
         (site / "sitemap.xml").write_text(
             '<?xml version="1.0" encoding="UTF-8"?>\n<urlset>\n'
@@ -39617,7 +39631,7 @@ def _bill_page_start_and_exit():
             "back is wherever the reader came from, which a label naming a place cannot promise")
     root = Path(tempfile.mkdtemp())
     try:
-        (root / "page.js").write_text(src, encoding="utf-8")
+        (root / "page.js").write_text(_with_components(src), encoding="utf-8")
         (root / "stub.js").write_text(stub.read_text(encoding="utf-8"), encoding="utf-8")
         (root / "go.js").write_text(_HEARD_PRELUDE + r"""
 load("render, IDX, backIsSearch, addressed, focusBill, setFocused:(x)=>{focused=x;},"
@@ -39802,7 +39816,7 @@ def _focus_survives():
         return "skip", "app.js, dom_stub.js or node is not here"
     root = Path(tempfile.mkdtemp())
     try:
-        (root / "page.js").write_text(js.read_text(encoding="utf-8"), encoding="utf-8")
+        (root / "page.js").write_text(_with_components(js.read_text(encoding="utf-8")), encoding="utf-8")
         (root / "stub.js").write_text(stub.read_text(encoding="utf-8"), encoding="utf-8")
         (root / "go.js").write_text(_FOCUS_HARNESS, encoding="utf-8")
         r = _run([node, "go.js"], cwd=root, capture_output=True, text=True, timeout=60)
@@ -39901,7 +39915,7 @@ def _chip_drawn():
         return "skip", "app.js, dom_stub.js or node is not here"
     root = Path(tempfile.mkdtemp())
     try:
-        (root / "page.js").write_text(js.read_text(encoding="utf-8"), encoding="utf-8")
+        (root / "page.js").write_text(_with_components(js.read_text(encoding="utf-8")), encoding="utf-8")
         (root / "stub.js").write_text(stub.read_text(encoding="utf-8"), encoding="utf-8")
         (root / "go.js").write_text(_CHIP_HARNESS, encoding="utf-8")
         r = _run([node, "go.js"], cwd=root, capture_output=True, text=True, timeout=60)
@@ -40039,7 +40053,7 @@ def _node_app(harness, files=None, args=()):
         return None
     root = Path(tempfile.mkdtemp())
     try:
-        (root / "page.js").write_text(js.read_text(encoding="utf-8"), encoding="utf-8")
+        (root / "page.js").write_text(_with_components(js.read_text(encoding="utf-8")), encoding="utf-8")
         (root / "stub.js").write_text(stub.read_text(encoding="utf-8"), encoding="utf-8")
         for name, text in (files or {}).items():
             (root / name).write_text(text, encoding="utf-8")
@@ -40976,7 +40990,7 @@ def _review_of_audit_fixes(BP):
     # ---- run: app.js ---------------------------------------------------
     root = Path(tempfile.mkdtemp())
     try:
-        (root / "page.js").write_text(js.read_text(encoding="utf-8"), encoding="utf-8")
+        (root / "page.js").write_text(_with_components(js.read_text(encoding="utf-8")), encoding="utf-8")
         (root / "stub.js").write_text(stub.read_text(encoding="utf-8"), encoding="utf-8")
         (root / "seat.js").write_text(_seat_script(BP), encoding="utf-8")
         home = re.search(r'document\.addEventListener\("click",e=>\{\s*const st=e\.target\.closest\('
@@ -48969,7 +48983,7 @@ def _bill_order_matches_app(BO):
            for b in BILL_SCRAMBLED]
     root = Path(tempfile.mkdtemp())
     try:
-        (root / "page.js").write_text(js.read_text(encoding="utf-8"), encoding="utf-8")
+        (root / "page.js").write_text(_with_components(js.read_text(encoding="utf-8")), encoding="utf-8")
         (root / "stub.js").write_text(stub.read_text(encoding="utf-8"), encoding="utf-8")
         (root / "ids.json").write_text(json.dumps(ids), encoding="utf-8")
         (root / "plain.json").write_text(json.dumps(BILL_SCRAMBLED), encoding="utf-8")
@@ -49253,7 +49267,7 @@ def _calendar_every_weekday():
                 BC.month_files(site, weeks, order, {}, {}, {}, today)
             go = tmp / "days.js"
             go.write_text("globalThis.document={getElementById:function(){return null;}};\n"
-                          + BC.WEEK_JS + r"""
+                          + _with_components(BC.WEEK_JS) + r"""
 const C=globalThis.GRCAL, j=JSON.parse(require("fs").readFileSync(process.argv[2],"utf8")), days={};
 Object.keys(j.days).forEach(d=>days[d]=C.parseDay(j.days[d]));
 const wk=[0,1,2,3,4,5,6].map(i=>C.addDays("2026-01-12",i));
@@ -49470,7 +49484,7 @@ def _calendar_study_committees():
             # off the cards' own attributes, so those run on the page's cards.
             go = tmp / "week.js"
             go.write_text("globalThis.document={getElementById:function(){return null;}};\n"
-                          + BC.WEEK_JS + r"""
+                          + _with_components(BC.WEEK_JS) + r"""
 const C=globalThis.GRCAL, t=require("fs").readFileSync(process.argv[2],"utf8");
 const view=t.slice(t.indexOf('<div class="calview"'),t.indexOf('<nav class="wknav wkfoot"'));
 const cards=(view.match(new RegExp('<details class="cal'+'meet"[\\s\\S]*?</details>','g'))||[]).map(C.parseCard);
@@ -49758,6 +49772,7 @@ def _calendar_chambers():
         site = tmp / "site"
         site.mkdir()
         shutil.copy(here / "src/pages/bills.html", site / "bills.html")
+        shutil.copy(here / "src/pages/components.js", site / "components.js")
         (site / "committees.json").write_text(json.dumps([
             {"code": "H34", "name": "Finance", "chamber": "H"},
             {"code": "S07", "name": "Finance", "chamber": "S"},
@@ -49962,7 +49977,7 @@ def _calendar_counts_bills():
         up = [{"date": x["date"], "time": x["time"], "bill": x["bill"], "term": x["term"],
                "committee": x["committee"], "what": x["kind"], "venue": x["venue"]}
               for x in rows if x["committee"] == "Housing"]
-        (tmp / "page.js").write_text(js.read_text(encoding="utf-8"), encoding="utf-8")
+        (tmp / "page.js").write_text(_with_components(js.read_text(encoding="utf-8")), encoding="utf-8")
         (tmp / "stub.js").write_text(stub.read_text(encoding="utf-8"), encoding="utf-8")
         (tmp / "up.json").write_text(json.dumps(up), encoding="utf-8")
         (tmp / "go.js").write_text("""
@@ -49994,9 +50009,12 @@ def _calendar_clock():
     build_pages.cal_days for the week pages, the month files and the home
     page's Coming up; the Calendar page's own script for the week at a
     glance and the preview; app.js's calendarBlock for a committee page --
-    so each carries a clock(), and this holds the three to one answer: noon
-    is 12:00 PM, midnight 12:00 AM, a span 10:00 AM-12:15 PM, and anything
-    that is not a time comes back as it was. Then it reads what the fixture's
+    and all three tell it with the component clock(), components.py's in
+    Python and components.js's in the browser, which _components_agree holds
+    to one answer (noon is 12:00 PM, midnight 12:00 AM, and anything that is
+    not a time comes back as it was). This holds the Calendar's script to
+    that one rather than a copy of its own, a span to 10:00 AM-12:15 PM, and
+    the hours of the week at a glance. Then it reads what the fixture's
     pages print and wants every time in that form, while the record's own
     "13:30" stays in data-time and data-last, where the script and the
     add-to-calendar links read it.
@@ -50007,14 +50025,8 @@ def _calendar_clock():
     import io
     import build_pages as BP
     nb = "\u00a0"
-    cases = {"00:00": "12:00 AM", "00:30": "12:30 AM", "09:05": "9:05 AM",
-             "9:30": "9:30 AM", "11:59": "11:59 AM", "12:00": "12:00 PM",
-             "12:15": "12:15 PM", "13:30": "1:30 PM", "23:59": "11:59 PM",
-             "": "", "TBA": "TBA", "24:00": "24:00"}
-    want = {k: re.sub(r" (AM|PM)$", nb + r"\1", v) for k, v in cases.items()}
-    got = {k: BP.clock(k) for k in cases}
-    assert got == want, "build_pages.clock: " + ", ".join(
-        f"{k!r} is {got[k]!r}" for k in cases if got[k] != want[k])
+    # clock() itself is a component, held to one answer in Python and in the
+    # browser, these times among its cases, by _components_agree.
     assert BP.clock_span("10:00", "12:15") == f"10:00{nb}AM\u201312:15{nb}PM" \
         and BP.clock_span("09:00", "09:00") == f"9:00{nb}AM", BP.clock_span("10:00", "12:15")
     shape = re.compile(r"^\d{1,2}:\d\d" + nb + r"(AM|PM)(\u2013\d{1,2}:\d\d" + nb + r"(AM|PM))?$")
@@ -50046,10 +50058,10 @@ def _calendar_clock():
         if not (node and js.exists() and stub.exists()):
             return "ok", f"{seen} times in three kinds of page; node not on PATH, so the scripts were not run"
         import build_calendar as BC
-        (root / "page.js").write_text(js.read_text(encoding="utf-8"), encoding="utf-8")
+        (root / "page.js").write_text(_with_components(js.read_text(encoding="utf-8")),
+                                      encoding="utf-8")
         (root / "stub.js").write_text(stub.read_text(encoding="utf-8"), encoding="utf-8")
-        (root / "week.js").write_text(BC.WEEK_JS, encoding="utf-8")
-        (root / "cases.json").write_text(json.dumps(list(cases)), encoding="utf-8")
+        (root / "week.js").write_text(_with_components(BC.WEEK_JS), encoding="utf-8")
         up = [{"date": "2026-03-10", "time": t, "bill": b, "term": "2025-2026", "committee": "Judiciary",
                "what": k, "venue": "LOB 206"}
               for b, k, t in (("HB1", "public hearing", "10:00"), ("HB2", "executive session", "13:00"))]
@@ -50058,14 +50070,14 @@ def _calendar_clock():
 require("./stub.js");
 const fs = require("fs");
 let s;
-try { s = (0, eval)(fs.readFileSync("./page.js", "utf8") + "; ({clock, calendarBlock});"); }
+try { s = (0, eval)(fs.readFileSync("./page.js", "utf8") + "; ({calendarBlock});"); }
 catch (e) { console.log("LOAD " + e.constructor.name + ": " + e.message); process.exit(1); }
 // The Calendar's script in a world of its own, with no page for its second half.
 const vm = require("vm"), ctx = vm.createContext({document: {getElementById: () => null}, URLSearchParams});
 vm.runInContext(fs.readFileSync("./week.js", "utf8"), ctx);
-const W = ctx.GRCAL, cases = JSON.parse(fs.readFileSync("./cases.json", "utf8"));
+const W = ctx.GRCAL;
 const h = s.calendarBlock(JSON.parse(fs.readFileSync("./up.json", "utf8")), "Upcoming session");
-process.stdout.write(JSON.stringify({app: cases.map(s.clock), week: cases.map(W.clock),
+process.stdout.write(JSON.stringify({own: W.clock !== vm.runInContext("clock", ctx),
   hours: ["00", "09", "12", "13", "23"].map(W.hourWord),
   block: [...h.matchAll(/<span class="caltime">([^<]*)<\\/span>/g)].map(m => m[1])}));
 """, encoding="utf-8")
@@ -50074,20 +50086,19 @@ process.stdout.write(JSON.stringify({app: cases.map(s.clock), week: cases.map(W.
         out = json.loads(r.stdout)
     finally:
         shutil.rmtree(root, ignore_errors=True)
-    listed = [want[k] for k in cases]
-    assert out["app"] == listed, f"app.js's clock differs: {out['app']}"
-    assert out["week"] == listed, f"the Calendar page's clock differs: {out['week']}"
+    assert not out["own"], ("the Calendar page's script tells the time with a clock() of its "
+                            "own, not components.js's")
     assert out["hours"] == [f"12{nb}AM", f"9{nb}AM", f"12{nb}PM", f"1{nb}PM", f"11{nb}PM"], (
         f"the week at a glance names its hours {out['hours']}")
     assert out["block"] == [f"10:00{nb}AM\u20131:00{nb}PM", f"10:00{nb}AM", f"1:00{nb}PM"], (
         f"a committee page's Upcoming session prints {out['block']}")
-    return "ok", (f"{len(cases)} times alike in build_pages, the Calendar's script and app.js; "
-                  f"{seen} printed on the week page, its month files and Coming up, all as a reader "
-                  "says them, the record's own in data-time")
+    return "ok", (f"{seen} times printed on the week page, its month files and Coming up, all "
+                  "as a reader says them, the record's own in data-time; the Calendar's script "
+                  "and a committee page tell the time with components.js's clock()")
 
 
 # The page's own picker, for _calendar_chambers, on _CAL_DOM.
-_CAL_CHAMBER_DRIVE = r"""const {makeWorld}=require("./minidom.js");
+_CAL_CHAMBER_DRIVE = r"""const {makeWorld, runPage}=require("./minidom.js");
 const fs=require("fs"), vm=require("vm"), path=require("path");
 const SITE=process.argv[2], fails=[];
 const ok=(c,m)=>{ if(!c) fails.push(m); };
@@ -50097,7 +50108,7 @@ async function open(page,pathname,o){
   const W=makeWorld(Object.assign({today:[2025,1,28], path:pathname,
     files:(url)=>{ const f=path.join(SITE,url.replace(/^\//,"")); return fs.existsSync(f)?fs.readFileSync(f,"utf8"):null; }},o||{}));
   W.doc.body.innerHTML=text.slice(a,s);
-  vm.runInContext(text.slice(s+8,e),vm.createContext(Object.assign({console},W.G)));
+  runPage(W,text,SITE,s,text.slice(s+8,e));
   await W.settle(); W.advance(700); await W.settle();
   W.$=(id)=>W.doc.getElementById(id); W.Q=(q,r)=>(r||W.doc).querySelector(q); W.QA=(q,r)=>(r||W.doc).querySelectorAll(q);
   W.keys=()=>W.QA(".calmeet",W.$("calview")).map(m=>W.Q(".calcmte",m).textContent);
@@ -50181,6 +50192,7 @@ def _cal_fixture(root):
     site = root / "site"
     site.mkdir(parents=True)
     shutil.copy(Path("src/pages/bills.html"), site / "bills.html")
+    shutil.copy(Path("src/pages/components.js"), site / "components.js")
     urls = []
     with contextlib.redirect_stdout(io.StringIO()):
         for i, k in enumerate(order):
@@ -50194,12 +50206,334 @@ def _cal_node():
     return shutil.which("node") or shutil.which("node.exe")
 
 
+# ---- the components, one answer in each language (9 October 2026) -----------------
+#
+# The component plan's C1 and C2, approved by the person on 9 October 2026:
+# src/pages/components.py for the builders and src/pages/components.js,
+# published as site/components.js and loaded in the head of every page, before
+# app.js, find.js and any page's own script, with the same helpers under the
+# same names, each in its language's case (date_words is dateWords). Two
+# things keep them one. Every harness here that runs a page's script in node
+# runs components.js first, as the page does (_with_components). And
+# _components_agree runs every helper in both languages on each case in
+# tests/components_cases.json and compares the answers byte for byte, which
+# replaced the separate checks the person chip, clock() and the dates each had.
+
+def _components_js(here="."):
+    """components.js, which every page loads in its head before any script of
+    its own. "" where it is not here, so a harness then fails on the name it
+    lacks, which says what is missing."""
+    p = Path(here) / "src/pages/components.js"
+    return p.read_text(encoding="utf-8") if p.exists() else ""
+
+
+def _with_components(js, here="."):
+    """A page's script as node is to run it: components.js first, as every
+    page loads it, then the script."""
+    return _components_js(here) + "\n" + js
+
+
+def _camel(name):
+    """A Python helper's name in components.js: date_words is dateWords."""
+    return re.sub(r"_([a-z])", lambda m: m.group(1).upper(), name)
+
+
+def _case_arg(a, lang):
+    """A case's argument as each language is handed it. {"$date": ...} is a
+    datetime.date in Python and its ISO string in the browser, which is handed
+    nothing else; {"$datetime": ...} the same for a moment."""
+    import datetime as _dt
+    if isinstance(a, dict) and len(a) == 1 and ("$date" in a or "$datetime" in a):
+        if lang == "js":
+            return next(iter(a.values()))
+        return (_dt.date.fromisoformat(a["$date"]) if "$date" in a
+                else _dt.datetime.fromisoformat(a["$datetime"]))
+    return a
+
+
+def _py_coverage(module, run):
+    """run() with sys.monitoring watching every function `module` defines,
+    and the code objects inside them. Returns (what run returned, every line
+    and every branch direction none of it reached, as "components.py line N:
+    source"). A function's own def line is not an instruction that runs, and
+    an except clause's other way out re-raises what no case can raise, so
+    neither is asked for."""
+    import inspect
+    import linecache
+    import types
+    mon = sys.monitoring
+    E = mon.events
+    tool = next((t for t in range(6) if mon.get_tool(t) is None), None)
+    assert tool is not None, "every sys.monitoring tool id is taken"
+    codes = []
+    for fn in vars(module).values():
+        if inspect.isfunction(fn) and fn.__module__ == module.__name__:
+            todo = [fn.__code__]
+            while todo:
+                c = todo.pop()
+                codes.append(c)
+                todo += [k for k in c.co_consts if isinstance(k, types.CodeType)]
+    lines, branches = set(), set()
+    mon.use_tool_id(tool, "preflight: the components")
+    try:
+        mon.register_callback(tool, E.LINE, lambda code, ln: lines.add((code, ln)))
+        mon.register_callback(tool, E.BRANCH_LEFT, lambda code, s, d: branches.add((code, s, d)))
+        mon.register_callback(tool, E.BRANCH_RIGHT, lambda code, s, d: branches.add((code, s, d)))
+        for c in codes:
+            mon.set_local_events(tool, c, E.LINE | E.BRANCH_LEFT | E.BRANCH_RIGHT)
+        got = run()
+    finally:
+        for c in codes:
+            mon.set_local_events(tool, c, 0)
+        for ev in (E.LINE, E.BRANCH_LEFT, E.BRANCH_RIGHT):
+            mon.register_callback(tool, ev, None)
+        mon.free_tool_id(tool)
+    missed = set()
+    name = Path(module.__file__).name
+    for c in codes:
+        def src(ln):
+            return linecache.getline(c.co_filename, ln).strip()
+        want = {ln for _s, _e, ln in c.co_lines() if ln is not None} - {c.co_firstlineno}
+        for ln in want - {ln for code, ln in lines if code is c}:
+            missed.add((ln, f"{name} line {ln}: {src(ln)[:70]}"))
+        for at, left, right in c.co_branches():
+            ln = next((ln for s, e, ln in c.co_lines() if s <= at < e), None)
+            if ln is None or src(ln).startswith("except"):
+                continue
+            for to in (left, right):
+                if (c, at, to) not in branches:
+                    missed.add((ln, f"{name} line {ln}, a way through it: {src(ln)[:70]}"))
+    return got, [m for _ln, m in sorted(missed)]
+
+
+def _js_coverage(cov_dir, file):
+    """Every block of `file` V8 counted no run of in the coverage node wrote
+    to `cov_dir` (NODE_V8_COVERAGE), as "components.js line N: source". V8's
+    block coverage counts each branch of an if, a ?: and a || on its own, and
+    a function never called as a whole."""
+    text = file.read_text(encoding="utf-8")
+    units = text.encode("utf-16-le")
+
+    def at(offset):
+        return len(units[:2 * offset].decode("utf-16-le"))
+    missed = set()
+    for f in sorted(Path(cov_dir).glob("*.json")):
+        for script in json.loads(f.read_text(encoding="utf-8")).get("result", []):
+            if not str(script.get("url", "")).replace("\\", "/").endswith("/" + file.name):
+                continue
+            for fn in script.get("functions", []):
+                for r in fn.get("ranges", []):
+                    if r.get("count") == 0:
+                        a = at(r["startOffset"])
+                        ln = text.count("\n", 0, a) + 1
+                        what = " ".join(text[a:at(r["endOffset"])].split())[:70]
+                        missed.add((ln, f"{file.name} line {ln}: {what}"))
+    return [m for _ln, m in sorted(missed)]
+
+
+_COMPONENTS_NODE = r"""
+// components.js as a page loads it -- a script, so its const and function
+// names are the page's -- then every helper on every case. The answers go to
+// stdout after "@@"; V8 writes its coverage to NODE_V8_COVERAGE on exit.
+const fs = require("fs"), vm = require("vm"), path = require("path");
+const file = path.resolve(process.argv[2]);
+vm.runInThisContext(fs.readFileSync(file, "utf8"), {filename: file});
+const job = JSON.parse(fs.readFileSync(process.argv[3], "utf8"));
+const out = {kinds: {}, answers: {}};
+for (const n of job.names) out.kinds[n] = vm.runInThisContext("typeof " + n);
+for (const [name, cases] of Object.entries(job.cases)) {
+  const fn = out.kinds[name] === "function" ? vm.runInThisContext(name) : null;
+  out.answers[name] = cases.map(args => {
+    if (!fn) return {missing: true};
+    try { return {value: fn(...args)}; }
+    catch (e) { return {threw: e.constructor.name + ": " + e.message}; }
+  });
+}
+process.stdout.write("\n@@" + JSON.stringify(out));
+"""
+
+
+@check("frontend", "every component gives the same answer in Python and in the browser, on "
+                   "every case, and every part of each is run")
+def _components_agree():
+    """components.py and components.js, held to one answer.
+
+    The helpers each file defines (a function in components.py whose name
+    does not start with "_"; a name components.js declares at its top level
+    that is a function) must be the same set, a Python name being the
+    browser's in snake case. Every helper must have a case in
+    tests/components_cases.json, and every key there must be a helper. Each
+    case runs in Python and, with components.js loaded as a page loads it, in
+    node; the two answers must be the same string, byte for byte, and the one
+    a case states where it states one. And every part of every helper must
+    be reached by some case: each line and each way through a branch of
+    components.py (sys.monitoring), each block of components.js (V8's block
+    coverage, which counts the two sides of a ?: or an || apart). So a helper
+    cannot be added to one file alone, nor a branch to either without the
+    case that runs it.
+
+    It replaced three checks, each holding one pair together: the person
+    chip (_pchip_agrees), the clock (part of _calendar_clock) and the dates
+    (part of _one_date_formatter). Their cases are in the cases file, with
+    the answers they asserted. Without node it fails on the nightly, which
+    has node, and is skipped elsewhere, saying so.
+    """
+    import inspect
+    py_f, js_f, cases_f = (Path("src/pages/components.py"), Path("src/pages/components.js"),
+                           Path("tests/components_cases.json"))
+    gone = [p.as_posix() for p in (py_f, js_f, cases_f) if not p.exists()]
+    assert not gone, "not here: " + ", ".join(gone)
+    import components as C
+    cases = {k: v for k, v in json.loads(cases_f.read_text(encoding="utf-8")).items()
+             if not k.startswith("_")}
+    py = {n: f for n, f in vars(C).items()
+          if inspect.isfunction(f) and f.__module__ == C.__name__ and not n.startswith("_")}
+    js_text = js_f.read_text(encoding="utf-8")
+    declared = [a or b for a, b in re.findall(
+        r"^(?:function\s+(\w+)\s*\(|(?:const|let|var)\s+(\w+)\s*=)", js_text, re.M)]
+    bad = []
+    no_case = sorted(n for n in py if not cases.get(n))
+    if no_case:
+        bad.append(f"no case in {cases_f.as_posix()} runs {', '.join(no_case)}")
+    stale = sorted(k for k in cases if k not in py)
+    if stale:
+        bad.append(f"{cases_f.as_posix()} has cases for {', '.join(stale)}, which components.py does "
+                   "not define")
+
+    def run_py():
+        out = {}
+        for n, f in py.items():
+            out[n] = []
+            for case in cases.get(n, []):
+                try:
+                    out[n].append({"value": f(*[_case_arg(a, "py") for a in case["args"]])})
+                except Exception as e:                                  # noqa: BLE001
+                    out[n].append({"threw": f"{type(e).__name__}: {e}"})
+        return out
+    got_py, py_missed = _py_coverage(C, run_py)
+
+    node = shutil.which("node") or shutil.which("node.exe")
+    if not node:
+        assert not os.environ.get("GITHUB_ACTIONS"), (
+            "node is not on PATH on the nightly, which installs it, so components.js "
+            "was not run against components.py")
+        return "skip", "node is not on PATH, so components.js could not be run against components.py"
+    root = Path(tempfile.mkdtemp(prefix="gr-components-"))
+    try:
+        job = {"names": declared,
+               "cases": {_camel(n): [[_case_arg(a, "js") for a in c["args"]]
+                                     for c in cases.get(n, [])] for n in py}}
+        (root / "job.json").write_text(json.dumps(job), encoding="utf-8")
+        (root / "go.js").write_text(_COMPONENTS_NODE, encoding="utf-8")
+        cov = root / "cov"
+        r = _run([node, "go.js", str(js_f.resolve()), "job.json"], cwd=root, capture_output=True,
+                 text=True, encoding="utf-8", timeout=60,
+                 env=dict(os.environ, NODE_V8_COVERAGE=str(cov)))
+        assert r.returncode == 0 and "@@" in (r.stdout or ""), (
+            "components.js did not run under node: " + (r.stderr or r.stdout or "")[-300:])
+        got_js = json.loads(r.stdout.rsplit("@@", 1)[1])
+        js_missed = _js_coverage(cov, js_f)
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+
+    js_funcs = {n for n, k in got_js["kinds"].items() if k == "function"}
+    only_py = sorted(n for n in py if _camel(n) not in js_funcs)
+    only_js = sorted(n for n in js_funcs if n not in {_camel(p) for p in py})
+    if only_py:
+        bad.append("components.py defines " + ", ".join(only_py) + " and components.js has no "
+                   + ", ".join(_camel(n) for n in only_py))
+    if only_js:
+        bad.append("components.js defines " + ", ".join(only_js) + " and components.py has no "
+                   "helper of that name in snake case")
+    differ, unwanted = [], []
+    for n in sorted(py):
+        for i, (case, a, b) in enumerate(zip(cases.get(n, []), got_py[n],
+                                             got_js["answers"].get(_camel(n), []))):
+            if a.get("missing") or b.get("missing"):
+                continue
+            if a != b or not isinstance(a.get("value"), str):
+                differ.append(f"{n}{tuple(case['args'])}: Python {a.get('value', a)!r}, "
+                              f"the browser {b.get('value', b)!r}")
+            elif "want" in case and a["value"] != case["want"]:
+                unwanted.append(f"{n}{tuple(case['args'])} is {a['value']!r}, not "
+                                f"{case['want']!r}")
+    if differ:
+        bad.append(f"{len(differ)} cases answered differently in Python and the browser: "
+                   + "; ".join(differ[:4]))
+    if unwanted:
+        bad.append(f"{len(unwanted)} cases did not give the answer they state: "
+                   + "; ".join(unwanted[:4]))
+    if py_missed or js_missed:
+        bad.append(f"{len(py_missed) + len(js_missed)} parts of the components no case "
+                   "reaches: " + "; ".join((py_missed + js_missed)[:6]))
+    assert not bad, " | ".join(bad)
+    n_cases = sum(len(v) for v in cases.values())
+    return "ok", (f"{len(py)} helpers ({', '.join(sorted(py))}), {n_cases} cases, the same "
+                  "answer byte for byte in Python and in node; every line and branch of "
+                  "components.py and every block of components.js run")
+
+
+@check("frontend", "every fixture record and tab, and every page that draws part of itself, is "
+                   "drawn by its own scripts in node without an error")
+def _drawn_pages():
+    """src/checks/drawn_pages.py, over the run's one build of the fixture.
+
+    The tool runs each page's scripts as a browser runs them -- components.js
+    in the head, app.js, the page's own, find.js deferred -- and writes down
+    what they draw, so that a change meant to move nothing is proved by what
+    a reader is shown and not only by the HTML (the component plan's proof,
+    9 October 2026). This holds the tool itself to working: every bill,
+    legislator and committee page, at its own address and at each tab's, and
+    the bill search, the home page, the Calendar, the search page and the
+    legislators page are drawn; no script meets an error, so a page that lost
+    a script it draws with, or a page script that declares a name
+    components.js already has, fails here; and every record page draws its
+    record rather than the message a failed load leaves."""
+    import contextlib
+    import io
+    node = shutil.which("node") or shutil.which("node.exe")
+    if not node:
+        assert not os.environ.get("GITHUB_ACTIONS"), (
+            "node is not on PATH on the nightly, which installs it")
+        return "skip", "node is not on PATH"
+    import drawn_pages as DP
+    shared, _base, _ran, days = _fixture_site_shared()
+    root = Path(tempfile.mkdtemp(prefix="gr-drawn-"))
+    try:
+        with contextlib.redirect_stdout(io.StringIO()):
+            drawn = DP.draw(shared / "site", root / "drawn", days[0])
+        assert (root / "drawn" / "manifest.json").exists(), "drawn_pages wrote no manifest"
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    slugs = DP.tab_slugs(shared / "site")
+    records = {k for k in drawn if "#" not in k and "/" in k}
+    kinds = {r.split("/")[0] for r in records}
+    assert kinds == {"bill", "legislator", "committee"}, (
+        f"the fixture's record pages drawn are {sorted(kinds)}, not a bill, a legislator and a committee")
+    short = [r for r in records
+             if sum(1 for k in drawn if k.split("#")[0] == r) != 1 + len(slugs[r.split("/")[0]])]
+    assert not short, f"not every tab drawn: {short[:3]}"
+    lists = [p for p in DP.LISTS if p not in drawn]
+    assert not lists, f"not drawn: {lists}"
+    errs = [f"{k}: {d['errors'][0]}" for k, d in drawn.items() if d["errors"]]
+    assert not errs, f"{len(errs)} pages met an error in their scripts: " + "; ".join(errs[:4])
+    def results(k):
+        return next((h for name, h, *_ in drawn[k]["elements"] if name == "results"), "")
+    failed = [k for k in drawn if k.split("#")[0] in records
+              and (not results(k) or "Could not load the data" in results(k)
+                   or "Detail unavailable" in results(k))]
+    assert not failed, f"{len(failed)} record pages drew no record: {failed[:4]}"
+    return "ok", (f"{len(drawn)} pages and tabs drawn without an error: {len(records)} records "
+                  f"at their own address and each tab's, and {len(DP.LISTS)} pages that draw "
+                  "part of themselves")
+
+
 # ---- one date formatter in each language (8 October 2026) -------------------------
 #
 # The person chose month first (D6 of the polish plan): "May 21, 2026", and
 # "10:00 AM" for a time. The site wrote its own dates in twelve forms from six
-# formatters in the builders and four in app.js; shell.date_words() and
-# app.js's dateWords() are the one of each now. These are the ways a
+# formatters in the builders and four in app.js; components.py's date_words()
+# and components.js's dateWords() are the one of each now. These are the ways a
 # formatter has been written here, so a new one is caught where it is written
 # rather than on a page: a strftime or a format spec with a month or a
 # weekday in it, a day number written before a month, a month list indexed to
@@ -50240,88 +50574,46 @@ _DATE_IDIOMS = (
 )
 
 
-@check("frontend", "every date the site writes is month first, from one formatter in Python and "
-                   "one in the browser that agree on every form, and no builder or script "
-                   "writes one any other way")
+@check("frontend", "every date the site writes is month first, from the components' one "
+                   "formatter in each language, and no builder or script writes one any "
+                   "other way")
 def _one_date_formatter():
-    """shell.date_words() and app.js's dateWords(), and date_span() and
-    dateSpan(), give the same words for the same day in every form (long,
-    full, medium, short, day, wkd) across a leap day, the turns of the year
-    and of a month, and what is not a date; the two pages that do not load
-    app.js (the home page's script and the Calendar's) carry app.js's own
-    text, between its DATEWORDS markers, and not a copy of it; narrative.py's
-    strftime, which writes the bills' stories, says what date_words' full form
-    says; nothing in a builder, app.js or find.js formats a date another way
-    (_DATE_IDIOMS, less _DATE_EXEMPT); and the fixture site's pages, as a
-    reader without script gets them, carry no date written day first but a
-    citation's."""
+    """The formatter is a component: components.py's date_words() and
+    date_span(), and components.js's dateWords() and dateSpan(), which
+    _components_agree holds to one answer on every form (long, full, medium,
+    short, day, wkd) across a leap day, the turns of the year and of a month,
+    and what is not a date, with the person's words among its cases. This
+    holds the rest: the home page's script and the Calendar's, which ran
+    without app.js and so carried a copy, carry none now, every page loading
+    components.js in its head before them; narrative.py's strftime, which
+    writes the bills' stories, says what date_words' full form says; nothing
+    in a builder, app.js, components.js or find.js formats a date another way
+    (_DATE_IDIOMS, less _DATE_EXEMPT and the formatter itself, between its
+    DATEWORDS markers); and the fixture site's pages, as a reader without
+    script gets them, carry no date written day first but a citation's."""
     import datetime as _dt
     import html as _h
-    try:
-        import shell as S
-    except ImportError:
-        return "skip", "shell.py will not import"
-    days = ["2026-02-19", "2024-02-29", "2026-01-01", "2025-12-31", "2026-05-21",
-            "2026-09-04", "2026-10-07", "1989-01-04", "2026-11-03"]
-    fixed = {("2026-02-19", "long"): "Thursday, February 19, 2026",
-             ("2026-02-19", "full"): "February 19, 2026",
-             ("2026-02-19", "medium"): "Feb 19, 2026",
-             ("2026-02-19", "short"): "Feb 19",
-             ("2026-02-19", "day"): "Thursday, February 19",
-             ("2026-02-19", "wkd"): "Thu, Feb 19",
-             ("2024-02-29", "long"): "Thursday, February 29, 2024",
-             ("2026-09-04", "medium"): "Sep 4, 2026"}
-    for (d, f), w in fixed.items():
-        assert S.date_words(d, f) == w, f"date_words({d!r}, {f!r}) is {S.date_words(d, f)!r}, not {w!r}"
-    assert S.date_words("2026-02-30") == "2026-02-30" and S.date_words("TBA") == "TBA" \
-        and S.date_words(None) == "" and S.date_words(_dt.date(2026, 2, 19), "full") == \
-        "February 19, 2026", "date_words does not give back what is not a date as it came"
-    spans = [("2026-10-05", "2026-10-11"), ("2026-09-28", "2026-10-04"),
-             ("2026-12-28", "2027-01-03"), ("2026-10-05", "2026-10-05")]
-    want_spans = ["October 5–11, 2026", "September 28 – October 4, 2026",
-                  "December 28, 2026 – January 3, 2027", "October 5, 2026"]
-    got_spans = [S.date_span(a, b) for a, b in spans]
-    assert got_spans == want_spans, f"date_span: {got_spans}"
-    want = {f"{d}|{f}": S.date_words(d, f) for d in days + ["x", "2026-13-01", ""]
-            for f in S.DATE_FORMS}
-
-    # The two copies are app.js's own text.
-    block = S.dates_js()
+    import components as C
     import build_pages as BP
     import build_calendar as BC
-    assert block in BP.HOME_JS and "__DATEWORDS__" not in BP.HOME_JS, (
-        "the home page's script does not carry app.js's dateWords as app.js writes it")
-    assert block in BC.WEEK_JS and "__DATEWORDS__" not in BC.WEEK_JS, (
-        "the Calendar's script does not carry app.js's dateWords as app.js writes it")
+    days = ["2026-02-19", "2024-02-29", "2026-01-01", "2025-12-31", "2026-05-21",
+            "2026-09-04", "2026-10-07", "1989-01-04", "2026-11-03"]
 
-    # The browser's, run in node.
-    node = shutil.which("node") or shutil.which("node.exe")
-    if node:
-        root = Path(tempfile.mkdtemp())
-        try:
-            (root / "go.js").write_text(
-                block + "\nconst W=" + json.dumps(list(want)) + ", P=" + json.dumps(spans) + ";\n"
-                "console.log(JSON.stringify({words:Object.fromEntries(W.map(k=>{"
-                "const [d,f]=k.split('|');return [k,dateWords(d,f)];})),"
-                "spans:P.map(([a,b])=>dateSpan(a,b))}));\n", encoding="utf-8")
-            r = _run([node, "go.js"], cwd=root, capture_output=True, text=True, timeout=60)
-            assert r.returncode == 0, (r.stderr or r.stdout)[-300:]
-            got = json.loads(r.stdout.strip().splitlines()[-1])
-        finally:
-            shutil.rmtree(root, ignore_errors=True)
-        off = [f"{k}: {got['words'].get(k)!r} / {v!r}" for k, v in want.items()
-               if got["words"].get(k) != v]
-        assert not off, "app.js and shell.py write a date differently: " + "; ".join(off[:6])
-        assert got["spans"] == want_spans, f"dateSpan: {got['spans']}"
+    # The two scripts that carried a copy carry none.
+    for what, js in (("the home page's script", BP.HOME_JS), ("the Calendar's script", BC.WEEK_JS)):
+        own = [w for w in ("function dateWords", "function dateSpan", "DW_MONTHS=", "DW_DAYS=",
+                           "__DATEWORDS__") if w in js]
+        assert not own, (f"{what} carries a date formatter of its own ({', '.join(own)}); "
+                         "the page loads components.js's before it")
 
     # The stories' own formatter, which narrative.py keeps: the same words.
     try:
         import narrative as N
         for d in days:
             x = _dt.datetime.strptime(d, "%Y-%m-%d")
-            assert x.strftime(N.MONTH) == S.date_words(d, "full"), (
+            assert x.strftime(N.MONTH) == C.date_words(d, "full"), (
                 f"narrative.py writes {x.strftime(N.MONTH)!r} where date_words writes "
-                f"{S.date_words(d, 'full')!r}")
+                f"{C.date_words(d, 'full')!r}")
     except ImportError:
         pass
 
@@ -50336,14 +50628,13 @@ def _one_date_formatter():
                     else text.find("\n", m.start())
                 text = text[:m.start()] + " " * ((end if end > 0 else len(text)) - m.start()) \
                     + text[(end if end > 0 else len(text)):]
-        a = text.find("// DATEWORDS:START")
-        if name == "app.js" and a >= 0:
-            b = text.find("// DATEWORDS:END", a)
-            text = text[:a] + " " * (b - a) + text[b:]
-        if name == "shell.py" and "def date_words" in text:
-            a = text.index("# A DATE, ONE WAY")
-            b = text.index("def dates_js")
-            text = text[:a] + " " * (b - a) + text[b:]
+        # The formatter itself, in each language, between its markers.
+        if name in ("components.js", "components.py"):
+            mark = "//" if name.endswith(".js") else "#"
+            a = text.find(mark + " DATEWORDS:START")
+            if a >= 0:
+                b = text.find(mark + " DATEWORDS:END", a)
+                text = text[:a] + " " * (b - a) + text[b:]
         for pat, what in _DATE_IDIOMS:
             for m in re.finditer(pat, text):
                 line = text[text.rfind("\n", 0, m.start()) + 1:text.find("\n", m.start())]
@@ -50352,6 +50643,9 @@ def _one_date_formatter():
                 bad.append(f"{name}:{_line_of(text, m.start())} {what}: {line.strip()[:70]}")
     assert not bad, (f"{len(bad)} dates written outside the formatter: " + "; ".join(bad[:8])
                      + (f" (+{len(bad) - 8} more)" if len(bad) > 8 else ""))
+    scanned = [name for name, _t in _front_sources()]
+    assert "components.js" in scanned and "components.py" in scanned, (
+        f"the scan for dates written another way does not read the components: {scanned[:6]}")
 
     # And the pages, as a reader without script is given them.
     day_first = re.compile(r"\b\d{1,2}(?:st|nd|rd|th)?(?:\s|&nbsp;)+(?:January|February|March|"
@@ -50383,11 +50677,10 @@ def _one_date_formatter():
     assert seen > 20, f"only {seen} pages in the fixture site"
     assert not found, (f"{len(found)} dates written day first on the fixture's pages: "
                        + "; ".join(found[:8]))
-    return "ok", (f"{len(want)} days and forms and {len(spans)} spans alike in shell.py and "
-                  f"app.js{'' if node else ' (node is not installed: Python only)'}; the home "
-                  f"and Calendar scripts carry app.js's own text; the stories' strftime agrees; "
-                  f"no other formatter in {len(_front_sources())} builders and scripts; no day "
-                  f"written first on {seen} fixture pages")
+    return "ok", ("the home and Calendar scripts carry no formatter of their own; the "
+                  "stories' strftime agrees with date_words; no other formatter in "
+                  f"{len(_front_sources())} builders and scripts; no day written first "
+                  f"on {seen} fixture pages")
 
 
 @check("frontend", "every link that leaves the site carries the outside-link mark, says it opens a "
@@ -50677,7 +50970,7 @@ def _calendar_core():
         data = site / "calendar" / "data"
         prog = root / "core.js"
         prog.write_text("globalThis.document={getElementById:function(){return null;}};\n"
-                        + BC.WEEK_JS + _CAL_CORE_TEST, encoding="utf-8")
+                        + _with_components(BC.WEEK_JS) + _CAL_CORE_TEST, encoding="utf-8")
         r = _run([node, str(prog), str(data / "2026-03.json"), str(data / "2026-04.json")],
                  capture_output=True, text=True, timeout=120)
         out = (r.stdout or "") + (r.stderr or "")
@@ -50692,7 +50985,7 @@ def _calendar_core():
         (root / "labels.json").write_text(json.dumps(labels, ensure_ascii=False), encoding="utf-8")
         prog2 = root / "labels.js"
         prog2.write_text("globalThis.document={getElementById:function(){return null;}};\n"
-                         + BC.WEEK_JS + r"""
+                         + _with_components(BC.WEEK_JS) + r"""
 const C=globalThis.GRCAL, want=JSON.parse(require("fs").readFileSync(process.argv[2],"utf8"));
 const bad=Object.keys(want).filter(k=>C.weekLabel(k)!==want[k]).map(k=>k+": "+C.weekLabel(k)+" | "+want[k]);
 console.log(bad.length?bad.slice(0,5).join("\n"):"OK "+Object.keys(want).length);
@@ -51151,11 +51444,24 @@ function makeWorld(o){
     async settle(){ for(let i=0;i<20;i++){ await new Promise(r=>setImmediate(r)); while(later.length) later.shift()(); } },
     ev:(type,o2)=>new Ev(type,o2)};
 }
-module.exports={makeWorld, parseInto, E, Ev};
+// THE SCRIPTS A PAGE RUNS BEFORE THIS ONE, as a browser runs them: each one the
+// page names by its own address ahead of `at` -- components.js, in the head --
+// and then `code`, all in one context, so what the first declares the second
+// can use. A file the site does not hold stops the run, as a missing script
+// would leave the page broken.
+function runPage(W,text,site,at,code){
+  const vm=require("vm"), fs=require("fs"), path=require("path");
+  const ctx=vm.createContext(Object.assign({console},W.G));
+  for(const m of text.slice(0,at).matchAll(/<script src="\/?([\w.-]+\.js)"><\/script>/g))
+    vm.runInContext(fs.readFileSync(path.join(site,m[1]),"utf8"),ctx,{filename:m[1]});
+  vm.runInContext(code,ctx);
+  return ctx;
+}
+module.exports={makeWorld, parseInto, E, Ev, runPage};
 """
 
 # The reader, for _calendar_in_a_dom.
-_CAL_DRIVE = r"""const {makeWorld}=require("./minidom.js");
+_CAL_DRIVE = r"""const {makeWorld, runPage}=require("./minidom.js");
 const fs=require("fs"), vm=require("vm"), path=require("path");
 const SITE=process.argv[2], fails=[];
 const ok=(c,m)=>{ if(!c) fails.push(m); };
@@ -51178,7 +51484,7 @@ function world(page,pathname,o){
     // row), the section at the foot before it.
     +(text.match(/<div class="pageacts"[^>]*><details class="pcite">[\s\S]*?<\/details><\/div>/)
       ||text.match(/<section class="citewrap">[\s\S]*?<\/section>/)||[""])[0];
-  W.run=async()=>{ vm.runInContext(text.slice(s+8,e),vm.createContext(Object.assign({console},W.G)));
+  W.run=async()=>{ runPage(W,text,SITE,s,text.slice(s+8,e));
     await W.settle(); W.advance(700); await W.settle(); };
   const D=W.doc;
   W.$=(id)=>D.getElementById(id); W.Q=(s,r)=>(r||D).querySelector(s); W.QA=(s,r)=>(r||D).querySelectorAll(s);
@@ -51956,7 +52262,7 @@ def _coming_up_is_this_week():
             ("2026-09-27", span, span[7:8]),     # a Sunday: only today
             ("2026-09-27", span[8:], [])):       # a Sunday, next week built
         y, mo, d = map(int, reader.split("-"))
-        prog = (
+        prog = _components_js() + "\n" + (
             "const R=Date;class D extends R{constructor(...a){a.length?super(...a)"
             f":super({y},{mo - 1},{d},15,30);}}static now(){{return new D().getTime();}}}}"
             "globalThis.Date=D;"
@@ -52273,10 +52579,9 @@ def _floor_session_titles():
     node = shutil.which("node") or shutil.which("node.exe")
     if not node:
         return "ok", "the block names the pattern; node is not here to run fdo()"
-    # fdo takes the month's name from app.js's own list (DW_MONTHS), which
-    # HOME_JS carries with dateWords (shell.dates_js, 8 October 2026).
-    import shell as _S
-    prog = (_S.dates_js() + "\n" + o.group(0) + f.group(0)
+    # fdo takes the month's name from components.js's list (DW_MONTHS), which
+    # the home page loads in its head, before its own script.
+    prog = (_components_js() + "\n" + o.group(0) + f.group(0)
             + "process.stdout.write(JSON.stringify(" + json.dumps(list(cases))
             + ".map(fdo)));")
     r = _run([node, "-e", prog], capture_output=True, text=True, timeout=60)
@@ -52979,7 +53284,7 @@ def _calendar_month_six_weeks():
         return "skip", "node is not on PATH"
     root = Path(tempfile.mkdtemp(prefix="gr-calmonth-"))
     try:
-        (root / "week.js").write_text(BC.WEEK_JS, encoding="utf-8")
+        (root / "week.js").write_text(_with_components(BC.WEEK_JS), encoding="utf-8")
         (root / "go.js").write_text(r"""
 const fs = require("fs"), vm = require("vm");
 const ctx = vm.createContext({document: {getElementById: () => null}, URLSearchParams});
@@ -55458,7 +55763,7 @@ def _report_box_fallback():
         return "skip", "node is not on PATH"
     root = Path(tempfile.mkdtemp())
     try:
-        (root / "page.js").write_text(app.read_text(encoding="utf-8"), encoding="utf-8")
+        (root / "page.js").write_text(_with_components(app.read_text(encoding="utf-8")), encoding="utf-8")
         (root / "stub.js").write_text(stub.read_text(encoding="utf-8"), encoding="utf-8")
         t = root / "t.mjs"
         t.write_text(REPORT_BOX_TEST % json.dumps(fn.resolve().as_uri()), encoding="utf-8")
@@ -75858,75 +76163,6 @@ def _places_reconcile():
     return "ok", (f"{n} places = {in_off} in NHDOT's directory + {n - in_off} "
                   f"unincorporated; {gc_rows} district rows, {sos_rows} clerk "
                   f"rows + {len(synthetic)} synthesised")
-
-
-@check("frontend", "the person chip is drawn the same in both copies")
-def _pchip_agrees():
-    """A legislator must look the same on a bill, a committee and the roster.
-
-    app.js draws one wherever a page is built in the browser; build_pages
-    draws one for the two rosters written as static HTML, because those are
-    the only listing a crawler and a reader without JavaScript can walk. Two
-    copies of a renderer is what this repository otherwise refuses, and it is
-    allowed here only because this check runs BOTH and compares the answer --
-    the same arrangement plate() is held together by.
-
-    THE BUG THE COMPONENT EXISTS FOR is what the party line below guards: a
-    committee's members were drawn in party colour and a bill's sponsors were
-    not, so the same member read as one party on a committee page and as no
-    party on a bill. The two records spell the party differently -- sponsors
-    carry "Republican", the roster carries "R" -- so the first-letter fallback
-    is load-bearing and both spellings are tested.
-
-    The function is lifted out of app.js and run on its own rather than by
-    loading the whole file, which is how the plate() check does it: what
-    matters is the answer, not whether the module will boot.
-    """
-    import build_pages as BP
-
-    cases = [
-        {"name": "Vail, Suzanne", "display_full": "Rep. Suzanne Vail (D - Hills 6)",
-         "party": "Democrat", "slug": "suzanne-vail-hills-6"},
-        {"name": "Abbas, Daryl", "display_full": "Sen. Daryl Abbas (R - SD22)",
-         "party_code": "R", "slug": "daryl-abbas-sd22"},
-        {"name": "A", "display_full": "Rep. A", "party": "R", "slug": "a"},
-        {"name": "A", "display_full": "Rep. A", "party": "Republican", "slug": "a"},
-        {"name": "B", "display_full": "Rep. B", "party": "D", "slug": "b",
-         "role": "Chair"},
-        {"name": "C", "display_full": "Rep. C", "party": "D", "slug": "c",
-         "prime": True},
-        {"name": "D", "display_full": "Rep. D", "party": "D", "slug": "d",
-         "role": "Member"},
-        {"name": "E", "display_full": "Rep. E"},
-        # the escape, which is the one thing two hand-written copies drift on
-        {"name": "F", "display_full": 'Rep. "F" & <G>', "party": "I", "slug": "f"},
-    ]
-    want = [BP.pchip(m) for m in cases]
-
-    node = shutil.which("node") or shutil.which("node.exe")
-    if not node:
-        return "skip", "node is not on PATH, so the JavaScript copy cannot be run"
-
-    js = Path("src/pages/app.js").read_text(encoding="utf-8", errors="replace")
-    e = re.search(r"^const esc=.*?;$", js, re.M)
-    c = re.search(r"^const pchip=m=>\{.*?\n(?:\s*)m\.slug\?.*?\};$", js,
-                  re.M | re.S)
-    assert e, "app.js has no esc()"
-    assert c, "app.js has no pchip()"
-    prog = (e.group(0) + "\n" + c.group(0) + "\n"
-            + "const cases=" + json.dumps(cases) + ";\n"
-            + "process.stdout.write(JSON.stringify(cases.map(pchip)));")
-    r = subprocess.run([node, "-e", prog], capture_output=True, timeout=60)
-    assert r.returncode == 0, ("app.js's pchip would not run: "
-                               + r.stderr.decode("utf-8", "replace")[-300:])
-    got = json.loads(r.stdout.decode("utf-8", "replace"))
-
-    bad = [f"case {i}: app.js={a!r} build_pages={b!r}"
-           for i, (a, b) in enumerate(zip(got, want)) if a != b]
-    assert not bad, ("the two person chips disagree, so a legislator is drawn "
-                     "differently on the roster than on a bill:\n  "
-                     + "\n  ".join(bad))
-    return "ok", f"both copies agree on {len(cases)} people, party, role and escaping"
 
 
 @check("calendar", "a reversed meridiem is corrected, and the evening is left alone")
