@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-09.1
+# GRANITE_VERSION: 2026-10-09.2
 """
 Who held the chair's offices, and on which days, from the record on disk.
 
@@ -141,11 +141,19 @@ H_ELECTION = re.compile(r"nominations\s+for\s+Speaker\b(?!\s+Pro)")
 # THE SENATE'S. "Senator Sharon M. Carson was elected President of the
 # Senate" (2024), "Senator Theodore L. Gatsas is elected the President of
 # the Senate" (9 September 2005), "The Honorable Sylvia B. Larsen was
-# elected President of the New Hampshire Senate" (2008).
+# elected President of the New Hampshire Senate" (2008) -- and from 2010 to
+# 2014 the clerk wrote the office small: "The Honorable Peter E. Bragdon was
+# elected president of the New Hampshire Senate" (1 December 2010), and "The
+# Honorable Chuck Morse was elected president of the New Hampshire Senate"
+# (SJ 17, 3 September 2013), the day "Senate President Peter Bragdon
+# resigned from the position". Read with a capital only, those two were
+# missed, and Senator Bragdon was President here until December 2014. The
+# office's words take either case; the name, which is told from the rest by
+# its capitals, does not.
 S_PRESIDENT = re.compile(
     r"(?:Senator|Sen\.|The\s+Honorable)\s+(?P<n>" + NAME + r")\s+(?:is|was)\s+"
     r"(?:duly\s+)?elected\s+(?:as\s+)?(?:the\s+)?"
-    r"(?:President\s+of\s+the\s+(?:New\s+Hampshire\s+)?Senate|Senate\s+President)\b")
+    r"(?:[Pp]resident\s+of\s+the\s+(?:New\s+Hampshire\s+)?[Ss]enate|[Ss]enate\s+[Pp]resident)\b")
 # The Senate's message the House Journal prints at the organization:
 # "President of the Senate: Senator Sharon M. Carson" (2024), "President of
 # the Senate, Senator Chuck Morse and Clerk of the Senate" (2014).

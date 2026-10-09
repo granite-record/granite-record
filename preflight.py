@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.481
+# GRANITE_VERSION: 2026-09-04.482
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -51420,7 +51420,39 @@ def _speaker_page_says_so(B):
 # Calendar's notices of 9 December 2022 (HC 2), 29 May 2026 (HC 22) and
 # 31 July 2026 (HC 28), and 1997's list that names the title after the name
 # (HC 13), which read the other way round made Rep. Brown Deputy Speaker.
+# And the Senate's of 2012-2013, whose clerk wrote the office small: Senator
+# Bragdon elected "president of the New Hampshire Senate" on 5 December 2012
+# (SJ 1), and on 3 September 2013 resigning it and Senator Morse elected in
+# his place (SJ 17). Read with a capital only, both were missed, and
+# officers.json published Senator Bragdon as President until December 2014
+# (the review of 9 October 2026).
 _OFFICERS_FILES = {
+    "journals_senate/2013/SJ 01 December 5, 2012 Organization Day.txt": """
+                                                                                                              December 5, 2012
+
+        STATE OF NEW HAMPSHIRE
+
+Sen. Bradley nominated the Honorable Peter Bragdon for the president of the New Hampshire senate.
+
+Sen. Larsen seconded the nomination.
+
+Hearing no further nominations, Senator Odell declared nominations to be closed.
+
+Adopted. The Honorable Peter Bragdon was elected president of the New Hampshire Senate.
+""",
+    "journals_senate/2013/SJ 17 September 3, 2013.txt": """
+                                                                                                                  September 3, 2013
+                                                                                                                  Nos. 16-17
+
+Senate President Peter Bragdon resigned from the position of President of the New Hampshire Senate.
+
+Senator Bragdon passed the gavel to President Pro Tem, Senator Bob Odell.
+
+Adopted. The Honorable Chuck Morse was elected president of the New Hampshire Senate.
+
+Senator Odell, President Pro Tem, requested Senators Rausch and D'Allesandro to escort The Honorable
+Chuck Morse, President of the New Hampshire Senate, to the rostrum.
+""",
     "journals/2025/HJ 01 December 4, 2024.txt": """
               HOUSE JOURNAL NO. 1
 
@@ -51529,7 +51561,12 @@ def _officers_from_the_record(OF):
     Speaker Pro Tem only on 29 May 2026, after "Fred Doucette, who served as
     Speaker Pro Tem earlier this term" -- so the record does not say when
     the office changed hands, and his turn in the chair that day is "Rep.
-    Kofalt, in the chair" unless a person's entry says from when."""
+    Kofalt, in the chair" unless a person's entry says from when. And the
+    Senate's of 2012-2013, its clerk writing "elected president of the New
+    Hampshire Senate": Senator Bragdon President from 5 December 2012 until
+    3 September 2013, the day he resigned it and Senator Morse was elected
+    (the review of 9 October 2026, which found Bragdon held to December
+    2014)."""
     tens, ms, bad = _officers_fixture(OF)
     assert not bad, bad
     got = {(t["body"], t["title"], t["name"], t["from"], t["to"], t["kind"]) for t in tens}
@@ -51538,12 +51575,16 @@ def _officers_from_the_record(OF):
                  ("H", "Deputy Speaker", "Steven Smith", "2024-12-04", "2026-12-02", "term"),
                  ("H", "Deputy Speaker", "Steve Smith", "2022-12-07", "2024-12-04", "term"),
                  ("H", "Speaker Pro Tempore", "Laurie Sanborn", "2022-12-07", "2024-12-04", "term"),
-                 ("H", "Speaker Pro Tempore", "Kofalt", "2026-05-29", "2026-05-30", "day")]:
+                 ("H", "Speaker Pro Tempore", "Kofalt", "2026-05-29", "2026-05-30", "day"),
+                 # The office written small (SJ 1 of 2012, SJ 17 of 2013): Senator
+                 # Bragdon until the day he resigned it, Senator Morse from then.
+                 ("S", "President", "Peter Bragdon", "2012-12-05", "2013-09-03", "elected"),
+                 ("S", "President", "Chuck Morse", "2013-09-03", "2014-12-03", "elected")]:
         assert want in got, f"no tenure {want}; read: {sorted(got)}"
     assert not any("Brown" in t["name"] or "Lozeau" in t["name"] for t in tens), (
         "1997's list, which gives the title after the name, was read the other way round: "
         + str([t for t in tens if t["from"] < "1998"]))
-    carson = next(t for t in tens if t["title"] == "President")
+    carson = next(t for t in tens if t["title"] == "President" and t["from"] == "2024-12-04")
     assert carson["source"].startswith("journals_senate/") or "journals_senate" in carson["source"], (
         "the President's election is cited from the House's message, not the Senate's journal: "
         + carson["source"])
@@ -51647,7 +51688,14 @@ def _officers_on_the_page(B, BLP, BSP, OF):
                   "scope.ballotCell(" + json.dumps(rc) + ", {n:'Rep. Steven Smith (R)', "
                   "s:'smith, steven', v:'Yea'}), "
                   "scope.ballotCell({date:'2025-04-10', body:'H'}, {n:'Rep. Jim Kofalt (R)', "
-                  "s:'kofalt, jim', v:'Presiding'})])]",
+                  "s:'kofalt, jim', v:'Presiding'}), "
+                  # The same member presiding on a day the record gives him no
+                  # office (10 March 2022, the term before), and a ballot of the
+                  # other chamber under the same key: neither is named anything.
+                  "scope.ballotCell({date:'2022-03-10', body:'H'}, {n:'Rep. Steven Smith (R)', "
+                  "s:'smith, steven', v:'Presiding'}), "
+                  "scope.ballotCell({date:'2025-05-08', body:'S'}, {n:'Sen. Steven Smith (R)', "
+                  "s:'smith, steven', v:'Presiding'})])]",
                   names=("renderMemberHead", "ballotCell", "setOff: x => (OFFICERS = x)"))
     if got is None:
         return "ok", "the offices and the headings hold in Python; node is not here to draw them"
@@ -51664,7 +51712,9 @@ def _officers_on_the_page(B, BLP, BSP, OF):
     assert cells == ['<div class="m">Rep. Steven Smith (R)<span class="p mo">Deputy '
                      'Speaker of the House</span></div>',
                      '<div class="m">Rep. Steven Smith (R)</div>',
-                     '<div class="m">Rep. Jim Kofalt (R)</div>'], cells
+                     '<div class="m">Rep. Jim Kofalt (R)</div>',
+                     '<div class="m">Rep. Steven Smith (R)</div>',
+                     '<div class="m">Sen. Steven Smith (R)</div>'], cells
     return "ok", ("\"Senator Sharon Carson (R - SD14)\", President of the Senate; "
                   "\"Representative James Spillane (R - Rock 2)\"; the Deputy Speaker named "
                   "on his presiding ballot and in the chair")
@@ -51719,14 +51769,23 @@ def _official_party_letter(BT):
 
 @check("data", "the member in the Speaker's chair is Speaker of the House in his own file, "
                "and every other sitting member's office is one the record gives them",
-       needs=("build_site_v2",))
-def _speaker_page_built(B):
+       needs=("build_site_v2", "officers"))
+def _speaker_page_built(B, OF):
     """Seat 6002's member is Speaker of the House, and nobody else is. Since
     9 October 2026 the other officers' own pages name their offices too --
     the President of the Senate, the Deputy Speaker, the Speaker Pro Tempore
     (build_officers) -- and each must be an office site/officers.json says
     that member holds on the day the site was built, and no two members may
-    hold one office."""
+    hold one office.
+
+    ON THAT DAY, NOT ON ANY (the review of 9 October 2026): the first form of
+    this check held an office to any tenure of it in officers.json, so a page
+    still calling Rep. Steven Smith Deputy Speaker in a term whose record
+    names nobody -- on the strength of 2023-2024 -- passed. A tenure covers
+    the build's day (site/build.json) from its first day to the day before
+    `to`; a "day" tenure, where the record named two people in one office in
+    one term, covers it as officers.holders does -- the latest so named in
+    the build's term, on or before the day."""
     d, lp = Path("site/legislators"), Path("site/legislators.json")
     if not (d.is_dir() and lp.exists()):
         return "skip", "site/legislators is not here"
@@ -51751,15 +51810,35 @@ def _speaker_page_built(B):
     if others:
         assert of.exists(), f"offices on file and no site/officers.json: {others}"
         tens = json.loads(of.read_text(encoding="utf-8")).get("officers") or []
-        held = {(t["id"], t["office"]) for t in tens}
+        try:
+            built = str(json.loads(Path("site/build.json").read_text(encoding="utf-8"))
+                        .get("finished") or "")[:10]
+        except (OSError, ValueError, AttributeError):
+            built = ""
+
+        def holds(t):
+            if not built:
+                return True
+            if t["from"] > built:
+                return False
+            if t.get("kind") != "day":
+                return built < t["to"]
+            term = OF.term_of(built)
+            later = [u for u in tens if (u["b"], u["title"]) == (t["b"], t["title"])
+                     and u.get("kind") == "day" and t["from"] < u["from"] <= built
+                     and OF.term_of(u["from"]) == term]
+            return OF.term_of(t["from"]) == term and not later
+        held = {(t["id"], t["office"]) for t in tens if holds(t)}
         stray = {k: o for k, o in others.items() if (k, o) not in held}
-        assert not stray, f"offices on file that officers.json gives nobody: {stray}"
+        assert not stray, (f"offices on file that officers.json gives nobody"
+                           f"{' on ' + built if built else ''}: {stray}")
     return "ok", (f"{chair[0].get('name')}, in seat {B.SPEAKER_SEAT}, is Speaker of the House"
                   + "".join(f"; {next(r.get('name') for r in rows if r['id'] == k)}, {o}"
                             for k, o in sorted(others.items(), key=lambda x: x[1])))
 
 
-@check("data", "no House sitting heads anyone but that day's Speaker \"Speaker\"",
+@check("data", "no House sitting heads anyone but that day's Speaker \"Speaker\", and "
+               "every other office it names in the chair is one held that day",
        needs=("officers",))
 def _chair_headings_on_the_site(OF):
     """The House Journal heads whoever is in the chair "Speaker", and the
@@ -51768,29 +51847,53 @@ def _chair_headings_on_the_site(OF):
     House sitting page is read here: a turn headed "Speaker <name>" must be
     the Speaker that site/officers.json says held the office that day, or
     a day it names no Speaker for; and the Deputy Speaker's turns of
-    8 May 2025 are headed so."""
+    8 May 2025 are headed so.
+
+    AND EVERY OTHER HEADING OF THE CHAIR (the review of 9 October 2026, which
+    found the first form of this check passed a build that called Rep.
+    Kofalt "Deputy Speaker" and one that demoted the Speaker to "Rep.
+    Packard, in the chair", since it read only the headings that still
+    began "Speaker"): a turn headed "Deputy Speaker <name>" or "Speaker Pro
+    Tempore <name>" must be a member officers.json gives that office that
+    day, and one headed "<name>, in the chair" must be neither that day's
+    Speaker nor a member officers.json gives another office that day -- who
+    would then have been titled by it."""
     import html as _h
     days, of = Path("site/session/H"), Path("site/officers.json")
     if not (days.is_dir() and of.exists()):
         return "skip", "site/session/H or site/officers.json is not here"
-    tens = json.loads(of.read_text(encoding="utf-8")).get("officers") or []
-    speakers = [t for t in tens if t["b"] == "H" and t["title"] == "Speaker"]
+    tens = [t for t in json.loads(of.read_text(encoding="utf-8")).get("officers") or []
+            if t["b"] == "H"]
     head = re.compile(r'<p class="sdsp"><span>([^<]+)</span>')
     wrong, n, retitled = [], 0, 0
     for f in sorted(days.glob("*.html")):
         iso = f.stem
-        here = [t for t in speakers if t["from"] <= iso < t["to"]]
+        on = [t for t in tens if t["from"] <= iso < t["to"]]
+        here = [t for t in on if t["title"] == "Speaker"]
         for who in head.findall(f.read_text(encoding="utf-8")):
             who = _h.unescape(who)
-            retitled += who.startswith(("Deputy Speaker ", "Speaker Pro Tempore ")) or \
-                who.endswith(", in the chair")
+            office = re.match(r"(Deputy Speaker|Speaker Pro Tempore) (.+)$", who)
+            member = re.match(r"(?:Rep\. )?(.+), in the chair$", who)
+            if office:
+                retitled += 1
+                if not any(t["title"] == office.group(1)
+                           and OF.same_person(t["name"], office.group(2)) for t in on):
+                    wrong.append(f"{iso}: {who} (officers.json gives nobody of that name "
+                                 "that office that day)")
+                continue
+            if member:
+                retitled += 1
+                held = [t["title"] for t in on if OF.same_person(t["name"], member.group(1))]
+                if held:
+                    wrong.append(f"{iso}: {who} (the {held[0]} that day)")
+                continue
             m = re.match(r"Speaker (?!Pro Tem)(.+)$", who)
             if not m or not here:
                 continue
             n += 1
             if not any(OF.same_person(t["name"], m.group(1)) for t in here):
                 wrong.append(f"{iso}: {who}")
-    assert not wrong, (f"{len(wrong)} turn(s) headed \"Speaker\" for someone not the Speaker "
+    assert not wrong, (f"{len(wrong)} turn(s) in the chair headed by an office not held "
                        f"that day: " + "; ".join(wrong[:6]))
     may8 = days / "2025-05-08.html"
     if may8.exists():
