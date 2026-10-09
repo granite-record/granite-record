@@ -1,9 +1,13 @@
-# What git tracks here: the scripts, the documents, the roll-call history as
-# the General Court published it, and the five files a person made by hand --
-# preflight.py's HANDMADE is the list, and pointing at it rather than repeating
-# it here is deliberate: this header said "the one file" for a fortnight after
-# there were five. Everything else is either downloaded from the General Court
-# or generated from what was, and can be rebuilt.
+# What git tracks here: the scripts, the documents, and the data in the five
+# folders of the root tidy (README.md's "What's where"): what a person
+# corrects or adds by hand (corrections/) and their checks of the site
+# (review/) -- preflight.py's HANDMADE reads those two, and pointing at them
+# rather than listing them here is deliberate: this header said "the one
+# file" for a fortnight after there were five -- the official record as
+# published (records/), what was gathered and is kept (collected/), and what
+# is computed ahead and kept (generated/). Everything else is either
+# downloaded from the General Court or generated from what was, and can be
+# rebuilt.
 #
 # The working folder is about 34 GB. Nearly all of it is caption files. Git is
 # here to make code changes reversible and to satisfy the desktop app, not to
@@ -130,16 +134,16 @@ check.txt
 # ==========================================================================
 # Tracked on purpose, against the patterns above.
 #
-# ground_truth.csv is 35 proceedings a person timed by watching the video. It
-# is the only measurement of this system that was not generated, every
-# timestamp method is scored against it, and it has already been lost twice to
-# a rebuild. It is a .csv sitting among generated .csv files, so it is spelled
-# out here rather than left to a pattern.
-!ground_truth.csv
-!status/officials.txt
+# review/ground_truth.csv is 35 proceedings a person timed by watching the
+# video. It is the only measurement of this system that was not generated,
+# every timestamp method is scored against it, and it has already been lost
+# twice to a rebuild. It sat among generated .csv files at the root until the
+# root tidy, so it is spelled out here rather than left to a pattern.
+!review/ground_truth.csv
+!corrections/status/officials.txt
 !versions.json
 
-# rollcalls/ is tracked, and the bulk downloads above are not, for the reason
+# records/rollcalls/ is tracked, and the bulk downloads above are not, for the reason
 # given there: those change on every fetch. A past session's roll calls do not.
 # The General Court publishes one bulk file per CURRENT session, so 2025's
 # 380 votes and 107,118 member votes cannot be downloaded at all -- they exist
@@ -195,7 +199,7 @@ journals_senate/
 
 # The bench's sample pools are derived and rebuilt by review.py
 # --refresh. review/checked.jsonl is NOT ignored: it is the record a
-# person made, and it belongs in git beside ground_truth.csv.
+# person made, and it belongs in git beside review/ground_truth.csv.
 review/.pool-*.json
 
 # ---- the assistant's local state -----------------------------------------
@@ -252,7 +256,7 @@ reports/*
 # GRANIT shapefiles: 4.2 MB of zips, re-fetchable from ftp.granit.unh.edu.
 # parse_granit.py records what each one is, where it came from and
 # when it was read, and skips cleanly when they are absent.
-sources/gis/*.zip
+records/sources/gis/*.zip
 town_sites/
 
 # THE LICENSED LOGO (24 September 2026). Debra Caplan's drawing, the lockups
@@ -305,7 +309,8 @@ assets/licensed/
 # ---- the nightly's new livestreams (livestreams.py) -----------------------
 # Written on GitHub's machine each night and carried to the next by cloud.py.
 # Never committed: a tracked file changed on that machine stops the deploy,
-# and nobody commits there. The committed videos_*.csv stay the laptop's.
+# and nobody commits there. The committed indexes, collected/videos/videos_*.csv,
+# stay the laptop's.
 # Its state is archive/livestreams.json, beside the project's other small
 # state (refused.json, census.json), and archive/ is ignored above.
 videos_*_livestreams.csv
@@ -318,4 +323,4 @@ videos_*_livestreams.csv
 /run.bat
 /senate_vids.txt
 /archive_*.html
-sources/sos-clerks-and-polling-places-2026-09-20.html
+records/sources/sos-clerks-and-polling-places-2026-09-20.html

@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.167
+// GRANITE_VERSION: 2026-09-07.168
 // What each kind of document actually is, said once rather than in every row.
 const DOCWHAT={text:"the bill as it currently stands",
   status:"the page this site takes a bill's status from",
@@ -52,8 +52,14 @@ const KIND={active:"s-active",law:"s-law",done:"s-done",veto:"s-veto",
 // that is not one of the six -- a stage, an adopted resolution -- takes its
 // kind's. "Became law" is wrong for a resolution, which is adopted and is
 // not law: its chip is its own word, "Adopted by the House".
+// Interim Study and Tabled take their rail marks' inks (the person, 8 October
+// 2026): the orange of the "~" and the yellow of the pause (graphite for a
+// day). A stage still moving -- "In committee" and the rest, KIND.active --
+// is slate blue since the same evening, so Tabled and In committee are two
+// colours. Under protanopia the yellow is near the orange, so the chip's
+// word and the rail's shape tell them apart.
 const CHIPCLASS={"Became Law":"s-law","Died":"s-done","Interim Study":"s-study",
-  "Tabled":"s-active","Vetoed":"s-veto","Withdrawn":"s-done"};
+  "Tabled":"s-table","Vetoed":"s-veto","Withdrawn":"s-done"};
 const CHIPORDER=Object.keys(CHIPCLASS);
 // A request's row has no chip, and its status is its word.
 const chipOf=b=>(b&&(b.chip||b.status))||"";
@@ -3402,7 +3408,18 @@ function rsaChapters(d){
 // "No roll call votes on this bill." HB 1102 of 2026 hid both chambers'
 // voice votes adopting its conference report. The hidden lines are this
 // list's own, so this list is where they open.
-const JMARK={p:"✓",x:"✕",h:"↺"};
+// AND THE RAIL'S OWN TWO, BARE (the person, 8 October 2026): the line that
+// sent the bill to interim study takes the rail's orange "~", and the line
+// that laid a bill on the table it still lies on takes the yellow pause,
+// two bars the stylesheet draws (.jl .j-ontable .jg::after). A bill that died
+// on the table keeps its turning arrow on that line. The "~" is drawn rather
+// than typed, so it centres at any size, and here before the rail (RAILMARK)
+// takes it too.
+const WAVE='<svg class="wave" viewBox="0 0 12 12" aria-hidden="true" focusable="false">'
+  +'<path d="M1.7 7.4C2.9 4.8 4.5 4.6 6 6.1s3.1 1.4 4.3-1.2" fill="none" '
+  +'stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>';
+const JMARK={p:"✓",x:"✕",h:"↺",s:WAVE,t:""};
+const JCLASS={s:"istudy",t:"ontable"};
 const JBODY={H:"House",S:"Senate",G:"Governor",L:"Law",V:"Voters"};
 const JOURNEY_SHOWN=6;
 function journeyList(b,d){
@@ -3411,7 +3428,7 @@ function journeyList(b,d){
   const k=dkey(b.id);
   const cut=st.length>JOURNEY_SHOWN&&!jOpen.has(k);
   const hide=i=>cut&&i>=2&&i<st.length-(JOURNEY_SHOWN-2);
-  const line=(s,i)=>`<li class="j-${esc(s.mark)}"${hide(i)?" hidden":""}><span class="jg"
+  const line=(s,i)=>`<li class="j-${esc(JCLASS[s.mark]||s.mark)}"${hide(i)?" hidden":""}><span class="jg"
     aria-hidden="true">${JMARK[s.mark]||""}</span><span class="jb">${
     esc(JBODY[s.body]||s.body)}</span><span class="jt">${esc(s.text)}</span><span
     class="jd">${s.date?esc(dateWords(s.date)):""}</span></li>`;
@@ -5074,7 +5091,11 @@ const REPORT_FIELDS=[["date","A date"],["status","The status"],["sponsor","A spo
 const REPORT_TO="contact@graniterecord.org";
 // The tabs the pages render. The Function accepts no other value, so a tab
 // renamed here and not there sends "", rather than having the report dropped.
-const REPORT_TABS=new Set(["Summary","Bill Text","Votes","Videos","Reports","Sponsors",
+// HEARINGS, AS THE TAB IS NAMED (8 October 2026). The bill's third tab was
+// renamed from Videos and this list was not, so a report sent from it named
+// no tab at all. The Function still takes "Videos" from a page loaded before
+// the rename and stores it as "Hearings" (report.js RENAMED_TABS).
+const REPORT_TABS=new Set(["Summary","Bill Text","Votes","Hearings","Reports","Sponsors",
   "Documents","Prime sponsored","Co-sponsored","Bills","Sessions","Meetings"]);
 let reportBuild=null;       // site/build.json's "finished", fetched once, on first open
 
@@ -5421,15 +5442,44 @@ function lsrCardHtml(b){
 // A stop carries a green check where the bill got through and a red cross
 // where it stopped, so the state is legible without knowing a key. The glyph
 // says it and the colour agrees; neither carries it alone.
+//
+// AND TWO MARKS OF THE RAIL'S OWN (the person, 8 October 2026, from a
+// measured sheet of the marks). A chamber that held the bill for interim
+// study is "s", an orange disc with a white "~", where it was the red cross
+// of a bill killed: the chamber decided, and the bill is parked, not dead.
+// A chamber whose table the bill lies on while the session still sits is
+// "t", a yellow disc with two white bars, the pause, where it was the ring
+// of a bill moving. A bill that died on the table keeps the cross.
+// build_site_v2.journey_rail gives a stop these, from the bill's chip, and
+// How it got here draws the same two bare (JMARK). Each is a filled disc of
+// the check's and the cross's weight with a glyph of its own -- check,
+// cross, wave, two bars -- so greyscale, where the four discs are within a
+// few points of each other's lightness, still tells them apart, and the
+// empty ring of a stop not reached is never one of them. The wave is drawn,
+// not typed (WAVE, above journeyList), so it centres in the disc at any
+// size; the two bars are the stylesheet's (.stop.s-ontable b::after).
 const CHNAME2={H:"House",S:"Senate"};
-const RAILMARK={p:"\u2713", x:"\u2715", h:"", "-":""};
+const RAILMARK={p:"\u2713", x:"\u2715", h:"", "-":"", s:WAVE, t:""};
 const RAILSAY={p:"passed", h:"is here now", x:"stopped here",
-               "-":"never reached"};
+               "-":"never reached", s:"sent to interim study", t:"on the table"};
+// The index row's word for the act each of those two marks already says.
+const RAILSAID={s:"interim study", t:"tabled"};
+// A mark's class on its stop: "s-o" for a stop never reached, as it was, and
+// the two marks of the rail's own by what they are.
+const RAILCLASS={"-":"o", s:"istudy", t:"ontable"};
+const railCls=m=>`s-${esc(RAILCLASS[m]||m)}`;
+// What the rail's own marks refine in b.passage, which has neither: the
+// chip says which (build_site_v2.RAIL_MARK_OF_CHIP).
+const RAILCHIP={"Interim Study":["x","s"],"Tabled":["h","t"]};
 function rail(b){
   const p=b.passage||"";
   if(!CHNAME2[p[0]])return "";
   const other=p[0]==="H"?"S":"H";
-  const st=p.slice(1);
+  const own=RAILCHIP[chipOf(b)];
+  // Only a chamber's stop: the first two of four, the first of a
+  // resolution's two (its second is whether it was adopted).
+  const n=p.length===3?1:2;
+  const st=p.slice(1).split("").map((m,i)=>own&&i<n&&m===own[0]?own[1]:m);
   // A resolution belongs to one chamber and has two stops: that chamber, and
   // whether it was adopted. Four stops drew it against a Senate it was never
   // going to see and a Law it could never become.
@@ -5441,7 +5491,7 @@ function rail(b){
     .join("; ");
   return `<span class="rail" role="img" aria-label="${esc(said)}"
     title="${esc(said)}">${stops.map((name,i)=>
-      `<span class="stop s-${esc(st[i]==="-"?"o":st[i])}"
+      `<span class="stop ${railCls(st[i])}"
         ><b>${RAILMARK[st[i]]||""}</b><i>${esc(name)}</i></span>`
     ).join("")}</span>`;
 }
@@ -5508,7 +5558,7 @@ function datedRail(b,d){
   const cells=st.map(s=>{
     const day=s.date?dateWords(s.date):"";
     // The day and nothing else: s.short is said below, never drawn.
-    return `<span class="stop s-${esc(s.mark==="-"?"o":s.mark)}"><b>${
+    return `<span class="stop ${railCls(s.mark)}"><b>${
       RAILMARK[s.mark]||""}</b><i>${esc(s.stop)}</i>${day
       ?`<small>${esc(day.slice(0,-5))}<span class="ry">${esc(day.slice(-5))}</span></small>`
       :""}</span>`;
@@ -5527,7 +5577,10 @@ function datedRail(b,d){
     // went -- "signed", "Chapter 140", "not ratified" -- and "passed, signed"
     // said it twice; so does "Nov 2026", in full, as every other date is.
     const own=s.short&&/^(Governor|Law|Voters)$/.test(s.stop)&&/^[px]$/.test(s.mark);
-    const what=(s.say||(own?s.short:[RAILSAY[s.mark],s.short].filter(Boolean).join(", ")))
+    // And the rail's own marks say their act ("sent to interim study", "on
+    // the table"), so the stop's word for the same act is not said again.
+    const short=s.short===RAILSAID[s.mark]?"":s.short;
+    const what=(s.say||(own?s.short:[RAILSAY[s.mark],short].filter(Boolean).join(", ")))
       .replace(/(\d)–(\d)/g,"$1 to $2")
       .replace(/\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) (\d{1,2}), (\d{4})\b/g,
         (_m,mo,d,y)=>dateWords(`${y}-${String(RAIL_MON.indexOf(mo)+1).padStart(2,"0")}-${

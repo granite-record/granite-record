@@ -23,14 +23,14 @@ editorial notes on particular bills. Those are authored. They are offered under
 the same terms as the code above, so a person building on this does not have to
 reason about which sentence came from where.
 
-Two files are neither code nor derived text. ground_truth.csv and
+Two files are neither code nor derived text. review/ground_truth.csv and
 review/checked.jsonl are measurements a person made by watching recordings with
 a stopwatch. They are included under the same terms, and are worth naming
 separately only because they cannot be regenerated: if they are lost, somebody
 has to sit down and watch the videos again.
 
 One file holds figures from outside the General Court's record.
-ballot_results.json is the statewide Yes and No vote on each constitutional
+corrections/ballot_results.json is the statewide Yes and No vote on each constitutional
 amendment both chambers sent to the voters. Each row names its source, where
 the count is printed and the day it was read, and says which CACR it is and
 why. For every amendment the voters have decided the source is the Secretary

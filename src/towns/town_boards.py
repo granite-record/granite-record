@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-24.5
+# GRANITE_VERSION: 2026-09-24.6
 """
 Which towns' own websites list their select board, and which cities' their
 mayor and council, as they stand now.
 
     python3 src/towns/town_boards.py --report         # what it decides, writes nothing
     python3 src/towns/town_boards.py --show lyme      # one town, with the lines it read
-    python3 src/towns/town_boards.py                  # -> town_boards.json
+    python3 src/towns/town_boards.py                  # -> collected/town_boards.json
 
 Reads what town_sites.py saved under town_sites/, through parse_town_sites.py,
 and NHDOT's directory in town_officials.json. Touches no network.
@@ -119,7 +119,7 @@ import re
 
 import parse_town_sites as PTS
 
-OUT = "town_boards.json"
+OUT = "collected/town_boards.json"
 BOARD = "Board of Selectmen"
 
 # A term that ended before this year means the page predates the town meeting
@@ -514,12 +514,12 @@ def known_spellings(root=Path(".")):
     def load(name):
         p = root / name
         return json.loads(p.read_text(encoding="utf-8")) if p.exists() else {}
-    for t in load("town_officials.json").values():
+    for t in load("collected/town_officials.json").values():
         for o in t.get("officials") or []:
             add(o.get("name"))
-    for o in (load("county_officials.json") or {}).get("officers", []):
+    for o in (load("collected/county_officials.json") or {}).get("officers", []):
         add(o.get("name"))
-    for v in load("careers.json").values():
+    for v in load("generated/careers.json").values():
         if isinstance(v, dict):
             add(" ".join(str(v.get(f) or "") for f in ("first", "last", "name")))
     legs = load("site/legislators.json")
@@ -1421,14 +1421,14 @@ def given_names(root=Path(".")):
     def load(name):
         p = root / name
         return json.loads(p.read_text(encoding="utf-8")) if p.exists() else {}
-    for t in load("town_officials.json").values():
+    for t in load("collected/town_officials.json").values():
         for o in t.get("officials") or []:
             add(o.get("name"))
-    for c in load("town_clerks.json").values():
+    for c in load("collected/town_clerks.json").values():
         add(c.get("clerk", ""))
-    for o in (load("county_officials.json") or {}).get("officers", []):
+    for o in (load("collected/county_officials.json") or {}).get("officers", []):
         add(o.get("name"))
-    for v in load("careers.json").values():
+    for v in load("generated/careers.json").values():
         if isinstance(v, dict) and v.get("first"):
             names.add(v["first"].lower().strip(" ."))
     legs = load("site/legislators.json")
@@ -1497,7 +1497,7 @@ def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.strip().splitlines()[0])
     ap.add_argument("--report", action="store_true")
     ap.add_argument("--show", nargs="*", default=None)
-    ap.add_argument("--officials", default="town_officials.json")
+    ap.add_argument("--officials", default="collected/town_officials.json")
     ap.add_argument("--out", default=OUT)
     a = ap.parse_args(argv)
 

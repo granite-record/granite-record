@@ -1,18 +1,18 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-20.4
+# GRANITE_VERSION: 2026-09-20.5
 """
 The Secretary of State's own district table, and what it says about ours.
 
     python3 src/towns/parse_sos_districts.py --report    # compare, write nothing
-    python3 src/towns/parse_sos_districts.py             # -> sos_districts.json
+    python3 src/towns/parse_sos_districts.py             # -> collected/sos_districts.json
 
-WHY. `districts/congress.txt`, `council.txt`, `senate.txt` and `house.txt`
+WHY. `records/districts/congress.txt`, `council.txt`, `senate.txt` and `house.txt`
 carry no provenance of any kind: no source URL, no retrieval date, no
 statement of which redistricting plan they encode. Everything this site says
 about who represents a town rests on them, and nothing has ever checked them
 against the published legal definition.
 
-THE SOURCE. `sources/sos-towns-and-wards-districted-2023-04-26.pdf`, "Towns
+THE SOURCE. `records/sources/sos-towns-and-wards-districted-2023-04-26.pdf`, "Towns
 and Wards as Districted for Election Purposes 2022", by Karen Ladd of the New
 Hampshire Department of State. Its embedded CreationDate is
 D:20230426104240-04'00', so 26 April 2023 is the date its contents are true
@@ -47,7 +47,7 @@ read from a fixed column.
 REPRESENTATIVE DISTRICTS ARE NUMBERED WITHIN A COUNTY, and a place with two
 of them has a base district and a floterial: Acworth's "4, 8" is Sullivan 4
 and Sullivan 8, and Sullivan 8 is the floterial it shares. That is the same
-fact `districts/house.txt` states by listing a town under two districts, and
+fact `records/districts/house.txt` states by listing a town under two districts, and
 comparing them is how this checks the floterial layer that
 `preflight.py:_floterials_overlay` can only check for self-consistency.
 
@@ -111,8 +111,8 @@ import parse_districts
 # The repository root, wherever this file sits (_paths.py): the data it
 # reads is the root's.
 ROOT = _paths.ROOT
-PDF = ROOT / "sources" / "sos-towns-and-wards-districted-2023-04-26.pdf"
-OUT = ROOT / "sos_districts.json"
+PDF = ROOT / "records" / "sources" / "sos-towns-and-wards-districted-2023-04-26.pdf"
+OUT = ROOT / "collected" / "sos_districts.json"
 
 DOCUMENT_DATE = "2023-04-26"
 SOURCE_URL = ("https://www.sos.nh.gov/sites/g/files/ehbemt561/files/"
@@ -167,7 +167,7 @@ def columns(rest, page, line, notes):
 
 def known_places():
     """Every place districts/*.txt names, for settling a wrapped name."""
-    d = parse_districts.parse_house(ROOT / "districts" / "house.txt")
+    d = parse_districts.parse_house(ROOT / "records" / "districts" / "house.txt")
     return sorted({t for v in d.values() for t, _ in v["towns"]})
 
 
@@ -289,11 +289,11 @@ def ours():
                                            "senate": set(), "house": set()})
     for key, name in (("cong", "congress"), ("council", "council"),
                       ("senate", "senate")):
-        d = parse_districts.parse(ROOT / "districts" / f"{name}.txt")
+        d = parse_districts.parse(ROOT / "records" / "districts" / f"{name}.txt")
         for num, places in d.items():
             for t, w in places:
                 out[(norm(t), w)][key].add(int(num))
-    h = parse_districts.parse_house(ROOT / "districts" / "house.txt")
+    h = parse_districts.parse_house(ROOT / "records" / "districts" / "house.txt")
     for v in h.values():
         for t, w in v["towns"]:
             out[(norm(t), w)]["house"].add((v["county"], int(v["district"])))
@@ -338,7 +338,7 @@ def main():
     a = ap.parse_args()
 
     if not PDF.exists():
-        print(f"  {PDF.name} is not in sources/")
+        print(f"  {PDF.name} is not in records/sources/")
         return 1
 
     rows, notes, theirs, mine, only_theirs, only_mine, diffs = compare()

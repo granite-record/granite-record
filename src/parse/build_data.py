@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.57
+# GRANITE_VERSION: 2026-09-04.58
 """
 Turn the General Court's bulk files into the data the site runs on.
 
@@ -103,7 +103,7 @@ def organization_votes(d, years):
 
 
 def rows_all(d, base, expect=None, archive=None, finished=None, left=None):
-    """base.txt plus every rollcalls/base_<year>.txt beside it -- or beside
+    """base.txt plus every records/rollcalls/base_<year>.txt beside it -- or beside
     `archive`, where the session's own files are a frozen term's and the past
     years' are where they always were.
 
@@ -121,7 +121,7 @@ def rows_all(d, base, expect=None, archive=None, finished=None, left=None):
     kept it: the summaries went into a dict, so an archive copy overwrote the
     download's, and the ballots into a list, so a roll call in both would
     have been counted twice. None is in both today -- the download is 2026
-    and rollcalls/ ends at 2025 -- but at the new term 2026 is archived while
+    and records/rollcalls/ ends at 2025 -- but at the new term 2026 is archived while
     the download may still hold it, and every 2026 ballot would count twice
     on every member's record.
 
@@ -131,7 +131,7 @@ def rows_all(d, base, expect=None, archive=None, finished=None, left=None):
     then take all of 2026 from those few.
     """
     out = rows(d / f"{base}.txt", expect)
-    extra = Path(archive or d) / "rollcalls"
+    extra = Path(archive or d) / "records" / "rollcalls"
     # A finished term's year whose own file is here comes from that file and
     # not from the session's (5 October 2026): rows of a finished term in
     # new files are counted and left out, never merged. Until the turn the
@@ -1783,7 +1783,7 @@ def main():
     # countyCode + district -> towns, and the reverse.
     towns, seats = defaultdict(list), defaultdict(list)
 
-    # districts/house.txt includes the 41 floterial districts that
+    # records/districts/house.txt includes the 41 floterial districts that
     # HouseDistricts.txt leaves out entirely, which is why eight sitting members
     # matched no town at all. Prefer it where parse_districts.py has run.
     dj = {}
@@ -2121,11 +2121,11 @@ def main():
     # voted in it, and their 165 sponsorships are on their bills' own text. So
     # a member the roster does not hold is a sponsor of the term's bills only
     # if they cast a ballot in the term (RollCallHistory, the session's file
-    # and rollcalls/ for its years); before the term's first roll call that
+    # and records/rollcalls/ for its years); before the term's first roll call that
     # is nobody, as it was before 7 October 2026.
     _years = freeze_term.term_years(sess) if sess else set()
     sat = {r[4] for f in [sd / "RollCallHistory.txt",
-                          *(d / "rollcalls" / f"RollCallHistory_{y}.txt" for y in sorted(_years))]
+                          *(d / "records" / "rollcalls" / f"RollCallHistory_{y}.txt" for y in sorted(_years))]
            if f.exists() for r in rows(f, 8) if r[0] in _years and r[4]}
     never_sat = Counter()
     # LsrsOnly.txt does not cover every bill -- HB197 and HB104 came back with
@@ -2424,7 +2424,7 @@ def main():
     # A correction that matches nothing is a correction that has stopped
     # working -- the id space changed, or the defect was fixed upstream and
     # the entry outlived it -- so it says so rather than passing quietly.
-    cp = Path("member_corrections.json")
+    cp = Path("corrections/member_corrections.json")
     ballot_fix = {}
     if cp.exists():
         _doc = json.loads(cp.read_text(encoding="utf-8"))

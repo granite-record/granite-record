@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-12.8
+# GRANITE_VERSION: 2026-09-12.9
 """
 What readers reported, compiled for a person and for the session that triages.
 
-    python3 compile_reports.py                  # pull new reports, write tonight's triage
-    python3 compile_reports.py --preview        # the same, from the preview database
-    python3 compile_reports.py --no-retention   # ... and delete nothing, here or in D1
-    python3 compile_reports.py --rows FILE      # compile rows from a JSON file; no network
-    python3 compile_reports.py --show ID        # one report's words, printed for a PERSON
-    python3 compile_reports.py --close ID --verdict fixed --why "the docket line..."
+    python3 src/ops/compile_reports.py                  # pull new reports, write tonight's triage
+    python3 src/ops/compile_reports.py --preview        # the same, from the preview database
+    python3 src/ops/compile_reports.py --no-retention   # ... and delete nothing, here or in D1
+    python3 src/ops/compile_reports.py --rows FILE      # compile rows from a JSON file; no network
+    python3 src/ops/compile_reports.py --show ID        # one report's words, printed for a PERSON
+    python3 src/ops/compile_reports.py --close ID --verdict fixed --why "the docket line..."
 
 WHERE REPORTS COME FROM
 
@@ -127,8 +127,20 @@ RECORD = re.compile(r"^(bill:\d{4}/[A-Z]{2,6}\d{1,4}|member:\d{1,7}|committee:[A
 PATH = re.compile(r"^/(bill/\d{4}/[a-z]{2,6}\d{1,4}|legislator/[a-z0-9-]{1,80}|committee/[A-Za-z]\d{2,3}(?:-\d{4})?)$")
 # The tabs the pages render, and nothing else: a tab is a label, and a
 # free-text tab was 24 letters of a reader's own words outside the quotation.
-TABS = ("", "Summary", "Bill Text", "Votes", "Videos", "Reports", "Sponsors",
+TABS = ("", "Summary", "Bill Text", "Votes", "Hearings", "Reports", "Sponsors",
         "Documents", "Prime sponsored", "Co-sponsored", "Bills", "Sessions", "Meetings")
+# A TAB'S OLD NAME, AND ITS NAME NOW (8 October 2026): functions/api/report.js
+# RENAMED_TABS. A bill's Hearings tab was Videos, and a report stored before
+# the Function learnt the new name carries the old one. It is read, and shown,
+# under the name the tab has.
+RENAMED_TABS = {"Videos": "Hearings"}
+
+
+def renamed_tab(r):
+    """The row with its tab under the name the tab has now."""
+    if r.get("tab") in RENAMED_TABS:
+        r = dict(r, tab=RENAMED_TABS[r["tab"]])
+    return r
 BUILD = re.compile(r"^[0-9T:.+\-Z]{0,40}$")
 AT = re.compile(r"^\d{4}-\d\d-\d\dT[\d:.]+Z?$")
 
@@ -470,7 +482,7 @@ def well_formed(r):
         return bool(isinstance(r.get("id"), int) and AT.match(str(r.get("at", "")))
                     and RECORD.match(str(r.get("record", "")))
                     and PATH.match(str(r.get("url", "")))
-                    and r.get("tab", "") in TABS
+                    and renamed_tab(r).get("tab", "") in TABS
                     and r.get("field") in FIELDS
                     and BUILD.match(str(r.get("build", "")))
                     and isinstance(r.get("note"), str) and 3 <= len(r["note"]) <= 1000
@@ -569,7 +581,7 @@ def issues(which):
     for f in sorted(OUT.glob(f"issues-{which}-*.jsonl")):
         for ln in f.read_text(encoding="utf-8").splitlines():
             try:
-                rows.append(decode_note(json.loads(ln)))
+                rows.append(renamed_tab(decode_note(json.loads(ln))))
             except (ValueError, KeyError):
                 continue
     return rows
@@ -728,7 +740,7 @@ def handled():
 
 def judge(rows, members):
     """[(row, reasons)] for well-formed rows, and the count set aside."""
-    good = [r for r in rows if well_formed(r)]
+    good = [renamed_tab(r) for r in rows if well_formed(r)]
     per_record = Counter(r["record"] for r in good)
     flood = len(good) > FLOOD
     out = []
@@ -773,7 +785,7 @@ def compile_rows(rows, which, site, day, nonce=None, earlier_held=()):
 
     L += ["## Held for the person -- do not triage these", "",
           "Their words are not in this file, and are stored encoded. A person reads one with "
-          f"`python3 compile_reports.py{' --preview' if which == 'preview' else ''} --show ID`.", ""]
+          f"`python3 src/ops/compile_reports.py{' --preview' if which == 'preview' else ''} --show ID`.", ""]
     listed = [(r["id"], r["record"], r["field"], "; ".join(why)) for r, why in held]
     listed += [x for x in earlier_held if x[0] not in {y[0] for y in listed}]
     L += [f"- **#{i}** {rec} ({field}) -- {reasons}" for i, rec, field, reasons in listed] or ["None."]
@@ -814,7 +826,7 @@ def compile_rows(rows, which, site, day, nonce=None, earlier_held=()):
 
     L += ["## To close one", "",
           "```",
-          f"python3 compile_reports.py{' --preview' if which == 'preview' else ''} --close ID --verdict "
+          f"python3 src/ops/compile_reports.py{' --preview' if which == 'preview' else ''} --close ID --verdict "
           "{fixed|wontfix|notabug|upstream|unreproduced|held} --why \"your own words\"",
           "```", ""]
     counts = {"new": len(rows), "shown": len(shown), "held": len(held), "malformed": malformed}

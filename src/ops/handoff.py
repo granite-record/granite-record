@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.17
+# GRANITE_VERSION: 2026-09-05.18
 """
 Write STATE.md from what is actually on disk.
 
-    python3 handoff.py            # write STATE.md
-    python3 handoff.py --print    # to the screen instead
+    python3 src/ops/handoff.py            # write STATE.md
+    python3 src/ops/handoff.py --print    # to the screen instead
 
 Every number in a handover document goes stale the moment someone runs a
 fetch. STATUS.md has been rewritten by hand four times this week and was wrong
@@ -12,7 +12,7 @@ within hours each time, because a person has to notice that a number changed
 and then remember to edit a file about it.
 
 So the numbers are not written by hand any more. This reads versions.json,
-proceedings.csv, candidate_segments.json, ground_truth.csv, the data files and
+proceedings.csv, candidate_segments.json, review/ground_truth.csv, the data files and
 the site, and reports what it finds. Run it at the start of a session and the
 state section is current by construction.
 
@@ -72,7 +72,10 @@ RUN = Path("logs/preflight-last.json")
 RUN_FRESH_HOURS = 24
 # The data the data checks read, as data_state() looks for it: files of
 # these kinds directly in these folders, and the build's record of the site.
-DATA_FOLDERS = (".", "data", "archive", "db")
+# The root keeps the day's files and what the build writes; the five
+# folders of the root tidy keep what git holds (README.md, "What's where").
+DATA_FOLDERS = (".", "data", "archive", "db", "corrections", "review", "records",
+                "collected", "collected/videos", "generated")
 DATA_KINDS = (".json", ".jsonl", ".csv", ".psv", ".txt")
 DATA_ALSO = ("site/build.json",)
 
@@ -299,8 +302,8 @@ def section_data(out):
                    "`python3 src/hearings/build_proceedings.py` -- every tool refuses "
                    "without it.")
 
-    gt = rows("ground_truth.csv")
-    out.append(f"- `ground_truth.csv`: {n(len(gt))} proceedings timed by hand. "
+    gt = rows("review/ground_truth.csv")
+    out.append(f"- `review/ground_truth.csv`: {n(len(gt))} proceedings timed by hand. "
                "The only measurement a person made; no generator writes it.")
 
     for f, label in (("narratives.json", "bill histories"),

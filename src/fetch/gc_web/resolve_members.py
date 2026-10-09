@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.9
+# GRANITE_VERSION: 2026-09-04.10
 """
 Put names to the members who voted but are missing from legislators.txt.
 
@@ -103,13 +103,13 @@ def main():
     def rc_file(base):
         """RollCallHistory.txt for the current session, or the archived year.
 
-        fetch_rollcalls_db.py writes rollcalls/<base>_<year>.txt for a session
+        fetch_rollcalls_db.py writes records/rollcalls/<base>_<year>.txt for a session
         the download no longer covers. Without this the script read the
         current session's file whatever --session said, found none of that
         year's roll calls in it, and reported that every member was already
         known -- a clean exit having done nothing.
         """
-        arch = d / "rollcalls" / f"{base}_{a.session}.txt"
+        arch = d / "records" / "rollcalls" / f"{base}_{a.session}.txt"
         return arch if arch.exists() else d / f"{base}.txt"
 
     hist_path, summ_path = rc_file("RollCallHistory"), rc_file("RollCallSummary")

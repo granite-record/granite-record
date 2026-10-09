@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-17.5
+# GRANITE_VERSION: 2026-09-17.6
 """
 The figures about.html states, counted rather than typed.
 
@@ -25,7 +25,7 @@ WHERE EACH FIGURE COMES FROM
   site/station_census.json   written by build_site_v2.py in the same loop that
                              builds the stations, so it cannot disagree with
                              the pages -- it is the same list, counted.
-  alignment_score.json       written by `probe_alignment.py --truth
+  generated/alignment_score.json  written by `probe_alignment.py --truth
                              --score-out`, which is the gate every timestamp
                              method has to pass before it ships. The accuracy
                              the page states is therefore the accuracy the gate
@@ -51,7 +51,7 @@ import shell as S
 
 # The date the General Court's YouTube channels begin: the House's first
 # upload is of 14 May 2020 and the Senate's of 29 May, as
-# channel_index_full.json records them. build_site_v2 imports this rather than
+# collected/videos/channel_index_full.json records them. build_site_v2 imports this rather than
 # repeating it, and splits "no recording to link: the sitting is older than
 # the channels" from "no recording matched" on it; the About page and app.js
 # say the same boundary in words. It is where the recordings this site links
@@ -136,7 +136,7 @@ def figures(site="site", root="."):
             "stream_start": STREAM_START_WORDS,
         })
 
-    sc = _load(Path(root) / "alignment_score.json")
+    sc = _load(Path(root) / "generated" / "alignment_score.json")
     cand = (sc or {}).get("candidate") or {}
     sched = (sc or {}).get("schedule") or {}
     if cand:

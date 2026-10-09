@@ -144,7 +144,7 @@ jobs:
           R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
           R2_BUCKET: ${{ secrets.R2_BUCKET }}
         run: |
-          python cloud.py state-down
+          python src/ops/cloud.py state-down
           exit $LASTEXITCODE
 
       - name: Bring the kit down from R2
@@ -155,7 +155,7 @@ jobs:
           R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
           R2_BUCKET: ${{ secrets.R2_BUCKET }}
         run: |
-          python cloud.py kit-down
+          python src/ops/cloud.py kit-down
           exit $LASTEXITCODE
 
       - name: Sunday's fetches
@@ -177,7 +177,7 @@ jobs:
           R2_BUCKET: ${{ secrets.R2_BUCKET }}
         run: |
           Write-Output "A refusal is on file in archive/refused.json. It goes to R2's state/ now."
-          python cloud.py state-up
+          python src/ops/cloud.py state-up
           exit $LASTEXITCODE
 
       # On a dry run (DRY_RUN, above, which cloud.py reads itself) none of the
@@ -192,7 +192,7 @@ jobs:
           R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
           R2_BUCKET: ${{ secrets.R2_BUCKET }}
         run: |
-          python cloud.py kit-up
+          python src/ops/cloud.py kit-up
           exit $LASTEXITCODE
 
       - name: The weekly verdict
@@ -213,7 +213,7 @@ jobs:
           R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
           R2_BUCKET: ${{ secrets.R2_BUCKET }}
         run: |
-          python cloud.py state-up
+          python src/ops/cloud.py state-up
           exit $LASTEXITCODE
 
       # Healthchecks' check expects the nightly each day, so the weekly job

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.4
+# GRANITE_VERSION: 2026-09-08.5
 """
 Captions for the recordings the proceedings table has never heard of.
 
@@ -49,7 +49,7 @@ import subprocess
 import time
 from collections import Counter
 
-INDEX = Path("channel_index_full.json")
+INDEX = Path("collected/videos/channel_index_full.json")
 WORK = Path("work")
 LEDGER = Path("archive/captions.json")
 
@@ -57,7 +57,7 @@ LEDGER = Path("archive/captions.json")
 def known():
     """Every video the two channels list, with its date and chamber."""
     if not INDEX.exists():
-        sys.exit("channel_index_full.json is not here. It is written by the "
+        sys.exit("collected/videos/channel_index_full.json is not here. It is written by the "
                  "channel walk in\nfetch_channel_index.py and needs an API key.")
     out = {}
     for chamber, d in json.loads(INDEX.read_text(encoding="utf-8")).items():

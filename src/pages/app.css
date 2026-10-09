@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.225 */
+/* GRANITE_VERSION: 2026-09-07.226 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -155,16 +155,34 @@
    8.8 (CIEDE2000) from the yes green: a yes or a law always carries its
    word, and pine never stands for one. */
 --pine:#14514C;--pine-soft:#DFEBEA;
-/* Status colours, by what happened to the bill. Yellow while it is moving,
-   green if it became law, red if it was voted down, orange for interim study
+/* Status colours, by what happened to the bill. Slate blue while it is
+   moving, yellow while it lies on the table, green if it became law, red if it was voted down, orange for interim study
    -- which is parked rather than dead. A veto keeps its own deeper red: the
    legislature did not kill it, and the two are worth telling apart.
    Every pair holds at least 5.4:1 against its own chip, which is why the
-   audit left them alone. */
---st-active:#7A5A00;--st-active-bg:#FBF2D9;
+   audit left them alone.
+   INTERIM STUDY'S ORANGE AND THE TABLE'S YELLOW (the person, 8 October
+   2026: first graphite, then "a yellow pause instead ... it would read a bit
+   better"). The table took the yellow a bill still moving had worn, and
+   the stages moved to a slate blue the same evening ("we may want a different
+   color for In Committee to distinguish it since those are two distinct
+   statuses"; slate blue, "a slight bit more vibrant"), so a bill on the table
+   and a bill in committee are two colours as well as two words. The blue was
+   chosen by measure: 16 or more (CIEDE2000) from every other status ink in
+   both themes, in normal vision and under protanopia and deuteranopia, and
+   7.5 from the nearest ink of any kind, the Independents' violet and the
+   Democrats' blue, which are a person's colours and never a chip's word. The study ink was a
+   brown, #94500E, and is the orange of the rail's "~" now: 4.66:1 as chip
+   text on its tint, 5.28:1 under the white wave on a card, 4.53:1 on the
+   page. --st-table is a bill lying on the table while the session sits: the
+   rail's pause and the Tabled chip, in the yellow a stage still moving
+   wore until 8 October 2026; under protanopia it is near the orange, so the two are told apart
+   by shape ("~" against two bars) and by the chip's word. */
+--st-active:#566290;--st-active-bg:#EBF0FE;
 --st-law:#1E5B3C;--st-law-bg:#E3EFE7;
 --st-done:#9E2B25;--st-done-bg:#FAE7E5;
---st-study:#94500E;--st-study-bg:#FCEEDF;
+--st-study:#B9420B;--st-study-bg:#FCEADB;
+--st-table:#7A5A00;--st-table-bg:#FBF2D9;
 --st-veto:#7C2D3A;--st-veto-bg:#F7E4E7;
 /* A MEETING'S KIND, in the General Court's own colours, because staff read
    its schedule by them: blue a hearing, green a work session, orange an
@@ -294,10 +312,11 @@ color-scheme:light}
 
 --edge:#7C8687;             /* 3.74:1 on a card, 4.64:1 on the page */
 --pine:#7FB9B1;--pine-soft:#1B302E;
---st-active:#E3C46A;--st-active-bg:#3A3116;
+--st-active:#A9B5E0;--st-active-bg:#252A3F;
 --st-law:#7FCB9C;--st-law-bg:#1C3A28;
 --st-done:#F0938C;--st-done-bg:#43211F;
---st-study:#EDAE6E;--st-study-bg:#402C14;
+--st-study:#F59A55;--st-study-bg:#45280F;
+--st-table:#E3C46A;--st-table-bg:#3A3116;
 --st-veto:#EE9BA8;--st-veto-bg:#41222A;
 --cal-hear:#8FB4E8;--cal-hear-bg:#22304A;
 --cal-meet:#7FCB9C;--cal-meet-bg:#1C3A28;
@@ -345,10 +364,11 @@ color-scheme:dark}
 
 --edge:#7C8687;             /* 3.74:1 on a card, 4.64:1 on the page */
 --pine:#7FB9B1;--pine-soft:#1B302E;
---st-active:#E3C46A;--st-active-bg:#3A3116;
+--st-active:#A9B5E0;--st-active-bg:#252A3F;
 --st-law:#7FCB9C;--st-law-bg:#1C3A28;
 --st-done:#F0938C;--st-done-bg:#43211F;
---st-study:#EDAE6E;--st-study-bg:#402C14;
+--st-study:#F59A55;--st-study-bg:#45280F;
+--st-table:#E3C46A;--st-table-bg:#3A3116;
 --st-veto:#EE9BA8;--st-veto-bg:#41222A;
 --cal-hear:#8FB4E8;--cal-hear-bg:#22304A;
 --cal-meet:#7FCB9C;--cal-meet-bg:#1C3A28;
@@ -1257,8 +1277,9 @@ line-height:1.1}
   --ink:#1C2126;--ink-2:#4A5259;--rule:#D3D6DA;--rule-2:#B2B7BD;
   --film:#000;--film-stub:#14181A;--film-stub-ink:#C8CFD1;--film-stub-hot:#1D2225;
   --edge:#767E86;--pine:#14514C;--pine-soft:#DFEBEA;
-  --st-active:#7A5A00;--st-active-bg:#FBF2D9;--st-law:#1E5B3C;--st-law-bg:#E3EFE7;
-  --st-done:#9E2B25;--st-done-bg:#FAE7E5;--st-study:#94500E;--st-study-bg:#FCEEDF;
+  --st-active:#566290;--st-active-bg:#EBF0FE;--st-law:#1E5B3C;--st-law-bg:#E3EFE7;
+  --st-done:#9E2B25;--st-done-bg:#FAE7E5;--st-study:#B9420B;--st-study-bg:#FCEADB;
+  --st-table:#7A5A00;--st-table-bg:#FBF2D9;
   --st-veto:#7C2D3A;--st-veto-bg:#F7E4E7;
   --cal-hear:#1F5594;--cal-hear-bg:#E3ECF7;--cal-meet:#1E5B3C;--cal-meet-bg:#E3EFE7;
   --cal-exec:#94500E;--cal-exec-bg:#FCEEDF;--cal-conf:#9E2B25;--cal-conf-bg:#FAE7E5;
@@ -1298,7 +1319,8 @@ line-height:1.1}
      printed as an empty band with the name nowhere on the sheet. The ground
      is part of what these say, so it is asked for. preflight holds every
      rule that sets type in --on-pine to this list or to the one above. */
-  .stop.s-p b,.stop.s-x b,.fhead .badge,.wkchips button[aria-pressed="true"],
+  .stop.s-p b,.stop.s-x b,.stop.s-istudy b,.stop.s-ontable b,
+  .fhead .badge,.wkchips button[aria-pressed="true"],
   .cmgrid td.cmpick,.calviews button[aria-pressed="true"],.cdopen,
   .calcat input:checked + .cbx,.searchbig button,.wbtn.sel,h1.lockup,
   .rtabs [role=tab][aria-selected=true]{
@@ -1665,6 +1687,36 @@ color:var(--surface)}
 color:var(--surface)}
 .stop.s-h b{background:var(--surface);border-color:var(--pine);border-width:3px;
 box-shadow:0 0 0 3px var(--pine-soft)}
+/* THE RAIL'S OWN TWO MARKS (the person, 8 October 2026, from a measured
+   sheet of the marks). A chamber that held the bill for interim
+   study is an orange disc with a white "~", and one whose table the bill
+   lies on while the session sits a yellow disc with two white bars: each a
+   filled disc of the check's and the cross's weight with a glyph of its own,
+   so greyscale -- where the four discs sit within a few points of lightness
+   -- still tells check, cross, wave and bars apart, and neither is ever the
+   empty ring of a stop not reached. The "~" is an SVG (app.js WAVE), so it
+   centres at any size; the bars are drawn here. A bill that died on the
+   table keeps the cross. */
+.stop.s-istudy b{background:var(--st-study);border-color:var(--st-study);
+color:var(--surface);display:grid;place-items:center;font-size:0}
+.stop b .wave{display:block;width:11px;height:11px}
+.stop.s-ontable b{background:var(--st-table);border-color:var(--st-table);
+display:grid;place-items:center;font-size:0}
+.stop.s-ontable b::after{content:"";display:block;width:6px;height:7px;box-sizing:border-box;
+border-left:2px solid var(--surface);border-right:2px solid var(--surface)}
+/* IN FORCED COLOURS the system paints every ground in its own colour, so a
+   filled disc would print as the empty ring of a stop not reached. The "~"
+   keeps its disc in the system's text colour with the wave cut out of it,
+   as the check and the cross keep their glyphs; the pause keeps its two
+   bars in the text colour inside the ring. */
+@media (forced-colors: active){
+  .stop.s-istudy b{forced-color-adjust:none;background:CanvasText !important;
+  border-color:CanvasText !important;color:Canvas !important}
+  .stop.s-ontable b{border-color:CanvasText !important}
+  .stop.s-ontable b::after{border-color:CanvasText;width:7px;height:8px;
+  border-left-width:2.5px;border-right-width:2.5px}
+  .jl .j-ontable .jg::after{border-color:CanvasText}
+}
 /* The three rules that set these labels to --ink-2 are gone: every stop's
    label is --ink-2 now, so there is nothing left for them to change. */
 /* A card head is a button, and the rail inside it must not look clickable. */
@@ -1766,6 +1818,8 @@ letter-spacing:.01em}
 .s-done{background:var(--st-done-bg);color:var(--st-done)}
 .s-veto{background:var(--st-veto-bg);color:var(--st-veto)}
 .s-study{background:var(--st-study-bg);color:var(--st-study)}
+/* The Tabled chip in its mark's yellow, as Interim Study is in its orange. */
+.s-table{background:var(--st-table-bg);color:var(--st-table)}
 /* An adopted resolution succeeded, so it reads like a bill that became
    law -- but it did not become law, and saying so would be false. Same
    colour, different word. */
@@ -2780,6 +2834,16 @@ column-gap:var(--sp-3);align-items:baseline;padding:var(--sp-1) 0}
 .jl .j-p .jg{color:var(--st-law)}
 .jl .j-x .jg{color:var(--st-done)}
 .jl .j-h .jg{color:var(--pine)}
+/* The rail's own two marks, bare, as the check and the cross are here: an
+   orange wave on the line that sent the bill to interim study, two yellow
+   bars on the line that laid it on the table it still lies on. */
+.jl .j-istudy .jg{color:var(--st-study);display:flex;align-items:center;
+justify-content:center;align-self:start;height:1.5em}
+.jl .j-istudy .jg .wave{width:1em;height:1em}
+.jl .j-ontable .jg{display:flex;align-items:center;justify-content:center;
+align-self:start;height:1.5em}
+.jl .j-ontable .jg::after{content:"";display:block;width:8px;height:.7em;box-sizing:border-box;
+border-left:2.5px solid var(--st-table);border-right:2.5px solid var(--st-table)}
 .jl .jb{font-weight:600}
 .jl .jd{color:var(--ink-2);font-size:var(--t-sm);white-space:nowrap;
 font-variant-numeric:tabular-nums}
@@ -3506,12 +3570,15 @@ color:var(--pine);margin-top:var(--sp-2)}
 /* A THRESHOLD, which is a third kind of thing and needs a third mark. On the
    constitution page the number IS the teaching point -- 240 of 400, three
    fifths of all seats, two thirds of those voting -- so the label is written
-   per step rather than being one generic word. Amber, the colour this site
-   already uses for a bill still moving, and the number carries it in any
-   case: the brief's rule is that nothing is told by colour alone. */
-.step.needs{border-left:3px solid var(--st-active)}
+   per step rather than being one generic word. Amber, the colour a bill
+   still moving wore when this was written; the stages turned slate blue on
+   8 October 2026 and a threshold kept its amber, which is now the tabled
+   ink's (--st-table) and is the same colour it always was here. The number
+   carries it in any case: the brief's rule is that nothing is told by colour
+   alone. */
+.step.needs{border-left:3px solid var(--st-table)}
 .step .needs-m{display:block;font-style:normal;font-size:var(--t-sm);font-weight:600;
-color:var(--st-active);margin-top:var(--sp-2)}
+color:var(--st-table);margin-top:var(--sp-2)}
 /* FOUR ACROSS, AND OUT OF THE MEASURE -- TO THE RIGHT ONLY. The diagram is the
    one wide thing on a prose page, so from 1100px it leaves the 560px column
    rather than being squeezed into it. Below 1100px it stays stacked, because
@@ -3580,12 +3647,12 @@ font-size:var(--t-sm);font-weight:600;color:var(--ink);margin-bottom:var(--sp-1)
 .cmptab td.same{grid-column:1/-1;background:var(--paper)}
 .cmptab td.dies{border-left:3px solid var(--st-done)}
 .cmptab td.say{border-left:3px solid var(--pine)}
-.cmptab td.needs{border-left:3px solid var(--st-active)}
+.cmptab td.needs{border-left:3px solid var(--st-table)}
 .cmptab td i{display:block;font-style:normal;font-size:var(--t-sm);font-weight:600;
 margin-top:var(--sp-2)}
 .cmptab .mark{color:var(--st-done)}
 .cmptab .say-m{color:var(--pine)}
-.cmptab .needs-m{color:var(--st-active)}
+.cmptab .needs-m{color:var(--st-table)}
 @media (min-width:37.5em){
   .cmptab tr{grid-template-columns:1fr 1fr}
 }
@@ -3622,11 +3689,11 @@ overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
 .laytab tbody{display:grid;gap:var(--sp-3)}
 .laytab tr{display:block;background:var(--surface);border:1px solid var(--rule);
 border-radius:var(--r-out);padding:var(--sp-4) var(--sp-5)}
-.laytab tr.needs{border-left:3px solid var(--st-active)}
+.laytab tr.needs{border-left:3px solid var(--st-table)}
 .laytab th[scope=row]{display:block;text-align:left;font-size:var(--t-ui);
 font-weight:600;margin:0 0 var(--sp-2)}
 .laytab th[scope=row] i{display:block;font-style:normal;font-size:var(--t-sm);
-font-weight:600;color:var(--st-active);margin-top:var(--sp-1)}
+font-weight:600;color:var(--st-table);margin-top:var(--sp-1)}
 .laytab td{display:block;font-size:var(--t-sm);color:var(--ink-2);line-height:1.5}
 .laytab td::before{content:attr(data-l) ": ";font-weight:600;color:var(--ink)}
 @media (min-width:37.5em){

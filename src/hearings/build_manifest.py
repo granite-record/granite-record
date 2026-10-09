@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.18
+# GRANITE_VERSION: 2026-09-05.19
 """
 Join the docket to the video index. Produces a verification manifest with the
 video ID and predicted offset already filled in, so the manual pass is only
@@ -7,7 +7,7 @@ video ID and predicted offset already filled in, so the manual pass is only
 
 Needs docket_parser.py in the same folder.
 
-    python3 src/hearings/build_manifest.py --videos videos_house_2025-01-01_to_2025-03-31.csv
+    python3 src/hearings/build_manifest.py --videos collected/videos/videos_house_2025-01-01_to_2025-03-31.csv
 
 Downloads Docket.txt automatically unless you pass --docket with a local copy.
 Standard library only.
@@ -261,11 +261,12 @@ def load_videos(paths, roster=None):
         else:
             f = Path(pat)
             if not f.exists():
-                near = sorted(x.name for x in Path(".").glob("videos_*.csv"))
+                import proceedings
+                near = [x.as_posix() for x in proceedings.video_indexes()]
                 sys.exit(f"No {pat}.\n"
                          + ("These are here:\n  " + "\n  ".join(near)
                             if near else "No videos_*.csv here at all.")
-                         + "\n\nOr just pass --videos \"videos_*.csv\" and let "
+                         + "\n\nOr just pass --videos \"collected/videos/videos_*.csv\" and let "
                            "it find them.")
             files.append(f)
 
@@ -928,10 +929,10 @@ def main():
     if marks and not a.keep_marks:
         print(f"  {len(marks)} hand-marked times found in {keep}; keeping them")
 
-    # ground_truth.csv is the record and outranks anything in an old manifest.
+    # review/ground_truth.csv is the record and outranks anything in an old manifest.
     # It is keyed by (video, bill, kind) rather than by date, because the video
     # is what a person watched; map that back onto this manifest's rows.
-    gt = Path("ground_truth.csv")
+    gt = Path("review/ground_truth.csv")
     if gt.exists():
         byvid = {}
         for r in read_any(gt):

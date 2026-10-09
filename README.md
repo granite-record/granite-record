@@ -20,8 +20,30 @@ program can use.
 ```
 
 The last two lines carry no figure on purpose: every version of this block that
-named one was stale within a week. `python3 handoff.py` writes the current
+named one was stale within a week. `python3 src/ops/handoff.py` writes the current
 counts into `STATE.md`, which is generated and is the copy to believe.
+
+## What's where
+
+| Folder | What it holds |
+|---|---|
+| [`src/`](src/README.md) | the code, one folder per job: what asks other servers, what decides the record, what writes the pages, what checks them, and in `src/ops/` the tools that keep the site running |
+| [`corrections/`](corrections/README.md) | what a person corrects or adds to the record by hand — a date the docket gets wrong, a member's name, a polling place, what a recurring bill number means, the voters' answer on each amendment, the state of the session. No script writes here |
+| [`review/`](review/README.md) | a person's checks of the site's own work: proceedings timed with a stopwatch, and the bench's judgments |
+| [`records/`](records/README.md) | official lists and documents as published: every past session's roll calls, the district lists, the Secretary of State's documents |
+| [`collected/`](collected/README.md) | what was gathered from outside sources and git keeps: the YouTube channels' video indexes, the towns' clerks and officials, the county officers |
+| [`generated/`](generated/README.md) | what is computed ahead of time and kept: careers, places, the topic model's settings, the timestamp scores |
+| `functions/`, `workers/` | the Cloudflare code: the report box's endpoint, and Workers deployed on their own |
+| `watchers/`, `tests/`, `obsolete/` | the General Court fetch lane, the tests and their fixtures, retired code kept for its reasoning |
+| `assets/`, `reports/`, `data/unh/` | one file each that git keeps where the rest is not: the web app manifest, the report box's database schema, and a survey of the University of New Hampshire's scanned journals |
+
+The root holds what something outside the repository runs by name
+(`build_all.py`, `nightly.py`, `preflight.py`, `refusal.py`, `netcheck.py`,
+`laptop_evening.py`, `publish.bat`), `_paths.py`, the config and these
+documents — and, untracked, the General Court's day files as the night
+installs them and everything the build writes (`site/`, `data/` and the JSON
+beside them), which `.gitignore` names. Each folder's README says what is in
+it and what reads it.
 
 **Three things worth knowing before you read the code.**
 
@@ -83,16 +105,19 @@ which need the record described below, and takes longer.
 
 ### A clone has the code, not the record
 
-The repository is the Python scripts, the front end, the documents, and the
-files a person made by hand; `git ls-files` lists them. The General Court's
+The repository is the Python scripts, the front end, the documents, the
+files a person made by hand, and the data in the five folders of
+[What's where](#whats-where); `git ls-files` lists them. The General Court's
 **live** bulk dumps and everything derived from them are deliberately
 untracked — they are the state's, they are large, and they change daily, so
 tracking them would store a new copy of a 4.7 MB file every day.
 
-What does not change is tracked. `rollcalls/` carries the roll-call history
+What does not change is tracked. `records/rollcalls/` carries the roll-call history
 since 1999 as the General Court published it, a summary and a history file
 for each year — about 100 MB, and most of the reason a clone weighs what it
-does rather than a few megabytes. The two small code tables are there too.
+does rather than a few megabytes. The General Court's two small code tables,
+`GeneralCodes.txt` and `BodyStatusCodes.txt`, are tracked too, at the root
+beside the day files the night installs there.
 `.gitignore` says which files and why.
 
 Four things are absent on purpose and are not missing:
@@ -129,13 +154,13 @@ python3 src/fetch/gc_web/snapshot_gencourt.py --dir nh-archive --into .    # fet
 ```
 python3 build_all.py --dry-run      # the plan: every step, its command, and why it matters
 python3 build_all.py --local        # every step that asks no network
-python3 inventory.py                # what is on disk, and which scripts are stale
-python3 handoff.py                  # writes STATE.md with the counts as measured
+python3 src/ops/inventory.py        # what is on disk, and which scripts are stale
+python3 src/ops/handoff.py          # writes STATE.md with the counts as measured
 ```
 
 `--local` takes the better part of an hour on the full record; every run
 records its total and its per-step timings in `site/build.json`, which is the
-figure to believe. `handoff.py --print`
+figure to believe. `src/ops/handoff.py --print`
 prints instead of writing `STATE.md`.
 
 `site/` is then a complete static site:
@@ -150,12 +175,15 @@ python3 -m http.server 8787 --directory site
 
 **How the code is laid out.** The repository root holds only what something
 outside the repository runs by name — `build_all.py`, `nightly.py`,
-`cloud.py`, `livestreams.py`, `laptop_evening.py`, `compile_reports.py`, the
-session's first commands (`inventory.py`, `preflight.py`, `handoff.py`) and
-the refusal tools (`refusal.py`, `netcheck.py`), and `publish.bat` — with
-`_paths.py`, the config, the documents and the data. Everything else is
-under `src/`, in one folder per job: `fetch/` (one folder per whose server
-it asks), `parse/`, `towns/`, `hearings/`, `pages/`, `checks/` and `lib/`.
+`laptop_evening.py`, `preflight.py`, the refusal tools (`refusal.py`,
+`netcheck.py`) and `publish.bat` — with `_paths.py`, the config and the
+documents; the data a clone carries is in the five folders of
+[What's where](#whats-where). Everything else is under `src/`, in one folder
+per job: `fetch/` (one folder per whose server it asks), `parse/`, `towns/`,
+`hearings/`, `pages/`, `checks/`, `lib/`, and `ops/` — `cloud.py`,
+`livestreams.py`, `compile_reports.py` and the session's first commands
+(`inventory.py`, `handoff.py`), which the workflows and a person run by
+their path.
 The front end (`bills.html`, `app.js`, `find.js`, `app.css`) is in
 `src/pages/` with the builders that read it, and the `dom_stub.js` that
 `preflight` loads it against is in `tests/`.
@@ -207,7 +235,7 @@ bill numbers repeat every biennium, so every per-bill file is
 `EmployeeNumber`, and a member who moves from the House to the Senate is issued
 a second one. `src/parse/build_careers.py` merges those into one person per
 record — narrowly, on identical names with non-overlapping service — and
-`careers.json` is the result.
+`generated/careers.json` is the result.
 
 **Where a bill page comes from.** `src/pages/build_bill_pages.py` writes
 `/bill/<year>/<id>.html` using `src/pages/shell.py`, which is
@@ -252,6 +280,7 @@ want:
 | what changed each night, for the email updates | `src/pages/follow_changes.py`, called by `build_feeds.py` |
 | where a hearing sits in a recording | `src/hearings/segment_markers.py`, scored by `src/hearings/probe_alignment.py` |
 | which rows exist at all | `src/parse/build_data.py` → `data/`, then `src/pages/build_site_v2.py` → `site/*.json` |
+| a fact the General Court's own record gets wrong | `corrections/` — its README says which file, and which step reads it |
 | towns, districts and their officials | `src/towns/` |
 | look and type | `src/pages/app.css`; `style.css` in `site/` is generated from it |
 | the pipeline, or its order | `build_all.py` — one `Step(...)` per entry in `plan()` |
@@ -331,8 +360,8 @@ refusal there is a different problem.
 - **Bump the `# GRANITE_VERSION:` stamp and `versions.json` in the same edit.**
   Increment the `.N`; leave the date alone. This is the most common way a first
   change fails.
-- **Some files are a person's, and no generator writes them.** `preflight.py`'s
-  `HANDMADE` is the list, and a check enforces it.
+- **Some files are a person's, and no generator writes them.** They are in
+  `corrections/` and `review/`, and a check enforces it.
 - **Nothing about timestamps ships without scoring it first**, with
   `python3 src/hearings/probe_alignment.py --truth`. The number to watch is the candidate median;
   do not let it regress.
@@ -387,7 +416,7 @@ carry it; it was never offered under MIT.
   what.
 - **`CONTRIBUTING.md`** — how a change is made and checked.
 - **`src/README.md`** — where the code lives, and where a new file goes; each
-  folder under `src/` has a README of its own.
+  folder under `src/` has a README of its own, and so does each data folder.
 - **`CLAUDE.md`** — the working rules: what may not be run without asking, and
   why each rule exists.
 - **`STATE.md`** — generated by `handoff.py`. Never edit it; run it again.

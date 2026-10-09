@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.9
+# GRANITE_VERSION: 2026-09-04.10
 """
 Build a per-bill index of floor debates, keyed to the session recordings.
 
-    python3 src/hearings/build_floor_index.py --videos videos_house_2026-01-01_to_2026-06-30.csv \\
+    python3 src/hearings/build_floor_index.py --videos collected/videos/videos_house_2026-01-01_to_2026-06-30.csv \\
         --summary RollCallSummary.txt --narratives narratives.json
 
 Writes floor_index.json, which build_proceedings.py folds into
@@ -25,7 +25,7 @@ docket. Two things followed from that, one of them already on the site:
   2027-2028's, and the next run would have written an index with no
   2025-2026 floor debate in it.
 
-So it reads the download and then every rollcalls/RollCallSummary_<year>.txt,
+So it reads the download and then every records/rollcalls/RollCallSummary_<year>.txt,
 each roll call once, from the first file that holds it -- the rule
 build_data.rows_all keeps -- and every term narratives.json holds, from
 FIRST_TERM on. The file stays keyed on the bill number with each entry dated,
@@ -191,7 +191,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--videos", nargs="+", required=True)
     ap.add_argument("--summary", default="RollCallSummary.txt")
-    ap.add_argument("--archive", default="rollcalls",
+    ap.add_argument("--archive", default="records/rollcalls",
                     help="the folder of RollCallSummary_<year>.txt read after "
                          "--summary; '' for the download alone")
     ap.add_argument("--narratives", default="narratives.json")

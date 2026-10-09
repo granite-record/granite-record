@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-09.17
+# GRANITE_VERSION: 2026-09-09.18
 """
 One refusal stops the fetch lane, not just the run that was refused.
 
@@ -172,7 +172,7 @@ def tell_the_bucket():
               f"but it could not be sent to the bucket's state/refused.json:\n  {why}\n"
               "GitHub's night reads the bucket's refusal record, not this one, so it would "
               f"still ask the General Court. {marker} says so until it is sent:\n"
-              "  python3 cloud.py send-refusal\n", file=sys.stderr)
+              "  python3 src/ops/cloud.py send-refusal\n", file=sys.stderr)
         return False
     if done:
         print(f"\nThe refusal went to the bucket as well: {said}", file=sys.stderr)
@@ -205,7 +205,7 @@ def force(d, now=None):
                 "lifts it")
     return (f"older than {QUIET_HOURS} hours: hand fetches here are not stopped by it, the "
             "lane is (it stops at any archive/refused.json), and GitHub's night stops at "
-            "it until python3 cloud.py clear-refusal")
+            "it until python3 src/ops/cloud.py clear-refusal")
 
 
 def standing():
@@ -739,7 +739,7 @@ def gc_turn(now=None):
             f"GitHub's night records a refusal it meets in the bucket's state/refused.json, "
             f"not here, and this laptop {when}. A refusal the night met would be "
             f"invisible to this fetch. Read it first:\n"
-            f"  python3 cloud.py pull --changes-only     (or a full pull)\n"
+            f"  python3 src/ops/cloud.py pull --changes-only     (or a full pull)\n"
             f"and start this again." + _clock_note())
     return None
 
@@ -822,7 +822,7 @@ def main():
         print("the bucket's refusal record "
               + ("has never been read here from the real bucket" if read is None else
                  f"was last read here at {_clock(_utc(read), weekday=True)}")
-              + ("; General Court fetches here wait for python3 cloud.py pull --changes-only"
+              + ("; General Court fetches here wait for python3 src/ops/cloud.py pull --changes-only"
                  if turn and turn[0] == "pull" else
                  f"; nothing starts in the {START_MARGIN_MINUTES} minutes before the window"
                  if turn and turn[0] == "soon" else
@@ -834,7 +834,7 @@ def main():
                 why = ""
             print(f"{unsent_marker()} is on file: a refusal met here is not in the bucket"
                   + (f" ({why})" if why else "")
-                  + ". python3 cloud.py send-refusal sends it when the bucket holds none.")
+                  + ". python3 src/ops/cloud.py send-refusal sends it when the bucket holds none.")
     s = standing()
     if a.clear:
         if MARK.exists():
@@ -855,7 +855,7 @@ def main():
         if stood_down() is not None:
             print("The nightly runs on GitHub and takes its refusal record from the "
                   "bucket's state/refused.json. Lift that one too: "
-                  "python3 cloud.py clear-refusal")
+                  "python3 src/ops/cloud.py clear-refusal")
         return 0
     if not s:
         print("no refusal in force." if not MARK.exists() else

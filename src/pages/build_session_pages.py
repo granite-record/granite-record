@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-19.27
+# GRANITE_VERSION: 2026-09-19.28
 """
 A page for every day the House sat.
 
@@ -818,11 +818,22 @@ def absences_html(narrative, body, members, esc):
 
 
 # What a motion carrying did to a bill, in one word, for a list of seventy.
+# A RE-REFERRAL IS NOT INTERIM STUDY (8 October 2026). "re-refer" and
+# "rerefer" sat in the interim study row, so every Senate consent calendar's
+# "Rereferred to Committee, MA, VV" (SB 18 of 2015, on the calendar of 12
+# February 2015) was listed under "Sent to interim study": 160 entries on the
+# Senate's sitting pages, 32 of them this term, every one a bill the Senate
+# had sent back to the committee that reported it. The bill's own How it got
+# here says "Sent back to committee" (build_site_v2._j_words, a recommittal),
+# and so does this list now. A re-referral whose words name interim study is
+# interim study, and the study row is read first.
 SHORT = (
     (("inexpedient to legislate", "indefinitely postpone"), "Killed", "Kept alive"),
     (("ought to pass",), "Passed", "Not passed"),
-    (("refer for interim study", "re-refer", "rerefer"), "Sent to interim study",
+    (("refer for interim study", "re-refer for interim study", "re-refer to interim study",
+      "rerefer for interim study", "rerefer to interim study"), "Sent to interim study",
      "Not sent to interim study"),
+    (("re-refer", "rerefer"), "Sent back to committee", "Not sent back to committee"),
     (("adopt",), "Adopted", "Not adopted"),
 )
 

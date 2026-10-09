@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.64
+# GRANITE_VERSION: 2026-09-05.65
 """
 Measure the signals in a transcript. Build nothing, tune nothing.
 
@@ -1851,16 +1851,16 @@ def main():
                                         "against the hand-marked times")
     ap.add_argument("--site", help="score what the site currently publishes "
                                    "against the marked times")
-    ap.add_argument("--truth", nargs="?", const="ground_truth.csv",
+    ap.add_argument("--truth", nargs="?", const="review/ground_truth.csv",
                     help="score every method against the hand-marked times. "
-                         "Reads ground_truth.csv AND review/checked.jsonl by "
+                         "Reads review/ground_truth.csv AND review/checked.jsonl by "
                          "default, or a manifest with observed_start filled "
                          "in.")
     ap.add_argument("--no-bench", action="store_true",
                     help="score against the truth file alone, leaving out "
                          "review/checked.jsonl. Use it to compare with a "
                          "number recorded before the bench was read here.")
-    ap.add_argument("--score-out", nargs="?", const="alignment_score.json",
+    ap.add_argument("--score-out", nargs="?", const="generated/alignment_score.json",
                     help="with --truth, write the scoreboard as JSON. "
                          "about_figures.py reads it so the accuracy about.html "
                          "states is the accuracy this run measured, rather "

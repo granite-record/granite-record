@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-12.4
+# GRANITE_VERSION: 2026-09-12.5
 """
 The town clerk and the polling place for every town and ward, in one request.
 
     python3 src/fetch/other/fetch_town_clerks.py --probe     # what the page answers, saves nothing
-    python3 src/fetch/other/fetch_town_clerks.py             # fetch, parse, write town_clerks.json
+    python3 src/fetch/other/fetch_town_clerks.py             # fetch, parse, write collected/town_clerks.json
     python3 src/fetch/other/fetch_town_clerks.py --parse     # re-parse what is already saved
 
 NOT THE GENERAL COURT. This asks app.sos.nh.gov, the Secretary of State's
@@ -82,7 +82,7 @@ import urllib.request
 
 URL = "https://app.sos.nh.gov/statelistclerkandpolling"
 RAW = Path("archive/sos_clerks.html")
-OUT = Path("town_clerks.json")
+OUT = Path("collected/town_clerks.json")
 AGENT = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
          "(KHTML, like Gecko) Chrome/124.0 Safari/537.36")
 

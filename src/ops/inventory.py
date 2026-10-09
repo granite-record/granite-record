@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.7
+# GRANITE_VERSION: 2026-09-04.8
 """
 Report what is actually on disk, and which scripts are out of date.
 
-    python3 inventory.py              # tree, data files, script versions
-    python3 inventory.py --full       # every filename, not just counts
+    python3 src/ops/inventory.py              # tree, data files, script versions
+    python3 src/ops/inventory.py --full       # every filename, not just counts
 
 Two questions this answers that are otherwise guesswork.
 

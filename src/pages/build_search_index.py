@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-01.8
+# GRANITE_VERSION: 2026-10-01.9
 """
 What each bill is about, in its own words, as a file the search can ask.
 
@@ -1038,7 +1038,7 @@ def main():
                     help="only these terms (the others' files are left alone)")
     ap.add_argument("--allow-no-text", action="store_true",
                     help="write the files even when no text at all could be read")
-    ap.add_argument("--names", nargs="*", default=["careers.json", "places.json"],
+    ap.add_argument("--names", nargs="*", default=["generated/careers.json", "generated/places.json"],
                     help="files whose strings are names -- of members, of towns "
                          "-- and so are words, for sidx/words.json")
     ap.add_argument("--fixture", metavar="CASES",

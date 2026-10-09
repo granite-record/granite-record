@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.3
+# GRANITE_VERSION: 2026-09-05.4
 """
 The hand-marked proceedings, in a file that no generator writes.
 
@@ -7,7 +7,7 @@ The hand-marked proceedings, in a file that no generator writes.
     python3 src/hearings/ground_truth.py --check        # does the manifest still agree with them
     python3 src/hearings/ground_truth.py                # show them
 
-ground_truth.csv is the only measurement of this system that a person made:
+review/ground_truth.csv is the only measurement of this system that a person made:
 35 proceedings timed by watching the video. Every timestamp method is scored
 against it. It has been lost twice, both times because it lived as two columns
 in verification_manifest.csv and a rebuild wrote that file without them.
@@ -30,7 +30,7 @@ import argparse
 import csv
 from datetime import date
 
-TRUTH = Path("ground_truth.csv")
+TRUTH = Path("review/ground_truth.csv")
 COLS = ["video_id", "bill", "kind", "observed_start", "observed_end", "notes",
         "marked_on"]
 

@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-20.4
+# GRANITE_VERSION: 2026-09-20.5
 """
 One canonical list of New Hampshire places, and what each source says about it.
 
     python3 src/towns/build_places.py --report     # says what it found, writes nothing
-    python3 src/towns/build_places.py              # -> places.json
+    python3 src/towns/build_places.py              # -> generated/places.json
 
 WHY THIS FILE EXISTS
 
@@ -102,7 +102,7 @@ import parse_districts
 # The repository root, wherever this file sits (_paths.py): the data it
 # reads is the root's.
 ROOT = _paths.ROOT
-OUT = ROOT / "places.json"
+OUT = ROOT / "generated" / "places.json"
 
 DISTRICT_FILES = ("congress", "council", "senate", "house")
 
@@ -111,7 +111,7 @@ DISTRICT_FILES = ("congress", "council", "senate", "house")
 # is true as of; the day a parser happened to open it says nothing.
 SOURCES = {
     "districts": {
-        "what": "districts/congress.txt, council.txt, senate.txt, house.txt",
+        "what": "records/districts/congress.txt, council.txt, senate.txt, house.txt",
         "document_date": None,
         "provenance": "unknown -- these files carry no source URL, no "
                       "retrieval date and no statement of which redistricting "
@@ -121,14 +121,14 @@ SOURCES = {
                       "outstanding.",
     },
     "sos_clerks": {
-        "what": "sources/sos-clerks-and-polling-places.pdf, exported by hand "
+        "what": "records/sources/sos-clerks-and-polling-places.pdf, exported by hand "
                 "from app.sos.nh.gov/statelistclerkandpolling",
         "document_date": "2026-09-12",
         "provenance": "the PDF's embedded CreationDate is "
                       "D:20260912173019-04'00'.",
     },
     "nhdot_officials": {
-        "what": "sources/nh-municipal-officials-2025-09-01.pdf, NHDOT's "
+        "what": "records/sources/nh-municipal-officials-2025-09-01.pdf, NHDOT's "
                 "City and Town Officials of the State of New Hampshire",
         "document_date": "2025-09-02",
         "provenance": "the PDF's embedded CreationDate is "
@@ -169,7 +169,7 @@ def read_districts():
     """{(town, ward)} per district file, and the county of every town."""
     per_file, county = {}, {}
     for name in DISTRICT_FILES:
-        path = ROOT / "districts" / f"{name}.txt"
+        path = ROOT / "records" / "districts" / f"{name}.txt"
         if name == "house":
             d = parse_districts.parse_house(path)
             for key, v in d.items():
@@ -186,7 +186,7 @@ def read_districts():
 def read_clerks():
     """{(town, ward)} as the Secretary of State's list wards them, and which
     of the keys parse_clerks.py synthesised rather than read."""
-    data = json.load(open(ROOT / "town_clerks.json", encoding="utf-8"))
+    data = json.load(open(ROOT / "collected" / "town_clerks.json", encoding="utf-8"))
     places, synthetic = set(), set()
     for key, rec in data.items():
         m = re.match(r"^(.*?)-ward-(\d+)$", key)
@@ -205,7 +205,7 @@ def read_clerks():
 
 
 def read_officials():
-    data = json.load(open(ROOT / "town_officials.json", encoding="utf-8"))
+    data = json.load(open(ROOT / "collected" / "town_officials.json", encoding="utf-8"))
     return {k: v.get("municipality", k) for k, v in data.items()}
 
 

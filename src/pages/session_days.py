@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-19.28
+# GRANITE_VERSION: 2026-09-19.29
 """
 A sitting day of the House or Senate, assembled from what is already parsed.
 
@@ -35,7 +35,7 @@ docket is the only record of a roll call, and its own words are drawn.
 
 THE THREE VOTES, AND WHY THE TALLY NEVER DECIDES
 
-  roll call   vote_kind RC, with yeas and nays, and ballots in rollcalls/
+  roll call   vote_kind RC, with yeas and nays, and ballots in records/rollcalls/
   division    vote_kind DV, with yeas and nays and no names -- nobody recorded
               who voted which way, which is what a division IS
   voice       vote_kind VV, no count at all

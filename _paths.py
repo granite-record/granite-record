@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-06.4
+# GRANITE_VERSION: 2026-10-06.5
 """
 Where the code lives, so that every script and module is found by its bare name.
 
@@ -11,12 +11,15 @@ Where the code lives, so that every script and module is found by its bare name.
     _paths.ROOT                          # the repository root
 
 THE FOLDERS. Code lives at the root (what people, workflows and schedulers run
-by name), under src/ (everything those call: src/README.md says which folder
-holds what and where a new file goes), in watchers/ (the General Court lane)
-and in tests/. SRC_DIRS lists the folders under src/; CODE_DIRS (every code
-folder) and SCRIPT_DIRS (the root and src/, which the guards that read every
-script read) are made from it. A new folder under src/ goes on SRC_DIRS in
-the same commit, and preflight fails until it does.
+by name), under src/ (everything those call, and in src/ops/ the operations
+tools the workflows, the morning triage and a person run by their path:
+src/README.md says which folder holds what and where a new file goes), in
+watchers/ (the General Court lane) and in tests/. The data is not code and is
+not here: README.md's "What's where" names its five folders. SRC_DIRS lists
+the folders under src/; CODE_DIRS (every code folder) and SCRIPT_DIRS (the
+root and src/, which the guards that read every script read) are made from
+it. A new folder under src/ goes on SRC_DIRS in the same commit, and
+preflight fails until it does.
 
 NAMES ARE UNIQUE ACROSS THEM, and every import and every launch is by bare
 name. So moving a file from one code folder to another changes no import, no
@@ -94,6 +97,7 @@ SRC_DIRS = (
     "src/pages",
     "src/checks",
     "src/lib",
+    "src/ops",
 )
 CODE_DIRS = ("",) + SRC_DIRS + ("watchers", "tests")
 

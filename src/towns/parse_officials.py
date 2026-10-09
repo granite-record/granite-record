@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-12.6
+# GRANITE_VERSION: 2026-09-12.7
 """
 Municipal officials, out of the Department of Transportation's directory.
 
     python3 src/towns/parse_officials.py --report     # says what it found, writes nothing
-    python3 src/towns/parse_officials.py              # -> town_officials.json
+    python3 src/towns/parse_officials.py              # -> collected/town_officials.json
 
 WHAT THIS IS
 
@@ -82,8 +82,8 @@ import re
 # The repository root, wherever this file sits (_paths.py): the data it
 # reads is the root's.
 ROOT = _paths.ROOT
-PDF = ROOT / "sources" / "nh-municipal-officials-2025-09-01.pdf"
-OUT = ROOT / "town_officials.json"
+PDF = ROOT / "records" / "sources" / "nh-municipal-officials-2025-09-01.pdf"
+OUT = ROOT / "collected" / "town_officials.json"
 
 MUNI, MAIL, MPHONE, MFAX, SITE, MEMAIL, POS, NAME, PHONE, EMAIL = range(10)
 
@@ -378,7 +378,7 @@ def main():
     a = ap.parse_args()
     pdf = pathlib.Path(a.pdf)
     if not pdf.exists():
-        sys.exit(f"{pdf} is not there; the directory lives in sources/")
+        sys.exit(f"{pdf} is not there; the directory lives in records/sources/")
     towns, notes, raw_site, restreamed = read(pdf)
     towns = tidy(towns)
 

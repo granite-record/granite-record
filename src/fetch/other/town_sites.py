@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-20.11
+# GRANITE_VERSION: 2026-09-20.12
 """
 Fetch what New Hampshire's towns publish about their own officials.
 
@@ -21,7 +21,7 @@ secondary.
 NOT THE GENERAL COURT, AND NOT THE LANE. This asks town websites. It takes no
 lock, it does not touch `archive/`, and `archive/refused.json` is about
 gc.nh.gov and does not apply. Captures go under `town_sites/`, which is
-gitignored for the same reason `sources/gis/` is: it is large and it is
+gitignored for the same reason `records/sources/gis/` is: it is large and it is
 re-fetchable.
 
 WHAT IT WILL NOT DO. It does not submit a form, it does not follow a link off
@@ -184,9 +184,9 @@ def municipalities():
     NHDOT's directory names 230 of them and the clerk list 215, they agree on
     176, and where they differ either may be the live one.
     """
-    places = json.loads((ROOT / "places.json").read_text(encoding="utf-8"))["places"]
-    clerks = json.loads((ROOT / "town_clerks.json").read_text(encoding="utf-8"))
-    offs = json.loads((ROOT / "town_officials.json").read_text(encoding="utf-8"))
+    places = json.loads((ROOT / "generated" / "places.json").read_text(encoding="utf-8"))["places"]
+    clerks = json.loads((ROOT / "collected" / "town_clerks.json").read_text(encoding="utf-8"))
+    offs = json.loads((ROOT / "collected" / "town_officials.json").read_text(encoding="utf-8"))
     out = {}
     for key, p in sorted(places.items()):
         if not p["named_by"]["nhdot_officials"]["present"]:

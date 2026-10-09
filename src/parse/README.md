@@ -16,7 +16,7 @@ sponsor, a committee) is fixed here; a right fact shown wrongly is fixed in
 | UNH's scanned journals (no step reads them yet) | `unh_extract`, `unh_measure`, `unh_parse`, `unh_repair`, `unh_rollcalls`, `unh_roster` |
 
 Run by: `build_all.py`'s `plan()`, every night, in its order. The rest are
-run by a person when a source changes (`careers.json`, for one) and
+run by a person when a source changes (`generated/careers.json`, for one) and
 write a committed file, so the diff is the review.
 
 Does not belong here: a request (`fetch/`), a proceeding's recording or

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.481
+# GRANITE_VERSION: 2026-09-04.482
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -915,6 +915,15 @@ def _src_dirs_off_list(code_dirs, src_dirs):
     return [d for d in code_dirs if d.startswith("src/") and d not in src_dirs]
 
 
+def _mk(p):
+    """`p`, with its folder made: a fixture's tree is new, and the root
+    tidy's folders (corrections/, collected/, records/...) are not in it until a
+    file is put in one."""
+    p = Path(p)
+    p.parent.mkdir(parents=True, exist_ok=True)
+    return p
+
+
 def _plant(root, files):
     """A tree for a reader to be proved on: {relative path: text}."""
     for rel, text in files.items():
@@ -1071,9 +1080,10 @@ def _runner_names_resolve():
     _paths.script, which fails at four in the morning on a name that finds no
     file or finds two. So each name is resolved here, now. The workflows and
     publish.bat run a script by its path, from the root: those must be where
-    they are written, which is why livestreams.py stays at the root -- the
-    nightly's `Test-Path livestreams.py` would otherwise skip its step without
-    a word."""
+    they are written. When livestreams.py moved to src/ops/ (the root tidy,
+    8 October 2026) the nightly's `Test-Path livestreams.py` moved with it, to
+    `Test-Path src/ops/livestreams.py`: left behind, it would have skipped its
+    step without a word."""
     tmp = Path(tempfile.mkdtemp(prefix="gr-runners-"))
     try:
         _plant(tmp, {
@@ -1081,13 +1091,13 @@ def _runner_names_resolve():
             "build_all.py": 'Step("a", ["moved.py", "--x"])\nStep("b", ["gone.py"] + more)\n',
             "nightly.py": 'run(["twice.py"], "t")\nx = ["moved.py", "y"]\n',
             "watchers/gc_lane.queue": "# c\ndaily 06:00 moved.py --a\nhandover gone.py\n",
-            ".github/workflows/nightly.yml": "run: python livestreams.py\n# python old.py\n",
+            ".github/workflows/nightly.yml": "run: python streams.py\n# python old.py\n",
             "publish.bat": "REM python3 old.py\npython3 checks.py --site site\n",
-            "src/parse/moved.py": "", "src/checks/checks.py": "", "src/pages/livestreams.py": "",
+            "src/parse/moved.py": "", "src/checks/checks.py": "", "src/pages/streams.py": "",
             "src/parse/twice.py": "", "src/pages/twice.py": ""})
         got = _runner_problems(tmp)
         want = ["build_all.py names gone.py", "nightly.py names twice.py",
-                "watchers/gc_lane.queue names gone.py", "nightly.yml runs livestreams.py",
+                "watchers/gc_lane.queue names gone.py", "nightly.yml runs streams.py",
                 "publish.bat runs checks.py"]
         assert len(got) == len(want) and all(any(w in g for g in got) for w in want), \
             f"the reader of runners found {got} in a tree made to break five ways"
@@ -1605,15 +1615,23 @@ def _dash_c_imports_paths():
 
 # THE NETWORK LINES, BY FOLDER (src/fetch/README.md). Read from what a file
 # does, so that they hold wherever it sits. The root is allowed all of them:
-# it holds the entry points that ask (nightly, livestreams, netcheck, cloud)
-# and, until each moves, the files the move has not reached yet; the
-# refusal guard holds every script there to refusal.check() all the same.
+# it holds the entry points that ask (nightly, netcheck); the refusal guard
+# holds every script there to refusal.check() all the same. src/ops/ asks the
+# services it operates -- R2 through boto3 and the reports database through
+# wrangler, which these patterns do not read -- and its livestreams.py is the
+# one script outside src/fetch/youtube/ that asks YouTube, as it was while it
+# sat at the root.
 _GC_HOST = re.compile(r"""["']https?://gc\.nh\.gov""")
 _SQL = re.compile(r"^\s*(?:import probe_db\b|from probe_db import)", re.M)
 _YOUTUBE = re.compile(r"yt_dlp|googleapis\.com/youtube|youtube/v3")
 _ASKS = re.compile(r"urlopen|urlretrieve|urllib\.request\.Request|requests\.(?:get|post)"
                    r"|http\.client")
 _URL = re.compile(r"""["'](https?://[^/"'\s]+)""")
+
+
+# The night's livestream step: the one script outside src/fetch/youtube/ that
+# asks YouTube (src/fetch/youtube/README.md).
+_LIVESTREAMS = "src/ops/livestreams.py"
 
 
 def _calls_refusal_check(tree):
@@ -1630,8 +1648,8 @@ def _boundary_problems(root=None, dirs=_paths.CODE_DIRS):
       - only src/fetch/gc_db/ (and, at the root, nightly and preflight; and
         tests/rehearse_turn.py) open the General Court's SQL host, through
         probe_db;
-      - only src/fetch/youtube/ (and livestreams.py at the root) use yt-dlp
-        or the YouTube API;
+      - only src/fetch/youtube/ (and src/ops/livestreams.py, the night's
+        livestream step) use yt-dlp or the YouTube API;
       - src/checks asks only graniterecord.org, and every other folder under
         src/ that is not in src/fetch/ asks nobody.
     The last is by default, not by a list of folders, so that a folder added
@@ -1659,10 +1677,10 @@ def _boundary_problems(root=None, dirs=_paths.CODE_DIRS):
         if (_SQL.search(src) or f.name == "probe_db.py") and folder != "src/fetch/gc_db" \
                 and rel != "tests/rehearse_turn.py":
             bad.append(f"{rel} opens the General Court's SQL host: it belongs in src/fetch/gc_db/")
-        if _YOUTUBE.search(src) and folder != "src/fetch/youtube":
+        if _YOUTUBE.search(src) and folder != "src/fetch/youtube" and rel != _LIVESTREAMS:
             bad.append(f"{rel} uses yt-dlp or the YouTube API: it belongs in src/fetch/youtube/")
         if folder.startswith("src/") and not folder.startswith("src/fetch/") \
-                and folder != "src/checks" and _ASKS.search(src):
+                and folder != "src/checks" and rel != _LIVESTREAMS and _ASKS.search(src):
             bad.append(f"{rel} makes a request, and {folder}/ asks nobody")
         if folder == "src/checks" and _ASKS.search(src):
             hosts = {u for u in _URL.findall(src)
@@ -1703,15 +1721,18 @@ def _network_boundaries():
             "src/checks/away.py": 'U = "https://example.org"\n' + ask,
             "src/fetch/other/sos.py": 'U = "https://app.sos.nh.gov"\n' + ask,
             "src/later/new.py": 'U = "https://app.sos.nh.gov"\n' + ask,
+            "src/ops/livestreams.py": 'import yt_dlp\nU = "https://www.googleapis.com/youtube/v3"\n' + ask,
+            "src/ops/elsewhere.py": "import yt_dlp\n",
             "nightly.py": "import probe_db\nimport yt_dlp\n"})
         # src/later stands for a folder listed after this check was written.
         got = _boundary_problems(tmp, dirs=_paths.CODE_DIRS + ("src/later",))
         want = ["unchecked.py is in src/fetch/gc_web/ and never calls",
                 "checked.py calls refusal.check()", "sql.py opens", "yt.py uses yt-dlp",
                 "asks.py makes a request", "away.py asks https://example.org",
-                "new.py makes a request, and src/later/ asks nobody"]
+                "new.py makes a request, and src/later/ asks nobody",
+                "elsewhere.py uses yt-dlp"]
         assert len(got) == len(want) and all(any(w in g for g in got) for w in want), \
-            f"the reader of the network lines found {got} in a tree made to cross seven"
+            f"the reader of the network lines found {got} in a tree made to cross eight"
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
     bad = _boundary_problems()
@@ -2370,8 +2391,8 @@ _DOCKET_CROSSED_LATE = {
 
 
 @check("narrative", "a chamber's introduction dated before the other chamber's vote that sent "
-                    "the bill is told after that vote, with the day the chamber gives it",
-       needs=("narrative",))
+                    "the bill is told after that vote, with no day, and its event keeps the day "
+                    "the chamber gives it", needs=("narrative",))
 def _crossed_after_passage(N):
     """The launch audit's cause 7: the Senate introduces the House's bills in
     recess and dates them by the session it is in recess of. HB 1460 of 2026
@@ -2379,21 +2400,21 @@ def _crossed_after_passage(N):
     reads "Introduced 02/05/2026", and the history said it crossed to the
     Senate on 5 February, before the House's vote -- on 51 histories of
     2025-2026 and 1,387 older ones. It is now told after the vote that sent
-    it, the day kept as the Senate's own (narrative.crossing_order), and the
-    event, the docket list and the rail keep the row's day. Only the votes up
-    to the receiving chamber's next row: SB 1 of 2023's House introduction
-    was entered in April, after the Senate concurred on 14 February, and is
-    told after the Senate's passage of 26 January. A crossing dated after the
-    vote (HB 70 of 2025) is told as it was."""
+    it (narrative.crossing_order), with no day -- the person's wording of 8
+    October 2026, "It crossed to the Senate and was referred to the Senate
+    Children and Family Law committee." -- and the event, the docket list and
+    the rail keep the row's day. Only the votes up to the receiving chamber's
+    next row: SB 1 of 2023's House introduction was entered in April, after
+    the Senate concurred on 14 February, and is told after the Senate's
+    passage of 26 January. A crossing dated after the vote (HB 70 of 2025) is
+    told as it was, with its day."""
     want = {
         "HB1460": ("On February 12, 2026 the House voted to pass it on a roll call 214–145.",
                    "It crossed to the Senate and was referred to the Senate Children and Family "
-                   "Law committee; the Senate records the introduction under its session of "
-                   "February 5, 2026.", "The committee held a public hearing on March 19, 2026."),
+                   "Law committee.", "The committee held a public hearing on March 19, 2026."),
         "SB1": ("On January 26, 2023 the Senate voted to pass it with changes on a voice vote and "
                 "ordered it to a third reading.",
-                "It crossed to the House and was referred to the House Finance committee; the "
-                "House records the introduction under its session of January 5, 2023.",
+                "It crossed to the House and was referred to the House Finance committee.",
                 "The committee held a public hearing on February 9, 2023."),
         "HB70": ("On March 26, 2025 the House voted to pass it on a voice vote.",
                  "It crossed to the Senate on March 27, 2025 and was referred to the Senate "
@@ -2419,8 +2440,8 @@ def _crossed_after_passage(N):
     finally:
         N.MEMBERS = keep
     assert not bad, "\n".join(bad)
-    return "ok", ("HB 1460 of 2026 and SB 1 of 2023 cross after the vote that sent them, on the "
-                  "day the receiving chamber gives; HB 70 of 2025 as it was")
+    return "ok", ("HB 1460 of 2026 and SB 1 of 2023 cross after the vote that sent them, with no "
+                  "day, their events on the day the receiving chamber gives; HB 70 of 2025 as it was")
 
 
 # A FLOOR VOTE WHOSE ROW STATES NO DATE (the launch audit of 7 October 2026,
@@ -3985,7 +4006,7 @@ def _person_corrected(N, P):
     taken off SB 286's history, whose last stage said it was enrolled on its
     way to the governor, and noted on SB 268's own row of that enrolment,
     whose rows carry the term's other session year (2026)."""
-    path = Path("docket_corrections.json")
+    path = Path("corrections/docket_corrections.json")
     assert path.exists(), "docket_corrections.json is not here"
     dates, moved = N.load_corrections(path), N.load_corrections(path, "misfiled")
     bad = []
@@ -4442,21 +4463,6 @@ def _altered(key, old, new):
 # Each rule the review found no history held (5 October 2026), on the real
 # rows nearest to it with one row changed, since nothing on disk tests it.
 _DOCKET_REFERRAL_UNMADE.update({
-    # A suspension that lost makes no referral: HB 650's, lost as Rep.
-    # Burling's motion "TO SUSP RULES TO REF TO FINANCE, ML RC(174-181)" was
-    # on HB 211 of 1997.
-    ("HB650", "1995-1996", "lost"): _altered(
-        ("HB650", "1995-1996"), "REF TO 2ND COMM, MA 2/3VV;", "REF TO 2ND COMM, ML RC(174-181);"),
-    # Nor one of the other chamber's: SB 173's suspension entered as the
-    # Senate's.
-    ("SB173", "1995-1996", "the Senate's"): _altered(
-        ("SB173", "1995-1996"), "|SB173|H|REPS C BROWN & D SYTEK SUSP RULES FOR REF",
-        "|SB173|S|REPS C BROWN & D SYTEK SUSP RULES FOR REF"),
-    # Nor one more than a week before the passage: HB 1633's, eight days
-    # before it.
-    ("HB1633", "1995-1996", "eight days"): _altered(
-        ("HB1633", "1995-1996"), "03/05/1996 03:08:49 PM|HB1633|H|REPS A TORR",
-        "02/27/1996 03:08:49 PM|HB1633|H|REPS A TORR"),
     # A waiver naming another committee than the referral before it waives
     # nothing of it: HB 1478's, as by the chair of Ways and Means.
     ("HB1478", "2013-2014", "another chair"): _altered(
@@ -4533,7 +4539,9 @@ _REFERRAL_UNMADE_HEADS = {
                               []),
     # Sent on to Finance by suspending the rules, on a row of its own: after
     # the passage (SB 173), before it (HB 650), the day before (HB 1633), and
-    # the 2002 House's "on deadline for 2nd Comm" (HB 1231).
+    # the 2002 House's "on deadline for 2nd Comm" (HB 1231). Told as any
+    # other passage that sent the bill on: since 8 October 2026 no House
+    # passage says "under the chamber's rules", whatever sent it.
     ("SB173", "1995-1996"): (["In House committee — Education", "On the House floor",
                               "In House committee — Finance", "On the House floor"],
                              ["then referred it on to the House Finance committee."],
@@ -4582,21 +4590,14 @@ _REFERRAL_UNMADE_HEADS = {
     # question, not this check's; the headings are not held here.
     ("SB339", "2005-2006"): (None, ["then referred it on to the Senate Finance committee"], []),
     # A suspension "for 2nd Comm deadlines" four weeks before the passage, for
-    # the committee's reporting deadline by the House Journal (HJ 6 of 2002):
-    # outside the week, and the referral is under the chamber's rules.
+    # the committee's reporting deadline by the House Journal (HJ 6 of 2002),
+    # and the referral told in the Senate's words (the person, 8 October 2026).
     ("HB1100", "2001-2002"): (["In House committee — Judiciary", "On the House floor",
                                "In House committee — Judiciary", "On the House floor",
                                "In House committee — Finance"],
-                              ["then referred it on to the House Finance committee under the chamber's "
-                               "rules."], []),
+                              ["then referred it on to the House Finance committee."], []),
     # The rules no row on disk tests (_altered, above): each keeps what the
     # rows without the rule would lose.
-    ("HB650", "1995-1996", "lost"): (None, ["then referred it on to the House Finance committee under "
-                                            "the chamber's rules."], []),
-    ("SB173", "1995-1996", "the Senate's"): (None, ["then referred it on to the House Finance committee "
-                                                    "under the chamber's rules."], []),
-    ("HB1633", "1995-1996", "eight days"): (None, ["then referred it on to the House Finance committee "
-                                                  "under the chamber's rules."], []),
     ("HB1478", "2013-2014", "another chair"): (["In House committee — Children and Family Law",
                                                 "On the House floor", "In House committee — Judiciary"],
                                                [], ["the referral"]),
@@ -4625,14 +4626,13 @@ _REFERRAL_UNMADE_PLACED = {
                              (2, "March 15", False)],
 }
 
-# Every wording on disk of a referral its chair waived or declined, and of a
-# rules suspension that made one, with the wordings beside them that are
-# neither. Real rows: Docket.txt 17658; Docket_2015-2016.txt 1521 and 78;
-# Docket_db_2013-2014.txt 1942 and 13937; Docket_db_1995-1996.txt 2000, 597
-# and 8125; Docket_2017-2018.txt 14819; Docket_db_2003-2004.txt 177;
-# Docket_db_2001-2002.txt 13114; Docket_db_2009-2010.txt 19770;
-# Docket_db_2007-2008.txt 133; Docket_db_1999-2000.txt 3450;
-# Docket_db_1989-1990.txt 1584.
+# Every wording on disk of a referral its chair waived or declined, with the
+# wordings beside them that are not. Real rows: Docket.txt 17658;
+# Docket_2015-2016.txt 1521 and 78; Docket_db_2013-2014.txt 1942 and 13937;
+# Docket_db_1995-1996.txt 2000; Docket_2017-2018.txt 14819. (The rules
+# suspensions that made a referral were read here too, by a pattern that
+# kept "under the chamber's rules" off the referral they made; with the
+# clause gone from every passage on 8 October 2026, so is the pattern.)
 _WAIVED_SAID = [
     ("Referral Waived by Committee Chair per House Rule 47(f) 02/19/2026  HJ 5  P. 112", True),
     ("Second Committee Referral Waived by Committee Chair per House Rule 46(f); HJ 16, PG. 317", True),
@@ -4652,23 +4652,11 @@ _WAIVED_SAID = [
     ("Per House Rule 50, Withdrawn from Committee", False),
     ("House Refused to Accede to req for Conf Comm, Rep McKinney MA VV;  HJ38, p1444", False),
 ]
-_SUSPENDED_FOR_REFERRAL = [
-    ("REPS A TORR & BUCKLEY SUSP RULES FOR REF TO 2ND COMM, MA 2/3VV;", True),
-    ("Reps Hess & Nordgren Susp Rules for late ref to Finance, MA 2/3VV;  HJ 29-pt 1, p896", True),
-    ("Reps Scanlan and Burling Susp Rules on deadline for 2nd Comm, MA 2/3VV;  HJ20, p739", True),
-    ("Suspend Rules, Allow Second Comm Referral (Reps Almy & Major): MA VV by Req 2/3; HJ 20 PG.1095",
-     True),
-    ("Rules Suspension: Deadline on Action for Bills Not in 2nd Comm: MA VV Necessary 2/3; HJ 34, pg.1233",
-     False),
-    ("Sen. Below susp. rules for intro. & no referral to comm. & notice in calendar &", False),
-    ("REP HAGER SUSP RULES FOR HEARING, MA 2/3 VV, (SEE PRM JRNL)", False),
-    ("SEN CURRIER SUSP RULES FOR FIN REPORT, MA 2/3VV; FIN REPORT OTP;", False),
-]
 
 
 @check("narrative", "a referral a chair waived heads no stage, a first committee's report is told in "
-                    "its stage, and a referral made by suspending the rules is not said to be under "
-                    "them", needs=("narrative",))
+                    "its stage, and no passage's referral is said to be under the chamber's rules",
+       needs=("narrative",))
 def _referral_unmade(N):
     """Three things a release check of the committee stages found on 5
     October 2026, each held here on the rows it was found on.
@@ -4686,15 +4674,17 @@ def _referral_unmade(N):
     on 31 histories.
 
     A REFERRAL MADE BY SUSPENDING THE RULES, on whichever row the suspension
-    stands, is not "under the chamber's rules": 48 histories of 1995-2006.
+    stands, was said to be "under the chamber's rules" on 48 histories of
+    1995-2006, and was then told without it. Since 8 October 2026 no passage
+    says the clause at all -- the person's wording, the House's referral in
+    the Senate's words exactly -- and no history here may.
 
     And what the review of that change found: "Committee Refused Referral"
     (SB 166 of 2013) and "Referral to Ways and Means withdrawn" (HB 1679 of
     2006), which it did not read; "Vacated ref to Executive Dept &
     Administration" (SB 295 of 2006), told as a committee the bill was sent
-    to "instead"; and six rules no history held -- where the waiver is told, a
-    notice given back to the first committee, a suspension that lost, one of
-    the other chamber, one more than a week before, a waiver naming another
+    to "instead"; and rules no history held -- where the waiver is told, a
+    notice given back to the first committee, a waiver naming another
     committee, one past the introduction, and the committee that sat on a bill
     before its chair waived it."""
     bad = []
@@ -4707,7 +4697,7 @@ def _referral_unmade(N):
         if heads is not None and got != heads:
             bad.append(f"{name}: headed {got}")
         bad += [f"{name} does not say {w!r}" for w in said if w not in text]
-        bad += [f"{name} says {w!r}" for w in unsaid if w in text]
+        bad += [f"{name} says {w!r}" for w in unsaid + ["under the chamber's rules"] if w in text]
         for at, w, want in _REFERRAL_UNMADE_PLACED.get(key, ()):
             told = n["stages"][at]["text"] if at < len(n["stages"]) else ""
             if (w in told) != want:
@@ -4715,13 +4705,10 @@ def _referral_unmade(N):
                            f"{'does not say' if want else 'says'} {w!r}")
     bad += [f"{raw[:50]!r} is {'not ' if want else ''}read as a waived referral"
             for raw, want in _WAIVED_SAID if bool(N.REFERRAL_WAIVED.search(raw)) != want]
-    bad += [f"{raw[:50]!r} is {'not ' if want else ''}read as a referral by suspending the rules"
-            for raw, want in _SUSPENDED_FOR_REFERRAL
-            if bool(N.REFERRAL_SUSPENSION.search(raw)) != want]
     assert not bad, "\n".join(bad)
     real = sum(len(k) == 2 for k in _DOCKET_REFERRAL_UNMADE)
     return "ok", (f"{real} histories from real rows, {len(_DOCKET_REFERRAL_UNMADE) - real} with one row "
-                  f"changed, and {len(_WAIVED_SAID) + len(_SUSPENDED_FOR_REFERRAL)} wordings")
+                  f"changed, and {len(_WAIVED_SAID)} wordings")
 
 
 # Real rows: Docket_db_2005-2006.txt 17549-17561 (SB 339), 12571-12577 (HB
@@ -7746,7 +7733,7 @@ def _ballot_file():
     """ballot_results.json's rows by (term, bill). The file is tracked, the
     person's own (HANDMADE), and the night's clone carries it, so a check of
     what it holds runs with the code checks."""
-    f = Path("ballot_results.json")
+    f = Path("corrections/ballot_results.json")
     assert f.exists(), "ballot_results.json is not here"
     return {(r.get("term"), r.get("bill")): r
             for r in json.loads(f.read_text(encoding="utf-8"))["rows"]}
@@ -10340,12 +10327,11 @@ def _introductions_read_from_the_journal(N, B):
         ("2007-2008", "HR6"), ("2015-2016", "HB1"), ("2021-2022", "CACR21")], sorted(N.INTRODUCED_ON)
     # CACR 21's history opens with the House introducing it, and the Senate's
     # row is the crossing it is, told after the House's vote of 10 March that
-    # sent it, with the day the Senate gives it (narrative.crossing_order); it
-    # was acted on in 2022 alone.
+    # sent it, with no day (narrative.crossing_order); it was acted on in 2022
+    # alone.
     c21 = narr[("2021-2022", "CACR21")]
     crossed = ("It crossed to the Senate and was referred to the Senate Executive Departments "
-               "and Administration committee; the Senate records the introduction under its "
-               "session of February 24, 2022.")
+               "and Administration committee.")
     if not c21["narrative"].startswith(
             "It was introduced on January 5, 2022 and referred to the House Judiciary "
             "committee.") or crossed not in c21["narrative"] or not (
@@ -11864,10 +11850,10 @@ _NAMED_IN = (
     (re.compile(r"sent the bill to the (?P<c>.+?) committee instead"), False),
     (re.compile(r"the bill was referred to the (?P<c>.+?)(?: committee\.|(?<=Committee)\.)"), False),
     (re.compile(r"referred the bill to the (?P<c>.+?)(?: committee\.|(?<=Committee)\.)"), False),
-    (re.compile(r"sent it on to the (?P<c>.+?) committee(?: under the chamber's rules)?[.,]"), False),
-    # The person's wording of 7 October 2026, the Senate's and the House's.
-    (re.compile(r"referred it on to the (?:House|Senate) (?P<c>.+?) committee"
-                r"(?: under the chamber's rules)?[.,]"), False),
+    (re.compile(r"sent it on to the (?P<c>.+?) committee[.,]"), False),
+    # The person's wording of 7 October 2026, the Senate's and the House's,
+    # and of 8 October: the House's names no rule either.
+    (re.compile(r"referred it on to the (?:House|Senate) (?P<c>.+?) committee[.,]"), False),
 )
 _COMMITTEE_WORK = {"hearing", "exec", "worksession", "report", "retained", "interim_report"}
 # A piece of a word, or of a clause, that a reader once printed as a name:
@@ -12082,16 +12068,13 @@ _WAIVER_UNPAIRED = {
     ("SB133", "2017-2018"), ("SB135", "2017-2018"), ("SB191", "2017-2018"), ("SB525", "2017-2018"),
     ("SB314", "2019-2020"), ("SB223", "2025-2026"), ("HB1199", "2025-2026"),
 }
-_SUSPENDED_LOOSE = re.compile(
-    r"(?:\bsusp\w*\.?\s+(?:of\s+)?(?:the\s+|all\s+)?(?:house\s+|senate\s+)?rules?\b|\brules?\s+susp\w*)"
-    r"(?:(?!\bnot\s+in\b|\bno\s+referral\b)[^;])*?(?:\bref|\b(?:2nd|second)\s+comm)", re.I)
-_SUSPENSION_LOST = re.compile(r"\b(?:ML|MF)\b|\bfail|\blost\b", re.I)
 # "then referred it on to the Senate Finance committee" is the Senate's (the
-# person's wording, 7 October 2026), and names no rule; the House's, "then
-# referred it on to the House Finance committee under the chamber's rules",
-# names one where the rules sent it.
+# person's wording, 7 October 2026), and the House's is the same words (8
+# October): neither names a rule.
 _SENT_ON_SAID = re.compile(r"then (?:sent it on to the|referred it on to the (?:House|Senate)) "
-                           r"(?P<c>.+?) committee(?P<r> under the chamber's rules)?[.,]")
+                           r"(?P<c>.+?) committee[.,]")
+# The clause the House's passages carried until 8 October 2026.
+_UNDER_THE_RULES = "under the chamber's rules"
 _REPORT_SAID = re.compile(r"^(?:The committee recommended|The majority|The minority|The committee's "
                           r"amendment|The committee reported|The committee made no recommendation)")
 _MOVED_AFTER = re.compile(r"Recommit|send it back|sent the bill to|referred the bill|Rerefer|Vacat", re.I)
@@ -12110,8 +12093,8 @@ def _when_said(iso):
 
 
 @check("data", "no referral a chair waived heads a stage, no first committee's report follows the "
-               "passage that sent the bill on, and no referral made by suspending the rules is "
-               "said to be under them", needs=("committee_names",))
+               "passage that sent the bill on, and no passage's referral is said to be under the "
+               "chamber's rules", needs=("committee_names",))
 def _referrals_unmade_on_disk(CN):
     """Three things, of every history in narratives.json, read from its own
     rows by a search of this check's own.
@@ -12141,10 +12124,13 @@ def _referrals_unmade_on_disk(CN):
     And the committee's stage before that passage tells no day after it: a
     notice entered before the passage for a later day is not given back to it.
 
-    A REFERRAL MADE BY SUSPENDING THE RULES. No passage "sent it on ... under
-    the chamber's rules" where a row of that chamber suspends the rules for a
-    referral that day, or in the week before with no passage of that chamber
-    between. 48 histories of 1995-2006.
+    UNDER THE CHAMBER'S RULES. No history says it. Until 8 October 2026 the
+    House's passages that sent a bill on said so where the rules sent it, and
+    this part looked for one made by suspending them (48 histories of
+    1995-2006); the person then chose the Senate's words for the House's too,
+    so the clause is gone from every passage, and a history that still says
+    it is one built before that change, or the clause come back. Read on the
+    same histories as the passages counted above.
 
     Each count has a floor: a search that finds nothing is not a search that
     found nothing wrong."""
@@ -12277,30 +12263,14 @@ def _referrals_unmade_on_disk(CN):
                     told = [x for x in _SENTENCE.split(nxt.get("text") or "") if x]
                     if told and all(_REPORT_SAID.match(x) for x in told):
                         back.append(f"{bill} of {term}: {label}")
-            # 3 -- a referral made by suspending the rules
+            # 3 -- under the chamber's rules
             for s in stages:
-                for m in re.finditer(r"On (?P<d>[A-Z][a-z]+ \d{1,2}, \d{4}) the (?P<ch>House|Senate) "
-                                     r"voted [^.]*?then (?:sent it on to the|referred it on to the "
-                                     r"House) [^.]*? committee under the chamber's rules",
-                                     s.get("text") or ""):
-                    ch = m.group("ch")[0]
-                    day = next((e.get("date")[:10] for e in evs
-                                if e.get("body") == ch and _when_said(e.get("date") or "") == m.group("d")),
-                               "")
-                    if not day:
-                        continue
-                    mine = [e for e in evs if e.get("body") == ch]
-                    for j, e in enumerate(mine):
-                        raw = e.get("raw") or ""
-                        x = _SUSPENDED_LOOSE.search(raw)
-                        if not x or _SUSPENSION_LOST.search(raw[x.end():].split(";")[0] + raw[:x.start()].split(";")[-1]):
-                            continue
-                        d = e.get("date")[:10]
-                        if d == day or (d < day and (_date_gap(d, day) <= 7) and not any(
-                                re.search(r"\bPASS", y.get("raw") or "", re.I) and d < y.get("date")[:10] < day
-                                for y in mine)):
-                            under.append(f"{bill} of {term}: {m.group('d')}, {raw[:50]!r}")
-                            break
+                t = s.get("text") or ""
+                at = t.find(_UNDER_THE_RULES)
+                if at >= 0:
+                    under.append(f"{bill} of {term}: {s.get('label')}, "
+                                 f"{t[max(0, at - 60):at + len(_UNDER_THE_RULES)]!r}")
+                    break
     problems = []
     if headed:
         problems.append(f"{len(headed)} stages are headed with a committee whose referral its chair "
@@ -12324,8 +12294,9 @@ def _referrals_unmade_on_disk(CN):
         problems.append(f"{len(early)} first committees' stages before the passage that sent the bill "
                         "on tell a day after it: " + "; ".join(early[:6]))
     if under:
-        problems.append(f"{len(under)} referrals made by suspending the rules are said to be under "
-                        "them: " + "; ".join(under[:6]))
+        problems.append(f"{len(under)} histories say a referral was made {_UNDER_THE_RULES}, the "
+                        "clause the person took out on 8 October 2026 (narratives.json is older than "
+                        "that change, or the clause is back): " + "; ".join(under[:6]))
     if waivers < _WAIVERS_AT_LEAST or sent_on < _SENT_ON_AT_LEAST:
         problems.append(f"{waivers:,} waived referrals and {sent_on:,} passages that sent a bill on, "
                         f"against at least {_WAIVERS_AT_LEAST:,} and {_SENT_ON_AT_LEAST:,}: a search "
@@ -12334,12 +12305,7 @@ def _referrals_unmade_on_disk(CN):
     return "ok", (f"{waivers:,} rows undoing a referral, {paired:,} with the row that made it ({again:,} "
                   f"made again after), none heading a stage or told without what undid it; "
                   f"{sent_on:,} passages that sent a bill on, no first "
-                  "committee's report after one, and none under rules suspended to make it")
-
-
-def _date_gap(a, b):
-    from datetime import date as _d
-    return (_d(*map(int, b.split("-"))) - _d(*map(int, a.split("-")))).days
+                  f"committee's report after one, and no history saying {_UNDER_THE_RULES}")
 
 
 def _said_date(s):
@@ -13925,6 +13891,69 @@ def _manifest_prefers_aired(build_manifest):
         shutil.rmtree(root, ignore_errors=True)
 
 
+@check("pipeline", "every video index reaches the build: the channel indexes in "
+                   "collected/videos/ and the night's livestreams at the root, both, by "
+                   "file name", needs=("build_all", "proceedings"))
+def _video_indexes_both_places(build_all, proceedings):
+    """THE ROOT TIDY (8 October 2026) put the channel indexes git keeps in
+    collected/videos/ and left the night's videos_*_livestreams.csv at the
+    root, where the kit has always carried them, so that no bucket key
+    changed. proceedings.video_indexes() is how build_all, build_manifest's
+    message, build_proceedings, build_calendar, caption_span, livestreams and
+    these checks find both. A reader of one place alone would lose either
+    every committed recording or every recording the night found since, and
+    the manifest would come out shorter without an error. When the review of
+    the move took the root out of video_indexes(), checks of the livestreams
+    and the captions failed by their symptoms, and none named the cause. So
+    the function is held to a planted tree, build_all's plan to handing both
+    to the manifest and the floor index, and no other code file may glob for
+    a video index of its own."""
+    import io
+    import contextlib
+    tmp = Path(tempfile.mkdtemp(prefix="gr-vids-"))
+    here = os.getcwd()
+
+    class A:
+        key = None
+        session = "2026"
+        base = "https://graniterecord.org"
+        archive = "nh-archive"
+
+    try:
+        _plant(tmp, {"collected/videos/videos_senate_2026-01-01_to_2026-12-31.csv": "x\n",
+                     "collected/videos/videos_house_2026-01-01_to_2026-06-30.csv": "x\n",
+                     "collected/videos/channel_index_full.json": "{}\n",
+                     "videos_house_livestreams.csv": "x\n",
+                     "videos_senate_livestreams.csv": "x\n",
+                     "elsewhere/videos_house_2025-01-01_to_2025-12-31.csv": "x\n"})
+        want = ["collected/videos/videos_house_2026-01-01_to_2026-06-30.csv",
+                "videos_house_livestreams.csv",
+                "collected/videos/videos_senate_2026-01-01_to_2026-12-31.csv",
+                "videos_senate_livestreams.csv"]
+        got = [p.relative_to(tmp).as_posix() for p in proceedings.video_indexes(tmp)]
+        assert got == want, f"proceedings.video_indexes read {got}, not {want}"
+        os.chdir(tmp)
+        with contextlib.redirect_stdout(io.StringIO()):
+            steps = build_all.plan(A())
+    finally:
+        os.chdir(here)
+        shutil.rmtree(tmp, ignore_errors=True)
+    for script in ("build_manifest.py", "build_floor_index.py"):
+        step = next((s for s in steps if s.args[:1] == [script]), None)
+        assert step is not None, f"build_all's plan has no {script} step"
+        handed = [a for a in step.args if a.endswith(".csv") and "videos_" in a]
+        assert handed == want, f"build_all hands {script} {handed}, not {want}"
+    own = [f"{f.relative_to(_paths.ROOT).as_posix()}"
+           for f in _paths.code_files("*.py")
+           if f.name not in ("proceedings.py", "preflight.py")
+           and re.search(r"""\.glob\(\s*f?["']videos_""",
+                         f.read_text(encoding="utf-8", errors="replace"))]
+    assert not own, ("these glob for a video index of their own rather than taking "
+                     "proceedings.video_indexes(): " + ", ".join(own))
+    return "ok", ("both places read, in file-name order, and handed to the manifest and the "
+                  "floor index; no other code file globs for an index")
+
+
 # ======================================================== code: livestreams ==
 
 def _ls_env():
@@ -15483,7 +15512,8 @@ def _ls_rows(livestreams):
     assert ast.literal_eval(m.group(1)) == livestreams.COLS, \
         "livestreams.COLS is not fetch_channel_index's column list"
     n, bad = 0, []
-    for f in sorted(Path(".").glob("videos_*.csv")):
+    import proceedings as _P
+    for f in _P.video_indexes():
         if f.name.endswith("_livestreams.csv"):
             continue
         with open(f, encoding="utf-8", newline="") as fh:
@@ -18455,8 +18485,8 @@ def _search_index_builds(BP, SI):
             "them for sidx/words.json")
     odd = sorted(w for w in known if len(w) < 5 or not re.fullmatch(r"[a-z]+", w))
     assert not odd, f"words.json would carry {odd[:5]}: not words as the page reads one"
-    names, _said = SI.name_words(["careers.json", "places.json"])
-    if Path("careers.json").exists() and Path("places.json").exists():
+    names, _said = SI.name_words(["generated/careers.json", "generated/places.json"])
+    if Path("generated/careers.json").exists() and Path("generated/places.json").exists():
         lost = [w for w in ("concord", "londonderry", "allen", "moore") if w not in names]
         assert not lost, (
             f"{lost} are names of towns or members in careers.json and "
@@ -19859,10 +19889,15 @@ def _palette():
     TEXT = [("ink", "surface"), ("ink", "paper"),
             ("ink-2", "surface"), ("ink-2", "paper"), ("ink-2", "wash"),
             ("pine", "surface"), ("pine", "paper")]
-    for st in ("active", "law", "done", "study", "veto"):
+    for st in ("active", "law", "done", "study", "veto", "table"):
         TEXT += [(f"st-{st}", f"st-{st}-bg"), ("ink-2", f"st-{st}-bg")]
     BOUND = [("edge", "surface"), ("edge", "paper"),
              ("pine", "surface"), ("pine", "paper")]
+    # The rail's discs are graphics on the card and the page, and their white
+    # glyph -- check, cross, "~", two bars -- is the card's own colour on them
+    # (8 October 2026: interim study's orange and the table's yellow).
+    for st in ("law", "done", "study", "table"):
+        BOUND += [(f"st-{st}", "surface"), (f"st-{st}", "paper")]
     # A meeting's kind: its ink is the chip's text on its tint, and it is also
     # the card's edge bar and the chip's edge on the card and the page -- and,
     # since 25 September 2026, the Calendar's box for that kind, whose tick
@@ -21164,7 +21199,7 @@ def _no_control_bytes():
     # and not while two sessions are in the same tree.
     skip = ("site/", "work/", "archive/", "obsolete/", "logs/", "data/", "db/",
             "docket_pages/", "bill_text/", "legislation/", "captions/",
-            "review/", ".git/", "sources/", "brand/", "assets/",
+            "review/", ".git/", "records/sources/", "brand/", "assets/",
             "town_sites/")
     #
     # GIT'S LIST, WHICH IS THAT CHANGE (2 October 2026). The walk was every
@@ -21977,7 +22012,7 @@ def _numbers_ballots(learn_numbers):
     def drawn(rows):
         with _tf.TemporaryDirectory() as tmp:
             _bill_index_write(tmp, idx)
-            (Path(tmp) / "ballot_results.json").write_text(json.dumps({"rows": rows}),
+            _mk(Path(tmp) / "corrections" / "ballot_results.json").write_text(json.dumps({"rows": rows}),
                                                            encoding="utf-8")
             page = learn_numbers.body(Path(tmp), Path(tmp), strict=False)
             return page, list(learn_numbers.HELD)
@@ -22517,25 +22552,39 @@ def _record_untouched():
 
     The 35 hand-marked times are the only measurement of this system a person
     made, and they were lost twice while they lived as two columns in a file
-    that rebuilds overwrite. They live in ground_truth.csv now, which a person
-    edits and every generator only reads.
+    that rebuilds overwrite. They live in review/ground_truth.csv now, which a
+    person edits and every generator only reads.
 
     The list has grown since, and each addition is a file that cost somebody
     an evening and cannot be rebuilt from anything:
 
-      ground_truth.csv        35 proceedings timed with a stopwatch
-      review/checked.jsonl    the bench's judgments, append-only
-      bill_notes.json         written explanations of bills that recur under
-                              one number every term, like the budget
-      officials.json          offices filled by hand from four official sources
-      member_corrections.json a name a generator got wrong, and the evidence
-      place_corrections.json  a polling place the Secretary of State's own
-                              list states wrongly, and the second source
-      docket_corrections.json a date the docket states wrongly, and the
-                              journal and roll call that settle it
+      review/ground_truth.csv        35 proceedings timed with a stopwatch
+      review/checked.jsonl           the bench's judgments, append-only
+      corrections/bill_notes.json    written explanations of bills that recur
+                                     under one number every term, like the budget
+      corrections/officials.json     offices filled by hand from four official
+                                     sources
+      corrections/member_corrections.json  a name a generator got wrong, and
+                                     the evidence
+      corrections/place_corrections.json   a polling place the Secretary of
+                                     State's own list states wrongly, and the
+                                     second source
+      corrections/docket_corrections.json  a date the docket states wrongly,
+                                     and the journal and roll call that settle it
+      corrections/ballot_results.json      the voters' answer on each amendment
+      corrections/status/            the session's state and the Executive
+                                     Council, which no published file gives
 
     Naming only the first one meant the check grew stale as quietly as the
-    thing it guards against: most of these had no guard at all.
+    thing it guards against: most of these had no guard at all. So since the
+    root tidy (8 October 2026) the list is two folders, read as they stand:
+    corrections/, what a person corrects or adds to the record by hand, and
+    review/, a person's checks of the site's own work. A file put in either
+    is guarded the day it is put there, with no list here to remember to
+    grow; launch_register.json, the person's own and untracked, stays where
+    the morning triage reads it and is named beside them. A build_ or fetch_
+    script that so much as writes into either folder fails too, whatever
+    file it names.
 
     THE BENCH'S RECORD IS HELD TO MORE, in the same reading of the scripts
     (2 October 2026; a check of its own until then, "no generator writes the
@@ -22546,18 +22595,74 @@ def _record_untouched():
     the network: it shows unpublished judgments about named people, and it
     binds the loopback address for that reason.
     """
-    HANDMADE = ["ground_truth.csv", "review/checked.jsonl", "bill_notes.json",
-                "officials.json", "member_corrections.json",
-                "place_corrections.json", "launch_register.json",
-                "docket_corrections.json", "ballot_results.json"]
+    HANDMADE_DIRS = ("corrections", "review")
+    HANDMADE = sorted(f.relative_to(_paths.ROOT).as_posix()
+                      for d in HANDMADE_DIRS if (_paths.ROOT / d).is_dir()
+                      for f in (_paths.ROOT / d).rglob("*")
+                      if f.is_file() and f.name != "README.md" and not f.name.startswith("."))
+    # A FLOOR for the folders: the ten tracked files they took on 8 October
+    # 2026. Read from nowhere, the list would be empty and pass.
+    assert len(HANDMADE) >= 10, (
+        f"only {len(HANDMADE)} hand-made files were found in {' and '.join(HANDMADE_DIRS)}/, "
+        "and ten were there on 8 October 2026: the folders are not being read")
+    HANDMADE.append("launch_register.json")
+    # Writing into either folder at all, by its name in a path: "corrections/x"
+    # in one string, or "corrections" as a part of its own (ROOT / "review" /
+    # ...), opened with "w" or written through a Path.
+    dirs = "|".join(HANDMADE_DIRS)
+    INTO = re.compile(r'open\s*\([^)]*["\'](?:%s)(?:[/\\]|["\'])[^)]*["\']w|'
+                      r'["\'](?:%s)(?:[/\\][^"\'\n]*)?["\'][^\n]{0,60}\.write_(?:text|bytes)'
+                      % (dirs, dirs))
+    # ... or through a name a line of its own gives such a path, which is how
+    # most scripts here name what they write (OUT = ROOT / "corrections" /
+    # "x.json", and OUT.write_text(...) further down): written, opened for
+    # writing, or put there whole by a rename or a copy, the way a careful
+    # writer finishes (os.replace(tmp, OUT)). The review of 8 October 2026
+    # planted both shapes in a build_ script and the reader above passed them.
+    HELD = re.compile(r'^[ \t]*([A-Za-z_]\w*)[ \t]*(?::[^=\n]*)?=[^=\n][^\n]*'
+                      r'["\'](?:%s)(?:[/\\][^"\'\n]*)?["\']' % dirs, re.M)
+
+    def writes_into(src):
+        if INTO.search(src):
+            return True
+        for held in set(HELD.findall(src)):
+            n = re.escape(held)
+            if re.search(r'\b%s\s*\.\s*(?:write_text|write_bytes)\s*\('
+                         r'|\b%s\s*\.\s*open\s*\(\s*(?:mode\s*=\s*)?["\'][wax]'
+                         r'|\bopen\s*\(\s*%s\s*,\s*(?:mode\s*=\s*)?["\'][wax]'
+                         r'|\.(?:replace|rename)\s*\(\s*%s\s*\)'
+                         r'|\b(?:os\.replace|os\.rename|shutil\.(?:copy\w*|move))'
+                         r'\s*\([^)\n]*,\s*%s\s*\)' % (n, n, n, n, n), src):
+                return True
+        return False
+
+    for text, writes in (('open("corrections/x.json", "w")', True),
+                         ('open(ROOT / "corrections" / "x.json", "w", encoding="utf-8")', True),
+                         ('Path("review/ground_truth.csv").write_text(t)', True),
+                         ('(Path("review") / "a.csv").write_text(t)', True),
+                         ('OUT = ROOT / "corrections" / "x.json"\nOUT.write_text(t)', True),
+                         ('T = Path("review") / "a.csv"\nos.replace(tmp, T)', True),
+                         ('NOTES: Path = Path("corrections/n.json")\nwith NOTES.open("w") as fh:', True),
+                         ('json.loads(Path("corrections/bill_notes.json").read_text())', False),
+                         ('open(ROOT / "corrections" / "x.json", encoding="utf-8")', False),
+                         ('gt = Path("review/ground_truth.csv")\nrows = read_any(gt)\n'
+                          'with open(gt, encoding="ascii") as fh:', False),
+                         ('Path("site/review.json").write_text(t)', False)):
+        assert writes_into(text) == writes, (
+            f"the reader of writes into {' and '.join(HANDMADE_DIRS)}/ reads {text!r} as "
+            + ("no write" if writes else "a write"))
     bad, names = [], []
     scanned = _paths.code_files("build_*.py") + _paths.code_files("fetch_*.py")
     for f in scanned:
         src = f.read_text(encoding="utf-8", errors="replace")
         if "checked.jsonl" in src:
             names.append(f.name)
+        if writes_into(src):
+            bad.append(f"{f.name} writes into {' or '.join(d + '/' for d in HANDMADE_DIRS)}")
         for name in HANDMADE:
-            stem = re.escape(name.split("/")[-1])
+            # Bounded on the left, so that status.txt is not bill_status.txt
+            # and officials.json is not town_officials.json.
+            stem = r"(?<![\w-])" + re.escape(name.split("/")[-1])
             if not re.search(stem, src):
                 continue
             # Opened for writing, written through a Path, or through a
@@ -22596,10 +22701,11 @@ def _record_untouched():
         said.append(f"only {len(scanned)} build_ and fetch_ scripts were read, and 56 were "
                     "on 7 October: the code folders are not being read (_paths.code_files)")
     assert not said, "; and ".join(said)
-    present = [n for n in HANDMADE if Path(n).exists()]
-    return "ok", (f"{len(present)} hand-made file(s) here, and only a person "
-                  "writes them: " + ", ".join(present) + "; no generator names "
-                  "the bench's record, and the bench is not on the network")
+    present = [n for n in HANDMADE if (_paths.ROOT / n).exists()]
+    return "ok", (f"{len(present)} hand-made file(s) here, in corrections/ and review/, and "
+                  "only a person writes them: " + ", ".join(present) + "; no generator "
+                  "names the bench's record or writes into either folder, and the bench "
+                  "is not on the network")
 
 
 @check("markers", "every phrasing read from a transcript still matches")
@@ -23674,7 +23780,7 @@ def _stream_start(build_site_v2, about_figures):
     # WHERE THE CHANNELS BEGIN, from the index of both of them. Tracked, so
     # this runs on a fresh clone; a date the index does not bear out is a
     # claim about the General Court's recordings that nothing supports.
-    idx = Path("channel_index_full.json")
+    idx = Path("collected/videos/channel_index_full.json")
     first = None
     if idx.exists():
         d = json.loads(idx.read_text(encoding="utf-8"))
@@ -24189,13 +24295,18 @@ def _journey_reads(build_site_v2):
                          "08/01/2025", "governor"), chapter="59")[1][-1][3],
          "Chapter 59, in effect Aug 1, 2025", "HB227 2025")
     # A part that does not say plainly what it covers states none of them:
-    # "I Sec 1-3-5" (HB 655 of 2025) and "Sec I" (HB 1584 of 2026).
+    # "I Sec 1-3-5" (HB 655 of 2025). "Sec I" is section 1 (HB 1584 of 2026,
+    # "I. Section 1 effective October 13, 2026" in its chaptered text); the
+    # rest of what the effective dates review of 8 October 2026 taught is
+    # in _effective_parts_read below.
     want(run("HB655", ev("H", "2025-07-15", "Signed by Governor Ayotte 07/15/2025; Chapter 202; "
                          "eff. I Sec 1-3-5 eff 09/13/2025 II. Rem eff 07/15/2025  HJ 18",
                          "governor"), chapter="202")[1][-1][3], "Chapter 202", "HB655 2025")
     want(run("HB1584", ev("H", "2026-07-15", "Signed by Governor Ayotte 07/15/2026; Chapter 328; "
                           "eff. I. Sec I eff 10/13/2026 II. Rem eff 01/01/2027", "governor"),
-             chapter="328")[1][-1][3], "Chapter 328", "HB1584 2026")
+             chapter="328")[1][-1][3],
+         "Chapter 328, in effect in parts: section 1 on 13 Oct 2026, the rest on 1 Jan 2027",
+         "HB1584 2026")
     # EVERY ROW THAT CARRIES THE GOVERNOR'S ON, not the first seven (the
     # review of 8 October 2026). HB 2 of 2007's row and the fifteen after it
     # in Docket_db_2007-2008.txt run to part XVI; read to part VIII, the stop
@@ -24560,6 +24671,149 @@ def _journey_reads(build_site_v2):
                   "motion not to adopt, a reconsidered defeat, a kill at adjournment, a "
                   "conference report filed and a chaptered override, each as the docket "
                   "has it")
+
+
+@check("status", "a law's dates in effect are read part by part, and only where its lines "
+                 "give each", needs=("build_site_v2",))
+def _effective_parts_read(build_site_v2):
+    """The effective dates review of 8 October 2026: seven laws of 2025-2026
+    stated no date in effect, and of the forms they showed, the ones the
+    line itself settles are read, each checked against the law's chaptered
+    text, while the ones it does not settle state none, as before.
+
+    Read: parts past VIII (HB 282 of 2025 runs to XII), a range written with
+    spaces ("27 - 33"), "Sec I" alone as section 1, and the governor's row in
+    full beside chapters.json's copy of it, which keeps 200 characters. Not
+    read, on purpose: "Sec 1-3-5" (one range or two numbers), "20256" (a
+    year the line does not give), the glued "PIIIII." (HB 307 of 2025), and
+    the Article 44 line's "June 6", which is the day HB 1256 of 2026 became
+    law, not the day it took effect -- its text says 60 days after.
+
+    And what the same review found the reader had been stating wrongly: a
+    part it could not split was left before the first one it could and
+    dropped, so SB 530 of 2008, SB 313 of 2018 and SB 91 of 2021 told
+    sections in effect on other days as "the rest"; and the same row read
+    twice, once with the docket's double spaces, made SB 21 of 2011's one
+    part into two and dated it by the other's day."""
+    B = build_site_v2
+
+    def ev(body, date, raw, typ="other"):
+        return {"body": body, "date": date, "raw": raw, "type": typ, "cancelled": False}
+
+    def law(bid, *evs, chapter, line=""):
+        steps = B.journey({"events": list(evs)}, bid, [], chapter, line, "")[1]
+        return [s["text"] for s in steps if s["body"] == "L"][-1]
+
+    bad = []
+
+    def want(got, expect, what):
+        if got != expect:
+            bad.append(f"{what}: {got!a}")
+
+    # Docket.txt line 10744, as the docket writes it; narratives.json keeps
+    # the row with its spaces closed up, and chapters.json its first 200
+    # characters, which end "V. Sec 13 21 &".
+    hb282 = ("Signed by Governor Ayotte 06/27/2025; Chapter 142; I. Sec 4 8 9 & 43 eff 1/1/26.  "
+             "II. Sec 2 10 18 & 44 eff 7/1/26.  III. Sec 3 11 19 40 & 45 eff 7/1/27.  IV. Sec 12 "
+             "20 & 46 eff 7/1/28.  V. Sec 13 21 & 47 eff 7/1/29.  VI. Sec 14 22 & 48 eff 7/1/30.  "
+             "VII. Sec 15 23 & 49 eff 7/1/31.  VIII. Sec 16 24 & 50 eff 7/1/32.  IX. Sec 17 25 27 "
+             "& 51 eff 7/1/33.  X. Sec 26 27 - 33 35 - 38 & 52 eff 7/1/34.  XI. Sec 1 eff "
+             "8/26/25.  XII. Rem eff 7/1/25.")
+    want(law("HB282", ev("H", "2025-06-27", " ".join(hb282.split()), "governor"),
+             chapter="142", line=hb282[:200]),
+         "Chapter 142, in effect in parts: sections 4, 8, 9 and 43 on 1 Jan 2026, sections 2, "
+         "10, 18 and 44 on 1 Jul 2026, sections 3, 11, 19, 40 and 45 on 1 Jul 2027, sections "
+         "12, 20 and 46 on 1 Jul 2028, sections 13, 21 and 47 on 1 Jul 2029, sections 14, 22 "
+         "and 48 on 1 Jul 2030, sections 15, 23 and 49 on 1 Jul 2031, sections 16, 24 and 50 "
+         "on 1 Jul 2032, sections 17, 25, 27 and 51 on 1 Jul 2033, sections 26, 27 to 33, 35 "
+         "to 38 and 52 on 1 Jul 2034, section 1 on 26 Aug 2025, the rest on 1 Jul 2025",
+         "HB282 2025")
+    # The 200 characters alone are a line cut short, and state none.
+    want(law("HB282", chapter="142", line=hb282[:200]), "Chapter 142", "HB282 2025, cut short")
+    # "Section I" on a row of its own: Docket_db_2007-2008.txt lines 22435-22437.
+    want(law("HB1508", ev("H", "2008-06-06", "Signed by the Governor 06/03/2008; Chapter 0118",
+                          "governor"),
+             ev("H", "2008-06-06", "I. Section I Effective 07/01/2008"),
+             ev("H", "2008-06-06", "II. Remainder Effective 06/03/2008"), chapter="118"),
+         "Chapter 118, in effect in parts: section 1 on 1 Jul 2008, the rest on 3 Jun 2008",
+         "HB1508 2008")
+    # Docket_2019-2020.txt line 4889, past its first 200 characters: the RSA
+    # part ends at its date, not at "13/".
+    hb1558 = ("Signed by Governor Sununu 07/29/2020; Chapter 38; I. RSA 193:13/ I-X as inserted "
+              "by Sec. 1 Eff: 07/01/2021 II. Sec. 3-5 & 8-10 Eff: 07/01/2020 III.Sec 6 & 7 Eff: "
+              "06/30/2020 IV. Sec. 17 and 31-36 Eff: 01/01/2021 V. Sec. 11-16 and 18-30 Eff: "
+              "09/27/2020 VI. Rem. Eff: 07/29/2020")
+    want(law("HB1558", ev("H", "2020-07-29", hb1558, "governor"), chapter="38",
+             line=hb1558[:200]),
+         "Chapter 38, in effect in parts: RSA 193:13/ I-X on 1 Jul 2021, sections 3 to 5 and 8 "
+         "to 10 on 1 Jul 2020, sections 6 and 7 on 30 Jun 2020, sections 17 and 31 to 36 on 1 "
+         "Jan 2021, sections 11 to 16 and 18 to 30 on 27 Sep 2020, the rest on 29 Jul 2020",
+         "HB1558 2020")
+
+    # A PART NOT READ IS NOT "THE REST". Docket_2021-2022.txt line 11477,
+    # Docket_db_2007-2008.txt lines 26882-26887, Docket_2021-2022.txt lines
+    # 19464-19469.
+    want(law("HB481", ev("H", "2022-06-24", "Signed by Governor Sununu 06/24/2022; Chapter 250; "
+                         "eff. I. Sec4 eff 6/24/22 II. Sec 5 and 6 eff 7/1/25 III Rem eff 7/1/22",
+                         "governor"), chapter="250"), "Chapter 250", "HB481 2022")
+    want(law("SB530", ev("S", "2008-07-16", "Signed by the Governor On 07/11/08", "governor"),
+             ev("S", "2008-07-16", "I. Paragraph I of Section 6 Eff. 06/30/08"),
+             ev("S", "2008-07-16", "II. Paragraph II of Section 6 Eff. 07/01/13"),
+             ev("S", "2008-07-16", "III. Section 5 Eff. 07/01/09 at 12:01 a.m"),
+             ev("S", "2008-07-16", "IV. Remainder Eff. 07/11/08"), chapter="384",
+             line="Chapter 0384"), "Chapter 384", "SB530 2008")
+    want(law("SB91", ev("S", "2021-08-26", "Signed by the Governor on 08/26/2021; Chapter 0228",
+                        "governor"),
+             *[ev("S", "2021-08-30", x) for x in (
+                 "Part I Effective 10/25/2021", "Part II Effective 08/26/2021",
+                 "Part III Effective 10/25/2021", "Part IV. I. Section 2 Effective 11/01/2021",
+                 "Part IV. II. Remainder Effective 08/26/2021")], chapter="228"),
+         "Chapter 228", "SB91 2021")
+    # ONE ROW, ONE READING, whatever its spaces. Docket_db_2011-2012.txt line
+    # 6805 writes "0195I.  Section"; narratives.json closes the space up.
+    sb21 = ("Signed by the Governor on 06/14/10; Chapter 0195I.  Section 2 & 3 Effective as Prov. "
+            "in Sec. 4II. Remainder Effective 08/13/11")
+    want(law("SB21", ev("S", "2011-06-14", " ".join(sb21.split()), "governor"), chapter="195",
+             line=sb21), "Chapter 195", "SB21 2011")
+    # And one part is not parts: HB 25 of 2023's row names part I alone
+    # (Docket_2023-2024.txt line 10300).
+    want(law("HB25", ev("H", "2023-06-30", "Signed by Governor Sununu 06/30/2023; Chapter 113; "
+                        "Eff: I. Sec 24 eff 6/30/23", "governor"), chapter="113",
+             line="Signed by Governor Sununu 06/30/2023; Chapter 113; Eff: I. Sec 24 eff "
+                  "6/30/23 HJ 17"), "Chapter 113", "HB25 2023")
+    # The same part again on a row of its own, which is no copy of the
+    # governor's row by its start, is still the one part (the review of the
+    # effective dates fix, 8 October 2026).
+    want(law("HB25", ev("H", "2023-06-30", "Signed by Governor Sununu 06/30/2023; Chapter 113; "
+                        "Eff: I. Sec 24 eff 6/30/23", "governor"),
+             ev("H", "2023-06-30", "I. Sec 24 eff 6/30/23"), chapter="113"),
+         "Chapter 113", "HB25 2023, its part on a row of its own")
+
+    # WHAT THE LINE DOES NOT SETTLE states none: Docket.txt lines 24269, 9567
+    # and 24272, the rows as the docket has them.
+    want(law("HB1388", ev("H", "2026-06-05", "Signed by Governor Ayotte 06/05/2026; Chapter 121; "
+                          "eff.06/05/20256", "governor"), chapter="121"),
+         "Chapter 121", "HB1388 2026")
+    want(law("HB307", ev("H", "2025-05-29", "Signed by Governor Ayotte 05/29/2025; Chapter 46; "
+                         "I. Sec 1 & 3 eff. as in sec 5 P I   II. Sec 2 & 4 eff as in sec 5 "
+                         "PIIIII. Rem eff 07/28/2025", "governor"), chapter="46"),
+         "Chapter 46", "HB307 2025")
+    want(law("HB1256", ev("H", "2026-06-05", "Law Without Signature 06/05/2026; Chapter 128; "
+                          "eff.Enacted in accordance with Article 44 Part II of the N.H. "
+                          "Constitutionwithout the signature of the governor June 6",
+                          "unsigned_law"), chapter="128"),
+         "Chapter 128", "HB1256 2026")
+
+    # The narrow edges, on the list reader itself: "Sec I" is section 1
+    # alone, and a dash between three numbers is not read.
+    for s, expect in (("I", "section 1"), ("II", ""), ("I-3", ""), ("1-3-5", ""),
+                      ("26 27 - 33 35 - 38 & 52", "sections 26, 27 to 33, 35 to 38 and 52"),
+                      ("4 8 9 & 43", "sections 4, 8, 9 and 43"), ("5 - 8", "sections 5 to 8")):
+        want(B._j_sections(s), expect, f"_j_sections({s!r})")
+    assert not bad, "; ".join(bad)
+    return "ok", ("parts to XII, spaced ranges, \"Sec I\" and a row read whole are read; a "
+                  "part not read, a row read twice, a typed year, a glued numeral and the "
+                  "Article 44 day state none")
 
 
 @check("status", "an amendment offered before it was adopted keeps its outcome",
@@ -24973,6 +25227,215 @@ def _rail_on_a_phone():
                   f"({worst[1]}), in the wider of Public Sans' and Segoe UI's widths; {drew}")
 
 
+# Real rows: Docket.txt 11893, 14650, 15189, 16344-16345, 19814-19815, 20127,
+# 20993, 22314 and 22842-22846 (HB 1043 of 2026: passed by the House, laid on
+# the Senate's table on 7 May 2026, and dead there when the session ended).
+# HB 561's are _CONSENT_REREFERRED's.
+_TABLED_ROWS = [
+    "2026|2396|11/7/2025 11:41:06 AM|HB1043|H|  Introduced 01/07/2026 and referred to Labor, Industrial and Rehabilitative Services  HJ 1  P. 3|3/24/2026 2:05:02 PM",
+    "2026|2396|1/21/2026 3:57:54 PM|HB1043|H|Public Hearing: 01/27/2026 11:30 am GP 159|1/21/2026 3:57:54 PM",
+    "2026|2396|1/28/2026 4:17:53 PM|HB1043|H|Executive Session: 02/03/2026 10:00 am GP 159|1/28/2026 4:17:53 PM",
+    "2026|2396|2/9/2026 1:58:27 PM|HB1043|H|Majority Committee Report: Ought to Pass with Amendment # 2026-0386h   02/03/2026 (Vote 11-9; RC)  HC 10  P. 60|3/16/2026 10:38:14 AM",
+    "2026|2396|2/9/2026 1:58:29 PM|HB1043|H|Minority Committee Report: Inexpedient to Legislate|2/9/2026 1:58:29 PM",
+    "2026|2396|3/12/2026 9:58:30 AM|HB1043|H|Amendment # 2026-0386h: AA DV 341-4 03/12/2026  HJ 8  P. 14|6/23/2026 2:24:11 PM",
+    "2026|2396|3/12/2026 10:00:52 AM|HB1043|H|Ought to Pass with Amendment 2026-0386h: MA RC 189-155 03/12/2026  HJ 8  P. 14|6/23/2026 2:24:19 PM",
+    "2026|2396|3/17/2026 11:51:22 AM|HB1043|S|  Introduced 03/12/2026 and Referred to Commerce;  SJ 7|3/17/2026 11:51:26 AM",
+    "2026|2396|3/31/2026 2:02:13 PM|HB1043|S|  Hearing: 04/14/2026, Room 100, SH, 10:25 am;  SC 13|4/2/2026 9:08:49 AM",
+    "2026|2396|4/28/2026 1:07:26 PM|HB1043|S|Committee Report: Ought to Pass, 05/07/2026, Vote 3-2;  SC 17|4/28/2026 1:07:26 PM",
+    "2026|2396|5/7/2026 9:36:50 AM|HB1043|S|Ought to Pass: DIV 9Y-12N, MF; 05/07/2026;  SJ 11|5/7/2026 9:36:50 AM",
+    "2026|2396|5/7/2026 9:37:04 AM|HB1043|S|Sen. Murphy Moved Laid on Table, MA, VV; 05/07/2026;  SJ 11|5/7/2026 9:37:04 AM",
+    "2026|2396|5/7/2026 9:37:39 AM|HB1043|S|No Pending Motion; 05/07/2026  SJ 11|5/7/2026 9:37:39 AM",
+]
+# Real rows: Docket_db_1999-2000.txt 16527-16539 (HB 1171 of 2000: passed by
+# the House, killed by the Senate on 20 April 2000, the kill reconsidered on
+# 18 May and the bill sent to interim study the same day).
+_KILLED_THEN_STUDIED = [
+    "2000|2440|01/05/2000 01:03:53 PM|HB1171|H|Introduced and ref to Judiciary;  HJ5, p89|01/05/2000 01:03:53 PM",
+    "2000|2440|01/05/2000 01:28:07 PM|HB1171|H|Copy to Chairman on   12/22/1999|01/05/2000 01:28:07 PM",
+    "2000|2440|01/05/2000 01:33:29 PM|HB1171|H|Hearing  Feb 8  11:00  RM208,LOB|01/05/2000 01:33:29 PM",
+    "2000|2440|02/22/2000 04:26:27 PM|HB1171|H|Maj Report   OTP   for   Mar  9      (vote 10-3;CC)|02/22/2000 04:26:27 PM",
+    "2000|2440|03/09/2000 11:04:31 AM|HB1171|H|Passed (Cons Cal by 2/3VV);  HJ22, p626 + 658|03/09/2000 11:04:31 AM",
+    "2000|2440|03/16/2000 10:54:22 AM|HB1171|S|Introduced and Ref. to Finance; SJ 6, Pg.195|03/16/2000 10:54:22 AM",
+    "2000|2440|03/22/2000 09:57:33 AM|HB1171|S|Hearing March 31, Room 103, SH, 1:30 p.m.., SC18, Pg.24|03/22/2000 09:57:33 AM",
+    "2000|2440|04/19/2000 04:02:24 PM|HB1171|S|Committee Report Inexpedient to Legislate, 4/20/2000 ; SC24|04/19/2000 04:02:24 PM",
+    "2000|2440|04/20/2000 01:01:59 PM|HB1171|S|Inexpedient to Legislate, MA, VV ==KILLED==; SJ 11, Pg.305|04/20/2000 01:01:59 PM",
+    "2000|2440|04/27/2000 10:45:31 AM|HB1171|S|Sen. J. King served notice of reconsideration; SJ 12, Pg.325|04/27/2000 10:45:31 AM",
+    "2000|2440|05/18/2000 01:01:14 PM|HB1171|S|Sen. Trombly Moved Reconsideration, MA, VV; Sen. J. King Ought to Pass, MA, VV; SJ 15, Pg.476|05/18/2000 01:01:14 PM",
+    "2000|2440|05/18/2000 01:02:55 PM|HB1171|S|Sen. J. King Floor Amendment{4465},[New Title],not voted on; SJ 15, Pg.476-477|05/18/2000 01:02:55 PM",
+    "2000|2440|05/18/2000 06:19:39 PM|HB1171|S|Sen. Franoueur Moved Interim Study, MA, VV; SJ 15, Pg.478|05/18/2000 06:19:39 PM",
+]
+
+
+@check("frontend", "interim study is the rail's orange \"~\" and a bill on the table now its yellow "
+                   "pause, a dead bill's cross kept; apart by shape, said aloud and drawn in forced "
+                   "colours, and the two chips in the same inks",
+       needs=("narrative", "build_site_v2"))
+def _rail_study_and_table_marks(N, B):
+    """THE PERSON'S MARKS OF 8 OCTOBER 2026, and the two chips' inks with them.
+    A chamber that held a bill for
+    interim study drew the red cross of a bill killed; a bill lying on a
+    table it could still come off drew the ring of a bill moving. Now:
+
+      * HB 561 of 2026, sent to interim study by the House on 7 January 2026,
+        has an orange disc with a white "~" on the House stop, on its list
+        card and on its own page, and the same "~", bare, on its How it got
+        here line; a reader who hears the rail hears "sent to interim study".
+      * HB 1043 of 2026, laid on the Senate's table on 7 May 2026, drawn as it
+        stood while the session still sat (live, its chip Tabled), has a
+        yellow disc with two white bars there and on the line that laid it
+        there, and is heard "on the table". Drawn as it stands, dead on the
+        table when the session ended, it keeps the red cross and the line's
+        turning arrow.
+      * The four filled marks differ in shape -- check, cross, wave, two bars
+        -- which is what tells them apart in greyscale, where their inks sit
+        within a few points of lightness; forced colours keep the wave's disc
+        and the pause's bars in the system's text colour; print keeps their
+        ground; and the Interim Study and Tabled chips take the orange and the
+        yellow.
+    Built from the real rows through narrative.build, the journey, passage,
+    chip_word and journey_rail, and drawn by app.js in node."""
+    term = "2025-2026"
+    cases = {}
+    for name, bill, lines, kind, status, live in (
+            ("study", "HB561", _CONSENT_REREFERRED[("HB561", term)], "study",
+             "Referred for interim study", True),
+            ("table", "HB1043", _TABLED_ROWS, "active", "Laid on the table", True),
+            ("died", "HB1043", _TABLED_ROWS, "done", "Died on the table", False)):
+        narr = _narrated(N, term, bill, lines)
+        intro, steps = B.journey(narr, bill, [], "", "")
+        passed = {c for c in "HS" if B.journey_state(steps, c) == "p"}
+        acted = list(dict.fromkeys(s["body"] for s in steps if s["body"] in "HS"))
+        rail = B.passage(narr["stages"], kind, status, bill, passed, acted)
+        chip = B.chip_word(kind, status, live)
+        jrail = B.journey_rail(intro, steps, rail, bill, status, chip=chip)
+        cells = B.index_rail(jrail)
+        for s in steps + jrail:
+            s.pop("short", None)
+            s.pop("effective", None)
+        cases[name] = {"id": bill, "passage": rail, "chip": chip, "cells": cells,
+                       "steps": steps, "jrail": jrail}
+    bad = []
+    marks = {k: [(s["stop"], s["mark"]) for s in c["jrail"]] for k, c in cases.items()}
+    lines = {k: [(s["act"], s["mark"]) for s in c["steps"] if s["body"] in "HS"]
+             for k, c in cases.items()}
+    if (cases["study"]["chip"], cases["study"]["passage"]) != ("Interim Study", "Hx---") or \
+            ("House", "s") not in marks["study"] or ("study", "s") not in lines["study"]:
+        bad.append(f"HB 561's rail and lines are {marks['study']} {lines['study']}, chip "
+                   f"{cases['study']['chip']!r}, passage {cases['study']['passage']!r}")
+    if cases["table"]["chip"] != "Tabled" or ("Senate", "t") not in marks["table"] or \
+            lines["table"][-1:] != [("tabled", "t")]:
+        bad.append(f"HB 1043 on the table now reads {marks['table']} {lines['table'][-2:]}, "
+                   f"chip {cases['table']['chip']!r}")
+    if cases["died"]["chip"] != "Died" or ("Senate", "x") not in marks["died"] or \
+            ("tabled", "h") not in lines["died"] or any(m in ("s", "t") for _s, m in marks["died"]):
+        bad.append(f"HB 1043 dead on the table reads {marks['died']} {lines['died'][-2:]}")
+    if [c[0] for c in cases["study"]["cells"]][:2] != ["Ip", "Hs"] or \
+            [c[0] for c in cases["table"]["cells"]][2] != "St":
+        bad.append("the list card's stops do not carry the marks: "
+                   f"{cases['study']['cells']} {cases['table']['cells']}")
+    # THE STOP SAYS WHAT ITS MARK SAYS (the review of 8 October 2026): HB 1171
+    # of 2000, killed by the Senate on 20 April 2000, the kill reconsidered,
+    # and sent to interim study on 18 May, drew the "~" over the kill's words
+    # and day. Its "~" is dated and worded from the interim study line.
+    narr = _narrated(N, "1999-2000", "HB1171", _KILLED_THEN_STUDIED)
+    intro, steps = B.journey(narr, "HB1171", [], "", "")
+    passed = {c for c in "HS" if B.journey_state(steps, c) == "p"}
+    acted = list(dict.fromkeys(s["body"] for s in steps if s["body"] in "HS"))
+    rail = B.passage(narr["stages"], "study", "Referred for interim study", "HB1171", passed, acted)
+    jrail = B.journey_rail(intro, steps, rail, "HB1171", "Referred for interim study",
+                           chip=B.chip_word("study", "Referred for interim study", False))
+    sen = next((s for s in jrail if s["stop"] == "Senate"), {})
+    if (sen.get("mark"), sen.get("date")) != ("s", "2000-05-18") or \
+            "interim study" not in (sen.get("say") or "").lower() or \
+            "killed" in (sen.get("say") or "").lower():
+        bad.append(f"HB 1171 of 2000's Senate stop is {sen!a}, not the \"~\" of 18 May 2000 in "
+                   "the interim study line's words")
+    if ["Ss", "2000-05-18"] != (B.index_rail(jrail)[2][:2] if len(jrail) > 2 else None):
+        bad.append(f"HB 1171 of 2000's list card reads {B.index_rail(jrail)!a}")
+
+    data = json.dumps({k: {kk: c[kk] for kk in ("id", "passage", "chip", "cells", "steps", "jrail")}
+                       for k, c in cases.items()})
+    got = _app_js(
+        "(x => Object.fromEntries(Object.entries(x).map(([k, c]) => [k, {"
+        "card: scope.datedRail({id: c.id, passage: c.passage, chip: c.chip, rail: c.cells}),"
+        "page: scope.datedRail({id: c.id, passage: c.passage, chip: c.chip},"
+        " {journey: {steps: c.steps, rail: c.jrail}}),"
+        "bare: scope.rail({id: c.id, passage: c.passage, chip: c.chip}),"
+        "how: scope.journeyList({id: c.id}, {journey: {steps: c.steps}})}])))(" + data + ")",
+        names=("datedRail", "rail", "journeyList"))
+    drew = "node is not here to draw them"
+    if got is not None:
+        wave = '<b><svg class="wave"'
+        stop = lambda html, cls: re.search(rf'<span class="stop {cls}"[^>]*>\s*(<b>.*?</b>)', html, re.S)
+        for where in ("card", "page", "bare"):
+            st, tb, dd = got["study"][where], got["table"][where], got["died"][where]
+            if not (stop(st, "s-istudy") and wave in st and 'class="stop s-x"' not in st):
+                bad.append(f"HB 561's {where} rail is not the orange \"~\": {st[:300]!a}")
+            m = stop(tb, "s-ontable")
+            if not (m and m.group(1) == "<b></b>"):
+                bad.append(f"HB 1043's {where} rail on the table now is not the pause: {tb[:300]!a}")
+            if not (stop(dd, "s-x") and "✕" in dd and "s-ontable" not in dd):
+                bad.append(f"HB 1043's {where} rail, dead on the table, has lost its cross: {dd[:300]!a}")
+        said = {k: (re.search(r'aria-label="([^"]*)"', got[k]["card"]) or [None, ""])[1] for k in got}
+        if "House: sent to interim study, 7 January 2026" not in said["study"] or \
+                "interim study, interim study" in said["study"]:
+            bad.append(f"HB 561's card is heard {said['study']!a}")
+        if "Senate: on the table, 7 May 2026" not in said["table"]:
+            bad.append(f"HB 1043's card on the table is heard {said['table']!a}")
+        if "sent to interim study" not in (re.search(r'aria-label="([^"]*)"', got["study"]["page"])
+                                           or [None, ""])[1].lower():
+            bad.append("HB 561's page does not say interim study to a reader who hears it")
+        if not re.search(r'<li class="j-istudy"><span class="jg"\s*aria-hidden="true"><svg class="wave"',
+                         got["study"]["how"]):
+            bad.append(f"HB 561's How it got here line is not the bare \"~\": {got['study']['how'][-400:]!a}")
+        if not re.search(r'<li class="j-ontable"><span class="jg"\s*aria-hidden="true"></span>'
+                         r'<span class="jb">Senate', got["table"]["how"]):
+            bad.append(f"HB 1043's line on the table now is not the pause: {got['table']['how'][-400:]!a}")
+        if not re.search(r'<li class="j-h"><span class="jg"\s*aria-hidden="true">↺</span>'
+                         r'<span class="jb">Senate', got["died"]["how"]):
+            bad.append(f"HB 1043's line, dead on the table, lost its arrow: {got['died']['how'][-400:]!a}")
+        drew = "app.js draws them on the card, the page, the bare rail and How it got here"
+
+    # SHAPE, NOT INK ALONE: four filled marks, four glyphs.
+    js = Path("src/pages/app.js").read_text(encoding="utf-8")
+    css = Path("src/pages/app.css").read_text(encoding="utf-8")
+    flat = re.sub(r"/\*.*?\*/", "", css, flags=re.S)
+    mk = re.search(r'const RAILMARK=\{p:"\\u2713", x:"\\u2715", h:"", "-":"", s:WAVE, t:""\};', js)
+    if not (mk and re.search(r"const WAVE='<svg class=\"wave\"[^;]*<path ", js)):
+        bad.append("the rail's marks are not check, cross and a drawn wave, with the pause's bars drawn by CSS")
+    if not re.search(r"\.stop\.s-ontable b::after\{[^}]*border-left:2px solid var\(--surface\);"
+                     r"border-right:2px solid var\(--surface\)", flat):
+        bad.append("the pause's two bars are not drawn")
+    for sel, ink in ((".stop.s-istudy b", "st-study"), (".stop.s-ontable b", "st-table")):
+        if not re.search(re.escape(sel) + r"\{background:var\(--" + ink + r"\);border-color:var\(--"
+                         + ink + r"\)", flat):
+            bad.append(f"{sel} is not a disc filled in --{ink}")
+    if not re.search(r'"Interim Study":"s-study",\s*"Tabled":"s-table"', js) or \
+            not re.search(r"\.s-table\{background:var\(--st-table-bg\);color:var\(--st-table\)\}", flat):
+        bad.append("the Interim Study and Tabled chips are not in the marks' inks")
+    fc = re.findall(r"@media \(forced-colors: active\)\{(.*?)\n\}", css, re.S)
+    if not any(re.search(r"\.stop\.s-istudy b\{forced-color-adjust:none;background:CanvasText", b)
+               and re.search(r"\.stop\.s-ontable b::after\{border-color:CanvasText", b) for b in fc):
+        bad.append("in forced colours the \"~\" or the pause becomes the empty ring of a stop not reached")
+    pr = re.findall(r"([^{}]+)\{\s*-webkit-print-color-adjust:exact;print-color-adjust:exact\}", flat)
+    if not any(".stop.s-istudy b" in g and ".stop.s-ontable b" in g for g in pr):
+        bad.append("on paper the \"~\" or the pause prints as an empty ring")
+    # THE INKS, light and dark: the sheet's.
+    want = {"st-study": ("#B9420B", "#F59A55"), "st-table": ("#7A5A00", "#E3C46A"),
+            "st-active": ("#566290", "#A9B5E0")}
+    blocks = (css[css.index(":root{"):css.index("/* DARK:OS")],
+              css[css.index("/* DARK:OS"):css.index("/* DARK:CHOSEN")],
+              css[css.index("/* DARK:CHOSEN"):css.index("/* PALETTE END")])
+    for tok, (light, dark) in want.items():
+        for blk, hexv in zip(blocks, (light, dark, dark)):
+            if not re.search(rf"--{tok}:{hexv};", blk, re.I):
+                bad.append(f"--{tok} is not {hexv} where the sheet says")
+    assert not bad, "; ".join(bad[:4])
+    return "ok", ("HB 561's House stop and line are the orange \"~\", HB 1043 on the table now "
+                  "the yellow pause, dead on the table the cross; check, cross, wave and bars; "
+                  f"forced colours, print and the two chips kept; {drew}")
+
+
 @check("data", "every index rail keeps its stops' words apart on a phone")
 def _rails_on_a_phone():
     """_rail_on_a_phone's measure over every rail the index carries, laid out
@@ -25056,7 +25519,7 @@ def _ballot_built(build_site_v2):
                 "stages": [{"hand": h} for h in ("H:committee", "H:floor", "S:committee",
                                                  "S:floor")],
                 "events": both + extra}}))
-        (root / "ballot_results.json").write_text(json.dumps({"rows": [
+        _mk(root / "corrections" / "ballot_results.json").write_text(json.dumps({"rows": [
             _voters_row("2025-2026", "CACR5", "2026-11-03", 452307, 237221),
             _voters_row("2025-2026", "CACR7", "2026-11-03", 119104, 169439, "Question 1",
                         _MANUAL_1999)]}),
@@ -25207,7 +25670,7 @@ def _ballot_said_built():
     try:
         base, _ran = _fixture_site_whole(root)
         sos, bp, uncited, pending = _ballot_mixed_rows()
-        (root / "ballot_results.json").write_text(
+        _mk(root / "corrections" / "ballot_results.json").write_text(
             json.dumps({"rows": [sos, bp, uncited, pending]}), encoding="utf-8")
         said = {}
         for s in ("build_civics.py", "build_exports.py"):
@@ -26168,7 +26631,7 @@ def _built_site(here, root, brand=True, env=None):
     # small, tracked, and written by `probe_alignment.py --truth --score-out`,
     # which is the gate every timestamp method passes before it ships.
     for name in ("src/pages/app.css", "src/pages/app.js", "src/pages/bills.html",
-                 "src/pages/find.js", "officials.json", "alignment_score.json"):
+                 "src/pages/find.js", "corrections/officials.json", "generated/alignment_score.json"):
         if (here / name).exists():
             (root / name).parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(here / name, root / name)
@@ -30838,6 +31301,184 @@ def _session_clause_names_question(SD, BSP):
                   "pointer without a roll call; a removal said and no more")
 
 
+# Real rows: Docket.txt 259, 1263, 2361, 3183, 11673 and 13226 (SB 39 of 2025,
+# re-referred on the Senate's consent calendar of 13 February 2025 and sent to
+# interim study on 7 January 2026); Docket_2015-2016.txt 17031-17034 (SB 18 of
+# 2015, re-referred on 12 February 2015); Docket.txt 907, 3843, 11604 and 13115
+# (HB 561, sent to interim study on the House's consent calendar of 7 January
+# 2026).
+_CONSENT_REREFERRED = {
+    ("SB39", "2025-2026"): [
+        "2026|0488|1/7/2025 1:25:06 PM|SB39|S|  Introduced 01/08/2025 and Referred to Transportation;  SJ 2|1/8/2025 11:28:18 AM",
+        "2026|0488|1/22/2025 4:01:45 PM|SB39|S| Hearing: 01/28/2025, Room 101, LOB, 01:00 pm;  SC 7|1/22/2025 4:01:45 PM",
+        "2026|0488|2/5/2025 3:28:48 PM|SB39|S|Committee Report: Rereferred to Committee, 02/13/2025; Vote 5-0; CC; SC 9|2/5/2025 3:28:48 PM",
+        "2026|0488|2/13/2025 2:01:33 PM|SB39|S|Rereferred to Committee, MA, VV; 02/13/2025;  SJ 5|2/13/2025 2:01:33 PM",
+        "2026|0488|10/29/2025 2:57:50 PM|SB39|S|Committee Report: Referred to Interim Study, 01/07/2026; Vote 5-0; CC;  SC 46|12/9/2025 2:09:44 PM",
+        "2026|0488|1/7/2026 11:46:13 AM|SB39|S|Refer to Interim Study, MA, VV; 01/07/2026;  SJ 1|1/7/2026 11:46:13 AM"],
+    ("SB18", "2015-2016"): [
+        "2016|0886|1/7/2015 12:00:00 AM|SB18|S|Introduced and Referred to Commerce; SJ 2|1/7/2015 12:00:00 AM",
+        "2016|0886|1/15/2015 12:00:00 AM|SB18|S|Hearing: 1/22/15, Room 101, LOB, 9:00 a.m.; SC6|1/15/2015 12:00:00 AM",
+        "2016|0886|2/5/2015 12:00:00 AM|SB18|S|Committee Report: Rereferred to Committee, 2/12/15; Vote 5-0; CC; SC9|2/5/2015 12:00:00 AM",
+        "2016|0886|2/12/2015 12:00:00 AM|SB18|S|Rereferred to Committee, MA, VV, SJ 5|2/12/2015 12:00:00 AM"],
+    ("HB561", "2025-2026"): [
+        "2026|0001|1/16/2025 9:07:34 AM|HB561|H|  Introduced (in recess of) 01/09/2025 and referred to Public Works and Highways  HJ 3  P. 16|2/18/2025 2:56:59 PM",
+        "2026|0001|2/25/2025 10:06:33 AM|HB561|H|Retained in Committee|2/25/2025 10:06:33 AM",
+        "2026|0001|10/20/2025 2:38:48 PM|HB561|H| Committee Report: Refer for Interim Study  10/14/2025 (Vote 16-0; CC)  HC 51  P. 16|12/19/2025 2:00:07 PM",
+        "2026|0001|1/7/2026 11:32:01 AM|HB561|H|Refer for Interim Study: MA VV 01/07/2026  HJ 1  P. 77|3/27/2026 3:15:36 PM"],
+}
+
+
+@check("session", "a re-referral on a consent calendar is listed as sent back to committee, "
+                  "and only a referral to interim study as sent to interim study",
+       needs=("narrative", "session_days", "build_session_pages"))
+def _consent_rereferral_not_study(N, SD, BSP):
+    """THE REVIEW OF 8 OCTOBER 2026. The consent calendar's list on a sitting
+    page groups its bills by what the motion did (build_session_pages.SHORT),
+    and "re-refer" and "rerefer" were in the interim study row: every Senate
+    "Rereferred to Committee, MA, VV" was listed under "Sent to interim
+    study" -- 160 entries on the Senate's pages, 32 of them this term -- for
+    bills the Senate had sent back to the committee that reported them, as
+    each bill's own How it got here says ("Sent back to committee"). SB 39 of
+    2025 was re-referred on 13 February 2025 and sent to interim study on 7
+    January 2026, and each day's list says its own. Read from the real rows,
+    through the reader and the sitting's Item, as the build reads them."""
+    import html as _html
+    got, bad = {}, []
+    for (bill, term), lines in _CONSENT_REREFERRED.items():
+        told = _narrated(N, term, bill, lines)
+        for e in told["events"]:
+            if e.get("type") != "floor" or e.get("cancelled"):
+                continue
+            it = SD.Item(bill, term, e, 0)
+            it.consent = True
+            page = BSP.consent_html([it], [], {}, {(term, bill): int(term[5:])}, _html.escape)
+            heads = re.findall(r'<h3 class="slab">(.*?) &mdash; \d+</h3>', page)
+            got[(bill, e.get("date"))] = heads
+    want = {("SB39", "2025-02-13"): ["Sent back to committee"],
+            ("SB18", "2015-02-12"): ["Sent back to committee"],
+            ("HB561", "2026-01-07"): ["Sent to interim study"]}
+    for k, heads in want.items():
+        if got.get(k) != heads:
+            bad.append(f"{k[0]} on {k[1]} is listed under {got.get(k)}, not {heads}")
+    if any(h == ["Sent to interim study"] for (b, d), h in got.items()
+           if (b, d) in (("SB39", "2025-02-13"), ("SB18", "2015-02-12"))):
+        bad.append("a Senate re-referral is listed as sent to interim study")
+    for words, head in (("Rerefer to Interim Study", "Sent to interim study"),
+                        ("Re-Refer to Committee", "Sent back to committee")):
+        it = SD.Item("SB1", "2025-2026", {"type": "floor", "body": "S", "action": words,
+                                          "motion": "MA", "vote_kind": "VV", "raw": words}, 0)
+        if BSP.short_outcome(it) != head:
+            bad.append(f"{words!r} is listed under {BSP.short_outcome(it)!r}, not {head!r}")
+    assert not bad, "; ".join(bad)
+    return "ok", ("SB 39 of 2025 and SB 18 of 2015, re-referred on the Senate's consent "
+                  "calendar, are listed as sent back to committee; HB 561's referral to "
+                  "interim study as sent to interim study")
+
+
+# Real rows, from the enrolment on: Docket.txt 23929, 23976, 24543, 25150,
+# 25151 and 25228 (SB 468 of 2026, "Law Without Signature"); 24809, 24853,
+# 25064, 25128, 25153 and 25229 (HB 1102, "Enacted in accordance with Article
+# 44 ..."); Docket_db_1999-2000.txt 12073-12079 (SB 153 of 2000: "Vetoed by the
+# Govenor", "Governers", "= VETO OVERRIDE="); Docket_db_2003-2004.txt 4184-4189
+# (HB 724 of 2003, "Veto Override,SJ 22") and 11055-11061 (HB 520 of 2004, the
+# Senate's answer on a row under its question); Docket.txt 10295, 10336 and
+# 10677 (HB 81 of 2025, which the governor neither signed nor returned).
+_OVERRIDDEN_LAWS = {
+    ("SB468", "2025-2026"): [
+        "2026|2244|5/28/2026 9:44:36 AM|SB468|S|Enrolled Adopted, VV, (In recess 05/21/2026);  SJ 14|5/28/2026 2:01:27 PM",
+        "2026|2244|5/28/2026 1:58:49 PM|SB468|H|Enrolled (in recess of) 05/21/2026  HJ 14  P. 34|7/27/2026 12:57:17 PM",
+        "2026|2244|6/19/2026 3:37:48 PM|SB468|S|Vetoed by Governor 06/12/2026|6/19/2026 3:37:48 PM",
+        "2026|2244|8/19/2026 3:23:03 PM|SB468|S|Notwithstanding the Governor's Veto, Shall SB 468 Become Law: RC 16Y-8N, Veto Overridden by necessary two-thirds vote; 08/19/2026;  SJ 15|8/19/2026 3:30:05 PM",
+        "2026|2244|8/19/2026 3:23:15 PM|SB468|H|Veto Overridden 08/19/2026: RC 257-44 by Required Two-Thirds Vote  HJ 16  P. 58|9/4/2026 11:12:45 AM",
+        "2026|2244|8/20/2026 3:32:29 PM|SB468|S|Law Without Signature 08/19/2026; Chapter 344; Effective 08/19/2026; Art 44, Pt II, NH Constitution|8/20/2026 3:32:29 PM"],
+    ("HB1102", "2025-2026"): [
+        "2026|2492|6/30/2026 10:45:10 AM|HB1102|S|Enrolled Adopted, VV, (In recess 06/04/2026);  SJ 15|6/30/2026 10:45:10 AM",
+        "2026|2492|7/1/2026 9:07:05 AM|HB1102|H|Enrolled (in recess of) 06/04/2026  HJ 15  P. 56|8/31/2026 10:51:04 AM",
+        "2026|2492|7/16/2026 1:44:58 PM|HB1102|H|Vetoed by Governor Ayotte 07/10/2026|7/16/2026 1:44:58 PM",
+        "2026|2492|8/19/2026 11:23:40 AM|HB1102|H|Veto Overridden 08/19/2026: RC 231-88 by Required Two-Thirds Vote  HJ 16  P. 21|9/4/2026 10:05:34 AM",
+        "2026|2492|8/19/2026 3:24:12 PM|HB1102|S|Notwithstanding the Governor's Veto, Shall HB 1102 Become Law: RC 24Y-0N, Veto Overridden by necessary two-thirds vote; 08/19/2026;  SJ 15|8/19/2026 3:24:12 PM",
+        "2026|2492|8/20/2026 4:26:09 PM|HB1102|H|Enacted in accordance with Article 44 PartII of the N.H. Constitution without the signature of the governor. Chapter 338;eff.  I. Sec 2 eff 1/1/27  II. Sec 3 eff 1/1/27   III. Rem eff 1/1/28|8/20/2026 4:26:09 PM"],
+    ("SB153", "1999-2000"): [
+        "2000|0879|05/31/2000 03:29:03 PM|SB153|S|Enrolled Bill, Adopted; SJ 16, Pg.624|05/31/2000 03:29:03 PM",
+        "2000|0879|05/31/2000 03:54:21 PM|SB153|H|Enrolled;  HJ50, p1567|05/31/2000 03:54:21 PM",
+        "2000|0879|07/05/2000 10:29:40 AM|SB153|S|Vetoed by the Govenor;|07/05/2000 10:29:40 AM",
+        "2000|0879|07/12/2000 04:39:41 PM|SB153|S|Notwithstanding the Governers Veto Shall the Bill Pass;          RC 18y - 5n;   = VETO OVERRIDE=|07/12/2000 04:39:41 PM",
+        "2000|0879|07/12/2000 04:51:48 PM|SB153|S|SJ 17, Pg.628-629|07/12/2000 04:51:48 PM",
+        "2000|0879|07/12/2000 09:14:36 PM|SB153|H|Governor's Veto Overridden RC(243-71);  HJ56, p1756-1757|07/12/2000 09:14:36 PM",
+        "2000|0879|07/12/2000 09:21:52 PM|SB153|S|Became Law Without Signature on   7/12/2000   Eff:  7/1/2001   Chap:  0328|07/12/2000 09:21:52 PM"],
+    ("HB724", "2003-2004"): [
+        "2003|0538|06/24/2003 10:27:21 AM|HB724|S|Enrolled; SJ 20, Pg.828|06/24/2003 10:27:21 AM",
+        "2003|0538|06/24/2003 10:45:34 AM|HB724|H|Enrolled;  HJ 51, p1615|06/24/2003 10:45:34 AM",
+        "2003|0538|07/08/2003 09:49:19 AM|HB724|H|Vetoed by the Governor on 7/8/2003;  (Veto message printed  HC 53, p1655-1656)|07/08/2003 09:49:19 AM",
+        "2003|0538|09/04/2003 10:52:49 AM|HB724|H|Veto Overridden  RC(251-101);  HJ 74, p 1896-1898|09/04/2003 10:52:49 AM",
+        "2003|0538|09/04/2003 11:36:36 AM|HB724|S|Notwithstanding the Governors Veto Shall the Bill Become Law, RC 23Y- 1N,Veto Override,SJ 22, Pg.875|09/04/2003 11:36:36 AM",
+        "2003|0538|09/04/2003 02:31:36 PM|HB724|H|Became Law Without Signature on 9/4/2003 Eff: 6/30/2003 Chap: 0320|09/04/2003 02:31:36 PM"],
+    ("HB520", "2003-2004"): [
+        "2004|0399|05/06/2004 01:19:38 PM|HB520|S|Enrolled; SJ 15, Pg.449|05/06/2004 01:19:38 PM",
+        "2004|0399|05/06/2004 03:22:47 PM|HB520|H|Enrolled;  HJ 39, p 1541|05/06/2004 03:22:47 PM",
+        "2004|0399|05/17/2004 02:15:35 PM|HB520|H|Vetoed by the Governor;  (Veto message printed:  HC 40, p 1566)|05/17/2004 02:15:35 PM",
+        "2004|0399|06/17/2004 11:02:39 AM|HB520|H|Veto Overridden RC(290-52);  HJ 46, p 1655-1657|06/17/2004 11:02:39 AM",
+        "2004|0399|06/17/2004 11:11:33 AM|HB520|S|Notwithstanding the Governors Veto Shall the Bill Become Law; SJ 17, Pg.584|06/17/2004 11:11:33 AM",
+        "2004|0399|06/17/2004 11:50:41 AM|HB520|S|2/3 nec. RC 18Y-6N, Veto Overridden; SJ 17, Pg.584|06/17/2004 11:50:41 AM",
+        "2004|0399|06/17/2004 12:51:56 PM|HB520|H|Became Law Without Signature on   6/17/2004   Eff:  1/1/2005   Chap: 0261|06/17/2004 12:51:56 PM"],
+    ("HB81", "2025-2026"): [
+        "2025|0105|6/16/2025 9:18:15 AM|HB81|S|Enrolled Adopted, VV, (In recess 06/12/2025);  SJ 17|6/16/2025 9:18:15 AM",
+        "2025|0105|6/16/2025 10:16:37 AM|HB81|H|Enrolled (in recess of) 06/12/2025  HJ 17  P. 24|7/15/2025 10:47:26 AM",
+        "2025|0105|6/27/2025 11:32:38 AM|HB81|H|Enacted in accordance with Article 44 Part II of the N.H. Constitution without the signature of the governor June 26 2025|6/27/2025 11:32:38 AM"],
+}
+# The override each chamber cast, as the history says it: (chamber, tally).
+_OVERRIDDEN_TOLD = {"SB468": [("Senate", "16–8"), ("House", "257–44")],
+                    "HB1102": [("House", "231–88"), ("Senate", "24–0")],
+                    "SB153": [("Senate", "18–5"), ("House", "243–71")],
+                    "HB724": [("House", "251–101"), ("Senate", "23–1")],
+                    "HB520": [("House", "290–52"), ("Senate", "18–6")]}
+
+
+@check("narrative", "a law the chambers made over a veto is told as vetoed and overridden in "
+                    "each chamber, never as one the governor neither signed nor returned",
+       needs=("narrative",))
+def _override_is_not_a_pocket_law(N):
+    """THE REVIEW OF 8 OCTOBER 2026. Part II, Article 44 makes a bill law two
+    ways -- the governor keeps it past five days, or returns it with a veto
+    two thirds of each chamber then overrule -- and the docket records both in
+    the same words: "Law Without Signature" (SB 468 of 2026), "Enacted in
+    accordance with Article 44 ... without the signature of the governor"
+    (HB 1102), "Became Law Without Signature" (the 1999-2006 readers). Every
+    such row was told "The governor neither signed it nor returned it", on 17
+    histories whose veto the chambers had overridden, 7 of them this term. And
+    on the seven of 1999-2004 the Senate's override was read by nothing: its
+    clerk wrote "Governers", "= VETO OVERRIDE=", "Veto Override", or the
+    answer on a row under its question (docket_era_1999.VETO_S_OLD and
+    VETO_S_OLD_ANSWER). Each is told from its real rows here: both chambers'
+    overrides with their counts, and the law as made over the veto; and a
+    bill the governor did neither sign nor return keeps the sentence that is
+    true of it."""
+    bad = []
+    for (bill, term), lines in _OVERRIDDEN_LAWS.items():
+        told = _narrated(N, term, bill, lines)
+        text = " ".join(s["text"] for s in told["stages"])
+        last = told["stages"][-1]["text"] if told["stages"] else ""
+        if bill == "HB81":
+            if "neither signed it nor returned it" not in last or "veto" in text.lower():
+                bad.append(f"HB 81 of 2025, a law the governor let pass, reads {last[:120]!r}")
+            continue
+        if "neither signed it nor returned it" in text:
+            bad.append(f"{bill} of {term} says the governor neither signed nor returned it")
+        if not last.startswith("It became law over the governor's veto"):
+            bad.append(f"{bill} of {term} ends {last[:90]!r}")
+        for chamber, tally in _OVERRIDDEN_TOLD[bill]:
+            if f"the {chamber} voted {tally} to override the governor's veto" not in text:
+                bad.append(f"{bill} of {term} does not tell the {chamber}'s override, {tally}")
+        order = " and the ".join(c for c, _t in _OVERRIDDEN_TOLD[bill])
+        if f"the {order} each overrode the veto" not in last:
+            bad.append(f"{bill} of {term}'s last sentence does not name both chambers, "
+                       f"in the order they overrode it: {last[:160]!r}")
+    assert not bad, "; ".join(bad)
+    return "ok", ("SB 468 and HB 1102 of 2026, SB 153 of 2000, HB 724 of 2003 and HB 520 of "
+                  "2004 each tell both chambers' overrides and a law made over the veto; "
+                  "HB 81 of 2025 keeps the governor's silence")
+
+
 # Real rows, as narrative.py reads them (body, date, the type the reader gives
 # the row, raw): Docket.txt 25128 and 25153 (HB 1102 of 2026), 25146 and 25149
 # (SB 434); Docket_db_2011-2012.txt 2320-2321 (SB 88), 6971-6972 (SB 57) and
@@ -30963,11 +31604,11 @@ def _organization_day_votes(P, BD, SD, BSP):
                                                  encoding="utf-8")
         (tmp / "RollCallHistory.txt").write_text(
             "2026|H|400|123456|10001|x|1|\n2027|H|1|123456|10001|x|1|\n", encoding="utf-8")
-        (tmp / "rollcalls").mkdir()
-        (tmp / "rollcalls" / "RollCallSummary_2026.txt").write_text(
+        (tmp / "records" / "rollcalls").mkdir(parents=True)
+        (tmp / "records" / "rollcalls" / "RollCallSummary_2026.txt").write_text(
             "2026|H|300|8/19/2026 2:58:41 PM|SB434|165|140|0|95|||Override|relative to school materials|\n",
             encoding="utf-8")
-        (tmp / "rollcalls" / "RollCallHistory_2026.txt").write_text(
+        (tmp / "records" / "rollcalls" / "RollCallHistory_2026.txt").write_text(
             "2026|H|300|123456|10001|x|1|\n", encoding="utf-8")
         left = Counter()
         import contextlib, io
@@ -30985,7 +31626,7 @@ def _organization_day_votes(P, BD, SD, BSP):
             bad.append(f"Organization Day's roll call is counted as a row left out: {dict(left)}")
         # rollcall_parser keys each roll call by its term, as rollcalls.json is.
         r = _run([sys.executable, _paths.script("rollcall_parser.py"), "--file",
-                  "RollCallSummary.txt", "--dir", "rollcalls", "--all", "--out", "rollcalls.json"],
+                  "RollCallSummary.txt", "--dir", "records/rollcalls", "--all", "--out", "rollcalls.json"],
                  cwd=str(tmp), capture_output=True)
         got = json.loads((tmp / "rollcalls.json").read_text(encoding="utf-8")) \
             if (tmp / "rollcalls.json").exists() else {}
@@ -38200,7 +38841,10 @@ def _chip_drawn():
     assert "threw" not in got, f"drawing the chips threw {got['threw']}"
     bad = []
     chips = re.findall(r'<span class="cstat ([^"]*)">([^<]*)</span>', got["list"])
-    want = {("s-done", "Died"), ("s-active", "Tabled"), ("s-active", "In committee"),
+    # Tabled in the yellow of the rail's pause (8 October 2026: graphite at
+    # first, then the person's yellow), and a stage still moving in slate blue
+    # from the same evening, so the two are not one ink.
+    want = {("s-done", "Died"), ("s-table", "Tabled"), ("s-active", "In committee"),
             ("s-done", "Withdrawn"), ("s-law", "Became Law"), ("s-veto", "Vetoed"),
             ("s-study", "Interim Study")}
     if set(chips) != want or len(chips) != 8:
@@ -40633,7 +41277,7 @@ def _kit_unmatched_says(CL, unmatched):
             + ('If the files do not exist yet, add "optional": true to that entry; if they '
                "should exist, the laptop job that makes them has not run."
                if e["owner"] == "laptop" else
-               "The night's files reach this laptop with python3 cloud.py pull; if no night "
+               "The night's files reach this laptop with python3 src/ops/cloud.py pull; if no night "
                'has made them yet, add "optional": true to that entry.'))
     return lines
 
@@ -45666,7 +46310,7 @@ def _site_chips(B):
         rows += [r for r in json.loads(f.read_text(encoding="utf-8")) if not r.get("lsr")]
     terms = sorted({r.get("term") or "" for r in rows} - {""})
     current = terms[-1] if terms else ""
-    over = B.session_over_in(B.session_over("status/status.txt"), current)
+    over = B.session_over_in(B.session_over("corrections/status/status.txt"), current)
     six = set(B.CHIP_WORDS)
     bad, n, per = [], Counter(), Counter()
     unbuilt = [f"{r.get('term')} {r.get('id')}" for r in rows if "chip" not in r]
@@ -50176,7 +50820,18 @@ def _using_this_site_tabs(civics):
     votes = votes[:votes.index("</li>")]
     assert "appear in the narrative" not in votes and "voice or division vote" in votes, (
         "Using this site says the voice and division votes are not on the Votes tab: " + votes)
-    return "ok", f"names {', '.join(named)}, each a tab the page draws"
+    # AND EVERY OTHER CIVICS PAGE (the review of 8 October 2026). Using this
+    # site was mended and two pages were not: State agencies said "the bill's
+    # Videos tab links the recording", and Testifying "the Videos tab links
+    # it", of a tab the page calls Hearings. Every "the bill's X tab" and "the
+    # X tab" in civics' prose names a tab app.js draws.
+    prose = " ".join(v for k, v in vars(civics).items()
+                     if k.startswith("BODY_") and isinstance(v, str))
+    said = set(re.findall(r"\bthe (?:bill's )?((?:[A-Z][a-z]+ )?[A-Z][a-z]+) tab\b", prose))
+    stale = sorted(t for t in said if t not in drawn and t != "Bill Text")
+    assert not stale, f"the civics pages name tabs a bill's page does not have: {stale}"
+    return "ok", (f"names {', '.join(named)}, each a tab the page draws, and the other civics "
+                  f"pages name {', '.join(sorted(said)) or 'no tab'}")
 
 
 @check("frontend", "each count of bills filed in a term says what it counts: the bills and "
@@ -50809,7 +51464,8 @@ def _video_starts_on_the_right_clock(fetch_channel_index):
     """
     import csv as _csv
     bad, n = [], 0
-    for p in sorted(Path(".").glob("videos_*.csv")):
+    import proceedings as _P
+    for p in _P.video_indexes():
         rows = list(_csv.DictReader(p.open(encoding="utf-8", newline="")))
         if not rows or "actual_start_utc" not in rows[0] or "start_eastern" not in rows[0]:
             continue
@@ -51155,7 +51811,7 @@ def _every_fetcher_notes_refusal():
         # the LSR fetch did not notice the block page, and on its postback
         # asked for the results page next. Two roll calls, a chamber each.
         "fetch_rollcall_parties": (["--budget", "5", "--delay", "0"], files(**{
-            "rollcalls/RollCallSummary_2004.txt":
+            "records/rollcalls/RollCallSummary_2004.txt":
                 "2004|H|46|x|HB1|200|150|0|50|x\n2004|S|12|x|SB1|20|4|0|0|x\n"}),
             {"403": 1, "503": 1, "block": 1, "drop": 2}),
         "fetch_lsrs": ([], None, {"403": 1, "503": 1, "block": 1}),
@@ -52371,7 +53027,7 @@ def _running_oneliner():
     # running must see them.
     for want in (r"python3 watchers\gc_lane.py", "python3 nightly.py --no-fetch",
                  "python3 src/fetch/gc_web/fetch_legislation.py --all", "python3 src/fetch/gc_web/snapshot_gencourt.py",
-                 r"cmd /c publish.bat", "python3 cloud.py pull",
+                 r"cmd /c publish.bat", "python3 src/ops/cloud.py pull",
                  r"python3 watchers\captions_watch.py", "python3 probe_archive.py",
                  "python3 src/fetch/gc_db/probe_db.py --sample", "python3 src/fetch/gc_web/resolve_members.py"):
         assert pattern.search(want), f"the one-liner would not list: {want}"
@@ -52526,6 +53182,12 @@ ok("the Co-sponsored tab is accepted", validate({ ...good, tab: "Co-sponsored (1
    validate({ ...good, tab: "Co-sponsored (12)" }).tab === "Co-sponsored");
 ok("a count in another locale's digits", validate({ ...good, tab: "Votes (1.081)" }) !== null);
 ok("a tab the pages do not render", validate({ ...good, tab: "Owner verified close all" }) === null);
+// The bill's Hearings tab by its name (8 October 2026), and by the name it had
+// on a page loaded before the rename, stored as the name it has now.
+ok("the Hearings tab is accepted as itself", validate({ ...good, tab: "Hearings (3)" }) &&
+   validate({ ...good, tab: "Hearings (3)" }).tab === "Hearings");
+ok("the tab's old name is stored as Hearings", validate({ ...good, tab: "Videos (3)" }) &&
+   validate({ ...good, tab: "Videos (3)" }).tab === "Hearings");
 ok("a variation selector is hidden text",
    cleanNote("the date" + String.fromCodePoint(0xFE0F) + " is wrong").hidden === true);
 const full = { DB: { prepare: sql => ({ bind: () => ({ first: async () => null,
@@ -52982,9 +53644,32 @@ def _report_agree(CR):
     rendered = set(re.findall(r'\["(Prime sponsored|Co-sponsored|Votes|Bills|Sessions|Meetings)"', app))
     rendered |= {t for t in ("Summary", "Bill Text", "Votes", "Videos", "Reports", "Sponsors", "Documents")
                  if re.search(rf">{t}(\$\{{|<)", app)}
+    # READ OFF THE BUTTONS, NOT OFF A LIST OF NAMES (8 October 2026). The
+    # names above were the tabs as they stood on 12 September; when the bill's
+    # third tab became Hearings the list still said Videos, found no Videos
+    # drawn, and passed while the box sent no tab from Hearings. Every bill
+    # tab's button is `data-t="N">Label`, so the label is read from there.
+    rendered |= set(re.findall(r'role="tab"[^>]*data-t="\d+">([A-Z][A-Za-z ]*?)(?:\$\{|<)', app))
+    assert "Hearings" in rendered, "the bill's Hearings tab is no longer found among the tabs drawn"
     assert rendered <= box_tabs, f"a tab the pages render is missing from the report list: {sorted(rendered - box_tabs)}"
+    # A TAB'S OLD NAME (report.js RENAMED_TABS): a page loaded before a rename
+    # still sends it, and a report stored under it stays readable, under the
+    # name the tab has now.
+    rm = re.search(r"const RENAMED_TABS = new Map\(\[(.*?)\]\);", js, re.S)
+    assert rm, "report.js has no RENAMED_TABS"
+    fn_renamed = dict(re.findall(r'\[\s*"([^"]+)"\s*,\s*"([^"]+)"\s*\]', rm.group(1)))
+    assert fn_renamed == CR.RENAMED_TABS, (fn_renamed, CR.RENAMED_TABS)
+    assert all(new in fn_tabs and old not in fn_tabs and old not in rendered
+               for old, new in fn_renamed.items()), fn_renamed
+    stored = {"id": 7, "at": "2026-09-30T12:00:00.000Z", "record": "bill:2026/HB100",
+              "kind": "bill", "url": "/bill/2026/hb100", "tab": "Videos", "field": "hearing",
+              "note": "The hearing was on the 3rd.", "build": "", "hidden": 0}
+    assert CR.well_formed(stored), "a report stored from the Videos tab is set aside as malformed"
+    assert [r["tab"] for r, _why, _page in CR.judge([stored], {})[0]] == ["Hearings"], (
+        "a report stored from the Videos tab is not shown as the Hearings tab's")
     return "ok", (f"{len(fn_fields)} fields, one record shape, {len(sent)} keys sent and read, "
-                  f"{len(box_tabs)} tabs the same in all three")
+                  f"{len(box_tabs)} tabs the same in all three, {len(rendered)} drawn; "
+                  f"{', '.join(sorted(fn_renamed))} read as {', '.join(fn_renamed[k] for k in sorted(fn_renamed))}")
 
 
 REPORT_PAGES_TEST = r"""
@@ -53342,7 +54027,7 @@ def _triage_file_name(CR, NI):
     # September 2026, so a clone and GitHub's machine check the other two.
     rules = [d for d in ("reports/TRIAGE.md",) if Path(d).exists()]
     for doc in ("nightly.py", *rules, "compile_reports.py"):
-        text = Path(doc).read_text(encoding="utf-8")
+        text = _paths.locate(doc).read_text(encoding="utf-8")
         named = re.findall(r"reports/(triage-[A-Za-z0-9<>_-]+\.md)", text)
         assert named, f"{doc} no longer names the triage file"
         for n in named:
@@ -56564,7 +57249,7 @@ def _freeze_term(FT, P):
 
         FT.freeze_session(T)
         for p in (f"Docket_{T}.txt", f"verification_manifest_{T}.csv",
-                  "rollcalls/RollCallSummary_2026.txt", "rollcalls/RollCallHistory_2026.txt",
+                  "records/rollcalls/RollCallSummary_2026.txt", "records/rollcalls/RollCallHistory_2026.txt",
                   f"frozen/{T}/day/Members.txt", f"frozen/{T}/manifest.json"):
             assert Path(p).exists(), f"--session did not write {p}"
         assert FT.intact(".", T) == [] and FT.ready()[0], FT.ready()
@@ -56886,7 +57571,8 @@ def _turn_on_a_fixture(FT, P, BA, FTD, BPR, RC, TFD):
                             sponsors, ["2025|0001|1|1|1", "2026|0002|1|3|1"], summary, history))
         Path("verification_manifest.csv").write_text("bill,sched_date\nHB1,2025-01-05\n",
                                                      encoding="utf-8")
-        shutil.copy2(here / "member_corrections.json", "member_corrections.json")
+        shutil.copy2(here / "corrections" / "member_corrections.json",
+                     _mk(Path("corrections") / "member_corrections.json"))
         # A bill the House withdrew, which the General Court's files do not
         # carry, its sponsor as the House Journal printed him (member 4).
         Path("journal_bills.json").write_text(json.dumps({T: {"HB9": {
@@ -57195,8 +57881,8 @@ def _sponsors_who_left():
             files[name] = _turn_day(fx[name])
         for n, b in files.items():
             (tmp / n).write_bytes(b)
-        (tmp / "rollcalls").mkdir()
-        (tmp / "rollcalls" / "RollCallHistory_2024.txt").write_bytes(
+        (tmp / "records" / "rollcalls").mkdir(parents=True)
+        (tmp / "records" / "rollcalls" / "RollCallHistory_2024.txt").write_bytes(
             _turn_day(fx["RollCallHistory_2024.txt"]))
         db = tmp / "db"
         db.mkdir()
@@ -57210,7 +57896,8 @@ def _sponsors_who_left():
             encoding="utf-8")
         for name in ("former_members.json", "past_members.json", "bill_status.json"):
             (tmp / name).write_text(json.dumps(fx[name]), encoding="utf-8")
-        shutil.copy2(here / "member_corrections.json", tmp / "member_corrections.json")
+        shutil.copy2(here / "corrections" / "member_corrections.json",
+                     _mk(tmp / "corrections" / "member_corrections.json"))
         (tmp / "verification_manifest.csv").write_text("bill,sched_date\n", encoding="utf-8")
         r = _run([sys.executable, _paths.script("build_data.py"), "--dir", ".", "--out", "data"],
                  cwd=tmp, capture_output=True, text=True, encoding="utf-8", errors="replace",
@@ -57391,7 +58078,7 @@ def _session_over_current(P, BSV):
     line left in ends no 2027 bill; this is the reminder, the CACR 13
     paragraph's kind, that once the session's files are the next term's the
     line, the headline, the phase and the note are last term's words."""
-    day = BSV.session_over("status/status.txt")
+    day = BSV.session_over("corrections/status/status.txt")
     if not day:
         return "skip", "no session_over line in status/status.txt"
     sess = P.session_term(".")
@@ -64632,7 +65319,7 @@ def _workflows_site_handoff():
             for verb, into in (("site-up", up), ("site-down", down)):
                 if f"cloud.py {verb}" not in body:
                     continue
-                assert re.search(rf"python cloud\.py {verb} --run \$env:RUN_ID\s*$", body, re.M) \
+                assert re.search(rf"python src/ops/cloud\.py {verb} --run \$env:RUN_ID\s*$", body, re.M) \
                     and "RUN_ID: ${{ github.run_id }}" in body, (
                         f"{f.name}: job {j} runs cloud.py {verb} under a name that is not "
                         "the run's own id")
@@ -64657,12 +65344,12 @@ NEW_TERM_FLAG = "          if ($env:NEW_TERM -eq 'true') { $flags += '--new-term
 # this order, and nothing else of New term anywhere.
 NEW_TERM_HOLD = ["          $hold = @()",
                  "          if ($env:NEW_TERM -eq 'true') { $hold = @('--hold', $env:RUN_ID) }",
-                 "          python cloud.py kit-up @hold",
+                 "          python src/ops/cloud.py kit-up @hold",
                  "          exit $LASTEXITCODE"]
 NEW_TERM_RELEASE_IF = "        if: env.NEW_TERM == 'true'"
-NEW_TERM_RELEASE = ["          python cloud.py kit-release --run $env:RUN_ID",
+NEW_TERM_RELEASE = ["          python src/ops/cloud.py kit-release --run $env:RUN_ID",
                     "          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }",
-                    "          python cloud.py state-up",
+                    "          python src/ops/cloud.py state-up",
                     "          exit $LASTEXITCODE"]
 RUN_ID_ENV = "          RUN_ID: ${{ github.run_id }}"
 
@@ -65718,7 +66405,7 @@ def _pulled_night_findings(logs, cloud, now, since=None):
     if not rec and not verdict:
         grace, ago = _grace(since, now)
         said = (f"this laptop stood down {ago}, and nothing has been pulled from the bucket "
-                "since: python3 cloud.py pull brings GitHub's nights here, and this check "
+                "since: python3 src/ops/cloud.py pull brings GitHub's nights here, and this check "
                 "reads them")
         if grace:
             return None, said + f" (it skips for {STANDDOWN_GRACE_HOURS} hours after the stand-down)"
@@ -65750,7 +66437,7 @@ def _pulled_night_findings(logs, cloud, now, since=None):
     problems = []
     if newest is None:
         problems.append(
-            f"The last pull ({since}) brought no night's log or verdict here. python3 cloud.py "
+            f"The last pull ({since}) brought no night's log or verdict here. python3 src/ops/cloud.py "
             "pull brings them; if it finds none, the nightly on GitHub has not sent any (its "
             "Actions tab says why), and starting it is the person's decision. It clears when a "
             "pull brings a night from the last 48 hours.")
@@ -65761,9 +66448,9 @@ def _pulled_night_findings(logs, cloud, now, since=None):
             problems.append(
                 f"The newest night this laptop has, from {what}, started "
                 f"{newest:%Y-%m-%d %H:%M}, {hours:.0f} hours ago. "
-                + ("The last pull from the bucket was " + since + ": python3 cloud.py pull "
+                + ("The last pull from the bucket was " + since + ": python3 src/ops/cloud.py pull "
                    "brings the nights since. " if old_pull else
-                   f"python3 cloud.py pull ran {since} and found nothing newer, so the nightly "
+                   f"python3 src/ops/cloud.py pull ran {since} and found nothing newer, so the nightly "
                    "on GitHub has stopped, or stopped reaching kit-up, which sends its log: its "
                    "Actions tab says which. Starting it again is the person's decision; do not "
                    "run nightly.py here, which refuses on a stood-down laptop anyway. ")
@@ -65804,7 +66491,7 @@ def _pulled_night_selftest():
         assert _pulled_night_findings(logs, cloud, now, now - timedelta(hours=20))[0] is None, \
             "never pulled, the day after the stand-down, was not a skip"
         p = _pulled_night_findings(logs, cloud, now, now - timedelta(hours=49))[0]
-        assert p and len(p) == 1 and "python3 cloud.py pull" in p[0], \
+        assert p and len(p) == 1 and "python3 src/ops/cloud.py pull" in p[0], \
             f"never pulled, 49 hours after the stand-down, did not fail naming the pull: {p}"
         assert _pulled_night_findings(logs, cloud, now, None)[0], \
             "never pulled, with no stand-down date to go by, was a skip"
@@ -65812,7 +66499,7 @@ def _pulled_night_selftest():
         assert _pulled_night_findings(logs, cloud, now)[0] == [], "a night from this morning failed"
         pulled(now - timedelta(days=3), "2026-09-27")
         p = _pulled_night_findings(logs, cloud, now)[0]
-        assert len(p) == 1 and "python3 cloud.py pull brings" in p[0], p
+        assert len(p) == 1 and "python3 src/ops/cloud.py pull brings" in p[0], p
         pulled(now - timedelta(hours=1), "2026-09-27")
         p = _pulled_night_findings(logs, cloud, now)[0]
         assert len(p) == 1 and "Actions tab" in p[0] and "found nothing newer" in p[0], p
@@ -65841,7 +66528,7 @@ def _full_pull_findings(cloud, now, since):
     that only ever triages keeps the night's files -- proceedings.csv, the
     narratives, the day's data -- as they were on the last FULL pull, which
     pull.json records ("full"). Older than FULL_PULL_HOURS is a failure
-    naming python3 cloud.py pull; never is a skip for STANDDOWN_GRACE_HOURS
+    naming python3 src/ops/cloud.py pull; never is a skip for STANDDOWN_GRACE_HOURS
     after the stand-down and a failure after, as the nightly check's is."""
     from datetime import datetime
     try:
@@ -65855,7 +66542,7 @@ def _full_pull_findings(cloud, now, since):
                 "on this laptop are as they were then")
         if grace:
             return None, said + f" (this skips for {STANDDOWN_GRACE_HOURS} hours after the stand-down)"
-        return [said[0].upper() + said[1:] + ". python3 cloud.py pull brings them (it reads the "
+        return [said[0].upper() + said[1:] + ". python3 src/ops/cloud.py pull brings them (it reads the "
                 "bucket only; --changes-only does not bring them). It clears on the first full "
                 "pull."], said
     at = datetime.fromtimestamp(float(full["epoch"]))
@@ -65864,7 +66551,7 @@ def _full_pull_findings(cloud, now, since):
     if hours > FULL_PULL_HOURS:
         return [said[0].upper() + said[1:] + f", more than {FULL_PULL_HOURS}: this laptop's "
                 "copies of the night's files are that old, and a build or a check here reads "
-                "them. python3 cloud.py pull brings them (it reads the bucket only; "
+                "them. python3 src/ops/cloud.py pull brings them (it reads the bucket only; "
                 "--changes-only does not bring them). It clears on the next full pull."], said
     return [], said
 
@@ -65878,7 +66565,7 @@ def _full_pull_selftest():
         assert _full_pull_findings(tmp, now, now - timedelta(hours=10))[0] is None, \
             "no full pull, the morning after the stand-down, was not a skip"
         p = _full_pull_findings(tmp, now, now - timedelta(hours=50))[0]
-        assert p and "python3 cloud.py pull" in p[0], p
+        assert p and "python3 src/ops/cloud.py pull" in p[0], p
         (tmp / "pull.json").write_text(json.dumps(
             {"epoch": now.timestamp(), "mode": "changes-only"}), encoding="utf-8")
         assert _full_pull_findings(tmp, now, now - timedelta(hours=50))[0], \
@@ -65889,7 +66576,7 @@ def _full_pull_selftest():
         (tmp / "pull.json").write_text(json.dumps(
             {"full": {"epoch": (now - timedelta(hours=49)).timestamp()}}), encoding="utf-8")
         p = _full_pull_findings(tmp, now, None)[0]
-        assert p and "49 hours ago" in p[0] and "python3 cloud.py pull" in p[0], p
+        assert p and "49 hours ago" in p[0] and "python3 src/ops/cloud.py pull" in p[0], p
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
 
@@ -65898,7 +66585,7 @@ def _full_pull_selftest():
 def _full_pull_fresh():
     """On a laptop that has stood down, the night's files -- the day's data,
     the carried outputs, the snapshots -- change on GitHub every night and
-    reach this laptop only through a full `python3 cloud.py pull`. The
+    reach this laptop only through a full `python3 src/ops/cloud.py pull`. The
     morning triage's --changes-only brings the change list and not them, so
     the laptop's data can grow old while every morning looks attended to.
     Fails when the last full pull is over 48 hours old (or, 48 hours after the
@@ -65942,12 +66629,12 @@ def _refusal_reached_the_bucket():
         raise AssertionError(
             f"{p} says a refusal met on this laptop at {d.get('at', '?')} is not in the "
             f"bucket: {why}. The night is stopped by the bucket's for now. python3 "
-            "cloud.py pull says where things stand; python3 refusal.py --clear removes the "
+            "src/ops/cloud.py pull says where things stand; python3 refusal.py --clear removes the "
             "marker with the refusal, if a person has decided it is over.")
     raise AssertionError(
         f"{p} says a refusal met on this laptop at {d.get('at', '?')} never reached the "
         "bucket" + (f" ({why})" if why else "") + ", so GitHub's night would still ask the "
-        "General Court. python3 cloud.py send-refusal sends it (the bucket, not the General "
+        "General Court. python3 src/ops/cloud.py send-refusal sends it (the bucket, not the General "
         "Court); python3 refusal.py --clear removes the marker with the refusal, if a "
         "person has decided it is over.")
 
@@ -65988,9 +66675,9 @@ def _nightly_logs():
     fail here forever. What it reads instead is what `cloud.py pull` brought:
     the pulled nightly logs and archive/cloud/last-night.json
     (_pulled_night_findings). Never pulled is a skip that says so for 48
-    hours after the stand-down, and a failure naming python3 cloud.py pull
+    hours after the stand-down, and a failure naming python3 src/ops/cloud.py pull
     after that -- a laptop that never pulled once skipped this for good; a
-    newest night older than 48 hours fails, with python3 cloud.py pull as the
+    newest night older than 48 hours fails, with python3 src/ops/cloud.py pull as the
     remedy when the pull is what is old, and the Actions tab when the pull is
     fresh and the night is not.
     """
@@ -66389,7 +67076,7 @@ def _no_phantom_sittings():
     today = datetime.date.today()
     days = SD.load(narr)
     rc = SD.read_rollcall_dates(
-        [p for p in sorted(Path("rollcalls").glob("RollCallSummary_*.txt"))
+        [p for p in sorted(Path("records/rollcalls").glob("RollCallSummary_*.txt"))
          + [Path("RollCallSummary.txt")] if p.exists()])
     flags = SD.doubtful(days, today, rc)
     new, warn = [], []
@@ -66934,7 +67621,7 @@ def _corrections_still_match():
     weekday in term time is not doubtful on its face. So an entry that
     matches no row fails here whenever its term's docket is on disk.
     """
-    f = Path("docket_corrections.json")
+    f = Path("corrections/docket_corrections.json")
     if not f.exists():
         return "skip", "no docket_corrections.json here"
     import narrative as N
@@ -67587,7 +68274,8 @@ def _manifest_chamber():
     if not mans:
         return "skip", "no manifest on disk"
     body_of = {}
-    for f in glob.glob("videos_*.csv"):
+    import proceedings as _P
+    for f in map(str, _P.video_indexes()):
         b = "S" if "senate" in f.lower() else "H"
         with open(f, encoding="utf-8", newline="") as fh:
             for r in csv.DictReader(fh):
@@ -67900,8 +68588,18 @@ def _journey_story(records, rows, B):
         if not why and p and rail:
             other = "Senate" if p[0] == "H" else "House"
             own = "House" if p[0] == "H" else "Senate"
+            # The rail's own marks for interim study and the table now refine
+            # the passage letter they stand in for (B.RAIL_REFINES), and
+            # only on the chip that draws them (B.RAIL_MARK_OF_CHIP).
+            mine = {v: k for k, v in B.RAIL_MARK_OF_CHIP.items()}
             for stop, m in zip((own, other, "Governor", "Law"), p[1:]):
-                if stop in marks and marks[stop] != m:
+                drawn = marks.get(stop)
+                if drawn in mine and (row.get("chip") != mine[drawn]
+                                      or stop not in ("House", "Senate")):
+                    why = (f"the bill's own rail marks {stop} {drawn!r} on a bill whose "
+                           f"chip is {row.get('chip')!r}")
+                    break
+                if stop in marks and B.RAIL_REFINES.get(drawn, drawn) != m:
                     why = f"the bill's own rail marks {stop} {marks[stop]!r} and the list card {m!r}"
                     break
         n["empty" if not steps else "disagree" if why else "agree"] += 1
@@ -68472,7 +69170,7 @@ def _sponsors_on_record():
                    if ln.strip()}
     sat = set()
     for f in [Path("RollCallHistory.txt"),
-              *(Path("rollcalls") / f"RollCallHistory_{y}.txt" for y in sorted(years))]:
+              *(Path("records/rollcalls") / f"RollCallHistory_{y}.txt" for y in sorted(years))]:
         if f.exists():
             for ln in f.read_text(encoding="utf-8-sig", errors="replace").splitlines():
                 p = ln.split("|")
@@ -68537,10 +69235,10 @@ def _vote_identity():
     people's votes, none of them named. Distinct Employeenos must stay
     distinct members however little else is known about them.
     """
-    rc = Path("rollcalls")
+    rc = Path("records/rollcalls")
     hist = sorted(rc.glob("RollCallHistory_*.txt")) if rc.exists() else []
     if not hist:
-        return "skip", "no rollcalls/RollCallHistory_*.txt here"
+        return "skip", "no records/rollcalls/RollCallHistory_*.txt here"
     # The id build_data will key a voter on, per Employeeno: the PersonID the
     # join supplied, or the Employeeno itself when it supplied none.
     by_emp = {}
@@ -68728,7 +69426,7 @@ def _careers():
     nobody holds two seats at once -- and the two shared names whose service
     DOES overlap are two different people, which is the case this guards.
     """
-    p = Path("careers.json")
+    p = Path("generated/careers.json")
     if not p.exists():
         return "skip", "careers.json is not built"
     d = json.loads(p.read_text(encoding="utf-8"))
@@ -69049,7 +69747,7 @@ def _rollcall_once(build_data, rollcall_parser):
     import contextlib
     tmp = Path(tempfile.mkdtemp(prefix="gr-rollonce-"))
     try:
-        (tmp / "rollcalls").mkdir()
+        (tmp / "records" / "rollcalls").mkdir(parents=True)
 
         def put(name, lines):
             (tmp / name).write_text("\ufeff" + "\n".join(lines) + "\n", encoding="utf-8")
@@ -69058,18 +69756,18 @@ def _rollcall_once(build_data, rollcall_parser):
             ["2026|H|1|1/7/2026 10:15:33 AM|HB1|1|1|0|0|||Passage|the download|||"])
         # The archive holds the same roll call with other ballots, one the
         # download lacks, and a year of its own.
-        put("rollcalls/RollCallHistory_2026.txt",
+        put("records/rollcalls/RollCallHistory_2026.txt",
             ["2026|H|1|100|11||Nay|", "2026|H|1|101|12||Nay|", "2026|H|1|102|13||Yea|",
              "2026|H|2|100|11||Yea|"])
-        put("rollcalls/RollCallSummary_2026.txt",
+        put("records/rollcalls/RollCallSummary_2026.txt",
             ["2026|H|1|1/7/2026 10:15:33 AM|HB1|1|2|0|0|||Passage|the archive|||",
              "2026|H|2|1/7/2026 11:00:00 AM|HB2|1|0|0|0|||Passage|the archive|||"])
-        put("rollcalls/RollCallHistory_2025.txt", ["2025|H|1|100|11||Yea|"])
+        put("records/rollcalls/RollCallHistory_2025.txt", ["2025|H|1|100|11||Yea|"])
         with contextlib.redirect_stdout(io.StringIO()):
             hist = build_data.rows_all(tmp, "RollCallHistory", 8)
             summ = build_data.rows_all(tmp, "RollCallSummary")
             counts = rollcall_parser.ballot_counts(current=tmp / "RollCallHistory.txt",
-                                                   extra_dir=tmp / "rollcalls")
+                                                   extra_dir=tmp / "records" / "rollcalls")
         by = Counter(tuple(r[:3]) for r in hist)
         assert by == {("2026", "H", "1"): 2, ("2026", "H", "2"): 1, ("2025", "H", "1"): 1}, by
         assert [r[6] for r in hist if tuple(r[:3]) == ("2026", "H", "1")] == ["Yea", "Nay"], \
@@ -69108,7 +69806,7 @@ def _floor_every_year(build_floor_index):
         "site, which waits for a bench sample of those years (see its docstring)")
     tmp = Path(tempfile.mkdtemp(prefix="gr-floor-"))
     try:
-        (tmp / "rollcalls").mkdir()
+        (tmp / "records" / "rollcalls").mkdir(parents=True)
 
         def put(name, lines):
             (tmp / name).write_text("\ufeff" + "\n".join(lines) + "\n", encoding="utf-8")
@@ -69119,13 +69817,13 @@ def _floor_every_year(build_floor_index):
         put("RollCallSummary.txt", [
             "2026|H|1|1/7/2026 10:15:33 AM||321|2|34|38|||Call of the Roll|||",
             "2025|H|3|2/6/2025 10:20:00 AM|HB60|140|217|10|32|||The download's copy|tenancy|||"])
-        put("rollcalls/RollCallSummary_2025.txt", [
+        put("records/rollcalls/RollCallSummary_2025.txt", [
             "2025|H|2|2/6/2025 10:10:00 AM|HRULE64|300|50|0|0|||Adopt|rules|||",
             "2025|H|3|2/6/2025 10:20:00 AM|HB60|140|217|10|32|||Adopt Floor Amendment|tenancy|||",
             "2025|H|4|2/6/2025 10:30:00 AM|HB60|217|139|11|32|||OTP|tenancy|||",
             # typed with a space, as 2017 S 198 typed "HB 315": still HB72's
             "2025|H|5|2/6/2025 10:40:00 AM|HB 72|200|150|10|32|||ITL|x|||"])
-        put("rollcalls/RollCallSummary_2023.txt", [
+        put("records/rollcalls/RollCallSummary_2023.txt", [
             "2023|H|5|3/9/2023 11:00:00 AM|HB10|200|150|0|0|||OTP|x|||"])
         floor = lambda d, kind: {"type": "floor", "date": d, "body": "H",
                                  "vote_kind": kind, "action": "OTP"}
@@ -71104,9 +71802,9 @@ def _floterials_overlay():
     error in its most obvious form and a reader of the failure deserves to be
     told which kind they have.
     """
-    src = Path("districts/house.txt")
+    src = Path("records/districts/house.txt")
     if not src.exists():
-        return "skip", "no districts/house.txt here"
+        return "skip", "no records/districts/house.txt here"
 
     head = re.compile(r"^([A-Za-z]+) County District (\d+)(.*)$")
     districts, cur = [], None
@@ -71215,7 +71913,7 @@ def _county_officers_sane():
     Both are properties of the output, so they are checked here whatever the
     parser becomes.
     """
-    p = Path("county_officials.json")
+    p = Path("collected/county_officials.json")
     if not p.exists():
         return "skip", "no county_officials.json here"
     recs = json.loads(p.read_text(encoding="utf-8"))["officers"]
@@ -71276,12 +71974,12 @@ def _town_officials_sane():
     when, and no office holds more people than it can. Both are properties of
     the output, so they hold however the parser is rewritten.
     """
-    if not Path("town_officials_web.json").exists():
+    if not Path("collected/town_officials_web.json").exists():
         return "skip", "no town_officials_web.json here"
     m = imp("parse_town_sites")
     if m is None:
         return "skip", "parse_town_sites.py does not import"
-    data = json.loads(Path("town_officials_web.json").read_text(encoding="utf-8"))
+    data = json.loads(Path("collected/town_officials_web.json").read_text(encoding="utf-8"))
 
     import collections as _c
     bad, n = [], 0
@@ -71339,7 +72037,7 @@ def _town_boards_sane():
     The words below are deliberately NOT town_boards.py's screen: a check
     built from the screen's own vocabulary can only agree with it.
     """
-    p = Path("town_boards.json")
+    p = Path("collected/town_boards.json")
     if not p.exists():
         return "skip", "no town_boards.json here"
     T = imp("town_boards")
@@ -71348,7 +72046,7 @@ def _town_boards_sane():
     data = json.loads(p.read_text(encoding="utf-8"))
     boards = data.get("boards") or {}
     councils = data.get("councils") or {}
-    dotf = Path("town_officials.json")
+    dotf = Path("collected/town_officials.json")
     dot = json.loads(dotf.read_text(encoding="utf-8")) if dotf.exists() else {}
     bad, n = [], 0
     for key, b in sorted(councils.items()):
@@ -72081,13 +72779,13 @@ def _town_boards_decide(T, P):
     # of State gives them in capitals, so their case is the rule
     # parse_clerks.namecase applied, not anybody's spelling.
     root = Path(tempfile.mkdtemp(prefix="gr-spell-"))
-    (root / "careers.json").write_text(json.dumps(
+    _mk(root / "generated" / "careers.json").write_text(json.dumps(
         {"a": {"name": "Paul LeClerc"}, "b": {"name": "Ann DiPietro"}}),
         encoding="utf-8")
-    (root / "town_officials.json").write_text(json.dumps(
+    _mk(root / "collected" / "town_officials.json").write_text(json.dumps(
         {"x": {"officials": [{"name": "Brian Leclerc"},
                              {"name": "Tom Macdonald"}]}}), encoding="utf-8")
-    (root / "town_clerks.json").write_text(json.dumps(
+    _mk(root / "collected" / "town_clerks.json").write_text(json.dumps(
         {"y": {"clerk": "Joe MacHado", "clerk_raw": "JOE MACHADO"}}),
         encoding="utf-8")
     ks = T.known_spellings(root)
@@ -72698,9 +73396,9 @@ def _officials_restream():
     the PDF's own order. This reads the directory itself -- it is in git --
     and holds the four rows to what the PDF prints.
     """
-    pdf = Path("sources/nh-municipal-officials-2025-09-01.pdf")
+    pdf = Path("records/sources/nh-municipal-officials-2025-09-01.pdf")
     if not pdf.exists():
-        return "skip", "the NHDOT directory is not in sources/"
+        return "skip", "the NHDOT directory is not in records/sources/"
     try:
         import pdfplumber                                    # noqa: F401
     except Exception:
@@ -72747,7 +73445,7 @@ def _town_officials_cells():
     extension if it has one, or one of the four cells NHDOT prints that are
     not -- each named below.
     """
-    f = Path("town_officials.json")
+    f = Path("collected/town_officials.json")
     if not f.exists():
         return "skip", "no town_officials.json here"
     P = imp("parse_officials")
@@ -72841,16 +73539,16 @@ def _corrections_still_apply():
     with a stale one. Neither is caught by anything downstream, because the
     output looks exactly as intended either way.
     """
-    if not Path("place_corrections.json").exists():
+    if not Path("corrections/place_corrections.json").exists():
         return "skip", "no place_corrections.json here"
-    src = Path("sources/sos-clerks-and-polling-places-2026-09-20.csv")
+    src = Path("records/sources/sos-clerks-and-polling-places-2026-09-20.csv")
     if not src.exists():
-        return "skip", "the clerk list export is not in sources/"
+        return "skip", "the clerk list export is not in records/sources/"
     m = imp("parse_clerks_csv")
     if m is None:
         return "skip", "parse_clerks_csv.py does not import"
 
-    fixes = json.loads(Path("place_corrections.json").read_text(encoding="utf-8"))
+    fixes = json.loads(Path("corrections/place_corrections.json").read_text(encoding="utf-8"))
     towns = m.load_towns("site")
     import csv as _csv
     with open(src, encoding="utf-8-sig", newline="") as fh:
@@ -72888,8 +73586,8 @@ def _granit_carries_our_districts():
     Skips when the zips are absent: they are 4.2 MB, not in git, and
     re-fetchable from ftp.granit.unh.edu.
     """
-    if not Path("sources/gis/NHHouseDistricts2022_Base.zip").exists():
-        return "skip", "sources/gis/ has no GRANIT zips"
+    if not Path("records/sources/gis/NHHouseDistricts2022_Base.zip").exists():
+        return "skip", "records/sources/gis/ has no GRANIT zips"
     g = imp("parse_granit")
     if g is None:
         return "skip", "parse_granit.py does not import"
@@ -72934,8 +73632,8 @@ def _districts_match_sos():
     of the table: any of them should be a decision somebody makes, not a
     difference that appears.
     """
-    if not Path("sources/sos-towns-and-wards-districted-2023-04-26.pdf").exists():
-        return "skip", "the Secretary of State's table is not in sources/"
+    if not Path("records/sources/sos-towns-and-wards-districted-2023-04-26.pdf").exists():
+        return "skip", "the Secretary of State's table is not in records/sources/"
     m = imp("parse_sos_districts")
     if m is None:
         return "skip", "parse_sos_districts.py does not import"
@@ -72984,14 +73682,14 @@ def _places_reconcile():
     This recomputes from the sources rather than trusting places.json, so a
     stale places.json fails rather than agreeing with itself.
     """
-    if not Path("places.json").exists():
+    if not Path("generated/places.json").exists():
         return "skip", "no places.json here; run build_places.py"
     bp = imp("build_places")
     if bp is None:
         return "skip", "build_places.py does not import"
 
     places, disagree, synthetic, _ = bp.build()
-    saved = json.loads(Path("places.json").read_text(encoding="utf-8"))["places"]
+    saved = json.loads(Path("generated/places.json").read_text(encoding="utf-8"))["places"]
 
     assert not disagree, (
         "the four district files no longer name the same places: "
@@ -73009,8 +73707,8 @@ def _places_reconcile():
     in_off = sum(1 for p in places.values()
                  if p["named_by"]["nhdot_officials"]["present"])
 
-    clerks = json.loads(Path("town_clerks.json").read_text(encoding="utf-8")) \
-        if Path("town_clerks.json").exists() else None
+    clerks = json.loads(Path("collected/town_clerks.json").read_text(encoding="utf-8")) \
+        if Path("collected/town_clerks.json").exists() else None
 
     bad = []
     if gc_rows != 320:
@@ -76530,7 +77228,7 @@ def main():
     if not bad:
         print("\nEverything that can be checked without the network is working"
               + (f", but for the {len(expected)} expected failures above." if expected else "."))
-        print("What is left needs real data: run inventory.py, then align_all,")
+        print("What is left needs real data: run src/ops/inventory.py, then align_all,")
         print("then src/hearings/segment_markers.py --all --data data, and score the result:")
         print("  src/hearings/probe_alignment.py --truth --candidate candidate_segments.json")
         print("Do not run src/hearings/apply_markers.py --apply. It is the superseded")
