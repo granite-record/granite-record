@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.471
+# GRANITE_VERSION: 2026-09-04.472
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -2365,8 +2365,8 @@ _DOCKET_CROSSED_LATE = {
 
 
 @check("narrative", "a chamber's introduction dated before the other chamber's vote that sent "
-                    "the bill is told after that vote, with the day the chamber gives it",
-       needs=("narrative",))
+                    "the bill is told after that vote, with no day, and its event keeps the day "
+                    "the chamber gives it", needs=("narrative",))
 def _crossed_after_passage(N):
     """The launch audit's cause 7: the Senate introduces the House's bills in
     recess and dates them by the session it is in recess of. HB 1460 of 2026
@@ -2374,21 +2374,21 @@ def _crossed_after_passage(N):
     reads "Introduced 02/05/2026", and the history said it crossed to the
     Senate on 5 February, before the House's vote -- on 51 histories of
     2025-2026 and 1,387 older ones. It is now told after the vote that sent
-    it, the day kept as the Senate's own (narrative.crossing_order), and the
-    event, the docket list and the rail keep the row's day. Only the votes up
-    to the receiving chamber's next row: SB 1 of 2023's House introduction
-    was entered in April, after the Senate concurred on 14 February, and is
-    told after the Senate's passage of 26 January. A crossing dated after the
-    vote (HB 70 of 2025) is told as it was."""
+    it (narrative.crossing_order), with no day -- the person's wording of 8
+    October 2026, "It crossed to the Senate and was referred to the Senate
+    Children and Family Law committee." -- and the event, the docket list and
+    the rail keep the row's day. Only the votes up to the receiving chamber's
+    next row: SB 1 of 2023's House introduction was entered in April, after
+    the Senate concurred on 14 February, and is told after the Senate's
+    passage of 26 January. A crossing dated after the vote (HB 70 of 2025) is
+    told as it was, with its day."""
     want = {
         "HB1460": ("On February 12, 2026 the House voted to pass it on a roll call 214–145.",
                    "It crossed to the Senate and was referred to the Senate Children and Family "
-                   "Law committee; the Senate records the introduction under its session of "
-                   "February 5, 2026.", "The committee held a public hearing on March 19, 2026."),
+                   "Law committee.", "The committee held a public hearing on March 19, 2026."),
         "SB1": ("On January 26, 2023 the Senate voted to pass it with changes on a voice vote and "
                 "ordered it to a third reading.",
-                "It crossed to the House and was referred to the House Finance committee; the "
-                "House records the introduction under its session of January 5, 2023.",
+                "It crossed to the House and was referred to the House Finance committee.",
                 "The committee held a public hearing on February 9, 2023."),
         "HB70": ("On March 26, 2025 the House voted to pass it on a voice vote.",
                  "It crossed to the Senate on March 27, 2025 and was referred to the Senate "
@@ -2414,8 +2414,8 @@ def _crossed_after_passage(N):
     finally:
         N.MEMBERS = keep
     assert not bad, "\n".join(bad)
-    return "ok", ("HB 1460 of 2026 and SB 1 of 2023 cross after the vote that sent them, on the "
-                  "day the receiving chamber gives; HB 70 of 2025 as it was")
+    return "ok", ("HB 1460 of 2026 and SB 1 of 2023 cross after the vote that sent them, with no "
+                  "day, their events on the day the receiving chamber gives; HB 70 of 2025 as it was")
 
 
 # A FLOOR VOTE WHOSE ROW STATES NO DATE (the launch audit of 7 October 2026,
@@ -4437,21 +4437,6 @@ def _altered(key, old, new):
 # Each rule the review found no history held (5 October 2026), on the real
 # rows nearest to it with one row changed, since nothing on disk tests it.
 _DOCKET_REFERRAL_UNMADE.update({
-    # A suspension that lost makes no referral: HB 650's, lost as Rep.
-    # Burling's motion "TO SUSP RULES TO REF TO FINANCE, ML RC(174-181)" was
-    # on HB 211 of 1997.
-    ("HB650", "1995-1996", "lost"): _altered(
-        ("HB650", "1995-1996"), "REF TO 2ND COMM, MA 2/3VV;", "REF TO 2ND COMM, ML RC(174-181);"),
-    # Nor one of the other chamber's: SB 173's suspension entered as the
-    # Senate's.
-    ("SB173", "1995-1996", "the Senate's"): _altered(
-        ("SB173", "1995-1996"), "|SB173|H|REPS C BROWN & D SYTEK SUSP RULES FOR REF",
-        "|SB173|S|REPS C BROWN & D SYTEK SUSP RULES FOR REF"),
-    # Nor one more than a week before the passage: HB 1633's, eight days
-    # before it.
-    ("HB1633", "1995-1996", "eight days"): _altered(
-        ("HB1633", "1995-1996"), "03/05/1996 03:08:49 PM|HB1633|H|REPS A TORR",
-        "02/27/1996 03:08:49 PM|HB1633|H|REPS A TORR"),
     # A waiver naming another committee than the referral before it waives
     # nothing of it: HB 1478's, as by the chair of Ways and Means.
     ("HB1478", "2013-2014", "another chair"): _altered(
@@ -4528,7 +4513,9 @@ _REFERRAL_UNMADE_HEADS = {
                               []),
     # Sent on to Finance by suspending the rules, on a row of its own: after
     # the passage (SB 173), before it (HB 650), the day before (HB 1633), and
-    # the 2002 House's "on deadline for 2nd Comm" (HB 1231).
+    # the 2002 House's "on deadline for 2nd Comm" (HB 1231). Told as any
+    # other passage that sent the bill on: since 8 October 2026 no House
+    # passage says "under the chamber's rules", whatever sent it.
     ("SB173", "1995-1996"): (["In House committee — Education", "On the House floor",
                               "In House committee — Finance", "On the House floor"],
                              ["then referred it on to the House Finance committee."],
@@ -4577,21 +4564,14 @@ _REFERRAL_UNMADE_HEADS = {
     # question, not this check's; the headings are not held here.
     ("SB339", "2005-2006"): (None, ["then referred it on to the Senate Finance committee"], []),
     # A suspension "for 2nd Comm deadlines" four weeks before the passage, for
-    # the committee's reporting deadline by the House Journal (HJ 6 of 2002):
-    # outside the week, and the referral is under the chamber's rules.
+    # the committee's reporting deadline by the House Journal (HJ 6 of 2002),
+    # and the referral told in the Senate's words (the person, 8 October 2026).
     ("HB1100", "2001-2002"): (["In House committee — Judiciary", "On the House floor",
                                "In House committee — Judiciary", "On the House floor",
                                "In House committee — Finance"],
-                              ["then referred it on to the House Finance committee under the chamber's "
-                               "rules."], []),
+                              ["then referred it on to the House Finance committee."], []),
     # The rules no row on disk tests (_altered, above): each keeps what the
     # rows without the rule would lose.
-    ("HB650", "1995-1996", "lost"): (None, ["then referred it on to the House Finance committee under "
-                                            "the chamber's rules."], []),
-    ("SB173", "1995-1996", "the Senate's"): (None, ["then referred it on to the House Finance committee "
-                                                    "under the chamber's rules."], []),
-    ("HB1633", "1995-1996", "eight days"): (None, ["then referred it on to the House Finance committee "
-                                                  "under the chamber's rules."], []),
     ("HB1478", "2013-2014", "another chair"): (["In House committee — Children and Family Law",
                                                 "On the House floor", "In House committee — Judiciary"],
                                                [], ["the referral"]),
@@ -4620,14 +4600,13 @@ _REFERRAL_UNMADE_PLACED = {
                              (2, "March 15", False)],
 }
 
-# Every wording on disk of a referral its chair waived or declined, and of a
-# rules suspension that made one, with the wordings beside them that are
-# neither. Real rows: Docket.txt 17658; Docket_2015-2016.txt 1521 and 78;
-# Docket_db_2013-2014.txt 1942 and 13937; Docket_db_1995-1996.txt 2000, 597
-# and 8125; Docket_2017-2018.txt 14819; Docket_db_2003-2004.txt 177;
-# Docket_db_2001-2002.txt 13114; Docket_db_2009-2010.txt 19770;
-# Docket_db_2007-2008.txt 133; Docket_db_1999-2000.txt 3450;
-# Docket_db_1989-1990.txt 1584.
+# Every wording on disk of a referral its chair waived or declined, with the
+# wordings beside them that are not. Real rows: Docket.txt 17658;
+# Docket_2015-2016.txt 1521 and 78; Docket_db_2013-2014.txt 1942 and 13937;
+# Docket_db_1995-1996.txt 2000; Docket_2017-2018.txt 14819. (The rules
+# suspensions that made a referral were read here too, by a pattern that
+# kept "under the chamber's rules" off the referral they made; with the
+# clause gone from every passage on 8 October 2026, so is the pattern.)
 _WAIVED_SAID = [
     ("Referral Waived by Committee Chair per House Rule 47(f) 02/19/2026  HJ 5  P. 112", True),
     ("Second Committee Referral Waived by Committee Chair per House Rule 46(f); HJ 16, PG. 317", True),
@@ -4647,23 +4626,11 @@ _WAIVED_SAID = [
     ("Per House Rule 50, Withdrawn from Committee", False),
     ("House Refused to Accede to req for Conf Comm, Rep McKinney MA VV;  HJ38, p1444", False),
 ]
-_SUSPENDED_FOR_REFERRAL = [
-    ("REPS A TORR & BUCKLEY SUSP RULES FOR REF TO 2ND COMM, MA 2/3VV;", True),
-    ("Reps Hess & Nordgren Susp Rules for late ref to Finance, MA 2/3VV;  HJ 29-pt 1, p896", True),
-    ("Reps Scanlan and Burling Susp Rules on deadline for 2nd Comm, MA 2/3VV;  HJ20, p739", True),
-    ("Suspend Rules, Allow Second Comm Referral (Reps Almy & Major): MA VV by Req 2/3; HJ 20 PG.1095",
-     True),
-    ("Rules Suspension: Deadline on Action for Bills Not in 2nd Comm: MA VV Necessary 2/3; HJ 34, pg.1233",
-     False),
-    ("Sen. Below susp. rules for intro. & no referral to comm. & notice in calendar &", False),
-    ("REP HAGER SUSP RULES FOR HEARING, MA 2/3 VV, (SEE PRM JRNL)", False),
-    ("SEN CURRIER SUSP RULES FOR FIN REPORT, MA 2/3VV; FIN REPORT OTP;", False),
-]
 
 
 @check("narrative", "a referral a chair waived heads no stage, a first committee's report is told in "
-                    "its stage, and a referral made by suspending the rules is not said to be under "
-                    "them", needs=("narrative",))
+                    "its stage, and no passage's referral is said to be under the chamber's rules",
+       needs=("narrative",))
 def _referral_unmade(N):
     """Three things a release check of the committee stages found on 5
     October 2026, each held here on the rows it was found on.
@@ -4681,15 +4648,17 @@ def _referral_unmade(N):
     on 31 histories.
 
     A REFERRAL MADE BY SUSPENDING THE RULES, on whichever row the suspension
-    stands, is not "under the chamber's rules": 48 histories of 1995-2006.
+    stands, was said to be "under the chamber's rules" on 48 histories of
+    1995-2006, and was then told without it. Since 8 October 2026 no passage
+    says the clause at all -- the person's wording, the House's referral in
+    the Senate's words exactly -- and no history here may.
 
     And what the review of that change found: "Committee Refused Referral"
     (SB 166 of 2013) and "Referral to Ways and Means withdrawn" (HB 1679 of
     2006), which it did not read; "Vacated ref to Executive Dept &
     Administration" (SB 295 of 2006), told as a committee the bill was sent
-    to "instead"; and six rules no history held -- where the waiver is told, a
-    notice given back to the first committee, a suspension that lost, one of
-    the other chamber, one more than a week before, a waiver naming another
+    to "instead"; and rules no history held -- where the waiver is told, a
+    notice given back to the first committee, a waiver naming another
     committee, one past the introduction, and the committee that sat on a bill
     before its chair waived it."""
     bad = []
@@ -4702,7 +4671,7 @@ def _referral_unmade(N):
         if heads is not None and got != heads:
             bad.append(f"{name}: headed {got}")
         bad += [f"{name} does not say {w!r}" for w in said if w not in text]
-        bad += [f"{name} says {w!r}" for w in unsaid if w in text]
+        bad += [f"{name} says {w!r}" for w in unsaid + ["under the chamber's rules"] if w in text]
         for at, w, want in _REFERRAL_UNMADE_PLACED.get(key, ()):
             told = n["stages"][at]["text"] if at < len(n["stages"]) else ""
             if (w in told) != want:
@@ -4710,13 +4679,10 @@ def _referral_unmade(N):
                            f"{'does not say' if want else 'says'} {w!r}")
     bad += [f"{raw[:50]!r} is {'not ' if want else ''}read as a waived referral"
             for raw, want in _WAIVED_SAID if bool(N.REFERRAL_WAIVED.search(raw)) != want]
-    bad += [f"{raw[:50]!r} is {'not ' if want else ''}read as a referral by suspending the rules"
-            for raw, want in _SUSPENDED_FOR_REFERRAL
-            if bool(N.REFERRAL_SUSPENSION.search(raw)) != want]
     assert not bad, "\n".join(bad)
     real = sum(len(k) == 2 for k in _DOCKET_REFERRAL_UNMADE)
     return "ok", (f"{real} histories from real rows, {len(_DOCKET_REFERRAL_UNMADE) - real} with one row "
-                  f"changed, and {len(_WAIVED_SAID) + len(_SUSPENDED_FOR_REFERRAL)} wordings")
+                  f"changed, and {len(_WAIVED_SAID)} wordings")
 
 
 # Real rows: Docket_db_2005-2006.txt 17549-17561 (SB 339), 12571-12577 (HB
@@ -10335,12 +10301,11 @@ def _introductions_read_from_the_journal(N, B):
         ("2007-2008", "HR6"), ("2015-2016", "HB1"), ("2021-2022", "CACR21")], sorted(N.INTRODUCED_ON)
     # CACR 21's history opens with the House introducing it, and the Senate's
     # row is the crossing it is, told after the House's vote of 10 March that
-    # sent it, with the day the Senate gives it (narrative.crossing_order); it
-    # was acted on in 2022 alone.
+    # sent it, with no day (narrative.crossing_order); it was acted on in 2022
+    # alone.
     c21 = narr[("2021-2022", "CACR21")]
     crossed = ("It crossed to the Senate and was referred to the Senate Executive Departments "
-               "and Administration committee; the Senate records the introduction under its "
-               "session of February 24, 2022.")
+               "and Administration committee.")
     if not c21["narrative"].startswith(
             "It was introduced on January 5, 2022 and referred to the House Judiciary "
             "committee.") or crossed not in c21["narrative"] or not (
@@ -11859,10 +11824,10 @@ _NAMED_IN = (
     (re.compile(r"sent the bill to the (?P<c>.+?) committee instead"), False),
     (re.compile(r"the bill was referred to the (?P<c>.+?)(?: committee\.|(?<=Committee)\.)"), False),
     (re.compile(r"referred the bill to the (?P<c>.+?)(?: committee\.|(?<=Committee)\.)"), False),
-    (re.compile(r"sent it on to the (?P<c>.+?) committee(?: under the chamber's rules)?[.,]"), False),
-    # The person's wording of 7 October 2026, the Senate's and the House's.
-    (re.compile(r"referred it on to the (?:House|Senate) (?P<c>.+?) committee"
-                r"(?: under the chamber's rules)?[.,]"), False),
+    (re.compile(r"sent it on to the (?P<c>.+?) committee[.,]"), False),
+    # The person's wording of 7 October 2026, the Senate's and the House's,
+    # and of 8 October: the House's names no rule either.
+    (re.compile(r"referred it on to the (?:House|Senate) (?P<c>.+?) committee[.,]"), False),
 )
 _COMMITTEE_WORK = {"hearing", "exec", "worksession", "report", "retained", "interim_report"}
 # A piece of a word, or of a clause, that a reader once printed as a name:
@@ -12077,16 +12042,13 @@ _WAIVER_UNPAIRED = {
     ("SB133", "2017-2018"), ("SB135", "2017-2018"), ("SB191", "2017-2018"), ("SB525", "2017-2018"),
     ("SB314", "2019-2020"), ("SB223", "2025-2026"), ("HB1199", "2025-2026"),
 }
-_SUSPENDED_LOOSE = re.compile(
-    r"(?:\bsusp\w*\.?\s+(?:of\s+)?(?:the\s+|all\s+)?(?:house\s+|senate\s+)?rules?\b|\brules?\s+susp\w*)"
-    r"(?:(?!\bnot\s+in\b|\bno\s+referral\b)[^;])*?(?:\bref|\b(?:2nd|second)\s+comm)", re.I)
-_SUSPENSION_LOST = re.compile(r"\b(?:ML|MF)\b|\bfail|\blost\b", re.I)
 # "then referred it on to the Senate Finance committee" is the Senate's (the
-# person's wording, 7 October 2026), and names no rule; the House's, "then
-# referred it on to the House Finance committee under the chamber's rules",
-# names one where the rules sent it.
+# person's wording, 7 October 2026), and the House's is the same words (8
+# October): neither names a rule.
 _SENT_ON_SAID = re.compile(r"then (?:sent it on to the|referred it on to the (?:House|Senate)) "
-                           r"(?P<c>.+?) committee(?P<r> under the chamber's rules)?[.,]")
+                           r"(?P<c>.+?) committee[.,]")
+# The clause the House's passages carried until 8 October 2026.
+_UNDER_THE_RULES = "under the chamber's rules"
 _REPORT_SAID = re.compile(r"^(?:The committee recommended|The majority|The minority|The committee's "
                           r"amendment|The committee reported|The committee made no recommendation)")
 _MOVED_AFTER = re.compile(r"Recommit|send it back|sent the bill to|referred the bill|Rerefer|Vacat", re.I)
@@ -12105,8 +12067,8 @@ def _when_said(iso):
 
 
 @check("data", "no referral a chair waived heads a stage, no first committee's report follows the "
-               "passage that sent the bill on, and no referral made by suspending the rules is "
-               "said to be under them", needs=("committee_names",))
+               "passage that sent the bill on, and no passage's referral is said to be under the "
+               "chamber's rules", needs=("committee_names",))
 def _referrals_unmade_on_disk(CN):
     """Three things, of every history in narratives.json, read from its own
     rows by a search of this check's own.
@@ -12136,10 +12098,13 @@ def _referrals_unmade_on_disk(CN):
     And the committee's stage before that passage tells no day after it: a
     notice entered before the passage for a later day is not given back to it.
 
-    A REFERRAL MADE BY SUSPENDING THE RULES. No passage "sent it on ... under
-    the chamber's rules" where a row of that chamber suspends the rules for a
-    referral that day, or in the week before with no passage of that chamber
-    between. 48 histories of 1995-2006.
+    UNDER THE CHAMBER'S RULES. No history says it. Until 8 October 2026 the
+    House's passages that sent a bill on said so where the rules sent it, and
+    this part looked for one made by suspending them (48 histories of
+    1995-2006); the person then chose the Senate's words for the House's too,
+    so the clause is gone from every passage, and a history that still says
+    it is one built before that change, or the clause come back. Read on the
+    same histories as the passages counted above.
 
     Each count has a floor: a search that finds nothing is not a search that
     found nothing wrong."""
@@ -12272,30 +12237,14 @@ def _referrals_unmade_on_disk(CN):
                     told = [x for x in _SENTENCE.split(nxt.get("text") or "") if x]
                     if told and all(_REPORT_SAID.match(x) for x in told):
                         back.append(f"{bill} of {term}: {label}")
-            # 3 -- a referral made by suspending the rules
+            # 3 -- under the chamber's rules
             for s in stages:
-                for m in re.finditer(r"On (?P<d>[A-Z][a-z]+ \d{1,2}, \d{4}) the (?P<ch>House|Senate) "
-                                     r"voted [^.]*?then (?:sent it on to the|referred it on to the "
-                                     r"House) [^.]*? committee under the chamber's rules",
-                                     s.get("text") or ""):
-                    ch = m.group("ch")[0]
-                    day = next((e.get("date")[:10] for e in evs
-                                if e.get("body") == ch and _when_said(e.get("date") or "") == m.group("d")),
-                               "")
-                    if not day:
-                        continue
-                    mine = [e for e in evs if e.get("body") == ch]
-                    for j, e in enumerate(mine):
-                        raw = e.get("raw") or ""
-                        x = _SUSPENDED_LOOSE.search(raw)
-                        if not x or _SUSPENSION_LOST.search(raw[x.end():].split(";")[0] + raw[:x.start()].split(";")[-1]):
-                            continue
-                        d = e.get("date")[:10]
-                        if d == day or (d < day and (_date_gap(d, day) <= 7) and not any(
-                                re.search(r"\bPASS", y.get("raw") or "", re.I) and d < y.get("date")[:10] < day
-                                for y in mine)):
-                            under.append(f"{bill} of {term}: {m.group('d')}, {raw[:50]!r}")
-                            break
+                t = s.get("text") or ""
+                at = t.find(_UNDER_THE_RULES)
+                if at >= 0:
+                    under.append(f"{bill} of {term}: {s.get('label')}, "
+                                 f"{t[max(0, at - 60):at + len(_UNDER_THE_RULES)]!r}")
+                    break
     problems = []
     if headed:
         problems.append(f"{len(headed)} stages are headed with a committee whose referral its chair "
@@ -12319,8 +12268,9 @@ def _referrals_unmade_on_disk(CN):
         problems.append(f"{len(early)} first committees' stages before the passage that sent the bill "
                         "on tell a day after it: " + "; ".join(early[:6]))
     if under:
-        problems.append(f"{len(under)} referrals made by suspending the rules are said to be under "
-                        "them: " + "; ".join(under[:6]))
+        problems.append(f"{len(under)} histories say a referral was made {_UNDER_THE_RULES}, the "
+                        "clause the person took out on 8 October 2026 (narratives.json is older than "
+                        "that change, or the clause is back): " + "; ".join(under[:6]))
     if waivers < _WAIVERS_AT_LEAST or sent_on < _SENT_ON_AT_LEAST:
         problems.append(f"{waivers:,} waived referrals and {sent_on:,} passages that sent a bill on, "
                         f"against at least {_WAIVERS_AT_LEAST:,} and {_SENT_ON_AT_LEAST:,}: a search "
@@ -12329,12 +12279,7 @@ def _referrals_unmade_on_disk(CN):
     return "ok", (f"{waivers:,} rows undoing a referral, {paired:,} with the row that made it ({again:,} "
                   f"made again after), none heading a stage or told without what undid it; "
                   f"{sent_on:,} passages that sent a bill on, no first "
-                  "committee's report after one, and none under rules suspended to make it")
-
-
-def _date_gap(a, b):
-    from datetime import date as _d
-    return (_d(*map(int, b.split("-"))) - _d(*map(int, a.split("-")))).days
+                  f"committee's report after one, and no history saying {_UNDER_THE_RULES}")
 
 
 def _said_date(s):

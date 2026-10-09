@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.29
+# GRANITE_VERSION: 2026-09-08.30
 """
 The topics of the civics section: their order, their names, and their prose.
 
@@ -1795,7 +1795,7 @@ was published.</li>
 [[rollcall_first_year]] on, and each voice or division vote on the bill, a
 division with its count. A voice or division vote has no member-by-member
 record to show, because none was made.</li>
-<li><b>Hearings</b> &mdash; each sitting that took the bill up, with its day,
+<li><b>Hearings</b> &mdash; each meeting that took the bill up, with its day,
 time and room, and the recording where there is one, opened at the moment
 the bill was taken up.</li>
 <li><b>Reports</b> &mdash; what the committee recommended and why, in the
