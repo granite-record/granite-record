@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.477
+# GRANITE_VERSION: 2026-09-04.480
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -285,7 +285,8 @@ def _site_bills(site="site"):
 # asks site_read itself.
 _RECORD_WHOLE = ("id", "term", "archived", "veto_message", "vote_note", "next_step",
                  "journey", "ballot",
-                 "status_source")   # whose a CACR's voters' line is (_ballots_shown)
+                 "status_source",   # whose a CACR's voters' line is (_ballots_shown)
+                 "study_report")    # the report's line (_rail_endings_on_the_site)
 _RECORD_KEPT = _RECORD_WHOLE + (
     "rollcalls",        # kept as whether the page has any
     "reports")          # kept as each report's cite_url and source
@@ -24428,9 +24429,56 @@ _KILLED_THEN_STUDIED = [
 ]
 
 
-@check("frontend", "interim study is the rail's orange \"~\" and a bill on the table now its yellow "
-                   "pause, a dead bill's cross kept; apart by shape, said aloud and drawn in forced "
-                   "colours, and the two chips in the same inks",
+# Real rows, of the days a chamber last sat: Docket.txt 25149 (the Senate's
+# veto votes of 19 August 2026, SJ 15) and 25123 (the House's, HJ 16);
+# Docket_db_1995-1996.txt 8654 (the House, 13 June 1996); Docket_2019-2020.txt
+# 14625 (the Senate, 16 September 2020); Docket_db_2013-2014.txt 128 (the
+# Senate, 26 June 2013).
+_LAST_SITTING_ROWS = {
+    ("SB434", "2025-2026"): ["2026|2030|8/19/2026 3:22:53 PM|SB434|S|Notwithstanding the Governor's Veto, Shall SB 434 Become Law: RC 16Y-8N, Veto Overridden by necessary two-thirds vote; 08/19/2026;  SJ 15|8/19/2026 4:55:32 PM"],
+    ("HB221", "2025-2026"): ["2026|0263|8/19/2026 10:43:37 AM|HB221|H|Veto Sustained 08/19/2026: RC 152-167 Lacking Necessary Two-Thirds Vote  HJ 16  P. 8|9/4/2026 9:42:34 AM"],
+    ("HB445", "1995-1996"): ["1996|0061|06/13/1996 01:33:01 PM|HB445|H|INDEF POSTPONED [PER JT RULE 23B], REPS SCANLAN & TROMBLY MA VV;|06/13/1996 01:33:01 PM"],
+    ("SB124", "2019-2020"): ["2020|0979|9/16/2020 12:00:00 AM|SB124|S|Notwithstanding the Governor's Veto, Shall SB 124 Become Law: RC 14Y-10N, Veto Sustained, lacking the necessary two-thirds vote; 09/16/2020; SJ 10|9/16/2020 12:00:00 AM"],
+    ("HB635", "2013-2014"): ["2013|0026|06/26/2013 12:16:38 PM|HB635|S|Conference Committee Report 2068c; Adopted, VV|06/26/2013 12:16:38 PM"],
+}
+
+
+def _sittings_of(N, B, rows=None):
+    """build_site_v2.chamber_sittings over the narratives of real rows,
+    {(bill, term): [docket lines]}: the days each chamber sat, as the build
+    reads them from every bill's floor rows."""
+    by = {}
+    for (bill, term), lines in (rows or _LAST_SITTING_ROWS).items():
+        by.setdefault(term, {})[bill] = _narrated(N, term, bill, lines)
+    return B.chamber_sittings(by)
+
+
+def _ended(N, B, term, bill, lines, kind, status, live, sittings, lsrs=None, sat=None):
+    """One bill as build_bills makes it, from its real rows: the journey, the
+    passage (with whether its session is over), the chip, the endings the
+    session's end makes (session_endings) and the rail. `sat` stands in for
+    the chamber's journals, none of which a check reads."""
+    narr = _narrated(N, term, bill, lines)
+    intro, steps = B.journey(narr, bill, [], "", "", term)
+    passed = {c for c in "HS" if B.journey_state(steps, c) == "p"}
+    acted = list(dict.fromkeys(s["body"] for s in steps if s["body"] in "HS"))
+    rail = B.passage(narr["stages"], kind, status, bill, passed, acted, over=not live)
+    chip = B.chip_word(kind, status, live)
+    tabled, ending = B.session_endings(narr, steps, rail, chip, status, term, not live,
+                                       sittings, lsrs, None, sat=sat)
+    jrail = B.journey_rail(intro, steps, rail, bill, status, chip=chip, tabled=tabled)
+    cells = B.index_rail(jrail)
+    for s in steps + jrail:
+        s.pop("short", None)
+        s.pop("effective", None)
+    return {"id": bill, "passage": rail, "chip": chip, "cells": cells, "steps": steps,
+            "jrail": jrail, "ending": ending, "narr": narr}
+
+
+@check("frontend", "interim study is the rail's orange \"~\" and a bill on the table its yellow "
+                   "pause -- while the session sits, and where it died there, with the cross at "
+                   "Law; apart by shape, said aloud and drawn in forced colours, and the two "
+                   "chips in the same inks",
        needs=("narrative", "build_site_v2"))
 def _rail_study_and_table_marks(N, B):
     """THE PERSON'S MARKS OF 8 OCTOBER 2026, and the two chips' inks with them.
@@ -24439,15 +24487,24 @@ def _rail_study_and_table_marks(N, B):
     table it could still come off drew the ring of a bill moving. Now:
 
       * HB 561 of 2026, sent to interim study by the House on 7 January 2026,
-        has an orange disc with a white "~" on the House stop, on its list
-        card and on its own page, and the same "~", bare, on its How it got
-        here line; a reader who hears the rail hears "sent to interim study".
+        drawn as it stood while the session still sat, has an orange disc
+        with a white "~" on the House stop, on its list card and on its own
+        page, and the same "~", bare, on its How it got here line; a reader
+        who hears the rail hears "sent to interim study". Law is not reached.
       * HB 1043 of 2026, laid on the Senate's table on 7 May 2026, drawn as it
         stood while the session still sat (live, its chip Tabled), has a
         yellow disc with two white bars there and on the line that laid it
-        there, and is heard "on the table". Drawn as it stands, dead on the
-        table when the session ended, it keeps the red cross and the line's
-        turning arrow.
+        there, and is heard "on the table".
+      * DRAWN AS IT STANDS, DEAD ON THE TABLE (the person, 8 October 2026:
+        "Show the body it was tabled in with the yellow pause, and show the
+        red x mark on the law once it died when the session ended"), its
+        Senate stop is still the pause of 7 May, heard "laid on the table";
+        Law is the cross on 19 August 2026, the Senate's last sitting (the
+        person, 9 October 2026), heard "stopped here, 19 August 2026"; and How
+        it got here has the pause on the tabling's line and a line with the
+        cross after it, "Still on the table when the Senate last sat; died
+        there when the session ended". This check held, until then, that it
+        kept the cross on the Senate and the turning arrow on the line.
       * The four filled marks differ in shape -- check, cross, wave, two bars
         -- which is what tells them apart in greyscale, where their inks sit
         within a few points of lightness; forced colours keep the wave's disc
@@ -24455,46 +24512,50 @@ def _rail_study_and_table_marks(N, B):
         ground; and the Interim Study and Tabled chips take the orange and the
         yellow.
     Built from the real rows through narrative.build, the journey, passage,
-    chip_word and journey_rail, and drawn by app.js in node."""
+    chip_word, session_endings and journey_rail, and drawn by app.js in node."""
     term = "2025-2026"
+    sittings = _sittings_of(N, B)
+    if (sittings.get(("S", "2026")) or [""])[-1] != "2026-08-19":
+        raise AssertionError(f"the Senate's last sitting of 2026 reads {sittings.get(('S', '2026'))}")
     cases = {}
     for name, bill, lines, kind, status, live in (
             ("study", "HB561", _CONSENT_REREFERRED[("HB561", term)], "study",
              "Referred for interim study", True),
             ("table", "HB1043", _TABLED_ROWS, "active", "Laid on the table", True),
-            ("died", "HB1043", _TABLED_ROWS, "done", "Died on the table", False)):
-        narr = _narrated(N, term, bill, lines)
-        intro, steps = B.journey(narr, bill, [], "", "")
-        passed = {c for c in "HS" if B.journey_state(steps, c) == "p"}
-        acted = list(dict.fromkeys(s["body"] for s in steps if s["body"] in "HS"))
-        rail = B.passage(narr["stages"], kind, status, bill, passed, acted)
-        chip = B.chip_word(kind, status, live)
-        jrail = B.journey_rail(intro, steps, rail, bill, status, chip=chip)
-        cells = B.index_rail(jrail)
-        for s in steps + jrail:
-            s.pop("short", None)
-            s.pop("effective", None)
-        cases[name] = {"id": bill, "passage": rail, "chip": chip, "cells": cells,
-                       "steps": steps, "jrail": jrail}
+            ("died", "HB1043", _TABLED_ROWS, "done", "Laid on the table", False)):
+        cases[name] = _ended(N, B, term, bill, lines, kind, status, live, sittings)
     bad = []
     marks = {k: [(s["stop"], s["mark"]) for s in c["jrail"]] for k, c in cases.items()}
     lines = {k: [(s["act"], s["mark"]) for s in c["steps"] if s["body"] in "HS"]
              for k, c in cases.items()}
     if (cases["study"]["chip"], cases["study"]["passage"]) != ("Interim Study", "Hx---") or \
-            ("House", "s") not in marks["study"] or ("study", "s") not in lines["study"]:
+            ("House", "s") not in marks["study"] or ("study", "s") not in lines["study"] or \
+            lines["study"][-1:] != [("study", "s")]:
         bad.append(f"HB 561's rail and lines are {marks['study']} {lines['study']}, chip "
                    f"{cases['study']['chip']!r}, passage {cases['study']['passage']!r}")
     if cases["table"]["chip"] != "Tabled" or ("Senate", "t") not in marks["table"] or \
-            lines["table"][-1:] != [("tabled", "t")]:
+            lines["table"][-1:] != [("tabled", "t")] or ("Law", "-") not in marks["table"]:
         bad.append(f"HB 1043 on the table now reads {marks['table']} {lines['table'][-2:]}, "
                    f"chip {cases['table']['chip']!r}")
-    if cases["died"]["chip"] != "Died" or ("Senate", "x") not in marks["died"] or \
-            ("tabled", "h") not in lines["died"] or any(m in ("s", "t") for _s, m in marks["died"]):
-        bad.append(f"HB 1043 dead on the table reads {marks['died']} {lines['died'][-2:]}")
+    died = cases["died"]
+    dstop = {s["stop"]: (s["mark"], s["date"]) for s in died["jrail"]}
+    dline = died["steps"][-1]
+    if died["chip"] != "Died" or dstop.get("Senate") != ("t", "2026-05-07") or \
+            dstop.get("Law") != ("x", "2026-08-19") or \
+            lines["died"][-2:] != [("tabled", "t"), ("died", "x")] or \
+            (dline["text"], dline["date"]) != (
+                "Still on the table when the Senate last sat; died there when the session "
+                "ended", "2026-08-19"):
+        bad.append(f"HB 1043 dead on the table reads {dstop} {lines['died'][-2:]} {dline!a}")
+    if (died["ending"] or {}).get("text") != (
+            "It was still on the Senate's table when the Senate last sat, on August 19, 2026, "
+            "and it died there when the session ended."):
+        bad.append(f"HB 1043's history ends {died['ending']!a}")
     if [c[0] for c in cases["study"]["cells"]][:2] != ["Ip", "Hs"] or \
-            [c[0] for c in cases["table"]["cells"]][2] != "St":
+            [c[0] for c in cases["table"]["cells"]][2] != "St" or \
+            died["cells"][2] != ["St", "2026-05-07", "tabled"] or died["cells"][4] != ["Lx", "2026-08-19"]:
         bad.append("the list card's stops do not carry the marks: "
-                   f"{cases['study']['cells']} {cases['table']['cells']}")
+                   f"{cases['study']['cells']} {cases['table']['cells']} {died['cells']}")
     # THE STOP SAYS WHAT ITS MARK SAYS (the review of 8 October 2026): HB 1171
     # of 2000, killed by the Senate on 20 April 2000, the kill reconsidered,
     # and sent to interim study on 18 May, drew the "~" over the kill's words
@@ -24529,6 +24590,8 @@ def _rail_study_and_table_marks(N, B):
     if got is not None:
         wave = '<b><svg class="wave"'
         stop = lambda html, cls: re.search(rf'<span class="stop {cls}"[^>]*>\s*(<b>.*?</b>)', html, re.S)
+        named = lambda html, cls, name: re.search(
+            rf'<span class="stop {cls}"[^>]*>\s*<b>[^<]*</b><i>{name}</i>', html)
         for where in ("card", "page", "bare"):
             st, tb, dd = got["study"][where], got["table"][where], got["died"][where]
             if not (stop(st, "s-istudy") and wave in st and 'class="stop s-x"' not in st):
@@ -24536,16 +24599,31 @@ def _rail_study_and_table_marks(N, B):
             m = stop(tb, "s-ontable")
             if not (m and m.group(1) == "<b></b>"):
                 bad.append(f"HB 1043's {where} rail on the table now is not the pause: {tb[:300]!a}")
-            if not (stop(dd, "s-x") and "✕" in dd and "s-ontable" not in dd):
-                bad.append(f"HB 1043's {where} rail, dead on the table, has lost its cross: {dd[:300]!a}")
+            if where == "bare":
+                # THE KNOWN LIMIT: the bare rail, drawn only for a row that
+                # carries no stops, has the passage alone, which cannot say a
+                # Died bill was tabled; it keeps the cross where it stopped.
+                if not named(dd, "s-x", "Senate"):
+                    bad.append(f"HB 1043's bare rail, dead on the table, is not the passage's: {dd[:300]!a}")
+            elif not (named(dd, "s-ontable", "Senate") and named(dd, "s-x", "Law")
+                      and not named(dd, "s-x", "Senate")):
+                bad.append(f"HB 1043's {where} rail, dead on the table, is not the pause at the "
+                           f"Senate and the cross at Law: {dd[:400]!a}")
         said = {k: (re.search(r'aria-label="([^"]*)"', got[k]["card"]) or [None, ""])[1] for k in got}
+        heard = {k: (re.search(r'aria-label="([^"]*)"', got[k]["page"]) or [None, ""])[1] for k in got}
         if "House: sent to interim study, 7 January 2026" not in said["study"] or \
-                "interim study, interim study" in said["study"]:
+                "interim study, interim study" in said["study"] or \
+                "Law: never reached" not in said["study"]:
             bad.append(f"HB 561's card is heard {said['study']!a}")
         if "Senate: on the table, 7 May 2026" not in said["table"]:
             bad.append(f"HB 1043's card on the table is heard {said['table']!a}")
-        if "sent to interim study" not in (re.search(r'aria-label="([^"]*)"', got["study"]["page"])
-                                           or [None, ""])[1].lower():
+        if "Senate: laid on the table, 7 May 2026" not in said["died"] or \
+                "Law: stopped here, 19 August 2026" not in said["died"]:
+            bad.append(f"HB 1043's card, dead on the table, is heard {said['died']!a}")
+        if "Senate: laid on the table on a voice vote, 7 May 2026" not in heard["died"] or \
+                "Law: did not become law, 19 August 2026" not in heard["died"]:
+            bad.append(f"HB 1043's page, dead on the table, is heard {heard['died']!a}")
+        if "sent to interim study" not in heard["study"].lower():
             bad.append("HB 561's page does not say interim study to a reader who hears it")
         if not re.search(r'<li class="j-istudy"><span class="jg"\s*aria-hidden="true"><svg class="wave"',
                          got["study"]["how"]):
@@ -24553,9 +24631,15 @@ def _rail_study_and_table_marks(N, B):
         if not re.search(r'<li class="j-ontable"><span class="jg"\s*aria-hidden="true"></span>'
                          r'<span class="jb">Senate', got["table"]["how"]):
             bad.append(f"HB 1043's line on the table now is not the pause: {got['table']['how'][-400:]!a}")
-        if not re.search(r'<li class="j-h"><span class="jg"\s*aria-hidden="true">↺</span>'
-                         r'<span class="jb">Senate', got["died"]["how"]):
-            bad.append(f"HB 1043's line, dead on the table, lost its arrow: {got['died']['how'][-400:]!a}")
+        if not re.search(r'<li class="j-ontable"><span class="jg"\s*aria-hidden="true"></span>'
+                         r'<span class="jb">Senate</span><span class="jt">Laid on the table on a '
+                         r'voice vote</span><span\s*class="jd">7 May 2026</span></li>'
+                         r'<li class="j-x"><span class="jg"\s*aria-hidden="true">✕</span>'
+                         r'<span class="jb">Senate</span><span class="jt">Still on the table when '
+                         r'the Senate last sat; died there when the session ended</span><span\s*'
+                         r'class="jd">19 Aug 2026</span></li>', got["died"]["how"]):
+            bad.append(f"HB 1043's lines, dead on the table, are not the pause and then the "
+                       f"cross: {got['died']['how'][-600:]!a}")
         drew = "app.js draws them on the card, the page, the bare rail and How it got here"
 
     # SHAPE, NOT INK ALONE: four filled marks, four glyphs.
@@ -24594,8 +24678,620 @@ def _rail_study_and_table_marks(N, B):
                 bad.append(f"--{tok} is not {hexv} where the sheet says")
     assert not bad, "; ".join(bad[:4])
     return "ok", ("HB 561's House stop and line are the orange \"~\", HB 1043 on the table now "
-                  "the yellow pause, dead on the table the cross; check, cross, wave and bars; "
+                  "the yellow pause, and dead on the table the pause of 7 May with the cross at "
+                  "Law on 19 August 2026 and a line saying so; check, cross, wave and bars; "
                   f"forced colours, print and the two chips kept; {drew}")
+
+
+# Real rows of the bills whose endings _rail_endings holds, copied from the
+# dockets on disk.
+_ENDING_ROWS = {
+    # Docket.txt lines 66-13354, 8 rows
+    ("HB96", "2025-2026"): [
+        "2025|0131|12/23/2024 3:38:22 PM|HB96|H|  Introduced 01/08/2025 and referred to Executive Departments and Administration  HJ 2  P. 5|1/21/2025 1:47:40 PM",
+        "2025|0131|1/15/2025 12:51:48 PM|HB96|H|Public Hearing: 01/22/2025 02:00 pm LOB 306-308|1/15/2025 12:51:48 PM",
+        "2025|0131|1/23/2025 11:21:48 AM|HB96|H|   Subcommittee Work Session: 01/28/2025 10:15 am LOB 104|1/23/2025 11:21:48 AM",
+        "2025|0131|3/5/2025 4:22:26 PM|HB96|H|Executive Session: 03/12/2025 11:00 am LOB 306-308|3/5/2025 4:22:26 PM",
+        "2025|0131|3/18/2025 9:03:40 AM|HB96|H|Majority Committee Report: Inexpedient to Legislate  03/12/2025 (Vote 12-4; RC)  HC 17  P. 31|3/21/2025 10:37:29 AM",
+        "2025|0131|3/18/2025 9:03:56 AM|HB96|H|Minority Committee Report: Ought to Pass|3/18/2025 9:03:56 AM",
+        "2025|0131|3/26/2025 1:23:51 PM|HB96|H|Lay HB96 on Table (Rep. C. McGuire): MA RC 199-135 03/26/2025  HJ 10  P. 59|5/13/2025 3:37:17 PM",
+        "2025|0131|12/18/2025 9:32:54 AM|HB96|H|Died on Table, Session ended 12/17/2025  HJ 19|12/18/2025 9:32:54 AM",
+    ],
+    # Docket.txt lines 955-25169, 29 rows
+    ("HB609", "2025-2026"): [
+        "2026|0889|1/16/2025 9:25:16 AM|HB609|H|  Introduced (in recess of) 01/09/2025 and referred to Criminal Justice and Public Safety  HJ 3  P. 18|2/18/2025 3:08:19 PM",
+        "2026|0889|1/22/2025 3:39:26 PM|HB609|H|Public Hearing: 01/30/2025 04:00 pm LOB 202-204|1/22/2025 3:39:26 PM",
+        "2026|0889|3/6/2025 8:58:45 AM|HB609|H|==CANCELLED== Executive Session: 03/14/2025 10:00 am LOB 202-204|3/10/2025 11:52:58 AM",
+        "2026|0889|3/10/2025 11:53:06 AM|HB609|H|  Executive Session: 03/19/2025 10:00 am LOB 202-204|3/10/2025 11:53:06 AM",
+        "2026|0889|3/19/2025 1:21:14 PM|HB609|H|Retained in Committee|3/19/2025 1:21:14 PM",
+        "2026|0889|10/3/2025 12:55:11 PM|HB609|H| ==RESCHEDULED== Executive Session: 10/22/2025 01:00 pm GP 230|10/8/2025 11:06:42 AM",
+        "2026|0889|10/3/2025 12:52:30 PM|HB609|H| ==RESCHEDULED==  Full Committee Work Session: 10/22/2025 10:00 am GP 230|10/8/2025 11:06:29 AM",
+        "2026|0889|11/13/2025 12:40:37 PM|HB609|H|Majority Committee Report: Ought to Pass  10/22/2025 (Vote 9-7; RC)  HC 51  P. 21|12/19/2025 2:06:23 PM",
+        "2026|0889|11/13/2025 12:40:52 PM|HB609|H|Minority Committee Report: Inexpedient to Legislate|11/13/2025 12:40:52 PM",
+        "2026|0889|1/7/2026 12:24:41 PM|HB609|H|FLAM # 2026-0019h (Rep. Farrington): AA RC 193-152 01/07/2026  HJ 1  P. 87|3/30/2026 9:40:54 AM",
+        "2026|0889|1/7/2026 12:25:29 PM|HB609|H|Ought to Pass with Amendment 2026-0019h: MA RC 193-151 01/07/2026  HJ 1  P. 92|3/30/2026 9:41:58 AM",
+        "2026|0889|1/30/2026 9:15:02 AM|HB609|S|  Introduced 01/29/2026 and Referred to Judiciary;  SJ 3|1/30/2026 9:15:02 AM",
+        "2026|0889|3/9/2026 2:22:39 PM|HB609|S| Hearing: 03/10/2026, Room 100, SH, 01:30 pm;  SC 9|4/28/2026 2:22:39 PM",
+        "2026|0889|5/12/2026 3:05:50 PM|HB609|S|Committee Report: Ought to Pass with Amendment # 2026-1917s, 05/14/2026, Vote 3-2;  SC 18A|5/12/2026 3:05:50 PM",
+        "2026|0889|5/14/2026 8:27:35 PM|HB609|S|Committee Amendment # 2026-1917s, AF, VV; 05/14/2026;  SJ 12|5/14/2026 8:27:35 PM",
+        "2026|0889|5/14/2026 8:27:53 PM|HB609|S|Sen. Abbas Floor Amendment # 2026-1987s, AA, VV; 05/14/2026;  SJ 12|5/14/2026 8:27:53 PM",
+        "2026|0889|5/14/2026 9:17:28 PM|HB609|S|Ought to Pass with Amendment # 2026-1987s, MA, VV; OT3rdg; 05/14/2026;  SJ 12|5/14/2026 9:17:28 PM",
+        "2026|0889|5/18/2026 2:30:52 PM|HB609|H|House Non-Concurs with Senate Amendment 2026-1987s and Requests CofC (Rep. Roy): MA VV 05/14/2026  HJ 13  P. 147|7/24/2026 11:36:19 AM",
+        "2026|0889|5/18/2026 2:32:21 PM|HB609|H|Speaker Appoints: Reps. Roy, Rhodes, Paquette, Osborne 05/14/2026  HJ 13  P. 147|7/24/2026 11:36:26 AM",
+        "2026|0889|5/20/2026 4:35:59 PM|HB609|S|Sen. Gannon Accedes to House Request for Committee of Conference, MA, VV; (In recess 05/14/2026);  SJ 13|5/26/2026 3:47:02 PM",
+        "2026|0889|5/20/2026 4:39:21 PM|HB609|S|President Appoints: Senators Abbas, Gannon, Reardon; (In Recess 05/14/2026);  SJ 13|5/20/2026 4:39:21 PM",
+        "2026|0889|5/21/2026 4:08:32 PM|HB609|H|Conferee Change: Rep. Layon Replaces Rep. Osborne 05/21/2026  HJ 14  P. 32|7/27/2026 12:53:24 PM",
+        "2026|0889|5/27/2026 12:00:00 AM|HB609|H|Conference Committee Meeting: 05/27/2026 11:00 am GP 234|5/21/2026 4:45:07 PM",
+        "2026|0889|5/27/2026 9:02:42 AM|HB609|S|Conferee Change; Senator Lang Replaces Senator Gannon;  SJ 14|5/27/2026 9:02:42 AM",
+        "2026|0889|5/28/2026 12:00:00 AM|HB609|H|Conference Committee Meeting: 05/28/2026 10:00 am GP 231|5/27/2026 12:22:36 PM",
+        "2026|0889|5/28/2026 4:03:03 PM|HB609|S|Conference Committee Report Filed, # 2026-2114c; 06/04/2026|5/28/2026 4:03:03 PM",
+        "2026|0889|6/4/2026 11:29:30 AM|HB609|S|Conference Committee Report # 2026-2114c; RC 15Y-8N, Adopted; 06/04/2026;  SJ 14|6/4/2026 11:29:30 AM",
+        "2026|0889|6/4/2026 2:29:29 PM|HB609|H|Lay HB609 on Table (Rep. Wilhelm): MA RC 182-160 06/04/2026  HJ 15  P. 29|8/28/2026 2:42:43 PM",
+        "2026|0889|8/20/2026 12:21:04 PM|HB609|H|Died on Table, Session ended 08/19/2026  HJ 16|8/20/2026 12:21:04 PM",
+    ],
+    # Docket.txt lines 1406-11727, 9 rows
+    ("SB131", "2025-2026"): [
+        "2025|1064|1/22/2025 6:07:48 PM|SB131|S|  Introduced 01/09/2025 and Referred to Health and Human Services;  SJ 3|1/22/2025 6:07:48 PM",
+        "2025|1064|2/5/2025 4:24:45 PM|SB131|S| Hearing: 02/12/2025, Room 101, LOB, 09:45 am;  SC 9|2/5/2025 4:24:45 PM",
+        "2025|1064|2/13/2025 3:13:22 PM|SB131|S|Committee Report: Ought to Pass, 03/06/2025; Vote 5-0; CC;  SC 11|2/19/2025 12:33:54 PM",
+        "2025|1064|3/6/2025 6:56:31 PM|SB131|S|Ought to Pass: MA, VV; Refer to Finance Rule 4-5; 03/06/2025;  SJ 6|3/6/2025 6:56:31 PM",
+        "2025|1064|3/18/2025 4:28:12 PM|SB131|S|Committee Report: Ought to Pass, 03/27/2025, Vote 6-0;  SC 14|3/18/2025 4:28:12 PM",
+        "2025|1064|3/27/2025 1:45:29 PM|SB131|S|Ought to Pass: MA, VV; 03/27/2025;  SJ 9|3/27/2025 1:45:29 PM",
+        "2025|1064|3/27/2025 1:45:49 PM|SB131|S|Sen. Gray Moved Laid on Table, MA, VV; 03/27/2025;  SJ 9|3/27/2025 1:45:48 PM",
+        "2025|1064|3/27/2025 1:46:11 PM|SB131|S|Pending Motion OT3rdg; 03/27/2025;  SJ 9|3/27/2025 1:46:11 PM",
+        "2025|1064|11/3/2025 1:17:34 PM|SB131|S|Inexpedient to Legislate, Senate Rule 3-23, 10/31/2025;  SJ 1|11/3/2025 1:17:34 PM",
+    ],
+    # Docket.txt lines 12265-25352, 12 rows
+    ("SB570", "2025-2026"): [
+        "2026|2191|11/24/2025 2:21:20 PM|SB570|S|  Introduced 01/07/2026 and Referred to Executive Departments and Administration;  SJ 1|1/8/2026 1:43:25 PM",
+        "2026|2191|1/20/2026 3:53:49 PM|SB570|S| Hearing: 01/28/2026, Room 103, SH, 09:10 am;  SC 3|1/20/2026 3:53:49 PM",
+        "2026|2191|3/27/2026 11:59:16 AM|SB570|H|  Introduced (in recess of) 03/26/2026 and referred to Legislative Administration  HJ 5  P. 54|6/26/2026 10:28:06 AM",
+        "2026|2191|3/19/2026 10:39:27 AM|SB570|S|Committee Report: Ought to Pass with Amendment # 2026-1228s, 03/26/2026; Vote 5-0; CC;  SC 11|3/19/2026 10:39:27 AM",
+        "2026|2191|3/23/2026 8:56:38 AM|SB570|S|Committee Amendment # 2026-1228s, AA, VV; 03/26/2026;  SJ 7|3/26/2026 9:31:04 AM",
+        "2026|2191|3/23/2026 8:57:00 AM|SB570|S|Ought to Pass with Amendment #2026-1228s, MA, VV; OT3rdg; 03/26/2026;  SJ 7|3/26/2026 9:31:08 AM",
+        "2026|2191|4/7/2026 3:34:24 PM|SB570|H|Public Hearing: 04/15/2026 10:00 am GP 234|4/7/2026 3:34:24 PM",
+        "2026|2191|4/30/2026 9:54:00 AM|SB570|H|  Executive Session: 05/06/2026 01:00 pm GP 232|5/5/2026 12:09:30 PM",
+        "2026|2191|5/6/2026 2:39:56 PM|SB570|H| Committee Report: Refer for Interim Study  05/06/2026 (Vote 12-0; CC)  HC 19  P. 15|5/11/2026 11:51:35 AM",
+        "2026|2191|5/14/2026 10:39:41 AM|SB570|H|Refer for Interim Study: MA VV 05/14/2026  HJ 13  P. 25|7/22/2026 4:25:05 PM",
+        "2026|2191|8/27/2026 11:21:33 AM|SB570|H|Executive Session: 09/15/2026 10:00 am GP 234|8/27/2026 11:21:33 AM",
+        "2026|2191|9/29/2026 12:41:48 PM|SB570|H| Interim Study Report: Recommended for Future Legislation  09/28/2026 (Vote 9-0; )|9/29/2026 12:41:48 PM",
+    ],
+    # Docket.txt lines 907-25355, 10 rows
+    ("HB561", "2025-2026"): [
+        "2026|0001|1/16/2025 9:07:34 AM|HB561|H|  Introduced (in recess of) 01/09/2025 and referred to Public Works and Highways  HJ 3  P. 16|2/18/2025 2:56:59 PM",
+        "2026|0001|1/29/2025 10:05:52 AM|HB561|H|Public Hearing: 02/04/2025 10:00 am LOB 201|1/29/2025 10:05:52 AM",
+        "2026|0001|2/4/2025 4:02:57 PM|HB561|H|Executive Session: 02/11/2025 10:00 am LOB 201|2/4/2025 4:02:57 PM",
+        "2026|0001|2/25/2025 10:06:33 AM|HB561|H|Retained in Committee|2/25/2025 10:06:33 AM",
+        "2026|0001|9/8/2025 4:18:25 PM|HB561|H|  Full Committee Work Session: 10/14/2025 10:00 am GP 228|9/8/2025 4:18:25 PM",
+        "2026|0001|9/8/2025 4:20:16 PM|HB561|H|  Executive Session: 10/14/2025 10:15 am GP 228|9/8/2025 4:20:16 PM",
+        "2026|0001|10/20/2025 2:38:48 PM|HB561|H| Committee Report: Refer for Interim Study  10/14/2025 (Vote 16-0; CC)  HC 51  P. 16|12/19/2025 2:00:07 PM",
+        "2026|0001|1/7/2026 11:32:01 AM|HB561|H|Refer for Interim Study: MA VV 01/07/2026  HJ 1  P. 77|3/27/2026 3:15:36 PM",
+        "2026|0001|9/15/2026 3:58:38 PM|HB561|H|   Full Committee Work Session: 09/29/2026 10:00 am GP 228|9/15/2026 3:58:38 PM",
+        "2026|0001|9/30/2026 1:13:25 PM|HB561|H| Interim Study Report: Not Recommended for Future Legislation  09/29/2026 (Vote 8-2; )|9/30/2026 1:13:25 PM",
+    ],
+    # Docket.txt lines 1120-13211, 13 rows
+    ("HB741", "2025-2026"): [
+        "2026|0782|1/22/2025 8:16:42 AM|HB741|H|  Introduced (in recess of) 01/09/2025 and referred to Education Policy and Administration  HJ 3  P. 25|2/18/2025 3:37:46 PM",
+        "2026|0782|2/12/2025 3:33:03 PM|HB741|H|Public Hearing: 02/18/2025 03:15 pm LOB 202-204|2/12/2025 3:33:03 PM",
+        "2026|0782|3/12/2025 2:44:04 PM|HB741|H|Executive Session: 03/17/2025 09:30 am LOB 205-207|3/12/2025 2:44:04 PM",
+        "2026|0782|3/19/2025 1:29:17 PM|HB741|H|Majority Committee Report: Ought to Pass with Amendment # 2025-0336h   03/17/2025 (Vote 10-8; RC)  HC 17  P. 53|3/21/2025 10:51:15 AM",
+        "2026|0782|3/19/2025 1:29:33 PM|HB741|H|Minority Committee Report: Inexpedient to Legislate|3/19/2025 1:29:33 PM",
+        "2026|0782|3/27/2025 10:23:53 AM|HB741|H|Amendment # 2025-0336h: AA VV 03/27/2025  HJ 11  P. 14|5/14/2025 10:22:44 AM",
+        "2026|0782|3/27/2025 10:24:21 AM|HB741|H|Ought to Pass with Amendment 2025-0336h: MA RC 198-174 03/27/2025  HJ 11  P. 14|5/14/2025 10:22:53 AM",
+        "2026|0782|3/28/2025 2:05:46 PM|HB741|S|  Introduced 03/27/2025 and Referred to Education;  SJ 10|3/28/2025 2:05:46 PM",
+        "2026|0782|4/3/2025 11:00:55 AM|HB741|S| Hearing: 04/10/2025, Room 101, LOB, 09:45 am;  SC 16|4/3/2025 11:00:55 AM",
+        "2026|0782|4/24/2025 11:26:36 AM|HB741|S|Committee Report: Rereferred to Committee, 05/01/2025, Vote 4-1, CC  SC 19|4/24/2025 11:26:36 AM",
+        "2026|0782|5/1/2025 1:37:20 PM|HB741|S|Rereferred to Committee, MA, VV; 05/01/2025;  SJ 11|5/1/2025 1:37:20 PM",
+        "2026|0782|11/20/2025 10:35:42 AM|HB741|S|Committee Report: Referred to Interim Study, 01/07/2026; Vote 5-0; CC;  SC 46|12/9/2025 1:47:20 PM",
+        "2026|0782|1/7/2026 10:54:12 AM|HB741|S|Refer to Interim Study, MA, VV; 01/07/2026;  SJ 1|1/7/2026 10:54:12 AM",
+    ],
+    # Docket_db_1995-1996.txt lines 14111-14124, 14 rows
+    ("HB1179", "1995-1996"): [
+        "1996|2331|01/03/1996 10:00:00 AM|HB1179|H|INTRODUCED AND REF TO EDUCATION; HJ4,P126|01/03/1996 10:00:00 AM",
+        "1996|2331|01/03/1996 01:21:07 PM|HB1179|H|COPY TO CHAIRMAN ON 12/12/95  DUE ON  02/22/96|01/03/1996 01:21:07 PM",
+        "1996|2331|01/03/1996 01:22:00 PM|HB1179|H|HEARING JAN24 10:00 RM202,LOB    FOR: EDUCATION|01/03/1996 01:22:00 PM",
+        "1996|2331|01/30/1996 05:25:20 PM|HB1179|H|MAJ REPORT  REF FOR STUDY  FOR FEB01  (VOTE 17-1)|01/30/1996 05:25:20 PM",
+        "1996|2331|02/01/1996 11:30:21 AM|HB1179|H|REFERRED TO EDUCATION FOR INTERIM STUDY VV; HJ19,P558|02/01/1996 11:30:21 AM",
+        "1996|2331|04/02/1996 02:33:51 PM|HB1179|H|//CANCELLED//INT STUDY SUBCOM WORK SESSION APR10 09:30 RM202,LOB|04/02/1996 02:33:51 PM",
+        "1996|2331|04/02/1996 02:34:02 PM|HB1179|H|(SUBCOM CHR:  REP SPEAR)|04/02/1996 02:34:02 PM",
+        "1996|2331|05/02/1996 09:59:13 AM|HB1179|H|INT STUDY SUBCOM WK SESS MAY09 10:00 RM202,LOB    FOR: EDUC|05/02/1996 09:59:13 AM",
+        "1996|2331|05/09/1996 12:12:40 PM|HB1179|H|INT STUDY SUBCOM WK SESS MAY22 10:00 RM202,LOB    FOR: EDUC|05/09/1996 12:12:40 PM",
+        "1996|2331|06/19/1996 12:30:42 PM|HB1179|H|INT STUDY SUBCOM WORK SESSION JUL10 09:00 RM202,LOB    FOR: EDUC|06/19/1996 12:30:42 PM",
+        "1996|2331|06/20/1996 02:45:28 PM|HB1179|H|INT STUDY SUBCOM WORK SESSION JUL17 09:00 RM202,LOB    FOR: EDUC|06/20/1996 02:45:28 PM",
+        "1996|2331|08/29/1996 12:38:28 PM|HB1179|H|INTERIM STUDY SUBCOM WORK SESS SEPT18 9:00 RM202,LOB :EDUCATION|08/29/1996 12:38:28 PM",
+        "1996|2331|10/29/1996 08:52:21 AM|HB1179|H|INT STUDY REPT:  REC FOR LEG IN 1997  (VOTE 17-0) <LSR 97-0155>|10/29/1996 08:52:21 AM",
+        "1996|2331|06/18/1997 04:36:14 PM|HB1179|H|{LSR 0155, HB 154, CH. 183, 1997  SIGNED BY GOV 6/18/97}|06/18/1997 04:36:14 PM",
+    ],
+    # Docket_db_2013-2014.txt lines 1421-1438, 18 rows
+    ("HB135", "2013-2014"): [
+        "2013|0281|01/03/2013 09:38:14 AM|HB135|H|Introduced 1/3/2013 and Referred to Criminal Justice and Public Safety; HJ 12, PG.183|01/03/2013 09:38:14 AM",
+        "2013|0281|01/15/2013 11:12:10 AM|HB135|H|Public Hearing: 1/22/2013 1:30 PM LOB 204|01/15/2013 11:12:10 AM",
+        "2013|0281|02/20/2013 02:15:07 PM|HB135|H|Executive Session: 2/28/2013 10:00 AM LOB 204|02/20/2013 02:15:07 PM",
+        "2013|0281|03/01/2013 08:28:09 AM|HB135|H|Majority Committee Report: Ought to Pass with Amendment #0341h for Mar 27 (Vote 12-6; RC); HC 25, PG.707|03/01/2013 08:28:09 AM",
+        "2013|0281|03/01/2013 08:28:30 AM|HB135|H|Proposed Majority Committee Amendment #2013-0341h; HC 25, PG.722|03/01/2013 08:28:30 AM",
+        "2013|0281|03/01/2013 08:29:45 AM|HB135|H|Minority Committee Report: Inexpedient to Legislate; HC 25, PG.707|03/01/2013 08:29:45 AM",
+        "2013|0281|03/21/2013 11:33:18 AM|HB135|H|Special Order to Regular Place on Mar 27 Calendar (Rep Shurtleff): MA VV; HJ29, PG.975-976|03/21/2013 11:33:18 AM",
+        "2013|0281|03/27/2013 10:18:25 AM|HB135|H|Amendment #0341h: AA DIV 217-115; HJ31, PG.1026|03/27/2013 10:18:25 AM",
+        "2013|0281|03/27/2013 10:28:20 AM|HB135|H|Floor Amendment #2013-1031h(NT) (Rep Itse): AF RC 103-254; HJ31, PG.1026-1029|03/27/2013 10:28:20 AM",
+        "2013|0281|03/27/2013 10:36:12 AM|HB135|H|Floor Amendment #2013-1033h(NT) (Rep Itse): AF RC 146-213; HJ31, PG.1029-1031|03/27/2013 10:36:12 AM",
+        "2013|0281|03/27/2013 12:03:53 PM|HB135|H|Ought to Pass with Amendment #0341h: MA RC 189-184; HJ31, PG.1026-1033|03/27/2013 12:03:53 PM",
+        "2013|0281|03/27/2013 12:04:30 PM|HB135|H|Reconsideration (Rep G.Richardson): MF RC 175-198; HJ31, PG.1033-1035|03/27/2013 12:04:30 PM",
+        "2013|0281|03/28/2013 04:09:57 PM|HB135|S|Introduced and Referred to Judiciary|03/28/2013 04:09:57 PM",
+        "2013|0281|04/17/2013 09:42:23 AM|HB135|S|Hearing: 4/23/13, Room 100, SH, 9:00 a.m.; SC17|04/17/2013 09:42:23 AM",
+        "2013|0281|05/10/2013 01:18:48 PM|HB135|S|Committee Report: Inexpedient to Legislate, 5/23/13; SC21|05/10/2013 01:18:48 PM",
+        "2013|0281|05/23/2013 02:32:37 PM|HB135|S|Inexpedient to Legislate Not Voted On;|05/23/2013 02:32:37 PM",
+        "2013|0281|05/23/2013 02:33:04 PM|HB135|S|Sen. Forrester Moved Laid on Table, RC 19Y-5N, MA;|05/23/2013 02:33:04 PM",
+        "2013|0281|09/03/2013 08:10:58 AM|HB135|S|Inexpedient to Legislate, 2013 Adjournment, Senate Rule 3-23|09/03/2013 08:10:58 AM",
+    ],
+}
+# Real report rows, one of each wording the docket has used (the review of
+# interim study, 8 October 2026).
+_STUDY_REPORT_ROWS = [
+    # Docket_db_1989-1990.txt 11894
+    ("1989-1990", "1990|2044|09/26/1990 02:56:40 PM|HB1045|H|INT STUDY REPORT OTP FOR 1991 SESSION  (VOTE 13-0)|09/26/1990 02:56:40 PM"),
+    # Docket_db_1991-1992.txt 12902
+    ("1991-1992", "1992|2007|04/02/1992 02:42:45 PM|HB1467|H|INT STUDY REPORT (ITL) FILED (VOTE 11-0)|04/02/1992 02:42:45 PM"),
+    # Docket_db_1993-1994.txt 13273
+    ("1993-1994", "1994|2064|10/19/1994 02:44:58 PM|HB1561|H|INT STUDY REPORT: MAJ-NOT REC FOR 1995 LEGISLATION  (VOTE: 10-4)|10/19/1994 02:44:58 PM"),
+    # Docket_db_1993-1994.txt 13274
+    ("1993-1994", "1994|2064|10/19/1994 03:22:59 PM|HB1561|H|INT STUDY REPORT:  MIN-REC FOR 1995 LEGISLATION (VOTE 4-10)|10/19/1994 03:22:59 PM"),
+    # Docket_db_1993-1994.txt 15150
+    ("1993-1994", "1994|2223|10/26/1994 03:12:42 PM|HB1465|H|INT STUDY REPORT:  NOT REEC FOR 1995 LEGISLATION  (VOTE:12-0)|10/26/1994 03:12:42 PM"),
+    # Docket_db_1999-2000.txt 14635
+    ("1999-2000", "2000|2232|07/12/2000 04:49:16 PM|HB1152|H|Int Study Report:  REC FOR LEGIS IN  2001   (vote 14-0)|07/12/2000 04:49:16 PM"),
+    # Docket_db_2005-2006.txt 12176
+    ("2005-2006", "2006|2043|09/19/2006 03:10:49 PM|HB1133|H|Interim Study Report:  NOT REC FOR LEGIS (vote 11-0)|09/19/2006 03:10:49 PM"),
+    # Docket_db_2007-2008.txt 17092
+    ("2007-2008", "2008|2081|09/23/2008 03:46:44 PM|HB1358|H|Interim Study Report: Recommended for Future Legislation in 2009 (Vote 11-0); HC 62, PG.2369|09/23/2008 03:46:44 PM"),
+    # Docket_db_2011-2012.txt 16044
+    ("2011-2012", "2012|2416|06/27/2012 04:01:50 PM|HB1473|H|Interim Study Report: Not Recommended for Legislation in 2013 (Vote 10-0)|06/27/2012 04:01:50 PM"),
+    # Docket_db_2013-2014.txt 15380
+    ("2013-2014", "2014|2448|10/31/2014 09:17:17 AM|HB1592|H|Interim Study Report: No Recommendation|10/31/2014 09:17:17 AM"),
+    # Docket_2023-2024.txt 5172
+    ("2023-2024", "2024|2472|10/31/2024 12:00:00 AM|HB1383|H|Interim Study Report: Without Recomendation (Vote 10-10)|10/31/2024 12:00:00 AM"),
+]
+
+
+@check("frontend", "a bill that died on the table is paused where it was tabled and crossed at "
+                   "Law on the day it died, and an interim study bill whose session is over "
+                   "crossed at Law on its chamber's last sitting, with its report's line",
+       needs=("narrative", "build_site_v2"))
+def _rail_endings(N, B):
+    """THE RAIL'S ENDINGS, from real rows (the person, 8 and 9 October 2026:
+    "Show the body it was tabled in with the yellow pause, and show the red x
+    mark on the law once it died when the session ended, same goes for
+    interim study bills that weren't recommended for future legislation by
+    showing the orange icon in the body it was studied in"; and for a
+    recommended one option (d), "the report gets its own How it got here line
+    with an orange arrow").
+
+    THE DAY A BILL LEFT ON THE TABLE DIED (build_site_v2.table_death):
+      * HB 96 of 2025, laid on the House's table on 26 March 2025, "Died on
+        Table, Session ended 12/17/2025": the pause of 26 March, Law crossed
+        on 17 December 2025, the row's own day.
+      * HB 609 of 2026, which both chambers had passed before the House laid
+        it on the table on 4 June: the House keeps its check, the tabling's
+        line is the pause, Law is crossed on 19 August 2026, the day its row
+        states.
+      * SB 131 of 2025, under Senate Rule 3-23 ("Inexpedient to Legislate,
+        Senate Rule 3-23, 10/31/2025"): the Senate's pause of 27 March, Law
+        crossed on 31 October 2025, and the rule's own line, not a second one.
+      * HB 135 of 2013, "Inexpedient to Legislate, 2013 Adjournment, Senate
+        Rule 3-23", which no pattern read: now the rule's line, dated by the
+        day the Senate adjourned -- 3 September 2013, where its journal opens
+        a sitting that day, the day the row was entered, and 26 June 2013, its
+        last floor sitting, where no journal says so.
+      * HB 201 of 2020, whose row says "Adjournment 09/16/2021", a day after
+        it was entered and outside the term: the line and Law on 16 September
+        2020, the Senate's adjournment of 2020, where both had no day.
+      * HB 1043 of 2026 is _rail_study_and_table_marks'.
+    AN INTERIM STUDY BILL WHOSE SESSION IS OVER (study_ending):
+      * SB 570 of 2026, sent to interim study by the House on 14 May, the
+        report of 28 September 2026 "Recommended for Future Legislation" 9-0:
+        the House's "~", Law crossed on 19 August 2026, the House's last
+        sitting, a line of the death and the report's with the orange arrow.
+      * HB 561 of 2026, "Not Recommended for Future Legislation" 8-2 on 29
+        September: the report's line keeps the "~". Drawn as it stood while
+        the session sat, nothing of this.
+      * HB 741 of 2026, studied by the Senate, no report: crossed at Law on
+        19 August 2026, the Senate's last sitting, and no report's line.
+      * HB 1179 of 1996, "INT STUDY REPT: REC FOR LEG IN 1997 (VOTE 17-0) <LSR
+        97-0155>", "{LSR 0155, HB 154, CH. 183, ...}": crossed at Law on 13
+        June 1996, the House's last sitting, and the report's line names and
+        links HB 154 of 1997, which data/bills.json files under LSR 155 of
+        1997.
+    And the report read in every wording, majority over minority."""
+    sittings = _sittings_of(N, B)
+    want_days = {("S", "2026"): "2026-08-19", ("H", "2026"): "2026-08-19",
+                 ("H", "1996"): "1996-06-13", ("S", "2020"): "2020-09-16",
+                 ("S", "2013"): "2013-06-26"}
+    bad = [f"{k} last sat {(sittings.get(k) or [''])[-1]!r}, not {v}"
+           for k, v in want_days.items() if (sittings.get(k) or [""])[-1] != v]
+    # HB 154 of 1997, as data/bills.json has it.
+    lsrs = B.lsr_bills({"1997-1998": {"HB154": {"lsr": "1997-155", "lsr_year": "1997",
+                                                  "lsr_num": "155"}}})
+    R = _ENDING_ROWS
+    journal = lambda body, day: (body, day) == ("S", "2013-09-03")
+    c = {
+        "HB96": _ended(N, B, "2025-2026", "HB96", R[("HB96", "2025-2026")], "done",
+                       "Died on the table", False, sittings),
+        "HB609": _ended(N, B, "2025-2026", "HB609", R[("HB609", "2025-2026")], "done",
+                        "Died on the table", False, sittings),
+        "SB131": _ended(N, B, "2025-2026", "SB131", R[("SB131", "2025-2026")], "done",
+                        "Died on the table", False, sittings),
+        "HB135": _ended(N, B, "2013-2014", "HB135", R[("HB135", "2013-2014")], "done",
+                        "Died on the table", False, sittings, sat=journal),
+        "HB135 unread": _ended(N, B, "2013-2014", "HB135", R[("HB135", "2013-2014")], "done",
+                               "Died on the table", False, sittings),
+        "HB201": _ended(N, B, "2019-2020", "HB201", _DOCKET_STATES_ITS_DAY[("2019-2020", "HB201")],
+                        "done", "Died on the table", False, sittings),
+        "SB570": _ended(N, B, "2025-2026", "SB570", R[("SB570", "2025-2026")], "study",
+                        "Referred for interim study", False, sittings),
+        "HB561": _ended(N, B, "2025-2026", "HB561", R[("HB561", "2025-2026")], "study",
+                        "Referred for interim study", False, sittings),
+        "HB561 live": _ended(N, B, "2025-2026", "HB561", R[("HB561", "2025-2026")], "study",
+                             "Referred for interim study", True, sittings),
+        "HB741": _ended(N, B, "2025-2026", "HB741", R[("HB741", "2025-2026")], "study",
+                        "Referred for interim study", False, sittings),
+        "HB1179": _ended(N, B, "1995-1996", "HB1179", R[("HB1179", "1995-1996")], "study",
+                         "Referred for interim study", False, sittings, lsrs),
+    }
+    stops = {k: {s["stop"]: (s["mark"], s["date"]) for s in v["jrail"]} for k, v in c.items()}
+    tail = {k: [(s["body"], s["act"], s["mark"], s["date"], s["text"]) for s in v["steps"]][-3:]
+            for k, v in c.items()}
+
+    def expect(k, stop, mark, day):
+        if stops[k].get(stop) != (mark, day):
+            bad.append(f"{k}'s {stop} is {stops[k].get(stop)}, not {(mark, day)}")
+
+    for k, stop, mark, day in (
+            ("HB96", "House", "t", "2025-03-26"), ("HB96", "Law", "x", "2025-12-17"),
+            ("HB609", "House", "p", "2026-01-07"), ("HB609", "Law", "x", "2026-08-19"),
+            ("SB131", "Senate", "t", "2025-03-27"), ("SB131", "Law", "x", "2025-10-31"),
+            ("HB135", "Senate", "t", "2013-05-23"), ("HB135", "Law", "x", "2013-09-03"),
+            ("HB135 unread", "Law", "x", "2013-06-26"),
+            ("HB201", "Senate", "t", "2020-06-16"), ("HB201", "Law", "x", "2020-09-16"),
+            ("SB570", "House", "s", "2026-05-14"), ("SB570", "Law", "x", "2026-08-19"),
+            ("HB561", "House", "s", "2026-01-07"), ("HB561", "Law", "x", "2026-08-19"),
+            ("HB561 live", "Law", "-", ""),
+            ("HB741", "Senate", "s", "2026-01-07"), ("HB741", "Law", "x", "2026-08-19"),
+            ("HB1179", "House", "s", "1996-02-01"), ("HB1179", "Law", "x", "1996-06-13")):
+        expect(k, stop, mark, day)
+    death = "Died on the table when the session ended"
+    for k, want in (
+            ("HB96", [("H", "tabled", "t", "2025-03-26", "Laid on the table, 199–135"),
+                      ("H", "died", "x", "2025-12-17", death)]),
+            ("HB609", [("S", "conf_adopted", "p", "2026-06-04", "Adopted the conference report, 15–8"),
+                       ("H", "tabled", "t", "2026-06-04", "Laid on the table, 182–160"),
+                       ("H", "died", "x", "2026-08-19", death)]),
+            ("SB131", [("S", "tabled", "t", "2025-03-27", "Laid on the table on a voice vote"),
+                       ("S", "died", "x", "2025-10-31",
+                        "Killed under Senate Rule 3-23, still on the table")]),
+            ("HB135", [("S", "tabled", "t", "2013-05-23", "Laid on the table, 19–5"),
+                       ("S", "died", "x", "2013-09-03",
+                        "Killed under Senate Rule 3-23, still on the table at adjournment")]),
+            ("HB201", [("S", "tabled", "t", "2020-06-16", "Laid on the table on a voice vote"),
+                       ("S", "died", "x", "2020-09-16",
+                        "Killed under Senate Rule 3-23, still on the table at adjournment")]),
+            ("SB570", [("H", "study", "s", "2026-05-14", "Sent to interim study on a voice vote"),
+                       ("H", "died", "x", "2026-08-19", "Still in interim study when the House last "
+                                                        "sat; died when the session ended"),
+                       ("H", "study_report", "f", "2026-09-28", "Interim study report: recommended "
+                                                                 "for future legislation, 9–0")]),
+            ("HB561", [("H", "study", "s", "2026-01-07", "Sent to interim study on a voice vote"),
+                       ("H", "died", "x", "2026-08-19", "Still in interim study when the House last "
+                                                        "sat; died when the session ended"),
+                       ("H", "study_report", "s", "2026-09-29", "Interim study report: not "
+                                                                 "recommended for future legislation, 8–2")]),
+            ("HB741", [("S", "study", "s", "2026-01-07", "Sent to interim study on a voice vote"),
+                       ("S", "died", "x", "2026-08-19", "Still in interim study when the Senate last "
+                                                        "sat; died when the session ended")]),
+            ("HB1179", [("H", "study", "s", "1996-02-01", "Sent to interim study on a voice vote"),
+                        ("H", "died", "x", "1996-06-13", "Still in interim study when the House last "
+                                                         "sat; died when the session ended"),
+                        ("H", "study_report", "f", "1996-10-29", "Interim study report: recommended "
+                                                                  "for legislation in 1997, 17–0; filed "
+                                                                  "again as HB 154 of 1997")])):
+        if tail[k][-len(want):] != want:
+            bad.append(f"{k}'s last lines are {tail[k]!a}")
+    if [s["act"] for s in c["HB561 live"]["steps"]][-1:] != ["study"]:
+        bad.append(f"HB 561 while the session sat has lines {tail['HB561 live']!a}")
+    if sum(s["act"] == "died" for s in c["SB131"]["steps"]) != 1:
+        bad.append("SB 131 of 2025 has a second line of its death beside the rule's")
+    link = (c["HB1179"]["steps"][-1].get("link") or {})
+    if link != {"text": "HB 154 of 1997", "href": "bill/1997/hb154.html"}:
+        bad.append(f"HB 1179 of 1996's report names {link!a}")
+    # THE HISTORY: the death's sentence where it is not told, and none where
+    # it is (HB 96's row is narrative.py's own "died").
+    if c["HB96"]["ending"] is not None or (c["SB131"]["ending"] or {}).get("text") not in (
+            None, "The bill died on the table under Senate Rule 3-23 on October 31, 2025, having "
+                  "been set aside and never taken back up."):
+        bad.append(f"the histories end {c['HB96']['ending']!a} {c['SB131']['ending']!a}")
+    if (c["HB201"]["ending"] or {}).get("text") not in (
+            None, "The bill died on the table under Senate Rule 3-23 at adjournment on "
+                  "September 16, 2020, having been set aside and never taken back up."):
+        bad.append(f"HB 201 of 2020's history ends {c['HB201']['ending']!a}")
+    # The report, read in every wording; the majority's over the minority's.
+    read = []
+    for term, row in _STUDY_REPORT_ROWS:
+        bill = row.split("|")[3]
+        r = B.interim_report(_narrated(N, term, bill, [row]), term) or {}
+        read.append((bill, r.get("rec"), r.get("vote"), r.get("year")))
+    want = [("HB1045", "rec", "13–0", "1991"), ("HB1467", "not", "11–0", ""),
+            ("HB1561", "not", "10–4", "1995"), ("HB1561", "rec", "4–10", "1995"),
+            ("HB1465", "not", "12–0", "1995"), ("HB1152", "rec", "14–0", "2001"),
+            ("HB1133", "not", "11–0", ""), ("HB1358", "rec", "11–0", "2009"),
+            ("HB1473", "not", "10–0", "2013"), ("HB1592", "without", "", ""),
+            ("HB1383", "without", "10–10", "")]
+    if read != want:
+        bad.append(f"the reports read {read!a}")
+    both = [r for t, r in _STUDY_REPORT_ROWS if "|HB1561|" in r]
+    maj = B.interim_report(_narrated(N, "1993-1994", "HB1561", both), "1993-1994") or {}
+    if (maj.get("rec"), maj.get("vote")) != ("not", "10–4"):
+        bad.append(f"HB 1561 of 1994's two reports read as {maj!a}, not the majority's")
+
+    data = json.dumps({k: {kk: v[kk] for kk in ("id", "passage", "chip", "cells", "steps", "jrail")}
+                       for k, v in c.items() if k in ("SB570", "HB561", "HB1179", "HB96")})
+    got = _app_js(
+        "Object.assign((x => Object.fromEntries(Object.entries(x).map(([k, c]) => [k, {"
+        "card: scope.datedRail({id: c.id, passage: c.passage, chip: c.chip, rail: c.cells}),"
+        "how: scope.journeyList({id: c.id}, {journey: {steps: c.steps}})}])))(" + data + "),"
+        " {note: scope.endNote({study_report: {date: '2024-10-31', rec: 'without',"
+        " recommended: false, vote: '10–10'}})})",
+        names=("datedRail", "journeyList", "endNote"))
+    drew = "node is not here to draw them"
+    if got is not None:
+        line = lambda k, cls, glyph, words: re.search(
+            rf'<li class="j-{cls}"><span class="jg"\s*aria-hidden="true">{glyph}</span>'
+            rf'<span class="jb">House</span><span class="jt">{words}</span>', got[k]["how"])
+        if not line("SB570", "ifuture", r'<svg class="arrow"[^>]*><path [^>]*/></svg>',
+                    "Interim study report: recommended for future legislation, 9–0"):
+            bad.append(f"SB 570's report is not the orange arrow's line: {got['SB570']['how'][-500:]!a}")
+        if not line("HB561", "istudy", r'<svg class="wave"[^>]*><path [^>]*/></svg>',
+                    "Interim study report: not recommended for future legislation, 8–2"):
+            bad.append(f"HB 561's report is not the \"~\"'s line: {got['HB561']['how'][-500:]!a}")
+        if not line("HB1179", "ifuture", r'<svg class="arrow"[^>]*><path [^>]*/></svg>',
+                    r'Interim study report: recommended for legislation in 1997, 17–0; filed again '
+                    r'as <a href="bill/1997/hb154.html">HB 154 of 1997</a>'):
+            bad.append(f"HB 1179 of 1996's report does not link HB 154 of 1997: "
+                       f"{got['HB1179']['how'][-500:]!a}")
+        said = (re.search(r'aria-label="([^"]*)"', got["SB570"]["card"]) or [None, ""])[1]
+        if "House: sent to interim study, 14 May 2026" not in said or \
+                "Law: stopped here, 19 August 2026" not in said:
+            bad.append(f"SB 570's card is heard {said!a}")
+        if "the committee reported without a recommendation, 10–10." not in (got.get("note") or ""):
+            bad.append(f"a report without a recommendation is noted {got.get('note')!a}")
+        drew = "app.js draws the arrow, the \"~\", the link and the note"
+    assert not bad, "; ".join(bad[:4])
+    return "ok", ("HB 96, HB 609, SB 131, HB 135 of 2013 and HB 201 of 2020 paused where tabled "
+                  "and crossed at Law on the day each died; SB 570, HB 561, HB 741 and HB 1179 of "
+                  "1996 crossed at Law on their chamber's last sitting, with the report's line, "
+                  f"the arrow where recommended and HB 154 of 1997 named; eleven report wordings read; {drew}")
+
+
+# Real rows of the days the review of the rail's endings (9 October 2026)
+# found read wrongly as a chamber's last sitting, and of the bills dated by
+# them: Docket_db_2005-2006.txt 20892-20901 (SB 1 of the special session of
+# 26 September 2006), 10173-10174 (HB 646, the House's last sitting of 2006),
+# 8786 (HB 76, the Senate's last floor row of 2006) and 20827-20836 (SB 401,
+# left on the Senate's table on 9 March 2006); Docket_db_1989-1990.txt 9979
+# and 10383 (Joint Rule 24(b), Sunday 1 July 1990), 17590 (HB 1182, the
+# House's veto day of 3 May 1990) and 18528 (HB 1506, the Senate's sitting
+# of 19 April 1990); Docket_db_2003-2004.txt 10982-10992 (SB 112, "Died on
+# Table at End of Session", entered 1 December 2004) and 10113-10114 (HB 134,
+# sent to interim study by the Senate on 7 January 2004); Docket_2021-2022.txt
+# 1494-1502 (HB 111) and 9158-9162 (HB 266).
+_SESSION_END_ROWS = {
+    ("SB1", "2005-2006"): [
+        "2006|4001|09/26/2006 01:16:31 PM|SB1|S|Sen. Clegg Moved to Adopt Rules for Special Session; MA, VV; SJ, Special Session;Pg.794|09/26/2006 01:16:31 PM",
+        "2006|4001|09/26/2006 01:20:55 PM|SB1|S|Sen. Clegg Introduced and Moved by a Motion of Ought to Pass; RC 14Y-9N, MA; OT3rdg; Pg.798|09/26/2006 01:20:55 PM",
+        "2006|4001|09/26/2006 01:40:06 PM|SB1|S|Passed by Third Reading Resolution;SJ,Special Session; Pg.798|09/26/2006 01:40:06 PM",
+        "2006|4001|09/26/2006 01:58:41 PM|SB1|H|Introduced, MA VV; 2006 Special Session HJ 1, p.18|09/26/2006 01:58:41 PM",
+        "2006|4001|09/26/2006 02:00:53 PM|SB1|H|Rep Vaillancourt moved lay on table; MF VV; 2006 Spec Sess HJ 1, p.18|09/26/2006 02:00:53 PM",
+        "2006|4001|09/26/2006 02:03:12 PM|SB1|H|Rep O'Neil moved Ought to Pass; 2006 Spec Sess HJ 1, p.18|09/26/2006 02:03:12 PM",
+        "2006|4001|09/26/2006 02:03:57 PM|SB1|H|Rep Chandler Proposed Floor Amendment {2421h}; 2006 Spec Sess HJ 1, p.18|09/26/2006 02:03:57 PM",
+        "2006|4001|09/26/2006 02:07:18 PM|SB1|H|Rep David Campbell: Divide question lines 1-8 from remainder of amendment; 2006 Spec Sess HJ 1, p.18|09/26/2006 02:07:18 PM",
+        "2006|4001|09/26/2006 02:09:13 PM|SB1|H|Adopt Section I Floor Amendment {2421h}; AA RC 193-140; 2006 Spec Sess HJ 1, p.18-20|09/26/2006 02:09:13 PM",
+        "2006|4001|09/26/2006 02:11:22 PM|SB1|H|Adopt Remainder Floor Amendment {2421h}; AA VV; 2006 Spec Sess HJ 1, p.20|09/26/2006 02:11:22 PM",
+    ],
+    ("HB646", "2005-2006"): [
+        "2006|0608|01/04/2006 02:22:23 PM|HB646|H|Majority AM {0190} AA VV; Lay on Table MA VV   HJ 7, pg 413-414|01/04/2006 02:22:23 PM",
+        "2006|0608|06/28/2006 02:00:13 PM|HB646|H|Reps. O'Neil and Craig move ITL all bills on table,  MA, VV|06/28/2006 02:00:13 PM",
+    ],
+    ("HB76", "2005-2006"): [
+        "2006|0102|05/24/2006 07:59:42 AM|HB76|S|Conference Committee Report(2359}; Senate Amendment + New Amendment ,Adopted, VV; SJ 16, Pg.683-686|05/24/2006 07:59:42 AM",
+    ],
+    ("SB401", "2005-2006"): [
+        "2006|3063|02/02/2006 07:48:23 AM|SB401|S|Introduced and Referred to Judiciary; SJ 3, Pg.80|02/02/2006 07:48:23 AM",
+        "2006|3063|02/09/2006 03:40:42 PM|SB401|S|Hearing; February 14, 2006, Room 103, State House, 1:00 p.m.; SC6|02/09/2006 03:40:42 PM",
+        "2006|3063|02/27/2006 12:17:55 PM|SB401|S|Committee Report; Ought to Pass with Amendment{1231}(New Title) [03/09/06]; SC9, Pg.11-12|02/27/2006 12:17:55 PM",
+        "2006|3063|03/09/2006 04:22:21 PM|SB401|S|Committee Amendment{1231}(New Title) [Not Voted On]; SJ 7, Pg.175-176|03/09/2006 04:22:21 PM",
+        "2006|3063|03/09/2006 04:23:26 PM|SB401|S|Sen. Boyce Moved Lay On Table, MA, VV; SJ 7, Pg.176|03/09/2006 04:23:26 PM",
+        "2006|3063|03/09/2006 04:24:20 PM|SB401|S|Sen. Flanders Moved Remove From Table, MA, VV; SJ 7, Pg.176|03/09/2006 04:24:20 PM",
+        "2006|3063|03/09/2006 04:25:04 PM|SB401|S|Committee Amendment{1231}(New Title), AA, VV; SJ 7, Pg.176|03/09/2006 04:25:04 PM",
+        "2006|3063|03/09/2006 04:25:25 PM|SB401|S|Sen. Burling Floor Amendment{1306}(2nd New Title), AF, VV; SJ 7, Pg.176|03/09/2006 04:25:25 PM",
+        "2006|3063|03/09/2006 04:26:01 PM|SB401|S|Ought to Pass with Amendment{1231}(New Title) [Not Voted On]; SJ 7, Pg.176|03/09/2006 04:26:01 PM",
+        "2006|3063|03/09/2006 04:31:05 PM|SB401|S|Sen. Boyce Moved Lay On Table, MA, VV; SJ 7, Pg.176-177|03/09/2006 04:31:05 PM",
+    ],
+    ("HB575", "1989-1990"): [
+        "1990|0034|07/01/1990 11:07:33 AM|HB575|H|INDEFINITELY POSTPONED PER JT. RULE 24 (B)|07/01/1990 11:07:33 AM",
+    ],
+    ("SB57", "1989-1990"): [
+        "1990|0449|07/01/1990 11:06:08 AM|SB57|S|INDEFINITELY POSTPONED PER JT. RULE 24 (B)|07/01/1990 11:06:08 AM",
+    ],
+    ("HB1182", "1989-1990"): [
+        "1990|2629|05/03/1990 04:15:17 PM|HB1182|H|GOV'S VETO SUSTAINED RC(75-266); HJ68,P1855-1859|05/03/1990 04:15:17 PM",
+    ],
+    ("HB1506", "1989-1990"): [
+        "1990|2746|04/19/1990 09:58:34 AM|HB1506|S|PASSED/ADOPTED WITH AM|04/19/1990 09:58:34 AM",
+    ],
+    ("SB112", "2003-2004"): [
+        "2004|0360|01/30/2003 05:08:17 PM|SB112|S|Introduced and Ref. to Public Affairs; SJ 3, Pg.35|01/30/2003 05:08:17 PM",
+        "2004|0360|02/04/2003 11:59:09 AM|SB112|S|Hearing; February 12, 2003, Room 105-A, SH, 8:30 a.m.; SC8|02/04/2003 11:59:09 AM",
+        "2004|0360|03/07/2003 11:30:01 AM|SB112|S|Committee Report; Inexpedient to Legislate [03/13/03]; SC13, Pg.4|03/07/2003 11:30:01 AM",
+        "2004|0360|03/13/2003 11:43:53 AM|SB112|S|Inexpedient to Legislate, MF, VV; SJ 8, Pg.92|03/13/2003 11:43:53 AM",
+        "2004|0360|03/13/2003 11:45:13 AM|SB112|S|Sen. Morse Moved Rerefer to Committee, MA, VV; SJ 8, Pg.92|03/13/2003 11:45:13 AM",
+        "2004|0360|01/05/2004 08:55:30 AM|SB112|S|Committee Report; Referred to Interim Study, [01/07/04]; SC1|01/05/2004 08:55:30 AM",
+        "2004|0360|01/07/2004 03:09:18 PM|SB112|S|Interim Study [Not Voted On]; SJ 1, Pg.24|01/07/2004 03:09:18 PM",
+        "2004|0360|01/07/2004 03:09:51 PM|SB112|S|Sen. Roberge Moved Laid On Table, MA, VV; SJ 1, Pg.24|01/07/2004 03:09:51 PM",
+        "2004|0360|03/17/2004 03:32:42 PM|SB112|S|Sen. Cohen Moved Remove From Table Division 9Y-14N, MF, 2/3 nec.; SJ 9, Pg.231|03/17/2004 03:32:42 PM",
+        "2004|0360|12/01/2004 02:59:47 PM|SB112|S|Died on Table at End of Session|12/01/2004 02:59:47 PM",
+    ],
+    ("HB134", "2003-2004"): [
+        "2004|0080|01/09/2003 11:13:35 AM|HB134|H|Introduced and ref to Judiciary;  HJ8, p108|01/09/2003 11:13:35 AM",
+        "2004|0080|03/25/2003 03:11:47 PM|HB134|H|Passed with Am;  HJ 29-pt 1, p875 +  pt 2, p966|03/25/2003 03:11:47 PM",
+        "2004|0080|04/03/2003 09:48:46 AM|HB134|S|Introduced and Ref. to Judiciary; SJ 11, Pg.273|04/03/2003 09:48:46 AM",
+        "2004|0080|05/22/2003 08:54:09 AM|HB134|S|Rerefer to Committee, MA, VV; SJ 17, Pg.464|05/22/2003 08:54:09 AM",
+        "2004|0080|01/05/2004 08:39:58 AM|HB134|S|Committee Report; Referred to Interim Study, [01/07/04]; SC1|01/05/2004 08:39:58 AM",
+        "2004|0080|01/07/2004 01:09:40 PM|HB134|S|Refer to Interim Study, MA, VV; SJ 1, Pg.18|01/07/2004 01:09:40 PM",
+    ],
+    ("HB111", "2021-2022"): [
+        "2021|0089|1/4/2021 12:00:00 AM|HB111|H|Introduced (in recess of) 01/06/2021 and referred to Judiciary HJ 2 P. 35|1/4/2021 12:00:00 AM",
+        "2021|0089|3/9/2021 12:00:00 AM|HB111|H|Committee Report: Ought to Pass (Vote 19-2; CC) HC 18 P. 17|3/9/2021 12:00:00 AM",
+        "2021|0089|4/9/2021 12:00:00 AM|HB111|H|Lay on Table (Rep. B. Griffin): MF RC 180-188 04/09/2021 HJ 7 P. 79|4/9/2021 12:00:00 AM",
+        "2021|0089|4/9/2021 12:00:00 AM|HB111|H|Ought to Pass: MF RC 178-184 04/09/2021 HJ 7 P. 81|4/9/2021 12:00:00 AM",
+        "2021|0089|4/9/2021 12:00:00 AM|HB111|H|Lay on Table (Rep. Alexander Jr.): MA VV 04/09/2021 HJ 7 P. 83|4/9/2021 12:00:00 AM",
+        "2021|0089|1/6/2022 12:00:00 AM|HB111|H|Died on Table, Session ended 01/05/2022|1/6/2022 12:00:00 AM",
+    ],
+    # Docket_2019-2020.txt 224-229 (HB 101 of 2019, "Died on Table" entered
+    # 9 January 2020), 7497 (HB 251, the House's sitting of 8 January 2020)
+    # and 1060 (HB 1166, its veto day of 16 September 2020).
+    ("HB101", "2019-2020"): [
+        "2019|0002|12/26/2018 12:00:00 AM|HB101|H|Introduced 01/02/2019 and referred to Education HJ 2 P. 37|12/26/2018 12:00:00 AM",
+        "2019|0002|2/20/2019 12:00:00 AM|HB101|H|Committee Report: Inexpedient to Legislate for 02/27/2019 (Vote 14-5; RC) HC 13 P. 28|2/20/2019 12:00:00 AM",
+        "2019|0002|2/28/2019 12:00:00 AM|HB101|H|Lay on Table (Rep. Cali-Pitts): MA RC 232-109 02/28/2019 HJ 7 P. 52|2/28/2019 12:00:00 AM",
+        "2019|0002|1/9/2020 12:00:00 AM|HB101|H|Died on Table|1/9/2020 12:00:00 AM",
+    ],
+    ("HB251", "2019-2020"): [
+        "2020|0319|1/8/2020 12:00:00 AM|HB251|H|Ought to Pass with Amendment 2019-2776h (NT): MA VV 01/08/2020 HJ 1 P. 36|1/8/2020 12:00:00 AM",
+    ],
+    ("HB1166", "2019-2020"): [
+        "2020|2209|9/17/2020 12:00:00 AM|HB1166|H|Veto Sustained 09/16/2020: RC 193-145 Lacking Necessary Two-Thirds Vote HJ 11 P. 26|9/17/2020 12:00:00 AM",
+    ],
+    ("HB266", "2021-2022"): [
+        "2021|0196|1/9/2021 12:00:00 AM|HB266|H|Introduced (in recess of) 01/06/2021 and referred to Municipal and County Government HJ 2 P. 41|1/9/2021 12:00:00 AM",
+        "2021|0196|3/12/2021 12:00:00 AM|HB266|H|Majority Committee Report: Ought to Pass (Vote 10-9; RC) HC 18 P. 56|3/12/2021 12:00:00 AM",
+        "2021|0196|3/12/2021 12:00:00 AM|HB266|H|Minority Committee Report: Inexpedient to Legislate|3/12/2021 12:00:00 AM",
+        "2021|0196|4/9/2021 12:00:00 AM|HB266|H|Lay on Table (Rep. Dolan): MA VV 04/09/2021 HJ 7 P. 29|4/9/2021 12:00:00 AM",
+    ],
+}
+
+
+@check("frontend", "the day a session ended is a day its chamber sat in its regular session: not a "
+                   "special session's, not a row that records no sitting, and with the sittings "
+                   "only the journal records; a bill whose own row of its death is missing takes "
+                   "the day its chamber's other rows state",
+       needs=("narrative", "build_site_v2"))
+def _rail_endings_sittings(N, B):
+    """THE REVIEW OF THE RAIL'S ENDINGS, 9 October 2026, of the last sitting
+    each death the session's end made is dated by (build_site_v2.
+    chamber_sittings, with_journals, table_session_ends):
+
+      * 26 SEPTEMBER 2006 WAS A SPECIAL SESSION, on SB 1 -- a bill whose number
+        does not say so, whose rows say "2006 Special Session" and "2006 Spec
+        Sess", and one of whose rows that day says neither. Read as the
+        regular session's last sitting it dated 154 bills of 2006; the House's
+        last sitting of 2006 is 28 June, when it killed "all bills on table".
+      * SUNDAY 1 JULY 1990 IS JOINT RULE 24(b)'s "INDEFINITELY POSTPONED PER
+        JT. RULE 24 (B)", with no motion and no vote: no sitting. The House's
+        last of 1990 is its veto day of 3 May (HJ 68), the Senate's 19 April.
+      * THE SENATE SAT ON 28 JUNE 2006 AND 17 JUNE 2004 with no floor row on
+        the docket; its journals open both sittings, and SJ 17 of 2004 lists
+        SB 112 among the "Senate Bills [that] remained on the table in the
+        Senate" "at the time of adjournment on June 17, 2004". with_journals
+        adds them, and not a special session's journal day nor the
+        organization day of December 2010. SB 401 of 2006, left on the
+        Senate's table, died on 28 June 2006; SB 112 of 2004 ("Died on Table
+        at End of Session", entered 1 December 2004) and HB 134 of 2004, in
+        interim study, on 17 June 2004.
+      * HB 266 OF 2021 HAS NO ROW OF ITS DEATH; HB 111, laid on the House's
+        table the same day, "Died on Table, Session ended 01/05/2022", the day
+        the House adjourned from its 2021 session. HB 266 dies that day, not
+        on 24 June 2021. The Senate's bills of 2026 keep 19 August 2026 (the
+        person, 9 October 2026), the Senate's 2025 rows notwithstanding.
+      * THE HOUSE'S 2019 SESSION, RECESSED, ENDED ON 8 JANUARY 2020: "The
+        recessed Session of September 25, 2019 was called to order by the
+        Speaker on January 8, 2020" and adjourned (HJ 23 cont.). HB 101 of
+        2019, "Died on Table" entered 9 January 2020, died on 8 January
+        2020, the House's first sitting of 2020, not 25 September 2019."""
+    R = _SESSION_END_ROWS
+    sit = _sittings_of(N, B, {k: v for k, v in R.items()
+                              if k[0] in ("SB1", "HB646", "HB76", "HB575", "SB57", "HB1182",
+                                          "HB1506")})
+    bad = []
+    for k, want in ((("H", "2006"), "2006-06-28"), (("S", "2006"), "2006-05-24"),
+                    (("H*", "2006"), "2006-09-26"), (("S*", "2006"), "2006-09-26"),
+                    (("H", "1990"), "1990-05-03"), (("S", "1990"), "1990-04-19")):
+        if (sit.get(k) or [""])[-1] != want:
+            bad.append(f"{k} last sat {sit.get(k)}, not {want}")
+    journal = {("S", "2006"): {"2006-06-28", "2006-09-26"}, ("S", "2004"): {"2004-06-17"},
+               ("H", "2010"): {"2010-12-01", "2010-06-09"}, ("S", "2013"): {"2013-11-07"}}
+    merged = B.with_journals({**sit, ("S", "2004"): ["2004-05-25"], ("H*", "2013"): ["2013-11-07"],
+                              ("S", "2013"): ["2013-06-26"], ("H", "2010"): ["2010-10-13"]},
+                             journal)
+    for k, want in ((("S", "2006"), "2006-06-28"), (("S", "2004"), "2004-06-17"),
+                    (("H", "2010"), "2010-10-13"), (("S", "2013"), "2013-06-26"),
+                    (("H", "2006"), "2006-06-28")):
+        if (merged.get(k) or [""])[-1] != want:
+            bad.append(f"with the journals {k} last sat {merged.get(k)}, not {want}")
+    if B.SPECIAL_JOURNAL.search("SJ 17") or not all(
+            B.SPECIAL_JOURNAL.search(n) for n in ("SJ SS", "SJ SS November 07, 2013",
+                                                  "HJ_SS 1 November 18 2015")):
+        bad.append("a special session's journal is not told from a regular one by its name")
+    merged = {**merged, ("S", "2004"): ["2004-01-07", "2004-03-17", "2004-06-17"]}
+    sb401 = _ended(N, B, "2005-2006", "SB401", R[("SB401", "2005-2006")], "done",
+                   "Laid on the table", False, merged)
+    sb112 = _ended(N, B, "2003-2004", "SB112", R[("SB112", "2003-2004")], "done",
+                   "Died on the table", False, merged)
+    hb134 = _ended(N, B, "2003-2004", "HB134", R[("HB134", "2003-2004")], "study",
+                   "Referred for interim study", False, merged)
+    law = lambda c: next((s["mark"], s["date"]) for s in c["jrail"] if s["stop"] == "Law")
+    for name, c, want in (("SB 401 of 2006", sb401, "2006-06-28"),
+                          ("SB 112 of 2004", sb112, "2004-06-17"),
+                          ("HB 134 of 2004", hb134, "2004-06-17")):
+        if law(c) != ("x", want):
+            bad.append(f"{name}'s Law is {law(c)}, not crossed on {want}")
+    # HB 266 of 2021, by HB 111's row; and the Senate's 2026 by its last sitting.
+    peers = {"2021-2022": {b: _narrated(N, "2021-2022", b, R[(b, "2021-2022")])
+                           for b in ("HB111", "HB266")},
+             "2025-2026": {"SB131": _narrated(N, "2025-2026", "SB131",
+                                              _ENDING_ROWS[("SB131", "2025-2026")])}}
+    ends = B.table_session_ends(peers)
+    if ends.get(("H", "2021-2022", "2021")) != "2022-01-05" or ("S", "2025-2026", "2026") in ends:
+        bad.append(f"the chambers' own rows state {ends}")
+    sit21 = {("H", "2021"): ["2021-04-09", "2021-06-24"], ("H", "2022"): ["2022-01-05", "2022-09-15"]}
+    for bill in ("HB266", "HB111"):
+        narr = peers["2021-2022"][bill]
+        intro, steps = B.journey(narr, bill, [], "", "", "2021-2022")
+        tab = next(s for s in reversed(steps) if s.get("act") == "tabled")
+        day, row = B.table_death(narr, tab, "2021-2022", sit21, sat=None, ends=ends)
+        if day != "2022-01-05":
+            bad.append(f"{bill} of 2021 died on {day!r}, not 5 January 2022")
+        if bill == "HB266" and B.table_death(narr, tab, "2021-2022", sit21, sat=None)[0] != "2021-06-24":
+            bad.append("HB 266 of 2021 without its peers' rows is not dated by the House's last sitting")
+    sit19 = {**_sittings_of(N, B, {k: v for k, v in R.items() if k[0] in ("HB251", "HB1166")}),
+             ("H", "2019"): ["2019-02-28", "2019-09-25"]}
+    if sit19.get(("H", "2020")) != ["2020-01-08", "2020-09-16"]:
+        bad.append(f"the House sat in 2020 on {sit19.get(('H', '2020'))}")
+    hb101 = _ended(N, B, "2019-2020", "HB101", R[("HB101", "2019-2020")], "done",
+                   "Died on the table", False, sit19)
+    if law(hb101) != ("x", "2020-01-08") or hb101["steps"][-1]["date"] != "2020-01-08":
+        bad.append(f"HB 101 of 2019's Law is {law(hb101)}, its line {hb101['steps'][-1]!a}")
+    hb1043 = _ended(N, B, "2025-2026", "HB1043", _TABLED_ROWS, "done", "Laid on the table", False,
+                    _sittings_of(N, B))
+    if law(hb1043) != ("x", "2026-08-19"):
+        bad.append(f"HB 1043 of 2026's Law is {law(hb1043)}")
+    narr = _narrated(N, "2025-2026", "HB1043", _TABLED_ROWS)
+    intro, steps = B.journey(narr, "HB1043", [], "", "", "2025-2026")
+    tab = next(s for s in reversed(steps) if s.get("act") == "tabled")
+    if B.table_death(narr, tab, "2025-2026", _sittings_of(N, B), sat=None, ends=ends)[0] != "2026-08-19":
+        bad.append("HB 1043 of 2026 took a day from the Senate's rows of 2025")
+    assert not bad, "; ".join(bad[:4])
+    return "ok", ("26 September 2006 a special session's and 1 July 1990 no sitting; the Senate's "
+                  "17 June 2004 and 28 June 2006 from its journals, SB 401 of 2006, SB 112 and "
+                  "HB 134 of 2004 crossed on them; HB 266 of 2021 on 5 January 2022 by HB 111's "
+                  "row, HB 101 of 2019 on 8 January 2020 when the recessed session ended, HB 1043 "
+                  "of 2026 still on 19 August 2026")
 
 
 @check("data", "every index rail keeps its stops' words apart on a phone")
@@ -68363,16 +69059,22 @@ def _journey_story(records, rows, B):
             own = "House" if p[0] == "H" else "Senate"
             # The rail's own marks for interim study and the table now refine
             # the passage letter they stand in for (B.RAIL_REFINES), and
-            # only on the chip that draws them (B.RAIL_MARK_OF_CHIP).
+            # only on the chip that draws them (B.RAIL_MARK_OF_CHIP) -- and
+            # the pause on a Died bill, where it died on the table, refines
+            # the cross (B.RAIL_DEAD_TABLE; the person, 8 October 2026: "Show
+            # the body it was tabled in with the yellow pause, and show the
+            # red x mark on the law once it died when the session ended").
             mine = {v: k for k, v in B.RAIL_MARK_OF_CHIP.items()}
             for stop, m in zip((own, other, "Governor", "Law"), p[1:]):
                 drawn = marks.get(stop)
-                if drawn in mine and (row.get("chip") != mine[drawn]
-                                      or stop not in ("House", "Senate")):
+                dead = ((drawn, m) == B.RAIL_DEAD_TABLE and row.get("chip") == "Died"
+                        and stop in ("House", "Senate"))
+                if drawn in mine and not dead and (row.get("chip") != mine[drawn]
+                                                   or stop not in ("House", "Senate")):
                     why = (f"the bill's own rail marks {stop} {drawn!r} on a bill whose "
                            f"chip is {row.get('chip')!r}")
                     break
-                if stop in marks and B.RAIL_REFINES.get(drawn, drawn) != m:
+                if stop in marks and not dead and B.RAIL_REFINES.get(drawn, drawn) != m:
                     why = f"the bill's own rail marks {stop} {marks[stop]!r} and the list card {m!r}"
                     break
         n["empty" if not steps else "disagree" if why else "agree"] += 1
@@ -68409,6 +69111,126 @@ def _journey_agrees(build_site_v2):
     return "ok", (f"{n['agree']:,} bills agree; {len(old)} of the older terms do not, "
                   f"each a gap, a misfiled row or a status word in the docket itself; "
                   f"{n['empty']:,} have no floor decision on record")
+
+
+@check("data", "every bill that died on the table is paused where it was tabled and crossed at Law "
+               "on the day it died, and every interim study bill of a finished session is "
+               "crossed at Law with a line saying why",
+       needs=("build_site_v2",))
+def _rail_endings_on_the_site(B):
+    """THE RAIL'S ENDINGS ON EVERY BILL (the person, 8 and 9 October 2026),
+    read from the built pages and the index, as _rail_endings holds them on
+    real rows:
+
+      * A Died bill whose rail pauses a chamber has that chamber's tabling
+        line with the pause in How it got here, a line of the death with the
+        cross after it, and a Law stop crossed on a day no earlier than the
+        tabling.
+      * No Died bill whose chamber's last line is a tabling keeps the cross
+        there on the day it was tabled: on 7 October 2026, 1,449 of the 2,170
+        that died on a table did.
+      * An Interim Study bill whose session is over -- every archived term,
+        and the current one once corrections/status/status.txt names its
+        session_over -- has Law crossed, on the day of its line "Still in
+        interim study when the ... last sat"; while the session sits, Law is
+        not reached and no such line is drawn.
+      * A report's line is the orange arrow exactly where the report
+        recommended the subject for future legislation.
+      * THE DAY A SESSION'S END IS DATED BY (the review of the rail's
+        endings, 9 October 2026) is never a Saturday or a Sunday -- 82
+        interim study bills of 1989-1990 were dated Sunday 1 July 1990, the
+        day Joint Rule 24(b)'s postponements were entered -- and a line
+        saying the Senate last sat, in a year its journals are on disk, is
+        dated no earlier than the last sitting they open outside a special
+        session's journal and a December of the second year (B.
+        journal_sittings): 45 bills of 2004 read 25 May 2004 where SJ 17 has
+        the Senate adjourn on 17 June with them on its table."""
+    every = _site_bills() if Path("site/bill").is_dir() else None
+    if every is None:
+        return "skip", "no built index and bill pages"
+    rows = {(r.get("term"), r.get("id")): r for r in every}
+    current = max((t for t, _b in rows if re.fullmatch(r"\d{4}-\d{4}", t or "")), default="")
+    over_now = bool(B.session_over_in(B.session_over("corrections/status/status.txt"), current))
+    from datetime import date as _date
+    n, bad, senate = Counter(), [], {}
+    for _y, bid, rec in _site_records():
+        term = rec.get("term") or ""
+        row = rows.get((term, bid)) or {}
+        j = rec.get("journey") or {}
+        steps, stops = j.get("steps") or [], {s.get("stop"): s for s in j.get("rail") or []}
+        law = stops.get("Law") or {}
+        chip = row.get("chip")
+        if chip == "Died":
+            paused = [c for c in ("House", "Senate") if (stops.get(c) or {}).get("mark") == "t"]
+            hs = [s for s in steps if s.get("body") in ("H", "S")]
+            if paused:
+                n["paused"] += 1
+                b = paused[0][0]
+                at = next((i for i in range(len(hs) - 1, -1, -1)
+                           if hs[i].get("body") == b and hs[i].get("act") == "tabled"), None)
+                if at is None or hs[at].get("mark") != "t" or not any(
+                        s.get("act") == "died" and s.get("mark") == "x" for s in hs[at + 1:]):
+                    bad.append(f"{term} {bid}: the {paused[0]} is paused with no tabling line "
+                               "paused and no death after it")
+                elif law and (law.get("mark") != "x" or (law.get("date") or "9")
+                              < (hs[at].get("date") or "")):
+                    bad.append(f"{term} {bid}: Law is {law.get('mark')!r} {law.get('date')!r}, "
+                               f"before its tabling of {hs[at].get('date')}")
+            elif hs and hs[-1].get("act") == "tabled":
+                tab = hs[-1]
+                own = stops.get({"H": "House", "S": "Senate"}.get(tab.get("body")))
+                if own and own.get("mark") == "x" and own.get("date") == tab.get("date"):
+                    bad.append(f"{term} {bid}: the {own['stop']} is crossed on the day it was "
+                               "tabled")
+        elif chip == "Interim Study":
+            over = term != current or over_now
+            said = [s for s in steps if s.get("act") == "died"
+                    and (s.get("text") or "").startswith("Still in interim study when")]
+            n["study over" if over else "study sitting"] += 1
+            if not over:
+                if said or law.get("mark") not in (None, "-"):
+                    bad.append(f"{term} {bid}: held for interim study while the session sits, "
+                               f"and Law is {law.get('mark')!r} beside {len(said)} line of its death")
+            elif law and (law.get("mark") != "x" or not said
+                          or (law.get("date") or "") != (said[-1].get("date") or "")):
+                bad.append(f"{term} {bid}: held for interim study in a session that is over, "
+                           f"and Law is {law.get('mark')!r} {law.get('date')!r} beside "
+                           f"{[s.get('date') for s in said]}")
+            rep = [s for s in steps if s.get("act") == "study_report"]
+            sr = rec.get("study_report") or {}
+            if rep and (rep[-1].get("mark") == "f") != (sr.get("rec") == "rec"):
+                bad.append(f"{term} {bid}: the report's line is {rep[-1].get('mark')!r} and "
+                           f"the report {sr.get('rec')!r}")
+            n["reports"] += bool(rep)
+        for s in steps:
+            if not B.session_end_line(s) or s.get("act") != "died" or not s.get("date"):
+                continue
+            d = s["date"]
+            try:
+                weekday = _date.fromisoformat(d).weekday()
+            except ValueError:
+                bad.append(f"{term} {bid}: a session's end dated {d!r}")
+                continue
+            if weekday >= 5:
+                bad.append(f"{term} {bid}: a session's end dated on a {('Saturday', 'Sunday')[weekday - 5]}, {d}")
+            if s.get("body") == "S" and "the Senate last sat" in (s.get("text") or ""):
+                senate.setdefault(d[:4], []).append((term, bid, d))
+    if senate:
+        days = B.journal_sittings()
+        for y, said in senate.items():
+            opened = [d for d in days.get(("S", y), ()) if d[:4] == y
+                      and not (d[5:7] == "12" and int(y) % 2 == 0)]
+            for term, bid, d in said:
+                if opened and d < max(opened):
+                    bad.append(f"{term} {bid}: the Senate last sat on {d}, and its journal opens "
+                               f"a sitting on {max(opened)}")
+    if not (n["paused"] or n["study over"] or n["study sitting"]):
+        return "skip", "no bill record carries a rail's ending yet"
+    assert not bad, f"{len(bad)} bills: {'; '.join(bad[:4])!a}"
+    return "ok", (f"{n['paused']:,} bills that died on a table paused where tabled and crossed "
+                  f"at Law; {n['study over']:,} interim study bills of a finished session crossed "
+                  f"at Law, {n['reports']:,} with the report's line; {n['study sitting']:,} "
+                  "still sitting, Law not reached")
 
 
 @check("data", "the list card's rail is the bill's own rail, stop for stop",

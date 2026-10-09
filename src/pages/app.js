@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.166
+// GRANITE_VERSION: 2026-09-07.167
 // What each kind of document actually is, said once rather than in every row.
 const DOCWHAT={text:"the bill as it currently stands",
   status:"the page this site takes a bill's status from",
@@ -3544,16 +3544,39 @@ function rsaChapters(d){
 // list's own, so this list is where they open.
 // AND THE RAIL'S OWN TWO, BARE (the person, 8 October 2026): the line that
 // sent the bill to interim study takes the rail's orange "~", and the line
-// that laid a bill on the table it still lies on takes the yellow pause,
-// two bars the stylesheet draws (.jl .j-ontable .jg::after). A bill that died
-// on the table keeps its turning arrow on that line. The "~" is drawn rather
-// than typed, so it centres at any size, and here before the rail (RAILMARK)
-// takes it too.
+// that laid a bill on the table takes the yellow pause, two bars the
+// stylesheet draws (.jl .j-ontable .jg::after) -- while it still lies there,
+// and, since the person's answer of the same day ("Show the body it was
+// tabled in with the yellow pause, and show the red x mark on the law once it
+// died when the session ended"), once it has died there, when a line with
+// the cross says so after it. The "~" is drawn rather than typed, so it
+// centres at any size, and here before the rail (RAILMARK) takes it too.
+//
+// AND THE INTERIM STUDY COMMITTEE'S REPORT, ONCE THE SESSION IS OVER (option
+// (d), the person, 9 October 2026): its own line, after the cross of the
+// bill's death, with a bare orange arrow, "f", where the committee
+// recommended the subject for future legislation -- advice for a new bill in
+// the next term, which the line names and links where the clerk wrote down
+// its LSR (s.link) -- and the "~" where it did not. The arrow is drawn, as the
+// wave is, and only here: the rail has no stop for it.
 const WAVE='<svg class="wave" viewBox="0 0 12 12" aria-hidden="true" focusable="false">'
   +'<path d="M1.7 7.4C2.9 4.8 4.5 4.6 6 6.1s3.1 1.4 4.3-1.2" fill="none" '
   +'stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>';
-const JMARK={p:"✓",x:"✕",h:"↺",s:WAVE,t:""};
-const JCLASS={s:"istudy",t:"ontable"};
+const ARROW='<svg class="arrow" viewBox="0 0 12 12" aria-hidden="true" focusable="false">'
+  +'<path d="M2 6h7.2M6.4 2.9 9.6 6l-3.2 3.1" fill="none" stroke="currentColor" '
+  +'stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+const JMARK={p:"✓",x:"✕",h:"↺",s:WAVE,t:"",f:ARROW};
+const JCLASS={s:"istudy",t:"ontable",f:"ifuture"};
+// A line's words, with the bill it names linked where it names one: the next
+// term's bill an interim study report's clerk wrote down (s.link, a bill/
+// address on this site). Only the first place the name stands is linked.
+function jText(s){
+  const t=esc(s.text||""), l=s.link;
+  if(!l||!l.text||!l.href||!/^bill\/\d{4}\/[a-z0-9]+\.html$/.test(l.href))return t;
+  const at=t.indexOf(esc(l.text));
+  return at<0?t:t.slice(0,at)+`<a href="${esc(l.href)}">${esc(l.text)}</a>`
+    +t.slice(at+esc(l.text).length);
+}
 const JBODY={H:"House",S:"Senate",G:"Governor",L:"Law",V:"Voters"};
 const JOURNEY_SHOWN=6;
 function journeyList(b,d){
@@ -3564,7 +3587,7 @@ function journeyList(b,d){
   const hide=i=>cut&&i>=2&&i<st.length-(JOURNEY_SHOWN-2);
   const line=(s,i)=>`<li class="j-${esc(JCLASS[s.mark]||s.mark)}"${hide(i)?" hidden":""}><span class="jg"
     aria-hidden="true">${JMARK[s.mark]||""}</span><span class="jb">${
-    esc(JBODY[s.body]||s.body)}</span><span class="jt">${esc(s.text)}</span><span
+    esc(JBODY[s.body]||s.body)}</span><span class="jt">${jText(s)}</span><span
     class="jd">${s.date?esc(railDay(s.date,true)):""}</span></li>`;
   const rows=st.map(line);
   if(cut)rows.splice(st.length-(JOURNEY_SHOWN-2),0,
@@ -3668,12 +3691,19 @@ function factsTable(b,d){
 //    pending. The status keeps the record's own word ("Laid on the table",
 //    where the chip says Died);
 //    this says why nothing follows it. status/status.txt sets the date.
+// Since 9 October 2026 the report is read in every wording the docket has
+// used (build_site_v2.interim_report), and says one of three things: the
+// committee recommended the subject, did not, or made no recommendation
+// ("Without Recomendation", 2024; "No Recommendation", HB 1592 of 2014).
+const STUDY_SAID={rec:"recommended the subject for future legislation",
+  not:"did not recommend the subject for future legislation",
+  without:"reported without a recommendation"};
 function endNote(d){
   const s=d.study_report,out=[];
+  const said=s&&(STUDY_SAID[s.rec!==undefined?s.rec:s.recommended?"rec":"not"]
+    ||"filed its report");
   if(s)out.push(`<p class="note"><b>Interim study report${s.date?`, ${
-    esc(fdate(s.date))}`:""}:</b> the committee ${s.recommended
-      ?"recommended the subject for future legislation"
-      :"did not recommend the subject for future legislation"}${
+    esc(fdate(s.date))}`:""}:</b> the committee ${said}${
       s.vote?`, ${esc(s.vote)}`:""}.</p>`);
   if(d.session_over)out.push(`<p class="note">The chambers do not sit again
     this term: the last session day was ${esc(fdate(d.session_over))}. A bill
@@ -5572,8 +5602,12 @@ function lsrCardHtml(b){
 // of a bill killed: the chamber decided, and the bill is parked, not dead.
 // A chamber whose table the bill lies on while the session still sits is
 // "t", a yellow disc with two white bars, the pause, where it was the ring
-// of a bill moving. A bill that died on the table keeps the cross.
-// build_site_v2.journey_rail gives a stop these, from the bill's chip, and
+// of a bill moving. And a chamber whose table it died on is the pause too,
+// where it was the cross (the person, 8 October 2026: "Show the body it was
+// tabled in with the yellow pause, and show the red x mark on the law once it
+// died when the session ended"): the Law stop keeps the cross, on the day it
+// died. build_site_v2.journey_rail gives a stop these, from the bill's chip
+// and the line that laid it on the table it died on, and
 // How it got here draws the same two bare (JMARK). Each is a filled disc of
 // the check's and the cross's weight with a glyph of its own -- check,
 // cross, wave, two bars -- so greyscale, where the four discs are within a
@@ -5585,6 +5619,10 @@ const CHNAME2={H:"House",S:"Senate"};
 const RAILMARK={p:"\u2713", x:"\u2715", h:"", "-":"", s:WAVE, t:""};
 const RAILSAY={p:"passed", h:"is here now", x:"stopped here",
                "-":"never reached", s:"sent to interim study", t:"on the table"};
+// The pause of a bill that died on the table is heard as the tabling it was,
+// not as a bill lying there now: "Senate: laid on the table, 7 May 2026", and
+// its death at Law, "Law: stopped here, 19 August 2026".
+const RAILSAY_DIED={t:"laid on the table"};
 // The index row's word for the act each of those two marks already says.
 const RAILSAID={s:"interim study", t:"tabled"};
 // A mark's class on its stop: "s-o" for a stop never reached, as it was, and
@@ -5681,6 +5719,7 @@ function railStops(b,d){
 function datedRail(b,d){
   const st=railStops(b,d);
   if(!st.length)return rail(b);
+  const words=chipOf(b)==="Died"?{...RAILSAY,...RAILSAY_DIED}:RAILSAY;
   let was="";
   const cells=st.map(s=>{
     const y=(s.date||"").slice(0,4);
@@ -5708,7 +5747,7 @@ function datedRail(b,d){
     // And the rail's own marks say their act ("sent to interim study", "on
     // the table"), so the stop's word for the same act is not said again.
     const short=s.short===RAILSAID[s.mark]?"":s.short;
-    const what=(s.say||(own?s.short:[RAILSAY[s.mark],short].filter(Boolean).join(", ")))
+    const what=(s.say||(own?s.short:[words[s.mark],short].filter(Boolean).join(", ")))
       .replace(/(\d)–(\d)/g,"$1 to $2")
       .replace(/\b(\d{1,2}) (Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) (\d{4})\b/g,
         (_m,d,mo,y)=>`${d} ${RAILMONTH[RAILMON.indexOf(mo)]} ${y}`)
