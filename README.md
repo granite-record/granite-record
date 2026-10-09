@@ -301,6 +301,7 @@ addresses:
 | `/legislators.json` | the roster — who holds a seat now, with districts, towns and committees |
 | `/former.json` | the people in the record who hold no seat now, with the span of their record. Deliberately a separate file: everything that reads the roster reads it to mean "who serves today" |
 | `/rollcalls_index.json` | every recorded vote — tally, whether it passed, party split, and a plain-English question where one could be made |
+| `/officers.json` | who held the chair's offices — the Speaker, the Deputy Speaker and the Speaker Pro Tempore of the House, the President of the Senate — from which day to which, each with the member it names and the sentence of the House or Senate Journal or the House Calendar it was read from |
 | `/committees.json`, `/towns.json`, `/districts.json` | membership and geography |
 | `/feed/*.xml` | RSS: everything, upcoming hearings, and one feed each per topic, per legislator, per bill still moving, and per committee that is not archived and has a sitting day or a bill on record — so `/feed/committee/` holds fewer feeds than `/committees.json` has rows. An archived committee's would never change again |
 | `/changes/current.json`, `/changes/<date>.json` | what changed, night by night: what can be followed tonight and what is scheduled, and for each of the last eight nights what was new for each bill, member, committee and topic — the feeds' own items and ids, filed under the night each first appeared. Rewritten every night, and nothing in them is about a reader |

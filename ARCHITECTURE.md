@@ -1419,6 +1419,31 @@ that is the symptom rather than the reassurance. The General Court's
 `legislators` table has a single party column too, so this needs a per-term
 source that has not been found.
 
+## The chair's officers, read from the journals (9 October 2026)
+
+No General Court file this site reads says who is Speaker, Deputy Speaker,
+Speaker Pro Tempore or President of the Senate: the roster's title field says
+"Representative" or "Senator", and a roll call records its presiding officer
+as a ballot, "Presiding". The journals and calendars on disk do say, and
+`src/parse/officers.py` reads them: each chamber's election of its Speaker or
+President, the House Journal naming its Deputy Speaker or Speaker Pro Tempore
+(a speech's heading, a note of who is in the chair, who called the House to
+order), and the House Calendar's notices ("Rep. Steve Smith of Charlestown
+has been reappointed as Deputy Speaker", HC 2 of 9 December 2022). Its
+docstring says how long each office is taken to be held and where the record
+leaves that open; `corrections/officials.json`'s `legislative_officers`, a
+person's, can give the days it does not, and nothing writes it.
+
+Three things read it. `build_site_v2.build_officers` writes `/officers.json`,
+every tenure with the member it names, and gives `member_office` the officers
+sitting today -- the Speaker is still the member in seat 6002. `app.js` names
+the office beside a presiding ballot from that file (`presidingOffice`).
+`build_session_pages` heads the chair's turns in a printed debate by
+`officers.chair_label`: the House Journal heads whoever is in the chair
+"Speaker", and printed as it stood the Deputy Speaker was "Speaker Steven
+Smith" on 33 sittings of 2021-2026. `python3 src/parse/officers.py --date
+2025-05-08` says who held what on a day and where each comes from.
+
 ---
 
 ## Veto messages

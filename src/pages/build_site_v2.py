@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.186
+# GRANITE_VERSION: 2026-09-05.187
 """
 Generate the faceted site from real General Court data.
 
@@ -3017,7 +3017,7 @@ def sponsored_in_order(rows):
                                        BO.bill_key(x["bill"])))
 
 
-def member_office(m):
+def member_office(m, offices=None):
     """The office a sitting member holds that their page names, or "".
 
     THE SPEAKER'S OWN PAGE SAID NOTHING OF IT (the survey of 7 October 2026).
@@ -3025,15 +3025,113 @@ def member_office(m):
     and the seating chart labels the Speaker's chair, while nothing on his
     page named the office. The chair is seat 6002, on the rostrum and in no
     division (seating.SPEAKER_SEAT): the member the roster seats there is the
-    Speaker. A member who has left holds no seat, and no office here."""
-    if m.get("former") or m.get("chamber") != "H":
+    Speaker. A member who has left holds no seat, and no office here.
+
+    AND THE OTHER OFFICERS (the person, 9 October 2026: "Sharon Carson is the
+    Senate President and should also have some indicator similar to how you
+    did the Speaker of the House"). `offices` is build_officers' {member id:
+    office} for the sitting members the record names today -- the President
+    of the Senate, the Deputy Speaker, the Speaker Pro Tempore -- read from
+    the journals and calendars by officers.py. The Speaker is still the
+    chair's: build_officers leaves the Speaker out and says so where the
+    record and the chair disagree."""
+    if m.get("former"):
         return ""
-    return "Speaker of the House" if str(m.get("seat") or "") == str(SPEAKER_SEAT) else ""
+    if m.get("chamber") == "H" and str(m.get("seat") or "") == str(SPEAKER_SEAT):
+        return "Speaker of the House"
+    return (offices or {}).get(str(m.get("id") or ""), "")
+
+
+def build_officers(out, votes_by_member, legs, today=None):
+    """site/officers.json, and {member id: office} for the sitting members
+    who hold one today (member_office).
+
+    WHO PRESIDED, BY THE OFFICE THEY HELD THAT DAY (the person, 9 October
+    2026: "he is the deputy speaker and sometimes fills in for Sherman
+    Packard if he has other business, as does Jim Kofalt occasionally as
+    speaker pro temp"). A roll call records its presiding officer as a
+    ballot, "Presiding", and nothing of their office: Rep. Steven Smith
+    presided over 257 House roll calls of 2025-2026 and Speaker Packard over
+    287. officers.py reads who held each office on which days from the
+    journals and the calendars; each tenure is named here as the member of
+    that chamber that term it names, by their ballots, and published with
+    the surname-first key a roll call's ballots carry ("s"), so that a vote
+    card can say "Deputy Speaker of the House" beside the presiding ballot
+    of the day it was cast. A tenure that names no member, or more than one,
+    is left out and counted here."""
+    import officers as OF
+    today = today or build_date.today().isoformat()
+    tens, mentions, bad = OF.load()
+    for e, why in bad:
+        print(f"  WARNING: corrections/officials.json legislative_officers: an entry "
+              f"left out, {why}: {e}")
+    rows, missed = OF.resolve(tens, OF.ballot_people(votes_by_member), legs,
+                              OF.term_of(today))
+    pub = []
+    for r in rows:
+        if not r["member_id"]:
+            continue
+        raw = r["ballot_name"] or (legs.get(r["member_id"]) or {}).get("name") or ""
+        if not raw:
+            missed.append((r, 0))
+            continue
+        lab = member_labels(raw, chamber=r["body"])
+        pub.append({"b": r["body"], "office": r["office"], "title": r["title"],
+                    "name": r["name"], "id": str(r["member_id"]),
+                    "s": lab["sort"] or sort_name(raw),
+                    "from": r["from"], "to": r["to"], "kind": r["kind"],
+                    "source": r["source"]})
+    (out / "officers.json").write_text(json.dumps({
+        "_about": "Who held the chair's offices -- the Speaker, the Deputy Speaker "
+                  "and the Speaker Pro Tempore of the House, and the President of the "
+                  "Senate -- from which day (from) until the day before `to`, as the "
+                  "House and Senate Journals and the House Calendar on disk say, each "
+                  "with the sentence it was read from (source). `s` is the member's "
+                  "name as a roll call's ballots sort it, and `id` their member id. "
+                  "kind: elected (from the election to the next, within its term), "
+                  "term (the one person named in an appointed office that term), day "
+                  "(two people named in one appointed office in one term: only the day "
+                  "each is named), hand (corrections/officials.json).",
+        "officers": pub}, separators=(",", ":")), encoding="utf-8")
+    print(f"officers: {len(pub)} tenure(s) -> officers.json, from "
+          f"{len(mentions)} mention(s) in the journals and calendars"
+          + (f"; {len(missed)} naming no single member of their chamber "
+             f"({', '.join(sorted({t['name'] for t, _n in missed}))[:200]})" if missed else ""))
+    if not mentions and Path("journals").is_dir():
+        print("  WARNING: journals/ is here and no officer was read from it: "
+              "officers.py's patterns no longer match the record")
+
+    offices, chair = {}, None
+    seated = {str(mid): m for mid, m in legs.items() if not m.get("former")}
+    for (body, title), t in OF.holders(tens, mentions, today).items():
+        if t.get("member_id"):
+            hit = [t["member_id"]] if str(t["member_id"]) in seated else []
+        else:
+            hit = [mid for mid, m in seated.items()
+                   if (m.get("chamber") or "")[:1] == body
+                   and OF.same_person(OF._roster_name(m.get("name") or ""), t["name"])]
+        if len(hit) != 1:
+            print(f"  WARNING: the {t['office']} the record names today, {t['name']}, is "
+                  f"{'nobody' if not hit else 'more than one member'} on the roster; "
+                  "no page names the office")
+            continue
+        if title == "Speaker":
+            chair = hit[0]
+            continue
+        offices[str(hit[0])] = t["office"]
+    seat = [mid for mid, m in seated.items() if str(m.get("seat") or "") == str(SPEAKER_SEAT)]
+    if chair and seat and seat != [chair]:
+        print(f"  WARNING: the roster seats {seat} in the Speaker's chair and the record's "
+              f"Speaker today is {chair}; the page names the chair's")
+    print(f"officers today: {len(offices) + bool(seat)} sitting member(s) whose page "
+          "names an office: " + ", ".join(
+              f"{seated[mid].get('name')} ({o})" for mid, o in sorted(offices.items())))
+    return offices
 
 
 def build_legislators(out, legs, votes_by_member, towns, unnamed,
                       sponsored=None, bill_year=None, links=None,
-                      former=None):
+                      former=None, offices=None):
     """One JSON per member, plus the index and the town map.
 
     Split out of main(). main() was 808 lines even after the station
@@ -3041,7 +3139,8 @@ def build_legislators(out, legs, votes_by_member, towns, unnamed,
     different things sharing the name `st` 350 lines apart in this scope.
 
     `links` is member_links.links(): the numbers a sitting member also voted
-    under in the other chamber.
+    under in the other chamber. `offices` is build_officers' {member id:
+    office} for the sitting members the record names in one today.
     """
     lg, fm = [], []
     # Read off every ballot once, because what one member's attendance needs
@@ -3123,7 +3222,7 @@ def build_legislators(out, legs, votes_by_member, towns, unnamed,
         # it. Only where there are two: everyone else's file is as it was.
         both = ({"member_ids": [mid, *joined], "service": ML.service(mv)}
                 if joined else {})
-        office = member_office(m)
+        office = member_office(m, offices)
         (out / "legislators" / f"{mid}.json").write_text(json.dumps({
             **m, **lab, "counts": dict(counts), **both,
             **({"office": office} if office else {}),
@@ -11172,8 +11271,11 @@ def main():
     # right one of two bills sharing a number.
     bill_year = {(t, b): str(r.get("lsr_year") or "")
                  for t, byb in bills.items() for b, r in byb.items()}
+    # Who held the chair's offices, for the vote cards' presiding ballots
+    # and the officers' own pages (build_officers).
+    offices = build_officers(out, votes_by_member, legs)
     lg = build_legislators(out, legs, votes_by_member, towns, unnamed,
-                           sponsored, bill_year, links, former)
+                           sponsored, bill_year, links, former, offices)
 
     # ---- home page data ----------------------------------------------------
     # Everything the landing page needs, precomputed here where the full records
