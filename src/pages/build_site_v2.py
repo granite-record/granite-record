@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.185
+# GRANITE_VERSION: 2026-09-05.186
 """
 Generate the faceted site from real General Court data.
 
@@ -6442,6 +6442,21 @@ def law_day(mark, law, stops, steps):
 # The rows that show a chamber sitting: its floor's (narrative.FLOOR_TYPES,
 # which has the veto votes) and its vote on a conference report.
 SITTING_TYPES = frozenset(N.FLOOR_TYPES) | {"conf_report"}
+# A row of a special session on a bill whose number does not say so: SB 1 of
+# 2006, "Introduced, MA VV; 2006 Special Session", "Rep Vaillancourt moved
+# lay on table; MF VV; 2006 Spec Sess", "Sen. Clegg Moved to Adopt Rules for
+# Special Session; MA, VV; SJ, Special Session" -- the special session of 26
+# September 2006 on the ballot (SJ SS, "PETITION FOR THE CALLING OF A
+# SPECIAL SESSION"). Every row of the bill that day is the special session's.
+SPECIAL_SESSION_ROW = re.compile(r"\bspec(?:ial)?\.?\s*ses+(?:ion)?\b", re.I)
+# A row that records no sitting: Joint Rule 24(b)'s postponement of what was
+# left unacted on, "INDEFINITELY POSTPONED PER JT. RULE 24 (B)", "...BY
+# JOINT RULE 24(B)", 18 rows entered on Sunday 1 July 1990 with no motion,
+# no vote and no journal. Read as the House's and the Senate's last sitting
+# of 1990, they dated the 82 interim study bills of 1989-1990 to a Sunday
+# (the review of the rail's endings, 9 October 2026).
+NO_SITTING_ROW = re.compile(r"^\s*indefinitely\s+postponed\s+(?:per|by)\s+(?:jt\.?|joint)\s+"
+                            r"rule\s*[\w()\s]*$", re.I)
 
 
 def chamber_sittings(narratives):
@@ -6452,26 +6467,91 @@ def chamber_sittings(narratives):
     THE LAST OF A YEAR IS ITS ADJOURNMENT, which is what a bill left on the
     table or in interim study died at: the House's of 2026 is 19 August (HJ
     16, "The House adjourned at 3:28 p.m."), the Senate's the same day (SJ
-    15), 2020's 16 September for both.
+    15), 2020's 16 September for both. The docket does not hold every
+    sitting -- the Senate's of 17 June 2004 and 28 June 2006 have no floor
+    row -- and with_journals adds the days the journals open.
 
     NOT A SPECIAL SESSION'S: SSHB 1 of 2013 sat on 7 and 21 November 2013,
     after both chambers had ended their year, and the special session of 18
     November 2015 the same; a bill of the regular session did not die on
-    either. NOR A DECEMBER OF THE SECOND YEAR, which is the next General
-    Court's organization day (7 December 2022), not this one's.
+    either. Nor 26 September 2006's, whose bill is SB 1 and whose rows say
+    "2006 Special Session" (SPECIAL_SESSION_ROW): read as the regular
+    session's last sitting, it dated 154 bills of 2006 to it. NOR A DECEMBER
+    OF THE SECOND YEAR, which is the next General Court's organization day
+    (7 December 2022), not this one's. NOR A ROW THAT RECORDS NO SITTING
+    (NO_SITTING_ROW, Sunday 1 July 1990).
     """
     days = defaultdict(set)
     for term_bills in (narratives or {}).values():
         for bid, narr in (term_bills or {}).items():
-            special = str(bid).upper().startswith("SS")
-            for e in (narr or {}).get("events", []) or []:
+            evs = (narr or {}).get("events", []) or []
+            ss = str(bid).upper().startswith("SS")
+            sdays = {e.get("date") for e in evs if not e.get("cancelled")
+                     and SPECIAL_SESSION_ROW.search(e.get("raw") or "")}
+            for e in evs:
                 d, body = e.get("date") or "", (e.get("body") or "")[:1].upper()
                 if (e.get("type") not in SITTING_TYPES or e.get("cancelled")
                         or body not in ("H", "S") or not re.match(r"\d{4}-\d\d-\d\d$", d)
-                        or (d[5:7] == "12" and int(d[:4]) % 2 == 0)):
+                        or (d[5:7] == "12" and int(d[:4]) % 2 == 0)
+                        or NO_SITTING_ROW.search(e.get("raw") or "")):
                     continue
-                days[(body + ("*" if special else ""), d[:4])].add(d)
+                days[(body + ("*" if ss or d in sdays else ""), d[:4])].add(d)
     return {k: sorted(v) for k, v in days.items()}
+
+
+# A journal of a special session, by its name: "SJ SS.txt" (26 September
+# 2006), "SJ SS November 07, 2013.txt", "HJ_SS 1 November 18 2015.txt".
+SPECIAL_JOURNAL = re.compile(r"(?:^|[\s_])SS(?:[\s_.,]|$)|special", re.I)
+
+
+def journal_sittings(roots=None):
+    """{(body, year): {each day the chamber's journals on disk open a
+    sitting}} -- the House's from 1997, the Senate's from 2003, by their day
+    headings alone (journal_days.day_blocks, senate_sittings) -- leaving out
+    a journal of a special session by its name. Empty where none is on disk."""
+    try:
+        import journal_days as J
+    except Exception:
+        return {}
+    out = defaultdict(set)
+    for body, root in (roots or (("H", J.HOUSE), ("S", J.SENATE))):
+        if not Path(root).is_dir():
+            continue
+        for yd in sorted(Path(root).glob("[12][0-9][0-9][0-9]")):
+            for f in sorted(yd.glob("*.txt")):
+                if "erbatim" in f.name or SPECIAL_JOURNAL.search(f.stem):
+                    continue
+                try:
+                    text = f.read_text(encoding="utf-8", errors="replace")
+                except OSError:
+                    continue
+                text = text.replace("\r\n", "\n").replace("\r", "\n")
+                for d, _b in (J.day_blocks(text) if body == "H" else J.senate_sittings(text)):
+                    if d and re.match(r"\d{4}-\d\d-\d\d$", d):
+                        out[(body, d[:4])].add(d)
+    return dict(out)
+
+
+def with_journals(sittings, journal):
+    """chamber_sittings with the days the chambers' journals open a sitting
+    on (journal_sittings), where the docket has no floor row: the Senate's
+    of 17 June 2004 ("At the time of adjournment on June 17, 2004, the
+    following House Bills remained on the table in the Senate", SJ 17) and
+    of 28 June 2006 (SJ 17), which the 45 bills of 2004 and the 66 of 2006
+    the Senate left on its table or in interim study died at, not the 25
+    May 2004 and 24 May 2006 of its last floor rows.
+
+    Not a December of the second year (the organization day, 1 December
+    2010), nor a day either chamber sat in a special session by the docket
+    (7 November 2013, whose Senate journal is "SJ SS November 07, 2013")."""
+    out = {k: list(v) for k, v in (sittings or {}).items()}
+    for (body, y), days in (journal or {}).items():
+        special = set(out.get(("H*", y)) or []) | set(out.get(("S*", y)) or [])
+        add = {d for d in days if d[:4] == y and d not in special
+               and not (d[5:7] == "12" and int(y) % 2 == 0)}
+        if add:
+            out[(body, y)] = sorted(set(out.get((body, y)) or []) | add)
+    return out
 
 
 def term_years(term):
@@ -6526,7 +6606,46 @@ def _sat_by_journal(body, day):
         return False
 
 
-def table_death(narr, tab, term, sittings, sat=_sat_by_journal):
+# A row that lays a bill on the table (J_ACTS' "tabled"), for table_session_ends.
+TABLING_ROW = next(rx for act, rx in J_ACTS if act == "tabled")
+
+
+def table_session_ends(narratives):
+    """{(body, term, year): day} -- the day a chamber's own death rows state
+    that the bills it left on its table in `year` of `term` died, where
+    every such row states the same day (table_death's first rule); a special
+    session's bills under body + "*".
+
+    FOR A BILL WHOSE OWN ROW IS MISSING: HB 266 of 2021, laid on the House's
+    table on 9 April 2021 beside HB 111, HB 155 and HB 165, has no row of
+    its death, and theirs say "Died on Table, Session ended 01/05/2022" --
+    the House adjourned from its 2021 session on 5 January 2022 (HJ 1 of
+    2022, "ADJOURN FROM 2021 SESSION"). Its last floor row of 2021 is of 24
+    June, which last_sat gave it."""
+    seen = defaultdict(set)
+    for term, byb in (narratives or {}).items():
+        first, last = term_years(term)
+        for bid, narr in (byb or {}).items():
+            ss = "*" if str(bid).upper().startswith("SS") else ""
+            evs = [e for e in (narr or {}).get("events", []) or [] if not e.get("cancelled")]
+            for i, e in enumerate(evs):
+                raw = e.get("raw") or ""
+                if not TABLE_DEATH_ROW.search(raw):
+                    continue
+                body, entered = (e.get("body") or "")[:1].upper(), e.get("date") or ""
+                m = ROW_DAY.search(raw)
+                day = _j_iso(m.group(1), m.group(2), m.group(3)) if m else ""
+                laid = next((x.get("date") or "" for x in reversed(evs[:i])
+                             if (x.get("body") or "")[:1].upper() == body
+                             and not TABLE_DEATH_ROW.search(x.get("raw") or "")
+                             and TABLING_ROW.search(x.get("raw") or "")), "")
+                if (body in ("H", "S") and day and laid and first <= int(day[:4]) <= last
+                        and laid <= day <= (entered or day)):
+                    seen[(body + ss, term, laid[:4])].add(day)
+    return {k: next(iter(v)) for k, v in seen.items() if len(v) == 1}
+
+
+def table_death(narr, tab, term, sittings, sat=_sat_by_journal, ends=None):
     """(the day a bill left on the table died, the row that says it died or
     None). `tab` is the line that laid it there (died_on_table).
 
@@ -6551,10 +6670,13 @@ def table_death(narr, tab, term, sittings, sat=_sat_by_journal):
          sat in a year of the term between the tabling and the row
          (adjourned_by). 227 House rows entered on 23 September 2020 are of
          a session that ended on the 16th.
-      3. No row, the session over: the last day the chamber sat in the year
-         the bill lay there (last_sat), which the line says in as many words.
-         The Senate's 52 bills of 2026, HB 1043 among them, take 19 August
-         2026; the House's 113 of 2021-2022 its days.
+      3. No row, the session over: the day the chamber's rows state for the
+         other bills it left on its table that year, where they agree
+         (`ends`, table_session_ends: HB 266 of 2021, 5 January 2022); else
+         the last day the chamber sat in the year the bill lay there
+         (last_sat), which the line says in as many words. The Senate's 52
+         bills of 2026, HB 1043 among them, take 19 August 2026; the House's
+         112 of 2022 its days.
 
     The row is the death's own in the chamber whose table it was, where it
     has one: SB 698 of 2020, which the House laid on its table, carries the
@@ -6567,6 +6689,9 @@ def table_death(narr, tab, term, sittings, sat=_sat_by_journal):
     row = next((e for e in rows if (e.get("body") or "")[:1].upper() == body),
                rows[0] if rows else None)
     if row is None:
+        peer = (ends or {}).get((body + ("*" if special else ""), term, laid[:4]))
+        if peer and peer >= laid:
+            return peer, None
         return last_sat(body, laid, term, sittings, special), None
     entered = row.get("date") or ""
     first, last = term_years(term)
@@ -6593,11 +6718,31 @@ def adjourned_by(body, laid, entered, term, sittings, sat=_sat_by_journal, speci
 
     A SPECIAL SESSION'S BILL BY ITS OWN DAYS (`special`): SSHB 2 of 2010,
     laid on the House's table on 9 June 2010 and "Died, Session Ended" the
-    same day. Where no day the chamber sat is known, none is given."""
+    same day. Where no day the chamber sat is known, none is given.
+
+    A FIRST YEAR'S SESSION RECESSED INTO THE SECOND ended on the day it was
+    called back to order and adjourned, the chamber's first sitting of the
+    second year, where the row was entered that January (the review of the
+    rail's endings, 9 October 2026): the House's of 2013 and 2019 -- "Although
+    the June 26, 2013 Session continues here, the actual date is January 8,
+    2014" (HJ 20 cont.), "The recessed Session of September 25, 2019 was
+    called to order by the Speaker on January 8, 2020" (HJ 23 cont.), each
+    then "adjourn[ed] from the 2013 [2019] Session" -- and the Senate's of
+    2005, out of recess and adjourned on 4 January 2006 (SJ 24 cont.). Their
+    "Died on Table" rows were entered on 8 January 2014, 9 January 2020 and
+    4 January 2006; and the House's own rows of 2021 say so in as many words,
+    "Died on Table, Session ended 01/05/2022". The 13, 29 and 25 bills of
+    those tables were dated 26 June 2013, 25 September 2019 and 16 November
+    2005."""
     first, last = term_years(term)
     if not (first and laid):
         return ""
     key = body + ("*" if special else "")
+    if (not special and entered and int(laid[:4]) == first and entered[:4] == str(last)
+            and entered[5:7] == "01"):
+        opened = (sittings.get((body, str(last))) or [""])[0]
+        if opened and opened[5:7] == "01" and laid <= opened <= entered:
+            return opened
     upto = entered or laid
     years = range(max(int(laid[:4]), first), min(int(upto[:4]), last) + 1)
     ends = []
@@ -6642,7 +6787,7 @@ def last_sat(body, laid, term, sittings, special=False):
     return max(days[-1], laid) if days else ""
 
 
-def table_death_line(narr, tab, steps, term, sittings, sat=_sat_by_journal):
+def table_death_line(narr, tab, steps, term, sittings, sat=_sat_by_journal, ends=None):
     """The line of How it got here that says the bill died on the table: a
     new one, or the journey's own where it already has the death's in that
     chamber -- the Senate's Rule 3-23 ("Killed under Senate Rule 3-23, still on the table at
@@ -6652,7 +6797,7 @@ def table_death_line(narr, tab, steps, term, sittings, sat=_sat_by_journal):
     "Adjournment 09/16/2021", and its Law stop none.
     Returns (line, day, how): `how` is "row" or "sat" for a new line, and
     "line" where `line` is the journey's own, which the caller does not add."""
-    day, row = table_death(narr, tab, term, sittings, sat)
+    day, row = table_death(narr, tab, term, sittings, sat, ends)
     at = next(i for i, s in enumerate(steps) if s is tab)
     had = next((s for s in steps[at + 1:] if s.get("body") == tab["body"]
                 and s.get("act") == "died"), None)
@@ -6872,7 +7017,7 @@ def study_ending(narr, steps, rail, term, sittings, lsrs=None):
 
 
 def session_endings(narr, steps, rail, chip, status, term, over, sittings, lsrs=None,
-                    ending=None, sat=_sat_by_journal):
+                    ending=None, sat=_sat_by_journal, ends=None):
     """The rail's endings for one bill, as build_bills makes them: the lines
     How it got here ends with, added to `steps`, for a bill that died on the
     table (table_death_line) and for one held for interim study whose
@@ -6882,7 +7027,7 @@ def session_endings(narr, steps, rail, chip, status, term, over, sittings, lsrs=
     sentence where the history does not tell it (table_death_told)."""
     tabled = died_on_table(steps, chip, status)
     if tabled is not None:
-        line, day, how = table_death_line(narr, tabled, steps, term, sittings, sat)
+        line, day, how = table_death_line(narr, tabled, steps, term, sittings, sat, ends)
         if how != "line":
             steps.append(line)
         said = table_death_told(narr, tabled, day, how, line, ending)
@@ -9765,7 +9910,11 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
     # Each chamber's sitting days, for the day a bill left on the table or in
     # interim study died (chamber_sittings), and the bill each LSR became, for
     # the next term's bill an interim study report's clerk named (lsr_bills).
-    sittings = chamber_sittings(narratives)
+    # The journals add the sittings the docket has no floor row of
+    # (with_journals), and the other bills' rows the day a bill whose own row
+    # is missing died on the table (table_session_ends).
+    sittings = with_journals(chamber_sittings(narratives), journal_sittings())
+    table_ends = table_session_ends(narratives)
     lsrs = lsr_bills(bills)
     # The journals the drain fetched, for a House Journal record's citations:
     # read once, and only if a bill needs them.
@@ -9989,7 +10138,7 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
         if not story and row.get("passage"):
             tabled, ending = session_endings(
                 narr, jsteps, row["passage"], row.get("chip", ""), status, term,
-                not (own and not session_over), sittings, lsrs, ending)
+                not (own and not session_over), sittings, lsrs, ending, ends=table_ends)
         jrail = journey_rail(intro, jsteps, row["passage"], bid, status, chip=row.get("chip", ""),
                              tabled=tabled)
         # What the committee reported, on a bill held for interim study: the
