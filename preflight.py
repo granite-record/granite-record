@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.472
+# GRANITE_VERSION: 2026-09-04.473
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -38511,6 +38511,98 @@ def _status_and_type_filters():
                   "Bill Type offers twelve kinds by letters and name; the two filter alone and "
                   "together; Sort by status heads with the categories; an earlier term, All "
                   "Terms, the requests and an address each get what is theirs")
+
+
+@check("frontend", "the bill search always says how many bills it lists -- the term's whole "
+                   "count with nothing narrowing it -- and its term picker says All Terms")
+def _search_count_always():
+    """The person, 8 October 2026: "The bill search should always show what
+    number of bills are currently matching the search, even if there are no
+    filters to show the total number of bills for that term, and it also
+    prevents the best match from shifting when you search." The count was
+    empty until something narrowed the list (A COUNT THAT SAYS N OF N SAYS
+    NOTHING, app.js, now THE COUNT IS ALWAYS THERE); nothing held that, so
+    nothing here is relaxed. Held, in node over _search_groups_fixture: the
+    list with nothing narrowing it says "20 bills in the 2025-2026 term", a
+    filter "4 of 20 bills in the 2025-2026 term", another term its own
+    whole count, All Terms "23 bills across all terms", a number search "1
+    matching in the 2025-2026 term", and the requests, as before, nothing
+    until something narrows them. And the picker's first option is "All
+    Terms", in the Title Case of the terms under it."""
+    fx = _search_groups_fixture()
+    got = _node_app(_SEARCH_GROUPS_HARNESS, {"fixture.json": json.dumps(fx)})
+    if got is None:
+        return "skip", "app.js, dom_stub.js or node is not here"
+    assert "threw" not in got, f"the bill search threw {got['threw']}"
+    want = {"start": "20 bills in the 2025-2026 term", "none": "20 bills in the 2025-2026 term",
+            "progress": "4 of 20 bills in the 2025-2026 term",
+            "older": "3 bills in the 2023-2024 term", "all": "23 bills across all terms",
+            "requests": "", "number": "1 matching in the 2025-2026 term"}
+    bad = [f"{k}: {got[k]['count']!r}, not {v!r}" for k, v in want.items()
+           if got[k]["count"] != v]
+    opts = re.findall(r'<option value="([^"]*)">([^<]*)</option>', got["year"])
+    if not opts or opts[0] != ("all", "All Terms"):
+        bad.append(f"the term picker's first option is {opts[:1]}, not All Terms")
+    assert not bad, "the count line says " + "; ".join(bad)
+    return "ok", ("the count is the term's whole count with nothing narrowing it, n of N when "
+                  "something does, across all terms on All Terms, and the picker says All Terms")
+
+
+@check("frontend", "the Sort sits before the count, under the term picker and exactly as wide "
+                   "as it at every width, and nothing else sets either's width")
+def _sort_beside_count():
+    """The person, 8 October 2026: "The best match/sort by should be to the
+    left of the number of matching bills ... and the width of the dropdown
+    boxes for the term selector and sort by should be the same size." The
+    Sort followed the count, so the count arriving with the first letter
+    typed pushed it along the row. Held, from the files: in bills.html the
+    Sort's label and select come before the count, which comes before the
+    search hint, in the one .qhint row; in app.css #year and #sort take one
+    width from one custom property, defined once, and no other rule -- at any
+    width, in any media query -- gives either a width of its own (the phone's
+    #year{width:100%} was one); and the row holds the Sort at its start while
+    the count takes the rest and wraps under itself. Measured in Chrome on 8
+    October from 1366 to 360: both 172px, the Sort not moving when a search
+    is typed, and no sideways scroll."""
+    html = Path("src/pages/bills.html").read_text(encoding="utf-8")
+    css = Path("src/pages/app.css").read_text(encoding="utf-8")
+    bad = []
+    hint = re.search(r'<div class="qhint">(.*?)</div>', html, re.S)
+    if not hint:
+        return "FAIL", "bills.html has no .qhint row"
+    row = re.sub(r"<!--.*?-->", "", hint.group(1), flags=re.S)
+    order = [m.group(0) for m in re.finditer(
+        r'<label for="sort"|<select id="sort"|<span id="count"|<span id="synhint"', row)]
+    if order != ['<label for="sort"', '<select id="sort"', '<span id="count"',
+                 '<span id="synhint"']:
+        bad.append(f"the .qhint row runs {order}: the Sort is not before the count")
+    flat = re.sub(r"/\*.*?\*/", "", css, flags=re.S)
+    rules = re.findall(r"([^{}]+)\{([^{}]*)\}", flat)
+    shared = [(sel_, body) for sel_, body in rules
+              if re.fullmatch(r"\s*#year\s*,\s*#sort\s*", sel_)]
+    if len(shared) != 1 or not re.search(r"(?:^|;)\s*width:var\(--pickw\)", shared[0][1]):
+        bad.append(f"#year and #sort do not share one width rule: {shared}")
+    defs = re.findall(r"--pickw\s*:\s*([^;}]+)", flat)
+    if len(defs) != 1 or not re.fullmatch(r"\d+px", defs[0].strip()):
+        bad.append(f"--pickw is defined {defs}: once, in pixels, is one width at every size")
+    # The pages build_pages writes (body.pg) carry no term picker and no Sort,
+    # so what their block says of #year sizes nothing on the bill search.
+    for sel_, body in rules:
+        if not re.search(r"#(?:year|sort)\b", sel_) or "body.pg" in sel_ \
+                or re.fullmatch(r"\s*#year\s*,\s*#sort\s*", sel_):
+            continue
+        if re.search(r"(?:^|;)\s*(?:min-|max-)?width\s*:", body):
+            bad.append(f"{sel_.strip()} sets a width of its own: {body.strip()[:80]}")
+    q = [(sel_, body) for sel_, body in rules if sel_.strip() == ".qhint"]
+    if not q or "align-items:flex-start" not in q[0][1].replace(" ", ""):
+        bad.append("the .qhint row does not hold the Sort at its top: a count that wraps "
+                   "would move it")
+    c = [(sel_, body) for sel_, body in rules if sel_.strip() == ".qhint #count"]
+    if not c or not re.search(r"flex:1 1 0", c[0][1]):
+        bad.append("the count does not take the rest of the Sort's row")
+    assert not bad, "; ".join(bad)
+    return "ok", ("the Sort comes before the count, and #year and #sort share --pickw and "
+                  "nothing else sizes either")
 
 
 @check("frontend", "what the review of the audit's fixes found stays found: focus after Show more, "

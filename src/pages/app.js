@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.162
+// GRANITE_VERSION: 2026-09-07.163
 // What each kind of document actually is, said once rather than in every row.
 const DOCWHAT={text:"the bill as it currently stands",
   status:"the page this site takes a bill's status from",
@@ -2268,7 +2268,7 @@ const fdate=d=>{if(!d)return"";const[y,m,dd]=d.split("-");
 const $=s=>document.querySelector(s);
 
 let IDX=[],META={},term=null,query="",sortBy="num",sortChosen=false;
-// "All terms" in the picker: every term's bills in one list. A bill number is
+// "All Terms" in the picker: every term's bills in one list. A bill number is
 // unique only within a term, so in that list a card is not opened in place --
 // two HB 1s would share one card's state -- and goes to its own page instead.
 const ALL_TERMS="all";
@@ -2541,7 +2541,7 @@ function wantedTerm(m){
   return terms[0]||"";
 }
 // A term already in IDX is never fetched again. All terms is every one of
-// them, which is what the picker's own "All terms" fetches.
+// them, which is what the picker's own "All Terms" fetches.
 const LOADED=new Set();
 function ensureTerm(t){
   if(t===ALL_TERMS)return Promise.all(((META&&META.terms)||[]).map(ensureTerm));
@@ -2578,7 +2578,9 @@ need("meta.json")
    // that walks the terms -- the directory, the sitemap, the archive pages --
    // sees them. The picker is the one place they belong, and the current term
    // stays the default "until the bills for next term are fully available".
-   ys.innerHTML=`<option value="${ALL_TERMS}">All terms</option>`
+   // "All Terms", in the Title Case of the terms below it (the person, 8
+   // October 2026); a sentence that says "across all terms" stays a sentence.
+   ys.innerHTML=`<option value="${ALL_TERMS}">All Terms</option>`
      +(META.requests?`<option value="${esc(META.requests.term)}">${
        esc(META.requests.label)}</option>`:"")
      +terms.map(t=>`<option value="${t}">${t} Term</option>`).join("");
@@ -7034,17 +7036,29 @@ function render(more){
   // A focused view is one bill. The count describes a list that is not on
   // screen, and on a bill's own page it read "2,234 of 2,234 bills in the
   // 2025-2026 term" above a single bill.
-  // A COUNT THAT SAYS N OF N SAYS NOTHING. Until something narrows the list,
-  // "2,234 of 2,234 bills in the 2025-2026 term" is the first line a reader
-  // meets and it cannot be false; the picker beside it already names the term.
-  // It appears when a search or a filter has taken something out.
+  // THE COUNT IS ALWAYS THERE. It was empty until a search or a filter took
+  // something out, on the argument that "N of N" says nothing. The person,
+  // 8 October 2026: "The bill search should always show what number of
+  // bills are currently matching the search, even if there are no filters to
+  // show the total number of bills for that term, and it also prevents the
+  // best match from shifting when you search" -- the count appearing at the
+  // first letter typed pushed the Sort select along the row under the
+  // reader's eye. With nothing narrowing the list it is the term's whole
+  // count, "2,243 bills in the 2025-2026 term" ("33,717 bills across all
+  // terms" on the build of 7 October); narrowed, "31 of 2,243 bills in the
+  // 2025-2026 term". The requests keep what they had, nothing until
+  // something narrows them: their explainer above the list already says
+  // what they are.
   const narrowed=rows.length!==inTerm;
+  const reqTerm=!!(META.requests&&term===META.requests.term);
   $("#count").textContent=focused?""
     :ids0
     ?`${rows.length} matching ${termPhrase()}`
     :narrowed
     ?`${rows.length.toLocaleString()} of ${inTerm.toLocaleString()} ${termNoun()} ${termPhrase()}`
-    :"";
+    :reqTerm?""
+    :`${inTerm.toLocaleString()} ${inTerm===1?termNoun().replace(/s$/,""):termNoun()} ${
+      termPhrase()}`;
   // Same number, different term: say so instead of an empty page.
   const elsewhere=ids0&&!rows.length
     ? IDX.filter(b=>ids0.includes(b.id.toUpperCase())&&b.term&&b.term!==term)

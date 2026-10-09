@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.219 */
+/* GRANITE_VERSION: 2026-09-07.220 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -1341,6 +1341,18 @@ b,strong,h1,h2,h3,h4{font-weight:600}button{font:inherit;color:inherit;backgroun
    long before that and the eye has nothing to land on. The hint line
    under it is capped to match so the two read as one control. */
 .qline{display:flex;gap:var(--sp-4);max-width:840px}
+/* THE TERM PICKER AND THE SORT ARE ONE WIDTH, at every width of screen (the
+   person, 8 October 2026: "the width of the dropdown boxes for the term
+   selector and sort by should be the same size"). Each sized itself to its
+   longest option, so the two stood one above the other at two widths. One
+   length for both, set here once, wide enough for the longest of either --
+   "2027 Bill Requests" and "Most recent action", 123px and 121px of 14px
+   Public Sans in Chrome on 8 October 2026, inside 154px and 162px of box
+   with the arrow beside them -- at every width from 1366 to 360, where the
+   whole row is 312px. preflight holds the one rule: no other sets either
+   width. */
+.searchrow{--pickw:172px}
+#year,#sort{width:var(--pickw);max-width:100%;flex:0 0 auto}
 #sort{height:26px;padding:0 var(--sp-2);font:inherit;font-size:var(--t-ui);border:1px solid var(--edge);
 border-radius:var(--r-in);background:var(--surface);color:var(--ink-2);cursor:pointer}
 #year{height:42px;padding:0 var(--sp-4);font:inherit;font-size:var(--t-ui);border:1px solid var(--edge);
@@ -1362,15 +1374,25 @@ line-height:1;border:1px solid transparent;border-radius:var(--r-out);background
 color:var(--ink-2);cursor:pointer}
 #qgo:hover{border-color:var(--edge);background:var(--wash);color:var(--pine)}
 #qgo:disabled{opacity:.35;cursor:default}
-.qhint{font-size:var(--t-ui);color:var(--ink-2);margin:var(--sp-3) var(--sp-1) 0;display:flex;gap:var(--sp-6);flex-wrap:wrap;max-width:840px}
-/* THE COUNT IS EMPTY UNTIL A SEARCH NARROWS THE LIST, and an empty item in
-   this row still took the row's gap: at 360px the Sort select stood 10px to
-   the right of the search box above it (the review of 2 October 2026). Out
-   of the row while empty, and not display:none -- it is the live region that
-   says the list has changed, and a region that is not there when the
-   sentence arrives is not read out. */
+/* THE SORT FIRST, THEN THE COUNT (bills.html, 8 October 2026). Flush with
+   the term picker above it, which is why the row has no side margin of its
+   own, and held at the top of the row: when the count wraps to a second or
+   third line on a phone, it is the count that grows downward, not the Sort
+   that moves. The count's own line is centred on the Sort beside it. */
+.qhint{font-size:var(--t-ui);color:var(--ink-2);margin:var(--sp-3) 0 0;display:flex;align-items:flex-start;
+gap:var(--sp-3) var(--sp-6);flex-wrap:wrap;max-width:840px}
+.qhint #count{flex:1 1 0;min-width:0;align-self:center}
+/* A request's list says nothing here until something narrows it, and a bill
+   opened in the list says nothing at all: out of the row while empty, so it
+   takes no gap, and not display:none -- it is the live region that says the
+   list has changed, and a region that is not there when the sentence
+   arrives is not read out. */
 .qhint #count:empty{position:absolute;width:1px;height:1px;overflow:hidden;
 clip-path:inset(50%)}
+/* What the search read beside what was typed: a line of its own, under the
+   Sort and the count rather than squeezed beside them. */
+.qhint #synhint{flex:1 0 100%}
+.qhint #synhint:empty{display:none}
 .link{color:var(--pine);font-size:var(--t-ui)}
 .shell{max-width:1180px;margin:0 auto;padding:var(--sp-7) var(--sp-8) var(--sp-12);display:grid;
 grid-template-columns:250px 1fr;gap:var(--sp-9);align-items:start}
@@ -2471,10 +2493,13 @@ text-align:center;color:var(--ink-2);font-size:var(--t-ui)}
   .searchbig button{padding:var(--sp-5) var(--sp-7)}
   /* The term selector and the search box share a flex row, and at 375px the
      selector was squeezed to 68px -- "2025-2026 term" showing as "2025".
-     Wrapping gives each a full row, which there is now room for since the
-     filters below them collapse on a phone. */
+     Wrapping gives each a row of its own, which there is now room for since
+     the filters below them collapse on a phone. The selector keeps the width
+     it shares with the Sort (--pickw, above) rather than taking the whole
+     row, so the two stand one above the other at one width on a phone too,
+     with the count beside the Sort; the box takes the whole row. */
   .qline{flex-wrap:wrap}
-  #year{width:100%}
+  .qline .qbox{flex:1 0 100%}
   /* The last filter group's rule and the block's own rule sat together. */
   .facets .fgroup:last-child{border-bottom:0}
   .qhint{flex-wrap:wrap;gap:var(--sp-4)}
