@@ -165,8 +165,9 @@ Three steps, each catching what the one before cannot.
    build before and after (the second with `--compare` and the first's
    report): it has headless Chrome draw a fixed list of page types at three
    widths, in both themes, in forced colours and at a 24px browser text size,
-   measures every text's size and contrast and every sideways overflow, and
-   saves a screenshot of each. Look at the screenshots, not only the numbers.
+   measures every text's size and contrast, every sideways overflow and any
+   text drawn over other text, and saves a screenshot of each. Look at the
+   screenshots, not only the numbers.
 3. **A dry run of the nightly on `dev`.** In GitHub's Actions tab, "nightly",
    "Run workflow", choose `dev` and leave "Dry run" ticked: the same night
    GitHub runs on `main`, on an empty machine with the kit from R2, built and

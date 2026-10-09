@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-10-08.1
+// GRANITE_VERSION: 2026-10-08.2
 // The rendered sweep's browser: headless Chrome over the DevTools protocol,
 // driven by rendered_sweep.py, which serves the built site, writes the list of
 // runs this reads and the one report it gathers from what this prints.
@@ -23,7 +23,7 @@
 // reads it: every element that owns text, its rendered size and its contrast
 // against the first opaque ground behind it; what sticks out sideways; the
 // visible h1s and the headings smaller than what they head; the longest lines
-// of prose. SVG text counts too, at the size it is drawn (its font-size
+// of prose; and text drawn over other text, which no overflow sees. SVG text counts too, at the size it is drawn (its font-size
 // attribute times the drawing's scale), because the vote rings' letters are
 // set there and not in the stylesheet.
 'use strict';
@@ -419,6 +419,79 @@ function measure(opts) {
       clipped.push({ sig: sig(e), scrollWidth: e.scrollWidth, width: e.clientWidth, ellipsis: cs.textOverflow === 'ellipsis', text: cut(e.textContent, 40) });
     }
   }
+  // ---- text drawn over other text, or cut off at the page's edge. Two
+  // words on top of each other are unreadable whatever their contrast, and
+  // neither the overflow above nor the census sees it: each box is inside
+  // its parent. Every line box of every text node is clipped to the boxes
+  // around it that hide what overflows them, so text a clamp or a scroller
+  // hides is not counted; the pairs left are boxes of different text that
+  // share more than a sliver of ink. SVG is left out: a chart's labels are
+  // placed by its own geometry, which the screenshots show.
+  const overlaps = [], edgeCut = [];
+  let overlapCount = 0;
+  {
+    const clipOf = new Map();
+    const clipFor = el => {
+      if (clipOf.has(el)) return clipOf.get(el);
+      let c = { l: 0, t: -1e9, r: vw, b: 1e9 };
+      const p = el.parentElement;
+      if (p && p !== de) c = Object.assign({}, clipFor(p));
+      const cs = getComputedStyle(el);
+      if (el !== document.body && /(hidden|clip|auto|scroll)/.test(cs.overflowX + cs.overflowY)) {
+        const r = el.getBoundingClientRect();
+        c = { l: Math.max(c.l, r.left), t: Math.max(c.t, r.top), r: Math.min(c.r, r.right), b: Math.min(c.b, r.bottom) };
+      }
+      clipOf.set(el, c);
+      return c;
+    };
+    const boxes = [];
+    const tw3 = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+    for (let n; (n = tw3.nextNode()) && boxes.length < 30000;) {
+      if (!txt(n.nodeValue)) continue;
+      const p = n.parentElement;
+      if (!p || p.closest('script,style,noscript,template,title,desc,svg')) continue;
+      if (!isVis(p) || srOnly(p)) continue;
+      const c = clipFor(p), rg = document.createRange();
+      rg.selectNodeContents(n);
+      for (const r of rg.getClientRects()) {
+        if (r.width < 2 || r.height < 2) continue;
+        // What the page's own edge cuts off: text that starts left of it,
+        // where no scrolling reaches.
+        if (r.left < -1 && r.right > 0 && c.l <= 0 && edgeCut.length < 25) edgeCut.push({ sig: sig(p), text: cut(n.nodeValue, 30), by: Math.round(-r.left) });
+        const b = { l: Math.max(r.left, c.l), t: Math.max(r.top, c.t), r: Math.min(r.right, c.r), b: Math.min(r.bottom, c.b) };
+        if (b.r - b.l < 2 || b.b - b.t < 2) continue;
+        boxes.push({ n, p, b, h: r.height });
+      }
+    }
+    const cells = new Map(), seen = new Set(), CELL = 64;
+    boxes.forEach((x, i) => {
+      for (let cx = Math.floor(x.b.l / CELL); cx <= Math.floor(x.b.r / CELL); cx++)
+        for (let cy = Math.floor(x.b.t / CELL); cy <= Math.floor(x.b.b / CELL); cy++) {
+          const k = cx + ',' + cy;
+          if (!cells.has(k)) cells.set(k, []);
+          cells.get(k).push(i);
+        }
+    });
+    for (const list of cells.values()) {
+      for (let a = 0; a < list.length; a++) for (let z = a + 1; z < list.length; z++) {
+        const x = boxes[list[a]], y = boxes[list[z]];
+        if (x.n === y.n) continue;
+        const iw = Math.min(x.b.r, y.b.r) - Math.max(x.b.l, y.b.l);
+        const ih = Math.min(x.b.b, y.b.b) - Math.max(x.b.t, y.b.t);
+        // More than a sliver: a third of the shorter line's height, and two
+        // pixels across. Line boxes of adjacent lines touch; they do not
+        // share a third of a line.
+        if (iw <= 2 || ih <= Math.min(x.h, y.h) / 3) continue;
+        const k = list[a] < list[z] ? list[a] + '|' + list[z] : list[z] + '|' + list[a];
+        if (seen.has(k)) continue;
+        seen.add(k);
+        if (overlaps.length < 25) overlaps.push({ a: sig(x.p), aText: cut(x.n.nodeValue, 30), b: sig(y.p), bText: cut(y.n.nodeValue, 30),
+          w: Math.round(iw), h: Math.round(ih), at: [Math.round(Math.max(x.b.l, y.b.l)), Math.round(Math.max(x.b.t, y.b.t) + scrollY)] });
+      }
+    }
+    overlapCount = seen.size;
+  }
+
   // A placeholder wider than its box is cut off where a reader starts.
   const placeholders = [];
   for (const f of document.querySelectorAll('input[placeholder], textarea[placeholder]')) {
@@ -444,6 +517,7 @@ function measure(opts) {
     lines: { paragraphs: lines.length, over80: lines.filter(l => l.cpl > 80).length, widest: lines.slice(0, 5) },
     overflow: { sideways: de.scrollWidth > vw + 1, poking: poking.slice(0, 25), scrollers: scrollers.slice(0, 15),
       clipped: clipped.slice(0, 15), placeholders },
+    overlap: { count: overlapCount, pairs: overlaps, edgeCut },
   };
 }
 
@@ -467,8 +541,26 @@ function measure(opts) {
           await pg.evaluate('window.scrollTo(0, 0)');
           const lm = await pg.S('Page.getLayoutMetrics');
           const h = Math.max(1, Math.min(job.shotCap || 2400, Math.ceil(lm.cssContentSize.height)));
-          const shot = await pg.S('Page.captureScreenshot', { format: 'png', captureBeyondViewport: true,
+          // THE PAGE AT ITS WHOLE HEIGHT, AND AT THE RUN'S TEXT SIZE. Chrome's
+          // captureBeyondViewport puts the browser's default text size back to
+          // 16px while it draws, so every 24px run's screenshot was the 16px
+          // page while its numbers were the 24px page's (the review of
+          // 8 October 2026: the root went 24 -> 16 across the capture, and 31
+          // of the foundation's 63 text24 shots were byte for byte its light
+          // ones, the rest the same page by eye). So the viewport is made the
+          // page's height, the text size is set again, and what is drawn is
+          // checked against what was measured (shotWrong in the run, and the
+          // report's shots_not_as_measured) before the view is put back.
+          await pg.S('Emulation.setDeviceMetricsOverride',
+            { width: run.width, height: h, deviceScaleFactor: 1, mobile: !!run.mobile });
+          const std = run.standard || 16;
+          await pg.S('Page.setFontSizes', { fontSizes: { standard: std, fixed: Math.round(std * 13 / 16) } });
+          await sleep(300);
+          const drawn = await pg.evaluate('parseFloat(getComputedStyle(document.documentElement).fontSize)');
+          const shot = await pg.S('Page.captureScreenshot', { format: 'png',
             clip: { x: 0, y: 0, width: run.width, height: h, scale: 1 } });
+          await setView(pg, run);
+          if (out.m && drawn !== out.m.rootPx) out.shotWrong = `drawn at ${drawn}px, measured at ${out.m.rootPx}px`;
           out.shot = run.id + '.png';
           fs.writeFileSync(path.join(job.shots, out.shot), Buffer.from(shot.data, 'base64'));
         }

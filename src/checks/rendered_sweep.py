@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-08.1
+# GRANITE_VERSION: 2026-10-08.2
 """
 The rendered sweep: a built site measured as a reader's browser draws it.
 
@@ -26,6 +26,8 @@ colours and at a browser text size of 24px, and measures on every run:
   - every horizontal overflow: the page scrolling sideways, an element
     sticking out past the edge, text cut off inside its box, a box that
     scrolls inside itself, and a placeholder wider than its field;
+  - text drawn over other text, and text the page's left edge cuts off,
+    which no overflow sees because each box is inside its parent;
   - the visible h1s, a heading smaller than what it heads, and the longest
     lines of prose.
 
@@ -111,6 +113,14 @@ PAGES = [
      "steps": [{"tab": "^Votes"}], "why": "its Votes tab: the vote rings"},
     {"name": "bill-study", "bill": ("2025-2026", "HB410"), "rule": "study",
      "why": "a bill sent to interim study"},
+    # Added by the review of the polish foundation (8 October 2026), the two
+    # states the list did not open and where it found a page scrolling
+    # sideways at 768 and a vote's word drawn over its tally at 24px.
+    {"name": "bill-law-text", "bill": ("2025-2026", "HB1681"), "rule": "law",
+     "steps": [{"tab": "^Bill Text"}], "why": "its Bill Text tab: the versions and the text"},
+    {"name": "member-votes", "path": "legislator/joe-alexander-hills-29.html",
+     "dir": "legislator", "steps": [{"tab": "^Votes"}],
+     "why": "a member's Votes tab: the table of every roll call"},
     {"name": "legislators-towns", "path": "legislators.html"},
     {"name": "legislators-last", "path": "legislators.html",
      "steps": [{"click": "#tab-legislators"}, {"click": "#tab-last"}]},
@@ -403,6 +413,20 @@ def summarise(runs):
                                         for p in r["m"]["overflow"]["placeholders"] if not p["fits"]}),
         "boxes_that_scroll_sideways": sum(len(r["m"]["overflow"]["scrollers"]) for r in ok),
     }
+    # TEXT ON TEXT. Two words drawn one over the other, or a word the page's
+    # left edge cuts off, are unreadable whatever their size and contrast; the
+    # overflow above never sees them, because each box is inside its parent.
+    # A report from before the measure existed has no "overlap" and counts 0.
+    lap = [r for r in ok if r["m"].get("overlap")]
+    s["overlap"] = {
+        "views": sorted(r["id"] for r in lap if r["m"]["overlap"]["count"]),
+        "pairs": sum(r["m"]["overlap"]["count"] for r in lap),
+        "cut_at_the_left_edge": sorted(r["id"] for r in lap if r["m"]["overlap"]["edgeCut"]),
+        "first": [dict(p, run=r["id"]) for r in lap for p in r["m"]["overlap"]["pairs"]][:25],
+    }
+    # A screenshot is evidence only if it shows the view that was measured.
+    s["shots_not_as_measured"] = sorted(f"{r['id']}: {r['shotWrong']}" for r in ok
+                                        if r.get("shotWrong"))
     s["headings"] = {
         "views_without_one_visible_h1": sorted(r["id"] for r in ok if len(r["m"]["headings"]["h1"]) != 1),
         "h1_px_1366_light": {r["page"]: [h["px"] for h in r["m"]["headings"]["h1"]]
@@ -437,7 +461,8 @@ def compare(before, after):
             ("contrast failures", "contrast", "failures"),
             ("page views scrolling sideways", "overflow", "sideways"),
             ("elements past the edge", "overflow", "elements_past_the_edge"),
-            ("views where 24px text grew", "text_size_24px", "text_grew")]
+            ("views where 24px text grew", "text_size_24px", "text_grew"),
+            ("pairs of text drawn over each other", "overlap", "pairs")]
     out = {}
     for label, *ks in rows:
         x, y = get(a, *ks), get(b, *ks)
@@ -480,6 +505,11 @@ def headline(s):
         f"overflow: {len(o['sideways'])} views scroll sideways, {o['elements_past_the_edge']} "
         f"elements past the edge, {o['text_cut_off']} boxes cut text off, "
         f"{len(o['placeholders_cut_off'])} placeholders do not fit",
+        f"text on text: {s['overlap']['pairs']} pairs drawn over each other on "
+        f"{len(s['overlap']['views'])} views; text cut off at the left edge on "
+        f"{len(s['overlap']['cut_at_the_left_edge'])}"
+        + (f"; {len(s['shots_not_as_measured'])} SCREENSHOTS NOT AS MEASURED"
+           if s["shots_not_as_measured"] else ""),
         f"headings: {len(s['headings']['views_without_one_visible_h1'])} views without exactly one "
         f"visible h1; longest prose line {s['lines']['longest_cpl']} characters",
         f"network: {len(s['network']['outside'])} requests outside the loopback address and "

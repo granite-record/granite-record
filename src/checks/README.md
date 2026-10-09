@@ -5,10 +5,11 @@ Scripts that write no record and no page, only a verdict or a report:
 - the built site before it ships (`check_site`), and the live site after
   (`check_live`, which asks graniterecord.org and nothing else);
 - the built site as a reader's browser draws it (`rendered_sweep`, which
-  drives headless Chrome through `sweep_browser.js`): text sizes, contrast and
-  sideways overflow on a fixed list of page types, at three widths, in both
-  themes, in forced colours and at a 24px browser text size, with a
-  screenshot of each and one JSON report;
+  drives headless Chrome through `sweep_browser.js`): text sizes, contrast,
+  sideways overflow and text drawn over other text on a fixed list of page
+  types, at three widths, in both themes, in forced colours and at a 24px
+  browser text size, with a screenshot of each (drawn at the text size it
+  measured) and one JSON report;
 - what the General Court changed overnight (`gc_changes`);
 - how complete the archive is (`archive_status`);
 - how near launch is (`readiness`);
