@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.187
+# GRANITE_VERSION: 2026-09-04.188
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -595,7 +595,7 @@ def card_bodies(key, rows):
                    for r in rows if (r.get("body") or "").strip()})
 
 
-def committee_codes(site, data="data"):
+def committee_codes(site, data=None):
     """{(chamber, lower-cased name): code} out of site/committees.json, for
     a card's link to its committee's page.
 
@@ -606,14 +606,24 @@ def committee_codes(site, data="data"):
     to the Senate committee's page -- 168 cards, House Judiciary of 15
     January 2025 among them, sent to committee/S10.
     """
-    # FROM THE STEP THAT KNOWS FIRST (10 October 2026): build_committees'
-    # own reading of today's committees, which no later step writes, so a
-    # build into an empty site links its Coming Up cards as a warm one does.
-    # Last night's committees.json, where it is here, fills in after it.
+    # FROM THE STEP THAT KNOWS FIRST, WHERE `data` IS GIVEN (10 October
+    # 2026): build_committees' own reading of today's committees, which no
+    # later step writes, so a build into an empty site links its Coming Up
+    # cards as a warm one does; last night's committees.json, where it is
+    # here, fills in after it. The home page asks for it (main); the calendar,
+    # which runs after build_committees, reads the file it wrote. Asked for
+    # only where `data` is named, because the folder is the real data's: a
+    # caller holding the map to a committees.json of its own (preflight's
+    # _calendar_chambers) got every real committee as well, on GitHub's
+    # machine and not on a clone without data.
     code = {}
     try:
+        if data is None:
+            raise LookupError("not asked for")
         import build_committees as BC
         code.update(BC.page_codes(site, data))
+    except LookupError:
+        pass
     except Exception as e:   # noqa: BLE001 -- the cards keep their words, unlinked
         print(f"  committee links: build_committees could not be read ({e}); "
               "falling back to site/committees.json")
@@ -811,7 +821,7 @@ def calendar_html(out, today=None, rows=None):
             continue
 
     # --- a chamber's committee -> its own page -----------------------------
-    code = committee_codes(out)
+    code = committee_codes(out, data="data")
 
     def when(d):
         """Tue, Sep 15, and how far off it is -- the part a reader acts on."""

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.521
+# GRANITE_VERSION: 2026-09-04.522
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -6958,7 +6958,7 @@ _DOCKET_TIME_CHANGE = [
 def _row_said(N):
     """The person's list, 10 October 2026: the home page's Latest Activity
     showed the clerk's line as typed. Each row of the last SAID_DAYS carries
-    the sentence the history first tells it in (`said`), which build_site_v2
+    the sentence the history first tells it in (`told`), which build_site_v2
     puts there instead; older rows carry none, so narratives.json does not
     grow by every term's sentences. SB 387 of 2000's real rows, built as of
     1 March 2000 and again as of today."""
@@ -6972,11 +6972,16 @@ def _row_said(N):
         now = _told_from_rows(N, "1999-2000", "SB387", rows)
     finally:
         N.TODAY = was
-    said = [e.get("said") for e in then["events"] if not e.get("cancelled")]
+    said = [e.get("told") for e in then["events"] if not e.get("cancelled")]
     assert said and all(isinstance(s, str) and s.endswith(".") for s in said if s) and any(said), (
         f"rows a week old carry no sentence: {said!r}")
-    assert not any(e.get("said") for e in now["events"]), (
+    assert not any(e.get("told") for e in now["events"]), (
         "rows of 2000, built in 2026, carry a sentence they do not need")
+    # NOT `said`, which is the clerk's line with its cancel mark (marked_line)
+    # and what a bill's docket list prints: a sentence there would replace the
+    # docket's own lines on every bill page.
+    assert not any(e.get("said") and e.get("said") == e.get("told") for e in then["events"]), (
+        "the row's sentence went into `said`, the docket list's line")
     return "ok", f"{sum(1 for s in said if s)} rows of February 2000 say themselves, as of March 2000"
 
 

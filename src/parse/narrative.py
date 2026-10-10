@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.111
+# GRANITE_VERSION: 2026-09-04.112
 """
 Turn a bill's docket entries into a plain-language history.
 
@@ -2551,7 +2551,8 @@ def stage_label(key):
 # without it produces exactly the sentences it did before.
 TESTIMONY = {}
 TERM = ""
-# HOW FAR BACK A ROW KEEPS ITS OWN SENTENCE (`said` on each event): the home
+# HOW FAR BACK A ROW KEEPS ITS OWN SENTENCE (`told` on each event; not
+# `said`, which is the line with the clerk's cancel mark, marked_line's): the home
 # page's Latest Activity showed the clerk's line as typed -- "Ought to Pass,
 # RC 16Y-8N, MA; 02/19/2026" -- where the bill's history says it in words
 # (the person's list, 10 October 2026). It needs only rows of the last weeks,
@@ -5599,7 +5600,7 @@ def build(bill, rows, introduction=None):
             continue
         s = describe(ev, ev["body"], seen_intro)
         # The row's own sentence, as the history first words it, kept for the
-        # serialised event (`said`) where the row is recent (SAID_DAYS). Not
+        # serialised event (`told`) where the row is recent (SAID_DAYS). Not
         # "_said": that is the row's own words, which the meeting readers
         # (MEETING_TIME, TIME_CHANGED ...) read, and taking it voided SB 387
         # of 2000's hearing at the wrong hour.
@@ -6034,7 +6035,7 @@ def build(bill, rows, introduction=None):
                     "body": e["body"],
                     "cancelled": e["cancelled"] or bool(e.get("_void")),
                     "raw": e["_raw"],
-                    **({"said": e["_told"]} if e.get("_told") and
+                    **({"told": e["_told"]} if e.get("_told") and
                        (TODAY - e["when"].date()).days <= SAID_DAYS else {}),
                     # The line with the clerk's cancel mark, where it carries
                     # one, for the bill's docket list alone (marked_line):

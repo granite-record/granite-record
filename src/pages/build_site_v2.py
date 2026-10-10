@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.195
+# GRANITE_VERSION: 2026-09-05.196
 """
 Generate the faceted site from real General Court data.
 
@@ -11526,7 +11526,7 @@ def main():
     recent_cut = (build_date.today() - _td(days=3650)).isoformat()
 
     def _said(e):
-        s = (e.get("said") or "").strip()
+        s = (e.get("told") or "").strip()
         if not s:
             return (e.get("raw") or "")[:150]
         return s if len(s) <= 220 else s[:220].rsplit(" ", 1)[0] + "\u2026"
