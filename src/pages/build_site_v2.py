@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.194
+# GRANITE_VERSION: 2026-09-05.195
 """
 Generate the faceted site from real General Court data.
 
@@ -7648,6 +7648,35 @@ def mover_member(mover, body, legs):
             "slug": m.get("slug") or member_slug(m, lab)}
 
 
+# A MEMBER NAMED IN THE STORY: "offered by Rep. Jane Smith", "Sen. Bradley
+# moved". The honorific, then up to three capitalised words, tried longest
+# first, so "Rep. Smith Amendment" falls back to "Rep. Smith".
+STORY_PERSON = re.compile(r"\b(Rep|Sen)\.\s+((?:[A-Z][\w'\u2019.-]*)(?:\s+[A-Z][\w'\u2019.-]*){0,2})")
+
+
+def story_people(texts, legs):
+    """[{"text", "label", "slug"}]: each member the story names as the docket
+    did -- a mover, the member who offered an amendment -- where the words
+    can mean one sitting member of that chamber (mover_member). The page
+    links them where they stand (the person, 10 October 2026: "movers in
+    story text not linked"). A WRONG LINK IS WORSE THAN NO LINK, so a name
+    two members share stays words."""
+    out, seen = [], set()
+    for text in texts:
+        for m in STORY_PERSON.finditer(text or ""):
+            hon, words = m.group(1), m.group(2).split()
+            for k in range(len(words), 0, -1):
+                said = f"{hon}. {' '.join(words[:k])}".rstrip(".,")
+                if said in seen:
+                    break
+                who = mover_member(said, "H" if hon == "Rep" else "S", legs)
+                if who and who.get("slug") and who.get("label"):
+                    seen.add(said)
+                    out.append({"text": said, **who})
+                    break
+    return out
+
+
 def bill_sponsor_list(bid, b, year, term, current, sponsors, legs,
                       leg_by_sort, leg_by_name, sponsored, seats=None, left=None,
                       term_roster=None):
@@ -10593,20 +10622,26 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
         # were keeping the pages apart by was doing nothing for the data.
         _bd = out / "bills" / str(year)
         _bd.mkdir(parents=True, exist_ok=True)
+        # The stages' text run together; of the stages as they are told,
+        # where one of them is told without its enrolment (stages_told).
+        _narrative = (" ".join(s_["text"] for s_ in stages_told(narr, kind, row["passage"]))
+                      if unenrolled else (narr or {}).get("narrative", ""))
+        # The history, plus a closing paragraph where the bill's ending
+        # is only on the status page. 120 bills showed a settled headline
+        # over a story that stopped at the committee report.
+        _stages = (story["stages"] if story else
+                   stages_told(narr, kind, row["passage"]) + ([ending] if ending else []))
+        # The members the story names, for the page to link (story_people).
+        # The sitting roster's seat is the seat held at the time only in the
+        # current term, as for a roll call's mover, so only there.
+        _people = (story_people([_narrative] + [s_.get("text") or "" for s_ in _stages or []],
+                                legs) if term == current else [])
         (_bd / f"{bid}.json").write_text(json.dumps({
             "id": bid, "year": year, "term": term,
             "title": b.get("title", ""),
-            # The stages' text run together; of the stages as they are told,
-            # where one of them is told without its enrolment (stages_told).
-            "narrative": (" ".join(s_["text"] for s_ in
-                                   stages_told(narr, kind, row["passage"]))
-                          if unenrolled else (narr or {}).get("narrative", "")),
-            # The history, plus a closing paragraph where the bill's ending
-            # is only on the status page. 120 bills showed a settled headline
-            # over a story that stopped at the committee report.
-            "stages": (story["stages"] if story else
-                       stages_told(narr, kind, row["passage"])
-                       + ([ending] if ending else [])),
+            "narrative": _narrative,
+            "stages": _stages,
+            **({"story_people": _people} if _people else {}),
             # Where the record comes from, on a bill the House Journal alone
             # carries; the docket's own notes everywhere else.
             # And where the record itself comes from, on the few that are not
@@ -11490,6 +11525,12 @@ def main():
     soon = (build_date.today() + _td(days=14)).isoformat()
     recent_cut = (build_date.today() - _td(days=3650)).isoformat()
 
+    def _said(e):
+        s = (e.get("said") or "").strip()
+        if not s:
+            return (e.get("raw") or "")[:150]
+        return s if len(s) <= 220 else s[:220].rsplit(" ", 1)[0] + "\u2026"
+
     actions = []
     for b in index:
         narr = narratives.get(b["term"], {}).get(b["id"])
@@ -11500,7 +11541,12 @@ def main():
             # a link to it needs and the day of the action does not give.
             actions.append({"date": e["date"], "bill": b["id"], "n": b["n"],
                             "year": b.get("year") or "",
-                            "title": b["title"][:110], "what": e.get("raw", "")[:150]})
+                            "title": b["title"][:110],
+                            # IN THE HISTORY'S WORDS, NOT THE CLERK'S (the
+                            # person's list, 10 October 2026): the row's own
+                            # sentence (narrative.SAID_DAYS), the line as typed
+                            # only where the history tells the row in none.
+                            "what": _said(e)})
     actions.sort(key=lambda x: x["date"], reverse=True)
 
     upcoming = []

@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.184
+// GRANITE_VERSION: 2026-09-07.185
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -2684,6 +2684,12 @@ need("meta.json")
    // list back on bill number and the reader would land on the opposite of
    // what they clicked. An unknown value is ignored rather than accepted,
    // because the picker only offers four.
+   // ...and the rest of the filters the list itself writes into its address
+   // (addressList): a committee, a prime sponsor, a floor vote day, each as
+   // the facet names it. Ticked as given; one this term has none of is
+   // offered at none, as a status is.
+   for(const k of ["committee","sponsor","voteday"])
+     for(const w of params.getAll(k)){const v=String(w||"").trim();if(v)sel[k].add(v);}
    const psort=params.get("sort");
    if(psort&&["best","num","recent","status"].includes(psort)){
      sortBy=psort; sortChosen=true;
@@ -2733,6 +2739,7 @@ need("meta.json")
    // 2026, S7). On the search page the box is the page.
    if(!window.GR_BILL)$("#q").focus();
    render();
+   restorePlace();
    // A bare #HB1442 link from elsewhere opens that bill.
    // Arriving with a bill in the address -- a refresh, a shared link, or the
    // "open it in the searchable view" link on a static page -- opens it the
@@ -3637,6 +3644,21 @@ const JOURNEY_SHOWN=6;
 // of the dash: "355,054–266,883" whole, the comma after it left to break.
 const tallyWhole=h=>h.replace(/\d+(?:,\d{3})*–\d+(?:,\d{3})*/g,
   m=>`<span class="tally">${m}</span>`);
+// THE MEMBERS THE STORY NAMES, LINKED (the person, 10 October 2026: "movers
+// in story text not linked"): each one build_site_v2.story_people could tie
+// to one sitting member, as the person in a sentence (personLink), where the
+// story names them; any other name stays the words it was. `html` is
+// already escaped; the names are matched as escaped, longest first, in one
+// pass, so no name is linked inside another's link.
+function storyPeople(html,d){
+  const ps=((d&&d.story_people)||[]).filter(p=>p&&p.text&&p.slug)
+    .sort((a,b)=>b.text.length-a.text.length);
+  if(!ps.length)return html;
+  const by={};ps.forEach(p=>{by[esc(p.text)]=p;});
+  const rx=new RegExp("("+Object.keys(by).map(s=>s.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")).join("|")
+    +")(?![\\w])","g");
+  return html.replace(rx,m=>personLink({display_full:by[m].label,slug:by[m].slug}));
+}
 function journeyList(b,d){
   const st=((d.journey||{}).steps)||[];
   if(!st.length)return "";
@@ -3732,8 +3754,8 @@ function renderSummary(b,d,rsa){
   else if(!an&&(d.docket_url||rsaChapters(d).length))
     S.push(section("Source",`<p class="src">Source: ${gcSource(d)}</p>${rsaLine(d)}`,"source"));
   if(d.stages&&d.stages.length)d.stages.forEach(st=>S.push(section(st.label||"The Story",
-    `<p class="story">${esc(st.text)}</p>${(st.notes||[]).map(n=>`<p class="note">${esc(n)}</p>`).join("")}`)));
-  else if(d.narrative)S.push(section("The Story",`<p class="story">${esc(d.narrative)}</p>`));
+    `<p class="story">${storyPeople(esc(st.text),d)}</p>${(st.notes||[]).map(n=>`<p class="note">${esc(n)}</p>`).join("")}`)));
+  else if(d.narrative)S.push(section("The Story",`<p class="story">${storyPeople(esc(d.narrative),d)}</p>`));
   const ending=endNote(d)+archivedNote(d);
   if(ending)S.push(section("How It Ended",ending,"ending"));
   if((d.events||[]).length)S.push(section("The Docket",`<details class="docket"><summary><span class="caret"></span>Show the docket&rsquo;s ${
@@ -5916,9 +5938,13 @@ function billHead(b,d){
       tm?`${BASE}bills?term=${encodeURIComponent(tm)}`:""],[b.n||b.id,""]],
     title:billNumberTerms(b.n),year:y,chip:chip(chipOf(b),`cstat ${chipCls(b)}`,"m"),line:esc(b.title),
     facts,rail:datedRail(b,d),actions:"",kind:"bill"});
-  // The trail's Bills goes back to the search where the search is behind it
-  // (backIsSearch), as "Back to bill search" did.
-  return head.replace(`<li><a href="${esc(BASE)}bills">`,`<li><a href="${esc(BASE)}bills" data-back="1">`);
+  // "BACK TO SEARCH RESULTS" ABOVE THE TRAIL (backIsSearch and lastSearch,
+  // above), where a list is behind the bill; the trail's Bills is the tab's
+  // last search, or the search, as a plain link.
+  const last=lastSearch(),to=last||`${BASE}bills`;
+  const back=showBack()?`<p class="rback"><a href="${esc(to)}" data-back="1">`
+    +`<span aria-hidden="true">&lsaquo; </span>Back to search results</a></p>`:"";
+  return back+head.replace(`<li><a href="${esc(BASE)}bills">`,`<li><a href="${esc(to)}">`);
 }
 
 // The tabs inside an expanded card are set after its HTML is in the document,
@@ -7598,7 +7624,7 @@ function render(more){
     }
   }
   syncCards(rows.filter(b=>openCards.has(b.id)).map(b=>b.id));
-  if(fb){focusActions(fb.id);placeActions();}else dropFocusActions();
+  if(fb){focusActions(fb.id);placeActions();}else{dropFocusActions();addressList();}
   showSelectedTab($("#results"));
   renderFacets();
   refocus(held);
@@ -7612,6 +7638,7 @@ function render(more){
 // query, same place on the page.
 function focusBill(id,href){
   focusY=window.scrollY;
+  savePlace(focusY);
   focused=id;
   // /bill/2026/hb1123 -- the address a person would paste, and the same
   // shape a legislator's page uses.
@@ -7644,6 +7671,73 @@ function focusBill(id,href){
 // site's /bills, which the referrer says; a page opened from a link
 // elsewhere, a bookmark or a member's page has something else behind it, or
 // nothing, and "Back to bill search" must not go there.
+// BACK TO SEARCH RESULTS (the person, 10 October 2026: a reader browsing
+// bills opens one, reads it, "and once they have the information they need,
+// they'd want to back out to the search with their filters and page position
+// where they'd left it"). Three parts:
+//
+// THE LIST'S STATE IS IN ITS ADDRESS (addressList): the term, the ticked
+// filters and a chosen order, replaced into /bills as they change -- and the
+// words searched where the address already names them (addressSearch's own
+// rule: typing does not rewrite the address). So the list a bill was opened
+// from can be opened again, by a reload, a link or a page load.
+//
+// ITS PLACE IS KEPT FOR THIS TAB (savePlace, restorePlace): how far down it
+// was and how many bills were drawn, under that address, in sessionStorage,
+// and the address itself as the tab's last search. A list opened again at
+// that address, by Back or by the link, opens there.
+//
+// THE LINK (billHead): "Back to search results" above the trail, wherever a
+// list is behind the bill -- over the search, always; on a bill's own page,
+// where it came from the search (backIsSearch) or this tab has searched. It
+// goes back in history where that is the search, which brings it back
+// exactly; otherwise it opens the tab's last search at its place.
+const PLACE_KEY="gr.place:",LAST_KEY="gr.search";
+function ssGet(k){try{return sessionStorage.getItem(k);}catch(_){return null;}}
+function ssSet(k,v){try{sessionStorage.setItem(k,v);}catch(_){}}
+const onList=()=>!window.GR_STANDALONE&&!PAGE&&!focused
+  &&/^\/bills(?:\.html)?\/?$/.test(location.pathname);
+function addressList(){
+  if(!onList())return;
+  const was=new URLSearchParams(location.search),p=new URLSearchParams();
+  if(was.get("q"))p.set("q",was.get("q"));
+  const terms=(META&&META.terms)||[];
+  if(term&&term!==terms[0])p.set("term",term);
+  for(const k of ["status","type","topic","committee","sponsor","voteday"])
+    for(const v of sel[k])p.append(k,v);
+  if(sortChosen&&sortBy)p.set("sort",sortBy);
+  const s=p.toString(),want=location.pathname+(s?"?"+s:"");
+  if(want!==location.pathname+location.search){
+    try{history.replaceState(history.state,"",want+location.hash);addressed();}catch(_){}
+  }
+  ssSet(LAST_KEY,want);
+}
+function savePlace(y){
+  if(!onList())return;
+  ssSet(PLACE_KEY+location.pathname+location.search,
+    JSON.stringify({y:y===undefined?window.scrollY:y,shown:SHOWN}));
+}
+function restorePlace(){
+  if(!onList())return;
+  let at=null;
+  try{at=JSON.parse(ssGet(PLACE_KEY+location.pathname+location.search)||"null");}catch(_){}
+  const nav=(typeof performance!=="undefined"&&performance.getEntriesByType)
+    ?(performance.getEntriesByType("navigation")[0]||{}).type:"";
+  const asked=ssGet("gr.back")==="1";
+  if(asked)ssSet("gr.back","");
+  if(!at||!(asked||nav==="back_forward"))return;
+  if(at.shown>SHOWN){SHOWN=at.shown;render(true);}
+  requestAnimationFrame(()=>window.scrollTo(0,at.y||0));
+}
+if(typeof window!=="undefined"&&window.addEventListener)
+  window.addEventListener("pagehide",()=>savePlace());
+// Where the link leads when history cannot take the reader back: the tab's
+// last search, else the search itself.
+const lastSearch=()=>ssGet(LAST_KEY)||"";
+function showBack(){
+  return !window.GR_STANDALONE||backIsSearch()||!!lastSearch();
+}
+
 function backIsSearch(){
   if(!window.GR_STANDALONE)return !!(history.state&&history.state.focus);
   // A bill opened in a new tab came from the search and has no page behind
@@ -7905,6 +7999,7 @@ document.addEventListener("click",e=>{
     if(e.button===0&&!e.metaKey&&!e.ctrlKey&&!e.shiftKey&&!e.altKey){
       if(backIsSearch()){e.preventDefault();history.back();}
       else if(!window.GR_STANDALONE){e.preventDefault();unfocus();}
+      else ssSet("gr.back","1");
     }
     return;}
   // The same thing the observer does, for a keyboard, a reader, or a

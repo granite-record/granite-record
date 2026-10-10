@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-10-09.4
+// GRANITE_VERSION: 2026-10-09.5
 /* A BILL'S PRINT SHEET. A reference sheet of one bill's record for paper,
    composed in the reader's browser from the record the page already holds,
    beside a short menu of settings, and printed with the browser's own dialog
@@ -1003,8 +1003,22 @@ const pagesSaid=n=>`Prints ${n} page${n===1?"":"s"}`;
 let OPEN=null;
 const VCACHE={};
 
-function close(){
+// THE SHEET IS A PLACE IN HISTORY (the person, 10 October 2026: backing out
+// with the browser's Back button left the print sheet up, over a page that
+// had moved on, until "Back to the bill" was pressed). Opening it adds an
+// entry at the same address; Back takes that entry away and the sheet with
+// it, and "Back to the bill" and Escape go back through the same entry, so
+// leaving the sheet never leaves one behind for the next Back to land on.
+let ENTRY=false;
+if(typeof window!=="undefined"&&window.addEventListener)window.addEventListener("popstate",()=>{
+  if(ENTRY&&!(history.state&&history.state.ps)){ENTRY=false;close(true);}
+});
+function close(popped){
   if(!OPEN)return;
+  if(!popped&&ENTRY&&history.state&&history.state.ps){
+    ENTRY=false;
+    try{history.back();}catch(_){}
+  }
   const o=OPEN;OPEN=null;
   o.layer.remove();o.foot.remove();
   if(FRAME){FRAME.remove();FRAME=null;MEASURE=null;}
@@ -1017,7 +1031,8 @@ function close(){
 
 function open(d,b,opts){
   if(!d||!d.id)throw new Error("GRPrint.open needs the bill's record");
-  close();
+  // Drawn again over itself (another bill, new options): the entry it has stays.
+  close(true);
   opts=opts||{};
   // The stylesheet the first time: the layer waits for it, hidden, rather
   // than covering the page with a sheet drawn unstyled.
@@ -1119,6 +1134,10 @@ function open(d,b,opts){
   window.addEventListener("beforeprint",stamp);
   document.addEventListener("keydown",key_,true);
   OPEN={layer,foot,inerted,stamp,key:key_,back:document.activeElement};
+  if(!ENTRY){
+    try{history.pushState(Object.assign({},history.state,{ps:1}),"",location.href);ENTRY=true;}
+    catch(_){}
+  }
 
   // The versions, where the record says there are some, once a bill.
   if(hasIndex(d)&&!ctx.versions.ix&&!ctx.versions.asking){

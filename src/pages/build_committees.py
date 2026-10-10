@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-07.57
+# GRANITE_VERSION: 2026-09-07.58
 """
 A page's worth of data for every committee.
 
@@ -777,6 +777,28 @@ def with_roster(site="site", data="data"):
     return sum(1 for code, held in R.seats.items()
                if presentable(committee_name(code, R.lead, R.codes))
                and any(R.on_it_today(m, code) for m in held or []))
+
+
+def page_codes(site="site", data="data"):
+    """{(chamber, lower-cased name): code} for the committees this step gives a
+    page and the General Court lists today (who_sits' listing and seat
+    table), with the chamber as main() takes it -- for build_pages' Coming Up
+    cards, which link a meeting's committee to its page and are written four
+    steps before main(). A committee of the past is not in Coming Up, so the
+    listing is the whole of what it needs (10 October 2026: a build into an
+    empty site linked none of them, where the kit's copy of last night's
+    committees.json did not reach)."""
+    R = who_sits(Path(site), Path(data))
+    out = {}
+    for code in sorted(set(R.lead) | set(R.seats)):
+        name = committee_name(code, R.lead, R.codes)
+        if not presentable(name):
+            continue
+        chamber = ((R.lead.get(code) or {}).get("chamber")
+                   or (R.seats.get(code) or [{}])[0].get("chamber")
+                   or (code[:1].upper() if code[:1].upper() in "HS" else ""))
+        out.setdefault((str(chamber).strip().upper(), name.strip().lower()), code)
+    return out
 
 
 def main():

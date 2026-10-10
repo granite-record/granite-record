@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-18.32
+# GRANITE_VERSION: 2026-09-18.33
 """
 The General Court's week, one page per week.
 
@@ -763,11 +763,13 @@ WEEK_JS = r"""
     // THE HIDDEN STUDY MEETINGS SAY SO. Study Committee starts unticked (the
     // person, 25 September), and 30 of the record's 103 weeks hold nothing
     // else, so a new reader met "None of the 7 sittings this week match."
-    // with no word of why. The line says how many the box would show.
+    // with no word of why. The line says how many the box would show -- and
+    // no more since 10 October 2026 (the person: the "tick Study Committee
+    // to show them" fragment came off; the box beside it says the rest).
     if(t.study)
       line+=" "+(t.study===1 ? "1 study committee meeting is"
                              : t.study+" study committee meetings are")
-        +" hidden: tick Study Committee to show "+(t.study===1?"it":"them")+".";
+        +" hidden.";
     return line;
   }
 

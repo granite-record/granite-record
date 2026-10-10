@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.520
+# GRANITE_VERSION: 2026-09-04.521
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -6951,6 +6951,33 @@ _DOCKET_TIME_CHANGE = [
     '2000|2068|01/19/2000 03:50:53 PM|SB387|S|==TIME CHANGE== Jan. 25, Room 104, LOB, 3:25 p.m.; SC 5, Pg.3|01/19/2000 03:50:53 PM',
     '2000|2068|01/26/2000 04:05:34 PM|SB387|S|==RESCHEDULED==Feb.15,Room 104,LOB,3:30 p.m.; SC 6,Pg.6|01/26/2000 04:05:34 PM',
 ]
+
+
+@check("build", "a recent docket row carries its own sentence for Latest Activity, and an old one "
+       "does not", needs=("narrative",))
+def _row_said(N):
+    """The person's list, 10 October 2026: the home page's Latest Activity
+    showed the clerk's line as typed. Each row of the last SAID_DAYS carries
+    the sentence the history first tells it in (`said`), which build_site_v2
+    puts there instead; older rows carry none, so narratives.json does not
+    grow by every term's sentences. SB 387 of 2000's real rows, built as of
+    1 March 2000 and again as of today."""
+    import datetime as _dt
+    rows = [x for x in _DOCKET_TIME_CHANGE if "|SB387|" in x]
+    was = N.TODAY
+    try:
+        N.TODAY = _dt.date(2000, 3, 1)
+        then = _told_from_rows(N, "1999-2000", "SB387", rows)
+        N.TODAY = _dt.date(2026, 10, 10)
+        now = _told_from_rows(N, "1999-2000", "SB387", rows)
+    finally:
+        N.TODAY = was
+    said = [e.get("said") for e in then["events"] if not e.get("cancelled")]
+    assert said and all(isinstance(s, str) and s.endswith(".") for s in said if s) and any(said), (
+        f"rows a week old carry no sentence: {said!r}")
+    assert not any(e.get("said") for e in now["events"]), (
+        "rows of 2000, built in 2026, carry a sentence they do not need")
+    return "ok", f"{sum(1 for s in said if s)} rows of February 2000 say themselves, as of March 2000"
 
 
 @check("build", "a Senate hearing of 1999-2006 sits at the hour a later TIME CHANGE row gave its "
@@ -50192,7 +50219,7 @@ process.stdout.write(C.countLine(C.tally(cards,on),"this week")+" | "
                      text=True, encoding="utf-8", timeout=60)
             assert r.returncode == 0, (r.stdout or r.stderr).strip()[-300:]
             assert r.stdout == ("1 meeting this week. | The one meeting this week does not match."
-                                " 1 study committee meeting is hidden: tick Study Committee to show it."), (
+                                " 1 study committee meeting is hidden."), (
                 f"the week script counts {r.stdout!r} with one meeting cancelled, with the "
                 "study committees shown and then as a new reader sees the week")
         js = BC.WEEK_JS
@@ -53345,7 +53372,7 @@ ok(cat("standing",["meet"])==="work" && cat("study",["study"])==="study" && cat(
    && cat("standing",["hearing","exec","meet"])==="hearing,exec,work" && cat("standing",["conf"])==="conf"
    && cat("standing",[])==="work",
    "a card answers to the wrong box: "+[cat("standing",["meet"]),cat("study",["study"]),cat("study",["hearing"]),cat("standing",["other"])]);
-ok(count(F({}))==="5 of 6 meetings shown. 1 study committee meeting is hidden: tick Study Committee to show it.", "a new reader's week: "+count(F({})));
+ok(count(F({}))==="5 of 6 meetings shown. 1 study committee meeting is hidden.", "a new reader's week: "+count(F({})));
 ok(names(F({})).join()==="Committee of conference on HB 3,House Commerce,House Judiciary,House Session Day,Senate Finance",
    "a new reader's week holds "+names(F({})));
 ok(count(ON)==="6 meetings this week.", "every box ticked: "+count(ON));
@@ -53356,10 +53383,10 @@ ok(names(F({cats:["floor"]})).join()==="House Session Day", "Session Day alone k
 ok(names(F({cats:["conf"]})).join()==="Committee of conference on HB 3", "Committee of Conference alone keeps "+names(F({cats:["conf"]})));
 ok(names(F({cats:["study"]})).join()==="Commission on Aging,Commission on Aging" && count(F({cats:["study"]}))==="1 of 6 meetings shown.",
    "Study Committee alone keeps "+names(F({cats:["study"]}))+" and counts "+count(F({cats:["study"]})));
-ok(count(F({cats:["work"]}))==="None of the 6 meetings this week match. 1 study committee meeting is hidden: tick Study Committee to show it.", "Work Session alone, in a week of none: "+count(F({cats:["work"]})));
+ok(count(F({cats:["work"]}))==="None of the 6 meetings this week match. 1 study committee meeting is hidden.", "Work Session alone, in a week of none: "+count(F({cats:["work"]})));
 // An entry holding two kinds stays while either is ticked, and whole.
 ok(names(F({cats:["hearing","work","conf","floor"]})).join()==="Committee of conference on HB 3,House Judiciary,House Session Day,Senate Finance"
-   && count(F({cats:["hearing","work","conf","floor"]}))==="4 of 6 meetings shown. 1 study committee meeting is hidden: tick Study Committee to show it.",
+   && count(F({cats:["hearing","work","conf","floor"]}))==="4 of 6 meetings shown. 1 study committee meeting is hidden.",
    "Executive Session unticked keeps "+names(F({cats:["hearing","work","conf","floor"]})));
 // Committees by name: only those, still in the kinds ticked, and a study
 // committee asked for by name whatever its box says.
@@ -53866,7 +53893,7 @@ const CLOCK=new RegExp("^\\d{1,2}:\\d\\d"+NB+"(AM|PM)(–\\d{1,2}:\\d\\d"+NB+"(A
   // Commission on Aging's two cards.
   const plain=statik.filter(k=>!/Aging/.test(k));
   ok(plain.length===5 && W.keys().join()===plain.join(), "the list the script draws is not the page's own less the study committee: "+W.keys());
-  ok($("wkcount").textContent==="5 of 6 meetings shown. 1 study committee meeting is hidden: tick Study Committee to show it.", "the count reads "+$("wkcount").textContent);
+  ok($("wkcount").textContent==="5 of 6 meetings shown. 1 study committee meeting is hidden.", "the count reads "+$("wkcount").textContent);
   ok($("calreset").hidden, "the reset control shows over a new reader's own filters");
   ok(QA(".caladd",$("calview")).length===5, "add-to-calendar on "+QA(".caladd",$("calview")).length+" cards, not the 5 shown that sat");
   ok($("cmprev").getAttribute("aria-disabled")==="true", "the month before the calendar's first is offered");
@@ -53986,13 +54013,13 @@ const CLOCK=new RegExp("^\\d{1,2}:\\d\\d"+NB+"(AM|PM)(–\\d{1,2}:\\d\\d"+NB+"(A
   ok(W.store.get("gr.calendar.showstudy")==="0" && W.keys().join()===plain.join() && $("calreset").hidden && W.addr()==="/calendar?week=2026-W11",
      "Study Committee unticked again: "+W.addr());
   await W.tick("exec",false);
-  ok(!W.keys().some(k=>/House Commerce/.test(k)) && W.keys().some(k=>/House Judiciary/.test(k)) && $("wkcount").textContent==="4 of 6 meetings shown. 1 study committee meeting is hidden: tick Study Committee to show it.",
+  ok(!W.keys().some(k=>/House Commerce/.test(k)) && W.keys().some(k=>/House Judiciary/.test(k)) && $("wkcount").textContent==="4 of 6 meetings shown. 1 study committee meeting is hidden.",
      "Executive Session unticked: "+$("wkcount").textContent+" "+W.keys()+" -- a committee that also heard bills stays");
   ok(!QA(".cmdots i",Q('td[data-d="2026-03-12"]',$("cmgrid"))).length, "the grid's dots do not follow the boxes");
   ok(W.addr()==="/calendar?week=2026-W11&kinds=hearing,work,conf,floor", "the address: "+W.addr());
   await W.tick("exec",true);
   await W.tick("floor",false);
-  ok(!W.keys().some(k=>/House Session Day/.test(k)) && $("wkcount").textContent==="4 of 6 meetings shown. 1 study committee meeting is hidden: tick Study Committee to show it.", "Session Day unticked: "+W.keys());
+  ok(!W.keys().some(k=>/House Session Day/.test(k)) && $("wkcount").textContent==="4 of 6 meetings shown. 1 study committee meeting is hidden.", "Session Day unticked: "+W.keys());
   await W.tick("floor",true);
   // ---- the side: a committee by name, a chamber, the search ----
   $("cpfind").dispatchEvent(W.ev("focus",{bubbles:false})); await W.settle();
@@ -56330,6 +56357,35 @@ def _bill_trail_term_search():
     assert "<a" not in items[2] and "HB 396" in items[2], (
         f"the trail does not end on the bill's number: {items[2]}")
     return "ok", "Bills > 2025\u20132026 Term (the search on that term) > HB 396-FN"
+
+
+@check("frontend", "a member the story names is linked where one sitting member is meant, "
+       "and left as words where two are", needs=("build_site_v2",))
+def _story_people(B):
+    """The person, 10 October 2026: movers named in a bill's story were not
+    linked. build_site_v2.story_people ties "Rep. Jane Smith" and "Sen.
+    Bradley" to one sitting member each (mover_member), takes "Rep. Smith
+    Amendment" as "Rep. Smith", and leaves "Rep. Lee", whom two members
+    could be, as the words it was; app.js's storyPeople links the first two
+    where the story names them and nothing inside another link."""
+    legs = {"1": {"name": "Smith, Jane", "chamber": "H", "party": "R", "slug": "jane-smith-rock-13",
+                  "label": "Rep. Jane Smith (R - Rock 13)"},
+            "2": {"name": "Bradley, Jeb", "chamber": "S", "party": "R", "slug": "jeb-bradley-s3",
+                  "label": "Sen. Jeb Bradley (R - 3)"},
+            "3": {"name": "Lee, Ann", "chamber": "H", "party": "D", "slug": "ann-lee"},
+            "4": {"name": "Lee, Bo", "chamber": "H", "party": "R", "slug": "bo-lee"}}
+    text = ("A floor amendment, offered by Rep. Jane Smith, failed. Sen. Bradley moved to table it. "
+            "Rep. Lee spoke.")
+    got = B.story_people([text, "Rep. Jane Smith Amendment was withdrawn."], legs)
+    said = {p["text"]: p["slug"] for p in got}
+    assert said == {"Rep. Jane Smith": "jane-smith-rock-13", "Sen. Bradley": "jeb-bradley-s3"}, said
+    html = _app_js("scope.storyPeople(" + json.dumps(text) + ", " + json.dumps({"story_people": got})
+                   + ")", names=("storyPeople",))
+    if html is None:
+        return "ok", "story_people ties two of three names; node is not here for the page"
+    assert html.count('class="psent"') == 2 and 'href="legislator/jane-smith-rock-13.html"' in html \
+        and "Rep. Lee spoke." in html, html
+    return "ok", "Rep. Jane Smith and Sen. Bradley linked; Rep. Lee, two members, left as words"
 
 
 @check("frontend", "the Bill Text tab opens on the current version in full text")

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-14.16
+# GRANITE_VERSION: 2026-09-14.17
 """
 The record in numbers: a Learn page of statistics computed from the site's own data.
 
@@ -842,13 +842,16 @@ def body(site=Path("site"), root=Path("."), strict=True):
     if tdb:
         # Twenty, and the paragraph says twenty.
         si = signins(tdb, narr_all, idx, site, root, top=20, strict=strict)
+        # THE CURRENT TERM ONLY (the person, 10 October 2026: "remove the
+        # 2023-2024 online sign in chart ... and just keep the 2025-2026
+        # numbers"). The earlier term's twenty were the first months of the
+        # form, and set beside a full term they compared nothing like with like.
+        si = {t: hs for t, hs in si.items() if t == current}
         allh = [h for t in si for h in si[t]]
         sided = [h for h in allh if h["support"] + h["oppose"]]
         lop = sum(1 for h in sided if 10 * max(h["support"], h["oppose"])
                   >= 9 * (h["support"] + h["oppose"]))
         against = sum(1 for h in allh if h["oppose"] > h["support"])
-        since = min((h["date"] for t in tdb if isinstance(tdb[t], dict) for rec in tdb[t].values()
-                     for h in (rec or {}).get("hearings") or []), default="")
         tables = []
         for t in sorted(si, reverse=True):
             # Five columns, the hearing's day and committee in one and the
@@ -867,7 +870,7 @@ def body(site=Path("site"), root=Path("."), strict=True):
         out.append("<h2>The Hearings with the Most Sign-Ins</h2><p>Anyone may use the House's "
                    "online form to say they support or oppose a bill, or are neutral on it, at "
                    "its committee hearing. These are the twenty hearings with the most of those "
-                   f"sign-ins in each term since the earliest on record, on {_day(since)}: one "
+                   f"sign-ins in the {_t(current)} term: one "
                    "bill on one House committee date, with the title it had when it was heard. "
                    "A sign-in is a position registered, not a vote and not a person counted: "
                    "one person may sign in on many bills, nobody is sampled, and an organised "
@@ -906,8 +909,26 @@ def body(site=Path("site"), root=Path("."), strict=True):
     regular = sum(c["regular"] for c in per_ch.values())
     removed = sum(c["removed"] for c in per_ch.values())
     total = kept + regular + removed
-    ccrows = sorted(([E(c), f"{n:,}", f"{k:,}", _pct(k, n)] for c, (n, k) in by_c.items() if n >= 10),
-                    key=lambda r: -float(r[3].rstrip("%")) if r[3].endswith("%") else 0)
+    # A TABLE FOR EACH CHAMBER (the person, 10 October 2026), each under its
+    # own totals: the House's committees and the Senate's had been one list,
+    # ranked together, where each chamber runs its calendar by its own rules.
+    def ccrows(word):
+        return sorted(([E(c), f"{n:,}", f"{k:,}", _pct(k, n)] for c, (n, k) in by_c.items()
+                       if n >= 10 and c.startswith(word + " ")),
+                      key=lambda r: -float(r[3].rstrip("%")) if r[3].endswith("%") else 0)
+
+    def chamber_cc(ch):
+        c = per_ch.get(ch) or Counter()
+        k, reg, rem = c["kept"], c["regular"], c["removed"]
+        tot = k + reg + rem
+        rows_ = ccrows(NAME[ch])
+        if not tot and not rows_:
+            return ""
+        return (f"<h3>{NAME[ch]} Committees</h3>"
+                f"<p>{_pct(k, tot)} of the {NAME[ch]}&rsquo;s {tot:,} committee recommendations "
+                f"were adopted on its consent calendar; {rem:,} were taken off it.</p>"
+                + (_table(["Committee", "Reports", "On consent and kept there", "Share"], rows_)
+                   if rows_ else ""))
     out.append(f"<h2>Consent Calendars, by Committee</h2><p>A committee sends a report to the "
                "consent calendar by its own vote, and in both chambers that vote must be unanimous, "
                "though the recommendation itself may have been carried on a divided one. The "
@@ -924,7 +945,7 @@ def body(site=Path("site"), root=Path("."), strict=True):
                f"({_pct(kept, total)}) were adopted on the consent calendar, and "
                f"<b>{regular + removed:,}</b> went to the regular calendar, {removed:,} of them "
                "after being taken off consent.</p>"
-               + _table(["Committee", "Reports", "On consent and kept there", "Share"], ccrows))
+               + chamber_cc("H") + chamber_cc("S"))
 
     # 7. Each committee's passage rate.
     cr, ctot = committee_rates(idx, narr, current)

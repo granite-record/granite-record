@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.248 */
+/* GRANITE_VERSION: 2026-09-07.249 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -5778,6 +5778,12 @@ transition:transform .15s}
 .rhead{--meas:51.1875rem;display:grid;grid-template-columns:minmax(0,1fr) auto;column-gap:2.5rem;
 align-items:start;margin:var(--sp-4) 0 0;
 grid-template-areas:"trail trail" "top top" "line acts" "facts acts" "rail rail"}
+/* "Back to search results", above a bill's head where a list is behind it
+   (app.js billHead): the quiet link, on its own line, before the trail. */
+.rback{margin:0 0 var(--sp-3);font-size:var(--t-sm)}
+.rback a{color:var(--pine);text-decoration:none}
+.rback a:hover,.rback a:focus-visible{text-decoration:underline}
+@media print{.rback{display:none}}
 .rtrail{grid-area:trail;border-bottom:1px solid var(--ink);padding-bottom:var(--sp-3);margin-bottom:var(--sp-6)}
 .rtrail ol{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;align-items:center;
 font:500 var(--t-ui)/1.4 var(--sans);color:var(--ink-2)}

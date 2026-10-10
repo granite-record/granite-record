@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.186
+# GRANITE_VERSION: 2026-09-04.187
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -595,7 +595,7 @@ def card_bodies(key, rows):
                    for r in rows if (r.get("body") or "").strip()})
 
 
-def committee_codes(site):
+def committee_codes(site, data="data"):
     """{(chamber, lower-cased name): code} out of site/committees.json, for
     a card's link to its committee's page.
 
@@ -606,14 +606,24 @@ def committee_codes(site):
     to the Senate committee's page -- 168 cards, House Judiciary of 15
     January 2025 among them, sent to committee/S10.
     """
+    # FROM THE STEP THAT KNOWS FIRST (10 October 2026): build_committees'
+    # own reading of today's committees, which no later step writes, so a
+    # build into an empty site links its Coming Up cards as a warm one does.
+    # Last night's committees.json, where it is here, fills in after it.
     code = {}
+    try:
+        import build_committees as BC
+        code.update(BC.page_codes(site, data))
+    except Exception as e:   # noqa: BLE001 -- the cards keep their words, unlinked
+        print(f"  committee links: build_committees could not be read ({e}); "
+              "falling back to site/committees.json")
     cf = Path(site) / "committees.json"
     if cf.exists():
         try:
             for c in json.loads(cf.read_text(encoding="utf-8")):
                 if c.get("name") and c.get("code"):
-                    code[((c.get("chamber") or "").strip().upper(),
-                          c["name"].strip().lower())] = c["code"]
+                    code.setdefault(((c.get("chamber") or "").strip().upper(),
+                                     c["name"].strip().lower()), c["code"])
         except (ValueError, OSError):
             pass
     return code
