@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.178
+// GRANITE_VERSION: 2026-09-07.179
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -6398,7 +6398,10 @@ function renderMemberHead(m){
   const code=String(m.party_code||m.party||(tagp?tagp[1]:"")).toUpperCase().slice(0,1);
   const towns=m.towns||[];
   const line=[m.office?`<b>${esc(m.office)}</b>`:"",esc(PARTY_WORD[code]||m.party||""),
-    esc(seatName(m)),former?"":joinList(towns.map(esc),"and")].filter(Boolean).join(" &middot; ");
+    esc(seatName(m)),former?"":joinList(towns.map(esc),"and")].filter(Boolean)
+    // Each dot holds to the words before it, so a wrapped line never opens on
+    // one (a phone, 10 October 2026: "· Senate District 14").
+    .join("&nbsp;&middot; ");
   // The years on record, by chamber: the record's own service where the
   // member sat in both, else the terms their attendance is counted in.
   const yrsOf=t=>t.map(x=>String(x).split("-").map(Number)).filter(x=>x[0]);

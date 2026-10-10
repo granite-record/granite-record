@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.501
+# GRANITE_VERSION: 2026-09-04.502
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -54951,10 +54951,10 @@ def _speaker_page_says_so(B):
     head, floor = got
     # The record head's line (C6, 10 October 2026): the office first, then
     # the party and the seat in words; the heading says the chamber.
-    assert re.search(r'<p class="rline"><b>Speaker of the House</b> &middot; Republican &middot; '
-                     r'Rockingham District 16', head), (
+    assert re.search(r'<p class="rline"><b>Speaker of the House</b>&nbsp;&middot; Republican'
+                     r'&nbsp;&middot; Rockingham District 16', head), (
         "the Speaker's page does not say he is Speaker: " + re.sub(r"\s+", " ", head)[:300])
-    assert '<p class="rline">Republican &middot; Rockingham District 16' in floor and \
+    assert '<p class="rline">Republican&nbsp;&middot; Rockingham District 16' in floor and \
         '<h1 class="rh1">Representative Sherman Packard</h1>' in floor, (
         "a member of the floor lost the chamber's name: " + re.sub(r"\s+", " ", floor)[:300])
     return "ok", "seat 6002's member is Speaker of the House on his own page; nobody else is"
@@ -55251,11 +55251,11 @@ def _officers_on_the_page(B, BLP, BSP, OF):
     # draws it: the title in full and the name, and the office, the party
     # and the seat in words on the line under it.
     assert '<h1 class="rh1">Senator Sharon Carson</h1>' in head_c, head_c[:300]
-    assert ('<p class="rline"><b>President of the Senate</b> &middot; Republican &middot; '
-            'Senate District 14') in head_c, (
+    assert ('<p class="rline"><b>President of the Senate</b>&nbsp;&middot; Republican'
+            '&nbsp;&middot; Senate District 14') in head_c, (
         "the President of the Senate's page does not say so: " + re.sub(r"\s+", " ", head_c)[:300])
     assert '<h1 class="rh1">Representative James Spillane</h1>' in head_s, head_s[:300]
-    assert '<p class="rline">Republican &middot; Rockingham District 2' in head_s, head_s[:400]
+    assert '<p class="rline">Republican&nbsp;&middot; Rockingham District 2' in head_s, head_s[:400]
     assert '<h1 class="rh1">Former Representative Michael Gunski</h1>' in head_g, head_g[:300]
     assert cells == ['<div class="m">Rep. Steven Smith (R)<span class="p mo">Deputy '
                      'Speaker of the House</span></div>',

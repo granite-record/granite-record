@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.238 */
+/* GRANITE_VERSION: 2026-09-07.239 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -5483,6 +5483,9 @@ color:var(--ink-2);margin:0 0 var(--sp-2)}
 .racts{grid-area:acts;align-self:start;justify-self:end;min-width:11.5rem;margin-top:var(--sp-4)}
 .racts:empty{display:none}
 .rnote{font-size:var(--t-ui);color:var(--ink-2);margin:var(--sp-4) 0 0;max-width:46rem}
+/* The last note under a head keeps the sections off it: a committee's
+   "Nothing is scheduled" stood on its Members heading. */
+.rnote:not(:has(+ .rnote)){margin-bottom:var(--sp-6)}
 /* THE ACTIONS, ONE STACK: Cite this page, Follow, Print, Share, Report a
    problem, each the quiet action button (Polish 1's), full width in the
    stack; their panes open from the stack's foot, at its right. */
@@ -5607,7 +5610,11 @@ padding:var(--sp-3) 0;border-top:1px solid var(--rule)}
 .wknav .wknext{align-items:flex-end;text-align:right}
 .wknav .wkmid{flex:1 1 auto;text-align:center;font-size:var(--t-ui)}
 .wknav .wkmid a{display:inline;padding:0;min-height:0;font-weight:500}
-@media (max-width:45em){.wknav .wkmid{order:3;flex-basis:100%;text-align:left}}
+/* Under 60em the list and the week take a line of their own under the
+   previous and next days: at 768px the next day wrapped alone onto a second
+   line at the right (the look of 10 October 2026). */
+@media (max-width:60em){.wknav .wkmid{order:3;flex-basis:100%}}
+@media (max-width:45em){.wknav .wkmid{text-align:left}}
 /* WHO PRESIDED, in one general line under How the Day Began. */
 .spres{font-size:var(--t-ui);color:var(--ink);margin:var(--sp-4) 0 0}
 /* THE FOLDS: the consent calendar's bills (item 18) and the members excused
