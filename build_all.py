@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.58
+# GRANITE_VERSION: 2026-09-05.60
 """
 Run the whole pipeline in the right order.
 
@@ -7,6 +7,10 @@ Run the whole pipeline in the right order.
                                             #   when secrets.json holds a key
     python3 build_all.py --local            # no network at all, rebuild from files
     python3 build_all.py --dry-run          # print the plan and stop
+    python3 build_all.py --front-end        # a change to app.css, components.js,
+                                            #   app.js or find.js alone, into the site
+                                            #   the last full build made, in seconds
+                                            #   (front_end.py)
 
 The video index is the one step here that needs a credential, and it reads it
 out of secrets.json like everything else that needs one. `publish YOURKEY`
@@ -43,6 +47,7 @@ import subprocess
 import threading
 import time
 import build_date
+import build_inputs
 import proceedings
 import child
 from datetime import datetime
@@ -928,7 +933,18 @@ def main():
     ap.add_argument("--dry-run", action="store_true")
     ap.add_argument("--keep-going", action="store_true",
                     help="carry on past a failed required step")
+    ap.add_argument("--front-end", action="store_true",
+                    help="put a change to app.css, components.js, app.js or find.js into the site the "
+                         "last full build made, in seconds; refuses, and says why, when "
+                         "anything else has moved since that build (front_end.py)")
     a = ap.parse_args()
+    # THE FAST PATH (decision D24, 9 October 2026): no step of the plan runs
+    # unless front_end.py says which and why. It holds the build's lock
+    # itself. Started as a script, as a step is, so that nothing it imports
+    # is imported by the build.
+    if a.front_end:
+        sys.exit(child.run([sys.executable, _paths.script("front_end.py")]
+                           + (["--dry-run"] if a.dry_run else [])).returncode)
 
     steps = plan(a)
     if a.local:
@@ -1039,7 +1055,42 @@ def main():
     # NOTHING BELOW THIS LINE MAY RUN TWICE AT ONCE. --dry-run returns above
     # and never reaches here, so listing the plan while a build runs is fine.
     with building():
-        return _run_steps(steps, a)
+        # WHAT THIS BUILD IS BUILT FROM (build_inputs.py), for the fast path
+        # (`--front-end`), which may build on site/ only while nothing it was
+        # built from has moved. The last build's record goes first: from here
+        # on site/ is not what it describes. _run_steps stops the process
+        # where the build fails, so a record is written only of one that ended
+        # well. Taken where the build is the laptop's; GitHub's machine has
+        # no use for one.
+        keep = not kit_build()
+        if keep:
+            build_inputs.forget()
+            before = build_inputs.state()
+            commit, dirty = build_inputs.git_head()
+        _run_steps(steps, a)
+        if keep and Path("site").exists():
+            record_build(before, a, commit, dirty)
+
+
+def record_build(before, a, commit, dirty):
+    """build_inputs.record, with what this build was asked to do, and what
+    the fast path reads of the code the build reads in part (front_end.py
+    --facts, asked of the script as a step would be)."""
+    r = child.run([sys.executable, _paths.script("front_end.py"), "--facts"],
+                  capture_output=True, text=True)
+    try:
+        facts = json.loads(r.stdout) if r.returncode == 0 else None
+    except ValueError:
+        facts = None
+    stated = build_date.stated()
+    return build_inputs.record(before, {
+        "session": a.session, "base": a.base, "archive": a.archive,
+        "local": a.local, "no_captions": a.no_captions,
+        "with_superseded": a.with_superseded,
+        "date_stated": build_date.today().isoformat() if stated else None,
+        "date_env": os.environ.get(build_date.ENV) if stated else None,
+        "hashseed": os.environ.get("PYTHONHASHSEED")},
+        facts, site=Path("site"), commit=commit, dirty=dirty)
 
 
 def _run_steps(steps, a):

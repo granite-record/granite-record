@@ -23,7 +23,26 @@
     "Wheeler R, Pappas D, Goodlander D. That is a person's statement rather",
     "than a page's, which is the whole reason this file is a person's file.",
     "A party chip is a visible claim about a real person; if one of these is",
-    "wrong, it is wrong here and nowhere else."
+    "wrong, it is wrong here and nowhere else.",
+    "",
+    "SINCE 9 OCTOBER 2026, ALSO THE SECRETARY OF STATE, THE STATE TREASURER AND",
+    "THE ATTORNEY GENERAL, read that day from each office's own pages, whose",
+    "addresses each record carries. The person approved the three names in chat",
+    "the same day. None of the three pages states a party, so none is recorded.",
+    "The Secretary of State and the Treasurer are elected by the General Court",
+    "for each biennium, so both are read again after the new General Court",
+    "chooses them in December.",
+    "",
+    "SINCE 9 OCTOBER 2026, ALSO EACH COUNTY'S ELECTED OFFICERS (key county): its",
+    "three commissioners, sheriff, county attorney, treasurer, register of deeds",
+    "and register of probate, 80 in all, read from the Secretary of State's county",
+    "roster (records/sources/sos-county-roster-2025-2026.pdf, dated 5 December",
+    "2024). The person approved them in chat the same day and decided that a",
+    "commissioner carries the party the roster prints (R/D where a candidate won",
+    "both nominations, shown on a neutral chip), while the sheriff, county attorney,",
+    "treasurer and the two registers carry none: their roles are meant to be",
+    "neutral, as a Secretary of State's is. Most of these seats are on the November",
+    "2026 ballot, so every name is read again from the next roster."
   ],
   "_checked": "2026-09-09",
   "governor": {
@@ -132,5 +151,1097 @@
         "official_url": "https://hassan.senate.gov"
       }
     ]
+  },
+  "secretary_of_state": {
+    "office": "Secretary of State",
+    "scope": "statewide",
+    "name": "David M. Scanlan",
+    "party": "",
+    "phone": "(603) 271-3242",
+    "email": "administration@sos.nh.gov",
+    "official_url": "https://www.sos.nh.gov/",
+    "contact_url": "https://www.sos.nh.gov/contact-us",
+    "source": "https://www.sos.nh.gov/contact-us",
+    "read": "2026-10-09",
+    "about": [
+      "As chief election official, the Secretary of State oversees all state elections. The office also keeps the state's corporations, securities, archives and vital records. The Secretary is elected by a joint session of the House and Senate."
+    ]
+  },
+  "treasurer": {
+    "office": "State Treasurer",
+    "scope": "statewide",
+    "name": "Monica Mezzapelle",
+    "party": "",
+    "phone": "(603) 271-2621",
+    "email": "info@treasury.nh.gov",
+    "official_url": "https://www.treasury.nh.gov/",
+    "contact_url": "https://www.treasury.nh.gov/contact-us",
+    "source": "https://www.treasury.nh.gov/about-us/state-treasurer",
+    "read": "2026-10-09",
+    "about": [
+      "The State Treasurer oversees the state's finances, including investments and debt management. Part 2, Article 67 of the New Hampshire Constitution establishes the office, and the Treasurer is elected by a joint session of the Senate and the House."
+    ]
+  },
+  "attorney_general": {
+    "office": "Attorney General",
+    "scope": "statewide",
+    "name": "John Formella",
+    "party": "",
+    "phone": "(603) 271-3658",
+    "email": "",
+    "official_url": "https://www.doj.nh.gov/",
+    "contact_url": "https://www.doj.nh.gov/contact-us",
+    "source": "https://www.doj.nh.gov/",
+    "read": "2026-10-09",
+    "about": [
+      "The Attorney General is the State's chief legal officer and chief law enforcement officer, and heads the Department of Justice."
+    ]
+  },
+  "county": {
+    "office": "County Officers",
+    "scope": "county",
+    "about": [
+      "Each of New Hampshire's ten counties elects three county commissioners, a sheriff, a county attorney, a county treasurer, a register of deeds and a register of probate.",
+      "Each commissioner represents a district (in Carroll and Sullivan the whole county votes for each one). In eight counties their terms are staggered, so two of the three seats are on the ballot at each general election; Hillsborough and Strafford elect all three every two years. The other officers serve two-year terms, except in Rockingham and Coos, where they serve four.",
+      "When an office falls vacant between elections, the county convention -- the county's state representatives -- fills it; a register of probate's vacancy is filled differently."
+    ],
+    "official_url": "",
+    "source": "The Secretary of State's COUNTY ROSTER 2025-2026 (Election Division), https://www.sos.nh.gov/sites/g/files/ehbemt561/files/documents/2024-12/roster-county-offices-2024.pdf, saved byte for byte at records/sources/sos-county-roster-2025-2026.pdf",
+    "source_file": "records/sources/sos-county-roster-2025-2026.pdf",
+    "source_sha256": "8b507d159a095d71cd79e33a401a42410948df23c367676db5735a3fe6cc2f24",
+    "as_of": "2024-12-05",
+    "read": "2026-10-09",
+    "counties": {
+      "Belknap": {
+        "name": "Belknap County",
+        "official_url": "",
+        "commissioners": {
+          "1": {
+            "name": "Peter John Spanos",
+            "office": "County Commissioner, District 1",
+            "district": "1",
+            "party": "R",
+            "party_as_printed": "REP",
+            "domicile": "Laconia",
+            "phone": "",
+            "email": "",
+            "source": "records/sources/sos-county-roster-2025-2026.pdf, page 1 (the Secretary of State's COUNTY ROSTER 2025-2026)",
+            "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/documents/2024-12/roster-county-offices-2024.pdf",
+            "as_of": "2024-12-05",
+            "read": "2026-10-09"
+          },
+          "2": {
+            "name": "Glen A. Waring",
+            "office": "County Commissioner, District 2",
+            "district": "2",
+            "party": "R/D",
+            "party_as_printed": "REP/DEM",
+            "domicile": "Gilmanton",
+            "phone": "",
+            "email": "",
+            "source": "records/sources/sos-county-roster-2025-2026.pdf, page 1 (the Secretary of State's COUNTY ROSTER 2025-2026)",
+            "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/documents/2024-12/roster-county-offices-2024.pdf",
+            "as_of": "2024-12-05",
+            "read": "2026-10-09"
+          },
+          "3": {
+            "name": "Stephen Hodges",
+            "office": "County Commissioner, District 3",
+            "district": "3",
+            "party": "R/D",
+            "party_as_printed": "REP/DEM",
+            "domicile": "Gilford",
+            "phone": "",
+            "email": "",
+            "source": "records/sources/sos-county-roster-2025-2026.pdf, page 1 (the Secretary of State's COUNTY ROSTER 2025-2026)",
+            "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/documents/2024-12/roster-county-offices-2024.pdf",
+            "as_of": "2024-12-05",
+            "read": "2026-10-09"
+          }
+        },
+        "sheriff": {
+          "name": "Bill Wright",
+          "office": "Sheriff",
+          "domicile": "Belmont",
+          "phone": "",
+          "email": "",
+          "source": "records/sources/sos-county-roster-2025-2026.pdf, page 1 (the Secretary of State's COUNTY ROSTER 2025-2026)",
+          "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/documents/2024-12/roster-county-offices-2024.pdf",
+          "as_of": "2024-12-05",
+          "read": "2026-10-09"
+        },
+        "county_attorney": {
+          "name": "Keith Gerard Cormier",
+          "office": "County Attorney",
+          "domicile": "Laconia",
+          "phone": "",
+          "email": "",
+          "source": "records/sources/sos-county-roster-2025-2026.pdf, page 1 (the Secretary of State's COUNTY ROSTER 2025-2026)",
+          "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/documents/2024-12/roster-county-offices-2024.pdf",
+          "as_of": "2024-12-05",
+          "read": "2026-10-09"
+        },
+        "treasurer": {
+          "name": "Michael G. Muzzey",
+          "office": "County Treasurer",
+          "domicile": "Laconia",
+          "phone": "",
+          "email": "",
+          "source": "records/sources/sos-county-roster-2025-2026.pdf, page 1 (the Secretary of State's COUNTY ROSTER 2025-2026)",
+          "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/documents/2024-12/roster-county-offices-2024.pdf",
+          "as_of": "2024-12-05",
+          "read": "2026-10-09"
+        },
+        "register_of_deeds": {
+          "name": "Laura Lapointe",
+          "office": "Register of Deeds",
+          "domicile": "Belmont",
+          "phone": "",
+          "email": "",
+          "source": "records/sources/sos-county-roster-2025-2026.pdf, page 1 (the Secretary of State's COUNTY ROSTER 2025-2026)",
+          "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/documents/2024-12/roster-county-offices-2024.pdf",
+          "as_of": "2024-12-05",
+          "read": "2026-10-09"
+        },
+        "register_of_probate": {
+          "name": "Alan Glassman",
+          "office": "Register of Probate",
+          "domicile": "Barnstead",
+          "phone": "",
+          "email": "",
+          "source": "records/sources/sos-county-roster-2025-2026.pdf, page 1 (the Secretary of State's COUNTY ROSTER 2025-2026)",
+          "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/documents/2024-12/roster-county-offices-2024.pdf",
+          "as_of": "2024-12-05",
+          "read": "2026-10-09"
+        }
+      },
+      "Carroll": {
+        "name": "Carroll County",
+        "official_url": "",
+        "commissioners": {
+          "1": {
+            "name": "Terry McCarthy",
+            "office": "County Commissioner, District 1",
+            "district": "1",
+            "party": "R",
+            "party_as_printed": "REP",
+            "domicile": "Conway",
+            "phone": "",
+            "email": "",
+            "source": "records/sources/sos-county-roster-2025-2026.pdf, page 2 (the Secretary of State's COUNTY ROSTER 2025-2026)",
+            "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/documents/2024-12/roster-county-offices-2024.pdf",
+            "as_of": "2024-12-05",
+            "read": "2026-10-09"
+          },
+          "2": {
+            "name": "Charles M. McGee",
+            "office": "County Commissioner, District 2",
+            "district": "2",
+            "party": "R",
+            "party_as_printed": "REP",
+            "domicile": "Moultonborough",
+            "phone": "",
+            "email": "",
+            "source": "records/sources/sos-county-roster-2025-2026.pdf, page 2 (the Secretary of State's COUNTY ROSTER 2025-2026)",
+            "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/documents/2024-12/roster-county-offices-2024.pdf",
+            "as_of": "2024-12-05",
+            "read": "2026-10-09"
+          },
+          "3": {
+            "name": "Harold B. Parker",
+            "office": "County Commissioner, District 3",
+            "district": "3",
+            "party": "R",
+            "party_as_printed": "REP",
+            "domicile": "Wolfeboro",
+            "phone": "",
+            "email": "",
+            "source": "records/sources/sos-county-roster-2025-2026.pdf, page 2 (the Secretary of State's COUNTY ROSTER 2025-2026)",
+            "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/documents/2024-12/roster-county-offices-2024.pdf",
+            "as_of": "2024-12-05",
+            "read": "2026-10-09"
+          }
+        },
+        "sheriff": {
+          "name": "Domenic M. Richardi",
+          "office": "Sheriff",
+          "domicile": "Conway",
+          "phone": "",
+          "email": "",
+          "source": "records/sources/sos-county-roster-2025-2026.pdf, page 1 (the Secretary of State's COUNTY ROSTER 2025-2026)",
+          "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/documents/2024-12/roster-county-offices-2024.pdf",
+          "as_of": "2024-12-05",
+          "read": "2026-10-09"
+        },
+        "county_attorney": {
+          "name": "Keith D. Blair",
+          "office": "County Attorney",
+          "domicile": "Wolfeboro",
+          "phone": "",
+          "email": "",
+          "source": "records/sources/sos-county-roster-2025-2026.pdf, page 1 (the Secretary of State's COUNTY ROSTER 2025-2026)",
+          "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/documents/2024-12/roster-county-offices-2024.pdf",
+          "as_of": "2024-12-05",
+          "read": "2026-10-09"
+        },
+        "treasurer": {
+          "name": "Matt Sawyer, Jr.",
+          "office": "County Treasurer",
+          "domicile": "Effingham",
+          "phone": "",
+          "email": "",
+          "source": "records/sources/sos-county-roster-2025-2026.pdf, page 2 (the Secretary of State's COUNTY ROSTER 2025-2026)",
+          "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/documents/2024-12/roster-county-offices-2024.pdf",
+          "as_of": "2024-12-05",
+          "read": "2026-10-09"
+        },
+        "register_of_deeds": {
+          "name": "Karen I. Rines",
+          "office": "Register of Deeds",
+          "domicile": "Ossipee",
+          "phone": "",
+          "email": "",
+          "source": "records/sources/sos-county-roster-2025-2026.pdf, page 2 (the Secretary of State's COUNTY ROSTER 2025-2026)",
+          "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/documents/2024-12/roster-county-offices-2024.pdf",
+          "as_of": "2024-12-05",
+          "read": "2026-10-09"
+        },
+        "register_of_probate": {
+          "name": "Meg Lavender",
+          "office": "Register of Probate",
+          "domicile": "Bartlett",
+          "phone": "",
+          "email": "",
+          "source": "records/sources/sos-county-roster-2025-2026.pdf, page 2 (the Secretary of State's COUNTY ROSTER 2025-2026)",
+          "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/documents/2024-12/roster-county-offices-2024.pdf",
+          "as_of": "2024-12-05",
+          "read": "2026-10-09"
+        }
+      },
+      "Cheshire": {
+        "name": "Cheshire County",
+        "official_url": "",
+        "commissioners": {
+          "1": {
+            "name": "Skipper DiBernardo",
+            "office": "County Commissioner, District 1",
+            "district": "1",
+            "party": "R",
+            "party_as_printed": "REP",
+            "domicile": "Swanzey",
+            "phone": "",
+            "email": "",
+            "source": "records/sources/sos-county-roster-2025-2026.pdf, page 3 (the Secretary of State's COUNTY ROSTER 2025-2026)",
+            "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/documents/2024-12/roster-county-offices-2024.pdf",
+            "as_of": "2024-12-05",
+            "read": "2026-10-09"
+          },
+          "2": {
+            "name": "Terry M. Clark",
+            "office": "County Commissioner, District 2",
+            "district": "2",
+            "party": "D",
+            "party_as_printed": "DEM",
+            "domicile": "Keene",
+            "phone": "",
+            "email": "",
+            "source": "records/sources/sos-county-roster-2025-2026.pdf, page 3 (the Secretary of State's COUNTY ROSTER 2025-2026)",
+            "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/documents/2024-12/roster-county-offices-2024.pdf",
+            "as_of": "2024-12-05",
+            "read": "2026-10-09"
+          },
+          "3": {
+            "name": "Claudia R. Stewart",
+            "office": "County Commissioner, District 3",
+            "district": "3",
+            "party": "R",
+            "party_as_printed": "REP",
+            "domicile": "Rindge",
+            "phone": "",
+            "email": "",
+            "source": "records/sources/sos-county-roster-2025-2026.pdf, page 3 (the Secretary of State's COUNTY ROSTER 2025-2026)",
+            "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/documents/2024-12/roster-county-offices-2024.pdf",
+            "as_of": "2024-12-05",
+            "read": "2026-10-09"
+          }
+        },
+        "sheriff": {
+          "name": "Eli Rivera",
+          "office": "Sheriff",
+          "domicile": "Keene",
+          "phone": "",
+          "email": "",
+          "source": "records/sources/sos-county-roster-2025-2026.pdf, page 2 (the Secretary of State's COUNTY ROSTER 2025-2026)",
+          "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/documents/2024-12/roster-county-offices-2024.pdf",
+          "as_of": "2024-12-05",
+          "read": "2026-10-09"
+        },
+        "county_attorney": {
+          "name": "D. Chris McLaughlin",
+          "office": "County Attorney",
+          "domicile": "Westmoreland",
+          "phone": "",
+          "email": "",
+          "source": "records/sources/sos-county-roster-2025-2026.pdf, page 2 (the Secretary of State's COUNTY ROSTER 2025-2026)",
+          "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/documents/2024-12/roster-county-offices-2024.pdf",
+          "as_of": "2024-12-05",
+          "read": "2026-10-09"
+        },
+        "treasurer": {
+          "name": "Jack Wozmak",
+          "office": "County Treasurer",
+          "domicile": "Walpole",
+          "phone": "",
+          "email": "",
+          "source": "records/sources/sos-county-roster-2025-2026.pdf, page 2 (the Secretary of State's COUNTY ROSTER 2025-2026)",
+          "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/documents/2024-12/roster-county-offices-2024.pdf",
+          "as_of": "2024-12-05",
+          "read": "2026-10-09"
+        },
+        "register_of_deeds": {
+          "name": "Anna Z. Tilton",
+          "office": "Register of Deeds",
+          "domicile": "Keene",
+          "phone": "",
+          "email": "",
+          "source": "records/sources/sos-county-roster-2025-2026.pdf, page 2 (the Secretary of State's COUNTY ROSTER 2025-2026)",
+          "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/documents/2024-12/roster-county-offices-2024.pdf",
+          "as_of": "2024-12-05",
+          "read": "2026-10-09"
+        },
+        "register_of_probate": {
+          "name": "Jeremy LaPlante",
+          "office": "Register of Probate",
+          "domicile": "Keene",
+          "phone": "",
+          "email": "",
+          "source": "records/sources/sos-county-roster-2025-2026.pdf, page 2 (the Secretary of State's COUNTY ROSTER 2025-2026)",
+          "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/documents/2024-12/roster-county-offices-2024.pdf",
+          "as_of": "2024-12-05",
+          "read": "2026-10-09"
+        }
+      },
+      "Coos": {
+        "name": "Coos County",
+        "official_url": "",
+        "commissioners": {
+          "1": {
+            "name": "Robert L. Theberge",
+            "office": "County Commissioner, District 1",
+            "district": "1",
+            "party": "R",
+            "party_as_printed": "REP",
+            "domicile": "Berlin",
+            "phone": "",
+            "email": "",
+            "source": "records/sources/sos-county-roster-2025-2026.pdf, page 3 (the Secretary of State's COUNTY ROSTER 2025-2026)",
+            "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/documents/2024-12/roster-county-offices-2024.pdf",
+            "as_of": "2024-12-05",
+            "read": "2026-10-09"
+          },
+          "2": {
+            "name": "Thomas M. Brady",
+            "office": "County Commissioner, District 2",
+            "district": "2",
+            "party": "R",
+            "party_as_printed": "REP",
+            "domicile": "Jefferson",
+            "phone": "",
+            "email": "",
+            "source": "records/sources/sos-county-roster-2025-2026.pdf, page 3 (the Secretary of State's COUNTY ROSTER 2025-2026)",
+            "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/documents/2024-12/roster-county-offices-2024.pdf",
+            "as_of": "2024-12-05",
+            "read": "2026-10-09"
+          },
+          "3": {
+            "name": "Ray Gorman",
+            "office": "County Commissioner, District 3",
+            "district": "3",
+            "party": "R",
+            "party_as_printed": "REP",
+            "domicile": "Colebrook",
+            "phone": "",
+            "email": "",
+            "source": "records/sources/sos-county-roster-2025-2026.pdf, page 3 (the Secretary of State's COUNTY ROSTER 2025-2026)",
+            "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/documents/2024-12/roster-county-offices-2024.pdf",
+            "as_of": "2024-12-05",
+            "read": "2026-10-09"
+          }
+        },
+        "sheriff": {
+          "name": "Keith L. Roberge",
+          "office": "Sheriff",
+          "domicile": "Gorham",
+          "phone": "",
+          "email": "",
+          "source": "records/sources/sos-county-roster-2025-2026.pdf, page 3 (the Secretary of State's COUNTY ROSTER 2025-2026)",
+          "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/documents/2024-12/roster-county-offices-2024.pdf",
+          "as_of": "2024-12-05",
+          "read": "2026-10-09"
+        },
+        "county_attorney": {
+          "name": "John McCormick",
+          "office": "County Attorney",
+          "domicile": "Lancaster",
+          "phone": "",
+          "email": "",
+          "source": "records/sources/sos-county-roster-2025-2026.pdf, page 3 (the Secretary of State's COUNTY ROSTER 2025-2026)",
+          "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/documents/2024-12/roster-county-offices-2024.pdf",
+          "as_of": "2024-12-05",
+          "read": "2026-10-09"
+        },
+        "treasurer": {
+          "name": "Suzanne Collins",
+          "office": "County Treasurer",
+          "domicile": "Colebrook",
+          "phone": "",
+          "email": "",
+          "source": "records/sources/sos-county-roster-2025-2026.pdf, page 3 (the Secretary of State's COUNTY ROSTER 2025-2026)",
+          "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/documents/2024-12/roster-county-offices-2024.pdf",
+          "as_of": "2024-12-05",
+          "read": "2026-10-09"
+        },
+        "register_of_deeds": {
+          "name": "Leon H. Rideout",
+          "office": "Register of Deeds",
+          "domicile": "Lancaster",
+          "phone": "",
+          "email": "",
+          "source": "records/sources/sos-county-roster-2025-2026.pdf, page 3 (the Secretary of State's COUNTY ROSTER 2025-2026)",
+          "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/documents/2024-12/roster-county-offices-2024.pdf",
+          "as_of": "2024-12-05",
+          "read": "2026-10-09"
+        },
+        "register_of_probate": {
+          "name": "Terri L. Peterson",
+          "office": "Register of Probate",
+          "domicile": "Lancaster",
+          "phone": "",
+          "email": "",
+          "source": "records/sources/sos-county-roster-2025-2026.pdf, page 3 (the Secretary of State's COUNTY ROSTER 2025-2026)",
+          "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/documents/2024-12/roster-county-offices-2024.pdf",
+          "as_of": "2024-12-05",
+          "read": "2026-10-09"
+        }
+      },
+      "Grafton": {
+        "name": "Grafton County",
+        "official_url": "",
+        "commissioners": {
+          "1": {
+            "name": "Wendy A. Piper",
+            "office": "County Commissioner, District 1",
+            "district": "1",
+            "party": "D",
+            "party_as_printed": "DEM",
+            "domicile": "Enfield",
+            "phone": "",
+            "email": "",
+            "source": "records/sources/sos-county-roster-2025-2026.pdf, page 4 (the Secretary of State's COUNTY ROSTER 2025-2026)",
+            "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/documents/2024-12/roster-county-offices-2024.pdf",
+            "as_of": "2024-12-05",
+            "read": "2026-10-09"
+          },
+          "2": {
+            "name": "Martha Stroup McLeod",
+            "office": "County Commissioner, District 2",
+            "district": "2",
+            "party": "D",
+            "party_as_printed": "DEM",
+            "domicile": "Franconia",
+            "phone": "",
+            "email": "",
+            "source": "records/sources/sos-county-roster-2025-2026.pdf, page 4 (the Secretary of State's COUNTY ROSTER 2025-2026)",
+            "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/documents/2024-12/roster-county-offices-2024.pdf",
+            "as_of": "2024-12-05",
+            "read": "2026-10-09"
+          },
+          "3": {
+            "name": "Katie Hedberg",
+            "office": "County Commissioner, District 3",
+            "district": "3",
+            "party": "D",
+            "party_as_printed": "DEM",
+            "domicile": "Plymouth",
+            "phone": "",
+            "email": "",
+            "source": "records/sources/sos-county-roster-2025-2026.pdf, page 4 (the Secretary of State's COUNTY ROSTER 2025-2026)",
+            "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/documents/2024-12/roster-county-offices-2024.pdf",
+            "as_of": "2024-12-05",
+            "read": "2026-10-09"
+          }
+        },
+        "sheriff": {
+          "name": "Jillian Myers",
+          "office": "Sheriff",
+          "domicile": "Lisbon",
+          "phone": "",
+          "email": "",
+          "source": "records/sources/sos-county-roster-2025-2026.pdf, page 4 (the Secretary of State's COUNTY ROSTER 2025-2026)",
+          "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/documents/2024-12/roster-county-offices-2024.pdf",
+          "as_of": "2024-12-05",
+          "read": "2026-10-09"
+        },
+        "county_attorney": {
+          "name": "Martha Ann Hornick",
+          "office": "County Attorney",
+          "domicile": "Littleton",
+          "phone": "",
+          "email": "",
+          "source": "records/sources/sos-county-roster-2025-2026.pdf, page 4 (the Secretary of State's COUNTY ROSTER 2025-2026)",
+          "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/documents/2024-12/roster-county-offices-2024.pdf",
+          "as_of": "2024-12-05",
+          "read": "2026-10-09"
+        },
+        "treasurer": {
+          "name": "Michael J. Cryans",
+          "office": "County Treasurer",
+          "domicile": "Hanover",
+          "phone": "",
+          "email": "",
+          "source": "records/sources/sos-county-roster-2025-2026.pdf, page 4 (the Secretary of State's COUNTY ROSTER 2025-2026)",
+          "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/documents/2024-12/roster-county-offices-2024.pdf",
+          "as_of": "2024-12-05",
+          "read": "2026-10-09"
+        },
+        "register_of_deeds": {
+          "name": "Kelley Jean Monahan",
+          "office": "Register of Deeds",
+          "domicile": "Orford",
+          "phone": "",
+          "email": "",
+          "source": "records/sources/sos-county-roster-2025-2026.pdf, page 4 (the Secretary of State's COUNTY ROSTER 2025-2026)",
+          "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/documents/2024-12/roster-county-offices-2024.pdf",
+          "as_of": "2024-12-05",
+          "read": "2026-10-09"
+        },
+        "register_of_probate": {
+          "name": "Charles Townsend",
+          "office": "Register of Probate",
+          "domicile": "Canaan",
+          "phone": "",
+          "email": "",
+          "source": "records/sources/sos-county-roster-2025-2026.pdf, page 4 (the Secretary of State's COUNTY ROSTER 2025-2026)",
+          "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/documents/2024-12/roster-county-offices-2024.pdf",
+          "as_of": "2024-12-05",
+          "read": "2026-10-09"
+        }
+      },
+      "Hillsborough": {
+        "name": "Hillsborough County",
+        "official_url": "",
+        "commissioners": {
+          "1": {
+            "name": "Toni Pappas",
+            "office": "County Commissioner, District 1",
+            "district": "1",
+            "party": "R",
+            "party_as_printed": "REP",
+            "domicile": "Manchester",
+            "phone": "",
+            "email": "",
+            "source": "records/sources/sos-county-roster-2025-2026.pdf, page 5 (the Secretary of State's COUNTY ROSTER 2025-2026)",
+            "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/documents/2024-12/roster-county-offices-2024.pdf",
+            "as_of": "2024-12-05",
+            "read": "2026-10-09"
+          },
+          "2": {
+            "name": "Michael Soucy",
+            "office": "County Commissioner, District 2",
+            "district": "2",
+            "party": "R",
+            "party_as_printed": "REP",
+            "domicile": "Nashua",
+            "phone": "",
+            "email": "",
+            "source": "records/sources/sos-county-roster-2025-2026.pdf, page 5 (the Secretary of State's COUNTY ROSTER 2025-2026)",
+            "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/documents/2024-12/roster-county-offices-2024.pdf",
+            "as_of": "2024-12-05",
+            "read": "2026-10-09"
+          },
+          "3": {
+            "name": "Robert H. Rowe",
+            "office": "County Commissioner, District 3",
+            "district": "3",
+            "party": "R",
+            "party_as_printed": "REP",
+            "domicile": "Amherst",
+            "phone": "",
+            "email": "",
+            "source": "records/sources/sos-county-roster-2025-2026.pdf, page 5 (the Secretary of State's COUNTY ROSTER 2025-2026)",
+            "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/documents/2024-12/roster-county-offices-2024.pdf",
+            "as_of": "2024-12-05",
+            "read": "2026-10-09"
+          }
+        },
+        "sheriff": {
+          "name": "Christopher Connelly",
+          "office": "Sheriff",
+          "domicile": "Mont Vernon",
+          "phone": "",
+          "email": "",
+          "source": "records/sources/sos-county-roster-2025-2026.pdf, page 4 (the Secretary of State's COUNTY ROSTER 2025-2026)",
+          "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/documents/2024-12/roster-county-offices-2024.pdf",
+          "as_of": "2024-12-05",
+          "read": "2026-10-09"
+        },
+        "county_attorney": {
+          "name": "John J. Coughlin",
+          "office": "County Attorney",
+          "domicile": "Amherst",
+          "phone": "",
+          "email": "",
+          "source": "records/sources/sos-county-roster-2025-2026.pdf, page 4 (the Secretary of State's COUNTY ROSTER 2025-2026)",
+          "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/documents/2024-12/roster-county-offices-2024.pdf",
+          "as_of": "2024-12-05",
+          "read": "2026-10-09"
+        },
+        "treasurer": {
+          "name": "David G. Fredette",
+          "office": "County Treasurer",
+          "domicile": "Nashua",
+          "phone": "",
+          "email": "",
+          "source": "records/sources/sos-county-roster-2025-2026.pdf, page 5 (the Secretary of State's COUNTY ROSTER 2025-2026)",
+          "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/documents/2024-12/roster-county-offices-2024.pdf",
+          "as_of": "2024-12-05",
+          "read": "2026-10-09"
+        },
+        "register_of_deeds": {
+          "name": "Dennis Hogan",
+          "office": "Register of Deeds",
+          "domicile": "Nashua",
+          "phone": "",
+          "email": "",
+          "source": "records/sources/sos-county-roster-2025-2026.pdf, page 5 (the Secretary of State's COUNTY ROSTER 2025-2026)",
+          "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/documents/2024-12/roster-county-offices-2024.pdf",
+          "as_of": "2024-12-05",
+          "read": "2026-10-09"
+        },
+        "register_of_probate": {
+          "name": "Christopher Maidment",
+          "office": "Register of Probate",
+          "domicile": "Peterborough",
+          "phone": "",
+          "email": "",
+          "source": "records/sources/sos-county-roster-2025-2026.pdf, page 5 (the Secretary of State's COUNTY ROSTER 2025-2026)",
+          "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/documents/2024-12/roster-county-offices-2024.pdf",
+          "as_of": "2024-12-05",
+          "read": "2026-10-09"
+        }
+      },
+      "Merrimack": {
+        "name": "Merrimack County",
+        "official_url": "",
+        "commissioners": {
+          "1": {
+            "name": "Steve Shurtleff",
+            "office": "County Commissioner, District 1",
+            "district": "1",
+            "party": "D",
+            "party_as_printed": "DEM",
+            "domicile": "Concord",
+            "phone": "",
+            "email": "",
+            "source": "records/sources/sos-county-roster-2025-2026.pdf, page 6 (the Secretary of State's COUNTY ROSTER 2025-2026)",
+            "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/documents/2024-12/roster-county-offices-2024.pdf",
+            "as_of": "2024-12-05",
+            "read": "2026-10-09"
+          },
+          "2": {
+            "name": "Stuart D. Trachy",
+            "office": "County Commissioner, District 2",
+            "district": "2",
+            "party": "R",
+            "party_as_printed": "REP",
+            "domicile": "Franklin",
+            "phone": "",
+            "email": "",
+            "source": "records/sources/sos-county-roster-2025-2026.pdf, page 6 (the Secretary of State's COUNTY ROSTER 2025-2026)",
+            "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/documents/2024-12/roster-county-offices-2024.pdf",
+            "as_of": "2024-12-05",
+            "read": "2026-10-09"
+          },
+          "3": {
+            "name": "David Lovlien, Jr.",
+            "office": "County Commissioner, District 3",
+            "district": "3",
+            "party": "R",
+            "party_as_printed": "REP",
+            "domicile": "Pembroke",
+            "phone": "",
+            "email": "",
+            "source": "records/sources/sos-county-roster-2025-2026.pdf, page 6 (the Secretary of State's COUNTY ROSTER 2025-2026)",
+            "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/documents/2024-12/roster-county-offices-2024.pdf",
+            "as_of": "2024-12-05",
+            "read": "2026-10-09"
+          }
+        },
+        "sheriff": {
+          "name": "David Croft",
+          "office": "Sheriff",
+          "domicile": "Canterbury",
+          "phone": "",
+          "email": "",
+          "source": "records/sources/sos-county-roster-2025-2026.pdf, page 5 (the Secretary of State's COUNTY ROSTER 2025-2026)",
+          "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/documents/2024-12/roster-county-offices-2024.pdf",
+          "as_of": "2024-12-05",
+          "read": "2026-10-09"
+        },
+        "county_attorney": {
+          "name": "Paul Halvorsen",
+          "office": "County Attorney",
+          "domicile": "Concord",
+          "phone": "",
+          "email": "",
+          "source": "records/sources/sos-county-roster-2025-2026.pdf, page 5 (the Secretary of State's COUNTY ROSTER 2025-2026)",
+          "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/documents/2024-12/roster-county-offices-2024.pdf",
+          "as_of": "2024-12-05",
+          "read": "2026-10-09"
+        },
+        "treasurer": {
+          "name": "Mary R. Heath",
+          "office": "County Treasurer",
+          "domicile": "Salisbury",
+          "phone": "",
+          "email": "",
+          "source": "records/sources/sos-county-roster-2025-2026.pdf, page 5 (the Secretary of State's COUNTY ROSTER 2025-2026)",
+          "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/documents/2024-12/roster-county-offices-2024.pdf",
+          "as_of": "2024-12-05",
+          "read": "2026-10-09"
+        },
+        "register_of_deeds": {
+          "name": "Samantha Morse",
+          "office": "Register of Deeds",
+          "domicile": "Franklin",
+          "phone": "",
+          "email": "",
+          "source": "records/sources/sos-county-roster-2025-2026.pdf, page 5 (the Secretary of State's COUNTY ROSTER 2025-2026)",
+          "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/documents/2024-12/roster-county-offices-2024.pdf",
+          "as_of": "2024-12-05",
+          "read": "2026-10-09"
+        },
+        "register_of_probate": {
+          "name": "Jane Bradstreet",
+          "office": "Register of Probate",
+          "domicile": "Hopkinton",
+          "phone": "",
+          "email": "",
+          "source": "records/sources/sos-county-roster-2025-2026.pdf, page 5 (the Secretary of State's COUNTY ROSTER 2025-2026)",
+          "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/documents/2024-12/roster-county-offices-2024.pdf",
+          "as_of": "2024-12-05",
+          "read": "2026-10-09"
+        }
+      },
+      "Rockingham": {
+        "name": "Rockingham County",
+        "official_url": "",
+        "commissioners": {
+          "1": {
+            "name": "Kate Coyle",
+            "office": "County Commissioner, District 1",
+            "district": "1",
+            "party": "R",
+            "party_as_printed": "REP",
+            "domicile": "Portsmouth",
+            "phone": "",
+            "email": "",
+            "source": "records/sources/sos-county-roster-2025-2026.pdf, page 6 (the Secretary of State's COUNTY ROSTER 2025-2026)",
+            "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/documents/2024-12/roster-county-offices-2024.pdf",
+            "as_of": "2024-12-05",
+            "read": "2026-10-09"
+          },
+          "2": {
+            "name": "Steven L. Goddu",
+            "office": "County Commissioner, District 2",
+            "district": "2",
+            "party": "R",
+            "party_as_printed": "REP",
+            "domicile": "Salem",
+            "phone": "",
+            "email": "",
+            "source": "records/sources/sos-county-roster-2025-2026.pdf, page 6 (the Secretary of State's COUNTY ROSTER 2025-2026)",
+            "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/documents/2024-12/roster-county-offices-2024.pdf",
+            "as_of": "2024-12-05",
+            "read": "2026-10-09"
+          },
+          "3": {
+            "name": "Thomas Tombarello",
+            "office": "County Commissioner, District 3",
+            "district": "3",
+            "party": "R",
+            "party_as_printed": "REP",
+            "domicile": "Sandown",
+            "phone": "",
+            "email": "",
+            "source": "records/sources/sos-county-roster-2025-2026.pdf, page 7 (the Secretary of State's COUNTY ROSTER 2025-2026)",
+            "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/documents/2024-12/roster-county-offices-2024.pdf",
+            "as_of": "2024-12-05",
+            "read": "2026-10-09"
+          }
+        },
+        "sheriff": {
+          "name": "Chuck Massahos",
+          "office": "Sheriff",
+          "domicile": "Salem",
+          "phone": "",
+          "email": "",
+          "source": "records/sources/sos-county-roster-2025-2026.pdf, page 6 (the Secretary of State's COUNTY ROSTER 2025-2026)",
+          "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/documents/2024-12/roster-county-offices-2024.pdf",
+          "as_of": "2024-12-05",
+          "read": "2026-10-09"
+        },
+        "county_attorney": {
+          "name": "Patricia Conway",
+          "office": "County Attorney",
+          "domicile": "Atkinson",
+          "phone": "",
+          "email": "",
+          "source": "records/sources/sos-county-roster-2025-2026.pdf, page 6 (the Secretary of State's COUNTY ROSTER 2025-2026)",
+          "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/documents/2024-12/roster-county-offices-2024.pdf",
+          "as_of": "2024-12-05",
+          "read": "2026-10-09"
+        },
+        "treasurer": {
+          "name": "Scott Priestley",
+          "office": "County Treasurer",
+          "domicile": "Windham",
+          "phone": "",
+          "email": "",
+          "source": "records/sources/sos-county-roster-2025-2026.pdf, page 6 (the Secretary of State's COUNTY ROSTER 2025-2026)",
+          "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/documents/2024-12/roster-county-offices-2024.pdf",
+          "as_of": "2024-12-05",
+          "read": "2026-10-09"
+        },
+        "register_of_deeds": {
+          "name": "Cathy Stacey",
+          "office": "Register of Deeds",
+          "domicile": "Salem",
+          "phone": "",
+          "email": "",
+          "source": "records/sources/sos-county-roster-2025-2026.pdf, page 6 (the Secretary of State's COUNTY ROSTER 2025-2026)",
+          "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/documents/2024-12/roster-county-offices-2024.pdf",
+          "as_of": "2024-12-05",
+          "read": "2026-10-09"
+        },
+        "register_of_probate": {
+          "name": "Lisa A. Massahos",
+          "office": "Register of Probate",
+          "domicile": "Salem",
+          "phone": "",
+          "email": "",
+          "source": "records/sources/sos-county-roster-2025-2026.pdf, page 6 (the Secretary of State's COUNTY ROSTER 2025-2026)",
+          "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/documents/2024-12/roster-county-offices-2024.pdf",
+          "as_of": "2024-12-05",
+          "read": "2026-10-09"
+        }
+      },
+      "Strafford": {
+        "name": "Strafford County",
+        "official_url": "",
+        "commissioners": {
+          "1": {
+            "name": "Joe Pitre",
+            "office": "County Commissioner, District 1",
+            "district": "1",
+            "party": "R",
+            "party_as_printed": "REP",
+            "domicile": "Farmington",
+            "phone": "",
+            "email": "",
+            "source": "records/sources/sos-county-roster-2025-2026.pdf, page 7 (the Secretary of State's COUNTY ROSTER 2025-2026)",
+            "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/documents/2024-12/roster-county-offices-2024.pdf",
+            "as_of": "2024-12-05",
+            "read": "2026-10-09"
+          },
+          "2": {
+            "name": "George Maglaras",
+            "office": "County Commissioner, District 2",
+            "district": "2",
+            "party": "D/R",
+            "party_as_printed": "DEM/REP",
+            "domicile": "Dover",
+            "phone": "",
+            "email": "",
+            "source": "records/sources/sos-county-roster-2025-2026.pdf, page 7 (the Secretary of State's COUNTY ROSTER 2025-2026)",
+            "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/documents/2024-12/roster-county-offices-2024.pdf",
+            "as_of": "2024-12-05",
+            "read": "2026-10-09"
+          },
+          "3": {
+            "name": "Sean M. Leavitt",
+            "office": "County Commissioner, District 3",
+            "district": "3",
+            "party": "R",
+            "party_as_printed": "REP",
+            "domicile": "Dover",
+            "phone": "",
+            "email": "",
+            "source": "records/sources/sos-county-roster-2025-2026.pdf, page 7 (the Secretary of State's COUNTY ROSTER 2025-2026)",
+            "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/documents/2024-12/roster-county-offices-2024.pdf",
+            "as_of": "2024-12-05",
+            "read": "2026-10-09"
+          }
+        },
+        "sheriff": {
+          "name": "Kathryn Mone",
+          "office": "Sheriff",
+          "domicile": "Durham",
+          "phone": "",
+          "email": "",
+          "source": "records/sources/sos-county-roster-2025-2026.pdf, page 7 (the Secretary of State's COUNTY ROSTER 2025-2026)",
+          "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/documents/2024-12/roster-county-offices-2024.pdf",
+          "as_of": "2024-12-05",
+          "read": "2026-10-09"
+        },
+        "county_attorney": {
+          "name": "Emily C. Garod",
+          "office": "County Attorney",
+          "domicile": "Barrington",
+          "phone": "",
+          "email": "",
+          "source": "records/sources/sos-county-roster-2025-2026.pdf, page 7 (the Secretary of State's COUNTY ROSTER 2025-2026)",
+          "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/documents/2024-12/roster-county-offices-2024.pdf",
+          "as_of": "2024-12-05",
+          "read": "2026-10-09"
+        },
+        "treasurer": {
+          "name": "Pamela J. Arnold",
+          "office": "County Treasurer",
+          "domicile": "Milton",
+          "phone": "",
+          "email": "",
+          "source": "records/sources/sos-county-roster-2025-2026.pdf, page 7 (the Secretary of State's COUNTY ROSTER 2025-2026)",
+          "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/documents/2024-12/roster-county-offices-2024.pdf",
+          "as_of": "2024-12-05",
+          "read": "2026-10-09"
+        },
+        "register_of_deeds": {
+          "name": "Catherine A. Berube",
+          "office": "Register of Deeds",
+          "domicile": "Dover",
+          "phone": "",
+          "email": "",
+          "source": "records/sources/sos-county-roster-2025-2026.pdf, page 7 (the Secretary of State's COUNTY ROSTER 2025-2026)",
+          "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/documents/2024-12/roster-county-offices-2024.pdf",
+          "as_of": "2024-12-05",
+          "read": "2026-10-09"
+        },
+        "register_of_probate": {
+          "name": "Jan Nedelka",
+          "office": "Register of Probate",
+          "domicile": "Dover",
+          "phone": "",
+          "email": "",
+          "source": "records/sources/sos-county-roster-2025-2026.pdf, page 7 (the Secretary of State's COUNTY ROSTER 2025-2026)",
+          "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/documents/2024-12/roster-county-offices-2024.pdf",
+          "as_of": "2024-12-05",
+          "read": "2026-10-09"
+        }
+      },
+      "Sullivan": {
+        "name": "Sullivan County",
+        "official_url": "",
+        "commissioners": {
+          "1": {
+            "name": "Joe Osgood",
+            "office": "County Commissioner, District 1",
+            "district": "1",
+            "party": "R",
+            "party_as_printed": "REP",
+            "domicile": "Claremont",
+            "phone": "",
+            "email": "",
+            "source": "records/sources/sos-county-roster-2025-2026.pdf, page 8 (the Secretary of State's COUNTY ROSTER 2025-2026)",
+            "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/documents/2024-12/roster-county-offices-2024.pdf",
+            "as_of": "2024-12-05",
+            "read": "2026-10-09"
+          },
+          "2": {
+            "name": "Bennie Nelson",
+            "office": "County Commissioner, District 2",
+            "district": "2",
+            "party": "R",
+            "party_as_printed": "REP",
+            "domicile": "Newport",
+            "phone": "",
+            "email": "",
+            "source": "records/sources/sos-county-roster-2025-2026.pdf, page 8 (the Secretary of State's COUNTY ROSTER 2025-2026)",
+            "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/documents/2024-12/roster-county-offices-2024.pdf",
+            "as_of": "2024-12-05",
+            "read": "2026-10-09"
+          },
+          "3": {
+            "name": "George Hebert",
+            "office": "County Commissioner, District 3",
+            "district": "3",
+            "party": "R",
+            "party_as_printed": "REP",
+            "domicile": "Goshen",
+            "phone": "",
+            "email": "",
+            "source": "records/sources/sos-county-roster-2025-2026.pdf, page 8 (the Secretary of State's COUNTY ROSTER 2025-2026)",
+            "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/documents/2024-12/roster-county-offices-2024.pdf",
+            "as_of": "2024-12-05",
+            "read": "2026-10-09"
+          }
+        },
+        "sheriff": {
+          "name": "Jayson S. Almstrom",
+          "office": "Sheriff",
+          "domicile": "Cornish",
+          "phone": "",
+          "email": "",
+          "source": "records/sources/sos-county-roster-2025-2026.pdf, page 7 (the Secretary of State's COUNTY ROSTER 2025-2026)",
+          "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/documents/2024-12/roster-county-offices-2024.pdf",
+          "as_of": "2024-12-05",
+          "read": "2026-10-09"
+        },
+        "county_attorney": {
+          "name": "Christine Hilliard",
+          "office": "County Attorney",
+          "domicile": "Grantham",
+          "phone": "",
+          "email": "",
+          "source": "records/sources/sos-county-roster-2025-2026.pdf, page 8 (the Secretary of State's COUNTY ROSTER 2025-2026)",
+          "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/documents/2024-12/roster-county-offices-2024.pdf",
+          "as_of": "2024-12-05",
+          "read": "2026-10-09"
+        },
+        "treasurer": {
+          "name": "Michael Sanderson",
+          "office": "County Treasurer",
+          "domicile": "Newport",
+          "phone": "",
+          "email": "",
+          "source": "records/sources/sos-county-roster-2025-2026.pdf, page 8 (the Secretary of State's COUNTY ROSTER 2025-2026)",
+          "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/documents/2024-12/roster-county-offices-2024.pdf",
+          "as_of": "2024-12-05",
+          "read": "2026-10-09"
+        },
+        "register_of_deeds": {
+          "name": "Renee Simino",
+          "office": "Register of Deeds",
+          "domicile": "Lempster",
+          "phone": "",
+          "email": "",
+          "source": "records/sources/sos-county-roster-2025-2026.pdf, page 8 (the Secretary of State's COUNTY ROSTER 2025-2026)",
+          "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/documents/2024-12/roster-county-offices-2024.pdf",
+          "as_of": "2024-12-05",
+          "read": "2026-10-09"
+        },
+        "register_of_probate": {
+          "name": "Rodd Ward",
+          "office": "Register of Probate",
+          "domicile": "Newport",
+          "phone": "",
+          "email": "",
+          "source": "records/sources/sos-county-roster-2025-2026.pdf, page 8 (the Secretary of State's COUNTY ROSTER 2025-2026)",
+          "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/documents/2024-12/roster-county-offices-2024.pdf",
+          "as_of": "2024-12-05",
+          "read": "2026-10-09"
+        }
+      }
+    }
   }
 }

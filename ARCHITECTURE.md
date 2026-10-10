@@ -1432,6 +1432,31 @@ that is the symptom rather than the reassurance. The General Court's
 `legislators` table has a single party column too, so this needs a per-term
 source that has not been found.
 
+## The chair's officers, read from the journals (9 October 2026)
+
+No General Court file this site reads says who is Speaker, Deputy Speaker,
+Speaker Pro Tempore or President of the Senate: the roster's title field says
+"Representative" or "Senator", and a roll call records its presiding officer
+as a ballot, "Presiding". The journals and calendars on disk do say, and
+`src/parse/officers.py` reads them: each chamber's election of its Speaker or
+President, the House Journal naming its Deputy Speaker or Speaker Pro Tempore
+(a speech's heading, a note of who is in the chair, who called the House to
+order), and the House Calendar's notices ("Rep. Steve Smith of Charlestown
+has been reappointed as Deputy Speaker", HC 2 of 9 December 2022). Its
+docstring says how long each office is taken to be held and where the record
+leaves that open; `corrections/officials.json`'s `legislative_officers`, a
+person's, can give the days it does not, and nothing writes it.
+
+Three things read it. `build_site_v2.build_officers` writes `/officers.json`,
+every tenure with the member it names, and gives `member_office` the officers
+sitting today -- the Speaker is still the member in seat 6002. `app.js` names
+the office beside a presiding ballot from that file (`presidingOffice`).
+`build_session_pages` heads the chair's turns in a printed debate by
+`officers.chair_label`: the House Journal heads whoever is in the chair
+"Speaker", and printed as it stood the Deputy Speaker was "Speaker Steven
+Smith" on 33 sittings of 2021-2026. `python3 src/parse/officers.py --date
+2025-05-08` says who held what on a day and where each comes from.
+
 ---
 
 ## Veto messages
@@ -1461,6 +1486,30 @@ build's path that asks the clock for itself. It is for comparing builds, not
 for publishing one -- `build_all.py` says when the day is stated and records
 it in `site/build.json`, whose own `finished` and step times stay the clock's
 and are left out of the comparison. Without the variable nothing changes.
+
+**What a build was built from** (9 October 2026). A build that ends well
+records, in `logs/last-build.json` (`src/lib/build_inputs.py`), its commit,
+every file git sees with a sha256 of its bytes, every other file under the
+folder with its size and time of writing (the folders that are no input --
+`logs/`, `tests/`, `reports/`, the worktrees, Markdown -- left out, which
+preflight holds against the code on the build's path), which of those the
+build itself wrote, and what it was asked to do. A build that begins removes
+the record; one that fails writes none; none is written on GitHub's machine.
+Two things read it:
+
+- the fast path, `build_all.py --front-end` (`src/pages/front_end.py`), which
+  puts a change to `app.css`, `components.js`, `app.js` or `find.js` into
+  the site that build made, through `build_pages.front_end` -- the function
+  the build's own step calls -- and only while nothing else in the record has
+  moved. `bills.html` is the template of every page and is refused.
+  `versions.json` and
+  `preflight.py` are read by the build only for data.html's two counts, and
+  app.js also for the search's tables (`front_end.facts`): where one of
+  those moved, the step that makes it runs again;
+- `src/checks/site_manifest.py`, which keeps a build's sha256 manifest under
+  its commit, day, options and data, proves it deterministic when the same
+  build is recorded under a second `PYTHONHASHSEED`, and compares a later
+  build with it -- so a baseline is built once per commit, not once per step.
 
 ## Known rough edges
 

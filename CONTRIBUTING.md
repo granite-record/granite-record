@@ -196,6 +196,61 @@ third the repository's own secrets, so for a pull request from outside they
 are the maintainer's to run; say in the request what you expect the second to
 show.
 
+### Iterating without waiting on the whole of it
+
+Three tools for the time between those proofs, none of which replaces one.
+
+- **A change to the browser's files alone** -- `src/pages/app.css`,
+  `components.js`, `app.js` or `find.js` -- goes into the site the last full
+  build made with `python3 build_all.py --front-end`, in seconds, through the
+  same function
+  the build calls (`src/pages/front_end.py`); `--dry-run` says what it would
+  write. It refuses, and names the file, when anything else the build reads
+  has moved since that build -- a script, a data file, a fetch, `bills.html`
+  (which every page is built from) -- because the rest of `site/` would then
+  not be what a build makes. Where app.js's search tables or data.html's
+  counts moved it runs the one step that makes them, as the build does. It is
+  for looking at a change; `publish` builds in full.
+- **The checks a change can reach.** `python3 preflight.py --changed` runs
+  the always-run guards (version stamps, control bytes, credentials and
+  addresses, the refusal and hand-made-file guards and the rest, named in
+  every run) and the checks related to what changed since the merge base
+  with `dev` -- or since `--changed <commit>` -- and `--verbose` says why
+  each was chosen. It says, every time, that it is not the full suite: the
+  full suite is what runs before a merge into `dev`.
+- **A baseline once per commit.** `src/checks/site_manifest.py` keeps the
+  sha256 manifest of a build, keyed by its commit, its stated day, its
+  options and the data under it, so the "build before" of step 2 is made
+  once for a base commit rather than once for each step of a piece of work.
+  In `cmd`, on the base commit:
+
+  ```
+  git switch --detach <base commit>
+  set GRANITE_BUILD_DATE=2026-10-09
+  set PYTHONHASHSEED=0
+  python3 build_all.py --local
+  python3 src/checks/site_manifest.py record
+  set PYTHONHASHSEED=1
+  python3 build_all.py --local
+  python3 src/checks/site_manifest.py record
+  git switch <your branch>
+  ```
+
+  The second `record` compares the two seeds' builds file by file and says
+  the baseline is deterministic, or names what moved. Then, for every step
+  of the work, with the same day stated and the same options:
+
+  ```
+  python3 build_all.py --local
+  python3 src/checks/site_manifest.py compare
+  ```
+
+  which compares `site/` with the merge base's kept manifest, names every
+  file changed, added or removed, and exits 0 only when nothing moved. It
+  refuses a comparison across different data or options, and says how to
+  make a baseline where there is none. `python3 src/checks/site_manifest.py
+  list` shows what is kept, in `logs/site-manifests/`.
+
 ## Where new code goes
 
 Code that is not an entry point lives under `src/`; `src/README.md` has the

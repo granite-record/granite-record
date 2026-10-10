@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-19.28
+# GRANITE_VERSION: 2026-09-19.29
 """
 A page for every day the House sat.
 
@@ -62,6 +62,8 @@ import bill_order as BO
 import build_date
 import session_days
 import journal_days
+import officers
+import proceedings
 import shell as S
 import structured as LD
 
@@ -128,11 +130,27 @@ class Members:
     matters -- it prints the first name when two sitting members share a
     surname -- so "Peter Schmidt" resolves where "Schmidt" cannot, which is
     the convention this follows rather than a rule invented here.
+
+    ONLY THE MEMBERS WHO SERVED THAT TERM COUNT (the person, 9 October 2026,
+    of the House's 19 August 2026 excused list). Gary Daniels, Ron Dunn,
+    Kimberly Rice and Len Turcotte were left unlinked because a former member
+    who left years ago shares each surname -- Eric Daniels, J. Timothy Dunn,
+    three former Rices, Alan and Alisson Turcotte -- and nobody who had left
+    could have been excused that day. A former member counts only for the
+    terms their record gives (`served.terms`); a sitting member always counts.
+    Two members serving the same term with one surname still leave the name
+    unlinked, as before. `term` is set for each day before it is drawn.
     """
 
     def __init__(self, site):
         self.by_last = collections.defaultdict(list)
-        self.by_full = {}
+        # A FULL NAME IS NOT ALWAYS ONE PERSON EITHER: the sitting Mark Pearson
+        # (Rock 34) and the Mark Pearson of 2007-2008 (Rock 4) share one, and
+        # the former member, loaded second, took every "Rep. Mark Pearson" on
+        # 38 House session days, 2026's among them -- a wrong link. Full names
+        # are matched among the members serving the term, as surnames are.
+        self.by_full = collections.defaultdict(list)
+        self.term = ""
         for f, in (("legislators.json",), ("former.json",)):
             p = site / f
             if not p.exists():
@@ -147,33 +165,43 @@ class Members:
                 if not slug or "," not in name:
                     continue
                 last, first = (x.strip() for x in name.split(",", 1))
-                self.by_last[(ch, last.lower())].append(slug)
-                self.by_full[(ch, f"{first} {last}".lower())] = slug
+                terms = (set((r.get("served") or {}).get("terms") or [])
+                         if f == "former.json" else None)
+                self.by_last[(ch, last.lower())].append((slug, terms))
+                self.by_full[(ch, f"{first} {last}".lower())].append((slug, terms))
                 # "Peter Schmidt" where the record holds "Schmidt, Peter E."
                 bare = first.split()[0] if first.split() else ""
-                if bare:
-                    self.by_full.setdefault(
-                        (ch, f"{bare} {last}".lower()), slug)
+                if bare and bare != first:
+                    self.by_full[(ch, f"{bare} {last}".lower())].append((slug, terms))
 
     def slug(self, body, name):
         n = re.sub(r"\s+", " ", (name or "").strip()).strip(".")
         if not n:
             return None
-        hit = self.by_full.get((body, n.lower()))
-        if hit:
-            return hit
+        full = self.serving(self.by_full.get((body, n.lower()), []))
+        if len(full) == 1:
+            return full[0]
+        if full:
+            return None
         # A surname of two words is the whole name: the Senate Journal's
         # "Senator Fuller Clark" and "Senator Perkins Kwoka", whose last word
         # alone is someone else's surname or no one's.
-        cand = self.by_last.get((body, n.lower()), [])
+        cand = self.serving(self.by_last.get((body, n.lower()), []))
         if len(cand) == 1:
             return cand[0]
         parts = n.split()
         if parts:
-            cand = self.by_last.get((body, parts[-1].lower()), [])
+            cand = self.serving(self.by_last.get((body, parts[-1].lower()), []))
             if len(cand) == 1:
                 return cand[0]
         return None
+
+    def serving(self, cands):
+        """The slugs of `cands` who served `self.term`: every sitting member,
+        and a former member only where their record names that term. With no
+        term set, everyone, as before."""
+        return list(dict.fromkeys(s for s, terms in cands
+                                  if terms is None or not self.term or self.term in terms))
 
 
 def base_bill(bid):
@@ -944,8 +972,9 @@ def consent_html(cons, removed, titles, years, esc, calendar=()):
     return "".join(H)
 
 
-def render(day, narrative, titles, years, members, esc):
-    """The day, as HTML."""
+def render(day, narrative, titles, years, members, esc, chair=None):
+    """The day, as HTML. `chair` heads a printed debate's turns in the chair
+    (_debate_html); without it they are printed as the journal heads them."""
     H = []
     body = day.body
     attrs = narrative.get("attributions") or []
@@ -1101,7 +1130,7 @@ def render(day, narrative, titles, years, members, esc):
         d = debates.get(base_bill(bill))
         if d and d["speeches"] and own and id(d) not in drawn:
             drawn.add(id(d))
-            H.append(_debate_html(d, body, members, esc))
+            H.append(_debate_html(d, body, members, esc, chair=chair))
         H.append("</article>")
     if seq_items:
         H.append("</section>")
@@ -1117,7 +1146,7 @@ def render(day, narrative, titles, years, members, esc):
         H.append('<section class="sday"><h2>Also printed in the permanent '
                  "journal</h2>")
         for d in loose:
-            H.append(_debate_html(d, body, members, esc, head=True))
+            H.append(_debate_html(d, body, members, esc, head=True, chair=chair))
         H.append("</section>")
 
     uc = narrative.get("unanimous_consent") or []
@@ -1136,11 +1165,20 @@ def render(day, narrative, titles, years, members, esc):
     return "".join(H), payloads
 
 
-def _debate_html(d, body, members, esc, head=False):
+def _debate_html(d, body, members, esc, head=False, chair=None):
     """A printed debate: the opening, and the rest behind a disclosure.
 
     They run long -- 5,507 speeches across 298 debates -- so the page shows
     enough to know what it is and opens on request.
+
+    THE CHAIR BY THE OFFICE THEY HELD THAT DAY (the person, 9 October 2026:
+    "he is the deputy speaker and sometimes fills in for Sherman Packard").
+    The journal heads whoever is in the chair "Speaker", so the Deputy
+    Speaker was printed "Speaker Steven Smith". `chair` is
+    officers.chair_label for the day: the Speaker's heading stands, and
+    anyone else in the chair is "Deputy Speaker Steven Smith" where the
+    record gives them the office and "Rep. Kofalt, in the chair" where it
+    does not. Without it the headings are printed as the journal has them.
     """
     sp = d["speeches"]
     # THE CHAIR IS NOT A SPEAKER IN THE DEBATE. "Speaker Chandler: The question
@@ -1171,7 +1209,9 @@ def _debate_html(d, body, members, esc, head=False):
     for who, said in sp:
         nm = re.sub(r"^(Rep(?:resentative)?\.?|Speaker|Deputy Speaker)\s+",
                     "", who).strip()
-        link = (member_html(body, nm, members, esc)
+        said_by = chair(who) if chair else who
+        link = (f"<span>{esc(said_by)}</span>" if said_by != who
+                else member_html(body, nm, members, esc)
                 if not who.lower().startswith("speaker")
                 else f"<span>{esc(who)}</span>")
         out.append(f'<p class="sdsp">{link}<span class="sdtx">{esc(said)}</span></p>')
@@ -1305,6 +1345,11 @@ def main():
 
     titles, years = load_titles(site)
     members = Members(site)
+    # WHO HELD THE CHAIR'S OFFICES, read from the journals and calendars on
+    # disk (officers.py), for the headings of the turns the chair takes in
+    # a printed debate. The House's alone: the Senate's pages print none.
+    tenures = officers.load()[0] if body == "H" else []
+    retitled = collections.Counter()
     out_dir = site / "session" / body
     out_dir.mkdir(parents=True, exist_ok=True)
 
@@ -1317,6 +1362,9 @@ def main():
     for n, key in enumerate(order):
         day = days[key]
         date = day.date
+        # Names are matched among the members serving this day's term
+        # (Members: ONLY THE MEMBERS WHO SERVED THAT TERM COUNT).
+        members.term = proceedings.vote_term(str(date)[:4], str(date))
         # THE SENATE JOURNAL IS READ FOR ONE THING: WHO WAS EXCUSED. Across
         # all 491 Senate files there are no UNANIMOUS CONSENT sections, no
         # REMARKS, no PERSONAL PRIVILEGE, and "spoke in favor" appears in three
@@ -1343,7 +1391,14 @@ def main():
                     linked += 1
                 else:
                     unlinked += 1
-        block, payloads = render(day, narrative, titles, years, members, S.E)
+        def chair(who, _date=date):
+            got = officers.chair_label(who, _date, tenures)
+            if got != who:
+                retitled[next((t for t in ("Deputy Speaker", "Speaker Pro Tempore")
+                               if got.startswith(t)), "a member in the chair")] += 1
+            return got
+        block, payloads = render(day, narrative, titles, years, members, S.E,
+                                 chair=chair if tenures else None)
         label = f"The {CHAMBER[body]}, {words(date)}"
         lead = _lead(day, narrative, date, body)
         prev_ = order[n - 1][1] if n > 0 else ""
@@ -1423,6 +1478,13 @@ def main():
     # Printed so that none at all, which is what a moved journal folder or a
     # changed opening looks like, cannot pass as a quiet chamber.
     print(f"    {excused:,} name the members the journal excused for the day")
+    if body == "H":
+        # The chair by the office held that day: none at all, with the
+        # journals here, is the patterns no longer reading them.
+        print(f"    {sum(retitled.values()):,} turn(s) in the chair the journal heads "
+              "\"Speaker\" given to someone not the Speaker that day: "
+              + (", ".join(f"{n:,} {k}" for k, n in sorted(retitled.items())) or "none")
+              + f" ({len(tenures)} officers' tenures read)")
     named = linked + unlinked
     if named:
         # A WRONG LINK IS WORSE THAN NO LINK, so this number is meant to be

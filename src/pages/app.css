@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.234 */
+/* GRANITE_VERSION: 2026-09-07.235 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -2168,6 +2168,8 @@ button.lrow:hover{background:var(--paper)}.lrow.sel{background:var(--pine-soft)}
 /* 250px, not 228: names now carry an honorific and a party letter. */
 .mgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:1px var(--sp-6)}
 .m{font-size:var(--t-ui);padding:var(--sp-1) 0}.m .p{color:var(--ink-2)}
+/* The office of the member who presided, on its own line under the name. */
+.m .mo{display:block}
 .discl{width:100%;text-align:left;font-size:var(--t-ui);color:var(--pine);padding:var(--sp-4) 0 0;
 border-top:1px solid var(--rule);margin-top:var(--sp-5)}
 /* app.css had no table rule at all above 720px, so the legislator page's
@@ -3070,6 +3072,10 @@ font-variant-numeric:tabular-nums}
 .phead{padding:var(--sp-2) 0 var(--sp-3)}
 .phead h1{font-size:var(--t-title);line-height:1.2;margin:0 0 var(--sp-3);
 letter-spacing:-.015em}
+/* A member's party and seat after their name, kept whole where the heading
+   wraps, as a chip's .mtag is: since the title is spelled out (9 October
+   2026), "Representative James Spillane (R - Rock" left "2)" alone at 375px. */
+.phead h1 .ptag{white-space:nowrap}
 .pmeta{color:var(--ink-2);font-size:var(--t-ui);margin:var(--sp-1) 0}
 .ptowns,.pcmte,.pserv,.pseat{font-size:var(--t-ui);color:var(--ink);margin:var(--sp-4) 0 0;line-height:1.6}
 /* .pmeta joins them so the address carries a label too: a bare

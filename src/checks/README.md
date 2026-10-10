@@ -19,7 +19,12 @@ Scripts that write no record and no page, only a verdict or a report:
   page's scripts in node against `tests/dom_stub.js`), so that two builds
   meant to look the same are compared by what a reader is shown;
 - the bench (`review.py`), where a person judges one sample at a time and
-  `review/checked.jsonl` grows.
+  `review/checked.jsonl` grows;
+- a built site against the kept manifest of a commit's build
+  (`site_manifest`: `record` after a build, `compare` after a change), so a
+  "nothing moved" proof builds its baseline once a commit;
+- which of preflight's checks a change can reach (`check_select`, which
+  `preflight.py --changed` runs on).
 
 Run by: the night (`check_site`, `check_live`, `gc_changes`), `publish.bat`
 (`check_site`, `check_live`), and a person (`rendered_sweep` before a front-end

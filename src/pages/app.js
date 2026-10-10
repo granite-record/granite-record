@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.175
+// GRANITE_VERSION: 2026-09-07.176
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -2977,6 +2977,40 @@ function simpleDonut(rc,bid,i){
         <span class="c">${n}</span></div></div></div>`;
 }
 
+/* WHO PRESIDED, BY THE OFFICE THEY HELD THAT DAY (the person, 9 October
+   2026: Rep. Steven Smith "is the deputy speaker and sometimes fills in for
+   Sherman Packard if he has other business, as does Jim Kofalt occasionally
+   as speaker pro temp"). A roll call records its presiding officer as a
+   ballot and nothing of their office, so the list under Presiding said
+   "Rep. Steven Smith (R)" with nothing to say why it was him. officers.json
+   (build_site_v2.build_officers) is who held the chair's offices on which
+   days, read from the journals and the calendars, keyed by the sort key the
+   ballots carry; it is asked for the first time a presiding ballot is
+   drawn. A member the record gives no office that day is listed as before. */
+let OFFICERS=null;      // null while unasked, [] while asked or unavailable
+function needOfficers(){
+  if(OFFICERS)return;
+  OFFICERS=[];
+  fetch(DATA("officers.json"))
+    .then(r=>r.ok?r.json():Promise.reject(new Error("HTTP "+r.status)))
+    .then(j=>{OFFICERS=(j&&j.officers)||[];repaint();})
+    .catch(()=>{});     // the ballots are listed as they were
+}
+function presidingOffice(rc,m){
+  if(!m||m.v!=="Presiding")return "";
+  needOfficers();
+  const d=String(rc.date||"");
+  const o=OFFICERS.find(t=>t.b===rc.body&&t.s===m.s&&t.from<=d&&d<t.to);
+  return o?o.office:"";
+}
+// One member in a roll call's list of names, and under it their office where
+// they presided over it: on the same line, "Deputy Speaker of the House"
+// broke after "Deputy" in a 250px column.
+function ballotCell(rc,m){
+  const o=presidingOffice(rc,m);
+  return `<div class="m">${esc(m.n)}${o?`<span class="p mo">${esc(o)}</span>`:""}</div>`;
+}
+
 function donut(bid,i,rc){
   // Yes on the LEFT in green, no on the RIGHT in red, growing up from a gap at
   // six o'clock. Green for yes and red for no is the chamber's own convention
@@ -3058,7 +3092,7 @@ function donut(bid,i,rc){
     <span class="sw sw-o"></span><span>${o.label}</span><span class="c">${o.n}</span></button>`).join("")}</div>`:"";
   let list="";
   if(chosen){
-    const grid=a=>`<div class="mgrid">${a.map(m=>`<div class="m">${esc(m.n)}</div>`).join("")}</div>`;
+    const grid=a=>`<div class="mgrid">${a.map(m=>ballotCell(rc,m)).join("")}</div>`;
     if(chosen.startsWith("other-")){
       const st=chosen.slice(6),o=OTHER.find(x=>x[0]===st)||[st,st,""];
       const names=(rc.members||[]).filter(m=>m.v===st);
@@ -3150,7 +3184,7 @@ function fullRecord(bid,i,rc){
   // and then by first name.
   const col=(v,p)=>(rc.members||[]).filter(m=>m.v===v&&(p==null||(m.p||"X")===p))
     .sort((a,b)=>(a.s||a.n||"").localeCompare(b.s||b.n||""));
-  const grid=a=>`<div class="mgrid">${a.map(m=>`<div class="m">${esc(m.n)}</div>`).join("")}</div>`;
+  const grid=a=>`<div class="mgrid">${a.map(m=>ballotCell(rc,m)).join("")}</div>`;
   const sect=([st,label,blurb])=>{const a=col(st);return a.length?`<div class="mlist">
     <h3>${label} — ${a.length}</h3><p class="note" style="margin:0 0 9px">${blurb}</p>${grid(a)}</div>`:"";};
   const y=col("Yea"),n=col("Nay"),tot=(rc.members||[]).length;
@@ -6120,12 +6154,35 @@ function formerName(m){
   return /^(Rep|Sen)\. /.test(who)?"Former "+who:"";
 }
 
+/* THE TITLE IN FULL AT THE TOP OF THE PAGE (the person, 9 October 2026:
+   "Member pages should list their title along with their name at the top
+   like Senator Sharon Carson or Representative James Spillane"). The
+   heading spells out the honorific every list on the site abbreviates --
+   "Rep." is Representative and "Sen." Senator, the roster's own title for
+   each -- and keeps the party and seat after the name, the one place the
+   page gives them. A member who has left is "Former Representative ...":
+   the word still joins the honorific. The office a member holds is the line
+   under it. build_legislator_pages.head_name writes the page's heading for a
+   reader without JavaScript the same way; the page's title, its link card
+   and every list keep the short form. */
+const HONORIFIC_FULL={"Rep.":"Representative","Sen.":"Senator"};
+const fullTitle=who=>String(who||"").replace(/^(Former )?(Rep\.|Sen\.) /,
+  (_,f,h)=>`${f||""}${HONORIFIC_FULL[h]} `);
+// The heading as markup: the name, and its "(R - Rock 2)" kept whole, as a
+// chip keeps its .mtag. At 375px "Representative James Spillane (R - Rock"
+// left "2)" on a line of its own.
+const headName=s=>{
+  const m=/^(.*\S)\s+(\([^()]*\))$/.exec(String(s||""));
+  return m?`${esc(m[1])} <span class="ptag">${esc(m[2])}</span>`:esc(s);
+};
+
 function renderMemberHead(m){
   const towns = m.towns||[];
   /* FORMER MEMBERS, ON THEIR OWN PAGE AND NOWHERE ELSE. A reader arriving
      cold at a page with a full voting record should not be left thinking the
      person still holds the seat, so the page says plainly that they do not:
-     its heading names them "Former Rep." or "Former Sen." (formerName).
+     its heading names them "Former Representative" or "Former Senator"
+     (formerName, with the title in full since 9 October: fullTitle).
      That is a statement of tenure, and it is different in kind from a badge
      in a list: in a roll call or a sponsor list a former member is drawn
      exactly like a sitting one, same honorific, party and seat.
@@ -6136,10 +6193,12 @@ function renderMemberHead(m){
   const yrs = former ? servedYears(m) : "";
   const titled = former ? formerName(m) : "";
   return `<div class="phead">
-    <h1>${esc(titled||m.display_full||m.display||m.name||"")}</h1>
+    <h1>${headName(fullTitle(titled||m.display_full||m.display||m.name||""))}</h1>
     ${/* THE OFFICE, where the member holds one this record names: the
-         Speaker's page said nothing of it (the survey of 7 October 2026).
-         build_site_v2.member_office says why the chair is the evidence. */""}
+         Speaker's page said nothing of it (the survey of 7 October 2026),
+         and nor did the President of the Senate's (9 October).
+         build_site_v2.member_office says why the chair is the evidence for
+         the Speaker, and officers.py where the others come from. */""}
     <p class="pmeta">${esc(m.office||(m.chamber==="S"?"State Senate":"House of Representatives"))}${
       m.district?` &middot; District ${esc(m.district)}`:""}${
       m.county?` &middot; ${esc(m.county)} County`:""}</p>
