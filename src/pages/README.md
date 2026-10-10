@@ -27,7 +27,8 @@ kind and a version of the text, in the person chip's frame (3px corners, a
 `app.css` draws it once, in its SHARED region; the classes beside `chip` are
 the family that colours it and the hook a page places it by. Its words are in
 Title Case, written so where they are made, and a record's own capitals go
-through `title_words`. `preflight` fails a chip written by hand and any rule
+through `title_words`, which keeps the record's own abbreviations in capitals
+(`chips.json`'s `capitals`). `preflight` fails a chip written by hand and any rule
 that gives one a shape of its own.
 
 The words the pages say are in `words/`, one JSON file to a kind (9 October

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-09.3
+# GRANITE_VERSION: 2026-10-09.4
 """
 The site's components, in Python: what the builders draw a person, a
 committee, a chip, a date and a time with, and the words they say.
@@ -260,17 +260,36 @@ def title_words(s):
     meeting_kinds.json's "small", the same that a kind of meeting's title
     keeps. A word with a figure in it is left as it is ("4/28/10",
     "1429S"), and so, where the words are not all capitals, is a word in
-    capitals ("RSA"), which is then an abbreviation rather than a shout."""
+    capitals ("RSA"), which is then an abbreviation rather than a shout.
+
+    THE RECORD'S ABBREVIATIONS STAY IN CAPITALS, whatever case the record
+    wrote them in: chips.json's "capitals", the kinds of bill, a fiscal
+    note's FN and its suffixes, the calendars' CC and RC, TBD. In a shout
+    nothing marks them, so "INEXPEDIENT TO LEGISLATE HB 143" came out
+    "Inexpedient to Legislate Hb 143" -- a bill's number misspelt on its
+    own Reports tab -- and "FOR MAR 5 CC" "for Mar 5 Cc", and the version
+    "Fn - as introduced" "Fn - As Introduced" (the review of steps 0-3, 9
+    October 2026, reading every recommendation and version the built bills
+    carry). And a small word straight after a dash starts what follows, so
+    it takes a capital as a title's first word does: "Fn - a - as
+    introduced" is "FN - A - As Introduced", the bill's FN-A."""
     s = "" if s is None else str(s)
     shout = not re.search(r"[a-z]", s)
-    small = WORDBOOK["meeting_kinds"]["small"]
-    out = []
-    for i, w in enumerate(s.split(" ")):
+    small, caps = WORDBOOK["meeting_kinds"]["small"], WORDBOOK["chips"]["capitals"]
+    words, out = s.split(" "), []
+    for i, w in enumerate(words):
+        if w.upper() in caps:
+            out.append(w.upper())
+            continue
         if re.search(r"[0-9]", w) or (
                 not shout and re.fullmatch(r"[^a-z]*[A-Z][^a-z]*[A-Z][^a-z]*", w)):
             out.append(w)
             continue
         low = w.lower()
-        out.append(low if i and low in small else re.sub(
+        out.append(low if i and words[i - 1] not in TW_DASHES and low in small else re.sub(
             r"^([^A-Za-z]*)([a-z])", lambda m: m.group(1) + m.group(2).upper(), low))
     return " ".join(out)
+
+
+# A word that is a dash alone, after which title_words starts again.
+TW_DASHES = ("-", "–", "—")

@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-10-09.3
+// GRANITE_VERSION: 2026-10-09.4
 /* THE SITE'S COMPONENTS, IN THE BROWSER. Published as site/components.js and
    loaded by every page, in its head, before app.js, find.js and any page's
    own script, so each of them draws a person, a committee, a date or a time
@@ -153,14 +153,20 @@ function chip(word,cls,size){
 // "INEXPEDIENT TO LEGISLATE" is "Inexpedient to Legislate" and "As amended by
 // the house" "As Amended by the House"; the small words are meeting_kinds.json's;
 // a word with a figure in it is kept, and so is a word in capitals among
-// words that are not, which is an abbreviation ("RSA").
+// words that are not, which is an abbreviation ("RSA"). The record's own
+// abbreviations, chips.json's "capitals", are capitals in any case it wrote
+// them ("HB 143", not "Hb 143"), and a small word straight after a dash
+// takes a capital, as a title's first word does ("FN - A - As Introduced").
 function titleWords(s){
-  const t=s==null?"":String(s), shout=!/[a-z]/.test(t);
-  const small=WORDBOOK.meeting_kinds.small;
-  return t.split(" ").map((w,i)=>{
+  const t=s==null?"":String(s), shout=!/[a-z]/.test(t), words=t.split(" ");
+  const small=WORDBOOK.meeting_kinds.small, caps=WORDBOOK.chips.capitals;
+  return words.map((w,i)=>{
+    if(caps.indexOf(w.toUpperCase())>=0)return w.toUpperCase();
     if(/[0-9]/.test(w)||(!shout&&/^[^a-z]*[A-Z][^a-z]*[A-Z][^a-z]*$/.test(w)))return w;
     const low=w.toLowerCase();
-    return i&&small.indexOf(low)>=0?low
+    return i&&TW_DASHES.indexOf(words[i-1])<0&&small.indexOf(low)>=0?low
       :low.replace(/^([^A-Za-z]*)([a-z])/,(m,a,b)=>a+b.toUpperCase());
   }).join(" ");
 }
+// A word that is a dash alone, after which titleWords starts again.
+const TW_DASHES=["-","–","—"];

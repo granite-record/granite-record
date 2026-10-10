@@ -153,6 +153,20 @@
     {"args": ["Two  spaces"], "want": "Two  Spaces"},
     {"args": ["The"], "want": "The"},
     {"args": [""], "want": ""},
-    {"args": [null], "want": ""}
+    {"args": [null], "want": ""},
+    {"args": ["INEXPEDIENT TO LEGISLATE HB 143"], "want": "Inexpedient to Legislate HB 143"},
+    {"args": ["INEXPEDIENT TO LEGISLATE HCR 8"], "want": "Inexpedient to Legislate HCR 8"},
+    {"args": ["INEXPEDIENT TO LEGISLATE CACR 5"], "want": "Inexpedient to Legislate CACR 5"},
+    {"args": ["INEXPEDIENT TO LEGISLATE HB302-FN-A"], "want": "Inexpedient to Legislate HB302-FN-A"},
+    {"args": ["INEXPEDIENT TO LEGISLATE FOR MAR 5 CC"], "want": "Inexpedient to Legislate for Mar 5 CC"},
+    {"args": ["WITHOUT RECOMMENDATION FOR APRIL 29 RC"], "want": "Without Recommendation for April 29 RC"},
+    {"args": ["INEXPEDIENT TO LEGISLATE FOR TBD"], "want": "Inexpedient to Legislate for TBD"},
+    {"args": ["Fn - as introduced"], "want": "FN - As Introduced"},
+    {"args": ["Fn - a - l - as introduced"], "want": "FN - A - L - As Introduced"},
+    {"args": ["Fn - a - - as amended by the house"], "want": "FN - A - - As Amended by the House"},
+    {"args": ["Fn-a - final version"], "want": "FN-A - Final Version"},
+    {"args": ["Fn-a-local - as introduced"], "want": "FN-A-LOCAL - As Introduced"},
+    {"args": ["Local - as amended by the senate"], "want": "Local - As Amended by the Senate"},
+    {"args": ["AS AMENDED – THE SENATE — OF THE DAY"], "want": "As Amended – The Senate — Of the Day"}
   ]
 }

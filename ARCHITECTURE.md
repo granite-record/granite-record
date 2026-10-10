@@ -961,7 +961,8 @@ a version of the text are `chip()` in `components.py` and `components.js`,
 drawn once in `app.css`'s SHARED region in the person chip's frame -- 3px
 corners, a 1px `--edge`, a 3px bar in the chip's own ink -- at 14px, or 16px
 in a head, with a family's class to colour it. Its words are in Title Case,
-a record's capitals through `title_words`. `preflight` fails a chip written
+a record's capitals through `title_words`, which keeps the record's own
+abbreviations (`chips.json`'s `capitals`: HB 143, not Hb 143). `preflight` fails a chip written
 by hand and a rule that gives one a corner, an edge, a case or a size of its
 own.
 
