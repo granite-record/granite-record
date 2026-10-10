@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-17.6
+# GRANITE_VERSION: 2026-09-17.7
 """
 The figures about.html states, counted rather than typed.
 
@@ -30,6 +30,17 @@ WHERE EACH FIGURE COMES FROM
                              method has to pass before it ships. The accuracy
                              the page states is therefore the accuracy the gate
                              last measured, and the page says when.
+  site/meta.json, site/idx/  the bill index, read through site_read.bill_index:
+                             how many bills the site carries and the first
+                             year of its first term, which About's opening
+                             states (the person's text of 9 October 2026 asks
+                             for both computed at build time, never typed).
+
+TWO PAGES, SINCE 9 OCTOBER 2026. The About page the person approved that day
+moved "What is taken from the record and what is generated" and "How much of
+this is timed, and how well" word for word to the Data page, under "How the
+Record Is Built", so build_exports.py fills those figures from here too and
+fill() names the page whose sentence lost its number.
 
 NEITHER FILE IS INVENTED IF IT IS ABSENT. `figures()` returns only what it
 could count, and `fill()` raises rather than publishing a sentence with a hole
@@ -48,6 +59,7 @@ import json
 import re
 
 import shell as S
+import site_read as SR
 
 # The date the General Court's YouTube channels begin: the House's first
 # upload is of 14 May 2020 and the Senate's of 29 May, as
@@ -156,10 +168,23 @@ def figures(site="site", root="."):
         })
     if sched:
         f["schedule_median"] = _mmss(sched.get("median"))
+
+    # HOW MANY BILLS, AND SINCE WHEN, from the index every bill page and the
+    # search read: every row of every term, the resolutions and amendments
+    # among them, as build_civics counts all_bills; the year from the terms
+    # themselves, as its first_year is. An index that is absent or will not
+    # hold together counts nothing here, and fill() then stops the build.
+    try:
+        rows = SR.bill_index(site)
+    except SR.Broken:
+        rows = None
+    terms = sorted(r.get("term") for r in rows or () if r.get("term"))
+    if rows and terms:
+        f.update({"bills": _n(len(rows)), "since": terms[0].split("-")[0]})
     return f
 
 
-def fill(text, figs):
+def fill(text, figs, page="about.html"):
     """[[name]] -> its figure, or stop the build.
 
     build_civics.fill does this for the Learn pages and raises on a name it
@@ -171,8 +196,9 @@ def fill(text, figs):
     missing = sorted(want - set(figs))
     if missing:
         raise SystemExit(
-            "about.html names figures nothing counted: " + ", ".join(missing)
-            + "\n  site/station_census.json comes from build_site_v2.py "
+            f"{page} names figures nothing counted: " + ", ".join(missing)
+            + "\n  site/station_census.json and the bill index (site/meta.json, "
+              "site/idx/) come from build_site_v2.py "
               "(run it first),\n  alignment_score.json from "
               "`python3 src/hearings/probe_alignment.py --truth "
               "--candidate candidate_segments.json --score-out`.")
