@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.170
+# GRANITE_VERSION: 2026-09-04.171
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -1497,8 +1497,8 @@ searchable form. The code is public, and you can download the official record as
 spreadsheets from the <a href="data.html">Data page</a>.</p>
 <p>Granite Record is independent of my role as a state legislator and is not
 affiliated with the New Hampshire General Court. For feature suggestions or
-corrections to a bill's record, use the <i>Report a problem</i> button on any page, or
-write to <a href="mailto:contact@graniterecord.org">contact@graniterecord.org</a>.</p>
+corrections to a bill's record, use the <i>Report a problem</i> button on a bill's,
+legislator's or committee's page, or write to <a href="mailto:contact@graniterecord.org">contact@graniterecord.org</a>.</p>
 <p>Special thanks to the House Clerk's Office and the General Court's IT staff,
 without whom this project would not be possible.</p>
 
@@ -1554,8 +1554,8 @@ record.</p>
 
 <h2>Keeping It Accurate</h2>
 <p>The official record at <a href="https://gc.nh.gov/" rel="noopener">gc.nh.gov</a> always takes precedence over anything shown
-here. If something on a page doesn't match it, use the <i>Report a problem</i> button
-on that page: reports are read every day, checked against the official record,
+here. If something on a bill's, legislator's or committee's page doesn't match it,
+use the <i>Report a problem</i> button on that page: reports are read every day, checked against the official record,
 and corrected.</p>
 
 <h2>Your Privacy</h2>
