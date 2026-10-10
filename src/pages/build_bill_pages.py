@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.63
+# GRANITE_VERSION: 2026-09-04.64
 """
 Write a real address for every bill, and the sitemap that points at them.
 
@@ -335,8 +335,8 @@ def main():
               # data.html was added to the nav and not here, so the downloads
               # page was on every header and in no sitemap -- the same shape
               # of defect as the nav tuple in build_pages.py, one level down.
-              "committees.html", "learn.html", "data.html", "about.html"):
-        # ALWAYS, NOT ONLY IF THE FILE IS THERE YET. committees.html, learn.html
+              "committees.html", "resources.html", "data.html", "about.html"):
+        # ALWAYS, NOT ONLY IF THE FILE IS THERE YET. committees.html, resources.html
         # and data.html are written by steps that run after this one, so a
         # build into an empty site/ -- every night on GitHub's machine --
         # dropped all three (found 25 September 2026). Every one is built on

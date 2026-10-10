@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-14.13
+# GRANITE_VERSION: 2026-09-14.14
 """
 The record in numbers: a Learn page of statistics computed from the site's own data.
 
@@ -655,13 +655,13 @@ HELD = []      # [what was left off, and why] of the last body(); build_civics p
 # Every section's heading, as body() writes it (the closest votes' ends in the
 # term). preflight's data check holds the built page to the list, so a section
 # left out for want of its input fails a full preflight run.
-HEADINGS = ("Bills filed, and how they ended", "Bills filed and passed per member",
-            "The bills each committee received", "The hearings with the most sign-ins",
-            "How often the full chamber overrules its committee",
-            "Consent calendars, by committee", "Each committee's passage rate",
-            "Passed as introduced, or amended", "How many amendments a bill takes before it passes",
-            "How the votes were taken", "The closest votes of", "Attendance on roll-call days",
-            "Vetoes", "Constitutional amendments sent to the voters")
+HEADINGS = ("Bills Filed, and How They Ended", "Bills Filed and Passed per Member",
+            "The Bills Each Committee Received", "The Hearings with the Most Sign-Ins",
+            "How Often the Full Chamber Overrules Its Committee",
+            "Consent Calendars, by Committee", "Each Committee's Passage Rate",
+            "Passed as Introduced, or Amended", "How Many Amendments a Bill Takes Before It Passes",
+            "How the Votes Were Taken", "The Closest Votes of", "Attendance on Roll-Call Days",
+            "Vetoes", "Constitutional Amendments Sent to the Voters")
 
 
 def _need(path, what):
@@ -698,7 +698,11 @@ def body(site=Path("site"), root=Path("."), strict=True):
     # here is counted from the record at build time. That is what separates
     # this page from a statistics page somebody typed, and it is the first
     # thing a reader should know.
-    out = ['<p class="caveat">Every number on this page is counted from the '
+    # The note opens the page under a heading of its own, as every Learn
+    # page's opening paragraph does (W4: each heading in the margin beside its
+    # prose; the heading is the approved prototype's, 9 October 2026).
+    out = ['<h2>How These Are Counted</h2>'
+           '<p>Every number on this page is counted from the '
            'General Court\'s own record when the site is built, not typed in. '
            'Each section says what it counts and over what period. Where the '
            'record on this site cannot answer something, the section says so '
@@ -718,7 +722,7 @@ def body(site=Path("site"), root=Path("."), strict=True):
     # NOT THE CONSTITUTIONAL AMENDMENTS OR RESOLUTIONS, AND SAID SO (the survey of
     # 7 October 2026): 2,139 for 2025-2026 here and 2,243 bills and resolutions
     # on How a bill becomes law, and neither page said what it counted.
-    out.append("<h2>Bills filed, and how they ended</h2><p>Every House and Senate bill "
+    out.append("<h2>Bills Filed, and How They Ended</h2><p>Every House and Senate bill "
                "given a number in each term, not counting constitutional amendments or "
                "resolutions, by the word its card on this site shows. "
                "Died covers a bill killed on the floor, left on the table, vetoed with the "
@@ -737,7 +741,7 @@ def body(site=Path("site"), root=Path("."), strict=True):
             continue
         prows.append([_t(t), f"{h[0] / SEATS['H']:.2f}", f"{h[1] / SEATS['H']:.2f}",
                       f"{s[0] / SEATS['S']:.1f}", f"{s[1] / SEATS['S']:.1f}"])
-    out.append("<h2>Bills filed and passed per member</h2><p>The House and Senate bills whose "
+    out.append("<h2>Bills Filed and Passed per Member</h2><p>The House and Senate bills whose "
                "prime sponsor sat in each chamber, divided by its seats: 400 in the House, 24 "
                "in the Senate. Passed means the bill became law.</p>"
                + _table(["Term", "Filed per representative", "Became law per representative",
@@ -756,7 +760,7 @@ def body(site=Path("site"), root=Path("."), strict=True):
                       f"{first_n:,} first referrals and {sent_n:,} sent on</summary>"
                       + _table(["Committee", "First referral", "Sent on from another committee"],
                                rrows) + "</details>")
-    out.append("<h2>The bills each committee received</h2><p>For each committee of the last "
+    out.append("<h2>The Bills Each Committee Received</h2><p>For each committee of the last "
                "ten terms: how many bills its chamber sent it first, as each bill's page names "
                "its committee, and how many it received after another committee of the same "
                "chamber had them &mdash; most often Finance or Ways and Means, for a bill that "
@@ -790,7 +794,7 @@ def body(site=Path("site"), root=Path("."), strict=True):
             tables.append(f"<h3>{_t(t)}</h3>" + _table(
                 ["Bill", "Title as heard", "Hearing and committee", "Signed in", "Positions"],
                 srows))
-        out.append("<h2>The hearings with the most sign-ins</h2><p>Anyone may use the House's "
+        out.append("<h2>The Hearings with the Most Sign-Ins</h2><p>Anyone may use the House's "
                    "online form to say they support or oppose a bill, or are neutral on it, at "
                    "its committee hearing. These are the twenty hearings with the most of those "
                    f"sign-ins in each term since the earliest on record, on {_day(since)}: one "
@@ -811,7 +815,7 @@ def body(site=Path("site"), root=Path("."), strict=True):
     for ch in ("H", "S"):
         d, a, s = st.get(ch, (0, 0, 0))
         rows.append([NAME[ch], f"{d:,}", _np(a, d), _np(s, d)])
-    out.append(f"<h2>How often the full chamber overrules its committee</h2>"
+    out.append(f"<h2>How Often the Full Chamber Overrules Its Committee</h2>"
                f"<p>In the {_t(current)} term, a committee's recommendation "
                "was followed by the chamber far more often than not. Counted here: each bill's "
                "committee report in each chamber, against the first motion adopted on that "
@@ -834,7 +838,7 @@ def body(site=Path("site"), root=Path("."), strict=True):
     total = kept + regular + removed
     ccrows = sorted(([E(c), f"{n:,}", f"{k:,}", _pct(k, n)] for c, (n, k) in by_c.items() if n >= 10),
                     key=lambda r: -float(r[3].rstrip("%")) if r[3].endswith("%") else 0)
-    out.append(f"<h2>Consent calendars, by committee</h2><p>A committee sends a report to the "
+    out.append(f"<h2>Consent Calendars, by Committee</h2><p>A committee sends a report to the "
                "consent calendar by its own vote, and in both chambers that vote must be unanimous, "
                "though the recommendation itself may have been carried on a divided one. The "
                "whole calendar is adopted in one vote without debate, and what it adopts is each "
@@ -863,7 +867,7 @@ def body(site=Path("site"), root=Path("."), strict=True):
     tot_line = "; ".join(f"of the {n:,} bills a {NAME[ch]} committee reported on, "
                          f"{_pct(p, n)} passed both chambers"
                          for ch, (n, p, _l) in ctot.items() if n)
-    out.append(f"<h2>Each committee's passage rate</h2><p>Of the House and Senate bills a "
+    out.append(f"<h2>Each Committee's Passage Rate</h2><p>Of the House and Senate bills a "
                f"committee reported on in {_t(current)}, whatever it recommended, the share that "
                "passed both chambers and the share that became law. A bill two committees of a "
                "chamber reported on counts in both; committees with ten bills or more. A Senate "
@@ -883,7 +887,7 @@ def body(site=Path("site"), root=Path("."), strict=True):
         n = p["passed"]
         parows.append([_t(t), f"{n:,}", _np(p["amended"], n), _np(n - p["amended"], n),
                        _np(p["conference"], n)])
-    out.append("<h2>Passed as introduced, or amended</h2><p>Every House and Senate bill that "
+    out.append("<h2>Passed as Introduced, or Amended</h2><p>Every House and Senate bill that "
                "passed both chambers in the same text and so went to the governor. Amended: "
                "either chamber adopted an amendment to it first, or a committee of conference "
                "settled the two chambers' versions; the Enrolled Bills Committee's technical "
@@ -903,7 +907,7 @@ def body(site=Path("site"), root=Path("."), strict=True):
         if n:
             drows.append([_t(label_), f"{n:,}"] + [_pct(dist[k], n) for k in range(4)]
                          + [_pct(sum(dist[k] for k in range(4, 7)), n)])
-    out.append("<h2>How many amendments a bill takes before it passes</h2><p>The same bills, by "
+    out.append("<h2>How Many Amendments a Bill Takes Before It Passes</h2><p>The same bills, by "
                "the number of amendments the two chambers adopted to each before it went to the "
                "governor: an amendment withdrawn or defeated after its adoption does not count, "
                "nor does a committee of conference's report. From 2007 every adoption the docket "
@@ -931,7 +935,7 @@ def body(site=Path("site"), root=Path("."), strict=True):
         c = kinds[y]
         n = sum(c.values())
         krows.append([y, f"{n:,}", _pct(c["RC"], n), _pct(c["DV"], n), _pct(c["VV"], n)])
-    out.append("<h2>How the votes were taken</h2><p>Every recorded floor decision, by year and by "
+    out.append("<h2>How the Votes Were Taken</h2><p>Every recorded floor decision, by year and by "
                "how it was decided: a roll call records each member by name, a division records "
                "the count, and a voice vote records only which side sounded louder.</p>"
                + _table(["Year", "Floor decisions", "Roll call", "Division", "Voice"], krows))
@@ -952,7 +956,7 @@ def body(site=Path("site"), root=Path("."), strict=True):
     crow = [[_bill_link(current, b, str(r.get("year") or "")), NAME.get(r.get("body"), ""),
              E(r.get("question_plain") or r.get("question") or ""), f"{r['yeas']}&ndash;{r['nays']}",
              _day(r.get("date") or "")] for _m, b, r in close[:10]]
-    out.append(f"<h2>The closest votes of {_t(current)}</h2><p>The ten "
+    out.append(f"<h2>The Closest Votes of {_t(current)}</h2><p>The ten "
                "roll calls on bills decided by the fewest votes, procedural motions and votes "
                "that needed more than a majority left out.</p>"
                + _table(["Bill", "Chamber", "Question", "Yeas&ndash;nays", "Date"], crow))
@@ -968,7 +972,7 @@ def body(site=Path("site"), root=Path("."), strict=True):
                 continue
             arows.append([_t(t)] + [x for v in (h, s) for x in
                                     ((f"{v[0]:,}", f"{100 * v[1]:.1f}%") if v else ("", ""))])
-        out.append("<h2>Attendance on roll-call days</h2><p>For each day a chamber took at least "
+        out.append("<h2>Attendance on Roll-Call Days</h2><p>For each day a chamber took at least "
                    "one roll call, the share of its members in office who were there for at "
                    "least one of that day's roll calls &mdash; voting, presiding, or declaring a "
                    "conflict of interest &mdash; averaged over the days. Members' ballots are on "
@@ -1031,7 +1035,7 @@ def body(site=Path("site"), root=Path("."), strict=True):
             f"{_day(r['election'])}." if r["election"] >= day else
             f" {_bill_link(r['term'], r['bill'])} of {_t(r['term'])} went to the voters on "
             f"{_day(r['election'])}, and their count is not on this site yet." for r in to_come)
-        out.append("<h2>Constitutional amendments sent to the voters</h2><p>A constitutional "
+        out.append("<h2>Constitutional Amendments Sent to the Voters</h2><p>A constitutional "
                    "amendment that passes both chambers by three fifths goes to the voters at the "
                    "next general election, and is ratified only with two thirds of the votes cast "
                    "on it (Part Second, Article 100); a blank ballot is not a vote cast on it. "

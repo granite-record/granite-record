@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.33
+# GRANITE_VERSION: 2026-09-08.34
 """
 The topics of the civics section: their order, their names, and their prose.
 
@@ -38,11 +38,14 @@ testify has decided.
 
 # The order is the order of the proposal, and it is the order the "next
 # topic" link at the foot of each page walks. Two groups: how the state
-# works, then how to take part.
+# works, then how to take part. Their names are headings -- on the Resources
+# hub's Learn tab and in The Thirteen Pages at the foot of each page -- so
+# they are in Title Case, as every heading is (the person, 8 and 9 October
+# 2026, item 17).
 GROUPS = [
-    ("How the state works",
+    ("How the State Works",
      "The institutions, in the order they act on a bill."),
-    ("How to take part",
+    ("How to Take Part",
      "The mechanics, which are more open than most people expect."),
 ]
 
@@ -53,9 +56,14 @@ def topic(slug, title, group, blurb, body, sources, holds=""):
 
 
 # ---------------------------------------------------------------------------
-# Bodies are filled in below. Each is plain HTML: h2, p, ul, and the two
-# classes this section adds -- .shows for a block that points into the record,
-# and .caveat for a limit stated plainly.
+# Bodies are filled in below. Each is plain HTML: h2, h3, p, ul, a table, the
+# diagrams below, and .l-note for a limit stated plainly. EVERY BODY OPENS
+# WITH AN h2, because build_civics cuts each page into sections at its h2s and
+# sets each heading in the margin beside its prose (W4, the component plan
+# approved on 9 October 2026); a body with words before its first heading
+# stops the build. The headings over the opening paragraphs are each taken
+# from that paragraph's own words ("In Two Parts", "What a Bill Is"), as the
+# approved prototypes drew them.
 # ---------------------------------------------------------------------------
 
 # ---------------------------------------------------------------------------
@@ -70,7 +78,10 @@ def topic(slug, title, group, blurb, body, sources, holds=""):
 # check is exactly the failure the proposal warns about.
 # ---------------------------------------------------------------------------
 
-SHOWS = ('<div class="shows"><h3>In the record</h3>{}</div>')
+# WHAT THE RECORD HOLDS ON THIS SUBJECT, as a section like the others: it
+# was a tinted box with a small heading, and is now In the Record in the
+# margin, so a page reads as one column of sections (C7).
+SHOWS = ('<h2>In the Record</h2>{}')
 
 
 # ---------------------------------------------------------------------------
@@ -90,11 +101,11 @@ SHOWS = ('<div class="shows"><h3>In the record</h3>{}</div>')
 # exits at almost every stage.
 # ---------------------------------------------------------------------------
 FLOW = [
-    ("Before it is a bill", [
+    ("Before It Is a Bill", [
         ("Filed as an LSR", "A title and an idea, filed in the autumn. "
          "Attorneys at the Office of Legislative Services draft the text.", ""),
     ]),
-    ("The first chamber", [
+    ("The First Chamber", [
         ("Introduced and referred", "It gets a number and goes to a committee "
          "chosen by subject.", ""),
         ("Public hearing", "The sponsor introduces it, then anyone may speak "
@@ -110,7 +121,7 @@ FLOW = [
         ("Floor vote", "The full chamber decides, and is not bound by the "
          "committee's recommendation.", "stop"),
     ]),
-    ("The second chamber", [
+    ("The Second Chamber", [
         ("Referred again", "The whole course repeats. Moving between chambers "
          "is called crossover, and there is a deadline for it.", ""),
         # TWO STEPS AND NOT ONE. Folded together, the diagram showed a single
@@ -141,53 +152,114 @@ FLOW = [
     ]),
 ]
 
-# The CSS class is .dies, not .stop: .stop belongs to the passage rail,
-# where `.stop b` is a transparent-text circle, and reusing it rendered
-# every marked step as invisible words in a grey disc. app.css says more.
+# THE MARKS. A step's mark says what can happen there, in words and in a
+# colour, never in colour alone. It sits under its step as two grid cells --
+# the glyph or the fraction in one, the words in the next -- so the one
+# cannot run into the other at any width or text size: the constitution's
+# "3/5" was one font glyph wider than the box it sat in and ran under its
+# words on a phone (the person, 9 October 2026, item 20).
 #
-# A mark is either one of these keys, or a (key, label) pair where the label
-# differs step by step -- a constitutional threshold is a different number in
-# each chamber, and "Needs a threshold" would be a worse sentence than the
-# number it stands for.
-MARKS = {"stop": ("dies", "mark", "Can die here"),
-         "say": ("say", "say-m", "You may speak here"),
-         "needs": ("needs", "needs-m", "")}
+# A mark is a key of MARKS, or a (key, words) pair where the words differ
+# step by step -- a constitutional threshold is a different number in each
+# chamber, and "Needs a threshold" would be a worse sentence than the number
+# it stands for:
+#   "stop"  -- the bill can die here: the rail's red cross
+#   "say"   -- a member of the public can speak here: the hearing's colour
+#   "needs" -- a threshold or a time limit, in amber (8 October 2026:
+#              "constitution threshold marks keep amber"); where the words
+#              name a fraction (FRACTIONS) the fraction is drawn, built of two
+#              numbers over a rule rather than a font's fraction glyph
+#   "rec"   -- something the record keeps: pine, with a check (a sign-in is
+#              counted, which is not a threshold)
+#   "sub"   -- no mark at all: a quiet line under a row's name (a floterial
+#              is laid over other districts, which is not a threshold either)
+#
+# THE CLASSES ARE l- ONES, Learn's own prefix. `.stop` is the passage rail's
+# class, and reusing it once rendered every marked step as invisible words in
+# a grey disc; a new component gets its own prefix.
+X_SVG = ('<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M3.3 3.3l5.4 5.4M8.7 3.3l-5.4 5.4" '
+         'fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg>')
+CHECK_SVG = ('<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2.6 6.3l2.3 2.3 4.6-5" fill="none" '
+             'stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>')
+SAY_SVG = ('<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2.2 2.6h7.6v5H5.4L3.2 9.4V7.6h-1z" '
+           'fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>')
+MARKS = {"stop": ("dies", "Can die here"),
+         "say": ("say", "You may speak here"),
+         "needs": ("need", ""),
+         "rec": ("rec", ""),
+         "sub": ("sub", "")}
+GLYPHS = {"dies": X_SVG, "say": SAY_SVG, "rec": CHECK_SVG}
+# The words a threshold mark carries, and the fraction they name.
+FRACTIONS = {"Three fifths of its members": "3/5",
+             "Two thirds of those voting on it": "2/3"}
+# The key under the constitution's diagram (new wording of the first round's
+# prototype, which the person liked on 9 October 2026).
+THRESHOLD_KEY = ('<i class="l-capsw" aria-hidden="true"></i>A threshold, in amber: '
+                 'the share of votes the step needs.')
 
 
 def mark_of(mark):
+    """(kind, words) for a mark: ("", "") for none."""
     if isinstance(mark, (tuple, list)) and len(mark) == 2:
-        cls, mcls, _ = MARKS.get(mark[0], ("", "", ""))
-        return cls, mcls, mark[1]
-    return MARKS.get(mark, ("", "", ""))
+        kind, _ = MARKS.get(mark[0], ("", ""))
+        return kind, mark[1]
+    return MARKS.get(mark, ("", ""))
 
 
-def flow_diagram(flow=FLOW, heading="The course of a bill", level=2):
-    """The sequence as nested lists. No image, no script, no SVG.
+def frac(f, large=False):
+    """A fraction built of two numbers over a rule, read aloud by its words."""
+    top, bottom = f.split("/")
+    return (f'<span class="l-frac{" is-l" if large else ""}" aria-hidden="true">'
+            f'<span>{top}</span><span>{bottom}</span></span>')
 
-    level is what the phase names are written at, and it depends on where the
-    diagram sits rather than on the diagram. On the bill page it is the first
-    thing after the h1 and its four phases ARE that page's sections, so they
-    are h2; on the constitution and testifying pages it follows a section
-    heading and belongs under it, so they are h3. Written at 3 everywhere, the
-    bill page went from a hidden h1 straight to h3, which is the jump
-    LAUNCH.md records -- and a reader navigating by heading on the page that
-    explains the whole process met four labels at the wrong depth.
+
+def mark_html(mark):
+    """A step's mark: its glyph (or fraction) and its words, in two cells."""
+    kind, words = mark_of(mark)
+    if not kind or not words:
+        return ""
+    if kind == "sub":
+        return f'<span class="l-sub">{words}</span>'
+    if kind == "need":
+        glyph = frac(FRACTIONS[words]) if words in FRACTIONS else ""
+    else:
+        glyph = f'<span class="l-g is-{kind}" aria-hidden="true">{GLYPHS[kind]}</span>'
+    return (f'<span class="l-mk is-{kind}{"" if glyph else " is-bare"}">{glyph}'
+            f'<span class="l-mt">{words}</span></span>')
+
+
+def step_html(step, what, mark):
+    kind, _ = mark_of(mark)
+    return (f'<li class="l-step{" is-" + kind if kind else ""}">'
+            f'<b>{step}</b><span>{what}</span>{mark_html(mark)}</li>')
+
+
+def wide(html_):
+    """A figure that takes the page's whole width under its section's
+    heading, where the prose keeps its measure beside the heading.
+    build_civics reads the markers; a figure without them stays in the
+    reading column."""
+    return f"<!--wide-->{html_}<!--/wide-->"
+
+
+def flow_diagram(flow=FLOW, heading="The course of a bill", level=3, key="", level_names=False):
+    """The sequence as nested lists. No image, no script, no SVG but the marks.
+
+    The phases go across the page, a column each, where there is room for
+    them (four from 60em, two from 37.5em, one on a phone), with an arrow
+    between. level is what the phase names are written at: every diagram
+    sits under its section's h2 now, so they are h3 by default. key is a line
+    under the diagram that says what its colour means; level_names holds the
+    phase names level however many lines one takes, for a diagram whose
+    names differ in length (how a rule is made).
     """
-    out = [f'<div class="flow" role="group" aria-label="{heading}">'
-           '<ol class="flowphases">']
-    for name, steps in flow:
-        out.append('<li class="phase">'
-                   f'<h{level} class="phname">{name}</h{level}>'
-                   '<ol class="steps">')
-        for step, what, mark in steps:
-            cls, mcls, label = mark_of(mark)
-            out.append(f'<li class="step{" " + cls if cls else ""}">'
-                       f'<b>{step}</b><span>{what}</span>'
-                       + (f'<i class="{mcls}">{label}</i>' if label else "")
-                       + "</li>")
-        out.append("</ol></li>")
-    out.append("</ol></div>")
-    return "".join(out)
+    phases = "".join(
+        f'<li class="l-phase"><h{level} class="l-phname">{name}</h{level}>'
+        f'<ol class="l-steps">{"".join(step_html(*s) for s in steps)}</ol></li>'
+        for name, steps in flow)
+    cap = f'<figcaption class="l-cap">{key}</figcaption>' if key else ""
+    return wide(f'<figure class="l-fig l-flow{" l-level" if level_names else ""}" role="group" '
+                f'aria-label="{heading}"><ol class="l-phases">{phases}</ol>{cap}</figure>')
 
 
 # TWO WAYS OF DOING THE SAME THING, compared stage by stage. flow_diagram draws
@@ -215,18 +287,17 @@ SAME = object()
 def compare_diagram(rows, heading, left, right):
     # THE ROLES ARE NOT DECORATION. On a phone the table is restacked, which
     # means changing display on its rows and cells, and a browser that sees a
-    # table given display:grid may drop it from the accessibility tree
+    # table given display:block may drop it from the accessibility tree
     # altogether -- Safari does -- taking away the one reason it is a table.
     # Explicit roles put the semantics back whatever the layout is doing.
-    def cell(v, col):
+    def cell(v, col, span=""):
         text, mark = (v if isinstance(v, (tuple, list)) else (v, ""))
-        cls, mcls, label = mark_of(mark)
-        return (f'<td role="cell" class="c{" " + cls if cls else ""}" '
-                f'data-l="{col}"><span>{text}</span>'
-                + (f'<i class="{mcls}">{label}</i>' if label else "")
-                + "</td>")
-    out = [f'<div class="cmp" role="group" aria-label="{heading}">'
-           f'<table class="cmptab" role="table">'
+        kind, _ = mark_of(mark)
+        cls = f' class="is-{kind}"' if kind else ""
+        return (f'<td role="cell"{span}{cls} data-l="{col}"><span>{text}</span>'
+                + mark_html(mark) + "</td>")
+    out = [f'<figure class="l-fig l-cmp" role="group" aria-label="{heading}">'
+           f'<table class="l-cmptab" role="table">'
            f'<caption class="sr">{heading}</caption>'
            '<thead role="rowgroup"><tr role="row">'
            '<th scope="col" role="columnheader">Stage</th>'
@@ -237,17 +308,12 @@ def compare_diagram(rows, heading, left, right):
         out.append(f'<tr role="row"><th scope="row" role="rowheader">'
                    f'{stage}</th>')
         if a is SAME or b is SAME:
-            text = b if a is SAME else a
-            merged = cell(text, f"{left} and {right}")
-            opening = '<td role="cell" class="c'
-            assert merged.startswith(opening), "cell() changed its opening tag"
-            out.append(merged.replace(
-                opening, '<td role="cell" colspan="2" class="c same', 1))
+            out.append(cell(b if a is SAME else a, f"{left} and {right}", ' colspan="2"'))
         else:
             out.append(cell(a, left) + cell(b, right))
         out.append("</tr>")
-    out.append("</tbody></table></div>")
-    return "".join(out)
+    out.append("</tbody></table></figure>")
+    return wide("".join(out))
 
 
 # EVERYONE WHO REPRESENTS ONE ADDRESS, from the most local seat to the whole
@@ -265,8 +331,8 @@ def compare_diagram(rows, heading, left, right):
 # "State House, floterial; district Belknap 8; members 2; elected by ..." as one
 # row. Explicit roles because the rows restack on a phone.
 def layers_diagram(rows, heading):
-    out = [f'<div class="lay" role="group" aria-label="{heading}">'
-           f'<table class="laytab" role="table">'
+    out = [f'<figure class="l-fig l-lay" role="group" aria-label="{heading}">'
+           f'<div class="l-tablewrap l-stack"><table class="l-table" role="table">'
            f'<caption class="sr">{heading}</caption>'
            '<thead role="rowgroup"><tr role="row">'
            '<th scope="col" role="columnheader">Seat</th>'
@@ -275,17 +341,14 @@ def layers_diagram(rows, heading):
            '<th scope="col" role="columnheader">Elected by</th>'
            '</tr></thead><tbody role="rowgroup">']
     for layer, district, members, shared, mark in rows:
-        cls, mcls, label = mark_of(mark)
-        klass = f' class="{cls}"' if cls else ""
         out.append(
-            f'<tr role="row"{klass}>'
-            f'<th scope="row" role="rowheader">{layer}'
-            + (f'<i class="{mcls}">{label}</i>' if label else "") + "</th>"
+            f'<tr role="row">'
+            f'<th scope="row" role="rowheader" class="is-text">{layer}{mark_html(mark)}</th>'
             f'<td role="cell" data-l="District">{district}</td>'
             f'<td role="cell" data-l="Members">{members}</td>'
             f'<td role="cell" data-l="Elected by">{shared}</td></tr>')
-    out.append("</tbody></table></div>")
-    return "".join(out)
+    out.append("</tbody></table></div></figure>")
+    return wide("".join(out))
 
 
 # THE WORKED EXAMPLE IS DANVILLE, chosen by checking every town that has a
@@ -378,7 +441,7 @@ def reps_example(districts, town=REPS_EXAMPLE):
         ("State House &mdash; floterial",
          f"{f['county']} {f['district']}", str(f.get("seats") or 1),
          f"{_names([town] + flot_with)} together",
-         ("needs", f"Laid over {len(under)} districts")),
+         ("sub", f"Laid over {len(under)} districts")),
         ("State Senate", f"District {rec.get('senate')}", "1",
          wide(len(sen), sk), ""),
         ("Executive Council", f"District {rec.get('council')}", "1",
@@ -417,13 +480,13 @@ def reps_example(districts, town=REPS_EXAMPLE):
 # docket line names three fifths; three fifths of the seats explains 101.
 # ---------------------------------------------------------------------------
 FLOW_CACR = [
-    ("How it starts", [
+    ("How It Starts", [
         ("Filed as a CACR", "A Constitutional Amendment Concurrent "
          "Resolution, which may start in the House or the Senate. Statutes "
          "change by bill; the constitution does not.",
          ""),
     ]),
-    ("The first chamber", [
+    ("The First Chamber", [
         ("Three fifths of the members in office", "Not three fifths of those "
          "voting: an absent member counts against it, a vacant seat does "
          "not. In 2012 the House carried CACR 26 with 239 votes, when 397 "
@@ -431,13 +494,13 @@ FLOW_CACR = [
          "enough, where 240 would have been needed with every seat filled.",
          ("needs", "Three fifths of its members")),
     ]),
-    ("The second chamber", [
+    ("The Second Chamber", [
         ("The same threshold again", "Three fifths of the other chamber's "
          "members in office, on the same terms: 240 when all 400 House seats "
          "are filled, and 15 of a full Senate of 24.",
          ("needs", "Three fifths of its members")),
     ]),
-    ("The voters", [
+    ("The Voters", [
         ("At the next general election", "Put to the people, where it takes "
          "effect only if two thirds of those voting on the question approve "
          "it.",
@@ -454,21 +517,21 @@ FLOW_CACR = [
 # are different acts, and that the second chamber gives a second chance.
 # ---------------------------------------------------------------------------
 FLOW_TESTIFY = [
-    ("Find out", [
+    ("Find Out", [
         ("The calendar", "Hearings are announced in the chamber's weekly "
          "calendar and on the General Court's meeting schedule. The median "
          "notice in the hearings parsed here is five days; some give one.",
          ""),
     ]),
-    ("Sign in", [
+    ("Sign In", [
         ("Online, for or against", "Your name and town, whether you are a "
          "member of the public or representing an organisation, and which "
          "side. You may attach written testimony.",
-         ("needs", "Counted, and published")),
+         ("rec", "Counted, and published")),
         ("Before the day ends", "The window opens once the hearing is "
          "scheduled and closes at the end of the day of the hearing.", ""),
     ]),
-    ("At the hearing", [
+    ("At the Hearing", [
         ("Speaking is separate", "A different act from signing in, and the "
          "chambers ask for it differently: a pink card in the House, a "
          "column to tick on the Senate's sheet. The sponsor speaks first, "
@@ -507,7 +570,7 @@ FLOW_TESTIFY = [
 # article 28-a protects political subdivisions generally -- counties, cities,
 # towns and school districts -- not towns alone.
 FLOW_RULES = [
-    ("Before anyone can comment", [
+    ("Before Anyone Can Comment", [
         ("The statute hands it over", "A bill says the agency \"shall adopt "
          "rules\" about something, and stops. Everything it left open is "
          "settled from here on, by the agency rather than by the "
@@ -521,15 +584,15 @@ FLOW_RULES = [
         ("The full text, not a summary", "At least one complete section of "
          "the rules as they would read, filed with the same office.", ""),
     ]),
-    ("The public's turn", [
+    ("The Public's Turn", [
         ("A public hearing", "At least one, on every proposed rule. Anyone "
          "may speak, and anyone may send data, views or arguments in writing "
          "instead.", "say"),
         ("Comment stays open after it", "Written comment is taken for a "
          "further period once the hearing is over.",
-         ("needs", "at least 5 business days")),
+         ("needs", "At least 5 business days")),
     ]),
-    ("The legislature's turn", [
+    ("The Legislature's Turn", [
         ("The final proposal", "The agency weighs the comment, settles the "
          "text, and files it.",
          ("needs", "21 to 180 days after the notice")),
@@ -540,12 +603,12 @@ FLOW_RULES = [
         ("Silence is approval", "If the 60 days pass with no notice of "
          "approval, conditional approval or objection, the statute deems the "
          "rule approved. A rule can take effect without anyone having voted "
-         "for it.", ("needs", "no vote required")),
+         "for it.", ("needs", "No vote required")),
         ("An objection is not a veto", "To actually stop a rule the "
          "committee has to sponsor a joint resolution, and that has to pass "
          "both chambers and go to the Governor like any other bill.", ""),
     ]),
-    ("In force, and not for ever", [
+    ("In Force, and Not for Ever", [
         ("Effective the next day", "Once adopted and filed the rule binds "
          "whoever it covers, exactly as a statute would.", ""),
         ("Ten years, then it lapses", "No rule is effective for longer than "
@@ -575,14 +638,14 @@ FLOW_RULES = [
 # is the whole difference: in the traditional meeting it is the same room as
 # the vote, and in an SB 2 town it is a different day from it.
 CMP_TOWN = [
-    ("The warrant",
+    ("The Warrant",
      "The selectmen sign a warrant listing each question to be decided, "
      "called an article, for a single meeting. Voters can add an article by "
      "petition, due five Tuesdays before the meeting.",
      "The same warrant, except that it sets a day for each of two sessions, "
      "and petitions are due earlier &mdash; the second Tuesday in January for "
      "a March vote."),
-    ("Debate and amendment",
+    ("Debate and Amendment",
      ("At the meeting itself. Each article is debated and may be amended from "
       "the floor, and the meeting may vote more or less than the sum an "
       "article asks for.", "say"),
@@ -590,13 +653,13 @@ CMP_TOWN = [
       "deliberative session. Articles are debated and may be amended, and "
       "this is the only place a sum of money can be changed &mdash; but no "
       "article is passed or defeated there.", "say")),
-    ("The vote",
+    ("The Vote",
      "In the same room, straight after the debate. Five voters can ask in "
      "writing for a secret ballot (three in a town of 500 or fewer).",
      "At the polls, by official ballot, with absentee voting as in an "
      "election. There is no debate, and each article reads as the first "
      "session left it."),
-    ("The budget",
+    ("The Budget",
      "Set in the room, where it can be amended up or down. There is no "
      "default budget.",
      ("Printed on the ballot beside a second figure, the default budget. If "
@@ -607,6 +670,7 @@ CMP_TOWN = [
 
 
 BODY_GENERAL_COURT = """
+<h2>The Largest State Legislature</h2>
 <p>The New Hampshire legislative branch is made up of 400 representatives and
 24 senators. It is the largest state legislature in the country: the last
 redistricting drew House districts to <b>3,444 residents a seat</b>.</p>
@@ -621,7 +685,7 @@ on a small number of full days, and committee work fills the rest.</p>
 vacant and are filled at by-elections through the term, so the working size of
 the House moves.</p>
 
-<h2>A term is two years</h2>
+<h2>A Term Is Two Years</h2>
 <p>The General Court sits in two-year terms beginning in odd years. Bill
 numbers are unique across the whole term, so there is only ever one HB 84 in
 2025&ndash;2026, and there will be another in the next term. That is why every
@@ -644,13 +708,13 @@ next term, where it will be a new bill with a new number &mdash; so a bill
 sent to interim study is not waiting to be taken up again, whatever the name
 suggests.</p>
 
-<h2>Every bill gets a public hearing</h2>
+<h2>Every Bill Gets a Public Hearing</h2>
 <p>This is unusual. In most states a committee chair can decline to hear a
 bill and it dies without anyone speaking on it. In New Hampshire every bill
 introduced is referred to a committee and given a public hearing that anyone
 may attend and speak at.</p>
 
-<h2>Bills and resolutions are not the same thing</h2>
+<h2>Bills and Resolutions Are Not the Same Thing</h2>
 <p>Which chamber a measure starts in follows from its prime sponsor: a
 representative's bill begins in the House, a senator's in the Senate.</p>
 <table><tbody>
@@ -671,7 +735,7 @@ three-fifths vote in both chambers and a two-thirds majority of voters. See
 <a href="learn/the-constitution.html">The Constitution</a>.</td></tr>
 </tbody></table>
 
-<h2>How committees work</h2>
+<h2>How Committees Work</h2>
 <p>Every bill is referred to a committee chosen by subject, and the committee
 holds the public hearing, votes on a recommendation following an executive
 session, and writes a report explaining its reasoning. If the committee is
@@ -708,14 +772,17 @@ they voted.</p>""")
 
 
 BODY_BILL = """
+<h2>What a Bill Is</h2>
 <p>A bill is a proposed change to New Hampshire law. It becomes law when both
 chambers have passed it in identical form and the Governor has signed it. A
 bill the Governor does not sign can still become law, either without a
 signature or over a veto.</p>
 
+<h2>The Course of a Bill</h2>
 <p>It has to clear the same course twice, once in each chamber, and it can
 stop at any point on it. Most do.</p>
 """ + flow_diagram() + """
+<h2>Two Meetings Often Confused</h2>
 <p>A public hearing and an executive session are different meetings, and they
 are the two most often confused. A <b>public hearing</b> is where anyone may
 speak, and the committee takes no decision at it. An <b>executive session</b>
@@ -729,7 +796,7 @@ at each, and
 <a href="learn/governor-and-council.html">The Governor and the Executive
 Council</a> for the last stage.</p>
 
-<h2>How most bills end</h2>
+<h2>How Most Bills End</h2>
 <p>Of the [[bills]] bills and resolutions filed in the [[term]] term,
 <b>[[killed]] were killed</b> on a motion of Inexpedient to Legislate, written <b>ITL</b>, and
 <b>[[signed]] were signed into law</b>. Among the rest, [[study]] were sent
@@ -737,7 +804,7 @@ for interim study, [[tabled]] died on the table, and [[session_end]] died when
 the session ended without a final vote. Dying is the ordinary outcome, not a
 failure of the bill or its sponsor.</p>
 
-<h2>How a chamber votes, and what is recorded</h2>
+<h2>How a Chamber Votes, and What Is Recorded</h2>
 <p>A chamber can put a question three ways. A <b>voice vote</b> records only
 which side sounded louder. A <b>division</b> records the count but not who
 voted which way. A <b>roll call</b> records every member by name. In the House
@@ -752,7 +819,7 @@ journals, but this site does not hold them. For most of the rest there is no
 answer to "how did my representative vote", because the bill was decided by
 voice vote or division and no record of names was made.</p>
 
-<h2>Votes that need more than a majority</h2>
+<h2>Votes That Need More Than a Majority</h2>
 <p>Overriding a veto takes two thirds of each chamber, by roll call, under
 Part Second, Article 44 of the state constitution. The article says two thirds
 "of that house", and the House counts it among the members voting rather than
@@ -764,7 +831,7 @@ that three fifths against every member in office rather than against those
 present &mdash; 240 when all 400 House seats are filled &mdash; so a measure
 can win a clear majority of those voting and fail anyway.</p>
 
-<h2>The consent calendar</h2>
+<h2>The Consent Calendar</h2>
 <p>A committee decides in executive session whether to send a bill to the
 consent calendar, and in both chambers that decision must be unanimous. It is
 a separate vote from the committee's recommendation: a recommendation carried
@@ -778,13 +845,13 @@ at the end of the regular calendar. Taking one off has needed ten members in
 the House since January 2023, and two senators in the Senate since April
 2026; before that, one member's request was enough in either chamber.</p>
 
-<h2>Two bills, followed all the way</h2>
+<h2>Two Bills, Followed All the Way</h2>
 <p>Both went through both chambers, and in each the closest roll call divided
 the House without dividing it by party. A majority of Republicans voted one
 way, a majority of Democrats the other, and a substantial minority of each
 party voted against its own side.</p>
 
-<h3>HB 1002 (2024) &mdash; what a public record may cost</h3>
+<h3>HB 1002 (2024): What a Public Record May Cost</h3>
 <p>A town or agency answering a
 right-to-know request may charge for the copies. The question was whether it
 may also charge for the staff time spent finding and reviewing the records.
@@ -805,7 +872,7 @@ it on a voice vote, and Governor Sununu signed it into law on June 14, 2024.
 Five of its proceedings are on video: the House hearing, both House executive
 sessions, the work session between them, and the Senate hearing.</p>
 
-<h3>HB 1215 (2024) &mdash; a bill that went to a committee of conference</h3>
+<h3>HB 1215 (2024): A Bill That Went to a Committee of Conference</h3>
 <p>The longer road at the end of the course. It went to a Special Committee on
 Housing, then to a second chamber that changed it. On the motion to accept
 that change the House divided <b>172 to 180</b>, and the bill went to a
@@ -815,7 +882,7 @@ be appealed: local control of what gets built against the time and cost of
 getting anything built. Six of its proceedings are on video, the conference
 among them. The House then rejected the conference report <b>102 to 261</b>,
 and the bill did not become law.</p>
-<p class="caveat">Both are offered as examples of the process and not as
+<p class="l-note">Both are offered as examples of the process and not as
 settled questions. The site takes no position on either. The arguments above
 are summarised from what was said for and against, and the recordings are
 there so you can check whether that summary is fair.</p>
@@ -853,6 +920,7 @@ signature, and [[overridden]] over a veto.</p>""")
 
 
 BODY_GOVERNOR = """
+<h2>The Governor</h2>
 <p>The New Hampshire governor serves as the state's head of government and
 supreme executive magistrate, responsible for enforcing state laws, proposing
 the biennial state budget, and commanding the New Hampshire National
@@ -865,7 +933,7 @@ five days, Sundays excepted &mdash; unless the legislature's adjournment
 prevents the Governor from returning it, and then it does not become law at
 all. Part Second, Article 44 of the state constitution sets both.</p>
 
-<h2>A veto is not always the end</h2>
+<h2>A Veto Is Not Always the End</h2>
 <p>The legislature can override a veto, but it takes two thirds of each
 chamber, by roll call, starting with the chamber the bill came from. The
 constitution says two thirds "of that house", and the House counts that among
@@ -903,13 +971,14 @@ Council."""
 
 
 BODY_COURTS = """
+<h2>Three Courts</h2>
 <p>New Hampshire has three courts. The <b>Supreme Court</b> hears appeals and
 is the final word on what a state law means. The <b>Superior Court</b> holds
 jury trials and hears the more serious civil and criminal cases. The
 <b>Circuit Court</b> handles the highest volume of cases each year, including
 misdemeanours, small claims, probate and domestic relations.</p>
 
-<h2>How a judge gets the job</h2>
+<h2>How a Judge Gets the Job</h2>
 <p>The Governor nominates and the Executive Council confirms &mdash; the same
 route as a commissioner, which is the clearest illustration of what the
 Council is for. There is no judicial election in New Hampshire at any level.
@@ -919,7 +988,7 @@ been tried. A 2023 amendment to do so passed both chambers and went to the
 voters in November 2024, and a 2026 proposal to make the same change, which
 failed in the House, still described the limit as seventy.</p>
 
-<h2>Where the courts and the legislature meet</h2>
+<h2>Where the Courts and the Legislature Meet</h2>
 <p>The legislature writes statutes, and the courts decide what they mean when
 that is disputed, and whether they are
 permitted by the state or federal constitution. A decision striking down or
@@ -936,20 +1005,22 @@ it links out for anything more."""
 
 
 BODY_CONSTITUTION = """
+<h2>In Two Parts</h2>
 <p>New Hampshire's constitution took effect in 1784 and is among the oldest
 still in force anywhere. It is in two parts. <b>Part First</b> is the Bill of
 Rights &mdash; thirty-odd articles on what the state may not do. <b>Part
 Second</b> is the Form of Government: the House, the Senate, the Governor, the
 Council, the courts, and how each is chosen.</p>
 
-<h2>It is not amended the way statutes are</h2>
+<h2>It Is Not Amended the Way Statutes Are</h2>
 <p>A statute changes when a bill passes both chambers and the Governor signs
 it. The constitution does not. A change starts as a <b>CACR</b> &mdash; a
 Constitutional Amendment Concurrent Resolution &mdash; and it has to clear
 three thresholds, none of which involves the Governor.</p>
-""" + flow_diagram(FLOW_CACR, "How the constitution is amended", level=3) + """
+""" + flow_diagram(FLOW_CACR, "How the constitution is amended",
+                 key=THRESHOLD_KEY) + """
 
-<h2>Why almost none get through</h2>
+<h2>Why Almost None Get Through</h2>
 <p>[[cacr_hurdle]]</p>
 """ + SHOWS.format("""
 <p>[[cacr_record]]</p>
@@ -959,18 +1030,19 @@ with the same words beside it.</p>""")
 
 
 BODY_AGENCIES = """
+<h2>Where Statutes Get Applied</h2>
 <p>The legislature passes a law. An agency carries it out. Health and Human
 Services, Transportation, Environmental Services, Education, Safety, Revenue
 Administration and the rest are where statutes get applied around New
 Hampshire.</p>
 
-<h2>How a commissioner gets the job</h2>
+<h2>How a Commissioner Gets the Job</h2>
 <p>Nominated by the Governor, confirmed by the Executive Council. That is the
 same route as a judge, and it is the most concrete answer to
 <a href="learn/governor-and-council.html">what the Council does</a>. A
 commissioner serves a fixed term and can be reappointed the same way.</p>
 
-<h2>How departments interact with the legislature</h2>
+<h2>How Departments Interact with the Legislature</h2>
 <p>A department is usually among the first bodies asked what a bill would
 actually do, and often the body that would have to do it, so agency staff
 appear at hearings regularly. An agency may support a bill, oppose it, or
@@ -980,7 +1052,7 @@ explain how a bill would be administered, or ask for a technical change, that
 is what you were listening to. Departments may request legislation, but the
 bill itself has to be filed by a legislator.</p>
 
-<h2>What an agency cannot do</h2>
+<h2>What an Agency Cannot Do</h2>
 <p>It cannot give itself powers the statute does not grant. What it can do is
 decide the detail, and it does that by writing
 <a href="learn/administrative-rules.html">administrative rules</a>. Every
@@ -1001,6 +1073,7 @@ every day a committee met and what it heard.</p>""")
 
 
 BODY_RULES = """
+<h2>What a Rule Is</h2>
 <p>An administrative rule is a requirement a state agency writes to carry out a
 statute. Rules are made under RSA 541-A, the Administrative Procedure Act.</p>
 
@@ -1011,13 +1084,13 @@ A bill often says so in as many words: "the department shall adopt rules under
 RSA 541-A". [[rules_delegated]] of the [[bills]] bills and resolutions filed in the
 [[term]] term carry a sentence of that kind.</p>
 
-<h2>How a rule is made</h2>
+<h2>How a Rule Is Made</h2>
 <p>RSA 541-A:3 sets out the course, and the deadlines below come from the
 sections it points at. The whole of it happens in the rulemaking register
 &mdash; a free bulletin the legislature's own staff publish online each week
 &mdash; and not in a chamber calendar, which is why a rulemaking can run its
 full course without ever appearing where people look for legislation.</p>
-""" + flow_diagram(FLOW_RULES, "How a rule is made", level=3) + """
+""" + flow_diagram(FLOW_RULES, "How a rule is made", level_names=True) + """
 <p>Two routes skip most of that. An <b>emergency rule</b> (RSA 541-A:18) takes
 effect at once where the agency finds an imminent peril to public health or
 safety, or a risk of substantial fiscal harm to the state or its citizens,
@@ -1026,7 +1099,7 @@ with only whatever notice the agency finds practicable; an
 a court decision or a federal requirement. Neither lasts more than 180 days,
 so both end in the ordinary course above or they end altogether.</p>
 
-<h2>How the legislature reviews a rule</h2>
+<h2>How the Legislature Reviews a Rule</h2>
 <p>The <b>Joint Legislative Committee on Administrative Rules</b>, or JLCAR,
 has members from both chambers and meets at least once a month. The final
 proposal goes to it before the rule can be adopted. It may approve the rule,
@@ -1038,7 +1111,7 @@ sponsors a joint resolution, which has to pass both chambers and go to the
 Governor <a href="learn/how-a-bill-becomes-law.html">like any other
 legislation</a>.</p>
 
-<h2>After the bill becomes law</h2>
+<h2>After the Bill Becomes Law</h2>
 <p>The law is often not the whole answer. What the statute left open is settled
 in the rule, and the rule's hearing is announced in the rulemaking register,
 not in a chamber calendar.</p>
@@ -1051,13 +1124,14 @@ below."""
 
 
 BODY_LOCAL = """
+<h2>Three Kinds of Local Government</h2>
 <p>Local government in New Hampshire is the city or town, the school district
 and the county. There are [[municipalities]] cities and towns. A city has an
 elected council or board of aldermen. Most towns have no council: the
 legislative body is the town meeting, and the registered voters adopt the
 budget themselves.</p>
 
-<h2>Two ways to hold a town meeting</h2>
+<h2>Two Ways to Hold a Town Meeting</h2>
 <p>A town settles its business once a year, and there are two ways it can do
 it. At a <b>traditional town meeting</b> the voters debate each question and
 decide it in the same room on the same day. A town, school district or village
@@ -1066,9 +1140,9 @@ meeting</b> (RSA 40:13), called <b>SB 2</b> after
 <a href="bill/1995/sb2.html">the 1995 bill</a> that created it. Under SB 2 the
 debate and the vote happen weeks apart, and the vote is cast at the polls.</p>
 """ + compare_diagram(CMP_TOWN, "A traditional town meeting and an SB 2 town, "
-                      "compared", "Traditional town meeting", "SB 2 town") + """
+                      "compared", "Traditional Town Meeting", "SB 2 Town") + """
 
-<h2>The traditional town meeting</h2>
+<h2>The Traditional Town Meeting</h2>
 <p><b>Warrant:</b> the notice of the meeting and the list of business to be
 decided at it. Nothing done at a town meeting except electing its officers is
 valid unless the subject was stated in the warrant (RSA 39:2). A <b>petitioned
@@ -1080,7 +1154,7 @@ for a sum of money the meeting may vote more or less than it asks (RSA 39:2),
 though a town under the municipal budget law is held to the limit in RSA
 32:18.</p>
 
-<h2>How SB 2 towns vote</h2>
+<h2>How SB 2 Towns Vote</h2>
 <p>The meeting is held in two sessions. The first is usually called the
 <b>deliberative session</b>, though the statute calls it only the first
 session, and it handles everything except the ballot. Each article is
@@ -1098,7 +1172,7 @@ session can be reconsidered (RSA 40:13, XIII and XV).</p>
 question, after a public hearing, and can return to a traditional meeting by
 the same three-fifths vote (RSA 40:14).</p>
 
-<h2>The default budget</h2>
+<h2>The Default Budget</h2>
 <p><b>Default budget:</b> the figure an SB 2 town or district falls back on if
 the operating budget on the ballot is defeated. It starts from last year's
 operating budget, is raised or lowered for debt service, contracts and other
@@ -1166,6 +1240,7 @@ them assume you already know all of this."""
 REGISTER_OF_PROBATE_REVIEWED = ""
 
 BODY_COUNTY = """
+<h2>Ten Counties</h2>
 <p>New Hampshire has ten counties: Belknap, Carroll, Cheshire, Coos, Grafton,
 Hillsborough, Merrimack, Rockingham, Strafford and Sullivan. Each is a unit of
 government with its own budget, its own elected officers and its own line on
@@ -1175,7 +1250,7 @@ governs them.</p>
 <p>A county has no council and no mayor. Its legislative body is a group of
 people you already elected to something else.</p>
 
-<h2>The county convention, which is the county delegation</h2>
+<h2>The County Convention, Which Is the County Delegation</h2>
 <p><b>County convention:</b> the legislative body of a county. It consists of
 the state representatives of the representative districts of the county
 (RSA 24:1). Nobody is elected to it separately. A representative elected to
@@ -1204,7 +1279,7 @@ the chairperson has to call one when the county commissioners ask in writing
 to a newspaper circulating in the county at least 7 days beforehand
 (RSA 24:9-d).</p>
 
-<h2>How the county budget is decided</h2>
+<h2>How the County Budget Is Decided</h2>
 <p>The budget is the delegation's main business, and RSA 24 sets out the
 sequence. Two bodies act, in turn, and the order is what decides who can
 change what.</p>
@@ -1240,7 +1315,7 @@ convention that has not adopted one by then does not get an extension. The
 budget as recommended by the commissioners takes effect as the county budget
 (RSA 24:14, II).</p>
 
-<h2>What happens after the budget is adopted</h2>
+<h2>What Happens After the Budget Is Adopted</h2>
 <p>The delegation is still the body that has to be asked. Commissioners and
 county officers may not pay out money that has not been appropriated, or
 exceed what was appropriated (RSA 24:15).</p>
@@ -1263,7 +1338,7 @@ representative has a second job most residents never see: the member who voted
 on a bill in Concord in the morning may spend the evening setting a county
 budget that arrives on the same property tax bill as the town's.</p>
 
-<h2>The county commissioners</h2>
+<h2>The County Commissioners</h2>
 <p><b>County commissioners:</b> the county's executive, and the body that
 runs it day to day. RSA 662:4 divides each of the ten counties into three
 county commissioner districts, and one commissioner is chosen from each, so
@@ -1277,7 +1352,7 @@ run its departments from day to day, and prepare the budget the convention
 votes on. The county treasurer pays money out only on their orders
 (RSA 29:1).</p>
 
-<h2>The officers on the county part of your ballot</h2>
+<h2>The Officers on the County Part of Your Ballot</h2>
 <p>Five county officers are elected by the voters of the county at the state
 general election: a <b>sheriff</b>, a <b>county attorney</b>, a <b>county
 treasurer</b>, a <b>register of deeds</b> and a <b>register of probate</b>.
@@ -1330,7 +1405,7 @@ Medical Examiner, a state office within the Department of Justice, rather than
 by a county officer (RSA 611-B:2, 611-B:11). RSA 611-B replaced RSA 611, the
 earlier medical examiners chapter, which was repealed in 2007.</p>
 
-<h2>What the county pays for, and where the money comes from</h2>
+<h2>What the County Pays For, and Where the Money Comes From</h2>
 <p>Two things dominate a county budget. A county may provide, keep and
 maintain facilities for the confinement of prisoners, administered by a county
 department of corrections (RSA 30-B:1); that is the jail. And long-term care is
@@ -1367,6 +1442,7 @@ they were elected to. The county's own record is kept by the county."""
 
 
 BODY_TOWNS = """
+<h2>City or Town</h2>
 <p>There are [[municipalities]] cities and towns in New Hampshire, and Title
 III of the Revised Statutes governs all of them. The difference between a city
 and a town is not size, and not the word on the sign. In most places it is who
@@ -1379,7 +1455,7 @@ elected council, and so it is in a town whose charter replaced the meeting
 with a town council (RSA 49-D:3). Nearly everything else follows from that one
 difference.</p>
 
-<h2>A town: the meeting decides, the selectboard carries it out</h2>
+<h2>A Town: The Meeting Decides, the Selectboard Carries It Out</h2>
 <p><b>Selectmen:</b> the executive of a town. The statutes say selectmen
 (RSA 41:8); selectboard is the term in common use now for the same body. A
 town elects one selectman each year for a 3-year term, which makes a board of
@@ -1400,7 +1476,7 @@ questions of order and declares every vote passed. The moderator may postpone
 a session for a weather warning, or for an emergency that makes the place
 unsafe (RSA 40:4).</p>
 
-<h2>A city: a council decides, a mayor or a manager carries it out</h2>
+<h2>A City: A Council Decides, a Mayor or a Manager Carries It Out</h2>
 <p>A city has no town meeting. The powers the law vests in towns, or in the
 inhabitants of them, are exercised by the city council (RSA 47:1). The council
 may be called a <b>city council</b> or a <b>board of aldermen</b>; the name is
@@ -1423,7 +1499,7 @@ at least a majority of the council, and the charter sets out how the manager
 may be removed (RSA 49-C:17). Where a city runs this way, the mayor chairs the
 council and the manager runs the administration.</p>
 
-<h2>Town managers and town administrators</h2>
+<h2>Town Managers and Town Administrators</h2>
 <p>A town may adopt the town manager form under RSA 37. It takes a vote: the
 chapter does not operate in a town until a majority of the voters present and
 voting at an annual meeting adopt it (RSA 37:11), and on the written
@@ -1446,7 +1522,7 @@ business, and the administrator works under their direct supervision. Adopting
 RSA 37 moves authority from the elected board to an appointed officer; hiring
 an administrator does not, and needs no vote of the meeting.</p>
 
-<h2>Village districts</h2>
+<h2>Village Districts</h2>
 <p><b>Village district:</b> a smaller unit inside one or more towns, formed to
 provide one service or a few. On the petition of 10 or more voters domiciled
 in a village the selectmen fix the district's bounds, and the statute lists
@@ -1465,7 +1541,7 @@ its taxable value) has adopted it, and it must then appoint that town's
 manager as its own (RSA 37:14). If you live in one, it is a separate line on
 your tax bill.</p>
 
-<h2>The other names on a town ballot</h2>
+<h2>The Other Names on a Town Ballot</h2>
 <p>Some offices every town governed by selectmen elects by ballot: the
 selectmen themselves, the moderator, the supervisors of the checklist and the
 town clerk. The town treasurer and highway agents are elected the same way
@@ -1509,7 +1585,7 @@ meeting to replace those whose terms expire; in a city, chosen as the city's
 ordinance provides (RSA 289:6).</td></tr>
 </tbody></table>
 
-<h2>Planning board and zoning board of adjustment</h2>
+<h2>Planning Board and Zoning Board of Adjustment</h2>
 <p>These two decide what may be built and where, and whether a particular
 property is let off a rule. In some towns you elect them and in others you do
 not, and which it is was a choice the town made.</p>
@@ -1525,7 +1601,7 @@ back (RSA 673:2).</p>
 manner RSA 669 prescribes or appointed in the manner the local legislative
 body prescribes (RSA 673:3).</p>
 
-<h2>School boards and the SAU</h2>
+<h2>School Boards and the SAU</h2>
 <p>A school district is a body separate from the town, with its own meeting,
 its own budget and its own ballot. Its <b>school board</b> has 3, 5, 7 or 9
 members as the district votes, and 3 if it has not voted, elected for three
@@ -1546,7 +1622,7 @@ the member districts, and it has the power to remove the superintendent
 vote for directly: you elected your district's school board, and your
 district's school board sits on the SAU board.</p>
 
-<h2>Changing the form of government: the charter</h2>
+<h2>Changing the Form of Government: The Charter</h2>
 <p><b>Charter:</b> a municipality's own written constitution, adopted by its
 voters. Any incorporated town or city, whatever its population, may draw one
 up under RSA 49-B, the home rule chapter. A charter prepared under RSA 49-C
@@ -1602,6 +1678,7 @@ as though you already knew all of this."""
 
 
 BODY_TESTIFYING = """
+<h2>Open to the Public</h2>
 <p><b>Every legislative meeting and hearing is open to the public.</b> You may
 attend in person, and most are live streamed and archived, so you can watch
 one later. Where you may <i>speak</i> is narrower: a public hearing is the
@@ -1617,7 +1694,7 @@ have to affect you. Committees hear bills for the whole state rather than for
 a district, so anyone may speak on any bill, whoever they are and wherever
 they live.</p>
 
-<h2>How hearings are announced</h2>
+<h2>How Hearings Are Announced</h2>
 <p>A hearing is announced in the chamber's calendar, which is published weekly,
 and on the meeting schedule the General Court keeps online. The notice gives
 the committee, the bill, the day, the time and the room. Across the
@@ -1643,7 +1720,7 @@ it is right about the day it was published whatever this page says.</p>
 <p>Both chambers live stream their standing committee hearings, so a hearing
 can be watched as it happens.</p>
 
-<h2>Signing in</h2>
+<h2>Signing In</h2>
 <p>The House takes sign-ins online, before and during the hearing. You give
 your name and town, say whether you are a member of the public or representing
 an organisation, and mark yourself supporting, opposing or neutral. You may
@@ -1658,10 +1735,10 @@ leads to them. They are kept in the General Court's own sign-in records, which
 its website offers as a lookup of its own. How long that lookup keeps a
 hearing is not documented anywhere this site can point to.</p>
 
-<h2>The steps, in order</h2>
-""" + flow_diagram(FLOW_TESTIFY, "How to testify, in order", level=3) + """
+<h2>The Steps, in Order</h2>
+""" + flow_diagram(FLOW_TESTIFY, "How to testify, in order") + """
 
-<h2>Speaking at the hearing</h2>
+<h2>Speaking at the Hearing</h2>
 <p>Speaking is a separate act from signing in, and the two chambers ask for it
 differently. In the <b>House</b> you fill in a pink card. In the <b>Senate</b>
 there is one sign-in sheet for everything, with a column to tick if you want
@@ -1677,7 +1754,7 @@ concrete: what this bill would do to you, in your town, said in particulars
 rather than in general &mdash; the cost, the date it would take effect, the
 number of people it would reach, whatever the specific is in your case.</p>
 
-<h2>What happens after the hearing</h2>
+<h2>What Happens After the Hearing</h2>
 <p>The committee votes on what to recommend at a later meeting called an
 executive session. It is public and you may attend it, but no testimony is
 taken at it. The committee then reports its recommendation to the chamber, and
@@ -1697,6 +1774,7 @@ opposing and neutral. Names and written testimony are not published here.</p>"""
 
 
 BODY_REPS = """
+<h2>House and Senate Districts</h2>
 <p>New Hampshire is divided into [[house_districts]] House districts and
 [[senate_districts]] Senate districts. Every resident lives in one Senate
 district and in at least one House district, set by the town or ward they live
@@ -1709,7 +1787,7 @@ constitution forbids the legislature to divide a town, ward or place when it
 draws them &mdash; and within that limit representation is to be "as equal as
 circumstances will admit" (Part II, Article 9).</p>
 
-<h2>Everyone who represents one town</h2>
+<h2>Everyone Who Represents One Town</h2>
 <p>This is every seat a voter in one town elects, from the most local to the
 whole state. The town is [[reps_town]], because its layers nest cleanly and
 show a floterial district plainly.</p>
@@ -1718,7 +1796,7 @@ show a floterial district plainly.</p>
 [[reps_town]]'s own page</a>, and every other town and ward has one like
 it.</p>
 
-<h2>What the district numbering means</h2>
+<h2>What the District Numbering Means</h2>
 <p>A House district is written as a county and a number: Rockingham 13,
 Hillsborough 44, or abbreviated to <b>Rock 13</b>. The number is not a rank or
 a size. It is an index within that county, and the map is redrawn every ten
@@ -1731,7 +1809,7 @@ one to each town. The largest elects [[largest]] representatives.</p>
 state rather than by county, and many cross county lines. Each elects one
 senator, and district 22 is written <b>SD22</b>.</p>
 
-<h2>What a floterial district is</h2>
+<h2>What a Floterial District Is</h2>
 <p>A floterial district is a House district laid exactly over two or more
 neighbouring House districts in the same county, each of which already elects
 its own members. It elects one or more additional members across all of them
@@ -1751,7 +1829,7 @@ or more of the county's other districts put together &mdash; [[reps_flot]] is
 [[reps_flot_under]] combined. Every one of the [[floterial]] districts this
 site marks as floterial passes that test against the statute.</p>
 
-<h2>How to contact a member</h2>
+<h2>How to Contact a Member</h2>
 <p>[[members_email]] of the [[members_sitting]] sitting members publish an
 email address in the General Court's directory. Almost none have staff, so a
 message to a representative is read by that representative. Most have other
@@ -1764,6 +1842,7 @@ has a button that opens an email to all of them at once.</p>""")
 
 
 BODY_SITE = """
+<h2>What This Site Is</h2>
 <p>Granite Record is an index of the New Hampshire General Court's own record:
 [[all_bills]] bills across [[terms]] two-year terms, back to [[first_year]],
 with what each bill does, who sponsored it, when it was heard, how it was
@@ -1774,7 +1853,7 @@ from the General Court's published files, and this page was last built on
 <p>Older terms hold less, and every bill's page says what its term carries and
 what has not been fetched.</p>
 
-<h2>How to find a bill, a member or a town</h2>
+<h2>How to Find a Bill, a Member or a Town</h2>
 <p>The <b>Search</b> button in the header finds legislators, committees, towns
 and this site's own pages: typing Litchfield offers both the town and the
 representative of that name. Anything else goes to
@@ -1784,7 +1863,7 @@ one term, or all of them at once, and narrows by committee, topic, prime
 sponsor, status, bill type and floor vote day. <a href="legislators.html">Every sitting member</a> and
 <a href="committees.html">every committee</a> has a page of their own.</p>
 
-<h2>What a bill's page holds</h2>
+<h2>What a Bill's Page Holds</h2>
 <ul>
 <li><b>Summary</b> &mdash; the General Court's own analysis, the current
 status, and a narrative of what has happened, in order, with each action
@@ -1805,7 +1884,7 @@ vetoed.</li>
 comes from.</li>
 </ul>
 
-<h2>What a timestamp claims</h2>
+<h2>What a Timestamp Claims</h2>
 <p>Not all of them claim the same thing, and the page says which.</p>
 <ul>
 <li>Where the chair can be heard taking the bill up, that is the time.</li>
@@ -1821,7 +1900,7 @@ as "HP 1381" often enough that a quotation would be a transcription error
 wearing the clothes of a citation. The timestamp is the claim. The recording
 is the evidence.</p>
 
-<h2>Reading the shorthand</h2>
+<h2>Reading the Shorthand</h2>
 <table><tbody>
 <tr><th scope="row"><b>OTP</b></th><td><b>Ought to Pass:</b> a motion to pass the bill</td></tr>
 <tr><th scope="row"><b>OTP/A</b></th><td><b>Ought to Pass with Amendment</b></td></tr>
@@ -1842,7 +1921,7 @@ would cost</td></tr>
 <tr><th scope="row"><b>-LOCAL</b></th><td><b>Local fiscal impact:</b> on towns or schools</td></tr>
 </tbody></table>
 
-<h2>Following a bill</h2>
+<h2>Following a Bill</h2>
 <p>A bill still moving through the General Court carries an RSS feed, and so
 does every sitting member, every current committee, and every topic. The
 <b>Follow</b> control on a record's page gives the address where there is one.
@@ -1850,7 +1929,7 @@ There are also feeds for the record's newest actions and for hearings coming
 up. A bill's feed ends once the bill is settled. There is no email option yet.
 No account, no email address, nothing to leak.</p>
 
-<h2>How to report an error</h2>
+<h2>How to Report an Error</h2>
 <p>Every record's page carries a <b>Report a problem</b> box at the foot,
 because this will be wrong somewhere. It sends nothing that identifies you,
 which also means we cannot reply. For an answer, or for an error on these
@@ -1930,13 +2009,35 @@ SRC_BALLOT_LIST = ("Past amendments and their vote shares (Ballotpedia, "
 # where a reader of the courts page most often wants to go next.
 SRC_DOJ = ("New Hampshire Department of Justice", "https://www.doj.nh.gov")
 
+# THE RESOURCES HUB'S OFFICIAL SOURCES TAB: every outside source these pages
+# cite, grouped by who publishes it (the groups' names are the approved
+# prototype's, 9 October 2026). build_civics stops the build where a page
+# cites a source that is in no group and not set aside below, or a group
+# lists one no page cites, so the tab and the pages cannot disagree. The
+# Secretary of State's results pages that The Record in Numbers cites are
+# added to ELECTIONS_GROUP from the rows its table shows.
+ELECTIONS_GROUP = "Elections and the Constitution"
+SOURCE_GROUPS = [
+    ("The General Court", [SRC_RSA, SRC_RULES, SRC_HOUSE_RULES, SRC_SENATE_RULES,
+                           SRC_CALENDARS, SRC_SCHEDULE, SRC_SENATE_SCHEDULE,
+                           SRC_TESTIFY, SRC_JLCAR]),
+    ("The Governor and State Agencies", [SRC_GOVERNOR, SRC_COUNCIL, SRC_AGENCIES, SRC_DOJ]),
+    ("The Courts", [SRC_COURTS]),
+    (ELECTIONS_GROUP, [SRC_SOS, SRC_CONSTITUTION]),
+    ("Towns and Counties", [SRC_NHMA, SRC_COUNTIES]),
+]
+# Cited, and not official: a third party's list, labelled so where it is
+# cited. The hub's tab lists the state's own sites and the two membership
+# bodies the officials themselves send a resident to.
+NOT_OFFICIAL = [SRC_BALLOT_LIST]
+
 
 # ---------------------------------------------------------------------------
 # The eleven. Order is the proposal's order and it is what the "next topic"
 # link walks; the hub and the sitemap read the same list.
 # ---------------------------------------------------------------------------
-HOW = "How the state works"
-PART = "How to take part"
+HOW = GROUPS[0][0]
+PART = GROUPS[1][0]
 
 TOPICS = [
     topic("general-court", "The General Court", HOW,
@@ -1947,7 +2048,7 @@ TOPICS = [
           [SRC_CONSTITUTION, SRC_HOUSE_RULES, SRC_SENATE_RULES,
            SRC_FIND_MEMBER]),
 
-    topic("how-a-bill-becomes-law", "How a bill becomes law", HOW,
+    topic("how-a-bill-becomes-law", "How a Bill Becomes Law", HOW,
           "From an idea filed in the autumn to a law that takes effect, and "
           "the several places along the way where a bill can stop.",
           BODY_BILL,
@@ -1963,7 +2064,7 @@ TOPICS = [
           [SRC_CONSTITUTION, SRC_GOVERNOR, SRC_COUNCIL],
           BODY_GOVERNOR_HOLDS),
 
-    topic("the-courts", "The courts", HOW,
+    topic("the-courts", "The Courts", HOW,
           "Supreme, Superior and Circuit; how judges are appointed and how "
           "long they serve; and where the legislature and the courts meet.",
           BODY_COURTS,
@@ -1977,13 +2078,13 @@ TOPICS = [
           BODY_CONSTITUTION,
           [SRC_CONSTITUTION, SRC_SOS, SRC_BALLOT_LIST]),
 
-    topic("state-agencies", "State agencies", HOW,
+    topic("state-agencies", "State Agencies", HOW,
           "Who actually carries out what the legislature passes, and how a "
           "commissioner gets the job.",
           BODY_AGENCIES,
           [SRC_AGENCIES, SRC_COUNCIL, SRC_CONSTITUTION]),
 
-    topic("administrative-rules", "Administrative rules", HOW,
+    topic("administrative-rules", "Administrative Rules", HOW,
           "A statute says what shall happen; the rules say how, and the "
           "agency writes them. This is the least visible part of the process "
           "and one of the most consequential.",
@@ -1991,14 +2092,14 @@ TOPICS = [
           [SRC_RULES, SRC_JLCAR, SRC_RSA],
           BODY_RULES_HOLDS),
 
-    topic("local-government", "Town meeting and local government", HOW,
+    topic("local-government", "Town Meeting and Local Government", HOW,
           "Where warrant articles, default budgets and \u201cSB 2 towns\u201d "
           "come from -- all of which turn up in bills here, unexplained.",
           BODY_LOCAL,
           [SRC_RSA, SRC_SOS],
           BODY_LOCAL_HOLDS),
 
-    topic("county-government", "County government", HOW,
+    topic("county-government", "County Government", HOW,
           "Ten counties, and the body that sets each one's budget is the "
           "state representatives you already elected, meeting under a second "
           "name.",
@@ -2006,7 +2107,7 @@ TOPICS = [
           [SRC_RSA, SRC_COUNTIES, SRC_SOS],
           BODY_COUNTY_HOLDS),
 
-    topic("city-and-town-government", "Cities, towns and who runs them", HOW,
+    topic("city-and-town-government", "Cities, Towns and Who Runs Them", HOW,
           "A town meeting and a selectboard, or a council and a mayor, or a "
           "council and a manager -- and the other offices you elect without "
           "being told what they do.",
@@ -2014,18 +2115,18 @@ TOPICS = [
           [SRC_RSA, SRC_NHMA, SRC_SOS],
           BODY_TOWNS_HOLDS),
 
-    topic("testifying", "Testifying and attending", PART,
+    topic("testifying", "Testifying and Attending", PART,
           "The most open part of the process and the least known. Anyone may "
           "speak on any bill, and you do not need to be invited.",
           BODY_TESTIFYING,
           [SRC_TESTIFY, SRC_SCHEDULE, SRC_SENATE_SCHEDULE, SRC_CALENDARS]),
 
-    topic("your-representatives", "Finding your representatives", PART,
+    topic("your-representatives", "Finding Your Representatives", PART,
           "By town and by district, and what the district numbering means.",
           BODY_REPS,
           [SRC_FIND_MEMBER, SRC_SOS]),
 
-    topic("using-this-site", "Using this site", PART,
+    topic("using-this-site", "Using This Site", PART,
           "What the tabs hold, what a timestamp claims and what it does not, "
           "how to follow a bill, and how to tell us we are wrong.",
           BODY_SITE,

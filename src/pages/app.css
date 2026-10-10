@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.231 */
+/* GRANITE_VERSION: 2026-09-07.232 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -1334,7 +1334,7 @@ line-height:1.1}
   .fhead .badge,.wkchips button[aria-pressed="true"],
   .cmgrid td.cmpick,.calviews button[aria-pressed="true"],.cdopen,
   .calcat input:checked + .cbx,.searchbig button,.wbtn.sel,h1.lockup,
-  .rtabs [role=tab][aria-selected=true]{
+  .rtabs [role=tab][aria-selected=true],.l-g{
   -webkit-print-color-adjust:exact;print-color-adjust:exact}
 }
 
@@ -3318,11 +3318,9 @@ margin-top:var(--sp-1)}
 .shell.nofacets .facets{display:none}
 
 /* ---- the civics section ------------------------------------------------
-   Eleven pages that are prose first, so this is the one part of the site
-   where the reading measure IS the page rather than a column inside a card.
-   --measure is 560px and every block here takes it, so the text and the box
-   it sits in end together. Wide things -- there are none yet, but a diagram
-   is coming -- opt out with .wide. */
+   .civics is the prose column the data page is drawn in; the Learn pages and
+   the Resources hub moved to their own rules on 9 October 2026, further down
+   ("RESOURCES AND LEARN, IN THE APPROVED DESIGN"). */
 
 /* WHO REPRESENTS THIS TOWN. Built like the civics pages, because it is the
    same kind of page: server-rendered prose in the same shell, read once
@@ -3503,121 +3501,11 @@ color:var(--ink-2);font-variant-numeric:tabular-nums}
    empty on the right of a Learn page is the next thing to answer, with the
    contents rail the mockups show. */
 .civics{max-width:var(--measure);margin:0;padding:0 0 var(--sp-10)}
-/* THE HEADING BLOCK, A SIBLING OF THE PROSE. It holds the crumb, the h1 and
-   the lead, and it is separate only so that a narrow screen can put the
-   contents list BETWEEN it and the prose: inside .civics the only orders
-   available were the list above the title, or the list under 1,900 words of
-   the page it describes. Both are wrong, and 768px is where that showed.
-   At 861px and up the two simply stack in the first column, which is what one
-   element did before. */
-.civhead{max-width:var(--measure);margin:0;padding:var(--sp-3) 0 0;
-grid-column:1}
-.civics{grid-column:1}
-/* THE READING COLUMN, AND THE TWO QUESTIONS BESIDE IT. The note on .civics
-   just above names what was left open when these pages were pulled to the
-   site's left edge: "what that leaves empty on the right of a Learn page is
-   the next thing to answer, with the contents rail the mockups show". This is
-   that answer.
-
-   A reader who arrives from a search result landed on ONE section of ONE page
-   and does not know the other eight, or the other thirteen pages, exist. So
-   the column beside the prose answers what is on THIS page first and what is
-   in this section second -- the page they are on above the section they did
-   not know about, which is the order this site puts an answer in.
-
-   ONE WRAPPER, NOT TWO GRID ITEMS. position:sticky is clipped to its own grid
-   area, and two stacked areas would split the column's height between them:
-   only the lower list would have had any travel, and it would have been the
-   wrong one. .lside is a single item in a single full-height area, so both
-   lists follow the page down together -- and it is the WRAPPER that scrolls
-   when nine sections above fourteen pages come to more than the window.
-
-   THE GAP BETWEEN THE TWO COLUMNS IS NOT DEAD SPACE, AND MUST NOT BE CLOSED.
-   It looks like 280px of nothing at 1440, and it was closed here once --
-   justify-self:start and a 300px rail -- before looking at the page showed
-   what it is for. `.civics .flow` breaks out of the reading column by 230px a
-   side at 1100px and up, so the diagram on how-a-bill-becomes-law runs from
-   x=-84 to x=936 while the article is 146 to 706. A rail pinned to the right
-   edge at 1042 clears it by 106px. A rail moved in to 762 sits underneath it,
-   and the four phase columns read through the contents list. The arithmetic
-   is written out at `.flow`'s own media query, which says the diagram "never
-   reaches the page's own edge" -- that sentence is only true while the rail
-   is at the edge.
-
-   So the geometry is exactly what it was, and what fills the column is the
-   second list rather than a wider first one. Widening the TRACK instead was
-   also tried and is also wrong: two non-flexible tracks share free space
-   equally, so just above 860px the rail would take its full 300 while the
-   article fell to about 214, the reverse of today, where 1fr yields and the
-   article keeps its measure. */
-/* --rail is the contents rail's width, named once because the diagrams'
-   breakout below has to stop short of it and the two numbers must not be
-   allowed to drift apart. */
-.lcols{--rail:236px;display:grid;grid-template-columns:minmax(0,var(--measure)) 1fr;
-grid-template-rows:auto 1fr;column-gap:var(--sp-11);align-items:start}
-/* The rail is beside BOTH rows of the first column, not beside the prose with
-   the heading above it: sticky needs one tall area to travel in. */
-.lside{grid-column:2;grid-row:1/span 2;
-position:sticky;top:20px;justify-self:end;width:var(--rail);
-max-height:calc(100vh - 40px);overflow-y:auto;overflow-x:hidden;
-font-size:var(--t-ui);padding-top:var(--sp-5)}
-/* The sections of one page and the pages of one section are the same kind of
-   list, so they are drawn the same way and told apart by a rule between them
-   rather than by a second visual language. */
-:is(.ctoc,.lrail) h2{font-size:var(--t-part);letter-spacing:.05em;
-text-transform:uppercase;color:var(--ink-2);margin:0 0 var(--sp-4);
-padding-bottom:var(--sp-4);border-bottom:1px solid var(--rule);font-family:var(--serif);font-weight:600}
-:is(.ctoc,.lrail) ol{list-style:none;margin:0;padding:0}
-:is(.ctoc,.lrail) a{display:block;
-padding:var(--sp-3) 0 var(--sp-3) var(--sp-5);color:var(--ink-2);
-text-decoration:none;line-height:1.4;border-left:2px solid transparent}
-:is(.ctoc,.lrail) a:hover{color:var(--ink);background:var(--wash)}
-/* The site's focus ring stands 2px off the element, and .lside's own overflow
-   would clip it on the left edge. Drawn inside instead. */
-:is(.ctoc,.lrail) a:focus-visible{outline-offset:-2px}
-.lrail a[aria-current]{color:var(--ink);font-weight:600;
-border-left-color:var(--pine)}
-/* The sections of one page read as one spine. There is no mark for the
-   section you are IN, and there should not be: nothing in a stylesheet knows
-   which heading is on screen, scroll-spy would be new JavaScript for a
-   decoration, and this site does not draw a state it cannot keep true. */
-.ctoc a{border-left-color:var(--rule)}
-.ctoc a:hover{border-left-color:var(--pine)}
-.ctoc + .lrail{margin-top:var(--sp-8);border-top:1px solid var(--rule);
-padding-top:var(--sp-6)}
-@media (max-width:53.75em){
-  /* ONE COLUMN, IN THE ORDER THE READER NEEDS rather than the order the
-     markup has. The contents go ABOVE the prose, because that is the reader
-     this was built for and a list of a page's sections printed under 1,900
-     words of it is a list nobody reaches; the section's other pages stay
-     BELOW, where they have always been. display:contents makes .lside's two
-     children flex items of .lcols so the two can be ordered apart, and an
-     element with display:contents still exists for inheritance, so they keep
-     the wrapper's font size.
-
-     align-items and gap are restated rather than left to the grid above: in a
-     column flex container align-items:start shrink-wraps every block instead
-     of letting it fill the page, which is the same correction .shell already
-     carries at 720. */
-  .lcols{display:flex;flex-direction:column;align-items:stretch;gap:0}
-  .lside{display:contents}
-  .civhead{order:1}
-  .ctoc{order:2;max-width:var(--measure);margin:0 0 var(--sp-7);
-  border-top:1px solid var(--rule);border-bottom:1px solid var(--rule);
-  padding:var(--sp-5) 0}
-  .civics{order:3}
-  .lrail{order:4;max-width:var(--measure);border-top:1px solid var(--rule);
-  padding-top:var(--sp-6)}
-  /* Nine destinations down the side of a phone is 250px of list before the
-     first sentence, so they go in columns wherever 14rem of them fit. At 360
-     the gutters leave 336px and it resolves to one, which is right. */
-  .ctoc ol{columns:2 14rem;column-gap:var(--sp-9)}
-  .ctoc li{break-inside:avoid}
-  .ctoc a{padding:var(--sp-2) 0 var(--sp-2) var(--sp-4)}
-}
-:is(.civics,.civhead) h1{font-size:var(--t-title);line-height:1.2;margin:var(--sp-3) 0 var(--sp-4)}
+/* THE PROSE RULES OF .civics, which the data page (build_exports) still
+   draws with; the Learn pages and the Resources hub have their own below. */
+.civics h1{font-size:var(--t-title);line-height:1.2;margin:var(--sp-3) 0 var(--sp-4)}
 .civics h2{font-size:var(--t-h2);margin:var(--sp-9) 0 var(--sp-4)}
-/* ARRIVING HALFWAY DOWN A PAGE. Every section has an address now, so a search
+/* ARRIVING HALFWAY DOWN A PAGE. Every section has an address, so a search
    engine can send somebody straight to one. Mark what they were sent to, and
    do not put it flush against the top of the window. The wash is a spread
    shadow rather than padding, so the heading does not jump when it is hit and
@@ -3626,27 +3514,26 @@ padding-top:var(--sp-6)}
 background:var(--pine-soft);box-shadow:0 0 0 var(--sp-3) var(--pine-soft)}
 /* The record in numbers (learn_numbers.py): tables that scroll inside their
    own box on a phone rather than pushing the page sideways. */
-.civics .tablewrap{overflow-x:auto;margin:var(--sp-4) 0 var(--sp-3)}
+.l-art .tablewrap{overflow-x:auto;margin:var(--sp-4) 0 var(--sp-3);position:relative}
 .numtab{border-collapse:collapse;width:100%;font-size:var(--t-ui)}
 .numtab th,.numtab td{text-align:left;padding:var(--sp-3);border-bottom:1px solid var(--rule);
   vertical-align:top}
 /* ONE LINE FOR A TERM. Six columns of counts with their shares fill the
-   column's 560 pixels on a desktop, and the browser broke "1989-1990" at its
-   dash and each "702 (46.0%)" before its bracket, row after row. The share is
-   joined to its count in learn_numbers (_np); the first column -- a term, a
-   year, a bill, a chamber -- stays whole here, unless it is a committee's
-   name, which wraps. On a phone the table scrolls in its own box. */
+   column on a desktop, and the browser broke "1989-1990" at its dash and
+   each "702 (46.0%)" before its bracket, row after row. The share is joined
+   to its count in learn_numbers (_np); the first column -- a term, a year, a
+   bill, a chamber -- stays whole here, unless it is a committee's name,
+   which wraps. On a phone the table scrolls in its own box. */
 .numtab td:first-child{white-space:nowrap}
 .numtab.names td:first-child{white-space:normal}
 .numtab th{font-size:var(--t-sm);letter-spacing:.04em;text-transform:uppercase;color:var(--ink-2);
   font-weight:600}
 .numtab td{font-variant-numeric:tabular-nums}
-.numlist{columns:2 16rem;font-size:var(--t-ui);margin:var(--sp-4) 0}
 .civics h3{font-size:var(--t-h3);font-weight:600;letter-spacing:0;
 text-transform:none;color:var(--ink);margin:var(--sp-7) 0 var(--sp-3);font-family:var(--serif)}
 .civics p{font-family:var(--serif);font-size:var(--t-read);line-height:1.68;
 margin:0 0 var(--sp-5)}
-:is(.civics,.civhead) .lead{font-size:var(--t-lead);line-height:1.6;color:var(--ink);margin:0 0 var(--sp-6)}
+.civics .lead{font-size:var(--t-lead);line-height:1.6;color:var(--ink);margin:0 0 var(--sp-6)}
 .civics ul,.civics ol{font-family:var(--serif);font-size:var(--t-read);line-height:1.68;
 padding-left:var(--sp-7);margin:0 0 var(--sp-5)}
 .civics li{margin-bottom:var(--sp-4)}
@@ -3654,329 +3541,357 @@ padding-left:var(--sp-7);margin:0 0 var(--sp-5)}
 :is(.civics,.civhead) .crumb a{color:var(--ink-2)}
 /* A TERM AND WHAT IT MEANS: the term is its row's header. These tables had
    no header cell at all, so a browser took them for layout and a screen
-   reader was given no table (the audit of 2 October 2026, M7). The cell is a
-   th now and is drawn as the td it was: to the left, and only as heavy as the
-   <b> inside it. */
+   reader was given no table (the audit of 2 October 2026, M7). */
 .civics th[scope="row"]{text-align:left;font-weight:400}
 
-/* ---- THE COURSE OF A BILL, AS A DIAGRAM -------------------------------
-   A diagram and not a picture. It is an ordered list of ordered lists --
-   four phases, and the stages inside each -- so a screen reader reads it as
-   the sequence it is, a reader with no CSS gets the same sequence, and there
-   is no image to fail to load and nothing to keep in step with the prose.
-   SVG was the obvious choice and the wrong one: a four-lane flow that has to
-   become one column at 360px is a layout problem, and CSS already solves
-   layout. The only thing drawn rather than written is the connector.
-
-   The structure carries the information, which is the brief's rule: the
-   phases are the two chambers and the two ends, the steps are in the order
-   they happen, and a step a bill can die at says so and is marked. That last
-   part is the point of the whole diagram -- the course is not a pipeline,
-   it is a series of places to stop, and most bills stop. */
-.flow{margin:var(--sp-7) 0 var(--sp-8)}
-/* ONE COLUMN FIRST. Four phases across needs about 235px each to be worth
-   reading, and the civics pages are a 560px measure -- four columns in that
-   came out at 115px, which is a column of broken words rather than a
-   diagram. So it stacks by default and goes across only where there is
-   genuinely room, which is the 1100px below. */
-.flowphases{list-style:none;margin:0;padding:0;display:grid;
-grid-template-columns:1fr;gap:var(--sp-6) 0;align-items:start}
-.phase{position:relative;min-width:0}
-/* The connector, drawn on the phase rather than between them so adding a
-   phase cannot leave a line pointing at nothing. Vertical while stacked. */
-.phase:not(:last-child):after{content:"";position:absolute;top:100%;
-left:15px;width:1px;height:18px;background:var(--rule-2)}
-.phname{font-size:var(--t-sm);font-weight:600;letter-spacing:.05em;
-text-transform:uppercase;color:var(--ink-2);margin:0 0 var(--sp-4);padding-bottom:var(--sp-3);
-border-bottom:1px solid var(--rule-2)}
-/* A phase is a part label: Learn's h2 rule (.civics h2) outranks .phname
-   and had been setting the four phases at its own size -- 19px, and 24px
-   once that rule became the prose heading (8 October 2026), which is a
-   phrase's heading and not a diagram's. */
-.civics .phname{font-family:var(--serif);font-size:var(--t-part)}
-.steps{list-style:none;margin:0;padding:0;display:grid;gap:var(--sp-3)}
-.step{background:var(--surface);border:1px solid var(--rule);
-border-radius:var(--r-out);padding:var(--sp-4) var(--sp-5)}
-.step b{display:block;font-size:var(--t-ui);font-weight:600;line-height:1.3}
-.step span{display:block;font-size:var(--t-sm);color:var(--ink-2);margin-top:var(--sp-1);
-line-height:1.45}
-/* A STAGE A BILL CAN DIE AT. The left edge is the mark, in the red the site
-   already uses for a bill that was voted down, and the word says so too --
-   the brief's rule is that no state is carried by colour alone.
-
-   NAMED .dies AND NOT .stop, WHICH IS WHAT IT WAS FIRST. `.stop` is the
-   passage rail's class, 800 lines above, where `.stop b` is an absolutely
-   positioned 15px circle with `color:transparent` -- so every "Executive
-   session" and "Floor vote" in this diagram rendered as invisible text in a
-   little grey disc. Nothing errored; the contrast sweep found it at 1:1,
-   which is the signature of text the same colour as its background.
-   This is the third time one class name has been two components here: the
-   file already records `.ctitle` being both a card title and a bill title
-   inside a committee day, and `.p-R` being both a tinted chip and a solid
-   bar segment. A new component gets its own prefix. */
-.step.dies{border-left:3px solid var(--st-done)}
-.step .mark{display:block;font-style:normal;font-size:var(--t-sm);font-weight:600;
-color:var(--st-done);margin-top:var(--sp-2)}
-/* And one a member of the public can speak at, which is the other thing a
-   reader wants from this diagram. */
-.step.say{border-left:3px solid var(--pine)}
-.step .say-m{display:block;font-style:normal;font-size:var(--t-sm);font-weight:600;
-color:var(--pine);margin-top:var(--sp-2)}
-/* A THRESHOLD, which is a third kind of thing and needs a third mark. On the
-   constitution page the number IS the teaching point -- 240 of 400, three
-   fifths of all seats, two thirds of those voting -- so the label is written
-   per step rather than being one generic word. Amber, the colour a bill
-   still moving wore when this was written; the stages turned slate blue on
-   8 October 2026 and a threshold kept its amber, which is now the tabled
-   ink's (--st-table) and is the same colour it always was here. The number
-   carries it in any case: the brief's rule is that nothing is told by colour
-   alone. */
-.step.needs{border-left:3px solid var(--st-table)}
-.step .needs-m{display:block;font-style:normal;font-size:var(--t-sm);font-weight:600;
-color:var(--st-table);margin-top:var(--sp-2)}
-/* FOUR ACROSS, AND OUT OF THE MEASURE -- TO THE RIGHT ONLY. The diagram is the
-   one wide thing on a prose page, so from 1100px it leaves the 560px column
-   rather than being squeezed into it. Below 1100px it stays stacked, because
-   four readable columns do not fit and a cramped diagram is worse than a
-   tall one.
-
-   IT USED TO BREAK OUT 230px EACH SIDE, and that put its first phase off the
-   screen. The note here said 230 a side "puts it at 1020px inside the 1132px
-   the page column has at 1440, so it never reaches the page's own edge" --
-   true of a prose column CENTRED in the page, which is what it was when that
-   was written. The contents rail came later and moved the prose to the left
-   of .lcols, and nothing recalculated: measured at 1440, the prose starts at
-   146px, so -230 put the diagram's left edge at -84 and the first phase of
-   How a bill becomes law, the section's most important page, was mostly
-   off the screen. Every flow on these pages was, and nobody had looked at
-   one wider than 1000px.
-
-   So it now grows only into space that is actually empty: rightward, across
-   the column gap and the unused part of the rail's column, stopping the same
-   56px short of the rail that the gap keeps the prose from it. That room is
-   the page column's width less the prose, the rail and the gap, and it
-   changes with the window, so it is measured from .lcols as a container
-   rather than typed as a number. --rail is the rail's own width, named once
-   above so the two cannot drift apart. .cmp shares the rule, and so, since
-   the interface went to 16px on 8 October 2026, does a table: By the
-   numbers' six columns no longer fitted the prose's 37rem and scrolled
-   inside their box beside 400px of empty page. */
-@media (min-width:68.75em){
-  .lcols{container-type:inline-size}
-  .civics :is(.flow,.cmp,.lay,.tablewrap){margin-left:0;margin-right:0;
-  width:calc(100cqw - var(--rail) - var(--sp-11));max-width:none}
-  .flowphases{grid-template-columns:repeat(4,minmax(0,1fr));gap:0 var(--sp-8)}
-  .phase:not(:last-child):after{top:11px;left:100%;width:26px;height:1px}
-}
-
-/* ---- TWO WAYS OF DOING THE SAME THING -----------------------------------
-   compare_diagram's table: one stage per row, the two forms side by side. It
-   takes the flow diagram's parts -- the phase heading for the stage, the step
-   card for each cell, the same three marks -- so a page carrying both reads
-   as one visual language rather than two.
-
-   THREE LAYOUTS, BY WIDTH, one markup. A phone stacks each stage: heading,
-   then one form, then the other, each cell naming its own column. From 600px
-   the two forms sit side by side under the stage heading, which is the
-   comparison the table exists to make. From 1100px it breaks out of the 560px
-   measure by the .flow rule -- rightward, up to the contents rail -- and
-   becomes a real three-column table with the column headings shown.
-
-   The rows are restacked with display:grid, which is why civics.py gives the
-   table explicit roles: without them a browser may drop a regridded table
-   from the accessibility tree. */
-.cmp{margin:var(--sp-7) 0 var(--sp-8)}
-.cmptab{display:block;width:100%;border-collapse:collapse}
-.cmptab thead{position:absolute;width:1px;height:1px;padding:0;margin:-1px;
-overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
-.cmptab tbody{display:grid;gap:var(--sp-6)}
-.cmptab tr{display:grid;grid-template-columns:1fr;gap:var(--sp-3)}
-.cmptab th[scope=row]{grid-column:1/-1;text-align:left;font-size:var(--t-sm);
-font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-2);
-margin:0;padding:0 0 var(--sp-3);border-bottom:1px solid var(--rule-2)}
-.cmptab td{display:block;background:var(--surface);border:1px solid var(--rule);
-border-radius:var(--r-out);padding:var(--sp-4) var(--sp-5);vertical-align:top}
-.cmptab td::before{content:attr(data-l);display:block;font-family:var(--sans);
-font-size:var(--t-sm);font-weight:600;color:var(--ink);margin-bottom:var(--sp-1)}
-.cmptab td > span{display:block;font-size:var(--t-sm);color:var(--ink-2);line-height:1.5}
-.cmptab td.same{grid-column:1/-1;background:var(--paper)}
-.cmptab td.dies{border-left:3px solid var(--st-done)}
-.cmptab td.say{border-left:3px solid var(--pine)}
-.cmptab td.needs{border-left:3px solid var(--st-table)}
-.cmptab td i{display:block;font-style:normal;font-size:var(--t-sm);font-weight:600;
-margin-top:var(--sp-2)}
-.cmptab .mark{color:var(--st-done)}
-.cmptab .say-m{color:var(--pine)}
-.cmptab .needs-m{color:var(--st-table)}
-@media (min-width:37.5em){
-  .cmptab tr{grid-template-columns:1fr 1fr}
-}
-@media (min-width:68.75em){
-  /* The breakout itself is the .flow rule's, shared: rightward only, up to
-     the rail. */
-  .cmptab thead{position:static;width:auto;height:auto;margin:0;
-  overflow:visible;clip:auto;white-space:normal;display:block;
-  margin-bottom:var(--sp-3)}
-  .cmptab thead tr,.cmptab tbody tr{grid-template-columns:minmax(150px,.55fr) 1fr 1fr;
-  align-items:start}
-  .cmptab thead th{text-align:left;font-family:var(--sans);font-size:var(--t-ui);
-  font-weight:600;color:var(--ink);padding:0 var(--sp-5) var(--sp-3);
-  border-bottom:2px solid var(--rule-2)}
-  .cmptab thead th:first-child{padding-left:0;color:var(--ink-2)}
-  .cmptab tbody{gap:var(--sp-4)}
-  .cmptab th[scope=row]{grid-column:auto;border-bottom:0;padding:var(--sp-4) 0 0}
-  .cmptab td::before{content:none}
-  .cmptab td.same{grid-column:2/-1}
-}
-
-/* ---- EVERYONE WHO REPRESENTS ONE ADDRESS ---------------------------------
-   layers_diagram's table: one row per seat a resident votes for, most local
-   first. Same parts as the two diagrams above -- the step card for a row, the
-   amber threshold mark for the floterial row, which is the thing the page is
-   teaching -- so all three read as one visual language.
-   A phone gets each seat as a card with its three facts labelled; from 600px
-   it is a real four-column table; from 1100px it takes the .flow breakout,
-   rightward up to the contents rail. */
-.lay{margin:var(--sp-7) 0 var(--sp-8)}
-.laytab{display:block;width:100%;border-collapse:collapse}
-.laytab thead{position:absolute;width:1px;height:1px;padding:0;margin:-1px;
-overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
-.laytab tbody{display:grid;gap:var(--sp-3)}
-.laytab tr{display:block;background:var(--surface);border:1px solid var(--rule);
-border-radius:var(--r-out);padding:var(--sp-4) var(--sp-5)}
-.laytab tr.needs{border-left:3px solid var(--st-table)}
-.laytab th[scope=row]{display:block;text-align:left;font-size:var(--t-ui);
-font-weight:600;margin:0 0 var(--sp-2)}
-.laytab th[scope=row] i{display:block;font-style:normal;font-size:var(--t-sm);
-font-weight:600;color:var(--st-table);margin-top:var(--sp-1)}
-.laytab td{display:block;font-size:var(--t-sm);color:var(--ink-2);line-height:1.5}
-.laytab td::before{content:attr(data-l) ": ";font-weight:600;color:var(--ink)}
-@media (min-width:37.5em){
-  .laytab thead{position:static;width:auto;height:auto;margin:0 0 var(--sp-2);
-  overflow:visible;clip:auto;white-space:normal;display:block}
-  .laytab thead tr,.laytab tbody tr{display:grid;
-  grid-template-columns:minmax(0,1.25fr) minmax(0,1fr) minmax(0,.55fr) minmax(0,2fr);
-  gap:var(--sp-4);align-items:start}
-  .laytab thead tr{background:none;border:0;padding:0 var(--sp-5) var(--sp-2)}
-  .laytab thead th{text-align:left;font-size:var(--t-label);font-weight:600;
-  color:var(--ink-2);letter-spacing:.04em;text-transform:uppercase}
-  .laytab th[scope=row]{margin:0}
-  .laytab td::before{content:none}
-}
-
-/* A block that points into the record: the whole argument for this section
-   living here rather than being a link to somebody else's explainer. */
-.shows{border-left:3px solid var(--pine);background:var(--pine-soft);
-padding:var(--sp-5) var(--sp-6);margin:0 0 var(--sp-6);border-radius:0 var(--r-in) var(--r-in) 0}
-/* h2 OR h3, because the box is used at two depths: the hub's "If you read
-   one" is the first thing after that page's h1, and a topic page's "In the
-   record" sits under a section heading. The label looks the same either way
-   -- the level is about the outline, not about the type. */
-.shows :is(h2,h3){font-family:var(--serif);font-size:var(--t-part);font-weight:600;
-letter-spacing:.05em;text-transform:uppercase;color:var(--ink-2);margin:0 0 var(--sp-3)}
-.shows p{margin:0 0 var(--sp-4);font-size:var(--t-ui)}
-.shows p:last-child{margin-bottom:0}
-.shows a{color:var(--pine);font-weight:600}
-
-/* A limit, said plainly rather than left for the reader to discover. */
-.caveat{border-left:3px solid var(--rule-2);background:var(--paper);
-padding:var(--sp-5) var(--sp-5);font-size:var(--t-ui);color:var(--ink-2);margin:var(--sp-6) 0 0}
-
-/* Where this comes from. Not a bibliography for respectability: a reader who
-   wants to check should be one click from the authority. */
+/* Where this comes from, on a town page. Not a bibliography for
+   respectability: a reader who wants to check should be one click from the
+   authority. */
 .srcs{margin-top:var(--sp-9);border-top:1px solid var(--rule);padding-top:var(--sp-5)}
 .srcs h2{font-size:var(--t-part);font-weight:600;letter-spacing:.05em;
 text-transform:uppercase;color:var(--ink-2);margin:0 0 var(--sp-4);font-family:var(--serif)}
 .srcs ul{font-size:var(--t-ui);font-family:var(--sans);padding-left:var(--sp-7)}
 .srcs li{margin-bottom:var(--sp-2)}
 
-/* The hub's topic list. Numbered, because the order is the argument. */
-/* THE HUB IS A SET OF DOORS, NOT A QUEUE. Eleven entries in one 560px column
-   made a reader scroll past nine of them to see the last, on a page whose
-   whole job is letting them choose. Two columns above 900px, one below, and
-   the numbers stay: the section is in the order the institutions act on a
-   bill, and that order is worth reading off the page. */
+/* The data page's column: the doors go wide, the sentences do not. */
 .hubpage{max-width:980px}
-/* The doors go wide; the sentences do not. Prose set to 980px is 110
-   characters a line, and the lead above it is capped at 28em, so the two
-   disagreed visibly -- a short line followed by a very long one. Everything
-   that is read stays at the measure the eleven pages themselves use, and only
-   the grid takes the width. */
-.hubpage > p,.hubpage > .shows{max-width:var(--measure)}
-.tlist{list-style:decimal;padding-left:var(--sp-8);margin:var(--sp-2) 0 var(--sp-8)}
-.tlist li{margin-bottom:var(--sp-1)}
-@media (min-width:56.25em){
-  /* DOWN A COLUMN, NOT ACROSS THE PAIR. The grid's default row flow filled
-     left, right, left, right, so a numbered list of ten put 1, 3, 5, 7, 9 in
-     the left column and the reader's eye, going down it, met every other
-     page. The person's words for it: the two columns appear to shuffle the
-     order of the pages back and forth -- on a list whose own heading says it
-     is in the order the institutions act on a bill.
-     grid-auto-flow:column fills the first column top to bottom and then the
-     second, so down the left is 1 to 5 and down the right is 6 to 10. That
-     needs an explicit row count, which is the list's own length halved and
-     rounded up: build_civics sets --rows on each list, at build time, so no
-     script runs and the page is right with JavaScript off. */
-  .hubpage .tlist{display:grid;grid-template-columns:1fr 1fr;
-  grid-auto-flow:column;grid-template-rows:repeat(var(--rows,99),auto);
-  column-gap:var(--sp-8);row-gap:var(--sp-2);align-items:start}
-  /* The marker hangs outside a grid item's box, so the list needs the room
-     on its left that a decimal list normally takes from its own padding. */
-  .hubpage .tlist li{margin-bottom:0}
+.hubpage > p{max-width:var(--measure)}
+
+/* ---- RESOURCES AND LEARN, IN THE APPROVED DESIGN (9 October 2026) --------
+   The person: "I think the resources page should have an initial hub linking
+   to the learn pages, the how to guides, and official sources with tabs for
+   each"; "Resources page looks good"; "Constitution page looks good"; "feel
+   free to build out and revise the remaining Learn pages". The prototypes
+   are private/design/polish/proto/resources.html and learn/*.html, and this
+   is their stylesheet (the kit's parts these pages use, and the Learn pages'
+   own) under one prefix, l- (r- for the hub's lists), so nothing here meets
+   a class another page draws with: `.stop` was once the rail's and a
+   diagram's at the same time, and rendered every marked step invisible.
+   Sizes in rem, breakpoints in em, colours the palette's tokens.
+
+   THE ARTICLE: the Resources bar (the hub's three tabs, Learn current), the
+   head (title, its line, On this page and Cite this page side by side, a
+   ruled foot), then W4 sections (C7): the heading in a left margin, level
+   with its first line, beside prose held to about 100 characters; a figure
+   across both columns where the prose leaves off. Below 60em the heading
+   goes over its text. */
+.l-page{--l-meas:51.1875rem;--l-hang:10rem;
+  --l-chev:url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%23000%22 stroke-width=%222.25%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Cpath d=%22M9 5.5l6.5 6.5L9 18.5%22/%3E%3C/svg%3E");
+  --l-list:url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%23000%22 stroke-width=%221.9%22 stroke-linecap=%22round%22%3E%3Cpath d=%22M9 6.5h11M9 12h11M9 17.5h11%22/%3E%3Ccircle cx=%224.5%22 cy=%226.5%22 r=%221%22 fill=%22%23000%22/%3E%3Ccircle cx=%224.5%22 cy=%2212%22 r=%221%22 fill=%22%23000%22/%3E%3Ccircle cx=%224.5%22 cy=%2217.5%22 r=%221%22 fill=%22%23000%22/%3E%3C/svg%3E");
+  padding:0 0 var(--sp-10)}
+
+/* the Resources bar */
+.l-hub{display:flex;flex-wrap:wrap;align-items:flex-end;column-gap:1.25rem;
+  border-bottom:1px solid var(--rule-2);margin-top:1.125rem}
+.l-hubname{margin:0;display:flex;align-items:center;padding:0 0 .6875rem;font:500 var(--t-ui)/1.2 var(--sans)}
+.l-hubname a{color:var(--pine);text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:3px}
+.l-hubname a:hover{color:var(--ink)}
+.l-hubname::after{content:"";width:.42em;height:.42em;border-top:1.5px solid var(--ink-2);
+  border-right:1.5px solid var(--ink-2);transform:rotate(45deg);margin:0 .1em 0 .7em}
+.l-hubtabs{display:flex;flex-wrap:wrap;gap:.25rem 1.5rem}
+.l-hubtab{display:inline-flex;align-items:center;font:400 var(--t-ui)/1.2 var(--sans);color:var(--ink-2);
+  padding:.75rem .125rem .5625rem;border-bottom:4px solid transparent;margin-bottom:-1px;text-decoration:none;white-space:nowrap}
+.l-hubtab:hover{color:var(--ink)}
+.l-hubtab[aria-current]{color:var(--ink);font-weight:600;border-bottom-color:var(--pine)}
+@media (max-width:45em){
+  .l-hub{display:block}
+  .l-hubname{padding:0}
+  .l-hubname a{display:inline-flex;align-items:center;min-height:2.75rem}
+  .l-hubname::after{display:none}
+  .l-hubname a::before{content:"";display:inline-block;width:.42em;height:.42em;
+    border-bottom:1.5px solid var(--ink-2);border-left:1.5px solid var(--ink-2);
+    transform:rotate(45deg);margin:0 .55em 0 .2em}
+  .l-hubtabs{gap:.125rem 1.25rem}
 }
 
-/* START HERE. Three pages answer nine visits in ten, and a reader who has
-   never been here cannot tell that from thirteen equal rows. These sit above
-   the lists as a shortcut, not as a replacement: the ordered lists below stay
-   complete, because "the institutions in the order they act on a bill" is a
-   thing worth teaching and a list with three gaps in it teaches it wrong.
-   The shape is the site's one chip shape -- 3px radius, a 1px edge and a 3px
-   bar down the left -- so a card here, a person's chip and a bill's status
-   are all recognisably the same object. */
-.startrow{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--sp-5);
-margin:var(--sp-4) 0 var(--sp-8)}
-.startcard{display:block;padding:var(--sp-5);background:var(--surface);
-border:1px solid var(--edge);border-left:3px solid var(--pine);
-border-radius:var(--r-in);text-decoration:none;color:inherit}
-.startcard:hover{background:var(--pine-soft);border-color:var(--pine);
-border-left-color:var(--pine)}
-.startcard b{display:block;font-family:var(--sans);font-size:var(--t-ui);
-color:var(--pine);margin-bottom:var(--sp-2)}
-.startcard span{display:block;font-size:var(--t-ui);color:var(--ink-2);
-line-height:1.5}
-/* One column well before the cards would be too narrow to read: three cards
-   in 700px is 220px each, which breaks the second line of every blurb. */
-@media (max-width:47.5em){.startrow{grid-template-columns:1fr;gap:var(--sp-4)}}
-.tlist a{display:block;padding:var(--sp-4) var(--sp-5);margin-left:-12px;text-decoration:none;
-border-radius:var(--r-in);color:inherit}
-.tlist a:hover{background:var(--pine-soft)}
-.tlist b{display:block;font-family:var(--sans);font-size:var(--t-ui);
-color:var(--pine)}
-.tlist span{display:block;font-size:var(--t-ui);color:var(--ink-2);margin-top:1px}
+/* the head */
+.l-head{padding-top:1.125rem}
+.l-head h1{font:600 var(--t-title)/1.12 var(--serif);color:var(--ink);letter-spacing:-.01em;
+  text-wrap:balance;margin:1.25rem 0 0}
+.l-lead{font:400 var(--t-lead)/1.45 var(--serif);color:var(--ink);margin:.625rem 0 0;max-width:44rem;text-wrap:pretty}
+.l-head::after{content:"";display:block;border-bottom:2px solid var(--ink);margin-top:1.5rem}
+.r-head h1{margin-top:.75rem}
+/* On this page and Cite this page, side by side under the line: the row
+   shell.py writes, set to the left and to its own panes. */
+.l-head .pageacts{justify-content:flex-start;margin:1.125rem 0 0;gap:.5rem}
+.l-head .pageacts > details > summary{min-height:2.5rem;padding:0 .875rem;gap:.5rem;
+  font:500 var(--t-ui)/1 var(--sans);color:var(--ink);background:var(--surface);border:1px solid var(--edge)}
+.l-head .pageacts > details > summary:hover{background:var(--wash)}
+.l-head .pageacts > details[open] > summary{border-color:var(--ink)}
+.l-head .pageacts .citebody{left:0;right:auto}
+.l-otp > summary{cursor:pointer;list-style:none;display:flex;align-items:center;border-radius:var(--r-in)}
+.l-otp > summary::-webkit-details-marker{display:none}
+.l-otp > summary::before{content:"";width:1.125rem;height:1.125rem;background:var(--ink-2);
+  -webkit-mask:var(--l-list) center/contain no-repeat;mask:var(--l-list) center/contain no-repeat}
+.l-otp > summary::after{content:"";width:.875rem;height:.875rem;background:var(--ink-2);
+  -webkit-mask:var(--l-chev) center/contain no-repeat;mask:var(--l-chev) center/contain no-repeat;
+  transform:rotate(90deg);transition:transform .15s}
+.l-otp[open] > summary::after{transform:rotate(-90deg)}
+.l-otpb{position:absolute;left:0;top:calc(100% + 6px);z-index:30;width:min(40rem,100%);box-sizing:border-box;
+  background:var(--surface);border:1px solid var(--rule-2);border-top:2px solid var(--ink);border-radius:var(--r-in);
+  box-shadow:0 8px 22px var(--shadow);padding:.5rem 1rem .75rem}
+.l-otpb ol{list-style:none;margin:0;padding:0;columns:2 15rem;column-gap:2rem}
+.l-otpb li{break-inside:avoid;border-bottom:1px solid var(--rule)}
+.l-otpb a{display:flex;align-items:center;min-height:2.75rem;font:500 var(--t-ui)/1.3 var(--sans);color:var(--pine);
+  text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:3px}
+.l-otpb a:hover{color:var(--ink)}
+@media (prefers-reduced-motion:reduce){.l-otp > summary::after{transition:none}}
+@media (max-width:45em){
+  .l-head .pageacts > details{flex:1 1 auto}
+  .l-head .pageacts > details > summary{justify-content:center;min-height:2.75rem}
+}
 
-/* Next topic, by name. A menu does not answer the question a reader has just
-   finished forming. */
-.tnav{margin-top:var(--sp-9);border-top:1px solid var(--rule);padding-top:var(--sp-6);
-display:flex;flex-wrap:wrap;gap:var(--sp-4);align-items:stretch}
-.tnav a{text-decoration:none;color:inherit}
-.tnav .next,.tnav .prev{flex:1 1 220px;border:1px solid var(--edge);
-border-radius:var(--r-out);padding:var(--sp-4) var(--sp-5);background:var(--surface)}
-.tnav .next{border-color:var(--pine)}
-.tnav .next:hover,.tnav .prev:hover{background:var(--pine-soft)}
-.tnav span{display:block;font-size:var(--t-sm);letter-spacing:.05em;
-text-transform:uppercase;color:var(--ink-2)}
-.tnav b{display:block;font-size:var(--t-ui);color:var(--pine);margin-top:var(--sp-1)}
-.tnav .prev b{color:var(--ink)}
-/* 22px TALL, BESIDE TWO 58px CARDS. LAUNCH.md 7.3 recorded it and left it;
-   it is the third item in a row of three and the only one that was not a
-   target. Stretched to the row's height with padding of its own it is the
-   same quiet link, and the same 44px minimum every other link on the site
-   gets on a phone. */
-.tnav .all{align-self:stretch;display:flex;align-items:center;
-font-size:var(--t-ui);color:var(--ink-2);padding:var(--sp-4) var(--sp-5);min-height:44px;
-border-radius:var(--r-in)}
-.tnav .all:hover{background:var(--wash);color:var(--ink)}
-@media(max-width:32.5em){.tnav .next,.tnav .prev{flex:1 1 100%}}
+/* the sections */
+.l-art{padding-top:1.75rem}
+.l-sec{border-top:1px solid var(--rule);padding:1.125rem 0 0;margin:0 0 1.75rem;scroll-margin-top:1rem}
+.l-sec:first-child{border-top:0;padding-top:0}
+.l-sech{font:600 var(--t-h3)/1.35 var(--serif);color:var(--ink);margin:0 0 .5rem;text-wrap:balance}
+.l-sech a{color:var(--pine);text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:3px}
+.l-sech a:hover{color:var(--ink)}
+.l-sec:target > .l-sech{background:var(--pine-soft);box-shadow:0 0 0 var(--sp-3) var(--pine-soft)}
+.l-secb > :first-child{margin-top:0}
+.l-secb > :last-child{margin-bottom:0}
+.l-secb + .l-wide,.l-wide + .l-secb{margin-top:.75rem}
+.l-secb > p:not([class]){font:400 var(--t-read)/1.65 var(--serif);color:var(--ink);margin:0 0 .75rem;max-width:var(--l-meas)}
+.l-secb > :is(ul,ol):not([class]){font:400 var(--t-read)/1.6 var(--serif);color:var(--ink);
+  margin:0 0 .875rem;padding-left:1.25rem;max-width:var(--l-meas)}
+.l-secb > :is(ul,ol):not([class]) > li{margin:0 0 .4375rem;padding-left:.25rem}
+.l-secb > :is(ul,ol):not([class]) > li::marker{color:var(--ink-2)}
+.l-secb > h3{font:600 var(--t-h3)/1.3 var(--serif);color:var(--ink);margin:1.75rem 0 .5rem}
+.l-art .l-secb a:not([class]){color:var(--pine);text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:3px}
+.l-art .l-secb a:not([class]):hover{color:var(--ink)}
+@media (min-width:60em){
+  .l-sec{display:grid;grid-template-columns:minmax(var(--l-hang),1fr) minmax(0,var(--l-meas));column-gap:2rem;align-items:start}
+  .l-sech{grid-column:1;grid-row:1;margin:0;padding-top:.125rem}
+  .l-sec > .l-secb{grid-column:2}
+  .l-sec > .l-wide{grid-column:1 / -1}
+}
+/* a limit, said plainly rather than left for the reader to discover */
+.l-note{font:400 var(--t-ui)/1.55 var(--sans);color:var(--ink-2);background:var(--wash);border-left:3px solid var(--rule-2);
+  padding:.625rem .875rem;margin:1rem 0;border-radius:0 var(--r-in) var(--r-in) 0;max-width:var(--l-meas)}
+
+/* a table in the prose: a term and what it means */
+.l-tablewrap{overflow-x:auto;border:1px solid var(--rule-2);border-radius:var(--r-in);background:var(--surface);
+  margin:1rem 0 .75rem;max-width:var(--l-meas);position:relative}
+.l-table{border-collapse:collapse;width:100%;font:400 var(--t-ui)/1.5 var(--sans);color:var(--ink)}
+.l-table caption{text-align:left;font:600 var(--t-h3)/1.3 var(--serif);padding:.75rem 1rem .5rem;caption-side:top}
+.l-table th{font:600 var(--t-label)/1.3 var(--sans);letter-spacing:.07em;text-transform:uppercase;color:var(--ink-2);
+  text-align:left;padding:.625rem 1rem;border-bottom:1px solid var(--ink);vertical-align:bottom}
+.l-table th[scope=row]{font:600 var(--t-ui)/1.5 var(--sans);letter-spacing:0;text-transform:none;color:var(--ink);
+  border-bottom:1px solid var(--rule);vertical-align:top;white-space:nowrap}
+.l-table th[scope=row].is-text{white-space:normal}
+.l-table td{padding:.625rem 1rem;border-bottom:1px solid var(--rule);vertical-align:top}
+.l-table tbody tr:last-child > *{border-bottom:0}
+.l-table td b,.l-table th b{font-weight:600}
+.l-deftab th[scope=row]{width:9rem}
+@media (max-width:40em){
+  .l-deftab,.l-deftab tbody,.l-deftab tr,.l-deftab th,.l-deftab td{display:block;width:auto}
+  .l-deftab th[scope=row]{border-bottom:0;padding:.75rem .875rem 0;white-space:normal}
+  .l-deftab td{padding:.25rem .875rem .75rem}
+}
+/* a table of several columns restacks on a phone: each row a block, each
+   cell with its column's name, from the cell's data-l */
+@media (max-width:37.5em){
+  .l-stack table,.l-stack tbody,.l-stack tr,.l-stack th,.l-stack td{display:block}
+  .l-stack thead{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+  .l-stack tr{border-bottom:1px solid var(--rule);padding:.5rem 0}
+  .l-stack tr:last-child{border-bottom:0}
+  .l-stack .l-table th[scope=row]{border-bottom:0;padding:.25rem 1rem;white-space:normal}
+  .l-stack .l-table td{border-bottom:0;padding:.25rem 1rem;display:grid;grid-template-columns:8.5rem minmax(0,1fr);gap:.75rem}
+  .l-stack td::before{content:attr(data-l);font:600 var(--t-sm)/1.5 var(--sans);color:var(--ink-2)}
+}
+/* at a large browser text the label goes over its value (22em is 352px at
+   16px, 528px at 24px) */
+@media (max-width:22em){.l-stack .l-table td{grid-template-columns:minmax(0,1fr);gap:0}}
+
+/* where this comes from: document rows, the name the link, the host beside it */
+.l-docs{list-style:none;margin:0;padding:0;border-top:1px solid var(--rule);max-width:var(--l-meas)}
+.l-doc{display:flex;flex-wrap:wrap;align-items:baseline;gap:.25rem 1rem;padding:.625rem 0;
+  border-bottom:1px solid var(--rule);font:400 var(--t-ui)/1.5 var(--sans)}
+.l-doc a{color:var(--pine);text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:3px}
+.l-doc a:hover{color:var(--ink)}
+.l-dmeta{color:var(--ink-2);font-size:var(--t-sm);font-variant-numeric:tabular-nums}
+
+/* Previous Topic on the left, Next Topic on the right, All Topics between */
+.l-pager{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);grid-template-areas:"p m n";
+  align-items:center;gap:.25rem 1rem;margin:2rem 0 1.75rem;padding:.375rem 0;
+  border-top:1px solid var(--rule);border-bottom:1px solid var(--rule);font:400 var(--t-ui)/1.35 var(--sans)}
+.l-pgp{grid-area:p;justify-self:start} .l-pgm{grid-area:m;justify-self:center}
+.l-pgn{grid-area:n;justify-self:end;text-align:right}
+.l-pager a{display:inline-flex;flex-direction:column;justify-content:center;min-height:2.75rem;color:var(--pine);text-decoration:none}
+.l-pgw{font-weight:600;text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:3px}
+.l-pgp .l-pgw::before{content:"\2039\00a0"}
+.l-pgn .l-pgw::after{content:"\00a0\203A"}
+.l-pgd{font-size:var(--t-sm);color:var(--ink-2)}
+a.l-pgm{font-weight:600;text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:3px}
+.l-pager a:hover,.l-pager a:hover .l-pgw{color:var(--ink)}
+@media (max-width:30em){
+  .l-pager{grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-areas:"p n" "m m"}
+}
+
+/* the thirteen pages, at the foot, in the hub's two groups */
+.l-all{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,18rem),1fr));gap:1rem 2.5rem}
+.l-all h3{font:600 var(--t-label)/1.3 var(--sans);letter-spacing:.07em;text-transform:uppercase;color:var(--ink-2);
+  margin:0;padding-bottom:.375rem;border-bottom:1px solid var(--ink)}
+.l-all ol{list-style:none;margin:0;padding:0}
+.l-all li{border-bottom:1px solid var(--rule)}
+.l-all a,.l-all [aria-current]{display:flex;align-items:center;min-height:2.75rem;font:500 var(--t-ui)/1.3 var(--sans)}
+.l-all a{color:var(--pine);text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:3px}
+.l-all a:hover{color:var(--ink)}
+.l-all [aria-current]{color:var(--ink);font-weight:600;box-shadow:inset 3px 0 0 var(--pine);padding-left:.75rem}
+
+/* ---- the diagrams ----------------------------------------------------------
+   A diagram and not a picture: ordered lists and tables, so a screen reader
+   reads the sequence it is, a reader with no CSS gets the same sequence, and
+   nothing is drawn but the connectors and the marks. */
+.l-fig{margin:1.25rem 0 .75rem;min-width:0}
+.l-cap{font:400 var(--t-sm)/1.5 var(--sans);color:var(--ink-2);margin:.75rem 0 0;max-width:var(--l-meas)}
+.l-capsw{display:inline-block;width:.75rem;height:.75rem;border-left:3px solid var(--st-table);
+  background:var(--st-table-bg);vertical-align:-.0625rem;margin-right:.375rem}
+.l-steps{list-style:none;margin:0;padding:0;display:grid;gap:.625rem}
+.l-step{background:var(--surface);border:1px solid var(--rule-2);border-radius:var(--r-out);padding:.75rem .875rem .875rem;min-width:0}
+.l-step > b{display:block;font:600 var(--t-ui)/1.35 var(--sans);color:var(--ink)}
+.l-step > span:not(.l-mk){display:block;margin-top:.3125rem;font:400 var(--t-ui)/1.5 var(--sans);color:var(--ink-2)}
+.l-step.is-need{border-left:3px solid var(--st-table)}
+.l-step.is-dies{border-left:3px solid var(--st-done)}
+.l-step.is-say{border-left:3px solid var(--cal-hear)}
+.l-step.is-rec{border-left:3px solid var(--pine)}
+/* A MARK UNDER ITS STEP: the glyph or the fraction in a column of its own and
+   the words in the next, two grid cells, so the one cannot run into the
+   other at any width or text size (item 20: the constitution's 3/5 had run
+   under its words on a phone, because it was one glyph wider than its box). */
+.l-mk{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:center;column-gap:.625rem;margin-top:.75rem}
+.l-mk + .l-mk{margin-top:.5rem}
+.l-mk.is-bare{display:flex}
+.l-mt{justify-self:start;font:600 var(--t-sm)/1.3 var(--sans);padding:.125rem .5rem;border-radius:var(--r-in)}
+.is-need > .l-mt{background:var(--st-table-bg);color:var(--st-table)}
+.is-dies > .l-mt{background:var(--st-done-bg);color:var(--st-done)}
+.is-say > .l-mt{background:var(--cal-hear-bg);color:var(--cal-hear)}
+.is-rec > .l-mt{background:var(--pine-soft);color:var(--pine)}
+/* the glyph, white on its own disc of the mark's colour; on paper the
+   disc is printed with it (the shared print block names .l-g) */
+.l-g{width:1.5rem;height:1.5rem;border-radius:50%;display:grid;place-items:center;
+  background:var(--ink-2);color:var(--surface)}
+.l-g svg{width:.875rem;height:.875rem;display:block}
+.l-g.is-dies{background:var(--st-done)}
+.l-g.is-say{background:var(--cal-hear)}
+.l-g.is-rec{background:var(--pine)}
+.l-sub{display:block;margin-top:.125rem;font:400 var(--t-sm)/1.45 var(--sans);color:var(--ink-2)}
+/* a fraction built of two numbers over a rule, not a font's fraction glyph */
+.l-frac{display:inline-grid;justify-items:center;font:600 1.25rem/1 var(--serif);color:var(--st-table);
+  font-variant-numeric:lining-nums tabular-nums}
+.l-frac > span{display:block;padding:0 .3125rem}
+.l-frac > span:first-child{padding-bottom:.1875rem;border-bottom:2px solid currentColor}
+.l-frac > span:last-child{padding-top:.1875rem}
+.l-frac.is-l{font-size:1.75rem}
+
+/* phases across the page, a column each, an arrow between */
+.l-phases{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1.5rem 2.75rem}
+.l-phase{position:relative;min-width:0}
+.l-phase:not(:last-child)::after{content:"";position:absolute;top:.25rem;right:-2.125rem;width:1.5rem;height:1.5rem;
+  background:var(--ink-2);-webkit-mask:var(--l-chev) center/contain no-repeat;mask:var(--l-chev) center/contain no-repeat}
+.l-phname{font:600 var(--t-h3)/1.3 var(--serif);color:var(--ink);margin:0 0 .75rem;padding:0 0 .5rem;border-bottom:1px solid var(--ink)}
+/* the phase names held level however many lines one takes */
+.l-level .l-phases{gap:0 2.75rem}
+.l-level .l-phase{display:grid;grid-row:span 2;grid-template-rows:subgrid;margin-bottom:1.5rem}
+.l-level .l-phname{align-self:end;text-wrap:balance}
+.l-level .l-steps{align-content:start}
+@media (max-width:59.99em){
+  .l-phases,.l-level .l-phases{grid-template-columns:repeat(2,minmax(0,1fr));gap:1.75rem 1.5rem}
+  .l-phase::after{display:none}
+  .l-level .l-phase{margin-bottom:0}
+}
+@media (max-width:37.5em){
+  .l-phases,.l-level .l-phases{grid-template-columns:minmax(0,1fr);gap:2.25rem}
+  .l-phase:not(:last-child)::after{display:block;top:auto;bottom:-1.875rem;right:auto;left:.5rem;transform:rotate(90deg)}
+}
+
+/* two ways of doing the same thing, side by side at each stage */
+.l-cmptab{width:calc(100% + 1.25rem);margin:-.625rem;border-collapse:separate;border-spacing:.625rem;table-layout:fixed}
+.l-cmptab thead th{font:600 var(--t-h3)/1.3 var(--serif);color:var(--ink);text-align:left;vertical-align:bottom;
+  padding:0 0 .5rem;border-bottom:1px solid var(--ink)}
+.l-cmptab thead th:first-child{width:12rem}
+.l-cmptab tbody th{font:600 var(--t-ui)/1.4 var(--sans);color:var(--ink);text-align:left;vertical-align:top;
+  padding:.8125rem 0 0;border-top:1px solid var(--rule)}
+.l-cmptab td{background:var(--surface);border:1px solid var(--rule-2);border-radius:var(--r-in);padding:.75rem .875rem .875rem;
+  vertical-align:top;font:400 var(--t-ui)/1.5 var(--sans);color:var(--ink-2)}
+.l-cmptab td > span:first-child{display:block}
+.l-cmptab td.is-say{border-left:3px solid var(--cal-hear)}
+.l-cmptab td.is-need{border-left:3px solid var(--st-table)}
+.l-cmptab td.is-dies{border-left:3px solid var(--st-done)}
+@media (max-width:40em){
+  .l-cmptab,.l-cmptab tbody,.l-cmptab tr,.l-cmptab th,.l-cmptab td{display:block;width:auto;margin:0}
+  .l-cmptab thead{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+  .l-cmptab tbody tr{margin:0 0 1.5rem}
+  .l-cmptab tbody th{font:600 var(--t-h3)/1.3 var(--serif);border-top:0;border-bottom:1px solid var(--ink);padding:0 0 .375rem}
+  .l-cmptab td{margin-top:.625rem}
+  .l-cmptab td::before{content:attr(data-l);display:block;font:600 var(--t-label)/1.3 var(--sans);letter-spacing:.07em;
+    text-transform:uppercase;color:var(--ink-2);margin:0 0 .3125rem}
+}
+
+/* everyone who represents one town */
+.l-lay .l-tablewrap{max-width:none}
+.l-lay td[data-l="District"]{white-space:nowrap}
+
+/* ---- THE RESOURCES HUB ------------------------------------------------------
+   A list head, then the three tabs (the town pages' strip and script), each
+   panel a white sheet hanging from the strip. On a phone the three tabs share
+   the width, two lines each if they must, so none is cut off at the edge. */
+.r-hub .r-tabs{margin:1.5rem 0 0;border-bottom:2px solid var(--ink);gap:.25rem 1.75rem}
+.r-hub .r-tabs [role=tab]{font-weight:400;padding:.75rem .125rem .625rem;min-height:2.75rem}
+.r-hub .r-tabs [role=tab][aria-selected=true]{font-weight:600;box-shadow:inset 0 -4px 0 var(--pine)}
+.r-n{font-weight:400;color:var(--ink-2)}
+.r-tabs:not([hidden]) ~ .r-sheet{background:var(--surface);border:1px solid var(--rule-2);border-top:0;
+  border-radius:0 0 var(--r-in) var(--r-in);padding:1.75rem 2rem 2rem}
+@media (max-width:45em){
+  .r-hub .r-tabs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:0 .75rem;overflow:visible}
+  .r-hub .r-tabs [role=tab]{display:block;white-space:normal;text-align:center;padding:.625rem .125rem .5rem;line-height:1.3}
+  .r-tabs:not([hidden]) ~ .r-sheet{padding:1.125rem .875rem 1.375rem}
+}
+.r-sheet .l-sec{margin-bottom:1.5rem}
+.r-sheet .l-sec:last-child{margin-bottom:0}
+.r-intro{font:400 var(--t-ui)/1.55 var(--sans);color:var(--ink-2);margin:0 0 1.25rem;max-width:46rem}
+.r-sheet .l-secb > .r-intro:first-child{margin-top:0}
+.r-start{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,14rem),1fr));gap:.875rem}
+.r-start a{display:block;height:100%;box-sizing:border-box;background:var(--surface);border:1px solid var(--rule-2);
+  border-radius:var(--r-out);padding:1rem 1.125rem 1.125rem;text-decoration:none;color:var(--ink)}
+.r-start a:hover{border-color:var(--pine)}
+.r-start b{display:block;font:600 var(--t-read)/1.3 var(--serif);color:var(--pine);
+  text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:3px}
+.r-start span{display:block;margin-top:.5rem;font:400 var(--t-ui)/1.5 var(--sans);color:var(--ink-2)}
+.r-topics,.r-srcs{list-style:none;margin:0;padding:0;display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(min(100%,21rem),1fr));column-gap:2.25rem}
+.r-topics li{border-top:1px solid var(--rule);padding:.75rem 0 .875rem}
+.r-topics a{font:600 var(--t-ui)/1.4 var(--sans);color:var(--pine);text-decoration:underline;
+  text-decoration-thickness:1px;text-underline-offset:3px}
+.r-topics a:hover,.r-start a:hover b{color:var(--ink)}
+.r-topics p{margin:.3125rem 0 0;font:400 var(--t-ui)/1.5 var(--sans);color:var(--ink-2)}
+.r-one{font:400 var(--t-ui)/1.5 var(--sans);color:var(--ink);margin:0;max-width:46rem}
+.r-srcs li{padding:.4375rem 0 .5rem;font:400 var(--t-ui)/1.5 var(--sans)}
+.r-srcs a{color:var(--pine);text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:3px}
+.r-srcs a:hover{color:var(--ink)}
+.r-srcs .l-dmeta{display:block;margin-top:.125rem}
+.r-close{font:400 var(--t-ui)/1.55 var(--sans);color:var(--ink-2);margin:1.25rem 0 0;max-width:46rem}
+.r-close a{color:var(--pine)}
+/* the guides' tab: nothing to list yet, said plainly, and where to go */
+.r-none{font:600 var(--t-read)/1.4 var(--serif);color:var(--ink);margin:0 0 .5rem}
+.r-sub{font:400 var(--t-ui)/1.55 var(--sans);color:var(--ink-2);margin:0;max-width:46rem}
+.r-goto{list-style:none;margin:1.25rem 0 0;padding:0;display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(min(100%,18rem),1fr));gap:.875rem}
+.r-goto a{display:block;height:100%;box-sizing:border-box;background:var(--surface);border:1px solid var(--rule-2);
+  border-radius:var(--r-out);padding:.875rem 1rem 1rem;text-decoration:none;color:var(--ink)}
+.r-goto a:hover{border-color:var(--pine)}
+.r-goto b{display:block;font:600 var(--t-ui)/1.35 var(--sans);color:var(--pine);text-decoration:underline;
+  text-decoration-thickness:1px;text-underline-offset:3px}
+.r-goto span{display:block;margin-top:.375rem;font:400 var(--t-ui)/1.5 var(--sans);color:var(--ink-2)}
+
+@media (forced-colors:active){
+  .l-step,.l-cmptab td,.r-start a,.r-goto a{border:1px solid CanvasText}
+  .l-frac > span:first-child{border-bottom-color:CanvasText}
+  .l-phase::after,.l-otp > summary::before,.l-otp > summary::after{forced-color-adjust:none;background:CanvasText}
+  .l-hubtab[aria-current]{border-bottom-color:Highlight}
+}
+@media print{.l-hub,.l-otp,.l-pager,.r-tabs{display:none}}
 
 /* The committees index: a way into the 56 pages that nothing linked to. */
 /* No width and no padding of its own: it is already inside .shell,
