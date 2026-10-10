@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.497
+# GRANITE_VERSION: 2026-09-04.498
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -58775,6 +58775,17 @@ def _nightly_runner(NI):
         v = keep("105")
         assert code == 0 and not v["publishable"] and v["data_rewritten"] == ["veto_messages.json"], \
             "a build production already serves was offered again, or a rewritten data file stopped it"
+        # The same data, but production names another commit: a release of
+        # code alone, on a day the night already published (10 October 2026,
+        # Polish 1's release run read "nothing to publish").
+        def same_data_older_code(base, timeout=180):
+            NI.SERVED["commit"] = "0" * 40
+            return NI.fingerprint(Path("site"))
+        NI.live_fingerprint = same_data_older_code
+        code, _ = night("--runner", "--no-fetch", run_id="105b")
+        v = keep("105b")
+        assert code == 0 and v["publishable"] and v["live_commit"] == "0" * 40, \
+            "a build of new code over the data production serves read as already served"
         NI.live_fingerprint = lambda base, timeout=180: "an-older-build"
         size["bills"] = 101             # a site production does not serve, nor run 103 built
         code, _ = night("--runner", "--no-fetch", run_id="106")

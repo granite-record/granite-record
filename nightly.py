@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.60
+# GRANITE_VERSION: 2026-09-04.61
 """
 The nightly run. Fetch the day's bulk files, rebuild, check, compile what
 readers reported and what changed -- and publish only if told to.
@@ -3695,11 +3695,17 @@ class Night:
         SERVED.clear()
         live = live_fingerprint(a.base)
         v["live_fingerprint"] = live
-        already = live == fp
         # The commit production's build names, read with it: None is "not
         # known", and a gate that cannot read it waits. And the bill lists it
         # read, for how much tonight changed against them; let go once used.
         v["live_commit"] = SERVED.get("commit")
+        # ALREADY SERVED is the same data AND the same code (10 October 2026).
+        # The fingerprint is of the data files alone, so a release that changed
+        # only code, run on a day whose night had already published that day's
+        # data, read as "nothing to publish": Polish 1's release run, f0d378c
+        # live and 13c674b built. A commit production does not name (None)
+        # leaves the fingerprint to answer alone, as it did before.
+        already = live == fp and v["live_commit"] in (None, v["sha"])
         served = dict(SERVED)
         SERVED.clear()
         # ... and which build that is, by its fingerprint, for the kinds of
