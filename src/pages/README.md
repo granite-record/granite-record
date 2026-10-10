@@ -9,7 +9,9 @@ every record page is built from, and the `components.js`, `app.js`, `app.css`
 and `find.js` it loads. `build_pages.py` copies all five into `site/` as they
 are, and the builders read them here under the folder they run in, so a
 fixture lays out its own copies the same way. Edit them here; `site/` holds
-copies.
+copies. The district map is a module of its own: `map.js` and `map.css`,
+which `build_district_map.py` copies beside `/district_map.json`, the one
+file the map draws, and which a page mounts with `GRMap.mount()`.
 
 The components are in two files with the same helpers under the same names
 (9 October 2026): `components.py`, which the builders draw a person, a

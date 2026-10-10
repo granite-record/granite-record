@@ -9,7 +9,7 @@ folder the places it is elected from.
 | What | Files |
 |---|---|
 | The places themselves | `build_places` (`generated/places.json`, one list reconciling the five on this disk) |
-| Districts | `parse_districts` (`site/districts.json`), `parse_sos_districts` (the Secretary of State's own table, held against ours), `parse_granit` (NH GRANIT's geometry) |
+| Districts | `parse_districts` (`site/districts.json`), `parse_sos_districts` (the Secretary of State's own table, held against ours), `parse_granit` (NH GRANIT's geometry), `build_district_geometry` (that geometry made small for the district map, `generated/district_geometry.json`) |
 | Clerks and polling places | `parse_clerks_csv` (`collected/town_clerks.json`), and `parse_clerks`, the PDF reader it supersedes |
 | Officials | `parse_officials` (NHDOT's directory, `collected/town_officials.json`), `parse_town_sites` and `town_boards` (the towns' own websites), `parse_county_roster` (`collected/county_officials.json`) |
 
