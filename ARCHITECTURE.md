@@ -904,13 +904,16 @@ first, which is whether the page was built.
 - *The directory.* `/directory/sessions-house` and `/directory/sessions-senate`
   list every day by year (`build_indexes.sessions_pages`).
 - *The line up.* Each sitting leads to its chamber's list, and to its week on
-  the Calendar where the calendar has that week.
+  the Calendar where the calendar has that week; its pager names that week
+  between Previous Session Day and Next Session Day, as the Calendar does
+  ("The Week of February 16–20, 2026").
 
 The home page, the lists and that line are written **before** the pages and
 the weeks they link, so on a machine that starts empty none of them can read
 the disk. `build_session_pages.sittings()` is the one rule for which days get
-a page, and `build_calendar.week_keys()` is the calendar's own reading of
-which weeks do; the earlier steps ask those.
+a page, and `build_calendar.week_labels()` is the calendar's own reading of
+which weeks do and what each is called (Monday to Friday, or to a Saturday or
+Sunday that holds a meeting); the earlier steps ask those.
 
 ## Keeping the keyboard's place
 

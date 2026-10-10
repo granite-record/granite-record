@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-08.3
+# GRANITE_VERSION: 2026-10-08.4
 """
 The rendered sweep: a built site measured as a reader's browser draws it.
 
@@ -132,6 +132,14 @@ PAGES = [
     {"name": "committees", "path": "committees.html"},
     {"name": "committee", "path": "committee/H64.html", "dir": "committee"},
     {"name": "calendar", "path": "calendar.html"},
+    # Added with the Week view of 9 October 2026, Monday to Friday beside the
+    # month: a week in session, its own page, in the List view and the Week
+    # view, where the tab's own week is often quiet.
+    {"name": "calendar-busy", "path": "calendar/2026-W08.html", "dir": "calendar",
+     "why": "a week in session, 16-20 February 2026, in the List view"},
+    {"name": "calendar-week", "path": "calendar/2026-W08.html", "dir": "calendar",
+     "steps": [{"click": '#calbar [data-view="week"]'}],
+     "why": "the same week in the Week view"},
     {"name": "session-day", "path": "session/H/2026-02-19.html", "dir": "session/H",
      "latest": True},
     {"name": "town", "path": "town/goffstown.html", "dir": "town"},

@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.236 */
+/* GRANITE_VERSION: 2026-09-07.237 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -4353,20 +4353,34 @@ color:var(--ink-2);margin-left:var(--sp-3)}
 /* No max-width: a week fills the page it is given, the way the
    roster and the bill list do. */
 .wkpage{min-width:0}
-.wknav{display:flex;flex-wrap:wrap;align-items:center;gap:var(--sp-4);
-margin:var(--sp-6) 0;padding:var(--sp-4) 0;
+/* THE PAGER, IN TITLE CASE (the person, 9 October 2026: "Session Day",
+   "This Week", "Previous Week" for "The week before", "Next Week" for "The
+   week after"). Previous on the left and next on the right, which is the
+   order this site uses everywhere it moves a reader through a sequence,
+   each with where it leads under it -- a week's short name, a session day's
+   or a day's date -- and the way back to this week, or to a session day's
+   week, between them. A grid of three named areas, so a link that is not
+   there (This Week on this week, Previous Week on the first) leaves its
+   place empty and the others stay put. On a phone the middle link takes a
+   line of its own under the two. The Calendar's weeks, a session day's
+   page, and the Day view's step from day to day (.calstep) are all this. */
+.wknav,.calstep{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);
+grid-template-areas:"p m n";align-items:center;gap:var(--sp-2) var(--sp-6);
+margin:var(--sp-6) 0;padding:var(--sp-2) 0;
 border-top:1px solid var(--rule);border-bottom:1px solid var(--rule)}
-.wknav a{font-size:var(--t-ui);font-weight:600;color:var(--pine);
-text-decoration:none;padding:var(--sp-3) 0;min-height:44px;
-display:inline-flex;align-items:center}
-.wknav a:hover{text-decoration:underline}
-/* Previous on the left and next on the right, which is the order this site
-   uses everywhere it moves a reader through a sequence. */
-.wknav .wknext{margin-left:auto}
-.wknav .wkhere{color:var(--ink-2)}
+.wknav a,.calstep button{display:inline-flex;flex-direction:column;justify-content:center;
+min-height:44px;padding:var(--sp-2) 0;font-size:var(--t-ui);line-height:1.35;
+color:var(--pine);text-decoration:none;text-align:left}
+.wknav .wkprev,.calstep .wkprev{grid-area:p;justify-self:start}
+.wknav .wknext,.calstep .wknext{grid-area:n;justify-self:end;align-items:flex-end;text-align:right}
+.wknav .wkhere{grid-area:m;justify-self:center;text-align:center}
+.wkpw,.wknav .wkhere{font-weight:600;text-decoration:underline;
+text-decoration-thickness:1px;text-underline-offset:3px}
+.wkpd{font-size:var(--t-sm);font-weight:400;color:var(--ink-2)}
+.wknav a:hover .wkpw,.wknav a.wkhere:hover,.calstep button:hover .wkpw{color:var(--ink)}
 .wkfoot{margin-bottom:var(--sp-9)}
-@media (max-width:35em){
-  .wknav{gap:var(--sp-3)}
+@media (max-width:30em){
+  .wknav,.calstep{grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-areas:"p n" "m m"}
 }
 
 /* NARROWING A WEEK. The controls sit between the week's arrows and its days,
@@ -4429,19 +4443,18 @@ padding:var(--sp-2) 0;min-height:32px;display:inline-flex;align-items:center}
    the paragraph stays for the script to say a week could not be loaded. */
 .calhead p.src:empty{display:none}
 /* The heading takes focus when the arrow a reader pressed is no longer there
-   ("This week" on this week), so it shows a ring when a keyboard put it there. */
+   ("This Week" on this week), so it shows a ring when a keyboard put it there. */
 .calhead h1:focus{outline:none}
 .calhead h1:focus-visible{outline:2px solid var(--pine);outline-offset:4px}
 /* THE CALENDAR'S TABLES STAY TABLES AT EVERY WIDTH. At 720px and below this
    file makes every table a scrolling block, which is right for a table of
    votes and wrong here: the month shrank to its content -- 26px days in a
-   336px column, 40% of it empty -- and the week at a glance became a second
-   scroller inside its frame, so its sticky hours stuck to the table and slid
-   off the screen with it. The month has the column's width by design, and
-   the week scrolls in .wkgridwrap, which is what that frame is for. */
+   336px column, 40% of it empty. The month has the column's width by
+   design. (The week was a table too until 9 October 2026, and a second
+   scroller inside its frame; it is a list of days now, .wkweek.) */
 .calapp table{display:table;overflow:visible}
 /* The month's column gives up a little on a small desktop, so a five-day
-   week still fits beside it at 1024px without scrolling: 56 + 5 x 122. */
+   week has room beside it at 1024px: five columns of about 135px. */
 .calapp.on{display:grid;grid-template-columns:clamp(260px,25vw,292px) minmax(0,1fr);
 grid-template-areas:"side head" "side main";column-gap:var(--sp-9);align-items:start}
 .calapp.on > .calhead{grid-area:head;min-width:0}
@@ -4630,85 +4643,79 @@ border-width:0 2px 2px 0;transform:rotate(45deg);visibility:hidden}
 /* The day chosen in the grid, marked in the list. */
 .calday.calsel > .caldate{color:var(--pine);border-bottom:2px solid var(--pine)}
 
-/* THE DAY: every entry open, and a step to the day either side. */
-.calstep{display:flex;flex-wrap:wrap;gap:var(--sp-4);margin:0}
-.calstepb{min-height:40px;padding:var(--sp-3) 0;font-size:var(--t-ui);font-weight:600;
-color:var(--pine);text-align:left}
-.calstepb:hover{text-decoration:underline}
-.calstepn{margin-left:auto;text-align:right}
+/* THE DAY: every entry open, and under it the pager to the day either side
+   (.calstep, drawn with the week's pager above). */
 
-/* THE WEEK AT A GLANCE. Days across, and down the side only the hours
-   something starts in: the record gives a start and never an end, so no
-   block is drawn to a length it does not state. The table keeps legible
-   columns and scrolls inside its own frame when the page is narrower than
-   they are -- a phone scrolls the week, never the page. */
-/* position:relative makes the frame the containing block of what is
-   positioned inside it: the day buttons' visually hidden labels are
-   position:absolute, and with no positioned ancestor they were placed
-   against the page, outside the frame's clip, and on a phone widened the
-   page by 200px. */
-.wkgridwrap{position:relative;overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0 0 var(--sp-6);
+/* THE WEEK, MONDAY TO FRIDAY, BESIDE THE MONTH (the person, 9 October 2026:
+   "Dont display Saturdays and sundays on the week view, only weekdays since
+   there aren't meetings on the weekend. If that would allow the week view to
+   be displayed like the list and day views which keep the month on the
+   left, that would be preferred"; and of the Week view drawn so, the same
+   day, "Week tab on the calendar looks good"). A column a day inside the
+   schedule's own column, so the month stays on the left as it does for
+   List and Day; a Saturday or Sunday is a column only when it holds
+   something (WEEK_JS's weekCols), and the columns are as many as the days
+   (--cols). Each entry is the day's card in brief: its kinds as the
+   divided bar, the time it starts, its name, its bill count. THE RECORD
+   HAS NO END TIMES, so nothing is drawn to a length on a clock: until 9
+   October the week was a table of the hours something started in, with the
+   cards whole in its cells. Under 40em of its own width -- a phone, or the
+   schedule's column on a narrow tablet -- the days stand one under another,
+   Monday first, and the page never scrolls sideways. A committee's name
+   wraps, and is hyphenated where the browser can (the page's lang="en"). */
+.wkweek{container-type:inline-size;margin:0 0 var(--sp-6)}
+.wkdays{list-style:none;margin:0;padding:0;display:grid;
+grid-template-columns:repeat(var(--cols,5),minmax(0,1fr));
 background:var(--surface);border:1px solid var(--rule-2);border-radius:var(--r-out)}
-.wkgridwrap:focus-visible{outline:2px solid var(--pine);outline-offset:2px}
-/* A COMMITTEE'S LONGEST WORD FITS ITS COLUMN, or is hyphenated. At 120px
-   with 6px each side of the cell and of the card, a name had 89px, and
-   "Administration" -- on 133 of the calendar's cards in September 2026 --
-   broke after its thirteenth letter with no hyphen: "Administratio / n". So
-   the column is the 122px a five-day week can have beside the month at
-   1024px, and the cell and the card give up 2px a side, which leaves the
-   name 99px. That the word fits in 99px is an estimate from the recheck's
-   screenshot, not a measurement of the font. A longer word -- the Commission
-   on the Interdisciplinary Primary Care Workforce's -- still needs
-   hyphens:auto, which the page's lang="en" lets a browser with its
-   dictionary apply; -webkit- for Safari before 17. */
-.wkgrid{width:100%;min-width:calc(56px + var(--cols,5) * 122px);table-layout:fixed;
-border-collapse:collapse}
-.wkgrid th,.wkgrid td{padding:var(--sp-3) var(--sp-2);vertical-align:top;text-align:left;
-border-bottom:1px solid var(--rule);border-left:1px solid var(--rule)}
-.wkgrid tr > :first-child{border-left:0}
-.wkgrid tbody tr:last-child > *{border-bottom:0}
-.wkgrid thead th{border-bottom:1px solid var(--rule-2)}
-.wkgrid .wkhr{position:sticky;left:0;z-index:1;width:56px;background:var(--surface);
-font-size:var(--t-sm);font-weight:600;color:var(--ink-2);font-variant-numeric:tabular-nums}
-.wkday{display:flex;flex-direction:column;align-items:flex-start;width:100%;min-height:40px;
-padding:var(--sp-1) var(--sp-2);border-radius:var(--r-in);text-align:left;
-font-size:var(--t-ui);font-weight:600;color:var(--pine)}
+/* position:relative: each day's button carries a visually hidden label,
+   position:absolute, which with no positioned ancestor is placed against
+   the page and on a phone widened it by 200px (the week's table did that). */
+.wkcol{position:relative;min-width:0;border-left:1px solid var(--rule)}
+.wkcol:first-child{border-left:0}
+.wkdh{margin:0;font-family:var(--sans);font-size:var(--t-ui);line-height:1.3;
+border-bottom:1px solid var(--ink)}
+.wkday{display:flex;flex-wrap:wrap;align-items:baseline;gap:0 var(--sp-3);width:100%;
+min-height:44px;padding:var(--sp-4) var(--sp-5);text-align:left;font-weight:600;color:var(--ink)}
 .wkday:hover{background:var(--wash)}
-.wkdn{font-size:var(--t-sm);font-weight:600;letter-spacing:.04em;text-transform:uppercase;
+.wkday:hover .wkdn{text-decoration:underline}
+.wkdd{font-size:var(--t-sm);font-weight:400;color:var(--ink-2)}
+/* The day chosen in the month, marked here as the list marks it. */
+.wkcol.wksel .wkdh{border-bottom-color:var(--pine);box-shadow:inset 0 -2px 0 var(--pine)}
+.wkcol.wksel .wkdn{color:var(--pine)}
+.wkes{list-style:none;margin:0;padding:0}
+.wkgo{display:grid;grid-template-columns:4px minmax(0,1fr);column-gap:var(--sp-4);width:100%;
+padding:var(--sp-4) var(--sp-4) var(--sp-4) 0;text-align:left;color:var(--ink);
+text-decoration:none;border-bottom:1px solid var(--rule)}
+.wke:last-child .wkgo{border-bottom:0}
+.wkgo:hover{background:var(--wash)}
+.wkgo:hover .wkc{text-decoration:underline}
+.wkgo:focus-visible,.wkday:focus-visible{outline:2px solid var(--pine);outline-offset:-2px}
+.wkbar{display:flex;flex-direction:column;align-self:stretch}
+.wkbar i{flex:1 1 0;display:block;background:var(--edge)}
+.wkbar .k-hearing{background:var(--cal-hear)}
+.wkbar .k-meet{background:var(--cal-meet)}
+.wkbar .k-exec{background:var(--cal-exec)}
+.wkbar .k-conf{background:var(--cal-conf)}
+.wkbar .k-floor{background:var(--cal-floor)}
+.wkbar .k-study{background:var(--cal-study)}
+.wkx{min-width:0;display:flex;flex-direction:column}
+.wkt{font-size:var(--t-sm);font-weight:500;line-height:1.35;color:var(--ink-2);
+font-variant-numeric:tabular-nums}
+.wkc{font-size:var(--t-sm);font-weight:600;line-height:1.35;color:var(--ink);
+overflow-wrap:break-word;-webkit-hyphens:auto;hyphens:auto}
+.wkn{font-size:var(--t-sm);line-height:1.35;color:var(--ink-2)}
+.wkempty{margin:0;padding:var(--sp-4) var(--sp-5);font-size:var(--t-sm);line-height:1.4;
 color:var(--ink-2)}
-.wkcol.wkpast .wkday{color:var(--ink-2)}
-.wkcol[aria-current="date"] .wkdd{box-shadow:inset 0 -2px 0 var(--pine)}
-.wkcol.wksel{box-shadow:inset 0 -3px 0 var(--pine)}
-.wknone{padding:var(--sp-7) var(--sp-6);font-size:var(--t-ui);color:var(--ink-2)}
-/* The card, compact in its cell: the committee on a line of its own, then
-   its time and count, then its kinds -- still named in words, as the chips
-   everywhere else name them, and never left to the colour alone -- and the
-   room last, small. A card whose items share one room names it only here,
-   so it stays: the expanded rooms place() writes are meant to be read. */
-.wkgrid .calmeet{margin:0 0 var(--sp-3)}
-.wkgrid .calmeet:last-child{margin-bottom:0}
-.wkgrid .calmeet > summary{gap:var(--sp-1) var(--sp-3);min-height:0;
-padding:var(--sp-3) var(--sp-2) var(--sp-3) calc(var(--sp-2) + 5px)}
-.wkgrid .calmeet > summary .calcmte{flex:1 1 100%;order:0;min-width:0;font-size:var(--t-ui);
-line-height:1.3;overflow-wrap:break-word;-webkit-hyphens:auto;hyphens:auto}
-.wkgrid .calmeet > summary .caltime,
-.wkgrid .calmeet > summary .calcount{order:1;font-size:var(--t-sm)}
-/* A chip may shrink and wrap in a column: the chip's own flex:0 0 auto kept
-   "Full committee work session" at its full width, 59px past its card and
-   over the next day's column. */
-.wkgrid .calmeet > summary .calkind{order:2;font-size:var(--t-sm);white-space:normal;
-flex:0 1 auto;min-width:0;max-width:100%}
-.wkgrid .calmeet > summary .calwhere{order:3;flex:1 1 100%;font-size:var(--t-sm);line-height:1.35}
-/* AND SO MAY ONE INSIDE AN OPENED CARD. The rule above reached the summary
-   only, so opening a card in the week put "Subcommittee work session" or
-   "Full committee work session" on its item lines at full width, up to 74px
-   past the card and over the next day's column. */
-.wkgrid .calbody .calkind{white-space:normal;flex:0 1 auto;min-width:0;max-width:100%}
-.wkgrid .calmeet .caret{display:none}
-.wkgrid .calbody{padding:0 var(--sp-3) var(--sp-3)}
-.wkgrid .calbills li{flex-direction:column;gap:var(--sp-1)}
-.wkgrid .calbills .cbn{flex:none}
-.wkgrid .calmore{flex-direction:column;gap:var(--sp-1)}
+@container (max-width:40em){
+  .wkdays{grid-template-columns:minmax(0,1fr)}
+  .wkcol{border-left:0;border-top:1px solid var(--rule-2)}
+  .wkcol:first-child{border-top:0}
+  .wkdh{border-bottom:1px solid var(--rule);background:var(--paper)}
+  .wkcol.wksel .wkdh{border-bottom-color:var(--pine)}
+}
+@media (forced-colors:active){
+  .wkbar i{forced-color-adjust:none}
+}
 
 /* THE PREVIEW of a day, beside it and never on it. It takes no pointer, so
    it can never sit between the pointer and the grid. */

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-09.5
+# GRANITE_VERSION: 2026-10-09.6
 """
 The site's components, in Python: what the builders draw a person, a
 committee, a chip, a date and a time with, and the words they say.
@@ -136,13 +136,17 @@ def date_words(iso, form="medium"):
             "wkd": f"{wd[:3]}, {mon} {d.day}"}.get(form, f"{mon} {d.day}, {d.year}")
 
 
-def date_span(a, b):
+def date_span(a, b, form="full"):
     """Two days as one span, month first: "October 5–11, 2026", "September 28
     – October 4, 2026", "December 28, 2026 – January 3, 2027"; one day where
-    the two are the same. components.js's dateSpan() says the same."""
+    the two are the same. components.js's dateSpan() says the same.
+
+    `form` "medium" is the same span with the months short, "Feb 9–13, 2026"
+    or "Sep 28 – Oct 2, 2026": what the Calendar's pager says under Previous
+    Week and Next Week, where the room is half a column (9 October 2026)."""
     if str(a)[:10] == str(b)[:10]:
-        return date_words(a, "full")
-    fa, fb = date_words(a, "full"), date_words(b, "full")
+        return date_words(a, form)
+    fa, fb = date_words(a, form), date_words(b, form)
     if fa == str(a) or fb == str(b):
         return f"{fa} – {fb}"
     (ma, da, ya), (mb, db, yb) = (x.replace(",", "").split() for x in (fa, fb))

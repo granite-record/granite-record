@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.175
+# GRANITE_VERSION: 2026-09-04.176
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -533,9 +533,14 @@ def is_conference(key):
     return key.name == CONFERENCE
 
 
+# The floor's cards, by the name build_calendar.FLOOR keys them on.
+FLOOR_CARD = {"house floor": "House Session Day", "senate floor": "Senate Session Day"}
+
+
 def card_name(key):
     """What a card calls its committee: "House Judiciary", "Senate Finance",
-    "Committee of conference on HB 2", "Commission on Aging".
+    "Committee of conference on HB 2", "Commission on Aging", "House Session
+    Day".
 
     THE CHAMBER IS SAID, on every chamber's committee and not only on the
     names both chambers use: a card reading "Commerce" beside one reading
@@ -543,10 +548,18 @@ def card_name(key):
     is how the General Court's own schedule titles them -- "House Ways and
     Means : GP, Room 234". The floor and the sittings whose committee the
     docket did not record already say it, and are not told twice.
+
+    THE FLOOR IS A SESSION DAY (the person, 9 October 2026: "Session day
+    should be Session Day"). Its card said "House floor", the key the week
+    is grouped on, over a chip saying Floor Session; the approved Calendar
+    calls it "House Session Day", and the key stays "House floor" for every
+    lookup made on it (build_calendar.FLOOR, the floor's links below).
     """
     if is_conference(key):
         num = re.sub(r"^([A-Z]+)(\d)", r"\1 \2", key.bill)
         return f"{CONFERENCE} on {num}" if num else CONFERENCE
+    if key.name.strip().lower() in FLOOR_CARD:
+        return FLOOR_CARD[key.name.strip().lower()]
     word = CHAMBER_WORD.get(key.chamber)
     first = (key.name.split() or [""])[0]
     if word and first not in CHAMBER_WORD.values():
@@ -734,11 +747,13 @@ def calendar_html(out, today=None, rows=None):
     # for every week in its range, empty ones included -- linked here only
     # when next week has a sitting, and otherwise the link is the Calendar
     # tab. HOME_JS keeps this line when it empties the rail in the reader's
-    # clock.
+    # clock. The link says "Next Week ›", the Calendar pager's own words for
+    # the same page (the person, 9 October 2026: "The week after should be
+    # Next Week"); it said "See next week".
     if n_next:
         onward = (f"{n_next}{' more' if dates else ''} "
                   f"meeting{'' if n_next == 1 else 's'} next week. ",
-                  f"calendar/{nxt}.html", "See next week")
+                  f"calendar/{nxt}.html", "Next Week \u203a")
     else:
         onward = ("Nothing is on the calendar for next week yet. ",
                   "calendar.html", "See the full calendar")
@@ -1034,7 +1049,10 @@ def cal_days(days, meets, titles, years, code, when, esc, level=3,
             if n:
                 html.append(f'<span class="calcount">'
                             + (f"({_bills})" if time else _bills) + "</span>")
-            for k in kinds:
+            # A SESSION DAY'S NAME SAYS WHAT IT IS ("House Session Day"), so
+            # no chip says "Session Day" again under it, as the approved
+            # Calendar has it (9 October 2026); its bar keeps the colour.
+            for k in ([] if key.name.strip().lower() in FLOOR_CARD else kinds):
                 word, kcls = MEET_KIND.get(k.strip().lower(),
                                            (kind_title(k), ""))
                 html.append(chip(word, f"calkind {kcls}"))
@@ -2538,7 +2556,7 @@ fetch(DATA("home.json")).then(r=>r.json()).then(H=>{
   else if(_state)_state.innerHTML=`
     <div class="statebox ${ph[0]}">
       <div class="stateline"><span class="dot"></span><b>${esc(ph[1])}</b>
-        ${S.last_session?`<span class="statemeta">Last Floor Session:
+        ${S.last_session?`<span class="statemeta">Last Session Day:
           ${fdy(S.last_session)}</span>`:""}</div>
       ${S.headline?`<p class="statehead">${esc(S.headline)}</p>`:""}
       ${S.note?`<p class="statenote">${esc(S.note)}</p>`:""}
@@ -3050,7 +3068,7 @@ def main():
         static_state = (
             f'<div class="statebox {ph[0]}"><div class="stateline">'
             f'<span class="dot"></span><b>{esc(ph[1])}</b>'
-            + (f'<span class="statemeta">Last Floor Session: {fdy(S["last_session"])}</span>'
+            + (f'<span class="statemeta">Last Session Day: {fdy(S["last_session"])}</span>'
                if S.get("last_session") else "")
             + "</div>"
             + (f'<p class="statehead">{esc(S["headline"])}</p>'

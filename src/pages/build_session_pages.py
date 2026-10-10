@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-19.30
+# GRANITE_VERSION: 2026-09-19.31
 """
 A page for every day the House sat.
 
@@ -1276,7 +1276,9 @@ DAYS_LIST = {"H": "directory/sessions-house.html",
 
 
 def calendar_weeks(site):
-    """{"2026-W21", ...}: the weeks build_calendar.py will write a page for.
+    """{"2026-W21": "May 18–22, 2026", ...}: the weeks build_calendar.py will
+    write a page for, each by the name its page gives it, which the pager's
+    middle link says ("The Week of May 18–22, 2026").
 
     Asked of the calendar's own functions and not read off the disk: that
     step runs after this one, so on a machine that starts empty there is no
@@ -1289,20 +1291,51 @@ def calendar_weeks(site):
     try:
         import build_calendar as BC
         with contextlib.redirect_stdout(io.StringIO()):
-            return BC.week_keys(site)
+            return BC.week_labels(site)
     except Exception as e:   # an addition: the page stands without it
         print(f"  WARNING: the calendar's weeks could not be read ({e!r}); "
               "no sitting links its week")
-        return set()
+        return {}
+
+
+def week_of(date):
+    """"2026-W08": the ISO week a sitting's date falls in, as the Calendar
+    keys its weeks."""
+    y, m, d = (int(x) for x in date.split("-"))
+    iso = datetime.date(y, m, d).isocalendar()
+    return f"{iso[0]}-W{iso[1]:02d}"
+
+
+def pager(body, date, prev_, next_, weeks):
+    """[link]: a session day's pager, as the Calendar's (build_calendar.
+    pager_html) is drawn. IN TITLE CASE (the person, 9 October 2026:
+    "Session day should be Session Day"): Previous Session Day on the left
+    and Next Session Day on the right, each with the day it leads to under
+    it, and between them the day's week on the Calendar by its name, where
+    the Calendar has that week. It said "The session day before" and "The
+    session day after"."""
+    nav = []
+    if prev_:
+        nav.append(f'<a class="wkprev" href="{S.canon(f"session/{body}/{prev_}.html")}">'
+                   '<span class="wkpw">&lsaquo; Previous Session Day</span>'
+                   f'<span class="wkpd">{S.E(words(prev_))}</span></a>')
+    wk = week_of(date)
+    if wk in weeks:
+        nav.append(f'<a class="wkhere" href="{S.canon(f"calendar/{wk}.html")}">'
+                   f"The Week of {S.E(weeks[wk])}</a>")
+    if next_:
+        nav.append(f'<a class="wknext" href="{S.canon(f"session/{body}/{next_}.html")}">'
+                   '<span class="wkpw">Next Session Day &rsaquo;</span>'
+                   f'<span class="wkpd">{S.E(words(next_))}</span></a>')
+    return nav
 
 
 def up_links(body, date, weeks):
     """The links above a sitting, in the order the line above its heading
     gives them: the chamber's list, at the sitting's year, and its week on
     the Calendar where the calendar has that week."""
-    y, m, d = (int(x) for x in date.split("-"))
-    iso = datetime.date(y, m, d).isocalendar()
-    wk = f"{iso[0]}-W{iso[1]:02d}"
+    y = int(date[:4])
+    wk = week_of(date)
     out = [f'<a href="{S.canon(DAYS_LIST[body])}#y{y}">'
            f"Every {CHAMBER[body]} session day</a>"]
     if wk in weeks:
@@ -1960,13 +1993,7 @@ def main():
         lead = _lead(day, narrative, date, body)
         prev_ = order[n - 1][1] if n > 0 else ""
         next_ = order[n + 1][1] if n + 1 < len(order) else ""
-        nav = []
-        if prev_:
-            nav.append(f'<a class="wkprev" href="{S.canon(f"session/{body}/{prev_}.html")}">'
-                       f"&lsaquo; The session day before</a>")
-        if next_:
-            nav.append(f'<a class="wknext" href="{S.canon(f"session/{body}/{next_}.html")}">'
-                       f"The session day after &rsaquo;</a>")
+        nav = pager(body, date, prev_, next_, weeks)
 
         # From the root, with its slash: the canonical link, the citation and
         # the sitemap are the domain joined to this.
