@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.169
+# GRANITE_VERSION: 2026-09-04.170
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -1455,13 +1455,72 @@ and a bill number starts again every two years.</p>
 </script>
 """
 
+# THE ABOUT PAGE AS THE PERSON APPROVED IT, word for word (9 October 2026;
+# private/design/ABOUT_FINAL_2026-10-09.md). Its headings are in Title Case,
+# and [[bills]] and [[since]] are counted from the bill index at build time
+# (about_figures), never typed. Three sections that were here moved word for
+# word to the Data page (build_exports.py): "What is taken from the record and
+# what is generated" and "How much of this is timed, and how well" under "How
+# the Record Is Built", and "What this site knows about you" under "Privacy in
+# Detail"; the two links below lead to them. The paragraphs that were "Where
+# the information comes from" are unchanged, in the closed "Sources in
+# detail" fold under the section that now carries that name. "The Logo" and
+# the artist's words are as they were. The repository's address is REPO's,
+# put in below, so the footer, the Data page and this page cannot point at two
+# places.
 ABOUT = """
-<h1>About this site</h1>
-<p class="lead">Granite Record indexes the public record of the New Hampshire General
-Court: what each bill does, who sponsored it, when it was heard, how it was voted on,
-and where in the recording it was discussed.</p>
+<h1>About Granite Record</h1>
+<p class="lead">Granite Record is a free, independent and searchable record of the New Hampshire
+General Court: what each bill does, who sponsored it, when it was heard, how it
+was voted on, and where in the recording it was discussed. It covers [[bills]]
+bills since [[since]], for anyone who follows the legislature, from a first-time
+testifier to the people who work in the State House.</p>
 
-<h2>Where the information comes from</h2>
+<h2 id="who">Who Makes Granite Record</h2>
+<p>I'm Alice Wade, a State Representative from Dover, and Granite Record is my
+independent project to make state government more accessible to everyone. It
+started with one problem: bill hearings had no timestamps, so finding a single
+bill meant combing through hours of livestream footage. From there I kept
+gathering everything I needed to track legislation into one place, and Granite
+Record grew out of that.</p>
+<p>I'm committed to keeping it free, neutral and open source, for anyone who has
+trouble keeping up with the state legislature. Built from the New Hampshire
+General Court's own digital records, it covers bills back to [[since]]. You can
+search for bills in plain language, prepare public testimony, research how
+legislation has changed over time, and get in touch with your state legislators.</p>
+<p>The eventual goal is a hub of information about New Hampshire's state, county and
+municipal government, including guides to how state government is structured,
+with interactive diagrams written to be accessible no matter your prior
+experience with state government.</p>
+<p>Nothing on this site is editorialized: it presents the official record in a more
+searchable form. The code is public, and you can download the official record as
+spreadsheets from the <a href="data.html">Data page</a>.</p>
+<p>Granite Record is independent of my role as a state legislator and is not
+affiliated with the New Hampshire General Court. For feature suggestions or
+corrections to a bill's record, use the <i>Report a problem</i> button on any page, or
+write to <a href="mailto:contact@graniterecord.org">contact@graniterecord.org</a>.</p>
+<p>Special thanks to the House Clerk's Office and the General Court's IT staff,
+without whom this project would not be possible.</p>
+
+<h2>What You Can Do Here</h2>
+<ul>
+<li>Search for bills in plain language, or by number, sponsor or committee.</li>
+<li>Open a hearing's recording at the moment a bill was taken up.</li>
+<li>Prepare to testify, with a bill's hearings, reports and text in one place.</li>
+<li>Research how a bill, or an issue, has changed over the years.</li>
+<li>Follow a bill's progress, and find your legislators and how to reach them.</li>
+</ul>
+
+<h2>Where the Information Comes From</h2>
+<p>Everything here comes from the General Court's own records: its docket, roll
+calls, committee reports, journals and calendars, and the recordings on its
+YouTube channels. Each bill links to its official record. Most hearing timestamps
+are the moment the chair opened the item, checked against recordings a person
+timed by hand; the rest are marked <i>approximate</i>.
+<a href="data.html#how-built">How the record is built</a>, on the
+Data page, explains the methods and how well they measure up.</p>
+<details class="fold">
+<summary>Sources in detail</summary>
 <p>Bill histories and hearing schedules come from the General Court's docket:
 for the current term its published data files, for 2015 to 2024 its web pages,
 and before that the read-only database the General Court publishes credentials
@@ -1491,104 +1550,31 @@ begin; before that, the docket gives the tallies it recorded, and the printed
 journals name who voted which way. Recordings start in [[stream_start]], when
 its YouTube channels begin. Every archived bill links its own official
 record.</p>
+</details>
 
-<h2>What is taken from the record and what is generated</h2>
-<p>Dates, sponsors, vote tallies, committee assignments and hearing times are taken
-directly from the official record. Committee reports are reproduced as filed, in the
-committee's own words.</p>
-<p>Plain-language summaries of a bill's progress are generated from those records by
-software, not written by hand. Most timestamps are not estimates: they are the
-moment the chair or the clerk opened the item, found by matching what they said
-against the recording's captions. The player opens two seconds before that, which
-is enough not to clip the first word. Where no boundary was heard, the site either
-shows a start marked <i>approximate</i> or links the recording with no time at
-all &#8212; it does not guess.</p>
+<h2>Keeping It Accurate</h2>
+<p>The official record at <a href="https://gc.nh.gov/" rel="noopener">gc.nh.gov</a> always takes precedence over anything shown
+here. If something on a page doesn't match it, use the <i>Report a problem</i> button
+on that page: reports are read every day, checked against the official record,
+and corrected.</p>
 
-<h2>How much of this is timed, and how well</h2>
-<p>The record here holds [[stations]] occasions on which a bill was taken up
-&#8212; hearings, executive sessions, work sessions and floor debates &#8212;
-across [[station_bills]] bills. What the site can say about each one depends
-almost entirely on whether there is a recording of it to link.</p>
-<p>For [[no_recording]] of them, there is no recording to offer. The recordings
-this site links are on the General Court's YouTube channels, which begin in
-[[stream_start]]; [[prestream]] of these meetings happened before that, which
-is [[prestream_pct]] of the whole record, and the other [[unmatched]] are
-meetings since then that no recording has been matched to. Most carry the
-date, the committee and the room, and nothing to play.</p>
-<p>[[recorded]] have a recording. On [[placed]] of them &#8212;
-[[placed_pct]] &#8212; the page opens the recording at the moment the bill
-was taken up. On the other [[recording_only]] it links the recording and says
-plainly that the moment has not been established, rather than guessing one. A
-further [[consent]] were decided on a consent calendar: the committee's report
-adopted in a block, never read out and never debated, so there is no moment in
-the recording to find.</p>
-<p>Where the moment is claimed, it usually comes from someone saying so. Most
-of these are the chair or the clerk opening the item, matched against the
-recording's captions; some are a roll call's own clock time from the General
-Court's record, which involves no speech recognition at all; the rest are
-inferred from where the bill is discussed, and those are the ones marked
-<i>approximate</i>. Only that word separates an inferred start from a quoted
-one. The site used to print the margin and the method beside every timestamp,
-and that turned out to be methodology in the reader's way.</p>
-<p>The timing is checked against [[marked]] proceedings that a person timed by
-watching the recording, across [[marked_videos]] recordings. Of these it places
-[[marked_placed]]: the median is out by [[median]], and [[within_minute]] of
-[[marked_placed]] are within a minute. [[over_ten]] are more than ten minutes
-out &#8212; the worst by [[worst]] &#8212; and that is not imprecision but a
-proceeding placed somewhere else, which is a different fault and is being
-worked through. The remaining [[marked_unplaced]] carry no time at all rather
-than a guessed one. Opening each recording at its scheduled time
-instead &#8212; the obvious method, and the one this replaced &#8212; would be
-out by [[schedule_median]] at the median. Last measured [[measured]].</p>
-<p>Speech recognition is worst at exactly the things that matter most — names,
-numbers and organisations. Check the recording before quoting anything.</p>
+<h2>Your Privacy</h2>
+<p>Granite Record doesn't track you. There are no accounts and no advertising,
+nothing about what you read is tied to you, and reports sent through the
+<i>Report a problem</i> button are deleted after a week.
+<a href="data.html#privacy">Privacy in detail</a> is on the Data page.</p>
 
-<h2>What this site knows about you</h2>
-<p>Page views are counted: how many there are, and which pages. That is
-Cloudflare Web Analytics, which runs on the pages this site is served from.
-It sets no cookies, it does not follow anyone between sites, and it does not
-build a profile of a reader &mdash; what comes back is a count per page, with
-the country, browser and referrer of the visit in aggregate. Nobody here can
-tell one reader from another, and nothing about what you read is stored
-against you.</p>
-<p>Nothing else is collected. There are no accounts, no email addresses and
-no advertising. The feeds need no subscription, so nothing knows who takes
-them. Search runs in your own browser against files this site serves. When a
-search takes you to a results page &mdash; the bill search, the record search
-or the legislator list &mdash; your words travel in that page&rsquo;s address.
-This site&rsquo;s server receives them, as it receives any address, and the
-page-view count may record that address like any other. The typefaces come
-from Google Fonts, so Google sees a request for them when a page opens. Video
-is embedded from
-YouTube&rsquo;s no-cookie address, which still means YouTube sees a request
-when a player is opened &mdash; a player only loads if you press play.</p>
-<p>One thing a reader sends deliberately is feedback, through the form
-linked in the footer. That is a Google form, and what you put in it goes to
-Google and to us.</p>
-<p>The other is a report, from the box marked <i>Report a problem with this
-page</i> on bill, committee and legislator pages. A report holds the page and
-the record it is about, the tab that was open, the kind of problem chosen from
-a list, what you wrote, the time it arrived and which build of the site you
-were reading. Nothing in it identifies you &mdash; no IP address, no cookie, no
-email address &mdash; which is also why we cannot reply to one. It is read only
-to check the page against the official record and fix what is wrong, and it is
-deleted after a week.</p>
-
-<h2>Corrections</h2>
-<p>If something here misrepresents the record, it should be corrected. The official
-record at gc.nh.gov always takes precedence over anything shown here.</p>
-
-<h2 id="who">Who makes Granite Record</h2>
-<p>Granite Record is built and maintained by Alice Wade, independently.</p>
-<!-- WHO MAKES IT: the person is writing the fuller description of who makes
-     the site and why (7 October 2026). It goes here, under this sentence, and
-     nothing else is to be written in its place. -->
+<h2>Free and Open Source</h2>
+<p>Granite Record is free to use, now and always. Its code is public on
+<a href="__REPO__" rel="noopener">GitHub</a>
+under the MIT licence, and the whole record can be downloaded as spreadsheets
+from the <a href="data.html">Data page</a>.</p>
 
 <h2>Independence</h2>
-<p>This site is not affiliated with or endorsed by the New Hampshire General Court.
-It takes no position on any bill.</p>
+<p>Granite Record is not affiliated with or endorsed by the New Hampshire General
+Court, and it takes no position on any bill.</p>
 
-<h2>The logo</h2>
+<h2>The Logo</h2>
 <p>The Granite Record logo was drawn by Debra Caplan, an artist in Peterborough,
 New Hampshire, and is used under licence from her. More of her work is at
 <a href="https://www.linescapesnh.com/" rel="noopener">linescapesnh.com</a>.
@@ -1603,7 +1589,7 @@ through lithographic prints.</p>
 hand-coloring some, and matting or framing them. &hellip; Over the years I have
 added scenes from the Monadnock Region, New Hampshire and beyond.</p>
 </blockquote>
-"""
+""".replace("__REPO__", REPO)
 
 SEATING_JS = """
 <script>

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-10.40
+# GRANITE_VERSION: 2026-09-10.41
 """
 The record as CSV, for anyone who wants to work with it rather than read it.
 
@@ -47,6 +47,7 @@ import text_sponsors as TS
 # The month the General Court's YouTube channels begin, as the About page and
 # the bill pages say it: one constant, so the three cannot drift apart.
 from about_figures import STREAM_START_WORDS
+import about_figures
 
 # Cloudflare Pages refuses a file larger than this. Checked before writing,
 # because the alternative is finding out during a deploy.
@@ -586,6 +587,102 @@ def ballot_words(path=Path("corrections/ballot_results.json")):
     return out or None
 
 
+# MOVED HERE FROM THE ABOUT PAGE, WORD FOR WORD (the person's About text of
+# 9 October 2026, private/design/ABOUT_FINAL_2026-10-09.md). About now says
+# these things in a line each and links here: "How the record is built" to
+# HOW_BUILT, which was About's "What is taken from the record and what is
+# generated" and "How much of this is timed, and how well", and "Privacy in
+# detail" to PRIVACY, which was its "What this site knows about you". The
+# figures are about_figures' and are filled as About's were, so a sentence
+# that loses its number stops the build rather than publishing a hole.
+HOW_BUILT = """
+    <h2 id="how-built">How the Record Is Built</h2>
+    <h3>What is taken from the record and what is generated</h3>
+<p class="src">Dates, sponsors, vote tallies, committee assignments and hearing times are taken
+directly from the official record. Committee reports are reproduced as filed, in the
+committee's own words.</p>
+<p class="src">Plain-language summaries of a bill's progress are generated from those records by
+software, not written by hand. Most timestamps are not estimates: they are the
+moment the chair or the clerk opened the item, found by matching what they said
+against the recording's captions. The player opens two seconds before that, which
+is enough not to clip the first word. Where no boundary was heard, the site either
+shows a start marked <i>approximate</i> or links the recording with no time at
+all &#8212; it does not guess.</p>
+
+    <h3>How much of this is timed, and how well</h3>
+<p class="src">The record here holds [[stations]] occasions on which a bill was taken up
+&#8212; hearings, executive sessions, work sessions and floor debates &#8212;
+across [[station_bills]] bills. What the site can say about each one depends
+almost entirely on whether there is a recording of it to link.</p>
+<p class="src">For [[no_recording]] of them, there is no recording to offer. The recordings
+this site links are on the General Court's YouTube channels, which begin in
+[[stream_start]]; [[prestream]] of these meetings happened before that, which
+is [[prestream_pct]] of the whole record, and the other [[unmatched]] are
+meetings since then that no recording has been matched to. Most carry the
+date, the committee and the room, and nothing to play.</p>
+<p class="src">[[recorded]] have a recording. On [[placed]] of them &#8212;
+[[placed_pct]] &#8212; the page opens the recording at the moment the bill
+was taken up. On the other [[recording_only]] it links the recording and says
+plainly that the moment has not been established, rather than guessing one. A
+further [[consent]] were decided on a consent calendar: the committee's report
+adopted in a block, never read out and never debated, so there is no moment in
+the recording to find.</p>
+<p class="src">Where the moment is claimed, it usually comes from someone saying so. Most
+of these are the chair or the clerk opening the item, matched against the
+recording's captions; some are a roll call's own clock time from the General
+Court's record, which involves no speech recognition at all; the rest are
+inferred from where the bill is discussed, and those are the ones marked
+<i>approximate</i>. Only that word separates an inferred start from a quoted
+one. The site used to print the margin and the method beside every timestamp,
+and that turned out to be methodology in the reader's way.</p>
+<p class="src">The timing is checked against [[marked]] proceedings that a person timed by
+watching the recording, across [[marked_videos]] recordings. Of these it places
+[[marked_placed]]: the median is out by [[median]], and [[within_minute]] of
+[[marked_placed]] are within a minute. [[over_ten]] are more than ten minutes
+out &#8212; the worst by [[worst]] &#8212; and that is not imprecision but a
+proceeding placed somewhere else, which is a different fault and is being
+worked through. The remaining [[marked_unplaced]] carry no time at all rather
+than a guessed one. Opening each recording at its scheduled time
+instead &#8212; the obvious method, and the one this replaced &#8212; would be
+out by [[schedule_median]] at the median. Last measured [[measured]].</p>
+<p class="src">Speech recognition is worst at exactly the things that matter most — names,
+numbers and organisations. Check the recording before quoting anything.</p>
+"""
+
+PRIVACY = """
+    <h2 id="privacy">Privacy in Detail</h2>
+<p class="src">Page views are counted: how many there are, and which pages. That is
+Cloudflare Web Analytics, which runs on the pages this site is served from.
+It sets no cookies, it does not follow anyone between sites, and it does not
+build a profile of a reader &mdash; what comes back is a count per page, with
+the country, browser and referrer of the visit in aggregate. Nobody here can
+tell one reader from another, and nothing about what you read is stored
+against you.</p>
+<p class="src">Nothing else is collected. There are no accounts, no email addresses and
+no advertising. The feeds need no subscription, so nothing knows who takes
+them. Search runs in your own browser against files this site serves. When a
+search takes you to a results page &mdash; the bill search, the record search
+or the legislator list &mdash; your words travel in that page&rsquo;s address.
+This site&rsquo;s server receives them, as it receives any address, and the
+page-view count may record that address like any other. The typefaces come
+from Google Fonts, so Google sees a request for them when a page opens. Video
+is embedded from
+YouTube&rsquo;s no-cookie address, which still means YouTube sees a request
+when a player is opened &mdash; a player only loads if you press play.</p>
+<p class="src">One thing a reader sends deliberately is feedback, through the form
+linked in the footer. That is a Google form, and what you put in it goes to
+Google and to us.</p>
+<p class="src">The other is a report, from the box marked <i>Report a problem with this
+page</i> on bill, committee and legislator pages. A report holds the page and
+the record it is about, the tab that was open, the kind of problem chosen from
+a list, what you wrote, the time it arrived and which build of the site you
+were reading. Nothing in it identifies you &mdash; no IP address, no cookie, no
+email address &mdash; which is also why we cannot reply to one. It is read only
+to check the page against the official record and fix what is wrong, and it is
+deleted after a week.</p>
+"""
+
+
 def data_page(site, out, tables, base, cov=()):
     """The downloads, described for somebody who has not read the code."""
     try:
@@ -621,6 +718,10 @@ def data_page(site, out, tables, base, cov=()):
     _bw = E(_bw).replace("'", "&#39;") if _bw else (
         "the statewide Yes and No votes on each, from the source each row "
         "names, with the day they were read")
+    # About's account of how the record is built, with its figures counted as
+    # About's were; fill() stops the build on one it cannot count.
+    how_built = about_figures.fill(HOW_BUILT, about_figures.figures(site=site),
+                                   page="data.html")
     _f = repo_facts()
     _rf = ""
     if _f.get("stamped") and _f.get("checks"):
@@ -784,7 +885,7 @@ def data_page(site, out, tables, base, cov=()):
     <p class="note">Found something that looks wrong? The page for that bill
       links the General Court&#39;s own record so the two can be compared, and
       its <i>Report a problem with this page</i> box tells us.</p>
-
+{how_built}{PRIVACY}
     <h2>Read the code</h2>
     <p>Every script that fetches, parses and builds this site is public, so a
       figure here can be traced to the line that produced it.</p>

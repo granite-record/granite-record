@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.231 */
+/* GRANITE_VERSION: 2026-09-07.232 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -5105,6 +5105,14 @@ padding:var(--sp-8) var(--sp-8) var(--sp-12)}
 :where(body.pg) blockquote.artist{margin:var(--sp-5) 0 0;padding:0 0 0 var(--sp-6);
 border-left:3px solid var(--rule-2);font-family:var(--serif);color:var(--ink-2)}
 :where(body.pg) blockquote.artist p{margin:0 0 var(--sp-4)}
+/* A CLOSED FOLD in a page's prose -- About's "Sources in detail" (the
+   person's text of 9 October 2026): the detail is there for the reader who
+   asks for it and out of the way of the one who does not. The summary is a
+   control, in the link colour and tall enough for a thumb. */
+:where(body.pg) details.fold{margin:0 0 var(--sp-5)}
+:where(body.pg) details.fold > summary{cursor:pointer;color:var(--pine);font-size:var(--t-ui);
+padding:var(--sp-3) 0;min-height:44px;box-sizing:border-box}
+:where(body.pg) details.fold[open] > summary{margin-bottom:var(--sp-4)}
 :where(body.pg) p{margin:0 0 var(--sp-5)}
 /* 34em is 68 characters at the body size. Without it the lead ran
    to 148 and the footer to 182 on a 1440px screen. */:where(body.pg) .lead{font-family:var(--serif);font-size:var(--t-lead);line-height:1.65;

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.491
+# GRANITE_VERSION: 2026-09-04.492
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -38353,7 +38353,9 @@ def _logo_licence():
     about = _paths.locate("build_pages.py").read_text(encoding="utf-8")
     about = about[about.index('ABOUT = """'):]
     about = about[:about.index('"""', 12)]
-    assert "<h2>The logo</h2>" in about and "Debra Caplan" in about \
+    # "The Logo", in the Title Case of the About page the person approved on
+    # 9 October 2026; the section itself is word for word as it was.
+    assert "<h2>The Logo</h2>" in about and "Debra Caplan" in about \
         and "https://www.linescapesnh.com/" in about, \
         "the About page lost the logo section, its credit or its link"
     ignored = Path(".gitignore").read_text(encoding="utf-8").splitlines()
@@ -53741,7 +53743,12 @@ def _footer_credit():
     independently, with a place left for the person's own fuller description
     (7 October 2026). Both footers carry it -- bills.html's, which every
     record page is built from, and build_pages.shell's -- and every page the
-    fixture's builders wrote carries it once."""
+    fixture's builders wrote carries it once.
+
+    THE DESCRIPTION IS WRITTEN (9 October 2026). The person's own account
+    took the place left for it, under "Who Makes Granite Record" in the About
+    page's Title Case, and opens by saying who makes the site; so the page
+    says that once, under that heading, and the placeholder is gone."""
     line = ('<p class="footby">An independent project by Alice Wade &middot; '
             '<a href="about.html">About</a></p>')
     for f in ("bills.html", "build_pages.py"):
@@ -53762,10 +53769,15 @@ def _footer_credit():
         f"{len(lacking)} of {len(with_footer)} pages carry the credit line other than once: "
         f"{lacking[:5]}")
     about = (shared / "site" / "about.html").read_text(encoding="utf-8")
-    assert about.count("Granite Record is built and maintained by Alice Wade, independently.") == 1 \
-        and '<h2 id="who">Who makes Granite Record</h2>' in about, (
+    who = '<h2 id="who">Who Makes Granite Record</h2>'
+    says = "I'm Alice Wade, a State Representative from Dover, and Granite Record is my"
+    flat = " ".join(about.split())
+    assert flat.count(says) == 1 and about.count(who) == 1 \
+        and flat.index(who) < flat.index(says) \
+        and "<h2" not in flat[flat.index(who) + len(who):flat.index(says)], (
             "the About page does not say who makes the site, once, under its own heading")
-    assert "<!-- WHO MAKES IT:" in about, "the About page leaves no place for the person's description"
+    assert "<!-- WHO MAKES IT:" not in about, (
+        "the About page still holds the place for the person's description it now carries")
     return "ok", (f"the credit line once on each of {len(with_footer)} pages with a footer, and "
                   "About says who makes it")
 
@@ -56290,24 +56302,45 @@ def _about_reports():
     it is kept. Until 13 September it said the one thing a reader sent was
     feedback through a Google form, a day after the report box went live, and
     nothing deleted a report at all. The promise is held to the code now: the
-    box named as app.js labels it, and the week as compile_reports deletes."""
-    bp, app, cr = _paths.locate("build_pages.py"), Path("src/pages/app.js"), _paths.locate("compile_reports.py")
-    absent = [str(p) for p in (bp, app, cr) if not p.exists()]
+    box named as app.js labels it, and the week as compile_reports deletes.
+
+    TWO PLACES SINCE 9 OCTOBER 2026. The About page the person approved that
+    day says it in a line -- reports sent through the <i>Report a problem</i>
+    button are deleted after a week -- and its old section, "What this site
+    knows about you", moved word for word to the Data page under "Privacy in
+    Detail" (build_exports.PRIVACY). So the detail is held there, the box by
+    its whole label as before, and About's line is held to the same week and
+    to naming the box by the words its label begins with."""
+    bp, ex = _paths.locate("build_pages.py"), _paths.locate("build_exports.py")
+    app, cr = Path("src/pages/app.js"), _paths.locate("compile_reports.py")
+    absent = [str(p) for p in (bp, ex, app, cr) if not p.exists()]
     if absent:
         return "skip", "not here: " + ", ".join(absent)
-    about = " ".join(bp.read_text(encoding="utf-8").split())
+
+    def const(p, name):
+        t = p.read_text(encoding="utf-8")
+        i = t.find(f'\n{name} = """')
+        assert i >= 0, f"{p.name} no longer has {name}"
+        t = t[i + len(f'\n{name} = """'):]
+        return " ".join(t[:t.index('"""')].split())
+    about, detail = const(bp, "ABOUT"), const(ex, "PRIVACY")
     m = re.search(r"<summary>(Report a problem[^<]*)</summary>", app.read_text(encoding="utf-8"))
     assert m, "app.js no longer labels the report box"
     label = " ".join(m.group(1).split())
-    assert f"<i>{label}</i>" in about, (
-        f"the About page does not name the box as the page labels it, <i>{label}</i>")
+    assert f"<i>{label}</i>" in detail, (
+        f"the Data page's Privacy in Detail does not name the box as the page labels it, <i>{label}</i>")
+    named = re.findall(r"<i>(Report\b[^<]*)</i>", about)
+    assert named and all(label.startswith(n) for n in named), (
+        f"the About page names the box {named}, which is not how the page labels it, <i>{label}</i>")
     k = re.search(r"^KEEP_DAYS = (\d+)", cr.read_text(encoding="utf-8"), re.M)
     assert k, "compile_reports.py no longer says how long a report is kept"
     said = {7: "a week", 14: "two weeks", 30: "a month"}.get(int(k.group(1)))
-    assert said and f"deleted after {said}" in about, (
-        f"compile_reports deletes a report after {k.group(1)} days; the About page does not "
-        f"say \"deleted after {said or k.group(1) + ' days'}\"")
-    return "ok", f"the box named as it is labelled, and deleted after {said}, as the compiler does"
+    for page, text in (("the About page", about), ("the Data page's Privacy in Detail", detail)):
+        assert said and f"deleted after {said}" in text, (
+            f"compile_reports deletes a report after {k.group(1)} days; {page} does not "
+            f"say \"deleted after {said or k.group(1) + ' days'}\"")
+    return "ok", (f"the box named as it is labelled, and deleted after {said}, as the compiler "
+                  "does, on About and in the Data page's Privacy in Detail")
 
 
 # Sentences the About page, the Data page and manifest.json carried on 23
@@ -56367,18 +56400,27 @@ def _about_data_claims(build_pages, about_figures, build_site_v2):
                                "approximate": 5, "consent": 5}}
         (root / "site" / "station_census.json").write_text(json.dumps(census),
                                                            encoding="utf-8")
+        # The bill index, before About is filled: its opening counts the
+        # bills and the first year from it (the person's text of 9 October
+        # 2026), and the Data page's build below reads the same rows.
+        passages = {"HB1": "Hpppp", "SB2": "Spxx-", "HB3": "Hphh-",
+                    "HR4": "Hpp", "HB5": ""}
+        _bill_index_write(root / "site", [
+            {"term": "2025-2026", "year": "2026", "id": b, "title": "a bill",
+             "status": "In committee", "kind": "active", "passage": p}
+            for b, p in passages.items()])
         figs = AF.figures(site=root / "site", root=here)
         if "marked" not in figs:
             return "skip", "alignment_score.json is not here, so about.html cannot be filled"
+        assert figs.get("bills") == "5" and figs.get("since") == "2025", (
+            "the About page's count of bills and first year are not the index's: "
+            f"{figs.get('bills')!r}, {figs.get('since')!r}")
         about = AF.fill(BP.ABOUT, figs)
         flat = " ".join(about.split())
         for bad in CONTRADICTED["about"]:
             assert bad not in flat, f"about.html says {bad!r} again"
-        para = next((p for p in re.findall(r"<p>(.*?)</p>", flat)
-                     if "no recording to offer" in p), "")
-        assert para and all(n in para for n in ("75", "70", "5")), (
-            "the About page's no-recording sentence does not split its total "
-            f"into the sittings before the channels and the unmatched rest: {para[:200]!r}")
+        assert "It covers 5 bills since 2025," in flat, (
+            "the About page does not open with the index's count of bills and its first year")
         assert AF.STREAM_START_WORDS in flat, "the About page does not say when the channels begin"
         assert "The House committees' written reports" in flat and "Senate committees'" in flat, (
             "the About page no longer says whose written reports begin in 1997: they are the "
@@ -56387,12 +56429,11 @@ def _about_data_claims(build_pages, about_figures, build_site_v2):
         # ---- Data page and manifest, built by build_exports on a fixture ---
         (root / "data").mkdir()
         shutil.copy2(here / "src/pages/bills.html", root / "site" / "bills.html")
-        passages = {"HB1": "Hpppp", "SB2": "Spxx-", "HB3": "Hphh-",
-                    "HR4": "Hpp", "HB5": ""}
-        _bill_index_write(root / "site", [
-            {"term": "2025-2026", "year": "2026", "id": b, "title": "a bill",
-             "status": "In committee", "kind": "active", "passage": p}
-            for b, p in passages.items()])
+        # The gate's score, where the build reads it: the Data page's How the
+        # Record Is Built states it, and fill() stops a build without it.
+        (root / "generated").mkdir()
+        shutil.copy2(here / "generated" / "alignment_score.json",
+                     root / "generated" / "alignment_score.json")
         (root / "site" / "legislators.json").write_text("[]", encoding="utf-8")
         (root / "data" / "sponsors.json").write_text("{}", encoding="utf-8")
         (root / "data" / "member_votes.json").write_text("[]", encoding="utf-8")
@@ -56407,6 +56448,19 @@ def _about_data_claims(build_pages, about_figures, build_site_v2):
         for bad in CONTRADICTED["data"]:
             assert bad not in data, f"data.html says {bad!r} again"
             assert bad not in mtext, f"manifest.json says {bad!r} again"
+        # WHAT MOVED FROM ABOUT (9 October 2026): How the Record Is Built and
+        # Privacy in Detail are About's old sections word for word, so the
+        # sentences About was held free of are held off them here, and the
+        # no-recording sentence is read where it now is.
+        for bad in CONTRADICTED["about"]:
+            assert bad not in data, f"data.html says {bad!r}, which About was held free of"
+        para = next((p for p in re.findall(r"<p[^>]*>(.*?)</p>", data)
+                     if "no recording to offer" in p), "")
+        # Each count as a word of its own: "5" is inside "75", so a sentence
+        # that lost the unmatched five passed while it was matched as text.
+        assert para and all(re.search(rf"\b{n}\b", para) for n in ("75", "70", "5")), (
+            "the Data page's no-recording sentence does not split its total "
+            f"into the sittings before the channels and the unmatched rest: {para[:200]!r}")
         with (root / "site" / "data" / "bills.csv").open(encoding="utf-8", newline="") as fh:
             used = {ch for row in csv.DictReader(fh) for ch in row["passage"]}
         undocumented = sorted(c for c in used if f"<code>{c}</code>" not in data)
