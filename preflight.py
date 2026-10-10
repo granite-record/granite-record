@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.505
+# GRANITE_VERSION: 2026-09-04.506
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -54603,6 +54603,42 @@ def _latest_activity_links_the_bill(BP, B):
     return "ok", "SB 256-FN of 2025 leads to bill/2025/sb256.html, in both renderers"
 
 
+@check("frontend", "a town page carries the district map in a tab of its own, second, framed on "
+                   "the town with its own State House district chosen")
+def _town_page_map():
+    """Polish 3: "The map also goes on the town pages" (the approved drawing,
+    private/design/polish/proto/town-dover-ward-1.html). Read off the
+    fixture's built town pages: every one has a District Map tab, second,
+    after Representatives; its panel holds the map's mount, named for the
+    town, a ward's page for its ward; the map's script comes after the tabs'
+    switching script, so the map is mounted the first time its tab is shown.
+    And map_section names the town's own State House district, never its
+    floterial, by the map's code ("ST14" for Strafford 14)."""
+    import build_town_pages as BT
+    shared, _base, _ran, _days = _fixture_site_shared()
+    pages = sorted((shared / "site" / "town").glob("*.html"))
+    if not pages:
+        return "skip", "the fixture builds no town page"
+    for f in pages:
+        page = f.read_text(encoding="utf-8")
+        tabs = re.findall(r'role="tab" id="tab-([a-z]+)"', page)
+        assert tabs[:2] == ["representatives", "map"], f"{f.name}: the tabs are {tabs}"
+        m = re.search(r'<div class="twnmap" id="twnmap" data-town="([^"]+)"([^>]*)></div>', page)
+        assert m, f"{f.name}: the District Map tab holds no map"
+        ward = re.search(r"-ward-(\d+)\.html$", f.name)
+        assert (f'data-ward="{ward.group(1)}"' in m.group(2)) if ward else "data-ward" not in m.group(2), (
+            f"{f.name}: the map is not told the page's ward: {m.group(0)}")
+        assert BT.MAP_JS in page and page.index(BT.MAP_JS) > page.index(BT.TABS_JS), (
+            f"{f.name}: the map's script is not after the tabs' switching script")
+    got = "".join(BT.map_section("Dover", "4", {"house": [
+        {"county": "Strafford", "district": "21", "floterial": True},
+        {"county": "Strafford", "district": "14", "floterial": False}]}))
+    assert 'data-town="Dover" data-ward="4" data-pick="ST14"' in got, (
+        f"map_section does not choose the ward's own district: {got[:300]}")
+    return "ok", (f"{len(pages)} town pages, each with the District Map second, the map told its "
+                  "town and ward and mounted after the tabs; Dover Ward 4 opens on Strafford 14")
+
+
 @check("frontend", "an official's chip on a town page says the party in letters, as a "
                    "legislator's does", needs=("build_town_pages",))
 def _official_party_letter(BT):
@@ -77314,9 +77350,11 @@ def _town_tabs(B, BP):
     pages = {t: B.build(t, "0", {"0": {}}, dist, [rep, sen], off,
                         "https://x.test", tmpl)
              for t in ("Lyme", "Bean's Grant", "Nowhere")}
-    want = {"Lyme": ["representatives", "officials", "vote"],
-            "Bean's Grant": ["representatives", "vote"],
-            "Nowhere": ["representatives"]}
+    # The District Map is every place's second tab (Polish 3): every town and
+    # ward is on the map.
+    want = {"Lyme": ["representatives", "map", "officials", "vote"],
+            "Bean's Grant": ["representatives", "map", "vote"],
+            "Nowhere": ["representatives", "map"]}
     bad = []
     for town, page in pages.items():
         bars = re.findall(r'<div class="twntabs" role="tablist" aria-label="[^"]+" '
