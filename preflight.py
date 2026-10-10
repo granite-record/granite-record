@@ -78285,6 +78285,10 @@ def main():
     print(f"python {sys.version.split()[0]}")
     print("=" * 74)
     chosen = _changed_choice(a) if a.changed is not None else None
+    if chosen is not None:
+        # NOT RECORDED: a --changed run vouches for part of the suite, and
+        # handoff.py reads a record as a run of all of it.
+        handoff = None
 
     results, group = [], None
     for c in CHECKS:
@@ -78327,17 +78331,12 @@ def main():
     bad = [r for r in results if r[2] in ("FAIL", "ERROR")]
     skipped = [r for r in results if r[2] == "skip"]
     ok = [r for r in results if r[2] == "ok"]
-    # A --changed run is not recorded: it vouches for part of the suite, and
-    # handoff.py reads a record as a run of all of it.
-    if handoff and chosen is None:
+    if handoff:
         handoff.record_run("code" if a.code else "data" if a.data else "all", results,
                            tree, _time.time() - began, data=data)
 
     print("\n" + "=" * 74)
     print(f"{len(ok)} passed, {len(bad)} failed, {len(skipped)} skipped")
-    if chosen is not None:
-        print(f"--changed: {len(results)} checks run of {chosen['pool']}. THIS IS NOT THE "
-              "FULL SUITE; run python3 preflight.py before a merge into dev.")
     if bad:
         print("\nWhat is broken:")
         for g, n, s, m in bad:
@@ -78349,7 +78348,7 @@ def main():
         print("\nSkipped, mostly because the file is not in this folder:")
         for g, n, s, m in skipped:
             print(f"  {g}/{n}: {m}")
-    if not bad and chosen is None:
+    if not bad:
         print("\nEverything that can be checked without the network is working.")
         print("What is left needs real data: run src/ops/inventory.py, then align_all,")
         print("then src/hearings/segment_markers.py --all --data data, and score the result:")
@@ -78357,6 +78356,10 @@ def main():
         print("Do not run src/hearings/apply_markers.py --apply. It is the superseded")
         print("clustering path; build_all skips it unless --with-superseded,")
         print("and it overwrites boundaries segment_markers read from the chair.")
+    if chosen is not None:
+        print(f"\n--changed: all of that is of the {len(results)} checks run, of "
+              f"{chosen['pool']}. THIS IS NOT THE FULL SUITE: python3 preflight.py runs "
+              "every check, and runs before a merge into dev.")
     print("=" * 74)
     sys.exit(1 if bad else 0)
 
