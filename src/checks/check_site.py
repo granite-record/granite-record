@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.17
+# GRANITE_VERSION: 2026-09-04.18
 """
 Check the site is fit to publish before uploading it.
 
@@ -53,7 +53,7 @@ MAY_BE_EMPTY = {"former.json"}
 # that is in the nav and not in here is a tab that can go missing without the
 # checker noticing -- which calendar.html did, between being added to both nav
 # emitters and being added to this list.
-REQUIRED = ["index.html", "bills.html", "legislators.html", "learn.html",
+REQUIRED = ["index.html", "bills.html", "legislators.html", "resources.html",
             "about.html", "calendar.html", "style.css",
             "meta.json", "legislators.json", "home.json"]
 
@@ -184,6 +184,36 @@ def search_index(site, errors, warnings):
         (warnings if allowed else errors).append(said)
 
 
+def redirect_rules(site):
+    """The left-hand side of every rule in the site's _redirects, as path
+    segments. Pages answers each one -- a tab's address with its record's page,
+    /learn with the Resources hub it moved to -- so a link to one is not a
+    broken link, though no file sits there. preflight's _links_resolve reads
+    the file the same way. `:name` is one segment, `*` is the rest."""
+    p = Path(site) / "_redirects"
+    if not p.exists():
+        return []
+    return [[x for x in line.split()[0].strip("/").split("/") if x]
+            for line in p.read_text(encoding="utf-8", errors="replace").splitlines()
+            if line.strip() and not line.strip().startswith("#")]
+
+
+def redirected(site, target, rules):
+    """Does a rule of _redirects answer this file's address?"""
+    try:
+        segs = [x for x in target.relative_to(Path(site).resolve()).as_posix().split("/") if x]
+    except ValueError:
+        return False
+    for rule in rules:
+        if rule and rule[-1] == "*":
+            if len(segs) >= len(rule) - 1 and all(r.startswith(":") or r == s
+                                                  for r, s in zip(rule[:-1], segs)):
+                return True
+        elif len(rule) == len(segs) and all(r.startswith(":") or r == s for r, s in zip(rule, segs)):
+            return True
+    return False
+
+
 def served(target):
     """Is this address one the host will answer?
 
@@ -258,6 +288,7 @@ def main():
     bad = Counter()
     checked = 0
     pages = list(site.glob("*.html")) + list((site / "bill").rglob("*.html"))[:200]
+    rules = redirect_rules(site)
     for p in pages:
         txt = p.read_text(encoding="utf-8", errors="replace")
         # Strip script blocks first. They contain template literals like
@@ -288,7 +319,7 @@ def main():
             else:
                 target = (p.parent / clean).resolve()
             checked += 1
-            if not served(target):
+            if not served(target) and not redirected(site, target, rules):
                 if target in brand_at:
                     to_brand += 1
                     continue

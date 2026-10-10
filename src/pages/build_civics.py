@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.37
+# GRANITE_VERSION: 2026-09-08.40
 """
 The civics section: a hub and one page per topic, in order.
 
@@ -243,12 +243,12 @@ def _voters_verb(label, n):
     return s
 
 
-def _cacr_record(cacrs, narr, term):
-    """The term's CACRs, every one in exactly one clause: the voters, a
-    three-fifths failure on the House floor where the docket records one,
-    and otherwise its status."""
-    if not cacrs:
-        return f"The {term.replace('-', '&ndash;')} term filed no CACRs."
+def _cacr_parts(cacrs, narr, term):
+    """(head, lead, voters, items): the term's CACRs, every one in exactly one
+    part -- the voters, a three-fifths failure on the House floor where the
+    docket records one, and otherwise its status. voters is [(status, n)];
+    items is [(clause, label, n, tail)], the clause as the sentence says it and
+    the label and tail as the table's row does."""
     shown = term.replace("-", "&ndash;")
     short = [r for r in cacrs if _fell_short(narr.get(r.get("id")), r.get("status"))]
     rest = [r for r in cacrs if all(r is not s for s in short)]
@@ -268,21 +268,26 @@ def _cacr_record(cacrs, narr, term):
     def n_(k):
         return f"{k:,}"
 
-    clauses = []
+    items = []
     if by["Killed"]:
-        clauses.append(f"{n_(by['Killed'])} {'was' if by['Killed'] == 1 else 'were'} killed outright")
+        items.append((f"{n_(by['Killed'])} {'was' if by['Killed'] == 1 else 'were'} killed outright",
+                      "Killed outright", by["Killed"], ""))
     if short:
         sen = sum(1 for r in short if (r.get("passage") or "")[:2] == "Sp")
         tail = ""
         if sen:
-            tail = (f", {sen:,} of them after passing the Senate" if len(short) > 1
-                    else ", after passing the Senate")
-        clauses.append(f"{n_(len(short))} fell short of three fifths on the House floor{tail}")
+            tail = (f"{sen:,} of them after passing the Senate" if len(short) > 1
+                    else "after passing the Senate")
+        items.append((f"{n_(len(short))} fell short of three fifths on the House floor"
+                      + (f", {tail}" if tail else ""),
+                      "Fell short of three fifths on the House floor", len(short), tail))
     failed = [r for r in rest if r.get("status") == "Failed to pass"]
     if failed:
-        clauses.append(f"{n_(len(failed))} failed a floor vote")
+        items.append((f"{n_(len(failed))} failed a floor vote", "Failed a floor vote",
+                      len(failed), ""))
     if by["Died on the table"]:
-        clauses.append(f"{n_(by['Died on the table'])} died on the table")
+        items.append((f"{n_(by['Died on the table'])} died on the table", "Died on the table",
+                      by["Died on the table"], ""))
     ended = [r for r in rest if r.get("status") == "Died when the session ended"]
     if ended:
         after = Counter((r.get("passage") or "")[:1] for r in ended
@@ -291,13 +296,25 @@ def _cacr_record(cacrs, narr, term):
         if sum(after.values()):
             where = " or ".join(("the Senate" if c == "S" else "the House")
                                 for c in sorted(after))
-            tail = (f", {sum(after.values()):,} of them after passing {where}"
-                    if len(ended) > 1 else f", after passing {where}")
-        clauses.append(f"{n_(len(ended))} died when the session ended{tail}")
+            tail = (f"{sum(after.values()):,} of them after passing {where}"
+                    if len(ended) > 1 else f"after passing {where}")
+        items.append((f"{n_(len(ended))} died when the session ended" + (f", {tail}" if tail else ""),
+                      "Died when the session ended", len(ended), tail))
     done = {"Killed", "Failed to pass", "Died on the table",
             "Died when the session ended", *voters}
     for s in sorted(s for s in by if s not in done):
-        clauses.append(f"{n_(by[s])} {'is' if by[s] == 1 else 'are'} listed as “{s}”")
+        items.append((f"{n_(by[s])} {'is' if by[s] == 1 else 'are'} listed as “{s}”",
+                      f"Listed as “{s}”", by[s], ""))
+    return head, lead, [(s, by[s]) for s in voters], items
+
+
+def _cacr_record(cacrs, narr, term):
+    """The term's CACRs as one paragraph: what it filed, what reached the
+    voters, and then every other CACR in exactly one clause."""
+    if not cacrs:
+        return f"The {term.replace('-', '&ndash;')} term filed no CACRs."
+    head, lead, _voters, items = _cacr_parts(cacrs, narr, term)
+    clauses = [c for c, *_ in items]
     body = ""
     if clauses:
         # A clause with a comma of its own ("10 fell short ..., 3 of them after
@@ -308,6 +325,38 @@ def _cacr_record(cacrs, narr, term):
                       else sep.join(clauses[:-1]) + sep + "and " + clauses[-1]) + "."
         body = " " + body[1].upper() + body[2:]
     return f"{head} {lead}{body}"
+
+
+def _cacr_lead(cacrs, narr, term):
+    """The paragraph over the table: what the term filed and what reached the
+    voters, the first two sentences of _cacr_record."""
+    if not cacrs:
+        return f"The {term.replace('-', '&ndash;')} term filed no CACRs."
+    head, lead, _voters, _items = _cacr_parts(cacrs, narr, term)
+    return f"{head} {lead}"
+
+
+def _cacr_table(cacrs, narr, term):
+    """The rest of _cacr_record's paragraph as a table, a row a part, the
+    passed ones first: every CACR of the term in exactly one row, which the
+    table's total says (the first round's prototype, which the person liked on
+    9 October 2026). A three-fifths failure carries the threshold's amber."""
+    if not cacrs:
+        return ""
+    _head, _lead, voters, items = _cacr_parts(cacrs, narr, term)
+    rows = ([(st.replace(", ", "; ", 1), n, "", False) for st, n in voters]
+            + [(label, n, tail, label.startswith("Fell short")) for _c, label, n, tail in items])
+    assert sum(n for _, n, _, _ in rows) == len(cacrs), "the CACR table does not add up to the term"
+    shown = term.replace("-", "&ndash;")
+    trs = "".join(
+        f'<tr{" class=\"needs\"" if needs else ""}><th scope="row" class="is-text">{label}'
+        + (f'<span class="l-sub">{tail}</span>' if tail else "")
+        + f'</th><td class="l-num">{n:,}</td></tr>' for label, n, tail, needs in rows)
+    return ('<div class="l-tablewrap"><table class="l-table">'
+            f"<caption>The {len(cacrs):,} CACRs of the {shown} term</caption>"
+            '<thead><tr><th scope="col">What became of them</th>'
+            '<th scope="col" class="l-num">CACRs</th></tr></thead>'
+            f"<tbody>{trs}</tbody></table></div>")
 
 
 def record_figures(site, root=Path(".")):
@@ -355,6 +404,8 @@ def record_figures(site, root=Path(".")):
             if v.get("body") == "H" and str(v.get("year")) in years:
                 seated[(v.get("year"), v.get("vote_number"))] += 1
 
+    senate_sitting = sum(1 for m in _load(Path(site) / "legislators.json", [])
+                         if m.get("chamber") == "S")
     every_narr = _load(Path(root) / "narratives.json", {})
     narr = every_narr.get(term, {})
 
@@ -499,6 +550,8 @@ def record_figures(site, root=Path(".")):
         # here because its clauses come and go with the counts.
         "cacr_hurdle": _cacr_hurdle(idx, every_narr, term),
         "cacr_record": _cacr_record(cacrs, every_narr.get(term, {}), term),
+        "cacr_lead": _cacr_lead(cacrs, every_narr.get(term, {}), term),
+        "cacr_table": _cacr_table(cacrs, every_narr.get(term, {}), term),
         "hearings": hearings,
         "hearing_video_bills": len(filmed),
         "hearing_video_from": video_from.split("-")[0],
@@ -518,6 +571,41 @@ def record_figures(site, root=Path(".")):
         # the site's own words, month first; S.BUILT is a citation's form.
         "built_on": S.date_words(build_date.today(), "full"),
     }
+    # THE FIGURES THE PAGES DRAW, from the counts above (civics.bar and the
+    # rest say how each is drawn). Counted here so that no figure carries a
+    # number typed beside the sentence that states it.
+    shown = figures["term"]
+    rest = (len(cur) - status["Killed"] - status["Signed into law"]
+            - status["Referred for interim study"] - status["Died on the table"]
+            - status["Died when the session ended"])
+    figures["fig_ends"] = civics.bar(
+        f"The {len(cur):,} bills and resolutions of the {shown} term",
+        f"How the {len(cur):,} bills and resolutions of the {term} term ended",
+        [(status["Killed"], "c-died", "killed (ITL)"),
+         (status["Signed into law"], "c-law", "signed into law"),
+         (status["Referred for interim study"], "c-study", "sent for interim study"),
+         (status["Died on the table"], "c-table", "died on the table"),
+         (status["Died when the session ended"], "c-end", "died when the session ended"),
+         (rest, "c-rest", "every other outcome", False)])
+    no_rc = figures["all_no_rollcall"]
+    figures["fig_rollcalls"] = civics.bar(
+        f"The {figures['all_bills']:,} bills in this record",
+        "Bills with and without a recorded roll call",
+        [(figures["all_rollcall"], "c-rc", "with at least one recorded roll call"),
+         (no_rc - figures["pre_rollcall_bills"], "c-none",
+          f"<b>{no_rc:,}</b> with none (the grey and the hatched)", False),
+         (figures["pre_rollcall_bills"], "c-old",
+          f'<span class="l-sub">of those from before {rc_first}, where this record&rsquo;s '
+          "roll calls begin</span>")])
+    pending_n = sum(1 for r in idx if r.get("status") == "Vetoed" and r.get("term") == term)
+    figures["fig_vetoes"] = civics.bar(
+        f"The {len(vetoed):,} vetoed bills across the {figures['terms']} terms on this site",
+        f"What became of the {len(vetoed):,} vetoed bills",
+        [(stood, "c-died", "the veto stood"),
+         (figures["veto_overridden"], "c-law", "overridden, and the bill became law"),
+         (pending_n, "c-rest", "still awaiting the override vote")])
+    figures["fig_seats"] = civics.seats_figure(seats, sitting, len(senate), senate_sitting)
+    figures["fig_term"] = civics.term_figure(term)
     # THE WORKED EXAMPLE on the finding-your-representatives page, drawn from
     # the map rather than typed: the diagram, and every fact the prose beside
     # it names. civics.reps_example stops the build if the example town stops
@@ -545,6 +633,29 @@ def dashes(text):
     return re.sub(r"(?<=\s)--(?=\s)", "—", text or "")
 
 
+# A BILL KEEPS ITS SUFFIX WHEREVER IT HAS ONE (the person's D7, 8 October
+# 2026: -FN, -A, -LOCAL are part of the official name). The prose names a bill
+# by its number as a link to its page -- "HB 349" -- and the suffix is the
+# record's, so it comes from the bill's own row rather than being typed: a
+# bill renumbered or given a fiscal note later changes its name here too. A
+# year the prose gives in brackets stays, and a link whose words are not a
+# bill's number ("the 1995 bill") is left as it was written.
+_BILL_LINK = re.compile(r'<a href="bill/(\d{4})/([a-z]+\d+)\.html">\s*([A-Z]+)\s+(\d+)'
+                        r'((?:\s+\(\d{4}\))?)\s*</a>')
+
+
+def suffixed(text, names):
+    """Every link to a bill whose words are its number, given the number the
+    bill's own row writes ("HB 349-FN"). names is {(year, "hb349"): "HB 349-FN"}."""
+    def one(m):
+        year, bid, letters, num, yr = m.groups()
+        name = names.get((year, bid))
+        if not name or not name.replace(" ", "").upper().startswith(f"{letters}{num}"):
+            return m.group(0)
+        return f'<a href="bill/{year}/{bid}.html">{name}{yr}</a>'
+    return _BILL_LINK.sub(one, text or "")
+
+
 def fill(text, figures):
     """[[name]] -> its figure. A name with no figure stops the build: a page
     that printed "[[killed]]", or nothing where a number was, would publish."""
@@ -555,31 +666,70 @@ def fill(text, figures):
                          lambda m: str(figures[m.group(1)]), text or ""))
 
 
-def sources_block(sources):
-    if not sources:
-        return ""
-    # A SOURCE ON THIS SITE IS NOT AN OUTWARD LINK. Every entry here used to be
-    # somebody else's page, so every one got target="_blank" and the arrow this
-    # site uses to mean "this leaves the record". One of them is now our own
-    # directory -- the General Court's address lookup answers 404 and the town
-    # pages already hold what it gave -- and sending a reader to our own page in
-    # a new tab, marked as though it were elsewhere, tells them something untrue
-    # about where they are going.
-    def one(label, u):
-        away = u.startswith("http")
-        mark = ' target="_blank" rel="noopener"' if away else ""
-        return f'<li><a href="{E(u)}"{mark}>{E(label)}</a></li>'
+# ---------------------------------------------------------------------------
+# WHERE THE PAGES LIVE, AND HOW THEY HANG TOGETHER (the person, 9 October
+# 2026: "an initial hub linking to the learn pages, the how to guides, and
+# official sources with tabs for each"; the approved prototypes in
+# private/design/polish/proto/resources.html and learn/*.html).
+#
+# THE HUB IS /resources, with a tab each for Learn, the How-To Guides and the
+# Official Sources, and each tab its own address (#learn, #guides, #sources).
+# /learn, which was the Learn hub, redirects there (decision 128 of 8 October:
+# a line in build_pages.REDIRECTS), and the articles keep their /learn/<page>
+# addresses, so nothing already pointing at one breaks. Every href below is
+# written from the site's root, because these pages are built from bills.html,
+# which carries <base href="/">: "../learn.html" resolved to /../learn.html
+# once, and a bare "#s-vetoes" resolves to the home page.
+# ---------------------------------------------------------------------------
+HUB_PAGE = "resources.html"
+HUB = S.canon("/" + HUB_PAGE)
+LEARN_DIR = "learn"
+# The hub's three tabs, in the person's order: (address, name).
+HUB_TABS = (("learn", "Learn"), ("guides", "How-To Guides"), ("sources", "Official Sources"))
+OG_ALT = "Granite Record: how New Hampshire works"
 
-    items = "".join(one(label, u) for label, u in sources)
-    return (f'<section class="srcs"><h2>Where this comes from</h2>'
-            f'<ul class="reading">{items}</ul></section>')
+# THE RECORD IN NUMBERS, named once: its page's title and lead and its entry
+# on the hub say the same thing. The hub's old blurb promised "the closest
+# votes on record" and how "the two chambers differ in the way they take a
+# vote", neither of which the page holds (the cohesion review of 9 October
+# 2026); the page's own description says what it does.
+NUMBERS_SLUG = "by-the-numbers"
+NUMBERS_TITLE = "The Record in Numbers"
+NUMBERS_WHAT = ("how bills end, committees' workloads and passage rates, amendments, "
+                "hearings, attendance, vetoes, the closest votes and the amendments sent to "
+                "the voters")
+NUMBERS_DESC = ("Statistics counted from the New Hampshire General Court's own record: "
+                + NUMBERS_WHAT + ".")
 
 
-# Three destinations beside a three-section page is the page printed twice,
-# which is the mistake already recorded above rail() for the hub. Seven of the
-# fourteen pages clear this; the other seven still get ids, because an address
-# costs nothing and a deep link into a 267-word page still lands somewhere.
-CONTENTS_MIN = 4
+def curly(text):
+    """Escaped for the page, with the apostrophe a reader sees (the meta
+    description keeps the plain one it has always had)."""
+    return E(text).replace("&#x27;", "&rsquo;")
+
+
+def learn_href(slug):
+    return f"{LEARN_DIR}/{slug}.html"
+
+
+# A small number in a sentence or a heading is spelled out ("Thirteen short
+# pages", "The Thirteen Pages"), and falls back to the digits past twenty, by
+# which point the section is a different thing and the sentence needs
+# rewriting anyway. COUNTED, NOT TYPED: "Eleven short pages" once sat over a
+# list of thirteen.
+NUMBER_WORD = {
+    1: "One", 2: "Two", 3: "Three", 4: "Four", 5: "Five", 6: "Six",
+    7: "Seven", 8: "Eight", 9: "Nine", 10: "Ten", 11: "Eleven",
+    12: "Twelve", 13: "Thirteen", 14: "Fourteen", 15: "Fifteen",
+    16: "Sixteen", 17: "Seventeen", 18: "Eighteen", 19: "Nineteen",
+    20: "Twenty",
+}
+
+
+def _plain(inner):
+    """A heading's words with its tags out and its entities LEFT ALONE: E()
+    here would publish "2025&amp;ndash;2026"."""
+    return re.sub(r"<[^>]+>", "", inner).strip()
 
 
 def _slug(inner):
@@ -593,238 +743,395 @@ def _slug(inner):
     return s
 
 
-def anchored(article, prefix="s-"):
-    """Give every h2 an address; return the article and the list of them.
+_H2 = re.compile(r"<h2([^>]*)>(.*?)</h2>", re.S)
+_WIDE = re.compile(r"<!--wide-->(.*?)<!--/wide-->", re.S)
 
-    DERIVED, NOT AUTHORED. Nothing links to a learn heading today because
-    there has never been anything to link to -- all fifteen built pages carry
-    zero ids on any h1-h6 -- so there is no contract to break, and sixty-two
-    hand-written ids would put the machinery into civics.py, which is the
-    writing. A heading that already has an id keeps it: that is how an author
-    pins an address whose wording is going to change.
 
-    h2 ONLY, and not every h2. SHOWS puts an h3 "In the record" callout label
-    on eight pages, so a list off both levels would be a transcript of the
-    page rather than a map of it -- and flow_diagram writes its phase names as
-    <hN class="phname">, at level 2 on how-a-bill-becomes-law. Those four are
-    the COLUMNS of one diagram, sitting side by side in a single horizontal
-    row: listing them gave that page nine entries of which the first four all
-    scrolled to the same place. A contents list that offers four destinations
-    and delivers one is worse than none, so a phase name gets an address --
-    a deep link to a column of the diagram is still a real place -- and stays
-    out of the list.
+def split_sections(article, where):
+    """[(id, heading, content)]: the page cut at its h2s.
 
-    html.unescape is not optional -- these headings carry &mdash; and &ndash;,
-    and without it "2025&ndash;2026" slugs as "2025-ndash-2026".
+    DERIVED, NOT AUTHORED. Each heading's address is "s-" and its own words
+    -- the addresses the pages have had since contents lists were added, so a
+    deep link made then still lands -- unless the heading carries an id of
+    its own, which is how an author pins an address whose wording will change.
+
+    EVERY WORD IS UNDER A HEADING. W4 sets each heading in the margin beside
+    its prose, so words before the first one would sit beside nothing; the
+    build stops on them rather than publishing a page that starts in the
+    middle.
     """
-    out, seen, items, pos = [], set(), [], 0
-    for m in re.finditer(r"<h2([^>]*)>(.*?)</h2>", article, re.S):
-        attrs, inner = m.group(1), m.group(2)
-        out.append(article[pos:m.start()])
-        pos = m.end()
-        listed = "phname" not in attrs
+    parts = _H2.split(article)
+    if parts[0].strip():
+        raise SystemExit(f"{where} has words before its first heading: "
+                         + re.sub(r"\s+", " ", parts[0].strip())[:80])
+    out, seen = [], set()
+    for k in range(1, len(parts), 3):
+        attrs, inner, content = parts[k], parts[k + 1], parts[k + 2]
         got = re.search(r'id="([^"]+)"', attrs)
-        if got:
-            hid = got.group(1)
-            out.append(m.group(0))
-        else:
-            base = prefix + _slug(inner)
-            hid, n = base, 2
-            while hid in seen:
-                hid, n = f"{base}-{n}", n + 1
-            out.append(f'<h2 id="{hid}"{attrs}>{inner}</h2>')
-        seen.add(hid)
-        # The label is the heading's own text with the tags out and the
-        # entities LEFT ALONE. E() here would publish "2025&amp;ndash;2026".
-        if listed:
-            items.append((hid, re.sub(r"<[^>]+>", "", inner).strip()))
-    out.append(article[pos:])
-    return "".join(out), items
+        base = got.group(1) if got else "s-" + _slug(inner)
+        sid, n = base, 2
+        while sid in seen:
+            sid, n = f"{base}-{n}", n + 1
+        seen.add(sid)
+        out.append((sid, inner.strip(), content))
+    return out
 
 
-def contents(items, slug):
-    """The page's own sections, for a reader who arrived on one of them.
+def tables(content):
+    """A table written in the prose as a bare <table> takes the Learn table's
+    box: it scrolls inside its own frame on a phone rather than pushing the
+    page sideways. A figure's table carries its own class and is left alone."""
+    return (content.replace("<table>", '<div class="l-tablewrap"><table class="l-table l-deftab">')
+            .replace("</tbody></table>\n", "</tbody></table></div>\n")
+            if "<table>" in content else content)
 
-    EVERY HREF CARRIES ITS PATH. These pages are built from bills.html, which
-    sets <base href="/">, so href="#s-vetoes" would resolve against the base
-    and send the reader to the home page. preflight would not catch it on its
-    own: _links_resolve urldefrags every href before resolving it, so a bare
-    fragment reads as the site root and passes. footer_nav's docstring records
-    the same trap being sprung once already, with "../learn.html".
+
+def section(sid, heading, content, level=2):
+    """One W4 section: the heading in the margin, the prose beside it at
+    about 100 characters, and a figure marked wide (civics.wide) across both
+    columns where it falls, the prose resuming beside the margin under it."""
+    content = tables(content)
+    blocks, pos = [], 0
+    for m in _WIDE.finditer(content):
+        blocks.append(("col", content[pos:m.start()]))
+        blocks.append(("wide", m.group(1)))
+        pos = m.end()
+    blocks.append(("col", content[pos:]))
+    body = "".join(f'<div class="l-wide">{b}</div>' if kind == "wide"
+                   else f'<div class="l-secb">{b}</div>'
+                   for kind, b in blocks if b.strip())
+    return (f'<section class="l-sec" id="{E(sid)}">'
+            f'<h{level} class="l-sech">{heading}</h{level}>{body}</section>')
+
+
+def sources_list(sources):
+    """Where This Comes From, as document rows: the name as the link and the
+    host beside it ("gc.nh.gov · PDF").
+
+    A SOURCE ON THIS SITE IS NOT AN OUTWARD LINK. One of them is our own town
+    directory -- the General Court's address lookup answers 404 and the town
+    pages already hold what it gave -- and sending a reader to our own page
+    in a new tab, marked as though it were elsewhere, tells them something
+    untrue about where they are going. Its row says Granite Record.
     """
-    if len(items) < CONTENTS_MIN:
-        return ""
-    here = S.canon("learn/" + slug + ".html")
-    li = "".join(f'<li><a href="{E(here)}#{E(hid)}">{text}</a></li>'
-                 for hid, text in items)
-    return ('<nav class="ctoc" aria-labelledby="ctoc-head">'
-            '<h2 id="ctoc-head">On this page</h2>'
-            f'<ol>{li}</ol></nav>')
+    def one(label, u):
+        if not u.startswith("http"):
+            return (f'<li class="l-doc"><a href="{E(u)}">{E(label)}</a>'
+                    f'<span class="l-dmeta">Granite Record</span></li>')
+        host = re.sub(r"^https?://(?:www\.)?([^/]+).*$", r"\1", u)
+        meta = host + (" &middot; PDF" if u.lower().endswith(".pdf") else "")
+        return (f'<li class="l-doc"><a href="{E(u)}" target="_blank" rel="noopener">'
+                f'{E(label)}</a><span class="l-dmeta">{meta}</span></li>')
+    return '<ul class="l-docs">' + "".join(one(label, u) for label, u in sources) + "</ul>"
 
 
-def rail(topics, here=None):
-    """The eleven pages, beside whichever one is open.
+def hub_bar(current="learn"):
+    """The Resources bar over every Learn page: the hub by name, then its three
+    tabs as links, with Learn marked as where the reader is."""
+    tabs = "".join(
+        f'<a class="l-hubtab" href="{HUB}#{pid}"'
+        + (' aria-current="true"' if pid == current else "")
+        + f">{E(name)}</a>" for pid, name in HUB_TABS)
+    return (f'<nav class="l-hub" aria-label="Resources"><p class="l-hubname">'
+            f'<a href="{HUB}">Resources</a></p><div class="l-hubtabs">{tabs}</div></nav>')
 
-    THE SECTION READS AS A BOOK OR AS ELEVEN DEAD ENDS. Each page ended with the
-    next one by name and nothing else, so a reader who wanted the third page
-    from the second had to go back to the hub; and since these pages line up on
-    the site's left edge, the right two thirds of a Learn page was empty, which
-    is the shape this project treats as broken. The rail fills it with the one
-    thing a reader of a civics section wants: where they are among the rest.
-    It is the same list the hub draws, in the same order.
+
+def head(path, slug, title, lead, secs, base):
+    """The article's head: the title, its line, then On this page and Cite
+    this page side by side.
+
+    ON THIS PAGE FOLDS INTO THE HEAD (the component plan, approved 9 October
+    2026). It was a rail down the right beside the prose, which repeated the
+    margin's headings once W4 put them there. It is the first control in the
+    row shell.py writes Cite this page into, so app.js's rule of one pane
+    open at a time in that row covers both, and every href in it carries the
+    page's own path (see HUB above).
     """
-    items = "".join(
-        f'<li><a href="{E(S.canon("learn/" + t["slug"] + ".html"))}"'
-        + (' aria-current="page"' if t["slug"] == here else "")
-        + f'>{E(t["title"])}</a></li>' for t in topics)
-    # The count comes from the list, like every other number on these pages, and
-    # it is spelled the way the prose spells a small number.
-    words = ["no", "one", "two", "three", "four", "five", "six", "seven",
-             "eight", "nine", "ten", "eleven", "twelve", "thirteen", "fourteen",
-             "fifteen", "sixteen", "seventeen", "eighteen", "nineteen", "twenty"]
+    here = S.canon(learn_href(slug))
+    items = "".join(f'<li><a href="{E(here)}#{E(sid)}">{_plain(h)}</a></li>'
+                    for sid, h, _ in secs)
+    otp = ('<details class="l-otp"><summary>On this page</summary>'
+           f'<nav class="l-otpb" aria-label="On this page"><ol>{items}</ol></nav></details>')
+    acts = S.cite_block(path, title, base, S.BUILT)
+    row = '<div class="pageacts" id="pageacts">'
+    assert acts.startswith(row), "shell.cite_block no longer opens with the row"
+    acts = row + otp + acts[len(row):]
+    return (f'<header class="l-head"><h1>{E(title)}</h1>'
+            + (f'<p class="l-lead">{lead}</p>' if lead else "")
+            + acts + "</header>")
+
+
+def pager(i, topics):
+    """Previous Topic on the left, Next Topic on the right, each with its
+    title under it, and All Topics between them back to the hub's Learn tab
+    (previous-left-next-right; Title Case, item 17). The markup is in the
+    order it is drawn, so the keyboard meets them the same way round. The
+    first topic has no previous and the last no next: an empty cell keeps
+    the other where it belongs."""
+    def side(k, cls, word):
+        if k is None or not 0 <= k < len(topics):
+            return f'<span class="{cls}"></span>'
+        t = topics[k]
+        return (f'<a class="{cls}" href="{E(learn_href(t["slug"]))}"><span class="l-pgw">{word}</span>'
+                f'<span class="l-pgd">{E(t["title"])}</span></a>')
+    return ('<nav class="l-pager" aria-label="Other topics">'
+            + side(None if i is None else i - 1, "l-pgp", "Previous Topic")
+            + f'<a class="l-pgm" href="{HUB}#learn">All Topics</a>'
+            + side(None if i is None else i + 1, "l-pgn", "Next Topic") + "</nav>")
+
+
+def all_topics(topics, here=None):
+    """The thirteen pages at the foot of each, in the hub's two groups, with
+    the one open marked: a reader inside the section needs a way across it,
+    and this was the rail down the right of every page."""
     n = len(topics)
-    return ('<aside class="lrail" aria-label="The pages of this section">'
-            f'<h2>The {words[n] if n < len(words) else n} pages</h2>'
-            f'<ol>{items}</ol></aside>')
+    groups = []
+    for group, _note in civics.GROUPS:
+        lis = "".join(
+            f'<li><span aria-current="page">{E(t["title"])}</span></li>' if t["slug"] == here
+            else f'<li><a href="{E(learn_href(t["slug"]))}">{E(t["title"])}</a></li>'
+            for t in topics if t["group"] == group)
+        if lis:
+            groups.append(f'<div><h3>{E(group)}</h3><ol>{lis}</ol></div>')
+    return ("all-topics", f"The {NUMBER_WORD.get(n, n)} Pages",
+            f'<nav class="l-all" aria-label="The pages of this section">{"".join(groups)}</nav>')
 
 
-def footer_nav(i, topics):
-    """The next topic by name, and the way back to the hub.
-
-    Every href here is written from the SITE ROOT, not relative to /learn/.
-    bills.html carries <base href="/"> -- it has to, because opening a bill on
-    the search page pushes /bill/2026/hb1123 and re-bases every link on it --
-    and these pages are built from that same template. So "../learn.html"
-    would resolve to /../learn.html and a sibling "courts.html" to /courts.html.
-    """
-    # PREVIOUS ON THE LEFT, NEXT ON THE RIGHT, in the order a reader reads.
-    # The markup is in the order it is drawn, so the keyboard meets them the
-    # same way round.
-    # Named, as the pagers of a week and of a sitting are ("Other weeks",
-    # "Other sittings"): an article carries three navs, and this was the one
-    # of them with no label (the audit of 2 October 2026, M6).
-    bits = ['<nav class="tnav" aria-label="Other topics">']
-    if i:
-        prev = topics[i - 1]
-        bits.append(f'<a class="prev" href="learn/{E(prev["slug"])}.html">'
-                    f'<span>Previous</span><b>{E(prev["title"])}</b></a>')
-    bits.append('<a class="all" href="learn.html">All topics</a>')
-    if i + 1 < len(topics):
-        nxt = topics[i + 1]
-        bits.append(f'<a class="next" href="learn/{E(nxt["slug"])}.html">'
-                    f'<span>Next topic</span><b>{E(nxt["title"])}</b></a>')
-    else:
-        bits.append('<a class="next" href="learn.html">'
-                    '<span>Back to</span><b>All topics</b></a>')
-    bits.append("</nav>")
-    return "".join(bits)
+def learn_page(tmpl, *, slug, title, lead, description, secs, foot, base, after=None):
+    """A Learn article: the Resources bar, the head, the sections, the pager
+    (foot) and, after it, The Thirteen Pages (after)."""
+    path = "/" + learn_href(slug)
+    p = S.page(tmpl, path=path, base=base,
+               # THE SITE'S NAME LAST, on every page; the section is worth
+               # naming, so it goes in front of the brand rather than instead.
+               title=S.title_of(title, "Learn"),
+               og_title=title, description=description,
+               og_image="og-learn.png", og_alt=OG_ALT,
+               globals={"GR_STATIC": True}, noscript="",
+               skip_label="Skip to the page", sr_title="",
+               nav_current="learn.html", cite=False)
+    every = secs + ([after] if after else [])
+    article = ("".join(section(*s) for s in secs) + foot
+               + (section(*after) if after else ""))
+    out = p.replace('<div id="results"></div>',
+                    '<div id="results"><div class="l-page">' + hub_bar()
+                    + head(path, slug, title, lead, every, base)
+                    + f'<div class="l-art">{article}</div></div>{OTP_JS}</div>', 1)
+    if "[[" in out:
+        raise SystemExit(f"{path} would publish an unfilled figure: "
+                         + out[out.index("[["):out.index("[[") + 40])
+    return out
 
 
-# Spelled out, because "11 short pages" in a sentence reads like a list
-# heading rather than prose. Falls back to the digits past twenty, by which
-# point the section is a different thing and the sentence needs rewriting
-# anyway.
-NUMBER_WORD = {
-    1: "One", 2: "Two", 3: "Three", 4: "Four", 5: "Five", 6: "Six",
-    7: "Seven", 8: "Eight", 9: "Nine", 10: "Ten", 11: "Eleven",
-    12: "Twelve", 13: "Thirteen", 14: "Fourteen", 15: "Fifteen",
-    16: "Sixteen", 17: "Seventeen", 18: "Eighteen", 19: "Nineteen",
-    20: "Twenty",
-}
+# ON THIS PAGE CLOSES when one of its links is chosen, on a click outside it,
+# or on Escape (focus back on its button), as the approved prototype's does.
+# Inline, after the page, so it needs no file of its own; a page read without
+# JavaScript has a <details> that opens and closes by itself.
+OTP_JS = """<script>
+(function(){
+  var d=document.querySelector(".l-otp");
+  if(!d)return;
+  document.addEventListener("click",function(e){
+    if(!d.open)return;
+    if(e.target.closest(".l-otpb a")||!e.target.closest(".l-otp"))d.open=false;
+  });
+  document.addEventListener("keydown",function(e){
+    if(e.key==="Escape"&&d.open){d.open=false;d.querySelector("summary").focus();}
+  });
+})();
+</script>"""
 
 
-def hub(topics):
-    # COUNTED, NOT TYPED. This read "Eleven short pages" while civics.TOPICS
-    # held eleven, and the sentence is one edit to that list away from being
-    # false -- on a page whose whole argument is that its figures come from
-    # the record rather than from someone's memory.
-    n = len(topics)
-    # THE SECTION IS "LEARN" wherever it is named, as the nav names it, with
-    # this standfirst under it (the person's D19, 8 October 2026).
-    out = ['<h1>Learn</h1>',
-           '<p class="lead">How New Hampshire&rsquo;s government works.</p>',
-           f'<p>{NUMBER_WORD.get(n, n)} short pages on the parts '
-           'of state and local government, each one linked to where you can '
-           'watch it happening in the record.</p>',
-           # WHAT THIS IS FOR, SAID ONCE. The hub was a numbered list and
-           # nothing else: a reader arriving cold could not tell whether
-           # these were explainers written from a textbook or written from
-           # the record, and that distinction is the only reason this section
-           # exists rather than linking to somebody else's civics site.
-           '<p>Every figure on these pages is one this site can produce from '
-           'the record, and every page says what it counts and over what '
-           'period. Where the record holds nothing &mdash; the courts, the '
-           'Executive Council &mdash; the page is short and says so rather '
-           'than being padded with prose nobody here can check.</p>',
-           # THE THREE PAGES MOST PEOPLE WANT. Thirteen equal rows made the
-           # reader choose before they knew what they were choosing between,
-           # and the answer is nearly always one of three. This replaced a
-           # single promoted link in a tinted box, which had two faults: it
-           # named one page where a newcomer has three different first
-           # questions -- how does this work, who are these people, how do I
-           # say something -- and it was the heaviest object on the page while
-           # being a second copy of item 2 in the list below it.
-           #
-           # WHY THESE THREE, AND IN THIS ORDER. How a bill becomes law is the
-           # spine everything else hangs off. The General Court answers "who
-           # are they", which is the other cold-open question. Testifying is
-           # the one page that tells a reader they can do something, and it is
-           # the least known thing in the whole section.
-           '<h2>Start here</h2><div class="startrow">']
-    START = [("how-a-bill-becomes-law",
-              "The course a bill runs, and the stages it can die at."),
-             ("general-court",
-              "Who the 424 of them are, and how a two-year term is shaped."),
-             ("testifying",
-              "Anyone may speak on any bill. This is how.")]
+# ---------------------------------------------------------------------------
+# THE HUB'S THREE TABS.
+# ---------------------------------------------------------------------------
+
+# THE THREE PAGES MOST PEOPLE WANT, as cards above the lists. Thirteen equal
+# rows made the reader choose before they knew what they were choosing
+# between, and the answer is nearly always one of three: how a bill becomes
+# law is the spine everything else hangs off, the General Court answers "who
+# are they", and testifying is the one page that tells a reader they can do
+# something. Each is listed once: the lists below leave these out.
+START = [("how-a-bill-becomes-law",
+          "The course a bill runs, and the stages it can die at."),
+         ("general-court",
+          "Who the 424 of them are, and how a two-year term is shaped."),
+         ("testifying",
+          "Anyone may speak on any bill. This is how.")]
+
+
+def official_sources(extra=()):
+    """[(group, [(name, url, meta)])]: every outside source a Learn page cites,
+    grouped by who publishes it (civics.SOURCE_GROUPS), and then the Secretary
+    of State's results pages The Record in Numbers cites (`extra`, read from
+    the rows its table shows). A source a page cites that is in no group and
+    not set aside as unofficial stops the build, so a page cannot cite a
+    source the hub forgets."""
+    cited = {u for t in civics.TOPICS for _, u in t["sources"] if u.startswith("http")}
+    grouped = [u for _, srcs in civics.SOURCE_GROUPS for _, u in srcs]
+    left = sorted(cited - set(grouped) - {u for _, u in civics.NOT_OFFICIAL})
+    if left:
+        raise SystemExit("a Learn page cites a source the Resources hub lists nowhere: "
+                         + ", ".join(left) + " (civics.SOURCE_GROUPS)")
+    stale = sorted(set(grouped) - cited)
+    if stale:
+        raise SystemExit("civics.SOURCE_GROUPS lists a source no Learn page cites: "
+                         + ", ".join(stale))
+
+    def row(label, u):
+        # "Guidance for towns and cities (New Hampshire Municipal Association,
+        # a membership body)": the bracket is what the source is, said beside it
+        m = re.match(r"^(.*?) \((.*)\)$", label)
+        host = re.sub(r"^https?://(?:www\.)?([^/]+).*$", r"\1", u)
+        meta = (m.group(2) if m else host + (" &middot; PDF" if u.lower().endswith(".pdf") else ""))
+        return (E(m.group(1) if m else label), u, E(html.unescape(meta)) if m else meta)
+    out = []
+    for group, srcs in civics.SOURCE_GROUPS:
+        rows = [row(label, u) for label, u in srcs]
+        if group == civics.ELECTIONS_GROUP:
+            rows += [(E(label), u, "sos.nh.gov") for label, u in extra]
+        out.append((group, rows))
+    return out
+
+
+def numbers_results(root):
+    """[(label, url)]: the Secretary of State's own results pages that the
+    page of numbers cites for the amendments the voters decided, in the order
+    of the elections, each once ("2024 general election results")."""
+    rows = _load(Path(root) / "corrections" / "ballot_results.json", {}).get("rows") or []
+    shown, _held, _to_come = learn_numbers.ballots(rows)
+    out, seen = [], set()
+    for r in sorted(shown, key=lambda r: r.get("election") or "", reverse=True):
+        u = r.get("source") or ""
+        if re.match(r"https?://(?:www\.)?sos\.nh\.gov/", u) and u not in seen:
+            seen.add(u)
+            out.append((re.sub(r",\s*sos\.nh\.gov\s*$", "", r.get("cite") or u), u))
+    return out
+
+
+def hub_section(sid, heading, content):
+    return section(sid, heading, content, level=3)
+
+
+def hub_learn(topics):
     by_slug = {t["slug"]: t for t in topics}
-    for slug, why in START:
-        t = by_slug.get(slug)
-        if not t:
-            continue
-        out.append(f'<a class="startcard" href="learn/{E(slug)}.html">'
-                   f'<b>{E(t["title"])}</b><span>{E(why)}</span></a>')
-    out.append("</div>")
+    n = len(topics)
+    start = "".join(
+        f'<li><a href="{E(learn_href(slug))}"><b>{E(by_slug[slug]["title"])}</b>'
+        f'<span>{E(why)}</span></a></li>' for slug, why in START if slug in by_slug)
+    started = {slug for slug, _ in START}
+    out = [f'<p class="r-intro">{NUMBER_WORD.get(n, n)} short pages on the parts of state '
+           'and local government, each one linked to where you can watch it happening in '
+           'the record.</p>',
+           hub_section("start", "Start Here", f'<ul class="r-start">{start}</ul>')]
     for group, note in civics.GROUPS:
-        rows = [(i, t) for i, t in enumerate(topics) if t["group"] == group]
-        if not rows:
-            continue
-        # THE ROW COUNT IS THE STYLESHEET'S, COMPUTED HERE. The two columns
-        # fill downward rather than across, which needs grid-template-rows to
-        # know how many rows to make. That number is this list's own length
-        # halved and rounded up, and it is written into the element so the
-        # page needs no script to be right -- the same reason every other
-        # figure on these pages is counted at build time rather than drawn in
-        # the browser.
-        rowspan = (len(rows) + 1) // 2
-        out.append(f'<h2>{E(group)}</h2><p class="src">{E(note)}</p>'
-                   f'<ol class="tlist" style="--rows:{rowspan}">')
-        for n, (i, t) in enumerate(rows, 1):
-            out.append(
-                f'<li><a href="learn/{E(t["slug"])}.html">'
-                f'<b>{E(t["title"])}</b>'
-                f'<span>{dashes(E(t["blurb"]))}</span></a></li>')
-        out.append("</ol>")
-    # NOT ONE OF THE NUMBERED PAGES. The topics above are short explanations
-    # meant to be read in order, and each ends by naming the next. This is a
-    # long table of statistics counted from the record -- a different kind of
-    # thing for a different reader, and putting it in the sequence would
-    # interrupt the sequence. It sits after them, named for what it is.
-    out.append(
-        '<h2>The record in numbers</h2>'
-        '<p class="src">Counted from the General Court\'s own record, at '
-        'build time, every time this site is built.</p>'
-        '<ol class="tlist" style="--rows:1"><li>'
-        '<a href="learn/by-the-numbers.html">'
-        '<b>The record in numbers</b>'
-        '<span>Vetoes and what happens to them, the closest votes on record, '
-        'how often a chamber overrules its own committee, and how the two '
-        'chambers differ in the way they take a vote.</span></a></li></ol>')
-    out.append(
-        '<p class="note">Every page here ends with its sources. If something '
-        'is wrong, <a href="mailto:contact@graniterecord.org">tell us</a> '
-        '&mdash; that address exists for this.</p>')
+        lis = "".join(
+            f'<li><a href="{E(learn_href(t["slug"]))}">{E(t["title"])}</a>'
+            f'<p>{dashes(E(t["blurb"]))}</p></li>'
+            for t in topics if t["group"] == group and t["slug"] not in started)
+        if lis:
+            out.append(hub_section("s-" + _slug(group), E(group),
+                                   f'<p class="r-intro">{E(note)}</p><ul class="r-topics">{lis}</ul>'))
+    # NOT ONE OF THE NUMBERED PAGES. The topics are short explanations meant
+    # to be read in order; this is a long table of statistics counted from the
+    # record, for a different reader, so it sits after them under its own
+    # heading, which is its link.
+    out.append(hub_section(
+        "numbers", f'<a href="{E(learn_href(NUMBERS_SLUG))}">{NUMBERS_TITLE}</a>',
+        '<p class="r-intro">Counted from the General Court&rsquo;s own record.</p>'
+        f'<p class="r-one">{curly(NUMBERS_WHAT[0].upper() + NUMBERS_WHAT[1:])}.</p>'))
     return "".join(out)
+
+
+def hub_guides():
+    """THERE ARE NONE YET, AND THE TAB SAYS SO. The list of guides coming
+    stays hidden until the first one exists (8 October 2026); the tab is
+    drawn anyway, because the person asked for a tab for each, and points to
+    the other two."""
+    return ('<p class="r-none">There are no how-to guides yet.</p>'
+            '<p class="r-sub">Each guide will be listed here once it is written and checked '
+            'against the official sources it cites.</p>'
+            '<ul class="r-goto">'
+            f'<li><a href="{HUB}#learn"><b>Learn</b><span>How each part of state and local '
+            'government works.</span></a></li>'
+            f'<li><a href="{HUB}#sources"><b>Official Sources</b><span>The state&rsquo;s own '
+            'sites, where its records and services are.</span></a></li></ul>')
+
+
+def hub_sources(groups):
+    secs = "".join(hub_section(
+        "src-" + _slug(group), E(group),
+        '<ul class="r-srcs">' + "".join(
+            f'<li><a href="{E(u)}" target="_blank" rel="noopener">{name}</a>'
+            f'<span class="l-dmeta">{meta}</span></li>' for name, u, meta in rows) + "</ul>")
+        for group, rows in groups)
+    return ('<p class="r-intro">The sites the Learn pages cite as their sources. Each opens in '
+            'a new tab.</p>' + secs
+            + '<p class="r-close">Every page here ends with its sources. If something is wrong, '
+            '<a href="mailto:contact@graniterecord.org">tell us</a> &mdash; that address exists '
+            'for this.</p>')
+
+
+def hub_page(tmpl, base, topics, groups):
+    """The Resources hub: a list head (its title and one line; no trail and no
+    Cite this page, which a hub does not carry), then the three tabs.
+
+    THE TOWN PAGES' TABS, THE SAME PATTERN AND THE SAME SCRIPT
+    (build_town_pages.TABS_JS): a role=tablist of buttons with a roving
+    tabindex, panels with role=tabpanel, each panel's id its address, so
+    /resources#sources opens Official Sources. WITHOUT JAVASCRIPT EVERY PANEL
+    IS SHOWN, in order, each under its own heading, and the strip is not: it is
+    written hidden and the script shows it.
+    """
+    import build_town_pages
+    n_learn = len(topics) + 1
+    n_src = sum(len(rows) for _, rows in groups)
+    panels = [("learn", "Learn", n_learn, hub_learn(topics)),
+              ("guides", "How-To Guides", 0, hub_guides()),
+              ("sources", "Official Sources", n_src, hub_sources(groups))]
+    assert [p[:2] for p in panels] == list(HUB_TABS), "the hub's panels and HUB_TABS disagree"
+    strip = ('<div class="twntabs r-tabs" role="tablist" aria-label="Resources" hidden>'
+             + "".join(
+                 f'<button type="button" role="tab" id="tab-{pid}" data-pane="{pid}" '
+                 f'aria-controls="{pid}" aria-selected="{"true" if k == 0 else "false"}" '
+                 f'tabindex="{0 if k == 0 else -1}">{E(name)} <span class="r-n">({count})</span></button>'
+                 for k, (pid, name, count, _) in enumerate(panels)) + "</div>")
+    panes = "".join(
+        f'<div class="twnpane r-sheet" id="{pid}" role="tabpanel" aria-labelledby="tab-{pid}">'
+        f'<h2 class="twnph">{E(name)}</h2>{body}</div>' for pid, name, _, body in panels)
+    p = S.page(tmpl, path="/" + HUB_PAGE, base=base,
+               title="Resources | Granite Record", og_title="Resources",
+               og_type="website", og_image="og-learn.png", og_alt=OG_ALT,
+               description=("How New Hampshire's state and local government works, and the "
+                            "official sources it publishes."),
+               globals={"GR_STATIC": True}, noscript="",
+               skip_label="Skip to the page", sr_title="",
+               nav_current="learn.html", cite=False)
+    return p.replace(
+        '<div id="results"></div>',
+        '<div id="results"><div class="l-page r-hub">'
+        '<header class="l-head r-head"><h1>Resources</h1>'
+        '<p class="l-lead">How New Hampshire&rsquo;s state and local government works, and '
+        'where to find what it publishes itself.</p></header>'
+        + strip + panes + "</div>" + build_town_pages.TABS_JS + LAND_JS + "</div>", 1)
+
+
+# AN ADDRESS NAMING A TAB LANDS ON THE STRIP. The browser's own jump to a
+# panel's id put the strip above the top of a phone's screen, at a large text
+# size, so the reader saw a panel with no way to tell it was one of three (the
+# approved prototype's fix).
+LAND_JS = """<script>
+(function(){
+  var s=document.querySelector(".r-tabs");
+  if(!s)return;
+  function land(){
+    var h=(location.hash||"").slice(1);
+    if(!h||!document.getElementById("tab-"+h))return;
+    window.scrollTo(0,Math.max(0,s.getBoundingClientRect().top+window.scrollY-8));
+  }
+  addEventListener("load",function(){land();setTimeout(land,0);});
+})();
+</script>"""
 
 
 def main():
@@ -838,117 +1145,41 @@ def main():
     if not topics:
         print("civics.TOPICS is empty; nothing written.")
         return 0
-    out = site / "learn"
+    out = site / LEARN_DIR
     out.mkdir(parents=True, exist_ok=True)
 
     tmpl = S.template(site)
-    urls = [a.base + S.canon("/learn.html")]
     figures = record_figures(site)
+    names = {(str(r.get("year") or ""), (r.get("id") or "").lower()): r.get("n")
+             for r in SR.bill_index_or_stop(site, "build_civics.py") if r.get("n")}
     print(f"figures from the record: {figures['all_bills']} bills, {figures['terms']} terms, "
           f"{figures['vetoed']} vetoed, {figures['bills']} in {figures['term'].replace('&ndash;', '-')}")
-
-    # ---- the hub -------------------------------------------------------
-    page = S.page(tmpl, path="/learn.html", base=a.base,
-                  title="Learn | Granite Record",
-                  og_title="Learn",
-                  og_image="og-learn.png", og_alt="Granite Record: how New Hampshire works",
-                  description=("Short, plain explanations of the parts of New "
-                               "Hampshire state government, each linked to "
-                               "where you can watch it happening."),
-                  globals={"GR_STATIC": True}, noscript="",
-                  skip_label="Skip to the topics",
-                  sr_title="", nav_current="learn.html")
-    # NO RAIL ON THE HUB. Every topic page carries a rail of the other ten,
-    # because a reader inside the section needs a way across it. The hub IS
-    # that list: drawing the rail here printed all eleven titles twice on one
-    # page, the second time in grey at half the size, and left the whole right
-    # half of a 1440px window empty while the eleven entries queued up in a
-    # 560px column. Without it the hub is one thing at full width.
-    page = page.replace('<div id="results"></div>',
-                        f'<div id="results">'
-                        f'<div class="civics hubpage">{hub(topics)}</div>'
-                        f'</div>', 1)
-    (site / "learn.html").write_text(page, encoding="utf-8")
+    urls = [a.base + HUB]
 
     # ---- one page a topic ----------------------------------------------
     for i, t in enumerate(topics):
-        # THE HEADING BLOCK IS ITS OWN ELEMENT, so that a narrow screen can
-        # put the contents list between it and the prose. Inside .civics, the
-        # only orders available were "contents above the title" and "contents
-        # under 1,900 words", and both are wrong.
-        #
-        # NOT chead. app.js has drawn every bill card's head button with
-        # that class since long before this, and app.css styles it from
-        # line 1056. A second rule of the same name lower in the stylesheet
-        # won on source order and took 24px of left padding off all 33,683
-        # bill cards. preflight freezes the set of names both renderers use,
-        # so the next one of these fails a check instead of shipping.
-        head = (f'<p class="crumb"><a href="learn.html">Learn</a></p>'
-                f'<h1>{E(t["title"])}</h1>'
-                + (f'<p class="lead">{dashes(E(t["blurb"]))}</p>'
-                   if t["blurb"] else ""))
-        body = [fill(t["body"], figures)]
+        secs = split_sections(suffixed(fill(t["body"], figures), names),
+                              f"learn/{t['slug']}.html")
+        # A LIMIT STATED PLAINLY closes the page's last section of prose --
+        # In the Record where the page has one, which is where it says what
+        # this site holds.
         if t.get("holds"):
-            body.append(f'<p class="caveat">{fill(t["holds"], figures)}</p>')
-        # The ids and the contents come off the ARTICLE, before the
-        # sources block and the pager are appended: "Where this comes from" is
-        # an h2 too, and a contents list that names the list of sources under
-        # it is describing the furniture rather than the page.
-        article, sections = anchored("".join(body))
-        body = [article, sources_block(t["sources"]), footer_nav(i, topics)]
-
-        p = S.page(tmpl, path=f"/learn/{t['slug']}.html", base=a.base,
-                   # THE SITE'S NAME LAST, on every page. These eleven ended
-                   # "| How New Hampshire works" while the other 34,000 ended
-                   # "| Granite Record", so a search result for a civics page
-                   # did not look like it came from the same site. The section
-                   # is worth naming, so it goes in front of the brand rather
-                   # than instead of it.
-                   title=S.title_of(t["title"], "Learn"),
-                   og_title=t["title"], description=t["blurb"],
-                   og_image="og-learn.png", og_alt="Granite Record: how New Hampshire works",
-                   globals={"GR_STATIC": True}, noscript="",
-                   skip_label="Skip to the page", sr_title="",
-                   nav_current="learn.html")
-        p = p.replace('<div id="results"></div>',
-                      f'<div id="results"><div class="lcols">'
-                      f'<header class="civhead">{head}</header>'
-                      f'<div class="civics">{"".join(body)}</div>'
-                      f'<div class="lside">{contents(sections, t["slug"])}'
-                      f'{rail(topics, t["slug"])}</div>'
-                      f'</div></div>', 1)
-        if "[[" in p:
-            raise SystemExit(f"learn/{t['slug']}.html would publish an unfilled figure: "
-                             + p[p.index("[["):p.index("[[") + 40])
-        (out / f"{t['slug']}.html").write_text(p, encoding="utf-8")
-        urls.append(a.base + S.canon(f"/learn/{t['slug']}.html"))
+            sid, h, c = secs[-1]
+            secs[-1] = (sid, h, c + f'<p class="l-note">{suffixed(fill(t["holds"], figures), names)}</p>')
+        if t["sources"]:
+            secs.append(("sources", "Where This Comes From", sources_list(t["sources"])))
+        page = learn_page(tmpl, slug=t["slug"], title=t["title"],
+                          lead=dashes(E(t["blurb"])) if t["blurb"] else "",
+                          description=t["blurb"], secs=secs, foot=pager(i, topics),
+                          base=a.base, after=all_topics(topics, t["slug"]))
+        (out / f"{t['slug']}.html").write_text(page, encoding="utf-8")
+        urls.append(a.base + S.canon("/" + learn_href(t["slug"])))
 
     # ---- the record in numbers ------------------------------------------
-    # learn_numbers.py says what it is. It began as a draft -- noindex, absent
-    # from the hub and from the sitemap -- and is public now: in the hub, in
-    # the sitemap, and no longer noindex.
-    #
-    # It is NOT in civics.TOPICS. The topics are short explanations that end by
-    # naming the next one, and this is a long table of counts; hub() puts it
-    # after them under its own heading rather than in the sequence.
-    path = "/learn/by-the-numbers.html"
-    p = S.page(tmpl, path=path, base=a.base,
-               title=S.title_of("The record in numbers", "Learn"),
-               og_title="The record in numbers",
-               description=("Statistics counted from the New Hampshire General Court's own "
-                            "record: how bills end, committees' workloads and passage rates, "
-                            "amendments, hearings, attendance, vetoes, the closest votes and "
-                            "the amendments sent to the voters."),
-               og_image="og-learn.png", og_alt="Granite Record: how New Hampshire works",
-               globals={"GR_STATIC": True}, noscript="", skip_label="Skip to the page",
-               sr_title="", nav_current="learn.html")
-    # THE PAGE A SEARCH ENGINE SENDS PEOPLE TO, and until now the one page
-    # of the fourteen with no way off it but the crumb: no contents, no pager,
-    # no rail, and the whole right of the window empty. "The closest votes of
-    # 2025-2026" is the kind of thing somebody types into Google. It gets the
-    # same two lists the topic pages get. rail() with no `here` marks nothing
-    # as current, which is right: this page is not one of the thirteen.
-    nbody, nsections = anchored(learn_numbers.body(site))
+    # learn_numbers.py says what it is. It is NOT in civics.TOPICS: the topics
+    # are short explanations that end by naming the next one, and this is a
+    # long table of counts, so it has no Previous or Next, only All Topics.
+    nsecs = split_sections(learn_numbers.body(site), "learn/by-the-numbers.html")
     # A SECTION LEFT OUT IS SAID. learn_numbers leaves out a figure whose input
     # is not on this disk rather than stop every build on it -- the builders'
     # fixture site holds none of them -- and names each one here, so a night
@@ -960,32 +1191,33 @@ def main():
     # the table, and said here rather than to the reader.
     for what in learn_numbers.HELD:
         print(f"  learn/by-the-numbers.html LEAVES OFF {what}")
-    p = p.replace('<div id="results"></div>',
-                  '<div id="results"><div class="lcols">'
-                  '<header class="civhead"><p class="crumb"><a href="learn.html">'
-                  'Learn</a></p>'
-                  '<h1>The record in numbers</h1></header>'
-                  '<div class="civics">' + nbody + '</div>'
-                  f'<div class="lside">{contents(nsections, "by-the-numbers")}'
-                  f'{rail(topics)}</div>'
-                  '</div></div>', 1)
-    (out / "by-the-numbers.html").write_text(p, encoding="utf-8")
-    urls.append(a.base + S.canon(path))
-    print("  learn/by-the-numbers.html: the page of statistics (public since 17 Sep)")
+    page = learn_page(tmpl, slug=NUMBERS_SLUG, title=NUMBERS_TITLE,
+                      lead=curly(NUMBERS_DESC), description=NUMBERS_DESC, secs=nsecs,
+                      foot=pager(None, topics), base=a.base)
+    (out / f"{NUMBERS_SLUG}.html").write_text(page, encoding="utf-8")
+    urls.append(a.base + S.canon("/" + learn_href(NUMBERS_SLUG)))
+    print("  learn/by-the-numbers.html: the page of statistics")
 
-    # ---- the sitemap, appended rather than rewritten -------------------
-    sm = site / "sitemap.xml"
-    if sm.exists():
-        text = sm.read_text(encoding="utf-8")
-        add = "".join(f"<url><loc>{S.E(u)}</loc></url>\n"
-                      for u in urls if S.E(u) not in text)
-        if add:
-            sm.write_text(text.replace("</urlset>", add + "</urlset>"),
-                          encoding="utf-8")
-            print(f"  {len(add.splitlines())} added to sitemap.xml")
+    # ---- the hub ----------------------------------------------------------
+    groups = official_sources(numbers_results(Path(".")))
+    (site / HUB_PAGE).write_text(hub_page(tmpl, a.base, topics, groups), encoding="utf-8")
+    # THE OLD HUB'S FILE GOES. /learn redirects to the hub (_redirects), and a
+    # learn.html left in the folder by an earlier build would be served in
+    # the redirect's place by a host that prefers a file.
+    old = site / "learn.html"
+    if old.exists():
+        old.unlink()
+        print("  learn.html: removed; /learn redirects to /resources")
+
+    # ---- the sitemap: this builder's addresses in, its stale ones out -----
+    added, dropped = S.sitemap_merge(site, a.base, urls, owns="/" + LEARN_DIR)
+    if added or dropped:
+        print(f"  sitemap.xml: {added} added, {dropped} dropped")
 
     n_src = sum(len(t["sources"]) for t in topics)
-    print(f"{len(topics)} topics -> {out}/ and learn.html")
+    print(f"{len(topics)} topics -> {out}/, and {HUB_PAGE}: "
+          f"{sum(len(r) for _, r in groups)} official sources in "
+          f"{len(groups)} groups")
     print(f"  {n_src} sources linked, "
           f"{sum(1 for t in topics if t.get('holds'))} pages state a limit")
     missing = [t["slug"] for t in topics if not t["sources"]]

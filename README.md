@@ -275,7 +275,7 @@ want:
 | which subject a bill is filed under | `src/parse/topic_model.py`, and `src/parse/topics.py`, the baseline it imports |
 | committee, member or town pages | `src/pages/build_committees.py`, `src/pages/build_legislator_pages.py`, `src/pages/build_town_pages.py` |
 | the plain lists of every bill, member and town | `src/pages/build_indexes.py` |
-| the civics explainers under `/learn` | `src/pages/build_civics.py` |
+| the civics explainers under `/learn` and the Resources hub, `/resources` | `src/pages/build_civics.py`, which reads `src/pages/civics.py` (the writing and its diagrams) and `src/pages/learn_numbers.py` (The Record in Numbers) |
 | the CSV downloads and `/data` | `src/pages/build_exports.py` |
 | the RSS feeds | `src/pages/build_feeds.py` |
 | what changed each night, for the email updates | `src/pages/follow_changes.py`, called by `build_feeds.py` |

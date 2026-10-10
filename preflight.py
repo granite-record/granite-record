@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.499
+# GRANITE_VERSION: 2026-09-04.500
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -19489,7 +19489,9 @@ def _index_json_retired():
     assert all(t["url"].endswith(f"/idx/{t['term']}.json")
                for t in man["bill_indexes"]["terms"]), man["bill_indexes"]
     page = (site / "learn" / "how-a-bill-becomes-law.html").read_text(encoding="utf-8")
-    assert f"Across the {len(rows):,} bills on this site" in page, (
+    # The count is said once, under How a Chamber Votes, since the polish
+    # plan's cut E6 took its second saying out of In the Record.
+    assert f"Across the {len(rows):,} bills in this record" in page, (
         f"the Learn page does not count the index's {len(rows):,} bills")
     assert NI.census(site)["bills"] == len(rows), (
         f"the census counts {NI.census(site)['bills']} bills of {len(rows)}")
@@ -21760,7 +21762,7 @@ def _learn_rules(civics, learn_numbers, build_civics):
     assert "roll call" in no_rc, (
         "a record with no roll calls built anyway, and the pages would say they "
         "begin in 0: " + (no_rc or "no stop"))
-    close = nums[nums.index("The closest votes"):]
+    close = nums[nums.index("The Closest Votes"):]
     close = close[:close.index("<h2>")] if "<h2>" in close else close
     for bid, why in (("hb1", "a veto override"), ("hb4", "a rules suspension")):
         assert f"bill/2026/{bid}\"" not in close, (
@@ -22161,9 +22163,9 @@ def _numbers_ballots(learn_numbers):
             ([bp22], "Yes and No are Ballotpedia's statewide count, printed where the Source "
                      "column says. 0 of the 1 below were ratified.")):
         sec = drawn(got_rows)[0]
-        sec = sec[sec.find("Constitutional amendments sent to the voters"):]
+        sec = sec[sec.find("Constitutional Amendments Sent to the Voters"):]
         assert want in sec, f"the amendments' section does not say {want!r}: {sec[:700]!a}"
-    sec = page[page.find("Constitutional amendments sent to the voters"):]
+    sec = page[page.find("Constitutional Amendments Sent to the Voters"):]
     assert sec, "the amendments' section was not drawn"
     for want in ("Yes and No are the Secretary of State's statewide count, printed where the "
                  "Source column says. 1 of the 2 below were ratified.",
@@ -22201,12 +22203,12 @@ def _numbers_removed(learn_numbers):
         missing = sorted(Path(f).name for f, _what in learn_numbers.MISSING)
     for gone in ("without the governor's signature</h2>", "<th>Awaiting</th>", "Still to come"):
         assert gone not in page, f"the page of numbers still carries {gone!r}"
-    assert "<h2>Vetoes</h2>" in page and "Bills filed, and how they ended" in page, (
+    assert "<h2>Vetoes</h2>" in page and "Bills Filed, and How They Ended" in page, (
         "the fixture page lost a section it should keep")
     want = ["ballot_results.json", "member_votes.json", "narratives.json", "testimony_db.json"]
     assert missing == want, f"the inputs said to be missing: {missing}, want {want}"
-    for h in ("The hearings with the most sign-ins", "Attendance on roll-call days",
-              "Constitutional amendments sent to the voters"):
+    for h in ("The Hearings with the Most Sign-Ins", "Attendance on Roll-Call Days",
+              "Constitutional Amendments Sent to the Voters"):
         assert h not in page, f"{h!r} was drawn with its input missing"
     return "ok", "both gone; Vetoes kept; the four missing inputs named and their sections left out"
 
@@ -26814,9 +26816,9 @@ def _ballot_said_built():
     want = ("Yes and No are the statewide count printed where the Source column says: "
             "Ballotpedia's for 1, the Secretary of State's for 1. 0 of the 2 below were ratified.")
     if want not in numbers:
-        i = numbers.find("Constitutional amendments sent to the voters")
+        i = numbers.find("Constitutional Amendments Sent to the Voters")
         bad.append(f"the page of numbers says {numbers[i:i + 600]!a}")
-    if "CACR 7" in numbers[numbers.find("Constitutional amendments sent to the voters"):]:
+    if "CACR 7" in numbers[numbers.find("Constitutional Amendments Sent to the Voters"):]:
         bad.append("the page of numbers shows the row with no cite")
     words = ("the statewide Yes and No votes on each of the 3 the voters have decided, with "
              "where each count is printed and the day it was read: the Secretary of State's "
@@ -27804,7 +27806,7 @@ def _built_site(here, root, brand=True, env=None):
         # After the bill pages, as in build_all: it reads their stations.
         ("build_committees.py", ["--site", "site", "--data", "data",
                                  "--base", base], "site/committees.json"),
-        ("build_civics.py", ["--site", "site", "--base", base], "site/learn.html"),
+        ("build_civics.py", ["--site", "site", "--base", base], "site/resources.html"),
         ("build_town_pages.py", ["--site", "site", "--base", base], "site/town"),
         # The district map's data, after the town pages, as in build_all.
         ("build_district_map.py", ["--site", "site"], "site/district_map.json"),
@@ -28015,7 +28017,8 @@ def _chain():
         # every href before resolving, so a bare fragment reads as the site
         # root and passes while every entry in a contents rail is wrong.
         # footer_nav's docstring records the same trap springing once already,
-        # with "../learn.html".
+        # with "../learn.html". On this page folded into the head of each page
+        # on 9 October 2026 (the component plan); its list is the one held here.
         #
         # The second half is the slower version of the same failure. The ids
         # are DERIVED from the headings, so a heading reworded in civics.py
@@ -28026,11 +28029,11 @@ def _chain():
         learn = sorted((root / "site" / "learn").glob("*.html"))
         assert learn, "the chain built no learn pages for the contents check"
         n_toc = 0
-        for f in learn + [root / "site" / "learn.html"]:
+        for f in learn:
             page = f.read_text(encoding="utf-8", errors="replace")
             ids = set(re.findall(r'id="([^"]+)"', page))
-            want = f"learn/{f.stem}" if f.parent.name == "learn" else "learn"
-            for nav in re.findall(r'<nav class="ctoc".*?</nav>', page, re.S):
+            want = f"learn/{f.stem}"
+            for nav in re.findall(r'<nav class="l-otpb".*?</nav>', page, re.S):
                 for href in re.findall(r'href="([^"]*)"', nav):
                     path, _, frag = href.partition("#")
                     assert path == want, (
@@ -28042,8 +28045,20 @@ def _chain():
                         f"{f.name}: the contents link {href!r} points at an id "
                         "that is not on the page")
                     n_toc += 1
-        assert n_toc, ("no learn page carries a contents rail, so nothing here "
+        assert n_toc, ("no learn page carries an On this page list, so nothing here "
                        "was actually checked")
+        # THE LEARN HUB'S OLD ADDRESS IS A REDIRECT NOW (decision 128): /learn and
+        # /learn.html go to /resources, which _redirects says and no file
+        # shadows, and the hub is where the redirect lands.
+        red = (root / "site" / "_redirects").read_text(encoding="utf-8")
+        for old in ("/learn", "/learn.html"):
+            assert f"\n{old} /resources 301\n" in red, f"_redirects does not send {old} to /resources"
+        assert not (root / "site" / "learn.html").exists(), (
+            "a learn.html is in the site, where the redirect to /resources should answer")
+        hub = (root / "site" / "resources.html").read_text(encoding="utf-8")
+        for pid in ("learn", "guides", "sources"):
+            assert f'id="tab-{pid}"' in hub and f'<div class="twnpane r-sheet" id="{pid}"' in hub, (
+                f"the Resources hub has no {pid} tab")
 
         # COMING UP ON THE BUILT HOME PAGE IS THE BUILD DATE'S WEEK: no day
         # before the build date or after that week's Sunday, and every day in
@@ -53817,7 +53832,7 @@ def _using_this_site_tabs(civics):
     as a card, a division with its count (the survey of 7 October 2026).
     Every tab the list names is a tab app.js draws on a bill's page."""
     body = civics.BODY_SITE
-    at = body.index("<h2>What a bill's page holds</h2>")
+    at = body.index("<h2>What a Bill's Page Holds</h2>")
     part = body[at:body.index("</ul>", at)]
     named = re.findall(r"<li><b>([^<]+)</b>", part) + re.findall(
         r", and <b>([^<]+)</b>", part)
@@ -74747,15 +74762,15 @@ def _numbers_page_public():
     assert '<meta name="robots" content="noindex">' not in text, (
         "the page of numbers is public and should not ask to be delisted")
     assert "[[" not in text and "Traceback" not in text, "the page carries a build fault"
-    hub = site / "learn.html"
+    hub = site / "resources.html"
     if hub.exists():
         assert "by-the-numbers" in hub.read_text(encoding="utf-8", errors="replace"), (
-            "learn.html does not link the page of numbers")
+            "the Resources hub does not link the page of numbers")
     sm = site / "sitemap.xml"
     if sm.exists():
         assert "by-the-numbers" in sm.read_text(encoding="utf-8", errors="replace"), (
             "the sitemap does not list the page of numbers")
-    return "ok", "indexable, on the Learn hub and in the sitemap"
+    return "ok", "indexable, on the Resources hub and in the sitemap"
 
 
 @check("data", "the Learn pages' worked examples agree with the roll calls they cite")
@@ -74861,7 +74876,7 @@ def _learn_examples_record():
             f"vetoed bill of {term} is without one")
     # The closest votes: no row needed more than a majority.
     nums = text(site / "learn" / "by-the-numbers.html")
-    at = nums.find("The closest votes")
+    at = nums.find("The Closest Votes")
     rows = 0
     if at >= 0:
         try:
@@ -74873,8 +74888,10 @@ def _learn_examples_record():
         cur = rcs.get(term) or {}
         block = nums[at:]
         block = block[:block.find("<h2", 10)] if "<h2" in block[10:] else block
-        for m in re.finditer(r'bill/\d{4}/([a-z0-9]+)"[^<]*</a></td><td>([^<]*)</td>'
-                             r"<td>[^<]*</td><td>(\d+)&ndash;(\d+)</td><td>([^<]*)</td>", block):
+        # A cell may carry a class (a column of numbers is set right, l-num).
+        for m in re.finditer(r'bill/\d{4}/([a-z0-9]+)"[^<]*</a></td><td[^>]*>([^<]*)</td>'
+                             r"<td[^>]*>[^<]*</td><td[^>]*>(\d+)&ndash;(\d+)</td><td[^>]*>([^<]*)</td>",
+                             block):
             bid, y, n, day = m.group(1).upper(), int(m.group(3)), int(m.group(4)), m.group(5)
             same = [r for r in cur.get(bid) or []
                     if r.get("yeas") == y and r.get("nays") == n and (r.get("date") or "") == day]
