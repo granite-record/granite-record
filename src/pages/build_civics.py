@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.40
+# GRANITE_VERSION: 2026-09-08.41
 """
 The civics section: a hub and one page per topic, in order.
 
@@ -909,7 +909,7 @@ def learn_page(tmpl, *, slug, title, lead, description, secs, foot, base, after=
                og_image="og-learn.png", og_alt=OG_ALT,
                globals={"GR_STATIC": True}, noscript="",
                skip_label="Skip to the page", sr_title="",
-               nav_current="learn.html", cite=False)
+               nav_current="resources.html", cite=False)
     every = secs + ([after] if after else [])
     article = ("".join(section(*s) for s in secs) + foot
                + (section(*after) if after else ""))
@@ -1106,7 +1106,7 @@ def hub_page(tmpl, base, topics, groups):
                             "official sources it publishes."),
                globals={"GR_STATIC": True}, noscript="",
                skip_label="Skip to the page", sr_title="",
-               nav_current="learn.html", cite=False)
+               nav_current="resources.html", cite=False)
     return p.replace(
         '<div id="results"></div>',
         '<div id="results"><div class="l-page r-hub">'

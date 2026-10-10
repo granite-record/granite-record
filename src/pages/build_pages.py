@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.176
+# GRANITE_VERSION: 2026-09-04.177
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -310,7 +310,13 @@ COMMITTEE_TAB_SLUGS = ("sessions",)
 # /learn/<page> addresses"). Both spellings, because a request for
 # /learn.html meets no file to be 308'd from; build_civics writes the hub and
 # no longer a learn.html that could stand in the redirect's place.
-MOVED = (("/learn", "/resources"), ("/learn.html", "/resources"))
+# AND THE LEGISLATORS PAGE BECAME OFFICIALS (decision 127, 8 October 2026:
+# "The Legislators tab and page are renamed Officials now"), so /legislators
+# and /legislators.html answer the same way. Only those two addresses: the
+# members' data under /legislators/<id>.json and their pages under
+# /legislator/ are where they were, and no rule here reaches them.
+MOVED = (("/learn", "/resources"), ("/learn.html", "/resources"),
+         ("/legislators", "/officials"), ("/legislators.html", "/officials"))
 REDIRECTS = ("# Written by build_pages.py. Not an asset; Pages reads it.\n"
              + "".join(f"/bill/:year/:bill/{s} /bill/:year/:bill 200\n" for s in BILL_TAB_SLUGS)
              + "".join(f"/legislator/:who/{s} /legislator/:who 200\n" for s in MEMBER_TAB_SLUGS)
@@ -1193,17 +1199,20 @@ def cal_notes(up, missing, esc):
 
 # THE SECTIONS, in the header's order, with each one's drawing.
 NAV_TABS = (("bills.html", "Bills", "bill"),
-            ("legislators.html", "Legislators", "person"),
-            ("committees.html", "Committees", "committee"),
+            # OFFICIALS, NOT LEGISLATORS, AND RESOURCES, NOT LEARN (the
+            # person, 8 October 2026, late evening: "the polish release's five
+            # tabs are Bills, Officials, Calendar, Committees, Resources"). The
+            # page moved with its tab: /legislators and /learn answer with a
+            # 301 to the new addresses (MOVED, below).
+            ("officials.html", "Officials", "person"),
             # A second nav emitter. bills.html carries the nav every
-            # shell.page() page inherits; this tuple is what legislators.html,
+            # shell.page() page inherits; this tuple is what officials.html,
             # index.html and about.html get, and when Data was added to the
             # first it was not added here, so three pages lacked the link the
-            # other 34,000 had.
-            ("learn.html", "Learn", "book"),
-            # Added to BOTH emitters in the same edit. The comment above
-            # records what happened the time it was not.
-            ("calendar.html", "Calendar", "calendar"))
+            # other 34,000 had. preflight holds the two to the same five.
+            ("calendar.html", "Calendar", "calendar"),
+            ("committees.html", "Committees", "committee"),
+            ("resources.html", "Resources", "book"))
 
 
 def shell(title, current, body, wide=False, script="", desc="",
@@ -1255,7 +1264,7 @@ def shell(title, current, body, wide=False, script="", desc="",
     # files so a change to one is obvious in the other.
     # The card a shared link unfurls into, by kind of page (build_brand.py
     # draws them); the plain logo card for the home page and About.
-    _card = {"legislators.html": ("og-legislator.png", "legislators and their voting records"),
+    _card = {"officials.html": ("og-legislator.png", "legislators and their voting records"),
              "bills.html": ("og-bill.png", "bills, votes and hearings")}.get(current)
     _img = f"https://graniterecord.org/{_card[0] if _card else 'og.png'}"
     _alt = f"Granite Record: {_card[1]}" if _card else "Granite Record"
@@ -1471,7 +1480,7 @@ not exist in: every bill since 1989 has a page at <code>/bill/&lt;year&gt;/&lt;n
 and a bill number starts again every two years.</p>
 <p id="nf-bill" hidden></p>
 <p><a href="bills.html">Search every bill</a> &middot;
-<a href="legislators.html">Legislators</a> &middot;
+<a href="officials.html">Officials</a> &middot;
 <a href="committees.html">Committees</a> &middot; <a href="index.html">Home</a></p>
 <script>
 (function(){
@@ -3417,8 +3426,15 @@ party or committee to find a member.</p>
   + static_bar("H") + vacancies + "</div>") if C else ""}
 </div>
 {TOWN_TABS_JS}"""
-    (out / "legislators.html").write_text(
-        shell("Legislators | Granite Record", "legislators.html", leg_body,
+    # THE PAGE IS OFFICIALS NOW, at /officials (decision 127); /legislators
+    # is a 301 to it (MOVED). A legislators.html left in the folder by an
+    # earlier build would be published beside the redirect, so it goes.
+    old_page = out / "legislators.html"
+    if old_page.exists():
+        old_page.unlink()
+        print("  legislators.html: removed; /legislators redirects to /officials")
+    (out / "officials.html").write_text(
+        shell("Officials | Granite Record", "officials.html", leg_body,
               desc="Every member of the New Hampshire House and Senate: their "
                    "district, their party, the bills they sponsored and every "
                    "recorded vote they cast.",
@@ -3539,7 +3555,7 @@ today.</p>
        offers the matching ones under the box and they are chosen with the
        arrow keys and Enter or with a tap, with no script and nothing fetched.
        A name still goes through: the list only suggests. -->
-  <form class="hfrow" action="legislators.html" method="get">
+  <form class="hfrow" action="officials.html" method="get">
     <label for="hq2" class="sr">Your town, or a legislator's name</label>
     <input id="hq2" name="q" type="search" autocomplete="off"{town_list_attr}
       placeholder="Your town or a legislator">
@@ -3600,7 +3616,7 @@ under, and every bill since 1989.</p>
 </form>
 <div id="resout"></div>
 <noscript><p class="note">This page needs JavaScript to search. Without it,
-the <a href="/bills">bill search</a>, the <a href="/legislators">roster</a> and
+the <a href="/bills">bill search</a>, the <a href="/officials">roster</a> and
 the <a href="/committees">committee list</a> are all plain pages.</p></noscript>"""
     # WIDE, as the roster is: a list of results is a list, and in the 820px
     # column of the prose pages it ended near the middle of a 1440px window
@@ -3632,7 +3648,7 @@ the <a href="/committees">committee list</a> are all plain pages.</p></noscript>
                      '<meta name="robots" content="noindex">', page404)
     (out / "404.html").write_text(page404, encoding="utf-8")
 
-    print(f"wrote legislators.html ({len(legs)} members), "
+    print(f"wrote officials.html ({len(legs)} members), "
           f"about.html, search.html, 404.html, style.css -> {out}/  (learn.html: build_civics.py)")
     if not legs:
         print("  legislators.json missing — run build_site_v2.py first")

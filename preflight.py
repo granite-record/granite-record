@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.501
+# GRANITE_VERSION: 2026-09-04.502
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -19713,7 +19713,7 @@ def _asset_headers():
                          f"{want}")
 
     pages = [site / "bills.html", site / "index.html",
-             site / "legislators.html"]
+             site / "officials.html"]
     for folder, pat in (("bill", "*/*.html"), ("legislator", "*.html"),
                         ("committee", "*.html"), ("town", "*.html")):
         got = sorted((site / folder).glob(pat))
@@ -27798,7 +27798,7 @@ def _built_site(here, root, brand=True, env=None):
         # ran this script's main() at all.
         ("build_search_index.py", ["--idx", "site/idx", "--out", "site/sidx",
                                    "--allow-no-text"], "site/sidx/manifest.json"),
-        ("build_pages.py", ["--out", "site"], "site/legislators.html"),
+        ("build_pages.py", ["--out", "site"], "site/officials.html"),
         ("build_bill_pages.py", ["--site", "site", "--base", base],
          "site/sitemap.xml"),
         ("build_legislator_pages.py", ["--site", "site", "--base", base],
@@ -28055,6 +28055,18 @@ def _chain():
             assert f"\n{old} /resources 301\n" in red, f"_redirects does not send {old} to /resources"
         assert not (root / "site" / "learn.html").exists(), (
             "a learn.html is in the site, where the redirect to /resources should answer")
+        # AND THE LEGISLATORS PAGE IS OFFICIALS (decision 127): /legislators and
+        # /legislators.html go to /officials, no file shadows them, and no rule
+        # reaches the members' data under /legislators/ or their pages.
+        for old in ("/legislators", "/legislators.html"):
+            assert f"\n{old} /officials 301\n" in red, f"_redirects does not send {old} to /officials"
+        assert not any(ln.split()[0].startswith(("/legislators/", "/legislator/"))
+                       and ln.split()[-1] == "301" for ln in red.splitlines() if ln.strip()
+                       and not ln.startswith("#")), (
+            "a redirect reaches the members' data or pages")
+        assert not (root / "site" / "legislators.html").exists() and \
+            (root / "site" / "officials.html").exists(), (
+            "a legislators.html is in the site, or no officials.html, where /officials should answer")
         hub = (root / "site" / "resources.html").read_text(encoding="utf-8")
         for pid in ("learn", "guides", "sources"):
             assert f'id="tab-{pid}"' in hub and f'<div class="twnpane r-sheet" id="{pid}"' in hub, (
@@ -53612,7 +53624,7 @@ def _legislators_page_tabs():
     import build_town_pages as BT
     shared, _base, _ran, _days = _fixture_site_shared()
     site = shared / "site"
-    page = (site / "legislators.html").read_text(encoding="utf-8")
+    page = (site / "officials.html").read_text(encoding="utf-8")
     strips = re.findall(r'<div class="twntabs" role="tablist"[^>]*>(.*?)</div>', page, re.S)
     assert len(strips) == 1, f"the legislators page has {len(strips)} Towns/Legislators strips"
     assert re.search(r'<div class="twntabs" role="tablist" aria-label="[^"]+" hidden>', page), (
@@ -53705,7 +53717,7 @@ def _vacancy_wording():
             "election. A Senate seat is filled as the state constitution provides.")
     assert BP.VACANCY_NOTE == want, f"build_pages.VACANCY_NOTE reads {BP.VACANCY_NOTE!r}"
     shared, _base, _ran, _days = _fixture_site_shared()
-    page = (shared / "site" / "legislators.html").read_text(encoding="utf-8")
+    page = (shared / "site" / "officials.html").read_text(encoding="utf-8")
     vac = re.search(r'<details class="vac">(.*?)</details>', page, re.S)
     assert vac, "the fixture's legislators page lists no vacant seats to check"
     assert f'<p class="note" style="margin-top:8px">{want}</p>' in vac.group(1), (
@@ -53780,7 +53792,7 @@ def _seat_list_by_division():
             {"display_full": "Rep. Suzanne Vail (D - Hills 6)", "party": "D", "slug": "s"}), (
         "a chip's party and district are not one unit, so a chip that wraps breaks inside them")
     shared, _base, _ran, _days = _fixture_site_shared()
-    page = (shared / "site" / "legislators.html").read_text(encoding="utf-8")
+    page = (shared / "site" / "officials.html").read_text(encoding="utf-8")
     assert '<div class="seatcols" id="seatlist">' in page and '<ol class="seatlist" id="seatlist">' \
         not in page, "the built page's seat list is not the columns"
     return "ok", (f"five columns headed 1 to 5 as the chart runs, the Speaker above, five "
@@ -53844,7 +53856,7 @@ def _seat_chart_turned():
         "the chart does not write its seats in the order of their numbers, which is the order "
         "the arrow keys walk")
     shared, _base, _ran, _days = _fixture_site_shared()
-    page = (shared / "site" / "legislators.html").read_text(encoding="utf-8")
+    page = (shared / "site" / "officials.html").read_text(encoding="utf-8")
     svg = re.search(r'<svg viewBox="[^"]+" class="seatmap".*?</svg>', page, re.S)
     assert svg, "the fixture's legislators page draws no seating chart"
     bad = upright(svg.group(0))

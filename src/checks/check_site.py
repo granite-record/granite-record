@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.18
+# GRANITE_VERSION: 2026-09-04.19
 """
 Check the site is fit to publish before uploading it.
 
@@ -53,7 +53,7 @@ MAY_BE_EMPTY = {"former.json"}
 # that is in the nav and not in here is a tab that can go missing without the
 # checker noticing -- which calendar.html did, between being added to both nav
 # emitters and being added to this list.
-REQUIRED = ["index.html", "bills.html", "legislators.html", "resources.html",
+REQUIRED = ["index.html", "bills.html", "officials.html", "resources.html",
             "about.html", "calendar.html", "style.css",
             "meta.json", "legislators.json", "home.json"]
 

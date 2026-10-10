@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.237 */
+/* GRANITE_VERSION: 2026-09-07.238 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -1474,6 +1474,19 @@ line-height:1.1}
 .twnph{font-size:var(--t-h2);line-height:1.25;margin:var(--sp-9) 0 var(--sp-5)}
 .twntabs:not([hidden]) ~ .twnpane > .twnph{position:absolute;width:1px;height:1px;
   padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+
+/* ==== HUBS, SHARED (Polish 3, ws/hubs, 10 October 2026) ====================
+   The hubs' rules that both stylesheets need: the header, the map's mount on
+   the Officials page and the town pages. The page-only rules are in the
+   HUBS, PAGES block inside PAGES:START. */
+/* SEARCH IS ITS DRAWING, AT EVERY WIDTH (decision 130, 8 October 2026:
+   "Search shrinks to its icon everywhere, desktop included"). It had kept its
+   word above 720px. The word stays for a screen reader: it is the button's
+   name. A 44px square, the theme button's twin. */
+.findbtn{padding:var(--sp-3)}
+.findbtn span{position:absolute;width:1px;height:1px;margin:-1px;
+overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+/* ==== /HUBS, SHARED ======================================================= */
 
 /* SHARED:END ------------------------------------------------------------ */
 

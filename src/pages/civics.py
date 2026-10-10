@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.37
+# GRANITE_VERSION: 2026-09-08.38
 """
 The topics of the civics section: their order, their names, and their prose.
 
@@ -1163,7 +1163,7 @@ which cover several towns or wards together &mdash; see
 <a href="learn/your-representatives.html">Finding your
 representatives</a>.</p>
 <p><a href="committees.html">Every committee</a>, who sits on it, and what it
-did on each day it met. <a href="legislators.html">Every member</a>, with how
+did on each day it met. <a href="officials.html">Every member</a>, with how
 they voted.</p>""")
 
 
@@ -1851,7 +1851,7 @@ raises it in the property tax. That is why a tax bill carries a county line
 beside the town, school and state education lines, and why a budget the
 delegation adopts turns up on a tax bill months later.</p>
 """ + SHOWS.format("""
-<p><a href="legislators.html">Every member of both chambers</a> has a page
+<p><a href="officials.html">Every member of both chambers</a> has a page
 here, with the county and district they were elected from. The House members
 from a county are that county's convention, so the roster is the membership
 list.</p>
@@ -2262,7 +2262,7 @@ email address in the General Court's directory. Almost none have staff, so a
 message to a representative is read by that representative. Most have other
 jobs.</p>
 """ + SHOWS.format("""
-<p><a href="legislators.html">Every member of both chambers</a>, with their
+<p><a href="officials.html">Every member of both chambers</a>, with their
 district, party and county, and every recorded vote they have cast.</p>
 <p>Every <a href="committees.html">committee page</a> lists its members and
 has a button that opens an email to all of them at once.</p>""")
@@ -2287,7 +2287,7 @@ representative of that name. Anything else goes to
 <a href="bills.html">the bill search</a>, which takes a bill number, several
 separated by commas, or words from a title, sponsor or committee. It covers
 one term, or all of them at once, and narrows by committee, topic, prime
-sponsor, status, bill type and floor vote day. <a href="legislators.html">Every sitting member</a> and
+sponsor, status, bill type and floor vote day. <a href="officials.html">Every sitting member</a> and
 <a href="committees.html">every committee</a> has a page of their own.</p>
 
 <h2>What a Bill's Page Holds</h2>
