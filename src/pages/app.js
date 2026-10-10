@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.179
+// GRANITE_VERSION: 2026-09-07.180
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -5798,7 +5798,7 @@ function cardHtml(b,focus,line){
     +`<div class="cbody">${body}</div></article>`;
   return billCard({id:b.id,href:`bill/${y}/${String(b.id).toLowerCase()}.html`,n:b.n,year:y,
     word:cardWord(chipOf(b),b.passage),cls:chipCls(b),title:b.title,
-    byline:billByline(cardSponsor(b),b.committees||[b.committee],cardTopic(b),b.term,
+    byline:billByline(b._self?null:cardSponsor(b),b.committees||[b.committee],cardTopic(b),b.term,
       META.committee_codes),
     notes:whyLine(b),line:line||"",
     rail:datedRail(b,!(b.rail||[]).length?d:undefined),
@@ -6153,13 +6153,6 @@ function formerName(m){
 const HONORIFIC_FULL={"Rep.":"Representative","Sen.":"Senator"};
 const fullTitle=who=>String(who||"").replace(/^(Former )?(Rep\.|Sen\.) /,
   (_,f,h)=>`${f||""}${HONORIFIC_FULL[h]} `);
-// The heading as markup: the name, and its "(R - Rock 2)" kept whole, as a
-// chip keeps its .mtag. At 375px "Representative James Spillane (R - Rock"
-// left "2)" on a line of its own.
-const headName=s=>{
-  const m=/^(.*\S)\s+(\([^()]*\))$/.exec(String(s||""));
-  return m?`${esc(m[1])} <span class="ptag">${esc(m[2])}</span>`:esc(s);
-};
 
 
 const memberBills=(m,prime)=>(m.sponsored||[])
@@ -6168,7 +6161,10 @@ const memberBills=(m,prime)=>(m.sponsored||[])
   .map(idxRow);
 
 function renderMemberBills(m, prime){
-  const rows=memberBills(m,prime);
+  // A member's own bills name no prime sponsor on their cards: it is the
+  // member whose page this is, as the approved prototype draws them (10
+  // October 2026). A co-sponsored bill's card names its prime sponsor.
+  const rows=memberBills(m,prime).map(b=>prime?Object.assign({},b,{_self:true}):b);
   const t=pageTerm();
   if(!rows.length)return `<p class="src">No bills ${prime?"prime sponsored"
     :"co-sponsored"} in the ${esc(t)} term.</p>`;
