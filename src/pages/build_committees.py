@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-07.52
+# GRANITE_VERSION: 2026-09-07.53
 """
 A page's worth of data for every committee.
 
@@ -43,6 +43,18 @@ and the recommendation half only appears when committee_reports.json has one
 for that bill. A committee that met and whose report is not on file gets the
 first sentence and nothing more, which is the honest outcome.
 
+WHAT HAPPENED TO EACH BILL AT A MEETING, AND WHAT THE COMMITTEE REPORTED
+
+Each meeting carries `outcomes`, one entry a bill: the kinds of sitting it
+had, the online sign-ins at a hearing, and what the committee voted there --
+its recommendation with the tally and the minority's, an interim study
+report (one not recommending future legislation marked killed), a retention
+-- or, where it voted nothing, the day the docket dates its vote. Each bill
+of the Bills tab carries `reported`: the committee's acts on it, each dated
+by the meeting it was voted at. committee_acts.py says how each is read off
+the bill's docket, and why by the docket's vote date (the person's feedback
+of 9 October 2026, items 1 and 12, and v8).
+
 Writes site/committees.json and site/committee/<code>.json. It writes no HTML:
 the page is app.js with one committee open, the same way a bill's page is.
 """
@@ -62,6 +74,7 @@ import types
 import proceedings as P
 import bill_order as BO
 import build_date
+import committee_acts as CA
 import committee_details as CD
 import committee_names as CN
 import names
@@ -146,6 +159,12 @@ def recommendation(reports, term, bill, committee=""):
                 break
         return maj.lower(), (rec.get("minority_recommendation") or "").strip().lower(), vote
     return "", "", ""
+
+
+def meeting_kinds(kinds):
+    """The kinds of sitting a bill had at one meeting, in the order a
+    committee day runs (KIND_ORDER), whatever order its rows came in."""
+    return [k for k in KIND_ORDER if k in kinds] + [k for k in kinds if k not in KIND_ORDER]
 
 
 def is_ahead(date):
@@ -839,6 +858,12 @@ def main():
                          "every notice would be filed as a day the committee sat. "
                          "Run python3 src/parse/narrative.py --all first.")
     rows, left_off = P.sittings(rows, histories)
+    # WHAT EACH COMMITTEE DID TO EACH BILL, read off its docket while the
+    # histories are here (committee_acts.acts): its reports, each with the day
+    # the docket dates the vote, its interim study reports and its retentions.
+    # A meeting's `outcomes` and a Bills tab row's `reported` are made of them.
+    acts_of = {(t, b): CA.acts(rec.get("events")) for t, byb in histories.items()
+               for b, rec in byb.items()}
     del histories
     notices = [f"{r.get('bill')} {r.get('kind')} {r.get('date')}"
                for r in left_off if its_own_sitting(r)]
@@ -881,6 +906,70 @@ def main():
     if stop:
         raise SystemExit(stop)
 
+    # ---- what happened to each bill at each meeting ---------------------
+    # Each bill's meetings, across committees, (date, code, kinds): whose a
+    # retention or an interim study report is (committee_acts.owners), and
+    # which of a committee's meetings the docket dates its vote to.
+    met_on = collections.defaultdict(list)
+    for code_, by_day in days.items():
+        for (term_, date_), items_ in by_day.items():
+            kinds_ = collections.defaultdict(list)
+            for it in items_:
+                if it["kind"] not in kinds_[it["bill"]]:
+                    kinds_[it["bill"]].append(it["kind"])
+            for bill_, ks in kinds_.items():
+                met_on[(term_, bill_)].append((date_, code_, meeting_kinds(ks)))
+    for v in met_on.values():
+        v.sort()
+    owners_of = {}
+
+    def owners(term, bill):
+        """Whose each of the bill's acts is, worked out once a bill."""
+        k = (term, bill)
+        if k not in owners_of:
+            owners_of[k] = CA.owners(acts_of.get(k, []), met_on.get(k, []),
+                                     lambda nm, body: code_of(nm, body, term))
+        return owners_of[k]
+
+    def mine_of(code, term, bill):
+        return {d: ks for d, c, ks in met_on.get((term, bill), []) if c == code}
+
+    def reported_row(code, term, bill):
+        """{"reported": [...]}: this committee's acts on the bill, for its
+        Bills tab (committee_acts.reported), each with the meeting the
+        docket dates it to; {} where it recorded none."""
+        got = CA.reported(code, acts_of.get((term, bill), []), owners(term, bill),
+                          mine_of(code, term, bill))
+        return {"reported": got} if got else {}
+
+    def meeting_outcomes(code, term, date, items):
+        """What happened to each bill at one meeting (committee_acts.outcome),
+        in the order the meeting took them up: the kinds of sitting it had,
+        the online sign-ins where the bill's own page has them for this
+        hearing (its station's, matched on the date, so that the two pages
+        agree), and what the committee voted there or, where it voted
+        nothing, the day the docket dates its vote."""
+        order, kinds = [], collections.defaultdict(list)
+        for it in items:
+            if it["bill"] not in kinds:
+                order.append(it["bill"])
+            if it["kind"] not in kinds[it["bill"]]:
+                kinds[it["bill"]].append(it["kind"])
+        out = []
+        for b in order:
+            ks = meeting_kinds(kinds[b])
+            year = next((it["year"] for it in items if it["bill"] == b), "")
+            signed = next(((station_of(year, b, date, k) or {}).get("testimony")
+                           for k in ks if k in CA.HEARD
+                           and (station_of(year, b, date, k) or {}).get("testimony")),
+                          None)
+            out.append({"bill": b, **CA.outcome(code, date, ks, acts_of.get((term, b), []),
+                                                owners(term, b), mine_of(code, term, b),
+                                                signed, is_ahead(date))})
+            told[out[-1]["outcome"]] += 1
+        return out
+    told = collections.Counter()
+
     # ---- bills referred, per term ---------------------------------------
     referred = collections.defaultdict(lambda: collections.defaultdict(list))
     for b in idx:
@@ -899,6 +988,10 @@ def main():
                     # The word the bill's card shows (build_site_v2.chip_word),
                     # for a card drawn from this row rather than the index's.
                     "chip": b.get("chip", ""),
+                    # What this committee reported on it, dated by the meeting
+                    # it was voted at (committee_acts.reported): the Bills
+                    # tab's card says it (the person, 9 October 2026, item 1).
+                    **reported_row(code, b.get("term"), b.get("id")),
                 })
 
     out = site / "committee"
@@ -994,6 +1087,11 @@ def main():
                 # 2025-2026" over a 14 October 2026 still to come. The day is
                 # listed, told as scheduled (narrate), and counted apart.
                 **({"ahead": True} if is_ahead(date) else {}),
+                # WHAT HAPPENED TO EACH BILL AT THIS MEETING (the person,
+                # 9 October 2026, item 12: "make clearer what changed on each
+                # bill at that meeting, if anything did"), one entry a bill in
+                # the order of `items` (meeting_outcomes, committee_acts).
+                "outcomes": meeting_outcomes(code, term, date, items),
             })
         met_days = sum(1 for s in sessions if not s.get("ahead"))
 
@@ -1256,6 +1354,18 @@ def main():
           f"{sum(i['n_sessions'] for i in index):,} sitting days")
     lead_n = sum(1 for i in index if i["chair"])
     print(f"  {lead_n} of {written} have a chair on file")
+    # WHAT HAPPENED AT EACH MEETING, said (committee_acts): nothing voted at
+    # any meeting would be the docket's vote dates no longer read, and every
+    # bill would read as heard and nothing more.
+    unowned = sum(1 for k, own in owners_of.items() for a, o in zip(acts_of.get(k, []), own)
+                  if o is None and a["act"] == "report")
+    print(f"  at the meetings: {told['voted']:,} bills voted on, {told['heard']:,} heard, "
+          f"{told['no vote']:,} with no vote dated that day, {told['worked']:,} worked on, "
+          f"{told['scheduled']:,} still to come; {unowned:,} committee report(s) name a "
+          "committee no page here holds")
+    if sum(told.values()) and not told["voted"]:
+        print("  WARNING: no meeting records a vote: committee_acts no longer reads the "
+              "docket's report rows")
     if unmatched:
         print(f"  {len(unmatched)} committee name(s) in proceedings.csv match "
               f"no committee page, today's or a retired one's (the ceiling is "

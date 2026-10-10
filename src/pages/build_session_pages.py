@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-19.29
+# GRANITE_VERSION: 2026-09-19.30
 """
 A page for every day the House sat.
 
@@ -12,6 +12,12 @@ pages the actions cite -- the record carries no clock for a floor action, and
 the page number is the chamber's own sequence. For each bill, the motions put
 to the House in turn: what was moved, who moved it, who spoke on which side,
 how it was voted, and what carrying or failing did to the bill.
+
+AND THE DAYS AS DATA. Beside the pages, site/session/<H|S>/<term>.json:
+every day of the term with its journal and counts, who presided and who was
+excused, the consent calendar, and every bill voted on with each vote in
+order and the committee recommendation acted on (day_record, below; the
+person's feedback of 9 October 2026, v12-v18 and item 18).
 
 Then the debates the House voted to print in its permanent journal, and last
 the remarks made under unanimous consent, which belong to no bill and are part
@@ -60,6 +66,7 @@ import re
 
 import bill_order as BO
 import build_date
+import committee_acts as CA
 import session_days
 import journal_days
 import officers
@@ -151,6 +158,10 @@ class Members:
         # are matched among the members serving the term, as surnames are.
         self.by_full = collections.defaultdict(list)
         self.term = ""
+        # Each member by their id and by their page, with the party and the
+        # label their record gives: a session day's term file counts the
+        # excused by party and names who presided (day_record).
+        self.by_id, self.by_slug = {}, {}
         for f, in (("legislators.json",), ("former.json",)):
             p = site / f
             if not p.exists():
@@ -162,6 +173,13 @@ class Members:
             for r in rows:
                 slug, name = r.get("slug"), (r.get("name") or "")
                 ch = (r.get("chamber") or "").strip().upper()
+                if slug:
+                    info = {"id": str(r.get("id") or ""), "slug": slug,
+                            "label": r.get("display_full") or r.get("label") or "",
+                            "party": party_letter(r.get("party") or r.get("party_code"))}
+                    self.by_slug.setdefault(slug, info)
+                    if info["id"]:
+                        self.by_id.setdefault(info["id"], info)
                 if not slug or "," not in name:
                     continue
                 last, first = (x.strip() for x in name.split(",", 1))
@@ -972,6 +990,18 @@ def consent_html(cons, removed, titles, years, esc, calendar=()):
     return "".join(H)
 
 
+def day_parts(day, narrative):
+    """(removed, seq_items, cons): the bills the journal says came off the
+    day's consent calendar (journal_days.taken_off), and the day split into
+    its sequence and its consent list (Day.split). render() draws the page
+    from these and day_record() writes the term file from them: one reading
+    of the day for both."""
+    removed = journal_days.taken_off(
+        narrative, {i.bill for i in day.items if i.consent or came_off_in_line(i)})
+    seq_items, cons = day.split(removed)
+    return removed, seq_items, cons
+
+
 def render(day, narrative, titles, years, members, esc, chair=None):
     """The day, as HTML. `chair` heads a printed debate's turns in the chair
     (_debate_html); without it they are printed as the journal heads them."""
@@ -992,9 +1022,7 @@ def render(day, narrative, titles, years, members, esc, chair=None):
     # The bills the journal says came off the consent calendar. A removal it
     # prints outside the calendar's own segment counts only for a bill the
     # record has on this day's list: journal_days.taken_off says why.
-    removed = journal_days.taken_off(
-        narrative, {i.bill for i in day.items if i.consent or came_off_in_line(i)})
-    seq_items, cons = day.split(removed)
+    removed, seq_items, cons = day_parts(day, narrative)
     attrs = clerk_counts(attrs, [it for it in seq_items if not it.entered
                                  and getattr(it, "added", "") != "rollcall"])
 
@@ -1306,6 +1334,511 @@ def write_days_index(site, body, dates):
     return f
 
 
+# ------------------------------------------------------- the day as data --
+#
+# THE CHAMBER'S SESSION DAYS AS DATA, ONE FILE A TERM: site/session/<H|S>/
+# <term>.json, written beside the day's pages by the run that writes them.
+# What the next pages of a session day are drawn from, decided here once
+# rather than by each page (the component plan's C4, approved 9 October
+# 2026), out of the same model of the day this step draws its page from:
+#
+#   every day the chamber sat that term, with its journal and its counts,
+#     for the House and Senate full sessions at the top of the Committees
+#     page, a reader going through them as a committee page shows its
+#     meetings (the person, 9 October 2026, v12 and v13);
+#   each day's members excused, counted by party (v16); the members who
+#     presided over the chamber that day, as a list and not bill by bill
+#     (v18: "a general line naming the members who presided ... they switch
+#     back and forth"); and the consent calendar's outcomes with the bills
+#     each took, and the bills taken off it (item 18);
+#   and every bill the chamber voted on that day, with every vote on it
+#     that day in order -- the motion, its amendment numbers, the result,
+#     the count, and the roll call's id and the place of its card on the
+#     bill's Votes tab, so that the vote display the Votes tab draws is the
+#     one used (v2) -- and the committee recommendation the floor acted on
+#     (v15).
+#
+# THE AMENDMENTS ARE THE DOCKET'S, NOT ONLY THE ROLL CALLS. The sitting model
+# draws a floor motion and every roll call on record, an amendment's among
+# them, and no amendment voted by voice or division: the House's day of
+# 19 February 2026 draws none, where its bills' dockets record nineteen,
+# three of them divisions (HB 1811-FN's committee amendment failed 166-171,
+# HB 1775's adopted 178-145, HB 1492's adopted 315-25 -- the second-round
+# prototype's finding, 9 October 2026). They are read here from each bill's
+# own rows and put among its motions where the docket enters them. The
+# day's `counts` stay the page's own -- the motions it draws, each counted
+# vote once -- and `amendment_votes` counts what the bills' entries add, so
+# the two can be told apart and added up.
+
+# What the site data step knows of the floor that only the ballots and the
+# bills' Votes tabs say: who presided over each roll call, and where each
+# roll call's card is on its bill's Votes tab (build_site_v2.
+# write_floor_record). Not published: everything a page needs of it is in
+# the files below.
+FLOOR_RECORD = Path("data") / "floor_record.json"
+TERM_FILE = re.compile(r"\d{4}-\d{4}")
+HOW = {"RC": "roll call", "DV": "division", "VV": "voice vote"}
+PARTY_LETTER = {"republican": "R", "democrat": "D", "democratic": "D",
+                "independent": "I", "libertarian": "L"}
+
+
+def party_letter(p):
+    """"Republican" (the sitting roster) and "R" (a former member's) alike."""
+    s = (p or "").strip()
+    return PARTY_LETTER.get(s.lower(), s[:1].upper())
+
+
+def rollcall_id(rc):
+    """"2026-H-95": the roll-call file's own name for a roll call, the key of
+    rollcalls_index.json and the roll_call column of data/rollcalls.csv."""
+    return f"{rc.get('year')}-{rc.get('body')}-{rc.get('number')}" if rc else None
+
+
+def floor_record(path=FLOOR_RECORD):
+    """{"presiding": {roll call: [[member id, label], ...]}, "cards": {term:
+    {bill: {roll call: card}}}}; empty where the site data step wrote none,
+    and said, because every day would then name nobody presiding."""
+    try:
+        got = json.loads(Path(path).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        print(f"  WARNING: {path} is not here or will not read: no day names who "
+              "presided, and no roll call names its card on its bill's Votes tab")
+        got = {}
+    return {"presiding": got.get("presiding") or {}, "cards": got.get("cards") or {}}
+
+
+def published_officers(site):
+    """site/officers.json's tenures (build_site_v2.build_officers), or []."""
+    try:
+        return json.loads((Path(site) / "officers.json").read_text(
+            encoding="utf-8")).get("officers") or []
+    except (OSError, ValueError):
+        print("  WARNING: site/officers.json is not here: no one presiding is "
+              "named by their office")
+        return []
+
+
+def load_numbers(site):
+    """{(term, bill): "HB 1705-FN"}: each bill's number as its card prints
+    it, suffix kept, from the term indexes load_titles reads."""
+    out = {}
+    for f in sorted((Path(site) / "idx").glob("*.json")):
+        try:
+            rows = json.loads(f.read_text(encoding="utf-8"))
+        except (ValueError, OSError):
+            continue
+        for b in rows if isinstance(rows, list) else ():
+            if b.get("id") and b.get("n"):
+                out[(b.get("term") or f.stem, b["id"])] = b["n"]
+    return out
+
+
+AMENDMENT_NUMBER = re.compile(r"\b(\d{4}-\d{3,4}[a-z]?)\b|\{(\d{3,4})\}|#\s*(\d{3,4}[a-z]?)\b(?!-)")
+
+
+def amendment_numbers(text):
+    """Every amendment a motion's words name, in order: "2026-0531h", the
+    1999-2006 clerk's "{1066}", "#0026h". Not the year of "# 2026-1709s"
+    on its own."""
+    out = []
+    for m in AMENDMENT_NUMBER.finditer(text or ""):
+        x = next(g for g in m.groups() if g)
+        if x not in out:
+            out.append(x)
+    return out
+
+
+def item_vote(it, cards):
+    """One motion of the day, as data. `result` is the clerk's -- MA, or MF
+    and ML -- never the larger number (vote_payload); `did` is what carrying
+    or failing did to the bill, where session_days can say; `card` the
+    place of the roll call's card on the bill's Votes tab (`cards`)."""
+    v = {"motion": it.action or "",
+         "result": None if it.carried is None else ("adopted" if it.carried else "failed")}
+    amds = amendment_numbers(it.action)
+    if amds:
+        v["amendments"] = amds
+    if it.mover:
+        v["mover"] = it.mover
+    if HOW.get(it.kind):
+        v["how"] = HOW[it.kind]
+    if it.counted:
+        v["yeas"], v["nays"] = it.yeas, it.nays
+        v["threshold_needed"] = it.threshold_needed
+        if it.threshold_unknown:
+            v["threshold_unknown"] = True
+    rid = rollcall_id(it.rc)
+    if rid:
+        v["rollcall"] = rid
+        if rid in cards:
+            v["card"] = cards[rid]
+    if (getattr(it, "shared", 0) or 0) > 1:
+        v["shared"] = it.shared
+    if it.consent:
+        v["consent"] = True
+    if it.entered:
+        v["entered"] = it.entered
+        if it.recess:
+            v["recess"] = True
+    if getattr(it, "added", "") == "rollcall":
+        v["docket"] = False
+    did = None if it.plain else session_days._consequence(it.action, it.carried, it.law,
+                                                           it.overturned)
+    if did:
+        v["did"] = did
+    return v
+
+
+def amendment_vote(e):
+    """An amendment its own docket row says was voted by voice or division,
+    as data, worded as the bill's Votes tab words one (build_site_v2.
+    bill_rollcalls) with the docket's own kind beside it ("Minority
+    Amendment", "Enrolled Bill Amendment"); None where the row records no
+    vote. A roll call on an amendment is the sitting model's already."""
+    k = (e.get("amend_kind") or "").lower()
+    result = session_days.amendment_carried(e)
+    y, n = e.get("yeas"), e.get("nays")
+    counted = str(y or "").strip().isdigit() and str(n or "").strip().isdigit()
+    if result is None and not counted:
+        return None
+    vk = (e.get("vote_kind") or "").strip().upper().rstrip(".")
+    vk = "DV" if vk in ("DV", "DIV") else vk
+    v = {"motion": ("Adopt Floor Amendment" if "floor" in k
+                    else "Adopt Committee Amendment" if "committee" in k
+                    else "Adopt Amendment"),
+         "result": None if result is None else ("adopted" if result else "failed"),
+         "amendment_kind": (e.get("amend_kind") or "").strip()}
+    num = (e.get("amendment") or "").strip()
+    if num:
+        v["amendments"] = [num]
+    if (e.get("mover") or "").strip():
+        v["mover"] = e["mover"].strip()
+    if HOW.get(vk):
+        v["how"] = HOW[vk]
+    if counted:
+        v["yeas"], v["nays"] = int(y), int(n)
+        v["threshold_needed"] = (int(y) + int(n)) // 2 + 1
+    if e.get("part"):
+        v["part"] = e["part"]
+    return v
+
+
+def amendments_on_sittings(days, data, body):
+    """({sitting: {(term, bill): [(seq, event)]}}, [rows no sitting holds]):
+    each amendment row of the chamber not voted by roll call, on the sitting
+    it belongs to -- the one the sitting model put the bill's floor rows of
+    that docket day on (a row done in the recess of an earlier sitting
+    takes its amendments with it), else its own day where the chamber sat
+    then, else the sitting the row says it was done in the recess of.
+    `seq` is its place in its bill's docket in the model's terms (Item.seq,
+    session_days.load's `base`), so it sorts among the bill's motions."""
+    moved = {}
+    for (b, date), d in days.items():
+        if b == body:
+            for it in d.items:
+                moved[(it.term, it.bill, it.entered or date)] = date
+    base = getattr(days, "base", None) or {}
+    out = collections.defaultdict(lambda: collections.defaultdict(list))
+    lost = []
+    for term, bills in data.items():
+        for bill, rec in bills.items():
+            if (term, bill) not in base:
+                continue
+            for n, e in enumerate(rec.get("events") or []):
+                if (e.get("type") != "amendment" or e.get("cancelled")
+                        or (e.get("body") or "").strip().upper() != body
+                        or (e.get("vote_kind") or "").strip().upper() == "RC"):
+                    continue
+                day = (e.get("date") or "")[:10]
+                at = moved.get((term, bill, day))
+                if at is None and (body, day) in days:
+                    at = day
+                if at is None:
+                    rs = session_days.recess_sitting(e)
+                    at = rs if rs and (body, rs) in days else None
+                if at is None:
+                    lost.append((term, bill, day))
+                    continue
+                out[at][(term, bill)].append((base[(term, bill)] + n, e))
+    return out, lost
+
+
+def bill_votes(items, amendments, cards):
+    """A bill's votes of the day in order: its motions as the day draws
+    them, and each amendment row before the first motion its docket enters
+    after it."""
+    votes = [(it.seq, item_vote(it, cards)) for it in items]
+    for seq, e in sorted(amendments, key=lambda x: x[0]):
+        v = amendment_vote(e)
+        if v is None:
+            continue
+        at = next((i for i, (s, _v) in enumerate(votes) if s > seq), len(votes))
+        votes.insert(at, (seq, v))
+    return [v for _s, v in votes]
+
+
+# A motion that disposes of a committee's report: the chamber passing,
+# killing, studying or re-referring the bill on it. A tabling, a special
+# order or a reconsideration leaves the report before the chamber.
+DISPOSES = re.compile(r"^\s*(?:ought\s+to\s+pass|inexpedient|indefinitely\s+postpone|"
+                      r"(?:re-?)?refer(?:red)?\s+(?:for|to)\s+interim\s+study|"
+                      r"interim\s+study|re-?\s*refer|recommit)", re.I)
+
+
+def recommendation_on(acts, body, date, floor):
+    """The committee recommendation the chamber acted on that day: the
+    latest report of the chamber's committees (committee_acts.acts) the
+    docket enters on or before the day, where no sitting since that entry
+    disposed of the bill on it (`floor`: the bill's [(sitting, Item)] in
+    this chamber). None where there is none: HB 1525 of 2026's report is
+    entered on 22 February, three days after the House killed the bill (the
+    second-round prototype's finding 3, 9 October 2026), and a concurrence
+    months after the chamber passed a bill is no vote on its committee's
+    report."""
+    reps = [a for a in acts if a["act"] == "report" and a["body"] == body
+            and a["entered"] <= date]
+    if not reps:
+        return None
+    r = reps[-1]
+    if any(r["entered"] <= s < date and it.carried
+           and (it.consent or DISPOSES.match(it.action or "")) for s, it in floor):
+        return None
+    return {k: v for k, v in CA.public(r).items() if k != "act"}
+
+
+# THE SECOND COMMITTEE, as the docket refers a bill on to it: the House's own
+# row ("Referred to Finance 02/19/2026", 1989-2006's "RE-REFERRED TO WAYS AND
+# MEANS"), and the Senate's clause in the line of the vote that passed it
+# ("Ought to Pass: MA, VV; Refer to Finance Rule 4-5; 05/07/2026", the older
+# "PASSED/ADOPTED WITH AM, REF TO FINANCE (RULE #24)"). Not a referral for
+# interim study, and not a motion to refer that is itself the question.
+SECOND_COMMITTEE = re.compile(r"\bre-?\s*ref(?:er(?:red)?)?\.?\s+to\s+(?:the\s+)?"
+                              r"(?P<c>finance|ways\s+and\s+means|w\s*&\s*m)\b"
+                              r"|\bref(?:er(?:red)?)?\.?\s+to\s+(?:the\s+)?"
+                              r"(?P<d>finance|ways\s+and\s+means|w\s*&\s*m)\b", re.I)
+WAIVED = re.compile(r"\breferral\s+waived|\bwaived\s+(?:second\s+committee\s+)?referral", re.I)
+
+
+def referral_on(events, body, docket_days):
+    """{"referred": "Finance"} where the docket refers the bill on to Finance
+    or Ways and Means on one of `docket_days`, and {"referral_waived": True}
+    where it says that referral was waived (House Rule 47(f)): the vote
+    words' row 1a, "Motion Passed: Sent to Finance", turns on it, and is
+    "not the 93 bill-days whose docket says the referral was waived"."""
+    out = {}
+    for e in events or ():
+        if e.get("cancelled") or (e.get("body") or "").strip().upper() != body \
+                or (e.get("date") or "")[:10] not in docket_days:
+            continue
+        raw = e.get("raw") or ""
+        m = SECOND_COMMITTEE.search(raw)
+        if m and not re.search(r"interim\s+study", raw, re.I) and (
+                e.get("type") == "rereferred"
+                or (e.get("type") == "floor" and m.start() > 0
+                    and session_days.CARRIED.get((e.get("motion") or "").strip().upper()))):
+            c = (m.group("c") or m.group("d")).lower()
+            out["referred"] = "Finance" if c.startswith("fin") else "Ways and Means"
+        if WAIVED.search(raw):
+            out["referral_waived"] = True
+    return out
+
+
+# A turn the House Journal gives the chair in a printed debate: "Speaker
+# Packard:", "Speaker Steven Smith:", "Deputy Speaker Steven Smith:".
+CHAIR_TURN = re.compile(r"^(?:Deputy\s+Speaker|Speaker\s+Pro\s+Tem(?:pore)?|Speaker)\s+"
+                        r"(?P<n>(?!Pro\s+Tem)\S.*)$")
+
+
+def office_on(offices, body, date, mid):
+    """The office officers.json gives member `mid` of `body` on the day, or
+    "": the record's, never inferred from who presided."""
+    for t in offices:
+        if (t.get("b") == body and str(t.get("id")) == str(mid)
+                and t.get("from", "") <= date < t.get("to", "")):
+            return t.get("office") or ""
+    return ""
+
+
+def presiding_on(day, narrative, presided, members, offices):
+    """The members who presided over the chamber that day, from the record:
+    each that a roll call's "Presiding" ballot names, with how many roll
+    calls (`roll_calls`), in the order they first took the chair; then each
+    the journal heads a turn in the chair of a printed debate with
+    ("Speaker Steven Smith:") who is on no such ballot (`journal`). Each
+    with the office officers.json gives them that day, or none -- a member
+    in the chair. The Senate records its President presiding on few ballots
+    (attendance_context), so most Senate days name nobody: the record does
+    not say, and this does not guess."""
+    out, seen = [], {}
+    rcs = {}
+    for it in list(day.items) + list(day.others):
+        rid = rollcall_id(it.rc)
+        if rid and rid not in rcs:
+            rcs[rid] = int(it.rc.get("number") or 0)
+    for rid in sorted(rcs, key=lambda r: (rcs[r], r)):
+        for mid, label in presided.get(rid) or ():
+            if mid not in seen:
+                who = members.by_id.get(mid) or {}
+                seen[mid] = {"id": mid, "slug": who.get("slug") or "",
+                             "label": label or who.get("label") or "",
+                             "party": who.get("party") or "", "roll_calls": 0}
+                off = office_on(offices, day.body, day.date, mid)
+                if off:
+                    seen[mid]["office"] = off
+                out.append(seen[mid])
+            seen[mid]["roll_calls"] += 1
+    by_slug = {x["slug"]: x for x in out if x["slug"]}
+    for d in narrative.get("debates") or ():
+        for who, _said in d.get("speeches") or ():
+            m = CHAIR_TURN.match(who or "")
+            slug = members.slug(day.body, m.group("n")) if m else None
+            if not slug:
+                continue
+            if slug in by_slug:
+                by_slug[slug]["journal"] = True
+                continue
+            info = members.by_slug.get(slug) or {}
+            x = {"id": info.get("id") or "", "slug": slug, "label": info.get("label") or "",
+                 "party": info.get("party") or "", "roll_calls": 0, "journal": True}
+            off = office_on(offices, day.body, day.date, x["id"])
+            if off:
+                x["office"] = off
+            by_slug[slug] = x
+            out.append(x)
+    return out
+
+
+def excused_on(narrative, body, members):
+    """The members the journal excused for the day, counted by party: each
+    name read as the member serving that term it can only mean (Members),
+    with the party their record gives; `unmatched` the names that are no one
+    member's. The names absences_html lists, once each. None where the
+    journal excused nobody, or is not on disk for the day."""
+    names, seen = [], set()
+    for r in narrative.get("absences") or ():
+        for nm in r.get("names") or ():
+            if nm.lower() not in seen:
+                seen.add(nm.lower())
+                names.append(nm)
+    if not names:
+        return None
+    parties, unmatched = collections.Counter(), 0
+    for nm in names:
+        slug = members.slug(body, nm)
+        p = (members.by_slug.get(slug) or {}).get("party") if slug else ""
+        if p:
+            parties[p] += 1
+        else:
+            unmatched += 1
+    return {"total": len(names), "by_party": dict(sorted(parties.items())),
+            "unmatched": unmatched}
+
+
+def consent_on(cons, removed):
+    """The consent calendar as data: its outcomes, each with the bills it
+    took, in consent_html's words and order; the bills taken off it; and
+    its counted vote where the chamber counted it. None where there was no
+    calendar."""
+    if not cons and not removed:
+        return None
+    groups = collections.Counter(short_outcome(i) for i in cons)
+    return {"bills": len({(i.term, i.bill) for i in cons}),
+            "outcomes": [{"outcome": k, "bills": groups[k]} for k in sorted(groups)],
+            "removed": sorted({str(b).split("-")[0].upper() for b in removed},
+                              key=BO.bill_key),
+            "votes": [{"how": kind, "yeas": y, "nays": n,
+                       "result": None if c is None else ("adopted" if c else "failed")}
+                      for kind, y, n, c in calendar_vote(cons)]}
+
+
+def day_record(day, narrative, jurl, ctx):
+    """One sitting as data, for its chamber's term file. `ctx` carries what
+    the run read once: members, numbers, years, amendments (by sitting),
+    cards, presided, offices, acts (by bill), floor (by bill), data."""
+    removed, seq_items, cons = day_parts(day, narrative)
+    off = {str(b).split("-")[0].upper() for b in removed}
+    seq_keys = [(it.term, it.bill) for it in seq_items]
+    cons_keys = {(i.term, i.bill) for i in cons}
+    order = list(dict.fromkeys(seq_keys + sorted(cons_keys - set(seq_keys),
+                                                 key=lambda k: (BO.bill_key(k[1]), k[0]))))
+    amds = ctx["amendments"].get(day.date) or {}
+    order += sorted((k for k in amds if k not in set(order)),
+                    key=lambda k: (BO.bill_key(k[1]), k[0]))
+    added = collections.Counter()
+    bills = []
+    for term, bill in order:
+        items = [it for it in day.items if (it.term, it.bill) == (term, bill)]
+        votes = bill_votes(items, amds.get((term, bill), ()),
+                           ctx["cards"].get(term, {}).get(bill, {}))
+        for v in votes:
+            if "amendment_kind" in v:
+                added[v.get("how") or "not stated"] += 1
+        if not votes:
+            continue
+        entry = {"bill": bill, "term": term, "year": ctx["years"].get((term, bill)) or "",
+                 "n": ctx["numbers"].get((term, bill)) or re.sub(r"^([A-Z]+)(\d)", r"\1 \2", bill),
+                 "consent": (term, bill) in cons_keys and (term, bill) not in set(seq_keys)}
+        if bill.upper() in off:
+            entry["removed"] = True
+        if not items:
+            entry["amendments_only"] = True
+        entry["votes"] = votes
+        rec = recommendation_on(ctx["acts"](term, bill), day.body, day.date,
+                                ctx["floor"].get((term, bill), ()))
+        if rec:
+            entry["recommendation"] = rec
+        entry.update(referral_on(((ctx["data"].get(term) or {}).get(bill) or {}).get("events"),
+                                 day.body, {it.entered or day.date for it in items} or {day.date}))
+        bills.append(entry)
+    k = day.counts()
+    return {"date": day.date, "journal": day.journal or "", "journal_url": jurl or "",
+            "ordered": bool(day.ordered),
+            "counts": {"bills": len(day.bills), "actions": len(day.items),
+                       "roll_calls": k.get("roll call", 0), "divisions": k.get("division", 0),
+                       "voice_votes": k.get("voice vote", 0),
+                       "debates": len(narrative.get("debates") or [])},
+            "amendment_votes": {"divisions": added["division"],
+                                "voice_votes": added["voice vote"],
+                                "not_stated": added["not stated"]},
+            "presiding": presiding_on(day, narrative, ctx["presided"], ctx["members"],
+                                      ctx["offices"]),
+            "excused": excused_on(narrative, day.body, ctx["members"]),
+            "consent": consent_on(cons, removed),
+            "bills": bills}
+
+
+TERM_ABOUT = (
+    "One chamber's session days of one term, oldest first, each as its own page draws it "
+    "(session/<H|S>/<date>.html), from the docket, the journals and the roll calls. counts: "
+    "the page's own count of the bills taken up, the motions it draws and each counted vote "
+    "once; amendment_votes: the amendments voted by voice or division that the bills' "
+    "entries add from their dockets. presiding: who a roll call's Presiding ballot or a "
+    "journal's turn in the chair names, with the office the record gives them that day. "
+    "excused: the journal's names counted by the party of the member each can only mean. "
+    "consent: the calendar's outcomes, the bills taken off it and its counted vote. bills: "
+    "every bill voted on that day, each vote in order (rollcall is the roll-call file's id; "
+    "card is the vote's place on the bill's Votes tab), and the committee recommendation "
+    "the chamber acted on.")
+
+
+def write_term_records(site, body, records):
+    """site/session/<body>/<term>.json for each term in `records`, and none
+    left for a term this run holds no day of. Written only for the whole
+    chamber: a run cut short by --limit writes none."""
+    folder = Path(site) / "session" / body
+    wrote = set()
+    for term in sorted(records):
+        f = folder / f"{term}.json"
+        f.write_text(json.dumps({"_about": TERM_ABOUT, "body": body, "term": term,
+                                 "days": sorted(records[term], key=lambda d: d["date"])},
+                                separators=(",", ":")), encoding="utf-8")
+        wrote.add(f.name)
+    for f in sorted(folder.glob("*.json")):
+        if TERM_FILE.fullmatch(f.stem) and f.name not in wrote:
+            f.unlink()
+    return sorted(wrote)
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--site", default="site")
@@ -1349,11 +1882,35 @@ def main():
     # disk (officers.py), for the headings of the turns the chair takes in
     # a printed debate. The House's alone: the Senate's pages print none.
     tenures = officers.load()[0] if body == "H" else []
+    # THE CHAMBER'S DAYS AS DATA, a file a term (write_term_records), from
+    # what this run reads once: the bills' histories, for each bill's
+    # amendments, reports and referrals; what the site data step wrote of the
+    # ballots (floor_record); the officers' tenures; the bills' numbers.
+    data = json.loads(Path(session_days.NARRATIVES).read_text(encoding="utf-8"))
+    amendments, unplaced_amendments = amendments_on_sittings(days, data, body)
+    fr = floor_record()
+    floor = collections.defaultdict(list)
+    for (b_, d_), day_ in days.items():
+        if b_ == body:
+            for it in day_.items:
+                floor[(it.term, it.bill)].append((d_, it))
+    acts_cache = {}
+
+    def acts_of(term, bill):
+        if (term, bill) not in acts_cache:
+            acts_cache[(term, bill)] = CA.acts(
+                ((data.get(term) or {}).get(bill) or {}).get("events"))
+        return acts_cache[(term, bill)]
     retitled = collections.Counter()
     out_dir = site / "session" / body
     out_dir.mkdir(parents=True, exist_ok=True)
 
     urls, wrote, with_narr, linked, unlinked = [], 0, 0, 0, 0
+    records = collections.defaultdict(list)
+    ctx = {"members": members, "numbers": load_numbers(site), "years": years,
+           "amendments": amendments, "cards": fr["cards"], "presided": fr["presiding"],
+           "offices": published_officers(site), "acts": acts_of, "floor": floor,
+           "data": data}
     excused = 0
     order = mine[: a.limit] if a.limit else mine
     weeks = calendar_weeks(site)
@@ -1431,6 +1988,7 @@ def main():
         jurl = B2.journal_url(date, day.journal, journal_keys) if day.journal else ""
         if jurl:
             jlinked += 1
+        records[members.term].append(day_record(day, narrative, jurl, ctx))
         # A journal PDF opens in a new tab, marked as going out, as the
         # Calendar's do (the person, 7 October 2026, F12: "a calendar or
         # journal PDF").
@@ -1462,6 +2020,20 @@ def main():
     if not a.limit:
         prune(out_dir, {k[1] for k in mine}, a.prune)
         write_days_index(site, body, [k[1] for k in mine])
+        # SILENCE IS NOT SUCCESS: a day drawn and not written as data would
+        # be a day missing from the chamber's list with nothing to say so.
+        n_rec = sum(len(v) for v in records.values())
+        assert n_rec == wrote, f"{wrote} days drawn and {n_rec} written as data"
+        terms_written = write_term_records(site, body, records)
+        bill_days = sum(len(d["bills"]) for v in records.values() for d in v)
+        added = sum(sum(d["amendment_votes"].values()) for v in records.values() for d in v)
+        print(f"  {len(terms_written)} term file(s) -> site/session/{body}/<term>.json: "
+              f"{n_rec:,} days, {bill_days:,} bills voted on a day, {added:,} amendment "
+              "votes the pages do not draw; "
+              f"{sum(1 for v in records.values() for d in v if d['presiding']):,} days name "
+              f"who presided, {sum(1 for v in records.values() for d in v if d['excused']):,}"
+              f" count the excused by party; {len(unplaced_amendments):,} amendment row(s) "
+              "on no sitting")
 
     # This chamber's days only, and all of them unless --limit cut the run
     # short: a limited run takes out only entries that were never an address.
