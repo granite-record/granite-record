@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.240 */
+/* GRANITE_VERSION: 2026-09-07.241 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -4981,6 +4981,13 @@ text-decoration-color:var(--rule-2);text-underline-offset:3px}
   .vfull th:nth-child(1){width:16%}
   .vfull th:nth-child(2){width:42%}
 }
+/* AND 18% UNDER 60em: a member's tab is the record head's sheet since 10
+   October 2026, 25px narrower at 768 than the card it was, and "Aug 19, 2026"
+   ran 3px into the bill beside it (the rendered sweep). */
+@media (max-width:60em){
+  .vfull th:nth-child(1){width:18%}
+  .vfull th:nth-child(2){width:40%}
+}
 /* MONTH FIRST, AND ON ONE LINE (8 October 2026). The date went from
    "8/19/2026" at 12px to "Aug 19, 2026" at 16px with the type scale and the
    one formatter, and in 9% of the table every row's date broke after its
@@ -5526,7 +5533,7 @@ border-radius:var(--r-in);background:var(--surface);font-size:var(--t-ui)}
   .racts .pageacts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--sp-2)}
   .racts .pageacts > *,.racts #reportbox > *{min-width:0;max-width:none}
   .racts :is(.pcite,.follow,.report) > summary,.racts .pshare{width:100%;justify-content:center;
-  min-height:2.75rem}
+  min-height:2.75rem;white-space:normal;text-align:center}
   .racts .sharestate{grid-column:1 / -1;max-width:none}
 }
 
