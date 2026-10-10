@@ -1,0 +1,237 @@
+/* GRANITE_VERSION: 2026-10-09.1 */
+/* A BILL'S PRINT SHEET (print.js), loaded the first time the sheet opens.
+
+   ON A SCREEN the sheet covers the page: the sheet as it prints on the left,
+   its settings on the right, and on a narrower screen the settings first.
+   The settings are the site's, in the site's theme. THE PAPER IS THE ONE
+   EXCEPTION: it is drawn as it prints, the light page's ink on white in
+   either theme, because paper has no dark mode -- the four --sheet tokens,
+   which are the same in every block of app.css's palette.
+
+   ON PAPER only the sheet prints, and every page carries the bill, its
+   address and its number among the pages (@page; print.js writes the bill's
+   own words into the rule as the sheet opens).
+
+   NOTHING ON THE PAPER IS SAID BY COLOUR ALONE: an outcome is a word in a
+   box, a party a letter in the chip's label, a change underlined or struck
+   through and bracketed, a table ruled. Type is the site's scale: 14px (10.5
+   point) for the paper's text, 13px only in capitals, as everywhere else. */
+
+/* ------------------------------------------------------------ THE LAYER */
+html.ps-open,html.ps-open body{overflow:hidden}
+.ps-layer{position:fixed;inset:0;z-index:1000;overflow:auto;background:var(--paper);color:var(--ink);
+-webkit-overflow-scrolling:touch}
+.ps-wrap{max-width:82rem;margin:0 auto;padding:var(--sp-8) var(--sp-8) var(--sp-11)}
+.ps-h{font:600 var(--t-title)/1.15 var(--serif);margin:0;color:var(--ink)}
+.ps-h:focus{outline:none}
+.ps-h .ps-yr{font-weight:400;color:var(--ink-2)}
+.ps-lead{font:400 var(--t-ui)/1.5 var(--sans);color:var(--ink-2);margin:var(--sp-3) 0 0;max-width:46rem}
+.ps-layout{display:grid;grid-template-columns:51rem minmax(0,1fr);column-gap:var(--sp-8);align-items:start;
+margin-top:var(--sp-8)}
+
+/* ------------------------------------------------------------ THE SETTINGS */
+.ps-menu{position:sticky;top:var(--sp-6);min-width:0}
+.ps-form{background:var(--surface);border:1px solid var(--rule-2);border-top:3px solid var(--ink);
+border-radius:var(--r-in);padding:var(--sp-6) var(--sp-6) var(--sp-7)}
+.ps-mh{font:600 var(--t-h3)/1.3 var(--serif);margin:0;color:var(--ink)}
+.ps-mlead{font:400 var(--t-sm)/1.45 var(--sans);color:var(--ink-2);margin:var(--sp-3) 0 0}
+.ps-fs{border:0;margin:var(--sp-7) 0 0;padding:0;min-width:0}
+/* a legend is a heading over its choices: as large as they are, heavier, and ruled */
+.ps-fs legend{font:600 var(--t-ui)/1.3 var(--sans);color:var(--ink);padding:0 0 var(--sp-3);
+margin:0 0 var(--sp-3);width:100%;border-bottom:1px solid var(--rule)}
+.ps-always{font:400 var(--t-sm)/1.45 var(--sans);color:var(--ink-2);margin:0 0 var(--sp-2)}
+.ps-opt{display:flex;align-items:flex-start;gap:var(--sp-4);padding:var(--sp-2) 0;
+font:400 var(--t-ui)/1.4 var(--sans);color:var(--ink);cursor:pointer}
+.ps-opt input{accent-color:var(--pine);width:1.125rem;height:1.125rem;margin:var(--sp-1) 0 0;flex:0 0 auto}
+.ps-optsub{padding-left:var(--sp-9)}
+.ps-hint{display:block;font-size:var(--t-sm);color:var(--ink-2);margin-top:var(--sp-1)}
+.ps-opt.is-off,.ps-textfs.is-off .ps-opt{color:var(--ink-2);cursor:default}
+.ps-btns{display:flex;flex-wrap:wrap;gap:var(--sp-4);margin-top:var(--sp-7)}
+.ps-btn{flex:1 1 auto;min-height:2.75rem;padding:var(--sp-3) var(--sp-6);border-radius:var(--r-in);
+font:600 var(--t-ui)/1.2 var(--sans);color:var(--ink);background:var(--surface);
+border:1px solid var(--edge);cursor:pointer}
+.ps-btn:hover{border-color:var(--pine)}
+.ps-btn.ps-do{color:var(--on-pine);background:var(--pine);border-color:var(--pine)}
+.ps-btn:disabled{cursor:progress}
+.ps-btn:focus-visible{outline:2px solid var(--pine);outline-offset:2px}
+.ps-live{font:400 var(--t-sm)/1.45 var(--sans);color:var(--ink-2);margin:var(--sp-4) 0 0}
+.ps-live:empty{display:none}
+.ps-keep{font:400 var(--t-sm)/1.45 var(--sans);color:var(--ink-2);margin:var(--sp-5) 0 0}
+
+/* ------------------------------------------------------------ THE PAPER */
+/* 51rem is Letter's 8.5in at 96 to the inch (A4's 8.27in takes the same
+   column), with the 0.6in margins the paper gets. */
+.ps-paper{background:var(--sheet);color:var(--sheet-ink);width:51rem;box-sizing:border-box;
+padding:3.6rem 3.6rem 2.75rem;border:1px solid var(--sheet-rule);box-shadow:0 2px 16px var(--shadow);
+font:400 var(--t-sm)/1.5 var(--serif);-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.ps-paper p{margin:0 0 var(--sp-4)}
+.ps-paper b{font-weight:600}
+/* A link on paper goes nowhere: a chip's name is words in the paper's ink,
+   and the address is printed where it matters. */
+.ps-paper a{color:var(--sheet-ink);text-decoration:none}
+.ps-vh{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+.ps-addr{font:400 var(--t-sm)/1.4 var(--sans);color:var(--sheet-ink-2);overflow-wrap:anywhere}
+.ps-sm{font:400 var(--t-sm)/1.45 var(--sans);color:var(--sheet-ink-2)}
+.ps-sub{display:block;font:400 var(--t-sm)/1.4 var(--sans);color:var(--sheet-ink-2);margin-top:var(--sp-1)}
+.ps-sub2{font:400 var(--t-sm)/1.45 var(--sans);color:var(--sheet-ink-2)}
+.ps-sub2 b{color:var(--sheet-ink)}
+.ps-nw,.ps-paper .tally{white-space:nowrap}
+
+/* the masthead */
+.ps-brandrow{display:flex;justify-content:space-between;align-items:center;gap:var(--sp-6);
+padding-bottom:var(--sp-4);border-bottom:1px solid var(--sheet-ink)}
+.ps-brand{font:600 var(--t-ui)/1 var(--serif);color:var(--sheet-ink)}
+.ps-mtop{display:grid;grid-template-columns:minmax(0,1fr) auto;column-gap:var(--sp-8);align-items:start;
+margin-top:var(--sp-6)}
+.ps-mtop.ps-noqr{grid-template-columns:minmax(0,1fr)}
+.ps-kind{font:600 var(--t-label)/1.3 var(--sans);letter-spacing:.06em;text-transform:uppercase;
+color:var(--sheet-ink-2);margin:0}
+.ps-paper .ps-kind{margin:0}
+.ps-title{font:600 var(--t-h2)/1.15 var(--serif);margin:var(--sp-2) 0 0;color:var(--sheet-ink)}
+.ps-title .ps-yr{font-weight:400;font-size:var(--t-ui);color:var(--sheet-ink-2)}
+.ps-paper .ps-ttl{font:400 var(--t-ui)/1.45 var(--serif);margin:var(--sp-3) 0 0}
+.ps-paper .ps-status{display:flex;flex-wrap:wrap;align-items:center;gap:var(--sp-3) var(--sp-5);
+font:400 var(--t-sm)/1.4 var(--sans);margin:var(--sp-4) 0 0}
+/* An outcome in words, in the chip's shape: an edge and a bar, no fill. */
+.ps-word{display:inline-block;font:600 var(--t-sm)/1.3 var(--sans);color:var(--sheet-ink);
+border:1px solid var(--sheet-ink);border-left-width:3px;border-radius:var(--r-in);
+padding:0 var(--sp-3);white-space:nowrap}
+.ps-word-m{font-size:var(--t-ui);padding:var(--sp-1) var(--sp-4)}
+.ps-qr{margin:0;width:9rem;text-align:center}
+.ps-qrsvg{display:block;width:7rem;height:7rem;margin:0 auto;color:var(--sheet-ink)}
+.ps-qrbg{fill:var(--sheet)}
+.ps-qr figcaption{font:600 var(--t-sm)/1.3 var(--sans);margin-top:var(--sp-2)}
+.ps-qr figcaption .ps-addr{display:block;font-weight:400}
+.ps-paper .ps-asof{font:400 var(--t-sm)/1.45 var(--sans);color:var(--sheet-ink-2);margin:var(--sp-5) 0 0;
+padding-top:var(--sp-4);border-top:1px solid var(--sheet-rule)}
+
+/* sections and their headings: each outranks its text */
+.ps-sec{margin-top:var(--sp-7)}
+.ps-h3{font:600 var(--t-h3)/1.25 var(--serif);color:var(--sheet-ink);margin:0 0 var(--sp-4);
+padding-bottom:var(--sp-2);border-bottom:2px solid var(--sheet-ink);break-after:avoid}
+.ps-h4{font:600 var(--t-ui)/1.3 var(--serif);color:var(--sheet-ink);margin:var(--sp-5) 0 var(--sp-3);break-after:avoid}
+.ps-h5{font:600 var(--t-sm)/1.3 var(--sans);color:var(--sheet-ink);margin:var(--sp-4) 0 var(--sp-2);break-after:avoid}
+.ps-h5 span{font-weight:400;color:var(--sheet-ink-2)}
+.ps-paper .ps-note{font:400 var(--t-sm)/1.45 var(--sans);color:var(--sheet-ink-2);
+border-left:2px solid var(--sheet-rule);padding-left:var(--sp-4)}
+
+/* tables: ruled, so they read on paper with no colour at all. */
+.ps-facts,.ps-table,.ps-how{width:100%;border-collapse:collapse}
+.ps-facts th{font:600 var(--t-sm)/1.45 var(--sans);text-align:left;vertical-align:top;width:9rem;
+padding:var(--sp-2) var(--sp-5) var(--sp-2) 0;color:var(--sheet-ink);border-bottom:1px solid var(--sheet-rule)}
+.ps-facts td{padding:var(--sp-2) 0;vertical-align:top;border-bottom:1px solid var(--sheet-rule)}
+.ps-facts tr:first-child th,.ps-facts tr:first-child td{border-top:1px solid var(--sheet-rule)}
+/* A person on paper: the chip's label (party letter and seat) and its
+   prime or committee label, in the paper's ink, with the chip's own edge. */
+.ps-paper .mchip{background:var(--sheet);color:var(--sheet-ink);border-color:var(--sheet-ink);
+font-size:var(--t-sm);margin:0 var(--sp-2) var(--sp-2) 0;padding:var(--sp-1) var(--sp-3);white-space:normal}
+.ps-paper .mchip > a{padding:0;margin:0;font-weight:500}
+.ps-how th{font:600 var(--t-sm)/1.45 var(--sans);text-align:left;width:5.5rem;vertical-align:top;
+padding:var(--sp-2) var(--sp-4) var(--sp-2) 0;border-top:1px solid var(--sheet-rule)}
+.ps-how td{vertical-align:top;padding:var(--sp-2) var(--sp-4) var(--sp-2) 0;border-top:1px solid var(--sheet-rule)}
+.ps-how tr:last-child th,.ps-how tr:last-child td{border-bottom:1px solid var(--sheet-rule)}
+.ps-d{font:400 var(--t-sm)/1.45 var(--sans);white-space:nowrap;width:7rem}
+.ps-table thead th{font:600 var(--t-sm)/1.3 var(--sans);text-align:left;padding:var(--sp-2) var(--sp-5) var(--sp-2) 0;
+border-bottom:2px solid var(--sheet-ink);vertical-align:bottom}
+.ps-table td{vertical-align:top;padding:var(--sp-3) var(--sp-5) var(--sp-3) 0;border-bottom:1px solid var(--sheet-rule);
+font:400 var(--t-sm)/1.4 var(--sans)}
+.ps-q{font-family:var(--serif)}
+.ps-votes td:last-child{width:10rem}
+.ps-votes td:nth-child(3){width:8rem}
+.ps-stage p{margin-bottom:var(--sp-3)}
+.ps-rep{border-top:1px solid var(--sheet-rule);margin-top:var(--sp-4)}
+.ps-h3 + .ps-rep{border-top:0;margin-top:0}
+
+/* a roll call, member by member: names in four columns */
+.ps-roll{margin-top:var(--sp-5);border-top:1px solid var(--sheet-ink)}
+.ps-names{list-style:none;margin:0;padding:0;columns:4;column-gap:var(--sp-6);font:400 var(--t-sm)/1.4 var(--sans)}
+.ps-names li{break-inside:avoid}
+
+/* the text: the amendments numbered, then the marks */
+.ps-amds{list-style:none;margin:var(--sp-2) 0 var(--sp-5);padding:0;font:400 var(--t-sm)/1.45 var(--sans)}
+.ps-amds li{display:grid;grid-template-columns:1.75rem minmax(0,1fr);column-gap:var(--sp-4);
+padding:var(--sp-2) 0;border-bottom:1px solid var(--sheet-rule)}
+/* A tag is a number or a letter, and 13px is for capitals: it is set in them.
+   Inline, not inline-block, so it never starts a line of its own away from
+   the words it numbers; raised no more than its line holds, or its edge
+   prints at the foot of the page before a line the page break carried on. */
+.ps-tagk{display:inline-grid;place-items:center;width:1.375rem;height:1.375rem;border:1px solid var(--sheet-ink);
+border-radius:var(--r-in);font:600 var(--t-label)/1 var(--sans);text-transform:uppercase}
+.ps-legend{border:1px solid var(--sheet-ink-2);padding:var(--sp-4) var(--sp-5);margin:0 0 var(--sp-6);
+font:400 var(--t-sm)/1.5 var(--sans)}
+.ps-legend p{margin:0 0 var(--sp-2)}
+.ps-legend p:last-child{margin:0}
+.ps-text{font:400 var(--t-sm)/1.6 var(--serif)}
+.ps-paper .ps-ln{margin:0 0 var(--sp-2)}
+.ps-i1{padding-left:1.25rem}.ps-i2{padding-left:2.5rem}.ps-i3{padding-left:3.75rem}.ps-i4{padding-left:5rem}
+.ps-ins{text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:2px}
+.ps-del{text-decoration:line-through;text-decoration-thickness:1px}
+.ps-tag{display:inline;font:600 var(--t-label)/1 var(--sans);text-transform:uppercase;vertical-align:.2em;
+border:1px solid var(--sheet-ink);border-radius:2px;padding:0 var(--sp-1);margin:0 var(--sp-1) 0 var(--sp-1);
+text-decoration:none}
+.ps-law-add{font-weight:700;font-style:italic}
+.ps-law-cut{text-decoration:line-through}
+.ps-flat{font:400 var(--t-sm)/1.6 var(--serif)}
+
+/* the documents: each with its address printed, since a link does not work on paper */
+.ps-docs{list-style:none;margin:0;padding:0}
+.ps-docs li{display:grid;grid-template-columns:10rem minmax(0,1fr);column-gap:var(--sp-5);break-inside:avoid;
+padding:var(--sp-2) 0;border-bottom:1px solid var(--sheet-rule);font:600 var(--t-sm)/1.4 var(--sans)}
+.ps-docs .ps-addr{font-weight:400}
+
+/* a narrower screen: the settings first, the sheet at the screen's width */
+@media screen and (max-width:83em){
+  .ps-layout{grid-template-columns:minmax(0,1fr);row-gap:var(--sp-7)}
+  .ps-menu{position:static;order:-1}
+  .ps-paper{width:auto;padding:2rem 2rem 1.75rem}
+  .ps-btn{flex:0 1 auto}
+}
+@media screen and (max-width:45em){
+  .ps-wrap{padding:var(--sp-6) var(--sp-6) var(--sp-10)}
+  .ps-h{font-size:var(--t-h2)}
+  .ps-paper{padding:var(--sp-6) var(--sp-5) var(--sp-7);box-shadow:none}
+  .ps-mtop{grid-template-columns:minmax(0,1fr) 5.5rem;column-gap:var(--sp-5)}
+  .ps-qr,.ps-qrsvg{width:5.5rem}.ps-qrsvg{height:5.5rem}
+  /* the address is too long for the column on a phone's screen; it prints */
+  .ps-qr figcaption .ps-addr{display:none}
+  .ps-brandrow{flex-wrap:wrap}
+  .ps-how,.ps-how tbody{display:block}
+  .ps-how tr{display:flex;flex-wrap:wrap;column-gap:var(--sp-5);border-top:1px solid var(--sheet-rule);padding:var(--sp-2) 0}
+  .ps-how th,.ps-how td{display:block;border:0;width:auto;padding:0}
+  .ps-how td:last-child{flex:1 1 100%}
+  .ps-word{white-space:normal}
+  .ps-table thead{display:none}
+  .ps-table,.ps-table tbody,.ps-table tr,.ps-table td{display:block;width:auto}
+  .ps-table tr{border-bottom:1px solid var(--sheet-rule);padding:var(--sp-3) 0}
+  .ps-table td{border:0;padding:var(--sp-1) 0}
+  .ps-votes td:last-child,.ps-votes td:nth-child(3){width:auto}
+  .ps-facts th{width:6.5rem}
+  .ps-names{columns:2}
+  .ps-docs li{grid-template-columns:minmax(0,1fr)}
+  .ps-btn{flex:1 1 auto}
+}
+
+/* ------------------------------------------------------------ ON PAPER */
+/* The sheet alone: the page under it, the heading and the settings are left
+   off, and the paper takes the page's width. Each page's foot is @page's
+   (Chrome 131 and later draw the margin boxes; another browser prints the
+   sheet without them): the bill and its address, which print.js writes as
+   the sheet opens, and the page's number of the pages. */
+@page{margin:.6in .6in .7in;
+  @bottom-right{content:"Page " counter(page) " of " counter(pages);font:400 .875rem "Public Sans",sans-serif}
+  @bottom-left{font:400 .875rem "Public Sans",sans-serif}}
+@media print{
+  html.ps-open,html.ps-open body{overflow:visible;background:var(--sheet) !important}
+  html.ps-open body > :not(.ps-layer){display:none !important}
+  .ps-layer{position:static;overflow:visible;background:var(--sheet)}
+  .ps-wrap{max-width:none;padding:0}
+  .ps-head,.ps-menu{display:none !important}
+  .ps-layout{display:block;margin:0}
+  .ps-paper{width:auto;padding:0;border:0;box-shadow:none}
+  /* app.css makes every table a scrolling block at 45em and under, and a
+     Letter page's text is 701px wide: on paper the sheet's tables would
+     shrink to their words, so they stay tables. */
+  .ps-paper table{display:table;overflow:visible}
+  .ps-table tr,.ps-how tr,.ps-facts tr,.ps-amds li,.ps-docs li,.ps-qr,.ps-legend{break-inside:avoid}
+  .ps-mast{break-after:avoid}
+}

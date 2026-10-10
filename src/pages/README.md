@@ -31,6 +31,17 @@ and `WORDBOOK:END` lines (`build_pages.with_words`), so the copy here holds
 none of them and nothing types a table of words twice. Change a word in its
 file; `preflight` holds the browser's `WORDBOOK` to Python's.
 
+A bill's print sheet is `print.js` and `print.css` (9 October 2026): a
+reference sheet of the bill's record for paper, composed in the reader's
+browser from the record the page already holds, beside a short menu of
+settings, with a QR code to the bill's page and each change to the text
+numbered by the amendment that made it. A bill's page mounts it with one
+call, `GRPrint.open(record, row)`, from its Print button; `print.css` is
+loaded the first time it opens. It draws with `components.js` and reads
+`app.js`'s own tables, so it formats nothing of its own; `preflight` composes
+it in node on the real records of `tests/print_cases.json` with every
+section present and absent.
+
 Run by: `build_all.py`'s `plan()`, after the record is built. A new page is
 `build_<page>.py` on `shell.py` plus one `Step()`.
 

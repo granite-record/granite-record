@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.491
+# GRANITE_VERSION: 2026-09-04.492
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -16396,7 +16396,7 @@ def _class_collisions():
     here = Path(".")
     # The components draw on both sides by design: components.js with the
     # browser's files, components.py with the builders.
-    app_side = ["components.js", "app.js", "find.js", "bills.html"]
+    app_side = ["components.js", "app.js", "find.js", "print.js", "bills.html"]
     bld_side = [f.name for f in _paths.code_files("build_*.py")] + ["shell.py", "components.py"]
     if not all(_paths.locate(f).exists() for f in app_side + ["shell.py"]) or not bld_side:
         return "skip", "not all renderers are in this directory"
@@ -20229,10 +20229,12 @@ _FRONT_EXEMPT = {
 
 def _front_sources(root="."):
     """[(name, text)] of every file whose markup reaches a page besides
-    app.css: components.js, app.js, find.js, bills.html and every builder in
-    src/pages/ (components.py among them), each cut where _FRONT_EXEMPT says."""
+    app.css: components.js, app.js, find.js, print.js (a bill's print sheet),
+    bills.html and every builder in src/pages/ (components.py among them),
+    each cut where _FRONT_EXEMPT says."""
     base = Path(root)
     files = [base / "src/pages/components.js", base / "src/pages/app.js", base / "src/pages/find.js",
+             base / "src/pages/print.js",
              base / "src/pages/bills.html"] + sorted((base / "src/pages").glob("*.py"))
     out = []
     for f in files:
@@ -27710,7 +27712,8 @@ def _built_site(here, root, brand=True, env=None):
     # small, tracked, and written by `probe_alignment.py --truth --score-out`,
     # which is the gate every timestamp method passes before it ships.
     for name in ("src/pages/app.css", "src/pages/components.js", "src/pages/app.js",
-                 "src/pages/bills.html", "src/pages/find.js", "corrections/officials.json",
+                 "src/pages/bills.html", "src/pages/find.js", "src/pages/print.js",
+                 "src/pages/print.css", "corrections/officials.json",
                  "generated/alignment_score.json"):
         if (here / name).exists():
             (root / name).parent.mkdir(parents=True, exist_ok=True)
@@ -50736,6 +50739,509 @@ def _drawn_pages():
     return "ok", (f"{len(drawn)} pages and tabs drawn without an error: {len(records)} records "
                   f"at their own address and each tab's, and {len(DP.LISTS)} pages that draw "
                   "part of themselves")
+
+
+# ---- a bill's print sheet (9 October 2026) --------------------------------------
+#
+# print.js composes a reference sheet of one bill's record in the reader's
+# browser, beside a short menu of settings, and prints it with the browser's
+# own dialog (the person's decisions of 6 October 2026; the second-round
+# prototype approved on 9 October, less the rail's table and the hearings and
+# session days). The component plan asks that it be "composed in the browser
+# by the same helpers ... Nothing in it formats a bill, person, vote or date
+# of its own. Proven in node with every section present and absent." These
+# hold that, on seven real records (tests/print_cases.json), and its
+# stylesheet to the rules app.css is held to.
+
+# The sheet's sections, in the order they print. Nothing else is a section:
+# the rail's table and the hearings and session days were taken out by the
+# person on 9 October 2026.
+_PRINT_SECTIONS = ["At a Glance", "Official Legislative Analysis", "How It Got Here", "The Story",
+                   "Votes", "Committee Reports", "The Bill’s Text", "Documents"]
+_PRINT_OPTION = {"summary": ["Official Legislative Analysis", "The Story"], "votes": ["Votes"],
+                 "reports": ["Committee Reports"], "text": ["The Bill’s Text"],
+                 "docs": ["Documents"]}
+
+_PRINT_GO = r"""
+require("./stub.js");
+const fs = require("fs");
+const scope = (0, eval)(fs.readFileSync("./page.js", "utf8") + "\n;({GRPrint, WORDBOOK})");
+const G = scope.GRPrint;
+const C = JSON.parse(fs.readFileSync("./cases.json", "utf8"));
+const clone = x => JSON.parse(JSON.stringify(x));
+const urlOf = d => "https://graniterecord.org/bill/" + d.year + "/" + d.id.toLowerCase();
+const ctxOf = (c, files) => ({url: urlOf(c.d), asOf: "2026-10-09", today: "2026-10-09",
+  versions: c.ix ? {ix: c.ix, files: files === undefined ? c.files : files} : {ix: null, files: {}}});
+const all = () => { const s = G.defaults(); s.names = 1; s.long = 1; return s; };
+const words = ts => ts.filter(t => t.w !== "¶").map(t => t.w).join(" ");
+const out = {cases: {}, variants: {}, blame: {}, needs: {}};
+for (const [name, c] of Object.entries(C.cases)) {
+  const ctx = ctxOf(c);
+  const r = out.cases[name] = {full: G.sheet(c.d, c.b, ctx, all()), dflt: G.sheet(c.d, c.b, ctx, G.defaults()),
+    menu: G.menu(c.d, c.b, ctx, G.defaults()), has: G.has(c.d, ctx), off: {}, choice: {},
+    sponsors: (c.d.sponsors || []).length,
+    members: (c.d.rollcalls || []).reduce((n, rc) => n + (rc.members || []).length, 0)};
+  for (const k of ["summary", "votes", "reports", "text", "docs"]) {
+    const s = all(); s.sec[k] = 0; r.off[k] = G.sheet(c.d, c.b, ctx, s); }
+  { const s = all(); s.qr = 0; r.noqr = G.sheet(c.d, c.b, ctx, s); }
+  { const s = all(); s.names = 0; r.nonames = G.sheet(c.d, c.b, ctx, s); }
+  for (const t of ["marked", "clean", "amendments", "introduced"]) {
+    const s = all(); s.text = t; r.choice[t] = G.sheet(c.d, c.b, ctx, s); }
+  if (c.ix && (c.ix.versions || []).length > 1) {
+    const toks = c.ix.versions.map(v => G.text.tokens(c.files[v.blocks_url || v.text_url]));
+    const steps = G.text.joinSteps(c.d, c.ix);
+    const B = G.text.blame(toks, steps.map(s => s.tag));
+    out.blame[name] = {now: words(B.doc.filter(t => t.st !== "del")) === words(toks[toks.length - 1]),
+      was: words(B.doc.filter(t => t.st !== "add")) === words(toks[0]),
+      steps: steps.map(s => [s.kind, s.tag, s.a ? s.a.num : null]),
+      changed: B.doc.filter(t => t.st !== "eq" && t.w !== "¶").length};
+    const st = t => Object.assign(G.defaults(), {text: t});
+    out.needs[name] = {versions: c.ix.versions.length, marked: G.needs(c.d, ctxOf(c, {}), st("marked")).length,
+      clean: G.needs(c.d, ctxOf(c, {}), st("clean")).length, loaded: G.needs(c.d, ctx, st("marked")).length,
+      loading: G.sheet(c.d, c.b, ctxOf(c, {}), G.defaults())};
+  }
+}
+// Absence by the record: the law's record, less one part at a time.
+const law = C.cases.law;
+const strip = {
+  votes: d => { d.rollcalls = []; delete d.ballot; },
+  reports: d => { d.reports = []; d.docket_reports = []; },
+  docs: d => { d.documents = []; },
+  summary: d => { d.billtext.analysis = ""; d.stages = []; d.narrative = ""; d.notes = []; d.veto_message = null; },
+  how: d => { d.journey.steps = []; },
+  text: d => { d.nver = 1; d.namd = 0; d.amendments = []; d.billtext.body = ""; },
+  names: d => { d.rollcalls.forEach(r => { r.members = []; }); },
+};
+for (const [k, f] of Object.entries(strip)) {
+  const d = clone(law.d); f(d);
+  const c2 = Object.assign({}, law, k === "text" ? {d, ix: null, files: {}} : {d});
+  out.variants[k] = {sheet: G.sheet(d, law.b, ctxOf(c2), all()), menu: G.menu(d, law.b, ctxOf(c2), all())};
+}
+// A bill too long to print by accident.
+{ const c2 = clone(law); c2.ix.versions[c2.ix.versions.length - 1].words = G.PER_PAGE * G.LONG_PAGES + 1;
+  out.long = {dflt: G.sheet(c2.d, c2.b, ctxOf(c2), G.defaults()), menu: G.menu(c2.d, c2.b, ctxOf(c2), G.defaults()),
+    ticked: G.sheet(c2.d, c2.b, ctxOf(c2), Object.assign(G.defaults(), {long: 1})),
+    needs: G.needs(c2.d, ctxOf(c2, {}), G.defaults()).length}; }
+// The QR code: each symbol against the second encoder's, read back, and a
+// damaged one refused.
+{ const rows = m => m.map(r => r.map(v => v ? "1" : "0").join(""));
+  const m = G.qr.encode(C.qr[0].text);
+  out.qr = {symbols: C.qr.map(q => { const s = G.qr.encode(q.text);
+      return {text: q.text, same: rows(s).join("/") === q.rows.join("/"), read: G.qr.read(s).text === q.text}; }),
+    every: Object.values(C.cases).map(c => G.qr.read(G.qr.encode(urlOf(c.d))).text === urlOf(c.d)),
+    svg: G.qr.svg(m, "x")};
+  const bad = m.map(r => r.slice()); [[10, 10], [12, 14], [14, 11], [20, 9]].forEach(([y, x]) => { bad[y][x] = !bad[y][x]; });
+  try { out.qr.damaged = "read as " + G.qr.read(bad).text; } catch (e) { out.qr.damaged = "refused"; } }
+// Mounted as the Print button will mount it, under the stub, and taken down.
+try { const l = G.open(law.d, law.b); G.close(); out.open = {ok: !!l}; }
+catch (e) { out.open = {ok: false, err: String(e && e.stack || e).slice(0, 400)}; }
+process.stdout.write("\n@@" + JSON.stringify(out));
+"""
+
+
+def _print_text(html):
+    """What a reader sees of some of the sheet's HTML."""
+    import html as _h
+    return _h.unescape(re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", html))).strip()
+
+
+def _print_heads(html):
+    import html as _h
+    return [_h.unescape(h) for h in re.findall(r'<h3 class="ps-h3">(.*?)</h3>', html)]
+
+
+@check("frontend", "a bill's print sheet is composed from its record by the components, with every "
+                   "section present and absent, nothing said by colour alone, each change numbered "
+                   "by the amendment that made it, and a QR code that reads back")
+def _print_sheet():
+    """print.js on the seven records of tests/print_cases.json (a law with
+    three amendments and a chaptered step, a bill killed on a roll call, an
+    interim study bill, a CACR going to the voters, a bill with one version
+    and no amendment, an archived bill of 1995 and a vetoed bill), loaded in
+    node after components.js and app.js, as a bill's page loads them.
+
+    SECTIONS. The law prints every one, in order; no case prints anything
+    else -- not the rail's table, not the hearings and session days (the
+    person, 9 October 2026). A part taken out of the record takes its section
+    and its line in the menu with it; a setting turned off takes its section;
+    a bill too long to print by accident leaves its text off until ticked.
+
+    THE COMPONENTS. Every sponsor is pchip's chip with its party letter; no
+    date is printed in figures; every outcome is a word; the vote words are
+    WORDBOOK's.
+
+    THE TEXT. Read without its struck words the marked text is the current
+    version and without its inserted words the introduced one, on every
+    versioned case; each change carries the number its list gives the
+    amendment that made it, HB 1681's in the docket's order; a struck run is
+    in brackets.
+
+    THE QR CODE matches the symbols a second encoder made (the prototype's
+    qr.py) module for module -- the seven cases' addresses and three where
+    two masks tie on their penalty, so the mask chosen is the standard's --
+    reads back to every case's address, and a damaged symbol is refused
+    rather than read as another address.
+
+    MOUNTED: GRPrint.open and close run on a bill's record under the DOM stub,
+    and the run's fixture build publishes print.js and print.css as they are,
+    with _headers giving both the freshness every script has."""
+    node = shutil.which("node") or shutil.which("node.exe")
+    need = [Path(f) for f in ("src/pages/print.js", "src/pages/app.js", "tests/dom_stub.js",
+                              "tests/print_cases.json")]
+    if not all(p.exists() for p in need):
+        return "skip", "print.js, app.js, the DOM stub or the print cases are not here"
+    if not node:
+        assert not os.environ.get("GITHUB_ACTIONS"), "node is not on PATH on the nightly, which installs it"
+        return "skip", "node is not on PATH"
+    cases = json.loads(Path("tests/print_cases.json").read_text(encoding="utf-8"))
+    root = Path(tempfile.mkdtemp(prefix="gr-print-"))
+    try:
+        js = Path("src/pages/app.js").read_text(encoding="utf-8") + "\n;\n" + \
+            Path("src/pages/print.js").read_text(encoding="utf-8")
+        (root / "page.js").write_text(_with_components(js), encoding="utf-8")
+        (root / "stub.js").write_text(Path("tests/dom_stub.js").read_text(encoding="utf-8"), encoding="utf-8")
+        (root / "cases.json").write_text(json.dumps({"cases": cases["cases"], "qr": cases["qr"]}),
+                                         encoding="utf-8")
+        (root / "go.js").write_text(_PRINT_GO, encoding="utf-8")
+        r = _run([node, "go.js"], cwd=root, capture_output=True, text=True, timeout=180)
+        assert r.returncode == 0 and "@@" in (r.stdout or ""), (
+            "print.js did not compose the sheets under node: " + (r.stderr or r.stdout or "")[-400:])
+        got = json.loads(r.stdout.rsplit("@@", 1)[1])
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    bad = []
+    order = {h: i for i, h in enumerate(_PRINT_SECTIONS)}
+
+    # The sections: the law's every one, in order, and nobody's anything else.
+    heads = _print_heads(got["cases"]["law"]["full"])
+    if heads != _PRINT_SECTIONS:
+        bad.append(f"HB 1681 with everything on prints {heads}, not {_PRINT_SECTIONS}")
+    for name, c in got["cases"].items():
+        for view in ("full", "dflt"):
+            hs = _print_heads(c[view])
+            odd = [h for h in hs if h not in order]
+            if odd:
+                bad.append(f"{name} prints a section the sheet does not have: {odd}")
+            elif [order[h] for h in hs] != sorted(order[h] for h in hs):
+                bad.append(f"{name} prints its sections out of order: {hs}")
+        for k, gone in _PRINT_OPTION.items():
+            left = [h for h in _print_heads(c["off"][k]) if h in gone]
+            if left:
+                bad.append(f"{name} with '{k}' off still prints {left}")
+        if '<svg class="ps-qrsvg"' in c["noqr"] or '<svg class="ps-qrsvg"' not in c["full"]:
+            bad.append(f"{name}'s QR code does not follow its setting")
+        if re.search(r'class="[^"]*\b(?:rail|stop)\b', c["full"]):
+            bad.append(f"{name} draws the rail, whose table the person took off the sheet")
+    # Absence by the record: the part, its section and its line in the menu go together.
+    for k, v in got["variants"].items():
+        hs = _print_heads(v["sheet"])
+        want_gone = {"how": ["How It Got Here"], "names": []}.get(k, _PRINT_OPTION.get(k, []))
+        if [h for h in hs if h in want_gone]:
+            bad.append(f"HB 1681 without its {k} still prints {[h for h in hs if h in want_gone]}")
+        opt = {"names": 'data-opt="names"'}.get(k, f'data-sec="{k}"')
+        if k != "how" and opt in v["menu"]:
+            bad.append(f"HB 1681 without its {k} is still offered it in the menu")
+        if k == "how" and "How It Got Here" in v["menu"]:
+            bad.append("the menu still says How It Got Here always prints, for a bill with no journey")
+        if k == "names" and "ps-roll" in v["sheet"]:
+            bad.append("a roll call with no members recorded still prints them member by member")
+        if k == "text" and "holds no text" not in v["menu"]:
+            bad.append("the menu does not say the record holds no text, where it holds none")
+    # A bill too long to print by accident.
+    lg = got["long"]
+    if "The Bill’s Text" in _print_heads(lg["dflt"]) or lg["needs"]:
+        bad.append("a long bill's text prints, or is asked for, before the reader ticks it")
+    if "The Bill’s Text" not in _print_heads(lg["ticked"]) or "pages, so it is left off" not in lg["menu"]:
+        bad.append("a long bill's text does not print once ticked, or the menu does not say its length")
+
+    # The kinds.
+    law, died, study, cacr, plain, arch, veto = (got["cases"][k] for k in
+                                                 ("law", "died", "study", "cacr", "plain", "archived", "veto"))
+    for name, word in (("law", "Became Law"), ("died", "Died"), ("study", "Interim Study"), ("veto", "Died")):
+        mast = got["cases"][name]["full"].split("</header>")[0]
+        if f'<span class="ps-word ps-word-m">{word}</span>' not in mast:
+            bad.append(f"{name}'s masthead does not say its status, {word!r}, in words")
+    if "Constitutional Amendment Concurrent Resolution" not in _print_text(cacr["full"]).split("At a Glance")[0]:
+        bad.append("CACR 13's masthead does not name the kind of measure")
+    if "The voters" not in _print_text(cacr["full"]):
+        bad.append("CACR 13's votes do not include the voters'")
+    if "Votes" in _print_heads(arch["full"]) or 'data-sec="votes"' in arch["menu"]:
+        bad.append("the archived bill, which no vote is recorded on, prints or offers Votes")
+    if "ps-amds" in plain["full"] or "The record holds one version" not in _print_text(plain["full"]):
+        bad.append("HB 102, one version and no amendment, prints an amendment list or does not say why none")
+    if "The Governor’s Veto Message" not in _print_text(veto["full"]):
+        bad.append("SB 268's veto message is not printed")
+    if 'data-opt="names"' in died["menu"] or "ps-roll" in died["full"]:
+        bad.append("a bill whose roll calls carry no members offers or prints them member by member")
+
+    # The components and the words.
+    for name, c in got["cases"].items():
+        glance = c["full"].split("At a Glance", 1)[-1].split("</table>", 1)[0]
+        chips = len(re.findall(r'<span class="mchip p-[A-Z]">', glance))
+        if chips != c["sponsors"]:
+            bad.append(f"{name} draws {chips} of its {c['sponsors']} sponsors as the person chip")
+        mine = re.sub(r'<span class="ps-addr">.*?</span>|<div class="ps-text">.*?</div>|'
+                      r'<p class="ps-flat">.*?</p>', " ", c["full"], flags=re.S)
+        for m in re.finditer(r"\b(?:19|20)\d\d-[01]\d-[0-3]\d\b|\b\d{1,2}/\d{1,2}/\d{4}\b", _print_text(mine)):
+            bad.append(f"{name} prints a date in figures: {m.group(0)}")
+            break
+        for m in re.finditer(r'<span class="ps-word[^"]*">(.*?)</span>', c["full"]):
+            if not m.group(1).strip():
+                bad.append(f"{name} prints an outcome box with no word in it")
+    if "Motion Passed" not in law["full"]:
+        bad.append("HB 1681's votes do not say what each did in the vote words (WORDBOOK.votes)")
+    rolls = re.findall(r'<ul class="ps-names">(.*?)</ul>', law["full"], re.S)
+    if sum(len(re.findall(r"<li>", r)) for r in rolls) != law["members"]:
+        bad.append(f"HB 1681's roll call prints {sum(len(re.findall('<li>', r)) for r in rolls)} names of "
+                   f"its {law['members']} members")
+    if "ps-roll" in law["nonames"] or "ps-roll" in law["dflt"]:
+        bad.append("the members of a roll call print with the setting off, and it is off by default")
+
+    # The text, and which amendment made which change.
+    for name, b in got["blame"].items():
+        if not (b["now"] and b["was"]):
+            bad.append(f"{name}'s marked text is not its current version less the struck words "
+                       f"({b['now']}) or its introduced version less the inserted ones ({b['was']})")
+    steps = got["blame"]["law"]["steps"]
+    if steps != [["one", "1", "2026-0998h"], ["one", "2", "2026-1709s"], ["one", "3", "2026-2191e"],
+                 ["chaptered", "C", None]]:
+        bad.append(f"HB 1681's versions are joined to its amendments as {steps}")
+    marked = law["full"].split('<div class="ps-text">', 1)[-1]
+    listed = re.findall(r'<li><span class="ps-tagk">([^<]*)</span>', law["full"])
+    tags = set(re.findall(r'<sup class="ps-tag"><span class="ps-vh">amendment </span>([^<]*)</sup>', marked))
+    if listed != ["1", "2", "3", "C"] or not tags or not tags <= set(listed):
+        bad.append(f"HB 1681's list numbers {listed} and its marks carry {sorted(tags)}")
+    runs = re.findall(r'<(ins|del) class="ps-(?:ins|del)">(.*?)</\1>(<sup class="ps-tag")?', marked, re.S)
+    if not runs or any(not s for _, _, s in runs):
+        bad.append("a change in HB 1681's marked text carries no amendment's number")
+    if any(k == "del" and not (t.startswith("[") and t.endswith("]")) for k, t, _ in runs):
+        bad.append("a struck run in the marked text is not in brackets, so it says itself by its line alone")
+    for name, c in got["cases"].items():
+        for k, t, _ in re.findall(r'<(ins|del) class="ps-(?:ins|del)">(.*?)</\1>(<sup)?', c["full"], re.S):
+            if k == "del" and not (t.startswith("[") and t.endswith("]")):
+                bad.append(f"{name} has a struck run out of brackets")
+                break
+    n = got["needs"]["law"]
+    if (n["marked"], n["clean"], n["loaded"]) != (n["versions"], 1, 0) or "Loading the bill" not in n["loading"]:
+        bad.append(f"the files the law's text needs are asked for wrongly: {n}")
+
+    # The QR code.
+    q = got["qr"]
+    differ = [s["text"] for s in q["symbols"] if not s["same"]]
+    if differ or len(q["symbols"]) < 10:
+        bad.append(f"print.js's QR code is not the symbol the second encoder made for {differ}")
+    if not all(s["read"] for s in q["symbols"]) or not all(q["every"]):
+        bad.append("a QR code does not read back to its bill's address")
+    if q["damaged"] != "refused":
+        bad.append(f"a damaged QR code is not refused: {q['damaged']}")
+    if 'fill="currentColor"' not in q["svg"] or 'class="ps-qrbg"' not in q["svg"]:
+        bad.append("the QR code is not drawn in the paper's ink on its ground")
+    if not got["open"]["ok"]:
+        bad.append("GRPrint.open did not mount the sheet: " + got["open"].get("err", ""))
+
+    # Published as it is, with every script's freshness.
+    shared, _base, _ran, _days = _fixture_site_shared()
+    site = shared / "site"
+    for f in ("print.js", "print.css"):
+        if not (site / f).exists() or (site / f).read_bytes() != Path("src/pages", f).read_bytes():
+            bad.append(f"the fixture build does not publish src/pages/{f} as it is")
+        if not re.search(rf"/{re.escape(f)}\s*\n\s*Cache-Control:[^\n]*max-age=0, must-revalidate",
+                         (site / "_headers").read_text(encoding="utf-8") if (site / "_headers").exists() else ""):
+            bad.append(f"_headers does not give /{f} the freshness every script has")
+    assert not bad, f"{len(bad)} findings: " + "; ".join(bad[:10])
+    return "ok", (f"{len(got['cases'])} records composed with every setting: {len(_PRINT_SECTIONS)} "
+                  f"sections in order, each absent with its part of the record and with its setting; "
+                  f"{len(got['blame'])} versioned texts read back to both ends; HB 1681's changes "
+                  f"numbered 1, 2, 3 and C; {len(got['qr']['symbols'])} QR codes the second "
+                  "encoder's, module for module")
+
+
+@check("frontend", "the print sheet's stylesheet keeps the site's rules: sizes in rem from the "
+                   "scale, 13px only in capitals, every colour a token measured in both themes, and "
+                   "on paper the sheet alone with its marks in line and stroke")
+def _print_sheet_css():
+    """print.css, held to what app.css is held to, since the checks of
+    app.css do not read it: every font size in rem or a token of the type
+    scale, none under 13px and 13px only where the rule sets capitals; every
+    breakpoint in em; no colour written outside the palette; every pair of
+    tokens drawn one on the other measured in both themes -- on the paper,
+    the --sheet tokens, which are the same in every theme because paper has
+    no dark mode, and app.css holds them so.
+
+    ON PAPER: the page under the sheet, the sheet's heading and its settings
+    are left off; an amendment's words are underlined and struck through,
+    the law's own added words bold and italic, its removed words struck --
+    never colour alone -- and print.js asks for the stylesheet by the name
+    the build publishes it under."""
+    css_p, app_p = Path("src/pages/print.css"), Path("src/pages/app.css")
+    if not (css_p.exists() and app_p.exists()):
+        return "skip", "print.css or app.css is not here"
+    text, app = css_p.read_text(encoding="utf-8"), app_p.read_text(encoding="utf-8")
+    pal = _css_palette(app)
+    light = pal["light"]
+    bad, sizes, pairs = [], 0, 0
+    sheet = ("--sheet", "--sheet-ink", "--sheet-ink-2", "--sheet-rule")
+    for tk in sheet:
+        if tk not in light or light.get(tk, "").lower() != pal["dark"].get(tk, "").lower():
+            bad.append(f"{tk} is not in app.css's palette, the same in both themes")
+    rules = _css_rules(text)
+    for ctx, sel, body, ln in rules:
+        ds = _css_decls(body)
+        caps = any(k == "text-transform" and "uppercase" in v for k, v in ds)
+        got = dict(ds)
+        for k, v in ds:
+            if k.startswith("--"):
+                bad.append(f"print.css:{ln} defines {k}; a token belongs in app.css's palette")
+            if _colour_literals(v) and k not in ("mask", "-webkit-mask"):
+                bad.append(f"print.css:{ln} {sel[:40]} writes {k}: {', '.join(_colour_literals(v))}")
+            for t in re.findall(r"var\(\s*(--[\w-]+)", v):
+                if t not in light:
+                    bad.append(f"print.css:{ln} uses {t}, which app.css does not define")
+            size = _css_font_size(k, v)
+            if size is None:
+                continue
+            sizes += 1
+            px, how = _css_px(size, light)
+            if px is None:
+                bad.append(f"print.css:{ln} {sel[:40]} sets a size this cannot read: {size}")
+            elif how in ("px", "pt") or re.search(r"\d(px|pt)\b", size):
+                bad.append(f"print.css:{ln} {sel[:40]} sets text in {how}")
+            elif px < _FLOOR_PX or (px < 14 and not caps):
+                bad.append(f"print.css:{ln} {sel[:40]} is {px:g}px" + ("" if px < _FLOOR_PX else
+                                                                       " in mixed case"))
+        # The pairs: the paper's inks on the paper, the menu's on its card.
+        ground = next((v for k, v in ds if k in ("background", "background-color")), "")
+        g = re.fullmatch(r"var\((--[\w-]+)\)", ground.strip())
+        on_paper = ".ps-paper" in sel or any(x.startswith("var(--sheet") for x in got.values())
+        for k, v in ds:
+            m = re.fullmatch(r"var\((--[\w-]+)\)", v.strip())
+            if k == "color" and m:
+                grounds = [g.group(1)] if g else (["--sheet"] if m.group(1).startswith("--sheet")
+                                                  else ["--surface", "--paper"])
+                need = 4.5
+            elif (k.startswith("border") and k != "border-radius") or k in ("outline", "fill"):
+                m = re.search(r"var\((--[\w-]+)\)", v)
+                if not m or m.group(1) in ("--rule", "--rule-2", "--sheet-rule", "--sheet", "--shadow"):
+                    continue
+                grounds = ["--sheet"] if m.group(1).startswith("--sheet") else ["--surface", "--paper"]
+                need = 3.0
+            else:
+                continue
+            for gr in grounds:
+                for scheme in ("light", "dark"):
+                    a, b = _css_token_colour(m.group(1), pal[scheme]), _css_token_colour(gr, pal[scheme])
+                    pairs += 1
+                    if a is None or b is None:
+                        bad.append(f"print.css:{ln} {m.group(1)} on {gr} cannot be measured in {scheme}")
+                    elif _css_ratio(a, b) < need:
+                        bad.append(f"print.css:{ln} {sel[:40]}: {m.group(1)} on {gr} is "
+                                   f"{_css_ratio(a, b):.2f}:1 in {scheme}, under {need:g}")
+        if on_paper and any(k == "color" and "var(--ink" in v for k, v in ds):
+            bad.append(f"print.css:{ln} {sel[:40]} inks the paper with the theme's ink, which is light in the dark")
+    for m in re.finditer(r"@media([^{]*)\{", re.sub(r"/\*.*?\*/", "", text, flags=re.S)):
+        if re.search(r"(?:min|max)-width\s*:\s*[\d.]+px", m.group(1)):
+            bad.append(f"@media{m.group(1).rstrip()} is in px")
+    for m in re.finditer(r"font\s*:[^;}]*?(\d*\.?\d+)(px|pt)\b", text):
+        bad.append(f"print.css sets a {m.group(1)}{m.group(2)} font, in {m.group(2)}")
+    printing = [(sel, dict(_css_decls(body))) for ctx, sel, body, _ in rules
+                if any(c.startswith("@media print") for c in ctx)]
+    hidden = {s.strip() for sel, ds in printing if "none" in ds.get("display", "")
+              for s in _css_selectors(sel)}
+    for want in ("html.ps-open body > :not(.ps-layer)", ".ps-head", ".ps-menu"):
+        if want not in hidden:
+            bad.append(f"on paper {want} is not left off")
+    marks = {sel: dict(_css_decls(body)) for ctx, sel, body, _ in rules if not ctx}
+    for sel, prop, word in ((".ps-ins", "text-decoration", "underline"),
+                            (".ps-del", "text-decoration", "line-through"),
+                            (".ps-law-cut", "text-decoration", "line-through"),
+                            (".ps-law-add", "font-style", "italic")):
+        if word not in marks.get(sel, {}).get(prop, ""):
+            bad.append(f"{sel} is not {word}: a change would be said by colour or not at all")
+    js = Path("src/pages/print.js").read_text(encoding="utf-8") if Path("src/pages/print.js").exists() else ""
+    if 'l.href="/print.css"' not in js:
+        bad.append("print.js does not ask for /print.css, the name the build publishes it under")
+    assert sizes > 40 and pairs > 40, f"only {sizes} sizes and {pairs} pairs were read in print.css"
+    assert not bad, f"{len(bad)} findings: " + "; ".join(bad[:10])
+    return "ok", (f"{sizes} sizes in rem, none under the floor and 13px only in capitals; "
+                  f"{pairs} token pairs measured in both themes; on paper the sheet alone, its "
+                  f"marks underlined, struck and italic")
+
+
+@check("data", "every versioned bill's print sheet composes, and its marked text reads back to "
+               "the current version and to the introduced one")
+def _print_sheet_on_the_record():
+    """The sheet on every bill the built site has versions of: each composed
+    with every setting on, without an error, and its marked text -- every
+    change numbered by the amendment that made it -- read without its struck
+    words is the current version and without its inserted words the
+    introduced one, word for word. That is the reading `git blame` gives a
+    file, and these two ends are what make it a reading of the record rather
+    than a drawing of one. 1,031 bills on 9 October 2026, in about thirty
+    seconds."""
+    node = shutil.which("node") or shutil.which("node.exe")
+    site = Path("site")
+    if not (site / "versions").is_dir():
+        return "skip", "no site/versions built"
+    if not node:
+        return "skip", "node is not on PATH"
+    go = r"""
+require("./stub.js");
+const fs = require("fs"), path = require("path");
+const {GRPrint: G} = (0, eval)(fs.readFileSync("./page.js", "utf8") + "\n;({GRPrint})");
+const site = process.argv[2];
+const recOf = (year, id) => {
+  const h = fs.readFileSync(path.join(site, "bill", year, id.toLowerCase() + ".html"), "utf8");
+  let m = /<script type="application\/json" id="gr-data">([\s\S]*?)<\/script>/.exec(h);
+  if (m) return JSON.parse(m[1]);
+  m = /<meta name="gr-data" content="([^"]+)"/.exec(h);
+  return JSON.parse(fs.readFileSync(path.join(site, m[1].replace(/^\//, "")), "utf8"));
+};
+const words = ts => ts.filter(t => t.w !== "¶").map(t => t.w).join(" ");
+let n = 0; const bad = [];
+for (const year of fs.readdirSync(path.join(site, "versions")))
+  for (const f of fs.readdirSync(path.join(site, "versions", year))) {
+    if (!/^[A-Z]+\d+\.json$/.test(f)) continue;
+    const id = f.slice(0, -5), ix = JSON.parse(fs.readFileSync(path.join(site, "versions", year, f), "utf8"));
+    if ((ix.versions || []).length < 2) continue;
+    try {
+      const files = {};
+      for (const v of ix.versions) {
+        const u = v.blocks_url || v.text_url, p = path.join(site, u.replace(/^\//, ""));
+        const x = u.endsWith(".json") ? JSON.parse(fs.readFileSync(p, "utf8")) : fs.readFileSync(p, "utf8");
+        files[u] = x.blocks || x;
+      }
+      const d = recOf(year, id);
+      const toks = ix.versions.map(v => G.text.tokens(files[v.blocks_url || v.text_url]));
+      const B = G.text.blame(toks, G.text.joinSteps(d, ix).map(s => s.tag));
+      if (words(B.doc.filter(t => t.st !== "del")) !== words(toks[toks.length - 1])
+          || words(B.doc.filter(t => t.st !== "add")) !== words(toks[0]))
+        bad.push(year + "/" + id + ": the marked text does not read back");
+      const st = G.defaults(); st.names = 1; st.long = 1;
+      G.sheet(d, null, {url: "https://graniterecord.org/bill/" + year + "/" + id.toLowerCase(),
+        today: "2026-10-09", versions: {ix, files}}, st);
+    } catch (e) { bad.push(year + "/" + id + ": " + e.message); }
+    n++;
+  }
+process.stdout.write("\n@@" + JSON.stringify({n, bad}));
+"""
+    root = Path(tempfile.mkdtemp(prefix="gr-print-data-"))
+    try:
+        js = Path("src/pages/app.js").read_text(encoding="utf-8") + "\n;\n" + \
+            Path("src/pages/print.js").read_text(encoding="utf-8")
+        (root / "page.js").write_text(_with_components(js), encoding="utf-8")
+        (root / "stub.js").write_text(Path("tests/dom_stub.js").read_text(encoding="utf-8"), encoding="utf-8")
+        (root / "go.js").write_text(go, encoding="utf-8")
+        r = _run([node, "--max-old-space-size=4096", "go.js", str(site.resolve())], cwd=root,
+                 capture_output=True, text=True, timeout=600)
+        assert r.returncode == 0 and "@@" in (r.stdout or ""), (
+            "the print sheet did not run over the built site: " + (r.stderr or r.stdout or "")[-400:])
+        got = json.loads(r.stdout.rsplit("@@", 1)[1])
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    assert got["n"] > 0, "no versioned bill was read"
+    assert not got["bad"], f"{len(got['bad'])} of {got['n']}: " + "; ".join(got["bad"][:6])
+    return "ok", (f"{got['n']} versioned bills: every sheet composed, every marked text read back "
+                  "to its current and its introduced version")
 
 
 # ---- one date formatter in each language (8 October 2026) -------------------------
