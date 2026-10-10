@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.174
+# GRANITE_VERSION: 2026-09-04.175
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -13,10 +13,11 @@ the bill search, which is the part that works.
 Writes a shared style.css these pages link to. index.html keeps its own inline
 styles and is untouched.
 
-The browser's files -- bills.html, app.css, components.js, app.js and find.js --
-are read from src/pages/ under the folder the build runs in, where they sit
-beside this file, and copied into the site as they are, components.js with
-the words of src/pages/words/ written between its markers (with_words).
+The browser's files -- bills.html, app.css, components.js, app.js and find.js,
+and print.js and print.css, a bill's print sheet -- are read from src/pages/
+under the folder the build runs in, where they sit beside this file, and
+copied into the site as they are, components.js with the words of
+src/pages/words/ written between its markers (with_words).
 """
 
 # The bootstrap: _paths.py, found above this file, puts every code folder on the import path.
@@ -247,6 +248,10 @@ HEADERS = """# Written by build_pages.py. Not an asset; Pages reads it.
 /find.js
   Cache-Control: public, max-age=0, must-revalidate
 /components.js
+  Cache-Control: public, max-age=0, must-revalidate
+/print.js
+  Cache-Control: public, max-age=0, must-revalidate
+/print.css
   Cache-Control: public, max-age=0, must-revalidate
 /billmatch.js
   Cache-Control: public, max-age=0, must-revalidate
@@ -2810,7 +2815,10 @@ def committees_with_roster(out, data="data"):
 # record page is made from (shell.template) -- which is why front_end.py,
 # the fast path, takes a change to it to a full build and the others not.
 # components.js before app.js, the order every page loads them in.
-COPIED = ("bills.html", "app.css", "components.js", "app.js", "find.js")
+# print.js and print.css are a bill's print sheet, which a bill's page
+# loads when its Print button is pressed (print.js, GRPrint.open).
+COPIED = ("bills.html", "app.css", "components.js", "app.js", "find.js",
+          "print.js", "print.css")
 
 
 def header_mark_placed(brand=Path("assets")):

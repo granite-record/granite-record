@@ -185,7 +185,8 @@ per job: `fetch/` (one folder per whose server it asks), `parse/`, `towns/`,
 (`inventory.py`, `handoff.py`), which the workflows and a person run by
 their path.
 The front end (`bills.html`, `components.js`, `app.js`, `find.js`,
-`app.css`) is in `src/pages/` with the builders that read it, and the `dom_stub.js` that
+`app.css`, and a bill's print sheet, `print.js` and `print.css`) is in
+`src/pages/` with the builders that read it, and the `dom_stub.js` that
 `preflight` loads it against is in `tests/`.
 [`src/README.md`](src/README.md) has the tree, what each folder holds, and
 where a new file goes. Run a script under `src/` from the root by its path

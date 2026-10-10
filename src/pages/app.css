@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.235 */
+/* GRANITE_VERSION: 2026-09-07.236 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -37,6 +37,12 @@
 --film-stub:#14181A;     /* the still that stands in for the recording */
 --film-stub-ink:#C8CFD1; /* the play cue on it */
 --film-stub-hot:#1D2225; /* the same, under the pointer */
+/* THE PRINT SHEET'S PAPER, which does not change with the theme either
+     (print.css, 9 October 2026). The sheet is drawn as it prints, beside
+     its settings, and paper has no dark mode: the light page's ink on
+     white. One ink for words, a second for what is read in passing, and a
+     hairline, the light palette's own values. */
+--sheet:#FFFFFF;--sheet-ink:#1C2126;--sheet-ink-2:#4A5259;--sheet-rule:#B2B7BD;
 
 /* THE SPACING SCALE, 16 September. Thirty-three pixel values were in
      use for margin, padding and gap, and 192 of the 690 declarations
@@ -322,6 +328,9 @@ color-scheme:light}
                             /* the same in the dark, and said again
                                rather than inherited: a recording is
                                somebody else's pixels either way. */
+--sheet:#FFFFFF;--sheet-ink:#1C2126;--sheet-ink-2:#4A5259;--sheet-rule:#B2B7BD;
+                            /* the print sheet's paper, the same in the
+                               dark too: paper has no dark mode. */
 
 --edge:#7C8687;             /* 3.74:1 on a card, 4.64:1 on the page */
 --pine:#7FB9B1;--pine-soft:#1B302E;
@@ -374,6 +383,9 @@ color-scheme:dark}
                             /* the same in the dark, and said again
                                rather than inherited: a recording is
                                somebody else's pixels either way. */
+--sheet:#FFFFFF;--sheet-ink:#1C2126;--sheet-ink-2:#4A5259;--sheet-rule:#B2B7BD;
+                            /* the print sheet's paper, the same in the
+                               dark too: paper has no dark mode. */
 
 --edge:#7C8687;             /* 3.74:1 on a card, 4.64:1 on the page */
 --pine:#7FB9B1;--pine-soft:#1B302E;
@@ -1378,6 +1390,7 @@ line-height:1.1}
   --lift:rgba(0,0,0,.22);--scrim:rgba(0,0,0,.32);
   --ink:#1C2126;--ink-2:#4A5259;--rule:#D3D6DA;--rule-2:#B2B7BD;
   --film:#000;--film-stub:#14181A;--film-stub-ink:#C8CFD1;--film-stub-hot:#1D2225;
+  --sheet:#FFFFFF;--sheet-ink:#1C2126;--sheet-ink-2:#4A5259;--sheet-rule:#B2B7BD;
   --edge:#767E86;--pine:#14514C;--pine-soft:#DFEBEA;
   --st-active:#566290;--st-active-bg:#EBF0FE;--st-law:#1E5B3C;--st-law-bg:#E3EFE7;
   --st-done:#9E2B25;--st-done-bg:#FAE7E5;--st-study:#B9420B;--st-study-bg:#FCEADB;
