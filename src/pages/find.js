@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-16.17
+// GRANITE_VERSION: 2026-09-16.18
 /* FIND ANYTHING, FROM THE HEADER (16 September, asked for in these words:
    "a search icon in the header that lets you search for anything including
    legislators, committees, towns, and bills ... searching Litchfield would
@@ -45,7 +45,7 @@
    header, so there is one of it. */
 const FIND={rows:null,loading:null,words:null};
 const FKIND={legislator:"Legislator",committee:"Committee",town:"Town",
-  page:"Page",former:"Former member",topic:"Subject"};
+  page:"Page",former:"Former Member",topic:"Subject"};
 const _fesc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>(
   {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 /* HALF AN EMOJI IS NOT AN ADDRESS. encodeURIComponent throws "URI malformed"
@@ -576,7 +576,7 @@ function findBillRow(b,q,dated,why){
   if(cut)t=t.slice(0,157).replace(/\s+\S*$/,"");
   return `<a href="/bill/${encodeURIComponent(y)}/${encodeURIComponent(String(b.id).toLowerCase())}">
     <span class="fl1"><span class="fname">${_fesc(b.n||b.id)}${dated&&y?` (${_fesc(y)})`:""}</span>
-    <span class="fkind">Bill</span></span>
+    ${chip("Bill","fkind")}</span>
     ${t?`<span class="fwhat">${_fmark(t,q)}${cut?"&hellip;":""}</span>`:""}
     ${why?`<span class="fwhy">Listed for &mdash; ${_fesc(why)}</span>`:""}</a>`;
 }
@@ -643,7 +643,7 @@ function findDraw(q){
     <span class="fwhat">open this bill number in the bill search</span></a>`:every;
   const row=r=>`<a href="${_fesc(_froot(r[3]))}">
       <span class="fl1"><span class="fname">${_fmark(r[1],s)}</span>
-      <span class="fkind">${_fesc(FKIND[r[0]]||r[0])}</span></span>
+      ${chip(FKIND[r[0]]||r[0],"fkind")}</span>
       ${r[2]?`<span class="fwhat">${_fesc(r[2])}</span>`:""}</a>`;
   // The bills, for anything that is not a bill number: the count and the
   // first three. Hidden once counted at none, because "All 0 bills" is not an

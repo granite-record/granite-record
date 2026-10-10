@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.169
+# GRANITE_VERSION: 2026-09-04.170
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -31,7 +31,7 @@ import bill_order as BO
 import build_date
 import html as _html
 import shell as _shell
-from components import WORDBOOK, clock, pchip
+from components import WORDBOOK, chip, clock, pchip
 import seating
 import json
 import re
@@ -1029,7 +1029,7 @@ def cal_days(days, meets, titles, years, code, when, esc, level=3,
             for k in kinds:
                 word, kcls = MEET_KIND.get(k.strip().lower(),
                                            (kind_title(k), ""))
-                html.append(f'<span class="calkind {kcls}">{esc(word)}</span>')
+                html.append(chip(word, f"calkind {kcls}"))
             if venue:
                 html.append(f'<span class="calwhere">{esc(venue)}</span>')
             html.append('<span class="caret"></span></summary>'
@@ -1041,7 +1041,7 @@ def cal_days(days, meets, titles, years, code, when, esc, level=3,
                 if not one:
                     html.append('<p class="calslot">'
                                 + (f'<span class="caltime">{esc(clock(tm))}</span>' if tm else "")
-                                + f'<span class="calkind {kcls}">{esc(word)}</span>'
+                                + chip(word, f"calkind {kcls}")
                                 + (f'<span class="calwhere">{esc(vn)}</span>'
                                    if vn and not venue else "") + "</p>")
                 # A ROW WITH NO BILL is a study or statutory committee's
@@ -2102,7 +2102,7 @@ const GROUPS=[
 
 const row=(r,q)=>`<a href="${esc(_froot(r[3]))}">
   <span class="fl1"><span class="fname">${_fmark(r[1],q)}</span>
-  <span class="fkind">${esc(FKIND[r[0]]||r[0])}</span></span>
+  ${chip(FKIND[r[0]]||r[0],"fkind")}</span>
   ${r[2]?`<span class="fwhat">${esc(r[2])}</span>`:""}</a>`;
 
 // THE BILLS, counted. Until 24 September this was one card at the foot of the
@@ -2348,7 +2348,7 @@ function render(){
     parts.push(mem.slice(0,SHOW).map(([,m])=>
       `<a class="lmrow" href="legislator/${esc(m.slug)}.html">`
       +`<b>${esc(m.display)}</b>`
-      +`<span class="chip pt-${esc(m.p)}">${esc(m.p)}</span>`
+      +chip(m.p,"pt-"+m.p)
       +`<span class="lmwhere">${esc(m.where)}</span>`
       +`<span class="lmwhat">${m.chamber==="S"?"Senate":"House"}</span></a>`)
       .join(""));
@@ -2559,8 +2559,7 @@ fetch(DATA("home.json")).then(r=>r.json()).then(H=>{
     const c=C.council; if(!c)return "";
     const rows=(c.members||[]).map(m=>
       `<tr><td style="width:96px">District ${esc(m.district)}</td>
-       <td>${m.name?`${esc(m.name)} <span class="chip pt-${esc(m.party||"V")}">${
-         esc(m.party||"?")}</span>`
+       <td>${m.name?`${esc(m.name)} ${chip(m.party||"?","pt-"+(m.party||"V"))}`
         :`<span style="color:var(--ink-2)">vacant</span>`}</td></tr>`).join("");
     return `<div class="comp">
       <div class="compline"><b>Executive Council</b>
@@ -2575,7 +2574,7 @@ fetch(DATA("home.json")).then(r=>r.json()).then(H=>{
     const g=C.governor; if(!g)return "";
     return `<div class="comp"><div class="compline"><b>Governor</b>
       <span class="statemeta">${esc(g.name)}
-      <span class="chip pt-${esc(g.party||"V")}">${esc(g.party||"?")}</span></span>
+      ${chip(g.party||"?","pt-"+(g.party||"V"))}</span>
       </div>
       <p class="statemeta" style="margin:4px 0 0">Signs or vetoes every bill that
       passes both chambers. A veto stands unless two thirds of those voting in

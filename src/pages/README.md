@@ -13,12 +13,22 @@ copies.
 
 The components are in two files with the same helpers under the same names
 (9 October 2026): `components.py`, which the builders draw a person, a
-committee, a date and a time with, and `components.js`, which every page
-loads in its head before any script of its own, for what the browser draws.
-A helper is pure and thin: a plain value in, a string out. `preflight` runs
-both on every case in `tests/components_cases.json` and fails where they
+committee, a chip, a date and a time with, and `components.js`, which every
+page loads in its head before any script of its own, for what the browser
+draws. A helper is pure and thin: a plain value in, a string out. `preflight`
+runs both on every case in `tests/components_cases.json` and fails where they
 answer differently, where one has a helper the other has not, and where any
 part of a helper is reached by no case.
+
+Every chip but a person's is `chip(word, classes, size)`: a bill's status, a
+meeting's kind, a vote's result, a party's letter, the sign-ins, the finder's
+kind and a version of the text, in the person chip's frame (3px corners, a
+1px edge, a 3px bar in the chip's ink) at 14px, or 16px in a head (`"m"`).
+`app.css` draws it once, in its SHARED region; the classes beside `chip` are
+the family that colours it and the hook a page places it by. Its words are in
+Title Case, written so where they are made, and a record's own capitals go
+through `title_words`. `preflight` fails a chip written by hand and any rule
+that gives one a shape of its own.
 
 The words the pages say are in `words/`, one JSON file to a kind (9 October
 2026): `chips.json` (the chip's words and the class that colours each, and

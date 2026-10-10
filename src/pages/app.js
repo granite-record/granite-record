@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.173
+// GRANITE_VERSION: 2026-09-07.174
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -2830,10 +2830,11 @@ function matches(b,ignore){
   return groupsFor(q).every(g=>groupWeight(b,g)>0);
 }
 
-// `paint`, where given, draws each value as a chip of that class: the Status
-// filter's words look as they do on the cards. The chip wraps here: "Passed
-// both chambers, goes to the voters in November 2026" ran out of the 250px
-// column on one line and was cut off at "the vote".
+// `paint`, where given, draws each value as a chip of that class, the one
+// chip (components.js), at the size everywhere but a head: the Status
+// filter's words look as they do on the cards. The chip wraps here (app.css,
+// .fopt .chip): "Passed both chambers, goes to the voters in November 2026"
+// ran out of the 250px column on one line and was cut off at "the vote".
 // `show`, where given, is what a value reads as, in HTML: the Bill Type
 // filter's "HB House Bill" for the value HB.
 function fgroup(key,label,vals,counts,searchable,paint,show){
@@ -2852,8 +2853,7 @@ function fgroup(key,label,vals,counts,searchable,paint,show){
   }else{
     inner=vals.map(v=>`<label class="fopt ${!counts[v]&&!chosen.has(v)?'off':''}">
       <input type="checkbox" data-f="${key}" value="${esc(v)}" ${chosen.has(v)?"checked":""}>
-      <span>${paint?`<span class="cstat ${paint(v)}" style="padding:1px 8px;white-space:normal;display:inline-block">${
-        esc(v)}</span>`:show?show(v):esc(v)}</span>
+      <span>${paint?chip(v,paint(v)):show?show(v):esc(v)}</span>
       <span class="c">${(counts[v]||0).toLocaleString()}</span></label>`).join("");
   }
   // A short list that is the same few words in every term -- the Status
@@ -3219,7 +3219,9 @@ const recColour=r=>{const m=RECCOLOUR.find(([re])=>re.test(r||""));
 const signins=t=>{
   if(!t||!t.total)return "";
   const n=x=>Number(x||0).toLocaleString();
-  const bit=(v,label,cls)=>v?`<span class="sgn ${cls}">${n(v)} ${label}</span>`:"";
+  // Each count is a chip, the one shape (components.js): a neutral ground,
+  // and the support or the opposition in its ink and its bar.
+  const bit=(v,label,cls)=>v?chip(`${n(v)} ${label}`,`sgn ${cls}`):"";
   return `<span class="tnote">${bit(t.support,"support","for")}${
     bit(t.oppose,"oppose","against")}${bit(t.neutral,"neutral","")} ${
     n(t.total)} signed in${t.dated?"":" across this bill’s hearings"}</span>`;
@@ -3855,7 +3857,7 @@ function renderVotes(b,d){
         rc.amendment?` <span class="ramd">${esc(rc.amendment)}</span>`:""}</h2>
       <span class="rcd">${sittingLink(rc.body==="H"?"H":"S",rc.date,dateWords(rc.date))} · ${
         rc.body==="H"?"House":"Senate"}${AVK[vk]?` · ${AVK[vk]}`:""}</span>
-      <span class="rcres ${rc.passed?'pass':'fail'}">${rc.passed?"Adopted":"Failed"}</span></div>
+      ${chip(rc.passed?"Adopted":"Failed",`rcres ${rc.passed?"pass":"fail"}`)}</div>
       ${rc.mover?`<p class="rcby">Moved by ${esc(rc.mover)}</p>`:""}
       ${rc.threshold_note?`<p class="note" style="margin:6px 0 0">${esc(rc.threshold_note)}</p>`:""}
       ${rc.outcome_conflict?`<p class="note" style="margin:6px 0 0">${esc(rc.outcome_conflict)}</p>`:""}
@@ -3951,7 +3953,7 @@ function ballotCard(d){
   const y=v.yes,n=v.no,tot=y+n,won=!!v.ratified;
   const word=won?"Ratified":"Not ratified";
   const how=3*y===2*tot?"exactly":won?"more than":"short of";
-  return `<section class="rc ballot">${head(`<span class="rcres ${won?"pass":"fail"}">${word}</span>`)}
+  return `<section class="rc ballot">${head(chip(won?"Ratified":"Not Ratified",`rcres ${won?"pass":"fail"}`))}
     <p class="bout">${word}: ${share(y,tot)} voted yes, ${how} the two thirds it needed.</p>
     <p class="note">This was the statewide public vote, at the general election. An
       amendment to the constitution needs two thirds of the votes cast on it: the
@@ -4502,7 +4504,7 @@ function renderReports(b,d,rsa){
         <div class="repline">
           <span class="secsub">${esc(e.side)}</span>
           ${committeeTally(e)}
-          ${rec?`<span class="cstat ${recColour(rec)}">${esc(rec)}</span>`:""}</div>
+          ${rec?chip(titleWords(rec),`cstat ${recColour(rec)}`):""}</div>
         <p class="repby">${esc(e.author)}</p>
         ${e.amendment?`<p class="note" style="margin:0 0 7px">Amendment ${
           esc(e.amendment)}.</p>`:""}
@@ -4542,7 +4544,7 @@ function renderReports(b,d,rsa){
     return between(r.date)+rep(head(r,r.committee,r.body==="S"?"Senate":"House"),
       `<div class="repline">
         <span class="secsub">${esc(r.side||"Committee")}</span>${vote}
-        <span class="cstat ${recColour(r.recommendation)}">${esc(r.recommendation)}</span></div>
+        ${r.recommendation?chip(titleWords(r.recommendation),`cstat ${recColour(r.recommendation)}`):""}</div>
       ${amd}
       <p class="note" style="margin:var(--sp-5) 0 0">${r.body==="S"
         ? "The written report for this one is not on the site; this is what the docket records of it."
@@ -4730,7 +4732,8 @@ function renderBillText(b,d,rsa){
     return `<div class="amd">
       <div class="amdhead"><span class="amdn">${esc(x.num)}</span>
         <span class="amdk">${esc(x.kind||"Amendment")}</span>
-        ${state?`<span class="cstat ${state==="adopted"?"s-law":"s-done"}">${state}</span>`:""}
+        ${state?chip(state==="adopted"?"Adopted":"Rejected",
+          `cstat ${state==="adopted"?"s-law":"s-done"}`):""}
         <span class="amdd">${x.date?esc(dateWords(x.date)):""}${
           AVK[x.vote_kind]?` \u00b7 ${AVK[x.vote_kind]}`:""}</span></div>
       ${who?`<p class="amdby">${esc(who)}</p>`:""}
@@ -4782,7 +4785,7 @@ function renderBillText(b,d,rsa){
   // that produced what is on screen rather than as a separate list to be
   // cross-referenced.
   const btBlock=bt?`
-    <div class="btver"><span class="btv">${esc(bt.version||"Version not stated")}</span>
+    <div class="btver">${chip(bt.version?titleWords(bt.version):"Version Not Stated","btv")}
       ${(bt.in_text||[]).length?`<span class="btamd">includes ${
         bt.in_text.map(a=>esc(a.num)).join(", ")}</span>`:""}</div>
     ${/* The analysis is the first thing on the Summary tab now. It was
@@ -5572,7 +5575,7 @@ function lsrCardHtml(b){
   return `<article class="card lsr" data-id="${esc(b.id)}">
       <div class="chead">
         <div class="crow"><span class="cnum">${esc(b.n)}</span>
-        <span class="cstat ${b.withdrawn?"veto":""}">${esc(b.status||"")}</span></div>
+        ${chip(chipOf(b),`cstat ${chipCls(b)}`,"m")}</div>
         <div class="ctitle">${esc(b.title)}</div>
         <div class="cmeta">${b.sponsor_slug
           ?`<a href="legislator/${esc(b.sponsor_slug)}.html">${esc(who)}</a>`
@@ -5779,8 +5782,8 @@ function cardHtml(b,focus){
       <button class="chead" aria-expanded="${open}">
         <div class="crow"><span class="cnum">${esc(b.n)} (${esc(String(y))})</span>
         <span class="cyear">${b.carried
-          ?` <span class="chip" title="The docket shows action in more than one year of the term — usually a bill the committee retained in the first year and reported in the second">carried over</span>`:""}</span>
-        <span class="cstat ${chipCls(b)}">${esc(chipOf(b))}</span></div>
+          ?` <span class="ccarry" title="The docket shows action in more than one year of the term — usually a bill the committee retained in the first year and reported in the second">carried over</span>`:""}</span>
+        ${chip(chipOf(b),`cstat ${chipCls(b)}`,"m")}</div>
         <div class="ctitle">${esc(b.title)}</div>
         <div class="cmeta">${cmeta(b)}</div>${focus?"":whyLine(b)}
         ${datedRail(b,focus||!(b.rail||[]).length?detail[dkey(b.id)]:undefined)}
@@ -6327,7 +6330,7 @@ function voteRow(r){
       r.mark?`<i class="pm${r.mark.agreed?"":" broke"}">${
         r.mark.agreed?"with":"against"} ${esc(r.mark.word)}</i>`:""}</td>
     <td class="o" data-l="Outcome">${rc
-      ? `<span class="${rc.p?"pass":"fail"}">${rc.p?"Adopted":"Failed"}</span>${
+      ? `${chip(rc.p?"Adopted":"Failed",rc.p?"pass":"fail")}${
           tallies}${rc.tn?`<i class="thr">${esc(rc.tn)}</i>`:""}${
           rc.oc?`<i class="thr">${esc(rc.oc)}</i>`:""}`
       : `<span class="dim">&mdash;</span>`}</td></tr>`;
@@ -6716,7 +6719,7 @@ function calendarBlock(rows,heading){
         +(time?`<span class="caltime">${esc(time)}</span>`:"")
         +`<span class="calcmte">${esc(cmte)}</span>`
         +kinds.map(k2=>{const [w,c]=kindWord(k2);
-          return `<span class="calkind ${c}">${esc(w)}</span>`;}).join("")
+          return chip(w,`calkind ${c}`);}).join("")
         +`<span class="calcount">${nb} bill${nb===1?"":"s"}</span>`
         +(venue?`<span class="calwhere">${esc(venue)}</span>`:"")
         +`<span class="caret"></span></summary>`
@@ -6728,7 +6731,7 @@ function calendarBlock(rows,heading){
           const [w,c]=kindWord(q[1]);
           out.push(`<p class="calslot">`
             +(q[0]?`<span class="caltime">${esc(clock(q[0]))}</span>`:"")
-            +`<span class="calkind ${c}">${esc(w)}</span>`
+            +chip(w,`calkind ${c}`)
             +(q[2]&&!venue?`<span class="calwhere">${esc(q[2])}</span>`:"")
             +`</p>`);
         }

@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.231 */
+/* GRANITE_VERSION: 2026-09-07.232 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -259,7 +259,9 @@
    9px, nine were 7px and nine were 5px, so no radius meant anything. */
 --r-in:3px;          /* something you operate: input, select, small button */
 --r-out:6px;         /* something that holds content: card, panel, player */
---r-pill:999px;      /* a chip, which is a word in a shape */
+--r-pill:999px;      /* a control that is a word in a round: a filter's count,
+                        a chosen name to take off, a toggle -- not a chip,
+                        which has the person chip's 3px corners (--r-in) */
 --sans:"Public Sans",system-ui,-apple-system,sans-serif;
 /* Source Serif 4 sets the long-form text a person actually reads: a bill's
    narrative, its analysis, its own words and its amendments. A serif at
@@ -693,28 +695,89 @@ padding:var(--sp-5) var(--sp-6);cursor:pointer;list-style:none;min-height:44px}
 .caltime{font-size:var(--t-ui);font-weight:600;font-variant-numeric:tabular-nums;
 flex:0 0 auto}
 .calcmte{font-size:var(--t-ui);color:var(--pine);font-weight:600;min-width:0}
+/* ONE CHIP, IN TWO SIZES (the component plan's step 3, approved 9 October
+   2026; the person's rule of 22 September 2026, that every kind of chip
+   shares the legislator chip's shape and placement). A word in a shape was
+   drawn six ways: a bill's status in a box with a bar, a meeting's kind as
+   a pill with an inset edge in its ink, a version as a pine tint in
+   capitals, the finder's kind as a 13px outlined tag in capitals, the
+   sign-ins as pills, a member's vote outcome as a bare coloured word. Each
+   is .chip now, written by components.chip in either language and drawn
+   here once, in this region so the pages built from style.css draw it too.
+     THE FRAME is the person chip's, and one rule draws both: 3px corners, a
+     1px edge in --edge, which holds the 3:1 a boundary needs on the card and
+     on the page, and a 3px bar down the left in the chip's own ink
+     (currentColor). So a family sets its ink and its tint and the bar
+     follows, and no chip rests on a tint alone, which is 1.1:1 against the
+     card and recedes into it. .mchip's bar is the party's and its size its
+     own, below: a name needs the room a word does not.
+     TWO SIZES: S, 14px, everywhere but a head; M, 16px with more room
+     round it (.chip-m), in a head -- the bill card's, which the compact
+     phone card sets at S again. Title Case, never capitals by a transform:
+     a word is written in its case where it is made, and a record's own
+     capitals by components.title_words.
+     THE FAMILIES colour it: a bill's status (.s-*, chips.json's classes), a
+     vote's result (.pass, .fail), a meeting's kind (.k-*), a party's letter
+     (.pt-*), the sign-ins (.sgn.for, .sgn.against); with none it is the
+     neutral chip, for a kind of thing rather than an outcome -- a version
+     of the text, the finder's kind, a request's status.
+   Where it sits is the page's: a hook beside .chip (.cstat, .rcres,
+   .calkind, .fkind, .sgn) places it, at the right end of its row where the
+   row has one, and sets nothing of its shape or size. */
+.chip,.mchip{border:1px solid var(--edge);border-left:3px solid currentColor;
+border-radius:var(--r-in)}
+.chip{display:inline-block;font-family:var(--sans);font-size:var(--t-sm);font-weight:600;
+font-style:normal;letter-spacing:0;text-transform:none;padding:var(--sp-1) var(--sp-4);
+background:var(--surface);color:var(--ink-2);white-space:nowrap}
+.chip-m{font-size:var(--t-ui);padding:var(--sp-2) var(--sp-5)}
+/* UNLESS THERE IS NO ROOM FOR IT. nowrap with no ceiling put "One chamber
+   did not concur; a committee of conference was asked for" in a 494px chip
+   inside a 272px row on a 360px screen, so the longest statuses were cut
+   off mid-word. Below the width where a card's head wraps, a chip wraps
+   with it. */
+@media (max-width:45em){.chip{white-space:normal;max-width:100%}}
+/* A BILL'S STATUS, by what happened to it; the tokens say why each colour.
+   Also the ground of the Bill status select and its options, which are
+   painted as the chips under them are. */
+.s-active{background:var(--st-active-bg);color:var(--st-active)}
+.s-law{background:var(--st-law-bg);color:var(--st-law)}
+.s-done{background:var(--st-done-bg);color:var(--st-done)}
+.s-veto{background:var(--st-veto-bg);color:var(--st-veto)}
+.s-study{background:var(--st-study-bg);color:var(--st-study)}
+/* The Tabled chip in its mark's yellow, as Interim Study is in its orange. */
+.s-table{background:var(--st-table-bg);color:var(--st-table)}
+/* An adopted resolution succeeded, so it reads like a bill that became
+   law -- but it did not become law, and saying so would be false. Same
+   colour, different word. */
+.s-adopted{background:var(--st-law-bg);color:var(--st-law)}
+/* A VOTE'S RESULT: the motion carried, or it did not -- a roll call's,
+   a ballot's and the line of a member's Votes. */
+.chip.pass{background:var(--st-law-bg);color:var(--st-law)}
+.chip.fail{background:var(--st-done-bg);color:var(--st-done)}
 /* The kind of meeting, as a word in a shape. A public hearing is the one a
    member of the public can speak at and an executive session is the one where
    the committee votes, so the difference is the whole reason this is on the
-   page -- it is never left to a colour. */
-.calkind{font-size:var(--t-sm);font-weight:600;padding:var(--sp-1) var(--sp-4);
-border-radius:var(--r-pill);white-space:nowrap;flex:0 0 auto;
-background:var(--wash);color:var(--ink-2)}
-/* Each coloured chip carries an edge in its own ink: a tint alone is about
-   1.1:1 against the card and recedes into it, and the edge is what holds the
-   3:1 a graphic needs. Inset, so the chip is no larger for having one. */
-.calkind.k-hearing{background:var(--cal-hear-bg);color:var(--cal-hear);
-box-shadow:inset 0 0 0 1px var(--cal-hear)}
-.calkind.k-meet{background:var(--cal-meet-bg);color:var(--cal-meet);
-box-shadow:inset 0 0 0 1px var(--cal-meet)}
-.calkind.k-exec{background:var(--cal-exec-bg);color:var(--cal-exec);
-box-shadow:inset 0 0 0 1px var(--cal-exec)}
-.calkind.k-conf{background:var(--cal-conf-bg);color:var(--cal-conf);
-box-shadow:inset 0 0 0 1px var(--cal-conf)}
-.calkind.k-floor{background:var(--cal-floor-bg);color:var(--cal-floor);
-box-shadow:inset 0 0 0 1px var(--cal-floor)}
-.calkind.k-study{background:var(--cal-study-bg);color:var(--cal-study);
-box-shadow:inset 0 0 0 1px var(--cal-study)}
+   page -- it is never left to a colour. Each kind in its ink on its tint,
+   with the bar in the ink; it was a pill with an inset edge in the ink,
+   which the bar and the --edge now do. A kind the table does not name is
+   the neutral chip and borrows no colour that means something else. */
+.chip.k-hearing{background:var(--cal-hear-bg);color:var(--cal-hear)}
+.chip.k-meet{background:var(--cal-meet-bg);color:var(--cal-meet)}
+.chip.k-exec{background:var(--cal-exec-bg);color:var(--cal-exec)}
+.chip.k-conf{background:var(--cal-conf-bg);color:var(--cal-conf)}
+.chip.k-floor{background:var(--cal-floor-bg);color:var(--cal-floor)}
+.chip.k-study{background:var(--cal-study-bg);color:var(--cal-study)}
+.calkind{flex:0 0 auto}
+/* A PARTY'S LETTER, where a row has room for the letter and not for a
+   person's chip: the party's ink on the party's tint, and the letter, so a
+   party never rests on its colour. */
+.chip.pt-R{background:var(--rep-soft);color:var(--rep)}
+.chip.pt-D{background:var(--dem-soft);color:var(--dem)}
+.chip.pt-I{background:var(--ind-soft);color:var(--ind)}
+/* WHO SIGNED IN, counted: the support in pine and the opposition in
+   --brick, each with its bar; a neutral count is the chip's own grey. */
+.chip.sgn.for{color:var(--pine)}
+.chip.sgn.against{color:var(--brick)}
 /* THE DAY'S KINDS, DOWN THE EDGE. One entry is one committee on one day, so
    a day holding a hearing and then an executive session is one card -- and
    the bar says at a glance that it is doing more than one thing, divided into
@@ -854,12 +917,10 @@ border-bottom:1px solid var(--rule)}
 .findout a:hover,.findout a:focus-visible{background:var(--wash)}
 .findout .fl1{display:flex;align-items:baseline;gap:var(--sp-3);
 flex-wrap:wrap;min-width:0}
-/* An outlined chip, not a column: 10px, uppercase, tracked, on the baseline
-   of the name it labels. */
-.findout .fkind{flex:0 0 auto;font-size:var(--t-label);font-weight:600;letter-spacing:.11em;
-text-transform:uppercase;border:1px solid var(--rule-2);border-radius:2px;
-padding:3px 5px;color:var(--ink-2);line-height:1;
-text-transform:uppercase;color:var(--ink-2)}
+/* The kind, after the name and on its baseline: the neutral chip (SHARED,
+   ONE CHIP), in Title Case at 14px where it was a 13px tag in tracked
+   capitals with a box of its own. */
+.findout .fkind{flex:0 0 auto}
 /* The name is the answer, so it takes the accent -- the one thing on the row
    a reader is looking for. */
 .findout .fname{font-weight:600;font-size:var(--t-ui);color:var(--pine);
@@ -1052,11 +1113,12 @@ cursor:pointer;background:var(--film-stub);color:var(--film-stub-ink);font-size:
    fact, one shape. The shape is still one shape -- .mchip is what the
    legislators page, the committee roster and the sponsor list all draw, so
    they all change together. */
+/* ITS FRAME IS THE ONE CHIP'S (SHARED, ONE CHIP: `.chip,.mchip`), with the
+   bar --edge until a party gives it one. */
 .mchip{display:inline-flex;align-items:center;gap:var(--sp-3);
 margin:0 var(--sp-3) var(--sp-3) 0;
 padding:var(--sp-3) var(--sp-4) var(--sp-3) var(--sp-3);
-border-radius:var(--r-in);font-size:var(--t-ui);background:var(--surface);
-border:1px solid var(--edge);border-left:3px solid var(--edge);
+font-size:var(--t-ui);background:var(--surface);border-left-color:var(--edge);
 /* ONE NAME, ONE LINE. A person's name broken across two lines reads as two
    people at a glance, and the roster is scanned rather than read. The names
    are as long as they are -- "Rep. Katherine Prudhomme-O'Brien (R - Rock 13)"
@@ -1582,6 +1644,10 @@ overflow-y:auto;overflow-x:hidden}
 .fopt{display:flex;align-items:center;gap:var(--sp-4);padding:var(--sp-1) 0;font-size:var(--t-ui);cursor:pointer}
 .fopt input{accent-color:var(--pine);margin:0;flex:0 0 auto}
 .fopt .c{margin-left:auto;font-size:var(--t-sm);color:var(--ink-2)}
+/* A Status filter's chip wraps in the 250px column rather than run out of
+   it: "Passed both chambers, goes to the voters in November 2026" was cut
+   off at "the vote". It was an inline style on each chip. */
+.fopt .chip{white-space:normal}
 /* "No match" under the sponsor box: it was a 12.5px inline style, under
    the floor and out of reach of this file. */
 .fnone{font-size:var(--t-sm);color:var(--ink-2)}
@@ -1905,51 +1971,25 @@ padding-inline:var(--sp-2)}
    changes nothing about its head; a bill's own page keeps its head as it
    is. The line under the sponsor's that says why a bill is listed takes the
    sponsor line's size, as its own rule says it is that line's quiet type.
-   AND THE "carried over" BESIDE THE NUMBER IS A CHIP TOO (app.js cardHtml,
-   .cyear .chip), so it takes the status chip's 14px: left at the scale's
-   16px it stood larger than the chip and the sponsor line under it, where
-   the old card set it at 14px (the review of 9 October 2026, HB 65 of
-   2026 at 375px). */
+   The status chip is the one chip's S there, its room with its type (the
+   component plan's step 3, 9 October 2026), where it kept M's room at S's
+   type. AND THE "carried over" BESIDE THE NUMBER (app.js cardHtml, .cyear
+   .ccarry), a word and not a chip, takes the chip's 14px: left at the
+   scale's 16px it stood larger than the chip and the sponsor line under
+   it, where the old card set it at 14px (the review of 9 October 2026, HB
+   65 of 2026 at 375px). */
 @media (max-width:37.5em){
   .card:not(.focus) .chead .ctitle{font-size:var(--t-card)}
   .card:not(.focus) .chead :is(.cmeta,.cwhy){font-size:var(--t-sm)}
-  .card:not(.focus) .crow .cstat{font-size:var(--t-sm)}
+  .card:not(.focus) .crow .cstat{font-size:var(--t-sm);padding:var(--sp-1) var(--sp-4)}
   .card:not(.focus) .crow .cyear{font-size:var(--t-sm)}
   .card:not(.focus) .rail.dated :is(.stop i,small){font-size:var(--t-rail)}
 }
-.cstat{margin-left:auto;font-size:var(--t-sm);font-weight:600;padding:var(--sp-1) var(--sp-4);border-radius:var(--r-in);white-space:nowrap}
-/* ONE CHIP SHAPE ACROSS THE SITE. A person is drawn as .mchip -- a 3px
-   radius, a 1px edge, and a 3px bar down the left in the colour of the thing
-   it names. A bill's status and a vote's result were pills with no border at
-   all: a tint and nothing else, which in dark mode is #43211F on a #1A1C1E
-   card and recedes into it. The complaint was that they blend into the
-   background and do not match the legislator chips.
-   THE BAR IS currentColor, so none of the seven variant rules below needs to
-   change: each already sets `color` to its own status colour and `background`
-   to that colour's tint, so the edge follows the meaning for free and a new
-   status gets its bar without anyone remembering to add one. */
-.cstat,.rcres{border:1px solid var(--edge);border-left:3px solid currentColor}
-/* UNLESS THERE IS NO ROOM FOR IT. nowrap with no ceiling put "One chamber
-   did not concur; a committee of conference was asked for" in a 494px pill
-   inside a 272px row on a 360px screen, so the longest statuses were cut
-   off mid-word. Below the width where the card head wraps, the pill wraps
-   with it. */
-@media (max-width:45em){.cstat{white-space:normal;max-width:100%}}
-/* The status on a card head: bigger and heavier than the chips used inside a
-   tab, because it is the one thing every reader looks for first. */
-.crow .cstat{font-size:var(--t-ui);font-weight:600;padding:var(--sp-2) var(--sp-5);
-letter-spacing:.01em}
-.s-active{background:var(--st-active-bg);color:var(--st-active)}
-.s-law{background:var(--st-law-bg);color:var(--st-law)}
-.s-done{background:var(--st-done-bg);color:var(--st-done)}
-.s-veto{background:var(--st-veto-bg);color:var(--st-veto)}
-.s-study{background:var(--st-study-bg);color:var(--st-study)}
-/* The Tabled chip in its mark's yellow, as Interim Study is in its orange. */
-.s-table{background:var(--st-table-bg);color:var(--st-table)}
-/* An adopted resolution succeeded, so it reads like a bill that became
-   law -- but it did not become law, and saying so would be false. Same
-   colour, different word. */
-.s-adopted{background:var(--st-law-bg);color:var(--st-law)}
+/* A BILL'S STATUS SITS AT THE RIGHT END of its card's head, and of a
+   report's or an amendment's line. Its shape, its two sizes and its
+   colours are the one chip's (SHARED, ONE CHIP); the card's head is where
+   it takes M, the size of the one thing every reader looks for first. */
+.cstat{margin-left:auto}
 /* WHAT THE BILL DOES. It was 12.5px in the same grey as the year it
    was filed in, so the sentence a reader is actually looking for
    ranked joint-fourth on its own card and ran to 147 characters a
@@ -2010,10 +2050,8 @@ line-height:1.5}
 
 .stg p{margin:0;font-family:var(--serif);font-size:var(--t-read);line-height:1.65;
 max-width:var(--measure)}
-.sgn{display:inline-block;margin:var(--sp-1) var(--sp-3) 0 0;padding:1px var(--sp-3);border-radius:var(--r-pill);
-font-size:var(--t-sm);font-weight:600;background:var(--paper);border:1px solid var(--rule-2)}
-.sgn.for{color:var(--pine);border-color:color-mix(in srgb,var(--pine) 35%,var(--rule-2))}
-.sgn.against{color:var(--brick);border-color:color-mix(in srgb,var(--brick) 35%,var(--rule-2))}
+/* Who signed in, each count the one chip (SHARED, ONE CHIP: .chip.sgn). */
+.sgn{margin:var(--sp-1) var(--sp-3) 0 0}
 .testimony{max-width:var(--measure);margin:var(--sp-4) 0 var(--sp-1);padding:var(--sp-4) var(--sp-5);background:var(--paper);
 border-left:3px solid var(--rule-2);border-radius:0 var(--r-in) var(--r-in) 0;font-size:var(--t-ui);
 line-height:1.55}
@@ -2054,8 +2092,8 @@ a.cite{color:var(--pine)}
    member lists inside an expansion something to sit under. The type is
    unchanged -- the level is the outline, not the size. */
 .rcq{font-size:var(--t-h3);font-weight:600;margin:0;font-family:var(--serif);letter-spacing:0;text-transform:none}.rcd{font-size:var(--t-ui);color:var(--ink-2)}
-.rcres{margin-left:auto;font-size:var(--t-sm);font-weight:600;padding:var(--sp-1) var(--sp-4);border-radius:var(--r-in)}
-.pass{background:var(--st-law-bg);color:var(--st-law)}.fail{background:var(--st-done-bg);color:var(--st-done)}
+/* A vote's result, at the right of its head: the one chip, .pass or .fail. */
+.rcres{margin-left:auto}
 .votewrap{display:flex;gap:var(--sp-7);flex-wrap:wrap;align-items:flex-start;margin-top:var(--sp-4)}
 /* THE RING IS SIZED IN rem, AND ITS WORDS IN ITS OWN UNITS (8 October 2026).
    Its letters, its count and its share are written into the SVG in the
@@ -2383,8 +2421,6 @@ font-size:var(--t-ui);color:var(--ink-2)}
 .story .stg{margin-top:var(--sp-7)}
 .story .stg:first-child{margin-top:var(--sp-1)}
 .btver{display:flex;gap:var(--sp-4);align-items:baseline;flex-wrap:wrap;margin-bottom:var(--sp-5)}
-.btv{font-size:var(--t-sm);font-weight:600;letter-spacing:.04em;text-transform:uppercase;
-background:var(--pine-soft);color:var(--pine);border-radius:var(--r-in);padding:var(--sp-1) var(--sp-4)}
 .btamd{font-size:var(--t-ui);color:var(--ink-2)}
 .btan{background:var(--wash);border-radius:var(--r-out);padding:var(--sp-5) var(--sp-6);margin-bottom:var(--sp-6)}
 
@@ -3249,7 +3285,7 @@ max-width:100%}
    options in the page's colours -- Chrome does, looked at on 8 October 2026
    -- and leaves it plain where the browser draws a list of its own; Any
    stays the page's ink. The select itself takes the chosen category's chip --
-   its ground, its ink and the 3px bar of .cstat -- so the closed control
+   its ground, its ink and the 3px bar of .chip -- so the closed control
    says what it is narrowed to in the colour the cards under it carry. */
 .bfilt option:not([class]){background:var(--paper);color:var(--ink)}
 .bfilt select.s-active{background:var(--st-active-bg);color:var(--st-active)}
@@ -4884,9 +4920,9 @@ text-decoration-color:var(--rule-2);text-underline-offset:3px}
    sat in both. */
 .votes .vch{display:block;font-size:var(--t-label);letter-spacing:.05em;text-transform:uppercase;
   color:var(--ink-2);font-weight:600;margin-top:var(--sp-1)}
-.votes td.o .pass,.votes td.o .fail,.votes td.o i{white-space:nowrap}
-.votes td.o .pass{color:var(--yes);font-weight:600}
-.votes td.o .fail{color:var(--st-done);font-weight:600}
+/* The outcome is the one chip, .pass or .fail, as on the bill's own Votes
+   tab: it was a bare word in the yes green or the failed red. */
+.votes td.o .chip,.votes td.o i{white-space:nowrap}
 .votes td.o i{font-style:normal;color:var(--ink-2)}
 /* THE ONE THING IN THAT CELL THAT IS A SENTENCE, AND SO THE ONE THING THAT
    MUST WRAP. The rule above holds the outcome words on one line -- "Adopted",
@@ -5151,14 +5187,10 @@ border-bottom:1px solid var(--rule);margin:0;max-width:none}
    and a --rule-2 border at 6px there: one name, two objects, and
    the edge at 1.19:1 against the page instead of 1.66:1. */:where(body.pg) .card{background:var(--surface);border:1px solid var(--rule-2);
 border-radius:var(--r-out);padding:var(--sp-6) var(--sp-6);margin-bottom:var(--sp-5)}
-:where(body.pg) .chip{font-size:var(--t-sm);padding:var(--sp-1) var(--sp-4);border-radius:var(--r-pill);background:var(--wash);color:var(--ink-2);
-display:inline-block;margin:0 var(--sp-2) var(--sp-2) 0}
-/* The party pill, on its own prefix. See build_pages.pchip for why it
-   could not go on sharing `p-` with the member chip and the floor
-   chart's seats. */
-:where(body.pg) .pt-R{background:var(--rep-soft);color:var(--rep)}
-:where(body.pg) .pt-D{background:var(--dem-soft);color:var(--dem)}
-:where(body.pg) .pt-I{background:var(--ind-soft);color:var(--ind)}
+/* A party's letter is the one chip (SHARED, ONE CHIP: .chip.pt-R and the
+   rest), on its own prefix: `p-` is the member chip's and the floor chart's
+   seats'. Here it keeps the room it had beside a name. */
+:where(body.pg) .chip[class*=" pt-"]{margin:0 var(--sp-2) var(--sp-2) 0}
 :where(body.pg) .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:var(--sp-1) var(--sp-7)}
 :where(body.pg) .mem{padding:var(--sp-2) 0;font-size:var(--t-ui)}
 /* The district beside a name in the roster. It was an inline style on all

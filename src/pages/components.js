@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-10-09.2
+// GRANITE_VERSION: 2026-10-09.3
 /* THE SITE'S COMPONENTS, IN THE BROWSER. Published as site/components.js and
    loaded by every page, in its head, before app.js, find.js and any page's
    own script, so each of them draws a person, a committee, a date or a time
@@ -134,3 +134,33 @@ const pchip=m=>{
   return `<span class="mchip p-${esc(code)}">${
     m.slug?`<a href="legislator/${esc(m.slug)}.html">${who}</a>`:who}${
     role?` <i>${esc(role)}</i>`:""}</span>`;};
+
+// ONE CHIP, IN TWO SIZES (the component plan's step 3, approved 9 October
+// 2026): components.chip. A bill's status, a meeting's kind, a vote's result,
+// a party's letter and the neutral chip are this one span, which app.css
+// draws in the person chip's frame -- 3px corners, a 1px edge, a 3px bar in
+// the chip's own ink -- at 14px, or 16px where size is "m", in a head. `cls`
+// is the family that colours it and the hook a page places it by, separated
+// by spaces; the word comes as it is to be read, its case decided where it
+// is made.
+function chip(word,cls,size){
+  const names=["chip"].concat(size==="m"?["chip-m"]:[],
+    String(cls||"").split(" ").filter(Boolean));
+  return `<span class="${esc(names.join(" "))}">${esc(word)}</span>`;
+}
+
+// A record's words as a chip says them, in Title Case: components.title_words.
+// "INEXPEDIENT TO LEGISLATE" is "Inexpedient to Legislate" and "As amended by
+// the house" "As Amended by the House"; the small words are meeting_kinds.json's;
+// a word with a figure in it is kept, and so is a word in capitals among
+// words that are not, which is an abbreviation ("RSA").
+function titleWords(s){
+  const t=s==null?"":String(s), shout=!/[a-z]/.test(t);
+  const small=WORDBOOK.meeting_kinds.small;
+  return t.split(" ").map((w,i)=>{
+    if(/[0-9]/.test(w)||(!shout&&/^[^a-z]*[A-Z][^a-z]*[A-Z][^a-z]*$/.test(w)))return w;
+    const low=w.toLowerCase();
+    return i&&small.indexOf(low)>=0?low
+      :low.replace(/^([^A-Za-z]*)([a-z])/,(m,a,b)=>a+b.toUpperCase());
+  }).join(" ");
+}

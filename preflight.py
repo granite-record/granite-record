@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.491
+# GRANITE_VERSION: 2026-09-04.492
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -17167,7 +17167,9 @@ def _find_bills(BP):
     try:
         files = {"stub.js": Path("tests/dom_stub.js").read_text(encoding="utf-8"),
                  "app.js": _with_components(app), "billmatch.js": matcher,
-                 "find.js": Path("src/pages/find.js").read_text(encoding="utf-8"),
+                 # components.js first, as every page loads it: the header's
+                 # panel draws each row's kind with its chip() (step 3).
+                 "find.js": _with_components(Path("src/pages/find.js").read_text(encoding="utf-8")),
                  "search.js": m.group(1),
                  "fixture.json": json.dumps(_find_bills_fixture()),
                  "queries.json": json.dumps(_FIND_BILLS_QUERIES),
@@ -23269,15 +23271,17 @@ var fixtures = [
   // minority moving Ought to Pass, so these two strings can only appear if the
   // chip is coloured by what was moved.
   {name:"full", d:detail,
-   want:['class="cstat s-done">INEXPEDIENT TO LEGISLATE',
-         'class="cstat s-law">OUGHT TO PASS',
+   // The one chip, the record's capitals in Title Case (components.js
+   // titleWords; the component plan's step 3, 9 October 2026).
+   want:['class="chip cstat s-done">Inexpedient to Legislate',
+         'class="chip cstat s-law">Ought to Pass',
          // Each report says when, and whether that is the day the committee
          // signed or the day the calendar carrying it was printed.
          "Feb 24, 2026",
          "as printed",
          // The Senate's report is drawn at all, coloured by its motion, and
          // says why there is no reasoning under it.
-         'class="cstat s-study">REFERRED TO INTERIM STUDY',
+         'class="chip cstat s-study">Referred to Interim Study',
          "Senate Commerce",
          // The Senate's report carries the same three-part heading as the
          // House's -- who, by what vote, for what motion -- rather than a
@@ -25049,8 +25053,9 @@ process.stdout.write("\\n@@" + JSON.stringify(out));
             (won, "Ratified", "pass", "85.7%", "14.3%", "more than")):
         text = flat(html)
         assert '<h2 class="rcq">The voters</h2>' in html, f"the voters' card is headed {text[:60]!a}"
-        assert f'<span class="rcres {cls}">{word}</span>' in html, (
-            f"the voters' card does not say {word!r}: {text[:120]!a}")
+        # The one chip, its words in Title Case (the component plan's step 3).
+        assert f'<span class="chip rcres {cls}">{word.title()}</span>' in html, (
+            f"the voters' card does not say {word.title()!r}: {text[:120]!a}")
         assert f"{word}: {pct} voted yes, {how} the two thirds it needed." in text, (
             f"the outcome is not said in words: {text[:200]!a}")
         assert "statewide public vote" in text and "two thirds of the votes cast" in text, (
@@ -39933,7 +39938,7 @@ def _chip_drawn():
         shutil.rmtree(root, ignore_errors=True)
     assert "threw" not in got, f"drawing the chips threw {got['threw']}"
     bad = []
-    chips = re.findall(r'<span class="cstat ([^"]*)">([^<]*)</span>', got["list"])
+    chips = re.findall(r'<span class="chip chip-m cstat ?([^"]*)">([^<]*)</span>', got["list"])
     # Tabled in the yellow of the rail's pause (8 October 2026: graphite at
     # first, then the person's yellow), and a stage still moving in slate blue
     # from the same evening, so the two are not one ink.
@@ -40375,7 +40380,7 @@ def _status_and_type_filters():
     if [(v, c) for v, _lab, c in n["status"]] != want_status:
         bad.append(f"the Status filter offers {[(v, c) for v, _l, c in n['status']]}, "
                    f"not {want_status}")
-    classes = {v: re.search(r'class="cstat ([^"]*)"', lab) for v, lab, _c in n["status"]}
+    classes = {v: re.search(r'class="chip ([^"]*)"', lab) for v, lab, _c in n["status"]}
     want_cls = {"In Progress": "s-active", "Passed": "s-law", "Tabled": "s-table",
                 "Interim Study": "s-study", "Died": "s-done", "Withdrawn": "s-done",
                 "Vetoed": "s-veto"}
@@ -40584,7 +40589,7 @@ def _bill_status_select_categories():
                          m.group(3).strip()))
         own = re.search(r'class="([^"]*)"', sel.group(1)) if sel else None
         cards = re.findall(r'<article class="card[^"]*" data-id="([^"]*)"', html)
-        chips = re.findall(r'<span class="cstat [^"]*">([^<]*)</span>', html)
+        chips = re.findall(r'<span class="chip chip-m cstat ?[^"]*">([^<]*)</span>', html)
         return {"opts": opts, "own": own.group(1) if own else "", "cards": cards,
                 "chips": chips, "note": re.search(r'<p class="src">(\d+) bills</p>', html)}
     bad = []
@@ -49049,7 +49054,7 @@ def _meet_kind_colours():
     tok = {"k-hearing": "hear", "k-exec": "exec", "k-meet": "meet",
            "k-conf": "conf", "k-floor": "floor", "k-study": "study"}
     for cls, t in tok.items():
-        for rule in (rf"\.calkind\.{cls}\{{[^}}]*var\(--cal-{t}\)",
+        for rule in (rf"\.chip\.{cls}\{{[^}}]*var\(--cal-{t}\)",
                      rf"\.calmix \.{cls}\{{background:var\(--cal-{t}\)\}}",
                      rf"\.calkey \.{cls}\{{background:var\(--cal-{t}\)\}}",
                      rf"\.cmdots \.{cls}\{{background:var\(--cal-{t}\)\}}",
@@ -49113,7 +49118,7 @@ def _meet_kind_colours():
         f"a floor sitting, a conference, a work session and a statutory "
         f"committee drew bars {sorted(seen)}")
     # Title case, as the boxes are (the person, 25 September 2026).
-    chip = re.search(r'<span class="calkind (k-[a-z]+)">Statutory Committee</span>', t)
+    chip = re.search(r'<span class="chip calkind (k-[a-z]+)">Statutory Committee</span>', t)
     assert chip and chip.group(1) == "k-study", (
         "a statutory committee's chip does not wear the study committees' colour")
     return "ok", (f"{len(want)} kinds on six colours, each from its own token, "
@@ -50681,6 +50686,155 @@ def _components_agree():
                   "answer byte for byte in Python and in node; every line and branch of "
                   "components.py and every block of components.js run; the words "
                   f"({', '.join(C.WORDBOOK)}, {len(words_py):,} characters) the same in both")
+
+
+# ---- one chip, in two sizes (the component plan's step 3, 9 October 2026) ---------
+#
+# The hooks a page places a chip by. Each is written beside .chip, by
+# components.chip in either language, and none of them draws: the shape, the
+# two sizes and the colours are the one chip's, in app.css's SHARED region.
+_CHIP_HOOKS = ("cstat", "rcres", "calkind", "fkind", "sgn", "btv")
+# What a chip's shape is made of. A rule that names a chip may move it, size
+# its room under a narrow head or colour its family; it may not give it a
+# corner, an edge, a shadow, a case or a spacing of its own -- which is how
+# there came to be six shapes.
+_CHIP_SHAPE = ("border", "border-left", "border-width", "border-style", "border-left-width",
+               "border-left-style", "border-radius", "box-shadow", "text-transform",
+               "letter-spacing", "outline")
+_CHIP_SUBJECT = re.compile(r"\.(?:chip|chip-m|mchip|" + "|".join(_CHIP_HOOKS) + r")(?![\w-])")
+# A chip written by hand in a builder or a script, rather than by chip(): a
+# class attribute that starts with one of the chip's own classes. pchip's
+# "mchip" and the Calendar's "wkchips" and "cpchip" are other names.
+_CHIP_BY_HAND = re.compile(r"""class=\\?["'](?:[\w-]+[ ]+)*(?:chip|"""
+                           + "|".join(_CHIP_HOOKS) + r""")(?![\w-])""")
+
+
+def _chip_css_faults(css):
+    """What in a stylesheet draws a chip other than the one chip: a list of
+    sentences, empty where the one chip is all there is. Held: the frame,
+    `.chip,.mchip`, and the two sizes, `.chip` at --t-sm and `.chip-m` at
+    --t-ui, inside the SHARED region, so the pages built from style.css draw
+    them too; and no other rule whose subject is a chip -- .chip, .mchip or
+    a hook -- sets any part of a chip's shape, nor a size but the two."""
+    bad = []
+    try:
+        a, b = css.index("/* SHARED:START"), css.index("/* SHARED:END")
+    except ValueError:
+        return ["the stylesheet has no SHARED region"]
+    shared = {tuple(_css_selectors(sel)): dict(_css_decls(body))
+              for _at, sel, body, _ln in _css_rules(css[a:b]) if not _at}
+    frame = shared.get((".chip", ".mchip"))
+    want = {"border": "1px solid var(--edge)", "border-left": "3px solid currentColor",
+            "border-radius": "var(--r-in)"}
+    if not frame:
+        bad.append("no `.chip,.mchip` rule in SHARED draws the one chip's frame")
+    else:
+        bad += [f"the frame's {k} is {frame.get(k)!r}, not {v!r}" for k, v in want.items()
+                if frame.get(k) != v]
+    for sel, size in (((".chip",), "var(--t-sm)"), ((".chip-m",), "var(--t-ui)")):
+        got = (shared.get(sel) or {}).get("font-size")
+        if got != size:
+            bad.append(f"`{sel[0]}` in SHARED is {got!r}, not {size}")
+    for at, sel, body, ln in _css_rules(css):
+        sels = _css_selectors(sel)
+        if sels == [".chip", ".mchip"] and not at:
+            continue
+        chips = [s for s in sels if _CHIP_SUBJECT.search(re.split(r"[\s>+~]+", s)[-1])]
+        if not chips:
+            continue
+        for k, v in _css_decls(body):
+            # A reset is not a shape: the one chip sets its case and its
+            # spacing back to none, whatever it is written inside.
+            if k in _CHIP_SHAPE and v not in ("none", "0", "normal"):
+                bad.append(f"line {ln}: `{chips[0]}` sets {k}:{v}, a part of the one chip's shape")
+            elif k == "font-size" and v not in ("var(--t-sm)", "var(--t-ui)", "inherit") \
+                    and not all(".mchip" in s for s in chips):
+                bad.append(f"line {ln}: `{chips[0]}` sets font-size:{v}; a chip is S or M")
+    return bad
+
+
+def _chips_by_hand(text):
+    """Every chip a script or a builder writes as markup of its own rather
+    than by chip(): [(line, the class attribute)]."""
+    return [(text.count("\n", 0, m.start()) + 1, m.group(0)) for m in _CHIP_BY_HAND.finditer(text)]
+
+
+@check("frontend", "every chip is the one chip: drawn by chip() in both languages, in one "
+                   "frame and two sizes, and no rule or page draws one of its own")
+def _chips_one_shape():
+    """The component plan's step 3 (approved 9 October 2026): chips in one
+    shape, and the person's rule of 22 September that every kind of chip
+    shares the legislator chip's shape and placement.
+
+    A bill's status, a meeting's kind, a vote's result, a party's letter,
+    the sign-ins, the finder's kind and a version of the text were six
+    shapes -- a box with a bar, a pill with an inset edge, a pine tint in
+    capitals, a 13px outlined tag in capitals, a bare coloured word -- each
+    written by its own line of markup in one of two languages. Held here:
+
+    THE STYLESHEET (_chip_css_faults). The frame `.chip,.mchip` -- 3px
+    corners, a 1px --edge, a 3px bar in currentColor -- and the two sizes,
+    in the SHARED region; and no other rule naming a chip as its subject
+    sets a corner, an edge, a shadow, a case, a spacing, or a size but S's
+    and M's. So a pill, a box or capitals cannot come back on one chip.
+
+    THE SOURCE. No builder or script in src/pages/ but the components
+    writes a chip's class by hand: every chip is components.chip or
+    components.js's chip(), whose answers _components_agree holds to one.
+
+    THE FIXTURE SITE. Every element of every page built on the fixture
+    that carries a chip's hook carries .chip, and no page carries a chip's
+    hook alone.
+
+    Each part is first shown the breaks it is there for -- a pill on the
+    kinds of meeting, capitals on the version, the inset edge, a 13px tag,
+    the frame gone, a status chip and a kind chip written by hand -- and
+    must find every one, and must pass the person chip and the Calendar's
+    own controls, which are other names."""
+    css = Path("src/pages/app.css").read_text(encoding="utf-8")
+    planted = css.replace("/* SHARED:END", ".calkind{border-radius:var(--r-pill)}\n"
+                          ".btv{text-transform:uppercase;letter-spacing:.04em}\n"
+                          ".chip.k-hearing{box-shadow:inset 0 0 0 1px var(--cal-hear)}\n"
+                          ".findout .fkind{font-size:var(--t-label)}\n/* SHARED:END", 1)
+    found = _chip_css_faults(planted)
+    for what in ("`.calkind` sets border-radius", "`.btv` sets text-transform",
+                 "`.btv` sets letter-spacing", "`.chip.k-hearing` sets box-shadow",
+                 "`.findout .fkind` sets font-size:var(--t-label)"):
+        assert any(what in f for f in found), f"the stylesheet's scan misses a planted break: {what}"
+    assert any("frame" in f for f in _chip_css_faults(css.replace(".chip,.mchip{", ".chip{", 1))), (
+        "the stylesheet's scan does not miss the frame when it is gone")
+    sample = ('`<span class="cstat ${c}">${esc(w)}</span>` + \'<span class="calkind k-hearing">\''
+              ' + `<span class="mchip p-R">` + \'<div class="wkchips">\' + \'<b class="cpchip">\''
+              ' + `<span class="chip pt-${p}">`')
+    hits = [h for _ln, h in _chips_by_hand(sample)]
+    assert len(hits) == 3 and not any(x in " ".join(hits) for x in ("mchip", "wkchips", "cpchip")), (
+        f"the scan for chips written by hand finds {hits}, where a status, a kind and a party's "
+        "chip were planted and the person chip and the Calendar's controls are other names")
+
+    bad = _chip_css_faults(css)
+    for p in sorted(Path("src/pages").glob("*")):
+        if p.suffix not in (".js", ".py", ".html") or p.stem == "components":
+            continue
+        for ln, h in _chips_by_hand(p.read_text(encoding="utf-8")):
+            bad.append(f"{p.name} line {ln} writes a chip by hand ({h}...), not by chip()")
+
+    shared, _base, _ran, _days = _fixture_site_shared()
+    pages = chips = 0
+    for page in sorted((shared / "site").rglob("*.html")):
+        pages += 1
+        for m in re.finditer(r'class="([^"]*)"', page.read_text(encoding="utf-8")):
+            names = set(m.group(1).split())
+            hooks = names & set(_CHIP_HOOKS)
+            if hooks and "chip" not in names:
+                bad.append(f"{page.relative_to(shared / 'site').as_posix()}: "
+                           f"class=\"{m.group(1)}\" is a chip's hook without the chip")
+            chips += "chip" in names
+    assert not bad, f"{len(bad)} ways a chip is not the one chip: " + "; ".join(bad[:6])
+    assert chips, "the fixture site carries no chip at all, so its pages held nothing here"
+    return "ok", (f"the one chip's frame and two sizes in SHARED and no rule drawing a chip of "
+                  f"its own; no chip written by hand in src/pages/; {chips:,} chips on "
+                  f"{pages:,} fixture pages, each with its hook beside .chip; every planted "
+                  "break found")
 
 
 @check("frontend", "every fixture record and tab, and every page that draws part of itself, is "

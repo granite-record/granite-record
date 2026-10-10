@@ -955,6 +955,16 @@ header, Play, a filter group's head), and **a text box's edge is `--edge`**.
 `preflight` holds both, and holds `--ink-2` on the Calendar's week band to
 4.5:1, computed from the tokens.
 
+**Every chip is one chip** (9 October 2026): a bill's status, a meeting's
+kind, a vote's result, a party's letter, the sign-ins, the finder's kind and
+a version of the text are `chip()` in `components.py` and `components.js`,
+drawn once in `app.css`'s SHARED region in the person chip's frame -- 3px
+corners, a 1px `--edge`, a 3px bar in the chip's own ink -- at 14px, or 16px
+in a head, with a family's class to colour it. Its words are in Title Case,
+a record's capitals through `title_words`. `preflight` fails a chip written
+by hand and a rule that gives one a corner, an edge, a case or a size of its
+own.
+
 **On a phone a control is 44px**, in one block placed after the rules it has
 to outrank; a person's chip is its link to the edges. The line above a Learn
 article's heading and a sitting's is the exception: there is no 44px between

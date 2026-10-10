@@ -1,13 +1,15 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-09.2
+# GRANITE_VERSION: 2026-10-09.3
 """
 The site's components, in Python: what the builders draw a person, a
-committee, a date and a time with, and the words they say.
+committee, a chip, a date and a time with, and the words they say.
 
     import components as C
     C.date_words("2026-02-19", "full")     # "February 19, 2026"
     C.clock("13:30")                       # "1:30 PM", a no-break space before PM
     C.pchip(member)                        # one legislator, as every page draws one
+    C.chip("Public Hearing", "calkind k-hearing")   # every other chip, in one shape
+    C.title_words("INEXPEDIENT TO LEGISLATE")      # "Inexpedient to Legislate"
     C.WORDBOOK["meeting_kinds"]["kinds"]   # the words, from src/pages/words/
 
 ONE FILE IN EACH LANGUAGE, THE SAME NAMES (the component plan's C1, approved
@@ -210,3 +212,65 @@ def pchip(m):
     inner = (f'<a href="legislator/{esc(slug)}.html">{who}</a>' if slug else who)
     return (f'<span class="mchip p-{esc(code)}">{inner}'
             + (f" <i>{esc(role)}</i>" if role else "") + "</span>")
+
+
+# ONE CHIP, IN TWO SIZES (the component plan's step 3, approved 9 October
+# 2026; the person's rule of 22 September 2026, that every kind of chip shares
+# the legislator chip's shape and placement). A bill's status was a box in
+# its own ink, a meeting's kind a pill with an inset edge, a version a pine
+# tint in capitals, the finder's kind a 13px outlined tag in capitals, the
+# sign-ins pills, a member's vote outcome a bare coloured word: six shapes
+# for one idea, each from its own line of markup in one of two languages.
+# Every one of them is chip() now, here and in components.js, and app.css
+# draws a chip one way -- the person chip's frame (3px corners, a 1px edge,
+# a 3px bar down the left in the chip's own ink) at 14px, or 16px in a head
+# -- with a family's class to colour it. The person chip is pchip, above,
+# whose frame is the same rule.
+def chip(word, cls="", size="s"):
+    """A word in the site's one chip: a bill's status, a meeting's kind, a
+    vote's result, a party's letter, or a neutral word for anything else.
+
+        chip("Became Law", "cstat s-law", "m")
+        -> '<span class="chip chip-m cstat s-law">Became Law</span>'
+
+    `cls` is the classes it takes beside its own, separated by spaces: the
+    family that colours it (chips.json's s-law and the rest, a meeting
+    kind's k-hearing and the rest, pass or fail, a party's pt-R) and the
+    hook a page places it by (cstat, calkind, rcres); with no family it is
+    the neutral chip. `size` is "m" in a head, the bill card's, and the
+    chip is "s" otherwise, the size everywhere else. The word is drawn as
+    it comes: its case is decided where the word is made -- title_words, for
+    a record's capitals -- never here."""
+    names = ["chip"] + (["chip-m"] if size == "m" else []) + [
+        c for c in str(cls or "").split(" ") if c]
+    return f'<span class="{esc(" ".join(names))}">{esc(word)}</span>'
+
+
+def title_words(s):
+    """A record's words as a chip says them, in Title Case, the case the
+    person set for every chip's words: "INEXPEDIENT TO LEGISLATE" is
+    "Inexpedient to Legislate", the bill text's "As amended by the house"
+    is "As Amended by the House", "Not ratified" is "Not Ratified".
+
+    For words a record holds in a case of its own -- a committee's
+    recommendation the clerk typed in capitals, a version written three
+    ways -- and only there: a word made here is written in its case where it
+    is made, and nothing recases it on display (C8 of the component plan).
+    The small words a title keeps in lower case after its first word are
+    meeting_kinds.json's "small", the same that a kind of meeting's title
+    keeps. A word with a figure in it is left as it is ("4/28/10",
+    "1429S"), and so, where the words are not all capitals, is a word in
+    capitals ("RSA"), which is then an abbreviation rather than a shout."""
+    s = "" if s is None else str(s)
+    shout = not re.search(r"[a-z]", s)
+    small = WORDBOOK["meeting_kinds"]["small"]
+    out = []
+    for i, w in enumerate(s.split(" ")):
+        if re.search(r"[0-9]", w) or (
+                not shout and re.fullmatch(r"[^a-z]*[A-Z][^a-z]*[A-Z][^a-z]*", w)):
+            out.append(w)
+            continue
+        low = w.lower()
+        out.append(low if i and low in small else re.sub(
+            r"^([^A-Za-z]*)([a-z])", lambda m: m.group(1) + m.group(2).upper(), low))
+    return " ".join(out)
