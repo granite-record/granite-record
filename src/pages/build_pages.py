@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.178
+# GRANITE_VERSION: 2026-09-04.179
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -674,19 +674,6 @@ def seat_columns(house, row):
                                     key=lambda kv: (across.get(kv[0], len(across)), kv[0])))
                + "</div>" if divs else "")
             + (block("No seat on file", unseated) if unseated else ""))
-
-
-def home_towns(out):
-    """Every town and city in site/districts.json, A to Z, for the home
-    page's finder to suggest; [] where the file is not there, and the box is
-    then a plain box that still works."""
-    try:
-        d = json.loads((Path(out) / "districts.json").read_text(encoding="utf-8"))
-    except (OSError, ValueError):
-        print("  home: no site/districts.json to read, so the finder suggests "
-              "no towns")
-        return []
-    return sorted((t for t in d if str(t).strip()), key=str.lower)
 
 
 def home_week(week):
@@ -2738,7 +2725,7 @@ fetch(DATA("home.json")).then(r=>r.json()).then(H=>{
   // its address. Kept in step with build_pages' static copy of this block --
   // there are two renderers for it and the footer has already shown what
   // happens when only one of them is changed.
-  document.getElementById("recent").innerHTML=`<h2>Latest activity</h2>
+  document.getElementById("recent").innerHTML=`<h2>Latest Activity</h2>
     <ul class="actlist">${(H.recent||[]).slice(0,5).map(r=>
       `<li><span class="actd">${fd(r.date)}</span>
        <span class="actb"><a href="${esc(r.year?`bill/${r.year}/${String(r.bill).toLowerCase()}.html`
@@ -2791,7 +2778,7 @@ fetch(DATA("home.json")).then(r=>r.json()).then(H=>{
   // "House Session (August 19th, 2026)", with the date the way to that
   // sitting's page where one is built.
   sess.innerHTML=ls.length
-    ?`<h2>Most recent floor sessions</h2><div class="twoup">${ls.map(v=>
+    ?`<h2>Most Recent Session Days</h2><div class="twoup">${ls.map(v=>
       `<div><p class="sesstitle"><b>${esc(v.chamber||"")} Session</b>
         (${dayLink(v)})</p>
         <div class="player"><button type="button" class="pstub" data-embed="${esc(v.video_id)}"
@@ -2815,22 +2802,40 @@ document.addEventListener("click",e=>{
   const frame=had&&box&&box.querySelector("iframe");
   if(frame)frame.focus({preventScroll:true});
 });
-// ONE ADDRESS, AND NO EMPTY QUESTION. Search with nothing typed sent the
-// reader to /bills?q= -- the same page the header's Bills tab reaches at
-// /bills, with a query string saying the reader searched for nothing. /bills
-// is what the host serves and what the header lands on.
-function goBills(v){
-  v=(v||"").trim();
-  // Half an emoji is not an address (find.js, _fwell).
-  location.href="/bills"+(v?"?q="+encodeURIComponent(
-    v.replace(/[\\uD800-\\uDFFF]/gu,"\\uFFFD")):"");
+// ONE BOX, THE HEADER'S FINDER (D13): find.js's findDraw, given this box's
+// ids, draws the header panel's rows into the box's dropdown -- the same
+// matcher, the same order, the same rows, so the two boxes cannot disagree.
+// find.js is deferred, so it is asked for when a reader types, not now.
+// Return takes the first row, as in the header; Search opens every result
+// (/search), and with nothing typed the bill search, as it always did.
+const HQ={out:"hqout",box:"hq",clear:"",say:"hqsay"};
+const hq=document.getElementById("hq"),hqout=document.getElementById("hqout");
+function hqDraw(){
+  const v=hq.value;
+  if(!v.trim()||typeof findDraw!=="function"){hqout.hidden=true;return;}
+  hqout.hidden=false;
+  findDraw(v,HQ);
+  findRows().then(()=>{if(hq.value===v&&!hqout.hidden)findDraw(v,HQ);});
 }
-document.getElementById("hq").addEventListener("keydown",e=>{
-  if(e.key==="Enter")goBills(e.target.value);
+// Half an emoji is not an address (find.js, _fwell).
+const hqAddr=v=>{v=(v||"").trim();return v?"/search?q="+encodeURIComponent(
+  v.replace(/[\\uD800-\\uDFFF]/gu,"\\uFFFD")):"/bills";};
+hq.addEventListener("input",hqDraw);
+hq.addEventListener("focus",()=>{if(hq.value.trim())hqDraw();});
+hq.addEventListener("keydown",e=>{
+  if(e.key==="Escape"){hqout.hidden=true;return;}
+  if(e.key!=="Enter")return;
+  e.preventDefault();
+  const first=hqout.hidden?null:hqout.querySelector("a");
+  location.href=first?first.href:hqAddr(hq.value);
 });
-document.getElementById("hgo").addEventListener("click",()=>{
-  goBills(document.getElementById("hq").value);
-});
+document.getElementById("hgo").addEventListener("click",()=>{location.href=hqAddr(hq.value);});
+// Away from the box, the dropdown closes; "Did you mean" searches again here.
+document.addEventListener("click",e=>{
+  const d=e.target.closest&&e.target.closest("#hqout .fdym");
+  if(d){e.stopPropagation();hq.value=d.dataset.find;hqDraw();hq.focus();return;}
+  if(!(e.target.closest&&e.target.closest(".searchbig")))hqout.hidden=true;
+},true);
 </script>"""
 # The home page loads no app.js. Its script draws with components.js's esc and
 # dateWords, which every page loads in its head.
@@ -3547,11 +3552,6 @@ Senate; and the state&rsquo;s other officials.</p>
                    for b in ("S" if v.get("chamber") == "Senate" else "H",)
                    if (b, v.get("date")) in sits]
 
-    town_names = home_towns(out)
-    town_list_attr = ' list="hq2towns"' if town_names else ""
-    town_list = ('\n  <datalist id="hq2towns">'
-                 + "".join(f'<option value="{esc(t)}">' for t in town_names)
-                 + "</datalist>") if town_names else ""
 
     static_recent = ""
     if H.get("recent"):
@@ -3560,7 +3560,7 @@ Senate; and the state&rsquo;s other officials.</p>
         # two columns and then reads as a grid with nothing to say what a
         # column is (the audit of 2 October 2026, M7). It is five things in a
         # row: the day, and what happened. HOME_JS draws the same markup.
-        static_recent = ('<h2>Latest activity</h2><ul class="actlist">' + "".join(
+        static_recent = ('<h2>Latest Activity</h2><ul class="actlist">' + "".join(
             f'<li><span class="actd">{fd(r.get("date"))}</span><span class="actb">'
             f'<a href="{esc(recent_href(r))}">{esc(r.get("n"))}</a> '
             f'{esc(r.get("title"))}<br><span class="actw">'
@@ -3585,64 +3585,53 @@ Senate; and the state&rsquo;s other officials.</p>
 <p class="lead">Keep up with New Hampshire legislation, find bills on the issues you
 care about, learn how the legislature works, and explore the record from 1989 to
 today.</p>
-<div class="searchbig">
-  <label for="hq" style="position:absolute;left:-9999px">Search bills</label>
-  <input id="hq" type="search" placeholder="Name, town, subject or bill">
+<!-- ONE BOX, THE HEADER'S FINDER (D13, the person, 8 October 2026: "one
+     search box like the header search: bills, legislators, towns, committees
+     and the rest from the same box, with a dropdown of the top results (no
+     separate legislator finder)"). find.js draws the top results into the
+     box's own dropdown, the header panel's rows; Return takes the first, as
+     in the header, and Search opens every result. Without script, Search
+     opens the bill search, as it did. -->
+<div class="searchbig" role="search">
+  <label for="hq" style="position:absolute;left:-9999px">Search bills, officials, towns and committees</label>
+  <input id="hq" type="search" autocomplete="off" aria-controls="hqout"
+    aria-describedby="hqhint" placeholder="Name, town, subject or bill">
   <button id="hgo">{icon("search")}Search</button>
+  <div class="findout hqdrop" id="hqout" role="region" aria-label="Top results" hidden></div>
 </div>
+<p class="hqhint" id="hqhint">Try a bill number, a subject, a legislator or a
+committee. Your town shows who represents you.</p>
+<p class="sr" id="hqsay" role="status"></p>
 <!-- EACH CARD WITH ITS SECTION'S DRAWING, the nav's own (Polish 1, 9 October
-     2026): the prototype kit's home cards. -->
+     2026): the prototype kit's home cards, their names in Title Case as the
+     approved drawing has them. -->
 <div class="entry">
-  <a href="/bills">{icon("bill")}<b>Browse bills</b><span>Search by committee, topic, sponsor,
+  <a href="/bills">{icon("bill")}<b>Browse Bills</b><span>Search by committee, topic, sponsor,
     status or the day it was voted on</span></a>
-  <!-- COMMITTEES, NOT LEGISLATORS. The finder in the right-hand column asks
-       for a town and says what a town gives you, in nearly the same sentence
-       this card used to -- so on a 1440px screen the same offer was made
-       twice, side by side. Committees had no route from the home page at all,
-       and it is where a reader who knows the subject rather than the bill
-       number starts. -->
+  <!-- COMMITTEES, NOT LEGISLATORS. Committees had no route from the home
+       page at all, and it is where a reader who knows the subject rather
+       than the bill number starts. -->
   <a href="committees.html">{icon("committee")}<b>Committees</b><span>{cmte_offer}</span></a>
-  <a href="learn.html">{icon("book")}<b>Learn</b><span>How a bill moves, what the shorthand
+  <!-- RESOURCES, NOT LEARN (decision 129, 8 October 2026): the card goes
+       where the tab does, and Learn is the hub's first tab. -->
+  <a href="resources.html">{icon("book")}<b>Resources</b><span>How a bill moves, what the shorthand
     means, and how to testify</span></a>
 </div>
-<div id="fresh" class="fresh"></div>
-<!-- UNDER THE REBUILD LINE, IN THE MIDDLE. This was a full-width band below
-     all three columns, so the thing that changes most often on the site was
-     the last thing on the page and was never beside the search box a reader
-     had just used. Asked for on 19 September. The left rail keeps the week
-     ahead and this keeps the days just gone, which is the same column a
-     reader is already reading down. -->
-<div id="recent" class="hrecent">{static_recent}</div>
 </div>
 <section class="hside hleft" aria-label="Where the General Court is, and what is coming up">
 <div id="state">{static_state}</div>
 <div id="upcoming">{static_up}</div>
 </section>
-<section class="hside hright" aria-label="Find your legislators, and what has just happened">
-<div class="hfind">
-  <h2>Find your legislators</h2>
-  <p class="hfnote">A town gives you its House and Senate districts, its
-  Executive Councillor and its member of Congress.</p>
-  <!-- ONE BOX. There were two forms here, one asking for a town and one for a
-       name, and they were two doors into the same room: legislators.html
-       reads `(pr.get("town") || pr.get("q") || "")` into the single #lq box,
-       which has always matched a town OR a name OR a county, party or
-       committee. So the split asked the reader to classify what they were
-       typing before they typed it, to no end. Asked for on 20 September.
-       The parameter is q, which is what that page's own box submits. -->
-  <!-- THE TOWNS AS THE READER TYPES (the person, 7 October 2026, F4: "no
-       dropdown"). A datalist of every town in districts.json, so the browser
-       offers the matching ones under the box and they are chosen with the
-       arrow keys and Enter or with a tap, with no script and nothing fetched.
-       A name still goes through: the list only suggests. -->
-  <form class="hfrow" action="officials.html" method="get">
-    <label for="hq2" class="sr">Your town, or a legislator's name</label>
-    <input id="hq2" name="q" type="search" autocomplete="off"{town_list_attr}
-      placeholder="Your town or a legislator">
-    <button type="submit">Find</button>
-  </form>{town_list}
-</div>
+<section class="hside hright" aria-label="The latest session days, and what has just happened">
 <div id="session" data-days="{esc(" ".join(latest_days))}"></div>
+<div id="fresh" class="fresh"></div>
+<!-- LATEST ACTIVITY UNDER THE RIGHT COLUMN (the person, 9 October 2026, item
+     3), under the latest session days and the rebuild line, so the middle
+     column ends with the three cards. The finder that held the top of this
+     column is the search box's now (D13). Below 1180px the order is as it
+     was: the hero, the search and the cards, the status, Coming Up, the
+     recordings, then the rebuild line and Latest Activity. -->
+<div id="recent" class="hrecent">{static_recent}</div>
 </section>
 </div>
 <div id="composition"></div>

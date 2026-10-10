@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.240 */
+/* GRANITE_VERSION: 2026-09-07.241 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -5997,8 +5997,6 @@ padding:var(--sp-7) max(0px,calc(50% - 590px))}
      exactly where they are. */
   :where(body.pg) .hcols .searchbig{order:4}
   :where(body.pg) .hcols .entry{order:5}
-  /* Then the finder, which is a search and belongs with the other one. */
-  :where(body.pg) .hcols .hfind{order:6}
   /* Then where the General Court is, and what it is about to do. */
   :where(body.pg) .hcols #state{order:7}
   :where(body.pg) .hcols #upcoming{order:8}
@@ -6012,8 +6010,7 @@ padding:var(--sp-7) max(0px,calc(50% - 590px))}
      so the blocks that used to lean on .hside set their own. */
   :where(body.pg) .hcols #state,
   :where(body.pg) .hcols #upcoming,
-  :where(body.pg) .hcols #session,
-  :where(body.pg) .hcols .hfind{margin-top:var(--sp-7)}
+  :where(body.pg) .hcols #session{margin-top:var(--sp-7)}
 }
 /* ---- COMING UP, THE WHOLE WEEK IN A BOX OF ITS OWN HEIGHT -------------
    A week in session is forty sittings, and drawn in full it ran the left
@@ -6074,51 +6071,6 @@ padding:var(--sp-7) max(0px,calc(50% - 590px))}
    going down, 0px from either edge in Chrome. The padding is the date's
    height above and the fade's below, so it stops clear of both. */
 :where(body.pg) .calscroll{scroll-padding:var(--sp-10) 0 var(--sp-9)}
-/* THE FINDER ON THE RIGHT IS A FORM, not a script: method="get" on
-   legislators.html produces exactly the ?town= and ?q= those two boxes read,
-   so it works with JavaScript off, the browser remembers what was typed, and
-   the Enter key needs no handler. The towns it suggests as the reader types
-   are a datalist written into the page (F4, 7 October 2026), so the
-   browser's own dropdown offers them and nothing is fetched; the ranked
-   type-ahead with members and wards stays on the legislators page. */:where(body.pg) .hfind{background:var(--surface);border:1px solid var(--rule-2);
-  border-radius:var(--r-out);padding:var(--sp-5) var(--sp-5);margin:0 0 var(--sp-7)}
-:where(body.pg) .hfind h2{margin:0 0 var(--sp-2);font-size:var(--t-part);font-weight:600;letter-spacing:.05em;
-  text-transform:uppercase;color:var(--ink-2);font-family:var(--serif)}
-:where(body.pg) .hfnote{font-size:var(--t-ui);color:var(--ink-2);margin:0 0 var(--sp-5)}
-:where(body.pg) .hfrow{display:flex;gap:var(--sp-3);margin:0 0 var(--sp-4)}
-:where(body.pg) .hfrow:last-child{margin-bottom:0}
-:where(body.pg) .hfrow input{flex:1 1 auto;min-width:0}
-/* One width for both, or the two inputs beside them end up different
-   lengths and the panel reads as two unrelated boxes. */:where(body.pg) .hfrow button{flex:0 0 auto;background:var(--wash);color:var(--ink);
-  border:1px solid var(--edge);border-radius:var(--r-in);padding:0 var(--sp-4);
-  font-size:var(--t-ui);min-height:42px;min-width:62px}
-:where(body.pg) .hfrow button:hover{border-color:var(--pine);color:var(--pine)}
-/* THE PLACEHOLDER WHOLE ON A PHONE (the person, 7 October 2026, F4: "text cut
-   off"). Beside its button the field was about 230px at 375px, and "Your
-   town, or a legislator's name" was cut after "legislator". Under 480px the
-   button takes a line of its own under the field, so the field has the full
-   width of the panel; the panel's padding gives a little back for the same
-   reason.
-   AND IN THE THREE COLUMNS (the look of 7 October 2026). From 1180px the
-   finder is in the right-hand column, 290px at most, and beside its button
-   the field was 170px: "Your town, or a leg". The same arrangement there,
-   for the same reason. Between the two the finder runs the page's width and
-   the button stays beside the field.
-   That alone left it at "Your town, or a legislator's na": Chrome keeps room
-   at the right of a search box for its clear button and as much again for a
-   datalist's arrow, even while the box is empty. Neither does anything then
-   -- there is nothing to clear, and the towns are offered as the reader
-   types -- so neither takes the room while the placeholder shows, and the
-   field's own padding gives back a little more in these two layouts. */
-:where(body.pg) #hq2::-webkit-calendar-picker-indicator{display:none !important}
-:where(body.pg) #hq2:placeholder-shown::-webkit-search-cancel-button{display:none}
-@media (max-width:30em),(min-width:73.75em){
-  :where(body.pg) .hfind{padding:var(--sp-5) var(--sp-4)}
-  :where(body.pg) .hfrow{flex-wrap:wrap}
-  :where(body.pg) .hfrow input{flex:1 1 100%}
-  :where(body.pg) .hfrow button{flex:1 1 100%}
-  :where(body.pg) .hfrow input{padding-left:var(--sp-4);padding-right:var(--sp-4)}
-}
 /* ---- narrow screens ---------------------------------------------------
    Most people arrive from a search result on a phone. Three things break at
    380px, and each is fixed by reflowing rather than by horizontal scrolling,
@@ -6533,6 +6485,22 @@ margin:var(--sp-6) 0 0;max-width:51rem}
 margin:var(--sp-9) 0 0;padding-top:var(--sp-5);border-top:1px solid var(--rule);max-width:51rem}
 :where(body.pg) .ofintro{margin:0 0 var(--sp-8);max-width:51rem}
 :where(body.pg) .ofintro .ofwhy{margin:0 0 var(--sp-4)}
+/* THE HOME PAGE'S ONE BOX (D13): find.js's rows in a dropdown under the
+   box, over the cards, as the header's panel is a dropdown under the bar.
+   The rows are the panel's own (.findout, in the shared region); this is
+   only where the box puts them. */
+:where(body.pg) .searchbig{position:relative}
+:where(body.pg) .hqdrop{position:absolute;top:calc(100% + var(--sp-2));left:0;right:0;z-index:30;
+margin:0;padding:var(--sp-2);background:var(--surface);border:1px solid var(--edge);
+border-radius:var(--r-in);box-shadow:0 10px 26px var(--shadow);max-height:min(60vh,420px)}
+:where(body.pg) .hqdrop[hidden]{display:none}
+:where(body.pg) .hqhint{font-size:var(--t-sm);color:var(--ink-2);margin:var(--sp-3) 0 0;max-width:34rem}
+/* LATEST ACTIVITY UNDER THE RIGHT COLUMN (item 3): in a 290px column the
+   day goes over its row rather than beside it, so the title has the width. */
+@media (min-width:73.75em){
+  :where(body.pg) .hright .actlist li{display:block}
+  :where(body.pg) .hright .actd{display:block;font-size:var(--t-sm);padding:0 0 var(--sp-1)}
+}
 /* ==== /HUBS, PAGES ======================================================== */
 
 /* PAGES:END ------------------------------------------------------- */
