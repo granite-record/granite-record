@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.238 */
+/* GRANITE_VERSION: 2026-09-07.239 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -6435,5 +6435,66 @@ margin:0 0 var(--sp-4)}
    spaced "45" into "4 5". */
 :where(body.pg) .resn{font-family:var(--sans);font-size:var(--t-sm);
 font-weight:600;font-variant-numeric:tabular-nums;color:var(--ink-2)}
+
+/* ==== HUBS, PAGES (Polish 3, ws/hubs, 10 October 2026) =====================
+   The hubs' page-only rules, scoped to body.pg as this region is. */
+
+/* THE OFFICIALS PAGE'S FIVE TABS (officials_tabs.py, build_pages.py; the
+   approved drawing, private/design/polish/proto/officials.html). The strip
+   is the town pages' (.twntabs), with each tab on one line and its count
+   quieter; on a phone the strip scrolls rather than wrapping "Statewide
+   Officials (9)" into three lines a word each. */
+:where(body.pg) .oftabs [role=tab]{white-space:nowrap}
+:where(body.pg) .oftabs .ofn{font-weight:400;color:var(--ink-2)}
+@media (max-width:45em){
+  :where(body.pg) .oftabs [role=tab]{flex:0 0 auto;padding:var(--sp-3) var(--sp-5)}
+  /* The edge that says the strip goes on, as the kit draws it: a shadow at
+     whichever end has more, made by the strip's own background. */
+  :where(body.pg) .oftabs{background:
+    linear-gradient(to right,var(--paper) 30%,transparent) 0 0/2rem 100% no-repeat local,
+    linear-gradient(to left,var(--paper) 30%,transparent) 100% 0/2rem 100% no-repeat local,
+    linear-gradient(to right,var(--shadow),transparent) 0 0/1rem 100% no-repeat scroll,
+    linear-gradient(to left,var(--shadow),transparent) 100% 0/1rem 100% no-repeat scroll}
+}
+/* My Town: the finder, then the map, each under its own heading. */
+:where(body.pg) .ofpart{margin:0 0 var(--sp-10)}
+:where(body.pg) .ofpart > h3,:where(body.pg) .ofpres > h3{font-family:var(--serif);
+font-size:var(--t-h3);font-weight:600;line-height:1.3;margin:0 0 var(--sp-4)}
+:where(body.pg) .ofmapbox{margin-top:var(--sp-6)}
+/* The presiding officers over the roster: the member's own chip with the
+   office as its role, in a row. */
+:where(body.pg) .ofpres{margin:0 0 var(--sp-9)}
+:where(body.pg) .ofchips{display:flex;flex-wrap:wrap;align-items:center}
+/* An office: its heading in a margin of its own beside the people from
+   60em (W4, C7), over them below; a hairline above each but the first. */
+:where(body.pg) .ofsec{border-top:1px solid var(--rule);padding:var(--sp-7) 0 0;
+margin:0 0 var(--sp-7)}
+:where(body.pg) .twnph + .ofsec,:where(body.pg) .ofintro + .ofsec{border-top:0;padding-top:0}
+:where(body.pg) .ofsech{font-family:var(--serif);font-size:var(--t-h3);font-weight:600;
+line-height:1.35;margin:0 0 var(--sp-5);color:var(--ink);text-wrap:balance}
+@media (min-width:60em){
+  :where(body.pg) .ofsec{display:grid;grid-template-columns:minmax(10rem,1fr) minmax(0,51rem);
+  column-gap:var(--sp-9);align-items:start}
+  :where(body.pg) .ofsech{margin:0;padding-top:var(--sp-1)}
+}
+:where(body.pg) .ofwhos{list-style:none;margin:0;padding:0;display:grid;
+grid-template-columns:repeat(auto-fill,minmax(min(100%,17.5rem),1fr));gap:var(--sp-7) var(--sp-9)}
+:where(body.pg) .ofwho{min-width:0}
+:where(body.pg) .ofwho .mchip{margin:0}
+:where(body.pg) .ofseat{display:block;font-size:var(--t-ui);color:var(--ink-2);margin:var(--sp-3) 0 0}
+:where(body.pg) .ofhow{list-style:none;margin:var(--sp-3) 0 0;padding:0;font-size:var(--t-ui);
+line-height:1.6;color:var(--ink-2)}
+:where(body.pg) .ofhow li{margin:0}
+:where(body.pg) .ofhow a{color:var(--pine)}
+:where(body.pg) .ofhow .ofmail{overflow-wrap:anywhere}
+:where(body.pg) .ofk{font-size:var(--t-sm)}
+:where(body.pg) .ofwhy{font-size:var(--t-ui);line-height:1.55;color:var(--ink-2);
+margin:var(--sp-6) 0 0;max-width:51rem}
+:where(body.pg) .ofsrc{font-size:var(--t-ui);color:var(--ink-2);margin:var(--sp-3) 0 0}
+:where(body.pg) .ofsrcs{font-size:var(--t-sm);line-height:1.55;color:var(--ink-2);
+margin:var(--sp-9) 0 0;padding-top:var(--sp-5);border-top:1px solid var(--rule);max-width:51rem}
+:where(body.pg) .ofintro{margin:0 0 var(--sp-8);max-width:51rem}
+:where(body.pg) .ofintro .ofwhy{margin:0 0 var(--sp-4)}
+/* ==== /HUBS, PAGES ======================================================== */
 
 /* PAGES:END ------------------------------------------------------- */

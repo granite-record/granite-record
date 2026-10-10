@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.177
+# GRANITE_VERSION: 2026-09-04.178
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -2304,6 +2304,42 @@ window.addEventListener("popstate",()=>{
 """
 
 
+# THE OLD PAGE'S TOWNS TAB IS MY TOWN. /legislators#towns arrives here as
+# /officials#towns through the 301, and the tab it named is #my-town now: the
+# address is rewritten before TABS_JS reads it, without a history entry.
+OFFICIALS_HASH_JS = """<script>
+if(location.hash==="#towns"&&history.replaceState)
+  history.replaceState(null,"",location.pathname+location.search+"#my-town");
+</script>"""
+
+# THE DISTRICT MAP ON MY TOWN (map v1, src/pages/map.js, the person's label
+# toggle with town names by default). Mounted the first time its tab is
+# shown, at the size it will have: a map drawn into a hidden panel measures
+# nothing. The finder's town is the map's town: typing a town's whole name,
+# or opening a city's wards, zooms the map to it (LEGFIND_JS sends "grtown").
+OFFICIALS_MAP_JS = """<link rel="stylesheet" href="/map.css">
+<script src="/map.js" defer></script>
+<script>
+(function(){
+  var el=document.getElementById("ofmap"),api=null,want=null;
+  if(!el)return;
+  function mount(){
+    if(api||!window.GRMap||el.offsetParent===null)return;
+    api=GRMap.mount(el,{layer:"base",layers:["base","senate","exec","cong"]});
+    if(want)api.ready.then(function(){api.pickTown(want);});
+  }
+  addEventListener("DOMContentLoaded",mount);
+  var pane=el.closest(".twnpane");
+  if(pane&&window.MutationObserver)
+    new MutationObserver(mount).observe(pane,{attributes:true,attributeFilter:["hidden"]});
+  addEventListener("grtown",function(e){
+    want=e.detail;
+    if(api)api.ready.then(function(){api.pickTown(want);});else mount();
+  });
+})();
+</script>"""
+
+
 LEGFIND_JS = """
 <script>
 (function(){
@@ -2386,6 +2422,12 @@ function render(){
   // Python string, where a backslash belongs to whichever one reads it
   // first. Python read one, dropped it, and left the JavaScript with an
   // unterminated string and the whole page with no script.
+  /* THE MAP FOLLOWS THE FINDER: a town named in full, or a city whose
+     wards were opened, is the map's town too (OFFICIALS_MAP_JS). */
+  const exact=towns.length&&n&&towns[0][1].town.toLowerCase()===n?towns[0][1].town:null;
+  const tw=picked||exact;
+  if(tw&&tw!==window.__grTown){window.__grTown=tw;
+    dispatchEvent(new CustomEvent("grtown",{detail:tw}));}
   out.innerHTML=parts.length?parts.join("")
     :'<p class="lmnone">Nothing matches that. Towns and wards, member names, '
      +'counties, parties and committees are all searched.</p>';
@@ -3390,17 +3432,30 @@ the House does.</p>
     # of 7 October 2026): "Type a town ... or a name" sat over both tabs and
     # described only the box in the first, so it moved into that panel, over
     # the box it is about.
-    leg_body = f"""<h1>Legislators</h1>
-<p class="lead">{len(legs)} sitting members of the New Hampshire House and
-Senate.</p>
-<div class="twntabs" role="tablist" aria-label="Towns and legislators" hidden>
-<button type="button" role="tab" id="tab-towns" data-pane="towns"
-  aria-controls="towns" aria-selected="true" tabindex="0">Towns</button>
-<button type="button" role="tab" id="tab-legislators" data-pane="legislators"
-  aria-controls="legislators" aria-selected="false" tabindex="-1">Legislators</button>
-</div>
-<div class="twnpane" id="towns" role="tabpanel" aria-labelledby="tab-towns">
-<h2 class="twnph">Towns</h2>
+    # THE OFFICIALS PAGE, FIVE TABS (Polish 3: the person's feedback of 9
+    # October 2026, item 4, and decision 127; the approved drawing is
+    # private/design/polish/proto/officials.html): My Town (the town finder
+    # and the district map), Legislators (the roster, as it was), Federal
+    # Delegation, Statewide Officials and County Officials (officials_tabs,
+    # from corrections/officials.json, read and never written). State
+    # Agencies and Courts come after the soft launch. The strip, the panels
+    # and the script are still the town pages' (build_town_pages.TABS_JS):
+    # without JavaScript every panel is on the page under its own heading;
+    # with it, a panel's id is its address (/officials#federal), and the old
+    # page's #towns opens My Town.
+    import officials_tabs as OT
+    try:
+        off = json.loads(Path("corrections/officials.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        off = {}
+    try:
+        officers = json.loads((out / "officers.json").read_text(encoding="utf-8")).get("officers")
+    except (OSError, ValueError, AttributeError):
+        officers = []
+    today = build_date.today().isoformat()
+    of_panes = [
+        ("my-town", "My Town", None, f"""<section class="ofpart" aria-labelledby="of-find">
+<h3 id="of-find">Find Your Town</h3>
 <p class="src fill">Type a town to see who represents it, or a name, county,
 party or committee to find a member.</p>
 <div class="lfind">
@@ -3411,21 +3466,44 @@ party or committee to find a member.</p>
   <p class="sr" id="lsay" role="status"></p>
   <div class="lmatch" id="lmatch"></div>
 </div>
-<!-- The roster's #out lives inside the By county pane, and there must be only
-     ONE of it. This line used to hold a second, left from when the roster was
-     drawn straight into the page: getElementById returns the first in document
-     order, so the county listing rendered HERE, above the tab bar, and the
-     pane a reader opened by clicking By county stayed empty. Two elements with
-     one id is valid HTML that no validator complains about and no test caught,
-     because both halves of it looked like they worked. -->
-</div>
-<div class="twnpane" id="legislators" role="tabpanel" aria-labelledby="tab-legislators">
-<h2 class="twnph">Legislators</h2>
-{roster_section(legs)}
-{('<div class="comp-wrap"><h2>Who holds the seats</h2>' + static_bar("S")
-  + static_bar("H") + vacancies + "</div>") if C else ""}
-</div>
-{TOWN_TABS_JS}"""
+</section>
+<section class="ofpart ofmap" aria-labelledby="of-map">
+<h3 id="of-map">The Map</h3>
+<p class="src fill">Each district coloured by the party of the members it
+elected, each town by its name, and a city&rsquo;s wards once you zoom in.
+Choose a district to see who sits for it and the towns it holds, each with
+its own page.</p>
+<div class="ofmapbox" id="ofmap"></div>
+<noscript><p class="note">The map needs JavaScript. Every town&rsquo;s districts
+are on its own page, listed in <a href="/directory/towns.html">every town and
+ward</a>.</p></noscript>
+</section>"""),
+        ("legislators", "Legislators", len(legs),
+         OT.presiding(officers, legs, today) + roster_section(legs)
+         + (('<div class="comp-wrap"><h2>Who holds the seats</h2>' + static_bar("S")
+             + static_bar("H") + vacancies + "</div>") if C else "")),
+        ("federal", "Federal Delegation", OT.count(off, "federal"), OT.federal(off)),
+        ("statewide", "Statewide Officials", OT.count(off, "statewide"), OT.statewide(off)),
+        ("county", "County Officials", OT.count(off, "county"), OT.county(off, legs)),
+    ]
+    of_panes = [p for p in of_panes if p[3]]
+    of_tabs = "".join(
+        f'<button type="button" role="tab" id="tab-{pid}" data-pane="{pid}" '
+        f'aria-controls="{pid}" aria-selected="{"true" if i == 0 else "false"}" '
+        f'tabindex="{0 if i == 0 else -1}">{name}'
+        + (f' <span class="ofn">({n:,})</span>' if n else "") + "</button>"
+        for i, (pid, name, n, _h) in enumerate(of_panes))
+    of_body = "".join(
+        f'<div class="twnpane" id="{pid}" role="tabpanel" aria-labelledby="tab-{pid}">'
+        f'<h2 class="twnph">{name}</h2>{inner}</div>'
+        for pid, name, _n, inner in of_panes)
+    leg_body = f"""<h1>Officials</h1>
+<p class="lead">Everyone who represents your town, from your select board to
+Congress; the {len(legs)} sitting members of the New Hampshire House and
+Senate; and the state&rsquo;s other officials.</p>
+<div class="twntabs oftabs" role="tablist" aria-label="Officials" hidden>{of_tabs}</div>
+{of_body}
+{OFFICIALS_HASH_JS}{TOWN_TABS_JS}{OFFICIALS_MAP_JS}"""
     # THE PAGE IS OFFICIALS NOW, at /officials (decision 127); /legislators
     # is a 301 to it (MOVED). A legislators.html left in the folder by an
     # earlier build would be published beside the redirect, so it goes.
@@ -3435,9 +3513,11 @@ party or committee to find a member.</p>
         print("  legislators.html: removed; /legislators redirects to /officials")
     (out / "officials.html").write_text(
         shell("Officials | Granite Record", "officials.html", leg_body,
-              desc="Every member of the New Hampshire House and Senate: their "
+              desc="Who represents your town, from the State House to Congress; "
+                   "every member of the New Hampshire House and Senate, with their "
                    "district, their party, the bills they sponsored and every "
-                   "recorded vote they cast.",
+                   "recorded vote they cast; and the state's and counties' elected "
+                   "officials.",
               wide=True, script=LEGFIND_JS + SEATING_JS), encoding="utf-8")
 
     static_up = calendar_html(out)

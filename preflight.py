@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.502
+# GRANITE_VERSION: 2026-09-04.503
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -53609,52 +53609,91 @@ def _home_finder_suggests_towns():
                   "button on a line of its own under 480px and in the three columns")
 
 
-@check("frontend", "the legislators page is two tabs, Towns and Legislators, drawn as the town pages' tabs are")
+@check("frontend", "the Officials page is five tabs, My Town, Legislators, Federal Delegation, "
+                   "Statewide Officials and County Officials, drawn as the town pages' tabs are")
 def _legislators_page_tabs():
-    """"Divide into a Towns section and a Legislators section" -- as two
-    tabs, like the town pages (the person, 7 October 2026, F5), because an
-    interactive map of the districts is to come and belongs with the towns.
+    """The person's feedback of 9 October 2026, item 4, and decision 127: the
+    Legislators page is Officials, in five tabs -- My Town (the town finder and
+    the district map), Legislators (the roster), Federal Delegation, Statewide
+    Officials and County Officials -- the strip and the switching script the
+    town pages' (F5, 7 October 2026), as the page's two tabs were.
 
     Read off the fixture's built page: one strip, written hidden for the
-    script to show, with Towns first and Legislators second; the finder in
-    the Towns panel and the roster, who holds the seats and the vacancies in
-    the Legislators panel, each panel under its own heading; the town pages'
-    switching script after them; and the strip's rules in the region of
-    app.css that style.css takes, so this page draws it as a town page does."""
+    script to show, with the five in that order, each panel under its own
+    heading; the finder and then the map in My Town; the roster, who holds
+    the seats and the vacancies in Legislators; the people of the other three
+    from corrections/officials.json; the old page's #towns sent to #my-town
+    before the script reads the address; the town pages' switching script
+    after the panels; and the strip's rules in the region of app.css that
+    style.css takes, so this page draws it as a town page does."""
     import build_town_pages as BT
+    import build_pages as BP
+    import html as _html
     shared, _base, _ran, _days = _fixture_site_shared()
     site = shared / "site"
     page = (site / "officials.html").read_text(encoding="utf-8")
-    strips = re.findall(r'<div class="twntabs" role="tablist"[^>]*>(.*?)</div>', page, re.S)
-    assert len(strips) == 1, f"the legislators page has {len(strips)} Towns/Legislators strips"
-    assert re.search(r'<div class="twntabs" role="tablist" aria-label="[^"]+" hidden>', page), (
-        "the strip is not written hidden for the script to show")
-    tabs = re.findall(r'role="tab" id="tab-([a-z]+)" data-pane="([a-z]+)"[^>]*>([^<]+)</button>',
-                      strips[0])
-    assert [(t, p, n) for t, p, n in tabs] == [("towns", "towns", "Towns"),
-                                               ("legislators", "legislators", "Legislators")], (
-        f"the strip's tabs are {tabs}")
-    a = page.index('<div class="twnpane" id="towns" role="tabpanel" aria-labelledby="tab-towns">')
-    b = page.index('<div class="twnpane" id="legislators" role="tabpanel" '
-                   'aria-labelledby="tab-legislators">')
-    towns, legs = page[a:b], page[b:]
-    assert '<h2 class="twnph">Towns</h2>' in towns and 'id="lq"' in towns \
-        and 'id="lmatch"' in towns and 'id="roster"' not in towns, (
-            "the Towns panel is not the finder under its own heading")
-    assert '<h2 class="twnph">Legislators</h2>' in legs and 'id="roster"' in legs \
-        and 'id="lq"' not in legs, "the Legislators panel does not hold the roster"
+    strips = re.findall(r'<div class="twntabs oftabs" role="tablist"[^>]*>(.*?)</div>', page, re.S)
+    assert len(strips) == 1, f"the Officials page has {len(strips)} tab strips"
+    assert re.search(r'<div class="twntabs oftabs" role="tablist" aria-label="Officials" hidden>',
+                     page), "the strip is not written hidden for the script to show"
+    tabs = re.findall(r'role="tab" id="tab-([a-z-]+)" data-pane="([a-z-]+)"[^>]*>([^<]+)', strips[0])
+    want = [("my-town", "My Town"), ("legislators", "Legislators"),
+            ("federal", "Federal Delegation"), ("statewide", "Statewide Officials"),
+            ("county", "County Officials")]
+    assert [(t, n.strip()) for t, p, n in tabs if t == p] == want, f"the strip's tabs are {tabs}"
+    panes = {}
+    starts = [(page.index(f'<div class="twnpane" id="{pid}" role="tabpanel" '
+                          f'aria-labelledby="tab-{pid}">'), pid) for pid, _n in want]
+    assert [p for _i, p in sorted(starts)] == [p for p, _n in want], "the panels are out of order"
+    starts.sort()
+    for k, (i, pid) in enumerate(starts):
+        panes[pid] = page[i:starts[k + 1][0] if k + 1 < len(starts) else len(page)]
+        name = dict(want)[pid]
+        assert f'<h2 class="twnph">{name}</h2>' in panes[pid], f"the {name} panel has no heading"
+    towns, legs = panes["my-town"], panes["legislators"]
+    assert 'id="lq"' in towns and 'id="lmatch"' in towns and 'id="roster"' not in towns, (
+        "My Town is not the finder")
+    assert towns.index('id="lmatch"') < towns.index('id="ofmap"'), (
+        "My Town does not hold the map under the finder")
+    assert 'id="roster"' in legs and 'id="lq"' not in legs, "the Legislators panel does not hold the roster"
     if 'class="comp-wrap"' in page:
-        assert page.index('class="comp-wrap"') > b, (
-            "who holds the seats is outside the Legislators panel")
+        assert 'class="comp-wrap"' in legs, "who holds the seats is outside the Legislators panel"
+    # The other three are officials.json's people, each the one person chip.
+    import json as _json
+    off = _json.loads(Path("corrections/officials.json").read_text(encoding="utf-8"))
+    for pid, names in (("federal", [s["name"] for s in off["us_senate"]["seats"]]
+                        + [r["name"] for r in off["us_house"]["districts"].values()]),
+                       ("statewide", [off["governor"]["name"]]
+                        + [r["name"] for r in off["council"]["districts"].values()]),
+                       ("county", [r["name"] for c in off["county"]["counties"].values()
+                                   for r in c["commissioners"].values()])):
+        for nm in names:
+            assert re.search(r'<span class="mchip p-[A-Z]">' + re.escape(_html.escape(nm)), panes[pid]), (
+                f"{nm} is not a person chip on the {pid} tab")
+    # A commissioner of both nominations on the neutral chip with both
+    # letters; the neutral offices with no party at all (the person, 9 Oct).
+    county = panes["county"]
+    for c in off["county"]["counties"].values():
+        for r in c["commissioners"].values():
+            if "/" in (r.get("party") or ""):
+                assert (f'<span class="mchip p-X">{_html.escape(r["name"])} <span class="mtag">'
+                        f'({r["party"]})</span>') in county, (
+                    f"{r['name']} ({r['party']}) is not on the neutral chip with both letters")
+        sheriff = (c.get("sheriff") or {}).get("name")
+        if sheriff:
+            assert f'<span class="mchip p-X">{_html.escape(sheriff)}</span>' in county, (
+                f"the sheriff {sheriff} carries a party, or is not a chip")
+    assert BP.OFFICIALS_HASH_JS in page and page.index(BP.OFFICIALS_HASH_JS) < page.index(
+        BT.TABS_JS), "the old page's #towns is not sent to #my-town before the tabs read it"
     tabs_js = BT.TABS_JS
-    assert tabs_js in page and page.index(tabs_js) > b, (
+    assert tabs_js in page and page.index(tabs_js) > starts[-1][0], (
         "the town pages' switching script is not after the panels")
     assert page.count('id="out"') == 1, "the county listing's #out is on the page twice"
     # THE INSTRUCTION IS THE TOWNS TAB'S (the look of 7 October 2026): "Type a
     # town ... or a name" describes the box, and it sat over both tabs.
     lead = re.search(r'<p class="lead">(.*?)</p>', page, re.S)
     assert lead and "Type a town" not in lead.group(1) and "Type a town" in towns, (
-        "the finder's instruction is not in the Towns panel, over its box")
+        "the finder's instruction is not in the My Town panel, over its box")
     # THE TOWNS TAB IS THE LIVE SITE'S FINDER (the person, 7 October 2026: "I
     # didn't want the change to the town ordering to also make it 5 columns
     # wide", and asked how it should list them, "Like the live site"): the
@@ -53662,10 +53701,13 @@ def _legislators_page_tabs():
     # inside itself -- and nothing below the finder, where the district map is
     # to come. For an afternoon the tab ran every town down the page in
     # columns; nothing in the script or either stylesheet does that now.
+    # AND THE MAP UNDER IT (Polish 3): the finder's own box holds the box and
+    # its list and nothing else, and the map is the next part of the panel.
     rest = re.sub(r"<!--.*?-->", "", towns.split('<div class="lfind">', 1)[1], flags=re.S)
+    rest = rest.split("</section>", 1)[0]
     assert re.fullmatch(r'\s*(?:<label [^>]*>[^<]*</label>|<input [^>]*>|<p [^>]*>[^<]*</p>'
-                        r'|<div class="lmatch" id="lmatch"></div>|\s)*</div>\s*</div>\s*', rest), (
-        "the Towns panel holds something after the finder and its list")
+                        r'|<div class="lmatch" id="lmatch"></div>|\s)*</div>\s*', rest), (
+        "the finder holds something after its box and its list")
     assert '.classList.toggle("all"' not in page, (
         "the finder marks its list as the whole list of towns, for columns down the page")
     css = (site / "style.css").read_text(encoding="utf-8")
@@ -53696,9 +53738,10 @@ def _legislators_page_tabs():
     assert app.count(".twntabs{display:flex") == 1, "app.css draws the strip twice"
     assert app.index(".twntabs{display:flex") < app.index("/* SHARED:END"), (
         "the strip's rules are not in app.css's shared region")
-    return "ok", ("Towns, then Legislators, each a panel under its own heading, switched by "
-                  "the town pages' script and drawn by the same rules in both stylesheets; "
-                  "the Towns tab the finder over its 260px window and nothing below it")
+    return "ok", ("My Town, Legislators, Federal Delegation, Statewide Officials and County "
+                  "Officials, each a panel under its own heading, switched by the town pages' "
+                  "script and drawn by the same rules in both stylesheets; My Town the finder "
+                  "over its 260px window and the map under it; the officials as person chips")
 
 
 @check("frontend", "the vacancy list says \"District\" and how a seat is filled, from RSA 661:8")

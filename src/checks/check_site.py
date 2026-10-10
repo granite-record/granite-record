@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.19
+# GRANITE_VERSION: 2026-09-04.20
 """
 Check the site is fit to publish before uploading it.
 
@@ -304,7 +304,7 @@ def main():
         mb = re.search(r'<base\s+href="([^"]*)"', txt, re.I)
         base = (mb.group(1) if mb else "") or ""
         for href in re.findall(r'(?:href|src)="([^"]+)"', txt):
-            if href.startswith(("http", "mailto:", "#", "data:", "//")):
+            if href.startswith(("http", "mailto:", "tel:", "#", "data:", "//")):
                 continue
             if "${" in href or "{{" in href:
                 continue
