@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-10-09.2
+// GRANITE_VERSION: 2026-10-09.3
 /* A BILL'S PRINT SHEET. A reference sheet of one bill's record for paper,
    composed in the reader's browser from the record the page already holds,
    beside a short menu of settings, and printed with the browser's own dialog
@@ -530,12 +530,13 @@ function saveSettings(st){
 // THE PAPER: a page's own size less print.css's @page margins (0.6in at the
 // top and the sides, 0.7in at the foot, where the page's number goes), at
 // 96 CSS pixels to the inch, as Chrome lays a printed page out. preflight
-// holds these margins to print.css's. A4 is the A4 Chrome prints to, read
-// off its own PDFs on 10 October 2026: 595.92 by 841.92 points, where the
-// standard's is 595.28 by 841.89 -- its text 0.86px wider, which moved a
-// line, and so a page, on SB 570's sheet when the standard's was used.
+// holds these margins to print.css's. Letter, the paper of the United
+// States: the menu says one number and names no paper (the person, 10
+// October 2026: "Don't bother specifying A4 or letter paper, just say the
+// page numbers"). A4 was counted beside it until then, and agreed with
+// Chrome's PDFs as well, with Chrome's own A4 (595.92 by 841.92 points).
 const MARGIN={top:.6,side:.6,foot:.7};
-const PAPERS=[["Letter",8.5,11],["A4",595.92/72,841.92/72]];
+const PAPER=["Letter",8.5,11];
 // AND A PIXEL MORE. Chrome printed SB 570's last line on A4 0.8px past the
 // page's text box rather than carry it over, where a column of exactly the
 // box's height carried it: so the column is a pixel taller.
@@ -932,9 +933,9 @@ ${radio("amendments","Each amendment&rsquo;s own text")}
 ${radio("introduced","As introduced")}
 </fieldset>`:`<p class="ps-mlead">The record holds no text of this bill: the Documents list gives the General Court&rsquo;s own.</p>`}
 <p class="ps-count" aria-live="polite">Counting the pages&hellip;</p>
-<div class="ps-btns"><button type="button" class="ps-btn ps-do" data-ps="print">Print</button><button type="button" class="ps-btn" data-ps="close">Back to the bill</button></div>
+<div class="ps-btns"><button type="button" class="ps-btn" data-ps="print">Print</button><button type="button" class="ps-btn" data-ps="close">Back to the bill</button></div>
 <p class="ps-live" role="status" aria-live="polite"></p>
-<p class="ps-keep">Your choices are kept in this browser only, for the next bill you print. The paper size is your printer&rsquo;s: Letter or A4.</p>
+<p class="ps-keep">Your choices are kept in this browser only, for the next bill you print.</p>
 </form>`;
 }
 
@@ -964,8 +965,8 @@ function urlOf(d){
 // as a printed page's do -- as columns exactly that tall, and the browser's
 // own fragmentation, the same that prints, breaks it there: a table row, a
 // list item, a heading and what follows it kept together, a paragraph
-// between its lines. The columns are the pages. On Letter and on A4, since
-// the printer decides which; checked against Chrome's own PDFs.
+// between its lines. The columns are the pages: checked against Chrome's
+// own PDFs, 44 sheets of 1 to 249 pages, every count equal.
 let MEASURE=null, FRAME=null;
 function measurer(){
   if(MEASURE)return MEASURE;
@@ -979,29 +980,20 @@ function measurer(){
   document.body.appendChild(f);
   return MEASURE;
 }
-// [[paper, pages]] for the sheet's HTML, Letter first.
+// How many pages the sheet's HTML prints.
 async function countPages(html){
-  const f=await measurer(), out=[];
-  for(const p of PAPERS){
-    const {w,h}=pageBox(p), doc=f.contentDocument;
-    f.style.width=`${w}px`;f.style.height=`${h}px`;
-    doc.body.innerHTML=`<div class="ps-paper ps-pages">${html}<div class="ps-end"></div></div>`;
-    const box=doc.body.firstChild;
-    box.style.width=`${w}px`;box.style.height=`${h}px`;box.style.columnWidth=`${w}px`;
-    void box.offsetHeight;
-    await doc.fonts.ready;
-    const at=box.lastChild.getBoundingClientRect().left-box.getBoundingClientRect().left;
-    out.push([p[0],Math.round(at/w)+1]);
-  }
-  return out;
+  const f=await measurer(), {w,h}=pageBox(PAPER), doc=f.contentDocument;
+  f.style.width=`${w}px`;f.style.height=`${h}px`;
+  doc.body.innerHTML=`<div class="ps-paper ps-pages">${html}<div class="ps-end"></div></div>`;
+  const box=doc.body.firstChild;
+  box.style.width=`${w}px`;box.style.height=`${h}px`;box.style.columnWidth=`${w}px`;
+  void box.offsetHeight;
+  await doc.fonts.ready;
+  const at=box.lastChild.getBoundingClientRect().left-box.getBoundingClientRect().left;
+  return Math.round(at/w)+1;
 }
-// What the menu says of them.
-function pagesSaid(c){
-  const n=k=>`${k} page${k===1?"":"s"}`;
-  const [[pa,a],[pb,b]]=c;
-  return a===b?`With these settings the sheet prints ${n(a)}, on ${pa} or ${pb} paper.`
-    :`With these settings the sheet prints ${n(a)} on ${pa} paper and ${n(b)} on ${pb}.`;
-}
+// What the menu says of them: the number, no paper named.
+const pagesSaid=n=>`Prints ${n} page${n===1?"":"s"}`;
 
 let OPEN=null;
 const VCACHE={};
@@ -1153,5 +1145,5 @@ return {open,close,sheet,menu,needs,has,defaults,pageWords,
   settings:{load:loadSettings,save:saveSettings},
   qr:{encode:qrEncode,read:qrRead,svg:qrSvg},
   text:{tokens,diff:diffTokens,blame,joinSteps,vday},
-  pages:{count:countPages,said:pagesSaid,PAPERS,MARGIN}};
+  pages:{count:countPages,said:pagesSaid,PAPER,MARGIN}};
 })();

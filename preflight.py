@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.493
+# GRANITE_VERSION: 2026-09-04.494
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -50833,7 +50833,7 @@ for (const [k, f] of Object.entries(strip)) {
   out.text = {dflt: G.defaults().sec.text, remembered: back.sec.text + raw.sec.text, choice: back.text,
     huge: G.sheet(c2.d, c2.b, ctxOf(c2), ticked),
     final: words(G.text.tokens(law.files[last.blocks_url || last.text_url])).split(" ").length,
-    said: [G.pages.said([["Letter", 9], ["A4", 9]]), G.pages.said([["Letter", 1], ["A4", 2]])]}; }
+    said: [G.pages.said(9), G.pages.said(1)]}; }
 // The QR code: each symbol against the second encoder's, read back, and a
 // damaged one refused.
 { const rows = m => m.map(r => r.map(v => v ? "1" : "0").join(""));
@@ -50881,7 +50881,8 @@ def _print_sheet():
     unticked by default and its tick is never remembered, so no case prints
     a text unasked; ticked, the text prints whole, a version said to be ten
     million words long included, word for word the version's own; and the
-    menu has its line for how many pages the sheet prints.
+    menu has its line for how many pages the sheet prints, one number with
+    no paper named ("Prints 9 pages": the person, 10 October 2026).
 
     THE COMPONENTS. Every sponsor is pchip's chip with its party letter; no
     date is printed in figures; every outcome is a word; the vote words are
@@ -50982,8 +50983,7 @@ def _print_sheet():
     if drawn != tx["final"]:
         bad.append(f"a bill said to be ten million words long, ticked, prints {drawn} of its "
                    f"current version's {tx['final']} words")
-    if tx["said"] != ["With these settings the sheet prints 9 pages, on Letter or A4 paper.",
-                      "With these settings the sheet prints 1 page on Letter paper and 2 pages on A4."]:
+    if tx["said"] != ["Prints 9 pages", "Prints 1 page"]:
         bad.append(f"the menu says the pages as {tx['said']}")
 
     # The kinds.
