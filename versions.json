@@ -19,7 +19,7 @@
     "build_calendar.py": "2026-09-18.30",
     "build_careers.py": "2026-09-09.5",
     "build_civics.py": "2026-09-08.37",
-    "build_committees.py": "2026-09-07.52",
+    "build_committees.py": "2026-09-07.53",
     "build_data.py": "2026-09-04.58",
     "build_date.py": "2026-10-02.1",
     "build_exports.py": "2026-09-10.42",
@@ -35,7 +35,7 @@
     "build_proceedings.py": "2026-09-05.14",
     "build_search_index.py": "2026-10-01.9",
     "build_session_pages.py": "2026-09-19.29",
-    "build_site_v2.py": "2026-09-05.189",
+    "build_site_v2.py": "2026-09-05.191",
     "build_town_pages.py": "2026-09-09.27",
     "calendar_documents.py": "2026-10-01.8",
     "calendar_meetings.py": "2026-09-08.14",
@@ -133,7 +133,7 @@
     "parse_sos_districts.py": "2026-09-20.5",
     "past_members.py": "2026-09-10.3",
     "past_sponsors.py": "2026-09-26.6",
-    "preflight.py": "2026-09-04.497",
+    "preflight.py": "2026-09-04.498",
     "probe_alignment.py": "2026-09-05.65",
     "probe_archive_shape.py": "2026-09-07.8",
     "probe_calendars.py": "2026-09-04.9",
@@ -184,7 +184,9 @@
     "bill_blocks.py": "2026-09-20.7",
     "_paths.py": "2026-10-06.5",
     "rendered_sweep.py": "2026-10-08.2",
-    "sweep_browser.js": "2026-10-08.2"
+    "sweep_browser.js": "2026-10-08.2",
+    "committee_acts.py": "2026-10-09.1",
+    "member_figures.py": "2026-10-09.1"
   },
   "generated": "2026-09-04"
 }

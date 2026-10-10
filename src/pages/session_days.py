@@ -78,6 +78,49 @@ NARRATIVES = "narratives.json"
 # sitting page with no outcome at all.
 CARRIED = {"MA": True, "MF": False, "ML": False}
 
+# AN AMENDMENT'S OWN ROW: AA is adopted, AF and AL are not. The docket's own
+# abbreviations. (Here since 9 October 2026, from build_site_v2.py, which
+# imports it: a session day reads an amendment's row the way the bill's
+# Votes tab does.)
+#
+# AND "FAILED" SPELLED OUT, which was the missing half of a pair. The docket
+# writes the outcome either way -- "AA" or "Adopted", "AF" or "Failed" -- and
+# this map took three of the four. So 153 amendment events whose docket line
+# says plainly that they failed were published with no outcome at all:
+# 2007-2008 SB27 reads "Floor Amendment #2071h (Rep P. Preston, et al) Failed,
+# RC 131-221" and the page declined to say it failed.
+#
+# A missing key here is silent. ADOPTED.get returns None, which the page reads
+# as "the record does not say" and draws no chip -- indistinguishable from the
+# 598 amendments that really were only filed and never voted on. That is the
+# failure mode worth naming: an absent mapping does not error, it publishes a
+# claim of ignorance the record contradicts.
+#
+# Only FAILED is added, because only FAILED occurs. Counted over all 19,105
+# amendment events in narratives.json, the motion field holds exactly AA
+# (12,249), ADOPTED (4,583), AF (997), AL (48), FAILED (153) and blank (1,075).
+# LOST and WITHDRAWN appear in docket PROSE but never in this field, so adding
+# them would be guessing at data rather than reading it.
+ADOPTED = {"AA": True, "ADOPTED": True,
+           "AF": False, "AL": False, "FAILED": False}
+
+
+def amendment_carried(e):
+    """Whether one amendment event says its amendment was adopted (True),
+    rejected (False) or neither (None).
+
+    A VOTE ON SOME OF IT SAYS NEITHER. The House divides an amendment and
+    votes on its sections, and the 1999-2006 reader tells each numbered part
+    with "part": "Comm Am{4383}, Sec. 5, AL DIV(141-160)" is section 5 of
+    SB 303 of 2000's committee amendment lost, and the remainder then carried
+    238-74, so "rejected" beside 4383 would be false. The remainder's vote is
+    the amendment's ("rest"): "Am{2229}, Remaining Secs, AA RC(239-112)"
+    adopted HB 999 of 1999's floor amendment, whose sections 17 and 18 had
+    carried 255-96."""
+    if e.get("part") == "some":
+        return None
+    return ADOPTED.get((e.get("motion") or "").upper())
+
 VOTE_KIND = {
     "RC": "roll call",
     "DV": "division",
@@ -3445,6 +3488,7 @@ def load(path=NARRATIVES, rollcalls=None, sat=None, journals=None):
     days = Sittings()
     days.left = left
     days.left_docket = left_docket
+    days.base = base
     for key in list(grouped) + [k for k in others if k not in grouped]:
         items = grouped.get(key, [])
         # A recess row with no page is not first: HB 1695's refusal, entered
@@ -3519,9 +3563,14 @@ class Sittings(dict):
     """{(body, date): Day}, and `left`: [(roll call, reason)] for each roll
     call on record that no sitting draws, so that a check can hold every
     one of them to a reason; `left_docket` the same for a roll call only the
-    docket states, before the roll-call file: [(Item, body, date, reason)]."""
+    docket states, before the roll-call file: [(Item, body, date, reason)].
+    `base`: {(term, bill): n}, where each bill's docket starts in the
+    sequence Item.seq counts, so that a row of the bill that is no floor
+    motion -- an amendment voted by voice -- sorts among its motions at
+    base + its place in the bill's events (build_session_pages)."""
     left = ()
     left_docket = ()
+    base = {}
 
 
 def _read_rollcalls(path=ROLLCALLS):
