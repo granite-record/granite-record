@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.522
+# GRANITE_VERSION: 2026-09-04.523
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -56362,6 +56362,31 @@ def _bill_trail_term_search():
     assert "<a" not in items[2] and "HB 396" in items[2], (
         f"the trail does not end on the bill's number: {items[2]}")
     return "ok", "Bills > 2025\u20132026 Term (the search on that term) > HB 396-FN"
+
+
+@check("build", "build_bills binds each of its names that hold every member once")
+def _bill_loop_names():
+    """The dry run of 8f700a7 (10 October 2026) stopped in the site data,
+    "'list' object has no attribute 'get'": the story's linked members were
+    put in `_people`, the name build_bills already gave every member and
+    former member, so the next bill's sponsor list read a list. The fixture's
+    bills never reached that read, so nothing here failed. Read off the
+    function's own source: a name it binds to the members is bound once."""
+    import ast
+    src = Path(_paths.locate("build_site_v2.py")).read_text(encoding="utf-8")
+    fn = next(n for n in ast.walk(ast.parse(src))
+              if isinstance(n, ast.FunctionDef) and n.name == "build_bills")
+    held = {"_people", "legs", "leg_by_sort", "leg_by_name"}
+    bound = {}
+    for n in ast.walk(fn):
+        for tgt in (n.targets if isinstance(n, ast.Assign) else
+                    [n.target] if isinstance(n, (ast.AnnAssign, ast.AugAssign)) else []):
+            for x in ast.walk(tgt):
+                if isinstance(x, ast.Name) and x.id in held:
+                    bound.setdefault(x.id, []).append(x.lineno)
+    twice = {k: v for k, v in bound.items() if len(v) > (0 if k != "_people" else 1)}
+    assert not twice, f"build_bills binds a name that holds the members again: {twice}"
+    return "ok", "_people bound once; legs, leg_by_sort and leg_by_name never rebound"
 
 
 @check("frontend", "a member the story names is linked where one sitting member is meant, "

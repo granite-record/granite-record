@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.196
+# GRANITE_VERSION: 2026-09-05.197
 """
 Generate the faceted site from real General Court data.
 
@@ -10634,14 +10634,19 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
         # The members the story names, for the page to link (story_people).
         # The sitting roster's seat is the seat held at the time only in the
         # current term, as for a roll call's mover, so only there.
-        _people = (story_people([_narrative] + [s_.get("text") or "" for s_ in _stages or []],
+        # _story_who, NOT _people: that is every member and former member,
+        # which bill_sponsor_list and the hearing record read for the bills
+        # after this one; taking the name made it a list there, and the dry run
+        # of 8f700a7 stopped in the site data ('list' object has no attribute
+        # 'get') on the second current-term bill a sponsor list was read for.
+        _story_who = (story_people([_narrative] + [s_.get("text") or "" for s_ in _stages or []],
                                 legs) if term == current else [])
         (_bd / f"{bid}.json").write_text(json.dumps({
             "id": bid, "year": year, "term": term,
             "title": b.get("title", ""),
             "narrative": _narrative,
             "stages": _stages,
-            **({"story_people": _people} if _people else {}),
+            **({"story_people": _story_who} if _story_who else {}),
             # Where the record comes from, on a bill the House Journal alone
             # carries; the docket's own notes everywhere else.
             # And where the record itself comes from, on the few that are not
