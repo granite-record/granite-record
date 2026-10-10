@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.239 */
+/* GRANITE_VERSION: 2026-09-07.240 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -2940,6 +2940,44 @@ text-align:center;color:var(--ink-2);font-size:var(--t-ui)}
   .statgrid{grid-template-columns:1fr}
   .plegend{gap:var(--sp-4);font-size:var(--t-sm)}
 }
+
+/* ==== HUBS, BILL SEARCH (Polish 3, ws/hubs, 10 October 2026) ===============
+   The bill search's filters as the person approved them on 9 October 2026
+   (item 2): 5a and 5c are app.js's (openGroups, zerosLast); 5d is here.
+   5c's rule: the first greyed zero of a narrowed long list sits under a
+   hairline, so the options with bills read as one group above it. */
+.fopt.fzero{border-top:1px solid var(--rule);margin-top:var(--sp-3);padding-top:var(--sp-4)}
+/* 5d: THE FILTERS BUTTON BELOW 960px, TABLETS TOO. It was a phone's alone
+   (45em), and from 721 to 960 the filter column stood beside the list at a
+   third of a tablet's width, or stacked open above it. Below 60em the list
+   takes the width and the filters are behind the button, as on a phone: the
+   button, then the panel it opens, then the results. The phone's own rules
+   (45em) are the same and stay where they are. */
+@media (max-width:59.9375em){
+  .shell{display:flex;flex-direction:column;align-items:stretch;gap:0}
+  .ftoggle{order:1;display:flex;align-items:center;gap:var(--sp-4);width:100%;min-height:44px;
+    padding:var(--sp-4) var(--sp-5);margin:0 0 var(--sp-5);font-size:var(--t-ui);font-weight:600;
+    text-align:left;background:var(--surface);color:var(--ink);
+    border:1px solid var(--rule-2);border-radius:var(--r-out)}
+  .ftoggle .chev{margin-left:auto;color:var(--ink-2);font-size:var(--t-sm);flex:0 0 auto}
+  .shell.fopen .ftoggle .chev{transform:rotate(90deg)}
+  .ftoggle .badge{background:var(--pine);color:var(--on-pine);font-size:var(--t-sm);
+    padding:1px var(--sp-3);border-radius:var(--r-pill);flex:0 0 auto}
+  .shell.fopen .ftoggle{margin-bottom:var(--sp-4)}
+  .shell.nofacets .ftoggle,.shell.focused .ftoggle{display:none}
+  .facets{order:2;position:static;max-height:none;width:auto;
+    margin:0 0 var(--sp-6);border-right:none;border-bottom:none;padding:0}
+  .shell > main{order:3;min-width:0}
+  .shell:not(.fopen) .facets{display:none}
+}
+/* On a tablet the open panel is two columns of groups (the drawing at 768),
+   so Status and Bill Type, open, sit side by side above the fold. */
+@media (min-width:37.5em) and (max-width:59.9375em){
+  .shell.fopen .facets{display:grid;grid-template-columns:1fr 1fr;column-gap:var(--sp-8);
+    align-items:start}
+  .shell.fopen .facets > :not(.fgroup){grid-column:1 / -1}
+}
+/* ==== /HUBS, BILL SEARCH ================================================== */
 
 /* Focus must be visible. Keyboard users navigate by it, and the default
    outline is removed by most resets without anything put back. */

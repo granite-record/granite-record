@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.503
+# GRANITE_VERSION: 2026-09-04.504
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -51656,6 +51656,66 @@ def _outside_links():
                   "opens a new tab; find.js opens it in one"
                   + (f", right about {len(cases)} addresses" if node else "")
                   + "; no writer puts the arrow in as text")
+
+
+@check("frontend", "the bill search opens Status and Bill Type, puts a narrowed long list's "
+                   "zeros last, and folds its filters behind the Filters button below 960px")
+def _search_filters_5acd():
+    """The person's feedback of 9 October 2026, item 2: 5a approved (Status
+    and Bill Type open, Committee closed), 5b NOT approved (a ticked choice
+    does not move first), 5c approved (once a search or a filter narrows the
+    list, the options with bills before the greyed zeros), 5d approved (the
+    Filters button below 960px, tablets too). Round two's questions 8a and 8b
+    went as recommended: 5a inside the Filters panel too, and 5c on the long
+    lists only, Status and Bill Type keeping their fixed orders.
+
+    Read off app.js and app.css: the groups open at the start, at every
+    width; zerosLast run in node on a narrowed and an unnarrowed list, a
+    short list, and a ticked zero, which keeps its place among the zeros; and
+    the stylesheet's 60em block, which puts the button first, the panel
+    after it, and the panel away until it is opened."""
+    js = Path("src/pages/app.js").read_text(encoding="utf-8")
+    css = Path("src/pages/app.css").read_text(encoding="utf-8")
+    m = re.search(r"const openGroups=new Set\((\[[^\]]*\])\);", js)
+    assert m and json.loads(m.group(1)) == ["status", "type"], (
+        f"the filter groups open at the start are {m.group(1) if m else 'not found'}, "
+        "not Status and Bill Type")
+    fn = re.search(r"const ZEROS_LAST=.*?\nfunction zerosLast\(key,vals,counts\)\{.*?\n\}", js, re.S)
+    assert fn, "app.js has no zerosLast"
+    assert "zerosLast(key,vals,counts)" in js and "i===order.rule?' fzero'" in js, (
+        "the filter groups do not draw their options in zerosLast's order")
+    node = shutil.which("node") or shutil.which("node.exe")
+    if node:
+        prog = ("let query='';const sel={committee:new Set(),topic:new Set(),sponsor:new Set(),"
+                "status:new Set(),type:new Set(),voteday:new Set()};" + fn.group(0) + """
+const V=["Alpha","Beta","Gamma","Delta"],C={Beta:3,Delta:1},out={};
+out.plain=zerosLast("committee",V,C);
+query="minimum wage";
+out.narrowed=zerosLast("committee",V,C);
+out.status=zerosLast("status",V,C);
+query="";sel.committee.add("Gamma");
+out.ticked=zerosLast("committee",V,C);
+process.stdout.write(JSON.stringify(out));""")
+        r = _run([node, "-e", prog], capture_output=True, text=True, timeout=60)
+        assert r.returncode == 0, "zerosLast would not run: " + (r.stderr or "")[-300:]
+        got = json.loads(r.stdout)
+        V_ = ["Alpha", "Beta", "Gamma", "Delta"]
+        want = {"plain": {"vals": V_, "rule": -1},
+                "narrowed": {"vals": ["Beta", "Delta", "Alpha", "Gamma"], "rule": 2},
+                "status": {"vals": V_, "rule": -1},
+                "ticked": {"vals": ["Beta", "Delta", "Alpha", "Gamma"], "rule": 2}}
+        assert got == want, f"zerosLast gives {got}"
+    block = re.search(r"@media \(max-width:59\.9375em\)\{(.*?)\n\}", css, re.S)
+    assert block, "app.css has no block for the Filters button below 960px"
+    body = block.group(1)
+    for rule in (".ftoggle{order:1;display:flex", ".facets{order:2;", ".shell > main{order:3",
+                 ".shell:not(.fopen) .facets{display:none}"):
+        assert rule in body, f"below 960px the stylesheet has no {rule}"
+    assert ".fopt.fzero{border-top:1px solid var(--rule)" in css, (
+        "the first zero of a narrowed list has no rule above it")
+    return "ok", ("Status and Bill Type open at the start; a narrowed long list's options with "
+                  "bills first and a ticked zero in its place among the zeros; Status in its "
+                  "fixed order; the Filters button and its panel below 960px")
 
 
 @check("frontend", "the Calendar page is a month, filters and three views over a week that reads whole without script")

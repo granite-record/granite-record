@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.176
+// GRANITE_VERSION: 2026-09-07.177
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -2397,7 +2397,13 @@ const sel={committee:new Set(),topic:new Set(),sponsor:new Set(),status:new Set(
 // longest group open -- fourteen committees before the first bill.
 const wideEnough=typeof matchMedia==="function"
   && matchMedia("(min-width:53.8125em)").matches;
-const openGroups=new Set(wideEnough?["committee"]:[]);
+// 5a (the person, 9 October 2026, item 2): STATUS AND BILL TYPE OPEN,
+// COMMITTEE CLOSED, at every width -- inside the Filters panel below 960px as
+// well, so a reader who opens it sees the categories at once (round two's
+// question 8a, as recommended). Both are short and shown whole, and Status
+// answers the commonest question; the committee list is the long one.
+// wideEnough is kept for what else asks how wide the window is.
+const openGroups=new Set(["status","type"]);
 let sponsorFilter="";
 const openCards=new Set(),openTab={},detail={},segSel={},fullOpen=new Set();
 // The bills whose How it got here the reader opened past its first six lines.
@@ -2840,21 +2846,40 @@ function matches(b,ignore){
 // ran out of the 250px column on one line and was cut off at "the vote".
 // `show`, where given, is what a value reads as, in HTML: the Bill Type
 // filter's "HB House Bill" for the value HB.
+// 5c (the person, 9 October 2026, item 2): ONCE A SEARCH OR A FILTER NARROWS
+// THE LIST, the long lists -- Committee, Topic, Prime Sponsor's found names,
+// Floor Vote Day -- put the options with bills first and the greyed zeros
+// after them, each part in the list's own order, with a rule above the first
+// zero. Unnarrowed, nothing moves. Status and Bill Type keep their fixed
+// orders, their zeros in place: both are short and shown whole, and Status's
+// order is decided (round two's question 8b, as recommended). NOT 5b: a ticked
+// choice keeps its place in its part and does not move to the top.
+const ZEROS_LAST=new Set(["committee","topic","sponsor","voteday"]);
+function narrowedNow(){
+  return !!String(query||"").trim()||Object.values(sel).some(s=>s.size);
+}
+function zerosLast(key,vals,counts){
+  if(!ZEROS_LAST.has(key)||!narrowedNow())return {vals,rule:-1};
+  const some=vals.filter(v=>counts[v]),none=vals.filter(v=>!counts[v]);
+  return {vals:some.concat(none),rule:some.length&&none.length?some.length:-1};
+}
 function fgroup(key,label,vals,counts,searchable,paint,show){
   const chosen=sel[key],open=openGroups.has(key);
   let inner="";
   if(searchable){
     const f=sponsorFilter.toLowerCase();
-    const shown=f?vals.filter(v=>v.toLowerCase().includes(f)).slice(0,15):[];
+    const found=zerosLast(key,f?vals.filter(v=>v.toLowerCase().includes(f)).slice(0,15):[],counts);
+    const shown=found.vals;
     inner=`${[...chosen].map(v=>`<span class="pill">${esc(v)}<button data-unpick="${esc(v)}">×</button></span>`).join("")
       ?`<div class="chosen">${[...chosen].map(v=>`<span class="pill">${esc(v)}<button data-unpick="${esc(v)}">×</button></span>`).join("")}</div>`:""}
       <input class="sbox" id="sbox" aria-label="Find a prime sponsor by name" placeholder="Type a name…" value="${esc(sponsorFilter)}" autocomplete="off">`
-      +(shown.map(v=>`<label class="fopt ${!counts[v]?'off':''}"><input type="checkbox" data-f="${key}"
+      +(shown.map((v,i)=>`<label class="fopt ${!counts[v]?'off':''}${i===found.rule?' fzero':''}"><input type="checkbox" data-f="${key}"
         value="${esc(v)}" ${chosen.has(v)?"checked":""}><span>${esc(v)}</span>
         <span class="c">${(counts[v]||0).toLocaleString()}</span></label>`).join("")
         ||(sponsorFilter?`<p class="fnone">No match</p>`:""));
   }else{
-    inner=vals.map(v=>`<label class="fopt ${!counts[v]&&!chosen.has(v)?'off':''}">
+    const order=zerosLast(key,vals,counts);
+    inner=order.vals.map((v,i)=>`<label class="fopt ${!counts[v]&&!chosen.has(v)?'off':''}${i===order.rule?' fzero':''}">
       <input type="checkbox" data-f="${key}" value="${esc(v)}" ${chosen.has(v)?"checked":""}>
       <span>${paint?chip(v,paint(v)):show?show(v):esc(v)}</span>
       <span class="c">${(counts[v]||0).toLocaleString()}</span></label>`).join("");
