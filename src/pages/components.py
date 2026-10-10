@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-09.5
+# GRANITE_VERSION: 2026-10-09.6
 """
 The site's components, in Python: what the builders draw a person, a
 committee, a chip, a date and a time with, and the words they say.
@@ -136,13 +136,17 @@ def date_words(iso, form="medium"):
             "wkd": f"{wd[:3]}, {mon} {d.day}"}.get(form, f"{mon} {d.day}, {d.year}")
 
 
-def date_span(a, b):
+def date_span(a, b, form="full"):
     """Two days as one span, month first: "October 5–11, 2026", "September 28
     – October 4, 2026", "December 28, 2026 – January 3, 2027"; one day where
-    the two are the same. components.js's dateSpan() says the same."""
+    the two are the same. components.js's dateSpan() says the same.
+
+    `form` "medium" is the same span with the months short, "Feb 9–13, 2026"
+    or "Sep 28 – Oct 2, 2026": what the Calendar's pager says under Previous
+    Week and Next Week, where the room is half a column (9 October 2026)."""
     if str(a)[:10] == str(b)[:10]:
-        return date_words(a, "full")
-    fa, fb = date_words(a, "full"), date_words(b, "full")
+        return date_words(a, form)
+    fa, fb = date_words(a, form), date_words(b, form)
     if fa == str(a) or fb == str(b):
         return f"{fa} – {fb}"
     (ma, da, ya), (mb, db, yb) = (x.replace(",", "").split() for x in (fa, fb))
@@ -352,3 +356,298 @@ def icon(name):
         return ""
     return (f'<svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false" '
             f'{ICON_PAINT}>{inner}</svg>')
+
+
+# ============================================================================
+# POLISH 2: THE RECORD PAGES' COMPONENTS (ws/records, 10 October 2026). The
+# component plan's steps 4 to 8, approved 9 October 2026: the bill in three
+# sizes (card, row, mention), the dated rail, a person in a sentence, a term
+# for its popover, the vote words, the record head and the W4 section. Each
+# has its twin under the same name in components.js, held to one answer by
+# _components_agree.
+# ============================================================================
+
+def card_word(word, passage=""):
+    """A bill CARD's chip word: the short form of a stage the bill page's
+    chip says at length (D18, approved by the person on 10 October 2026;
+    chips.json's "short"). "Passed one chamber" and "In progress" name the
+    chamber the bill passed, from its passage ("Hpp--": the House passed,
+    then the Senate); a word with no short form is its own in Title Case.
+
+        card_word("Retained in committee")            -> "Retained"
+        card_word("Passed one chamber", "Hp---")      -> "Passed House"
+        card_word("Became Law")                       -> "Became Law"
+    """
+    s = "" if word is None else str(word)
+    ch = WORDBOOK["chips"]
+    if s in ch["short"]:
+        return ch["short"][s]
+    for pre, short in ch["short_prefix"]:
+        if s.startswith(pre):
+            return short
+    p = str(passage or "")
+    names = {"H": "House", "S": "Senate"}
+    if s in ch["short_passed"] and p[:1] in names and "p" in p[1:3]:
+        other = "S" if p[:1] == "H" else "H"
+        return "Passed " + names[other if p[2:3] == "p" else p[:1]]
+    return title_words(s)
+
+
+def bill_mention(n, href, year=""):
+    """A bill named in running words (the plan's "mention"): its number as
+    an underlined link, no chip and no preview (D12), the year beside it
+    where the page spans terms. "HB 652-FN", "HB 1681 (2026)"."""
+    y = f' <span class="byr">({esc(year)})</span>' if year else ""
+    return f'<a class="bmention" href="{esc(href)}">{esc(n)}{y}</a>'
+
+
+def bill_row(r):
+    """A bill as one row (the plan's "row"): its number and year in a fixed
+    column as the link, the title in the serif, the chip at the right where
+    the heading above does not already say the outcome, and a line for what
+    happened here. `r`: {n, year, href, title, word, cls, line}."""
+    chp = chip(r.get("word"), "cstat " + str(r.get("cls") or "")) if r.get("word") else ""
+    year = f'<span class="byr">({esc(r.get("year"))})</span>' if r.get("year") else ""
+    line = f'<span class="brline">{r.get("line")}</span>' if r.get("line") else ""
+    return (f'<div class="brow"><a class="brnum" href="{esc(r.get("href"))}">'
+            f'{esc(r.get("n"))}{year}</a><span class="brtitle">{esc(r.get("title"))}</span>'
+            f'{chp}{line}</div>')
+
+
+def bill_byline(sponsor, committees, topic, term, codes):
+    """A card's line of who and where: the prime sponsor as the person chip
+    (D14), each committee as a mention of its page (cmte_link), and the
+    subject. `sponsor` is a member as pchip takes one, or None; `topic` is
+    "" where the subject is the topic model's refusal ("Miscellaneous"),
+    which the caller knows and this does not."""
+    parts = ([pchip(sponsor)] if sponsor else []) + [
+        cmte_link(c, term, codes) for c in (committees or []) if c] + (
+        [esc(topic)] if topic else [])
+    return ' <span class="cdot" aria-hidden="true">&middot;</span> '.join(parts)
+
+
+def bill_card(c):
+    """A bill as a card (the plan's C5, with the person's feedback of
+    9 October 2026: a card, not a row, on member, committee and session-day
+    pages). The number and year are the link to the bill's own page, the
+    chip is at the right, then the title, the byline, the line for what
+    happened at this meeting or on this day, and the dated rail.
+
+    `c`: {id, href, n, year, word, cls (the chip's family), title, byline,
+    notes, line, rail, open, body, card (more classes)}. Where `open` is
+    true or false the title is the button that opens the card in place and
+    `body` is what it opens; where it is null the card is drawn whole, for
+    a page built ahead (a session day), and the title is text. The head is
+    no longer a button holding links (C5)."""
+    opened = c.get("open")
+    year = f'<span class="cyear"> ({esc(c.get("year"))})</span>' if c.get("year") else ""
+    chp = chip(c.get("word"), "cstat " + str(c.get("cls") or ""), "m") if c.get("word") else ""
+    title = (f'<div class="ctitle">{esc(c.get("title"))}</div>' if opened is None else
+             f'<button type="button" class="ctitle" aria-expanded="{"true" if opened else "false"}">'
+             f'{esc(c.get("title"))}</button>')
+    meta = f'<div class="cmeta">{c.get("byline")}</div>' if c.get("byline") else ""
+    line = f'<div class="cline">{c.get("line")}</div>' if c.get("line") else ""
+    body = ("" if c.get("body") is None else
+            f'<div class="cbody"{"" if opened else " hidden"}>{c.get("body")}</div>')
+    more = f' {c.get("card")}' if c.get("card") else ""
+    # A bill with no page of its own to go to (no href) has its number as
+    # text: a link to nowhere is a link that fails.
+    num = (f'<a class="cnum" href="{esc(c.get("href"))}">{esc(c.get("n"))}{year}</a>'
+           if c.get("href") else f'<span class="cnum">{esc(c.get("n"))}{year}</span>')
+    return (f'<article class="card{" open" if opened else ""}{more}" data-id="{esc(c.get("id"))}">'
+            f'<div class="chead"><div class="crow">{num}{chp}</div>{title}{meta}'
+            f'{c.get("notes") or ""}{line}{c.get("rail") or ""}</div>{body}</article>')
+
+
+# THE DATED RAIL, in both languages since 10 October 2026 (it was app.js's
+# datedRail, moved here unchanged in what it draws and says, so a session
+# day built ahead draws a card's rail as a bill's page does). A stop is
+# {stop, mark, date, short, say}, or an index row's ["Hp", "2026-03-11",
+# "231–99, amended"]: the stop's letter and its mark, its day, its words.
+RAIL_STOP = {"I": "Introduced", "H": "House", "S": "Senate", "G": "Governor", "L": "Law",
+             "V": "Voters"}
+# The wave of interim study, drawn rather than typed so it centres at any size.
+RAIL_WAVE = ('<svg class="wave" viewBox="0 0 12 12" aria-hidden="true" focusable="false">'
+             '<path d="M1.7 7.4C2.9 4.8 4.5 4.6 6 6.1s3.1 1.4 4.3-1.2" fill="none" '
+             'stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>')
+RAIL_MARK = {"p": "✓", "x": "✕", "s": RAIL_WAVE}
+RAIL_SAY = {"p": "passed", "h": "is here now", "x": "stopped here", "-": "never reached",
+            "s": "sent to interim study", "t": "on the table"}
+RAIL_SAY_DIED = {"t": "laid on the table"}
+RAIL_SAID = {"s": "interim study", "t": "tabled"}
+RAIL_CLASS = {"-": "o", "s": "istudy", "t": "ontable"}
+RAIL_MON = tuple(m[:3] for m in MONTHS)
+_RAIL_DAY = re.compile(r"\b(" + "|".join(RAIL_MON) + r") (\d{1,2}), (\d{4})\b")
+_RAIL_MONTH = re.compile(r"\b(" + "|".join(RAIL_MON) + r") (\d{4})\b")
+
+
+def rail_html(stops, died=False):
+    """The rail of a bill's stops, each dated, and the same facts as one
+    sentence for a reader who hears it: every date in full, a tally read "16
+    to 8". `died` is whether the bill's chip is Died, which says a pause is
+    the tabling it was. "" where there are no stops."""
+    st = []
+    for s in stops or []:
+        if isinstance(s, (list, tuple)):
+            row = list(s) + ["", "", ""]
+            sm = str(row[0] or "")
+            st.append({"stop": RAIL_STOP.get(sm[:1], sm[:1]), "mark": sm[1:],
+                       "date": row[1] or "", "short": row[2] or "", "say": ""})
+        else:
+            st.append({k: s.get(k) or "" for k in ("stop", "mark", "date", "short", "say")})
+    if not st:
+        return ""
+    words = {**RAIL_SAY, **RAIL_SAY_DIED} if died else RAIL_SAY
+    cells, said = [], []
+    for s in st:
+        day = date_words(s["date"]) if s["date"] else ""
+        small = (f'<small>{esc(day[:-5])}<span class="ry">{esc(day[-5:])}</span></small>'
+                 if day else "")
+        cells.append(f'<span class="stop s-{esc(RAIL_CLASS.get(s["mark"]) or s["mark"])}"><b>'
+                     f'{RAIL_MARK.get(s["mark"], "")}</b><i>{esc(s["stop"])}</i>{small}</span>')
+        when = date_words(s["date"], "full") if s["date"] else ""
+        own = bool(s["short"]) and s["stop"] in ("Governor", "Law", "Voters") and s["mark"] in ("p", "x")
+        short = "" if s["short"] == RAIL_SAID.get(s["mark"]) else s["short"]
+        what = s["say"] or (s["short"] if own else ", ".join(
+            x for x in (words.get(s["mark"]), short) if x))
+        what = re.sub(r"(\d)–(\d)", r"\1 to \2", what)
+        what = _RAIL_DAY.sub(lambda m: date_words(
+            f"{m.group(3)}-{RAIL_MON.index(m.group(1)) + 1:02d}-{int(m.group(2)):02d}", "full"), what)
+        what = _RAIL_MONTH.sub(lambda m: f"{MONTHS[RAIL_MON.index(m.group(1))]} {m.group(2)}", what)
+        law_day = s["stop"] == "Law" and s["mark"] == "p"
+        tail = ("" if not when else f", {when}" if not law_day else
+                "" if "in effect" in what else f", in effect {when}")
+        said.append(f"Introduced{f' {when}' if when else ''}" if s["stop"] == "Introduced"
+                    else f'{s["stop"]}: {what[:1].lower() + what[1:]}{tail}')
+    s_ = esc("; ".join(said))
+    return (f'<span class="rail dated" role="img" aria-label="{s_}" title="{s_}">'
+            f'{"".join(cells)}</span>')
+
+
+def person_link(m):
+    """A person in a running sentence (D14, the person, 8 October 2026):
+    the full label as a link -- "Rep. Alice Wade (D - Straf 15)", never the
+    party letter alone -- with the seat held at the time, which the caller's
+    record gives. Text where there is no page to link to."""
+    full = str(m.get("display_full") or m.get("label") or m.get("name") or "")
+    slug = m.get("slug") or ""
+    return (f'<a class="psent" href="legislator/{esc(slug)}.html">{esc(full)}</a>' if slug
+            else esc(full))
+
+
+def term_mark(key, text):
+    """A term of the record's shorthand, marked for its popover (C9): the
+    writer chooses the key by context (RC is a roll call on a vote,
+    RC-calendar the Regular Calendar), and components.js makes the first on
+    the page a button that opens glossary.json's entry."""
+    return f'<span data-term="{esc(key)}">{esc(text)}</span>'
+
+
+def _vote_motion(key):
+    """The vote words' row for a motion key, the consent calendar's for
+    "consent", or None."""
+    v = WORDBOOK["votes"]
+    return v["consent"] if key == "consent" else v["motions"].get(key)
+
+
+def _vote_fill(s, fill):
+    """{Committee}, {Chamber} and {Bill} put in a vote's words."""
+    for k, x in (fill or {}).items():
+        s = s.replace("{" + k + "}", str(x))
+    return s
+
+
+def vote_head(key, own="", fill=None):
+    """A vote's head in the approved words (the person, 8 October 2026,
+    votes.json): the motion's own name in Title Case and a plain gloss in
+    brackets, an abbreviation before it only for OTP, OTPA, ITL and IS, each
+    marked for its popover -- "Inexpedient to Legislate (ITL, Kill the
+    bill)". `own` is the head where the words have no single name (a part of
+    a divided question) or the motion is one they do not hold: the record's
+    words, as they are. `fill` names {Committee} and {Chamber}."""
+    m = _vote_motion(key)
+    if m is None or m.get("motion") is None:
+        return esc(own)
+    gloss = esc(_vote_fill(m.get("gloss") or "", fill))
+    abbr = term_mark(m["abbr"], m["abbr"]) + ", " if m.get("abbr") else ""
+    return esc(_vote_fill(m["motion"], fill)) + (f" ({abbr}{gloss})" if gloss else "")
+
+
+def vote_chip(key, passed, bill="", fill=None):
+    """What the vote did, as its chip, coloured by the vote's outcome (the
+    person, 8 October 2026: green where the motion passed, red where it
+    failed, whatever follows the colon): "Motion Passed: Bill Killed",
+    "Motion Failed". {Bill} is the measure's noun by the letters of its
+    number; a vote on no bill takes none. "" where the outcome is not on
+    record."""
+    if passed is None:
+        return ""
+    v = WORDBOOK["votes"]
+    m = _vote_motion(key) or {}
+    prefix = re.match(r"[A-Z]+", str(bill or "").upper())
+    noun = next((n for n, ps in v["nouns"].items() if prefix and prefix.group(0) in ps), "")
+    raw = m.get("passed" if passed else "failed") or ""
+    tail = "" if "{Bill}" in raw and not noun else _vote_fill(raw, dict(fill or {}, Bill=noun))
+    # A place in the words the record could not fill -- the committee a
+    # referral was vacated to, where the docket names only the one it left
+    # -- leaves the outcome alone rather than a brace on the page.
+    tail = "" if "{" in tail else tail
+    word = (v["passed"] if passed else v["failed"]) + (f": {tail}" if tail else "")
+    return chip(word, "rcres " + ("pass" if passed else "fail"))
+
+
+def record_head(h):
+    """THE RECORD'S HEAD (the plan's page head, from option E; C6): the
+    trail ending in the kind of record, the h1 with the year beside it and
+    the chip at the right, one line, up to six labelled facts, the rail
+    centred (a bill's), the actions, and nothing tinted behind it. ONE DOM
+    ORDER AT EVERY WIDTH -- trail, title, chip, line, facts, rail, actions --
+    and the stylesheet's grid areas move the actions to the right on a
+    desktop and under the rail on a phone, so the keyboard's order is the
+    reading order. The tabs follow it, hanging from its foot rule.
+
+    `h`: {trail: [[label, href], ...] (the last, the kind, has no href),
+    title (markup), year, chip (markup), line (markup), facts: [[label,
+    markup, note], ...], rail (markup), actions (markup), kind (a class)}."""
+    crumbs = "".join(
+        (f'<li><a href="{esc(href)}">{esc(lab)}</a></li>' if href else
+         f'<li aria-current="page">{esc(lab)}</li>') for lab, href in (h.get("trail") or []))
+    year = f' <span class="ryear">({esc(h.get("year"))})</span>' if h.get("year") else ""
+    facts = "".join(
+        f'<div><dt>{esc(f[0])}</dt><dd>{f[1]}'
+        + (f'<small>{f[2]}</small>' if len(f) > 2 and f[2] else "") + "</dd></div>"
+        for f in (h.get("facts") or [])[:6] if f[1])
+    kind = f' rh-{esc(h.get("kind"))}' if h.get("kind") else ""
+    return (f'<header class="rhead{kind}">'
+            + (f'<nav class="rtrail" aria-label="Where this page is"><ol>{crumbs}</ol></nav>'
+               if crumbs else "")
+            + f'<div class="rtop"><h1 class="rh1">{h.get("title") or ""}{year}</h1>'
+            + f'{h.get("chip") or ""}</div>'
+            + (f'<p class="rline">{h.get("line")}</p>' if h.get("line") else "")
+            + (f'<dl class="rfacts">{facts}</dl>' if facts else "")
+            + (f'<div class="rrail">{h.get("rail")}</div>' if h.get("rail") else "")
+            + f'<div class="racts">{h.get("actions") or ""}</div></header>')
+
+
+def doc_row(x):
+    """A document of the record, as a bill's Documents tab lists it (the
+    component plan's step 7): its label as the link to the General Court's
+    own copy, opening in a new tab as every outside link does (D20), where
+    it comes from and when, and what it is the record of. `x`: {kind,
+    label, url, of, what}; `what` is markup, the docket's lines or the
+    sentence that says what the document is. A room's building is not
+    named: the General Court's key knows LOB and SH and not GP, and the
+    plan does not guess it."""
+    of = f'<span class="docof">{esc(x.get("of"))}</span>' if x.get("of") else ""
+    return (f'<li class="doc doc-{esc(x.get("kind"))}"><a href="{esc(x.get("url"))}" '
+            f'target="_blank" rel="noopener">{esc(x.get("label"))}</a>{of}{x.get("what") or ""}</li>')
+
+
+def section(heading, body, sid=""):
+    """A W4 section (C7): its heading in Title Case in a margin level with
+    its first line, beside prose about a hundred characters wide; over its
+    text below 960px. The heading is written in its case where it is made
+    (C8); preflight holds every one of them to the rule."""
+    i = f' id="{esc(sid)}"' if sid else ""
+    return (f'<section class="w4"{i}><h2 class="w4h">{esc(heading)}</h2>'
+            f'<div class="w4b">{body}</div></section>')

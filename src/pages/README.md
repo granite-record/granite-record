@@ -9,7 +9,24 @@ every record page is built from, and the `components.js`, `app.js`, `app.css`
 and `find.js` it loads. `build_pages.py` copies all five into `site/` as they
 are, and the builders read them here under the folder they run in, so a
 fixture lays out its own copies the same way. Edit them here; `site/` holds
-copies.
+copies. The district map is a module of its own: `map.js` and `map.css`,
+which `build_district_map.py` copies beside `/district_map.json`, the one
+file the map draws, and which a page mounts with `GRMap.mount()`: the
+Officials page's My Town tab and every town page's District Map tab.
+
+The hubs (Polish 3, 10 October 2026). The Officials page, `/officials`
+(`/legislators` answers with a 301 to it), is `build_pages.py`'s, in five
+tabs; its Federal Delegation, Statewide Officials and County Officials are
+drawn by `officials_tabs.py` from `corrections/officials.json`, which it reads
+and never writes. The House and the Senate are each a card at the
+top of their column of `/committees`, drawn as a committee's card is, and each
+card leads to the chamber's page of session days, `/session/house` and
+`/session/senate`, beside the day pages: a term picker over every term, the
+latest chosen, and that term's days listed as a committee's meetings are,
+each leading to its own page. Both are `build_full_sessions.py`'s, a step
+after both chambers' session pages: it fills the slots `build_committees.py`
+writes at the top of the columns, because the term files it reads
+(`site/session/<H|S>/<term>.json`) are written after the committees.
 
 The components are in two files with the same helpers under the same names
 (9 October 2026): `components.py`, which the builders draw a person, a
@@ -41,6 +58,21 @@ build writes the same into `site/components.js` between its `WORDBOOK:START`
 and `WORDBOOK:END` lines (`build_pages.with_words`), so the copy here holds
 none of them and nothing types a table of words twice. Change a word in its
 file; `preflight` holds the browser's `WORDBOOK` to Python's.
+
+A bill's print sheet is `print.js` and `print.css` (9 October 2026): a
+reference sheet of the bill's record for paper, composed in the reader's
+browser from the record the page already holds, beside a short menu of
+settings, with a QR code to the bill's page and each change to the text
+numbered by the amendment that made it. A bill's page mounts it with one
+call, `GRPrint.open(record, row)`, from its Print button; `print.css` is
+loaded the first time it opens. The bill's text is an option, unticked every
+time it opens (the person, 10 October 2026); ticked, it prints whole, and the
+menu says how many pages the sheet prints on Letter and on A4, counted by
+laying the sheet out again in columns a printed page's size. It draws with
+`components.js` and reads
+`app.js`'s own tables, so it formats nothing of its own; `preflight` composes
+it in node on the real records of `tests/print_cases.json` with every
+section present and absent.
 
 Run by: `build_all.py`'s `plan()`, after the record is built. A new page is
 `build_<page>.py` on `shell.py` plus one `Step()`.

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.60
+# GRANITE_VERSION: 2026-09-05.65
 """
 Run the whole pipeline in the right order.
 
@@ -791,9 +791,9 @@ def plan(a):
         Step("how New Hampshire works",
              ["build_civics.py", "--site", "site", "--base", a.base],
              needs=["site/meta.json"],
-             produces=["site/learn.html"],
-             note="eleven civics pages and the hub they hang off; needs no "
-                  "data and no network, and it owns learn.html"),
+             produces=["site/resources.html"],
+             note="the Learn pages and the Resources hub they hang off; needs "
+                  "no network, and it owns resources.html and learn/"),
 
         Step("a page per town and ward",
              ["build_town_pages.py", "--site", "site", "--base", a.base],
@@ -803,6 +803,22 @@ def plan(a):
                   "representatives and senator from the roster, and the "
                   "executive council, US House and Senate districts that were "
                   "in districts.json all along and had never been shown"),
+
+        # AFTER the town pages, which will mount the map (Polish 3), and after
+        # the district files and the roster it reads. Its geometry is
+        # generated/district_geometry.json, which a person builds from the
+        # GIS zips on the laptop and commits, so GitHub's machine has it from
+        # git; kit_required, so a night that cannot write the map's data
+        # stops rather than publishing pages that fetch a file nobody wrote.
+        Step("the district map's data, script and stylesheet",
+             ["build_district_map.py", "--site", "site"],
+             needs=["generated/district_geometry.json", "site/districts.json",
+                    "site/legislators.json"],
+             produces=["site/district_map.json"], kit_required=True,
+             note="the boundaries, every town and ward and its districts, and "
+                  "who sits for each district with the party it is filled "
+                  "with, in one file the map draws; and map.js and map.css "
+                  "beside it"),
 
         Step("the whole record, as lists",
              ["build_indexes.py", "--site", "site", "--base", a.base],
@@ -835,6 +851,18 @@ def plan(a):
                   "the motions put to it, who spoke on which side, how it was "
                   "voted and what that did to the bill. House only -- the "
                   "Senate journal records no speakers"),
+
+        # THE HOUSE AND SENATE AS COMMITTEES OF THE WHOLE (the person, 9 and
+        # 10 October 2026): a card at the top of each column of /committees
+        # and a page for each chamber's session days, after both chambers'
+        # session pages, whose term files it reads. build_committees writes
+        # the page with an empty slot in each column, and this fills it.
+        Step("the House's and the Senate's session days, as committees",
+             ["build_full_sessions.py", "--site", "site", "--base", a.base],
+             needs=["site/committees.json", "site/session/S", "site/session/H"],
+             produces=["site/session/house.html", "site/session/senate.html"],
+             note="a card for each chamber at the top of its column of "
+                  "/committees, and its page of session days, term by term"),
 
         # AFTER the committees, whose codes turn a committee name on a card
         # into a link to its page, and after the sitemap exists so the weeks

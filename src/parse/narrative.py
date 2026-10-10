@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.109
+# GRANITE_VERSION: 2026-09-04.110
 """
 Turn a bill's docket entries into a plain-language history.
 
@@ -2516,17 +2516,34 @@ def stage_of(ev):
     return (body, "committee")
 
 
+# THE STORY'S HEADINGS, IN TITLE CASE WHERE THEY ARE MADE (the component
+# plan's C8, approved 9 October 2026; the person's round 3 of 8 October: "On
+# the House Floor", "House Committee (Housing)"). A bill's page sets each as a
+# W4 section's heading in a margin, and recasing them on display would mangle
+# what is not a plain word ("RSA", "HB 1681"), so they are written here as
+# they are read. A committee's own name goes in brackets after its chamber's
+# (stage_label), as the General Court writes it. preflight holds every
+# heading to the case rule.
 STAGE_LABEL = {
-    ("H", "committee"): "In House committee",
-    ("H", "floor"): "On the House floor",
-    ("S", "committee"): "In Senate committee",
-    ("S", "floor"): "On the Senate floor",
-    ("C", "conference"): "Committee of conference",
-    ("G", "governor"): "With the governor",
+    ("H", "committee"): "House Committee",
+    ("H", "floor"): "On the House Floor",
+    ("S", "committee"): "Senate Committee",
+    ("S", "floor"): "On the Senate Floor",
+    ("C", "conference"): "Committee of Conference",
+    ("G", "governor"): "With the Governor",
     # A bill that was never introduced was never in a committee's hands.
-    ("H", "filed"): "Before introduction in the House",
-    ("S", "filed"): "Before introduction in the Senate",
+    ("H", "filed"): "Before Introduction in the House",
+    ("S", "filed"): "Before Introduction in the Senate",
 }
+
+
+def stage_label(key):
+    """A stage's heading: its chamber's, and the committee's own name in
+    brackets where the stage is one committee's -- "House Committee
+    (Housing)", "Senate Committee (Executive Departments and
+    Administration)"."""
+    base = STAGE_LABEL.get(tuple(key[:2]), "")
+    return f"{base} ({key[2]})" if base and len(key) > 2 and key[2] else base
 
 
 # {term: {bill: {"hearings": [{"date": ..., "support": ..., ...}]}}}, from
@@ -5738,10 +5755,7 @@ def build(bill, rows, introduction=None):
                 here = stages[-1]
                 here["sentences"].append(s)
             else:
-                base = STAGE_LABEL.get(key[:2], "")
-                if len(key) > 2 and base:
-                    base = f"{base} \u2014 {key[2]}"
-                here = {"key": key, "label": base, "sentences": [s], "notes": []}
+                here = {"key": key, "label": stage_label(key), "sentences": [s], "notes": []}
                 stages.append(here)
             # THE REPORTS TAB NAMES THE COMMITTEE THE HISTORY HEADS THE REPORT
             # WITH (6 October 2026; the person's word on decision 48). The
@@ -5939,7 +5953,7 @@ def build(bill, rows, introduction=None):
                     stages[-1]["sentences"].append(said)
                 else:
                     stages.append({"key": key, "sentences": [said], "notes": [],
-                                   "label": f"{STAGE_LABEL[key[:2]]} \u2014 {sent[1]}"})
+                                   "label": stage_label(key)})
 
     # Not a note on the summary. This is about the votes, and the Votes tab
     # is where somebody goes to look for them.

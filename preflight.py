@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.498
+# GRANITE_VERSION: 2026-09-04.518
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -2168,7 +2168,7 @@ def _whose_amendment(N, B):
         for (bill, term), rows in _DOCKET_WHOSE_AMENDMENT.items():
             rec = _narrated(N, term, bill, rows)
             told, listed = want[bill]
-            floor = [st["text"] for st in rec["stages"] if st["label"] == "On the House floor"]
+            floor = [st["text"] for st in rec["stages"] if st["label"] == "On the House Floor"]
             for s in told:
                 if not any(s in t for t in floor):
                     bad.append(f"{bill} of {term} does not say, on the House floor: {s!r}; "
@@ -2183,7 +2183,7 @@ def _whose_amendment(N, B):
                 bad.append(f"{bill} of {term} leaves a FLAM row unread: {flam}")
             if bill == "HB1598":
                 heads = [st["label"] for st in rec["stages"]]
-                if heads[-1:] != ["In House committee — Ways and Means"] or len(heads) != 3:
+                if heads[-1:] != ["House Committee (Ways and Means)"] or len(heads) != 3:
                     bad.append(f"HB1598 of 2022's stages are {heads}")
                 if "2022-041)" in (rec.get("narrative") or ""):
                     bad.append(f"HB1598 of 2022 tells a split number: {rec.get('narrative')!r}")
@@ -2534,7 +2534,7 @@ def _undated_floor_vote(N, B):
             bad.append(f"HB 1473 of 2026's vote of 5 March is {last['type']} of {last['date']}")
         if "On March 5, 2026 the House voted to kill it on a voice vote." not in rec["narrative"]:
             bad.append(f"HB 1473 of 2026's history: {rec['narrative'][-300:]!r}")
-        if [st["label"] for st in rec["stages"]][-1:] != ["On the House floor"]:
+        if [st["label"] for st in rec["stages"]][-1:] != ["On the House Floor"]:
             bad.append(f"HB 1473's stages: {[st['label'] for st in rec['stages']]}")
         votes = [(v.get("date"), v.get("vote_kind"), v.get("question"))
                  for v in B.bill_rollcalls("HB1473", "2025-2026", [], rec, {}, [], {})]
@@ -2593,15 +2593,15 @@ def _conference_report_told(N):
     185-180 on reconsideration), and one short of three fifths says so (CACR
     12 of 2012). A "Filed" row is the report arriving, and stays unread."""
     want = {
-        "HB1300": [("On the Senate floor", "On June 4, 2026 the Senate adopted the conference report "
+        "HB1300": [("On the Senate Floor", "On June 4, 2026 the Senate adopted the conference report "
                     "(2026-2109c) on a roll call 15–8."),
-                   ("On the House floor", "On June 4, 2026 the House adopted the conference report "
+                   ("On the House Floor", "On June 4, 2026 the House adopted the conference report "
                     "(2026-2109c) on a roll call 183–170.")],
-        "HB1": [("On the House floor", "On June 26, 2025 the House rejected the conference report "
+        "HB1": [("On the House Floor", "On June 26, 2025 the House rejected the conference report "
                  "(2025-2865c) on a roll call 182–183."),
-                ("On the House floor", "On June 26, 2025 the House adopted the conference report "
+                ("On the House Floor", "On June 26, 2025 the House adopted the conference report "
                  "(2025-2865c) on a roll call 185–180.")],
-        "CACR12": [("On the House floor", "rejected the conference report (2465c) on a roll call "
+        "CACR12": [("On the House Floor", "rejected the conference report (2465c) on a roll call "
                     "224–144, short of three fifths.")],
     }
     bad = []
@@ -2677,7 +2677,7 @@ def _senate_rule_3_23_told(N):
             rec = _narrated(N, term, bill, rows)
             day, s = want[bill]
             last = rec["stages"][-1] if rec["stages"] else {}
-            if last.get("label") != "On the Senate floor" or not last.get("text", "").endswith(s):
+            if last.get("label") != "On the Senate Floor" or not last.get("text", "").endswith(s):
                 bad.append(f"{bill} of {term} does not end, on the Senate floor, {s!r}: "
                            f"{[(st['label'], st['text'][-160:]) for st in rec['stages']]!r}")
             got = [(e["type"], e["date"]) for e in rec["events"] if "3-23" in e["raw"]]
@@ -2732,7 +2732,7 @@ def _died_on_the_floor(N):
         last = rec["stages"][-1]
         died = ("The bill died on the table when the session ended on December 17, 2025, having "
                 "been set aside and never taken back up.")
-        if last["label"] != "On the House floor" or not last["text"].endswith(died) \
+        if last["label"] != "On the House Floor" or not last["text"].endswith(died) \
                 or "Lay HB761 on Table" not in last["text"]:
             bad.append(f"HB 761 of 2025's last stage: {last['label']!r}: {last['text']!r}")
         if any(note in st["notes"] for st in rec["stages"]):
@@ -2883,13 +2883,13 @@ def _committee_amendment_on_the_floor(N):
         N.MEMBERS = {}
         for (bill, term), rows in _DOCKET_COMMITTEE_AMENDMENT_FLOOR.items():
             rec = _narrated(N, term, bill, rows)
-            floor = [st["text"] for st in rec["stages"] if st["label"] == "On the Senate floor"]
+            floor = [st["text"] for st in rec["stages"] if st["label"] == "On the Senate Floor"]
             for s in want[bill]:
                 if not any(s in t for t in floor):
                     bad.append(f"{bill} of {term} does not say on the Senate floor {s!r}: "
                                f"{[(st['label'], st['text']) for st in rec['stages']]!r}")
             if any("committee's amendment (" in st["text"] or "floor amendment (" in st["text"]
-                   for st in rec["stages"] if st["label"].startswith("In Senate committee")):
+                   for st in rec["stages"] if st["label"].startswith("Senate Committee")):
                 bad.append(f"{bill} of {term} tells an amendment's vote under a committee's "
                            f"heading: {rec['stages']!r}")
             if bill == "HB154" and rec["narrative"].count("was adopted on a voice vote on May 8") != 1:
@@ -3230,7 +3230,7 @@ def _nongermane_hearing_told(N, B):
                                      "support and 5 in opposition.") not in told:
                 bad.append(f"HB1300 of 2026's own hearing lost the day's sign-ins: {told!r}")
             if bill == "HB292" and [st["label"] for st in rec["stages"]] != [
-                    "In Senate committee — Education"]:
+                    "Senate Committee (Education)"]:
                 bad.append(f"HB292 of 2025's joint hearing: {rec['stages']!r}")
     finally:
         N.MEMBERS, N.TESTIMONY = keep
@@ -3593,146 +3593,146 @@ _DOCKET_SENT_ON = {
 # Senate's "Executive Departments and Administration" are what the history
 # said before.
 _SENT_ON_HEADS = {
-    ("SB286", "2025-2026"): (["In Senate committee — Executive Departments and Administration",
-                              "On the Senate floor", "In Senate committee — Finance"],
+    ("SB286", "2025-2026"): (["Senate Committee (Executive Departments and Administration)",
+                              "On the Senate Floor", "Senate Committee (Finance)"],
                              ["then referred it on to the Senate Finance committee"],
                              ["the Fi committee", "under the chamber's rules"]),
-    ("SB106", "2009-2010"): (["In Senate committee — Judiciary", "On the Senate floor",
-                              "In Senate committee — Finance"],
+    ("SB106", "2009-2010"): (["Senate Committee (Judiciary)", "On the Senate Floor",
+                              "Senate Committee (Finance)"],
                              ["referred it on to the Senate Finance committee"], ["the Fi committee"]),
-    ("HB613", "1993-1994"): (["In House committee — Health, Human Services and Elderly Affairs",
-                              "On the House floor", "In House committee — Appropriations"],
+    ("HB613", "1993-1994"): (["House Committee (Health, Human Services and Elderly Affairs)",
+                              "On the House Floor", "House Committee (Appropriations)"],
                              ["referred it on to the House Appropriations committee"], []),
-    ("SB58", "1989-1990"): (["In House committee — Public Works", "On the House floor",
-                             "In House committee — Appropriations"],
+    ("SB58", "1989-1990"): (["House Committee (Public Works)", "On the House Floor",
+                             "House Committee (Appropriations)"],
                             ["voted to pass it, then referred it on to the House Appropriations "
                              "committee"], []),
-    ("HB1119", "2001-2002"): (["In Senate committee — Environment", "On the Senate floor",
-                               "In Senate committee — Finance"],
+    ("HB1119", "2001-2002"): (["Senate Committee (Environment)", "On the Senate Floor",
+                               "Senate Committee (Finance)"],
                               ["on a voice vote, then referred it on to the Senate Finance committee"], []),
-    ("HB517", "2025-2026"): (["In Senate committee — Judiciary", "In Senate committee — Finance"],
+    ("HB517", "2025-2026"): (["Senate Committee (Judiciary)", "Senate Committee (Finance)"],
                              ["The Senate withdrew that referral and sent the bill to the Finance "
                               "committee instead."], []),
-    ("CACR2", "2017-2018"): (["In House committee — Health, Human Services and Elderly Affairs",
-                              "In House committee — Children and Family Law"], [], []),
-    ("HB363", "1991-1992"): (["In House committee — Judiciary", "On the House floor",
-                              "In House committee — Appropriations", "On the House floor",
-                              "In House committee — Appropriations"], [], []),
-    ("HB357", "1995-1996"): (["In House committee — Health, Human Services and Elderly Affairs",
-                              "On the House floor",
-                              "In House committee — Executive Departments and Administration",
-                              "On the House floor",
-                              "In House committee — Executive Departments and Administration"],
+    ("CACR2", "2017-2018"): (["House Committee (Health, Human Services and Elderly Affairs)",
+                              "House Committee (Children and Family Law)"], [], []),
+    ("HB363", "1991-1992"): (["House Committee (Judiciary)", "On the House Floor",
+                              "House Committee (Appropriations)", "On the House Floor",
+                              "House Committee (Appropriations)"], [], []),
+    ("HB357", "1995-1996"): (["House Committee (Health, Human Services and Elderly Affairs)",
+                              "On the House Floor",
+                              "House Committee (Executive Departments and Administration)",
+                              "On the House Floor",
+                              "House Committee (Executive Departments and Administration)"],
                              ["then referred it on to the House Executive Departments and "
                               "Administration committee."],
                              ["Administration committee under the chamber's rules"]),
-    ("HB256", "1997-1998"): (["In House committee — Executive Departments and Administration",
-                              "On the House floor", "In House committee — Finance"],
+    ("HB256", "1997-1998"): (["House Committee (Executive Departments and Administration)",
+                              "On the House Floor", "House Committee (Finance)"],
                              ["on a roll call 248–8, then referred it on to the House Finance committee"],
                              ["Consent Cal committee"]),
     # Commerce's report, dated the 16th and entered on the 7th, before the
     # Senate sent the bill on to Finance on the 15th, is Commerce's, and is
     # told in Commerce's stage, before the passage: not in a second one of
     # Commerce's straight after the sentence that sent the bill to Finance.
-    ("HB1076", "2023-2024"): (["In Senate committee — Commerce", "On the Senate floor",
-                               "In Senate committee — Finance"],
+    ("HB1076", "2023-2024"): (["Senate Committee (Commerce)", "On the Senate Floor",
+                               "Senate Committee (Finance)"],
                               ["held a public hearing on April 16, 2024. The committee recommended "
                                "that the Senate pass it unanimously, 4–0."], []),
     # And so is the amendment that report carried, adopted on the 15th, after
     # the report that carried it.
-    ("HB1380", "2023-2024"): (["In Senate committee — Commerce", "On the Senate floor",
-                               "In Senate committee — Finance"],
+    ("HB1380", "2023-2024"): (["Senate Committee (Commerce)", "On the Senate Floor",
+                               "Senate Committee (Finance)"],
                               ["(amendment 2024-1826s) unanimously, 4–0. The committee's amendment "
                                "(2024-1826s) was adopted"], []),
     # "PASSED AND REF TO FIN DIV": no name the record lets this give, until
     # the hearing's row says Capital Budget. The sentence keeps the clerk's
     # "Fin" until the person names the 1993 Senate's finance divisions.
-    ("HB126", "1993-1994"): (["In Senate committee — Transportation", "On the Senate floor",
-                              "In Senate committee — Capital Budget"], [], []),
+    ("HB126", "1993-1994"): (["Senate Committee (Transportation)", "On the Senate Floor",
+                              "Senate Committee (Capital Budget)"], [], []),
     # "REFERRED TO FINANCE/APPROP" is the 1989 Senate's Finance; the reader
     # wrote it "Appropriations", a committee that Senate did not have.
-    ("HB115", "1989-1990"): (["In Senate committee — Transportation", "In Senate committee — Finance",
-                              "On the Senate floor", "In Senate committee — Finance"],
+    ("HB115", "1989-1990"): (["Senate Committee (Transportation)", "Senate Committee (Finance)",
+                              "On the Senate Floor", "Senate Committee (Finance)"],
                              ["referred to the Finance committee"], ["Appropriations"]),
-    ("HB1163", "2005-2006"): (["In House committee — Science, Technology and Energy"],
+    ("HB1163", "2005-2006"): (["House Committee (Science, Technology and Energy)"],
                               ["referred to the House Science, Technology and Energy committee"],
                               ["ed to Science"]),
-    ("HB1218", "1991-1992"): (["In House committee — Appropriations",
-                               "In House committee — Resources, Recreation and Development"],
+    ("HB1218", "1991-1992"): (["House Committee (Appropriations)",
+                               "House Committee (Resources, Recreation and Development)"],
                               ["sent the bill to the Resources, Recreation and Development committee "
                                "instead"], ["the Res committee"]),
-    ("CACR1", "1989-1990"): (["In Senate committee — Executive Departments"],
+    ("CACR1", "1989-1990"): (["Senate Committee (Executive Departments)"],
                              ["referred to the Senate Executive Departments committee"],
                              ["Administration"]),
     # "PASSED WITH AM AND REF TO FIN DIV", and then "FIN EXEC COMM REPORT": the
     # row names the 1993 Senate's Finance Executive Committee.
-    ("SB732", "1993-1994"): (["In Senate committee — Judiciary", "On the Senate floor",
-                              "In Senate committee — Finance Executive Committee"], [], []),
+    ("SB732", "1993-1994"): (["Senate Committee (Judiciary)", "On the Senate Floor",
+                              "Senate Committee (Finance Executive Committee)"], [], []),
     # "Committee of Conference Hearing: 05/29/2008 ..." is the conferees'.
-    ("HB1405", "2007-2008"): (["On the House floor", "Committee of conference"], [], []),
+    ("HB1405", "2007-2008"): (["On the House Floor", "Committee of Conference"], [], []),
     # A row that names another committee than the one that has the bill: the
     # record cannot say whose the work is, and from there the chamber is named
     # alone. The 19th's "CONTINUED HEARING ... FOR: INSUR" was Internal
     # Affairs' hearing of the 12th, continued.
-    ("HCR25", "1997-1998"): (["In Senate committee — Internal Affairs", "In Senate committee"],
+    ("HCR25", "1997-1998"): (["Senate Committee (Internal Affairs)", "Senate Committee"],
                              [], ["Insurance"]),
     # "REF TO FINANCE" before "PASSED WITH AM" on its row: Finance's amendment
     # adopted, then the bill passed. Not a passage, then a referral.
-    ("SB173", "1995-1996"): (["In Senate committee — Education", "On the Senate floor"], [],
+    ("SB173", "1995-1996"): (["Senate Committee (Education)", "On the Senate Floor"], [],
                              ["referred it on to the"]),
     # A joint committee is no one of its members.
-    ("HB1643", "2007-2008"): (["In House committee — a Joint Committee of Executive Departments and "
-                               "Administration and Finance", "On the House floor",
-                               "In House committee — a Joint Committee of Executive Departments and "
-                               "Administration and Finance", "On the House floor"], [], []),
+    ("HB1643", "2007-2008"): (["House Committee (a Joint Committee of Executive Departments and "
+                               "Administration and Finance)", "On the House Floor",
+                               "House Committee (a Joint Committee of Executive Departments and "
+                               "Administration and Finance)", "On the House Floor"], [], []),
     # Its first row is the floor's: "COMM AM<3943>, AA VV; COMM FL AM<4488>,
     # AA VV; ...", the committee's amendment adopted on the floor.
-    ("HB442", "1993-1994"): (["On the House floor", "In House committee — Appropriations",
-                              "On the House floor", "In House committee"], [], []),
+    ("HB442", "1993-1994"): (["On the House Floor", "House Committee (Appropriations)",
+                              "On the House Floor", "House Committee"], [], []),
     # Re-referred twice on one row: where it says last.
-    ("SB165", "1993-1994"): (["In Senate committee — Executive Departments and Administration",
-                              "On the Senate floor", "In Senate committee — Wildlife and Recreation",
-                              "On the Senate floor"], [], []),
+    ("SB165", "1993-1994"): (["Senate Committee (Executive Departments and Administration)",
+                              "On the Senate Floor", "Senate Committee (Wildlife and Recreation)",
+                              "On the Senate Floor"], [], []),
     # "Rule 24 (Refer to Finance)", "ref Finance", "Refer Finance [Rule 26]".
-    ("HB236", "1999-2000"): (["In Senate committee — Judiciary", "On the Senate floor",
-                              "In Senate committee — Finance", "On the Senate floor"],
+    ("HB236", "1999-2000"): (["Senate Committee (Judiciary)", "On the Senate Floor",
+                              "Senate Committee (Finance)", "On the Senate Floor"],
                              ["then referred it on to the Senate Finance committee"], []),
-    ("SB262", "2005-2006"): (["In House committee — Criminal Justice and Public Safety",
-                              "On the House floor", "In House committee — Finance", "On the House floor"],
+    ("SB262", "2005-2006"): (["House Committee (Criminal Justice and Public Safety)",
+                              "On the House Floor", "House Committee (Finance)", "On the House Floor"],
                              ["The House referred the bill to the Finance committee."], []),
-    ("SB324", "2007-2008"): (["In Senate committee — Health and Human Services", "On the Senate floor",
-                              "In Senate committee — Finance", "On the Senate floor"], [], []),
+    ("SB324", "2007-2008"): (["Senate Committee (Health and Human Services)", "On the Senate Floor",
+                              "Senate Committee (Finance)", "On the Senate Floor"], [], []),
     # "The Chair Rescinded Refer to Finance Rule 4-5", seven minutes on.
-    ("SB91", "2013-2014"): (["In Senate committee — Commerce", "On the Senate floor"] * 3, [],
+    ("SB91", "2013-2014"): (["Senate Committee (Commerce)", "On the Senate Floor"] * 3, [],
                             ["referred it on to the"]),
     # The House's Finance is not carried past the crossing to a House row
     # entered three weeks after it, in the Senate's room.
-    ("HB25", "1997-1998"): (["In House committee", "On the House floor", "In House committee — Finance",
-                             "On the House floor", "In Senate committee — Capital Budget",
-                             "In House committee"], [], []),
+    ("HB25", "1997-1998"): (["House Committee", "On the House Floor", "House Committee (Finance)",
+                             "On the House Floor", "Senate Committee (Capital Budget)",
+                             "House Committee"], [], []),
     # Never "Finance Executive Committee committee".
-    ("HB1260", "1993-1994"): (["In Senate committee — Finance Executive Committee"],
+    ("HB1260", "1993-1994"): (["Senate Committee (Finance Executive Committee)"],
                               ["referred to the Senate Finance Executive Committee."],
                               ["Committee committee"]),
     # "Refer To Finance Rule 26" is Finance, not "Finance Rule 26".
-    ("HB618", "2003-2004"): (["In Senate committee — Ways and Means", "On the Senate floor",
-                              "In Senate committee — Finance"],
+    ("HB618", "2003-2004"): (["Senate Committee (Ways and Means)", "On the Senate Floor",
+                              "Senate Committee (Finance)"],
                              ["the bill was referred to the Finance committee"], ["Rule 26"]),
     # "JOINT HEARING ... FOR: APP & WAYS & MEANS" is no one committee's.
-    ("HB777", "1989-1990"): (["In House committee — Appropriations", "On the House floor"], [], []),
+    ("HB777", "1989-1990"): (["House Committee (Appropriations)", "On the House Floor"], [], []),
     # "RE-REFERRED TO REG" and, thirteen seconds later, "REV VV".
-    ("HB297", "1991-1992"): (["In House committee — Regulated Revenues"],
+    ("HB297", "1991-1992"): (["House Committee (Regulated Revenues)"],
                              ["the bill was referred to the Regulated Revenues committee"],
                              ["Reg committee"]),
     # Sent back to the committee that had it: the row's own sentence says so,
     # and no second sentence tells it as another referral.
-    ("HB355", "1989-1990"): (["In House committee — Commerce, Small Business and Consumer Affairs",
-                              "On the House floor",
-                              "In House committee — Commerce, Small Business and Consumer Affairs"],
+    ("HB355", "1989-1990"): (["House Committee (Commerce, Small Business and Consumer Affairs)",
+                              "On the House Floor",
+                              "House Committee (Commerce, Small Business and Consumer Affairs)"],
                              ["voted to send it back to committee"], ["referred the bill to the"]),
     # Sent on to Finance by suspending the rules, not under them.
-    ("HB551", "1995-1996"): (["In House committee — Judiciary and Family Law", "On the House floor",
-                              "In House committee — Finance"],
+    ("HB551", "1995-1996"): (["House Committee (Judiciary and Family Law)", "On the House Floor",
+                              "House Committee (Finance)"],
                              ["then referred it on to the House Finance committee."],
                              ["under the chamber's rules"]),
     # A referral where no committee had the bill moves no heading, and is not
@@ -3799,7 +3799,10 @@ def _report_names_its_stage(N, B):
     bad = []
     for key, want in _REPORTED_BY.items():
         n = _narrated(N, key[1], key[0], _DOCKET_SENT_ON[key])
-        heads = {s["label"].split(" — ", 1)[1] for s in n["stages"] if " — " in s["label"]}
+        # "Senate Committee (Finance)" since 10 October 2026 (C8), where it
+        # was "In Senate committee — Finance".
+        heads = {m.group(1) for s in n["stages"]
+                 for m in [re.fullmatch(r"(?:House|Senate) Committee \((.+)\)", s["label"])] if m}
         got = [e.get("committee") for e in n["events"] if e["type"] == "report"]
         if got != want:
             bad.append(f"{key[0]} of {key[1]}: reports by {got}, not {want}")
@@ -4142,11 +4145,11 @@ def _journal_settles_the_committee(N):
         bad.append(f"the House Journal's reports are read as {said}")
     for key, lines in _DOCKET_JOURNAL_SAYS.items():
         heads = [s["label"] for s in _narrated(N, key[1], key[0], lines, reported=said)["stages"]]
-        if ("In House committee — Criminal Justice and Public Safety" not in heads
-                or "In House committee" in heads):
+        if ("House Committee (Criminal Justice and Public Safety)" not in heads
+                or "House Committee" in heads):
             bad.append(f"{key[0]} of {key[1]}, with the journal, is headed {heads}")
         heads = [s["label"] for s in _narrated(N, key[1], key[0], lines)["stages"]]
-        if "In House committee" not in heads or any("Criminal" in h for h in heads):
+        if "House Committee" not in heads or any("Criminal" in h for h in heads):
             bad.append(f"{key[0]} of {key[1]}, with no journal, is headed {heads}")
         # Nor a journal that prints the referral's committee's report too.
         both = {key[0]: want[key[0]] | {"Commerce", "State-Federal Relations and Veterans Affairs"}}
@@ -4521,53 +4524,53 @@ _REFERRAL_UNMADE_HEADS = {
     # Chair per House Rule 47(f)": the House Journal prints "REFERRAL
     # DECLINED". The referral is told with its waiver, on the floor that made
     # it, and Finance heads no stage.
-    ("HB1574", "2025-2026"): (["In House committee — Education Funding", "On the House floor",
-                               "In Senate committee — Education"],
+    ("HB1574", "2025-2026"): (["House Committee (Education Funding)", "On the House Floor",
+                               "Senate Committee (Education)"],
                               ["On February 19, 2026 the bill was referred to the Finance committee, "
                                "whose chair waived the referral under House Rule 47(f)."],
-                              ["In House committee — Finance"]),
+                              ["House Committee (Finance)"]),
     # The waiver entered three hours before the referral it waives.
-    ("SB482", "2025-2026"): (["In House committee — Commerce and Consumer Affairs", "On the House floor"],
+    ("SB482", "2025-2026"): (["House Committee (Commerce and Consumer Affairs)", "On the House Floor"],
                              ["On April 23, 2026 the bill was referred to the Criminal Justice and Public "
                               "Safety committee, whose chair waived the referral under House Rule 47(f)."],
-                             ["In House committee — Criminal Justice"]),
-    ("HB1478", "2013-2014"): (["In House committee — Children and Family Law", "On the House floor"],
+                             ["House Committee (Criminal Justice)"]),
+    ("HB1478", "2013-2014"): (["House Committee (Children and Family Law)", "On the House Floor"],
                               ["On February 12, 2014 the bill was referred to the Judiciary committee, "
                                "whose chair declined the referral under House Rule 46(f)."],
-                              ["In House committee — Judiciary"]),
-    ("HB407", "2015-2016"): (["In House committee — Municipal and County Government", "On the House floor"],
+                              ["House Committee (Judiciary)"]),
+    ("HB407", "2015-2016"): (["House Committee (Municipal and County Government)", "On the House Floor"],
                              ["referred to the Executive Departments and Administration committee, and "
                               "the Speaker waived the referral."],
-                             ["In House committee — Executive"]),
+                             ["House Committee (Executive)"]),
     # "PASSED AND REF TO FINANCE", and a week later "REF TO FINANCE DECLINED,
     # ORDERED TO 3RD READING": the passage does not send it on, and the
     # referral is told with what became of it.
-    ("HB126", "1995-1996"): (["In House committee — Public Works and Highways", "On the House floor",
-                              "In Senate committee — Education"],
+    ("HB126", "1995-1996"): (["House Committee (Public Works and Highways)", "On the House Floor",
+                              "Senate Committee (Education)"],
                              ["On January 26, 1995 the House voted to pass it. The House referred the "
                               "bill to the Finance committee, and the referral was declined."],
                              ["referred it on to the House Finance committee"]),
     # Finance's Division I sat on it, and six weeks later the chair waived
     # the referral: the work stands, and the waiver is told after it.
-    ("HB194", "2023-2024"): (["In House committee — Resources, Recreation and Development",
-                              "In House committee — Finance", "On the House floor",
-                              "In House committee — Finance"],
+    ("HB194", "2023-2024"): (["House Committee (Resources, Recreation and Development)",
+                              "House Committee (Finance)", "On the House Floor",
+                              "House Committee (Finance)"],
                              ["The committee held a work session on January 16, 2024. The committee's "
                               "chair waived the referral under House Rule 47(f)."], []),
     # A waiver with no referral on the docket: nothing is told of either.
-    ("HB1138", "2023-2024"): (["In House committee — Transportation", "On the House floor"], [],
+    ("HB1138", "2023-2024"): (["House Committee (Transportation)", "On the House Floor"], [],
                               ["the referral"]),
     # Ways and Means' amendment, entered two hours after the passage that sent
     # the bill to Finance, is told before it: after Ways and Means' report, on
     # the floor that adopted it (narrative.amendment_after_report).
-    ("HB658", "2025-2026"): (["In Senate committee — Ways and Means", "On the Senate floor",
-                              "In Senate committee — Finance"],
+    ("HB658", "2025-2026"): (["Senate Committee (Ways and Means)", "On the Senate Floor",
+                              "Senate Committee (Finance)"],
                              ["(amendment 2025-1642s) unanimously, 5–0, and the report was placed on the "
                               "consent calendar. The committee's amendment (2025-1642s) was adopted"], []),
     # HHS's report, dated the calendar's 16 May and entered on the 6th, before
     # the vote on the amendment it carried.
-    ("HB1568", "2023-2024"): (["In Senate committee — Health and Human Services", "On the Senate floor",
-                               "In Senate committee — Finance"],
+    ("HB1568", "2023-2024"): (["Senate Committee (Health and Human Services)", "On the Senate Floor",
+                               "Senate Committee (Finance)"],
                               ["(amendment 2024-1727s) unanimously, 5–0, and the report was placed on the "
                                "consent calendar. The committee's amendment (2024-1727s) was adopted"],
                               []),
@@ -4576,45 +4579,45 @@ _REFERRAL_UNMADE_HEADS = {
     # the 2002 House's "on deadline for 2nd Comm" (HB 1231). Told as any
     # other passage that sent the bill on: since 8 October 2026 no House
     # passage says "under the chamber's rules", whatever sent it.
-    ("SB173", "1995-1996"): (["In House committee — Education", "On the House floor",
-                              "In House committee — Finance", "On the House floor"],
+    ("SB173", "1995-1996"): (["House Committee (Education)", "On the House Floor",
+                              "House Committee (Finance)", "On the House Floor"],
                              ["then referred it on to the House Finance committee."],
                              ["under the chamber's rules"]),
-    ("HB650", "1995-1996"): (["In House committee — Commerce, Small Business, Consumer Affairs and "
-                              "Economic Development", "On the House floor", "In House committee — Finance"],
+    ("HB650", "1995-1996"): (["House Committee (Commerce, Small Business, Consumer Affairs and "
+                              "Economic Development)", "On the House Floor", "House Committee (Finance)"],
                              ["then referred it on to the House Finance committee."],
                              ["under the chamber's rules"]),
-    ("HB1633", "1995-1996"): (["In House committee — Environment and Agriculture", "On the House floor",
-                               "In House committee — Finance"],
+    ("HB1633", "1995-1996"): (["House Committee (Environment and Agriculture)", "On the House Floor",
+                               "House Committee (Finance)"],
                               ["then referred it on to the House Finance committee."],
                               ["under the chamber's rules"]),
-    ("HB1231", "2001-2002"): (["In House committee — Education", "On the House floor",
-                               "In House committee — Finance"],
+    ("HB1231", "2001-2002"): (["House Committee (Education)", "On the House Floor",
+                               "House Committee (Finance)"],
                               ["then referred it on to the House Finance committee."],
                               ["under the chamber's rules"]),
     # "Committee Refused Referral" that afternoon: the House Journal prints
     # "REFERRAL DECLINED" over SB 166, and Judiciary heads nothing.
-    ("SB166", "2013-2014"): (["In House committee — Health, Human Services and Elderly Affairs",
-                              "On the House floor", "With the governor"],
+    ("SB166", "2013-2014"): (["House Committee (Health, Human Services and Elderly Affairs)",
+                              "On the House Floor", "With the Governor"],
                              ["On May 8, 2013 the bill was referred to the Judiciary committee, and the "
-                              "referral was refused."], ["In House committee — Judiciary"]),
+                              "referral was refused."], ["House Committee (Judiciary)"]),
     # "Referral to Ways and Means withdrawn" within the hour, and the Senate
     # had the bill the next morning.
-    ("HB1679", "2005-2006"): (["In House committee — Municipal and County Government", "On the House floor",
-                               "In Senate committee — Finance"],
+    ("HB1679", "2005-2006"): (["House Committee (Municipal and County Government)", "On the House Floor",
+                               "Senate Committee (Finance)"],
                               ["On February 15, 2006 the bill was referred to the Ways and Means committee, "
-                               "and the referral was withdrawn."], ["In House committee — Ways and Means"]),
+                               "and the referral was withdrawn."], ["House Committee (Ways and Means)"]),
     # "Vacated ref to Executive Dept & Administration": the referral vacated,
     # not a committee the bill went to "instead".
-    ("SB295", "2005-2006"): (["In House committee — Executive Departments and Administration",
-                              "In House committee — Commerce", "On the House floor"],
+    ("SB295", "2005-2006"): (["House Committee (Executive Departments and Administration)",
+                              "House Committee (Commerce)", "On the House Floor"],
                              ["referred to the House Executive Departments and Administration committee. "
                               "The House withdrew that referral."], ["instead"]),
     # The Senate's introduction, dated the day before the waiver, is told
     # before it: the House chair's waiver is told on the House floor, not
     # under the Senate's committee (below).
-    ("HB186", "2025-2026"): (["In House committee — Commerce and Consumer Affairs", "On the House floor",
-                              "In Senate committee — Judiciary"],
+    ("HB186", "2025-2026"): (["House Committee (Commerce and Consumer Affairs)", "On the House Floor",
+                              "Senate Committee (Judiciary)"],
                              ["On January 7, 2026 the bill was referred to the Finance committee, whose "
                               "chair waived the referral under House Rule 47(f)."], []),
     # A notice entered before the passage that sent the bill on, for a day
@@ -4626,23 +4629,23 @@ _REFERRAL_UNMADE_HEADS = {
     # A suspension "for 2nd Comm deadlines" four weeks before the passage, for
     # the committee's reporting deadline by the House Journal (HJ 6 of 2002),
     # and the referral told in the Senate's words (the person, 8 October 2026).
-    ("HB1100", "2001-2002"): (["In House committee — Judiciary", "On the House floor",
-                               "In House committee — Judiciary", "On the House floor",
-                               "In House committee — Finance"],
+    ("HB1100", "2001-2002"): (["House Committee (Judiciary)", "On the House Floor",
+                               "House Committee (Judiciary)", "On the House Floor",
+                               "House Committee (Finance)"],
                               ["then referred it on to the House Finance committee."], []),
     # The rules no row on disk tests (_altered, above): each keeps what the
     # rows without the rule would lose.
-    ("HB1478", "2013-2014", "another chair"): (["In House committee — Children and Family Law",
-                                                "On the House floor", "In House committee — Judiciary"],
+    ("HB1478", "2013-2014", "another chair"): (["House Committee (Children and Family Law)",
+                                                "On the House Floor", "House Committee (Judiciary)"],
                                                [], ["the referral"]),
-    ("HB1679", "2005-2006", "another committee"): (["In House committee — Municipal and County Government",
-                                                    "On the House floor", "In House committee — Ways and Means",
-                                                    "In Senate committee — Finance"], [], ["the referral"]),
+    ("HB1679", "2005-2006", "another committee"): (["House Committee (Municipal and County Government)",
+                                                    "On the House Floor", "House Committee (Ways and Means)",
+                                                    "Senate Committee (Finance)"], [], ["the referral"]),
     ("HB1138", "2023-2024", "before the introduction"): (None, [], ["the referral"]),
-    ("HB194", "2023-2024", "a meeting after"): (["In House committee — Resources, Recreation and "
-                                                 "Development", "In House committee — Finance",
-                                                 "On the House floor", "In House committee — Finance",
-                                                 "In House committee"], [], []),
+    ("HB194", "2023-2024", "a meeting after"): (["House Committee (Resources, Recreation and "
+                                                 "Development)", "House Committee (Finance)",
+                                                 "On the House Floor", "House Committee (Finance)",
+                                                 "House Committee"], [], []),
 }
 
 # Where a sentence is told: (the stage's place, words, whether that stage
@@ -10746,11 +10749,11 @@ def _rail_against_the_record(N, B):
     # the bill was acted on, and stays a docket line. A bill that did reach
     # the governor keeps the heading and the sentence.
     n, _s, rail = told(("1993-1994", "HB613"))
-    if "With the governor" not in [s["label"] for s in n["stages"]]:
-        bad.append("HB613's rows no longer make a stage headed With the governor: nothing is tested")
+    if "With the Governor" not in [s["label"] for s in n["stages"]]:
+        bad.append("HB613's rows no longer make a stage headed With the Governor: nothing is tested")
     stages = B.stages_told(n, "done", rail)
     labels = [s["label"] for s in stages]
-    if "With the governor" in labels or labels[-2:] != ["On the Senate floor", "On the Senate floor"]:
+    if "With the Governor" in labels or labels[-2:] != ["On the Senate Floor", "On the Senate Floor"]:
         bad.append(f"HB613 of 1993's history is headed {labels[-3:]}")
     if any("enrolled" in s["text"].lower() or "governor" in s["text"].lower() for s in stages):
         bad.append("HB613 of 1993's history still says the bill was enrolled")
@@ -10758,9 +10761,9 @@ def _rail_against_the_record(N, B):
     if [e["raw"][:8] for e in rows] != ["ENROLLED"]:
         bad.append(f"HB613 of 1993's untold enrolment is {[e['raw'] for e in rows]}")
     law = B.stages_told(n, "law", "Hpppp")
-    if "With the governor" not in [s["label"] for s in law] or not any(
+    if "With the Governor" not in [s["label"] for s in law] or not any(
             "The bill was enrolled on May 25, 1993" in s["text"] for s in law):
-        bad.append("a bill that became law lost its stage With the governor, or its enrolment")
+        bad.append("a bill that became law lost its stage With the Governor, or its enrolment")
     if B.enrolled_untold(n, "law", "Hpppp") or B.enrolled_untold(n, "active", "Hpx--"):
         bad.append("an enrolment is left untold on a bill that is law, or still moving")
     # SB 286 of 2025, whose one stage under the governor is the row of SB 268
@@ -10841,18 +10844,18 @@ _DOCKET_CONSENT_OFF = {
         "2006|2082|01/04/2006 03:37:38 PM|CACR32|H|Introduced and ref to Judiciary  HJ 7, pg 355|01/04/2006 03:37:38 PM",
         "2006|2082|02/09/2006 01:08:21 PM|CACR32|H|Comm Rprt:   ref Interim Study  for Feb 15  (vote 15-6; CC)  HC 15, pg 780|02/09/2006 01:08:21 PM",
         "2006|2082|02/15/2006 10:09:27 AM|CACR32|H|Removed from CC (Rep. Vaillancourt)    HJ 19, pg 1069|02/15/2006 10:09:27 AM"],
-        "In House committee", ("House",)),
+        "House Committee", ("House",)),
     ("2007-2008", "HB87"): ([
         "2007|0396|01/04/2007 10:12:49 AM|HB87|H|Introduced and ref to Education; HJ 10, pg.137|01/04/2007 10:12:49 AM",
         "2007|0396|01/23/2007 03:27:58 PM|HB87|H|Committee Report: Ought to Pass for Jan 31 (vote 14-0; CC); HC 11, Pg.142|01/23/2007 03:27:58 PM",
         "2007|0396|01/31/2007 04:54:24 PM|HB87|H|Rep Sorg: Removed from Consent Calendar; HJ 14, Pg.221|01/31/2007 04:54:24 PM",
         "2007|0396|01/31/2007 04:55:14 PM|HB87|H|Ought to Pass: MA VV; HJ 14, Pg.224|01/31/2007 04:55:14 PM"],
-        "In House committee", ("House",)),
+        "House Committee", ("House",)),
     ("2015-2016", "HB676"): ([
         "2015|0665|01/08/2015 09:22:04 AM|HB676|H|Introduced and Referred to Education; HJ 12, PG. 235|01/08/2015 09:22:04 AM",
         "2015|0665|02/12/2015 11:30:37 AM|HB676|H|Committee Report: Inexpedient to Legislate for Feb 18 (Vote 19-0; CC); HC13, PG. 237-238|02/12/2015 11:30:37 AM",
         "2015|0665|02/18/2015 10:48:22 AM|HB676|H|Remove from Consent Calendar (Rep Kurk); HJ 20, PG. 496|02/18/2015 10:48:22 AM"],
-        "In House committee", ("House",)),
+        "House Committee", ("House",)),
     ("2013-2014", "HB1410"): ([
         "2014|2070|12/16/2013 02:08:18 PM|HB1410|H|Introduced 1/8/2014 and Referred to Criminal Justice and Public Safety|12/16/2013 02:08:18 PM",
         "2014|2070|03/19/2014 03:58:40 PM|HB1410|H|Ought to Pass: MA VV|03/19/2014 03:58:40 PM",
@@ -10860,13 +10863,13 @@ _DOCKET_CONSENT_OFF = {
         "2014|2070|05/07/2014 12:40:29 PM|HB1410|S|Committee Report: Ought to Pass with Amendment #2014-1732s, 5/15/14; Vote 5-0; CC; SC18|05/07/2014 12:40:29 PM",
         "2014|2070|05/15/2014 11:14:19 AM|HB1410|S|Sen. Carson Moved Remove From Consent Calendar|05/15/2014 11:14:19 AM",
         "2014|2070|05/15/2014 08:27:53 PM|HB1410|S|Ought to Pass with Amendment 1732s, 1840s, MA, VV; OT3rdg; SJ 13|05/15/2014 08:27:53 PM"],
-        "In Senate committee", ("Senate",)),
+        "Senate Committee", ("Senate",)),
     ("2025-2026", "SB60"): ([
         "2025|0430|1/14/2025 3:57:55 PM|SB60|S|  Introduced 01/09/2025 and Referred to Ways and Means;  SJ 3|1/14/2025 3:57:55 PM",
         "2025|0430|2/6/2025 8:29:25 AM|SB60|S|Committee Report: Ought to Pass with Amendment #2025-0281s, 02/13/2025; Vote 5-0; CC;  SC 9|2/6/2025 8:29:25 AM",
         "2025|0430|2/13/2025 2:50:37 PM|SB60|S|SB 60-FN was Removed from the Consent Calendar; 02/13/2025;  SJ 5|2/13/2025 2:50:37 PM",
         "2025|0430|2/13/2025 2:53:21 PM|SB60|S|Ought to Pass with Amendment #2025-0374s, MA, VV; OT3rdg; 02/13/2025;  SJ 5|5/5/2025 11:40:04 AM"],
-        "In Senate committee", ("Senate",)),
+        "Senate Committee", ("Senate",)),
     # Off the Senate's, and later on the House's and left there: one note,
     # under the first placing, and no second one in other words.
     ("2021-2022", "SB58"): ([
@@ -10877,13 +10880,13 @@ _DOCKET_CONSENT_OFF = {
         "2021|0935|3/17/2021 12:00:00 AM|SB58|H|Introduced (in recess of) 02/25/2021 and referred to Executive Departments and Administration HJ 4 P. 50|3/17/2021 12:00:00 AM",
         "2021|0935|5/25/2021 12:00:00 AM|SB58|H|Committee Report: Ought to Pass with Amendment #2021-1531h (Vote 18-0; CC) HC 26 P. 6|5/25/2021 12:00:00 AM",
         "2021|0935|6/3/2021 12:00:00 AM|SB58|H|Ought to Pass with Amendment 2021-1531h: MA VV 06/03/2021 HJ 8 P. 8|6/3/2021 12:00:00 AM"],
-        "In Senate committee", ("Senate",)),
+        "Senate Committee", ("Senate",)),
     ("1999-2000", "HB605"): ([
         "1999|0365|02/10/1999 08:05:59 PM|HB605|H|Introduced and ref to Judiciary;  HJ18, p297|02/10/1999 08:05:59 PM",
         "1999|0365|04/06/1999 11:07:57 AM|HB605|H|Maj Report  ITL  for  Apr 14   (vote 13-1;CC#2)|04/06/1999 11:07:57 AM",
         "1999|0365|04/14/1999 02:25:49 PM|HB605|H|ITL Report adopted;  Consent Cal reconsidered, Rep Mock|04/14/1999 02:25:49 PM",
         "1999|0365|04/14/1999 03:36:29 PM|HB605|H|MA VV; Removed from Consent Cal, req Rep Mock; Recommitted to|04/14/1999 03:36:29 PM"],
-        "In House committee", ("House",)),
+        "House Committee", ("House",)),
     # A row about OTHER bills removed: this one stayed on, and passed.
     ("2021-2022", "HB275"): ([
         "2022|0749|1/18/2022 12:00:00 AM|HB275|S|Introduced 01/05/2022 and Referred to Executive Departments and Administration; SJ 2|1/18/2022 12:00:00 AM",
@@ -10891,7 +10894,7 @@ _DOCKET_CONSENT_OFF = {
         "2022|0749|4/28/2022 12:00:00 AM|HB275|S|Ought to Pass: MA, VV; Refer to Finance Rule 4-5; 04/28/2022; SJ 10|4/28/2022 12:00:00 AM",
         "2022|0749|5/5/2022 12:00:00 AM|HB275|S|Special Order to after the Bills removed from the Consent Calendar, Without Objection, MA; 05/05/2022; SJ 11|5/5/2022 12:00:00 AM",
         "2022|0749|5/5/2022 12:00:00 AM|HB275|S|Ought to Pass : MA, VV; OT3rdg; 05/05/2022; SJ 11|5/5/2022 12:00:00 AM"],
-        "In Senate committee", ()),
+        "Senate Committee", ()),
     # The House took the conference report off ITS consent calendar; the
     # Senate had passed the bill on the Senate's.
     ("2025-2026", "HB273"): ([
@@ -10904,7 +10907,7 @@ _DOCKET_CONSENT_OFF = {
         "2025|0549|6/19/2025 12:13:12 PM|HB273|S|Conference Committee Report Filed, # 2025-2780c; 06/26/2025|6/19/2025 12:13:12 PM",
         "2025|0549|6/26/2025 2:28:02 PM|HB273|H|Conference Committee Report 2025-2780c: Adopted, RC 201-165 06/26/2025  HJ 18  P. 23|10/21/2025 11:21:17 AM",
         "2025|0549|6/24/2025 1:28:08 PM|HB273|H|Removed from Consent (Reps. Berch, Scherr, C. Harvey, D. Fox, N. Germana, O'Rorke, Horrigan, Turer, Meuse, Manos) 06/24/2025  HJ 18  P. 17|10/21/2025 10:52:31 AM"],
-        "In Senate committee", ("House",)),
+        "Senate Committee", ("House",)),
     # THE BILL NAMED BETWEEN THE VERB AND THE CALENDAR, the Senate's from 2011
     # to 2024, and the House's "CON CAL" of 1992: the note kept "The chamber
     # then adopts the committee's recommendation without floor debate" beside
@@ -10917,7 +10920,7 @@ _DOCKET_CONSENT_OFF = {
         "2018|2363|5/2/2018 12:00:00 AM|HB1313|S|Special Order to 05/03/2018, Without Objection, MA; 05/02/2018|5/2/2018 12:00:00 AM",
         "2018|2363|5/3/2018 12:00:00 AM|HB1313|S|Refer to Interim Study, RC 12Y-12N, MF; 05/03/2018; SJ 16|5/3/2018 12:00:00 AM",
         "2018|2363|5/3/2018 12:00:00 AM|HB1313|S|Sen. Carson Moved Laid on Table, RC 14Y-10N, MA; 05/03/2018; SJ 16|5/3/2018 12:00:00 AM"],
-        "In Senate committee", ("Senate",)),
+        "Senate Committee", ("Senate",)),
     ("2023-2024", "SB47"): ([
         "2023|0984|1/11/2023 12:00:00 AM|SB47|S|Introduced 01/05/2023 and Referred to Election Law and Municipal Affairs; SJ 4|1/11/2023 12:00:00 AM",
         "2023|0984|1/17/2023 12:00:00 AM|SB47|S|Committee Report: Ought to Pass with Amendment #2023-0056s , 01/19/2023; Vote 5-0; CC; SC 6A|1/17/2023 12:00:00 AM",
@@ -10925,20 +10928,20 @@ _DOCKET_CONSENT_OFF = {
         "2023|0984|1/19/2023 12:00:00 AM|SB47|S|Sen. Perkins Kwoka Moved to Remove SB 47 from the Consent Calendar; 01/19/2023; SJ 4|1/19/2023 12:00:00 AM",
         "2023|0984|1/26/2023 12:00:00 AM|SB47|S|Sen. Perkins Kwoka Floor Amendment #2023-0123s , AA, VV; 01/26/2023; SJ 5|1/26/2023 12:00:00 AM",
         "2023|0984|1/26/2023 12:00:00 AM|SB47|S|Ought to Pass with Amendment 2023-0123s, MA, VV; OT3rdg; 01/26/2023; SJ 5|1/26/2023 12:00:00 AM"],
-        "In Senate committee", ("Senate",)),
+        "Senate Committee", ("Senate",)),
     ("2013-2014", "SB155"): ([
         "2013|0992|01/31/2013 12:24:14 PM|SB155|S|Introduced and Referred to Executive Dept. & Admin; SJ 5|01/31/2013 12:24:14 PM",
         "2013|0992|02/21/2013 11:49:33 AM|SB155|S|Committee Report: Ought to Pass with Amendment #2013-0485s, NT, 3/7/13; Vote 5-0; CC; SC10|02/21/2013 11:49:33 AM",
         "2013|0992|03/07/2013 10:50:32 AM|SB155|S|Sen. Watters Moved to Remove SB 155-FN-A from the Consent Calendar; SJ 6|03/07/2013 10:50:32 AM",
         "2013|0992|03/07/2013 01:38:41 PM|SB155|S|Committee Amendment 0485s, NT, AA, VV; SJ 6|03/07/2013 01:38:41 PM",
         "2013|0992|03/07/2013 01:39:25 PM|SB155|S|Ought to Pass with Amendment 0485s, NT, MA, VV; Refer to Finance Rule 4-5; SJ 6|03/07/2013 01:39:25 PM"],
-        "In Senate committee", ("Senate",)),
+        "Senate Committee", ("Senate",)),
     ("1991-1992", "HB476"): ([
         "1992|0664|01/22/1992 11:30:25 AM|HB476|H|MAJ REPORT ITL FOR JAN30  (VOTE 18-0;CC)|01/22/1992 11:30:25 AM",
         "1992|0664|01/30/1992 02:10:41 PM|HB476|H|REMOVED FROM CON CAL, REQ REP JACOBSON; HJ23,P616|01/30/1992 02:10:41 PM",
         "1992|0664|01/30/1992 03:17:13 PM|HB476|H|REP JACOBSON SUBST OTP, ML RC(96-240); ITL REPORT ADOPTED VV;|01/30/1992 03:17:13 PM",
         "1992|0664|01/30/1992 03:18:10 PM|HB476|H|HJ23,P643-646|01/30/1992 03:18:10 PM"],
-        "In House committee", ("House",)),
+        "House Committee", ("House",)),
     # UNDER ITS OWN CHAMBER'S STAGE. The Senate's removal of HB 592, entered
     # after the bill's enrolment, sat under "With the governor". Docket.txt
     # lines 5629-6198, the Senate's rows.
@@ -10950,7 +10953,7 @@ _DOCKET_CONSENT_OFF = {
         "2025|0795|3/20/2025 11:54:53 AM|HB592|S|Enrolled Adopted, VV, 03/20/2025  SJ 8|4/1/2025 3:10:28 PM",
         "2025|0795|3/20/2025 12:43:38 PM|HB592|S|HB 592-FN was Removed from the Consent Calendar; 03/20/2025;  SJ 8|3/20/2025 12:43:42 PM",
         "2025|0795|3/20/2025 12:45:21 PM|HB592|S|Special Order to the Beginning of the Regular Calendar, Without Objection; 03/20/2025;  SJ 8|3/20/2025 12:45:25 PM"],
-        "In Senate committee", ("Senate",)),
+        "Senate Committee", ("Senate",)),
     # Taken off, and put back: HB 264 of 1993 was killed with the calendar
     # of 16 March. Docket_db_1993-1994.txt lines 5-10.
     ("1993-1994", "HB264"): ([
@@ -10960,7 +10963,7 @@ _DOCKET_CONSENT_OFF = {
         "1993|0002|03/11/1993 01:20:30 PM|HB264|H|SPECIAL ORDER TO MAR16; HJ37,P905|03/11/1993 01:20:30 PM",
         "1993|0002|03/16/1993 03:57:52 PM|HB264|H|RETURNED TO CONSENT CALENDAR, REP MCGOVERN; HJ40,P958|03/16/1993 03:57:52 PM",
         "1993|0002|03/16/1993 06:44:50 PM|HB264|H|ITL REPORT ADOPTED; HJ40,P977|03/16/1993 06:44:50 PM"],
-        "In House committee", ("House",)),
+        "House Committee", ("House",)),
     # A placing CALENDAR_RE does not read, "for Mar 24 CC (vote 18-0)", and
     # a removal it does: the rule is said beside the removal, ahead of it.
     # Docket_db_2009-2010.txt lines 411-419.
@@ -10970,7 +10973,7 @@ _DOCKET_CONSENT_OFF = {
         "2009|0050|03/24/2009 10:27:20 AM|HB522|H|Removed from Consent Calendar (Rep Vaillancourt); HJ 25, PG.827|03/24/2009 10:27:20 AM",
         "2009|0050|03/24/2009 10:31:02 PM|HB522|H|Special Ordered to Mar 25 Without Objection; HJ 25, PG.914|03/24/2009 10:31:02 PM",
         "2009|0050|03/26/2009 06:11:16 PM|HB522|H|Inexpedient to Legislate: MA VV; HJ 29, PG.1191|03/26/2009 06:11:16 PM"],
-        "In House committee", ("House",)),
+        "House Committee", ("House",)),
     # Another calendar: the House's of conference reports, which HB 1123's
     # passed the House from; and the Senate's list of bills to lay on the
     # table together, on a measure no committee reported.
@@ -10980,7 +10983,7 @@ _DOCKET_CONSENT_OFF = {
         "1998|2128|02/12/1998 12:18:30 PM|HB1123|H|PASSED WITH AM; HJ15,P739 + 770|02/12/1998 12:18:30 PM",
         "1998|2128|06/18/1998 06:20:00 PM|HB1123|H|REMOVED FROM CONF COMM CONSENT CAL, REQ REP MOCK; HJ60,P2219|06/18/1998 06:20:00 PM",
         "1998|2128|06/18/1998 06:21:01 PM|HB1123|H|CONF COMM REPORT ADOPTED VV; HJ60,P2227|06/18/1998 06:21:01 PM"],
-        "In House committee", ()),
+        "House Committee", ()),
     ("2019-2020", "CACR19"): ([
         "2020|2962|1/8/2020 12:00:00 AM|CACR19|S|To Be Introduced 01/08/2020 and Referred to Election Law and Municipal Affairs; SJ 2|1/8/2020 12:00:00 AM",
         "2020|2962|6/17/2020 12:00:00 AM|CACR19|S|Removed from the Consent List; 06/16/2020; SJ 8|6/17/2020 12:00:00 AM",
@@ -11209,8 +11212,8 @@ def _rows_read_on_the_second_pass(N, B):
             c = next((c for c in ("House", "Senate") if x in (off[c], back[c])), None)
             if not c:
                 continue
-            if not lab.startswith((f"In {c} committee", f"On the {c} floor",
-                                   "Committee of conference")):
+            if not lab.startswith((f"{c} Committee", f"On the {c} Floor",
+                                   "Committee of Conference")):
                 bad.append(f"{key[1]} of {key[0]}: {x!r} is under {lab!r}")
             if not any(y == rule for _l, y in told[:i]):
                 bad.append(f"{key[1]} of {key[0]}: {x!r} comes before the rule, or without it")
@@ -11384,7 +11387,7 @@ def _the_ending_the_history_does_not_tell(N, B):
         {"gen_status": "SENATE", "house_status": "CONFERENCE REPORT ADOPTED",
          "senate_status": "NONCONCURRED"})
     if (status, label, text, bare) != (
-            rejected, "How it ended",
+            rejected, "How It Ended",
             "On June 26, 2001 the Senate rejected the conference report, 11\u201313. A conference "
             "report has to be adopted by both chambers, so the bill went no further.", None):
         bad.append(f"SB95 of 2001: {status!r} {text!r} {bare!r}")
@@ -11528,7 +11531,7 @@ def _held_where_build_bills_makes_the_record(N, B):
         # The paragraph of a finished term, asked for with the journey.
         r, p = row[("1989-1990", "HB462")], page("1989-1990", "HB462")
         is_("HB462 of 1989", (r["status"], p["stages"][-1]["label"], p["stages"][-1]["text"]),
-            ("Died when the session ended", "How it ended", B.ENDED_UNFINISHED))
+            ("Died when the session ended", "How It Ended", B.ENDED_UNFINISHED))
         r, p = row[("1997-1998", "SB437")], page("1997-1998", "SB437")
         is_("SB437 of 1998", (r["status"], p["stages"][-1]["text"]),
             ("Died when the session ended", B.CONF_REPORT_NOT_TAKEN_UP.format(chamber="House")))
@@ -11537,7 +11540,7 @@ def _held_where_build_bills_makes_the_record(N, B):
         # The ending the history does not tell.
         r, p = row[("2001-2002", "SB95")], page("2001-2002", "SB95")
         is_("SB95 of 2001", (r["status"], p["stages"][-1]["label"]),
-            ("Died when the conference report was rejected", "How it ended"))
+            ("Died when the conference report was rejected", "How It Ended"))
         if "the Senate rejected the conference report, 11\u201313" not in p["stages"][-1]["text"]:
             bad.append(f"SB95's ending: {p['stages'][-1]['text']!r}")
         if any("untold" in s or "_untold" in s for s in p["journey"]["steps"]):
@@ -11545,8 +11548,8 @@ def _held_where_build_bills_makes_the_record(N, B):
         # The stage of a bill a chamber ended.
         r, p = row[("1993-1994", "HB613")], page("1993-1994", "HB613")
         is_("HB613 of 1993", (r["status"], r["passage"]), ("Killed", "Hpx-x"))
-        if any(s["label"] == "With the governor" for s in p["stages"]):
-            bad.append("HB613 of 1993's page has a stage headed With the governor")
+        if any(s["label"] == "With the Governor" for s in p["stages"]):
+            bad.append("HB613 of 1993's page has a stage headed With the Governor")
         # And it was not enrolled: no stage says so, the row says why, and
         # the page's one-string history is the stages' text.
         for term, bill, ended in (("1993-1994", "HB613", "Senate"), (cur, "SB286", "Senate")):
@@ -11877,7 +11880,9 @@ _WRITTEN_DAY = re.compile(r"\b(\d{1,2})/(\d{1,2})/(\d{4})\b")
 # THE COMMITTEE THAT HAS THE BILL, ON EVERY HISTORY (3 October 2026). What
 # the data check below reads a history's own words for: a committee heading
 # and the five sentences that name a committee.
-_HEADED = re.compile(r"^In (House|Senate) committee(?: — (?P<c>.+))?$")
+# "Senate Committee (Finance)" since 10 October 2026 (narrative.STAGE_LABEL,
+# C8), where it was "In Senate committee — Finance".
+_HEADED = re.compile(r"^(House|Senate) Committee(?: \((?P<c>.+)\))?$")
 _NAMED_IN = (
     (re.compile(r"referred to the (?P<ch>House|Senate) (?P<c>.+?)"
                 r"(?: committee\b|(?<=Committee)\.)"), True),
@@ -12251,7 +12256,7 @@ def _referrals_unmade_on_disk(CN):
                 if busy or not c:
                     continue
                 for s in stages:
-                    if s.get("label") != f"In {chamber} committee — {c}":
+                    if s.get("label") != f"{chamber} Committee ({c})":
                         continue
                     told = [x for x in _SENTENCE.split(s.get("text") or "") if x]
                     if told and all(re.match(r"On .+ the bill was referred to the |The (?:House|Senate) "
@@ -12290,10 +12295,10 @@ def _referrals_unmade_on_disk(CN):
                     continue
                 nxt = stages[i + 1]
                 prior = next((x.get("label") for x in reversed(stages[:i])
-                              if (x.get("label") or "").startswith(f"In {chamber} committee")), "")
+                              if (x.get("label") or "").startswith(f"{chamber} Committee")), "")
                 label = nxt.get("label") or ""
-                if (label.startswith(f"In {chamber} committee — ") and label == prior
-                        and label != f"In {chamber} committee — {m.group('c')}"):
+                if (label.startswith(f"{chamber} Committee (") and label == prior
+                        and label != f"{chamber} Committee ({m.group('c')})"):
                     told = [x for x in _SENTENCE.split(nxt.get("text") or "") if x]
                     if told and all(_REPORT_SAID.match(x) for x in told):
                         back.append(f"{bill} of {term}: {label}")
@@ -15739,7 +15744,9 @@ def _bills_html():
         # can reach, so this one sits outside the card's expand button. What it
         # is called changed once already; anchoring on the tag rather than the
         # wording is what the check is actually about.
-        "detail link outside the button": '<a class="detail" href="bill/',
+        # Since 10 October 2026 the number is that link (C5), and the title
+        # is the button; the corner arrow went with the button it sat beside.
+        "detail link outside the button": '<a class="cnum" href="${esc(c.href)}">',
         "page heading": '<h1 class="sr">',
         # The player opens AT the boundary, not before it. The old lead was
         # five minutes for an estimate, which put the reader in the middle of
@@ -16356,7 +16363,9 @@ def _bill_text_in_its_tab():
         "the Bill Text pane no longer draws the text of a bill with no version "
         "history, so it opens empty in the bills list")
     i = t.find("const btsec=")
-    assert i > 0 and "hasVersionIndex(d)" in t[i:i + 200], (
+    # Since 10 October 2026 nothing is drawn under the tabs at all: the
+    # text is the Bill Text tab's (option E, the summary taking its tab).
+    assert i > 0 and (t[i:].startswith('const btsec="";') or "hasVersionIndex(d)" in t[i:i + 200]), (
         "the text below the tabs is drawn for bills whose tab already holds it, "
         "so a one-printing bill's text appears twice on its page")
     return "ok", "one printing: text in the tab; a version history: the viewer in the tab"
@@ -16425,11 +16434,43 @@ def _class_collisions():
         # alike, and bills.html's header carries written out (Polish 1, 9
         # October 2026); _icons_named holds every one to the component
         "icon",
+        # THE RECORD PAGES' COMPONENTS (Polish 2, ws/records, 10 October
+        # 2026), each written in components.js and components.py alike and
+        # held to one answer by _components_agree, so a session day built
+        # ahead draws what app.js draws: a bill as a card (bill_card), its
+        # byline's dot and the list the cards stand in
+        "chead", "crow", "cnum", "cyear", "ctitle", "cmeta", "cline", "cbody", "cdot",
+        "cards",
+        # a bill named in words (bill_mention) and as a row (bill_row)
+        "bmention", "byr", "brow", "brnum", "brtitle", "brline",
+        # the dated rail (rail_html) and its drawn wave
+        "rail", "dated", "wave",
+        # a person in a sentence (person_link)
+        "psent",
+        # the record head (record_head) and its note
+        "rtrail", "rtop", "rh1", "ryear", "ry", "rline", "rfacts", "rrail", "racts", "rnote",
+        # the W4 sections (section) and the run of them
+        "w4", "w4h", "w4b", "w4s",
+        # a document's row (doc_row)
+        "docof",
+        # a vote in the approved words: its amendment's number and the
+        # record's own words where they differ
+        "ramd", "rcrec",
+        # a recording's moment and its player, on a committee's meeting and
+        # a session day alike, and the fold's caret
+        "jump", "mjumps", "pbar", "pwho", "tolnote", "cmcaret",
+        # Share, among the record head's actions on every record page
+        "pshare", "sharestate",
+        # a committee's page -- its head, its term control and its meetings
+        # -- which app.js draws for a committee and build_full_sessions for
+        # the House's and the Senate's session days, drawn as a committee's
+        # page at the person's asking (10 October 2026)
+        "cmtehead", "cinfo", "bfilt", "pterm", "cday", "daylink", "cnarr",
     }
     here = Path(".")
     # The components draw on both sides by design: components.js with the
     # browser's files, components.py with the builders.
-    app_side = ["components.js", "app.js", "find.js", "bills.html"]
+    app_side = ["components.js", "app.js", "find.js", "print.js", "bills.html"]
     bld_side = [f.name for f in _paths.code_files("build_*.py")] + ["shell.py", "components.py"]
     if not all(_paths.locate(f).exists() for f in app_side + ["shell.py"]) or not bld_side:
         return "skip", "not all renderers are in this directory"
@@ -19489,7 +19530,9 @@ def _index_json_retired():
     assert all(t["url"].endswith(f"/idx/{t['term']}.json")
                for t in man["bill_indexes"]["terms"]), man["bill_indexes"]
     page = (site / "learn" / "how-a-bill-becomes-law.html").read_text(encoding="utf-8")
-    assert f"Across the {len(rows):,} bills on this site" in page, (
+    # The count is said once, under How a Chamber Votes, since the polish
+    # plan's cut E6 took its second saying out of In the Record.
+    assert f"Across the {len(rows):,} bills in this record" in page, (
         f"the Learn page does not count the index's {len(rows):,} bills")
     assert NI.census(site)["bills"] == len(rows), (
         f"the census counts {NI.census(site)['bills']} bills of {len(rows)}")
@@ -19711,7 +19754,7 @@ def _asset_headers():
                          f"{want}")
 
     pages = [site / "bills.html", site / "index.html",
-             site / "legislators.html"]
+             site / "officials.html"]
     for folder, pat in (("bill", "*/*.html"), ("legislator", "*.html"),
                         ("committee", "*.html"), ("town", "*.html")):
         got = sorted((site / folder).glob(pat))
@@ -20264,10 +20307,12 @@ _FRONT_EXEMPT = {
 
 def _front_sources(root="."):
     """[(name, text)] of every file whose markup reaches a page besides
-    app.css: components.js, app.js, find.js, bills.html and every builder in
-    src/pages/ (components.py among them), each cut where _FRONT_EXEMPT says."""
+    app.css: components.js, app.js, find.js, print.js (a bill's print sheet),
+    bills.html and every builder in src/pages/ (components.py among them),
+    each cut where _FRONT_EXEMPT says."""
     base = Path(root)
     files = [base / "src/pages/components.js", base / "src/pages/app.js", base / "src/pages/find.js",
+             base / "src/pages/print.js",
              base / "src/pages/bills.html"] + sorted((base / "src/pages").glob("*.py"))
     out = []
     for f in files:
@@ -20614,7 +20659,10 @@ _NOT_MARKS = re.compile(r"^--(?:rule|rule-2|paper|surface|wash|shadow|film|film-
 # ink in the same rule (app.js JMARK.f, the ARROW svg). A rule naming several
 # selectors draws a mark only where every one of them is named here.
 _COLOR_DRAWS_A_MARK = {".jl .j-istudy .jg": ("JMARK", "s", "WAVE"),
-                       ".jl .j-ifuture .jg": ("JMARK", "f", "ARROW")}
+                       ".jl .j-ifuture .jg": ("JMARK", "f", "ARROW"),
+                       # a committee's meeting: the interim study report it
+                       # recommended, in the same arrow (app.js actSaid)
+                       ".mrec .mmark": ("ACTMARK", "rec", "ARROW")}
 
 
 def _css_selectors(sel):
@@ -20790,9 +20838,14 @@ def _token_pairs_measure():
     # A colour read as a mark's is a mark's only while the rule is there and
     # what it colours is still the drawing named (_COLOR_DRAWS_A_MARK).
     sels = {s for _, sel, _, _ in _css_rules(text) for s in _css_selectors(sel)}
-    js = Path("src/pages/app.js").read_text(encoding="utf-8") if Path("src/pages/app.js").exists() else ""
+    # app.js and components.js: the wave is the dated rail's, which
+    # components.js draws in both languages since 10 October 2026, and app.js
+    # names it again (const WAVE=RL_WAVE), which is followed to its drawing.
+    js = "\n".join(Path(f).read_text(encoding="utf-8")
+                   for f in ("src/pages/app.js", "src/pages/components.js") if Path(f).exists())
     for sel, (table, key, svg) in _COLOR_DRAWS_A_MARK.items():
-        drawing = re.search(rf"\bconst {svg}\s*=\s*((?:'[^']*'\s*\+?\s*)+);", js)
+        alias = re.search(rf"\bconst {svg}\s*=\s*([A-Z_][A-Z0-9_]*)\s*;", js)
+        drawing = re.search(rf"\bconst {alias.group(1) if alias else svg}\s*=\s*((?:'[^']*'\s*\+?\s*)+);", js)
         if sel not in sels:
             bad.append(f"{sel} is no longer a rule of app.css; take it off _COLOR_DRAWS_A_MARK")
         elif not re.search(rf"\bconst {table}\s*=\s*\{{[^}}]*\b{key}\s*:\s*{svg}\b", js):
@@ -20890,7 +20943,9 @@ def _rings_edges_opacity():
 
     bad = []
     # S5
-    for sel in (".chead:focus-visible", ".fhead:focus-visible", ".pstub:focus-visible"):
+    # A card's control is its title's button since 10 October 2026 (C5),
+    # where it was the whole head.
+    for sel in (".ctitle:focus-visible", ".fhead:focus-visible", ".pstub:focus-visible"):
         got = rules(sel)
         off = [m for b in got for m in re.findall(r"outline-offset:\s*(-?\d+)px", b)]
         if not off or int(off[-1]) >= 0:
@@ -21097,7 +21152,7 @@ def _audit_minor(BSP, seating, BP):
         bad.append("the block that makes a phone's controls 44px is gone")
     else:
         for sel in (".cmbtn", ".calviews button", ".calfold", ".calcat", "#sort",
-                    ".bfilt select", ".docket summary", ".detail", ".offhow a"):
+                    ".bfilt select", ".docket summary", "a.cnum::before", ".offhow a"):
             if not re.search(r"(^|[,\s}])" + re.escape(sel) + r"\s*[,{][^}]*44px", phone.group(1)):
                 bad.append(f"{sel} is not held to 44px on a phone")
             base = [m.start() for m in re.finditer(r"(^|\n)" + re.escape(sel) + r"\{", css)]
@@ -21162,14 +21217,19 @@ def _audit_minor(BSP, seating, BP):
             bad.append(f"{what}'s player does not take its title from the button it replaces")
 
     # M20
+    # Since 10 October 2026 a member the name can mean is the person chip
+    # (D14), which needs no comma; a name left as words keeps its own.
     class _M:
+        by_slug = {"x": {"label": "Rep. Pat Hunt (R - Hills 1)", "party": "R"}}
+
         def slug(self, body, name):
             return "x" if name == "Hunt" else ""
     row = BSP.members_row("H", ["Hunt", "Roy", "Muns"], _M(), lambda s: s)
-    if row != ('<span class="swho1"><a href="legislator/x.html">Rep. Hunt</a>,</span> '
+    if row != ('<span class="swho1"><span class="mchip p-R"><a href="legislator/x.html">'
+               'Rep. Pat Hunt <span class="mtag">(R - Hills 1)</span></a></span></span> '
                '<span class="swho1"><span>Rep. Roy</span>,</span> '
                '<span class="swho1"><span>Rep. Muns</span></span>'):
-        bad.append("a speaker line's names are not each one item with its comma: " + row[:160])
+        bad.append("a speaker line's names are not each one item with its comma: " + row[:260])
     page = _paths.locate("build_session_pages.py").read_text(encoding="utf-8")
     if re.search(r'", "\.join\(member_html', page):
         bad.append("build_session_pages.py joins members with a bare comma again, which a "
@@ -21760,7 +21820,7 @@ def _learn_rules(civics, learn_numbers, build_civics):
     assert "roll call" in no_rc, (
         "a record with no roll calls built anyway, and the pages would say they "
         "begin in 0: " + (no_rc or "no stop"))
-    close = nums[nums.index("The closest votes"):]
+    close = nums[nums.index("The Closest Votes"):]
     close = close[:close.index("<h2>")] if "<h2>" in close else close
     for bid, why in (("hb1", "a veto override"), ("hb4", "a rules suspension")):
         assert f"bill/2026/{bid}\"" not in close, (
@@ -22161,9 +22221,9 @@ def _numbers_ballots(learn_numbers):
             ([bp22], "Yes and No are Ballotpedia's statewide count, printed where the Source "
                      "column says. 0 of the 1 below were ratified.")):
         sec = drawn(got_rows)[0]
-        sec = sec[sec.find("Constitutional amendments sent to the voters"):]
+        sec = sec[sec.find("Constitutional Amendments Sent to the Voters"):]
         assert want in sec, f"the amendments' section does not say {want!r}: {sec[:700]!a}"
-    sec = page[page.find("Constitutional amendments sent to the voters"):]
+    sec = page[page.find("Constitutional Amendments Sent to the Voters"):]
     assert sec, "the amendments' section was not drawn"
     for want in ("Yes and No are the Secretary of State's statewide count, printed where the "
                  "Source column says. 1 of the 2 below were ratified.",
@@ -22201,12 +22261,12 @@ def _numbers_removed(learn_numbers):
         missing = sorted(Path(f).name for f, _what in learn_numbers.MISSING)
     for gone in ("without the governor's signature</h2>", "<th>Awaiting</th>", "Still to come"):
         assert gone not in page, f"the page of numbers still carries {gone!r}"
-    assert "<h2>Vetoes</h2>" in page and "Bills filed, and how they ended" in page, (
+    assert "<h2>Vetoes</h2>" in page and "Bills Filed, and How They Ended" in page, (
         "the fixture page lost a section it should keep")
     want = ["ballot_results.json", "member_votes.json", "narratives.json", "testimony_db.json"]
     assert missing == want, f"the inputs said to be missing: {missing}, want {want}"
-    for h in ("The hearings with the most sign-ins", "Attendance on roll-call days",
-              "Constitutional amendments sent to the voters"):
+    for h in ("The Hearings with the Most Sign-Ins", "Attendance on Roll-Call Days",
+              "Constitutional Amendments Sent to the Voters"):
         assert h not in page, f"{h!r} was drawn with its input missing"
     return "ok", "both gone; Vetoes kept; the four missing inputs named and their sections left out"
 
@@ -23081,23 +23141,23 @@ try { scope.render(); } catch (e) {
   process.exit(1); }
 const focusHtml = document.querySelector("#results").innerHTML;
 scope.setFocused(null);
-if (/class="detail"/.test(focusHtml)) {
-  console.log("ARROW: the focused view still draws a corner link. It points at "
-              + "the standalone page for the same bill, which from a reader's "
+// THE NUMBER IS THE LINK (C5, 10 October 2026): a card's number and year lead
+// to the bill's own page, where the corner arrow did. The bill's own page is
+// its record head, with no card number leading to where the reader is.
+if (/class="cnum" href=/.test(focusHtml)) {
+  console.log("ARROW: the focused view still draws the card's number as a link. It "
+              + "points at the standalone page for the same bill, which from a reader's "
               + "seat is the page they are already on"); process.exit(1); }
-if (!/class="detail"/.test(listHtml)) {
+if (!/<a class="cnum" href="bill[/]2026[/]hb1442[.]html">HB 1442/.test(listHtml)) {
   console.log("ARROW: the search list drew no link to a standalone page");
   process.exit(1); }
 // The tooltip promised "no JavaScript" until the standalone page became this
 // same app with one bill open. It is the only place a member of the public
 // was told that, and it sat on every card in the list.
-if (/class="detail"[^>]*title="[^"]*(no JavaScript|without JavaScript)/i.test(listHtml)) {
+if (/title="[^"]*(no JavaScript|without JavaScript)/i.test(listHtml)) {
   console.log("ARROW: the tooltip still promises the page needs no JavaScript, "
     + "which it has since it became a shell for this renderer");
   process.exit(1); }
-if (!/class="detail"[^>]*title="[^"]{10,}"/.test(listHtml)) {
-  console.log("ARROW: the link has no title, so hovering it says nothing about "
-              + "where it goes"); process.exit(1); }
 try { scope.render(); } catch (e) {
   console.log("RENDER unfocused " + e.constructor.name + ": " + e.message);
   process.exit(1); }
@@ -23161,7 +23221,7 @@ scope.setFocused(null); box.value = ""; go.fire("click");
 // nothing here had ever called it.
 var detail = {
   next_step:"Passed one chamber", status_source:"General Court docket",
-  notes:[], stages:[{label:"In House committee",text:"It was introduced."}],
+  notes:[], stages:[{label:"House Committee",text:"It was introduced."}],
   narrative:"It was introduced.",
   events:[{date:"2026-03-06",type:"floor",body:"H",cancelled:false,
            raw:"Ought to Pass: MA RC 214-119 03/06/2026",action:"Ought to Pass",
@@ -23873,8 +23933,13 @@ def _app_js(expr, names=("renderHearings", "archivedNote")):
             encoding="utf-8")
         r = _run(["node", "go.js"], cwd=root, capture_output=True, text=True,
                  timeout=60)
+        # The error's own line first: node prints the line that threw and
+        # its message above the stack, which is all the last 300 characters
+        # held, so a failure read "js/loader:1651:32)" and nothing else.
+        said = (r.stderr or r.stdout or "").strip()
         assert r.returncode == 0 and "@@" in (r.stdout or ""), (
-            "app.js did not run under node: " + (r.stderr or r.stdout or "")[-300:])
+            "app.js did not run under node: " + said[:400]
+            + (" ... " + said[-200:] if len(said) > 600 else said[400:]))
         return json.loads(r.stdout.rsplit("@@", 1)[1])
     finally:
         shutil.rmtree(root, ignore_errors=True)
@@ -25242,14 +25307,15 @@ def _rail_phone(css):
         pad = float(root.get(t.group(1), 0)) if t else float((re.match(r"[\d.]+", v) or ["0"])[0])
     back = re.search(r"\.card:not\(\.focus\) \.chead \.rail\.dated\{width:calc\(100% \+ 46px "
                      r"- var\(--sp-6\)\)", css)
+    # SINCE 10 OCTOBER 2026 THE HEAD PADS ALIKE ON BOTH SIDES (C5): the corner
+    # link went, the number being the link, and its 46px with it.
+    alike = re.search(r"(?m)^\.chead\{padding:var\(--sp-6\);", css)
     # On a phone the rail takes half the card's padding either side
     # (8 October 2026), 8px of the head's 16 on each hand.
     phone = re.search(r"@media \(max-width:30em\)\{\s*\.chead \.rail\.dated\{margin-inline:"
-                      r"calc\(-1 \* var\(--(sp-\d+)\)\)\}\s*\.card:not\(\.focus\) \.chead "
-                      r"\.rail\.dated\{width:calc\(100% \+ 46px\);margin-left:calc\(-1 \* "
-                      r"var\(--\1\)\)\}", css)
+                      r"calc\(-1 \* var\(--(sp-\d+)\)\)\}", css)
     take = 2 * float(root.get(phone.group(1), 0)) if phone else 0
-    return 334 - 16 - (16 if back else 46) + take, pad
+    return 334 - 16 - (16 if (back or alike) else 46) + take, pad
 
 
 def _rail_drawn(rail):
@@ -25882,8 +25948,13 @@ def _rail_study_and_table_marks(N, B):
     js = Path("src/pages/app.js").read_text(encoding="utf-8")
     css = Path("src/pages/app.css").read_text(encoding="utf-8")
     flat = re.sub(r"/\*.*?\*/", "", css, flags=re.S)
-    mk = re.search(r'const RAILMARK=\{p:"\\u2713", x:"\\u2715", h:"", "-":"", s:WAVE, t:""\};', js)
-    if not (mk and re.search(r"const WAVE='<svg class=\"wave\"[^;]*<path ", js)):
+    # The rail's marks are components.js's since 10 October 2026 (RL_MARK,
+    # RL_WAVE), which draws the dated rail in both languages; app.js's WAVE
+    # is the same drawing.
+    cjs = Path("src/pages/components.js").read_text(encoding="utf-8")
+    mk = re.search(r'const RL_MARK=\{p:"(?:\\u2713|✓)",x:"(?:\\u2715|✕)",s:RL_WAVE\};', cjs)
+    if not (mk and re.search(r"const RL_WAVE='<svg class=\"wave\"[^;]*<path ", cjs)
+            and "const WAVE=RL_WAVE;" in js):
         bad.append("the rail's marks are not check, cross and a drawn wave, with the pause's bars drawn by CSS")
     # The bars in rem, as the disc is, so they grow with it (the merge with
     # option E's foundation): 2px at the browser's default text size.
@@ -26297,7 +26368,7 @@ def _rail_endings(N, B):
         if not line("HB1179", "ifuture", r'<svg class="arrow"[^>]*><path [^>]*/></svg>',
                     r'Interim study report: recommended for legislation in 1997, '
                     r'<span class="tally">17–0</span>; filed again '
-                    r'as <a href="bill/1997/hb154.html">HB 154 of 1997</a>'):
+                    r'as <a class="bmention" href="bill/1997/hb154.html">HB 154 of 1997</a>'):
             bad.append(f"HB 1179 of 1996's report does not link HB 154 of 1997: "
                        f"{got['HB1179']['how'][-500:]!a}")
         said = (re.search(r'aria-label="([^"]*)"', got["SB570"]["card"]) or [None, ""])[1]
@@ -26814,9 +26885,9 @@ def _ballot_said_built():
     want = ("Yes and No are the statewide count printed where the Source column says: "
             "Ballotpedia's for 1, the Secretary of State's for 1. 0 of the 2 below were ratified.")
     if want not in numbers:
-        i = numbers.find("Constitutional amendments sent to the voters")
+        i = numbers.find("Constitutional Amendments Sent to the Voters")
         bad.append(f"the page of numbers says {numbers[i:i + 600]!a}")
-    if "CACR 7" in numbers[numbers.find("Constitutional amendments sent to the voters"):]:
+    if "CACR 7" in numbers[numbers.find("Constitutional Amendments Sent to the Voters"):]:
         bad.append("the page of numbers shows the row with no cite")
     words = ("the statewide Yes and No votes on each of the 3 the voters have decided, with "
              "where each count is printed and the day it was read: the Secretary of State's "
@@ -26895,7 +26966,9 @@ process.stdout.write("\\n@@" + JSON.stringify(out));
         shutil.rmtree(root, ignore_errors=True)
 
     def rail_of(html):
-        m = re.search(r'<span class="rail dated"[^>]*aria-label="([^"]*)"[^>]*>(.*?)</span>\s*</button>',
+        # The rail closes the card's head, and the record head's rail its
+        # own box, since 10 October 2026 (C5, C6): no longer a button.
+        m = re.search(r'<span class="rail dated"[^>]*aria-label="([^"]*)"[^>]*>(.*?)</span>\s*</div>',
                       html, re.S)
         assert m, "the bill's own view drew no dated rail"
         return m.group(1), re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", m.group(2))).strip()
@@ -26944,7 +27017,8 @@ process.stdout.write("\\n@@" + JSON.stringify(out));
             f"{bid} still draws the status page's per-chamber rows")
         # Across the panel, not in the value column: beside the analysis that
         # column left the words about 66px (24 September).
-        assert '<tr class="wide"><td colspan="2"><ul class="jl">' in g["summary"], (
+        assert '<section class="w4" id="journey"><h2 class="w4h">How It Got Here</h2>' \
+               '<div class="w4b"><ul class="jl">' in g["summary"], (
             f"{bid}'s How it got here is drawn in the value column, not across the panel")
         # ONE RAIL (5 October 2026): the list card, closed and with nothing
         # fetched, draws the rail the bill's own view draws, from the index
@@ -26964,7 +27038,7 @@ process.stdout.write("\\n@@" + JSON.stringify(out));
         # THE DAY ALONE under every stop, on the page, the card and the card
         # opened: a word back under any of them fails here as well as above.
         for where in ("page", "card", "opened"):
-            m = re.search(r'<span class="rail dated".*?</span>\s*</button>', g[where], re.S)
+            m = re.search(r'<span class="rail dated".*?</span>\s*</div>', g[where], re.S)
             under = [re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", s)).strip()
                      for s in re.findall(r"<small>(.*?)</small>", m.group(0) if m else "", re.S)]
             words = [u for u in under if not re.fullmatch(r"[A-Z][a-z]{2} \d{1,2}, \d{4}", u)]
@@ -27116,7 +27190,7 @@ def _site_fixture(root):
                               "raw": "Inexpedient to Legislate, RC 16Y-8N, "
                                      "MA; 02/19/2026"}]},
         "HB1442": {"narrative": "It was introduced.",
-                   "stages": [{"label": "In House committee", "text": "It was introduced."}],
+                   "stages": [{"label": "House Committee", "text": "It was introduced."}],
                    "notes": [], "unrecognised": [],
                    "events": [{"date": "2026-03-06", "type": "floor", "body": "H",
                                "cancelled": False, "action": "Ought to Pass",
@@ -27654,7 +27728,8 @@ CHAIN_NEEDS = ["build_site_v2.py", "build_search_index.py", "build_pages.py",
                "build_legislator_pages.py", "build_committees.py",
                "build_civics.py", "build_town_pages.py", "build_indexes.py",
                "build_exports.py", "build_feeds.py", "check_site.py",
-               "app.css", "app.js", "bills.html"]
+               "app.css", "app.js", "bills.html",
+               "build_district_map.py", "map.js", "map.css"]
 
 
 def _stand_in_png():
@@ -27747,9 +27822,13 @@ def _built_site(here, root, brand=True, env=None):
     # build fails on a file that has nothing to do with the fixture. It is
     # small, tracked, and written by `probe_alignment.py --truth --score-out`,
     # which is the gate every timestamp method passes before it ships.
+    # The district map's module and its committed geometry, which
+    # build_district_map publishes with the map's data (9 October 2026).
     for name in ("src/pages/app.css", "src/pages/components.js", "src/pages/app.js",
-                 "src/pages/bills.html", "src/pages/find.js", "corrections/officials.json",
-                 "generated/alignment_score.json"):
+                 "src/pages/bills.html", "src/pages/find.js", "src/pages/print.js",
+                 "src/pages/print.css", "corrections/officials.json",
+                 "generated/alignment_score.json",
+                 "src/pages/map.js", "src/pages/map.css", "generated/district_geometry.json"):
         if (here / name).exists():
             (root / name).parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(here / name, root / name)
@@ -27792,7 +27871,7 @@ def _built_site(here, root, brand=True, env=None):
         # ran this script's main() at all.
         ("build_search_index.py", ["--idx", "site/idx", "--out", "site/sidx",
                                    "--allow-no-text"], "site/sidx/manifest.json"),
-        ("build_pages.py", ["--out", "site"], "site/legislators.html"),
+        ("build_pages.py", ["--out", "site"], "site/officials.html"),
         ("build_bill_pages.py", ["--site", "site", "--base", base],
          "site/sitemap.xml"),
         ("build_legislator_pages.py", ["--site", "site", "--base", base],
@@ -27800,8 +27879,10 @@ def _built_site(here, root, brand=True, env=None):
         # After the bill pages, as in build_all: it reads their stations.
         ("build_committees.py", ["--site", "site", "--data", "data",
                                  "--base", base], "site/committees.json"),
-        ("build_civics.py", ["--site", "site", "--base", base], "site/learn.html"),
+        ("build_civics.py", ["--site", "site", "--base", base], "site/resources.html"),
         ("build_town_pages.py", ["--site", "site", "--base", base], "site/town"),
+        # The district map's data, after the town pages, as in build_all.
+        ("build_district_map.py", ["--site", "site"], "site/district_map.json"),
         ("build_indexes.py", ["--site", "site", "--base", base],
          "site/directory.html"),
         # Before the calendar, whose floor cards link to these, and after the
@@ -27813,6 +27894,9 @@ def _built_site(here, root, brand=True, env=None):
          "site/session/S"),
         ("build_session_pages.py", ["--site", "site", "--base", base],
          "site/session/H"),
+        # The chambers' cards on the Committees page and their pages, after
+        # both chambers' term files, as build_all runs it.
+        ("build_full_sessions.py", ["--site", "site", "--base", base], "site/session/house.html"),
         # After the committees, whose codes it needs to link a card, and in
         # build_all's own order. Its output is what the Calendar tab points
         # at, so a fixture without it builds a nav link to nothing -- which
@@ -27960,6 +28044,14 @@ def _chain():
     root = Path(tempfile.mkdtemp())
     try:
         base, steps = _fixture_site_whole(root)
+        # The district map's file, script and stylesheet (9 October 2026):
+        # published by the night, though no page mounts the map yet.
+        dm = json.loads((root / "site" / "district_map.json").read_text(encoding="utf-8"))
+        assert dm["places"] and dm["fill"]["base"] and dm["arcs"], \
+            "build_district_map wrote a district_map.json with nothing in it"
+        for name in ("map.js", "map.css"):
+            assert (root / "site" / name).read_bytes() == (here / "src/pages" / name).read_bytes(), \
+                f"site/{name} is not src/pages/{name}"
         # llms.txt (24 September): it exists, says the one thing that must
         # never move -- this is not the General Court's official record --
         # and the example bill address it gives is a page that was built.
@@ -28001,7 +28093,8 @@ def _chain():
         # every href before resolving, so a bare fragment reads as the site
         # root and passes while every entry in a contents rail is wrong.
         # footer_nav's docstring records the same trap springing once already,
-        # with "../learn.html".
+        # with "../learn.html". On this page folded into the head of each page
+        # on 9 October 2026 (the component plan); its list is the one held here.
         #
         # The second half is the slower version of the same failure. The ids
         # are DERIVED from the headings, so a heading reworded in civics.py
@@ -28012,11 +28105,11 @@ def _chain():
         learn = sorted((root / "site" / "learn").glob("*.html"))
         assert learn, "the chain built no learn pages for the contents check"
         n_toc = 0
-        for f in learn + [root / "site" / "learn.html"]:
+        for f in learn:
             page = f.read_text(encoding="utf-8", errors="replace")
             ids = set(re.findall(r'id="([^"]+)"', page))
-            want = f"learn/{f.stem}" if f.parent.name == "learn" else "learn"
-            for nav in re.findall(r'<nav class="ctoc".*?</nav>', page, re.S):
+            want = f"learn/{f.stem}"
+            for nav in re.findall(r'<nav class="l-otpb".*?</nav>', page, re.S):
                 for href in re.findall(r'href="([^"]*)"', nav):
                     path, _, frag = href.partition("#")
                     assert path == want, (
@@ -28028,8 +28121,32 @@ def _chain():
                         f"{f.name}: the contents link {href!r} points at an id "
                         "that is not on the page")
                     n_toc += 1
-        assert n_toc, ("no learn page carries a contents rail, so nothing here "
+        assert n_toc, ("no learn page carries an On this page list, so nothing here "
                        "was actually checked")
+        # THE LEARN HUB'S OLD ADDRESS IS A REDIRECT NOW (decision 128): /learn and
+        # /learn.html go to /resources, which _redirects says and no file
+        # shadows, and the hub is where the redirect lands.
+        red = (root / "site" / "_redirects").read_text(encoding="utf-8")
+        for old in ("/learn", "/learn.html"):
+            assert f"\n{old} /resources 301\n" in red, f"_redirects does not send {old} to /resources"
+        assert not (root / "site" / "learn.html").exists(), (
+            "a learn.html is in the site, where the redirect to /resources should answer")
+        # AND THE LEGISLATORS PAGE IS OFFICIALS (decision 127): /legislators and
+        # /legislators.html go to /officials, no file shadows them, and no rule
+        # reaches the members' data under /legislators/ or their pages.
+        for old in ("/legislators", "/legislators.html"):
+            assert f"\n{old} /officials 301\n" in red, f"_redirects does not send {old} to /officials"
+        assert not any(ln.split()[0].startswith(("/legislators/", "/legislator/"))
+                       and ln.split()[-1] == "301" for ln in red.splitlines() if ln.strip()
+                       and not ln.startswith("#")), (
+            "a redirect reaches the members' data or pages")
+        assert not (root / "site" / "legislators.html").exists() and \
+            (root / "site" / "officials.html").exists(), (
+            "a legislators.html is in the site, or no officials.html, where /officials should answer")
+        hub = (root / "site" / "resources.html").read_text(encoding="utf-8")
+        for pid in ("learn", "guides", "sources"):
+            assert f'id="tab-{pid}"' in hub and f'<div class="twnpane r-sheet" id="{pid}"' in hub, (
+                f"the Resources hub has no {pid} tab")
 
         # COMING UP ON THE BUILT HOME PAGE IS THE BUILD DATE'S WEEK: no day
         # before the build date or after that week's Sunday, and every day in
@@ -28040,8 +28157,12 @@ def _chain():
         import build_calendar as BC
         import proceedings as _P
         from datetime import date as _date, timedelta as _td
+        # FROM SATURDAY, NEXT WEEK (D13, 8 October 2026): built on a Saturday
+        # or a Sunday the rail is the coming Monday's week, whole.
         built = _date.fromisoformat(json.loads((root / "site" / "home.json").read_text(
             encoding="utf-8"))["generated"])
+        if built.weekday() >= 5:
+            built = built + _td(days=7 - built.weekday())
         wk_end = built + _td(days=6 - built.weekday())
         homepage = (root / "site" / "index.html").read_text(encoding="utf-8",
                                                             errors="replace")
@@ -28049,7 +28170,7 @@ def _chain():
         stray = [d for d in rail if not built.isoformat() <= d <= wk_end.isoformat()]
         assert not stray, (
             f"the built home page's Coming up shows {stray}, outside the week "
-            f"it was built in ({built} to {wk_end})")
+            f"it was built for ({built} to {wk_end})")
         week = BC.weeks_from(_P.load(root / "proceedings.csv")).get(
             BC.week_key(built)) or {}
         due = sorted(d for d in week if d >= built.isoformat() and week[d])
@@ -28171,17 +28292,26 @@ def _chain():
                 f"the directory does not link the list of {name} session days")
             for d in on_disk[b]:
                 day = (sess / b / f"{d}.html").read_text(encoding="utf-8")
-                up = re.findall(r'<div class="wkpage sesspage"><p class="crumb">(.*?)</p><h1>',
-                                day, re.S)
-                assert len(up) == 1 and f'href="directory/{lst}#y{d[:4]}"' in up[0], (
-                    f"session/{b}/{d} does not lead up to the list of {name} "
-                    "session days, at its year, in a line above its heading")
+                # THE RECORD HEAD'S TRAIL (C6, 10 October 2026), where the
+                # line above the heading was; the week on the Calendar is in
+                # the line between the previous and next days.
+                up = re.findall(r'<div class="wkpage sesspage"><header class="rhead rh-day">'
+                                r'<nav class="rtrail"[^>]*>(.*?)</nav>', day, re.S)
+                # The week is the pager's, between the previous and next
+                # days ("The Week of ...", build_session_pages.pager).
+                mid = re.findall(r'<nav class="wknav[^"]*" aria-label="Other session days">'
+                                 r'(.*?)</nav>', day, re.S)
+                import proceedings as _PR
+                _t = _PR.vote_term(d[:4], d)
+                assert len(up) == 1 and f'href="session/{ {"H": "house", "S": "senate"}[b]}?term={_t}#day-{d}"' in up[0], (
+                    f"session/{b}/{d} does not lead up to the {name}'s page of session "
+                    "days, at its term, in a line above its heading")
                 assert f'id="y{d[:4]}"' in page, (
                     f"/directory/{lst} has no heading for {d[:4]}, which "
                     f"session/{b}/{d} leads to")
                 y, w, _ = _date.fromisoformat(d).isocalendar()
                 wk = f"{y}-W{w:02d}"
-                assert (f'href="calendar/{wk}"' in up[0]) == (wk in weeks), (
+                assert mid and (f'href="calendar/{wk}"' in mid[0]) == (wk in weeks), (
                     f"session/{b}/{d} {'does not link' if wk in weeks else 'links'} "
                     f"its week on the Calendar, {wk}, which the calendar "
                     f"{'wrote' if wk in weeks else 'did not write'}")
@@ -28989,10 +29119,13 @@ def _session_bill_term(BSP, SD, shell):
         wrong = [h for h in hrefs if not h.startswith("bill/2016/")]
         assert not wrong, ("a 2016 sitting links to another term's bill: "
                            + ", ".join(wrong))
-        assert hrefs.count("bill/2016/hb1102.html") == 2, (
-            "HB 1102's heading and its roll call pointer should both reach "
-            f"bill/2016/hb1102.html; the links are {hrefs}")
-        assert 'class="cbn" href="bill/2016/hb1300.html"' in html, (
+        # The card's number is HB 1102's one link since 10 October 2026: its
+        # roll call is drawn with the Votes tab's own display, where a line
+        # pointed at the bill's page (v2: no new link).
+        assert hrefs.count("bill/2016/hb1102.html") == 1, (
+            "HB 1102's card should reach bill/2016/hb1102.html, once; "
+            f"the links are {hrefs}")
+        assert 'class="brnum" href="bill/2016/hb1300.html"' in html, (
             "the consent-calendar line does not reach the 2016 HB 1300")
         assert "relative to the 2016 bill" in html and \
             "research and development" not in html and \
@@ -29001,7 +29134,7 @@ def _session_bill_term(BSP, SD, shell):
         assert "/bills#" not in html and "hb9999" not in html, (
             "a bill its own term's index does not hold was linked anyway; "
             "it must be printed without a link")
-        assert '<span class="sbill">HB 9999</span>' in html, (
+        assert '<span class="cnum">HB 9999</span>' in html, (
             "the unindexed bill's number is not printed as plain text")
 
         # One number from two terms on one day is two bills: the House
@@ -29012,7 +29145,7 @@ def _session_bill_term(BSP, SD, shell):
         assert len(two.bills) == 2, "two terms' HR 1 counted as one bill"
         html2, _ = BSP.render(two, blank, titles, years,
                               BSP.Members(root / "site"), shell.E)
-        assert html2.count('<article class="sitem">') == 2 and \
+        assert html2.count('<article class="card"') == 2 and \
             "bill/2015/hr1.html" in html2 and "bill/2025/hr1.html" in html2, (
             "HR 1 of two terms was drawn as one card, or linked to one term")
         return "ok", ("heading, consent line and roll call pointer all reach "
@@ -29881,9 +30014,10 @@ def _session_consent_removed_anywhere(JD, SD, BSP):
         assert sorted(i.bill for i in day.items if i.consent) == ["HB522", "HB605"], (
             "the fixture's two bills are not both on the day's consent list")
         page = BSP.render(day, found, {}, {}, {}, _html.escape)[0]
-        cons = page.split("On the consent calendar", 1)[-1].split("</section>", 1)[0]
-        listed = cons.split("</p>", 1)[-1]
-        assert "HB 522" in listed and "HB 605" not in listed and "HB 605-FN was taken off" in cons, (
+        cons = page.split('<section class="w4" id="consent">', 1)[-1].split("</section>", 1)[0]
+        listed = cons.split("<details", 1)[-1]
+        assert "HB 522" in listed and "HB 605" not in listed and \
+            "HB 605-FN was removed from the consent calendar" in cons, (
             "the 14 April 1999 page still lists HB 605 as adopted without debate: "
             + re.sub(r"<[^>]+>", " ", cons)[:200])
         assert "HB 9999" not in page, "a stray removal put a bill into the consent note"
@@ -29914,8 +30048,8 @@ def _session_consent_removed_anywhere(JD, SD, BSP):
         assert sorted(i.bill for i in day.items if i.consent) == ["HB522"], (
             "HB 605's recommittal, read whole, is a consent item")
         page = BSP.render(day, found, {}, {}, {}, _html.escape)[0]
-        cons = page.split("On the consent calendar", 1)[-1].split("</section>", 1)[0]
-        assert "HB 605-FN was taken off" in cons and "HB 9999" not in cons, (
+        cons = page.split('<section class="w4" id="consent">', 1)[-1].split("</section>", 1)[0]
+        assert "HB 605-FN was removed from the consent calendar" in cons and "HB 9999" not in cons, (
             "the 14 April 1999 page does not say HB 605 was taken off the consent "
             "calendar, which its own docket line and the journal both say: "
             + re.sub(r"<[^>]+>", " ", cons)[:200])
@@ -30177,7 +30311,11 @@ def _session_speech_before_its_motion(N, JD, SD, BSP):
     finally:
         shutil.rmtree(root, ignore_errors=True)
     txt = re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", page))
-    claimed = re.findall(r"Spoke (for|against) the motion (.*?)(?= Spoke| A roll call| Taken| The motion| Also|$)", txt)
+    # Each side's names are their own paragraph (.sspoke), read to its end:
+    # what follows one is the next motion's card, whatever its words.
+    claimed = [(side, re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", who)).strip())
+               for side, who in re.findall(r'<p class="sspoke"><span class="slab">Spoke '
+                                           r'(for|against) the motion</span>(.*?)</p>', page)]
     assert claimed == [("against", "Rep. Kurk")], (
         f"HB 110's page of 10 February 1999 credits {claimed}: " + txt[:500])
     also = re.search(r"Also spoke during this bill (.*?) the record does not say", txt)
@@ -31987,12 +32125,12 @@ def _docket_1999_clauses(N, V, E, B):
         in told["HB621"], told["HB621"]
     # A committee's amendment voted between two floor questions stays under
     # the floor's heading: HR 10 was never in committee.
-    assert [lab for lab, _t in stages["HR10"]] == ["On the House floor"] and \
+    assert [lab for lab, _t in stages["HR10"]] == ["On the House Floor"] and \
         "The committee's amendment (4110) was adopted on a voice vote" in told["HR10"], (
         f"HR 10's Finance amendment of 13 April 2000 is under {stages['HR10']}")
     # And under the floor's where the committee's amendment comes first on the
     # line: it was voted on the floor (the launch audit of 7 October 2026).
-    assert [lab for lab, _t in stages["SB324"]] == ["On the House floor"], (
+    assert [lab for lab, _t in stages["SB324"]] == ["On the House Floor"], (
         stages["SB324"])
     return "ok", ("HB 999's amendment 2229 is adopted in two parts and listed adopted; SB 303's "
                   "section 5 claims nothing for 4383; HB 1548's veto, HB 763's concurrence, "
@@ -32550,8 +32688,9 @@ def _session_clause_names_question(SD, BSP):
     cons = SD.Item("HB189", "2013-2014", {"type": "floor", "body": "H", "action": "Ought to Pass",
                                           "motion": "MA", "vote_kind": "VV", "raw": "OTP"}, 0)
     note = BSP.consent_html([cons], ["HB679"], {}, {}, _html.escape)
-    assert "HB 679 was taken off the calendar." in note and "debated" not in note and \
-        "request" not in note, f"the consent calendar's note says more than the record: {note}"
+    assert "HB 679 was removed from the consent calendar." in note and "debated" not in note \
+        and "request" not in note and "told below" not in note, (
+            f"the consent calendar's note says more than the record: {note}")
     return "ok", ("veto results read from the result words; a count bound to its own "
                   "clause; a Senate amendment row's third reading and a motion to divide "
                   "drawn as themselves; a counted division never a voice vote; no ballots "
@@ -32609,19 +32748,19 @@ def _consent_rereferral_not_study(N, SD, BSP):
             it = SD.Item(bill, term, e, 0)
             it.consent = True
             page = BSP.consent_html([it], [], {}, {(term, bill): int(term[5:])}, _html.escape)
-            heads = re.findall(r'<h3 class="slab">(.*?) &mdash; \d+</h3>', page)
+            heads = re.findall(r'<h3 class="sch">(.*?) <span>\d+</span></h3>', page)
             got[(bill, e.get("date"))] = heads
-    want = {("SB39", "2025-02-13"): ["Sent back to committee"],
-            ("SB18", "2015-02-12"): ["Sent back to committee"],
-            ("HB561", "2026-01-07"): ["Sent to interim study"]}
+    want = {("SB39", "2025-02-13"): ["Sent Back to Committee"],
+            ("SB18", "2015-02-12"): ["Sent Back to Committee"],
+            ("HB561", "2026-01-07"): ["Sent to Interim Study"]}
     for k, heads in want.items():
         if got.get(k) != heads:
             bad.append(f"{k[0]} on {k[1]} is listed under {got.get(k)}, not {heads}")
-    if any(h == ["Sent to interim study"] for (b, d), h in got.items()
+    if any(h == ["Sent to Interim Study"] for (b, d), h in got.items()
            if (b, d) in (("SB39", "2025-02-13"), ("SB18", "2015-02-12"))):
         bad.append("a Senate re-referral is listed as sent to interim study")
-    for words, head in (("Rerefer to Interim Study", "Sent to interim study"),
-                        ("Re-Refer to Committee", "Sent back to committee")):
+    for words, head in (("Rerefer to Interim Study", "Sent to Interim Study"),
+                        ("Re-Refer to Committee", "Sent Back to Committee")):
         it = SD.Item("SB1", "2025-2026", {"type": "floor", "body": "S", "action": words,
                                           "motion": "MA", "vote_kind": "VV", "raw": words}, 0)
         if BSP.short_outcome(it) != head:
@@ -33475,7 +33614,7 @@ def _session_rollcalls_reconciled(SD, BSP):
         rules.items, rules.others)
     html, payloads = BSP.render(rules, {}, {}, {}, BSP.Members(Path("no-such-site")), str)
     lead = BSP._lead(rules, {}, "2025-01-08")
-    assert "Votes on no bill" in html and len(payloads) == 1 and lead.startswith("1 roll call."), (
+    assert "Votes on No Bill" in html and len(payloads) == 1 and lead.startswith("1 roll call."), (
         lead, html[:300])
     html, _ = BSP.render(shared, {}, {}, {}, BSP.Members(Path("no-such-site")), str)
     assert html.count("One roll call on 2 bills") == 2, html[:600]
@@ -33964,7 +34103,9 @@ def _session_speeches_by_the_record(SD, BSP):
     days = _sitting_fixture(SD, narr, rolls)
 
     def spoke(html, action):
-        part = html.split(f"<b>{action}</b>", 1)[1].split('<div class="smotion">', 1)[0]
+        # The record's words are the block's data-motion since 10 October
+        # 2026, where the head says the approved words.
+        part = html.split(f'data-motion="{action}"', 1)[1].split('<div class="dvote"', 1)[0]
         return {side: set(re.findall(r"Rep\. (\w+)", m.group(1)))
                 for side, m in (("for", re.search(r"Spoke for the motion</span>(.*?)</p>", part)),
                                 ("against", re.search(r"Spoke against the motion</span>(.*?)</p>", part)))
@@ -34042,10 +34183,16 @@ def _session_rollcall_says_no_more(SD, BSP):
         "1999-2000": {"HB1406": [_rc('2000', 'H', 121, '2000-06-27', 'HB1406', "OVERRIDE GOVERNOR'S VETO", 19, 323, False, 228)]}}
     days = _sitting_fixture(SD, narr, rolls)
     jun = days[("S", "2012-06-27")]
+    # Since 10 October 2026 a roll call on a bill draws the bill's Votes
+    # tab's own display, its ballots by party (data-card), where a line sent
+    # the reader to the bill's page for them: the suspension, filed under no
+    # bill, draws its count and no ballots, with HB 1354's own card known.
     html, _ = BSP.render(jun, {}, {}, {("2011-2012", "HB1354"): "2012"},
-                         BSP.Members(Path("no-such-site")), _html.escape)
-    assert html.count("Who voted which way is on") == 1 and \
-        html.index("Who voted which way") > html.index("Inexpedient to Legislate"), (
+                         BSP.Members(Path("no-such-site")), _html.escape,
+                         ctx={"cards": {"2011-2012": {"HB1354": {"2012-S-120": 0}}}})
+    tied = re.findall(r'data-bill="2012/HB1354" data-card="(\d+)"', html)
+    assert tied == ["0"] and \
+        html.index('data-card="0"') > html.index("Inexpedient to Legislate"), (
         re.sub(r"<[^>]+>", " ", html)[:700])
     sb = [i for i in days[("S", "2021-04-01")].items if i.bill == "SB138"][0]
     assert not sb.consent and SD.rollcall_key(sb.rc)[2] == 278, (sb.consent, sb.rc)
@@ -34363,15 +34510,17 @@ def _session_unmarked_recess(SD, BSP, shell):
         (root / "site").mkdir()
         html, _ = BSP.render(day, narrative, {}, {}, BSP.Members(root / "site"), shell.E)
         import html as H
-        cards = {re.search(r'class="sbill">([^<]+)<', c).group(1):
+        cards = {re.search(r'class="cnum"[^>]*>([^<]+)<', c).group(1):
                  H.unescape(re.sub(r"<[^>]+>", " ", c))
-                 for c in html.split('<article class="sitem">')[1:]}
+                 for c in html.split('<article class="card"')[1:]}
         assert not re.search(r"Burt|Wright|Beaudoin|Spoke|spoke", cards["SB 389"]), (
             "SB 389's accession, done in recess with no debate, is drawn with the "
             f"speeches on its floor amendments: {cards['SB 389'][:300]!r}")
-        assert re.search(r"Floor Amendment #2013-2010h\(NT\).{0,80}?Spoke against the "
-                         r"motion\s+Rep\. William O'Brien\s*,\s*Rep\. Tucker\s+A roll call:\s+"
-                         r"166", cards["SB 148"]) \
+        # The vote first, its count, the record's words and then who spoke
+        # on it (10 October 2026).
+        assert re.search(r"166\D119\s+on a roll call\s+In the record: Floor Amendment "
+                         r"#2013-2010h\(NT\).{0,80}?Spoke against the motion\s+Rep\. "
+                         r"William O'Brien\s*,\s*Rep\. Tucker\s+Ought to Pass", cards["SB 148"]) \
             and cards["SB 148"].count("O'Brien") == 1 \
             and "Also spoke" not in cards["SB 148"], (
             "SB 148's speakers were pushed off the roll call they spoke on by the "
@@ -34381,7 +34530,7 @@ def _session_unmarked_recess(SD, BSP, shell):
             "recess" not in cards["SB 19"], (
             "a row the docket says was done in recess, or one placed only by the "
             "journal it cites, is not described as the record has it")
-        tail = html.split("Also printed in the permanent journal")
+        tail = html.split("Also Printed in the Permanent Journal")
         assert len(tail) == 2 and "I rise in support" in tail[1], (
             "a debate printed on SB 389 that day is drawn under its recess row "
             "rather than among the debates on no motion of the day")
@@ -38160,7 +38309,7 @@ require("./stub.js");
 const fs = require("fs");
 const src = fs.readFileSync("./page.js", "utf8");
 let scope;
-try { scope = (0, eval)(src + "; ({cmteLink, cmeta, renderCommitteeHead, setMeta: m => { META = m; }});"); }
+try { scope = (0, eval)(src + "; ({cmteLink, billByline, renderCommitteeHead, setMeta: m => { META = m; }});"); }
 catch (e) { console.log("LOAD " + e.message); process.exit(1); }
 // meta.json's map: the page's META, which a card's byline hands cmteLink, and
 // what cmteLink is handed here.
@@ -38176,7 +38325,7 @@ const out = {
   ia12: link("Senate Internal Affairs", "2011-2012"),
   wr: link("Senate Wildlife and Recreation", "2001-2002"),
   dre: link("Senate Development, Recreation and Environment", "1989-1990"),
-  card: scope.cmeta({term: "2007-2008", committees: [E, "House Commerce"]}),
+  card: scope.billByline(null, [E, "House Commerce"], "", "2007-2008", CODES),
   head: scope.renderCommitteeHead({code: "H26", name: "Criminal Justice and Public Safety",
     chamber: "H", names: [{name: "Corrections and Criminal Justice", years: "1993 to 1996"}]}),
   s03_1989: scope.renderCommitteeHead({code: "S03-1989",
@@ -38484,16 +38633,27 @@ def _former_heading(BL):
         head = drawn[mid]["head"]
         # Read as a reader reads it: the party and seat are a span of their
         # own (.ptag), kept whole where the heading wraps.
-        h1 = re.sub(r"<[^>]+>", "", between(head, "<h1>", "</h1>") or "")
-        if h1 != _in_full(name):
+        # THE RECORD HEAD (C6, 10 October 2026), as the approved prototype
+        # draws it: the title in full and the name in the heading, as the
+        # person wrote them ("Senator Sharon Carson"), and the party and seat
+        # in words on the line under it; the years in the facts, or in the
+        # note under the head of a member the record could not name.
+        h1 = re.sub(r"<[^>]+>", "", between(head, '<h1 class="rh1">', "</h1>") or "")
+        if h1 != re.sub(r"\s+\([^()]*\)$", "", _in_full(name)):
             bad.append(f"app.js heads member {mid} {h1!r}, not {_in_full(name)!r}")
-        line = re.sub(r"\s+", " ", between(head, '<p class="pformer">', "</p>") or "")
+        import html as _html
+        said = re.sub(r"\s+", " ", _html.unescape(re.sub(r"<[^>]+>", " ", head)))
+        if "(R - " in name and "Republican" not in (between(head, '<p class="rline">', "</p>") or ""):
+            bad.append(f"the line under member {mid}'s heading does not name the party: {said[:200]!r}")
         if mid in years:
-            if years[mid] not in line:
-                bad.append(f"app.js's line under member {mid}'s heading lost the years: {line!r}")
-            if ("Former member" in line) != (not name.startswith("Former ")):
-                bad.append(f"app.js's line under member {mid}'s heading reads {line!r}")
-        elif 'class="pformer"' in head:
+            # The first and the last year on record, whether as one span or,
+            # for a member who sat in both chambers, the record's own spans
+            # by chamber ("House, 1999–2002 · Senate, 2009–2024").
+            if not all(y in said for y in years[mid].split(" to ")):
+                bad.append(f"app.js's head of member {mid} lost the years: {said[:300]!r}")
+            if ("Former member" in said) != (not name.startswith("Former ")):
+                bad.append(f"app.js's head of member {mid} reads {said[:300]!r}")
+        elif 'class="rnote"' in head:
             bad.append(f"app.js marks sitting member {mid} as former")
         # The chip is how a roll call, a sponsor list and a roster draw them.
         chip = drawn[mid]["chip"]
@@ -39855,7 +40015,7 @@ s.IDX.push({id: "HB1442", n: "HB 1442", title: "a bill", status: "Passed", kind:
   committees: [], topic: "", sponsor: "", term: "2025-2026", year: "2026", hay: "hb1442"});
 s.setTerm("2025-2026");
 s.setFocused("HB1442"); s.render();
-out.back = (/<(\w+) class="backto"[^>]*>/.exec(document.querySelector("#results").innerHTML) || [""])[0];
+out.back = (/<a [^>]*data-back="1"[^>]*>/.exec(document.querySelector("#results").innerHTML) || [""])[0];
 const at = (standalone, referrer, length, state) => { window.GR_STANDALONE = standalone;
   document.referrer = referrer; history.length = length; history.state = state || null;
   return s.backIsSearch(); };
@@ -39946,7 +40106,9 @@ process.stdout.write("\n@@" + JSON.stringify(out));
         got = json.loads(r.stdout.rsplit("@@", 1)[1])
     finally:
         shutil.rmtree(root, ignore_errors=True)
-    assert got["back"] == '<a class="backto" href="/bills" data-back="1">', (
+    # The trail's first step, Bills, since 10 October 2026 (the record head,
+    # C6), where "Back to bill search" was above the card.
+    assert got["back"] == '<a href="/bills" data-back="1">', (
         "\"Back to bill search\" is drawn as " + (got["back"] or "nothing")
         + ": it must be a link to /bills, which is where its label says it goes")
     want = {"inSearch": True, "inSearchByItsAddress": False, "inSearchAtAPlaceOnIt": False,
@@ -40142,7 +40304,7 @@ def _chip_drawn():
     # Tabled in the yellow of the rail's pause (8 October 2026: graphite at
     # first, then the person's yellow), and a stage still moving in slate blue
     # from the same evening, so the two are not one ink.
-    want = {("s-done", "Died"), ("s-table", "Tabled"), ("s-active", "In committee"),
+    want = {("s-done", "Died"), ("s-table", "Tabled"), ("s-active", "In Committee"),
             ("s-done", "Withdrawn"), ("s-law", "Became Law"), ("s-veto", "Vetoed"),
             ("s-study", "Interim Study")}
     if set(chips) != want or len(chips) != 8:
@@ -40271,8 +40433,13 @@ def _node_app(harness, files=None, args=()):
             (root / name).write_text(text, encoding="utf-8")
         (root / "go.js").write_text(harness, encoding="utf-8")
         r = _run([node, "go.js", *args], cwd=root, capture_output=True, text=True, timeout=120)
+        # The error's own line first: node prints the line that threw and
+        # its message above the stack, which is all the last 300 characters
+        # held, so a failure read "js/loader:1651:32)" and nothing else.
+        said = (r.stderr or r.stdout or "").strip()
         assert r.returncode == 0 and "@@" in (r.stdout or ""), (
-            "app.js did not run under node: " + (r.stderr or r.stdout or "")[-300:])
+            "app.js did not run under node: " + said[:400]
+            + (" ... " + said[-200:] if len(said) > 600 else said[400:]))
         return json.loads(r.stdout.rsplit("@@", 1)[1])
     finally:
         shutil.rmtree(root, ignore_errors=True)
@@ -40807,9 +40974,10 @@ def _bill_status_select_categories():
         bad.append(f"the select on Any is painted {a['own']!r}")
     if len(a["cards"]) != len(rows) or not a["note"] or a["note"].group(1) != str(len(rows)):
         bad.append(f"Any lists {a['cards']}")
-    for st, ids, chips in (("Passed", ["HB1", "HR2"], ["Became Law", "Adopted by the House"]),
+    # A card's chip is the short word since 10 October 2026 (D18).
+    for st, ids, chips in (("Passed", ["HB1", "HR2"], ["Became Law", "Adopted by House"]),
                            ("In Progress", ["HB3", "SB4"],
-                            ["In committee", "Passed, awaiting the governor"]),
+                            ["In Committee", "To the Governor"]),
                            ("Died", ["HB6", "HB7"], ["Died", "Died"]),
                            ("Tabled", [], [])):
         r = read(got[st])
@@ -41297,7 +41465,7 @@ const results = document.querySelector("#results");
 // What focus() was called on, by kind and place in its list.
 let took = [];
 const thing = (kind, i) => ({kind, i, tabIndex: 0, focus() { took.push(this); },
-  querySelector(q) { return q === ".chead" ? this.head : null; }});
+  querySelector(q) { return q === ".ctitle" ? this.head : null; }});
 const cards = Array.from({length: 250}, (_, i) => {
   const c = thing("card", i); c.head = thing("head", i); return c; });
 const rows = Array.from({length: 450}, (_, i) => thing("row", i));
@@ -41950,7 +42118,9 @@ def _chain_output():
              f"HR10 kind is {idx['HR10']['kind']!r}"),
             (idx["SB434"]["status"] == "Vetoed, override failed",
              f"SB434 reads {idx['SB434']['status']!r}, not the docket's outcome"),
-            (idx["HB1442"].get("sponsor_label") == "Rep. Jodi Nelson (R)",
+            # The card's byline draws the prime sponsor as the person chip,
+            # with the seat (D14, 10 October 2026).
+            (idx["HB1442"].get("sponsor_label") == "Rep. Jodi Nelson (R - Rock 13)",
              f"sponsor reads {idx['HB1442'].get('sponsor_label')!r}"),
             (lg[0].get("display_full") == "Rep. Jodi Nelson (R - Rock 13)",
              f"legislator reads {lg[0].get('display_full')!r}"),
@@ -49259,6 +49429,7 @@ def _meet_kind_colours():
                      rf"\.calkey \.{cls}\{{background:var\(--cal-{t}\)\}}",
                      rf"\.cmdots \.{cls}\{{background:var\(--cal-{t}\)\}}",
                      rf"\.pkbar \.{cls}\{{background:var\(--cal-{t}\)\}}",
+                     rf"\.wkbar \.{cls}\{{background:var\(--cal-{t}\)\}}",
                      rf"\.calcat\.{cls}\{{--cat:var\(--cal-{t}\)\}}"):
             assert re.search(rule, css), (
                 f"app.css has no rule matching {rule!r}: the {cls} colour is "
@@ -49269,7 +49440,7 @@ def _meet_kind_colours():
     assert legend == list(tok), f"the key names {legend}, not {list(tok)}, in that order"
     names = [w for _c, w in BP.MEET_LEGEND]
     assert names == ["Public Hearing", "Executive Session", "Work Session",
-                     "Committee of Conference", "Floor Session", "Study Committee"], (
+                     "Committee of Conference", "Session Day", "Study Committee"], (
         f"the key's names are {names}: one per kind, work sessions and study "
         "committees apart, in title case")
 
@@ -49444,10 +49615,10 @@ def _bill_lists_by_number(BO, BC, BS, SP, BP, BI):
             for b in mixed]
     page = SP.consent_html(cons, ["SB29", "SB285", "SB28"], {},
                            {("2025-2026", b): 2026 for b in mixed}, _h.escape)
-    got = [x.replace(" ", "") for x in _CBN.findall(page)]
+    got = [x.replace(" ", "") for x in re.findall(r'class="brnum" href="[^"]*">([^<]*)<', page)]
     assert got == want, "a consent calendar lists " + ", ".join(got)
-    assert "SB 28, SB 29, SB 285 were taken off" in page, \
-        "the bills taken off a consent calendar are not named by number"
+    assert "SB 28, SB 29, and SB 285 were removed from the consent calendar" in \
+        re.sub(r"<[^>]+>", "", page), "the bills taken off a consent calendar are not named by number"
 
     key = BP.Meet("2026-01-13", "H", "Commerce", "")
     slot = [{"bill": b, "time": "10:00", "what": "public hearing",
@@ -49576,10 +49747,10 @@ def _calendar_every_week():
             prv = re.findall(r'class="wkprev" href="([^"]+)"', t)
             if i + 1 < len(order):
                 assert nxt and set(nxt) == {addr(order[i + 1])}, (
-                    f"{k}: The week after goes to {nxt}, not {addr(order[i + 1])}")
+                    f"{k}: Next Week goes to {nxt}, not {addr(order[i + 1])}")
             if i:
                 assert prv and set(prv) == {addr(order[i - 1])}, (
-                    f"{k}: The week before goes to {prv}, not {addr(order[i - 1])}")
+                    f"{k}: Previous Week goes to {prv}, not {addr(order[i - 1])}")
         quiet = (site / "calendar" / "2026-W30.html").read_text(encoding="utf-8")
         assert "No meetings are on the record for this week." in quiet, (
             "an empty week that is over does not say nothing was on")
@@ -49643,6 +49814,12 @@ def _calendar_every_weekday():
                     f"{k}: {d} is {'marked empty' if empty else 'not marked empty'}")
             assert t.count("No meetings scheduled.") == len(dates) - len(busy), (
                 f"{k}: an empty weekday does not say it has no meetings")
+            # THE WEEK IS NAMED BY THE DAYS IT SHOWS (9 October 2026): Monday
+            # to Friday, and to the Saturday where one holds a sitting.
+            name = {"2026-W03": "January 12–17, 2026", "2026-W04": "January 19–23, 2026"}[k]
+            assert f"<h1>The Week of {name}</h1>" in t, (
+                f"{k} is not headed The Week of {name}: "
+                f"{re.search(r'<h1>[^<]*</h1>', t).group(0)}")
         node = shutil.which("node") or shutil.which("node.exe")
         if node:
             with contextlib.redirect_stdout(io.StringIO()):
@@ -49652,23 +49829,138 @@ def _calendar_every_weekday():
                           + _with_components(BC.WEEK_JS) + r"""
 const C=globalThis.GRCAL, j=JSON.parse(require("fs").readFileSync(process.argv[2],"utf8")), days={};
 Object.keys(j.days).forEach(d=>days[d]=C.parseDay(j.days[d]));
-const wk=[0,1,2,3,4,5,6].map(i=>C.addDays("2026-01-12",i));
+const wk=[0,1,2,3,4,5,6].map(i=>C.addDays("2026-01-12",i)), wk2=wk.map(d=>C.addDays(d,7));
 const none=Object.assign(C.defaults(),{cats:[],picks:["nobody"]});
-process.stdout.write(JSON.stringify([C.listDates(wk,days,C.defaults()),C.listDates(wk,days,none)]));
+process.stdout.write(JSON.stringify([C.listDates(wk,days,C.defaults()),C.listDates(wk,days,none),
+  C.weekCols(wk,days,C.defaults()),C.weekCols(wk2,days,C.defaults()),C.weekCols(wk,days,none)]));
 """, encoding="utf-8")
             r = _run([node, str(go), str(site / "calendar" / "data" / "2026-01.json")],
                      capture_output=True, text=True, timeout=60)
             assert r.returncode == 0, (r.stdout or r.stderr).strip()[-300:]
-            every, empty = json.loads(r.stdout)
+            every, empty, cols, cols2, cols0 = json.loads(r.stdout)
             assert every == want["2026-W03"][0], (
                 f"the script's list of 12-18 January draws {every}, the page {want['2026-W03'][0]}")
-            assert empty == ["2026-01-12", "2026-01-13", "2026-01-15", "2026-01-16"], (
+            # Every weekday stays under a filter matching nothing -- an empty
+            # one saying so, a busy one saying what is hidden (9 October
+            # 2026) -- and the Saturday, which shows nothing, goes.
+            assert empty == ["2026-01-12", "2026-01-13", "2026-01-14", "2026-01-15", "2026-01-16"], (
                 "under a filter matching nothing the script's list keeps "
-                f"{empty}: the empty weekdays, and only them, stay")
+                f"{empty}: Monday to Friday, and no weekend day, stay")
+            # AND THE WEEK VIEW: Monday to Friday, the Saturday only where it
+            # holds a sitting the filters show, never a Sunday that holds none.
+            assert cols == want["2026-W03"][0] and cols2 == want["2026-W04"][0] \
+                and cols0 == want["2026-W03"][0][:5], (
+                f"the Week view's days are {cols}, {cols2} and, under a filter matching "
+                f"nothing, {cols0}: Monday to Friday, and a weekend day only when it shows something")
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
-    return "ok", ("Monday to Friday on every week, empty ones saying so; a "
-                  "Saturday only where it holds a sitting")
+    return "ok", ("Monday to Friday on every week, in the list and the Week view, empty ones "
+                  "saying so; a Saturday only where it holds a sitting, and the week named "
+                  "by the days it shows")
+
+
+# The words the pagers and the floor said until 9 October 2026, as code wrote
+# them: a line of a builder, a script or a words file that writes one again
+# fails _pager_labels. Comments may still quote them, as history.
+_PAGER_GONE = ("&lsaquo; The week before", "The week after &rsaquo;", ">This week</a>",
+               "The session day before</a>", "The session day after &rsaquo;",
+               '"See next week"', "Last Floor Session", '"Floor Session"',
+               'floor:"Floor sessions"')
+
+
+@check("frontend", "the pagers say This Week, Previous Week, Next Week, Previous and Next "
+                   "Session Day and Previous and Next Day, and the floor is Session Day, in "
+                   "Title Case wherever the site writes them")
+def _pager_labels():
+    """The person, 9 October 2026: "Session day should be Session Day, This
+    week should be This Week, The week before should be Previous Week, The
+    week after should be Next Week".
+
+    The Calendar's pager said "‹ The week before", "This week" and "The week
+    after ›"; a session day's said "The session day before" and "The session
+    day after"; the home page's Coming up said "See next week" for the same
+    page the Calendar calls Next Week, and "Last Floor Session"; and the floor
+    was "House floor" on its card, under a chip and a box saying "Floor
+    Session". This holds every place that writes them: no builder, script or
+    words file writes an old one (_PAGER_GONE); a week's page, the Calendar's
+    script, a session day's pager and Coming up say the new ones, each pager
+    with where it leads under it (a week's short name, a session day's date);
+    and the floor is "House Session Day", with no chip to say Session Day
+    again, under the key's "Session Day".
+    """
+    import contextlib
+    import datetime as _dt
+    import io
+    import build_calendar as BC
+    import build_pages as BP
+    import build_session_pages as SP
+    if not Path("src/pages/bills.html").exists():
+        return "skip", "bills.html is not here"
+    bad = []
+    files = (sorted(Path("src/pages").glob("*.py")) + sorted(Path("src/pages").glob("*.js"))
+             + sorted(Path("src/pages").glob("*.html")) + sorted(Path("src/pages/words").glob("*.json")))
+    for f in files:
+        for i, ln in enumerate(f.read_text(encoding="utf-8").splitlines(), 1):
+            if ln.strip().startswith(("#", "//", "*")):
+                continue
+            bad += [f"{f.name}:{i} {g}" for g in _PAGER_GONE if g in ln]
+    assert len(files) > 20 and not bad, (
+        f"{len(bad)} lines still write a label the person retired: " + "; ".join(bad[:6]))
+    assert ("k-floor", "Session Day") in BP.MEET_LEGEND, f"the key names the floor {BP.MEET_LEGEND}"
+
+    root = Path(tempfile.mkdtemp(prefix="gr-pagers-"))
+    try:
+        site, _w, _o, _u, _m = _cal_fixture(root)
+        # A week's page: the week of 16 March, with this week before it and
+        # an empty week after.
+        t = (site / "calendar" / "2026-W12.html").read_text(encoding="utf-8")
+        navs = re.findall(r'<nav class="wknav[^"]*" aria-label="Other weeks">(.*?)</nav>', t)
+        want = ('<a class="wkprev" href="/calendar"><span class="wkpw">&lsaquo; Previous Week</span>'
+                '<span class="wkpd">Mar 9–14, 2026</span></a>'
+                '<a class="wkhere" href="/calendar">This Week</a>'
+                '<a class="wknext" href="/calendar/2026-W13"><span class="wkpw">Next Week &rsaquo;</span>'
+                '<span class="wkpd">Mar 23–27, 2026</span></a>')
+        assert navs == [want, want], f"the week of 16 March's pagers read {navs}"
+        assert "<h1>The Week of March 16–20, 2026</h1>" in t and \
+            "<title>The Week of March 16–20, 2026 | Granite Record</title>" in t, (
+            "the week's heading or title is not The Week of March 16–20, 2026")
+        # The page's script, which draws the same pager and the Day view's.
+        lean = re.search(r"<script>(\(function\(\)\{.*?)</script>", t, re.S).group(1)
+        for w in ("Previous Week", "Next Week", ">This Week<", "Previous Day", "Next Day",
+                  '"The Week of "'):
+            assert w in lean, f"the Calendar's script does not write {w!r}"
+        for w in ("The week before", "The week after", ">This week<", '"The week of "+label;'):
+            assert w not in lean, f"the Calendar's script still writes {w!r}"
+        # The floor's card, on the week and in Coming up: named, with no chip.
+        wk11 = (site / "calendar.html").read_text(encoding="utf-8")
+        floor = re.search(r'<details class="calmeet"[^>]*data-who="floor"[^>]*>.*?</summary>', wk11, re.S)
+        assert floor and '<span class="calcmte">House Session Day</span>' in floor.group(0) \
+            and "calkind" not in floor.group(0), (
+            f"the floor's card is not House Session Day without a chip: {floor and floor.group(0)}")
+        with contextlib.redirect_stdout(io.StringIO()):
+            up = BP.calendar_html(site, today=_dt.date(2026, 3, 11), rows=_cal_rows())
+        assert '<span class="calcmte">House Session Day</span>' in up and "calkind k-floor" not in up \
+            and '<p class="calmore calall"><a href="calendar.html">See the full calendar</a></p>' in up, (
+            "Coming up does not name the floor House Session Day, or does not end with See the "
+            f"full calendar (D13): {re.search(r'<p class=.calmore calall.>.*?</p>', up)}")
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    # A session day's pager: the days either side by their dates, and its
+    # week on the Calendar between them by the name the Calendar gives it.
+    nav = "".join(SP.pager("H", "2026-02-19", "2026-02-12", "2026-03-05",
+                           {"2026-W08": "February 16–20, 2026"}))
+    got = re.sub(r'href="[^"]*"', 'href=""', nav)
+    assert got == ('<a class="wkprev" href=""><span class="wkpw">&lsaquo; Previous Session Day</span>'
+                   '<span class="wkpd">Thursday, February 12, 2026</span></a>'
+                   '<a class="wkhere" href="">The Week of February 16–20, 2026</a>'
+                   '<a class="wknext" href=""><span class="wkpw">Next Session Day &rsaquo;</span>'
+                   '<span class="wkpd">Thursday, March 5, 2026</span></a>'), (
+        f"a session day's pager reads {nav}")
+    assert "".join(SP.pager("H", "2024-02-15", "", "2024-02-22", {})).count("<a ") == 1, (
+        "a session day before the Calendar's first week links a week, or its first day a day before it")
+    return "ok", (f"{len(files)} builders, scripts and words files write none of the old "
+                  "labels; a week's page and the Calendar's script, a session day's pager "
+                  "and Coming up say the new ones, and the floor is House Session Day")
 
 
 @check("frontend", "study and statutory committees are on the calendar, named, and off until a reader ticks them")
@@ -50396,7 +50688,7 @@ def _calendar_clock():
     to one answer (noon is 12:00 PM, midnight 12:00 AM, and anything that is
     not a time comes back as it was). This holds the Calendar's script to
     that one rather than a copy of its own, a span to 10:00 AM-12:15 PM, and
-    the hours of the week at a glance. Then it reads what the fixture's
+    the time each entry of the week at a glance starts. Then it reads what the fixture's
     pages print and wants every time in that form, while the record's own
     "13:30" stays in data-time and data-last, where the script and the
     add-to-calendar links read it.
@@ -50459,8 +50751,11 @@ const vm = require("vm"), ctx = vm.createContext({document: {getElementById: () 
 vm.runInContext(fs.readFileSync("./week.js", "utf8"), ctx);
 const W = ctx.GRCAL;
 const h = s.calendarBlock(JSON.parse(fs.readFileSync("./up.json", "utf8")), "Upcoming session");
+const card = (t) => '<details class="cal' + 'meet" data-date="2026-03-10" data-cmte="x" data-time="' + t
+  + '" data-kinds="hearing"><summary><span class="calcmte">X</span></summary></details>';
 process.stdout.write(JSON.stringify({own: W.clock !== vm.runInContext("clock", ctx),
-  hours: ["00", "09", "12", "13", "23"].map(W.hourWord),
+  hours: ["00:00", "09:30", "12:00", "13:15", "23:59"].map(t =>
+    (/<span class="wkt">([^<]*)<\\/span>/.exec(W.entryHtml(W.parseCard(card(t)))) || [])[1]),
   block: [...h.matchAll(/<span class="caltime">([^<]*)<\\/span>/g)].map(m => m[1])}));
 """, encoding="utf-8")
         r = _run([node, "go.js"], cwd=root, capture_output=True, text=True, encoding="utf-8", timeout=60)
@@ -50470,8 +50765,9 @@ process.stdout.write(JSON.stringify({own: W.clock !== vm.runInContext("clock", c
         shutil.rmtree(root, ignore_errors=True)
     assert not out["own"], ("the Calendar page's script tells the time with a clock() of its "
                             "own, not components.js's")
-    assert out["hours"] == [f"12{nb}AM", f"9{nb}AM", f"12{nb}PM", f"1{nb}PM", f"11{nb}PM"], (
-        f"the week at a glance names its hours {out['hours']}")
+    assert out["hours"] == [f"12:00{nb}AM", f"9:30{nb}AM", f"12:00{nb}PM", f"1:15{nb}PM",
+                            f"11:59{nb}PM"], (
+        f"the week at a glance says its entries start at {out['hours']}")
     assert out["block"] == [f"10:00{nb}AM\u20131:00{nb}PM", f"10:00{nb}AM", f"1:00{nb}PM"], (
         f"a committee page's Upcoming session prints {out['block']}")
     return "ok", (f"{seen} times printed on the week page, its month files and Coming up, all "
@@ -50612,6 +50908,40 @@ def _components_js(here="."):
         return ""
     import build_pages as BP
     return BP.with_words(p.read_text(encoding="utf-8"))
+
+
+def _node_file(node, prog, **kw):
+    """node run on `prog` from a file rather than with -e: components.js
+    with its words is past 32,767 characters since 10 October 2026, which
+    Windows refuses as a command line ("The filename or extension is too
+    long")."""
+    root = Path(tempfile.mkdtemp())
+    try:
+        (root / "prog.js").write_text(prog, encoding="utf-8")
+        return _run([node, str(root / "prog.js")], **kw)
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+
+
+@check("frontend", "no harness hands node components.js on a command line, which Windows "
+                   "refuses past 32,767 characters")
+def _no_components_on_a_command_line():
+    """components.js with its words passed 32,767 characters on 10 October
+    2026, and three checks that ran it with `node -e` stopped with "The
+    filename or extension is too long" -- an ERROR, not a finding, and only
+    on Windows. They run it from a file (_node_file). A harness that builds
+    its program from _components_js() and hands it to `-e` is caught here,
+    before the file grows past the limit under it again."""
+    src = Path(__file__).read_text(encoding="utf-8").split("\n")
+    bad = []
+    for i, line in enumerate(src):
+        if re.search(r'\[\s*node\s*,\s*"-e"', line):
+            before = "\n".join(src[max(0, i - 30):i])
+            if "_components_js()" in before or "_with_components(" in before:
+                bad.append(f"preflight.py:{i + 1}")
+    assert not bad, ("these run components.js with node -e, which Windows refuses once the "
+                     "file is past 32,767 characters; use _node_file: " + ", ".join(bad))
+    return "ok", "every harness that runs components.js runs it from a file"
 
 
 def _with_components(js, here="."):
@@ -50835,6 +51165,17 @@ def _components_agree():
             "components.js did not run under node: " + (r.stderr or r.stdout or "")[-300:])
         got_js = json.loads(r.stdout.rsplit("@@", 1)[1])
         js_missed = _js_coverage(cov, site_js)
+        # THE BEHAVIOUR IS NOT A HELPER (the component plan: "anything that
+        # responds ... lives only in components.js, attached by data
+        # attributes"). Between its markers is code a page runs, not a string
+        # a case can ask for -- the term popovers, which declare no name of
+        # their own -- and _term_popovers holds it instead.
+        lines = js_text.split("\n")
+        b0 = next((i + 1 for i, ln in enumerate(lines) if ln.startswith("// BEHAVIOUR:START")), None)
+        b1 = next((i + 1 for i, ln in enumerate(lines) if ln.startswith("// BEHAVIOUR:END")), None)
+        if b0 and b1:
+            js_missed = [m for m in js_missed
+                         if not b0 < int(re.search(r" line (\d+):", m).group(1)) < b1]
     finally:
         shutil.rmtree(root, ignore_errors=True)
 
@@ -50957,6 +51298,430 @@ def _chips_by_hand(text):
     """Every chip a script or a builder writes as markup of its own rather
     than by chip(): [(line, the class attribute)]."""
     return [(text.count("\n", 0, m.start()) + 1, m.group(0)) for m in _CHIP_BY_HAND.finditer(text)]
+
+
+# ---- POLISH 2: THE RECORD PAGES (ws/records, 10 October 2026) -------------------------
+#
+# The component plan's steps 4 to 8, approved 9 October 2026: the bill as a card, a row and
+# a mention; the person in a sentence and as a chip; the vote words and the term popovers;
+# the record head and the W4 sections. Each check below holds a rule that could otherwise
+# break without anything saying so.
+
+def _unescape(s):
+    import html
+    return html.unescape(s)
+
+
+def _headings_of_sections():
+    """Every W4 section heading this code writes, with where it is written: the literal
+    headings app.js and build_session_pages.py hand components.section, the story's
+    headings narrative.py and build_site_v2.py make (C8), and every .w4h the fixture's
+    built and drawn pages carry."""
+    import narrative as N
+    out = []
+    for f, rx in ((Path("src/pages/app.js"), r'\bsection\(\s*"([^"]+)"'),
+                  (Path("src/pages/build_session_pages.py"), r'\bC\.section\(\s*"([^"]+)"')):
+        out += [(h, f.name) for h in re.findall(rx, f.read_text(encoding="utf-8"))]
+    out += [(h, "narrative.STAGE_LABEL") for h in N.STAGE_LABEL.values()]
+    out += [(N.stage_label(("H", "committee", "Health, Human Services and Elderly Affairs")),
+             "narrative.stage_label")]
+    v2 = Path("src/pages/build_site_v2.py").read_text(encoding="utf-8")
+    out += [(h, "build_site_v2.py") for h in re.findall(r'"label": "([A-Z][^"]+)"', v2)
+            if not h.startswith(("Ought", "Inexpedient"))]
+    shared, _base, _ran, _days = _fixture_site_shared()
+    for p in sorted((shared / "site" / "session").rglob("*.html")):
+        out += [(_unescape(h), p.name)
+                for h in re.findall(r'<h2 class="w4h">([^<]+)', p.read_text(encoding="utf-8"))]
+    for k, drew in _fixture_drawn().items():
+        text = json.dumps(drew, ensure_ascii=False)
+        out += [(_unescape(h), k)
+                for h in re.findall(r'<h2 class=\\"w4h\\">([^<]+)', text)]
+    return out
+
+
+def _title_case_faults(heading, small):
+    """The words of `heading` that break the case rule: a word starts with a capital, a
+    figure or a mark, but for the small words after the first (meeting_kinds.json's)."""
+    words = re.findall(r"[A-Za-z][\w'’.-]*", heading)
+    return [w for i, w in enumerate(words)
+            if w[0].islower() and not (i and w.lower() in small)]
+
+
+@check("frontend", "every section heading is in Title Case where it is made: the story's, the "
+                   "summary's, a member's, a committee's and a session day's (C8)")
+def _section_headings_title_case():
+    """THE HEADINGS ARE WRITTEN IN THEIR CASE WHERE THEY ARE MADE (the component plan's
+    C8, approved 9 October 2026; the person's round 3 of 8 October: "Official Legislative
+    Analysis", "On the House Floor", "House Committee (Housing)"). Recasing them on display
+    would mangle what is not a plain word -- "RSA", "HB 1681" -- so nothing does, and this
+    holds every heading the record pages draw to the rule: each word begins with a capital,
+    a figure or a mark, but the small words after the first (meeting_kinds.json's "small",
+    the same a chip's title keeps). The story's old forms ("In House committee --
+    Housing", "On the House floor") fail it, which is what it is for."""
+    import components as C
+    small = set(C.WORDBOOK["meeting_kinds"]["small"])
+    got = _headings_of_sections()
+    bad = sorted({f"{h!r} ({where}): {', '.join(w)}" for h, where in got
+                  for w in [_title_case_faults(h, small)] if w})
+    assert len(got) >= 20, f"only {len(got)} section headings were found to hold"
+    assert not bad, f"{len(bad)} headings not in Title Case: " + "; ".join(bad[:8])
+    assert not _title_case_faults("House Committee (Housing)", small)
+    assert _title_case_faults("In House committee \u2014 Housing", small) == ["committee"], \
+        "the rule no longer finds a lower-case word"
+    return "ok", (f"{len(got):,} section headings in Title Case, among them "
+                  f"{len({h for h, w in got if w.endswith('.html')}):,} drawn on the fixture's "
+                  "session days")
+
+
+@check("frontend", "a bill on a record page is a component: its card's number, a row's number or "
+                   "a mention, never a link of its own")
+def _bill_links_are_components():
+    """THE BILL IN THREE SIZES (the component plan's step 4: "a check fails any bill link
+    without a component class"). On the pages this branch draws -- a member's, a
+    committee's, a bill's own and a session day -- every link to a bill's page is one of
+    the three: a card's number (cnum), a row's (brnum) or a mention in running words
+    (bmention), so a bill drawn some fourth way, with its own words for the number and the
+    year, is caught where it is written. The Calendar's rows (cbn, the hubs' component)
+    and the trail are the others' and are left to them."""
+    allowed = {"cnum", "brnum", "bmention", "cbn"}
+    shared, _base, _ran, _days = _fixture_site_shared()
+    pages = {k: json.dumps(v, ensure_ascii=False) for k, v in _fixture_drawn().items()
+             if k.split("#")[0].startswith(("legislator/", "committee/", "bill/"))}
+    for p in sorted((shared / "site" / "session").rglob("*.html")):
+        pages[p.relative_to(shared / "site").as_posix()] = p.read_text(encoding="utf-8")
+    bad, n = [], 0
+    for k, text in pages.items():
+        text = text.replace('\\"', '"')
+        for m in re.finditer(r'<a\b([^>]*)\bhref="(?:/)?bill/\d{4}/[a-z0-9]+(?:\.html)?"', text):
+            n += 1
+            cls = set((re.search(r'class="([^"]*)"', m.group(1)) or [None, ""])[1].split())
+            if not cls & allowed:
+                bad.append(f"{k}: {m.group(0)[:90]}")
+    assert n, "no link to a bill was found on the fixture's record pages"
+    assert not bad, f"{len(bad)} bill links that are no component: " + "; ".join(bad[:5])
+    return "ok", f"{n:,} links to a bill on {len(pages)} record pages and tabs, each a component's"
+
+
+@check("frontend", "a card's chip says a stage in one of the person's short words (D18), and the "
+                   "bill's own page keeps the full wording")
+def _card_words_short():
+    """D18 (the person, 10 October 2026): a CARD's chip says "In Committee", "Retained",
+    "Re-referred", "Passed House" or "Passed Senate", "To the Governor", "Nonconcurred",
+    "In Conference", "Adopted", "Adopted by House" or "Adopted by Senate", "To the Voters",
+    "Ratified", "Not Ratified", "Not Introduced" or "Special Session", or one of the six;
+    the bill's own page keeps the full wording. Every stage word app.js's search knows of
+    (CAT_OF_CHIP), every chip a fixture bill carries and every one the built site's
+    indexes carry, where they are here, must come out of components.card_word as one of
+    those, or as a stage's own word in Title Case of three words or fewer -- so a stage the
+    General Court names tomorrow is caught rather than drawn at length on a card. And the
+    head of a bill's own page draws the chip whole (billHead)."""
+    import components as C
+    six = set(C.WORDBOOK["chips"]["chip"])
+    d18 = {"In Committee", "Retained", "Re-referred", "Passed House", "Passed Senate",
+           "To the Governor", "Nonconcurred", "In Conference", "Adopted", "Adopted by House",
+           "Adopted by Senate", "To the Voters", "Ratified", "Not Ratified", "Not Introduced",
+           "Special Session"}
+    app = Path("src/pages/app.js").read_text(encoding="utf-8")
+    words = set(re.findall(r'"([A-Z][a-z][^"]{2,80})":"(?:Passed|Died|In Progress|Interim Study|'
+                           r'Tabled|Vetoed|Withdrawn)"', app))
+    words |= set(re.findall(r'"((?:In|Retained|Re-referred|Committee|Passed|One|Conference)[^"]{2,80})"',
+                            app[app.index("CAT_OF_CHIP"):app.index("CAT_OF_KIND")]))
+    shared, _base, _ran, _days = _fixture_site_shared()
+    for f in list((shared / "site" / "idx").glob("*.json")) + list(Path("site/idx").glob("*.json")):
+        try:
+            rows = json.loads(f.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+        words |= {r.get("chip") for r in rows if r.get("chip")}
+    bad = []
+    for w in sorted(words):
+        for passage in ("Hp---", "Hpp--", "S----", ""):
+            got = C.card_word(w, passage)
+            if got in six or got in d18:
+                continue
+            if len(got.split()) > 3 or got != C.title_words(w):
+                bad.append(f"{w!r} -> {got!r}")
+    assert not bad, f"{len(bad)} chips a card would say at length: " + "; ".join(sorted(set(bad))[:6])
+    assert C.card_word("Passed one chamber", "Hp---") == "Passed House"
+    assert C.card_word("Passed both chambers, goes to the voters in November 2028", "") == "To the Voters"
+    head = app[app.index("function billHead("):app.index("function billHead(") + 3000]
+    assert 'chip(chipOf(b),`cstat ${chipCls(b)}`,"m")' in head, (
+        "the bill's own head no longer draws its chip's full word")
+    card = app[app.index("function cardHtml("):app.index("function cardHtml(") + 2000]
+    assert "cardWord(chipOf(b),b.passage)" in card, "a card no longer says its short word"
+    assert "ccarry" not in card and "carried over" not in card, (
+        'a card says "carried over" again: the year beside the number says it (8 October 2026)')
+    return "ok", (f"{len(words):,} chip words, each a card's short word or its own of three words "
+                  "or fewer; the bill's head keeps the full wording; no card says carried over")
+
+
+@check("frontend", "the term popovers are behaviour of components.js's own: the first of each term "
+                   "a button that opens on a tap, a held hover or focus, stays while hovered and "
+                   "shuts on Escape (C9, WCAG 1.4.13)")
+def _term_popovers():
+    """C9, approved 9 October 2026 with the person's refinement: "for the tooltips they
+    would show up on a tap or on a mouse hover after a short time" -- a tap, a hover held
+    about half a second, or keyboard focus opens one; it stays while the pointer moves
+    onto it, and closes on Escape (WCAG 1.4.13: dismissible, hoverable, persistent). The
+    behaviour lives in components.js between its markers, as an IIFE that declares no
+    name (so _components_agree holds the helpers and this the behaviour); every key a
+    writer marks (the vote words' abbreviations, a recommendation's code) is a glossary
+    entry; and the shared stylesheet draws the popover, so it shows on any page."""
+    import components as C
+    js = Path("src/pages/components.js").read_text(encoding="utf-8")
+    a, b = js.find("// BEHAVIOUR:START"), js.find("// BEHAVIOUR:END")
+    assert 0 < a < b, "components.js has no behaviour between its markers"
+    beh = js[a:b]
+    assert not re.search(r"^(?:function|const|let|var)\s", beh, re.M), (
+        "the behaviour declares a name at the top level, which _components_agree would take "
+        "for a helper with no twin")
+    for need, why in (("(function(){", "it is not one IIFE"),
+                      ('setAttribute("role","tooltip")', "the popover is no tooltip"),
+                      ('"aria-expanded"', "its button says nothing of being open"),
+                      ('e.key==="Escape"', "Escape does not close it"),
+                      ('e.pointerType!=="mouse"', "a touch would open it twice, by hover and by tap"),
+                      ('"focusin"', "keyboard focus does not open it"),
+                      ("HOLD=500", "a hover is not held about half a second"),
+                      ('closest("[hidden]")', "the first of a term may be one in a hidden tab"),
+                      ("MutationObserver", "a page drawn again keeps no popover")):
+        assert need in beh, f"the term popovers: {why} ({need} is not in the behaviour)"
+    glossary = set(C.WORDBOOK["glossary"])
+    keys = {m["abbr"] for m in C.WORDBOOK["votes"]["motions"].values() if m.get("abbr")}
+    keys |= {"OTP", "OTPA", "ITL", "IS"}
+    missing = sorted(keys - glossary)
+    assert not missing, f"terms marked with no glossary entry: {missing}"
+    css = Path("src/pages/app.css").read_text(encoding="utf-8")
+    shared = css[css.index("/* SHARED:START"):css.index("/* SHARED:END")]
+    for rule in (".termbtn{", ".termpop{", ".termpop[hidden]{display:none}"):
+        assert rule in shared, f"the shared stylesheet does not draw {rule}"
+    return "ok", (f"the behaviour is one IIFE between its markers; {len(keys)} marked terms, "
+                  "each a glossary entry; the popover drawn in the shared region")
+
+
+# Every form of a vote's question the 2025-2026 record carries, and a sample of the older
+# clerks', with the key the approved words give it (10 October 2026, read off the built
+# site's bills: 216 forms).
+MOTION_CASES = [
+    ("Ought to Pass", "HB1", "H", "otp"), ("Inexpedient to Legislate", "HB1", "H", "itl"),
+    ("Ought to Pass with Amendment 2026-0998h", "HB1", "H", "otpa"),
+    ("Ought to Pass with Amendments 2026-1 and 2026-2", "HB1", "H", "otpa"),
+    ("Adopt Conference Committee Report", "HB1", "H", "conference_report"),
+    ("House Concurs with Senate Amendment 2026-1709s", "HB1681", "H", "concur"),
+    ("Refer to Interim Study", "HB1", "H", "is"), ("Refer for Interim Study", "HB1", "H", "is"),
+    ("Laid on Table", "HB1", "S", "table"), ("Lay HB1046 on Table", "HB1046", "H", "table"),
+    ("Concur with the House Amendment", "SB1", "S", "concur"),
+    ("Accedes to House Request for Committee of Conference", "HB1", "S", "accede"),
+    ("Rereferred to Committee", "HB1", "H", "rerefer"),
+    ("Adopt Committee Amendment", "HB1", "H", "committee_amendment"),
+    ("Adopt Floor Amendment", "HB1", "H", "floor_amendment"),
+    ("House Non-Concurs with Senate Amendment 2026-1 and Requests CofC", "HB1", "H",
+     "nonconcur_conference"),
+    ("Nonconcur with the House Amendment; Requests C of C", "SB1", "S", "nonconcur_conference"),
+    ("Nonconcur with the House Amendment", "SB1", "S", "nonconcur"),
+    ("Veto Override", "HB1", "H", "override_first"), ("Veto Override", "HB1", "S", "override_second"),
+    ("Adopt Amendment", "HB1", "H", "amendment"), ("Remove From Table", "HB1", "H", "untable"),
+    ("Special Order to the next order of business", "HB1681", "H", "special_order"),
+    ("Indefinitely Postpone", "HB1", "H", "postpone"), ("Recommit", "HB1", "H", "recommit"),
+    ("Refused to Accede to House Request for Committee of Conference", "HB1", "S", "refuse_accede"),
+    ("Reconsider OTP", "HB1", "H", "reconsider"), ("Withdraw", "HB431", "H", "withdraw"),
+    ("suspend all rules necessary to permit the consideration of HB 1091; 2/3 necessary",
+     "HB1091", "H", "suspend_rules"),
+    ("Refer to Finance", "HB1", "H", "refer"), ("Adopt", "HR38", "H", "adopt"),
+    ("Shall the Decision of the President Stand", "SB119", "S", "uphold_ruling"),
+    ("Divide Section 2 from 3 and 4", "HB724", "H", "divide"), ("RFS", "HB1186", "H", "is"),
+    ("Vacated from Municipal and County Government", "HB1242", "H", "vacate_referral"),
+    ("", "HB1", "H", "unnamed"), ("03/11/2026", "HB1", "H", "unnamed"),
+]
+
+
+@check("frontend", "a vote's motion is read once, in Python, into the key of the approved vote "
+                   "words, and the record's own words go under the head where they differ")
+def _motion_keys():
+    """THE VOTE WORDS (the person, 8 October 2026; votes.json): a vote card's head is the
+    motion's own name with only OTP, OTPA, ITL and IS abbreviated and a plain gloss, and
+    its chip says what the vote did. Which motion a record's words name is decided once,
+    in Python (motions.classify, the component plan's C4), for the bill's Votes tab (the
+    record's rollcalls carry it as mk) and for a session day; this holds the reading to
+    every form the 2025-2026 record uses and a sample of the older clerks'. "Ought to Pass
+    with Amendment 2026-0998h" carries no record line (an amendment's number is not a
+    difference); "House Concurs with Senate Amendment 2026-1709s" does; and every key it
+    gives is a row of the words."""
+    import components as C
+    import motions as MO
+    words = C.WORDBOOK["votes"]["motions"]
+    bad = []
+    for text, bill, body, want in MOTION_CASES:
+        got = MO.classify(text, bill, body, words)
+        if got["mk"] != want:
+            bad.append(f"{text!r} on {bill} in {body} is {got['mk']!r}, not {want!r}")
+        if got["mk"] and got["mk"] not in words:
+            bad.append(f"{got['mk']!r} is no row of votes.json")
+    assert not bad, f"{len(bad)} motions read wrongly: " + "; ".join(bad[:5])
+    assert "mrec" not in MO.classify("Ought to Pass with Amendment 2026-0998h", "HB1", "H", words)
+    assert MO.classify("House Concurs with Senate Amendment 2026-1709s", "HB1", "H", words)["mrec"]
+    assert MO.classify("Refer to Finance", "HB1", "H", words)["mf"] == {"Committee": "Finance"}
+    v2 = Path("src/pages/build_site_v2.py").read_text(encoding="utf-8")
+    assert "MO.classify(" in v2, "the bills' Votes tabs no longer carry the motion's key"
+    sd = Path("src/pages/build_session_pages.py").read_text(encoding="utf-8")
+    assert "MO.classify(" in sd, "a session day no longer reads the motion's key"
+    return "ok", f"{len(MOTION_CASES)} forms of the record's questions, each the approved words' key"
+
+
+@check("session", "a session day names each member by the seat they held in its term: the old "
+                  "seat on an old day, the roster's in the term it describes, and no seat where "
+                  "the record gives none", needs=("build_session_pages", "build_site_v2"))
+def _session_seat_at_the_time(BSP, B2):
+    """labels-use-the-seat-held-at-the-time (the person, 16 September 2026:
+    "show them as a rep when they were a rep and a senator when they were a
+    senator"). A session day's chips -- who spoke, who was excused, who
+    presided -- were each member's label from today's roster, so a member
+    whose district was renumbered or who moved seats was named on 2015's
+    days by the seat of 2025. The seat is each member's own ballots' of the
+    day's term (build_site_v2.term_seats, written into the floor record);
+    in the term the roster describes, a sitting member's roster label; and
+    where neither says, the name alone with the day's chamber's honorific.
+    Rep. James Spillane, whose seat was Rockingham 5 in 2015-2016 (a fixture's
+    ballots) and is Rockingham 2 now."""
+    def ballot(year, label, member="905", name="Spillane, James"):
+        return {"year": str(year), "body": "H", "vote_number": 1, "member_id": member,
+                "name": name, "party": "R", "label": label, "date": f"3/1/{year}"}
+    seats = B2.term_seats({
+        "905": [ballot(2015, "Rep. James Spillane (R - Rock 5)"),
+                ballot(2016, "Rep. James Spillane (R - Rock 5)"),
+                ballot(2025, "Rep. James Spillane (R - Rock 2)")],
+        # two seats in one term name neither
+        "77": [ballot(2015, "Rep. Pat Two (D - Hills 3)", "77", "Two, Pat"),
+               ballot(2016, "Rep. Pat Two (D - Hills 4)", "77", "Two, Pat")]})
+    assert seats.get("2015-2016", {}).get("905") == "Rep. James Spillane (R - Rock 5)" and \
+        seats.get("2025-2026", {}).get("905") == "Rep. James Spillane (R - Rock 2)" and \
+        "77" not in seats.get("2015-2016", {}), f"the seats of a term read off its ballots: {seats}"
+    root = Path(tempfile.mkdtemp())
+    try:
+        (root / "legislators.json").write_text(json.dumps([
+            {"id": "905", "slug": "james-spillane-rock-2", "name": "Spillane, James", "chamber": "H",
+             "party": "R", "display_full": "Rep. James Spillane (R - Rock 2)"}]), encoding="utf-8")
+        (root / "former.json").write_text("[]", encoding="utf-8")
+        m = BSP.Members(root)
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    m.seats = {"2015-2016": {"905": "Rep. James Spillane (R - Rock 5)"}}
+    m.current = "2025-2026"
+    got = {}
+    for term in ("2015-2016", "2009-2010", "2025-2026"):
+        m.term = term
+        got[term] = (BSP.member_info("H", "Spillane", m) or {}).get("display_full")
+    want = {"2015-2016": "Rep. James Spillane (R - Rock 5)", "2009-2010": "Rep. James Spillane",
+            "2025-2026": "Rep. James Spillane (R - Rock 2)"}
+    assert got == want, f"a member's chip on a day of each term reads {got}, not {want}"
+    chip = BSP.members_row("H", ["Spillane"], m, str)
+    assert "(R - Rock 2)" in chip, chip
+    m.term = "2015-2016"
+    assert "(R - Rock 5)" in BSP.members_row("H", ["Spillane"], m, str), (
+        "a speaker line of 2015 names the member by today's seat")
+    return "ok", ("Rep. James Spillane is Rock 5 on a day of 2015-2016, Rock 2 on one of "
+                  "2025-2026, and seatless on one of 2009-2010, where no ballot says")
+
+
+@check("data", "every chip on a past term's session day names the seat its member's own ballots "
+               "of that term give, or none", needs=("build_session_pages",))
+def _session_chips_seat_of_their_term(BSP):
+    """The built pages, held to _session_seat_at_the_time's rule: on every
+    session day outside the term the roster describes, a member's chip with
+    a seat names the seat that member's ballots of the day's term give
+    (data/floor_record.json's seats)."""
+    sess, fr = Path("site/session"), BSP.floor_record()
+    if not sess.exists() or not fr.get("seats"):
+        return "skip", "no built session days or no floor record seats here"
+    ids = {}
+    for f in ("site/legislators.json", "site/former.json"):
+        if Path(f).exists():
+            for r in json.loads(Path(f).read_text(encoding="utf-8")):
+                if r.get("slug"):
+                    ids.setdefault(r["slug"], str(r.get("id") or ""))
+    import build_date
+    import proceedings
+    today = build_date.today().isoformat()
+    current = proceedings.vote_term(today[:4], today)
+    chip = re.compile(r'<span class="mchip p-\w"><a href="legislator/([^"]+)\.html">([^<]*?)'
+                      r'(?: <span class="mtag">([^<]*)</span>)?</a>')
+    bad, seen = [], 0
+    for page in sorted(sess.glob("[HS]/*.html")):
+        term = proceedings.vote_term(page.stem[:4], page.stem)
+        if term == current:
+            continue
+        for slug, name, tag in chip.findall(page.read_text(encoding="utf-8")):
+            if not tag:
+                continue
+            seen += 1
+            want = (fr["seats"].get(term) or {}).get(ids.get(slug, ""))
+            if f"{name} {tag}" != want:
+                bad.append(f"{page.parent.name} {page.stem}: {name} {tag}, the ballots of "
+                           f"{term} say {want!r}")
+    assert not bad, f"{len(bad)} chip(s) name a seat not held that term: " + "; ".join(bad[:4])
+    return "ok", f"{seen:,} chips with a seat on past terms' days, each the seat of its term"
+
+
+@check("frontend", "a session day folds the consent calendar and the excused with their counts, "
+                   "names who presided in one line, and plays no recording for a consent bill")
+def _session_day_folds():
+    """The person's feedback of 9 October 2026 on the session day: the consent calendar's
+    bills "hidden in a dropdown by default, with each category's count shown" (item 18),
+    the counts in the status chips' colours (v19), the bills taken off it in their
+    sentence; the members excused "a compact dropdown ... closed by default, with the
+    count of members excused from each party" (v16); "a general line naming the members
+    who presided" (v18); "a bill that passes on the consent calendar needs no embedded
+    YouTube recording" (v3). Read off the fixture's session days and the code that draws
+    them."""
+    import build_session_pages as BSP
+    shared, _base, _ran, _days = _fixture_site_shared()
+    pages = sorted((shared / "site" / "session").rglob("*.html"))
+    assert pages, "the fixture built no session day"
+    text = "\n".join(p.read_text(encoding="utf-8") for p in pages)
+    bad = []
+    for m in re.finditer(r'<details class="sfold (sconsent|sexcused)"( open)?', text):
+        if m.group(2):
+            bad.append(f"the {m.group(1)} fold is drawn open")
+    if '<p class="dvh">' in text and 'class="rhead rh-day"' not in text:
+        bad.append("a session day has no record head")
+    assert not bad, "; ".join(bad)
+    src = Path("src/pages/build_session_pages.py").read_text(encoding="utf-8")
+    assert BSP.CONSENT_CLASS == {"Passed": "s-law", "Killed": "s-done",
+                                 "Sent to Interim Study": "s-study",
+                                 "Sent Back to Committee": "s-active", "Adopted": "s-adopted"}, (
+        f"the consent counts are not in the chips' colours: {BSP.CONSENT_CLASS}")
+    # EVERY GROUP IS ONE OF THE APPROVED WORDS, IN ITS CHIP'S COLOURS: the
+    # Senate's "Refer to Interim Study" was listed under the record's own
+    # words, in no colour, on 92 days, and the clerk's spellings of
+    # Inexpedient to Legislate each made a group of one (the look of
+    # 10 October 2026). The actions are the record's.
+    class _It:
+        def __init__(self, action):
+            self.action, self.carried = action, True
+    for said in ("Refer to Interim Study", "Rerefer to Interim Study", "Interim Study",
+                 "Re-Refer to Committee", "Inexepdient to Legislate", "Inexpedient to Legistlate",
+                 "Ought Not to Pass", "Ought to Adopt with Amendment #0806h (New Title)",
+                 "Ought to Pass with Amendment 2026-0546h", "Inexpedient to Legislate",
+                 "Indefinitely Postpone", "Adopt"):
+        assert BSP.short_outcome(_It(said)) in BSP.CONSENT_CLASS, (
+            f"a consent calendar lists {said!r} under {BSP.short_outcome(_It(said))!r}, "
+            "which is none of the approved groups and has no chip's colours")
+    for need, why in (("were removed from the consent", "the removed bills' sentence is gone"),
+                      ("Presiding over the", "no general line names who presided"),
+                      ("by_party", "the excused are not counted by party")):
+        assert need in src, why
+    assert BSP.and_list(["a", "b", "c"]) == "a, b, and c" and BSP.and_list(["a", "b"]) == "a and b"
+    v2 = Path("src/pages/build_site_v2.py").read_text(encoding="utf-8")
+    fm = v2[v2.index("def floor_moment("):v2.index("def write_floor_record(")]
+    assert '"consent"' not in fm or "return None" in fm
+    import build_site_v2 as B2
+    assert B2.floor_moment({"state": "consent", "video_id": "x", "what": "consent calendar",
+                            "when": "2026-02-19", "committee": "House"}) is None, (
+        "a bill decided on the consent calendar is given a moment in the day's recording")
+    assert B2.floor_moment({"state": "floor_precise", "video_id": "v", "what": "floor debate",
+                            "when": "2026-02-19", "committee": "House", "debate_start": 61.5,
+                            "debate_end": 900.0, "window_start": 10.0})["from"] == 61
+    return "ok", (f"{len(pages)} fixture session days: both folds closed; the counts in the "
+                  "chips' colours; the presiding line; no moment for a consent bill")
 
 
 @check("frontend", "every chip is the one chip: drawn by chip() in both languages, in one "
@@ -51249,6 +52014,579 @@ def _icons_named():
                   "the five sections; " + ", ".join(f"{n} {seen[n]}" for n in sorted(seen) if seen[n]))
 
 
+# ---- a bill's print sheet (9 October 2026) --------------------------------------
+#
+# print.js composes a reference sheet of one bill's record in the reader's
+# browser, beside a short menu of settings, and prints it with the browser's
+# own dialog (the person's decisions of 6 October 2026; the second-round
+# prototype approved on 9 October, less the rail's table and the hearings and
+# session days). The component plan asks that it be "composed in the browser
+# by the same helpers ... Nothing in it formats a bill, person, vote or date
+# of its own. Proven in node with every section present and absent." These
+# hold that, on seven real records (tests/print_cases.json), and its
+# stylesheet to the rules app.css is held to.
+
+# The sheet's sections, in the order they print. Nothing else is a section:
+# the rail's table and the hearings and session days were taken out by the
+# person on 9 October 2026.
+_PRINT_SECTIONS = ["At a Glance", "Official Legislative Analysis", "How It Got Here", "The Story",
+                   "Votes", "Committee Reports", "The Bill’s Text", "Documents"]
+_PRINT_OPTION = {"summary": ["Official Legislative Analysis", "The Story"], "votes": ["Votes"],
+                 "reports": ["Committee Reports"], "text": ["The Bill’s Text"],
+                 "docs": ["Documents"]}
+
+_PRINT_GO = r"""
+require("./stub.js");
+const fs = require("fs");
+const scope = (0, eval)(fs.readFileSync("./page.js", "utf8") + "\n;({GRPrint, WORDBOOK})");
+const G = scope.GRPrint;
+const C = JSON.parse(fs.readFileSync("./cases.json", "utf8"));
+const clone = x => JSON.parse(JSON.stringify(x));
+const urlOf = d => "https://graniterecord.org/bill/" + d.year + "/" + d.id.toLowerCase();
+const ctxOf = (c, files) => ({url: urlOf(c.d), asOf: "2026-10-09", today: "2026-10-09",
+  versions: c.ix ? {ix: c.ix, files: files === undefined ? c.files : files} : {ix: null, files: {}}});
+const all = () => { const s = G.defaults(); s.names = 1; s.sec.text = 1; return s; };
+const words = ts => ts.filter(t => t.w !== "¶").map(t => t.w).join(" ");
+const out = {cases: {}, variants: {}, blame: {}, needs: {}};
+for (const [name, c] of Object.entries(C.cases)) {
+  const ctx = ctxOf(c);
+  const r = out.cases[name] = {full: G.sheet(c.d, c.b, ctx, all()), dflt: G.sheet(c.d, c.b, ctx, G.defaults()),
+    menu: G.menu(c.d, c.b, ctx, G.defaults()), has: G.has(c.d, ctx), off: {}, choice: {},
+    sponsors: (c.d.sponsors || []).length,
+    members: (c.d.rollcalls || []).reduce((n, rc) => n + (rc.members || []).length, 0)};
+  for (const k of ["summary", "votes", "reports", "text", "docs"]) {
+    const s = all(); s.sec[k] = 0; r.off[k] = G.sheet(c.d, c.b, ctx, s); }
+  { const s = all(); s.qr = 0; r.noqr = G.sheet(c.d, c.b, ctx, s); }
+  { const s = all(); s.names = 0; r.nonames = G.sheet(c.d, c.b, ctx, s); }
+  for (const t of ["marked", "clean", "amendments", "introduced"]) {
+    const s = all(); s.text = t; r.choice[t] = G.sheet(c.d, c.b, ctx, s); }
+  if (c.ix && (c.ix.versions || []).length > 1) {
+    const toks = c.ix.versions.map(v => G.text.tokens(c.files[v.blocks_url || v.text_url]));
+    const steps = G.text.joinSteps(c.d, c.ix);
+    const B = G.text.blame(toks, steps.map(s => s.tag));
+    out.blame[name] = {now: words(B.doc.filter(t => t.st !== "del")) === words(toks[toks.length - 1]),
+      was: words(B.doc.filter(t => t.st !== "add")) === words(toks[0]),
+      steps: steps.map(s => [s.kind, s.tag, s.a ? s.a.num : null]),
+      changed: B.doc.filter(t => t.st !== "eq" && t.w !== "¶").length};
+    const st = t => { const s = G.defaults(); s.sec.text = 1; s.text = t; return s; };
+    out.needs[name] = {versions: c.ix.versions.length, marked: G.needs(c.d, ctxOf(c, {}), st("marked")).length,
+      clean: G.needs(c.d, ctxOf(c, {}), st("clean")).length, loaded: G.needs(c.d, ctx, st("marked")).length,
+      loading: G.sheet(c.d, c.b, ctxOf(c, {}), all())};
+  }
+}
+// Absence by the record: the law's record, less one part at a time.
+const law = C.cases.law;
+const strip = {
+  votes: d => { d.rollcalls = []; delete d.ballot; },
+  reports: d => { d.reports = []; d.docket_reports = []; },
+  docs: d => { d.documents = []; },
+  summary: d => { d.billtext.analysis = ""; d.stages = []; d.narrative = ""; d.notes = []; d.veto_message = null; },
+  how: d => { d.journey.steps = []; },
+  text: d => { d.nver = 1; d.namd = 0; d.amendments = []; d.billtext.body = ""; },
+  names: d => { d.rollcalls.forEach(r => { r.members = []; }); },
+};
+for (const [k, f] of Object.entries(strip)) {
+  const d = clone(law.d); f(d);
+  const c2 = Object.assign({}, law, k === "text" ? {d, ix: null, files: {}} : {d});
+  out.variants[k] = {sheet: G.sheet(d, law.b, ctxOf(c2), all()), menu: G.menu(d, law.b, ctxOf(c2), all())};
+}
+// The text: off by default, its tick never remembered, and ticked, whole
+// however long (the person, 10 October 2026); what the menu says of the pages.
+{ const store = {};
+  globalThis.localStorage = {getItem: k => (k in store ? store[k] : null), setItem: (k, v) => { store[k] = String(v); }};
+  const s = G.defaults(); s.sec.text = 1; s.text = "clean"; G.settings.save(s);
+  const back = G.settings.load();
+  // and a choice stored any other way, the tick in it, is not taken either
+  store["gr-print"] = JSON.stringify({sec: {summary: 1, votes: 1, reports: 1, text: 1, docs: 1}, names: 0, qr: 1, text: "clean"});
+  const raw = G.settings.load();
+  delete globalThis.localStorage;
+  const c2 = clone(law); c2.ix.versions[c2.ix.versions.length - 1].words = 10000000;
+  const ticked = all(); ticked.text = "clean";
+  const last = law.ix.versions[law.ix.versions.length - 1];
+  out.text = {dflt: G.defaults().sec.text, remembered: back.sec.text + raw.sec.text, choice: back.text,
+    huge: G.sheet(c2.d, c2.b, ctxOf(c2), ticked),
+    final: words(G.text.tokens(law.files[last.blocks_url || last.text_url])).split(" ").length,
+    said: [G.pages.said(9), G.pages.said(1)]}; }
+// The QR code: each symbol against the second encoder's, read back, and a
+// damaged one refused.
+{ const rows = m => m.map(r => r.map(v => v ? "1" : "0").join(""));
+  const m = G.qr.encode(C.qr[0].text);
+  out.qr = {symbols: C.qr.map(q => { const s = G.qr.encode(q.text);
+      return {text: q.text, same: rows(s).join("/") === q.rows.join("/"), read: G.qr.read(s).text === q.text}; }),
+    every: Object.values(C.cases).map(c => G.qr.read(G.qr.encode(urlOf(c.d))).text === urlOf(c.d)),
+    svg: G.qr.svg(m, "x")};
+  const bad = m.map(r => r.slice()); [[10, 10], [12, 14], [14, 11], [20, 9]].forEach(([y, x]) => { bad[y][x] = !bad[y][x]; });
+  try { out.qr.damaged = "read as " + G.qr.read(bad).text; } catch (e) { out.qr.damaged = "refused"; } }
+// Mounted as the Print button will mount it, under the stub, and taken down.
+try { const l = G.open(law.d, law.b); G.close(); out.open = {ok: !!l}; }
+catch (e) { out.open = {ok: false, err: String(e && e.stack || e).slice(0, 400)}; }
+process.stdout.write("\n@@" + JSON.stringify(out));
+"""
+
+
+def _print_text(html):
+    """What a reader sees of some of the sheet's HTML."""
+    import html as _h
+    return _h.unescape(re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", html))).strip()
+
+
+def _print_heads(html):
+    import html as _h
+    return [_h.unescape(h) for h in re.findall(r'<h3 class="ps-h3">(.*?)</h3>', html)]
+
+
+@check("frontend", "a bill's print sheet is composed from its record by the components, with every "
+                   "section present and absent, nothing said by colour alone, each change numbered "
+                   "by the amendment that made it, and a QR code that reads back")
+def _print_sheet():
+    """print.js on the seven records of tests/print_cases.json (a law with
+    three amendments and a chaptered step, a bill killed on a roll call, an
+    interim study bill, a CACR going to the voters, a bill with one version
+    and no amendment, an archived bill of 1995 and a vetoed bill), loaded in
+    node after components.js and app.js, as a bill's page loads them.
+
+    SECTIONS. The law prints every one, in order; no case prints anything
+    else -- not the rail's table, not the hearings and session days (the
+    person, 9 October 2026). A part taken out of the record takes its section
+    and its line in the menu with it; a setting turned off takes its section.
+
+    THE TEXT (the person, 10 October 2026): "Include the bill's text" is
+    unticked by default and its tick is never remembered, so no case prints
+    a text unasked; ticked, the text prints whole, a version said to be ten
+    million words long included, word for word the version's own; and the
+    menu has its line for how many pages the sheet prints, one number with
+    no paper named ("Prints 9 pages": the person, 10 October 2026).
+
+    THE COMPONENTS. Every sponsor is pchip's chip with its party letter; no
+    date is printed in figures; every outcome is a word; the vote words are
+    WORDBOOK's.
+
+    THE TEXT. Read without its struck words the marked text is the current
+    version and without its inserted words the introduced one, on every
+    versioned case; each change carries the number its list gives the
+    amendment that made it, HB 1681's in the docket's order; a struck run is
+    in brackets.
+
+    THE QR CODE matches the symbols a second encoder made (the prototype's
+    qr.py) module for module -- the seven cases' addresses and three where
+    two masks tie on their penalty, so the mask chosen is the standard's --
+    reads back to every case's address, and a damaged symbol is refused
+    rather than read as another address.
+
+    MOUNTED: GRPrint.open and close run on a bill's record under the DOM stub,
+    and the run's fixture build publishes print.js and print.css as they are,
+    with _headers giving both the freshness every script has."""
+    node = shutil.which("node") or shutil.which("node.exe")
+    need = [Path(f) for f in ("src/pages/print.js", "src/pages/app.js", "tests/dom_stub.js",
+                              "tests/print_cases.json")]
+    if not all(p.exists() for p in need):
+        return "skip", "print.js, app.js, the DOM stub or the print cases are not here"
+    if not node:
+        assert not os.environ.get("GITHUB_ACTIONS"), "node is not on PATH on the nightly, which installs it"
+        return "skip", "node is not on PATH"
+    cases = json.loads(Path("tests/print_cases.json").read_text(encoding="utf-8"))
+    root = Path(tempfile.mkdtemp(prefix="gr-print-"))
+    try:
+        js = Path("src/pages/app.js").read_text(encoding="utf-8") + "\n;\n" + \
+            Path("src/pages/print.js").read_text(encoding="utf-8")
+        (root / "page.js").write_text(_with_components(js), encoding="utf-8")
+        (root / "stub.js").write_text(Path("tests/dom_stub.js").read_text(encoding="utf-8"), encoding="utf-8")
+        (root / "cases.json").write_text(json.dumps({"cases": cases["cases"], "qr": cases["qr"]}),
+                                         encoding="utf-8")
+        (root / "go.js").write_text(_PRINT_GO, encoding="utf-8")
+        r = _run([node, "go.js"], cwd=root, capture_output=True, text=True, timeout=180)
+        assert r.returncode == 0 and "@@" in (r.stdout or ""), (
+            "print.js did not compose the sheets under node: " + (r.stderr or r.stdout or "")[-400:])
+        got = json.loads(r.stdout.rsplit("@@", 1)[1])
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    bad = []
+    order = {h: i for i, h in enumerate(_PRINT_SECTIONS)}
+
+    # The sections: the law's every one, in order, and nobody's anything else.
+    heads = _print_heads(got["cases"]["law"]["full"])
+    if heads != _PRINT_SECTIONS:
+        bad.append(f"HB 1681 with everything on prints {heads}, not {_PRINT_SECTIONS}")
+    for name, c in got["cases"].items():
+        for view in ("full", "dflt"):
+            hs = _print_heads(c[view])
+            odd = [h for h in hs if h not in order]
+            if odd:
+                bad.append(f"{name} prints a section the sheet does not have: {odd}")
+            elif [order[h] for h in hs] != sorted(order[h] for h in hs):
+                bad.append(f"{name} prints its sections out of order: {hs}")
+        for k, gone in _PRINT_OPTION.items():
+            left = [h for h in _print_heads(c["off"][k]) if h in gone]
+            if left:
+                bad.append(f"{name} with '{k}' off still prints {left}")
+        if '<svg class="ps-qrsvg"' in c["noqr"] or '<svg class="ps-qrsvg"' not in c["full"]:
+            bad.append(f"{name}'s QR code does not follow its setting")
+        if re.search(r'class="[^"]*\b(?:rail|stop)\b', c["full"]):
+            bad.append(f"{name} draws the rail, whose table the person took off the sheet")
+    # Absence by the record: the part, its section and its line in the menu go together.
+    for k, v in got["variants"].items():
+        hs = _print_heads(v["sheet"])
+        want_gone = {"how": ["How It Got Here"], "names": []}.get(k, _PRINT_OPTION.get(k, []))
+        if [h for h in hs if h in want_gone]:
+            bad.append(f"HB 1681 without its {k} still prints {[h for h in hs if h in want_gone]}")
+        opt = {"names": 'data-opt="names"'}.get(k, f'data-sec="{k}"')
+        if k != "how" and opt in v["menu"]:
+            bad.append(f"HB 1681 without its {k} is still offered it in the menu")
+        if k == "how" and "How It Got Here" in v["menu"]:
+            bad.append("the menu still says How It Got Here always prints, for a bill with no journey")
+        if k == "names" and "ps-roll" in v["sheet"]:
+            bad.append("a roll call with no members recorded still prints them member by member")
+        if k == "text" and "holds no text" not in v["menu"]:
+            bad.append("the menu does not say the record holds no text, where it holds none")
+    # The text: off until ticked, never remembered ticked, and whole once ticked.
+    tx = got["text"]
+    for name, c in got["cases"].items():
+        if "The Bill’s Text" in _print_heads(c["dflt"]):
+            bad.append(f"{name} prints its text with the settings as they open")
+        box = re.search(r'<input type="checkbox" data-sec="text"( checked)?><span>([^<]*)', c["menu"])
+        if c["has"]["text"] and (not box or box.group(1) or box.group(2) != "Include the bill&rsquo;s text"):
+            bad.append(f"{name}'s menu does not offer 'Include the bill's text', unticked")
+        if '<p class="ps-count"' not in c["menu"]:
+            bad.append(f"{name}'s menu has no line for how many pages the sheet prints")
+    if tx["dflt"] or tx["remembered"] or tx["choice"] != "clean":
+        bad.append(f"the text is ticked by default ({tx['dflt']}) or its tick is remembered "
+                   f"({tx['remembered']}), or which text is not ({tx['choice']!r})")
+    huge = tx["huge"].split('<div class="ps-text">', 1)
+    drawn = len(_print_text(huge[1].split("</section>", 1)[0]).split()) if len(huge) > 1 else 0
+    if drawn != tx["final"]:
+        bad.append(f"a bill said to be ten million words long, ticked, prints {drawn} of its "
+                   f"current version's {tx['final']} words")
+    if tx["said"] != ["Prints 9 pages", "Prints 1 page"]:
+        bad.append(f"the menu says the pages as {tx['said']}")
+
+    # The kinds.
+    law, died, study, cacr, plain, arch, veto = (got["cases"][k] for k in
+                                                 ("law", "died", "study", "cacr", "plain", "archived", "veto"))
+    for name, word in (("law", "Became Law"), ("died", "Died"), ("study", "Interim Study"), ("veto", "Died")):
+        mast = got["cases"][name]["full"].split("</header>")[0]
+        if f'<span class="ps-word ps-word-m">{word}</span>' not in mast:
+            bad.append(f"{name}'s masthead does not say its status, {word!r}, in words")
+    if "Constitutional Amendment Concurrent Resolution" not in _print_text(cacr["full"]).split("At a Glance")[0]:
+        bad.append("CACR 13's masthead does not name the kind of measure")
+    if "The voters" not in _print_text(cacr["full"]):
+        bad.append("CACR 13's votes do not include the voters'")
+    if "Votes" in _print_heads(arch["full"]) or 'data-sec="votes"' in arch["menu"]:
+        bad.append("the archived bill, which no vote is recorded on, prints or offers Votes")
+    if "ps-amds" in plain["full"] or "The record holds one version" not in _print_text(plain["full"]):
+        bad.append("HB 102, one version and no amendment, prints an amendment list or does not say why none")
+    if "The Governor’s Veto Message" not in _print_text(veto["full"]):
+        bad.append("SB 268's veto message is not printed")
+    if 'data-opt="names"' in died["menu"] or "ps-roll" in died["full"]:
+        bad.append("a bill whose roll calls carry no members offers or prints them member by member")
+
+    # The components and the words.
+    for name, c in got["cases"].items():
+        glance = c["full"].split("At a Glance", 1)[-1].split("</table>", 1)[0]
+        chips = len(re.findall(r'<span class="mchip p-[A-Z]">', glance))
+        if chips != c["sponsors"]:
+            bad.append(f"{name} draws {chips} of its {c['sponsors']} sponsors as the person chip")
+        mine = re.sub(r'<span class="ps-addr">.*?</span>|<div class="ps-text">.*?</div>|'
+                      r'<p class="ps-flat">.*?</p>', " ", c["full"], flags=re.S)
+        for m in re.finditer(r"\b(?:19|20)\d\d-[01]\d-[0-3]\d\b|\b\d{1,2}/\d{1,2}/\d{4}\b", _print_text(mine)):
+            bad.append(f"{name} prints a date in figures: {m.group(0)}")
+            break
+        for m in re.finditer(r'<span class="ps-word[^"]*">(.*?)</span>', c["full"]):
+            if not m.group(1).strip():
+                bad.append(f"{name} prints an outcome box with no word in it")
+    if "Motion Passed" not in law["full"]:
+        bad.append("HB 1681's votes do not say what each did in the vote words (WORDBOOK.votes)")
+    rolls = re.findall(r'<ul class="ps-names">(.*?)</ul>', law["full"], re.S)
+    if sum(len(re.findall(r"<li>", r)) for r in rolls) != law["members"]:
+        bad.append(f"HB 1681's roll call prints {sum(len(re.findall('<li>', r)) for r in rolls)} names of "
+                   f"its {law['members']} members")
+    if "ps-roll" in law["nonames"] or "ps-roll" in law["dflt"]:
+        bad.append("the members of a roll call print with the setting off, and it is off by default")
+
+    # The text, and which amendment made which change.
+    for name, b in got["blame"].items():
+        if not (b["now"] and b["was"]):
+            bad.append(f"{name}'s marked text is not its current version less the struck words "
+                       f"({b['now']}) or its introduced version less the inserted ones ({b['was']})")
+    steps = got["blame"]["law"]["steps"]
+    if steps != [["one", "1", "2026-0998h"], ["one", "2", "2026-1709s"], ["one", "3", "2026-2191e"],
+                 ["chaptered", "C", None]]:
+        bad.append(f"HB 1681's versions are joined to its amendments as {steps}")
+    marked = law["full"].split('<div class="ps-text">', 1)[-1]
+    listed = re.findall(r'<li><span class="ps-tagk">([^<]*)</span>', law["full"])
+    tags = set(re.findall(r'<sup class="ps-tag"><span class="ps-vh">amendment </span>([^<]*)</sup>', marked))
+    if listed != ["1", "2", "3", "C"] or not tags or not tags <= set(listed):
+        bad.append(f"HB 1681's list numbers {listed} and its marks carry {sorted(tags)}")
+    runs = re.findall(r'<(ins|del) class="ps-(?:ins|del)">(.*?)</\1>(<sup class="ps-tag")?', marked, re.S)
+    if not runs or any(not s for _, _, s in runs):
+        bad.append("a change in HB 1681's marked text carries no amendment's number")
+    if any(k == "del" and not (t.startswith("[") and t.endswith("]")) for k, t, _ in runs):
+        bad.append("a struck run in the marked text is not in brackets, so it says itself by its line alone")
+    for name, c in got["cases"].items():
+        for k, t, _ in re.findall(r'<(ins|del) class="ps-(?:ins|del)">(.*?)</\1>(<sup)?', c["full"], re.S):
+            if k == "del" and not (t.startswith("[") and t.endswith("]")):
+                bad.append(f"{name} has a struck run out of brackets")
+                break
+    n = got["needs"]["law"]
+    if (n["marked"], n["clean"], n["loaded"]) != (n["versions"], 1, 0) or "Loading the bill" not in n["loading"]:
+        bad.append(f"the files the law's text needs are asked for wrongly: {n}")
+
+    # The QR code.
+    q = got["qr"]
+    differ = [s["text"] for s in q["symbols"] if not s["same"]]
+    if differ or len(q["symbols"]) < 10:
+        bad.append(f"print.js's QR code is not the symbol the second encoder made for {differ}")
+    if not all(s["read"] for s in q["symbols"]) or not all(q["every"]):
+        bad.append("a QR code does not read back to its bill's address")
+    if q["damaged"] != "refused":
+        bad.append(f"a damaged QR code is not refused: {q['damaged']}")
+    if 'fill="currentColor"' not in q["svg"] or 'class="ps-qrbg"' not in q["svg"]:
+        bad.append("the QR code is not drawn in the paper's ink on its ground")
+    if not got["open"]["ok"]:
+        bad.append("GRPrint.open did not mount the sheet: " + got["open"].get("err", ""))
+
+    # Published as it is, with every script's freshness.
+    shared, _base, _ran, _days = _fixture_site_shared()
+    site = shared / "site"
+    for f in ("print.js", "print.css"):
+        if not (site / f).exists() or (site / f).read_bytes() != Path("src/pages", f).read_bytes():
+            bad.append(f"the fixture build does not publish src/pages/{f} as it is")
+        if not re.search(rf"/{re.escape(f)}\s*\n\s*Cache-Control:[^\n]*max-age=0, must-revalidate",
+                         (site / "_headers").read_text(encoding="utf-8") if (site / "_headers").exists() else ""):
+            bad.append(f"_headers does not give /{f} the freshness every script has")
+    assert not bad, f"{len(bad)} findings: " + "; ".join(bad[:10])
+    return "ok", (f"{len(got['cases'])} records composed with every setting: {len(_PRINT_SECTIONS)} "
+                  f"sections in order, each absent with its part of the record and with its setting; "
+                  f"{len(got['blame'])} versioned texts read back to both ends; HB 1681's changes "
+                  f"numbered 1, 2, 3 and C; {len(got['qr']['symbols'])} QR codes the second "
+                  "encoder's, module for module")
+
+
+@check("frontend", "the print sheet's stylesheet keeps the site's rules: sizes in rem from the "
+                   "scale, 13px only in capitals, every colour a token measured in both themes, and "
+                   "on paper the sheet alone with its marks in line and stroke")
+def _print_sheet_css():
+    """print.css, held to what app.css is held to, since the checks of
+    app.css do not read it: every font size in rem or a token of the type
+    scale, none under 13px and 13px only where the rule sets capitals; every
+    breakpoint in em; no colour written outside the palette; every pair of
+    tokens drawn one on the other measured in both themes -- on the paper,
+    the --sheet tokens, which are the same in every theme because paper has
+    no dark mode, and app.css holds them so.
+
+    ON PAPER: the page under the sheet, the sheet's heading and its settings
+    are left off; an amendment's words are underlined and struck through,
+    the law's own added words bold and italic, its removed words struck --
+    never colour alone -- and print.js asks for the stylesheet by the name
+    the build publishes it under.
+
+    THE PAGE COUNT: what keeps together on paper keeps together in the frame
+    print.js counts the pages in, the tables are tables there too, no narrow
+    screen's rule reaches it, and its margins are @page's."""
+    css_p, app_p = Path("src/pages/print.css"), Path("src/pages/app.css")
+    if not (css_p.exists() and app_p.exists()):
+        return "skip", "print.css or app.css is not here"
+    text, app = css_p.read_text(encoding="utf-8"), app_p.read_text(encoding="utf-8")
+    pal = _css_palette(app)
+    light = pal["light"]
+    bad, sizes, pairs = [], 0, 0
+    sheet = ("--sheet", "--sheet-ink", "--sheet-ink-2", "--sheet-rule")
+    for tk in sheet:
+        if tk not in light or light.get(tk, "").lower() != pal["dark"].get(tk, "").lower():
+            bad.append(f"{tk} is not in app.css's palette, the same in both themes")
+    rules = _css_rules(text)
+    for ctx, sel, body, ln in rules:
+        ds = _css_decls(body)
+        caps = any(k == "text-transform" and "uppercase" in v for k, v in ds)
+        got = dict(ds)
+        for k, v in ds:
+            if k.startswith("--"):
+                bad.append(f"print.css:{ln} defines {k}; a token belongs in app.css's palette")
+            if _colour_literals(v) and k not in ("mask", "-webkit-mask"):
+                bad.append(f"print.css:{ln} {sel[:40]} writes {k}: {', '.join(_colour_literals(v))}")
+            for t in re.findall(r"var\(\s*(--[\w-]+)", v):
+                if t not in light:
+                    bad.append(f"print.css:{ln} uses {t}, which app.css does not define")
+            size = _css_font_size(k, v)
+            if size is None:
+                continue
+            sizes += 1
+            px, how = _css_px(size, light)
+            if px is None:
+                bad.append(f"print.css:{ln} {sel[:40]} sets a size this cannot read: {size}")
+            elif how in ("px", "pt") or re.search(r"\d(px|pt)\b", size):
+                bad.append(f"print.css:{ln} {sel[:40]} sets text in {how}")
+            elif px < _FLOOR_PX or (px < 14 and not caps):
+                bad.append(f"print.css:{ln} {sel[:40]} is {px:g}px" + ("" if px < _FLOOR_PX else
+                                                                       " in mixed case"))
+        # The pairs: the paper's inks on the paper, the menu's on its card.
+        ground = next((v for k, v in ds if k in ("background", "background-color")), "")
+        g = re.fullmatch(r"var\((--[\w-]+)\)", ground.strip())
+        on_paper = ".ps-paper" in sel or any(x.startswith("var(--sheet") for x in got.values())
+        for k, v in ds:
+            m = re.fullmatch(r"var\((--[\w-]+)\)", v.strip())
+            if k == "color" and m:
+                grounds = [g.group(1)] if g else (["--sheet"] if m.group(1).startswith("--sheet")
+                                                  else ["--surface", "--paper"])
+                need = 4.5
+            elif (k.startswith("border") and k != "border-radius") or k in ("outline", "fill"):
+                m = re.search(r"var\((--[\w-]+)\)", v)
+                if not m or m.group(1) in ("--rule", "--rule-2", "--sheet-rule", "--sheet", "--shadow"):
+                    continue
+                grounds = ["--sheet"] if m.group(1).startswith("--sheet") else ["--surface", "--paper"]
+                need = 3.0
+            else:
+                continue
+            for gr in grounds:
+                for scheme in ("light", "dark"):
+                    a, b = _css_token_colour(m.group(1), pal[scheme]), _css_token_colour(gr, pal[scheme])
+                    pairs += 1
+                    if a is None or b is None:
+                        bad.append(f"print.css:{ln} {m.group(1)} on {gr} cannot be measured in {scheme}")
+                    elif _css_ratio(a, b) < need:
+                        bad.append(f"print.css:{ln} {sel[:40]}: {m.group(1)} on {gr} is "
+                                   f"{_css_ratio(a, b):.2f}:1 in {scheme}, under {need:g}")
+        if on_paper and any(k == "color" and "var(--ink" in v for k, v in ds):
+            bad.append(f"print.css:{ln} {sel[:40]} inks the paper with the theme's ink, which is light in the dark")
+    for m in re.finditer(r"@media([^{]*)\{", re.sub(r"/\*.*?\*/", "", text, flags=re.S)):
+        if re.search(r"(?:min|max)-width\s*:\s*[\d.]+px", m.group(1)):
+            bad.append(f"@media{m.group(1).rstrip()} is in px")
+    for m in re.finditer(r"font\s*:[^;}]*?(\d*\.?\d+)(px|pt)\b", text):
+        bad.append(f"print.css sets a {m.group(1)}{m.group(2)} font, in {m.group(2)}")
+    printing = [(sel, dict(_css_decls(body))) for ctx, sel, body, _ in rules
+                if any(c.startswith("@media print") for c in ctx)]
+    hidden = {s.strip() for sel, ds in printing if "none" in ds.get("display", "")
+              for s in _css_selectors(sel)}
+    for want in ("html.ps-open body > :not(.ps-layer)", ".ps-head", ".ps-menu"):
+        if want not in hidden:
+            bad.append(f"on paper {want} is not left off")
+    marks = {sel: dict(_css_decls(body)) for ctx, sel, body, _ in rules if not ctx}
+    for sel, prop, word in ((".ps-ins", "text-decoration", "underline"),
+                            (".ps-del", "text-decoration", "line-through"),
+                            (".ps-law-cut", "text-decoration", "line-through"),
+                            (".ps-law-add", "font-style", "italic")):
+        if word not in marks.get(sel, {}).get(prop, ""):
+            bad.append(f"{sel} is not {word}: a change would be said by colour or not at all")
+    js = Path("src/pages/print.js").read_text(encoding="utf-8") if Path("src/pages/print.js").exists() else ""
+    # THE PAGES ARE COUNTED AS PAPER BREAKS THEM (print.js countPages, the
+    # person's "always list the full number of pages", 10 October 2026): the
+    # sheet laid out again in a frame a page's width, in columns a page's
+    # height. So what keeps together keeps together there as on paper, the
+    # tables stay tables there as on paper, a narrow screen's rules stay on
+    # the screen's sheet (the frame is a screen as narrow as a page), and the
+    # margins print.js counts with are print.css's own.
+    top = [(sel, dict(_css_decls(body))) for ctx, sel, body, _ in rules if not ctx]
+    together = {s for sel, ds in top if "avoid" in ds.get("break-inside", "")
+                for s in _css_selectors(sel)}
+    for want in (".ps-table tr", ".ps-how tr", ".ps-facts tr", ".ps-amds li", ".ps-docs li"):
+        if want not in together:
+            bad.append(f"{want} keeps together on paper only, not in the frame the pages are counted in")
+    if not any(".ps-measure .ps-paper table" in sel and ds.get("display") == "table" for sel, ds in top):
+        bad.append("in the counting frame app.css makes the sheet's tables blocks, which on paper it does not")
+    for ctx, sel, body, ln in rules:
+        if any(c.startswith("@media screen") for c in ctx):
+            for s in _css_selectors(sel):
+                if not s.startswith(".ps-layer"):
+                    bad.append(f"print.css:{ln} {s}: a narrow screen's rule reaching the counting frame")
+    pm = re.search(r"@page\s*\{\s*margin:\s*([\d.]+)in\s+([\d.]+)in\s+([\d.]+)in", text)
+    jm = re.search(r"const MARGIN=\{top:([\d.]+),side:([\d.]+),foot:([\d.]+)\}", js)
+    if not pm or not jm or [float(x) for x in pm.groups()] != [float(x) for x in jm.groups()]:
+        bad.append("print.js counts the pages with other margins than print.css's @page")
+    if 'l.href="/print.css"' not in js:
+        bad.append("print.js does not ask for /print.css, the name the build publishes it under")
+    assert sizes > 40 and pairs > 40, f"only {sizes} sizes and {pairs} pairs were read in print.css"
+    assert not bad, f"{len(bad)} findings: " + "; ".join(bad[:10])
+    return "ok", (f"{sizes} sizes in rem, none under the floor and 13px only in capitals; "
+                  f"{pairs} token pairs measured in both themes; on paper the sheet alone, its "
+                  f"marks underlined, struck and italic; the pages counted as paper breaks them")
+
+
+@check("data", "every versioned bill's print sheet composes, and its marked text reads back to "
+               "the current version and to the introduced one")
+def _print_sheet_on_the_record():
+    """The sheet on every bill the built site has versions of: each composed
+    with every setting on, without an error; ticked, its clean text prints
+    every word of the current version, however long (HB 2 of 2025's 107,482
+    among them: the person, 10 October 2026, "it should print the full
+    length text"); and its marked text -- every change numbered by the
+    amendment that made it -- read without its struck words is the current
+    version and without its inserted words the introduced one, word for word. That is the reading `git blame` gives a
+    file, and these two ends are what make it a reading of the record rather
+    than a drawing of one. 1,031 bills on 9 October 2026, in about thirty
+    seconds."""
+    node = shutil.which("node") or shutil.which("node.exe")
+    site = Path("site")
+    if not (site / "versions").is_dir():
+        return "skip", "no site/versions built"
+    if not node:
+        return "skip", "node is not on PATH"
+    go = r"""
+require("./stub.js");
+const fs = require("fs"), path = require("path");
+const {GRPrint: G} = (0, eval)(fs.readFileSync("./page.js", "utf8") + "\n;({GRPrint})");
+const site = process.argv[2];
+const recOf = (year, id) => {
+  const h = fs.readFileSync(path.join(site, "bill", year, id.toLowerCase() + ".html"), "utf8");
+  let m = /<script type="application\/json" id="gr-data">([\s\S]*?)<\/script>/.exec(h);
+  if (m) return JSON.parse(m[1]);
+  m = /<meta name="gr-data" content="([^"]+)"/.exec(h);
+  return JSON.parse(fs.readFileSync(path.join(site, m[1].replace(/^\//, "")), "utf8"));
+};
+const words = ts => ts.filter(t => t.w !== "¶").map(t => t.w).join(" ");
+let n = 0; const bad = [];
+for (const year of fs.readdirSync(path.join(site, "versions")))
+  for (const f of fs.readdirSync(path.join(site, "versions", year))) {
+    if (!/^[A-Z]+\d+\.json$/.test(f)) continue;
+    const id = f.slice(0, -5), ix = JSON.parse(fs.readFileSync(path.join(site, "versions", year, f), "utf8"));
+    if ((ix.versions || []).length < 2) continue;
+    try {
+      const files = {};
+      for (const v of ix.versions) {
+        const u = v.blocks_url || v.text_url, p = path.join(site, u.replace(/^\//, ""));
+        const x = u.endsWith(".json") ? JSON.parse(fs.readFileSync(p, "utf8")) : fs.readFileSync(p, "utf8");
+        files[u] = x.blocks || x;
+      }
+      const d = recOf(year, id);
+      const toks = ix.versions.map(v => G.text.tokens(files[v.blocks_url || v.text_url]));
+      const B = G.text.blame(toks, G.text.joinSteps(d, ix).map(s => s.tag));
+      if (words(B.doc.filter(t => t.st !== "del")) !== words(toks[toks.length - 1])
+          || words(B.doc.filter(t => t.st !== "add")) !== words(toks[0]))
+        bad.push(year + "/" + id + ": the marked text does not read back");
+      const st = G.defaults(); st.names = 1; st.sec.text = 1;
+      const ctx = {url: "https://graniterecord.org/bill/" + year + "/" + id.toLowerCase(),
+        today: "2026-10-09", versions: {ix, files}};
+      G.sheet(d, null, ctx, st);
+      // ticked, the text prints whole: the clean text's words, every one
+      st.text = "clean";
+      const html = (G.sheet(d, null, ctx, st).split('<div class="ps-text">')[1] || "").split("</section>")[0];
+      const drawn = html.replace(/<[^>]+>/g, " ").replace(/&[a-z]+;|&#\d+;/g, "x").split(/\s+/).filter(Boolean).length;
+      if (drawn !== toks[toks.length - 1].filter(t => t.w !== "\u00b6").length)
+        bad.push(year + "/" + id + ": ticked, the clean text prints " + drawn + " of "
+          + toks[toks.length - 1].filter(t => t.w !== "\u00b6").length + " words");
+    } catch (e) { bad.push(year + "/" + id + ": " + e.message); }
+    n++;
+  }
+process.stdout.write("\n@@" + JSON.stringify({n, bad}));
+"""
+    root = Path(tempfile.mkdtemp(prefix="gr-print-data-"))
+    try:
+        js = Path("src/pages/app.js").read_text(encoding="utf-8") + "\n;\n" + \
+            Path("src/pages/print.js").read_text(encoding="utf-8")
+        (root / "page.js").write_text(_with_components(js), encoding="utf-8")
+        (root / "stub.js").write_text(Path("tests/dom_stub.js").read_text(encoding="utf-8"), encoding="utf-8")
+        (root / "go.js").write_text(go, encoding="utf-8")
+        r = _run([node, "--max-old-space-size=4096", "go.js", str(site.resolve())], cwd=root,
+                 capture_output=True, text=True, timeout=600)
+        assert r.returncode == 0 and "@@" in (r.stdout or ""), (
+            "the print sheet did not run over the built site: " + (r.stderr or r.stdout or "")[-400:])
+        got = json.loads(r.stdout.rsplit("@@", 1)[1])
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    assert got["n"] > 0, "no versioned bill was read"
+    assert not got["bad"], f"{len(got['bad'])} of {got['n']}: " + "; ".join(got["bad"][:6])
+    return "ok", (f"{got['n']} versioned bills: every sheet composed, every clean text printed "
+                  "whole, every marked text read back to its current and its introduced version")
+
+
 # ---- one date formatter in each language (8 October 2026) -------------------------
 #
 # The person chose month first (D6 of the polish plan): "May 21, 2026", and
@@ -51491,6 +52829,217 @@ def _outside_links():
                   + "; no writer puts the arrow in as text")
 
 
+@check("frontend", "the House and the Senate are each a card at the top of their column of "
+                   "/committees, leading to a page of every term's session days, each day "
+                   "leading to its own page")
+def _committees_full_sessions():
+    """The person, 9 October 2026 (v12, v13), as they corrected it on 10
+    October: "when I mentioned adding the house and Senate session days, I
+    meant that they would be listed in a similar format to the other
+    committees and that when you clicked to see their pages you'd be able to
+    view each term and select the session day you wanted to view the full
+    page of."
+
+    build_committees writes a slot at the top of each column; build_full_
+    sessions fills it after the session pages, whose term files it reads, so
+    a build into an empty site draws them too. Read off the fixture's built
+    site: in each column whose chamber has term files, the first card is the
+    chamber's, the committee card's own markup, leading to /session/house or
+    /session/senate;
+    that page offers every term file in its picker, the latest chosen, and
+    lists the latest term's days newest first, each leading to a day page
+    that is built; filling the slots again redraws them rather than doubling
+    them; the script draws a day in the same markup as the page; and
+    build_all runs the step after both chambers' pages."""
+    import build_full_sessions as FS
+    import build_date as _bd
+    shared, _base, _ran, _days = _fixture_site_shared()
+    site = shared / "site"
+    page = (site / "committees.html").read_text(encoding="utf-8")
+    bodies = [b for b in ("H", "S") if list((site / "session" / b).glob("*.json"))]
+    if not bodies:
+        return "skip", "the fixture writes no session term file"
+    n_days = 0
+    for b in bodies:
+        word = FS.CHAMBER[b]
+        col = re.search(rf"<section><h2>{word}</h2><div class=\"ccards\">(.*?)</div></section>", page, re.S)
+        assert col, f"the Committees page has no {word} column"
+        first = re.search(r"<a class=\"ccard[^\"]*\" href=\"([^\"]+)\"><span class=\"cc-n\">([^<]+)</span>"
+                          r"<span class=\"cc-m\">([^<]*(?:<[^a/][^>]*>[^<]*)*)</span></a>", col.group(1))
+        assert first and first.group(1) == f"session/{FS.SLUG[b]}.html" \
+            and first.group(2) == f"{word} Session Days", (
+                f"the {word} column does not open with its session days: "
+                f"{first.groups() if first else col.group(1)[:200]}")
+        assert col.group(1).count(f'href="session/{FS.SLUG[b]}.html"') == 1, (
+            f"the {word} card is drawn twice")
+        chamber = (site / "session" / f"{FS.SLUG[b]}.html").read_text(encoding="utf-8")
+        terms = sorted((f.stem for f in (site / "session" / b).glob("*.json")
+                        if re.fullmatch(r"\d{4}-\d{4}", f.stem)), reverse=True)
+        offered = re.findall(r'<option value="(\d{4}-\d{4})"( selected)?>', chamber)
+        assert [t for t, _s in offered] == terms and offered[0][1], (
+            f"session/{FS.SLUG[b]}.html offers the terms {offered}, not every term file {terms} "
+            "with the latest chosen")
+        days = [d["date"] for d in json.loads((site / "session" / b / f"{terms[0]}.json")
+                                              .read_text(encoding="utf-8"))["days"]]
+        drawn = re.findall(r'<section class="cday" id="day-(\d{4}-\d\d-\d\d)" data-date="\1">',
+                           chamber)
+        assert drawn == sorted(days, reverse=True), (
+            f"session/{FS.SLUG[b]}.html lists {drawn}, not {terms[0]}'s days newest first")
+        for d in drawn:
+            assert f'<a class="daylink" href="session/{b}/{d}.html">' in chamber, (
+                f"{b} {d} does not lead to its own page")
+            assert (site / "session" / b / f"{d}.html").exists(), f"session/{b}/{d}.html is not built"
+        # The record head, as a committee's page has it since 10 October 2026.
+        assert re.search(r'<header class="rhead rh-committee cmtehead chamberhead">', chamber) \
+            and "Cite this page" in chamber and f"<h1 class=\"rh1\">{word} Session Days</h1>" in chamber, (
+            f"session/{FS.SLUG[b]}.html is not drawn as a committee's page is, with its head and Cite")
+        n_days += len(drawn)
+        # In the sitemap once, and in no folder build_session_pages owns
+        # there: it takes out an entry under /session/H it did not write.
+        sm = site / "sitemap.xml"
+        if sm.exists():
+            n_sm = sm.read_text(encoding="utf-8").count(f"/session/{FS.SLUG[b]}</loc>")
+            assert n_sm == 1, f"the sitemap lists session/{FS.SLUG[b]} {n_sm} times, not once"
+        assert FS.SLUG[b] not in ("H", "S"), (
+            "the chamber's page is at /session/H or /session/S, which build_session_pages "
+            "owns in the sitemap and takes out when it rebuilds the days alone")
+    # Again: the slots are redrawn, not doubled.
+    today = _bd.today().isoformat()
+    again = page
+    for b in bodies:
+        c = FS.chamber(site, b, today)
+        again = FS.slot(b).sub(lambda _m, c=c, b=b: f"<!-- chamber:{b} -->{FS.card(c)}<!-- /chamber:{b} -->",
+                               again, count=1)
+    for b in bodies:
+        assert again.count(f'href="session/{FS.SLUG[b]}.html"') == 1, (
+            "filling the slots again doubles a card")
+    # The script draws a day as the page does: its day() in node, against
+    # day_section, on a day with a consent calendar and a journal.
+    node = shutil.which("node") or shutil.which("node.exe")
+    if node:
+        js = re.search(r"<script>(.*?)</script>", FS.SCRIPT, re.S).group(1)
+        def fn(name):
+            """A function of the script, by matching its braces."""
+            i = js.index(f"function {name}(")
+            j, depth = js.index("{", i), 0
+            for k in range(j, len(js)):
+                depth += {"{": 1, "}": -1}.get(js[k], 0)
+                if depth == 0:
+                    return js[i:k + 1] + "\n"
+            raise AssertionError(f"the script's {name}() does not close")
+        fns = "".join(fn(n) for n in ("esc", "plural", "long", "journal", "day"))
+        d = {"date": "2026-02-19", "journal": "HJ 05", "journal_url": "https://example.test/hj5.pdf",
+             "counts": {"bills": 164, "roll_calls": 17},
+             "consent": {"bills": 118, "outcomes": [{"outcome": "Killed", "bills": 59},
+                                                    {"outcome": "Passed", "bills": 41}]}}
+        # In a scope of their own, as the page has them: its esc beside
+        # components.js's.
+        prog = (_components_js() + "\n(function(){var b='H';" + fns
+                + f"\nprocess.stdout.write(day({json.dumps(d)}));}})();")
+        r = _node_file(node, prog, capture_output=True, text=True, timeout=60)
+        assert r.returncode == 0, "the chamber page's script would not run: " + (r.stderr or "")[-300:]
+        assert r.stdout == FS.day_section("H", d), (
+            f"the script draws a day as {r.stdout[:200]!r}, the page as {FS.day_section('H', d)[:200]!r}")
+    plan = Path("build_all.py").read_text(encoding="utf-8")
+    assert plan.index('"build_full_sessions.py"') > plan.index(
+        '"a page for every day the House sat"'), "build_all draws the chambers before their pages"
+    return "ok", (f"{' and '.join(FS.CHAMBER[b] for b in bodies)} first in their columns, each "
+                  f"leading to its page of every term; {n_days} days of the latest terms, newest "
+                  "first, each on a built page; the script draws a day as the page does")
+
+
+@check("frontend", "the header's five tabs are one row from 1008px, in the flow between the "
+                   "wordmark and the controls, and a row of their own on a tablet")
+def _nav_ladder():
+    """Decisions 130 and 131 (8 October 2026): Search as its drawing at every
+    width, and the tablet's tabs on a second row, always shown. With
+    "Resources" 43px wider than "Learn", the strip centred on the bar from
+    1100px wrapped "Resources" under the others at 1100 and stood 27px from
+    the wordmark at 1200 and 1366 (measured in Chrome, 10 October 2026). Held
+    in app.css's shared region, which style.css takes too: from 63em the strip
+    is in the flow, one row, centred by its own auto margins with the theme
+    button taking none; from 721 to 1007 it is a row of its own, five equal
+    cells after the controls; Search shows its drawing alone, its word kept
+    for a screen reader."""
+    css = Path("src/pages/app.css").read_text(encoding="utf-8").replace("\r\n", "\n")
+    shared = css[css.index("/* SHARED:START"):css.index("/* SHARED:END")]
+    wide = _braced(shared, "@media (min-width:63em){")
+    assert ".navtabs{position:static;transform:none;flex-wrap:nowrap;width:max-content;margin:0 auto}" \
+        in wide and ".themer{margin-left:0}" in wide and "nav.top .in{position:static;flex-wrap:nowrap}" \
+        in wide, "from 1008px the five are not one row in the flow, centred between the wordmark and the controls"
+    assert shared.index("@media (min-width:63em){") > shared.index("@media (min-width:68.75em){"), (
+        "the strip centred on the bar comes after the rule that puts it in the flow, and wins")
+    tab = _braced(shared, "@media (min-width:45.0625em) and (max-width:62.9375em){")
+    assert ".navtabs{order:3;flex:1 0 100%;flex-wrap:nowrap" in tab \
+        and "nav.top .navtabs a{flex:1 1 0;justify-content:center;min-height:44px" in tab, (
+            "on a tablet the five are not a row of their own in equal cells")
+    assert ".findbtn span{position:absolute;width:1px;height:1px" in shared.split("@media")[0] \
+        or re.search(r"\n\.findbtn span\{position:absolute;width:1px;height:1px", shared), (
+            "Search shows its word above a phone's width")
+    return "ok", ("one row from 1008px, in the flow; a row of five equal cells from 721 to 1007; "
+                  "Search its drawing at every width")
+
+
+@check("frontend", "the bill search opens Status and Bill Type, puts a narrowed long list's "
+                   "zeros last, and folds its filters behind the Filters button below 960px")
+def _search_filters_5acd():
+    """The person's feedback of 9 October 2026, item 2: 5a approved (Status
+    and Bill Type open, Committee closed), 5b NOT approved (a ticked choice
+    does not move first), 5c approved (once a search or a filter narrows the
+    list, the options with bills before the greyed zeros), 5d approved (the
+    Filters button below 960px, tablets too). Round two's questions 8a and 8b
+    went as recommended: 5a inside the Filters panel too, and 5c on the long
+    lists only, Status and Bill Type keeping their fixed orders.
+
+    Read off app.js and app.css: the groups open at the start, at every
+    width; zerosLast run in node on a narrowed and an unnarrowed list, a
+    short list, and a ticked zero, which keeps its place among the zeros; and
+    the stylesheet's 60em block, which puts the button first, the panel
+    after it, and the panel away until it is opened."""
+    js = Path("src/pages/app.js").read_text(encoding="utf-8")
+    css = Path("src/pages/app.css").read_text(encoding="utf-8")
+    m = re.search(r"const openGroups=new Set\((\[[^\]]*\])\);", js)
+    assert m and json.loads(m.group(1)) == ["status", "type"], (
+        f"the filter groups open at the start are {m.group(1) if m else 'not found'}, "
+        "not Status and Bill Type")
+    fn = re.search(r"const ZEROS_LAST=.*?\nfunction zerosLast\(key,vals,counts\)\{.*?\n\}", js, re.S)
+    assert fn, "app.js has no zerosLast"
+    assert "zerosLast(key,vals,counts)" in js and "i===order.rule?' fzero'" in js, (
+        "the filter groups do not draw their options in zerosLast's order")
+    node = shutil.which("node") or shutil.which("node.exe")
+    if node:
+        prog = ("let query='';const sel={committee:new Set(),topic:new Set(),sponsor:new Set(),"
+                "status:new Set(),type:new Set(),voteday:new Set()};" + fn.group(0) + """
+const V=["Alpha","Beta","Gamma","Delta"],C={Beta:3,Delta:1},out={};
+out.plain=zerosLast("committee",V,C);
+query="minimum wage";
+out.narrowed=zerosLast("committee",V,C);
+out.status=zerosLast("status",V,C);
+query="";sel.committee.add("Gamma");
+out.ticked=zerosLast("committee",V,C);
+process.stdout.write(JSON.stringify(out));""")
+        r = _run([node, "-e", prog], capture_output=True, text=True, timeout=60)
+        assert r.returncode == 0, "zerosLast would not run: " + (r.stderr or "")[-300:]
+        got = json.loads(r.stdout)
+        V_ = ["Alpha", "Beta", "Gamma", "Delta"]
+        want = {"plain": {"vals": V_, "rule": -1},
+                "narrowed": {"vals": ["Beta", "Delta", "Alpha", "Gamma"], "rule": 2},
+                "status": {"vals": V_, "rule": -1},
+                "ticked": {"vals": ["Beta", "Delta", "Alpha", "Gamma"], "rule": 2}}
+        assert got == want, f"zerosLast gives {got}"
+    block = re.search(r"@media \(max-width:59\.9375em\)\{(.*?)\n\}", css, re.S)
+    assert block, "app.css has no block for the Filters button below 960px"
+    body = block.group(1)
+    for rule in (".ftoggle{order:1;display:flex", ".facets{order:2;", ".shell > main{order:3",
+                 ".shell:not(.fopen) .facets{display:none}"):
+        assert rule in body, f"below 960px the stylesheet has no {rule}"
+    assert ".fopt.fzero{border-top:1px solid var(--rule)" in css, (
+        "the first zero of a narrowed list has no rule above it")
+    return "ok", ("Status and Bill Type open at the start; a narrowed long list's options with "
+                  "bills first and a ticked zero in its place among the zeros; Status in its "
+                  "fixed order; the Filters button and its panel below 960px")
+
+
 @check("frontend", "the Calendar page is a month, filters and three views over a week that reads whole without script")
 def _calendar_page_shape():
     """The person's description of 24 September 2026, as markup and files.
@@ -51570,7 +53119,7 @@ def _calendar_page_shape():
             re.search(r'data-who="([^"]*)"', c).group(1),
             re.search(r'data-kinds="([^"]*)"', c).group(1)) for c in cards}
         assert who_of["house judiciary"] == ("standing", "hearing exec"), who_of
-        assert who_of["house floor"] == ("floor", "floor"), who_of["house floor"]
+        assert who_of["house session day"] == ("floor", "floor"), who_of.get("house session day")
         assert who_of["committee of conference on hb 3"] == ("standing", "conf"), who_of
         # Two cards of the commission, the one that met and the one cancelled:
         # both study, the one that met drawn in the study committees' colour.
@@ -51624,13 +53173,24 @@ def _calendar_page_shape():
                                            f"({len(from_files)} against {len(on_page)})")
             import html as _h
             wk = (m3["weeks"].get(k) or m4["weeks"].get(k))
-            h1 = _h.unescape(re.search(r"<h1>The week of ([^<]*)</h1>", pt).group(1))
+            h1 = _h.unescape(re.search(r"<h1>The Week of ([^<]*)</h1>", pt).group(1))
             lead = re.search(r'<p class="src">([^<]*)</p>', pt).group(1)
             assert wk and wk["label"] == h1, f"{k}: the month file calls the week {wk}, the page {h1!r}"
             assert wk["lead"] == lead, f"{k}: the month file's lead is not the page's"
+            # The pager's short name, which Previous Week and Next Week say
+            # under them, is the month file's too.
+            for cls, near in (("wkprev", -1), ("wknext", 1)):
+                said = re.search(rf'class="{cls}" href="[^"]*"><span class="wkpw">[^<]*</span>'
+                                 r'<span class="wkpd">([^<]*)</span>', pt)
+                nk = order[order.index(k) + near] if 0 <= order.index(k) + near < len(order) else None
+                if nk:
+                    nw = m3["weeks"].get(nk) or m4["weeks"].get(nk)
+                    assert said and nw and _h.unescape(said.group(1)) == nw["short"], (
+                        f"{k}: the pager names {nk} {said and said.group(1)!r}, its month file "
+                        f"{nw and nw['short']!r}")
         names = json.loads((data / "committees.json").read_text(encoding="utf-8"))
         assert ["House Judiciary", "standing", "H"] in names and ["Senate Finance", "standing", "S"] in names \
-            and ["Commission on Aging", "study", ""] in names and ["House floor", "floor", "H"] in names \
+            and ["Commission on Aging", "study", ""] in names and ["House Session Day", "floor", "H"] in names \
             and ["Committee of conference", "standing", "H S"] in names, names
         # Writers merge what they own: a month file this run did not write goes.
         (data / "1999-01.json").write_text("{}", encoding="utf-8")
@@ -51651,15 +53211,15 @@ def _calendar_core():
     """The script's reasoning, run in node over cards a build wrote.
 
     Everything the page decides -- which cards a filter keeps, what the count
-    says, which days the list draws, which hours the week has rows for, which
-    dots a day of the month carries and what its name says, what the preview
-    lists, what the address holds -- is a plain function in WEEK_JS's first
-    half. This loads that half against the fixture's month files and holds
-    each to the rule it implements:
+    says, which days the list draws, which days the week has columns for and
+    what each entry says, which dots a day of the month carries and what its
+    name says, what the preview lists, what the address holds -- is a plain
+    function in WEEK_JS's first half. This loads that half against the
+    fixture's month files and holds each to the rule it implements:
 
       one box per kind of meeting, every one on but Study Committee for a
       new reader; a card holding several kinds matches if any is ticked and
-      stays whole; the floor is Floor Session and a study or statutory
+      stays whole; the floor is Session Day and a study or statutory
       committee is Study Committee, whatever kind of meeting either held;
       work sessions and study committees are two boxes; committees picked
       by name show only those committees, still narrowed by the boxes, and a
@@ -51667,9 +53227,12 @@ def _calendar_core():
       with Study Committee unticked; a cancelled meeting is shown and never
       counted; an empty weekday is drawn under any filter, a busy day the
       filters emptied is not, and a weekend day only when something shown is
-      on it; the week's rows are the hours something starts in, named in the
-      twelve-hour clock, with a row for the sittings the record gives no
-      time; the grid starts on Monday, bands the selected week, marks today
+      on it, in the list and in the week, whose columns are Monday to Friday
+      otherwise (9 October 2026) and whose entries are the cards in brief --
+      the time a reader says, the name, the bills, the kinds as the bar and
+      in words for a screen reader -- leading where the card leads or else
+      into the Day view; an empty column says why; the Day view steps over
+      an empty weekend; the grid starts on Monday, bands the selected week, marks today
       and the past, and its dots and names agree with the entries; the
       preview stops at five, says how many more and gives its times as a
       reader says them; and the query round-trips, while an address from
@@ -51697,18 +53260,25 @@ def _calendar_core():
         out = (r.stdout or "") + (r.stderr or "")
         assert r.returncode == 0 and out.strip().endswith("OK"), out.strip()[-1500:]
         # A WEEK'S NAME FROM ITS KEY, which the heading uses when the week's
-        # month file did not come: the same words span_words gives every
-        # week's own page, across month ends and a year's.
+        # month file did not come, and the pager's short name for it: the
+        # same words week_facts gives every week's own page with nothing on
+        # its weekend -- Monday to Friday (9 October 2026) -- across month
+        # ends and a year's.
         labels, d = {}, BC.datetime.date(2024, 12, 23)
         while d <= BC.datetime.date(2028, 1, 10):
-            labels[BC.week_key(d)] = BC.span_words(d, d + BC.datetime.timedelta(days=6))
+            k = BC.week_key(d)
+            facts = BC.week_facts(k, {k: {d.isoformat(): {}}}, BC.datetime.date(2026, 3, 11))
+            labels[k] = [facts["label"], facts["short"]]
+            assert facts["label"] == BC.span_words(d, d + BC.datetime.timedelta(days=4)), (
+                f"{k} is named {facts['label']!r}, not Monday to Friday")
             d += BC.datetime.timedelta(days=7)
         (root / "labels.json").write_text(json.dumps(labels, ensure_ascii=False), encoding="utf-8")
         prog2 = root / "labels.js"
         prog2.write_text("globalThis.document={getElementById:function(){return null;}};\n"
                          + _with_components(BC.WEEK_JS) + r"""
 const C=globalThis.GRCAL, want=JSON.parse(require("fs").readFileSync(process.argv[2],"utf8"));
-const bad=Object.keys(want).filter(k=>C.weekLabel(k)!==want[k]).map(k=>k+": "+C.weekLabel(k)+" | "+want[k]);
+const bad=Object.keys(want).filter(k=>C.weekLabel(k)!==want[k][0]||C.weekLabel(k,"medium")!==want[k][1])
+  .map(k=>k+": "+C.weekLabel(k)+" / "+C.weekLabel(k,"medium")+" | "+want[k].join(" / "));
 console.log(bad.length?bad.slice(0,5).join("\n"):"OK "+Object.keys(want).length);
 """, encoding="utf-8")
         r2 = _run([node, str(prog2), str(root / "labels.json")], capture_output=True,
@@ -51754,19 +53324,19 @@ ok(cat("standing",["meet"])==="work" && cat("study",["study"])==="study" && cat(
    && cat("standing",[])==="work",
    "a card answers to the wrong box: "+[cat("standing",["meet"]),cat("study",["study"]),cat("study",["hearing"]),cat("standing",["other"])]);
 ok(count(F({}))==="5 of 6 meetings shown. 1 study committee meeting is hidden: tick Study Committee to show it.", "a new reader's week: "+count(F({})));
-ok(names(F({})).join()==="Committee of conference on HB 3,House Commerce,House Judiciary,House floor,Senate Finance",
+ok(names(F({})).join()==="Committee of conference on HB 3,House Commerce,House Judiciary,House Session Day,Senate Finance",
    "a new reader's week holds "+names(F({})));
 ok(count(ON)==="6 meetings this week.", "every box ticked: "+count(ON));
 ok(names(F({cats:["hearing"]})).join()==="House Judiciary,Senate Finance",
    "Public Hearing alone keeps "+names(F({cats:["hearing"]}))+" -- the floor answers to its own box");
 ok(names(F({cats:["exec"]})).join()==="House Commerce,House Judiciary", "Executive Session alone keeps "+names(F({cats:["exec"]})));
-ok(names(F({cats:["floor"]})).join()==="House floor", "Floor Session alone keeps "+names(F({cats:["floor"]})));
+ok(names(F({cats:["floor"]})).join()==="House Session Day", "Session Day alone keeps "+names(F({cats:["floor"]})));
 ok(names(F({cats:["conf"]})).join()==="Committee of conference on HB 3", "Committee of Conference alone keeps "+names(F({cats:["conf"]})));
 ok(names(F({cats:["study"]})).join()==="Commission on Aging,Commission on Aging" && count(F({cats:["study"]}))==="1 of 6 meetings shown.",
    "Study Committee alone keeps "+names(F({cats:["study"]}))+" and counts "+count(F({cats:["study"]})));
 ok(count(F({cats:["work"]}))==="None of the 6 meetings this week match. 1 study committee meeting is hidden: tick Study Committee to show it.", "Work Session alone, in a week of none: "+count(F({cats:["work"]})));
 // An entry holding two kinds stays while either is ticked, and whole.
-ok(names(F({cats:["hearing","work","conf","floor"]})).join()==="Committee of conference on HB 3,House Judiciary,House floor,Senate Finance"
+ok(names(F({cats:["hearing","work","conf","floor"]})).join()==="Committee of conference on HB 3,House Judiciary,House Session Day,Senate Finance"
    && count(F({cats:["hearing","work","conf","floor"]}))==="4 of 6 meetings shown. 1 study committee meeting is hidden: tick Study Committee to show it.",
    "Executive Session unticked keeps "+names(F({cats:["hearing","work","conf","floor"]})));
 // Committees by name: only those, still in the kinds ticked, and a study
@@ -51785,7 +53355,7 @@ ok(names(F({picks:["Committee of conference"]})).join()==="Committee of conferen
 ok(names(F({body:"S",picks:["House Judiciary"]})).length===0 && names(F({body:"H",picks:["House Judiciary"]})).join()==="House Judiciary",
    "a chamber plus a committee");
 ok(count(F({body:"S",picks:["House Judiciary"]}))==="None of the 6 meetings this week match.", count(F({body:"S",picks:["House Judiciary"]})));
-ok(names(F({body:"H"})).join()==="Committee of conference on HB 3,House Commerce,House Judiciary,House floor"
+ok(names(F({body:"H"})).join()==="Committee of conference on HB 3,House Commerce,House Judiciary,House Session Day"
    && names(Object.assign(F({body:"H"}),{cats:C.CATS.slice()})).indexOf("Commission on Aging")<0,
    "the House alone: "+names(F({body:"H"}))+" -- a conference is both chambers', a study committee neither's");
 // The search: a bill, a committee, and a study committee found by name.
@@ -51802,20 +53372,52 @@ ok(C.sideOn(F({}))===0 && C.sideOn(F({cats:[],body:"H"}))===1 && C.sideOn(F({pic
    "the side's own count takes in the boxes above the schedule");
 // ---- the list's days ----
 const none=F({cats:[],picks:["Nobody"]});
-ok(C.listDates(week,days,F({})).join()==="2026-03-09,2026-03-10,2026-03-11,2026-03-12",
-   "a new reader's list draws "+C.listDates(week,days,F({}))+" -- Friday's only sitting is a study committee's");
+ok(C.listDates(week,days,F({})).join()==="2026-03-09,2026-03-10,2026-03-11,2026-03-12,2026-03-13",
+   "a new reader's list draws "+C.listDates(week,days,F({}))+" -- Monday to Friday, Friday's study committee hidden and said to be");
 ok(C.listDates(week,days,ON).join()==="2026-03-09,2026-03-10,2026-03-11,2026-03-12,2026-03-13,2026-03-14",
    "every box ticked, the list draws "+C.listDates(week,days,ON));
-ok(C.listDates(week,days,none).join()==="2026-03-09", "under a filter matching nothing the list keeps the empty Monday only: "+C.listDates(week,days,none));
-// ---- the week at a glance ----
-const cols=C.weekCols(week,days,ON), by={};
-cols.forEach(d=>by[d]=days[d].cards);
-const rows=C.weekRows(cols,by);
-ok(cols.length===6 && cols[5]==="2026-03-14", "the week's columns: "+cols);
-ok(C.weekCols(week,days,F({})).length===5, "a Saturday whose one meeting is a study committee's is a column for a new reader");
-ok(rows.map(x=>x.h).join()==="09,10,", "the week's rows: "+rows.map(x=>x.h));
-ok([].concat(...rows.map(x=>[].concat(...x.cells))).length===7, "a card is missing from the week at a glance");
-ok(rows[2].cells[2].map(e=>e.name).join()==="Committee of conference on HB 3,House floor", "the untimed row holds the floor and the conference");
+ok(C.listDates(week,days,none).join()==="2026-03-09,2026-03-10,2026-03-11,2026-03-12,2026-03-13",
+   "under a filter matching nothing the list does not keep Monday to Friday alone: "+C.listDates(week,days,none));
+// ---- the week at a glance: Monday to Friday, and a weekend day that holds something ----
+const cols=C.weekCols(week,days,ON);
+ok(cols.join()==="2026-03-09,2026-03-10,2026-03-11,2026-03-12,2026-03-13,2026-03-14",
+   "every box ticked, the week's columns are "+cols+" -- Monday to Friday and the Saturday that holds a meeting");
+ok(C.weekCols(week,days,F({})).join()==="2026-03-09,2026-03-10,2026-03-11,2026-03-12,2026-03-13",
+   "a Saturday whose one meeting is a study committee's is a column for a new reader: "+C.weekCols(week,days,F({})));
+ok(C.weekCols(week,days,none).length===5 && C.weekCols(week,days,F({}),"2026-03-15").join().endsWith("2026-03-13,2026-03-15"),
+   "under a filter matching nothing the week is not Monday to Friday, or a Sunday the reader chose is no column");
+// An entry is its card in brief, read off the card: the time a reader says
+// it, the name, the bills; the kinds as the bar and, for a screen reader, in
+// words; a cancelled meeting says so; and it leads where the card leads.
+const E=(e)=>C.entryHtml(e);
+const ej=E(jud);
+ok(/^<li class="wke" data-date="2026-03-10" data-cmte="house judiciary"><button type="button" class="wkgo" data-open="2026-03-10\|house judiciary">/.test(ej)
+   && ej.indexOf('<span class="wkbar" aria-hidden="true"><i class="k-hearing"></i><i class="k-exec"></i></span>')>=0
+   && ej.indexOf('<span class="wkt">10:00'+NB+'AM</span><span class="wkc">House Judiciary</span><span class="wkn">2 bills</span>')>=0
+   && ej.indexOf('<span class="sr">, Public Hearing, Executive Session</span>')>=0,
+   "House Judiciary's entry: "+ej);
+const fl=all.find(e=>e.who==="floor"), ef=E(fl);
+ok(fl && fl.name==="House Session Day" && ef.indexOf('<span class="wkc">House Session Day</span><span class="wkn">1 bill</span>')>=0
+   && ef.indexOf('class="wkt"')<0 && ef.indexOf('<i class="k-floor"></i>')>=0 && ef.indexOf('<span class="sr">, ')<0,
+   "the floor's entry is not House Session Day, untimed, with no chip to say it again: "+ef);
+const off=E(aging[1]);
+ok(/<span class="wkc">Commission on Aging<\/span><span class="wkn">Cancelled<\/span>/.test(off) && !/Cancelled<\/span><span class="sr">/.test(off),
+   "a cancelled meeting's entry: "+off);
+const linked=C.parseCard(jud.html.replace("</div></details>",'<p class="calmore caldocs"><a class="out" href="https://gc/x.pdf">HC 9 (PDF)</a></p>'
+  +'<p class="calmore"><a href="committee/H05.html#day-2026-03-10">This meeting on the House Judiciary page</a></p></div></details>'));
+ok(/<li class="wke"[^>]*><a class="wkgo" href="committee\/H05\.html#day-2026-03-10"><span class="wkbar"/.test(E(linked)),
+   "an entry whose card leads to its committee's page at that day does not: "+E(linked));
+// What an empty column says.
+ok(C.emptyWords([],F({}))==="No meetings" && C.emptyWords([aging[0]],F({}))==="1 study committee meeting is hidden."
+   && C.emptyWords([aging[0],aging[0]],F({}))==="2 study committee meetings are hidden."
+   && C.emptyWords([aging[0]],F({cats:[],q:"x"}))==="1 meeting is hidden by the filters."
+   && C.emptyWords([jud,aging[0]],F({cats:[]}))==="2 meetings are hidden by the filters.",
+   "an empty column's words: "+[C.emptyWords([],F({})),C.emptyWords([aging[0]],F({})),C.emptyWords([jud,aging[0]],F({cats:[]}))]);
+// The Day view steps over a weekend with nothing on it, and not over one that holds something.
+ok(C.stepDay("2026-03-13",1,days)==="2026-03-14" && C.stepDay("2026-03-14",1,days)==="2026-03-16"
+   && C.stepDay("2026-03-16",-1,days)==="2026-03-14" && C.stepDay("2026-03-23",-1,days)==="2026-03-20"
+   && C.stepDay("2026-03-20",1,days)==="2026-03-23" && C.stepDay("2026-03-10",-1,days)==="2026-03-09",
+   "the Day view's steps: "+[C.stepDay("2026-03-13",1,days),C.stepDay("2026-03-14",1,days),C.stepDay("2026-03-23",-1,days)]);
 // ---- the day a week opens on ----
 // Today where the week holds it; else its first sitting the filters show,
 // so a week whose Monday is a study commission's alone does not open on a
@@ -51834,8 +53436,6 @@ const clocks={"09:05":"9:05 AM","9:30":"9:30 AM","00:30":"12:30 AM","12:00":"12:
   "13:30":"1:30 PM","23:59":"11:59 PM","":"","TBA":"TBA","24:00":"24:00"};
 const badClock=Object.keys(clocks).filter(t=>C.clock(t)!==clocks[t].replace(/ (AM|PM)$/,NB+"$1"));
 ok(!badClock.length, "the clock: "+badClock.map(t=>JSON.stringify(t)+" is "+JSON.stringify(C.clock(t))).join(", "));
-ok(C.hourWord("09")==="9"+NB+"AM" && C.hourWord("12")==="12"+NB+"PM" && C.hourWord("13")==="1"+NB+"PM" && C.hourWord("00")==="12"+NB+"AM",
-   "the week's hours: "+["09","12","13","00"].map(C.hourWord));
 // ---- the grid ----
 const g=C.gridHtml({view:"2026-03",sel:"2026-03-10",focus:"2026-03-10",today:"2026-03-11",
   first:"2026-03-02",last:"2026-04-05",days,f:F({})});
@@ -51915,7 +53515,7 @@ ok(C.stepKey("2026-03-11","ArrowUp")==="2026-03-04" && C.stepKey("2026-03-11","H
 ok(C.relWord("2026-03-12","2026-03-11")==="tomorrow" && C.relWord("2026-03-25","2026-03-11")==="in 14 days"
    && C.relWord("2026-03-26","2026-03-11")==="" && C.relWord("2026-03-10","2026-03-11")==="", "the relative day words");
 if(fails.length){ console.log(fails.join("\n")); process.exit(1); }
-console.log("7 cards: the six boxes alone and together, picks and the search with Study Committee off, the list's days, the week's rows and columns, the clock, the grid's cells and dots, the preview, the query and the old hash");
+console.log("7 cards: the six boxes alone and together, picks and the search with Study Committee off, the list's days, the week's columns and entries, the Day view's steps, the clock, the grid's cells and dots, the preview, the query and the old hash");
 console.log("OK");
 """
 
@@ -52209,7 +53809,10 @@ function world(page,pathname,o){
     await W.settle(); W.advance(700); await W.settle(); };
   const D=W.doc;
   W.$=(id)=>D.getElementById(id); W.Q=(s,r)=>(r||D).querySelector(s); W.QA=(s,r)=>(r||D).querySelectorAll(s);
-  W.keys=()=>W.QA(".calmeet",W.$("calview")).map(m=>m.getAttribute("data-date")+"|"+W.Q(".calcmte",m).textContent);
+  // The meetings the schedule shows: its cards, and in the Week view the
+  // entries that stand for them (one a card, named as the card is).
+  W.keys=()=>W.QA(".calmeet",W.$("calview")).map(m=>m.getAttribute("data-date")+"|"+W.Q(".calcmte",m).textContent)
+    .concat(W.QA(".wke",W.$("calview")).map(m=>m.getAttribute("data-date")+"|"+W.Q(".wkc",m).textContent));
   W.sel=()=>{ const g=W.Q('td[aria-selected="true"]',W.$("cmgrid")); return g&&g.getAttribute("data-d"); };
   W.view=(v)=>W.QA("[data-view]",W.$("calbar")).find(b=>b.getAttribute("data-view")===v);
   W.addr=()=>W.G.location.pathname+W.G.location.search+W.G.location.hash;
@@ -52248,7 +53851,12 @@ const CLOCK=new RegExp("^\\d{1,2}:\\d\\d"+NB+"(AM|PM)(–\\d{1,2}:\\d\\d"+NB+"(A
   const c10=Q('td[data-d="2026-03-10"]',$("cmgrid")), c13=Q('td[data-d="2026-03-13"]',$("cmgrid"));
   ok(QA(".cmdots i",c10).map(i=>i.className).join()==="k-hearing,k-exec", "10 March's dots: "+QA(".cmdots i",c10).map(i=>i.className));
   ok(!QA(".cmdots i",c13).length, "a study committee's day has a dot while its box is unticked");
-  ok(QA(".cdrel",$("calview")).map(r=>r.textContent).join()===",,today,tomorrow", "the days' relative words: "+QA(".cdrel",$("calview")).map(r=>r.textContent));
+  ok(QA(".cdrel",$("calview")).map(r=>r.textContent).join()===",,today,tomorrow,in 2 days", "the days' relative words: "+QA(".cdrel",$("calview")).map(r=>r.textContent));
+  // MONDAY TO FRIDAY IN THE LIST TOO: Friday, whose one meeting is a study
+  // committee's, stays and says so, as the Week view's column does.
+  const fri=Q('.calday[data-d="2026-03-13"]',$("calview"));
+  ok(fri && Q(".calempty",fri) && Q(".calempty",fri).textContent==="1 study committee meeting is hidden.",
+     "the list drops a weekday the filters emptied, or does not say why it is empty: "+(fri&&fri.textContent));
   ok(W.addr()==="/calendar" && W.G.history.length===1, "opening the tab wrote an address: "+W.addr());
   // EVERY TIME AS A READER SAYS IT, on the cards and on the items inside them.
   const times=QA(".caltime",$("calview")).map(t=>t.textContent);
@@ -52259,7 +53867,7 @@ const CLOCK=new RegExp("^\\d{1,2}:\\d\\d"+NB+"(AM|PM)(–\\d{1,2}:\\d\\d"+NB+"(A
   Q('td[data-d="2026-03-18"]',$("cmgrid")).click(); await W.step();
   ok(W.addr()==="/calendar?week=2026-W12", "a day in another week, the one it opens on, is at "+W.addr());
   ok(W.G.history.length===h0+1, "choosing a day is not one step of history");
-  ok(Q(".calhead h1").textContent==="The week of March 16–22, 2026", "the heading: "+Q(".calhead h1").textContent);
+  ok(Q(".calhead h1").textContent==="The Week of March 16–20, 2026", "the heading: "+Q(".calhead h1").textContent);
   ok(W.keys().join()==="2026-03-18|House Judiciary,2026-03-18|Senate Finance", "the week of 16 March lists "+W.keys());
   ok((Q(".calday.calsel",$("calview"))||{getAttribute:()=>null}).getAttribute("data-d")==="2026-03-18", "the list does not mark the day chosen");
   ok(QA(".calhead .wknav a").map(a=>a.getAttribute("href")).join()==="/calendar,/calendar,/calendar/2026-W13",
@@ -52272,8 +53880,8 @@ const CLOCK=new RegExp("^\\d{1,2}:\\d\\d"+NB+"(AM|PM)(–\\d{1,2}:\\d\\d"+NB+"(A
     ogt:Q('meta[property="og:title"]').getAttribute("content"), ld:Q('script[type="application/ld+json"]').textContent,
     skip:Q("a.skip").getAttribute("href"), days:QA(".pcite .citeday").length});
   let nm=named();
-  ok(nm.canon==="https://graniterecord.org/calendar/2026-W12" && nm.og===nm.canon && nm.ogt==="The week of March 16–22, 2026"
-     && /“The week of March 16–22, 2026\.” Granite Record, https:\/\/graniterecord\.org\/calendar\/2026-W12\. Accessed/.test(nm.cite)
+  ok(nm.canon==="https://graniterecord.org/calendar/2026-W12" && nm.og===nm.canon && nm.ogt==="The Week of March 16–20, 2026"
+     && /“The Week of March 16–20, 2026\.” Granite Record, https:\/\/graniterecord\.org\/calendar\/2026-W12\. Accessed/.test(nm.cite)
      && /@misc\{calendar-2026-W12,/.test(nm.cite) && !/9–15 March|calendar,|\/calendar\./.test(nm.cite)
      && /"@id":"https:\/\/graniterecord\.org\/calendar\/2026-W12"/.test(nm.ld) && !/9–15 March/.test(nm.ld) && nm.days===4,
      "another week's page still names the week it was loaded as: "+JSON.stringify(nm));
@@ -52284,9 +53892,9 @@ const CLOCK=new RegExp("^\\d{1,2}:\\d\\d"+NB+"(AM|PM)(–\\d{1,2}:\\d\\d"+NB+"(A
   W.G.history.back(); await W.step();
   ok(W.addr()==="/calendar?week=2026-W12" && W.sel()==="2026-03-18", "Back did not return to 18 March: "+W.addr()+" "+W.sel());
   W.G.history.back(); await W.step();
-  ok(W.sel()==="2026-03-11" && W.addr()==="/calendar" && Q(".calhead h1").textContent==="The week of March 9–15, 2026", "Back did not return to 11 March");
+  ok(W.sel()==="2026-03-11" && W.addr()==="/calendar" && Q(".calhead h1").textContent==="The Week of March 9–14, 2026", "Back did not return to 11 March");
   nm=named();
-  ok(nm.canon==="https://graniterecord.org/calendar" && /“The week of March 9–15, 2026\.” Granite Record, https:\/\/graniterecord\.org\/calendar\. Accessed/.test(nm.cite)
+  ok(nm.canon==="https://graniterecord.org/calendar" && /“The Week of March 9–14, 2026\.” Granite Record, https:\/\/graniterecord\.org\/calendar\. Accessed/.test(nm.cite)
      && /@misc\{calendar,/.test(nm.cite) && nm.skip==="/calendar#results", "Back did not name this week again: "+JSON.stringify(nm));
   // THE ARROWS KEEP FOCUS. The week after, from the head's arrows, then This
   // week from the foot's: the same arrow in the new ones, and the heading
@@ -52306,16 +53914,42 @@ const CLOCK=new RegExp("^\\d{1,2}:\\d\\d"+NB+"(AM|PM)(–\\d{1,2}:\\d\\d"+NB+"(A
   ok(W.sel()==="2026-03-11" && D.activeElement===arrow(".calhead .wknav","wkprev"), "The week before dropped focus");
   // ---- the week, the day ----
   W.view("week").click(); await W.settle();
-  ok(QA("tbody th",$("calview")).map(t=>t.textContent).join()===["9"+NB+"AM","10"+NB+"AM","No time given"].join(),
-     "the week's rows: "+QA("tbody th",$("calview")).map(t=>t.textContent));
-  ok(QA("thead th",$("calview")).length===6, "not Monday to Friday: a Saturday whose one meeting is hidden is a column");
-  ok(W.keys().sort().join()===plain.slice().sort().join(), "the week at a glance does not hold the week's cards");
+  // MONDAY TO FRIDAY, beside the month (9 October 2026): a column a day,
+  // each the day's meetings in brief, and a Saturday whose one meeting is
+  // hidden is no column.
+  const wcols=QA(".wkcol",$("calview"));
+  ok(wcols.map(c=>Q(".wkday",c).getAttribute("data-d")).join()==="2026-03-09,2026-03-10,2026-03-11,2026-03-12,2026-03-13"
+     && QA(".wkdn",$("calview")).map(x=>x.textContent).join()==="Monday,Tuesday,Wednesday,Thursday,Friday",
+     "the week is not Monday to Friday: "+wcols.map(c=>Q(".wkday",c).getAttribute("data-d")));
+  ok(!QA("table",$("calview")).length && !QA(".calmeet",$("calview")).length && QA(".wke",$("calview")).length===5,
+     "the week is still whole cards in a table of hours, or not one entry a meeting shown");
+  ok(W.keys().sort().join()===plain.slice().sort().join(), "the week at a glance does not hold the week's cards: "+W.keys());
+  ok(Q(".wkempty",wcols[0]).textContent==="No meetings" && Q(".wkempty",wcols[4]).textContent==="1 study committee meeting is hidden.",
+     "an empty column does not say why: "+[Q(".wkempty",wcols[0]),Q(".wkempty",wcols[4])].map(x=>x&&x.textContent));
+  ok(wcols[2].getAttribute("aria-current")==="date" && Q(".wkdd",wcols[2]).textContent==="Mar 11 · Today",
+     "today is not marked in the week: "+Q(".wkdd",wcols[2]).textContent);
+  ok(QA(".wkt",$("calview")).every(t=>/^\d{1,2}:\d\d (AM|PM)$/.test(t.textContent)), "an entry's time is not as a reader says it");
   ok(W.addr()==="/calendar?week=2026-W11&view=week", "the address does not say Week: "+W.addr());
+  // An entry with no page to lead to -- a conference's -- opens its day,
+  // the card in full and given the focus.
+  const conf=QA(".wke",$("calview")).find(e=>/conference/.test(Q(".wkc",e).textContent));
+  ok(conf && Q(".wkgo",conf).tagName==="BUTTON", "the conference's entry is not a button into its day");
+  if(conf){ Q(".wkgo",conf).click(); await W.settle(); }
+  ok(W.view("day").getAttribute("aria-pressed")==="true" && W.sel()==="2026-03-11" && D.activeElement.tagName==="SUMMARY"
+     && /conference/.test(D.activeElement.textContent), "the conference's entry did not open it in the Day view: "
+     +W.addr()+" "+D.activeElement.tagName);
   W.view("day").click(); await W.settle();
-  ok(QA(".calday",$("calview")).length===1 && W.keys().join()==="2026-03-11|Committee of conference on HB 3,2026-03-11|House floor"
+  ok(QA(".calday",$("calview")).length===1 && W.keys().join()==="2026-03-11|Committee of conference on HB 3,2026-03-11|House Session Day"
      && QA(".calmeet",$("calview")).every(m=>m.open), "the Day view is not 11 March's two entries, open: "+W.keys());
   ok($("wkcount").textContent==="2 meetings on Wednesday, March 11.", "the day's count: "+$("wkcount").textContent);
   ok(W.addr()==="/calendar?week=2026-W11&view=day", "the Day view's address: "+W.addr());
+  // PREVIOUS DAY AND NEXT DAY, under the day, each with the day it leads to.
+  const steps=()=>QA(".calstep button",$("calview")).map(b=>b.getAttribute("data-to")+" "+b.textContent).join(" | ");
+  ok(steps()==="2026-03-10 ‹ Previous DayTuesday, March 10 | 2026-03-12 Next Day ›Thursday, March 12", "the Day view's pager: "+steps());
+  Q('.calstep [data-step="1"]',$("calview")).click(); await W.settle();
+  ok(W.sel()==="2026-03-12" && W.addr()==="/calendar?week=2026-W11&day=2026-03-12&view=day", "Next Day: "+W.sel()+" "+W.addr());
+  Q('.calstep [data-step="-1"]',$("calview")).click(); await W.settle();
+  ok(W.sel()==="2026-03-11" && W.addr()==="/calendar?week=2026-W11&view=day", "Previous Day: "+W.sel()+" "+W.addr());
   W.view("list").click(); await W.settle();
   // ---- the boxes ----
   const hb=W.G.history.length;
@@ -52336,7 +53970,7 @@ const CLOCK=new RegExp("^\\d{1,2}:\\d\\d"+NB+"(AM|PM)(–\\d{1,2}:\\d\\d"+NB+"(A
   ok(W.addr()==="/calendar?week=2026-W11&kinds=hearing,work,conf,floor", "the address: "+W.addr());
   await W.tick("exec",true);
   await W.tick("floor",false);
-  ok(!W.keys().some(k=>/House floor/.test(k)) && $("wkcount").textContent==="4 of 6 meetings shown. 1 study committee meeting is hidden: tick Study Committee to show it.", "Floor Session unticked: "+W.keys());
+  ok(!W.keys().some(k=>/House Session Day/.test(k)) && $("wkcount").textContent==="4 of 6 meetings shown. 1 study committee meeting is hidden: tick Study Committee to show it.", "Session Day unticked: "+W.keys());
   await W.tick("floor",true);
   // ---- the side: a committee by name, a chamber, the search ----
   $("cpfind").dispatchEvent(W.ev("focus",{bubbles:false})); await W.settle();
@@ -52471,11 +54105,11 @@ const CLOCK=new RegExp("^\\d{1,2}:\\d\\d"+NB+"(AM|PM)(–\\d{1,2}:\\d\\d"+NB+"(A
   // ---- the reader's today, not the build's ----
   const W2=world("calendar.html","/calendar",{today:[2026,3,18]});
   await W2.run();
-  ok(W2.sel()==="2026-03-18" && W2.Q(".calhead h1").textContent==="The week of March 16–22, 2026"
+  ok(W2.sel()==="2026-03-18" && W2.Q(".calhead h1").textContent==="The Week of March 16–20, 2026"
      && W2.keys().join()==="2026-03-18|House Judiciary,2026-03-18|Senate Finance", "a reader a week after the build is not shown their own week: "+W2.sel());
   ok(W2.Q('td[aria-current="date"]',W2.$("cmgrid")).getAttribute("data-d")==="2026-03-18", "today is the build's, not the reader's");
   ok(W2.Q('link[rel="canonical"]').getAttribute("href")==="https://graniterecord.org/calendar/2026-W12"
-     && /^“The week of March 16–22, 2026\.” Granite Record, https:\/\/graniterecord\.org\/calendar\/2026-W12\./.test(W2.QA(".pcite dd")[0].textContent),
+     && /^“The Week of March 16–20, 2026\.” Granite Record, https:\/\/graniterecord\.org\/calendar\/2026-W12\./.test(W2.QA(".pcite dd")[0].textContent),
      "the tab shows the reader's week and cites the build's: "+W2.QA(".pcite dd")[0].textContent);
   ok(W2.addr()==="/calendar", "the tab opened on the reader's week wrote an address: "+W2.addr());
   // THE DAY A WEEK OPENS ON IS ITS FIRST SITTING THE FILTERS SHOW. That
@@ -52545,16 +54179,16 @@ const CLOCK=new RegExp("^\\d{1,2}:\\d\\d"+NB+"(AM|PM)(–\\d{1,2}:\\d\\d"+NB+"(A
   const n6=W6.Q(".calhead .wknav a.wknext"); n6.focus(); n6.dispatchEvent(W6.ev("click",{button:0,detail:0}));
   await W6.step();
   const said6=W6.Q("p.calempty",W6.$("calview")), link6=said6&&W6.Q("a",said6);
-  ok(W6.addr()==="/calendar?week=2026-W12" && W6.Q(".calhead h1").textContent==="The week of March 16–22, 2026"
-     && W6.doc.title==="The week of March 16–22, 2026 | Granite Record"
+  ok(W6.addr()==="/calendar?week=2026-W12" && W6.Q(".calhead h1").textContent==="The Week of March 16–20, 2026"
+     && W6.doc.title==="The Week of March 16–20, 2026 | Granite Record"
      && W6.Q('link[rel="canonical"]').getAttribute("href")==="https://graniterecord.org/calendar/2026-W12"
-     && /“The week of March 16–22, 2026\.” Granite Record, https:\/\/graniterecord\.org\/calendar\/2026-W12\./.test(W6.QA(".pcite dd")[0].textContent),
+     && /“The Week of March 16–20, 2026\.” Granite Record, https:\/\/graniterecord\.org\/calendar\/2026-W12\./.test(W6.QA(".pcite dd")[0].textContent),
      "a week whose file failed is at "+W6.addr()+" under the heading "+W6.Q(".calhead h1").textContent
        +", canonical "+W6.Q('link[rel="canonical"]').getAttribute("href"));
   ok(W6.Q(".calhead p.src").textContent==="The meetings of this week could not be loaded here."
      && W6.$("wkcount").textContent==="The meetings could not be loaded.",
      "the lead and the count of a week that did not load: "+W6.Q(".calhead p.src").textContent+" / "+W6.$("wkcount").textContent);
-  ok(said6 && said6.textContent==="The week of March 16–22, 2026 could not be loaded here. Open it on its own page."
+  ok(said6 && said6.textContent==="The week of March 16–20, 2026 could not be loaded here. Open it on its own page."
      && link6 && link6.getAttribute("href")==="/calendar/2026-W12",
      "the panel of a week that did not load says "+(said6&&said6.textContent));
   W6.view("day").click(); await W6.settle();
@@ -52565,7 +54199,7 @@ const CLOCK=new RegExp("^\\d{1,2}:\\d\\d"+NB+"(AM|PM)(–\\d{1,2}:\\d\\d"+NB+"(A
   const W3=world("calendar.html","/calendar",{search:"?week=2026-W10&day=2026-03-03&view=day&kinds=hearing"});
   await W3.run();
   ok(W3.sel()==="2026-03-03" && W3.view("day").getAttribute("aria-pressed")==="true" && W3.ticked()==="hearing"
-     && W3.keys().join()==="2026-03-03|House Commerce" && W3.Q(".calhead h1").textContent==="The week of March 2–8, 2026",
+     && W3.keys().join()==="2026-03-03|House Commerce" && W3.Q(".calhead h1").textContent==="The Week of March 2–6, 2026",
      "a shared address does not open on its week, day, view and box: "+W3.sel()+" "+W3.keys());
   ok(W3.addr()==="/calendar?week=2026-W10&day=2026-03-03&view=day&kinds=hearing" && W3.G.history.length===1,
      "a shared address was rewritten: "+W3.addr());
@@ -52592,7 +54226,7 @@ const CLOCK=new RegExp("^\\d{1,2}:\\d\\d"+NB+"(AM|PM)(–\\d{1,2}:\\d\\d"+NB+"(A
      "the address before the reload: "+before);
   ok(R.addr()===before && R.sel()==="2026-03-19" && R.view("week").getAttribute("aria-pressed")==="true"
      && R.ticked()==="hearing,exec,work,conf,floor,study" && R.Q('[data-body="H"]',R.$("wkfilter")).getAttribute("aria-pressed")==="true"
-     && R.keys().join()===W7.keys().join() && R.Q(".calhead h1").textContent==="The week of March 16–22, 2026",
+     && R.keys().join()===W7.keys().join() && R.Q(".calhead h1").textContent==="The Week of March 16–20, 2026",
      "a reload does not open what was on the screen: "+R.addr()+" "+R.sel()+" "+R.keys());
   // And Back after a reload is the browser's own: the calendar reads it.
   // The Study Committee box, once ticked, is this browser's choice too: the
@@ -52629,7 +54263,7 @@ const CLOCK=new RegExp("^\\d{1,2}:\\d\\d"+NB+"(AM|PM)(–\\d{1,2}:\\d\\d"+NB+"(A
   ok(WA.addr()==="/calendar?week=2026-W11" && WA.sel()==="2026-03-11" && WA.G.history.length===2,
      "the first move from a week's own page is at "+WA.addr());
   WA.G.history.back(); await WA.step();
-  ok(WA.addr()==="/calendar/2026-W10" && WA.sel()==="2026-03-03" && WA.Q(".calhead h1").textContent==="The week of March 2–8, 2026"
+  ok(WA.addr()==="/calendar/2026-W10" && WA.sel()==="2026-03-03" && WA.Q(".calhead h1").textContent==="The Week of March 2–6, 2026"
      && WA.keys().join()==="2026-03-03|House Commerce", "Back to a week's own page: "+WA.addr()+" "+WA.sel());
   // Reached by its file's name, as a preview served from the folder has it,
   // the calendar keeps to that name, so a reload there finds the page.
@@ -52674,11 +54308,14 @@ def _calendar_layout():
     schedule scrolls -- one tall grid area, because sticky is clipped to its
     own area -- and below 1024px it goes above the schedule, compact and
     foldable, with the DOM order the reading order at every width. The week at
-    a glance keeps legible columns and scrolls inside its own frame rather than
-    widening the page: 56px of hours and five 122px days is 666px, which this
-    holds against the narrowest two-column panel (1024px less the shell's
-    sides, a scrollbar, the month's column at its narrowest and the gap).
-    Every colour is a token, so the dark palette re-grounds all of it; and a
+    a glance is Monday to Friday beside the month since 9 October 2026, a
+    column a day in the schedule's own column, and the days stand one under
+    another where that column is narrow; this sums a day's room for a
+    committee's name against the narrowest two-column panel (1024px less the
+    shell's sides, a scrollbar, the month's column at its narrowest and the
+    gap). Until then it was a table of hours that scrolled in its own frame,
+    and the rules below that held its chips and cells went with it. Every
+    colour is a token, so the dark palette re-grounds all of it; and a
     heading here outranks what it heads.
 
     Added after the review of 24 September, from what a headless Chrome
@@ -52746,69 +54383,64 @@ def _calendar_layout():
         "the tick is not drawn in the card's ground, which is what holds 3:1 on every colour")
     assert re.search(r"\.calcat input:focus-visible \+ \.cbx\{outline:2px solid var\(--pine\)", block), (
         "a box does not show where the keyboard's focus is")
-    wrap = _braced(block, ".wkgridwrap{")
-    assert "overflow-x:auto" in wrap, "the week at a glance can widen the page"
-    # ITS FRAME CLIPS WHAT IS POSITIONED INSIDE IT. The day buttons carry a
-    # visually hidden label, position:absolute; with no positioned ancestor it
-    # was placed against the page, outside the frame, and at 360px the page
-    # scrolled sideways by 192px in the Week view.
-    assert "position:relative" in wrap, "the week's frame is not the containing block of its hidden labels"
-    # AND THE CALENDAR'S TABLES STAY TABLES. The stylesheet makes every table
-    # a scrolling block at 720px and below; the month then shrank to 26px days
-    # and the week became a scroller inside its frame, its sticky hours
-    # sliding off the screen with it.
+    # THE WEEK, MONDAY TO FRIDAY, BESIDE THE MONTH (9 October 2026): a column
+    # a day in the schedule's own column, as many columns as days, which
+    # stand one under another where the schedule is narrow -- by the width it
+    # has (a container query), so a phone never scrolls sideways.
+    week = _braced(block, ".wkweek{")
+    assert "container-type:inline-size" in week, "the week does not stack by the width it has"
+    days_ = _braced(block, ".wkdays{")
+    assert "display:grid" in days_ and "grid-template-columns:repeat(var(--cols,5),minmax(0,1fr))" in days_, (
+        f"the week is not a column a day, as many as the days: {days_}")
+    stack = _braced(block, "@container (max-width:40em){")
+    assert ".wkdays{grid-template-columns:minmax(0,1fr)}" in stack, (
+        "the days do not stand one under another where the schedule is narrow")
+    # ITS DAYS ARE THE CONTAINING BLOCK OF WHAT IS POSITIONED INSIDE THEM. The
+    # day buttons carry a visually hidden label, position:absolute; with no
+    # positioned ancestor it was placed against the page, and at 360px the
+    # page scrolled sideways by 192px in the Week view.
+    assert "position:relative" in _braced(block, ".wkcol{"), (
+        "the week's days are not the containing block of their hidden labels")
+    # AND THE MONTH STAYS A TABLE. The stylesheet makes every table a
+    # scrolling block at 720px and below; the month then shrank to 26px days.
     assert re.search(r"@media \(max-width: ?45em\)\{[^@]*?\btable\{display:block", css), (
         "the narrow-screen table rule this answers has moved; recheck the calendar against it")
     keep = re.search(r"\.calapp table\{([^}]*)\}", block)
     assert keep and "display:table" in keep.group(1) and "overflow:visible" in keep.group(1), (
-        "the month and the week are made scrolling blocks on a phone by the site's table rule")
-    # A chip in a column shrinks and wraps rather than running over the next day.
-    chip = _braced(block, ".wkgrid .calmeet > summary .calkind{")
-    assert "flex:0 1 auto" in chip and "max-width:100%" in chip, (
-        "a kind chip in the week at a glance keeps its full width and spills out of its card")
-    # AND IN AN OPENED CARD. The summary's rule was all there was, and with a
-    # card open "Subcommittee work session" ran 74px over the next day at
-    # 1024px, because the chips on the item lines are the body's.
-    inner = _braced(block, ".wkgrid .calbody .calkind{")
-    assert all(x in inner for x in ("flex:0 1 auto", "max-width:100%", "min-width:0",
-                                     "white-space:normal")), (
-        "a kind chip inside an opened card in the week keeps its full width and "
-        f"spills over the next day's column: {inner}")
-    name = _braced(block, ".wkgrid .calmeet > summary .calcmte{")
-    assert "overflow-wrap:anywhere" not in name, (
-        "a committee's name in the week breaks mid-word before it breaks between words")
+        "the month is made a scrolling block on a phone by the site's table rule")
+    name = _braced(block, "\n.wkc{")
+    assert "overflow-wrap:anywhere" not in name and "overflow-wrap:break-word" in name, (
+        "a committee's name in the week breaks mid-word before it breaks between words, or not at all")
     # A LONG WORD FITS, OR IS HYPHENATED. "Administration" broke as
-    # "Administratio / n" in the 89px the name had; the column and the
-    # paddings are summed here from the stylesheet itself, so a padding put
-    # back narrows the name and fails this. 99px is the estimate the rule's
-    # comment gives, from a screenshot and not from the font's metrics; a
-    # longer word is left to hyphens:auto, both spellings of it.
+    # "Administratio / n" in the 89px a name had in the week's table; the
+    # column and the paddings are summed here from the stylesheet itself, so
+    # a padding put back narrows the name and fails this. 99px is the
+    # estimate the old rule's comment gave, from a screenshot and not from the
+    # font's metrics; a longer word is left to hyphens:auto, both spellings.
     assert "-webkit-hyphens:auto" in name and re.search(r"(?<!-)hyphens:auto", name), (
         f"a committee's name in the week is not hyphenated where it must break: {name}")
     sp = {int(k): int(v) for k, v in re.findall(r"--sp-(\d+):(\d+)px", css)}
 
     def px(v):
         v = v.strip()
-        m_ = re.fullmatch(r"calc\(var\(--sp-(\d+)\) \+ (\d+)px\)", v)
-        if m_:
-            return sp[int(m_.group(1))] + int(m_.group(2))
         m_ = re.fullmatch(r"var\(--sp-(\d+)\)", v)
         return sp[int(m_.group(1))] if m_ else int(v.rstrip("px"))
 
     def sides(decl):
         """(right, left) of a padding shorthand of one to four values."""
-        p = [px(x) for x in re.findall(r"calc\(var\([^)]*\) \+ \d+px\)|var\([^)]*\)|\d+px|0", decl)]
+        p = [px(x) for x in re.findall(r"var\([^)]*\)|\d+px|0", decl)]
         p = {1: p * 4, 2: p * 2, 3: p + p[1:2], 4: p}[len(p)]
         return p[1], p[3]
-    cell = re.search(r"padding:([^;}]*)", _braced(block, ".wkgrid th,.wkgrid td{")).group(1)
-    summ = re.search(r"padding:([^;}]*)", _braced(block, ".wkgrid .calmeet > summary{")).group(1)
-    card = re.search(r"border:(\d+)px", _braced(css, ".calmeet{")).group(1)
-    col = int(re.search(r"\.wkgrid\{[^}]*min-width:calc\(\d+px \+ var\(--cols,5\) \* (\d+)px\)",
-                        block).group(1))
-    measure = col - sum(sides(cell)) - 2 * int(card) - sum(sides(summ))
+    go = _braced(block, ".wkgo{")
+    bar = int(re.search(r"grid-template-columns:(\d+)px minmax\(0,1fr\)", go).group(1))
+    gap = px(re.search(r"column-gap:([^;}]*)", go).group(1))
+    pad = sum(sides(re.search(r"padding:([^;}]*)", go).group(1)))
+    have = 1024 - 2 * 24 - 15 - side_min - 32 - 2
+    col = (have - 2) // 5 - 1
+    measure = col - bar - gap - pad
     assert measure >= 99, (
-        f"a committee's name in the week has {measure}px ({col}px column, cell {cell}, "
-        f"card border {card}px, summary {summ}): \"Administration\" needs about 99")
+        f"a committee's name in the week has {measure}px at 1024 ({col}px a day, a {bar}px "
+        f"bar, a {gap}px gap, {pad}px of padding): \"Administration\" needs about 99")
     # THE SELECTED WEEK IS A BAND A READER CAN SEE, in both themes: pine mixed
     # into the page. --pine-soft was about 1.0:1 against the light page.
     band = re.search(r"\.cmrow\.cmsel td\{background:color-mix\(in srgb,var\(--pine\) (\d+)%,var\(--paper\)\)\}", block)
@@ -52829,20 +54461,18 @@ def _calendar_layout():
         a_, b_ = sorted((_lum(mix), _lum(paper)))
         ratio = (b_ + 0.05) / (a_ + 0.05)
         assert ratio >= 1.2, f"the selected week's band is {ratio:.2f}:1 against the {theme} page"
-    m = re.search(r"\.wkgrid\{[^}]*min-width:calc\((\d+)px \+ var\(--cols,5\) \* (\d+)px\)", block)
-    assert m, "the week's columns have no minimum width"
-    need = int(m.group(1)) + 5 * int(m.group(2))
-    have = 1024 - 2 * 24 - 15 - side_min - 32 - 2
-    assert need <= have, (f"a five-day week needs {need}px and the panel beside the month "
-                          f"has {have}px at 1024: it would scroll on a desktop")
     for rule, size in ((".cmtitle{", "--t-lead"), (".cfhead h2{", "--t-lead"),
                        (".calfs legend,.calside .wkfind{", "--t-ui"), (".pkd{", "--t-h3")):
         assert f"font-size:var({size})" in _braced(block, rule), f"{rule} is not set at {size}"
     assert "font-size:var(--t-ui)" in _braced(block, ".calchk{"), "the boxes are not at the interface size"
-    return "ok", (f"month beside the schedule and sticky, above it below 1024px; a week "
-                  f"needs {need}px of the {have}px it has, scrolls in its own frame and "
-                  f"keeps its chips, open or shut; a committee's name has {measure}px and "
-                  f"hyphens; the tables stay tables on a phone; tokens only")
+    # A day's heading outranks its entries: the interface's size over theirs.
+    assert "font-size:var(--t-ui)" in _braced(block, ".wkdh{") and \
+        all("font-size:var(--t-sm)" in _braced(block, r) for r in ("\n.wkt{", "\n.wkc{", "\n.wkn{")), (
+        "a day's heading in the week does not outrank its entries")
+    return "ok", (f"month beside the schedule and sticky, above it below 1024px; the week "
+                  f"a column a day beside it, {col}px a day at 1024, stacked where it is "
+                  f"narrow; a committee's name has {measure}px and hyphens; the month stays "
+                  f"a table on a phone; tokens only")
 
 
 @check("frontend", "the home page's Coming up is this week, the week the Calendar tab shows")
@@ -52864,8 +54494,10 @@ def _coming_up_is_this_week():
     four fixed days -- a Monday, a Thursday, a Saturday and a Sunday, the one
     getDay() calls 0 -- out of rows written here, and holds it to the week
     build_calendar draws: from today to Sunday, every sitting in that span,
-    the floor included, a hundred bills on one day and all of them shown,
-    and next week counted and linked rather than listed. Then it runs
+    the floor included, a hundred bills on one day and all of them shown;
+    from Saturday the next week's, whole and named Next Week (D13, the
+    person, 8 October 2026, item 120); and the rail ending with "See the
+    full calendar" (item 118), where it once counted next week. Then it runs
     HOME_JS's own block in node against a stub page, because the build is
     read for days after it is made and it is the script that keeps the rail
     to the READER's week. _chain holds the built fixture home page to it too.
@@ -52910,17 +54542,24 @@ def _coming_up_is_this_week():
             rows = rows_for(today)
             with contextlib.redirect_stdout(io.StringIO()):
                 page = BP.calendar_html(tmp, today=today, rows=rows)
-            sun = BC.monday(today) + _dt.timedelta(days=6)
-            t, s = today.isoformat(), sun.isoformat()
+            ahead = today.weekday() >= 5
+            start = BC.monday(today) + _dt.timedelta(days=7) if ahead else today
+            sun = BC.monday(start) + _dt.timedelta(days=6)
+            t, s = start.isoformat(), sun.isoformat()
             shown = re.findall(r'class="calday" data-d="([^"]+)"', page)
             wide = [d for d in shown if not t <= d <= s]
             assert not wide, (
                 f"built on {today:%a %d %b}, Coming up shows {wide}, outside "
-                f"this week ({t} to {s}) -- the rail is the Calendar tab's "
-                "week, not a fortnight")
-            # The same sittings the Calendar tab's week holds from today on:
-            # read through the same function, so the two cannot differ.
-            week = BC.weeks_from(rows).get(BC.week_key(today)) or {}
+                f"its week ({t} to {s}) -- the rail is the Calendar tab's "
+                "week, not a fortnight, and from Saturday the next")
+            name = re.search(r'<p class="calwk"><span class="chip">([^<]+)</span> <span>([^<]+)</span>',
+                             page)
+            assert name and name.group(1) == ("Next Week" if ahead else "This Week"), (
+                f"built on {today:%a %d %b}, Coming up's week is named "
+                f"{name.group(1) if name else 'nothing'}")
+            # The same sittings the Calendar tab's week holds from its first
+            # day on: read through the same function, so the two cannot differ.
+            week = BC.weeks_from(rows).get(BC.week_key(start)) or {}
             want = {(k.date, BP.card_name(k).lower()) for d in week if d >= t
                     for k in week[d]}
             got = set(re.findall(
@@ -52931,38 +54570,45 @@ def _coming_up_is_this_week():
                 f"built on {today:%a %d %b}, Coming up and the Calendar tab's "
                 f"week disagree: only on the rail {sorted(got - want)}, only "
                 f"on the week page {sorted(want - got)}")
-            assert "House floor" in page, (
-                "a floor sitting this week is on the Calendar tab and not in "
-                "Coming up")
-            n_sb = len(set(re.findall(r'bills#SB(\d+)"', page)))
-            assert n_sb == 100, (
-                f"one sitting of 100 bills shows {n_sb} of them in Coming up: "
-                "the rail is capped again, and cuts a day short")
-            nxt = BC.week_key(sun + _dt.timedelta(days=1))
-            n_next = len({k for d, day in (BC.weeks_from(rows).get(nxt) or {}).items()
-                          for k in day})
+            if not ahead:
+                assert "House Session Day" in page, (
+                    "a floor sitting this week is on the Calendar tab and not in "
+                    "Coming up, named as the Calendar names it")
+                n_sb = len(set(re.findall(r'bills#SB(\d+)"', page)))
+                assert n_sb == 100, (
+                    f"one sitting of 100 bills shows {n_sb} of them in Coming up: "
+                    "the rail is capped again, and cuts a day short")
             line = re.search(r'<p class="calmore calall">(.*?)</p>', page)
-            assert line and f'href="calendar/{nxt}.html"' in line.group(1) \
-                and line.group(1).startswith(f"{n_next} more meeting"), (
-                    f"built on {today:%a %d %b}, the line under Coming up "
-                    f"should count next week's {n_next} meetings and link "
-                    f"calendar/{nxt}.html; it reads "
-                    f"{line.group(1) if line else 'nothing'!r}")
+            assert line and line.group(1) == '<a href="calendar.html">See the full calendar</a>', (
+                f"built on {today:%a %d %b}, Coming up does not end with See the "
+                f"full calendar: {line.group(1) if line else 'nothing'!r}")
             assert "fortnight" not in page, (
                 "Coming up still speaks of a fortnight, and it shows one week")
             checked += 1
 
-        # A SATURDAY WITH THE WEEK'S BUSINESS OVER: the rail says so and
-        # points at next week, rather than showing next week as this one.
+        # A SATURDAY WITH THE WEEK'S BUSINESS OVER: the rail is next week's,
+        # named Next Week with its weekdays, never read as the week gone (D13).
         sat = _dt.date(2026, 9, 26)
         with contextlib.redirect_stdout(io.StringIO()):
             page = BP.calendar_html(tmp, today=sat,
                                     rows=rows_for(sat, weekdays_only=True))
-        assert "calday" not in page, (
-            "with nothing left this week, Coming up still draws a day: "
-            + page[:200])
-        assert "rest of this week" in page and 'href="calendar/2026-W40.html"' in page, (
-            "an empty week does not say so and link to next week: " + page[:300])
+        days = re.findall(r'class="calday" data-d="([^"]+)"', page)
+        assert days and days[0] >= "2026-09-28" and days[-1] <= "2026-10-04", (
+            f"on a Saturday Coming up draws {days}, not next week's days")
+        assert '<span class="chip">Next Week</span> <span>Sep 28 – Oct 2, 2026</span>' in page, (
+            "on a Saturday Coming up does not name next week and its weekdays: "
+            + page[:300])
+        # AND A WEEKDAY WITH THE WEEK'S BUSINESS OVER says so, and offers the
+        # full calendar.
+        fri = _dt.date(2026, 10, 2)
+        with contextlib.redirect_stdout(io.StringIO()):
+            page = BP.calendar_html(tmp, today=fri,
+                                    rows=[r for r in rows_for(fri, weekdays_only=True)
+                                          if r["date"] < fri.isoformat()])
+        assert "calday" not in page and "rest of this week" in page \
+            and "See the full calendar" in page, (
+                "an empty rest of the week does not say so and offer the calendar: "
+                + page[:300])
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
 
@@ -52980,8 +54626,10 @@ def _coming_up_is_this_week():
     for reader, days, want_kept in (
             ("2026-09-21", span, span[1:8]),     # a Monday: the whole week
             ("2026-09-24", span, span[4:8]),     # a Thursday: to Sunday
-            ("2026-09-27", span, span[7:8]),     # a Sunday: only today
-            ("2026-09-27", span[8:], [])):       # a Sunday, next week built
+            ("2026-09-26", span, span[8:15]),    # a Saturday: next week (D13)
+            ("2026-09-27", span, span[8:15]),    # a Sunday: next week
+            ("2026-09-27", span[8:], span[8:15]),  # a Sunday, next week built
+            ("2026-09-26", span[:7], [])):       # a Saturday, this week built
         y, mo, d = map(int, reader.split("-"))
         prog = _components_js() + "\n" + (
             "const R=Date;class D extends R{constructor(...a){a.length?super(...a)"
@@ -52998,10 +54646,10 @@ def _coming_up_is_this_week():
             "process.stdout.write(JSON.stringify({kept:days.filter(e=>!e.gone)"
             ".map(e=>e.dataset.d),labels:days.filter(e=>!e.gone).map(e=>e.rel.textContent),"
             "cal:cal.innerHTML}));")
-        r = subprocess.run([node, "-e", prog], capture_output=True, timeout=60)
+        r = _node_file(node, prog, capture_output=True, text=True, timeout=60)
         assert r.returncode == 0, ("HOME_JS's Coming up block would not run: "
-                                   + r.stderr.decode("utf-8", "replace")[-300:])
-        got = json.loads(r.stdout.decode("utf-8", "replace"))
+                                   + (r.stderr or "")[-300:])
+        got = json.loads(r.stdout)
         assert got["kept"] == want_kept, (
             f"read on {reader}, HOME_JS keeps {got['kept']} of the rail; this "
             f"week from that day is {want_kept}")
@@ -53011,9 +54659,10 @@ def _coming_up_is_this_week():
         if not want_kept:
             assert "this week" in got["cal"] and "NEXT" in got["cal"], (
                 "when the reader's week has nothing left, HOME_JS must say so "
-                "and keep the line that links to next week: " + got["cal"][:200])
-    return "ok", (f"{checked} build dates and 4 reading dates: today to Sunday, "
-                  "uncapped, the floor included, next week linked")
+                "and keep the line to the full calendar: " + got["cal"][:200])
+    return "ok", (f"{checked} build dates and 6 reading dates: today to Sunday, "
+                  "uncapped, the floor included; from Saturday next week, named so; "
+                  "the full calendar offered")
 
 
 @check("frontend", "the home page's Coming up keeps the whole week in a box that scrolls")
@@ -53197,15 +54846,15 @@ def _coming_up_without_study_committees():
             f"Coming up's cards are {cards}: a standing committee's interim study "
             "session belongs on it")
         line = re.search(r'<p class="calmore calall">(.*?)</p>', page)
-        assert line and line.group(1).startswith("1 more meeting next week"), (
-            "the line under Coming up counts next week's study committees: "
+        assert line and "See the full calendar" in line.group(1), (
+            "the line under Coming up is not the full calendar: "
             + (line.group(1) if line else "no line"))
         # A WEEK OF STUDY COMMITTEES ALONE is a week with nothing on the rail.
         with contextlib.redirect_stdout(io.StringIO()):
             empty = BP.calendar_html(tmp, today=monday, rows=[r for r in rows if r.get("study")
                                                               or r["kind"] == "study committee"])
         assert "calday" not in empty and "rest of this week" in empty \
-            and "Nothing is on the calendar for next week" in empty, (
+            and "sits mostly from January to June" in empty, (
                 "a week of study committees alone still draws a day in Coming up: "
                 + empty[:300])
     finally:
@@ -53305,7 +54954,7 @@ def _floor_session_titles():
     prog = (_components_js() + "\n" + o.group(0) + f.group(0)
             + "process.stdout.write(JSON.stringify(" + json.dumps(list(cases))
             + ".map(fdo)));")
-    r = _run([node, "-e", prog], capture_output=True, text=True, timeout=60)
+    r = _node_file(node, prog, capture_output=True, text=True, timeout=60)
     assert r.returncode == 0, "fdo() would not run: " + (r.stderr or "")[-300:]
     got = dict(zip(cases, json.loads(r.stdout)))
     bad = {d: g for d, g in got.items() if g != cases[d]}
@@ -53314,99 +54963,141 @@ def _floor_session_titles():
                   "\"House Session (August 19th, 2026)\"")
 
 
-@check("frontend", "the home page's finder suggests every town as the reader types, and its box is whole on a phone")
+@check("frontend", "the home page's one search box is the header's finder, its top results in a "
+                   "dropdown, with no second finder beside it")
 def _home_finder_suggests_towns():
-    """"Find-your-legislators box: text cut off, no dropdown" (the person, 7
-    October 2026, F4). The box is a datalist of every town in districts.json,
-    which the browser offers under it as the reader types and which is chosen
-    with the arrow keys and Enter or with a tap; no script and nothing
-    fetched. And under 480px its button takes a line of its own, so the box
-    has the panel's width and "Your town, or a legislator's name" is not cut
-    off after "legislator". Read off the fixture's built home page and
-    stylesheet."""
+    """D13 (the person, 8 October 2026): "The home page's main search becomes
+    one box like the header search: bills, legislators, towns, committees
+    and the rest from the same box, with a dropdown of the top results (no
+    separate legislator finder)." It replaces the finder of towns in the
+    right-hand column (F4, 7 October 2026), whose datalist this used to hold.
+
+    Read off the fixture's built home page, HOME_JS, find.js and style.css:
+    one box, tied to its dropdown and written before the cards; no finder of
+    towns beside it; HOME_JS draws with find.js's own findDraw into the box's
+    own ids, so one matcher and one set of rows serve the header and the
+    home page; findDraw takes the ids it draws into, the header's by default,
+    and every redraw it asks for passes them on; and the dropdown is placed
+    under the box."""
     import build_pages as BP
     shared, _base, _ran, _days = _fixture_site_shared()
     site = shared / "site"
     page = (site / "index.html").read_text(encoding="utf-8")
-    towns = sorted(json.loads((site / "districts.json").read_text(encoding="utf-8")), key=str.lower)
-    box = re.search(r'<input id="hq2"[^>]*>', page)
-    assert box and 'list="hq2towns"' in box.group(0) and 'autocomplete="off"' in box.group(0), (
-        f"the finder's box offers no towns: {box.group(0) if box else 'no box'}")
-    dl = re.search(r'<datalist id="hq2towns">(.*?)</datalist>', page, re.S)
-    assert dl, "the home page has no list of towns for its finder"
-    offered = re.findall(r'<option value="([^"]*)">', dl.group(1))
-    assert offered == towns, f"the finder offers {offered}, where districts.json has {towns}"
-    assert page.index('<input id="hq2"') < page.index('<datalist id="hq2towns">') \
-        < page.index('<div id="session"'), "the list of towns is not beside its box"
-    assert BP.home_towns(shared / "nowhere") == [], "a site with no districts.json suggests towns"
+    assert 'id="hq2"' not in page and "hq2towns" not in page and 'class="hfind"' not in page, (
+        "the home page still has a second finder beside its search box")
+    box = re.search(r'<input id="hq"[^>]*>', page)
+    assert box and 'aria-controls="hqout"' in box.group(0) and 'autocomplete="off"' in box.group(0), (
+        f"the home box is not tied to its dropdown: {box.group(0) if box else 'no box'}")
+    assert '<div class="findout hqdrop" id="hqout" role="region" aria-label="Top results" hidden>' \
+        '</div>' in page and page.index('id="hqout"') < page.index('class="entry"'), (
+            "the home box has no dropdown of its own, written before the cards")
+    js = BP.HOME_JS
+    assert 'const HQ={out:"hqout",box:"hq",clear:"",say:"hqsay"};' in js \
+        and "findDraw(v,HQ)" in js and 'id="hqsay"' in page, (
+            "the home box does not draw with find.js's findDraw into its own ids")
+    fj = Path("src/pages/find.js").read_text(encoding="utf-8").replace("\r\n", "\n")
+    assert 'const FIND_IDS={out:"findout",box:"findq",clear:"findclear",say:"findsay"};' in fj \
+        and "function findDraw(q,ids){\n  ids=ids||FIND_IDS;" in fj \
+        and "function findSay(html,ids){" in fj, "find.js's findDraw does not take the ids it draws into"
+    redraws = fj[fj.index("function findDraw(q,ids){"):fj.index("function findSay(")]
+    assert "findDraw(box.value);" not in redraws and redraws.count("findDraw(box.value,ids);") == 2, (
+        "a redraw find.js asks for draws into the header's panel whichever box asked")
     css = (site / "style.css").read_text(encoding="utf-8")
-    # AND IN THE THREE COLUMNS (the look of 7 October 2026): from 1180px the
-    # finder is a 290px column, where beside its button the box was 170px
-    # and read "Your town, or a leg". The same media block covers both.
-    m = re.search(r"@media \(max-width:30em\),\(min-width:73\.75em\)\{\s*"
-                  r":where\(body\.pg\) \.hfind\{[^}]*\}\s*"
-                  r":where\(body\.pg\) \.hfrow\{flex-wrap:wrap\}\s*"
-                  r":where\(body\.pg\) \.hfrow input\{flex:1 1 100%\}\s*"
-                  r":where\(body\.pg\) \.hfrow button\{flex:1 1 100%\}", css)
-    assert m, ("style.css does not put the finder's button under its box on a phone and "
-               "in the three columns, so the box keeps about 170-230px and its placeholder "
-               "is cut off")
-    # Chrome keeps room in an empty search box for its clear button and a
-    # datalist's arrow; measured in the browser, the placeholder was still cut
-    # at "legislator's na" until neither took it.
-    for rule in (":where(body.pg) #hq2::-webkit-calendar-picker-indicator{display:none !important}",
-                 ":where(body.pg) #hq2:placeholder-shown::-webkit-search-cancel-button{display:none}"):
-        assert rule in css, f"style.css has no {rule}, so the empty box keeps room for nothing"
-    return "ok", (f"all {len(towns)} of the fixture's towns offered under the box, and the "
-                  "button on a line of its own under 480px and in the three columns")
+    assert ":where(body.pg) .hqdrop{position:absolute;top:calc(100% + var(--sp-2))" in css \
+        and ":where(body.pg) .searchbig{position:relative}" in css and ".hfind" not in css, (
+            "style.css does not put the dropdown under the box, or still styles the old finder")
+    return "ok", ("one box, the header's finder, its top results in its own dropdown under it; "
+                  "no finder of towns beside it")
 
 
-@check("frontend", "the legislators page is two tabs, Towns and Legislators, drawn as the town pages' tabs are")
+@check("frontend", "the Officials page is five tabs, My Town, Legislators, Federal Delegation, "
+                   "Statewide Officials and County Officials, drawn as the town pages' tabs are")
 def _legislators_page_tabs():
-    """"Divide into a Towns section and a Legislators section" -- as two
-    tabs, like the town pages (the person, 7 October 2026, F5), because an
-    interactive map of the districts is to come and belongs with the towns.
+    """The person's feedback of 9 October 2026, item 4, and decision 127: the
+    Legislators page is Officials, in five tabs -- My Town (the town finder and
+    the district map), Legislators (the roster), Federal Delegation, Statewide
+    Officials and County Officials -- the strip and the switching script the
+    town pages' (F5, 7 October 2026), as the page's two tabs were.
 
     Read off the fixture's built page: one strip, written hidden for the
-    script to show, with Towns first and Legislators second; the finder in
-    the Towns panel and the roster, who holds the seats and the vacancies in
-    the Legislators panel, each panel under its own heading; the town pages'
-    switching script after them; and the strip's rules in the region of
-    app.css that style.css takes, so this page draws it as a town page does."""
+    script to show, with the five in that order, each panel under its own
+    heading; the finder and then the map in My Town; the roster, who holds
+    the seats and the vacancies in Legislators; the people of the other three
+    from corrections/officials.json; the old page's #towns sent to #my-town
+    before the script reads the address; the town pages' switching script
+    after the panels; and the strip's rules in the region of app.css that
+    style.css takes, so this page draws it as a town page does."""
     import build_town_pages as BT
+    import build_pages as BP
+    import html as _html
     shared, _base, _ran, _days = _fixture_site_shared()
     site = shared / "site"
-    page = (site / "legislators.html").read_text(encoding="utf-8")
-    strips = re.findall(r'<div class="twntabs" role="tablist"[^>]*>(.*?)</div>', page, re.S)
-    assert len(strips) == 1, f"the legislators page has {len(strips)} Towns/Legislators strips"
-    assert re.search(r'<div class="twntabs" role="tablist" aria-label="[^"]+" hidden>', page), (
-        "the strip is not written hidden for the script to show")
-    tabs = re.findall(r'role="tab" id="tab-([a-z]+)" data-pane="([a-z]+)"[^>]*>([^<]+)</button>',
-                      strips[0])
-    assert [(t, p, n) for t, p, n in tabs] == [("towns", "towns", "Towns"),
-                                               ("legislators", "legislators", "Legislators")], (
-        f"the strip's tabs are {tabs}")
-    a = page.index('<div class="twnpane" id="towns" role="tabpanel" aria-labelledby="tab-towns">')
-    b = page.index('<div class="twnpane" id="legislators" role="tabpanel" '
-                   'aria-labelledby="tab-legislators">')
-    towns, legs = page[a:b], page[b:]
-    assert '<h2 class="twnph">Towns</h2>' in towns and 'id="lq"' in towns \
-        and 'id="lmatch"' in towns and 'id="roster"' not in towns, (
-            "the Towns panel is not the finder under its own heading")
-    assert '<h2 class="twnph">Legislators</h2>' in legs and 'id="roster"' in legs \
-        and 'id="lq"' not in legs, "the Legislators panel does not hold the roster"
+    page = (site / "officials.html").read_text(encoding="utf-8")
+    strips = re.findall(r'<div class="twntabs oftabs" role="tablist"[^>]*>(.*?)</div>', page, re.S)
+    assert len(strips) == 1, f"the Officials page has {len(strips)} tab strips"
+    assert re.search(r'<div class="twntabs oftabs" role="tablist" aria-label="Officials" hidden>',
+                     page), "the strip is not written hidden for the script to show"
+    tabs = re.findall(r'role="tab" id="tab-([a-z-]+)" data-pane="([a-z-]+)"[^>]*>([^<]+)', strips[0])
+    want = [("my-town", "My Town"), ("legislators", "Legislators"),
+            ("federal", "Federal Delegation"), ("statewide", "Statewide Officials"),
+            ("counties", "County Officials")]
+    assert [(t, n.strip()) for t, p, n in tabs if t == p] == want, f"the strip's tabs are {tabs}"
+    panes = {}
+    starts = [(page.index(f'<div class="twnpane" id="{pid}" role="tabpanel" '
+                          f'aria-labelledby="tab-{pid}">'), pid) for pid, _n in want]
+    assert [p for _i, p in sorted(starts)] == [p for p, _n in want], "the panels are out of order"
+    starts.sort()
+    for k, (i, pid) in enumerate(starts):
+        panes[pid] = page[i:starts[k + 1][0] if k + 1 < len(starts) else len(page)]
+        name = dict(want)[pid]
+        assert f'<h2 class="twnph">{name}</h2>' in panes[pid], f"the {name} panel has no heading"
+    towns, legs = panes["my-town"], panes["legislators"]
+    assert 'id="lq"' in towns and 'id="lmatch"' in towns and 'id="roster"' not in towns, (
+        "My Town is not the finder")
+    assert towns.index('id="lmatch"') < towns.index('id="ofmap"'), (
+        "My Town does not hold the map under the finder")
+    assert 'id="roster"' in legs and 'id="lq"' not in legs, "the Legislators panel does not hold the roster"
     if 'class="comp-wrap"' in page:
-        assert page.index('class="comp-wrap"') > b, (
-            "who holds the seats is outside the Legislators panel")
+        assert 'class="comp-wrap"' in legs, "who holds the seats is outside the Legislators panel"
+    # The other three are officials.json's people, each the one person chip.
+    import json as _json
+    off = _json.loads(Path("corrections/officials.json").read_text(encoding="utf-8"))
+    for pid, names in (("federal", [s["name"] for s in off["us_senate"]["seats"]]
+                        + [r["name"] for r in off["us_house"]["districts"].values()]),
+                       ("statewide", [off["governor"]["name"]]
+                        + [r["name"] for r in off["council"]["districts"].values()]),
+                       ("counties", [r["name"] for c in off["county"]["counties"].values()
+                                   for r in c["commissioners"].values()])):
+        for nm in names:
+            assert re.search(r'<span class="mchip p-[A-Z]">' + re.escape(_html.escape(nm)), panes[pid]), (
+                f"{nm} is not a person chip on the {pid} tab")
+    # A commissioner of both nominations on the neutral chip with both
+    # letters; the neutral offices with no party at all (the person, 9 Oct).
+    county = panes["counties"]
+    ids = re.findall(r' id="([^"]+)"', page)
+    assert len(ids) == len(set(ids)), (
+        f"the Officials page gives an id twice: {sorted({i for i in ids if ids.count(i) > 1})}")
+    for c in off["county"]["counties"].values():
+        for r in c["commissioners"].values():
+            if "/" in (r.get("party") or ""):
+                assert (f'<span class="mchip p-X">{_html.escape(r["name"])} <span class="mtag">'
+                        f'({r["party"]})</span>') in county, (
+                    f"{r['name']} ({r['party']}) is not on the neutral chip with both letters")
+        sheriff = (c.get("sheriff") or {}).get("name")
+        if sheriff:
+            assert f'<span class="mchip p-X">{_html.escape(sheriff)}</span>' in county, (
+                f"the sheriff {sheriff} carries a party, or is not a chip")
+    assert BP.OFFICIALS_HASH_JS in page and page.index(BP.OFFICIALS_HASH_JS) < page.index(
+        BT.TABS_JS), "the old page's #towns is not sent to #my-town before the tabs read it"
     tabs_js = BT.TABS_JS
-    assert tabs_js in page and page.index(tabs_js) > b, (
+    assert tabs_js in page and page.index(tabs_js) > starts[-1][0], (
         "the town pages' switching script is not after the panels")
     assert page.count('id="out"') == 1, "the county listing's #out is on the page twice"
     # THE INSTRUCTION IS THE TOWNS TAB'S (the look of 7 October 2026): "Type a
     # town ... or a name" describes the box, and it sat over both tabs.
     lead = re.search(r'<p class="lead">(.*?)</p>', page, re.S)
     assert lead and "Type a town" not in lead.group(1) and "Type a town" in towns, (
-        "the finder's instruction is not in the Towns panel, over its box")
+        "the finder's instruction is not in the My Town panel, over its box")
     # THE TOWNS TAB IS THE LIVE SITE'S FINDER (the person, 7 October 2026: "I
     # didn't want the change to the town ordering to also make it 5 columns
     # wide", and asked how it should list them, "Like the live site"): the
@@ -53414,10 +55105,13 @@ def _legislators_page_tabs():
     # inside itself -- and nothing below the finder, where the district map is
     # to come. For an afternoon the tab ran every town down the page in
     # columns; nothing in the script or either stylesheet does that now.
+    # AND THE MAP UNDER IT (Polish 3): the finder's own box holds the box and
+    # its list and nothing else, and the map is the next part of the panel.
     rest = re.sub(r"<!--.*?-->", "", towns.split('<div class="lfind">', 1)[1], flags=re.S)
+    rest = rest.split("</section>", 1)[0]
     assert re.fullmatch(r'\s*(?:<label [^>]*>[^<]*</label>|<input [^>]*>|<p [^>]*>[^<]*</p>'
-                        r'|<div class="lmatch" id="lmatch"></div>|\s)*</div>\s*</div>\s*', rest), (
-        "the Towns panel holds something after the finder and its list")
+                        r'|<div class="lmatch" id="lmatch"></div>|\s)*</div>\s*', rest), (
+        "the finder holds something after its box and its list")
     assert '.classList.toggle("all"' not in page, (
         "the finder marks its list as the whole list of towns, for columns down the page")
     css = (site / "style.css").read_text(encoding="utf-8")
@@ -53448,9 +55142,10 @@ def _legislators_page_tabs():
     assert app.count(".twntabs{display:flex") == 1, "app.css draws the strip twice"
     assert app.index(".twntabs{display:flex") < app.index("/* SHARED:END"), (
         "the strip's rules are not in app.css's shared region")
-    return "ok", ("Towns, then Legislators, each a panel under its own heading, switched by "
-                  "the town pages' script and drawn by the same rules in both stylesheets; "
-                  "the Towns tab the finder over its 260px window and nothing below it")
+    return "ok", ("My Town, Legislators, Federal Delegation, Statewide Officials and County "
+                  "Officials, each a panel under its own heading, switched by the town pages' "
+                  "script and drawn by the same rules in both stylesheets; My Town the finder "
+                  "over its 260px window and the map under it; the officials as person chips")
 
 
 @check("frontend", "the vacancy list says \"District\" and how a seat is filled, from RSA 661:8")
@@ -53469,7 +55164,7 @@ def _vacancy_wording():
             "election. A Senate seat is filled as the state constitution provides.")
     assert BP.VACANCY_NOTE == want, f"build_pages.VACANCY_NOTE reads {BP.VACANCY_NOTE!r}"
     shared, _base, _ran, _days = _fixture_site_shared()
-    page = (shared / "site" / "legislators.html").read_text(encoding="utf-8")
+    page = (shared / "site" / "officials.html").read_text(encoding="utf-8")
     vac = re.search(r'<details class="vac">(.*?)</details>', page, re.S)
     assert vac, "the fixture's legislators page lists no vacant seats to check"
     assert f'<p class="note" style="margin-top:8px">{want}</p>' in vac.group(1), (
@@ -53544,7 +55239,7 @@ def _seat_list_by_division():
             {"display_full": "Rep. Suzanne Vail (D - Hills 6)", "party": "D", "slug": "s"}), (
         "a chip's party and district are not one unit, so a chip that wraps breaks inside them")
     shared, _base, _ran, _days = _fixture_site_shared()
-    page = (shared / "site" / "legislators.html").read_text(encoding="utf-8")
+    page = (shared / "site" / "officials.html").read_text(encoding="utf-8")
     assert '<div class="seatcols" id="seatlist">' in page and '<ol class="seatlist" id="seatlist">' \
         not in page, "the built page's seat list is not the columns"
     return "ok", (f"five columns headed 1 to 5 as the chart runs, the Speaker above, five "
@@ -53608,7 +55303,7 @@ def _seat_chart_turned():
         "the chart does not write its seats in the order of their numbers, which is the order "
         "the arrow keys walk")
     shared, _base, _ran, _days = _fixture_site_shared()
-    page = (shared / "site" / "legislators.html").read_text(encoding="utf-8")
+    page = (shared / "site" / "officials.html").read_text(encoding="utf-8")
     svg = re.search(r'<svg viewBox="[^"]+" class="seatmap".*?</svg>', page, re.S)
     assert svg, "the fixture's legislators page draws no seating chart"
     bad = upright(svg.group(0))
@@ -53707,9 +55402,9 @@ def _committee_notes_fill():
     if got is None:
         return "ok", "the index's two notes fill; node is not here to draw a committee page"
     head, sess = got
-    assert '<div class="phead cmtehead">' in head, (
+    assert re.search(r'<header class="rhead [^"]*\bcmtehead\b', head), (
         "a committee page's head does not say it is one, so app.css cannot widen its notes")
-    assert re.search(r'<p class="src fill">Not on the General Court&rsquo;s list of committees', head), (
+    assert re.search(r'<p class="src fill rnote">Not on the General Court&rsquo;s list of committees', head), (
         "a committee page's \"not on the list\" note is held to the measure")
     assert '<p class="src fill">No day of this committee is' in sess, (
         "a committee page's \"no day on record\" note is held to the measure")
@@ -53758,7 +55453,8 @@ def _committee_days_met(BCM):
     if sess is None:
         return "ok", "build_committees counts the days met; node is not here to draw the tab"
     flat = re.sub(r"\s+", " ", sess)
-    assert "1 day this committee met in" in flat and "and 1 still to come, newest first" in flat, (
+    # "meetings" (D19), and the order the reader chose (10 October 2026).
+    assert re.search(r"<b>1 meeting</b>(?: in [^,]*)?, and 1 still to come, the newest first", flat), (
         "the Sessions tab's count reads: " + flat[:200])
     assert flat.count("No recording of this day is on file.") == 1, (
         "a day still to come is said to have no recording on file")
@@ -53803,7 +55499,7 @@ def _using_this_site_tabs(civics):
     as a card, a division with its count (the survey of 7 October 2026).
     Every tab the list names is a tab app.js draws on a bill's page."""
     body = civics.BODY_SITE
-    at = body.index("<h2>What a bill's page holds</h2>")
+    at = body.index("<h2>What a Bill's Page Holds</h2>")
     part = body[at:body.index("</ul>", at)]
     named = re.findall(r"<li><b>([^<]+)</b>", part) + re.findall(
         r", and <b>([^<]+)</b>", part)
@@ -53911,9 +55607,13 @@ def _speaker_page_says_so(B):
     if got is None:
         return "ok", "seat 6002's member is Speaker of the House; node is not here to draw it"
     head, floor = got
-    assert re.search(r'<p class="pmeta">Speaker of the House &middot; District 16', head), (
+    # The record head's line (C6, 10 October 2026): the office first, then
+    # the party and the seat in words; the heading says the chamber.
+    assert re.search(r'<p class="rline"><b>Speaker of the House</b>&nbsp;&middot; Republican'
+                     r'&nbsp;&middot; Rockingham District&nbsp;16', head), (
         "the Speaker's page does not say he is Speaker: " + re.sub(r"\s+", " ", head)[:300])
-    assert '<p class="pmeta">House of Representatives &middot; District 16' in floor, (
+    assert '<p class="rline">Republican&nbsp;&middot; Rockingham District&nbsp;16' in floor and \
+        '<h1 class="rh1">Representative Sherman Packard</h1>' in floor, (
         "a member of the floor lost the chamber's name: " + re.sub(r"\s+", " ", floor)[:300])
     return "ok", "seat 6002's member is Speaker of the House on his own page; nobody else is"
 
@@ -54205,15 +55905,16 @@ def _officers_on_the_page(B, BLP, BSP, OF):
     if got is None:
         return "ok", "the offices and the headings hold in Python; node is not here to draw them"
     head_c, head_s, head_g, cells = got
-    assert '<h1>Senator Sharon Carson <span class="ptag">(R - SD14)</span></h1>' in head_c, (
-        head_c[:300])
-    assert '<p class="pmeta">President of the Senate &middot; District 14' in head_c, (
+    # The record head (C6, 10 October 2026), as the approved prototype
+    # draws it: the title in full and the name, and the office, the party
+    # and the seat in words on the line under it.
+    assert '<h1 class="rh1">Senator Sharon Carson</h1>' in head_c, head_c[:300]
+    assert ('<p class="rline"><b>President of the Senate</b>&nbsp;&middot; Republican'
+            '&nbsp;&middot; Senate District&nbsp;14') in head_c, (
         "the President of the Senate's page does not say so: " + re.sub(r"\s+", " ", head_c)[:300])
-    assert ('<h1>Representative James Spillane <span class="ptag">(R - Rock 2)</span></h1>'
-            in head_s), head_s[:300]
-    assert '<p class="pmeta">House of Representatives &middot; District 2' in head_s
-    assert ('<h1>Former Representative Michael Gunski <span class="ptag">(R - Hills 6)</span>'
-            '</h1>' in head_g), head_g[:300]
+    assert '<h1 class="rh1">Representative James Spillane</h1>' in head_s, head_s[:300]
+    assert '<p class="rline">Republican&nbsp;&middot; Rockingham District&nbsp;2' in head_s, head_s[:400]
+    assert '<h1 class="rh1">Former Representative Michael Gunski</h1>' in head_g, head_g[:300]
     assert cells == ['<div class="m">Rep. Steven Smith (R)<span class="p mo">Deputy '
                      'Speaker of the House</span></div>',
                      '<div class="m">Rep. Steven Smith (R)</div>',
@@ -54239,7 +55940,7 @@ def _latest_activity_links_the_bill(BP, B):
         "bill/2025/sb256.html", BP.recent_href({"bill": "SB256", "year": 2025})
     assert BP.recent_href({"bill": "SB256"}) == "bills.html#SB256"
     src = inspect.getsource(BP)
-    static = src[src.index("static_recent = ('<h2>Latest activity</h2>"):]
+    static = src[src.index("static_recent = ('<h2>Latest Activity</h2>"):]
     static = static[:static.index("RECENT_MORE")]
     assert "recent_href(r)" in static and "bills.html#" not in static, (
         "the static Latest activity still links the search list")
@@ -54250,6 +55951,42 @@ def _latest_activity_links_the_bill(BP, B):
     assert '"year": b.get("year") or ""' in inspect.getsource(B), (
         "home.json's recent rows do not carry the year their bill is filed under")
     return "ok", "SB 256-FN of 2025 leads to bill/2025/sb256.html, in both renderers"
+
+
+@check("frontend", "a town page carries the district map in a tab of its own, second, framed on "
+                   "the town with its own State House district chosen")
+def _town_page_map():
+    """Polish 3: "The map also goes on the town pages" (the approved drawing,
+    private/design/polish/proto/town-dover-ward-1.html). Read off the
+    fixture's built town pages: every one has a District Map tab, second,
+    after Representatives; its panel holds the map's mount, named for the
+    town, a ward's page for its ward; the map's script comes after the tabs'
+    switching script, so the map is mounted the first time its tab is shown.
+    And map_section names the town's own State House district, never its
+    floterial, by the map's code ("ST14" for Strafford 14)."""
+    import build_town_pages as BT
+    shared, _base, _ran, _days = _fixture_site_shared()
+    pages = sorted((shared / "site" / "town").glob("*.html"))
+    if not pages:
+        return "skip", "the fixture builds no town page"
+    for f in pages:
+        page = f.read_text(encoding="utf-8")
+        tabs = re.findall(r'role="tab" id="tab-([a-z]+)"', page)
+        assert tabs[:2] == ["representatives", "map"], f"{f.name}: the tabs are {tabs}"
+        m = re.search(r'<div class="twnmap" id="twnmap" data-town="([^"]+)"([^>]*)></div>', page)
+        assert m, f"{f.name}: the District Map tab holds no map"
+        ward = re.search(r"-ward-(\d+)\.html$", f.name)
+        assert (f'data-ward="{ward.group(1)}"' in m.group(2)) if ward else "data-ward" not in m.group(2), (
+            f"{f.name}: the map is not told the page's ward: {m.group(0)}")
+        assert BT.MAP_JS in page and page.index(BT.MAP_JS) > page.index(BT.TABS_JS), (
+            f"{f.name}: the map's script is not after the tabs' switching script")
+    got = "".join(BT.map_section("Dover", "4", {"house": [
+        {"county": "Strafford", "district": "21", "floterial": True},
+        {"county": "Strafford", "district": "14", "floterial": False}]}))
+    assert 'data-town="Dover" data-ward="4" data-pick="ST14"' in got, (
+        f"map_section does not choose the ward's own district: {got[:300]}")
+    return "ok", (f"{len(pages)} town pages, each with the District Map second, the map told its "
+                  "town and ward and mounted after the tabs; Dover Ward 4 opens on Strafford 14")
 
 
 @check("frontend", "an official's chip on a town page says the party in letters, as a "
@@ -54527,17 +56264,26 @@ def _on_the_record_rows():
          "chapter": "160", "year": "2025", "house_committee": "Judiciary",
          "journey": {"steps": [{"date": "2025-02-13", "body": "H", "act": "passed",
                                 "mark": "p", "text": "Passed on a voice vote"}]}}
-    b = {"id": "HB57", "term": "2025-2026", "year": 2025, "status": "Signed into law"}
-    got = _app_js("scope.factsTable(" + json.dumps(b) + ", " + json.dumps(d) + ")",
-                  names=("factsTable",))
+    b = {"id": "HB57", "term": "2025-2026", "year": 2025, "status": "Signed into law",
+         "topic": "Criminal Justice"}
+    # THE ON THE RECORD BOX IS GONE (the person, 8 October 2026: "Remove the
+    # ON THE RECORD box"; option E, 10 October 2026): what it carried is in
+    # the record head's facts, How It Got Here or under the analysis, and
+    # none of them carries the LSR or an Introduced row.
+    assert "function factsTable(" not in Path("src/pages/app.js").read_text(encoding="utf-8"), (
+        "app.js still draws the On the record box")
+    got = _app_js("[scope.billHead(" + json.dumps(b) + ", " + json.dumps(d) + "), "
+                  "scope.renderSummary(" + json.dumps(b) + ", " + json.dumps(d) + ")]",
+                  names=("billHead", "renderSummary"))
     if got is None:
         return "skip", "node, app.js or dom_stub.js is not here"
-    heads = re.findall(r'<th scope="(?:row|colgroup)"[^>]*>([^<]*)</th>', got)
-    assert heads and "Bill Status" in heads and "Subject" in heads, (
-        f"On the record lost rows it keeps: {heads}")
-    assert "Introduced" not in heads and "LSR" not in heads and "2025-0123" not in got, (
-        f"On the record still carries {[h for h in heads if h in ('Introduced', 'LSR')]}")
-    return "ok", f"On the record holds {', '.join(heads)}, and no Introduced or LSR row"
+    head, summary = got
+    heads = re.findall(r"<dt>([^<]*)</dt>", head)
+    assert heads and "Subject" in heads, f"the head lost facts it keeps: {heads}"
+    assert "Introduced" not in heads and "LSR" not in heads and \
+        "2025-0123" not in head + summary, (
+            f"the bill's head or summary still carries {[h for h in heads if h in ('Introduced', 'LSR')]}")
+    return "ok", f"the head holds {', '.join(heads)}, and no Introduced or LSR row"
 
 
 @check("frontend", "the Bill Text tab opens on the current version in full text")
@@ -56942,7 +58688,7 @@ const setNav = v => Object.defineProperty(globalThis, "navigator",
 const fail = [];
 // THE BOX, AS IT WAS, behind its drawing.
 const box = reportBox("bill", "2026/HB1442");
-if (!box.includes("<summary>" + want.report + "Report a problem with this page</summary>"))
+if (!box.includes("<summary>" + want.report + "Report a problem</summary>"))
   fail.push("the report's button is not its drawing and its words");
 for (const part of want.form) if (!box.includes(part)) fail.push("the report's form lost " + part);
 const kinds = (box.match(/<option value="[a-z]+">/g) || []).map(s => s.slice(15, -2));
@@ -70949,7 +72695,11 @@ def _every_rollcall_on_its_sitting():
     today = build_date.today().isoformat()
     bad, pages, missing, sides, chips = [], 0, [], [], []
     count = re.compile(r"(\d+) roll calls?\b")
-    tallied = re.compile(r'<p class="stally">A roll call: ')
+    # Since 10 October 2026 (the record head and the vote words): the count
+    # is the head's Votes Taken, a roll call drawn is its line's tally, the
+    # consent calendar is its own section with its rows, and a vote is its
+    # block (.dvote).
+    tallied = re.compile(r"<b>\d+\u2013\d+</b> on a roll call</p>")
     for (body, date), day in sorted(days.items()):
         if date > today:
             continue
@@ -70959,32 +72709,36 @@ def _every_rollcall_on_its_sitting():
             continue
         pages += 1
         h = p.read_text(encoding="utf-8")
-        lead = re.search(r'<p class="src">(.*?)</p>', h, re.S)
+        lead = re.search(r'<dl class="rfacts">(.*?)</dl>', h, re.S)
         m = count.search(lead.group(1) if lead else "")
         stated = int(m.group(1)) if m else 0
         votes = day.votes("RC")
-        drawn = len(tallied.findall(h))
         # A consent item is on the list, where the calendar's vote is said
         # once, unless the journal says a member took it off: then it is
         # in the day's sequence with its tally.
-        cs = re.search(r"<h2>On the consent calendar</h2>(.*?)</section>", h, re.S)
-        listed = {re.sub(r"[^A-Z0-9]", "", x.upper()) for x in re.findall(
-            r'class="cbn"[^>]*>([^<]*)<', cs.group(1))} if cs else set()
+        cs = re.search(r'<section class="w4" id="consent">(.*?)</section>', h, re.S)
+        drawn = len(tallied.findall(h.replace(cs.group(0), "") if cs else h))
+        listed = {re.sub(r"[^A-Z0-9]", "", x.split("-")[0].upper()) for x in re.findall(
+            r'class="brnum"[^>]*>([^<]*)<', cs.group(1))} if cs else set()
         under = sum(1 for its in votes.values() for i in its
                     if i.counted and not (i.consent and i.bill.upper() in listed))
         on_note = any(i.consent and i.bill.upper() in listed
                       for its in votes.values() for i in its)
         if stated != len(votes) or drawn != under or (
-                on_note and "on a roll call," not in h):
+                on_note and not (cs and tallied.search(cs.group(1)))):
             bad.append(f"{body} {date}: says {stated}, draws {len(votes)} roll calls "
                        f"in {drawn} tallies ({under} expected)")
         # A member on both sides of one motion, or named twice in one list.
-        for chunk in h.split('<div class="smotion">')[1:]:
+        def each(lst):
+            """The names of a line, one per item (.swho1): a member is the
+            person chip since 10 October 2026, which carries no comma."""
+            return [n for n in (re.sub(r"<[^>]+>", "", x).strip().rstrip(",").strip()
+                                for x in lst.split('<span class="swho1">')[1:]) if n]
+        for chunk in h.split('<div class="dvote"')[1:]:
             names = {}
             for side in ("for", "against"):
                 m = re.search(rf"Spoke {side} the motion</span>(.*?)</p>", chunk, re.S)
-                names[side] = [n.strip() for n in re.sub(r"<[^>]+>", "", m.group(1)).split(",")
-                               if n.strip()] if m else []
+                names[side] = each(m.group(1)) if m else []
             if set(names["for"]) & set(names["against"]) or any(
                     len(v) != len(set(v)) for v in names.values()):
                 sides.append(f"{body} {date}: {names}")
@@ -70996,8 +72750,7 @@ def _every_rollcall_on_its_sitting():
         for lst in re.findall(r'<p class="sspoke[^"]*"><span class="slab">[^<]*</span>(.*?)</p>',
                               h, re.S):
             lst = re.sub(r'<span class="snote">.*?</span>', "", lst, flags=re.S)
-            for n in re.sub(r"<[^>]+>", "", lst).split(","):
-                n = n.strip()
+            for n in each(lst):
                 if re.search(r"\b(?:Reps?|Sens?)\b\.?.+\b(?:Reps?|Sens?)\b|\s(?:and|&)$|"
                              r"\b(?:spoke|moved)\b", n):
                     chips.append(f"{body} {date}: {n!r}")
@@ -71061,15 +72814,23 @@ def _speakers_against_journal(root, jroot):
     import bisect
     import html as _html
     import journal_days as J
-    art = re.compile(r'<article class="sitem">(.*?)</article>', re.S)
-    bill_rx = re.compile(r'class="sbill"[^>]*>([^<]+)<')
-    tal = re.compile(r'class="stally">A (roll call|division): <b>(\d+)</b> yeas, <b>(\d+)</b> nays')
+    # A bill's card and its votes' lines since 10 October 2026: "<b>184–157</b>
+    # on a roll call".
+    art = re.compile(r'<article class="card"[^>]*>(.*?)</article>', re.S)
+    bill_rx = re.compile(r'class="cnum"[^>]*>([^<]+)<')
+    tal = re.compile(r"<b>(?P<y>\d+)\u2013(?P<n>\d+)</b> on a (?P<k>roll call|division)")
     spk = re.compile(r'<p class="sspoke(?: sother)?"><span class="slab">([^<]+)</span>(.*?)</p>',
                      re.S)
 
     def names_of(h):
         h = re.sub(r'<span class="snote">.*?</span>', "", h, flags=re.S)
-        return [_html.unescape(n).strip(" ,").replace("Rep. ", "").split()[-1]
+        # a person chip's "(R - Rock 14)" is no name
+        h = re.sub(r'<span class="mtag">.*?</span>', "", h, flags=re.S)
+        # and the surname is the chip's last word but a suffix ("Rep. Robert
+        # Christie Jr." is Christie, as the journal names him), read without
+        # its case: the roster's "MacKenzie" is the journal's "Mackenzie"
+        return [[w for w in _html.unescape(n).strip(" ,").replace("Rep. ", "").split()
+                 if w not in ("Jr.", "Jr", "Sr.", "Sr", "II", "III", "IV")][-1].lower()
                 for n in re.sub(r"<[^>]+>", "\x00", h).split("\x00") if n.strip(" ,")]
 
     def base(b):
@@ -71083,12 +72844,12 @@ def _speakers_against_journal(root, jroot):
             bill = re.sub(r"\s+", "", _html.unescape(m.group(1))).upper() if m else ""
             also = {n for s in spk.finditer(a) if s.group(1).startswith("Also")
                     for n in names_of(s.group(2))}
-            for mo in a.split('<div class="smotion">')[1:]:
+            for mo in a.split('<div class="dvote"')[1:]:
                 t = tal.search(mo)
                 sides = {("for" if " for " in s.group(1) else "against"): names_of(s.group(2))
                          for s in spk.finditer(mo) if not s.group(1).startswith("Also")}
-                out.append({"bill": bill, "rc": bool(t) and t.group(1) == "roll call",
-                            "count": (int(t.group(2)), int(t.group(3))) if t else None,
+                out.append({"bill": bill, "rc": bool(t) and t.group("k") == "roll call",
+                            "count": (int(t.group("y")), int(t.group("n"))) if t else None,
                             "sides": sides, "also": also,
                             "skip": any(w in mo for w in (
                                 "Printed in the journal with this session day", "Done in the recess",
@@ -71245,18 +73006,18 @@ def _speakers_against_journal(root, jroot):
                 if per_bill[b] == 1 else []
             for side, names in mo["sides"].items():
                 for n in names:
-                    if not any(s[2] == side and any(x.split()[-1] == n for x in s[3])
+                    if not any(s[2] == side and any(x.split()[-1].lower() == n for x in s[3])
                                for s in landing + ended):
                         bad.append(f"H {date} {mo['bill']} {c[0]}-{c[1]}: {n} ({side}) is named, "
                                    "and the journal decides no speech of theirs there")
             # Named on it, or under "also spoke" where the journal has the
             # member speaking on both sides of it, which the page never says.
             named = {(side, n) for side, ns in mo["sides"].items() for n in ns}
-            both = ({x.split()[-1] for s in landing if s[2] == "for" for x in s[3]}
-                    & {x.split()[-1] for s in landing if s[2] == "against" for x in s[3]})
+            both = ({x.split()[-1].lower() for s in landing if s[2] == "for" for x in s[3]}
+                    & {x.split()[-1].lower() for s in landing if s[2] == "against" for x in s[3]})
             for s in landing:
                 for x in s[3]:
-                    sur = x.split()[-1]
+                    sur = x.split()[-1].lower()
                     if (s[2], sur) not in named and not (sur in both and sur in mo["also"]):
                         bad.append(f"H {date} {mo['bill']} {c[0]}-{c[1]}: {x} ({s[2]}) spoke on it "
                                    "and is " + ("named only as having spoken during the bill"
@@ -74717,7 +76478,9 @@ def _learn_figures():
                 if "[[" in p.read_text(encoding="utf-8", errors="replace")]
     assert not unfilled, f"a figure left unfilled on {unfilled}"
     n = len(idx)
-    assert f"Across the {n:,} bills on this site" in page.read_text(encoding="utf-8"), (
+    # "in this record" since the Learn pages' wording of 9 October 2026 (E6),
+    # as the index check reads it.
+    assert f"Across the {n:,} bills in this record" in page.read_text(encoding="utf-8"), (
         f"how-a-bill-becomes-law does not state the index's {n:,} bills: built before "
         "build_civics filled the figures, or from another index")
     return "ok", f"every Learn page filled; the bill page states the index's {n:,} bills"
@@ -74744,15 +76507,15 @@ def _numbers_page_public():
     assert '<meta name="robots" content="noindex">' not in text, (
         "the page of numbers is public and should not ask to be delisted")
     assert "[[" not in text and "Traceback" not in text, "the page carries a build fault"
-    hub = site / "learn.html"
+    hub = site / "resources.html"
     if hub.exists():
         assert "by-the-numbers" in hub.read_text(encoding="utf-8", errors="replace"), (
-            "learn.html does not link the page of numbers")
+            "the Resources hub does not link the page of numbers")
     sm = site / "sitemap.xml"
     if sm.exists():
         assert "by-the-numbers" in sm.read_text(encoding="utf-8", errors="replace"), (
             "the sitemap does not list the page of numbers")
-    return "ok", "indexable, on the Learn hub and in the sitemap"
+    return "ok", "indexable, on the Resources hub and in the sitemap"
 
 
 @check("data", "the Learn pages' worked examples agree with the roll calls they cite")
@@ -74858,7 +76621,7 @@ def _learn_examples_record():
             f"vetoed bill of {term} is without one")
     # The closest votes: no row needed more than a majority.
     nums = text(site / "learn" / "by-the-numbers.html")
-    at = nums.find("The closest votes")
+    at = nums.find("The Closest Votes")
     rows = 0
     if at >= 0:
         try:
@@ -74870,8 +76633,10 @@ def _learn_examples_record():
         cur = rcs.get(term) or {}
         block = nums[at:]
         block = block[:block.find("<h2", 10)] if "<h2" in block[10:] else block
-        for m in re.finditer(r'bill/\d{4}/([a-z0-9]+)"[^<]*</a></td><td>([^<]*)</td>'
-                             r"<td>[^<]*</td><td>(\d+)&ndash;(\d+)</td><td>([^<]*)</td>", block):
+        # A cell may carry a class (a column of numbers is set right, l-num).
+        for m in re.finditer(r'bill/\d{4}/([a-z0-9]+)"[^<]*</a></td><td[^>]*>([^<]*)</td>'
+                             r"<td[^>]*>[^<]*</td><td[^>]*>(\d+)&ndash;(\d+)</td><td[^>]*>([^<]*)</td>",
+                             block):
             bid, y, n, day = m.group(1).upper(), int(m.group(3)), int(m.group(4)), m.group(5)
             same = [r for r in cur.get(bid) or []
                     if r.get("yeas") == y and r.get("nays") == n and (r.get("date") or "") == day]
@@ -76972,9 +78737,11 @@ def _town_tabs(B, BP):
     pages = {t: B.build(t, "0", {"0": {}}, dist, [rep, sen], off,
                         "https://x.test", tmpl)
              for t in ("Lyme", "Bean's Grant", "Nowhere")}
-    want = {"Lyme": ["representatives", "officials", "vote"],
-            "Bean's Grant": ["representatives", "vote"],
-            "Nowhere": ["representatives"]}
+    # The District Map is every place's second tab (Polish 3): every town and
+    # ward is on the map.
+    want = {"Lyme": ["representatives", "map", "officials", "vote"],
+            "Bean's Grant": ["representatives", "map", "vote"],
+            "Nowhere": ["representatives", "map"]}
     bad = []
     for town, page in pages.items():
         bars = re.findall(r'<div class="twntabs" role="tablist" aria-label="[^"]+" '
@@ -77392,6 +79159,363 @@ def _granit_carries_our_districts():
                   f"layers; {len(hc['granit_base'])} base and "
                   f"{len(hc['granit_floterial'])} floterial House districts "
                   f"agreeing with districts/house.txt")
+
+
+# ========================================================== the district map ==
+#
+# MAP V1 (9 October 2026): src/pages/map.js and map.css, a module a page
+# mounts, drawing one file, /district_map.json, which build_district_map.py
+# writes every night from generated/district_geometry.json (a person builds
+# that from the GIS zips on the laptop and commits it), the district files,
+# the roster and the officials file. The design is the person's, settled in
+# private/design/polish/map_v2/ and the decisions of 8 and 9 October; these
+# hold the parts of it a change could quietly undo: the label toggle and its
+# default, labels that never overlap, every district filled from the record's
+# party, and a geometry no older than its inputs.
+
+def _map_data(roster=()):
+    """/district_map.json as build_district_map.build() makes it, from the
+    tracked files alone: the committed geometry, records/districts/ through
+    parse_districts.combine() (which is what the night's site/districts.json
+    is), the officials file, and `roster` for the members. None where one of
+    them is not here."""
+    import build_district_map as BDM
+    import parse_districts as PD
+    geom, off = Path("generated/district_geometry.json"), Path("corrections/officials.json")
+    if not (geom.exists() and off.exists() and Path("records/districts/house.txt").exists()):
+        return None
+    districts = PD.combine("records/districts", say=lambda *a, **k: None)
+    return BDM.build(geom.read_bytes(), districts, list(roster),
+                     json.loads(off.read_text(encoding="utf-8")))
+
+
+# map.js mounted on dom_stub.js's element, its data never arriving: what is
+# held is the markup mount() writes and the api it returns before any data.
+_MAP_TOGGLE_JS = r"""
+require("./stub.js");
+globalThis.fetch = () => new Promise(() => {});
+const G = require("./map.js");
+function mount(opts) {
+  const root = document.createElement("div");
+  const api = G.mount(root, opts);
+  return { html: root.innerHTML, api };
+}
+const out = { labels: G.LABELS, def: G.DEFAULT_LABELS };
+const a = mount({});
+out.plain = { html: a.html, labels: a.api.labels() };
+a.api.setLabels("none"); out.afterNone = a.api.labels();
+a.api.setLabels("numbers"); out.afterNumbers = a.api.labels();
+a.api.setLabels("bogus"); out.afterBogus = a.api.labels();
+const b = mount({ labels: "numbers" });
+out.numbers = { html: b.html, labels: b.api.labels() };
+out.bogus = mount({ labels: "bogus" }).api.labels();
+console.log(JSON.stringify(out));
+"""
+
+
+@check("frontend", "the district map's label toggle offers town names, district numbers and no "
+                   "labels, as one group of radio buttons, with town names chosen first")
+def _map_label_toggle():
+    """The person, 9 October 2026: "Toggle to switch between viewing district
+    numbers, town names, and no labels for the interactive map with the default
+    being town names."
+
+    map.js mounted in node: the three modes in map.js's LABELS, in the order
+    drawn, with the words drawn; DEFAULT_LABELS "names"; the toggle written as
+    native radio buttons sharing one name inside a radiogroup labelled for a
+    screen reader, so arrow keys move within it and it is read as "1 of 3",
+    with only Town names checked on a plain mount and only District numbers
+    when a page asks for them; a mode a page names that is not one of the
+    three falls back to town names; and setLabels() changes the mode to each
+    of the three and refuses anything else.
+    """
+    if not shutil.which("node"):
+        return "skip", "node is not installed"
+    js, stub = Path("src/pages/map.js"), Path("tests/dom_stub.js")
+    if not (js.exists() and stub.exists()):
+        return "skip", "map.js or dom_stub.js is not in this directory"
+    root = Path(tempfile.mkdtemp(prefix="gr-map-"))
+    try:
+        for name, text in (("map.js", js.read_text(encoding="utf-8")),
+                           ("stub.js", stub.read_text(encoding="utf-8")),
+                           ("toggle.js", _MAP_TOGGLE_JS)):
+            (root / name).write_text(text, encoding="utf-8")
+        r = _run(["node", "toggle.js"], cwd=root, capture_output=True, text=True, timeout=60)
+        said = (r.stdout or "").strip().splitlines()
+        assert r.returncode == 0 and said, (
+            "map.js did not mount under node: " + ((r.stderr or r.stdout or "").strip()[-300:]))
+        out = json.loads(said[-1])
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+
+    want = [["names", "Town names"], ["numbers", "District numbers"], ["none", "No labels"]]
+    assert out["labels"] == want, f"map.js's LABELS are {out['labels']}, not {want}"
+    assert out["def"] == "names", f"the default is {out['def']!r}, not town names"
+
+    def toggle(html):
+        m = re.search(r'<div class="gmseg" role="radiogroup" aria-label="Labels on the map">'
+                      r'(.*?)</div>', html, re.S)
+        assert m, "mount() writes no radiogroup labelled \"Labels on the map\""
+        radios = re.findall(r'<input type="radio" name="([^"]+)" value="([^"]+)"( checked)?>'
+                            r'<span>([^<]+)</span>', m.group(1))
+        assert len({n for n, _, _, _ in radios}) == 1, \
+            "the label toggle's radio buttons do not share one name, so they are not one group"
+        return [[v, w] for _, v, _, w in radios], [v for _, v, c, _ in radios if c]
+
+    drawn, checked = toggle(out["plain"]["html"])
+    assert drawn == want, f"the toggle draws {drawn}, not {want}"
+    assert checked == ["names"], f"a plain mount checks {checked}, not town names alone"
+    assert out["plain"]["labels"] == "names", f"a plain mount's mode is {out['plain']['labels']!r}"
+    _, checked = toggle(out["numbers"]["html"])
+    assert checked == ["numbers"] and out["numbers"]["labels"] == "numbers", (
+        f"a mount asking for numbers checks {checked} and is in {out['numbers']['labels']!r}")
+    assert out["bogus"] == "names", f"a mode that is not one of the three gives {out['bogus']!r}"
+    assert (out["afterNone"], out["afterNumbers"], out["afterBogus"]) == ("none", "numbers", "numbers"), (
+        "setLabels() went none, numbers, bogus -> "
+        f"{out['afterNone']}, {out['afterNumbers']}, {out['afterBogus']}")
+    return "ok", "Town names, District numbers, No labels: one radio group, town names chosen"
+
+
+@check("frontend", "the district map's labels never overlap, in any of its three modes (the "
+                   "label rule run in node on the real geometry)")
+def _map_labels_never_overlap():
+    """tests/test_map_labels.js loads map.js in node and lays out the labels of
+    every layer in every mode -- Town names, District numbers, No labels --
+    over the whole state and twelve places at four zooms each, in the map's
+    box at 1366, 768 and 375 pixels wide, and in Town names with a town and
+    its district chosen too: some three thousand layouts, on the map's data
+    built here from the tracked files.
+
+    Held: no two labels overlap (the chosen district's tag among them); no
+    town name lies outside the view or under the zoom buttons; a mode draws
+    only its own kind of label and No labels draws none. And what the design
+    says each mode shows: the five Executive Council and two US House numbers
+    at full view at every width; no State House number at full view, where
+    they cannot all fit (the person, 8 October: only when "all numbers can be
+    displayed without overlapping"); town names at full view; and Manchester's
+    wards numbered, and named, within eight presses of +, so neither rule
+    leaves the state's largest city unlabelled at every zoom.
+    """
+    if not shutil.which("node"):
+        return "skip", "node is not installed"
+    js, harness = Path("src/pages/map.js"), Path("tests/test_map_labels.js")
+    if not (js.exists() and harness.exists()):
+        return "skip", "map.js or tests/test_map_labels.js is not in this directory"
+    data = _map_data()
+    if data is None:
+        return "skip", "the geometry, the district files or the officials file is not here"
+    root = Path(tempfile.mkdtemp(prefix="gr-maplabels-"))
+    try:
+        (root / "district_map.json").write_text(json.dumps(data), encoding="utf-8")
+        r = _run(["node", str(harness.resolve()), str(js.resolve()), str(root / "district_map.json")],
+                 cwd=root, capture_output=True, text=True, timeout=240)
+        said = (r.stdout or "").strip().splitlines()
+        assert r.returncode == 0 and said, (
+            "the label rule did not run: " + ((r.stderr or r.stdout or "").strip()[-300:]))
+        out = json.loads(said[-1])
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+
+    assert out["layouts"] >= 2000, f"only {out['layouts']} layouts were run"
+    assert not out["overlaps"], "labels overlap:\n    " + "\n    ".join(out["overlaps"][:8])
+    assert not out["outside"], "labels drawn off the view:\n    " + "\n    ".join(out["outside"][:8])
+    assert not out["wrongKind"], "labels of the wrong kind:\n    " + "\n    ".join(out["wrongKind"][:8])
+    full, bad = out["full"], []
+    for w in ("660", "734", "341"):
+        for layer, mode, ok, what in (
+                ("exec", "numbers", lambda n: n == 5, "all five"),
+                ("cong", "numbers", lambda n: n == 2, "both"),
+                ("base", "numbers", lambda n: n == 0, "none"),
+                ("base", "names", lambda n: n >= 8, "at least eight"),
+                ("base", "none", lambda n: n == 0, "none")):
+            n = full.get(f"{w} {layer} {mode}")
+            if n is None or not ok(n):
+                bad.append(f"{layer} in {mode} at full view in a {w}px box shows {n}, not {what}")
+    for k, presses in out["manchester"].items():
+        if presses is None:
+            bad.append(f"Manchester's wards are never labelled ({k}) within eight presses")
+    assert not bad, "\n  ".join(bad)
+    return "ok", (f"{out['layouts']:,} layouts, none overlapping; Manchester's wards numbered "
+                  f"after {out['manchester'].get('660 numbers')} presses and named after "
+                  f"{out['manchester'].get('660 names')} at 1366")
+
+
+@check("build", "every district on the map is filled from the record's party, and a vacant "
+                "one is not filled", needs=("build_district_map",))
+def _map_fills_from_the_record(BDM):
+    """A district is filled with the party of who sits for it (the D5 inks):
+    its sitting members' parties, Republican, then Democratic, then
+    Independent, drawn as equal stripes where there are two or more; a
+    district every seat of which is vacant is filled with nothing, and the map
+    hatches it. A base district by its OWN members (method (a), 8 October
+    2026) and a floterial by its own, framed. The Executive Council and the US
+    House from corrections/officials.json.
+
+    Built from the tracked files with a roster of real seats: Manchester ward 1
+    (Hillsborough 21) with a Republican and a Democrat, Rochester ward 3
+    (Strafford 7) with an Independent, the floterial Hillsborough 40 with two
+    Democrats, who must fill the floterial and not the wards under it, Senate
+    16 with a Republican, and Coos 6 with nobody. Then every district of every
+    filled layer against the members the build put there, every member in
+    exactly one district, and counties and towns filled with nothing.
+    """
+    def rep(name, county, d, party, chamber="H"):
+        return {"name": name, "chamber": chamber, "county": county, "district": str(d),
+                "party": party, "slug": name.lower().replace(" ", "-"),
+                "display_full": f"Rep. {name} ({party[0]} - x)", "sort": name}
+    roster = [rep("Ann Ray", "Hillsborough", 21, "Republican"),
+              rep("Bo Dee", "Hillsborough", 21, "Democrat"),
+              rep("Cy Indy", "Strafford", 7, "Independent"),
+              rep("Di Flo", "Hillsborough", 40, "Democrat"),
+              rep("Ed Flo", "Hillsborough", 40, "Democrat"),
+              rep("Fay Sen", "Hillsborough", 16, "Republican", chamber="S")]
+    data = _map_data(roster)
+    if data is None:
+        return "skip", "the geometry, the district files or the officials file is not here"
+    f = data["fill"]
+    want = {("base", "HI21"): "RD", ("base", "ST7"): "I", ("float", "HI40"): "D",
+            ("senate", "16"): "R", ("base", "CO6"): "", ("senate", "1"): "",
+            ("base", "HI22"): ""}
+    got = {k: f[k[0]].get(k[1]) for k in want}
+    assert got == want, f"the fills are {got}, not {want}"
+    assert "county" not in f and "towns" not in f, "counties or towns are filled by party"
+    placed = [p["n"] for k, ps in data["who"].items() if not k.startswith(("exec|", "cong|"))
+              for p in ps]
+    assert sorted(placed) == sorted(m["display_full"] for m in roster), (
+        f"the roster's members are not each in one district: {placed}")
+    off = json.loads(Path("corrections/officials.json").read_text(encoding="utf-8"))
+    for lk, office in (("exec", "council"), ("cong", "us_house")):
+        for num, o in off[office]["districts"].items():
+            assert f[lk][str(int(num))] == o["party"][:1].upper(), (
+                f"{lk} {num} is filled {f[lk][str(int(num))]!r}; officials.json says {o['party']}")
+    wrong = []
+    for lk in ("base", "float", "senate", "exec", "cong"):
+        assert set(f[lk]) == set(data["layers"][lk]["f"]), f"{lk}: a district has no fill entry"
+        for fid, v in f[lk].items():
+            ps = {p["p"] for p in data["who"].get(f"{lk}|{fid}", [])}
+            if v != "".join(x for x in "RDI" if x in ps) + "".join(sorted(ps - set("RDI"))):
+                wrong.append(f"{lk} {fid}: {v!r} for {sorted(ps)}")
+    assert not wrong, "filled otherwise than its members' parties: " + "; ".join(wrong[:6])
+    return "ok", (f"{sum(len(v) for v in f.values())} districts filled from their members; "
+                  "stripes, an Independent, a floterial apart and a vacancy as the record has them")
+
+
+@check("files", "the district map's geometry is as fresh as its inputs",
+       needs=("build_district_geometry",))
+def _map_geometry_fresh(BDG):
+    """generated/district_geometry.json is built by a person from NH GRANIT's
+    zips (src/towns/build_district_geometry.py), which only the laptop holds,
+    and committed; the night publishes it. So nothing rebuilds it when an
+    input moves, and this is what notices.
+
+    Held always: the file names the builder's own stamp, so a builder changed
+    since it was run fails until it is run again; its State House base and
+    floterial codes, Senate, Executive Council and US House numbers, ten
+    counties and every town are exactly records/districts/'s, so a
+    redistricting that changes the district files without the map fails here
+    instead of drawing old lines quietly; and every feature has rings that
+    name arcs the file holds and a label point inside the map. Held where the
+    zips are on this disk: each one's sha256 is the one the file was built
+    from.
+    """
+    p = Path("generated/district_geometry.json")
+    if not p.exists():
+        return "skip", "generated/district_geometry.json is not here"
+    g = json.loads(p.read_text(encoding="utf-8"))
+    src = _paths.locate("build_district_geometry.py").read_text(encoding="utf-8")
+    stamp = re.search(r"GRANITE_VERSION:\s*(\S+)", src).group(1)
+    assert g.get("_builder") == stamp, (
+        f"the geometry was written by build_district_geometry.py {g.get('_builder')}, and the "
+        f"builder is now {stamp}: run python3 src/towns/build_district_geometry.py where the "
+        "GIS zips are, and commit what it writes")
+    rec = BDG.record_names()
+    bad = [f"{lk}: only in the geometry {sorted(set(g['layers'][lk]['f']) - rec[lk])[:6]}, "
+           f"only in records/districts {sorted(rec[lk] - set(g['layers'][lk]['f']))[:6]}"
+           for lk in BDG.LAYERS if set(g["layers"][lk]["f"]) != rec[lk]]
+    assert not bad, "the geometry and the district files disagree:\n  " + "\n  ".join(bad)
+    counts = {lk: len(g["layers"][lk]["f"]) for lk in BDG.LAYERS}
+    assert counts == {"base": 164, "float": 39, "senate": 24, "exec": 5, "cong": 2,
+                      "county": 10, "towns": 259}, f"the layers hold {counts}"
+    n, broken = len(g["arcs"]), []
+    for lk in BDG.LAYERS:
+        for fid, f in g["layers"][lk]["f"].items():
+            refs = [r if r >= 0 else ~r for ring in f["r"] for r in ring]
+            x, y = f["l"]
+            if not f["r"] or any(r >= n for r in refs) or not (0 <= x <= g["w"] and 0 <= y <= g["h"]):
+                broken.append(f"{lk} {fid}")
+        if any(a >= n for a in g["layers"][lk]["m"]):
+            broken.append(f"{lk}'s borders")
+    assert not broken, "features with no rings, arcs not in the file or a label off the map: " \
+        + ", ".join(broken[:8])
+    gis = Path("records/sources/gis")
+    here = {z: d for z, d in g["_inputs"].items() if (gis / z).exists()}
+    import hashlib
+    moved = [z for z, d in here.items() if hashlib.sha256((gis / z).read_bytes()).hexdigest() != d]
+    assert not moved, (f"{', '.join(moved)} changed since the geometry was built: run "
+                       "python3 src/towns/build_district_geometry.py and commit what it writes")
+    return "ok", (f"built by {stamp}; {sum(counts.values())} features agreeing with "
+                  f"records/districts; " + (f"all {len(here)} zips' digests agree" if len(here) == len(g["_inputs"])
+                                            else "the GIS zips are not on this disk, so their digests "
+                                                 "were not compared"))
+
+
+@check("data", "the district map's published file is the committed geometry, with every "
+               "district filled from the roster's party")
+def _map_published():
+    """The night's site/district_map.json, read against what it was made from,
+    each side read here rather than through build_district_map.py: its
+    geometry the committed file's, byte for byte by digest and in its arcs and
+    layers; every district's fill the letters of the parties of the members
+    site/legislators.json seats there (a floterial's members by
+    site/districts.json's floterial codes) or of the councillor or
+    representative corrections/officials.json names; and map.js and map.css
+    the copies of src/pages/'s.
+    """
+    pub, geo = Path("site/district_map.json"), Path("generated/district_geometry.json")
+    legs, dist = Path("site/legislators.json"), Path("site/districts.json")
+    if not all(p.exists() for p in (pub, geo, legs, dist)):
+        return "skip", "site/district_map.json and what it is made from are not all here"
+    import hashlib
+    d = json.loads(pub.read_text(encoding="utf-8"))
+    gb = geo.read_bytes()
+    g = json.loads(gb)
+    assert d["_geometry"] == hashlib.sha256(gb).hexdigest() and d["arcs"] == g["arcs"] \
+        and d["layers"] == g["layers"], (
+        "site/district_map.json was not built from generated/district_geometry.json as it stands")
+    code = {"Belknap": "BE", "Carroll": "CA", "Cheshire": "CH", "Coos": "CO", "Grafton": "GR",
+            "Hillsborough": "HI", "Merrimack": "ME", "Rockingham": "RO", "Strafford": "ST",
+            "Sullivan": "SU"}
+    flo = {f"{code[h['county']]}{h['district']}" for t in json.loads(dist.read_text(encoding="utf-8")).values()
+           for w in t.values() for h in w["house"] if h["floterial"]}
+    seen = {}
+    roster = json.loads(legs.read_text(encoding="utf-8"))
+    for m in roster if isinstance(roster, list) else roster.values():
+        if m.get("chamber") == "H":
+            c = f"{code[m['county']]}{int(m['district'])}"
+            k = ("float", c) if c in flo else ("base", c)
+        else:
+            k = ("senate", str(int(m["district"])))
+        seen.setdefault(k, set()).add(str(m.get("party") or "X")[:1].upper())
+    off = json.loads(Path("corrections/officials.json").read_text(encoding="utf-8"))
+    for lk, office in (("exec", "council"), ("cong", "us_house")):
+        for num, o in off[office]["districts"].items():
+            if o.get("name"):
+                seen[(lk, str(int(num)))] = {str(o.get("party") or "X")[:1].upper()}
+    wrong = []
+    for lk in ("base", "float", "senate", "exec", "cong"):
+        for fid in g["layers"][lk]["f"]:
+            ps = seen.get((lk, fid), set())
+            want = "".join(x for x in "RDI" if x in ps) + "".join(sorted(ps - set("RDI")))
+            if d["fill"][lk].get(fid) != want:
+                wrong.append(f"{lk} {fid}: {d['fill'][lk].get(fid)!r}, the record {want!r}")
+    assert not wrong, f"{len(wrong)} districts filled otherwise than the record: " + "; ".join(wrong[:6])
+    for name in ("map.js", "map.css"):
+        site, src = Path("site") / name, Path("src/pages") / name
+        assert site.exists() and site.read_bytes() == src.read_bytes(), \
+            f"site/{name} is not src/pages/{name}"
+    vac = sum(1 for v in d["fill"]["base"].values() if not v)
+    return "ok", (f"{sum(len(v) for v in d['fill'].values())} districts filled as the roster "
+                  f"and officials.json have them; {vac} base districts with every seat vacant")
 
 
 @check("files", "our district files still say what the Secretary of State's do")
@@ -78575,7 +80699,7 @@ def _never_introduced(N, B, BD):
     def kinds(bill):
         return [(e["date"], e["type"], e["cancelled"]) for e in narr[bill]["events"]]
     assert told("HB1587") == [(
-        "Before introduction in the House", "H:filed",
+        "Before Introduction in the House", "H:filed",
         "It was to be introduced on January 6, 2010 and referred to the House Finance "
         "committee. It was withdrawn prior to introduction on December 22, 2009.")], (
         told("HB1587"))
@@ -78592,19 +80716,19 @@ def _never_introduced(N, B, BD):
     # notices, not told (decision 59e: a meeting that did not sit), and leave
     # the events as a cancelled row does.
     assert told("HB1284") == [(
-        "Before introduction in the House", "H:filed",
+        "Before Introduction in the House", "H:filed",
         "It was to be introduced on January 4, 2012 and referred to the House Education "
         "committee. It was withdrawn on January 4, 2012.")], told("HB1284")
     assert kinds("HB1284") == [
         ("2011-11-21", "to_be_introduced", False), ("2011-12-15", "hearing", True),
         ("2011-12-15", "exec", True), ("2012-01-04", "withdrawn", False)], kinds("HB1284")
-    assert told("PET29") == [("On the House floor", "H:floor",
+    assert told("PET29") == [("On the House Floor", "H:floor",
                               "It was read in on January 4, 2012 and withdrawn.")], (
         told("PET29"))
     assert "not_introduced" not in narr["PET29"] and narr["PET29"]["withdrawn"] == (
         "2012-01-04"), narr["PET29"]
     assert told("HB3") == [(
-        "Before introduction in the House", "H:filed",
+        "Before Introduction in the House", "H:filed",
         "It was proposed as a bill for the special session on September 25, 2006.")], (
         told("HB3"))
     assert narr["HB3"].get("not_introduced") is True
@@ -78626,7 +80750,7 @@ def _never_introduced(N, B, BD):
     assert alone["HB1512"].get("not_introduced") is True and (
         alone["HB1512"]["events"][0]["type"] == "to_be_introduced"), alone["HB1512"]
     assert told("HB87") == [(
-        "Before introduction in the House", "H:filed",
+        "Before Introduction in the House", "H:filed",
         "The docket enters it as introduced on January 7, 2009 and referred to the House "
         "Municipal and County Government committee; the House Journal of January 7, 2009 "
         "leaves it out of the bills it introduces.")], told("HB87")
@@ -78635,13 +80759,13 @@ def _never_introduced(N, B, BD):
     # HB 633's row states no day, and the day it was typed is not the day of
     # anything: "on" a day only where the row gives one.
     assert told("HB633") == [(
-        "Before introduction in the House", "H:filed",
+        "Before Introduction in the House", "H:filed",
         "The docket enters it as introduced and referred to the House Health, Human "
         "Services and Elderly Affairs committee, on a row entered January 31, 2007; the "
         "House Journal of January 4, 2007 leaves it out of the bills it introduces.")], (
         told("HB633"))
     assert told("HB1512") == [(
-        "In House committee — Municipal and County Government", "H:committee",
+        "House Committee (Municipal and County Government)", "H:committee",
         "It was introduced on January 4, 2012 and referred to the House Municipal and "
         "County Government committee. It was withdrawn on January 4, 2012.")], told("HB1512")
     assert kinds("HB1512") == [
@@ -78660,23 +80784,23 @@ def _never_introduced(N, B, BD):
         "The committee held a public hearing on January 10, 2017."), alone["HB273"]["stages"]
     left_out = "the House Journal of January 4, 2017 leaves it out of the bills it introduces."
     assert told("HB274") == [(
-        "Before introduction in the House", "H:filed",
+        "Before Introduction in the House", "H:filed",
         "The docket enters it as introduced on January 4, 2017 and referred to the House "
         "Labor, Industrial and Rehabilitative Services committee; " + left_out)], told("HB274")
     # A row the docket never entered as done is told in its own tense.
     assert told("HB177") == [(
-        "Before introduction in the House", "H:filed",
+        "Before Introduction in the House", "H:filed",
         "The docket enters it as to be introduced on January 4, 2017 and referred to the "
         "House Election Law committee; " + left_out)], told("HB177")
     assert told("HB277") == [(
-        "Before introduction in the House", "H:filed",
+        "Before Introduction in the House", "H:filed",
         "The docket enters it as to be introduced on January 4, 2017 and referred to the "
         "House Criminal Justice and Public Safety committee; " + left_out)], told("HB277")
     # HB 273's second row is the docket's notice of a hearing: told as that,
     # with nothing said of whether it was held, before any committee had the
     # bill, and out of the events as a cancelled row is.
     assert told("HB273") == [(
-        "Before introduction in the House", "H:filed",
+        "Before Introduction in the House", "H:filed",
         "The docket enters it as introduced on January 4, 2017 and referred to the House "
         "Executive Departments and Administration committee; " + left_out
         + " The docket schedules a public hearing for January 10, 2017, for a bill the "
@@ -80826,6 +82950,603 @@ def _journal_intros_on_record():
                   "the record")
 
 
+# ------------------------------------------- the cards' data (9 October 2026) --
+#
+# What the next visual stages draw a bill's card from on a committee's
+# meeting, a session day and a member's term, decided once, upstream, in
+# Python (the component plan's C4; the person's feedback of 9 October 2026,
+# items 1, 7, 12 and 18 and v7, v8, v12, v13, v15, v16 and v18).
+
+# Real rows, copied from Docket.txt on 9 October 2026: HB 1681 (lines 13162,
+# 16668, 17316, 18930, 19540-19541, 19565, 19770, 20150, 21797, 22429, 22580,
+# 22619, 23615), HB 1652 (13009, 16693, 17461-17462, 18573, 25340, 25396),
+# HB 65 (35, 470, 2121, 11346, 11932-11933, 13095, 25331, 25388), HB 572 (918,
+# 1163, 4014, 4466, 5137, 5530-5531, 6009, 6569, 7285, 11425, 11544,
+# 11839-11840, 13904), HB 1525 (12883, 14107, 15739, 16298, 17229) and
+# HB 1705 (13186, 15195, 15828, 16694-16695, 17609-17612).
+_CARD_DOCKETS = {
+    ('HB1681', "2025-2026"): [
+        "2026|3110|12/12/2025 9:34:08 AM|HB1681|H|  Introduced 01/07/2026 and referred to Housing  HJ 1  P. 31|3/25/2026 3:13:36 PM",
+        "2026|3110|2/11/2026 11:35:54 AM|HB1681|H|Public Hearing: 02/17/2026 01:00 pm GP 231|2/11/2026 11:35:54 AM",
+        "2026|3110|2/17/2026 3:32:21 PM|HB1681|H|Executive Session: 03/03/2026 10:00 am GP 231|2/17/2026 3:32:21 PM",
+        "2026|3110|3/4/2026 5:21:40 PM|HB1681|H| Committee Report: Ought to Pass with Amendment # 2026-0998h   03/03/2026 (Vote 17-0; CC)  HC 10  P. 25|3/16/2026 9:53:57 AM",
+        "2026|3110|3/11/2026 8:13:48 PM|HB1681|H|Amendment # 2026-0998h: AA VV 03/11/2026  HJ 7  P. 226|6/23/2026 1:19:20 PM",
+        "2026|3110|3/11/2026 8:15:00 PM|HB1681|H|Ought to Pass with Amendment 2026-0998h: MA DV 231-99 03/11/2026  HJ 7  P. 228|6/23/2026 1:19:34 PM",
+        "2026|3110|3/10/2026 10:08:37 AM|HB1681|H|Removed from Consent (Reps. Turcotte, Sheehan, Hill, Verville, T. Walsh, Corcoran, Gilman, Stavis, Mandelbaum, Maggiore) 03/09/2026  HJ 7  P. 1|6/23/2026 3:07:53 PM",
+        "2026|3110|3/11/2026 8:13:40 PM|HB1681|H|Special Order to the next order of business (Rep. Alexander Jr.): MA DV 299-28 03/11/2026  HJ 7  P. 226|6/23/2026 1:18:49 PM",
+        "2026|3110|3/17/2026 11:53:26 AM|HB1681|S|  Introduced 03/12/2026 and Referred to Commerce;  SJ 7|3/17/2026 11:53:30 AM",
+        "2026|3110|4/16/2026 9:13:48 AM|HB1681|S| Hearing: 04/21/2026, Room 100, SH, 10:30 am;  SC 15|4/16/2026 9:13:48 AM",
+        "2026|3110|4/30/2026 9:18:33 AM|HB1681|S|Committee Report: Ought to Pass with Amendment # 2026-1709s, 05/07/2026; Vote 4-1; CC;  SC 17|4/30/2026 9:18:33 AM",
+        "2026|3110|5/5/2026 9:54:46 AM|HB1681|S|Committee Amendment # 2026-1709s, AA, VV; 05/07/2026;  SJ 11|5/7/2026 9:33:04 AM",
+        "2026|3110|5/5/2026 10:23:02 AM|HB1681|S|Ought to Pass with Amendment # 2026-1709s, MA, VV; OT3rdg; 05/07/2026;  SJ 11|5/7/2026 9:33:09 AM",
+        "2026|3110|5/21/2026 12:01:21 PM|HB1681|H|House Concurs with Senate Amendment 2026-1709s (Rep. Alexander Jr.): MA RC 242-102 05/21/2026  HJ 14  P. 14|7/24/2026 3:57:46 PM",
+    ],
+    ('HB1652', "2025-2026"): [
+        "2026|3100|12/10/2025 1:33:38 PM|HB1652|H|  Introduced 01/07/2026 and referred to Housing  HJ 1  P. 30|3/25/2026 3:07:05 PM",
+        "2026|3100|2/11/2026 11:36:24 AM|HB1652|H|Public Hearing: 02/17/2026 02:00 pm GP 231|2/11/2026 11:36:24 AM",
+        "2026|3100|2/18/2026 3:28:33 PM|HB1652|H|  Executive Session: 02/17/2026 02:00 pm GP 231|2/18/2026 3:28:33 PM",
+        "2026|3100|2/18/2026 3:28:52 PM|HB1652|H| Committee Report: Refer for Interim Study  02/17/2026 (Vote 12-0; CC)  HC 9  P. 17|3/3/2026 11:44:46 AM",
+        "2026|3100|3/5/2026 10:21:35 AM|HB1652|H|Refer for Interim Study: MA VV 03/05/2026  HJ 6  P. 20|6/9/2026 1:57:42 PM",
+        "2026|3100|9/22/2026 1:40:01 PM|HB1652|H|Executive Session: 10/01/2026 10:00 am GP 231|9/22/2026 1:40:01 PM",
+        "2026|3100|10/5/2026 12:43:18 PM|HB1652|H| Interim Study Report: Recommended for Future Legislation  10/01/2026 (Vote 8-1; )|10/5/2026 12:43:18 PM",
+    ],
+    ('HB65', "2025-2026"): [
+        "2026|0045|12/23/2024 3:26:13 PM|HB65|H|  Introduced 01/08/2025 and referred to Housing  HJ 2  P. 4|1/21/2025 1:23:35 PM",
+        "2026|0045|1/9/2025 10:45:23 AM|HB65|H|  Public Hearing: 01/21/2025 11:30 am LOB 210-211|1/17/2025 2:44:45 PM",
+        "2026|0045|1/31/2025 10:50:41 AM|HB65|H|Retained in Committee|1/31/2025 10:50:41 AM",
+        "2026|0045|8/28/2025 11:01:36 AM|HB65|H|  Full Committee Work Session: 09/23/2025 10:00 am GP 231|8/28/2025 11:01:36 AM",
+        "2026|0045|11/12/2025 8:33:46 AM|HB65|H|  Executive Session: 09/23/2025 10:00 am GP 231|11/12/2025 8:33:46 AM",
+        "2026|0045|11/12/2025 8:34:17 AM|HB65|H| Committee Report: Refer for Interim Study  09/23/2025 (Vote 16-0; CC)  HC 51  P. 12|12/19/2025 12:14:25 PM",
+        "2026|0045|1/7/2026 11:23:14 AM|HB65|H|Refer for Interim Study: MA VV 01/07/2026  HJ 1  P. 73|3/27/2026 3:04:43 PM",
+        "2026|0045|9/22/2026 1:38:37 PM|HB65|H|Executive Session: 10/01/2026 10:00 am GP 231|9/22/2026 1:38:37 PM",
+        "2026|0045|10/5/2026 12:22:52 PM|HB65|H| Interim Study Report: Not Recommended for Future Legislation  09/30/2026 (Vote 5-4; )|10/5/2026 12:22:52 PM",
+    ],
+    ('HB572', "2025-2026"): [
+        "2026|0095|1/16/2025 9:11:19 AM|HB572|H|  Introduced (in recess of) 01/09/2025 and referred to Housing  HJ 3  P. 17|2/18/2025 2:59:38 PM",
+        "2026|0095|1/22/2025 1:41:28 PM|HB572|H|Public Hearing: 01/28/2025 10:00 am LOB 305|1/22/2025 1:41:28 PM",
+        "2026|0095|2/26/2025 9:43:34 AM|HB572|H|Executive Session: 03/04/2025 10:00 am LOB 305|2/26/2025 9:43:34 AM",
+        "2026|0095|3/5/2025 12:10:23 PM|HB572|H| Committee Report: Ought to Pass with Amendment # 2025-0560h (NT)  03/04/2025 (Vote 16-0; RC)|3/5/2025 12:10:23 PM",
+        "2026|0095|3/13/2025 3:51:27 PM|HB572|H|Referred to Finance 03/13/2025  HJ 8  P. 79|4/21/2025 3:36:55 PM",
+        "2026|0095|3/13/2025 3:50:45 PM|HB572|H|Amendment # 2025-0560h (NT): AA VV 03/13/2025  HJ 8  P. 78|4/21/2025 3:36:24 PM",
+        "2026|0095|3/13/2025 3:51:24 PM|HB572|H|Ought to Pass with Amendment 2025-0560h: MA VV 03/13/2025  HJ 8  P. 79|4/21/2025 3:36:50 PM",
+        "2026|0095|3/19/2025 12:41:51 PM|HB572|H|  Division I Work Session: 03/24/2025 09:00 am LOB 212|3/20/2025 12:55:16 PM",
+        "2026|0095|3/26/2025 12:41:27 PM|HB572|H|Executive Session: 04/01/2025 10:00 am LOB 210-211|3/26/2025 12:41:27 PM",
+        "2026|0095|4/2/2025 11:20:47 AM|HB572|H|Retained in Committee|4/2/2025 11:20:47 AM",
+        "2026|0095|9/18/2025 3:39:04 PM|HB572|H|  Division I Work Session: 10/02/2025 01:00 pm GP 230|9/18/2025 3:39:04 PM",
+        "2026|0095|10/14/2025 11:40:15 AM|HB572|H|Executive Session: 10/30/2025 10:00 am GP 230|10/14/2025 11:40:15 AM",
+        "2026|0095|11/6/2025 2:47:28 PM|HB572|H|Majority Committee Report: Inexpedient to Legislate  10/30/2025 (Vote 14-11; RC)  HC 51  P. 35|12/19/2025 2:15:36 PM",
+        "2026|0095|11/6/2025 2:47:54 PM|HB572|H|Minority Committee Report: Ought to Pass with Amendment # 2025-2956h (NT)|11/6/2025 2:47:54 PM",
+        "2026|0095|1/8/2026 9:56:39 AM|HB572|H|Inexpedient to Legislate: MA RC 191-156 01/08/2026  HJ 2  P. 6|3/30/2026 2:30:51 PM",
+    ],
+    ('HB1525', "2025-2026"): [
+        "2026|2678|12/10/2025 11:50:05 AM|HB1525|H|  Introduced 01/07/2026 and referred to Housing  HJ 1  P. 24|3/25/2026 1:13:49 PM",
+        "2026|2678|1/14/2026 11:28:09 AM|HB1525|H|Public Hearing: 01/22/2026 01:00 pm GP 231|1/14/2026 11:28:09 AM",
+        "2026|2678|2/3/2026 2:33:31 PM|HB1525|H|  Executive Session: 01/22/2026 01:00 pm GP 231|2/3/2026 2:35:42 PM",
+        "2026|2678|2/6/2026 12:37:00 PM|HB1525|H| Committee Report: Inexpedient to Legislate  02/22/2026 (Vote 15-0; CC)  HC 7  P. 15|2/18/2026 10:20:21 AM",
+        "2026|2678|2/19/2026 10:43:49 AM|HB1525|H|Inexpedient to Legislate: MA VV 02/19/2026  HJ 5  P. 24|5/12/2026 9:00:48 AM",
+    ],
+    ('HB1705', "2025-2026"): [
+        "2026|2393|12/12/2025 9:43:06 AM|HB1705|H|  Introduced 01/07/2026 and referred to Labor, Industrial and Rehabilitative Services  HJ 1  P. 32|3/25/2026 3:21:39 PM",
+        "2026|2393|1/28/2026 4:19:31 PM|HB1705|H|Public Hearing: 02/03/2026 01:30 pm GP 159|1/28/2026 4:19:31 PM",
+        "2026|2393|2/5/2026 8:22:59 AM|HB1705|H|Executive Session: 02/10/2026 10:00 am GP 159|2/5/2026 8:22:59 AM",
+        "2026|2393|2/11/2026 11:07:18 AM|HB1705|H|Majority Committee Report: Refer for Interim Study  02/10/2026 (Vote 11-9; RC)  HC 7  P. 36|2/18/2026 11:04:37 AM",
+        "2026|2393|2/11/2026 11:08:02 AM|HB1705|H|Minority Committee Report: Ought to Pass with Amendment # 2026-0531h|2/11/2026 11:08:02 AM",
+        "2026|2393|2/19/2026 2:09:56 PM|HB1705|H|Refer for Interim Study: MF DV 167-174 02/19/2026  HJ 5  P. 93|5/12/2026 10:13:46 AM",
+        "2026|2393|2/19/2026 2:10:23 PM|HB1705|H|Amendment # 2026-0531h: AA VV 02/19/2026  HJ 5  P. 93|5/12/2026 10:13:54 AM",
+        "2026|2393|2/19/2026 2:11:12 PM|HB1705|H|Ought to Pass with Amendment 2026-0531h: MA RC 194-154 02/19/2026  HJ 5  P. 93|5/12/2026 10:14:05 AM",
+        "2026|2393|2/19/2026 2:11:30 PM|HB1705|H|Referred to Finance 02/19/2026  HJ 5  P. 95|5/12/2026 10:14:22 AM",
+    ],
+}
+
+
+def _card_events(N):
+    """{bill: events} for _CARD_DOCKETS, as narrative.build tells them."""
+    keep = N.MEMBERS
+    try:
+        N.MEMBERS = {}
+        return {b: _narrated(N, t, b, rows)["events"]
+                for (b, t), rows in _CARD_DOCKETS.items()}
+    finally:
+        N.MEMBERS = keep
+
+
+@check("build", "a committee's meeting says what happened to each bill there, by the day the "
+                "docket dates the committee's vote, and its Bills tab dates each report by "
+                "the meeting it was voted at", needs=("committee_acts", "narrative"))
+def _committee_meeting_outcomes(CA, N):
+    """The person, 9 October 2026, item 12: a committee's Meetings tab should
+    make clear "what changed on each bill at that meeting, if anything did";
+    and v8: an interim study report not recommending future legislation is
+    listed as killed, with what the committee voted. committee_acts reads it
+    off each bill's docket, by the day the docket dates the vote -- "03/03/2026
+    (Vote 17-0; CC)" -- not the day the row was entered, which made the
+    prototype's first draft say "no vote" on the day of a vote. Real rows
+    (_CARD_DOCKETS), at House Housing (H64), House Finance (H34) and Senate
+    Commerce (S37):
+
+      HB 1681, 17 Feb 2026: heard, 7 signed in for and 6 against (the
+        sign-in record's own count for that hearing), and voted on 3 March,
+        a meeting of the committee: Ought to Pass with Amendment 2026-0998h,
+        17-0. Its Senate hearing of 21 April is heard, and the Senate's
+        report is dated 7 May, the sitting that took it up, and is placed at
+        no meeting.
+      HB 1652-FN, 17 Feb 2026, a hearing and an executive session: voted,
+        Interim Study, 12-0; and on 1 October its interim study report,
+        recommended for future legislation, 8-1.
+      HB 65, 1 Oct 2026: the study report dated 30 September, not
+        recommended, 5-4: killed, at the meeting of the 1st.
+      HB 572: Housing's report of 4 March 2025, 16-0; the retention of
+        2 April is Finance's, after its executive session of the 1st, and
+        so is the ITL of 30 October, 14-11, with the minority's Ought to
+        Pass with Amendment 2025-2956h -- none of it on Housing's page.
+      HB 1525, 22 Jan 2026: an executive session with no report dated that
+        day; the docket dates it 22 February, no meeting of the committee,
+        and it is not moved to the nearest one."""
+    ev = _card_events(N)
+    codes = {("H", "housing"): "H64", ("H", "finance"): "H34", ("S", "commerce"): "S37"}
+
+    def code_of(name, body):
+        return codes.get((body, (name or "").strip().lower()))
+
+    meetings = {
+        "HB1681": [("2026-02-17", "H64", ["public hearing"]),
+                   ("2026-03-03", "H64", ["executive session"]),
+                   ("2026-04-21", "S37", ["hearing"])],
+        "HB1652": [("2026-02-17", "H64", ["public hearing", "executive session"]),
+                   ("2026-10-01", "H64", ["executive session"])],
+        "HB65": [("2025-01-21", "H64", ["public hearing"]),
+                 ("2025-09-23", "H64", ["executive session", "full committee work session"]),
+                 ("2026-10-01", "H64", ["executive session"])],
+        "HB572": [("2025-01-28", "H64", ["public hearing"]),
+                  ("2025-03-04", "H64", ["executive session"]),
+                  ("2025-04-01", "H34", ["executive session"]),
+                  ("2025-10-30", "H34", ["executive session"])],
+        "HB1525": [("2026-01-22", "H64", ["public hearing", "executive session"])],
+    }
+
+    def at(bill, code, date, signins=None):
+        acts = CA.acts(ev[bill])
+        own = CA.owners(acts, meetings[bill], code_of)
+        mine = {d: k for d, c, k in meetings[bill] if c == code}
+        return CA.outcome(code, date, mine[date], acts, own, mine, signins)
+
+    def rep(bill, code):
+        acts = CA.acts(ev[bill])
+        own = CA.owners(acts, meetings[bill], code_of)
+        return CA.reported(code, acts, own, {d: k for d, c, k in meetings[bill] if c == code})
+
+    bad = []
+
+    def want(got, **kw):
+        miss = {k: (got.get(k), v) for k, v in kw.items() if got.get(k) != v}
+        if miss:
+            bad.append(f"{miss} in {got}")
+
+    signed = {"date": "2026-02-17", "total": 13, "support": 7, "oppose": 6, "neutral": 0,
+              "dated": True}
+    want(at("HB1681", "H64", "2026-02-17", signed), outcome="heard",
+         signins={"for": 7, "against": 6, "neutral": 0, "total": 13},
+         voted={"act": "report", "date": "2026-03-03", "meeting": "2026-03-03"})
+    got = at("HB1681", "H64", "2026-03-03")
+    want(got, outcome="voted")
+    want((got.get("votes") or [{}])[0], act="report", code="OTPA", amendment="2026-0998h",
+         yeas=17, nays=0, dated="vote", meeting="2026-03-03")
+    want(at("HB1681", "S37", "2026-04-21"), outcome="heard",
+         voted={"act": "report", "date": "2026-05-07"})
+    want(rep("HB1681", "S37")[0], dated="sitting", code="OTPA", yeas=4, nays=1)
+    if "meeting" in rep("HB1681", "S37")[0]:
+        bad.append("the Senate's report of HB 1681 is placed at a meeting")
+    got = at("HB1652", "H64", "2026-02-17")
+    want(got, outcome="voted")
+    want((got.get("votes") or [{}])[0], code="IS", recommendation="Interim Study",
+         yeas=12, nays=0)
+    got = at("HB1652", "H64", "2026-10-01")
+    want((got.get("votes") or [{}])[0], act="study report", said="rec", killed=False,
+         yeas=8, nays=1)
+    got = at("HB65", "H64", "2026-10-01")
+    want(got, outcome="voted")
+    want((got.get("votes") or [{}])[0], act="study report", said="not", killed=True,
+         yeas=5, nays=4, date="2026-09-30", meeting="2026-10-01")
+    want(at("HB65", "H64", "2025-01-21"), outcome="heard",
+         voted={"act": "retained", "date": "2025-01-31"})
+    housing = [(a["act"], a.get("code")) for a in rep("HB572", "H64")]
+    finance = rep("HB572", "H34")
+    if housing != [("report", "OTPA")]:
+        bad.append(f"House Housing's acts on HB 572: {housing}")
+    if [a["act"] for a in finance] != ["retained", "report"]:
+        bad.append(f"House Finance's acts on HB 572: {finance}")
+    else:
+        want(finance[1], code="ITL", yeas=14, nays=11, minority_code="OTPA",
+             minority_amendment="2025-2956h", meeting="2025-10-30")
+    want(at("HB1525", "H64", "2026-01-22"), outcome="heard",
+         voted={"act": "report", "date": "2026-02-22"})
+    if CA.study_said("Interim Study Report: Without Recomendation (Vote 10-10)") != "without":
+        bad.append("a study report without a recommendation is not read as one")
+    assert not bad, "; ".join(bad[:6])
+    return "ok", ("HB 1681 heard on 17 Feb 2026 (7 for, 6 against) and voted on 3 March, 17-0; "
+                  "HB 1652-FN Interim Study, 12-0; HB 65's study report not recommended, 5-4, "
+                  "killed; HB 572's Finance acts on Finance's page alone")
+
+
+@check("data", "a committee's meetings on the built site say what happened to each bill, "
+               "and a vote is placed only at a meeting the docket dates it to")
+def _meeting_outcomes_on_the_site():
+    """The built committee records (committee_acts by way of
+    build_committees). House Housing's real meetings: on 17 February 2026
+    HB 1681 was heard, 7 signing in for it and 6 against (testimony_db.json's
+    count for that hearing), and voted on 3 March, 17-0, Ought to Pass with
+    Amendment 2026-0998h; HB 1652-FN was recommended for interim study,
+    12-0. And over every committee: each meeting's outcomes name the bills
+    its items do, once each; a vote is given only at the meeting the docket
+    dates it to, and never a Senate report's (dated by its sitting); a Bills
+    tab act placed at a meeting is at one of the committee's meetings on
+    that bill."""
+    folder = Path("site/committee")
+    if not (folder / "H64.json").exists():
+        return "skip", "site/committee is not built"
+    bad, n_meet, n_out, n_voted = [], 0, 0, 0
+    for f in sorted(folder.glob("*.json")):
+        c = json.loads(f.read_text(encoding="utf-8"))
+        met = {(s.get("date"), it.get("bill")) for s in c.get("sessions") or []
+               for it in s.get("items") or []}
+        for s in c.get("sessions") or []:
+            n_meet += 1
+            outs = s.get("outcomes")
+            if outs is None:
+                bad.append(f"{f.stem} {s.get('date')}: no outcomes")
+                continue
+            items = list(dict.fromkeys(it.get("bill") for it in s.get("items") or []))
+            if [o.get("bill") for o in outs] != items:
+                bad.append(f"{f.stem} {s.get('date')}: outcomes for {[o.get('bill') for o in outs]}"
+                           f", items {items}")
+            for o in outs:
+                n_out += 1
+                if o.get("outcome") not in ("voted", "heard", "no vote", "worked", "scheduled"):
+                    bad.append(f"{f.stem} {s.get('date')} {o.get('bill')}: {o.get('outcome')!r}")
+                for v in o.get("votes") or []:
+                    n_voted += 1
+                    if v.get("meeting") != s.get("date") or v.get("dated") == "sitting":
+                        bad.append(f"{f.stem} {s.get('date')} {o.get('bill')}: a vote of "
+                                   f"{v.get('date')} ({v.get('dated')}) placed here")
+        for rows in (c.get("bills") or {}).values():
+            for r in rows:
+                for a in r.get("reported") or []:
+                    if a.get("meeting") and (a["meeting"], r.get("id")) not in met:
+                        bad.append(f"{f.stem}: {r.get('id')}'s {a.get('act')} placed at "
+                                   f"{a['meeting']}, no meeting of the committee on it")
+    h64 = {s["date"]: {o["bill"]: o for o in s.get("outcomes") or []}
+           for s in json.loads((folder / "H64.json").read_text(encoding="utf-8"))["sessions"]}
+    o = (h64.get("2026-02-17") or {}).get("HB1681") or {}
+    if (o.get("outcome"), o.get("signins"), (o.get("voted") or {}).get("meeting")) != (
+            "heard", {"for": 7, "against": 6, "neutral": 0, "total": 13}, "2026-03-03"):
+        bad.append(f"HB 1681 at House Housing on 17 Feb 2026: {o}")
+    o = (h64.get("2026-02-17") or {}).get("HB1652") or {}
+    v = (o.get("votes") or [{}])[0]
+    if (o.get("outcome"), v.get("code"), v.get("yeas"), v.get("nays")) != ("voted", "IS", 12, 0):
+        bad.append(f"HB 1652-FN at House Housing on 17 Feb 2026: {o}")
+    o = (h64.get("2026-03-03") or {}).get("HB1681") or {}
+    v = (o.get("votes") or [{}])[0]
+    if (v.get("code"), v.get("amendment"), v.get("yeas"), v.get("nays")) != (
+            "OTPA", "2026-0998h", 17, 0):
+        bad.append(f"HB 1681 at House Housing on 3 Mar 2026: {o}")
+    assert not bad, f"{len(bad)} wrong: " + "; ".join(bad[:6])
+    return "ok", (f"{n_out:,} bills at {n_meet:,} meetings, {n_voted:,} votes each at the meeting "
+                  "the docket dates it to; HB 1681 heard 17 Feb 2026 (7 for, 6 against)")
+
+
+@check("session", "a session day gives every vote on each bill that day in order, the "
+                  "docket's amendments among them, and the committee recommendation the "
+                  "floor acted on", needs=("build_session_pages", "session_days",
+                                           "committee_acts", "narrative"))
+def _session_day_votes(BSP, SD, CA, N):
+    """The person, 9 October 2026, v15: "each bill's card shows the
+    committee's recommendation, and where a bill had several votes that day,
+    every vote that occurred that day". Real rows (_CARD_DOCKETS): the
+    House on 19 February 2026 put three questions to HB 1705-FN -- Interim
+    Study failed on a division, 167-174; the minority's amendment 2026-0531h
+    adopted by voice; Ought to Pass with Amendment carried 194-154 on a roll
+    call -- and referred it to Finance, on the Labor committee's report
+    (Interim Study, 11-9; a minority Ought to Pass with Amendment 2026-0531h).
+    The sitting model draws no amendment voted by voice or division, so
+    the second was on no page; it is read off the bill's own row and put
+    where the docket enters it. HB 1525's report is entered on 22 February,
+    after the House killed the bill on the 19th, so no recommendation is
+    named for that day; and a concurrence months after the House passed
+    HB 1681 is no vote on its committee's report."""
+    ev = _card_events(N)
+
+    def day(bill, date, body="H"):
+        events = ev[bill]
+        at = {id(e): n for n, e in enumerate(events)}
+        items = []
+        for e, it in SD.floor_items(bill, "2025-2026", events):
+            it.seq = at[id(e)]
+            if (e.get("date") or "")[:10] == date and (e.get("body") or "") == body:
+                items.append(it)
+        amds = [(at[id(e)], e) for e in events if e.get("type") == "amendment"
+                and (e.get("date") or "")[:10] == date and (e.get("body") or "") == body
+                and (e.get("vote_kind") or "").upper() != "RC"]
+        floor = [((e.get("date") or "")[:10], it)
+                 for e, it in SD.floor_items(bill, "2025-2026", events)
+                 if (e.get("body") or "") == body]
+        return (BSP.bill_votes(items, amds, {}),
+                BSP.recommendation_on(CA.acts(events), body, date, floor),
+                BSP.referral_on(events, body, {date}))
+
+    votes, rec, ref = day("HB1705", "2026-02-19")
+    got = [(v["motion"], v["result"], v.get("how"), v.get("yeas"), v.get("nays"),
+            v.get("amendments"), v.get("amendment_kind")) for v in votes]
+    want = [("Refer for Interim Study", "failed", "division", 167, 174, None, None),
+            ("Adopt Amendment", "adopted", "voice vote", None, None, ["2026-0531h"],
+             "Minority Amendment"),
+            ("Ought to Pass with Amendment 2026-0531h", "adopted", "roll call", 194, 154,
+             ["2026-0531h"], None)]
+    assert got == want, f"HB 1705-FN's votes of 19 February 2026: {got}"
+    assert rec and (rec.get("committee"), rec.get("code"), rec.get("yeas"), rec.get("nays"),
+                    rec.get("minority_code"), rec.get("minority_amendment")) == (
+        "Labor, Industrial and Rehabilitative Services", "IS", 11, 9, "OTPA", "2026-0531h"), (
+        f"HB 1705-FN's recommendation on 19 February 2026: {rec}")
+    assert ref == {"referred": "Finance"}, f"HB 1705-FN's referral: {ref}"
+    votes, rec, _ref = day("HB1525", "2026-02-19")
+    assert [(v["motion"], v["result"]) for v in votes] == [
+        ("Inexpedient to Legislate", "adopted")], votes
+    assert rec is None, f"HB 1525 is said to have been killed on a report entered later: {rec}"
+    _v, rec, _r = day("HB1681", "2026-03-11")
+    assert rec and rec.get("code") == "OTPA" and rec.get("yeas") == 17, rec
+    _v, rec, _r = day("HB1681", "2026-05-21")
+    assert rec is None, f"HB 1681's concurrence is said to act on its committee's report: {rec}"
+    assert BSP.amendment_numbers("Ought to Pass with Amendment # 2026-1709s") == ["2026-1709s"]
+    assert BSP.amendment_numbers("Ought to Pass W/Amendment, {1066}, AA") == ["1066"]
+    return "ok", ("HB 1705-FN on 19 Feb 2026: Interim Study failed 167-174, amendment "
+                  "2026-0531h adopted by voice, Ought to Pass with Amendment 194-154, on "
+                  "Labor's Interim Study 11-9, then referred to Finance; HB 1525 names no "
+                  "report entered after the vote")
+
+
+class _MembersStub:
+    """Members, for a check: names to slugs, slugs to a roster row."""
+
+    def __init__(self, rows):
+        self.by_slug = {r["slug"]: r for r in rows}
+        self.by_id = {r["id"]: r for r in rows}
+        self.names = {r["name"]: r["slug"] for r in rows}
+
+    def slug(self, body, name):
+        return self.names.get(name)
+
+
+@check("session", "a session day counts its excused members by party and names who "
+                  "presided, from the ballots and the journal, with the office held that day",
+       needs=("build_session_pages",))
+def _session_day_people(BSP):
+    """The person, 9 October 2026: v16, the members excused for the day
+    counted by party; v18, "a general line naming the members who presided
+    over the chamber during the day (they switch back and forth)". Real
+    rows: on 19 February 2026 Speaker Packard (425) was recorded presiding
+    on roll calls 83-88 and Deputy Speaker Steven Smith (656) on 89-99
+    (RollCallHistory.txt); officers.json gives each his office. A member the
+    journal heads a turn in the chair with is named too, and a name no
+    member's is counted unmatched rather than given a party."""
+    rows = [{"id": "425", "slug": "sherman-packard-rock-16", "name": "Packard", "party": "R",
+             "label": "Rep. Sherman Packard (R - Rock 16)"},
+            {"id": "656", "slug": "steven-smith-sull-3", "name": "Steven Smith", "party": "R",
+             "label": "Rep. Steven Smith (R - Sull 3)"},
+            {"id": "9895", "slug": "jim-kofalt-hills-32", "name": "Kofalt", "party": "R",
+             "label": "Rep. Jim Kofalt (R - Hills 32)"},
+            {"id": "523", "slug": "thomas-buco-carr-1", "name": "Buco", "party": "D",
+             "label": "Rep. Thomas Buco (D - Carr 1)"}]
+    members = _MembersStub(rows)
+
+    class _It:
+        def __init__(self, n):
+            self.rc = {"year": "2026", "body": "H", "number": n}
+
+    class _Day:
+        body, date = "H", "2026-02-19"
+        items = [_It(n) for n in range(83, 100)]
+        others = []
+
+    presided = {f"2026-H-{n}": [["425", "Rep. Sherman Packard (R - Rock 16)"]]
+                for n in range(83, 89)}
+    presided.update({f"2026-H-{n}": [["656", "Rep. Steven Smith (R - Sull 3)"]]
+                     for n in range(89, 100)})
+    offices = [{"b": "H", "id": "425", "office": "Speaker of the House",
+                "from": "2024-12-04", "to": "2026-12-02"},
+               {"b": "H", "id": "656", "office": "Deputy Speaker of the House",
+                "from": "2024-12-04", "to": "2026-12-02"}]
+    narrative = {"debates": [{"speeches": [["Speaker Steven Smith", "The question is..."],
+                                           ["Speaker Kofalt", "The Chair recognizes..."]]}],
+                 "absences": [{"names": ["Buco", "Packard"]}, {"names": ["Nobody", "Buco"]}]}
+    got = BSP.presiding_on(_Day(), narrative, presided, members, offices)
+    seen = [(x["id"], x["roll_calls"], x.get("office"), bool(x.get("journal"))) for x in got]
+    assert seen == [("425", 6, "Speaker of the House", False),
+                    ("656", 11, "Deputy Speaker of the House", True),
+                    ("9895", 0, None, True)], seen
+    ex = BSP.excused_on(narrative, "H", members)
+    assert ex == {"total": 3, "by_party": {"D": 1, "R": 1}, "unmatched": 1}, ex
+    assert BSP.party_letter("Republican") == "R" and BSP.party_letter("D") == "D"
+    return "ok", ("19 Feb 2026: Speaker Packard over 6 roll calls, Deputy Speaker Steven Smith "
+                  "over 11 and in the journal's chair, Rep. Kofalt in the chair; excused "
+                  "counted by party, a name no member's unmatched")
+
+
+@check("data", "each chamber's session days of a term are on the site as data: every day, "
+               "every vote on each bill in order, who presided and who was excused")
+def _session_terms_on_the_site():
+    """site/session/<H|S>/<term>.json (build_session_pages.write_term_records):
+    every day site/session/days.json names is in one term's file, once;
+    every roll call's card is a card of that bill's Votes tab with the same
+    count. And the record's own days: the House on 19 February 2026 --
+    roll calls 83-88 with Speaker Packard presiding and 89-99 with Deputy
+    Speaker Steven Smith (RollCallHistory.txt); the consent calendar's 59
+    killed, 41 passed and 18 sent to interim study, and HB 652-FN, HB 1028,
+    HB 1572-FN and HB 1602-FN taken off it; HB 1705-FN's three votes, the
+    third roll call 95, 194-154 -- and on 19 August 2026, 24 members excused,
+    10 Democrats and 14 Republicans (each journal name read as the member
+    serving that term, whose ballots that day say excused, but for Rep.
+    Aldrich, whom the ballots record voting)."""
+    days_file = Path("site/session/days.json")
+    if not days_file.exists():
+        return "skip", "site/session is not built"
+    listed = json.loads(days_file.read_text(encoding="utf-8"))
+    bad, n_days, n_votes, n_cards = [], 0, 0, 0
+    import site_read
+    records = {}
+
+    def record(year, bill):
+        if (year, bill) not in records:
+            records[(year, bill)] = site_read.one("site", year, bill) or {}
+        return records[(year, bill)]
+
+    for body in ("H", "S"):
+        got = []
+        for f in sorted((Path("site/session") / body).glob("*.json")):
+            rec = json.loads(f.read_text(encoding="utf-8"))
+            got += [d["date"] for d in rec.get("days") or []]
+            for d in rec.get("days") or []:
+                n_days += 1
+                for b in d.get("bills") or []:
+                    for v in b.get("votes") or []:
+                        n_votes += 1
+                        if "card" in v and rec["term"] == "2025-2026":
+                            n_cards += 1
+                            r = record(b.get("year"), b["bill"])
+                            card = (r.get("rollcalls") or [])[v["card"]:v["card"] + 1]
+                            if not card or (card[0].get("yeas"), card[0].get("nays")) != (
+                                    v.get("yeas"), v.get("nays")):
+                                bad.append(f"{body} {d['date']} {b['bill']}: card {v['card']} "
+                                           f"is not roll call {v.get('rollcall')}")
+        if sorted(got) != sorted(listed.get(body) or []):
+            bad.append(f"{body}: the term files hold {len(got)} days, days.json "
+                       f"{len(listed.get(body) or [])}")
+    term = Path("site/session/H/2025-2026.json")
+    by = {d["date"]: d for d in json.loads(term.read_text(encoding="utf-8"))["days"]} \
+        if term.exists() else {}
+    feb = by.get("2026-02-19") or {}
+    pres = [(p.get("id"), p.get("roll_calls"), p.get("office")) for p in feb.get("presiding") or []]
+    if pres[:2] != [("425", 6, "Speaker of the House"), ("656", 11, "Deputy Speaker of the House")]:
+        bad.append(f"who presided on 19 Feb 2026: {pres}")
+    cons = feb.get("consent") or {}
+    if ([(o["outcome"], o["bills"]) for o in cons.get("outcomes") or []]
+            != [("Killed", 59), ("Passed", 41), ("Sent to Interim Study", 18)]
+            or cons.get("removed") != ["HB652", "HB1028", "HB1572", "HB1602"]):
+        bad.append(f"the consent calendar of 19 Feb 2026: {cons}")
+    hb = next((b for b in feb.get("bills") or [] if b["bill"] == "HB1705"), {})
+    got = [(v["motion"], v["result"], v.get("how"), v.get("yeas"), v.get("rollcall"))
+           for v in hb.get("votes") or []]
+    if got != [("Refer for Interim Study", "failed", "division", 167, None),
+               ("Adopt Amendment", "adopted", "voice vote", None, None),
+               ("Ought to Pass with Amendment 2026-0531h", "adopted", "roll call", 194,
+                "2026-H-95")] or hb.get("referred") != "Finance":
+        bad.append(f"HB 1705-FN on 19 Feb 2026: {got}, {hb.get('referred')}")
+    aug = (by.get("2026-08-19") or {}).get("excused")
+    if aug != {"total": 24, "by_party": {"D": 10, "R": 14}, "unmatched": 0}:
+        bad.append(f"excused on 19 Aug 2026: {aug}")
+    assert not bad, f"{len(bad)} wrong: " + "; ".join(bad[:6])
+    return "ok", (f"{n_days:,} days, {n_votes:,} votes on bills, {n_cards:,} roll-call cards of "
+                  "2025-2026 each its bill's; 19 Feb 2026 presided by Speaker Packard (6) and "
+                  "Deputy Speaker Steven Smith (11); 19 Aug 2026, 24 excused, 10 D and 14 R")
+
+
+@check("frontend", "a member's bills passed are the bill search's Passed, word for word",
+       needs=("member_figures",))
+def _member_figures_passed(MF):
+    """The person, 9 October 2026, v7: "'bills filed' counts every bill
+    filed, prime and co-sponsor together; 'bills passed' the same". Passed
+    is the bill search's category (app.js statusCat), so member_figures
+    ports it; here both run over every (chip, kind) the nineteen terms carry
+    (_STATUS_REAL_PAIRS) and every word a chip can say (_STATUS_CATEGORY),
+    and must agree. And the term's figures for a member's real rows: Speaker
+    Packard's 2025-2026, 17 bills put his name to (4 as prime sponsor),
+    of which HB 10, HB 1000, HB 1774 and SB 562 became law (chapters 74, 3,
+    242 and 265 in the database's Legislation table) and HR 42 was adopted
+    by the House (Ought to Pass, 308-11, 5 March 2026)."""
+    pairs = sorted(set(_STATUS_REAL_PAIRS) | {(c, "") for c in _STATUS_CATEGORY}
+                   | {(c, k) for c in _STATUS_CATEGORY for k in ("active", "done", "law")})
+    got = _node_app(_STATUSCAT_HARNESS, {"pairs.json": json.dumps(pairs), "words.json": "[]"})
+    bad = []
+    if got is not None:
+        assert "threw" not in got, f"statusCat threw {got['threw']}"
+        for chip, kind, cat, _w, _k in got["pairs"]:
+            mine = MF.status_category({"chip": chip, "kind": kind})
+            if mine != cat:
+                bad.append(f"{chip!r} ({kind or 'no kind'}): app.js says {cat!r}, "
+                           f"member_figures {mine!r}")
+    rows = {("2025-2026", b): {"chip": c, "kind": k} for b, c, k in (
+        ("HB10", "Became Law", "law"), ("HB1000", "Became Law", "law"),
+        ("HB1323", "Died", "done"), ("HB1324", "Died", "done"), ("HB148", "Died", "veto"),
+        ("HB1643", "Died", "veto"), ("HB1774", "Became Law", "law"), ("HB1804", "Died", "done"),
+        ("HB188", "Died", "done"), ("HB450", "Died", "done"), ("HB452", "Interim Study", "study"),
+        ("HB453", "Died", "done"), ("HR42", "Adopted by the House", "adopted"),
+        ("SB191", "Interim Study", "study"), ("SB263", "Died", "done"),
+        ("SB562", "Became Law", "law"), ("SB631", "Died", "done"))}
+    prime = {"HB10", "HB1000", "HB188", "HB450"}
+    sponsored = [{"term": t, "bill": b, "prime": b in prime} for t, b in rows]
+    att = {"2025-2026": {"chambers": "H", "days": 33, "attended": 28, "roll_calls": 591,
+                         "voted": 51, "presided": 287, "conflict": 0, "excused": 146,
+                         "not_excused": 107, "no_vote": 0}}
+    f = MF.term_figures(sponsored, att, rows)["2025-2026"]
+    want = {"bills_filed": 17, "bills_passed": 5, "became_law": 4, "adopted": 1, "ratified": 0,
+            "prime": 4, "prime_passed": 2, "cosponsored": 13, "cosponsored_passed": 3,
+            "session_days": 33, "days_attended": 28, "roll_calls": 591,
+            "roll_calls_recorded": 338}
+    if f != want:
+        bad.append(f"Speaker Packard's 2025-2026: {f}")
+    old = MF.term_figures([{"term": "1993-1994", "bill": "HB142", "prime": True}], {},
+                          {("1993-1994", "HB142"): {"chip": "Became Law", "kind": "law"}})
+    if old["1993-1994"]["session_days"] is not None:
+        bad.append("a term before the roll calls says a zero where the record says nothing")
+    assert not bad, "; ".join(bad[:6])
+    return "ok", (f"{len(pairs)} chip words and kinds filed alike by app.js and member_figures"
+                  if got is not None else "app.js or node is not here; the figures alone")
+
+
+@check("data", "a member's file gives each term's bills filed and passed and attendance, "
+               "as the member's own sponsorships and attendance say")
+def _member_figures_on_the_site():
+    """legislators/<id>.json's term_figures (member_figures.term_figures),
+    held to the same file's sponsorships and attendance, for every member,
+    and to the record for one: Speaker Packard's 2025-2026 -- 17 bills (4 as
+    prime sponsor; the database's Sponsors table names the same 17), 5
+    passed (HB 10, HB 1000, HB 1774 and SB 562 became law, chapters 74, 3,
+    242 and 265; HR 42 adopted by the House), 33 session days with 28
+    attended and 591 roll calls with 338 recorded (42 yeas, 9 nays and 287
+    presiding in RollCallHistory.txt and RollCallHistory_2025.txt)."""
+    folder = Path("site/legislators")
+    if not (folder / "425.json").exists():
+        return "skip", "site/legislators is not built"
+    bad, n = [], 0
+    for f in sorted(folder.glob("*.json")):
+        m = json.loads(f.read_text(encoding="utf-8"))
+        tf = m.get("term_figures")
+        if tf is None:
+            bad.append(f"{f.stem}: no term_figures")
+            continue
+        n += 1
+        for t, a in (m.get("attendance") or {}).items():
+            x = tf.get(t) or {}
+            if (x.get("session_days"), x.get("days_attended"), x.get("roll_calls")) != (
+                    a.get("days"), a.get("attended"), a.get("roll_calls")):
+                bad.append(f"{f.stem} {t}: {x} beside {a}")
+        for t, x in tf.items():
+            mine = {s["bill"] for s in m.get("sponsored") or [] if s.get("term") == t}
+            if x.get("bills_filed") != len(mine) or \
+                    x.get("prime") + x.get("cosponsored") != x.get("bills_filed"):
+                bad.append(f"{f.stem} {t}: {x.get('bills_filed')} filed, {len(mine)} sponsored")
+    p = json.loads((folder / "425.json").read_text(encoding="utf-8"))
+    want = {"bills_filed": 17, "bills_passed": 5, "became_law": 4, "adopted": 1, "ratified": 0,
+            "prime": 4, "prime_passed": 2, "cosponsored": 13, "cosponsored_passed": 3,
+            "session_days": 33, "days_attended": 28, "roll_calls": 591,
+            "roll_calls_recorded": 338}
+    got = (p.get("term_figures") or {}).get("2025-2026")
+    if got != want:
+        bad.append(f"Speaker Packard's 2025-2026: {got}")
+    assert not bad, f"{len(bad)} wrong: " + "; ".join(bad[:6])
+    return "ok", (f"{n:,} members' term figures agree with their sponsorships and attendance; "
+                  "Speaker Packard 2025-2026: 17 filed, 5 passed, 28 of 33 days, 338 of 591 "
+                  "roll calls")
+
+
 # ======================================================================= main ==
 
 def main():
@@ -81172,8 +83893,26 @@ def _fast_path_matches_the_build(BI, BP):
         assert code == 0, f"the fast path failed: {out[-400:]}"
         for n in ("style.css", "app.css", "components.js", "app.js", "find.js"):
             assert n in out.split("wrote ", 1)[-1], f"the fast path did not write {n}: {out[-400:]}"
-        r = _run([sys.executable, _paths.script("build_pages.py"), "--out", "site"], cwd=step,
-                 capture_output=True, text=True, timeout=300)
+        # THE STEP SEES THE SITE AS THE BUILD'S OWN STEP SAW IT (10 October
+        # 2026). build_pages runs before build_committees, so it found no
+        # site/committees.json on the fixture's chain, and the home page's
+        # Coming Up linked no committee page; run again over the whole site it
+        # found one and linked it, and index.html differed -- on any day a
+        # meeting is on the rail (Monday to Thursday, and since D13 the
+        # weekend), not because of the fast path, which never writes
+        # index.html. Held aside for the run and put back, so the comparison
+        # is of what the fast path writes. The page reading a later step's
+        # file is a fault of its own, reported rather than hidden here.
+        held = step / "site" / "committees.json"
+        kept = held.read_bytes() if held.exists() else None
+        if kept is not None:
+            held.unlink()
+        try:
+            r = _run([sys.executable, _paths.script("build_pages.py"), "--out", "site"], cwd=step,
+                     capture_output=True, text=True, timeout=300)
+        finally:
+            if kept is not None:
+                held.write_bytes(kept)
         assert r.returncode == 0, "build_pages.py: " + (r.stderr or r.stdout)[-300:]
         a = {p.relative_to(fast / "site").as_posix(): p.read_bytes()
              for p in (fast / "site").rglob("*") if p.is_file()}

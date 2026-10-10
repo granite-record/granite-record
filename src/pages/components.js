@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-10-09.5
+// GRANITE_VERSION: 2026-10-09.8
 /* THE SITE'S COMPONENTS, IN THE BROWSER. Published as site/components.js and
    loaded by every page, in its head, before app.js, find.js and any page's
    own script, so each of them draws a person, a committee, a date or a time
@@ -69,9 +69,11 @@ function dateWords(iso,form){
 }
 // Two days as one span: "October 5–11, 2026", "September 28 – October
 // 4, 2026", "December 28, 2026 – January 3, 2027" -- components.date_span.
-function dateSpan(a,b){
-  if(String(a).slice(0,10)===String(b).slice(0,10))return dateWords(a,"full");
-  var fa=dateWords(a,"full"), fb=dateWords(b,"full");
+// The form "medium" says the months short: "Feb 9–13, 2026", the pager's.
+function dateSpan(a,b,form){
+  form=form||"full";
+  if(String(a).slice(0,10)===String(b).slice(0,10))return dateWords(a,form);
+  var fa=dateWords(a,form), fb=dateWords(b,form);
   if(fa===String(a)||fb===String(b))return fa+" – "+fb;
   var x=fa.replace(",","").split(" "), z=fb.replace(",","").split(" ");
   if(x[2]!==z[2])return fa+" – "+fb;
@@ -213,3 +215,291 @@ function icon(name){
   return '<svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false" '+
     ICON_PAINT+'>'+inner+'</svg>';
 }
+
+// ===========================================================================
+// POLISH 2: THE RECORD PAGES' COMPONENTS (ws/records, 10 October 2026): the
+// component plan's steps 4 to 8, approved 9 October 2026. Each is
+// components.py's helper of the same name, held to one answer by
+// _components_agree; read the reasons there.
+// ===========================================================================
+// Own keys only, so a word like "constructor" is never a table's. An object, not a
+// function, so that it is no helper of its own (_components_agree).
+const CMP={own:(o,k)=>Object.prototype.hasOwnProperty.call(o,k)};
+
+// A bill CARD's chip word (D18): components.card_word.
+function cardWord(word,passage){
+  const s=word==null?"":String(word), ch=WORDBOOK.chips;
+  if(CMP.own(ch.short,s))return ch.short[s];
+  const pre=ch.short_prefix.find(x=>s.indexOf(x[0])===0);
+  if(pre)return pre[1];
+  const p=String(passage||""), names={H:"House",S:"Senate"};
+  if(ch.short_passed.indexOf(s)>=0&&CMP.own(names,p.slice(0,1))&&p.slice(1,3).indexOf("p")>=0){
+    const other=p.slice(0,1)==="H"?"S":"H";
+    return "Passed "+names[p.slice(2,3)==="p"?other:p.slice(0,1)];
+  }
+  return titleWords(s);
+}
+
+// A bill named in running words: components.bill_mention.
+function billMention(n,href,year){
+  const y=year?` <span class="byr">(${esc(year)})</span>`:"";
+  return `<a class="bmention" href="${esc(href)}">${esc(n)}${y}</a>`;
+}
+
+// A bill as one row: components.bill_row.
+function billRow(r){
+  const chp=r.word?chip(r.word,"cstat "+String(r.cls||"")):"";
+  const year=r.year?`<span class="byr">(${esc(r.year)})</span>`:"";
+  const line=r.line?`<span class="brline">${r.line}</span>`:"";
+  return `<div class="brow"><a class="brnum" href="${esc(r.href)}">`+
+    `${esc(r.n)}${year}</a><span class="brtitle">${esc(r.title)}</span>${chp}${line}</div>`;
+}
+
+// A card's line of who and where: components.bill_byline.
+function billByline(sponsor,committees,topic,term,codes){
+  const parts=(sponsor?[pchip(sponsor)]:[]).concat(
+    (committees||[]).filter(Boolean).map(c=>cmteLink(c,term,codes)),topic?[esc(topic)]:[]);
+  return parts.join(' <span class="cdot" aria-hidden="true">&middot;</span> ');
+}
+
+// A bill as a card: components.bill_card.
+function billCard(c){
+  const opened=c.open==null?null:c.open;
+  const year=c.year?`<span class="cyear"> (${esc(c.year)})</span>`:"";
+  const chp=c.word?chip(c.word,"cstat "+String(c.cls||""),"m"):"";
+  const title=opened===null?`<div class="ctitle">${esc(c.title)}</div>`
+    :`<button type="button" class="ctitle" aria-expanded="${opened?"true":"false"}">`+
+     `${esc(c.title)}</button>`;
+  const meta=c.byline?`<div class="cmeta">${c.byline}</div>`:"";
+  const line=c.line?`<div class="cline">${c.line}</div>`:"";
+  const body=c.body==null?"":`<div class="cbody"${opened?"":" hidden"}>${c.body}</div>`;
+  const more=c.card?` ${c.card}`:"";
+  const num=c.href?`<a class="cnum" href="${esc(c.href)}">${esc(c.n)}${year}</a>`
+    :`<span class="cnum">${esc(c.n)}${year}</span>`;
+  return `<article class="card${opened?" open":""}${more}" data-id="${esc(c.id)}">`+
+    `<div class="chead"><div class="crow">${num}${chp}</div>${title}${meta}`+
+    `${c.notes||""}${line}${c.rail||""}</div>${body}</article>`;
+}
+
+// THE DATED RAIL: components.rail_html, and its tables, which app.js's rail
+// and How it got here read too (RL_MARK, RL_WAVE ...).
+const RL_STOP={I:"Introduced",H:"House",S:"Senate",G:"Governor",L:"Law",V:"Voters"};
+const RL_WAVE='<svg class="wave" viewBox="0 0 12 12" aria-hidden="true" focusable="false">'
+  +'<path d="M1.7 7.4C2.9 4.8 4.5 4.6 6 6.1s3.1 1.4 4.3-1.2" fill="none" '
+  +'stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>';
+const RL_MARK={p:"✓",x:"✕",s:RL_WAVE};
+const RL_SAY={p:"passed",h:"is here now",x:"stopped here","-":"never reached",
+  s:"sent to interim study",t:"on the table"};
+const RL_SAY_DIED={t:"laid on the table"};
+const RL_SAID={s:"interim study",t:"tabled"};
+const RL_CLASS={"-":"o",s:"istudy",t:"ontable"};
+const RL_MON=DW_MONTHS.map(m=>m.slice(0,3));
+function railHtml(stops,died){
+  const st=(stops||[]).map(s=>{
+    if(Array.isArray(s)){
+      const row=s.concat(["","",""]), sm=String(row[0]||"");
+      return {stop:CMP.own(RL_STOP,sm.slice(0,1))?RL_STOP[sm.slice(0,1)]:sm.slice(0,1),
+        mark:sm.slice(1),date:row[1]||"",short:row[2]||"",say:""};
+    }
+    return {stop:s.stop||"",mark:s.mark||"",date:s.date||"",short:s.short||"",say:s.say||""};
+  });
+  if(!st.length)return "";
+  const words=died?Object.assign({},RL_SAY,RL_SAY_DIED):RL_SAY;
+  const cells=[], said=[];
+  const mon="("+RL_MON.join("|")+")";
+  st.forEach(s=>{
+    const day=s.date?dateWords(s.date):"";
+    const small=day?`<small>${esc(day.slice(0,-5))}<span class="ry">${esc(day.slice(-5))}</span></small>`:"";
+    cells.push(`<span class="stop s-${esc((CMP.own(RL_CLASS,s.mark)&&RL_CLASS[s.mark])||s.mark)}"><b>`+
+      `${CMP.own(RL_MARK,s.mark)?RL_MARK[s.mark]:""}</b><i>${esc(s.stop)}</i>${small}</span>`);
+    const when=s.date?dateWords(s.date,"full"):"";
+    const own=!!s.short&&["Governor","Law","Voters"].indexOf(s.stop)>=0&&["p","x"].indexOf(s.mark)>=0;
+    const short=s.short===(CMP.own(RL_SAID,s.mark)?RL_SAID[s.mark]:null)?"":s.short;
+    let what=s.say||(own?s.short:[CMP.own(words,s.mark)?words[s.mark]:"",short].filter(Boolean).join(", "));
+    what=what.replace(/(\d)–(\d)/g,"$1 to $2")
+      .replace(new RegExp("\\b"+mon+" (\\d{1,2}), (\\d{4})\\b","g"),(_m,mo,d,y)=>dateWords(
+        `${y}-${String(RL_MON.indexOf(mo)+1).padStart(2,"0")}-${String(+d).padStart(2,"0")}`,"full"))
+      .replace(new RegExp("\\b"+mon+" (\\d{4})\\b","g"),(_m,mo,y)=>`${DW_MONTHS[RL_MON.indexOf(mo)]} ${y}`);
+    const lawDay=s.stop==="Law"&&s.mark==="p";
+    const tail=!when?"":!lawDay?`, ${when}`:what.indexOf("in effect")>=0?"":`, in effect ${when}`;
+    said.push(s.stop==="Introduced"?`Introduced${when?` ${when}`:""}`
+      :`${s.stop}: ${what.slice(0,1).toLowerCase()+what.slice(1)}${tail}`);
+  });
+  const s_=esc(said.join("; "));
+  return `<span class="rail dated" role="img" aria-label="${s_}" title="${s_}">${cells.join("")}</span>`;
+}
+
+// A person in a running sentence: components.person_link.
+function personLink(m){
+  const full=String(m.display_full||m.label||m.name||""), slug=m.slug||"";
+  return slug?`<a class="psent" href="legislator/${esc(slug)}.html">${esc(full)}</a>`:esc(full);
+}
+
+// A term marked for its popover: components.term_mark.
+function termMark(key,text){
+  return `<span data-term="${esc(key)}">${esc(text)}</span>`;
+}
+
+// THE VOTE WORDS: components.vote_head and vote_chip.
+function voteHead(key,own,fill){
+  const v=WORDBOOK.votes, m=key==="consent"?v.consent:(CMP.own(v.motions,key)?v.motions[key]:null);
+  const put=s=>Object.keys(fill||{}).reduce((a,k)=>a.split("{"+k+"}").join(String(fill[k])),s);
+  if(m===null||m.motion==null)return esc(own||"");
+  const gloss=esc(put(m.gloss||""));
+  const abbr=m.abbr?termMark(m.abbr,m.abbr)+", ":"";
+  return esc(put(m.motion))+(gloss?` (${abbr}${gloss})`:"");
+}
+function voteChip(key,passed,bill,fill){
+  if(passed==null)return "";
+  const v=WORDBOOK.votes;
+  const m=(key==="consent"?v.consent:(CMP.own(v.motions,key)?v.motions[key]:null))||{};
+  const pre=/^[A-Z]+/.exec(String(bill||"").toUpperCase());
+  const noun=Object.keys(v.nouns).find(n=>pre&&v.nouns[n].indexOf(pre[0])>=0)||"";
+  const all=Object.assign({},fill||{},{Bill:noun});
+  const raw=m[passed?"passed":"failed"]||"";
+  const put=raw.indexOf("{Bill}")>=0&&!noun?"":
+    Object.keys(all).reduce((a,k)=>a.split("{"+k+"}").join(String(all[k])),raw);
+  const tail=put.indexOf("{")>=0?"":put;
+  return chip((passed?v.passed:v.failed)+(tail?`: ${tail}`:""),"rcres "+(passed?"pass":"fail"));
+}
+
+// THE RECORD'S HEAD: components.record_head.
+function recordHead(h){
+  const crumbs=(h.trail||[]).map(([lab,href])=>href
+    ?`<li><a href="${esc(href)}">${esc(lab)}</a></li>`:`<li aria-current="page">${esc(lab)}</li>`).join("");
+  const year=h.year?` <span class="ryear">(${esc(h.year)})</span>`:"";
+  const facts=(h.facts||[]).slice(0,6).filter(f=>f[1]).map(f=>
+    `<div><dt>${esc(f[0])}</dt><dd>${f[1]}`+(f.length>2&&f[2]?`<small>${f[2]}</small>`:"")+"</dd></div>").join("");
+  const kind=h.kind?` rh-${esc(h.kind)}`:"";
+  return `<header class="rhead${kind}">`
+    +(crumbs?`<nav class="rtrail" aria-label="Where this page is"><ol>${crumbs}</ol></nav>`:"")
+    +`<div class="rtop"><h1 class="rh1">${h.title||""}${year}</h1>`
+    +`${h.chip||""}</div>`
+    +(h.line?`<p class="rline">${h.line}</p>`:"")
+    +(facts?`<dl class="rfacts">${facts}</dl>`:"")
+    +(h.rail?`<div class="rrail">${h.rail}</div>`:"")
+    +`<div class="racts">${h.actions||""}</div></header>`;
+}
+
+// A document of the record: components.doc_row.
+function docRow(x){
+  const of=x.of?`<span class="docof">${esc(x.of)}</span>`:"";
+  return `<li class="doc doc-${esc(x.kind)}"><a href="${esc(x.url)}" `+
+    `target="_blank" rel="noopener">${esc(x.label)}</a>${of}${x.what||""}</li>`;
+}
+
+// A W4 section: components.section.
+function section(heading,body,sid){
+  const i=sid?` id="${esc(sid)}"`:"";
+  return `<section class="w4"${i}><h2 class="w4h">${esc(heading)}</h2>`+
+    `<div class="w4b">${body}</div></section>`;
+}
+
+// BEHAVIOUR:START
+// THE TERM POPOVERS (the component plan's C9, approved 9 October 2026: "for
+// the tooltips they would show up on a tap or on a mouse hover after a short
+// time"). The FIRST visible span[data-term="ITL"] of each term on the page
+// becomes a button that opens glossary.json's entry -- its name in full and
+// what it means -- on a tap or a click, on a pointer held over it about half
+// a second, or on keyboard focus; it stays while the pointer moves onto it,
+// and closes on Escape, on a press elsewhere or when focus leaves (WCAG
+// 1.4.13: dismissible, hoverable, persistent). Later ones of the same term
+// stay as the words they are. Drawn again whenever the page draws itself
+// again (a tab, a term, a record arriving), so the first stays the first.
+// BEHAVIOUR, NOT A HELPER: an IIFE, which declares no name of its own, so
+// _components_agree holds the helpers above and _term_popovers this.
+(function(){
+  if(typeof document==="undefined"||!document.addEventListener||typeof WORDBOOK==="undefined")return;
+  var G=WORDBOOK.glossary||{}, HOLD=500, n=0, open=null, wait=0, shut=0, again=0;
+  var has=function(k){return Object.prototype.hasOwnProperty.call(G,k);};
+  function plain(s){
+    var b=s.querySelector(".termbtn");
+    var t=b?b.textContent:s.textContent;
+    s.classList.remove("term");
+    s.textContent=(s.getAttribute("data-pre")||"")+t+(s.getAttribute("data-post")||"");
+  }
+  function arm(){
+    var seen={}, all=document.querySelectorAll("[data-term]");
+    for(var i=0;i<all.length;i++){
+      var s=all[i], k=s.getAttribute("data-term");
+      if(!has(k)||(s.closest&&s.closest("[hidden]"))||(s.parentNode&&s.parentNode.closest&&
+        s.parentNode.closest("a,button,summary,label")))continue;
+      if(seen[k]){if(s.classList.contains("term"))plain(s);continue;}
+      seen[k]=1;
+      if(s.classList.contains("term"))continue;
+      var e=G[k], id="gr-term-"+(++n), word=s.textContent;
+      s.textContent="";s.classList.add("term");
+      var b=document.createElement("button");
+      b.type="button";b.className="termbtn";b.textContent=word;
+      b.setAttribute("aria-expanded","false");b.setAttribute("aria-controls",id);
+      b.setAttribute("aria-describedby",id);
+      var p=document.createElement("span");
+      p.className="termpop";p.id=id;p.setAttribute("role","tooltip");p.hidden=true;
+      p.innerHTML="<b>"+esc(e.name||k)+"</b>"+(e.says?" &mdash; "+esc(e.says):"");
+      // THE BRACKET STAYS WITH ITS WORD: a button is set as a box of its own,
+      // and a phone broke "Ought to Pass (" from "OTP)" at it (the look of 10
+      // October 2026). The mark either side comes into the word's span,
+      // which does not break.
+      var pre=s.previousSibling, post=s.nextSibling, a="", z="";
+      if(pre&&pre.nodeType===3&&/[(\[\u201c"]$/.test(pre.data)){a=pre.data.slice(-1);pre.data=pre.data.slice(0,-1);}
+      if(post&&post.nodeType===3&&/^[)\],.;:\u201d"]/.test(post.data)){z=post.data.charAt(0);post.data=post.data.slice(1);}
+      s.setAttribute("data-pre",a);s.setAttribute("data-post",z);
+      if(a)s.appendChild(document.createTextNode(a));
+      s.appendChild(b);
+      if(z)s.appendChild(document.createTextNode(z));
+      s.appendChild(p);
+    }
+  }
+  function pop(b){return b&&document.getElementById(b.getAttribute("aria-controls"));}
+  function hide(b){
+    var p=pop(b);
+    if(p)p.hidden=true;
+    if(b)b.setAttribute("aria-expanded","false");
+    if(open===b)open=null;
+  }
+  function show(b){
+    if(open&&open!==b)hide(open);
+    var p=pop(b);
+    if(!p)return;
+    p.hidden=false;p.style.left="";
+    b.setAttribute("aria-expanded","true");open=b;
+    // Kept on the screen: moved left by however far it runs past the right.
+    var r=p.getBoundingClientRect(), w=document.documentElement.clientWidth;
+    if(r.right>w-8)p.style.left=Math.round(Math.min(0,w-8-r.right))+"px";
+  }
+  document.addEventListener("click",function(e){
+    var b=e.target.closest&&e.target.closest(".termbtn");
+    if(b){e.preventDefault();e.stopPropagation();
+      if(open===b&&!wait)hide(b);else show(b);
+      clearTimeout(wait);wait=0;return;}
+    if(open&&!(e.target.closest&&e.target.closest(".termpop")))hide(open);
+  },true);
+  document.addEventListener("pointerover",function(e){
+    var t=e.target.closest&&e.target.closest(".term");
+    if(!t||e.pointerType!=="mouse")return;
+    clearTimeout(shut);
+    var b=t.querySelector(".termbtn");
+    if(b&&open!==b&&!wait)wait=setTimeout(function(){wait=0;show(b);},HOLD);
+  });
+  document.addEventListener("pointerout",function(e){
+    var t=e.target.closest&&e.target.closest(".term");
+    if(!t||e.pointerType!=="mouse"||(e.relatedTarget&&t.contains(e.relatedTarget)))return;
+    clearTimeout(wait);wait=0;
+    var b=t.querySelector(".termbtn");
+    if(b&&open===b&&document.activeElement!==b)shut=setTimeout(function(){hide(b);},250);
+  });
+  document.addEventListener("focusin",function(e){
+    var b=e.target.closest&&e.target.closest(".termbtn");
+    if(b)show(b);
+    else if(open&&!(e.target.closest&&e.target.closest(".term")))hide(open);
+  });
+  document.addEventListener("keydown",function(e){
+    if(e.key==="Escape"&&open){var b=open;hide(b);if(document.activeElement!==b)b.focus();}
+  });
+  function soon(){clearTimeout(again);again=setTimeout(arm,40);}
+  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",arm);else arm();
+  if(typeof MutationObserver!=="undefined")
+    new MutationObserver(soon).observe(document.documentElement,{childList:true,subtree:true,
+      attributes:true,attributeFilter:["hidden"]});
+})();
+// BEHAVIOUR:END

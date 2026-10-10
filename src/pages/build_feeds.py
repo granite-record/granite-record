@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.30
+# GRANITE_VERSION: 2026-09-04.31
 """
 Write RSS feeds so people can follow bills without a login.
 
@@ -790,7 +790,7 @@ def main():
                 feed(f"{who} \u2014 Granite Record",
                      f"Every recorded vote and sponsorship for {who}, newest "
                      "first. Nothing is rated, scored or selected.",
-                     base + S.canon("/legislators.html"), self_l, newest(items), base),
+                     base + S.canon("/officials.html"), self_l, newest(items), base),
                 encoding="utf-8")
             nleg += 1
 

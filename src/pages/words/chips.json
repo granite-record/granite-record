@@ -5,8 +5,28 @@
     "'kind' is the class of a word that is not one of the six -- a stage still moving ('In committee' and the rest, slate blue since 8 October 2026, so Tabled and In committee are two colours), a resolution adopted, a constitutional amendment's ballot -- by the kind build_site_v2's bill_disposition gives the bill.",
     "'category' is the bill search's Status filter (the person, 8 October 2026: In Progress, Passed, Tabled, Interim Study, Died, Withdrawn, Vetoed), in the order the filter offers them and the Status sort heads them, each in its chip's class. It asks a question the chip does not, and a card's chip keeps its own word; app.js says which chip and which kind fall in which category.",
     "'capitals' is the record's abbreviations a chip keeps in capitals whatever case the record wrote them in, when components.title_words writes a record's words in a chip's Title Case: the kinds of bill (HB, SB, HCR, CACR and the rest), a fiscal note's FN with the suffixes a bill's number carries after it, the calendars' CC and RC (the consent and the regular calendar), TBD and RSA. A recommendation typed in capitals says nothing of which of its words are abbreviations, and without this list 'INEXPEDIENT TO LEGISLATE HB 143' was drawn 'Inexpedient to Legislate Hb 143', 'FOR MAR 5 CC' 'for Mar 5 Cc' and the version 'Fn - as introduced' 'Fn - As Introduced' (the review of steps 0-3 of the component plan, 9 October 2026, which read every recommendation and version the built bills carry).",
+    "'short' is a bill CARD's word for a stage whose chip says it at length (D18, the person's approval of 10 October 2026: In Committee, Retained, Re-referred, Passed House / Passed Senate, To the Governor, Nonconcurred, In Conference, Adopted, Adopted by House / Adopted by Senate, To the Voters, Ratified, Not Ratified, Not Introduced, Special Session; 'the full wording stays on the bill page'). components.card_word reads it: a word not here is the chip's own in Title Case, 'Passed one chamber' and 'In progress' name the chamber the bill passed (Passed House, Passed Senate) from its passage, and any 'Passed both chambers, goes to the voters ...' is To the Voters whatever November it names (short_prefix). The six above are their own short form.",
     "preflight holds the six to the person's words (_chip_words), and app.js, components.js and the builders to this one copy (_words_written_once, _components_agree)."
   ],
+  "short": {
+    "In committee": "In Committee",
+    "Retained in committee": "Retained",
+    "Re-referred to committee": "Re-referred",
+    "Passed, awaiting the governor": "To the Governor",
+    "One chamber did not concur": "Nonconcurred",
+    "One chamber did not concur; a committee of conference was asked for": "Nonconcurred",
+    "In a committee of conference": "In Conference",
+    "Conference committee report adopted": "In Conference",
+    "Adopted by both chambers": "Adopted",
+    "Adopted by the House": "Adopted by House",
+    "Adopted by the Senate": "Adopted by Senate",
+    "Passed both chambers, ratified by the voters": "Ratified",
+    "Passed both chambers, not ratified by the voters": "Not Ratified",
+    "Not introduced": "Not Introduced",
+    "Proposed for the special session": "Special Session"
+  },
+  "short_prefix": [["Passed both chambers, goes to the voters", "To the Voters"]],
+  "short_passed": ["Passed one chamber", "In progress"],
   "chip": {
     "Became Law": "s-law",
     "Died": "s-done",

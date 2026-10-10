@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-09.27
+# GRANITE_VERSION: 2026-09-09.29
 """
 A page per town and ward: everyone who represents the people who live there.
 
@@ -1080,11 +1080,17 @@ def build(town, ward, wards, dist, legs, off, base, tmpl):
                           or weblink(loc.get("website"))),
         board=board, loc=loc, council=council)
     # A city's are city officials: Concord has a mayor, not a select board.
+    # THE DISTRICT MAP (Polish 3: "The map also goes on the town pages"),
+    # second, after the people who represent the place, as the approved
+    # drawing has it (proto/town-dover-ward-1.html); and the strip's words in
+    # Title Case, as that drawing's are, so the new tab is not the one that
+    # reads differently.
     panels = [("representatives", "Representatives",
                representatives_sections(dist, legs, off)),
-              ("officials", "City officials" if slug(town, "0") in CITIES
-               else "Town officials", officials),
-              ("vote", "How to vote", vote_sections(town, loc, town_off))]
+              ("map", "District Map", map_section(town, ward, dist)),
+              ("officials", "City Officials" if slug(town, "0") in CITIES
+               else "Town Officials", officials),
+              ("vote", "How to Vote", vote_sections(town, loc, town_off))]
 
     srcs = ["NH General Court", "Secretary of State"]
     if (board or council) and officials:
@@ -1108,10 +1114,63 @@ def build(town, ward, wards, dist, legs, off, base, tmpl):
                og_image="og-town.png", og_alt="Granite Record: who represents your town",
                description=desc, globals={"GR_STATIC": True},
                noscript="", skip_label="Skip to the page", sr_title="",
-               nav_current="legislators.html")
+               nav_current="officials.html")
     return p.replace('<div id="results"></div>',
                      '<div id="results"><div class="officials">'
-                     + "".join(body) + "</div>" + TABS_JS + "</div>", 1)
+                     + "".join(body) + "</div>" + TABS_JS
+                     + (MAP_JS if 'id="twnmap"' in "".join(body) else "") + "</div>", 1)
+
+
+# The map's code for a county (build_district_map.CODE): a State House
+# district is "ST14", Strafford 14.
+MAP_COUNTY = {"Belknap": "BE", "Carroll": "CA", "Cheshire": "CH", "Coos": "CO",
+              "Grafton": "GR", "Hillsborough": "HI", "Merrimack": "ME",
+              "Rockingham": "RO", "Strafford": "ST", "Sullivan": "SU"}
+
+
+def map_section(town, ward, dist):
+    """The District Map tab: map v1 (map.js), framed on the town, the rest of
+    the state veiled, the town's own ward named first and its State House
+    district chosen, with the switch between State House, State Senate,
+    Executive Council and US House and the label toggle (town names by
+    default). Drawn by the script the first time the tab is shown (MAP_JS);
+    without it, the tabs are a page and the districts are in its first
+    line."""
+    base = next((h for h in dist.get("house") or [] if not h.get("floterial")), None)
+    pick = (MAP_COUNTY.get(base.get("county"), "") + str(base.get("district") or "")) \
+        if base and MAP_COUNTY.get(base.get("county")) else ""
+    inner = ('<p class="note">Each district coloured by the party of the members it '
+             'elected. Choose a kind of district, then a district on the map.</p>'
+             f'<div class="twnmap" id="twnmap" data-town="{E(town)}"'
+             + (f' data-ward="{E(ward)}"' if ward and ward != "0" else "")
+             + (f' data-pick="{E(pick)}"' if pick else "")
+             + '></div><noscript><p class="note">The map needs JavaScript; the '
+             "districts are in the line above the tabs.</p></noscript>")
+    return [card("The Map", inner, wide=True)]
+
+
+# The map's own stylesheet and script, and its mount: the first time the
+# District Map tab is shown, at the size it will have, since a map drawn into
+# a hidden panel measures nothing. The page carries <base href="/">, so the
+# addresses are the site root's either way.
+MAP_JS = """<link rel="stylesheet" href="/map.css">
+<script src="/map.js" defer></script>
+<script>
+(function(){
+  var el=document.getElementById("twnmap"),api=null;
+  if(!el)return;
+  function mount(){
+    if(api||!window.GRMap||el.offsetParent===null)return;
+    api=GRMap.mount(el,{layer:"base",layers:["base","senate","exec","cong"],
+      frame:el.dataset.town,town:el.dataset.town,ward:el.dataset.ward||null,
+      pick:el.dataset.pick||null,list:false,dim:true});
+  }
+  addEventListener("DOMContentLoaded",mount);
+  var pane=el.closest(".twnpane");
+  if(pane&&window.MutationObserver)
+    new MutationObserver(mount).observe(pane,{attributes:true,attributeFilter:["hidden"]});
+})();
+</script>"""
 
 
 def tabbed(label, panels):

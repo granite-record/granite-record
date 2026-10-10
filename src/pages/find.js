@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-16.19
+// GRANITE_VERSION: 2026-09-16.20
 /* FIND ANYTHING, FROM THE HEADER (16 September, asked for in these words:
    "a search icon in the header that lets you search for anything including
    legislators, committees, towns, and bills ... searching Litchfield would
@@ -44,6 +44,11 @@
    The control is built here rather than in the two files that write the
    header, so there is one of it. */
 const FIND={rows:null,loading:null,words:null};
+/* THE BOXES THE FINDER DRAWS INTO. The header's panel by default; the home
+   page's own box passes its own (D13, 8 October 2026: "one search box like
+   the header search ... with a dropdown of the top results"), so one matcher
+   and one set of rows serve both. */
+const FIND_IDS={out:"findout",box:"findq",clear:"findclear",say:"findsay"};
 const FKIND={legislator:"Legislator",committee:"Committee",town:"Town",
   page:"Page",former:"Former Member",topic:"Subject"};
 const _fesc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>(
@@ -611,15 +616,16 @@ function findBillsAll(B,q,what){
     <span class="fwhat">${line}</span></a>`;
 }
 
-function findDraw(q){
-  const out=document.getElementById("findout");
+function findDraw(q,ids){
+  ids=ids||FIND_IDS;
+  const out=document.getElementById(ids.out);
   if(!out)return;
   const s=(q||"").trim();
-  const clr=document.getElementById("findclear");
+  const clr=ids.clear?document.getElementById(ids.clear):null;
   if(clr)clr.hidden=!s;
   if(!s){out.innerHTML=`<p class="fnote">Type a legislator, a committee, a
     town, a subject, a bill number or words from a bill&rsquo;s title.</p>`;
-    findSay("");return;}
+    findSay("",ids);return;}
   const num=findBill(s);
   const rows=findMatch(s);
   // THE ONE LINE THAT LEAVES THE PANEL, and it leads to two different places.
@@ -653,8 +659,8 @@ function findDraw(q){
   if(B&&B.state==="loading"&&!FBILLS.redraw){
     FBILLS.redraw=true;
     findBillsLoad().then(()=>{
-      const box=document.getElementById("findq");
-      if(box)findDraw(box.value);});
+      const box=document.getElementById(ids.box);
+      if(box)findDraw(box.value,ids);});
   }
   const counted=B&&B.state==="ready";
   const bills=B&&(!counted||B.n)?findBillsAll(B,s)
@@ -683,8 +689,8 @@ function findDraw(q){
     if(offer.wait&&!FWORDS.redraw){
       FWORDS.redraw=true;
       offer.wait.then(()=>{
-        const box=document.getElementById("findq");
-        if(box)findDraw(box.value);});
+        const box=document.getElementById(ids.box);
+        if(box)findDraw(box.value,ids);});
     }
     // data-find, not data-q: app.js reads data-q anywhere on the page as
     // "run this search in the bill list" (see the panel's click, below).
@@ -694,7 +700,7 @@ function findDraw(q){
       ?`${none?" ":""}Did you mean ${did.join(" or ")}?`:""}</p>`;
   }
   out.innerHTML=num?all+list+every+tail:list+all+tail;
-  findSay(out.innerHTML);
+  findSay(out.innerHTML,ids);
 }
 
 // WHAT THE LIST NOW HOLDS, SAID. The answers are drawn as the reader types
@@ -706,8 +712,8 @@ function findDraw(q){
 // result, and is not counted; while the bills are still being counted and
 // nothing else matches, nothing is said. Read off the markup just written,
 // which is the list as the reader has it.
-function findSay(html){
-  const say=document.getElementById("findsay");
+function findSay(html,ids){
+  const say=document.getElementById((ids||FIND_IDS).say);
   if(!say)return;
   html=String(html||"");
   const n=(html.match(/<a\s/g)||[]).length-(/See all search results for/.test(html)?1:0);

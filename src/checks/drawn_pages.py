@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-09.1
+# GRANITE_VERSION: 2026-10-09.2
 """
 What the browser draws on a built site's pages, written down, so that two
 builds can be compared by what a reader is shown and not only by the HTML.
@@ -54,7 +54,7 @@ import subprocess
 import tempfile
 
 # The pages that are not a record but draw part of themselves in the browser.
-LISTS = ("bills.html", "index.html", "calendar.html", "search.html", "legislators.html")
+LISTS = ("bills.html", "index.html", "calendar.html", "search.html", "officials.html")
 
 # The node side. One context a page, so nothing one page's scripts declare is
 # another's; the stub is loaded into it and then told what the page holds.

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.174
+# GRANITE_VERSION: 2026-09-04.185
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -13,10 +13,11 @@ the bill search, which is the part that works.
 Writes a shared style.css these pages link to. index.html keeps its own inline
 styles and is untouched.
 
-The browser's files -- bills.html, app.css, components.js, app.js and find.js --
-are read from src/pages/ under the folder the build runs in, where they sit
-beside this file, and copied into the site as they are, components.js with
-the words of src/pages/words/ written between its markers (with_words).
+The browser's files -- bills.html, app.css, components.js, app.js and find.js,
+and print.js and print.css, a bill's print sheet -- are read from src/pages/
+under the folder the build runs in, where they sit beside this file, and
+copied into the site as they are, components.js with the words of
+src/pages/words/ written between its markers (with_words).
 """
 
 # The bootstrap: _paths.py, found above this file, puts every code folder on the import path.
@@ -31,7 +32,7 @@ import bill_order as BO
 import build_date
 import html as _html
 import shell as _shell
-from components import WORDBOOK, chip, clock, icon, pchip
+from components import WORDBOOK, chip, clock, date_span, icon, pchip
 import seating
 import json
 import re
@@ -248,6 +249,10 @@ HEADERS = """# Written by build_pages.py. Not an asset; Pages reads it.
   Cache-Control: public, max-age=0, must-revalidate
 /components.js
   Cache-Control: public, max-age=0, must-revalidate
+/print.js
+  Cache-Control: public, max-age=0, must-revalidate
+/print.css
+  Cache-Control: public, max-age=0, must-revalidate
 /billmatch.js
   Cache-Control: public, max-age=0, must-revalidate
 # The two files a page reads to say what is true today: the home page's own
@@ -304,10 +309,24 @@ BILL_TAB_SLUGS = ("text", "votes", "hearings", "videos", "reports",
                   "sponsors", "documents")
 MEMBER_TAB_SLUGS = ("cosponsored", "votes")
 COMMITTEE_TAB_SLUGS = ("sessions",)
+# THE LEARN HUB MOVED. /learn was the hub of the Learn pages and is now the
+# first tab of the Resources hub, /resources (the person, 8 October 2026,
+# decision 128: "/learn redirects to /resources ... the articles keep their
+# /learn/<page> addresses"). Both spellings, because a request for
+# /learn.html meets no file to be 308'd from; build_civics writes the hub and
+# no longer a learn.html that could stand in the redirect's place.
+# AND THE LEGISLATORS PAGE BECAME OFFICIALS (decision 127, 8 October 2026:
+# "The Legislators tab and page are renamed Officials now"), so /legislators
+# and /legislators.html answer the same way. Only those two addresses: the
+# members' data under /legislators/<id>.json and their pages under
+# /legislator/ are where they were, and no rule here reaches them.
+MOVED = (("/learn", "/resources"), ("/learn.html", "/resources"),
+         ("/legislators", "/officials"), ("/legislators.html", "/officials"))
 REDIRECTS = ("# Written by build_pages.py. Not an asset; Pages reads it.\n"
              + "".join(f"/bill/:year/:bill/{s} /bill/:year/:bill 200\n" for s in BILL_TAB_SLUGS)
              + "".join(f"/legislator/:who/{s} /legislator/:who 200\n" for s in MEMBER_TAB_SLUGS)
-             + "".join(f"/committee/:code/{s} /committee/:code 200\n" for s in COMMITTEE_TAB_SLUGS))
+             + "".join(f"/committee/:code/{s} /committee/:code 200\n" for s in COMMITTEE_TAB_SLUGS)
+             + "".join(f"{old} {new} 301\n" for old, new in MOVED))
 
 
 # WHAT A POWER USER NEEDS, IN THE FOOTER, WHERE THEY WILL LOOK FOR IT.
@@ -525,9 +544,14 @@ def is_conference(key):
     return key.name == CONFERENCE
 
 
+# The floor's cards, by the name build_calendar.FLOOR keys them on.
+FLOOR_CARD = {"house floor": "House Session Day", "senate floor": "Senate Session Day"}
+
+
 def card_name(key):
     """What a card calls its committee: "House Judiciary", "Senate Finance",
-    "Committee of conference on HB 2", "Commission on Aging".
+    "Committee of conference on HB 2", "Commission on Aging", "House Session
+    Day".
 
     THE CHAMBER IS SAID, on every chamber's committee and not only on the
     names both chambers use: a card reading "Commerce" beside one reading
@@ -535,10 +559,18 @@ def card_name(key):
     is how the General Court's own schedule titles them -- "House Ways and
     Means : GP, Room 234". The floor and the sittings whose committee the
     docket did not record already say it, and are not told twice.
+
+    THE FLOOR IS A SESSION DAY (the person, 9 October 2026: "Session day
+    should be Session Day"). Its card said "House floor", the key the week
+    is grouped on, over a chip saying Floor Session; the approved Calendar
+    calls it "House Session Day", and the key stays "House floor" for every
+    lookup made on it (build_calendar.FLOOR, the floor's links below).
     """
     if is_conference(key):
         num = re.sub(r"^([A-Z]+)(\d)", r"\1 \2", key.bill)
         return f"{CONFERENCE} on {num}" if num else CONFERENCE
+    if key.name.strip().lower() in FLOOR_CARD:
+        return FLOOR_CARD[key.name.strip().lower()]
     word = CHAMBER_WORD.get(key.chamber)
     first = (key.name.split() or [""])[0]
     if word and first not in CHAMBER_WORD.values():
@@ -649,19 +681,6 @@ def seat_columns(house, row):
             + (block("No seat on file", unseated) if unseated else ""))
 
 
-def home_towns(out):
-    """Every town and city in site/districts.json, A to Z, for the home
-    page's finder to suggest; [] where the file is not there, and the box is
-    then a plain box that still works."""
-    try:
-        d = json.loads((Path(out) / "districts.json").read_text(encoding="utf-8"))
-    except (OSError, ValueError):
-        print("  home: no site/districts.json to read, so the finder suggests "
-              "no towns")
-        return []
-    return sorted((t for t in d if str(t).strip()), key=str.lower)
-
-
 def home_week(week):
     """A week's days as the home page's Coming up holds them: without the
     special study and statutory committees.
@@ -715,27 +734,38 @@ def calendar_html(out, today=None, rows=None):
     # no cap. home.json's fortnight is left alone: the hearings feed reads it.
     today = today or build_date.today()
     weeks = BC.weeks_from(proceedings.load() if rows is None else rows)
-    sunday = BC.monday(today) + _dt.timedelta(days=6)
-    week = home_week(weeks.get(BC.week_key(today)))
+    # FROM SATURDAY, NEXT WEEK (D13, the person, 8 October 2026: "Coming up
+    # shows the current week's upcoming meetings; from Saturday it switches
+    # to the next week's, clearly labelled as next week (never read as the
+    # week just past)"). A weekend has no committee meetings, so on Saturday
+    # and Sunday the rail is the coming Monday's week, whole, and says so.
+    ahead = today.weekday() >= 5
+    start = BC.monday(today) + _dt.timedelta(days=7) if ahead else today
+    monday = BC.monday(start)
+    sunday = monday + _dt.timedelta(days=6)
+    week = home_week(weeks.get(BC.week_key(start)))
     dates = sorted(d for d in week
-                   if today.isoformat() <= d <= sunday.isoformat() and week[d])
+                   if start.isoformat() <= d <= sunday.isoformat() and week[d])
     nxt = BC.week_key(sunday + _dt.timedelta(days=1))
     n_next = sum(len(v) for v in home_week(weeks.get(nxt)).values())
+    # The week's name and its weekdays, as the Calendar's pager says them
+    # ("This Week", "Next Week": the person, 9 October 2026, item 17).
+    label = ('<p class="calwk">' + chip("Next Week" if ahead else "This Week")
+             + f' <span>{esc(date_span(monday, monday + _dt.timedelta(days=4), "medium"))}'
+             + "</span></p>")
 
     # WHERE THE REST IS: next week's own page, which build_calendar writes
     # for every week in its range, empty ones included -- linked here only
     # when next week has a sitting, and otherwise the link is the Calendar
     # tab. HOME_JS keeps this line when it empties the rail in the reader's
-    # clock.
-    if n_next:
-        onward = (f"{n_next}{' more' if dates else ''} "
-                  f"meeting{'' if n_next == 1 else 's'} next week. ",
-                  f"calendar/{nxt}.html", "See next week")
-    else:
-        onward = ("Nothing is on the calendar for next week yet. ",
-                  "calendar.html", "See the full calendar")
-    more = ('<p class="calmore calall">' + esc(onward[0])
-            + f'<a href="{esc(onward[1])}">{esc(onward[2])}</a></p>')
+    # clock. The link says "Next Week ›", the Calendar pager's own words for
+    # the same page (the person, 9 October 2026: "The week after should be
+    # Next Week"); it said "See next week".
+    # THE RAIL ENDS WITH THE CALENDAR (D13, item 118: "Coming up ends with a
+    # plain 'See the full calendar' link instead of the count of next week's
+    # meetings"). It said how many meetings next week held and linked that
+    # week's page; from Saturday next week is the rail itself.
+    more = '<p class="calmore calall"><a href="calendar.html">See the full calendar</a></p>'
 
     if not dates:
         # THE REST OF THE WEEK IS EMPTY every weekend in session and every
@@ -743,15 +773,16 @@ def calendar_html(out, today=None, rows=None):
         # business resumes rather than just "nothing", because the General
         # Court is a part-time legislature and this is what the page says for
         # half the year.
-        note = "Nothing is scheduled for the rest of this week."
+        note = ("Nothing is scheduled next week yet." if ahead
+                else "Nothing is scheduled for the rest of this week.")
         if not n_next:
             # MOSTLY (the survey of 7 October 2026): both chambers sat until veto
             # day, 19 August, in 2026, and into the autumn in most years.
             note += (" The General Court sits mostly from January to June, and "
                      "committees meet on bills from the autumn filing period "
                      "onwards.")
-        return ('<section class="cal"><h2>Coming up</h2>'
-                f'<p class="note">{esc(note)}</p>{more}</section>')
+        return (f'<section class="cal" data-mon="{monday.isoformat()}"><h2>Coming up</h2>'
+                f'{label}<p class="note">{esc(note)}</p>{more}</section>')
 
     meets = {k: rs for d in dates for k, rs in week[d].items()}
     up = [r for rs in meets.values() for r in rs]
@@ -791,7 +822,7 @@ def calendar_html(out, today=None, rows=None):
     # days of committee cards down a 300px column, and it was asked on 19
     # September to be "a bit more consolidated ... so it isn't as long". A
     # week is the Calendar tab's own unit, and the rail is now that week.
-    html = ['<section class="cal"><h2>Coming up</h2>']
+    html = [f'<section class="cal" data-mon="{monday.isoformat()}"><h2>Coming up</h2>{label}']
     body, missing = cal_days(days, meets, titles, years, code, when, esc)
     # THE WHOLE WEEK, IN A BOX OF ITS OWN HEIGHT. A week in session is forty
     # sittings -- the week of 26 January 2026 held 43 -- and drawn in full it
@@ -1026,7 +1057,10 @@ def cal_days(days, meets, titles, years, code, when, esc, level=3,
             if n:
                 html.append(f'<span class="calcount">'
                             + (f"({_bills})" if time else _bills) + "</span>")
-            for k in kinds:
+            # A SESSION DAY'S NAME SAYS WHAT IT IS ("House Session Day"), so
+            # no chip says "Session Day" again under it, as the approved
+            # Calendar has it (9 October 2026); its bar keeps the colour.
+            for k in ([] if key.name.strip().lower() in FLOOR_CARD else kinds):
                 word, kcls = MEET_KIND.get(k.strip().lower(),
                                            (kind_title(k), ""))
                 html.append(chip(word, f"calkind {kcls}"))
@@ -1167,17 +1201,20 @@ def cal_notes(up, missing, esc):
 
 # THE SECTIONS, in the header's order, with each one's drawing.
 NAV_TABS = (("bills.html", "Bills", "bill"),
-            ("legislators.html", "Legislators", "person"),
-            ("committees.html", "Committees", "committee"),
+            # OFFICIALS, NOT LEGISLATORS, AND RESOURCES, NOT LEARN (the
+            # person, 8 October 2026, late evening: "the polish release's five
+            # tabs are Bills, Officials, Calendar, Committees, Resources"). The
+            # page moved with its tab: /legislators and /learn answer with a
+            # 301 to the new addresses (MOVED, below).
+            ("officials.html", "Officials", "person"),
             # A second nav emitter. bills.html carries the nav every
-            # shell.page() page inherits; this tuple is what legislators.html,
+            # shell.page() page inherits; this tuple is what officials.html,
             # index.html and about.html get, and when Data was added to the
             # first it was not added here, so three pages lacked the link the
-            # other 34,000 had.
-            ("learn.html", "Learn", "book"),
-            # Added to BOTH emitters in the same edit. The comment above
-            # records what happened the time it was not.
-            ("calendar.html", "Calendar", "calendar"))
+            # other 34,000 had. preflight holds the two to the same five.
+            ("calendar.html", "Calendar", "calendar"),
+            ("committees.html", "Committees", "committee"),
+            ("resources.html", "Resources", "book"))
 
 
 def shell(title, current, body, wide=False, script="", desc="",
@@ -1229,7 +1266,7 @@ def shell(title, current, body, wide=False, script="", desc="",
     # files so a change to one is obvious in the other.
     # The card a shared link unfurls into, by kind of page (build_brand.py
     # draws them); the plain logo card for the home page and About.
-    _card = {"legislators.html": ("og-legislator.png", "legislators and their voting records"),
+    _card = {"officials.html": ("og-legislator.png", "legislators and their voting records"),
              "bills.html": ("og-bill.png", "bills, votes and hearings")}.get(current)
     _img = f"https://graniterecord.org/{_card[0] if _card else 'og.png'}"
     _alt = f"Granite Record: {_card[1]}" if _card else "Granite Record"
@@ -1445,7 +1482,7 @@ not exist in: every bill since 1989 has a page at <code>/bill/&lt;year&gt;/&lt;n
 and a bill number starts again every two years.</p>
 <p id="nf-bill" hidden></p>
 <p><a href="bills.html">Search every bill</a> &middot;
-<a href="legislators.html">Legislators</a> &middot;
+<a href="officials.html">Officials</a> &middot;
 <a href="committees.html">Committees</a> &middot; <a href="index.html">Home</a></p>
 <script>
 (function(){
@@ -2269,6 +2306,64 @@ window.addEventListener("popstate",()=>{
 """
 
 
+# THE OLD PAGE'S TOWNS TAB IS MY TOWN. /legislators#towns arrives here as
+# /officials#towns through the 301, and the tab it named is #my-town now: the
+# address is rewritten before TABS_JS reads it, without a history entry.
+OFFICIALS_HASH_JS = """<script>
+if(location.hash==="#towns"&&history.replaceState)
+  history.replaceState(null,"",location.pathname+location.search+"#my-town");
+</script>"""
+
+# THE DISTRICT MAP ON MY TOWN (map v1, src/pages/map.js, the person's label
+# toggle with town names by default). Mounted the first time its tab is
+# shown, at the size it will have: a map drawn into a hidden panel measures
+# nothing. The finder's town is the map's town: typing a town's whole name,
+# or opening a city's wards, zooms the map to it (LEGFIND_JS sends "grtown").
+OFFICIALS_MAP_JS = """<link rel="stylesheet" href="/map.css">
+<script src="/map.js" defer></script>
+<script>
+(function(){
+  var el=document.getElementById("ofmap"),api=null,want=null;
+  if(!el)return;
+  function mount(){
+    if(api||!window.GRMap||el.offsetParent===null)return;
+    api=GRMap.mount(el,{layer:"base",layers:["base","senate","exec","cong"]});
+    if(want)api.ready.then(function(){api.pickTown(want);});
+  }
+  addEventListener("DOMContentLoaded",mount);
+  var pane=el.closest(".twnpane");
+  if(pane&&window.MutationObserver)
+    new MutationObserver(mount).observe(pane,{attributes:true,attributeFilter:["hidden"]});
+  addEventListener("grtown",function(e){
+    want=e.detail;
+    if(api)api.ready.then(function(){api.pickTown(want);});else mount();
+  });
+})();
+// THE CHOSEN TAB IN VIEW. Below 1024px the strip scrolls, so an address
+// naming the fourth or fifth tab (/officials#statewide) opened it with its
+// tab half past the strip's edge; the strip is moved to show it, at load and
+// whenever a tab is chosen, and the page itself does not move.
+(function(){
+  var bar=document.querySelector(".oftabs");
+  if(!bar)return;
+  function shown(){
+    var t=bar.querySelector('[aria-selected="true"]');
+    if(!t)return;
+    var l=t.offsetLeft-bar.offsetLeft,r=l+t.offsetWidth;
+    // 2rem clear of the edge, where the strip's shadow says it goes on
+    if(l<bar.scrollLeft)bar.scrollLeft=Math.max(0,l-32);
+    else if(r>bar.scrollLeft+bar.clientWidth)bar.scrollLeft=r-bar.clientWidth+32;
+  }
+  shown();
+  // and again once the fonts have their widths
+  if(document.fonts)document.fonts.ready.then(shown);
+  bar.addEventListener("click",function(){setTimeout(shown,0);});
+  bar.addEventListener("keydown",function(){setTimeout(shown,0);});
+  addEventListener("hashchange",shown);
+})();
+</script>"""
+
+
 LEGFIND_JS = """
 <script>
 (function(){
@@ -2351,6 +2446,12 @@ function render(){
   // Python string, where a backslash belongs to whichever one reads it
   // first. Python read one, dropped it, and left the JavaScript with an
   // unterminated string and the whole page with no script.
+  /* THE MAP FOLLOWS THE FINDER: a town named in full, or a city whose
+     wards were opened, is the map's town too (OFFICIALS_MAP_JS). */
+  const exact=towns.length&&n&&towns[0][1].town.toLowerCase()===n?towns[0][1].town:null;
+  const tw=picked||exact;
+  if(tw&&tw!==window.__grTown){window.__grTown=tw;
+    dispatchEvent(new CustomEvent("grtown",{detail:tw}));}
   out.innerHTML=parts.length?parts.join("")
     :'<p class="lmnone">Nothing matches that. Towns and wards, member names, '
      +'counties, parties and committees are all searched.</p>';
@@ -2530,7 +2631,7 @@ fetch(DATA("home.json")).then(r=>r.json()).then(H=>{
   else if(_state)_state.innerHTML=`
     <div class="statebox ${ph[0]}">
       <div class="stateline"><span class="dot"></span><b>${esc(ph[1])}</b>
-        ${S.last_session?`<span class="statemeta">Last Floor Session:
+        ${S.last_session?`<span class="statemeta">Last Session Day:
           ${fdy(S.last_session)}</span>`:""}</div>
       ${S.headline?`<p class="statehead">${esc(S.headline)}</p>`:""}
       ${S.note?`<p class="statenote">${esc(S.note)}</p>`:""}
@@ -2610,15 +2711,20 @@ fetch(DATA("home.json")).then(r=>r.json()).then(H=>{
   // week. getDay() calls Sunday 0, which ends an ISO week rather than
   // starting one, so on a Sunday the week has no days left after today.
   // Nothing else here is touched.
+  // FROM SATURDAY, NEXT WEEK (D13): on a Saturday or a Sunday in the
+  // reader's clock the rail is the coming Monday's week, Monday to Sunday,
+  // and its name says so; on a weekday it is today to Sunday, and its name
+  // says This Week again for a rail built at the weekend.
   (function(){
     const now=new Date(); now.setHours(0,0,0,0);
-    const toSun=(7-now.getDay())%7;
+    const dow=now.getDay(),ahead=dow===6||dow===0;
+    const from=ahead?(dow===6?2:1):0,to=ahead?from+6:(7-dow)%7;
     const days=[...document.querySelectorAll(".calday[data-d]")];
     let left=0;
     days.forEach(d=>{
       const p=d.dataset.d.split("-").map(Number);
       const off=Math.round((new Date(p[0],p[1]-1,p[2])-now)/86400000);
-      if(off<0||off>toSun){d.remove();return;}
+      if(off<from||off>to){d.remove();return;}
       left++;
       const rel=d.querySelector(".cdrel");
       // `off<=14`, as the built labels have it: a week's days never reach
@@ -2628,9 +2734,18 @@ fetch(DATA("home.json")).then(r=>r.json()).then(H=>{
         :off<=14?`in ${off} days`:"";
     });
     const cal=document.querySelector(".cal");
+    const name=cal&&cal.querySelector&&cal.querySelector(".calwk .chip");
+    if(name&&cal.dataset&&cal.dataset.mon){
+      const p=cal.dataset.mon.split("-").map(Number);
+      const off=Math.round((new Date(p[0],p[1]-1,p[2])-now)/86400000);
+      // The rail's Monday against the reader's: this week's is 0 to 6 days
+      // back, next week's 1 to 7 days on.
+      if(off<=0&&off>-7)name.textContent="This Week";
+      else if(off>0&&off<=7)name.textContent="Next Week";
+    }
     if(cal&&days.length&&!left){
-      // The line under the rail stays: it says what next week holds and is
-      // the way to it, which is the useful thing to say about an empty week.
+      // The line under the rail stays: it is the way to the full calendar,
+      // which is the useful thing to offer under an empty week.
       const more=cal.querySelector(".calall");
       cal.innerHTML=`<h2>Coming up</h2><p class="note">Nothing else is
         scheduled this week.</p>`+(more?more.outerHTML:"");
@@ -2661,7 +2776,7 @@ fetch(DATA("home.json")).then(r=>r.json()).then(H=>{
   // its address. Kept in step with build_pages' static copy of this block --
   // there are two renderers for it and the footer has already shown what
   // happens when only one of them is changed.
-  document.getElementById("recent").innerHTML=`<h2>Latest activity</h2>
+  document.getElementById("recent").innerHTML=`<h2>Latest Activity</h2>
     <ul class="actlist">${(H.recent||[]).slice(0,5).map(r=>
       `<li><span class="actd">${fd(r.date)}</span>
        <span class="actb"><a href="${esc(r.year?`bill/${r.year}/${String(r.bill).toLowerCase()}.html`
@@ -2714,7 +2829,7 @@ fetch(DATA("home.json")).then(r=>r.json()).then(H=>{
   // "House Session (August 19th, 2026)", with the date the way to that
   // sitting's page where one is built.
   sess.innerHTML=ls.length
-    ?`<h2>Most recent floor sessions</h2><div class="twoup">${ls.map(v=>
+    ?`<h2>Most Recent Session Days</h2><div class="twoup">${ls.map(v=>
       `<div><p class="sesstitle"><b>${esc(v.chamber||"")} Session</b>
         (${dayLink(v)})</p>
         <div class="player"><button type="button" class="pstub" data-embed="${esc(v.video_id)}"
@@ -2738,22 +2853,40 @@ document.addEventListener("click",e=>{
   const frame=had&&box&&box.querySelector("iframe");
   if(frame)frame.focus({preventScroll:true});
 });
-// ONE ADDRESS, AND NO EMPTY QUESTION. Search with nothing typed sent the
-// reader to /bills?q= -- the same page the header's Bills tab reaches at
-// /bills, with a query string saying the reader searched for nothing. /bills
-// is what the host serves and what the header lands on.
-function goBills(v){
-  v=(v||"").trim();
-  // Half an emoji is not an address (find.js, _fwell).
-  location.href="/bills"+(v?"?q="+encodeURIComponent(
-    v.replace(/[\\uD800-\\uDFFF]/gu,"\\uFFFD")):"");
+// ONE BOX, THE HEADER'S FINDER (D13): find.js's findDraw, given this box's
+// ids, draws the header panel's rows into the box's dropdown -- the same
+// matcher, the same order, the same rows, so the two boxes cannot disagree.
+// find.js is deferred, so it is asked for when a reader types, not now.
+// Return takes the first row, as in the header; Search opens every result
+// (/search), and with nothing typed the bill search, as it always did.
+const HQ={out:"hqout",box:"hq",clear:"",say:"hqsay"};
+const hq=document.getElementById("hq"),hqout=document.getElementById("hqout");
+function hqDraw(){
+  const v=hq.value;
+  if(!v.trim()||typeof findDraw!=="function"){hqout.hidden=true;return;}
+  hqout.hidden=false;
+  findDraw(v,HQ);
+  findRows().then(()=>{if(hq.value===v&&!hqout.hidden)findDraw(v,HQ);});
 }
-document.getElementById("hq").addEventListener("keydown",e=>{
-  if(e.key==="Enter")goBills(e.target.value);
+// Half an emoji is not an address (find.js, _fwell).
+const hqAddr=v=>{v=(v||"").trim();return v?"/search?q="+encodeURIComponent(
+  v.replace(/[\\uD800-\\uDFFF]/gu,"\\uFFFD")):"/bills";};
+hq.addEventListener("input",hqDraw);
+hq.addEventListener("focus",()=>{if(hq.value.trim())hqDraw();});
+hq.addEventListener("keydown",e=>{
+  if(e.key==="Escape"){hqout.hidden=true;return;}
+  if(e.key!=="Enter")return;
+  e.preventDefault();
+  const first=hqout.hidden?null:hqout.querySelector("a");
+  location.href=first?first.href:hqAddr(hq.value);
 });
-document.getElementById("hgo").addEventListener("click",()=>{
-  goBills(document.getElementById("hq").value);
-});
+document.getElementById("hgo").addEventListener("click",()=>{location.href=hqAddr(hq.value);});
+// Away from the box, the dropdown closes; "Did you mean" searches again here.
+document.addEventListener("click",e=>{
+  const d=e.target.closest&&e.target.closest("#hqout .fdym");
+  if(d){e.stopPropagation();hq.value=d.dataset.find;hqDraw();hq.focus();return;}
+  if(!(e.target.closest&&e.target.closest(".searchbig")))hqout.hidden=true;
+},true);
 </script>"""
 # The home page loads no app.js. Its script draws with components.js's esc and
 # dateWords, which every page loads in its head.
@@ -2810,7 +2943,10 @@ def committees_with_roster(out, data="data"):
 # record page is made from (shell.template) -- which is why front_end.py,
 # the fast path, takes a change to it to a full build and the others not.
 # components.js before app.js, the order every page loads them in.
-COPIED = ("bills.html", "app.css", "components.js", "app.js", "find.js")
+# print.js and print.css are a bill's print sheet, which a bill's page
+# loads when its Print button is pressed (print.js, GRPrint.open).
+COPIED = ("bills.html", "app.css", "components.js", "app.js", "find.js",
+          "print.js", "print.css")
 
 
 def header_mark_placed(brand=Path("assets")):
@@ -3042,7 +3178,7 @@ def main():
         static_state = (
             f'<div class="statebox {ph[0]}"><div class="stateline">'
             f'<span class="dot"></span><b>{esc(ph[1])}</b>'
-            + (f'<span class="statemeta">Last Floor Session: {fdy(S["last_session"])}</span>'
+            + (f'<span class="statemeta">Last Session Day: {fdy(S["last_session"])}</span>'
                if S.get("last_session") else "")
             + "</div>"
             + (f'<p class="statehead">{esc(S["headline"])}</p>'
@@ -3355,17 +3491,30 @@ the House does.</p>
     # of 7 October 2026): "Type a town ... or a name" sat over both tabs and
     # described only the box in the first, so it moved into that panel, over
     # the box it is about.
-    leg_body = f"""<h1>Legislators</h1>
-<p class="lead">{len(legs)} sitting members of the New Hampshire House and
-Senate.</p>
-<div class="twntabs" role="tablist" aria-label="Towns and legislators" hidden>
-<button type="button" role="tab" id="tab-towns" data-pane="towns"
-  aria-controls="towns" aria-selected="true" tabindex="0">Towns</button>
-<button type="button" role="tab" id="tab-legislators" data-pane="legislators"
-  aria-controls="legislators" aria-selected="false" tabindex="-1">Legislators</button>
-</div>
-<div class="twnpane" id="towns" role="tabpanel" aria-labelledby="tab-towns">
-<h2 class="twnph">Towns</h2>
+    # THE OFFICIALS PAGE, FIVE TABS (Polish 3: the person's feedback of 9
+    # October 2026, item 4, and decision 127; the approved drawing is
+    # private/design/polish/proto/officials.html): My Town (the town finder
+    # and the district map), Legislators (the roster, as it was), Federal
+    # Delegation, Statewide Officials and County Officials (officials_tabs,
+    # from corrections/officials.json, read and never written). State
+    # Agencies and Courts come after the soft launch. The strip, the panels
+    # and the script are still the town pages' (build_town_pages.TABS_JS):
+    # without JavaScript every panel is on the page under its own heading;
+    # with it, a panel's id is its address (/officials#federal), and the old
+    # page's #towns opens My Town.
+    import officials_tabs as OT
+    try:
+        off = json.loads(Path("corrections/officials.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        off = {}
+    try:
+        officers = json.loads((out / "officers.json").read_text(encoding="utf-8")).get("officers")
+    except (OSError, ValueError, AttributeError):
+        officers = []
+    today = build_date.today().isoformat()
+    of_panes = [
+        ("my-town", "My Town", None, f"""<section class="ofpart" aria-labelledby="of-find">
+<h3 id="of-find">Find Your Town</h3>
 <p class="src fill">Type a town to see who represents it, or a name, county,
 party or committee to find a member.</p>
 <div class="lfind">
@@ -3376,26 +3525,59 @@ party or committee to find a member.</p>
   <p class="sr" id="lsay" role="status"></p>
   <div class="lmatch" id="lmatch"></div>
 </div>
-<!-- The roster's #out lives inside the By county pane, and there must be only
-     ONE of it. This line used to hold a second, left from when the roster was
-     drawn straight into the page: getElementById returns the first in document
-     order, so the county listing rendered HERE, above the tab bar, and the
-     pane a reader opened by clicking By county stayed empty. Two elements with
-     one id is valid HTML that no validator complains about and no test caught,
-     because both halves of it looked like they worked. -->
-</div>
-<div class="twnpane" id="legislators" role="tabpanel" aria-labelledby="tab-legislators">
-<h2 class="twnph">Legislators</h2>
-{roster_section(legs)}
-{('<div class="comp-wrap"><h2>Who holds the seats</h2>' + static_bar("S")
-  + static_bar("H") + vacancies + "</div>") if C else ""}
-</div>
-{TOWN_TABS_JS}"""
-    (out / "legislators.html").write_text(
-        shell("Legislators | Granite Record", "legislators.html", leg_body,
-              desc="Every member of the New Hampshire House and Senate: their "
+</section>
+<section class="ofpart ofmap" aria-labelledby="of-map">
+<h3 id="of-map">The Map</h3>
+<p class="src fill">Each district coloured by the party of the members it
+elected, each town by its name, and a city&rsquo;s wards once you zoom in.
+Choose a district to see who sits for it and the towns it holds, each with
+its own page.</p>
+<div class="ofmapbox" id="ofmap"></div>
+<noscript><p class="note">The map needs JavaScript. Every town&rsquo;s districts
+are on its own page, listed in <a href="/directory/towns.html">every town and
+ward</a>.</p></noscript>
+</section>"""),
+        ("legislators", "Legislators", len(legs),
+         OT.presiding(officers, legs, today) + roster_section(legs)
+         + (('<div class="comp-wrap"><h2>Who holds the seats</h2>' + static_bar("S")
+             + static_bar("H") + vacancies + "</div>") if C else "")),
+        ("federal", "Federal Delegation", OT.count(off, "federal"), OT.federal(off)),
+        ("statewide", "Statewide Officials", OT.count(off, "statewide"), OT.statewide(off)),
+        # #counties, not #county: the roster's By county button is tab-county.
+        ("counties", "County Officials", OT.count(off, "county"), OT.county(off, legs)),
+    ]
+    of_panes = [p for p in of_panes if p[3]]
+    of_tabs = "".join(
+        f'<button type="button" role="tab" id="tab-{pid}" data-pane="{pid}" '
+        f'aria-controls="{pid}" aria-selected="{"true" if i == 0 else "false"}" '
+        f'tabindex="{0 if i == 0 else -1}">{name}'
+        + (f' <span class="ofn">({n:,})</span>' if n else "") + "</button>"
+        for i, (pid, name, n, _h) in enumerate(of_panes))
+    of_body = "".join(
+        f'<div class="twnpane" id="{pid}" role="tabpanel" aria-labelledby="tab-{pid}">'
+        f'<h2 class="twnph">{name}</h2>{inner}</div>'
+        for pid, name, _n, inner in of_panes)
+    leg_body = f"""<h1>Officials</h1>
+<p class="lead">Everyone who represents your town, from your select board to
+Congress; the {len(legs)} sitting members of the New Hampshire House and
+Senate; and the state&rsquo;s other officials.</p>
+<div class="twntabs oftabs" role="tablist" aria-label="Officials" hidden>{of_tabs}</div>
+{of_body}
+{OFFICIALS_HASH_JS}{TOWN_TABS_JS}{OFFICIALS_MAP_JS}"""
+    # THE PAGE IS OFFICIALS NOW, at /officials (decision 127); /legislators
+    # is a 301 to it (MOVED). A legislators.html left in the folder by an
+    # earlier build would be published beside the redirect, so it goes.
+    old_page = out / "legislators.html"
+    if old_page.exists():
+        old_page.unlink()
+        print("  legislators.html: removed; /legislators redirects to /officials")
+    (out / "officials.html").write_text(
+        shell("Officials | Granite Record", "officials.html", leg_body,
+              desc="Who represents your town, from the State House to Congress; "
+                   "every member of the New Hampshire House and Senate, with their "
                    "district, their party, the bills they sponsored and every "
-                   "recorded vote they cast.",
+                   "recorded vote they cast; and the state's and counties' elected "
+                   "officials.",
               wide=True, script=LEGFIND_JS + SEATING_JS), encoding="utf-8")
 
     static_up = calendar_html(out)
@@ -3425,11 +3607,6 @@ party or committee to find a member.</p>
                    for b in ("S" if v.get("chamber") == "Senate" else "H",)
                    if (b, v.get("date")) in sits]
 
-    town_names = home_towns(out)
-    town_list_attr = ' list="hq2towns"' if town_names else ""
-    town_list = ('\n  <datalist id="hq2towns">'
-                 + "".join(f'<option value="{esc(t)}">' for t in town_names)
-                 + "</datalist>") if town_names else ""
 
     static_recent = ""
     if H.get("recent"):
@@ -3438,7 +3615,7 @@ party or committee to find a member.</p>
         # two columns and then reads as a grid with nothing to say what a
         # column is (the audit of 2 October 2026, M7). It is five things in a
         # row: the day, and what happened. HOME_JS draws the same markup.
-        static_recent = ('<h2>Latest activity</h2><ul class="actlist">' + "".join(
+        static_recent = ('<h2>Latest Activity</h2><ul class="actlist">' + "".join(
             f'<li><span class="actd">{fd(r.get("date"))}</span><span class="actb">'
             f'<a href="{esc(recent_href(r))}">{esc(r.get("n"))}</a> '
             f'{esc(r.get("title"))}<br><span class="actw">'
@@ -3463,64 +3640,53 @@ party or committee to find a member.</p>
 <p class="lead">Keep up with New Hampshire legislation, find bills on the issues you
 care about, learn how the legislature works, and explore the record from 1989 to
 today.</p>
-<div class="searchbig">
-  <label for="hq" style="position:absolute;left:-9999px">Search bills</label>
-  <input id="hq" type="search" placeholder="Name, town, subject or bill">
+<!-- ONE BOX, THE HEADER'S FINDER (D13, the person, 8 October 2026: "one
+     search box like the header search: bills, legislators, towns, committees
+     and the rest from the same box, with a dropdown of the top results (no
+     separate legislator finder)"). find.js draws the top results into the
+     box's own dropdown, the header panel's rows; Return takes the first, as
+     in the header, and Search opens every result. Without script, Search
+     opens the bill search, as it did. -->
+<div class="searchbig" role="search">
+  <label for="hq" style="position:absolute;left:-9999px">Search bills, officials, towns and committees</label>
+  <input id="hq" type="search" autocomplete="off" aria-controls="hqout"
+    aria-describedby="hqhint" placeholder="Name, town, subject or bill">
   <button id="hgo">{icon("search")}Search</button>
+  <div class="findout hqdrop" id="hqout" role="region" aria-label="Top results" hidden></div>
 </div>
+<p class="hqhint" id="hqhint">Try a bill number, a subject, a legislator or a
+committee. Your town shows who represents you.</p>
+<p class="sr" id="hqsay" role="status"></p>
 <!-- EACH CARD WITH ITS SECTION'S DRAWING, the nav's own (Polish 1, 9 October
-     2026): the prototype kit's home cards. -->
+     2026): the prototype kit's home cards, their names in Title Case as the
+     approved drawing has them. -->
 <div class="entry">
-  <a href="/bills">{icon("bill")}<b>Browse bills</b><span>Search by committee, topic, sponsor,
+  <a href="/bills">{icon("bill")}<b>Browse Bills</b><span>Search by committee, topic, sponsor,
     status or the day it was voted on</span></a>
-  <!-- COMMITTEES, NOT LEGISLATORS. The finder in the right-hand column asks
-       for a town and says what a town gives you, in nearly the same sentence
-       this card used to -- so on a 1440px screen the same offer was made
-       twice, side by side. Committees had no route from the home page at all,
-       and it is where a reader who knows the subject rather than the bill
-       number starts. -->
+  <!-- COMMITTEES, NOT LEGISLATORS. Committees had no route from the home
+       page at all, and it is where a reader who knows the subject rather
+       than the bill number starts. -->
   <a href="committees.html">{icon("committee")}<b>Committees</b><span>{cmte_offer}</span></a>
-  <a href="learn.html">{icon("book")}<b>Learn</b><span>How a bill moves, what the shorthand
+  <!-- RESOURCES, NOT LEARN (decision 129, 8 October 2026): the card goes
+       where the tab does, and Learn is the hub's first tab. -->
+  <a href="resources.html">{icon("book")}<b>Resources</b><span>How a bill moves, what the shorthand
     means, and how to testify</span></a>
 </div>
-<div id="fresh" class="fresh"></div>
-<!-- UNDER THE REBUILD LINE, IN THE MIDDLE. This was a full-width band below
-     all three columns, so the thing that changes most often on the site was
-     the last thing on the page and was never beside the search box a reader
-     had just used. Asked for on 19 September. The left rail keeps the week
-     ahead and this keeps the days just gone, which is the same column a
-     reader is already reading down. -->
-<div id="recent" class="hrecent">{static_recent}</div>
 </div>
 <section class="hside hleft" aria-label="Where the General Court is, and what is coming up">
 <div id="state">{static_state}</div>
 <div id="upcoming">{static_up}</div>
 </section>
-<section class="hside hright" aria-label="Find your legislators, and what has just happened">
-<div class="hfind">
-  <h2>Find your legislators</h2>
-  <p class="hfnote">A town gives you its House and Senate districts, its
-  Executive Councillor and its member of Congress.</p>
-  <!-- ONE BOX. There were two forms here, one asking for a town and one for a
-       name, and they were two doors into the same room: legislators.html
-       reads `(pr.get("town") || pr.get("q") || "")` into the single #lq box,
-       which has always matched a town OR a name OR a county, party or
-       committee. So the split asked the reader to classify what they were
-       typing before they typed it, to no end. Asked for on 20 September.
-       The parameter is q, which is what that page's own box submits. -->
-  <!-- THE TOWNS AS THE READER TYPES (the person, 7 October 2026, F4: "no
-       dropdown"). A datalist of every town in districts.json, so the browser
-       offers the matching ones under the box and they are chosen with the
-       arrow keys and Enter or with a tap, with no script and nothing fetched.
-       A name still goes through: the list only suggests. -->
-  <form class="hfrow" action="legislators.html" method="get">
-    <label for="hq2" class="sr">Your town, or a legislator's name</label>
-    <input id="hq2" name="q" type="search" autocomplete="off"{town_list_attr}
-      placeholder="Your town or a legislator">
-    <button type="submit">Find</button>
-  </form>{town_list}
-</div>
+<section class="hside hright" aria-label="The latest session days, and what has just happened">
 <div id="session" data-days="{esc(" ".join(latest_days))}"></div>
+<div id="fresh" class="fresh"></div>
+<!-- LATEST ACTIVITY UNDER THE RIGHT COLUMN (the person, 9 October 2026, item
+     3), under the latest session days and the rebuild line, so the middle
+     column ends with the three cards. The finder that held the top of this
+     column is the search box's now (D13). Below 1180px the order is as it
+     was: the hero, the search and the cards, the status, Coming Up, the
+     recordings, then the rebuild line and Latest Activity. -->
+<div id="recent" class="hrecent">{static_recent}</div>
 </section>
 </div>
 <div id="composition"></div>
@@ -3574,7 +3740,7 @@ under, and every bill since 1989.</p>
 </form>
 <div id="resout"></div>
 <noscript><p class="note">This page needs JavaScript to search. Without it,
-the <a href="/bills">bill search</a>, the <a href="/legislators">roster</a> and
+the <a href="/bills">bill search</a>, the <a href="/officials">roster</a> and
 the <a href="/committees">committee list</a> are all plain pages.</p></noscript>"""
     # WIDE, as the roster is: a list of results is a list, and in the 820px
     # column of the prose pages it ended near the middle of a 1440px window
@@ -3606,7 +3772,7 @@ the <a href="/committees">committee list</a> are all plain pages.</p></noscript>
                      '<meta name="robots" content="noindex">', page404)
     (out / "404.html").write_text(page404, encoding="utf-8")
 
-    print(f"wrote legislators.html ({len(legs)} members), "
+    print(f"wrote officials.html ({len(legs)} members), "
           f"about.html, search.html, 404.html, style.css -> {out}/  (learn.html: build_civics.py)")
     if not legs:
         print("  legislators.json missing — run build_site_v2.py first")

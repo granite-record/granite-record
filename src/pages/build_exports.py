@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-10.42
+# GRANITE_VERSION: 2026-09-10.43
 """
 The record as CSV, for anyone who wants to work with it rather than read it.
 
@@ -680,8 +680,8 @@ when a player is opened &mdash; a player only loads if you press play.</p>
 <p>One thing a reader sends deliberately is feedback, through the form
 linked in the footer. That is a Google form, and what you put in it goes to
 Google and to us.</p>
-<p>The other is a report, from the box marked <i>Report a problem with this
-page</i> on bill, committee and legislator pages. A report holds the page and
+<p>The other is a report, from the button marked <i>Report a problem</i> on
+bill, committee and legislator pages. A report holds the page and
 the record it is about, the tab that was open, the kind of problem chosen from
 a list, what you wrote, the time it arrived and which build of the site you
 were reading. Nothing in it identifies you &mdash; no IP address, no cookie, no
@@ -970,7 +970,7 @@ def data_page(site, out, tables, base, cov=()):
       of publishing the whole thing rather than a chart of it.</p>
     <p class="dpnote">Found something that looks wrong? The page for that bill
       links the General Court&#39;s own record so the two can be compared, and
-      its <i>Report a problem with this page</i> box tells us.</p>''',
+      its <i>Report a problem</i> button tells us.</p>''',
 
         "how-built": how_built,
         "privacy": PRIVACY,

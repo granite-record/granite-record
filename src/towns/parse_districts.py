@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.4
+# GRANITE_VERSION: 2026-09-04.5
 """
 Turn the Senate and Executive Council district lists into a town lookup.
 
@@ -99,22 +99,21 @@ def parse(path):
     return out
 
 
-def main():
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--dir", default="records/districts")
-    ap.add_argument("--towns", default="site/towns.json",
-                    help="from build_data.py, used to check the names line up")
-    ap.add_argument("--out", default="site/districts.json")
-    a = ap.parse_args()
-
-    d = Path(a.dir)
+def combine(d, towns=None, say=print):
+    """{town: {ward: {"senate", "council", "congress", "house": [...]}}} from
+    the four lists in folder `d`: what site/districts.json holds. `towns`,
+    site/towns.json where it is built, is only read to say whether the names
+    line up. One function, because the district map's check builds the same
+    table from the tracked lists (build_district_map.py) and must not build it
+    a second way."""
+    d = Path(d)
     combined = defaultdict(dict)
     counts = {}
     for kind, fname in (("senate", "senate.txt"), ("council", "council.txt"),
                         ("congress", "congress.txt")):
         p = d / fname
         if not p.exists():
-            print(f"missing: {p}")
+            say(f"missing: {p}")
             continue
         districts = parse(p)
         counts[kind] = len(districts)
@@ -123,26 +122,26 @@ def main():
             for town, ward in entries:
                 combined[town].setdefault(ward, {})[kind] = int(num)
                 n += 1
-        print(f"{kind}: {len(districts)} districts, {n:,} town-ward entries")
+        say(f"{kind}: {len(districts)} districts, {n:,} town-ward entries")
 
     # Do the names match the House district file? A silent mismatch would mean
     # a town looks up its representatives but not its senator.
-    tp = Path(a.towns)
-    if tp.exists():
+    tp = Path(towns) if towns else None
+    if tp and tp.exists():
         house = json.loads(tp.read_text(encoding="utf-8"))
         hnames = set(house)
         mine = set(combined)
         missing = sorted(hnames - mine)
         extra = sorted(mine - hnames)
-        print(f"\ntowns in the House file: {len(hnames)}; in these lists: {len(mine)}")
+        say(f"\ntowns in the House file: {len(hnames)}; in these lists: {len(mine)}")
         if missing:
-            print(f"  {len(missing)} in the House file but not here: "
+            say(f"  {len(missing)} in the House file but not here: "
                   f"{', '.join(missing[:8])}{' …' if len(missing) > 8 else ''}")
         if extra:
-            print(f"  {len(extra)} here but not in the House file: "
+            say(f"  {len(extra)} here but not in the House file: "
                   f"{', '.join(extra[:8])}{' …' if len(extra) > 8 else ''}")
         if not missing and not extra:
-            print("  names line up exactly")
+            say("  names line up exactly")
 
     # House districts, from the fuller list rather than HouseDistricts.txt.
     hp = d / "house.txt"
@@ -150,10 +149,10 @@ def main():
         hd = parse_house(hp)
         flot = sum(1 for v in hd.values() if v["floterial"])
         seats = sum(v["seats"] for v in hd.values())
-        print(f"\nhouse: {len(hd)} districts ({flot} floterial), "
+        say(f"\nhouse: {len(hd)} districts ({flot} floterial), "
               f"{seats} seats total")
         if seats != 400:
-            print(f"  seat total is {seats}, not the constitutional 400 "
+            say(f"  seat total is {seats}, not the constitutional 400 "
                   "\u2014 worth checking the source list")
         for (county, num), rec in hd.items():
             for town, ward in rec["towns"]:
@@ -168,7 +167,7 @@ def main():
                    for t, ws in combined.items() for w, v in ws.items()
                    if "house" not in v]
         if nohouse:
-            print(f"  {len(nohouse)} town-wards with no House district: "
+            say(f"  {len(nohouse)} town-wards with no House district: "
                   f"{', '.join(nohouse[:6])}")
 
     kinds = set(counts)
@@ -179,13 +178,25 @@ def main():
                 if k not in v:
                     gaps[k].append(f"{town}{'' if w=='0' else ' ward '+w}")
     if gaps:
-        print("\ntown-wards missing a district (each should have all three):")
+        say("\ntown-wards missing a district (each should have all three):")
         for k, v in gaps.items():
-            print(f"  {k}: {len(v)} — {', '.join(v[:6])}"
+            say(f"  {k}: {len(v)} — {', '.join(v[:6])}"
                   f"{' …' if len(v) > 6 else ''}")
     else:
-        print("\nevery town-ward has a senate, council and congressional district")
+        say("\nevery town-ward has a senate, council and congressional district")
 
+    return combined
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--dir", default="records/districts")
+    ap.add_argument("--towns", default="site/towns.json",
+                    help="from build_data.py, used to check the names line up")
+    ap.add_argument("--out", default="site/districts.json")
+    a = ap.parse_args()
+
+    combined = combine(a.dir, a.towns)
     Path(a.out).parent.mkdir(parents=True, exist_ok=True)
     Path(a.out).write_text(json.dumps(combined, indent=2, sort_keys=True),
                            encoding="utf-8")

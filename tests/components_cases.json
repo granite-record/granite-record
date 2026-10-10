@@ -56,6 +56,10 @@
     {"args": ["2026-09-28", "2026-10-04"], "want": "September 28 – October 4, 2026"},
     {"args": ["2026-12-28", "2027-01-03"], "want": "December 28, 2026 – January 3, 2027"},
     {"args": ["2026-10-05", "2026-10-05"], "want": "October 5, 2026"},
+    {"args": ["2026-02-09", "2026-02-13", "medium"], "want": "Feb 9–13, 2026"},
+    {"args": ["2026-09-28", "2026-10-02", "medium"], "want": "Sep 28 – Oct 2, 2026"},
+    {"args": ["2026-12-28", "2027-01-01", "medium"], "want": "Dec 28, 2026 – Jan 1, 2027"},
+    {"args": ["2026-10-09", "2026-10-09", "medium"], "want": "Oct 9, 2026"},
     {"args": ["TBA", "2026-01-01"], "want": "TBA – January 1, 2026"},
     {"args": ["2026-01-01", "TBA"], "want": "January 1, 2026 – TBA"}
   ],
@@ -179,5 +183,99 @@
     {"args": ["nonesuch"], "want": ""},
     {"args": ["constructor"], "want": ""},
     {"args": [null], "want": ""}
+  ],
+  "card_word": [
+    {"args": ["Retained in committee", ""], "want": "Retained"},
+    {"args": ["In committee"], "want": "In Committee"},
+    {"args": ["Passed both chambers, goes to the voters in November 2026", ""], "want": "To the Voters"},
+    {"args": ["Passed one chamber", "Hp---"], "want": "Passed House"},
+    {"args": ["Passed one chamber", "Spp--"], "want": "Passed House"},
+    {"args": ["In progress", "Hpp--"], "want": "Passed Senate"},
+    {"args": ["In progress", "H----"], "want": "In Progress"},
+    {"args": ["Passed one chamber", ""], "want": "Passed One Chamber"},
+    {"args": ["Passed one chamber", "X-p"], "want": "Passed One Chamber"},
+    {"args": ["Became Law", "Hpppp"], "want": "Became Law"},
+    {"args": ["Committee report filed", "H----"], "want": "Committee Report Filed"},
+    {"args": ["constructor", ""], "want": "Constructor"},
+    {"args": [null, null], "want": ""}
+  ],
+  "bill_mention": [
+    {"args": ["HB 652-FN", "bill/2026/hb652.html", ""], "want": "<a class=\"bmention\" href=\"bill/2026/hb652.html\">HB 652-FN</a>"},
+    {"args": ["HB 1681", "bill/2026/hb1681.html", 2026], "want": "<a class=\"bmention\" href=\"bill/2026/hb1681.html\">HB 1681 <span class=\"byr\">(2026)</span></a>"}
+  ],
+  "bill_row": [
+    {"args": [{"n": "HB 1371", "year": 2026, "href": "bill/2026/hb1371.html", "title": "prohibiting application fees", "word": "Died", "cls": "s-done", "line": "Killed on the consent calendar"}]},
+    {"args": [{"n": "HB 1371", "href": "bill/2026/hb1371.html", "title": "a & b"}]},
+    {"args": [{"n": "HB 9", "href": "x", "title": "t", "word": "Died"}]}
+  ],
+  "bill_byline": [
+    {"args": [{"display_full": "Rep. George Grant (R - Sull 5)", "party": "R", "slug": "george-grant-sull-5"}, ["House Housing", "Senate Commerce", ""], "Housing", "2025-2026", {"House Housing": "H64"}]},
+    {"args": [null, null, "", "", null], "want": ""}
+  ],
+  "bill_card": [
+    {"args": [{"id": "HB1681", "href": "bill/2026/hb1681.html", "n": "HB 1681", "year": 2026, "word": "Became Law", "cls": "s-law", "title": "relative to tiny houses", "byline": "b", "notes": "<p>why</p>", "line": "l", "rail": "<span>r</span>", "open": false, "body": "", "card": "focus"}]},
+    {"args": [{"id": "HB1", "href": "h", "n": "HB 1", "year": 2026, "word": "Died", "title": "t", "open": true, "body": "<p>tabs</p>"}]},
+    {"args": [{"id": "HB2", "href": "h", "n": "HB 2", "title": "t <i>"}]},
+    {"args": [{"id": "HB3", "href": "", "n": "HB 3", "year": 1999, "title": "t"}]}
+  ],
+  "rail_html": [
+    {"args": [[["Ip", "2026-01-07"], ["Hp", "2026-03-11", "231–99, amended"], ["Sp", "2026-05-07", "voice vote, amended"], ["Gp", "2026-07-15", "signed"], ["Lp", "2026-09-13", "Chapter 330"]], false]},
+    {"args": [[["Ip", "2026-01-07"], ["Hx", "2026-02-19", "voice vote"], ["S-"], ["G-"], ["Lx", "2026-02-19"]], true]},
+    {"args": [[["Ip", "2026-01-07"], ["Ht", "2026-02-19", "tabled"], ["S-", "", ""], ["G-"], ["Lx", "2026-08-19", "died Aug 19, 2026"]], true]},
+    {"args": [[["Ip", "2026-01-07"], ["Hs", "2026-03-11", "interim study"], ["S-"], ["G-"], ["Lx", "2026-08-19"]], false]},
+    {"args": [[["Ip", "2026-01-07"], ["Ht", "2026-05-07"]], false]},
+    {"args": [[{"stop": "Introduced", "mark": "p", "date": "2026-01-07", "say": "Introduced"}, {"stop": "House", "mark": "p", "date": "2026-03-11", "say": "Passed with an amendment, 231–99"}, {"stop": "Law", "mark": "p", "date": "2026-09-13", "say": "Chapter 330, in effect Sep 13, 2026"}, {"stop": "Voters", "mark": "h", "date": "", "short": "Nov 2026"}], false]},
+    {"args": [[{"stop": "Law", "mark": "p", "date": "2026-01-01", "short": "Chapter 12"}, {"stop": "Governor", "mark": "x", "date": "2025-07-01", "short": "vetoed"}, {"stop": "Senate", "mark": "q", "date": "2025-02-30"}], false]},
+    {"args": [[[]], false]},
+    {"args": [[{}, {"stop": "Introduced", "mark": "p"}], false]},
+    {"args": [[], false], "want": ""},
+    {"args": [null, false], "want": ""}
+  ],
+  "person_link": [
+    {"args": [{"display_full": "Rep. Alice Wade (D - Straf 15)", "slug": "alice-wade-straf-15"}], "want": "<a class=\"psent\" href=\"legislator/alice-wade-straf-15.html\">Rep. Alice Wade (D - Straf 15)</a>"},
+    {"args": [{"label": "Rep. Alexander Jr."}], "want": "Rep. Alexander Jr."},
+    {"args": [{"name": "Smith & Co"}], "want": "Smith &amp; Co"},
+    {"args": [{}], "want": ""}
+  ],
+  "term_mark": [
+    {"args": ["ITL", "ITL"], "want": "<span data-term=\"ITL\">ITL</span>"},
+    {"args": ["RC-calendar", "RC"], "want": "<span data-term=\"RC-calendar\">RC</span>"}
+  ],
+  "vote_head": [
+    {"args": ["itl", "", null], "want": "Inexpedient to Legislate (<span data-term=\"ITL\">ITL</span>, Kill the bill)"},
+    {"args": ["table", "Laid on Table", null], "want": "Lay on the Table (Set the bill aside)"},
+    {"args": ["refer", "", {"Committee": "Finance"}], "want": "Refer to Finance (Send the bill to the Finance Committee)"},
+    {"args": ["part", "Adopt the Committee Amendment, Sections 22-24", null], "want": "Adopt the Committee Amendment, Sections 22-24"},
+    {"args": ["unnamed", "", null], "want": "A question the record does not name"},
+    {"args": ["consent", "", null], "want": "Adopt the Consent Calendar (Decide these bills together without debate)"},
+    {"args": ["nonesuch", "Rules of the House & Senate", null], "want": "Rules of the House &amp; Senate"},
+    {"args": ["constructor", "", null], "want": ""},
+    {"args": [null, null, null], "want": ""}
+  ],
+  "vote_chip": [
+    {"args": ["itl", true, "HB1681", null], "want": "<span class=\"chip rcres pass\">Motion Passed: Bill Killed</span>"},
+    {"args": ["itl", false, "HB1681", null], "want": "<span class=\"chip rcres fail\">Motion Failed</span>"},
+    {"args": ["untable", false, "SB5", {"Chamber": "Senate"}], "want": "<span class=\"chip rcres fail\">Motion Failed: Stays on the Table</span>"},
+    {"args": ["untable", true, "SB5", {"Chamber": "Senate"}], "want": "<span class=\"chip rcres pass\">Motion Passed: Back Before the Senate</span>"},
+    {"args": ["refer", true, "HB1", {"Committee": "Finance"}], "want": "<span class=\"chip rcres pass\">Motion Passed: Sent to Finance</span>"},
+    {"args": ["adopt", true, "HR38", null], "want": "<span class=\"chip rcres pass\">Motion Passed: Resolution Adopted</span>"},
+    {"args": ["itl", true, "", null], "want": "<span class=\"chip rcres pass\">Motion Passed</span>"},
+    {"args": ["consent", true, "", null], "want": "<span class=\"chip rcres pass\">Motion Passed</span>"},
+    {"args": ["nonesuch", true, "HB1", null], "want": "<span class=\"chip rcres pass\">Motion Passed</span>"},
+    {"args": ["itl", null, "HB1", null], "want": ""},
+    {"args": ["vacate_referral", true, "HB1", null], "want": "<span class=\"chip rcres pass\">Motion Passed</span>"}
+  ],
+  "record_head": [
+    {"args": [{"trail": [["Bills", "bills.html"], ["2025–2026 Term", "directory/bills-2025-2026.html"], ["House Bill", ""]], "title": "HB 1681", "year": 2026, "chip": "<span class=\"chip chip-m cstat s-law\">Became Law</span>", "line": "relative to tiny houses", "facts": [["Prime Sponsor", "<span>chip</span>"], ["Committees", "a · b"], ["Subject", "Housing"], ["Chapter Law", "Chapter 330, Laws of 2026", "Effective Sep 13, 2026"], ["Empty", ""], ["Six", "6"], ["Seven", "7"], ["Eight", "8"]], "rail": "<span class=\"rail\"></span>", "actions": "<button>Cite</button>", "kind": "bill"}]},
+    {"args": [{"title": "Housing"}]},
+    {"args": [{"facts": [["Room", "GP 231", ""]]}]}
+  ],
+  "doc_row": [
+    {"args": [{"kind": "record", "label": "HJ 5, page 23", "url": "https://gc.nh.gov/x.pdf", "of": "House Journal · Feb 19, 2026", "what": "<span class=\"docacts\">a</span>"}]},
+    {"args": [{"kind": "status", "label": "Bill status", "url": "https://gc.nh.gov/s"}]}
+  ],
+  "section": [
+    {"args": ["Official Legislative Analysis", "<p>x</p>", "analysis"], "want": "<section class=\"w4\" id=\"analysis\"><h2 class=\"w4h\">Official Legislative Analysis</h2><div class=\"w4b\"><p>x</p></div></section>"},
+    {"args": ["House Committee (Housing)", "<p>y</p>", ""]}
   ]
 }

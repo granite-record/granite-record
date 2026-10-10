@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.176
+// GRANITE_VERSION: 2026-09-07.183
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -2397,7 +2397,13 @@ const sel={committee:new Set(),topic:new Set(),sponsor:new Set(),status:new Set(
 // longest group open -- fourteen committees before the first bill.
 const wideEnough=typeof matchMedia==="function"
   && matchMedia("(min-width:53.8125em)").matches;
-const openGroups=new Set(wideEnough?["committee"]:[]);
+// 5a (the person, 9 October 2026, item 2): STATUS AND BILL TYPE OPEN,
+// COMMITTEE CLOSED, at every width -- inside the Filters panel below 960px as
+// well, so a reader who opens it sees the categories at once (round two's
+// question 8a, as recommended). Both are short and shown whole, and Status
+// answers the commonest question; the committee list is the long one.
+// wideEnough is kept for what else asks how wide the window is.
+const openGroups=new Set(["status","type"]);
 let sponsorFilter="";
 const openCards=new Set(),openTab={},detail={},segSel={},fullOpen=new Set();
 // The bills whose How it got here the reader opened past its first six lines.
@@ -2840,21 +2846,40 @@ function matches(b,ignore){
 // ran out of the 250px column on one line and was cut off at "the vote".
 // `show`, where given, is what a value reads as, in HTML: the Bill Type
 // filter's "HB House Bill" for the value HB.
+// 5c (the person, 9 October 2026, item 2): ONCE A SEARCH OR A FILTER NARROWS
+// THE LIST, the long lists -- Committee, Topic, Prime Sponsor's found names,
+// Floor Vote Day -- put the options with bills first and the greyed zeros
+// after them, each part in the list's own order, with a rule above the first
+// zero. Unnarrowed, nothing moves. Status and Bill Type keep their fixed
+// orders, their zeros in place: both are short and shown whole, and Status's
+// order is decided (round two's question 8b, as recommended). NOT 5b: a ticked
+// choice keeps its place in its part and does not move to the top.
+const ZEROS_LAST=new Set(["committee","topic","sponsor","voteday"]);
+function narrowedNow(){
+  return !!String(query||"").trim()||Object.values(sel).some(s=>s.size);
+}
+function zerosLast(key,vals,counts){
+  if(!ZEROS_LAST.has(key)||!narrowedNow())return {vals,rule:-1};
+  const some=vals.filter(v=>counts[v]),none=vals.filter(v=>!counts[v]);
+  return {vals:some.concat(none),rule:some.length&&none.length?some.length:-1};
+}
 function fgroup(key,label,vals,counts,searchable,paint,show){
   const chosen=sel[key],open=openGroups.has(key);
   let inner="";
   if(searchable){
     const f=sponsorFilter.toLowerCase();
-    const shown=f?vals.filter(v=>v.toLowerCase().includes(f)).slice(0,15):[];
+    const found=zerosLast(key,f?vals.filter(v=>v.toLowerCase().includes(f)).slice(0,15):[],counts);
+    const shown=found.vals;
     inner=`${[...chosen].map(v=>`<span class="pill">${esc(v)}<button data-unpick="${esc(v)}">×</button></span>`).join("")
       ?`<div class="chosen">${[...chosen].map(v=>`<span class="pill">${esc(v)}<button data-unpick="${esc(v)}">×</button></span>`).join("")}</div>`:""}
       <input class="sbox" id="sbox" aria-label="Find a prime sponsor by name" placeholder="Type a name…" value="${esc(sponsorFilter)}" autocomplete="off">`
-      +(shown.map(v=>`<label class="fopt ${!counts[v]?'off':''}"><input type="checkbox" data-f="${key}"
+      +(shown.map((v,i)=>`<label class="fopt ${!counts[v]?'off':''}${i===found.rule?' fzero':''}"><input type="checkbox" data-f="${key}"
         value="${esc(v)}" ${chosen.has(v)?"checked":""}><span>${esc(v)}</span>
         <span class="c">${(counts[v]||0).toLocaleString()}</span></label>`).join("")
         ||(sponsorFilter?`<p class="fnone">No match</p>`:""));
   }else{
-    inner=vals.map(v=>`<label class="fopt ${!counts[v]&&!chosen.has(v)?'off':''}">
+    const order=zerosLast(key,vals,counts);
+    inner=order.vals.map((v,i)=>`<label class="fopt ${!counts[v]&&!chosen.has(v)?'off':''}${i===order.rule?' fzero':''}">
       <input type="checkbox" data-f="${key}" value="${esc(v)}" ${chosen.has(v)?"checked":""}>
       <span>${paint?chip(v,paint(v)):show?show(v):esc(v)}</span>
       <span class="c">${(counts[v]||0).toLocaleString()}</span></label>`).join("");
@@ -3339,40 +3364,13 @@ const PANE_NOTE={
 };
 const paneNote=(k)=>PANE_NOTE[k]?`<p class="src">${PANE_NOTE[k]}</p>`:"";
 
-// The General Court's own analysis of the bill, at the top of the summary
-// because it is the shortest true answer to what the bill does. Long ones are
-// clamped to six lines by CSS and given a button by clampAnalysis(), which
-// measures rather than guessing from a character count -- six lines is a
-// different number of characters on a phone and on a desktop.
-function analysis(d, rsa){
-  const t=((d.billtext||{}).analysis||"").trim();
-  if(!t)return "";
-  return `<section class="anbox" data-an="1">
-    <h2 class="anlab">Official legislative analysis</h2>
-    <div class="antext">${rsa?rsa(esc(t)):esc(t)}</div>
-    <p class="src">Source: NH General Court</p></section>`;
-}
-
-// WHAT THIS BILL IS, where its number carries a standing meaning. HB1 has
-// been the state budget in every term since 1993-1994 and its title says only
-// "making appropriations for the expenses of certain departments of the
-// state", which is accurate and tells a reader nothing.
-//
-// ATTRIBUTED TO THIS SITE, NOT TO THE RECORD. Everything else in this box is
-// the General Court's -- the official analysis says "Source: NH General
-// Court" underneath it for exactly this reason. These words are Granite
-// Record's, and a reader who cannot tell the difference has been given a
-// worse page, not a fuller one.
-function billNote(d){
-  const n=d&&d.bill_note;
-  if(!n||!n.note)return "";
-  return `<section class="anbox billnote">
-    <h2 class="anlab">${esc(n.label||"About this bill")}</h2>
-    <div class="antext">${esc(n.note)}</div>
-    <p class="src">Written by Granite Record, not quoted from the General
-      Court. It describes what this bill number is for, which its title does
-      not say.</p></section>`;
-}
+// THE OFFICIAL ANALYSIS AND A BILL'S NOTE are sections of renderSummary since
+// 10 October 2026. The note is Granite Record's words, not the General
+// Court's, and says so under it: HB1 has been the state budget in every term
+// since 1993-1994 and its title says only "making appropriations for the
+// expenses of certain departments of the state". A long analysis is clamped
+// and given a button by clampAnalysis(), which measures rather than guessing
+// from a character count.
 
 // WHAT AN ARCHIVED TERM ACTUALLY HAS, which is not the same in all eighteen
 // of them. This was one paragraph on one boolean, drawn on 31,449 of the
@@ -3607,13 +3605,17 @@ function rsaChapters(d){
 // the next term, which the line names and links where the clerk wrote down
 // its LSR (s.link) -- and the "~" where it did not. The arrow is drawn, as the
 // wave is, and only here: the rail has no stop for it.
-const WAVE='<svg class="wave" viewBox="0 0 12 12" aria-hidden="true" focusable="false">'
-  +'<path d="M1.7 7.4C2.9 4.8 4.5 4.6 6 6.1s3.1 1.4 4.3-1.2" fill="none" '
-  +'stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>';
+// The wave is components.js's since 10 October 2026 (RL_WAVE), where the
+// dated rail is drawn in both languages.
+const WAVE=RL_WAVE;
 const ARROW='<svg class="arrow" viewBox="0 0 12 12" aria-hidden="true" focusable="false">'
   +'<path d="M2 6h7.2M6.4 2.9 9.6 6l-3.2 3.1" fill="none" stroke="currentColor" '
   +'stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 const JMARK={p:"✓",x:"✕",h:"↺",s:WAVE,t:"",f:ARROW};
+// A committee's acts on its meeting's card (actSaid): the interim study
+// report it recommended, in the orange arrow, and one it did not, killed, in
+// the red cross. The arrow is a drawing, so its orange is a mark's.
+const ACTMARK={rec:ARROW,kill:"\u2715"};
 const JCLASS={s:"istudy",t:"ontable",f:"ifuture"};
 // A line's words, with the bill it names linked where it names one: the next
 // term's bill an interim study report's clerk wrote down (s.link, a bill/
@@ -3622,8 +3624,7 @@ function jText(s){
   const t=esc(s.text||""), l=s.link;
   if(!l||!l.text||!l.href||!/^bill\/\d{4}\/[a-z0-9]+\.html$/.test(l.href))return t;
   const at=t.indexOf(esc(l.text));
-  return at<0?t:t.slice(0,at)+`<a href="${esc(l.href)}">${esc(l.text)}</a>`
-    +t.slice(at+esc(l.text).length);
+  return at<0?t:t.slice(0,at)+billMention(l.text,l.href)+t.slice(at+esc(l.text).length);
 }
 const JBODY={H:"House",S:"Senate",G:"Governor",L:"Law",V:"Voters"};
 const JOURNEY_SHOWN=6;
@@ -3651,89 +3652,12 @@ function journeyList(b,d){
   return `<ul class="jl">${rows.join("")}</ul>`;
 }
 
-function factsTable(b,d){
-  const rows=[];
-  const add=(k,v,wide)=>{ if(v) rows.push([k,v,wide]); };
-
-  // NOT facts.gen_status, WHICH IS NOT A STATUS ON MOST BILLS. Counted over
-  // the current term's 2,234: it reads "HOUSE" on 1,065 and "SENATE" on 454
-  // -- 68% -- because the field records which chamber the bill is in, not
-  // what happened to it. A row labelled "Bill Status" saying "HOUSE" is
-  // worse than no row. Where it IS a status (SIGNED BY GOVERNOR, VETOED BY
-  // GOVERNOR, PASSED, LAW WITHOUT SIGNATURE, VETO OVERRIDDEN, 715 bills) the
-  // site's own classification says the same thing in words a reader uses, so
-  // nothing is lost by taking it from there for all of them.
-  add("Bill Status", esc(b.status||d.next_step||""));
-  // HOW IT GOT HERE, IN PLACE OF THE HOUSE STATUS AND SENATE STATUS ROWS.
-  // Those were the General Court's own per-chamber fields, and they are blank
-  // for one chamber on most bills: this term 932 bills carried only a House
-  // status, 351 only a Senate one and 156 neither -- HB 57 of 2025 passed the
-  // House on a voice vote and its House field is empty. The journey is read
-  // from the docket instead, one line per decision, the same lines the rail
-  // above is dated from (the person chose it on 24 September).
-  //
-  // ACROSS THE WHOLE PANEL, its label on a line of its own. Beside the
-  // analysis the panel is at most 440px, and in the value column of a 42%
-  // label the list's glyph, body and day left about 66px for the words:
-  // "Passed with an amendment, 16–8" ran to four lines, a conference refusal
-  // to nine. Spanning both columns gives the words about 250px.
-  add("How it got here", journeyList(b,d), true);
-  if(d.chapter)
-    add("Chapter", `Chapter ${esc(d.chapter)}`
-      + (d.year?`, Laws of ${esc(d.year)}`:""));
-  // HB 2 OF 2025 AMENDS 238 CHAPTERS, from 685 cited sections. Written out
-  // in full, that single row is about thirty lines of the table on a desktop
-  // and most of a screen on a phone -- in the panel a reader meets first, in
-  // front of everything they came for. Eight, and the rest behind a native
-  // disclosure: no script, the count is in the control so the scale of it is
-  // still stated, and eight chapters is enough to see what kind of bill this
-  // is. Ten or fewer are all shown, because hiding two behind a control that
-  // costs a line is not a saving.
-  const ch=rsaChapters(d);
-  const rsaLink=([n,u])=>`<a class="rsa" href="${esc(u)}" target="_blank"`
-    +` rel="noopener">${esc(n)}</a>`;
-  const RSA_SHOWN=8;
-  if(ch.length && ch.length<=RSA_SHOWN+2)
-    add(ch.length===1?"Amends RSA chapter":"Amends RSA chapters",
-      ch.map(rsaLink).join(", "));
-  else if(ch.length)
-    add("Amends RSA chapters",
-      `<span class="rsaset">${ch.slice(0,RSA_SHOWN).map(rsaLink).join(", ")}</span>`
-      +`<details class="rsamore"><summary><span class="shut">Show all ${
-        ch.length} chapters</span><span class="open">Show fewer</span></summary>`
-      +`<span class="rsaset">${ch.slice(RSA_SHOWN).map(rsaLink).join(", ")}</span>`
-      +`</details>`);
-  if(d.house_committee) add("House Committee", cmteLink("House "+d.house_committee,b.term,META.committee_codes));
-  if(d.senate_committee) add("Senate Committee", cmteLink("Senate "+d.senate_committee,b.term,META.committee_codes));
-  // THE TOPIC MODEL'S REFUSAL IS NOT A SUBJECT. "Miscellaneous" is what
-  // topic_model.py returns below its confidence floor -- its own way of
-  // declining to answer -- and the General Court's 46 subject codes do not
-  // contain it. In this row it reads as the record's word for what the bill is
-  // about. 69 of the archive's organisation-day housekeeping resolutions carry
-  // it under titles that are word for word the 14 this term correctly leaves
-  // blank ("Adopting the rules of the 2024 session for the 2025-2026
-  // biennium", "RESOLVED, that the biennium salary of the members of the
-  // Senate be paid in one undivided sum"), and 10,894 bills carry it in all.
-  //
-  // OMITTED, NOT BLANKED. A row that is not there says nothing, which is what
-  // is known. The guard is on where the word came from and not on the word: a
-  // subject the General Court itself filed a bill under is printed whatever it
-  // says.
-  if(!(d.subject==="Miscellaneous"&&d.subject_source==="granite record"))
-    add("Subject", esc(d.subject||""));
-  // NO INTRODUCED AND NO LSR ROW (the person, 7 October 2026, F14). The rail
-  // above dates the introduction and How it got here begins with it, so the
-  // row said a third time what the panel says twice; the LSR number is the
-  // drafting office's reference, on the bill's own text and its LSR page.
-  if(!rows.length) return "";
-  return `<section class="facts"><h2>On the record</h2>
-    <table class="facttab"><tbody>${rows.map(([k,v,wide])=>wide
-      ?`<tr class="wideh"><th scope="colgroup" colspan="2">${esc(k)}</th></tr>`
-        +`<tr class="wide"><td colspan="2">${v}</td></tr>`
-      :`<tr><th scope="row">${esc(k)}</th><td>${v}</td></tr>`).join("")}</tbody></table>
-    ${d.docket_url?`<p class="src"><a href="${esc(d.docket_url)}" target="_blank"
-      rel="noopener">This bill on gencourt</a></p>`:""}</section>`;
-}
+// THE ON THE RECORD BOX IS GONE (option E, the person, 8 October 2026): its
+// facts are in the bill's head (billHead), How It Got Here and the RSA
+// chapters are sections of the summary (renderSummary, rsaLine), and "This
+// bill on gencourt" is the link on "Source: NH General Court". The head has
+// no Introduced and no LSR fact (F14, 7 October 2026): the rail dates the
+// introduction, and the LSR number is the drafting office's reference.
 
 // HOW A BILL ENDED WHEN NOTHING WAS VOTED ON IT. Two lines, both from the
 // record rather than from the status field, and both about bills whose last
@@ -3767,53 +3691,51 @@ function endNote(d){
   return out.join("");
 }
 
+// THE SUMMARY IN W4 SECTIONS (the component plan's C7 and option E, the
+// person, 8 October 2026): each heading in a margin in Title Case, beside
+// prose about a hundred characters wide, and the whole tab the summary's --
+// the ON THE RECORD box is gone, its facts in the head. The official
+// analysis first, its source the bill on GenCourt ("Source: NH General
+// Court" links to it) and the RSA chapters the bill amends under it; then
+// How It Got Here, the story stage by stage under the headings narrative.py
+// writes (C8: in their case where they are made, "House Committee
+// (Housing)", "On the House Floor"), how it ended, and the docket.
+const RSA_SHOWN=8;
+function rsaLine(d){
+  const ch=rsaChapters(d);
+  if(!ch.length)return "";
+  const link=([n,u])=>`<a class="rsa" href="${esc(u)}" target="_blank" rel="noopener">${esc(n)}</a>`;
+  const lead=ch.length===1?"Amends RSA chapter":"Amends RSA chapters";
+  if(ch.length<=RSA_SHOWN+2)return `<p class="rsaline">${lead} ${ch.map(link).join(", ")}</p>`;
+  return `<div class="rsaline">${lead} <span class="rsaset">${ch.slice(0,RSA_SHOWN).map(link).join(", ")}</span>`
+    +`<details class="rsamore"><summary><span class="shut">Show all ${ch.length} chapters</span>`
+    +`<span class="open">Show fewer</span></summary><span class="rsaset">${
+      ch.slice(RSA_SHOWN).map(link).join(", ")}</span></details></div>`;
+}
+const gcSource=d=>d.docket_url?`<a href="${esc(d.docket_url)}" target="_blank" rel="noopener">NH General Court</a>`
+  :"NH General Court";
 function renderSummary(b,d,rsa){
-  const _an=billNote(d)+analysis(d,rsa);
-  // ON THE RECORD SITS AT THE TOP ON A WIDE SCREEN, AND UNDER THE ANALYSIS ON
-  // A NARROW ONE. Asked for in those terms on 20 September.
-  //
-  // THIS REVERSED AN EARLIER DECISION, which is worth keeping rather than
-  // quietly overwriting. The comment here used to read "WHAT A BILL OPENS
-  // WITH IS THE WRITING, NOT THE TABLE. Asked for in those terms", and it
-  // moved the panel after the analysis in the markup so the float started
-  // below the prose and sat beside the story. Both arrangements were asked
-  // for, a fortnight apart; this is the newer one.
-  //
-  // A FLOATED BOX HAS TO COME FIRST IN THE DOM TO SIT AT THE TOP, so the
-  // panel is emitted before the writing and the narrow layout orders it back
-  // -- .anbox is order:1 and .facts order:2 below 1100px, which is what puts
-  // the analysis above it on a phone and has done all along. app.css's .facts
-  // float has described exactly this arrangement the whole time; the markup
-  // is what had drifted away from it.
-  //
-  // What that cost, and why it is still a float: a grid row is as tall as its
-  // tallest item, so the row holding the 488px panel gave the analysis beside
-  // it a 274px dead tail, and no span fixed every bill -- two rows left 75px
-  // on HB 1, three left an empty row on HB 751. A float cannot push in-flow
-  // content down at all, which is the property actually wanted. See .facts in
-  // app.css.
-  // A BAND ACROSS THE TOP (the person, 24 September): on a desktop the
-  // analysis and any bill notes on the left and On the record on the right,
-  // with the stage sections full width below; on a phone the panel first,
-  // then the writing. The band holds the two as siblings in their own box, so
-  // the story below can never run under the panel, which is what the float
-  // did once text stopped being capped at 560px. No writing: the panel alone.
-  const _top=_an
-    ? `<div class="sumtop"><div class="sumrow"><div class="sumlead">${_an}</div>${factsTable(b,d)}</div></div>`
-    : factsTable(b,d);
-  return _top + `
-${d._error?`<div class="loaderr"><b>This bill's detail did not
-    load.</b><span>${esc(d._error)}</span></div>`:""}
-    ${(d.notes||[]).map(x=>`<p class="note">${esc(x)}</p>`).join("")}
-    ${(d.stages&&d.stages.length)
-      ? `<div class="story">${d.stages.map(st=>
-          `<div class="stg">${st.label?`<h2>${esc(st.label)}</h2>`:""}
-           <p>${esc(st.text)}</p>${(st.notes||[]).map(n=>
-             `<p class="note">${esc(n)}</p>`).join("")}</div>`).join("")}</div>`
-      : (d.narrative?`<p class="story"><span class="stg">${esc(d.narrative)}</span></p>`:"")}
-    ${endNote(d)}
-    ${archivedNote(d)}
-    ${(d.events||[]).length?`<details class="docket"><summary><span class="caret"></span>View docket</summary>
+  const S=[];
+  const note=d&&d.bill_note;
+  if(note&&note.note)S.push(section(titleWords(note.label||"About this bill"),
+    `<div class="anbox billnote"><div class="antext">${esc(note.note)}</div></div>
+     <p class="src">Written by Granite Record, not quoted from the General Court. It
+     describes what this bill number is for, which its title does not say.</p>`,"about"));
+  const an=((d.billtext||{}).analysis||"").trim();
+  if(an)S.push(section("Official Legislative Analysis",
+    `<div class="anbox" data-an="1"><div class="antext">${rsa?rsa(esc(an)):esc(an)}</div></div>
+     <p class="src">Source: ${gcSource(d)}</p>${rsaLine(d)}`,"analysis"));
+  const jl=journeyList(b,d);
+  if(jl)S.push(section("How It Got Here",jl+(an?"":`<p class="src">Source: ${gcSource(d)}</p>${rsaLine(d)}`),"journey"));
+  else if(!an&&(d.docket_url||rsaChapters(d).length))
+    S.push(section("Source",`<p class="src">Source: ${gcSource(d)}</p>${rsaLine(d)}`,"source"));
+  if(d.stages&&d.stages.length)d.stages.forEach(st=>S.push(section(st.label||"The Story",
+    `<p class="story">${esc(st.text)}</p>${(st.notes||[]).map(n=>`<p class="note">${esc(n)}</p>`).join("")}`)));
+  else if(d.narrative)S.push(section("The Story",`<p class="story">${esc(d.narrative)}</p>`));
+  const ending=endNote(d)+archivedNote(d);
+  if(ending)S.push(section("How It Ended",ending,"ending"));
+  if((d.events||[]).length)S.push(section("The Docket",`<details class="docket"><summary><span class="caret"></span>Show the docket&rsquo;s ${
+      d.events.filter(e=>!e.cancelled).length} lines</summary>
       <p class="note">Every action the General Court recorded, in its own words
         and in the order it recorded them.</p>
       <ul class="tl">${d.events.filter(e=>!e.cancelled).map(e=>`<li>
@@ -3826,8 +3748,10 @@ ${d._error?`<div class="loaderr"><b>This bill's detail did not
           e.date_note?`<span class="note tldate">${esc(e.date_note)}</span>`:""}${
           /* a row the docket files under the wrong bill, and its twin */
           e.row_note?`<span class="note tldate">${esc(e.row_note)}</span>`:""}</span>
-        </li>`).join("")}</ul></details>`:""}
-`;
+        </li>`).join("")}</ul></details>`,"docket"));
+  return `${d._error?`<div class="loaderr"><b>This bill's detail did not
+    load.</b><span>${esc(d._error)}</span></div>`:""}${
+    (d.notes||[]).map(x=>`<p class="note">${esc(x)}</p>`).join("")}<div class="w4s">${S.join("")}</div>`;
 }
 
 // THE DAY A VOTE WAS TAKEN LEADS TO THE DAY. A roll call on a bill and a row
@@ -3889,13 +3813,22 @@ function renderVotes(b,d){
       body=`<p class="note" style="margin-top:6px">Decided on a voice vote. There is
         no count and no record of how individual members voted.</p>`;
     }
+    // THE APPROVED VOTE WORDS (the person, 8 October 2026; votes.json): the
+    // motion's own name with only OTP, OTPA, ITL and IS abbreviated and a
+    // plain gloss -- "Inexpedient to Legislate (ITL, Kill the bill)" -- and
+    // the chip saying what the vote did, coloured by the vote's outcome,
+    // "Motion Passed: Bill Killed". The key is the build's (motions.py, rc.mk);
+    // a record built before it has none and its question stands as the head.
+    // The record's own words go on a small line under the head where they
+    // differ from it by more than case and an amendment number (rc.mrec).
     return `<section class="rc">
-      <div class="rchead"><h2 class="rcq">${esc(rc.question)}${
+      <div class="rchead"><h2 class="rcq">${voteHead(rc.mk,rc.question,rc.mf)}${
         rc.amendment?` <span class="ramd">${esc(rc.amendment)}</span>`:""}</h2>
       <span class="rcd">${sittingLink(rc.body==="H"?"H":"S",rc.date,dateWords(rc.date))} · ${
-        rc.body==="H"?"House":"Senate"}${AVK[vk]?` · ${AVK[vk]}`:""}</span>
-      ${chip(rc.passed?"Adopted":"Failed",`rcres ${rc.passed?"pass":"fail"}`)}</div>
-      ${rc.mover?`<p class="rcby">Moved by ${esc(rc.mover)}</p>`:""}
+        rc.body==="H"?"House":"Senate"}${AVK[vk]?` · ${termMark(vk,AVK[vk])}`:""}</span>
+      ${voteChip(rc.mk||"",rc.passed,b.id,rc.mf)}</div>
+      ${rc.mrec?`<p class="rcrec">In the record: ${esc(rc.mrec)}</p>`:""}
+      ${rc.mover?`<p class="rcby">Moved by ${rc.mover_m?personLink(rc.mover_m):esc(rc.mover)}</p>`:""}
       ${rc.threshold_note?`<p class="note" style="margin:6px 0 0">${esc(rc.threshold_note)}</p>`:""}
       ${rc.outcome_conflict?`<p class="note" style="margin:6px 0 0">${esc(rc.outcome_conflict)}</p>`:""}
       ${body}</section>`;}).join("")
@@ -4880,10 +4813,8 @@ function renderDocuments(b,d){
            const src=x.kind==="record"?citeSource(x.label):"";
            const when=acts.length?dateWords(acts[0].date):"";
            const of=[src,when].filter(Boolean).join(" \u00b7 ");
-           return `<li class="doc doc-${esc(x.kind)}">
-           <a href="${esc(x.url)}" target="_blank" rel="noopener">${esc(x.label)}</a>
-           ${of?`<span class="docof">${esc(of)}</span>`:""}
-           ${acts.length
+           // ONE DOCUMENT ROW, components.doc_row (the plan's step 7).
+           return docRow({kind:x.kind,label:x.label,url:x.url,of,what:acts.length
              ? `<span class="docacts">${acts.map(e=>esc(e.text)).join("<br>")}</span>`
              // NOT "the page this site takes a bill's status from" where it
              // did not: a bill the House Journal leaves out of those it
@@ -4891,7 +4822,7 @@ function renderDocuments(b,d){
              : `<span>${x.kind==="status"&&d.status_source==="House Journal"
                  ? STATUS_NOT_FROM_PAGE
                  : x.kind==="status"&&d.ballot&&!d.ballot.pending
-                 ? statusUpToTheVoters(d) : (DOCWHAT[x.kind]||"")}</span>`}</li>`;
+                 ? statusUpToTheVoters(d) : (DOCWHAT[x.kind]||"")}</span>`});
          }).join("")}</ul>`
       : `<p class="note">No official documents on file for this bill yet. The
          bill text and docket links come from the General Court's status page,
@@ -5206,10 +5137,11 @@ function renderDetail(b,d){
   // bill was focused -- a refresh on a bill page reporting that its detail
   // would not load when the file had arrived fine. It is a call now, made
   // where it is used, so there is nothing left to order wrongly.
-  const btsec=(focused===b.id&&hasVersionIndex(d)&&((d.billtext&&d.billtext.body)
-    ||(d.amendments||[]).length))
-    ? billTextSection(b,d,rsa)
-    : "";
+  // NOT SINCE 10 OCTOBER 2026: a bill's own page is its head, its tabs and
+  // the tab that is open (option E and the approved prototype, where the
+  // summary takes the whole tab), and the text is the Bill Text tab's. Drawn
+  // under every tab, the whole text ran on below the Summary and the Votes.
+  const btsec="";
 
   // BILL TEXT SITS SECOND, and the data-t numbers are deliberately NOT
   // renumbered. They are the tab's identity: PAGE_TAB holds one, the pane
@@ -5322,7 +5254,7 @@ let reportBuild=null;       // site/build.json's "finished", fetched once, on fi
 
 function reportBox(kind,ref){
   return `<details class="report" data-rkind="${esc(kind)}" data-rref="${esc(ref)}">
-  <summary>${icon("report")}Report a problem with this page</summary>
+  <summary>${icon("report")}Report a problem</summary>
   <form class="reportform" novalidate>
     <p class="reportwhat">Tell us what is wrong and we will check it against the official record.
     Nothing here identifies you, which also means we cannot reply: for an answer, write to
@@ -5349,15 +5281,69 @@ function shareBox(){
     `<span class="sharestate" role="status" aria-live="polite"></span>`;
 }
 
+// THE ACTIONS ARE ONE STACK IN THE RECORD'S HEAD (the record head of the
+// component plan, C6, and the person's option E: "Actions stacked on the
+// right on a desktop", in a row below the rail on a phone): Cite this page,
+// Follow, Print (a bill's), Share and Report a problem, in that order, each
+// the quiet action button. shell.py writes the row (#pageacts) with Cite in
+// it; Follow goes in after Cite (mountFollow), and Print, Share and Report a
+// problem after Follow, here. The row is moved into the head each time the
+// head is drawn (placeActions) and out of the way before the record is drawn
+// again (parkActions), so it is one row a page, whatever is open in it or
+// typed into it. A page from an older build, with no row, keeps the old
+// arrangement below the record.
+function printBox(){
+  return `<button type="button" class="pshare pprint" data-print>${icon("print")}Print</button>`;
+}
 function mountReport(kind,ref){
   if(document.getElementById("reportbox"))return;
   const res=$("#results");
   if(!res)return;
+  const acts=document.getElementById("pageacts");
   const div=document.createElement("div");
   div.id="reportbox";
-  div.innerHTML=reportBox(kind,ref)+shareBox();
-  res.after(div);
+  div.innerHTML=(kind==="bill"&&acts?printBox():"")+shareBox()+reportBox(kind,ref);
+  if(acts){div.className="inacts";acts.appendChild(div);}
+  else res.after(div);
 }
+// The row, out of the record before the record is drawn again, and into the
+// head once it is drawn. The template's hidden <h1> gives way to the head's.
+// HIDDEN WHILE THE LIST IS DRAWN (`hide`): a bill's own page that goes back
+// to the list for a search has no record on it to cite, print, share or
+// report, and the row stood over the first card (the look of 10 October 2026).
+function parkActions(hide){
+  const a=document.getElementById("pageacts"), r=$("#results");
+  if(a&&r&&r.contains(a)){r.before(a);a.classList.remove("inhead");}
+  if(a)a.hidden=!!hide;
+}
+function placeActions(){
+  const a=document.getElementById("pageacts");
+  const slot=document.querySelector("#results .rhead .racts");
+  if(a)a.hidden=false;
+  if(a&&slot&&a.parentNode!==slot){slot.appendChild(a);a.classList.add("inhead");}
+  if(document.querySelector("#results .rh1")){
+    const sr=document.querySelector("main > h1.sr");
+    if(sr)sr.hidden=true;
+  }
+}
+// PRINT, on a bill's own page: the print sheet (print.js, GRPrint.open),
+// fetched the first time it is asked for, with the record this page holds.
+document.addEventListener("click",e=>{
+  const b=e.target.closest&&e.target.closest("[data-print]");
+  if(!b)return;
+  const id=focused||String(window.GR_BILL||"").split("/").pop().toUpperCase();
+  const d=detail[dkey(id)];
+  if(!d||d._error)return;
+  const row=IDX.find(x=>x.id===id&&(!d.term||x.term===d.term))||{id,n:id,chip:""};
+  const go=()=>{try{GRPrint.open(d,row,{});}catch(err){b.disabled=false;}};
+  if(typeof GRPrint!=="undefined")return go();
+  b.disabled=true;
+  const sc=document.createElement("script");
+  sc.src="/print.js";
+  sc.onload=()=>{b.disabled=false;go();};
+  sc.onerror=()=>{b.disabled=false;};
+  document.head.appendChild(sc);
+});
 
 // The address shared is the one in the bar -- a tab's own address where a
 // tab is open -- without a fragment, which only scrolls this reader's page.
@@ -5416,7 +5402,7 @@ function mountFollow(kind){
         <button type="button" class="link" data-copyfeed="1">Copy the address</button>
         <a href="${esc(href)}">Open the feed</a></p>
     </div></details>`;
-  if(acts)acts.insertBefore(div,acts.firstChild);
+  if(acts){const c=acts.querySelector(".pcite");acts.insertBefore(div,c?c.nextSibling:acts.firstChild);}
   else res.before(div);
 }
 document.addEventListener("click",e=>{
@@ -5526,7 +5512,10 @@ let UPCOMING = null;
 // renderers' own job now (focusKey and refocus, below), so this only chooses
 // which of the two to run.
 const repaint=()=>{
-  if(PAGE)renderPage();else render();
+  // A session day draws its roll calls with the Votes tab's display (below,
+  // drawSessionVotes): a party row pressed there redraws them, never the
+  // bill list over the day.
+  if(PAGE)renderPage();else if(SESSV)drawSessionVotes();else render();
 };
 
 // FOCUS SURVIVES EVERY REDRAW. A redraw replaces the element that held focus
@@ -5625,11 +5614,8 @@ const termOfYear=y=>{
 // "No Committee Assignment" on 296 cards is the General Court's own wording
 // for a bill it never referred, not an empty value: it is a fact about the
 // bill and stays.
-function cmeta(b){
-  return [esc(b.sponsor_label||b.sponsor||""),
-    ...(b.committees||[b.committee]).filter(Boolean).map(c=>cmteLink(c,b.term,META.committee_codes)),
-    b.topic?esc(b.topic):""].filter(Boolean).join(" · ");
-}
+// Drawn by components.bill_byline (billByline) since 10 October 2026, which
+// joins the parts the same way, the sponsor as the person chip (cardHtml).
 
 /* A BILL REQUEST'S CARD, which is shorter because a request is smaller.
 
@@ -5703,19 +5689,15 @@ function lsrCardHtml(b){
 // not typed (WAVE, above journeyList), so it centres in the disc at any
 // size; the two bars are the stylesheet's (.stop.s-ontable b::after).
 const CHNAME2={H:"House",S:"Senate"};
-const RAILMARK={p:"\u2713", x:"\u2715", h:"", "-":"", s:WAVE, t:""};
-const RAILSAY={p:"passed", h:"is here now", x:"stopped here",
-               "-":"never reached", s:"sent to interim study", t:"on the table"};
-// The pause of a bill that died on the table is heard as the tabling it was,
-// not as a bill lying there now: "Senate: laid on the table, May 7, 2026", and
-// its death at Law, "Law: stopped here, August 19, 2026".
-const RAILSAY_DIED={t:"laid on the table"};
-// The index row's word for the act each of those two marks already says.
-const RAILSAID={s:"interim study", t:"tabled"};
-// A mark's class on its stop: "s-o" for a stop never reached, as it was, and
-// the two marks of the rail's own by what they are.
-const RAILCLASS={"-":"o", s:"istudy", t:"ontable"};
-const railCls=m=>`s-${esc(RAILCLASS[m]||m)}`;
+// THE MARKS, THEIR WORDS AND THEIR CLASSES ARE components.js's (RL_MARK,
+// RL_SAY, RL_SAY_DIED, RL_SAID, RL_CLASS) since 10 October 2026, where the
+// dated rail is drawn for a session day built ahead as for this page
+// (components.rail_html): the pause of a bill that died on the table is
+// heard as the tabling it was, "Senate: laid on the table, May 7, 2026", and
+// its death at Law, "Law: stopped here, August 19, 2026"; a stop never
+// reached is "s-o", and the rail's own two marks are classed by what they
+// are. This bare rail reads the same tables.
+const railCls=m=>`s-${esc((CMP.own(RL_CLASS,m)&&RL_CLASS[m])||m)}`;
 // What the rail's own marks refine in b.passage, which has neither: the
 // chip says which (build_site_v2.RAIL_MARK_OF_CHIP).
 const RAILCHIP={"Interim Study":["x","s"],"Tabled":["h","t"]};
@@ -5735,12 +5717,12 @@ function rail(b){
               : st.length===4 ? [CHNAME2[p[0]],CHNAME2[other],"Governor","Law"]
               : null;
   if(!stops)return "";
-  const said=stops.map((name,i)=>`${name}: ${RAILSAY[st[i]]||"not known"}`)
+  const said=stops.map((name,i)=>`${name}: ${(CMP.own(RL_SAY,st[i])&&RL_SAY[st[i]])||"not known"}`)
     .join("; ");
   return `<span class="rail" role="img" aria-label="${esc(said)}"
     title="${esc(said)}">${stops.map((name,i)=>
       `<span class="stop ${railCls(st[i])}"
-        ><b>${RAILMARK[st[i]]||""}</b><i>${esc(name)}</i></span>`
+        ><b>${(CMP.own(RL_MARK,st[i])&&RL_MARK[st[i]])||""}</b><i>${esc(name)}</i></span>`
     ).join("")}</span>`;
 }
 
@@ -5792,78 +5774,104 @@ function rail(b){
 // its own span, so where the rail is too narrow for "Jan 8, 2025" on one
 // line every stop sets its year on a line of its own alike (app.css, .ry),
 // rather than one stop wrapping where its neighbours did not.
-const RAIL_MON=DW_MONTHS.map(m=>m.slice(0,3));
-const RAILSTOP={I:"Introduced",H:"House",S:"Senate",G:"Governor",L:"Law",V:"Voters"};
+// The stops: the record's journey where the bill's record is here, else the
+// index row's own ["Sp","2025-05-22","16–8, amended"], which
+// components.rail_html reads as they are.
 function railStops(b,d){
   const own=((d||{}).journey||{}).rail||[];
-  if(own.length)return own;
-  return (b.rail||[]).map(([sm,date,short])=>({stop:RAILSTOP[sm[0]]||sm[0],
-    mark:sm.slice(1),date:date||"",short:short||"",say:""}));
+  return own.length?own:(b.rail||[]);
 }
+// THE DATED RAIL IS components.rail_html (railHtml) since 10 October 2026,
+// moved there unchanged in what it draws and says, so that a session day
+// built ahead in Python draws a bill card's rail as this page does. A row
+// with no stops still draws the bare rail above.
 function datedRail(b,d){
   const st=railStops(b,d);
   if(!st.length)return rail(b);
-  const words=chipOf(b)==="Died"?{...RAILSAY,...RAILSAY_DIED}:RAILSAY;
-  const cells=st.map(s=>{
-    const day=s.date?dateWords(s.date):"";
-    // The day and nothing else: s.short is said below, never drawn.
-    return `<span class="stop ${railCls(s.mark)}"><b>${
-      RAILMARK[s.mark]||""}</b><i>${esc(s.stop)}</i>${day
-      ?`<small>${esc(day.slice(0,-5))}<span class="ry">${esc(day.slice(-5))}</span></small>`
-      :""}</span>`;
-  });
-  // The same facts as a sentence, for a reader who hears the page: every
-  // date in full and a tally read "16 to 8" rather than a dash. The Law
-  // stop's day is the day the law took effect (F13, 7 October 2026), said
-  // as that -- "in effect 11 January 2026" -- and not a second time where
-  // its words already say it.
-  const said=st.map(s=>{
-    const when=s.date?dateWords(s.date,"full"):"";
-    const lawDay=s.stop==="Law"&&s.mark==="p";
-    // From the index, before the record is here, the mark's word and the
-    // stop's own: "House: passed, voice vote, 13 February 2025". The
-    // governor's, the law's and the voters' own words already say how it
-    // went -- "signed", "Chapter 140", "not ratified" -- and "passed, signed"
-    // said it twice; so does "Nov 2026", in full, as every other date is.
-    const own=s.short&&/^(Governor|Law|Voters)$/.test(s.stop)&&/^[px]$/.test(s.mark);
-    // And the rail's own marks say their act ("sent to interim study", "on
-    // the table"), so the stop's word for the same act is not said again.
-    const short=s.short===RAILSAID[s.mark]?"":s.short;
-    const what=(s.say||(own?s.short:[words[s.mark],short].filter(Boolean).join(", ")))
-      .replace(/(\d)–(\d)/g,"$1 to $2")
-      .replace(/\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) (\d{1,2}), (\d{4})\b/g,
-        (_m,mo,d,y)=>dateWords(`${y}-${String(RAIL_MON.indexOf(mo)+1).padStart(2,"0")}-${
-          String(d).padStart(2,"0")}`,"full"))
-      .replace(/\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) (\d{4})\b/g,
-        (_m,mo,y)=>`${DW_MONTHS[RAIL_MON.indexOf(mo)]} ${y}`);
-    const tail=!when?"":!lawDay?`, ${when}`:/in effect/.test(what)?"":`, in effect ${when}`;
-    return s.stop==="Introduced"
-      ?`Introduced${when?` ${when}`:""}`
-      :`${s.stop}: ${what.charAt(0).toLowerCase()+what.slice(1)}${tail}`;
-  }).join("; ");
-  return `<span class="rail dated" role="img" aria-label="${esc(said)}"
-    title="${esc(said)}">${cells.join("")}</span>`;
+  return railHtml(st,chipOf(b)==="Died");
 }
 
-function cardHtml(b,focus){
+// THE CARD IS components.bill_card (billCard) since 10 October 2026 (the
+// component plan's step 4 and C5, approved 9 October 2026), the same markup
+// a session day built ahead in Python draws. Its head is no longer a button
+// holding links: the number and year are the link to the bill's own page --
+// which in the bill search opens it here, as the corner arrow did, and on a
+// member's or a committee's page goes to it -- the title is the button that
+// opens the card in place, and the corner arrow is gone, since the number
+// says the same. The chip is the card's short word (components.card_word,
+// D18: "Retained", "Passed House", "To the Voters"); the bill's own page
+// keeps the full wording. "Carried over" is not drawn: the year beside the
+// number says it (the person, 8 October 2026). The sponsor is the person
+// chip (D14) and the committees mentions of their pages, the subject beside
+// them but never the topic model's "Miscellaneous". `line` is what happened
+// to the bill at the meeting or on the day a page lists it under.
+function cardSponsor(b){
+  const who=b.sponsor_label||b.sponsor||"";
+  if(!who)return null;
+  const party=b.sponsor_party||(/\(([A-Z])\b/.exec(who)||[])[1]||"";
+  return {display_full:who,party,slug:b.sponsor_slug||""};
+}
+const cardTopic=b=>(b.topic==="Miscellaneous"&&b.topic_by==="granite record")?"":(b.topic||"");
+function cardHtml(b,focus,line){
   const open=openCards.has(b.id);
   const y=b.year||(b.term?String(b.term).slice(0,4):"");
-  return `<article class="card ${open?'open':''}${focus?' focus':''}" data-id="${b.id}">
-      ${focus?"":`<a class="detail" href="bill/${esc(String(y))}/${esc(b.id.toLowerCase())}.html"
-        title="${esc(b.n)} on its own page: its own address, and a link worth sharing"
-        aria-label="Open the standalone page for ${esc(b.n)}">&#8599;</a>`}
-      <button class="chead" aria-expanded="${open}">
-        <div class="crow"><span class="cnum">${esc(b.n)} (${esc(String(y))})</span>
-        <span class="cyear">${b.carried
-          ?` <span class="ccarry" title="The docket shows action in more than one year of the term — usually a bill the committee retained in the first year and reported in the second">carried over</span>`:""}</span>
-        ${chip(chipOf(b),`cstat ${chipCls(b)}`,"m")}</div>
-        <div class="ctitle">${esc(b.title)}</div>
-        <div class="cmeta">${cmeta(b)}</div>${focus?"":whyLine(b)}
-        ${datedRail(b,focus||!(b.rail||[]).length?detail[dkey(b.id)]:undefined)}
-      </button>
-      <div class="cbody" ${open?"":"hidden"}>${
-        open?(detail[dkey(b.id)]?renderDetail(b,detail[dkey(b.id)]):`<p class="spin">Loading…</p>`):""}</div>
-    </article>`;
+  const d=detail[dkey(b.id)];
+  const body=focus||open?(d?renderDetail(b,d):`<p class="spin">Loading…</p>`):"";
+  // A BILL'S OWN PAGE IS ITS HEAD AND ITS TABS (the record head, C6): the
+  // article stays, since the tabs and their panes are found inside it.
+  if(focus)return `<article class="card focus rec" data-id="${esc(b.id)}">${billHead(b,d)}`
+    +`<div class="cbody">${body}</div></article>`;
+  return billCard({id:b.id,href:`bill/${y}/${String(b.id).toLowerCase()}.html`,n:b.n,year:y,
+    word:cardWord(chipOf(b),b.passage),cls:chipCls(b),title:b.title,
+    byline:billByline(b._self?null:cardSponsor(b),b.committees||[b.committee],cardTopic(b),b.term,
+      META.committee_codes),
+    notes:whyLine(b),line:line||"",
+    rail:datedRail(b,!(b.rail||[]).length?d:undefined),
+    open,body,card:""});
+}
+
+// A BILL'S NUMBER, ITS SUFFIXES MARKED FOR THEIR POPOVERS (C9: "FN in a
+// bill's title too"): "HB 1083-FN" says what FN is on a tap or a held hover,
+// and FN-A-LOCAL each of its parts. The number itself is the record's.
+const SUFFIX_TERM={FN:"FN",A:"A",L:"LOCAL",LOCAL:"LOCAL"};
+const billNumberTerms=n=>esc(n).replace(/-(FN|A|LOCAL|L)(?=-|$)/g,
+  (_m,k)=>"-"+termMark(SUFFIX_TERM[k],k));
+// "2025-2026" as a term is written in words: "2025–2026".
+const termDash=t=>String(t||"").replace("-","\u2013");
+// THE BILL'S HEAD (option E and the record head, C6): the trail -- Bills,
+// the term, the kind of measure -- the number with its year and the full
+// chip, the title as its one line, up to six facts (the prime sponsor as the
+// person chip, the committees, the subject but never the topic model's
+// "Miscellaneous", the chapter of law and when it took effect, and the
+// status where it says more than the chip), the rail centred, and the
+// actions. What the ON THE RECORD box carried is here, in How It Got Here,
+// or under the analysis (the person, 8 October 2026: "Remove the ON THE
+// RECORD box").
+function billHead(b,d){
+  const y=b.year||(b.term?String(b.term).slice(0,4):"");
+  const tm=b.term||(d&&d.term)||"";
+  const prime=((d&&d.sponsors)||[]).find(x=>x.prime);
+  const sp=prime||cardSponsor(b);
+  const cmtes=(b.committees||[b.committee]).filter(Boolean);
+  const law=((((d||{}).journey||{}).rail)||[]).find(x=>x.stop==="Law"&&x.mark==="p"&&x.date);
+  const topic=cardTopic(b)||(d&&!(d.subject==="Miscellaneous"&&d.subject_source==="granite record")
+    ?(d.subject||""):"");
+  const status=String(b.status||"");
+  const facts=[];
+  if(sp)facts.push(["Prime Sponsor",pchip(Object.assign({},sp,{prime:false,role:""}))]);
+  if(cmtes.length)facts.push([cmtes.length>1?"Committees":"Committee",
+    cmtes.map(c=>cmteLink(c,tm,META.committee_codes)).join(" &middot; ")]);
+  if(topic)facts.push(["Subject",esc(topic)]);
+  if(d&&d.chapter)facts.push(["Chapter Law",`Chapter ${esc(d.chapter)}, Laws of ${esc(d.year||y)}`,
+    law?`Effective ${esc(dateWords(law.date))}`:""]);
+  else if(status&&status.toLowerCase()!==chipOf(b).toLowerCase())facts.push(["Status",esc(status)]);
+  const head=recordHead({trail:[["Bills",`${BASE}bills`],[`${termDash(tm)} Term`,
+      `directory/bills-${tm}.html`],[TYPE_NAME[typeOf(b)]||"Bill",""]],
+    title:billNumberTerms(b.n),year:y,chip:chip(chipOf(b),`cstat ${chipCls(b)}`,"m"),line:esc(b.title),
+    facts,rail:datedRail(b,d),actions:"",kind:"bill"});
+  // The trail's Bills goes back to the search where the search is behind it
+  // (backIsSearch), as "Back to bill search" did.
+  return head.replace(`<li><a href="${esc(BASE)}bills">`,`<li><a href="${esc(BASE)}bills" data-back="1">`);
 }
 
 // The tabs inside an expanded card are set after its HTML is in the document,
@@ -5972,7 +5980,7 @@ function billPane(rows,note){
       ${cats.map(x=>`<option value="${esc(x)}" class="${CATCLASS[x]||""}"${
         x===PAGE.status?" selected":""}>${esc(x)}</option>`).join("")}</select></label></div>
     <p class="src">${note(shown.length,rows.length)}</p>
-    <div class="cards">${shown.map(b=>b.lsr?lsrCardHtml(b):cardHtml(b,false)).join("")}</div>`;
+    <div class="cards">${shown.map(b=>b.lsr?lsrCardHtml(b):cardHtml(b,false,b._line)).join("")}</div>`;
 }
 // "137 bills", or "24 of 137 bills" where fewer than all are listed.
 const billsOf=(n,of)=>`${n===of?"":`${n.toLocaleString()} of `}${
@@ -6086,7 +6094,9 @@ const pctOf=(a,b)=>{
 // "a, b and c", "a or b".
 const joinList=(xs,and)=>xs.length>1?`${xs.slice(0,-1).join(", ")} ${and} ${xs[xs.length-1]}`
   :(xs[0]||"");
-function attendanceBlock(att,t){
+// `more`: what a caller adds at the end of the block (termGlance's note on
+// how bills are counted).
+function attendanceBlock(att,t,more){
   const terms=Object.keys(att||{}).sort();
   if(!terms.length)return "";
   const num=n=>Number(n||0).toLocaleString();
@@ -6127,7 +6137,7 @@ function attendanceBlock(att,t){
   out.push(`<p class="pattnote">A day counts when ${where} held at least one roll
     call while they held the seat, and is attended if they ${acts} any roll call
     that day. Voice votes record no names, so they are not counted.</p>`);
-  return `<div class="patt">${out.join("")}</div>`;
+  return `<div class="patt">${out.join("")}${more||""}</div>`;
 }
 
 /* "2013 to 2026", from the first and last roll call the member appears in.
@@ -6168,62 +6178,7 @@ function formerName(m){
 const HONORIFIC_FULL={"Rep.":"Representative","Sen.":"Senator"};
 const fullTitle=who=>String(who||"").replace(/^(Former )?(Rep\.|Sen\.) /,
   (_,f,h)=>`${f||""}${HONORIFIC_FULL[h]} `);
-// The heading as markup: the name, and its "(R - Rock 2)" kept whole, as a
-// chip keeps its .mtag. At 375px "Representative James Spillane (R - Rock"
-// left "2)" on a line of its own.
-const headName=s=>{
-  const m=/^(.*\S)\s+(\([^()]*\))$/.exec(String(s||""));
-  return m?`${esc(m[1])} <span class="ptag">${esc(m[2])}</span>`:esc(s);
-};
 
-function renderMemberHead(m){
-  const towns = m.towns||[];
-  /* FORMER MEMBERS, ON THEIR OWN PAGE AND NOWHERE ELSE. A reader arriving
-     cold at a page with a full voting record should not be left thinking the
-     person still holds the seat, so the page says plainly that they do not:
-     its heading names them "Former Representative" or "Former Senator"
-     (formerName, with the title in full since 9 October: fullTitle).
-     That is a statement of tenure, and it is different in kind from a badge
-     in a list: in a roll call or a sponsor list a former member is drawn
-     exactly like a sitting one, same honorific, party and seat.
-     It says nothing about WHY they left. The site does not distinguish a
-     member who resigned from one who lost, retired or died, and must not
-     start here -- people who served alongside them read this. */
-  const former = !!(m.former || window.GR_FORMER);
-  const yrs = former ? servedYears(m) : "";
-  const titled = former ? formerName(m) : "";
-  return `<div class="phead">
-    <h1>${headName(fullTitle(titled||m.display_full||m.display||m.name||""))}</h1>
-    ${/* THE OFFICE, where the member holds one this record names: the
-         Speaker's page said nothing of it (the survey of 7 October 2026),
-         and nor did the President of the Senate's (9 October).
-         build_site_v2.member_office says why the chair is the evidence for
-         the Speaker, and officers.py where the others come from. */""}
-    <p class="pmeta">${esc(m.office||(m.chamber==="S"?"State Senate":"House of Representatives"))}${
-      m.district?` &middot; District ${esc(m.district)}`:""}${
-      m.county?` &middot; ${esc(m.county)} County`:""}</p>
-    ${former?`<p class="pformer">${
-      /* The years are the span of the RECORD -- roll calls here begin in 1999,
-         so a member sworn in before that appears from the year the evidence
-         starts. "On record" carries that; the person's call was to leave it at
-         one phrase rather than explain it, the case being rare. The heading
-         already says "Former", so the line says it only where the heading
-         could not. */
-      titled?(yrs?`On record ${esc(yrs)}. `:"")
-        :`Former member${yrs?` &middot; on record ${esc(yrs)}`:""}. `}This page is
-      their record in the General Court; it is not a current directory entry.</p>`:""}
-    ${serviceLine(m)}
-    ${former?"":(towns.length?`<p class="ptowns"><b>Represents</b> ${
-      towns.map(t=>esc(t)).join(" &middot; ")}</p>`:
-      `<p class="ptowns note">The towns in this district are not on file.</p>`)}
-    ${(m.committees||[]).length?`<p class="pcmte"><b>Committees</b> ${
-      m.committees.map(c=>cmteLink(
-        (m.chamber==="S"?"Senate ":"House ")+c,"",META.committee_codes)).join(" &middot; ")}</p>`:""}
-    ${m.seat?`<p class="pseat"><b>Seat</b> ${esc(plate(m.seat))}</p>`:""}
-    ${(!former&&m.email)?`<p class="pmeta"><b>Email</b> <a href="mailto:${
-      esc(m.email)}">${esc(m.email)}</a></p>`:""}
-  </div>`;
-}
 
 const memberBills=(m,prime)=>(m.sponsored||[])
   .filter(b=>!!b.prime===prime)
@@ -6231,7 +6186,10 @@ const memberBills=(m,prime)=>(m.sponsored||[])
   .map(idxRow);
 
 function renderMemberBills(m, prime){
-  const rows=memberBills(m,prime);
+  // A member's own bills name no prime sponsor on their cards: it is the
+  // member whose page this is, as the approved prototype draws them (10
+  // October 2026). A co-sponsored bill's card names its prime sponsor.
+  const rows=memberBills(m,prime).map(b=>prime?Object.assign({},b,{_self:true}):b);
   const t=pageTerm();
   if(!rows.length)return `<p class="src">No bills ${prime?"prime sponsored"
     :"co-sponsored"} in the ${esc(t)} term.</p>`;
@@ -6410,8 +6368,8 @@ function voteRow(r){
       r.ch?`<span class="vch">${
       esc(CHAMBER_SHORT[r.ch]||r.ch)}</span>`:""}</td>
     <td class="b" data-l="On">${x.b&&x.y
-      ? `<a href="bill/${esc(String(x.y))}/${esc(String(x.b).toLowerCase())
-        }.html">${esc((b&&b.n)||x.b)}</a>`
+      // A MENTION, components.bill_mention: the number as the link.
+      ? billMention((b&&b.n)||x.b,`bill/${String(x.y)}/${String(x.b).toLowerCase()}.html`)
       : x.b ? esc(x.b)
       // A procedural vote -- a call of the roll, a rules suspension -- is
       // recorded against no bill. It used to render an empty cell wrapped in
@@ -6434,16 +6392,117 @@ function voteRow(r){
       : `<span class="dim">&mdash;</span>`}</td></tr>`;
 }
 
+// ===================================================== POLISH 2: A MEMBER
+//
+// THE MEMBER'S HEAD (the record head, C6; the person's feedback of 9 October
+// 2026, item 10: "Member pages should list their title along with their name
+// at the top like Senator Sharon Carson or Representative James Spillane",
+// the Senate President indicated as the Speaker is). The trail, the title
+// and name in full in the h1 beside a bar in their party's ink, one line --
+// the office the record names them to, the party, the seat and its towns --
+// the facts (committees, seat, email, phone, the years on record), and the
+// actions. A member who has left is "Former Representative ..." and the line
+// says the page is their record, not a directory entry; it never says why
+// they left.
+const PARTY_WORD={R:"Republican",D:"Democrat",I:"Independent",L:"Libertarian"};
+const seatName=m=>m.chamber==="S"?(m.district?`Senate District ${m.district}`:"")
+  :([m.county,m.district?`District ${m.district}`:""].filter(Boolean).join(" "));
+function renderMemberHead(m){
+  const former=!!(m.former||window.GR_FORMER);
+  const yrs=former?servedYears(m):"";
+  const plain=String(m.display_plain||String(m.display_full||m.display||m.name||"")
+    .replace(/\s+\([^()]*\)$/,""));
+  const named=former&&/^(Rep|Sen)\. /.test(plain)?"Former "+plain:plain;
+  // The party from the record's own label where the file names none: "(R -
+  // Rock 16)" is a Republican's.
+  const tagp=/\(([A-Z])[A-Za-z]* - [^()]*\)\s*$/.exec(String(m.display_full||m.display||""));
+  const code=String(m.party_code||m.party||(tagp?tagp[1]:"")).toUpperCase().slice(0,1);
+  const towns=m.towns||[];
+  const line=[m.office?`<b>${esc(m.office)}</b>`:"",esc(PARTY_WORD[code]||m.party||""),
+    // The seat's number held to its name: "Senate District" over "14" at 768px.
+    esc(seatName(m)).replace(/ (?=\S+$)/,"&nbsp;"),former?"":joinList(towns.map(esc),"and")]
+    .filter(Boolean)
+    // Each dot holds to the words before it, so a wrapped line never opens on
+    // one (a phone, 10 October 2026: "· Senate District 14").
+    .join("&nbsp;&middot; ");
+  // The years on record, by chamber: the record's own service where the
+  // member sat in both, else the terms their attendance is counted in.
+  const yrsOf=t=>t.map(x=>String(x).split("-").map(Number)).filter(x=>x[0]);
+  const att=yrsOf(Object.keys(m.attendance||{}));
+  const spans=(m.service||[]).length?m.service
+    :att.length?[{chamber:m.chamber,spans:[[Math.min(...att.map(x=>x[0])),Math.max(...att.map(x=>x[1]||x[0]))]]}]:[];
+  const svc=spans.map(c=>`${esc(CHAMBER_SHORT[c.chamber]||c.chamber)}, ${(c.spans||[])
+    .map(([a,b])=>a===b?esc(String(a)):`${esc(String(a))}&ndash;${esc(String(b))}`).join(", ")}`);
+  const facts=[];
+  if((m.committees||[]).length)facts.push([m.committees.length>1?"Committees":"Committee",
+    m.committees.map(c=>cmteLink((m.chamber==="S"?"Senate ":"House ")+c,"",META.committee_codes))
+      .join(" &middot; ")]);
+  if(m.seat)facts.push(["Seat",esc(plate(m.seat))]);
+  if(!former&&m.email)facts.push(["Email",`<a href="mailto:${esc(m.email)}">${esc(m.email)}</a>`]);
+  if(!former&&m.phone)facts.push(["Phone",`<a href="tel:${esc(String(m.phone).replace(/[^\d+]/g,""))}">${
+    esc(m.phone)}</a>`]);
+  if(svc.length)facts.push(["On Record",svc.join(" &middot; ")]);
+  else if(yrs)facts.push(["On Record",esc(yrs)]);
+  // OFFICIALS, where Legislators was (decision 127, 8 October 2026: the
+  // Legislators page is the Officials page, and /legislators 301s to it).
+  const head=recordHead({trail:[["Officials","officials.html"],
+      [(former?"Former ":"")+(m.chamber==="S"?"Senator":"Representative"),""]],
+    title:esc(fullTitle(named)),line,facts,rail:"",actions:"",kind:`member rh-p${code||"X"}`});
+  const note=former?`<p class="rnote">${!/^(Rep|Sen)\. /.test(plain)?`Former member${
+    yrs?` &middot; on record ${esc(yrs)}`:""}. `:""}This page is their record in the
+    General Court; it is not a current directory entry.</p>`:"";
+  return head+note;
+}
+
+// THE TERM AT A GLANCE (the person's feedback of 9 October 2026, item 7:
+// "the selected term's attendance, then attendance on roll calls, then the
+// number of bills filed and the number passed, in the selected term"; v7:
+// "'bills filed' counts every bill filed, prime and co-sponsor together;
+// 'bills passed' the same"). The figures are the build's (member_figures,
+// term_figures); attendance is as member_attendance has always counted it,
+// and how is said in a fold under the figures. A term with no roll call on
+// record (before 1999) says so where the attendance would be.
+function termGlance(m,t){
+  const f=(m.term_figures||{})[t]||null, a=(m.attendance||{})[t]||null;
+  if(!f&&!a)return attendanceBlock(m.attendance,t);
+  const num=n=>Number(n||0).toLocaleString();
+  const fig=(big,lab,small)=>`<div class="mf"><b>${big}</b><span>${lab}</span>${small?`<small>${small}</small>`:""}</div>`;
+  const took=r=>(r.voted||0)+(r.presided||0)+(r.conflict||0);
+  const att=a?fig(`${pctOf(a.attended,a.days)}%`,"of session days attended",
+      `${num(a.attended)} of ${num(a.days)} days &middot; absent ${num(a.days-a.attended)}`)
+    +fig(`${pctOf(took(a),a.roll_calls)}%`,"of roll calls recorded on",
+      `${joinList([`Voted on ${num(a.voted)}`,...(a.presided?[`presided over ${num(a.presided)}`]:[]),
+        ...(a.conflict?[`declared a conflict on ${num(a.conflict)}`]:[])],"and")} of ${
+        num(a.roll_calls)} &middot; missed ${num((a.roll_calls||0)-took(a))}`)
+    :`<p class="mfnone">No roll call is on record for them in ${esc(termDash(t))}${
+      parseInt(t,10)<1999?"; the record of roll calls begins in 1999":""}.</p>`;
+  const bills=f?fig(num(f.bills_filed),`bill${f.bills_filed===1?"":"s"} filed`,
+      `${num(f.prime)} as prime sponsor, ${num(f.cosponsored)} co-sponsored`)
+    +fig(num(f.bills_passed),"passed",f.bills_filed?`of the ${num(f.bills_filed)} filed${
+      f.became_law?` &middot; ${num(f.became_law)} became law`:""}`:""):"";
+  // The fold: every term's attendance together, and how each figure is counted.
+  const note=`<p class="pattnote">Bills filed counts every bill the member put their
+      name to in the term, as prime sponsor or co-sponsor, each once; passed counts those
+      of them that became law, were adopted, or were ratified by the voters.</p>`;
+  const how=attendanceBlock(m.attendance,"",note)||`<div class="patt">${note}</div>`;
+  return `<section class="mfig" aria-labelledby="mfh"><h2 class="mfh" id="mfh">In the ${esc(termDash(t))} Term</h2>
+    <div class="mfgrid"><div class="mfgrp"><h3>Attendance</h3><div class="mfrow">${att}</div></div>${
+      bills?`<div class="mfgrp"><h3>Bills</h3><div class="mfrow">${bills}</div></div>`:""}</div>
+    <details class="mfhow"><summary>How this is counted</summary>${how}</details>
+  </section>`;
+}
+
 function renderMember(m){
   const tabs=[["Prime sponsored",memberBills(m,true).length],
               ["Co-sponsored",memberBills(m,false).length],
               ["Votes",memberVotes(m).length]];
   const body=[()=>renderMemberBills(m,true),()=>renderMemberBills(m,false),
               ()=>renderMemberVotes(m)][PAGE_TAB]||(()=>"");
-  // Attendance under the term control, because the term governs it as it
-  // governs the tabs, and above them, because it is about the member rather
+  // The term under the head, because it governs the figures and every tab,
+  // and the figures above the tabs, because they are about the member rather
   // than about any one tab.
-  return renderMemberHead(m) + termControl() + attendanceBlock(m.attendance, pageTerm())
+  return renderMemberHead(m) + `<div class="mterm">${termControl()}<p class="src">The figures, bills and
+    votes follow the term.</p></div>` + termGlance(m,pageTerm())
     + tabStrip(tabs) + pagePane(body());
 }
 
@@ -6507,56 +6566,11 @@ function sameCode(c){
     different committees, each with its own page here.</p>`;
 }
 
-function renderCommitteeHead(c){
-  const officers=(c.officers||[]).filter(o=>o.name);
-  const staff=[["Committee aide",c.aide],["Researcher",c.researcher],
-               ["Room",c.room],["Phone",c.phone]].filter(x=>x[1]);
-  const members=c.members||[];
-  const rule=c.purpose||null;
-  const dl=(cls,rows)=>rows.length?`<dl class="${cls}">${rows.map(
-    ([k,v])=>`<div><dt>${esc(k)}</dt><dd>${v}</dd></div>`).join("")}</dl>`:"";
-  // .cmtehead says "a committee's page" to app.css, with or without a roster
-  // (a retired committee has none, and its notes were left at 560px, F9).
-  return `<div class="phead cmtehead">
-    <h1>${esc(c.name||"")}</h1>
-    <p class="pmeta">${esc(c.chamber==="S"?"State Senate":"House of Representatives")}</p>
-    ${c.archived?`<p class="src fill">Not on the General Court&rsquo;s list of committees today.
-      Its bills and meetings on this record run ${esc(c.archived.years||"")}; the
-      records do not say whether it was renamed, divided, merged or ended.</p>`:""}
-    ${/* The names it carried before, so a reader who followed an older name
-         here from a bill knows this is the committee it was. The bills and
-         sittings below keep the name they were given at the time. */
-      (c.names||[]).length?`<p class="src">Named ${c.names.map(n=>
-        `<b>${esc(n.name)}</b> (${esc(n.years||"")})`).join(" and ")} on this
-      record&rsquo;s earlier bills and meetings, which the General Court&rsquo;s
-      own records file under this committee.</p>`:""}
-    ${sameCode(c)}
-    <div class="cinfo">
-      ${/* ONE CHIP FOR A PERSON: the Chair, Vice Chair and Clerk were
-           underlined links over a roster that draws the same three as party
-           chips (the review of 2 October 2026). Their roster entry where it
-           is there, with the role left to the row's own label; an officer
-           the roster lacks is a chip with no party. */
-        dl("cofficers",officers.map(o=>{
-          const m=o.slug&&members.find(x=>x.slug===o.slug);
-          return [o.role,mchip(m?{...m,role:"Member",prime:false}
-            :{name:o.name,label:o.label||o.name,slug:o.slug||""})];}))}
-      ${dl("cstaff",staff.map(([k,v])=>[k,esc(v)]))}
-    </div>
-    ${members.length?`<div class="croster">
-      <h2>Members <span>${members.length}</span></h2>
-      <p class="mlist">${members.map(mchip).join(" ")}</p>
-      ${emailCommittee(c)}</div>`:""}
-    ${rule?`<div class="cpurpose"><h2>What it does</h2>
-      <p>${esc(rule.text||"")}</p>
-      <p class="src">${esc(rule.rule||"")}, as the General Court publishes it.</p>
-      </div>`:""}
-    ${c.url?`<p class="src"><a href="${esc(c.url)}" target="_blank"
-      rel="noopener">This committee on gencourt</a></p>`:""}
-  </div>`;
-}
 
-const cmteBills=c=>((c.bills||{})[pageTerm()]||[]).map(idxRow);
+// Each row as the index has it, with what this committee reported on it
+// (committee_acts.reported, build_committees), which its card says.
+const cmteBills=c=>((c.bills||{})[pageTerm()]||[]).map(r=>
+  Object.assign({},idxRow(r),{_line:reportedLine(r.reported)}));
 const cmteSessions=c=>(c.sessions||[])
   .filter(s=>!pageTerm()||!s.term||s.term===pageTerm());
 
@@ -6569,76 +6583,195 @@ function renderCommitteeBills(c){
     this committee in ${esc(t)}.`);
 }
 
-// One day the committee met: what it did, the recording, and the moment each
-// bill was taken up. The timestamps drive the player above them rather than
-// sending the reader to YouTube and back.
-function sessionHtml(s,si){
-  const items=s.items||[];
-  const pid=`d${String(s.date||"").replace(/-/g,"")}_${si}`;
-  const timed=items.filter(i=>i.start!=null);
-  const from=timed.length?Math.max(0,Math.floor(timed[0].start)):0;
-  const vid=s.video_id||"";
-  // ONE number, shown and seeked. Where the header, the player and the button
-  // each carried a slightly different offset, a reader had no way to tell
-  // which one was the claim.
-  // The player's name once it replaces Play: this committee, this day.
+// ============================================ POLISH 2: A COMMITTEE'S MEETINGS
+//
+// THE MEETINGS TAB (the person's feedback of 9 October 2026: item 1, bill
+// CARDS on a committee's page, each saying "what happened to that bill at
+// that meeting"; item 12, "make clearer what changed on each bill at that
+// meeting, if anything did"; item 6, one player per livestream; item 14, the
+// newest meeting open, or the day the address names; v8, an interim study
+// report not recommending future legislation, or making no recommendation,
+// shown as killed with what the committee voted; v13, sortable oldest or
+// newest first). One entry a day, folded: its date, times, how many bills
+// and how many voted on, its room and its kinds of meeting; opened, one
+// sentence of what changed, a player for each recording of the day, and a
+// card for each bill with its line for this meeting. What happened is the
+// build's (committee_acts, build_committees: each meeting's `outcomes`);
+// this says it.
+const nBills=n=>`${n.toLocaleString()} bill${n===1?"":"s"}`;
+// A recommendation's code as the record's shorthand, marked for its popover
+// (C9), where it is one of the four a reader meets everywhere.
+const REC_TERM={OTP:"OTP",OTPA:"OTPA",ITL:"ITL",IS:"IS"};
+function recSaid(words,code){
+  return `${esc(words||"")}${REC_TERM[code]?` (${termMark(code,code)})`:""}`;
+}
+const tallyOf=a=>a&&a.yeas!=null&&a.nays!=null?`${a.yeas}\u2013${a.nays}`:"";
+// One act of the committee on a bill, as a sentence: a recommendation with
+// its tally and the minority's; an interim study report, which recommended
+// the subject for future legislation (the orange arrow of How it got here)
+// or killed the bill (v8: "listed as killed, explaining what the committee
+// voted"); a retention.
+const STUDY_WORDS={not:"did not recommend the subject for future legislation",
+  without:"made no recommendation for future legislation",
+  "":"reported on its study"};
+// `tail` goes before the sentence's full stop: the day of a vote taken at
+// another meeting (reportedLine).
+function actSaid(a,who,tail){
+  const t=tallyOf(a), end=(tail||"")+".";
+  if(a.act==="report"){
+    return `<p class="mact">${who} recommended ${recSaid(a.recommendation,a.code)}${
+      a.amendment?` with amendment ${esc(a.amendment)}`:""}${t?`, ${t}`:""}${
+      a.minority?`; a minority, ${recSaid(a.minority,a.minority_code)}`:""}${end}</p>`;
+  }
+  if(a.act==="study report"){
+    if(a.said==="rec")return `<p class="mact mrec"><span class="mmark" aria-hidden="true">${
+      ACTMARK.rec}</span>${who==="The committee"?"The committee's":esc(who)+"'s"} interim study report: recommended for future legislation${
+      t?`, ${t}`:""}${end}</p>`;
+    return `<p class="mact mkill"><span class="mmark" aria-hidden="true">${ACTMARK.kill}</span><b>Killed:</b> ${
+      who==="The committee"?"the committee's":esc(who)+"'s"} interim study report ${
+      STUDY_WORDS[a.said||""]||STUDY_WORDS[""]}${t?`, ${t}`:""}${end}</p>`;
+  }
+  return `<p class="mact">${who} retained the bill: it stays in the committee into the next year${end}</p>`;
+}
+// Where the committee voted, when it did not at this meeting: the day, a
+// link to that meeting where the docket dates the vote to one.
+function votedElsewhere(v,date){
+  if(!v||!v.date)return "";
+  const day=v.meeting?`<a href="#${esc(dayId(v.meeting))}">${esc(dateWords(v.date))}</a>`
+    :esc(dateWords(v.date));
+  const before=v.date<date;
+  if(!v.meeting&&v.act==="report")
+    return `No report is dated this meeting; the docket dates the committee's report ${day}.`;
+  const what=v.act==="study report"?"voted its interim study report"
+    :v.act==="retained"?"retained the bill":"voted";
+  return `No vote at this meeting; the committee ${before?"had ":""}${
+    v.act==="retained"&&before?"retained the bill":what} on ${day}.`;
+}
+function signedSaid(g){
+  if(!g||!g.total)return "";
+  const n=x=>`<b>${Number(x||0).toLocaleString()}</b>`;
+  const bits=[`${n(g.for)} signed in support`,`${n(g.against)} in opposition`]
+    .concat(g.neutral?[`${n(g.neutral)} neutral`]:[]);
+  return `<p class="msign">Online testimony: ${joinList(bits,"and")}.</p>`;
+}
+// The kinds of meeting a bill had, as the Calendar's chips.
+const kindChips=ks=>(ks||[]).map(k=>{
+  const w=MEET_KIND[String(k||"").trim().toLowerCase()]||[kindTitle(k),"k-other"];
+  return chip(w[0],`calkind ${w[1]||"k-other"}`);}).join("");
+// The line on a bill's card for one meeting: its kinds, its time, the moment
+// in the recording where each was taken up (the same times and the same
+// "approximate" as before; nothing about a timestamp changes), and what
+// happened.
+function meetingLine(s,o,items){
+  const mine=items.filter(i=>String(i.bill)===String(o.bill));
+  const at=mine.map(i=>i.time).filter(Boolean).sort()[0]||"";
+  const jumps=mine.filter(i=>i.start!=null).map(i=>{
+    const t=Math.max(0,Math.floor(i.start));
+    const said=/^(stated|floor_stated|floor_precise)$/.test(i.state||"");
+    const pid=meetingPid(s,i.video_id||s.video_id);
+    const kind=mine.length>1?`${(MEET_KIND[String(i.kind||"").toLowerCase()]||[kindTitle(i.kind)])[0]} `:"";
+    return `<button type="button" class="jump" data-seek="${esc(pid)}|${t}" aria-label="Play ${
+      esc(kind||"this bill ")}from ${hms(t)}">${icon("play")}${esc(kind)}${hms(t)}</button>${
+      said?"":`<i class="approx">approximate</i>`}`;}).join("");
+  const who="The committee";
+  let what="";
+  if(o.outcome==="voted")what=(o.votes||[]).map(a=>actSaid(a,who)).join("");
+  else if(o.outcome==="scheduled")what="";
+  else{
+    const work=(o.kinds||[]).find(k=>/work session/i.test(k));
+    what=(o.outcome==="heard"?signedSaid(o.signins):"")
+      +(o.outcome==="worked"&&work?`<p class="mact">Taken up in a ${esc(String(work).toLowerCase())}, with no vote.</p>`:"")
+      +(votedElsewhere(o.voted,s.date)?`<p class="mwhen">${votedElsewhere(o.voted,s.date)}</p>`
+        :(o.outcome==="heard"||o.outcome==="no vote"?`<p class="mwhen">No vote at this meeting.</p>`:""));
+  }
+  return `<div class="mline"><span class="mkinds">${kindChips(o.kinds)}</span>${
+    at?`<span class="mtime">${esc(clock(at))}</span>`:""}${jumps?`<span class="mjumps">${jumps}</span>`:""}</div>${what}`;
+}
+// A player's id: this day and this recording, so each recording of the day
+// is its own player and a time on a card moves only the one it is in.
+const meetingPid=(s,vid)=>`m${String(s.date||"").replace(/-/g,"")}_${String(vid||"").replace(/[^\w-]/g,"")}`;
+// One player per recording of the day (item 6), in the order they are first
+// named. What the recording is called once it plays: this committee, this
+// day.
+function meetingPlayers(s,items){
   const c=(PAGE&&PAGE.data)||{};
-  const who=[c.chamber==="S"?"Senate":c.chamber==="H"?"House":"",c.name||""]
-    .filter(Boolean).join(" ")||"Committee";
-  const player=vid?`<div class="player" data-player="${esc(pid)}">
+  const who=[c.chamber==="S"?"Senate":c.chamber==="H"?"House":"",c.name||""].filter(Boolean).join(" ")||"Committee";
+  const vids=[...new Set(items.map(i=>i.video_id||"").concat(s.video_id||"").filter(Boolean))];
+  if(!vids.length){
+    if(items.some(i=>i.state==="candidates"))return `<p class="note">This committee was recorded on
+      this day, and which of its recordings each meeting belongs to has not been established
+      &mdash; a committee can sit in divisions that stream separately. The bill pages link the
+      recordings each could be.</p>`;
+    return s.ahead?"":`<p class="note">No recording of this day is on file.</p>`;
+  }
+  return vids.map(vid=>{
+    const pid=meetingPid(s,vid);
+    const timed=items.filter(i=>(i.video_id||s.video_id)===vid&&i.start!=null);
+    const from=timed.length?Math.max(0,Math.floor(Math.min(...timed.map(i=>i.start)))):0;
+    const kinds=[...new Set(items.filter(i=>(i.video_id||s.video_id)===vid).map(i=>String(i.kind||"").toLowerCase()))];
+    return `<div class="player" data-player="${esc(pid)}">
       <button type="button" class="pstub" data-title="${esc(recTitle(who,s.date))}"
-        data-embed="${esc(vid)}|${from}|${esc(pid)}">
-        <span>${icon("play")}</span><span>Play this day's recording${timed.length
-          ?` from ${hms(from)}, where the first bill is taken up`:""}</span></button>
-      <div class="pbar">
-        <a href="https://www.youtube.com/watch?v=${esc(vid)}&t=${from}s"
-           target="_blank" rel="noopener">Open on YouTube</a>
-        <span class="tolnote">${timed.length
-          ?"the times below move this player"
-          :"no moment in this recording has been identified yet"}</span>
-      </div></div>`
-    // THE COMMITTEE WAS RECORDED; WHICH RECORDING THIS IS, IS NOT SETTLED.
-    // A day whose sittings are all in the "candidates" state has no video_id
-    // for the same reason a bill's station does: more than one recording of
-    // this committee exists for that day and nothing in the record says which
-    // took the bill up, so the site picks none. Reading that as "no recording
-    // of this day is on file" said the opposite of what the manifest holds,
-    // on 46 days and 261 bill items -- the same contradiction the candidates
-    // state was created to remove from bill pages, still standing here.
-    : (items.some(i=>i.state==="candidates")
-      ? `<p class="note">This committee was recorded on this day, and which of
-         its recordings each meeting belongs to has not been established &mdash;
-         a committee can sit in divisions that stream separately. Each bill
-         below links the recordings it could be.</p>`
-      // A day still to come has no recording yet, and its sentence above
-      // already says it is scheduled.
-      : s.ahead ? ""
-      : `<p class="note">No recording of this day is on file.</p>`);
-  // A DAY IS SOMETHING YOU CAN LINK TO. It had no id at all, so a calendar
-  // entry could name the committee and not the sitting, and the only per-day
-  // string in the DOM was the player id -- which is absent on days with no
-  // recording and carries the day's index inside the TERM-FILTERED list, so
-  // it changes when the term picker moves. The date does neither.
-  return `<section class="cday" id="${esc(dayId(s.date))}">
-    <h3><a class="daylink" href="#${esc(dayId(s.date))}"
-      title="A link to this meeting">${esc(dateWords(s.date))}</a></h3>
-    <p class="cnarr">${esc(s.narrative||"")}</p>
-    ${player}
-    <ul class="tl">${items.map(i=>{
-      // "stated" is a boundary the chair spoke; anything else was worked out
-      // from the schedule or the surrounding recording and says so.
-      const said=/^(stated|floor_stated|floor_precise)$/.test(i.state||"");
-      const at=i.start!=null?Math.max(0,Math.floor(i.start)):null;
-      return `<li>
-      <span class="d">${at!=null
-        ? (vid?`<button class="jump" data-seek="${esc(pid)}|${at}">${hms(at)}</button>`
-             :`${hms(at)}`)
-        : "&mdash;"}${at!=null&&!said?`<i class="approx">approximate</i>`:""}</span>
-      <span class="w"><a href="bill/${esc(String(i.year||""))}/${
-        esc(String(i.bill||"").toLowerCase())}.html">${esc(i.n||i.bill||"")}</a>
-        &mdash; ${esc(i.kind||"")}${i.title?`<span class="cd-title">${
-          esc(i.title)}</span>`:""}</span></li>`;}).join("")}</ul>
-  </section>`;
+        data-embed="${esc(vid)}|${from}|${esc(pid)}"><span>${icon("play")}</span><span>Play the recording${
+          timed.length?` from ${hms(from)}`:""}</span></button>
+      <div class="pbar"><span class="pwho"><b>${esc(who)}</b> &middot; ${esc(dateWords(s.date,"long"))}${
+        kinds.length?` &middot; ${esc(kinds.join(", "))}`:""}</span>
+        <a href="https://www.youtube.com/watch?v=${esc(vid)}&t=${from}s" target="_blank"
+          rel="noopener">On YouTube</a>
+        <span class="tolnote">${timed.length?"the times on the cards move this player"
+          :"no moment in this recording has been identified yet"}</span></div></div>`;}).join("");
+}
+// What changed at the meeting, in one sentence (item 12): what the committee
+// voted, then what the other bills had.
+function meetingSentence(s){
+  const oc=s.outcomes||[];
+  if(!oc.length)return "";
+  if(s.ahead)return `The committee is scheduled to take up ${nBills(oc.length)} at this meeting.`;
+  const voted=oc.filter(o=>o.outcome==="voted");
+  const recs=voted.filter(o=>(o.votes||[]).some(a=>a.act==="report")).length;
+  const studies=voted.filter(o=>(o.votes||[]).some(a=>a.act==="study report"));
+  const kept=voted.filter(o=>(o.votes||[]).some(a=>a.act==="retained")).length;
+  const rec=studies.filter(o=>(o.votes||[]).some(a=>a.act==="study report"&&a.said==="rec")).length;
+  const did=[];
+  if(recs)did.push(`voted its recommendation on ${nBills(recs)}`);
+  if(studies.length)did.push(`voted its interim study report on ${nBills(studies.length)}${
+    rec&&rec<studies.length?` (${rec} recommended for future legislation and ${studies.length-rec} not)`
+    :rec?", recommending each for future legislation":", recommending none for future legislation"}`);
+  if(kept)did.push(`retained ${nBills(kept)}`);
+  const n=k=>oc.filter(o=>o.outcome===k).length;
+  const had=[];
+  if(n("heard"))had.push(`${nBills(n("heard"))} had ${n("heard")===1?"its":"their"} public hearing`);
+  if(n("worked"))had.push(`${nBills(n("worked"))} ${n("worked")===1?"was":"were"} taken up in a work session`);
+  if(n("no vote"))had.push(`${nBills(n("no vote"))} ${n("no vote")===1?"was":"were"} in executive session with no vote dated to it`);
+  const lead=did.length?`At this meeting the committee ${joinList(did,"and")}`:"At this meeting";
+  return `${lead}${did.length&&had.length?"; ":" "}${joinList(had,"and")}${had.length&&!did.length?", with no vote":""}.`
+    .replace(/ \.$/,".");
+}
+// How many of the day's bills the committee voted on, for the folded entry.
+const votedCount=s=>(s.outcomes||[]).filter(o=>o.outcome==="voted").length;
+function meetingHtml(s,open){
+  const items=s.items||[];
+  const oc=s.outcomes&&s.outcomes.length?s.outcomes
+    :[...new Set(items.map(i=>i.bill))].map(b=>({bill:b,kinds:[...new Set(items.filter(i=>i.bill===b).map(i=>i.kind))],outcome:s.ahead?"scheduled":""}));
+  const slots=items.map(i=>i.time||"").filter(Boolean).sort();
+  const span=!slots.length?"":slots[0]===slots[slots.length-1]?clock(slots[0])
+    :`${clock(slots[0])}\u2013${clock(slots[slots.length-1])}`;
+  const rooms=[...new Set(items.map(i=>i.venue||"").filter(Boolean))];
+  const kinds=[...new Set(oc.flatMap(o=>o.kinds||[]).map(k=>String(k).toLowerCase()))];
+  const bars=[...new Set(kinds.map(k=>(MEET_KIND[k]||["","k-other"])[1]||"k-other"))];
+  const v=votedCount(s);
+  const cards=oc.map(o=>{
+    const it=items.find(i=>String(i.bill)===String(o.bill))||{};
+    const b=idxRow({id:o.bill,year:it.year,term:it.term||s.term,n:it.n,title:it.title});
+    return cardHtml(b,false,meetingLine(s,o,items));}).join("");
+  return `<details class="cmeet${s.ahead?" ahead":""}" id="${esc(dayId(s.date))}"${open?" open":""}>
+    <summary><span class="calmix" aria-hidden="true">${bars.map(c=>`<i class="${c}"></i>`).join("")}</span>
+      <span class="cmwhen"><b>${esc(dateWords(s.date,"long"))}</b>${span?` <span class="cmtime">${esc(span)}</span>`:""}</span>
+      <span class="cmcount">${nBills(oc.length)}${s.ahead?" scheduled":v?` &middot; <b>${v} voted on</b>`:" &middot; no votes"}${
+        rooms.length===1?` &middot; ${esc(rooms[0])}`:""}</span>
+      <span class="cmkinds">${kindChips(kinds)}</span><span class="cmcaret" aria-hidden="true"></span></summary>
+    <div class="cmbody"><p class="cmsaid">${meetingSentence(Object.assign({},s,{outcomes:oc}))}</p>
+      <div class="cmlay"><div class="cmplay">${meetingPlayers(s,items)}</div>
+      <div class="cards">${cards}</div></div></div></details>`;
 }
 
 function renderCommitteeSessions(c){
@@ -6653,12 +6786,35 @@ function renderCommitteeSessions(c){
   // build marks such a day `ahead`; it is listed, told as scheduled, and
   // counted apart.
   const met=ss.filter(s=>!s.ahead).length, ahead=ss.length-met;
-  return `<p class="src">${met.toLocaleString()} day${met===1?"":"s"}
-      this committee met in ${esc(t)}${ahead?`, and ${ahead.toLocaleString()} still
-      to come`:""}, newest first. Each is the day's recording
-      with the moment every bill was taken up, composed from the record rather
-      than written.</p>`
-    + ss.map(sessionHtml).join("");
+  const pg=PAGE||{};
+  const old=pg.msort==="old";
+  const order=ss.slice().sort((a,b)=>old?String(a.date).localeCompare(String(b.date))
+    :String(b.date).localeCompare(String(a.date)));
+  // Open: the day the address names, or else the newest the committee met.
+  const want=decodeURIComponent(location.hash.slice(1)||"");
+  const named=order.find(s=>dayId(s.date)===want);
+  const newest=ss.filter(s=>!s.ahead).map(s=>s.date).sort().pop();
+  const isOpen=s=>(pg.mopen&&CMP.own(pg.mopen,dayId(s.date)))?pg.mopen[dayId(s.date)]
+    :(named?s===named:s.date===newest);
+  return `<div class="bfilt msort"><label>Order
+      <select data-pf="msort"><option value="new"${old?"":" selected"}>Newest first</option>
+      <option value="old"${old?" selected":""}>Oldest first</option></select></label></div>
+    <p class="src"><b>${met.toLocaleString()} meeting${met===1?"":"s"}</b>${t?` in ${esc(termDash(t))}`:""}${
+      ahead?`, and ${ahead.toLocaleString()} still to come`:""}, ${old?"the oldest":"the newest"} first.
+      One entry a day, each kind of meeting in its colour; opened, each bill&rsquo;s card says
+      what happened to it at that meeting.</p>
+    <div class="cmeets">${order.map(s=>meetingHtml(s,isOpen(s))).join("")}</div>`;
+}
+
+// What the committee reported on a bill, for its card on the Bills tab: each
+// act, with the day the docket dates it and a link to that meeting.
+function reportedLine(acts){
+  if(!(acts||[]).length)return "";
+  return acts.map(a=>{
+    const day=a.date?(a.meeting?`<a href="#${esc(dayId(a.meeting))}">${esc(dateWords(a.date))}</a>`
+      :esc(dateWords(a.date))):"";
+    return actSaid(a,"The committee",day?`, ${a.meeting?"at its meeting of":"dated"} ${day}`:"");})
+    .join("");
 }
 
 // ======================================================= upcoming session ==
@@ -6889,6 +7045,60 @@ function renderCommitteeUpcoming(c){
   return calendarBlock(rows,"Upcoming meeting");
 }
 
+// ================================================== POLISH 2: A COMMITTEE
+//
+// THE COMMITTEE'S HEAD (the record head, C6; the person's question 11,
+// approved 9 October 2026: Members and What It Does above the tabs). One
+// line says whose committee it is and who chairs it, the chair as the
+// person in a sentence (D14); the facts are where it meets and whom to ask;
+// and, once what is scheduled has been read, whether it meets in the next
+// two weeks and when it last met. Members and What It Does follow as W4
+// sections, then the term, the tabs and the record.
+function renderCommitteeHead(c){
+  const ch=c.chamber==="S"?"Senate":"House";
+  const members=c.members||[];
+  const chairO=(c.officers||[]).find(o=>/^chair$/i.test(String(o.role||"").trim()));
+  const chairM=chairO&&chairO.slug&&members.find(x=>x.slug===chairO.slug);
+  const chair=chairO?personLink(chairM||{label:chairO.label||chairO.name,slug:chairO.slug||""}):"";
+  const facts=[["Meets In",esc(c.room||"")],["Phone",c.phone?`<a href="tel:${
+      esc(String(c.phone).replace(/[^\d+]/g,""))}">${esc(c.phone)}</a>`:""],
+    ["Committee Aide",esc(c.aide||"")],["Researcher",esc(c.researcher||"")]];
+  const met=(c.sessions||[]).filter(s=>!s.ahead).map(s=>s.date).sort().pop();
+  const next=UPCOMING===null?"":cmteUpcoming(c).length?""
+    :`Nothing is scheduled in the next two weeks.${met?` Its last meeting was on <a href="#${
+      esc(dayId(met))}">${esc(dateWords(met,"long"))}</a>.`:""}`;
+  const line=`The ${ch} Committee on ${esc(c.name||"")}${chair?`, chaired by ${chair}`:""}.`;
+  const notes=[c.archived?`Not on the General Court&rsquo;s list of committees today.
+      Its bills and meetings on this record run ${esc(c.archived.years||"")}; the
+      records do not say whether it was renamed, divided, merged or ended.`:"",
+    (c.names||[]).length?`Named ${c.names.map(n=>`<b>${esc(n.name)}</b> (${esc(n.years||"")})`)
+      .join(" and ")} on this record&rsquo;s earlier bills and meetings, which the General
+      Court&rsquo;s own records file under this committee.`:"",next].filter(Boolean);
+  return recordHead({trail:[["Committees","committees.html"],[`${ch} Committee`,""]],
+      title:esc(c.name||""),line,facts,rail:"",actions:"",kind:"committee cmtehead"})
+    +notes.map(n=>`<p class="src fill rnote">${n}</p>`).join("")+sameCode(c);
+}
+function committeeSections(c){
+  const officers=(c.officers||[]).filter(o=>o.name);
+  const members=c.members||[];
+  const rule=c.purpose||null;
+  // ONE CHIP FOR A PERSON: the officers are in the roster with their role in
+  // the chip's corner; an officer the roster lacks is a chip with no party.
+  const extra=officers.filter(o=>!(o.slug&&members.some(x=>x.slug===o.slug)))
+    .map(o=>mchip({name:o.name,label:o.label||o.name,slug:o.slug||"",role:o.role}));
+  const S=[];
+  if(members.length||extra.length)S.push(section(`Members`,`<p class="mlist">${
+    members.map(mchip).concat(extra).join(" ")}</p>${emailCommittee(c)}`,"members")
+    .replace('<h2 class="w4h">Members</h2>',`<h2 class="w4h">Members <span class="w4n">${members.length}</span></h2>`));
+  if(rule)S.push(section("What It Does",`<p>${esc(rule.text||"")}</p>
+      <p class="src">${esc(rule.rule||"")}, as the General Court publishes it.${
+        c.url?` Source: <a href="${esc(c.url)}" target="_blank" rel="noopener">NH General Court</a>`:""}</p>`,
+      "what"));
+  else if(c.url)S.push(section("Source",`<p class="src"><a href="${esc(c.url)}" target="_blank"
+      rel="noopener">This committee on gencourt</a></p>`,"source"));
+  return S.length?`<div class="w4s">${S.join("")}</div>`:"";
+}
+
 function renderCommittee(c){
   // Counted for the term the page is showing, not across every term. "Bills
   // (107)" over a list of 32 is the tab disagreeing with itself.
@@ -6898,8 +7108,10 @@ function renderCommittee(c){
   // Who they are, then what is coming, then the record. The calendar sits
   // above the term control because it is not about a term: it is about this
   // week, and a reader who came to find out whether they can still turn up
-  // and speak should not have to scroll past nineteen years of bills.
-  return renderCommitteeHead(c) + renderCommitteeUpcoming(c)
+  // and speak should not have to scroll past nineteen years of bills. Where
+  // nothing is coming the head says so, and when it last met.
+  const up=UPCOMING!==null&&cmteUpcoming(c).length?renderCommitteeUpcoming(c):"";
+  return renderCommitteeHead(c) + committeeSections(c) + up
     + termControl() + tabStrip(tabs) + pagePane(body());
 }
 
@@ -6909,8 +7121,10 @@ function renderPage(){
   const el=$("#results");
   if(!el)return;
   const held=focusKey();
+  parkActions();
   el.innerHTML = PAGE.kind==="member" ? renderMember(PAGE.data)
                                       : renderCommittee(PAGE.data);
+  placeActions();
   syncCards([...openCards]);
   showDay();
   showSelectedTab(el);
@@ -6942,8 +7156,8 @@ document.addEventListener("click",e=>{
     return;}
   const ct=e.target.closest(".card .tab[data-t]");
   if(ct){openTab[ct.closest(".card").dataset.id]=ct.dataset.t;renderPage();return;}
-  const head=e.target.closest(".chead");
-  if(head&&!e.target.closest("a")){
+  const head=e.target.closest(".card .ctitle");
+  if(head){
     const id=head.closest(".card").dataset.id;
     if(openCards.has(id)){openCards.delete(id);renderPage();}
     else openBill(id);
@@ -7076,7 +7290,7 @@ let dayLanded = "", dayTried = "";
 function showDay(){
   const want = decodeURIComponent(location.hash.slice(1) || "");
   if(!/^day-\d{4}-\d{2}-\d{2}$/.test(want)){ dayLanded=""; dayTried=""; return; }
-  document.querySelectorAll(".cday.at").forEach(e=>e.classList.remove("at"));
+  document.querySelectorAll(".cmeet.at").forEach(e=>e.classList.remove("at"));
   let el = document.getElementById(want);
   // THE SITTINGS ARE ON THE OTHER TAB. A committee page opens on Bills, and
   // the days live under Sessions -- so a calendar entry linking to a sitting
@@ -7093,12 +7307,23 @@ function showDay(){
   }
   if(!el) return;                      // no sitting of that date on this page
   el.classList.add("at");
+  // A meeting is folded since 10 October 2026: the one named is opened.
+  if(el.tagName==="DETAILS"&&!el.open){el.open=true;
+    if(PAGE){PAGE.mopen=PAGE.mopen||{};PAGE.mopen[el.id]=true;}}
   if(dayLanded === want) return;
   dayLanded = want;
   el.scrollIntoView({block:"start"});
 }
 
 window.addEventListener("hashchange", function(){ if(PAGE) showDay(); });
+// A MEETING THE READER OPENED OR SHUT STAYS SO through the page's next
+// drawing -- the term's index, home.json and the officers each arrive after
+// the record and draw it again.
+document.addEventListener("toggle",e=>{
+  const d=e.target;
+  if(!PAGE||!d||!d.classList||!d.classList.contains("cmeet"))return;
+  PAGE.mopen=PAGE.mopen||{};PAGE.mopen[d.id]=d.open;
+},true);
 
 function openPage(kind,ref){
   PAGE={kind,data:null,terms:[],term:"",status:"",vfilter:"",
@@ -7282,8 +7507,8 @@ function render(more){
   // to the member (the audit of 2 October 2026, S14). The click handler goes
   // back in history only where back IS the search (backIsSearch), so the
   // list returns as it was left; everywhere else this is an ordinary link.
-  $("#results").innerHTML=(fb?`<a class="backto" href="${BASE}bills" data-back="1">\u2190 Back to
-    bill search</a>`:"")+((rows.length||fb)?shown.map((b,gi,arr)=>`
+  parkActions(!fb);
+  $("#results").innerHTML=((rows.length||fb)?shown.map((b,gi,arr)=>`
     ${!fb&&sortBy==="status"&&(gi===0||grpOf(arr[gi-1])!==grpOf(b))
       ?`<h2 class="grp">${esc(grpOf(b)||"No status recorded")}
          <span>${(grpN[grpOf(b)]||0).toLocaleString()}</span></h2>`:""}
@@ -7310,6 +7535,7 @@ function render(more){
     }
   }
   syncCards(rows.filter(b=>openCards.has(b.id)).map(b=>b.id));
+  if(fb)placeActions();
   showSelectedTab($("#results"));
   renderFacets();
   refocus(held);
@@ -7601,7 +7827,7 @@ document.addEventListener("click",e=>{
   // the anchor and gets the static page in a new tab, which still works.
   // On a record page there is no search list to come back to, so the arrow
   // is left to be an ordinary link to the bill's own page.
-  const dt=PAGE?null:e.target.closest("a.detail");
+  const dt=PAGE?null:e.target.closest("a.cnum");
   if(dt&&e.button===0&&!e.metaKey&&!e.ctrlKey&&!e.shiftKey&&!e.altKey){
     e.preventDefault();
     focusBill(dt.closest(".card").dataset.id,dt.getAttribute("href"));return;}
@@ -7627,16 +7853,16 @@ document.addEventListener("click",e=>{
     const from=SHOWN;
     SHOWN+=PAGE_SIZE;render(true);
     const next=$("#results").querySelectorAll(".card")[from];
-    const head=next&&next.querySelector(".chead");
+    const head=next&&next.querySelector(".ctitle");
     if(head&&head.focus)head.focus({preventScroll:true});
     return;}
   // Everything below reads .card. A member's or a committee's page has none,
   // so a tab click here threw on tab.closest(".card").dataset and the tab did
   // nothing. Those pages have their own handler, registered above.
   if(PAGE)return;
-  const head=e.target.closest(".chead");
-  if(head&&!e.target.closest("a")){const id=head.closest(".card").dataset.id;
-    if(term===ALL_TERMS){const own=head.closest(".card").querySelector("a.detail");
+  const head=e.target.closest(".card .ctitle");
+  if(head){const id=head.closest(".card").dataset.id;
+    if(term===ALL_TERMS){const own=head.closest(".card").querySelector("a.cnum");
       if(own){location.href=own.href;return;}}
     if(openCards.has(id)){openCards.delete(id);render();}else openBill(id);return;}
   const tab=e.target.closest(".tab");
@@ -7856,42 +8082,69 @@ document.addEventListener("keydown",e=>{
   }});
 
 
-// THE SITTING DAY'S VOTE RINGS, DRAWN BY THE FUNCTION THE BILL PAGES USE.
+// THE SESSION DAY'S VOTES, DRAWN BY THE FUNCTIONS THE BILL PAGES USE.
 //
-// build_session_pages.py writes the day's narrative as static HTML and leaves
-// each counted vote as an empty .svote with the tally beside it in words. This
-// fills them, calling simpleDonut -- the same renderer, not a copy of it.
-// Drawing a second ring in Python that merely looked like this one is the
-// mistake this repository keeps a check under, and a session page holds up to
-// twenty votes, which is twenty chances for the two to drift apart.
-//
-// A ROLL CALL IS DRAWN AS A DIVISION IS. simpleDonut is the anonymous ring;
-// the named ballots are on the bill's own page, which the markup already links
-// to, because a day with eleven roll calls would otherwise carry four thousand
-// names. The ring says the same thing either way -- the difference between a
-// roll call and a division is who is named, not how the count should look.
+// build_session_pages.py writes the day as static HTML and leaves each counted
+// vote as an empty .svote with the count beside it in words. A ROLL CALL IS
+// DRAWN WITH THE VOTES TAB'S OWN DISPLAY (the person, 9 October 2026, v2:
+// "Don't add a click to see how each member voted, the live site already has
+// that functionality in the votes tab by clicking the bar chart or the
+// Democrat Yes, Democrat No ..."): its ring and its party rows, which show the
+// members when pressed. The ballots are the bill's own record -- the day's
+// .svote names the bill and the place of the roll call's card on its Votes tab
+// (data-bill, data-card) -- fetched the first time the day is drawn, one
+// record a bill. A division, and a roll call whose record will not come, is
+// drawn as before with simpleDonut, from the payload at the foot of the page.
 //
 // Nothing here is required for the page to be true: the count, which side
 // prevailed and what it did to the bill are all in the HTML already.
+let SESSV=null;        // {votes: payload, recs: {"2026/HB1": record|null}}
+function sessionRecord(key){
+  if(CMP.own(SESSV.recs,key))return;
+  SESSV.recs[key]=null;
+  const [yr,id]=key.split("/");
+  const url=DATA(`bill/${yr}/${String(id).toLowerCase()}`);
+  const got=d=>{SESSV.recs[key]=d;drawSessionVotes();};
+  fetch(url).then(r=>r.ok?r:fetch(url+".html")).then(r=>r.ok?r.text():Promise.reject(new Error("HTTP "+r.status)))
+    .then(html=>{
+      const doc=new DOMParser().parseFromString(html,"text/html");
+      const node=doc.getElementById("gr-data");
+      if(node)return got(JSON.parse(node.textContent));
+      const ptr=doc.querySelector('meta[name="gr-data"]');
+      if(!ptr)return;
+      return fetch(DATA(ptr.getAttribute("content").replace(/^\//,"")))
+        .then(r=>r.ok?r.json():null).then(d=>{if(d)got(d);});
+    }).catch(()=>{});
+}
+function drawSessionVotes(){
+  if(!SESSV)return;
+  const slots=document.querySelectorAll(".svote[data-vote]");
+  for(const slot of slots){
+    const n=parseInt(slot.getAttribute("data-vote"),10), v=SESSV.votes[n];
+    const key=slot.getAttribute("data-bill"), card=slot.getAttribute("data-card");
+    let html="";
+    try{
+      if(key&&card!=null){
+        sessionRecord(key);
+        const d=SESSV.recs[key], rc=d&&(d.rollcalls||[])[+card];
+        if(rc&&(rc.members||[]).length){
+          const id=key.split("/")[1];
+          html=donut(id,+card,rc);
+        }
+      }
+      if(!html&&v)html=simpleDonut(v,"session",n);
+    }catch(e){html="";}
+    if(html&&slot.innerHTML!==html)slot.innerHTML=html;
+  }
+}
 (function(){
   var tag=document.getElementById("sessvotes");
   if(!tag||typeof simpleDonut!=="function")return;
   var votes;
   try{ votes=JSON.parse(tag.textContent||"[]"); }catch(e){ return; }
   if(!votes.length)return;
-  var slots=document.querySelectorAll(".svote[data-vote]");
-  for(var i=0;i<slots.length;i++){
-    var n=parseInt(slots[i].getAttribute("data-vote"),10);
-    var v=votes[n];
-    if(!v)continue;
-    try{
-      var box=document.createElement("div");
-      // bid and i only build a selection key inside simpleDonut; the day has
-      // no bill of its own at this point, so they are a label, not a lookup.
-      box.innerHTML=simpleDonut(v,"session",n);
-      slots[i].appendChild(box.firstChild||box);
-    }catch(e){ /* the tally in the markup stands on its own */ }
-  }
+  SESSV={votes:votes,recs:{}};
+  drawSessionVotes();
 })();
 
 

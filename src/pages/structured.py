@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-13.3
+# GRANITE_VERSION: 2026-09-13.4
 """
 What a search engine is told a page is about, in schema.org's vocabulary.
 
@@ -130,7 +130,9 @@ def person(m, base, canon_path):
     if m.get("party"):
         obj["affiliation"] = {"@type": "Organization", "name": f"{m['party']} Party"
                               if not str(m["party"]).lower().endswith("party") else m["party"]}
-    return [obj, _crumbs(base, [("Granite Record", "/"), ("Legislators", "/legislators"),
+    # Officials, where Legislators was: /legislators 301s to /officials
+    # (decision 127, 8 October 2026), and a breadcrumb names the page itself.
+    return [obj, _crumbs(base, [("Granite Record", "/"), ("Officials", "/officials"),
                                 (obj["name"], canon_path)])]
 
 
