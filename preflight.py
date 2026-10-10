@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.508
+# GRANITE_VERSION: 2026-09-04.509
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -82566,8 +82566,26 @@ def _fast_path_matches_the_build(BI, BP):
         assert code == 0, f"the fast path failed: {out[-400:]}"
         for n in ("style.css", "app.css", "components.js", "app.js", "find.js"):
             assert n in out.split("wrote ", 1)[-1], f"the fast path did not write {n}: {out[-400:]}"
-        r = _run([sys.executable, _paths.script("build_pages.py"), "--out", "site"], cwd=step,
-                 capture_output=True, text=True, timeout=300)
+        # THE STEP SEES THE SITE AS THE BUILD'S OWN STEP SAW IT (10 October
+        # 2026). build_pages runs before build_committees, so it found no
+        # site/committees.json on the fixture's chain, and the home page's
+        # Coming Up linked no committee page; run again over the whole site it
+        # found one and linked it, and index.html differed -- on any day a
+        # meeting is on the rail (Monday to Thursday, and since D13 the
+        # weekend), not because of the fast path, which never writes
+        # index.html. Held aside for the run and put back, so the comparison
+        # is of what the fast path writes. The page reading a later step's
+        # file is a fault of its own, reported rather than hidden here.
+        held = step / "site" / "committees.json"
+        kept = held.read_bytes() if held.exists() else None
+        if kept is not None:
+            held.unlink()
+        try:
+            r = _run([sys.executable, _paths.script("build_pages.py"), "--out", "site"], cwd=step,
+                     capture_output=True, text=True, timeout=300)
+        finally:
+            if kept is not None:
+                held.write_bytes(kept)
         assert r.returncode == 0, "build_pages.py: " + (r.stderr or r.stdout)[-300:]
         a = {p.relative_to(fast / "site").as_posix(): p.read_bytes()
              for p in (fast / "site").rglob("*") if p.is_file()}
