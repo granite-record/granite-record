@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.38
+# GRANITE_VERSION: 2026-09-08.39
 """
 The civics section: a hub and one page per topic, in order.
 
@@ -243,12 +243,12 @@ def _voters_verb(label, n):
     return s
 
 
-def _cacr_record(cacrs, narr, term):
-    """The term's CACRs, every one in exactly one clause: the voters, a
-    three-fifths failure on the House floor where the docket records one,
-    and otherwise its status."""
-    if not cacrs:
-        return f"The {term.replace('-', '&ndash;')} term filed no CACRs."
+def _cacr_parts(cacrs, narr, term):
+    """(head, lead, voters, items): the term's CACRs, every one in exactly one
+    part -- the voters, a three-fifths failure on the House floor where the
+    docket records one, and otherwise its status. voters is [(status, n)];
+    items is [(clause, label, n, tail)], the clause as the sentence says it and
+    the label and tail as the table's row does."""
     shown = term.replace("-", "&ndash;")
     short = [r for r in cacrs if _fell_short(narr.get(r.get("id")), r.get("status"))]
     rest = [r for r in cacrs if all(r is not s for s in short)]
@@ -268,21 +268,26 @@ def _cacr_record(cacrs, narr, term):
     def n_(k):
         return f"{k:,}"
 
-    clauses = []
+    items = []
     if by["Killed"]:
-        clauses.append(f"{n_(by['Killed'])} {'was' if by['Killed'] == 1 else 'were'} killed outright")
+        items.append((f"{n_(by['Killed'])} {'was' if by['Killed'] == 1 else 'were'} killed outright",
+                      "Killed outright", by["Killed"], ""))
     if short:
         sen = sum(1 for r in short if (r.get("passage") or "")[:2] == "Sp")
         tail = ""
         if sen:
-            tail = (f", {sen:,} of them after passing the Senate" if len(short) > 1
-                    else ", after passing the Senate")
-        clauses.append(f"{n_(len(short))} fell short of three fifths on the House floor{tail}")
+            tail = (f"{sen:,} of them after passing the Senate" if len(short) > 1
+                    else "after passing the Senate")
+        items.append((f"{n_(len(short))} fell short of three fifths on the House floor"
+                      + (f", {tail}" if tail else ""),
+                      "Fell short of three fifths on the House floor", len(short), tail))
     failed = [r for r in rest if r.get("status") == "Failed to pass"]
     if failed:
-        clauses.append(f"{n_(len(failed))} failed a floor vote")
+        items.append((f"{n_(len(failed))} failed a floor vote", "Failed a floor vote",
+                      len(failed), ""))
     if by["Died on the table"]:
-        clauses.append(f"{n_(by['Died on the table'])} died on the table")
+        items.append((f"{n_(by['Died on the table'])} died on the table", "Died on the table",
+                      by["Died on the table"], ""))
     ended = [r for r in rest if r.get("status") == "Died when the session ended"]
     if ended:
         after = Counter((r.get("passage") or "")[:1] for r in ended
@@ -291,13 +296,25 @@ def _cacr_record(cacrs, narr, term):
         if sum(after.values()):
             where = " or ".join(("the Senate" if c == "S" else "the House")
                                 for c in sorted(after))
-            tail = (f", {sum(after.values()):,} of them after passing {where}"
-                    if len(ended) > 1 else f", after passing {where}")
-        clauses.append(f"{n_(len(ended))} died when the session ended{tail}")
+            tail = (f"{sum(after.values()):,} of them after passing {where}"
+                    if len(ended) > 1 else f"after passing {where}")
+        items.append((f"{n_(len(ended))} died when the session ended" + (f", {tail}" if tail else ""),
+                      "Died when the session ended", len(ended), tail))
     done = {"Killed", "Failed to pass", "Died on the table",
             "Died when the session ended", *voters}
     for s in sorted(s for s in by if s not in done):
-        clauses.append(f"{n_(by[s])} {'is' if by[s] == 1 else 'are'} listed as “{s}”")
+        items.append((f"{n_(by[s])} {'is' if by[s] == 1 else 'are'} listed as “{s}”",
+                      f"Listed as “{s}”", by[s], ""))
+    return head, lead, [(s, by[s]) for s in voters], items
+
+
+def _cacr_record(cacrs, narr, term):
+    """The term's CACRs as one paragraph: what it filed, what reached the
+    voters, and then every other CACR in exactly one clause."""
+    if not cacrs:
+        return f"The {term.replace('-', '&ndash;')} term filed no CACRs."
+    head, lead, _voters, items = _cacr_parts(cacrs, narr, term)
+    clauses = [c for c, *_ in items]
     body = ""
     if clauses:
         # A clause with a comma of its own ("10 fell short ..., 3 of them after
@@ -308,6 +325,38 @@ def _cacr_record(cacrs, narr, term):
                       else sep.join(clauses[:-1]) + sep + "and " + clauses[-1]) + "."
         body = " " + body[1].upper() + body[2:]
     return f"{head} {lead}{body}"
+
+
+def _cacr_lead(cacrs, narr, term):
+    """The paragraph over the table: what the term filed and what reached the
+    voters, the first two sentences of _cacr_record."""
+    if not cacrs:
+        return f"The {term.replace('-', '&ndash;')} term filed no CACRs."
+    head, lead, _voters, _items = _cacr_parts(cacrs, narr, term)
+    return f"{head} {lead}"
+
+
+def _cacr_table(cacrs, narr, term):
+    """The rest of _cacr_record's paragraph as a table, a row a part, the
+    passed ones first: every CACR of the term in exactly one row, which the
+    table's total says (the first round's prototype, which the person liked on
+    9 October 2026). A three-fifths failure carries the threshold's amber."""
+    if not cacrs:
+        return ""
+    _head, _lead, voters, items = _cacr_parts(cacrs, narr, term)
+    rows = ([(st.replace(", ", "; ", 1), n, "", False) for st, n in voters]
+            + [(label, n, tail, label.startswith("Fell short")) for _c, label, n, tail in items])
+    assert sum(n for _, n, _, _ in rows) == len(cacrs), "the CACR table does not add up to the term"
+    shown = term.replace("-", "&ndash;")
+    trs = "".join(
+        f'<tr{" class=\"needs\"" if needs else ""}><th scope="row" class="is-text">{label}'
+        + (f'<span class="l-sub">{tail}</span>' if tail else "")
+        + f'</th><td class="l-num">{n:,}</td></tr>' for label, n, tail, needs in rows)
+    return ('<div class="l-tablewrap"><table class="l-table">'
+            f"<caption>The {len(cacrs):,} CACRs of the {shown} term</caption>"
+            '<thead><tr><th scope="col">What became of them</th>'
+            '<th scope="col" class="l-num">CACRs</th></tr></thead>'
+            f"<tbody>{trs}</tbody></table></div>")
 
 
 def record_figures(site, root=Path(".")):
@@ -355,6 +404,8 @@ def record_figures(site, root=Path(".")):
             if v.get("body") == "H" and str(v.get("year")) in years:
                 seated[(v.get("year"), v.get("vote_number"))] += 1
 
+    senate_sitting = sum(1 for m in _load(Path(site) / "legislators.json", [])
+                         if m.get("chamber") == "S")
     every_narr = _load(Path(root) / "narratives.json", {})
     narr = every_narr.get(term, {})
 
@@ -499,6 +550,8 @@ def record_figures(site, root=Path(".")):
         # here because its clauses come and go with the counts.
         "cacr_hurdle": _cacr_hurdle(idx, every_narr, term),
         "cacr_record": _cacr_record(cacrs, every_narr.get(term, {}), term),
+        "cacr_lead": _cacr_lead(cacrs, every_narr.get(term, {}), term),
+        "cacr_table": _cacr_table(cacrs, every_narr.get(term, {}), term),
         "hearings": hearings,
         "hearing_video_bills": len(filmed),
         "hearing_video_from": video_from.split("-")[0],
@@ -518,6 +571,41 @@ def record_figures(site, root=Path(".")):
         # the site's own words, month first; S.BUILT is a citation's form.
         "built_on": S.date_words(build_date.today(), "full"),
     }
+    # THE FIGURES THE PAGES DRAW, from the counts above (civics.bar and the
+    # rest say how each is drawn). Counted here so that no figure carries a
+    # number typed beside the sentence that states it.
+    shown = figures["term"]
+    rest = (len(cur) - status["Killed"] - status["Signed into law"]
+            - status["Referred for interim study"] - status["Died on the table"]
+            - status["Died when the session ended"])
+    figures["fig_ends"] = civics.bar(
+        f"The {len(cur):,} bills and resolutions of the {shown} term",
+        f"How the {len(cur):,} bills and resolutions of the {term} term ended",
+        [(status["Killed"], "c-died", "killed (ITL)"),
+         (status["Signed into law"], "c-law", "signed into law"),
+         (status["Referred for interim study"], "c-study", "sent for interim study"),
+         (status["Died on the table"], "c-table", "died on the table"),
+         (status["Died when the session ended"], "c-end", "died when the session ended"),
+         (rest, "c-rest", "every other outcome", False)])
+    no_rc = figures["all_no_rollcall"]
+    figures["fig_rollcalls"] = civics.bar(
+        f"The {figures['all_bills']:,} bills in this record",
+        "Bills with and without a recorded roll call",
+        [(figures["all_rollcall"], "c-rc", "with at least one recorded roll call"),
+         (no_rc - figures["pre_rollcall_bills"], "c-none",
+          f"<b>{no_rc:,}</b> with none (the grey and the hatched)", False),
+         (figures["pre_rollcall_bills"], "c-old",
+          f'<span class="l-sub">of those from before {rc_first}, where this record&rsquo;s '
+          "roll calls begin</span>")])
+    pending_n = sum(1 for r in idx if r.get("status") == "Vetoed" and r.get("term") == term)
+    figures["fig_vetoes"] = civics.bar(
+        f"The {len(vetoed):,} vetoed bills across the {figures['terms']} terms on this site",
+        f"What became of the {len(vetoed):,} vetoed bills",
+        [(stood, "c-died", "the veto stood"),
+         (figures["veto_overridden"], "c-law", "overridden, and the bill became law"),
+         (pending_n, "c-rest", "still awaiting the override vote")])
+    figures["fig_seats"] = civics.seats_figure(seats, sitting, len(senate), senate_sitting)
+    figures["fig_term"] = civics.term_figure(term)
     # THE WORKED EXAMPLE on the finding-your-representatives page, drawn from
     # the map rather than typed: the diagram, and every fact the prose beside
     # it names. civics.reps_example stops the build if the example town stops

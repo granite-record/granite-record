@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.232 */
+/* GRANITE_VERSION: 2026-09-07.233 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -1334,7 +1334,7 @@ line-height:1.1}
   .fhead .badge,.wkchips button[aria-pressed="true"],
   .cmgrid td.cmpick,.calviews button[aria-pressed="true"],.cdopen,
   .calcat input:checked + .cbx,.searchbig button,.wbtn.sel,h1.lockup,
-  .rtabs [role=tab][aria-selected=true],.l-g{
+  .rtabs [role=tab][aria-selected=true],.l-g,.l-reach > span.is-me{
   -webkit-print-color-adjust:exact;print-color-adjust:exact}
 }
 
@@ -3892,6 +3892,245 @@ a.l-pgm{font-weight:600;text-decoration:underline;text-decoration-thickness:1px;
   .l-hubtab[aria-current]{border-bottom-color:Highlight}
 }
 @media print{.l-hub,.l-otp,.l-pager,.r-tabs{display:none}}
+
+/* ---- the figures each page draws from its own words and numbers -----------
+   (civics.py: bar, chain, boxes, course_diagram, seats_figure, term_figure and
+   the rest). A bar says its numbers in a key beside a swatch, never in colour
+   alone; a picture of a count is hidden from a screen reader, which reads the
+   count in the sentence or the row. */
+.l-lbl{font:600 var(--t-label)/1.3 var(--sans);letter-spacing:.07em;text-transform:uppercase;color:var(--ink-2);margin:0 0 .3125rem}
+.l-table .l-num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.l-table tr.needs th[scope=row]{box-shadow:inset 3px 0 0 var(--st-table)}
+.l-key{display:inline-block;width:.6875rem;height:.6875rem;border-radius:2px;vertical-align:-.0625rem;
+  margin:0 .25rem 0 .125rem;box-shadow:inset 0 0 0 1.5px var(--edge)}
+.l-key.is-me{background:var(--pine);box-shadow:none}
+.l-g.is-p{background:var(--st-law)}
+.l-g.is-x{background:var(--st-done)}
+.l-g.is-study{background:var(--st-study)}
+
+/* proportion bars: how bills end, roll calls, vetoes */
+.l-bar{margin:1.125rem 0 .5rem;max-width:var(--l-meas)}
+.l-bar figcaption{font:600 var(--t-ui)/1.35 var(--sans);color:var(--ink);margin:0 0 .5rem}
+.l-barb{display:flex;gap:2px;height:1.75rem;border-radius:var(--r-in);overflow:hidden;background:var(--surface)}
+.l-barb > i{display:block;min-width:2px}
+.l-sw{display:inline-block;flex:0 0 auto;width:.875rem;height:.875rem;border-radius:2px;vertical-align:-.0625rem}
+.c-died{background:var(--st-done)} .c-law{background:var(--st-law)} .c-study{background:var(--st-study)}
+.c-table{background:var(--st-table)} .c-end{background:var(--st-done-bg);box-shadow:inset 0 0 0 1.5px var(--st-done)}
+.c-rest{background:var(--rule-2)} .c-rc{background:var(--pine)}
+.c-none{background:linear-gradient(90deg,var(--rule-2) 0 50%,transparent 50%),
+  repeating-linear-gradient(135deg,var(--rule-2) 0 2px,var(--surface) 2px 4px);box-shadow:inset 0 0 0 1px var(--rule-2)}
+.l-barb > i.c-none{background:var(--rule-2);box-shadow:none}
+.c-old{background:repeating-linear-gradient(135deg,var(--rule-2) 0 3px,var(--surface) 3px 6px);box-shadow:inset 0 0 0 1.5px var(--rule-2)}
+.l-barkey{list-style:none;margin:.75rem 0 0;padding:0;display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(min(100%,14.5rem),1fr));gap:.375rem 1.5rem;
+  font:400 var(--t-ui)/1.4 var(--sans);color:var(--ink)}
+.l-barkey li{display:flex;align-items:baseline;gap:.5rem}
+.l-barkey b{font-weight:600;font-variant-numeric:tabular-nums}
+.l-barkey .l-sub{display:inline;color:var(--ink-2);font-size:var(--t-ui)}
+
+/* yes and no, in a table of what each way of voting records */
+.l-yn{display:inline-flex;align-items:center;gap:.375rem;white-space:nowrap}
+.l-yn::before{content:"";width:1rem;height:1rem;flex:0 0 auto;background:currentColor;
+  -webkit-mask:var(--l-ynm) center/contain no-repeat;mask:var(--l-ynm) center/contain no-repeat}
+.l-yn.is-y{color:var(--st-law);--l-ynm:url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 12 12%22%3E%3Cpath d=%22M2.4 6.3l2.4 2.4 4.8-5.2%22 fill=%22none%22 stroke=%22%23000%22 stroke-width=%221.9%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22/%3E%3C/svg%3E")}
+.l-yn.is-n{color:var(--ink-2);--l-ynm:url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 12 12%22%3E%3Cpath d=%22M3 6h6%22 fill=%22none%22 stroke=%22%23000%22 stroke-width=%221.9%22 stroke-linecap=%22round%22/%3E%3C/svg%3E")}
+.l-yn > span{color:var(--ink)}
+@media (max-width:37.5em){
+  .l-stack .l-yn{white-space:normal;align-items:flex-start}
+  .l-stack .l-yn::before{margin-top:.1875rem}
+}
+
+/* two thresholds, side by side */
+.l-thr{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,19rem),1fr));gap:.875rem;
+  margin:1.125rem 0 .75rem;max-width:var(--l-meas)}
+.l-thrb{background:var(--surface);border:1px solid var(--rule-2);border-left:3px solid var(--st-table);
+  border-radius:var(--r-in);padding:.875rem 1rem 1rem;min-width:0}
+.l-thrh{font:600 var(--t-h3)/1.3 var(--serif);color:var(--ink);margin:0}
+.l-thrb .l-mk{margin-top:.75rem}
+.l-thrb .l-mt{font-size:var(--t-ui);font-weight:500;background:none;padding:0;color:var(--ink)}
+.l-thrb dl{margin:.875rem 0 0;display:grid;grid-template-columns:auto minmax(0,1fr);gap:.25rem .875rem;
+  font:400 var(--t-ui)/1.45 var(--sans)}
+.l-thrb dt{font:600 var(--t-sm)/1.6 var(--sans);color:var(--ink-2)}
+.l-thrb dd{margin:0;color:var(--ink)}
+@media (max-width:30em){.l-thrb dl{grid-template-columns:minmax(0,1fr);gap:0}.l-thrb dd{margin-bottom:.375rem}}
+
+/* the course of a bill: the two chambers side by side, step for step */
+.l-cphases{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);
+  column-gap:3.5rem;row-gap:.625rem}
+.l-cp{min-width:0;position:relative}
+.l-cp-a{grid-column:1 / -1}
+.l-cp-a .l-steps{width:calc(50% - 1.75rem)}
+.l-cp-a::after,.l-cp-g::before{content:"";display:block;width:1.5rem;height:1.5rem;margin:.5rem 0 .25rem .5rem;
+  background:var(--ink-2);-webkit-mask:var(--l-chev) center/contain no-repeat;mask:var(--l-chev) center/contain no-repeat;
+  transform:rotate(90deg)}
+.l-cp-g::before{margin:.875rem 0 .375rem .5rem}
+.l-cp-h1,.l-cp-h2{display:grid;grid-row:2 / span 6;grid-template-rows:subgrid;row-gap:.625rem}
+.l-cp-h1{grid-column:1} .l-cp-h2{grid-column:2}
+.l-cp-h1 > .l-steps,.l-cp-h2 > .l-steps{grid-row:2 / span 5;display:grid;grid-template-rows:subgrid;gap:.625rem}
+.l-cp-h1 > .l-phname,.l-cp-h2 > .l-phname{margin:0}
+.l-cp-h1::after{content:"";position:absolute;right:-2.75rem;top:.125rem;width:1.5rem;height:1.5rem;
+  background:var(--ink-2);-webkit-mask:var(--l-chev) center/contain no-repeat;mask:var(--l-chev) center/contain no-repeat}
+.l-cpx{position:absolute;right:-3.5rem;top:-1.0625rem;width:3rem;text-align:center;font:500 var(--t-sm)/1.2 var(--sans);color:var(--ink-2)}
+.l-cp-g{grid-column:1 / -1}
+.l-gsteps{grid-template-columns:repeat(3,minmax(0,1fr));column-gap:2.75rem}
+.l-gsteps > li{position:relative}
+.l-gsteps > li:not(:last-child)::after{content:"";position:absolute;top:.25rem;right:-2.125rem;width:1.5rem;height:1.5rem;
+  background:var(--ink-2);-webkit-mask:var(--l-chev) center/contain no-repeat;mask:var(--l-chev) center/contain no-repeat}
+@media (max-width:47.99em){
+  .l-cphases{display:block}
+  .l-cp-a .l-steps{width:auto}
+  .l-cp-h1,.l-cp-h2{display:block}
+  .l-cp-h1 > .l-phname,.l-cp-h2 > .l-phname{margin:0 0 .75rem}
+  .l-cp-h1 > .l-steps,.l-cp-h2 > .l-steps{display:grid;grid-template-rows:none}
+  .l-cp-h1::after{display:block;position:static;margin:.5rem 0 .25rem .5rem;transform:rotate(90deg)}
+  .l-cpx{display:none}
+  .l-cp-h2{margin-top:.25rem}
+  .l-gsteps{grid-template-columns:minmax(0,1fr)}
+  .l-gsteps > li::after{display:none}
+}
+
+/* the Governor's three answers */
+.l-rstart{font:600 var(--t-ui)/1.4 var(--sans);color:var(--ink);margin:0 0 .5rem;padding:.625rem .875rem;
+  background:var(--wash);border-radius:var(--r-in);max-width:max-content}
+.l-rcols{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1.5rem}
+.l-rcol{min-width:0;display:flex;flex-direction:column}
+.l-rcol::before{content:"";display:block;width:1.5rem;height:1.5rem;margin:0 0 .375rem .5rem;background:var(--ink-2);
+  -webkit-mask:var(--l-chev) center/contain no-repeat;mask:var(--l-chev) center/contain no-repeat;transform:rotate(90deg)}
+.l-rh{font:600 var(--t-h3)/1.3 var(--serif);color:var(--ink);margin:0;padding:0 0 .5rem;border-bottom:1px solid var(--ink)}
+.l-rstep{margin:.75rem 0 0}
+.l-rends{list-style:none;margin:0;padding:0;display:grid;gap:.5rem}
+.l-rstep + .l-rends,.l-rh + .l-rends{margin-top:.75rem}
+.l-rstep + .l-rends::before{content:"";display:block;width:1.5rem;height:1.5rem;margin:-.25rem 0 0 .5rem;background:var(--ink-2);
+  -webkit-mask:var(--l-chev) center/contain no-repeat;mask:var(--l-chev) center/contain no-repeat;transform:rotate(90deg)}
+.l-end{display:grid;grid-template-columns:auto minmax(0,1fr);gap:.625rem;align-items:start;padding:.625rem .75rem;
+  border-radius:var(--r-in);border:1px solid var(--rule-2);background:var(--surface);font:400 var(--t-ui)/1.45 var(--sans);color:var(--ink)}
+.l-end b{font-weight:600}
+.l-end .l-g{margin-top:-.0625rem}
+.l-ror{display:none}
+@media (max-width:52em){
+  .l-rcols{grid-template-columns:minmax(0,1fr);gap:1rem}
+  .l-rcol + .l-rcol::before{display:none}
+  .l-ror{display:block;font:600 var(--t-label)/1.3 var(--sans);letter-spacing:.07em;text-transform:uppercase;color:var(--ink-2);margin:0 0 .5rem}
+}
+
+/* a chain: who nominates, who confirms */
+.l-chain{list-style:none;margin:1.125rem 0 .75rem;padding:0;display:grid;grid-template-columns:repeat(var(--n,3),minmax(0,1fr));
+  column-gap:2.75rem;max-width:var(--l-meas)}
+.l-chainfig .l-chain{max-width:none}
+.l-chain > li{position:relative;background:var(--surface);border:1px solid var(--rule-2);border-radius:var(--r-in);padding:.75rem .875rem;min-width:0}
+.l-chain > li:not(:last-child)::after{content:"";position:absolute;top:50%;right:-2.125rem;width:1.5rem;height:1.5rem;margin-top:-.75rem;
+  background:var(--ink-2);-webkit-mask:var(--l-chev) center/contain no-repeat;mask:var(--l-chev) center/contain no-repeat}
+.l-chain b{display:block;font:600 var(--t-ui)/1.35 var(--sans);color:var(--ink)}
+.l-chain span{display:block;margin-top:.25rem;font:400 var(--t-ui)/1.45 var(--sans);color:var(--ink-2)}
+.l-chain > li.is-end{border-left:3px solid var(--pine)}
+@media (max-width:40em){
+  .l-chain{grid-template-columns:minmax(0,1fr);row-gap:2.25rem}
+  .l-chain > li:not(:last-child)::after{top:auto;bottom:-1.875rem;right:auto;left:.5rem;margin-top:0;transform:rotate(90deg)}
+}
+
+/* the three courts */
+.l-courts{list-style:none;margin:1.125rem 0 .75rem;padding:0;display:grid;gap:.5rem;max-width:var(--l-meas)}
+.l-courts > li{background:var(--surface);border:1px solid var(--rule-2);border-left:3px solid var(--ink-2);border-radius:var(--r-in);
+  padding:.75rem 1rem;font:400 var(--t-ui)/1.5 var(--sans);color:var(--ink)}
+.l-courts b{font:600 var(--t-read)/1.3 var(--serif);color:var(--ink)}
+
+/* the seats, one square each */
+.l-seats{display:flex;flex-wrap:wrap;gap:1.5rem 3rem;align-items:flex-start;margin:1.25rem 0 .5rem}
+.l-sgh{margin:0 0 .5rem;font:400 var(--t-ui)/1.3 var(--sans);color:var(--ink-2)}
+.l-sgh b{font:600 var(--t-h3)/1.3 var(--serif);color:var(--ink);margin-right:.375rem}
+.l-sg{min-width:0;flex:0 1 auto;width:min(100%,18rem)}
+.l-dots{display:grid;grid-template-columns:repeat(20,minmax(0,1fr));gap:3px;max-width:18rem}
+.l-dots > i{display:block;width:100%;aspect-ratio:1;border-radius:2px;background:var(--pine)}
+.l-dots > i.is-v{background:none;box-shadow:inset 0 0 0 1.5px var(--edge)}
+.l-seats figcaption{flex:1 1 100%;font:400 var(--t-sm)/1.5 var(--sans);color:var(--ink-2);margin:0}
+
+/* a two-year term: retained, or sent to interim study */
+.l-term .l-tablewrap{max-width:none}
+.l-term table{table-layout:fixed}
+.l-term th[scope=col]:first-child{width:12rem}
+.l-term .l-table td{padding:.75rem 1rem;vertical-align:top}
+.l-tbox{position:relative;display:block;background:var(--surface);border:1px solid var(--rule-2);border-radius:var(--r-in);
+  padding:.625rem .75rem;font:400 var(--t-ui)/1.45 var(--sans);color:var(--ink)}
+.l-tbox b{display:flex;align-items:center;gap:.5rem;font-weight:600;margin-bottom:.25rem}
+.l-tbox.is-keep{border-left:3px solid var(--pine)}
+.l-tbox.is-study{border-left:3px solid var(--st-study)}
+.l-tbox.is-new{border-left:3px dashed var(--edge)}
+.l-term td.is-none{color:var(--ink-2)}
+.l-term td:not(:last-child) .l-tbox.is-go::after{content:"";position:absolute;top:50%;right:-1.6rem;width:1.25rem;height:1.25rem;
+  margin-top:-.625rem;background:var(--ink-2);-webkit-mask:var(--l-chev) center/contain no-repeat;mask:var(--l-chev) center/contain no-repeat}
+@media (max-width:47.99em){
+  .l-term table{table-layout:auto}
+  .l-term th[scope=col]:first-child{width:auto}
+  .l-term td.is-none{display:none}
+  .l-term td:not(:last-child) .l-tbox.is-go::after{display:none}
+}
+@media (max-width:37.5em){.l-term .l-stack .l-table td{grid-template-columns:minmax(0,1fr);gap:.25rem}}
+
+/* everyone who represents one town: each seat's reach under its row */
+.l-reach{display:flex;flex-wrap:wrap;gap:3px;margin-top:.5rem}
+.l-reach > i{display:block;width:.625rem;height:.625rem;border-radius:2px;box-shadow:inset 0 0 0 1.5px var(--edge)}
+.l-reach > i.is-me{background:var(--pine);box-shadow:none}
+.l-reach > span{display:inline-flex;align-items:center;min-height:1.625rem;padding:0 .5rem;border-radius:var(--r-in);
+  font:500 var(--t-sm)/1.2 var(--sans);box-shadow:inset 0 0 0 1.5px var(--edge);color:var(--ink)}
+.l-reach > span.is-me{background:var(--pine);color:var(--on-pine);box-shadow:none}
+.l-reach > b{display:block;width:100%;height:.625rem;border-radius:2px;
+  background:repeating-linear-gradient(135deg,var(--edge) 0 2px,transparent 2px 6px);box-shadow:inset 0 0 0 1.5px var(--edge)}
+.l-lay td.l-by{min-width:16rem}
+.l-lay figcaption{font:400 var(--t-sm)/1.5 var(--sans);color:var(--ink-2);margin:.625rem 0 0}
+@media (max-width:37.5em){.l-lay td.l-by{min-width:0}.l-stack td > .l-reach{grid-column:1 / -1}}
+
+/* a floterial, laid over the districts beneath it */
+.l-flot{margin:1.125rem 0 .75rem;max-width:42rem}
+.l-fband{margin:0;background:var(--pine-soft);border:1px solid var(--pine);border-radius:var(--r-in) var(--r-in) 0 0;
+  padding:.625rem .875rem;font:400 var(--t-ui)/1.45 var(--sans);color:var(--ink)}
+.l-fband b{font-weight:600}
+.l-fbase{list-style:none;margin:0;padding:.5rem;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.5rem;
+  border:1px solid var(--pine);border-top:0;border-radius:0 0 var(--r-in) var(--r-in);background:var(--pine-soft)}
+.l-fbase > li{background:var(--surface);border:1px solid var(--rule-2);border-radius:var(--r-in);padding:.5rem .625rem;
+  font:400 var(--t-ui)/1.4 var(--sans);color:var(--ink);min-width:0}
+.l-fbase b{display:block;font-weight:600}
+.l-fbase > li.is-me{box-shadow:inset 0 -3px 0 var(--pine)}
+@media (max-width:30em){.l-fbase{grid-template-columns:minmax(0,1fr)}}
+
+/* where you may speak: the calendar's own chips */
+.l-speak .calkind{white-space:nowrap}
+.l-speak td:last-child{min-width:12rem}
+@media (max-width:37.5em){.l-speak td:last-child{min-width:0}}
+
+/* who is who: a box for each body, with what it does and the statute */
+.l-who{display:grid;grid-template-columns:repeat(var(--n,3),minmax(0,1fr));gap:.875rem;margin:1.25rem 0 1.5rem}
+.l-body{background:var(--surface);border:1px solid var(--rule-2);border-top:3px solid var(--ink);border-radius:var(--r-in);
+  padding:.875rem 1rem 1rem;min-width:0}
+.l-body h3{font:600 var(--t-h3)/1.3 var(--serif);color:var(--ink);margin:0 0 .125rem}
+.l-body .l-lbl{margin:0 0 .625rem}
+.l-body dl{margin:0;display:grid;gap:.625rem}
+.l-body dt{font:600 var(--t-label)/1.3 var(--sans);letter-spacing:.07em;text-transform:uppercase;color:var(--ink-2)}
+.l-body dd{margin:.125rem 0 0;font:400 var(--t-ui)/1.5 var(--sans);color:var(--ink)}
+.l-rsa{color:var(--ink-2);white-space:nowrap}
+@media (max-width:59.99em){.l-who{grid-template-columns:repeat(min(var(--n,3),2),minmax(0,1fr))}}
+@media (max-width:37.5em){.l-who{grid-template-columns:1fr}}
+
+/* the county's budget, step by step: a numbered line down the column */
+.l-time{list-style:none;margin:.5rem 0 1rem;padding:0;max-width:var(--l-meas);counter-reset:lt}
+.l-time > li{position:relative;padding:0 0 1.125rem 2.75rem;counter-increment:lt}
+.l-time > li::before{content:counter(lt);position:absolute;left:0;top:.125rem;width:1.75rem;height:1.75rem;border-radius:50%;
+  background:var(--surface);border:2px solid var(--ink);font:600 var(--t-sm)/1.5rem var(--sans);color:var(--ink);text-align:center;box-sizing:border-box}
+.l-time > li:not(:last-child)::after{content:"";position:absolute;left:.8125rem;top:2.125rem;bottom:.25rem;width:2px;background:var(--rule-2)}
+.l-time > li > p{font:400 var(--t-read)/1.65 var(--serif);color:var(--ink);margin:0}
+.l-time > li > .l-mk{margin-top:.5rem}
+
+/* a picture of a bill's tabs */
+.l-mock{margin:0 0 1rem;max-width:var(--l-meas)}
+.l-mocktabs{display:flex;flex-wrap:wrap;gap:.25rem 1.75rem;border-bottom:2px solid var(--ink);margin-top:.25rem}
+.l-mocktabs > span{display:inline-flex;font:400 var(--t-ui)/1.2 var(--sans);color:var(--ink-2);padding:.75rem .125rem .625rem;
+  border-bottom:4px solid transparent;margin-bottom:-2px}
+.l-mocktabs > span.is-on{color:var(--ink);font-weight:600;border-bottom-color:var(--pine)}
+
+@media (forced-colors:active){
+  .l-thrb,.l-end,.l-chain > li,.l-courts > li,.l-tbox,.l-fbase > li,.l-body{border:1px solid CanvasText}
+  .l-barb > i,.l-dots > i,.l-reach > i,.l-sw,.l-key{forced-color-adjust:none}
+  .l-chain > li::after,.l-rcol::before,.l-cp-a::after,.l-cp-g::before,.l-cp-h1::after{forced-color-adjust:none;background:CanvasText}
+}
 
 /* The committees index: a way into the 56 pages that nothing linked to. */
 /* No width and no padding of its own: it is already inside .shell,

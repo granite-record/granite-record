@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.34
+# GRANITE_VERSION: 2026-09-08.35
 """
 The topics of the civics section: their order, their names, and their prose.
 
@@ -35,6 +35,8 @@ No "did you know", no exclamation marks, and no suggestion that the reader
 ought to be more engaged than they already are. Someone looking up how to
 testify has decided.
 """
+
+import re
 
 # The order is the order of the proposal, and it is the order the "next
 # topic" link at the foot of each page walks. Two groups: how the state
@@ -316,6 +318,333 @@ def compare_diagram(rows, heading, left, right):
     return wide("".join(out))
 
 
+# ---------------------------------------------------------------------------
+# THE FIGURES THE APPROVED PAGES DRAW (the person, 9 October 2026: "feel free
+# to build out and revise the remaining Learn pages"; the Learn standard asks
+# for a diagram wherever a shape is hard to hold in prose). Every one is drawn
+# from its own page's sentences or numbers and adds no fact: a count comes in
+# as a figure build_civics counted from the record, and the words are the
+# paragraph's own, shortened where a box is small. Each is a list, a table or
+# a set of boxes, so a screen reader reads what a sighted reader sees, and a
+# bar says its numbers in a key beside a swatch, never in colour alone.
+# ---------------------------------------------------------------------------
+
+def bar(caption, label, parts):
+    """A proportion bar and its key: parts [(n, swatch, words)], n an int,
+    or (n, swatch, words, False) for a part the page names without a figure
+    of its own ("every other outcome")."""
+    segs, key = [], []
+    for part in parts:
+        n, cls, words = part[:3]
+        said = part[3] if len(part) > 3 else True
+        if n <= 0:
+            continue
+        segs.append(f'<i class="{cls}" style="flex:{n}"></i>')
+        key.append(f'<li><span class="l-sw {cls}" aria-hidden="true"></span><span>'
+                   + (f"<b>{n:,}</b> " if said else "") + f"{words}</span></li>")
+    return (f'<figure class="l-fig l-bar" role="group" aria-label="{label}">'
+            f'<figcaption>{caption}</figcaption>'
+            f'<div class="l-barb" aria-hidden="true">{"".join(segs)}</div>'
+            f'<ul class="l-barkey">{"".join(key)}</ul></figure>')
+
+
+def chain(label, links, n=None, wide_=False):
+    """Who acts, in turn: [(who, what)], an arrow between, the last box the
+    outcome. On a phone it runs down the page."""
+    end = ' class="is-end"'
+    lis = "".join(
+        f'<li{end if k == len(links) - 1 else ""}><b>{who}</b>'
+        + (f"<span>{what}</span>" if what else "") + "</li>"
+        for k, (who, what) in enumerate(links))
+    html_ = (f'<ol class="l-chain" style="--n:{n or len(links)}" aria-label="{label}">{lis}</ol>')
+    return wide(f'<figure class="l-fig l-chainfig">{html_}</figure>') if wide_ else html_
+
+
+def boxes(label, items):
+    """Bodies side by side, each with what it is: [(name, line, [(field, text)])]."""
+    out = []
+    for name, line, rows in items:
+        dl = "".join(f"<div><dt>{f}</dt><dd>{t}</dd></div>" for f, t in rows)
+        out.append(f'<section class="l-body"><h3>{name}</h3><p class="l-lbl">{line}</p><dl>{dl}</dl></section>')
+    return wide(f'<div class="l-who" style="--n:{len(items)}" role="group" aria-label="{label}">'
+                + "".join(out) + "</div>")
+
+
+def course_diagram(flow=FLOW, heading="The course of a bill"):
+    """How a bill becomes law, with the two chambers side by side, step against
+    step -- the page's point, "the same course twice" -- the word crossover on
+    the arrow between them, and the Governor's three steps across under them
+    (the person's answer to the round-two question 9a, as recommended)."""
+    (n0, s0), (n1, s1), (n2, s2), (n3, s3) = flow
+
+    def steps(xs, cls=""):
+        return f'<ol class="l-steps{cls}">' + "".join(step_html(*s) for s in xs) + "</ol>"
+    return wide(
+        f'<figure class="l-fig l-course" role="group" aria-label="{heading}"><ol class="l-cphases">'
+        f'<li class="l-cp l-cp-a"><h3 class="l-phname">{n0}</h3>{steps(s0)}</li>'
+        f'<li class="l-cp l-cp-h1"><h3 class="l-phname">{n1}</h3>{steps(s1)}'
+        '<span class="l-cpx" aria-hidden="true">crossover</span></li>'
+        f'<li class="l-cp l-cp-h2"><h3 class="l-phname">{n2}</h3>{steps(s2)}</li>'
+        f'<li class="l-cp l-cp-g"><h3 class="l-phname">{n3}</h3>{steps(s3, " l-gsteps")}</li>'
+        '</ol></figure>')
+
+
+def yn(yes, words=None):
+    return (f'<span class="l-yn {"is-y" if yes else "is-n"}"><span>'
+            f'{words or ("Yes" if yes else "No")}</span></span>')
+
+
+# HOW A CHAMBER VOTES: the paragraph's three definitions set side by side.
+WAYS_OF_VOTING = (
+    '<div class="l-tablewrap l-stack"><table class="l-table">'
+    "<caption>What each way of voting records</caption>"
+    '<thead><tr><th scope="col">Way</th><th scope="col">Which side won</th>'
+    '<th scope="col">The count</th><th scope="col">Each member&rsquo;s name</th></tr></thead><tbody>'
+    + "".join(f'<tr><th scope="row">{way}</th><td data-l="Which side won">{a}</td>'
+              f'<td data-l="The count">{b}</td><td data-l="Each name">{c}</td></tr>'
+              for way, a, b, c in (
+                  ("Voice vote", yn(True, "Which side sounded louder"), yn(False), yn(False)),
+                  ("Division", yn(True), yn(True), yn(False)),
+                  ("Roll call", yn(True), yn(True), yn(True))))
+    + "</tbody></table></div>")
+
+# THE TWO VOTES THAT NEED MORE THAN A MAJORITY, side by side, each threshold
+# as an amber fraction with what it is counted against, its article and the
+# paragraph's example.
+THRESHOLDS = (
+    '<div class="l-thr" role="group" aria-label="The two votes that need more than a majority">'
+    '<div class="l-thrb"><p class="l-thrh">Overriding a veto</p>'
+    f'<span class="l-mk is-need">{frac("2/3", True)}<span class="l-mt">two thirds of each chamber, '
+    'by roll call</span></span>'
+    "<dl><dt>Counted against</dt><dd>the members voting</dd><dt>Authority</dt>"
+    "<dd>Part Second, Article 44</dd><dt>Example</dt>"
+    "<dd>August 2026: 231 to 88, with 384 members in office</dd></dl></div>"
+    '<div class="l-thrb"><p class="l-thrh">Amending the constitution</p>'
+    f'<span class="l-mk is-need">{frac("3/5", True)}<span class="l-mt">three fifths of the '
+    "members of each chamber</span></span>"
+    f'<span class="l-mk is-need">{frac("2/3", True)}<span class="l-mt">then two thirds of those '
+    "voting on the question, at the election</span></span>"
+    "<dl><dt>Counted against</dt><dd>every member in office: 240 when all 400 House seats are "
+    "filled</dd><dt>Authority</dt><dd>Part Second, Article 100</dd></dl></div></div>")
+
+
+def _end(ok, words):
+    return (f'<li class="l-end"><span class="l-g {"is-p" if ok else "is-x"}" aria-hidden="true">'
+            f'{CHECK_SVG if ok else X_SVG}</span><span>{words}</span></li>')
+
+
+# THE GOVERNOR'S THREE ANSWERS, as routes from the page's two paragraphs,
+# each ending in the rail's green check or red cross. On a phone the three
+# stack, and the second and third are headed "Or": they are alternatives, not
+# steps.
+GOVERNOR_ROUTES = wide(
+    '<figure class="l-fig l-routes" role="group" aria-label="What the Governor may do with a bill">'
+    '<p class="l-rstart">A bill has passed both chambers</p><ol class="l-rcols">'
+    '<li class="l-rcol"><h3 class="l-rh">The Governor signs it</h3><ul class="l-rends">'
+    + _end(True, "It becomes law.") + "</ul></li>"
+    '<li class="l-rcol"><span class="l-ror" aria-hidden="true">Or</span>'
+    '<h3 class="l-rh">The Governor vetoes it</h3>'
+    '<div class="l-rstep l-step is-need"><b>The legislature may override</b>'
+    "<span>Starting with the chamber the bill came from.</span>"
+    f'<span class="l-mk is-need">{frac("2/3")}<span class="l-mt">Two thirds of each chamber, '
+    'by roll call</span></span></div><ul class="l-rends">'
+    + _end(True, "<b>Overridden:</b> it becomes law over the Governor&rsquo;s objection.")
+    + _end(False, "<b>Not overridden:</b> the veto stands.") + "</ul></li>"
+    '<li class="l-rcol"><span class="l-ror" aria-hidden="true">Or</span>'
+    '<h3 class="l-rh">The Governor does nothing</h3>'
+    '<div class="l-rstep l-step"><b>Five days pass</b><span>Sundays excepted.</span></div>'
+    '<ul class="l-rends">'
+    + _end(True, "It becomes law without a signature,")
+    + _end(False, "unless the legislature&rsquo;s adjournment prevents its return: then it does "
+                  "not become law at all.") + "</ul></li></ol></figure>")
+
+# WHO GOVERNS A COUNTY: the three bodies the page names, each with who they
+# are and what they do in its own sentences, shortened, with their RSA.
+_RSA = '<span class="l-rsa">({})</span>'
+COUNTY_BODIES = boxes("Who governs a county", [
+    ("The Convention", "The county delegation", [
+        ("Who", "The state representatives of the representative districts of the county. "
+                "Nobody is elected to it separately. " + _RSA.format("RSA 24:1")),
+        ("What it does", "Adopts the budget; raising county taxes and making appropriations "
+                         "are its powers. " + _RSA.format("RSA 24:13"))]),
+    ("The Commissioners", "Three in every county", [
+        ("Who", "One chosen from each of three county commissioner districts. "
+                + _RSA.format("RSA 662:4")),
+        ("What they do", "The county&rsquo;s executive: they run its departments from day to day "
+                         "and prepare the budget the convention votes on.")]),
+    ("Five Elected Officers", "On the county part of your ballot", [
+        ("Who", "A sheriff, a county attorney, a county treasurer, a register of deeds and a "
+                "register of probate."),
+        ("Term", "Two years, except in Rockingham and Coos, which moved to four-year terms. "
+                 + _RSA.format("RSA 653:1, V"))])])
+
+# THE COUNTY BUDGET, STEP BY STEP: the page's five paragraphs as a numbered
+# line, each with the time limit it states as an amber tag.
+COUNTY_LIMITS = {
+    "The commissioners propose.": "Before December 1 (June 1 on an optional fiscal year)",
+    "There is a public hearing.": "5 to 20 days after it is mailed",
+    "The executive committee examines it.": "",
+    "The delegation votes.": "Not until 28 days after it is mailed",
+    "Missing the deadline has a consequence.":
+        "Within 90 days of the fiscal year&rsquo;s start (September 1 on an optional fiscal year)",
+}
+
+
+def county_budget(paragraphs):
+    """The budget's paragraphs, "<p><b>Step.</b> ...</p>", as the numbered line.
+    Stops the build if the paragraphs and the limits stop matching, so a step
+    rewritten in the prose cannot lose its tag silently."""
+    steps = re.findall(r"<p><b>(.*?)</b>(.*?)</p>", paragraphs, re.S)
+    assert [b for b, _ in steps] == list(COUNTY_LIMITS), [b for b, _ in steps]
+    lis = "".join(
+        f"<li><p><b>{b}</b>{rest}</p>"
+        + (mark_html(("needs", COUNTY_LIMITS[b])) if COUNTY_LIMITS[b] else "") + "</li>"
+        for b, rest in steps)
+    return f'<ol class="l-time" aria-label="How the county budget is decided">{lis}</ol>'
+
+
+# WHO DECIDES, AND WHO CARRIES IT OUT: the lead's three arrangements side by side.
+TOWN_FORMS = boxes("Who decides, and who carries it out", [
+    ("A Town", "A meeting and a selectboard", [
+        ("Decides", "The voters themselves, assembled at town meeting."),
+        ("Carries it out", "The selectmen: one elected each year for a 3-year term, a board of "
+                           "three. " + _RSA.format("RSA 41:8"))]),
+    ("A City with a Mayor", "A council and a mayor", [
+        ("Decides", "The city council, or board of aldermen, which exercises the powers the law "
+                    "vests in towns. " + _RSA.format("RSA 47:1")),
+        ("Carries it out", "The mayor, the chief executive officer, with a veto the aldermen can "
+                           "override only by two thirds of all the aldermen elected. "
+                           + _RSA.format("RSA 45:7, 45:9"))]),
+    ("A Council and a Manager", "A charter city", [
+        ("Decides", "The council, which enacts the policies."),
+        ("Carries it out", "A city manager the council appoints, heading the administrative "
+                           "branch; the mayor chairs the council. "
+                           + _RSA.format("RSA 49-C:16, 49-C:17"))])])
+
+# HOW A CHARTER IS ADOPTED: the page's own sentences, with its two thresholds.
+FLOW_CHARTER = [
+    ("How It Starts", [
+        ("A petition of voters", "25 registered voters, or 2 percent of them, whichever is less "
+         "and never fewer than 10. (RSA 49-B:3)", ("needs", "25 voters or 2 percent, at least 10")),
+    ]),
+    ("The Ballot", [
+        ("Shall a charter commission be established?", "The question the voters are asked. "
+         "(RSA 49-B:3)", ""),
+    ]),
+    ("The Commission", [
+        ("Nine members, elected", "It writes the charter and reports. (RSA 49-B:4)", ""),
+    ]),
+    ("The Voters Again", [
+        ("The charter goes back to the voters", "It takes effect only if three fifths of the "
+         "ballots cast on the question favour it. (RSA 49-B:6)",
+         ("needs", "Three fifths of the ballots cast on it")),
+    ]),
+]
+
+
+# WHICH MEETINGS YOU MAY ATTEND, AND WHERE YOU MAY SPEAK: the paragraph's rule
+# as a table, each meeting by the calendar's own chip, its words and class
+# read from the words file the Calendar reads (src/pages/words/), so a reader
+# meets the same chip there.
+def _meeting_chip(kind):
+    import components
+    word, cls = components.WORDBOOK["meeting_kinds"]["kinds"][kind]
+    return f'<span class="calkind {cls}">{word}</span>'
+
+
+WHERE_TO_SPEAK = (
+    '<div class="l-tablewrap l-stack l-speak"><table class="l-table">'
+    "<caption>Which meetings you may attend, and where you may speak</caption>"
+    '<thead><tr><th scope="col">Meeting</th><th scope="col">Attend</th><th scope="col">Speak</th>'
+    "</tr></thead><tbody>"
+    + "".join(f'<tr><th scope="row">{_meeting_chip(k)}</th><td data-l="Attend">{yn(True)}</td>'
+              f'<td data-l="Speak">{speak}</td></tr>'
+              for k, speak in (
+                  ("public hearing", yn(True, "Yes: the only meeting at which the public is heard")),
+                  ("executive session", yn(False)),
+                  ("subcommittee work session", yn(False)),
+                  ("work session", yn(False))))
+    + "</tbody></table></div>")
+
+# A BILL'S TABS, as a picture of the strip over the list of what each holds:
+# the shape before its parts. The names are the list's own; it is a picture,
+# so a screen reader is not told about tabs that are not there.
+BILL_TABS_PICTURE = (
+    '<div class="l-mock" aria-hidden="true"><p class="l-lbl">A bill&rsquo;s tabs</p>'
+    '<div class="l-mocktabs">'
+    + "".join(('<span class="is-on">' if k == 0 else "<span>") + t + "</span>" for k, t in enumerate(
+        ("Summary", "Bill Text", "Votes", "Hearings", "Reports", "Sponsors", "Documents")))
+    + "</div></div>")
+
+
+STUDY_SVG = ('<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M1.6 7.1c1.1-1.9 2.3-1.9 3.4-.5s2.3 '
+             '1.4 3.4-.5 1.9-1.6 2-.6" fill="none" stroke="currentColor" stroke-width="1.8" '
+             'stroke-linecap="round"/></svg>')
+
+
+def seats_figure(house, house_sitting, senate, senate_sitting):
+    """THE TWO CHAMBERS AS SQUARES, one a seat, a vacant seat hollow: the
+    page's "400 representatives and 24 senators" and In the Record's vacancies,
+    counted from the district map and the roster."""
+    hv, sv = max(house - house_sitting, 0), max(senate - senate_sitting, 0)
+
+    def group(name, n, vacant):
+        dots = "<i></i>" * (n - vacant) + '<i class="is-v"></i>' * vacant
+        return (f'<div class="l-sg"><p class="l-sgh"><b>{name}</b>{n:,} seats</p>'
+                f'<div class="l-dots" aria-hidden="true">{dots}</div></div>')
+    where = " and ".join(x for x in (f"{hv:,} in the House" if hv else "",
+                                      f"{sv:,} in the Senate" if sv else "") if x)
+    label = (f"The House has {house:,} seats"
+             + (f", {hv:,} of them vacant as the record stands" if hv else "")
+             + f"; the Senate has {senate:,}"
+             + (f", {sv:,} of them vacant" if sv else "") + ".")
+    cap = ('<i class="l-key is-me" aria-hidden="true"></i>One square, one seat.'
+           + (f' <i class="l-key" aria-hidden="true"></i>A hollow square is a vacant seat: '
+              f"{where} as the record stands." if where else ""))
+    return (f'<figure class="l-fig l-seats" role="img" aria-label="{label}">'
+            + group("House", house, hv) + group("Senate", senate, sv)
+            + f"<figcaption>{cap}</figcaption></figure>")
+
+
+def term_figure(term):
+    """TWO WAYS A BILL OUTLASTS ITS FIRST YEAR, through the term: the two
+    paragraphs' facts in the order a term runs, retained against interim study,
+    with the rail's orange mark for interim study. The years are the current
+    term's, as the page's own example of a term is."""
+    a, b = (term.split("-") + [""])[:2]
+    nxt = (f"{int(b) + 1}&ndash;{int(b) + 2}" if b.isdigit() else "the next term")
+    first, second, then = (f"First year ({a})", f"Second year ({b})", f"The next term ({nxt})")
+
+    def box(cls, glyph, head, words, go=False):
+        g = f'<span class="l-g {glyph}" aria-hidden="true">{GLYPH_OF[glyph]}</span>' if glyph else ""
+        return (f'<span class="l-tbox {cls}{" is-go" if go else ""}"><b>{g}{head}</b>{words}</span>')
+    none = '<td data-l="{}" class="is-none">&mdash;</td>'
+    return wide(
+        '<figure class="l-fig l-term" role="group" aria-label="Retained or sent to interim study, '
+        'through a two-year term"><div class="l-tablewrap l-stack"><table class="l-table">'
+        "<caption>Two ways a bill outlasts its first year</caption>"
+        f'<thead><tr><th scope="col">Which</th><th scope="col">{first}</th>'
+        f'<th scope="col">{second}</th><th scope="col">{then}</th></tr></thead><tbody>'
+        '<tr><th scope="row" class="is-text">Retained<span class="l-sub">first year only</span></th>'
+        f'<td data-l="{first}">' + box("is-keep", "", "Kept by the committee",
+                                       "for more work, and studied over the autumn.", True) + "</td>"
+        f'<td data-l="{second}">' + box("is-keep", "is-p", "Reported and voted on",
+                                        "like any other bill. It keeps its number, and shows here "
+                                        "as carried over.") + "</td>"
+        + none.format(then) + "</tr>"
+        '<tr><th scope="row" class="is-text">Interim study<span class="l-sub">second year only</span></th>'
+        + none.format(first)
+        + f'<td data-l="{second}">' + box("is-study", "is-study", "Studied over the autumn",
+                                          "The committee may report on it, but the bill itself dies "
+                                          "with the term.", True) + "</td>"
+        f'<td data-l="{then}">' + box("is-new", "", "Filed again",
+                                      "To come back it has to be a new bill, with a new number.")
+        + "</td></tr></tbody></table></div></figure>")
+
+
+GLYPH_OF = {"is-p": CHECK_SVG, "is-study": STUDY_SVG}
+
+
 # EVERYONE WHO REPRESENTS ONE ADDRESS, from the most local seat to the whole
 # state. The finding-your-representatives page explains in prose that most
 # towns and wards have more than one state representative and that a
@@ -330,7 +659,22 @@ def compare_diagram(rows, heading, left, right):
 # A table for the same reason compare_diagram is one: a screen reader reads
 # "State House, floterial; district Belknap 8; members 2; elected by ..." as one
 # row. Explicit roles because the rows restack on a phone.
-def layers_diagram(rows, heading):
+def reach(places, town):
+    """Under a seat's row, the places that vote for it: by name where there
+    are a few, one square each where there are more (the reader's own town
+    filled), a band for the whole state. A picture of the row's own count, so
+    a screen reader is told the count in the row and not the squares."""
+    if places is None:
+        return '<span class="l-reach" aria-hidden="true"><b></b></span>'
+    if len(places) <= 4:
+        return ('<span class="l-reach" aria-hidden="true">' + "".join(
+            ('<span class="is-me">' if p == town else "<span>") + f"{p}</span>" for p in places)
+            + "</span>")
+    return ('<span class="l-reach" aria-hidden="true">' + "".join(
+        '<i class="is-me"></i>' if p == town else "<i></i>" for p in places) + "</span>")
+
+
+def layers_diagram(rows, heading, town=""):
     out = [f'<figure class="l-fig l-lay" role="group" aria-label="{heading}">'
            f'<div class="l-tablewrap l-stack"><table class="l-table" role="table">'
            f'<caption class="sr">{heading}</caption>'
@@ -340,14 +684,17 @@ def layers_diagram(rows, heading):
            '<th scope="col" role="columnheader">Members</th>'
            '<th scope="col" role="columnheader">Elected by</th>'
            '</tr></thead><tbody role="rowgroup">']
-    for layer, district, members, shared, mark in rows:
+    for layer, district, members, shared, mark, places in rows:
         out.append(
             f'<tr role="row">'
             f'<th scope="row" role="rowheader" class="is-text">{layer}{mark_html(mark)}</th>'
             f'<td role="cell" data-l="District">{district}</td>'
             f'<td role="cell" data-l="Members">{members}</td>'
-            f'<td role="cell" data-l="Elected by">{shared}</td></tr>')
-    out.append("</tbody></table></div></figure>")
+            f'<td role="cell" data-l="Elected by" class="l-by">{shared}{reach(places, town)}</td></tr>')
+    out.append("</tbody></table></div>"
+               "<figcaption>Under each row, one square for each town or city that votes for the "
+               f'seat: <i class="l-key is-me" aria-hidden="true"></i>{town}, '
+               '<i class="l-key" aria-hidden="true"></i>another town or city.</figcaption></figure>')
     return wide("".join(out))
 
 
@@ -437,25 +784,51 @@ def reps_example(districts, town=REPS_EXAMPLE):
         (f"State House &mdash; {town}'s own district",
          f"{o['county']} {o['district']}", str(o.get("seats") or 1),
          f"{town} voters alone" if not own_with
-         else f"{_names([town] + own_with)} together", ""),
+         else f"{_names([town] + own_with)} together", "", [town] + own_with),
         ("State House &mdash; floterial",
          f"{f['county']} {f['district']}", str(f.get("seats") or 1),
          f"{_names([town] + flot_with)} together",
-         ("sub", f"Laid over {len(under)} districts")),
+         ("sub", f"Laid over {len(under)} districts"), [town] + flot_with),
         ("State Senate", f"District {rec.get('senate')}", "1",
-         wide(len(sen), sk), ""),
+         wide(len(sen), sk), "", [town] + sen),
         ("Executive Council", f"District {rec.get('council')}", "1",
-         wide(len(cou), ck), ""),
+         wide(len(cou), ck), "", [town] + cou),
         ("US House", f"District {rec.get('congress')}", "1",
-         wide(len(con), nk), ""),
+         wide(len(con), nk), "", [town] + con),
         ("US Senate", "The whole state", "2",
-         "Every voter in New Hampshire", ""),
+         "Every voter in New Hampshire", "", None),
     ]
     beneath = sorted(d for c, d in under)
+
+    def seats(n):
+        return f"{n} seat" + ("" if n == 1 else "s")
+
+    # THE FLOTERIAL LAID OVER THE DISTRICTS BENEATH IT: each of them by its
+    # name, its places and its seats, the reader's own town marked. The page
+    # says "Rockingham 32 is Rockingham 6, 7 and 8 combined"; this draws it.
+    base = []
+    for c, d in sorted(under, key=lambda cd: (cd[0], int(cd[1]) if str(cd[1]).isdigit() else 0)):
+        key = (c, d)
+        places = sorted(t for t, ws in districts.items() for w in ws.values()
+                        if any((x.get("county"), x.get("district")) == key
+                               for x in w.get("house") or []))
+        n = next((x.get("seats") or 1 for t in places for w in districts[t].values()
+                  for x in w.get("house") or [] if (x.get("county"), x.get("district")) == key), 1)
+        base.append((f"{c} {d}", places, n))
+    order = [p for _, ps, _ in base for p in ps]
+    band = (f'<figure class="l-flot" role="group" aria-label="{f["county"]} {f["district"]}, '
+            f'laid over {f["county"]} {_names([str(d) for d in beneath])}">'
+            f'<p class="l-fband"><b>{f["county"]} {f["district"]}</b>, floterial: '
+            f'{seats(f.get("seats") or 1)}, elected by {_names(order)} together</p>'
+            '<ol class="l-fbase">' + "".join(
+                ('<li class="is-me">' if town in ps else "<li>") + f'<b>{name}</b>{_names(ps)}'
+                f'<span class="l-sub">{seats(n)}</span></li>' for name, ps, n in base)
+            + "</ol></figure>")
     return {
         "reps_town": town,
         "reps_example": layers_diagram(
-            rows, f"Everyone who represents a voter in {town}"),
+            rows, f"Everyone who represents a voter in {town}", town),
+        "reps_band": band,
         "reps_flot": f"{f['county']} {f['district']}",
         "reps_flot_under": f"{f['county']} {_names([str(d) for d in beneath])}",
         "reps_under_n": _WORD.get(len(beneath), str(len(beneath))),
@@ -684,6 +1057,7 @@ on a small number of full days, and committee work fills the rest.</p>
 <p>Four hundred is the number of seats, not the number of members. Seats fall
 vacant and are filled at by-elections through the term, so the working size of
 the House moves.</p>
+[[fig_seats]]
 
 <h2>A Term Is Two Years</h2>
 <p>The General Court sits in two-year terms beginning in odd years. Bill
@@ -707,6 +1081,7 @@ bill itself dies with the term. To come back it has to be filed again in the
 next term, where it will be a new bill with a new number &mdash; so a bill
 sent to interim study is not waiting to be taken up again, whatever the name
 suggests.</p>
+[[fig_term]]
 
 <h2>Every Bill Gets a Public Hearing</h2>
 <p>This is unusual. In most states a committee chair can decline to hear a
@@ -717,7 +1092,7 @@ may attend and speak at.</p>
 <h2>Bills and Resolutions Are Not the Same Thing</h2>
 <p>Which chamber a measure starts in follows from its prime sponsor: a
 representative's bill begins in the House, a senator's in the Senate.</p>
-<table><tbody>
+<table><caption>The kinds of measure</caption><tbody>
 <tr><th scope="row"><b>HB</b></th><td><b>House Bill:</b> a proposed change to New
 Hampshire law. Begins in the House, must pass both chambers, goes to the
 Governor.</td></tr>
@@ -745,7 +1120,7 @@ recommendations, but [[follows_committee]]% of the bills it decided this term
 went the way its committee recommended.</p>
 
 <p>The motions a committee most often recommends are these:</p>
-<table><tbody>
+<table><caption class="sr">The motions a committee most often recommends</caption><tbody>
 <tr><th scope="row"><b>OTP</b></th><td>Ought to Pass</td></tr>
 <tr><th scope="row"><b>OTP/A</b></th><td>Ought to Pass as Amended</td></tr>
 <tr><th scope="row"><b>ITL</b></th><td>Inexpedient to Legislate &mdash; kill the bill</td></tr>
@@ -781,7 +1156,7 @@ signature or over a veto.</p>
 <h2>The Course of a Bill</h2>
 <p>It has to clear the same course twice, once in each chamber, and it can
 stop at any point on it. Most do.</p>
-""" + flow_diagram() + """
+""" + course_diagram() + """
 <h2>Two Meetings Often Confused</h2>
 <p>A public hearing and an executive session are different meetings, and they
 are the two most often confused. A <b>public hearing</b> is where anyone may
@@ -803,6 +1178,7 @@ Council</a> for the last stage.</p>
 for interim study, [[tabled]] died on the table, and [[session_end]] died when
 the session ended without a final vote. Dying is the ordinary outcome, not a
 failure of the bill or its sponsor.</p>
+[[fig_ends]]
 
 <h2>How a Chamber Votes, and What Is Recorded</h2>
 <p>A chamber can put a question three ways. A <b>voice vote</b> records only
@@ -811,6 +1187,7 @@ voted which way. A <b>roll call</b> records every member by name. In the House
 one is taken when a member moves for it and the required number of other
 members second the motion. A vote to override a veto is always a roll call,
 because the constitution requires one.</p>
+""" + WAYS_OF_VOTING + """
 <p>Across the [[all_bills]] bills in this record, <b>[[all_rollcall]] have at
 least one recorded roll call and [[all_no_rollcall]] have none</b>. Of those,
 [[pre_rollcall_bills]] are from before [[rollcall_first_year]], where this
@@ -818,6 +1195,7 @@ record's roll calls begin: roll calls were taken then too, and printed in the
 journals, but this site does not hold them. For most of the rest there is no
 answer to "how did my representative vote", because the bill was decided by
 voice vote or division and no record of names was made.</p>
+[[fig_rollcalls]]
 
 <h2>Votes That Need More Than a Majority</h2>
 <p>Overriding a veto takes two thirds of each chamber, by roll call, under
@@ -830,6 +1208,7 @@ question at the election, under Part Second, Article 100. The chambers count
 that three fifths against every member in office rather than against those
 present &mdash; 240 when all 400 House seats are filled &mdash; so a measure
 can win a clear majority of those voting and fail anyway.</p>
+""" + THRESHOLDS + """
 
 <h2>The Consent Calendar</h2>
 <p>A committee decides in executive session whether to send a bill to the
@@ -932,6 +1311,7 @@ veto it, or do nothing, in which case it becomes law without a signature after
 five days, Sundays excepted &mdash; unless the legislature's adjournment
 prevents the Governor from returning it, and then it does not become law at
 all. Part Second, Article 44 of the state constitution sets both.</p>
+""" + GOVERNOR_ROUTES + """
 
 <h2>A Veto Is Not Always the End</h2>
 <p>The legislature can override a veto, but it takes two thirds of each
@@ -941,6 +1321,7 @@ the members voting. That is a high bar and most attempts fail.</p>
 <p>Across the [[terms]] terms on this site there are <b>[[vetoed]] vetoed bills</b>.
 In <b>[[veto_failed]]</b> the veto stood. In <b>[[veto_overridden]]</b> it was
 overridden and the bill became law over the Governor's objection.[[veto_pending]]</p>
+[[fig_vetoes]]
 <p>When the Governor vetoes a bill, the reasons are set out in a message
 entered in the journal of the chamber the bill came from. Those messages are printed
 in the House and Senate calendars, and this site carries [[veto_messages]] of the
@@ -955,6 +1336,10 @@ does: state contracts above a threshold, the appointment of commissioners and
 judges, and pardons. A commissioner nominated by the Governor takes office
 only when the Council confirms them, and a Governor who has the legislature
 and not the Council cannot simply proceed.</p>
+""" + chain("How a commissioner or a judge is appointed", [
+    ("The Governor nominates", "a commissioner, or a judge."),
+    ("The Executive Council confirms", ""),
+    ("The nominee takes office", "only when the Council confirms them.")]) + """
 <p>The Council is genuinely debated. Supporters say it is a check on
 executive power that no single elected officer should be without. Critics say
 it gives five people a veto over routine administration and slows work that
@@ -972,13 +1357,21 @@ Council."""
 
 BODY_COURTS = """
 <h2>Three Courts</h2>
-<p>New Hampshire has three courts. The <b>Supreme Court</b> hears appeals and
-is the final word on what a state law means. The <b>Superior Court</b> holds
-jury trials and hears the more serious civil and criminal cases. The
-<b>Circuit Court</b> handles the highest volume of cases each year, including
-misdemeanours, small claims, probate and domestic relations.</p>
+<p>New Hampshire has three courts.</p>
+<ol class="l-courts" aria-label="The three courts">
+<li>The <b>Supreme Court</b> hears appeals and is the final word on what a state
+law means.</li>
+<li>The <b>Superior Court</b> holds jury trials and hears the more serious civil
+and criminal cases.</li>
+<li>The <b>Circuit Court</b> handles the highest volume of cases each year,
+including misdemeanours, small claims, probate and domestic relations.</li>
+</ol>
 
 <h2>How a Judge Gets the Job</h2>
+""" + chain("How a judge gets the job", [
+    ("The Governor nominates", "No judicial election, at any level."),
+    ("The Executive Council confirms", "The same route as a commissioner."),
+    ("The judge serves", "Until the age of seventy at most: Part Second, Article 78.")]) + """
 <p>The Governor nominates and the Executive Council confirms &mdash; the same
 route as a commissioner, which is the clearest illustration of what the
 Council is for. There is no judicial election in New Hampshire at any level.
@@ -1023,7 +1416,8 @@ three thresholds, none of which involves the Governor.</p>
 <h2>Why Almost None Get Through</h2>
 <p>[[cacr_hurdle]]</p>
 """ + SHOWS.format("""
-<p>[[cacr_record]]</p>
+<p>[[cacr_lead]]</p>
+[[cacr_table]]
 <p>They sit in <a href="bills.html">the bill list</a> beside ordinary bills.
 A CACR that shows "Passed one chamber" has a much longer way to go than a bill
 with the same words beside it.</p>""")
@@ -1035,6 +1429,16 @@ BODY_AGENCIES = """
 Services, Transportation, Environmental Services, Education, Safety, Revenue
 Administration and the rest are where statutes get applied around New
 Hampshire.</p>
+""" + chain("From statute to rule", [
+    ("The legislature passes a law", "Departments may request legislation, but the bill "
+     "itself has to be filed by a legislator."),
+    ("An agency carries it out", "Its commissioner is nominated by the Governor and "
+     "confirmed by the Executive Council, for a fixed term."),
+    ("The agency decides the detail", "It cannot give itself powers the statute does not "
+     "grant. It writes administrative rules."),
+    ("JLCAR reviews the rule", "Every rule except an emergency rule, before it is adopted: "
+     "approve, approve on a condition, or object. No action within 60 days and the rule is "
+     "treated as approved.")], wide_=True) + """
 
 <h2>How a Commissioner Gets the Job</h2>
 <p>Nominated by the Governor, confirmed by the Executive Council. That is the
@@ -1249,6 +1653,7 @@ governs them.</p>
 
 <p>A county has no council and no mayor. Its legislative body is a group of
 people you already elected to something else.</p>
+""" + COUNTY_BODIES + """
 
 <h2>The County Convention, Which Is the County Delegation</h2>
 <p><b>County convention:</b> the legislative body of a county. It consists of
@@ -1284,7 +1689,7 @@ to a newspaper circulating in the county at least 7 days beforehand
 sequence. Two bodies act, in turn, and the order is what decides who can
 change what.</p>
 
-<p><b>The commissioners propose.</b> Before December 1 each year they deliver
+""" + county_budget("""<p><b>The commissioners propose.</b> Before December 1 each year they deliver
 their recommended budget to every member of the convention, to the chair of
 the selectmen of every town and the mayor of every city in the county, and to
 the Secretary of State (RSA 24:21-a, I). A county on an optional fiscal year
@@ -1313,7 +1718,7 @@ the budget within 90 days after the fiscal year begins if the county runs on a
 calendar year, or by September 1 if it is on an optional fiscal year. A
 convention that has not adopted one by then does not get an extension. The
 budget as recommended by the commissioners takes effect as the county budget
-(RSA 24:14, II).</p>
+(RSA 24:14, II).</p>""") + """
 
 <h2>What Happens After the Budget Is Adopted</h2>
 <p>The delegation is still the body that has to be asked. Commissioners and
@@ -1454,6 +1859,7 @@ ordinances.</p>
 elected council, and so it is in a town whose charter replaced the meeting
 with a town council (RSA 49-D:3). Nearly everything else follows from that one
 difference.</p>
+""" + TOWN_FORMS + """
 
 <h2>A Town: The Meeting Decides, the Selectboard Carries It Out</h2>
 <p><b>Selectmen:</b> the executive of a town. The statutes say selectmen
@@ -1636,6 +2042,7 @@ voters are asked whether a charter commission shall be established
 it reports, and the charter it writes goes back to the voters, where it takes
 effect only if three fifths of the ballots cast on the question favour it
 (RSA 49-B:6).</p>
+""" + flow_diagram(FLOW_CHARTER, "How a charter is adopted", level_names=True) + """
 
 <p>A charter already in force changes by one of two routes. A revision, which
 changes the form of government, goes through a charter commission of its own:
@@ -1685,6 +2092,7 @@ one later. Where you may <i>speak</i> is narrower: a public hearing is the
 meeting for that, and it is the only one at which members of the public are
 heard. You may attend any other meeting &mdash; an executive session, a
 subcommittee, a work session &mdash; but not speak at it.</p>
+""" + WHERE_TO_SPEAK + """
 <p>A public hearing is the meeting at which a committee hears a bill before it
 votes on what to recommend. Every bill introduced gets one, and anyone may
 speak at it.</p>
@@ -1702,7 +2110,7 @@ the committee, the bill, the day, the time and the room. Across the
 the median notice is <b>[[notice_median]] days</b>. That is the gap between the
 day the calendar is published and the day of the hearing.</p>
 <p>Notices name the room by building:</p>
-<table><tbody>
+<table><caption class="sr">The buildings a notice names</caption><tbody>
 <tr><th scope="row"><b>SH</b></th><td><b>State House:</b> 107 North Main Street,
 Concord.</td></tr>
 <tr><th scope="row"><b>LOB</b></th><td><b>Legislative Office Building:</b> 33 North State
@@ -1814,6 +2222,7 @@ senator, and district 22 is written <b>SD22</b>.</p>
 neighbouring House districts in the same county, each of which already elects
 its own members. It elects one or more additional members across all of them
 together. [[reps_town]]'s is laid over [[reps_under_n]] districts.</p>
+[[reps_band]]
 <p>A town's population is rarely an exact multiple of what one seat is worth,
 and the constitution will not let the legislature split a town to even it out.
 A floterial is where those remainders are pooled instead.</p>
@@ -1864,6 +2273,7 @@ sponsor, status, bill type and floor vote day. <a href="legislators.html">Every 
 <a href="committees.html">every committee</a> has a page of their own.</p>
 
 <h2>What a Bill's Page Holds</h2>
+""" + BILL_TABS_PICTURE + """
 <ul>
 <li><b>Summary</b> &mdash; the General Court's own analysis, the current
 status, and a narrative of what has happened, in order, with each action
