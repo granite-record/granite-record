@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-10-09.1
+// GRANITE_VERSION: 2026-10-09.2
 /* THE DISTRICT MAP (map v1), as a module a page mounts:
 
      <link rel="stylesheet" href="/map.css">
@@ -438,12 +438,13 @@ function chip(m){
   const who=tag?`${esc(tag[1])} <span class="mtag">${esc(tag[2])}</span>`:esc(full);
   return `<span class="mchip p-${p}">${m.s?`<a href="/legislator/${esc(m.s)}.html">${who}</a>`:who}</span>`;
 }
-/* "Concord, wards 1-3" once, rather than the city ten times */
+/* "Dover (Ward 1, Ward 2, Ward 3)" once, rather than the city ten times,
+   each ward its own link with its capital (the person, 10 October 2026) */
 function wardsText(list){
   const by={};list.forEach(([t,w])=>(by[t]=by[t]||[]).push(w));
   return Object.entries(by).map(([t,ws])=>{
     if(ws.length===1&&ws[0]==="0")return `<a href="/town/${slugOf(t)}.html">${esc(t)}</a>`;
-    return `${esc(t)}, `+ws.sort((a,b)=>a-b).map(w=>`<a href="/town/${slugOf(t,w)}.html">ward ${esc(w)}</a>`).join(", ");
+    return `${esc(t)} (`+ws.sort((a,b)=>a-b).map(w=>`<a href="/town/${slugOf(t,w)}.html">Ward ${esc(w)}</a>`).join(", ")+")";
   }).join("; ");
 }
 
@@ -482,7 +483,7 @@ function mount(root,opts){
     (opts.list?`<details class="gmlist"><summary>Every district, as a list</summary><div class="gmlistbody"></div></details>`:"");
   const svg=root.querySelector("svg"),wrap=root.querySelector(".gmwrap"),panel=root.querySelector(".gmpanel");
   let M=null,layer=opts.layer,mode=opts.labels,picked=null,townPicked=null,zoom=1,vb=null,last=null;
-  const api={root,ready:null,select,pickTown,setLayer,setLabels,zoomOn,
+  const api={root,ready:null,select,pickTown,clear,setLayer,setLabels,zoomOn,
     layer:()=>layer,labels:()=>mode,shown:()=>last,model:()=>M};
 
   api.ready=load(opts.data).then(m=>{M=m;
@@ -630,6 +631,19 @@ function mount(root,opts){
     if(say&&panel)panel.innerHTML=describe(lk,fid);
     if(say)changed();
   }
+  /* NOTHING CHOSEN AGAIN: a click on the map's background, off every
+     district, or Escape, puts the map back as it opened (the person,
+     10 October 2026: "there isn't an easy way to deselect"). A town page's
+     own town stays outlined -- that is the page, not a choice. */
+  function clear(){
+    if(!picked&&!townPicked)return;
+    picked=null;townPicked=opts.frame&&opts.dim?townPicked:null;
+    svg.querySelectorAll(".f.on").forEach(p=>p.classList.remove("on"));
+    const hi=svg.querySelector(".hi");if(hi)hi.textContent="";
+    relabel();
+    if(panel)panel.innerHTML=`<p class="quiet">${esc(opts.prompt)}</p>`;
+    changed();
+  }
   function seatLine(lk,fid){
     const ms=sitting(M,lk,fid),seats=seatsOf(M,lk,fid);
     return `<div class="pk">${seats} seat${seats===1?"":"s"}${seats>ms.length?` &middot; ${seats-ms.length} vacant`:""}</div>`+
@@ -651,7 +665,7 @@ function mount(root,opts){
   }
   function townSummary(t){
     return Object.entries(M.T.places[t].w).map(([w,[b,f,s,c,g]])=>
-      `<div class="pk">${esc(t)}${w!=="0"?" ward "+esc(w):""}</div><p>State House ${esc(label("base",b))}${f?`, and floterial ${esc(label("float",f))}`:""}; State Senate ${esc(s)}; Executive Council ${esc(c)}; US House ${esc(g)}. <a href="/town/${slugOf(t,w)}.html">Who represents ${esc(t)}${w!=="0"?" ward "+esc(w):""}</a></p>`).join("");
+      `<div class="pk">${esc(t)}${w!=="0"?" Ward "+esc(w):""}</div><p>State House ${esc(label("base",b))}${f?`, and floterial ${esc(label("float",f))}`:""}; State Senate ${esc(s)}; Executive Council ${esc(c)}; US House ${esc(g)}. <a href="/town/${slugOf(t,w)}.html">Who represents ${esc(t)}${w!=="0"?" Ward "+esc(w):""}</a></p>`).join("");
   }
   /* Choose a town: the district holding it in this layer is chosen, the town
      outlined and named first, and the map zoomed to it. Switching layers
@@ -752,7 +766,10 @@ function mount(root,opts){
     if(lb)lb.addEventListener("click",e=>{const b=e.target.closest("button.gmpick");if(!b)return;
       select(b.dataset.l,b.dataset.f);if(opts.zoom)centreOn(fbox(M,b.dataset.l,b.dataset.f));});
     let dragged=false,from=null;
-    svg.addEventListener("click",e=>{if(dragged||!opts.panel)return;const p=e.target.closest(".f");if(p)select(layer,p.dataset.f);});
+    svg.addEventListener("click",e=>{if(dragged||!opts.panel)return;const p=e.target.closest(".f");if(p)select(layer,p.dataset.f);else clear();});
+    // the box around the drawing is background too, and Escape is the keyboard's way
+    wrap.addEventListener("click",e=>{if(!dragged&&opts.panel&&e.target===wrap)clear();});
+    root.addEventListener("keydown",e=>{if(e.key==="Escape"&&opts.panel&&(picked||townPicked)){clear();}});
     if(!opts.zoom)return;
     // a pan changes which labels are in view, so the rule is run again
     let queued=false;

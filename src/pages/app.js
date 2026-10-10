@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.183
+// GRANITE_VERSION: 2026-09-07.184
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -2901,9 +2901,8 @@ function renderFacets(){
     facetVals(b,k).forEach(v=>{if(v)c[v]=(c[v]||0)+1;});});return c;};
   const present=k=>[...new Set(inYear.flatMap(b=>facetVals(b,k)).filter(Boolean))].sort();
   let h="";
-  h+=fgroup("committee","Committee",present("committee"),cnt("committee","committee"));
-  h+=fgroup("topic","Topic",present("topic"),cnt("topic","topic"));
-  h+=fgroup("sponsor","Prime Sponsor",present("sponsor"),cnt("sponsor","sponsor"),true);
+  // STATUS AND BILL TYPE FIRST (the person, 10 October 2026): the two that
+  // open by default head the list, above Committee, Topic and Prime Sponsor.
   // No "Year Filed" facet. The term picker above the list already chooses
   // the biennium, and splitting one term into its two filing years was a
   // second control for a distinction the card prints on its own. (The
@@ -2931,6 +2930,9 @@ function renderFacets(){
     cnt("type","type"),false,null,
     v=>`<span class="tname"><b class="tcode">${esc(v)}</b>${
       TYPE_NAME[v]?`<span>${esc(TYPE_NAME[v])}</span>`:""}</span>`);
+  h+=fgroup("committee","Committee",present("committee"),cnt("committee","committee"));
+  h+=fgroup("topic","Topic",present("topic"),cnt("topic","topic"));
+  h+=fgroup("sponsor","Prime Sponsor",present("sponsor"),cnt("sponsor","sponsor"),true);
   const days={};inYear.filter(b=>matches(b,"voteday")).forEach(b=>(b.votedays||[]).forEach(d=>days[d]=(days[d]||0)+1));
   const allDays=[...new Set(inYear.flatMap(b=>b.votedays||[]))].sort().reverse();
   // "Floor Vote Day", in the Title Case of the headings above it (Prime
@@ -5306,6 +5308,47 @@ function mountReport(kind,ref){
   if(acts){div.className="inacts";acts.appendChild(div);}
   else res.after(div);
 }
+// A BILL OPENED FROM THE SEARCH HAS ITS ROW TOO (the person, 10 October
+// 2026: "some bill pages are missing the action buttons like print, report,
+// and share entirely"). focusBill draws the bill under its own address
+// without loading its page, and the row was mounted only on a page that
+// loaded as a bill's (GR_BILL), so every bill reached from the list had no
+// Cite, Follow, Print, Share or Report. Its own page's row is fetched -- Cite
+// as the build wrote it, and the bill's feed -- and the rest mounted into it
+// as on that page; the row goes when the list comes back (dropFocusActions).
+let focusActs=null;
+function dropFocusActions(){
+  if(!focusActs)return;
+  focusActs=null;
+  const a=document.getElementById("pageacts");
+  if(a&&a.dataset.focus)a.remove();
+}
+function focusActions(id){
+  if(window.GR_STANDALONE||PAGE||focusActs===id)return;
+  dropFocusActions();
+  const y=yearOf(id);
+  if(!y||document.getElementById("pageacts")||typeof fetch!=="function"||typeof DOMParser==="undefined")return;
+  focusActs=id;
+  const path=`bill/${y}/${String(id).toLowerCase()}`;
+  fetch(`${BASE}${path}.html`).then(r=>r.ok?r.text():Promise.reject(r.status)).then(html=>{
+    if(focusActs!==id||focused!==id||document.getElementById("pageacts"))return;
+    const doc=new DOMParser().parseFromString(html,"text/html");
+    const acts=doc.getElementById("pageacts");
+    if(!acts)return;
+    const feed=doc.querySelector('link[rel="alternate"][type="application/rss+xml"]');
+    const row=document.importNode(acts,true);
+    row.dataset.focus="1";
+    // as the page's own script does on load: the day read, and Copy shown
+    row.querySelectorAll(".citeday").forEach(x=>{x.textContent=citeDay(new Date());});
+    row.querySelectorAll("[data-citecopy]").forEach(x=>{x.hidden=false;});
+    const res=$("#results");
+    if(!res)return;
+    res.before(row);
+    mountFollow(feed?"bill":"",feed?feed.getAttribute("href"):"");
+    mountReport("bill",`${y}/${id}`);
+    placeActions();
+  }).catch(()=>{if(focusActs===id)focusActs=null;});
+}
 // The row, out of the record before the record is drawn again, and into the
 // head once it is drawn. The template's hidden <h1> gives way to the head's.
 // HIDDEN WHILE THE LIST IS DRAWN (`hide`): a bill's own page that goes back
@@ -5378,11 +5421,11 @@ document.addEventListener("click",e=>{
 const FOLLOWS={bill:"each new action, hearing and vote on this bill",
   member:"this member's newest votes and the bills they put their name to",
   committee:"each day this committee sits, and what it does with each bill"};
-function mountFollow(kind){
-  const link=document.querySelector('link[rel="alternate"][type="application/rss+xml"]');
+function mountFollow(kind,feed){
+  const link=feed?null:document.querySelector('link[rel="alternate"][type="application/rss+xml"]');
   const res=$("#results");
-  if(!kind||!link||!res||document.getElementById("followbox"))return;
-  const href=link.getAttribute("href")||"";
+  if(!kind||!(feed||link)||!res||document.getElementById("followbox"))return;
+  const href=feed||link.getAttribute("href")||"";
   const div=document.createElement("div");
   div.id="followbox";
   div.className="followrow";
@@ -5865,8 +5908,12 @@ function billHead(b,d){
   if(d&&d.chapter)facts.push(["Chapter Law",`Chapter ${esc(d.chapter)}, Laws of ${esc(d.year||y)}`,
     law?`Effective ${esc(dateWords(law.date))}`:""]);
   else if(status&&status.toLowerCase()!==chipOf(b).toLowerCase())facts.push(["Status",esc(status)]);
+  // THE TRAIL ENDS ON THIS BILL, AND ITS TERM IS THE SEARCH OPENED ON THAT
+  // TERM (the person, 10 October 2026): "Bills > 2025-2026 Term > HB 396-FN",
+  // where the term led to the term's directory index -- a page most readers
+  // will not use -- and the trail ended on the kind of measure.
   const head=recordHead({trail:[["Bills",`${BASE}bills`],[`${termDash(tm)} Term`,
-      `directory/bills-${tm}.html`],[TYPE_NAME[typeOf(b)]||"Bill",""]],
+      tm?`${BASE}bills?term=${encodeURIComponent(tm)}`:""],[b.n||b.id,""]],
     title:billNumberTerms(b.n),year:y,chip:chip(chipOf(b),`cstat ${chipCls(b)}`,"m"),line:esc(b.title),
     facts,rail:datedRail(b,d),actions:"",kind:"bill"});
   // The trail's Bills goes back to the search where the search is behind it
@@ -5880,6 +5927,22 @@ function billHead(b,d){
 // Which analyses the reader has opened out. Keyed on the bill, so opening
 // one and then touching any other control does not shut it again.
 const anOpen=new Set();
+
+// THE WHOLE CARD OPENS IT (the person, 10 October 2026: "If you click
+// anywhere on a bill card except another link like the title, the sponsor
+// chip, or the committee, it should open the bill card"). A press on a list
+// card's head that is on none of its own controls -- the number, a chip, a
+// committee, a term, the rail's marks -- and is not the end of selecting
+// text, is a press on its title: the title button that opens and shuts it,
+// which stays the keyboard's way to do the same.
+function cardBackground(e){
+  const h=e.target.closest&&e.target.closest(".card:not(.focus):not(.lsr) .chead");
+  if(!h||e.button>0||e.target.closest("a,button,input,select,textarea,label,summary,details,[data-term],[tabindex]"))
+    return null;
+  const s=window.getSelection&&window.getSelection();
+  if(s&&String(s).length)return null;
+  return h.querySelector(":scope > button.ctitle");
+}
 
 // A box is clamped unless the reader opened it, and gets a button only if it
 // actually overflows -- which is a measurement, not a guess: the same 300
@@ -7156,7 +7219,7 @@ document.addEventListener("click",e=>{
     return;}
   const ct=e.target.closest(".card .tab[data-t]");
   if(ct){openTab[ct.closest(".card").dataset.id]=ct.dataset.t;renderPage();return;}
-  const head=e.target.closest(".card .ctitle");
+  const head=e.target.closest(".card .ctitle")||cardBackground(e);
   if(head){
     const id=head.closest(".card").dataset.id;
     if(openCards.has(id)){openCards.delete(id);renderPage();}
@@ -7535,7 +7598,7 @@ function render(more){
     }
   }
   syncCards(rows.filter(b=>openCards.has(b.id)).map(b=>b.id));
-  if(fb)placeActions();
+  if(fb){focusActions(fb.id);placeActions();}else dropFocusActions();
   showSelectedTab($("#results"));
   renderFacets();
   refocus(held);
@@ -7860,7 +7923,7 @@ document.addEventListener("click",e=>{
   // so a tab click here threw on tab.closest(".card").dataset and the tab did
   // nothing. Those pages have their own handler, registered above.
   if(PAGE)return;
-  const head=e.target.closest(".card .ctitle");
+  const head=e.target.closest(".card .ctitle")||cardBackground(e);
   if(head){const id=head.closest(".card").dataset.id;
     if(term===ALL_TERMS){const own=head.closest(".card").querySelector("a.cnum");
       if(own){location.href=own.href;return;}}
@@ -8213,3 +8276,29 @@ document.addEventListener("toggle",e=>{
   if(!d||!d.open||!d.closest||!d.closest("#pageacts"))return;
   document.querySelectorAll("#pageacts details[open]").forEach(o=>{if(o!==d)o.open=false;});
 },true);
+// AND A PRESS ANYWHERE ELSE SHUTS IT (the person, 10 October 2026: the
+// buttons "should deselect when you click on the background since right now
+// there isn't an easy way to deselect them"): Cite, Follow and Report a
+// problem in the row, wherever the row is -- a bill's, a member's or a
+// committee's head, a session day's, a chamber's -- and Escape does the same,
+// putting the keyboard back on the button it opened from. Share's line
+// ("Link copied") goes with them, unless the press was on the line itself,
+// where an address it could not copy waits to be selected.
+const ACT_PANES="#pageacts details[open], .pageacts details[open], .racts details[open]";
+const SHARE_PRESS="[data-share]";   // named here: Share's own listener is the one that names it
+document.addEventListener("click",e=>{
+  const at=e.target;
+  if(!at||!at.closest)return;
+  document.querySelectorAll(ACT_PANES).forEach(d=>{if(!d.contains(at))d.open=false;});
+  if(!at.closest(SHARE_PRESS)&&!at.closest(".sharestate"))
+    document.querySelectorAll(".sharestate").forEach(s=>{if(s.textContent)s.textContent="";});
+});
+document.addEventListener("keydown",e=>{
+  if(e.key!=="Escape")return;
+  const open=[...document.querySelectorAll(ACT_PANES)];
+  if(!open.length)return;
+  const back=open.find(d=>d.contains(document.activeElement));
+  open.forEach(d=>{d.open=false;});
+  const s=back&&back.querySelector("summary");
+  if(s&&s.focus)s.focus();
+});

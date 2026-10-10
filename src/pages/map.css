@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-10-09.1 */
+/* GRANITE_VERSION: 2026-10-09.2 */
 /* THE DISTRICT MAP (map v1): the stylesheet map.js draws against. A page that
    mounts the map links /map.css and /map.js and nothing else; every rule here
    is under .gm, the class mount() gives its element, so nothing here reaches
@@ -158,6 +158,9 @@
 .gm .nm.is-out{fill:var(--ink-2);font-weight:400}
 /* The chosen district's tag: its name and number, in pine on the card's
    colour, in a box, like the outline it names. */
+/* the chosen district's tag lets a click through to the district under it:
+   a click off every district clears the choice (map.js clear) */
+.gm .dtag{pointer-events:none}
 .gm .dtag rect{fill:var(--surface);stroke:var(--pine);stroke-width:1.5;vector-effect:non-scaling-stroke}
 .gm .dtag text{font-size:var(--n-tag);font-weight:600;fill:var(--pine);text-anchor:middle;dominant-baseline:central}
 @media (forced-colors:active){.gm .labels text,.gm .dtag text{forced-color-adjust:none}}

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-19.34
+# GRANITE_VERSION: 2026-09-19.35
 """
 A page for every day the House sat.
 
@@ -307,7 +307,7 @@ def members_row(body, names, members, esc):
     return " ".join(out)
 
 
-def vote_payload(item):
+def vote_payload(item, mk=""):
     """What simpleDonut needs, and nothing it does not.
 
     `passed` is the clerk's MA or MF, never whichever number is larger. On
@@ -318,6 +318,16 @@ def vote_payload(item):
     """
     if not item.counted:
         return None
+    need = item.threshold_needed
+    # A MOTION TO SUSPEND THE RULES NEEDS TWO THIRDS OF THOSE VOTING (the
+    # person, 10 October 2026: a failed suspension drawn 181-121 with its mark
+    # at a majority read as though the yes side should have won). Its head
+    # says "needs two thirds", and rollcall_outcomes counts it so from the
+    # roll call's own question; where neither that question nor the line names
+    # the fraction -- "Suspend the Rules for transmittal" -- the mark sat at
+    # half. `mk` is the head's own reading of the motion (motions.classify).
+    if mk == "suspend_rules" and not item.need and not item.threshold_unknown:
+        need = -(-2 * (item.yeas + item.nays) // 3)
     return {"yeas": item.yeas, "nays": item.nays,
             "passed": bool(item.carried),
             # Not always half plus one. The Senate writes "3/5 nec." into the
@@ -326,7 +336,7 @@ def vote_payload(item):
             # faced, or missed one it did. Three fifths is of the members in
             # office, which session_days takes from the roll call's ballots;
             # where there are none, the ring draws no mark.
-            "threshold_needed": item.threshold_needed,
+            "threshold_needed": need,
             **({"threshold_unknown": True} if item.threshold_unknown else {}),
             "kind": item.kind}
 
@@ -1217,7 +1227,7 @@ def vote_html(it, bill, body, year, cards, members, esc, payloads):
     rec = (f'<p class="rcrec">In the record: {esc(k["mrec"])}</p>'
            if k.get("mrec") and words_ else "")
     ring = ""
-    pl = vote_payload(it)
+    pl = vote_payload(it, k["mk"] if words_ else "")
     if pl:
         i = len(payloads)
         payloads.append(pl)

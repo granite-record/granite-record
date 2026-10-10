@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.518
+# GRANITE_VERSION: 2026-09-04.520
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -32431,6 +32431,28 @@ def _session_motion_lost(SD, BSP):
     return "ok", "ML, MF and MA each say what happened to the motion"
 
 
+@check("session", "a motion to suspend the rules is drawn against two thirds, not a majority",
+       needs=("session_days", "build_session_pages", "motions"))
+def _session_suspend_two_thirds(SD, BSP, MO):
+    """The person, 10 October 2026: "Suspend the Rules for transmittal",
+    failed 181-121 on a roll call, drawn with its mark at half, so the ring
+    said the losing side had won. Its head says "needs two thirds", and the
+    ring now marks 202 of 302. A line that names its own fraction keeps it,
+    and another motion keeps a majority."""
+    e = {"type": "floor", "action": "Suspend the Rules for transmittal", "motion": "MF",
+         "vote_kind": "RC", "yeas": "181", "nays": "121",
+         "raw": "Suspend the Rules for transmittal, MF, RC 181-121"}
+    it = SD.Item("HB1", "2023-2024", e, 0)
+    mk = MO.classify(it.action, "HB1", "H")["mk"]
+    assert mk == "suspend_rules", f"the motion reads as {mk!r}"
+    got = BSP.vote_payload(it, mk)["threshold_needed"]
+    assert got == 202, f"a suspension 181-121 is drawn needing {got}, not 202 (two thirds of 302)"
+    assert BSP.vote_payload(it)["threshold_needed"] == 152, "without its kind it is a majority"
+    ot = SD.Item("HB1", "2023-2024", {**e, "action": "Ought to Pass", "raw": "OTP, MF, RC 181-121"}, 0)
+    assert BSP.vote_payload(ot, MO.classify("Ought to Pass", "HB1", "H")["mk"])["threshold_needed"] == 152
+    return "ok", "a suspension 181-121 needs 202; Ought to Pass on the same count needs 152"
+
+
 @check("session", "a voice vote takes no count from another question on its line",
        needs=("narrative", "docket_vocab", "docket_era_1999", "session_days",
               "build_session_pages"))
@@ -56284,6 +56306,30 @@ def _on_the_record_rows():
         "2025-0123" not in head + summary, (
             f"the bill's head or summary still carries {[h for h in heads if h in ('Introduced', 'LSR')]}")
     return "ok", f"the head holds {', '.join(heads)}, and no Introduced or LSR row"
+
+
+@check("frontend", "a bill's trail ends on its number, and its term opens the search on that term")
+def _bill_trail_term_search():
+    """The person, 10 October 2026: "Bills > 2025-2026 Term > HB 396-FN".
+    The term led to the term's directory index, which most readers will not
+    use, and the trail ended on the kind of measure ("House Bill"). billHead
+    is drawn in node: the trail is Bills, the term opening /bills?term=, and
+    the bill's own number, unlinked."""
+    b = {"id": "HB396", "n": "HB 396-FN", "term": "2025-2026", "year": 2025,
+         "status": "In committee"}
+    got = _app_js("scope.billHead(" + json.dumps(b) + ", null)", names=("billHead",))
+    if got is None:
+        return "skip", "node, app.js or dom_stub.js is not here"
+    trail = re.search(r'<nav class="rtrail"[^>]*><ol>(.*?)</ol></nav>', got, re.S)
+    assert trail, "the bill's head has no trail"
+    items = re.findall(r"<li[^>]*>(.*?)</li>", trail.group(1), re.S)
+    assert len(items) == 3, f"the trail has {len(items)} steps, not 3: {items}"
+    assert re.search(r'href="[^"]*bills\?term=2025-2026"', items[1]) and "Term" in items[1], (
+        f"the term does not open the search on its term: {items[1]}")
+    assert "directory/bills-" not in got, "the term still leads to the directory index"
+    assert "<a" not in items[2] and "HB 396" in items[2], (
+        f"the trail does not end on the bill's number: {items[2]}")
+    return "ok", "Bills > 2025\u20132026 Term (the search on that term) > HB 396-FN"
 
 
 @check("frontend", "the Bill Text tab opens on the current version in full text")

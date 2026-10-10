@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-13.4
+# GRANITE_VERSION: 2026-09-13.5
 """
 What a search engine is told a page is about, in schema.org's vocabulary.
 
@@ -93,7 +93,7 @@ def bill(b, d, base, canon_path):
             "about": {"@id": url + "#legislation"},
             "isPartOf": _site(base), "publisher": _publisher(base)}
     return [page, obj, _crumbs(base, [("Granite Record", "/"), ("Bills", "/bills"),
-                                (f"{b.get('term')}", f"/directory/bills-{b.get('term')}"),
+                                (f"{b.get('term')}", f"/bills?term={b.get('term')}"),
                                 (b.get("n") or bid, canon_path)])]
 
 

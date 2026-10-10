@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.185
+# GRANITE_VERSION: 2026-09-04.186
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -1618,7 +1618,7 @@ from the <a href="data.html">Data page</a>.</p>
 Court, and it takes no position on any bill.</p>
 
 <h2>The Logo</h2>
-<p>The Granite Record logo was drawn by Debra Caplan, an artist in Peterborough,
+__LOGO__<p>The Granite Record logo was drawn by Debra Caplan, an artist in Peterborough,
 New Hampshire, and is used under licence from her. More of her work is at
 <a href="https://www.linescapesnh.com/" rel="noopener">linescapesnh.com</a>.
 In her own words:</p>
@@ -1633,6 +1633,19 @@ hand-coloring some, and matting or framing them. &hellip; Over the years I have
 added scenes from the Monadnock Region, New Hampshire and beyond.</p>
 </blockquote>
 """.replace("__REPO__", REPO)
+
+def about_logo(has_lockup):
+    """THE DRAWING ITSELF, in the section about it (the person, 10 October
+    2026: "add the logo drawing to the section in the about page about the
+    logo"): the lockup the home page's heading draws, as the same mask over
+    the text colour (app.css .aboutlogo), so it is right in both themes. A
+    build without lockup.png -- a clone, a fork -- writes nothing here rather
+    than an empty box, as the home page writes its name as text."""
+    if not has_lockup:
+        return ""
+    return ('<p class="aboutlogo" role="img" aria-label="The Granite Record logo, '
+            'drawn by Debra Caplan"></p>\n')
+
 
 SEATING_JS = """
 <script>
@@ -3719,7 +3732,8 @@ committee. Your town shows who represents you.</p>
     # with a hole where a number was.
     (out / "about.html").write_text(
         shell("About | Granite Record", "about.html",
-              about_figures.fill(ABOUT, about_figures.figures(site=out)),
+              about_figures.fill(ABOUT.replace("__LOGO__", about_logo(has_lockup)),
+                                 about_figures.figures(site=out)),
               desc="How Granite Record is built, where every fact on it comes "
                    "from, and how to report something that is wrong."),
         encoding="utf-8")
