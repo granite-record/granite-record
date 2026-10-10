@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.181
+# GRANITE_VERSION: 2026-09-04.182
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -3513,7 +3513,8 @@ ward</a>.</p></noscript>
              + static_bar("H") + vacancies + "</div>") if C else "")),
         ("federal", "Federal Delegation", OT.count(off, "federal"), OT.federal(off)),
         ("statewide", "Statewide Officials", OT.count(off, "statewide"), OT.statewide(off)),
-        ("county", "County Officials", OT.count(off, "county"), OT.county(off, legs)),
+        # #counties, not #county: the roster's By county button is tab-county.
+        ("counties", "County Officials", OT.count(off, "county"), OT.county(off, legs)),
     ]
     of_panes = [p for p in of_panes if p[3]]
     of_tabs = "".join(

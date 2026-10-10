@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.511
+# GRANITE_VERSION: 2026-09-04.512
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -53814,7 +53814,7 @@ def _legislators_page_tabs():
     tabs = re.findall(r'role="tab" id="tab-([a-z-]+)" data-pane="([a-z-]+)"[^>]*>([^<]+)', strips[0])
     want = [("my-town", "My Town"), ("legislators", "Legislators"),
             ("federal", "Federal Delegation"), ("statewide", "Statewide Officials"),
-            ("county", "County Officials")]
+            ("counties", "County Officials")]
     assert [(t, n.strip()) for t, p, n in tabs if t == p] == want, f"the strip's tabs are {tabs}"
     panes = {}
     starts = [(page.index(f'<div class="twnpane" id="{pid}" role="tabpanel" '
@@ -53840,14 +53840,17 @@ def _legislators_page_tabs():
                         + [r["name"] for r in off["us_house"]["districts"].values()]),
                        ("statewide", [off["governor"]["name"]]
                         + [r["name"] for r in off["council"]["districts"].values()]),
-                       ("county", [r["name"] for c in off["county"]["counties"].values()
+                       ("counties", [r["name"] for c in off["county"]["counties"].values()
                                    for r in c["commissioners"].values()])):
         for nm in names:
             assert re.search(r'<span class="mchip p-[A-Z]">' + re.escape(_html.escape(nm)), panes[pid]), (
                 f"{nm} is not a person chip on the {pid} tab")
     # A commissioner of both nominations on the neutral chip with both
     # letters; the neutral offices with no party at all (the person, 9 Oct).
-    county = panes["county"]
+    county = panes["counties"]
+    ids = re.findall(r' id="([^"]+)"', page)
+    assert len(ids) == len(set(ids)), (
+        f"the Officials page gives an id twice: {sorted({i for i in ids if ids.count(i) > 1})}")
     for c in off["county"]["counties"].values():
         for r in c["commissioners"].values():
             if "/" in (r.get("party") or ""):

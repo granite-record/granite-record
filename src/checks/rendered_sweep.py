@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-08.4
+# GRANITE_VERSION: 2026-10-08.5
 """
 The rendered sweep: a built site measured as a reader's browser draws it.
 
@@ -121,13 +121,23 @@ PAGES = [
     {"name": "member-votes", "path": "legislator/joe-alexander-hills-29.html",
      "dir": "legislator", "steps": [{"tab": "^Votes"}],
      "why": "a member's Votes tab: the table of every roll call"},
-    {"name": "legislators-towns", "path": "legislators.html"},
-    {"name": "legislators-last", "path": "legislators.html",
+    # THE LEGISLATORS PAGE IS OFFICIALS (Polish 3, decision 127), in five
+    # tabs: My Town with the district map, the roster in its three
+    # arrangements, and the three tabs of officials.json's people.
+    {"name": "officials-town", "path": "officials.html",
+     "why": "My Town: the town finder and the district map"},
+    {"name": "officials-last", "path": "officials.html",
      "steps": [{"click": "#tab-legislators"}, {"click": "#tab-last"}]},
-    {"name": "legislators-county", "path": "legislators.html",
+    {"name": "officials-county", "path": "officials.html",
      "steps": [{"click": "#tab-legislators"}, {"click": "#tab-county"}]},
-    {"name": "legislators-seat", "path": "legislators.html",
+    {"name": "officials-seat", "path": "officials.html",
      "steps": [{"click": "#tab-legislators"}, {"click": "#tab-seat"}]},
+    {"name": "officials-federal", "path": "officials.html",
+     "steps": [{"click": "#tab-federal"}]},
+    {"name": "officials-statewide", "path": "officials.html",
+     "steps": [{"click": "#tab-statewide"}]},
+    {"name": "officials-counties", "path": "officials.html",
+     "steps": [{"click": "#tab-counties"}]},
     {"name": "member", "path": "legislator/joe-alexander-hills-29.html", "dir": "legislator"},
     {"name": "committees", "path": "committees.html"},
     {"name": "committee", "path": "committee/H64.html", "dir": "committee"},
@@ -143,6 +153,10 @@ PAGES = [
     {"name": "session-day", "path": "session/H/2026-02-19.html", "dir": "session/H",
      "latest": True},
     {"name": "town", "path": "town/goffstown.html", "dir": "town"},
+    {"name": "town-map", "path": "town/goffstown.html", "dir": "town",
+     "steps": [{"click": "#tab-map"}], "why": "a town's District Map tab (Polish 3)"},
+    {"name": "bills-filters", "path": "bills.html", "steps": [{"click": "#ftoggle"}],
+     "why": "the bill search with its filters open (5a, 5c, 5d)"},
     {"name": "learn", "path": "learn/how-a-bill-becomes-law.html"},
     {"name": "numbers", "path": "learn/by-the-numbers.html"},
     # The Resources hub and the Learn pages whose figures are widest (9

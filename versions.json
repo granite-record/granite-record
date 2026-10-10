@@ -33,7 +33,7 @@
     "build_legislator_pages.py": "2026-09-04.19",
     "build_lsrs.py": "2026-09-18.4",
     "build_manifest.py": "2026-09-05.19",
-    "build_pages.py": "2026-09-04.181",
+    "build_pages.py": "2026-09-04.182",
     "build_places.py": "2026-09-20.5",
     "build_proceedings.py": "2026-09-05.14",
     "build_search_index.py": "2026-10-01.9",
@@ -141,7 +141,7 @@
     "parse_sos_districts.py": "2026-09-20.5",
     "past_members.py": "2026-09-10.3",
     "past_sponsors.py": "2026-09-26.6",
-    "preflight.py": "2026-09-04.511",
+    "preflight.py": "2026-09-04.512",
     "probe_alignment.py": "2026-09-05.65",
     "probe_archive_shape.py": "2026-09-07.8",
     "probe_calendars.py": "2026-09-04.9",
@@ -192,7 +192,7 @@
     "wrangler.toml": "2026-09-12.2",
     "bill_blocks.py": "2026-09-20.7",
     "_paths.py": "2026-10-06.5",
-    "rendered_sweep.py": "2026-10-08.4",
+    "rendered_sweep.py": "2026-10-08.5",
     "sweep_browser.js": "2026-10-08.2"
   },
   "generated": "2026-09-04"
