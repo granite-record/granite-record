@@ -1930,5 +1930,15 @@
         "A seat caveat that is not this section's to fix: past_members.json and member_party.json both record him at Belknap 5, taken from a 2025 roll call page. In 2017 he sat Belknap 9, and a label states the seat held when the record was made."
       ]
     }
+  },
+
+  "_spellings_what": "A member's name as the General Court's own record misspells it, keyed \"chamber|name as written\", with \"means\" the surname as the roster spells it. The page keeps the record's words; only the name looked up changes, and it must still mean one member serving that term. Read by spellings.py, which build_session_pages and build_site_v2 use; build_session_pages says in the night's log each spelling it used and any that met nothing.",
+
+  "spellings": {
+    "H|Poloszaj": {
+      "means": "Ploszaj",
+      "seen": "HB 1689 (2025-2026), the House session day",
+      "why": "The person, 10 October 2026: the representative is Tom Ploszaj (R), in the House 2021-2026 (generated/careers.json, 408962: first Tom, last Ploszaj). The record spells it Poloszaj; no member has ever had that name."
+    }
   }
 }
