@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.232 */
+/* GRANITE_VERSION: 2026-09-07.233 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -563,6 +563,30 @@ nav.top a:hover{color:var(--ink)}
    every tab strip. One way now, and it is the tab strip's. */
 .navtabs a[aria-current]{color:var(--ink);font-weight:600;
 box-shadow:inset 0 -2px 0 var(--pine)}
+/* THE ICONS (Polish 1, the person, 9 October 2026): components.icon's
+   drawings, the prototype kit's, in the ink of the words beside them
+   (currentColor) and sized in rem, so the browser's text setting reaches
+   them too. Each sits beside a word and is hidden from a screen reader; none
+   is a control's only name. */
+.icon{display:inline-block;flex:0 0 auto;width:1.125rem;height:1.125rem;vertical-align:-.1875em}
+/* THE SECTIONS' DRAWINGS: always in the phone's panel, beside each word;
+   in the desktop row only from 75em, and there each tab gives back 8px of
+   its padding, so the strip is 624px rather than 664 and stays centred 37px
+   clear of the wordmark (13px before the serif has loaded) and 101px clear
+   of the controls -- measured at 1200, 1280 and 1366, and the same at every
+   width past 1228, where the bar stops growing. Its width is its content's:
+   placed at left:50% it is offered half the bar, and at 1280 the drawings
+   wrapped Calendar onto a second row over the bar's top edge, as Calendar
+   once did at 980. Below 75em, the words alone, as before. The current
+   section's drawing is pine, as its underline is. */
+.navtabs a{gap:var(--sp-3)}
+.navtabs .icon{display:none;width:1.0625rem;height:1.0625rem;opacity:.85}
+.navtabs a[aria-current] .icon{color:var(--pine);opacity:1}
+@media (min-width:75em){
+  .navtabs{width:max-content}
+  nav.top .navtabs a{padding:0 var(--sp-4)}
+  .navtabs .icon{display:inline-block}
+}
 /* ONE ROW NEEDS 635px: the brand at 163 with its mark, the strip at 331 with
    Legislators as the current one, the control at 57 with Light as its label,
    two 18px gaps and the 48px gutter -- measured in the browser, not added up
@@ -591,7 +615,8 @@ box-shadow:inset 0 -2px 0 var(--pine)}
   nav.top.open .navdrop{display:flex}
   .navtabs{flex-direction:column;margin:0;gap:0}
   .navdrop .navtabs a{border-radius:0;border-bottom:1px solid var(--rule);
-  justify-content:flex-start}
+  justify-content:flex-start;gap:var(--sp-5)}
+  .navdrop .navtabs .icon{display:inline-block}
   .navdrop .navtabs a[aria-current]{box-shadow:inset 3px 0 0 var(--pine);
   background:var(--pine-soft)}
   /* The panel clips to its corners and its rows fill it edge to edge, so the
@@ -1051,6 +1076,10 @@ background:var(--wash)}
 .pstub{width:100%;aspect-ratio:16/9;display:flex;align-items:center;justify-content:center;
 cursor:pointer;background:var(--film-stub);color:var(--film-stub-ink);font-size:var(--t-ui);gap:var(--sp-4);text-align:center;padding:var(--sp-6)}
 .pstub:hover{background:var(--film-stub-hot)}
+/* Play's drawing (Polish 1), where a text triangle was: as large as the
+   triangle drew at the interface size, and on the line with the words. */
+.pstub > span:first-child{display:inline-flex}
+.pstub .icon{width:1.375rem;height:1.375rem}
 /* THE RING, INSIDE THE STILL. .player clips to its rounded corners, so the
    site's ring -- 2px, 2px out -- was cut away on all four sides and Play
    showed no focus at all, in either theme (the audit of 2 October 2026, S5:
@@ -1365,7 +1394,7 @@ line-height:1.1}
   /* The footer's feedback button with them: it is white words on a pine
      ground, and with no ground printed it is white on white. */
   nav.top,.skip,.calskip,.searchrow,.ftoggle,.backto,.pageacts,.findpanel,
-  .findscrim,details.report,.player iframe,.fbk{display:none !important}
+  .findscrim,details.report,.pshare,.sharestate,.player iframe,.fbk{display:none !important}
   /* A RECORDING'S BOX IS NOT ITS PLAYER. The whole box was left off, and the
      box is where the times are: Play's own words -- "Play from 04:33:32,
      where the clerk takes it up" -- and the line under it, "09:14:11 the
@@ -3095,12 +3124,39 @@ color:var(--ink-2);font-weight:600;margin-right:var(--sp-3)}
 .pageacts{position:relative}
 .follow{position:relative}
 .pageacts .follow{position:static}
-.follow summary,.pcite > summary{cursor:pointer;list-style:none;font-size:var(--t-ui);color:var(--ink-2);
-  display:flex;align-items:center;border:1px solid var(--rule-2);
-  border-radius:var(--r-in);padding:var(--sp-2) var(--sp-5)}
-.follow summary::-webkit-details-marker,.pcite > summary::-webkit-details-marker{display:none}
-.follow summary:hover,.follow[open] summary,
-.pcite > summary:hover,.pcite[open] > summary{color:var(--ink);border-color:var(--pine)}
+/* THE QUIET ACTION BUTTON (Polish 1, the person, 9 October 2026: "a visual
+   polish of the report button so it matches the style of the print, testify,
+   cite this page, and follow icons and add a share button alongside the
+   report button with the same thing in mind"). The prototype kit's .k-act:
+   the interface size at 500, the ink on the card's ground in an --edge
+   outline, its drawing in the second ink before the word; the wash on hover
+   and the ink's outline while open. Cite this page and Follow above a page's
+   heading, Report a problem and Share at its foot -- one button four times. */
+.follow > summary,.pcite > summary,.report > summary,.pshare{cursor:pointer;list-style:none;
+  display:inline-flex;align-items:center;gap:var(--sp-4);min-height:2.5rem;padding:0 .875rem;
+  font:500 var(--t-ui)/1.2 var(--sans);color:var(--ink);background:var(--surface);
+  border:1px solid var(--edge);border-radius:var(--r-in);max-width:100%;text-align:left}
+/* A LINE OF ITS OWN, NOT THE PAGE'S EDGE. The kit set its buttons nowrap;
+   at a 24px browser text on a phone "Report a problem with this page" stood
+   73px past the right edge and the record pages scrolled sideways (the
+   rendered sweep, 9 October 2026), so a button's words wrap inside it, and
+   only where the column is narrower than they are. */
+#reportbox > .report{max-width:100%}
+.follow > summary::-webkit-details-marker,.pcite > summary::-webkit-details-marker,
+.report > summary::-webkit-details-marker{display:none}
+:is(.follow,.pcite,.report) > summary .icon,.pshare .icon{color:var(--ink-2)}
+.follow > summary:hover,.pcite > summary:hover,.report > summary:hover,.pshare:hover{background:var(--wash)}
+.follow[open] > summary,.pcite[open] > summary,.report[open] > summary{border-color:var(--ink)}
+@media (max-width:45em){
+  .follow > summary,.pcite > summary,.report > summary,.pshare{min-height:2.75rem}
+}
+/* REPORT AND SHARE, SIDE BY SIDE under the record. The report's form opens
+   under its button across the column, as it always has, and Share follows
+   it there while it is open; the button pressed does not move. Share's line
+   says "Link copied" where the address was copied rather than shared. */
+#reportbox{display:flex;flex-wrap:wrap;align-items:center;gap:var(--sp-4) var(--sp-5);margin-top:var(--sp-5)}
+#reportbox > .report[open]{flex:1 1 100%}
+.sharestate{font-size:var(--t-sm);color:var(--ink-2);overflow-wrap:anywhere;min-width:0}
 .followpane,.citebody{position:absolute;right:0;top:calc(100% + 6px);z-index:20;
   width:min(36rem,calc(100vw - 28px));padding:var(--sp-5) var(--sp-5);border:1px solid var(--rule-2);
   border-radius:var(--r-in);background:var(--surface);font-size:var(--t-ui)}
@@ -5201,11 +5257,15 @@ border-radius:var(--r-out);padding:var(--sp-6) var(--sp-6);margin-bottom:var(--s
    columns and the third card took half of row two, floating beside nothing.
    A flex item grows into the row it lands in. */:where(body.pg) .entry{display:flex;flex-wrap:wrap;gap:var(--sp-5);margin:var(--sp-7) 0 var(--sp-9)}
 :where(body.pg) .entry > a{flex:1 1 210px;min-width:0}
-:where(body.pg) .entry a{display:block;background:var(--surface);border:1px solid var(--rule);border-radius:var(--r-out);
+:where(body.pg) .entry a{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:center;column-gap:var(--sp-4);
+align-content:start;background:var(--surface);border:1px solid var(--rule);border-radius:var(--r-out);
 padding:var(--sp-6) var(--sp-6);text-decoration:none;color:inherit}
 :where(body.pg) .entry a:hover{border-color:var(--pine)}
+/* Each card's section drawing beside its name, in the name's pine (Polish 1,
+   the prototype kit's home cards); the line under it keeps the card's width. */
+:where(body.pg) .entry .icon{width:1.375rem;height:1.375rem;color:var(--pine);margin-bottom:var(--sp-1)}
 :where(body.pg) .entry b{display:block;font-size:var(--t-ui);margin-bottom:var(--sp-1);color:var(--pine)}
-:where(body.pg) .entry span{font-size:var(--t-ui);color:var(--ink-2)}
+:where(body.pg) .entry span{grid-column:1 / -1;font-size:var(--t-ui);color:var(--ink-2)}
 /* FLEX, NOT GRID, AND THE FLOOR IS MEASURED. Two faults, one cause: the
    row was auto-fit with a 120px floor, and "2,303,047" is 132px of 24px
    type. In a 143px cell with 32px of padding it did not fit, and because
@@ -5223,7 +5283,8 @@ background:var(--rule);border:1px solid var(--rule);border-radius:var(--r-out);o
 :where(body.pg) .stat span{font-size:var(--t-ui);color:var(--ink-2)}
 :where(body.pg) .searchbig{display:flex;gap:var(--sp-4);margin:var(--sp-6) 0 var(--sp-2)}
 :where(body.pg) .searchbig input{flex:1}
-:where(body.pg) .searchbig button{background:var(--pine);color:var(--on-pine);border-radius:var(--r-out);padding:0 var(--sp-7);font-size:var(--t-ui)}
+:where(body.pg) .searchbig button{background:var(--pine);color:var(--on-pine);border-radius:var(--r-out);padding:0 var(--sp-7);font-size:var(--t-ui);
+display:inline-flex;align-items:center;justify-content:center;gap:var(--sp-4)}
 :where(body.pg) .fresh{font-size:var(--t-ui);color:var(--ink-2);margin:0 0 var(--sp-5);display:flex;
 align-items:center;gap:var(--sp-3)}
 :where(body.pg) .fresh:empty{display:none}

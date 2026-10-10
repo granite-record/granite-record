@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.174
+// GRANITE_VERSION: 2026-09-07.175
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -2636,8 +2636,11 @@ need("meta.json")
    // the clause about commas, which is the only place that feature is
    // explained, was the part that fell off the end. Two strings, and the
    // narrow one says what to type rather than everything you may type.
+   // THE PERSON'S WORDS SINCE 9 OCTOBER 2026, both of them shorter: "Bill
+   // number or key words" in bills.html, and this for the phone's cards.
+   // The commas are explained on Using this site.
    if(matchMedia("(max-width:45em)").matches)
-     $("#q").placeholder="Bill number, or a few words";
+     $("#q").placeholder="Bill number or a few words";
    // The button next to it does the same job on the focused view, so it waits
    // for the same data.
    $("#qgo").disabled=false;
@@ -4120,7 +4123,7 @@ function renderHearings(b,d){
       return `<div class="player" data-player="${pid}">
         <button type="button" class="pstub"${rec}
           data-embed="${esc(s.video_id)}|${Math.max(0,Math.floor(from))}|${pid}"
-          ><span>\u25B6</span><span>${stub}</span></button>
+          ><span>${icon("play")}</span><span>${stub}</span></button>
         <div class="pbar">
           <a href="https://www.youtube.com/watch?v=${esc(s.video_id)}&t=${
              Math.max(0,Math.floor(from))}s"
@@ -4161,7 +4164,7 @@ function renderHearings(b,d){
       const range = hasend ? `${hms(s.start)}\u2013${hms(s.end)}` : `from ${hms(s.start)}`;
       inner=`<div class="player" data-player="${pid}">
         <button type="button" class="pstub"${rec} data-embed="${esc(s.video_id)}|${from}|${pid}">
-          <span>▶</span><span>Play ${esc(s.what)} on this bill — ${range}${
+          <span>${icon("play")}</span><span>Play ${esc(s.what)} on this bill — ${range}${
             dur?`, about ${dur}`:""}</span></button>
         <div class="pbar">
           <button class="jump" data-seek="${pid}|${Math.floor(s.start)}">${hms(s.start)} starts</button>
@@ -4199,7 +4202,7 @@ function renderHearings(b,d){
       const pid=`${esc(s.video_id)}_${si}_w`;
       inner=`<div class="player" data-player="${pid}">
         <button type="button" class="pstub"${rec} data-embed="${esc(s.video_id)}|0|${pid}">
-          <span>&#9654;</span><span>Play the whole recording &mdash; it covers this
+          <span>${icon("play")}</span><span>Play the whole recording &mdash; it covers this
           bill only</span></button>
         <div class="pbar">
           <a href="https://www.youtube.com/watch?v=${esc(s.video_id)}"
@@ -4310,7 +4313,7 @@ function renderHearings(b,d){
       const pid=`${esc(s.video_id)}_${si}_f${Math.floor(s.debate_end)}`;
       inner=`<div class="player" data-player="${pid}">
         <button type="button" class="pstub"${rec} data-embed="${esc(s.video_id)}|${from}|${pid}">
-          <span>▶</span><span>${s.debate_start!=null
+          <span>${icon("play")}</span><span>${s.debate_start!=null
             ? `Play from ${hms(from)}, where the clerk takes it up`
             : `Play the floor session from ${hms(from)}`} — debate on
           this bill ends at ${hms(s.debate_end)}</span></button>
@@ -5285,7 +5288,7 @@ let reportBuild=null;       // site/build.json's "finished", fetched once, on fi
 
 function reportBox(kind,ref){
   return `<details class="report" data-rkind="${esc(kind)}" data-rref="${esc(ref)}">
-  <summary>Report a problem with this page</summary>
+  <summary>${icon("report")}Report a problem with this page</summary>
   <form class="reportform" novalidate>
     <p class="reportwhat">Tell us what is wrong and we will check it against the official record.
     Nothing here identifies you, which also means we cannot reply: for an answer, write to
@@ -5300,15 +5303,51 @@ function reportBox(kind,ref){
   </form></details>`;
 }
 
+// SHARE, BESIDE IT (the person, 9 October 2026: "add a share button
+// alongside the report button with the same thing in mind"). The browser's
+// own share sheet, with the page's title and address, where the browser has
+// one; where it has none, or the sheet fails for any reason but the reader
+// closing it, the address is copied and the line beside the button says so.
+// Nothing is loaded from anywhere and nothing is counted: no share service,
+// no tracking parameter on the address.
+function shareBox(){
+  return `<button type="button" class="pshare" data-share>${icon("share")}Share</button>`+
+    `<span class="sharestate" role="status" aria-live="polite"></span>`;
+}
+
 function mountReport(kind,ref){
   if(document.getElementById("reportbox"))return;
   const res=$("#results");
   if(!res)return;
   const div=document.createElement("div");
   div.id="reportbox";
-  div.innerHTML=reportBox(kind,ref);
+  div.innerHTML=reportBox(kind,ref)+shareBox();
   res.after(div);
 }
+
+// The address shared is the one in the bar -- a tab's own address where a
+// tab is open -- without a fragment, which only scrolls this reader's page.
+function shareCopy(b,url){
+  const st=b.parentNode&&b.parentNode.querySelector(".sharestate");
+  const say=t=>{if(st)st.textContent=t;};
+  const shown=()=>say(`Copy this address: ${url}`);
+  say("");   // emptied first, so a second press is said again
+  if(navigator.clipboard&&navigator.clipboard.writeText)
+    return navigator.clipboard.writeText(url).then(()=>say("Link copied"),shown);
+  shown();
+  return Promise.resolve();
+}
+document.addEventListener("click",e=>{
+  const b=e.target.closest&&e.target.closest("[data-share]");
+  if(!b)return;
+  const url=location.href.split("#")[0];
+  if(navigator.share){
+    navigator.share({title:document.title,url}).catch(err=>{
+      if(!err||err.name!=="AbortError")shareCopy(b,url);});
+    return;
+  }
+  shareCopy(b,url);
+});
 
 // FOLLOW, WHERE THERE IS SOMETHING TO FOLLOW. A record's page names its feed
 // in its head exactly where the build writes one -- a bill still moving, a
@@ -5333,7 +5372,7 @@ function mountFollow(kind){
   // row, and Follow makes its own as it always did.
   const acts=document.getElementById("pageacts");
   if(acts)div.className="followin";
-  div.innerHTML=`<details class="follow"><summary>Follow</summary>
+  div.innerHTML=`<details class="follow"><summary>${icon("follow")}Follow</summary>
     <div class="followpane">
       <p><b>By RSS</b>, in any feed reader: ${esc(FOLLOWS[kind]||"what is new here")}.
         The record is rebuilt once a night, so an update arrives the morning after
@@ -6490,7 +6529,7 @@ function sessionHtml(s,si){
   const player=vid?`<div class="player" data-player="${esc(pid)}">
       <button type="button" class="pstub" data-title="${esc(recTitle(who,s.date))}"
         data-embed="${esc(vid)}|${from}|${esc(pid)}">
-        <span>&#9654;</span><span>Play this day's recording${timed.length
+        <span>${icon("play")}</span><span>Play this day's recording${timed.length
           ?` from ${hms(from)}, where the first bill is taken up`:""}</span></button>
       <div class="pbar">
         <a href="https://www.youtube.com/watch?v=${esc(vid)}&t=${from}s"
@@ -6889,7 +6928,9 @@ function hideListControls(){
   const hint=document.querySelector(".qhint");
   if(hint)hint.hidden=true;
   const q=$("#q");
-  if(q)q.placeholder="Search all bills";
+  // The person's words for the box on a record's page (9 October 2026): it
+  // finds any bill, by its number or the words of its title.
+  if(q)q.placeholder="Bill number or title words";
 }
 
 /* AND ON A PAGE THAT IS NOT A LIST OF BILLS AT ALL, the box itself goes.

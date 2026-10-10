@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-16.18
+// GRANITE_VERSION: 2026-09-16.19
 /* FIND ANYTHING, FROM THE HEADER (16 September, asked for in these words:
    "a search icon in the header that lets you search for anything including
    legislators, committees, towns, and bills ... searching Litchfield would
@@ -754,7 +754,7 @@ function findMount(){
     <div class="findtop">
     <div class="findbox">
       <label class="sr" for="findq">Search for a legislator, committee, town, subject or bill</label>
-      <input id="findq" type="search" autocomplete="off" aria-controls="findout" placeholder="A legislator, a town, a subject or a bill">
+      <input id="findq" type="search" autocomplete="off" aria-controls="findout" placeholder="Name, town, committee or bill">
       <button type="button" class="findclear" id="findclear" hidden aria-label="Clear the search box">&#10005;</button>
     </div>
     <button type="button" class="findcancel" id="findcancel">Cancel</button>

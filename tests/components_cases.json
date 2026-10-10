@@ -168,5 +168,16 @@
     {"args": ["Fn-a-local - as introduced"], "want": "FN-A-LOCAL - As Introduced"},
     {"args": ["Local - as amended by the senate"], "want": "Local - As Amended by the Senate"},
     {"args": ["AS AMENDED – THE SENATE — OF THE DAY"], "want": "As Amended – The Senate — Of the Day"}
+  ],
+  "icon": [
+    {"args": ["close"],
+     "want": "<svg class=\"icon\" viewBox=\"0 0 24 24\" aria-hidden=\"true\" focusable=\"false\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M6 6l12 12M18 6L6 18\" stroke-width=\"2\"/></svg>"},
+    {"args": ["bill"]}, {"args": ["person"]}, {"args": ["committee"]}, {"args": ["book"]},
+    {"args": ["calendar"]}, {"args": ["cite"]}, {"args": ["follow"]}, {"args": ["print"]},
+    {"args": ["testify"]}, {"args": ["report"]}, {"args": ["share"]}, {"args": ["search"]},
+    {"args": ["play"]},
+    {"args": ["nonesuch"], "want": ""},
+    {"args": ["constructor"], "want": ""},
+    {"args": [null], "want": ""}
   ]
 }
