@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.64
+# GRANITE_VERSION: 2026-09-05.65
 """
 Run the whole pipeline in the right order.
 
@@ -860,7 +860,7 @@ def plan(a):
         Step("the House's and the Senate's session days, as committees",
              ["build_full_sessions.py", "--site", "site", "--base", a.base],
              needs=["site/committees.json", "site/session/S", "site/session/H"],
-             produces=["site/session/H.html", "site/session/S.html"],
+             produces=["site/session/house.html", "site/session/senate.html"],
              note="a card for each chamber at the top of its column of "
                   "/committees, and its page of session days, term by term"),
 

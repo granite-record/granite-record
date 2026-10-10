@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.516
+# GRANITE_VERSION: 2026-09-04.517
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -27896,7 +27896,7 @@ def _built_site(here, root, brand=True, env=None):
          "site/session/H"),
         # The chambers' cards on the Committees page and their pages, after
         # both chambers' term files, as build_all runs it.
-        ("build_full_sessions.py", ["--site", "site", "--base", base], "site/session/H.html"),
+        ("build_full_sessions.py", ["--site", "site", "--base", base], "site/session/house.html"),
         # After the committees, whose codes it needs to link a card, and in
         # build_all's own order. Its output is what the Calendar tab points
         # at, so a fixture without it builds a nav link to nothing -- which
@@ -28303,7 +28303,7 @@ def _chain():
                                  r'(.*?)</nav>', day, re.S)
                 import proceedings as _PR
                 _t = _PR.vote_term(d[:4], d)
-                assert len(up) == 1 and f'href="session/{b}?term={_t}#day-{d}"' in up[0], (
+                assert len(up) == 1 and f'href="session/{ {"H": "house", "S": "senate"}[b]}?term={_t}#day-{d}"' in up[0], (
                     f"session/{b}/{d} does not lead up to the {name}'s page of session "
                     "days, at its term, in a line above its heading")
                 assert f'id="y{d[:4]}"' in page, (
@@ -52844,7 +52844,8 @@ def _committees_full_sessions():
     sessions fills it after the session pages, whose term files it reads, so
     a build into an empty site draws them too. Read off the fixture's built
     site: in each column whose chamber has term files, the first card is the
-    chamber's, the committee card's own markup, leading to /session/<H|S>;
+    chamber's, the committee card's own markup, leading to /session/house or
+    /session/senate;
     that page offers every term file in its picker, the latest chosen, and
     lists the latest term's days newest first, each leading to a day page
     that is built; filling the slots again redraws them rather than doubling
@@ -52865,24 +52866,25 @@ def _committees_full_sessions():
         assert col, f"the Committees page has no {word} column"
         first = re.search(r"<a class=\"ccard[^\"]*\" href=\"([^\"]+)\"><span class=\"cc-n\">([^<]+)</span>"
                           r"<span class=\"cc-m\">([^<]*(?:<[^a/][^>]*>[^<]*)*)</span></a>", col.group(1))
-        assert first and first.group(1) == f"session/{b}.html" \
+        assert first and first.group(1) == f"session/{FS.SLUG[b]}.html" \
             and first.group(2) == f"{word} Session Days", (
                 f"the {word} column does not open with its session days: "
                 f"{first.groups() if first else col.group(1)[:200]}")
-        assert col.group(1).count(f'href="session/{b}.html"') == 1, f"the {word} card is drawn twice"
-        chamber = (site / "session" / f"{b}.html").read_text(encoding="utf-8")
+        assert col.group(1).count(f'href="session/{FS.SLUG[b]}.html"') == 1, (
+            f"the {word} card is drawn twice")
+        chamber = (site / "session" / f"{FS.SLUG[b]}.html").read_text(encoding="utf-8")
         terms = sorted((f.stem for f in (site / "session" / b).glob("*.json")
                         if re.fullmatch(r"\d{4}-\d{4}", f.stem)), reverse=True)
         offered = re.findall(r'<option value="(\d{4}-\d{4})"( selected)?>', chamber)
         assert [t for t, _s in offered] == terms and offered[0][1], (
-            f"session/{b}.html offers the terms {offered}, not every term file {terms} "
+            f"session/{FS.SLUG[b]}.html offers the terms {offered}, not every term file {terms} "
             "with the latest chosen")
         days = [d["date"] for d in json.loads((site / "session" / b / f"{terms[0]}.json")
                                               .read_text(encoding="utf-8"))["days"]]
         drawn = re.findall(r'<section class="cday" id="day-(\d{4}-\d\d-\d\d)" data-date="\1">',
                            chamber)
         assert drawn == sorted(days, reverse=True), (
-            f"session/{b}.html lists {drawn}, not {terms[0]}'s days newest first")
+            f"session/{FS.SLUG[b]}.html lists {drawn}, not {terms[0]}'s days newest first")
         for d in drawn:
             assert f'<a class="daylink" href="session/{b}/{d}.html">' in chamber, (
                 f"{b} {d} does not lead to its own page")
@@ -52890,8 +52892,17 @@ def _committees_full_sessions():
         # The record head, as a committee's page has it since 10 October 2026.
         assert re.search(r'<header class="rhead rh-committee cmtehead chamberhead">', chamber) \
             and "Cite this page" in chamber and f"<h1 class=\"rh1\">{word} Session Days</h1>" in chamber, (
-            f"session/{b}.html is not drawn as a committee's page is, with its head and Cite")
+            f"session/{FS.SLUG[b]}.html is not drawn as a committee's page is, with its head and Cite")
         n_days += len(drawn)
+        # In the sitemap once, and in no folder build_session_pages owns
+        # there: it takes out an entry under /session/H it did not write.
+        sm = site / "sitemap.xml"
+        if sm.exists():
+            n_sm = sm.read_text(encoding="utf-8").count(f"/session/{FS.SLUG[b]}</loc>")
+            assert n_sm == 1, f"the sitemap lists session/{FS.SLUG[b]} {n_sm} times, not once"
+        assert FS.SLUG[b] not in ("H", "S"), (
+            "the chamber's page is at /session/H or /session/S, which build_session_pages "
+            "owns in the sitemap and takes out when it rebuilds the days alone")
     # Again: the slots are redrawn, not doubled.
     today = _bd.today().isoformat()
     again = page
@@ -52900,7 +52911,8 @@ def _committees_full_sessions():
         again = FS.slot(b).sub(lambda _m, c=c, b=b: f"<!-- chamber:{b} -->{FS.card(c)}<!-- /chamber:{b} -->",
                                again, count=1)
     for b in bodies:
-        assert again.count(f'href="session/{b}.html"') == 1, "filling the slots again doubles a card"
+        assert again.count(f'href="session/{FS.SLUG[b]}.html"') == 1, (
+            "filling the slots again doubles a card")
     # The script draws a day as the page does: its day() in node, against
     # day_section, on a day with a consent calendar and a journal.
     node = shutil.which("node") or shutil.which("node.exe")

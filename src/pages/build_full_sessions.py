@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-10.3
+# GRANITE_VERSION: 2026-10-10.6
 """
 The House and the Senate as committees of the whole: a card at the top of
 each column of /committees, and a page for each chamber's session days.
@@ -17,8 +17,9 @@ and select the session day you wanted to view the full page of." So:
     markup (the same component): "House Session Days", who presides, its
     members, and its session days in the latest term and since the first
     year;
-  - each card leads to the chamber's page, /session/H and /session/S, beside
-    the day pages (/session/H/<date>), the counterpart of a committee's page:
+  - each card leads to the chamber's page, /session/house and
+    /session/senate, beside the day pages (/session/H/<date>), the
+    counterpart of a committee's page:
     the same head (the chamber, who presides), a term picker covering every
     term the record holds, the latest chosen, and that term's session days
     listed as a committee's meetings are -- the day, its bills and roll
@@ -42,8 +43,17 @@ so and leaves the page as it is.
 
 Reads site/session/days.json, site/session/<H|S>/<term>.json,
 site/officers.json and site/legislators.json; writes site/committees.html,
-site/session/H.html and site/session/S.html, and adds the two to the sitemap.
-Asks nobody anything.
+site/session/house.html and site/session/senate.html, and adds the two to the
+sitemap. Asks nobody anything.
+
+WHY /session/house AND NOT /session/H. The site's habit is a page beside its
+folder (calendar.html and calendar/), so /session/H was the first choice. But
+build_session_pages owns /session/H in the sitemap -- /session/H and
+everything under it, through shell.sitemap_merge -- and takes out an entry
+there it did not write, so rebuilding the House's days alone would have taken
+the chamber's page out of the sitemap until the next whole build. preflight's
+"every page names its own address" check caught it. A name of its own beside
+the day folders owns nothing of theirs.
 """
 
 # The bootstrap: _paths.py, found above this file, puts every code folder on the import path.
@@ -73,6 +83,9 @@ PRESIDES = {"H": (("Speaker of the House", "Speaker"),
                   ("Deputy Speaker of the House", "Deputy Speaker")),
             "S": (("President of the Senate", "Senate President"),)}
 TERM = re.compile(r"\d{4}-\d{4}")
+# The chamber's page, beside its folder of days: /session/house beside
+# /session/H/ (see WHY /session/house above).
+SLUG = {"H": "house", "S": "senate"}
 
 
 def slot(body):
@@ -82,10 +95,6 @@ def slot(body):
 
 def plural(n, word):
     return f"{n:,} {word}{'' if n == 1 else 's'}"
-
-
-def dash(term):
-    return str(term).replace("-", "–")
 
 
 def journal_words(j):
@@ -141,9 +150,9 @@ def card(c):
         bits.append(f"Presided over by {E(role)} {E(bare_name(m))}")
     if c["members"]:
         bits.append(plural(c["members"], "member"))
-    bits.append(f"{plural(len(c['days']), 'session day')} in {E(dash(c['latest']))} and "
+    bits.append(f"{plural(len(c['days']), 'session day')} in {E(c['latest'])} and "
                 f"{len(c['dates']):,} since {c['dates'][0][:4]}")
-    return (f'<a class="ccard chcard" href="session/{c["body"]}.html">'
+    return (f'<a class="ccard chcard" href="session/{SLUG[c["body"]]}.html">'
             f'<span class="cc-n">{CHAMBER[c["body"]]} Session Days</span>'
             f'<span class="cc-m">{" &middot; ".join(bits)}</span></a>')
 
@@ -175,7 +184,7 @@ def day_section(body, d):
 
 
 def count_line(body, n, term):
-    return (f"{plural(n, 'day')} the {CHAMBER[body]} sat in {E(dash(term))}, newest first. "
+    return (f"{plural(n, 'day')} the {CHAMBER[body]} sat in {E(term)}, newest first. "
             "Each opens on the day&rsquo;s full page: what it took up, in the order the "
             "journal prints it, and how it voted.")
 
@@ -199,7 +208,7 @@ def page_head(c, path, base):
     facts = [["Members", f'<a href="officials.html#legislators">'
                          f'{plural(c["members"], "sitting member")}</a>'],
              ["This Term", f"{plural(len(c['days']), 'session day')}",
-              f"in {E(dash(c['latest']))}"],
+              f"in {E(c['latest'])}"],
              ["On Record", f"{plural(len(c['dates']), 'session day')}",
               f"since {c['dates'][0][:4]}"]]
     cite = S.cite_block(path, f"{CHAMBER[body]} Session Days | Granite Record", base, S.BUILT)
@@ -218,9 +227,9 @@ def page_body(c, path="", base=""):
     the latest term's days."""
     body = c["body"]
     opts = "".join(f'<option value="{E(t)}"{" selected" if t == c["latest"] else ""}>'
-                   f"{E(dash(t))}</option>" for t in c["terms"])
+                   f"{E(t)}</option>" for t in c["terms"])
     days = "".join(day_section(body, d) for d in reversed(c["days"]))
-    return (page_head(c, path or f"/session/{body}.html", base)
+    return (page_head(c, path or f"/session/{SLUG[body]}.html", base)
             + f'<div class="bfilt pterm chamberctl" data-body="{body}">'
             f'<label>Term <select class="chterm">{opts}</select></label>'
             '<label>Order <select class="chsort"><option value="new" selected>Newest first'
@@ -243,7 +252,6 @@ SCRIPT = """<script>
   function esc(s){return String(s==null?"":s).replace(/[&<>"]/g,function(c){
     return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c];});}
   function plural(n,w){return n.toLocaleString("en-US")+" "+w+(n===1?"":"s");}
-  function dash(t){return String(t).replace("-","\\u2013");}
   function long(d){return typeof dateWords==="function"?dateWords(d):d;}
   function journal(j){var m=String(j||"").match(/^(HJ|SJ)\\s*0*(\\d+)/);
     return m?(m[1]==="HJ"?"House Journal ":"Senate Journal ")+m[2]:String(j||"");}
@@ -261,7 +269,7 @@ SCRIPT = """<script>
       +cl+'<p class="src">'+links.join(" &middot; ")+'</p></section>';
   }
   function line(n,t){
-    return plural(n,"day")+" the "+word+" sat in "+esc(dash(t))+", "
+    return plural(n,"day")+" the "+word+" sat in "+esc(t)+", "
       +(sort.value==="old"?"oldest":"newest")+" first. Each opens on the day&rsquo;s full page: "
       +"what it took up, in the order the journal prints it, and how it voted.";
   }
@@ -282,7 +290,7 @@ SCRIPT = """<script>
       if(write&&history.replaceState)history.replaceState(null,"",
         location.pathname+"?term="+t+location.hash);
     }).catch(function(){
-      count.textContent="The session days of "+dash(t)+" could not be loaded.";
+      count.textContent="The session days of "+t+" could not be loaded.";
     }).then(function(){list.removeAttribute("aria-busy");});
   }
   term.addEventListener("change",function(){show(term.value,true);});
@@ -296,10 +304,10 @@ SCRIPT = """<script>
 
 
 def write_page(site, c, base):
-    """site/session/<H|S>.html, built from the record template as a
+    """site/session/<house|senate>.html, built from the record template as a
     committee's page is, so it carries the same frame and Cite this page."""
     body = c["body"]
-    path = f"/session/{body}.html"
+    path = f"/session/{SLUG[body]}.html"
     name = f"{CHAMBER[body]} Session Days"
     desc = (f"Every day the New Hampshire {CHAMBER[body]} sat, term by term since "
             f"{c['dates'][0][:4]}: the bills it took up and its roll calls, each day with "
@@ -314,7 +322,7 @@ def write_page(site, c, base):
     assert '<div id="results"></div>' in html, f"{path}: the template has no results slot"
     html = html.replace('<div id="results"></div>',
                         f'<div id="results">{page_body(c, path, base)}</div>{SCRIPT}', 1)
-    (Path(site) / "session" / f"{body}.html").write_text(html, encoding="utf-8")
+    (Path(site) / "session" / f"{SLUG[body]}.html").write_text(html, encoding="utf-8")
     return base + S.canon(path)
 
 
@@ -325,13 +333,15 @@ def main():
     a = ap.parse_args()
     site, base = Path(a.site), a.base.rstrip("/")
     today = build_date.today().isoformat()
-    made, urls = [], []
+    made = []
     for body in ("H", "S"):
         c = chamber(site, body, today)
         if not c:
             print(f"  the {CHAMBER[body]} has no session days on this site: no card, no page")
             continue
-        urls.append(write_page(site, c, base))
+        # Writers merge: the page's own address, and nothing else of the
+        # sitemap's, is this run's.
+        S.sitemap_merge(site, base, [write_page(site, c, base)], f"/session/{SLUG[body]}")
         made.append(c)
     page = site / "committees.html"
     if page.exists() and made:
@@ -346,14 +356,8 @@ def main():
             text = pat.sub(lambda _m: f"<!-- chamber:{b} -->{card(c)}<!-- /chamber:{b} -->",
                            text, count=1)
         page.write_text(text, encoding="utf-8")
-    sm = site / "sitemap.xml"
-    if sm.exists() and urls:
-        text = sm.read_text(encoding="utf-8")
-        add = "".join(f"<url><loc>{E(u)}</loc></url>\n" for u in urls if E(u) not in text)
-        if add:
-            sm.write_text(text.replace("</urlset>", add + "</urlset>"), encoding="utf-8")
     for c in made:
-        print(f"  session/{c['body']}.html: {len(c['terms'])} terms, the latest "
+        print(f"  session/{SLUG[c['body']]}.html: {len(c['terms'])} terms, the latest "
               f"{c['latest']} with {len(c['days'])} days written in; its card on committees.html")
     return 0
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-19.33
+# GRANITE_VERSION: 2026-09-19.34
 """
 A page for every day the House sat.
 
@@ -78,6 +78,9 @@ import structured as LD
 
 
 CHAMBER = {"H": "House", "S": "Senate"}
+# The chamber's page of session days, beside the folder of days
+# (build_full_sessions.SLUG): /session/house, not /session/H.
+CHAMBER_PAGE = {"H": "house", "S": "senate"}
 
 # The journal is the only source for who spoke, and it starts in 1997. Days
 # before that get the record and say plainly that there is no journal for them,
@@ -2433,7 +2436,7 @@ def day_head(day, narrative, rec, jurl, label, path, base):
     # directory's list at its year (2 October 2026: a sitting's page led
     # nowhere above itself); and the line's chamber is the same link.
     term = proceedings.vote_term(date[:4], date)
-    days = f"{S.canon(f'session/{body}.html')}?term={term}#day-{date}"
+    days = f"{S.canon(f'session/{CHAMBER_PAGE[body]}.html')}?term={term}#day-{date}"
     line = S.E(line).replace(f"The {ch} ", f'The <a href="{S.E(days)}">{ch}</a> ', 1)
     return C.record_head({"trail": [["Committees", "committees.html"], [f"{ch} Session Days", days],
                                     ["Session Day", ""]],
