@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-23.3
+# GRANITE_VERSION: 2026-09-23.4
 """
 What each roll call decided, from the General Court's own record, and what it
 needed to carry.
@@ -415,6 +415,18 @@ def two_thirds(y, n):
     return -(-2 * v // 3), f"two thirds of the {v} members voting"
 
 
+def suspends(words):
+    """Does the docket's own text for this tally name a rules suspension as
+    the motion decided? "Suspend the Rules for transmittal, MF, RC 181-121"
+    does; "Susp Rules for 3rd reading, MA 2/3VV, OT3rdg, Passed RC 200-100"
+    does not -- the suspension carried on a voice vote and the roll call is
+    the passage after it. Read only the stretch since the last action."""
+    t = TALLY.search(words)
+    head = words[:t.start()] if t else words
+    head = re.split(r";|\bOT3rdg\b|\bpassed\b|\badopted\b|\bconcur", head, flags=re.I)[-1]
+    return bool(SUSPEND.search(head)) and not re.search(r"reconsider", head, re.I)
+
+
 def threshold(r, words=""):
     """(needed, rule) for a vote that needed more than a majority, else
     (None, None). `words` is the record's own text for this tally.
@@ -429,7 +441,8 @@ def threshold(r, words=""):
     q = r.get("question_raw") or r.get("question") or ""
     said3 = bool(THREE_FIFTHS.search(words) or THREE_FIFTHS.search(q))
     said2 = bool(TWO_THIRDS.search(words) or TWO_THIRDS.search(q))
-    suspension = bool(SUSPEND.search(q)) and not re.search(r"reconsider", q, re.I)
+    suspension = ((bool(SUSPEND.search(q)) and not re.search(r"reconsider", q, re.I))
+                  or suspends(words))
     if VETO.search(q) or suspension or (said2 and not said3):
         return two_thirds(y, n)
     if seated and (cacr_passage(r.get("bill"), q)

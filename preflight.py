@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.524
+# GRANITE_VERSION: 2026-09-04.525
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -32488,6 +32488,24 @@ def _session_suspend_two_thirds(SD, BSP, MO):
     ot = SD.Item("HB1", "2023-2024", {**e, "action": "Ought to Pass", "raw": "OTP, MF, RC 181-121"}, 0)
     assert BSP.vote_payload(ot, MO.classify("Ought to Pass", "HB1", "H")["mk"])["threshold_needed"] == 152
     return "ok", "a suspension 181-121 needs 202; Ought to Pass on the same count needs 152"
+
+
+@check("rollcalls", "a roll call the docket names as a rules suspension needs two thirds",
+       needs=("rollcall_outcomes",))
+def _rollcall_suspend_from_docket(RO):
+    """The same 181-121 suspension on a bill's Votes tab: the roll call's
+    own question may name only what the suspension was for, so the docket's
+    words for the tally decide. A suspension carried by voice before a
+    passage roll call on the same line leaves the passage at a majority."""
+    r = {"yeas": 181, "nays": 121, "question_raw": "Transmittal", "bill": "HB1"}
+    got, _ = RO.threshold(r, "Suspend the Rules for transmittal, MF, RC 181-121")
+    assert got == 202, f"a suspension 181-121 on the Votes tab needs {got}, not 202"
+    assert RO.threshold(r, "OTP, MF, RC 181-121") == (None, None), "Ought to Pass is a majority"
+    after = "Susp Rules for 3rd reading, MA VV, OT3rdg, Passed RC 181-121"
+    assert RO.threshold(r, after) == (None, None), \
+        "a passage roll call after a voice-vote suspension is drawn at two thirds"
+    assert RO.threshold(r, "Reconsider Susp Rules, MF, RC 181-121") == (None, None)
+    return "ok", "named on the docket 181-121 needs 202; the passage after one needs a majority"
 
 
 @check("session", "a voice vote takes no count from another question on its line",
