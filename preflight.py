@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.510
+# GRANITE_VERSION: 2026-09-04.511
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -51720,6 +51720,38 @@ def _committees_full_sessions():
     return "ok", (f"{n_days} session days of the latest term, newest first, for "
                   f"{' and '.join(FS.CHAMBER[b] for b in bodies)}, above the committees; every "
                   "term a pick away; filled once, after the session pages")
+
+
+@check("frontend", "the header's five tabs are one row from 1008px, in the flow between the "
+                   "wordmark and the controls, and a row of their own on a tablet")
+def _nav_ladder():
+    """Decisions 130 and 131 (8 October 2026): Search as its drawing at every
+    width, and the tablet's tabs on a second row, always shown. With
+    "Resources" 43px wider than "Learn", the strip centred on the bar from
+    1100px wrapped "Resources" under the others at 1100 and stood 27px from
+    the wordmark at 1200 and 1366 (measured in Chrome, 10 October 2026). Held
+    in app.css's shared region, which style.css takes too: from 63em the strip
+    is in the flow, one row, centred by its own auto margins with the theme
+    button taking none; from 721 to 1007 it is a row of its own, five equal
+    cells after the controls; Search shows its drawing alone, its word kept
+    for a screen reader."""
+    css = Path("src/pages/app.css").read_text(encoding="utf-8").replace("\r\n", "\n")
+    shared = css[css.index("/* SHARED:START"):css.index("/* SHARED:END")]
+    wide = _braced(shared, "@media (min-width:63em){")
+    assert ".navtabs{position:static;transform:none;flex-wrap:nowrap;width:max-content;margin:0 auto}" \
+        in wide and ".themer{margin-left:0}" in wide and "nav.top .in{position:static;flex-wrap:nowrap}" \
+        in wide, "from 1008px the five are not one row in the flow, centred between the wordmark and the controls"
+    assert shared.index("@media (min-width:63em){") > shared.index("@media (min-width:68.75em){"), (
+        "the strip centred on the bar comes after the rule that puts it in the flow, and wins")
+    tab = _braced(shared, "@media (min-width:45.0625em) and (max-width:62.9375em){")
+    assert ".navtabs{order:3;flex:1 0 100%;flex-wrap:nowrap" in tab \
+        and "nav.top .navtabs a{flex:1 1 0;justify-content:center;min-height:44px" in tab, (
+            "on a tablet the five are not a row of their own in equal cells")
+    assert ".findbtn span{position:absolute;width:1px;height:1px" in shared.split("@media")[0] \
+        or re.search(r"\n\.findbtn span\{position:absolute;width:1px;height:1px", shared), (
+            "Search shows its word above a phone's width")
+    return "ok", ("one row from 1008px, in the flow; a row of five equal cells from 721 to 1007; "
+                  "Search its drawing at every width")
 
 
 @check("frontend", "the bill search opens Status and Bill Type, puts a narrowed long list's "

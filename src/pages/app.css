@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.243 */
+/* GRANITE_VERSION: 2026-09-07.244 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -1486,6 +1486,29 @@ line-height:1.1}
 .findbtn{padding:var(--sp-3)}
 .findbtn span{position:absolute;width:1px;height:1px;margin:-1px;
 overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+/* THE FIVE TABS' LADDER (decisions 130 and 131, 8 October 2026; the six-tab
+   study's recommendation, private/design/polish/nav6). "Resources" is 43px
+   wider than "Learn" was, and the strip centred on the bar from 1100px
+   wrapped it under the others at 1100 and stood 27px from the wordmark at
+   1200 and 1366 (measured). So the strip goes back into the flow, centred
+   between the wordmark and the two controls, on one row from 1008px, its
+   tabs a little tighter until the drawings join them at 1200; and from 721
+   to 1007 -- tablets, small laptops -- the wordmark and the controls keep
+   the first row and the five take the second as equal cells, always shown
+   (decision 131: "tablet menu on a second row (always visible)"), where the
+   search button had wrapped alone onto a line of its own at 721 and 900.
+   The phone's menu, below 721, is as it was. */
+@media (min-width:45.0625em) and (max-width:62.9375em){
+  nav.top .in{flex-wrap:wrap;row-gap:var(--sp-2)}
+  .navtabs{order:3;flex:1 0 100%;flex-wrap:nowrap;margin:0;gap:0}
+  nav.top .navtabs a{flex:1 1 0;justify-content:center;min-height:44px;padding:0 var(--sp-2)}
+}
+@media (min-width:63em){
+  nav.top .in{position:static;flex-wrap:nowrap}
+  .navtabs{position:static;transform:none;flex-wrap:nowrap;width:max-content;margin:0 auto}
+  nav.top .navtabs a{padding:0 var(--sp-4)}
+  .themer{margin-left:0}
+}
 /* ==== /HUBS, SHARED ======================================================= */
 
 /* SHARED:END ------------------------------------------------------------ */
@@ -6472,7 +6495,10 @@ font-weight:600;font-variant-numeric:tabular-nums;color:var(--ink-2)}
    Officials (9)" into three lines a word each. */
 :where(body.pg) .oftabs [role=tab]{white-space:nowrap}
 :where(body.pg) .oftabs .ofn{font-weight:400;color:var(--ink-2)}
-@media (max-width:45em){
+/* Below 1024px the strip scrolls, closer, its edge saying so, as the drawing
+   has it on a tablet and a phone ("Seven tabs scroll on a tablet and a
+   phone, with the kit's edge shadow"). */
+@media (max-width:63.9375em){
   :where(body.pg) .oftabs [role=tab]{flex:0 0 auto;padding:var(--sp-3) var(--sp-5)}
   /* The edge that says the strip goes on, as the kit draws it: a shadow at
      whichever end has more, made by the strip's own background. */
