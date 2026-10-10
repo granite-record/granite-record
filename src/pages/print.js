@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-10-09.3
+// GRANITE_VERSION: 2026-10-09.4
 /* A BILL'S PRINT SHEET. A reference sheet of one bill's record for paper,
    composed in the reader's browser from the record the page already holds,
    beside a short menu of settings, and printed with the browser's own dialog
@@ -695,14 +695,19 @@ function votes(d,st,W){
       const off=Object.entries(t).filter(([k])=>k!=="Yea"&&k!=="Nay").reduce((x,[,c])=>x+c,0);
       return `<span class="ps-nw"><b>${esc(p)}</b> ${esc(t.Yea||0)} Yea, ${esc(t.Nay||0)} Nay${
         off?`, ${esc(off)} did not vote`:""}</span>`;}).join("; ");
+    // THE APPROVED VOTE WORDS, components.js's (vote_head, vote_chip): the
+    // motion's own name with its plain gloss, and what the vote did, in
+    // words, the chip's words without its box. A record built before the
+    // words' key (rc.mk) keeps its question.
     return `<tr><td class="ps-d">${esc(dateWords(rc.date))}<span class="ps-sub">${
-      esc(W.body[rc.body]||rc.body)}</span></td><td><b class="ps-q">${esc(rc.question)}</b>${
+      esc(W.body[rc.body]||rc.body)}</span></td><td><b class="ps-q">${voteHead(rc.mk,rc.question,rc.mf)}</b>${
+      rc.mrec?`<span class="ps-sub">In the record: ${esc(rc.mrec)}</span>`:""}${
       sub.map(x=>`<span class="ps-sub">${x}</span>`).join("")}${
       parties?`<span class="ps-sub">By party: ${parties}</span>`:""}${
       rc.threshold_note?`<span class="ps-sub">${esc(rc.threshold_note)}</span>`:""}${
       rc.outcome_conflict?`<span class="ps-sub">${esc(rc.outcome_conflict)}</span>`:""}</td><td>${
       esc(W.how[vk]||vk)}${rc.yeas!=null&&rc.nays!=null?`, ${tally(rc.yeas,rc.nays)}`:""}</td><td><span class="ps-word">${
-      esc(rc.passed?V.passed:V.failed)}</span></td></tr>`;});
+      voteChip(rc.mk||"",!!rc.passed,d.id,rc.mf).replace(/<[^>]*>/g,"")||esc(rc.passed?V.passed:V.failed)}</span></td></tr>`;});
   const bl=d.ballot;
   if(bl){
     const y=bl.yes,n=bl.no,decided=!bl.pending&&y!=null&&n!=null;
@@ -716,7 +721,7 @@ function votes(d,st,W){
   const names=st.names?rcs.filter(rc=>(rc.members||[]).length).map(rc=>{
     const groups=[["Yea","Yea"],["Nay","Nay"]].concat(W.other.map(([code,label])=>[code,label]));
     return `<div class="ps-roll"><h4 class="ps-h4">${esc(W.body[rc.body]||rc.body)} ${
-      esc(W.how.RC)}, ${esc(dateWords(rc.date))}: ${esc(rc.question)}, member by member</h4>${
+      esc(W.how.RC)}, ${esc(dateWords(rc.date))}: ${voteHead(rc.mk,rc.question,rc.mf)}, member by member</h4>${
       groups.map(([code,label])=>{
         const ms=rc.members.filter(m=>m.v===code).sort((x,y)=>String(x.s||x.n).localeCompare(String(y.s||y.n)));
         return ms.length?`<h5 class="ps-h5">${esc(label)} <span>${ms.length}</span></h5><ul class="ps-names">${

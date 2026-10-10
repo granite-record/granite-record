@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.499
+# GRANITE_VERSION: 2026-09-04.500
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -2168,7 +2168,7 @@ def _whose_amendment(N, B):
         for (bill, term), rows in _DOCKET_WHOSE_AMENDMENT.items():
             rec = _narrated(N, term, bill, rows)
             told, listed = want[bill]
-            floor = [st["text"] for st in rec["stages"] if st["label"] == "On the House floor"]
+            floor = [st["text"] for st in rec["stages"] if st["label"] == "On the House Floor"]
             for s in told:
                 if not any(s in t for t in floor):
                     bad.append(f"{bill} of {term} does not say, on the House floor: {s!r}; "
@@ -2183,7 +2183,7 @@ def _whose_amendment(N, B):
                 bad.append(f"{bill} of {term} leaves a FLAM row unread: {flam}")
             if bill == "HB1598":
                 heads = [st["label"] for st in rec["stages"]]
-                if heads[-1:] != ["In House committee — Ways and Means"] or len(heads) != 3:
+                if heads[-1:] != ["House Committee (Ways and Means)"] or len(heads) != 3:
                     bad.append(f"HB1598 of 2022's stages are {heads}")
                 if "2022-041)" in (rec.get("narrative") or ""):
                     bad.append(f"HB1598 of 2022 tells a split number: {rec.get('narrative')!r}")
@@ -2534,7 +2534,7 @@ def _undated_floor_vote(N, B):
             bad.append(f"HB 1473 of 2026's vote of 5 March is {last['type']} of {last['date']}")
         if "On March 5, 2026 the House voted to kill it on a voice vote." not in rec["narrative"]:
             bad.append(f"HB 1473 of 2026's history: {rec['narrative'][-300:]!r}")
-        if [st["label"] for st in rec["stages"]][-1:] != ["On the House floor"]:
+        if [st["label"] for st in rec["stages"]][-1:] != ["On the House Floor"]:
             bad.append(f"HB 1473's stages: {[st['label'] for st in rec['stages']]}")
         votes = [(v.get("date"), v.get("vote_kind"), v.get("question"))
                  for v in B.bill_rollcalls("HB1473", "2025-2026", [], rec, {}, [], {})]
@@ -2593,15 +2593,15 @@ def _conference_report_told(N):
     185-180 on reconsideration), and one short of three fifths says so (CACR
     12 of 2012). A "Filed" row is the report arriving, and stays unread."""
     want = {
-        "HB1300": [("On the Senate floor", "On June 4, 2026 the Senate adopted the conference report "
+        "HB1300": [("On the Senate Floor", "On June 4, 2026 the Senate adopted the conference report "
                     "(2026-2109c) on a roll call 15–8."),
-                   ("On the House floor", "On June 4, 2026 the House adopted the conference report "
+                   ("On the House Floor", "On June 4, 2026 the House adopted the conference report "
                     "(2026-2109c) on a roll call 183–170.")],
-        "HB1": [("On the House floor", "On June 26, 2025 the House rejected the conference report "
+        "HB1": [("On the House Floor", "On June 26, 2025 the House rejected the conference report "
                  "(2025-2865c) on a roll call 182–183."),
-                ("On the House floor", "On June 26, 2025 the House adopted the conference report "
+                ("On the House Floor", "On June 26, 2025 the House adopted the conference report "
                  "(2025-2865c) on a roll call 185–180.")],
-        "CACR12": [("On the House floor", "rejected the conference report (2465c) on a roll call "
+        "CACR12": [("On the House Floor", "rejected the conference report (2465c) on a roll call "
                     "224–144, short of three fifths.")],
     }
     bad = []
@@ -2677,7 +2677,7 @@ def _senate_rule_3_23_told(N):
             rec = _narrated(N, term, bill, rows)
             day, s = want[bill]
             last = rec["stages"][-1] if rec["stages"] else {}
-            if last.get("label") != "On the Senate floor" or not last.get("text", "").endswith(s):
+            if last.get("label") != "On the Senate Floor" or not last.get("text", "").endswith(s):
                 bad.append(f"{bill} of {term} does not end, on the Senate floor, {s!r}: "
                            f"{[(st['label'], st['text'][-160:]) for st in rec['stages']]!r}")
             got = [(e["type"], e["date"]) for e in rec["events"] if "3-23" in e["raw"]]
@@ -2732,7 +2732,7 @@ def _died_on_the_floor(N):
         last = rec["stages"][-1]
         died = ("The bill died on the table when the session ended on December 17, 2025, having "
                 "been set aside and never taken back up.")
-        if last["label"] != "On the House floor" or not last["text"].endswith(died) \
+        if last["label"] != "On the House Floor" or not last["text"].endswith(died) \
                 or "Lay HB761 on Table" not in last["text"]:
             bad.append(f"HB 761 of 2025's last stage: {last['label']!r}: {last['text']!r}")
         if any(note in st["notes"] for st in rec["stages"]):
@@ -2883,13 +2883,13 @@ def _committee_amendment_on_the_floor(N):
         N.MEMBERS = {}
         for (bill, term), rows in _DOCKET_COMMITTEE_AMENDMENT_FLOOR.items():
             rec = _narrated(N, term, bill, rows)
-            floor = [st["text"] for st in rec["stages"] if st["label"] == "On the Senate floor"]
+            floor = [st["text"] for st in rec["stages"] if st["label"] == "On the Senate Floor"]
             for s in want[bill]:
                 if not any(s in t for t in floor):
                     bad.append(f"{bill} of {term} does not say on the Senate floor {s!r}: "
                                f"{[(st['label'], st['text']) for st in rec['stages']]!r}")
             if any("committee's amendment (" in st["text"] or "floor amendment (" in st["text"]
-                   for st in rec["stages"] if st["label"].startswith("In Senate committee")):
+                   for st in rec["stages"] if st["label"].startswith("Senate Committee")):
                 bad.append(f"{bill} of {term} tells an amendment's vote under a committee's "
                            f"heading: {rec['stages']!r}")
             if bill == "HB154" and rec["narrative"].count("was adopted on a voice vote on May 8") != 1:
@@ -3230,7 +3230,7 @@ def _nongermane_hearing_told(N, B):
                                      "support and 5 in opposition.") not in told:
                 bad.append(f"HB1300 of 2026's own hearing lost the day's sign-ins: {told!r}")
             if bill == "HB292" and [st["label"] for st in rec["stages"]] != [
-                    "In Senate committee — Education"]:
+                    "Senate Committee (Education)"]:
                 bad.append(f"HB292 of 2025's joint hearing: {rec['stages']!r}")
     finally:
         N.MEMBERS, N.TESTIMONY = keep
@@ -3593,146 +3593,146 @@ _DOCKET_SENT_ON = {
 # Senate's "Executive Departments and Administration" are what the history
 # said before.
 _SENT_ON_HEADS = {
-    ("SB286", "2025-2026"): (["In Senate committee — Executive Departments and Administration",
-                              "On the Senate floor", "In Senate committee — Finance"],
+    ("SB286", "2025-2026"): (["Senate Committee (Executive Departments and Administration)",
+                              "On the Senate Floor", "Senate Committee (Finance)"],
                              ["then referred it on to the Senate Finance committee"],
                              ["the Fi committee", "under the chamber's rules"]),
-    ("SB106", "2009-2010"): (["In Senate committee — Judiciary", "On the Senate floor",
-                              "In Senate committee — Finance"],
+    ("SB106", "2009-2010"): (["Senate Committee (Judiciary)", "On the Senate Floor",
+                              "Senate Committee (Finance)"],
                              ["referred it on to the Senate Finance committee"], ["the Fi committee"]),
-    ("HB613", "1993-1994"): (["In House committee — Health, Human Services and Elderly Affairs",
-                              "On the House floor", "In House committee — Appropriations"],
+    ("HB613", "1993-1994"): (["House Committee (Health, Human Services and Elderly Affairs)",
+                              "On the House Floor", "House Committee (Appropriations)"],
                              ["referred it on to the House Appropriations committee"], []),
-    ("SB58", "1989-1990"): (["In House committee — Public Works", "On the House floor",
-                             "In House committee — Appropriations"],
+    ("SB58", "1989-1990"): (["House Committee (Public Works)", "On the House Floor",
+                             "House Committee (Appropriations)"],
                             ["voted to pass it, then referred it on to the House Appropriations "
                              "committee"], []),
-    ("HB1119", "2001-2002"): (["In Senate committee — Environment", "On the Senate floor",
-                               "In Senate committee — Finance"],
+    ("HB1119", "2001-2002"): (["Senate Committee (Environment)", "On the Senate Floor",
+                               "Senate Committee (Finance)"],
                               ["on a voice vote, then referred it on to the Senate Finance committee"], []),
-    ("HB517", "2025-2026"): (["In Senate committee — Judiciary", "In Senate committee — Finance"],
+    ("HB517", "2025-2026"): (["Senate Committee (Judiciary)", "Senate Committee (Finance)"],
                              ["The Senate withdrew that referral and sent the bill to the Finance "
                               "committee instead."], []),
-    ("CACR2", "2017-2018"): (["In House committee — Health, Human Services and Elderly Affairs",
-                              "In House committee — Children and Family Law"], [], []),
-    ("HB363", "1991-1992"): (["In House committee — Judiciary", "On the House floor",
-                              "In House committee — Appropriations", "On the House floor",
-                              "In House committee — Appropriations"], [], []),
-    ("HB357", "1995-1996"): (["In House committee — Health, Human Services and Elderly Affairs",
-                              "On the House floor",
-                              "In House committee — Executive Departments and Administration",
-                              "On the House floor",
-                              "In House committee — Executive Departments and Administration"],
+    ("CACR2", "2017-2018"): (["House Committee (Health, Human Services and Elderly Affairs)",
+                              "House Committee (Children and Family Law)"], [], []),
+    ("HB363", "1991-1992"): (["House Committee (Judiciary)", "On the House Floor",
+                              "House Committee (Appropriations)", "On the House Floor",
+                              "House Committee (Appropriations)"], [], []),
+    ("HB357", "1995-1996"): (["House Committee (Health, Human Services and Elderly Affairs)",
+                              "On the House Floor",
+                              "House Committee (Executive Departments and Administration)",
+                              "On the House Floor",
+                              "House Committee (Executive Departments and Administration)"],
                              ["then referred it on to the House Executive Departments and "
                               "Administration committee."],
                              ["Administration committee under the chamber's rules"]),
-    ("HB256", "1997-1998"): (["In House committee — Executive Departments and Administration",
-                              "On the House floor", "In House committee — Finance"],
+    ("HB256", "1997-1998"): (["House Committee (Executive Departments and Administration)",
+                              "On the House Floor", "House Committee (Finance)"],
                              ["on a roll call 248–8, then referred it on to the House Finance committee"],
                              ["Consent Cal committee"]),
     # Commerce's report, dated the 16th and entered on the 7th, before the
     # Senate sent the bill on to Finance on the 15th, is Commerce's, and is
     # told in Commerce's stage, before the passage: not in a second one of
     # Commerce's straight after the sentence that sent the bill to Finance.
-    ("HB1076", "2023-2024"): (["In Senate committee — Commerce", "On the Senate floor",
-                               "In Senate committee — Finance"],
+    ("HB1076", "2023-2024"): (["Senate Committee (Commerce)", "On the Senate Floor",
+                               "Senate Committee (Finance)"],
                               ["held a public hearing on April 16, 2024. The committee recommended "
                                "that the Senate pass it unanimously, 4–0."], []),
     # And so is the amendment that report carried, adopted on the 15th, after
     # the report that carried it.
-    ("HB1380", "2023-2024"): (["In Senate committee — Commerce", "On the Senate floor",
-                               "In Senate committee — Finance"],
+    ("HB1380", "2023-2024"): (["Senate Committee (Commerce)", "On the Senate Floor",
+                               "Senate Committee (Finance)"],
                               ["(amendment 2024-1826s) unanimously, 4–0. The committee's amendment "
                                "(2024-1826s) was adopted"], []),
     # "PASSED AND REF TO FIN DIV": no name the record lets this give, until
     # the hearing's row says Capital Budget. The sentence keeps the clerk's
     # "Fin" until the person names the 1993 Senate's finance divisions.
-    ("HB126", "1993-1994"): (["In Senate committee — Transportation", "On the Senate floor",
-                              "In Senate committee — Capital Budget"], [], []),
+    ("HB126", "1993-1994"): (["Senate Committee (Transportation)", "On the Senate Floor",
+                              "Senate Committee (Capital Budget)"], [], []),
     # "REFERRED TO FINANCE/APPROP" is the 1989 Senate's Finance; the reader
     # wrote it "Appropriations", a committee that Senate did not have.
-    ("HB115", "1989-1990"): (["In Senate committee — Transportation", "In Senate committee — Finance",
-                              "On the Senate floor", "In Senate committee — Finance"],
+    ("HB115", "1989-1990"): (["Senate Committee (Transportation)", "Senate Committee (Finance)",
+                              "On the Senate Floor", "Senate Committee (Finance)"],
                              ["referred to the Finance committee"], ["Appropriations"]),
-    ("HB1163", "2005-2006"): (["In House committee — Science, Technology and Energy"],
+    ("HB1163", "2005-2006"): (["House Committee (Science, Technology and Energy)"],
                               ["referred to the House Science, Technology and Energy committee"],
                               ["ed to Science"]),
-    ("HB1218", "1991-1992"): (["In House committee — Appropriations",
-                               "In House committee — Resources, Recreation and Development"],
+    ("HB1218", "1991-1992"): (["House Committee (Appropriations)",
+                               "House Committee (Resources, Recreation and Development)"],
                               ["sent the bill to the Resources, Recreation and Development committee "
                                "instead"], ["the Res committee"]),
-    ("CACR1", "1989-1990"): (["In Senate committee — Executive Departments"],
+    ("CACR1", "1989-1990"): (["Senate Committee (Executive Departments)"],
                              ["referred to the Senate Executive Departments committee"],
                              ["Administration"]),
     # "PASSED WITH AM AND REF TO FIN DIV", and then "FIN EXEC COMM REPORT": the
     # row names the 1993 Senate's Finance Executive Committee.
-    ("SB732", "1993-1994"): (["In Senate committee — Judiciary", "On the Senate floor",
-                              "In Senate committee — Finance Executive Committee"], [], []),
+    ("SB732", "1993-1994"): (["Senate Committee (Judiciary)", "On the Senate Floor",
+                              "Senate Committee (Finance Executive Committee)"], [], []),
     # "Committee of Conference Hearing: 05/29/2008 ..." is the conferees'.
-    ("HB1405", "2007-2008"): (["On the House floor", "Committee of conference"], [], []),
+    ("HB1405", "2007-2008"): (["On the House Floor", "Committee of Conference"], [], []),
     # A row that names another committee than the one that has the bill: the
     # record cannot say whose the work is, and from there the chamber is named
     # alone. The 19th's "CONTINUED HEARING ... FOR: INSUR" was Internal
     # Affairs' hearing of the 12th, continued.
-    ("HCR25", "1997-1998"): (["In Senate committee — Internal Affairs", "In Senate committee"],
+    ("HCR25", "1997-1998"): (["Senate Committee (Internal Affairs)", "Senate Committee"],
                              [], ["Insurance"]),
     # "REF TO FINANCE" before "PASSED WITH AM" on its row: Finance's amendment
     # adopted, then the bill passed. Not a passage, then a referral.
-    ("SB173", "1995-1996"): (["In Senate committee — Education", "On the Senate floor"], [],
+    ("SB173", "1995-1996"): (["Senate Committee (Education)", "On the Senate Floor"], [],
                              ["referred it on to the"]),
     # A joint committee is no one of its members.
-    ("HB1643", "2007-2008"): (["In House committee — a Joint Committee of Executive Departments and "
-                               "Administration and Finance", "On the House floor",
-                               "In House committee — a Joint Committee of Executive Departments and "
-                               "Administration and Finance", "On the House floor"], [], []),
+    ("HB1643", "2007-2008"): (["House Committee (a Joint Committee of Executive Departments and "
+                               "Administration and Finance)", "On the House Floor",
+                               "House Committee (a Joint Committee of Executive Departments and "
+                               "Administration and Finance)", "On the House Floor"], [], []),
     # Its first row is the floor's: "COMM AM<3943>, AA VV; COMM FL AM<4488>,
     # AA VV; ...", the committee's amendment adopted on the floor.
-    ("HB442", "1993-1994"): (["On the House floor", "In House committee — Appropriations",
-                              "On the House floor", "In House committee"], [], []),
+    ("HB442", "1993-1994"): (["On the House Floor", "House Committee (Appropriations)",
+                              "On the House Floor", "House Committee"], [], []),
     # Re-referred twice on one row: where it says last.
-    ("SB165", "1993-1994"): (["In Senate committee — Executive Departments and Administration",
-                              "On the Senate floor", "In Senate committee — Wildlife and Recreation",
-                              "On the Senate floor"], [], []),
+    ("SB165", "1993-1994"): (["Senate Committee (Executive Departments and Administration)",
+                              "On the Senate Floor", "Senate Committee (Wildlife and Recreation)",
+                              "On the Senate Floor"], [], []),
     # "Rule 24 (Refer to Finance)", "ref Finance", "Refer Finance [Rule 26]".
-    ("HB236", "1999-2000"): (["In Senate committee — Judiciary", "On the Senate floor",
-                              "In Senate committee — Finance", "On the Senate floor"],
+    ("HB236", "1999-2000"): (["Senate Committee (Judiciary)", "On the Senate Floor",
+                              "Senate Committee (Finance)", "On the Senate Floor"],
                              ["then referred it on to the Senate Finance committee"], []),
-    ("SB262", "2005-2006"): (["In House committee — Criminal Justice and Public Safety",
-                              "On the House floor", "In House committee — Finance", "On the House floor"],
+    ("SB262", "2005-2006"): (["House Committee (Criminal Justice and Public Safety)",
+                              "On the House Floor", "House Committee (Finance)", "On the House Floor"],
                              ["The House referred the bill to the Finance committee."], []),
-    ("SB324", "2007-2008"): (["In Senate committee — Health and Human Services", "On the Senate floor",
-                              "In Senate committee — Finance", "On the Senate floor"], [], []),
+    ("SB324", "2007-2008"): (["Senate Committee (Health and Human Services)", "On the Senate Floor",
+                              "Senate Committee (Finance)", "On the Senate Floor"], [], []),
     # "The Chair Rescinded Refer to Finance Rule 4-5", seven minutes on.
-    ("SB91", "2013-2014"): (["In Senate committee — Commerce", "On the Senate floor"] * 3, [],
+    ("SB91", "2013-2014"): (["Senate Committee (Commerce)", "On the Senate Floor"] * 3, [],
                             ["referred it on to the"]),
     # The House's Finance is not carried past the crossing to a House row
     # entered three weeks after it, in the Senate's room.
-    ("HB25", "1997-1998"): (["In House committee", "On the House floor", "In House committee — Finance",
-                             "On the House floor", "In Senate committee — Capital Budget",
-                             "In House committee"], [], []),
+    ("HB25", "1997-1998"): (["House Committee", "On the House Floor", "House Committee (Finance)",
+                             "On the House Floor", "Senate Committee (Capital Budget)",
+                             "House Committee"], [], []),
     # Never "Finance Executive Committee committee".
-    ("HB1260", "1993-1994"): (["In Senate committee — Finance Executive Committee"],
+    ("HB1260", "1993-1994"): (["Senate Committee (Finance Executive Committee)"],
                               ["referred to the Senate Finance Executive Committee."],
                               ["Committee committee"]),
     # "Refer To Finance Rule 26" is Finance, not "Finance Rule 26".
-    ("HB618", "2003-2004"): (["In Senate committee — Ways and Means", "On the Senate floor",
-                              "In Senate committee — Finance"],
+    ("HB618", "2003-2004"): (["Senate Committee (Ways and Means)", "On the Senate Floor",
+                              "Senate Committee (Finance)"],
                              ["the bill was referred to the Finance committee"], ["Rule 26"]),
     # "JOINT HEARING ... FOR: APP & WAYS & MEANS" is no one committee's.
-    ("HB777", "1989-1990"): (["In House committee — Appropriations", "On the House floor"], [], []),
+    ("HB777", "1989-1990"): (["House Committee (Appropriations)", "On the House Floor"], [], []),
     # "RE-REFERRED TO REG" and, thirteen seconds later, "REV VV".
-    ("HB297", "1991-1992"): (["In House committee — Regulated Revenues"],
+    ("HB297", "1991-1992"): (["House Committee (Regulated Revenues)"],
                              ["the bill was referred to the Regulated Revenues committee"],
                              ["Reg committee"]),
     # Sent back to the committee that had it: the row's own sentence says so,
     # and no second sentence tells it as another referral.
-    ("HB355", "1989-1990"): (["In House committee — Commerce, Small Business and Consumer Affairs",
-                              "On the House floor",
-                              "In House committee — Commerce, Small Business and Consumer Affairs"],
+    ("HB355", "1989-1990"): (["House Committee (Commerce, Small Business and Consumer Affairs)",
+                              "On the House Floor",
+                              "House Committee (Commerce, Small Business and Consumer Affairs)"],
                              ["voted to send it back to committee"], ["referred the bill to the"]),
     # Sent on to Finance by suspending the rules, not under them.
-    ("HB551", "1995-1996"): (["In House committee — Judiciary and Family Law", "On the House floor",
-                              "In House committee — Finance"],
+    ("HB551", "1995-1996"): (["House Committee (Judiciary and Family Law)", "On the House Floor",
+                              "House Committee (Finance)"],
                              ["then referred it on to the House Finance committee."],
                              ["under the chamber's rules"]),
     # A referral where no committee had the bill moves no heading, and is not
@@ -3799,7 +3799,10 @@ def _report_names_its_stage(N, B):
     bad = []
     for key, want in _REPORTED_BY.items():
         n = _narrated(N, key[1], key[0], _DOCKET_SENT_ON[key])
-        heads = {s["label"].split(" — ", 1)[1] for s in n["stages"] if " — " in s["label"]}
+        # "Senate Committee (Finance)" since 10 October 2026 (C8), where it
+        # was "In Senate committee — Finance".
+        heads = {m.group(1) for s in n["stages"]
+                 for m in [re.fullmatch(r"(?:House|Senate) Committee \((.+)\)", s["label"])] if m}
         got = [e.get("committee") for e in n["events"] if e["type"] == "report"]
         if got != want:
             bad.append(f"{key[0]} of {key[1]}: reports by {got}, not {want}")
@@ -4142,11 +4145,11 @@ def _journal_settles_the_committee(N):
         bad.append(f"the House Journal's reports are read as {said}")
     for key, lines in _DOCKET_JOURNAL_SAYS.items():
         heads = [s["label"] for s in _narrated(N, key[1], key[0], lines, reported=said)["stages"]]
-        if ("In House committee — Criminal Justice and Public Safety" not in heads
-                or "In House committee" in heads):
+        if ("House Committee (Criminal Justice and Public Safety)" not in heads
+                or "House Committee" in heads):
             bad.append(f"{key[0]} of {key[1]}, with the journal, is headed {heads}")
         heads = [s["label"] for s in _narrated(N, key[1], key[0], lines)["stages"]]
-        if "In House committee" not in heads or any("Criminal" in h for h in heads):
+        if "House Committee" not in heads or any("Criminal" in h for h in heads):
             bad.append(f"{key[0]} of {key[1]}, with no journal, is headed {heads}")
         # Nor a journal that prints the referral's committee's report too.
         both = {key[0]: want[key[0]] | {"Commerce", "State-Federal Relations and Veterans Affairs"}}
@@ -4521,53 +4524,53 @@ _REFERRAL_UNMADE_HEADS = {
     # Chair per House Rule 47(f)": the House Journal prints "REFERRAL
     # DECLINED". The referral is told with its waiver, on the floor that made
     # it, and Finance heads no stage.
-    ("HB1574", "2025-2026"): (["In House committee — Education Funding", "On the House floor",
-                               "In Senate committee — Education"],
+    ("HB1574", "2025-2026"): (["House Committee (Education Funding)", "On the House Floor",
+                               "Senate Committee (Education)"],
                               ["On February 19, 2026 the bill was referred to the Finance committee, "
                                "whose chair waived the referral under House Rule 47(f)."],
-                              ["In House committee — Finance"]),
+                              ["House Committee (Finance)"]),
     # The waiver entered three hours before the referral it waives.
-    ("SB482", "2025-2026"): (["In House committee — Commerce and Consumer Affairs", "On the House floor"],
+    ("SB482", "2025-2026"): (["House Committee (Commerce and Consumer Affairs)", "On the House Floor"],
                              ["On April 23, 2026 the bill was referred to the Criminal Justice and Public "
                               "Safety committee, whose chair waived the referral under House Rule 47(f)."],
-                             ["In House committee — Criminal Justice"]),
-    ("HB1478", "2013-2014"): (["In House committee — Children and Family Law", "On the House floor"],
+                             ["House Committee (Criminal Justice)"]),
+    ("HB1478", "2013-2014"): (["House Committee (Children and Family Law)", "On the House Floor"],
                               ["On February 12, 2014 the bill was referred to the Judiciary committee, "
                                "whose chair declined the referral under House Rule 46(f)."],
-                              ["In House committee — Judiciary"]),
-    ("HB407", "2015-2016"): (["In House committee — Municipal and County Government", "On the House floor"],
+                              ["House Committee (Judiciary)"]),
+    ("HB407", "2015-2016"): (["House Committee (Municipal and County Government)", "On the House Floor"],
                              ["referred to the Executive Departments and Administration committee, and "
                               "the Speaker waived the referral."],
-                             ["In House committee — Executive"]),
+                             ["House Committee (Executive)"]),
     # "PASSED AND REF TO FINANCE", and a week later "REF TO FINANCE DECLINED,
     # ORDERED TO 3RD READING": the passage does not send it on, and the
     # referral is told with what became of it.
-    ("HB126", "1995-1996"): (["In House committee — Public Works and Highways", "On the House floor",
-                              "In Senate committee — Education"],
+    ("HB126", "1995-1996"): (["House Committee (Public Works and Highways)", "On the House Floor",
+                              "Senate Committee (Education)"],
                              ["On January 26, 1995 the House voted to pass it. The House referred the "
                               "bill to the Finance committee, and the referral was declined."],
                              ["referred it on to the House Finance committee"]),
     # Finance's Division I sat on it, and six weeks later the chair waived
     # the referral: the work stands, and the waiver is told after it.
-    ("HB194", "2023-2024"): (["In House committee — Resources, Recreation and Development",
-                              "In House committee — Finance", "On the House floor",
-                              "In House committee — Finance"],
+    ("HB194", "2023-2024"): (["House Committee (Resources, Recreation and Development)",
+                              "House Committee (Finance)", "On the House Floor",
+                              "House Committee (Finance)"],
                              ["The committee held a work session on January 16, 2024. The committee's "
                               "chair waived the referral under House Rule 47(f)."], []),
     # A waiver with no referral on the docket: nothing is told of either.
-    ("HB1138", "2023-2024"): (["In House committee — Transportation", "On the House floor"], [],
+    ("HB1138", "2023-2024"): (["House Committee (Transportation)", "On the House Floor"], [],
                               ["the referral"]),
     # Ways and Means' amendment, entered two hours after the passage that sent
     # the bill to Finance, is told before it: after Ways and Means' report, on
     # the floor that adopted it (narrative.amendment_after_report).
-    ("HB658", "2025-2026"): (["In Senate committee — Ways and Means", "On the Senate floor",
-                              "In Senate committee — Finance"],
+    ("HB658", "2025-2026"): (["Senate Committee (Ways and Means)", "On the Senate Floor",
+                              "Senate Committee (Finance)"],
                              ["(amendment 2025-1642s) unanimously, 5–0, and the report was placed on the "
                               "consent calendar. The committee's amendment (2025-1642s) was adopted"], []),
     # HHS's report, dated the calendar's 16 May and entered on the 6th, before
     # the vote on the amendment it carried.
-    ("HB1568", "2023-2024"): (["In Senate committee — Health and Human Services", "On the Senate floor",
-                               "In Senate committee — Finance"],
+    ("HB1568", "2023-2024"): (["Senate Committee (Health and Human Services)", "On the Senate Floor",
+                               "Senate Committee (Finance)"],
                               ["(amendment 2024-1727s) unanimously, 5–0, and the report was placed on the "
                                "consent calendar. The committee's amendment (2024-1727s) was adopted"],
                               []),
@@ -4576,45 +4579,45 @@ _REFERRAL_UNMADE_HEADS = {
     # the 2002 House's "on deadline for 2nd Comm" (HB 1231). Told as any
     # other passage that sent the bill on: since 8 October 2026 no House
     # passage says "under the chamber's rules", whatever sent it.
-    ("SB173", "1995-1996"): (["In House committee — Education", "On the House floor",
-                              "In House committee — Finance", "On the House floor"],
+    ("SB173", "1995-1996"): (["House Committee (Education)", "On the House Floor",
+                              "House Committee (Finance)", "On the House Floor"],
                              ["then referred it on to the House Finance committee."],
                              ["under the chamber's rules"]),
-    ("HB650", "1995-1996"): (["In House committee — Commerce, Small Business, Consumer Affairs and "
-                              "Economic Development", "On the House floor", "In House committee — Finance"],
+    ("HB650", "1995-1996"): (["House Committee (Commerce, Small Business, Consumer Affairs and "
+                              "Economic Development)", "On the House Floor", "House Committee (Finance)"],
                              ["then referred it on to the House Finance committee."],
                              ["under the chamber's rules"]),
-    ("HB1633", "1995-1996"): (["In House committee — Environment and Agriculture", "On the House floor",
-                               "In House committee — Finance"],
+    ("HB1633", "1995-1996"): (["House Committee (Environment and Agriculture)", "On the House Floor",
+                               "House Committee (Finance)"],
                               ["then referred it on to the House Finance committee."],
                               ["under the chamber's rules"]),
-    ("HB1231", "2001-2002"): (["In House committee — Education", "On the House floor",
-                               "In House committee — Finance"],
+    ("HB1231", "2001-2002"): (["House Committee (Education)", "On the House Floor",
+                               "House Committee (Finance)"],
                               ["then referred it on to the House Finance committee."],
                               ["under the chamber's rules"]),
     # "Committee Refused Referral" that afternoon: the House Journal prints
     # "REFERRAL DECLINED" over SB 166, and Judiciary heads nothing.
-    ("SB166", "2013-2014"): (["In House committee — Health, Human Services and Elderly Affairs",
-                              "On the House floor", "With the governor"],
+    ("SB166", "2013-2014"): (["House Committee (Health, Human Services and Elderly Affairs)",
+                              "On the House Floor", "With the Governor"],
                              ["On May 8, 2013 the bill was referred to the Judiciary committee, and the "
-                              "referral was refused."], ["In House committee — Judiciary"]),
+                              "referral was refused."], ["House Committee (Judiciary)"]),
     # "Referral to Ways and Means withdrawn" within the hour, and the Senate
     # had the bill the next morning.
-    ("HB1679", "2005-2006"): (["In House committee — Municipal and County Government", "On the House floor",
-                               "In Senate committee — Finance"],
+    ("HB1679", "2005-2006"): (["House Committee (Municipal and County Government)", "On the House Floor",
+                               "Senate Committee (Finance)"],
                               ["On February 15, 2006 the bill was referred to the Ways and Means committee, "
-                               "and the referral was withdrawn."], ["In House committee — Ways and Means"]),
+                               "and the referral was withdrawn."], ["House Committee (Ways and Means)"]),
     # "Vacated ref to Executive Dept & Administration": the referral vacated,
     # not a committee the bill went to "instead".
-    ("SB295", "2005-2006"): (["In House committee — Executive Departments and Administration",
-                              "In House committee — Commerce", "On the House floor"],
+    ("SB295", "2005-2006"): (["House Committee (Executive Departments and Administration)",
+                              "House Committee (Commerce)", "On the House Floor"],
                              ["referred to the House Executive Departments and Administration committee. "
                               "The House withdrew that referral."], ["instead"]),
     # The Senate's introduction, dated the day before the waiver, is told
     # before it: the House chair's waiver is told on the House floor, not
     # under the Senate's committee (below).
-    ("HB186", "2025-2026"): (["In House committee — Commerce and Consumer Affairs", "On the House floor",
-                              "In Senate committee — Judiciary"],
+    ("HB186", "2025-2026"): (["House Committee (Commerce and Consumer Affairs)", "On the House Floor",
+                              "Senate Committee (Judiciary)"],
                              ["On January 7, 2026 the bill was referred to the Finance committee, whose "
                               "chair waived the referral under House Rule 47(f)."], []),
     # A notice entered before the passage that sent the bill on, for a day
@@ -4626,23 +4629,23 @@ _REFERRAL_UNMADE_HEADS = {
     # A suspension "for 2nd Comm deadlines" four weeks before the passage, for
     # the committee's reporting deadline by the House Journal (HJ 6 of 2002),
     # and the referral told in the Senate's words (the person, 8 October 2026).
-    ("HB1100", "2001-2002"): (["In House committee — Judiciary", "On the House floor",
-                               "In House committee — Judiciary", "On the House floor",
-                               "In House committee — Finance"],
+    ("HB1100", "2001-2002"): (["House Committee (Judiciary)", "On the House Floor",
+                               "House Committee (Judiciary)", "On the House Floor",
+                               "House Committee (Finance)"],
                               ["then referred it on to the House Finance committee."], []),
     # The rules no row on disk tests (_altered, above): each keeps what the
     # rows without the rule would lose.
-    ("HB1478", "2013-2014", "another chair"): (["In House committee — Children and Family Law",
-                                                "On the House floor", "In House committee — Judiciary"],
+    ("HB1478", "2013-2014", "another chair"): (["House Committee (Children and Family Law)",
+                                                "On the House Floor", "House Committee (Judiciary)"],
                                                [], ["the referral"]),
-    ("HB1679", "2005-2006", "another committee"): (["In House committee — Municipal and County Government",
-                                                    "On the House floor", "In House committee — Ways and Means",
-                                                    "In Senate committee — Finance"], [], ["the referral"]),
+    ("HB1679", "2005-2006", "another committee"): (["House Committee (Municipal and County Government)",
+                                                    "On the House Floor", "House Committee (Ways and Means)",
+                                                    "Senate Committee (Finance)"], [], ["the referral"]),
     ("HB1138", "2023-2024", "before the introduction"): (None, [], ["the referral"]),
-    ("HB194", "2023-2024", "a meeting after"): (["In House committee — Resources, Recreation and "
-                                                 "Development", "In House committee — Finance",
-                                                 "On the House floor", "In House committee — Finance",
-                                                 "In House committee"], [], []),
+    ("HB194", "2023-2024", "a meeting after"): (["House Committee (Resources, Recreation and "
+                                                 "Development)", "House Committee (Finance)",
+                                                 "On the House Floor", "House Committee (Finance)",
+                                                 "House Committee"], [], []),
 }
 
 # Where a sentence is told: (the stage's place, words, whether that stage
@@ -10746,11 +10749,11 @@ def _rail_against_the_record(N, B):
     # the bill was acted on, and stays a docket line. A bill that did reach
     # the governor keeps the heading and the sentence.
     n, _s, rail = told(("1993-1994", "HB613"))
-    if "With the governor" not in [s["label"] for s in n["stages"]]:
-        bad.append("HB613's rows no longer make a stage headed With the governor: nothing is tested")
+    if "With the Governor" not in [s["label"] for s in n["stages"]]:
+        bad.append("HB613's rows no longer make a stage headed With the Governor: nothing is tested")
     stages = B.stages_told(n, "done", rail)
     labels = [s["label"] for s in stages]
-    if "With the governor" in labels or labels[-2:] != ["On the Senate floor", "On the Senate floor"]:
+    if "With the Governor" in labels or labels[-2:] != ["On the Senate Floor", "On the Senate Floor"]:
         bad.append(f"HB613 of 1993's history is headed {labels[-3:]}")
     if any("enrolled" in s["text"].lower() or "governor" in s["text"].lower() for s in stages):
         bad.append("HB613 of 1993's history still says the bill was enrolled")
@@ -10758,9 +10761,9 @@ def _rail_against_the_record(N, B):
     if [e["raw"][:8] for e in rows] != ["ENROLLED"]:
         bad.append(f"HB613 of 1993's untold enrolment is {[e['raw'] for e in rows]}")
     law = B.stages_told(n, "law", "Hpppp")
-    if "With the governor" not in [s["label"] for s in law] or not any(
+    if "With the Governor" not in [s["label"] for s in law] or not any(
             "The bill was enrolled on May 25, 1993" in s["text"] for s in law):
-        bad.append("a bill that became law lost its stage With the governor, or its enrolment")
+        bad.append("a bill that became law lost its stage With the Governor, or its enrolment")
     if B.enrolled_untold(n, "law", "Hpppp") or B.enrolled_untold(n, "active", "Hpx--"):
         bad.append("an enrolment is left untold on a bill that is law, or still moving")
     # SB 286 of 2025, whose one stage under the governor is the row of SB 268
@@ -10841,18 +10844,18 @@ _DOCKET_CONSENT_OFF = {
         "2006|2082|01/04/2006 03:37:38 PM|CACR32|H|Introduced and ref to Judiciary  HJ 7, pg 355|01/04/2006 03:37:38 PM",
         "2006|2082|02/09/2006 01:08:21 PM|CACR32|H|Comm Rprt:   ref Interim Study  for Feb 15  (vote 15-6; CC)  HC 15, pg 780|02/09/2006 01:08:21 PM",
         "2006|2082|02/15/2006 10:09:27 AM|CACR32|H|Removed from CC (Rep. Vaillancourt)    HJ 19, pg 1069|02/15/2006 10:09:27 AM"],
-        "In House committee", ("House",)),
+        "House Committee", ("House",)),
     ("2007-2008", "HB87"): ([
         "2007|0396|01/04/2007 10:12:49 AM|HB87|H|Introduced and ref to Education; HJ 10, pg.137|01/04/2007 10:12:49 AM",
         "2007|0396|01/23/2007 03:27:58 PM|HB87|H|Committee Report: Ought to Pass for Jan 31 (vote 14-0; CC); HC 11, Pg.142|01/23/2007 03:27:58 PM",
         "2007|0396|01/31/2007 04:54:24 PM|HB87|H|Rep Sorg: Removed from Consent Calendar; HJ 14, Pg.221|01/31/2007 04:54:24 PM",
         "2007|0396|01/31/2007 04:55:14 PM|HB87|H|Ought to Pass: MA VV; HJ 14, Pg.224|01/31/2007 04:55:14 PM"],
-        "In House committee", ("House",)),
+        "House Committee", ("House",)),
     ("2015-2016", "HB676"): ([
         "2015|0665|01/08/2015 09:22:04 AM|HB676|H|Introduced and Referred to Education; HJ 12, PG. 235|01/08/2015 09:22:04 AM",
         "2015|0665|02/12/2015 11:30:37 AM|HB676|H|Committee Report: Inexpedient to Legislate for Feb 18 (Vote 19-0; CC); HC13, PG. 237-238|02/12/2015 11:30:37 AM",
         "2015|0665|02/18/2015 10:48:22 AM|HB676|H|Remove from Consent Calendar (Rep Kurk); HJ 20, PG. 496|02/18/2015 10:48:22 AM"],
-        "In House committee", ("House",)),
+        "House Committee", ("House",)),
     ("2013-2014", "HB1410"): ([
         "2014|2070|12/16/2013 02:08:18 PM|HB1410|H|Introduced 1/8/2014 and Referred to Criminal Justice and Public Safety|12/16/2013 02:08:18 PM",
         "2014|2070|03/19/2014 03:58:40 PM|HB1410|H|Ought to Pass: MA VV|03/19/2014 03:58:40 PM",
@@ -10860,13 +10863,13 @@ _DOCKET_CONSENT_OFF = {
         "2014|2070|05/07/2014 12:40:29 PM|HB1410|S|Committee Report: Ought to Pass with Amendment #2014-1732s, 5/15/14; Vote 5-0; CC; SC18|05/07/2014 12:40:29 PM",
         "2014|2070|05/15/2014 11:14:19 AM|HB1410|S|Sen. Carson Moved Remove From Consent Calendar|05/15/2014 11:14:19 AM",
         "2014|2070|05/15/2014 08:27:53 PM|HB1410|S|Ought to Pass with Amendment 1732s, 1840s, MA, VV; OT3rdg; SJ 13|05/15/2014 08:27:53 PM"],
-        "In Senate committee", ("Senate",)),
+        "Senate Committee", ("Senate",)),
     ("2025-2026", "SB60"): ([
         "2025|0430|1/14/2025 3:57:55 PM|SB60|S|  Introduced 01/09/2025 and Referred to Ways and Means;  SJ 3|1/14/2025 3:57:55 PM",
         "2025|0430|2/6/2025 8:29:25 AM|SB60|S|Committee Report: Ought to Pass with Amendment #2025-0281s, 02/13/2025; Vote 5-0; CC;  SC 9|2/6/2025 8:29:25 AM",
         "2025|0430|2/13/2025 2:50:37 PM|SB60|S|SB 60-FN was Removed from the Consent Calendar; 02/13/2025;  SJ 5|2/13/2025 2:50:37 PM",
         "2025|0430|2/13/2025 2:53:21 PM|SB60|S|Ought to Pass with Amendment #2025-0374s, MA, VV; OT3rdg; 02/13/2025;  SJ 5|5/5/2025 11:40:04 AM"],
-        "In Senate committee", ("Senate",)),
+        "Senate Committee", ("Senate",)),
     # Off the Senate's, and later on the House's and left there: one note,
     # under the first placing, and no second one in other words.
     ("2021-2022", "SB58"): ([
@@ -10877,13 +10880,13 @@ _DOCKET_CONSENT_OFF = {
         "2021|0935|3/17/2021 12:00:00 AM|SB58|H|Introduced (in recess of) 02/25/2021 and referred to Executive Departments and Administration HJ 4 P. 50|3/17/2021 12:00:00 AM",
         "2021|0935|5/25/2021 12:00:00 AM|SB58|H|Committee Report: Ought to Pass with Amendment #2021-1531h (Vote 18-0; CC) HC 26 P. 6|5/25/2021 12:00:00 AM",
         "2021|0935|6/3/2021 12:00:00 AM|SB58|H|Ought to Pass with Amendment 2021-1531h: MA VV 06/03/2021 HJ 8 P. 8|6/3/2021 12:00:00 AM"],
-        "In Senate committee", ("Senate",)),
+        "Senate Committee", ("Senate",)),
     ("1999-2000", "HB605"): ([
         "1999|0365|02/10/1999 08:05:59 PM|HB605|H|Introduced and ref to Judiciary;  HJ18, p297|02/10/1999 08:05:59 PM",
         "1999|0365|04/06/1999 11:07:57 AM|HB605|H|Maj Report  ITL  for  Apr 14   (vote 13-1;CC#2)|04/06/1999 11:07:57 AM",
         "1999|0365|04/14/1999 02:25:49 PM|HB605|H|ITL Report adopted;  Consent Cal reconsidered, Rep Mock|04/14/1999 02:25:49 PM",
         "1999|0365|04/14/1999 03:36:29 PM|HB605|H|MA VV; Removed from Consent Cal, req Rep Mock; Recommitted to|04/14/1999 03:36:29 PM"],
-        "In House committee", ("House",)),
+        "House Committee", ("House",)),
     # A row about OTHER bills removed: this one stayed on, and passed.
     ("2021-2022", "HB275"): ([
         "2022|0749|1/18/2022 12:00:00 AM|HB275|S|Introduced 01/05/2022 and Referred to Executive Departments and Administration; SJ 2|1/18/2022 12:00:00 AM",
@@ -10891,7 +10894,7 @@ _DOCKET_CONSENT_OFF = {
         "2022|0749|4/28/2022 12:00:00 AM|HB275|S|Ought to Pass: MA, VV; Refer to Finance Rule 4-5; 04/28/2022; SJ 10|4/28/2022 12:00:00 AM",
         "2022|0749|5/5/2022 12:00:00 AM|HB275|S|Special Order to after the Bills removed from the Consent Calendar, Without Objection, MA; 05/05/2022; SJ 11|5/5/2022 12:00:00 AM",
         "2022|0749|5/5/2022 12:00:00 AM|HB275|S|Ought to Pass : MA, VV; OT3rdg; 05/05/2022; SJ 11|5/5/2022 12:00:00 AM"],
-        "In Senate committee", ()),
+        "Senate Committee", ()),
     # The House took the conference report off ITS consent calendar; the
     # Senate had passed the bill on the Senate's.
     ("2025-2026", "HB273"): ([
@@ -10904,7 +10907,7 @@ _DOCKET_CONSENT_OFF = {
         "2025|0549|6/19/2025 12:13:12 PM|HB273|S|Conference Committee Report Filed, # 2025-2780c; 06/26/2025|6/19/2025 12:13:12 PM",
         "2025|0549|6/26/2025 2:28:02 PM|HB273|H|Conference Committee Report 2025-2780c: Adopted, RC 201-165 06/26/2025  HJ 18  P. 23|10/21/2025 11:21:17 AM",
         "2025|0549|6/24/2025 1:28:08 PM|HB273|H|Removed from Consent (Reps. Berch, Scherr, C. Harvey, D. Fox, N. Germana, O'Rorke, Horrigan, Turer, Meuse, Manos) 06/24/2025  HJ 18  P. 17|10/21/2025 10:52:31 AM"],
-        "In Senate committee", ("House",)),
+        "Senate Committee", ("House",)),
     # THE BILL NAMED BETWEEN THE VERB AND THE CALENDAR, the Senate's from 2011
     # to 2024, and the House's "CON CAL" of 1992: the note kept "The chamber
     # then adopts the committee's recommendation without floor debate" beside
@@ -10917,7 +10920,7 @@ _DOCKET_CONSENT_OFF = {
         "2018|2363|5/2/2018 12:00:00 AM|HB1313|S|Special Order to 05/03/2018, Without Objection, MA; 05/02/2018|5/2/2018 12:00:00 AM",
         "2018|2363|5/3/2018 12:00:00 AM|HB1313|S|Refer to Interim Study, RC 12Y-12N, MF; 05/03/2018; SJ 16|5/3/2018 12:00:00 AM",
         "2018|2363|5/3/2018 12:00:00 AM|HB1313|S|Sen. Carson Moved Laid on Table, RC 14Y-10N, MA; 05/03/2018; SJ 16|5/3/2018 12:00:00 AM"],
-        "In Senate committee", ("Senate",)),
+        "Senate Committee", ("Senate",)),
     ("2023-2024", "SB47"): ([
         "2023|0984|1/11/2023 12:00:00 AM|SB47|S|Introduced 01/05/2023 and Referred to Election Law and Municipal Affairs; SJ 4|1/11/2023 12:00:00 AM",
         "2023|0984|1/17/2023 12:00:00 AM|SB47|S|Committee Report: Ought to Pass with Amendment #2023-0056s , 01/19/2023; Vote 5-0; CC; SC 6A|1/17/2023 12:00:00 AM",
@@ -10925,20 +10928,20 @@ _DOCKET_CONSENT_OFF = {
         "2023|0984|1/19/2023 12:00:00 AM|SB47|S|Sen. Perkins Kwoka Moved to Remove SB 47 from the Consent Calendar; 01/19/2023; SJ 4|1/19/2023 12:00:00 AM",
         "2023|0984|1/26/2023 12:00:00 AM|SB47|S|Sen. Perkins Kwoka Floor Amendment #2023-0123s , AA, VV; 01/26/2023; SJ 5|1/26/2023 12:00:00 AM",
         "2023|0984|1/26/2023 12:00:00 AM|SB47|S|Ought to Pass with Amendment 2023-0123s, MA, VV; OT3rdg; 01/26/2023; SJ 5|1/26/2023 12:00:00 AM"],
-        "In Senate committee", ("Senate",)),
+        "Senate Committee", ("Senate",)),
     ("2013-2014", "SB155"): ([
         "2013|0992|01/31/2013 12:24:14 PM|SB155|S|Introduced and Referred to Executive Dept. & Admin; SJ 5|01/31/2013 12:24:14 PM",
         "2013|0992|02/21/2013 11:49:33 AM|SB155|S|Committee Report: Ought to Pass with Amendment #2013-0485s, NT, 3/7/13; Vote 5-0; CC; SC10|02/21/2013 11:49:33 AM",
         "2013|0992|03/07/2013 10:50:32 AM|SB155|S|Sen. Watters Moved to Remove SB 155-FN-A from the Consent Calendar; SJ 6|03/07/2013 10:50:32 AM",
         "2013|0992|03/07/2013 01:38:41 PM|SB155|S|Committee Amendment 0485s, NT, AA, VV; SJ 6|03/07/2013 01:38:41 PM",
         "2013|0992|03/07/2013 01:39:25 PM|SB155|S|Ought to Pass with Amendment 0485s, NT, MA, VV; Refer to Finance Rule 4-5; SJ 6|03/07/2013 01:39:25 PM"],
-        "In Senate committee", ("Senate",)),
+        "Senate Committee", ("Senate",)),
     ("1991-1992", "HB476"): ([
         "1992|0664|01/22/1992 11:30:25 AM|HB476|H|MAJ REPORT ITL FOR JAN30  (VOTE 18-0;CC)|01/22/1992 11:30:25 AM",
         "1992|0664|01/30/1992 02:10:41 PM|HB476|H|REMOVED FROM CON CAL, REQ REP JACOBSON; HJ23,P616|01/30/1992 02:10:41 PM",
         "1992|0664|01/30/1992 03:17:13 PM|HB476|H|REP JACOBSON SUBST OTP, ML RC(96-240); ITL REPORT ADOPTED VV;|01/30/1992 03:17:13 PM",
         "1992|0664|01/30/1992 03:18:10 PM|HB476|H|HJ23,P643-646|01/30/1992 03:18:10 PM"],
-        "In House committee", ("House",)),
+        "House Committee", ("House",)),
     # UNDER ITS OWN CHAMBER'S STAGE. The Senate's removal of HB 592, entered
     # after the bill's enrolment, sat under "With the governor". Docket.txt
     # lines 5629-6198, the Senate's rows.
@@ -10950,7 +10953,7 @@ _DOCKET_CONSENT_OFF = {
         "2025|0795|3/20/2025 11:54:53 AM|HB592|S|Enrolled Adopted, VV, 03/20/2025  SJ 8|4/1/2025 3:10:28 PM",
         "2025|0795|3/20/2025 12:43:38 PM|HB592|S|HB 592-FN was Removed from the Consent Calendar; 03/20/2025;  SJ 8|3/20/2025 12:43:42 PM",
         "2025|0795|3/20/2025 12:45:21 PM|HB592|S|Special Order to the Beginning of the Regular Calendar, Without Objection; 03/20/2025;  SJ 8|3/20/2025 12:45:25 PM"],
-        "In Senate committee", ("Senate",)),
+        "Senate Committee", ("Senate",)),
     # Taken off, and put back: HB 264 of 1993 was killed with the calendar
     # of 16 March. Docket_db_1993-1994.txt lines 5-10.
     ("1993-1994", "HB264"): ([
@@ -10960,7 +10963,7 @@ _DOCKET_CONSENT_OFF = {
         "1993|0002|03/11/1993 01:20:30 PM|HB264|H|SPECIAL ORDER TO MAR16; HJ37,P905|03/11/1993 01:20:30 PM",
         "1993|0002|03/16/1993 03:57:52 PM|HB264|H|RETURNED TO CONSENT CALENDAR, REP MCGOVERN; HJ40,P958|03/16/1993 03:57:52 PM",
         "1993|0002|03/16/1993 06:44:50 PM|HB264|H|ITL REPORT ADOPTED; HJ40,P977|03/16/1993 06:44:50 PM"],
-        "In House committee", ("House",)),
+        "House Committee", ("House",)),
     # A placing CALENDAR_RE does not read, "for Mar 24 CC (vote 18-0)", and
     # a removal it does: the rule is said beside the removal, ahead of it.
     # Docket_db_2009-2010.txt lines 411-419.
@@ -10970,7 +10973,7 @@ _DOCKET_CONSENT_OFF = {
         "2009|0050|03/24/2009 10:27:20 AM|HB522|H|Removed from Consent Calendar (Rep Vaillancourt); HJ 25, PG.827|03/24/2009 10:27:20 AM",
         "2009|0050|03/24/2009 10:31:02 PM|HB522|H|Special Ordered to Mar 25 Without Objection; HJ 25, PG.914|03/24/2009 10:31:02 PM",
         "2009|0050|03/26/2009 06:11:16 PM|HB522|H|Inexpedient to Legislate: MA VV; HJ 29, PG.1191|03/26/2009 06:11:16 PM"],
-        "In House committee", ("House",)),
+        "House Committee", ("House",)),
     # Another calendar: the House's of conference reports, which HB 1123's
     # passed the House from; and the Senate's list of bills to lay on the
     # table together, on a measure no committee reported.
@@ -10980,7 +10983,7 @@ _DOCKET_CONSENT_OFF = {
         "1998|2128|02/12/1998 12:18:30 PM|HB1123|H|PASSED WITH AM; HJ15,P739 + 770|02/12/1998 12:18:30 PM",
         "1998|2128|06/18/1998 06:20:00 PM|HB1123|H|REMOVED FROM CONF COMM CONSENT CAL, REQ REP MOCK; HJ60,P2219|06/18/1998 06:20:00 PM",
         "1998|2128|06/18/1998 06:21:01 PM|HB1123|H|CONF COMM REPORT ADOPTED VV; HJ60,P2227|06/18/1998 06:21:01 PM"],
-        "In House committee", ()),
+        "House Committee", ()),
     ("2019-2020", "CACR19"): ([
         "2020|2962|1/8/2020 12:00:00 AM|CACR19|S|To Be Introduced 01/08/2020 and Referred to Election Law and Municipal Affairs; SJ 2|1/8/2020 12:00:00 AM",
         "2020|2962|6/17/2020 12:00:00 AM|CACR19|S|Removed from the Consent List; 06/16/2020; SJ 8|6/17/2020 12:00:00 AM",
@@ -11209,8 +11212,8 @@ def _rows_read_on_the_second_pass(N, B):
             c = next((c for c in ("House", "Senate") if x in (off[c], back[c])), None)
             if not c:
                 continue
-            if not lab.startswith((f"In {c} committee", f"On the {c} floor",
-                                   "Committee of conference")):
+            if not lab.startswith((f"{c} Committee", f"On the {c} Floor",
+                                   "Committee of Conference")):
                 bad.append(f"{key[1]} of {key[0]}: {x!r} is under {lab!r}")
             if not any(y == rule for _l, y in told[:i]):
                 bad.append(f"{key[1]} of {key[0]}: {x!r} comes before the rule, or without it")
@@ -11384,7 +11387,7 @@ def _the_ending_the_history_does_not_tell(N, B):
         {"gen_status": "SENATE", "house_status": "CONFERENCE REPORT ADOPTED",
          "senate_status": "NONCONCURRED"})
     if (status, label, text, bare) != (
-            rejected, "How it ended",
+            rejected, "How It Ended",
             "On June 26, 2001 the Senate rejected the conference report, 11\u201313. A conference "
             "report has to be adopted by both chambers, so the bill went no further.", None):
         bad.append(f"SB95 of 2001: {status!r} {text!r} {bare!r}")
@@ -11528,7 +11531,7 @@ def _held_where_build_bills_makes_the_record(N, B):
         # The paragraph of a finished term, asked for with the journey.
         r, p = row[("1989-1990", "HB462")], page("1989-1990", "HB462")
         is_("HB462 of 1989", (r["status"], p["stages"][-1]["label"], p["stages"][-1]["text"]),
-            ("Died when the session ended", "How it ended", B.ENDED_UNFINISHED))
+            ("Died when the session ended", "How It Ended", B.ENDED_UNFINISHED))
         r, p = row[("1997-1998", "SB437")], page("1997-1998", "SB437")
         is_("SB437 of 1998", (r["status"], p["stages"][-1]["text"]),
             ("Died when the session ended", B.CONF_REPORT_NOT_TAKEN_UP.format(chamber="House")))
@@ -11537,7 +11540,7 @@ def _held_where_build_bills_makes_the_record(N, B):
         # The ending the history does not tell.
         r, p = row[("2001-2002", "SB95")], page("2001-2002", "SB95")
         is_("SB95 of 2001", (r["status"], p["stages"][-1]["label"]),
-            ("Died when the conference report was rejected", "How it ended"))
+            ("Died when the conference report was rejected", "How It Ended"))
         if "the Senate rejected the conference report, 11\u201313" not in p["stages"][-1]["text"]:
             bad.append(f"SB95's ending: {p['stages'][-1]['text']!r}")
         if any("untold" in s or "_untold" in s for s in p["journey"]["steps"]):
@@ -11545,8 +11548,8 @@ def _held_where_build_bills_makes_the_record(N, B):
         # The stage of a bill a chamber ended.
         r, p = row[("1993-1994", "HB613")], page("1993-1994", "HB613")
         is_("HB613 of 1993", (r["status"], r["passage"]), ("Killed", "Hpx-x"))
-        if any(s["label"] == "With the governor" for s in p["stages"]):
-            bad.append("HB613 of 1993's page has a stage headed With the governor")
+        if any(s["label"] == "With the Governor" for s in p["stages"]):
+            bad.append("HB613 of 1993's page has a stage headed With the Governor")
         # And it was not enrolled: no stage says so, the row says why, and
         # the page's one-string history is the stages' text.
         for term, bill, ended in (("1993-1994", "HB613", "Senate"), (cur, "SB286", "Senate")):
@@ -12251,7 +12254,7 @@ def _referrals_unmade_on_disk(CN):
                 if busy or not c:
                     continue
                 for s in stages:
-                    if s.get("label") != f"In {chamber} committee — {c}":
+                    if s.get("label") != f"{chamber} Committee ({c})":
                         continue
                     told = [x for x in _SENTENCE.split(s.get("text") or "") if x]
                     if told and all(re.match(r"On .+ the bill was referred to the |The (?:House|Senate) "
@@ -12290,10 +12293,10 @@ def _referrals_unmade_on_disk(CN):
                     continue
                 nxt = stages[i + 1]
                 prior = next((x.get("label") for x in reversed(stages[:i])
-                              if (x.get("label") or "").startswith(f"In {chamber} committee")), "")
+                              if (x.get("label") or "").startswith(f"{chamber} Committee")), "")
                 label = nxt.get("label") or ""
-                if (label.startswith(f"In {chamber} committee — ") and label == prior
-                        and label != f"In {chamber} committee — {m.group('c')}"):
+                if (label.startswith(f"{chamber} Committee (") and label == prior
+                        and label != f"{chamber} Committee ({m.group('c')})"):
                     told = [x for x in _SENTENCE.split(nxt.get("text") or "") if x]
                     if told and all(_REPORT_SAID.match(x) for x in told):
                         back.append(f"{bill} of {term}: {label}")
@@ -15739,7 +15742,9 @@ def _bills_html():
         # can reach, so this one sits outside the card's expand button. What it
         # is called changed once already; anchoring on the tag rather than the
         # wording is what the check is actually about.
-        "detail link outside the button": '<a class="detail" href="bill/',
+        # Since 10 October 2026 the number is that link (C5), and the title
+        # is the button; the corner arrow went with the button it sat beside.
+        "detail link outside the button": '<a class="cnum" href="${esc(c.href)}">',
         "page heading": '<h1 class="sr">',
         # The player opens AT the boundary, not before it. The old lead was
         # five minutes for an estimate, which put the reader in the middle of
@@ -16356,7 +16361,9 @@ def _bill_text_in_its_tab():
         "the Bill Text pane no longer draws the text of a bill with no version "
         "history, so it opens empty in the bills list")
     i = t.find("const btsec=")
-    assert i > 0 and "hasVersionIndex(d)" in t[i:i + 200], (
+    # Since 10 October 2026 nothing is drawn under the tabs at all: the
+    # text is the Bill Text tab's (option E, the summary taking its tab).
+    assert i > 0 and (t[i:].startswith('const btsec="";') or "hasVersionIndex(d)" in t[i:i + 200]), (
         "the text below the tabs is drawn for bills whose tab already holds it, "
         "so a one-printing bill's text appears twice on its page")
     return "ok", "one printing: text in the tab; a version history: the viewer in the tab"
@@ -16425,6 +16432,33 @@ def _class_collisions():
         # alike, and bills.html's header carries written out (Polish 1, 9
         # October 2026); _icons_named holds every one to the component
         "icon",
+        # THE RECORD PAGES' COMPONENTS (Polish 2, ws/records, 10 October
+        # 2026), each written in components.js and components.py alike and
+        # held to one answer by _components_agree, so a session day built
+        # ahead draws what app.js draws: a bill as a card (bill_card), its
+        # byline's dot and the list the cards stand in
+        "chead", "crow", "cnum", "cyear", "ctitle", "cmeta", "cline", "cbody", "cdot",
+        "cards",
+        # a bill named in words (bill_mention) and as a row (bill_row)
+        "bmention", "byr", "brow", "brnum", "brtitle", "brline",
+        # the dated rail (rail_html) and its drawn wave
+        "rail", "dated", "wave",
+        # a person in a sentence (person_link)
+        "psent",
+        # the record head (record_head) and its note
+        "rtrail", "rtop", "rh1", "ryear", "ry", "rline", "rfacts", "rrail", "racts", "rnote",
+        # the W4 sections (section) and the run of them
+        "w4", "w4h", "w4b", "w4s",
+        # a document's row (doc_row)
+        "docof",
+        # a vote in the approved words: its amendment's number and the
+        # record's own words where they differ
+        "ramd", "rcrec",
+        # a recording's moment and its player, on a committee's meeting and
+        # a session day alike, and the fold's caret
+        "jump", "mjumps", "pbar", "pwho", "tolnote", "cmcaret",
+        # Share, among the record head's actions on every record page
+        "pshare", "sharestate",
     }
     here = Path(".")
     # The components draw on both sides by design: components.js with the
@@ -20616,7 +20650,10 @@ _NOT_MARKS = re.compile(r"^--(?:rule|rule-2|paper|surface|wash|shadow|film|film-
 # ink in the same rule (app.js JMARK.f, the ARROW svg). A rule naming several
 # selectors draws a mark only where every one of them is named here.
 _COLOR_DRAWS_A_MARK = {".jl .j-istudy .jg": ("JMARK", "s", "WAVE"),
-                       ".jl .j-ifuture .jg": ("JMARK", "f", "ARROW")}
+                       ".jl .j-ifuture .jg": ("JMARK", "f", "ARROW"),
+                       # a committee's meeting: the interim study report it
+                       # recommended, in the same arrow (app.js actSaid)
+                       ".mrec .mmark": ("ACTMARK", "rec", "ARROW")}
 
 
 def _css_selectors(sel):
@@ -20792,9 +20829,14 @@ def _token_pairs_measure():
     # A colour read as a mark's is a mark's only while the rule is there and
     # what it colours is still the drawing named (_COLOR_DRAWS_A_MARK).
     sels = {s for _, sel, _, _ in _css_rules(text) for s in _css_selectors(sel)}
-    js = Path("src/pages/app.js").read_text(encoding="utf-8") if Path("src/pages/app.js").exists() else ""
+    # app.js and components.js: the wave is the dated rail's, which
+    # components.js draws in both languages since 10 October 2026, and app.js
+    # names it again (const WAVE=RL_WAVE), which is followed to its drawing.
+    js = "\n".join(Path(f).read_text(encoding="utf-8")
+                   for f in ("src/pages/app.js", "src/pages/components.js") if Path(f).exists())
     for sel, (table, key, svg) in _COLOR_DRAWS_A_MARK.items():
-        drawing = re.search(rf"\bconst {svg}\s*=\s*((?:'[^']*'\s*\+?\s*)+);", js)
+        alias = re.search(rf"\bconst {svg}\s*=\s*([A-Z_][A-Z0-9_]*)\s*;", js)
+        drawing = re.search(rf"\bconst {alias.group(1) if alias else svg}\s*=\s*((?:'[^']*'\s*\+?\s*)+);", js)
         if sel not in sels:
             bad.append(f"{sel} is no longer a rule of app.css; take it off _COLOR_DRAWS_A_MARK")
         elif not re.search(rf"\bconst {table}\s*=\s*\{{[^}}]*\b{key}\s*:\s*{svg}\b", js):
@@ -20892,7 +20934,9 @@ def _rings_edges_opacity():
 
     bad = []
     # S5
-    for sel in (".chead:focus-visible", ".fhead:focus-visible", ".pstub:focus-visible"):
+    # A card's control is its title's button since 10 October 2026 (C5),
+    # where it was the whole head.
+    for sel in (".ctitle:focus-visible", ".fhead:focus-visible", ".pstub:focus-visible"):
         got = rules(sel)
         off = [m for b in got for m in re.findall(r"outline-offset:\s*(-?\d+)px", b)]
         if not off or int(off[-1]) >= 0:
@@ -21099,7 +21143,7 @@ def _audit_minor(BSP, seating, BP):
         bad.append("the block that makes a phone's controls 44px is gone")
     else:
         for sel in (".cmbtn", ".calviews button", ".calfold", ".calcat", "#sort",
-                    ".bfilt select", ".docket summary", ".detail", ".offhow a"):
+                    ".bfilt select", ".docket summary", "a.cnum::before", ".offhow a"):
             if not re.search(r"(^|[,\s}])" + re.escape(sel) + r"\s*[,{][^}]*44px", phone.group(1)):
                 bad.append(f"{sel} is not held to 44px on a phone")
             base = [m.start() for m in re.finditer(r"(^|\n)" + re.escape(sel) + r"\{", css)]
@@ -21164,14 +21208,19 @@ def _audit_minor(BSP, seating, BP):
             bad.append(f"{what}'s player does not take its title from the button it replaces")
 
     # M20
+    # Since 10 October 2026 a member the name can mean is the person chip
+    # (D14), which needs no comma; a name left as words keeps its own.
     class _M:
+        by_slug = {"x": {"label": "Rep. Pat Hunt (R - Hills 1)", "party": "R"}}
+
         def slug(self, body, name):
             return "x" if name == "Hunt" else ""
     row = BSP.members_row("H", ["Hunt", "Roy", "Muns"], _M(), lambda s: s)
-    if row != ('<span class="swho1"><a href="legislator/x.html">Rep. Hunt</a>,</span> '
+    if row != ('<span class="swho1"><span class="mchip p-R"><a href="legislator/x.html">'
+               'Rep. Pat Hunt <span class="mtag">(R - Hills 1)</span></a></span></span> '
                '<span class="swho1"><span>Rep. Roy</span>,</span> '
                '<span class="swho1"><span>Rep. Muns</span></span>'):
-        bad.append("a speaker line's names are not each one item with its comma: " + row[:160])
+        bad.append("a speaker line's names are not each one item with its comma: " + row[:260])
     page = _paths.locate("build_session_pages.py").read_text(encoding="utf-8")
     if re.search(r'", "\.join\(member_html', page):
         bad.append("build_session_pages.py joins members with a bare comma again, which a "
@@ -23083,23 +23132,23 @@ try { scope.render(); } catch (e) {
   process.exit(1); }
 const focusHtml = document.querySelector("#results").innerHTML;
 scope.setFocused(null);
-if (/class="detail"/.test(focusHtml)) {
-  console.log("ARROW: the focused view still draws a corner link. It points at "
-              + "the standalone page for the same bill, which from a reader's "
+// THE NUMBER IS THE LINK (C5, 10 October 2026): a card's number and year lead
+// to the bill's own page, where the corner arrow did. The bill's own page is
+// its record head, with no card number leading to where the reader is.
+if (/class="cnum" href=/.test(focusHtml)) {
+  console.log("ARROW: the focused view still draws the card's number as a link. It "
+              + "points at the standalone page for the same bill, which from a reader's "
               + "seat is the page they are already on"); process.exit(1); }
-if (!/class="detail"/.test(listHtml)) {
+if (!/<a class="cnum" href="bill[/]2026[/]hb1442[.]html">HB 1442/.test(listHtml)) {
   console.log("ARROW: the search list drew no link to a standalone page");
   process.exit(1); }
 // The tooltip promised "no JavaScript" until the standalone page became this
 // same app with one bill open. It is the only place a member of the public
 // was told that, and it sat on every card in the list.
-if (/class="detail"[^>]*title="[^"]*(no JavaScript|without JavaScript)/i.test(listHtml)) {
+if (/title="[^"]*(no JavaScript|without JavaScript)/i.test(listHtml)) {
   console.log("ARROW: the tooltip still promises the page needs no JavaScript, "
     + "which it has since it became a shell for this renderer");
   process.exit(1); }
-if (!/class="detail"[^>]*title="[^"]{10,}"/.test(listHtml)) {
-  console.log("ARROW: the link has no title, so hovering it says nothing about "
-              + "where it goes"); process.exit(1); }
 try { scope.render(); } catch (e) {
   console.log("RENDER unfocused " + e.constructor.name + ": " + e.message);
   process.exit(1); }
@@ -23163,7 +23212,7 @@ scope.setFocused(null); box.value = ""; go.fire("click");
 // nothing here had ever called it.
 var detail = {
   next_step:"Passed one chamber", status_source:"General Court docket",
-  notes:[], stages:[{label:"In House committee",text:"It was introduced."}],
+  notes:[], stages:[{label:"House Committee",text:"It was introduced."}],
   narrative:"It was introduced.",
   events:[{date:"2026-03-06",type:"floor",body:"H",cancelled:false,
            raw:"Ought to Pass: MA RC 214-119 03/06/2026",action:"Ought to Pass",
@@ -23875,8 +23924,13 @@ def _app_js(expr, names=("renderHearings", "archivedNote")):
             encoding="utf-8")
         r = _run(["node", "go.js"], cwd=root, capture_output=True, text=True,
                  timeout=60)
+        # The error's own line first: node prints the line that threw and
+        # its message above the stack, which is all the last 300 characters
+        # held, so a failure read "js/loader:1651:32)" and nothing else.
+        said = (r.stderr or r.stdout or "").strip()
         assert r.returncode == 0 and "@@" in (r.stdout or ""), (
-            "app.js did not run under node: " + (r.stderr or r.stdout or "")[-300:])
+            "app.js did not run under node: " + said[:400]
+            + (" ... " + said[-200:] if len(said) > 600 else said[400:]))
         return json.loads(r.stdout.rsplit("@@", 1)[1])
     finally:
         shutil.rmtree(root, ignore_errors=True)
@@ -25244,14 +25298,15 @@ def _rail_phone(css):
         pad = float(root.get(t.group(1), 0)) if t else float((re.match(r"[\d.]+", v) or ["0"])[0])
     back = re.search(r"\.card:not\(\.focus\) \.chead \.rail\.dated\{width:calc\(100% \+ 46px "
                      r"- var\(--sp-6\)\)", css)
+    # SINCE 10 OCTOBER 2026 THE HEAD PADS ALIKE ON BOTH SIDES (C5): the corner
+    # link went, the number being the link, and its 46px with it.
+    alike = re.search(r"(?m)^\.chead\{padding:var\(--sp-6\);", css)
     # On a phone the rail takes half the card's padding either side
     # (8 October 2026), 8px of the head's 16 on each hand.
     phone = re.search(r"@media \(max-width:30em\)\{\s*\.chead \.rail\.dated\{margin-inline:"
-                      r"calc\(-1 \* var\(--(sp-\d+)\)\)\}\s*\.card:not\(\.focus\) \.chead "
-                      r"\.rail\.dated\{width:calc\(100% \+ 46px\);margin-left:calc\(-1 \* "
-                      r"var\(--\1\)\)\}", css)
+                      r"calc\(-1 \* var\(--(sp-\d+)\)\)\}", css)
     take = 2 * float(root.get(phone.group(1), 0)) if phone else 0
-    return 334 - 16 - (16 if back else 46) + take, pad
+    return 334 - 16 - (16 if (back or alike) else 46) + take, pad
 
 
 def _rail_drawn(rail):
@@ -25884,8 +25939,13 @@ def _rail_study_and_table_marks(N, B):
     js = Path("src/pages/app.js").read_text(encoding="utf-8")
     css = Path("src/pages/app.css").read_text(encoding="utf-8")
     flat = re.sub(r"/\*.*?\*/", "", css, flags=re.S)
-    mk = re.search(r'const RAILMARK=\{p:"\\u2713", x:"\\u2715", h:"", "-":"", s:WAVE, t:""\};', js)
-    if not (mk and re.search(r"const WAVE='<svg class=\"wave\"[^;]*<path ", js)):
+    # The rail's marks are components.js's since 10 October 2026 (RL_MARK,
+    # RL_WAVE), which draws the dated rail in both languages; app.js's WAVE
+    # is the same drawing.
+    cjs = Path("src/pages/components.js").read_text(encoding="utf-8")
+    mk = re.search(r'const RL_MARK=\{p:"(?:\\u2713|✓)",x:"(?:\\u2715|✕)",s:RL_WAVE\};', cjs)
+    if not (mk and re.search(r"const RL_WAVE='<svg class=\"wave\"[^;]*<path ", cjs)
+            and "const WAVE=RL_WAVE;" in js):
         bad.append("the rail's marks are not check, cross and a drawn wave, with the pause's bars drawn by CSS")
     # The bars in rem, as the disc is, so they grow with it (the merge with
     # option E's foundation): 2px at the browser's default text size.
@@ -26299,7 +26359,7 @@ def _rail_endings(N, B):
         if not line("HB1179", "ifuture", r'<svg class="arrow"[^>]*><path [^>]*/></svg>',
                     r'Interim study report: recommended for legislation in 1997, '
                     r'<span class="tally">17–0</span>; filed again '
-                    r'as <a href="bill/1997/hb154.html">HB 154 of 1997</a>'):
+                    r'as <a class="bmention" href="bill/1997/hb154.html">HB 154 of 1997</a>'):
             bad.append(f"HB 1179 of 1996's report does not link HB 154 of 1997: "
                        f"{got['HB1179']['how'][-500:]!a}")
         said = (re.search(r'aria-label="([^"]*)"', got["SB570"]["card"]) or [None, ""])[1]
@@ -26897,7 +26957,9 @@ process.stdout.write("\\n@@" + JSON.stringify(out));
         shutil.rmtree(root, ignore_errors=True)
 
     def rail_of(html):
-        m = re.search(r'<span class="rail dated"[^>]*aria-label="([^"]*)"[^>]*>(.*?)</span>\s*</button>',
+        # The rail closes the card's head, and the record head's rail its
+        # own box, since 10 October 2026 (C5, C6): no longer a button.
+        m = re.search(r'<span class="rail dated"[^>]*aria-label="([^"]*)"[^>]*>(.*?)</span>\s*</div>',
                       html, re.S)
         assert m, "the bill's own view drew no dated rail"
         return m.group(1), re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", m.group(2))).strip()
@@ -26946,7 +27008,8 @@ process.stdout.write("\\n@@" + JSON.stringify(out));
             f"{bid} still draws the status page's per-chamber rows")
         # Across the panel, not in the value column: beside the analysis that
         # column left the words about 66px (24 September).
-        assert '<tr class="wide"><td colspan="2"><ul class="jl">' in g["summary"], (
+        assert '<section class="w4" id="journey"><h2 class="w4h">How It Got Here</h2>' \
+               '<div class="w4b"><ul class="jl">' in g["summary"], (
             f"{bid}'s How it got here is drawn in the value column, not across the panel")
         # ONE RAIL (5 October 2026): the list card, closed and with nothing
         # fetched, draws the rail the bill's own view draws, from the index
@@ -26966,7 +27029,7 @@ process.stdout.write("\\n@@" + JSON.stringify(out));
         # THE DAY ALONE under every stop, on the page, the card and the card
         # opened: a word back under any of them fails here as well as above.
         for where in ("page", "card", "opened"):
-            m = re.search(r'<span class="rail dated".*?</span>\s*</button>', g[where], re.S)
+            m = re.search(r'<span class="rail dated".*?</span>\s*</div>', g[where], re.S)
             under = [re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", s)).strip()
                      for s in re.findall(r"<small>(.*?)</small>", m.group(0) if m else "", re.S)]
             words = [u for u in under if not re.fullmatch(r"[A-Z][a-z]{2} \d{1,2}, \d{4}", u)]
@@ -27118,7 +27181,7 @@ def _site_fixture(root):
                               "raw": "Inexpedient to Legislate, RC 16Y-8N, "
                                      "MA; 02/19/2026"}]},
         "HB1442": {"narrative": "It was introduced.",
-                   "stages": [{"label": "In House committee", "text": "It was introduced."}],
+                   "stages": [{"label": "House Committee", "text": "It was introduced."}],
                    "notes": [], "unrecognised": [],
                    "events": [{"date": "2026-03-06", "type": "floor", "body": "H",
                                "cancelled": False, "action": "Ought to Pass",
@@ -28174,8 +28237,12 @@ def _chain():
                 f"the directory does not link the list of {name} session days")
             for d in on_disk[b]:
                 day = (sess / b / f"{d}.html").read_text(encoding="utf-8")
-                up = re.findall(r'<div class="wkpage sesspage"><p class="crumb">(.*?)</p><h1>',
-                                day, re.S)
+                # THE RECORD HEAD'S TRAIL (C6, 10 October 2026), where the
+                # line above the heading was; the week on the Calendar is in
+                # the line between the previous and next days.
+                up = re.findall(r'<div class="wkpage sesspage"><header class="rhead rh-day">'
+                                r'<nav class="rtrail"[^>]*>(.*?)</nav>', day, re.S)
+                mid = re.findall(r'<span class="wkmid">(.*?)</span>', day, re.S)
                 assert len(up) == 1 and f'href="directory/{lst}#y{d[:4]}"' in up[0], (
                     f"session/{b}/{d} does not lead up to the list of {name} "
                     "session days, at its year, in a line above its heading")
@@ -28184,7 +28251,7 @@ def _chain():
                     f"session/{b}/{d} leads to")
                 y, w, _ = _date.fromisoformat(d).isocalendar()
                 wk = f"{y}-W{w:02d}"
-                assert (f'href="calendar/{wk}"' in up[0]) == (wk in weeks), (
+                assert mid and (f'href="calendar/{wk}"' in mid[0]) == (wk in weeks), (
                     f"session/{b}/{d} {'does not link' if wk in weeks else 'links'} "
                     f"its week on the Calendar, {wk}, which the calendar "
                     f"{'wrote' if wk in weeks else 'did not write'}")
@@ -28992,10 +29059,13 @@ def _session_bill_term(BSP, SD, shell):
         wrong = [h for h in hrefs if not h.startswith("bill/2016/")]
         assert not wrong, ("a 2016 sitting links to another term's bill: "
                            + ", ".join(wrong))
-        assert hrefs.count("bill/2016/hb1102.html") == 2, (
-            "HB 1102's heading and its roll call pointer should both reach "
-            f"bill/2016/hb1102.html; the links are {hrefs}")
-        assert 'class="cbn" href="bill/2016/hb1300.html"' in html, (
+        # The card's number is HB 1102's one link since 10 October 2026: its
+        # roll call is drawn with the Votes tab's own display, where a line
+        # pointed at the bill's page (v2: no new link).
+        assert hrefs.count("bill/2016/hb1102.html") == 1, (
+            "HB 1102's card should reach bill/2016/hb1102.html, once; "
+            f"the links are {hrefs}")
+        assert 'class="brnum" href="bill/2016/hb1300.html"' in html, (
             "the consent-calendar line does not reach the 2016 HB 1300")
         assert "relative to the 2016 bill" in html and \
             "research and development" not in html and \
@@ -29004,7 +29074,7 @@ def _session_bill_term(BSP, SD, shell):
         assert "/bills#" not in html and "hb9999" not in html, (
             "a bill its own term's index does not hold was linked anyway; "
             "it must be printed without a link")
-        assert '<span class="sbill">HB 9999</span>' in html, (
+        assert '<span class="cnum">HB 9999</span>' in html, (
             "the unindexed bill's number is not printed as plain text")
 
         # One number from two terms on one day is two bills: the House
@@ -29015,7 +29085,7 @@ def _session_bill_term(BSP, SD, shell):
         assert len(two.bills) == 2, "two terms' HR 1 counted as one bill"
         html2, _ = BSP.render(two, blank, titles, years,
                               BSP.Members(root / "site"), shell.E)
-        assert html2.count('<article class="sitem">') == 2 and \
+        assert html2.count('<article class="card"') == 2 and \
             "bill/2015/hr1.html" in html2 and "bill/2025/hr1.html" in html2, (
             "HR 1 of two terms was drawn as one card, or linked to one term")
         return "ok", ("heading, consent line and roll call pointer all reach "
@@ -29884,9 +29954,10 @@ def _session_consent_removed_anywhere(JD, SD, BSP):
         assert sorted(i.bill for i in day.items if i.consent) == ["HB522", "HB605"], (
             "the fixture's two bills are not both on the day's consent list")
         page = BSP.render(day, found, {}, {}, {}, _html.escape)[0]
-        cons = page.split("On the consent calendar", 1)[-1].split("</section>", 1)[0]
-        listed = cons.split("</p>", 1)[-1]
-        assert "HB 522" in listed and "HB 605" not in listed and "HB 605-FN was taken off" in cons, (
+        cons = page.split('<section class="w4" id="consent">', 1)[-1].split("</section>", 1)[0]
+        listed = cons.split("<details", 1)[-1]
+        assert "HB 522" in listed and "HB 605" not in listed and \
+            "HB 605-FN was removed from the consent calendar" in cons, (
             "the 14 April 1999 page still lists HB 605 as adopted without debate: "
             + re.sub(r"<[^>]+>", " ", cons)[:200])
         assert "HB 9999" not in page, "a stray removal put a bill into the consent note"
@@ -29917,8 +29988,8 @@ def _session_consent_removed_anywhere(JD, SD, BSP):
         assert sorted(i.bill for i in day.items if i.consent) == ["HB522"], (
             "HB 605's recommittal, read whole, is a consent item")
         page = BSP.render(day, found, {}, {}, {}, _html.escape)[0]
-        cons = page.split("On the consent calendar", 1)[-1].split("</section>", 1)[0]
-        assert "HB 605-FN was taken off" in cons and "HB 9999" not in cons, (
+        cons = page.split('<section class="w4" id="consent">', 1)[-1].split("</section>", 1)[0]
+        assert "HB 605-FN was removed from the consent calendar" in cons and "HB 9999" not in cons, (
             "the 14 April 1999 page does not say HB 605 was taken off the consent "
             "calendar, which its own docket line and the journal both say: "
             + re.sub(r"<[^>]+>", " ", cons)[:200])
@@ -30180,7 +30251,11 @@ def _session_speech_before_its_motion(N, JD, SD, BSP):
     finally:
         shutil.rmtree(root, ignore_errors=True)
     txt = re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", page))
-    claimed = re.findall(r"Spoke (for|against) the motion (.*?)(?= Spoke| A roll call| Taken| The motion| Also|$)", txt)
+    # Each side's names are their own paragraph (.sspoke), read to its end:
+    # what follows one is the next motion's card, whatever its words.
+    claimed = [(side, re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", who)).strip())
+               for side, who in re.findall(r'<p class="sspoke"><span class="slab">Spoke '
+                                           r'(for|against) the motion</span>(.*?)</p>', page)]
     assert claimed == [("against", "Rep. Kurk")], (
         f"HB 110's page of 10 February 1999 credits {claimed}: " + txt[:500])
     also = re.search(r"Also spoke during this bill (.*?) the record does not say", txt)
@@ -31990,12 +32065,12 @@ def _docket_1999_clauses(N, V, E, B):
         in told["HB621"], told["HB621"]
     # A committee's amendment voted between two floor questions stays under
     # the floor's heading: HR 10 was never in committee.
-    assert [lab for lab, _t in stages["HR10"]] == ["On the House floor"] and \
+    assert [lab for lab, _t in stages["HR10"]] == ["On the House Floor"] and \
         "The committee's amendment (4110) was adopted on a voice vote" in told["HR10"], (
         f"HR 10's Finance amendment of 13 April 2000 is under {stages['HR10']}")
     # And under the floor's where the committee's amendment comes first on the
     # line: it was voted on the floor (the launch audit of 7 October 2026).
-    assert [lab for lab, _t in stages["SB324"]] == ["On the House floor"], (
+    assert [lab for lab, _t in stages["SB324"]] == ["On the House Floor"], (
         stages["SB324"])
     return "ok", ("HB 999's amendment 2229 is adopted in two parts and listed adopted; SB 303's "
                   "section 5 claims nothing for 4383; HB 1548's veto, HB 763's concurrence, "
@@ -32553,8 +32628,9 @@ def _session_clause_names_question(SD, BSP):
     cons = SD.Item("HB189", "2013-2014", {"type": "floor", "body": "H", "action": "Ought to Pass",
                                           "motion": "MA", "vote_kind": "VV", "raw": "OTP"}, 0)
     note = BSP.consent_html([cons], ["HB679"], {}, {}, _html.escape)
-    assert "HB 679 was taken off the calendar." in note and "debated" not in note and \
-        "request" not in note, f"the consent calendar's note says more than the record: {note}"
+    assert "HB 679 was removed from the consent calendar." in note and "debated" not in note \
+        and "request" not in note and "told below" not in note, (
+            f"the consent calendar's note says more than the record: {note}")
     return "ok", ("veto results read from the result words; a count bound to its own "
                   "clause; a Senate amendment row's third reading and a motion to divide "
                   "drawn as themselves; a counted division never a voice vote; no ballots "
@@ -32612,19 +32688,19 @@ def _consent_rereferral_not_study(N, SD, BSP):
             it = SD.Item(bill, term, e, 0)
             it.consent = True
             page = BSP.consent_html([it], [], {}, {(term, bill): int(term[5:])}, _html.escape)
-            heads = re.findall(r'<h3 class="slab">(.*?) &mdash; \d+</h3>', page)
+            heads = re.findall(r'<h3 class="sch">(.*?) <span>\d+</span></h3>', page)
             got[(bill, e.get("date"))] = heads
-    want = {("SB39", "2025-02-13"): ["Sent back to committee"],
-            ("SB18", "2015-02-12"): ["Sent back to committee"],
-            ("HB561", "2026-01-07"): ["Sent to interim study"]}
+    want = {("SB39", "2025-02-13"): ["Sent Back to Committee"],
+            ("SB18", "2015-02-12"): ["Sent Back to Committee"],
+            ("HB561", "2026-01-07"): ["Sent to Interim Study"]}
     for k, heads in want.items():
         if got.get(k) != heads:
             bad.append(f"{k[0]} on {k[1]} is listed under {got.get(k)}, not {heads}")
-    if any(h == ["Sent to interim study"] for (b, d), h in got.items()
+    if any(h == ["Sent to Interim Study"] for (b, d), h in got.items()
            if (b, d) in (("SB39", "2025-02-13"), ("SB18", "2015-02-12"))):
         bad.append("a Senate re-referral is listed as sent to interim study")
-    for words, head in (("Rerefer to Interim Study", "Sent to interim study"),
-                        ("Re-Refer to Committee", "Sent back to committee")):
+    for words, head in (("Rerefer to Interim Study", "Sent to Interim Study"),
+                        ("Re-Refer to Committee", "Sent Back to Committee")):
         it = SD.Item("SB1", "2025-2026", {"type": "floor", "body": "S", "action": words,
                                           "motion": "MA", "vote_kind": "VV", "raw": words}, 0)
         if BSP.short_outcome(it) != head:
@@ -33478,7 +33554,7 @@ def _session_rollcalls_reconciled(SD, BSP):
         rules.items, rules.others)
     html, payloads = BSP.render(rules, {}, {}, {}, BSP.Members(Path("no-such-site")), str)
     lead = BSP._lead(rules, {}, "2025-01-08")
-    assert "Votes on no bill" in html and len(payloads) == 1 and lead.startswith("1 roll call."), (
+    assert "Votes on No Bill" in html and len(payloads) == 1 and lead.startswith("1 roll call."), (
         lead, html[:300])
     html, _ = BSP.render(shared, {}, {}, {}, BSP.Members(Path("no-such-site")), str)
     assert html.count("One roll call on 2 bills") == 2, html[:600]
@@ -33967,7 +34043,9 @@ def _session_speeches_by_the_record(SD, BSP):
     days = _sitting_fixture(SD, narr, rolls)
 
     def spoke(html, action):
-        part = html.split(f"<b>{action}</b>", 1)[1].split('<div class="smotion">', 1)[0]
+        # The record's words are the block's data-motion since 10 October
+        # 2026, where the head says the approved words.
+        part = html.split(f'data-motion="{action}"', 1)[1].split('<div class="dvote"', 1)[0]
         return {side: set(re.findall(r"Rep\. (\w+)", m.group(1)))
                 for side, m in (("for", re.search(r"Spoke for the motion</span>(.*?)</p>", part)),
                                 ("against", re.search(r"Spoke against the motion</span>(.*?)</p>", part)))
@@ -34045,10 +34123,16 @@ def _session_rollcall_says_no_more(SD, BSP):
         "1999-2000": {"HB1406": [_rc('2000', 'H', 121, '2000-06-27', 'HB1406', "OVERRIDE GOVERNOR'S VETO", 19, 323, False, 228)]}}
     days = _sitting_fixture(SD, narr, rolls)
     jun = days[("S", "2012-06-27")]
+    # Since 10 October 2026 a roll call on a bill draws the bill's Votes
+    # tab's own display, its ballots by party (data-card), where a line sent
+    # the reader to the bill's page for them: the suspension, filed under no
+    # bill, draws its count and no ballots, with HB 1354's own card known.
     html, _ = BSP.render(jun, {}, {}, {("2011-2012", "HB1354"): "2012"},
-                         BSP.Members(Path("no-such-site")), _html.escape)
-    assert html.count("Who voted which way is on") == 1 and \
-        html.index("Who voted which way") > html.index("Inexpedient to Legislate"), (
+                         BSP.Members(Path("no-such-site")), _html.escape,
+                         ctx={"cards": {"2011-2012": {"HB1354": {"2012-S-120": 0}}}})
+    tied = re.findall(r'data-bill="2012/HB1354" data-card="(\d+)"', html)
+    assert tied == ["0"] and \
+        html.index('data-card="0"') > html.index("Inexpedient to Legislate"), (
         re.sub(r"<[^>]+>", " ", html)[:700])
     sb = [i for i in days[("S", "2021-04-01")].items if i.bill == "SB138"][0]
     assert not sb.consent and SD.rollcall_key(sb.rc)[2] == 278, (sb.consent, sb.rc)
@@ -34366,15 +34450,17 @@ def _session_unmarked_recess(SD, BSP, shell):
         (root / "site").mkdir()
         html, _ = BSP.render(day, narrative, {}, {}, BSP.Members(root / "site"), shell.E)
         import html as H
-        cards = {re.search(r'class="sbill">([^<]+)<', c).group(1):
+        cards = {re.search(r'class="cnum"[^>]*>([^<]+)<', c).group(1):
                  H.unescape(re.sub(r"<[^>]+>", " ", c))
-                 for c in html.split('<article class="sitem">')[1:]}
+                 for c in html.split('<article class="card"')[1:]}
         assert not re.search(r"Burt|Wright|Beaudoin|Spoke|spoke", cards["SB 389"]), (
             "SB 389's accession, done in recess with no debate, is drawn with the "
             f"speeches on its floor amendments: {cards['SB 389'][:300]!r}")
-        assert re.search(r"Floor Amendment #2013-2010h\(NT\).{0,80}?Spoke against the "
-                         r"motion\s+Rep\. William O'Brien\s*,\s*Rep\. Tucker\s+A roll call:\s+"
-                         r"166", cards["SB 148"]) \
+        # The vote first, its count, the record's words and then who spoke
+        # on it (10 October 2026).
+        assert re.search(r"166\D119\s+on a roll call\s+In the record: Floor Amendment "
+                         r"#2013-2010h\(NT\).{0,80}?Spoke against the motion\s+Rep\. "
+                         r"William O'Brien\s*,\s*Rep\. Tucker\s+Ought to Pass", cards["SB 148"]) \
             and cards["SB 148"].count("O'Brien") == 1 \
             and "Also spoke" not in cards["SB 148"], (
             "SB 148's speakers were pushed off the roll call they spoke on by the "
@@ -34384,7 +34470,7 @@ def _session_unmarked_recess(SD, BSP, shell):
             "recess" not in cards["SB 19"], (
             "a row the docket says was done in recess, or one placed only by the "
             "journal it cites, is not described as the record has it")
-        tail = html.split("Also printed in the permanent journal")
+        tail = html.split("Also Printed in the Permanent Journal")
         assert len(tail) == 2 and "I rise in support" in tail[1], (
             "a debate printed on SB 389 that day is drawn under its recess row "
             "rather than among the debates on no motion of the day")
@@ -38163,7 +38249,7 @@ require("./stub.js");
 const fs = require("fs");
 const src = fs.readFileSync("./page.js", "utf8");
 let scope;
-try { scope = (0, eval)(src + "; ({cmteLink, cmeta, renderCommitteeHead, setMeta: m => { META = m; }});"); }
+try { scope = (0, eval)(src + "; ({cmteLink, billByline, renderCommitteeHead, setMeta: m => { META = m; }});"); }
 catch (e) { console.log("LOAD " + e.message); process.exit(1); }
 // meta.json's map: the page's META, which a card's byline hands cmteLink, and
 // what cmteLink is handed here.
@@ -38179,7 +38265,7 @@ const out = {
   ia12: link("Senate Internal Affairs", "2011-2012"),
   wr: link("Senate Wildlife and Recreation", "2001-2002"),
   dre: link("Senate Development, Recreation and Environment", "1989-1990"),
-  card: scope.cmeta({term: "2007-2008", committees: [E, "House Commerce"]}),
+  card: scope.billByline(null, [E, "House Commerce"], "", "2007-2008", CODES),
   head: scope.renderCommitteeHead({code: "H26", name: "Criminal Justice and Public Safety",
     chamber: "H", names: [{name: "Corrections and Criminal Justice", years: "1993 to 1996"}]}),
   s03_1989: scope.renderCommitteeHead({code: "S03-1989",
@@ -38487,16 +38573,27 @@ def _former_heading(BL):
         head = drawn[mid]["head"]
         # Read as a reader reads it: the party and seat are a span of their
         # own (.ptag), kept whole where the heading wraps.
-        h1 = re.sub(r"<[^>]+>", "", between(head, "<h1>", "</h1>") or "")
-        if h1 != _in_full(name):
+        # THE RECORD HEAD (C6, 10 October 2026), as the approved prototype
+        # draws it: the title in full and the name in the heading, as the
+        # person wrote them ("Senator Sharon Carson"), and the party and seat
+        # in words on the line under it; the years in the facts, or in the
+        # note under the head of a member the record could not name.
+        h1 = re.sub(r"<[^>]+>", "", between(head, '<h1 class="rh1">', "</h1>") or "")
+        if h1 != re.sub(r"\s+\([^()]*\)$", "", _in_full(name)):
             bad.append(f"app.js heads member {mid} {h1!r}, not {_in_full(name)!r}")
-        line = re.sub(r"\s+", " ", between(head, '<p class="pformer">', "</p>") or "")
+        import html as _html
+        said = re.sub(r"\s+", " ", _html.unescape(re.sub(r"<[^>]+>", " ", head)))
+        if "(R - " in name and "Republican" not in (between(head, '<p class="rline">', "</p>") or ""):
+            bad.append(f"the line under member {mid}'s heading does not name the party: {said[:200]!r}")
         if mid in years:
-            if years[mid] not in line:
-                bad.append(f"app.js's line under member {mid}'s heading lost the years: {line!r}")
-            if ("Former member" in line) != (not name.startswith("Former ")):
-                bad.append(f"app.js's line under member {mid}'s heading reads {line!r}")
-        elif 'class="pformer"' in head:
+            # The first and the last year on record, whether as one span or,
+            # for a member who sat in both chambers, the record's own spans
+            # by chamber ("House, 1999–2002 · Senate, 2009–2024").
+            if not all(y in said for y in years[mid].split(" to ")):
+                bad.append(f"app.js's head of member {mid} lost the years: {said[:300]!r}")
+            if ("Former member" in said) != (not name.startswith("Former ")):
+                bad.append(f"app.js's head of member {mid} reads {said[:300]!r}")
+        elif 'class="rnote"' in head:
             bad.append(f"app.js marks sitting member {mid} as former")
         # The chip is how a roll call, a sponsor list and a roster draw them.
         chip = drawn[mid]["chip"]
@@ -39858,7 +39955,7 @@ s.IDX.push({id: "HB1442", n: "HB 1442", title: "a bill", status: "Passed", kind:
   committees: [], topic: "", sponsor: "", term: "2025-2026", year: "2026", hay: "hb1442"});
 s.setTerm("2025-2026");
 s.setFocused("HB1442"); s.render();
-out.back = (/<(\w+) class="backto"[^>]*>/.exec(document.querySelector("#results").innerHTML) || [""])[0];
+out.back = (/<a [^>]*data-back="1"[^>]*>/.exec(document.querySelector("#results").innerHTML) || [""])[0];
 const at = (standalone, referrer, length, state) => { window.GR_STANDALONE = standalone;
   document.referrer = referrer; history.length = length; history.state = state || null;
   return s.backIsSearch(); };
@@ -39949,7 +40046,9 @@ process.stdout.write("\n@@" + JSON.stringify(out));
         got = json.loads(r.stdout.rsplit("@@", 1)[1])
     finally:
         shutil.rmtree(root, ignore_errors=True)
-    assert got["back"] == '<a class="backto" href="/bills" data-back="1">', (
+    # The trail's first step, Bills, since 10 October 2026 (the record head,
+    # C6), where "Back to bill search" was above the card.
+    assert got["back"] == '<a href="/bills" data-back="1">', (
         "\"Back to bill search\" is drawn as " + (got["back"] or "nothing")
         + ": it must be a link to /bills, which is where its label says it goes")
     want = {"inSearch": True, "inSearchByItsAddress": False, "inSearchAtAPlaceOnIt": False,
@@ -40145,7 +40244,7 @@ def _chip_drawn():
     # Tabled in the yellow of the rail's pause (8 October 2026: graphite at
     # first, then the person's yellow), and a stage still moving in slate blue
     # from the same evening, so the two are not one ink.
-    want = {("s-done", "Died"), ("s-table", "Tabled"), ("s-active", "In committee"),
+    want = {("s-done", "Died"), ("s-table", "Tabled"), ("s-active", "In Committee"),
             ("s-done", "Withdrawn"), ("s-law", "Became Law"), ("s-veto", "Vetoed"),
             ("s-study", "Interim Study")}
     if set(chips) != want or len(chips) != 8:
@@ -40274,8 +40373,13 @@ def _node_app(harness, files=None, args=()):
             (root / name).write_text(text, encoding="utf-8")
         (root / "go.js").write_text(harness, encoding="utf-8")
         r = _run([node, "go.js", *args], cwd=root, capture_output=True, text=True, timeout=120)
+        # The error's own line first: node prints the line that threw and
+        # its message above the stack, which is all the last 300 characters
+        # held, so a failure read "js/loader:1651:32)" and nothing else.
+        said = (r.stderr or r.stdout or "").strip()
         assert r.returncode == 0 and "@@" in (r.stdout or ""), (
-            "app.js did not run under node: " + (r.stderr or r.stdout or "")[-300:])
+            "app.js did not run under node: " + said[:400]
+            + (" ... " + said[-200:] if len(said) > 600 else said[400:]))
         return json.loads(r.stdout.rsplit("@@", 1)[1])
     finally:
         shutil.rmtree(root, ignore_errors=True)
@@ -40810,9 +40914,10 @@ def _bill_status_select_categories():
         bad.append(f"the select on Any is painted {a['own']!r}")
     if len(a["cards"]) != len(rows) or not a["note"] or a["note"].group(1) != str(len(rows)):
         bad.append(f"Any lists {a['cards']}")
-    for st, ids, chips in (("Passed", ["HB1", "HR2"], ["Became Law", "Adopted by the House"]),
+    # A card's chip is the short word since 10 October 2026 (D18).
+    for st, ids, chips in (("Passed", ["HB1", "HR2"], ["Became Law", "Adopted by House"]),
                            ("In Progress", ["HB3", "SB4"],
-                            ["In committee", "Passed, awaiting the governor"]),
+                            ["In Committee", "To the Governor"]),
                            ("Died", ["HB6", "HB7"], ["Died", "Died"]),
                            ("Tabled", [], [])):
         r = read(got[st])
@@ -41300,7 +41405,7 @@ const results = document.querySelector("#results");
 // What focus() was called on, by kind and place in its list.
 let took = [];
 const thing = (kind, i) => ({kind, i, tabIndex: 0, focus() { took.push(this); },
-  querySelector(q) { return q === ".chead" ? this.head : null; }});
+  querySelector(q) { return q === ".ctitle" ? this.head : null; }});
 const cards = Array.from({length: 250}, (_, i) => {
   const c = thing("card", i); c.head = thing("head", i); return c; });
 const rows = Array.from({length: 450}, (_, i) => thing("row", i));
@@ -41953,7 +42058,9 @@ def _chain_output():
              f"HR10 kind is {idx['HR10']['kind']!r}"),
             (idx["SB434"]["status"] == "Vetoed, override failed",
              f"SB434 reads {idx['SB434']['status']!r}, not the docket's outcome"),
-            (idx["HB1442"].get("sponsor_label") == "Rep. Jodi Nelson (R)",
+            # The card's byline draws the prime sponsor as the person chip,
+            # with the seat (D14, 10 October 2026).
+            (idx["HB1442"].get("sponsor_label") == "Rep. Jodi Nelson (R - Rock 13)",
              f"sponsor reads {idx['HB1442'].get('sponsor_label')!r}"),
             (lg[0].get("display_full") == "Rep. Jodi Nelson (R - Rock 13)",
              f"legislator reads {lg[0].get('display_full')!r}"),
@@ -49447,10 +49554,10 @@ def _bill_lists_by_number(BO, BC, BS, SP, BP, BI):
             for b in mixed]
     page = SP.consent_html(cons, ["SB29", "SB285", "SB28"], {},
                            {("2025-2026", b): 2026 for b in mixed}, _h.escape)
-    got = [x.replace(" ", "") for x in _CBN.findall(page)]
+    got = [x.replace(" ", "") for x in re.findall(r'class="brnum" href="[^"]*">([^<]*)<', page)]
     assert got == want, "a consent calendar lists " + ", ".join(got)
-    assert "SB 28, SB 29, SB 285 were taken off" in page, \
-        "the bills taken off a consent calendar are not named by number"
+    assert "SB 28, SB 29, and SB 285 were removed from the consent calendar" in \
+        re.sub(r"<[^>]+>", "", page), "the bills taken off a consent calendar are not named by number"
 
     key = BP.Meet("2026-01-13", "H", "Commerce", "")
     slot = [{"bill": b, "time": "10:00", "what": "public hearing",
@@ -50617,6 +50724,19 @@ def _components_js(here="."):
     return BP.with_words(p.read_text(encoding="utf-8"))
 
 
+def _node_file(node, prog, **kw):
+    """node run on `prog` from a file rather than with -e: components.js
+    with its words is past 32,767 characters since 10 October 2026, which
+    Windows refuses as a command line ("The filename or extension is too
+    long")."""
+    root = Path(tempfile.mkdtemp())
+    try:
+        (root / "prog.js").write_text(prog, encoding="utf-8")
+        return _run([node, str(root / "prog.js")], **kw)
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+
+
 def _with_components(js, here="."):
     """A page's script as node is to run it: components.js first, as every
     page loads it, then the script."""
@@ -50838,6 +50958,17 @@ def _components_agree():
             "components.js did not run under node: " + (r.stderr or r.stdout or "")[-300:])
         got_js = json.loads(r.stdout.rsplit("@@", 1)[1])
         js_missed = _js_coverage(cov, site_js)
+        # THE BEHAVIOUR IS NOT A HELPER (the component plan: "anything that
+        # responds ... lives only in components.js, attached by data
+        # attributes"). Between its markers is code a page runs, not a string
+        # a case can ask for -- the term popovers, which declare no name of
+        # their own -- and _term_popovers holds it instead.
+        lines = js_text.split("\n")
+        b0 = next((i + 1 for i, ln in enumerate(lines) if ln.startswith("// BEHAVIOUR:START")), None)
+        b1 = next((i + 1 for i, ln in enumerate(lines) if ln.startswith("// BEHAVIOUR:END")), None)
+        if b0 and b1:
+            js_missed = [m for m in js_missed
+                         if not b0 < int(re.search(r" line (\d+):", m).group(1)) < b1]
     finally:
         shutil.rmtree(root, ignore_errors=True)
 
@@ -50960,6 +51091,320 @@ def _chips_by_hand(text):
     """Every chip a script or a builder writes as markup of its own rather
     than by chip(): [(line, the class attribute)]."""
     return [(text.count("\n", 0, m.start()) + 1, m.group(0)) for m in _CHIP_BY_HAND.finditer(text)]
+
+
+# ---- POLISH 2: THE RECORD PAGES (ws/records, 10 October 2026) -------------------------
+#
+# The component plan's steps 4 to 8, approved 9 October 2026: the bill as a card, a row and
+# a mention; the person in a sentence and as a chip; the vote words and the term popovers;
+# the record head and the W4 sections. Each check below holds a rule that could otherwise
+# break without anything saying so.
+
+def _unescape(s):
+    import html
+    return html.unescape(s)
+
+
+def _headings_of_sections():
+    """Every W4 section heading this code writes, with where it is written: the literal
+    headings app.js and build_session_pages.py hand components.section, the story's
+    headings narrative.py and build_site_v2.py make (C8), and every .w4h the fixture's
+    built and drawn pages carry."""
+    import narrative as N
+    out = []
+    for f, rx in ((Path("src/pages/app.js"), r'\bsection\(\s*"([^"]+)"'),
+                  (Path("src/pages/build_session_pages.py"), r'\bC\.section\(\s*"([^"]+)"')):
+        out += [(h, f.name) for h in re.findall(rx, f.read_text(encoding="utf-8"))]
+    out += [(h, "narrative.STAGE_LABEL") for h in N.STAGE_LABEL.values()]
+    out += [(N.stage_label(("H", "committee", "Health, Human Services and Elderly Affairs")),
+             "narrative.stage_label")]
+    v2 = Path("src/pages/build_site_v2.py").read_text(encoding="utf-8")
+    out += [(h, "build_site_v2.py") for h in re.findall(r'"label": "([A-Z][^"]+)"', v2)
+            if not h.startswith(("Ought", "Inexpedient"))]
+    shared, _base, _ran, _days = _fixture_site_shared()
+    for p in sorted((shared / "site" / "session").rglob("*.html")):
+        out += [(_unescape(h), p.name)
+                for h in re.findall(r'<h2 class="w4h">([^<]+)', p.read_text(encoding="utf-8"))]
+    for k, drew in _fixture_drawn().items():
+        text = json.dumps(drew, ensure_ascii=False)
+        out += [(_unescape(h), k)
+                for h in re.findall(r'<h2 class=\\"w4h\\">([^<]+)', text)]
+    return out
+
+
+def _title_case_faults(heading, small):
+    """The words of `heading` that break the case rule: a word starts with a capital, a
+    figure or a mark, but for the small words after the first (meeting_kinds.json's)."""
+    words = re.findall(r"[A-Za-z][\w'’.-]*", heading)
+    return [w for i, w in enumerate(words)
+            if w[0].islower() and not (i and w.lower() in small)]
+
+
+@check("frontend", "every section heading is in Title Case where it is made: the story's, the "
+                   "summary's, a member's, a committee's and a session day's (C8)")
+def _section_headings_title_case():
+    """THE HEADINGS ARE WRITTEN IN THEIR CASE WHERE THEY ARE MADE (the component plan's
+    C8, approved 9 October 2026; the person's round 3 of 8 October: "Official Legislative
+    Analysis", "On the House Floor", "House Committee (Housing)"). Recasing them on display
+    would mangle what is not a plain word -- "RSA", "HB 1681" -- so nothing does, and this
+    holds every heading the record pages draw to the rule: each word begins with a capital,
+    a figure or a mark, but the small words after the first (meeting_kinds.json's "small",
+    the same a chip's title keeps). The story's old forms ("In House committee --
+    Housing", "On the House floor") fail it, which is what it is for."""
+    import components as C
+    small = set(C.WORDBOOK["meeting_kinds"]["small"])
+    got = _headings_of_sections()
+    bad = sorted({f"{h!r} ({where}): {', '.join(w)}" for h, where in got
+                  for w in [_title_case_faults(h, small)] if w})
+    assert len(got) >= 20, f"only {len(got)} section headings were found to hold"
+    assert not bad, f"{len(bad)} headings not in Title Case: " + "; ".join(bad[:8])
+    assert not _title_case_faults("House Committee (Housing)", small)
+    assert _title_case_faults("In House committee \u2014 Housing", small) == ["committee"], \
+        "the rule no longer finds a lower-case word"
+    return "ok", (f"{len(got):,} section headings in Title Case, among them "
+                  f"{len({h for h, w in got if w.endswith('.html')}):,} drawn on the fixture's "
+                  "session days")
+
+
+@check("frontend", "a bill on a record page is a component: its card's number, a row's number or "
+                   "a mention, never a link of its own")
+def _bill_links_are_components():
+    """THE BILL IN THREE SIZES (the component plan's step 4: "a check fails any bill link
+    without a component class"). On the pages this branch draws -- a member's, a
+    committee's, a bill's own and a session day -- every link to a bill's page is one of
+    the three: a card's number (cnum), a row's (brnum) or a mention in running words
+    (bmention), so a bill drawn some fourth way, with its own words for the number and the
+    year, is caught where it is written. The Calendar's rows (cbn, the hubs' component)
+    and the trail are the others' and are left to them."""
+    allowed = {"cnum", "brnum", "bmention", "cbn"}
+    shared, _base, _ran, _days = _fixture_site_shared()
+    pages = {k: json.dumps(v, ensure_ascii=False) for k, v in _fixture_drawn().items()
+             if k.split("#")[0].startswith(("legislator/", "committee/", "bill/"))}
+    for p in sorted((shared / "site" / "session").rglob("*.html")):
+        pages[p.relative_to(shared / "site").as_posix()] = p.read_text(encoding="utf-8")
+    bad, n = [], 0
+    for k, text in pages.items():
+        text = text.replace('\\"', '"')
+        for m in re.finditer(r'<a\b([^>]*)\bhref="(?:/)?bill/\d{4}/[a-z0-9]+(?:\.html)?"', text):
+            n += 1
+            cls = set((re.search(r'class="([^"]*)"', m.group(1)) or [None, ""])[1].split())
+            if not cls & allowed:
+                bad.append(f"{k}: {m.group(0)[:90]}")
+    assert n, "no link to a bill was found on the fixture's record pages"
+    assert not bad, f"{len(bad)} bill links that are no component: " + "; ".join(bad[:5])
+    return "ok", f"{n:,} links to a bill on {len(pages)} record pages and tabs, each a component's"
+
+
+@check("frontend", "a card's chip says a stage in one of the person's short words (D18), and the "
+                   "bill's own page keeps the full wording")
+def _card_words_short():
+    """D18 (the person, 10 October 2026): a CARD's chip says "In Committee", "Retained",
+    "Re-referred", "Passed House" or "Passed Senate", "To the Governor", "Nonconcurred",
+    "In Conference", "Adopted", "Adopted by House" or "Adopted by Senate", "To the Voters",
+    "Ratified", "Not Ratified", "Not Introduced" or "Special Session", or one of the six;
+    the bill's own page keeps the full wording. Every stage word app.js's search knows of
+    (CAT_OF_CHIP), every chip a fixture bill carries and every one the built site's
+    indexes carry, where they are here, must come out of components.card_word as one of
+    those, or as a stage's own word in Title Case of three words or fewer -- so a stage the
+    General Court names tomorrow is caught rather than drawn at length on a card. And the
+    head of a bill's own page draws the chip whole (billHead)."""
+    import components as C
+    six = set(C.WORDBOOK["chips"]["chip"])
+    d18 = {"In Committee", "Retained", "Re-referred", "Passed House", "Passed Senate",
+           "To the Governor", "Nonconcurred", "In Conference", "Adopted", "Adopted by House",
+           "Adopted by Senate", "To the Voters", "Ratified", "Not Ratified", "Not Introduced",
+           "Special Session"}
+    app = Path("src/pages/app.js").read_text(encoding="utf-8")
+    words = set(re.findall(r'"([A-Z][a-z][^"]{2,80})":"(?:Passed|Died|In Progress|Interim Study|'
+                           r'Tabled|Vetoed|Withdrawn)"', app))
+    words |= set(re.findall(r'"((?:In|Retained|Re-referred|Committee|Passed|One|Conference)[^"]{2,80})"',
+                            app[app.index("CAT_OF_CHIP"):app.index("CAT_OF_KIND")]))
+    shared, _base, _ran, _days = _fixture_site_shared()
+    for f in list((shared / "site" / "idx").glob("*.json")) + list(Path("site/idx").glob("*.json")):
+        try:
+            rows = json.loads(f.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+        words |= {r.get("chip") for r in rows if r.get("chip")}
+    bad = []
+    for w in sorted(words):
+        for passage in ("Hp---", "Hpp--", "S----", ""):
+            got = C.card_word(w, passage)
+            if got in six or got in d18:
+                continue
+            if len(got.split()) > 3 or got != C.title_words(w):
+                bad.append(f"{w!r} -> {got!r}")
+    assert not bad, f"{len(bad)} chips a card would say at length: " + "; ".join(sorted(set(bad))[:6])
+    assert C.card_word("Passed one chamber", "Hp---") == "Passed House"
+    assert C.card_word("Passed both chambers, goes to the voters in November 2028", "") == "To the Voters"
+    head = app[app.index("function billHead("):app.index("function billHead(") + 3000]
+    assert 'chip(chipOf(b),`cstat ${chipCls(b)}`,"m")' in head, (
+        "the bill's own head no longer draws its chip's full word")
+    card = app[app.index("function cardHtml("):app.index("function cardHtml(") + 2000]
+    assert "cardWord(chipOf(b),b.passage)" in card, "a card no longer says its short word"
+    assert "ccarry" not in card and "carried over" not in card, (
+        'a card says "carried over" again: the year beside the number says it (8 October 2026)')
+    return "ok", (f"{len(words):,} chip words, each a card's short word or its own of three words "
+                  "or fewer; the bill's head keeps the full wording; no card says carried over")
+
+
+@check("frontend", "the term popovers are behaviour of components.js's own: the first of each term "
+                   "a button that opens on a tap, a held hover or focus, stays while hovered and "
+                   "shuts on Escape (C9, WCAG 1.4.13)")
+def _term_popovers():
+    """C9, approved 9 October 2026 with the person's refinement: "for the tooltips they
+    would show up on a tap or on a mouse hover after a short time" -- a tap, a hover held
+    about half a second, or keyboard focus opens one; it stays while the pointer moves
+    onto it, and closes on Escape (WCAG 1.4.13: dismissible, hoverable, persistent). The
+    behaviour lives in components.js between its markers, as an IIFE that declares no
+    name (so _components_agree holds the helpers and this the behaviour); every key a
+    writer marks (the vote words' abbreviations, a recommendation's code) is a glossary
+    entry; and the shared stylesheet draws the popover, so it shows on any page."""
+    import components as C
+    js = Path("src/pages/components.js").read_text(encoding="utf-8")
+    a, b = js.find("// BEHAVIOUR:START"), js.find("// BEHAVIOUR:END")
+    assert 0 < a < b, "components.js has no behaviour between its markers"
+    beh = js[a:b]
+    assert not re.search(r"^(?:function|const|let|var)\s", beh, re.M), (
+        "the behaviour declares a name at the top level, which _components_agree would take "
+        "for a helper with no twin")
+    for need, why in (("(function(){", "it is not one IIFE"),
+                      ('setAttribute("role","tooltip")', "the popover is no tooltip"),
+                      ('"aria-expanded"', "its button says nothing of being open"),
+                      ('e.key==="Escape"', "Escape does not close it"),
+                      ('e.pointerType!=="mouse"', "a touch would open it twice, by hover and by tap"),
+                      ('"focusin"', "keyboard focus does not open it"),
+                      ("HOLD=500", "a hover is not held about half a second"),
+                      ('closest("[hidden]")', "the first of a term may be one in a hidden tab"),
+                      ("MutationObserver", "a page drawn again keeps no popover")):
+        assert need in beh, f"the term popovers: {why} ({need} is not in the behaviour)"
+    glossary = set(C.WORDBOOK["glossary"])
+    keys = {m["abbr"] for m in C.WORDBOOK["votes"]["motions"].values() if m.get("abbr")}
+    keys |= {"OTP", "OTPA", "ITL", "IS"}
+    missing = sorted(keys - glossary)
+    assert not missing, f"terms marked with no glossary entry: {missing}"
+    css = Path("src/pages/app.css").read_text(encoding="utf-8")
+    shared = css[css.index("/* SHARED:START"):css.index("/* SHARED:END")]
+    for rule in (".termbtn{", ".termpop{", ".termpop[hidden]{display:none}"):
+        assert rule in shared, f"the shared stylesheet does not draw {rule}"
+    return "ok", (f"the behaviour is one IIFE between its markers; {len(keys)} marked terms, "
+                  "each a glossary entry; the popover drawn in the shared region")
+
+
+# Every form of a vote's question the 2025-2026 record carries, and a sample of the older
+# clerks', with the key the approved words give it (10 October 2026, read off the built
+# site's bills: 216 forms).
+MOTION_CASES = [
+    ("Ought to Pass", "HB1", "H", "otp"), ("Inexpedient to Legislate", "HB1", "H", "itl"),
+    ("Ought to Pass with Amendment 2026-0998h", "HB1", "H", "otpa"),
+    ("Ought to Pass with Amendments 2026-1 and 2026-2", "HB1", "H", "otpa"),
+    ("Adopt Conference Committee Report", "HB1", "H", "conference_report"),
+    ("House Concurs with Senate Amendment 2026-1709s", "HB1681", "H", "concur"),
+    ("Refer to Interim Study", "HB1", "H", "is"), ("Refer for Interim Study", "HB1", "H", "is"),
+    ("Laid on Table", "HB1", "S", "table"), ("Lay HB1046 on Table", "HB1046", "H", "table"),
+    ("Concur with the House Amendment", "SB1", "S", "concur"),
+    ("Accedes to House Request for Committee of Conference", "HB1", "S", "accede"),
+    ("Rereferred to Committee", "HB1", "H", "rerefer"),
+    ("Adopt Committee Amendment", "HB1", "H", "committee_amendment"),
+    ("Adopt Floor Amendment", "HB1", "H", "floor_amendment"),
+    ("House Non-Concurs with Senate Amendment 2026-1 and Requests CofC", "HB1", "H",
+     "nonconcur_conference"),
+    ("Nonconcur with the House Amendment; Requests C of C", "SB1", "S", "nonconcur_conference"),
+    ("Nonconcur with the House Amendment", "SB1", "S", "nonconcur"),
+    ("Veto Override", "HB1", "H", "override_first"), ("Veto Override", "HB1", "S", "override_second"),
+    ("Adopt Amendment", "HB1", "H", "amendment"), ("Remove From Table", "HB1", "H", "untable"),
+    ("Special Order to the next order of business", "HB1681", "H", "special_order"),
+    ("Indefinitely Postpone", "HB1", "H", "postpone"), ("Recommit", "HB1", "H", "recommit"),
+    ("Refused to Accede to House Request for Committee of Conference", "HB1", "S", "refuse_accede"),
+    ("Reconsider OTP", "HB1", "H", "reconsider"), ("Withdraw", "HB431", "H", "withdraw"),
+    ("suspend all rules necessary to permit the consideration of HB 1091; 2/3 necessary",
+     "HB1091", "H", "suspend_rules"),
+    ("Refer to Finance", "HB1", "H", "refer"), ("Adopt", "HR38", "H", "adopt"),
+    ("Shall the Decision of the President Stand", "SB119", "S", "uphold_ruling"),
+    ("Divide Section 2 from 3 and 4", "HB724", "H", "divide"), ("RFS", "HB1186", "H", "is"),
+    ("Vacated from Municipal and County Government", "HB1242", "H", "vacate_referral"),
+    ("", "HB1", "H", "unnamed"), ("03/11/2026", "HB1", "H", "unnamed"),
+]
+
+
+@check("frontend", "a vote's motion is read once, in Python, into the key of the approved vote "
+                   "words, and the record's own words go under the head where they differ")
+def _motion_keys():
+    """THE VOTE WORDS (the person, 8 October 2026; votes.json): a vote card's head is the
+    motion's own name with only OTP, OTPA, ITL and IS abbreviated and a plain gloss, and
+    its chip says what the vote did. Which motion a record's words name is decided once,
+    in Python (motions.classify, the component plan's C4), for the bill's Votes tab (the
+    record's rollcalls carry it as mk) and for a session day; this holds the reading to
+    every form the 2025-2026 record uses and a sample of the older clerks'. "Ought to Pass
+    with Amendment 2026-0998h" carries no record line (an amendment's number is not a
+    difference); "House Concurs with Senate Amendment 2026-1709s" does; and every key it
+    gives is a row of the words."""
+    import components as C
+    import motions as MO
+    words = C.WORDBOOK["votes"]["motions"]
+    bad = []
+    for text, bill, body, want in MOTION_CASES:
+        got = MO.classify(text, bill, body, words)
+        if got["mk"] != want:
+            bad.append(f"{text!r} on {bill} in {body} is {got['mk']!r}, not {want!r}")
+        if got["mk"] and got["mk"] not in words:
+            bad.append(f"{got['mk']!r} is no row of votes.json")
+    assert not bad, f"{len(bad)} motions read wrongly: " + "; ".join(bad[:5])
+    assert "mrec" not in MO.classify("Ought to Pass with Amendment 2026-0998h", "HB1", "H", words)
+    assert MO.classify("House Concurs with Senate Amendment 2026-1709s", "HB1", "H", words)["mrec"]
+    assert MO.classify("Refer to Finance", "HB1", "H", words)["mf"] == {"Committee": "Finance"}
+    v2 = Path("src/pages/build_site_v2.py").read_text(encoding="utf-8")
+    assert "MO.classify(" in v2, "the bills' Votes tabs no longer carry the motion's key"
+    sd = Path("src/pages/build_session_pages.py").read_text(encoding="utf-8")
+    assert "MO.classify(" in sd, "a session day no longer reads the motion's key"
+    return "ok", f"{len(MOTION_CASES)} forms of the record's questions, each the approved words' key"
+
+
+@check("frontend", "a session day folds the consent calendar and the excused with their counts, "
+                   "names who presided in one line, and plays no recording for a consent bill")
+def _session_day_folds():
+    """The person's feedback of 9 October 2026 on the session day: the consent calendar's
+    bills "hidden in a dropdown by default, with each category's count shown" (item 18),
+    the counts in the status chips' colours (v19), the bills taken off it in their
+    sentence; the members excused "a compact dropdown ... closed by default, with the
+    count of members excused from each party" (v16); "a general line naming the members
+    who presided" (v18); "a bill that passes on the consent calendar needs no embedded
+    YouTube recording" (v3). Read off the fixture's session days and the code that draws
+    them."""
+    import build_session_pages as BSP
+    shared, _base, _ran, _days = _fixture_site_shared()
+    pages = sorted((shared / "site" / "session").rglob("*.html"))
+    assert pages, "the fixture built no session day"
+    text = "\n".join(p.read_text(encoding="utf-8") for p in pages)
+    bad = []
+    for m in re.finditer(r'<details class="sfold (sconsent|sexcused)"( open)?', text):
+        if m.group(2):
+            bad.append(f"the {m.group(1)} fold is drawn open")
+    if '<p class="dvh">' in text and 'class="rhead rh-day"' not in text:
+        bad.append("a session day has no record head")
+    assert not bad, "; ".join(bad)
+    src = Path("src/pages/build_session_pages.py").read_text(encoding="utf-8")
+    assert BSP.CONSENT_CLASS == {"Passed": "s-law", "Killed": "s-done",
+                                 "Sent to Interim Study": "s-study",
+                                 "Sent Back to Committee": "s-active", "Adopted": "s-adopted"}, (
+        f"the consent counts are not in the chips' colours: {BSP.CONSENT_CLASS}")
+    for need, why in (("were removed from the consent", "the removed bills' sentence is gone"),
+                      ("Presiding over the", "no general line names who presided"),
+                      ("by_party", "the excused are not counted by party")):
+        assert need in src, why
+    assert BSP.and_list(["a", "b", "c"]) == "a, b, and c" and BSP.and_list(["a", "b"]) == "a and b"
+    v2 = Path("src/pages/build_site_v2.py").read_text(encoding="utf-8")
+    fm = v2[v2.index("def floor_moment("):v2.index("def write_floor_record(")]
+    assert '"consent"' not in fm or "return None" in fm
+    import build_site_v2 as B2
+    assert B2.floor_moment({"state": "consent", "video_id": "x", "what": "consent calendar",
+                            "when": "2026-02-19", "committee": "House"}) is None, (
+        "a bill decided on the consent calendar is given a moment in the day's recording")
+    assert B2.floor_moment({"state": "floor_precise", "video_id": "v", "what": "floor debate",
+                            "when": "2026-02-19", "committee": "House", "debate_start": 61.5,
+                            "debate_end": 900.0, "window_start": 10.0})["from"] == 61
+    return "ok", (f"{len(pages)} fixture session days: both folds closed; the counts in the "
+                  "chips' colours; the presiding line; no moment for a consent bill")
 
 
 @check("frontend", "every chip is the one chip: drawn by chip() in both languages, in one "
@@ -53574,10 +54019,10 @@ def _coming_up_is_this_week():
             "process.stdout.write(JSON.stringify({kept:days.filter(e=>!e.gone)"
             ".map(e=>e.dataset.d),labels:days.filter(e=>!e.gone).map(e=>e.rel.textContent),"
             "cal:cal.innerHTML}));")
-        r = subprocess.run([node, "-e", prog], capture_output=True, timeout=60)
+        r = _node_file(node, prog, capture_output=True, text=True, timeout=60)
         assert r.returncode == 0, ("HOME_JS's Coming up block would not run: "
-                                   + r.stderr.decode("utf-8", "replace")[-300:])
-        got = json.loads(r.stdout.decode("utf-8", "replace"))
+                                   + (r.stderr or "")[-300:])
+        got = json.loads(r.stdout)
         assert got["kept"] == want_kept, (
             f"read on {reader}, HOME_JS keeps {got['kept']} of the rail; this "
             f"week from that day is {want_kept}")
@@ -53881,7 +54326,7 @@ def _floor_session_titles():
     prog = (_components_js() + "\n" + o.group(0) + f.group(0)
             + "process.stdout.write(JSON.stringify(" + json.dumps(list(cases))
             + ".map(fdo)));")
-    r = _run([node, "-e", prog], capture_output=True, text=True, timeout=60)
+    r = _node_file(node, prog, capture_output=True, text=True, timeout=60)
     assert r.returncode == 0, "fdo() would not run: " + (r.stderr or "")[-300:]
     got = dict(zip(cases, json.loads(r.stdout)))
     bad = {d: g for d, g in got.items() if g != cases[d]}
@@ -54283,9 +54728,9 @@ def _committee_notes_fill():
     if got is None:
         return "ok", "the index's two notes fill; node is not here to draw a committee page"
     head, sess = got
-    assert '<div class="phead cmtehead">' in head, (
+    assert re.search(r'<header class="rhead [^"]*\bcmtehead\b', head), (
         "a committee page's head does not say it is one, so app.css cannot widen its notes")
-    assert re.search(r'<p class="src fill">Not on the General Court&rsquo;s list of committees', head), (
+    assert re.search(r'<p class="src fill rnote">Not on the General Court&rsquo;s list of committees', head), (
         "a committee page's \"not on the list\" note is held to the measure")
     assert '<p class="src fill">No day of this committee is' in sess, (
         "a committee page's \"no day on record\" note is held to the measure")
@@ -54334,7 +54779,8 @@ def _committee_days_met(BCM):
     if sess is None:
         return "ok", "build_committees counts the days met; node is not here to draw the tab"
     flat = re.sub(r"\s+", " ", sess)
-    assert "1 day this committee met in" in flat and "and 1 still to come, newest first" in flat, (
+    # "meetings" (D19), and the order the reader chose (10 October 2026).
+    assert re.search(r"<b>1 meeting</b>(?: in [^,]*)?, and 1 still to come, the newest first", flat), (
         "the Sessions tab's count reads: " + flat[:200])
     assert flat.count("No recording of this day is on file.") == 1, (
         "a day still to come is said to have no recording on file")
@@ -54487,9 +54933,13 @@ def _speaker_page_says_so(B):
     if got is None:
         return "ok", "seat 6002's member is Speaker of the House; node is not here to draw it"
     head, floor = got
-    assert re.search(r'<p class="pmeta">Speaker of the House &middot; District 16', head), (
+    # The record head's line (C6, 10 October 2026): the office first, then
+    # the party and the seat in words; the heading says the chamber.
+    assert re.search(r'<p class="rline"><b>Speaker of the House</b> &middot; Republican &middot; '
+                     r'Rockingham District 16', head), (
         "the Speaker's page does not say he is Speaker: " + re.sub(r"\s+", " ", head)[:300])
-    assert '<p class="pmeta">House of Representatives &middot; District 16' in floor, (
+    assert '<p class="rline">Republican &middot; Rockingham District 16' in floor and \
+        '<h1 class="rh1">Representative Sherman Packard</h1>' in floor, (
         "a member of the floor lost the chamber's name: " + re.sub(r"\s+", " ", floor)[:300])
     return "ok", "seat 6002's member is Speaker of the House on his own page; nobody else is"
 
@@ -54781,15 +55231,16 @@ def _officers_on_the_page(B, BLP, BSP, OF):
     if got is None:
         return "ok", "the offices and the headings hold in Python; node is not here to draw them"
     head_c, head_s, head_g, cells = got
-    assert '<h1>Senator Sharon Carson <span class="ptag">(R - SD14)</span></h1>' in head_c, (
-        head_c[:300])
-    assert '<p class="pmeta">President of the Senate &middot; District 14' in head_c, (
+    # The record head (C6, 10 October 2026), as the approved prototype
+    # draws it: the title in full and the name, and the office, the party
+    # and the seat in words on the line under it.
+    assert '<h1 class="rh1">Senator Sharon Carson</h1>' in head_c, head_c[:300]
+    assert ('<p class="rline"><b>President of the Senate</b> &middot; Republican &middot; '
+            'Senate District 14') in head_c, (
         "the President of the Senate's page does not say so: " + re.sub(r"\s+", " ", head_c)[:300])
-    assert ('<h1>Representative James Spillane <span class="ptag">(R - Rock 2)</span></h1>'
-            in head_s), head_s[:300]
-    assert '<p class="pmeta">House of Representatives &middot; District 2' in head_s
-    assert ('<h1>Former Representative Michael Gunski <span class="ptag">(R - Hills 6)</span>'
-            '</h1>' in head_g), head_g[:300]
+    assert '<h1 class="rh1">Representative James Spillane</h1>' in head_s, head_s[:300]
+    assert '<p class="rline">Republican &middot; Rockingham District 2' in head_s, head_s[:400]
+    assert '<h1 class="rh1">Former Representative Michael Gunski</h1>' in head_g, head_g[:300]
     assert cells == ['<div class="m">Rep. Steven Smith (R)<span class="p mo">Deputy '
                      'Speaker of the House</span></div>',
                      '<div class="m">Rep. Steven Smith (R)</div>',
@@ -55103,17 +55554,26 @@ def _on_the_record_rows():
          "chapter": "160", "year": "2025", "house_committee": "Judiciary",
          "journey": {"steps": [{"date": "2025-02-13", "body": "H", "act": "passed",
                                 "mark": "p", "text": "Passed on a voice vote"}]}}
-    b = {"id": "HB57", "term": "2025-2026", "year": 2025, "status": "Signed into law"}
-    got = _app_js("scope.factsTable(" + json.dumps(b) + ", " + json.dumps(d) + ")",
-                  names=("factsTable",))
+    b = {"id": "HB57", "term": "2025-2026", "year": 2025, "status": "Signed into law",
+         "topic": "Criminal Justice"}
+    # THE ON THE RECORD BOX IS GONE (the person, 8 October 2026: "Remove the
+    # ON THE RECORD box"; option E, 10 October 2026): what it carried is in
+    # the record head's facts, How It Got Here or under the analysis, and
+    # none of them carries the LSR or an Introduced row.
+    assert "function factsTable(" not in Path("src/pages/app.js").read_text(encoding="utf-8"), (
+        "app.js still draws the On the record box")
+    got = _app_js("[scope.billHead(" + json.dumps(b) + ", " + json.dumps(d) + "), "
+                  "scope.renderSummary(" + json.dumps(b) + ", " + json.dumps(d) + ")]",
+                  names=("billHead", "renderSummary"))
     if got is None:
         return "skip", "node, app.js or dom_stub.js is not here"
-    heads = re.findall(r'<th scope="(?:row|colgroup)"[^>]*>([^<]*)</th>', got)
-    assert heads and "Bill Status" in heads and "Subject" in heads, (
-        f"On the record lost rows it keeps: {heads}")
-    assert "Introduced" not in heads and "LSR" not in heads and "2025-0123" not in got, (
-        f"On the record still carries {[h for h in heads if h in ('Introduced', 'LSR')]}")
-    return "ok", f"On the record holds {', '.join(heads)}, and no Introduced or LSR row"
+    head, summary = got
+    heads = re.findall(r"<dt>([^<]*)</dt>", head)
+    assert heads and "Subject" in heads, f"the head lost facts it keeps: {heads}"
+    assert "Introduced" not in heads and "LSR" not in heads and \
+        "2025-0123" not in head + summary, (
+            f"the bill's head or summary still carries {[h for h in heads if h in ('Introduced', 'LSR')]}")
+    return "ok", f"the head holds {', '.join(heads)}, and no Introduced or LSR row"
 
 
 @check("frontend", "the Bill Text tab opens on the current version in full text")
@@ -57518,7 +57978,7 @@ const setNav = v => Object.defineProperty(globalThis, "navigator",
 const fail = [];
 // THE BOX, AS IT WAS, behind its drawing.
 const box = reportBox("bill", "2026/HB1442");
-if (!box.includes("<summary>" + want.report + "Report a problem with this page</summary>"))
+if (!box.includes("<summary>" + want.report + "Report a problem</summary>"))
   fail.push("the report's button is not its drawing and its words");
 for (const part of want.form) if (!box.includes(part)) fail.push("the report's form lost " + part);
 const kinds = (box.match(/<option value="[a-z]+">/g) || []).map(s => s.slice(15, -2));
@@ -79140,7 +79600,7 @@ def _never_introduced(N, B, BD):
     def kinds(bill):
         return [(e["date"], e["type"], e["cancelled"]) for e in narr[bill]["events"]]
     assert told("HB1587") == [(
-        "Before introduction in the House", "H:filed",
+        "Before Introduction in the House", "H:filed",
         "It was to be introduced on January 6, 2010 and referred to the House Finance "
         "committee. It was withdrawn prior to introduction on December 22, 2009.")], (
         told("HB1587"))
@@ -79157,19 +79617,19 @@ def _never_introduced(N, B, BD):
     # notices, not told (decision 59e: a meeting that did not sit), and leave
     # the events as a cancelled row does.
     assert told("HB1284") == [(
-        "Before introduction in the House", "H:filed",
+        "Before Introduction in the House", "H:filed",
         "It was to be introduced on January 4, 2012 and referred to the House Education "
         "committee. It was withdrawn on January 4, 2012.")], told("HB1284")
     assert kinds("HB1284") == [
         ("2011-11-21", "to_be_introduced", False), ("2011-12-15", "hearing", True),
         ("2011-12-15", "exec", True), ("2012-01-04", "withdrawn", False)], kinds("HB1284")
-    assert told("PET29") == [("On the House floor", "H:floor",
+    assert told("PET29") == [("On the House Floor", "H:floor",
                               "It was read in on January 4, 2012 and withdrawn.")], (
         told("PET29"))
     assert "not_introduced" not in narr["PET29"] and narr["PET29"]["withdrawn"] == (
         "2012-01-04"), narr["PET29"]
     assert told("HB3") == [(
-        "Before introduction in the House", "H:filed",
+        "Before Introduction in the House", "H:filed",
         "It was proposed as a bill for the special session on September 25, 2006.")], (
         told("HB3"))
     assert narr["HB3"].get("not_introduced") is True
@@ -79191,7 +79651,7 @@ def _never_introduced(N, B, BD):
     assert alone["HB1512"].get("not_introduced") is True and (
         alone["HB1512"]["events"][0]["type"] == "to_be_introduced"), alone["HB1512"]
     assert told("HB87") == [(
-        "Before introduction in the House", "H:filed",
+        "Before Introduction in the House", "H:filed",
         "The docket enters it as introduced on January 7, 2009 and referred to the House "
         "Municipal and County Government committee; the House Journal of January 7, 2009 "
         "leaves it out of the bills it introduces.")], told("HB87")
@@ -79200,13 +79660,13 @@ def _never_introduced(N, B, BD):
     # HB 633's row states no day, and the day it was typed is not the day of
     # anything: "on" a day only where the row gives one.
     assert told("HB633") == [(
-        "Before introduction in the House", "H:filed",
+        "Before Introduction in the House", "H:filed",
         "The docket enters it as introduced and referred to the House Health, Human "
         "Services and Elderly Affairs committee, on a row entered January 31, 2007; the "
         "House Journal of January 4, 2007 leaves it out of the bills it introduces.")], (
         told("HB633"))
     assert told("HB1512") == [(
-        "In House committee — Municipal and County Government", "H:committee",
+        "House Committee (Municipal and County Government)", "H:committee",
         "It was introduced on January 4, 2012 and referred to the House Municipal and "
         "County Government committee. It was withdrawn on January 4, 2012.")], told("HB1512")
     assert kinds("HB1512") == [
@@ -79225,23 +79685,23 @@ def _never_introduced(N, B, BD):
         "The committee held a public hearing on January 10, 2017."), alone["HB273"]["stages"]
     left_out = "the House Journal of January 4, 2017 leaves it out of the bills it introduces."
     assert told("HB274") == [(
-        "Before introduction in the House", "H:filed",
+        "Before Introduction in the House", "H:filed",
         "The docket enters it as introduced on January 4, 2017 and referred to the House "
         "Labor, Industrial and Rehabilitative Services committee; " + left_out)], told("HB274")
     # A row the docket never entered as done is told in its own tense.
     assert told("HB177") == [(
-        "Before introduction in the House", "H:filed",
+        "Before Introduction in the House", "H:filed",
         "The docket enters it as to be introduced on January 4, 2017 and referred to the "
         "House Election Law committee; " + left_out)], told("HB177")
     assert told("HB277") == [(
-        "Before introduction in the House", "H:filed",
+        "Before Introduction in the House", "H:filed",
         "The docket enters it as to be introduced on January 4, 2017 and referred to the "
         "House Criminal Justice and Public Safety committee; " + left_out)], told("HB277")
     # HB 273's second row is the docket's notice of a hearing: told as that,
     # with nothing said of whether it was held, before any committee had the
     # bill, and out of the events as a cancelled row is.
     assert told("HB273") == [(
-        "Before introduction in the House", "H:filed",
+        "Before Introduction in the House", "H:filed",
         "The docket enters it as introduced on January 4, 2017 and referred to the House "
         "Executive Departments and Administration committee; " + left_out
         + " The docket schedules a public hearing for January 10, 2017, for a bill the "

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.33
+# GRANITE_VERSION: 2026-09-08.34
 """
 The topics of the civics section: their order, their names, and their prose.
 
@@ -1851,8 +1851,8 @@ up. A bill's feed ends once the bill is settled. There is no email option yet.
 No account, no email address, nothing to leak.</p>
 
 <h2>How to report an error</h2>
-<p>Every record's page carries a <b>Report a problem</b> box at the foot,
-because this will be wrong somewhere. It sends nothing that identifies you,
+<p>Every bill's, legislator's and committee's page carries a <b>Report a problem</b>
+button beside its heading, because this will be wrong somewhere. It sends nothing that identifies you,
 which also means we cannot reply. For an answer, or for an error on these
 explanatory pages, write to
 <a href="mailto:contact@graniterecord.org">contact@graniterecord.org</a>.</p>

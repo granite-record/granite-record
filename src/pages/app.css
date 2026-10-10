@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.236 */
+/* GRANITE_VERSION: 2026-09-07.237 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -1488,6 +1488,45 @@ line-height:1.1}
 .twntabs:not([hidden]) ~ .twnpane > .twnph{position:absolute;width:1px;height:1px;
   padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
 
+/* POLISH 2 -- SHARED: THE TERM POPOVER, A BILL MENTION, A BILL ROW, A PERSON
+   IN A SENTENCE (ws/records, 10 October 2026). In the shared region because
+   components.js draws them on any page, the pages style.css serves among
+   them. The popover (C9) is the first of each term on a page: its word
+   underlined in dots, its entry in a box under it, within the screen. */
+.term{position:relative;display:inline}
+.termbtn{font:inherit;color:inherit;background:none;border:0;padding:0;margin:0;cursor:help;
+text-decoration:underline dotted;text-decoration-thickness:1px;text-underline-offset:.2em;
+letter-spacing:inherit}
+.termbtn:hover,.termbtn[aria-expanded="true"]{text-decoration-style:solid}
+.termpop{position:absolute;left:0;top:calc(100% + 6px);z-index:30;display:block;
+width:max-content;max-width:min(22rem,calc(100vw - 2rem));padding:var(--sp-4) var(--sp-5);
+background:var(--surface);color:var(--ink);border:1px solid var(--rule-2);border-radius:var(--r-in);
+box-shadow:0 3px 10px var(--shadow);font:400 var(--t-sm)/1.5 var(--sans);text-align:left;
+white-space:normal;letter-spacing:0;text-transform:none}
+.termpop[hidden]{display:none}
+.termpop b{font-weight:600}
+@media (forced-colors:active){.termpop{border-color:CanvasText}}
+/* A bill named in running words: the number, underlined, the year quiet. */
+.bmention{white-space:nowrap}
+.bmention .byr{color:var(--ink-2)}
+/* A bill as a row: the number and year in a column, the title in the serif,
+   the chip at the right, the line under. */
+.brow{display:grid;grid-template-columns:minmax(6.5rem,auto) minmax(0,1fr) auto;
+grid-template-areas:"num title chip" ". line line";column-gap:var(--sp-5);row-gap:var(--sp-1);
+align-items:baseline;padding:var(--sp-3) 0;border-top:1px solid var(--rule)}
+.brow:first-child{border-top:0}
+.brnum{grid-area:num;font-weight:600;white-space:nowrap}
+.brnum .byr{font-weight:400;color:var(--ink-2);margin-left:var(--sp-2)}
+.brtitle{grid-area:title;font:400 var(--t-ui)/1.5 var(--serif);color:var(--ink)}
+.brow > .chip{grid-area:chip}
+.brline{grid-area:line;font-size:var(--t-sm);color:var(--ink-2)}
+@media (max-width:30em){
+  .brow{grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"num chip" "title title" "line line"}
+}
+/* A person in a running sentence: the full label, a link as any other. */
+.psent{text-decoration-thickness:1px}
+/* POLISH 2 -- SHARED: END */
+
 /* SHARED:END ------------------------------------------------------------ */
 
 /* MARK:START ---------------------------------------------------------------
@@ -1730,7 +1769,11 @@ border-radius:var(--r-out);margin-bottom:var(--sp-5);overflow:hidden;
    card had a shadow too, so nine cards on a screen were all raised
    and none of them read as raised. */
 .card.open{box-shadow:0 3px 10px var(--shadow)}
-.chead{width:100%;text-align:left;padding:var(--sp-6) 46px var(--sp-6) var(--sp-6);display:block;cursor:pointer}
+/* A DIV SINCE 10 OCTOBER 2026 (the component plan's C5): the head was a
+   button holding links, and the title is the button now (.ctitle, the
+   POLISH 2 block below), so it pads alike on both sides -- the corner
+   arrow's 46px went with the arrow, the number being the link. */
+.chead{padding:var(--sp-6);display:block}
 /* The link to a bill's own page used to sit INSIDE the .chead button.
    Nesting a link in a button is invalid and browsers disagree about
    whether the link can be reached or clicked at all, which is why it
@@ -1751,17 +1794,13 @@ border-radius:var(--r-out);margin-bottom:var(--sp-5);overflow:hidden;
    padding changes, this is that sum again and not a fudge to re-eyeball.
    A status long enough to wrap to two lines will sit lower than the arrow;
    that is on purpose, because the arrow belongs beside the first line. */
-.detail{position:absolute;top:32px;transform:translateY(-50%);right:10px;z-index:2;display:flex;
-align-items:center;justify-content:center;min-width:36px;min-height:36px;
-text-decoration:none;font-size:var(--t-ui);color:var(--ink-2);border-radius:var(--r-out)}
-.detail:hover{color:var(--pine);background:var(--wash)}
 /* On the focused view the reader is already looking at a detail page, and a
    bare arrow in the corner reads as a link to the one they are on. It leads
    somewhere else -- the standalone page, which needs no JavaScript and has
    its own address -- so there it says so. */
 /* No corner link on the focused view. It pointed at the standalone page for
    the same bill, which from a reader's seat is the page they are already on. */
-.chead:hover{background:var(--paper)}
+.chead:has(> button.ctitle:hover){background:var(--paper)}
 .crow{display:flex;gap:var(--sp-4);align-items:center}
 /* The thing the reader is looking for. It was a point smaller than the
    title beside it, which is the wrong way round on a page of bills. */
@@ -1822,8 +1861,6 @@ letter-spacing:-.005em;line-height:1.25}
    5 October 2026: 4,132 rails within 3px). Across the whole head it is the
    bill page's rail at every width: 302px there, and above that still 560px,
    centred in the card rather than 15px left of its middle. */
-.card:not(.focus) .chead .rail.dated{width:calc(100% + 46px - var(--sp-6));
-margin-left:max(0px,calc((100% + 46px - var(--sp-6) - 560px) / 2))}
 /* AND ON A PHONE IT TAKES HALF THE CARD'S PADDING EACH SIDE (8 October 2026).
    The stops' names went from 12px to 14px with the type scale, and on a
    360px phone's 302px rail a Senate bill's "Introduced" and "Senate" stood
@@ -1832,7 +1869,6 @@ margin-left:max(0px,calc((100% + 46px - var(--sp-6) - 560px) / 2))}
    (_rail_on_a_phone), on the list card and the bill's own page alike. */
 @media (max-width:30em){
   .chead .rail.dated{margin-inline:calc(-1 * var(--sp-4))}
-  .card:not(.focus) .chead .rail.dated{width:calc(100% + 46px);margin-left:calc(-1 * var(--sp-4))}
 }
 /* An opened card in the list shows the same tabs as the bill's own page, so
    its rail is the page's rail, centred (the person, 24 September). */
@@ -1912,8 +1948,6 @@ border-right:.125rem solid var(--surface)}
 }
 /* The three rules that set these labels to --ink-2 are gone: every stop's
    label is --ink-2 now, so there is nothing left for them to change. */
-/* A card head is a button, and the rail inside it must not look clickable. */
-.chead .rail{pointer-events:none}
 /* THE DATED RAIL, on a bill's own view and on every card: under each stop
    its day, "22 May", and since 5 October 2026 nothing else -- the word or two
    of how it went ("16–8, amended") crowded the card, the person said, and is
@@ -2710,7 +2744,6 @@ color:var(--ink-2);background:var(--wash);border-radius:var(--r-in);padding:1px 
 /* A bill's own page draws no ↗ link, so its head gives back the 46px the
    link reserves on the right. Kept, it put the centred rail 15px left of the
    card's middle at 1440 and took 4px from each of a phone's five stops. */
-.card.focus .chead{cursor:default;padding-right:var(--sp-6)}
 
 /* A BILL REQUEST'S CARD. "Cards should be shorter", and the shortness is not
    a smaller type size: it is that there is less on it. No rail, no expand
@@ -2951,7 +2984,7 @@ text-align:center;color:var(--ink-2);font-size:var(--t-ui)}
    to the filter rail (the audit of 2 October 2026, S5). .calmeet > summary
    and the town page's tabs were already drawn this way; Play is with its
    own rules, above. */
-.chead:focus-visible,.fhead:focus-visible{outline-offset:-2px}
+.ctitle:focus-visible,.fhead:focus-visible{outline-offset:-2px}
 /* The same footer the pages built from style.css have carried all along.
    It reaches every record page because bills.html is their template. */
 footer{border-top:1px solid var(--rule);background:var(--surface);
@@ -5281,7 +5314,6 @@ table.cov{border-collapse:collapse;width:100%;min-width:30rem;font-family:var(--
   #sort{height:44px}
   .bfilt select{min-height:44px}
   .docket summary{min-height:44px}
-  .detail{min-width:44px;right:2px}
   /* The row centres on its links, or a number that is not a link sits at the
      top of the line beside an address in the middle of it. */
   .offhow{align-items:center}
@@ -5292,7 +5324,344 @@ table.cov{border-collapse:collapse;width:100%;min-width:30rem;font-family:var(--
      (preflight's outside-link check). */
   :is(.civics,.civhead,.sesspage) .crumb a::before{content:"";position:absolute;
   left:0;right:0;top:-2px;bottom:-14px}
+  /* A card's number is the link to the bill's own page since 10 October
+     2026 (C5), where the corner arrow was, which was held to 44px here. The
+     number keeps the size of its words, and what can be pressed is a box
+     44px tall laid over it, inside the head's padding. */
+  .crow a.cnum{position:relative}
+  .crow a.cnum::before{content:"";position:absolute;left:-4px;right:-4px;top:50%;height:44px;
+  transform:translateY(-50%)}
 }
+
+/* POLISH 2 -- THE RECORD PAGES: CARDS (ws/records, 10 October 2026) -------
+   The component plan's step 4 and C5, approved 9 October 2026, with the
+   person's feedback of that day: bill CARDS on member, committee and
+   session-day pages, each with a line for what happened to the bill at that
+   meeting or on that day. components.bill_card draws the card in both
+   languages. Rules in this block are this branch's own; the hubs' are in
+   theirs. */
+
+/* THE NUMBER AND YEAR ARE THE LINK to the bill's own page (D7: "HB 1083-FN
+   (2026)"), underlined as every link on the site is, the year in the quiet
+   ink inside it. */
+a.cnum{text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:.18em}
+a.cnum:hover{text-decoration-thickness:2px}
+/* THE TITLE IS THE BUTTON that opens the card in place, and reads as the
+   title it is: the serif at the title's size, no button chrome. The head
+   lights under the pointer as the whole head used to, and the button carries
+   the focus ring. */
+button.ctitle{display:block;width:100%;background:none;border:0;padding:0;
+margin:var(--sp-3) 0 0;text-align:left;font-weight:400;letter-spacing:normal;
+cursor:pointer;color:var(--ink)}
+button.ctitle:hover{text-decoration:underline;text-decoration-color:var(--rule-2);
+text-underline-offset:.2em}
+/* The byline's separators and the sponsor's chip sit on one baseline; the
+   chip keeps its own size (the one person chip). */
+.cmeta{display:flex;flex-wrap:wrap;align-items:center;gap:var(--sp-2) var(--sp-3)}
+.cmeta .cdot{color:var(--ink-2)}
+/* WHAT HAPPENED HERE: the line a member's, a committee's and a session day's
+   card carries for this meeting or this day, in a quiet well with a rule in
+   the accent down its left, under the byline and above the rail. */
+.cline{margin:var(--sp-5) 0 var(--sp-2);padding:var(--sp-4) var(--sp-5);
+background:var(--wash);border-left:3px solid var(--rule-2);
+border-radius:0 var(--r-in) var(--r-in) 0;font-size:var(--t-ui);color:var(--ink);line-height:1.55}
+.cline p{margin:var(--sp-2) 0 0;max-width:none}
+.cline p:first-child{margin-top:0}
+/* POLISH 2 -- CARDS: END ------------------------------------------------ */
+
+/* POLISH 2 -- A COMMITTEE'S MEETINGS (ws/records, 10 October 2026) --------
+   One folded entry a day (the person's feedback of 9 October 2026, items 1,
+   6, 12 and 14, v8 and v13): the day, its times, its bills and how many were
+   voted on, its room and its kinds of meeting, each kind's colour in the bar
+   down its left as the Calendar draws a meeting; opened, the day's sentence,
+   a player for each recording beside the cards. */
+.msort{margin-bottom:var(--sp-4)}
+.cmeets{display:flex;flex-direction:column;gap:var(--sp-4);margin-top:var(--sp-5)}
+.cmeet{position:relative;background:var(--surface);border:1px solid var(--rule-2);
+border-radius:var(--r-out);overflow:hidden}
+.cmeet[open]{border-color:var(--pine)}
+.cmeet.at{box-shadow:0 0 0 2px var(--pine)}
+.cmeet > summary{list-style:none;cursor:pointer;display:grid;
+grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"when caret" "count caret" "kinds caret";
+gap:var(--sp-2) var(--sp-4);padding:var(--sp-5) var(--sp-6) var(--sp-5) calc(var(--sp-6) + 6px)}
+.cmeet > summary::-webkit-details-marker{display:none}
+.cmeet > summary:hover{background:var(--paper)}
+.cmeet .calmix{position:absolute;left:0;top:0;bottom:0;width:6px;display:flex;flex-direction:column}
+.cmeet .calmix i{flex:1 1 0}
+.cmwhen{grid-area:when;font-family:var(--serif);font-size:var(--t-read);color:var(--ink)}
+.cmwhen b{font-weight:600}
+.cmtime{font-family:var(--sans);font-size:var(--t-ui);font-weight:600;margin-left:var(--sp-3);white-space:nowrap}
+.cmcount{grid-area:count;font-size:var(--t-ui);color:var(--ink-2)}
+.cmcount b{color:var(--ink);font-weight:600}
+.cmkinds{grid-area:kinds;display:flex;flex-wrap:wrap;gap:var(--sp-2)}
+.cmeet > summary .cmcaret{grid-area:caret;align-self:center;width:.6rem;height:.6rem;
+border-right:2px solid var(--ink-2);border-bottom:2px solid var(--ink-2);transform:rotate(-45deg);
+transition:transform .15s}
+.cmeet[open] > summary .cmcaret{transform:rotate(45deg)}
+.cmbody{border-top:1px solid var(--rule);padding:var(--sp-5) var(--sp-6) var(--sp-6)}
+.cmsaid{margin:0 0 var(--sp-5);font-size:var(--t-ui);line-height:1.6;max-width:100ch}
+/* THE PLAYERS BESIDE THE CARDS on a wide screen, above them on a narrow one:
+   first in the document, so the keyboard meets the recording before the
+   bills whose times move it. */
+.cmlay{display:grid;grid-template-columns:minmax(0,1fr);gap:var(--sp-5)}
+.cmplay:empty{display:none}
+.cmplay .player:first-child{margin-top:0}
+@media (min-width:60em){
+  .cmlay{grid-template-columns:minmax(0,1fr) minmax(16rem,20rem);grid-template-areas:"cards play"}
+  .cmlay > .cards{grid-area:cards}
+  .cmlay > .cmplay{grid-area:play;align-self:start;position:sticky;top:var(--sp-5)}
+  .cmplay:empty + .cards{grid-column:1 / -1}
+}
+.cmlay .cards .card{margin-bottom:var(--sp-4)}
+.cmplay .pbar{font-size:var(--t-sm)}
+.cmplay .pwho{flex:1 1 100%;color:var(--ink-2)}
+.cmplay .pwho b{color:var(--ink);font-weight:600}
+.cmplay .tolnote{margin-left:0}
+/* THE LINE FOR THIS MEETING, inside the card's well (.cline): its kinds and
+   time, the moment in the recording where each was taken up, and what
+   happened, each act on a line of its own. A killing is said in the red of
+   the cross that marks it, a study recommended in the orange of its arrow,
+   both as a mark and a word, never by colour alone. */
+.mline{display:flex;flex-wrap:wrap;align-items:center;gap:var(--sp-2) var(--sp-4);margin-bottom:var(--sp-3)}
+.mkinds{display:inline-flex;flex-wrap:wrap;gap:var(--sp-2)}
+.mtime{font-weight:600;font-size:var(--t-ui);white-space:nowrap}
+.mjumps{display:inline-flex;flex-wrap:wrap;align-items:center;gap:var(--sp-2) var(--sp-3);margin-left:auto}
+.mjumps .jump{display:inline-flex;align-items:center;gap:var(--sp-2);background:var(--surface)}
+.mjumps .jump .icon{width:.75rem;height:.75rem}
+.mjumps .approx{font-style:normal;font-size:var(--t-sm);color:var(--ink-2)}
+.cline .mact{margin:var(--sp-2) 0 0}
+.mmark{display:inline-flex;vertical-align:-.1em;margin-right:var(--sp-2);font-weight:700}
+.mmark svg{width:.9em;height:.9em}
+.mkill .mmark,.mkill b{color:var(--st-done)}
+.mrec .mmark{color:var(--st-study)}
+.msign b{font-variant-numeric:tabular-nums}
+.mwhen{color:var(--ink-2)}
+/* POLISH 2 -- MEETINGS: END --------------------------------------------- */
+
+/* POLISH 2 -- THE RECORD HEAD AND W4 SECTIONS (ws/records, 10 October 2026)
+   The component plan's page head for records (option E; C6) and its
+   sections (C7), as the approved prototype kit draws them
+   (private/design/polish/proto/css/kit.css, parts 4 to 10), under this
+   branch's own names: components.record_head and components.section. On the
+   page's own ground, no tinted band (D1). ONE DOM ORDER AT EVERY WIDTH --
+   trail, title and chip, line, facts, rail, actions -- and the grid's areas
+   put the actions at the right on a desktop and in a row under the rail on a
+   phone. */
+.rhead{--meas:51.1875rem;display:grid;grid-template-columns:minmax(0,1fr) auto;column-gap:2.5rem;
+align-items:start;margin:var(--sp-4) 0 0;
+grid-template-areas:"trail trail" "top top" "line acts" "facts acts" "rail rail"}
+.rtrail{grid-area:trail;border-bottom:1px solid var(--ink);padding-bottom:var(--sp-3);margin-bottom:var(--sp-6)}
+.rtrail ol{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;align-items:center;
+font:500 var(--t-ui)/1.4 var(--sans);color:var(--ink-2)}
+.rtrail li{display:flex;align-items:center}
+.rtrail li + li::before{content:"";width:.42em;height:.42em;border-top:1.5px solid var(--ink-2);
+border-right:1.5px solid var(--ink-2);transform:rotate(45deg);margin:0 .8em 0 .55em}
+.rtrail a{color:var(--pine);text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:3px}
+.rtrail a:hover{color:var(--ink)}
+.rtrail [aria-current]{color:var(--ink)}
+.rtop{grid-area:top;display:flex;align-items:center;justify-content:space-between;gap:var(--sp-4) var(--sp-6);flex-wrap:wrap}
+.rh1{font:600 var(--t-title)/1.12 var(--serif);margin:0;color:var(--ink);letter-spacing:-.01em;text-wrap:balance}
+.rh1 .ryear{font-weight:400;font-size:.6em;color:var(--ink-2);letter-spacing:0;white-space:nowrap}
+.rtop > .chip{margin-left:auto;flex:0 0 auto;max-width:18rem}
+/* A person's own page: the party's bar down the left of the name. */
+.rhead[class*="rh-p"] .rh1{padding-left:var(--sp-5);border-left:5px solid var(--pc,var(--edge))}
+.rhead.rh-pR{--pc:var(--rep)}.rhead.rh-pD{--pc:var(--dem)}.rhead.rh-pI,.rhead.rh-pL{--pc:var(--ind)}
+.rline{grid-area:line;font:400 var(--t-lead)/1.45 var(--serif);color:var(--ink);margin:var(--sp-4) 0 0;
+max-width:40em;text-wrap:pretty}
+.rline b{font-weight:600}
+.rfacts{grid-area:facts;display:flex;flex-wrap:wrap;gap:var(--sp-5) 2.5rem;margin:var(--sp-6) 0 0;padding:0}
+.rfacts > div{margin:0;min-width:0}
+.rfacts dt{font:600 var(--t-label)/1.3 var(--sans);letter-spacing:.07em;text-transform:uppercase;
+color:var(--ink-2);margin:0 0 var(--sp-2)}
+.rfacts dd{margin:0;font:400 var(--t-ui)/1.45 var(--sans);color:var(--ink)}
+.rfacts dd small{display:block;font-size:var(--t-sm);color:var(--ink-2);margin-top:var(--sp-1)}
+.rrail{grid-area:rail;justify-self:center;width:100%;max-width:38.75rem;margin-top:var(--sp-7)}
+.rrail .rail.dated{margin:0 auto}
+.racts{grid-area:acts;align-self:start;justify-self:end;min-width:11.5rem;margin-top:var(--sp-4)}
+.racts:empty{display:none}
+.rnote{font-size:var(--t-ui);color:var(--ink-2);margin:var(--sp-4) 0 0;max-width:46rem}
+/* THE ACTIONS, ONE STACK: Cite this page, Follow, Print, Share, Report a
+   problem, each the quiet action button (Polish 1's), full width in the
+   stack; their panes open from the stack's foot, at its right. */
+.racts .pageacts{display:flex;flex-direction:column;align-items:stretch;gap:var(--sp-3);margin:0}
+.racts .pageacts > *{margin:0}
+.racts #reportbox{display:contents}
+.racts :is(.pcite,.follow,.report) > summary,.racts .pshare{width:100%;justify-content:flex-start;white-space:nowrap}
+.racts .sharestate:empty{display:none}
+.racts .sharestate{max-width:16rem}
+.racts .report{position:static}
+.racts .report > .reportform{position:absolute;right:0;top:calc(100% + 6px);z-index:20;
+width:min(36rem,calc(100vw - 28px));padding:var(--sp-5);border:1px solid var(--rule-2);
+border-radius:var(--r-in);background:var(--surface);font-size:var(--t-ui)}
+.racts .report > .reportform p{margin:0 0 var(--sp-4)}
+.pprint{cursor:pointer}
+.pprint:disabled{cursor:progress;color:var(--ink-2)}
+@media (max-width:45em){
+  .rhead{column-gap:var(--sp-4);grid-template-areas:"trail" "top" "line" "facts" "rail" "acts";
+  grid-template-columns:minmax(0,1fr)}
+  .rtrail{padding-bottom:0;margin-bottom:var(--sp-4)}
+  .rtrail a{display:inline-flex;align-items:center;min-height:2.75rem}
+  .rtrail li:not(:nth-last-child(2)):not(:last-child){display:none}
+  .rtrail li:nth-last-child(2)::before{display:none}
+  .rtrail li:nth-last-child(2) a::before{content:"";display:inline-block;width:.42em;height:.42em;
+  border-bottom:1.5px solid var(--ink-2);border-left:1.5px solid var(--ink-2);transform:rotate(45deg);
+  margin:0 .55em 0 .2em}
+  .rline{font-size:var(--t-read)}
+  .rfacts{gap:var(--sp-4) var(--sp-7)}
+  .rrail{margin-top:var(--sp-6);max-width:none}
+  .racts{justify-self:stretch;min-width:0;margin-top:var(--sp-5)}
+  .racts .pageacts{flex-direction:row;flex-wrap:wrap;gap:var(--sp-2)}
+  .racts .pageacts > :is(.pcite,.follow,.report,.pshare){flex:1 1 auto}
+  .racts :is(.pcite,.follow,.report) > summary,.racts .pshare{justify-content:center;min-height:2.75rem}
+  .racts .sharestate{flex:1 1 100%;max-width:none}
+}
+
+/* THE TABS HANG FROM THE HEAD'S FOOT (the kit's part 9): a strip on a 2px
+   rule in ink under the head, the chosen tab in ink with the accent's bar,
+   and the record's white sheet under it. On a bill's own page the card's
+   frame gives way to the page: the head stands on the page's ground. */
+.card.focus.rec{background:none;border:0;border-radius:0;box-shadow:none;overflow:visible}
+.card.focus.rec > .cbody{border-top:0;padding:0}
+.card.focus.rec > .cbody > .tabs,.rhead ~ .tabs{margin-top:var(--sp-7);border-bottom:2px solid var(--ink)}
+.card.focus.rec > .cbody > .pane,.rhead ~ #ppane{background:var(--surface);border:1px solid var(--rule-2);
+border-top:0;border-radius:0 0 var(--r-out) var(--r-out);padding:var(--sp-7) var(--sp-8) var(--sp-8)}
+@media (max-width:45em){
+  .card.focus.rec > .cbody > .pane,.rhead ~ #ppane{padding:var(--sp-5) var(--sp-4) var(--sp-6)}
+}
+
+/* W4 SECTIONS (C7): the heading in a left margin level with its first line,
+   beside prose of about a hundred characters, a hairline starting each part;
+   over its text below 60em. In Title Case and balanced, so it breaks where
+   the phrase does; a heading is the serif at 19px and 600 over 18px prose
+   at 400: larger and heavier than what it heads. */
+.w4s{display:block}
+.w4{border-top:1px solid var(--rule);padding:var(--sp-5) 0 0;margin:0 0 var(--sp-5)}
+.w4:first-child{border-top:0;padding-top:0}
+.w4h{font:600 var(--t-h3)/1.35 var(--serif);margin:0 0 var(--sp-3);color:var(--ink);text-wrap:balance;
+letter-spacing:0;text-transform:none}
+.w4h .w4n{font:400 var(--t-sm)/1 var(--sans);color:var(--ink-2);margin-left:var(--sp-2)}
+.w4b{min-width:0}
+.w4b > :first-child{margin-top:0}
+.w4b > :last-child{margin-bottom:0}
+.w4b > p:not([class]),.w4b .story,.w4b .antext{font:400 var(--t-read)/1.65 var(--serif);color:var(--ink);
+max-width:51.1875rem;margin:0 0 var(--sp-4)}
+.w4b > :is(.src,.note,.rsaline){max-width:51.1875rem}
+.w4b .anbox{margin:0;padding:0;border:0;background:none}
+.w4b .rsaline{font-size:var(--t-ui);color:var(--ink-2);margin:var(--sp-2) 0 0}
+.w4b .docket > summary{display:inline-flex;align-items:center;gap:var(--sp-3);cursor:pointer;color:var(--pine);
+font-size:var(--t-ui)}
+@media (min-width:60em){
+  .w4{display:grid;grid-template-columns:minmax(10rem,1fr) minmax(0,51.1875rem);column-gap:2rem;align-items:start}
+  .w4h{margin:0;padding-top:var(--sp-1)}
+}
+
+/* A MEMBER'S TERM AT A GLANCE (item 7): the term's control, then its
+   attendance and its bills as four figures, the way each is counted in a
+   fold under them. */
+.mterm{display:flex;flex-wrap:wrap;align-items:center;gap:var(--sp-3) var(--sp-5);margin:var(--sp-7) 0 0;
+padding-top:var(--sp-6);border-top:1px solid var(--rule)}
+.mterm .bfilt{margin:0}
+.mterm .src{margin:0}
+.mfig{margin:var(--sp-5) 0 0}
+.mfh{font:600 var(--t-h3)/1.35 var(--serif);margin:0 0 var(--sp-3);letter-spacing:0;text-transform:none}
+.mfgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,22rem),1fr));gap:var(--sp-5) 2.5rem}
+.mfgrp h3{font:600 var(--t-label)/1.3 var(--sans);letter-spacing:.07em;text-transform:uppercase;color:var(--ink-2);
+margin:0 0 var(--sp-4);padding-bottom:var(--sp-2);border-bottom:1px solid var(--rule-2)}
+.mfrow{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--sp-4) var(--sp-6)}
+.mf b{display:block;font:600 var(--t-h2)/1.1 var(--serif);color:var(--ink)}
+.mf span{display:block;font-size:var(--t-ui);color:var(--ink);margin-top:var(--sp-2)}
+.mf small{display:block;font-size:var(--t-sm);color:var(--ink-2);margin-top:var(--sp-1)}
+.mfnone{grid-column:1 / -1;font-size:var(--t-ui);color:var(--ink-2);margin:0}
+.mfhow{margin:var(--sp-5) 0 0}
+.mfhow > summary{cursor:pointer;color:var(--pine);font-size:var(--t-ui);display:inline-flex;min-height:2.25rem;align-items:center}
+.mfhow .patt{margin-top:var(--sp-3)}
+/* How It Got Here in a section's width: the mark, the body, the day, then
+   what it did -- the day in a column of its own beside the body, as the
+   prototype draws it, rather than at the far end of a 50rem line. */
+.w4b .jl li{grid-template-columns:1.1em 5em 7.6em minmax(0,1fr);grid-template-areas:"g b d t";
+padding:var(--sp-3) 0;border-top:1px solid var(--rule)}
+.w4b .jl li:first-child{border-top:0}
+.w4b .jl .jg{grid-area:g}.w4b .jl .jb{grid-area:b}.w4b .jl .jt{grid-area:t}.w4b .jl .jd{grid-area:d}
+.w4b .jl li.jmore{display:block}
+@media (max-width:37.5em){
+  .w4b .jl li{grid-template-columns:1.1em minmax(0,1fr) auto;grid-template-areas:"g b d" ". t t"}
+}
+/* POLISH 2 -- HEAD AND SECTIONS: END ----------------------------------- */
+
+/* POLISH 2 -- SESSION DAYS (ws/records, 10 October 2026) ------------------
+   A chamber's session day in the record head and W4 sections, each bill it
+   took up one by one as a card saying what happened that day: the committee's
+   recommendation and every vote in order (the person's feedback of 9 October
+   2026: item 1, item 6, item 18, v2, v3, v15, v16, v18 and v19). */
+.sesspage > .rhead{margin-top:0}
+.sesspage .wknav{margin:var(--sp-7) 0}
+.wknav a small{display:block;font-weight:400;font-size:var(--t-sm);color:var(--ink-2)}
+.wknav a{flex-direction:column;align-items:flex-start}
+.wknav .wknext{align-items:flex-end;text-align:right}
+.wknav .wkmid{flex:1 1 auto;text-align:center;font-size:var(--t-ui)}
+.wknav .wkmid a{display:inline;padding:0;min-height:0;font-weight:500}
+@media (max-width:45em){.wknav .wkmid{order:3;flex-basis:100%;text-align:left}}
+/* WHO PRESIDED, in the facts: each the person chip with the office the
+   record gives them that day. */
+.rpres{display:flex;flex-direction:column;align-items:flex-start;margin:0 0 var(--sp-3)}
+.rpres:last-child{margin-bottom:0}
+.rpres small{margin-top:var(--sp-1)}
+.spres{font-size:var(--t-ui);color:var(--ink);margin:var(--sp-4) 0 0}
+/* THE FOLDS: the consent calendar's bills (item 18) and the members excused
+   (v16), closed by default, each group's count on the fold in its chip's
+   colours (v19). */
+.sfold{margin:var(--sp-5) 0 0;border:1px solid var(--rule-2);border-radius:var(--r-out);
+background:var(--surface)}
+.sfold > summary{list-style:none;cursor:pointer;display:flex;flex-wrap:wrap;align-items:center;
+gap:var(--sp-3) var(--sp-5);padding:var(--sp-5) var(--sp-6);min-height:2.75rem}
+.sfold > summary::-webkit-details-marker{display:none}
+.sfold > summary:hover{background:var(--paper)}
+.sflab{color:var(--pine);font-weight:600;text-decoration:underline;text-decoration-thickness:1px;
+text-underline-offset:.2em}
+.sfcounts{display:inline-flex;flex-wrap:wrap;gap:var(--sp-2)}
+.sfold > summary .cmcaret{margin-left:auto;width:.6rem;height:.6rem;border-right:2px solid var(--ink-2);
+border-bottom:2px solid var(--ink-2);transform:rotate(-45deg);transition:transform .15s}
+.sfold[open] > summary .cmcaret{transform:rotate(45deg)}
+.sfold > :not(summary){margin-left:var(--sp-6);margin-right:var(--sp-6)}
+.sfold > :last-child{margin-bottom:var(--sp-6)}
+.sfold .note{margin-top:0}
+.scons{margin:var(--sp-5) 0 0}
+.sch{font:600 var(--t-ui)/1.3 var(--sans);margin:0 0 var(--sp-2);color:var(--ink)}
+.sch span{font-weight:400;color:var(--ink-2);margin-left:var(--sp-2)}
+/* A VOTE OF THE DAY, in the approved words (the person, 8 October 2026):
+   the motion as the head, then what it did and the count, who moved it, the
+   record's own words where they differ, and the ring. */
+.dvote{margin:var(--sp-4) 0 0;padding-top:var(--sp-4);border-top:1px solid var(--rule)}
+.cline .dvote:first-child,.cline > .drec + .dvote,.cline > .mjumps + .dvote{border-top:0;padding-top:0}
+.dvh{font:600 var(--t-read)/1.4 var(--serif);color:var(--ink);margin:0 0 var(--sp-2)}
+.dvh .ramd{font:400 var(--t-sm)/1 var(--sans);color:var(--ink-2);margin-left:var(--sp-2)}
+.dvr{display:flex;flex-wrap:wrap;align-items:center;gap:var(--sp-2) var(--sp-3);margin:0 0 var(--sp-2)}
+.dvr > .chip{margin-left:0}
+.dvr b{font-variant-numeric:tabular-nums}
+.dvby,.rcrec{font-size:var(--t-sm);color:var(--ink-2);margin:0 0 var(--sp-2)}
+.drec{margin:0 0 var(--sp-3)}
+.dremoved{margin:var(--sp-3) 0 0}
+.dconsent .dvr{margin-bottom:0}
+.cline .mjumps{margin:0 0 var(--sp-4);display:flex}
+.cline .sspoke{margin-top:var(--sp-2)}
+.cline .svote .votewrap{margin-top:var(--sp-2)}
+/* THE DAY IN ORDER: its heading in the margin and the day's recordings under
+   it, one player each, beside the cards; above them on a narrow screen. */
+.wday .w4m{min-width:0}
+.wday .w4m .player:first-child{margin-top:0}
+.wday .w4m .pbar{font-size:var(--t-sm)}
+.wday .w4m .pwho{flex:1 1 100%;color:var(--ink-2)}
+.wday .w4m .pwho b{color:var(--ink);font-weight:600}
+.wday .w4m .tolnote{margin-left:0}
+@media (min-width:60em){
+  .w4.wday{grid-template-areas:"head body" "play body"}
+  .wday > .w4h{grid-area:head}
+  .wday > .w4m{grid-area:play;align-self:start;position:sticky;top:var(--sp-5);margin-top:var(--sp-5)}
+  .wday > .w4b{grid-area:body;grid-row:1 / span 2}
+}
+@media (max-width:59.99em){.wday > .w4m{margin:0 0 var(--sp-5)}}
+.wday .cards .card{margin-bottom:var(--sp-5)}
+/* POLISH 2 -- SESSION DAYS: END ----------------------------------------- */
 
 /* PAGES:START ---------------------------------------------------------
    THE PAGES build_pages.py WRITES -- the home page, the roster, About,

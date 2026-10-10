@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.191
+# GRANITE_VERSION: 2026-09-05.192
 """
 Generate the faceted site from real General Court data.
 
@@ -50,6 +50,7 @@ import csv
 import json
 import member_figures as MF
 import member_links as ML
+import motions as MO
 import names
 import re
 import archive_text as AT
@@ -1588,7 +1589,7 @@ def untold_ending(label, steps, untold):
             when=when, chamber=chamber, verb="adopt" if head == "Not adopted" else "pass",
             how=text[len(head):])
     said = said.strip()
-    return {"label": "How it ended", "text": said[:1].upper() + said[1:]}
+    return {"label": "How It Ended", "text": said[:1].upper() + said[1:]}
 
 
 def closing_stage(label, narr, decided=False, steps=None, inferred=False,
@@ -1644,7 +1645,7 @@ def closing_stage(label, narr, decided=False, steps=None, inferred=False,
         failed = conference_failure([e for e in (narr or {}).get("events", [])
                                      if not e.get("cancelled")])
         text = CONF_UNABLE_CLOSING.get((failed or ("unable",))[0], text)
-    return {"label": "How it ended", "text": text}
+    return {"label": "How It Ended", "text": text}
 
 
 def veto_votes(evs):
@@ -2734,7 +2735,36 @@ def ballot_seat(v, body):
     return member_labels(v.get("name"), chamber=body, party=v.get("party"))["display"]
 
 
-def write_floor_record(data_dir, votes_by_member, cards):
+def floor_moment(st):
+    """A floor station's moment in its recording, as its bill's Hearings tab
+    plays it (app.js renderHearings): {"d": the day, "b": "H" or "S", "v": the
+    recording, "from": where the player opens, "end": the vote's or the
+    chair's close, "stated": whether the opening is the clerk's own words},
+    or None for a station with no recording, no moment, or the consent
+    calendar's."""
+    state = st.get("state") or ""
+    if not st.get("video_id") or not str(st.get("what") or "").startswith("floor"):
+        return None
+    ws = st.get("window_start")
+    if state in ("floor_precise", "floor_stated"):
+        end = st.get("debate_end")
+        if st.get("debate_start") is not None:
+            frm = max(int(st["debate_start"]), 0)
+        elif end is not None:
+            frm = max(int(ws) if ws is not None else 0, int(end) - 600)
+        else:
+            return None
+    elif state == "floor_dated" and st.get("debate_start") is not None:
+        frm, end = max(int(st["debate_start"]), 0), None
+    else:
+        return None
+    return {"d": st.get("when"), "b": "H" if st.get("committee") == "House" else "S",
+            "v": st["video_id"], "from": frm,
+            **({"end": int(end)} if end is not None else {}),
+            "stated": st.get("debate_start") is not None, "s": state}
+
+
+def write_floor_record(data_dir, votes_by_member, cards, moments=None):
     """data/floor_record.json (FLOOR_RECORD, above). Returns its path."""
     presiding = defaultdict(list)
     for rows in votes_by_member.values():
@@ -2749,7 +2779,8 @@ def write_floor_record(data_dir, votes_by_member, cards):
                   "on its bill's Votes tab (cards, the index into the bill record's "
                   "rollcalls). Written by build_site_v2.py, which reads the ballots.",
         "presiding": {k: sorted(v) for k, v in sorted(presiding.items())},
-        "cards": cards}, separators=(",", ":"), sort_keys=True), encoding="utf-8")
+        "cards": cards, "moments": moments or {}}, separators=(",", ":"), sort_keys=True),
+        encoding="utf-8")
     print(f"{f}: {len(presiding):,} roll calls with a presiding ballot, "
           f"{sum(len(b) for t in cards.values() for b in t.values()):,} roll-call cards "
           f"on {sum(len(t) for t in cards.values()):,} bills' Votes tabs")
@@ -7190,7 +7221,7 @@ def session_endings(narr, steps, rail, chip, status, term, over, sittings, lsrs=
         if said and ending:
             ending = {**ending, "text": f"{ending['text']} {said}"}
         elif said:
-            ending = {"label": "How it ended", "text": said}
+            ending = {"label": "How It Ended", "text": said}
     elif chip == INTERIM_STUDY and over:
         steps.extend(study_ending(narr, steps, rail, term, sittings, lsrs))
     return tabled, ending
@@ -7557,6 +7588,41 @@ def vote_member(m, body, legs, unnamed):
             "p": m.get("party") or "X", "v": m.get("vote")}
 
 
+MOVER_HONORIFIC = re.compile(r"^(?:Rep|Sen|Representative|Senator)s?\.?\s+", re.I)
+MOVER_SUFFIX = re.compile(r",?\s+(?:Jr|Sr|II|III|IV)\.?$", re.I)
+
+
+def mover_member(mover, body, legs):
+    """{"label", "slug"} of the one sitting member of `body` the docket's
+    mover can mean -- "Rep. Alexander Jr." is Rep. Joe Alexander (R - Hills
+    29), the only Alexander in the House -- or None where the name is no
+    one's or more than one's. A WRONG LINK IS WORSE THAN NO LINK: a surname
+    two members of the chamber share is left as the docket wrote it, and a
+    full name ("Peter Schmidt") is tried before the surname alone."""
+    n = MOVER_SUFFIX.sub("", MOVER_HONORIFIC.sub("", (mover or "").strip())).strip().strip(".")
+    ch = (body or "").strip().upper()[:1]
+    if not n or not ch:
+        return None
+    pool = []
+    for m in (legs or {}).values():
+        if (m.get("chamber") or "").strip().upper()[:1] != ch or "," not in (m.get("name") or ""):
+            continue
+        last, first = (x.strip() for x in m["name"].split(",", 1))
+        pool.append((MOVER_SUFFIX.sub("", last).lower(), f"{first.split()[0] if first.split() else ''} "
+                     f"{MOVER_SUFFIX.sub('', last)}".lower(), m))
+    want = n.lower()
+    cands = [m for _l, full, m in pool if full == want] or (
+        [m for last, _f, m in pool if last == want] if " " not in want else [])
+    if len(cands) != 1:
+        return None
+    m = cands[0]
+    lab = member_labels(m.get("name"), chamber=m.get("chamber"),
+                        party=m.get("party_code") or m.get("party"), district=m.get("district"),
+                        county=m.get("county"), county_abbr=m.get("county_abbr"))
+    return {"label": lab.get("display_full") or m.get("label") or "",
+            "slug": m.get("slug") or member_slug(m, lab)}
+
+
 def bill_sponsor_list(bid, b, year, term, current, sponsors, legs,
                       leg_by_sort, leg_by_name, sponsored, seats=None, left=None,
                       term_roster=None):
@@ -7755,7 +7821,15 @@ def bill_index_row(bid, b, year, term, cmte, cmtes, disp, prime,
         # twice, once per source. person_name() is the same normaliser the
         # display label already goes through.
         "sponsor": person_name(prime["name"]) if prime else "",
-        "sponsor_label": prime.get("display", "") if prime else "",
+        # THE SPONSOR AS THE PERSON CHIP ON A CARD (D14, the person, 8 October
+        # 2026: the chip wherever a person is listed or labelled, with the seat
+        # held at the time): the label in full, "Rep. George Grant (R - Sull
+        # 5)", where it was "(R)", and the page and party the chip needs, only
+        # where the record has them, so the up-front index grows by little.
+        "sponsor_label": (prime.get("display_full") or prime.get("display", "")) if prime else "",
+        **({"sponsor_slug": prime["slug"]} if prime and prime.get("slug") else {}),
+        **({"sponsor_party": str(prime.get("party") or "").strip().upper()[:1]}
+           if prime and prime.get("party") else {}),
         "committee": cmte, "committees": cmtes,
         "topic": b.get("subject", ""),
         # Whether the General Court filed it there or this site did.
@@ -9068,12 +9142,12 @@ def journal_story(b, jkeys):
             said += (f" A motion to reconsider {recon}"
                      + (f", {rv.replace('-', chr(0x2013))}" if rv else "") + ".")
     stages = [
-        {"label": "In House committee" + (f" — {committee}" if committee else ""),
+        {"label": "House Committee" + (f" ({committee})" if committee else ""),
          "hand": "H:committee", "notes": [],
          "text": (f"It was introduced on {_long_day(i.get('date'))}"
                   + (f" and referred to the House {committee} committee." if committee
                      else "."))},
-        {"label": "On the House floor", "hand": "H:floor", "notes": [], "text": said},
+        {"label": "On the House Floor", "hand": "H:floor", "notes": [], "text": said},
     ]
 
     def where(c):
@@ -9136,12 +9210,12 @@ def journal_decided_story(b, jkeys):
             + (f" on a {d['how']}" if d.get("how") else "")
             + (f" {tally}" if tally else "") + ".")
     stages = [
-        {"label": "In House committee" + (f" — {committee}" if committee else ""),
+        {"label": "House Committee" + (f" ({committee})" if committee else ""),
          "hand": "H:committee", "notes": [],
          "text": (f"It was introduced on {_long_day(i.get('date'))}"
                   + (f" and referred to the House {committee} committee." if committee
                      else "."))},
-        {"label": "On the House floor", "hand": "H:floor", "notes": [], "text": said},
+        {"label": "On the House Floor", "hand": "H:floor", "notes": [], "text": said},
     ]
 
     def where(c):
@@ -9810,7 +9884,7 @@ def stages_told(narr, kind, rail):
     body = next(((e.get("body") or "")[:1].upper() for e in rows), "")
     if body not in ("H", "S"):
         return stages
-    label = f"On the {'House' if body == 'H' else 'Senate'} floor"
+    label = f"On the {'House' if body == 'H' else 'Senate'} Floor"
     told = []
     for s in stages:
         if s.get("hand") != "G:governor":
@@ -9949,7 +10023,7 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
                 votes_by_bill, vetoes=None, notes=None, coverage=None,
                 chapters=None, seats=None, session_over="", former=None,
                 links=None, hearing_reports=None, ballots=None, term_rosters=None,
-                rc_cards=None):
+                rc_cards=None, moments=None):
     """One JSON per bill, and the index row for each.
 
     This is the loop ARCHITECTURE item 5 names. It ran inside a 955-line
@@ -10347,6 +10421,22 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
                                 votes_by_bill, legs, unnamed)
         for r in rc_out:
             r.pop("_ord", None)
+            # THE VOTE WORDS' KEY (the person, 8 October 2026; motions.py):
+            # which motion this was, read once here, so the Votes tab draws
+            # its head and its chip in the approved words (components.
+            # vote_head, vote_chip), with the record's own words under it
+            # where they differ (mrec).
+            r.update(MO.classify(r.get("question"), bid, r.get("body") or "",
+                                 _WORDBOOK["votes"]["motions"]))
+            # THE MOVER AS THE PERSON IN A SENTENCE (D14): "Moved by Rep. Joe
+            # Alexander (R - Hills 29)", linked, where the docket's "Rep.
+            # Alexander Jr." can mean one member of the chamber. The sitting
+            # roster's seat is the seat held at the time only in the current
+            # term, so only there; elsewhere the docket's words stand.
+            if r.get("mover") and term == current:
+                who = mover_member(r["mover"], r.get("body"), legs)
+                if who:
+                    r["mover_m"] = who
         # WHERE EACH ROLL CALL'S CARD IS on this bill's Votes tab, for the
         # session days (`rc_cards`, write_floor_record): {term: {bill: {roll
         # call: index into the record's rollcalls}}}.
@@ -10422,6 +10512,18 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
         stations += [station_for_floor(f, bid, marks)
                      for f in fold_conference_notices(floor.get((term, bid), []))]
         stations.sort(key=lambda x: (x["when"], x.get("time") or ""))
+        # EACH FLOOR STATION'S MOMENT, for the session day's card of this bill
+        # (`moments`, write_floor_record): the very time this bill's own
+        # Hearings tab opens its player at and the vote it ends on, so the two
+        # pages give one answer (nothing about a timestamp changes). A bill
+        # the consent calendar decided has none: "a bill that passes on the
+        # consent calendar needs no embedded YouTube recording" (the person,
+        # 9 October 2026, v3).
+        if moments is not None:
+            for _st in stations:
+                _m = floor_moment(_st)
+                if _m:
+                    moments.setdefault(term, {}).setdefault(bid, []).append(_m)
         # The census, taken after the sort so it counts exactly the list the
         # page receives -- including the floor stations, which is the half of
         # the record five tools in one day were found to be missing.
@@ -11259,6 +11361,8 @@ def main():
     # Each roll call's card on its bill's Votes tab, filled by build_bills
     # for write_floor_record.
     rc_cards = {}
+    # And each floor station's moment, for the session day's cards.
+    floor_moments = {}
     # -------------------------------------------------------------- index --
     index, years, unnamed, sponsored = build_bills(out, bills, narratives, rollcalls, reports,
                                sponsors, bill_texts, amend_texts, testimony,
@@ -11276,7 +11380,7 @@ def main():
                                    rollcalls, procs,
                                    max(bills) if bills else ""),
                                ballots=load_ballots(BALLOTS, bills),
-                               rc_cards=rc_cards)
+                               rc_cards=rc_cards, moments=floor_moments)
     # NO index.json (retired 5 October 2026). It was every row below in one
     # file, read by six build steps and by no page: 23.7 MB on 2 October,
     # 90.5% of the 25 MiB Cloudflare Pages takes in one file, and a term's
@@ -11349,7 +11453,7 @@ def main():
     # What the session days need of the floor that only the ballots and the
     # bills' Votes tabs say: who presided over each roll call, and where each
     # roll call's card is (write_floor_record, FLOOR_RECORD).
-    write_floor_record(D, votes_by_member, rc_cards)
+    write_floor_record(D, votes_by_member, rc_cards, floor_moments)
     lg = build_legislators(out, legs, votes_by_member, towns, unnamed,
                            sponsored, bill_year, links, former, offices,
                            index_rows={(r.get("term"), r.get("id")): r for r in index})

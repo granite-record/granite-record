@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-19.29
+# GRANITE_VERSION: 2026-09-19.30
 """
 A page for every day the House sat.
 
@@ -67,6 +67,8 @@ import re
 import bill_order as BO
 import build_date
 import committee_acts as CA
+import components as C
+import motions as MO
 import session_days
 import journal_days
 import officers
@@ -235,29 +237,44 @@ def base_bill(bid):
     return re.split(r"-", (bid or "").upper(), maxsplit=1)[0].strip()
 
 
-def member_html(body, name, members, esc):
+def member_info(body, name, members):
+    """The one member `name` can mean that day, as the person chip and the
+    person in a sentence take one ({display_full, slug, party}), or None."""
     slug = members.slug(body, name)
-    who = esc(f"Rep. {name}" if body == "H" else f"Sen. {name}")
-    if slug:
-        return f'<a href="legislator/{esc(slug)}.html">{who}</a>'
-    return f"<span>{who}</span>"
+    info = (getattr(members, "by_slug", None) or {}).get(slug) if slug else None
+    if not info:
+        return None
+    return {"display_full": info.get("label") or "", "slug": slug, "party": info.get("party") or ""}
+
+
+def member_html(body, name, members, esc):
+    """A member in a running sentence (D14, the person, 8 October 2026): the
+    full label as a link, "Rep. Joe Alexander (R - Hills 29)", where the name
+    can mean one member serving the day's term; the journal's own words where
+    it cannot (A WRONG LINK IS WORSE THAN NO LINK, Members)."""
+    who = member_info(body, name, members)
+    if who and who["display_full"]:
+        return C.person_link(who)
+    return f"<span>{esc(f'Rep. {name}' if body == 'H' else f'Sen. {name}')}</span>"
 
 
 def members_row(body, names, members, esc):
-    """The members of a line, each with the comma that follows it.
-
-    THE COMMA BELONGS TO THE NAME BEFORE IT. These lines are flex rows
-    (.sspoke) with a gap between their items, and the names were joined with
-    ", ": a comma between two elements is a piece of text on its own, so it
-    became an item of its own and took the gap on both sides -- "Rep. Barbour
-    , Rep. Bridle ,", with a space before every comma, on every sitting's page
-    (the audit of 2 October 2026, M20). Each name and its comma are one item
-    now. The space written between two items is not drawn in a flex row; it
-    is there for a copy of the text and for a screen reader.
-    """
-    out = [member_html(body, n, members, esc) for n in names]
-    return " ".join(f'<span class="swho1">{h}{"," if i + 1 < len(out) else ""}</span>'
-                    for i, h in enumerate(out))
+    """The members of a line, each as the person chip (D14: "the chip
+    wherever a person is listed"), or as the journal names them where the
+    name is no one member's. One item each in the flex row (.sspoke), so a
+    comma never stands between two items on its own (the audit of 2 October
+    2026, M20): a chip needs none, and a name left as words keeps its own,
+    inside its item, where another name follows it."""
+    out = []
+    for i, n in enumerate(names):
+        who = member_info(body, n, members)
+        if who and who["display_full"]:
+            out.append(f'<span class="swho1">{C.pchip(who)}</span>')
+        else:
+            words = esc(f"Rep. {n}" if body == "H" else f"Sen. {n}")
+            comma = "," if i + 1 < len(names) else ""
+            out.append(f'<span class="swho1"><span>{words}</span>{comma}</span>')
+    return " ".join(out)
 
 
 def vote_payload(item):
@@ -319,28 +336,12 @@ def others_html(others, body, members, esc, payloads):
     than the file does: no debate, no speaker, nothing done to a bill."""
     if not others:
         return ""
-    H = ['<section class="sday"><h2>Votes on no bill</h2>'
-         '<p class="note">Roll calls the '
+    H = ['<p class="note">Roll calls the '
          f"{CHAMBER[body]} took that day on questions that were on no bill, such "
          "as its own rules, a ruling of the chair or printing a debate. The "
          "question is as the General Court&rsquo;s roll-call file words it.</p>"]
     for it in others:
-        moved = (f' <span class="smover">moved by '
-                 f'{member_html(body, it.mover.replace("Rep. ", "").replace("Sen. ", ""), members, esc)}'
-                 "</span>" if it.mover else "")
-        H.append('<article class="sitem"><div class="smotion">')
-        H.append(_question_html(it, moved, esc))
-        p = vote_payload(it)
-        if p:
-            i = len(payloads)
-            payloads.append(p)
-            H.append(f'<div class="svote" data-vote="{i}">'
-                     f'<p class="stally">A {esc(it.kind_words or "vote")}: '
-                     f'<b>{it.yeas}</b> yeas, <b>{it.nays}</b> nays.</p></div>')
-        if it.outcome_words:
-            H.append(f'<p class="soutcome">{esc(it.outcome_words)}</p>')
-        H.append("</div></article>")
-    H.append("</section>")
+        H.append(vote_html(it, "", body, "", {}, members, esc, payloads) + "</div>")
     return "".join(H)
 
 
@@ -802,8 +803,7 @@ def opening_html(narrative, body, members, esc):
     if say:
         line = (line + ". " if line else "") + ", and ".join(say).capitalize() \
             if not line else line + ", " + " and ".join(say)
-    return ('<section class="sday sopen"><h2>How the day began</h2>'
-            f"<p>{line}.</p></section>")
+    return f"<p>{line}.</p>"
 
 
 def absences_html(narrative, body, members, esc):
@@ -854,13 +854,28 @@ def absences_html(narrative, body, members, esc):
         who = (f'{n} member{"" if n == 1 else "s"} as having leave of the '
                f"{CHAMBER[body]}")
         one = "A member on leave may still have voted on part of the day"
-    return ('<section class="sday"><h2>Excused for the day</h2>'
+    # FOLDED, WITH EACH PARTY'S COUNT ON THE FOLD (the person, 9 October
+    # 2026, v16: "a compact dropdown like the consent calendar's, closed by
+    # default, with the count of members excused from each party shown").
+    # The parties are the members' own records' (excused_on, the day's data);
+    # a name that is no one member's is counted in the total and in no party.
+    by_party = collections.Counter()
+    for nm in names:
+        mi = member_info(body, nm, members)
+        if mi and mi["party"]:
+            by_party[mi["party"]] += 1
+    word = "senator" if body == "S" else "member"
+    counts = "".join(C.chip(f"{PARTY_WORD.get(k, k)} {v}", f"sfn pt-{k}")
+                     for k, v in sorted(by_party.items(), key=lambda x: (-x[1], x[0])))
+    return ('<details class="sfold sexcused"><summary><span class="sflab">Show the '
+            f'{n} {word}{"" if n == 1 else "s"} excused</span><span class="sfcounts">{counts}</span>'
+            '<span class="cmcaret" aria-hidden="true"></span></summary>'
             f'<p class="note">The journal records {who} for the day, that is, '
             f"permission to be away. {one}, and the roll call record does not "
             "always agree with the journal about who was excused.</p>"
             '<p class="sspoke sabs">'
             + members_row(body, names, members, esc)
-            + "</p></section>")
+            + "</p></details>")
 
 
 # What a motion carrying did to a bill, in one word, for a list of seventy.
@@ -873,15 +888,28 @@ def absences_html(narrative, body, members, esc):
 # here says "Sent back to committee" (build_site_v2._j_words, a recommittal),
 # and so does this list now. A re-referral whose words name interim study is
 # interim study, and the study row is read first.
+# IN TITLE CASE WHERE THEY ARE MADE (the component plan's C8): the words the
+# person approved for the consent calendar's groups (votes.json, row 33:
+# Passed, Killed, Sent to Interim Study, Sent Back to Committee, Adopted).
 SHORT = (
-    (("inexpedient to legislate", "indefinitely postpone"), "Killed", "Kept alive"),
-    (("ought to pass",), "Passed", "Not passed"),
+    (("inexpedient to legislate", "indefinitely postpone"), "Killed", "Kept Alive"),
+    (("ought to pass",), "Passed", "Not Passed"),
     (("refer for interim study", "re-refer for interim study", "re-refer to interim study",
-      "rerefer for interim study", "rerefer to interim study"), "Sent to interim study",
-     "Not sent to interim study"),
-    (("re-refer", "rerefer"), "Sent back to committee", "Not sent back to committee"),
-    (("adopt",), "Adopted", "Not adopted"),
+      "rerefer for interim study", "rerefer to interim study"), "Sent to Interim Study",
+     "Not Sent to Interim Study"),
+    (("re-refer", "rerefer"), "Sent Back to Committee", "Not Sent Back to Committee"),
+    (("adopt",), "Adopted", "Not Adopted"),
 )
+# Each group's count on the fold in its status chip's colours (v19, the
+# person, 9 October 2026); a group the motion's failure made takes none.
+# The groups are the approved words' (votes.json's consent groups, in their
+# order), each in the class the bill search gives what it did: passed, died,
+# interim study, still moving, a resolution adopted.
+_CAT, _KIND = C.WORDBOOK["chips"]["category"], C.WORDBOOK["chips"]["kind"]
+CONSENT_CLASS = dict(zip(C.WORDBOOK["votes"]["consent"]["groups"],
+                         (_CAT["Passed"], _CAT["Died"], _CAT["Interim Study"],
+                          _CAT["In Progress"], _KIND["adopted"])))
+PARTY_WORD = {"R": "Republican", "D": "Democrat", "I": "Independent", "L": "Libertarian"}
 
 
 def short_outcome(item):
@@ -936,58 +964,93 @@ def calendar_vote(cons):
     return out
 
 
-def consent_html(cons, removed, titles, years, esc, calendar=()):
-    """The bills the chamber disposed of together, grouped by what happened.
+def and_list(xs):
+    """"a", "a and b", "a, b, and c": the person's sentence for the bills
+    removed from the consent calendar (item 18, its serial comma kept)."""
+    xs = list(xs)
+    if len(xs) < 3:
+        return " and ".join(xs)
+    return ", ".join(xs[:-1]) + ", and " + xs[-1]
+
+
+def consent_html(cons, removed, titles, years, esc, calendar=(), rows=None, term="",
+                 told=frozenset()):
+    """The bills the chamber disposed of together, folded (the person's
+    feedback of 9 October 2026, item 18: "consent-calendar bills hidden in a
+    dropdown by default, with each category's count shown"; v19, the counts
+    in the status chips' colours). The motion in the approved vote words and
+    what it did; the bills taken off it, in the person's sentence ("HB 652-FN,
+    HB 1028, HB 1572-FN, and HB 1602-FN were removed from the consent
+    calendar."), each told in its place in the day; then the fold, each
+    outcome's bills as rows under its heading, which says the outcome, so a
+    row carries no chip of its own. Rows, not cards: each consent bill has
+    nothing of its own to say that day (the prototype's question 6).
 
     A consent calendar is one motion covering dozens of bills that nobody
     asked to debate -- 75 of the 121 things the House did on 6 March 2025 --
-    so they belong in a list, by outcome. Printed as 75 entries in the day's
-    sequence they bury the 46 bills it actually argued about.
-
-    Any member may pull a bill off the list, and the journal names the bill
-    and the members who did. A bill that came off is not here.
-
-    THE NOTE SAYS IT CAME OFF AND NO MORE. It said such bills were "debated
-    separately", which the record does not say and often contradicts: HB 189,
-    389, 527, 549 and 679 came off on 13 March 2013 and were "Special Ordered
-    to Next Session Without Objection" that day, and HB 1288 and HB 1223, off
-    on 11 March 2026, were taken up the next day. The bill histories had
-    already stopped saying it.
-    """
+    so they belong in a list, by outcome. Any member may pull a bill off the
+    list, and the journal names the bill. THE NOTE SAYS IT CAME OFF AND NO
+    MORE: the record does not say such bills were "debated separately", and
+    often contradicts it (HB 189, 389, 527, 549 and 679 of 13 March 2013 were
+    special-ordered to the next session that day)."""
     if not cons:
         return ""
+    rows = rows or {}
     groups = {}
     for i in cons:
         groups.setdefault(short_outcome(i), []).append(i)
     n = len({(i.term, i.bill) for i in cons})
-    note = (f'{n} bill{"" if n == 1 else "s"} the chamber disposed of '
-            "together, in one motion and without debate.")
-    for kind, yeas, nays, carried in calendar:
-        how = ("was adopted" if carried else "failed" if carried is False
-               else "was taken")
-        note += (f" The calendar {how} on a {kind}, {yeas} "
-                 f"yea{'' if yeas == 1 else 's'} to {nays} nay{'' if nays == 1 else 's'}.")
+    done = [i.carried for i in cons if i.carried is not None]
+    carried = (True if any(done) else False) if done else None
+    tally = "".join(f' <b>{yeas}\u2013{nays}</b> on a {esc(kind)}'
+                    for kind, yeas, nays, _c in calendar)
+    out = ['<div class="dvote dconsent">'
+           f'<p class="dvh">{C.vote_head("consent")}</p>'
+           f'<p class="dvr">{C.vote_chip("consent", carried)}{tally}</p>']
     if removed:
-        pretty = ", ".join(re.sub(r"^([A-Z]+)(\d)", r"\1 \2", b)
-                           for b in sorted(removed, key=BO.bill_key))
-        note += (f" {pretty} {'was' if len(removed) == 1 else 'were'} taken off "
-                 "the calendar.")
-    H = ['<section class="sday"><h2>On the consent calendar</h2>'
-         f'<p class="note">{esc(note)}</p>']
-    for label in sorted(groups):
+        named = []
+        # A bill the index does not hold is named as the journal named it,
+        # with its suffixes: "HB 605-FN", as the person's sentence has them.
+        said = {}
+        for x in removed:
+            said.setdefault(str(x).split("-")[0].upper(), str(x).upper())
+        for b in sorted(said, key=BO.bill_key):
+            row = rows.get((term, b)) or {}
+            num = row.get("n") or re.sub(r"^([A-Z]+)(\d)", r"\1 \2", said[b])
+            href = bill_href(term, b, years)
+            named.append(C.bill_mention(num, href) if href else esc(num))
+        # "Each is told below" only where each is: a bill taken off the
+        # calendar and special-ordered to another day is not (HB 189, 389,
+        # 527, 549 and 679 of 13 March 2013).
+        below = all(b in told for b in {str(x).split("-")[0].upper() for x in removed})
+        out.append(f'<p class="dremoved">{and_list(named)} '
+                   f'{"was" if len(named) == 1 else "were"} removed from the consent '
+                   "calendar." + (" Each is told below, in its place in the day." if below
+                                  and len(named) > 1 else " It is told below, in its place in "
+                                  "the day." if below else "") + "</p>")
+    counts = "".join(C.chip(f"{label} {len({(i.term, i.bill) for i in groups[label]})}",
+                            "sfn " + CONSENT_CLASS.get(label, ""))
+                     for label in sorted(groups, key=lambda g: (-len(groups[g]), g)))
+    out.append('<details class="sfold sconsent"><summary><span class="sflab">Show the '
+               f'{n} bill{"" if n == 1 else "s"}</span><span class="sfcounts">{counts}</span>'
+               '<span class="cmcaret" aria-hidden="true"></span></summary>')
+    for label in sorted(groups, key=lambda g: (-len(groups[g]), g)):
         # By number as bills.html lists them; as text, SB 16 followed SB 133.
         items = sorted(groups[label], key=lambda x: BO.bill_key(x.bill))
-        H.append(f'<div class="scons"><h3 class="slab">{esc(label)} '
-                 f'&mdash; {len(items)}</h3><ul class="sconslist">')
+        out.append(f'<div class="scons"><h3 class="sch">{esc(label)} <span>{len(items)}</span></h3>')
         for i in items:
-            num = re.sub(r"^([A-Z]+)(\d)", r"\1 \2", i.bill)
+            row = rows.get((i.term, i.bill)) or {}
+            num = row.get("n") or re.sub(r"^([A-Z]+)(\d)", r"\1 \2", i.bill)
+            href = bill_href(i.term, i.bill, years)
             ti = titles.get((i.term, i.bill)) or ""
-            H.append("<li>" + bill_link(i.term, i.bill, num, years, esc, "cbn")
-                     + (f'<span class="cbt">{esc(ti)}</span>' if ti else "")
-                     + "</li>")
-        H.append("</ul></div>")
-    H.append("</section>")
-    return "".join(H)
+            # A bill the term's index does not hold has no page to link to
+            # (A WRONG LINK IS WORSE THAN NO LINK): its number as words.
+            out.append(C.bill_row({"n": num, "href": href, "year": "", "title": ti}) if href else
+                       f'<div class="brow"><span class="brnum">{esc(num)}</span>'
+                       f'<span class="brtitle">{esc(ti)}</span></div>')
+        out.append("</div>")
+    out.append("</details></div>")
+    return "".join(out)
 
 
 def day_parts(day, narrative):
@@ -1002,46 +1065,177 @@ def day_parts(day, narrative):
     return removed, seq_items, cons
 
 
-def render(day, narrative, titles, years, members, esc, chair=None):
-    """The day, as HTML. `chair` heads a printed debate's turns in the chair
-    (_debate_html); without it they are printed as the journal heads them."""
-    H = []
+def hms(x):
+    """Seconds as app.js writes a moment in a recording: "01:02:03"."""
+    x = max(0, int(x or 0))
+    return f"{x // 3600:02d}:{x % 3600 // 60:02d}:{x % 60:02d}"
+
+
+def presiding_html(people, body, members, esc):
+    """WHO PRESIDED DURING THE DAY, IN ONE GENERAL LINE (the person, 9 October
+    2026, v18: "no detail of who presided over which bills; a general line
+    naming the members who presided over the chamber during the day (they
+    switch back and forth)"). Each as the person in a sentence (D14), with
+    the office the record names them to that day and no other -- a member in
+    the chair with no office is named without one, the same rule in every
+    term (the person, 10 October 2026). "" where the record names nobody."""
+    if not people:
+        return ""
+    named = []
+    for x in people:
+        who = C.person_link({"display_full": x.get("label") or "", "slug": x.get("slug") or ""})
+        named.append(who + (f", {esc(x['office'])}" if x.get("office") else ""))
+    line = (", and ".join(named) if len(named) == 2 and any(x.get("office") for x in people)
+            else " and ".join(named) if len(named) < 3 else and_list(named))
+    return f'<p class="spres">Presiding over the {CHAMBER[body]} during the day: {line}.</p>'
+
+
+REC_TERM = ("OTP", "OTPA", "ITL", "IS")
+
+
+def rec_said(words, code, esc):
+    """A recommendation in the site's words with the record's abbreviation,
+    marked for its popover, where it is one of the four a reader meets
+    everywhere (app.js recSaid)."""
+    return esc(words or "") + (f" ({C.term_mark(code, code)})" if code in REC_TERM else "")
+
+
+def recommendation_html(r, body, term, codes, esc):
+    """The committee recommendation the chamber acted on that day (the
+    person, 9 October 2026, v15: "each bill's card shows the committee's
+    recommendation"), from the bill's own docket (recommendation_on): the
+    committee, linked to its page, what it recommended and by what vote,
+    and the minority's."""
+    if not r:
+        return ""
+    cmte = r.get("committee") or ""
+    who = C.cmte_link(f"{CHAMBER[body]} {cmte}", term, codes) if cmte else "The committee"
+    tally = (f", {r['yeas']}\u2013{r['nays']}" if r.get("yeas") is not None
+             and r.get("nays") is not None else "")
+    amd = f" with amendment {esc(r['amendment'])}" if r.get("amendment") else ""
+    minority = (f"; a minority, {rec_said(r['minority'], r.get('minority_code'), esc)}"
+                if r.get("minority") else "")
+    return (f'<p class="drec">{who} recommended {rec_said(r.get("recommendation"), r.get("code"), esc)}'
+            f"{amd}{tally}{minority}.</p>")
+
+
+def day_players(body, date, vids, esc):
+    """ONE PLAYER PER LIVESTREAM (the person, 9 October 2026, item 6: "so
+    timestamps tie to that meeting and several clips can be opened at
+    once"), for the recordings the day's bills were taken up in, each moved
+    only by the times on its own bills' cards. None for the consent calendar
+    (v3)."""
+    out = []
+    for vid in vids:
+        pid = f"s{date.replace('-', '')}_{re.sub(r'[^\w-]', '', vid)}"
+        title = f"Recording of the {CHAMBER[body]}, {words(date)}"
+        out.append(f'<div class="player" data-player="{esc(pid)}">'
+                   f'<button type="button" class="pstub" data-title="{esc(title)}" '
+                   f'data-embed="{esc(vid)}|0|{esc(pid)}"><span>{C.icon("play")}</span>'
+                   "<span>Play the recording</span></button>"
+                   f'<div class="pbar"><span class="pwho"><b>The {CHAMBER[body]}</b> &middot; '
+                   f"{esc(words(date))} &middot; Session Day</span>"
+                   f'<a href="https://www.youtube.com/watch?v={esc(vid)}" target="_blank" '
+                   'rel="noopener">On YouTube</a><span class="tolnote">the times on the cards '
+                   "move this player</span></div></div>")
+    return "".join(out)
+
+
+def moment_html(m, date, esc):
+    """A bill's moment in the day's recording: the time its own Hearings tab
+    opens the player at, and the vote it ends on (build_site_v2.floor_moment),
+    as buttons that move the day's player for that recording."""
+    pid = f"s{date.replace('-', '')}_{re.sub(r'[^\w-]', '', m['v'])}"
+    out = (f'<button type="button" class="jump" data-seek="{esc(pid)}|{int(m["from"])}" '
+           f'aria-label="Play from {hms(m["from"])}">{C.icon("play")}{hms(m["from"])}</button>')
+    if m.get("end") is not None and m["end"] > m["from"]:
+        word = "the vote" if m.get("s") == "floor_precise" else "ends"
+        out += (f'<button type="button" class="jump" data-seek="{esc(pid)}|{int(m["end"])}">'
+                f"{hms(m['end'])} {word}</button>")
+    return f'<span class="mjumps">{out}</span>'
+
+
+def vote_html(it, bill, body, year, cards, members, esc, payloads):
+    """One motion of the day on a bill, in the approved vote words (the
+    person, 8 October 2026): the motion's own name with only OTP, OTPA, ITL
+    and IS abbreviated and a plain gloss; the chip saying what the vote did,
+    coloured by its outcome; the count and how it was taken; who moved it,
+    as the person in a sentence; the record's own words where they differ.
+    A counted vote leaves its slot for the ring, which app.js draws -- for a
+    roll call with its card on the bill's Votes tab, the Votes tab's own
+    display, whose party rows show the members (v2: no new link) -- and the
+    count stands in the HTML without it."""
+    words_ = (it.action or "").strip()
+    k = MO.classify(words_, bill, body, C.WORDBOOK["votes"]["motions"])
+    head = (C.vote_head(k["mk"], words_, k["mf"]) if words_
+            else "On a question the record does not name")
+    amds = amendment_numbers(words_)
+    amd = f' <span class="ramd">{esc(", ".join(amds))}</span>' if amds else ""
+    chp = C.vote_chip(k["mk"], it.carried, bill, k["mf"]) if words_ else ""
+    tally = f" <b>{it.yeas}\u2013{it.nays}</b>" if it.counted else ""
+    how = f" on a {esc(it.kind_words)}" if it.kind_words else ""
+    moved = ""
+    if it.mover:
+        nm = it.mover.replace("Rep. ", "").replace("Sen. ", "")
+        moved = f'<p class="dvby">Moved by {member_html(body, nm, members, esc)}.</p>'
+    rec = (f'<p class="rcrec">In the record: {esc(k["mrec"])}</p>'
+           if k.get("mrec") and words_ else "")
+    ring = ""
+    pl = vote_payload(it)
+    if pl:
+        i = len(payloads)
+        payloads.append(pl)
+        rid = rollcall_id(it.rc)
+        card = cards.get(rid) if rid else None
+        full = (f' data-bill="{esc(str(year))}/{esc(bill)}" data-card="{card}"'
+                if card is not None and year and it.kind == "RC" else "")
+        ring = f'<div class="svote" data-vote="{i}"{full}></div>'
+    # data-motion: the record's own words for the motion, which the head
+    # says in the approved words, kept for whatever reads the page by them.
+    return (f'<div class="dvote" data-motion="{esc(words_)}"><p class="dvh">{head}{amd}</p>'
+            f'<p class="dvr">{chp}{tally}{how}</p>{moved}{rec}{ring}')
+
+
+def render(day, narrative, titles, years, members, esc, chair=None, rec=None, ctx=None):
+    """The day, as HTML: W4 sections (the component plan's C7) -- How the Day
+    Began, Excused for the Day, On the Consent Calendar, The Day in Order,
+    and what belongs to no bill -- each bill the chamber took up one by one
+    as its CARD (the person's feedback of 9 October 2026, item 1 and v15),
+    saying what happened to it that day: the committee's recommendation and
+    every vote in order. `rec` is the day as data (day_record), `ctx` what
+    the run read once: the bills' index rows, meta.json's committee codes,
+    and each floor station's moment. `chair` heads a printed debate's turns
+    in the chair (_debate_html)."""
+    rec = rec or {}
+    ctx = ctx or {}
+    rows = ctx.get("rows") or {}
+    codes = ctx.get("codes") or {}
+    moments = ctx.get("moments") or {}
+    cards_of = ctx.get("cards") or {}
+    S_ = []
     body = day.body
     attrs = narrative.get("attributions") or []
     debates = {base_bill(d.get("bill")): d
                for d in (narrative.get("debates") or []) if d.get("bill")}
     payloads = []
-
-    # ONLY CLAIM AN ORDER WHERE THE RECORD HOLDS ONE. The journal page is the
-    # chamber's own sequence and it is cited on 24% of House actions and 0.3%
-    # of Senate ones -- in practice from 2016 for the House and almost never
-    # for the Senate. Where it is absent the actions are listed by bill, which
-    # is predictable and is NOT the order they happened in, and the heading
-    # says so rather than letting an alphabetical list read as a narrative.
-    # A printed debate is drawn once even where its bill holds the floor twice.
-    # The bills the journal says came off the consent calendar. A removal it
-    # prints outside the calendar's own segment counts only for a bill the
-    # record has on this day's list: journal_days.taken_off says why.
     removed, seq_items, cons = day_parts(day, narrative)
     attrs = clerk_counts(attrs, [it for it in seq_items if not it.entered
                                  and getattr(it, "added", "") != "rollcall"])
+    term = (day.items[0].term if day.items else "") or getattr(members, "term", "")
 
-    H.append(opening_html(narrative, body, members, esc))
-    H.append(absences_html(narrative, body, members, esc))
-    H.append(consent_html(cons, removed, titles, years, esc,
-                          calendar=calendar_vote(cons)))
+    began = opening_html(narrative, body, members, esc) + presiding_html(
+        rec.get("presiding"), body, members, esc)
+    if began:
+        S_.append(C.section("How the Day Began", began, "began"))
+    exc = absences_html(narrative, body, members, esc)
+    if exc:
+        S_.append(C.section("Excused for the Day", exc, "excused"))
+    cc = consent_html(cons, removed, titles, years, esc, calendar=calendar_vote(cons),
+                      rows=rows, term=term, told={it.bill.upper() for it in seq_items})
+    if cc:
+        S_.append(C.section("On the Consent Calendar", cc, "consent"))
 
-    drawn = set()
-    # A sitting whose every vote was on no bill -- the House's organisation
-    # days, which adopted its rules by roll call -- has no motions to list.
-    if day.ordered and seq_items:
-        H.append('<section class="sday"><h2>The day in order</h2>')
-    elif seq_items:
-        H.append('<section class="sday"><h2>What the '
-                 f'{CHAMBER[body]} did that day</h2>'
-                 '<p class="note">The record does not say what order these '
-                 "came in: the journal page is cited on only a few of them, "
-                 "so they are listed by bill.</p>")
+    recs = {(b.get("term"), b.get("bill")): b for b in rec.get("bills") or []}
     groups = speech_groups(seq_items)
     shared_out = collections.defaultdict(list)
     known = collections.defaultdict(set)
@@ -1050,51 +1244,45 @@ def render(day, narrative, titles, years, members, esc, chair=None):
         if not it.entered and getattr(it, "added", "") != "rollcall":
             shared_out[groups[id(it)]].append(it)
     unsure = {g: ambiguous_tallies(its) for g, its in shared_out.items()}
-    told = set()
+    told, drawn, said_rec = set(), set(), set()
+    cards, vids = [], []
     for bill, items in runs(seq_items):
-        term = items[0].term
-        href = bill_href(term, bill, years)
-        ti = titles.get((term, bill)) or ""
-        num = re.sub(r"^([A-Z]+)(\d)", r"\1 \2", bill)
-        # WHAT WAS DONE IN RECESS TAKES NO PART IN THE DAY'S DEBATE. The
-        # journal prints it with no speaker -- "Rep. Almy moved that the House
-        # accede. Adopted." -- so the speeches the journal gives the bill that
-        # day are the sitting's own motions', and a recess row neither claims
-        # them nor counts as a second motion that leaves them unplaced. Before
-        # this, SB 389's accession on 15 May 2014 took five speeches made on
-        # its floor amendments, and SB 148's on 5 June 2013 pushed Reps.
-        # O'Brien and Tucker off the roll call they spoke on.
+        term_ = items[0].term
+        href = bill_href(term_, bill, years)
+        row = rows.get((term_, bill)) or {}
+        year = row.get("year") or years.get((term_, bill)) or ""
+        num = row.get("n") or re.sub(r"^([A-Z]+)(\d)", r"\1 \2", bill)
         own = [it for it in items if not it.entered
                and getattr(it, "added", "") != "rollcall"]
-        H.append('<article class="sitem">')
-        H.append("<h3>" + bill_link(term, bill, num, years, esc, "sbill")
-                 + (f'<span class="sbt">{esc(ti)}</span>' if ti else "") + "</h3>")
-
+        line = []
+        # The committee's recommendation, once a bill a day.
+        if (term_, bill) not in said_rec:
+            said_rec.add((term_, bill))
+            line.append(recommendation_html((recs.get((term_, bill)) or {}).get("recommendation"),
+                                            body, term_, codes, esc))
+        # Its moment in the day's recording, as its own Hearings tab gives it.
+        mm = [m for m in (moments.get(term_) or {}).get(bill, [])
+              if m.get("d") == day.date and m.get("b") == body]
+        if mm and own:
+            line.append(moment_html(mm[0], day.date, esc))
+            if mm[0]["v"] not in vids:
+                vids.append(mm[0]["v"])
+        cards_here = (cards_of.get(term_) or {}).get(bill) or {}
         for it in items:
-            H.append('<div class="smotion">')
-            moved = (f' <span class="smover">moved by '
-                     f'{member_html(body, it.mover.replace("Rep. ", "")
-                                   .replace("Sen. ", ""), members, esc)}</span>'
-                     if it.mover else "")
-            H.append(_question_html(it, moved, esc))
+            block = vote_html(it, bill, body, year, cards_here, members, esc, payloads)
             # BUSINESS DONE IN RECESS is on the sitting the journal prints it
             # with (session_days.recess_sitting), and the bill's own history
-            # keeps the day the docket entered it. Said here, so the two
-            # dates read as one fact rather than as a contradiction. "Recess"
-            # only where the docket says it: a row placed by the journal it
-            # cites may be one entered late from the sitting itself.
+            # keeps the day the docket entered it. Said here, so the two dates
+            # read as one fact rather than as a contradiction.
             if it.entered:
                 where = ("Done in the recess of this session day" if it.recess
                          else "Printed in the journal with this session day")
-                H.append(f'<p class="swho">{where}, '
-                         "and entered in the docket on "
-                         f"{esc(words(it.entered))}, the date the bill&rsquo;s "
-                         "own history gives it.</p>")
+                block += (f'<p class="swho">{where}, and entered in the docket on '
+                          f"{esc(words(it.entered))}, the date the bill&rsquo;s own history "
+                          "gives it.</p>")
             elif getattr(it, "added", "") == "rollcall":
-                # NO DEBATE AND NO SPEAKER FOR A VOTE THE DOCKET DOES NOT
-                # STATE: the roll-call file records the question and the
-                # ballots, and that is all the page says of it.
-                H.append(ROLLCALL_ONLY)
+                # NO DEBATE AND NO SPEAKER FOR A VOTE THE DOCKET DOES NOT STATE.
+                block += ROLLCALL_ONLY
             else:
                 grp = groups[id(it)]
                 mine, _rest = speakers_for(attrs, bill, it,
@@ -1104,93 +1292,81 @@ def render(day, narrative, titles, years, members, esc, chair=None):
                                     ("against", "Spoke against the motion")):
                     who = mine[side]
                     if who:
-                        H.append(f'<p class="sspoke"><span class="slab">{label}'
-                                 "</span>"
-                                 + members_row(body, who, members, esc) + "</p>")
-            p = vote_payload(it)
-            if p:
-                i = len(payloads)
-                payloads.append(p)
-                kindw = esc(it.kind_words or "vote")
-                H.append(f'<div class="svote" data-vote="{i}">'
-                         f'<p class="stally">A {kindw}: '
-                         f'<b>{it.yeas}</b> yeas, <b>{it.nays}</b> nays.</p></div>')
-                if (getattr(it, "shared", 0) or 0) > 1:
-                    H.append(f'<p class="swho">One {kindw} on {it.shared} bills: the '
-                             "same vote is drawn under each of them, and counted "
-                             "once.</p>")
-                elif it.kind == "RC" and href and _ballots_here(it):
-                    H.append('<p class="swho">Who voted which way is on '
-                             f'<a href="{esc(href)}">'
-                             f"{esc(num)}'s own page</a>.</p>")
-            elif it.kind == "VV":
-                H.append('<p class="stally">Taken on a voice vote, so no count '
-                         "was recorded.</p>")
-
-            if it.outcome_words:
-                H.append(f'<p class="soutcome">{esc(it.outcome_words)}</p>')
-            H.append("</div>")
-
-        # NAMED, BUT NOT TAKEN A SIDE FOR. These spoke on this bill on a day
-        # the House put several motions to it, and nothing in the record ties
-        # the speech to one of them. Their side is deliberately NOT shown:
-        # "spoke in favor" means the opposite of its plain reading 22% of the
-        # time, and it is the motion that disambiguates it. Naming them without
-        # a side is true; guessing the motion would not be.
+                        block += (f'<p class="sspoke"><span class="slab">{label}</span>'
+                                  + members_row(body, who, members, esc) + "</p>")
+            if (getattr(it, "shared", 0) or 0) > 1:
+                block += (f'<p class="swho">One {esc(it.kind_words or "vote")} on {it.shared} '
+                          "bills: the same vote is drawn under each of them, and counted "
+                          "once.</p>")
+            line.append(block + "</div>")
+        # NAMED, BUT NOT TAKEN A SIDE FOR: the record does not tie the speech
+        # to one of the day's motions, so no side is shown.
         grp = groups[id(items[0])]
         if own and grp not in told:
             told.add(grp)
             names = unplaced(attrs, bill, shared_out[grp],
                              unsure.get(grp, frozenset()), known=known[grp])
             if names:
-                H.append('<p class="sspoke sother"><span class="slab">Also '
-                         "spoke during this bill</span>"
-                         + members_row(body, names, members, esc)
-                         + '<span class="snote">the record does not say which '
-                           "of the day's motions</span></p>")
-
-        # The debate the House voted to keep, under the bill it belongs to --
-        # ONCE. A bill can hold the floor twice in a day with other business
-        # between: HB 396 was vetoed at page 12, reconsidered at 38 and voted
-        # again at 42, which is two runs, and the debate printed for it was
-        # drawn under both. There is one debate; it goes under the first run
-        # the sitting itself took up, and never under recess business alone.
+                line.append('<p class="sspoke sother"><span class="slab">Also spoke during '
+                            "this bill</span>" + members_row(body, names, members, esc)
+                            + '<span class="snote">the record does not say which of the '
+                              "day's motions</span></p>")
+        # The debate the House voted to keep, under the bill it belongs to,
+        # ONCE (HB 396 held the floor twice on one day).
         d = debates.get(base_bill(bill))
         if d and d["speeches"] and own and id(d) not in drawn:
             drawn.add(id(d))
-            H.append(_debate_html(d, body, members, esc, chair=chair))
-        H.append("</article>")
+            line.append(_debate_html(d, body, members, esc, chair=chair))
+        chip_w = row.get("chip") or ""
+        topic = "" if (row.get("topic") == "Miscellaneous"
+                       and row.get("topic_by") == "granite record") else (row.get("topic") or "")
+        sponsor = ({"display_full": row.get("sponsor_label"), "slug": row.get("sponsor_slug") or "",
+                    "party": row.get("sponsor_party") or ""} if row.get("sponsor_label") else None)
+        cards.append(C.bill_card({
+            "id": bill, "href": href or "", "n": num, "year": year,
+            "word": C.card_word(chip_w, row.get("passage")) if chip_w else "",
+            "cls": (C.WORDBOOK["chips"]["chip"].get(chip_w)
+                    or C.WORDBOOK["chips"]["kind"].get(row.get("kind") or "", "")),
+            "title": titles.get((term_, bill)) or row.get("title") or "",
+            "byline": C.bill_byline(sponsor, row.get("committees") or [], topic, term_, codes),
+            "line": "".join(line), "rail": C.rail_html(row.get("rail") or [], chip_w == "Died"),
+            "open": None}))
     if seq_items:
-        H.append("</section>")
-    H.append(others_html(getattr(day, "others", ()), body, members, esc, payloads))
+        heading = "The Day in Order" if day.ordered else f"What the {CHAMBER[body]} Did That Day"
+        note = ("" if day.ordered else
+                '<p class="note">The record does not say what order these came in: the '
+                "journal page is cited on only a few of them, so they are listed by bill.</p>")
+        play = day_players(body, day.date, vids, esc)
+        S_.append(f'<section class="w4 wday" id="order"><h2 class="w4h">{esc(heading)}</h2>'
+                  + (f'<div class="w4m">{play}</div>' if play else "")
+                  + f'<div class="w4b">{note}<div class="cards">{"".join(cards)}</div></div></section>')
 
-    # Debates whose bill is not among the day's actions -- a motion to print
-    # can name a bill the House took no recorded vote on that day -- or is
-    # there only for what was done in the sitting's recess.
+    oth = others_html(getattr(day, "others", ()), body, members, esc, payloads)
+    if oth:
+        S_.append(C.section("Votes on No Bill", oth, "nobill"))
+    # Debates whose bill is not among the day's actions, or is there only for
+    # what was done in the sitting's recess.
     seen = {base_bill(b) for b, its in runs(seq_items)
             if any(not it.entered for it in its)}
     loose = [d for k, d in debates.items() if k and k not in seen and d["speeches"]]
     if loose:
-        H.append('<section class="sday"><h2>Also printed in the permanent '
-                 "journal</h2>")
-        for d in loose:
-            H.append(_debate_html(d, body, members, esc, head=True, chair=chair))
-        H.append("</section>")
-
+        S_.append(C.section("Also Printed in the Permanent Journal",
+                            "".join(_debate_html(d, body, members, esc, head=True, chair=chair)
+                                    for d in loose), "printed"))
     uc = narrative.get("unanimous_consent") or []
     if uc:
-        H.append('<section class="sday"><h2>Under unanimous consent</h2>'
-                 '<p class="note">These belong to no bill. The House gives a '
-                 "member leave to address it, and what they said is part of "
-                 "the permanent record.</p><ul class=\"suc\">")
+        H = ['<p class="note">These belong to no bill. The House gives a member leave to '
+             "address it, and what they said is part of the permanent record.</p>"
+             '<ul class="suc">']
         for x in uc:
             about = x["about"]
             H.append("<li>" + member_html(body, x["name"], members, esc)
                      + (f", on {esc(about)}." if about and
                         about != "addressed the House" else " addressed the House.")
                      + "</li>")
-        H.append("</ul></section>")
-    return "".join(H), payloads
+        H.append("</ul>")
+        S_.append(C.section("Under Unanimous Consent", "".join(H), "consent-uc"))
+    return '<div class="w4s">' + "".join(S_) + "</div>", payloads
 
 
 def _debate_html(d, body, members, esc, head=False, chair=None):
@@ -1404,7 +1580,31 @@ def floor_record(path=FLOOR_RECORD):
         print(f"  WARNING: {path} is not here or will not read: no day names who "
               "presided, and no roll call names its card on its bill's Votes tab")
         got = {}
-    return {"presiding": got.get("presiding") or {}, "cards": got.get("cards") or {}}
+    return {"presiding": got.get("presiding") or {}, "cards": got.get("cards") or {},
+            "moments": got.get("moments") or {}}
+
+
+def load_rows(site):
+    """{(term, bill): the bill's index row}, from the term indexes."""
+    out = {}
+    for f in sorted((Path(site) / "idx").glob("*.json")):
+        try:
+            rows = json.loads(f.read_text(encoding="utf-8"))
+        except (ValueError, OSError):
+            continue
+        for b in rows if isinstance(rows, list) else ():
+            if b.get("id"):
+                out[(b.get("term") or f.stem, b["id"])] = b
+    return out
+
+
+def load_codes(site):
+    """meta.json's committee codes: a committee's name to its page."""
+    try:
+        return json.loads((Path(site) / "meta.json").read_text(encoding="utf-8")).get(
+            "committee_codes") or {}
+    except (OSError, ValueError):
+        return {}
 
 
 def published_officers(site):
@@ -1911,6 +2111,12 @@ def main():
            "amendments": amendments, "cards": fr["cards"], "presided": fr["presiding"],
            "offices": published_officers(site), "acts": acts_of, "floor": floor,
            "data": data}
+    # WHAT THE PAGE'S CARDS ARE DRAWN FROM (the record pages' bill cards,
+    # 10 October 2026): each bill's index row, for its chip, byline and rail;
+    # meta.json's committee codes, for a committee's link; and each floor
+    # station's moment, for the time its card plays the day's recording at.
+    draw = {"rows": load_rows(site), "codes": load_codes(site),
+            "moments": fr.get("moments") or {}, "cards": fr["cards"]}
     excused = 0
     order = mine[: a.limit] if a.limit else mine
     weeks = calendar_weeks(site)
@@ -1954,19 +2160,33 @@ def main():
                 retitled[next((t for t in ("Deputy Speaker", "Speaker Pro Tempore")
                                if got.startswith(t)), "a member in the chair")] += 1
             return got
+        # THE JOURNAL ITSELF, where the record holds its address: by the
+        # number this day's rows cite and never by the date alone (see
+        # build_site_v2.journal_url), so a page is linked to its own journal
+        # or to none.
+        jurl = B2.journal_url(date, day.journal, journal_keys) if day.journal else ""
+        if jurl:
+            jlinked += 1
+        rec = day_record(day, narrative, jurl, ctx)
+        records[members.term].append(rec)
         block, payloads = render(day, narrative, titles, years, members, S.E,
-                                 chair=chair if tenures else None)
+                                 chair=chair if tenures else None, rec=rec, ctx=draw)
         label = f"The {CHAMBER[body]}, {words(date)}"
         lead = _lead(day, narrative, date, body)
         prev_ = order[n - 1][1] if n > 0 else ""
         next_ = order[n + 1][1] if n + 1 < len(order) else ""
+        # PREVIOUS SESSION DAY, NEXT SESSION DAY (the person's item 17, 9
+        # October 2026), each with its date, the week and the chamber's list
+        # between them; previous on the left, next on the right.
         nav = []
         if prev_:
             nav.append(f'<a class="wkprev" href="{S.canon(f"session/{body}/{prev_}.html")}">'
-                       f"&lsaquo; The session day before</a>")
+                       f'&lsaquo; Previous Session Day<small>{S.E(words(prev_))}</small></a>')
+        nav.append('<span class="wkmid">' + " &middot; ".join(up_links(body, date, weeks))
+                   + "</span>")
         if next_:
             nav.append(f'<a class="wknext" href="{S.canon(f"session/{body}/{next_}.html")}">'
-                       f"The session day after &rsaquo;</a>")
+                       f'Next Session Day &rsaquo;<small>{S.E(words(next_))}</small></a>')
 
         # From the root, with its slash: the canonical link, the citation and
         # the sitemap are the domain joined to this.
@@ -1979,30 +2199,11 @@ def main():
                       og_title=label, globals={"GR_STATIC": True}, noscript="",
                       skip_label="Skip to the session day", sr_title="",
                       og_type="article", nav_current="calendar.html",
-                      jsonld=LD.listing(label, lead, base, S.canon(path)))
+                      jsonld=LD.listing(label, lead, base, S.canon(path)), cite=False)
         payload = json.dumps(payloads, separators=(",", ":"))
-        # THE JOURNAL ITSELF, where the record holds its address: by the
-        # number this day's rows cite and never by the date alone (see
-        # build_site_v2.journal_url), so a page is linked to its own journal
-        # or to none.
-        jurl = B2.journal_url(date, day.journal, journal_keys) if day.journal else ""
-        if jurl:
-            jlinked += 1
-        records[members.term].append(day_record(day, narrative, jurl, ctx))
-        # A journal PDF opens in a new tab, marked as going out, as the
-        # Calendar's do (the person, 7 October 2026, F12: "a calendar or
-        # journal PDF").
-        cite = (f'<a class="jpdf out" href="{S.E(jurl)}" target="_blank" rel="noopener">'
-                f'{S.E(day.journal)} (PDF)</a>' if jurl else S.E(day.journal))
-        # The line up, above the heading, as a Learn article's is above its
-        # own: where this page sits, as links.
-        crumb = ('<p class="crumb">'
-                 + " &middot; ".join(up_links(body, date, weeks)) + "</p>")
+        head = day_head(day, narrative, rec, jurl=jurl, label=label, path=path, base=base)
         full = ('<div id="results"><div class="wkpage sesspage">'
-                + crumb
-                + f"<h1>{S.E(label)}</h1>"
-                + (f'<p class="src">{cite}. {S.E(lead)}</p>'
-                   if day.journal else f'<p class="src">{S.E(lead)}</p>')
+                + head
                 + f'<nav class="wknav" aria-label="Other session days">{"".join(nav)}</nav>'
                 + block
                 + f'<nav class="wknav wkfoot" aria-label="Other session days">{"".join(nav)}</nav>'
@@ -2103,6 +2304,77 @@ def prune(out_dir, keep, allowed=False):
         print(f"  {len(stale)} page(s) removed for sittings the record no "
               f"longer holds: {', '.join(f.stem for f in stale)}")
     return [f.stem for f in stale]
+
+
+SHARE = ('<button type="button" class="pshare" data-share>' + C.icon("share") + "Share</button>"
+         '<span class="sharestate" role="status" aria-live="polite"></span>')
+
+
+def day_head(day, narrative, rec, jurl, label, path, base):
+    """THE SESSION DAY'S HEAD (the record head of the component plan, C6;
+    the second-round prototype, approved): the trail, the day as its title,
+    one line of what the chamber did, the facts -- its journal, when it
+    assembled, who presided, the votes taken, the debates printed -- and the
+    actions, Cite this page and Share."""
+    body, date = day.body, day.date
+    removed, seq_items, cons = day_parts(day, narrative)
+    seq_n = len({(it.term, it.bill) for it in seq_items})
+    cons_n = len({(i.term, i.bill) for i in cons})
+    n = len(day.bills)
+    tail = ", in the order told below" if day.ordered else ", listed below by bill"
+    ch = CHAMBER[body]
+    if cons_n and seq_n:
+        line = (f"The {ch} took up {n:,} bill{'' if n == 1 else 's'}: {cons_n:,} together on "
+                f"the consent calendar, then {seq_n:,} one by one{tail}.")
+    elif cons_n:
+        line = (f"The {ch} took up {cons_n:,} bill{'' if cons_n == 1 else 's'}, together on the "
+                "consent calendar.")
+    elif seq_n:
+        line = f"The {ch} took up {seq_n:,} bill{'' if seq_n == 1 else 's'}{tail}."
+    else:
+        line = f"The {ch} took no recorded vote on a bill that day."
+    facts = []
+    if day.journal:
+        jword = re.sub(r"^HJ\b", "House Journal", re.sub(r"^SJ\b", "Senate Journal", day.journal))
+        facts.append(["Journal", (f'<a class="jpdf out" href="{S.E(jurl)}" target="_blank" '
+                                  f'rel="noopener">{S.E(jword)}</a>' if jurl else S.E(jword)),
+                      f"PDF, as the {ch} printed it" if jurl else ""])
+    o = narrative.get("opening") or {}
+    if o.get("assembled"):
+        facts.append(["Assembled", S.E(said_clock(o["assembled"]))])
+    pres = rec.get("presiding") or []
+    if pres:
+        facts.append(["Presiding", "".join(
+            f'<span class="rpres">{C.pchip({"display_full": x.get("label") or "", "slug": x.get("slug") or "", "party": x.get("party") or ""})}'
+            + (f"<small>{S.E(x['office'])}</small>" if x.get("office") else "") + "</span>"
+            for x in pres)])
+    k = day.counts()
+    counted = [f"{k[name]:,} {name}{'' if k[name] == 1 else 's'}"
+               for name in ("roll call", "division") if k.get(name)]
+    if counted or k.get("voice vote"):
+        vv = k.get("voice vote", 0)
+        facts.append(["Votes Taken", S.E(", ".join(counted) or f"{vv:,} voice vote{'' if vv == 1 else 's'}"),
+                      S.E(f"{vv:,} voice vote{'' if vv == 1 else 's'}") if counted and vv else ""])
+    dn = len(narrative.get("debates") or [])
+    if dn:
+        facts.append(["Debates Printed", f"{dn:,}", "in the permanent journal"])
+    cite = S.cite_block(path, f"{label} | Granite Record", base, S.BUILT)
+    assert cite.endswith("</div>"), "the citation block no longer ends its row"
+    note = ""
+    if body == "S":
+        note = ('<p class="rnote">The Senate journal does not record who spoke for or against '
+                "a motion, so this is the vote record without the debate.</p>")
+    elif date < JOURNAL_FROM:
+        note = ('<p class="rnote">The journal is on record from 1997, so this day carries the '
+                "vote record without the debate.</p>")
+    # THE TRAIL LEADS UP TO THE CHAMBER'S LIST OF SESSION DAYS, at the day's
+    # year (2 October 2026: a sitting's page led nowhere above itself).
+    days = f"{S.canon(DAYS_LIST[body])}#y{date[:4]}"
+    return C.record_head({"trail": [["Calendar", "calendar.html"], [f"{ch} Session Days", days],
+                                    ["Session Day", ""]],
+                          "title": S.E(label), "line": S.E(line), "facts": facts,
+                          "actions": cite[:-len("</div>")] + SHARE + "</div>",
+                          "kind": "day"}) + note
 
 
 def _lead(day, narrative, date, body="H"):
