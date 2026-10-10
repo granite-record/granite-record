@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.492
+# GRANITE_VERSION: 2026-09-04.493
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -19454,7 +19454,9 @@ def _index_json_retired():
     assert all(t["url"].endswith(f"/idx/{t['term']}.json")
                for t in man["bill_indexes"]["terms"]), man["bill_indexes"]
     page = (site / "learn" / "how-a-bill-becomes-law.html").read_text(encoding="utf-8")
-    assert f"Across the {len(rows):,} bills on this site" in page, (
+    # The count is said once, under How a Chamber Votes, since the polish
+    # plan's cut E6 took its second saying out of In the Record.
+    assert f"Across the {len(rows):,} bills in this record" in page, (
         f"the Learn page does not count the index's {len(rows):,} bills")
     assert NI.census(site)["bills"] == len(rows), (
         f"the census counts {NI.census(site)['bills']} bills of {len(rows)}")

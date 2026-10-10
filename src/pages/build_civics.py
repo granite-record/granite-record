@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.39
+# GRANITE_VERSION: 2026-09-08.40
 """
 The civics section: a hub and one page per topic, in order.
 
@@ -633,6 +633,29 @@ def dashes(text):
     return re.sub(r"(?<=\s)--(?=\s)", "—", text or "")
 
 
+# A BILL KEEPS ITS SUFFIX WHEREVER IT HAS ONE (the person's D7, 8 October
+# 2026: -FN, -A, -LOCAL are part of the official name). The prose names a bill
+# by its number as a link to its page -- "HB 349" -- and the suffix is the
+# record's, so it comes from the bill's own row rather than being typed: a
+# bill renumbered or given a fiscal note later changes its name here too. A
+# year the prose gives in brackets stays, and a link whose words are not a
+# bill's number ("the 1995 bill") is left as it was written.
+_BILL_LINK = re.compile(r'<a href="bill/(\d{4})/([a-z]+\d+)\.html">\s*([A-Z]+)\s+(\d+)'
+                        r'((?:\s+\(\d{4}\))?)\s*</a>')
+
+
+def suffixed(text, names):
+    """Every link to a bill whose words are its number, given the number the
+    bill's own row writes ("HB 349-FN"). names is {(year, "hb349"): "HB 349-FN"}."""
+    def one(m):
+        year, bid, letters, num, yr = m.groups()
+        name = names.get((year, bid))
+        if not name or not name.replace(" ", "").upper().startswith(f"{letters}{num}"):
+            return m.group(0)
+        return f'<a href="bill/{year}/{bid}.html">{name}{yr}</a>'
+    return _BILL_LINK.sub(one, text or "")
+
+
 def fill(text, figures):
     """[[name]] -> its figure. A name with no figure stops the build: a page
     that printed "[[killed]]", or nothing where a number was, would publish."""
@@ -1127,19 +1150,22 @@ def main():
 
     tmpl = S.template(site)
     figures = record_figures(site)
+    names = {(str(r.get("year") or ""), (r.get("id") or "").lower()): r.get("n")
+             for r in SR.bill_index_or_stop(site, "build_civics.py") if r.get("n")}
     print(f"figures from the record: {figures['all_bills']} bills, {figures['terms']} terms, "
           f"{figures['vetoed']} vetoed, {figures['bills']} in {figures['term'].replace('&ndash;', '-')}")
     urls = [a.base + HUB]
 
     # ---- one page a topic ----------------------------------------------
     for i, t in enumerate(topics):
-        secs = split_sections(fill(t["body"], figures), f"learn/{t['slug']}.html")
+        secs = split_sections(suffixed(fill(t["body"], figures), names),
+                              f"learn/{t['slug']}.html")
         # A LIMIT STATED PLAINLY closes the page's last section of prose --
         # In the Record where the page has one, which is where it says what
         # this site holds.
         if t.get("holds"):
             sid, h, c = secs[-1]
-            secs[-1] = (sid, h, c + f'<p class="l-note">{fill(t["holds"], figures)}</p>')
+            secs[-1] = (sid, h, c + f'<p class="l-note">{suffixed(fill(t["holds"], figures), names)}</p>')
         if t["sources"]:
             secs.append(("sources", "Where This Comes From", sources_list(t["sources"])))
         page = learn_page(tmpl, slug=t["slug"], title=t["title"],

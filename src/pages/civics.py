@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.35
+# GRANITE_VERSION: 2026-09-08.36
 """
 The topics of the civics section: their order, their names, and their prose.
 
@@ -893,7 +893,7 @@ FLOW_TESTIFY = [
     ("Find Out", [
         ("The calendar", "Hearings are announced in the chamber's weekly "
          "calendar and on the General Court's meeting schedule. The median "
-         "notice in the hearings parsed here is five days; some give one.",
+         "notice this term is five days; some give one.",
          ""),
     ]),
     ("Sign In", [
@@ -1042,6 +1042,34 @@ CMP_TOWN = [
 ]
 
 
+# THE MOTIONS A COMMITTEE MOST OFTEN RECOMMENDS, in the vote cards' words
+# (VOTE_WORDS, 8 October 2026: the motion's name, the four common
+# abbreviations, and a plain gloss), read from the words file the vote cards
+# read, so Learn teaches the words a reader meets on a bill. Two rows are
+# Learn's own: interim study's line is decision 131's ("the bill goes no
+# further this term; the study committee may recommend new legislation"),
+# and retaining, which no vote card names, keeps the page's words.
+def _motions():
+    import components
+    m = components.WORDBOOK["votes"]["motions"]
+    rows = [(m[k]["abbr"], m[k]["motion"], m[k]["gloss"]) for k in ("otp", "otpa", "itl")]
+    rows.append((m["is"]["abbr"], m["is"]["motion"],
+                 "The bill goes no further this term; the study committee may recommend "
+                 "new legislation"))
+    rows.append(("Retain", "Retain", "Hold the bill in the committee: first year only, "
+                 "and it returns in the second"))
+    return ('<div class="l-tablewrap l-stack"><table class="l-table">'
+            '<caption class="sr">The motions a committee most often recommends</caption>'
+            '<thead><tr><th scope="col">Written</th><th scope="col">The motion</th>'
+            '<th scope="col">What it does</th></tr></thead><tbody>'
+            + "".join(f'<tr><th scope="row">{a}</th><td data-l="The motion">{b}</td>'
+                      f'<td data-l="What it does">{c}</td></tr>' for a, b, c in rows)
+            + "</tbody></table></div>")
+
+
+MOTIONS = _motions()
+
+
 BODY_GENERAL_COURT = """
 <h2>The Largest State Legislature</h2>
 <p>The New Hampshire legislative branch is made up of 400 representatives and
@@ -1120,15 +1148,7 @@ recommendations, but [[follows_committee]]% of the bills it decided this term
 went the way its committee recommended.</p>
 
 <p>The motions a committee most often recommends are these:</p>
-<table><caption class="sr">The motions a committee most often recommends</caption><tbody>
-<tr><th scope="row"><b>OTP</b></th><td>Ought to Pass</td></tr>
-<tr><th scope="row"><b>OTP/A</b></th><td>Ought to Pass as Amended</td></tr>
-<tr><th scope="row"><b>ITL</b></th><td>Inexpedient to Legislate &mdash; kill the bill</td></tr>
-<tr><th scope="row"><b>IS</b></th><td>Interim Study &mdash; second year only, and the
-bill dies with the term</td></tr>
-<tr><th scope="row"><b>Retain</b></th><td>Hold the bill in the committee &mdash; first
-year only, and it returns in the second</td></tr>
-</tbody></table>
+""" + MOTIONS + """
 """ + SHOWS.format("""
 <p>The [[term]] term filed <b>[[bills]] bills and resolutions</b>: [[hb]] House
 bills, [[sb]] Senate bills, [[cacr]] constitutional amendments and [[resolutions]] resolutions.</p>
@@ -1288,8 +1308,7 @@ plan.</p>
 <p><b>Carried over</b> into the second year:
 <a href="bill/2026/hb649.html">HB 649</a>, on the maintenance obligations of
 motor vehicle operators, which passed in the second year and became law.</p>
-<p>Across the [[all_bills]] bills on this site, [[all_rollcall]] have at least
-one recorded roll call. Of the [[law]] bills that became law in the [[term]] term,
+<p>Of the [[law]] bills that became law in the [[term]] term,
 [[law_no_rollcall]] did so without a roll call on the floor of either
 chamber.</p>
 <p>Of the [[narrated]] bills with a narrative this term, <b>[[both_chambers]]
@@ -2121,8 +2140,7 @@ House committee meetings are now held.</td></tr>
 </tbody></table>
 <p>The Legislative Office Building is expected back in service around the
 start of the next term, and Granite Place to drop out of the rota when it is.
-That is what is expected rather than what has been announced, and this site
-will say it has happened when the notices say so. <b>Go by the notice for the
+<b>Go by the notice for the
 hearing you are attending</b> &mdash; it names the building and the room, and
 it is right about the day it was published whatever this page says.</p>
 <p>Both chambers live stream their standing committee hearings, so a hearing
@@ -2140,8 +2158,7 @@ passes one chamber and gets a hearing in the other, there is a second window on
 the same terms.</p>
 <p>The sign-ins are not part of the bill's docket, and no link on the docket
 leads to them. They are kept in the General Court's own sign-in records, which
-its website offers as a lookup of its own. How long that lookup keeps a
-hearing is not documented anywhere this site can point to.</p>
+its website offers as a lookup of its own.</p>
 
 <h2>The Steps, in Order</h2>
 """ + flow_diagram(FLOW_TESTIFY, "How to testify, in order") + """
@@ -2452,8 +2469,7 @@ PART = GROUPS[1][0]
 TOPICS = [
     topic("general-court", "The General Court", HOW,
           "400 representatives and 24 senators, paid $200 for the two-year "
-          "term. The largest state legislature in the country, and the page "
-          "everything else here hangs off.",
+          "term. The largest state legislature in the country.",
           BODY_GENERAL_COURT,
           [SRC_CONSTITUTION, SRC_HOUSE_RULES, SRC_SENATE_RULES,
            SRC_FIND_MEMBER]),
@@ -2468,8 +2484,7 @@ TOPICS = [
     topic("governor-and-council", "The Governor and the Executive Council",
           HOW,
           "The Governor signs or vetoes. The Council -- five members, elected "
-          "by district -- approves contracts, nominations and pardons, and "
-          "almost no resident could say what it does.",
+          "by district -- approves contracts, nominations and pardons.",
           BODY_GOVERNOR,
           [SRC_CONSTITUTION, SRC_GOVERNOR, SRC_COUNCIL],
           BODY_GOVERNOR_HOLDS),
@@ -2504,7 +2519,7 @@ TOPICS = [
 
     topic("local-government", "Town Meeting and Local Government", HOW,
           "Where warrant articles, default budgets and \u201cSB 2 towns\u201d "
-          "come from -- all of which turn up in bills here, unexplained.",
+          "come from.",
           BODY_LOCAL,
           [SRC_RSA, SRC_SOS],
           BODY_LOCAL_HOLDS),
@@ -2519,8 +2534,7 @@ TOPICS = [
 
     topic("city-and-town-government", "Cities, Towns and Who Runs Them", HOW,
           "A town meeting and a selectboard, or a council and a mayor, or a "
-          "council and a manager -- and the other offices you elect without "
-          "being told what they do.",
+          "council and a manager.",
           BODY_TOWNS,
           [SRC_RSA, SRC_NHMA, SRC_SOS],
           BODY_TOWNS_HOLDS),
