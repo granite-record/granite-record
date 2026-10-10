@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.234 */
+/* GRANITE_VERSION: 2026-09-07.235 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -3691,6 +3691,7 @@ text-transform:uppercase;color:var(--ink-2);margin:0 0 var(--sp-4);font-family:v
   .l-deftab,.l-deftab tbody,.l-deftab tr,.l-deftab th,.l-deftab td{display:block;width:auto}
   .l-deftab th[scope=row]{border-bottom:0;padding:.75rem .875rem 0;white-space:normal}
   .l-deftab td{padding:.25rem .875rem .75rem}
+  .l-deftab caption{display:block}
 }
 /* a table of several columns restacks on a phone: each row a block, each
    cell with its column's name, from the cell's data-l */
@@ -3702,6 +3703,8 @@ text-transform:uppercase;color:var(--ink-2);margin:0 0 var(--sp-4);font-family:v
   .l-stack .l-table th[scope=row]{border-bottom:0;padding:.25rem 1rem;white-space:normal}
   .l-stack .l-table td{border-bottom:0;padding:.25rem 1rem;display:grid;grid-template-columns:8.5rem minmax(0,1fr);gap:.75rem}
   .l-stack td::before{content:attr(data-l);font:600 var(--t-sm)/1.5 var(--sans);color:var(--ink-2)}
+  /* the caption spans the restacked table, not a column of its own */
+  .l-stack caption{display:block}
 }
 /* at a large browser text the label goes over its value (22em is 352px at
    16px, 528px at 24px) */
