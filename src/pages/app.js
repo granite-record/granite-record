@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.177
+// GRANITE_VERSION: 2026-09-07.178
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -5283,13 +5283,18 @@ function mountReport(kind,ref){
 }
 // The row, out of the record before the record is drawn again, and into the
 // head once it is drawn. The template's hidden <h1> gives way to the head's.
-function parkActions(){
+// HIDDEN WHILE THE LIST IS DRAWN (`hide`): a bill's own page that goes back
+// to the list for a search has no record on it to cite, print, share or
+// report, and the row stood over the first card (the look of 10 October 2026).
+function parkActions(hide){
   const a=document.getElementById("pageacts"), r=$("#results");
-  if(a&&r&&r.contains(a))r.before(a);
+  if(a&&r&&r.contains(a)){r.before(a);a.classList.remove("inhead");}
+  if(a)a.hidden=!!hide;
 }
 function placeActions(){
   const a=document.getElementById("pageacts");
   const slot=document.querySelector("#results .rhead .racts");
+  if(a)a.hidden=false;
   if(a&&slot&&a.parentNode!==slot){slot.appendChild(a);a.classList.add("inhead");}
   if(document.querySelector("#results .rh1")){
     const sr=document.querySelector("main > h1.sr");
@@ -7474,7 +7479,7 @@ function render(more){
   // to the member (the audit of 2 October 2026, S14). The click handler goes
   // back in history only where back IS the search (backIsSearch), so the
   // list returns as it was left; everywhere else this is an ordinary link.
-  parkActions();
+  parkActions(!fb);
   $("#results").innerHTML=((rows.length||fb)?shown.map((b,gi,arr)=>`
     ${!fb&&sortBy==="status"&&(gi===0||grpOf(arr[gi-1])!==grpOf(b))
       ?`<h2 class="grp">${esc(grpOf(b)||"No status recorded")}

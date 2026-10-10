@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-19.30
+# GRANITE_VERSION: 2026-09-19.31
 """
 A page for every day the House sat.
 
@@ -892,13 +892,19 @@ def absences_html(narrative, body, members, esc):
 # person approved for the consent calendar's groups (votes.json, row 33:
 # Passed, Killed, Sent to Interim Study, Sent Back to Committee, Adopted).
 SHORT = (
-    (("inexpedient to legislate", "indefinitely postpone"), "Killed", "Kept Alive"),
+    # "inex" for the clerk's own spellings ("Inexepdient", "Legistlate"), and
+    # Ought Not to Pass, which kills a bill as Inexpedient to Legislate does.
+    (("inex", "indefinitely postpone", "ought not to pass"), "Killed", "Kept Alive"),
     (("ought to pass",), "Passed", "Not Passed"),
-    (("refer for interim study", "re-refer for interim study", "re-refer to interim study",
-      "rerefer for interim study", "rerefer to interim study"), "Sent to Interim Study",
+    # The Senate's "Refer to Interim Study" too (26 March 2026: three bills
+    # listed under the record's words, in no chip's colour).
+    (("refer for interim study", "refer to interim study", "re-refer for interim study",
+      "re-refer to interim study", "rerefer for interim study", "rerefer to interim study"),
+     "Sent to Interim Study",
      "Not Sent to Interim Study"),
     (("re-refer", "rerefer"), "Sent Back to Committee", "Not Sent Back to Committee"),
-    (("adopt",), "Adopted", "Not Adopted"),
+    (("adopt", "ought to adopt"), "Adopted", "Not Adopted"),
+    (("interim study",), "Sent to Interim Study", "Not Sent to Interim Study"),
 )
 # Each group's count on the fold in its status chip's colours (v19, the
 # person, 9 October 2026); a group the motion's failure made takes none.
@@ -2314,8 +2320,8 @@ def day_head(day, narrative, rec, jurl, label, path, base):
     """THE SESSION DAY'S HEAD (the record head of the component plan, C6;
     the second-round prototype, approved): the trail, the day as its title,
     one line of what the chamber did, the facts -- its journal, when it
-    assembled, who presided, the votes taken, the debates printed -- and the
-    actions, Cite this page and Share."""
+    assembled, the votes taken, the debates printed -- and the actions, Cite
+    this page and Share. Who presided is the day's one line about it."""
     body, date = day.body, day.date
     removed, seq_items, cons = day_parts(day, narrative)
     seq_n = len({(it.term, it.bill) for it in seq_items})
@@ -2342,12 +2348,9 @@ def day_head(day, narrative, rec, jurl, label, path, base):
     o = narrative.get("opening") or {}
     if o.get("assembled"):
         facts.append(["Assembled", S.E(said_clock(o["assembled"]))])
-    pres = rec.get("presiding") or []
-    if pres:
-        facts.append(["Presiding", "".join(
-            f'<span class="rpres">{C.pchip({"display_full": x.get("label") or "", "slug": x.get("slug") or "", "party": x.get("party") or ""})}'
-            + (f"<small>{S.E(x['office'])}</small>" if x.get("office") else "") + "</span>"
-            for x in pres)])
+    # WHO PRESIDED IS SAID ONCE, in the day's one general line under How
+    # the Day Began (presiding_html; v18). The head named them again as chips
+    # among its facts, a screen apart (the look of 10 October 2026).
     k = day.counts()
     counted = [f"{k[name]:,} {name}{'' if k[name] == 1 else 's'}"
                for name in ("roll call", "division") if k.get(name)]

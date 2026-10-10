@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.500
+# GRANITE_VERSION: 2026-09-04.501
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -51388,6 +51388,22 @@ def _session_day_folds():
                                  "Sent to Interim Study": "s-study",
                                  "Sent Back to Committee": "s-active", "Adopted": "s-adopted"}, (
         f"the consent counts are not in the chips' colours: {BSP.CONSENT_CLASS}")
+    # EVERY GROUP IS ONE OF THE APPROVED WORDS, IN ITS CHIP'S COLOURS: the
+    # Senate's "Refer to Interim Study" was listed under the record's own
+    # words, in no colour, on 92 days, and the clerk's spellings of
+    # Inexpedient to Legislate each made a group of one (the look of
+    # 10 October 2026). The actions are the record's.
+    class _It:
+        def __init__(self, action):
+            self.action, self.carried = action, True
+    for said in ("Refer to Interim Study", "Rerefer to Interim Study", "Interim Study",
+                 "Re-Refer to Committee", "Inexepdient to Legislate", "Inexpedient to Legistlate",
+                 "Ought Not to Pass", "Ought to Adopt with Amendment #0806h (New Title)",
+                 "Ought to Pass with Amendment 2026-0546h", "Inexpedient to Legislate",
+                 "Indefinitely Postpone", "Adopt"):
+        assert BSP.short_outcome(_It(said)) in BSP.CONSENT_CLASS, (
+            f"a consent calendar lists {said!r} under {BSP.short_outcome(_It(said))!r}, "
+            "which is none of the approved groups and has no chip's colours")
     for need, why in (("were removed from the consent", "the removed bills' sentence is gone"),
                       ("Presiding over the", "no general line names who presided"),
                       ("by_party", "the excused are not counted by party")):

@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-10-09.6
+// GRANITE_VERSION: 2026-10-09.7
 /* THE SITE'S COMPONENTS, IN THE BROWSER. Published as site/components.js and
    loaded by every page, in its head, before app.js, find.js and any page's
    own script, so each of them draws a person, a committee, a date or a time
@@ -413,7 +413,8 @@ function section(heading,body,sid){
   function plain(s){
     var b=s.querySelector(".termbtn");
     var t=b?b.textContent:s.textContent;
-    s.classList.remove("term");s.textContent=t;
+    s.classList.remove("term");
+    s.textContent=(s.getAttribute("data-pre")||"")+t+(s.getAttribute("data-post")||"");
   }
   function arm(){
     var seen={}, all=document.querySelectorAll("[data-term]");
@@ -433,7 +434,18 @@ function section(heading,body,sid){
       var p=document.createElement("span");
       p.className="termpop";p.id=id;p.setAttribute("role","tooltip");p.hidden=true;
       p.innerHTML="<b>"+esc(e.name||k)+"</b>"+(e.says?" &mdash; "+esc(e.says):"");
-      s.appendChild(b);s.appendChild(p);
+      // THE BRACKET STAYS WITH ITS WORD: a button is set as a box of its own,
+      // and a phone broke "Ought to Pass (" from "OTP)" at it (the look of 10
+      // October 2026). The mark either side comes into the word's span,
+      // which does not break.
+      var pre=s.previousSibling, post=s.nextSibling, a="", z="";
+      if(pre&&pre.nodeType===3&&/[(\[\u201c"]$/.test(pre.data)){a=pre.data.slice(-1);pre.data=pre.data.slice(0,-1);}
+      if(post&&post.nodeType===3&&/^[)\],.;:\u201d"]/.test(post.data)){z=post.data.charAt(0);post.data=post.data.slice(1);}
+      s.setAttribute("data-pre",a);s.setAttribute("data-post",z);
+      if(a)s.appendChild(document.createTextNode(a));
+      s.appendChild(b);
+      if(z)s.appendChild(document.createTextNode(z));
+      s.appendChild(p);
     }
   }
   function pop(b){return b&&document.getElementById(b.getAttribute("aria-controls"));}

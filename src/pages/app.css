@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.237 */
+/* GRANITE_VERSION: 2026-09-07.238 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -1493,7 +1493,8 @@ line-height:1.1}
    components.js draws them on any page, the pages style.css serves among
    them. The popover (C9) is the first of each term on a page: its word
    underlined in dots, its entry in a box under it, within the screen. */
-.term{position:relative;display:inline}
+.term{position:relative;display:inline;white-space:nowrap}
+.term .termpop{white-space:normal}
 .termbtn{font:inherit;color:inherit;background:none;border:0;padding:0;margin:0;cursor:help;
 text-decoration:underline dotted;text-decoration-thickness:1px;text-underline-offset:.2em;
 letter-spacing:inherit}
@@ -3174,6 +3175,8 @@ color:var(--ink-2);font-weight:600;margin-right:var(--sp-3)}
 .followrow,.pageacts{display:flex;justify-content:flex-end;flex-wrap:wrap;
   gap:var(--sp-3);margin:var(--sp-3) 0 -4px}
 .pageacts{position:relative}
+/* Hidden while a bill's own page shows the list (app.js parkActions). */
+.pageacts[hidden]{display:none}
 .follow{position:relative}
 .pageacts .follow{position:static}
 /* THE QUIET ACTION BUTTON (Polish 1, the person, 9 October 2026: "a visual
@@ -5510,10 +5513,14 @@ border-radius:var(--r-in);background:var(--surface);font-size:var(--t-ui)}
   .rfacts{gap:var(--sp-4) var(--sp-7)}
   .rrail{margin-top:var(--sp-6);max-width:none}
   .racts{justify-self:stretch;min-width:0;margin-top:var(--sp-5)}
-  .racts .pageacts{flex-direction:row;flex-wrap:wrap;gap:var(--sp-2)}
-  .racts .pageacts > :is(.pcite,.follow,.report,.pshare){flex:1 1 auto}
-  .racts :is(.pcite,.follow,.report) > summary,.racts .pshare{justify-content:center;min-height:2.75rem}
-  .racts .sharestate{flex:1 1 100%;max-width:none}
+  /* TWO TO A ROW, EACH THE SAME WIDTH (the look of 10 October 2026): as a
+     wrapping row the buttons took their own widths, Cite, Print and Share a
+     line each and Report a problem half one at the right. */
+  .racts .pageacts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--sp-2)}
+  .racts .pageacts > *,.racts #reportbox > *{min-width:0;max-width:none}
+  .racts :is(.pcite,.follow,.report) > summary,.racts .pshare{width:100%;justify-content:center;
+  min-height:2.75rem}
+  .racts .sharestate{grid-column:1 / -1;max-width:none}
 }
 
 /* THE TABS HANG FROM THE HEAD'S FOOT (the kit's part 9): a strip on a 2px
@@ -5601,11 +5608,7 @@ padding:var(--sp-3) 0;border-top:1px solid var(--rule)}
 .wknav .wkmid{flex:1 1 auto;text-align:center;font-size:var(--t-ui)}
 .wknav .wkmid a{display:inline;padding:0;min-height:0;font-weight:500}
 @media (max-width:45em){.wknav .wkmid{order:3;flex-basis:100%;text-align:left}}
-/* WHO PRESIDED, in the facts: each the person chip with the office the
-   record gives them that day. */
-.rpres{display:flex;flex-direction:column;align-items:flex-start;margin:0 0 var(--sp-3)}
-.rpres:last-child{margin-bottom:0}
-.rpres small{margin-top:var(--sp-1)}
+/* WHO PRESIDED, in one general line under How the Day Began. */
 .spres{font-size:var(--t-ui);color:var(--ink);margin:var(--sp-4) 0 0}
 /* THE FOLDS: the consent calendar's bills (item 18) and the members excused
    (v16), closed by default, each group's count on the fold in its chip's
@@ -5632,7 +5635,8 @@ border-bottom:2px solid var(--ink-2);transform:rotate(-45deg);transition:transfo
    the motion as the head, then what it did and the count, who moved it, the
    record's own words where they differ, and the ring. */
 .dvote{margin:var(--sp-4) 0 0;padding-top:var(--sp-4);border-top:1px solid var(--rule)}
-.cline .dvote:first-child,.cline > .drec + .dvote,.cline > .mjumps + .dvote{border-top:0;padding-top:0}
+.cline .dvote:first-child,.cline > .drec + .dvote,.cline > .mjumps + .dvote,
+.w4b > .dvote:first-child{border-top:0;padding-top:0}
 .dvh{font:600 var(--t-read)/1.4 var(--serif);color:var(--ink);margin:0 0 var(--sp-2)}
 .dvh .ramd{font:400 var(--t-sm)/1 var(--sans);color:var(--ink-2);margin-left:var(--sp-2)}
 .dvr{display:flex;flex-wrap:wrap;align-items:center;gap:var(--sp-2) var(--sp-3);margin:0 0 var(--sp-2)}
@@ -5654,7 +5658,10 @@ border-bottom:2px solid var(--ink-2);transform:rotate(-45deg);transition:transfo
 .wday .w4m .pwho b{color:var(--ink);font-weight:600}
 .wday .w4m .tolnote{margin-left:0}
 @media (min-width:60em){
-  .w4.wday{grid-template-areas:"head body" "play body"}
+  /* The first row the heading's height and the second the rest: with both
+     auto, the cards' height was shared between the two rows and the player
+     stood at the foot of the day, 15,000px down (the look of 10 October). */
+  .w4.wday{grid-template-areas:"head body" "play body";grid-template-rows:auto 1fr}
   .wday > .w4h{grid-area:head}
   .wday > .w4m{grid-area:play;align-self:start;position:sticky;top:var(--sp-5);margin-top:var(--sp-5)}
   .wday > .w4b{grid-area:body;grid-row:1 / span 2}
