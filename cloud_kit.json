@@ -135,9 +135,13 @@
       "globs": ["calendars/*/*.txt", "calendars_senate/*/*.txt", "journals/*/*.txt", "journals_senate/*/*.txt"]
     },
     {
-      "what": "Times read off the recordings, and where each recording's captions stop: the caption job's answers, not the 20 GB of captions it read them from.",
+      "what": "Times read off the recordings, and where each recording's captions stop: the answers read off the captions, not the 20 GB of captions they were read from. The night's since 10 October 2026: its livestream step captions the new recordings and its --markers step merges what it reads into both files, behind the timestamp probe's guard (livestreams.py), and kit-up sends them back. Until then they were the laptop's, sent by its evening caption job, which was switched off on 8 October. seed-kit never sends the laptop's copies over the night's, so a re-read after a change to the patterns reaches the site only by a deliberate send of the person's.",
+      "owner": "night",
+      "paths": ["candidate_segments.json", "caption_spans.json"]
+    },
+    {
+      "what": "The clustering model's segments, one small file a recording: the fallback build_site_v2 reads where no chair stated a boundary. Made only when that model is run again, which is development on the laptop.",
       "owner": "laptop",
-      "paths": ["candidate_segments.json", "caption_spans.json"],
       "globs": ["work/*/segments.json"]
     },
     {
@@ -184,7 +188,7 @@
     {"path": "archive/last-dry-weekly.json", "key": "last-dry-weekly.json",
      "what": "A dry weekly's verdict -- every run of the weekly on a branch other than main, since 7 October 2026 (nightly.WEEKLY_DRY_VERDICT) -- kept apart from the week's, which the morning reads. No night reads it."},
     {"path": "archive/livestreams.json", "key": "livestreams.json",
-     "what": "What livestreams.py has seen and waits for, and what it read off recordings the laptop has not yet read. The night writes it; the laptop's --catch-up only reads it."},
+     "what": "What livestreams.py has seen and waits for, YouTube's refusal of the night's machine and its hold, and how the last reading of new recordings was judged (until 10 October 2026, also what it read off recordings the laptop had not yet read). The night writes it; the laptop's by-hand --catch-up only reads it."},
     {"path": "archive/sql-held.json", "key": "sql-held.json",
      "what": "A hold on the General Court's SQL host: a connection the night could not open (probe_db.py). It expires by itself and lengthens; the night is its one writer, and the web server's refusal record is a different file about a different server."},
     {"path": "reports/.cursor-production", "key": "cursor-production",

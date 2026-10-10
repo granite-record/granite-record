@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-25.19
+# GRANITE_VERSION: 2026-09-25.20
 """
 The nightly's kit and the laptop's backup, in the project's private R2 bucket.
 
@@ -1197,9 +1197,11 @@ def cmd_seed_kit(a, root):
             and f"kit/{r}" in remote]
     for r in kept:
         todo.pop(r)
-    # --only: the files it names and nothing else, as laptop_evening.py sends
-    # the caption results. Every other change here waits, and its copy in the
-    # bucket, and its manifest entry, stand.
+    # --only: the files it names and nothing else, as the term turn sends the
+    # frozen term (and as the laptop's evening job sent the caption results
+    # until 8 October 2026, which are the night's now and so held above).
+    # Every other change here waits, and its copy in the bucket, and its
+    # manifest entry, stand.
     held = []
     if getattr(a, "only", None):
         pats = [glob_re(g) for g in a.only]

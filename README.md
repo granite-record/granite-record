@@ -39,7 +39,7 @@ counts into `STATE.md`, which is generated and is the copy to believe.
 
 The root holds what something outside the repository runs by name
 (`build_all.py`, `nightly.py`, `preflight.py`, `refusal.py`, `netcheck.py`,
-`laptop_evening.py`, `publish.bat`), `_paths.py`, the config and these
+`publish.bat`), `_paths.py`, the config and these
 documents — and, untracked, the General Court's day files as the night
 installs them and everything the build writes (`site/`, `data/` and the JSON
 beside them), which `.gitignore` names. Each folder's README says what is in
@@ -175,8 +175,8 @@ python3 -m http.server 8787 --directory site
 
 **How the code is laid out.** The repository root holds only what something
 outside the repository runs by name — `build_all.py`, `nightly.py`,
-`laptop_evening.py`, `preflight.py`, the refusal tools (`refusal.py`,
-`netcheck.py`) and `publish.bat` — with `_paths.py`, the config and the
+`preflight.py`, the refusal tools (`refusal.py`, `netcheck.py`) and
+`publish.bat` — with `_paths.py`, the config and the
 documents; the data a clone carries is in the five folders of
 [What's where](#whats-where). Everything else is under `src/`, in one folder
 per job: `fetch/` (one folder per whose server it asks), `parse/`, `towns/`,

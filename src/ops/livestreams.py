@@ -1,15 +1,18 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-25.9
+# GRANITE_VERSION: 2026-09-25.10
 """
 New livestreams, every night: the recordings the House and Senate channels
-finished since the last run, indexed and captioned, and left where the build
-turns captions into timestamps.
+finished since the last run, indexed and captioned, and read into the start
+times the site publishes -- by the night alone, with no laptop in the loop.
 
     python3 src/ops/livestreams.py --since-state   the nightly step, before build_all
     python3 src/ops/livestreams.py --markers       build_all's step after the chair's
                                                    boundaries: this step's recordings
-    python3 src/ops/livestreams.py --catch-up      on the laptop: the recordings the
-                                                   nightly could not caption
+                                                   read, scored, and kept
+    python3 src/ops/livestreams.py --catch-up      on the laptop, by hand: asks YouTube
+                                                   from there and reads what it gets
+                                                   into the laptop's own files; sends
+                                                   nothing anywhere
     python3 src/ops/livestreams.py --status        what the state says; asks nothing
     python3 src/ops/livestreams.py --carry         the files carried between nights
 
@@ -43,6 +46,27 @@ Two of YouTube's hosts, and nothing of the General Court's:
   --sleep-subtitles). On 30 September 2026 the laptop asked twenty seconds
   apart, two tracks a recording, and YouTube answered the second recording
   with "HTTP Error 429: Too Many Requests".
+
+  With a JavaScript runtime (10 October 2026). yt-dlp 2026.08.19 enables
+  only deno by default, which neither machine has, and without a runtime it
+  reads YouTube with one fallback client and warns that "YouTube extraction
+  without a JS runtime has been deprecated, and some formats may be
+  missing". So every ask names node (--js-runtimes node; the night sets up
+  Node 24 before this step), and the night installs the challenge solver
+  yt-dlp names in its own metadata, yt-dlp-ejs, pinned beside it. Whether
+  this is why YouTube refuses either machine is not known: it is the one
+  thing wrong on this side the disk showed, and it costs nothing. What the
+  run had -- yt-dlp's version, node's, the solver's -- goes into the state's
+  last_run, so a refusal can be read against the setup that met it.
+
+  yt-dlp's warnings were never seen: --no-warnings hid them, among them the
+  two that say a track was discarded for want of a token. They are now kept
+  -- and kept OUT of how an answer is read, which is exactly what it was
+  under --no-warnings: a warning that mentions an HTTP error on a request
+  yt-dlp retried is not the answer. They go to logs/youtube-<day>.log, with
+  everything yt-dlp said about an ask that brought no captions. The night
+  sends that file to the bucket with its other logs; nothing of it goes to
+  the run's public page, where only the outcome line is printed.
 
 HOW MUCH A RUN ASKS FOR
 
@@ -107,10 +131,10 @@ at all, behind the nine without captions of 16 to 19 May 2022 and the seven
 of 4 and 5 June 2024.
 
 The same goes for any answer that is not captions and not a refusal -- a
-failure, a recording gone private -- because the laptop cannot write the
-night's state and would otherwise open every evening with the same one. It
-keeps count itself, in archive/youtube.refused.json, and after five such
-answers stops asking.
+failure, a recording gone private. The laptop's by-hand --catch-up cannot
+write the night's state and would otherwise open every run with the same
+one, so it keeps count itself, in archive/youtube.refused.json, and after
+five such answers stops asking.
 
 A recording is taken to have none, or given up on, only by a run that
 captioned something. "No captions" is also what yt-dlp says when it could
@@ -175,8 +199,15 @@ WHAT IT WRITES, AND NOTHING ELSE
                                   (proceedings.video_indexes) and takes the
                                   chamber from the file's name.
   work/<video>/captions*.json3    where segment_markers and caption_span look.
+  candidate_segments.json         by --markers: what the chair said where, for
+  caption_spans.json              this step's recordings, merged in; and where
+                                  their captions stop. The night's files in
+                                  the kit since 10 October 2026.
   archive/livestreams.json        what it has seen, what it waits for, and any
-                                  refusal still in force.
+                                  refusal still in force; and what --markers
+                                  read, and how the guard judged it.
+  logs/youtube-<day>.log          yt-dlp's warnings, and what it said about an
+                                  ask that brought no captions.
   archive/youtube.refused.json    on the laptop only, by --catch-up: YouTube's
                                   refusal of that machine, and what it asked
                                   for and got no captions: how often, when it
@@ -190,36 +221,66 @@ WHAT TURNS THEM INTO TIMESTAMPS
 build_all.py --local, which the night runs next. build_manifest and
 build_floor_index read the new rows and build_proceedings writes the table;
 then `livestreams.py --markers`, a step of its own, runs segment_markers over
-this step's recordings and nothing else. segment_markers merges, so every
-other recording keeps the answer the laptop's caption job gave it, and
-build_site_v2 publishes the lot. On the laptop step 15 has read these already
-and --markers finds them in its cache; on GitHub's machine step 15 does not
-run, and --markers is how a new recording gets its times. The late-caption
-check reads the caption file where there is one, and that night it is there.
+this step's recordings and nothing else, and puts where each one's captions
+stop into the caption summary. Both merge, so every other recording keeps the
+answer it had, and build_site_v2 publishes the lot. On the laptop step 15 has
+read these already and --markers finds them in its cache; on GitHub's
+machine step 15 does not run, and --markers is how a new recording gets its
+times. The late-caption check reads the caption file where there is one, and
+that night it is there.
 
-CARRIED BETWEEN NIGHTS
+THE NIGHT KEEPS WHAT IT READS (10 October 2026)
 
-GitHub's machine starts empty and its kit carries no captions, so what was
-read off a recording travels instead: --markers keeps the recording's
-candidate_segments.json entry and its caption-summary entry in the state, and
-on the nights after puts both back -- only where the laptop's copies have
-nothing for it -- so the times stay on the site. It stops once the laptop has
-read the recording itself, which is when its candidate_segments.json and its
-caption summary both name it. `--carry` lists the three small files the
-bucket must keep: the state and the two row files.
+candidate_segments.json and caption_spans.json are the night's files in the
+kit (cloud_kit.json): kit-down brings last night's, --markers adds tonight's
+recordings, kit-up sends them back. Until then they were the laptop's -- its
+evening job captioned what the night could not and sent them -- so a reading
+the night made travelled in the state instead and was put back each night
+until the laptop had read the recording itself. The evening job was switched
+off on 8 October 2026: YouTube had answered it with a 429 every evening since
+30 September, and it had once sent a laptop build's reading into the kit. A
+reading an older night still carries in the state is folded into the files
+by the next --markers, once, and carried no longer.
+
+A recording counts as read when the caption summary names it and
+candidate_segments.json does too -- or when no proceeding names it, so there
+is nothing to read it against yet (a study commission's meeting). One the
+docket later schedules something on is asked for again, because its captions
+did not stay on the machine that read it. `--carry` lists the three small
+files of this step's own that the bucket must keep: the state and the two
+row files.
+
+THE GUARD, BEFORE ANY TIME READ HERE GOES OUT
+
+CLAUDE.md: nothing about timestamps goes on the site before
+`probe_alignment.py --truth --candidate candidate_segments.json` has been run
+and the median has not regressed. --markers keeps copies of both files before
+it reads, and after it reads it asks two things. Did any entry but tonight's
+recordings change? And does the probe, against the hand-timed proceedings,
+place as many as the copy did, with a median no worse? Either answer wrong,
+or a probe that would not run, and both files are put back as they came
+down: tonight's readings go nowhere, the recordings are asked for again on a
+later night (three times at most), the state says why, and the night's
+verdict warns. The rest of the night publishes as usual. The night reads new
+recordings and none of them is hand-timed, so this should never fire; it is
+there for a change to the code that slips through, which is where a quiet
+regression would otherwise go out every night. It cannot judge a better or
+worse pattern -- the night never re-reads a hand-timed recording -- and does
+not try to.
 
 A REFUSAL
 
 YouTube refusing a caption request stops the captions for that run and is
 recorded; the recording waits. Nothing more is asked of YouTube from that
-machine for twelve hours, so its next night -- or the laptop's next evening --
-opens with one request, the oldest recording waiting, and goes on only if that
-one is answered. Each refusal in a row doubles the wait: a day, two, four,
-then a week -- each of those two hours short, because a run comes round a day
-later to the minute or the second and never exactly, and a hold of a whole
-day would be one day or two by that accident. Inside a hold nothing is asked
-at all. The laptop keeps its own record: a refusal is about an address, and
-the two machines have different ones.
+machine for twelve hours, so its next night opens with one request, the
+oldest recording waiting, and goes on only if that one is answered. Each
+refusal in a row doubles the wait: a day, two, four, then a week -- each of
+those two hours short, because a run comes round a day later to the minute
+or the second and never exactly, and a hold of a whole day would be one day
+or two by that accident. Inside a hold nothing is asked at all, and nothing
+is ever asked again in the same run. The laptop's by-hand --catch-up keeps
+its own record: a refusal is about an address, and the two machines have
+different ones.
 
 The run after a refusal is also a small one: six new recordings at most, or
 half of what the refused run had been answered if that is more. Each run
@@ -232,11 +293,25 @@ run a refusal in words called for is still owed when the hold after it ends.
 THE DATA CENTRE RISK
 
 YouTube often answers a data centre's address -- GitHub's among them -- with
-"Sign in to confirm you're not a bot". That is read as a refusal, not a
-failure: the recording waits for the laptop, its index row and the schedule's
-offsets still reach the site, nothing already published changes, and the
-night goes on. On the laptop, `python3 src/ops/livestreams.py --catch-up` captions what
-the nightly could not and reads it; the next night sees that the laptop has.
+"Sign in to confirm you're not a bot", and it has answered every caption the
+night asked for since 26 September 2026 that way. That is read as a refusal,
+not a failure: the recording waits under the hold above, its index row and
+the schedule's start still reach the site, marked approximate, nothing
+already published changes, and the night goes on and publishes. The night's
+verdict counts what waits and says why -- YouTube's refusal of GitHub's
+machine, and until when nothing is asked -- and warns once a recording has
+waited three days. That is the fallback, and it is what the site showed all
+along: approximate starts for new recordings, and every recording already
+read keeps its times. Getting past the refusal from GitHub's address (a
+newer yt-dlp, or a route that costs money) is a person's decision, not
+something this step tries by itself.
+
+A NEW TERM RUN ASKS FOR NO CAPTIONS
+
+The night a term turns over is the longest run there is, and the workflow's
+NEW_TERM, which every step of it inherits, says it is that night. This step
+then lists what is new as on any night -- two or three API units -- and asks
+YouTube for nothing: what waits is asked for by the next scheduled night.
 
 EXIT STATUS
 
@@ -298,6 +373,12 @@ LAPTOP_REFUSAL = Path("archive/youtube.refused.json")
 ASKED = "asked"
 WORK = Path("work")
 MARKERS = Path("candidate_segments.json")
+# yt-dlp's warnings and what it said about an ask that brought no captions,
+# by the machine's own day; the night's kit-up sends logs/* to the bucket.
+YT_LOG = "logs/youtube-{day}.log"
+# The workflow's word that tonight is the New term run (nightly.yml's env,
+# which every step inherits): no captions are asked for on it.
+NEW_TERM_ENV = "NEW_TERM"
 
 CHANNELS = {c: cid for c, (cid, _name) in FCI.CHANNELS.items()}
 # fetch_channel_index.main's columns, in its order; preflight reads that file
@@ -314,10 +395,19 @@ COST = {"channels": 1, "playlistItems": 1, "videos": 1}
 # wildcard. The two pauses are yt-dlp's own, inside one recording: between
 # the requests it makes to read the page, and before it asks for the caption
 # file. Twice what its own "sleep" preset uses (0.75 and 5); a judgment, not
-# a measured threshold -- YouTube publishes none.
+# a measured threshold -- YouTube publishes none. A JavaScript runtime, node,
+# which yt-dlp does not use unless named (WHAT IT ASKS); and no --no-warnings:
+# the warnings are split off and logged (split_warnings), never read.
 YTDLP = ["-m", "yt_dlp", "--write-auto-subs", "--sub-format", "json3/vtt",
-         "--skip-download", "--no-warnings",
+         "--skip-download", "--js-runtimes", "node",
          "--sleep-requests", "1.5", "--sleep-subtitles", "10"]
+# The challenge solver that --js-runtimes needs, by its package's name: yt-dlp
+# names the version it wants in its own metadata, and the night pins it.
+SOLVER = "yt-dlp-ejs"
+# The two minutes past BUDGET the last recording of a run can take, every
+# pause at its longest: its pause, two tracks at --timeout each and the pause
+# between them. The night's step allows BUDGET and this, and a little more.
+LAST_ASK_MINUTES = 14
 # The caption tracks, in the order they are asked for and ONE to an ask.
 # yt-dlp matches --sub-langs as a whole-name pattern, so `en` is that track
 # and not `en-orig` with it. `en.*` matched both, and both are the same
@@ -333,7 +423,8 @@ LOOKBACK_DAYS = 14     # how far behind the last run a page may reach
 NONE_YET_DAYS = 7      # auto-captions can lag a stream; this long after it,
                        # ask once more, for every track, and take it to
                        # have none
-MAX_TRIES = 3          # failures that are not refusals, then the laptop's
+MAX_TRIES = 3          # failures that are not refusals, or readings not
+                       # kept, then left for a person ("for-laptop")
 PENDING_DAYS = 30      # past its scheduled time, an unaired stream never aired
 STALE_DAYS = 60        # a pre-air committed row this near today is rechecked
 PRUNE_DAYS = 60        # settled entries leave the state after this
@@ -362,6 +453,10 @@ ALL_NONE = 3           # "no captions" this often in a run that captioned
 DELAY = 60.0           # seconds between two recordings, at least
 JITTER = 60.0          # and up to this many more, so the gaps are not a beat
 BUDGET = 60.0          # minutes of caption requests in one run, at most
+TIMEOUT = 300.0        # seconds allowed for one track's ask
+LOCK_BEAT = 30         # seconds between two touches of a held lock
+LOCK_STALE = 300       # a lock untouched this long was left by a run that is
+                       # gone: the night's step killed at its time limit
 
 # What yt-dlp says, read the way fetch_archive_captions reads it, plus the one
 # answer that script never met: a data centre's bot check, "Sign in to confirm
@@ -893,6 +988,71 @@ def yt_dlp_here(a):
     return True
 
 
+def setup():
+    """What this machine asks YouTube with: {"yt-dlp", "node", SOLVER}, each a
+    version or "" where it is not here. Read from the installed packages and
+    node itself; asks nothing. Kept in the state's last_run, so that a
+    refusal can be read against the setup that met it."""
+    import importlib.metadata as md
+    out = {}
+    for pkg in ("yt-dlp", SOLVER):
+        try:
+            out[pkg] = md.version(pkg)
+        except md.PackageNotFoundError:
+            out[pkg] = ""
+    node = shutil.which("node")
+    out["node"] = ""
+    if node:
+        try:
+            r = subprocess.run([node, "--version"], capture_output=True, text=True,
+                               encoding="utf-8", errors="replace", timeout=20)
+            out["node"] = (r.stdout or "").strip() if r.returncode == 0 else ""
+        except (OSError, subprocess.TimeoutExpired):
+            pass
+    return out
+
+
+def setup_said(s):
+    """One line for the log: what a run asks with, and what it lacks."""
+    have = f"yt-dlp {s.get('yt-dlp') or '(not installed)'}"
+    if not s.get("node"):
+        return have + ", and no node: YouTube's challenges go unsolved"
+    if not s.get(SOLVER):
+        return (have + f", node {s['node']}, and no {SOLVER}: node has no challenge "
+                f"solver to run (pip install {SOLVER} at the version yt-dlp names)")
+    return have + f", node {s['node']} and {SOLVER} {s[SOLVER]}"
+
+
+def split_warnings(said):
+    """(what yt-dlp said less its warnings, the warnings): each line that
+    opens "WARNING:" is one. What is left is exactly what yt-dlp prints
+    under --no-warnings, which is what every answer here was read from
+    before the warnings were kept."""
+    keep, warned = [], []
+    for ln in (said or "").splitlines():
+        (warned if ln.lstrip().startswith("WARNING:") else keep).append(ln)
+    return "\n".join(keep), warned
+
+
+def log_answer(vid, track, outcome, warned, said, day=None):
+    """yt-dlp's warnings about one ask, and everything it said when the ask
+    brought no captions, into the day's log. Never on the run's page. A log
+    that cannot be written is said once and costs the ask nothing."""
+    if not warned and outcome == "captioned":
+        return
+    path = Path(YT_LOG.format(day=day or datetime.now().strftime("%Y-%m-%d")))
+    lines = [f"{iso(datetime.now(timezone.utc))} {vid} {track}: {outcome}"]
+    lines += [f"  {ln.strip()}" for ln in warned]
+    if outcome != "captioned":
+        lines += [f"  | {ln.rstrip()}" for ln in (said or "").splitlines() if ln.strip()]
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with open(path, "a", encoding="utf-8") as fh:
+            fh.write("\n".join(lines) + "\n")
+    except OSError as e:
+        print(f"  ({path.as_posix()} could not be written: {type(e).__name__})")
+
+
 def caption_file(vid, work=WORK):
     d = Path(work) / vid
     return next((d / f for f in CAPTION_FILES if (d / f).exists()), None)
@@ -961,6 +1121,7 @@ def ask_track(vid, track, work=WORK, source=None, timeout=300):
     existed = d.exists()
     d.mkdir(parents=True, exist_ok=True)
     before = {p.name for p in d.iterdir()}
+    warned, live = [], not source
     if source:
         s = Path(source) / vid
         rc, said = 0, ""
@@ -982,6 +1143,8 @@ def ask_track(vid, track, work=WORK, source=None, timeout=300):
             rc, said = -1, f"took longer than {timeout:g}s"
         except OSError as e:
             rc, said = -1, f"yt-dlp would not start: {e}"
+    # Read as it was read under --no-warnings; the warnings go to the log.
+    said, warned = split_warnings(said)
     f = caption_file(vid, work)
     vtt = next(iter(sorted(d.glob("captions*.vtt"))), None)
     readable = False
@@ -989,6 +1152,8 @@ def ask_track(vid, track, work=WORK, source=None, timeout=300):
         import segment_markers
         readable = bool(segment_markers.read_words(d))
     outcome, why = classify(rc, said, f.name if f else None, vtt, readable)
+    if live:
+        log_answer(vid, track, outcome, warned, said)
     if outcome != "captioned":
         # Only what this attempt left: the folder held no captions when it
         # started, so any file in it now that was not there then is its own.
@@ -1112,26 +1277,27 @@ def wait(a):
 WAITING = ("waiting", "deferred", "none-yet", "failed")
 
 
-def settle(st, now, laptop, work=WORK):
+def settle(st, now, done, work=WORK):
     """The recordings that need nothing more asked of YouTube: how many.
 
-    One the laptop has read -- its --catch-up, after a night YouTube refused
-    this machine -- and one whose captions are already on this disk. EVERY
-    recording still waiting is looked at, whether it is due tonight or not,
-    and the ones left for the laptop with them. For a day only the ones due
-    were: a recording answered "no captions" here and read by the laptop
-    that evening stayed `none-yet` and unadopted until its turn came round,
-    up to eight days in which the night's three-day warning counted it.
+    One whose reading the caption results already hold (`done`, in_files) --
+    read on an earlier night, or by the laptop's caption job while there was
+    one -- and one whose captions are already on this disk. EVERY recording
+    still waiting is looked at, whether it is due tonight or not, and the
+    ones left for a person with them. For a day only the ones due were: a
+    recording answered "no captions" here and read elsewhere that evening
+    stayed `none-yet` until its turn came round, up to eight days in which
+    the night's three-day warning counted it.
     """
     n = 0
     for vid, v in st["videos"].items():
         if v.get("status") != "finished" \
                 or v.get("captions") not in WAITING + ("for-laptop",):
             continue
-        if laptop is not None and vid in laptop:
-            v.update(captions="captioned", by=v.get("by") or "laptop",
+        if done is not None and vid in done:
+            v.update(captions="captioned", by=v.get("by") or "files",
                      fetched=v.get("fetched") or iso(now),
-                     adopted=now.strftime("%Y-%m-%d"), why="")
+                     read=now.strftime("%Y-%m-%d"), why="")
         elif has_captions(vid, work):
             v.update(captions="captioned", by=v.get("by") or "found",
                      fetched=v.get("fetched") or iso(now), why="")
@@ -1168,8 +1334,10 @@ def caption_queue(st, now, work=WORK):
     of one that has not been asked, and not due at all until its turn comes
     round, a day later and then two, four and eight.
 
-    One that failed three times for reasons that were not refusals is left
-    for the laptop.
+    One that failed three times for reasons that were not refusals -- or
+    whose reading was not kept three times (markers) -- is left for a person
+    ("for-laptop", the name it had while the laptop's evening job took them):
+    the night's verdict counts it among what waits.
 
     A recording whose last ask was refused goes behind the rest of its lane
     (`refused`, cleared by its next answer), so the next run asks another
@@ -1441,65 +1609,60 @@ def carry_list(st=None):
     """What GitHub's machine is given for this step each night and sends back
     after it: download each one the bucket holds, upload each one that exists.
 
-    Three small files and no caption file. The kit carries no captions, so
-    what this step read off a recording travels in the state instead -- the
-    candidate_segments.json entry segment_markers made and the caption-summary
-    entry caption_span would make -- until the laptop has read the recording
-    itself (see --markers and adopt).
+    Three small files of this step's own. What it reads off a recording is
+    kept in candidate_segments.json and caption_spans.json, which the kit
+    carries as the night's (THE NIGHT KEEPS WHAT IT READS); until 10 October
+    2026 it travelled in the state instead.
     """
     return [p.as_posix() for p in (STATE, csv_path("house"), csv_path("senate"))]
 
 
-def laptop_has(markers=MARKERS, summary=None):
-    """The recordings the laptop has read, or None when this machine cannot
-    tell.
+# candidate_segments.json's two maps beside its recordings (segment_markers).
+SIDES = ("_absent", "_sequence")
 
-    Read means both of the laptop's files name it: candidate_segments.json,
-    what segment_markers found in its captions, and the caption summary,
-    where they stop -- because once this step stops restoring a recording,
-    the summary is all build_site_v2 has to check that its track is in step,
-    and a recording with times and neither has its times withheld. Where
-    there is no summary at all the first is enough.
 
-    Both files are the laptop's only until the night's build writes its own
-    copies, so once a site has been built on a machine that starts every
-    night empty, this refuses to judge.
+def in_files(markers=MARKERS, summary=None, named=None):
+    """The recordings whose reading the caption results already hold, or
+    None when this machine cannot tell.
+
+    Read means the caption summary names it -- where its captions stop,
+    which is all build_site_v2 has to check that its track is in step, and a
+    recording with times and no entry has its times withheld -- and
+    candidate_segments.json names it too, which is what segment_markers
+    found in its captions. Or no proceeding names it (`named`, by default
+    proceedings.csv's), and there is nothing to read it against yet: a study
+    commission's meeting is read when it is captioned, and its summary entry
+    is all there is to keep. Where there is no summary at all, the first
+    file alone answers; where there is no proceedings table, the second rule
+    is not applied.
     """
-    if os.environ.get("GITHUB_ACTIONS") == "true" and Path("site/build.json").exists():
-        print("  site/build.json is here, so the build has already run and "
-              "candidate_segments.json is this machine's own. Nothing is "
-              "judged taken over tonight. Run this step before build_all.")
-        return None
     try:
-        read = set(json.loads(Path(markers).read_text(encoding="utf-8")))
+        marks = json.loads(Path(markers).read_text(encoding="utf-8"))
     except (OSError, ValueError):
         return None
+    if not isinstance(marks, dict):
+        return None
+    marks = {k for k in marks if k not in SIDES}
     summary = Path(summary or summary_path())
-    if summary.exists():
-        try:
-            doc = json.loads(summary.read_text(encoding="utf-8"))
-            read &= set((doc.get("recordings") or {}) if isinstance(doc, dict) else {})
-        except (OSError, ValueError):
-            return None
-    return read
+    if not summary.exists():
+        return marks
+    try:
+        doc = json.loads(summary.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    rec = set((doc.get("recordings") or {}) if isinstance(doc, dict) else {})
+    if named is None:
+        import proceedings as P
+        named = set(P.by_video(P.load())) if Path(P.PATH).exists() else None
+    if named is None:
+        return marks & rec
+    return {v for v in rec if v in marks or v not in named}
 
 
 def summary_path():
     """caption_span's summary file, by its own name where it has one."""
     import caption_span
     return Path(getattr(caption_span, "SUMMARY", "caption_spans.json"))
-
-
-def adopt(st, now, laptop):
-    """Stop restoring what the laptop has read; its own files now answer."""
-    n = 0
-    for vid, v in st["videos"].items():
-        if v.get("carry") and laptop is not None and vid in laptop:
-            v.update(carry=False, adopted=now.strftime("%Y-%m-%d"))
-            v.pop("result", None)
-            v.pop("span", None)
-            n += 1
-    return n
 
 
 def prune(st, now):
@@ -1513,50 +1676,18 @@ def prune(st, now):
         if v.get("status") == "gone" or v.get("captions") in (
                 "none-published", "not-needed", "for-laptop") or (
                 v.get("captions") == "captioned"
-                and (v.get("adopted") or v.get("by") != "runner")):
+                and (v.get("read") or v.get("adopted") or v.get("by") != "runner")):
             del st["videos"][vid]
 
 
-def span_of(folder):
-    """The caption-summary entry for one recording, in caption_span's own
-    shape: where its captions stop, and the size and date of each file that
-    answer was read from."""
-    import caption_span
-    from segment_markers import WORK_FILES
-    if hasattr(caption_span, "caption_files"):
-        files = caption_span.caption_files(folder)
-    else:
-        files = {}
-        for name in WORK_FILES:
-            f = Path(folder) / name
-            if f.exists():
-                s = f.stat()
-                files[name] = [s.st_size, int(s.st_mtime)]
-    return {"last": caption_span.last_cue(folder), "files": files}
-
-
-def store_results(st, vids, marks, work=WORK):
-    """Keep what segment_markers read off these recordings, so the next night
-    -- on a machine that will not have their captions -- can put it back."""
-    n = 0
-    for vid in vids:
-        if vid not in marks:
-            continue
-        v = st["videos"][vid]
-        v["result"] = {"segs": marks[vid],
-                       "absent": (marks.get("_absent") or {}).get(vid),
-                       "sequence": (marks.get("_sequence") or {}).get(vid)}
-        v["span"] = span_of(Path(work) / vid)
-        v["carry"] = True
-        n += 1
-    return n
-
-
 def restore_results(st, markers=MARKERS, summary=None, work=WORK):
-    """Put back what earlier nights read, for recordings whose captions are
-    not on this machine. Only where the laptop's files have nothing for the
-    recording: an answer the laptop made is never replaced by this one.
-    Returns the recordings restored."""
+    """Fold what an older night carried in the state into the caption
+    results, for recordings whose captions are not on this machine: the one
+    night of overlap after 10 October 2026, when the files became the
+    night's and the carrying stopped (THE NIGHT KEEPS WHAT IT READS). Only
+    where the files have nothing for the recording: an answer already there
+    is never replaced by this one. Returns the recordings put into
+    candidate_segments.json."""
     held = {vid: v for vid, v in st["videos"].items()
             if v.get("carry") and v.get("result") and not has_captions(vid, work)}
     if not held:
@@ -1600,28 +1731,29 @@ def since_state(a):
                  if not f.endswith("_livestreams.csv") and rank(r) == 2}
     code, notes, units = 0, [], 0
 
-    laptop = laptop_has() if a.origin == "runner" else None
-    taken = adopt(st, now, laptop)
-    if taken:
-        print(f"  {taken} recording(s) the laptop has read need nothing more "
-              "from this step")
-    if a.origin == "runner":
-        # A recording captioned here whose reading never reached the state --
-        # build_all's --markers step did not run, or the docket named nothing
-        # on it then and does now -- is asked for again, because its captions
-        # did not come with this machine. Only those.
-        import proceedings as P
-        named = set(P.by_video(P.load()))
+    # What the caption results already hold: last night's files, as the kit
+    # brought them, the night's own since 10 October 2026.
+    done = in_files()
+    if a.origin == "runner" and done is not None:
+        # A recording captioned here whose reading the files do not hold --
+        # build_all's --markers step did not run, its guard put the files
+        # back, or the docket named nothing on it then and does now -- is
+        # asked for again, because its captions did not come with this
+        # machine: as a failure, so that after MAX_TRIES it is left for a
+        # person rather than asked every night. A reading an older night
+        # still carries in the state is not: --markers folds it in.
         again = [vid for vid, v in st["videos"].items()
                  if v.get("captions") == "captioned" and v.get("by") == "runner"
-                 and not v.get("result") and not v.get("adopted")
-                 and vid in named and not has_captions(vid)]
+                 and not v.get("carry") and vid not in done and not has_captions(vid)]
         for vid in again:
-            st["videos"][vid].update(captions="waiting",
-                                     why="read on no night yet; asked for again")
+            v = st["videos"][vid]
+            v.update(captions="failed", tries=int(v.get("tries") or 0) + 1,
+                     why=str(v.get("why") or "") or "its reading is in no night's files; "
+                         "asked for again")
+            v.pop("read", None)
         if again:
             print(f"  {len(again)} recording(s) captioned on an earlier night "
-                  "were never read into the state; asked for again")
+                  "are not in the caption results; asked for again")
 
     counts = Counter()
     updates, removals = {"house": {}, "senate": {}}, {"house": set(), "senate": set()}
@@ -1653,16 +1785,26 @@ def since_state(a):
                   f"{drop} dropped")
     save_state(st)
 
-    # Not asked for again: a recording the laptop has already read, and one
-    # whose captions are already on this disk -- before the queue is made,
-    # so one that is not due tonight is seen as well.
-    settle(st, now, laptop)
+    # Not asked for again: a recording the caption results already hold, and
+    # one whose captions are already on this disk -- before the queue is
+    # made, so one that is not due tonight is seen as well.
+    settle(st, now, done)
     first, again = caption_queue(st, now)
+    kit = {}
+    if (first or again) and a.origin == "runner" \
+            and os.environ.get(NEW_TERM_ENV) == "true":
+        print(f"  a New term run: no captions are asked for tonight; "
+              f"{len(first) + len(again)} recording(s) wait for the next night")
+        notes.append("no captions asked for: a New term run")
+        first, again = [], []
     if (first or again) and not yt_dlp_here(a):
         code = 3
         notes.append(f"not configured: yt-dlp is not installed here, so "
                      f"{len(first) + len(again)} recording(s) wait for captions")
         first, again = [], []
+    if (first or again) and not a.captions_from:
+        kit = setup()
+        print(f"  asking with {setup_said(kit)}")
     got, refused = run_captions(st, first, again, refusals, now, a,
                                 save=lambda: save_state(st))
     if refused:
@@ -1670,6 +1812,8 @@ def since_state(a):
 
     prune(st, now)
     carried = sum(1 for v in st["videos"].values() if v.get("carry"))
+    waiting = sum(1 for v in st["videos"].values() if v.get("status") == "finished"
+                  and v.get("captions") in WAITING + ("for-laptop",))
     said = []
     if counts["new"] or counts["finished"]:
         said.append(f"{counts['new']} new on the channels, {counts['finished']} "
@@ -1679,29 +1823,35 @@ def since_state(a):
     if got:
         said.append("captions: " + ", ".join(f"{n} {k}" for k, n in got.items()))
     head = "; ".join(said) if said else "nothing new"
-    tail = [f"holding {carried} reading(s) for the laptop"] if carried else []
+    tail = [f"{waiting} wait for captions"] if waiting else []
+    tail += [f"{carried} older reading(s) to fold into the caption results"] if carried else []
     tail.append(f"{units} API unit{'' if units == 1 else 's'}")
     line = "LIVESTREAMS: " + head + "; " + ", ".join(tail) + \
         ("; " + "; ".join(notes) if notes else "")
+    # What the night's verdict reads (nightly.captions_record): tonight's
+    # answers by outcome, what still waits, and the setup that asked.
     st["last_run"] = {"at": iso(now), "origin": a.origin, "units": units,
-                      "verdict": line}
+                      "captions": dict(got), "waiting": waiting,
+                      "verdict": line, **({"setup": kit} if kit else {})}
     save_state(st)
     print("\n" + line)
     return code
 
 
 def catch_up(a):
-    """On the laptop: caption the night's new recordings that are not here --
-    the ones YouTube refused GitHub's machine, and the ones it captioned
-    there, whose files the kit never brings back -- then read them.
+    """On the laptop, by hand: caption the night's new recordings that are not
+    here -- the ones YouTube refused GitHub's machine, and the ones it
+    captioned there, whose files the kit never brings back -- then read them.
 
-    Reads the nightly's state and never writes it. That file is GitHub's, and
-    a second writer is how one machine's night overwrites the other's. What
-    this does reaches the nightly through the laptop's own two files: its
-    candidate_segments.json, which segment_markers merges these into, and its
-    caption summary, which the caption_span writer refreshes. Once both name a
-    recording, the next night stops waiting for it, or stops holding its
-    reading, and asks YouTube nothing about it again.
+    Until 8 October 2026 the laptop's evening job ran this every evening and
+    sent the two files it reads into to the kit. Now it is a person's tool:
+    a test of whether YouTube answers this machine (its own refusal record,
+    archive/youtube.refused.json, says what happened), and captions for
+    development. Reads the nightly's state and never writes it. What it reads
+    goes into the laptop's own candidate_segments.json and caption summary,
+    and no further: both are the night's files in the kit since 10 October
+    2026, and cloud.py seed-kit never sends a night's file over the night's
+    copy. The night asks for these recordings itself.
     """
     if a.origin == "runner":
         raise Broken("--catch-up is the laptop's; on GitHub's machine run "
@@ -1729,7 +1879,7 @@ def catch_up(a):
             return False
         if v.get("captions") != "captioned":
             return True
-        if v.get("adopted") or has_captions(vid):
+        if v.get("adopted") or v.get("read") or has_captions(vid):
             return False
         return not str(v.get("fetched") or "") > str(e.get("tried") or "")
 
@@ -1740,7 +1890,7 @@ def catch_up(a):
             if v.get("status") == "finished"
             and v.get("captions") in ("waiting", "deferred", "failed",
                                       "for-laptop", "none-yet", "captioned")
-            and not v.get("adopted") and not has_captions(vid)
+            and not v.get("adopted") and not v.get("read") and not has_captions(vid)
             and vid not in closed]
     # The night's entry for each, as this machine sees it: waiting, and
     # carrying what this machine's own asks have counted against it.
@@ -1810,8 +1960,9 @@ def catch_up(a):
         line += f"; YouTube refused this machine as well ({refused})"
     print("\n" + line)
     if done:
-        print("\nThen send the laptop's candidate_segments.json and caption "
-              "summary to the bucket with cloud.py, as after any caption job.")
+        print("\nWhat was read is in this laptop's candidate_segments.json and caption "
+              "summary, and goes no further: the night owns both in the kit, and asks "
+              "YouTube for these recordings itself.")
     return code
 
 
@@ -1831,17 +1982,24 @@ def write_summary():
 
 def markers(a):
     """build_all's step after the chair's boundaries: segment_markers over this
-    step's recordings, and nothing else.
+    step's recordings, and nothing else, scored before anything is kept.
 
     Where their captions are on this machine it reads them, through
-    segment_markers, which merges -- every other recording keeps the answer
-    the laptop's caption job gave it. On the laptop, step 15 has just read
-    them and this finds them in its cache. On GitHub's machine, where step 15
-    does not run, this is where a new recording gets its times, and what was
-    read is kept in the state; on the nights after, when the captions are not
-    on the machine, it is put back into candidate_segments.json and the
-    caption summary -- only where the laptop's copies have nothing for the
-    recording -- until the laptop has read the recording itself.
+    segment_markers, which merges into candidate_segments.json, and puts
+    where each one's captions stop into the caption summary, which merges
+    too: every other recording keeps the answer it had. On the laptop, step
+    15 has just read them and this finds them in its cache. On GitHub's
+    machine, where step 15 does not run, this is where a new recording gets
+    its times, and the two files go back to the kit as the night's. A
+    reading an older night carried in the state is folded in once (fold).
+
+    Then the guard (THE GUARD): an entry other than tonight's that changed,
+    or a probe against the hand-timed proceedings that places fewer or has
+    a worse median, or one that would not run, and both files are put back
+    as they were. Exit 0 either way, so the rest of the build and the night
+    go on: the state says what happened and the night's verdict warns.
+    Exit 1 only when segment_markers itself failed, and then too the files
+    are put back first.
     """
     try:
         st = load_state()
@@ -1850,21 +2008,235 @@ def markers(a):
         return 1
     here = sorted(vid for vid, v in st["videos"].items()
                   if v.get("captions") == "captioned" and has_captions(vid))
+    runner = a.origin == "runner"
+    held = sorted(vid for vid, v in st["videos"].items()
+                  if runner and v.get("carry") and v.get("result")
+                  and not has_captions(vid))
+    now = utcnow(a.now)
+    record = {"at": iso(now), "read": len(here), "folded": 0}
+    if not here and not held:
+        record["guard"] = "nothing to read"
+        print("\nLIVESTREAMS MARKERS: 0 recording(s) read")
+        if runner:
+            st["markers"] = record
+            save_state(st)
+        return 0
+    copies = Copies(MARKERS, summary_path())
+    try:
+        return _read_and_judge(st, here, held, copies, record, now, runner)
+    except BaseException:
+        # Whatever stopped it half way, nothing it wrote is kept.
+        copies.put_back()
+        raise
+    finally:
+        copies.close()
+
+
+def _read_and_judge(st, here, held, copies, record, now, runner):
+    """markers(), from the copies on: read, judge, keep or put back, and
+    say so in the state. The exit status."""
+    if held:
+        restore_results(st)
     code = read_markers(here) if here else 0
-    stored = back = 0
-    if a.origin == "runner":
-        try:
-            marks = json.loads(MARKERS.read_text(encoding="utf-8"))
-        except (OSError, ValueError):
-            marks = {}
-        stored = store_results(st, here, marks)
-        back = len(restore_results(st))
+    if code == 0 and here:
+        code = summarize(here)
+    # The fold may add a held recording's summary entry where its reading
+    # was in the file already, so every held one may change, not only the
+    # ones it put into candidate_segments.json.
+    tonight = set(here) | set(held)
+    why, scores = ("segment_markers did not finish", None) if code else \
+        guard(copies, tonight)
+    if scores:
+        record["probe"] = scores
+    if why:
+        copies.put_back()
+        record["guard"] = "put back: " + why
+        for vid in here:
+            v = st["videos"][vid]
+            v.update(captions="failed", tries=int(v.get("tries") or 0) + 1,
+                     why=f"read on {now:%Y-%m-%d} and not kept: {why}"[:200])
+            v.pop("read", None)
+        print(f"\nLIVESTREAMS MARKERS: {len(here)} recording(s) read and NOT kept: {why}. "
+              "candidate_segments.json and the caption summary are as they came down; "
+              "the recordings are asked for again on a later night.")
+    else:
+        record["guard"] = "passed" if copies.changed() else "nothing changed"
+        day = now.strftime("%Y-%m-%d")
+        done = in_files() or set()
+        for vid in here:
+            if vid in done:
+                st["videos"][vid]["read"] = day
+        # A carried reading the files now hold is carried no longer: folded
+        # tonight, or there already.
+        released = 0
+        for vid in held:
+            v = st["videos"][vid]
+            if vid in done:
+                v.update(carry=False, read=day)
+                v.pop("result", None)
+                v.pop("span", None)
+                released += 1
+        record["folded"] = released
+        after = (scores or {}).get("after") or {}
+        print(f"\nLIVESTREAMS MARKERS: {len(here)} recording(s) read"
+              + (f", {released} older reading(s) folded into the caption results"
+                 if released else "")
+              + (f"; the timestamp probe places {after['placed']} of {after['marked']} "
+                 "hand-timed proceedings, median "
+                 + ("-" if after.get("median") is None else f"{after['median']:g}s")
+                 + ", no worse than before" if after else ""))
+    if runner:
+        st["markers"] = record
         save_state(st)
-    print(f"\nLIVESTREAMS MARKERS: {len(here)} recording(s) read"
-          + (f", {stored} reading(s) kept for the nights after" if stored else "")
-          + (f", {back} put back from earlier nights" if back else "")
-          + ("" if not code else "; segment_markers did not finish"))
-    return code
+    return 1 if code else 0
+
+
+class Copies:
+    """The two caption results as they were before a reading, to compare
+    with and to put back. A file that was not there is put back as not
+    there."""
+
+    def __init__(self, *paths):
+        import tempfile
+        self.dir = Path(tempfile.mkdtemp(prefix="gr-markers-"))
+        self.files = {}
+        for k, p in enumerate(paths):
+            p = Path(p)
+            keep = self.dir / f"{k}-{p.name}"
+            if p.exists():
+                shutil.copy2(p, keep)
+                self.files[p] = keep
+            else:
+                self.files[p] = None
+
+    def before(self, path):
+        return self.files.get(Path(path))
+
+    def changed(self):
+        for p, keep in self.files.items():
+            if (keep is None) != (not p.exists()):
+                return True
+            if keep is not None and keep.read_bytes() != p.read_bytes():
+                return True
+        return False
+
+    def put_back(self):
+        for p, keep in self.files.items():
+            if keep is None:
+                p.unlink(missing_ok=True)
+            else:
+                tmp = p.with_name(p.name + ".tmp")
+                shutil.copy2(keep, tmp)
+                os.replace(tmp, p)
+
+    def close(self):
+        shutil.rmtree(self.dir, ignore_errors=True)
+
+
+def summarize(vids, work=WORK):
+    """Where each of these recordings' captions stop, merged into the caption
+    summary (caption_span.merge_summary, the writer --write uses): 0, or 1
+    when it could not be written."""
+    import caption_span
+    try:
+        caption_span.merge_summary([Path(work) / v for v in vids])
+    except (OSError, SystemExit) as e:
+        print(f"  the caption summary could not be written: {e}")
+        return 1
+    return 0
+
+
+def changed_besides(before, after, tonight):
+    """The entries of two candidate files, or two caption summaries'
+    recordings, that differ other than tonight's recordings': [name]."""
+    before = before if isinstance(before, dict) else {}
+    after = after if isinstance(after, dict) else {}
+    out = []
+    for k in sorted(set(before) | set(after)):
+        if k in SIDES:
+            b, x = before.get(k) or {}, after.get(k) or {}
+            out += [f"{k}/{v}" for v in sorted(set(b) | set(x))
+                    if v not in tonight and b.get(v) != x.get(v)]
+        elif k not in tonight and before.get(k) != after.get(k):
+            out.append(k)
+    return out
+
+
+def probe(candidate):
+    """probe_alignment.py --truth on one candidate file: {"marked", "placed",
+    "median"} (seconds, None where nothing was placed), or None when the
+    probe would not run. Its scoreboard is read from the file --score-out
+    writes, in a folder of its own, not from what it prints."""
+    import child
+    import tempfile
+    d = Path(tempfile.mkdtemp(prefix="gr-probe-"))
+    try:
+        out = d / "score.json"
+        r = child.run([sys.executable, _paths.script("probe_alignment.py"), "--truth",
+                       "--candidate", str(candidate), "--score-out", str(out)],
+                      capture_output=True, text=True)
+        if r.returncode != 0 or not out.exists():
+            return None
+        doc = json.loads(out.read_text(encoding="utf-8"))
+        truth, cand = doc.get("truth") or {}, doc.get("candidate") or {}
+        marked = int(truth.get("marked") or cand.get("marked") or 0)
+        if not marked:
+            return None
+        med = cand.get("median")
+        return {"marked": marked, "placed": int(cand.get("placed") or 0),
+                "median": None if med is None else round(float(med), 3)}
+    except (OSError, ValueError, TypeError):
+        return None
+    finally:
+        shutil.rmtree(d, ignore_errors=True)
+
+
+def worse(before, after):
+    """Why `after` scores worse than `before`, or "": laptop_evening.py's
+    rule, which this replaces. A median that grew, or fewer of the same
+    hand-timed proceedings placed."""
+    if before.get("median") is not None and (after.get("median") is None
+                                             or after["median"] > before["median"]):
+        return (f"the timestamp probe's median went from {before['median']}s to "
+                f"{after.get('median')}s")
+    if after["marked"] == before["marked"] and after["placed"] < before["placed"]:
+        return (f"the timestamp probe places {after['placed']} of {after['marked']} "
+                f"hand-timed proceedings, where it placed {before['placed']}")
+    return ""
+
+
+def guard(copies, tonight):
+    """(why the reading is not kept, or "", the probe before and after): see
+    THE GUARD. Nothing changed is nothing to judge."""
+    if not copies.changed():
+        return "", None
+    names = []
+    for path, inner in ((MARKERS, None), (summary_path(), "recordings")):
+        keep = copies.before(path)
+        try:
+            was = json.loads(keep.read_text(encoding="utf-8")) if keep else {}
+            now = json.loads(Path(path).read_text(encoding="utf-8")) \
+                if Path(path).exists() else {}
+        except (OSError, ValueError) as e:
+            return f"{Path(path).name} will not read after the reading ({e})", None
+        if inner:
+            was, now = (was or {}).get(inner), (now or {}).get(inner)
+        names += [f"{Path(path).name}: {n}" for n in changed_besides(was, now, tonight)]
+    if names:
+        return (f"entries besides tonight's recordings changed ({', '.join(names[:3])}"
+                + (f" and {len(names) - 3} more" if len(names) > 3 else "") + ")"), None
+    keep = copies.before(MARKERS)
+    before = probe(keep) if keep else {"marked": 0, "placed": 0, "median": None}
+    after = probe(MARKERS)
+    scores = {"before": before, "after": after}
+    if after is None or (keep and before is None):
+        return ("the timestamp probe (probe_alignment.py --truth) would not run, so "
+                "nothing read tonight could be scored"), scores
+    if before.get("marked"):
+        why = worse(before, after)
+        if why:
+            return why, scores
+    return "", scores
 
 
 def load_laptop_refusals():
@@ -1893,7 +2265,13 @@ def read_markers(vids):
         return 1
     import child
     r = child.run([sys.executable, _paths.script("segment_markers.py"),
-                   "--transcript", *folders, "--data", "data", "--quiet"])
+                   "--transcript", *folders, "--data", "data", "--quiet"],
+                  capture_output=True, text=True)
+    # What it found, in its own few lines; all of it where it failed.
+    said = [ln for ln in (r.stdout or "").splitlines() if ln.strip()]
+    keep = [ln for ln in said if re.match(r"\s+\d[\d,]*\s{2}", ln) or "%" in ln]
+    for ln in (keep if r.returncode == 0 else said[-12:] + (r.stderr or "").splitlines()[-12:]):
+        print(f"  segment_markers: {ln.strip()}")
     return 0 if r.returncode == 0 else 1
 
 
@@ -1912,8 +2290,13 @@ def status(a):
         print(f"  {len(behind):>5}  of those asked for and answered without "
               "captions: behind the rest, next due "
               + min(v["again"] for v in behind))
-    print(f"  {sum(1 for v in vids.values() if v.get('carry'))} reading(s) held "
-          "for the laptop, put back each night until it has read them")
+    print(f"  {sum(1 for v in vids.values() if v.get('carry'))} older reading(s) "
+          "carried in the state, folded into the caption results by the next "
+          "--markers")
+    mk = st.get("markers") or {}
+    if mk:
+        print(f"  the last --markers, {mk.get('at')}: {mk.get('read', 0)} read; "
+              f"the guard: {mk.get('guard')}")
     for origin, r in sorted((st.get("refusals") or {}).items()):
         if r.get("count"):
             print("  YouTube "
@@ -1928,18 +2311,41 @@ def status(a):
 
 
 class lock:
-    """One run of this step at a time on one machine."""
+    """One run of this step at a time on one machine.
+
+    Touched every LOCK_BEAT seconds while it is held, and taken over once it
+    has gone LOCK_STALE seconds untouched: the night's step is killed at its
+    time limit with the lock still on disk, and until 10 October 2026 a lock
+    held for two hours by its date alone would then have failed the build's
+    --markers step -- a failed step, which check_site will not publish. A
+    run that is alive touches it ten times in that while, whatever yt-dlp is
+    doing."""
 
     def __enter__(self):
-        if LOCK.exists() and time.time() - LOCK.stat().st_mtime < 2 * 3600:
+        if LOCK.exists() and time.time() - LOCK.stat().st_mtime < LOCK_STALE:
             raise Broken(f"{LOCK} is held "
                          f"({LOCK.read_text(encoding='utf-8').strip()}): "
                          "another run of this step is going")
+        if LOCK.exists():
+            print(f"  {LOCK.as_posix()} has not been touched for "
+                  f"{(time.time() - LOCK.stat().st_mtime) / 60:.0f} minutes: the run "
+                  "that held it is gone, so this one takes it")
         LOCK.parent.mkdir(parents=True, exist_ok=True)
         LOCK.write_text(f"pid {os.getpid()}", encoding="utf-8")
+        import threading
+        self._stop = threading.Event()
+
+        def beat():
+            while not self._stop.wait(LOCK_BEAT):
+                try:
+                    os.utime(LOCK, None)
+                except OSError:
+                    pass
+        threading.Thread(target=beat, daemon=True).start()
         return self
 
     def __exit__(self, *exc):
+        self._stop.set()
         LOCK.unlink(missing_ok=True)
         return False
 
@@ -1950,10 +2356,11 @@ def main(argv=None):
     mode.add_argument("--since-state", action="store_true",
                       help="the nightly step: list, index, caption")
     mode.add_argument("--catch-up", action="store_true",
-                      help="on the laptop: caption what the nightly could not")
+                      help="on the laptop, by hand: ask YouTube from there for what "
+                           "the nightly could not caption; sends nothing")
     mode.add_argument("--markers", action="store_true",
                       help="build_all's step: segment_markers over this step's "
-                           "recordings only")
+                           "recordings only, scored before it is kept")
     mode.add_argument("--status", action="store_true")
     mode.add_argument("--carry", action="store_true",
                       help="the files carried between nights, one a line")
@@ -1970,8 +2377,9 @@ def main(argv=None):
     ap.add_argument("--budget", type=float, default=BUDGET,
                     help="minutes of caption requests in one run, at most "
                          f"(default {BUDGET:g})")
-    ap.add_argument("--timeout", type=float, default=300.0,
-                    help="seconds allowed for one recording's captions")
+    ap.add_argument("--timeout", type=float, default=TIMEOUT,
+                    help="seconds allowed for one track's ask "
+                         f"(default {TIMEOUT:g})")
     ap.add_argument("--stop-after", type=int, default=3,
                     help="failures in a row, not refusals, before stopping")
     ap.add_argument("--max-pages", type=int, default=MAX_PAGES)

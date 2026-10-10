@@ -248,13 +248,17 @@ jobs:
       # setting it makes, and this one is pinned so a night does not take
       # whatever is newest. yt-dlp is the livestream step's, for captions, at
       # the laptop's version; without it that step exits 3, "not set up".
+      # yt-dlp-ejs is yt-dlp's solver for YouTube's challenges, run with the
+      # Node set up above (livestreams.py asks with --js-runtimes node), at
+      # the version yt-dlp 2026.8.19 names in its own metadata; preflight
+      # holds the two together (10 October 2026: the free fix tried first).
       - name: The Python packages, at the laptop's versions, with boto3 and yt-dlp
         run: |
           python -m pip install --disable-pip-version-check --no-input `
             numpy==2.5.2 openpyxl==3.1.5 et-xmlfile==2.0.0 pdfplumber==0.11.10 `
             pdfminer.six==20260107 pypdfium2==5.13.0 pillow==12.3.0 `
             charset-normalizer==3.5.1 cryptography==50.0.1 cffi==2.1.1 pycparser==3.0 `
-            PyYAML==6.0.3 boto3==1.43.103 yt-dlp==2026.8.19
+            PyYAML==6.0.3 boto3==1.43.103 yt-dlp==2026.8.19 yt-dlp-ejs==0.8.0
           exit $LASTEXITCODE
 
       - name: Bring the state files down from R2 (the refusal record, last night's census)
@@ -281,15 +285,30 @@ jobs:
 
       # YouTube, not the General Court. Before the build, which reads what it
       # adds; its --markers step runs inside build_all, after the step
-      # --no-captions skips. Exit 0 is success, including "nothing new" and
-      # "captions deferred" (YouTube's bot check). Any other exit -- 3 is "not
-      # set up": no key, a refused key, or no yt-dlp -- fails the night, loudly,
-      # at --close, without stopping the day's General Court files from being
-      # taken and built: those cannot be taken later.
+      # --no-captions skips, and keeps what it reads in the kit's
+      # candidate_segments.json and caption_spans.json, the night's files since
+      # 10 October 2026, behind the timestamp probe's guard. No laptop takes
+      # part: the evening job that captioned what this step could not was
+      # switched off on 8 October 2026. Exit 0 is success, including "nothing
+      # new" and "captions deferred": YouTube refusing this machine is
+      # recorded and held (livestreams.py, A REFUSAL), never asked again in
+      # the same run, and the recordings keep the schedule's approximate
+      # start; the verdict says how many wait and why. Any other exit -- 3 is
+      # "not set up": no key, a refused key, or no yt-dlp -- fails the night,
+      # loudly, at --close, without stopping the day's General Court files
+      # from being taken and built: those cannot be taken later. Its own time
+      # limit, so a hang inside one yt-dlp call can never eat the night: the
+      # step's sixty minutes of asking (livestreams.BUDGET), the last ask's
+      # fourteen past it (LAST_ASK_MINUTES), and the listing; preflight holds
+      # the sum, and the night window after it. A step killed at the limit
+      # leaves its lock, which goes stale in five minutes, long before the
+      # build's --markers step. On the New term run, which every step knows
+      # by NEW_TERM, it lists and asks YouTube for nothing.
       - name: New livestreams, from YouTube
         id: livestreams
         if: env.FETCH == 'true'
         continue-on-error: true
+        timeout-minutes: 80
         env:
           YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
         run: |
