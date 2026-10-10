@@ -10,7 +10,11 @@ Shared by every stage:
 - `build_date`: the build's one clock;
 - `child`: a child process without Windows' code-page crash;
 - `keys`: the one place a credential is read (`secrets.json` at the
-  repository root, wherever `keys.py` sits).
+  repository root, wherever `keys.py` sits);
+- `build_inputs`: what the last full build was built from, recorded by
+  `build_all.py` in `logs/last-build.json` as a build ends well, and what
+  has moved since -- read by the fast path (`src/pages/front_end.py`) and by
+  `src/checks/site_manifest.py`.
 
 A module comes here only when scripts in several folders import it and it
 belongs to no single stage. A helper used by one folder lives in that
