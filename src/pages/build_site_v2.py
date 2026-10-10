@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.197
+# GRANITE_VERSION: 2026-09-05.198
 """
 Generate the faceted site from real General Court data.
 
@@ -46,6 +46,7 @@ import proceedings as P
 import report_check as RC
 import senate_hearing_reports as SHR
 import site_read
+import spellings
 import csv
 import json
 import member_figures as MF
@@ -7617,6 +7618,16 @@ MOVER_HONORIFIC = re.compile(r"^(?:Rep|Sen|Representative|Senator)s?\.?\s+", re.
 MOVER_SUFFIX = re.compile(r",?\s+(?:Jr|Sr|II|III|IV)\.?$", re.I)
 
 
+_SPELLINGS = []
+
+
+def _spellings():
+    """member_corrections.json's spellings, read once a run."""
+    if not _SPELLINGS:
+        _SPELLINGS.append(spellings.load())
+    return _SPELLINGS[0]
+
+
 def mover_member(mover, body, legs):
     """{"label", "slug"} of the one sitting member of `body` the docket's
     mover can mean -- "Rep. Alexander Jr." is Rep. Joe Alexander (R - Hills
@@ -7628,6 +7639,9 @@ def mover_member(mover, body, legs):
     ch = (body or "").strip().upper()[:1]
     if not n or not ch:
         return None
+    # A name the record misspells, as a person put it right (spellings.py):
+    # "Rep. Poloszaj" is looked up as Ploszaj.
+    n = spellings.respell(ch, n, _spellings())
     pool = []
     for m in (legs or {}).values():
         if (m.get("chamber") or "").strip().upper()[:1] != ch or "," not in (m.get("name") or ""):

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.525
+# GRANITE_VERSION: 2026-09-04.526
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -56418,11 +56418,56 @@ def _day_summary_words(BSP):
     return "ok", "a day in counts, its consent calendar by outcome, who presided and who was excused"
 
 
+@check("session", "a name the record misspells links where a person's spelling says whom it means",
+       needs=("spellings", "build_session_pages", "build_site_v2"))
+def _record_misspelling(SP, BSP, V2):
+    """The person, 10 October 2026: "Rep. Poloszaj" on HB 1689 is
+    Representative Tom Ploszaj, misspelled in the official record. No
+    matcher guesses at a near name; member_corrections.json's "spellings"
+    says it, and both matchers -- the session day's (Members.slug) and the
+    bill story's (mover_member) -- look the name up as the roster spells it,
+    under every rule an ordinary name meets. Without the entry it stays
+    words. A key for the other chamber does not apply."""
+    root = Path(tempfile.mkdtemp(prefix="gr-spell-"))
+    try:
+        cf = root / "member_corrections.json"
+        cf.write_text(json.dumps({"members": {}, "spellings": {
+            "_what": "ignored", "H|Poloszaj": {"means": "Ploszaj", "why": "the record's typo"}}}),
+            encoding="utf-8")
+        table = SP.load(cf)
+        assert table == {("H", "poloszaj"): "Ploszaj"}, table
+        assert SP.respell("H", "Tom Poloszaj", table) == "Tom Ploszaj"
+        assert SP.respell("S", "Poloszaj", table) == "Poloszaj", "a House spelling read in the Senate"
+        assert SP.load(root / "missing.json") == {}
+        (root / "legislators.json").write_text(json.dumps([
+            {"id": 7, "slug": "tom-ploszaj-belk-1", "name": "Ploszaj, Tom", "chamber": "H",
+             "label": "Rep. Tom Ploszaj (R - Belk 1)"}]), encoding="utf-8")
+        m = BSP.Members(root)
+        m.spellings = {}
+        assert m.slug("H", "Poloszaj") is None, "linked with no spelling on file"
+        m.spellings = table
+        assert m.slug("H", "Poloszaj") == "tom-ploszaj-belk-1"
+        assert m.respelled[("H", "Poloszaj", "Ploszaj")] == 1, m.respelled
+        legs = {"7": {"chamber": "H", "name": "Ploszaj, Tom", "slug": "tom-ploszaj-belk-1",
+                      "party_code": "R", "district": "1", "county": "Belknap"}}
+        keep = list(V2._SPELLINGS)
+        try:
+            V2._SPELLINGS[:] = [{}]
+            assert V2.mover_member("Rep. Poloszaj", "H", legs) is None
+            V2._SPELLINGS[:] = [table]
+            got = V2.mover_member("Rep. Poloszaj", "H", legs)
+        finally:
+            V2._SPELLINGS[:] = keep
+        assert got and got["slug"] == "tom-ploszaj-belk-1", got
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    return "ok", "Poloszaj links to Ploszaj on a session day and in a bill's story only with the spelling on file"
+
+
 @check("session", "a speaker the rosters miss is linked by the term's own ballots, where one member has the name",
        needs=("build_session_pages",))
 def _speaker_by_ballot(BSP):
-    """The person, 10 October 2026: "Rep. Poloszaj wasn't linked properly
-    with a chip on HB1689". A name no roster matches for the day's term is
+    """A name no roster matches for the day's term is
     matched among the members whose own ballots of that term give them a
     seat, by surname, where exactly one has it; two who share it stay words,
     and a name nobody voted under is counted in `unmatched` for the log."""
@@ -56434,19 +56479,19 @@ def _speaker_by_ballot(BSP):
             {"id": 3, "slug": "ann-lee-hills-1", "name": "Lee, Ann", "chamber": "H"},
             {"id": 4, "slug": "bo-lee-hills-2", "name": "Lee, Bo", "chamber": "H"}]), encoding="utf-8")
         (root / "former.json").write_text(json.dumps([
-            {"id": 2, "slug": "joe-poloszaj-hills-9", "name": "Poloszaj, Joe", "chamber": "H",
+            {"id": 2, "slug": "joe-quill-hills-9", "name": "Quill, Joe", "chamber": "H",
              "served": {"terms": ["2023-2024"]}}]), encoding="utf-8")
         m = BSP.Members(root)
         m.term = "2025-2026"
         m.seats = {"2025-2026": {"1": "Rep. Paul Terry (R - Belk 7)",
-                                 "2": "Rep. Joe Poloszaj (R - Hills 9)",
+                                 "2": "Rep. Joe Quill (R - Hills 9)",
                                  "3": "Rep. Ann Lee (D - Hills 1)", "4": "Rep. Bo Lee (R - Hills 2)"}}
-        got = (m.slug("H", "Poloszaj"), m.slug("H", "Terry"), m.slug("H", "Lee"), m.slug("H", "Nobody"))
+        got = (m.slug("H", "Quill"), m.slug("H", "Terry"), m.slug("H", "Lee"), m.slug("H", "Nobody"))
     finally:
         shutil.rmtree(root, ignore_errors=True)
-    assert got == ("joe-poloszaj-hills-9", "paul-terry-belk-7", None, None), got
+    assert got == ("joe-quill-hills-9", "paul-terry-belk-7", None, None), got
     assert m.unmatched[("H", "Lee")] == 1 and m.unmatched[("H", "Nobody")] == 1, m.unmatched
-    return "ok", "Poloszaj by the term's ballots; Terry by the roster; Lee, two of them, and Nobody left as words"
+    return "ok", "Quill by the term's ballots; Terry by the roster; Lee, two of them, and Nobody left as words"
 
 
 @check("build", "build_bills binds each of its names that hold every member once")

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-19.36
+# GRANITE_VERSION: 2026-09-19.37
 """
 A page for every day the House sat.
 
@@ -70,6 +70,7 @@ import committee_acts as CA
 import components as C
 import motions as MO
 import session_days
+import spellings
 import journal_days
 import officers
 import proceedings
@@ -171,6 +172,11 @@ class Members:
         # The names left as words, (chamber, name) -> times, said at the end
         # of the run so a name that should have linked can be found.
         self.unmatched = collections.Counter()
+        # A NAME THE RECORD MISSPELLS ("Rep. Poloszaj" for Rep. Tom Ploszaj,
+        # HB 1689), put right by a person in member_corrections.json's
+        # spellings (spellings.py) and looked up as the roster spells it.
+        self.spellings = spellings.load()
+        self.respelled = collections.Counter()
         # Each member by their id and by their page, with the party and the
         # label their record gives: a session day's term file counts the
         # excused by party and names who presided (day_record).
@@ -225,9 +231,12 @@ class Members:
         return f"{'Sen.' if body == 'S' else 'Rep.'} {bare}" if bare else ""
 
     def slug(self, body, name):
-        n = re.sub(r"\s+", " ", (name or "").strip()).strip(".")
-        if not n:
+        said = re.sub(r"\s+", " ", (name or "").strip()).strip(".")
+        if not said:
             return None
+        n = spellings.respell(body, said, self.spellings)
+        if n != said:
+            self.respelled[(body, said, n)] += 1
         full = self.serving(self.by_full.get((body, n.lower()), []))
         if len(full) == 1:
             return full[0]
@@ -244,17 +253,18 @@ class Members:
             cand = self.serving(self.by_last.get((body, parts[-1].lower()), []))
             if len(cand) == 1:
                 return cand[0]
-        # THE TERM'S OWN BALLOTS, LAST (the person, 10 October 2026: "Rep.
-        # Poloszaj wasn't linked properly with a chip on HB1689"): a name the
-        # rosters leave unmatched is matched among the members whose own
-        # ballots of the term give them a seat (seats), by surname, where
-        # exactly one of them in the chamber has it. Someone who voted in the
-        # term was there; one who left during it, or whose roster row spells
-        # the name otherwise, is still one person on the ballots.
+        # THE TERM'S OWN BALLOTS, LAST: a name the rosters leave unmatched is
+        # matched among the members whose own ballots of the term give them a
+        # seat (seats), by surname, where exactly one of them in the chamber
+        # has it. Someone who voted in the term was there; one who left during
+        # it, or whose roster row spells the name otherwise, is still one
+        # person on the ballots. (Written for "Rep. Poloszaj" on HB 1689,
+        # which turned out to be the record's misspelling of Ploszaj: that is
+        # the spellings above, not this.)
         got = self.by_ballot(body, parts[-1] if parts else n)
         if got:
             return got
-        self.unmatched[(body, n)] += 1
+        self.unmatched[(body, said)] += 1
         return None
 
     def by_ballot(self, body, last):
@@ -2438,6 +2448,15 @@ def main():
         top = members.unmatched.most_common(12)
         print(f"    {len(members.unmatched):,} name(s) left as words; the most often: "
               + ", ".join(f"{b} {n} ({c})" for (b, n), c in top))
+    # A person's spelling that put nothing right is said, not passed over:
+    # the record may have been corrected, or the key mistyped.
+    used = {(b, s.lower()) for b, s, _n in members.respelled}
+    for b, s, n in sorted(members.respelled):
+        print(f"    spellings: {b} {s} read as {n} ({members.respelled[(b, s, n)]})")
+    idle = sorted(k for k in members.spellings if k not in used)
+    if idle:
+        print(f"    spellings: {len(idle)} named in member_corrections.json and met on no "
+              "session day: " + ", ".join(f"{b} {s}" for b, s in idle))
     return 0
 
 
