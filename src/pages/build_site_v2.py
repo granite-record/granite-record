@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.189
+# GRANITE_VERSION: 2026-09-05.190
 """
 Generate the faceted site from real General Court data.
 
@@ -45,6 +45,7 @@ import senate_hearing_reports as SHR
 import site_read
 import csv
 import json
+import member_figures as MF
 import member_links as ML
 import names
 import re
@@ -3168,7 +3169,7 @@ def build_officers(out, votes_by_member, legs, today=None):
 
 def build_legislators(out, legs, votes_by_member, towns, unnamed,
                       sponsored=None, bill_year=None, links=None,
-                      former=None, offices=None):
+                      former=None, offices=None, index_rows=None):
     """One JSON per member, plus the index and the town map.
 
     Split out of main(). main() was 808 lines even after the station
@@ -3178,6 +3179,8 @@ def build_legislators(out, legs, votes_by_member, towns, unnamed,
     `links` is member_links.links(): the numbers a sitting member also voted
     under in the other chamber. `offices` is build_officers' {member id:
     office} for the sitting members the record names in one today.
+    `index_rows` is the bill index, {(term, bill): row}, whose chips say
+    which of a member's bills passed (member_figures).
     """
     lg, fm = [], []
     # Read off every ballot once, because what one member's attendance needs
@@ -3260,6 +3263,7 @@ def build_legislators(out, legs, votes_by_member, towns, unnamed,
         both = ({"member_ids": [mid, *joined], "service": ML.service(mv)}
                 if joined else {})
         office = member_office(m, offices)
+        att = member_attendance(mv, attending)
         (out / "legislators" / f"{mid}.json").write_text(json.dumps({
             **m, **lab, "counts": dict(counts), **both,
             **({"office": office} if office else {}),
@@ -3267,7 +3271,13 @@ def build_legislators(out, legs, votes_by_member, towns, unnamed,
             # above, which is what the legislators page, the town pages and
             # every other listing read. It is a figure on their own page, not
             # a column anyone is sorted by.
-            "attendance": member_attendance(mv, attending),
+            "attendance": att,
+            # EACH TERM AT A GLANCE (member_figures.term_figures), as the
+            # person ordered it on 9 October 2026 (item 7 and v7): the
+            # session days attended, the roll calls recorded on, the bills
+            # filed and the bills passed -- filed and passed counting prime
+            # and co-sponsored bills together, passed the bill search's.
+            "term_figures": MF.term_figures(mine, att, index_rows or {}),
             "n_sponsored": len(mine),
             "n_prime": sum(1 for x in mine if x["prime"]),
             "sponsored": mine,
@@ -11334,7 +11344,8 @@ def main():
     # roll call's card is (write_floor_record, FLOOR_RECORD).
     write_floor_record(D, votes_by_member, rc_cards)
     lg = build_legislators(out, legs, votes_by_member, towns, unnamed,
-                           sponsored, bill_year, links, former, offices)
+                           sponsored, bill_year, links, former, offices,
+                           index_rows={(r.get("term"), r.get("id")): r for r in index})
 
     # ---- home page data ----------------------------------------------------
     # Everything the landing page needs, precomputed here where the full records

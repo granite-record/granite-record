@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.486
+# GRANITE_VERSION: 2026-09-04.487
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -78704,6 +78704,105 @@ def _session_terms_on_the_site():
     return "ok", (f"{n_days:,} days, {n_votes:,} votes on bills, {n_cards:,} roll-call cards of "
                   "2025-2026 each its bill's; 19 Feb 2026 presided by Speaker Packard (6) and "
                   "Deputy Speaker Steven Smith (11); 19 Aug 2026, 24 excused, 10 D and 14 R")
+
+
+@check("frontend", "a member's bills passed are the bill search's Passed, word for word",
+       needs=("member_figures",))
+def _member_figures_passed(MF):
+    """The person, 9 October 2026, v7: "'bills filed' counts every bill
+    filed, prime and co-sponsor together; 'bills passed' the same". Passed
+    is the bill search's category (app.js statusCat), so member_figures
+    ports it; here both run over every (chip, kind) the nineteen terms carry
+    (_STATUS_REAL_PAIRS) and every word a chip can say (_STATUS_CATEGORY),
+    and must agree. And the term's figures for a member's real rows: Speaker
+    Packard's 2025-2026, 17 bills put his name to (4 as prime sponsor),
+    of which HB 10, HB 1000, HB 1774 and SB 562 became law (chapters 74, 3,
+    242 and 265 in the database's Legislation table) and HR 42 was adopted
+    by the House (Ought to Pass, 308-11, 5 March 2026)."""
+    pairs = sorted(set(_STATUS_REAL_PAIRS) | {(c, "") for c in _STATUS_CATEGORY}
+                   | {(c, k) for c in _STATUS_CATEGORY for k in ("active", "done", "law")})
+    got = _node_app(_STATUSCAT_HARNESS, {"pairs.json": json.dumps(pairs), "words.json": "[]"})
+    bad = []
+    if got is not None:
+        assert "threw" not in got, f"statusCat threw {got['threw']}"
+        for chip, kind, cat, _w, _k in got["pairs"]:
+            mine = MF.status_category({"chip": chip, "kind": kind})
+            if mine != cat:
+                bad.append(f"{chip!r} ({kind or 'no kind'}): app.js says {cat!r}, "
+                           f"member_figures {mine!r}")
+    rows = {("2025-2026", b): {"chip": c, "kind": k} for b, c, k in (
+        ("HB10", "Became Law", "law"), ("HB1000", "Became Law", "law"),
+        ("HB1323", "Died", "done"), ("HB1324", "Died", "done"), ("HB148", "Died", "veto"),
+        ("HB1643", "Died", "veto"), ("HB1774", "Became Law", "law"), ("HB1804", "Died", "done"),
+        ("HB188", "Died", "done"), ("HB450", "Died", "done"), ("HB452", "Interim Study", "study"),
+        ("HB453", "Died", "done"), ("HR42", "Adopted by the House", "adopted"),
+        ("SB191", "Interim Study", "study"), ("SB263", "Died", "done"),
+        ("SB562", "Became Law", "law"), ("SB631", "Died", "done"))}
+    prime = {"HB10", "HB1000", "HB188", "HB450"}
+    sponsored = [{"term": t, "bill": b, "prime": b in prime} for t, b in rows]
+    att = {"2025-2026": {"chambers": "H", "days": 33, "attended": 28, "roll_calls": 591,
+                         "voted": 51, "presided": 287, "conflict": 0, "excused": 146,
+                         "not_excused": 107, "no_vote": 0}}
+    f = MF.term_figures(sponsored, att, rows)["2025-2026"]
+    want = {"bills_filed": 17, "bills_passed": 5, "became_law": 4, "adopted": 1, "ratified": 0,
+            "prime": 4, "prime_passed": 2, "cosponsored": 13, "cosponsored_passed": 3,
+            "session_days": 33, "days_attended": 28, "roll_calls": 591,
+            "roll_calls_recorded": 338}
+    if f != want:
+        bad.append(f"Speaker Packard's 2025-2026: {f}")
+    old = MF.term_figures([{"term": "1993-1994", "bill": "HB142", "prime": True}], {},
+                          {("1993-1994", "HB142"): {"chip": "Became Law", "kind": "law"}})
+    if old["1993-1994"]["session_days"] is not None:
+        bad.append("a term before the roll calls says a zero where the record says nothing")
+    assert not bad, "; ".join(bad[:6])
+    return "ok", (f"{len(pairs)} chip words and kinds filed alike by app.js and member_figures"
+                  if got is not None else "app.js or node is not here; the figures alone")
+
+
+@check("data", "a member's file gives each term's bills filed and passed and attendance, "
+               "as the member's own sponsorships and attendance say")
+def _member_figures_on_the_site():
+    """legislators/<id>.json's term_figures (member_figures.term_figures),
+    held to the same file's sponsorships and attendance, for every member,
+    and to the record for one: Speaker Packard's 2025-2026 -- 17 bills (4 as
+    prime sponsor; the database's Sponsors table names the same 17), 5
+    passed (HB 10, HB 1000, HB 1774 and SB 562 became law, chapters 74, 3,
+    242 and 265; HR 42 adopted by the House), 33 session days with 28
+    attended and 591 roll calls with 338 recorded (42 yeas, 9 nays and 287
+    presiding in RollCallHistory.txt and RollCallHistory_2025.txt)."""
+    folder = Path("site/legislators")
+    if not (folder / "425.json").exists():
+        return "skip", "site/legislators is not built"
+    bad, n = [], 0
+    for f in sorted(folder.glob("*.json")):
+        m = json.loads(f.read_text(encoding="utf-8"))
+        tf = m.get("term_figures")
+        if tf is None:
+            bad.append(f"{f.stem}: no term_figures")
+            continue
+        n += 1
+        for t, a in (m.get("attendance") or {}).items():
+            x = tf.get(t) or {}
+            if (x.get("session_days"), x.get("days_attended"), x.get("roll_calls")) != (
+                    a.get("days"), a.get("attended"), a.get("roll_calls")):
+                bad.append(f"{f.stem} {t}: {x} beside {a}")
+        for t, x in tf.items():
+            mine = {s["bill"] for s in m.get("sponsored") or [] if s.get("term") == t}
+            if x.get("bills_filed") != len(mine) or \
+                    x.get("prime") + x.get("cosponsored") != x.get("bills_filed"):
+                bad.append(f"{f.stem} {t}: {x.get('bills_filed')} filed, {len(mine)} sponsored")
+    p = json.loads((folder / "425.json").read_text(encoding="utf-8"))
+    want = {"bills_filed": 17, "bills_passed": 5, "became_law": 4, "adopted": 1, "ratified": 0,
+            "prime": 4, "prime_passed": 2, "cosponsored": 13, "cosponsored_passed": 3,
+            "session_days": 33, "days_attended": 28, "roll_calls": 591,
+            "roll_calls_recorded": 338}
+    got = (p.get("term_figures") or {}).get("2025-2026")
+    if got != want:
+        bad.append(f"Speaker Packard's 2025-2026: {got}")
+    assert not bad, f"{len(bad)} wrong: " + "; ".join(bad[:6])
+    return "ok", (f"{n:,} members' term figures agree with their sponsorships and attendance; "
+                  "Speaker Packard 2025-2026: 17 filed, 5 passed, 28 of 33 days, 338 of 591 "
+                  "roll calls")
 
 
 # ======================================================================= main ==
