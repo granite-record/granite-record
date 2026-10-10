@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.245 */
+/* GRANITE_VERSION: 2026-09-07.246 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -2965,39 +2965,13 @@ text-align:center;color:var(--ink-2);font-size:var(--t-ui)}
 }
 
 /* ==== HUBS, COMMITTEES (Polish 3, ws/hubs, 10 October 2026) ================
-   The House and Senate full sessions at the top of /committees
-   (build_full_sessions.py; the person, 9 October 2026, v12 and v13): each
-   chamber's session days of a term as folds, like a committee's meetings,
-   in a box of its own height so the committees stay near the top. */
-.fullsess{margin:0 0 var(--sp-9)}
-.fschamber h3{font-family:var(--serif);font-size:var(--t-h3);font-weight:600;line-height:1.3;
-margin:var(--sp-6) 0 var(--sp-2);color:var(--ink)}
-.fscount{font-size:var(--t-ui);color:var(--ink-2);margin:0 0 var(--sp-4)}
-.fsctl{display:flex;flex-wrap:wrap;gap:var(--sp-4) var(--sp-7);margin:0 0 var(--sp-5);font-size:var(--t-ui)}
-.fsctl[hidden]{display:none}
-.fsctl label{display:inline-flex;align-items:center;gap:var(--sp-3);color:var(--ink-2)}
-.fsctl select{font:inherit;min-height:44px;padding:0 var(--sp-4);color:var(--ink);
-background:var(--surface);border:1px solid var(--edge);border-radius:var(--r-in)}
-.fsbox{max-height:min(560px,70vh);overflow-x:hidden;overflow-y:auto;
-border:1px solid var(--rule);border-radius:var(--r-out);background:var(--surface)}
-.fsdays{list-style:none;margin:0;padding:0}
-.fsdays > li + li{border-top:1px solid var(--rule)}
-.fsday > summary{display:flex;flex-wrap:wrap;align-items:baseline;gap:var(--sp-1) var(--sp-5);
-padding:var(--sp-4) var(--sp-5);min-height:44px;cursor:pointer;list-style:none}
-.fsday > summary::-webkit-details-marker{display:none}
-.fsday > summary::marker{content:""}
-.fsday > summary:focus-visible{outline:2px solid var(--pine);outline-offset:-2px}
-.fsd{font-weight:600;color:var(--ink)}
-.fsd::before{content:"\25B8";display:inline-block;width:1.1em;color:var(--ink-2)}
-.fsday[open] .fsd::before{transform:rotate(90deg)}
-.fsm{font-size:var(--t-ui);color:var(--ink-2)}
-.fsbody{padding:0 var(--sp-5) var(--sp-5)}
-.fslinks{margin:0 0 var(--sp-3);font-size:var(--t-ui)}
-.fsnote,.fscons{font-size:var(--t-ui);color:var(--ink-2);margin:0 0 var(--sp-3)}
-.fsbl{list-style:none;margin:0;padding:0}
-.fsbl li{padding:var(--sp-3) 0;border-top:1px solid var(--rule);font-size:var(--t-ui);line-height:1.5}
-.fsbn{font-weight:600;margin-right:var(--sp-3);white-space:nowrap}
-.fsv{color:var(--ink-2)}
+   The chamber's session days as a committee (build_full_sessions.py; the
+   person, 9 and 10 October 2026): its card on /committees is a committee's
+   card (.ccard), and its page, /session/H and /session/S, is drawn with a
+   committee page's own classes (.cmtehead, .cinfo, .bfilt, .cday). All that
+   is its own is the order picker sitting beside the term's. */
+.chamberctl{gap:var(--sp-4) var(--sp-8)}
+.chdays .cday:last-child{border-bottom:0}
 /* ==== /HUBS, COMMITTEES =================================================== */
 
 /* ==== HUBS, BILL SEARCH (Polish 3, ws/hubs, 10 October 2026) ===============

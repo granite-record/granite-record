@@ -1,37 +1,49 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-10.1
+# GRANITE_VERSION: 2026-10-10.2
 """
-The House and the Senate full sessions at the top of the Committees page.
+The House and the Senate as committees of the whole: a card at the top of
+each column of /committees, and a page for each chamber's session days.
 
-    python3 src/pages/build_full_sessions.py --site site
+    python3 src/pages/build_full_sessions.py --site site [--base URL]
 
-The person, 9 October 2026 (round two, v12 and v13): "the House and the
-Senate full sessions listed at the top of the Committees page, each letting a
-reader go through that chamber's session days in one place, as a committee
-page shows its meetings", and "a committee's meetings (and the chambers'
-session days) can be sorted oldest to newest or newest to oldest".
+The person, 9 October 2026 (round two, v12 and v13), and their correction of
+10 October: "when I mentioned adding the house and Senate session days, I
+meant that they would be listed in a similar format to the other committees
+and that when you clicked to see their pages you'd be able to view each term
+and select the session day you wanted to view the full page of." So:
 
-So each chamber gets a column at the head of /committees: its session days of
-the latest term, newest first, each a fold like a committee's meeting -- the
-day, how many bills and roll calls, and, opened, the day's own page, its
-journal, and every bill it voted on with each vote in order -- a term picker
-for every earlier term, and the order either way. The days and their counts
-are written into the page here; the bills and votes come from the term's
-file, site/session/<H|S>/<term>.json, which the script fetches the first time
-a day of that term is opened, so the page carries no term's whole record.
+  - /committees carries one card at the top of the House column and one at
+    the top of the Senate column, drawn by build_committees.committee_card's
+    markup (the same component): "House Session Days", who presides, its
+    members, and its session days in the latest term and since the first
+    year;
+  - each card leads to the chamber's page, /session/H and /session/S, beside
+    the day pages (/session/H/<date>), the counterpart of a committee's page:
+    the same head (the chamber, who presides), a term picker covering every
+    term the record holds, the latest chosen, and that term's session days
+    listed as a committee's meetings are -- the day, its bills and roll
+    calls, the consent calendar's line where there is one, its journal --
+    newest first or oldest first, each leading to its full session-day page.
 
-WHY A STEP OF ITS OWN, AFTER THE SESSION PAGES. The term files are written by
-build_session_pages (write_term_records), which runs after build_committees,
-so the committees step cannot read them on a build into an empty site --
-GitHub's nightly -- and would draw the chambers from last night's files on the
-laptop and from nothing on the night: the trap the home page's Committees card
-fell into (13c674b). build_committees writes an empty slot
-(<div id="fullsess"></div><!-- /fullsess -->) and this fills it, between the
-same two marks, so running it again redraws rather than doubles it. Where the
-slot or the term files are missing it says so and leaves the page as it is.
+Two pages, not one per term: the latest term is written into the page, so it
+reads without script; another term is drawn from that term's file,
+site/session/<H|S>/<term>.json, which build_session_pages writes
+(write_term_records), when it is chosen.
 
-Reads site/session/days.json and site/session/<H|S>/<term>.json; writes
-site/committees.html. Asks nobody anything.
+WHY A STEP OF ITS OWN, AFTER THE SESSION PAGES. Those term files are written
+after build_committees, so the committees step cannot read them on a build
+into an empty site -- GitHub's nightly -- and would draw the chambers from
+last night's files on the laptop and from nothing on the night: the trap the
+home page's Committees card fell into (13c674b). build_committees writes an
+empty slot at the top of each column (<!-- chamber:H --><!-- /chamber:H -->)
+and this fills it, between the same two marks, so running it again redraws
+rather than doubles it. Where a slot or the term files are missing it says
+so and leaves the page as it is.
+
+Reads site/session/days.json, site/session/<H|S>/<term>.json,
+site/officers.json and site/legislators.json; writes site/committees.html,
+site/session/H.html and site/session/S.html, and adds the two to the sitemap.
+Asks nobody anything.
 """
 
 # The bootstrap: _paths.py, found above this file, puts every code folder on the import path.
@@ -45,16 +57,34 @@ import html as _html
 import json
 import re
 
-from components import date_words
+import build_date
+import shell as S
+import structured as LD
+from components import date_words, pchip
 
 E = lambda s: _html.escape(str(s or ""), quote=True)  # noqa: E731
-SLOT = re.compile(r'<div id="fullsess">.*?</div><!-- /fullsess -->', re.S)
 CHAMBER = {"H": "House", "S": "Senate"}
+BODY_NAME = {"H": "House of Representatives", "S": "State Senate"}
 JOURNAL = {"HJ": "House Journal", "SJ": "Senate Journal"}
+# Who presides, by the office officers.json names, in the order the head
+# lists them; the card names the first.
+PRESIDES = {"H": (("Speaker of the House", "Speaker"),
+                  ("Deputy Speaker of the House", "Deputy Speaker")),
+            "S": (("President of the Senate", "Senate President"),)}
+TERM = re.compile(r"\d{4}-\d{4}")
+
+
+def slot(body):
+    """The marks build_committees writes at the top of a column."""
+    return re.compile(rf"<!-- chamber:{body} -->.*?<!-- /chamber:{body} -->", re.S)
 
 
 def plural(n, word):
     return f"{n:,} {word}{'' if n == 1 else 's'}"
+
+
+def dash(term):
+    return str(term).replace("-", "–")
 
 
 def journal_words(j):
@@ -63,201 +93,247 @@ def journal_words(j):
     return f"{JOURNAL[m.group(1)]} {m.group(2)}" if m else str(j or "")
 
 
-def meta(day):
-    """What the fold's head says of a day: its bills and its roll calls."""
-    c = day.get("counts") or {}
-    bits = []
-    if c.get("bills"):
-        bits.append(plural(c["bills"], "bill"))
-    if c.get("roll_calls"):
-        bits.append(plural(c["roll_calls"], "roll call"))
-    return " &middot; ".join(bits)
-
-
-def day_fold(body, term, day):
-    """One session day as a fold: the day and its counts; opened, its own
-    page and its journal, and a slot the script fills with its bills."""
-    d = day["date"]
-    links = [f'<a href="session/{body}/{E(d)}.html">Open this session day</a>']
-    if day.get("journal_url"):
-        links.append(f'<a href="{E(day["journal_url"])}">'
-                     f'{E(journal_words(day.get("journal")))} (PDF)</a>')
-    return (f'<li><details class="fsday" data-date="{E(d)}"><summary>'
-            f'<span class="fsd">{E(date_words(d, "long"))}</span>'
-            f'<span class="fsm">{meta(day)}</span></summary>'
-            f'<div class="fsbody"><p class="fslinks">{" &middot; ".join(links)}</p>'
-            f'<div class="fsbills" data-load="{body}|{E(term)}|{E(d)}">'
-            '<p class="fsnote">The bills it voted on, and every vote, are on the '
-            "session day&rsquo;s own page.</p></div></div></details></li>")
-
-
-def chamber(body, dates, site):
-    """A chamber's column: its heading, how many days, the term picker and
-    the order, and its latest term's days, newest first."""
-    # The terms are the files build_session_pages wrote, named by the term
-    # each day is filed under there; nothing here works a term out again.
-    terms = sorted((f.stem for f in (site / "session" / body).glob("*.json")
-                    if re.fullmatch(r"\d{4}-\d{4}", f.stem)), reverse=True)
-    if not terms or not dates:
-        return ""
-    latest = terms[0]
-    f = site / "session" / body / f"{latest}.json"
+def _load(path, default):
     try:
-        days = json.loads(f.read_text(encoding="utf-8")).get("days") or []
+        return json.loads(Path(path).read_text(encoding="utf-8"))
     except (OSError, ValueError):
-        days = []
-    if not days:
-        return ""
-    word = CHAMBER[body]
-    first = min(dates)
-    opts = "".join(f'<option value="{E(t)}"{" selected" if t == latest else ""}>'
-                   f'{E(t.replace("-", chr(8211)))}</option>' for t in terms)
-    folds = "".join(day_fold(body, latest, d) for d in reversed(days))
-    return (f'<section class="fschamber" data-body="{body}" aria-labelledby="fs-{body}">'
-            f'<h3 id="fs-{body}">{word} Session Days</h3>'
-            f'<p class="fscount" aria-live="polite">{plural(len(days), "session day")} in '
-            f'{E(latest.replace("-", chr(8211)))} &middot; {len(dates):,} since '
-            f'{first[:4]}</p>'
-            f'<div class="fsctl" hidden>'
-            f'<label>Term <select class="fsterm">{opts}</select></label>'
-            f'<label>Order <select class="fssort"><option value="new" selected>Newest first'
-            f'</option><option value="old">Oldest first</option></select></label></div>'
-            # A BOX OF ITS OWN HEIGHT, as Coming Up's week is on the home page:
-            # a term is thirty to forty days, and the committees are below.
-            # A box that scrolls is a stop for the keyboard, named.
-            f'<div class="fsbox" role="region" tabindex="0" aria-label="{word} session days">'
-            f'<ol class="fsdays">{folds}</ol></div></section>')
+        return default
 
 
-def block(site):
+def chamber(site, body, today):
+    """What the record holds for one chamber: its terms (the term files, newest
+    first), its latest term's days, every day it sat, its members today and
+    who presides today."""
     site = Path(site)
-    try:
-        listed = json.loads((site / "session" / "days.json").read_text(encoding="utf-8"))
-    except (OSError, ValueError):
-        return "", "no site/session/days.json"
-    cols = [chamber(b, sorted(listed.get(b) or []), site) for b in ("H", "S")]
-    cols = [c for c in cols if c]
-    if not cols:
-        return "", "no chamber's term file under site/session"
-    return ('<div id="fullsess"><section class="fullsess" aria-labelledby="fs-h">'
-            '<h2 id="fs-h">Full Sessions</h2>'
-            '<p class="src fill">Each chamber meeting as a whole, on its session days: '
-            "what it voted on and how, day by day, as a committee&rsquo;s page lists its "
-            "meetings.</p>"
-            f'<div class="ctwo">{"".join(cols)}</div></section>{SCRIPT}'
-            "</div><!-- /fullsess -->"), ""
+    terms = sorted((f.stem for f in (site / "session" / body).glob("*.json")
+                    if TERM.fullmatch(f.stem)), reverse=True)
+    dates = sorted((_load(site / "session" / "days.json", {}) or {}).get(body) or [])
+    if not terms or not dates:
+        return None
+    days = (_load(site / "session" / body / f"{terms[0]}.json", {}) or {}).get("days") or []
+    legs = _load(site / "legislators.json", []) or []
+    by_id = {str(m.get("id")): m for m in legs}
+    officers = (_load(site / "officers.json", {}) or {}).get("officers") or []
+    chair = []
+    for office, role in PRESIDES[body]:
+        o = next((o for o in officers if o.get("office") == office and o.get("b") == body
+                  and str(o.get("from") or "") <= today < str(o.get("to") or "9999")), None)
+        m = by_id.get(str(o.get("id"))) if o else None
+        if m and m.get("chamber") == body:
+            chair.append((role, m))
+    return {"body": body, "terms": terms, "latest": terms[0], "days": days, "dates": dates,
+            "members": sum(1 for m in legs if m.get("chamber") == body), "chair": chair}
 
 
-# THE SCRIPT: the term picker, the order, and a day's bills when it opens.
-# It draws only from the term's own file, and a day it cannot load keeps the
-# line that sends the reader to the day's page.
+def bare_name(m):
+    """"Sherman Packard" out of the roster's "Rep. Sherman Packard"."""
+    return re.sub(r"^(Rep|Sen)\.\s*", "", str(m.get("display_plain") or m.get("name") or ""))
+
+
+def card(c):
+    """The chamber on /committees, as build_committees.committee_card draws a
+    committee: its name, and what the record holds -- who presides, its
+    members, and its session days, the latest term's and every term's."""
+    bits = []
+    if c["chair"]:
+        role, m = c["chair"][0]
+        bits.append(f"Presided over by {E(role)} {E(bare_name(m))}")
+    if c["members"]:
+        bits.append(plural(c["members"], "member"))
+    bits.append(f"{plural(len(c['days']), 'session day')} in {E(dash(c['latest']))} and "
+                f"{len(c['dates']):,} since {c['dates'][0][:4]}")
+    return (f'<a class="ccard chcard" href="session/{c["body"]}.html">'
+            f'<span class="cc-n">{CHAMBER[c["body"]]} Session Days</span>'
+            f'<span class="cc-m">{" &middot; ".join(bits)}</span></a>')
+
+
+def day_section(body, d):
+    """One session day, as a committee's page lists a meeting: the day, as a
+    meeting's is written ("Feb 19, 2026"), as the link to its full page, its bills and roll calls, the consent calendar's
+    line where there is one, and its journal."""
+    date = d["date"]
+    c = d.get("counts") or {}
+    said = [plural(c["bills"], "bill")] if c.get("bills") else []
+    if c.get("roll_calls"):
+        said.append(plural(c["roll_calls"], "roll call"))
+    cons = d.get("consent") or {}
+    cline = ""
+    if cons.get("bills"):
+        cline = (f'<p class="cnarr">Consent calendar, {plural(cons["bills"], "bill")}: '
+                 + ", ".join(f'{E(o.get("outcome"))} {o.get("bills")}'
+                             for o in cons.get("outcomes") or []) + ".</p>")
+    links = [f'<a href="session/{body}/{E(date)}.html">The full session day</a>']
+    if d.get("journal_url"):
+        links.append(f'<a href="{E(d["journal_url"])}">{E(journal_words(d.get("journal")))} '
+                     "(PDF)</a>")
+    return (f'<section class="cday" id="day-{E(date)}" data-date="{E(date)}">'
+            f'<h3><a class="daylink" href="session/{body}/{E(date)}.html">'
+            f'{E(date_words(date))}</a></h3>'
+            + (f'<p class="cnarr">{" &middot; ".join(said)}</p>' if said else "")
+            + cline + f'<p class="src">{" &middot; ".join(links)}</p></section>')
+
+
+def count_line(body, n, term):
+    return (f"{plural(n, 'day')} the {CHAMBER[body]} sat in {E(dash(term))}, newest first. "
+            "Each opens on the day&rsquo;s full page: what it took up, in the order the "
+            "journal prints it, and how it voted.")
+
+
+def page_body(c):
+    """The chamber's page: the committee page's head, then the term and the
+    order, then the latest term's days."""
+    body = c["body"]
+    officers = "".join(f"<div><dt>{E(role)}</dt><dd>{pchip({**m, 'role': 'Member'})}</dd></div>"
+                       for role, m in c["chair"])
+    facts = (f'<div><dt>Members</dt><dd><a href="officials.html#legislators">'
+             f'{plural(c["members"], "sitting member")}</a></dd></div>'
+             f'<div><dt>Session days</dt><dd>{len(c["dates"]):,} since '
+             f'{c["dates"][0][:4]}</dd></div>')
+    opts = "".join(f'<option value="{E(t)}"{" selected" if t == c["latest"] else ""}>'
+                   f"{E(dash(t))}</option>" for t in c["terms"])
+    days = "".join(day_section(body, d) for d in reversed(c["days"]))
+    return (f'<div class="phead cmtehead chamberhead"><h1>{CHAMBER[body]} Session Days</h1>'
+            f'<p class="pmeta">{BODY_NAME[body]}</p>'
+            '<div class="cinfo">'
+            + (f'<dl class="cofficers">{officers}</dl>' if officers else "")
+            + f'<dl class="cstaff">{facts}</dl></div>'
+            f'<p class="src">Every day the whole {CHAMBER[body]} sat, term by term, as its '
+            "journal records it. A committee&rsquo;s days are on its own page, from "
+            '<a href="committees.html">Committees</a>.</p></div>'
+            f'<div class="bfilt pterm chamberctl" data-body="{body}">'
+            f'<label>Term <select class="chterm">{opts}</select></label>'
+            '<label>Order <select class="chsort"><option value="new" selected>Newest first'
+            '</option><option value="old">Oldest first</option></select></label></div>'
+            f'<p class="src chcount" aria-live="polite">{count_line(body, len(c["days"]), c["latest"])}</p>'
+            f'<div class="chdays">{days}</div>')
+
+
+# THE PAGE'S SCRIPT: another term from its own file, the order either way, and
+# the term in the address (?term=2023-2024) so a reload or a link keeps it.
+# The days it draws are day_section's, written again here in the same words;
+# preflight holds the two to the same markup.
 SCRIPT = """<script>
 (function(){
-  var cache={};
+  var ctl=document.querySelector(".chamberctl");
+  if(!ctl)return;
+  var b=ctl.dataset.body,term=ctl.querySelector(".chterm"),sort=ctl.querySelector(".chsort"),
+      list=document.querySelector(".chdays"),count=document.querySelector(".chcount"),
+      word=b==="S"?"Senate":"House",cache={};
   function esc(s){return String(s==null?"":s).replace(/[&<>"]/g,function(c){
     return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c];});}
-  function load(b,t){
-    if(!cache[b+t])cache[b+t]=fetch("/session/"+b+"/"+t+".json")
-      .then(function(r){if(!r.ok)throw new Error(r.status);return r.json();});
-    return cache[b+t];
-  }
   function plural(n,w){return n.toLocaleString("en-US")+" "+w+(n===1?"":"s");}
-  function vote(v){
-    var n=(v.yeas!=null&&v.nays!=null)?", "+v.yeas+"\\u2013"+v.nays:"";
-    return esc(v.motion)+": "+esc(v.result)+n+(v.how?" ("+esc(v.how)+")":"")
-      +(v.did?"; "+esc(v.did):"")+".";
+  function dash(t){return String(t).replace("-","\\u2013");}
+  function long(d){return typeof dateWords==="function"?dateWords(d):d;}
+  function journal(j){var m=String(j||"").match(/^(HJ|SJ)\\s*0*(\\d+)/);
+    return m?(m[1]==="HJ"?"House Journal ":"Senate Journal ")+m[2]:String(j||"");}
+  function day(d){
+    var c=d.counts||{},said=[],cons=d.consent||{},cl="";
+    if(c.bills)said.push(plural(c.bills,"bill"));
+    if(c.roll_calls)said.push(plural(c.roll_calls,"roll call"));
+    if(cons.bills)cl='<p class="cnarr">Consent calendar, '+plural(cons.bills,"bill")+": "
+      +(cons.outcomes||[]).map(function(o){return esc(o.outcome)+" "+o.bills;}).join(", ")+".</p>";
+    var links=['<a href="session/'+b+'/'+esc(d.date)+'.html">The full session day</a>'];
+    if(d.journal_url)links.push('<a href="'+esc(d.journal_url)+'">'+esc(journal(d.journal))+' (PDF)</a>');
+    return '<section class="cday" id="day-'+esc(d.date)+'" data-date="'+esc(d.date)+'">'
+      +'<h3><a class="daylink" href="session/'+b+'/'+esc(d.date)+'.html">'+esc(long(d.date))+'</a></h3>'
+      +(said.length?'<p class="cnarr">'+said.join(" &middot; ")+'</p>':"")
+      +cl+'<p class="src">'+links.join(" &middot; ")+'</p></section>';
   }
-  function bills(day){
-    var out=[],seq=(day.bills||[]).filter(function(b){return !b.consent;});
-    seq.forEach(function(b){
-      out.push('<li><a class="fsbn" href="bill/'+esc(b.year)+'/'+esc(String(b.bill).toLowerCase())
-        +'.html">'+esc(b.n||b.bill)+'</a> <span class="fsv">'
-        +(b.votes||[]).map(vote).join(" ")+'</span></li>');});
-    var c=day.consent,line="";
-    if(c&&c.bills)line='<p class="fscons">Consent calendar, '+plural(c.bills,"bill")+": "
-      +(c.outcomes||[]).map(function(o){return esc(o.outcome)+" "+o.bills;}).join(", ")+".</p>";
-    return line+(out.length?'<ul class="fsbl">'+out.join("")+"</ul>"
-      :(line?"":'<p class="fsnote">No bill was voted on this day.</p>'));
+  function line(n,t){
+    return plural(n,"day")+" the "+word+" sat in "+esc(dash(t))+", "
+      +(sort.value==="old"?"oldest":"newest")+" first. Each opens on the day&rsquo;s full page: "
+      +"what it took up, in the order the journal prints it, and how it voted.";
   }
-  function fill(det){
-    var slot=det.querySelector(".fsbills");
-    if(!slot||slot.dataset.done)return;
-    var k=slot.dataset.load.split("|");
-    load(k[0],k[1]).then(function(T){
-      var d=(T.days||[]).filter(function(x){return x.date===k[2];})[0];
-      if(!d)return;
-      slot.innerHTML=bills(d);slot.dataset.done="1";
-    }).catch(function(){});
+  function order(){
+    var items=[].slice.call(list.children),up=sort.value==="old";
+    items.sort(function(x,y){var a=x.dataset.date,c=y.dataset.date;
+      return a<c?(up?-1:1):a>c?(up?1:-1):0;});
+    items.forEach(function(s){list.appendChild(s);});
+    count.innerHTML=line(items.length,term.value);
   }
-  function longDay(s){return typeof dateWords==="function"?dateWords(s,"long"):s;}
-  function fold(b,t,d){
-    var c=d.counts||{},m=[];
-    if(c.bills)m.push(plural(c.bills,"bill"));
-    if(c.roll_calls)m.push(plural(c.roll_calls,"roll call"));
-    var j=String(d.journal||"").match(/^(HJ|SJ)\\s*0*(\\d+)/);
-    var jw=j?(j[1]==="HJ"?"House Journal ":"Senate Journal ")+j[2]:(d.journal||"");
-    return '<li><details class="fsday" data-date="'+esc(d.date)+'"><summary><span class="fsd">'
-      +esc(longDay(d.date))+'</span><span class="fsm">'+m.join(" &middot; ")+'</span></summary>'
-      +'<div class="fsbody"><p class="fslinks"><a href="session/'+b+'/'+esc(d.date)
-      +'.html">Open this session day</a>'+(d.journal_url?' &middot; <a href="'+esc(d.journal_url)
-      +'">'+esc(jw)+' (PDF)</a>':"")+'</p><div class="fsbills" data-load="'+b+"|"+esc(t)+"|"
-      +esc(d.date)+'"><p class="fsnote">The bills it voted on, and every vote, are on the '
-      +"session day&rsquo;s own page.</p></div></div></details></li>";
+  function show(t,write){
+    if(!cache[t])cache[t]=fetch("/session/"+b+"/"+t+".json").then(function(r){
+      if(!r.ok)throw new Error(r.status);return r.json();});
+    list.setAttribute("aria-busy","true");
+    cache[t].then(function(T){
+      list.innerHTML=(T.days||[]).map(day).join("");
+      order();
+      if(write&&history.replaceState)history.replaceState(null,"",
+        location.pathname+"?term="+t+location.hash);
+    }).catch(function(){
+      count.textContent="The session days of "+dash(t)+" could not be loaded.";
+    }).then(function(){list.removeAttribute("aria-busy");});
   }
-  document.querySelectorAll(".fschamber").forEach(function(col){
-    var b=col.dataset.body,list=col.querySelector(".fsdays"),
-        term=col.querySelector(".fsterm"),sort=col.querySelector(".fssort"),
-        count=col.querySelector(".fscount"),since=count.textContent.split("\\u00b7")[1]||"";
-    col.querySelector(".fsctl").hidden=false;
-    list.addEventListener("toggle",function(e){if(e.target.open)fill(e.target);},true);
-    function order(){
-      var items=[].slice.call(list.children);
-      var want=sort.value==="old"?1:-1;
-      items.sort(function(x,y){
-        var a=x.firstChild.dataset.date,c=y.firstChild.dataset.date;
-        return a<c?-want:a>c?want:0;});
-      items.forEach(function(li){list.appendChild(li);});
-    }
-    sort.addEventListener("change",order);
-    term.addEventListener("change",function(){
-      var t=term.value;
-      list.setAttribute("aria-busy","true");
-      load(b,t).then(function(T){
-        var days=T.days||[];
-        list.innerHTML=days.map(function(d){return fold(b,t,d);}).join("");
-        count.textContent=plural(days.length,"session day")+" in "+t.replace("-","\\u2013")
-          +(since?" \\u00b7"+since:"");
-        order();
-      }).catch(function(){
-        count.textContent="That term's session days could not be loaded.";
-      }).then(function(){list.removeAttribute("aria-busy");});
-    });
-  });
+  term.addEventListener("change",function(){show(term.value,true);});
+  sort.addEventListener("change",order);
+  var want=new URLSearchParams(location.search).get("term");
+  if(want&&want!==term.value&&[].some.call(term.options,function(o){return o.value===want;})){
+    term.value=want;show(want,false);
+  }
 })();
 </script>"""
+
+
+def write_page(site, c, base):
+    """site/session/<H|S>.html, built from the record template as a
+    committee's page is, so it carries the same frame and Cite this page."""
+    body = c["body"]
+    path = f"/session/{body}.html"
+    name = f"{CHAMBER[body]} Session Days"
+    desc = (f"Every day the New Hampshire {CHAMBER[body]} sat, term by term since "
+            f"{c['dates'][0][:4]}: the bills it took up and its roll calls, each day with "
+            "its own page.")
+    html = S.page(S.template(site), path=path, base=base,
+                  title=f"{name} | Granite Record", og_title=name,
+                  og_image="og-committee.png", og_alt="Granite Record: committees and hearings",
+                  description=desc, globals={"GR_STATIC": True}, og_type="website",
+                  jsonld=LD.listing(name, desc, base, S.canon(path)),
+                  noscript="", skip_label="Skip to the session days",
+                  nav_current="committees.html", sr_title="")
+    assert '<div id="results"></div>' in html, f"{path}: the template has no results slot"
+    html = html.replace('<div id="results"></div>',
+                        f'<div id="results">{page_body(c)}</div>{SCRIPT}', 1)
+    (Path(site) / "session" / f"{body}.html").write_text(html, encoding="utf-8")
+    return base + S.canon(path)
 
 
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--site", default="site")
+    ap.add_argument("--base", default="https://graniterecord.org")
     a = ap.parse_args()
-    page = Path(a.site) / "committees.html"
-    if not page.exists():
-        print("  committees.html is not built: nothing to put the full sessions on")
-        return 0
-    text = page.read_text(encoding="utf-8")
-    if not SLOT.search(text):
-        print("  committees.html has no slot for the full sessions "
-              "(build_committees writes it): the page is left as it is")
-        return 0
-    html, why = block(a.site)
-    if not html:
-        print(f"  the full sessions are not drawn: {why}")
-        return 0
-    page.write_text(SLOT.sub(lambda _m: html, text, count=1), encoding="utf-8")
-    n = html.count('class="fsday"')
-    print(f"  committees.html: the House and Senate full sessions, {n} session days of "
-          "the latest term drawn, every earlier term a pick away")
+    site, base = Path(a.site), a.base.rstrip("/")
+    today = build_date.today().isoformat()
+    made, urls = [], []
+    for body in ("H", "S"):
+        c = chamber(site, body, today)
+        if not c:
+            print(f"  the {CHAMBER[body]} has no session days on this site: no card, no page")
+            continue
+        urls.append(write_page(site, c, base))
+        made.append(c)
+    page = site / "committees.html"
+    if page.exists() and made:
+        text = page.read_text(encoding="utf-8")
+        for c in made:
+            pat = slot(c["body"])
+            if not pat.search(text):
+                print(f"  committees.html has no slot for the {CHAMBER[c['body']]} card "
+                      "(build_committees writes it): the page is left as it is")
+                continue
+            b = c["body"]
+            text = pat.sub(lambda _m: f"<!-- chamber:{b} -->{card(c)}<!-- /chamber:{b} -->",
+                           text, count=1)
+        page.write_text(text, encoding="utf-8")
+    sm = site / "sitemap.xml"
+    if sm.exists() and urls:
+        text = sm.read_text(encoding="utf-8")
+        add = "".join(f"<url><loc>{E(u)}</loc></url>\n" for u in urls if E(u) not in text)
+        if add:
+            sm.write_text(text.replace("</urlset>", add + "</urlset>"), encoding="utf-8")
+    for c in made:
+        print(f"  session/{c['body']}.html: {len(c['terms'])} terms, the latest "
+              f"{c['latest']} with {len(c['days'])} days written in; its card on committees.html")
     return 0
 
 

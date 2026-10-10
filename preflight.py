@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.513
+# GRANITE_VERSION: 2026-09-04.514
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -16425,6 +16425,11 @@ def _class_collisions():
         # alike, and bills.html's header carries written out (Polish 1, 9
         # October 2026); _icons_named holds every one to the component
         "icon",
+        # a committee's page -- its head, its term control and its meetings
+        # -- which app.js draws for a committee and build_full_sessions for
+        # the House's and the Senate's session days, drawn as a committee's
+        # page at the person's asking (10 October 2026)
+        "cmtehead", "cinfo", "bfilt", "pterm", "cday", "daylink", "cnarr",
     }
     here = Path(".")
     # The components draw on both sides by design: components.js with the
@@ -27821,9 +27826,9 @@ def _built_site(here, root, brand=True, env=None):
          "site/session/S"),
         ("build_session_pages.py", ["--site", "site", "--base", base],
          "site/session/H"),
-        # The full sessions on the Committees page, after both chambers'
-        # term files, as build_all runs it.
-        ("build_full_sessions.py", ["--site", "site"], "site/committees.html"),
+        # The chambers' cards on the Committees page and their pages, after
+        # both chambers' term files, as build_all runs it.
+        ("build_full_sessions.py", ["--site", "site", "--base", base], "site/session/H.html"),
         # After the committees, whose codes it needs to link a card, and in
         # build_all's own order. Its output is what the Calendar tab points
         # at, so a fixture without it builds a nav link to nothing -- which
@@ -51665,61 +51670,109 @@ def _outside_links():
                   + "; no writer puts the arrow in as text")
 
 
-@check("frontend", "the Committees page opens with the House and Senate full sessions: each "
-                   "chamber's session days of its latest term, newest first, every term a pick away")
+@check("frontend", "the House and the Senate are each a card at the top of their column of "
+                   "/committees, leading to a page of every term's session days, each day "
+                   "leading to its own page")
 def _committees_full_sessions():
-    """The person, 9 October 2026 (v12): "the House and the Senate full
-    sessions listed at the top of the Committees page, each letting a reader
-    go through that chamber's session days in one place, as a committee page
-    shows its meetings"; and v13, sortable oldest to newest or newest to
-    oldest.
+    """The person, 9 October 2026 (v12, v13), as they corrected it on 10
+    October: "when I mentioned adding the house and Senate session days, I
+    meant that they would be listed in a similar format to the other
+    committees and that when you clicked to see their pages you'd be able to
+    view each term and select the session day you wanted to view the full
+    page of."
 
-    build_committees writes the slot; build_full_sessions fills it after the
-    session pages, whose term files it reads -- so a build into an empty site
-    draws them too. Read off the fixture's built page: the slot filled once,
-    before the committees; a column for each chamber whose term files the
-    fixture wrote, its latest term's days in it newest first, each opening
-    on its own page; the term picker offering every term file, the order
-    picker both ways; and filling the slot again redraws it rather than
-    doubling it. And build_all runs the step after both chambers' pages."""
+    build_committees writes a slot at the top of each column; build_full_
+    sessions fills it after the session pages, whose term files it reads, so
+    a build into an empty site draws them too. Read off the fixture's built
+    site: in each column whose chamber has term files, the first card is the
+    chamber's, the committee card's own markup, leading to /session/<H|S>;
+    that page offers every term file in its picker, the latest chosen, and
+    lists the latest term's days newest first, each leading to a day page
+    that is built; filling the slots again redraws them rather than doubling
+    them; the script draws a day in the same markup as the page; and
+    build_all runs the step after both chambers' pages."""
     import build_full_sessions as FS
+    import build_date as _bd
     shared, _base, _ran, _days = _fixture_site_shared()
     site = shared / "site"
     page = (site / "committees.html").read_text(encoding="utf-8")
-    assert '<!-- /fullsess -->' in page, "the Committees page has no slot for the full sessions"
     bodies = [b for b in ("H", "S") if list((site / "session" / b).glob("*.json"))]
     if not bodies:
         return "skip", "the fixture writes no session term file"
-    assert page.count('<section class="fullsess"') == 1, "the full sessions are drawn more than once"
-    assert page.index('class="fullsess"') < page.index('class="ctwo"', page.index("<!-- /fullsess -->")), (
-        "the full sessions are not above the committees")
     n_days = 0
     for b in bodies:
-        terms = sorted((f.stem for f in (site / "session" / b).glob("*.json")), reverse=True)
-        col = re.search(rf'<section class="fschamber" data-body="{b}".*?</section>', page, re.S)
-        assert col, f"no column for the {FS.CHAMBER[b]}"
+        word = FS.CHAMBER[b]
+        col = re.search(rf"<section><h2>{word}</h2><div class=\"ccards\">(.*?)</div></section>", page, re.S)
+        assert col, f"the Committees page has no {word} column"
+        first = re.search(r"<a class=\"ccard[^\"]*\" href=\"([^\"]+)\"><span class=\"cc-n\">([^<]+)</span>"
+                          r"<span class=\"cc-m\">([^<]*(?:<[^a/][^>]*>[^<]*)*)</span></a>", col.group(1))
+        assert first and first.group(1) == f"session/{b}.html" \
+            and first.group(2) == f"{word} Session Days", (
+                f"the {word} column does not open with its session days: "
+                f"{first.groups() if first else col.group(1)[:200]}")
+        assert col.group(1).count(f'href="session/{b}.html"') == 1, f"the {word} card is drawn twice"
+        chamber = (site / "session" / f"{b}.html").read_text(encoding="utf-8")
+        terms = sorted((f.stem for f in (site / "session" / b).glob("*.json")
+                        if re.fullmatch(r"\d{4}-\d{4}", f.stem)), reverse=True)
+        offered = re.findall(r'<option value="(\d{4}-\d{4})"( selected)?>', chamber)
+        assert [t for t, _s in offered] == terms and offered[0][1], (
+            f"session/{b}.html offers the terms {offered}, not every term file {terms} "
+            "with the latest chosen")
         days = [d["date"] for d in json.loads((site / "session" / b / f"{terms[0]}.json")
                                               .read_text(encoding="utf-8"))["days"]]
-        drawn = re.findall(r'<details class="fsday" data-date="([^"]+)">', col.group(0))
+        drawn = re.findall(r'<section class="cday" id="day-(\d{4}-\d\d-\d\d)" data-date="\1">',
+                           chamber)
         assert drawn == sorted(days, reverse=True), (
-            f"the {FS.CHAMBER[b]}'s days are {drawn}, not {terms[0]}'s newest first")
+            f"session/{b}.html lists {drawn}, not {terms[0]}'s days newest first")
         for d in drawn:
-            assert f'href="session/{b}/{d}.html">Open this session day</a>' in col.group(0), (
-                f"{b} {d} does not open on its own page")
+            assert f'<a class="daylink" href="session/{b}/{d}.html">' in chamber, (
+                f"{b} {d} does not lead to its own page")
             assert (site / "session" / b / f"{d}.html").exists(), f"session/{b}/{d}.html is not built"
-        offered = re.findall(r'<option value="(\d{4}-\d{4})"', col.group(0))
-        assert offered == terms, f"the {FS.CHAMBER[b]}'s term picker offers {offered}, not {terms}"
-        assert '<option value="new" selected>Newest first</option><option value="old">Oldest first' \
-            in col.group(0), "the order picker does not offer both ways"
+        assert '<div class="phead cmtehead chamberhead">' in chamber and "Cite this page" in chamber, (
+            f"session/{b}.html is not drawn as a committee's page is, with its head and Cite")
         n_days += len(drawn)
-    again = FS.SLOT.sub(lambda _m: FS.block(site)[0], page, count=1)
-    assert again.count('<section class="fullsess"') == 1, "filling the slot again doubles it"
+    # Again: the slots are redrawn, not doubled.
+    today = _bd.today().isoformat()
+    again = page
+    for b in bodies:
+        c = FS.chamber(site, b, today)
+        again = FS.slot(b).sub(lambda _m, c=c, b=b: f"<!-- chamber:{b} -->{FS.card(c)}<!-- /chamber:{b} -->",
+                               again, count=1)
+    for b in bodies:
+        assert again.count(f'href="session/{b}.html"') == 1, "filling the slots again doubles a card"
+    # The script draws a day as the page does: its day() in node, against
+    # day_section, on a day with a consent calendar and a journal.
+    node = shutil.which("node") or shutil.which("node.exe")
+    if node:
+        js = re.search(r"<script>(.*?)</script>", FS.SCRIPT, re.S).group(1)
+        def fn(name):
+            """A function of the script, by matching its braces."""
+            i = js.index(f"function {name}(")
+            j, depth = js.index("{", i), 0
+            for k in range(j, len(js)):
+                depth += {"{": 1, "}": -1}.get(js[k], 0)
+                if depth == 0:
+                    return js[i:k + 1] + "\n"
+            raise AssertionError(f"the script's {name}() does not close")
+        fns = "".join(fn(n) for n in ("esc", "plural", "long", "journal", "day"))
+        d = {"date": "2026-02-19", "journal": "HJ 05", "journal_url": "https://example.test/hj5.pdf",
+             "counts": {"bills": 164, "roll_calls": 17},
+             "consent": {"bills": 118, "outcomes": [{"outcome": "Killed", "bills": 59},
+                                                    {"outcome": "Passed", "bills": 41}]}}
+        # In a scope of their own, as the page has them: its esc beside
+        # components.js's.
+        prog = (_components_js() + "\n(function(){var b='H';" + fns
+                + f"\nprocess.stdout.write(day({json.dumps(d)}));}})();")
+        r = _run([node, "-e", prog], capture_output=True, text=True, timeout=60)
+        assert r.returncode == 0, "the chamber page's script would not run: " + (r.stderr or "")[-300:]
+        assert r.stdout == FS.day_section("H", d), (
+            f"the script draws a day as {r.stdout[:200]!r}, the page as {FS.day_section('H', d)[:200]!r}")
     plan = Path("build_all.py").read_text(encoding="utf-8")
     assert plan.index('"build_full_sessions.py"') > plan.index(
-        '"a page for every day the House sat"'), "build_all fills the slot before the session pages"
-    return "ok", (f"{n_days} session days of the latest term, newest first, for "
-                  f"{' and '.join(FS.CHAMBER[b] for b in bodies)}, above the committees; every "
-                  "term a pick away; filled once, after the session pages")
+        '"a page for every day the House sat"'), "build_all draws the chambers before their pages"
+    return "ok", (f"{' and '.join(FS.CHAMBER[b] for b in bodies)} first in their columns, each "
+                  f"leading to its page of every term; {n_days} days of the latest terms, newest "
+                  "first, each on a built page; the script draws a day as the page does")
 
 
 @check("frontend", "the header's five tabs are one row from 1008px, in the flow between the "
