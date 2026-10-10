@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-10-09.2
+// GRANITE_VERSION: 2026-10-09.3
 /* THE DISTRICT MAP (map v1), as a module a page mounts:
 
      <link rel="stylesheet" href="/map.css">
@@ -775,6 +775,23 @@ function mount(root,opts){
     let queued=false;
     wrap.addEventListener("scroll",()=>{if(queued)return;queued=true;requestAnimationFrame(()=>{queued=false;relabel();});},{passive:true});
     wrap.addEventListener("wheel",e=>{e.preventDefault();zoomAt(zoom*(e.deltaY<0?1.15:1/1.15),e.clientX,e.clientY);},{passive:false});
+    // TWO FINGERS PINCH (the person, 10 October 2026: "pinch to zoom on
+    // mobile for the diagrams like the seating chart and the interactive
+    // map"), as the seating chart's does: about the point between the
+    // fingers, which follows them as they move. One finger is left alone, so
+    // the box still scrolls as everything else on a phone does (touch-action
+    // pan-x pan-y, map.css, keeps the browser's own page zoom out of it).
+    let gap=0;
+    const spread=ts=>Math.hypot(ts[0].clientX-ts[1].clientX,ts[0].clientY-ts[1].clientY);
+    const middle=ts=>[(ts[0].clientX+ts[1].clientX)/2,(ts[0].clientY+ts[1].clientY)/2];
+    wrap.addEventListener("touchstart",e=>{if(e.touches.length===2)gap=spread(e.touches);},{passive:true});
+    wrap.addEventListener("touchmove",e=>{
+      if(e.touches.length!==2||!gap)return;
+      if(e.cancelable)e.preventDefault();
+      const now=spread(e.touches),[cx,cy]=middle(e.touches);
+      if(now>0){zoomAt(zoom*(now/gap),cx,cy);gap=now;}
+      dragged=true;},{passive:false});
+    wrap.addEventListener("touchend",e=>{if(e.touches.length<2)gap=0;},{passive:true});
     wrap.addEventListener("pointerdown",e=>{dragged=false;if(e.pointerType==="touch")return;from={x:e.clientX,y:e.clientY,l:wrap.scrollLeft,t:wrap.scrollTop};});
     wrap.addEventListener("pointermove",e=>{if(!from)return;if(Math.abs(e.clientX-from.x)+Math.abs(e.clientY-from.y)>4){dragged=true;wrap.classList.add("dragging");}
       wrap.scrollLeft=from.l-(e.clientX-from.x);wrap.scrollTop=from.t-(e.clientY-from.y);});

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-19.35
+# GRANITE_VERSION: 2026-09-19.36
 """
 A page for every day the House sat.
 
@@ -168,6 +168,9 @@ class Members:
         # (floor_record's seats), and the term the roster describes. Set by
         # main(); label() reads them.
         self.seats, self.current = {}, ""
+        # The names left as words, (chamber, name) -> times, said at the end
+        # of the run so a name that should have linked can be found.
+        self.unmatched = collections.Counter()
         # Each member by their id and by their page, with the party and the
         # label their record gives: a session day's term file counts the
         # excused by party and names who presided (day_record).
@@ -241,7 +244,30 @@ class Members:
             cand = self.serving(self.by_last.get((body, parts[-1].lower()), []))
             if len(cand) == 1:
                 return cand[0]
+        # THE TERM'S OWN BALLOTS, LAST (the person, 10 October 2026: "Rep.
+        # Poloszaj wasn't linked properly with a chip on HB1689"): a name the
+        # rosters leave unmatched is matched among the members whose own
+        # ballots of the term give them a seat (seats), by surname, where
+        # exactly one of them in the chamber has it. Someone who voted in the
+        # term was there; one who left during it, or whose roster row spells
+        # the name otherwise, is still one person on the ballots.
+        got = self.by_ballot(body, parts[-1] if parts else n)
+        if got:
+            return got
+        self.unmatched[(body, n)] += 1
         return None
+
+    def by_ballot(self, body, last):
+        hon = "sen." if body == "S" else "rep."
+        want = (last or "").strip().lower()
+        hits = []
+        for mid, lab in (self.seats.get(self.term) or {}).items():
+            words = re.sub(r"\s*\([^()]*\)\s*$", "", lab or "").split()
+            if (len(words) >= 2 and words[0].lower() == hon and words[-1].lower() == want
+                    and (self.by_id.get(str(mid)) or {}).get("slug")):
+                hits.append(self.by_id[str(mid)]["slug"])
+        hits = list(dict.fromkeys(hits))
+        return hits[0] if len(hits) == 1 else None
 
     def serving(self, cands):
         """The slugs of `cands` who served `self.term`: every sitting member,
@@ -2032,6 +2058,61 @@ def consent_on(cons, removed):
                       for kind, y, n, c in calendar_vote(cons)]}
 
 
+def _n(n, word, many=None):
+    return f"{n:,} {word if n == 1 else (many or word + 's')}"
+
+
+def _list(xs):
+    xs = [x for x in xs if x]
+    return xs[0] if len(xs) == 1 else ", ".join(xs[:-1]) + " and " + xs[-1] if xs else ""
+
+
+def day_summary(rec, body):
+    """WHAT THE CHAMBER DID THAT DAY, IN GENERAL (the person, 10 October 2026:
+    the chamber's page lists each day "with the recording embedded and a
+    brief summary of what the house did that day but don't display the bill
+    numbers, just the general information"): how many bills it took up and
+    how it voted, its consent calendar by outcome, who presided and how many
+    were excused. Every figure is the day record's own; no bill is named."""
+    ch = CHAMBER[body]
+    c = rec.get("counts") or {}
+    out = []
+    took = c.get("bills") or 0
+    how = _list([_n(c["roll_calls"], "roll call") if c.get("roll_calls") else "",
+                 _n(c["divisions"], "division vote") if c.get("divisions") else "",
+                 _n(c["voice_votes"], "voice vote") if c.get("voice_votes") else ""])
+    if took:
+        out.append(f"The {ch} took up {_n(took, 'bill')}" + (f", with {how}." if how else "."))
+    cons = rec.get("consent") or {}
+    if cons.get("bills"):
+        parts = _list([f"{o['bills']:,} {str(o['outcome']).lower()}"
+                       for o in cons.get("outcomes") or [] if o.get("bills")])
+        off = len(cons.get("removed") or [])
+        out.append(f"Its consent calendar held {_n(cons['bills'], 'bill')}"
+                   + (f": {parts}" if parts else "")
+                   + (f"; {_n(off, 'bill was', 'bills were')} taken off it" if off else "") + ".")
+    chair = [x for x in rec.get("presiding") or [] if x.get("label")]
+    if chair:
+        out.append(_list([x["label"] for x in chair]) + " presided.")
+    ex = (rec.get("excused") or {}).get("total") or 0
+    if ex:
+        out.append(f"{_n(ex, 'member was', 'members were')} excused for the day.")
+    return " ".join(out)
+
+
+def day_videos(day, moments):
+    """The recordings of the day, in the order its bills were taken up: each
+    livestream a bill's moment of that day is in (the same the day's page
+    draws a player for, day_players)."""
+    vids = []
+    for it in day.items:
+        for m in (moments.get(it.term) or {}).get(it.bill, []):
+            if m.get("d") == day.date and m.get("b") == day.body and m.get("v") \
+                    and m["v"] not in vids:
+                vids.append(m["v"])
+    return vids
+
+
 def day_record(day, narrative, jurl, ctx):
     """One sitting as data, for its chamber's term file. `ctx` carries what
     the run read once: members, numbers, years, amendments (by sitting),
@@ -2072,7 +2153,7 @@ def day_record(day, narrative, jurl, ctx):
                                  day.body, {it.entered or day.date for it in items} or {day.date}))
         bills.append(entry)
     k = day.counts()
-    return {"date": day.date, "journal": day.journal or "", "journal_url": jurl or "",
+    rec = {"date": day.date, "journal": day.journal or "", "journal_url": jurl or "",
             "ordered": bool(day.ordered),
             "counts": {"bills": len(day.bills), "actions": len(day.items),
                        "roll_calls": k.get("roll call", 0), "divisions": k.get("division", 0),
@@ -2086,6 +2167,13 @@ def day_record(day, narrative, jurl, ctx):
             "excused": excused_on(narrative, day.body, ctx["members"]),
             "consent": consent_on(cons, removed),
             "bills": bills}
+    # The chamber's page draws the day from these two (build_full_sessions):
+    # what it did in general, and its recordings.
+    rec["summary"] = day_summary(rec, day.body)
+    vids = day_videos(day, ctx.get("moments") or {})
+    if vids:
+        rec["videos"] = vids
+    return rec
 
 
 TERM_ABOUT = (
@@ -2198,7 +2286,7 @@ def main():
     ctx = {"members": members, "numbers": load_numbers(site), "years": years,
            "amendments": amendments, "cards": fr["cards"], "presided": fr["presiding"],
            "offices": published_officers(site), "acts": acts_of, "floor": floor,
-           "data": data}
+           "data": data, "moments": fr.get("moments") or {}}
     # WHAT THE PAGE'S CARDS ARE DRAWN FROM (the record pages' bill cards,
     # 10 October 2026): each bill's index row, for its chip, byline and rail;
     # meta.json's committee codes, for a committee's link; and each floor
@@ -2343,6 +2431,13 @@ def main():
         # what a broken index looks like, cannot pass as normal.
         print(f"    {linked:,} of {named:,} speaker mentions resolved to a "
               f"member page ({100.0 * linked / named:.0f}%)")
+    # THE NAMES LEFT AS WORDS, the most often first, so one that should have
+    # linked -- a member the rosters and the term's ballots both miss -- is
+    # named in the night's log rather than found on a page.
+    if members.unmatched:
+        top = members.unmatched.most_common(12)
+        print(f"    {len(members.unmatched):,} name(s) left as words; the most often: "
+              + ", ".join(f"{b} {n} ({c})" for (b, n), c in top))
     return 0
 
 

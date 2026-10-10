@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.523
+# GRANITE_VERSION: 2026-09-04.524
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -16453,6 +16453,11 @@ def _class_collisions():
         "cdrel",
         # the recording player, on a bill's Videos tab and the home page
         "player", "pstub",
+        # A COMMITTEE'S MEETING, as a fold: app.js's meetingHtml for a
+        # committee's Meetings tab, and build_full_sessions' day_section for
+        # each day a chamber sat, drawn as a committee's meeting is (the
+        # person, 10 October 2026)
+        "cmeets", "cmeet", "cmwhen", "cmcount", "cmcaret", "cmbody", "cmsaid", "cmplay",
         # a page heading block, and the bill-number/title pair
         "phead", "pmeta", "cbn", "cbt",
         # the feedback box
@@ -52935,7 +52940,9 @@ def _committees_full_sessions():
             "with the latest chosen")
         days = [d["date"] for d in json.loads((site / "session" / b / f"{terms[0]}.json")
                                               .read_text(encoding="utf-8"))["days"]]
-        drawn = re.findall(r'<section class="cday" id="day-(\d{4}-\d\d-\d\d)" data-date="\1">',
+        # EACH DAY A FOLD, AS A COMMITTEE'S MEETING IS (the person, 10 October
+        # 2026): its summary and recording inside, its full page linked.
+        drawn = re.findall(r'<details class="cmeet" id="day-(\d{4}-\d\d-\d\d)" data-date="\1">',
                            chamber)
         assert drawn == sorted(days, reverse=True), (
             f"session/{FS.SLUG[b]}.html lists {drawn}, not {terms[0]}'s days newest first")
@@ -52985,10 +52992,16 @@ def _committees_full_sessions():
         d = {"date": "2026-02-19", "journal": "HJ 05", "journal_url": "https://example.test/hj5.pdf",
              "counts": {"bills": 164, "roll_calls": 17},
              "consent": {"bills": 118, "outcomes": [{"outcome": "Killed", "bills": 59},
-                                                    {"outcome": "Passed", "bills": 41}]}}
+                                                    {"outcome": "Passed", "bills": 41}]},
+             "summary": "The House took up 164 bills, with 17 roll calls.",
+             "videos": ["abcDEF12345"]}
+        page_day = FS.day_section("H", d)
+        assert '<p class="cmsaid">The House took up 164 bills, with 17 roll calls.</p>' in page_day \
+            and 'data-embed="abcDEF12345|0|' in page_day and not re.search(r"\b[HS]B ?\d", page_day), (
+                f"a day is not its summary and its recording, without a bill number: {page_day[:300]}")
         # In a scope of their own, as the page has them: its esc beside
         # components.js's.
-        prog = (_components_js() + "\n(function(){var b='H';" + fns
+        prog = (_components_js() + "\n(function(){var b='H',word='House';" + fns
                 + f"\nprocess.stdout.write(day({json.dumps(d)}));}})();")
         r = _node_file(node, prog, capture_output=True, text=True, timeout=60)
         assert r.returncode == 0, "the chamber page's script would not run: " + (r.stderr or "")[-300:]
@@ -56362,6 +56375,60 @@ def _bill_trail_term_search():
     assert "<a" not in items[2] and "HB 396" in items[2], (
         f"the trail does not end on the bill's number: {items[2]}")
     return "ok", "Bills > 2025\u20132026 Term (the search on that term) > HB 396-FN"
+
+
+@check("session", "a session day's summary says what the chamber did in general and names no bill",
+       needs=("build_session_pages",))
+def _day_summary_words(BSP):
+    """The chamber's page lists each day with "a brief summary of what the
+    house did that day but don't display the bill numbers" (the person, 10
+    October 2026): day_summary, from the day record's own counts, consent
+    calendar, presiding officer and excused."""
+    rec = {"counts": {"bills": 47, "roll_calls": 12, "divisions": 1, "voice_votes": 30},
+           "consent": {"bills": 25, "outcomes": [{"outcome": "Killed", "bills": 7},
+                                                 {"outcome": "Passed", "bills": 18}],
+                       "removed": ["HB1", "HB2"]},
+           "presiding": [{"label": "Rep. Sherman Packard (R - Rock 5)", "roll_calls": 12}],
+           "excused": {"total": 27}}
+    got = BSP.day_summary(rec, "H")
+    want = ("The House took up 47 bills, with 12 roll calls, 1 division vote and 30 voice votes. "
+            "Its consent calendar held 25 bills: 7 killed and 18 passed; 2 bills were taken off it. "
+            "Rep. Sherman Packard (R - Rock 5) presided. 27 members were excused for the day.")
+    assert got == want, got
+    assert not re.search(r"\b[HS]B ?\d", got), "the summary names a bill"
+    assert BSP.day_summary({"counts": {"bills": 1}}, "S") == "The Senate took up 1 bill."
+    return "ok", "a day in counts, its consent calendar by outcome, who presided and who was excused"
+
+
+@check("session", "a speaker the rosters miss is linked by the term's own ballots, where one member has the name",
+       needs=("build_session_pages",))
+def _speaker_by_ballot(BSP):
+    """The person, 10 October 2026: "Rep. Poloszaj wasn't linked properly
+    with a chip on HB1689". A name no roster matches for the day's term is
+    matched among the members whose own ballots of that term give them a
+    seat, by surname, where exactly one has it; two who share it stay words,
+    and a name nobody voted under is counted in `unmatched` for the log."""
+    root = Path(tempfile.mkdtemp(prefix="gr-ballot-"))
+    try:
+        (root / "legislators.json").write_text(json.dumps([
+            {"id": 1, "slug": "paul-terry-belk-7", "name": "Terry, Paul", "chamber": "H",
+             "label": "Rep. Paul Terry (R - Belk 7)"},
+            {"id": 3, "slug": "ann-lee-hills-1", "name": "Lee, Ann", "chamber": "H"},
+            {"id": 4, "slug": "bo-lee-hills-2", "name": "Lee, Bo", "chamber": "H"}]), encoding="utf-8")
+        (root / "former.json").write_text(json.dumps([
+            {"id": 2, "slug": "joe-poloszaj-hills-9", "name": "Poloszaj, Joe", "chamber": "H",
+             "served": {"terms": ["2023-2024"]}}]), encoding="utf-8")
+        m = BSP.Members(root)
+        m.term = "2025-2026"
+        m.seats = {"2025-2026": {"1": "Rep. Paul Terry (R - Belk 7)",
+                                 "2": "Rep. Joe Poloszaj (R - Hills 9)",
+                                 "3": "Rep. Ann Lee (D - Hills 1)", "4": "Rep. Bo Lee (R - Hills 2)"}}
+        got = (m.slug("H", "Poloszaj"), m.slug("H", "Terry"), m.slug("H", "Lee"), m.slug("H", "Nobody"))
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    assert got == ("joe-poloszaj-hills-9", "paul-terry-belk-7", None, None), got
+    assert m.unmatched[("H", "Lee")] == 1 and m.unmatched[("H", "Nobody")] == 1, m.unmatched
+    return "ok", "Poloszaj by the term's ballots; Terry by the roster; Lee, two of them, and Nobody left as words"
 
 
 @check("build", "build_bills binds each of its names that hold every member once")

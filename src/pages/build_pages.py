@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.188
+# GRANITE_VERSION: 2026-09-04.189
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -1209,9 +1209,9 @@ def cal_notes(up, missing, esc):
     # the online sign-in both registers a position and takes written
     # testimony. HEARING_NOTE is the one copy; app.js's calendarBlock prints
     # the same words, and preflight holds the two to them.
-    html.append(f'<p class="note">{HEARING_NOTE} An '
-                'executive session is where the committee votes on what to '
-                'recommend; it is open to watch but not to testify.</p>'
+    # The executive session's sentence is off the home page (the person,
+    # 10 October 2026); a committee's Upcoming sessions keep it (app.js).
+    html.append(f'<p class="note">{HEARING_NOTE}</p>'
                 "</section>")
     if missing:
         print(f"  calendar: {missing} of {len(up)} upcoming bills had no title "
@@ -2862,7 +2862,7 @@ fetch(DATA("home.json")).then(r=>r.json()).then(H=>{
   // "House Session (August 19th, 2026)", with the date the way to that
   // sitting's page where one is built.
   sess.innerHTML=ls.length
-    ?`<h2>Most Recent Session Days</h2><div class="twoup">${ls.map(v=>
+    ?`<h2>Recent Session Days</h2><div class="twoup">${ls.map(v=>
       `<div><p class="sesstitle"><b>${esc(v.chamber||"")} Session</b>
         (${dayLink(v)})</p>
         <div class="player"><button type="button" class="pstub" data-embed="${esc(v.video_id)}"

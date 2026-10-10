@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-10.6
+# GRANITE_VERSION: 2026-10-10.7
 """
 The House and the Senate as committees of the whole: a card at the top of
 each column of /committees, and a page for each chamber's session days.
@@ -157,36 +157,59 @@ def card(c):
             f'<span class="cc-m">{" &middot; ".join(bits)}</span></a>')
 
 
+def day_players(body, d):
+    """The day's recordings, one player each, as the day's own page draws
+    them (build_session_pages.day_players), still until pressed."""
+    out = []
+    day = d["date"]
+    title = f"Recording of the {CHAMBER[body]}, {date_words(day)}"
+    for vid in d.get("videos") or []:
+        pid = f"c{str(day).replace('-', '')}_{re.sub(r'[^\w-]', '', vid)}"
+        out.append(f'<div class="player" data-player="{E(pid)}">'
+                   f'<button type="button" class="pstub" data-title="{E(title)}" '
+                   f'data-embed="{E(vid)}|0|{E(pid)}"><span>{C.icon("play")}</span>'
+                   "<span>Play the recording</span></button>"
+                   f'<div class="pbar"><span class="pwho"><b>The {CHAMBER[body]}</b> &middot; '
+                   f'{E(date_words(d["date"]))}</span>'
+                   f'<a href="https://www.youtube.com/watch?v={E(vid)}" target="_blank" '
+                   'rel="noopener">On YouTube</a></div></div>')
+    return "".join(out)
+
+
 def day_section(body, d):
-    """One session day, as a committee's page lists a meeting: the day, as a
-    meeting's is written ("Feb 19, 2026"), as the link to its full page, its bills and roll calls, the consent calendar's
-    line where there is one, and its journal."""
+    """ONE SESSION DAY AS A COMMITTEE'S MEETING IS ONE (the person, 10 October
+    2026: "format the house and senate session day pages to look more like
+    the meeting tabs on committee pages where each is a dropdown with the
+    recording embedded and a brief summary of what the house did that day
+    but don't display the bill numbers, just the general information with a
+    link to view the full session page"): the day and its counts as the
+    fold's line; open, what the chamber did in general (the term file's
+    `summary`, build_session_pages.day_summary), its recordings, and the
+    links to the day's full page and its journal. No bill is named."""
     date = d["date"]
     c = d.get("counts") or {}
     said = [plural(c["bills"], "bill")] if c.get("bills") else []
     if c.get("roll_calls"):
         said.append(plural(c["roll_calls"], "roll call"))
-    cons = d.get("consent") or {}
-    cline = ""
-    if cons.get("bills"):
-        cline = (f'<p class="cnarr">Consent calendar, {plural(cons["bills"], "bill")}: '
-                 + ", ".join(f'{E(o.get("outcome"))} {o.get("bills")}'
-                             for o in cons.get("outcomes") or []) + ".</p>")
-    links = [f'<a href="session/{body}/{E(date)}.html">The full session day</a>']
+    links = [f'<a class="daylink" href="session/{body}/{E(date)}.html">The full session day</a>']
     if d.get("journal_url"):
         links.append(f'<a href="{E(d["journal_url"])}">{E(journal_words(d.get("journal")))} '
                      "(PDF)</a>")
-    return (f'<section class="cday" id="day-{E(date)}" data-date="{E(date)}">'
-            f'<h3><a class="daylink" href="session/{body}/{E(date)}.html">'
-            f'{E(date_words(date))}</a></h3>'
-            + (f'<p class="cnarr">{" &middot; ".join(said)}</p>' if said else "")
-            + cline + f'<p class="src">{" &middot; ".join(links)}</p></section>')
+    play = day_players(body, d)
+    return (f'<details class="cmeet" id="day-{E(date)}" data-date="{E(date)}">'
+            f'<summary><span class="cmwhen"><b>{E(date_words(date))}</b></span>'
+            f'<span class="cmcount">{" &middot; ".join(said)}</span>'
+            '<span class="cmcaret" aria-hidden="true"></span></summary>'
+            f'<div class="cmbody"><p class="cmsaid">{E(d.get("summary") or "")}</p>'
+            + (f'<div class="cmplay">{play}</div>' if play else
+               '<p class="note">No recording of this day is on file.</p>')
+            + f'<p class="src">{" &middot; ".join(links)}</p></div></details>')
 
 
 def count_line(body, n, term):
     return (f"{plural(n, 'day')} the {CHAMBER[body]} sat in {E(term)}, newest first. "
-            "Each opens on the day&rsquo;s full page: what it took up, in the order the "
-            "journal prints it, and how it voted.")
+            "Open a day for what the chamber did and its recording; its full page has "
+            "every bill it took up, in the order the journal prints it, and how it voted.")
 
 
 # Share, as a session day's head carries it (build_session_pages.SHARE).
@@ -235,7 +258,7 @@ def page_body(c, path="", base=""):
             '<label>Order <select class="chsort"><option value="new" selected>Newest first'
             '</option><option value="old">Oldest first</option></select></label></div>'
             f'<p class="src chcount" aria-live="polite">{count_line(body, len(c["days"]), c["latest"])}</p>'
-            f'<div class="chdays">{days}</div>')
+            f'<div class="chdays cmeets">{days}</div>')
 
 
 # THE PAGE'S SCRIPT: another term from its own file, the order either way, and
@@ -256,22 +279,32 @@ SCRIPT = """<script>
   function journal(j){var m=String(j||"").match(/^(HJ|SJ)\\s*0*(\\d+)/);
     return m?(m[1]==="HJ"?"House Journal ":"Senate Journal ")+m[2]:String(j||"");}
   function day(d){
-    var c=d.counts||{},said=[],cons=d.consent||{},cl="";
+    var c=d.counts||{},said=[],pl="";
     if(c.bills)said.push(plural(c.bills,"bill"));
     if(c.roll_calls)said.push(plural(c.roll_calls,"roll call"));
-    if(cons.bills)cl='<p class="cnarr">Consent calendar, '+plural(cons.bills,"bill")+": "
-      +(cons.outcomes||[]).map(function(o){return esc(o.outcome)+" "+o.bills;}).join(", ")+".</p>";
-    var links=['<a href="session/'+b+'/'+esc(d.date)+'.html">The full session day</a>'];
+    (d.videos||[]).forEach(function(v){
+      var pid="c"+String(d.date).replace(/-/g,"")+"_"+String(v).replace(/[^\w-]/g,"");
+      pl+='<div class="player" data-player="'+esc(pid)+'"><button type="button" class="pstub" data-title="'
+        +esc("Recording of the "+word+", "+long(d.date))+'" data-embed="'+esc(v)+'|0|'+esc(pid)+'">'
+        +'<span>'+(typeof icon==="function"?icon("play"):"")+'</span><span>Play the recording</span></button>'
+        +'<div class="pbar"><span class="pwho"><b>The '+word+'</b> &middot; '+esc(long(d.date))+'</span>'
+        +'<a href="https://www.youtube.com/watch?v='+esc(v)+'" target="_blank" rel="noopener">On YouTube</a></div></div>';
+    });
+    var links=['<a class="daylink" href="session/'+b+'/'+esc(d.date)+'.html">The full session day</a>'];
     if(d.journal_url)links.push('<a href="'+esc(d.journal_url)+'">'+esc(journal(d.journal))+' (PDF)</a>');
-    return '<section class="cday" id="day-'+esc(d.date)+'" data-date="'+esc(d.date)+'">'
-      +'<h3><a class="daylink" href="session/'+b+'/'+esc(d.date)+'.html">'+esc(long(d.date))+'</a></h3>'
-      +(said.length?'<p class="cnarr">'+said.join(" &middot; ")+'</p>':"")
-      +cl+'<p class="src">'+links.join(" &middot; ")+'</p></section>';
+    return '<details class="cmeet" id="day-'+esc(d.date)+'" data-date="'+esc(d.date)+'">'
+      +'<summary><span class="cmwhen"><b>'+esc(long(d.date))+'</b></span>'
+      +'<span class="cmcount">'+said.join(" &middot; ")+'</span>'
+      +'<span class="cmcaret" aria-hidden="true"></span></summary>'
+      +'<div class="cmbody"><p class="cmsaid">'+esc(d.summary||"")+'</p>'
+      +(pl?'<div class="cmplay">'+pl+'</div>':'<p class="note">No recording of this day is on file.</p>')
+      +'<p class="src">'+links.join(" &middot; ")+'</p></div></details>';
   }
   function line(n,t){
     return plural(n,"day")+" the "+word+" sat in "+esc(t)+", "
-      +(sort.value==="old"?"oldest":"newest")+" first. Each opens on the day&rsquo;s full page: "
-      +"what it took up, in the order the journal prints it, and how it voted.";
+      +(sort.value==="old"?"oldest":"newest")+" first. Open a day for what the chamber did and its "
+      +"recording; its full page has every bill it took up, in the order the journal prints it, "
+      +"and how it voted.";
   }
   function order(){
     var items=[].slice.call(list.children),up=sort.value==="old";
@@ -287,12 +320,21 @@ SCRIPT = """<script>
     cache[t].then(function(T){
       list.innerHTML=(T.days||[]).map(day).join("");
       order();
+      opened();
       if(write&&history.replaceState)history.replaceState(null,"",
         location.pathname+"?term="+t+location.hash);
     }).catch(function(){
       count.textContent="The session days of "+t+" could not be loaded.";
     }).then(function(){list.removeAttribute("aria-busy");});
   }
+  // A day the address names (a session day's trail leads here at
+  // #day-<date>) is opened, as a committee's meeting is.
+  function opened(){
+    var m=/^#day-(\d{4}-\d\d-\d\d)$/.exec(location.hash||"");
+    var d=m&&document.getElementById("day-"+m[1]);
+    if(d&&d.tagName==="DETAILS"){d.open=true;}
+  }
+  opened();
   term.addEventListener("change",function(){show(term.value,true);});
   sort.addEventListener("change",order);
   var want=new URLSearchParams(location.search).get("term");
