@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.493
+# GRANITE_VERSION: 2026-09-04.494
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -73736,8 +73736,10 @@ def _learn_examples_record():
         cur = rcs.get(term) or {}
         block = nums[at:]
         block = block[:block.find("<h2", 10)] if "<h2" in block[10:] else block
-        for m in re.finditer(r'bill/\d{4}/([a-z0-9]+)"[^<]*</a></td><td>([^<]*)</td>'
-                             r"<td>[^<]*</td><td>(\d+)&ndash;(\d+)</td><td>([^<]*)</td>", block):
+        # A cell may carry a class (a column of numbers is set right, l-num).
+        for m in re.finditer(r'bill/\d{4}/([a-z0-9]+)"[^<]*</a></td><td[^>]*>([^<]*)</td>'
+                             r"<td[^>]*>[^<]*</td><td[^>]*>(\d+)&ndash;(\d+)</td><td[^>]*>([^<]*)</td>",
+                             block):
             bid, y, n, day = m.group(1).upper(), int(m.group(3)), int(m.group(4)), m.group(5)
             same = [r for r in cur.get(bid) or []
                     if r.get("yeas") == y and r.get("nays") == n and (r.get("date") or "") == day]

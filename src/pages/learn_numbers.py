@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-14.14
+# GRANITE_VERSION: 2026-09-14.15
 """
 The record in numbers: a Learn page of statistics computed from the site's own data.
 
@@ -51,6 +51,7 @@ from datetime import date as _date
 from pathlib import Path
 
 import adopted_amendments as AA
+import components
 import ballot_source as BS
 import build_date
 import shell
@@ -77,16 +78,85 @@ def _np(n, d):
     return f"{n:,}&nbsp;({_pct(n, d)})"
 
 
+# A CELL THAT IS A NUMBER: a count, a count with its share, a share, a tally
+# or a mean. Its column is set to the right in tabular figures, so a column
+# of counts reads down by place value; a column with anything else in it --
+# a term, a name, a date -- stays to the left.
+_NUMCELL = re.compile(r"^[\d,.]+(?:&nbsp;\([\d.]+%\))?%?$|^&mdash;$|^\d+&ndash;\d+$")
+
+
 def _table(head, rows, cls="numtab"):
     # The first column is a term, a year, a bill or a chamber, and app.css
     # keeps it on one line ("1989-1990" broke at its dash); a committee's
     # name is the exception, and wraps.
     if head and head[0] == "Committee":
         cls += " names"
-    return (f'<div class="tablewrap"><table class="{cls}"><thead><tr>'
-            + "".join(f"<th>{h}</th>" for h in head) + "</tr></thead><tbody>"
-            + "".join("<tr>" + "".join(f"<td>{c}</td>" for c in r) + "</tr>" for r in rows)
+    num = [k > 0 and any(str(r[k]).strip() for r in rows if k < len(r))
+           and all(_NUMCELL.match(str(r[k]).strip()) for r in rows
+                   if k < len(r) and str(r[k]).strip())
+           for k in range(len(head))]
+
+    def td(k, c):
+        return f'<td class="l-num">{c}</td>' if k < len(num) and num[k] else f"<td>{c}</td>"
+    return (f'<div class="l-tablewrap l-numwrap"><table class="l-table l-numtab {cls}"><thead><tr>'
+            + "".join(f'<th class="l-num">{h}</th>' if num[k] else f"<th>{h}</th>"
+                      for k, h in enumerate(head)) + "</tr></thead><tbody>"
+            + "".join("<tr>" + "".join(td(k, c) for k, c in enumerate(r)) + "</tr>" for r in rows)
             + "</tbody></table></div>")
+
+
+# The status chip's class for a kind of ending, from the words file the
+# chips are drawn from (src/pages/words/chips.json).
+CHIP = components.WORDBOOK["chips"]["kind"]
+
+
+def wide(table):
+    """A table of many columns takes the page's whole width under its
+    section's heading rather than the prose's measure: the sign-ins (a title
+    and a hearing beside four counts) and the amendments (seven columns, the
+    source among them) squeezed into the measure and broke every cell. The
+    markers are civics.wide's, which build_civics reads."""
+    return f"<!--wide-->{table}<!--/wide-->"
+
+
+def law_chart(oc, terms):
+    """BECAME LAW, AS A SHARE OF THE BILLS FILED, by term: a bar chart of the
+    first table's own column, over it (the approved prototype, 9 October
+    2026). One series, so no legend: the title names it, a bar's value shows
+    at its end for the first and last terms and the highest and lowest, and
+    on a pointer for the rest, and the table under it is its accessible view
+    -- the chart itself is one image to a screen reader, which is told the
+    range in words. The scale runs to the next ten past the highest share and
+    ten more, so every value's label fits after its bar, on a phone too."""
+    data = [(t, oc[t]["filed"], oc[t]["Became Law"]) for t in terms if oc.get(t) and oc[t]["filed"]]
+    if not data:
+        return ""
+    pct = [(t, f, n, 100 * n / f) for t, f, n in data]
+    hi = max(pct, key=lambda r: r[3])
+    lo = min(pct, key=lambda r: r[3])
+    top = min(100, 10 * (int(hi[3]) // 10) + 20)
+    named = {pct[0][0], pct[-1][0], hi[0], lo[0]}
+
+    def bar(t, f, n, v):
+        w = v / top * 100
+        return (f'<li class="{"is-lab" if t in named else ""}" title="{_t(t)}: {n:,} of {f:,} '
+                f'bills became law ({v:.1f}%)"><span class="l-bl">{_t(t)}</span>'
+                f'<span class="l-bt"><span class="l-bf" style="width:{w:.2f}%"></span>'
+                f'<span class="l-bv" style="left:{w:.2f}%">{v:.1f}%</span></span></li>')
+    ticks = "".join(f'<i class="t{x}" style="left:{x / top * 100:.4f}%">{x}%</i>'
+                    for x in range(0, top + 1, 10))
+    said = (f"Bar chart: the share of the bills filed in each term that became law, from "
+            f"{pct[0][3]:.1f}% in {pct[0][0]} to {pct[-1][3]:.1f}% in {pct[-1][0]}; the highest "
+            f"{hi[3]:.1f}% in {hi[0]}, the lowest {lo[3]:.1f}% in {lo[0]}. The figures are in "
+            "the table below.")
+    return (f'<figure class="l-chart" role="img" aria-label="{E(said)}">'
+            '<h3 aria-hidden="true">Became Law, as a Share of the Bills Filed</h3>'
+            '<p aria-hidden="true">The figures are the table&rsquo;s, its Became Law column. '
+            "Hover over a term to see its value.</p>"
+            f'<ol class="l-bars" aria-hidden="true" style="--l-grid:{1000 / top:.4f}%">'
+            f'{"".join(bar(*r) for r in pct)}</ol>'
+            f'<div class="l-axis" aria-hidden="true"><span>{_t(pct[-1][0])}</span>'
+            f'<span class="l-ticks">{ticks}</span></div></figure>')
 
 
 def _t(term):
@@ -728,7 +798,7 @@ def body(site=Path("site"), root=Path("."), strict=True):
                "Died covers a bill killed on the floor, left on the table, vetoed with the "
                "veto standing, lost between the two chambers, or still pending when its term "
                "ended; Other is a bill withdrawn, never introduced, or still before the "
-               "legislature.</p>"
+               "legislature.</p>" + law_chart(oc, terms)
                + _table(["Term", "Bills filed", "Became Law", "Died", "Interim Study", "Other"],
                         orows))
 
@@ -756,7 +826,7 @@ def body(site=Path("site"), root=Path("."), strict=True):
                                       -int(r[1].replace(",", "")), r[0]))
         first_n = sum(f for f, _s in rf.values())
         sent_n = sum(s for _f, s in rf.values())
-        blocks.append(f"<details{' open' if t == current else ''}><summary>{_t(t)}: "
+        blocks.append(f"<details class=\"l-fold\"{' open' if t == current else ''}><summary>{_t(t)}: "
                       f"{first_n:,} first referrals and {sent_n:,} sent on</summary>"
                       + _table(["Committee", "First referral", "Sent on from another committee"],
                                rrows) + "</details>")
@@ -765,7 +835,7 @@ def body(site=Path("site"), root=Path("."), strict=True):
                "its committee, and how many it received after another committee of the same "
                "chamber had them &mdash; most often Finance or Ways and Means, for a bill that "
                "spends or raises money. Every numbered measure counts, resolutions "
-               "included.</p>" + "".join(blocks))
+               "included.</p>" + '<div class="l-folds">' + "".join(blocks) + "</div>")
 
     # 4. The hearings with the most sign-ins.
     tdb = _need(root / "testimony_db.json", "the hearings with the most sign-ins")
@@ -791,9 +861,9 @@ def body(site=Path("site"), root=Path("."), strict=True):
                       f"{h['support']:,}&nbsp;support<br>{h['oppose']:,}&nbsp;oppose"
                       + (f"<br>{h['neutral']:,}&nbsp;neutral" if h["neutral"] else "")]
                      for h in si[t]]
-            tables.append(f"<h3>{_t(t)}</h3>" + _table(
+            tables.append(wide(f"<h3>{_t(t)}</h3>" + _table(
                 ["Bill", "Title as heard", "Hearing and committee", "Signed in", "Positions"],
-                srows))
+                srows)))
         out.append("<h2>The Hearings with the Most Sign-Ins</h2><p>Anyone may use the House's "
                    "online form to say they support or oppose a bill, or are neutral on it, at "
                    "its committee hearing. These are the twenty hearings with the most of those "
@@ -826,8 +896,8 @@ def body(site=Path("site"), root=Path("."), strict=True):
     if cases:
         items = "".join(f"<li>{_bill_link(current, b)} &mdash; {NAME[c]}: committee "
                         f"{label[r]}, floor {label[f]}</li>" for b, c, r, f in sorted(cases)[:60])
-        out.append(f"<details><summary>The {len(cases)} bills</summary><ul class=\"numlist\">"
-                   f"{items}</ul></details>")
+        out.append(f'<div class="l-folds"><details class="l-fold"><summary>The {len(cases)} '
+                   f'bills</summary><ul class="l-bills">{items}</ul></details></div>')
 
     # 6. Consent calendar share by committee, with the term's totals above it.
     rows_by = {r.get("id"): r for r in idx if r.get("term") == current}
@@ -1013,7 +1083,10 @@ def body(site=Path("site"), root=Path("."), strict=True):
             y, n = r["yes"], r["no"]
             brows.append([f'{_bill_link(r["term"], r["bill"])}<br>{_t(r["term"])}', _day(r["election"]),
                           f"{y:,}", f"{n:,}", _pct(y, y + n),
-                          "Ratified" if ratified(y, n) else "Not ratified",
+                          # the result in the status chip's colours: law's
+                          # green, a death's red (chips.json's classes)
+                          (f'<span class="cstat {CHIP["law"]}">Ratified</span>' if ratified(y, n)
+                           else f'<span class="cstat {CHIP["done"]}">Not ratified</span>'),
                           f'<a href="{E(r["source"])}" rel="noopener">{E(r["cite"])}</a>'])
         rat = sum(1 for r in shown if ratified(r["yes"], r["no"]))
         # WHOSE COUNT, FROM THE ROWS (ballot_source.py): the Secretary of
@@ -1040,6 +1113,6 @@ def body(site=Path("site"), root=Path("."), strict=True):
                    "next general election, and is ratified only with two thirds of the votes cast "
                    "on it (Part Second, Article 100); a blank ballot is not a vote cast on it. "
                    + said + f" {rat} of the {len(shown)} below were ratified." + coming + "</p>"
-                   + _table(["Amendment", "Election", "Yes", "No", "Yes share", "Result",
-                             "Source"], brows))
+                   + wide(_table(["Amendment", "Election", "Yes", "No", "Yes share", "Result",
+                                  "Source"], brows)))
     return "".join(out)

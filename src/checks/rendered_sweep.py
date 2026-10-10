@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-08.2
+# GRANITE_VERSION: 2026-10-08.3
 """
 The rendered sweep: a built site measured as a reader's browser draws it.
 
@@ -137,6 +137,13 @@ PAGES = [
     {"name": "town", "path": "town/goffstown.html", "dir": "town"},
     {"name": "learn", "path": "learn/how-a-bill-becomes-law.html"},
     {"name": "numbers", "path": "learn/by-the-numbers.html"},
+    # The Resources hub and the Learn pages whose figures are widest (9
+    # October 2026): the constitution's phases, the General Court's seats and
+    # term, Danville's seats and the floterial laid over its districts.
+    {"name": "resources", "path": "resources.html"},
+    {"name": "learn-constitution", "path": "learn/the-constitution.html"},
+    {"name": "learn-general-court", "path": "learn/general-court.html"},
+    {"name": "learn-representatives", "path": "learn/your-representatives.html"},
     {"name": "data", "path": "data.html"},
     {"name": "about", "path": "about.html"},
     {"name": "404", "path": "no-such-page-here.html", "missing": True,

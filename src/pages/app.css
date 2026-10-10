@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.233 */
+/* GRANITE_VERSION: 2026-09-07.234 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -3657,7 +3657,7 @@ text-transform:uppercase;color:var(--ink-2);margin:0 0 var(--sp-4);font-family:v
   margin:0 0 .875rem;padding-left:1.25rem;max-width:var(--l-meas)}
 .l-secb > :is(ul,ol):not([class]) > li{margin:0 0 .4375rem;padding-left:.25rem}
 .l-secb > :is(ul,ol):not([class]) > li::marker{color:var(--ink-2)}
-.l-secb > h3{font:600 var(--t-h3)/1.3 var(--serif);color:var(--ink);margin:1.75rem 0 .5rem}
+:is(.l-secb,.l-wide) > h3{font:600 var(--t-h3)/1.3 var(--serif);color:var(--ink);margin:1.75rem 0 .5rem}
 .l-art .l-secb a:not([class]){color:var(--pine);text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:3px}
 .l-art .l-secb a:not([class]):hover{color:var(--ink)}
 @media (min-width:60em){
@@ -3671,8 +3671,11 @@ text-transform:uppercase;color:var(--ink-2);margin:0 0 var(--sp-4);font-family:v
   padding:.625rem .875rem;margin:1rem 0;border-radius:0 var(--r-in) var(--r-in) 0;max-width:var(--l-meas)}
 
 /* a table in the prose: a term and what it means */
+/* contain:inline-size: the box takes the width the page gives it and its
+   table scrolls inside it, rather than the table's least width (808px
+   for the amendments sent to the voters) widening the page at 768px */
 .l-tablewrap{overflow-x:auto;border:1px solid var(--rule-2);border-radius:var(--r-in);background:var(--surface);
-  margin:1rem 0 .75rem;max-width:var(--l-meas);position:relative}
+  margin:1rem 0 .75rem;max-width:var(--l-meas);position:relative;contain:inline-size}
 .l-table{border-collapse:collapse;width:100%;font:400 var(--t-ui)/1.5 var(--sans);color:var(--ink)}
 .l-table caption{text-align:left;font:600 var(--t-h3)/1.3 var(--serif);padding:.75rem 1rem .5rem;caption-side:top}
 .l-table th{font:600 var(--t-label)/1.3 var(--sans);letter-spacing:.07em;text-transform:uppercase;color:var(--ink-2);
@@ -3892,6 +3895,66 @@ a.l-pgm{font-weight:600;text-decoration:underline;text-decoration-thickness:1px;
   .l-hubtab[aria-current]{border-bottom-color:Highlight}
 }
 @media print{.l-hub,.l-otp,.l-pager,.r-tabs{display:none}}
+
+/* ---- the record in numbers: its tables, folds and chart --------------------
+   Every table in the Learn table, numbers right-aligned and tabular (a column
+   learn_numbers finds is all numbers); the committees' ten terms and the
+   bills behind a figure in folds, the newest term open; the voters' result
+   in the status chip's colours; and one chart, of the first table's Became
+   Law column, over it. */
+.l-numwrap{max-width:none}
+.l-art .l-secb > .l-numwrap{max-width:var(--l-meas)}
+.l-numtab thead th,.l-numtab thead th.l-num{white-space:normal}
+.l-numtab td:first-child{font-weight:500}
+.l-numtab tbody tr:hover > *{background:var(--wash)}
+.l-numtab .cstat{white-space:nowrap}
+.l-folds{max-width:var(--l-meas);margin:.75rem 0 1rem}
+.l-fold{border:1px solid var(--rule-2);border-radius:var(--r-in);background:var(--surface);margin:.5rem 0}
+.l-fold > summary{list-style:none;display:flex;align-items:center;gap:.625rem;min-height:2.75rem;padding:.25rem .875rem;
+  cursor:pointer;font:600 var(--t-ui)/1.4 var(--sans);color:var(--ink)}
+.l-fold > summary::-webkit-details-marker{display:none}
+.l-fold > summary::before{content:"";flex:0 0 auto;width:.875rem;height:.875rem;background:var(--pine);
+  -webkit-mask:var(--l-chev) center/contain no-repeat;mask:var(--l-chev) center/contain no-repeat;transition:transform .15s}
+.l-fold[open] > summary::before{transform:rotate(90deg)}
+.l-fold > summary:hover{background:var(--wash)}
+.l-fold > .l-tablewrap{margin:0;border:0;border-top:1px solid var(--rule-2);border-radius:0;max-width:none}
+.l-bills{list-style:none;margin:0;padding:.375rem .875rem .75rem;border-top:1px solid var(--rule-2);display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(min(100%,17rem),1fr));column-gap:1.5rem}
+.l-bills li{padding:.4375rem 0;border-bottom:1px solid var(--rule);font:400 var(--t-ui)/1.45 var(--sans);color:var(--ink-2)}
+.l-bills a{color:var(--pine);font-weight:600}
+@media (prefers-reduced-motion:reduce){.l-fold > summary::before{transition:none}}
+
+.l-chart{max-width:var(--l-meas);margin:.75rem 0 1.25rem;padding:1rem 1.125rem;background:var(--surface);
+  border:1px solid var(--rule-2);border-radius:var(--r-in)}
+.l-chart > h3{font:600 var(--t-h3)/1.3 var(--serif);color:var(--ink);margin:0 0 .25rem}
+.l-chart > p{font:400 var(--t-sm)/1.45 var(--sans);color:var(--ink-2);margin:0 0 .875rem}
+.l-bars{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:auto minmax(0,1fr);column-gap:.875rem;position:relative}
+.l-bars li{display:grid;grid-template-columns:subgrid;grid-column:1 / -1}
+.l-bl{font:400 var(--t-sm)/1 var(--sans);color:var(--ink-2);font-variant-numeric:tabular-nums;white-space:nowrap;
+  align-self:center;padding:.1875rem 0}
+/* gridlines every 10 points: the scale is ticked below */
+.l-bt{position:relative;height:1.625rem;align-self:center;margin-right:3.25rem;
+  background:repeating-linear-gradient(to right,var(--rule) 0 1px,transparent 1px var(--l-grid,16.6667%));box-shadow:inset -1px 0 0 var(--rule)}
+.l-bf{position:absolute;left:0;top:.5rem;height:.625rem;background:var(--st-law);border-radius:0 4px 4px 0;
+  -webkit-print-color-adjust:exact;print-color-adjust:exact}
+.l-bv{position:absolute;top:50%;transform:translateY(-50%);margin-left:.4375rem;font:600 var(--t-sm)/1 var(--sans);
+  color:var(--ink);font-variant-numeric:tabular-nums;white-space:nowrap;visibility:hidden}
+.l-bars li.is-lab .l-bv,.l-bars li:hover .l-bv{visibility:visible}
+.l-bars li:hover{background:var(--wash)}
+.l-bars li:hover .l-bl{color:var(--ink)}
+.l-axis{display:grid;grid-template-columns:auto minmax(0,1fr);column-gap:.875rem;margin-top:.25rem}
+.l-axis span:first-child{visibility:hidden;font:400 var(--t-sm)/1 var(--sans);white-space:nowrap}
+.l-ticks{position:relative;height:1.125rem;margin-right:3.25rem;font:400 var(--t-sm)/1 var(--sans);color:var(--ink-2);
+  font-variant-numeric:tabular-nums}
+.l-ticks i{position:absolute;top:.25rem;font-style:normal;transform:translateX(-50%)}
+.l-ticks i:first-child{transform:none}
+.l-ticks i:last-child{transform:translateX(-100%)}
+.l-ticks i.t10,.l-ticks i.t30,.l-ticks i.t50,.l-ticks i.t70,.l-ticks i.t90{display:none}
+@media (max-width:30em){.l-ticks i.t20,.l-ticks i.t40{display:none}}
+@media (forced-colors:active){
+  .l-fold > summary::before{forced-color-adjust:none;background:CanvasText}
+  .l-bf{forced-color-adjust:none;background:CanvasText}
+}
 
 /* ---- the figures each page draws from its own words and numbers -----------
    (civics.py: bar, chain, boxes, course_diagram, seats_figure, term_figure and
