@@ -13,6 +13,15 @@ its own copies the same way. Edit them here; `site/` holds copies.
 Run by: `build_all.py`'s `plan()`, after the record is built. A new page is
 `build_<page>.py` on `shell.py` plus one `Step()`.
 
+`front_end.py` is the fast path, `python3 build_all.py --front-end`: a change
+to `app.css`, `app.js` or `find.js` alone, put into the site the last full
+build made in seconds, through `build_pages.front_end`, the function the
+build itself calls. It refuses, naming the file, when anything else the
+build reads has moved since that build (`src/lib/build_inputs.py` keeps the
+record), and it refuses a change to `bills.html`, which every page is built
+from. A builder that starts making something of one of those three files is
+taught to `front_end.py` and named in preflight's `FAST_PATH_READERS`.
+
 Asks nobody. Does not belong here: deciding a fact (`parse/`). This folder is
 the code; `site/` at the root is what it writes. (Not `src/site/`: the
 `site/` line of `.gitignore` would hide a folder of that name at any depth.)

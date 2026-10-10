@@ -1474,6 +1474,29 @@ for publishing one -- `build_all.py` says when the day is stated and records
 it in `site/build.json`, whose own `finished` and step times stay the clock's
 and are left out of the comparison. Without the variable nothing changes.
 
+**What a build was built from** (9 October 2026). A build that ends well
+records, in `logs/last-build.json` (`src/lib/build_inputs.py`), its commit,
+every file git sees with a sha256 of its bytes, every other file under the
+folder with its size and time of writing (the folders that are no input --
+`logs/`, `tests/`, `reports/`, the worktrees, Markdown -- left out, which
+preflight holds against the code on the build's path), which of those the
+build itself wrote, and what it was asked to do. A build that begins removes
+the record; one that fails writes none; none is written on GitHub's machine.
+Two things read it:
+
+- the fast path, `build_all.py --front-end` (`src/pages/front_end.py`), which
+  puts a change to `app.css`, `app.js` or `find.js` into the site that build
+  made, through `build_pages.front_end` -- the function the build's own step
+  calls -- and only while nothing else in the record has moved. `bills.html`
+  is the template of every page and is refused. `versions.json` and
+  `preflight.py` are read by the build only for data.html's two counts, and
+  app.js also for the search's tables (`front_end.facts`): where one of
+  those moved, the step that makes it runs again;
+- `src/checks/site_manifest.py`, which keeps a build's sha256 manifest under
+  its commit, day, options and data, proves it deterministic when the same
+  build is recorded under a second `PYTHONHASHSEED`, and compares a later
+  build with it -- so a baseline is built once per commit, not once per step.
+
 ## Known rough edges
 
 Each is described where it belongs; this is the list in one place.

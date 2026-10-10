@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.160
+# GRANITE_VERSION: 2026-09-04.161
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -2855,6 +2855,83 @@ def committees_with_roster(out):
                if isinstance(c, dict) and (c.get("n_members") or 0) > 0)
 
 
+# THE BROWSER'S FILES, as this step puts them in the site: copied from
+# src/pages/, and bills.html first because it is also the template every
+# record page is made from (shell.template) -- which is why front_end.py,
+# the fast path, takes a change to it to a full build and the others not.
+COPIED = ("bills.html", "app.css", "app.js", "find.js")
+
+
+def header_mark_placed(brand=Path("assets")):
+    """Whether main() places HEADER_MARK: it is a file in assets/ or in
+    assets/licensed/, which main() lays over it. What front_end.py asks,
+    with assets/ as the full build left it, to write what main() wrote."""
+    brand = Path(brand)
+    return brand.is_dir() and ((brand / HEADER_MARK).is_file()
+                               or (brand / "licensed" / HEADER_MARK).is_file())
+
+
+def front_end(out, has_mark):
+    """Everything this step makes of the browser's files and of nothing else:
+    style.css, the files it copies (COPIED) and billmatch.js. Returns the
+    names it wrote whose bytes changed (style.css when it did).
+
+    ONE FUNCTION FOR THE BUILD AND THE FAST PATH (9 October 2026). main()
+    calls it, and so does `build_all.py --front-end` (front_end.py), which
+    puts a change to app.css, app.js or find.js into the site the last full
+    build made -- so what the fast path writes is what this step writes,
+    because it is this step's code. A file added to what this step derives
+    from the browser's files goes here, or the fast path will not know it.
+    """
+    out = Path(out)
+    wrote = []
+    css = out / "style.css"
+    before = css.read_bytes() if css.exists() else None
+    css.write_text(stylesheet(has_mark), encoding="utf-8")
+    if css.read_bytes() != before:
+        wrote.append("style.css")
+
+    # bills.html and the files it loads are written by hand rather than
+    # generated, and nothing in the pipeline copied them into the output
+    # folder -- so an edit sat in the code while the deploy shipped
+    # whatever was in site/, which looks exactly like the edit having no
+    # effect and cost a round more than once. app.css and app.js are files of
+    # their own rather than a <style> and a <script> inside the page, so a
+    # second page loads the SAME renderer and a reader who opens six bills
+    # downloads 110 KB once instead of six times.
+    #
+    # Copied as they are. Nothing is rewritten on the way through any more:
+    # the version query these three used to gain is a header now, written
+    # below. ONE EXCEPTION, and it only ever takes something out: where the
+    # build has no header mark, app.css goes into the site without the block
+    # that draws it (without_mark), for the same reason style.css does.
+    for name in COPIED:
+        src = Path("src/pages") / name
+        if not src.exists():
+            continue
+        dst = out / name
+        body = src.read_bytes()
+        if name == "app.css" and not has_mark:
+            body = without_mark(body)
+        if not dst.exists() or dst.read_bytes() != body:
+            dst.write_bytes(body)
+            wrote.append(name)
+            print(f"copied {name} into the site folder")
+
+    # The bill matcher, cut out of app.js for the header search on the pages
+    # that do not load app.js. See bill_matcher_js.
+    if Path("src/pages/app.js").exists():
+        body = bill_matcher_js(
+            Path("src/pages/app.js").read_text(encoding="utf-8")).encode("utf-8")
+        dst = out / "billmatch.js"
+        if not dst.exists() or dst.read_bytes() != body:
+            dst.write_bytes(body)
+            wrote.append("billmatch.js")
+            print("  billmatch.js: app.js's bill matcher, for the header "
+                  "search")
+    return wrote
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--out", default="site")
@@ -2935,44 +3012,7 @@ def main():
                  f". No {HEADER_MARK} among them (build_brand.py draws it into "
                  "assets/licensed/ from the artist's drawing), so the header is "
                  "the wordmark alone"))
-    (out / "style.css").write_text(stylesheet(has_mark), encoding="utf-8")
-
-    # bills.html and the files it loads are written by hand rather than
-    # generated, and nothing in the pipeline copied them into the output
-    # folder -- so an edit sat in the code while the deploy shipped
-    # whatever was in site/, which looks exactly like the edit having no
-    # effect and cost a round more than once. app.css and app.js are files of
-    # their own rather than a <style> and a <script> inside the page, so a
-    # second page loads the SAME renderer and a reader who opens six bills
-    # downloads 110 KB once instead of six times.
-    #
-    # Copied as they are. Nothing is rewritten on the way through any more:
-    # the version query these three used to gain is a header now, written
-    # below. ONE EXCEPTION, and it only ever takes something out: where the
-    # build has no header mark, app.css goes into the site without the block
-    # that draws it (without_mark), for the same reason style.css does.
-    for name in ("bills.html", "app.css", "app.js", "find.js"):
-        src = Path("src/pages") / name
-        if not src.exists():
-            continue
-        dst = out / name
-        body = src.read_bytes()
-        if name == "app.css" and not has_mark:
-            body = without_mark(body)
-        if not dst.exists() or dst.read_bytes() != body:
-            dst.write_bytes(body)
-            print(f"copied {name} into the site folder")
-
-    # The bill matcher, cut out of app.js for the header search on the pages
-    # that do not load app.js. See bill_matcher_js.
-    if Path("src/pages/app.js").exists():
-        body = bill_matcher_js(
-            Path("src/pages/app.js").read_text(encoding="utf-8")).encode("utf-8")
-        dst = out / "billmatch.js"
-        if not dst.exists() or dst.read_bytes() != body:
-            dst.write_bytes(body)
-            print("  billmatch.js: app.js's bill matcher, for the header "
-                  "search")
+    front_end(out, has_mark)
 
     # LF, not the platform default: this file is parsed by Pages, not
     # by anything on this machine, and write_text on Windows would
