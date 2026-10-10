@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-19.32
+# GRANITE_VERSION: 2026-09-19.33
 """
 A page for every day the House sat.
 
@@ -2428,12 +2428,16 @@ def day_head(day, narrative, rec, jurl, label, path, base):
     elif date < JOURNAL_FROM:
         note = ('<p class="rnote">The journal is on record from 1997, so this day carries the '
                 "vote record without the debate.</p>")
-    # THE TRAIL LEADS UP TO THE CHAMBER'S LIST OF SESSION DAYS, at the day's
-    # year (2 October 2026: a sitting's page led nowhere above itself).
-    days = f"{S.canon(DAYS_LIST[body])}#y{date[:4]}"
-    return C.record_head({"trail": [["Calendar", "calendar.html"], [f"{ch} Session Days", days],
+    # THE TRAIL LEADS UP TO THE CHAMBER'S PAGE OF SESSION DAYS (build_full_
+    # sessions, 10 October 2026), at the day's term, where it led to the
+    # directory's list at its year (2 October 2026: a sitting's page led
+    # nowhere above itself); and the line's chamber is the same link.
+    term = proceedings.vote_term(date[:4], date)
+    days = f"{S.canon(f'session/{body}.html')}?term={term}#day-{date}"
+    line = S.E(line).replace(f"The {ch} ", f'The <a href="{S.E(days)}">{ch}</a> ', 1)
+    return C.record_head({"trail": [["Committees", "committees.html"], [f"{ch} Session Days", days],
                                     ["Session Day", ""]],
-                          "title": S.E(label), "line": S.E(line), "facts": facts,
+                          "title": S.E(label), "line": line, "facts": facts,
                           "actions": cite[:-len("</div>")] + SHARE + "</div>",
                           "kind": "day"}) + note
 

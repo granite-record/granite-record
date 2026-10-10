@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-07.56
+# GRANITE_VERSION: 2026-09-07.57
 """
 A page's worth of data for every committee.
 
@@ -1250,9 +1250,15 @@ def main():
     cols = []
     for ch, word in (("H", "House"), ("S", "Senate")):
         rows_ = [c for c in live if c["chamber"] == ch]
-        if not rows_:
-            continue
+        # THE CHAMBER ITSELF FIRST (the person, 9 and 10 October 2026): its
+        # session days as a card like its committees', at the top of its
+        # column. build_full_sessions.py fills the slot after the session
+        # pages, whose term files it reads, are written -- so the column is
+        # drawn for both chambers, with or without a committee sitting
+        # today, because this step cannot know on an empty site whether the
+        # chamber's card will fill it.
         cols.append(f"<section><h2>{word}</h2><div class=\"ccards\">"
+                    + f"<!-- chamber:{ch} --><!-- /chamber:{ch} -->"
                     + "".join(_card(c) for c in
                               sorted(rows_, key=lambda x: x["name"]))
                     + "</div></section>")
@@ -1326,10 +1332,6 @@ def main():
         f'<div id="results"><div class="clist"><h1>Committees</h1>'
         f'<p class="src">Bill-first search answers what happened to a bill. '
         f'These answer what a committee did on a day.</p>'
-        # THE HOUSE AND SENATE FULL SESSIONS GO HERE, at the top (the person,
-        # 9 October 2026, v12): build_full_sessions.py fills this slot after
-        # the session pages, whose term files it reads, are written.
-        + '<div id="fullsess"></div><!-- /fullsess -->'
         + "".join(body) + "</div></div>", 1)
     (site / "committees.html").write_text(page_html, encoding="utf-8")
     print("committees.html written")
