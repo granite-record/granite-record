@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-09.1
+# GRANITE_VERSION: 2026-10-09.2
 """
 The site's components, in Python: what the builders draw a person, a
 committee, a date and a time with.
@@ -187,3 +187,62 @@ def pchip(m):
     inner = (f'<a href="legislator/{esc(slug)}.html">{who}</a>' if slug else who)
     return (f'<span class="mchip p-{esc(code)}">{inner}'
             + (f" <i>{esc(role)}</i>" if role else "") + "</span>")
+
+
+# ICONS: THE PROTOTYPE KIT'S DRAWINGS (the polish's second round, 9 October
+# 2026, private/design/polish/proto/css/kit.css), drawn for this project on a
+# 24-unit grid with a 1.75 stroke and round ends; report and share were drawn
+# the same way for Polish 1, at the person's asking ("add a share button
+# alongside the report button with the same thing in mind"). Each is a
+# picture beside a word, never the only name of its control: aria-hidden, so
+# a screen reader reads the control's own text and not "image", and
+# currentColor, so it takes the ink of whatever holds it in both themes.
+# app.css sizes it (.icon) in rem with the text beside it.
+ICON_PAINT = ('fill="none" stroke="currentColor" stroke-width="1.75" '
+              'stroke-linecap="round" stroke-linejoin="round"')
+ICONS = {
+    # the sections: the nav's tabs and the home page's cards
+    "bill": ('<path d="M6.25 2.75h7.75l4.25 4.25v14.25H6.25z"/><path d="M13.75 2.75v4.5h4.5"/>'
+             '<path d="M9 11.75h6.5M9 15h6.5M9 18.25h4"/>'),
+    "person": ('<circle cx="12" cy="7.75" r="3.75"/>'
+               '<path d="M4.5 20.75c.9-4.25 3.8-6.5 7.5-6.5s6.6 2.25 7.5 6.5"/>'),
+    "committee": ('<circle cx="6.25" cy="8.25" r="2.25"/><circle cx="12" cy="6.5" r="2.25"/>'
+                  '<circle cx="17.75" cy="8.25" r="2.25"/><path d="M2.75 13.25h18.5"/>'
+                  '<path d="M5.25 13.25v7.5M18.75 13.25v7.5"/><path d="M8.5 17h7"/>'),
+    "book": ('<path d="M12 6.75C9.6 5 6.6 4.6 3.25 5.25v13.5c3.35-.65 6.35-.25 8.75 1.5 '
+             '2.4-1.75 5.4-2.15 8.75-1.5V5.25C17.4 4.6 14.4 5 12 6.75z"/><path d="M12 6.75v13.5"/>'),
+    "calendar": ('<rect x="3.5" y="4.75" width="17" height="16" rx="1.5"/>'
+                 '<path d="M3.5 9.75h17M8 2.75v4M16 2.75v4"/>'
+                 '<path d="M7.25 13.25h3v3h-3z" fill="currentColor"/>'),
+    # a page's actions
+    "cite": ('<path fill="currentColor" stroke="none" d="M4.5 18v-4.6c0-3.4 1.7-6 4.6-7.4l.9 1.6c-1.7 '
+             '1-2.6 2.4-2.8 4.2H10V18zM13.5 18v-4.6c0-3.4 1.7-6 4.6-7.4l.9 1.6c-1.7 1-2.6 2.4-2.8 '
+             '4.2H19V18z"/>'),
+    "follow": ('<path d="M6 16.5V11a6 6 0 0 1 12 0v5.5l1.5 1.75h-15z"/>'
+               '<path d="M10 20.75a2 2 0 0 0 4 0"/>'),
+    "print": ('<path d="M7 9V3.75h10V9"/><path d="M7 17.25H4.25v-7.5h15.5v7.5H17"/>'
+              '<path d="M7 14h10v6.25H7z"/>'),
+    "testify": ('<path d="M4.25 5.25h15.5v10.5H10.5l-4.5 3.75v-3.75H4.25z"/>'
+                '<path d="M8 9.25h8M8 12.25h5"/>'),
+    "report": '<path d="M5.5 21.25V3.5"/><path d="M5.5 4.25h12.25L15 8.75l2.75 4.5H5.5"/>',
+    "share": ('<path d="M12 15V3.25"/><path d="M7.75 7.5 12 3.25l4.25 4.25"/>'
+              '<path d="M8.75 10.75h-3v10h12.5v-10h-3"/>'),
+    # the controls that already carried a drawing or a character of their own
+    "search": '<circle cx="10.5" cy="10.5" r="6.25" stroke-width="2"/><path d="M15.25 15.25l5 5" stroke-width="2"/>',
+    "close": '<path d="M6 6l12 12M18 6L6 18" stroke-width="2"/>',
+    "play": '<path fill="currentColor" stroke="none" d="M8 5.5v13l10.5-6.5z"/>',
+}
+
+
+def icon(name):
+    """One of ICONS as an inline SVG, or "" for a name it does not hold.
+
+    Pure, like every helper here: the same markup in components.js's icon(),
+    which preflight holds byte for byte. The control it sits in carries the
+    words -- a visible label, or an aria-label where the drawing stands alone
+    -- and preflight fails a page that gives a drawing no words beside it."""
+    inner = ICONS.get(name) if isinstance(name, str) else None
+    if inner is None:
+        return ""
+    return (f'<svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false" '
+            f'{ICON_PAINT}>{inner}</svg>')

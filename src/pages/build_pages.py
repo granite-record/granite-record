@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.168
+# GRANITE_VERSION: 2026-09-04.169
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -30,7 +30,7 @@ import bill_order as BO
 import build_date
 import html as _html
 import shell as _shell
-from components import clock, pchip
+from components import clock, icon, pchip
 import seating
 import json
 import re
@@ -1181,6 +1181,21 @@ def cal_notes(up, missing, esc):
     return "".join(html)
 
 
+# THE SECTIONS, in the header's order, with each one's drawing.
+NAV_TABS = (("bills.html", "Bills", "bill"),
+            ("legislators.html", "Legislators", "person"),
+            ("committees.html", "Committees", "committee"),
+            # A second nav emitter. bills.html carries the nav every
+            # shell.page() page inherits; this tuple is what legislators.html,
+            # index.html and about.html get, and when Data was added to the
+            # first it was not added here, so three pages lacked the link the
+            # other 34,000 had.
+            ("learn.html", "Learn", "book"),
+            # Added to BOTH emitters in the same edit. The comment above
+            # records what happened the time it was not.
+            ("calendar.html", "Calendar", "calendar"))
+
+
 def shell(title, current, body, wide=False, script="", desc="",
           base="https://graniterecord.org"):
     tabs = []
@@ -1190,21 +1205,12 @@ def shell(title, current, body, wide=False, script="", desc="",
     # read in the first place. Home came off because the mark beside the
     # wordmark is the way home on every site a reader uses -- it only needed
     # to be a link.
-    for href, label in (("bills.html", "Bills"),
-                        ("legislators.html", "Legislators"),
-                        ("committees.html", "Committees"),
-                        # A second nav emitter. bills.html carries the nav
-                        # every shell.page() page inherits; this tuple is what
-                        # legislators.html, index.html and about.html get, and
-                        # when Data was added to the first it was not added
-                        # here, so three pages lacked the link the other
-                        # 34,000 had.
-                        ("learn.html", "Learn"),
-                        # Added to BOTH emitters in the same edit. The comment
-                        # above records what happened the time it was not.
-                        ("calendar.html", "Calendar")):
+    # EACH WITH ITS DRAWING (Polish 1, 9 October 2026): the prototype kit's
+    # icon before the word, from components.icon, as bills.html's nav carries
+    # it; preflight holds the two emitters to the same five.
+    for href, label, glyph in NAV_TABS:
         cur = ' aria-current="page"' if href == current else ""
-        tabs.append(f'<a href="{href}"{cur}>{label}</a>')
+        tabs.append(f'<a href="{href}"{cur}>{icon(glyph)}{label}</a>')
     # ONE WRAPPER, WRITTEN TWICE BECAUSE THE NAV IS. bills.html carries the
     # same <div class="navtabs"> around the same four links and app.css
     # styles it once; without it the links wrap through the middle of the row
@@ -2705,7 +2711,7 @@ fetch(DATA("home.json")).then(r=>r.json()).then(H=>{
         <div class="player"><button type="button" class="pstub" data-embed="${esc(v.video_id)}"
           data-title="Recording of the ${esc(v.chamber||"")} floor session, ${fdy(v.date)}"
           aria-label="Play the ${esc(v.chamber||"")} floor session of ${fd(v.date)}">
-          <span>&#9654;</span><span>Play</span></button></div></div>`).join("")}</div>`
+          <span>${icon("play")}</span><span>Play</span></button></div></div>`).join("")}</div>`
     :"";
 });
 document.addEventListener("click",e=>{
@@ -3237,7 +3243,7 @@ The Speaker&rsquo;s chair is on the rostrum rather than on the floor, so
   <select id="sgo"><option value="">Seat number&hellip;</option>{opts}</select>
   <label for="sq">Find</label>
   <input id="sq" type="search" autocomplete="off"
-    placeholder="A name, a county or a seat number">
+    placeholder="Name, county or seat">
 </div>
 <div class="seatbar">
   <p class="seathint">Scroll or pinch to zoom, drag to move about the floor.</p>
@@ -3311,7 +3317,7 @@ party or committee to find a member.</p>
 <div class="lfind">
   <label for="lq" class="sr">Your town, or a legislator&rsquo;s name</label>
   <input id="lq" type="search" autocomplete="off"
-    placeholder="Your town, or a legislator&rsquo;s name" disabled>
+    placeholder="Your town or a legislator" disabled>
   <p class="count" id="lcount">Loading&hellip;</p>
   <p class="sr" id="lsay" role="status"></p>
   <div class="lmatch" id="lmatch"></div>
@@ -3403,11 +3409,13 @@ care about, learn how the legislature works, and explore the record from 1989 to
 today.</p>
 <div class="searchbig">
   <label for="hq" style="position:absolute;left:-9999px">Search bills</label>
-  <input id="hq" type="search" placeholder="Bill number, or words from the title">
-  <button id="hgo">Search</button>
+  <input id="hq" type="search" placeholder="Name, town, subject or bill">
+  <button id="hgo">{icon("search")}Search</button>
 </div>
+<!-- EACH CARD WITH ITS SECTION'S DRAWING, the nav's own (Polish 1, 9 October
+     2026): the prototype kit's home cards. -->
 <div class="entry">
-  <a href="/bills"><b>Browse bills</b><span>Search by committee, topic, sponsor,
+  <a href="/bills">{icon("bill")}<b>Browse bills</b><span>Search by committee, topic, sponsor,
     status or the day it was voted on</span></a>
   <!-- COMMITTEES, NOT LEGISLATORS. The finder in the right-hand column asks
        for a town and says what a town gives you, in nearly the same sentence
@@ -3415,8 +3423,8 @@ today.</p>
        twice, side by side. Committees had no route from the home page at all,
        and it is where a reader who knows the subject rather than the bill
        number starts. -->
-  <a href="committees.html"><b>Committees</b><span>{cmte_offer}</span></a>
-  <a href="learn.html"><b>Learn</b><span>How a bill moves, what the shorthand
+  <a href="committees.html">{icon("committee")}<b>Committees</b><span>{cmte_offer}</span></a>
+  <a href="learn.html">{icon("book")}<b>Learn</b><span>How a bill moves, what the shorthand
     means, and how to testify</span></a>
 </div>
 <div id="fresh" class="fresh"></div>
@@ -3452,7 +3460,7 @@ today.</p>
   <form class="hfrow" action="legislators.html" method="get">
     <label for="hq2" class="sr">Your town, or a legislator's name</label>
     <input id="hq2" name="q" type="search" autocomplete="off"{town_list_attr}
-      placeholder="Your town, or a legislator&rsquo;s name">
+      placeholder="Your town or a legislator">
     <button type="submit">Find</button>
   </form>{town_list}
 </div>
@@ -3506,7 +3514,7 @@ under, and every bill since 1989.</p>
 <form class="resfind" action="/search" method="get" role="search">
   <label for="resq" class="sr">A legislator, a committee, a town, a subject or a bill</label>
   <input id="resq" name="q" type="search" autocomplete="off"
-    placeholder="A legislator, a committee, a town, a subject or a bill" disabled>
+    placeholder="Name, town, committee or bill" disabled>
 </form>
 <div id="resout"></div>
 <noscript><p class="note">This page needs JavaScript to search. Without it,

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.490
+# GRANITE_VERSION: 2026-09-04.491
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -16388,6 +16388,10 @@ def _class_collisions():
         # the same answer in Python and in the browser" (the look of 7 October
         # 2026)
         "mtag",
+        # a drawing, which icon() writes in components.js and components.py
+        # alike, and bills.html's header carries written out (Polish 1, 9
+        # October 2026); _icons_named holds every one to the component
+        "icon",
     }
     here = Path(".")
     # The components draw on both sides by design: components.js with the
@@ -50528,6 +50532,163 @@ def _drawn_pages():
                   "part of themselves")
 
 
+# ---- the icons (Polish 1, the person, 9 October 2026) ------------------------------
+#
+# "Is there any way you can get the icons for the nav and homepage items among
+# other icons not currently live on the site as part of the polish 1 batch?"
+# components.icon (and components.js's icon) draws the prototype kit's
+# drawings, and every drawing on the site comes from it: the five sections in
+# the header (bills.html's nav, written out, and build_pages.shell's, from
+# NAV_TABS), the home page's three cards and its Search, Cite this page,
+# Follow, Report a problem, Share and Play. A drawing is decoration beside a
+# word: hidden from a screen reader, and never a control's only name.
+
+_ICON_CONTROLS = ("a", "button", "summary")
+_VOID_TAGS = {"area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta",
+              "param", "source", "track", "wbr"}
+
+
+def _icons_in(html):
+    """Every drawing marked class="icon" in `html`, as (its attributes, whether
+    anything inside it is text, and the nearest a, button or summary holding
+    it as (tag, attributes, its words) or None)."""
+    from html.parser import HTMLParser
+
+    class P(HTMLParser):
+        def __init__(self):
+            super().__init__(convert_charrefs=True)
+            self.stack, self.found, self.svg = [], [], None
+
+        def handle_starttag(self, tag, attrs):
+            a = dict(attrs)
+            if self.svg is not None:
+                self.svg["depth"] += tag == "svg"
+                return
+            if tag == "svg" and "icon" in (a.get("class") or "").split():
+                ctl = next((e for e in reversed(self.stack) if e["tag"] in _ICON_CONTROLS), None)
+                self.svg = {"attrs": a, "depth": 0, "text": False, "ctl": ctl}
+            elif tag not in _VOID_TAGS:
+                self.stack.append({"tag": tag, "attrs": a, "words": []})
+
+        def handle_endtag(self, tag):
+            if self.svg is not None:
+                if tag == "svg" and not self.svg["depth"]:
+                    self.found.append(self.svg)
+                    self.svg = None
+                elif tag == "svg":
+                    self.svg["depth"] -= 1
+                return
+            for i in range(len(self.stack) - 1, -1, -1):
+                if self.stack[i]["tag"] == tag:
+                    del self.stack[i:]
+                    break
+
+        def handle_data(self, data):
+            if self.svg is not None:
+                self.svg["text"] = self.svg["text"] or bool(data.strip())
+                return
+            for e in self.stack:
+                if e["tag"] in _ICON_CONTROLS:
+                    e["words"].append(data)
+
+    p = P()
+    p.feed(html)
+    p.close()
+    return [(s["attrs"], s["text"],
+             (s["ctl"]["tag"], s["ctl"]["attrs"], " ".join("".join(s["ctl"]["words"]).split()))
+             if s["ctl"] else None) for s in p.found]
+
+
+def _fixture_drawn():
+    """The fixture's pages as their scripts draw them (drawn_pages.draw), once a
+    run: {page or page#tab: what it drew}."""
+    def make():
+        import contextlib
+        import io
+        import drawn_pages as DP
+        shared, _base, _ran, days = _fixture_site_shared()
+        root = _shared_root("gr-drawn-icons-")
+        with contextlib.redirect_stdout(io.StringIO()):
+            return DP.draw(shared / "site", root / "drawn", days[0])
+    return _once_a_run("the fixture's pages, drawn", make)
+
+
+@check("frontend", "every icon is the icon component's, hidden from a screen reader, in a link or "
+                   "button that names itself in words, and both headers draw the same five")
+def _icons_named():
+    """The person asked for the prototype kit's icons on the five sections,
+    the home page's cards and the page's actions (9 October 2026). Read off
+    the fixture's built pages and off what their scripts draw (drawn_pages):
+
+    every drawing marked class="icon" is exactly one of components.icon's,
+    byte for byte, so a drawing copied into a page by hand (bills.html's nav
+    is written out) cannot drift from the component; each carries
+    aria-hidden="true" and focusable="false" and holds no text, so a screen
+    reader reads the control and never "image"; each sits in a link, a button
+    or a summary whose own words -- or, where the drawing stands alone, whose
+    aria-label -- name it; every header on the site, bills.html's and
+    build_pages.shell's alike, gives the five sections in NAV_TABS's order,
+    each with its drawing before its word; and the drawings the person asked
+    for are on the fixture's pages: the five sections, the home page's cards
+    and Search, and Cite this page. Follow, Report a problem and Share are
+    mounted where the drawing does not record, and _share_beside_report
+    holds their markup to the same rules."""
+    import components as C
+    import build_pages as BP
+    node = shutil.which("node") or shutil.which("node.exe")
+    if not node:
+        assert not os.environ.get("GITHUB_ACTIONS"), "node is not on PATH on the nightly"
+        return "skip", "node is not on PATH, so the drawn half of the pages could not be read"
+    shared, _base, _ran, _days = _fixture_site_shared()
+    site = shared / "site"
+    sources = {f.relative_to(site).as_posix(): f.read_text(encoding="utf-8", errors="replace")
+               for f in sorted(site.rglob("*.html"))}
+    for key, d in _fixture_drawn().items():
+        sources[f"drawn {key}"] = "\n".join(h for _k, h, *_ in d["elements"] if h)
+    drawings = {n: C.icon(n) for n in C.ICONS}
+    seen, bad, n_icons, navs = Counter(), [], 0, 0
+    want_nav = [(href, drawings[g], label) for href, label, g in BP.NAV_TABS]
+    for where, html in sources.items():
+        if 'class="icon"' not in html:
+            continue
+        found = _icons_in(html)
+        n_icons += len(found)
+        exact = 0
+        for n, svg in drawings.items():
+            k = html.count(svg)
+            seen[n] += k
+            exact += k
+        if exact != len(found):
+            bad.append(f"{where}: {len(found) - exact} drawings marked icon that are not "
+                       "components.icon's own")
+        for attrs, text, ctl in found:
+            if attrs.get("aria-hidden") != "true" or attrs.get("focusable") != "false" or text:
+                bad.append(f"{where}: a drawing a screen reader would read ({attrs})")
+            elif ctl is None:
+                bad.append(f"{where}: a drawing in no link, button or summary")
+            elif not re.search(r"\w", ctl[2]) and not (ctl[1].get("aria-label") or "").strip():
+                bad.append(f"{where}: a <{ctl[0]}> whose only name is its drawing")
+        for nav in re.findall(r'<div class="navtabs">(.*?)</div>', html, re.S):
+            navs += 1
+            got = re.findall(r'<a href="([^"]+)"(?: aria-current="page")?>(<svg class="icon".*?</svg>)'
+                             r'([^<]*)</a>', nav, re.S)
+            # 404.html names them from the root, since it answers at any depth
+            if [(h.lstrip("/"), s, w.strip()) for h, s, w in got] != want_nav:
+                bad.append(f"{where}: the header's sections are not NAV_TABS's five, each with its "
+                           f"drawing: {[(h, w.strip()) for h, _s, w in got]}")
+    # Follow, Report a problem and Share are mounted outside anything the
+    # drawing records; _share_beside_report holds those three the same way.
+    wanted = {"bill", "person", "committee", "book", "calendar", "cite", "search"}
+    missing = sorted(n for n in wanted if not seen[n])
+    if missing:
+        bad.append("no fixture page draws " + ", ".join(missing))
+    assert navs, "no header on the fixture's pages has its sections"
+    assert not bad, f"{len(bad)} faults: " + "; ".join(bad[:5])
+    return "ok", (f"{n_icons} drawings on {len(sources)} built and drawn pages, every one the "
+                  f"component's, hidden, and named by its control's words; {navs} headers with "
+                  "the five sections; " + ", ".join(f"{n} {seen[n]}" for n in sorted(seen) if seen[n]))
+
+
 # ---- one date formatter in each language (8 October 2026) -------------------------
 #
 # The person chose month first (D6 of the polish plan): "May 21, 2026", and
@@ -55776,6 +55937,158 @@ def _report_box_fallback():
                   "/legislator/adam-schroadter is thanked")
 
 
+SHARE_BOX_TEST = r"""
+const { readFileSync } = require("fs");
+require("./stub.js");
+const on = {};
+document.addEventListener = (t, f) => { (on[t] = on[t] || []).push(f); };
+const tick = () => new Promise(r => setImmediate(r));
+const want = JSON.parse(readFileSync("./want.json", "utf8"));
+try { (0, eval)(readFileSync("./page.js", "utf8")); }
+catch (e) { console.log("LOAD " + e.constructor.name + ": " + e.message); process.exit(1); }
+const setNav = v => Object.defineProperty(globalThis, "navigator",
+  { value: v, configurable: true, writable: true });
+(async () => {
+const fail = [];
+// THE BOX, AS IT WAS, behind its drawing.
+const box = reportBox("bill", "2026/HB1442");
+if (!box.includes("<summary>" + want.report + "Report a problem with this page</summary>"))
+  fail.push("the report's button is not its drawing and its words");
+for (const part of want.form) if (!box.includes(part)) fail.push("the report's form lost " + part);
+const kinds = (box.match(/<option value="[a-z]+">/g) || []).map(s => s.slice(15, -2));
+if (kinds.join() !== want.fields.join()) fail.push("the report offers " + kinds.join());
+if (shareBox() !== want.share) fail.push("Share is drawn as " + shareBox());
+// OPENING IT starts its clock and asks which build the page is, as before.
+const toggles = (on.toggle || []).filter(f => String(f).includes('"report"'));
+const form = { dataset: {} }, asked = [];
+globalThis.fetch = async u => { asked.push(u); return { ok: true, json: async () => ({ finished: "x" }) }; };
+toggles.forEach(f => f({ target: { classList: { contains: c => c === "report" }, open: true,
+  querySelector: s => s === ".reportform" ? form : null } }));
+await tick(); await tick();
+if (toggles.length !== 1 || !form.dataset.opened || !asked.includes("/build.json"))
+  fail.push("opening the report box no longer starts its clock and asks for the build");
+// SHARE, pressed in each kind of browser.
+const presses = (on.click || []).filter(f => String(f).includes("[data-share]"));
+if (presses.length !== 1) fail.push(presses.length + " listeners for Share");
+const URL0 = "https://graniterecord.org/bill/2026/hb1442/votes";
+async function press(nav) {
+  const st = { textContent: "stale" };
+  const btn = { parentNode: { querySelector: s => s === ".sharestate" ? st : null } };
+  setNav(nav);
+  location.href = URL0 + "#cite-mla";
+  document.title = "HB 1442 (2026) | Granite Record";
+  presses.forEach(f => f({ target: { closest: s => s === "[data-share]" ? btn : null } }));
+  for (let i = 0; i < 6; i++) await tick();
+  return st.textContent;
+}
+let shared = [], copied = [];
+const clip = { writeText: async t => { copied.push(t); } };
+const refuse = name => async () => { const e = new Error(name); e.name = name; throw e; };
+let said = await press({ share: async d => { shared.push(d); }, clipboard: clip });
+if (shared.length !== 1 || shared[0].url !== URL0 || shared[0].title !== document.title || copied.length)
+  fail.push("with a share sheet: " + JSON.stringify({ shared, copied }));
+shared = []; copied = [];
+said = await press({ clipboard: clip });
+if (said !== "Link copied" || copied.join() !== URL0)
+  fail.push("with no share sheet the address was not copied and said: " + JSON.stringify({ said, copied }));
+copied = [];
+said = await press({ share: refuse("AbortError"), clipboard: clip });
+if (copied.length) fail.push("the reader closed the sheet and the address was copied anyway");
+said = await press({ share: refuse("NotAllowedError"), clipboard: clip });
+if (said !== "Link copied" || copied.join() !== URL0)
+  fail.push("a sheet that failed did not fall back to copying: " + JSON.stringify({ said, copied }));
+said = await press({});
+if (said !== "Copy this address: " + URL0) fail.push("with no clipboard: " + JSON.stringify(said));
+said = await press({ clipboard: { writeText: refuse("NotAllowedError") } });
+if (said !== "Copy this address: " + URL0) fail.push("with the clipboard refused: " + JSON.stringify(said));
+// FOLLOW, as mountFollow writes it beside Cite this page.
+const made = [], mk = document.createElement, byId = document.getElementById;
+document.createElement = t => { const e = mk(t); made.push(e); return e; };
+document.getElementById = id => (id === "followbox" ? null : byId(id));
+mountFollow("bill");
+const follow = made.map(e => e.innerHTML).find(h => h.includes('class="follow"')) || "";
+if (!follow.includes("<summary>" + want.follow + "Follow</summary>"))
+  fail.push("Follow is not its drawing and its word: " + follow.slice(0, 160));
+console.log("@@" + JSON.stringify({ report: box, share: shareBox(), follow }));
+console.log(fail.length ? "FAILED: " + fail.join("; ") : "ALL OK");
+process.exit(fail.length ? 1 : 0);
+})();
+"""
+
+
+@check("frontend", "Share opens the browser's own sheet or copies the address and says so, and the "
+                   "report box beside it opens as before")
+def _share_beside_report():
+    """Report a problem and Share at the foot of a record's page (the person, 9
+    October 2026: "a visual polish of the report button so it matches the
+    style of the print, testify, cite this page, and follow icons and add a
+    share button alongside the report button with the same thing in mind").
+
+    Run in node on app.js as the page loads it: the report box is the box it
+    was -- the same form, the thirteen kinds of fault, the honeypot, Send and
+    its status line, the email address -- with the report drawing before its
+    words, and opening it still starts its clock and asks for the build
+    (sending it is _report_box_fallback's, which posts through the same
+    handler into report.js). Share is one button with its drawing and its
+    word and a status line beside it. Pressed where the browser has a share
+    sheet, it hands the sheet the page's title and its address without the
+    fragment, and copies nothing; where there is none, it copies the address
+    and says "Link copied"; where the reader closes the sheet, nothing more
+    happens; where the sheet fails, it copies instead; and where the
+    clipboard is missing or refused, it says the address to copy. Nothing is
+    sent anywhere: no share service and no fetch. And the three buttons
+    mounted where drawn_pages does not record them -- Report a problem, Share
+    and Follow -- are held to _icons_named's rules: one drawing each, hidden,
+    in a button or a summary with words of its own."""
+    import components as C
+    app, stub = Path("src/pages/app.js"), Path("tests/dom_stub.js")
+    if not (app.exists() and stub.exists()):
+        return "skip", "app.js or dom_stub.js is not here"
+    node = shutil.which("node") or shutil.which("node.exe")
+    if not node:
+        assert not os.environ.get("GITHUB_ACTIONS"), "node is not on PATH on the nightly"
+        return "skip", "node is not on PATH"
+    want = {
+        "report": C.icon("report"), "follow": C.icon("follow"),
+        "share": (f'<button type="button" class="pshare" data-share>{C.icon("share")}Share</button>'
+                  '<span class="sharestate" role="status" aria-live="polite"></span>'),
+        "form": ['<details class="report" data-rkind="bill" data-rref="2026/HB1442">',
+                 '<form class="reportform" novalidate>',
+                 '<select name="field"><option value="">Choose one</option>',
+                 '<textarea name="note" rows="4" maxlength="1000"></textarea>',
+                 '<input name="website" tabindex="-1" autocomplete="off">',
+                 '<button type="submit">Send</button> <span class="reportstate" role="status" '
+                 'aria-live="polite"></span>',
+                 '<a href="mailto:contact@graniterecord.org">contact@graniterecord.org</a>'],
+        "fields": ["date", "status", "sponsor", "vote", "hearing", "committee", "text", "link",
+                   "chapter", "veto", "topic", "fiscal", "other"],
+    }
+    root = Path(tempfile.mkdtemp(prefix="gr-share-"))
+    try:
+        (root / "page.js").write_text(_with_components(app.read_text(encoding="utf-8")), encoding="utf-8")
+        (root / "stub.js").write_text(stub.read_text(encoding="utf-8"), encoding="utf-8")
+        (root / "want.json").write_text(json.dumps(want), encoding="utf-8")
+        (root / "t.js").write_text(SHARE_BOX_TEST, encoding="utf-8")
+        r = _run([node, "t.js"], capture_output=True, text=True, encoding="utf-8", cwd=root, timeout=60)
+        assert r.returncode == 0 and "ALL OK" in r.stdout, (r.stdout + r.stderr).strip()[-500:]
+        drawn = json.loads(r.stdout.split("@@", 1)[1].splitlines()[0])
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    # The three controls held to _icons_named's rules: each drawing hidden,
+    # and each in a button or a summary that says what it is in words.
+    for what, html in drawn.items():
+        found = _icons_in(html)
+        assert len(found) == 1, f"{what} carries {len(found)} drawings, not one"
+        attrs, text, ctl = found[0]
+        assert attrs.get("aria-hidden") == "true" and not text, f"{what}'s drawing is read aloud"
+        assert ctl and ctl[0] in ("button", "summary") and re.search(r"\w", ctl[2]), (
+            f"{what}'s drawing is not in a button or summary with words of its own: {ctl}")
+    return "ok", ("the report box's form and its thirteen kinds unchanged behind its drawing, and "
+                  "opening it starts its clock; Share hands the sheet the title and the address, "
+                  "copies and says \"Link copied\" without one or when it fails, does nothing when "
+                  "closed, and says the address when the clipboard is missing or refused")
+
+
 REPORT_GENUINE = [
     "The roll call says 190-150 but the House Journal says 191-150.",
     "HB 1442: 190-150 vs 191-150",
@@ -56086,7 +56399,10 @@ def _about_reports():
     if absent:
         return "skip", "not here: " + ", ".join(absent)
     about = " ".join(bp.read_text(encoding="utf-8").split())
-    m = re.search(r"<summary>(Report a problem[^<]*)</summary>", app.read_text(encoding="utf-8"))
+    # Its drawing comes first since Polish 1 (9 October 2026): the label is
+    # the words after it.
+    m = re.search(r'<summary>(?:\$\{icon\("report"\)\})?(Report a problem[^<]*)</summary>',
+                  app.read_text(encoding="utf-8"))
     assert m, "app.js no longer labels the report box"
     label = " ".join(m.group(1).split())
     assert f"<i>{label}</i>" in about, (

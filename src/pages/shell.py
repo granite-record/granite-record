@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-07.25
+# GRANITE_VERSION: 2026-09-07.26
 """
 The page every record's own address is: bills.html, with one record open.
 
@@ -30,6 +30,7 @@ from pathlib import Path
 
 import build_date
 from components import date_span, date_words  # noqa: F401 (the builders ask for them here)
+from components import icon
 
 E = html.escape
 
@@ -228,7 +229,7 @@ def cite_block(path, title, base, built=""):
     # <details> inherited, so above 720px every citation ran on one line past
     # its box and opening it made the whole page scroll sideways.
     return ('<div class="pageacts" id="pageacts"><details class="pcite">'
-            '<summary>Cite this page</summary>'
+            f'<summary>{icon("cite")}Cite this page</summary>'
             '<div class="citebody">'
             '<p class="citenote">Granite Record indexes the General '
             'Court&rsquo;s record; it is not that record. Where a citation '
