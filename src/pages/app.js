@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.182
+// GRANITE_VERSION: 2026-09-07.183
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -6443,7 +6443,9 @@ function renderMemberHead(m){
     esc(m.phone)}</a>`]);
   if(svc.length)facts.push(["On Record",svc.join(" &middot; ")]);
   else if(yrs)facts.push(["On Record",esc(yrs)]);
-  const head=recordHead({trail:[["Legislators","legislators.html"],
+  // OFFICIALS, where Legislators was (decision 127, 8 October 2026: the
+  // Legislators page is the Officials page, and /legislators 301s to it).
+  const head=recordHead({trail:[["Officials","officials.html"],
       [(former?"Former ":"")+(m.chamber==="S"?"Senator":"Representative"),""]],
     title:esc(fullTitle(named)),line,facts,rail:"",actions:"",kind:`member rh-p${code||"X"}`});
   const note=former?`<p class="rnote">${!/^(Rep|Sen)\. /.test(plain)?`Former member${

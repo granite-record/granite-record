@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.514
+# GRANITE_VERSION: 2026-09-04.515
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -51537,6 +51537,100 @@ def _motion_keys():
     sd = Path("src/pages/build_session_pages.py").read_text(encoding="utf-8")
     assert "MO.classify(" in sd, "a session day no longer reads the motion's key"
     return "ok", f"{len(MOTION_CASES)} forms of the record's questions, each the approved words' key"
+
+
+@check("session", "a session day names each member by the seat they held in its term: the old "
+                  "seat on an old day, the roster's in the term it describes, and no seat where "
+                  "the record gives none", needs=("build_session_pages", "build_site_v2"))
+def _session_seat_at_the_time(BSP, B2):
+    """labels-use-the-seat-held-at-the-time (the person, 16 September 2026:
+    "show them as a rep when they were a rep and a senator when they were a
+    senator"). A session day's chips -- who spoke, who was excused, who
+    presided -- were each member's label from today's roster, so a member
+    whose district was renumbered or who moved seats was named on 2015's
+    days by the seat of 2025. The seat is each member's own ballots' of the
+    day's term (build_site_v2.term_seats, written into the floor record);
+    in the term the roster describes, a sitting member's roster label; and
+    where neither says, the name alone with the day's chamber's honorific.
+    Rep. James Spillane, whose seat was Rockingham 5 in 2015-2016 (a fixture's
+    ballots) and is Rockingham 2 now."""
+    def ballot(year, label, member="905", name="Spillane, James"):
+        return {"year": str(year), "body": "H", "vote_number": 1, "member_id": member,
+                "name": name, "party": "R", "label": label, "date": f"3/1/{year}"}
+    seats = B2.term_seats({
+        "905": [ballot(2015, "Rep. James Spillane (R - Rock 5)"),
+                ballot(2016, "Rep. James Spillane (R - Rock 5)"),
+                ballot(2025, "Rep. James Spillane (R - Rock 2)")],
+        # two seats in one term name neither
+        "77": [ballot(2015, "Rep. Pat Two (D - Hills 3)", "77", "Two, Pat"),
+               ballot(2016, "Rep. Pat Two (D - Hills 4)", "77", "Two, Pat")]})
+    assert seats.get("2015-2016", {}).get("905") == "Rep. James Spillane (R - Rock 5)" and \
+        seats.get("2025-2026", {}).get("905") == "Rep. James Spillane (R - Rock 2)" and \
+        "77" not in seats.get("2015-2016", {}), f"the seats of a term read off its ballots: {seats}"
+    root = Path(tempfile.mkdtemp())
+    try:
+        (root / "legislators.json").write_text(json.dumps([
+            {"id": "905", "slug": "james-spillane-rock-2", "name": "Spillane, James", "chamber": "H",
+             "party": "R", "display_full": "Rep. James Spillane (R - Rock 2)"}]), encoding="utf-8")
+        (root / "former.json").write_text("[]", encoding="utf-8")
+        m = BSP.Members(root)
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    m.seats = {"2015-2016": {"905": "Rep. James Spillane (R - Rock 5)"}}
+    m.current = "2025-2026"
+    got = {}
+    for term in ("2015-2016", "2009-2010", "2025-2026"):
+        m.term = term
+        got[term] = (BSP.member_info("H", "Spillane", m) or {}).get("display_full")
+    want = {"2015-2016": "Rep. James Spillane (R - Rock 5)", "2009-2010": "Rep. James Spillane",
+            "2025-2026": "Rep. James Spillane (R - Rock 2)"}
+    assert got == want, f"a member's chip on a day of each term reads {got}, not {want}"
+    chip = BSP.members_row("H", ["Spillane"], m, str)
+    assert "(R - Rock 2)" in chip, chip
+    m.term = "2015-2016"
+    assert "(R - Rock 5)" in BSP.members_row("H", ["Spillane"], m, str), (
+        "a speaker line of 2015 names the member by today's seat")
+    return "ok", ("Rep. James Spillane is Rock 5 on a day of 2015-2016, Rock 2 on one of "
+                  "2025-2026, and seatless on one of 2009-2010, where no ballot says")
+
+
+@check("data", "every chip on a past term's session day names the seat its member's own ballots "
+               "of that term give, or none", needs=("build_session_pages",))
+def _session_chips_seat_of_their_term(BSP):
+    """The built pages, held to _session_seat_at_the_time's rule: on every
+    session day outside the term the roster describes, a member's chip with
+    a seat names the seat that member's ballots of the day's term give
+    (data/floor_record.json's seats)."""
+    sess, fr = Path("site/session"), BSP.floor_record()
+    if not sess.exists() or not fr.get("seats"):
+        return "skip", "no built session days or no floor record seats here"
+    ids = {}
+    for f in ("site/legislators.json", "site/former.json"):
+        if Path(f).exists():
+            for r in json.loads(Path(f).read_text(encoding="utf-8")):
+                if r.get("slug"):
+                    ids.setdefault(r["slug"], str(r.get("id") or ""))
+    import build_date
+    import proceedings
+    today = build_date.today().isoformat()
+    current = proceedings.vote_term(today[:4], today)
+    chip = re.compile(r'<span class="mchip p-\w"><a href="legislator/([^"]+)\.html">([^<]*?)'
+                      r'(?: <span class="mtag">([^<]*)</span>)?</a>')
+    bad, seen = [], 0
+    for page in sorted(sess.glob("[HS]/*.html")):
+        term = proceedings.vote_term(page.stem[:4], page.stem)
+        if term == current:
+            continue
+        for slug, name, tag in chip.findall(page.read_text(encoding="utf-8")):
+            if not tag:
+                continue
+            seen += 1
+            want = (fr["seats"].get(term) or {}).get(ids.get(slug, ""))
+            if f"{name} {tag}" != want:
+                bad.append(f"{page.parent.name} {page.stem}: {name} {tag}, the ballots of "
+                           f"{term} say {want!r}")
+    assert not bad, f"{len(bad)} chip(s) name a seat not held that term: " + "; ".join(bad[:4])
+    return "ok", f"{seen:,} chips with a seat on past terms' days, each the seat of its term"
 
 
 @check("frontend", "a session day folds the consent calendar and the excused with their counts, "

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.193
+# GRANITE_VERSION: 2026-09-05.194
 """
 Generate the faceted site from real General Court data.
 
@@ -2764,6 +2764,26 @@ def floor_moment(st):
             "stated": st.get("debate_start") is not None, "s": state}
 
 
+def term_seats(votes_by_member):
+    """{term: {member id: label}}: the seat each member held in each term, as
+    their own ballots of that term give it (ballot_seat) -- the label a
+    session day of the term names them by (labels-use-the-seat-held-at-the-
+    time; the person, 16 September 2026). Only a label with a seat in it, and
+    only where every ballot of the term gives the same one: a member whose
+    ballots of a term name two seats is named without one there, which is
+    true, rather than with either, which may not be."""
+    seen, cache = defaultdict(lambda: defaultdict(set)), {}
+    for mid, rows in votes_by_member.items():
+        for v in rows:
+            k = (v.get("label"), v.get("name"), v.get("body"), v.get("party"))
+            if k not in cache:
+                cache[k] = ballot_seat(v, v.get("body"))
+            if " - " in cache[k]:
+                seen[P.vote_term(v["year"], v.get("date"))][str(mid)].add(cache[k])
+    return {t: {m: next(iter(ls)) for m, ls in sorted(ms.items()) if len(ls) == 1}
+            for t, ms in sorted(seen.items())}
+
+
 def write_floor_record(data_dir, votes_by_member, cards, moments=None):
     """data/floor_record.json (FLOOR_RECORD, above). Returns its path."""
     presiding = defaultdict(list)
@@ -2772,18 +2792,23 @@ def write_floor_record(data_dir, votes_by_member, cards, moments=None):
             if v.get("vote") == "Presiding":
                 presiding[_roll_call_key(v)].append(
                     [str(v.get("member_id") or ""), ballot_seat(v, v.get("body"))])
+    seats = term_seats(votes_by_member)
     f = Path(data_dir) / FLOOR_RECORD
     f.write_text(json.dumps({
         "_about": "Not published. For build_session_pages.py: who each roll call's "
                   "Presiding ballot names (presiding), and where each roll call's card is "
                   "on its bill's Votes tab (cards, the index into the bill record's "
-                  "rollcalls). Written by build_site_v2.py, which reads the ballots.",
+                  "rollcalls); the seat each member held in each term, off their own "
+                  "ballots (seats). Written by build_site_v2.py, which reads the ballots.",
         "presiding": {k: sorted(v) for k, v in sorted(presiding.items())},
-        "cards": cards, "moments": moments or {}}, separators=(",", ":"), sort_keys=True),
+        "cards": cards, "moments": moments or {}, "seats": seats},
+        separators=(",", ":"), sort_keys=True),
         encoding="utf-8")
     print(f"{f}: {len(presiding):,} roll calls with a presiding ballot, "
           f"{sum(len(b) for t in cards.values() for b in t.values()):,} roll-call cards "
-          f"on {sum(len(t) for t in cards.values()):,} bills' Votes tabs")
+          f"on {sum(len(t) for t in cards.values()):,} bills' Votes tabs; "
+          f"{sum(len(s) for s in seats.values()):,} members' seats across "
+          f"{len(seats)} terms")
     # SILENCE IS NOT SUCCESS: ballots with no presiding officer at all is a
     # vote field read wrong, and every session day would name nobody.
     if votes_by_member and not presiding:

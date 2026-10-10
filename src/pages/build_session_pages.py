@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-19.31
+# GRANITE_VERSION: 2026-09-19.32
 """
 A page for every day the House sat.
 
@@ -160,6 +160,11 @@ class Members:
         # are matched among the members serving the term, as surnames are.
         self.by_full = collections.defaultdict(list)
         self.term = ""
+        # THE SEAT HELD AT THE TIME (labels-use-the-seat-held-at-the-time):
+        # {term: {member id: label}} off each member's own ballots of the term
+        # (floor_record's seats), and the term the roster describes. Set by
+        # main(); label() reads them.
+        self.seats, self.current = {}, ""
         # Each member by their id and by their page, with the party and the
         # label their record gives: a session day's term file counts the
         # excused by party and names who presided (day_record).
@@ -178,7 +183,8 @@ class Members:
                 if slug:
                     info = {"id": str(r.get("id") or ""), "slug": slug,
                             "label": r.get("display_full") or r.get("label") or "",
-                            "party": party_letter(r.get("party") or r.get("party_code"))}
+                            "party": party_letter(r.get("party") or r.get("party_code")),
+                            "sitting": f == "legislators.json"}
                     self.by_slug.setdefault(slug, info)
                     if info["id"]:
                         self.by_id.setdefault(info["id"], info)
@@ -193,6 +199,24 @@ class Members:
                 bare = first.split()[0] if first.split() else ""
                 if bare and bare != first:
                     self.by_full[(ch, f"{bare} {last}".lower())].append((slug, terms))
+
+    def label(self, slug, body):
+        """The member as the day's term names them (the person, 16 September
+        2026: "show them as a rep when they were a rep"): the seat their own
+        ballots of the term give (seats); in the term the roster describes, a
+        sitting member's roster label; anywhere else the name alone, with the
+        day's chamber's honorific -- no seat rather than a seat they may not
+        have held. A member renumbered or moved between terms is named on an
+        old day by the old seat."""
+        info = self.by_slug.get(slug) or {}
+        got = (self.seats.get(self.term) or {}).get(info.get("id") or "")
+        if got:
+            return got
+        if info.get("sitting") and self.term and self.term == self.current:
+            return info.get("label") or ""
+        bare = re.sub(r"\s*\([^()]*\)\s*$", "", info.get("label") or "")
+        bare = re.sub(r"^(?:Former\s+)?(?:Rep|Sen)\.\s+", "", bare).strip()
+        return f"{'Sen.' if body == 'S' else 'Rep.'} {bare}" if bare else ""
 
     def slug(self, body, name):
         n = re.sub(r"\s+", " ", (name or "").strip()).strip(".")
@@ -244,7 +268,10 @@ def member_info(body, name, members):
     info = (getattr(members, "by_slug", None) or {}).get(slug) if slug else None
     if not info:
         return None
-    return {"display_full": info.get("label") or "", "slug": slug, "party": info.get("party") or ""}
+    # The seat held in the day's term (Members.label), where the members
+    # know their seats; a stand-in that does not, as its record gives.
+    label = members.label(slug, body) if hasattr(members, "label") else info.get("label")
+    return {"display_full": label or "", "slug": slug, "party": info.get("party") or ""}
 
 
 def member_html(body, name, members, esc):
@@ -1620,7 +1647,7 @@ def floor_record(path=FLOOR_RECORD):
               "presided, and no roll call names its card on its bill's Votes tab")
         got = {}
     return {"presiding": got.get("presiding") or {}, "cards": got.get("cards") or {},
-            "moments": got.get("moments") or {}}
+            "moments": got.get("moments") or {}, "seats": got.get("seats") or {}}
 
 
 def load_rows(site):
@@ -1937,7 +1964,9 @@ def presiding_on(day, narrative, presided, members, offices):
                 by_slug[slug]["journal"] = True
                 continue
             info = members.by_slug.get(slug) or {}
-            x = {"id": info.get("id") or "", "slug": slug, "label": info.get("label") or "",
+            x = {"id": info.get("id") or "", "slug": slug,
+                 "label": (members.label(slug, day.body) if hasattr(members, "label")
+                           else info.get("label")) or "",
                  "party": info.get("party") or "", "roll_calls": 0, "journal": True}
             off = office_on(offices, day.body, day.date, x["id"])
             if off:
@@ -2128,6 +2157,13 @@ def main():
     data = json.loads(Path(session_days.NARRATIVES).read_text(encoding="utf-8"))
     amendments, unplaced_amendments = amendments_on_sittings(days, data, body)
     fr = floor_record()
+    # Each member by the seat they held in the day's term (Members.label).
+    members.seats = fr.get("seats") or {}
+    _today = build_date.today().isoformat()
+    members.current = proceedings.vote_term(_today[:4], _today)
+    if not members.seats:
+        print("  WARNING: the floor record names no member's seat by term: every chip "
+              "outside the current term is drawn without a seat")
     floor = collections.defaultdict(list)
     for (b_, d_), day_ in days.items():
         if b_ == body:
