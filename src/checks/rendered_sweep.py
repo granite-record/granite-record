@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-08.6
+# GRANITE_VERSION: 2026-10-08.7
 """
 The rendered sweep: a built site measured as a reader's browser draws it.
 
@@ -143,8 +143,8 @@ PAGES = [
     {"name": "committee", "path": "committee/H64.html", "dir": "committee"},
     # The House and the Senate as committees (10 October 2026): each chamber's
     # page of session days, beside the day pages, from its card on /committees.
-    {"name": "chamber-house", "path": "session/H.html"},
-    {"name": "chamber-senate", "path": "session/S.html"},
+    {"name": "chamber-house", "path": "session/house.html"},
+    {"name": "chamber-senate", "path": "session/senate.html"},
     {"name": "calendar", "path": "calendar.html"},
     # Added with the Week view of 9 October 2026, Monday to Friday beside the
     # month: a week in session, its own page, in the List view and the Week
