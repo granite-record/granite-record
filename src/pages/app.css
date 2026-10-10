@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.242 */
+/* GRANITE_VERSION: 2026-09-07.243 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -6537,6 +6537,18 @@ border-radius:var(--r-in);box-shadow:0 10px 26px var(--shadow);max-height:min(60
   :where(body.pg) .hright .actlist li{display:block}
   :where(body.pg) .hright .actd{display:block;font-size:var(--t-sm);padding:0 0 var(--sp-1)}
 }
+/* COMING UP'S WEEK, NAMED (D13, item 120; the drawing's "This Week Oct 5-9,
+   2026"): the week's name as the neutral chip (components.chip), its weekdays beside it, so from
+   Saturday a reader cannot take next week's meetings for the week gone. */
+:where(body.pg) .calwk{display:flex;flex-wrap:wrap;align-items:center;gap:var(--sp-2) var(--sp-4);
+margin:0 0 var(--sp-4);font-size:var(--t-ui);color:var(--ink-2)}
+/* THE SLOGAN IN THE WORDMARK'S FACE, LARGER (D13, item 117): Source Serif 4
+   at 700, the site's nearest to the lockup's letters, as the drawing has it. */
+:where(body.pg) .slogan{font-family:var(--serif);font-size:1.75rem;font-weight:700;line-height:1.15;
+text-wrap:balance}
+@media (max-width:45em){:where(body.pg) .slogan{font-size:1.5rem}}
+/* The rebuild line under the latest session days, clear of the player. */
+:where(body.pg) .hright .fresh{margin-top:var(--sp-5)}
 /* ==== /HUBS, PAGES ======================================================== */
 
 /* PAGES:END ------------------------------------------------------- */

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.509
+# GRANITE_VERSION: 2026-09-04.510
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -28084,8 +28084,12 @@ def _chain():
         import build_calendar as BC
         import proceedings as _P
         from datetime import date as _date, timedelta as _td
+        # FROM SATURDAY, NEXT WEEK (D13, 8 October 2026): built on a Saturday
+        # or a Sunday the rail is the coming Monday's week, whole.
         built = _date.fromisoformat(json.loads((root / "site" / "home.json").read_text(
             encoding="utf-8"))["generated"])
+        if built.weekday() >= 5:
+            built = built + _td(days=7 - built.weekday())
         wk_end = built + _td(days=6 - built.weekday())
         homepage = (root / "site" / "index.html").read_text(encoding="utf-8",
                                                             errors="replace")
@@ -28093,7 +28097,7 @@ def _chain():
         stray = [d for d in rail if not built.isoformat() <= d <= wk_end.isoformat()]
         assert not stray, (
             f"the built home page's Coming up shows {stray}, outside the week "
-            f"it was built in ({built} to {wk_end})")
+            f"it was built for ({built} to {wk_end})")
         week = BC.weeks_from(_P.load(root / "proceedings.csv")).get(
             BC.week_key(built)) or {}
         due = sorted(d for d in week if d >= built.isoformat() and week[d])
@@ -49814,9 +49818,9 @@ def _pager_labels():
         with contextlib.redirect_stdout(io.StringIO()):
             up = BP.calendar_html(site, today=_dt.date(2026, 3, 11), rows=_cal_rows())
         assert '<span class="calcmte">House Session Day</span>' in up and "calkind k-floor" not in up \
-            and re.search(r'<p class="calmore calall">[^<]*<a href="calendar/2026-W12\.html">Next Week ›</a></p>', up), (
-            "Coming up does not name the floor House Session Day, or its way to next week "
-            f"is not Next Week: {re.search(r'<p class=.calmore calall.>.*?</p>', up)}")
+            and '<p class="calmore calall"><a href="calendar.html">See the full calendar</a></p>' in up, (
+            "Coming up does not name the floor House Session Day, or does not end with See the "
+            f"full calendar (D13): {re.search(r'<p class=.calmore calall.>.*?</p>', up)}")
     finally:
         shutil.rmtree(root, ignore_errors=True)
     # A session day's pager: the days either side by their dates, and its
@@ -53232,8 +53236,10 @@ def _coming_up_is_this_week():
     four fixed days -- a Monday, a Thursday, a Saturday and a Sunday, the one
     getDay() calls 0 -- out of rows written here, and holds it to the week
     build_calendar draws: from today to Sunday, every sitting in that span,
-    the floor included, a hundred bills on one day and all of them shown,
-    and next week counted and linked rather than listed. Then it runs
+    the floor included, a hundred bills on one day and all of them shown;
+    from Saturday the next week's, whole and named Next Week (D13, the
+    person, 8 October 2026, item 120); and the rail ending with "See the
+    full calendar" (item 118), where it once counted next week. Then it runs
     HOME_JS's own block in node against a stub page, because the build is
     read for days after it is made and it is the script that keeps the rail
     to the READER's week. _chain holds the built fixture home page to it too.
@@ -53278,17 +53284,24 @@ def _coming_up_is_this_week():
             rows = rows_for(today)
             with contextlib.redirect_stdout(io.StringIO()):
                 page = BP.calendar_html(tmp, today=today, rows=rows)
-            sun = BC.monday(today) + _dt.timedelta(days=6)
-            t, s = today.isoformat(), sun.isoformat()
+            ahead = today.weekday() >= 5
+            start = BC.monday(today) + _dt.timedelta(days=7) if ahead else today
+            sun = BC.monday(start) + _dt.timedelta(days=6)
+            t, s = start.isoformat(), sun.isoformat()
             shown = re.findall(r'class="calday" data-d="([^"]+)"', page)
             wide = [d for d in shown if not t <= d <= s]
             assert not wide, (
                 f"built on {today:%a %d %b}, Coming up shows {wide}, outside "
-                f"this week ({t} to {s}) -- the rail is the Calendar tab's "
-                "week, not a fortnight")
-            # The same sittings the Calendar tab's week holds from today on:
-            # read through the same function, so the two cannot differ.
-            week = BC.weeks_from(rows).get(BC.week_key(today)) or {}
+                f"its week ({t} to {s}) -- the rail is the Calendar tab's "
+                "week, not a fortnight, and from Saturday the next")
+            name = re.search(r'<p class="calwk"><span class="chip">([^<]+)</span> <span>([^<]+)</span>',
+                             page)
+            assert name and name.group(1) == ("Next Week" if ahead else "This Week"), (
+                f"built on {today:%a %d %b}, Coming up's week is named "
+                f"{name.group(1) if name else 'nothing'}")
+            # The same sittings the Calendar tab's week holds from its first
+            # day on: read through the same function, so the two cannot differ.
+            week = BC.weeks_from(rows).get(BC.week_key(start)) or {}
             want = {(k.date, BP.card_name(k).lower()) for d in week if d >= t
                     for k in week[d]}
             got = set(re.findall(
@@ -53299,38 +53312,45 @@ def _coming_up_is_this_week():
                 f"built on {today:%a %d %b}, Coming up and the Calendar tab's "
                 f"week disagree: only on the rail {sorted(got - want)}, only "
                 f"on the week page {sorted(want - got)}")
-            assert "House Session Day" in page, (
-                "a floor sitting this week is on the Calendar tab and not in "
-                "Coming up, named as the Calendar names it")
-            n_sb = len(set(re.findall(r'bills#SB(\d+)"', page)))
-            assert n_sb == 100, (
-                f"one sitting of 100 bills shows {n_sb} of them in Coming up: "
-                "the rail is capped again, and cuts a day short")
-            nxt = BC.week_key(sun + _dt.timedelta(days=1))
-            n_next = len({k for d, day in (BC.weeks_from(rows).get(nxt) or {}).items()
-                          for k in day})
+            if not ahead:
+                assert "House Session Day" in page, (
+                    "a floor sitting this week is on the Calendar tab and not in "
+                    "Coming up, named as the Calendar names it")
+                n_sb = len(set(re.findall(r'bills#SB(\d+)"', page)))
+                assert n_sb == 100, (
+                    f"one sitting of 100 bills shows {n_sb} of them in Coming up: "
+                    "the rail is capped again, and cuts a day short")
             line = re.search(r'<p class="calmore calall">(.*?)</p>', page)
-            assert line and f'href="calendar/{nxt}.html"' in line.group(1) \
-                and line.group(1).startswith(f"{n_next} more meeting"), (
-                    f"built on {today:%a %d %b}, the line under Coming up "
-                    f"should count next week's {n_next} meetings and link "
-                    f"calendar/{nxt}.html; it reads "
-                    f"{line.group(1) if line else 'nothing'!r}")
+            assert line and line.group(1) == '<a href="calendar.html">See the full calendar</a>', (
+                f"built on {today:%a %d %b}, Coming up does not end with See the "
+                f"full calendar: {line.group(1) if line else 'nothing'!r}")
             assert "fortnight" not in page, (
                 "Coming up still speaks of a fortnight, and it shows one week")
             checked += 1
 
-        # A SATURDAY WITH THE WEEK'S BUSINESS OVER: the rail says so and
-        # points at next week, rather than showing next week as this one.
+        # A SATURDAY WITH THE WEEK'S BUSINESS OVER: the rail is next week's,
+        # named Next Week with its weekdays, never read as the week gone (D13).
         sat = _dt.date(2026, 9, 26)
         with contextlib.redirect_stdout(io.StringIO()):
             page = BP.calendar_html(tmp, today=sat,
                                     rows=rows_for(sat, weekdays_only=True))
-        assert "calday" not in page, (
-            "with nothing left this week, Coming up still draws a day: "
-            + page[:200])
-        assert "rest of this week" in page and 'href="calendar/2026-W40.html"' in page, (
-            "an empty week does not say so and link to next week: " + page[:300])
+        days = re.findall(r'class="calday" data-d="([^"]+)"', page)
+        assert days and days[0] >= "2026-09-28" and days[-1] <= "2026-10-04", (
+            f"on a Saturday Coming up draws {days}, not next week's days")
+        assert '<span class="chip">Next Week</span> <span>Sep 28 – Oct 2, 2026</span>' in page, (
+            "on a Saturday Coming up does not name next week and its weekdays: "
+            + page[:300])
+        # AND A WEEKDAY WITH THE WEEK'S BUSINESS OVER says so, and offers the
+        # full calendar.
+        fri = _dt.date(2026, 10, 2)
+        with contextlib.redirect_stdout(io.StringIO()):
+            page = BP.calendar_html(tmp, today=fri,
+                                    rows=[r for r in rows_for(fri, weekdays_only=True)
+                                          if r["date"] < fri.isoformat()])
+        assert "calday" not in page and "rest of this week" in page \
+            and "See the full calendar" in page, (
+                "an empty rest of the week does not say so and offer the calendar: "
+                + page[:300])
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
 
@@ -53348,8 +53368,10 @@ def _coming_up_is_this_week():
     for reader, days, want_kept in (
             ("2026-09-21", span, span[1:8]),     # a Monday: the whole week
             ("2026-09-24", span, span[4:8]),     # a Thursday: to Sunday
-            ("2026-09-27", span, span[7:8]),     # a Sunday: only today
-            ("2026-09-27", span[8:], [])):       # a Sunday, next week built
+            ("2026-09-26", span, span[8:15]),    # a Saturday: next week (D13)
+            ("2026-09-27", span, span[8:15]),    # a Sunday: next week
+            ("2026-09-27", span[8:], span[8:15]),  # a Sunday, next week built
+            ("2026-09-26", span[:7], [])):       # a Saturday, this week built
         y, mo, d = map(int, reader.split("-"))
         prog = _components_js() + "\n" + (
             "const R=Date;class D extends R{constructor(...a){a.length?super(...a)"
@@ -53379,9 +53401,10 @@ def _coming_up_is_this_week():
         if not want_kept:
             assert "this week" in got["cal"] and "NEXT" in got["cal"], (
                 "when the reader's week has nothing left, HOME_JS must say so "
-                "and keep the line that links to next week: " + got["cal"][:200])
-    return "ok", (f"{checked} build dates and 4 reading dates: today to Sunday, "
-                  "uncapped, the floor included, next week linked")
+                "and keep the line to the full calendar: " + got["cal"][:200])
+    return "ok", (f"{checked} build dates and 6 reading dates: today to Sunday, "
+                  "uncapped, the floor included; from Saturday next week, named so; "
+                  "the full calendar offered")
 
 
 @check("frontend", "the home page's Coming up keeps the whole week in a box that scrolls")
@@ -53565,15 +53588,15 @@ def _coming_up_without_study_committees():
             f"Coming up's cards are {cards}: a standing committee's interim study "
             "session belongs on it")
         line = re.search(r'<p class="calmore calall">(.*?)</p>', page)
-        assert line and line.group(1).startswith("1 more meeting next week"), (
-            "the line under Coming up counts next week's study committees: "
+        assert line and "See the full calendar" in line.group(1), (
+            "the line under Coming up is not the full calendar: "
             + (line.group(1) if line else "no line"))
         # A WEEK OF STUDY COMMITTEES ALONE is a week with nothing on the rail.
         with contextlib.redirect_stdout(io.StringIO()):
             empty = BP.calendar_html(tmp, today=monday, rows=[r for r in rows if r.get("study")
                                                               or r["kind"] == "study committee"])
         assert "calday" not in empty and "rest of this week" in empty \
-            and "Nothing is on the calendar for next week" in empty, (
+            and "sits mostly from January to June" in empty, (
                 "a week of study committees alone still draws a day in Coming up: "
                 + empty[:300])
     finally:

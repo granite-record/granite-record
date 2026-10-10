@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.179
+# GRANITE_VERSION: 2026-09-04.181
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -31,7 +31,7 @@ import bill_order as BO
 import build_date
 import html as _html
 import shell as _shell
-from components import WORDBOOK, chip, clock, icon, pchip
+from components import WORDBOOK, chip, clock, date_span, icon, pchip
 import seating
 import json
 import re
@@ -729,12 +729,25 @@ def calendar_html(out, today=None, rows=None):
     # no cap. home.json's fortnight is left alone: the hearings feed reads it.
     today = today or build_date.today()
     weeks = BC.weeks_from(proceedings.load() if rows is None else rows)
-    sunday = BC.monday(today) + _dt.timedelta(days=6)
-    week = home_week(weeks.get(BC.week_key(today)))
+    # FROM SATURDAY, NEXT WEEK (D13, the person, 8 October 2026: "Coming up
+    # shows the current week's upcoming meetings; from Saturday it switches
+    # to the next week's, clearly labelled as next week (never read as the
+    # week just past)"). A weekend has no committee meetings, so on Saturday
+    # and Sunday the rail is the coming Monday's week, whole, and says so.
+    ahead = today.weekday() >= 5
+    start = BC.monday(today) + _dt.timedelta(days=7) if ahead else today
+    monday = BC.monday(start)
+    sunday = monday + _dt.timedelta(days=6)
+    week = home_week(weeks.get(BC.week_key(start)))
     dates = sorted(d for d in week
-                   if today.isoformat() <= d <= sunday.isoformat() and week[d])
+                   if start.isoformat() <= d <= sunday.isoformat() and week[d])
     nxt = BC.week_key(sunday + _dt.timedelta(days=1))
     n_next = sum(len(v) for v in home_week(weeks.get(nxt)).values())
+    # The week's name and its weekdays, as the Calendar's pager says them
+    # ("This Week", "Next Week": the person, 9 October 2026, item 17).
+    label = ('<p class="calwk">' + chip("Next Week" if ahead else "This Week")
+             + f' <span>{esc(date_span(monday, monday + _dt.timedelta(days=4), "medium"))}'
+             + "</span></p>")
 
     # WHERE THE REST IS: next week's own page, which build_calendar writes
     # for every week in its range, empty ones included -- linked here only
@@ -743,15 +756,11 @@ def calendar_html(out, today=None, rows=None):
     # clock. The link says "Next Week ›", the Calendar pager's own words for
     # the same page (the person, 9 October 2026: "The week after should be
     # Next Week"); it said "See next week".
-    if n_next:
-        onward = (f"{n_next}{' more' if dates else ''} "
-                  f"meeting{'' if n_next == 1 else 's'} next week. ",
-                  f"calendar/{nxt}.html", "Next Week \u203a")
-    else:
-        onward = ("Nothing is on the calendar for next week yet. ",
-                  "calendar.html", "See the full calendar")
-    more = ('<p class="calmore calall">' + esc(onward[0])
-            + f'<a href="{esc(onward[1])}">{esc(onward[2])}</a></p>')
+    # THE RAIL ENDS WITH THE CALENDAR (D13, item 118: "Coming up ends with a
+    # plain 'See the full calendar' link instead of the count of next week's
+    # meetings"). It said how many meetings next week held and linked that
+    # week's page; from Saturday next week is the rail itself.
+    more = '<p class="calmore calall"><a href="calendar.html">See the full calendar</a></p>'
 
     if not dates:
         # THE REST OF THE WEEK IS EMPTY every weekend in session and every
@@ -759,15 +768,16 @@ def calendar_html(out, today=None, rows=None):
         # business resumes rather than just "nothing", because the General
         # Court is a part-time legislature and this is what the page says for
         # half the year.
-        note = "Nothing is scheduled for the rest of this week."
+        note = ("Nothing is scheduled next week yet." if ahead
+                else "Nothing is scheduled for the rest of this week.")
         if not n_next:
             # MOSTLY (the survey of 7 October 2026): both chambers sat until veto
             # day, 19 August, in 2026, and into the autumn in most years.
             note += (" The General Court sits mostly from January to June, and "
                      "committees meet on bills from the autumn filing period "
                      "onwards.")
-        return ('<section class="cal"><h2>Coming up</h2>'
-                f'<p class="note">{esc(note)}</p>{more}</section>')
+        return (f'<section class="cal" data-mon="{monday.isoformat()}"><h2>Coming up</h2>'
+                f'{label}<p class="note">{esc(note)}</p>{more}</section>')
 
     meets = {k: rs for d in dates for k, rs in week[d].items()}
     up = [r for rs in meets.values() for r in rs]
@@ -807,7 +817,7 @@ def calendar_html(out, today=None, rows=None):
     # days of committee cards down a 300px column, and it was asked on 19
     # September to be "a bit more consolidated ... so it isn't as long". A
     # week is the Calendar tab's own unit, and the rail is now that week.
-    html = ['<section class="cal"><h2>Coming up</h2>']
+    html = [f'<section class="cal" data-mon="{monday.isoformat()}"><h2>Coming up</h2>{label}']
     body, missing = cal_days(days, meets, titles, years, code, when, esc)
     # THE WHOLE WEEK, IN A BOX OF ITS OWN HEIGHT. A week in session is forty
     # sittings -- the week of 26 January 2026 held 43 -- and drawn in full it
@@ -2674,15 +2684,20 @@ fetch(DATA("home.json")).then(r=>r.json()).then(H=>{
   // week. getDay() calls Sunday 0, which ends an ISO week rather than
   // starting one, so on a Sunday the week has no days left after today.
   // Nothing else here is touched.
+  // FROM SATURDAY, NEXT WEEK (D13): on a Saturday or a Sunday in the
+  // reader's clock the rail is the coming Monday's week, Monday to Sunday,
+  // and its name says so; on a weekday it is today to Sunday, and its name
+  // says This Week again for a rail built at the weekend.
   (function(){
     const now=new Date(); now.setHours(0,0,0,0);
-    const toSun=(7-now.getDay())%7;
+    const dow=now.getDay(),ahead=dow===6||dow===0;
+    const from=ahead?(dow===6?2:1):0,to=ahead?from+6:(7-dow)%7;
     const days=[...document.querySelectorAll(".calday[data-d]")];
     let left=0;
     days.forEach(d=>{
       const p=d.dataset.d.split("-").map(Number);
       const off=Math.round((new Date(p[0],p[1]-1,p[2])-now)/86400000);
-      if(off<0||off>toSun){d.remove();return;}
+      if(off<from||off>to){d.remove();return;}
       left++;
       const rel=d.querySelector(".cdrel");
       // `off<=14`, as the built labels have it: a week's days never reach
@@ -2692,9 +2707,18 @@ fetch(DATA("home.json")).then(r=>r.json()).then(H=>{
         :off<=14?`in ${off} days`:"";
     });
     const cal=document.querySelector(".cal");
+    const name=cal&&cal.querySelector&&cal.querySelector(".calwk .chip");
+    if(name&&cal.dataset&&cal.dataset.mon){
+      const p=cal.dataset.mon.split("-").map(Number);
+      const off=Math.round((new Date(p[0],p[1]-1,p[2])-now)/86400000);
+      // The rail's Monday against the reader's: this week's is 0 to 6 days
+      // back, next week's 1 to 7 days on.
+      if(off<=0&&off>-7)name.textContent="This Week";
+      else if(off>0&&off<=7)name.textContent="Next Week";
+    }
     if(cal&&days.length&&!left){
-      // The line under the rail stays: it says what next week holds and is
-      // the way to it, which is the useful thing to say about an empty week.
+      // The line under the rail stays: it is the way to the full calendar,
+      // which is the useful thing to offer under an empty week.
       const more=cal.querySelector(".calall");
       cal.innerHTML=`<h2>Coming up</h2><p class="note">Nothing else is
         scheduled this week.</p>`+(more?more.outerHTML:"");
