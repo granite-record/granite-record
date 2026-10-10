@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-10-09.1 */
+/* GRANITE_VERSION: 2026-10-09.2 */
 /* A BILL'S PRINT SHEET (print.js), loaded the first time the sheet opens.
 
    ON A SCREEN the sheet covers the page: the sheet as it prints on the left,
@@ -57,6 +57,9 @@ border:1px solid var(--edge);cursor:pointer}
 .ps-live{font:400 var(--t-sm)/1.45 var(--sans);color:var(--ink-2);margin:var(--sp-4) 0 0}
 .ps-live:empty{display:none}
 .ps-keep{font:400 var(--t-sm)/1.45 var(--sans);color:var(--ink-2);margin:var(--sp-5) 0 0}
+/* how many pages the sheet prints, with the settings as they stand (print.js countPages) */
+.ps-count{font:600 var(--t-ui)/1.4 var(--sans);color:var(--ink);margin:var(--sp-6) 0 0;
+padding-top:var(--sp-4);border-top:1px solid var(--rule)}
 
 /* ------------------------------------------------------------ THE PAPER */
 /* 51rem is Letter's 8.5in at 96 to the inch (A4's 8.27in takes the same
@@ -179,36 +182,39 @@ text-decoration:none}
 padding:var(--sp-2) 0;border-bottom:1px solid var(--sheet-rule);font:600 var(--t-sm)/1.4 var(--sans)}
 .ps-docs .ps-addr{font-weight:400}
 
-/* a narrower screen: the settings first, the sheet at the screen's width */
+/* a narrower screen: the settings first, the sheet at the screen's width.
+   On the screen's sheet only (.ps-layer): the frame print.js counts the
+   pages in is a page's width, and must lay the sheet out as paper does. */
 @media screen and (max-width:83em){
-  .ps-layout{grid-template-columns:minmax(0,1fr);row-gap:var(--sp-7)}
-  .ps-menu{position:static;order:-1}
-  .ps-paper{width:auto;padding:2rem 2rem 1.75rem}
-  .ps-btn{flex:0 1 auto}
+  .ps-layer .ps-layout{grid-template-columns:minmax(0,1fr);row-gap:var(--sp-7)}
+  .ps-layer .ps-menu{position:static;order:-1}
+  .ps-layer .ps-paper{width:auto;padding:2rem 2rem 1.75rem}
+  .ps-layer .ps-btn{flex:0 1 auto}
 }
 @media screen and (max-width:45em){
-  .ps-wrap{padding:var(--sp-6) var(--sp-6) var(--sp-10)}
-  .ps-h{font-size:var(--t-h2)}
-  .ps-paper{padding:var(--sp-6) var(--sp-5) var(--sp-7);box-shadow:none}
-  .ps-mtop{grid-template-columns:minmax(0,1fr) 5.5rem;column-gap:var(--sp-5)}
-  .ps-qr,.ps-qrsvg{width:5.5rem}.ps-qrsvg{height:5.5rem}
+  .ps-layer .ps-wrap{padding:var(--sp-6) var(--sp-6) var(--sp-10)}
+  .ps-layer .ps-h{font-size:var(--t-h2)}
+  .ps-layer .ps-paper{padding:var(--sp-6) var(--sp-5) var(--sp-7);box-shadow:none}
+  .ps-layer .ps-mtop{grid-template-columns:minmax(0,1fr) 5.5rem;column-gap:var(--sp-5)}
+  .ps-layer .ps-qr,.ps-layer .ps-qrsvg{width:5.5rem}
+  .ps-layer .ps-qrsvg{height:5.5rem}
   /* the address is too long for the column on a phone's screen; it prints */
-  .ps-qr figcaption .ps-addr{display:none}
-  .ps-brandrow{flex-wrap:wrap}
-  .ps-how,.ps-how tbody{display:block}
-  .ps-how tr{display:flex;flex-wrap:wrap;column-gap:var(--sp-5);border-top:1px solid var(--sheet-rule);padding:var(--sp-2) 0}
-  .ps-how th,.ps-how td{display:block;border:0;width:auto;padding:0}
-  .ps-how td:last-child{flex:1 1 100%}
-  .ps-word{white-space:normal}
-  .ps-table thead{display:none}
-  .ps-table,.ps-table tbody,.ps-table tr,.ps-table td{display:block;width:auto}
-  .ps-table tr{border-bottom:1px solid var(--sheet-rule);padding:var(--sp-3) 0}
-  .ps-table td{border:0;padding:var(--sp-1) 0}
-  .ps-votes td:last-child,.ps-votes td:nth-child(3){width:auto}
-  .ps-facts th{width:6.5rem}
-  .ps-names{columns:2}
-  .ps-docs li{grid-template-columns:minmax(0,1fr)}
-  .ps-btn{flex:1 1 auto}
+  .ps-layer .ps-qr figcaption .ps-addr{display:none}
+  .ps-layer .ps-brandrow{flex-wrap:wrap}
+  .ps-layer .ps-how,.ps-layer .ps-how tbody{display:block}
+  .ps-layer .ps-how tr{display:flex;flex-wrap:wrap;column-gap:var(--sp-5);border-top:1px solid var(--sheet-rule);padding:var(--sp-2) 0}
+  .ps-layer .ps-how th,.ps-layer .ps-how td{display:block;border:0;width:auto;padding:0}
+  .ps-layer .ps-how td:last-child{flex:1 1 100%}
+  .ps-layer .ps-word{white-space:normal}
+  .ps-layer .ps-table thead{display:none}
+  .ps-layer .ps-table,.ps-layer .ps-table tbody,.ps-layer .ps-table tr,.ps-layer .ps-table td{display:block;width:auto}
+  .ps-layer .ps-table tr{border-bottom:1px solid var(--sheet-rule);padding:var(--sp-3) 0}
+  .ps-layer .ps-table td{border:0;padding:var(--sp-1) 0}
+  .ps-layer .ps-votes td:last-child,.ps-layer .ps-votes td:nth-child(3){width:auto}
+  .ps-layer .ps-facts th{width:6.5rem}
+  .ps-layer .ps-names{columns:2}
+  .ps-layer .ps-docs li{grid-template-columns:minmax(0,1fr)}
+  .ps-layer .ps-btn{flex:1 1 auto}
 }
 
 /* ------------------------------------------------------------ ON PAPER */
@@ -220,6 +226,22 @@ padding:var(--sp-2) 0;border-bottom:1px solid var(--sheet-rule);font:600 var(--t
 @page{margin:.6in .6in .7in;
   @bottom-right{content:"Page " counter(page) " of " counter(pages);font:400 .875rem "Public Sans",sans-serif}
   @bottom-left{font:400 .875rem "Public Sans",sans-serif}}
+/* WHERE A PAGE BREAKS, on paper and in the frame print.js counts the pages
+   in alike, since a break rule acts only where there are pages or columns. */
+.ps-table tr,.ps-how tr,.ps-facts tr,.ps-amds li,.ps-docs li,.ps-qr,.ps-legend{break-inside:avoid}
+.ps-mast{break-after:avoid}
+/* A table's head goes with its first row: paper carried HB 1449's Votes,
+   head and all, to the next page, where a column left the head behind. */
+.ps-table thead{break-after:avoid}
+.ps-table tbody tr:first-child{break-before:avoid}
+/* THE COUNTING FRAME (print.js countPages): off the screen, as wide as a
+   printed page's text and holding the sheet as paper holds it, in columns a
+   printed page's text is as tall as -- one column, one page. */
+.ps-measurer{position:absolute;left:-300vw;top:0;border:0;visibility:hidden;pointer-events:none}
+.ps-measure body{background:var(--sheet)}
+.ps-measure .ps-paper{width:auto;padding:0;border:0;box-shadow:none}
+.ps-pages{column-gap:0;column-fill:auto;overflow:visible}
+.ps-end{height:0}
 @media print{
   html.ps-open,html.ps-open body{overflow:visible;background:var(--sheet) !important}
   html.ps-open body > :not(.ps-layer){display:none !important}
@@ -230,8 +252,8 @@ padding:var(--sp-2) 0;border-bottom:1px solid var(--sheet-rule);font:600 var(--t
   .ps-paper{width:auto;padding:0;border:0;box-shadow:none}
   /* app.css makes every table a scrolling block at 45em and under, and a
      Letter page's text is 701px wide: on paper the sheet's tables would
-     shrink to their words, so they stay tables. */
+     shrink to their words, so they stay tables (and in the counting frame,
+     as narrow, below). */
   .ps-paper table{display:table;overflow:visible}
-  .ps-table tr,.ps-how tr,.ps-facts tr,.ps-amds li,.ps-docs li,.ps-qr,.ps-legend{break-inside:avoid}
-  .ps-mast{break-after:avoid}
 }
+.ps-measure .ps-paper table{display:table;overflow:visible}

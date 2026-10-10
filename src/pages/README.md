@@ -37,7 +37,11 @@ browser from the record the page already holds, beside a short menu of
 settings, with a QR code to the bill's page and each change to the text
 numbered by the amendment that made it. A bill's page mounts it with one
 call, `GRPrint.open(record, row)`, from its Print button; `print.css` is
-loaded the first time it opens. It draws with `components.js` and reads
+loaded the first time it opens. The bill's text is an option, unticked every
+time it opens (the person, 10 October 2026); ticked, it prints whole, and the
+menu says how many pages the sheet prints on Letter and on A4, counted by
+laying the sheet out again in columns a printed page's size. It draws with
+`components.js` and reads
 `app.js`'s own tables, so it formats nothing of its own; `preflight` composes
 it in node on the real records of `tests/print_cases.json` with every
 section present and absent.

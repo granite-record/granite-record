@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-10-09.1
+// GRANITE_VERSION: 2026-10-09.2
 /* A BILL'S PRINT SHEET. A reference sheet of one bill's record for paper,
    composed in the reader's browser from the record the page already holds,
    beside a short menu of settings, and printed with the browser's own dialog
@@ -498,30 +498,48 @@ function pageWords(){
 
 // ================================================================= SETTINGS
 // Remembered in this browser only (localStorage "gr-print"), never sent.
+//
+// THE BILL'S TEXT IS OFF UNTIL TICKED, EVERY TIME (the person, 10 October
+// 2026: "an option to include or exclude printing the bill text, with it
+// ticked off by default. If they do select to print the bill text, it should
+// print the full length text and it should always list the full number of
+// pages"). So the tick is never remembered -- a reader who printed one
+// bill's text does not print HB 2's 107,482 words by opening the next --
+// and, ticked, the text prints whole, however long; the menu says how many
+// pages the sheet comes to (countPages, below), and every page's foot says
+// its number of them all. Which text, once ticked, is remembered.
 const KEY="gr-print";
 const SECS=["summary","votes","reports","text","docs"];
 function defaults(){
-  return {sec:{summary:1,votes:1,reports:1,text:1,docs:1},names:0,qr:1,text:"marked"};
+  return {sec:{summary:1,votes:1,reports:1,text:0,docs:1},names:0,qr:1,text:"marked"};
 }
 function loadSettings(){
   const st=defaults();
   try{
     const s=JSON.parse(localStorage.getItem(KEY)||"null");
-    if(s&&s.sec){SECS.forEach(k=>{if(k in s.sec)st.sec[k]=s.sec[k]?1:0;});
+    if(s&&s.sec){SECS.forEach(k=>{if(k in s.sec&&k!=="text")st.sec[k]=s.sec[k]?1:0;});
       st.names=s.names?1:0;st.qr=s.qr===0?0:1;if(typeof s.text==="string")st.text=s.text;}
   }catch(_){}
   return st;
 }
-function saveSettings(st){try{localStorage.setItem(KEY,JSON.stringify(st));}catch(_){}}
+function saveSettings(st){
+  const sec=Object.assign({},st.sec);delete sec.text;
+  try{localStorage.setItem(KEY,JSON.stringify({sec,names:st.names,qr:st.qr,text:st.text}));}catch(_){}
+}
 
-// A BILL TOO LONG TO PRINT BY ACCIDENT. Above about twenty pages of text the
-// text is off until the reader ticks it, with its length said beside the box
-// (the design's open question 1: "about 20 pages is the starting guess").
-// PER_PAGE is measured, not assumed: on Letter in this sheet's type, HB
-// 1681's chaptered text took about three pages for its 1,156 words clean and
-// about five for 1,882 marked (its struck words counted), so about 400 a
-// page. The twenty is the design's guess, still the person's to settle.
-const PER_PAGE=400, LONG_PAGES=20;
+// THE PAPER: a page's own size less print.css's @page margins (0.6in at the
+// top and the sides, 0.7in at the foot, where the page's number goes), at
+// 96 CSS pixels to the inch, as Chrome lays a printed page out. preflight
+// holds these margins to print.css's. A4 is the A4 Chrome prints to, read
+// off its own PDFs on 10 October 2026: 595.92 by 841.92 points, where the
+// standard's is 595.28 by 841.89 -- its text 0.86px wider, which moved a
+// line, and so a page, on SB 570's sheet when the standard's was used.
+const MARGIN={top:.6,side:.6,foot:.7};
+const PAPERS=[["Letter",8.5,11],["A4",595.92/72,841.92/72]];
+// AND A PIXEL MORE. Chrome printed SB 570's last line on A4 0.8px past the
+// page's text box rather than carry it over, where a column of exactly the
+// box's height carried it: so the column is a pixel taller.
+const pageBox=([,w,h])=>({w:(w-2*MARGIN.side)*96,h:(h-MARGIN.top-MARGIN.foot)*96+1});
 
 // ================================================================ THE RECORD
 const hasIndex=d=>!!d&&(((d.nver||0)>1)||!!(d.namd||0));
@@ -555,20 +573,13 @@ function textChoice(d,ctx,st){
   const h=has(d,ctx);
   return [st.text,"marked","clean","amendments","introduced"].find(c=>h[c])||"";
 }
-function textWords(d,ctx){
-  const ix=(ctx.versions||{}).ix, vs=(ix&&ix.versions)||[];
-  if(vs.length)return vs[vs.length-1].words||0;
-  return Math.round(String((d.billtext||{}).body||"").length/6);
-}
-const isLong=(d,ctx)=>textWords(d,ctx)>PER_PAGE*LONG_PAGES;
-const pagesOf=(d,ctx)=>Math.max(1,Math.round(textWords(d,ctx)/PER_PAGE));
 
 // The files the sheet's text needs that are not here yet: the versions'
 // blocks for the marked, clean and introduced texts, the amendments' own
 // texts for theirs. open() asks for them and draws again as they land.
 function needs(d,ctx,st){
   const ix=(ctx.versions||{}).ix;
-  if(!st.sec.text||!ix||!has(d,ctx).text||(isLong(d,ctx)&&!st.long))return [];
+  if(!st.sec.text||!ix||!has(d,ctx).text)return [];
   const have=(ctx.versions||{}).files||{}, vs=ix.versions||[];
   const choice=textChoice(d,ctx,st);
   const u=v=>v&&(v.blocks_url||v.text_url);
@@ -883,11 +894,10 @@ ${amendmentList(d,B,W)}
 function sheet(d,b,ctx,st){
   const W=ctx.words||pageWords(), h=has(d,ctx);
   const on=k=>h[k]&&st.sec[k];
-  const textOn=on("text")&&!(isLong(d,ctx)&&!st.long);
   return `<div class="ps-sheet">${masthead(d,b,ctx,st,W)}${glance(d,b,ctx,W)}${
     on("summary")?analysis(d):""}${how(d,W)}${on("summary")?story(d,W):""}${
     on("votes")?votes(d,st,W):""}${on("reports")?reports(d,W):""}${
-    textOn?text(d,ctx,st,W):""}${on("docs")?docs(d):""}</div>`;
+    on("text")?text(d,ctx,st,W):""}${on("docs")?docs(d):""}</div>`;
 }
 
 // The settings: what the sheet holds, and which text. Only what this record
@@ -897,7 +907,6 @@ function menu(d,b,ctx,st){
   const box=(k,label,on,hint,cls)=>`<label class="ps-opt${cls?" "+cls:""}"><input type="checkbox" ${k}${
     on?" checked":""}><span>${label}${hint?`<span class="ps-hint">${hint}</span>`:""}</span></label>`;
   const nRc=(d.rollcalls||[]).filter(r=>(r.members||[]).length).length;
-  const long=isLong(d,ctx);
   const radio=(v,label)=>h[v]?`<label class="ps-opt"><input type="radio" name="ps-text" value="${v}"${
     textChoice(d,ctx,st)===v?" checked":""}><span>${label}</span></label>`:"";
   return `<form class="ps-form" novalidate>
@@ -911,8 +920,8 @@ ${h.votes?box('data-sec="votes"',"Votes",st.sec.votes):""}
 ${h.names?box('data-opt="names"',"Each member&rsquo;s vote on a roll call",st.names,
   `About a page for each House roll call: this bill has ${nRc===1?"one":nRc}.`,"ps-optsub"):""}
 ${h.reports?box('data-sec="reports"',"Committee reports",st.sec.reports):""}
-${h.text?box('data-sec="text"',"The bill&rsquo;s text",st.sec.text&&(!long||st.long),
-  long?`About ${pagesOf(d,ctx)} pages, so it is left off unless you tick it.`:""):""}
+${h.text?box('data-sec="text"',"Include the bill&rsquo;s text",st.sec.text,
+  "Off unless you tick it. Ticked, the whole text prints, however long."):""}
 ${h.docs?box('data-sec="docs"',"Documents, with their addresses",st.sec.docs):""}
 ${box('data-opt="qr"',"A QR code to this bill&rsquo;s page",st.qr)}
 </fieldset>
@@ -922,6 +931,7 @@ ${radio("clean",`${law?"As it became law":"The latest text"}, clean`)}
 ${radio("amendments","Each amendment&rsquo;s own text")}
 ${radio("introduced","As introduced")}
 </fieldset>`:`<p class="ps-mlead">The record holds no text of this bill: the Documents list gives the General Court&rsquo;s own.</p>`}
+<p class="ps-count" aria-live="polite">Counting the pages&hellip;</p>
 <div class="ps-btns"><button type="button" class="ps-btn ps-do" data-ps="print">Print</button><button type="button" class="ps-btn" data-ps="close">Back to the bill</button></div>
 <p class="ps-live" role="status" aria-live="polite"></p>
 <p class="ps-keep">Your choices are kept in this browser only, for the next bill you print. The paper size is your printer&rsquo;s: Letter or A4.</p>
@@ -948,6 +958,51 @@ function urlOf(d){
   return h&&/\/bill\/\d{4}\/[a-z0-9]+$/i.test(h)?h
     :`https://graniterecord.org/bill/${d.year}/${String(d.id||"").toLowerCase()}`;
 }
+// HOW MANY PAGES, AS THE BROWSER WILL PRINT THEM. A printed page is a column
+// the page's text is as wide and as tall as, so the sheet is laid out again
+// in a frame off the screen exactly that wide -- its media queries answer
+// as a printed page's do -- as columns exactly that tall, and the browser's
+// own fragmentation, the same that prints, breaks it there: a table row, a
+// list item, a heading and what follows it kept together, a paragraph
+// between its lines. The columns are the pages. On Letter and on A4, since
+// the printer decides which; checked against Chrome's own PDFs.
+let MEASURE=null, FRAME=null;
+function measurer(){
+  if(MEASURE)return MEASURE;
+  const f=FRAME=document.createElement("iframe");
+  f.className="ps-measurer";f.tabIndex=-1;f.title="";
+  f.setAttribute("aria-hidden","true");
+  const sheets=[...document.querySelectorAll('link[rel="stylesheet"]')]
+    .map(l=>`<link rel="stylesheet" href="${esc(l.href)}">`).join("");
+  f.srcdoc=`<!doctype html><html class="ps-measure"><head><meta charset="utf-8">${sheets}</head><body></body></html>`;
+  MEASURE=new Promise(res=>{f.addEventListener("load",()=>res(f));});
+  document.body.appendChild(f);
+  return MEASURE;
+}
+// [[paper, pages]] for the sheet's HTML, Letter first.
+async function countPages(html){
+  const f=await measurer(), out=[];
+  for(const p of PAPERS){
+    const {w,h}=pageBox(p), doc=f.contentDocument;
+    f.style.width=`${w}px`;f.style.height=`${h}px`;
+    doc.body.innerHTML=`<div class="ps-paper ps-pages">${html}<div class="ps-end"></div></div>`;
+    const box=doc.body.firstChild;
+    box.style.width=`${w}px`;box.style.height=`${h}px`;box.style.columnWidth=`${w}px`;
+    void box.offsetHeight;
+    await doc.fonts.ready;
+    const at=box.lastChild.getBoundingClientRect().left-box.getBoundingClientRect().left;
+    out.push([p[0],Math.round(at/w)+1]);
+  }
+  return out;
+}
+// What the menu says of them.
+function pagesSaid(c){
+  const n=k=>`${k} page${k===1?"":"s"}`;
+  const [[pa,a],[pb,b]]=c;
+  return a===b?`With these settings the sheet prints ${n(a)}, on ${pa} or ${pb} paper.`
+    :`With these settings the sheet prints ${n(a)} on ${pa} paper and ${n(b)} on ${pb}.`;
+}
+
 let OPEN=null;
 const VCACHE={};
 
@@ -955,6 +1010,7 @@ function close(){
   if(!OPEN)return;
   const o=OPEN;OPEN=null;
   o.layer.remove();o.foot.remove();
+  if(FRAME){FRAME.remove();FRAME=null;MEASURE=null;}
   document.documentElement.classList.remove("ps-open");
   o.inerted.forEach(el=>{el.inert=false;});
   window.removeEventListener("beforeprint",o.stamp);
@@ -1001,6 +1057,17 @@ function open(d,b,opts){
   document.documentElement.classList.add("ps-open");
 
   const status=()=>layer.querySelector(".ps-live");
+  // The pages, counted after every drawing: one count at a time, since they
+  // share the frame, and only the latest said.
+  let counted=Promise.resolve(), asked=0;
+  const count=()=>{
+    const n=++asked, said=t=>{const c=layer.querySelector(".ps-count");if(c&&n===asked)c.textContent=t;};
+    if(needs(d,ctx,st).length){said("The pages are counted once the bill’s text has loaded.");return;}
+    said("Counting the pages…");
+    counted=counted.then(()=>n!==asked?null:countPages(paper.innerHTML).then(c=>{
+      if(OPEN&&OPEN.layer===layer){ctx.pages=c;said(pagesSaid(c));}
+    })).catch(()=>{said("");});
+  };
   const draw=()=>{
     paper.innerHTML=sheet(d,b,ctx,st);
     const want=needs(d,ctx,st), btn=layer.querySelector('[data-ps="print"]');
@@ -1015,18 +1082,19 @@ function open(d,b,opts){
         .catch(e=>{ctx.versions.files[u]={error:e.message||String(e)};})
         .then(()=>{if(OPEN&&OPEN.layer===layer)draw();});
     });
+    count();
   };
   const sync=()=>{
     const f=side.querySelector("form");
     if(!f)return;
     f.querySelectorAll("input[data-sec]").forEach(i=>{
       const k=i.getAttribute("data-sec");
-      i.checked=!!st.sec[k]&&(k!=="text"||!isLong(d,ctx)||!!st.long);});
+      i.checked=!!st.sec[k];});
     const nm=f.querySelector('input[data-opt="names"]');
     const row=nm&&nm.closest(".ps-opt");
     if(nm){nm.checked=!!st.names;nm.disabled=!st.sec.votes;}
     if(row)row.classList.toggle("is-off",!st.sec.votes);
-    const textOn=!!st.sec.text&&(!isLong(d,ctx)||!!st.long);
+    const textOn=!!st.sec.text;
     f.querySelectorAll('input[name="ps-text"]').forEach(r=>{r.checked=r.value===textChoice(d,ctx,st);r.disabled=!textOn;});
     const tf=f.querySelector(".ps-textfs");if(tf)tf.classList.toggle("is-off",!textOn);
   };
@@ -1035,8 +1103,7 @@ function open(d,b,opts){
     const t=e.target;
     if(t.hasAttribute("data-sec")){
       const k=t.getAttribute("data-sec");
-      if(k==="text"&&isLong(d,ctx))st.long=t.checked?1:0;
-      else st.sec[k]=t.checked?1:0;
+      st.sec[k]=t.checked?1:0;
     }
     else if(t.getAttribute("data-opt")==="names")st.names=t.checked?1:0;
     else if(t.getAttribute("data-opt")==="qr")st.qr=t.checked?1:0;
@@ -1083,7 +1150,8 @@ function open(d,b,opts){
 }
 
 return {open,close,sheet,menu,needs,has,defaults,pageWords,
+  settings:{load:loadSettings,save:saveSettings},
   qr:{encode:qrEncode,read:qrRead,svg:qrSvg},
   text:{tokens,diff:diffTokens,blame,joinSteps,vday},
-  PER_PAGE,LONG_PAGES};
+  pages:{count:countPages,said:pagesSaid,PAPERS,MARGIN}};
 })();

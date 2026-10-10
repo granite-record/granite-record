@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.492
+# GRANITE_VERSION: 2026-09-04.493
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -50772,7 +50772,7 @@ const clone = x => JSON.parse(JSON.stringify(x));
 const urlOf = d => "https://graniterecord.org/bill/" + d.year + "/" + d.id.toLowerCase();
 const ctxOf = (c, files) => ({url: urlOf(c.d), asOf: "2026-10-09", today: "2026-10-09",
   versions: c.ix ? {ix: c.ix, files: files === undefined ? c.files : files} : {ix: null, files: {}}});
-const all = () => { const s = G.defaults(); s.names = 1; s.long = 1; return s; };
+const all = () => { const s = G.defaults(); s.names = 1; s.sec.text = 1; return s; };
 const words = ts => ts.filter(t => t.w !== "¶").map(t => t.w).join(" ");
 const out = {cases: {}, variants: {}, blame: {}, needs: {}};
 for (const [name, c] of Object.entries(C.cases)) {
@@ -50795,10 +50795,10 @@ for (const [name, c] of Object.entries(C.cases)) {
       was: words(B.doc.filter(t => t.st !== "add")) === words(toks[0]),
       steps: steps.map(s => [s.kind, s.tag, s.a ? s.a.num : null]),
       changed: B.doc.filter(t => t.st !== "eq" && t.w !== "¶").length};
-    const st = t => Object.assign(G.defaults(), {text: t});
+    const st = t => { const s = G.defaults(); s.sec.text = 1; s.text = t; return s; };
     out.needs[name] = {versions: c.ix.versions.length, marked: G.needs(c.d, ctxOf(c, {}), st("marked")).length,
       clean: G.needs(c.d, ctxOf(c, {}), st("clean")).length, loaded: G.needs(c.d, ctx, st("marked")).length,
-      loading: G.sheet(c.d, c.b, ctxOf(c, {}), G.defaults())};
+      loading: G.sheet(c.d, c.b, ctxOf(c, {}), all())};
   }
 }
 // Absence by the record: the law's record, less one part at a time.
@@ -50817,11 +50817,23 @@ for (const [k, f] of Object.entries(strip)) {
   const c2 = Object.assign({}, law, k === "text" ? {d, ix: null, files: {}} : {d});
   out.variants[k] = {sheet: G.sheet(d, law.b, ctxOf(c2), all()), menu: G.menu(d, law.b, ctxOf(c2), all())};
 }
-// A bill too long to print by accident.
-{ const c2 = clone(law); c2.ix.versions[c2.ix.versions.length - 1].words = G.PER_PAGE * G.LONG_PAGES + 1;
-  out.long = {dflt: G.sheet(c2.d, c2.b, ctxOf(c2), G.defaults()), menu: G.menu(c2.d, c2.b, ctxOf(c2), G.defaults()),
-    ticked: G.sheet(c2.d, c2.b, ctxOf(c2), Object.assign(G.defaults(), {long: 1})),
-    needs: G.needs(c2.d, ctxOf(c2, {}), G.defaults()).length}; }
+// The text: off by default, its tick never remembered, and ticked, whole
+// however long (the person, 10 October 2026); what the menu says of the pages.
+{ const store = {};
+  globalThis.localStorage = {getItem: k => (k in store ? store[k] : null), setItem: (k, v) => { store[k] = String(v); }};
+  const s = G.defaults(); s.sec.text = 1; s.text = "clean"; G.settings.save(s);
+  const back = G.settings.load();
+  // and a choice stored any other way, the tick in it, is not taken either
+  store["gr-print"] = JSON.stringify({sec: {summary: 1, votes: 1, reports: 1, text: 1, docs: 1}, names: 0, qr: 1, text: "clean"});
+  const raw = G.settings.load();
+  delete globalThis.localStorage;
+  const c2 = clone(law); c2.ix.versions[c2.ix.versions.length - 1].words = 10000000;
+  const ticked = all(); ticked.text = "clean";
+  const last = law.ix.versions[law.ix.versions.length - 1];
+  out.text = {dflt: G.defaults().sec.text, remembered: back.sec.text + raw.sec.text, choice: back.text,
+    huge: G.sheet(c2.d, c2.b, ctxOf(c2), ticked),
+    final: words(G.text.tokens(law.files[last.blocks_url || last.text_url])).split(" ").length,
+    said: [G.pages.said([["Letter", 9], ["A4", 9]]), G.pages.said([["Letter", 1], ["A4", 2]])]}; }
 // The QR code: each symbol against the second encoder's, read back, and a
 // damaged one refused.
 { const rows = m => m.map(r => r.map(v => v ? "1" : "0").join(""));
@@ -50863,8 +50875,13 @@ def _print_sheet():
     SECTIONS. The law prints every one, in order; no case prints anything
     else -- not the rail's table, not the hearings and session days (the
     person, 9 October 2026). A part taken out of the record takes its section
-    and its line in the menu with it; a setting turned off takes its section;
-    a bill too long to print by accident leaves its text off until ticked.
+    and its line in the menu with it; a setting turned off takes its section.
+
+    THE TEXT (the person, 10 October 2026): "Include the bill's text" is
+    unticked by default and its tick is never remembered, so no case prints
+    a text unasked; ticked, the text prints whole, a version said to be ten
+    million words long included, word for word the version's own; and the
+    menu has its line for how many pages the sheet prints.
 
     THE COMPONENTS. Every sponsor is pchip's chip with its party letter; no
     date is printed in figures; every outcome is a word; the vote words are
@@ -50947,12 +50964,27 @@ def _print_sheet():
             bad.append("a roll call with no members recorded still prints them member by member")
         if k == "text" and "holds no text" not in v["menu"]:
             bad.append("the menu does not say the record holds no text, where it holds none")
-    # A bill too long to print by accident.
-    lg = got["long"]
-    if "The Bill’s Text" in _print_heads(lg["dflt"]) or lg["needs"]:
-        bad.append("a long bill's text prints, or is asked for, before the reader ticks it")
-    if "The Bill’s Text" not in _print_heads(lg["ticked"]) or "pages, so it is left off" not in lg["menu"]:
-        bad.append("a long bill's text does not print once ticked, or the menu does not say its length")
+    # The text: off until ticked, never remembered ticked, and whole once ticked.
+    tx = got["text"]
+    for name, c in got["cases"].items():
+        if "The Bill’s Text" in _print_heads(c["dflt"]):
+            bad.append(f"{name} prints its text with the settings as they open")
+        box = re.search(r'<input type="checkbox" data-sec="text"( checked)?><span>([^<]*)', c["menu"])
+        if c["has"]["text"] and (not box or box.group(1) or box.group(2) != "Include the bill&rsquo;s text"):
+            bad.append(f"{name}'s menu does not offer 'Include the bill's text', unticked")
+        if '<p class="ps-count"' not in c["menu"]:
+            bad.append(f"{name}'s menu has no line for how many pages the sheet prints")
+    if tx["dflt"] or tx["remembered"] or tx["choice"] != "clean":
+        bad.append(f"the text is ticked by default ({tx['dflt']}) or its tick is remembered "
+                   f"({tx['remembered']}), or which text is not ({tx['choice']!r})")
+    huge = tx["huge"].split('<div class="ps-text">', 1)
+    drawn = len(_print_text(huge[1].split("</section>", 1)[0]).split()) if len(huge) > 1 else 0
+    if drawn != tx["final"]:
+        bad.append(f"a bill said to be ten million words long, ticked, prints {drawn} of its "
+                   f"current version's {tx['final']} words")
+    if tx["said"] != ["With these settings the sheet prints 9 pages, on Letter or A4 paper.",
+                      "With these settings the sheet prints 1 page on Letter paper and 2 pages on A4."]:
+        bad.append(f"the menu says the pages as {tx['said']}")
 
     # The kinds.
     law, died, study, cacr, plain, arch, veto = (got["cases"][k] for k in
@@ -51072,7 +51104,11 @@ def _print_sheet_css():
     are left off; an amendment's words are underlined and struck through,
     the law's own added words bold and italic, its removed words struck --
     never colour alone -- and print.js asks for the stylesheet by the name
-    the build publishes it under."""
+    the build publishes it under.
+
+    THE PAGE COUNT: what keeps together on paper keeps together in the frame
+    print.js counts the pages in, the tables are tables there too, no narrow
+    screen's rule reaches it, and its margins are @page's."""
     css_p, app_p = Path("src/pages/print.css"), Path("src/pages/app.css")
     if not (css_p.exists() and app_p.exists()):
         return "skip", "print.css or app.css is not here"
@@ -51158,23 +51194,49 @@ def _print_sheet_css():
         if word not in marks.get(sel, {}).get(prop, ""):
             bad.append(f"{sel} is not {word}: a change would be said by colour or not at all")
     js = Path("src/pages/print.js").read_text(encoding="utf-8") if Path("src/pages/print.js").exists() else ""
+    # THE PAGES ARE COUNTED AS PAPER BREAKS THEM (print.js countPages, the
+    # person's "always list the full number of pages", 10 October 2026): the
+    # sheet laid out again in a frame a page's width, in columns a page's
+    # height. So what keeps together keeps together there as on paper, the
+    # tables stay tables there as on paper, a narrow screen's rules stay on
+    # the screen's sheet (the frame is a screen as narrow as a page), and the
+    # margins print.js counts with are print.css's own.
+    top = [(sel, dict(_css_decls(body))) for ctx, sel, body, _ in rules if not ctx]
+    together = {s for sel, ds in top if "avoid" in ds.get("break-inside", "")
+                for s in _css_selectors(sel)}
+    for want in (".ps-table tr", ".ps-how tr", ".ps-facts tr", ".ps-amds li", ".ps-docs li"):
+        if want not in together:
+            bad.append(f"{want} keeps together on paper only, not in the frame the pages are counted in")
+    if not any(".ps-measure .ps-paper table" in sel and ds.get("display") == "table" for sel, ds in top):
+        bad.append("in the counting frame app.css makes the sheet's tables blocks, which on paper it does not")
+    for ctx, sel, body, ln in rules:
+        if any(c.startswith("@media screen") for c in ctx):
+            for s in _css_selectors(sel):
+                if not s.startswith(".ps-layer"):
+                    bad.append(f"print.css:{ln} {s}: a narrow screen's rule reaching the counting frame")
+    pm = re.search(r"@page\s*\{\s*margin:\s*([\d.]+)in\s+([\d.]+)in\s+([\d.]+)in", text)
+    jm = re.search(r"const MARGIN=\{top:([\d.]+),side:([\d.]+),foot:([\d.]+)\}", js)
+    if not pm or not jm or [float(x) for x in pm.groups()] != [float(x) for x in jm.groups()]:
+        bad.append("print.js counts the pages with other margins than print.css's @page")
     if 'l.href="/print.css"' not in js:
         bad.append("print.js does not ask for /print.css, the name the build publishes it under")
     assert sizes > 40 and pairs > 40, f"only {sizes} sizes and {pairs} pairs were read in print.css"
     assert not bad, f"{len(bad)} findings: " + "; ".join(bad[:10])
     return "ok", (f"{sizes} sizes in rem, none under the floor and 13px only in capitals; "
                   f"{pairs} token pairs measured in both themes; on paper the sheet alone, its "
-                  f"marks underlined, struck and italic")
+                  f"marks underlined, struck and italic; the pages counted as paper breaks them")
 
 
 @check("data", "every versioned bill's print sheet composes, and its marked text reads back to "
                "the current version and to the introduced one")
 def _print_sheet_on_the_record():
     """The sheet on every bill the built site has versions of: each composed
-    with every setting on, without an error, and its marked text -- every
-    change numbered by the amendment that made it -- read without its struck
-    words is the current version and without its inserted words the
-    introduced one, word for word. That is the reading `git blame` gives a
+    with every setting on, without an error; ticked, its clean text prints
+    every word of the current version, however long (HB 2 of 2025's 107,482
+    among them: the person, 10 October 2026, "it should print the full
+    length text"); and its marked text -- every change numbered by the
+    amendment that made it -- read without its struck words is the current
+    version and without its inserted words the introduced one, word for word. That is the reading `git blame` gives a
     file, and these two ends are what make it a reading of the record rather
     than a drawing of one. 1,031 bills on 9 October 2026, in about thirty
     seconds."""
@@ -51216,9 +51278,17 @@ for (const year of fs.readdirSync(path.join(site, "versions")))
       if (words(B.doc.filter(t => t.st !== "del")) !== words(toks[toks.length - 1])
           || words(B.doc.filter(t => t.st !== "add")) !== words(toks[0]))
         bad.push(year + "/" + id + ": the marked text does not read back");
-      const st = G.defaults(); st.names = 1; st.long = 1;
-      G.sheet(d, null, {url: "https://graniterecord.org/bill/" + year + "/" + id.toLowerCase(),
-        today: "2026-10-09", versions: {ix, files}}, st);
+      const st = G.defaults(); st.names = 1; st.sec.text = 1;
+      const ctx = {url: "https://graniterecord.org/bill/" + year + "/" + id.toLowerCase(),
+        today: "2026-10-09", versions: {ix, files}};
+      G.sheet(d, null, ctx, st);
+      // ticked, the text prints whole: the clean text's words, every one
+      st.text = "clean";
+      const html = (G.sheet(d, null, ctx, st).split('<div class="ps-text">')[1] || "").split("</section>")[0];
+      const drawn = html.replace(/<[^>]+>/g, " ").replace(/&[a-z]+;|&#\d+;/g, "x").split(/\s+/).filter(Boolean).length;
+      if (drawn !== toks[toks.length - 1].filter(t => t.w !== "\u00b6").length)
+        bad.push(year + "/" + id + ": ticked, the clean text prints " + drawn + " of "
+          + toks[toks.length - 1].filter(t => t.w !== "\u00b6").length + " words");
     } catch (e) { bad.push(year + "/" + id + ": " + e.message); }
     n++;
   }
@@ -51240,8 +51310,8 @@ process.stdout.write("\n@@" + JSON.stringify({n, bad}));
         shutil.rmtree(root, ignore_errors=True)
     assert got["n"] > 0, "no versioned bill was read"
     assert not got["bad"], f"{len(got['bad'])} of {got['n']}: " + "; ".join(got["bad"][:6])
-    return "ok", (f"{got['n']} versioned bills: every sheet composed, every marked text read back "
-                  "to its current and its introduced version")
+    return "ok", (f"{got['n']} versioned bills: every sheet composed, every clean text printed "
+                  "whole, every marked text read back to its current and its introduced version")
 
 
 # ---- one date formatter in each language (8 October 2026) -------------------------
