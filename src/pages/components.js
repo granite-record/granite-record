@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-10-09.7
+// GRANITE_VERSION: 2026-10-09.8
 /* THE SITE'S COMPONENTS, IN THE BROWSER. Published as site/components.js and
    loaded by every page, in its head, before app.js, find.js and any page's
    own script, so each of them draws a person, a committee, a date or a time
@@ -69,9 +69,11 @@ function dateWords(iso,form){
 }
 // Two days as one span: "October 5–11, 2026", "September 28 – October
 // 4, 2026", "December 28, 2026 – January 3, 2027" -- components.date_span.
-function dateSpan(a,b){
-  if(String(a).slice(0,10)===String(b).slice(0,10))return dateWords(a,"full");
-  var fa=dateWords(a,"full"), fb=dateWords(b,"full");
+// The form "medium" says the months short: "Feb 9–13, 2026", the pager's.
+function dateSpan(a,b,form){
+  form=form||"full";
+  if(String(a).slice(0,10)===String(b).slice(0,10))return dateWords(a,form);
+  var fa=dateWords(a,form), fb=dateWords(b,form);
   if(fa===String(a)||fb===String(b))return fa+" – "+fb;
   var x=fa.replace(",","").split(" "), z=fb.replace(",","").split(" ");
   if(x[2]!==z[2])return fa+" – "+fb;

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.503
+# GRANITE_VERSION: 2026-09-04.514
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -19525,7 +19525,9 @@ def _index_json_retired():
     assert all(t["url"].endswith(f"/idx/{t['term']}.json")
                for t in man["bill_indexes"]["terms"]), man["bill_indexes"]
     page = (site / "learn" / "how-a-bill-becomes-law.html").read_text(encoding="utf-8")
-    assert f"Across the {len(rows):,} bills on this site" in page, (
+    # The count is said once, under How a Chamber Votes, since the polish
+    # plan's cut E6 took its second saying out of In the Record.
+    assert f"Across the {len(rows):,} bills in this record" in page, (
         f"the Learn page does not count the index's {len(rows):,} bills")
     assert NI.census(site)["bills"] == len(rows), (
         f"the census counts {NI.census(site)['bills']} bills of {len(rows)}")
@@ -19747,7 +19749,7 @@ def _asset_headers():
                          f"{want}")
 
     pages = [site / "bills.html", site / "index.html",
-             site / "legislators.html"]
+             site / "officials.html"]
     for folder, pat in (("bill", "*/*.html"), ("legislator", "*.html"),
                         ("committee", "*.html"), ("town", "*.html")):
         got = sorted((site / folder).glob(pat))
@@ -21813,7 +21815,7 @@ def _learn_rules(civics, learn_numbers, build_civics):
     assert "roll call" in no_rc, (
         "a record with no roll calls built anyway, and the pages would say they "
         "begin in 0: " + (no_rc or "no stop"))
-    close = nums[nums.index("The closest votes"):]
+    close = nums[nums.index("The Closest Votes"):]
     close = close[:close.index("<h2>")] if "<h2>" in close else close
     for bid, why in (("hb1", "a veto override"), ("hb4", "a rules suspension")):
         assert f"bill/2026/{bid}\"" not in close, (
@@ -22214,9 +22216,9 @@ def _numbers_ballots(learn_numbers):
             ([bp22], "Yes and No are Ballotpedia's statewide count, printed where the Source "
                      "column says. 0 of the 1 below were ratified.")):
         sec = drawn(got_rows)[0]
-        sec = sec[sec.find("Constitutional amendments sent to the voters"):]
+        sec = sec[sec.find("Constitutional Amendments Sent to the Voters"):]
         assert want in sec, f"the amendments' section does not say {want!r}: {sec[:700]!a}"
-    sec = page[page.find("Constitutional amendments sent to the voters"):]
+    sec = page[page.find("Constitutional Amendments Sent to the Voters"):]
     assert sec, "the amendments' section was not drawn"
     for want in ("Yes and No are the Secretary of State's statewide count, printed where the "
                  "Source column says. 1 of the 2 below were ratified.",
@@ -22254,12 +22256,12 @@ def _numbers_removed(learn_numbers):
         missing = sorted(Path(f).name for f, _what in learn_numbers.MISSING)
     for gone in ("without the governor's signature</h2>", "<th>Awaiting</th>", "Still to come"):
         assert gone not in page, f"the page of numbers still carries {gone!r}"
-    assert "<h2>Vetoes</h2>" in page and "Bills filed, and how they ended" in page, (
+    assert "<h2>Vetoes</h2>" in page and "Bills Filed, and How They Ended" in page, (
         "the fixture page lost a section it should keep")
     want = ["ballot_results.json", "member_votes.json", "narratives.json", "testimony_db.json"]
     assert missing == want, f"the inputs said to be missing: {missing}, want {want}"
-    for h in ("The hearings with the most sign-ins", "Attendance on roll-call days",
-              "Constitutional amendments sent to the voters"):
+    for h in ("The Hearings with the Most Sign-Ins", "Attendance on Roll-Call Days",
+              "Constitutional Amendments Sent to the Voters"):
         assert h not in page, f"{h!r} was drawn with its input missing"
     return "ok", "both gone; Vetoes kept; the four missing inputs named and their sections left out"
 
@@ -26878,9 +26880,9 @@ def _ballot_said_built():
     want = ("Yes and No are the statewide count printed where the Source column says: "
             "Ballotpedia's for 1, the Secretary of State's for 1. 0 of the 2 below were ratified.")
     if want not in numbers:
-        i = numbers.find("Constitutional amendments sent to the voters")
+        i = numbers.find("Constitutional Amendments Sent to the Voters")
         bad.append(f"the page of numbers says {numbers[i:i + 600]!a}")
-    if "CACR 7" in numbers[numbers.find("Constitutional amendments sent to the voters"):]:
+    if "CACR 7" in numbers[numbers.find("Constitutional Amendments Sent to the Voters"):]:
         bad.append("the page of numbers shows the row with no cite")
     words = ("the statewide Yes and No votes on each of the 3 the voters have decided, with "
              "where each count is printed and the day it was read: the Secretary of State's "
@@ -27721,7 +27723,8 @@ CHAIN_NEEDS = ["build_site_v2.py", "build_search_index.py", "build_pages.py",
                "build_legislator_pages.py", "build_committees.py",
                "build_civics.py", "build_town_pages.py", "build_indexes.py",
                "build_exports.py", "build_feeds.py", "check_site.py",
-               "app.css", "app.js", "bills.html"]
+               "app.css", "app.js", "bills.html",
+               "build_district_map.py", "map.js", "map.css"]
 
 
 def _stand_in_png():
@@ -27814,10 +27817,13 @@ def _built_site(here, root, brand=True, env=None):
     # build fails on a file that has nothing to do with the fixture. It is
     # small, tracked, and written by `probe_alignment.py --truth --score-out`,
     # which is the gate every timestamp method passes before it ships.
+    # The district map's module and its committed geometry, which
+    # build_district_map publishes with the map's data (9 October 2026).
     for name in ("src/pages/app.css", "src/pages/components.js", "src/pages/app.js",
                  "src/pages/bills.html", "src/pages/find.js", "src/pages/print.js",
                  "src/pages/print.css", "corrections/officials.json",
-                 "generated/alignment_score.json"):
+                 "generated/alignment_score.json",
+                 "src/pages/map.js", "src/pages/map.css", "generated/district_geometry.json"):
         if (here / name).exists():
             (root / name).parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(here / name, root / name)
@@ -27860,7 +27866,7 @@ def _built_site(here, root, brand=True, env=None):
         # ran this script's main() at all.
         ("build_search_index.py", ["--idx", "site/idx", "--out", "site/sidx",
                                    "--allow-no-text"], "site/sidx/manifest.json"),
-        ("build_pages.py", ["--out", "site"], "site/legislators.html"),
+        ("build_pages.py", ["--out", "site"], "site/officials.html"),
         ("build_bill_pages.py", ["--site", "site", "--base", base],
          "site/sitemap.xml"),
         ("build_legislator_pages.py", ["--site", "site", "--base", base],
@@ -27868,8 +27874,10 @@ def _built_site(here, root, brand=True, env=None):
         # After the bill pages, as in build_all: it reads their stations.
         ("build_committees.py", ["--site", "site", "--data", "data",
                                  "--base", base], "site/committees.json"),
-        ("build_civics.py", ["--site", "site", "--base", base], "site/learn.html"),
+        ("build_civics.py", ["--site", "site", "--base", base], "site/resources.html"),
         ("build_town_pages.py", ["--site", "site", "--base", base], "site/town"),
+        # The district map's data, after the town pages, as in build_all.
+        ("build_district_map.py", ["--site", "site"], "site/district_map.json"),
         ("build_indexes.py", ["--site", "site", "--base", base],
          "site/directory.html"),
         # Before the calendar, whose floor cards link to these, and after the
@@ -27881,6 +27889,9 @@ def _built_site(here, root, brand=True, env=None):
          "site/session/S"),
         ("build_session_pages.py", ["--site", "site", "--base", base],
          "site/session/H"),
+        # The full sessions on the Committees page, after both chambers'
+        # term files, as build_all runs it.
+        ("build_full_sessions.py", ["--site", "site"], "site/committees.html"),
         # After the committees, whose codes it needs to link a card, and in
         # build_all's own order. Its output is what the Calendar tab points
         # at, so a fixture without it builds a nav link to nothing -- which
@@ -28028,6 +28039,14 @@ def _chain():
     root = Path(tempfile.mkdtemp())
     try:
         base, steps = _fixture_site_whole(root)
+        # The district map's file, script and stylesheet (9 October 2026):
+        # published by the night, though no page mounts the map yet.
+        dm = json.loads((root / "site" / "district_map.json").read_text(encoding="utf-8"))
+        assert dm["places"] and dm["fill"]["base"] and dm["arcs"], \
+            "build_district_map wrote a district_map.json with nothing in it"
+        for name in ("map.js", "map.css"):
+            assert (root / "site" / name).read_bytes() == (here / "src/pages" / name).read_bytes(), \
+                f"site/{name} is not src/pages/{name}"
         # llms.txt (24 September): it exists, says the one thing that must
         # never move -- this is not the General Court's official record --
         # and the example bill address it gives is a page that was built.
@@ -28069,7 +28088,8 @@ def _chain():
         # every href before resolving, so a bare fragment reads as the site
         # root and passes while every entry in a contents rail is wrong.
         # footer_nav's docstring records the same trap springing once already,
-        # with "../learn.html".
+        # with "../learn.html". On this page folded into the head of each page
+        # on 9 October 2026 (the component plan); its list is the one held here.
         #
         # The second half is the slower version of the same failure. The ids
         # are DERIVED from the headings, so a heading reworded in civics.py
@@ -28080,11 +28100,11 @@ def _chain():
         learn = sorted((root / "site" / "learn").glob("*.html"))
         assert learn, "the chain built no learn pages for the contents check"
         n_toc = 0
-        for f in learn + [root / "site" / "learn.html"]:
+        for f in learn:
             page = f.read_text(encoding="utf-8", errors="replace")
             ids = set(re.findall(r'id="([^"]+)"', page))
-            want = f"learn/{f.stem}" if f.parent.name == "learn" else "learn"
-            for nav in re.findall(r'<nav class="ctoc".*?</nav>', page, re.S):
+            want = f"learn/{f.stem}"
+            for nav in re.findall(r'<nav class="l-otpb".*?</nav>', page, re.S):
                 for href in re.findall(r'href="([^"]*)"', nav):
                     path, _, frag = href.partition("#")
                     assert path == want, (
@@ -28096,8 +28116,32 @@ def _chain():
                         f"{f.name}: the contents link {href!r} points at an id "
                         "that is not on the page")
                     n_toc += 1
-        assert n_toc, ("no learn page carries a contents rail, so nothing here "
+        assert n_toc, ("no learn page carries an On this page list, so nothing here "
                        "was actually checked")
+        # THE LEARN HUB'S OLD ADDRESS IS A REDIRECT NOW (decision 128): /learn and
+        # /learn.html go to /resources, which _redirects says and no file
+        # shadows, and the hub is where the redirect lands.
+        red = (root / "site" / "_redirects").read_text(encoding="utf-8")
+        for old in ("/learn", "/learn.html"):
+            assert f"\n{old} /resources 301\n" in red, f"_redirects does not send {old} to /resources"
+        assert not (root / "site" / "learn.html").exists(), (
+            "a learn.html is in the site, where the redirect to /resources should answer")
+        # AND THE LEGISLATORS PAGE IS OFFICIALS (decision 127): /legislators and
+        # /legislators.html go to /officials, no file shadows them, and no rule
+        # reaches the members' data under /legislators/ or their pages.
+        for old in ("/legislators", "/legislators.html"):
+            assert f"\n{old} /officials 301\n" in red, f"_redirects does not send {old} to /officials"
+        assert not any(ln.split()[0].startswith(("/legislators/", "/legislator/"))
+                       and ln.split()[-1] == "301" for ln in red.splitlines() if ln.strip()
+                       and not ln.startswith("#")), (
+            "a redirect reaches the members' data or pages")
+        assert not (root / "site" / "legislators.html").exists() and \
+            (root / "site" / "officials.html").exists(), (
+            "a legislators.html is in the site, or no officials.html, where /officials should answer")
+        hub = (root / "site" / "resources.html").read_text(encoding="utf-8")
+        for pid in ("learn", "guides", "sources"):
+            assert f'id="tab-{pid}"' in hub and f'<div class="twnpane r-sheet" id="{pid}"' in hub, (
+                f"the Resources hub has no {pid} tab")
 
         # COMING UP ON THE BUILT HOME PAGE IS THE BUILD DATE'S WEEK: no day
         # before the build date or after that week's Sunday, and every day in
@@ -28108,8 +28152,12 @@ def _chain():
         import build_calendar as BC
         import proceedings as _P
         from datetime import date as _date, timedelta as _td
+        # FROM SATURDAY, NEXT WEEK (D13, 8 October 2026): built on a Saturday
+        # or a Sunday the rail is the coming Monday's week, whole.
         built = _date.fromisoformat(json.loads((root / "site" / "home.json").read_text(
             encoding="utf-8"))["generated"])
+        if built.weekday() >= 5:
+            built = built + _td(days=7 - built.weekday())
         wk_end = built + _td(days=6 - built.weekday())
         homepage = (root / "site" / "index.html").read_text(encoding="utf-8",
                                                             errors="replace")
@@ -28117,7 +28165,7 @@ def _chain():
         stray = [d for d in rail if not built.isoformat() <= d <= wk_end.isoformat()]
         assert not stray, (
             f"the built home page's Coming up shows {stray}, outside the week "
-            f"it was built in ({built} to {wk_end})")
+            f"it was built for ({built} to {wk_end})")
         week = BC.weeks_from(_P.load(root / "proceedings.csv")).get(
             BC.week_key(built)) or {}
         due = sorted(d for d in week if d >= built.isoformat() and week[d])
@@ -28244,7 +28292,10 @@ def _chain():
                 # the line between the previous and next days.
                 up = re.findall(r'<div class="wkpage sesspage"><header class="rhead rh-day">'
                                 r'<nav class="rtrail"[^>]*>(.*?)</nav>', day, re.S)
-                mid = re.findall(r'<span class="wkmid">(.*?)</span>', day, re.S)
+                # The week is the pager's, between the previous and next
+                # days ("The Week of ...", build_session_pages.pager).
+                mid = re.findall(r'<nav class="wknav[^"]*" aria-label="Other session days">'
+                                 r'(.*?)</nav>', day, re.S)
                 assert len(up) == 1 and f'href="directory/{lst}#y{d[:4]}"' in up[0], (
                     f"session/{b}/{d} does not lead up to the list of {name} "
                     "session days, at its year, in a line above its heading")
@@ -49371,6 +49422,7 @@ def _meet_kind_colours():
                      rf"\.calkey \.{cls}\{{background:var\(--cal-{t}\)\}}",
                      rf"\.cmdots \.{cls}\{{background:var\(--cal-{t}\)\}}",
                      rf"\.pkbar \.{cls}\{{background:var\(--cal-{t}\)\}}",
+                     rf"\.wkbar \.{cls}\{{background:var\(--cal-{t}\)\}}",
                      rf"\.calcat\.{cls}\{{--cat:var\(--cal-{t}\)\}}"):
             assert re.search(rule, css), (
                 f"app.css has no rule matching {rule!r}: the {cls} colour is "
@@ -49381,7 +49433,7 @@ def _meet_kind_colours():
     assert legend == list(tok), f"the key names {legend}, not {list(tok)}, in that order"
     names = [w for _c, w in BP.MEET_LEGEND]
     assert names == ["Public Hearing", "Executive Session", "Work Session",
-                     "Committee of Conference", "Floor Session", "Study Committee"], (
+                     "Committee of Conference", "Session Day", "Study Committee"], (
         f"the key's names are {names}: one per kind, work sessions and study "
         "committees apart, in title case")
 
@@ -49688,10 +49740,10 @@ def _calendar_every_week():
             prv = re.findall(r'class="wkprev" href="([^"]+)"', t)
             if i + 1 < len(order):
                 assert nxt and set(nxt) == {addr(order[i + 1])}, (
-                    f"{k}: The week after goes to {nxt}, not {addr(order[i + 1])}")
+                    f"{k}: Next Week goes to {nxt}, not {addr(order[i + 1])}")
             if i:
                 assert prv and set(prv) == {addr(order[i - 1])}, (
-                    f"{k}: The week before goes to {prv}, not {addr(order[i - 1])}")
+                    f"{k}: Previous Week goes to {prv}, not {addr(order[i - 1])}")
         quiet = (site / "calendar" / "2026-W30.html").read_text(encoding="utf-8")
         assert "No meetings are on the record for this week." in quiet, (
             "an empty week that is over does not say nothing was on")
@@ -49755,6 +49807,12 @@ def _calendar_every_weekday():
                     f"{k}: {d} is {'marked empty' if empty else 'not marked empty'}")
             assert t.count("No meetings scheduled.") == len(dates) - len(busy), (
                 f"{k}: an empty weekday does not say it has no meetings")
+            # THE WEEK IS NAMED BY THE DAYS IT SHOWS (9 October 2026): Monday
+            # to Friday, and to the Saturday where one holds a sitting.
+            name = {"2026-W03": "January 12–17, 2026", "2026-W04": "January 19–23, 2026"}[k]
+            assert f"<h1>The Week of {name}</h1>" in t, (
+                f"{k} is not headed The Week of {name}: "
+                f"{re.search(r'<h1>[^<]*</h1>', t).group(0)}")
         node = shutil.which("node") or shutil.which("node.exe")
         if node:
             with contextlib.redirect_stdout(io.StringIO()):
@@ -49764,23 +49822,138 @@ def _calendar_every_weekday():
                           + _with_components(BC.WEEK_JS) + r"""
 const C=globalThis.GRCAL, j=JSON.parse(require("fs").readFileSync(process.argv[2],"utf8")), days={};
 Object.keys(j.days).forEach(d=>days[d]=C.parseDay(j.days[d]));
-const wk=[0,1,2,3,4,5,6].map(i=>C.addDays("2026-01-12",i));
+const wk=[0,1,2,3,4,5,6].map(i=>C.addDays("2026-01-12",i)), wk2=wk.map(d=>C.addDays(d,7));
 const none=Object.assign(C.defaults(),{cats:[],picks:["nobody"]});
-process.stdout.write(JSON.stringify([C.listDates(wk,days,C.defaults()),C.listDates(wk,days,none)]));
+process.stdout.write(JSON.stringify([C.listDates(wk,days,C.defaults()),C.listDates(wk,days,none),
+  C.weekCols(wk,days,C.defaults()),C.weekCols(wk2,days,C.defaults()),C.weekCols(wk,days,none)]));
 """, encoding="utf-8")
             r = _run([node, str(go), str(site / "calendar" / "data" / "2026-01.json")],
                      capture_output=True, text=True, timeout=60)
             assert r.returncode == 0, (r.stdout or r.stderr).strip()[-300:]
-            every, empty = json.loads(r.stdout)
+            every, empty, cols, cols2, cols0 = json.loads(r.stdout)
             assert every == want["2026-W03"][0], (
                 f"the script's list of 12-18 January draws {every}, the page {want['2026-W03'][0]}")
-            assert empty == ["2026-01-12", "2026-01-13", "2026-01-15", "2026-01-16"], (
+            # Every weekday stays under a filter matching nothing -- an empty
+            # one saying so, a busy one saying what is hidden (9 October
+            # 2026) -- and the Saturday, which shows nothing, goes.
+            assert empty == ["2026-01-12", "2026-01-13", "2026-01-14", "2026-01-15", "2026-01-16"], (
                 "under a filter matching nothing the script's list keeps "
-                f"{empty}: the empty weekdays, and only them, stay")
+                f"{empty}: Monday to Friday, and no weekend day, stay")
+            # AND THE WEEK VIEW: Monday to Friday, the Saturday only where it
+            # holds a sitting the filters show, never a Sunday that holds none.
+            assert cols == want["2026-W03"][0] and cols2 == want["2026-W04"][0] \
+                and cols0 == want["2026-W03"][0][:5], (
+                f"the Week view's days are {cols}, {cols2} and, under a filter matching "
+                f"nothing, {cols0}: Monday to Friday, and a weekend day only when it shows something")
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
-    return "ok", ("Monday to Friday on every week, empty ones saying so; a "
-                  "Saturday only where it holds a sitting")
+    return "ok", ("Monday to Friday on every week, in the list and the Week view, empty ones "
+                  "saying so; a Saturday only where it holds a sitting, and the week named "
+                  "by the days it shows")
+
+
+# The words the pagers and the floor said until 9 October 2026, as code wrote
+# them: a line of a builder, a script or a words file that writes one again
+# fails _pager_labels. Comments may still quote them, as history.
+_PAGER_GONE = ("&lsaquo; The week before", "The week after &rsaquo;", ">This week</a>",
+               "The session day before</a>", "The session day after &rsaquo;",
+               '"See next week"', "Last Floor Session", '"Floor Session"',
+               'floor:"Floor sessions"')
+
+
+@check("frontend", "the pagers say This Week, Previous Week, Next Week, Previous and Next "
+                   "Session Day and Previous and Next Day, and the floor is Session Day, in "
+                   "Title Case wherever the site writes them")
+def _pager_labels():
+    """The person, 9 October 2026: "Session day should be Session Day, This
+    week should be This Week, The week before should be Previous Week, The
+    week after should be Next Week".
+
+    The Calendar's pager said "‹ The week before", "This week" and "The week
+    after ›"; a session day's said "The session day before" and "The session
+    day after"; the home page's Coming up said "See next week" for the same
+    page the Calendar calls Next Week, and "Last Floor Session"; and the floor
+    was "House floor" on its card, under a chip and a box saying "Floor
+    Session". This holds every place that writes them: no builder, script or
+    words file writes an old one (_PAGER_GONE); a week's page, the Calendar's
+    script, a session day's pager and Coming up say the new ones, each pager
+    with where it leads under it (a week's short name, a session day's date);
+    and the floor is "House Session Day", with no chip to say Session Day
+    again, under the key's "Session Day".
+    """
+    import contextlib
+    import datetime as _dt
+    import io
+    import build_calendar as BC
+    import build_pages as BP
+    import build_session_pages as SP
+    if not Path("src/pages/bills.html").exists():
+        return "skip", "bills.html is not here"
+    bad = []
+    files = (sorted(Path("src/pages").glob("*.py")) + sorted(Path("src/pages").glob("*.js"))
+             + sorted(Path("src/pages").glob("*.html")) + sorted(Path("src/pages/words").glob("*.json")))
+    for f in files:
+        for i, ln in enumerate(f.read_text(encoding="utf-8").splitlines(), 1):
+            if ln.strip().startswith(("#", "//", "*")):
+                continue
+            bad += [f"{f.name}:{i} {g}" for g in _PAGER_GONE if g in ln]
+    assert len(files) > 20 and not bad, (
+        f"{len(bad)} lines still write a label the person retired: " + "; ".join(bad[:6]))
+    assert ("k-floor", "Session Day") in BP.MEET_LEGEND, f"the key names the floor {BP.MEET_LEGEND}"
+
+    root = Path(tempfile.mkdtemp(prefix="gr-pagers-"))
+    try:
+        site, _w, _o, _u, _m = _cal_fixture(root)
+        # A week's page: the week of 16 March, with this week before it and
+        # an empty week after.
+        t = (site / "calendar" / "2026-W12.html").read_text(encoding="utf-8")
+        navs = re.findall(r'<nav class="wknav[^"]*" aria-label="Other weeks">(.*?)</nav>', t)
+        want = ('<a class="wkprev" href="/calendar"><span class="wkpw">&lsaquo; Previous Week</span>'
+                '<span class="wkpd">Mar 9–14, 2026</span></a>'
+                '<a class="wkhere" href="/calendar">This Week</a>'
+                '<a class="wknext" href="/calendar/2026-W13"><span class="wkpw">Next Week &rsaquo;</span>'
+                '<span class="wkpd">Mar 23–27, 2026</span></a>')
+        assert navs == [want, want], f"the week of 16 March's pagers read {navs}"
+        assert "<h1>The Week of March 16–20, 2026</h1>" in t and \
+            "<title>The Week of March 16–20, 2026 | Granite Record</title>" in t, (
+            "the week's heading or title is not The Week of March 16–20, 2026")
+        # The page's script, which draws the same pager and the Day view's.
+        lean = re.search(r"<script>(\(function\(\)\{.*?)</script>", t, re.S).group(1)
+        for w in ("Previous Week", "Next Week", ">This Week<", "Previous Day", "Next Day",
+                  '"The Week of "'):
+            assert w in lean, f"the Calendar's script does not write {w!r}"
+        for w in ("The week before", "The week after", ">This week<", '"The week of "+label;'):
+            assert w not in lean, f"the Calendar's script still writes {w!r}"
+        # The floor's card, on the week and in Coming up: named, with no chip.
+        wk11 = (site / "calendar.html").read_text(encoding="utf-8")
+        floor = re.search(r'<details class="calmeet"[^>]*data-who="floor"[^>]*>.*?</summary>', wk11, re.S)
+        assert floor and '<span class="calcmte">House Session Day</span>' in floor.group(0) \
+            and "calkind" not in floor.group(0), (
+            f"the floor's card is not House Session Day without a chip: {floor and floor.group(0)}")
+        with contextlib.redirect_stdout(io.StringIO()):
+            up = BP.calendar_html(site, today=_dt.date(2026, 3, 11), rows=_cal_rows())
+        assert '<span class="calcmte">House Session Day</span>' in up and "calkind k-floor" not in up \
+            and '<p class="calmore calall"><a href="calendar.html">See the full calendar</a></p>' in up, (
+            "Coming up does not name the floor House Session Day, or does not end with See the "
+            f"full calendar (D13): {re.search(r'<p class=.calmore calall.>.*?</p>', up)}")
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    # A session day's pager: the days either side by their dates, and its
+    # week on the Calendar between them by the name the Calendar gives it.
+    nav = "".join(SP.pager("H", "2026-02-19", "2026-02-12", "2026-03-05",
+                           {"2026-W08": "February 16–20, 2026"}))
+    got = re.sub(r'href="[^"]*"', 'href=""', nav)
+    assert got == ('<a class="wkprev" href=""><span class="wkpw">&lsaquo; Previous Session Day</span>'
+                   '<span class="wkpd">Thursday, February 12, 2026</span></a>'
+                   '<a class="wkhere" href="">The Week of February 16–20, 2026</a>'
+                   '<a class="wknext" href=""><span class="wkpw">Next Session Day &rsaquo;</span>'
+                   '<span class="wkpd">Thursday, March 5, 2026</span></a>'), (
+        f"a session day's pager reads {nav}")
+    assert "".join(SP.pager("H", "2024-02-15", "", "2024-02-22", {})).count("<a ") == 1, (
+        "a session day before the Calendar's first week links a week, or its first day a day before it")
+    return "ok", (f"{len(files)} builders, scripts and words files write none of the old "
+                  "labels; a week's page and the Calendar's script, a session day's pager "
+                  "and Coming up say the new ones, and the floor is House Session Day")
 
 
 @check("frontend", "study and statutory committees are on the calendar, named, and off until a reader ticks them")
@@ -50508,7 +50681,7 @@ def _calendar_clock():
     to one answer (noon is 12:00 PM, midnight 12:00 AM, and anything that is
     not a time comes back as it was). This holds the Calendar's script to
     that one rather than a copy of its own, a span to 10:00 AM-12:15 PM, and
-    the hours of the week at a glance. Then it reads what the fixture's
+    the time each entry of the week at a glance starts. Then it reads what the fixture's
     pages print and wants every time in that form, while the record's own
     "13:30" stays in data-time and data-last, where the script and the
     add-to-calendar links read it.
@@ -50571,8 +50744,11 @@ const vm = require("vm"), ctx = vm.createContext({document: {getElementById: () 
 vm.runInContext(fs.readFileSync("./week.js", "utf8"), ctx);
 const W = ctx.GRCAL;
 const h = s.calendarBlock(JSON.parse(fs.readFileSync("./up.json", "utf8")), "Upcoming session");
+const card = (t) => '<details class="cal' + 'meet" data-date="2026-03-10" data-cmte="x" data-time="' + t
+  + '" data-kinds="hearing"><summary><span class="calcmte">X</span></summary></details>';
 process.stdout.write(JSON.stringify({own: W.clock !== vm.runInContext("clock", ctx),
-  hours: ["00", "09", "12", "13", "23"].map(W.hourWord),
+  hours: ["00:00", "09:30", "12:00", "13:15", "23:59"].map(t =>
+    (/<span class="wkt">([^<]*)<\\/span>/.exec(W.entryHtml(W.parseCard(card(t)))) || [])[1]),
   block: [...h.matchAll(/<span class="caltime">([^<]*)<\\/span>/g)].map(m => m[1])}));
 """, encoding="utf-8")
         r = _run([node, "go.js"], cwd=root, capture_output=True, text=True, encoding="utf-8", timeout=60)
@@ -50582,8 +50758,9 @@ process.stdout.write(JSON.stringify({own: W.clock !== vm.runInContext("clock", c
         shutil.rmtree(root, ignore_errors=True)
     assert not out["own"], ("the Calendar page's script tells the time with a clock() of its "
                             "own, not components.js's")
-    assert out["hours"] == [f"12{nb}AM", f"9{nb}AM", f"12{nb}PM", f"1{nb}PM", f"11{nb}PM"], (
-        f"the week at a glance names its hours {out['hours']}")
+    assert out["hours"] == [f"12:00{nb}AM", f"9:30{nb}AM", f"12:00{nb}PM", f"1:15{nb}PM",
+                            f"11:59{nb}PM"], (
+        f"the week at a glance says its entries start at {out['hours']}")
     assert out["block"] == [f"10:00{nb}AM\u20131:00{nb}PM", f"10:00{nb}AM", f"1:00{nb}PM"], (
         f"a committee page's Upcoming session prints {out['block']}")
     return "ok", (f"{seen} times printed on the week page, its month files and Coming up, all "
@@ -52530,6 +52707,155 @@ def _outside_links():
                   + "; no writer puts the arrow in as text")
 
 
+@check("frontend", "the Committees page opens with the House and Senate full sessions: each "
+                   "chamber's session days of its latest term, newest first, every term a pick away")
+def _committees_full_sessions():
+    """The person, 9 October 2026 (v12): "the House and the Senate full
+    sessions listed at the top of the Committees page, each letting a reader
+    go through that chamber's session days in one place, as a committee page
+    shows its meetings"; and v13, sortable oldest to newest or newest to
+    oldest.
+
+    build_committees writes the slot; build_full_sessions fills it after the
+    session pages, whose term files it reads -- so a build into an empty site
+    draws them too. Read off the fixture's built page: the slot filled once,
+    before the committees; a column for each chamber whose term files the
+    fixture wrote, its latest term's days in it newest first, each opening
+    on its own page; the term picker offering every term file, the order
+    picker both ways; and filling the slot again redraws it rather than
+    doubling it. And build_all runs the step after both chambers' pages."""
+    import build_full_sessions as FS
+    shared, _base, _ran, _days = _fixture_site_shared()
+    site = shared / "site"
+    page = (site / "committees.html").read_text(encoding="utf-8")
+    assert '<!-- /fullsess -->' in page, "the Committees page has no slot for the full sessions"
+    bodies = [b for b in ("H", "S") if list((site / "session" / b).glob("*.json"))]
+    if not bodies:
+        return "skip", "the fixture writes no session term file"
+    assert page.count('<section class="fullsess"') == 1, "the full sessions are drawn more than once"
+    assert page.index('class="fullsess"') < page.index('class="ctwo"', page.index("<!-- /fullsess -->")), (
+        "the full sessions are not above the committees")
+    n_days = 0
+    for b in bodies:
+        terms = sorted((f.stem for f in (site / "session" / b).glob("*.json")), reverse=True)
+        col = re.search(rf'<section class="fschamber" data-body="{b}".*?</section>', page, re.S)
+        assert col, f"no column for the {FS.CHAMBER[b]}"
+        days = [d["date"] for d in json.loads((site / "session" / b / f"{terms[0]}.json")
+                                              .read_text(encoding="utf-8"))["days"]]
+        drawn = re.findall(r'<details class="fsday" data-date="([^"]+)">', col.group(0))
+        assert drawn == sorted(days, reverse=True), (
+            f"the {FS.CHAMBER[b]}'s days are {drawn}, not {terms[0]}'s newest first")
+        for d in drawn:
+            assert f'href="session/{b}/{d}.html">Open this session day</a>' in col.group(0), (
+                f"{b} {d} does not open on its own page")
+            assert (site / "session" / b / f"{d}.html").exists(), f"session/{b}/{d}.html is not built"
+        offered = re.findall(r'<option value="(\d{4}-\d{4})"', col.group(0))
+        assert offered == terms, f"the {FS.CHAMBER[b]}'s term picker offers {offered}, not {terms}"
+        assert '<option value="new" selected>Newest first</option><option value="old">Oldest first' \
+            in col.group(0), "the order picker does not offer both ways"
+        n_days += len(drawn)
+    again = FS.SLOT.sub(lambda _m: FS.block(site)[0], page, count=1)
+    assert again.count('<section class="fullsess"') == 1, "filling the slot again doubles it"
+    plan = Path("build_all.py").read_text(encoding="utf-8")
+    assert plan.index('"build_full_sessions.py"') > plan.index(
+        '"a page for every day the House sat"'), "build_all fills the slot before the session pages"
+    return "ok", (f"{n_days} session days of the latest term, newest first, for "
+                  f"{' and '.join(FS.CHAMBER[b] for b in bodies)}, above the committees; every "
+                  "term a pick away; filled once, after the session pages")
+
+
+@check("frontend", "the header's five tabs are one row from 1008px, in the flow between the "
+                   "wordmark and the controls, and a row of their own on a tablet")
+def _nav_ladder():
+    """Decisions 130 and 131 (8 October 2026): Search as its drawing at every
+    width, and the tablet's tabs on a second row, always shown. With
+    "Resources" 43px wider than "Learn", the strip centred on the bar from
+    1100px wrapped "Resources" under the others at 1100 and stood 27px from
+    the wordmark at 1200 and 1366 (measured in Chrome, 10 October 2026). Held
+    in app.css's shared region, which style.css takes too: from 63em the strip
+    is in the flow, one row, centred by its own auto margins with the theme
+    button taking none; from 721 to 1007 it is a row of its own, five equal
+    cells after the controls; Search shows its drawing alone, its word kept
+    for a screen reader."""
+    css = Path("src/pages/app.css").read_text(encoding="utf-8").replace("\r\n", "\n")
+    shared = css[css.index("/* SHARED:START"):css.index("/* SHARED:END")]
+    wide = _braced(shared, "@media (min-width:63em){")
+    assert ".navtabs{position:static;transform:none;flex-wrap:nowrap;width:max-content;margin:0 auto}" \
+        in wide and ".themer{margin-left:0}" in wide and "nav.top .in{position:static;flex-wrap:nowrap}" \
+        in wide, "from 1008px the five are not one row in the flow, centred between the wordmark and the controls"
+    assert shared.index("@media (min-width:63em){") > shared.index("@media (min-width:68.75em){"), (
+        "the strip centred on the bar comes after the rule that puts it in the flow, and wins")
+    tab = _braced(shared, "@media (min-width:45.0625em) and (max-width:62.9375em){")
+    assert ".navtabs{order:3;flex:1 0 100%;flex-wrap:nowrap" in tab \
+        and "nav.top .navtabs a{flex:1 1 0;justify-content:center;min-height:44px" in tab, (
+            "on a tablet the five are not a row of their own in equal cells")
+    assert ".findbtn span{position:absolute;width:1px;height:1px" in shared.split("@media")[0] \
+        or re.search(r"\n\.findbtn span\{position:absolute;width:1px;height:1px", shared), (
+            "Search shows its word above a phone's width")
+    return "ok", ("one row from 1008px, in the flow; a row of five equal cells from 721 to 1007; "
+                  "Search its drawing at every width")
+
+
+@check("frontend", "the bill search opens Status and Bill Type, puts a narrowed long list's "
+                   "zeros last, and folds its filters behind the Filters button below 960px")
+def _search_filters_5acd():
+    """The person's feedback of 9 October 2026, item 2: 5a approved (Status
+    and Bill Type open, Committee closed), 5b NOT approved (a ticked choice
+    does not move first), 5c approved (once a search or a filter narrows the
+    list, the options with bills before the greyed zeros), 5d approved (the
+    Filters button below 960px, tablets too). Round two's questions 8a and 8b
+    went as recommended: 5a inside the Filters panel too, and 5c on the long
+    lists only, Status and Bill Type keeping their fixed orders.
+
+    Read off app.js and app.css: the groups open at the start, at every
+    width; zerosLast run in node on a narrowed and an unnarrowed list, a
+    short list, and a ticked zero, which keeps its place among the zeros; and
+    the stylesheet's 60em block, which puts the button first, the panel
+    after it, and the panel away until it is opened."""
+    js = Path("src/pages/app.js").read_text(encoding="utf-8")
+    css = Path("src/pages/app.css").read_text(encoding="utf-8")
+    m = re.search(r"const openGroups=new Set\((\[[^\]]*\])\);", js)
+    assert m and json.loads(m.group(1)) == ["status", "type"], (
+        f"the filter groups open at the start are {m.group(1) if m else 'not found'}, "
+        "not Status and Bill Type")
+    fn = re.search(r"const ZEROS_LAST=.*?\nfunction zerosLast\(key,vals,counts\)\{.*?\n\}", js, re.S)
+    assert fn, "app.js has no zerosLast"
+    assert "zerosLast(key,vals,counts)" in js and "i===order.rule?' fzero'" in js, (
+        "the filter groups do not draw their options in zerosLast's order")
+    node = shutil.which("node") or shutil.which("node.exe")
+    if node:
+        prog = ("let query='';const sel={committee:new Set(),topic:new Set(),sponsor:new Set(),"
+                "status:new Set(),type:new Set(),voteday:new Set()};" + fn.group(0) + """
+const V=["Alpha","Beta","Gamma","Delta"],C={Beta:3,Delta:1},out={};
+out.plain=zerosLast("committee",V,C);
+query="minimum wage";
+out.narrowed=zerosLast("committee",V,C);
+out.status=zerosLast("status",V,C);
+query="";sel.committee.add("Gamma");
+out.ticked=zerosLast("committee",V,C);
+process.stdout.write(JSON.stringify(out));""")
+        r = _run([node, "-e", prog], capture_output=True, text=True, timeout=60)
+        assert r.returncode == 0, "zerosLast would not run: " + (r.stderr or "")[-300:]
+        got = json.loads(r.stdout)
+        V_ = ["Alpha", "Beta", "Gamma", "Delta"]
+        want = {"plain": {"vals": V_, "rule": -1},
+                "narrowed": {"vals": ["Beta", "Delta", "Alpha", "Gamma"], "rule": 2},
+                "status": {"vals": V_, "rule": -1},
+                "ticked": {"vals": ["Beta", "Delta", "Alpha", "Gamma"], "rule": 2}}
+        assert got == want, f"zerosLast gives {got}"
+    block = re.search(r"@media \(max-width:59\.9375em\)\{(.*?)\n\}", css, re.S)
+    assert block, "app.css has no block for the Filters button below 960px"
+    body = block.group(1)
+    for rule in (".ftoggle{order:1;display:flex", ".facets{order:2;", ".shell > main{order:3",
+                 ".shell:not(.fopen) .facets{display:none}"):
+        assert rule in body, f"below 960px the stylesheet has no {rule}"
+    assert ".fopt.fzero{border-top:1px solid var(--rule)" in css, (
+        "the first zero of a narrowed list has no rule above it")
+    return "ok", ("Status and Bill Type open at the start; a narrowed long list's options with "
+                  "bills first and a ticked zero in its place among the zeros; Status in its "
+                  "fixed order; the Filters button and its panel below 960px")
+
+
 @check("frontend", "the Calendar page is a month, filters and three views over a week that reads whole without script")
 def _calendar_page_shape():
     """The person's description of 24 September 2026, as markup and files.
@@ -52609,7 +52935,7 @@ def _calendar_page_shape():
             re.search(r'data-who="([^"]*)"', c).group(1),
             re.search(r'data-kinds="([^"]*)"', c).group(1)) for c in cards}
         assert who_of["house judiciary"] == ("standing", "hearing exec"), who_of
-        assert who_of["house floor"] == ("floor", "floor"), who_of["house floor"]
+        assert who_of["house session day"] == ("floor", "floor"), who_of.get("house session day")
         assert who_of["committee of conference on hb 3"] == ("standing", "conf"), who_of
         # Two cards of the commission, the one that met and the one cancelled:
         # both study, the one that met drawn in the study committees' colour.
@@ -52663,13 +52989,24 @@ def _calendar_page_shape():
                                            f"({len(from_files)} against {len(on_page)})")
             import html as _h
             wk = (m3["weeks"].get(k) or m4["weeks"].get(k))
-            h1 = _h.unescape(re.search(r"<h1>The week of ([^<]*)</h1>", pt).group(1))
+            h1 = _h.unescape(re.search(r"<h1>The Week of ([^<]*)</h1>", pt).group(1))
             lead = re.search(r'<p class="src">([^<]*)</p>', pt).group(1)
             assert wk and wk["label"] == h1, f"{k}: the month file calls the week {wk}, the page {h1!r}"
             assert wk["lead"] == lead, f"{k}: the month file's lead is not the page's"
+            # The pager's short name, which Previous Week and Next Week say
+            # under them, is the month file's too.
+            for cls, near in (("wkprev", -1), ("wknext", 1)):
+                said = re.search(rf'class="{cls}" href="[^"]*"><span class="wkpw">[^<]*</span>'
+                                 r'<span class="wkpd">([^<]*)</span>', pt)
+                nk = order[order.index(k) + near] if 0 <= order.index(k) + near < len(order) else None
+                if nk:
+                    nw = m3["weeks"].get(nk) or m4["weeks"].get(nk)
+                    assert said and nw and _h.unescape(said.group(1)) == nw["short"], (
+                        f"{k}: the pager names {nk} {said and said.group(1)!r}, its month file "
+                        f"{nw and nw['short']!r}")
         names = json.loads((data / "committees.json").read_text(encoding="utf-8"))
         assert ["House Judiciary", "standing", "H"] in names and ["Senate Finance", "standing", "S"] in names \
-            and ["Commission on Aging", "study", ""] in names and ["House floor", "floor", "H"] in names \
+            and ["Commission on Aging", "study", ""] in names and ["House Session Day", "floor", "H"] in names \
             and ["Committee of conference", "standing", "H S"] in names, names
         # Writers merge what they own: a month file this run did not write goes.
         (data / "1999-01.json").write_text("{}", encoding="utf-8")
@@ -52690,15 +53027,15 @@ def _calendar_core():
     """The script's reasoning, run in node over cards a build wrote.
 
     Everything the page decides -- which cards a filter keeps, what the count
-    says, which days the list draws, which hours the week has rows for, which
-    dots a day of the month carries and what its name says, what the preview
-    lists, what the address holds -- is a plain function in WEEK_JS's first
-    half. This loads that half against the fixture's month files and holds
-    each to the rule it implements:
+    says, which days the list draws, which days the week has columns for and
+    what each entry says, which dots a day of the month carries and what its
+    name says, what the preview lists, what the address holds -- is a plain
+    function in WEEK_JS's first half. This loads that half against the
+    fixture's month files and holds each to the rule it implements:
 
       one box per kind of meeting, every one on but Study Committee for a
       new reader; a card holding several kinds matches if any is ticked and
-      stays whole; the floor is Floor Session and a study or statutory
+      stays whole; the floor is Session Day and a study or statutory
       committee is Study Committee, whatever kind of meeting either held;
       work sessions and study committees are two boxes; committees picked
       by name show only those committees, still narrowed by the boxes, and a
@@ -52706,9 +53043,12 @@ def _calendar_core():
       with Study Committee unticked; a cancelled meeting is shown and never
       counted; an empty weekday is drawn under any filter, a busy day the
       filters emptied is not, and a weekend day only when something shown is
-      on it; the week's rows are the hours something starts in, named in the
-      twelve-hour clock, with a row for the sittings the record gives no
-      time; the grid starts on Monday, bands the selected week, marks today
+      on it, in the list and in the week, whose columns are Monday to Friday
+      otherwise (9 October 2026) and whose entries are the cards in brief --
+      the time a reader says, the name, the bills, the kinds as the bar and
+      in words for a screen reader -- leading where the card leads or else
+      into the Day view; an empty column says why; the Day view steps over
+      an empty weekend; the grid starts on Monday, bands the selected week, marks today
       and the past, and its dots and names agree with the entries; the
       preview stops at five, says how many more and gives its times as a
       reader says them; and the query round-trips, while an address from
@@ -52736,18 +53076,25 @@ def _calendar_core():
         out = (r.stdout or "") + (r.stderr or "")
         assert r.returncode == 0 and out.strip().endswith("OK"), out.strip()[-1500:]
         # A WEEK'S NAME FROM ITS KEY, which the heading uses when the week's
-        # month file did not come: the same words span_words gives every
-        # week's own page, across month ends and a year's.
+        # month file did not come, and the pager's short name for it: the
+        # same words week_facts gives every week's own page with nothing on
+        # its weekend -- Monday to Friday (9 October 2026) -- across month
+        # ends and a year's.
         labels, d = {}, BC.datetime.date(2024, 12, 23)
         while d <= BC.datetime.date(2028, 1, 10):
-            labels[BC.week_key(d)] = BC.span_words(d, d + BC.datetime.timedelta(days=6))
+            k = BC.week_key(d)
+            facts = BC.week_facts(k, {k: {d.isoformat(): {}}}, BC.datetime.date(2026, 3, 11))
+            labels[k] = [facts["label"], facts["short"]]
+            assert facts["label"] == BC.span_words(d, d + BC.datetime.timedelta(days=4)), (
+                f"{k} is named {facts['label']!r}, not Monday to Friday")
             d += BC.datetime.timedelta(days=7)
         (root / "labels.json").write_text(json.dumps(labels, ensure_ascii=False), encoding="utf-8")
         prog2 = root / "labels.js"
         prog2.write_text("globalThis.document={getElementById:function(){return null;}};\n"
                          + _with_components(BC.WEEK_JS) + r"""
 const C=globalThis.GRCAL, want=JSON.parse(require("fs").readFileSync(process.argv[2],"utf8"));
-const bad=Object.keys(want).filter(k=>C.weekLabel(k)!==want[k]).map(k=>k+": "+C.weekLabel(k)+" | "+want[k]);
+const bad=Object.keys(want).filter(k=>C.weekLabel(k)!==want[k][0]||C.weekLabel(k,"medium")!==want[k][1])
+  .map(k=>k+": "+C.weekLabel(k)+" / "+C.weekLabel(k,"medium")+" | "+want[k].join(" / "));
 console.log(bad.length?bad.slice(0,5).join("\n"):"OK "+Object.keys(want).length);
 """, encoding="utf-8")
         r2 = _run([node, str(prog2), str(root / "labels.json")], capture_output=True,
@@ -52793,19 +53140,19 @@ ok(cat("standing",["meet"])==="work" && cat("study",["study"])==="study" && cat(
    && cat("standing",[])==="work",
    "a card answers to the wrong box: "+[cat("standing",["meet"]),cat("study",["study"]),cat("study",["hearing"]),cat("standing",["other"])]);
 ok(count(F({}))==="5 of 6 meetings shown. 1 study committee meeting is hidden: tick Study Committee to show it.", "a new reader's week: "+count(F({})));
-ok(names(F({})).join()==="Committee of conference on HB 3,House Commerce,House Judiciary,House floor,Senate Finance",
+ok(names(F({})).join()==="Committee of conference on HB 3,House Commerce,House Judiciary,House Session Day,Senate Finance",
    "a new reader's week holds "+names(F({})));
 ok(count(ON)==="6 meetings this week.", "every box ticked: "+count(ON));
 ok(names(F({cats:["hearing"]})).join()==="House Judiciary,Senate Finance",
    "Public Hearing alone keeps "+names(F({cats:["hearing"]}))+" -- the floor answers to its own box");
 ok(names(F({cats:["exec"]})).join()==="House Commerce,House Judiciary", "Executive Session alone keeps "+names(F({cats:["exec"]})));
-ok(names(F({cats:["floor"]})).join()==="House floor", "Floor Session alone keeps "+names(F({cats:["floor"]})));
+ok(names(F({cats:["floor"]})).join()==="House Session Day", "Session Day alone keeps "+names(F({cats:["floor"]})));
 ok(names(F({cats:["conf"]})).join()==="Committee of conference on HB 3", "Committee of Conference alone keeps "+names(F({cats:["conf"]})));
 ok(names(F({cats:["study"]})).join()==="Commission on Aging,Commission on Aging" && count(F({cats:["study"]}))==="1 of 6 meetings shown.",
    "Study Committee alone keeps "+names(F({cats:["study"]}))+" and counts "+count(F({cats:["study"]})));
 ok(count(F({cats:["work"]}))==="None of the 6 meetings this week match. 1 study committee meeting is hidden: tick Study Committee to show it.", "Work Session alone, in a week of none: "+count(F({cats:["work"]})));
 // An entry holding two kinds stays while either is ticked, and whole.
-ok(names(F({cats:["hearing","work","conf","floor"]})).join()==="Committee of conference on HB 3,House Judiciary,House floor,Senate Finance"
+ok(names(F({cats:["hearing","work","conf","floor"]})).join()==="Committee of conference on HB 3,House Judiciary,House Session Day,Senate Finance"
    && count(F({cats:["hearing","work","conf","floor"]}))==="4 of 6 meetings shown. 1 study committee meeting is hidden: tick Study Committee to show it.",
    "Executive Session unticked keeps "+names(F({cats:["hearing","work","conf","floor"]})));
 // Committees by name: only those, still in the kinds ticked, and a study
@@ -52824,7 +53171,7 @@ ok(names(F({picks:["Committee of conference"]})).join()==="Committee of conferen
 ok(names(F({body:"S",picks:["House Judiciary"]})).length===0 && names(F({body:"H",picks:["House Judiciary"]})).join()==="House Judiciary",
    "a chamber plus a committee");
 ok(count(F({body:"S",picks:["House Judiciary"]}))==="None of the 6 meetings this week match.", count(F({body:"S",picks:["House Judiciary"]})));
-ok(names(F({body:"H"})).join()==="Committee of conference on HB 3,House Commerce,House Judiciary,House floor"
+ok(names(F({body:"H"})).join()==="Committee of conference on HB 3,House Commerce,House Judiciary,House Session Day"
    && names(Object.assign(F({body:"H"}),{cats:C.CATS.slice()})).indexOf("Commission on Aging")<0,
    "the House alone: "+names(F({body:"H"}))+" -- a conference is both chambers', a study committee neither's");
 // The search: a bill, a committee, and a study committee found by name.
@@ -52841,20 +53188,52 @@ ok(C.sideOn(F({}))===0 && C.sideOn(F({cats:[],body:"H"}))===1 && C.sideOn(F({pic
    "the side's own count takes in the boxes above the schedule");
 // ---- the list's days ----
 const none=F({cats:[],picks:["Nobody"]});
-ok(C.listDates(week,days,F({})).join()==="2026-03-09,2026-03-10,2026-03-11,2026-03-12",
-   "a new reader's list draws "+C.listDates(week,days,F({}))+" -- Friday's only sitting is a study committee's");
+ok(C.listDates(week,days,F({})).join()==="2026-03-09,2026-03-10,2026-03-11,2026-03-12,2026-03-13",
+   "a new reader's list draws "+C.listDates(week,days,F({}))+" -- Monday to Friday, Friday's study committee hidden and said to be");
 ok(C.listDates(week,days,ON).join()==="2026-03-09,2026-03-10,2026-03-11,2026-03-12,2026-03-13,2026-03-14",
    "every box ticked, the list draws "+C.listDates(week,days,ON));
-ok(C.listDates(week,days,none).join()==="2026-03-09", "under a filter matching nothing the list keeps the empty Monday only: "+C.listDates(week,days,none));
-// ---- the week at a glance ----
-const cols=C.weekCols(week,days,ON), by={};
-cols.forEach(d=>by[d]=days[d].cards);
-const rows=C.weekRows(cols,by);
-ok(cols.length===6 && cols[5]==="2026-03-14", "the week's columns: "+cols);
-ok(C.weekCols(week,days,F({})).length===5, "a Saturday whose one meeting is a study committee's is a column for a new reader");
-ok(rows.map(x=>x.h).join()==="09,10,", "the week's rows: "+rows.map(x=>x.h));
-ok([].concat(...rows.map(x=>[].concat(...x.cells))).length===7, "a card is missing from the week at a glance");
-ok(rows[2].cells[2].map(e=>e.name).join()==="Committee of conference on HB 3,House floor", "the untimed row holds the floor and the conference");
+ok(C.listDates(week,days,none).join()==="2026-03-09,2026-03-10,2026-03-11,2026-03-12,2026-03-13",
+   "under a filter matching nothing the list does not keep Monday to Friday alone: "+C.listDates(week,days,none));
+// ---- the week at a glance: Monday to Friday, and a weekend day that holds something ----
+const cols=C.weekCols(week,days,ON);
+ok(cols.join()==="2026-03-09,2026-03-10,2026-03-11,2026-03-12,2026-03-13,2026-03-14",
+   "every box ticked, the week's columns are "+cols+" -- Monday to Friday and the Saturday that holds a meeting");
+ok(C.weekCols(week,days,F({})).join()==="2026-03-09,2026-03-10,2026-03-11,2026-03-12,2026-03-13",
+   "a Saturday whose one meeting is a study committee's is a column for a new reader: "+C.weekCols(week,days,F({})));
+ok(C.weekCols(week,days,none).length===5 && C.weekCols(week,days,F({}),"2026-03-15").join().endsWith("2026-03-13,2026-03-15"),
+   "under a filter matching nothing the week is not Monday to Friday, or a Sunday the reader chose is no column");
+// An entry is its card in brief, read off the card: the time a reader says
+// it, the name, the bills; the kinds as the bar and, for a screen reader, in
+// words; a cancelled meeting says so; and it leads where the card leads.
+const E=(e)=>C.entryHtml(e);
+const ej=E(jud);
+ok(/^<li class="wke" data-date="2026-03-10" data-cmte="house judiciary"><button type="button" class="wkgo" data-open="2026-03-10\|house judiciary">/.test(ej)
+   && ej.indexOf('<span class="wkbar" aria-hidden="true"><i class="k-hearing"></i><i class="k-exec"></i></span>')>=0
+   && ej.indexOf('<span class="wkt">10:00'+NB+'AM</span><span class="wkc">House Judiciary</span><span class="wkn">2 bills</span>')>=0
+   && ej.indexOf('<span class="sr">, Public Hearing, Executive Session</span>')>=0,
+   "House Judiciary's entry: "+ej);
+const fl=all.find(e=>e.who==="floor"), ef=E(fl);
+ok(fl && fl.name==="House Session Day" && ef.indexOf('<span class="wkc">House Session Day</span><span class="wkn">1 bill</span>')>=0
+   && ef.indexOf('class="wkt"')<0 && ef.indexOf('<i class="k-floor"></i>')>=0 && ef.indexOf('<span class="sr">, ')<0,
+   "the floor's entry is not House Session Day, untimed, with no chip to say it again: "+ef);
+const off=E(aging[1]);
+ok(/<span class="wkc">Commission on Aging<\/span><span class="wkn">Cancelled<\/span>/.test(off) && !/Cancelled<\/span><span class="sr">/.test(off),
+   "a cancelled meeting's entry: "+off);
+const linked=C.parseCard(jud.html.replace("</div></details>",'<p class="calmore caldocs"><a class="out" href="https://gc/x.pdf">HC 9 (PDF)</a></p>'
+  +'<p class="calmore"><a href="committee/H05.html#day-2026-03-10">This meeting on the House Judiciary page</a></p></div></details>'));
+ok(/<li class="wke"[^>]*><a class="wkgo" href="committee\/H05\.html#day-2026-03-10"><span class="wkbar"/.test(E(linked)),
+   "an entry whose card leads to its committee's page at that day does not: "+E(linked));
+// What an empty column says.
+ok(C.emptyWords([],F({}))==="No meetings" && C.emptyWords([aging[0]],F({}))==="1 study committee meeting is hidden."
+   && C.emptyWords([aging[0],aging[0]],F({}))==="2 study committee meetings are hidden."
+   && C.emptyWords([aging[0]],F({cats:[],q:"x"}))==="1 meeting is hidden by the filters."
+   && C.emptyWords([jud,aging[0]],F({cats:[]}))==="2 meetings are hidden by the filters.",
+   "an empty column's words: "+[C.emptyWords([],F({})),C.emptyWords([aging[0]],F({})),C.emptyWords([jud,aging[0]],F({cats:[]}))]);
+// The Day view steps over a weekend with nothing on it, and not over one that holds something.
+ok(C.stepDay("2026-03-13",1,days)==="2026-03-14" && C.stepDay("2026-03-14",1,days)==="2026-03-16"
+   && C.stepDay("2026-03-16",-1,days)==="2026-03-14" && C.stepDay("2026-03-23",-1,days)==="2026-03-20"
+   && C.stepDay("2026-03-20",1,days)==="2026-03-23" && C.stepDay("2026-03-10",-1,days)==="2026-03-09",
+   "the Day view's steps: "+[C.stepDay("2026-03-13",1,days),C.stepDay("2026-03-14",1,days),C.stepDay("2026-03-23",-1,days)]);
 // ---- the day a week opens on ----
 // Today where the week holds it; else its first sitting the filters show,
 // so a week whose Monday is a study commission's alone does not open on a
@@ -52873,8 +53252,6 @@ const clocks={"09:05":"9:05 AM","9:30":"9:30 AM","00:30":"12:30 AM","12:00":"12:
   "13:30":"1:30 PM","23:59":"11:59 PM","":"","TBA":"TBA","24:00":"24:00"};
 const badClock=Object.keys(clocks).filter(t=>C.clock(t)!==clocks[t].replace(/ (AM|PM)$/,NB+"$1"));
 ok(!badClock.length, "the clock: "+badClock.map(t=>JSON.stringify(t)+" is "+JSON.stringify(C.clock(t))).join(", "));
-ok(C.hourWord("09")==="9"+NB+"AM" && C.hourWord("12")==="12"+NB+"PM" && C.hourWord("13")==="1"+NB+"PM" && C.hourWord("00")==="12"+NB+"AM",
-   "the week's hours: "+["09","12","13","00"].map(C.hourWord));
 // ---- the grid ----
 const g=C.gridHtml({view:"2026-03",sel:"2026-03-10",focus:"2026-03-10",today:"2026-03-11",
   first:"2026-03-02",last:"2026-04-05",days,f:F({})});
@@ -52954,7 +53331,7 @@ ok(C.stepKey("2026-03-11","ArrowUp")==="2026-03-04" && C.stepKey("2026-03-11","H
 ok(C.relWord("2026-03-12","2026-03-11")==="tomorrow" && C.relWord("2026-03-25","2026-03-11")==="in 14 days"
    && C.relWord("2026-03-26","2026-03-11")==="" && C.relWord("2026-03-10","2026-03-11")==="", "the relative day words");
 if(fails.length){ console.log(fails.join("\n")); process.exit(1); }
-console.log("7 cards: the six boxes alone and together, picks and the search with Study Committee off, the list's days, the week's rows and columns, the clock, the grid's cells and dots, the preview, the query and the old hash");
+console.log("7 cards: the six boxes alone and together, picks and the search with Study Committee off, the list's days, the week's columns and entries, the Day view's steps, the clock, the grid's cells and dots, the preview, the query and the old hash");
 console.log("OK");
 """
 
@@ -53248,7 +53625,10 @@ function world(page,pathname,o){
     await W.settle(); W.advance(700); await W.settle(); };
   const D=W.doc;
   W.$=(id)=>D.getElementById(id); W.Q=(s,r)=>(r||D).querySelector(s); W.QA=(s,r)=>(r||D).querySelectorAll(s);
-  W.keys=()=>W.QA(".calmeet",W.$("calview")).map(m=>m.getAttribute("data-date")+"|"+W.Q(".calcmte",m).textContent);
+  // The meetings the schedule shows: its cards, and in the Week view the
+  // entries that stand for them (one a card, named as the card is).
+  W.keys=()=>W.QA(".calmeet",W.$("calview")).map(m=>m.getAttribute("data-date")+"|"+W.Q(".calcmte",m).textContent)
+    .concat(W.QA(".wke",W.$("calview")).map(m=>m.getAttribute("data-date")+"|"+W.Q(".wkc",m).textContent));
   W.sel=()=>{ const g=W.Q('td[aria-selected="true"]',W.$("cmgrid")); return g&&g.getAttribute("data-d"); };
   W.view=(v)=>W.QA("[data-view]",W.$("calbar")).find(b=>b.getAttribute("data-view")===v);
   W.addr=()=>W.G.location.pathname+W.G.location.search+W.G.location.hash;
@@ -53287,7 +53667,12 @@ const CLOCK=new RegExp("^\\d{1,2}:\\d\\d"+NB+"(AM|PM)(–\\d{1,2}:\\d\\d"+NB+"(A
   const c10=Q('td[data-d="2026-03-10"]',$("cmgrid")), c13=Q('td[data-d="2026-03-13"]',$("cmgrid"));
   ok(QA(".cmdots i",c10).map(i=>i.className).join()==="k-hearing,k-exec", "10 March's dots: "+QA(".cmdots i",c10).map(i=>i.className));
   ok(!QA(".cmdots i",c13).length, "a study committee's day has a dot while its box is unticked");
-  ok(QA(".cdrel",$("calview")).map(r=>r.textContent).join()===",,today,tomorrow", "the days' relative words: "+QA(".cdrel",$("calview")).map(r=>r.textContent));
+  ok(QA(".cdrel",$("calview")).map(r=>r.textContent).join()===",,today,tomorrow,in 2 days", "the days' relative words: "+QA(".cdrel",$("calview")).map(r=>r.textContent));
+  // MONDAY TO FRIDAY IN THE LIST TOO: Friday, whose one meeting is a study
+  // committee's, stays and says so, as the Week view's column does.
+  const fri=Q('.calday[data-d="2026-03-13"]',$("calview"));
+  ok(fri && Q(".calempty",fri) && Q(".calempty",fri).textContent==="1 study committee meeting is hidden.",
+     "the list drops a weekday the filters emptied, or does not say why it is empty: "+(fri&&fri.textContent));
   ok(W.addr()==="/calendar" && W.G.history.length===1, "opening the tab wrote an address: "+W.addr());
   // EVERY TIME AS A READER SAYS IT, on the cards and on the items inside them.
   const times=QA(".caltime",$("calview")).map(t=>t.textContent);
@@ -53298,7 +53683,7 @@ const CLOCK=new RegExp("^\\d{1,2}:\\d\\d"+NB+"(AM|PM)(–\\d{1,2}:\\d\\d"+NB+"(A
   Q('td[data-d="2026-03-18"]',$("cmgrid")).click(); await W.step();
   ok(W.addr()==="/calendar?week=2026-W12", "a day in another week, the one it opens on, is at "+W.addr());
   ok(W.G.history.length===h0+1, "choosing a day is not one step of history");
-  ok(Q(".calhead h1").textContent==="The week of March 16–22, 2026", "the heading: "+Q(".calhead h1").textContent);
+  ok(Q(".calhead h1").textContent==="The Week of March 16–20, 2026", "the heading: "+Q(".calhead h1").textContent);
   ok(W.keys().join()==="2026-03-18|House Judiciary,2026-03-18|Senate Finance", "the week of 16 March lists "+W.keys());
   ok((Q(".calday.calsel",$("calview"))||{getAttribute:()=>null}).getAttribute("data-d")==="2026-03-18", "the list does not mark the day chosen");
   ok(QA(".calhead .wknav a").map(a=>a.getAttribute("href")).join()==="/calendar,/calendar,/calendar/2026-W13",
@@ -53311,8 +53696,8 @@ const CLOCK=new RegExp("^\\d{1,2}:\\d\\d"+NB+"(AM|PM)(–\\d{1,2}:\\d\\d"+NB+"(A
     ogt:Q('meta[property="og:title"]').getAttribute("content"), ld:Q('script[type="application/ld+json"]').textContent,
     skip:Q("a.skip").getAttribute("href"), days:QA(".pcite .citeday").length});
   let nm=named();
-  ok(nm.canon==="https://graniterecord.org/calendar/2026-W12" && nm.og===nm.canon && nm.ogt==="The week of March 16–22, 2026"
-     && /“The week of March 16–22, 2026\.” Granite Record, https:\/\/graniterecord\.org\/calendar\/2026-W12\. Accessed/.test(nm.cite)
+  ok(nm.canon==="https://graniterecord.org/calendar/2026-W12" && nm.og===nm.canon && nm.ogt==="The Week of March 16–20, 2026"
+     && /“The Week of March 16–20, 2026\.” Granite Record, https:\/\/graniterecord\.org\/calendar\/2026-W12\. Accessed/.test(nm.cite)
      && /@misc\{calendar-2026-W12,/.test(nm.cite) && !/9–15 March|calendar,|\/calendar\./.test(nm.cite)
      && /"@id":"https:\/\/graniterecord\.org\/calendar\/2026-W12"/.test(nm.ld) && !/9–15 March/.test(nm.ld) && nm.days===4,
      "another week's page still names the week it was loaded as: "+JSON.stringify(nm));
@@ -53323,9 +53708,9 @@ const CLOCK=new RegExp("^\\d{1,2}:\\d\\d"+NB+"(AM|PM)(–\\d{1,2}:\\d\\d"+NB+"(A
   W.G.history.back(); await W.step();
   ok(W.addr()==="/calendar?week=2026-W12" && W.sel()==="2026-03-18", "Back did not return to 18 March: "+W.addr()+" "+W.sel());
   W.G.history.back(); await W.step();
-  ok(W.sel()==="2026-03-11" && W.addr()==="/calendar" && Q(".calhead h1").textContent==="The week of March 9–15, 2026", "Back did not return to 11 March");
+  ok(W.sel()==="2026-03-11" && W.addr()==="/calendar" && Q(".calhead h1").textContent==="The Week of March 9–14, 2026", "Back did not return to 11 March");
   nm=named();
-  ok(nm.canon==="https://graniterecord.org/calendar" && /“The week of March 9–15, 2026\.” Granite Record, https:\/\/graniterecord\.org\/calendar\. Accessed/.test(nm.cite)
+  ok(nm.canon==="https://graniterecord.org/calendar" && /“The Week of March 9–14, 2026\.” Granite Record, https:\/\/graniterecord\.org\/calendar\. Accessed/.test(nm.cite)
      && /@misc\{calendar,/.test(nm.cite) && nm.skip==="/calendar#results", "Back did not name this week again: "+JSON.stringify(nm));
   // THE ARROWS KEEP FOCUS. The week after, from the head's arrows, then This
   // week from the foot's: the same arrow in the new ones, and the heading
@@ -53345,16 +53730,42 @@ const CLOCK=new RegExp("^\\d{1,2}:\\d\\d"+NB+"(AM|PM)(–\\d{1,2}:\\d\\d"+NB+"(A
   ok(W.sel()==="2026-03-11" && D.activeElement===arrow(".calhead .wknav","wkprev"), "The week before dropped focus");
   // ---- the week, the day ----
   W.view("week").click(); await W.settle();
-  ok(QA("tbody th",$("calview")).map(t=>t.textContent).join()===["9"+NB+"AM","10"+NB+"AM","No time given"].join(),
-     "the week's rows: "+QA("tbody th",$("calview")).map(t=>t.textContent));
-  ok(QA("thead th",$("calview")).length===6, "not Monday to Friday: a Saturday whose one meeting is hidden is a column");
-  ok(W.keys().sort().join()===plain.slice().sort().join(), "the week at a glance does not hold the week's cards");
+  // MONDAY TO FRIDAY, beside the month (9 October 2026): a column a day,
+  // each the day's meetings in brief, and a Saturday whose one meeting is
+  // hidden is no column.
+  const wcols=QA(".wkcol",$("calview"));
+  ok(wcols.map(c=>Q(".wkday",c).getAttribute("data-d")).join()==="2026-03-09,2026-03-10,2026-03-11,2026-03-12,2026-03-13"
+     && QA(".wkdn",$("calview")).map(x=>x.textContent).join()==="Monday,Tuesday,Wednesday,Thursday,Friday",
+     "the week is not Monday to Friday: "+wcols.map(c=>Q(".wkday",c).getAttribute("data-d")));
+  ok(!QA("table",$("calview")).length && !QA(".calmeet",$("calview")).length && QA(".wke",$("calview")).length===5,
+     "the week is still whole cards in a table of hours, or not one entry a meeting shown");
+  ok(W.keys().sort().join()===plain.slice().sort().join(), "the week at a glance does not hold the week's cards: "+W.keys());
+  ok(Q(".wkempty",wcols[0]).textContent==="No meetings" && Q(".wkempty",wcols[4]).textContent==="1 study committee meeting is hidden.",
+     "an empty column does not say why: "+[Q(".wkempty",wcols[0]),Q(".wkempty",wcols[4])].map(x=>x&&x.textContent));
+  ok(wcols[2].getAttribute("aria-current")==="date" && Q(".wkdd",wcols[2]).textContent==="Mar 11 · Today",
+     "today is not marked in the week: "+Q(".wkdd",wcols[2]).textContent);
+  ok(QA(".wkt",$("calview")).every(t=>/^\d{1,2}:\d\d (AM|PM)$/.test(t.textContent)), "an entry's time is not as a reader says it");
   ok(W.addr()==="/calendar?week=2026-W11&view=week", "the address does not say Week: "+W.addr());
+  // An entry with no page to lead to -- a conference's -- opens its day,
+  // the card in full and given the focus.
+  const conf=QA(".wke",$("calview")).find(e=>/conference/.test(Q(".wkc",e).textContent));
+  ok(conf && Q(".wkgo",conf).tagName==="BUTTON", "the conference's entry is not a button into its day");
+  if(conf){ Q(".wkgo",conf).click(); await W.settle(); }
+  ok(W.view("day").getAttribute("aria-pressed")==="true" && W.sel()==="2026-03-11" && D.activeElement.tagName==="SUMMARY"
+     && /conference/.test(D.activeElement.textContent), "the conference's entry did not open it in the Day view: "
+     +W.addr()+" "+D.activeElement.tagName);
   W.view("day").click(); await W.settle();
-  ok(QA(".calday",$("calview")).length===1 && W.keys().join()==="2026-03-11|Committee of conference on HB 3,2026-03-11|House floor"
+  ok(QA(".calday",$("calview")).length===1 && W.keys().join()==="2026-03-11|Committee of conference on HB 3,2026-03-11|House Session Day"
      && QA(".calmeet",$("calview")).every(m=>m.open), "the Day view is not 11 March's two entries, open: "+W.keys());
   ok($("wkcount").textContent==="2 meetings on Wednesday, March 11.", "the day's count: "+$("wkcount").textContent);
   ok(W.addr()==="/calendar?week=2026-W11&view=day", "the Day view's address: "+W.addr());
+  // PREVIOUS DAY AND NEXT DAY, under the day, each with the day it leads to.
+  const steps=()=>QA(".calstep button",$("calview")).map(b=>b.getAttribute("data-to")+" "+b.textContent).join(" | ");
+  ok(steps()==="2026-03-10 ‹ Previous DayTuesday, March 10 | 2026-03-12 Next Day ›Thursday, March 12", "the Day view's pager: "+steps());
+  Q('.calstep [data-step="1"]',$("calview")).click(); await W.settle();
+  ok(W.sel()==="2026-03-12" && W.addr()==="/calendar?week=2026-W11&day=2026-03-12&view=day", "Next Day: "+W.sel()+" "+W.addr());
+  Q('.calstep [data-step="-1"]',$("calview")).click(); await W.settle();
+  ok(W.sel()==="2026-03-11" && W.addr()==="/calendar?week=2026-W11&view=day", "Previous Day: "+W.sel()+" "+W.addr());
   W.view("list").click(); await W.settle();
   // ---- the boxes ----
   const hb=W.G.history.length;
@@ -53375,7 +53786,7 @@ const CLOCK=new RegExp("^\\d{1,2}:\\d\\d"+NB+"(AM|PM)(–\\d{1,2}:\\d\\d"+NB+"(A
   ok(W.addr()==="/calendar?week=2026-W11&kinds=hearing,work,conf,floor", "the address: "+W.addr());
   await W.tick("exec",true);
   await W.tick("floor",false);
-  ok(!W.keys().some(k=>/House floor/.test(k)) && $("wkcount").textContent==="4 of 6 meetings shown. 1 study committee meeting is hidden: tick Study Committee to show it.", "Floor Session unticked: "+W.keys());
+  ok(!W.keys().some(k=>/House Session Day/.test(k)) && $("wkcount").textContent==="4 of 6 meetings shown. 1 study committee meeting is hidden: tick Study Committee to show it.", "Session Day unticked: "+W.keys());
   await W.tick("floor",true);
   // ---- the side: a committee by name, a chamber, the search ----
   $("cpfind").dispatchEvent(W.ev("focus",{bubbles:false})); await W.settle();
@@ -53510,11 +53921,11 @@ const CLOCK=new RegExp("^\\d{1,2}:\\d\\d"+NB+"(AM|PM)(–\\d{1,2}:\\d\\d"+NB+"(A
   // ---- the reader's today, not the build's ----
   const W2=world("calendar.html","/calendar",{today:[2026,3,18]});
   await W2.run();
-  ok(W2.sel()==="2026-03-18" && W2.Q(".calhead h1").textContent==="The week of March 16–22, 2026"
+  ok(W2.sel()==="2026-03-18" && W2.Q(".calhead h1").textContent==="The Week of March 16–20, 2026"
      && W2.keys().join()==="2026-03-18|House Judiciary,2026-03-18|Senate Finance", "a reader a week after the build is not shown their own week: "+W2.sel());
   ok(W2.Q('td[aria-current="date"]',W2.$("cmgrid")).getAttribute("data-d")==="2026-03-18", "today is the build's, not the reader's");
   ok(W2.Q('link[rel="canonical"]').getAttribute("href")==="https://graniterecord.org/calendar/2026-W12"
-     && /^“The week of March 16–22, 2026\.” Granite Record, https:\/\/graniterecord\.org\/calendar\/2026-W12\./.test(W2.QA(".pcite dd")[0].textContent),
+     && /^“The Week of March 16–20, 2026\.” Granite Record, https:\/\/graniterecord\.org\/calendar\/2026-W12\./.test(W2.QA(".pcite dd")[0].textContent),
      "the tab shows the reader's week and cites the build's: "+W2.QA(".pcite dd")[0].textContent);
   ok(W2.addr()==="/calendar", "the tab opened on the reader's week wrote an address: "+W2.addr());
   // THE DAY A WEEK OPENS ON IS ITS FIRST SITTING THE FILTERS SHOW. That
@@ -53584,16 +53995,16 @@ const CLOCK=new RegExp("^\\d{1,2}:\\d\\d"+NB+"(AM|PM)(–\\d{1,2}:\\d\\d"+NB+"(A
   const n6=W6.Q(".calhead .wknav a.wknext"); n6.focus(); n6.dispatchEvent(W6.ev("click",{button:0,detail:0}));
   await W6.step();
   const said6=W6.Q("p.calempty",W6.$("calview")), link6=said6&&W6.Q("a",said6);
-  ok(W6.addr()==="/calendar?week=2026-W12" && W6.Q(".calhead h1").textContent==="The week of March 16–22, 2026"
-     && W6.doc.title==="The week of March 16–22, 2026 | Granite Record"
+  ok(W6.addr()==="/calendar?week=2026-W12" && W6.Q(".calhead h1").textContent==="The Week of March 16–20, 2026"
+     && W6.doc.title==="The Week of March 16–20, 2026 | Granite Record"
      && W6.Q('link[rel="canonical"]').getAttribute("href")==="https://graniterecord.org/calendar/2026-W12"
-     && /“The week of March 16–22, 2026\.” Granite Record, https:\/\/graniterecord\.org\/calendar\/2026-W12\./.test(W6.QA(".pcite dd")[0].textContent),
+     && /“The Week of March 16–20, 2026\.” Granite Record, https:\/\/graniterecord\.org\/calendar\/2026-W12\./.test(W6.QA(".pcite dd")[0].textContent),
      "a week whose file failed is at "+W6.addr()+" under the heading "+W6.Q(".calhead h1").textContent
        +", canonical "+W6.Q('link[rel="canonical"]').getAttribute("href"));
   ok(W6.Q(".calhead p.src").textContent==="The meetings of this week could not be loaded here."
      && W6.$("wkcount").textContent==="The meetings could not be loaded.",
      "the lead and the count of a week that did not load: "+W6.Q(".calhead p.src").textContent+" / "+W6.$("wkcount").textContent);
-  ok(said6 && said6.textContent==="The week of March 16–22, 2026 could not be loaded here. Open it on its own page."
+  ok(said6 && said6.textContent==="The week of March 16–20, 2026 could not be loaded here. Open it on its own page."
      && link6 && link6.getAttribute("href")==="/calendar/2026-W12",
      "the panel of a week that did not load says "+(said6&&said6.textContent));
   W6.view("day").click(); await W6.settle();
@@ -53604,7 +54015,7 @@ const CLOCK=new RegExp("^\\d{1,2}:\\d\\d"+NB+"(AM|PM)(–\\d{1,2}:\\d\\d"+NB+"(A
   const W3=world("calendar.html","/calendar",{search:"?week=2026-W10&day=2026-03-03&view=day&kinds=hearing"});
   await W3.run();
   ok(W3.sel()==="2026-03-03" && W3.view("day").getAttribute("aria-pressed")==="true" && W3.ticked()==="hearing"
-     && W3.keys().join()==="2026-03-03|House Commerce" && W3.Q(".calhead h1").textContent==="The week of March 2–8, 2026",
+     && W3.keys().join()==="2026-03-03|House Commerce" && W3.Q(".calhead h1").textContent==="The Week of March 2–6, 2026",
      "a shared address does not open on its week, day, view and box: "+W3.sel()+" "+W3.keys());
   ok(W3.addr()==="/calendar?week=2026-W10&day=2026-03-03&view=day&kinds=hearing" && W3.G.history.length===1,
      "a shared address was rewritten: "+W3.addr());
@@ -53631,7 +54042,7 @@ const CLOCK=new RegExp("^\\d{1,2}:\\d\\d"+NB+"(AM|PM)(–\\d{1,2}:\\d\\d"+NB+"(A
      "the address before the reload: "+before);
   ok(R.addr()===before && R.sel()==="2026-03-19" && R.view("week").getAttribute("aria-pressed")==="true"
      && R.ticked()==="hearing,exec,work,conf,floor,study" && R.Q('[data-body="H"]',R.$("wkfilter")).getAttribute("aria-pressed")==="true"
-     && R.keys().join()===W7.keys().join() && R.Q(".calhead h1").textContent==="The week of March 16–22, 2026",
+     && R.keys().join()===W7.keys().join() && R.Q(".calhead h1").textContent==="The Week of March 16–20, 2026",
      "a reload does not open what was on the screen: "+R.addr()+" "+R.sel()+" "+R.keys());
   // And Back after a reload is the browser's own: the calendar reads it.
   // The Study Committee box, once ticked, is this browser's choice too: the
@@ -53668,7 +54079,7 @@ const CLOCK=new RegExp("^\\d{1,2}:\\d\\d"+NB+"(AM|PM)(–\\d{1,2}:\\d\\d"+NB+"(A
   ok(WA.addr()==="/calendar?week=2026-W11" && WA.sel()==="2026-03-11" && WA.G.history.length===2,
      "the first move from a week's own page is at "+WA.addr());
   WA.G.history.back(); await WA.step();
-  ok(WA.addr()==="/calendar/2026-W10" && WA.sel()==="2026-03-03" && WA.Q(".calhead h1").textContent==="The week of March 2–8, 2026"
+  ok(WA.addr()==="/calendar/2026-W10" && WA.sel()==="2026-03-03" && WA.Q(".calhead h1").textContent==="The Week of March 2–6, 2026"
      && WA.keys().join()==="2026-03-03|House Commerce", "Back to a week's own page: "+WA.addr()+" "+WA.sel());
   // Reached by its file's name, as a preview served from the folder has it,
   // the calendar keeps to that name, so a reload there finds the page.
@@ -53713,11 +54124,14 @@ def _calendar_layout():
     schedule scrolls -- one tall grid area, because sticky is clipped to its
     own area -- and below 1024px it goes above the schedule, compact and
     foldable, with the DOM order the reading order at every width. The week at
-    a glance keeps legible columns and scrolls inside its own frame rather than
-    widening the page: 56px of hours and five 122px days is 666px, which this
-    holds against the narrowest two-column panel (1024px less the shell's
-    sides, a scrollbar, the month's column at its narrowest and the gap).
-    Every colour is a token, so the dark palette re-grounds all of it; and a
+    a glance is Monday to Friday beside the month since 9 October 2026, a
+    column a day in the schedule's own column, and the days stand one under
+    another where that column is narrow; this sums a day's room for a
+    committee's name against the narrowest two-column panel (1024px less the
+    shell's sides, a scrollbar, the month's column at its narrowest and the
+    gap). Until then it was a table of hours that scrolled in its own frame,
+    and the rules below that held its chips and cells went with it. Every
+    colour is a token, so the dark palette re-grounds all of it; and a
     heading here outranks what it heads.
 
     Added after the review of 24 September, from what a headless Chrome
@@ -53785,69 +54199,64 @@ def _calendar_layout():
         "the tick is not drawn in the card's ground, which is what holds 3:1 on every colour")
     assert re.search(r"\.calcat input:focus-visible \+ \.cbx\{outline:2px solid var\(--pine\)", block), (
         "a box does not show where the keyboard's focus is")
-    wrap = _braced(block, ".wkgridwrap{")
-    assert "overflow-x:auto" in wrap, "the week at a glance can widen the page"
-    # ITS FRAME CLIPS WHAT IS POSITIONED INSIDE IT. The day buttons carry a
-    # visually hidden label, position:absolute; with no positioned ancestor it
-    # was placed against the page, outside the frame, and at 360px the page
-    # scrolled sideways by 192px in the Week view.
-    assert "position:relative" in wrap, "the week's frame is not the containing block of its hidden labels"
-    # AND THE CALENDAR'S TABLES STAY TABLES. The stylesheet makes every table
-    # a scrolling block at 720px and below; the month then shrank to 26px days
-    # and the week became a scroller inside its frame, its sticky hours
-    # sliding off the screen with it.
+    # THE WEEK, MONDAY TO FRIDAY, BESIDE THE MONTH (9 October 2026): a column
+    # a day in the schedule's own column, as many columns as days, which
+    # stand one under another where the schedule is narrow -- by the width it
+    # has (a container query), so a phone never scrolls sideways.
+    week = _braced(block, ".wkweek{")
+    assert "container-type:inline-size" in week, "the week does not stack by the width it has"
+    days_ = _braced(block, ".wkdays{")
+    assert "display:grid" in days_ and "grid-template-columns:repeat(var(--cols,5),minmax(0,1fr))" in days_, (
+        f"the week is not a column a day, as many as the days: {days_}")
+    stack = _braced(block, "@container (max-width:40em){")
+    assert ".wkdays{grid-template-columns:minmax(0,1fr)}" in stack, (
+        "the days do not stand one under another where the schedule is narrow")
+    # ITS DAYS ARE THE CONTAINING BLOCK OF WHAT IS POSITIONED INSIDE THEM. The
+    # day buttons carry a visually hidden label, position:absolute; with no
+    # positioned ancestor it was placed against the page, and at 360px the
+    # page scrolled sideways by 192px in the Week view.
+    assert "position:relative" in _braced(block, ".wkcol{"), (
+        "the week's days are not the containing block of their hidden labels")
+    # AND THE MONTH STAYS A TABLE. The stylesheet makes every table a
+    # scrolling block at 720px and below; the month then shrank to 26px days.
     assert re.search(r"@media \(max-width: ?45em\)\{[^@]*?\btable\{display:block", css), (
         "the narrow-screen table rule this answers has moved; recheck the calendar against it")
     keep = re.search(r"\.calapp table\{([^}]*)\}", block)
     assert keep and "display:table" in keep.group(1) and "overflow:visible" in keep.group(1), (
-        "the month and the week are made scrolling blocks on a phone by the site's table rule")
-    # A chip in a column shrinks and wraps rather than running over the next day.
-    chip = _braced(block, ".wkgrid .calmeet > summary .calkind{")
-    assert "flex:0 1 auto" in chip and "max-width:100%" in chip, (
-        "a kind chip in the week at a glance keeps its full width and spills out of its card")
-    # AND IN AN OPENED CARD. The summary's rule was all there was, and with a
-    # card open "Subcommittee work session" ran 74px over the next day at
-    # 1024px, because the chips on the item lines are the body's.
-    inner = _braced(block, ".wkgrid .calbody .calkind{")
-    assert all(x in inner for x in ("flex:0 1 auto", "max-width:100%", "min-width:0",
-                                     "white-space:normal")), (
-        "a kind chip inside an opened card in the week keeps its full width and "
-        f"spills over the next day's column: {inner}")
-    name = _braced(block, ".wkgrid .calmeet > summary .calcmte{")
-    assert "overflow-wrap:anywhere" not in name, (
-        "a committee's name in the week breaks mid-word before it breaks between words")
+        "the month is made a scrolling block on a phone by the site's table rule")
+    name = _braced(block, "\n.wkc{")
+    assert "overflow-wrap:anywhere" not in name and "overflow-wrap:break-word" in name, (
+        "a committee's name in the week breaks mid-word before it breaks between words, or not at all")
     # A LONG WORD FITS, OR IS HYPHENATED. "Administration" broke as
-    # "Administratio / n" in the 89px the name had; the column and the
-    # paddings are summed here from the stylesheet itself, so a padding put
-    # back narrows the name and fails this. 99px is the estimate the rule's
-    # comment gives, from a screenshot and not from the font's metrics; a
-    # longer word is left to hyphens:auto, both spellings of it.
+    # "Administratio / n" in the 89px a name had in the week's table; the
+    # column and the paddings are summed here from the stylesheet itself, so
+    # a padding put back narrows the name and fails this. 99px is the
+    # estimate the old rule's comment gave, from a screenshot and not from the
+    # font's metrics; a longer word is left to hyphens:auto, both spellings.
     assert "-webkit-hyphens:auto" in name and re.search(r"(?<!-)hyphens:auto", name), (
         f"a committee's name in the week is not hyphenated where it must break: {name}")
     sp = {int(k): int(v) for k, v in re.findall(r"--sp-(\d+):(\d+)px", css)}
 
     def px(v):
         v = v.strip()
-        m_ = re.fullmatch(r"calc\(var\(--sp-(\d+)\) \+ (\d+)px\)", v)
-        if m_:
-            return sp[int(m_.group(1))] + int(m_.group(2))
         m_ = re.fullmatch(r"var\(--sp-(\d+)\)", v)
         return sp[int(m_.group(1))] if m_ else int(v.rstrip("px"))
 
     def sides(decl):
         """(right, left) of a padding shorthand of one to four values."""
-        p = [px(x) for x in re.findall(r"calc\(var\([^)]*\) \+ \d+px\)|var\([^)]*\)|\d+px|0", decl)]
+        p = [px(x) for x in re.findall(r"var\([^)]*\)|\d+px|0", decl)]
         p = {1: p * 4, 2: p * 2, 3: p + p[1:2], 4: p}[len(p)]
         return p[1], p[3]
-    cell = re.search(r"padding:([^;}]*)", _braced(block, ".wkgrid th,.wkgrid td{")).group(1)
-    summ = re.search(r"padding:([^;}]*)", _braced(block, ".wkgrid .calmeet > summary{")).group(1)
-    card = re.search(r"border:(\d+)px", _braced(css, ".calmeet{")).group(1)
-    col = int(re.search(r"\.wkgrid\{[^}]*min-width:calc\(\d+px \+ var\(--cols,5\) \* (\d+)px\)",
-                        block).group(1))
-    measure = col - sum(sides(cell)) - 2 * int(card) - sum(sides(summ))
+    go = _braced(block, ".wkgo{")
+    bar = int(re.search(r"grid-template-columns:(\d+)px minmax\(0,1fr\)", go).group(1))
+    gap = px(re.search(r"column-gap:([^;}]*)", go).group(1))
+    pad = sum(sides(re.search(r"padding:([^;}]*)", go).group(1)))
+    have = 1024 - 2 * 24 - 15 - side_min - 32 - 2
+    col = (have - 2) // 5 - 1
+    measure = col - bar - gap - pad
     assert measure >= 99, (
-        f"a committee's name in the week has {measure}px ({col}px column, cell {cell}, "
-        f"card border {card}px, summary {summ}): \"Administration\" needs about 99")
+        f"a committee's name in the week has {measure}px at 1024 ({col}px a day, a {bar}px "
+        f"bar, a {gap}px gap, {pad}px of padding): \"Administration\" needs about 99")
     # THE SELECTED WEEK IS A BAND A READER CAN SEE, in both themes: pine mixed
     # into the page. --pine-soft was about 1.0:1 against the light page.
     band = re.search(r"\.cmrow\.cmsel td\{background:color-mix\(in srgb,var\(--pine\) (\d+)%,var\(--paper\)\)\}", block)
@@ -53868,20 +54277,18 @@ def _calendar_layout():
         a_, b_ = sorted((_lum(mix), _lum(paper)))
         ratio = (b_ + 0.05) / (a_ + 0.05)
         assert ratio >= 1.2, f"the selected week's band is {ratio:.2f}:1 against the {theme} page"
-    m = re.search(r"\.wkgrid\{[^}]*min-width:calc\((\d+)px \+ var\(--cols,5\) \* (\d+)px\)", block)
-    assert m, "the week's columns have no minimum width"
-    need = int(m.group(1)) + 5 * int(m.group(2))
-    have = 1024 - 2 * 24 - 15 - side_min - 32 - 2
-    assert need <= have, (f"a five-day week needs {need}px and the panel beside the month "
-                          f"has {have}px at 1024: it would scroll on a desktop")
     for rule, size in ((".cmtitle{", "--t-lead"), (".cfhead h2{", "--t-lead"),
                        (".calfs legend,.calside .wkfind{", "--t-ui"), (".pkd{", "--t-h3")):
         assert f"font-size:var({size})" in _braced(block, rule), f"{rule} is not set at {size}"
     assert "font-size:var(--t-ui)" in _braced(block, ".calchk{"), "the boxes are not at the interface size"
-    return "ok", (f"month beside the schedule and sticky, above it below 1024px; a week "
-                  f"needs {need}px of the {have}px it has, scrolls in its own frame and "
-                  f"keeps its chips, open or shut; a committee's name has {measure}px and "
-                  f"hyphens; the tables stay tables on a phone; tokens only")
+    # A day's heading outranks its entries: the interface's size over theirs.
+    assert "font-size:var(--t-ui)" in _braced(block, ".wkdh{") and \
+        all("font-size:var(--t-sm)" in _braced(block, r) for r in ("\n.wkt{", "\n.wkc{", "\n.wkn{")), (
+        "a day's heading in the week does not outrank its entries")
+    return "ok", (f"month beside the schedule and sticky, above it below 1024px; the week "
+                  f"a column a day beside it, {col}px a day at 1024, stacked where it is "
+                  f"narrow; a committee's name has {measure}px and hyphens; the month stays "
+                  f"a table on a phone; tokens only")
 
 
 @check("frontend", "the home page's Coming up is this week, the week the Calendar tab shows")
@@ -53903,8 +54310,10 @@ def _coming_up_is_this_week():
     four fixed days -- a Monday, a Thursday, a Saturday and a Sunday, the one
     getDay() calls 0 -- out of rows written here, and holds it to the week
     build_calendar draws: from today to Sunday, every sitting in that span,
-    the floor included, a hundred bills on one day and all of them shown,
-    and next week counted and linked rather than listed. Then it runs
+    the floor included, a hundred bills on one day and all of them shown;
+    from Saturday the next week's, whole and named Next Week (D13, the
+    person, 8 October 2026, item 120); and the rail ending with "See the
+    full calendar" (item 118), where it once counted next week. Then it runs
     HOME_JS's own block in node against a stub page, because the build is
     read for days after it is made and it is the script that keeps the rail
     to the READER's week. _chain holds the built fixture home page to it too.
@@ -53949,17 +54358,24 @@ def _coming_up_is_this_week():
             rows = rows_for(today)
             with contextlib.redirect_stdout(io.StringIO()):
                 page = BP.calendar_html(tmp, today=today, rows=rows)
-            sun = BC.monday(today) + _dt.timedelta(days=6)
-            t, s = today.isoformat(), sun.isoformat()
+            ahead = today.weekday() >= 5
+            start = BC.monday(today) + _dt.timedelta(days=7) if ahead else today
+            sun = BC.monday(start) + _dt.timedelta(days=6)
+            t, s = start.isoformat(), sun.isoformat()
             shown = re.findall(r'class="calday" data-d="([^"]+)"', page)
             wide = [d for d in shown if not t <= d <= s]
             assert not wide, (
                 f"built on {today:%a %d %b}, Coming up shows {wide}, outside "
-                f"this week ({t} to {s}) -- the rail is the Calendar tab's "
-                "week, not a fortnight")
-            # The same sittings the Calendar tab's week holds from today on:
-            # read through the same function, so the two cannot differ.
-            week = BC.weeks_from(rows).get(BC.week_key(today)) or {}
+                f"its week ({t} to {s}) -- the rail is the Calendar tab's "
+                "week, not a fortnight, and from Saturday the next")
+            name = re.search(r'<p class="calwk"><span class="chip">([^<]+)</span> <span>([^<]+)</span>',
+                             page)
+            assert name and name.group(1) == ("Next Week" if ahead else "This Week"), (
+                f"built on {today:%a %d %b}, Coming up's week is named "
+                f"{name.group(1) if name else 'nothing'}")
+            # The same sittings the Calendar tab's week holds from its first
+            # day on: read through the same function, so the two cannot differ.
+            week = BC.weeks_from(rows).get(BC.week_key(start)) or {}
             want = {(k.date, BP.card_name(k).lower()) for d in week if d >= t
                     for k in week[d]}
             got = set(re.findall(
@@ -53970,38 +54386,45 @@ def _coming_up_is_this_week():
                 f"built on {today:%a %d %b}, Coming up and the Calendar tab's "
                 f"week disagree: only on the rail {sorted(got - want)}, only "
                 f"on the week page {sorted(want - got)}")
-            assert "House floor" in page, (
-                "a floor sitting this week is on the Calendar tab and not in "
-                "Coming up")
-            n_sb = len(set(re.findall(r'bills#SB(\d+)"', page)))
-            assert n_sb == 100, (
-                f"one sitting of 100 bills shows {n_sb} of them in Coming up: "
-                "the rail is capped again, and cuts a day short")
-            nxt = BC.week_key(sun + _dt.timedelta(days=1))
-            n_next = len({k for d, day in (BC.weeks_from(rows).get(nxt) or {}).items()
-                          for k in day})
+            if not ahead:
+                assert "House Session Day" in page, (
+                    "a floor sitting this week is on the Calendar tab and not in "
+                    "Coming up, named as the Calendar names it")
+                n_sb = len(set(re.findall(r'bills#SB(\d+)"', page)))
+                assert n_sb == 100, (
+                    f"one sitting of 100 bills shows {n_sb} of them in Coming up: "
+                    "the rail is capped again, and cuts a day short")
             line = re.search(r'<p class="calmore calall">(.*?)</p>', page)
-            assert line and f'href="calendar/{nxt}.html"' in line.group(1) \
-                and line.group(1).startswith(f"{n_next} more meeting"), (
-                    f"built on {today:%a %d %b}, the line under Coming up "
-                    f"should count next week's {n_next} meetings and link "
-                    f"calendar/{nxt}.html; it reads "
-                    f"{line.group(1) if line else 'nothing'!r}")
+            assert line and line.group(1) == '<a href="calendar.html">See the full calendar</a>', (
+                f"built on {today:%a %d %b}, Coming up does not end with See the "
+                f"full calendar: {line.group(1) if line else 'nothing'!r}")
             assert "fortnight" not in page, (
                 "Coming up still speaks of a fortnight, and it shows one week")
             checked += 1
 
-        # A SATURDAY WITH THE WEEK'S BUSINESS OVER: the rail says so and
-        # points at next week, rather than showing next week as this one.
+        # A SATURDAY WITH THE WEEK'S BUSINESS OVER: the rail is next week's,
+        # named Next Week with its weekdays, never read as the week gone (D13).
         sat = _dt.date(2026, 9, 26)
         with contextlib.redirect_stdout(io.StringIO()):
             page = BP.calendar_html(tmp, today=sat,
                                     rows=rows_for(sat, weekdays_only=True))
-        assert "calday" not in page, (
-            "with nothing left this week, Coming up still draws a day: "
-            + page[:200])
-        assert "rest of this week" in page and 'href="calendar/2026-W40.html"' in page, (
-            "an empty week does not say so and link to next week: " + page[:300])
+        days = re.findall(r'class="calday" data-d="([^"]+)"', page)
+        assert days and days[0] >= "2026-09-28" and days[-1] <= "2026-10-04", (
+            f"on a Saturday Coming up draws {days}, not next week's days")
+        assert '<span class="chip">Next Week</span> <span>Sep 28 – Oct 2, 2026</span>' in page, (
+            "on a Saturday Coming up does not name next week and its weekdays: "
+            + page[:300])
+        # AND A WEEKDAY WITH THE WEEK'S BUSINESS OVER says so, and offers the
+        # full calendar.
+        fri = _dt.date(2026, 10, 2)
+        with contextlib.redirect_stdout(io.StringIO()):
+            page = BP.calendar_html(tmp, today=fri,
+                                    rows=[r for r in rows_for(fri, weekdays_only=True)
+                                          if r["date"] < fri.isoformat()])
+        assert "calday" not in page and "rest of this week" in page \
+            and "See the full calendar" in page, (
+                "an empty rest of the week does not say so and offer the calendar: "
+                + page[:300])
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
 
@@ -54019,8 +54442,10 @@ def _coming_up_is_this_week():
     for reader, days, want_kept in (
             ("2026-09-21", span, span[1:8]),     # a Monday: the whole week
             ("2026-09-24", span, span[4:8]),     # a Thursday: to Sunday
-            ("2026-09-27", span, span[7:8]),     # a Sunday: only today
-            ("2026-09-27", span[8:], [])):       # a Sunday, next week built
+            ("2026-09-26", span, span[8:15]),    # a Saturday: next week (D13)
+            ("2026-09-27", span, span[8:15]),    # a Sunday: next week
+            ("2026-09-27", span[8:], span[8:15]),  # a Sunday, next week built
+            ("2026-09-26", span[:7], [])):       # a Saturday, this week built
         y, mo, d = map(int, reader.split("-"))
         prog = _components_js() + "\n" + (
             "const R=Date;class D extends R{constructor(...a){a.length?super(...a)"
@@ -54050,9 +54475,10 @@ def _coming_up_is_this_week():
         if not want_kept:
             assert "this week" in got["cal"] and "NEXT" in got["cal"], (
                 "when the reader's week has nothing left, HOME_JS must say so "
-                "and keep the line that links to next week: " + got["cal"][:200])
-    return "ok", (f"{checked} build dates and 4 reading dates: today to Sunday, "
-                  "uncapped, the floor included, next week linked")
+                "and keep the line to the full calendar: " + got["cal"][:200])
+    return "ok", (f"{checked} build dates and 6 reading dates: today to Sunday, "
+                  "uncapped, the floor included; from Saturday next week, named so; "
+                  "the full calendar offered")
 
 
 @check("frontend", "the home page's Coming up keeps the whole week in a box that scrolls")
@@ -54236,15 +54662,15 @@ def _coming_up_without_study_committees():
             f"Coming up's cards are {cards}: a standing committee's interim study "
             "session belongs on it")
         line = re.search(r'<p class="calmore calall">(.*?)</p>', page)
-        assert line and line.group(1).startswith("1 more meeting next week"), (
-            "the line under Coming up counts next week's study committees: "
+        assert line and "See the full calendar" in line.group(1), (
+            "the line under Coming up is not the full calendar: "
             + (line.group(1) if line else "no line"))
         # A WEEK OF STUDY COMMITTEES ALONE is a week with nothing on the rail.
         with contextlib.redirect_stdout(io.StringIO()):
             empty = BP.calendar_html(tmp, today=monday, rows=[r for r in rows if r.get("study")
                                                               or r["kind"] == "study committee"])
         assert "calday" not in empty and "rest of this week" in empty \
-            and "Nothing is on the calendar for next week" in empty, (
+            and "sits mostly from January to June" in empty, (
                 "a week of study committees alone still draws a day in Coming up: "
                 + empty[:300])
     finally:
@@ -54353,99 +54779,141 @@ def _floor_session_titles():
                   "\"House Session (August 19th, 2026)\"")
 
 
-@check("frontend", "the home page's finder suggests every town as the reader types, and its box is whole on a phone")
+@check("frontend", "the home page's one search box is the header's finder, its top results in a "
+                   "dropdown, with no second finder beside it")
 def _home_finder_suggests_towns():
-    """"Find-your-legislators box: text cut off, no dropdown" (the person, 7
-    October 2026, F4). The box is a datalist of every town in districts.json,
-    which the browser offers under it as the reader types and which is chosen
-    with the arrow keys and Enter or with a tap; no script and nothing
-    fetched. And under 480px its button takes a line of its own, so the box
-    has the panel's width and "Your town, or a legislator's name" is not cut
-    off after "legislator". Read off the fixture's built home page and
-    stylesheet."""
+    """D13 (the person, 8 October 2026): "The home page's main search becomes
+    one box like the header search: bills, legislators, towns, committees
+    and the rest from the same box, with a dropdown of the top results (no
+    separate legislator finder)." It replaces the finder of towns in the
+    right-hand column (F4, 7 October 2026), whose datalist this used to hold.
+
+    Read off the fixture's built home page, HOME_JS, find.js and style.css:
+    one box, tied to its dropdown and written before the cards; no finder of
+    towns beside it; HOME_JS draws with find.js's own findDraw into the box's
+    own ids, so one matcher and one set of rows serve the header and the
+    home page; findDraw takes the ids it draws into, the header's by default,
+    and every redraw it asks for passes them on; and the dropdown is placed
+    under the box."""
     import build_pages as BP
     shared, _base, _ran, _days = _fixture_site_shared()
     site = shared / "site"
     page = (site / "index.html").read_text(encoding="utf-8")
-    towns = sorted(json.loads((site / "districts.json").read_text(encoding="utf-8")), key=str.lower)
-    box = re.search(r'<input id="hq2"[^>]*>', page)
-    assert box and 'list="hq2towns"' in box.group(0) and 'autocomplete="off"' in box.group(0), (
-        f"the finder's box offers no towns: {box.group(0) if box else 'no box'}")
-    dl = re.search(r'<datalist id="hq2towns">(.*?)</datalist>', page, re.S)
-    assert dl, "the home page has no list of towns for its finder"
-    offered = re.findall(r'<option value="([^"]*)">', dl.group(1))
-    assert offered == towns, f"the finder offers {offered}, where districts.json has {towns}"
-    assert page.index('<input id="hq2"') < page.index('<datalist id="hq2towns">') \
-        < page.index('<div id="session"'), "the list of towns is not beside its box"
-    assert BP.home_towns(shared / "nowhere") == [], "a site with no districts.json suggests towns"
+    assert 'id="hq2"' not in page and "hq2towns" not in page and 'class="hfind"' not in page, (
+        "the home page still has a second finder beside its search box")
+    box = re.search(r'<input id="hq"[^>]*>', page)
+    assert box and 'aria-controls="hqout"' in box.group(0) and 'autocomplete="off"' in box.group(0), (
+        f"the home box is not tied to its dropdown: {box.group(0) if box else 'no box'}")
+    assert '<div class="findout hqdrop" id="hqout" role="region" aria-label="Top results" hidden>' \
+        '</div>' in page and page.index('id="hqout"') < page.index('class="entry"'), (
+            "the home box has no dropdown of its own, written before the cards")
+    js = BP.HOME_JS
+    assert 'const HQ={out:"hqout",box:"hq",clear:"",say:"hqsay"};' in js \
+        and "findDraw(v,HQ)" in js and 'id="hqsay"' in page, (
+            "the home box does not draw with find.js's findDraw into its own ids")
+    fj = Path("src/pages/find.js").read_text(encoding="utf-8").replace("\r\n", "\n")
+    assert 'const FIND_IDS={out:"findout",box:"findq",clear:"findclear",say:"findsay"};' in fj \
+        and "function findDraw(q,ids){\n  ids=ids||FIND_IDS;" in fj \
+        and "function findSay(html,ids){" in fj, "find.js's findDraw does not take the ids it draws into"
+    redraws = fj[fj.index("function findDraw(q,ids){"):fj.index("function findSay(")]
+    assert "findDraw(box.value);" not in redraws and redraws.count("findDraw(box.value,ids);") == 2, (
+        "a redraw find.js asks for draws into the header's panel whichever box asked")
     css = (site / "style.css").read_text(encoding="utf-8")
-    # AND IN THE THREE COLUMNS (the look of 7 October 2026): from 1180px the
-    # finder is a 290px column, where beside its button the box was 170px
-    # and read "Your town, or a leg". The same media block covers both.
-    m = re.search(r"@media \(max-width:30em\),\(min-width:73\.75em\)\{\s*"
-                  r":where\(body\.pg\) \.hfind\{[^}]*\}\s*"
-                  r":where\(body\.pg\) \.hfrow\{flex-wrap:wrap\}\s*"
-                  r":where\(body\.pg\) \.hfrow input\{flex:1 1 100%\}\s*"
-                  r":where\(body\.pg\) \.hfrow button\{flex:1 1 100%\}", css)
-    assert m, ("style.css does not put the finder's button under its box on a phone and "
-               "in the three columns, so the box keeps about 170-230px and its placeholder "
-               "is cut off")
-    # Chrome keeps room in an empty search box for its clear button and a
-    # datalist's arrow; measured in the browser, the placeholder was still cut
-    # at "legislator's na" until neither took it.
-    for rule in (":where(body.pg) #hq2::-webkit-calendar-picker-indicator{display:none !important}",
-                 ":where(body.pg) #hq2:placeholder-shown::-webkit-search-cancel-button{display:none}"):
-        assert rule in css, f"style.css has no {rule}, so the empty box keeps room for nothing"
-    return "ok", (f"all {len(towns)} of the fixture's towns offered under the box, and the "
-                  "button on a line of its own under 480px and in the three columns")
+    assert ":where(body.pg) .hqdrop{position:absolute;top:calc(100% + var(--sp-2))" in css \
+        and ":where(body.pg) .searchbig{position:relative}" in css and ".hfind" not in css, (
+            "style.css does not put the dropdown under the box, or still styles the old finder")
+    return "ok", ("one box, the header's finder, its top results in its own dropdown under it; "
+                  "no finder of towns beside it")
 
 
-@check("frontend", "the legislators page is two tabs, Towns and Legislators, drawn as the town pages' tabs are")
+@check("frontend", "the Officials page is five tabs, My Town, Legislators, Federal Delegation, "
+                   "Statewide Officials and County Officials, drawn as the town pages' tabs are")
 def _legislators_page_tabs():
-    """"Divide into a Towns section and a Legislators section" -- as two
-    tabs, like the town pages (the person, 7 October 2026, F5), because an
-    interactive map of the districts is to come and belongs with the towns.
+    """The person's feedback of 9 October 2026, item 4, and decision 127: the
+    Legislators page is Officials, in five tabs -- My Town (the town finder and
+    the district map), Legislators (the roster), Federal Delegation, Statewide
+    Officials and County Officials -- the strip and the switching script the
+    town pages' (F5, 7 October 2026), as the page's two tabs were.
 
     Read off the fixture's built page: one strip, written hidden for the
-    script to show, with Towns first and Legislators second; the finder in
-    the Towns panel and the roster, who holds the seats and the vacancies in
-    the Legislators panel, each panel under its own heading; the town pages'
-    switching script after them; and the strip's rules in the region of
-    app.css that style.css takes, so this page draws it as a town page does."""
+    script to show, with the five in that order, each panel under its own
+    heading; the finder and then the map in My Town; the roster, who holds
+    the seats and the vacancies in Legislators; the people of the other three
+    from corrections/officials.json; the old page's #towns sent to #my-town
+    before the script reads the address; the town pages' switching script
+    after the panels; and the strip's rules in the region of app.css that
+    style.css takes, so this page draws it as a town page does."""
     import build_town_pages as BT
+    import build_pages as BP
+    import html as _html
     shared, _base, _ran, _days = _fixture_site_shared()
     site = shared / "site"
-    page = (site / "legislators.html").read_text(encoding="utf-8")
-    strips = re.findall(r'<div class="twntabs" role="tablist"[^>]*>(.*?)</div>', page, re.S)
-    assert len(strips) == 1, f"the legislators page has {len(strips)} Towns/Legislators strips"
-    assert re.search(r'<div class="twntabs" role="tablist" aria-label="[^"]+" hidden>', page), (
-        "the strip is not written hidden for the script to show")
-    tabs = re.findall(r'role="tab" id="tab-([a-z]+)" data-pane="([a-z]+)"[^>]*>([^<]+)</button>',
-                      strips[0])
-    assert [(t, p, n) for t, p, n in tabs] == [("towns", "towns", "Towns"),
-                                               ("legislators", "legislators", "Legislators")], (
-        f"the strip's tabs are {tabs}")
-    a = page.index('<div class="twnpane" id="towns" role="tabpanel" aria-labelledby="tab-towns">')
-    b = page.index('<div class="twnpane" id="legislators" role="tabpanel" '
-                   'aria-labelledby="tab-legislators">')
-    towns, legs = page[a:b], page[b:]
-    assert '<h2 class="twnph">Towns</h2>' in towns and 'id="lq"' in towns \
-        and 'id="lmatch"' in towns and 'id="roster"' not in towns, (
-            "the Towns panel is not the finder under its own heading")
-    assert '<h2 class="twnph">Legislators</h2>' in legs and 'id="roster"' in legs \
-        and 'id="lq"' not in legs, "the Legislators panel does not hold the roster"
+    page = (site / "officials.html").read_text(encoding="utf-8")
+    strips = re.findall(r'<div class="twntabs oftabs" role="tablist"[^>]*>(.*?)</div>', page, re.S)
+    assert len(strips) == 1, f"the Officials page has {len(strips)} tab strips"
+    assert re.search(r'<div class="twntabs oftabs" role="tablist" aria-label="Officials" hidden>',
+                     page), "the strip is not written hidden for the script to show"
+    tabs = re.findall(r'role="tab" id="tab-([a-z-]+)" data-pane="([a-z-]+)"[^>]*>([^<]+)', strips[0])
+    want = [("my-town", "My Town"), ("legislators", "Legislators"),
+            ("federal", "Federal Delegation"), ("statewide", "Statewide Officials"),
+            ("counties", "County Officials")]
+    assert [(t, n.strip()) for t, p, n in tabs if t == p] == want, f"the strip's tabs are {tabs}"
+    panes = {}
+    starts = [(page.index(f'<div class="twnpane" id="{pid}" role="tabpanel" '
+                          f'aria-labelledby="tab-{pid}">'), pid) for pid, _n in want]
+    assert [p for _i, p in sorted(starts)] == [p for p, _n in want], "the panels are out of order"
+    starts.sort()
+    for k, (i, pid) in enumerate(starts):
+        panes[pid] = page[i:starts[k + 1][0] if k + 1 < len(starts) else len(page)]
+        name = dict(want)[pid]
+        assert f'<h2 class="twnph">{name}</h2>' in panes[pid], f"the {name} panel has no heading"
+    towns, legs = panes["my-town"], panes["legislators"]
+    assert 'id="lq"' in towns and 'id="lmatch"' in towns and 'id="roster"' not in towns, (
+        "My Town is not the finder")
+    assert towns.index('id="lmatch"') < towns.index('id="ofmap"'), (
+        "My Town does not hold the map under the finder")
+    assert 'id="roster"' in legs and 'id="lq"' not in legs, "the Legislators panel does not hold the roster"
     if 'class="comp-wrap"' in page:
-        assert page.index('class="comp-wrap"') > b, (
-            "who holds the seats is outside the Legislators panel")
+        assert 'class="comp-wrap"' in legs, "who holds the seats is outside the Legislators panel"
+    # The other three are officials.json's people, each the one person chip.
+    import json as _json
+    off = _json.loads(Path("corrections/officials.json").read_text(encoding="utf-8"))
+    for pid, names in (("federal", [s["name"] for s in off["us_senate"]["seats"]]
+                        + [r["name"] for r in off["us_house"]["districts"].values()]),
+                       ("statewide", [off["governor"]["name"]]
+                        + [r["name"] for r in off["council"]["districts"].values()]),
+                       ("counties", [r["name"] for c in off["county"]["counties"].values()
+                                   for r in c["commissioners"].values()])):
+        for nm in names:
+            assert re.search(r'<span class="mchip p-[A-Z]">' + re.escape(_html.escape(nm)), panes[pid]), (
+                f"{nm} is not a person chip on the {pid} tab")
+    # A commissioner of both nominations on the neutral chip with both
+    # letters; the neutral offices with no party at all (the person, 9 Oct).
+    county = panes["counties"]
+    ids = re.findall(r' id="([^"]+)"', page)
+    assert len(ids) == len(set(ids)), (
+        f"the Officials page gives an id twice: {sorted({i for i in ids if ids.count(i) > 1})}")
+    for c in off["county"]["counties"].values():
+        for r in c["commissioners"].values():
+            if "/" in (r.get("party") or ""):
+                assert (f'<span class="mchip p-X">{_html.escape(r["name"])} <span class="mtag">'
+                        f'({r["party"]})</span>') in county, (
+                    f"{r['name']} ({r['party']}) is not on the neutral chip with both letters")
+        sheriff = (c.get("sheriff") or {}).get("name")
+        if sheriff:
+            assert f'<span class="mchip p-X">{_html.escape(sheriff)}</span>' in county, (
+                f"the sheriff {sheriff} carries a party, or is not a chip")
+    assert BP.OFFICIALS_HASH_JS in page and page.index(BP.OFFICIALS_HASH_JS) < page.index(
+        BT.TABS_JS), "the old page's #towns is not sent to #my-town before the tabs read it"
     tabs_js = BT.TABS_JS
-    assert tabs_js in page and page.index(tabs_js) > b, (
+    assert tabs_js in page and page.index(tabs_js) > starts[-1][0], (
         "the town pages' switching script is not after the panels")
     assert page.count('id="out"') == 1, "the county listing's #out is on the page twice"
     # THE INSTRUCTION IS THE TOWNS TAB'S (the look of 7 October 2026): "Type a
     # town ... or a name" describes the box, and it sat over both tabs.
     lead = re.search(r'<p class="lead">(.*?)</p>', page, re.S)
     assert lead and "Type a town" not in lead.group(1) and "Type a town" in towns, (
-        "the finder's instruction is not in the Towns panel, over its box")
+        "the finder's instruction is not in the My Town panel, over its box")
     # THE TOWNS TAB IS THE LIVE SITE'S FINDER (the person, 7 October 2026: "I
     # didn't want the change to the town ordering to also make it 5 columns
     # wide", and asked how it should list them, "Like the live site"): the
@@ -54453,10 +54921,13 @@ def _legislators_page_tabs():
     # inside itself -- and nothing below the finder, where the district map is
     # to come. For an afternoon the tab ran every town down the page in
     # columns; nothing in the script or either stylesheet does that now.
+    # AND THE MAP UNDER IT (Polish 3): the finder's own box holds the box and
+    # its list and nothing else, and the map is the next part of the panel.
     rest = re.sub(r"<!--.*?-->", "", towns.split('<div class="lfind">', 1)[1], flags=re.S)
+    rest = rest.split("</section>", 1)[0]
     assert re.fullmatch(r'\s*(?:<label [^>]*>[^<]*</label>|<input [^>]*>|<p [^>]*>[^<]*</p>'
-                        r'|<div class="lmatch" id="lmatch"></div>|\s)*</div>\s*</div>\s*', rest), (
-        "the Towns panel holds something after the finder and its list")
+                        r'|<div class="lmatch" id="lmatch"></div>|\s)*</div>\s*', rest), (
+        "the finder holds something after its box and its list")
     assert '.classList.toggle("all"' not in page, (
         "the finder marks its list as the whole list of towns, for columns down the page")
     css = (site / "style.css").read_text(encoding="utf-8")
@@ -54487,9 +54958,10 @@ def _legislators_page_tabs():
     assert app.count(".twntabs{display:flex") == 1, "app.css draws the strip twice"
     assert app.index(".twntabs{display:flex") < app.index("/* SHARED:END"), (
         "the strip's rules are not in app.css's shared region")
-    return "ok", ("Towns, then Legislators, each a panel under its own heading, switched by "
-                  "the town pages' script and drawn by the same rules in both stylesheets; "
-                  "the Towns tab the finder over its 260px window and nothing below it")
+    return "ok", ("My Town, Legislators, Federal Delegation, Statewide Officials and County "
+                  "Officials, each a panel under its own heading, switched by the town pages' "
+                  "script and drawn by the same rules in both stylesheets; My Town the finder "
+                  "over its 260px window and the map under it; the officials as person chips")
 
 
 @check("frontend", "the vacancy list says \"District\" and how a seat is filled, from RSA 661:8")
@@ -54508,7 +54980,7 @@ def _vacancy_wording():
             "election. A Senate seat is filled as the state constitution provides.")
     assert BP.VACANCY_NOTE == want, f"build_pages.VACANCY_NOTE reads {BP.VACANCY_NOTE!r}"
     shared, _base, _ran, _days = _fixture_site_shared()
-    page = (shared / "site" / "legislators.html").read_text(encoding="utf-8")
+    page = (shared / "site" / "officials.html").read_text(encoding="utf-8")
     vac = re.search(r'<details class="vac">(.*?)</details>', page, re.S)
     assert vac, "the fixture's legislators page lists no vacant seats to check"
     assert f'<p class="note" style="margin-top:8px">{want}</p>' in vac.group(1), (
@@ -54583,7 +55055,7 @@ def _seat_list_by_division():
             {"display_full": "Rep. Suzanne Vail (D - Hills 6)", "party": "D", "slug": "s"}), (
         "a chip's party and district are not one unit, so a chip that wraps breaks inside them")
     shared, _base, _ran, _days = _fixture_site_shared()
-    page = (shared / "site" / "legislators.html").read_text(encoding="utf-8")
+    page = (shared / "site" / "officials.html").read_text(encoding="utf-8")
     assert '<div class="seatcols" id="seatlist">' in page and '<ol class="seatlist" id="seatlist">' \
         not in page, "the built page's seat list is not the columns"
     return "ok", (f"five columns headed 1 to 5 as the chart runs, the Speaker above, five "
@@ -54647,7 +55119,7 @@ def _seat_chart_turned():
         "the chart does not write its seats in the order of their numbers, which is the order "
         "the arrow keys walk")
     shared, _base, _ran, _days = _fixture_site_shared()
-    page = (shared / "site" / "legislators.html").read_text(encoding="utf-8")
+    page = (shared / "site" / "officials.html").read_text(encoding="utf-8")
     svg = re.search(r'<svg viewBox="[^"]+" class="seatmap".*?</svg>', page, re.S)
     assert svg, "the fixture's legislators page draws no seating chart"
     bad = upright(svg.group(0))
@@ -54843,7 +55315,7 @@ def _using_this_site_tabs(civics):
     as a card, a division with its count (the survey of 7 October 2026).
     Every tab the list names is a tab app.js draws on a bill's page."""
     body = civics.BODY_SITE
-    at = body.index("<h2>What a bill's page holds</h2>")
+    at = body.index("<h2>What a Bill's Page Holds</h2>")
     part = body[at:body.index("</ul>", at)]
     named = re.findall(r"<li><b>([^<]+)</b>", part) + re.findall(
         r", and <b>([^<]+)</b>", part)
@@ -55284,7 +55756,7 @@ def _latest_activity_links_the_bill(BP, B):
         "bill/2025/sb256.html", BP.recent_href({"bill": "SB256", "year": 2025})
     assert BP.recent_href({"bill": "SB256"}) == "bills.html#SB256"
     src = inspect.getsource(BP)
-    static = src[src.index("static_recent = ('<h2>Latest activity</h2>"):]
+    static = src[src.index("static_recent = ('<h2>Latest Activity</h2>"):]
     static = static[:static.index("RECENT_MORE")]
     assert "recent_href(r)" in static and "bills.html#" not in static, (
         "the static Latest activity still links the search list")
@@ -55295,6 +55767,42 @@ def _latest_activity_links_the_bill(BP, B):
     assert '"year": b.get("year") or ""' in inspect.getsource(B), (
         "home.json's recent rows do not carry the year their bill is filed under")
     return "ok", "SB 256-FN of 2025 leads to bill/2025/sb256.html, in both renderers"
+
+
+@check("frontend", "a town page carries the district map in a tab of its own, second, framed on "
+                   "the town with its own State House district chosen")
+def _town_page_map():
+    """Polish 3: "The map also goes on the town pages" (the approved drawing,
+    private/design/polish/proto/town-dover-ward-1.html). Read off the
+    fixture's built town pages: every one has a District Map tab, second,
+    after Representatives; its panel holds the map's mount, named for the
+    town, a ward's page for its ward; the map's script comes after the tabs'
+    switching script, so the map is mounted the first time its tab is shown.
+    And map_section names the town's own State House district, never its
+    floterial, by the map's code ("ST14" for Strafford 14)."""
+    import build_town_pages as BT
+    shared, _base, _ran, _days = _fixture_site_shared()
+    pages = sorted((shared / "site" / "town").glob("*.html"))
+    if not pages:
+        return "skip", "the fixture builds no town page"
+    for f in pages:
+        page = f.read_text(encoding="utf-8")
+        tabs = re.findall(r'role="tab" id="tab-([a-z]+)"', page)
+        assert tabs[:2] == ["representatives", "map"], f"{f.name}: the tabs are {tabs}"
+        m = re.search(r'<div class="twnmap" id="twnmap" data-town="([^"]+)"([^>]*)></div>', page)
+        assert m, f"{f.name}: the District Map tab holds no map"
+        ward = re.search(r"-ward-(\d+)\.html$", f.name)
+        assert (f'data-ward="{ward.group(1)}"' in m.group(2)) if ward else "data-ward" not in m.group(2), (
+            f"{f.name}: the map is not told the page's ward: {m.group(0)}")
+        assert BT.MAP_JS in page and page.index(BT.MAP_JS) > page.index(BT.TABS_JS), (
+            f"{f.name}: the map's script is not after the tabs' switching script")
+    got = "".join(BT.map_section("Dover", "4", {"house": [
+        {"county": "Strafford", "district": "21", "floterial": True},
+        {"county": "Strafford", "district": "14", "floterial": False}]}))
+    assert 'data-town="Dover" data-ward="4" data-pick="ST14"' in got, (
+        f"map_section does not choose the ward's own district: {got[:300]}")
+    return "ok", (f"{len(pages)} town pages, each with the District Map second, the map told its "
+                  "town and ward and mounted after the tabs; Dover Ward 4 opens on Strafford 14")
 
 
 @check("frontend", "an official's chip on a town page says the party in letters, as a "
@@ -75775,7 +76283,9 @@ def _learn_figures():
                 if "[[" in p.read_text(encoding="utf-8", errors="replace")]
     assert not unfilled, f"a figure left unfilled on {unfilled}"
     n = len(idx)
-    assert f"Across the {n:,} bills on this site" in page.read_text(encoding="utf-8"), (
+    # "in this record" since the Learn pages' wording of 9 October 2026 (E6),
+    # as the index check reads it.
+    assert f"Across the {n:,} bills in this record" in page.read_text(encoding="utf-8"), (
         f"how-a-bill-becomes-law does not state the index's {n:,} bills: built before "
         "build_civics filled the figures, or from another index")
     return "ok", f"every Learn page filled; the bill page states the index's {n:,} bills"
@@ -75802,15 +76312,15 @@ def _numbers_page_public():
     assert '<meta name="robots" content="noindex">' not in text, (
         "the page of numbers is public and should not ask to be delisted")
     assert "[[" not in text and "Traceback" not in text, "the page carries a build fault"
-    hub = site / "learn.html"
+    hub = site / "resources.html"
     if hub.exists():
         assert "by-the-numbers" in hub.read_text(encoding="utf-8", errors="replace"), (
-            "learn.html does not link the page of numbers")
+            "the Resources hub does not link the page of numbers")
     sm = site / "sitemap.xml"
     if sm.exists():
         assert "by-the-numbers" in sm.read_text(encoding="utf-8", errors="replace"), (
             "the sitemap does not list the page of numbers")
-    return "ok", "indexable, on the Learn hub and in the sitemap"
+    return "ok", "indexable, on the Resources hub and in the sitemap"
 
 
 @check("data", "the Learn pages' worked examples agree with the roll calls they cite")
@@ -75916,7 +76426,7 @@ def _learn_examples_record():
             f"vetoed bill of {term} is without one")
     # The closest votes: no row needed more than a majority.
     nums = text(site / "learn" / "by-the-numbers.html")
-    at = nums.find("The closest votes")
+    at = nums.find("The Closest Votes")
     rows = 0
     if at >= 0:
         try:
@@ -75928,8 +76438,10 @@ def _learn_examples_record():
         cur = rcs.get(term) or {}
         block = nums[at:]
         block = block[:block.find("<h2", 10)] if "<h2" in block[10:] else block
-        for m in re.finditer(r'bill/\d{4}/([a-z0-9]+)"[^<]*</a></td><td>([^<]*)</td>'
-                             r"<td>[^<]*</td><td>(\d+)&ndash;(\d+)</td><td>([^<]*)</td>", block):
+        # A cell may carry a class (a column of numbers is set right, l-num).
+        for m in re.finditer(r'bill/\d{4}/([a-z0-9]+)"[^<]*</a></td><td[^>]*>([^<]*)</td>'
+                             r"<td[^>]*>[^<]*</td><td[^>]*>(\d+)&ndash;(\d+)</td><td[^>]*>([^<]*)</td>",
+                             block):
             bid, y, n, day = m.group(1).upper(), int(m.group(3)), int(m.group(4)), m.group(5)
             same = [r for r in cur.get(bid) or []
                     if r.get("yeas") == y and r.get("nays") == n and (r.get("date") or "") == day]
@@ -78030,9 +78542,11 @@ def _town_tabs(B, BP):
     pages = {t: B.build(t, "0", {"0": {}}, dist, [rep, sen], off,
                         "https://x.test", tmpl)
              for t in ("Lyme", "Bean's Grant", "Nowhere")}
-    want = {"Lyme": ["representatives", "officials", "vote"],
-            "Bean's Grant": ["representatives", "vote"],
-            "Nowhere": ["representatives"]}
+    # The District Map is every place's second tab (Polish 3): every town and
+    # ward is on the map.
+    want = {"Lyme": ["representatives", "map", "officials", "vote"],
+            "Bean's Grant": ["representatives", "map", "vote"],
+            "Nowhere": ["representatives", "map"]}
     bad = []
     for town, page in pages.items():
         bars = re.findall(r'<div class="twntabs" role="tablist" aria-label="[^"]+" '
@@ -78450,6 +78964,363 @@ def _granit_carries_our_districts():
                   f"layers; {len(hc['granit_base'])} base and "
                   f"{len(hc['granit_floterial'])} floterial House districts "
                   f"agreeing with districts/house.txt")
+
+
+# ========================================================== the district map ==
+#
+# MAP V1 (9 October 2026): src/pages/map.js and map.css, a module a page
+# mounts, drawing one file, /district_map.json, which build_district_map.py
+# writes every night from generated/district_geometry.json (a person builds
+# that from the GIS zips on the laptop and commits it), the district files,
+# the roster and the officials file. The design is the person's, settled in
+# private/design/polish/map_v2/ and the decisions of 8 and 9 October; these
+# hold the parts of it a change could quietly undo: the label toggle and its
+# default, labels that never overlap, every district filled from the record's
+# party, and a geometry no older than its inputs.
+
+def _map_data(roster=()):
+    """/district_map.json as build_district_map.build() makes it, from the
+    tracked files alone: the committed geometry, records/districts/ through
+    parse_districts.combine() (which is what the night's site/districts.json
+    is), the officials file, and `roster` for the members. None where one of
+    them is not here."""
+    import build_district_map as BDM
+    import parse_districts as PD
+    geom, off = Path("generated/district_geometry.json"), Path("corrections/officials.json")
+    if not (geom.exists() and off.exists() and Path("records/districts/house.txt").exists()):
+        return None
+    districts = PD.combine("records/districts", say=lambda *a, **k: None)
+    return BDM.build(geom.read_bytes(), districts, list(roster),
+                     json.loads(off.read_text(encoding="utf-8")))
+
+
+# map.js mounted on dom_stub.js's element, its data never arriving: what is
+# held is the markup mount() writes and the api it returns before any data.
+_MAP_TOGGLE_JS = r"""
+require("./stub.js");
+globalThis.fetch = () => new Promise(() => {});
+const G = require("./map.js");
+function mount(opts) {
+  const root = document.createElement("div");
+  const api = G.mount(root, opts);
+  return { html: root.innerHTML, api };
+}
+const out = { labels: G.LABELS, def: G.DEFAULT_LABELS };
+const a = mount({});
+out.plain = { html: a.html, labels: a.api.labels() };
+a.api.setLabels("none"); out.afterNone = a.api.labels();
+a.api.setLabels("numbers"); out.afterNumbers = a.api.labels();
+a.api.setLabels("bogus"); out.afterBogus = a.api.labels();
+const b = mount({ labels: "numbers" });
+out.numbers = { html: b.html, labels: b.api.labels() };
+out.bogus = mount({ labels: "bogus" }).api.labels();
+console.log(JSON.stringify(out));
+"""
+
+
+@check("frontend", "the district map's label toggle offers town names, district numbers and no "
+                   "labels, as one group of radio buttons, with town names chosen first")
+def _map_label_toggle():
+    """The person, 9 October 2026: "Toggle to switch between viewing district
+    numbers, town names, and no labels for the interactive map with the default
+    being town names."
+
+    map.js mounted in node: the three modes in map.js's LABELS, in the order
+    drawn, with the words drawn; DEFAULT_LABELS "names"; the toggle written as
+    native radio buttons sharing one name inside a radiogroup labelled for a
+    screen reader, so arrow keys move within it and it is read as "1 of 3",
+    with only Town names checked on a plain mount and only District numbers
+    when a page asks for them; a mode a page names that is not one of the
+    three falls back to town names; and setLabels() changes the mode to each
+    of the three and refuses anything else.
+    """
+    if not shutil.which("node"):
+        return "skip", "node is not installed"
+    js, stub = Path("src/pages/map.js"), Path("tests/dom_stub.js")
+    if not (js.exists() and stub.exists()):
+        return "skip", "map.js or dom_stub.js is not in this directory"
+    root = Path(tempfile.mkdtemp(prefix="gr-map-"))
+    try:
+        for name, text in (("map.js", js.read_text(encoding="utf-8")),
+                           ("stub.js", stub.read_text(encoding="utf-8")),
+                           ("toggle.js", _MAP_TOGGLE_JS)):
+            (root / name).write_text(text, encoding="utf-8")
+        r = _run(["node", "toggle.js"], cwd=root, capture_output=True, text=True, timeout=60)
+        said = (r.stdout or "").strip().splitlines()
+        assert r.returncode == 0 and said, (
+            "map.js did not mount under node: " + ((r.stderr or r.stdout or "").strip()[-300:]))
+        out = json.loads(said[-1])
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+
+    want = [["names", "Town names"], ["numbers", "District numbers"], ["none", "No labels"]]
+    assert out["labels"] == want, f"map.js's LABELS are {out['labels']}, not {want}"
+    assert out["def"] == "names", f"the default is {out['def']!r}, not town names"
+
+    def toggle(html):
+        m = re.search(r'<div class="gmseg" role="radiogroup" aria-label="Labels on the map">'
+                      r'(.*?)</div>', html, re.S)
+        assert m, "mount() writes no radiogroup labelled \"Labels on the map\""
+        radios = re.findall(r'<input type="radio" name="([^"]+)" value="([^"]+)"( checked)?>'
+                            r'<span>([^<]+)</span>', m.group(1))
+        assert len({n for n, _, _, _ in radios}) == 1, \
+            "the label toggle's radio buttons do not share one name, so they are not one group"
+        return [[v, w] for _, v, _, w in radios], [v for _, v, c, _ in radios if c]
+
+    drawn, checked = toggle(out["plain"]["html"])
+    assert drawn == want, f"the toggle draws {drawn}, not {want}"
+    assert checked == ["names"], f"a plain mount checks {checked}, not town names alone"
+    assert out["plain"]["labels"] == "names", f"a plain mount's mode is {out['plain']['labels']!r}"
+    _, checked = toggle(out["numbers"]["html"])
+    assert checked == ["numbers"] and out["numbers"]["labels"] == "numbers", (
+        f"a mount asking for numbers checks {checked} and is in {out['numbers']['labels']!r}")
+    assert out["bogus"] == "names", f"a mode that is not one of the three gives {out['bogus']!r}"
+    assert (out["afterNone"], out["afterNumbers"], out["afterBogus"]) == ("none", "numbers", "numbers"), (
+        "setLabels() went none, numbers, bogus -> "
+        f"{out['afterNone']}, {out['afterNumbers']}, {out['afterBogus']}")
+    return "ok", "Town names, District numbers, No labels: one radio group, town names chosen"
+
+
+@check("frontend", "the district map's labels never overlap, in any of its three modes (the "
+                   "label rule run in node on the real geometry)")
+def _map_labels_never_overlap():
+    """tests/test_map_labels.js loads map.js in node and lays out the labels of
+    every layer in every mode -- Town names, District numbers, No labels --
+    over the whole state and twelve places at four zooms each, in the map's
+    box at 1366, 768 and 375 pixels wide, and in Town names with a town and
+    its district chosen too: some three thousand layouts, on the map's data
+    built here from the tracked files.
+
+    Held: no two labels overlap (the chosen district's tag among them); no
+    town name lies outside the view or under the zoom buttons; a mode draws
+    only its own kind of label and No labels draws none. And what the design
+    says each mode shows: the five Executive Council and two US House numbers
+    at full view at every width; no State House number at full view, where
+    they cannot all fit (the person, 8 October: only when "all numbers can be
+    displayed without overlapping"); town names at full view; and Manchester's
+    wards numbered, and named, within eight presses of +, so neither rule
+    leaves the state's largest city unlabelled at every zoom.
+    """
+    if not shutil.which("node"):
+        return "skip", "node is not installed"
+    js, harness = Path("src/pages/map.js"), Path("tests/test_map_labels.js")
+    if not (js.exists() and harness.exists()):
+        return "skip", "map.js or tests/test_map_labels.js is not in this directory"
+    data = _map_data()
+    if data is None:
+        return "skip", "the geometry, the district files or the officials file is not here"
+    root = Path(tempfile.mkdtemp(prefix="gr-maplabels-"))
+    try:
+        (root / "district_map.json").write_text(json.dumps(data), encoding="utf-8")
+        r = _run(["node", str(harness.resolve()), str(js.resolve()), str(root / "district_map.json")],
+                 cwd=root, capture_output=True, text=True, timeout=240)
+        said = (r.stdout or "").strip().splitlines()
+        assert r.returncode == 0 and said, (
+            "the label rule did not run: " + ((r.stderr or r.stdout or "").strip()[-300:]))
+        out = json.loads(said[-1])
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+
+    assert out["layouts"] >= 2000, f"only {out['layouts']} layouts were run"
+    assert not out["overlaps"], "labels overlap:\n    " + "\n    ".join(out["overlaps"][:8])
+    assert not out["outside"], "labels drawn off the view:\n    " + "\n    ".join(out["outside"][:8])
+    assert not out["wrongKind"], "labels of the wrong kind:\n    " + "\n    ".join(out["wrongKind"][:8])
+    full, bad = out["full"], []
+    for w in ("660", "734", "341"):
+        for layer, mode, ok, what in (
+                ("exec", "numbers", lambda n: n == 5, "all five"),
+                ("cong", "numbers", lambda n: n == 2, "both"),
+                ("base", "numbers", lambda n: n == 0, "none"),
+                ("base", "names", lambda n: n >= 8, "at least eight"),
+                ("base", "none", lambda n: n == 0, "none")):
+            n = full.get(f"{w} {layer} {mode}")
+            if n is None or not ok(n):
+                bad.append(f"{layer} in {mode} at full view in a {w}px box shows {n}, not {what}")
+    for k, presses in out["manchester"].items():
+        if presses is None:
+            bad.append(f"Manchester's wards are never labelled ({k}) within eight presses")
+    assert not bad, "\n  ".join(bad)
+    return "ok", (f"{out['layouts']:,} layouts, none overlapping; Manchester's wards numbered "
+                  f"after {out['manchester'].get('660 numbers')} presses and named after "
+                  f"{out['manchester'].get('660 names')} at 1366")
+
+
+@check("build", "every district on the map is filled from the record's party, and a vacant "
+                "one is not filled", needs=("build_district_map",))
+def _map_fills_from_the_record(BDM):
+    """A district is filled with the party of who sits for it (the D5 inks):
+    its sitting members' parties, Republican, then Democratic, then
+    Independent, drawn as equal stripes where there are two or more; a
+    district every seat of which is vacant is filled with nothing, and the map
+    hatches it. A base district by its OWN members (method (a), 8 October
+    2026) and a floterial by its own, framed. The Executive Council and the US
+    House from corrections/officials.json.
+
+    Built from the tracked files with a roster of real seats: Manchester ward 1
+    (Hillsborough 21) with a Republican and a Democrat, Rochester ward 3
+    (Strafford 7) with an Independent, the floterial Hillsborough 40 with two
+    Democrats, who must fill the floterial and not the wards under it, Senate
+    16 with a Republican, and Coos 6 with nobody. Then every district of every
+    filled layer against the members the build put there, every member in
+    exactly one district, and counties and towns filled with nothing.
+    """
+    def rep(name, county, d, party, chamber="H"):
+        return {"name": name, "chamber": chamber, "county": county, "district": str(d),
+                "party": party, "slug": name.lower().replace(" ", "-"),
+                "display_full": f"Rep. {name} ({party[0]} - x)", "sort": name}
+    roster = [rep("Ann Ray", "Hillsborough", 21, "Republican"),
+              rep("Bo Dee", "Hillsborough", 21, "Democrat"),
+              rep("Cy Indy", "Strafford", 7, "Independent"),
+              rep("Di Flo", "Hillsborough", 40, "Democrat"),
+              rep("Ed Flo", "Hillsborough", 40, "Democrat"),
+              rep("Fay Sen", "Hillsborough", 16, "Republican", chamber="S")]
+    data = _map_data(roster)
+    if data is None:
+        return "skip", "the geometry, the district files or the officials file is not here"
+    f = data["fill"]
+    want = {("base", "HI21"): "RD", ("base", "ST7"): "I", ("float", "HI40"): "D",
+            ("senate", "16"): "R", ("base", "CO6"): "", ("senate", "1"): "",
+            ("base", "HI22"): ""}
+    got = {k: f[k[0]].get(k[1]) for k in want}
+    assert got == want, f"the fills are {got}, not {want}"
+    assert "county" not in f and "towns" not in f, "counties or towns are filled by party"
+    placed = [p["n"] for k, ps in data["who"].items() if not k.startswith(("exec|", "cong|"))
+              for p in ps]
+    assert sorted(placed) == sorted(m["display_full"] for m in roster), (
+        f"the roster's members are not each in one district: {placed}")
+    off = json.loads(Path("corrections/officials.json").read_text(encoding="utf-8"))
+    for lk, office in (("exec", "council"), ("cong", "us_house")):
+        for num, o in off[office]["districts"].items():
+            assert f[lk][str(int(num))] == o["party"][:1].upper(), (
+                f"{lk} {num} is filled {f[lk][str(int(num))]!r}; officials.json says {o['party']}")
+    wrong = []
+    for lk in ("base", "float", "senate", "exec", "cong"):
+        assert set(f[lk]) == set(data["layers"][lk]["f"]), f"{lk}: a district has no fill entry"
+        for fid, v in f[lk].items():
+            ps = {p["p"] for p in data["who"].get(f"{lk}|{fid}", [])}
+            if v != "".join(x for x in "RDI" if x in ps) + "".join(sorted(ps - set("RDI"))):
+                wrong.append(f"{lk} {fid}: {v!r} for {sorted(ps)}")
+    assert not wrong, "filled otherwise than its members' parties: " + "; ".join(wrong[:6])
+    return "ok", (f"{sum(len(v) for v in f.values())} districts filled from their members; "
+                  "stripes, an Independent, a floterial apart and a vacancy as the record has them")
+
+
+@check("files", "the district map's geometry is as fresh as its inputs",
+       needs=("build_district_geometry",))
+def _map_geometry_fresh(BDG):
+    """generated/district_geometry.json is built by a person from NH GRANIT's
+    zips (src/towns/build_district_geometry.py), which only the laptop holds,
+    and committed; the night publishes it. So nothing rebuilds it when an
+    input moves, and this is what notices.
+
+    Held always: the file names the builder's own stamp, so a builder changed
+    since it was run fails until it is run again; its State House base and
+    floterial codes, Senate, Executive Council and US House numbers, ten
+    counties and every town are exactly records/districts/'s, so a
+    redistricting that changes the district files without the map fails here
+    instead of drawing old lines quietly; and every feature has rings that
+    name arcs the file holds and a label point inside the map. Held where the
+    zips are on this disk: each one's sha256 is the one the file was built
+    from.
+    """
+    p = Path("generated/district_geometry.json")
+    if not p.exists():
+        return "skip", "generated/district_geometry.json is not here"
+    g = json.loads(p.read_text(encoding="utf-8"))
+    src = _paths.locate("build_district_geometry.py").read_text(encoding="utf-8")
+    stamp = re.search(r"GRANITE_VERSION:\s*(\S+)", src).group(1)
+    assert g.get("_builder") == stamp, (
+        f"the geometry was written by build_district_geometry.py {g.get('_builder')}, and the "
+        f"builder is now {stamp}: run python3 src/towns/build_district_geometry.py where the "
+        "GIS zips are, and commit what it writes")
+    rec = BDG.record_names()
+    bad = [f"{lk}: only in the geometry {sorted(set(g['layers'][lk]['f']) - rec[lk])[:6]}, "
+           f"only in records/districts {sorted(rec[lk] - set(g['layers'][lk]['f']))[:6]}"
+           for lk in BDG.LAYERS if set(g["layers"][lk]["f"]) != rec[lk]]
+    assert not bad, "the geometry and the district files disagree:\n  " + "\n  ".join(bad)
+    counts = {lk: len(g["layers"][lk]["f"]) for lk in BDG.LAYERS}
+    assert counts == {"base": 164, "float": 39, "senate": 24, "exec": 5, "cong": 2,
+                      "county": 10, "towns": 259}, f"the layers hold {counts}"
+    n, broken = len(g["arcs"]), []
+    for lk in BDG.LAYERS:
+        for fid, f in g["layers"][lk]["f"].items():
+            refs = [r if r >= 0 else ~r for ring in f["r"] for r in ring]
+            x, y = f["l"]
+            if not f["r"] or any(r >= n for r in refs) or not (0 <= x <= g["w"] and 0 <= y <= g["h"]):
+                broken.append(f"{lk} {fid}")
+        if any(a >= n for a in g["layers"][lk]["m"]):
+            broken.append(f"{lk}'s borders")
+    assert not broken, "features with no rings, arcs not in the file or a label off the map: " \
+        + ", ".join(broken[:8])
+    gis = Path("records/sources/gis")
+    here = {z: d for z, d in g["_inputs"].items() if (gis / z).exists()}
+    import hashlib
+    moved = [z for z, d in here.items() if hashlib.sha256((gis / z).read_bytes()).hexdigest() != d]
+    assert not moved, (f"{', '.join(moved)} changed since the geometry was built: run "
+                       "python3 src/towns/build_district_geometry.py and commit what it writes")
+    return "ok", (f"built by {stamp}; {sum(counts.values())} features agreeing with "
+                  f"records/districts; " + (f"all {len(here)} zips' digests agree" if len(here) == len(g["_inputs"])
+                                            else "the GIS zips are not on this disk, so their digests "
+                                                 "were not compared"))
+
+
+@check("data", "the district map's published file is the committed geometry, with every "
+               "district filled from the roster's party")
+def _map_published():
+    """The night's site/district_map.json, read against what it was made from,
+    each side read here rather than through build_district_map.py: its
+    geometry the committed file's, byte for byte by digest and in its arcs and
+    layers; every district's fill the letters of the parties of the members
+    site/legislators.json seats there (a floterial's members by
+    site/districts.json's floterial codes) or of the councillor or
+    representative corrections/officials.json names; and map.js and map.css
+    the copies of src/pages/'s.
+    """
+    pub, geo = Path("site/district_map.json"), Path("generated/district_geometry.json")
+    legs, dist = Path("site/legislators.json"), Path("site/districts.json")
+    if not all(p.exists() for p in (pub, geo, legs, dist)):
+        return "skip", "site/district_map.json and what it is made from are not all here"
+    import hashlib
+    d = json.loads(pub.read_text(encoding="utf-8"))
+    gb = geo.read_bytes()
+    g = json.loads(gb)
+    assert d["_geometry"] == hashlib.sha256(gb).hexdigest() and d["arcs"] == g["arcs"] \
+        and d["layers"] == g["layers"], (
+        "site/district_map.json was not built from generated/district_geometry.json as it stands")
+    code = {"Belknap": "BE", "Carroll": "CA", "Cheshire": "CH", "Coos": "CO", "Grafton": "GR",
+            "Hillsborough": "HI", "Merrimack": "ME", "Rockingham": "RO", "Strafford": "ST",
+            "Sullivan": "SU"}
+    flo = {f"{code[h['county']]}{h['district']}" for t in json.loads(dist.read_text(encoding="utf-8")).values()
+           for w in t.values() for h in w["house"] if h["floterial"]}
+    seen = {}
+    roster = json.loads(legs.read_text(encoding="utf-8"))
+    for m in roster if isinstance(roster, list) else roster.values():
+        if m.get("chamber") == "H":
+            c = f"{code[m['county']]}{int(m['district'])}"
+            k = ("float", c) if c in flo else ("base", c)
+        else:
+            k = ("senate", str(int(m["district"])))
+        seen.setdefault(k, set()).add(str(m.get("party") or "X")[:1].upper())
+    off = json.loads(Path("corrections/officials.json").read_text(encoding="utf-8"))
+    for lk, office in (("exec", "council"), ("cong", "us_house")):
+        for num, o in off[office]["districts"].items():
+            if o.get("name"):
+                seen[(lk, str(int(num)))] = {str(o.get("party") or "X")[:1].upper()}
+    wrong = []
+    for lk in ("base", "float", "senate", "exec", "cong"):
+        for fid in g["layers"][lk]["f"]:
+            ps = seen.get((lk, fid), set())
+            want = "".join(x for x in "RDI" if x in ps) + "".join(sorted(ps - set("RDI")))
+            if d["fill"][lk].get(fid) != want:
+                wrong.append(f"{lk} {fid}: {d['fill'][lk].get(fid)!r}, the record {want!r}")
+    assert not wrong, f"{len(wrong)} districts filled otherwise than the record: " + "; ".join(wrong[:6])
+    for name in ("map.js", "map.css"):
+        site, src = Path("site") / name, Path("src/pages") / name
+        assert site.exists() and site.read_bytes() == src.read_bytes(), \
+            f"site/{name} is not src/pages/{name}"
+    vac = sum(1 for v in d["fill"]["base"].values() if not v)
+    return "ok", (f"{sum(len(v) for v in d['fill'].values())} districts filled as the roster "
+                  f"and officials.json have them; {vac} base districts with every seat vacant")
 
 
 @check("files", "our district files still say what the Secretary of State's do")
@@ -82827,8 +83698,26 @@ def _fast_path_matches_the_build(BI, BP):
         assert code == 0, f"the fast path failed: {out[-400:]}"
         for n in ("style.css", "app.css", "components.js", "app.js", "find.js"):
             assert n in out.split("wrote ", 1)[-1], f"the fast path did not write {n}: {out[-400:]}"
-        r = _run([sys.executable, _paths.script("build_pages.py"), "--out", "site"], cwd=step,
-                 capture_output=True, text=True, timeout=300)
+        # THE STEP SEES THE SITE AS THE BUILD'S OWN STEP SAW IT (10 October
+        # 2026). build_pages runs before build_committees, so it found no
+        # site/committees.json on the fixture's chain, and the home page's
+        # Coming Up linked no committee page; run again over the whole site it
+        # found one and linked it, and index.html differed -- on any day a
+        # meeting is on the rail (Monday to Thursday, and since D13 the
+        # weekend), not because of the fast path, which never writes
+        # index.html. Held aside for the run and put back, so the comparison
+        # is of what the fast path writes. The page reading a later step's
+        # file is a fault of its own, reported rather than hidden here.
+        held = step / "site" / "committees.json"
+        kept = held.read_bytes() if held.exists() else None
+        if kept is not None:
+            held.unlink()
+        try:
+            r = _run([sys.executable, _paths.script("build_pages.py"), "--out", "site"], cwd=step,
+                     capture_output=True, text=True, timeout=300)
+        finally:
+            if kept is not None:
+                held.write_bytes(kept)
         assert r.returncode == 0, "build_pages.py: " + (r.stderr or r.stdout)[-300:]
         a = {p.relative_to(fast / "site").as_posix(): p.read_bytes()
              for p in (fast / "site").rglob("*") if p.is_file()}

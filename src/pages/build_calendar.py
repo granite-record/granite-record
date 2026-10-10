@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-18.30
+# GRANITE_VERSION: 2026-09-18.32
 """
 The General Court's week, one page per week.
 
@@ -85,6 +85,25 @@ document -- and a button that opens the General Court's own PDF, as its own
 pages do. calendar_documents.py reads the list and writes the section, its
 script and the list page; this hands the section to every week's page and
 writes the two files beside them. Without script the section is plain links.
+
+MONDAY TO FRIDAY, IN TITLE CASE (9 October 2026, the second round of the
+polish, approved). "Dont display Saturdays and sundays on the week view, only
+weekdays since there aren't meetings on the weekend. If that would allow the
+week view to be displayed like the list and day views which keep the month on
+the left, that would be preferred." So the Week view is a column a day,
+Monday to Friday, in the schedule's column beside the month, each the day's
+cards in brief (WEEK_JS's weekView), where it was a table of hours with the
+cards whole in its cells; the List view keeps every weekday too, one the
+filters emptied saying what they hid; a week is named by the days it shows,
+"The Week of February 16–20, 2026"; and the pager says "Previous Week", "This Week" and
+"Next Week", each with the week it leads to, as the person asked the same
+day, and the Day view's "Previous Day" and "Next Day". A Saturday or Sunday
+is shown wherever one holds a meeting -- a column, a day in the list, the end
+of the week's name -- and never hidden in silence. None has since the
+calendar's first week: proceedings.csv has eleven weekend days, 1999-2015,
+and the study committees' copy sixty, 1994-2015. The floor is "House Session
+Day" and "Senate Session Day" (build_pages.card_name), under the key's
+"Session Day".
 """
 
 # The bootstrap: _paths.py, found above this file, puts every code folder on the import path.
@@ -608,11 +627,16 @@ WEEK_JS = r"""
     return m+"-"+pad(Math.min(+s.slice(8),daysIn(m)));
   }
   function dayWords(s){ return dateWords(s,"day"); }
-  // A week's name from its key alone: build_calendar.span_words, "March
-  // 9–15, 2026" or "March 30 – April 5, 2026". For a week whose month
-  // file did not come, so the heading can still name the week the address
-  // does; preflight holds the two to the same words.
-  function weekLabel(k){ var a=keyMonday(k); return dateSpan(a,addDays(a,6)); }
+  // A week's name from its key alone: build_calendar.week_facts's label,
+  // "March 9–13, 2026" or "March 30 – April 3, 2026" -- MONDAY TO FRIDAY
+  // (the person, 9 October 2026: "Dont display Saturdays and sundays on the
+  // week view, only weekdays since there aren't meetings on the weekend").
+  // For a week whose month file did not come, so the heading can still name
+  // the week the address does; preflight holds the two to the same words. A
+  // week with a Saturday or Sunday sitting runs to that day, and only its
+  // month file can say so: none has since the calendar's first week.
+  // `form` "medium" is the pager's short name for it, "Mar 9–13, 2026".
+  function weekLabel(k,form){ var a=keyMonday(k); return dateSpan(a,addDays(a,4),form); }
   function monthWords(m){ return MONTH[+m.slice(5,7)-1]+" "+m.slice(0,4); }
   // build_calendar.day_words's rule, in the reader's clock.
   function relWord(s,today){
@@ -620,8 +644,6 @@ WEEK_JS = r"""
     return off===0?"today":off===1?"tomorrow":(off>0&&off<=14)?"in "+off+" days":"";
   }
   function plural(n,w){ return n+" "+w+(n===1?"":"s"); }
-  // An hour of the week at a glance: "9 AM", "1 PM".
-  function hourWord(h){ var n=+h; return (n%12||12)+"\u00a0"+(n<12?"AM":"PM"); }
   function unesc(s){
     return String(s).replace(/&(amp|lt|gt|quot|#x27|#39);/g,function(_m,e){
       return {amp:"&",lt:"<",gt:">",quot:'"',"#x27":"'","#39":"'"}[e]; });
@@ -671,7 +693,7 @@ WEEK_JS = r"""
   // "HB 1234", "hb1234" and "1234" all mean the same bill to a person typing
   // it, and none of them is what the attribute holds.
   function norm(s){ return String(s||"").toUpperCase().replace(/[^A-Z0-9]/g,""); }
-  // WHICH BOXES A CARD ANSWERS TO. The floor is Floor Session. A study or
+  // WHICH BOXES A CARD ANSWERS TO. The floor is Session Day. A study or
   // statutory committee is Study Committee whatever kind of meeting it held
   // -- a hearing, a regular meeting -- which its card still says in words. A
   // chamber's committee is each kind its items are, so a day of hearings and
@@ -753,39 +775,86 @@ WEEK_JS = r"""
   //
   // THE LIST: the week page's own rule. Every weekday, an empty one saying so
   // under any filter, because "No meetings scheduled" is true of it whatever
-  // is ticked; a Saturday or Sunday only when something shown is on it; and a
-  // busy day the filters emptied goes, rather than standing as a heading over
-  // nothing.
+  // is ticked; and a Saturday or Sunday only when something shown is on it.
+  // A WEEKDAY THE FILTERS EMPTIED STAYS TOO, MONDAY TO FRIDAY (the approved
+  // Calendar of 9 October 2026), saying what was hidden -- "4 study
+  // committee meetings are hidden." -- as the Week view's column does. It
+  // went, rather than stand as a heading over nothing; with that line it is
+  // not over nothing, and a reader can tell a quiet day from a filtered one.
   function listDates(dates,days,f){
     return dates.filter(function(d){
       var day=days[d];
       if(!day) return false;
-      if(!day.cards.length) return weekday(d)<5;
+      if(weekday(d)<5) return true;
       return day.cards.some(function(e){ return matches(e,f); });
     });
   }
-  // THE WEEK AT A GLANCE: weekdays always, a weekend day when something shown
-  // is on it.
-  function weekCols(dates,days,f){
+  // THE WEEK AT A GLANCE, MONDAY TO FRIDAY (the person, 9 October 2026:
+  // "Dont display Saturdays and sundays on the week view, only weekdays since
+  // there aren't meetings on the weekend. If that would allow the week view
+  // to be displayed like the list and day views which keep the month on the
+  // left, that would be preferred"). A Saturday or Sunday is a column only
+  // when something shown is on it, or when it is the day the reader chose,
+  // so a weekend sitting is never hidden in silence. Counted on 9 October
+  // 2026: proceedings.csv has eleven weekend days (1999-2015) and the study
+  // committees' copy sixty (1994-2015), and neither has one from the
+  // calendar's first week, in January 2025, on.
+  function weekCols(dates,days,f,sel){
     return dates.filter(function(d){
-      return weekday(d)<5 || ((days[d]||{}).cards||[]).some(function(e){ return matches(e,f); });
+      return weekday(d)<5 || d===sel
+        || ((days[d]||{}).cards||[]).some(function(e){ return matches(e,f); });
     });
   }
-  // THE RECORD HAS NO END TIMES. The docket says when business is taken up
-  // and never when a committee rises, so the week is not drawn as blocks of
-  // invented length on a clock: its rows are the hours that something starts
-  // in, and a sitting with no time on the record gets a row saying so.
-  function hourOf(t){ return /^\d\d:\d\d/.test(t||"")?t.slice(0,2):""; }
-  function weekRows(cols,by){
-    var hours={}, none=false;
-    cols.forEach(function(d){ (by[d]||[]).forEach(function(e){
-      var h=hourOf(e.time); if(h) hours[h]=1; else none=true; }); });
-    var hs=Object.keys(hours).sort();
-    if(none) hs.push("");
-    return hs.map(function(h){
-      return {h:h, cells:cols.map(function(d){
-        return (by[d]||[]).filter(function(e){ return hourOf(e.time)===h; }); })};
-    });
+  // A DAY'S COLUMN, ONE LINE PER MEETING (the Week view approved on 9
+  // October 2026, "Week tab on the calendar looks good"): the card in brief
+  // -- its kinds as the divided bar, the time it starts, the name the card
+  // prints, its bill count -- in the card's own order, which is the order the
+  // day's sittings start (in_order). THE RECORD HAS NO END TIMES, so nothing
+  // is drawn to a length on a clock. The entry is read off the card, as the
+  // grid's dots and the preview are, and leads where the card does: to the
+  // committee's page at that day, or to the session day's own page. A card
+  // with no page to lead to -- a study committee's, a conference's, a
+  // session day still to come -- opens in the Day view, where it is whole.
+  // The kinds are the bar's colours, and are said in words to a screen
+  // reader, as the card's chips say them (a session day's name says it).
+  // The chip is components.chip's since Polish 1 ("chip calkind k-hearing"),
+  // so the hook is found among the classes rather than first.
+  var KIND_CHIP=new RegExp('<span class="(?:[^"]* )?cal'+'kind[^"]*">([^<]*)</span>',"g");
+  function entryHtml(e){
+    var go=/<p class="calmore"><a href="([^"]+)"/.exec(e.html), n=e.bills.length,
+        sum=/<summary>([\s\S]*?)<\/summary>/.exec(e.html), said=[];
+    String(sum?sum[1]:"").replace(KIND_CHIP,function(_m,w){
+      if(!(e.cancelled&&w==="Cancelled")) said.push(w); return ""; });
+    var inner='<span class="wkbar" aria-hidden="true">'
+          +(e.kinds.length?e.kinds:["other"]).map(function(k){ return '<i class="k-'+k+'"></i>'; }).join("")
+          +'</span><span class="wkx">'+(e.time?'<span class="wkt">'+esc(clock(e.time))+'</span>':"")
+          +'<span class="wkc">'+esc(e.name)+'</span>'
+          +(e.cancelled?'<span class="wkn">Cancelled</span>':n?'<span class="wkn">'+plural(n,"bill")+'</span>':"")
+          +(said.length?'<span class="sr">, '+said.join(", ")+'</span>':"")
+          +'</span>';
+    return '<li class="wke" data-date="'+esc(e.date)+'" data-cmte="'+esc(e.cmte)+'">'
+      +(go?'<a class="wkgo" href="'+go[1]+'">'+inner+'</a>'
+          :'<button type="button" class="wkgo" data-open="'+esc(e.date+"|"+e.cmte)+'">'+inner
+            +'<span class="sr">: open it in the Day view</span></button>')+'</li>';
+  }
+  // What a column says where it shows nothing: that nothing is on, or what
+  // the filters hid -- the study committees by name, since a new reader has
+  // that box unticked and would otherwise not know why a day is empty.
+  function emptyWords(cards,f){
+    if(!cards.length) return "No meetings";
+    var st=cards.filter(function(e){ return e.who==="study"; }).length;
+    if(st===cards.length && f.cats.indexOf("study")<0 && !f.picks.length && !String(f.q||"").trim())
+      return (st===1?"1 study committee meeting is":st+" study committee meetings are")+" hidden.";
+    return (cards.length===1?"1 meeting is":cards.length+" meetings are")+" hidden by the filters.";
+  }
+  // THE DAY BEFORE AND AFTER A READER WANTS, for the Day view's Previous Day
+  // and Next Day: a Saturday or Sunday with nothing on it is stepped over,
+  // as the week no longer shows one. A weekend day whose month has not come
+  // is taken as empty: none since the calendar's first week holds anything.
+  function stepDay(d,n,days){
+    var t=addDays(d,n);
+    while(weekday(t)>4 && !((days[t]||{}).cards||[]).length) t=addDays(t,n);
+    return t;
   }
   // The day a week opens on, when the address does not name one: today if
   // the week holds it, else its first day with a sitting the filters `f`
@@ -973,7 +1042,8 @@ WEEK_JS = r"""
     shiftMonth:shiftMonth, dayWords:dayWords, weekLabel:weekLabel, relWord:relWord, parseCard:parseCard,
     parseDay:parseDay, dayHtml:dayHtml, defaults:defaults, catsOf:catsOf, matches:matches,
     narrowed:narrowed, sideOn:sideOn, tally:tally, countLine:countLine, listDates:listDates,
-    weekCols:weekCols, weekRows:weekRows, firstDay:firstDay, clock:clock, hourWord:hourWord,
+    weekCols:weekCols, entryHtml:entryHtml, emptyWords:emptyWords, stepDay:stepDay,
+    firstDay:firstDay, clock:clock,
     isDay:isDay, isWeek:isWeek, readQuery:readQuery, writeQuery:writeQuery, readHash:readHash,
     barsOf:barsOf, cellHtml:cellHtml, gridHtml:gridHtml,
     peekHtml:peekHtml, stepKey:stepKey, CATS:CATS, CAT_ON:CAT_ON};
@@ -1023,7 +1093,7 @@ WEEK_JS = r"""
   // The week this page was built with is in it already: the script starts
   // from those cards and needs no file for them.
   all(view,".calday[data-d]").forEach(function(el){ DAYS[el.getAttribute("data-d")]=parseDay(el.outerHTML); });
-  WEEKS[PAGEWEEK]={label:h1.textContent.replace(/^The week of /,""), lead:lead?lead.textContent:""};
+  WEEKS[PAGEWEEK]={label:h1.textContent.replace(/^The Week of /,""), lead:lead?lead.textContent:""};
 
   // ---- where the reader is -------------------------------------------------------
   //
@@ -1157,10 +1227,10 @@ WEEK_JS = r"""
     // loaded". A week's name follows from its key (weekLabel); its lead is
     // the build's, and said plainly where the week is not here to count.
     var k=weekKey(SEL), w=WEEKS[k], label=w?w.label:weekLabel(k);
-    h1.textContent="The week of "+label;
+    h1.textContent="The Week of "+label;
     if(lead) lead.textContent=broken()?"The meetings of this week could not be loaded here."
                                       :w?w.lead:"";
-    document.title="The week of "+label+" | Granite Record";
+    document.title="The Week of "+label+" | Granite Record";
     rename(k,label);
     // The arrows are written again only when they change -- against what was
     // last written here, not against innerHTML, which a browser hands back
@@ -1169,7 +1239,7 @@ WEEK_JS = r"""
     // link that had focus goes with the old arrows: left there, focus fell to
     // the page, a screen reader said nothing, and Enter again did nothing. The
     // same arrow in the new ones takes it; where that arrow is no more --
-    // "This week" on this week, "The week after" on the last -- the heading
+    // "This Week" on this week, "Next Week" on the last -- the heading
     // that names the week now shown takes it.
     var html=navHtml(k);
     if(html===NAV) return;
@@ -1231,16 +1301,24 @@ WEEK_JS = r"""
     });
     NAMED=to;
   }
-  // The week's arrows, as week_page writes them, stepping from the day
-  // selected: previous on the left, next on the right.
+  // The week's pager, as week_page writes it, stepping from the day
+  // selected: previous on the left, next on the right, each with the week
+  // it leads to under it, and This Week between them. IN TITLE CASE, as the
+  // person asked on 9 October 2026: "This week should be This Week, The
+  // week before should be Previous Week, The week after should be Next
+  // Week". A week's short name is its month file's, where that has come, and
+  // otherwise Monday to Friday from its key.
+  function shortOf(k){ return WEEKS[k]&&WEEKS[k].short?WEEKS[k].short:weekLabel(k,"medium"); }
   function navHtml(k){
-    var mon=keyMonday(k), h="", tk=weekKey(clamp(TODAY));
+    var mon=keyMonday(k), h="", tk=weekKey(clamp(TODAY)), pk=weekKey(addDays(mon,-7)), nk=weekKey(addDays(mon,7));
     if(addDays(mon,-1)>=FIRST)
-      h+='<a class="wkprev" data-step="-7" href="'+hrefFor(weekKey(addDays(mon,-7)))+'">&lsaquo; The week before</a>';
+      h+='<a class="wkprev" data-step="-7" href="'+hrefFor(pk)+'"><span class="wkpw">&lsaquo; Previous Week</span>'
+        +'<span class="wkpd">'+esc(shortOf(pk))+'</span></a>';
     if(k!==tk && inRange(TODAY))
-      h+='<a class="wkhere" data-today="" href="'+hrefFor(tk)+'">This week</a>';
+      h+='<a class="wkhere" data-today="" href="'+hrefFor(tk)+'">This Week</a>';
     if(addDays(mon,7)<=LAST)
-      h+='<a class="wknext" data-step="7" href="'+hrefFor(weekKey(addDays(mon,7)))+'">The week after &rsaquo;</a>';
+      h+='<a class="wknext" data-step="7" href="'+hrefFor(nk)+'"><span class="wkpw">Next Week &rsaquo;</span>'
+        +'<span class="wkpd">'+esc(shortOf(nk))+'</span></a>';
     return h;
   }
   // The days the panel needs and does not have, and whether a month file
@@ -1262,55 +1340,58 @@ WEEK_JS = r"""
     if(count.textContent!==t) count.textContent=t;
   }
   function listView(dates){
-    return listDates(dates,DAYS,S).map(function(d){ return dayHtml(DAYS[d],visible(d)); }).join("")
+    return listDates(dates,DAYS,S).map(function(d){
+        var day=DAYS[d], vis=visible(d);
+        return day.cards.length&&!vis.length
+          ? day.head+'<p class="calempty">'+esc(emptyWords(day.cards,S))+'</p></div>'
+          : dayHtml(day,vis); }).join("")
       || '<p class="calempty">Nothing this week matches the filters.</p>';
   }
+  // THE DAY, with the day either side under it as a pager in the week's
+  // words (9 October 2026): "Previous Day" and "Next Day", each with the day
+  // it leads to, stepping over a Saturday or Sunday with nothing on it.
   function dayView(){
-    var d=SEL, day=DAYS[d], vis=visible(d);
-    var step='<div class="calstep">'
-      +(addDays(d,-1)>=FIRST?'<button type="button" class="calstepb" data-step="-1">&lsaquo; '
-        +esc(dayWords(addDays(d,-1)))+'</button>':"")
-      +(addDays(d,1)<=LAST?'<button type="button" class="calstepb calstepn" data-step="1">'
-        +esc(dayWords(addDays(d,1)))+' &rsaquo;</button>':"")+'</div>';
+    var d=SEL, day=DAYS[d], vis=visible(d), p=stepDay(d,-1,DAYS), n=stepDay(d,1,DAYS);
+    var step='<nav class="calstep" aria-label="Other days">'
+      +(p>=FIRST?'<button type="button" class="wkprev calstepb" data-step="-1" data-to="'+p+'">'
+        +'<span class="wkpw">&lsaquo; Previous Day</span><span class="wkpd">'+esc(dayWords(p))+'</span></button>':"")
+      +(n<=LAST?'<button type="button" class="wknext calstepb calstepn" data-step="1" data-to="'+n+'">'
+        +'<span class="wkpw">Next Day &rsaquo;</span><span class="wkpd">'+esc(dayWords(n))+'</span></button>':"")
+      +'</nav>';
     if(day.cards.length && !vis.length)
-      return step+day.head+'<p class="calempty">Nothing on this day matches the filters.</p></div>';
-    return step+dayHtml(day,vis);
+      return day.head+'<p class="calempty">Nothing on this day matches the filters.</p></div>'+step;
+    return dayHtml(day,vis)+step;
   }
+  // THE WEEK: a column a day, Monday to Friday, beside the month as the list
+  // and the day are; each column the day's meetings in brief (entryHtml), and
+  // its heading the way into that day in full. On a narrow screen the days
+  // stand one under another, Monday first (app.css).
   function weekView(dates){
-    var cols=weekCols(dates,DAYS,S), by={};
-    cols.forEach(function(d){ by[d]=visible(d); });
-    var rows=weekRows(cols,by), any=dates.some(function(d){ return DAYS[d]&&DAYS[d].cards.length; });
-    var h='<div class="wkgridwrap" role="region" tabindex="0" '
-      +'aria-label="The week at a glance, by the hour each meeting starts">'
-      +'<table class="wkgrid" style="--cols:'+cols.length+'"><thead><tr>'
-      +'<th scope="col" class="wkhr"><span class="sr">Starts</span></th>'
+    var cols=weekCols(dates,DAYS,S,SEL);
+    return '<div class="wkweek"><ol class="wkdays" style="--cols:'+cols.length+'">'
       +cols.map(function(d){
-        return '<th scope="col" class="wkcol'+(d===SEL?" wksel":"")+(d<TODAY?" wkpast":"")+'"'
-          +(d===TODAY?' aria-current="date"':"")+'><button type="button" class="wkday" data-d="'+d+'">'
-          +'<span class="wkdn">'+DAYNAME[weekday(d)].slice(0,3)+'</span> '
-          +'<span class="wkdd">'+dateWords(d,"short")+'</span>'
-          +'<span class="sr">: open '+esc(dayWords(d))+'</span></button></th>'; }).join("")
-      +'</tr></thead><tbody>';
-    if(!rows.length)
-      h+='<tr><td class="wknone" colspan="'+(cols.length+1)+'">'
-        +(any?"Nothing this week matches the filters.":"Nothing is scheduled this week.")+'</td></tr>';
-    rows.forEach(function(r){
-      h+='<tr><th scope="row" class="wkhr">'+(r.h?hourWord(r.h):"No time given")+'</th>'
-        +r.cells.map(function(c,i){
-          return '<td data-d="'+cols[i]+'">'+c.map(function(e){ return e.html; }).join("")+'</td>'; }).join("")
-        +'</tr>';
-    });
-    return h+'</tbody></table></div>';
+        var vis=visible(d);
+        return '<li class="wkcol'+(d===SEL?" wksel":"")+(d<TODAY?" wkpast":"")+'"'
+          +(d===TODAY?' aria-current="date"':"")+'><h2 class="wkdh"><button type="button" class="wkday" data-d="'+d+'">'
+          +'<span class="wkdn">'+DAYNAME[weekday(d)]+'</span> '
+          +'<span class="wkdd">'+dateWords(d,"short")+(d===TODAY?" · Today":"")+'</span>'
+          +'<span class="sr">: open this day</span></button></h2>'
+          +(vis.length?'<ul class="wkes">'+vis.map(entryHtml).join("")+'</ul>'
+            :'<p class="wkempty">'+esc(emptyWords(((DAYS[d]||{}).cards)||[],S))+'</p>')
+          +'</li>'; }).join("")
+      +'</ol></div>';
   }
   function cardKey(m){ return (m.getAttribute("data-date")||"")+"|"+(m.getAttribute("data-cmte")||""); }
   // FOCUS IS NOT LOST WHEN THE PANEL IS DRAWN AGAIN: whatever held it -- a
-  // card, a day's button, a step -- is found in the new drawing and given it
-  // back, and failing that the schedule itself takes it.
+  // card, a week's entry, a day's button, a step -- is found in the new
+  // drawing and given it back, and failing that the schedule itself takes it.
   function focusMark(){
     var a=document.activeElement;
     if(!a||!view.contains(a)) return null;
     var m=a.closest&&a.closest(".calmeet");
     if(m) return {card:cardKey(m)};
+    var w=a.closest&&a.closest(".wke");
+    if(w) return {entry:cardKey(w)};
     if(a.getAttribute("data-d")) return {day:a.getAttribute("data-d")};
     if(a.getAttribute("data-step")) return {step:a.getAttribute("data-step")};
     return {view:1};
@@ -1320,6 +1401,8 @@ WEEK_JS = r"""
     var t=null;
     if(k.card) all(view,".calmeet").some(function(m){
       if(cardKey(m)===k.card){ t=m.querySelector("summary"); return true; } return false; });
+    else if(k.entry) all(view,".wke").some(function(w){
+      if(cardKey(w)===k.entry){ t=w.querySelector(".wkgo"); return true; } return false; });
     else if(k.day) t=view.querySelector('button[data-d="'+k.day+'"]');
     else if(k.step) t=view.querySelector('[data-step="'+k.step+'"]');
     (t||view).focus();
@@ -1433,7 +1516,7 @@ WEEK_JS = r"""
   }
   var CHAMBER={"H":"House","S":"Senate","H S":"House and Senate"};
   var GROUP={standing:"Standing committees and committees of conference",study:"Study and statutory committees",
-             floor:"Floor sessions"};
+             floor:"Session days"};
   function drawList(){
     var q=cpfind.value.trim().toLowerCase(), open=cpall.getAttribute("aria-expanded")==="true";
     if(!q&&!open){ cplist.hidden=true; cpstat.textContent=""; return; }
@@ -1814,7 +1897,18 @@ WEEK_JS = r"""
       S.v="day"; syncControls(); select(b.getAttribute("data-d"),"view");
       var hd=view.querySelector(".caldate");
       if(hd){ hd.tabIndex=-1; hd.focus(); }
-    }else if(b.hasAttribute("data-step")) select(addDays(SEL,+b.getAttribute("data-step")),"step");
+    }else if(b.hasAttribute("data-open")){
+      // A week's entry with no page to lead to: its day, with it in full.
+      var ck=b.getAttribute("data-open");
+      S.v="day"; syncControls(); select(ck.split("|")[0],"view");
+      all(view,".calmeet").some(function(m){
+        if(cardKey(m)!==ck) return false;
+        var sm=m.querySelector("summary"); if(sm) sm.focus();
+        if(m.scrollIntoView) m.scrollIntoView({block:"nearest"});
+        return true;
+      });
+    }else if(b.hasAttribute("data-step"))
+      select(b.getAttribute("data-to")||addDays(SEL,+b.getAttribute("data-step")),"step");
   });
   // The week's arrows move to the week before or after in place, keeping
   // the view and the filters, on the calendar's own address; opened in a new
@@ -1849,10 +1943,11 @@ def monday(d):
     return d - datetime.timedelta(days=d.isoweekday() - 1)
 
 
-def span_words(a, b):
-    """September 21–27, 2026, or September 29 – October 5, 2026: shell's
-    date_span, month first (D6, 8 October 2026)."""
-    return S.date_span(a, b)
+def span_words(a, b, form="full"):
+    """September 21–25, 2026, or September 29 – October 3, 2026: shell's
+    date_span, month first (D6, 8 October 2026); "Sep 21–25, 2026" in the
+    form "medium", which the pager says under Previous Week and Next Week."""
+    return S.date_span(a, b, form)
 
 
 def href_for(key, today):
@@ -2011,13 +2106,9 @@ def week_keys(site, today=None):
     read them off the disk. This is main()'s own reading, in main()'s order:
     the proceedings and the study committees' meetings, then every week from
     the first to the last. None when there are no weeks, which is when main()
-    stops without writing one.
+    stops without writing one. week_labels gives each its name as well.
     """
-    weeks = collect(Path(site), statstud()[0])[0]
-    if not weeks:
-        return set()
-    every_week(weeks, today or build_date.today())
-    return set(weeks)
+    return set(week_labels(site, today))
 
 
 # ---- the official documents behind a card ----------------------------------
@@ -2166,7 +2257,6 @@ def week_facts(key, weeks, today):
     first = monday(datetime.date.fromisoformat(min(dated) if dated
                                                else min(days_raw)))
     last = first + datetime.timedelta(days=6)
-    label = span_words(first, last)
 
     # EVERY WEEKDAY, WITH OR WITHOUT A MEETING. A week listing only the days
     # that held something let a quiet Monday simply vanish, and a reader
@@ -2177,6 +2267,12 @@ def week_facts(key, weeks, today):
     # would be noise.
     shown = sorted(set(dated) | {(first + datetime.timedelta(days=i)).isoformat()
                                  for i in range(5)})
+    # THE WEEK IS NAMED BY THE DAYS IT SHOWS: "February 16–20, 2026", Monday
+    # to Friday, as the approved Calendar names it (9 October 2026), and to
+    # the Saturday or Sunday where one holds a meeting. WEEK_JS's weekLabel
+    # says the same from a key alone.
+    end = datetime.date.fromisoformat(shown[-1])
+    label, short = span_words(first, end), span_words(first, end, "medium")
     meets, days = {}, OrderedDict()
     for date in shown:
         for k, rows in (days_raw.get(date) or {}).items():
@@ -2216,7 +2312,7 @@ def week_facts(key, weeks, today):
                  else "No meetings are scheduled yet for this week. ")
                 + "The General Court sits mostly from January to June, and committees "
                 "meet on bills from the autumn filing period onwards.")
-    return {"first": first, "last": last, "label": label, "days": days,
+    return {"first": first, "last": last, "label": label, "short": short, "days": days,
             "meets": meets, "n": n, "lead": lead}
 
 
@@ -2354,6 +2450,48 @@ BAR_HTML = ('<div class="calbar" id="calbar" hidden>'
             'Reset filters</button></div>')
 
 
+def pager_html(key, weeks, order, at, today):
+    """[link]: the week's pager, as WEEK_JS's navHtml draws it again.
+
+    IN TITLE CASE, AND EACH SAYING WHERE IT LEADS (the person, 9 October
+    2026: "This week should be This Week, The week before should be Previous
+    Week, The week after should be Next Week"). Previous Week on the left and
+    Next Week on the right, each with the week it leads to under it in the
+    pager's short form ("Feb 9–13, 2026"), and This Week between them on any
+    week but this one. The class comes before the address on each link:
+    preflight counts 'class="wknext" href=' in a page's text, and the page's
+    script, which writes the same links with a data-step between the two,
+    must not be counted with them."""
+    def short(k):
+        return S.E(week_facts(k, weeks, today)["short"])
+    nav = []
+    if at > 0:
+        nav.append(f'<a class="wkprev" href="{S.canon(href_for(order[at - 1], today))}">'
+                   f'<span class="wkpw">&lsaquo; Previous Week</span>'
+                   f'<span class="wkpd">{short(order[at - 1])}</span></a>')
+    here = week_key(today)
+    if key != here and here in order:
+        nav.append(f'<a class="wkhere" href="{S.canon("/calendar.html")}">This Week</a>')
+    if at < len(order) - 1:
+        nav.append(f'<a class="wknext" href="{S.canon(href_for(order[at + 1], today))}">'
+                   f'<span class="wkpw">Next Week &rsaquo;</span>'
+                   f'<span class="wkpd">{short(order[at + 1])}</span></a>')
+    return nav
+
+
+def week_labels(site, today=None):
+    """{"2026-W21": "May 18–22, 2026", ...}: every week main() writes a page
+    for, by the name its page gives it. week_keys's reading, for a session
+    day's pager, whose middle link names the day's week as the Calendar does
+    ("The Week of February 16–20, 2026")."""
+    weeks = collect(Path(site), statstud()[0])[0]
+    if not weeks:
+        return {}
+    today = today or build_date.today()
+    every_week(weeks, today)
+    return {k: week_facts(k, weeks, today)["label"] for k in weeks}
+
+
 def week_page(site, base, key, weeks, order, at, titles, years, code, urls,
               today, sessions=frozenset(), study=False, docs=None, picker=""):
     """Write one week's page. `study` is whether the calendar holds the study
@@ -2380,16 +2518,8 @@ def week_page(site, base, key, weeks, order, at, titles, years, code, urls,
                                  lambda d: day_words(d, today), S.E,
                                  level=2, sessions=sessions, docs=docs)
 
-    nav = []
-    if at > 0:
-        nav.append(f'<a class="wkprev" href="{S.canon(href_for(order[at - 1], today))}">'
-                   f'&lsaquo; The week before</a>')
+    nav = pager_html(key, weeks, order, at, today)
     here = week_key(today)
-    if key != here and here in order:
-        nav.append(f'<a class="wkhere" href="{S.canon("/calendar.html")}">This week</a>')
-    if at < len(order) - 1:
-        nav.append(f'<a class="wknext" href="{S.canon(href_for(order[at + 1], today))}">'
-                   f'The week after &rsaquo;</a>')
 
     path = href_for(key, today)
     # THE CURRENT WEEK IS WRITTEN AT BOTH ITS ADDRESSES. /calendar is the tab,
@@ -2413,7 +2543,7 @@ def week_page(site, base, key, weeks, order, at, titles, years, code, urls,
              f'<div class="wkpage calapp" id="calapp" data-week="{key}" '
              f'data-here="{here}" data-first="{order[0]}" data-last="{order[-1]}">'
              '<div class="calhead">'
-             f'<h1>The week of {S.E(label)}</h1>'
+             f'<h1>The Week of {S.E(label)}</h1>'
              f'<p class="src">{lead}</p>'
              # NO LINK DOWN TO THE CALENDARS & JOURNALS (F11): the section is
              # the last block of the schedule's column, where a reader finds it.
@@ -2445,7 +2575,7 @@ def week_page(site, base, key, weeks, order, at, titles, years, code, urls,
              + (f"<script>{lean_js(CD.PICKER_JS)}</script>" if picker else ""))
     for f in copies:
         html = S.page(S.template(site), path=f, canonical=path, base=base,
-                      title=f"The week of {label} | Granite Record",
+                      title=f"The Week of {label} | Granite Record",
                       # WHAT THE PAGE HOLDS, and no more: it said "Every
                       # hearing..." while it held bill business only.
                       description=("Hearings, work sessions, executive sessions, "
@@ -2453,11 +2583,11 @@ def week_page(site, base, key, weeks, order, at, titles, years, code, urls,
                                    + (" and study and statutory committee meetings"
                                       if study else "")
                                    + f" of the New Hampshire General Court, {label}."),
-                      og_title=f"The week of {label}",
+                      og_title=f"The Week of {label}",
                       globals={"GR_STATIC": True}, noscript="",
                       skip_label="Skip to the week", sr_title="", og_type="website",
                       nav_current="calendar.html",
-                      jsonld=LD.listing(f"The week of {label}",
+                      jsonld=LD.listing(f"The Week of {label}",
                                         f"The General Court's business, {label}.",
                                         base, S.canon(path)))
         html = html.replace('<div id="results"></div>', block, 1)
@@ -2610,7 +2740,9 @@ def month_files(site, weeks, order, titles, years, code, today,
             if k in weeks and k not in wk:
                 if k not in facts:
                     f = week_facts(k, weeks, today)
-                    facts[k] = {"label": f["label"], "lead": f["lead"]}
+                    # The pager's short name for it too, which Previous Week
+                    # and Next Week say under them (WEEK_JS's shortOf).
+                    facts[k] = {"label": f["label"], "lead": f["lead"], "short": f["short"]}
                 wk[k] = facts[k]
         name = f"{ym}.json"
         (out / name).write_text(json.dumps({"month": ym, "days": days, "weeks": wk},

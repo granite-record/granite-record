@@ -16,7 +16,7 @@
     "study committee": ["Study Committee", "k-study"],
     "statutory committee": ["Statutory Committee", "k-study"],
     "committee of conference": ["Committee of Conference", "k-conf"],
-    "floor debate": ["Floor Session", "k-floor"]
+    "floor debate": ["Session Day", "k-floor"]
   },
   "small": ["a", "an", "and", "at", "by", "for", "from", "in", "of", "on", "or", "the", "to", "with"],
   "legend": [
@@ -24,7 +24,7 @@
     ["k-exec", "Executive Session"],
     ["k-meet", "Work Session"],
     ["k-conf", "Committee of Conference"],
-    ["k-floor", "Floor Session"],
+    ["k-floor", "Session Day"],
     ["k-study", "Study Committee"]
   ]
 }

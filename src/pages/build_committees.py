@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-07.53
+# GRANITE_VERSION: 2026-09-07.56
 """
 A page's worth of data for every committee.
 
@@ -1317,7 +1317,8 @@ def main():
                           "Every committee of the New Hampshire General Court.",
                           a.base, S.canon("/committees.html")),
         noscript="", skip_label="Skip to the committees",
-                  nav_current="committees.html", sr_title="")
+                  # No Cite on a hub (D23, 8 October 2026).
+                  nav_current="committees.html", sr_title="", cite=False)
     # A plain listing rather than an app view: there is nothing to filter and
     # 56 links do not need JavaScript to draw.
     page_html = page_html.replace(
@@ -1325,6 +1326,10 @@ def main():
         f'<div id="results"><div class="clist"><h1>Committees</h1>'
         f'<p class="src">Bill-first search answers what happened to a bill. '
         f'These answer what a committee did on a day.</p>'
+        # THE HOUSE AND SENATE FULL SESSIONS GO HERE, at the top (the person,
+        # 9 October 2026, v12): build_full_sessions.py fills this slot after
+        # the session pages, whose term files it reads, are written.
+        + '<div id="fullsess"></div><!-- /fullsess -->'
         + "".join(body) + "</div></div>", 1)
     (site / "committees.html").write_text(page_html, encoding="utf-8")
     print("committees.html written")

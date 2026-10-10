@@ -9,7 +9,20 @@ every record page is built from, and the `components.js`, `app.js`, `app.css`
 and `find.js` it loads. `build_pages.py` copies all five into `site/` as they
 are, and the builders read them here under the folder they run in, so a
 fixture lays out its own copies the same way. Edit them here; `site/` holds
-copies.
+copies. The district map is a module of its own: `map.js` and `map.css`,
+which `build_district_map.py` copies beside `/district_map.json`, the one
+file the map draws, and which a page mounts with `GRMap.mount()`: the
+Officials page's My Town tab and every town page's District Map tab.
+
+The hubs (Polish 3, 10 October 2026). The Officials page, `/officials`
+(`/legislators` answers with a 301 to it), is `build_pages.py`'s, in five
+tabs; its Federal Delegation, Statewide Officials and County Officials are
+drawn by `officials_tabs.py` from `corrections/officials.json`, which it reads
+and never writes. The House and Senate full sessions at the top of
+`/committees` are `build_full_sessions.py`'s, a step after both chambers'
+session pages, which fills a slot `build_committees.py` writes, because the
+term files it reads (`site/session/<H|S>/<term>.json`) are written after the
+committees.
 
 The components are in two files with the same helpers under the same names
 (9 October 2026): `components.py`, which the builders draw a person, a

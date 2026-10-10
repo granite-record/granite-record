@@ -276,7 +276,7 @@ want:
 | which subject a bill is filed under | `src/parse/topic_model.py`, and `src/parse/topics.py`, the baseline it imports |
 | committee, member or town pages | `src/pages/build_committees.py`, `src/pages/build_legislator_pages.py`, `src/pages/build_town_pages.py` |
 | the plain lists of every bill, member and town | `src/pages/build_indexes.py` |
-| the civics explainers under `/learn` | `src/pages/build_civics.py` |
+| the civics explainers under `/learn` and the Resources hub, `/resources` | `src/pages/build_civics.py`, which reads `src/pages/civics.py` (the writing and its diagrams) and `src/pages/learn_numbers.py` (The Record in Numbers) |
 | the CSV downloads and `/data` | `src/pages/build_exports.py` |
 | the RSS feeds | `src/pages/build_feeds.py` |
 | what changed each night, for the email updates | `src/pages/follow_changes.py`, called by `build_feeds.py` |
@@ -306,6 +306,7 @@ addresses:
 | `/officers.json` | who held the chair's offices — the Speaker, the Deputy Speaker and the Speaker Pro Tempore of the House, the President of the Senate — from which day to which, each with the member it names and the sentence of the House or Senate Journal or the House Calendar it was read from |
 | `/session/<H\|S>/<term>.json` | one chamber's session days of one term, oldest first: each day's journal and counts, who presided (the roll calls' presiding ballots and the journal's turns in the chair, with the office the record gives them that day), the members excused counted by party, the consent calendar's outcomes and the bills taken off it, and every bill voted on that day with each vote in order — motion, amendment numbers, result, count, the roll call's id (`rollcall`, as `/rollcalls_index.json` keys it) and its card on the bill's Votes tab (`card`) — and the committee recommendation the chamber acted on |
 | `/committees.json`, `/towns.json`, `/districts.json` | membership and geography |
+| `/district_map.json` | the district map's one file: NH GRANIT's 2022 boundaries for every State House, floterial, Senate, Executive Council and US House district, county and town, simplified at 100 ft on shared arcs in New Hampshire's own State Plane feet (EPSG:3437, 100-ft units, y down); every town and ward with the districts it votes in; and who sits for each district, with the party letters the map fills it with. Not for legal use: the Secretary of State's published definitions are the legal text |
 | `/feed/*.xml` | RSS: everything, upcoming hearings, and one feed each per topic, per legislator, per bill still moving, and per committee that is not archived and has a sitting day or a bill on record — so `/feed/committee/` holds fewer feeds than `/committees.json` has rows. An archived committee's would never change again |
 | `/changes/current.json`, `/changes/<date>.json` | what changed, night by night: what can be followed tonight and what is scheduled, and for each of the last eight nights what was new for each bill, member, committee and topic — the feeds' own items and ids, filed under the night each first appeared. Rewritten every night, and nothing in them is about a reader |
 

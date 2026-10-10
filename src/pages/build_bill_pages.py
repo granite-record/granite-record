@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.63
+# GRANITE_VERSION: 2026-09-04.65
 """
 Write a real address for every bill, and the sitemap that points at them.
 
@@ -331,12 +331,12 @@ def main():
           f"{kept:,} are larger than {INLINE_CAP // 1024} KB and keep a file "
           "of their own")
 
-    for p in ("index.html", "bills.html", "legislators.html",
+    for p in ("index.html", "bills.html", "officials.html",
               # data.html was added to the nav and not here, so the downloads
               # page was on every header and in no sitemap -- the same shape
               # of defect as the nav tuple in build_pages.py, one level down.
-              "committees.html", "learn.html", "data.html", "about.html"):
-        # ALWAYS, NOT ONLY IF THE FILE IS THERE YET. committees.html, learn.html
+              "committees.html", "resources.html", "data.html", "about.html"):
+        # ALWAYS, NOT ONLY IF THE FILE IS THERE YET. committees.html, resources.html
         # and data.html are written by steps that run after this one, so a
         # build into an empty site/ -- every night on GitHub's machine --
         # dropped all three (found 25 September 2026). Every one is built on
@@ -391,7 +391,8 @@ def main():
         "",
         f"- [Bills]({a.base}/bills): search and filter every bill. One page per "
         f"bill at {a.base}/bill/<year>/<id>" + (f", e.g. {ex_url}" if ex_url else ""),
-        f"- [Legislators]({a.base}/legislators): the sitting House and Senate; "
+        f"- [Officials]({a.base}/officials): the sitting House and Senate, and the "
+        f"state's other elected officials; "
         f"one page per member, current and former, at {a.base}/legislator/<name>",
         f"- [Committees]({a.base}/committees): one page per standing committee",
         f"- [Calendar]({a.base}/calendar): this week's hearings and sessions; "

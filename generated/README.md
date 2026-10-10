@@ -9,6 +9,10 @@ the run named beside it, never edited by hand.
   (`src/parse/build_careers.py`).
 - `places.json` -- one list of New Hampshire's places, reconciling the five
   that count them differently (`src/towns/build_places.py`).
+- `district_geometry.json` -- NH GRANIT's 2022 district boundaries and town
+  outlines, simplified on shared arcs for the district map
+  (`src/towns/build_district_geometry.py`, run on the laptop, where the GIS
+  zips are). The night publishes it inside `/district_map.json`.
 - `topic_model.json` -- the settings `src/parse/topic_model.py` runs with,
   the ones that won its scored comparison of 16 September 2026; a new
   comparison writes new ones.

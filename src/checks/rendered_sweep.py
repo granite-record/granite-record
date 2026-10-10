@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-08.2
+# GRANITE_VERSION: 2026-10-08.5
 """
 The rendered sweep: a built site measured as a reader's browser draws it.
 
@@ -121,22 +121,51 @@ PAGES = [
     {"name": "member-votes", "path": "legislator/joe-alexander-hills-29.html",
      "dir": "legislator", "steps": [{"tab": "^Votes"}],
      "why": "a member's Votes tab: the table of every roll call"},
-    {"name": "legislators-towns", "path": "legislators.html"},
-    {"name": "legislators-last", "path": "legislators.html",
+    # THE LEGISLATORS PAGE IS OFFICIALS (Polish 3, decision 127), in five
+    # tabs: My Town with the district map, the roster in its three
+    # arrangements, and the three tabs of officials.json's people.
+    {"name": "officials-town", "path": "officials.html",
+     "why": "My Town: the town finder and the district map"},
+    {"name": "officials-last", "path": "officials.html",
      "steps": [{"click": "#tab-legislators"}, {"click": "#tab-last"}]},
-    {"name": "legislators-county", "path": "legislators.html",
+    {"name": "officials-county", "path": "officials.html",
      "steps": [{"click": "#tab-legislators"}, {"click": "#tab-county"}]},
-    {"name": "legislators-seat", "path": "legislators.html",
+    {"name": "officials-seat", "path": "officials.html",
      "steps": [{"click": "#tab-legislators"}, {"click": "#tab-seat"}]},
+    {"name": "officials-federal", "path": "officials.html",
+     "steps": [{"click": "#tab-federal"}]},
+    {"name": "officials-statewide", "path": "officials.html",
+     "steps": [{"click": "#tab-statewide"}]},
+    {"name": "officials-counties", "path": "officials.html",
+     "steps": [{"click": "#tab-counties"}]},
     {"name": "member", "path": "legislator/joe-alexander-hills-29.html", "dir": "legislator"},
     {"name": "committees", "path": "committees.html"},
     {"name": "committee", "path": "committee/H64.html", "dir": "committee"},
     {"name": "calendar", "path": "calendar.html"},
+    # Added with the Week view of 9 October 2026, Monday to Friday beside the
+    # month: a week in session, its own page, in the List view and the Week
+    # view, where the tab's own week is often quiet.
+    {"name": "calendar-busy", "path": "calendar/2026-W08.html", "dir": "calendar",
+     "why": "a week in session, 16-20 February 2026, in the List view"},
+    {"name": "calendar-week", "path": "calendar/2026-W08.html", "dir": "calendar",
+     "steps": [{"click": '#calbar [data-view="week"]'}],
+     "why": "the same week in the Week view"},
     {"name": "session-day", "path": "session/H/2026-02-19.html", "dir": "session/H",
      "latest": True},
     {"name": "town", "path": "town/goffstown.html", "dir": "town"},
+    {"name": "town-map", "path": "town/goffstown.html", "dir": "town",
+     "steps": [{"click": "#tab-map"}], "why": "a town's District Map tab (Polish 3)"},
+    {"name": "bills-filters", "path": "bills.html", "steps": [{"click": "#ftoggle"}],
+     "why": "the bill search with its filters open (5a, 5c, 5d)"},
     {"name": "learn", "path": "learn/how-a-bill-becomes-law.html"},
     {"name": "numbers", "path": "learn/by-the-numbers.html"},
+    # The Resources hub and the Learn pages whose figures are widest (9
+    # October 2026): the constitution's phases, the General Court's seats and
+    # term, Danville's seats and the floterial laid over its districts.
+    {"name": "resources", "path": "resources.html"},
+    {"name": "learn-constitution", "path": "learn/the-constitution.html"},
+    {"name": "learn-general-court", "path": "learn/general-court.html"},
+    {"name": "learn-representatives", "path": "learn/your-representatives.html"},
     {"name": "data", "path": "data.html"},
     {"name": "about", "path": "about.html"},
     {"name": "404", "path": "no-such-page-here.html", "missing": True,
