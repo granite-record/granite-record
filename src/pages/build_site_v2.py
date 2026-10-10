@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.188
+# GRANITE_VERSION: 2026-09-05.189
 """
 Generate the faceted site from real General Court data.
 
@@ -78,28 +78,10 @@ PUBLIC_HEARING = re.compile(r"public hearing", re.I)
 
 AMEND_NUM = re.compile(r"#\s*(\d{4}-\d+[a-z]?)", re.I)
 AMEND_ANY = re.compile(r"\b(\d{4}-\d{3,4}[a-z]?)\b")
-# AA is adopted, AF and AL are not. The docket's own abbreviations.
-#
-# AND "FAILED" SPELLED OUT, which was the missing half of a pair. The docket
-# writes the outcome either way -- "AA" or "Adopted", "AF" or "Failed" -- and
-# this map took three of the four. So 153 amendment events whose docket line
-# says plainly that they failed were published with no outcome at all:
-# 2007-2008 SB27 reads "Floor Amendment #2071h (Rep P. Preston, et al) Failed,
-# RC 131-221" and the page declined to say it failed.
-#
-# A missing key here is silent. ADOPTED.get returns None, which the page reads
-# as "the record does not say" and draws no chip -- indistinguishable from the
-# 598 amendments that really were only filed and never voted on. That is the
-# failure mode worth naming: an absent mapping does not error, it publishes a
-# claim of ignorance the record contradicts.
-#
-# Only FAILED is added, because only FAILED occurs. Counted over all 19,105
-# amendment events in narratives.json, the motion field holds exactly AA
-# (12,249), ADOPTED (4,583), AF (997), AL (48), FAILED (153) and blank (1,075).
-# LOST and WITHDRAWN appear in docket PROSE but never in this field, so adding
-# them would be guessing at data rather than reading it.
-ADOPTED = {"AA": True, "ADOPTED": True,
-           "AF": False, "AL": False, "FAILED": False}
+# AA is adopted, AF and AL are not; and "FAILED" spelled out. The map, and
+# why it holds exactly these, are session_days.ADOPTED's: a session day and
+# the bill's Votes tab read an amendment's row one way (9 October 2026).
+from session_days import ADOPTED, amendment_carried  # noqa: E402,F401
 
 
 # What an amendment says it changes. New Hampshire amendments are written as
@@ -392,21 +374,10 @@ def bill_amendments(narr, texts, claimed=None):
     return out
 
 
-def _amendment_said(e):
-    """Whether one amendment event says its amendment was adopted (True),
-    rejected (False) or neither (None).
-
-    A VOTE ON SOME OF IT SAYS NEITHER. The House divides an amendment and
-    votes on its sections, and the 1999-2006 reader tells each numbered part
-    with "part": "Comm Am{4383}, Sec. 5, AL DIV(141-160)" is section 5 of
-    SB 303 of 2000's committee amendment lost, and the remainder then carried
-    238-74, so "rejected" beside 4383 would be false. The remainder's vote is
-    the amendment's ("rest"): "Am{2229}, Remaining Secs, AA RC(239-112)"
-    adopted HB 999 of 1999's floor amendment, whose sections 17 and 18 had
-    carried 255-96."""
-    if e.get("part") == "some":
-        return None
-    return ADOPTED.get((e.get("motion") or "").upper())
+# Whether one amendment event says its amendment was adopted, rejected or
+# neither: session_days.amendment_carried, which says why a vote on part of
+# one says neither.
+_amendment_said = amendment_carried
 
 
 VOTE_KIND_RE = re.compile(r"\b(RC|VV|DV)\b")
@@ -2711,6 +2682,72 @@ def write_rollcall_index(out, rollcalls, votes_by_member):
                  encoding="utf-8")
     print(f"{len(ix):,} roll calls -> {f.name} "
           f"({f.stat().st_size / 1024:,.0f} KB, read once per reader)")
+
+
+# WHAT THE SESSION-DAY STEP NEEDS OF THE FLOOR THAT ONLY THIS STEP KNOWS:
+# data/floor_record.json, read by build_session_pages.py (FLOOR_RECORD) for
+# each chamber's term files of session days, and published by nothing.
+#
+#   presiding  {roll call: [[member id, label], ...]}: whom each roll call's
+#              "Presiding" ballot names, labelled with the seat they held
+#              when it was cast (ballot_seat). The record's word for who was
+#              in the chair, ballot by ballot -- the person, 9 October 2026,
+#              v18: "a general line naming the members who presided over the
+#              chamber during the day" -- and never attendance_context's
+#              reading of a day that names nobody, which is for counting a
+#              member's attendance and not for saying who presided.
+#   cards      {term: {bill: {roll call: card}}}: where each roll call's card
+#              is on its bill's Votes tab (the bill record's `rollcalls`), so
+#              a session day can point at the vote display that tab already
+#              draws (v2: "keep the live site's vote display as it is").
+#
+# Not published: the session-day files carry what a page needs of it. It is
+# this step's because the ballots are read here and nowhere after: the
+# session-day step reading data/member_votes.json for itself would load
+# 560 MB twice more a build to find a few thousand ballots.
+FLOOR_RECORD = "floor_record.json"
+
+
+def ballot_seat(v, body):
+    """The member a ballot names, labelled with the seat they held when it
+    was cast: the sitting roster's label as the ballot carries it ("Rep.
+    Sherman Packard (R - Rock 3)" in 2010), or the former member's read off
+    the ballot's own ("Sytek, Donna(R) Rock 26", FORMER_LABEL)."""
+    lab = (v.get("label") or "").strip()
+    if lab.startswith(("Rep. ", "Sen. ")):
+        return lab
+    m = FORMER_LABEL.search(lab)
+    if m:
+        return member_labels(v.get("name"), chamber=body, party=v.get("party"),
+                             district=m.group("district").lstrip("0"),
+                             county=m.group("county").strip())["display_full"]
+    return member_labels(v.get("name"), chamber=body, party=v.get("party"))["display"]
+
+
+def write_floor_record(data_dir, votes_by_member, cards):
+    """data/floor_record.json (FLOOR_RECORD, above). Returns its path."""
+    presiding = defaultdict(list)
+    for rows in votes_by_member.values():
+        for v in rows:
+            if v.get("vote") == "Presiding":
+                presiding[_roll_call_key(v)].append(
+                    [str(v.get("member_id") or ""), ballot_seat(v, v.get("body"))])
+    f = Path(data_dir) / FLOOR_RECORD
+    f.write_text(json.dumps({
+        "_about": "Not published. For build_session_pages.py: who each roll call's "
+                  "Presiding ballot names (presiding), and where each roll call's card is "
+                  "on its bill's Votes tab (cards, the index into the bill record's "
+                  "rollcalls). Written by build_site_v2.py, which reads the ballots.",
+        "presiding": {k: sorted(v) for k, v in sorted(presiding.items())},
+        "cards": cards}, separators=(",", ":"), sort_keys=True), encoding="utf-8")
+    print(f"{f}: {len(presiding):,} roll calls with a presiding ballot, "
+          f"{sum(len(b) for t in cards.values() for b in t.values()):,} roll-call cards "
+          f"on {sum(len(t) for t in cards.values()):,} bills' Votes tabs")
+    # SILENCE IS NOT SUCCESS: ballots with no presiding officer at all is a
+    # vote field read wrong, and every session day would name nobody.
+    if votes_by_member and not presiding:
+        print("  WARNING: no ballot reads Presiding; no session day will name who presided")
+    return f
 
 
 # The seat out of a ballot's own label: "Shurtleff, Steve(D) Merrimack 15".
@@ -9430,6 +9467,9 @@ def bill_rollcalls(bid, term, rcs, narr, votes_by_bill, legs, unnamed):
             **({"outcome_conflict": r["outcome_conflict"]}
                if r.get("outcome_conflict") else {}),
             "tally": {p: dict(v) for p, v in tally.items()},
+            # The roll call's own name, "2026-H-95", taken off before the
+            # record is written (build_bills): a session day names the card.
+            "_rc": key,
             # "s" is the surname-first sort key. The grids are read
             # alphabetically, and sorting the displayed string would order
             # 400 members by honorific and then by first name.
@@ -9891,7 +9931,8 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
                 marks, sources, legs, leg_by_sort, leg_by_name,
                 votes_by_bill, vetoes=None, notes=None, coverage=None,
                 chapters=None, seats=None, session_over="", former=None,
-                links=None, hearing_reports=None, ballots=None, term_rosters=None):
+                links=None, hearing_reports=None, ballots=None, term_rosters=None,
+                rc_cards=None):
     """One JSON per bill, and the index row for each.
 
     This is the loop ARCHITECTURE item 5 names. It ran inside a 955-line
@@ -10289,6 +10330,16 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
                                 votes_by_bill, legs, unnamed)
         for r in rc_out:
             r.pop("_ord", None)
+        # WHERE EACH ROLL CALL'S CARD IS on this bill's Votes tab, for the
+        # session days (`rc_cards`, write_floor_record): {term: {bill: {roll
+        # call: index into the record's rollcalls}}}.
+        _cards = {}
+        for _card, _rc in enumerate(rc_out):
+            _rc_key = _rc.pop("_rc", None)
+            if _rc_key:
+                _cards[_rc_key] = _card
+        if rc_cards is not None and _cards:
+            rc_cards.setdefault(term, {})[bid] = _cards
 
         # Two short builders, defined together above main(). Committee
         # proceedings and floor appearances are different enough to need
@@ -11188,6 +11239,9 @@ def main():
                           links, max(bills) if bills else "")
 
     segs, marks = load_transcripts(a, procs, prows)
+    # Each roll call's card on its bill's Votes tab, filled by build_bills
+    # for write_floor_record.
+    rc_cards = {}
     # -------------------------------------------------------------- index --
     index, years, unnamed, sponsored = build_bills(out, bills, narratives, rollcalls, reports,
                                sponsors, bill_texts, amend_texts, testimony,
@@ -11204,7 +11258,8 @@ def main():
                                    bills, narratives, sponsors, reports,
                                    rollcalls, procs,
                                    max(bills) if bills else ""),
-                               ballots=load_ballots(BALLOTS, bills))
+                               ballots=load_ballots(BALLOTS, bills),
+                               rc_cards=rc_cards)
     # NO index.json (retired 5 October 2026). It was every row below in one
     # file, read by six build steps and by no page: 23.7 MB on 2 October,
     # 90.5% of the 25 MiB Cloudflare Pages takes in one file, and a term's
@@ -11274,6 +11329,10 @@ def main():
     # Who held the chair's offices, for the vote cards' presiding ballots
     # and the officers' own pages (build_officers).
     offices = build_officers(out, votes_by_member, legs)
+    # What the session days need of the floor that only the ballots and the
+    # bills' Votes tabs say: who presided over each roll call, and where each
+    # roll call's card is (write_floor_record, FLOOR_RECORD).
+    write_floor_record(D, votes_by_member, rc_cards)
     lg = build_legislators(out, legs, votes_by_member, towns, unnamed,
                            sponsored, bill_year, links, former, offices)
 
