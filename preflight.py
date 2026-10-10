@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.502
+# GRANITE_VERSION: 2026-09-04.503
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -11880,7 +11880,9 @@ _WRITTEN_DAY = re.compile(r"\b(\d{1,2})/(\d{1,2})/(\d{4})\b")
 # THE COMMITTEE THAT HAS THE BILL, ON EVERY HISTORY (3 October 2026). What
 # the data check below reads a history's own words for: a committee heading
 # and the five sentences that name a committee.
-_HEADED = re.compile(r"^In (House|Senate) committee(?: — (?P<c>.+))?$")
+# "Senate Committee (Finance)" since 10 October 2026 (narrative.STAGE_LABEL,
+# C8), where it was "In Senate committee — Finance".
+_HEADED = re.compile(r"^(House|Senate) Committee(?: \((?P<c>.+)\))?$")
 _NAMED_IN = (
     (re.compile(r"referred to the (?P<ch>House|Senate) (?P<c>.+?)"
                 r"(?: committee\b|(?<=Committee)\.)"), True),
@@ -54952,9 +54954,9 @@ def _speaker_page_says_so(B):
     # The record head's line (C6, 10 October 2026): the office first, then
     # the party and the seat in words; the heading says the chamber.
     assert re.search(r'<p class="rline"><b>Speaker of the House</b>&nbsp;&middot; Republican'
-                     r'&nbsp;&middot; Rockingham District 16', head), (
+                     r'&nbsp;&middot; Rockingham District&nbsp;16', head), (
         "the Speaker's page does not say he is Speaker: " + re.sub(r"\s+", " ", head)[:300])
-    assert '<p class="rline">Republican&nbsp;&middot; Rockingham District 16' in floor and \
+    assert '<p class="rline">Republican&nbsp;&middot; Rockingham District&nbsp;16' in floor and \
         '<h1 class="rh1">Representative Sherman Packard</h1>' in floor, (
         "a member of the floor lost the chamber's name: " + re.sub(r"\s+", " ", floor)[:300])
     return "ok", "seat 6002's member is Speaker of the House on his own page; nobody else is"
@@ -55252,10 +55254,10 @@ def _officers_on_the_page(B, BLP, BSP, OF):
     # and the seat in words on the line under it.
     assert '<h1 class="rh1">Senator Sharon Carson</h1>' in head_c, head_c[:300]
     assert ('<p class="rline"><b>President of the Senate</b>&nbsp;&middot; Republican'
-            '&nbsp;&middot; Senate District 14') in head_c, (
+            '&nbsp;&middot; Senate District&nbsp;14') in head_c, (
         "the President of the Senate's page does not say so: " + re.sub(r"\s+", " ", head_c)[:300])
     assert '<h1 class="rh1">Representative James Spillane</h1>' in head_s, head_s[:300]
-    assert '<p class="rline">Republican&nbsp;&middot; Rockingham District 2' in head_s, head_s[:400]
+    assert '<p class="rline">Republican&nbsp;&middot; Rockingham District&nbsp;2' in head_s, head_s[:400]
     assert '<h1 class="rh1">Former Representative Michael Gunski</h1>' in head_g, head_g[:300]
     assert cells == ['<div class="m">Rep. Steven Smith (R)<span class="p mo">Deputy '
                      'Speaker of the House</span></div>',
@@ -71990,7 +71992,11 @@ def _every_rollcall_on_its_sitting():
     today = build_date.today().isoformat()
     bad, pages, missing, sides, chips = [], 0, [], [], []
     count = re.compile(r"(\d+) roll calls?\b")
-    tallied = re.compile(r'<p class="stally">A roll call: ')
+    # Since 10 October 2026 (the record head and the vote words): the count
+    # is the head's Votes Taken, a roll call drawn is its line's tally, the
+    # consent calendar is its own section with its rows, and a vote is its
+    # block (.dvote).
+    tallied = re.compile(r"<b>\d+\u2013\d+</b> on a roll call</p>")
     for (body, date), day in sorted(days.items()):
         if date > today:
             continue
@@ -72000,32 +72006,36 @@ def _every_rollcall_on_its_sitting():
             continue
         pages += 1
         h = p.read_text(encoding="utf-8")
-        lead = re.search(r'<p class="src">(.*?)</p>', h, re.S)
+        lead = re.search(r'<dl class="rfacts">(.*?)</dl>', h, re.S)
         m = count.search(lead.group(1) if lead else "")
         stated = int(m.group(1)) if m else 0
         votes = day.votes("RC")
-        drawn = len(tallied.findall(h))
         # A consent item is on the list, where the calendar's vote is said
         # once, unless the journal says a member took it off: then it is
         # in the day's sequence with its tally.
-        cs = re.search(r"<h2>On the consent calendar</h2>(.*?)</section>", h, re.S)
-        listed = {re.sub(r"[^A-Z0-9]", "", x.upper()) for x in re.findall(
-            r'class="cbn"[^>]*>([^<]*)<', cs.group(1))} if cs else set()
+        cs = re.search(r'<section class="w4" id="consent">(.*?)</section>', h, re.S)
+        drawn = len(tallied.findall(h.replace(cs.group(0), "") if cs else h))
+        listed = {re.sub(r"[^A-Z0-9]", "", x.split("-")[0].upper()) for x in re.findall(
+            r'class="brnum"[^>]*>([^<]*)<', cs.group(1))} if cs else set()
         under = sum(1 for its in votes.values() for i in its
                     if i.counted and not (i.consent and i.bill.upper() in listed))
         on_note = any(i.consent and i.bill.upper() in listed
                       for its in votes.values() for i in its)
         if stated != len(votes) or drawn != under or (
-                on_note and "on a roll call," not in h):
+                on_note and not (cs and tallied.search(cs.group(1)))):
             bad.append(f"{body} {date}: says {stated}, draws {len(votes)} roll calls "
                        f"in {drawn} tallies ({under} expected)")
         # A member on both sides of one motion, or named twice in one list.
-        for chunk in h.split('<div class="smotion">')[1:]:
+        def each(lst):
+            """The names of a line, one per item (.swho1): a member is the
+            person chip since 10 October 2026, which carries no comma."""
+            return [n for n in (re.sub(r"<[^>]+>", "", x).strip().rstrip(",").strip()
+                                for x in lst.split('<span class="swho1">')[1:]) if n]
+        for chunk in h.split('<div class="dvote"')[1:]:
             names = {}
             for side in ("for", "against"):
                 m = re.search(rf"Spoke {side} the motion</span>(.*?)</p>", chunk, re.S)
-                names[side] = [n.strip() for n in re.sub(r"<[^>]+>", "", m.group(1)).split(",")
-                               if n.strip()] if m else []
+                names[side] = each(m.group(1)) if m else []
             if set(names["for"]) & set(names["against"]) or any(
                     len(v) != len(set(v)) for v in names.values()):
                 sides.append(f"{body} {date}: {names}")
@@ -72037,8 +72047,7 @@ def _every_rollcall_on_its_sitting():
         for lst in re.findall(r'<p class="sspoke[^"]*"><span class="slab">[^<]*</span>(.*?)</p>',
                               h, re.S):
             lst = re.sub(r'<span class="snote">.*?</span>', "", lst, flags=re.S)
-            for n in re.sub(r"<[^>]+>", "", lst).split(","):
-                n = n.strip()
+            for n in each(lst):
                 if re.search(r"\b(?:Reps?|Sens?)\b\.?.+\b(?:Reps?|Sens?)\b|\s(?:and|&)$|"
                              r"\b(?:spoke|moved)\b", n):
                     chips.append(f"{body} {date}: {n!r}")
@@ -72102,15 +72111,23 @@ def _speakers_against_journal(root, jroot):
     import bisect
     import html as _html
     import journal_days as J
-    art = re.compile(r'<article class="sitem">(.*?)</article>', re.S)
-    bill_rx = re.compile(r'class="sbill"[^>]*>([^<]+)<')
-    tal = re.compile(r'class="stally">A (roll call|division): <b>(\d+)</b> yeas, <b>(\d+)</b> nays')
+    # A bill's card and its votes' lines since 10 October 2026: "<b>184–157</b>
+    # on a roll call".
+    art = re.compile(r'<article class="card"[^>]*>(.*?)</article>', re.S)
+    bill_rx = re.compile(r'class="cnum"[^>]*>([^<]+)<')
+    tal = re.compile(r"<b>(?P<y>\d+)\u2013(?P<n>\d+)</b> on a (?P<k>roll call|division)")
     spk = re.compile(r'<p class="sspoke(?: sother)?"><span class="slab">([^<]+)</span>(.*?)</p>',
                      re.S)
 
     def names_of(h):
         h = re.sub(r'<span class="snote">.*?</span>', "", h, flags=re.S)
-        return [_html.unescape(n).strip(" ,").replace("Rep. ", "").split()[-1]
+        # a person chip's "(R - Rock 14)" is no name
+        h = re.sub(r'<span class="mtag">.*?</span>', "", h, flags=re.S)
+        # and the surname is the chip's last word but a suffix ("Rep. Robert
+        # Christie Jr." is Christie, as the journal names him), read without
+        # its case: the roster's "MacKenzie" is the journal's "Mackenzie"
+        return [[w for w in _html.unescape(n).strip(" ,").replace("Rep. ", "").split()
+                 if w not in ("Jr.", "Jr", "Sr.", "Sr", "II", "III", "IV")][-1].lower()
                 for n in re.sub(r"<[^>]+>", "\x00", h).split("\x00") if n.strip(" ,")]
 
     def base(b):
@@ -72124,12 +72141,12 @@ def _speakers_against_journal(root, jroot):
             bill = re.sub(r"\s+", "", _html.unescape(m.group(1))).upper() if m else ""
             also = {n for s in spk.finditer(a) if s.group(1).startswith("Also")
                     for n in names_of(s.group(2))}
-            for mo in a.split('<div class="smotion">')[1:]:
+            for mo in a.split('<div class="dvote"')[1:]:
                 t = tal.search(mo)
                 sides = {("for" if " for " in s.group(1) else "against"): names_of(s.group(2))
                          for s in spk.finditer(mo) if not s.group(1).startswith("Also")}
-                out.append({"bill": bill, "rc": bool(t) and t.group(1) == "roll call",
-                            "count": (int(t.group(2)), int(t.group(3))) if t else None,
+                out.append({"bill": bill, "rc": bool(t) and t.group("k") == "roll call",
+                            "count": (int(t.group("y")), int(t.group("n"))) if t else None,
                             "sides": sides, "also": also,
                             "skip": any(w in mo for w in (
                                 "Printed in the journal with this session day", "Done in the recess",
@@ -72286,18 +72303,18 @@ def _speakers_against_journal(root, jroot):
                 if per_bill[b] == 1 else []
             for side, names in mo["sides"].items():
                 for n in names:
-                    if not any(s[2] == side and any(x.split()[-1] == n for x in s[3])
+                    if not any(s[2] == side and any(x.split()[-1].lower() == n for x in s[3])
                                for s in landing + ended):
                         bad.append(f"H {date} {mo['bill']} {c[0]}-{c[1]}: {n} ({side}) is named, "
                                    "and the journal decides no speech of theirs there")
             # Named on it, or under "also spoke" where the journal has the
             # member speaking on both sides of it, which the page never says.
             named = {(side, n) for side, ns in mo["sides"].items() for n in ns}
-            both = ({x.split()[-1] for s in landing if s[2] == "for" for x in s[3]}
-                    & {x.split()[-1] for s in landing if s[2] == "against" for x in s[3]})
+            both = ({x.split()[-1].lower() for s in landing if s[2] == "for" for x in s[3]}
+                    & {x.split()[-1].lower() for s in landing if s[2] == "against" for x in s[3]})
             for s in landing:
                 for x in s[3]:
-                    sur = x.split()[-1]
+                    sur = x.split()[-1].lower()
                     if (s[2], sur) not in named and not (sur in both and sur in mo["also"]):
                         bad.append(f"H {date} {mo['bill']} {c[0]}-{c[1]}: {x} ({s[2]}) spoke on it "
                                    "and is " + ("named only as having spoken during the bill"
@@ -82345,7 +82362,7 @@ def _session_terms_on_the_site():
         bad.append(f"who presided on 19 Feb 2026: {pres}")
     cons = feb.get("consent") or {}
     if ([(o["outcome"], o["bills"]) for o in cons.get("outcomes") or []]
-            != [("Killed", 59), ("Passed", 41), ("Sent to interim study", 18)]
+            != [("Killed", 59), ("Passed", 41), ("Sent to Interim Study", 18)]
             or cons.get("removed") != ["HB652", "HB1028", "HB1572", "HB1602"]):
         bad.append(f"the consent calendar of 19 Feb 2026: {cons}")
     hb = next((b for b in feb.get("bills") or [] if b["bill"] == "HB1705"), {})
