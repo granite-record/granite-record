@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.232 */
+/* GRANITE_VERSION: 2026-09-07.233 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -4931,73 +4931,206 @@ text-decoration-color:var(--rule-2);text-underline-offset:3px}
     margin:var(--sp-4) 0 0}
 }
 
-/* THE DOWNLOADS PAGE IS NOT AN ESSAY. .civics caps at --measure, 560px, which
-   is right for the explainers it was written for and wrong here: this page is
-   mostly a list of tables whose column names run to a hundred characters, and
-   at 560 inside a 1,132px pane it left 572px of empty box beside every one of
-   them. The prose inside still stops at the measure, because .src carries its
-   own max-width -- so the paragraphs read at 76 characters and the column
-   lists get the room they need. */
-.datapage{max-width:900px}
-.dl{margin:var(--sp-7) 0 0;padding:var(--sp-6) var(--sp-6);background:var(--surface);
-  border:1px solid var(--rule-2);border-radius:var(--r-out)}
-.dl h3{margin:0;font-size:var(--t-h3);letter-spacing:0;text-transform:none;font-family:var(--serif);font-weight:600}
-.dl h3 a{font-family:var(--mono,ui-monospace,SFMono-Regular,Menlo,monospace);
-  font-size:var(--t-ui)}
-.dlmeta{color:var(--ink-2);font-size:var(--t-sm);margin:var(--sp-2) 0 var(--sp-4);
-  font-family:var(--sans,inherit)}
-.dl p{margin:var(--sp-3) 0}
-.dl .cols{font-size:var(--t-sm);color:var(--ink-2);line-height:1.55;
-  font-family:var(--sans,inherit);max-width:none}
-.dl .note{max-width:none}
-/* THE FEEDS, AND WHAT A CLONE GETS. Two lists rather than two more cards:
-   .dl is a card per table because a table has five things to say about
-   itself, and a feed has one line. The address leads, because that is what
-   a reader is here to copy. */
-.feeds{list-style:none;margin:var(--sp-5) 0 0;padding:0;max-width:none}
-.feeds li{margin:0;padding:var(--sp-4) 0;border-bottom:1px solid var(--rule);
-  font-size:var(--t-ui);line-height:1.6;color:var(--ink-2)}
-.feeds li:last-child{border-bottom:0}
-.feeds code{font-family:var(--mono,ui-monospace,SFMono-Regular,Menlo,monospace);
-  font-size:var(--t-ui);color:var(--ink);overflow-wrap:anywhere}
-/* The count of a family, on the address's own line rather than under it --
-   .dlmeta is a block where it labels a table, and here it is a tag. */
-.feeds .dlmeta{display:inline-block;margin:0 0 0 var(--sp-3);
-  font-variant-numeric:tabular-nums}
-.repo{margin:var(--sp-6) 0 0;max-width:none}
-.repo dt{font-family:var(--sans,inherit);font-size:var(--t-sm);font-weight:600;
-  letter-spacing:.06em;text-transform:uppercase;color:var(--ink-2);
-  margin:var(--sp-5) 0 var(--sp-2)}
-.repo dd{margin:0;font-size:var(--t-ui);line-height:1.6}
-.repo code{font-family:var(--mono,ui-monospace,SFMono-Regular,Menlo,monospace);
-  font-size:var(--t-ui);background:var(--wash);padding:1px 5px;
-  border-radius:var(--r-in)}
-@media(max-width:45em){
-  .datapage{max-width:none}
-  .dl{padding:var(--sp-5) var(--sp-5)}
+/* THE DATA PAGE, IN THE POLISH DESIGN (the person, 9 October 2026: "a polish
+   pass on the data page ... it's fairly outdated at this point in terms of
+   formatting"). It follows the approved kit (private/design/polish/proto,
+   kit.css) and the component plan: an article head that answers first and
+   folds "On this page" into itself, then W4 sections -- the heading in a
+   margin beside its text from 60em, over it below (C7) -- with prose at about
+   a hundred characters, tables in a ruled box, and a long note in a closed
+   fold. Its own names (dp-), so it meets no rule the component steps add;
+   the shared article and section components can take it over when step 9
+   builds them. */
+.datapage{max-width:none}
+.dphead{padding-top:var(--sp-2)}
+.dphead h1{font-family:var(--serif);font-size:var(--t-title);font-weight:600;line-height:1.12;
+  margin:0;color:var(--ink);letter-spacing:-.01em;text-wrap:balance}
+.dplead{font-family:var(--serif);font-size:var(--t-lead);line-height:1.45;color:var(--ink);
+  margin:var(--sp-5) 0 0;max-width:44rem;text-wrap:pretty}
+/* The head's foot is the kit's 2px ink rule. */
+.dphead::after{content:"";display:block;border-bottom:2px solid var(--ink);margin-top:var(--sp-8)}
+/* ON THIS PAGE, folded into the head (the plan's answer for Learn): a button
+   that opens the list of sections over the page, two columns where there is
+   room. A <details>, so it opens and closes with no script. */
+.dponp{position:relative;display:inline-block;margin-top:var(--sp-6)}
+.dponp > summary{display:inline-flex;align-items:center;gap:var(--sp-4);min-height:2.75rem;
+  padding:0 var(--sp-6);box-sizing:border-box;border:1px solid var(--edge);border-radius:var(--r-out);
+  background:var(--surface);color:var(--ink);font-family:var(--sans);font-size:var(--t-ui);
+  font-weight:500;cursor:pointer;list-style:none}
+.dponp > summary::-webkit-details-marker{display:none}
+.dponp > summary::after{content:"";width:.45em;height:.45em;margin:0 0 .2em var(--sp-1);
+  border-right:1.5px solid var(--ink-2);border-bottom:1.5px solid var(--ink-2);transform:rotate(45deg)}
+.dponp[open] > summary{border-color:var(--ink)}
+.dponp[open] > summary::after{transform:rotate(225deg);margin:.25em 0 0 var(--sp-1)}
+.dponp > summary:hover{border-color:var(--pine)}
+.dponpb{position:absolute;left:0;top:calc(100% + var(--sp-3));z-index:30;width:min(40rem,calc(100vw - 2rem));
+  box-sizing:border-box;background:var(--surface);border:1px solid var(--rule-2);border-top:2px solid var(--ink);
+  border-radius:var(--r-out);box-shadow:0 8px 22px var(--shadow);padding:var(--sp-3) var(--sp-6) var(--sp-5)}
+.dponpb ol{list-style:none;margin:0;padding:0;columns:2 15rem;column-gap:var(--sp-9)}
+.dponpb li{break-inside:avoid;border-bottom:1px solid var(--rule);margin:0}
+.dponpb a{display:flex;align-items:center;min-height:2.75rem;font-family:var(--sans);font-size:var(--t-ui);
+  font-weight:500;line-height:1.3;color:var(--pine);text-decoration:underline;
+  text-decoration-thickness:1px;text-underline-offset:3px}
+.dponpb a:hover{color:var(--ink)}
+
+/* W4: a section's heading in the margin, level with its first line. */
+.dpsec{border-top:1px solid var(--rule);padding:var(--sp-7) 0 0;margin:0 0 var(--sp-9);
+  scroll-margin-top:var(--sp-6)}
+.dphead + .dpsec{border-top:0}
+.dpsech{font-family:var(--serif);font-size:var(--t-h3);font-weight:600;line-height:1.35;
+  margin:0 0 var(--sp-4);color:var(--ink);text-wrap:balance}
+.dpsec:target .dpsech{color:var(--pine)}
+.dpsecb{min-width:0}
+.dpsecb > :first-child{margin-top:0}
+.dpsecb > :last-child{margin-bottom:0}
+.dpsecb p{font-family:var(--serif);font-size:var(--t-read);line-height:1.65;color:var(--ink);
+  margin:0 0 var(--sp-5);max-width:51.1875rem}
+.dph3{font-family:var(--serif);font-size:var(--t-h3);font-weight:600;line-height:1.35;color:var(--ink);
+  margin:var(--sp-9) 0 var(--sp-4)}
+.dpsecb > .dph3:first-child{margin-top:0}
+.dpsecb p.dpnote{font-family:var(--sans);font-size:var(--t-ui);line-height:1.55;
+  color:var(--ink-2);background:var(--wash);border-left:3px solid var(--rule-2);
+  padding:var(--sp-5) var(--sp-6)}
+@media (min-width:60em){
+  .dpsec{display:grid;grid-template-columns:minmax(10rem,1fr) minmax(0,51.1875rem);
+    column-gap:var(--sp-9);align-items:start}
+  .dpsech{margin:0;padding-top:var(--sp-1)}
+  /* What needs the room -- the downloads table -- runs under the heading
+     and the prose, across the section's whole width. */
+  .dpsec > .dpwide{grid-column:1 / -1}
 }
 
-/* Nineteen terms by five columns, on a phone as well. It scrolls sideways
-   inside its own box rather than pushing the page wide, which is the one
-   place this file allows that. */
-.covwrap{overflow-x:auto;margin:var(--sp-4) 0 0}
+/* A FOLD: a long note or part, closed until asked for. The summary is a
+   control, in the link colour and 44px tall, with a chevron that turns. */
+.dpfold{border-top:1px solid var(--rule);margin:0}
+.dpfold:last-child{border-bottom:1px solid var(--rule)}
+.dpfold > summary,.dpmore > summary{display:flex;align-items:center;gap:var(--sp-4);
+  min-height:2.75rem;padding:var(--sp-3) 0;box-sizing:border-box;cursor:pointer;list-style:none;
+  font-family:var(--sans);font-size:var(--t-ui);font-weight:600;line-height:1.35;color:var(--pine)}
+.dpfold > summary::-webkit-details-marker,.dpmore > summary::-webkit-details-marker{display:none}
+.dpfold > summary::before,.dpmore > summary::before{content:"";flex:0 0 auto;width:.45em;height:.45em;
+  margin:0 .15em 0 .05em;border-right:2px solid currentColor;border-bottom:2px solid currentColor;
+  transform:rotate(-45deg)}
+.dpfold[open] > summary::before,.dpmore[open] > summary::before{transform:rotate(45deg)}
+.dpfold > summary > span,.dpmore > summary > span{text-decoration:underline;
+  text-decoration-thickness:1px;text-underline-offset:3px}
+.dpfold > summary:hover,.dpmore > summary:hover{color:var(--ink)}
+.dpfold[open] > summary{margin-bottom:var(--sp-3)}
+.dpfold code,.dpmore summary code{font-family:var(--mono)}
+@media (prefers-reduced-motion:no-preference){
+  .dpfold > summary::before,.dpmore > summary::before,.dponp > summary::after{transition:transform .15s}
+}
+
+/* THE DOWNLOADS, ONE TABLE: the file, what it holds, its rows, its size and
+   its link, in the kit's ruled box. */
+.dptablewrap{border:1px solid var(--rule-2);border-radius:var(--r-out);background:var(--surface);
+  margin:var(--sp-6) 0 0}
+table.dpdl{border-collapse:collapse;width:100%;font-family:var(--sans);font-size:var(--t-ui);
+  line-height:1.5;color:var(--ink)}
+.dpdl thead th{font-size:var(--t-label);font-weight:600;line-height:1.3;letter-spacing:.07em;
+  text-transform:uppercase;color:var(--ink-2);text-align:left;white-space:nowrap;
+  padding:var(--sp-5) var(--sp-6) var(--sp-4);border-bottom:1px solid var(--rule-2)}
+.dpdl td,.dpdl tbody th{padding:var(--sp-5) var(--sp-6);border-bottom:1px solid var(--rule);
+  vertical-align:top;text-align:left;font-weight:400}
+.dpdl tbody tr:last-child > *{border-bottom:0}
+.dpdl .n{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.dpdl tbody th code{font-family:var(--mono);font-size:var(--t-ui);color:var(--ink);white-space:nowrap}
+.dpdl .dpgroup th{font-weight:600}
+.dpdl .dpgroup th code{display:block;font-weight:500;color:var(--ink-2);font-size:var(--t-sm);margin-top:var(--sp-1)}
+.dpdl p.dpwhat{font-family:var(--sans);font-size:var(--t-ui);line-height:1.5;margin:0 0 var(--sp-3)}
+.dpu{display:none}
+.dpget{display:inline-flex;align-items:center;min-height:2.75rem;margin:calc(-1 * var(--sp-4)) 0;
+  font-weight:600;color:var(--pine);text-decoration:underline;text-decoration-thickness:1px;
+  text-underline-offset:3px;white-space:nowrap}
+.dpget:hover{color:var(--ink)}
+.dpeach{color:var(--ink-2);font-size:var(--t-sm);white-space:nowrap}
+/* A row's fold: the rest of what the file holds, how it joins, its columns. */
+.dpmore{margin:0}
+.dpmore > summary{min-height:2.75rem;padding:0;font-size:var(--t-sm)}
+.dpmore > summary code{font-size:var(--t-sm);font-weight:500}
+.dpmore p,.dpdl .dpmore p{font-family:var(--sans);font-size:var(--t-sm);line-height:1.55;
+  color:var(--ink-2);margin:var(--sp-2) 0 var(--sp-4);max-width:none}
+.dpmore .dpjoin{color:var(--ink);border-left:3px solid var(--rule-2);padding-left:var(--sp-5)}
+.dpmore .dpcols b{color:var(--ink);font-weight:600}
+/* THE VOTES BY TERM: one download a term, in a grid under their row. */
+.dpdl .dpterms td{padding-top:0}
+.dptermgrid{list-style:none;margin:0;padding:0;display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(11.5rem,1fr));gap:var(--sp-4)}
+.dptermgrid li{margin:0}
+.dptermgrid a{display:flex;flex-direction:column;gap:var(--sp-1);min-height:2.75rem;box-sizing:border-box;
+  padding:var(--sp-4) var(--sp-5);border:1px solid var(--rule-2);border-radius:var(--r-out);
+  background:var(--paper);text-decoration:none;color:var(--ink)}
+.dptermgrid a:hover{border-color:var(--pine)}
+.dpt{font-weight:600;color:var(--pine);text-decoration:underline;text-decoration-thickness:1px;
+  text-underline-offset:3px;font-variant-numeric:tabular-nums}
+.dpm{font-size:var(--t-sm);color:var(--ink-2);font-variant-numeric:tabular-nums}
+/* A PHONE: each row a block -- the file and its link, what it holds, its rows
+   and size -- with the words "rows" back beside the count, since the column
+   heads are not drawn. The roles in the markup keep it a table to a screen
+   reader. */
+@media (max-width:45em){
+  .dpdl thead{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+  .dpdl tbody tr{display:grid;grid-template-columns:auto auto 1fr;column-gap:var(--sp-5);
+    padding:var(--sp-5) var(--sp-5);border-bottom:1px solid var(--rule)}
+  .dpdl tbody tr:last-child{border-bottom:0}
+  .dpdl tbody tr > *{display:block;padding:0;border:0}
+  .dpdl tbody th{grid-column:1 / 3;align-self:center}
+  .dpdl td.dpg{grid-column:3;grid-row:1;justify-self:end}
+  .dpdl td.dpw{grid-column:1 / -1;margin-top:var(--sp-3)}
+  .dpdl td.dpr{grid-column:1;text-align:left;color:var(--ink-2);font-size:var(--t-sm)}
+  .dpdl td.dps{grid-column:2;text-align:left;color:var(--ink-2);font-size:var(--t-sm)}
+  .dpu{display:inline}
+  .dpdl tr.dpterms{padding-top:0}
+  .dpdl tr.dpterms td{grid-column:1 / -1}
+  .dptermgrid{grid-template-columns:repeat(auto-fill,minmax(9.5rem,1fr))}
+  .dponp{display:block}
+  .dponp > summary{width:100%;justify-content:space-between}
+}
+
+/* WHAT'S COVERED. Nineteen terms by five columns, on a phone as well. It
+   scrolls sideways inside its own box rather than pushing the page wide,
+   which is the one place this file allows that. */
+.covwrap{overflow-x:auto;margin:var(--sp-6) 0 0;border:1px solid var(--rule-2);
+  border-radius:var(--r-out);background:var(--surface)}
 /* width AND min-width. On its own the min-width let the table sit at
    420px inside a 900px box, which is the same empty-box complaint this file
    has been answering all week; the min-width is what makes it scroll rather
    than crush on a phone. */
-table.cov{border-collapse:collapse;font-size:var(--t-sm);width:100%;min-width:420px}
-.cov th,.cov td{text-align:left;padding:var(--sp-2) var(--sp-5) var(--sp-2) 0;
-  border-bottom:1px solid var(--rule);white-space:nowrap}
-.cov th{font-size:var(--t-label);letter-spacing:.04em;text-transform:uppercase;
-  color:var(--ink-2);font-weight:600}
+table.cov{border-collapse:collapse;width:100%;min-width:30rem;font-family:var(--sans);
+  font-size:var(--t-ui);line-height:1.5}
+.cov th,.cov td{text-align:left;padding:var(--sp-4) var(--sp-6);border-bottom:1px solid var(--rule);
+  white-space:nowrap}
+.cov tbody tr:last-child > *{border-bottom:0}
+.cov thead th{font-size:var(--t-label);letter-spacing:.07em;text-transform:uppercase;
+  color:var(--ink-2);font-weight:600;border-bottom:1px solid var(--rule-2)}
 /* The term heads its row (a th since 2 October 2026) and is drawn as the
    cell it was. */
-.cov tbody th{font-size:inherit;letter-spacing:0;text-transform:none;
-  color:inherit;font-weight:400}
+.cov tbody th{font-weight:400;color:var(--ink);font-variant-numeric:tabular-nums}
+.cov td{font-variant-numeric:tabular-nums}
+.cov td.n,.cov thead th:nth-child(2){text-align:right}
 .cov td.n{color:var(--ink-2)}
 .cov .c1{color:var(--yes);font-weight:600}
 .cov .c0{color:var(--ink-2)}
 .cov .cp{font-weight:600}
+
+/* FOR DEVELOPERS: the feeds and what a clone gets. Two lists, the address
+   leading, because that is what a reader is here to copy. */
+.feeds{list-style:none;margin:var(--sp-5) 0 0;padding:0;max-width:51.1875rem;
+  border-top:1px solid var(--rule)}
+.feeds li{margin:0;padding:var(--sp-4) 0;border-bottom:1px solid var(--rule);
+  font-family:var(--sans);font-size:var(--t-ui);line-height:1.6;color:var(--ink-2)}
+.feeds code{font-family:var(--mono);font-size:var(--t-ui);color:var(--ink);overflow-wrap:anywhere}
+/* The count of a family, on the address's own line. */
+.feeds .dlmeta{display:inline-block;margin:0 0 0 var(--sp-3);color:var(--ink-2);
+  font-size:var(--t-sm);font-variant-numeric:tabular-nums}
+.repo{margin:var(--sp-6) 0 0;max-width:51.1875rem}
+.repo dt{font-family:var(--sans);font-size:var(--t-label);font-weight:600;
+  letter-spacing:.07em;text-transform:uppercase;color:var(--ink-2);
+  margin:var(--sp-6) 0 var(--sp-2)}
+.repo dd{margin:0;font-family:var(--serif);font-size:var(--t-read);line-height:1.65}
+.repo code{font-family:var(--mono);font-size:var(--t-sm);background:var(--wash);padding:1px 5px;
+  border-radius:var(--r-in)}
+.dpgo{font-family:var(--sans);font-size:var(--t-ui);font-weight:600}
 
 /* The standing note sits above the official analysis and must not be mistaken
    for it. Same box, different edge: this site's words get the pine rule, the

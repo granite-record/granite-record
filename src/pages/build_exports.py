@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-10.41
+# GRANITE_VERSION: 2026-09-10.42
 """
 The record as CSV, for anyone who wants to work with it rather than read it.
 
@@ -499,8 +499,10 @@ def feeds(site):
     if not rows:
         return ""
     total = len(list((site / "feed").rglob("*.xml")))
-    return f"""<h2>Feeds</h2>
-    <p class="src">Following a bill takes no account and no email address:
+    # A part of For Developers since the polish pass of 9 October 2026, under
+    # a heading of the section's own rank.
+    return f"""<h3 class="dph3">Feeds</h3>
+    <p>Following a bill takes no account and no email address:
       every feed below is a fixed address, rebuilt whenever the site is.
       {total:,} of them are published.</p>
     <ul class="feeds">{"".join(rows)}</ul>"""
@@ -595,39 +597,45 @@ def ballot_words(path=Path("corrections/ballot_results.json")):
 # detail" to PRIVACY, which was its "What this site knows about you". The
 # figures are about_figures' and are filled as About's were, so a sentence
 # that loses its number stops the build rather than publishing a hole.
+#
+# IN THE POLISH DESIGN (the Data page's polish pass, 9 October 2026), each is
+# the body of a section of its own (DATA_SECTIONS gives the heading): the two
+# parts of How the Record Is Built under their old headings in Title Case, the
+# long second one in a closed fold, and Privacy in Detail open, because About
+# sends a reader straight to it and a statement of what is collected is not a
+# thing to keep behind a click.
 HOW_BUILT = """
-    <h2 id="how-built">How the Record Is Built</h2>
-    <h3>What is taken from the record and what is generated</h3>
-<p class="src">Dates, sponsors, vote tallies, committee assignments and hearing times are taken
+<h3 class="dph3">What Is Taken from the Record and What Is Generated</h3>
+<p>Dates, sponsors, vote tallies, committee assignments and hearing times are taken
 directly from the official record. Committee reports are reproduced as filed, in the
 committee's own words.</p>
-<p class="src">Plain-language summaries of a bill's progress are generated from those records by
+<p>Plain-language summaries of a bill's progress are generated from those records by
 software, not written by hand. Most timestamps are not estimates: they are the
 moment the chair or the clerk opened the item, found by matching what they said
 against the recording's captions. The player opens two seconds before that, which
 is enough not to clip the first word. Where no boundary was heard, the site either
 shows a start marked <i>approximate</i> or links the recording with no time at
 all &#8212; it does not guess.</p>
-
-    <h3>How much of this is timed, and how well</h3>
-<p class="src">The record here holds [[stations]] occasions on which a bill was taken up
+<details class="dpfold">
+<summary><span>How Much of This Is Timed, and How Well</span></summary>
+<p>The record here holds [[stations]] occasions on which a bill was taken up
 &#8212; hearings, executive sessions, work sessions and floor debates &#8212;
 across [[station_bills]] bills. What the site can say about each one depends
 almost entirely on whether there is a recording of it to link.</p>
-<p class="src">For [[no_recording]] of them, there is no recording to offer. The recordings
+<p>For [[no_recording]] of them, there is no recording to offer. The recordings
 this site links are on the General Court's YouTube channels, which begin in
 [[stream_start]]; [[prestream]] of these meetings happened before that, which
 is [[prestream_pct]] of the whole record, and the other [[unmatched]] are
 meetings since then that no recording has been matched to. Most carry the
 date, the committee and the room, and nothing to play.</p>
-<p class="src">[[recorded]] have a recording. On [[placed]] of them &#8212;
+<p>[[recorded]] have a recording. On [[placed]] of them &#8212;
 [[placed_pct]] &#8212; the page opens the recording at the moment the bill
 was taken up. On the other [[recording_only]] it links the recording and says
 plainly that the moment has not been established, rather than guessing one. A
 further [[consent]] were decided on a consent calendar: the committee's report
 adopted in a block, never read out and never debated, so there is no moment in
 the recording to find.</p>
-<p class="src">Where the moment is claimed, it usually comes from someone saying so. Most
+<p>Where the moment is claimed, it usually comes from someone saying so. Most
 of these are the chair or the clerk opening the item, matched against the
 recording's captions; some are a roll call's own clock time from the General
 Court's record, which involves no speech recognition at all; the rest are
@@ -635,7 +643,7 @@ inferred from where the bill is discussed, and those are the ones marked
 <i>approximate</i>. Only that word separates an inferred start from a quoted
 one. The site used to print the margin and the method beside every timestamp,
 and that turned out to be methodology in the reader's way.</p>
-<p class="src">The timing is checked against [[marked]] proceedings that a person timed by
+<p>The timing is checked against [[marked]] proceedings that a person timed by
 watching the recording, across [[marked_videos]] recordings. Of these it places
 [[marked_placed]]: the median is out by [[median]], and [[within_minute]] of
 [[marked_placed]] are within a minute. [[over_ten]] are more than ten minutes
@@ -645,20 +653,20 @@ worked through. The remaining [[marked_unplaced]] carry no time at all rather
 than a guessed one. Opening each recording at its scheduled time
 instead &#8212; the obvious method, and the one this replaced &#8212; would be
 out by [[schedule_median]] at the median. Last measured [[measured]].</p>
-<p class="src">Speech recognition is worst at exactly the things that matter most — names,
+<p>Speech recognition is worst at exactly the things that matter most — names,
 numbers and organisations. Check the recording before quoting anything.</p>
+</details>
 """
 
 PRIVACY = """
-    <h2 id="privacy">Privacy in Detail</h2>
-<p class="src">Page views are counted: how many there are, and which pages. That is
+<p>Page views are counted: how many there are, and which pages. That is
 Cloudflare Web Analytics, which runs on the pages this site is served from.
 It sets no cookies, it does not follow anyone between sites, and it does not
 build a profile of a reader &mdash; what comes back is a count per page, with
 the country, browser and referrer of the visit in aggregate. Nobody here can
 tell one reader from another, and nothing about what you read is stored
 against you.</p>
-<p class="src">Nothing else is collected. There are no accounts, no email addresses and
+<p>Nothing else is collected. There are no accounts, no email addresses and
 no advertising. The feeds need no subscription, so nothing knows who takes
 them. Search runs in your own browser against files this site serves. When a
 search takes you to a results page &mdash; the bill search, the record search
@@ -669,10 +677,10 @@ from Google Fonts, so Google sees a request for them when a page opens. Video
 is embedded from
 YouTube&rsquo;s no-cookie address, which still means YouTube sees a request
 when a player is opened &mdash; a player only loads if you press play.</p>
-<p class="src">One thing a reader sends deliberately is feedback, through the form
+<p>One thing a reader sends deliberately is feedback, through the form
 linked in the footer. That is a Google form, and what you put in it goes to
 Google and to us.</p>
-<p class="src">The other is a report, from the box marked <i>Report a problem with this
+<p>The other is a report, from the box marked <i>Report a problem with this
 page</i> on bill, committee and legislator pages. A report holds the page and
 the record it is about, the tab that was open, the kind of problem chosen from
 a list, what you wrote, the time it arrived and which build of the site you
@@ -683,8 +691,48 @@ deleted after a week.</p>
 """
 
 
+# THE PAGE'S SECTIONS, in order: what the head's "On this page" lists and what
+# the page draws, from one list so the two cannot disagree. Every heading in
+# Title Case, as the polish design has them (the kit's rules and the component
+# plan's C7, 9 October 2026). The ids are the addresses About links: #how-built
+# and #privacy.
+DATA_SECTIONS = (
+    ("downloads", "Downloads"),
+    ("coverage", "What&rsquo;s Covered"),
+    ("before", "Before You Start"),
+    ("using", "Using It"),
+    ("how-built", "How the Record Is Built"),
+    ("privacy", "Privacy in Detail"),
+    ("developers", "For Developers"),
+    ("lists", "The Whole Record as Lists"),
+)
+
+
+def _first_sentence(what):
+    """A table's description as the Downloads table gives it: the first
+    sentence in the row, and the rest, if there is any, in the row's fold.
+    Every description here opens with one sentence saying what the file
+    holds, with no ". " inside it."""
+    i = what.find(". ")
+    return (what, "") if i < 0 else (what[:i + 1], what[i + 2:].strip())
+
+
 def data_page(site, out, tables, base, cov=()):
-    """The downloads, described for somebody who has not read the code."""
+    """The downloads, described for somebody who has not read the code.
+
+    THE POLISH DESIGN (9 October 2026, the person: "a polish pass on the data
+    page ... it's fairly outdated at this point in terms of formatting"). An
+    article head that gives the answer first and folds "On this page" into
+    itself; then sections in the W4 layout, each heading in a margin beside
+    its text above 60em and over it below (the component plan's C7, the kit's
+    .k-sec): the downloads as one compact table, the per-term vote files one
+    row of it with a grid of terms; what each term's columns cover; the notes
+    for a first use; and the developers' material. A long note is a closed
+    fold, so the page reads short and keeps every word it had.
+
+    Every number on it is counted here as before: the rows and bytes of each
+    table, their sums, the coverage table, the feeds, the repository's stamps
+    and checks, and HOW_BUILT's figures."""
     try:
         import shell as S
     except ImportError:
@@ -693,18 +741,67 @@ def data_page(site, out, tables, base, cov=()):
     tmpl = S.template(site)
     E = lambda s: (str(s).replace("&", "&amp;").replace("<", "&lt;")
                    .replace(">", "&gt;"))
+    mb = lambda b: f"{b / 1e6:.1f}&nbsp;MB"
 
-    def row(tb):
-        join = next((v for k, v in JOINS.items() if tb["file"].startswith(k)
-                     or tb["file"] == k), "")
-        return f'''<section class="dl">
-      <h3><a href="data/{E(tb["file"])}">{E(tb["file"])}</a></h3>
-      <p class="dlmeta">{tb["rows"]:,} rows &middot; {tb["bytes"] / 1e6:.1f} MB
-        &middot; CSV, UTF-8, header row</p>
-      <p>{E(tb["what"])}</p>
-      {f'<p class="note">{E(join)}</p>' if join else ""}
-      <p class="cols"><b>Columns</b> {", ".join(E(c) for c in tb["columns"])}</p>
-    </section>'''
+    def join_of(name):
+        return next((v for k, v in JOINS.items() if name.startswith(k) or name == k), "")
+
+    def more(name, rest, columns):
+        """A row's fold: the rest of its description, how it joins, and its
+        columns."""
+        join = join_of(name)
+        return (f'<details class="dpmore"><summary><span>More about '
+                f'<code>{E(name)}</code></span></summary>'
+                + (f'<p>{E(rest)}</p>' if rest else "")
+                + (f'<p class="dpjoin">{E(join)}</p>' if join else "")
+                + f'<p class="dpcols"><b>Columns</b> {", ".join(E(c) for c in columns)}</p>'
+                + '</details>')
+
+    # A TABLE THAT IS A LIST ON A PHONE. Below 45em app.css lays each row out
+    # as a block -- the file and its download link, what it holds, its rows
+    # and size -- and the roles keep it a table to a screen reader, which a
+    # change of display alone would not.
+    def dl_row(tb):
+        lead, rest = _first_sentence(tb["what"])
+        f = E(tb["file"])
+        return (f'<tr role="row"><th scope="row" role="rowheader"><code>{f}</code></th>'
+                f'<td role="cell" class="dpw"><p class="dpwhat">{E(lead)}</p>'
+                f'{more(tb["file"], rest, tb["columns"])}</td>'
+                f'<td role="cell" class="n dpr">{tb["rows"]:,}<span class="dpu"> rows</span></td>'
+                f'<td role="cell" class="n dps">{mb(tb["bytes"])}</td>'
+                f'<td role="cell" class="dpg"><a class="dpget" href="data/{f}" download>'
+                f'Download<span class="sr"> {f}</span></a></td></tr>')
+
+    # THE VOTES, ONE ROW. A file a term since 1999 is fourteen rows saying the
+    # same sentence with a different term in it; they are one row here, whose
+    # counts are the sums, and a grid of the terms under it, each its own
+    # download with its own rows and size.
+    votes = [t for t in tables if t["file"].startswith("votes-")]
+    others = [t for t in tables if not t["file"].startswith("votes-")]
+    vote_rows = ""
+    if votes:
+        term = lambda t: t["file"][len("votes-"):-len(".csv")]
+        lead, rest = _first_sentence(votes[0]["what"])
+        lead = lead.replace(term(votes[0]), "each term")
+        grid = "".join(
+            # A space between the parts, so the link's name reads as words and
+            # not "1999-2000118,968" where its spans are drawn as blocks.
+            f'<li><a href="data/{E(t["file"])}" download><span class="dpt">'
+            f'{E(term(t))}</span> <span class="dpm">{t["rows"]:,} rows &middot; '
+            f'{mb(t["bytes"])}</span> <span class="sr">{E(t["file"])}</span></a></li>'
+            for t in votes)
+        vote_rows = (
+            f'<tr role="row" class="dpgroup"><th scope="row" role="rowheader">Votes by Term'
+            f'<code>votes-&lt;term&gt;.csv</code></th>'
+            f'<td role="cell" class="dpw"><p class="dpwhat">{E(lead)} One file a term, '
+            f'{len(votes)} in all, from {E(term(votes[0]))} to {E(term(votes[-1]))}.</p>'
+            f'{more("votes-<term>.csv", rest, votes[0]["columns"])}</td>'
+            f'<td role="cell" class="n dpr">{sum(t["rows"] for t in votes):,}'
+            f'<span class="dpu"> rows</span></td>'
+            f'<td role="cell" class="n dps">{mb(sum(t["bytes"] for t in votes))}</td>'
+            f'<td role="cell" class="dpg"><span class="dpeach">Each term below</span></td></tr>'
+            f'<tr role="row" class="dpterms"><td role="cell" colspan="5">'
+            f'<ul class="dptermgrid" aria-label="Votes by term">{grid}</ul></td></tr>')
 
     cov_rows = "".join(
         f'''<tr><th scope="row">{E(c["term"])}</th><td class="n">{c["bills"]:,}</td>
@@ -731,24 +828,14 @@ def data_page(site, out, tables, base, cov=()):
         _rf = (f'{_f["stamped"]} files carry a version stamp the build '
                f'refuses to let drift, and {_f["checks"]} checks run over the '
                'whole of it with no network and nothing fetched. ')
-    body = f'''<div class="civics hubpage datapage">
-    <div class="phead">
-      <h1>The data</h1>
-      <p class="pmeta">The bills, roll calls, member votes, sponsors, hearings
-        and sitting legislators behind this site, as CSV. {sum(t["rows"] for t in tables):,}
-        rows across {len(tables)} tables.</p>
-    </div>
-    <p class="src">These are built from the same files the pages are drawn
-      from, by the same run, so a download and a page cannot disagree. They
-      are rebuilt whenever the site is.</p>
 
-    <h2>Before you start</h2>
-    <p class="src"><b>A bill number is not a key.</b> HB100 names a different
-      bill in every biennium, so every table carries a <code>term</code> and
-      the pair <code>bill</code>&nbsp;+&nbsp;<code>term</code> is what joins
-      them. Getting this wrong silently merges two centuries of different
-      bills, which is a mistake this project has made and fixed.</p>
-    <p class="src"><b>The <code>status</code>, <code>outcome</code> and
+    # BEFORE YOU START: the first note open, because it is the one mistake
+    # every user of these files can make; each of the others a closed fold,
+    # its lead words in the summary and the whole paragraph, lead and all,
+    # inside it.
+    notes = [
+        ('The <code>status</code>, <code>outcome</code> and <code>chip</code> columns',
+         """<b>The <code>status</code>, <code>outcome</code> and
       <code>chip</code> columns</b> in bills.csv say where a bill stands in
       three ways. <code>status</code> is how it stands or how it ended, in
       full: <i>Killed</i>, <i>Died on the table</i>, <i>Vetoed, override
@@ -770,8 +857,9 @@ def data_page(site, out, tables, base, cov=()):
       committee&#39;s file carries the same
       word as <code>chip</code>, beside its <code>status</code>.
       <code>chip</code> is the last column, so every column before it is
-      where it was before it was added.</p>
-    <p class="src"><b>The <code>passage</code> column</b> in bills.csv is
+      where it was before it was added."""),
+        ('The <code>passage</code> column',
+         """<b>The <code>passage</code> column</b> in bills.csv is
       where the bill started, <code>H</code> or <code>S</code>, then one
       character per stop in the order it travelled: the chamber it started
       in, the other chamber, the Governor and the statute book.
@@ -781,8 +869,9 @@ def data_page(site, out, tables, base, cov=()):
       adopts, has three characters rather than five; a concurrent or joint
       resolution goes to both chambers and has five. The column is empty
       where the docket does not record enough of the bill&#39;s journey to
-      draw it, or records one its outcome contradicts.</p>
-    <p class="src"><b>The <code>rail</code> field</b> of a row of
+      draw it, or records one its outcome contradicts."""),
+        ('The <code>rail</code> field',
+         """<b>The <code>rail</code> field</b> of a row of
       <code>/idx/&lt;term&gt;.json</code> is the rail the bill&#39;s card
       draws: one entry a stop, in the order the bill travelled, each the
       stop&#39;s letter &mdash; <code>I</code> introduced, <code>H</code>,
@@ -795,16 +884,18 @@ def data_page(site, out, tables, base, cov=()):
       <code>h</code>; then the day and a word or two of how it went
       where there are any. The card draws the day under each stop; the words
       are what its rail says to a reader who hears the page. It is not in
-      bills.csv.</p>
-    <p class="src"><b>A constitutional amendment&#39;s ballot.</b> What the
+      bills.csv."""),
+        ("A constitutional amendment&#39;s ballot",
+         """<b>A constitutional amendment&#39;s ballot.</b> What the
       voters made of an amendment both chambers sent them is the
       docket&#39;s word where it records one, and otherwise
       <code>ballot_results.json</code>&#39;s, a file in the repository that
-      no script writes: {_bw}. An amendment needs two thirds of the votes cast on it,
+      no script writes: """ + _bw + """. An amendment needs two thirds of the votes cast on it,
       so the <code>status</code> says ratified or not ratified by that
       measure and not by a majority, and a bill&#39;s own page shows the two
-      counts beside it.</p>
-    <p class="src"><b>The <code>chapter</code> column</b> is the chapter of
+      counts beside it."""),
+        ('The <code>chapter</code> column',
+         """<b>The <code>chapter</code> column</b> is the chapter of
       that year's session laws the bill became: the bill&#39;s status page
       where the General Court gives one, and otherwise the docket&#39;s law
       line &mdash; &ldquo;1, special session&rdquo; for a special session's
@@ -812,12 +903,13 @@ def data_page(site, out, tables, base, cov=()):
       a few laws whose chapter this site could not take from the docket: it
       gives none, gives one number to two bills in a year &mdash; one of them
       a typing error the docket cannot say which &mdash; or writes it in a
-      form not yet read.</p>
-    <p class="src"><b>A blank cell is usually an answer.</b> In
+      form not yet read."""),
+        ('A blank cell is usually an answer',
+         """<b>A blank cell is usually an answer.</b> In
       proceedings.csv a sitting with no <code>start_seconds</code> has no
       moment in a recording to point at. Most have no recording to link at
       all, and nearly all of those are older than the General Court&#39;s
-      YouTube channels, which begin in {STREAM_START_WORDS}; a bill passed on a consent
+      YouTube channels, which begin in """ + STREAM_START_WORDS + """; a bill passed on a consent
       calendar was adopted in a block and never taken up on its own; the rest
       have a recording in which the moment has not been found yet, and
       <code>how_placed</code> says which. In bills.csv,
@@ -828,10 +920,19 @@ def data_page(site, out, tables, base, cov=()):
       then has none here, even where the docket gives a roll call&#39;s tally
       and the printed journals name who voted. A later bill with none was
       decided by a voice or division vote, which records no individual
-      member, or has no floor vote on record.</p>
+      member, or has no floor vote on record."""),
+    ]
+    folded = "".join(
+        f'\n    <details class="dpfold"><summary><span>{lead}</span></summary>'
+        f'<p>{text}</p></details>' for lead, text in notes)
 
-    <h2>What is filled in, and for which terms</h2>
-    <p class="src">Every bill back to 1989 has a title, a status and an
+    sections = {
+        "downloads": f'''<p>These are built from the same files the pages are drawn
+      from, by the same run, so a download and a page cannot disagree. They
+      are rebuilt whenever the site is. Every file is CSV, UTF-8, with a header
+      row.</p>''',
+
+        "coverage": f'''<p>Every bill back to 1989 has a title, a status and an
       outcome. The other columns are filled wherever this site has read them
       from the record, and the table below counts how far that reaches in
       each term. An empty cell has one of three reasons. The record may leave
@@ -854,13 +955,28 @@ def data_page(site, out, tables, base, cov=()):
       <thead><tr><th scope="col">Term</th><th scope="col">Bills</th>
         <th scope="col">Sponsor</th><th scope="col">Committee</th>
         <th scope="col">Topic</th><th scope="col">Passage</th></tr></thead>
-      <tbody>{cov_rows}</tbody></table></div>
+      <tbody>{cov_rows}</tbody></table></div>''',
 
-    <h2>The tables</h2>
-    {"".join(row(t) for t in tables)}
+        "before": f'''<p><b>A bill number is not a key.</b> HB100 names a different bill in every
+      biennium, so every table carries a <code>term</code> and
+      the pair <code>bill</code>&nbsp;+&nbsp;<code>term</code> is what joins
+      them. Getting this wrong silently merges two centuries of different
+      bills, which is a mistake this project has made and fixed.</p>{folded}''',
 
-    <h2>For programs</h2>
-    <p class="src"><a href="data/manifest.json">data/manifest.json</a> lists
+        "using": '''<p>The record itself is the State of New Hampshire&#39;s and is
+      public. This site adds the parsing, the joining and the plain-English
+      summaries. Use it for whatever you like; a link back to
+      graniterecord.org helps somebody check your working, which is the point
+      of publishing the whole thing rather than a chart of it.</p>
+    <p class="dpnote">Found something that looks wrong? The page for that bill
+      links the General Court&#39;s own record so the two can be compared, and
+      its <i>Report a problem with this page</i> box tells us.</p>''',
+
+        "how-built": how_built,
+        "privacy": PRIVACY,
+
+        "developers": f'''<h3 class="dph3">The Manifest</h3>
+    <p><a href="data/manifest.json">data/manifest.json</a> lists
       every table with its rows, byte size and column names, so a script can
       discover what is here in one request instead of guessing from
       filenames. The site&#39;s own JSON is served from this origin too and is
@@ -873,20 +989,8 @@ def data_page(site, out, tables, base, cov=()):
       index.json, was retired on October 5, 2026, when it had grown to nine
       tenths of the largest file this site&#39;s host will serve; the same
       bills are bills.csv above, in one table.</p>
-
     {feeds(site)}
-
-    <h2>Using it</h2>
-    <p class="src">The record itself is the State of New Hampshire&#39;s and is
-      public. This site adds the parsing, the joining and the plain-English
-      summaries. Use it for whatever you like; a link back to
-      graniterecord.org helps somebody check your working, which is the point
-      of publishing the whole thing rather than a chart of it.</p>
-    <p class="note">Found something that looks wrong? The page for that bill
-      links the General Court&#39;s own record so the two can be compared, and
-      its <i>Report a problem with this page</i> box tells us.</p>
-{how_built}{PRIVACY}
-    <h2>Read the code</h2>
+    <h3 class="dph3">Read the Code</h3>
     <p>Every script that fetches, parses and builds this site is public, so a
       figure here can be traced to the line that produced it.</p>
     <p><a class="out" href="https://github.com/granite-record/granite-record"
@@ -913,14 +1017,43 @@ def data_page(site, out, tables, base, cov=()):
         <code>python3 build_all.py --local</code> builds the whole site and
         asks the General Court for nothing. <code>python3 preflight.py</code>
         runs the checks, and most of them need no record at all.</dd>
-    </dl>
+    </dl>''',
 
-    <h2>The whole record, as lists</h2>
-    <p>Every bill, legislator, committee and town as a plain link: no
+        "lists": '''<p>Every bill, legislator, committee and town as a plain link: no
       JavaScript, no search box, nothing to load. It is the version of this
       site that works anywhere, and it is what a crawler follows.</p>
-    <p><a href="directory.html">Open the directory</a></p>
-  </div>'''
+    <p><a class="dpgo" href="directory.html">Open the directory</a></p>''',
+    }
+    # THE DOWNLOADS TABLE TAKES THE SECTION'S WHOLE WIDTH, under its heading
+    # and its sentence rather than in the column of prose beside the
+    # heading: five columns in a hundred characters' width left what each
+    # file holds a column of three words a line.
+    wide = {"downloads": f'''<div class="dptablewrap dpwide"><table class="dpdl" role="table">
+      <thead role="rowgroup"><tr role="row"><th scope="col" role="columnheader">File</th>
+        <th scope="col" role="columnheader">What it holds</th>
+        <th scope="col" role="columnheader" class="n">Rows</th>
+        <th scope="col" role="columnheader" class="n">Size</th>
+        <th scope="col" role="columnheader"><span class="sr">Download</span></th></tr></thead>
+      <tbody role="rowgroup">{"".join(dl_row(t) for t in others)}{vote_rows}</tbody></table></div>'''}
+    onp = "".join(f'<li><a href="#{sid}">{title}</a></li>' for sid, title in DATA_SECTIONS)
+    secs = "".join(
+        f'''
+  <section class="dpsec" id="{sid}" aria-labelledby="{sid}-h">
+    <h2 class="dpsech" id="{sid}-h">{title}</h2>
+    <div class="dpsecb">{sections[sid]}</div>{wide.get(sid, "")}
+  </section>''' for sid, title in DATA_SECTIONS)
+    body = f'''<div class="datapage">
+  <header class="dphead">
+    <h1>The Data</h1>
+    <p class="dplead">The bills, roll calls, member votes, sponsors, hearings
+      and sitting legislators behind this site are free to download as
+      spreadsheets, built from the General Court&#39;s own records:
+      {sum(t["rows"] for t in tables):,} rows across {len(tables)} tables, as
+      CSV. The code that builds them is public under the MIT licence.</p>
+    <details class="dponp"><summary>On this page</summary>
+      <nav class="dponpb" aria-label="On this page"><ol>{onp}</ol></nav></details>
+  </header>{secs}
+</div>'''
 
     page = S.page(tmpl, path="/data.html", base=base,
                   title="The data | Granite Record",
