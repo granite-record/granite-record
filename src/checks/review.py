@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-09.18
+# GRANITE_VERSION: 2026-09-09.19
 """
 The bench: one sample at a time, judged by a person, written down for good.
 
@@ -762,6 +762,56 @@ def show_archive_rollcall(it):
             'under each heading?</p>')
 
 
+def sample_related():
+    """A pair of bills whose texts amend a section of the RSA in common
+    (build_related.py), strongest first -- the pairs the Related tab does not
+    list until enough of them have been judged here. Spread over the ranking
+    rather than its top alone: a list that is right where the overlap is
+    strongest says nothing about where the tab would stop."""
+    p = Path("data/related_candidates.json")
+    if not p.exists():
+        return []
+    pairs = json.loads(p.read_text(encoding="utf-8")).get("pairs") or []
+    # every pair of the first hundred, then one in ten, then one in a hundred
+    keep = [x for i, x in enumerate(pairs)
+            if i < 100 or (i < 2000 and i % 10 == 0) or i % 100 == 0]
+    return [dict(x, rank=i + 1) for i, x in enumerate(keep)]
+
+
+def _analysis(year, bid):
+    """The bill's analysis as its record holds it, or "" -- from its file or
+    from inside its page, as build_related reads it."""
+    try:
+        import build_bill_pages as BBP
+        f = Path("site/bills") / str(year) / f"{bid}.json"
+        raw = (f.read_text(encoding="utf-8") if f.exists()
+               else BBP.embedded(Path("site/bill") / str(year) / f"{bid.lower()}.html"))
+        d = json.loads(raw) if raw else {}
+    except (OSError, ValueError, ImportError):
+        return ""
+    return str((d.get("billtext") or {}).get("analysis") or "")
+
+
+def show_related(it):
+    def side(x):
+        an = _analysis(x.get("year"), x.get("id", ""))
+        return (f'<td><b>{E(x.get("n"))}</b> ({E(x.get("year"))}, {E(x.get("term"))})<br>'
+                f'{E(x.get("title"))}'
+                + (f'<p class="prose">{E(an[:900])}</p>' if an else "")
+                + f'<p><a href="https://graniterecord.org/bill/{E(x.get("year"))}/'
+                  f'{E(str(x.get("id", "")).lower())}" target="_blank" rel="noopener">'
+                  'Open its page</a></p></td>')
+    secs = ", ".join("RSA " + s for s in it.get("sections") or [])
+    return (f'<table class="facts"><tr><th>Both amend</th><td colspan="2">{E(secs)}</td></tr>'
+            f'<tr><th>Ranked</th><td colspan="2">{E(it.get("rank"))} '
+            f'(score {E(it.get("score"))})</td></tr>'
+            f'<tr><th>The two bills</th>{side(it.get("a") or {})}{side(it.get("b") or {})}</tr>'
+            '</table>'
+            '<p class="ask">Would a reader of one of these want to be shown the other, as a '
+            'bill about the same thing? Touching the same section for different purposes '
+            'is <b>Not related</b>.</p>')
+
+
 KINDS = {
     "archive_rollcall": {
         "label": "Roll calls read off the scanned journals",
@@ -876,6 +926,20 @@ KINDS = {
         "sample": sample_vetoes, "show": show_vetoes,
         "fields": [("missing_text", "Anything cut off the start or end",
                     "the first or last words that should be there")],
+    },
+    "related": {
+        "label": "Related bills: the same sections of the RSA",
+        "blurb": "Two bills whose texts amend a section of the law in common. "
+                 "The Related tab lists none of these yet: two bills can touch "
+                 "the same RSA for unrelated purposes, so this measures how "
+                 "often the overlap means the same subject, and where in the "
+                 "ranking it stops meaning it, before any is published. "
+                 "Strongest overlap first, then a spread down the list.",
+        "sample": sample_related, "show": show_related,
+        "fields": [("note", "Why, in a few words", "both raise the minimum wage")],
+        "verdicts": [("correct", "Related: the same subject"),
+                     ("wrong", "Not related"),
+                     ("unsure", "Cannot tell")],
     },
     "report": {
         "label": "Committee report reasoning",

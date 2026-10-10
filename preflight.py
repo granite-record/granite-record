@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.520
+# GRANITE_VERSION: 2026-09-04.521
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -27869,6 +27869,8 @@ def _built_site(here, root, brand=True, env=None):
         # step check_site refuses the fixture's site as it would a real one:
         # bill indexes and no search index beside them. Until then no check
         # ran this script's main() at all.
+        # Related bills, while the records are still files, as in build_all.
+        ("build_related.py", ["--site", "site", "--data", "data"], "site/related"),
         ("build_search_index.py", ["--idx", "site/idx", "--out", "site/sidx",
                                    "--allow-no-text"], "site/sidx/manifest.json"),
         ("build_pages.py", ["--out", "site"], "site/officials.html"),
@@ -28012,6 +28014,94 @@ def _fixture_site_whole(root):
     shared, base, ran, _days = _fixture_site_shared()
     shutil.copytree(shared, root, dirs_exist_ok=True)
     return base, ran
+
+
+@check("build", "related bills list only what the record states, every term has its file, "
+       "and the same-RSA pairs go to the bench and not the site", needs=("build_related",))
+def _related_bills(BR):
+    """The plan (ROADMAP.md, September 2026): related bills that amend the
+    same RSA only "after a checked sample at the bench, never before". A
+    made-up site of two terms: HB 1162 of 1994, whose interim study report's
+    clerk wrote that it was filed again as HB 581 of 1995 (the case
+    build_site_v2.study_ending names), and three bills of 1995 whose texts
+    amend RSA 275:41, two of them RSA 275:42 too. The tab's file lists the
+    filing both ways, each term has a file, and the RSA pairs are in the
+    bench's file, ranked, and in no published one."""
+    import contextlib
+    import io
+    root = Path(tempfile.mkdtemp())
+    try:
+        site, data = root / "site", root / "data"
+        rows = {"1993-1994": [{"id": "HB1162", "n": "HB 1162", "year": 1994, "term": "1993-1994",
+                               "title": "relative to the minimum wage", "chip": "Died"}],
+                "1995-1996": [{"id": "HB581", "n": "HB 581", "year": 1995, "term": "1995-1996",
+                               "title": "relative to the minimum wage", "chip": "Became Law"},
+                              {"id": "HB600", "n": "HB 600", "year": 1995, "term": "1995-1996",
+                               "title": "relative to tipped employees", "chip": "Died"},
+                              {"id": "HB700", "n": "HB 700", "year": 1995, "term": "1995-1996",
+                               "title": "relative to youth employment", "chip": "Died"}]}
+        (site / "idx").mkdir(parents=True)
+        for term, rs in rows.items():
+            (site / "idx" / f"{term}.json").write_text(json.dumps(rs), encoding="utf-8")
+        (site / "idx" / "2027-requests.json").write_text(json.dumps([{"lsr": "1"}]), encoding="utf-8")
+        recs = {(1994, "HB1162"): {"journey": {"steps": [
+                    {"act": "study_report", "text": "Interim study report: recommended for "
+                     "legislation in 1995, 12-0; filed again as HB 581 of 1995",
+                     "link": {"text": "HB 581 of 1995", "href": "bill/1995/hb581.html"}}]}},
+                (1995, "HB581"): {"amends": {"RSA 275:41": "u", "RSA 275:42": "u"}},
+                (1995, "HB600"): {"amends": {"RSA 275:41": "u", "RSA 275:42": "u"}},
+                (1995, "HB700"): {"amends": {"RSA 275:41": "u"}}}
+        for (y, bid), rec in recs.items():
+            (site / "bills" / str(y)).mkdir(parents=True, exist_ok=True)
+            (site / "bills" / str(y) / f"{bid}.json").write_text(json.dumps(rec), encoding="utf-8")
+        (site / "related").mkdir()
+        (site / "related" / "1979-1980.json").write_text("{}", encoding="utf-8")
+        with contextlib.redirect_stdout(io.StringIO()):
+            BR.build(site, data)
+        files = sorted(f.stem for f in (site / "related").glob("*.json"))
+        assert files == ["1993-1994", "1995-1996"], f"the terms' files are {files}"
+        t93 = json.loads((site / "related" / "1993-1994.json").read_text(encoding="utf-8"))
+        t95 = json.loads((site / "related" / "1995-1996.json").read_text(encoding="utf-8"))
+        got = [(e["rel"], e["id"], e["year"]) for e in t93.get("HB1162", [])]
+        assert got == [("filed_again_as", "HB581", 1995)], f"HB 1162 of 1994 lists {got}"
+        back = [(e["rel"], e["id"], e["year"]) for e in t95.get("HB581", [])]
+        assert back == [("filed_again_from", "HB1162", 1994)], f"HB 581 of 1995 lists {back}"
+        assert set(t95) == {"HB581"}, (
+            f"a bill is listed for an RSA overlap alone, before the bench: {sorted(t95)}")
+        assert t95["HB581"][0].get("chip") == "Died" and t95["HB581"][0].get("title"), (
+            "a related bill is listed without its chip or title")
+        c = json.loads((data / "related_candidates.json").read_text(encoding="utf-8"))
+        pairs = [(p["a"]["id"], p["b"]["id"], p["sections"]) for p in c["pairs"]]
+        assert pairs and pairs[0][:2] == ("HB581", "HB600") and pairs[0][2] == ["275:41", "275:42"], (
+            f"the strongest pair is not the two that share two sections: {pairs}")
+        assert len(pairs) == 3 and len({p[:2] for p in pairs}) == 3, f"a pair is held twice: {pairs}"
+        assert BR.sections({"RSA 674": "u", "RSA 21-I:19-a": "u"}) == {"674", "21-I:19-a"}
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    return "ok", ("HB 1162 of 1994 and HB 581 of 1995 list each other; three RSA 275 pairs "
+                  "go to the bench, strongest first, and none to the site")
+
+
+@check("frontend", "the Related tab lists a related bill as a row, under what the record says")
+def _related_tab():
+    """renderRelated in node: a bill filed again after an interim study is a
+    row -- its number and year linked, its title, its chip and why -- under
+    the group the record states, and a bill with none says so."""
+    one = [{"id": "HB581", "n": "HB 581", "year": 1995, "term": "1995-1996",
+            "title": "relative to the minimum wage", "chip": "Became Law",
+            "rel": "filed_again_as", "why": "Filed again as this bill after an interim study."}]
+    got = _app_js("[scope.renderRelated({id:'HB1162',n:'HB 1162'}," + json.dumps(one) + "),"
+                  "scope.renderRelated({id:'HB9',n:'HB 9'},[]),"
+                  "scope.BILL_TABS.related]", names=("renderRelated", "BILL_TABS"))
+    if got is None:
+        return "skip", "node, app.js or dom_stub.js is not here"
+    html, none, slug = got
+    assert "Filed Again As" in html and 'href="bill/1995/hb581.html"' in html, html[:400]
+    assert "relative to the minimum wage" in html and "Filed again as this bill" in html, html[:400]
+    assert "Filed Again From" not in html, "an empty group is drawn"
+    assert "No related bill is on record for HB 9" in none, none
+    assert slug == "7", f"the Related tab's data-t is {slug!r}, not 7"
+    return "ok", "a row under Filed Again As, an empty bill says so, and the tab is data-t 7"
 
 
 @check("build", "every builder runs end to end on a fixture site")

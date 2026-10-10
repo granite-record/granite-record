@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.186
+# GRANITE_VERSION: 2026-09-04.187
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -306,7 +306,7 @@ HEADERS = """# Written by build_pages.py. Not an asset; Pages reads it.
 # _redirects: the new one because that is what the page now writes, the old
 # one because it has been published and indexed.
 BILL_TAB_SLUGS = ("text", "votes", "hearings", "videos", "reports",
-                  "sponsors", "documents")
+                  "sponsors", "documents", "related")
 MEMBER_TAB_SLUGS = ("cosponsored", "votes")
 COMMITTEE_TAB_SLUGS = ("sessions",)
 # THE LEARN HUB MOVED. /learn was the hub of the Learn pages and is now the

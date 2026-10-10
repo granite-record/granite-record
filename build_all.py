@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.65
+# GRANITE_VERSION: 2026-09-05.66
 """
 Run the whole pipeline in the right order.
 
@@ -719,6 +719,19 @@ def plan(a):
               "--segments", "work"],
              needs=["data/bills.json"],
              produces=["site/meta.json", "site/idx"]),
+
+        # RELATED BILLS, AFTER THE SITE DATA AND BEFORE THE BILL PAGES: it
+        # reads every bill's record, which build_bill_pages then folds into
+        # the page and takes away (build_related reads it from the page where
+        # it has). It publishes only what the record states; the pairs that
+        # amend the same RSA go to the bench, not the site (its docstring).
+        Step("the bills each bill is related to",
+             ["build_related.py", "--site", "site", "--data", "data"],
+             needs=["site/meta.json", "site/idx"],
+             produces=["site/related", "data/related_candidates.json"],
+             note="a Related tab where the record says one bill was filed again "
+                  "as another; and, for review.py's bench and not the site, the "
+                  "pairs whose texts amend the same sections of the RSA"),
 
         # AFTER THE SITE DATA, because what it reads is the site's own word for
         # which bills were vetoed. It was the end of the step that writes the

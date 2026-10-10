@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.184
+// GRANITE_VERSION: 2026-09-07.185
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -2423,7 +2423,7 @@ const jOpen=new Set();
 // on /videos. An address that has been published is a promise; renaming the
 // label is not a reason to break it.
 const BILL_TABS={text:"6",votes:"1",hearings:"2",videos:"2",
-                 reports:"3",sponsors:"4",documents:"5"};
+                 reports:"3",sponsors:"4",documents:"5",related:"7"};
 const MEMBER_TABS={cosponsored:1,votes:2};
 const COMMITTEE_TABS={sessions:1};
 const TAB_PATH=/^(\/(?:bill\/\d{4}\/[a-z]{2,5}\d+|legislator\/[^\/]+|committee\/[^\/]+))\/([a-z]+)\/?$/i;
@@ -5131,6 +5131,50 @@ function wantVersionBody(b){
   });
 }
 
+// RELATED BILLS (build_related.py): site/related/<term>.json, one file a term
+// and every term has one, fetched the first time a bill of that term is drawn.
+// What it lists is only what the record states -- today, a bill filed again
+// after an interim study, both ways; bills that amend the same RSA wait on
+// the bench (the plan: "after a checked sample at the bench, never before").
+// The tab is drawn only for a bill with something in it, or where the
+// address asked for it, so a bill opened on /related shows its pane once the
+// file is in.
+const RELATED={};      // term -> {bill: [related]}, null while it loads
+function needRelated(term){
+  if(!term||term in RELATED)return;
+  RELATED[term]=null;
+  fetch(DATA("related/"+encodeURIComponent(term)+".json"))
+    .then(r=>r.ok?r.json():{})
+    .then(j=>{RELATED[term]=j||{};repaint();})
+    .catch(()=>{RELATED[term]={};});
+}
+function relatedOf(b,d){
+  const term=(d&&d.term)||b.term||"";
+  needRelated(term);
+  const m=RELATED[term];
+  return m?(m[b.id]||[]):null;
+}
+// In the order a reader follows a subject: where it came from, then where
+// it went. Each group's heading says what the record states; each bill is a
+// row (components.billRow) with its own chip and the line saying why.
+const RELATED_GROUPS=[
+  ["filed_again_from","Filed Again From","An earlier bill, held for interim study, that this bill continues."],
+  ["filed_again_as","Filed Again As","The bill this one became in the next term, after its interim study."]];
+function renderRelated(b,list){
+  if(list===null)return `<p class="spin">Loading&hellip;</p>`;
+  if(!list.length)return `<p class="src">No related bill is on record for ${esc(b.n||b.id)}.</p>`;
+  const groups=RELATED_GROUPS.map(([k,h,lead])=>{
+    const rows=list.filter(r=>r.rel===k);
+    if(!rows.length)return "";
+    return `<section class="w4 relgrp"><h2 class="w4h">${esc(h)}</h2><div class="w4b">
+      <p class="src">${esc(lead)}</p>${rows.map(r=>billRow({n:r.n||r.id,year:r.year,
+        href:`bill/${r.year}/${String(r.id).toLowerCase()}.html`,title:r.title||"",
+        word:cardWord(chipOf(r),r.passage),cls:chipCls(r),line:esc(r.why||"")})).join("")}</div></section>`;
+  }).join("");
+  return groups+`<p class="src rnote">Related bills are what the record itself states. Bills that
+    change the same sections of the law are being checked by hand before they are listed here.</p>`;
+}
+
 function renderDetail(b,d){
   const rsa=makeRsa(d);
   // Below the tabs, outside every pane, and only in the expanded view. The
@@ -5174,6 +5218,19 @@ function renderDetail(b,d){
         tabindex="0" data-t="6" hidden>${hasVersionIndex(d)?renderVersions(b,d):billTextSection(b,d,makeRsa(d))}</div>`
     : "";
 
+  // RELATED, LAST, AND ONLY WHERE THERE IS SOMETHING (renderRelated): data-t
+  // "7", the next number, as every tab keeps its own.
+  const rel=relatedOf(b,d);
+  const relHas=(rel&&rel.length)||openTab[b.id]==="7";
+  const relTab=relHas
+    ? `<button class="tab" role="tab" id="tab_${b.id}_7" aria-controls="pane_${b.id}_7"
+        aria-selected="false" data-t="7">Related${rel&&rel.length?` (${rel.length})`:""}</button>`
+    : "";
+  const relPane=relHas
+    ? `<div class="pane" role="tabpanel" id="pane_${b.id}_7" aria-labelledby="tab_${b.id}_7"
+        tabindex="0" data-t="7" hidden>${renderRelated(b,rel)}</div>`
+    : "";
+
   return `<div class="tabs" role="tablist">
     <button class="tab" role="tab" id="tab_${b.id}_0" aria-controls="pane_${b.id}_0" aria-selected="true" data-t="0">Summary</button>
     ${btTab}
@@ -5202,7 +5259,7 @@ function renderDetail(b,d){
 
     <button class="tab" role="tab" id="tab_${b.id}_5" aria-controls="pane_${b.id}_5"
       aria-selected="false" data-t="5">Documents${
-        (d.documents||[]).length?` (${d.documents.length})`:""}</button></div>
+        (d.documents||[]).length?` (${d.documents.length})`:""}</button>${relTab}</div>
     <div class="pane" role="tabpanel" id="pane_${b.id}_0" aria-labelledby="tab_${b.id}_0" tabindex="0" data-t="0">${renderSummary(b,d,rsa)}</div>
     ${/* ONLY WHERE THERE IS SOMETHING TO SHOW. 1,149 of 2,234 bills have a
           second version; a tab on the other 1,085 would say "there is one
@@ -5215,7 +5272,7 @@ function renderDetail(b,d){
 
     <div class="pane" role="tabpanel" id="pane_${b.id}_4" aria-labelledby="tab_${b.id}_4" tabindex="0" data-t="4" hidden>${renderSponsors(b,d)}</div>
     <div class="pane" role="tabpanel" id="pane_${b.id}_5" aria-labelledby="tab_${b.id}_5"
-      tabindex="0" data-t="5" hidden>${renderDocuments(b,d)}</div>${btsec}`;
+      tabindex="0" data-t="5" hidden>${renderDocuments(b,d)}</div>${relPane}${btsec}`;
 }
 
 // ======================================================= report a problem ==
@@ -5251,7 +5308,7 @@ const REPORT_TO="contact@graniterecord.org";
 // the rename and stores it as "Hearings" (report.js RENAMED_TABS), and a
 // committee's "Sessions", the Meetings tab's name before D19, as "Meetings".
 const REPORT_TABS=new Set(["Summary","Bill Text","Votes","Hearings","Reports","Sponsors",
-  "Documents","Prime sponsored","Co-sponsored","Bills","Meetings"]);
+  "Documents","Related","Prime sponsored","Co-sponsored","Bills","Meetings"]);
 let reportBuild=null;       // site/build.json's "finished", fetched once, on first open
 
 function reportBox(kind,ref){

@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-12.9
+// GRANITE_VERSION: 2026-09-12.10
 /*
  * POST /api/report -- a reader says something on a page is wrong.
  *
@@ -54,7 +54,7 @@ export const FIELDS = new Set(["date", "status", "sponsor", "vote", "hearing",
 // The tabs the pages render. compile_reports.TABS is the same list, and
 // preflight holds the two together.
 export const TABS = new Set(["", "Summary", "Bill Text", "Votes", "Hearings", "Reports",
-  "Sponsors", "Documents", "Prime sponsored", "Co-sponsored", "Bills", "Meetings"]);
+  "Sponsors", "Documents", "Related", "Prime sponsored", "Co-sponsored", "Bills", "Meetings"]);
 // A TAB'S OLD NAME, AND ITS NAME NOW (8 October 2026). A bill's Hearings tab
 // was Videos, and a committee's Meetings tab was Sessions (the person's words,
 // D19), and a page loaded before either was renamed still sends the old name;
