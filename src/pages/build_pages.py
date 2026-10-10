@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.173
+# GRANITE_VERSION: 2026-09-04.174
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -2774,7 +2774,7 @@ def sitting_days():
     return set(build_session_pages.sittings()[0])
 
 
-def committees_with_roster(out):
+def committees_with_roster(out, data="data"):
     """How many committees this site can say who sits on.
 
     THE NUMBER WAS TYPED AND MATCHED NOTHING. The home page offered "who sits
@@ -2785,24 +2785,24 @@ def committees_with_roster(out):
     roster at all (H05 Education among them, 1,532 bills and no members), and
     "who sits on each" is false of every one of those. So the card states the
     committees whose membership the record actually holds, counted at build
-    time out of the JSON the page it links to is built from -- the way the
-    Learn pages compute every figure they print.
+    time -- the way the Learn pages compute every figure they print.
 
-    n_members is build_committees.py's own len(members), and the 38 it counts
-    today are exactly the 38 that carry a chair. Returns 0 if committees.json
-    is not written yet: build_committees runs after this one, so on a cold
-    build there is nothing to count and the card drops the number rather than
-    inventing one.
+    COUNTED BY THE STEP THAT KNOWS, NOT READ OFF ITS OUTPUT (10 October
+    2026). This read site/committees.json, which build_committees writes four
+    steps after this one, so a build into an empty site/ -- GitHub's nightly,
+    whose machine starts with none -- had nothing to count, and the card said
+    "Who sits on a committee" where the laptop's named 38; found twice on 9
+    October, on the builds the kit's copy of last night's file did not reach.
+    build_committees.with_roster counts what its committees.json will give a
+    member, from what that step reads for it -- the seat table, the listing
+    and the roster, none of which a later step writes -- so a cold build and
+    a warm one say the same. preflight's _home_counts_rosters_cold builds
+    into a site with no committees.json and holds the number to what
+    build_committees then writes. It is 0 only where no committee has a
+    sitting member on file, and then the card names no number.
     """
-    f = Path(out) / "committees.json"
-    if not f.exists():
-        return 0
-    try:
-        rows = json.loads(f.read_text(encoding="utf-8"))
-    except (OSError, ValueError):
-        return 0
-    return sum(1 for c in rows
-               if isinstance(c, dict) and (c.get("n_members") or 0) > 0)
+    import build_committees
+    return build_committees.with_roster(out, data)
 
 
 # THE BROWSER'S FILES, as this step puts them in the site: copied from
@@ -3402,16 +3402,18 @@ party or committee to find a member.</p>
 
     # The Committees card's offer, counted rather than typed. See
     # committees_with_roster: what the card promises is a roster, so the number
-    # it names is the committees that have one, and it names none at all if
-    # committees.json is not there to count.
+    # it names is the committees that have one, counted by build_committees
+    # from what it reads -- not from its committees.json, which a build into
+    # an empty site has not written yet. With none, it names no number.
     n_roster = committees_with_roster(out)
     cmte_offer = (f"Who sits on each of the {n_roster} committees with a "
-                  "roster, and what it did on every day it met" if n_roster
+                  "roster, and what it did on every day it met" if n_roster > 1
+                  else "Who sits on the one committee with a roster, and what "
+                       "it did on every day it met" if n_roster == 1
                   else "Who sits on a committee, and what it did on every day "
                        "it met")
-    if not n_roster:
-        print("  committees: no site/committees.json to count, so the home "
-              "page's Committees card names no number")
+    print(f"  committees: {n_roster} with a member on the roster today, as "
+          "build_committees counts them, for the home page's Committees card")
 
     # WHICH OF THE DAYS "MOST RECENT FLOOR SESSIONS" NAMES HAVE A PAGE. The
     # block is drawn by the script from home.json, a chamber and a date each,

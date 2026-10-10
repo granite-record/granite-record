@@ -155,7 +155,7 @@
                 "assets/og-legislator.png", "assets/og-town.png"]
     },
     {
-      "what": "The one file of last night's site a build reads before it rewrites it: build_pages.py counts the committees with a roster for the home page out of site/committees.json, which build_committees.py writes later in the same build. A build from the kit alone on 25 September differed from the laptop's in this and in two sitemap addresses, of 54,975 files; build_bill_pages.py has since listed those addresses whatever is on disk.",
+      "what": "The one file of last night's site a build reads before it rewrites it: build_pages.py links the home page's Coming Up cards to their committees' pages through site/committees.json (committee_codes), which build_committees.py writes later in the same build. A build from the kit alone on 25 September differed from the laptop's in the Committees card's count and in two sitemap addresses, of 54,975 files; build_bill_pages.py has since listed those addresses whatever is on disk, and since 10 October 2026 the count is build_committees.with_roster's, made from what that step reads, so it no longer needs this file.",
       "owner": "night",
       "optional": true,
       "paths": ["site/committees.json"]

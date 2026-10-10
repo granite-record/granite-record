@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.496
+# GRANITE_VERSION: 2026-09-04.497
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -28271,6 +28271,89 @@ CLOCK_OF_THEIR_OWN = {
 }
 
 
+@check("build", "a build into an empty site counts the committees with a roster on the home page, "
+                "as build_committees then writes them")
+def _home_counts_rosters_cold():
+    """THE COMMITTEES CARD ON A BUILD THAT STARTS EMPTY (10 October 2026).
+    build_pages counted the committees with a roster out of
+    site/committees.json, which build_committees writes four steps later, so
+    a build into an empty site/ -- GitHub's nightly, whose machine starts
+    with none -- found nothing to count, and the home page said "Who sits on
+    a committee, and what it did on every day it met" where the laptop's
+    said "Who sits on each of the 38 committees with a roster". Found twice
+    on 9 October, on the builds where the kit's copy of last night's file
+    (cloud_kit.json's entry for site/committees.json) was not there to hide
+    it. The count is build_committees' own now (build_committees.with_roster),
+    made from what that step reads, none of which a later step writes.
+
+    So this takes the fixture's built project, gives its House Commerce and
+    its Senate Education a sitting member each, takes site/committees.json
+    and the home page away, and runs build_pages alone: the card must count
+    two. Then build_committees, whose committees.json must give a member to
+    the same two -- so the card says what the Committees page lists."""
+    absent = [x for x in CHAIN_NEEDS if not _paths.locate(x).exists()]
+    if absent:
+        return "skip", "not here: " + ", ".join(absent)
+    root = Path(tempfile.mkdtemp(prefix="gr-cold-roster-"))
+    try:
+        _fixture_site_whole(root)
+        site = root / "site"
+        legs = {str(m.get("id")): m for m in json.loads(
+            (site / "legislators.json").read_text(encoding="utf-8"))}
+        house, senate = legs.get("377204"), legs.get("377207")
+        assert house and senate, ("the fixture's roster no longer has Jodi Nelson (377204) and "
+                                  "Debra Altschiller (377207), whom this seats")
+        # The committees as the three files build_committees reads them
+        # from name them: data/committees.json's codes, the weekly listing
+        # (committees.json at the root, with its chairs) and the seats.
+        codes = json.loads((root / "data" / "committees.json").read_text(encoding="utf-8"))
+        codes["S05"] = {"code": "S05", "name": "Education", "abbr": "EDUCATION"}
+        codes["H05"] = {"code": "H05", "name": "Education", "abbr": "EDUCATION"}
+        (root / "data" / "committees.json").write_text(json.dumps(codes), encoding="utf-8")
+        (root / "committees.json").write_text(json.dumps({
+            "H": [{"chamber": "H", "name": "Commerce", "code": "43", "chair": "Jodi Nelson"}],
+            "S": [{"chamber": "S", "name": "Education", "code": "05",
+                   "chair": "Debra Altschiller"}]}), encoding="utf-8")
+
+        def seat(m, sitting=True):
+            return {"id": str(m["id"]), "name": m["name"], "party_code": m.get("party_code"),
+                    "district": m.get("district"), "chamber": m.get("chamber"),
+                    "sitting": sitting}
+        (root / "data" / "committee_members.json").write_text(json.dumps({
+            "H43": [seat(house)], "S05": [seat(senate)],
+            # A seat the table still holds for someone no longer sitting, on a
+            # committee with a page: a page, and no roster to count.
+            "H05": [seat(house, sitting=False)]}), encoding="utf-8")
+        for f in ("committees.json", "index.html"):
+            (site / f).unlink(missing_ok=True)
+
+        def run(script, *args):
+            r = _run([sys.executable, _paths.script(script), *args], cwd=root,
+                     capture_output=True, text=True, timeout=180)
+            assert r.returncode == 0, f"{script} stopped: {(r.stderr or r.stdout).strip()[-300:]}"
+        run("build_pages.py", "--out", "site")
+        assert not (site / "committees.json").exists(), "build_pages wrote site/committees.json"
+        home = " ".join((site / "index.html").read_text(encoding="utf-8").split())
+        said = re.search(r"Who sits on (each of the (\d+) committees|the one committee|a committee)", home)
+        assert said and said.group(2), (
+            "built into a site with no committees.json yet, the home page's Committees card "
+            f"names no number: {said.group(0) if said else 'no card'!r} -- it is counting a "
+            "file a later step writes, as GitHub's nightly found")
+        run("build_committees.py", "--site", "site", "--data", "data",
+            "--base", "https://graniterecord.org")
+        rows = json.loads((site / "committees.json").read_text(encoding="utf-8"))
+        with_members = sorted(c["code"] for c in rows if (c.get("n_members") or 0) > 0)
+        assert int(said.group(2)) == len(with_members) == 2, (
+            f"the home page counts {said.group(2)} committees with a roster and "
+            f"build_committees gives a member to {len(with_members)} ({with_members}); "
+            "the fixture seats two")
+        return "ok", ("built into a site with no committees.json, the home page counts the "
+                      f"{said.group(2)} committees build_committees then gives a member "
+                      f"({', '.join(with_members)})")
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+
+
 @check("build", "a stated build date is the date every builder writes, and only build_date.py "
                 "reads the clock for them", needs=("build_all", "build_date", "shell"))
 def _build_date_stated(build_all, build_date, shell):
@@ -38048,11 +38131,15 @@ def _committee_older_names(committee_names, build_committees, build_site_v2):
         {"name": "Regulated Revenues", "years": "1989 to 1996"}]
     assert BC.runs(["2009-2010", "1997-1998"]) == "1997 to 1998 and 2009 to 2010"
     src = Path(BC.__file__).read_text(encoding="utf-8")
-    main_ = src[src.index("def main("):]
+    # From who_sits on: main() reads the codes, the retired ones among them,
+    # through who_sits since 10 October 2026, which with_roster shares.
+    main_ = src[src.index("def who_sits("):]
+    assert "R = who_sits(site, data)" in src[src.index("def main("):], (
+        "build_committees.main no longer reads the codes through who_sits")
     for said in ("CN.retired()", 'code_of(cname, r.get("body"), r.get("term"))',
                  'code_of(nm, "", b.get("term"))', "name_on_the_day(name,",
                  "shared_pages(CN.shared(), span_of, index)", 'rec["same_code"] = '):
-        assert said in main_, f"build_committees.main no longer has {said}"
+        assert said in main_, f"build_committees.main (or who_sits) no longer has {said}"
     # A retired page's tab and search result carry its years, since S33's
     # name is S50's too.
     assert 'title=f"{name}{when} — ' in main_ and \

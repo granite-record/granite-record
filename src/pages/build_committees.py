@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-07.51
+# GRANITE_VERSION: 2026-09-07.52
 """
 A page's worth of data for every committee.
 
@@ -57,6 +57,7 @@ import argparse
 import collections
 import json
 import re
+import types
 
 import proceedings as P
 import bill_order as BO
@@ -568,18 +569,44 @@ def load_county_abbr(legislators):
             CABBR.setdefault(str(r["county_code"]).zfill(2), r["county_abbr"])
 
 
-def main():
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--site", default="site")
-    ap.add_argument("--data", default="data")
-    ap.add_argument("--base", default="https://graniterecord.org")
-    a = ap.parse_args()
-    site, data = Path(a.site), Path(a.data)
+# H29 is "No Committee Assignment" -- the code the General Court files a
+# bill under when it has no committee. It is not a committee and must not
+# have a page; it had one, with two bills on it and no way in, because the
+# index only lists a chamber it can name and H29 has none.
+NOT_A_COMMITTEE = {"no committee assignment"}
 
-    # Every bill's row, from the term files the pages read; it stops, saying
-    # why, where there is no site or the files do not hold together -- the
-    # bills a committee heard come from it.
-    idx = SR.bill_index_or_stop(site, "build_committees.py")
+
+def committee_name(code, lead, codes):
+    """The name a committee's page goes by: the listing's (who_sits' lead),
+    else data/committees.json's (codes), else ""."""
+    return ((lead.get(code) or {}).get("name")
+            or (codes.get(code) or {}).get("name") or "")
+
+
+def presentable(name):
+    """Whether a committee of this name gets a page. A code with no name does
+    not: five of them -- H13, H14, H39, H40, H41 -- are in the database's
+    CommitteeMembers and in no other source, with no name, no bills and no
+    sitting day, and had pages titled "The House Committee on H13". Nor does
+    H29 (NOT_A_COMMITTEE)."""
+    return bool(name) and name.strip().lower() not in NOT_A_COMMITTEE
+
+
+def who_sits(site, data):
+    """What this step reads to say who sits on each committee today, and the
+    helpers it reads it with, as one namespace: the listing with its details
+    joined in (web), the seat table (seats), the committees' codes with the
+    retired ones added (codes, retired), the roster (legs), the name-to-code
+    map and its helpers (by_name, bare, code_of), the listing by code (lead)
+    and on_it_today(seat, code).
+
+    ONE PLACE, FOR TWO READERS (10 October 2026). main() builds the pages
+    from it, and with_roster() counts the committees it gives a member, for
+    the home page's Committees card -- which build_pages writes four steps
+    before main() runs, so it cannot read main()'s committees.json, and on a
+    build into an empty site (GitHub's nightly) there was none to read.
+    Nothing here is a later step's: the files are the fetchers', and
+    site/legislators.json is the site data's, which runs first."""
     # committees.json with committee_details.json joined in. Two files since
     # 26 September, because GitHub's weekly job swaps committees.json in whole
     # from the listing pages, which carry no clerk and no purpose: read alone,
@@ -603,24 +630,7 @@ def main():
     retired = {c: nm for c, nm in CN.retired().items() if c not in codes}
     for c, nm in retired.items():
         codes[c] = {"code": c, "name": nm}
-    # Both files, CONCATENATED per bill rather than one shadowing the other.
-    # setdefault kept only the first: a bill reported by a House committee and
-    # then by a Senate one -- which is most bills that pass a chamber -- lost
-    # the Senate's report entirely, so a Senate committee narrating its own
-    # executive session had nothing of its own to quote and quoted the House's.
-    reports = {}
-    # The House Calendar's printings, less the reports report_check.py found
-    # printed under another bill: a record it drops is not this bill's, and a
-    # committee day would otherwise narrate another bill's recommendation.
-    house = load("committee_reports.json", {})
-    RC.apply(house, load("report_corrections.json", {}))
-    for src in (house, load("senate_reports.json", {})):
-        for t, byb in src.items():
-            for b, v in byb.items():
-                reports.setdefault(t, {}).setdefault(b, []).extend(
-                    v if isinstance(v, list) else [v])
     legs = {str(m.get("id")): m for m in load(site / "legislators.json", [])}
-    load_county_abbr(legs)
 
     # (chamber, name) -> code. NOT name alone: both chambers have a
     # Judiciary, a Finance and a Ways and Means, so a name-only map silently
@@ -730,6 +740,60 @@ def main():
             return False
         mine = assigned.get(str(seat.get("id")))
         return True if mine is None else code in mine
+    return types.SimpleNamespace(web=web, seats=seats, codes=codes, retired=retired,
+                                 legs=legs, by_name=by_name, bare=bare, code_of=code_of,
+                                 lead=lead, on_it_today=on_it_today)
+
+
+def with_roster(site="site", data="data"):
+    """How many committees this step gives a member today: the entries of its
+    committees.json whose n_members is more than 0, counted as main() fills
+    them -- every seat on a committee that gets a page, kept where
+    on_it_today keeps it -- without the bills, the meetings or the pages,
+    which only main() needs. build_pages asks it for the home page's
+    Committees card (build_pages.committees_with_roster), and preflight's
+    _home_counts_rosters_cold holds the two to the same number on a build
+    into an empty site."""
+    R = who_sits(Path(site), Path(data))
+    return sum(1 for code, held in R.seats.items()
+               if presentable(committee_name(code, R.lead, R.codes))
+               and any(R.on_it_today(m, code) for m in held or []))
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--site", default="site")
+    ap.add_argument("--data", default="data")
+    ap.add_argument("--base", default="https://graniterecord.org")
+    a = ap.parse_args()
+    site, data = Path(a.site), Path(a.data)
+
+    # Every bill's row, from the term files the pages read; it stops, saying
+    # why, where there is no site or the files do not hold together -- the
+    # bills a committee heard come from it.
+    idx = SR.bill_index_or_stop(site, "build_committees.py")
+    # Who sits on each committee today, and what each is called: who_sits,
+    # which with_roster reads too, for the home page's count.
+    R = who_sits(site, data)
+    seats, codes, retired, legs = R.seats, R.codes, R.retired, R.legs
+    bare, code_of, lead, on_it_today = R.bare, R.code_of, R.lead, R.on_it_today
+    # Both files, CONCATENATED per bill rather than one shadowing the other.
+    # setdefault kept only the first: a bill reported by a House committee and
+    # then by a Senate one -- which is most bills that pass a chamber -- lost
+    # the Senate's report entirely, so a Senate committee narrating its own
+    # executive session had nothing of its own to quote and quoted the House's.
+    reports = {}
+    # The House Calendar's printings, less the reports report_check.py found
+    # printed under another bill: a record it drops is not this bill's, and a
+    # committee day would otherwise narrate another bill's recommendation.
+    house = load("committee_reports.json", {})
+    RC.apply(house, load("report_corrections.json", {}))
+    for src in (house, load("senate_reports.json", {})):
+        for t, byb in src.items():
+            for b, v in byb.items():
+                reports.setdefault(t, {}).setdefault(b, []).extend(
+                    v if isinstance(v, list) else [v])
+    load_county_abbr(legs)
 
     # ---- what each committee heard, day by day --------------------------
     days = collections.defaultdict(lambda: collections.defaultdict(list))
@@ -843,19 +907,12 @@ def main():
     index, written, urls, skipped = [], 0, [], []
     span_of = {}
 
-    # H29 is "No Committee Assignment" -- the code the General Court files a
-    # bill under when it has no committee. It is not a committee and must not
-    # have a page; it had one, with two bills on it and no way in, because the
-    # index only lists a chamber it can name and H29 has none.
-    NOT_A_COMMITTEE = {"no committee assignment"}
     for code in sorted(set(list(seats) + list(referred) + list(days))):
         info = lead.get(code, {})
-        name = (info.get("name") or (codes.get(code) or {}).get("name") or "")
-        # A code with no name is not a committee this site can present. Five
-        # of them -- H13, H14, H39, H40, H41 -- are in the database's
-        # CommitteeMembers and in no other source: no name, no bills, no
-        # sitting day, and pages titled "The House Committee on H13".
-        if not name or name.strip().lower() in NOT_A_COMMITTEE:
+        name = committee_name(code, lead, codes)
+        # A code with no name, or H29's, is not a committee this site can
+        # present (presentable says which).
+        if not presentable(name):
             skipped.append(f"{code}" + (f" ({name})" if name else " (unnamed)"))
             continue
         # The code carries the chamber where nothing else states it.
