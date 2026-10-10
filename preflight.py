@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.512
+# GRANITE_VERSION: 2026-09-04.513
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -75211,7 +75211,9 @@ def _learn_figures():
                 if "[[" in p.read_text(encoding="utf-8", errors="replace")]
     assert not unfilled, f"a figure left unfilled on {unfilled}"
     n = len(idx)
-    assert f"Across the {n:,} bills on this site" in page.read_text(encoding="utf-8"), (
+    # "in this record" since the Learn pages' wording of 9 October 2026 (E6),
+    # as the index check reads it.
+    assert f"Across the {n:,} bills in this record" in page.read_text(encoding="utf-8"), (
         f"how-a-bill-becomes-law does not state the index's {n:,} bills: built before "
         "build_civics filled the figures, or from another index")
     return "ok", f"every Learn page filled; the bill page states the index's {n:,} bills"

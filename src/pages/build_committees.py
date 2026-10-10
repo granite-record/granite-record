@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-07.54
+# GRANITE_VERSION: 2026-09-07.55
 """
 A page's worth of data for every committee.
 
@@ -1317,7 +1317,8 @@ def main():
                           "Every committee of the New Hampshire General Court.",
                           a.base, S.canon("/committees.html")),
         noscript="", skip_label="Skip to the committees",
-                  nav_current="committees.html", sr_title="")
+                  # No Cite on a hub (D23, 8 October 2026).
+                  nav_current="committees.html", sr_title="", cite=False)
     # A plain listing rather than an app view: there is nothing to filter and
     # 56 links do not need JavaScript to draw.
     page_html = page_html.replace(

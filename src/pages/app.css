@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.244 */
+/* GRANITE_VERSION: 2026-09-07.245 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -6557,6 +6557,13 @@ margin:0;padding:var(--sp-2);background:var(--surface);border:1px solid var(--ed
 border-radius:var(--r-in);box-shadow:0 10px 26px var(--shadow);max-height:min(60vh,420px)}
 :where(body.pg) .hqdrop[hidden]{display:none}
 :where(body.pg) .hqhint{font-size:var(--t-sm);color:var(--ink-2);margin:var(--sp-3) 0 0;max-width:34rem}
+/* IN ONE COLUMN, UNDER ITS BOX. Below 1180px the columns dissolve and each
+   block is placed by its own order (the hero 1-3, the search 4, the cards
+   5); a block with none came first, so the hint stood over the logo on a
+   phone. It takes the search's place, after it in the page. */
+@media (max-width:73.74875em){
+  :where(body.pg) .hcols .hqhint,:where(body.pg) .hcols #hqsay{order:4}
+}
 /* LATEST ACTIVITY UNDER THE RIGHT COLUMN (item 3): in a 290px column the
    day goes over its row rather than beside it, so the title has the width. */
 @media (min-width:73.75em){

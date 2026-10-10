@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.38
+# GRANITE_VERSION: 2026-09-08.39
 """
 The topics of the civics section: their order, their names, and their prose.
 
@@ -2281,8 +2281,9 @@ from the General Court's published files, and this page was last built on
 what has not been fetched.</p>
 
 <h2>How to Find a Bill, a Member or a Town</h2>
-<p>The <b>Search</b> button in the header finds legislators, committees, towns
-and this site's own pages: typing Litchfield offers both the town and the
+<p>The <b>Search</b> button in the header, drawn as a magnifier, finds
+legislators, committees, towns and this site's own pages: typing Litchfield
+offers both the town and the
 representative of that name. Anything else goes to
 <a href="bills.html">the bill search</a>, which takes a bill number, several
 separated by commas, or words from a title, sponsor or committee. It covers
