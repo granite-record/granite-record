@@ -1668,7 +1668,7 @@ def _boundary_problems(root=None, dirs=_paths.CODE_DIRS):
         if not folder:
             continue
         src = f.read_text(encoding="utf-8", errors="replace")
-        tree = ast.parse(src)
+        tree = _parsed(f)
         checks = _calls_refusal_check(tree)
         if folder == "src/fetch/gc_web" and not checks:
             bad.append(f"{rel} is in src/fetch/gc_web/ and never calls refusal.check()")
