@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.62
+# GRANITE_VERSION: 2026-09-05.63
 """
 Run the whole pipeline in the right order.
 
@@ -851,6 +851,17 @@ def plan(a):
                   "the motions put to it, who spoke on which side, how it was "
                   "voted and what that did to the bill. House only -- the "
                   "Senate journal records no speakers"),
+
+        # THE HOUSE AND SENATE FULL SESSIONS ON THE COMMITTEES PAGE (the
+        # person, 9 October 2026, v12 and v13), after both chambers' session
+        # pages, whose term files it reads: build_committees writes the page
+        # with an empty slot, and this fills it.
+        Step("the House and Senate full sessions on the Committees page",
+             ["build_full_sessions.py", "--site", "site"],
+             needs=["site/committees.json", "site/session/S", "site/session/H"],
+             produces=["site/committees.html"],
+             note="each chamber's session days of the latest term at the top "
+                  "of /committees, every earlier term a pick away"),
 
         # AFTER the committees, whose codes turn a committee name on a card
         # into a link to its page, and after the sitemap exists so the weeks

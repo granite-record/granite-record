@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.506
+# GRANITE_VERSION: 2026-09-04.508
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -27821,6 +27821,9 @@ def _built_site(here, root, brand=True, env=None):
          "site/session/S"),
         ("build_session_pages.py", ["--site", "site", "--base", base],
          "site/session/H"),
+        # The full sessions on the Committees page, after both chambers'
+        # term files, as build_all runs it.
+        ("build_full_sessions.py", ["--site", "site"], "site/committees.html"),
         # After the committees, whose codes it needs to link a card, and in
         # build_all's own order. Its output is what the Calendar tab points
         # at, so a fixture without it builds a nav link to nothing -- which
@@ -51656,6 +51659,63 @@ def _outside_links():
                   "opens a new tab; find.js opens it in one"
                   + (f", right about {len(cases)} addresses" if node else "")
                   + "; no writer puts the arrow in as text")
+
+
+@check("frontend", "the Committees page opens with the House and Senate full sessions: each "
+                   "chamber's session days of its latest term, newest first, every term a pick away")
+def _committees_full_sessions():
+    """The person, 9 October 2026 (v12): "the House and the Senate full
+    sessions listed at the top of the Committees page, each letting a reader
+    go through that chamber's session days in one place, as a committee page
+    shows its meetings"; and v13, sortable oldest to newest or newest to
+    oldest.
+
+    build_committees writes the slot; build_full_sessions fills it after the
+    session pages, whose term files it reads -- so a build into an empty site
+    draws them too. Read off the fixture's built page: the slot filled once,
+    before the committees; a column for each chamber whose term files the
+    fixture wrote, its latest term's days in it newest first, each opening
+    on its own page; the term picker offering every term file, the order
+    picker both ways; and filling the slot again redraws it rather than
+    doubling it. And build_all runs the step after both chambers' pages."""
+    import build_full_sessions as FS
+    shared, _base, _ran, _days = _fixture_site_shared()
+    site = shared / "site"
+    page = (site / "committees.html").read_text(encoding="utf-8")
+    assert '<!-- /fullsess -->' in page, "the Committees page has no slot for the full sessions"
+    bodies = [b for b in ("H", "S") if list((site / "session" / b).glob("*.json"))]
+    if not bodies:
+        return "skip", "the fixture writes no session term file"
+    assert page.count('<section class="fullsess"') == 1, "the full sessions are drawn more than once"
+    assert page.index('class="fullsess"') < page.index('class="ctwo"', page.index("<!-- /fullsess -->")), (
+        "the full sessions are not above the committees")
+    n_days = 0
+    for b in bodies:
+        terms = sorted((f.stem for f in (site / "session" / b).glob("*.json")), reverse=True)
+        col = re.search(rf'<section class="fschamber" data-body="{b}".*?</section>', page, re.S)
+        assert col, f"no column for the {FS.CHAMBER[b]}"
+        days = [d["date"] for d in json.loads((site / "session" / b / f"{terms[0]}.json")
+                                              .read_text(encoding="utf-8"))["days"]]
+        drawn = re.findall(r'<details class="fsday" data-date="([^"]+)">', col.group(0))
+        assert drawn == sorted(days, reverse=True), (
+            f"the {FS.CHAMBER[b]}'s days are {drawn}, not {terms[0]}'s newest first")
+        for d in drawn:
+            assert f'href="session/{b}/{d}.html">Open this session day</a>' in col.group(0), (
+                f"{b} {d} does not open on its own page")
+            assert (site / "session" / b / f"{d}.html").exists(), f"session/{b}/{d}.html is not built"
+        offered = re.findall(r'<option value="(\d{4}-\d{4})"', col.group(0))
+        assert offered == terms, f"the {FS.CHAMBER[b]}'s term picker offers {offered}, not {terms}"
+        assert '<option value="new" selected>Newest first</option><option value="old">Oldest first' \
+            in col.group(0), "the order picker does not offer both ways"
+        n_days += len(drawn)
+    again = FS.SLOT.sub(lambda _m: FS.block(site)[0], page, count=1)
+    assert again.count('<section class="fullsess"') == 1, "filling the slot again doubles it"
+    plan = Path("build_all.py").read_text(encoding="utf-8")
+    assert plan.index('"build_full_sessions.py"') > plan.index(
+        '"a page for every day the House sat"'), "build_all fills the slot before the session pages"
+    return "ok", (f"{n_days} session days of the latest term, newest first, for "
+                  f"{' and '.join(FS.CHAMBER[b] for b in bodies)}, above the committees; every "
+                  "term a pick away; filled once, after the session pages")
 
 
 @check("frontend", "the bill search opens Status and Bill Type, puts a narrowed long list's "

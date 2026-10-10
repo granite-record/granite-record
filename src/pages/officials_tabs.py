@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-10.1
+# GRANITE_VERSION: 2026-10-10.2
 """
 The Officials page's tabs that are not the legislators' (Polish 3, the
 person's feedback of 9 October 2026, item 4, and the decisions of that day):
@@ -207,7 +207,10 @@ def county(off, legs):
     for m in legs:
         if m.get("chamber") == "H" and m.get("county"):
             reps[m["county"]] = reps.get(m["county"], 0) + 1
-    about = "".join(f'<p class="ofwhy">{E(p)}</p>' for p in co.get("about") or [])
+    # The file writes a dash as two hyphens, as a plain-text file does; the
+    # page sets it as the site's dash.
+    about = "".join(f'<p class="ofwhy">{E(p).replace(" -- ", "&thinsp;&mdash;&thinsp;")}</p>'
+                    for p in co.get("about") or [])
     parts = []
     for name in sorted(counties):
         c = counties[name] or {}
