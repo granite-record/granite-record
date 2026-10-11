@@ -328,8 +328,12 @@ def chapter_page(tmpl, table, data, bills, ch, base):
                noscript="", skip_label="Skip to the statute", sr_title="",
                nav_current="resources.html", cite=False)
     first = table.sections[secs[0]] if secs else None
-    official = (f"https://gc.nh.gov/rsa/html/{first.url.rsplit('/', 1)[0]}/{ch}-mrg.htm"
-                if first and first.url else "https://gc.nh.gov/rsa/html/nhtoc.htm")
+    # The General Court's own table of contents page for the chapter, the
+    # address build_site_v2.rsa_url has linked for a chapter since 4
+    # September, rather than a guessed one for the whole chapter's text.
+    tno = (first.url.split("/")[0] if first and first.url else "") or (first.title_no if first else "")
+    official = (f"https://gc.nh.gov/rsa/html/NHTOC/NHTOC-{tno}-{ch}.htm" if tno
+                else "https://gc.nh.gov/rsa/html/nhtoc.htm")
     lead = (f"The text as the General Court's table holds it, "
             f"through the laws of {E(str(latest))}. "
             f'<a href="{E(official)}" rel="noopener">The official text on gc.nh.gov</a>.')
