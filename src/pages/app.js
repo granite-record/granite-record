@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.188
+// GRANITE_VERSION: 2026-09-07.189
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -3764,16 +3764,30 @@ function endNote(d){
 // writes (C8: in their case where they are made, "House Committee
 // (Housing)", "On the House Floor"), how it ended, and the docket.
 const RSA_SHOWN=8;
+// CHANGED THESE STATUTES (RSA_PAGE.md §7): the sections the statute's own
+// source notes credit to the law this bill became, each linked to its anchor
+// on the statute's page -- the other end of a section's "How it has changed".
+function changedLine(d){
+  const a=d.changed||[];
+  if(!a.length)return "";
+  const link=x=>{const p=x.split(":");return `<a class="rsa" href="/rsa/${esc(p[0].toLowerCase())}#s${esc(p[1]||"")}">${esc(x)}</a>`;};
+  const lead=a.length===1?"Changed RSA":"Changed these statutes:";
+  if(a.length<=RSA_SHOWN+2)return `<p class="rsaline">${lead} ${a.map(link).join(", ")}</p>`;
+  return `<div class="rsaline">${lead} <span class="rsaset">${a.slice(0,RSA_SHOWN).map(link).join(", ")}</span>`
+    +`<details class="rsamore"><summary><span class="shut">Show all ${a.length} sections</span>`
+    +`<span class="open">Show fewer</span></summary><span class="rsaset">${
+      a.slice(RSA_SHOWN).map(link).join(", ")}</span></details></div>`;
+}
 function rsaLine(d){
   const ch=rsaChapters(d);
-  if(!ch.length)return "";
+  if(!ch.length)return changedLine(d);
   const link=([n,u])=>`<a class="rsa" href="${esc(u)}"${u.charAt(0)==="/"?"":' target="_blank" rel="noopener"'}>${esc(n)}</a>`;
   const lead=ch.length===1?"Amends RSA chapter":"Amends RSA chapters";
-  if(ch.length<=RSA_SHOWN+2)return `<p class="rsaline">${lead} ${ch.map(link).join(", ")}</p>`;
+  if(ch.length<=RSA_SHOWN+2)return `<p class="rsaline">${lead} ${ch.map(link).join(", ")}</p>`+changedLine(d);
   return `<div class="rsaline">${lead} <span class="rsaset">${ch.slice(0,RSA_SHOWN).map(link).join(", ")}</span>`
     +`<details class="rsamore"><summary><span class="shut">Show all ${ch.length} chapters</span>`
     +`<span class="open">Show fewer</span></summary><span class="rsaset">${
-      ch.slice(RSA_SHOWN).map(link).join(", ")}</span></details></div>`;
+      ch.slice(RSA_SHOWN).map(link).join(", ")}</span></details></div>`+changedLine(d);
 }
 const gcSource=d=>d.docket_url?`<a href="${esc(d.docket_url)}" target="_blank" rel="noopener">NH General Court</a>`
   :"NH General Court";

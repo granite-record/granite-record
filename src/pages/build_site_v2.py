@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.200
+# GRANITE_VERSION: 2026-09-05.201
 """
 Generate the faceted site from real General Court data.
 
@@ -7919,6 +7919,38 @@ def statute_changes(term, bid):
     return sorted(out, key=key)
 
 
+_ENACTED = []
+
+
+def statutes_enacted(term, bid):
+    """The statute sections the source notes say this bill wrote, as the law
+    it became (RSA_PAGE.md §7, "Changed these statutes"), in statute order:
+    the other way round from a section's history, so the two pages link both
+    ways. [] where rsa_citations.json is not on this disk or the bill became
+    no law a note names."""
+    if not _ENACTED:
+        inv = defaultdict(list)
+        p = Path("rsa_citations.json")
+        try:
+            data = json.loads(p.read_text(encoding="utf-8")) if p.is_file() else {}
+        except (OSError, ValueError):
+            data = {}
+        for addr, rows in (data.get("enacted") or {}).items():
+            for _y, _law, b in rows:
+                if b and addr not in inv[b]:
+                    inv[b].append(addr)
+        _ENACTED.append(inv)
+    got = list(_ENACTED[0].get(f"{term}/{bid}", []))
+
+    def key(a):
+        ch, _, sec = a.partition(":")
+        m = re.match(r"(\d+)(?:-([A-Z]+))?$", ch)
+        n = re.match(r"(\d+)(?:\.(\d+))?(?:-(.*))?$", sec)
+        return ((int(m.group(1)), m.group(2) or "") if m else (99999, ch),
+                (int(n.group(1)), int(n.group(2) or 0), n.group(3) or "") if n else (99999, 0, sec))
+    return sorted(got, key=key)
+
+
 def bill_index_row(bid, b, year, term, cmte, cmtes, disp, prime,
                    narr, rcs, coverage, carried, dates, chapter="",
                    passed=None, acted=None, live=False):
@@ -10923,6 +10955,11 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
             # adopted. A bill with no text on disk gets no row rather than a
             # row inferred from either.
             "amends": bill_amends((btext or {}).get("body", "")),
+            # WHAT IT CHANGED, AS THE LAW IT BECAME: the statute's own source
+            # notes, not the bill's text (RSA_PAGE.md §3: the two agree on
+            # about nine in ten of the text's claims). Only on a bill a note
+            # names, and only where the statute pages are built.
+            **({"changed": ch} if (ch := statutes_enacted(term, bid)) else {}),
         }), encoding="utf-8")
 
     if status_pages:

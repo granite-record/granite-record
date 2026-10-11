@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.534
+# GRANITE_VERSION: 2026-09-04.535
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -32557,8 +32557,17 @@ def _rsa_links_own_pages(B, RSA):
         B._STATUTES[:] = keep
     assert got == ("/rsa/91-a#s4", "/rsa/91-a", "/rsa/91-a", ""), got
     assert amends == {"RSA 91-A:4": "/rsa/91-a#s4"}, amends
+    keep_e = list(B._ENACTED)
+    try:
+        B._ENACTED[:] = [{"2019-2020/HB286": ["91-A:4", "6:12", "91-A:1-a"]}]
+        changed = B.statutes_enacted("2019-2020", "HB286")
+    finally:
+        B._ENACTED[:] = keep_e
+    assert changed == ["6:12", "91-A:1-a", "91-A:4"], f"Changed these statutes is not in statute order: {changed}"
     app = Path("src/pages/app.js").read_text(encoding="utf-8")
     assert app.count('charAt(0)==="/"') >= 3, "an app link writer sends the site's own statute page to a new tab"
+    assert "function changedLine(d)" in app and "+changedLine(d)" in app, \
+        "the bill page does not draw Changed these statutes"
     return "ok", "91-A:4 to its anchor, a new section to its chapter, chapter 999 to nothing; same tab"
 
 
