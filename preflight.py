@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.542
+# GRANITE_VERSION: 2026-09-04.543
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -32643,7 +32643,77 @@ def _rsa_pages(B, RSA, S):
     assert hist.index("2019") < hist.index("1967") and 'href="/bill/2019/hb286"' in hist, \
         "the history is not newest first with its bill"
     assert "Access to Governmental Records and Meetings" in page, "the chapter's name is not in title case"
-    return "ok", "91-A:4 tagged pending by HB 100, linked to 91-A:5 and not to 91-A:99, history 2019 then 1967"
+    # The person, 11 October 2026: "Chapter 71: The Tax Commission rather
+    # than just 71"; the sections in a sidebar; and a bill in the history is
+    # not listed again beside it ("the exact same bill numbers which is
+    # redundant").
+    assert "<h1>Chapter 91-A: Access to Governmental Records and Meetings</h1>" in page, \
+        "the chapter is not titled Chapter 91-A: its name"
+    side = page[page.index('class="rs-side"'):page.index('class="rs-art"')]
+    assert 'href="#s4"' in side and 'href="#s5"' in side, "the sidebar does not list the chapter's sections"
+    assert "Other bills that proposed changes" not in sec and "Also proposed" not in sec, \
+        "HB 286, in 91-A:4's history, is listed again as another bill that proposed changes"
+    return "ok", ("91-A:4 tagged pending by HB 100, linked to 91-A:5 and not to 91-A:99, history 2019 then "
+                  "1967 and HB 286 not repeated; titled Chapter 91-A, its sections in the sidebar")
+
+
+@check("build", "the Laws landing: titles say which chapters they hold, chapters carry their name, "
+       "status and topic, and a repealed or moved chapter says so in words", needs=("build_rsa", "rsa", "shell"))
+def _rsa_landing(B, RSA, S):
+    """The person, 11 October 2026: laid out as the bill search is, "filters
+    on the side"; "the top level titles should have something similar to the
+    general court's RSA website that tells you which chapters each title
+    includes before you click it"; topics "in a similar way to bills"; and
+    repealed chapters plain to see. The two repeal notes are the table's own
+    for RSA 71 and RSA 373."""
+    cols = ["id", "TitleNo", "ChapterNo", "SectionNo", "Title", "Chapter", "Section", "SourceNote",
+            "rsa", "EntireRSA", "titleNumber", "url"]
+    t = RSA.Table([dict(zip(cols, r)) for r in (
+        ["1", "V", "72", "72-1", "TITLE V TAXATION", "CHAPTER 72 PERSONS AND PROPERTY LIABLE TO TAXATION",
+         "Section 72:1 Poll Taxes.", "", "", "<codesect> Repealed.</codesect>", "5", "V\\72\\72-1.htm"],
+        ["2", "V", "72", "72-6", "TITLE V TAXATION", "CHAPTER 72 PERSONS AND PROPERTY LIABLE TO TAXATION",
+         "Section 72:6 Real Estate.", "", "", "<codesect> All real estate</codesect>", "5",
+         "V\\72\\72-6.htm"])])
+    assert "72" in t.chapters, sorted(t.chapters)
+    data = {"bills": {"2025-2026": {"HB100": {"changes": ["72:6"]}, "HB101": {"changes": ["72:6"]}}},
+            "statute": {}, "enacted": {},
+            "asof": {"laws_through": 2025}}
+    root = Path(tempfile.mkdtemp(prefix="gr-rsal-"))
+    try:
+        (root / "idx").mkdir()
+        (root / "idx" / "2025-2026.json").write_text(json.dumps([
+            {"id": "HB100", "n": "HB 100", "year": 2025, "title": "x", "kind": "active", "chip": "In committee",
+             "term": "2025-2026", "topic": "Taxes - State"},
+            {"id": "HB101", "n": "HB 101", "year": 2025, "title": "y", "kind": "law", "chip": "Signed into law",
+             "term": "2025-2026", "topic": "Taxes - State"}]), encoding="utf-8")
+        bills = B.Bills(root, "2025-2026")
+        topics, pending = B.chapter_topics(data, bills), B.chapter_pending(data, bills)
+        page = B.landing_page(S.template(Path("site")), t, data, "https://graniterecord.org", topics, pending)
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    assert topics.get("72") == ["Taxes - State"] and pending.get("72"), (topics, pending)
+    title = page[page.index('id="t-V"'):]
+    assert '<span class="lw-tno">Title V</span>' in title and "Chapter 72 &middot;" in title \
+        and "Persons and Property Liable to Taxation" in title[:title.index('class="lw-chs"')], \
+        "Title V does not say which chapters it holds before it is opened"
+    assert '<span class="lw-chn">Chapter 72:</span>' in page and 'data-topics="Taxes - State"' in page \
+        and 'data-pend="1"' in page and "1 pending" in page, "the chapter's label, topic or pending count is missing"
+    for name in ("st", "tp", "ti"):
+        assert f'name="{name}"' in page, f"the {name} filter is missing"
+    assert 'id="lwread"' in page and 'data-sec' in B.LANDING_JS, "no reader for a chosen section"
+    gone = B.repeal_words("TITLE V\nTAXATION CHAPTER 71\nTHE TAX COMMISSION Chapter 71 Repealed \u2013 "
+                          "Entire Chapter was repealed\n[Repealed 1973, 544:19, eff. Sept. 1, 1973.]")
+    assert gone == " It was repealed by the Laws of 1973, chapter 544:19, effective Sept. 1, 1973.", gone
+    note = ("TITLE XX\nTRANSPORTATION CHAPTER 373\nCROSSINGS Chapter 373 Repealed \u2013 Entire Chapter was "
+            "repealed\n[Redesignated as RSA 246 by 2024, 33:4, eff. July 1, 2024.]")
+    assert B.moved_to(note) == "246" and 'It is now <a href="/laws/246">RSA 246</a>' in B.repeal_words(note), \
+        B.repeal_words(note)
+    css = Path("src/pages/app.css").read_text(encoding="utf-8")
+    assert re.search(r"\.rs-folds\{[^}]*flex-direction:column", css), \
+        "the section's folds sit side by side, so opening one moves the other"
+    assert re.search(r"\.rs-banner\{[^}]*var\(--t-lead\)", css), "the repeal banner is not at the lead's size"
+    return "ok", ("Title V names Chapter 72 before it opens; status, topic and title filters; 71 repealed "
+                  "in 1973 and 373 moved to RSA 246, in words")
 
 
 @check("build", "the changes files mark milestones, set a ballot beside its roll call, and let a "

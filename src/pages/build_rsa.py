@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-11.4
+# GRANITE_VERSION: 2026-10-11.5
 """
 The statutes (RSA) as pages: /laws, and one page a chapter at /laws/<chapter>.
 
@@ -140,6 +140,61 @@ def term_of_year(y):
     return f"{a}-{a + 1}"
 
 
+def chapter_label(ch, name):
+    """ "Chapter 71: The Tax Commission" (the person, 11 October 2026: "Laws
+    should also be labeled as Chapter 71: The Tax Commission rather than just
+    71")."""
+    return f"Chapter {ch}: {nice(name)}" if name else f"Chapter {ch}"
+
+
+def title_label(tno, tname):
+    """("VI", "TITLE VI PUBLIC OFFICERS AND EMPLOYEES") -> ("Title VI", "Public Officers and Employees")."""
+    return f"Title {tno}", nice(re.sub(r"^TITLE\s+\S+\s*", "", tname or "").strip())
+
+
+# A CHAPTER'S TOPICS are the bill search's own, read off the bills that say
+# they change it (the person, 11 October 2026: "If laws are groupable into
+# topics in a similar way to bills, that would be helpful for searching").
+# Miscellaneous says nothing about a chapter and is not counted; a topic is
+# the chapter's where at least TOPIC_SHARE of the rest of its bills and at
+# least TOPIC_LEAST of them carry it, at most two. A chapter no bill of the
+# record has changed has none, rather than a guessed one: 1,274 of 1,786 have
+# one on 8 September 2026's table.
+TOPIC_SHARE, TOPIC_LEAST, TOPIC_SKIP = 0.3, 2, ("Miscellaneous",)
+
+
+def chapter_topics(data, bills):
+    votes = collections.defaultdict(collections.Counter)
+    for term, bs in data.get("bills", {}).items():
+        for bill, rec in bs.items():
+            tp = bills.row(f"{term}/{bill}").get("topic") or ""
+            if not tp or tp in TOPIC_SKIP:
+                continue
+            for ch in {str(c).split(":")[0] for c in rec.get("changes") or []}:
+                votes[ch][tp] += 1
+    out = {}
+    for ch, c in votes.items():
+        n = sum(c.values())
+        top = [t for t, v in c.most_common(2) if v >= TOPIC_LEAST and v / n >= TOPIC_SHARE]
+        if top:
+            out[ch] = top
+    return out
+
+
+def chapter_pending(data, bills):
+    """{chapter: [bill keys]} for the sitting term's bills still moving that
+    say they change it."""
+    out = collections.defaultdict(set)
+    for term, bs in data.get("bills", {}).items():
+        for bill, rec in bs.items():
+            k = f"{term}/{bill}"
+            chs = {str(c).split(":")[0] for c in rec.get("changes") or []}
+            if chs and bills.moving(k):
+                for ch in chs:
+                    out[ch].add(k)
+    return {ch: sorted(ks, key=bill_order) for ch, ks in out.items()}
+
+
 # ------------------------------------------------------------------ bills
 
 class Bills:
@@ -268,7 +323,7 @@ def popular_names(table):
     return out
 
 
-def build_indexes(table, cites):
+def build_indexes(table, cites, topics=None, pending=None):
     """chapters.json, headings.json and words.json for the landing page's
     search (RSA_PAGE.md §6), all in the reader's browser.
 
@@ -278,7 +333,7 @@ def build_indexes(table, cites):
     the person asked for, at a size a reader can fetch once."""
     names = popular_names(table)
     chapters = {ch: [nice(info["name"]), info["title_no"], len(info["sections"]), info["repealed"],
-                     names.get(ch, [])]
+                     names.get(ch, []), (topics or {}).get(ch, []), len((pending or {}).get(ch, []))]
                 for ch, info in table.chapters.items()}
     headings = [[a, s.heading] for a, s in table.sections.items() if not s.repealed]
     df = collections.Counter()
@@ -309,6 +364,42 @@ def build_indexes(table, cites):
 
 # ------------------------------------------------------------------ pages
 
+# A REPEALED CHAPTER'S NOTE, as the table holds it: its title and name in
+# capitals, then "[Repealed by 1971, 227:15, eff. Aug. 17, 1971.]". All 468
+# chapters the table marks repealed carry the bracket, and nine of them were
+# not repealed but moved: "[Redesignated as RSA 246 by 2024, 33:4, eff. July
+# 1, 2024.]". The banner says which, in words.
+REPEAL = re.compile(r"\[\s*Repealed,?\s+(?:by\s+)?(\d{4}),\s*([^\]]*?)"
+                    r"(?:,?\s*(?:eff\.|effective)\s*([^\]]*?))?\.?\s*\]")
+MOVED = re.compile(r"\[\s*Redesignated\s+as\s+RSA\s+(\d{1,3}(?:-[A-Z]{1,2})?)\s+by\s+(\d{4}),\s*"
+                   r"([^\]]*?)(?:,?\s*(?:eff\.|effective)\s*([^\]]*?))?\.?\s*\]")
+
+
+def moved_to(note):
+    """The chapter a redesignated chapter became, or ''."""
+    m = MOVED.search(note or "")
+    return m.group(1) if m else ""
+
+
+def repeal_words(note):
+    """The banner's words after its first: when and by what law the chapter
+    was repealed or moved, or the bracket as the table has it where its words
+    are in neither shape, or ''."""
+    note = note or ""
+    m = MOVED.search(note)
+    if m:
+        to, y, law, eff = m.groups()
+        return (f' It is now <a href="{E(href(to))}">RSA {E(to)}</a>, moved there by the Laws of {E(y)}, '
+                f"chapter {E(law)}" + (f", effective {E(eff)}." if eff else "."))
+    m = REPEAL.search(note)
+    if m:
+        y, law, eff = m.groups()
+        return (f" It was repealed by the Laws of {E(y)}, chapter {E(law)}"
+                + (f", effective {E(eff)}." if eff else "."))
+    b = re.search(r"\[([^\]]+)\]", note)
+    return f" {E(b.group(1).strip())}" if b else ""
+
+
 def chapter_page(tmpl, table, data, bills, ch, base):
     info = table.chapters[ch]
     secs = info["sections"]
@@ -327,8 +418,8 @@ def chapter_page(tmpl, table, data, bills, ch, base):
                         key=bill_order)
     latest = data.get("asof", {}).get("laws_through") or ""
     path = f"/laws/{chapter_slug(ch)}"
-    title = f"RSA {ch}: {nice(info['name'])}"
-    p = S.page(tmpl, path=path, base=base, title=S.title_of(f"RSA {ch}", "Laws"),
+    title = chapter_label(ch, info["name"])
+    p = S.page(tmpl, path=path, base=base, title=S.title_of(f"Chapter {ch}", "Laws"),
                og_title=title, description=f"New Hampshire RSA chapter {ch}, {info['name']}: "
                "its text, the bills that changed it and the bills that would.",
                og_image="og-learn.png", og_alt=OG_ALT, globals={"GR_STATIC": True, "GR_LAW": ch},
@@ -344,9 +435,19 @@ def chapter_page(tmpl, table, data, bills, ch, base):
     lead = (f"The text as the General Court's table holds it, "
             f"{as_of(latest)}. "
             f'<a href="{E(official)}" rel="noopener">The official text on gc.nh.gov</a>.')
-    crumb = nice(re.sub(r"^TITLE\s+(\S+)\s*", r"TITLE \1: ", first.title)) if first else ""
+    tl, tn = title_label(info["title_no"], info["title"])
+    crumb = f"{tl}: {tn}" if tn else tl
+    # A REPEALED CHAPTER SAYS SO AT THE TOP, at the size of the lead (the
+    # person, 11 October 2026: "Repealed pages are a bit hard to tell that the
+    # chapter has been repealed on the page since the text is quite small").
+    gone = ""
+    if info.get("repealed"):
+        word = "Moved" if moved_to(info.get("note")) else "Repealed"
+        gone = (f'<p class="rs-banner" role="note"><strong>{word}.</strong> This chapter is no '
+                f'longer in force.{repeal_words(info.get("note"))}</p>')
     head = (f'<header class="l-head"><p class="rs-crumb"><a href="/laws">Laws</a> &rsaquo; '
-            f'{E(crumb)}</p><h1>{E(title)}</h1>'
+            f'<a href="/laws#t-{E(info["title_no"])}">{E(crumb)}</a></p>'
+            f'<p class="rs-kick">RSA {E(ch)}</p><h1>{E(title)}</h1>{gone}'
             f'<p class="l-lead">{lead}</p>' + S.cite_block(path, title, base, S.BUILT) + "</header>")
     pend = ""
     if pending_ch:
@@ -364,12 +465,19 @@ def chapter_page(tmpl, table, data, bills, ch, base):
         anchor = sec_anchor(a)
         if s.repealed:
             body.append(f'<p class="rs-repealed" id="{E(anchor)}"><a href="#{E(anchor)}">{E(a)}</a> '
-                        f'{E(s.heading)}</p>')
+                        f'<span class="rs-rbadge">Repealed</span> {E(s.heading)}</p>')
+            toc_items.append(f'<li class="rs-off"><a href="#{E(anchor)}">{E(a)}</a> '
+                             f'<span>Repealed</span></li>')
             continue
-        toc_items.append(f'<li><a href="{E(path)}#{E(anchor)}">{E(a)} {E(s.heading)}</a></li>')
+        toc_items.append(f'<li><a href="#{E(anchor)}"><b>{E(a)}</b> {E(s.heading)}</a></li>')
         pend_k = sorted((k for k in proposed.get(a, []) if bills.moving(k)), key=bill_order)
-        other = [k for k in proposed.get(a, []) if not bills.moving(k)]
         hist = list(reversed(data.get("enacted", {}).get(a, [])))
+        # A BILL IN THE HISTORY IS NOT ALSO "PROPOSED" (the person, 11 October
+        # 2026: the two "sometimes show the exact same bill numbers which is
+        # redundant"): the other list is the bills that did not become this
+        # section's law.
+        in_hist = {b for _y, _law, b in hist if b}
+        other = [k for k in proposed.get(a, []) if not bills.moving(k) and k not in in_hist]
         rows = []
         if hist:
             items = []
@@ -381,8 +489,9 @@ def chapter_page(tmpl, table, data, bills, ch, base):
                          folded(items, "rs-hist")))
         if other:
             other.sort(key=lambda k: (k.split("/")[0], bill_order(k)[1], -bill_order(k)[2]), reverse=True)
-            rows.append(("Also proposed by", "Bills whose own text says they change this section, "
-                         "passed or not.", folded([bills.chip(k) for k in other])))
+            rows.append(("Other bills that proposed changes", "Bills whose own text says they "
+                         "change this section, and that are not in its history above.",
+                         folded([bills.chip(k) for k in other])))
         out_c = data.get("statute", {}).get(a, [])
         if out_c:
             rows.append(("Cites", "", folded([f'<li><a href="{E(href(t))}">RSA {E(t)}</a></li>'
@@ -406,26 +515,119 @@ def chapter_page(tmpl, table, data, bills, ch, base):
             f'<div class="rs-text">{linked_text(table, s.text, a)}</div>'
             + (f'<p class="rs-source">Source. {E(s.note)}</p>' if s.note else "")
             + (f'<div class="rs-folds">{folds}</div>' if folds else "") + "</section>")
+    # THE SECTIONS IN A SIDEBAR (the person, 11 October 2026: "when you're in
+    # an RSA chapter, the sidebar would show you the chapter sections so you
+    # could easily click through them"): sticky beside the text on a wide
+    # screen, a fold above it on a narrow one.
     toc = ""
-    if len(toc_items) > 1:
-        toc = (f'<details class="rs-toc"><summary>The {len(toc_items)} sections</summary>'
-               f'<ol>{"".join(toc_items)}</ol></details>')
-    if info.get("repealed") and not toc_items:
-        body.insert(0, f'<p class="rs-repealed">This chapter has been repealed. {E(info.get("note") or "")}</p>')
-    art = f'<div class="rs-art">{pend}{toc}{"".join(body)}</div>'
+    if toc_items:
+        toc = (f'<nav class="rs-side" aria-label="Sections of chapter {E(ch)}"><details class="rs-sidebox" open>'
+               f'<summary>Chapter {E(ch)}: {len(toc_items)} section{"s" if len(toc_items) != 1 else ""}'
+               f'</summary><ol>{"".join(toc_items)}</ol></details></nav>')
+    art = f'<div class="rs-art">{pend}{"".join(body)}</div>'
     return p.replace('<div id="results"></div>',
-                     f'<div id="results"><div class="l-page rs-page">{head}{art}</div></div>', 1)
+                     f'<div id="results"><div class="l-page rs-page">{head}'
+                     f'<div class="rs-chap{" rs-notoc" if not toc else ""}">{toc}{art}</div></div>'
+                     f'{CHAPTER_JS}</div>', 1)
+
+
+CHAPTER_JS = """<script>
+(function(){
+  // The sidebar's sections: folded on a narrow screen, and the one being
+  // read marked as the page scrolls past it.
+  var d=document.querySelector(".rs-sidebox");if(!d)return;
+  if(window.matchMedia&&matchMedia("(max-width:60em)").matches)d.open=false;
+  var links={},box=d.querySelector("ol"),cur=null;
+  [].forEach.call(d.querySelectorAll("a[href^='#']"),function(a){links[a.getAttribute("href").slice(1)]=a;});
+  if(!("IntersectionObserver" in window)||!box)return;
+  var io=new IntersectionObserver(function(es){es.forEach(function(e){
+    if(!e.isIntersecting)return;var a=links[e.target.id];if(!a||a===cur)return;
+    if(cur)cur.removeAttribute("aria-current");a.setAttribute("aria-current","location");cur=a;
+    var li=a.parentNode;if(li.offsetTop<box.scrollTop||li.offsetTop>box.scrollTop+box.clientHeight-40)
+      box.scrollTop=li.offsetTop-box.clientHeight/3;});},{rootMargin:"-15% 0px -75% 0px"});
+  [].forEach.call(document.querySelectorAll(".rs-sec[id],.rs-repealed[id]"),function(s){io.observe(s);});
+})();
+</script>"""
 
 
 LANDING_JS = """<script>
 (function(){
-  var box=document.getElementById("rsq"),out=document.getElementById("rsout");
-  if(!box||!out)return;
-  var CH=null,HD=null,WD=null;
+  var root=document.getElementById("lw");if(!root)return;
+  var box=document.getElementById("rsq"),out=document.getElementById("rsout"),dir=document.getElementById("lwdir"),
+      read=document.getElementById("lwread"),count=document.getElementById("lwcount");
+  var narrow=function(){return window.matchMedia&&matchMedia("(max-width:60em)").matches;};
+  var CH=null,HD=null,WD=null,PAGES={};
   function get(u){return fetch(u).then(function(r){return r.ok?r.json():null;});}
   function esc(s){return String(s).replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c];});}
+  function chOf(a){return a.split(":")[0];}
   function link(a){var p=a.split(":");return "/laws/"+p[0].toLowerCase()+(p[1]?"#s"+p[1]:"");}
-  // The same light stem build_rsa.stem gives the index.
+  function heads(){return HD?Promise.resolve(HD):get("laws/headings.json").then(function(d){return HD=d||[];});}
+  function chapters(){return CH?Promise.resolve(CH):get("laws/chapters.json").then(function(d){return CH=d||{};});}
+
+  // ---- THE READER: a section's text from its chapter's own page, on the right.
+  function page(ch){
+    if(!PAGES[ch])PAGES[ch]=fetch(link(ch)).then(function(r){return r.ok?r.text():"";}).then(function(t){
+      return new DOMParser().parseFromString(t,"text/html");});
+    return PAGES[ch];}
+  function open(a){
+    if(narrow()){location.href=link(a);return;}
+    var ch=chOf(a),li=root.querySelector('.lw-ch[data-ch="'+ch+'"]');
+    [].forEach.call(root.querySelectorAll("[data-sec][aria-current]"),function(x){x.removeAttribute("aria-current");});
+    [].forEach.call(root.querySelectorAll('[data-sec="'+a+'"]'),function(x){x.setAttribute("aria-current","true");});
+    var crumb=li?li.getAttribute("data-crumb"):"",name=li?li.getAttribute("data-label"):"Chapter "+ch;
+    read.innerHTML='<p class="lw-wait">Opening RSA '+esc(a)+'&hellip;</p>';
+    page(ch).then(function(doc){
+      var sec=doc&&doc.getElementById("s"+a.split(":")[1]);
+      read.innerHTML='<p class="lw-rcrumb">'+esc(crumb)+' &rsaquo; '+esc(name)+'</p>'
+        +(sec?sec.outerHTML:'<p>This section could not be opened here.</p>')
+        +'<p class="lw-own"><a href="'+link(a)+'">Open RSA '+esc(a)+' on its chapter&rsquo;s page</a></p>';
+      read.scrollTop=0;
+      var r=read.getBoundingClientRect();if(r.top<0)read.scrollIntoView({block:"start"});
+    });
+  }
+  root.addEventListener("click",function(e){
+    var t=e.target.closest("[data-sec]");if(!t||e.metaKey||e.ctrlKey||e.shiftKey)return;
+    if(narrow())return;e.preventDefault();open(t.getAttribute("data-sec"));});
+
+  // ---- A CHAPTER OPENED IN THE DIRECTORY lists its sections.
+  root.addEventListener("toggle",function(e){
+    var d=e.target;if(!d.classList||!d.classList.contains("lw-chd")||!d.open)return;
+    var ol=d.querySelector(".lw-secs");if(!ol||ol.getAttribute("data-done"))return;
+    ol.setAttribute("data-done","1");var ch=ol.getAttribute("data-ch");
+    heads().then(function(hd){
+      var rows=hd.filter(function(x){return chOf(x[0])===ch;});
+      ol.innerHTML=rows.length?rows.map(function(x){return '<li><a href="'+link(x[0])+'" data-sec="'+esc(x[0])
+        +'"><b>'+esc(x[0])+'</b> '+esc(x[1])+'</a></li>';}).join(""):'<li class="lw-none">No section of this chapter is in force.</li>';
+    });
+  },true);
+
+  // ---- THE FILTERS: status, topic and title, over the chapters the page lists.
+  var rows=[].slice.call(root.querySelectorAll(".lw-ch")),titles=[].slice.call(root.querySelectorAll(".lw-title"));
+  function picked(name){return [].slice.call(root.querySelectorAll('input[name="'+name+'"]:checked')).map(function(x){return x.value;});}
+  function keep(li){
+    var st=picked("st"),tp=picked("tp"),ti=picked("ti");
+    if(st.length){var ok=st.some(function(v){return v==="in"?li.getAttribute("data-rep")!=="1":
+      v==="rep"?li.getAttribute("data-rep")==="1":Number(li.getAttribute("data-pend"))>0;});if(!ok)return false;}
+    if(tp.length){var mine=(li.getAttribute("data-topics")||"").split("|");if(!tp.some(function(v){return mine.indexOf(v)>=0;}))return false;}
+    if(ti.length&&ti.indexOf(li.getAttribute("data-title"))<0)return false;
+    return true;}
+  function filter(){
+    var any=picked("st").length+picked("tp").length+picked("ti").length,shown=0,ts=0;
+    rows.forEach(function(li){var k=keep(li);li.hidden=!k;if(k)shown++;});
+    titles.forEach(function(t){var n=t.querySelectorAll(".lw-ch:not([hidden])").length;t.hidden=!n;
+      if(n)ts++;var c=t.querySelector(".lw-tn");if(c)c.textContent=any?n+" of "+c.getAttribute("data-all"):c.getAttribute("data-all");
+      if(any&&n&&n<=40)t.open=true;});
+    count.textContent=any?shown.toLocaleString()+" chapter"+(shown===1?"":"s")+" in "+ts+" title"+(ts===1?"":"s")+" match":
+      count.getAttribute("data-all");
+    document.getElementById("lwclear").hidden=!any;
+  }
+  root.addEventListener("change",function(e){if(e.target.matches&&e.target.matches(".lw-side input[type=checkbox]"))filter();});
+  document.getElementById("lwclear").addEventListener("click",function(){
+    [].forEach.call(root.querySelectorAll(".lw-side input[type=checkbox]"),function(x){x.checked=false;});
+    titles.forEach(function(t){t.open=false;});filter();});
+
+  // ---- THE SEARCH: a number goes straight to it; words are ranked across the
+  // chapters' names, the sections' headings and what each section is about.
   function stem(w){w=w.toLowerCase().replace(/^'+|'+$/g,"");if(/'s$/.test(w))w=w.slice(0,-2);
     if(w.length>4&&/ies$/.test(w))return w.slice(0,-3)+"y";
     if(w.length>3&&/s$/.test(w)&&!/ss$/.test(w))return w.slice(0,-1);return w;}
@@ -434,51 +636,55 @@ LANDING_JS = """<script>
     return STOP.indexOf(" "+w+" ")<0;}).map(stem);}
   function has(text,w){return (text.toLowerCase().match(/[a-z][a-z']+/g)||[]).some(function(x){
     return stem(x)===w||(w.length>=4&&x.indexOf(w)===0);});}
-  var CITE=/^\\s*(?:rsa\\s*)?(\\d{1,3}(?:-[a-z]{1,2})?)(?::\\s*([0-9a-z.\\-]+))?\\s*$/i;
-  function show(rows,note){
-    out.innerHTML=(note?'<p class="rs-note">'+esc(note)+'</p>':'')+(rows.length?'<ol class="rs-hits">'+rows.slice(0,50).map(function(r){
-      return '<li><a href="'+link(r[0])+'">RSA '+esc(r[0])+'</a> '+esc(r[1]||"")+'</li>';}).join("")+'</ol>':'');
+  var CITE=/^\\s*(?:rsa\\s*)?(?:chapter\\s*)?(\\d{1,3}(?:-[a-z]{1,2})?)(?::\\s*([0-9a-z.\\-]+))?\\s*$/i;
+  function label(a,ch,hd){var c=chOf(a),info=ch[c]||[];
+    if(a.indexOf(":")<0)return "Chapter "+c+": "+(info[0]||"");
+    var h=(hd.filter(function(x){return x[0]===a;})[0]||[])[1]||"";return h;}
+  function show(list,note){
+    dir.hidden=count.hidden=!!(list||note);
+    out.innerHTML=!list&&!note?"":(note?'<p class="rs-note">'+esc(note)+'</p>':'')+(list&&list.length?'<ol class="rs-hits">'
+      +list.slice(0,60).map(function(r){var sec=r[0].indexOf(":")>=0;
+        return '<li><a href="'+link(r[0])+'"'+(sec?' data-sec="'+esc(r[0])+'"':'')+'>'
+          +(sec?'<b>RSA '+esc(r[0])+'</b> ':'')+esc(r[1]||"")+'</a>'
+          +(sec&&CH&&CH[chOf(r[0])]?' <span class="rs-in">in Chapter '+esc(chOf(r[0]))+'</span>':'')+'</li>';}).join("")+'</ol>':'');
   }
-  function load(){return Promise.all([
-    CH?CH:get("laws/chapters.json").then(function(d){return CH=d||{};}),
-    HD?HD:get("laws/headings.json").then(function(d){return HD=d||[];}),
-    WD?WD:get("laws/words.json").then(function(d){return WD=d||{words:{}};})]);}
   function run(){
     var q=box.value.trim();
-    if(!q){out.innerHTML="";return;}
+    if(!q){show(null,"");return;}
     var m=CITE.exec(q);
-    load().then(function(r){
+    Promise.all([chapters(),heads(),WD?WD:get("laws/words.json").then(function(d){return WD=d||{words:{}};})]).then(function(r){
       var ch=r[0],hd=r[1],wd=r[2];
       if(m&&ch[m[1].toUpperCase()]){
         var c=m[1].toUpperCase(),a=c+(m[2]?":"+m[2]:"");
-        show([[a,m[2]?((hd.filter(function(x){return x[0]===a;})[0]||[])[1]||ch[c][0]):ch[c][0]]],"By number:");return;
+        show([[a,label(a,ch,hd)]].concat(m[2]?[[c,label(c,ch,hd)]]:[]),"By number:");
+        if(m[2]&&!narrow())open(a);return;
       }
       var ws=words(q);if(!ws.length){show([],"");return;}
-      // Every source counts: a chapter's name, a section's heading, and what
-      // each section is about. Ranked by how many of the words it matches,
-      // then by where they matched, so a near miss is listed below, not lost.
       var hit={},name={};
-      function add(a,label,w,pts){var h=hit[a]||(hit[a]={w:{},s:0});h.w[w]=1;h.s+=pts;if(label)name[a]=label;}
-      Object.keys(ch).forEach(function(c){var known=(ch[c][4]||[]).join(" ");
-        ws.forEach(function(w){if(has(ch[c][0]||"",w))add(c,ch[c][0],w,3);
-          else if(known&&has(known,w))add(c,ch[c][0]+" (the "+ch[c][4][0]+")",w,3);});});
+      function add(a,lab,w,pts){var h=hit[a]||(hit[a]={w:{},s:0});h.w[w]=1;h.s+=pts;if(lab)name[a]=lab;}
+      Object.keys(ch).forEach(function(c){var known=(ch[c][4]||[]).join(" "),lab="Chapter "+c+": "+ch[c][0];
+        ws.forEach(function(w){if(has(ch[c][0]||"",w))add(c,lab,w,3);
+          else if(known&&has(known,w))add(c,lab+" (the "+ch[c][4][0]+")",w,3);});});
       hd.forEach(function(x){ws.forEach(function(w){if(has(x[1],w))add(x[0],x[1],w,2);});});
-      var heads={};hd.forEach(function(x){heads[x[0]]=x[1];});
-      // words.json numbers sections by headings.json's order, each posting
-      // the gap from the one before.
+      var hs={};hd.forEach(function(x){hs[x[0]]=x[1];});
       ws.forEach(function(w){var i=0;(wd.words[w]||[]).forEach(function(g){i+=g;var a=(hd[i]||[])[0];
-        if(a)add(a,heads[a],w,1);});});
-      var rows=Object.keys(hit).map(function(a){return [a,name[a]||heads[a]||"",Object.keys(hit[a].w).length,hit[a].s];})
+        if(a)add(a,hs[a],w,1);});});
+      var list=Object.keys(hit).map(function(a){return [a,name[a]||hs[a]||"",Object.keys(hit[a].w).length,hit[a].s];})
         .filter(function(x){return x[2]>=Math.min(ws.length,Math.max(1,ws.length-1));})
         .sort(function(x,y){var cx=x[0].indexOf(":")<0,cy=y[0].indexOf(":")<0;
           return y[2]-x[2]||(cy-cx)||y[3]-x[3]||(x[0]<y[0]?-1:1);});
-      var all=rows.filter(function(x){return x[2]===ws.length;}).length;
-      show(rows,rows.length?(all===rows.length?"Matching every word:":all+" match every word; then the closest:")
+      var all=list.filter(function(x){return x[2]===ws.length;}).length;
+      show(list,list.length?(all===list.length?"Matching every word:":all+" match every word; then the closest:")
         :"Nothing found. Try fewer words, or a chapter number such as 91-A.");
     });
   }
+  // The filters fold on a narrow screen, where they would fill the first one.
+  if(narrow())document.getElementById("lwfbox").open=false;
   var t=null;box.addEventListener("input",function(){clearTimeout(t);t=setTimeout(run,180);});
   document.getElementById("rsform").addEventListener("submit",function(e){e.preventDefault();run();});
+  // A title linked from a chapter's breadcrumb (/laws#t-VI) opens.
+  var h=location.hash.match(/^#t-(.+)$/);if(h){var d=document.getElementById("t-"+decodeURIComponent(h[1]));if(d){d.open=true;}}
+  filter();
 })();
 </script>"""
 
@@ -505,38 +711,89 @@ def as_of(latest):
     return f"through the laws of {E(str(latest))}{taken}"
 
 
-def landing_page(tmpl, table, data, base):
+def landing_page(tmpl, table, data, base, topics, pending):
+    """THE LAWS AS THE BILL SEARCH IS LAID OUT (the person, 11 October 2026):
+    filters at the side, the directory of titles and chapters in the middle
+    -- each title saying which chapters it holds before it is opened, as the
+    General Court's own table of contents does -- and a section's text on the
+    right when one is chosen, with the way to its own page."""
     path = "/laws"
-    title = "New Hampshire's laws (RSA)"
-    p = S.page(tmpl, path=path, base=base, title=S.title_of(title, "Laws"),
+    title = "New Hampshire laws"
+    p = S.page(tmpl, path=path, base=base, title=S.title_of("Laws", "New Hampshire RSA"),
                og_title=title, description="Every chapter of the New Hampshire Revised Statutes "
-               "Annotated: search by number, heading or subject, with the bills that changed each "
-               "section and the bills that would.", og_image="og-learn.png", og_alt=OG_ALT,
+               "Annotated: browse by title or topic, search by number or words, with the bills that "
+               "changed each section and the bills that would.", og_image="og-learn.png", og_alt=OG_ALT,
                globals={"GR_STATIC": True}, noscript="", skip_label="Skip to the laws",
                sr_title="", nav_current="laws.html", cite=False)
     latest = data.get("asof", {}).get("laws_through") or ""
-    head = (f'<header class="l-head"><h1>{E(title)}</h1><p class="l-lead">The state\'s laws, '
-            f'chapter by chapter, as the General Court\'s table holds them {as_of(latest)}, each section with the bills that changed it and the bills now '
-            'proposing to.</p>' + S.cite_block(path, title, base, S.BUILT) + "</header>")
-    search = ('<form id="rsform" class="rs-search" role="search"><label for="rsq">Search the '
-              'laws</label><input id="rsq" type="search" autocomplete="off" '
-              'placeholder="A number (91-A:4) or words (right to know, dog bite)">'
-              '</form><div id="rsout" aria-live="polite"></div>')
-    titles = collections.OrderedDict()
+    head = (f'<header class="l-head"><h1>{E(title)}</h1><p class="l-lead">The Revised Statutes '
+            f'Annotated (RSA), chapter by chapter, as the General Court\'s table holds them {as_of(latest)}: '
+            'each section with the bills that changed it and the bills now proposing to.</p>'
+            + S.cite_block(path, title, base, S.BUILT) + "</header>")
+    groups = collections.OrderedDict()
     for ch in sorted(table.chapters, key=rsa.chap_key):
         info = table.chapters[ch]
-        titles.setdefault((info["title_no"], info["title"]), []).append(ch)
-    blocks = []
-    for (tno, tname), chs in titles.items():
-        lis = "".join(
-            f'<li class="{"rs-off" if table.chapters[c]["repealed"] else ""}"><a href="/laws/'
-            f'{E(chapter_slug(c))}">{E(c)}</a> {E(nice(table.chapters[c]["name"]))}</li>' for c in chs)
-        tn = nice(re.sub(r"^TITLE\s+\S+\s*", "", tname))
-        blocks.append(f'<details class="rs-title"><summary><span class="rs-tno">Title {E(tno)}</span> '
-                      f'{E(tn)}</summary><ul>{lis}</ul></details>')
-    art = f'<div class="rs-art">{search}<h2 class="rs-sub">By title</h2>{"".join(blocks)}</div>'
+        groups.setdefault((info["title_no"], info["title"]), []).append(ch)
+    tcount = collections.Counter(t for ts in topics.values() for t in ts)
+    n_rep = sum(1 for c in table.chapters.values() if c["repealed"])
+    n_pend = sum(1 for c in table.chapters if pending.get(c))
+    blocks, title_opts = [], []
+    for (tno, tname), chs in groups.items():
+        tl, tn = title_label(tno, tname)
+        live = [c for c in chs if not table.chapters[c]["repealed"]]
+        span = f"Chapters {chs[0]} to {chs[-1]}" if len(chs) > 1 else f"Chapter {chs[0]}"
+        peek = "; ".join(nice(table.chapters[c]["name"]) for c in live[:3]) + ("; &hellip;" if len(live) > 3 else "")
+        lis = []
+        for c in chs:
+            info = table.chapters[c]
+            label = chapter_label(c, info["name"])
+            pend = len(pending.get(c, []))
+            badges = ((f'<span class="lw-badge lw-rep">{"Moved" if moved_to(info.get("note")) else "Repealed"}'
+                       '</span>' if info["repealed"] else "")
+                      + (f'<span class="lw-badge lw-pend">{pend} pending</span>' if pend else ""))
+            lis.append(
+                f'<li class="lw-ch" data-ch="{E(c)}" data-title="{E(tno)}" data-rep="{1 if info["repealed"] else 0}" '
+                f'data-pend="{pend}" data-topics="{E("|".join(topics.get(c, [])))}" '
+                f'data-label="{E(label)}" data-crumb="{E(tl)}: {E(tn)}">'
+                f'<details class="lw-chd"><summary><span class="lw-chn">Chapter {E(c)}:</span> '
+                f'{E(nice(info["name"]))}{badges}</summary>'
+                f'<ol class="lw-secs" data-ch="{E(c)}"><li class="lw-none">Loading the sections&hellip;</li></ol>'
+                f'<p class="lw-own"><a href="/laws/{E(chapter_slug(c))}">Open Chapter {E(c)} on its own page</a>'
+                f'</p></details></li>')
+        blocks.append(
+            f'<details class="lw-title" id="t-{E(tno)}"><summary><span class="lw-tno">{E(tl)}</span>'
+            f'<span class="lw-tname">{E(tn)}</span><span class="lw-tspan">{E(span)} &middot; '
+            f'<span class="lw-tn" data-all="{len(chs)} chapters">{len(chs)} chapters</span></span>'
+            f'<span class="lw-tpeek">{peek}</span></summary><ul class="lw-chs">{"".join(lis)}</ul></details>')
+        title_opts.append(f'<li><label><input type="checkbox" name="ti" value="{E(tno)}"> '
+                          f'<span><b>{E(tl)}</b> {E(tn)}</span></label></li>')
+    topic_opts = "".join(f'<li><label><input type="checkbox" name="tp" value="{E(t)}"> <span>{E(t)}</span>'
+                         f'<span class="lw-n">{n}</span></label></li>'
+                         for t, n in sorted(tcount.items(), key=lambda x: (-x[1], x[0])))
+    n_all = len(table.chapters)
+    side = (
+        '<aside class="lw-side" aria-label="Search and filters">'
+        '<form id="rsform" class="rs-search" role="search"><label for="rsq">Search the laws</label>'
+        '<input id="rsq" type="search" autocomplete="off" placeholder="91-A:4, or right to know"></form>'
+        '<details class="lw-fbox" id="lwfbox" open><summary>Filters</summary>'
+        '<div class="lw-f"><h2>Status</h2><ul>'
+        f'<li><label><input type="checkbox" name="st" value="in"> <span>In force</span><span class="lw-n">{n_all - n_rep:,}</span></label></li>'
+        f'<li><label><input type="checkbox" name="st" value="pend"> <span>Bills pending this term</span><span class="lw-n">{n_pend:,}</span></label></li>'
+        f'<li><label><input type="checkbox" name="st" value="rep"> <span>Repealed or moved</span><span class="lw-n">{n_rep:,}</span></label></li>'
+        '</ul></div>'
+        f'<div class="lw-f"><h2>Topic</h2><p class="lw-fnote">From the bills that changed each chapter.</p>'
+        f'<ul class="lw-scroll">{topic_opts}</ul></div>'
+        f'<div class="lw-f"><h2>Title</h2><ul class="lw-scroll">{"".join(title_opts)}</ul></div>'
+        '<button type="button" class="lw-clear" id="lwclear" hidden>Clear filters</button></details></aside>')
+    middle = (f'<section class="lw-dir" aria-label="The laws by title"><p class="lw-count" id="lwcount" '
+              f'data-all="{n_all:,} chapters in {len(groups)} titles">{n_all:,} chapters in {len(groups)} titles</p>'
+              '<div id="rsout" aria-live="polite"></div>'
+              f'<div id="lwdir">{"".join(blocks)}</div></section>')
+    reader = ('<aside class="lw-read" id="lwread" aria-label="The section chosen" aria-live="polite">'
+              '<p class="lw-empty">Choose a chapter, then a section, to read it here.</p></aside>')
+    art = f'<div class="lw" id="lw">{side}{middle}{reader}</div>'
     return p.replace('<div id="results"></div>',
-                     f'<div id="results"><div class="l-page rs-page">{head}{art}</div>{LANDING_JS}</div>', 1)
+                     f'<div id="results"><div class="l-page rs-page rs-landing">{head}{art}</div>{LANDING_JS}</div>', 1)
 
 
 def main():
@@ -567,12 +824,15 @@ def main():
     for ch in chs:
         (out / f"{chapter_slug(ch)}.html").write_text(
             chapter_page(tmpl, table, data, bills, ch, a.base), encoding="utf-8")
-    (site / "laws.html").write_text(landing_page(tmpl, table, data, a.base), encoding="utf-8")
-    chapters, headings, words = build_indexes(table, data)
+    topics, pending = chapter_topics(data, bills), chapter_pending(data, bills)
+    (site / "laws.html").write_text(landing_page(tmpl, table, data, a.base, topics, pending), encoding="utf-8")
+    chapters, headings, words = build_indexes(table, data, topics, pending)
     for name, obj in (("chapters.json", chapters), ("headings.json", headings), ("words.json", words)):
         (out / name).write_text(json.dumps(obj, ensure_ascii=False, separators=(",", ":")),
                                 encoding="utf-8")
     sizes = {n: (out / n).stat().st_size for n in ("chapters.json", "headings.json", "words.json")}
+    print(f"build_rsa: {len(topics):,} of {len(table.chapters):,} chapters with a topic from their bills, "
+          f"{len(pending):,} with a bill pending")
     print(f"build_rsa: {len(chs):,} chapter pages and the landing page; search files "
           + ", ".join(f"{n} {s / 1e6:.1f} MB" for n, s in sizes.items()))
     if not a.only:

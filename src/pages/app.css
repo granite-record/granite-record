@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.254 */
+/* GRANITE_VERSION: 2026-09-07.255 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -6061,11 +6061,13 @@ border-bottom:2px solid var(--ink-2);transform:rotate(-45deg);transition:transfo
 .rs-repealed{font:400 var(--t-sm)/1.5 var(--sans);color:var(--ink-2);margin:.375rem 0;
   scroll-margin-top:5rem}
 .rs-repealed a{color:var(--ink-2)}
-.rs-folds{display:flex;flex-wrap:wrap;gap:.25rem 1.25rem;margin-top:.625rem}
+/* The folds stack (the person, 11 October 2026: side by side, "opening one of
+   them moves the other to a new line"). */
+.rs-folds{display:flex;flex-direction:column;align-items:flex-start;gap:.25rem;margin-top:.625rem}
 .rs-fold,.rs-tag,.rs-toc,.rs-title,.rs-more{font:500 var(--t-sm)/1.45 var(--sans)}
 .rs-fold > summary,.rs-toc > summary,.rs-more > summary{cursor:pointer;color:var(--pine);
   padding:.25rem 0}
-.rs-fold[open]{flex:1 1 100%;background:var(--surface);border:1px solid var(--rule);
+.rs-fold[open]{align-self:stretch;background:var(--surface);border:1px solid var(--rule);
   border-radius:var(--r-in);padding:.25rem .875rem .625rem}
 .rs-note{margin:.25rem 0 .5rem}
 .rs-list,.rs-refs,.rs-hist{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:.375rem .5rem}
@@ -6088,27 +6090,147 @@ border-bottom:2px solid var(--ink-2);transform:rotate(-45deg);transition:transfo
 .rs-pending{margin:1.5rem 0 1rem;padding:1rem 1.125rem;background:var(--surface);
   border:1px solid var(--rule-2);border-left:3px solid var(--pine);border-radius:var(--r-in)}
 .rs-pending h2{font:600 var(--t-ui)/1.35 var(--sans);margin:0 0 .625rem;color:var(--ink)}
-.rs-toc{margin:1rem 0 .5rem}
-.rs-toc ol{columns:2 18rem;column-gap:2rem;margin:.5rem 0 0;padding:0;list-style:none}
-.rs-toc li{break-inside:avoid;padding:.1875rem 0}
-.rs-toc a{color:var(--pine)}
-.rs-search{margin:1.5rem 0 .75rem}
+/* A REPEALED CHAPTER SAYS SO AT THE SIZE OF THE LEAD, in a box of its own
+   (the person, 11 October 2026: "the text is quite small"). Ink rather than a
+   status red: a repeal is not a bill voted down. */
+.rs-kick{font:600 var(--t-label)/1.3 var(--sans);letter-spacing:.06em;text-transform:uppercase;
+  color:var(--ink-2);margin:0 0 .25rem}
+.rs-banner{font:400 var(--t-lead)/1.45 var(--sans);color:var(--ink);background:var(--wash);
+  border:1px solid var(--rule-2);border-left:5px solid var(--ink);border-radius:var(--r-in);
+  padding:.75rem 1rem;margin:.75rem 0 1rem;max-width:var(--rs-meas)}
+.rs-banner strong{font-weight:700}
+.rs-rbadge,.lw-badge{display:inline-block;font:600 var(--t-label)/1.2 var(--sans);letter-spacing:.04em;
+  text-transform:uppercase;border:1px solid var(--ink-2);color:var(--ink);border-radius:var(--r-pill);
+  padding:.125rem .5rem;margin:0 .375rem;vertical-align:.1em;white-space:nowrap}
+.lw-badge.lw-pend{border-color:var(--pine);color:var(--pine);background:var(--pine-soft)}
+
+/* NO BILL SEARCH ON A LAW'S PAGE. app.js hides the row on every GR_STATIC
+   page once the bill index arrives; the Laws landing is a megabyte of
+   directory, and on a phone the row stood on screen a second or more before
+   that (rendered 11 October 2026). A browser without :has() keeps the flash. */
+body:has(.rs-page) .searchrow{display:none}
+
+/* THE CHAPTER PAGE: its sections in a sidebar beside the text, sticky and
+   scrolling on its own; above the text, folded, on a narrow screen. */
+.rs-chap{display:grid;grid-template-columns:17rem minmax(0,1fr);gap:var(--sp-9);align-items:start}
+.rs-chap.rs-notoc{grid-template-columns:minmax(0,1fr)}
+.rs-side{position:sticky;top:16px;max-height:calc(100vh - 32px);display:flex;flex-direction:column}
+.rs-sidebox{font:400 var(--t-sm)/1.4 var(--sans);display:flex;flex-direction:column;min-height:0;
+  border:1px solid var(--rule-2);border-radius:var(--r-in);background:var(--surface)}
+.rs-sidebox > summary{cursor:pointer;font-weight:600;color:var(--ink);padding:.625rem .75rem;
+  border-bottom:1px solid var(--rule)}
+.rs-sidebox:not([open]) > summary{border-bottom:0}
+.rs-sidebox ol{list-style:none;margin:0;padding:.25rem 0;overflow-y:auto;min-height:0;
+  max-height:calc(100vh - 6rem)}
+.rs-sidebox li a{display:block;padding:.3125rem .75rem;color:var(--ink);text-decoration:none;
+  border-left:3px solid transparent}
+.rs-sidebox li a b{color:var(--pine);font-weight:600;margin-right:.25rem}
+.rs-sidebox li a:hover{background:var(--wash)}
+.rs-sidebox li a[aria-current]{border-left-color:var(--pine);background:var(--pine-soft)}
+.rs-sidebox li.rs-off a{color:var(--ink-2)}
+.rs-sidebox li.rs-off span{display:none}
+.rs-sidebox li.rs-off a::after{content:" (repealed)"}
+@media (max-width:60em){
+  .rs-chap{grid-template-columns:minmax(0,1fr);gap:var(--sp-6)}
+  .rs-side{position:static;max-height:none}
+  .rs-sidebox ol{max-height:60vh}
+}
+
+/* THE LANDING, laid out as the bill search is (the person, 11 October
+   2026): filters at the side, the directory of titles and chapters in the
+   middle, the chosen section's text on the right, sticky as the directory
+   scrolls. One column under 60em, where a section opens on its own page. */
+.rs-landing{max-width:none}
+.lw{display:grid;grid-template-columns:15rem minmax(0,1fr) minmax(0,1fr);gap:var(--sp-8);align-items:start;
+  margin-top:var(--sp-6)}
+.lw-side{position:sticky;top:16px;max-height:calc(100vh - 32px);overflow-y:auto;overflow-x:hidden}
+.lw-side .rs-search{margin:0 0 .75rem}
+.lw-side .rs-search input{font-size:var(--t-ui);padding:.5rem .75rem}
 .rs-search label{display:block;font:600 var(--t-label)/1.3 var(--sans);letter-spacing:.06em;
   text-transform:uppercase;color:var(--ink-2);margin-bottom:.5rem}
 .rs-search input{width:100%;box-sizing:border-box;font:400 var(--t-lead)/1.3 var(--sans);
   padding:.75rem 1rem;color:var(--ink);background:var(--surface);border:1px solid var(--edge);
   border-radius:var(--r-in)}
-.rs-hits{margin:.5rem 0 1.5rem;padding:0 0 0 1.25rem}
-.rs-hits li{padding:.25rem 0;font:400 var(--t-ui)/1.5 var(--sans)}
-.rs-hits a{color:var(--pine);font-weight:600;margin-right:.25rem}
-.rs-title{border-bottom:1px solid var(--rule)}
-.rs-title > summary{cursor:pointer;padding:.625rem 0;font:500 var(--t-ui)/1.4 var(--sans);color:var(--ink)}
-.rs-tno{display:inline-block;min-width:6.5rem;color:var(--ink-2);font-weight:600}
-.rs-title ul{list-style:none;margin:0 0 .75rem;padding:0 0 0 6.5rem;columns:2 16rem;column-gap:2rem}
-.rs-title li{break-inside:avoid;padding:.125rem 0}
-.rs-title a{color:var(--pine);font-weight:600;margin-right:.25rem}
-.rs-title li.rs-off,.rs-title li.rs-off a{color:var(--ink-2);font-weight:400}
-@media (max-width:45em){.rs-title ul{padding-left:0}.rs-tno{min-width:0;margin-right:.5rem}}
+.lw-fbox > summary{display:none}
+.lw-f{border-top:1px solid var(--rule);padding:.625rem 0}
+.lw-f h2{font:600 var(--t-ui)/1.3 var(--sans);color:var(--ink);margin:0 0 .375rem}
+.lw-fnote{font:400 var(--t-sm)/1.4 var(--sans);color:var(--ink-2);margin:0 0 .375rem}
+.lw-f ul{list-style:none;margin:0;padding:0}
+.lw-f ul.lw-scroll{max-height:16rem;overflow-y:auto}
+.lw-f label{display:flex;align-items:baseline;gap:.5rem;padding:.1875rem 0;cursor:pointer;
+  font:400 var(--t-sm)/1.35 var(--sans);color:var(--ink)}
+.lw-f label input{flex:none;margin:0;accent-color:var(--pine);position:relative;top:.125rem}
+.lw-f label span:first-of-type{flex:1 1 auto;min-width:0}
+.lw-f label b{font-weight:600;margin-right:.25rem}
+.lw-n{flex:none;color:var(--ink-2);font-variant-numeric:tabular-nums}
+.lw-clear{margin-top:.5rem;font:500 var(--t-sm)/1.3 var(--sans);color:var(--pine);background:none;
+  border:1px solid var(--edge);border-radius:var(--r-in);padding:.375rem .75rem;cursor:pointer}
+.lw-count{font:500 var(--t-sm)/1.4 var(--sans);color:var(--ink-2);margin:0 0 .5rem}
+.rs-hits{margin:.25rem 0 1.5rem;padding:0;list-style:none}
+.rs-hits li{padding:.375rem 0;border-bottom:1px solid var(--rule);font:400 var(--t-ui)/1.45 var(--sans)}
+.rs-hits a{color:var(--pine)}
+.rs-hits a b{font-weight:600;margin-right:.25rem}
+.rs-in{color:var(--ink-2);font-size:var(--t-sm)}
+
+/* A title says which chapters it holds before it is opened, as the General
+   Court's table of contents does. */
+.lw-title{border-bottom:1px solid var(--rule)}
+.lw-title:first-child{border-top:1px solid var(--rule)}
+.lw-title > summary{cursor:pointer;list-style:none;display:grid;grid-template-columns:5.5rem minmax(0,1fr);
+  column-gap:.75rem;padding:.75rem .25rem .75rem 1.25rem;position:relative}
+.lw-title > summary::-webkit-details-marker{display:none}
+.lw-title > summary::before,.lw-chd > summary::before{content:"";position:absolute;left:.25rem;top:1.125rem;
+  width:.4rem;height:.4rem;border-right:1.5px solid var(--ink-2);border-bottom:1.5px solid var(--ink-2);
+  transform:rotate(-45deg);transition:transform .15s}
+.lw-title[open] > summary::before,.lw-chd[open] > summary::before{transform:rotate(45deg)}
+.lw-title > summary:hover .lw-tname{color:var(--pine)}
+.lw-tno{grid-row:1 / span 3;font:600 var(--t-ui)/1.4 var(--sans);color:var(--ink-2)}
+.lw-tname{font:600 var(--t-ui)/1.4 var(--sans);color:var(--ink)}
+.lw-tspan{font:500 var(--t-sm)/1.4 var(--sans);color:var(--ink-2)}
+.lw-tpeek{font:400 var(--t-sm)/1.4 var(--sans);color:var(--ink-2);overflow:hidden;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.lw-title[open] > summary .lw-tpeek{display:none}
+.lw-chs{list-style:none;margin:0 0 .75rem;padding:0 0 0 1.25rem}
+.lw-ch{border-top:1px solid var(--rule)}
+.lw-chd > summary{cursor:pointer;list-style:none;position:relative;padding:.4375rem .25rem .4375rem 1.125rem;
+  font:400 var(--t-ui)/1.4 var(--sans);color:var(--ink)}
+.lw-chd > summary::-webkit-details-marker{display:none}
+.lw-chd > summary::before{top:.875rem;left:.125rem}
+.lw-chd > summary:hover{color:var(--pine)}
+.lw-chn{font-weight:600}
+.lw-ch[data-rep="1"] .lw-chd > summary{color:var(--ink-2)}
+.lw-secs{list-style:none;margin:0 0 .25rem;padding:0 0 0 1.125rem;font:400 var(--t-sm)/1.4 var(--sans)}
+.lw-secs li a{display:block;padding:.25rem .5rem;color:var(--ink);text-decoration:none;border-radius:var(--r-in)}
+.lw-secs li a b{color:var(--pine);font-weight:600;margin-right:.25rem}
+.lw-secs li a:hover{background:var(--wash)}
+.lw-secs li a[aria-current]{background:var(--pine-soft);box-shadow:inset 3px 0 0 var(--pine)}
+.lw-none{color:var(--ink-2);padding:.25rem .5rem}
+.lw-own{font:500 var(--t-sm)/1.4 var(--sans);margin:.25rem 0 .625rem 1.125rem}
+.lw-own a{color:var(--pine)}
+
+/* The reader: the section as its chapter's page prints it. */
+.lw-read{position:sticky;top:16px;max-height:calc(100vh - 32px);overflow-y:auto;
+  border:1px solid var(--rule-2);border-radius:var(--r-in);background:var(--surface);padding:.25rem 1.25rem 1rem}
+.lw-read .rs-sec{border-bottom:0;padding-top:.75rem}
+.lw-read .rs-h{font-size:var(--t-ui)}
+.lw-empty,.lw-wait{font:400 var(--t-sm)/1.5 var(--sans);color:var(--ink-2);margin:1rem 0}
+.lw-rcrumb{font:500 var(--t-sm)/1.4 var(--sans);color:var(--ink-2);margin:.875rem 0 0}
+.lw-read .lw-own{margin-left:0;padding-top:.75rem;border-top:1px solid var(--rule)}
+@media (max-width:75em){.lw{grid-template-columns:14rem minmax(0,1fr) minmax(0,.9fr)}}
+@media (max-width:60em){
+  .lw{grid-template-columns:minmax(0,1fr);gap:var(--sp-6)}
+  .lw-side{position:static;max-height:none;overflow:visible}
+  .lw-fbox > summary{display:block;cursor:pointer;font:600 var(--t-ui)/1.3 var(--sans);color:var(--ink);
+    padding:.625rem .75rem;border:1px solid var(--edge);border-radius:var(--r-in);background:var(--surface)}
+  .lw-fbox[open] > summary{margin-bottom:.5rem}
+  .lw-read{display:none}
+  .lw-f ul.lw-scroll{max-height:11rem}
+}
+@media (max-width:45em){
+  .lw-title > summary{grid-template-columns:minmax(0,1fr)}
+  .lw-tno{grid-row:auto}
+  .lw-chs{padding-left:.25rem}
+}
 /* The bill search's statute filter (app.js rsaGroup). */
 .frsa{font:400 var(--t-sm)/1.45 var(--sans);color:var(--ink-2);margin:.5rem 0 .25rem}
 .frsa a{color:var(--pine)}
