@@ -1,4 +1,4 @@
-# GRANITE_VERSION: 2026-09-12.2
+# GRANITE_VERSION: 2026-09-12.3
 #
 # The Pages project's configuration, which this file now owns. Until
 # 12 September there was none: the dashboard held a name and a compatibility
@@ -47,5 +47,18 @@ binding = "DB"
 database_name = "graniterecord-reports-preview"
 database_id = "39c58ee3-73cd-41a5-b998-b259bcf1d902"
 
+# EMAIL FOLLOWING, ON PREVIEWS ONLY (workers/follow/README.md). With
+# FOLLOW_DB bound, functions/api/follow/ answers; without it every one of
+# them answers 404. Production binds it at go-live and not before: preflight
+# holds that production has no FOLLOW_DB until the About page says what
+# following by email keeps. The database is the person's, created 11 October
+# 2026, and its secrets are set on Cloudflare, never here.
+[[env.preview.d1_databases]]
+binding = "FOLLOW_DB"
+database_name = "graniterecord-follow-preview"
+database_id = "296ea738-2f5f-4ec6-8951-6496282c35c3"
+
 [env.preview.vars]
 REPORT_ORIGINS = "*.graniterecord.pages.dev"
+MAIL_FROM = "Granite Record <noreply@mail.graniterecord.org>"
+FEEDBACK_URL = "https://forms.gle/PYw9c3xgpDDwvX7E9"
