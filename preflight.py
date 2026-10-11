@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.528
+# GRANITE_VERSION: 2026-09-04.529
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -59143,10 +59143,15 @@ def _follow_email():
     node = shutil.which("node")
     if not node:
         return "skip", "node is not on PATH"
-    r = _run([node, "--test", "tests/follow/"], capture_output=True, text=True)
+    # index.js by name, which imports every test file into one process: the
+    # folder form passed on Node 22 here and failed on GitHub's Node 24 under
+    # Windows (the dry run of 51a6944). Node's one-time ExperimentalWarning for
+    # node:sqlite (the fake D1) is not a log line of the code under test.
+    r = _run([node, "--disable-warning=ExperimentalWarning", "--test", "tests/follow/index.js"],
+             capture_output=True, text=True)
     out = r.stdout + r.stderr
     passed = re.search(r"^# pass (\d+)", out, re.M)
-    assert r.returncode == 0 and passed, out.strip()[-600:]
+    assert r.returncode == 0 and passed and int(passed.group(1)) > 0, out.strip()[-600:]
     return "ok", (f"previews bind FOLLOW_DB, production {'does' if binds('production') else 'does not'}; "
                   f"tests/follow: {passed.group(1)} passed")
 
