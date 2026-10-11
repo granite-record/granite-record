@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.535
+# GRANITE_VERSION: 2026-09-04.536
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -57012,6 +57012,38 @@ def _record_misspelling(SP, BSP, V2):
     finally:
         shutil.rmtree(root, ignore_errors=True)
     return "ok", "Poloszaj links to Ploszaj on a session day and in a bill's story only with the spelling on file"
+
+
+@check("session", "a member who sat in the other chamber is matched there in the terms they sat in it",
+       needs=("build_session_pages",))
+def _speaker_other_chamber(BSP):
+    """The dry run of e82bd06 left "H Rosenwald" as words 177 times: Sen. Cindy
+    Rosenwald sat in the House from 2005 to 2018, and a member was filed only
+    under the chamber of their own row. careers.json gives each term's
+    chamber; she is matched on a House day of 2017 and not on one of 2021,
+    when the House had no Rosenwald."""
+    root = Path(tempfile.mkdtemp(prefix="gr-chambers-"))
+    keep = BSP._careers
+    try:
+        (root / "legislators.json").write_text(json.dumps([
+            {"id": 209106, "slug": "cindy-rosenwald-13", "name": "Rosenwald, Cindy", "chamber": "S"}]),
+            encoding="utf-8")
+        (root / "former.json").write_text("[]", encoding="utf-8")
+        BSP._careers = lambda: {"209106": {"by_term": {"2017-2018": {"chambers": ["H"]},
+                                                       "2021-2022": {"chambers": ["S"]}}}}
+        m = BSP.Members(root)
+        m.term = "2017-2018"
+        then = m.slug("H", "Rosenwald")
+        m.term = "2021-2022"
+        later = m.slug("H", "Rosenwald")
+        senate = m.slug("S", "Rosenwald")
+    finally:
+        BSP._careers = keep
+        shutil.rmtree(root, ignore_errors=True)
+    assert then == "cindy-rosenwald-13", f"Rosenwald on a House day of 2017 is {then!r}"
+    assert later is None, f"Rosenwald matched on a House day of 2021, when she sat in the Senate: {later!r}"
+    assert senate == "cindy-rosenwald-13"
+    return "ok", "Rosenwald on a House day of 2017; nobody of that name on one of 2021"
 
 
 @check("session", "a speaker the rosters miss is linked by the term's own ballots, where one member has the name",
