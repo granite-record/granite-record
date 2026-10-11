@@ -59111,6 +59111,46 @@ process.exit(fail.length ? 1 : 0);
 """
 
 
+@check("build", "email following is on previews only until the About page says what it keeps, "
+       "and its 106 tests pass")
+def _follow_email():
+    """workers/follow/ and functions/api/follow/ (the person's accounts of 11
+    October 2026). Every follow endpoint answers 404 without FOLLOW_DB, so the
+    database bound is the switch. Previews bind it, to test sign-ups; the
+    production environment may bind it only once the About page carries the
+    "Email updates." paragraph and no longer says the site keeps no email
+    addresses -- the About page and go-live go together, as
+    EMAIL_FOLLOW_CHECKLIST.md asks. The Follow pane offers email only where
+    the sign-up answers and the record is in tonight's current.json, so a
+    production page shows the RSS pane alone. tests/follow/ is run whole."""
+    if not Path("workers/follow").is_dir():
+        return "skip", "no workers/follow here"
+    import tomllib
+    envs = tomllib.loads(Path("wrangler.toml").read_text(encoding="utf-8")).get("env", {})
+    def binds(env):
+        return any(d.get("binding") == "FOLLOW_DB" for d in envs.get(env, {}).get("d1_databases", []))
+    assert binds("preview"), "previews do not bind FOLLOW_DB, so sign-ups cannot be tested"
+    about = Path("src/pages/build_exports.py").read_text(encoding="utf-8")
+    told = "Email updates." in about and "no email addresses" not in about
+    assert told or not binds("production"), \
+        "production binds FOLLOW_DB while the About page still says the site keeps no email addresses"
+    app = Path("src/pages/app.js").read_text(encoding="utf-8")
+    assert '"/api/follow/count"' in app and '"/changes/current.json"' in app, \
+        "the Follow pane offers email without asking whether this deployment can take it"
+    key = re.search(r'FOLLOW_SITEKEY="([^"]+)"', app)
+    readme = Path("workers/follow/README.md").read_text(encoding="utf-8")
+    assert key and key.group(1) in readme, "app.js's Turnstile site key is not the one README.md records"
+    node = shutil.which("node")
+    if not node:
+        return "skip", "node is not on PATH"
+    r = _run([node, "--test", "tests/follow/"], capture_output=True, text=True)
+    out = r.stdout + r.stderr
+    passed = re.search(r"^# pass (\d+)", out, re.M)
+    assert r.returncode == 0 and passed, out.strip()[-600:]
+    return "ok", (f"previews bind FOLLOW_DB, production {'does' if binds('production') else 'does not'}; "
+                  f"tests/follow: {passed.group(1)} passed")
+
+
 @check("build", "the report endpoint accepts only what a page can name, and stores nothing about the reader")
 def _report_function():
     """functions/api/report.js is the one thing on the site that runs.

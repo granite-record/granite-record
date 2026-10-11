@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.185
+// GRANITE_VERSION: 2026-09-07.186
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -2728,7 +2728,8 @@ need("meta.json")
    if(window.GR_BILL)mountReport("bill",String(window.GR_BILL));
    if(window.GR_MEMBER)mountReport("member",String(window.GR_MEMBER));
    if(window.GR_COMMITTEE)mountReport("committee",String(window.GR_COMMITTEE));
-   mountFollow(window.GR_BILL?"bill":window.GR_MEMBER?"member":window.GR_COMMITTEE?"committee":"");
+   mountFollow(window.GR_BILL?"bill":window.GR_MEMBER?"member":window.GR_COMMITTEE?"committee":"","",
+     String(window.GR_BILL||window.GR_MEMBER||window.GR_COMMITTEE||""));
    if(window.GR_MEMBER){openPage("member",String(window.GR_MEMBER));return;}
    if(window.GR_COMMITTEE){openPage("committee",String(window.GR_COMMITTEE));return;}
    // THE BILL SEARCH STARTS IN ITS BOX; A BILL'S OWN PAGE STARTS AT THE TOP.
@@ -5366,7 +5367,7 @@ function focusActions(id){
     const res=$("#results");
     if(!res)return;
     res.before(row);
-    mountFollow(feed?"bill":"",feed?feed.getAttribute("href"):"");
+    mountFollow(feed?"bill":"",feed?feed.getAttribute("href"):"",`${y}/${id}`);
     mountReport("bill",`${y}/${id}`);
     placeActions();
   }).catch(()=>{if(focusActs===id)focusActs=null;});
@@ -5443,7 +5444,19 @@ document.addEventListener("click",e=>{
 const FOLLOWS={bill:"each new action, hearing and vote on this bill",
   member:"this member's newest votes and the bills they put their name to",
   committee:"each day this committee sits, and what it does with each bill"};
-function mountFollow(kind,feed){
+// EMAIL, BESIDE RSS (FOLLOW.md; the person's accounts of 11 October 2026).
+// The box is drawn only where it can work: the sign-up answers (the
+// deployment has the follow database bound, which production does not until
+// go-live) and tonight's /changes/current.json lists this record as
+// followable. Asked once, when Follow is first opened, so no page pays for
+// it on load. The Turnstile widget's site key is public.
+const FOLLOW_SITEKEY="0x4AAAAAAFTdC20uymy0Ut8h";
+const FOLLOW_SAID={invalid:"That does not look like an email address.",
+  check:"The check that you are a person did not finish. Please try again.",
+  "not-followable":"This can no longer be followed by email.",
+  busy:"Too many sign-ups today. Please try again tomorrow.",
+  unavailable:"Email updates are not working right now. The feed above still is."};
+function mountFollow(kind,feed,ref){
   const link=feed?null:document.querySelector('link[rel="alternate"][type="application/rss+xml"]');
   const res=$("#results");
   if(!kind||!(feed||link)||!res||document.getElementById("followbox"))return;
@@ -5451,6 +5464,7 @@ function mountFollow(kind,feed){
   const div=document.createElement("div");
   div.id="followbox";
   div.className="followrow";
+  div.dataset.fkey=kind&&ref?`${kind}:${ref}`:"";
   // BESIDE "CITE THIS PAGE", in the row shell.py writes above the heading,
   // where there is one (every page built since 24 September): one row of
   // quiet controls rather than two stacked. A page from an older build has no
@@ -5466,10 +5480,85 @@ function mountFollow(kind,feed){
         value="${esc(new URL(href,location.origin).href)}">
         <button type="button" class="link" data-copyfeed="1">Copy the address</button>
         <a href="${esc(href)}">Open the feed</a></p>
+      <div class="followmail" hidden></div>
     </div></details>`;
   if(acts){const c=acts.querySelector(".pcite");acts.insertBefore(div,c?c.nextSibling:acts.firstChild);}
   else res.before(div);
 }
+function followMailForm(key){
+  return `<form class="followform" novalidate>
+    <p><b>By email</b>, daily or weekly: ${esc(FOLLOWS[key.split(":")[0]]||"what is new here")}.
+      Nothing is sent until you confirm from the first email, and every email has a link to
+      change what you follow or to unsubscribe, which deletes your address from our database at once.</p>
+    <p class="followaddr"><label>Your email address
+      <input type="email" name="email" autocomplete="email" maxlength="254" required></label>
+      <button type="submit" class="followsend">Email me updates</button></p>
+    <p style="position:absolute;left:-9999px" aria-hidden="true"><label>Leave this empty
+    <input name="website" tabindex="-1" autocomplete="off"></label></p>
+    <div class="followcheck"></div>
+    <p class="followstate" role="status" aria-live="polite"></p>
+  </form>`;
+}
+let turnstileLoad=null;
+function turnstileReady(){
+  if(window.turnstile)return Promise.resolve(window.turnstile);
+  if(!turnstileLoad)turnstileLoad=new Promise((ok,no)=>{
+    const sc=document.createElement("script");
+    sc.src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
+    sc.async=true;sc.onload=()=>window.turnstile?ok(window.turnstile):no(new Error("turnstile"));
+    sc.onerror=()=>{turnstileLoad=null;no(new Error("turnstile"));};
+    document.head.appendChild(sc);
+  });
+  return turnstileLoad;
+}
+function followMail(box){
+  const key=box.dataset.fkey||"", slot=box.querySelector(".followmail");
+  if(!key||!slot||box.dataset.mail)return;
+  box.dataset.mail="asked";
+  Promise.all([fetch("/api/follow/count",{cache:"no-store"}),fetch("/changes/current.json")])
+    .then(([c,cur])=>c.ok&&cur.ok?cur.json():null)
+    .then(cur=>{
+      if(!cur||!cur.followable||!Object.prototype.hasOwnProperty.call(cur.followable,key))return;
+      slot.innerHTML=followMailForm(key);
+      slot.hidden=false;
+      box.dataset.mail="shown";
+      turnstileReady().then(t=>{
+        const w=slot.querySelector(".followcheck");
+        if(w&&!w.dataset.widget)w.dataset.widget=t.render(w,{sitekey:FOLLOW_SITEKEY,
+          size:"flexible",appearance:"interaction-only"});
+      }).catch(()=>{});
+    }).catch(()=>{});
+}
+document.addEventListener("toggle",e=>{
+  const d=e.target;
+  if(d.classList&&d.classList.contains("follow")&&d.open){
+    const box=d.closest("#followbox");
+    if(box)followMail(box);
+  }
+},true);
+// Sent through the page's one submit listener, the report box's, below.
+async function followSubmit(e,form){
+  e.preventDefault();
+  const box=form.closest("#followbox"), st=form.querySelector(".followstate");
+  const btn=form.querySelector(".followsend"), w=form.querySelector(".followcheck");
+  const [kind,...rest]=(box&&box.dataset.fkey||"").split(":");
+  const email=form.elements.email.value.trim();
+  if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){st.textContent=FOLLOW_SAID.invalid;return;}
+  const token=window.turnstile&&w&&w.dataset.widget?window.turnstile.getResponse(w.dataset.widget):"";
+  btn.disabled=true;st.textContent="Sending…";
+  let said;
+  try{
+    const r=await fetch("/api/follow/signup",{method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({email,kind,ref:rest.join(":"),turnstile:token||"",website:form.elements.website.value})});
+    const j=await r.json().catch(()=>({}));
+    said=r.status===202?"If this address can take email, a confirmation is on its way. "+
+      "Nothing is sent until you confirm from it.":(FOLLOW_SAID[j.why]||FOLLOW_SAID.unavailable);
+    if(r.status===202)form.elements.email.value="";
+  }catch(_){said=FOLLOW_SAID.unavailable;}
+  st.textContent=said;btn.disabled=false;
+  if(window.turnstile&&w&&w.dataset.widget)try{window.turnstile.reset(w.dataset.widget);}catch(_){}
+}
+
 document.addEventListener("click",e=>{
   const b=e.target.closest&&e.target.closest("[data-copyfeed]");
   if(!b)return;
@@ -5503,6 +5592,8 @@ document.addEventListener("toggle",e=>{
 },true);
 
 document.addEventListener("submit",async e=>{
+  const ff=e.target.closest&&e.target.closest(".followform");
+  if(ff)return followSubmit(e,ff);
   const form=e.target.closest&&e.target.closest(".reportform");
   if(!form)return;
   e.preventDefault();
