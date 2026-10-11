@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-19.38
+# GRANITE_VERSION: 2026-09-19.39
 """
 A page for every day the House sat.
 
@@ -134,6 +134,22 @@ def load_titles(site):
     return titles, years
 
 
+def _careers():
+    """generated/careers.json, {member id: {"by_term": {term: {"chambers"}}}},
+    or {} where it is not here; every id a member's employee numbers give is
+    a key."""
+    p = Path("generated/careers.json")
+    try:
+        raw = json.loads(p.read_text(encoding="utf-8")) if p.is_file() else {}
+    except (OSError, ValueError):
+        return {}
+    out = {}
+    for k, v in raw.items():
+        for i in [k] + list(v.get("employee_nos") or []):
+            out.setdefault(str(i), v)
+    return out
+
+
 class Members:
     """Names to pages, and only where the name can mean one person.
 
@@ -181,6 +197,7 @@ class Members:
         # label their record gives: a session day's term file counts the
         # excused by party and names who presided (day_record).
         self.by_id, self.by_slug = {}, {}
+        served = []
         for f, in (("legislators.json",), ("former.json",)):
             p = site / f
             if not p.exists():
@@ -211,6 +228,27 @@ class Members:
                 bare = first.split()[0] if first.split() else ""
                 if bare and bare != first:
                     self.by_full[(ch, f"{bare} {last}".lower())].append((slug, terms))
+                served.append((str(r.get("id") or ""), slug, ch, last, first, bare))
+        # THE OTHER CHAMBER, IN THE TERMS THEY SAT IN IT (the dry run of
+        # e82bd06: "H Rosenwald (177)", "H Abbas (149)" and "H McConkey (58)"
+        # among the House speakers left as words). A member is filed under the
+        # chamber of their own row, so Sen. Cindy Rosenwald's fourteen House
+        # years were matched against no one. careers.json says which chamber
+        # each member sat in, term by term; a member is filed under each other
+        # chamber for those terms only, so the term rule above still decides.
+        careers = _careers()
+        for mid, slug, ch, last, first, bare in served:
+            rec = careers.get(mid) or {}
+            other = collections.defaultdict(set)
+            for t, x in (rec.get("by_term") or {}).items():
+                for c in x.get("chambers") or []:
+                    if c in ("H", "S") and c != ch:
+                        other[c].add(t)
+            for c, terms in other.items():
+                self.by_last[(c, last.lower())].append((slug, terms))
+                self.by_full[(c, f"{first} {last}".lower())].append((slug, terms))
+                if bare and bare != first:
+                    self.by_full[(c, f"{bare} {last}".lower())].append((slug, terms))
 
     def label(self, slug, body):
         """The member as the day's term names them (the person, 16 September
