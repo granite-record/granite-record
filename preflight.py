@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.540
+# GRANITE_VERSION: 2026-09-04.541
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -32864,10 +32864,19 @@ def _rsa_reader(RSA):
     table = RSA.load()
     if table is None:
         return "ok", "the reader on four real passages; db/NH_RSA.psv not here to score against"
+    # THE SCORE NEEDS THE BUILD'S OWN INPUTS: chapters.json, which turns a
+    # note's session law into the bill it was, and the bill texts. GitHub's
+    # night runs preflight before it builds, with the table from the kit and
+    # neither of those yet, and scored 0% for want of them (dry run of
+    # 5f317a5, 11 October 2026): that is nothing to score, not a fall.
     chp = Path("chapters.json")
-    data = RSA.build(table, RSA.bill_texts(),
-                     json.loads(chp.read_text(encoding="utf-8")) if chp.is_file() else {})
+    if not chp.is_file():
+        return "ok", "the reader on four real passages; no chapters.json yet to score against the notes"
+    data = RSA.build(table, RSA.bill_texts(), json.loads(chp.read_text(encoding="utf-8")))
     sc = RSA.score(table, data)
+    if not sc["claims"] or not sc["notes"]:
+        return "ok", (f"the reader on four real passages; nothing to score yet ({sc['claims']:,} claims, "
+                      f"{sc['notes']:,} notes naming a bill)")
     assert sc["precision"] >= 0.90 and sc["recall"] >= 0.84, \
         f"the reader against the source notes fell: precision {sc['precision']:.1%}, recall {sc['recall']:.1%}"
     return "ok", (f"four real passages; against the source notes precision {sc['precision']:.1%}, "
