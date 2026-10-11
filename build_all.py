@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.65
+# GRANITE_VERSION: 2026-09-05.66
 """
 Run the whole pipeline in the right order.
 
@@ -110,8 +110,8 @@ def carried_problems():
     Unreadable is worse than missing, and stops a build anywhere. The step
     that reads one treats it as empty and writes back only what it made:
     segment_markers, reading a few recordings on the nightly's machine, would
-    leave candidate_segments.json holding those few and nothing the laptop's
-    caption job found. Parsing all five takes about three seconds.
+    leave candidate_segments.json holding those few and nothing any earlier
+    reading found. Parsing all five takes about three seconds.
     """
     strict = kit_build()
     missing = [(p, why) for p, source, why in CARRIED
@@ -132,14 +132,14 @@ def captions_elsewhere(work="work"):
 
     segment_markers.py reads every caption file there is, merges what it reads
     into candidate_segments.json recording by recording, and writes
-    caption_spans.json from the same files. Both are the laptop's: its caption
-    job makes them, and the kit carries them to the nightly's machine, which
-    holds none of the 20 GB of captions -- only, some nights, the few that
-    livestreams.py fetched, which `livestreams.py --markers` reads on its own.
-    There this step would read nothing and still rewrite two files another
-    machine owns, and CLAUDE.md wants no timestamp to move without being
-    scored first. So where most of the caption files are missing it does not
-    run, and the log says why.
+    caption_spans.json from the same files. The kit carries both to the
+    nightly's machine -- the night's own files since 10 October 2026 -- which
+    holds none of the 20 GB of captions: only, some nights, the few that
+    livestreams.py fetched, which `livestreams.py --markers` reads on its own,
+    behind the timestamp probe's guard. There this step would read nothing
+    and still rewrite both, and CLAUDE.md wants no timestamp to move without
+    being scored first. So where most of the caption files are missing it
+    does not run, and the log says why.
     """
     import caption_span
     spans = caption_span.load_summary()
@@ -155,8 +155,8 @@ def captions_elsewhere(work="work"):
         if here < len(listed) / 2:
             return (f"{caption_span.SUMMARY} lists {len(listed):,} recordings "
                     f"with caption files and {here:,} of them are on this "
-                    "machine; the chair's boundaries stay as the caption job "
-                    "left them in candidate_segments.json")
+                    "machine; the chair's boundaries stay as the kit brought them "
+                    "in candidate_segments.json")
         return ""
     if not w.is_dir():
         return ""
@@ -164,7 +164,7 @@ def captions_elsewhere(work="work"):
     if any((d / n).exists() for d in w.iterdir() if d.is_dir() for n in WORK_FILES):
         return ""
     return (f"no caption file under {work}/ at all; the chair's boundaries stay "
-            "as the caption job left them in candidate_segments.json")
+            "as the kit brought them in candidate_segments.json")
 
 
 class building:
@@ -631,17 +631,22 @@ def plan(a):
         # machine -- which holds a night's few, not the laptop's 20 GB -- it
         # does not run. livestreams.py --since-state fetched these recordings'
         # captions before this build began, and this reads them and nothing
-        # else, through segment_markers, which merges: every other recording
-        # keeps the answer the laptop's caption job gave it. On the laptop the
-        # step above has read them already, and this finds them in its cache.
-        # Asks nobody anything.
+        # else, through segment_markers, which merges, and puts where their
+        # captions stop into caption_spans.json: every other recording keeps
+        # the answer it had. Both files are the night's in the kit since 10
+        # October 2026, and this keeps nothing the timestamp probe scores
+        # worse (livestreams.py, THE GUARD): it puts both back, says so in
+        # the state for the night's verdict, and exits 0. On the laptop the
+        # step above has read them already, and this finds them in its
+        # cache. Asks nobody anything.
         Step("boundaries the chair stated on the night's new livestreams",
              ["livestreams.py", "--markers"],
              needs=["archive/livestreams.json", "proceedings.csv",
                     "data/bills.json"],
              produces=["candidate_segments.json"], optional=True,
              note="segment_markers over the recordings livestreams.py "
-                  "captioned and still holds, and no others"),
+                  "captioned and still holds, and no others, scored against "
+                  "the hand-timed proceedings before anything is kept"),
 
         # apply_markers.py patches segments.json, which the clustering path
         # produced. segment_markers.py above supersedes it: candidate_segments
@@ -1052,7 +1057,8 @@ def main():
     # work out every recording again from whatever else it could find, and
     # published timestamps would change without the comparison against
     # review/ground_truth.csv that CLAUDE.md requires first. So the step is skipped,
-    # by name, and candidate_segments.json comes from the laptop's caption job.
+    # by name, and candidate_segments.json is the kit's -- the night's own file,
+    # which livestreams.py --markers adds the night's new recordings to.
     if a.no_captions:
         dropped = [s for s in steps if s.captions]
         steps = [s for s in steps if not s.captions]

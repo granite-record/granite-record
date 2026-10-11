@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.526
+# GRANITE_VERSION: 2026-09-04.527
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -800,8 +800,9 @@ def _import_all():
     that left one behind, stayed green here and failed at four in the
     morning. So the list is read off the runners as well (_scripts_run):
     each script one of them names is imported, and one that build_all.py,
-    nightly.py, laptop_evening.py or the lane names and that is not here
-    fails by name.
+    nightly.py or the lane names and that is not here fails by name. (The
+    laptop's evening job was one of them until it was retired to obsolete/
+    on 10 October 2026.)
     """
     ALSO = ("floor_markers", "apply_markers")
     mods = sorted({n for c in CHECKS for n in c["needs"]} | set(ALSO))
@@ -827,16 +828,18 @@ def _import_all():
                      "import -- a check that needs one would be skipped, not failed, and "
                      "a step that runs one fails where nobody is watching: " + "; ".join(bad))
     return "ok", (f"all {len(mods)} modules the checks need import, and the "
-                  f"{len(set(runs) - set(mods))} more that only the build, the night, the "
-                  "laptop's evening or the lane run")
+                  f"{len(set(runs) - set(mods))} more that only the build, the night or the "
+                  "lane run")
 
 
 # What runs unattended, and so what _import_all reads for the scripts they
-# start: the build, the night, the laptop's evening job, the lane and its
-# queue, and the workflow. In the first four a script is a quoted "name.py",
-# and one named there and missing is a failure; the last two are text, where
-# a name may only be mentioned, so there only what is here is imported.
-_RUNNERS = ("build_all.py", "nightly.py", "laptop_evening.py", "watchers/gc_lane.py",
+# start: the build, the night, the lane and its queue, and the workflow. In
+# the first three a script is a quoted "name.py", and one named there and
+# missing is a failure; the last two are text, where a name may only be
+# mentioned, so there only what is here is imported. The laptop's evening job
+# was among them until 10 October 2026, when the night took its captions over
+# and it went to obsolete/.
+_RUNNERS = ("build_all.py", "nightly.py", "watchers/gc_lane.py",
             "watchers/gc_lane.queue", ".github/workflows/nightly.yml")
 
 
@@ -1000,10 +1003,10 @@ _RUN_BY_PATH = re.compile(r"(?:\bpython3?|\bpy)\s+([\w./\\-]+\.py)\b|Test-Path\s
 
 def _runner_names(root=None):
     """{runner: [(script name, run by its path)]}: every script that
-    build_all's steps, nightly, the laptop's evening job, the lane's queue,
-    the workflows and publish.bat start, as each writes it. The first four
-    find theirs through _paths.script; the workflows and publish.bat run a
-    path, which must be there as written."""
+    build_all's steps, nightly, the lane's queue, the workflows and
+    publish.bat start, as each writes it. The first three find theirs
+    through _paths.script; the workflows and publish.bat run a path, which
+    must be there as written."""
     base = Path(root).resolve() if root is not None else _paths.ROOT
     out = {}
 
@@ -1025,7 +1028,6 @@ def _runner_names(root=None):
         out[rel] = sorted(set(names))
     code("build_all.py", also="Step")
     code("nightly.py")
-    code("laptop_evening.py")
     queue = _paths.locate("watchers/gc_lane.queue", root=base)
     if queue.exists():
         lines = []
@@ -1071,19 +1073,19 @@ def _runner_problems(root=None):
 
 
 # Most of what each runner named on 6 October 2026, before any file moved
-# (47, 14, 3, 5, 3, 2 and 3): a runner read as naming fewer has stopped being
+# (47, 14, 5, 3, 2 and 3): a runner read as naming fewer has stopped being
 # read, not stopped running things. The slack is for a step retired on
-# purpose.
-_RUNNER_FLOORS = {"build_all.py": 40, "nightly.py": 12, "laptop_evening.py": 3,
+# purpose. laptop_evening.py, which named 3, was retired on 10 October 2026.
+_RUNNER_FLOORS = {"build_all.py": 40, "nightly.py": 12,
                   "watchers/gc_lane.queue": 3, ".github/workflows/nightly.yml": 2,
                   ".github/workflows/weekly.yml": 1, "publish.bat": 2}
 
 
-@check("files", "every script build_all, the night, the laptop's evening, the lane, the "
-                "workflows and publish.bat start resolves to exactly one file")
+@check("files", "every script build_all, the night, the lane, the workflows and "
+                "publish.bat start resolves to exactly one file")
 def _runner_names_resolve():
-    """The four runners that start scripts by bare name -- build_all's steps,
-    nightly.run, laptop_evening.run_step and the lane -- find each through
+    """The three runners that start scripts by bare name -- build_all's steps,
+    nightly.run and the lane -- find each through
     _paths.script, which fails at four in the morning on a name that finds no
     file or finds two. So each name is resolved here, now. The workflows and
     publish.bat run a script by its path, from the root: those must be where
@@ -14129,6 +14131,37 @@ def _ls_fixture(root, livestreams):
         encoding="utf-8")
 
 
+def _ls_markers_fixture(root):
+    """What --markers reads beside the night's captions: the bills, a
+    proceedings table naming the new recording and one read before
+    (PFOTHER), the caption results holding PFOTHER's reading, and a hand-timed
+    proceeding on PFOTHER for the guard's probe (review/ground_truth.csv), a
+    second from the reading. Returns PFOTHER's entry."""
+    (root / "data").mkdir(exist_ok=True)
+    (root / "data" / "bills.json").write_text(json.dumps(
+        {"2025-2026": {"HB1491": {"id": "HB1491", "title": "x"}}}), encoding="utf-8")
+    with open(root / "proceedings.csv", "w", newline="", encoding="utf-8") as fh:
+        w = csv.DictWriter(fh, fieldnames=["term", "bill", "body", "kind", "date",
+                                           "video_id", "source", "predicted_offset"])
+        w.writeheader()
+        for bill, vid in (("HB1491", "PFNEW000001"), ("HB77", "PFOTHER")):
+            w.writerow({"term": "2025-2026", "bill": bill, "body": "H",
+                        "kind": "public hearing", "date": "2026-09-23",
+                        "video_id": vid, "source": "docket", "predicted_offset": "30"})
+    (root / "review").mkdir(exist_ok=True)
+    (root / "review" / "ground_truth.csv").write_text(
+        "video_id,bill,kind,observed_start,observed_end,notes,marked_on\n"
+        "PFOTHER,HB77,public hearing,61.0,,,2026-10-10\n", encoding="utf-8")
+    other = {"HB77": [{"start": 60.0, "end": None, "how": "number",
+                       "what": "hearing", "said": "x"}]}
+    (root / "candidate_segments.json").write_text(json.dumps(
+        {"PFOTHER": other, "_absent": {"PFOTHER": ["HB88"]}}), encoding="utf-8")
+    (root / "caption_spans.json").write_text(json.dumps(
+        {"about": "x", "recordings": {"PFOTHER": {"last": 60.0, "files": {}}}}),
+        encoding="utf-8")
+    return other
+
+
 def _ls_run(root, *extra):
     # Sealed (_Seal): it replays the Data API's answers and a caption source,
     # and a regression that asked YouTube instead fails here, not quietly.
@@ -14154,10 +14187,13 @@ def _ls_nights(livestreams, build_manifest):
     first -- the refused recording, though older, goes behind it -- finds no
     captions on it yet, then asks the refused one again, is refused again and
     asks for nothing after it (the retry due that night waits); the build's
-    --markers step reads the captioned one and touches nothing else; night
-    three finds the laptop has read it and stops carrying it. No night changes
-    a committed file, and build_manifest takes the aired row over the
-    committed one written before the stream.
+    --markers step reads the captioned one into candidate_segments.json and
+    the caption summary, touches nothing else, and the guard passes it.
+    Night three, on a machine with no captions and the kit's files holding
+    the reading, asks nothing more of it; a night whose files lost it asks
+    for it again, counted as a failure. No night changes a committed file,
+    and build_manifest takes the aired row over the committed one written
+    before the stream.
     """
     if not _paths.locate("livestreams.py").exists():
         return "skip", "livestreams.py not here"
@@ -14237,23 +14273,10 @@ def _ls_nights(livestreams, build_manifest):
             "build_manifest kept the row written before the stream aired"
 
         # build_all's step: segment_markers over this step's recordings alone,
-        # merged into a candidate file that holds another recording already.
-        (root / "data").mkdir()
-        (root / "data" / "bills.json").write_text(json.dumps(
-            {"2025-2026": {"HB1491": {"id": "HB1491", "title": "x"}}}),
-            encoding="utf-8")
-        with open(root / "proceedings.csv", "w", newline="", encoding="utf-8") as fh:
-            w = csv.DictWriter(fh, fieldnames=["term", "bill", "body", "kind",
-                                               "date", "video_id", "source"])
-            w.writeheader()
-            for bill, vid in (("HB1491", "PFNEW000001"), ("HB77", "PFOTHER")):
-                w.writerow({"term": "2025-2026", "bill": bill, "body": "H",
-                            "kind": "public hearing", "date": "2026-09-23",
-                            "video_id": vid, "source": "docket"})
-        other = {"HB77": [{"start": 60.0, "end": None, "how": "number",
-                           "what": "hearing", "said": "x"}]}
-        (root / "candidate_segments.json").write_text(json.dumps(
-            {"PFOTHER": other, "_absent": {"PFOTHER": ["HB88"]}}), encoding="utf-8")
+        # merged into a candidate file that holds another recording already,
+        # and the guard's probe against one hand-timed proceeding on it.
+        other = _ls_markers_fixture(root)
+        kits = {"PFOTHER": other, "_absent": {"PFOTHER": ["HB88"]}}
         env = {k: v for k, v in _ls_env().items() if k != "GRANITE_PROCEEDINGS"}
 
         def markers():
@@ -14264,56 +14287,56 @@ def _ls_nights(livestreams, build_manifest):
             return json.loads((root / "candidate_segments.json").read_text(
                 encoding="utf-8"))
 
-        laptops = {"PFOTHER": other, "_absent": {"PFOTHER": ["HB88"]}}
         cs = markers()
         read = cs.get("PFNEW000001") or {}
         assert "HB1491" in read, read
         assert cs.get("PFOTHER") == other and cs["_absent"] == {"PFOTHER": ["HB88"]}, \
             "--markers changed a recording it was not given"
-        st = json.loads((root / "archive" / "livestreams.json").read_text(encoding="utf-8"))
-        n1 = st["videos"]["PFNEW000001"]
-        assert n1.get("carry") and n1["result"]["segs"] == read, n1
-
-        # The next night's machine: no captions, the laptop's own copies of
-        # candidate_segments.json and the caption summary, neither of which
-        # names the new recording. --markers puts back what was read.
-        shutil.rmtree(root / "work" / "PFNEW000001")
-        (root / "candidate_segments.json").write_text(json.dumps(laptops),
-                                                      encoding="utf-8")
-        (root / "caption_spans.json").write_text(json.dumps(
-            {"recordings": {"PFOTHER": {"last": 60.0, "files": {}}}}),
-            encoding="utf-8")
-        cs = markers()
-        assert cs.get("PFNEW000001") == read, "the reading was not put back"
-        assert cs.get("PFOTHER") == other and cs["_absent"] == {"PFOTHER": ["HB88"]}
         spans = json.loads((root / "caption_spans.json").read_text(encoding="utf-8"))
         assert spans["recordings"].get("PFOTHER") == {"last": 60.0, "files": {}}
         assert spans["recordings"].get("PFNEW000001", {}).get("files"), \
             "the caption summary was not given the new recording"
+        st = json.loads((root / "archive" / "livestreams.json").read_text(encoding="utf-8"))
+        n1 = st["videos"]["PFNEW000001"]
+        assert n1.get("read") and not n1.get("carry") and "result" not in n1, \
+            f"the reading was carried in the state rather than kept in the files: {n1}"
+        assert st["markers"]["guard"] == "passed" and st["markers"]["read"] == 1 and \
+            st["markers"]["probe"]["after"] == st["markers"]["probe"]["before"] == {
+                "marked": 1, "placed": 1, "median": 1.0}, st["markers"]
+        kept = {p: (root / p).read_bytes() for p in ("candidate_segments.json",
+                                                     "caption_spans.json")}
 
-        # Night three: the laptop has read PFNEW000001 -- its own candidate
-        # file and caption summary both name it -- so nothing more is held.
-        (root / "candidate_segments.json").write_text(json.dumps(
-            dict(laptops, PFNEW000001=read)), encoding="utf-8")
-        (root / "caption_spans.json").write_text(json.dumps({"recordings": {
-            "PFOTHER": {"last": 60.0, "files": {}},
-            "PFNEW000001": {"last": 9.0, "files": {}}}}), encoding="utf-8")
+        # Night three, on a machine with no captions: the kit brought the
+        # night's own files, which hold the reading, so nothing is asked again.
+        shutil.rmtree(root / "work" / "PFNEW000001")
         r = _ls_run(root, "--now", "2026-09-28T06:30:00Z")
         assert r.returncode == 0, (r.stdout + r.stderr)[-400:]
         st = json.loads((root / "archive" / "livestreams.json").read_text(encoding="utf-8"))
         n1 = st["videos"]["PFNEW000001"]
-        assert not n1.get("carry") and n1.get("adopted") and "result" not in n1, n1
+        assert n1["captions"] == "captioned" and not n1.get("tries"), n1
         assert st["last_run"]["units"] == 2, st["last_run"]
+        assert {p: (root / p).read_bytes() for p in kept} == kept, \
+            "--since-state wrote the caption results"
+        # A night whose files lost it -- the build stopped before --markers --
+        # asks for it again, as a failure, so that it cannot be asked forever:
+        # tonight behind the hold night three's refusal started, so deferred.
+        (root / "candidate_segments.json").write_text(json.dumps(kits), encoding="utf-8")
+        r = _ls_run(root, "--now", "2026-09-28T07:30:00Z")
+        assert r.returncode == 0, (r.stdout + r.stderr)[-400:]
+        n1 = json.loads((root / "archive" / "livestreams.json").read_text(
+            encoding="utf-8"))["videos"]["PFNEW000001"]
+        assert n1["captions"] in ("failed", "deferred") and n1.get("tries") == 1 \
+            and "read" not in n1 and "asked for again" in n1.get("why", ""), n1
         assert livestreams.carry_list(st) == [
             "archive/livestreams.json", "videos_house_livestreams.csv",
             "videos_senate_livestreams.csv"], livestreams.carry_list(st)
         return "ok", ("3 new and 1 pre-air row indexed at 6 units, then 3, then 2; "
-                      "one captioned, read by --markers and put back the next "
-                      "night without its captions, then handed to the laptop; "
+                      "one captioned, read by --markers into the night's caption "
+                      "results with the guard's probe unchanged, and not asked again "
+                      "while they hold it, asked again as a failure when they lost it; "
                       "one refused, then asked behind the newly aired one the next "
                       "night and refused again; one with no captions put behind the "
-                      "new ones, not "
-                      "closed; committed index untouched")
+                      "new ones, not closed; committed index untouched")
     finally:
         shutil.rmtree(root, ignore_errors=True)
 
@@ -15467,22 +15490,28 @@ def _ls_laptop_count(livestreams):
         shutil.rmtree(root, ignore_errors=True)
 
 
-@check("livestreams", "the night sees that the laptop has read a recording, whether or "
-                      "not it is due to be asked again", needs=("livestreams", "nightly"))
+@check("livestreams", "the night sees what its caption results already hold, whether or "
+                      "not a recording is due to be asked again", needs=("livestreams", "nightly"))
 def _ls_laptop_read(livestreams, nightly):
     """A recording the night asked for and found without captions is not
-    due again for a day, then two, four, eight. The night looked for the
-    laptop's reading only among the recordings due, so one the laptop read
-    that same evening stayed `none-yet` and unadopted until its turn came
-    round -- and nightly.py's warning, "finished more than 3 days ago has
-    no start time", counted it for up to eight days after it had one.
+    due again for a day, then two, four, eight. The night looked for a
+    reading of it only among the recordings due, so one read elsewhere that
+    same evening (the laptop's evening job, while there was one) stayed
+    `none-yet` until its turn came round -- and nightly.py's warning,
+    "finished more than 3 days ago has no start time", counted it for up to
+    eight days after it had one.
 
-    So: every recording still waiting is looked at, and the ones left for
-    the laptop with them, due or not; one whose captions are on this disk
-    likewise; one nobody has read is left exactly as it was. And through
-    the step itself, on the three-night fixture: a recording answered "no
-    captions" on night one, not due again for a week, named in the laptop's
-    candidate_segments.json, is adopted on night two and leaves the count
+    So: every recording still waiting is looked at, and the ones left for a
+    person with them, due or not; one whose captions are on this disk
+    likewise; one nothing has read is left exactly as it was. What counts as
+    read (in_files) is what the caption results hold: the caption summary
+    names it, and candidate_segments.json too -- or no proceeding names it,
+    so there is nothing to read it against. Without that second rule a study
+    commission captioned on the laptop on 30 September 2026, uVqpWyuJ8fo,
+    waited for ever and was the first thing the night asked YouTube for.
+    And through the step itself, on the three-night fixture: a recording
+    answered "no captions" on night one, not due again for a week, named in
+    candidate_segments.json, is settled on night two and leaves the count
     behind the nightly's warning.
     """
     if not _paths.locate("livestreams.py").exists():
@@ -15518,17 +15547,30 @@ def _ls_laptop_read(livestreams, nightly):
         n = L.settle(st, now, {"DUE", "LATER", "LEFT", "SOON", "ELSEWHERE"}, work)
         v = st["videos"]
         for vid in ("DUE", "LATER", "LEFT"):
-            assert v[vid]["captions"] == "captioned" and v[vid].get("adopted") == "2026-09-26" \
-                and v[vid].get("by") == "laptop", f"{vid}, which the laptop has read: {v[vid]}"
+            assert v[vid]["captions"] == "captioned" and v[vid].get("read") == "2026-09-26" \
+                and v[vid].get("by") == "files", f"{vid}, which the files hold: {v[vid]}"
         assert v["HERE"]["captions"] == "captioned" and v["HERE"].get("by") == "found" \
-            and not v["HERE"].get("adopted"), v["HERE"]
+            and not v["HERE"].get("read"), v["HERE"]
         assert n == 4 and not any(k in v[vid] for vid in ("DUE", "LATER", "LEFT", "HERE")
                                   for k in ("asks", "again", "tries", "vouched")), (n, v)
         assert v["NOBODY"] == videos()["NOBODY"] and v["SOON"] == videos()["SOON"], v
         assert L.caption_queue(st, now) == ([], []), L.caption_queue(st, now)
-        # A machine that cannot tell what the laptop has read adopts nothing.
+        # A machine that cannot tell what the files hold settles nothing.
         st = {"videos": videos()}
         assert L.settle(st, now, None, work) == 1 and st["videos"]["LATER"] == videos()["LATER"]
+
+        # What the files hold: the summary and the candidate file both, or the
+        # summary alone for a recording no proceeding names; the summary's
+        # side maps are not recordings; no summary, the candidate file alone.
+        cand, summ = root / "cand.json", root / "spans.json"
+        cand.write_text(json.dumps({"BOTH": {}, "CANDONLY": {}, "_absent": {"SIDE": []}}),
+                        encoding="utf-8")
+        summ.write_text(json.dumps({"recordings": {"BOTH": {}, "STUDY": {}, "NAMED": {}}}),
+                        encoding="utf-8")
+        named = {"BOTH", "CANDONLY", "NAMED"}
+        assert L.in_files(cand, summ, named) == {"BOTH", "STUDY"}, L.in_files(cand, summ, named)
+        assert L.in_files(cand, root / "none.json", named) == {"BOTH", "CANDONLY"}
+        assert L.in_files(root / "none.json", summ, named) is None
 
         # Through the step. Night one answers PFSTALE0001 "no captions".
         _ls_fixture(root, L)
@@ -15550,18 +15592,19 @@ def _ls_laptop_read(livestreams, nightly):
         r = _ls_run(root, "--now", L.iso(now))
         assert r.returncode == 0, (r.stdout + r.stderr)[-400:]
         stale = json.loads(path.read_text(encoding="utf-8"))["videos"]["PFSTALE0001"]
-        assert stale["captions"] == "captioned" and stale.get("adopted") == "2026-09-26" \
+        assert stale["captions"] == "captioned" and stale.get("read") == "2026-09-26" \
             and "again" not in stale and "asks" not in stale, \
-            f"the laptop has read it and the night did not see: {stale}"
+            f"the files hold its reading and the night did not see: {stale}"
         os.chdir(root)
         after = nightly.captions_waiting(now)
         os.chdir(here)
         assert (before, after) == (1, 0), \
             f"the nightly's warning counted {before} before the night and {after} after"
-        return "ok", ("three the laptop has read are adopted -- one due, one not due for six "
-                      "days, one left for the laptop -- one with captions on disk is found, one "
-                      "nobody has read is untouched; on the fixture a recording not due for a "
-                      "week is adopted the night after the laptop reads it, and the nightly's "
+        return "ok", ("three the files hold are settled -- one due, one not due for six "
+                      "days, one left for a person -- one with captions on disk is found, one "
+                      "nothing has read is untouched; a study commission no proceeding names "
+                      "counts as read once summarised; on the fixture a recording not due for "
+                      "a week is settled the night after its reading lands, and the nightly's "
                       "warning stops counting it")
     finally:
         os.chdir(here)
@@ -45329,84 +45372,391 @@ def _cloud_seed_only(CL):
     return "ok", "--only sends what it names; every other change waits, in the bucket and its manifest"
 
 
-@check("cloud", "the laptop's evening job catches up the livestream captions and sends only "
-                "their results, and nothing when the timestamps got worse",
-       needs=("laptop_evening",))
-def _laptop_evening(LE):
-    """YouTube refuses GitHub's machine the captions, so laptop_evening.py, run
-    by Windows' Task Scheduler each evening, pulls the night's livestream
-    state, catches the waiting recordings up and sends the caption results.
-    Driven here on faked steps: a fresh state goes pull, probe, catch-up,
-    probe, then seed-kit --only with exactly the kit's caption files; a state
-    over two days old, or none, stops after the pull; a broken catch-up sends
-    nothing; and a probe worse than the one last sent -- CLAUDE.md's rule
-    that nothing about timestamps goes on the site if the median regressed --
-    sends nothing either. Every file --only names is one the kit carries."""
-    from datetime import datetime as _dt, timedelta, timezone
-    saved = (LE.run_step, LE.STATE, LE.RECORD)
-    tmp = Path(tempfile.mkdtemp(prefix="gr-evening-"))
-    calls, answers = [], {}
+@check("livestreams", "the night keeps a reading of its new recordings only past the "
+                      "timestamp guard, and its verdict says when one was put back",
+       needs=("livestreams", "nightly", "probe_alignment", "caption_span"))
+def _ls_markers_guard(livestreams, nightly, probe_alignment, caption_span):
+    """CLAUDE.md: nothing about timestamps goes on the site before
+    `probe_alignment.py --truth --candidate candidate_segments.json` has been
+    run and the median has not regressed. The laptop's evening job held the
+    caption results to that before it sent them, and was retired to
+    obsolete/ on 10 October 2026, when the night took the captions over and
+    candidate_segments.json and caption_spans.json became the night's files
+    in the kit. So the night's --markers step holds itself to it: copies of
+    both files before it reads, and both put back, byte for byte, when
 
-    def fake(argv, log):
-        calls.append(list(argv))
-        return answers.get(" ".join(argv[:2]), (0, ""))
+      - an entry other than tonight's recordings changed (a merge that
+        damages what is already there: the failure that cost 842
+        recordings once and the hand-marked times twice);
+      - the probe places fewer of the same hand-timed proceedings, or its
+        median is worse -- driven here through the real probe, on a
+        hand-timed proceeding the night's reading lands far from;
+      - the probe would not run, so nothing could be scored;
+      - segment_markers itself failed (exit 1, files put back first).
 
-    def state(days_old):
-        at = (_dt.now(timezone.utc) - timedelta(days=days_old)).strftime("%Y-%m-%dT%H:%M:%SZ")
-        LE.STATE.write_text(json.dumps({"last_run": {"at": at}}), encoding="utf-8")
-
-    def scored(mins, secs, placed=44):
-        return (0, f"  A CANDIDATE: candidate_segments.json  ({placed} of 63 marked proceedings)\n"
-                   f"    median off by {mins}m {secs:02d}s, worst 88m 08s\n")
-
-    def quiet(msg):
-        pass
+    Each put-back exits 0 -- the build and the night go on and publish --
+    leaves the recordings to be asked for again (as failures, so three at
+    most), says why in the state, and gives the night's verdict a warning of
+    a kind of its own, which the gate holds for a person. A reading that
+    passes is kept and the state says so. Nothing here asks anybody: the
+    captions are a fixture, and the probe reads files.
+    """
+    import contextlib
+    import io
+    import types
+    L = livestreams
+    root = Path(tempfile.mkdtemp(prefix="gr-guard-"))
+    here = os.getcwd()
+    real_read, real_probe = L.read_markers, L.probe
+    saved_env = {k: os.environ.pop(k, None) for k in ("GITHUB_ACTIONS", "GRANITE_PROCEEDINGS")}
     try:
-        LE.run_step, LE.STATE, LE.RECORD = fake, tmp / "livestreams.json", tmp / "evening.json"
-        state(0.3)
-        answers.update({"livestreams.py --catch-up": (0, "LIVESTREAMS CATCH-UP: 2 captioned"),
-                        "probe_alignment.py --truth": scored(0, 1),
-                        "cloud.py seed-kit": (0, "seed-kit: sent 3 files, 1 MB")})
-        code, steps, said, sent = LE.evening(log=quiet)
-        assert code == 0 and [c[:2] for c in calls] == [
-            ["cloud.py", "pull"], ["probe_alignment.py", "--truth"], ["livestreams.py", "--catch-up"],
-            ["probe_alignment.py", "--truth"], ["cloud.py", "seed-kit"]], calls
-        assert calls[-1][2] == "--only" and tuple(calls[-1][3:]) == LE.CAPTION_FILES, calls[-1]
-        assert "2 captioned" in said and "sent 3 files" in said and sent == {
-            "median_s": 1, "placed": 44, "total": 63}, (said, sent)
-        for age, words in ((3, "days old"), (None, "not here")):
-            del calls[:]
-            if age is None:
-                LE.STATE.unlink()
-            else:
-                state(age)
-            code, steps, said, sent = LE.evening(log=quiet)
-            assert code == 1 and calls == [["cloud.py", "pull"]] and words in said, (calls, said)
-        del calls[:]
-        state(0.3)
-        answers["livestreams.py --catch-up"] = (1, "LIVESTREAMS: broken -- x")
-        code, steps, said, sent = LE.evening(log=quiet)
-        assert code == 1 and not any(c[:2] == ["cloud.py", "seed-kit"] for c in calls), calls
-        # Worse than the times last sent: a median that grew, or a truth
-        # proceeding lost out of the same number -- nothing goes.
-        answers["livestreams.py --catch-up"] = (0, "LIVESTREAMS CATCH-UP: 1 captioned")
-        LE.RECORD.write_text(json.dumps({"sent_probe": {"median_s": 1, "placed": 44,
-                                                        "total": 63}}), encoding="utf-8")
-        for worse in (scored(0, 30), scored(0, 1, placed=43)):
-            del calls[:]
-            answers["probe_alignment.py --truth"] = worse
-            code, steps, said, sent = LE.evening(log=quiet)
-            assert code == 1 and "got worse" in said and not any(
-                c[:2] == ["cloud.py", "seed-kit"] for c in calls), (said, calls)
-        kit = json.loads(Path("cloud_kit.json").read_text(encoding="utf-8"))
-        named = {x for e in kit["kit"] for x in e.get("paths", []) + e.get("globs", [])}
-        assert set(LE.CAPTION_FILES) <= named, \
-            f"laptop_evening sends {set(LE.CAPTION_FILES) - named}, which the kit does not carry"
+        _ls_markers_fixture(root)
+        (root / "work" / "PFNEW000001").mkdir(parents=True)
+        (root / "work" / "PFNEW000001" / "captions.en.json3").write_text(json.dumps(_json3(
+            ["good morning", "I am opening the hearing on House Bill 1491"])), encoding="utf-8")
+        state = {"version": 1, "channels": {}, "last_run": {}, "refusals": {},
+                 "videos": {"PFNEW000001": {"status": "finished", "captions": "captioned",
+                                            "by": "runner", "chamber": "house",
+                                            "seen": "2026-10-09T08:30:00Z"}}}
+        (root / "archive").mkdir()
+        files = ("candidate_segments.json", "caption_spans.json")
+        os.chdir(root)
+
+        def night(when="2026-10-10T09:00:00Z"):
+            """A fresh night: the state and both files as kit-down brings
+            them, --markers run; (exit, the state after, the files after)."""
+            Path("archive/livestreams.json").write_text(json.dumps(state), encoding="utf-8")
+            Path(".segment_cache.json").unlink(missing_ok=True)
+            with contextlib.redirect_stdout(io.StringIO()) as out:
+                code = L.main(["--markers", "--origin", "runner", "--now", when])
+            st = json.loads(Path("archive/livestreams.json").read_text(encoding="utf-8"))
+            return code, st, {f: Path(f).read_bytes() for f in files}, out.getvalue()
+
+        _ls_markers_fixture(root)
+        kit = {f: Path(f).read_bytes() for f in files}
+
+        def put_back(code, st, after, out, want_why, want_code=0):
+            assert code == want_code, (code, out[-300:])
+            assert after == kit, "the caption results were not put back as they came down"
+            mk, v = st["markers"], st["videos"]["PFNEW000001"]
+            assert mk["guard"].startswith("put back: ") and want_why in mk["guard"], mk
+            assert v["captions"] == "failed" and v.get("tries") == 1 and "read" not in v \
+                and "not kept" in v["why"], v
+            return mk
+
+        # A reading that passes is kept, and the state says so.
+        code, st, after, out = night()
+        assert code == 0 and after != kit, out[-300:]
+        assert st["markers"]["guard"] == "passed" and st["videos"]["PFNEW000001"].get("read"), \
+            st["markers"]
+        assert "HB1491" in json.loads(after["candidate_segments.json"])["PFNEW000001"]
+
+        # A merge that damages an entry already there.
+        def damaging(vids):
+            code = real_read(vids)
+            doc = json.loads(Path("candidate_segments.json").read_text(encoding="utf-8"))
+            doc["PFOTHER"]["HB77"][0]["start"] = 3600.0
+            Path("candidate_segments.json").write_text(json.dumps(doc), encoding="utf-8")
+            return code
+        _ls_markers_fixture(root)
+        L.read_markers = damaging
+        put_back(*night(), "entries besides tonight's recordings changed")
+        L.read_markers = real_read
+
+        # The probe: worse, fewer placed, would not run -- each read as such.
+        for scores, why in (([{"marked": 1, "placed": 1, "median": 1.0},
+                              {"marked": 1, "placed": 1, "median": 30.0}], "median went"),
+                            ([{"marked": 2, "placed": 2, "median": 1.0},
+                              {"marked": 2, "placed": 1, "median": 1.0}], "places 1 of 2"),
+                            ([{"marked": 1, "placed": 1, "median": 1.0}, None], "would not run")):
+            seq = iter(scores)
+            L.probe = lambda candidate, seq=seq: next(seq)
+            _ls_markers_fixture(root)
+            put_back(*night(), why)
+        L.probe = real_probe
+
+        # The real probe, on a hand-timed proceeding on tonight's recording
+        # that the reading lands nearly eight minutes from: a worse median.
+        _ls_markers_fixture(root)
+        with open("review/ground_truth.csv", "a", encoding="utf-8") as fh:
+            fh.write("PFNEW000001,HB1491,public hearing,480.0,,,2026-10-10\n")
+        mk = put_back(*night(), "median went")
+        assert mk["probe"]["before"] == {"marked": 2, "placed": 1, "median": 1.0} and \
+            mk["probe"]["after"]["placed"] == 2, mk["probe"]
+        _ls_markers_fixture(root)
+
+        # segment_markers failing is the step failing, with the files put back.
+        def failing(vids):
+            Path("candidate_segments.json").write_text("{half", encoding="utf-8")
+            return 1
+        L.read_markers = failing
+        put_back(*night(), "did not finish", want_code=1)
+        L.read_markers = real_read
+
+        # And the night's verdict: a put-back is a warning of its own kind,
+        # the waiting recordings keep the kind they always had, and the
+        # verdict's "captions" says what --markers did.
+        L.probe = lambda candidate, seq=iter([{"marked": 1, "placed": 1, "median": 1.0},
+                                              None]): next(seq)
+        night()
+        L.probe = real_probe
+        started = "2026-10-10T08:50:00+00:00"
+        rec = nightly.captions_record(started)
+        assert rec["guard"].startswith("put back") and rec["read"] == 1, rec
+        assert "the guard: put back" in nightly.captions_line(rec), nightly.captions_line(rec)
+        warned = nightly.Night.warned(types.SimpleNamespace(v={"started": started}))
+        kinds = [k for k, _w in warned]
+        assert nightly.KIND_CAPTIONS_PUT_BACK in kinds, warned
+        assert "were not kept" in dict(warned)[nightly.KIND_CAPTIONS_PUT_BACK], warned
+        assert nightly.KIND_CAPTIONS_WAIT == "recordings with no start time from their captions yet", \
+            "the waiting recordings' warning changed its kind, so the gate would hold a night for it"
+        # A night later, with no --markers since, the put-back is old news.
+        later = "2026-10-11T08:50:00+00:00"
+        assert not nightly.captions_record(later)["read"] and nightly.KIND_CAPTIONS_PUT_BACK not in \
+            [k for k, _w in nightly.Night.warned(types.SimpleNamespace(v={"started": later}))]
+        return "ok", ("a passing reading kept; a damaged neighbour, a worse median, fewer placed, "
+                      "a probe that would not run and the real probe on a hand-timed proceeding "
+                      "each put both files back byte for byte with exit 0, the recordings asked "
+                      "again as failures; segment_markers failing exits 1 with them put back; the "
+                      "verdict warns of a put-back that night only, under a kind of its own")
     finally:
-        LE.run_step, LE.STATE, LE.RECORD = saved
-        shutil.rmtree(tmp, ignore_errors=True)
-    return "ok", ("pull, probe, catch-up, probe, then only the caption results; a stale or "
-                  "missing state, a broken catch-up or a worse probe sends nothing")
+        L.read_markers, L.probe = real_read, real_probe
+        os.chdir(here)
+        for k, val in saved_env.items():
+            if val is not None:
+                os.environ[k] = val
+        shutil.rmtree(root, ignore_errors=True)
+
+
+@check("livestreams", "the evening job is retired, and the caption results are the night's",
+       needs=("cloud", "livestreams"))
+def _ls_evening_retired(CL, livestreams):
+    """The laptop's evening job (laptop_evening.py, Windows' Task Scheduler,
+    from 30 September 2026) captioned what YouTube refused GitHub's machine
+    and sent candidate_segments.json and caption_spans.json to the kit. It
+    captioned one recording in nine runs -- YouTube answered it with a 429
+    every evening after the first -- and once sent a laptop build's reading
+    into the kit. The person switched it off on 8 October and decided on the
+    same day that the night owns the captions. So:
+
+      - it is in obsolete/, without a stamp, and no runner names it;
+      - the two caption results are the night's in the kit, and the
+        clustering model's segments, which only a person reruns, the
+        laptop's;
+      - a dry run sends neither back (the dry night sends only the store);
+      - the livestream step's three small files are what it carries itself.
+    """
+    assert not Path("laptop_evening.py").exists(), \
+        "laptop_evening.py is back at the root: the night takes the captions now"
+    retired = Path("obsolete/laptop_evening.py")
+    assert retired.exists() and "GRANITE_VERSION" not in retired.read_text(encoding="utf-8"), \
+        "obsolete/laptop_evening.py is missing, or still carries a stamp somebody must keep true"
+    assert "laptop_evening.py" not in _RUNNERS and "laptop_evening.py" not in _RUNNER_FLOORS
+    named = [r for r, ns in _runner_names().items() if any("laptop_evening" in n for n, _ in ns)]
+    assert not named, f"{named} still start laptop_evening.py"
+    kit = CL.load_kit(".")
+    for f in ("candidate_segments.json", "caption_spans.json"):
+        assert CL.owner_of(kit, f) == "night", f"{f} is the {CL.owner_of(kit, f)}'s in the kit"
+        assert not CL.dry_sends(kit, Path("."), f, {}), f"a dry night would send {f}"
+    assert CL.owner_of(kit, "work/x/segments.json") == "laptop", \
+        "the clustering model's segments are not the laptop's"
+    assert livestreams.carry_list() == ["archive/livestreams.json", "videos_house_livestreams.csv",
+                                        "videos_senate_livestreams.csv"]
+    return "ok", ("laptop_evening.py in obsolete/, named by no runner; the caption results the "
+                  "night's, sent back by no dry run; the clustering segments the laptop's")
+
+
+@check("livestreams", "yt-dlp asks with node, and its warnings go to the day's log, never into "
+                      "how an answer is read", needs=("livestreams",))
+def _ls_warnings_logged(livestreams):
+    """yt-dlp 2026.08.19 uses no JavaScript runtime it is not told about
+    (only deno by default, which neither machine has) and warned, unseen
+    under --no-warnings, that YouTube extraction without one is deprecated.
+    So every ask names node, and the warnings are kept: split off what yt-dlp
+    said before it is read -- what is left is exactly what --no-warnings
+    printed, so no answer is read differently (a warning that names an HTTP
+    403 on a request yt-dlp retried is not a refusal) -- and written to
+    logs/youtube-<day>.log, with everything yt-dlp said about an ask that
+    brought no captions. Nothing of it is printed: the step's output is the
+    run's public page. Driven through ask_track with yt-dlp stood in for."""
+    import contextlib
+    import io
+    import subprocess as _sp
+    import types
+    L = livestreams
+    args = L.ytdlp_args("en")
+    at = [k for k, x in enumerate(args) if x == "--js-runtimes"]
+    assert len(at) == 1 and args[at[0] + 1] == "node", f"yt-dlp is not told to use node: {args}"
+    assert "--no-warnings" not in args and "--verbose" not in args and "-v" not in args, \
+        f"yt-dlp's warnings are hidden, or its debug output (which prints a proxy) is on: {args}"
+    said, warned = L.split_warnings("WARNING: [youtube] x: one\n[info] two\n  WARNING: three\nERROR: four")
+    assert said == "[info] two\nERROR: four" and len(warned) == 2, (said, warned)
+    root = Path(tempfile.mkdtemp(prefix="gr-ytwarn-"))
+    here, real_sp = os.getcwd(), L.subprocess
+    cmds = []
+
+    def fake(answer, captions=False):
+        def run(cmd, **kw):
+            cmds.append(cmd)
+            if captions:
+                out = Path(cmd[cmd.index("-o") + 1])
+                out.with_name("captions.en.json3").write_text(json.dumps(_json3(
+                    ["good morning", "I am opening the hearing on House Bill 1491"])),
+                    encoding="utf-8")
+            return _sp.CompletedProcess(cmd, 0 if captions else 1, stdout="", stderr=answer)
+        return types.SimpleNamespace(run=run, TimeoutExpired=_sp.TimeoutExpired)
+
+    try:
+        os.chdir(root)
+        warn = ("WARNING: [youtube] PFWARN00001: Unable to download webpage: HTTP Error 403: "
+                "Forbidden (caused by a retry)\nWARNING: [youtube] PFWARN00001: Some web client "
+                "subtitles require a PO Token which was not provided. They will be discarded\n")
+        L.subprocess = fake(warn + "ERROR: [youtube] PFWARN00001: Private video. Sign in if "
+                            "you've been granted access to this video")
+        with contextlib.redirect_stdout(io.StringIO()) as out:
+            got = L.ask_track("PFWARN00001", "en", L.WORK, None, 30)
+        assert got[0] == "gone", f"a warning changed how the answer was read: {got}"
+        assert "--js-runtimes" in cmds[-1] and "node" in cmds[-1], cmds[-1]
+        L.subprocess = fake(warn, captions=True)
+        with contextlib.redirect_stdout(out):
+            got = L.ask_track("PFWARN00002", "en", L.WORK, None, 30)
+        assert got[0] == "captioned", got
+        logs = list(Path("logs").glob("youtube-*.log"))
+        assert len(logs) == 1, logs
+        text = logs[0].read_text(encoding="utf-8")
+        assert "PFWARN00001 en: gone" in text and "PO Token" in text and "Private video" in text \
+            and "PFWARN00002 en: captioned" in text, text
+        assert "WARNING" not in out.getvalue() and "PO Token" not in out.getvalue(), \
+            "yt-dlp's warnings reached the step's output, which is the run's public page"
+    finally:
+        L.subprocess = real_sp
+        os.chdir(here)
+        shutil.rmtree(root, ignore_errors=True)
+    s = L.setup_said({"yt-dlp": "2026.8.19", "node": "", L.SOLVER: ""})
+    assert "no node" in s, s
+    s = L.setup_said({"yt-dlp": "2026.8.19", "node": "v24.0.0", L.SOLVER: ""})
+    assert f"no {L.SOLVER}" in s, s
+    return "ok", ("asks name node; a 403 and a token warning beside a private video read as gone, "
+                  "a captioned ask with warnings as captioned; both in the day's log and neither "
+                  "on the page; the setup line names a missing node or solver")
+
+
+@check("livestreams", "a lock left by a killed step goes stale, and a New term run asks YouTube "
+                      "for nothing", needs=("livestreams",))
+def _ls_lock_and_new_term(livestreams):
+    """The night's livestream step has a time limit of its own, and a step
+    killed at it leaves archive/livestreams.lock behind. Held for two hours
+    by its date alone, that lock failed the build's --markers step -- a
+    failed step, which check_site will not publish. So a held lock is
+    touched every LOCK_BEAT seconds and one untouched for LOCK_STALE is
+    taken over, which is minutes, not the hours before --markers runs. And
+    the New term run, the longest there is, lists what is new and asks for
+    no captions: the workflow's NEW_TERM, which every step inherits."""
+    import time as _t
+    L = livestreams
+    assert 10 * L.LOCK_BEAT <= L.LOCK_STALE <= 15 * 60, (L.LOCK_BEAT, L.LOCK_STALE)
+    root = Path(tempfile.mkdtemp(prefix="gr-lslock-"))
+    here, beat = os.getcwd(), L.LOCK_BEAT
+    try:
+        os.chdir(root)
+        Path("archive").mkdir()
+        L.LOCK.write_text("pid 1", encoding="utf-8")
+        try:
+            with L.lock():
+                raise AssertionError("a fresh lock was taken over")
+        except L.Broken:
+            pass
+        old = _t.time() - L.LOCK_STALE - 60
+        os.utime(L.LOCK, (old, old))
+        L.LOCK_BEAT = 0.05
+        with L.lock():
+            os.utime(L.LOCK, (old, old))
+            _t.sleep(0.5)
+            assert _t.time() - L.LOCK.stat().st_mtime < 5, "a held lock was not touched"
+        assert not L.LOCK.exists(), "the lock was left behind"
+    finally:
+        L.LOCK_BEAT = beat
+        os.chdir(here)
+        shutil.rmtree(root, ignore_errors=True)
+
+    root = Path(tempfile.mkdtemp(prefix="gr-lsterm-"))
+    try:
+        _ls_fixture(root, L)
+        r = _sealed_run([sys.executable, _paths.script("livestreams.py"),
+                         "--since-state", "--replay", "api", "--captions-from", "src",
+                         "--origin", "runner", "--now", "2026-09-25T06:30:00Z"],
+                        cwd=str(root), env=dict(_ls_env(), NEW_TERM="true"),
+                        capture_output=True, text=True, timeout=120)
+        assert r.returncode == 0, (r.stdout + r.stderr)[-400:]
+        st = json.loads((root / "archive" / "livestreams.json").read_text(encoding="utf-8"))
+        assert not (root / "work").exists(), "a New term run asked for captions"
+        assert {v.get("captions") for v in st["videos"].values()
+                if v.get("status") == "finished"} == {"waiting"}, st["videos"]
+        assert "a New term run" in st["last_run"]["verdict"] and st["last_run"]["units"] == 6, \
+            st["last_run"]
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    return "ok", (f"a fresh lock refuses, one untouched for {L.LOCK_STALE}s is taken over, a held "
+                  "one is touched; a New term run lists at 6 units and asks for no captions")
+
+
+@check("livestreams", "the night's verdict says why recordings wait for their start times, "
+                      "under the kind the warning always had", needs=("nightly",))
+def _ls_verdict_words(nightly):
+    """The warning read "the laptop's evening catch-up (laptop_evening.py)
+    reads them" for a job that was switched off on 8 October 2026. It names
+    what stops them now -- YouTube's refusal of GitHub's machine, with when
+    it is next asked -- and that they keep the schedule's approximate start,
+    under the kind it has carried since 30 September, so the gate holds no
+    night for words that changed. And "captions" in every verdict: what the
+    step did tonight and what waits."""
+    from datetime import datetime, timezone
+    import types
+    N = nightly
+    now = datetime(2026, 10, 10, 9, 0, tzinfo=timezone.utc)
+    st = {"refusals": {"runner": {"at": "2026-10-07T16:29:24Z", "count": 4,
+                                  "until": datetime(2026, 10, 11, 14, 29, tzinfo=timezone.utc)
+                                  .timestamp(), "until_iso": "2026-10-11T14:29:24Z",
+                                  "why": "ERROR: [youtube] x: Sign in to confirm you’re not a bot."}},
+          "last_run": {"at": "2026-10-10T08:20:00Z", "captions": {"deferred": 3},
+                       "setup": {"yt-dlp": "2026.8.19", "node": "v24.1.0", "yt-dlp-ejs": "0.8.0"}},
+          "videos": {f"V{k}": {"status": "finished", "captions": "deferred",
+                               "ended": "2026-10-01T15:00:00Z"} for k in range(3)}}
+    st["videos"]["NY"] = {"status": "finished", "captions": "none-yet",
+                          "ended": "2026-10-09T15:00:00Z"}
+    why = N.captions_why(st, now)
+    assert "refused GitHub's machine" in why and "bot check" in why and \
+        "until 2026-10-11 14:29 UTC" in why and "1 with no captions published yet" in why, why
+    rec = N.captions_record("2026-10-10T08:30:00+00:00", st, now)
+    assert rec["step"] == "tonight" and rec["asked"] == {"deferred": 3} and rec["waiting"] == 4 \
+        and rec["late"] == 3 and rec["setup"]["yt-dlp-ejs"] == "0.8.0", rec
+    line = N.captions_line(rec)
+    assert line.startswith("captions: 0 captioned tonight; 4 wait: YouTube refused"), line
+    old = N.captions_record("2026-10-11T08:30:00+00:00", st, now)
+    assert old["step"].startswith("not tonight") and not old["asked"], old
+    root = Path(tempfile.mkdtemp(prefix="gr-lsverdict-"))
+    here = os.getcwd()
+    try:
+        os.chdir(root)
+        Path("archive").mkdir()
+        # The warning counts by the clock: five days ago is late whenever this runs.
+        from datetime import timedelta
+        ago = (datetime.now(timezone.utc) - timedelta(days=5)).strftime("%Y-%m-%dT%H:%M:%SZ")
+        for v in st["videos"].values():
+            v["ended"] = ago
+        st["refusals"]["runner"]["until"] = 4102444800.0       # 2100: held, whatever the clock
+        Path("archive/livestreams.json").write_text(json.dumps(st), encoding="utf-8")
+        warned = dict(N.Night.warned(types.SimpleNamespace(v={"started": "2026-10-10T08:30:00"})))
+        w = warned.get(N.KIND_CAPTIONS_WAIT, "")
+        assert "approximate start" in w and "refused GitHub's machine" in w \
+            and "laptop" not in w, warned
+        assert len(w) <= 300, f"the run's page cuts a note at 300 characters: {len(w)}"
+    finally:
+        os.chdir(here)
+        shutil.rmtree(root, ignore_errors=True)
+    return "ok", ("the waiting warning names YouTube's refusal and the hold, keeps its kind, and "
+                  "fits the page; the verdict's captions say tonight's answers, the setup, what "
+                  "waits, and not tonight's when the step did not run")
 
 
 @check("cloud", "the R2 adapter makes the calls boto3 takes", needs=("cloud",))
@@ -70924,11 +71274,12 @@ def _workflows_livestreams():
     be taken later -- and so its failure reaches the night only through
     --close, which is told its outcome. Drop that and a night with no
     livestreams for a month is green every morning. yt-dlp, which it fetches
-    captions with, is installed pinned, or the step exits 3 every night."""
+    captions with, is installed pinned, or the step exits 3 every night; and
+    the step has a time limit of its own (_livestream_step_limits)."""
     files = _workflows()
     if not files:
         return "skip", "no .github/workflows here"
-    found = []
+    found, limits = [], []
     for f in files:
         for j, jl in _wf_jobs(f.read_text(encoding="utf-8")).items():
             code = _wf_code(jl)
@@ -70950,9 +71301,78 @@ def _workflows_livestreams():
                 f"{f.name}: job {j} does not tell --close the livestream step's outcome"
             assert re.search(r"\byt-dlp==\d", body), \
                 f"{f.name}: job {j} runs livestreams.py and installs no pinned yt-dlp"
+            limits.append(_livestream_step_limits(f.name, j, st, body))
             found.append(f"{f.name}:{j}")
     assert found, "no workflow runs livestreams.py, which the nightly is meant to"
-    return "ok", f"{', '.join(found)}: before the night, fetch nights only, outcome to --close, yt-dlp pinned"
+    return "ok", (f"{', '.join(found)}: before the night, fetch nights only, outcome to --close, "
+                  f"yt-dlp and its solver pinned; {'; '.join(limits)}")
+
+
+def _livestream_step_limits(name, job, step, body):
+    """The livestream step's own time limit, and what it must hold (10
+    October 2026, when the night took the captions over from the laptop):
+
+      - the longest run fits it: livestreams.BUDGET minutes of asking, and
+        LAST_ASK_MINUTES for the ask that starts just inside that -- its
+        pause, both tracks at --timeout and the pause between -- with two
+        minutes for the listing; and LAST_ASK_MINUTES is that sum, not a
+        guess. Without a limit a hang inside one yt-dlp call ate the night;
+        with one too short, the step is killed in an ordinary long run;
+      - a scheduled night that spends all of it still asks the General Court
+        inside refusal.NIGHT_WINDOWS, started an hour late, and fits the
+        job's own timeout-minutes with an hour for the build (the allowances
+        of the night's own check: five minutes a try at the export, ten at
+        the database);
+      - yt-dlp's challenge solver, yt-dlp-ejs, is installed pinned beside
+        it, at the version yt-dlp names in its own metadata where the pinned
+        yt-dlp is the one installed here."""
+    import livestreams as L
+    import nightly as NI
+    import refusal
+    m = re.search(r"^        timeout-minutes:\s*(\d+)\s*$", step, re.M)
+    assert m, f"{name}: job {job}'s livestream step has no timeout-minutes of its own"
+    limit = int(m.group(1))
+    worst = (2 * (L.DELAY + L.JITTER) + len(L.CAPTION_TRACKS) * L.TIMEOUT) / 60
+    assert L.LAST_ASK_MINUTES >= worst, \
+        f"livestreams.LAST_ASK_MINUTES is {L.LAST_ASK_MINUTES}; the last ask can take {worst:g}"
+    need = L.BUDGET + L.LAST_ASK_MINUTES + 2
+    assert need <= limit <= 90, (
+        f"{name}: the livestream step allows {limit} minutes; its longest run is {need:g} "
+        "and it may not take more than an hour and a half of the night")
+    TRY, DATABASE, REST, LATE = 5, 10, 60, 60
+    asking = NI.DB_AFTER_TRIES * TRY + DATABASE + NI.TRIES_AFTER_DB * (NI.EMPTY_WAIT + TRY)
+    wf = _paths.locate(".github/workflows/" + name).read_text(encoding="utf-8")
+    cron = re.search(r'^\s+- cron: "(\d+) (\d+) \* \* \*"', wf, re.M)
+    jobmax = re.search(r"^  night:\n(?:(?!  \S).*\n)*?    timeout-minutes: (\d+)", wf, re.M)
+    if cron and jobmax:
+        starts = int(cron.group(2)) * 60 + int(cron.group(1))
+        closes = next(w[2] for w in refusal.NIGHT_WINDOWS if w[0] is None)
+        assert starts + LATE + limit + asking <= closes[0] * 60 + closes[1], (
+            f"{name}: a night started {LATE} minutes late that spends {limit} on captions asks "
+            f"the General Court until {starts + LATE + limit + asking} minutes past midnight "
+            f"UTC, past refusal.NIGHT_WINDOWS' {closes}")
+        assert limit + asking + REST <= int(jobmax.group(1)), (
+            f"{name}: {limit} minutes of captions, {asking} of asking and {REST} for the rest "
+            f"is past the night job's {jobmax.group(1)}")
+    yt = re.search(r"\byt-dlp==([\w.]+)", body)
+    ejs = re.search(r"\b" + re.escape(L.SOLVER) + r"==([\w.]+)", body)
+    assert ejs, f"{name}: job {job} installs no pinned {L.SOLVER}, which --js-runtimes node needs"
+    import importlib.metadata as md
+    try:
+        here = md.version("yt-dlp")
+        wants = [re.search(r"==([\w.]+)", r).group(1) for r in md.requires("yt-dlp") or []
+                 if r.startswith(L.SOLVER + "==")]
+    except md.PackageNotFoundError:
+        here, wants = None, []
+
+    def norm(v):
+        return ".".join(str(int(x)) if x.isdigit() else x for x in str(v).split("."))
+    if here and yt and norm(here) == norm(yt.group(1)) and wants:
+        assert ejs.group(1) in wants, (
+            f"{name}: yt-dlp {yt.group(1)} names {L.SOLVER} {wants[0]} in its own metadata, and "
+            f"the workflow pins {ejs.group(1)}")
+    return (f"its own limit {limit} min for a longest run of {need:g}, inside the night window "
+            f"and the job; {L.SOLVER} {ejs.group(1)}")
 
 
 @check("workflows", "the built site reaches the publish job through the private bucket, never as "
@@ -84223,6 +84643,9 @@ NOT_INPUT_NAMERS = {
     "build_all.py": "archive/cloud/kit-down.json: whether the build is the kit's, which "
                     "decides whether a missing input stops it, never what it writes",
     "cloud.py": "the bucket's logs and reports, which it sends; nothing a page is made of",
+    "livestreams.py": "logs/youtube-<day>.log, yt-dlp's warnings, which its asks write "
+                      "(--since-state, before the build) and nothing reads; nothing a page "
+                      "is made of",
 }
 
 

@@ -19,4 +19,6 @@ Asks nobody. Does not belong here: downloading captions or audio
 bench, `review.py` (`checks/`).
 
 The files moved here in stages 1 to 4 (`src/README.md`), the last of them
-`probe_alignment`, which the laptop's evening job runs by name, in stage 4.
+`probe_alignment`, which the laptop's evening job ran by name, in stage 4.
+The night's `src/ops/livestreams.py --markers` runs it by name now, as the
+guard on what it reads.

@@ -98,8 +98,18 @@ night itself does is here, and what differs on that machine is behind --runner:
                       calendar shows them), each into a scratch folder first
                       and swapped in only if it arrived whole
   the build           build_all.py --local --no-captions: that machine holds
-                      no caption files, so the step that reads them is skipped
-                      and says so
+                      no caption files but the night's new few, so the step
+                      that reads every one is skipped and says so; the
+                      livestream step's --markers reads the new few into
+                      candidate_segments.json and caption_spans.json, the
+                      night's files in the kit since 10 October 2026, behind
+                      the timestamp probe's guard (livestreams.py)
+  the captions        what the livestream step captioned and read, and what
+                      still waits and why, in the verdict ("captions") and on
+                      the run's page; a recording waiting three days is a
+                      warning, and keeps the schedule's approximate start.
+                      YouTube refusing GitHub's machine is not a failure: the
+                      night publishes
   the gates           against archive/census.json, the last good build's
                       counts, which cloud.py carries in R2's state/, because
                       site/ starts empty. No census is no baseline, and that
@@ -658,16 +668,28 @@ LIST_SAME_NIGHTS = 3
 # the same address next, reads it. Emptied before the two are run.
 EXITS = {}
 
-# RECORDINGS WAITING FOR THEIR START TIMES (30 September 2026). YouTube refuses
-# GitHub's machine the captions, so the laptop's evening job reads them. A
-# finished recording the laptop has not read CAPTION_WAIT_DAYS after it ended
-# is a warning: the laptop has been off, or its evening job is failing. Past
+# RECORDINGS WAITING FOR THEIR START TIMES (30 September 2026; the night's own
+# since 10 October 2026). The night's livestream step captions the new
+# recordings and its --markers step reads them into the start times; the
+# laptop's evening job, which did that from 30 September, is switched off. A
+# finished recording with no reading CAPTION_WAIT_DAYS after it ended is a
+# warning, which says why it waits -- YouTube refusing GitHub's machine, most
+# likely -- and that it keeps the schedule's approximate start. Past
 # CAPTION_WAIT_MOST days it is no longer counted, so no recording can hold a
 # warning up for ever, and one with no captions published at all is not
-# waiting for anything.
+# waiting for anything. Every night's verdict also says, in "captions", what
+# the step captioned and read that night and how many wait (captions_record).
 LIVE_STATE = Path("archive/livestreams.json")
 CAPTION_WAIT_DAYS = 3
 CAPTION_WAIT_MOST = 30
+# The kinds of the two caption warnings (WARNING KINDS). The first is the
+# kind the warning has carried since 30 September, kept although its words
+# changed, so that the gate does not hold a night for news that is not news;
+# the second is new, and a night that carries it is held for a person.
+KIND_CAPTIONS_WAIT = "recordings with no start time from their captions yet"
+KIND_CAPTIONS_PUT_BACK = "the start times read tonight put back by the timestamp guard"
+# What a captions state answers that does not say "captions waiting".
+CAPTIONS_WAITING = ("waiting", "deferred", "failed", "for-laptop", "none-yet")
 STUDY_WEEKLY = ("StatStudMembers", "vStatStudTemp")
 
 # A result this much smaller than the copy it would replace is not swapped in:
@@ -2871,25 +2893,153 @@ def count_lines(path):
 
 def captions_waiting(now=None):
     """How many finished recordings, CAPTION_WAIT_DAYS to CAPTION_WAIT_MOST
-    days old, the laptop has not read yet, by the livestream state."""
+    days old, have no reading yet, by the livestream state."""
+    return len(_captions_late(load_json(LIVE_STATE), now))
+
+
+def _captions_late(st, now=None):
+    """The state's entries for the finished recordings CAPTION_WAIT_DAYS to
+    CAPTION_WAIT_MOST days old that have no reading yet: [entry]."""
     from datetime import timedelta, timezone
-    st = load_json(LIVE_STATE)
     if not isinstance(st, dict):
-        return 0
+        return []
     now = now or datetime.now(timezone.utc)
-    n = 0
+    out = []
     for v in (st.get("videos") or {}).values():
         if not isinstance(v, dict) or v.get("status") != "finished" or v.get("adopted"):
             continue
-        if v.get("captions") not in ("waiting", "deferred", "failed", "for-laptop", "none-yet"):
+        if v.get("captions") not in CAPTIONS_WAITING:
             continue
         try:
             ended = datetime.fromisoformat(str(v.get("ended") or v.get("seen")).replace("Z", "+00:00"))
         except ValueError:
             continue
         if timedelta(days=CAPTION_WAIT_DAYS) < now - ended <= timedelta(days=CAPTION_WAIT_MOST):
-            n += 1
-    return n
+            out.append(v)
+    return out
+
+
+def refusal_said(why):
+    """YouTube's refusal in a few words, for the run's page: what yt-dlp was
+    told, never the whole of what it printed."""
+    w = str(why or "").lower()
+    if "not a bot" in w:
+        return "its bot check"
+    if "429" in w or "too many requests" in w:
+        return "HTTP 429, too many requests"
+    if "no captions" in w:
+        return "no captions from any recording asked, read as a refusal"
+    return (str(why or "")[:60] or "a refusal").strip()
+
+
+def captions_why(st, now=None):
+    """Why the finished recordings with no reading wait, as one clause, most
+    first: YouTube's refusal of GitHub's machine (with when it is next asked),
+    no captions published yet, failures, the ones left for a person, and the
+    ones not asked yet. "" for none."""
+    from datetime import timezone
+    if not isinstance(st, dict):
+        return ""
+    videos = [v for v in (st.get("videos") or {}).values() if isinstance(v, dict)
+              and v.get("status") == "finished" and not v.get("adopted")
+              and v.get("captions") in CAPTIONS_WAITING]
+    if not videos:
+        return ""
+    now = now or datetime.now(timezone.utc)
+    ref = ((st.get("refusals") or {}).get("runner") or {})
+    try:
+        held = bool(ref.get("count")) and float(ref.get("until") or 0) > now.timestamp()
+    except (TypeError, ValueError):
+        held = False
+    by = {}
+    for v in videos:
+        by[v.get("captions")] = by.get(v.get("captions"), 0) + 1
+    parts = []
+    stopped = by.get("deferred", 0) + by.get("waiting", 0)
+    if ref.get("count") and stopped:
+        parts.append(f"YouTube refused GitHub's machine on {str(ref.get('at'))[:10]} "
+                     f"({refusal_said(ref.get('why'))}), and "
+                     + (f"nothing is asked until "
+                        f"{str(ref.get('until_iso'))[:16].replace('T', ' ')} UTC"
+                        if held else "the next night asks again"))
+    elif by.get("waiting"):
+        parts.append(f"{by['waiting']} not asked yet")
+    if by.get("none-yet"):
+        parts.append(f"{by['none-yet']} with no captions published yet")
+    if by.get("failed"):
+        parts.append(f"{by['failed']} where yt-dlp failed or the reading was not kept")
+    if by.get("for-laptop"):
+        parts.append(f"{by['for-laptop']} left for a person after three failures")
+    return "; ".join(parts)
+
+
+# The livestream step runs before nightly.py starts, and takes at most about
+# an hour and a quarter (livestreams.BUDGET and LAST_ASK_MINUTES): a run of it
+# this much before the night's start is tonight's. The night before's is a day
+# older.
+CAPTION_STEP_HOURS = 3
+
+
+def _utc_of(s):
+    """A time the livestream state wrote ("...Z"), or a night's own "started"
+    (local, naive: the machine's clock), as an aware UTC datetime; None."""
+    from datetime import timezone
+    try:
+        d = datetime.fromisoformat(str(s).replace("Z", "+00:00"))
+    except (TypeError, ValueError):
+        return None
+    return d.astimezone(timezone.utc)
+
+
+def captions_record(started, st=None, now=None):
+    """What the night's caption step did tonight and what still waits, for
+    the verdict's "captions": None where there is no livestream state.
+
+    "step" says whether the livestream step ran tonight (a night that does
+    not fetch, and a New term run, ask YouTube nothing); "asked" is its
+    answers by outcome; "read" and "guard" are what --markers read into the
+    start times and how the guard judged it (THE GUARD in livestreams.py);
+    "waiting" every finished recording with no reading, "late" those
+    CAPTION_WAIT_DAYS to CAPTION_WAIT_MOST days old, and "why" why they wait."""
+    from datetime import timedelta
+    st = load_json(LIVE_STATE) if st is None else st
+    if not isinstance(st, dict):
+        return None
+    begun = _utc_of(started)
+    lr, mk = st.get("last_run") or {}, st.get("markers") or {}
+    ran, marked = _utc_of(lr.get("at")), _utc_of(mk.get("at"))
+    tonight = bool(begun and ran and ran >= begun - timedelta(hours=CAPTION_STEP_HOURS))
+    read_tonight = bool(begun and marked and marked >= begun - timedelta(minutes=5))
+    waiting = sum(1 for v in (st.get("videos") or {}).values() if isinstance(v, dict)
+                  and v.get("status") == "finished" and not v.get("adopted")
+                  and v.get("captions") in CAPTIONS_WAITING)
+    rec = {"step": "tonight" if tonight else f"not tonight (last ran {lr.get('at') or 'never'})",
+           "asked": dict(lr.get("captions") or {}) if tonight else {},
+           "read": int(mk.get("read") or 0) if read_tonight else 0,
+           "guard": str(mk.get("guard") or "") if read_tonight else "did not run tonight",
+           "waiting": waiting, "late": len(_captions_late(st, now)),
+           "why": captions_why(st, now)}
+    if tonight and lr.get("setup"):
+        rec["setup"] = lr["setup"]
+    if read_tonight and mk.get("probe"):
+        rec["probe"] = mk["probe"]
+    return rec
+
+
+def captions_line(rec):
+    """captions_record() as one line for the run's page, or ""."""
+    if not rec:
+        return ""
+    asked = rec.get("asked") or {}
+    got = int(asked.get("captioned") or 0)
+    head = (f"{got} captioned tonight" if rec.get("step") == "tonight"
+            else "the livestream step did not run tonight")
+    if rec.get("read") or str(rec.get("guard") or "").startswith("put back"):
+        head += (f", {rec.get('read', 0)} read into the start times "
+                 f"(the guard: {rec.get('guard')})")
+    tail = (f"; {rec['waiting']} wait: {rec['why']}" if rec.get("waiting") and rec.get("why")
+            else f"; {rec['waiting']} wait" if rec.get("waiting") else "; none waits")
+    return "captions: " + head + tail
 
 
 def take_lsrs():
@@ -3903,13 +4053,27 @@ class Night:
         if docs and not str(docs).startswith("installed"):
             out.append(("the General Court's list of calendars and journals: " + kind_of(docs),
                         f"the General Court's list of calendars and journals: {docs}"))
-        n = captions_waiting()
+        # The recordings waiting for their start times, and why: the night's
+        # own caption step since 10 October 2026, so the words name what
+        # stopped it rather than a laptop job. The kind is the one this
+        # warning has carried since 30 September (KIND_CAPTIONS_WAIT).
+        live = load_json(LIVE_STATE)
+        n = len(_captions_late(live))
         if n:
-            out.append(("recordings with no start time from their captions yet",
+            why = captions_why(live)
+            out.append((KIND_CAPTIONS_WAIT,
                         f"{n} recording{'s' if n != 1 else ''} finished more than "
                         f"{CAPTION_WAIT_DAYS} days ago {'have' if n != 1 else 'has'} no start "
-                        f"time from {'their' if n != 1 else 'its'} captions yet: the laptop's "
-                        "evening catch-up (laptop_evening.py) reads them"))
+                        f"time from {'their' if n != 1 else 'its'} captions yet, and "
+                        f"keep{'' if n != 1 else 's'} the schedule's approximate start"
+                        + (f": {why}" if why else "")))
+        rec = captions_record(self.v.get("started"), live)
+        if rec and str(rec.get("guard") or "").startswith("put back"):
+            out.append((KIND_CAPTIONS_PUT_BACK,
+                        f"the start times read off {rec['read']} new recording"
+                        f"{'s' if rec['read'] != 1 else ''} tonight were not kept, and "
+                        "candidate_segments.json and caption_spans.json are as they came "
+                        f"down: {rec['guard'][len('put back: '):]}"))
         return out
 
     def alarms(self):
@@ -3946,6 +4110,11 @@ class Night:
         why = self.problems()
         alarms = self.alarms()
         warned = self.warned()
+        # What the caption step did tonight and what waits (captions_record):
+        # in the verdict whatever else happened, and a line on the run's page.
+        caps = captions_record(v.get("started"))
+        if caps:
+            v["captions"] = caps
         v.update(finished=datetime.now().isoformat(timespec="seconds"), exit=code,
                  clean=not why and not alarms and code == 0, not_clean=why + alarms,
                  alarms=alarms, warnings=[w for _kind, w in warned],
@@ -4026,6 +4195,7 @@ class Night:
                    + [f"- {NEW_TERM_BOX}, {k}: {r}" for k, r in (v.get("new_term") or {}).items()
                       if k != "refused"]
                    + ([f"- {unpublished_note(v).strip()}"] if unpublished_note(v) else [])
+                   + ([f"- {captions_line(caps)}"] if caps else [])
                    + [f"- {w}" for w in why[:8]]
                    + [f"- warning: {w}" for w in v["warnings"]])
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-10.5
+# GRANITE_VERSION: 2026-09-10.6
 """
 Whether a recording's captions reach the end of the recording.
 
@@ -75,9 +75,12 @@ So the answer travels instead of the files. caption_spans.json holds, for
 every recording whose captions were read, what last_cue said and the size and
 date of the files it said it from. segment_markers.py --all writes it after
 every run, because that is the step that reads every caption file anyway, and
---write does the same by hand. It MERGES: a folder with no caption file on
-this machine keeps the entry made where its captions are, because a machine
-missing the captions is not evidence that they stopped anywhere.
+--write does the same by hand. On the nightly's machine, which holds only the
+night's new recordings, livestreams.py --markers merges their entries in
+(merge_summary) and the kit carries the file back as the night's, since
+10 October 2026. It MERGES: a folder with no caption file on this machine
+keeps the entry made where its captions are, because a machine missing the
+captions is not evidence that they stopped anywhere.
 
 out_of_step reads a caption file where there is one and the summary where
 there is not. Where a summary is in use and a recording with times has
@@ -239,19 +242,31 @@ def write_summary(work="work", path=SUMMARY):
     otherwise write "no captions" over every recording it was never given.
     Written whole and then moved into place, so a reader never meets half.
     """
+    root = Path(work)
+    folders = [d for d in sorted(root.iterdir()) if d.is_dir()] if root.is_dir() else []
+    return merge_summary(folders, path)
+
+
+def merge_summary(folders, path=SUMMARY):
+    """Each folder's entry -- where its captions stop, and the size and date of
+    the files that was read from -- merged into the summary: (read, kept).
+
+    write_summary gives it every folder under work/; the night's livestream
+    step (livestreams.py --markers) gives it the night's few, so that a
+    recording read there has its entry in the summary the kit carries back
+    -- the same entry, by the same functions, that --write makes where the
+    captions are. A folder with no caption file here is skipped, and every
+    entry not given keeps what it had."""
     old = load_summary(path) or {}
     new = dict(old)
     read = 0
-    root = Path(work)
-    if root.is_dir():
-        for d in sorted(root.iterdir()):
-            if not d.is_dir():
-                continue
-            files = caption_files(d)
-            if not files:
-                continue
-            new[d.name] = {"last": last_cue(d), "files": files}
-            read += 1
+    for d in folders:
+        d = Path(d)
+        files = caption_files(d)
+        if not files:
+            continue
+        new[d.name] = {"last": last_cue(d), "files": files}
+        read += 1
     doc = {"about": ("Where each recording's captions stop, for a machine that "
                      "does not hold the caption files. Written by caption_span.py "
                      "--write and by segment_markers.py --all; read by "

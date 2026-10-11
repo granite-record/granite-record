@@ -15,9 +15,9 @@ the work was done in -- is kept privately rather than in this repository.
 ## Where the code lives
 
 The repository root holds only what something outside the repository runs by
-name: the pipeline (`build_all.py`), the night (`nightly.py`), the laptop's
-evening job (`laptop_evening.py`), the checks (`preflight.py`), the refusal
-tools (`refusal.py`, `netcheck.py`) and the deploy (`publish.bat`); beside
+name: the pipeline (`build_all.py`), the night (`nightly.py`), the checks
+(`preflight.py`), the refusal tools (`refusal.py`, `netcheck.py`) and the
+deploy (`publish.bat`); beside
 them `_paths.py`, the config and the documents, and, untracked, the day's
 files as the night installs them and what the build writes. The tools that
 keep the site running rather than build it are in `src/ops/`, run by their
@@ -72,8 +72,8 @@ a refusal.
 
 **Names are bare and unique.** Every import and every launch is by bare name:
 `_paths.py` puts each code folder on the import path, and whatever starts a
-script as a process -- `build_all.py`'s steps, `nightly.py`, the evening job,
-the lane -- finds it through `_paths.script`. So a file can move between
+script as a process -- `build_all.py`'s steps, `nightly.py`, the lane --
+finds it through `_paths.script`. So a file can move between
 folders without anything that names it changing. A command a person types
 gives the path from the root --
 `python3 src/hearings/probe_alignment.py --truth` -- and `preflight` fails a
@@ -86,7 +86,7 @@ The site is built and published by a night on GitHub's machines and fed by
 the maintainer's laptop, and the two meet in a private Cloudflare R2 bucket
 rather than on either machine. `nightly.py`'s docstring is the long version
 of the first four parts below, `cloud.py`'s of the morning and the kit, and
-`laptop_evening.py`'s of the evening.
+`src/ops/livestreams.py`'s of the captions.
 
 **The night, on GitHub.** `.github/workflows/nightly.yml` runs every night at
 08:17 UTC on an empty Windows machine, from the commit of the branch it was
@@ -221,18 +221,29 @@ where a verdict from before yesterday is called stale) and the change lists
 `functions/api/report.js` writes them to, screens every one without a model, and writes the triage file read in the
 morning, holding back the words of any report the screen stops.
 
-**The evening caption job.** YouTube refuses captions to GitHub's machines
-and answers the laptop, so the exact start of a recording comes from there.
-`laptop_evening.py`, which Windows' Task Scheduler runs each evening, stops at
-the first step that fails: `cloud.py pull`, for the night's list of
-recordings waiting for captions; `src/ops/livestreams.py --catch-up`, which captions
-up to twenty of them, oldest first, and reads the chair's boundaries out of
-them;
-`src/hearings/probe_alignment.py --truth --candidate candidate_segments.json`,
-and nothing is sent if the median got worse; and
-`cloud.py seed-kit --only` with the caption results and nothing else. The
-next night publishes the times. Until then a recording is on its bill's page
-with a start taken from the schedule, marked approximate.
+**The captions, in the night.** Before the build, the night's livestream step
+(`src/ops/livestreams.py --since-state`) lists the House and Senate channels'
+new recordings with the YouTube Data API and asks YouTube for their captions
+through yt-dlp, with Node as its JavaScript runtime: whatever is waiting, up
+to twenty recordings, one at a time and a minute or two apart, within a time
+limit of its own. A refusal stops the asking for that run and holds the
+night's machine for twelve hours, doubling with each refusal in a row to a
+week; it is recorded in the livestream state, never asked again in the same
+run, and is not a failure -- the night publishes. Inside the build,
+`src/ops/livestreams.py --markers` reads the captioned recordings into
+`candidate_segments.json` and `caption_spans.json`, which have been the
+night's files in the kit since 10 October 2026, and keeps nothing unless the
+entries it did not read are unchanged and
+`src/hearings/probe_alignment.py --truth --candidate candidate_segments.json`
+places as many hand-timed proceedings with a median no worse; otherwise it
+puts both files back as they came down, and the night warns. Until a
+recording's captions are read it is on its bill's page with a start taken
+from the schedule, marked approximate, and the night's verdict says how many
+wait and why -- since 26 September 2026, chiefly YouTube's bot check, which
+it answers GitHub's machines with. The laptop's evening job that captioned
+what the night could not (`laptop_evening.py`, now in `obsolete/`) was
+switched off on 8 October 2026; `src/ops/livestreams.py --catch-up` remains
+for a person to ask YouTube from the laptop by hand, and sends nothing.
 
 **The kit.** `cloud_kit.json` lists everything the build reads that git does
 not hold -- the day files, the saved bill pages, the database dump, the
