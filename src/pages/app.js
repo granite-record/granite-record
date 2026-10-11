@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.190
+// GRANITE_VERSION: 2026-09-07.191
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -2728,6 +2728,11 @@ need("meta.json")
    if(window.GR_STATIC){
      // The content is in the HTML. Take the chrome down and leave it alone.
      staticChromeDown();
+     // A law's page can be followed by email (build_rsa's GR_LAW), and only
+     // by email: the box is drawn only where the sign-up answers, so the live
+     // site shows no Follow with nothing in it before email goes live.
+     if(window.GR_LAW)fetch("/api/follow/count",{cache:"no-store"})
+       .then(r=>{if(r.ok)mountFollow("law","",String(window.GR_LAW));}).catch(()=>{});
      return;
    }
    // A bill's own page is one bill, so the controls that filter and sort a
@@ -5495,7 +5500,8 @@ document.addEventListener("click",e=>{
 // is not offered until it works.
 const FOLLOWS={bill:"each new action, hearing and vote on this bill",
   member:"this member's newest votes and the bills they put their name to",
-  committee:"each day this committee sits, and what it does with each bill"};
+  committee:"each day this committee sits, and what it does with each bill",
+  law:"each of this term's bills that would change this chapter, as it is filed, heard, voted on and decided"};
 // EMAIL, BESIDE RSS (FOLLOW.md; the person's accounts of 11 October 2026).
 // The box is drawn only where it can work: the sign-up answers (the
 // deployment has the follow database bound, which production does not until
@@ -5511,8 +5517,11 @@ const FOLLOW_SAID={invalid:"That does not look like an email address.",
 function mountFollow(kind,feed,ref){
   const link=feed?null:document.querySelector('link[rel="alternate"][type="application/rss+xml"]');
   const res=$("#results");
-  if(!kind||!(feed||link)||!res||document.getElementById("followbox"))return;
-  const href=feed||link.getAttribute("href")||"";
+  // A LAW HAS NO FEED (11 October 2026): its Follow is email alone, and is
+  // drawn only once the email box can work there (followMail).
+  if(!kind||!res||document.getElementById("followbox"))return;
+  if(kind!=="law"&&!(feed||link))return;
+  const href=feed||(link&&link.getAttribute("href"))||"";
   const div=document.createElement("div");
   div.id="followbox";
   div.className="followrow";
@@ -5524,14 +5533,13 @@ function mountFollow(kind,feed,ref){
   const acts=document.getElementById("pageacts");
   if(acts)div.className="followin";
   div.innerHTML=`<details class="follow"><summary>${icon("follow")}Follow</summary>
-    <div class="followpane">
-      <p><b>By RSS</b>, in any feed reader: ${esc(FOLLOWS[kind]||"what is new here")}.
+    <div class="followpane">${href?`<p><b>By RSS</b>, in any feed reader: ${esc(FOLLOWS[kind]||"what is new here")}.
         The record is rebuilt once a night, so an update arrives the morning after
         it happens.</p>
       <p class="feedurl"><input type="text" readonly aria-label="The feed's address"
         value="${esc(new URL(href,location.origin).href)}">
         <button type="button" class="link" data-copyfeed="1">Copy the address</button>
-        <a href="${esc(href)}">Open the feed</a></p>
+        <a href="${esc(href)}">Open the feed</a></p>`:""}
       <div class="followmail" hidden></div>
     </div></details>`;
   if(acts){const c=acts.querySelector(".pcite");acts.insertBefore(div,c?c.nextSibling:acts.firstChild);}

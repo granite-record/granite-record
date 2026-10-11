@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-11.3
+# GRANITE_VERSION: 2026-10-11.4
 """
 The statutes (RSA) as pages: /laws, and one page a chapter at /laws/<chapter>.
 
@@ -331,7 +331,7 @@ def chapter_page(tmpl, table, data, bills, ch, base):
     p = S.page(tmpl, path=path, base=base, title=S.title_of(f"RSA {ch}", "Laws"),
                og_title=title, description=f"New Hampshire RSA chapter {ch}, {info['name']}: "
                "its text, the bills that changed it and the bills that would.",
-               og_image="og-learn.png", og_alt=OG_ALT, globals={"GR_STATIC": True},
+               og_image="og-learn.png", og_alt=OG_ALT, globals={"GR_STATIC": True, "GR_LAW": ch},
                noscript="", skip_label="Skip to the statute", sr_title="",
                nav_current="laws.html", cite=False)
     first = table.sections[secs[0]] if secs else None
