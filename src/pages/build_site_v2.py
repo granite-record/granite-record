@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.199
+# GRANITE_VERSION: 2026-09-05.200
 """
 Generate the faceted site from real General Court data.
 
@@ -7894,6 +7894,31 @@ def bill_committees(b, bid):
                  cmtes[0] if cmtes else ""), cmtes)
 
 
+_CHANGES = []
+
+
+def statute_changes(term, bid):
+    """The chapters and sections a bill's own text says it changes, from
+    rsa.py's rsa_citations.json -- the bill search's RSA filter (the person,
+    11 October 2026: the statute search replaces the floor vote day filter).
+    Each section's chapter is listed with it, so a chapter matches a bill
+    that changes any section of it. [] where the file is not on this disk."""
+    if not _CHANGES:
+        p = Path("rsa_citations.json")
+        try:
+            _CHANGES.append(json.loads(p.read_text(encoding="utf-8")).get("bills", {}) if p.is_file() else {})
+        except (OSError, ValueError):
+            _CHANGES.append({})
+    got = ((_CHANGES[0].get(term) or {}).get(bid) or {}).get("changes") or []
+    out = set(got) | {a.split(":")[0] for a in got}
+
+    def key(a):
+        ch, _, sec = a.partition(":")
+        m = re.match(r"(\d+)(?:-([A-Z]+))?$", ch)
+        return ((int(m.group(1)), m.group(2) or "") if m else (99999, ch), sec)
+    return sorted(out, key=key)
+
+
 def bill_index_row(bid, b, year, term, cmte, cmtes, disp, prime,
                    narr, rcs, coverage, carried, dates, chapter="",
                    passed=None, acted=None, live=False):
@@ -7966,6 +7991,9 @@ def bill_index_row(bid, b, year, term, cmte, cmtes, disp, prime,
         **({"chapter": chapter} if chapter else {}),
         "nrc": len([r for r in rcs if not r.get("procedural")]),
         "votedays": sorted({r["date"] for r in rcs if r.get("date")}),
+        # Only where the bill changes a statute, so the index grows by what
+        # the RSA filter needs and nothing on a night without the file.
+        **({"rsa": ch} if (ch := statute_changes(term, bid)) else {}),
     }
 
 # The record's own name for a stage a bill stopped at, for bill_disposition's

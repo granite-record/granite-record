@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.533
+# GRANITE_VERSION: 2026-09-04.534
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -40955,7 +40955,8 @@ def _search_groups_fixture(passed=0):
     earlier term with no bill still moving, tabled, withdrawn or vetoed, nor
     sent to interim study. `passed` more laws in the current term, HB 100 on,
     make its list longer than the hundred cards drawn at first. One bill was
-    voted on the floor, so the Floor Vote Day filter is drawn."""
+    voted on the floor and changes RSA 91-A:4: the RSA (Statute) filter is
+    drawn in the Floor Vote Day filter's place (the person, 11 October 2026)."""
     def row(bid, kind, chip, term="2025-2026", status=None):
         return {"id": bid, "n": re.sub(r"^([A-Z]+)", r"\1 ", bid), "title": "a bill",
                 "kind": kind, "status": status or chip, "chip": chip, "committees": [],
@@ -40963,7 +40964,7 @@ def _search_groups_fixture(passed=0):
                 "year": int(term[-4:]), "passage": "", "votedays": [], "nrc": 0,
                 "last_action": ""}
     now = [dict(row("HB1", "law", "Became Law", status="Signed into law"),
-                votedays=["2026-03-05"]),
+                votedays=["2026-03-05"], rsa=["91-A", "91-A:4"]),
            row("HB2", "done", "Died", status="Killed"),
            row("HB3", "active", "Tabled", status="Laid on the table"),
            row("HB4", "active", "In committee"),
@@ -41084,9 +41085,13 @@ def _status_and_type_filters():
     if labels.get("status") != "Status" or labels.get("type") != "Bill Type":
         bad.append(f"the two filters are headed {labels.get('status')!r} and "
                    f"{labels.get('type')!r}, not 'Status' and 'Bill Type'")
-    if labels.get("voteday") != "Floor Vote Day":
-        bad.append(f"the floor vote filter is headed {labels.get('voteday')!r}, not "
-                   "'Floor Vote Day'")
+    # THE STATUTE FILTER REPLACES THE FLOOR VOTE DAY FILTER (the person, 11
+    # October 2026: "Eventually we will replace the session day filter on
+    # bill search for the RSA search").
+    if "voteday" in labels:
+        bad.append("the Floor Vote Day filter is still drawn; the RSA (Statute) filter replaces it")
+    if labels.get("rsa") != "RSA (Statute)":
+        bad.append(f"the statute filter is headed {labels.get('rsa')!r}, not 'RSA (Statute)'")
     lower = [lab for _g, lab in n["labels"] if any(w[:1].islower() for w in lab.split())]
     if lower:
         bad.append(f"a filter's heading is not in Title Case: {lower}")

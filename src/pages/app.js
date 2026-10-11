@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.187
+// GRANITE_VERSION: 2026-09-07.188
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -2387,7 +2387,19 @@ function sortRows(rows){
   return rows.slice().sort(by);
 }
 const sel={committee:new Set(),topic:new Set(),sponsor:new Set(),status:new Set(),
-           type:new Set(),voteday:new Set()};
+           type:new Set(),voteday:new Set(),rsa:new Set()};
+// THE STATUTE FILTER (the person, 11 October 2026: the RSA search replaces the
+// floor vote day filter). A bill's index row carries `rsa`, the chapters and
+// sections its own text says it changes (rsa.py), each section's chapter with
+// it; a chapter or a section typed or picked here keeps the bills that change
+// it. RSA_SHAPE reads "RSA 91-A:4", "91-a:4" or "91-A" alike.
+let rsaText="";
+const RSA_SHAPE=/^\s*(?:rsa\s*)?(\d{1,3}(?:-[a-z]{1,2})?)(?:\s*:\s*([0-9]{1,4}(?:\.[0-9]{1,2})?(?:-[a-z0-9]{1,4})?))?\s*$/i;
+function rsaNorm(t){const m=RSA_SHAPE.exec(String(t||""));return m?m[1].toUpperCase()+(m[2]?":"+m[2].toLowerCase():""):"";}
+function rsaHas(b,want){return (b.rsa||[]).includes(want);}
+function rsaHref(a){const p=a.split(":");return "/rsa/"+p[0].toLowerCase()+(p[1]?"#s"+p[1]:"");}
+let HAS_RSA=null;
+function hasRsa(){if(HAS_RSA===null&&IDX&&IDX.length)HAS_RSA=IDX.some(b=>b.rsa);return !!HAS_RSA;}
 // On a phone the filter column stacks ABOVE the results, and an open
 // Committee group is 340 pixels of it -- so the first bill sat past a
 // screen and a half of filters on a 375-wide screen. Someone arriving on
@@ -2690,6 +2702,7 @@ need("meta.json")
    // offered at none, as a status is.
    for(const k of ["committee","sponsor","voteday"])
      for(const w of params.getAll(k)){const v=String(w||"").trim();if(v)sel[k].add(v);}
+   {const r=rsaNorm(params.get("rsa")||"");if(r){sel.rsa.add(r);rsaText=r;}}
    const psort=params.get("sort");
    if(psort&&["best","num","recent","status"].includes(psort)){
      sortBy=psort; sortChosen=true;
@@ -2842,7 +2855,12 @@ function matches(b,ignore){
   for(const k of["committee","topic","sponsor","status","type"])
     if(k!==ignore&&sel[k].size&&!facetVals(b,k).some(v=>sel[k].has(v)))return false;
   if(ignore!=="voteday"&&sel.voteday.size&&!(b.votedays||[]).some(d=>sel.voteday.has(d)))return false;
+  if(ignore!=="rsa"&&sel.rsa.size&&![...sel.rsa].some(a=>rsaHas(b,a)))return false;
   const q=query.trim(); if(!q)return true;
+  // A statute typed in the search box is the statute filter: "RSA 91-A:4"
+  // lists the bills that change it, not the bills that print those words.
+  const rq=/^\s*rsa\b/i.test(q)&&hasRsa()?rsaNorm(q):"";
+  if(rq)return rsaHas(b,rq);
   // Every group must match, and any of its alternatives will do.
   return groupsFor(q).every(g=>groupWeight(b,g)>0);
 }
@@ -2903,6 +2921,23 @@ function fgroup(key,label,vals,counts,searchable,paint,show){
     <span class="chev">▸</span></button><div class="fbody${whole?" whole":""}" ${open?"":"hidden"}>${inner}</div></div>`;
 }
 
+function rsaGroup(inYear){
+  const open=openGroups.has("rsa"),chosen=[...sel.rsa];
+  const c={};inYear.filter(b=>matches(b,"rsa")).forEach(b=>(b.rsa||[]).forEach(a=>{
+    if(a.indexOf(":")<0)c[a]=(c[a]||0)+1;}));
+  const top=Object.keys(c).sort((x,y)=>c[y]-c[x]||(x<y?-1:1)).slice(0,10);
+  const inner=`<input class="sbox" id="rsabox" aria-label="A chapter or section of the RSA"
+      placeholder="A chapter or section: 91-A or 91-A:4" value="${esc(rsaText||chosen[0]||"")}" autocomplete="off">`
+    +(chosen.length?`<p class="frsa">Bills that change <b>RSA ${esc(chosen[0])}</b> &middot; `
+      +`<a href="${esc(rsaHref(chosen[0]))}">Read the statute</a> &middot; <button class="link" data-rsapick="">Clear</button></p>`
+      :(rsaText.trim()?`<p class="fnone">Type a chapter (91-A) or a section (91-A:4)</p>`:""))
+    +(top.length?`<p class="frsa">Most changed by these bills:</p>`
+      +top.map(a=>`<button class="pill frsapick" data-rsapick="${esc(a)}">RSA ${esc(a)} <span class="c">${c[a]}</span></button>`).join(" "):"");
+  return `<div class="fgroup ${open?'open':''}"><button class="fhead" data-g="rsa"
+    aria-expanded="${open}"><span>RSA (Statute)</span>${chosen.length?`<span class="badge">1</span>`:""}
+    <span class="chev">▸</span></button><div class="fbody" ${open?"":"hidden"}>${inner}</div></div>`;
+}
+
 function renderFacets(){
   const inYear=IDX.filter(inTermOf);
   const cnt=(k,ig)=>{const c={};inYear.filter(b=>matches(b,ig)).forEach(b=>{
@@ -2941,11 +2976,11 @@ function renderFacets(){
   h+=fgroup("committee","Committee",present("committee"),cnt("committee","committee"));
   h+=fgroup("topic","Topic",present("topic"),cnt("topic","topic"));
   h+=fgroup("sponsor","Prime Sponsor",present("sponsor"),cnt("sponsor","sponsor"),true);
-  const days={};inYear.filter(b=>matches(b,"voteday")).forEach(b=>(b.votedays||[]).forEach(d=>days[d]=(days[d]||0)+1));
-  const allDays=[...new Set(inYear.flatMap(b=>b.votedays||[]))].sort().reverse();
-  // "Floor Vote Day", in the Title Case of the headings above it (Prime
-  // Sponsor, Bill Type): decided 8 October 2026.
-  if(allDays.length)h+=fgroup("voteday","Floor Vote Day",allDays,days);
+  // THE STATUTE, where the Floor Vote Day filter was (the person, 11 October
+  // 2026). A box for a chapter or a section, the bills' most changed chapters
+  // under it as picks, and the statute itself one link away. A vote day an
+  // old address names still filters; the group is no longer drawn.
+  if(hasRsa())h+=rsaGroup(inYear);
   if(Object.values(sel).some(s=>s.size))h+=`<button class="link" id="clear" style="margin-top:12px">Clear all filters</button>`;
   // Replacing innerHTML resets scrollTop to zero. Capture it first and put it
   // back in the same tick, before anything is painted, or every tick of a
@@ -7797,7 +7832,7 @@ function addressList(){
   if(was.get("q"))p.set("q",was.get("q"));
   const terms=(META&&META.terms)||[];
   if(term&&term!==terms[0])p.set("term",term);
-  for(const k of ["status","type","topic","committee","sponsor","voteday"])
+  for(const k of ["status","type","topic","committee","sponsor","voteday","rsa"])
     for(const v of sel[k])p.append(k,v);
   if(sortChosen&&sortBy)p.set("sort",sortBy);
   const s=p.toString(),want=location.pathname+(s?"?"+s:"");
@@ -8182,7 +8217,17 @@ document.addEventListener("change",e=>{
   if(PAGE)return;                       // the facet checkboxes are not drawn there
   const f=e.target.dataset.f;if(!f)return;
   e.target.checked?sel[f].add(e.target.value):sel[f].delete(e.target.value);render();});
+let RSADRAW=null;
+document.addEventListener("click",e=>{
+  const pk=e.target.closest&&e.target.closest("[data-rsapick]");
+  if(!pk||PAGE)return;
+  const a=pk.dataset.rsapick;sel.rsa.clear();if(a)sel.rsa.add(a);rsaText=a;render();
+});
 document.addEventListener("input",e=>{
+  if(e.target.id==="rsabox"){rsaText=e.target.value;clearTimeout(RSADRAW);
+    RSADRAW=setTimeout(()=>{const a=rsaNorm(rsaText);sel.rsa.clear();if(a)sel.rsa.add(a);render();
+      const b=document.getElementById("rsabox");if(b){b.focus();b.setSelectionRange(b.value.length,b.value.length);}},250);
+    return;}
   if(e.target.id==="sbox"){sponsorFilter=e.target.value;renderFacets();
     const b=document.getElementById("sbox");if(b){b.focus();b.setSelectionRange(b.value.length,b.value.length);}}});
 // AN OFFERED SEARCH, TAKEN, IS THE ONE THE ADDRESS NAMES. A reader who

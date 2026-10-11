@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.251 */
+/* GRANITE_VERSION: 2026-09-07.252 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -6107,6 +6107,10 @@ border-bottom:2px solid var(--ink-2);transform:rotate(-45deg);transition:transfo
 .rs-title a{color:var(--pine);font-weight:600;margin-right:.25rem}
 .rs-title li.rs-off,.rs-title li.rs-off a{color:var(--ink-2);font-weight:400}
 @media (max-width:45em){.rs-title ul{padding-left:0}.rs-tno{min-width:0;margin-right:.5rem}}
+/* The bill search's statute filter (app.js rsaGroup). */
+.frsa{font:400 var(--t-sm)/1.45 var(--sans);color:var(--ink-2);margin:.5rem 0 .25rem}
+.frsa a{color:var(--pine)}
+.frsapick{margin:.125rem .25rem .125rem 0;cursor:pointer;font:500 var(--t-sm)/1.3 var(--sans)}
 /* ==== /THE STATUTES ====================================================== */
 
 /* PAGES:START ---------------------------------------------------------
