@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-19.39
+# GRANITE_VERSION: 2026-09-19.40
 """
 A page for every day the House sat.
 
@@ -136,8 +136,11 @@ def load_titles(site):
 
 def _careers():
     """generated/careers.json, {member id: {"by_term": {term: {"chambers"}}}},
-    or {} where it is not here; every id a member's employee numbers give is
-    a key."""
+    or {} where it is not here. The roster numbers a member by PersonID
+    (legislators.json: Abbas is 10607) and careers.json by employee number
+    (218760, 408908), so each record is keyed by its person_id as well as by
+    each of its employee numbers: keyed by employee number alone, the dry run
+    of 3b43bf7 matched no one and still left Rosenwald and Abbas as words."""
     p = Path("generated/careers.json")
     try:
         raw = json.loads(p.read_text(encoding="utf-8")) if p.is_file() else {}
@@ -145,7 +148,9 @@ def _careers():
         return {}
     out = {}
     for k, v in raw.items():
-        for i in [k] + list(v.get("employee_nos") or []):
+        for i in [k, v.get("person_id")] + list(v.get("employee_nos") or []):
+            if not i:
+                continue
             out.setdefault(str(i), v)
     return out
 
