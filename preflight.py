@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.530
+# GRANITE_VERSION: 2026-09-04.531
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -22645,6 +22645,7 @@ ic_SOURCES = {
     "db/CandH_Reports.psv": "fetch_archive_db.py, which dumps the SQL views",
     "db/Legislators.psv": "fetch_archive_db.py, which dumps the SQL views",
     "db/_columns.json": "fetch_archive_db.py, the column order of each view it dumps",
+    "db/NH_RSA.psv": "fetch_archive_db.py --only NH_RSA, the statute table (a person's run)",
     "db/past/PastSponsors.psv": "fetch_past_db.py, which dumps the six Past* views",
     "db/past/PastLegislation.psv": "fetch_past_db.py, which dumps the six Past* views",
     "db/past/_manifest.json": "fetch_past_db.py, the column order of each Past* view",
@@ -32531,6 +32532,71 @@ def _session_suspend_two_thirds(SD, BSP, MO):
     ot = SD.Item("HB1", "2023-2024", {**e, "action": "Ought to Pass", "raw": "OTP, MF, RC 181-121"}, 0)
     assert BSP.vote_payload(ot, MO.classify("Ought to Pass", "HB1", "H")["mk"])["threshold_needed"] == 152
     return "ok", "a suspension 181-121 needs 202; Ought to Pass on the same count needs 152"
+
+
+@check("build", "the statute reader takes a bill's own instructions, new sections and lists "
+       "included, and holds its score against the source notes", needs=("rsa",))
+def _rsa_reader(RSA):
+    """src/parse/rsa.py (RSA_PAGE.md, 11 October 2026). Every passage below is
+    from a real bill text on disk, never typed out of a description:
+
+    - SB 617 (1995-1996): a new section, named by its neighbour, whose own
+      heading the text then writes;
+    - SB 29 (1991-1992): a new chapter, declared as "CHAPTER 14-B";
+    - HB 59 (1989-1990): "Amend the following RSA provisions", whose targets
+      follow the colon in a list that drops "RSA".
+
+    Where db/NH_RSA.psv is on disk, the reader is scored against the source
+    notes, which it did not write: on the table of 8 September 2026, 90.6% of
+    its section claims for enacted bills are confirmed by a note and it finds
+    84.5% of what the notes say. A change that lowers either fails here. The
+    note of RSA 91-A:4 is read whole: a second law of 2019 after an effective
+    date was once lost, and every section's history with it."""
+    sb617 = ("commissioners; however, nothing in this chapter is to be construed to alter the "
+             "applicability of RSA 38, 149-I or 231.  197:2 New Section; Appointment of Sewer "
+             "Commissioners. Amend RSA 149-I by inserting after section 20 the following new "
+             "section:  149-I:20-a Appointment. The commissioners may be appointed by the mayor")
+    got = RSA.changes(sb617)
+    assert "149-I:20-a" in got and "149-I" in got, got
+    assert "38" not in got and "231" not in got, f"a mention read as a change: {got}"
+    sb29 = ("1 New Chapter; Legislative Ethics Committee Established. Amend RSA by inserting "
+            "after chapter 14-A the following new chapter:  CHAPTER 14-B  LEGISLATIVE ETHICS "
+            "COMMITTEE  14-B:1 Definitions. In this chapter:  I. \"Investigation\" means")
+    assert "14-B:1" in RSA.changes(sb29), RSA.changes(sb29)
+    hb59 = ("1 Change from Postsecondary Vocational-technical to Postsecondary Technical. Amend the "
+            "following RSA provisions by replacing \"vocational-technical\" with \"technical\": "
+            "RSA 4:8-a; 21-K:11, IV; 21-K:14, IV; 94:1-a, I; 188-B:2; 188-D:2, I, III, and IV; "
+            "and 188-F.  2 Effective Date. This act shall take effect")
+    got = RSA.changes(hb59)
+    for a in ("4:8-a", "21-K:11", "21-K:14", "94:1-a", "188-B:2", "188-D:2"):
+        assert a in got, f"{a} not read from HB 59's list: {got}"
+    note = ("1967, 251:1. 2019, 107:1, eff. Jan. 1, 2020; 163:2, eff. Jan. 1, 2020 at 12:01 a.m. "
+            "2024, 49:1, 2, eff. Aug. 13, 2024.")     # RSA 91-A:4's source note
+    h = RSA.history(note, {(2024, 49): "2023-2024/SB1"})
+    assert [(y, law) for y, law, _b in h] == [(1967, "251:1"), (2019, "107:1"), (2019, "163:2"),
+                                              (2024, "49:1")], h
+    assert h[-1][2] == "2023-2024/SB1"
+    cols = ["id", "TitleNo", "ChapterNo", "SectionNo", "Title", "Chapter", "Section", "SourceNote",
+            "rsa", "EntireRSA"]
+    t = RSA.Table([dict(zip(cols, r)) for r in (
+        ["1", "XXXI", "339", "339-1", "TITLE XXXI", "CHAPTER 339 X", "Section 339:1 Sales Tickets.",
+         "", "", "<codesect> I. Every seller shall</codesect>"],
+        ["2", "XXXI", "339", "339-71", "TITLE XXXI", "CHAPTER 339 X",
+         "Section 339:71-339:76 Repealed by 2007, 138:6, II, eff. Aug. 17, 2007.", "", "",
+         "<codesect></codesect>"])])
+    assert t.resolve("339", "73") == ("range", "339:71"), t.resolve("339", "73")
+    assert t.resolve("339", "80") == (None, None) and not t.dropped, t.dropped
+    table = RSA.load()
+    if table is None:
+        return "ok", "the reader on four real passages; db/NH_RSA.psv not here to score against"
+    chp = Path("chapters.json")
+    data = RSA.build(table, RSA.bill_texts(),
+                     json.loads(chp.read_text(encoding="utf-8")) if chp.is_file() else {})
+    sc = RSA.score(table, data)
+    assert sc["precision"] >= 0.90 and sc["recall"] >= 0.84, \
+        f"the reader against the source notes fell: precision {sc['precision']:.1%}, recall {sc['recall']:.1%}"
+    return "ok", (f"four real passages; against the source notes precision {sc['precision']:.1%}, "
+                  f"recall {sc['recall']:.1%}")
 
 
 @check("rollcalls", "a roll call the docket names as a rules suspension needs two thirds",

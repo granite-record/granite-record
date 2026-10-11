@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.66
+# GRANITE_VERSION: 2026-09-05.67
 """
 Run the whole pipeline in the right order.
 
@@ -511,6 +511,19 @@ def plan(a):
              produces=["chapters.json"],
              note="11,812 bills across all 19 terms; 18 withheld where the "
                   "docket gives one number to two bills"),
+
+        # The statutes (RSA_PAGE.md, src/parse/rsa.py): what each bill says
+        # it changes and cites, each section's history of change from its
+        # source note, and what each section cites. After the chapters, which
+        # turn a source note's session law into the bill it was. Skipped, and
+        # named, where db/NH_RSA.psv is not on disk -- GitHub's night until
+        # the kit carries it. Writes a file no page reads yet.
+        Step("the statutes, and the bills that change them",
+             ["rsa.py"],
+             needs=["db/NH_RSA.psv", "chapters.json"],
+             produces=["rsa_citations.json"],
+             note="on 8 September 2026's table: 90.6% of the clause reader's claims "
+                  "for enacted bills confirmed by a source note, 84.5% of the notes found"),
 
         # An archived term's docket, and the histories built from it. Both
         # are skipped when the file is not there, so a checkout without the
