@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-07.26
+# GRANITE_VERSION: 2026-09-07.27
 """
 The page every record's own address is: bills.html, with one record open.
 
@@ -425,6 +425,22 @@ def member_followable(m):
     if m.get("former"):
         return False
     return bool(str(m.get("id") or "")) and bool(m.get("n_votes") or m.get("n_sponsored"))
+
+
+# EMAIL FOLLOWING IS LIVE when the production deployment binds its database:
+# the root wrangler.toml's [[env.production.d1_databases]] naming FOLLOW_DB,
+# the one switch the go-live flips (workers/follow/README.md). The About and
+# Data pages say what email following keeps only from then on, so neither
+# describes a sign-up a reader of the live site cannot see.
+def follow_live(toml=None):
+    try:
+        import _paths
+        text = Path(toml or _paths.ROOT / "wrangler.toml").read_text(encoding="utf-8")
+    except OSError:
+        return False
+    blocks = re.split(r"(?m)^\s*\[", text)
+    return any(b.startswith("[env.production.d1_databases]]")
+               and re.search(r'(?m)^\s*binding\s*=\s*"FOLLOW_DB"', b) for b in blocks)
 
 
 def ld_script(jsonld):

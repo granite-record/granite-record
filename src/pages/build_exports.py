@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-10.43
+# GRANITE_VERSION: 2026-09-10.44
 """
 The record as CSV, for anyone who wants to work with it rather than read it.
 
@@ -42,6 +42,7 @@ import ballot_source as BS
 import bill_order as BO
 import build_date
 import past_sponsors as PSP
+import shell
 import site_read as SR
 import text_sponsors as TS
 # The month the General Court's YouTube channels begin, as the About page and
@@ -666,8 +667,7 @@ build a profile of a reader &mdash; what comes back is a count per page, with
 the country, browser and referrer of the visit in aggregate. Nobody here can
 tell one reader from another, and nothing about what you read is stored
 against you.</p>
-<p>Nothing else is collected. There are no accounts, no email addresses and
-no advertising. The feeds need no subscription, so nothing knows who takes
+<p>Nothing else is collected. __NO_ACCOUNTS__ The feeds need no subscription, so nothing knows who takes
 them. Search runs in your own browser against files this site serves. When a
 search takes you to a results page &mdash; the bill search, the record search
 or the legislator list &mdash; your words travel in that page&rsquo;s address.
@@ -677,10 +677,10 @@ from Google Fonts, so Google sees a request for them when a page opens. Video
 is embedded from
 YouTube&rsquo;s no-cookie address, which still means YouTube sees a request
 when a player is opened &mdash; a player only loads if you press play.</p>
-<p>One thing a reader sends deliberately is feedback, through the form
+<p>__FEEDBACK_OPENS__, through the form
 linked in the footer. That is a Google form, and what you put in it goes to
 Google and to us.</p>
-<p>The other is a report, from the button marked <i>Report a problem</i> on
+<p>__REPORT_OPENS__, from the button marked <i>Report a problem</i> on
 bill, committee and legislator pages. A report holds the page and
 the record it is about, the tab that was open, the kind of problem chosen from
 a list, what you wrote, the time it arrived and which build of the site you
@@ -688,7 +688,40 @@ were reading. Nothing in it identifies you &mdash; no IP address, no cookie, no
 email address &mdash; which is also why we cannot reply to one. It is read only
 to check the page against the official record and fix what is wrong, and it is
 deleted after a week.</p>
-"""
+__EMAIL__"""
+
+# WHAT THE DATA PAGE SAYS OF EMAIL, BEFORE AND AFTER IT GOES LIVE (the
+# person's wording, 11 October 2026). shell.follow_live() decides; the first
+# is the text of 9 October, unchanged.
+PRIVACY_FOLLOW = {
+    False: {"__NO_ACCOUNTS__": "There are no accounts, no email addresses and\nno advertising.",
+            "__FEEDBACK_OPENS__": "One thing a reader sends deliberately is feedback",
+            "__REPORT_OPENS__": "The other is a report",
+            "__EMAIL__": ""},
+    True: {"__NO_ACCOUNTS__": "There are no accounts and no advertising.",
+           "__FEEDBACK_OPENS__": "Readers send three things deliberately. The first is feedback",
+           "__REPORT_OPENS__": "The second is a report",
+           "__EMAIL__": """<p><b>Email updates.</b> If you sign up for email updates, we keep your email
+address and the list of what you follow, and use them only to send those updates.
+Both are stored encrypted. Every email has a link to change what you follow and a
+link to unsubscribe. Unsubscribing deletes your address and your list right away,
+and an address we can't deliver to is deleted the same way. If you never confirm a
+sign-up, it's deleted after two days. Our emails don't track whether you open them
+or which links you click.</p>
+<p>The site runs on Cloudflare, which also keeps short-term backups of the database,
+and the emails are sent through a mail service, Resend. Both keep their own copies
+for a limited time before deleting them. To keep automated programs from signing up
+addresses that aren't theirs, the sign-up form uses a check from Cloudflare that
+works out you're a person, usually without asking you to do anything.</p>
+"""},
+}
+
+
+def privacy_text(live=None):
+    out = PRIVACY
+    for k, v in PRIVACY_FOLLOW[shell.follow_live() if live is None else bool(live)].items():
+        out = out.replace(k, v)
+    return out
 
 
 # THE PAGE'S SECTIONS, in order: what the head's "On this page" lists and what
@@ -973,7 +1006,7 @@ def data_page(site, out, tables, base, cov=()):
       its <i>Report a problem</i> button tells us.</p>''',
 
         "how-built": how_built,
-        "privacy": PRIVACY,
+        "privacy": privacy_text(),
 
         "developers": f'''<h3 class="dph3">The Manifest</h3>
     <p><a href="data/manifest.json">data/manifest.json</a> lists

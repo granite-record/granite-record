@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.538
+# GRANITE_VERSION: 2026-09-04.539
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -32646,6 +32646,35 @@ def _rsa_pages(B, RSA, S):
     return "ok", "91-A:4 tagged pending by HB 100, linked to 91-A:5 and not to 91-A:99, history 2019 then 1967"
 
 
+@check("build", "About and the Data page describe email updates only once production binds the "
+       "follow database, in the person's approved words", needs=("shell", "build_pages", "build_exports"))
+def _follow_privacy_gated(S, BP, BE):
+    """The person, 11 October 2026: "Approved the language for the privacy
+    info". Until the go-live binds FOLLOW_DB for production, neither page may
+    describe a sign-up the live site does not show, and the 9 October text
+    stands; after it, both say what is kept and how it is deleted."""
+    tmp = Path(tempfile.mkdtemp(prefix="gr-live-"))
+    try:
+        base = Path("wrangler.toml").read_text(encoding="utf-8")
+        (tmp / "off.toml").write_text(base, encoding="utf-8")
+        (tmp / "on.toml").write_text(base + '\n[[env.production.d1_databases]]\nbinding = "FOLLOW_DB"\n'
+                                     'database_name = "graniterecord-follow"\ndatabase_id = "x"\n', encoding="utf-8")
+        assert not S.follow_live(tmp / "off.toml"), "a preview binding was read as the live site's"
+        assert S.follow_live(tmp / "on.toml"), "the production binding was not read"
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    for live in (False, True):
+        a, d = BP.about_text(live), BE.privacy_text(live)
+        assert "__" not in a.replace("__LOGO__", "").replace("__REPO__", "") and "__" not in d, "a placeholder was left"
+        if live:
+            assert "stored encrypted, never shared or" in " ".join(a.split()) \
+                and "it's deleted after two days" in d and "Resend" in d, "the live text is not the approved one"
+        else:
+            assert "email" not in a.lower().split("<h2>your privacy</h2>")[-1].split("<h2>")[0] \
+                and "no email addresses" in d, "email is described before it is live"
+    return "ok", "9 October's words until production binds FOLLOW_DB, the approved ones after"
+
+
 @check("build", "the weekly takes the statutes whole: a short copy or one whose columns moved is "
        "refused, and the Laws pages say when the table was taken", needs=("nightly", "build_rsa"))
 def _statutes_weekly(NI, B):
@@ -60146,6 +60175,12 @@ def _about_reports():
         t = t[i + len(f'\n{name} = """'):]
         return " ".join(t[:t.index('"""')].split())
     about, detail = const(bp, "ABOUT"), const(ex, "PRIVACY")
+    # Its privacy paragraph is one of two since 11 October 2026, before and
+    # after email goes live (build_pages.ABOUT_FOLLOW); both must keep the
+    # promise, so each is held below.
+    src = bp.read_text(encoding="utf-8")
+    follow = " ".join(src[src.index("\nABOUT_FOLLOW = {"):src.index("\n}\n", src.index("\nABOUT_FOLLOW = {"))].split())
+    about = about + " " + follow
     # Its drawing comes first since Polish 1 (9 October 2026): the label is
     # the words after it.
     m = re.search(r'<summary>(?:\$\{icon\("report"\)\})?(Report a problem[^<]*)</summary>',
@@ -60160,6 +60195,9 @@ def _about_reports():
     k = re.search(r"^KEEP_DAYS = (\d+)", cr.read_text(encoding="utf-8"), re.M)
     assert k, "compile_reports.py no longer says how long a report is kept"
     said = {7: "a week", 14: "two weeks", 30: "a month"}.get(int(k.group(1)))
+    assert said and follow.count(f"deleted after {said}") == 2, (
+        f"compile_reports deletes a report after {k.group(1)} days; one of the About page's two "
+        f"privacy paragraphs does not say \"deleted after {said}\"")
     for page, text in (("the About page", about), ("the Data page's Privacy in Detail", detail)):
         assert said and f"deleted after {said}" in text, (
             f"compile_reports deletes a report after {k.group(1)} days; {page} does not "

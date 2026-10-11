@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.190
+# GRANITE_VERSION: 2026-09-04.191
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -1576,7 +1576,7 @@ without whom this project would not be possible.</p>
 <li>Open a hearing's recording at the moment a bill was taken up.</li>
 <li>Prepare to testify, with a bill's hearings, reports and text in one place.</li>
 <li>Research how a bill, or an issue, has changed over the years.</li>
-<li>Follow a bill's progress, and find your legislators and how to reach them.</li>
+<li>__FOLLOW_BULLET__</li>
 </ul>
 
 <h2>Where the Information Comes From</h2>
@@ -1627,10 +1627,7 @@ use the <i>Report a problem</i> button on that page: reports are read every day,
 and corrected.</p>
 
 <h2>Your Privacy</h2>
-<p>Granite Record doesn't track you. There are no accounts and no advertising,
-nothing about what you read is tied to you, and reports sent through the
-<i>Report a problem</i> button are deleted after a week.
-<a href="data.html#privacy">Privacy in detail</a> is on the Data page.</p>
+__PRIVACY__
 
 <h2>Free and Open Source</h2>
 <p>Granite Record is free to use, now and always. Its code is public on
@@ -1658,6 +1655,31 @@ hand-coloring some, and matting or framing them. &hellip; Over the years I have
 added scenes from the Monadnock Region, New Hampshire and beyond.</p>
 </blockquote>
 """.replace("__REPO__", REPO)
+
+# WHAT ABOUT SAYS OF FOLLOWING, BEFORE AND AFTER EMAIL GOES LIVE (the
+# person's wording, 11 October 2026: "Approved the language for the privacy
+# info"). shell.follow_live() decides which; the first of each pair is the
+# text of 9 October, unchanged.
+ABOUT_FOLLOW = {
+    False: ("Follow a bill's progress, and find your legislators and how to reach them.",
+            """<p>Granite Record doesn't track you. There are no accounts and no advertising,
+nothing about what you read is tied to you, and reports sent through the
+<i>Report a problem</i> button are deleted after a week.
+<a href="data.html#privacy">Privacy in detail</a> is on the Data page.</p>"""),
+    True: ("Follow a bill, legislator, committee or topic by feed or by email, and find "
+           "your legislators and how to reach them.",
+           """<p>Granite Record doesn't track you. There are no accounts and no advertising,
+and nothing about what you read is tied to you. If you sign up for email updates,
+your address is used only to send them. It is stored encrypted, never shared or
+sold, and deleted at once when you unsubscribe. Reports sent through the
+<i>Report a problem</i> button are deleted after a week.
+<a href="data.html#privacy">Privacy in detail</a> is on the Data page.</p>"""),
+}
+
+
+def about_text(live=None):
+    bullet, privacy = ABOUT_FOLLOW[_shell.follow_live() if live is None else bool(live)]
+    return ABOUT.replace("__FOLLOW_BULLET__", bullet).replace("__PRIVACY__", privacy)
 
 def about_logo(has_lockup):
     """THE DRAWING ITSELF, in the section about it (the person, 10 October
@@ -3757,7 +3779,7 @@ committee. Your town shows who represents you.</p>
     # with a hole where a number was.
     (out / "about.html").write_text(
         shell("About | Granite Record", "about.html",
-              about_figures.fill(ABOUT.replace("__LOGO__", about_logo(has_lockup)),
+              about_figures.fill(about_text().replace("__LOGO__", about_logo(has_lockup)),
                                  about_figures.figures(site=out)),
               desc="How Granite Record is built, where every fact on it comes "
                    "from, and how to report something that is wrong."),
