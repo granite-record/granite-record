@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.67
+# GRANITE_VERSION: 2026-09-05.68
 """
 Run the whole pipeline in the right order.
 
@@ -827,6 +827,17 @@ def plan(a):
              produces=["site/resources.html"],
              note="the Learn pages and the Resources hub they hang off; needs "
                   "no network, and it owns resources.html and learn/"),
+
+        # The statutes as pages (RSA_PAGE.md; build_rsa.py): /rsa and a page a
+        # chapter, each section with its history of change, the bills now
+        # proposing to change it and its references both ways. After the site
+        # data, whose bill index says which bills are still moving.
+        Step("the statutes: a page a chapter, and their search",
+             ["build_rsa.py", "--site", "site", "--base", a.base],
+             needs=["db/NH_RSA.psv", "rsa_citations.json", "site/meta.json"],
+             produces=["site/rsa.html"],
+             note="1,786 chapter pages and /rsa, about 105 MB; search files about 3.5 MB, "
+                  "fetched only on a first search"),
 
         Step("a page per town and ward",
              ["build_town_pages.py", "--site", "site", "--base", a.base],

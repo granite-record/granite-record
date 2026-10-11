@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.531
+# GRANITE_VERSION: 2026-09-04.532
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -32532,6 +32532,56 @@ def _session_suspend_two_thirds(SD, BSP, MO):
     ot = SD.Item("HB1", "2023-2024", {**e, "action": "Ought to Pass", "raw": "OTP, MF, RC 181-121"}, 0)
     assert BSP.vote_payload(ot, MO.classify("Ought to Pass", "HB1", "H")["mk"])["threshold_needed"] == 152
     return "ok", "a suspension 181-121 needs 202; Ought to Pass on the same count needs 152"
+
+
+@check("build", "a statute page links only what the table holds, tags a section a moving bill would "
+       "change, and gives its history from the source note", needs=("build_rsa", "rsa", "shell"))
+def _rsa_pages(B, RSA, S):
+    """build_rsa.py on a two-section chapter: RSA 91-A:4's own note and a
+    citation of a section the table holds and one it does not, with a bill
+    of the sitting term still moving that says it changes 91-A:4 and one of
+    an old term that did. The person, 11 October 2026: "tagging sections
+    that are in progress that propose to amend that RSA section, with
+    history of how it's changed through various bills over the years"."""
+    cols = ["id", "TitleNo", "ChapterNo", "SectionNo", "Title", "Chapter", "Section", "SourceNote",
+            "rsa", "EntireRSA", "titleNumber", "url"]
+    t = RSA.Table([dict(zip(cols, r)) for r in (
+        ["1", "VI", "91-A", "91-A-4", "TITLE VI PUBLIC OFFICERS AND EMPLOYEES",
+         "CHAPTER 91-A ACCESS TO GOVERNMENTAL RECORDS AND MEETINGS",
+         "Section 91-A:4 Minutes and Records Available for Public Inspection.",
+         "<p><b>Source.</b> 1967, 251:1. 2019, 107:1, eff. Jan. 1, 2020; 163:2, eff. Jan. 1, 2020. </p>",
+         "", "<codesect> I. Every citizen ... except as otherwise prohibited by statute or RSA 91-A:5. "
+         "See also RSA 91-A:99.</codesect>", "6", "VI\\91-A\\91-A-4.htm"],
+        ["2", "VI", "91-A", "91-A-5", "TITLE VI PUBLIC OFFICERS AND EMPLOYEES",
+         "CHAPTER 91-A ACCESS TO GOVERNMENTAL RECORDS AND MEETINGS", "Section 91-A:5 Exemptions.",
+         "", "", "<codesect> The following governmental records are exempted</codesect>", "6",
+         "VI\\91-A\\91-A-5.htm"])])
+    data = {"bills": {"2025-2026": {"HB100": {"changes": ["91-A:4"], "cites": ["91-A:4"]}},
+                      "2019-2020": {"HB286": {"changes": ["91-A:4"], "cites": ["91-A:4"]}}},
+            "enacted": {"91-A:4": [["1967", "251:1", ""], ["2019", "163:2", "2019-2020/HB286"]]},
+            "statute": {"91-A:4": ["91-A:5"]}, "asof": {"laws_through": 2025}}
+    root = Path(tempfile.mkdtemp(prefix="gr-rsa-"))
+    try:
+        (root / "idx").mkdir()
+        (root / "idx" / "2025-2026.json").write_text(json.dumps([
+            {"id": "HB100", "n": "HB 100", "year": 2025, "title": "relative to records", "kind": "active",
+             "chip": "In committee", "term": "2025-2026"}]), encoding="utf-8")
+        (root / "idx" / "2019-2020.json").write_text(json.dumps([
+            {"id": "HB286", "n": "HB 286", "year": 2019, "title": "x", "kind": "law",
+             "chip": "Signed into law", "term": "2019-2020"}]), encoding="utf-8")
+        bills = B.Bills(root, "2025-2026")
+        page = B.chapter_page(S.template(Path("site")), t, data, bills, "91-A", "https://graniterecord.org")
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    sec = page[page.index('id="s4"'):page.index('id="s5"')]
+    assert "Pending: 1 bill" in sec and 'href="/bill/2025/hb100"' in sec, "the moving bill is not tagged"
+    assert 'href="/rsa/91-a#s5"' in sec, "a citation the table holds is not linked to its anchor"
+    assert "91-A:99" in sec and 'href="/rsa/91-a#s99"' not in sec, "a section the table lacks was linked"
+    hist = sec[sec.index('class="rs-hist"'):]
+    assert hist.index("2019") < hist.index("1967") and 'href="/bill/2019/hb286"' in hist, \
+        "the history is not newest first with its bill"
+    assert "Access to Governmental Records and Meetings" in page, "the chapter's name is not in title case"
+    return "ok", "91-A:4 tagged pending by HB 100, linked to 91-A:5 and not to 91-A:99, history 2019 then 1967"
 
 
 @check("build", "related bills: the same text hashes the same everywhere, quoted law is not shared "
