@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.544
+# GRANITE_VERSION: 2026-09-04.545
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -32969,6 +32969,47 @@ def _related_judged(RB, R):
     assert kept >= 0.97 * len(right), f"only {kept} of {len(right)} pairs judged right are still found"
     assert len(back) <= 4, f"{len(back)} pairs judged wrong are shown again: {back[:3]}"
     return "ok", f"{kept} of {len(right)} judged right still found; {len(back)} judged wrong still shown"
+
+
+@check("build", "related bills on a bill's page: only what the judged sample let through, each other "
+       "bill once, the specific first", needs=("build_site_v2", "related_bills"))
+def _related_tab(B, RB):
+    """build_site_v2.add_related, the Related tab's data (RELATED_BILLS.md §6).
+    SB 184 of 2025's real relations: its text became law in HB 377, which the
+    same text also links as language, and it was filed before as SB 479. An
+    entry below the line, an amendment whose fate the docket does not
+    record, the bill itself and a bill the index does not hold are left out."""
+    by_key = {"2025-2026/HB377": {"n": "HB 377-FN", "title": "relative to x", "year": 2025, "chip": "Became Law"},
+              "2023-2024/SB479": {"n": "SB 479", "title": "relative to y", "year": 2024, "chip": "Died"},
+              "2025-2026/HB2": {"n": "HB 2", "title": "z", "year": 2025, "chip": "Became Law"},
+              "2025-2026/SB184": {"n": "SB 184", "title": "w", "year": 2025, "chip": "Died"}}
+    rows = [{"kind": "amendment", "other": "2025-2026/HB2", "amendment": "2025-1333h", "band": "line",
+             "direction": "bill_in_amendment", "order": "same", "share": 0.9, "fate": "unknown"},
+            {"kind": "amendment", "other": "2025-2026/HB2", "amendment": "2025-1247h", "band": "line",
+             "direction": "bill_in_amendment", "order": "same", "share": 0.9, "fate": "failed",
+             "fate_vote": "72-300", "fate_body": "H"},
+            {"kind": "inside_law", "other": "2025-2026/HB377", "share": 0.97, "band": "line"},
+            {"kind": "language", "other": "2023-2024/SB479", "share": 0.98, "mine": 0.98, "theirs": 0.97,
+             "band": "line"},
+            {"kind": "language", "other": "2025-2026/HB377", "share": 0.97, "mine": 0.97, "theirs": 0.2,
+             "band": "line"},
+            {"kind": "language", "other": "2025-2026/SB184", "share": 1.0, "band": "line"},
+            {"kind": "language", "other": "2021-2022/SB9", "share": 0.9, "band": "line"},
+            {"kind": "language", "other": "2025-2026/HB2", "share": 0.7, "band": "below"}]
+    got = B.related_entries("2025-2026", "SB184", rows, by_key)
+    said = [(e["g"], e["o"], e["s"]) for e in got]
+    assert said == [
+        (0, "2025-2026/HB377", "Nearly all of its text became law as part of {b}."),
+        (0, "2025-2026/HB2", "Its language was offered as amendment 2025-1247h to {b}; the House rejected it, 72-300."),
+        (1, "2023-2024/SB479", "Filed before as {b}, with the same text.")], said
+    assert got[0]["n"] == "HB 377-FN" and got[0]["c"] == "Became Law" and got[2]["y"] == 2024, got
+    assert not RB.shown({"kind": "amendment", "band": "line", "fate": "recommended"}), \
+        "an amendment no vote is on record for would be shown"
+    app = Path("src/pages/app.js").read_text(encoding="utf-8")
+    assert "function renderRelated(b,rel)" in app and 'replace("{b}",name)' in app and 'related:"7"' in app, \
+        "the page does not draw the Related tab from d.related"
+    return "ok", ("SB 184: rejected amendment, HB 377 once, SB 479 filed before; below the line, "
+                  "no fate, itself and an unknown bill left out")
 
 
 @check("build", "related bills: the same text hashes the same everywhere, quoted law is not shared "

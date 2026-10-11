@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.257 */
+/* GRANITE_VERSION: 2026-09-07.258 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -6052,6 +6052,18 @@ border-bottom:2px solid var(--ink-2);transform:rotate(-45deg);transition:transfo
 @media (max-width:59.99em){.wday > .w4m{margin:0 0 var(--sp-5)}}
 .wday .cards .card{margin-bottom:var(--sp-5)}
 /* POLISH 2 -- SESSION DAYS: END ----------------------------------------- */
+
+/* THE RELATED TAB (app.js renderRelated). Each row the sentence, at reading
+   size, and the other bill's title and status under it at the size of meta. */
+.rl-g{margin:0 0 1.25rem}
+.rl-g h3{font:600 var(--t-ui)/1.35 var(--sans);color:var(--ink);margin:1rem 0 .5rem}
+.rl-list{list-style:none;margin:0;padding:0}
+.rl-row{padding:.625rem 0;border-top:1px solid var(--rule)}
+.rl-s{font:400 var(--t-ui)/1.5 var(--sans);color:var(--ink);margin:0}
+.rl-s a{color:var(--pine);font-weight:600}
+.rl-t{font:400 var(--t-sm)/1.45 var(--sans);color:var(--ink-2);margin:.25rem 0 0}
+.rl-st{display:inline-block;margin-left:.375rem;padding:0 .5rem;border:1px solid var(--rule-2);
+  border-radius:var(--r-pill);white-space:nowrap}
 
 /* ==== THE STATUTES (build_rsa.py) ========================================
    /laws and /laws/<chapter>. A section is an anchor on its chapter's page; its

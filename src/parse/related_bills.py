@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-11.2
+# GRANITE_VERSION: 2026-10-11.3
 """
 Related bills: which bills and amendments share their proposed language.
 
@@ -50,8 +50,10 @@ and a "band" of "line" (share >= 0.8, the starting line RELATED_BILLS.md
 decision 1 proposes) or "below" (0.6 to 0.8, kept only for the bench's
 seventh stratum and shown nowhere).
 
-NOTHING HERE IS SHOWN YET. The bench judges a sample of each kind first
-(review.py's "related" kind), and a kind ships only where its sample passes.
+WHAT IS SHOWN. The bench judged a sample of each kind (review.py's
+"related" kind; tests/related_judged_2026-10-11.json), and a bill's Related
+tab shows only what shown() passes: a relation at the line, and an amendment
+only with a fate the docket records (build_site_v2.add_related).
 An amendment relation also waits for the amendment's fate from the docket:
 "offered as an amendment to HB 2, which the House rejected 72-300" is the
 fact, and "added to HB 2" would be false (RELATED_BILLS.md §2.2).
@@ -125,6 +127,76 @@ HEAD_BILL = re.compile(r"amendment\s+to\s+(hb|sb|cacr|hcr|scr|hr|sr|hjr|sjr)\s*(
 AM_HEAD = re.compile(r"amendment\s+to\s+(?:hb|sb|cacr|hcr|scr|hr|sr|hjr|sjr)\s*\d+[^\n]*", re.I)
 STRUCK = re.compile(r"\[[^\[\]]{0,4000}\]")
 AMEND_NO = re.compile(r"\b(\d{4}-\d{3,5}[a-zA-Z]{0,2})\b")
+
+
+# WHAT A PAGE SHOWS (RELATED_BILLS.md §6 and the judged sample of 11 October
+# 2026): a relation at the line, and an amendment only where the docket
+# records what became of it -- "added to HB 2" for an amendment the House
+# rejected 72-300 would be false.
+SHOWN_FATES = ("adopted", "failed", "withdrawn")
+
+
+def shown(r):
+    if r.get("band") != "line":
+        return False
+    return r.get("kind") != "amendment" or r.get("fate") in SHOWN_FATES
+
+
+def sentence(it, label):
+    """The sentence a bill page prints for one relation, and the bench shows
+    beside it (RELATED_BILLS.md §6: plain words, not percentages; an
+    amendment's fate always stated, "added" only for one adopted). `it` is
+    the relation with this bill's key as "a" and the other's as "b";
+    `label` names the other bill -- "HB 106 (2023-2024)" at the bench, a
+    placeholder the page turns into a link."""
+    other, share = label(it.get("b")), float(it.get("share") or 0)
+    words = ("the same text" if share >= 0.95 else "most of its text" if share >= 0.8
+             else "some of its text")
+    if it["kind"] == "language":
+        ta, tb = (it.get("a") or "")[:9], (it.get("b") or "")[:9]
+        # WHICH WAY THE TEXT WENT (the judged sample, 11 October 2026): a share
+        # measured on the smaller bill alone called SB 124's appropriation
+        # "most of the text" of HB 2. "mine" is how much of this bill is in
+        # the other, "theirs" how much of the other is in this one.
+        mine, theirs = it.get("mine"), it.get("theirs")
+        if mine is not None and theirs is not None:
+            if mine >= 0.8 and theirs < 0.6:
+                return (f"Its text is also in {other}, a longer bill." if ta == tb else
+                        f"Its text was filed again as part of {other}, a longer bill." if tb > ta else
+                        f"Its text was part of {other}, a longer bill filed before it.")
+            if theirs >= 0.8 and mine < 0.6:
+                return (f"It contains the text of {other}, a shorter bill." if ta == tb else
+                        f"Part of its text was filed again as {other}." if tb > ta else
+                        f"It contains the text of {other}, filed before it.")
+            words = ("the same text" if min(mine, theirs) >= 0.9 else "much the same text"
+                     if min(mine, theirs) >= 0.6 else words)
+        if ta == tb:
+            return f"This term's {other} has {words}."
+        return (f"Filed before as {other}, with {words}." if tb < ta
+                else f"Filed again as {other}, with {words}.")
+    if it["kind"] == "inside_law":
+        return f"Nearly all of its text became law as part of {other}."
+    num, on = it.get("amendment") or "", label(it.get("b"))
+    house = {"H": "House", "S": "Senate"}.get(it.get("fate_body") or "", "chamber")
+    vote = f", {it['fate_vote']}" if it.get("fate_vote") else ""
+    fate = {"adopted": f"the {house} adopted it{vote}",
+            "failed": f"the {house} rejected it{vote}",
+            "withdrawn": "it was withdrawn",
+            "recommended": "its committee recommended it, and no vote on it is on record"}.get(
+                it.get("fate"), "")
+    if it.get("direction") == "bill_in_amendment":
+        if not fate:
+            return (f"Its language was in amendment {num} to {on}, whose fate the docket does not "
+                    "record. (Not shown on the site.)")
+        if it.get("order") == "before":
+            return f"Its language had been offered before, as amendment {num} to {on}; {fate}."
+        return f"Its language was offered as amendment {num} to {on}; {fate}."
+    if not fate:
+        return f"Amendment {num} to {on} carries language this bill has. (No fate on record: not shown.)"
+    if it.get("order") == "after":
+        return f"Amendment {num} to {on}, offered later, carries language this bill had; {fate}."
+    return f"Amendment {num} to {on} carries language this bill has; {fate}."
+
 
 
 def term_of_year(y):

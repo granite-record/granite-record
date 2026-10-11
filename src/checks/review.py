@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-09.21
+# GRANITE_VERSION: 2026-09-09.22
 """
 The bench: one sample at a time, judged by a person, written down for good.
 
@@ -795,56 +795,11 @@ def _bill_label(key):
 
 
 def related_sentence(it):
-    """The sentence the page would print for this relation, word for word
-    (RELATED_BILLS.md §6: plain words, not percentages; an amendment's fate
-    always stated, "added" only for one adopted)."""
-    other, share = _bill_label(it.get("b")), float(it.get("share") or 0)
-    words = ("the same text" if share >= 0.95 else "most of its text" if share >= 0.8
-             else "some of its text")
-    if it["kind"] == "language":
-        ta, tb = (it.get("a") or "")[:9], (it.get("b") or "")[:9]
-        # WHICH WAY THE TEXT WENT (the judged sample, 11 October 2026): a share
-        # measured on the smaller bill alone called SB 124's appropriation
-        # "most of the text" of HB 2. "mine" is how much of this bill is in
-        # the other, "theirs" how much of the other is in this one.
-        mine, theirs = it.get("mine"), it.get("theirs")
-        if mine is not None and theirs is not None:
-            if mine >= 0.8 and theirs < 0.6:
-                return (f"Its text is also in {other}, a longer bill." if ta == tb else
-                        f"Its text was filed again as part of {other}, a longer bill." if tb > ta else
-                        f"Its text was part of {other}, a longer bill filed before it.")
-            if theirs >= 0.8 and mine < 0.6:
-                return (f"It contains the text of {other}, a shorter bill." if ta == tb else
-                        f"Part of its text was filed again as {other}." if tb > ta else
-                        f"It contains the text of {other}, filed before it.")
-            words = ("the same text" if min(mine, theirs) >= 0.9 else "much the same text"
-                     if min(mine, theirs) >= 0.6 else words)
-        if ta == tb:
-            return f"This term's {other} has {words}."
-        return (f"Filed before as {other}, with {words}." if tb < ta
-                else f"Filed again as {other}, with {words}.")
-    if it["kind"] == "inside_law":
-        return f"Nearly all of its text became law as part of {other}."
-    num, on = it.get("amendment") or "", _bill_label(it.get("b"))
-    house = {"H": "House", "S": "Senate"}.get(it.get("fate_body") or "", "chamber")
-    vote = f", {it['fate_vote']}" if it.get("fate_vote") else ""
-    fate = {"adopted": f"the {house} adopted it{vote}",
-            "failed": f"the {house} rejected it{vote}",
-            "withdrawn": "it was withdrawn",
-            "recommended": "its committee recommended it, and no vote on it is on record"}.get(
-                it.get("fate"), "")
-    if it.get("direction") == "bill_in_amendment":
-        if not fate:
-            return (f"Its language was in amendment {num} to {on}, whose fate the docket does not "
-                    "record. (Not shown on the site.)")
-        if it.get("order") == "before":
-            return f"Its language had been offered before, as amendment {num} to {on}; {fate}."
-        return f"Its language was offered as amendment {num} to {on}; {fate}."
-    if not fate:
-        return f"Amendment {num} to {on} carries language this bill has. (No fate on record: not shown.)"
-    if it.get("order") == "after":
-        return f"Amendment {num} to {on}, offered later, carries language this bill had; {fate}."
-    return f"Amendment {num} to {on} carries language this bill has; {fate}."
+    """The sentence the page prints for this relation, word for word: the
+    page and the bench read the same function (related_bills.sentence), with
+    the other bill named as "HB 106 (2023-2024)" here."""
+    import related_bills
+    return related_bills.sentence(it, _bill_label)
 
 
 def sample_related():

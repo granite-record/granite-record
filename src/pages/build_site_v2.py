@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.202
+# GRANITE_VERSION: 2026-09-05.203
 """
 Generate the faceted site from real General Court data.
 
@@ -10182,6 +10182,81 @@ def chapter_of(st, docket, tally):
     return ""
 
 
+# RELATED BILLS ON A BILL'S PAGE (RELATED_BILLS.md §6; related_bills.py).
+# Added after the loop, because an entry names the other bill's number,
+# title and status, and the loop has not reached every other bill when it
+# writes this one. Only what related_bills.shown passes: a relation at the
+# line, and an amendment only with a fate the docket records. Absent file,
+# no tab: a night without the statute table skips the step, and that is the
+# truth about that night.
+RELATED_GROUPS = (("inside_law", "amendment"), ("language_across",), ("language_same",))
+RELATED_MAX = 40
+
+
+def related_entries(term, bid, rows, by_key):
+    """[{g, o, n, t, y, c, s}] for one bill: the group (0 where its language
+    went, 1 filed before or after, 2 this term's bills with the same text),
+    the other bill's key, number, title, year and status, and the sentence
+    with "{b}" where the other bill is named, which the page links."""
+    import related_bills as RB
+    me, out, seen = f"{term}/{bid}", [], set()
+    for r in rows:
+        o = r.get("other") or ""
+        if not RB.shown(r) or o == me or o not in by_key:
+            continue
+        kind = r["kind"]
+        if kind == "language":
+            g = 2 if o[:9] == term else 1
+        else:
+            g = 0
+        if kind != "amendment":
+            if o in seen:
+                continue
+            seen.add(o)
+        it = {"kind": kind, "a": me, "b": o, "share": r.get("share"), "mine": r.get("mine"),
+              "theirs": r.get("theirs"), "order": r.get("order", ""), "amendment": r.get("amendment", ""),
+              "direction": r.get("direction", ""), "fate": r.get("fate", ""),
+              "fate_vote": r.get("fate_vote", ""), "fate_body": r.get("fate_body", "")}
+        x = by_key[o]
+        out.append({"g": g, "o": o, "n": x.get("n") or o.split("/")[1], "t": x.get("title") or "",
+                    "y": x.get("year"), "c": x.get("chip") or "", "s": RB.sentence(it, lambda _k: "{b}"),
+                    "_share": float(r.get("share") or 0)})
+    out.sort(key=lambda e: (e["g"], -e["_share"], e["o"]))
+    for e in out:
+        del e["_share"]
+    return out[:RELATED_MAX]
+
+
+def add_related(out, index, path=None):
+    """Puts each bill's related entries into its own JSON. Returns how many
+    bills have some."""
+    p = Path(path or "related_bills.json")
+    if not p.is_file():
+        print("  related bills: no related_bills.json here; no Related tab on any page")
+        return 0
+    data = json.loads(p.read_text(encoding="utf-8"))
+    by_key = {f"{r.get('term')}/{r.get('id')}": r for r in index}
+    n_bills = n_rows = 0
+    for r in index:
+        term, bid = r.get("term"), r.get("id")
+        rows = (data.get(term) or {}).get(bid)
+        if not rows:
+            continue
+        rel = related_entries(term, bid, rows, by_key)
+        if not rel:
+            continue
+        f = out / "bills" / str(r.get("year")) / f"{bid}.json"
+        if not f.is_file():
+            continue
+        rec = json.loads(f.read_text(encoding="utf-8"))
+        rec["related"] = rel
+        f.write_text(json.dumps(rec), encoding="utf-8")
+        n_bills += 1
+        n_rows += len(rel)
+    print(f"  related bills: {n_rows:,} relations on {n_bills:,} bills' pages")
+    return n_bills
+
+
 def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
                 bill_texts, amend_texts, testimony, testimony_db, procs, floor, segs,
                 marks, sources, legs, leg_by_sort, leg_by_name,
@@ -11562,6 +11637,7 @@ def main():
                                    max(bills) if bills else ""),
                                ballots=load_ballots(BALLOTS, bills),
                                rc_cards=rc_cards, moments=floor_moments)
+    add_related(out, index)
     # NO index.json (retired 5 October 2026). It was every row below in one
     # file, read by six build steps and by no page: 23.7 MB on 2 October,
     # 90.5% of the 25 MiB Cloudflare Pages takes in one file, and a term's

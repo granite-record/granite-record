@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.69
+# GRANITE_VERSION: 2026-09-05.70
 """
 Run the whole pipeline in the right order.
 
@@ -738,9 +738,11 @@ def plan(a):
         # bills and amendments share their proposed language, and what the
         # docket says became of each amendment. After the bill versions,
         # whose amendment texts it reads, and the histories, whose dockets
-        # give the fates. Writes a file no page reads yet: what ships is
-        # decided at the bench. Skipped, and named, without the statute
-        # table, because without it quoted law reads as shared language.
+        # give the fates. The site data reads it for each bill's Related tab
+        # (build_site_v2.add_related), only what related_bills.shown lets
+        # through. Skipped, and named, without the statute table, because
+        # without it quoted law reads as shared language; a night that skips
+        # it draws no Related tab anywhere.
         Step("related bills: shared language, and where it went",
              ["related_bills.py"],
              needs=["db/NH_RSA.psv", "chapters.json", "narratives.json"],

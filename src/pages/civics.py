@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.40
+# GRANITE_VERSION: 2026-09-08.41
 """
 The topics of the civics section: their order, their names, and their prose.
 
@@ -2311,6 +2311,10 @@ committee's own words, and the Governor's message where a bill was
 vetoed.</li>
 <li><b>Sponsors</b>, and <b>Documents</b> &mdash; the official pages this all
 comes from.</li>
+<li><b>Related</b>, where there is any &mdash; bills and amendments that share
+most of its language: the same text filed in another year, or carried into
+another bill or an amendment to one, with what became of it. Found by
+comparing the texts, so a match can be missed.</li>
 </ul>
 
 <h2>What a Timestamp Claims</h2>

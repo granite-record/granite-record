@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.191
+// GRANITE_VERSION: 2026-09-07.192
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -2435,7 +2435,7 @@ const jOpen=new Set();
 // on /videos. An address that has been published is a promise; renaming the
 // label is not a reason to break it.
 const BILL_TABS={text:"6",votes:"1",hearings:"2",videos:"2",
-                 reports:"3",sponsors:"4",documents:"5"};
+                 reports:"3",sponsors:"4",documents:"5",related:"7"};
 const MEMBER_TABS={cosponsored:1,votes:2};
 const COMMITTEE_TABS={sessions:1};
 const TAB_PATH=/^(\/(?:bill\/\d{4}\/[a-z]{2,5}\d+|legislator\/[^\/]+|committee\/[^\/]+))\/([a-z]+)\/?$/i;
@@ -5254,6 +5254,18 @@ function renderDetail(b,d){
         tabindex="0" data-t="6" hidden>${hasVersionIndex(d)?renderVersions(b,d):billTextSection(b,d,makeRsa(d))}</div>`
     : "";
 
+  // RELATED, ONLY WHERE THERE IS SOMETHING TO SHOW (RELATED_BILLS.md §6):
+  // build_site_v2.add_related writes d.related only for a bill with a
+  // relation the judged sample let through. data-t 7, after the six.
+  const rel=Array.isArray(d.related)?d.related:[];
+  const relTab=rel.length
+    ? `<button class="tab" role="tab" id="tab_${b.id}_7" aria-controls="pane_${b.id}_7" aria-selected="false" data-t="7">Related${rel.length?` (${rel.length})`:""}</button>`
+    : "";
+  const relPane=rel.length
+    ? `<div class="pane" role="tabpanel" id="pane_${b.id}_7" aria-labelledby="tab_${b.id}_7"
+        tabindex="0" data-t="7" hidden>${renderRelated(b,rel)}</div>`
+    : "";
+
   return `<div class="tabs" role="tablist">
     <button class="tab" role="tab" id="tab_${b.id}_0" aria-controls="pane_${b.id}_0" aria-selected="true" data-t="0">Summary</button>
     ${btTab}
@@ -5282,7 +5294,7 @@ function renderDetail(b,d){
 
     <button class="tab" role="tab" id="tab_${b.id}_5" aria-controls="pane_${b.id}_5"
       aria-selected="false" data-t="5">Documents${
-        (d.documents||[]).length?` (${d.documents.length})`:""}</button></div>
+        (d.documents||[]).length?` (${d.documents.length})`:""}</button>${relTab}</div>
     <div class="pane" role="tabpanel" id="pane_${b.id}_0" aria-labelledby="tab_${b.id}_0" tabindex="0" data-t="0">${renderSummary(b,d,rsa)}</div>
     ${/* ONLY WHERE THERE IS SOMETHING TO SHOW. 1,149 of 2,234 bills have a
           second version; a tab on the other 1,085 would say "there is one
@@ -5295,7 +5307,33 @@ function renderDetail(b,d){
 
     <div class="pane" role="tabpanel" id="pane_${b.id}_4" aria-labelledby="tab_${b.id}_4" tabindex="0" data-t="4" hidden>${renderSponsors(b,d)}</div>
     <div class="pane" role="tabpanel" id="pane_${b.id}_5" aria-labelledby="tab_${b.id}_5"
-      tabindex="0" data-t="5" hidden>${renderDocuments(b,d)}</div>${btsec}`;
+      tabindex="0" data-t="5" hidden>${renderDocuments(b,d)}</div>${relPane}${btsec}`;
+}
+
+// THE RELATED TAB'S LIST. The specific first (RELATED_BILLS.md §6): where its
+// language went or came from, then the same text filed before or after, then
+// this term's bills with the same text. Each row is the sentence, with the
+// other bill linked where the sentence names it, and that bill's title and
+// status under it. The sentence is related_bills.sentence's, the one the
+// bench judged, so the page says nothing the sample did not.
+const RELATED_HEADS=["Where its language went","Filed before and after","This term\u2019s bills with the same text"];
+function renderRelated(b,rel){
+  const groups=[[],[],[]];
+  for(const e of rel)(groups[e.g]||groups[2]).push(e);
+  const row=e=>{
+    const id=String(e.o).split("/")[1]||"";
+    const other=String(e.o).slice(0,9)!==String(b.term||"");
+    const href=`bill/${e.y}/${id.toLowerCase()}.html`;
+    const name=`<a href="${esc(href)}">${esc(e.n)}</a>${other?` (${esc(String(e.o).slice(0,9)).replace("-","&ndash;")})`:""}`;
+    const said=esc(e.s).replace("{b}",name);
+    return `<li class="rl-row"><p class="rl-s">${said}</p>`
+      +`<p class="rl-t">${esc(e.t)}${e.c?` <span class="rl-st">${esc(e.c)}</span>`:""}</p></li>`;
+  };
+  return groups.map((g,i)=>g.length
+    ?`<section class="rl-g"><h3>${RELATED_HEADS[i]}</h3><ul class="rl-list">${g.map(row).join("")}</ul></section>`:"").join("")
+    +`<p class="src">Found by comparing the text of bills and their amendments. A bill is listed
+      only where most of its language is shared, and an amendment only where the docket
+      records what became of it; a match can be missed.</p>`;
 }
 
 // ======================================================= report a problem ==
@@ -5331,7 +5369,7 @@ const REPORT_TO="contact@graniterecord.org";
 // the rename and stores it as "Hearings" (report.js RENAMED_TABS), and a
 // committee's "Sessions", the Meetings tab's name before D19, as "Meetings".
 const REPORT_TABS=new Set(["Summary","Bill Text","Votes","Hearings","Reports","Sponsors",
-  "Documents","Prime sponsored","Co-sponsored","Bills","Meetings"]);
+  "Documents","Related","Prime sponsored","Co-sponsored","Bills","Meetings"]);
 let reportBuild=null;       // site/build.json's "finished", fetched once, on first open
 
 function reportBox(kind,ref){
