@@ -1,0 +1,3218 @@
+{
+ "_what": "Related-bill pairs judged by Claude (not the person) on 11 October 2026, at the person's request when the bench would not work for them: two samples of the bench's seven strata, the first drawn before the rules of that day, the second after the first of them. Verdicts: correct, wrong_label (related, sentence wrong), wrong (not related as said), unsure. review/checked.jsonl is the person's and is not written here.",
+ "pairs": [
+  {
+   "sample": 1,
+   "stratum": "S1",
+   "kind": "language",
+   "a": "2009-2010/HB140",
+   "b": "2011-2012/HB505",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 1,
+   "stratum": "S1",
+   "kind": "language",
+   "a": "2015-2016/HB1641",
+   "b": "2021-2022/HB1538",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 1,
+   "stratum": "S1",
+   "kind": "language",
+   "a": "1999-2000/HB1515",
+   "b": "2003-2004/HB576",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 1,
+   "stratum": "S1",
+   "kind": "language",
+   "a": "2011-2012/SB197",
+   "b": "2013-2014/HB566",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 1,
+   "stratum": "S1",
+   "kind": "language",
+   "a": "2023-2024/SB562",
+   "b": "2025-2026/HB1442",
+   "amendment": "",
+   "verdict": "wrong_label"
+  },
+  {
+   "sample": 1,
+   "stratum": "S1",
+   "kind": "language",
+   "a": "2021-2022/HB227",
+   "b": "2023-2024/HB1115",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 1,
+   "stratum": "S1",
+   "kind": "language",
+   "a": "2001-2002/HB178",
+   "b": "2003-2004/HB708",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 1,
+   "stratum": "S1",
+   "kind": "language",
+   "a": "2011-2012/HB455",
+   "b": "2013-2014/HB1103",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 1,
+   "stratum": "S1",
+   "kind": "language",
+   "a": "2003-2004/HB202",
+   "b": "2013-2014/HB579",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 1,
+   "stratum": "S1",
+   "kind": "language",
+   "a": "2019-2020/HB364",
+   "b": "2021-2022/HB350",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 1,
+   "stratum": "S1",
+   "kind": "language",
+   "a": "2021-2022/HB1625",
+   "b": "2025-2026/HB1313",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 1,
+   "stratum": "S1",
+   "kind": "language",
+   "a": "2001-2002/HB190",
+   "b": "2003-2004/HB405",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 1,
+   "stratum": "S1",
+   "kind": "language",
+   "a": "2001-2002/HB205",
+   "b": "2003-2004/HB823",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 1,
+   "stratum": "S1",
+   "kind": "language",
+   "a": "2019-2020/HB1516",
+   "b": "2021-2022/HB60",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 1,
+   "stratum": "S1",
+   "kind": "language",
+   "a": "1989-1990/HB216",
+   "b": "1991-1992/HB679",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 1,
+   "stratum": "S1",
+   "kind": "language",
+   "a": "2007-2008/HB1241",
+   "b": "2009-2010/HB221",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 1,
+   "stratum": "S1",
+   "kind": "language",
+   "a": "2001-2002/SB87",
+   "b": "2003-2004/SB209",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 1,
+   "stratum": "S1",
+   "kind": "language",
+   "a": "2021-2022/HB1044",
+   "b": "2023-2024/HB69",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 1,
+   "stratum": "S1",
+   "kind": "language",
+   "a": "2005-2006/HB209",
+   "b": "2007-2008/HB655",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 1,
+   "stratum": "S1",
+   "kind": "language",
+   "a": "2005-2006/HB661",
+   "b": "2011-2012/HB496",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 1,
+   "stratum": "S1",
+   "kind": "language",
+   "a": "2001-2002/HB505",
+   "b": "2003-2004/HB249",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 1,
+   "stratum": "S1",
+   "kind": "language",
+   "a": "2013-2014/HB323",
+   "b": "2021-2022/SB61",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 1,
+   "stratum": "S1",
+   "kind": "language",
+   "a": "2007-2008/HB1504",
+   "b": "2011-2012/HB1413",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 1,
+   "stratum": "S1",
+   "kind": "language",
+   "a": "2015-2016/HB402",
+   "b": "2017-2018/HB520",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 1,
+   "stratum": "S1",
+   "kind": "language",
+   "a": "2023-2024/HB557",
+   "b": "2025-2026/HB357",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 1,
+   "stratum": "S1",
+   "kind": "language",
+   "a": "2019-2020/HB1651",
+   "b": "2021-2022/HB555",
+   "amendment": "",
+   "verdict": "wrong_label"
+  },
+  {
+   "sample": 1,
+   "stratum": "S1",
+   "kind": "language",
+   "a": "2009-2010/HB1594",
+   "b": "2011-2012/HB157",
+   "amendment": "",
+   "verdict": "wrong_label"
+  },
+  {
+   "sample": 1,
+   "stratum": "S1",
+   "kind": "language",
+   "a": "1989-1990/HB1197",
+   "b": "1991-1992/HB640",
+   "amendment": "",
+   "verdict": "wrong_label"
+  },
+  {
+   "sample": 1,
+   "stratum": "S1",
+   "kind": "language",
+   "a": "2015-2016/HB1126",
+   "b": "2017-2018/HB139",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 1,
+   "stratum": "S1",
+   "kind": "language",
+   "a": "2011-2012/HB1677",
+   "b": "2013-2014/HB323",
+   "amendment": "",
+   "verdict": "wrong_label"
+  },
+  {
+   "sample": 1,
+   "stratum": "S2",
+   "kind": "language",
+   "a": "2019-2020/HB1409",
+   "b": "2023-2024/HB268",
+   "amendment": "",
+   "verdict": "wrong_label"
+  },
+  {
+   "sample": 1,
+   "stratum": "S2",
+   "kind": "language",
+   "a": "1991-1992/HB412",
+   "b": "2003-2004/SB158",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 1,
+   "stratum": "S2",
+   "kind": "language",
+   "a": "2001-2002/HB221",
+   "b": "2017-2018/SB11",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 1,
+   "stratum": "S2",
+   "kind": "language",
+   "a": "2019-2020/HB1421",
+   "b": "2021-2022/HB411",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 1,
+   "stratum": "S2",
+   "kind": "language",
+   "a": "1993-1994/CACR27",
+   "b": "1995-1996/CACR30",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 1,
+   "stratum": "S2",
+   "kind": "language",
+   "a": "1991-1992/HB476",
+   "b": "1999-2000/HB260",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 1,
+   "stratum": "S2",
+   "kind": "language",
+   "a": "1993-1994/SB500",
+   "b": "2017-2018/SB564",
+   "amendment": "",
+   "verdict": "wrong"
+  },
+  {
+   "sample": 1,
+   "stratum": "S2",
+   "kind": "language",
+   "a": "1991-1992/HB146",
+   "b": "1995-1996/HB539",
+   "amendment": "",
+   "verdict": "wrong"
+  },
+  {
+   "sample": 1,
+   "stratum": "S2",
+   "kind": "language",
+   "a": "1989-1990/HB500",
+   "b": "1993-1994/HB420",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 1,
+   "stratum": "S2",
+   "kind": "language",
+   "a": "1991-1992/HB1432",
+   "b": "2013-2014/SB217",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 1,
+   "stratum": "S2",
+   "kind": "language",
+   "a": "2017-2018/HB317",
+   "b": "2019-2020/HB166",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 1,
+   "stratum": "S2",
+   "kind": "language",
+   "a": "1991-1992/CACR2",
+   "b": "1995-1996/CACR9",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 1,
+   "stratum": "S2",
+   "kind": "language",
+   "a": "2015-2016/HB1229",
+   "b": "2017-2018/HB513",
+   "amendment": "",
+   "verdict": "wrong_label"
+  },
+  {
+   "sample": 1,
+   "stratum": "S2",
+   "kind": "language",
+   "a": "1995-1996/HB339",
+   "b": "2013-2014/HB1325",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 1,
+   "stratum": "S2",
+   "kind": "language",
+   "a": "2023-2024/SB525",
+   "b": "2025-2026/SB203",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 1,
+   "stratum": "S2",
+   "kind": "language",
+   "a": "2005-2006/HB284",
+   "b": "2007-2008/HB691",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 1,
+   "stratum": "S2",
+   "kind": "language",
+   "a": "1991-1992/HB472",
+   "b": "1999-2000/HB393",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 1,
+   "stratum": "S2",
+   "kind": "language",
+   "a": "2007-2008/HB253",
+   "b": "2017-2018/HB1360",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 1,
+   "stratum": "S2",
+   "kind": "language",
+   "a": "2023-2024/HB2",
+   "b": "2025-2026/SB662",
+   "amendment": "",
+   "verdict": "wrong"
+  },
+  {
+   "sample": 1,
+   "stratum": "S2",
+   "kind": "language",
+   "a": "1991-1992/HB714",
+   "b": "1993-1994/HB1294",
+   "amendment": "",
+   "verdict": "wrong_label"
+  },
+  {
+   "sample": 1,
+   "stratum": "S2",
+   "kind": "language",
+   "a": "1991-1992/HB584",
+   "b": "1993-1994/SB731",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 1,
+   "stratum": "S2",
+   "kind": "language",
+   "a": "2015-2016/HB1456",
+   "b": "2017-2018/HB125",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 1,
+   "stratum": "S2",
+   "kind": "language",
+   "a": "1999-2000/SB52",
+   "b": "2005-2006/HB104",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 1,
+   "stratum": "S2",
+   "kind": "language",
+   "a": "2017-2018/HB1787",
+   "b": "2021-2022/HB1080",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 1,
+   "stratum": "S2",
+   "kind": "language",
+   "a": "2009-2010/SB334",
+   "b": "2011-2012/HB559",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 1,
+   "stratum": "S2",
+   "kind": "language",
+   "a": "2017-2018/HB1628",
+   "b": "2019-2020/HB395",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 1,
+   "stratum": "S2",
+   "kind": "language",
+   "a": "2011-2012/HB1660",
+   "b": "2015-2016/HB595",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 1,
+   "stratum": "S2",
+   "kind": "language",
+   "a": "1997-1998/CACR45",
+   "b": "2009-2010/CACR3",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 1,
+   "stratum": "S2",
+   "kind": "language",
+   "a": "2001-2002/HB607",
+   "b": "2005-2006/HB233",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 1,
+   "stratum": "S2",
+   "kind": "language",
+   "a": "2019-2020/HB1234",
+   "b": "2021-2022/SB48",
+   "amendment": "",
+   "verdict": "wrong_label"
+  },
+  {
+   "sample": 1,
+   "stratum": "S3",
+   "kind": "language",
+   "a": "2023-2024/HB1696",
+   "b": "2023-2024/HB1708",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 1,
+   "stratum": "S3",
+   "kind": "language",
+   "a": "2019-2020/HB1128",
+   "b": "2019-2020/HB1182",
+   "amendment": "",
+   "verdict": "wrong_label"
+  },
+  {
+   "sample": 1,
+   "stratum": "S3",
+   "kind": "language",
+   "a": "2025-2026/HB612",
+   "b": "2025-2026/SB198",
+   "amendment": "",
+   "verdict": "wrong_label"
+  },
+  {
+   "sample": 1,
+   "stratum": "S3",
+   "kind": "language",
+   "a": "2001-2002/HB1235",
+   "b": "2001-2002/SB357",
+   "amendment": "",
+   "verdict": "wrong_label"
+  },
+  {
+   "sample": 1,
+   "stratum": "S3",
+   "kind": "language",
+   "a": "1995-1996/HB1379",
+   "b": "1995-1996/SB534",
+   "amendment": "",
+   "verdict": "wrong_label"
+  },
+  {
+   "sample": 1,
+   "stratum": "S3",
+   "kind": "language",
+   "a": "2021-2022/HB1662",
+   "b": "2021-2022/SB209",
+   "amendment": "",
+   "verdict": "wrong_label"
+  },
+  {
+   "sample": 1,
+   "stratum": "S3",
+   "kind": "language",
+   "a": "2023-2024/HB2",
+   "b": "2023-2024/SB124",
+   "amendment": "",
+   "verdict": "wrong_label"
+  },
+  {
+   "sample": 1,
+   "stratum": "S3",
+   "kind": "language",
+   "a": "2025-2026/HB741",
+   "b": "2025-2026/HB751",
+   "amendment": "",
+   "verdict": "wrong_label"
+  },
+  {
+   "sample": 1,
+   "stratum": "S3",
+   "kind": "language",
+   "a": "2017-2018/HB1756",
+   "b": "2017-2018/SB219",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 1,
+   "stratum": "S3",
+   "kind": "language",
+   "a": "1991-1992/HB289",
+   "b": "1991-1992/HB377",
+   "amendment": "",
+   "verdict": "wrong_label"
+  },
+  {
+   "sample": 1,
+   "stratum": "S3",
+   "kind": "language",
+   "a": "2019-2020/HB483",
+   "b": "2019-2020/SB232",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 1,
+   "stratum": "S3",
+   "kind": "language",
+   "a": "2011-2012/HB254",
+   "b": "2011-2012/SB17",
+   "amendment": "",
+   "verdict": "wrong_label"
+  },
+  {
+   "sample": 1,
+   "stratum": "S3",
+   "kind": "language",
+   "a": "2017-2018/CACR14",
+   "b": "2017-2018/CACR2",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 1,
+   "stratum": "S3",
+   "kind": "language",
+   "a": "2019-2020/HB1672",
+   "b": "2019-2020/HB556",
+   "amendment": "",
+   "verdict": "wrong_label"
+  },
+  {
+   "sample": 1,
+   "stratum": "S3",
+   "kind": "language",
+   "a": "2025-2026/HB1709",
+   "b": "2025-2026/SB475",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 1,
+   "stratum": "S3",
+   "kind": "language",
+   "a": "1993-1994/HB330",
+   "b": "1993-1994/SB97",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 1,
+   "stratum": "S3",
+   "kind": "language",
+   "a": "2019-2020/HB1234",
+   "b": "2019-2020/SB540",
+   "amendment": "",
+   "verdict": "wrong_label"
+  },
+  {
+   "sample": 1,
+   "stratum": "S3",
+   "kind": "language",
+   "a": "2015-2016/HB668",
+   "b": "2015-2016/SB552",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 1,
+   "stratum": "S3",
+   "kind": "language",
+   "a": "2017-2018/HB1101",
+   "b": "2017-2018/SB309",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 1,
+   "stratum": "S3",
+   "kind": "language",
+   "a": "2009-2010/HB1233",
+   "b": "2009-2010/HB1252",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 1,
+   "stratum": "S3",
+   "kind": "language",
+   "a": "2019-2020/HB4",
+   "b": "2019-2020/SB259",
+   "amendment": "",
+   "verdict": "wrong_label"
+  },
+  {
+   "sample": 1,
+   "stratum": "S3",
+   "kind": "language",
+   "a": "2019-2020/HB705",
+   "b": "2019-2020/SB679",
+   "amendment": "",
+   "verdict": "wrong_label"
+  },
+  {
+   "sample": 1,
+   "stratum": "S3",
+   "kind": "language",
+   "a": "2005-2006/HB2",
+   "b": "2005-2006/HB686",
+   "amendment": "",
+   "verdict": "wrong_label"
+  },
+  {
+   "sample": 1,
+   "stratum": "S3",
+   "kind": "language",
+   "a": "2013-2014/HB1359",
+   "b": "2013-2014/SB212",
+   "amendment": "",
+   "verdict": "wrong_label"
+  },
+  {
+   "sample": 1,
+   "stratum": "S3",
+   "kind": "language",
+   "a": "2019-2020/HB1221",
+   "b": "2019-2020/HB293",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 1,
+   "stratum": "S3",
+   "kind": "language",
+   "a": "2019-2020/HB1245",
+   "b": "2019-2020/SB595",
+   "amendment": "",
+   "verdict": "wrong_label"
+  },
+  {
+   "sample": 1,
+   "stratum": "S3",
+   "kind": "language",
+   "a": "1993-1994/SB218",
+   "b": "1993-1994/SB800",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 1,
+   "stratum": "S3",
+   "kind": "language",
+   "a": "2023-2024/HB2",
+   "b": "2023-2024/SB154",
+   "amendment": "",
+   "verdict": "wrong_label"
+  },
+  {
+   "sample": 1,
+   "stratum": "S3",
+   "kind": "language",
+   "a": "2019-2020/HB1459",
+   "b": "2019-2020/SB196",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 1,
+   "stratum": "S3",
+   "kind": "language",
+   "a": "1993-1994/HB121",
+   "b": "1993-1994/HB1378",
+   "amendment": "",
+   "verdict": "wrong_label"
+  },
+  {
+   "sample": 1,
+   "stratum": "S4",
+   "kind": "inside_law",
+   "a": "1989-1990/HB127",
+   "b": "1989-1990/HB764",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 1,
+   "stratum": "S4",
+   "kind": "inside_law",
+   "a": "2019-2020/SB234",
+   "b": "2019-2020/HB4",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 1,
+   "stratum": "S4",
+   "kind": "inside_law",
+   "a": "1995-1996/HB1215",
+   "b": "1999-2000/HB1463",
+   "amendment": "",
+   "verdict": "unsure"
+  },
+  {
+   "sample": 1,
+   "stratum": "S4",
+   "kind": "inside_law",
+   "a": "2007-2008/HB127",
+   "b": "2003-2004/HB627",
+   "amendment": "",
+   "verdict": "wrong"
+  },
+  {
+   "sample": 1,
+   "stratum": "S4",
+   "kind": "inside_law",
+   "a": "2017-2018/HB294",
+   "b": "2019-2020/HB110",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 1,
+   "stratum": "S4",
+   "kind": "inside_law",
+   "a": "1993-1994/HB614",
+   "b": "1995-1996/HB2",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 1,
+   "stratum": "S4",
+   "kind": "inside_law",
+   "a": "2015-2016/HB385",
+   "b": "2015-2016/HB280",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 1,
+   "stratum": "S4",
+   "kind": "inside_law",
+   "a": "1991-1992/HB625",
+   "b": "1991-1992/SB180",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 1,
+   "stratum": "S4",
+   "kind": "inside_law",
+   "a": "2019-2020/HB1637",
+   "b": "2019-2020/HB1162",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 1,
+   "stratum": "S4",
+   "kind": "inside_law",
+   "a": "1993-1994/SB199",
+   "b": "1993-1994/HB173",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 1,
+   "stratum": "S4",
+   "kind": "inside_law",
+   "a": "1997-1998/SB348",
+   "b": "1997-1998/HB802",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 1,
+   "stratum": "S4",
+   "kind": "inside_law",
+   "a": "2003-2004/HB455",
+   "b": "2003-2004/SB45",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 1,
+   "stratum": "S4",
+   "kind": "inside_law",
+   "a": "2021-2022/SB135",
+   "b": "2021-2022/HB2",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 1,
+   "stratum": "S4",
+   "kind": "inside_law",
+   "a": "2007-2008/SB454",
+   "b": "2025-2026/SB250",
+   "amendment": "",
+   "verdict": "wrong"
+  },
+  {
+   "sample": 1,
+   "stratum": "S4",
+   "kind": "inside_law",
+   "a": "1989-1990/HB196",
+   "b": "1989-1990/HB1409",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 1,
+   "stratum": "S4",
+   "kind": "inside_law",
+   "a": "2023-2024/HB565",
+   "b": "2023-2024/HB2",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 1,
+   "stratum": "S4",
+   "kind": "inside_law",
+   "a": "2015-2016/SB185",
+   "b": "2013-2014/SB413",
+   "amendment": "",
+   "verdict": "wrong"
+  },
+  {
+   "sample": 1,
+   "stratum": "S4",
+   "kind": "inside_law",
+   "a": "2003-2004/HB284",
+   "b": "2003-2004/SB391",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 1,
+   "stratum": "S4",
+   "kind": "inside_law",
+   "a": "2003-2004/SB334",
+   "b": "2003-2004/HB25",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 1,
+   "stratum": "S4",
+   "kind": "inside_law",
+   "a": "1991-1992/SB305",
+   "b": "1991-1992/SB304",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 1,
+   "stratum": "S4",
+   "kind": "inside_law",
+   "a": "2023-2024/HB198",
+   "b": "2025-2026/HB2",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 1,
+   "stratum": "S4",
+   "kind": "inside_law",
+   "a": "1995-1996/HB1252",
+   "b": "1995-1996/SB7",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 1,
+   "stratum": "S4",
+   "kind": "inside_law",
+   "a": "1993-1994/SB507",
+   "b": "2023-2024/HB318",
+   "amendment": "",
+   "verdict": "wrong"
+  },
+  {
+   "sample": 1,
+   "stratum": "S4",
+   "kind": "inside_law",
+   "a": "1991-1992/SB373",
+   "b": "1991-1992/SB339",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 1,
+   "stratum": "S4",
+   "kind": "inside_law",
+   "a": "2019-2020/SB613",
+   "b": "2019-2020/HB1182",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 1,
+   "stratum": "S4",
+   "kind": "inside_law",
+   "a": "2019-2020/SB718",
+   "b": "2019-2020/HB1639",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 1,
+   "stratum": "S4",
+   "kind": "inside_law",
+   "a": "1995-1996/HB1223",
+   "b": "2019-2020/HB608",
+   "amendment": "",
+   "verdict": "wrong"
+  },
+  {
+   "sample": 1,
+   "stratum": "S4",
+   "kind": "inside_law",
+   "a": "2019-2020/SB727",
+   "b": "2019-2020/HB1135",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 1,
+   "stratum": "S4",
+   "kind": "inside_law",
+   "a": "2019-2020/HB721",
+   "b": "2021-2022/HB282",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 1,
+   "stratum": "S4",
+   "kind": "inside_law",
+   "a": "1997-1998/SB216",
+   "b": "1997-1998/HB2",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 1,
+   "stratum": "S5",
+   "kind": "amendment",
+   "a": "2025-2026/HB1478",
+   "b": "2025-2026/HB707",
+   "amendment": "2025-1041h",
+   "verdict": "correct"
+  },
+  {
+   "sample": 1,
+   "stratum": "S5",
+   "kind": "amendment",
+   "a": "2021-2022/SB68",
+   "b": "2019-2020/SB759",
+   "amendment": "2020-1061s",
+   "verdict": "wrong_label"
+  },
+  {
+   "sample": 1,
+   "stratum": "S5",
+   "kind": "amendment",
+   "a": "2019-2020/SB511",
+   "b": "2019-2020/HB1234",
+   "amendment": "2020-1487s",
+   "verdict": "correct"
+  },
+  {
+   "sample": 1,
+   "stratum": "S5",
+   "kind": "amendment",
+   "a": "2021-2022/HB1499",
+   "b": "2023-2024/HB2",
+   "amendment": "2023-1247h",
+   "verdict": "correct"
+  },
+  {
+   "sample": 1,
+   "stratum": "S5",
+   "kind": "amendment",
+   "a": "2021-2022/HB1014",
+   "b": "2021-2022/HB108",
+   "amendment": "2021-1711s",
+   "verdict": "correct"
+  },
+  {
+   "sample": 1,
+   "stratum": "S5",
+   "kind": "amendment",
+   "a": "2019-2020/SB644",
+   "b": "2019-2020/HB1162",
+   "amendment": "2020-1417s",
+   "verdict": "correct"
+  },
+  {
+   "sample": 1,
+   "stratum": "S5",
+   "kind": "amendment",
+   "a": "2023-2024/HB1231",
+   "b": "2023-2024/SB419",
+   "amendment": "2024-1892h",
+   "verdict": "correct"
+  },
+  {
+   "sample": 1,
+   "stratum": "S5",
+   "kind": "amendment",
+   "a": "2021-2022/SB80",
+   "b": "2019-2020/SB8",
+   "amendment": "2019-2802h",
+   "verdict": "wrong_label"
+  },
+  {
+   "sample": 1,
+   "stratum": "S5",
+   "kind": "amendment",
+   "a": "2005-2006/HB222",
+   "b": "2023-2024/HB2024",
+   "amendment": "2024-2187s",
+   "verdict": "wrong"
+  },
+  {
+   "sample": 1,
+   "stratum": "S5",
+   "kind": "amendment",
+   "a": "2019-2020/SB131",
+   "b": "2021-2022/HB186",
+   "amendment": "2021-1696s",
+   "verdict": "correct"
+  },
+  {
+   "sample": 1,
+   "stratum": "S5",
+   "kind": "amendment",
+   "a": "2017-2018/HB498",
+   "b": "2017-2018/SB13",
+   "amendment": "2017-1452h",
+   "verdict": "correct"
+  },
+  {
+   "sample": 1,
+   "stratum": "S5",
+   "kind": "amendment",
+   "a": "2021-2022/HB1250",
+   "b": "2021-2022/HB2",
+   "amendment": "2021-1059h",
+   "verdict": "correct"
+  },
+  {
+   "sample": 1,
+   "stratum": "S5",
+   "kind": "amendment",
+   "a": "2023-2024/SB374",
+   "b": "2023-2024/HB1298",
+   "amendment": "2024-1808s",
+   "verdict": "correct"
+  },
+  {
+   "sample": 1,
+   "stratum": "S5",
+   "kind": "amendment",
+   "a": "1999-2000/HB1332",
+   "b": "2021-2022/HB332",
+   "amendment": "2021-0344h",
+   "verdict": "wrong"
+  },
+  {
+   "sample": 1,
+   "stratum": "S5",
+   "kind": "amendment",
+   "a": "2005-2006/SB271",
+   "b": "2019-2020/HB593",
+   "amendment": "2019-2038s",
+   "verdict": "wrong"
+  },
+  {
+   "sample": 1,
+   "stratum": "S5",
+   "kind": "amendment",
+   "a": "2017-2018/HB435",
+   "b": "2017-2018/HB2",
+   "amendment": "2017-1163h",
+   "verdict": "correct"
+  },
+  {
+   "sample": 1,
+   "stratum": "S5",
+   "kind": "amendment",
+   "a": "2023-2024/HB419",
+   "b": "2023-2024/HB2",
+   "amendment": "2023-2076s",
+   "verdict": "correct"
+  },
+  {
+   "sample": 1,
+   "stratum": "S5",
+   "kind": "amendment",
+   "a": "2019-2020/HB352",
+   "b": "2019-2020/HB2",
+   "amendment": "2019-2403s",
+   "verdict": "correct"
+  },
+  {
+   "sample": 1,
+   "stratum": "S5",
+   "kind": "amendment",
+   "a": "2019-2020/HB152",
+   "b": "2021-2022/HB263",
+   "amendment": "2021-1523s",
+   "verdict": "correct"
+  },
+  {
+   "sample": 1,
+   "stratum": "S5",
+   "kind": "amendment",
+   "a": "2011-2012/HB1714",
+   "b": "2017-2018/HB1347",
+   "amendment": "2018-0442h",
+   "verdict": "unsure"
+  },
+  {
+   "sample": 1,
+   "stratum": "S5",
+   "kind": "amendment",
+   "a": "2015-2016/HB594",
+   "b": "2015-2016/HB1696",
+   "amendment": "2016-0920h",
+   "verdict": "correct"
+  },
+  {
+   "sample": 1,
+   "stratum": "S5",
+   "kind": "amendment",
+   "a": "2021-2022/HB1101",
+   "b": "2021-2022/HB1627",
+   "amendment": "2022-1246h",
+   "verdict": "correct"
+  },
+  {
+   "sample": 1,
+   "stratum": "S5",
+   "kind": "amendment",
+   "a": "2017-2018/HB1313",
+   "b": "2017-2018/SB313",
+   "amendment": "2018-1854h",
+   "verdict": "correct"
+  },
+  {
+   "sample": 1,
+   "stratum": "S5",
+   "kind": "amendment",
+   "a": "2019-2020/SB159",
+   "b": "2019-2020/HB1218",
+   "amendment": "2020-0616h",
+   "verdict": "correct"
+  },
+  {
+   "sample": 1,
+   "stratum": "S5",
+   "kind": "amendment",
+   "a": "2021-2022/HB227",
+   "b": "2023-2024/SB413",
+   "amendment": "2024-1678h",
+   "verdict": "correct"
+  },
+  {
+   "sample": 1,
+   "stratum": "S5",
+   "kind": "amendment",
+   "a": "2021-2022/CACR4",
+   "b": "2019-2020/CACR9",
+   "amendment": "2019-2742h",
+   "verdict": "wrong_label"
+  },
+  {
+   "sample": 1,
+   "stratum": "S5",
+   "kind": "amendment",
+   "a": "2023-2024/SB485",
+   "b": "2023-2024/HB1111",
+   "amendment": "2024-0245h",
+   "verdict": "correct"
+  },
+  {
+   "sample": 1,
+   "stratum": "S5",
+   "kind": "amendment",
+   "a": "2023-2024/HB462",
+   "b": "2023-2024/HB2",
+   "amendment": "2023-1333h",
+   "verdict": "correct"
+  },
+  {
+   "sample": 1,
+   "stratum": "S5",
+   "kind": "amendment",
+   "a": "2017-2018/HB560",
+   "b": "2015-2016/HB1696",
+   "amendment": "2016-0920h",
+   "verdict": "wrong_label"
+  },
+  {
+   "sample": 1,
+   "stratum": "S5",
+   "kind": "amendment",
+   "a": "2025-2026/CACR4",
+   "b": "2025-2026/CACR21",
+   "amendment": "2026-0455h",
+   "verdict": "correct"
+  },
+  {
+   "sample": 1,
+   "stratum": "S6",
+   "kind": "amendment",
+   "a": "2019-2020/HB286",
+   "b": "2017-2018/HB1788",
+   "amendment": "2018-0451h",
+   "verdict": "correct"
+  },
+  {
+   "sample": 1,
+   "stratum": "S6",
+   "kind": "amendment",
+   "a": "2013-2014/HB544",
+   "b": "",
+   "amendment": "2013-2418h",
+   "verdict": "wrong_label"
+  },
+  {
+   "sample": 1,
+   "stratum": "S6",
+   "kind": "amendment",
+   "a": "2013-2014/SB355",
+   "b": "2013-2014/HB1200",
+   "amendment": "2014-0584h",
+   "verdict": "correct"
+  },
+  {
+   "sample": 1,
+   "stratum": "S6",
+   "kind": "amendment",
+   "a": "2021-2022/HB60",
+   "b": "2019-2020/HB1516",
+   "amendment": "2020-1142h",
+   "verdict": "correct"
+  },
+  {
+   "sample": 1,
+   "stratum": "S6",
+   "kind": "amendment",
+   "a": "2015-2016/SB92",
+   "b": "2015-2016/HB304",
+   "amendment": "2015-0359h",
+   "verdict": "correct"
+  },
+  {
+   "sample": 1,
+   "stratum": "S6",
+   "kind": "amendment",
+   "a": "2019-2020/SB150",
+   "b": "2017-2018/SB149",
+   "amendment": "2017-0796s",
+   "verdict": "correct"
+  },
+  {
+   "sample": 1,
+   "stratum": "S6",
+   "kind": "amendment",
+   "a": "2021-2022/SB87",
+   "b": "2019-2020/SB456",
+   "amendment": "2020-0758s",
+   "verdict": "correct"
+  },
+  {
+   "sample": 1,
+   "stratum": "S6",
+   "kind": "amendment",
+   "a": "2023-2024/HB40",
+   "b": "2015-2016/SB509",
+   "amendment": "2016-1478h",
+   "verdict": "wrong"
+  },
+  {
+   "sample": 1,
+   "stratum": "S6",
+   "kind": "amendment",
+   "a": "2019-2020/HB1234",
+   "b": "2021-2022/HB95",
+   "amendment": "2021-0190h",
+   "verdict": "wrong"
+  },
+  {
+   "sample": 1,
+   "stratum": "S6",
+   "kind": "amendment",
+   "a": "2023-2024/SB504",
+   "b": "2023-2024/SB252",
+   "amendment": "2023-2470h",
+   "verdict": "correct"
+  },
+  {
+   "sample": 1,
+   "stratum": "S6",
+   "kind": "amendment",
+   "a": "2023-2024/SB91",
+   "b": "2023-2024/SB147",
+   "amendment": "2023-0658s",
+   "verdict": "correct"
+  },
+  {
+   "sample": 1,
+   "stratum": "S6",
+   "kind": "amendment",
+   "a": "2017-2018/SB553",
+   "b": "2019-2020/SB59",
+   "amendment": "2019-0187s",
+   "verdict": "correct"
+  },
+  {
+   "sample": 1,
+   "stratum": "S6",
+   "kind": "amendment",
+   "a": "2019-2020/SB677",
+   "b": "2019-2020/HB696",
+   "amendment": "2019-0395h",
+   "verdict": "correct"
+  },
+  {
+   "sample": 1,
+   "stratum": "S6",
+   "kind": "amendment",
+   "a": "2023-2024/HB1149",
+   "b": "2017-2018/SB3",
+   "amendment": "2017-2116h",
+   "verdict": "wrong"
+  },
+  {
+   "sample": 1,
+   "stratum": "S6",
+   "kind": "amendment",
+   "a": "2019-2020/HB4",
+   "b": "2019-2020/SB205",
+   "amendment": "2019-1640h",
+   "verdict": "correct"
+  },
+  {
+   "sample": 1,
+   "stratum": "S6",
+   "kind": "amendment",
+   "a": "2021-2022/HB1187",
+   "b": "2021-2022/HB95",
+   "amendment": "2021-2234s",
+   "verdict": "correct"
+  },
+  {
+   "sample": 1,
+   "stratum": "S6",
+   "kind": "amendment",
+   "a": "2011-2012/HB592",
+   "b": "2021-2022/HB50",
+   "amendment": "2022-0560s",
+   "verdict": "wrong"
+  },
+  {
+   "sample": 1,
+   "stratum": "S6",
+   "kind": "amendment",
+   "a": "2023-2024/HB40",
+   "b": "2017-2018/SB3",
+   "amendment": "2017-2116h",
+   "verdict": "wrong"
+  },
+  {
+   "sample": 1,
+   "stratum": "S6",
+   "kind": "amendment",
+   "a": "2015-2016/HB1661",
+   "b": "2017-2018/HB587",
+   "amendment": "2018-0438h",
+   "verdict": "correct"
+  },
+  {
+   "sample": 1,
+   "stratum": "S6",
+   "kind": "amendment",
+   "a": "2001-2002/HB710",
+   "b": "2021-2022/SB66",
+   "amendment": "2021-0458s",
+   "verdict": "wrong"
+  },
+  {
+   "sample": 1,
+   "stratum": "S6",
+   "kind": "amendment",
+   "a": "2019-2020/HB224",
+   "b": "2017-2018/HB649",
+   "amendment": "2017-0375h",
+   "verdict": "correct"
+  },
+  {
+   "sample": 1,
+   "stratum": "S6",
+   "kind": "amendment",
+   "a": "2019-2020/HB2",
+   "b": "2019-2020/SB208",
+   "amendment": "2019-1380h",
+   "verdict": "correct"
+  },
+  {
+   "sample": 1,
+   "stratum": "S6",
+   "kind": "amendment",
+   "a": "2019-2020/SB1",
+   "b": "2019-2020/HB712",
+   "amendment": "2019-0418h",
+   "verdict": "correct"
+  },
+  {
+   "sample": 1,
+   "stratum": "S6",
+   "kind": "amendment",
+   "a": "2021-2022/SB83",
+   "b": "2023-2024/SB530",
+   "amendment": "2024-0672s",
+   "verdict": "correct"
+  },
+  {
+   "sample": 1,
+   "stratum": "S6",
+   "kind": "amendment",
+   "a": "2023-2024/HB154",
+   "b": "2019-2020/HB345",
+   "amendment": "2019-0385h",
+   "verdict": "wrong"
+  },
+  {
+   "sample": 1,
+   "stratum": "S6",
+   "kind": "amendment",
+   "a": "2019-2020/SB173",
+   "b": "2019-2020/HB637",
+   "amendment": "2019-0047h",
+   "verdict": "correct"
+  },
+  {
+   "sample": 1,
+   "stratum": "S6",
+   "kind": "amendment",
+   "a": "2021-2022/HB538",
+   "b": "2015-2016/SB509",
+   "amendment": "2016-1478h",
+   "verdict": "wrong"
+  },
+  {
+   "sample": 1,
+   "stratum": "S6",
+   "kind": "amendment",
+   "a": "2023-2024/SB175",
+   "b": "2023-2024/HB358",
+   "amendment": "2023-2156s",
+   "verdict": "correct"
+  },
+  {
+   "sample": 1,
+   "stratum": "S6",
+   "kind": "amendment",
+   "a": "2021-2022/SB365",
+   "b": "2021-2022/SB31",
+   "amendment": "2021-1486h",
+   "verdict": "correct"
+  },
+  {
+   "sample": 1,
+   "stratum": "S6",
+   "kind": "amendment",
+   "a": "2021-2022/SB125",
+   "b": "2015-2016/SB93",
+   "amendment": "2015-1232h",
+   "verdict": "wrong"
+  },
+  {
+   "sample": 2,
+   "stratum": "S1",
+   "kind": "language",
+   "a": "2019-2020/HB117",
+   "b": "2021-2022/HB210",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 2,
+   "stratum": "S1",
+   "kind": "language",
+   "a": "2011-2012/HB1684",
+   "b": "2013-2014/SB142",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 2,
+   "stratum": "S1",
+   "kind": "language",
+   "a": "2015-2016/HB1387",
+   "b": "2017-2018/HB127",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 2,
+   "stratum": "S1",
+   "kind": "language",
+   "a": "2005-2006/HB1555",
+   "b": "2007-2008/HB517",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 2,
+   "stratum": "S1",
+   "kind": "language",
+   "a": "2019-2020/HB1328",
+   "b": "2021-2022/HB388",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 2,
+   "stratum": "S1",
+   "kind": "language",
+   "a": "2013-2014/HB323",
+   "b": "2023-2024/SB516",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 2,
+   "stratum": "S1",
+   "kind": "language",
+   "a": "2023-2024/HB1557",
+   "b": "2025-2026/SB219",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 2,
+   "stratum": "S1",
+   "kind": "language",
+   "a": "2001-2002/HB586",
+   "b": "2003-2004/HB177",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 2,
+   "stratum": "S1",
+   "kind": "language",
+   "a": "2005-2006/SB247",
+   "b": "2011-2012/HB474",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 2,
+   "stratum": "S1",
+   "kind": "language",
+   "a": "1999-2000/HB1396",
+   "b": "2011-2012/HB280",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 2,
+   "stratum": "S1",
+   "kind": "language",
+   "a": "1995-1996/HB256",
+   "b": "1999-2000/HB68",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 2,
+   "stratum": "S1",
+   "kind": "language",
+   "a": "2019-2020/HB1636",
+   "b": "2021-2022/HB1141",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 2,
+   "stratum": "S1",
+   "kind": "language",
+   "a": "2019-2020/HB1648",
+   "b": "2021-2022/HB629",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 2,
+   "stratum": "S1",
+   "kind": "language",
+   "a": "2011-2012/HB1178",
+   "b": "2013-2014/HB107",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 2,
+   "stratum": "S1",
+   "kind": "language",
+   "a": "2005-2006/HB1224",
+   "b": "2007-2008/HB518",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 2,
+   "stratum": "S1",
+   "kind": "language",
+   "a": "2011-2012/HB593",
+   "b": "2013-2014/HB665",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 2,
+   "stratum": "S1",
+   "kind": "language",
+   "a": "2015-2016/HB403",
+   "b": "2017-2018/HB589",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 2,
+   "stratum": "S1",
+   "kind": "language",
+   "a": "2001-2002/SB332",
+   "b": "2003-2004/SB420",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 2,
+   "stratum": "S1",
+   "kind": "language",
+   "a": "2011-2012/HB259",
+   "b": "2013-2014/HB605",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 2,
+   "stratum": "S1",
+   "kind": "language",
+   "a": "2021-2022/HB213",
+   "b": "2025-2026/HB567",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 2,
+   "stratum": "S1",
+   "kind": "language",
+   "a": "2007-2008/HB1523",
+   "b": "2009-2010/HB1180",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 2,
+   "stratum": "S1",
+   "kind": "language",
+   "a": "1999-2000/HB1514",
+   "b": "2003-2004/HB581",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 2,
+   "stratum": "S1",
+   "kind": "language",
+   "a": "2007-2008/HB177",
+   "b": "2009-2010/HB1644",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 2,
+   "stratum": "S1",
+   "kind": "language",
+   "a": "1999-2000/HB398",
+   "b": "2003-2004/HB405",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 2,
+   "stratum": "S1",
+   "kind": "language",
+   "a": "1997-1998/HB1495",
+   "b": "1999-2000/HB389",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 2,
+   "stratum": "S1",
+   "kind": "language",
+   "a": "2019-2020/HB1525",
+   "b": "2021-2022/HB468",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 2,
+   "stratum": "S1",
+   "kind": "language",
+   "a": "2013-2014/HB439",
+   "b": "2017-2018/HB1508",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 2,
+   "stratum": "S1",
+   "kind": "language",
+   "a": "1999-2000/SB216",
+   "b": "2001-2002/HB188",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 2,
+   "stratum": "S1",
+   "kind": "language",
+   "a": "2001-2002/HB582",
+   "b": "2003-2004/HB130",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 2,
+   "stratum": "S1",
+   "kind": "language",
+   "a": "2017-2018/HB79",
+   "b": "2019-2020/HB714",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 2,
+   "stratum": "S2",
+   "kind": "language",
+   "a": "2003-2004/SB153",
+   "b": "2005-2006/SB170",
+   "amendment": "",
+   "verdict": "wrong_label"
+  },
+  {
+   "sample": 2,
+   "stratum": "S2",
+   "kind": "language",
+   "a": "2005-2006/HB1144",
+   "b": "2007-2008/HB1208",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 2,
+   "stratum": "S2",
+   "kind": "language",
+   "a": "2007-2008/HB637",
+   "b": "2009-2010/SB169",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 2,
+   "stratum": "S2",
+   "kind": "language",
+   "a": "2019-2020/HB1104",
+   "b": "2021-2022/HB164",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 2,
+   "stratum": "S2",
+   "kind": "language",
+   "a": "2017-2018/HB260",
+   "b": "2019-2020/HB527",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 2,
+   "stratum": "S2",
+   "kind": "language",
+   "a": "2017-2018/HB1788",
+   "b": "2019-2020/HB286",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 2,
+   "stratum": "S2",
+   "kind": "language",
+   "a": "1997-1998/HB323",
+   "b": "2013-2014/HB323",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 2,
+   "stratum": "S2",
+   "kind": "language",
+   "a": "2001-2002/HB563",
+   "b": "2005-2006/HB117",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 2,
+   "stratum": "S2",
+   "kind": "language",
+   "a": "1999-2000/HB430",
+   "b": "2017-2018/HB458",
+   "amendment": "",
+   "verdict": "wrong"
+  },
+  {
+   "sample": 2,
+   "stratum": "S2",
+   "kind": "language",
+   "a": "1999-2000/HB411",
+   "b": "2001-2002/SB31",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 2,
+   "stratum": "S2",
+   "kind": "language",
+   "a": "2015-2016/HB1211",
+   "b": "2017-2018/HB600",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 2,
+   "stratum": "S2",
+   "kind": "language",
+   "a": "2011-2012/HB126",
+   "b": "2013-2014/HB218",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 2,
+   "stratum": "S2",
+   "kind": "language",
+   "a": "2001-2002/HB1320",
+   "b": "2003-2004/SB73",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 2,
+   "stratum": "S2",
+   "kind": "language",
+   "a": "2017-2018/HB525",
+   "b": "2019-2020/SB265",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 2,
+   "stratum": "S2",
+   "kind": "language",
+   "a": "2019-2020/HB1285",
+   "b": "2025-2026/HB1034",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 2,
+   "stratum": "S2",
+   "kind": "language",
+   "a": "2001-2002/HB184",
+   "b": "2009-2010/HB1611",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 2,
+   "stratum": "S2",
+   "kind": "language",
+   "a": "2015-2016/CACR4",
+   "b": "2019-2020/CACR5",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 2,
+   "stratum": "S2",
+   "kind": "language",
+   "a": "2007-2008/HB1180",
+   "b": "2009-2010/HB512",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 2,
+   "stratum": "S2",
+   "kind": "language",
+   "a": "1991-1992/HB1432",
+   "b": "2021-2022/SB61",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 2,
+   "stratum": "S2",
+   "kind": "language",
+   "a": "1997-1998/HB564",
+   "b": "2001-2002/HB709",
+   "amendment": "",
+   "verdict": "wrong_label"
+  },
+  {
+   "sample": 2,
+   "stratum": "S2",
+   "kind": "language",
+   "a": "2005-2006/HB49",
+   "b": "2011-2012/HB224",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 2,
+   "stratum": "S2",
+   "kind": "language",
+   "a": "2017-2018/HB1240",
+   "b": "2021-2022/HB505",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 2,
+   "stratum": "S2",
+   "kind": "language",
+   "a": "2013-2014/HB478",
+   "b": "2015-2016/HB405",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 2,
+   "stratum": "S2",
+   "kind": "language",
+   "a": "1997-1998/SB476",
+   "b": "2013-2014/SB250",
+   "amendment": "",
+   "verdict": "wrong"
+  },
+  {
+   "sample": 2,
+   "stratum": "S2",
+   "kind": "language",
+   "a": "1997-1998/HB1373",
+   "b": "2001-2002/HB735",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 2,
+   "stratum": "S2",
+   "kind": "language",
+   "a": "2005-2006/HB347",
+   "b": "2007-2008/HB647",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 2,
+   "stratum": "S2",
+   "kind": "language",
+   "a": "1991-1992/HB1432",
+   "b": "1997-1998/HB323",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 2,
+   "stratum": "S2",
+   "kind": "language",
+   "a": "2013-2014/HB1607",
+   "b": "2015-2016/HB420",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 2,
+   "stratum": "S2",
+   "kind": "language",
+   "a": "2011-2012/SB201",
+   "b": "2021-2022/SB253",
+   "amendment": "",
+   "verdict": "wrong"
+  },
+  {
+   "sample": 2,
+   "stratum": "S2",
+   "kind": "language",
+   "a": "1993-1994/HB362",
+   "b": "1995-1996/HB356",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 2,
+   "stratum": "S3",
+   "kind": "language",
+   "a": "2015-2016/HB1631",
+   "b": "2015-2016/HB618",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 2,
+   "stratum": "S3",
+   "kind": "language",
+   "a": "2023-2024/HB1594",
+   "b": "2023-2024/SB525",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 2,
+   "stratum": "S3",
+   "kind": "language",
+   "a": "2007-2008/HB1601",
+   "b": "2007-2008/HB857",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 2,
+   "stratum": "S3",
+   "kind": "language",
+   "a": "2021-2022/HB1229",
+   "b": "2021-2022/HB203",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 2,
+   "stratum": "S3",
+   "kind": "language",
+   "a": "2005-2006/HB222",
+   "b": "2005-2006/SB220",
+   "amendment": "",
+   "verdict": "unsure"
+  },
+  {
+   "sample": 2,
+   "stratum": "S3",
+   "kind": "language",
+   "a": "2019-2020/HB250",
+   "b": "2019-2020/SB754",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 2,
+   "stratum": "S3",
+   "kind": "language",
+   "a": "2015-2016/HB658",
+   "b": "2015-2016/SB107",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 2,
+   "stratum": "S3",
+   "kind": "language",
+   "a": "2021-2022/HB1536",
+   "b": "2021-2022/SB407",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 2,
+   "stratum": "S3",
+   "kind": "language",
+   "a": "2019-2020/HB1245",
+   "b": "2019-2020/HB647",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 2,
+   "stratum": "S3",
+   "kind": "language",
+   "a": "2011-2012/HB492",
+   "b": "2011-2012/SB362",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 2,
+   "stratum": "S3",
+   "kind": "language",
+   "a": "2007-2008/HB691",
+   "b": "2007-2008/SB491",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 2,
+   "stratum": "S3",
+   "kind": "language",
+   "a": "1989-1990/SB124",
+   "b": "1989-1990/SB94",
+   "amendment": "",
+   "verdict": "unsure"
+  },
+  {
+   "sample": 2,
+   "stratum": "S3",
+   "kind": "language",
+   "a": "2009-2010/HB567",
+   "b": "2009-2010/HB568",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 2,
+   "stratum": "S3",
+   "kind": "language",
+   "a": "2015-2016/SB108",
+   "b": "2015-2016/SB512",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 2,
+   "stratum": "S3",
+   "kind": "language",
+   "a": "2023-2024/HB1594",
+   "b": "2023-2024/SB141",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 2,
+   "stratum": "S3",
+   "kind": "language",
+   "a": "2019-2020/SB226",
+   "b": "2019-2020/SB32",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 2,
+   "stratum": "S3",
+   "kind": "language",
+   "a": "2011-2012/HB1566",
+   "b": "2011-2012/SB90",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 2,
+   "stratum": "S3",
+   "kind": "language",
+   "a": "1989-1990/HB1350",
+   "b": "1989-1990/HB70",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 2,
+   "stratum": "S3",
+   "kind": "language",
+   "a": "2007-2008/HB133",
+   "b": "2007-2008/SB436",
+   "amendment": "",
+   "verdict": "unsure"
+  },
+  {
+   "sample": 2,
+   "stratum": "S3",
+   "kind": "language",
+   "a": "2025-2026/HB1189",
+   "b": "2025-2026/HB707",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 2,
+   "stratum": "S3",
+   "kind": "language",
+   "a": "2003-2004/HB1196",
+   "b": "2003-2004/HB1197",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 2,
+   "stratum": "S3",
+   "kind": "language",
+   "a": "2019-2020/HB1234",
+   "b": "2019-2020/SB423",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 2,
+   "stratum": "S3",
+   "kind": "language",
+   "a": "2003-2004/HB626",
+   "b": "2003-2004/HB674",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 2,
+   "stratum": "S3",
+   "kind": "language",
+   "a": "2025-2026/HB612",
+   "b": "2025-2026/SB169",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 2,
+   "stratum": "S3",
+   "kind": "language",
+   "a": "2021-2022/HB361",
+   "b": "2021-2022/HB451",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 2,
+   "stratum": "S3",
+   "kind": "language",
+   "a": "2025-2026/HB133",
+   "b": "2025-2026/HB2",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 2,
+   "stratum": "S3",
+   "kind": "language",
+   "a": "2013-2014/HB189",
+   "b": "2013-2014/HB588",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 2,
+   "stratum": "S3",
+   "kind": "language",
+   "a": "1999-2000/HB108",
+   "b": "1999-2000/HB747",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 2,
+   "stratum": "S3",
+   "kind": "language",
+   "a": "2017-2018/HB498",
+   "b": "2017-2018/SB13",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 2,
+   "stratum": "S3",
+   "kind": "language",
+   "a": "2023-2024/HB167",
+   "b": "2023-2024/SB21",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 2,
+   "stratum": "S4",
+   "kind": "inside_law",
+   "a": "2013-2014/HB189",
+   "b": "2013-2014/HB588",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 2,
+   "stratum": "S4",
+   "kind": "inside_law",
+   "a": "2015-2016/HB313",
+   "b": "2019-2020/SB104",
+   "amendment": "",
+   "verdict": "unsure"
+  },
+  {
+   "sample": 2,
+   "stratum": "S4",
+   "kind": "inside_law",
+   "a": "2019-2020/SB5",
+   "b": "2019-2020/HB4",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 2,
+   "stratum": "S4",
+   "kind": "inside_law",
+   "a": "2019-2020/SB237",
+   "b": "2019-2020/HB4",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 2,
+   "stratum": "S4",
+   "kind": "inside_law",
+   "a": "1993-1994/HB427",
+   "b": "1993-1994/HB2",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 2,
+   "stratum": "S4",
+   "kind": "inside_law",
+   "a": "1993-1994/SB47",
+   "b": "1993-1994/HB2",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 2,
+   "stratum": "S4",
+   "kind": "inside_law",
+   "a": "2023-2024/SB230",
+   "b": "2023-2024/HB2",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 2,
+   "stratum": "S4",
+   "kind": "inside_law",
+   "a": "1995-1996/HB54",
+   "b": "1995-1996/HB2",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 2,
+   "stratum": "S4",
+   "kind": "inside_law",
+   "a": "2019-2020/HB1128",
+   "b": "2019-2020/HB1182",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 2,
+   "stratum": "S4",
+   "kind": "inside_law",
+   "a": "2023-2024/SB230",
+   "b": "2025-2026/HB2",
+   "amendment": "",
+   "verdict": "wrong"
+  },
+  {
+   "sample": 2,
+   "stratum": "S4",
+   "kind": "inside_law",
+   "a": "2019-2020/SB703",
+   "b": "2021-2022/SB162",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 2,
+   "stratum": "S4",
+   "kind": "inside_law",
+   "a": "1991-1992/HB306",
+   "b": "1995-1996/HB360",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 2,
+   "stratum": "S4",
+   "kind": "inside_law",
+   "a": "1997-1998/SB348",
+   "b": "2001-2002/SB48",
+   "amendment": "",
+   "verdict": "wrong"
+  },
+  {
+   "sample": 2,
+   "stratum": "S4",
+   "kind": "inside_law",
+   "a": "2025-2026/SB184",
+   "b": "2025-2026/HB377",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 2,
+   "stratum": "S4",
+   "kind": "inside_law",
+   "a": "2015-2016/HB1141",
+   "b": "2015-2016/SB345",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 2,
+   "stratum": "S4",
+   "kind": "inside_law",
+   "a": "1997-1998/HB1505",
+   "b": "2001-2002/HB543",
+   "amendment": "",
+   "verdict": "unsure"
+  },
+  {
+   "sample": 2,
+   "stratum": "S4",
+   "kind": "inside_law",
+   "a": "2005-2006/HB1555",
+   "b": "2007-2008/HB517",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 2,
+   "stratum": "S4",
+   "kind": "inside_law",
+   "a": "2019-2020/SB456",
+   "b": "2021-2022/SB87",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 2,
+   "stratum": "S4",
+   "kind": "inside_law",
+   "a": "2003-2004/HB720",
+   "b": "2003-2004/HB4",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 2,
+   "stratum": "S4",
+   "kind": "inside_law",
+   "a": "2019-2020/SB702",
+   "b": "2021-2022/SB162",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 2,
+   "stratum": "S4",
+   "kind": "inside_law",
+   "a": "2011-2012/SB3",
+   "b": "2011-2012/HB2",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 2,
+   "stratum": "S4",
+   "kind": "inside_law",
+   "a": "1993-1994/SB101",
+   "b": "1993-1994/SB196",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 2,
+   "stratum": "S4",
+   "kind": "inside_law",
+   "a": "2025-2026/HB1006",
+   "b": "2025-2026/HB577",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 2,
+   "stratum": "S4",
+   "kind": "inside_law",
+   "a": "2019-2020/SB435",
+   "b": "2019-2020/HB1182",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 2,
+   "stratum": "S4",
+   "kind": "inside_law",
+   "a": "2005-2006/HB1441",
+   "b": "2007-2008/HB1196",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 2,
+   "stratum": "S4",
+   "kind": "inside_law",
+   "a": "2019-2020/HB1611",
+   "b": "2021-2022/SB134",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 2,
+   "stratum": "S4",
+   "kind": "inside_law",
+   "a": "2019-2020/SB738",
+   "b": "2019-2020/HB1245",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 2,
+   "stratum": "S4",
+   "kind": "inside_law",
+   "a": "2015-2016/HB1520",
+   "b": "2015-2016/HB2",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 2,
+   "stratum": "S4",
+   "kind": "inside_law",
+   "a": "2015-2016/HB1690",
+   "b": "2015-2016/HB1696",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 2,
+   "stratum": "S4",
+   "kind": "inside_law",
+   "a": "2013-2014/HB677",
+   "b": "2013-2014/HB2",
+   "amendment": "",
+   "verdict": "correct"
+  },
+  {
+   "sample": 2,
+   "stratum": "S5",
+   "kind": "amendment",
+   "a": "2017-2018/SB150",
+   "b": "2019-2020/HB1639",
+   "amendment": "2020-1435s",
+   "verdict": "correct"
+  },
+  {
+   "sample": 2,
+   "stratum": "S5",
+   "kind": "amendment",
+   "a": "2023-2024/HB1276",
+   "b": "2023-2024/SB503",
+   "amendment": "2024-1770h",
+   "verdict": "correct"
+  },
+  {
+   "sample": 2,
+   "stratum": "S5",
+   "kind": "amendment",
+   "a": "2023-2024/SB238",
+   "b": "2023-2024/HB500",
+   "amendment": "2023-0507h",
+   "verdict": "correct"
+  },
+  {
+   "sample": 2,
+   "stratum": "S5",
+   "kind": "amendment",
+   "a": "2025-2026/SB662",
+   "b": "2023-2024/HB2",
+   "amendment": "2023-2076s",
+   "verdict": "wrong"
+  },
+  {
+   "sample": 2,
+   "stratum": "S5",
+   "kind": "amendment",
+   "a": "2021-2022/SB141",
+   "b": "2021-2022/HB334",
+   "amendment": "2021-1769s",
+   "verdict": "correct"
+  },
+  {
+   "sample": 2,
+   "stratum": "S5",
+   "kind": "amendment",
+   "a": "2019-2020/HB1714",
+   "b": "2021-2022/SB15",
+   "amendment": "2021-1155h",
+   "verdict": "correct"
+  },
+  {
+   "sample": 2,
+   "stratum": "S5",
+   "kind": "amendment",
+   "a": "2019-2020/SB645",
+   "b": "2019-2020/HB1639",
+   "amendment": "2020-1435s",
+   "verdict": "correct"
+  },
+  {
+   "sample": 2,
+   "stratum": "S5",
+   "kind": "amendment",
+   "a": "2019-2020/SB635",
+   "b": "2019-2020/HB1234",
+   "amendment": "2020-1487s",
+   "verdict": "correct"
+  },
+  {
+   "sample": 2,
+   "stratum": "S5",
+   "kind": "amendment",
+   "a": "2023-2024/SB75",
+   "b": "2023-2024/SB487",
+   "amendment": "2024-1177s",
+   "verdict": "correct"
+  },
+  {
+   "sample": 2,
+   "stratum": "S5",
+   "kind": "amendment",
+   "a": "2019-2020/SB534",
+   "b": "2021-2022/HB1016",
+   "amendment": "2022-0091h",
+   "verdict": "correct"
+  },
+  {
+   "sample": 2,
+   "stratum": "S5",
+   "kind": "amendment",
+   "a": "2019-2020/SB309",
+   "b": "2019-2020/HB2",
+   "amendment": "2019-2403s",
+   "verdict": "correct"
+  },
+  {
+   "sample": 2,
+   "stratum": "S5",
+   "kind": "amendment",
+   "a": "2021-2022/HB1389",
+   "b": "2023-2024/HB2",
+   "amendment": "2023-2076s",
+   "verdict": "correct"
+  },
+  {
+   "sample": 2,
+   "stratum": "S5",
+   "kind": "amendment",
+   "a": "2015-2016/HB1520",
+   "b": "2015-2016/SB576",
+   "amendment": "2016-0048s",
+   "verdict": "correct"
+  },
+  {
+   "sample": 2,
+   "stratum": "S5",
+   "kind": "amendment",
+   "a": "2021-2022/HB350",
+   "b": "2019-2020/HB364",
+   "amendment": "2019-1613s",
+   "verdict": "correct"
+  },
+  {
+   "sample": 2,
+   "stratum": "S5",
+   "kind": "amendment",
+   "a": "2025-2026/HB207",
+   "b": "2023-2024/SB503",
+   "amendment": "2024-1770h",
+   "verdict": "correct"
+  },
+  {
+   "sample": 2,
+   "stratum": "S5",
+   "kind": "amendment",
+   "a": "2015-2016/HB253",
+   "b": "2013-2014/HB1449",
+   "amendment": "2014-0779h",
+   "verdict": "correct"
+  },
+  {
+   "sample": 2,
+   "stratum": "S5",
+   "kind": "amendment",
+   "a": "2019-2020/HB250",
+   "b": "2021-2022/HB103",
+   "amendment": "2021-2214h",
+   "verdict": "correct"
+  },
+  {
+   "sample": 2,
+   "stratum": "S5",
+   "kind": "amendment",
+   "a": "2019-2020/SB432",
+   "b": "2021-2022/SB133",
+   "amendment": "2021-1579h",
+   "verdict": "correct"
+  },
+  {
+   "sample": 2,
+   "stratum": "S5",
+   "kind": "amendment",
+   "a": "2021-2022/SB399",
+   "b": "2021-2022/HB1673",
+   "amendment": "2022-0688h",
+   "verdict": "correct"
+  },
+  {
+   "sample": 2,
+   "stratum": "S5",
+   "kind": "amendment",
+   "a": "2023-2024/SB530",
+   "b": "2021-2022/SB83",
+   "amendment": "2021-0717s",
+   "verdict": "correct"
+  },
+  {
+   "sample": 2,
+   "stratum": "S5",
+   "kind": "amendment",
+   "a": "2015-2016/HB1188",
+   "b": "2015-2016/SB305",
+   "amendment": "2016-1916h",
+   "verdict": "correct"
+  },
+  {
+   "sample": 2,
+   "stratum": "S5",
+   "kind": "amendment",
+   "a": "2019-2020/SB696",
+   "b": "2021-2022/SB301",
+   "amendment": "2022-1526h",
+   "verdict": "correct"
+  },
+  {
+   "sample": 2,
+   "stratum": "S5",
+   "kind": "amendment",
+   "a": "2019-2020/HB1599",
+   "b": "2019-2020/HB1240",
+   "amendment": "2020-1603s",
+   "verdict": "correct"
+  },
+  {
+   "sample": 2,
+   "stratum": "S5",
+   "kind": "amendment",
+   "a": "2025-2026/HB98",
+   "b": "2023-2024/HB1082",
+   "amendment": "2024-1060h",
+   "verdict": "correct"
+  },
+  {
+   "sample": 2,
+   "stratum": "S5",
+   "kind": "amendment",
+   "a": "2023-2024/SB209",
+   "b": "2023-2024/HB421",
+   "amendment": "2023-1751s",
+   "verdict": "correct"
+  },
+  {
+   "sample": 2,
+   "stratum": "S5",
+   "kind": "amendment",
+   "a": "2023-2024/SB563",
+   "b": "2023-2024/HB1292",
+   "amendment": "2024-2179s",
+   "verdict": "correct"
+  },
+  {
+   "sample": 2,
+   "stratum": "S5",
+   "kind": "amendment",
+   "a": "2017-2018/HB124",
+   "b": "2017-2018/SB565",
+   "amendment": "2018-1676h",
+   "verdict": "correct"
+  },
+  {
+   "sample": 2,
+   "stratum": "S5",
+   "kind": "amendment",
+   "a": "2021-2022/HB98",
+   "b": "2021-2022/SB328",
+   "amendment": "2022-1137s",
+   "verdict": "correct"
+  },
+  {
+   "sample": 2,
+   "stratum": "S6",
+   "kind": "amendment",
+   "a": "2025-2026/HB2",
+   "b": "2023-2024/SB230",
+   "amendment": "2023-0534s",
+   "verdict": "wrong"
+  },
+  {
+   "sample": 2,
+   "stratum": "S6",
+   "kind": "amendment",
+   "a": "2019-2020/HB2",
+   "b": "2019-2020/HB692",
+   "amendment": "2019-1465s",
+   "verdict": "correct"
+  },
+  {
+   "sample": 2,
+   "stratum": "S6",
+   "kind": "amendment",
+   "a": "2023-2024/HB1616",
+   "b": "2023-2024/HB1236",
+   "amendment": "2024-1996s",
+   "verdict": "correct"
+  },
+  {
+   "sample": 2,
+   "stratum": "S6",
+   "kind": "amendment",
+   "a": "2019-2020/HB1494",
+   "b": "2019-2020/HB1171",
+   "amendment": "2020-0827h",
+   "verdict": "correct"
+  },
+  {
+   "sample": 2,
+   "stratum": "S6",
+   "kind": "amendment",
+   "a": "2019-2020/HB1282",
+   "b": "2019-2020/HB489",
+   "amendment": "2019-0989h",
+   "verdict": "correct"
+  },
+  {
+   "sample": 2,
+   "stratum": "S6",
+   "kind": "amendment",
+   "a": "2013-2014/HB448",
+   "b": "2011-2012/HB592",
+   "amendment": "2012-0248h",
+   "verdict": "wrong"
+  },
+  {
+   "sample": 2,
+   "stratum": "S6",
+   "kind": "amendment",
+   "a": "2021-2022/SB357",
+   "b": "2021-2022/SB142",
+   "amendment": "2021-0603s",
+   "verdict": "correct"
+  },
+  {
+   "sample": 2,
+   "stratum": "S6",
+   "kind": "amendment",
+   "a": "2023-2024/SB510",
+   "b": "2021-2022/HB1474",
+   "amendment": "2022-1818s",
+   "verdict": "correct"
+  },
+  {
+   "sample": 2,
+   "stratum": "S6",
+   "kind": "amendment",
+   "a": "2021-2022/HB2",
+   "b": "2019-2020/HB712",
+   "amendment": "2020-1197s",
+   "verdict": "correct"
+  },
+  {
+   "sample": 2,
+   "stratum": "S6",
+   "kind": "amendment",
+   "a": "2013-2014/HB466",
+   "b": "2015-2016/SB509",
+   "amendment": "2016-0703s",
+   "verdict": "wrong"
+  },
+  {
+   "sample": 2,
+   "stratum": "S6",
+   "kind": "amendment",
+   "a": "2023-2024/HB120",
+   "b": "2021-2022/SB458",
+   "amendment": "2022-1272s",
+   "verdict": "correct"
+  },
+  {
+   "sample": 2,
+   "stratum": "S6",
+   "kind": "amendment",
+   "a": "2023-2024/SB504",
+   "b": "2023-2024/HB318",
+   "amendment": "2023-2460h",
+   "verdict": "correct"
+  },
+  {
+   "sample": 2,
+   "stratum": "S6",
+   "kind": "amendment",
+   "a": "2019-2020/HB1218",
+   "b": "2019-2020/SB159",
+   "amendment": "2019-2844h",
+   "verdict": "correct"
+  },
+  {
+   "sample": 2,
+   "stratum": "S6",
+   "kind": "amendment",
+   "a": "2021-2022/SB422",
+   "b": "2021-2022/HB103",
+   "amendment": "2022-0904h",
+   "verdict": "correct"
+  },
+  {
+   "sample": 2,
+   "stratum": "S6",
+   "kind": "amendment",
+   "a": "2019-2020/HB1218",
+   "b": "2019-2020/HB365",
+   "amendment": "2019-1554s",
+   "verdict": "correct"
+  },
+  {
+   "sample": 2,
+   "stratum": "S6",
+   "kind": "amendment",
+   "a": "2015-2016/SB108",
+   "b": "2015-2016/SB512",
+   "amendment": "2016-0907s",
+   "verdict": "correct"
+  },
+  {
+   "sample": 2,
+   "stratum": "S6",
+   "kind": "amendment",
+   "a": "2023-2024/HB358",
+   "b": "2021-2022/SB69",
+   "amendment": "2021-0111s",
+   "verdict": "unsure"
+  },
+  {
+   "sample": 2,
+   "stratum": "S6",
+   "kind": "amendment",
+   "a": "2023-2024/HB1085",
+   "b": "2023-2024/HB244",
+   "amendment": "2023-0957h",
+   "verdict": "correct"
+  },
+  {
+   "sample": 2,
+   "stratum": "S6",
+   "kind": "amendment",
+   "a": "2019-2020/HB405",
+   "b": "2017-2018/HB353",
+   "amendment": "2017-0533h",
+   "verdict": "correct"
+  },
+  {
+   "sample": 2,
+   "stratum": "S6",
+   "kind": "amendment",
+   "a": "2021-2022/HB73",
+   "b": "2019-2020/SB163",
+   "amendment": "2019-1840h",
+   "verdict": "unsure"
+  },
+  {
+   "sample": 2,
+   "stratum": "S6",
+   "kind": "amendment",
+   "a": "2019-2020/HB120",
+   "b": "2019-2020/HB121",
+   "amendment": "2019-0812h",
+   "verdict": "correct"
+  },
+  {
+   "sample": 2,
+   "stratum": "S6",
+   "kind": "amendment",
+   "a": "2021-2022/SB305",
+   "b": "2019-2020/HB1380",
+   "amendment": "2020-0887h",
+   "verdict": "correct"
+  },
+  {
+   "sample": 2,
+   "stratum": "S6",
+   "kind": "amendment",
+   "a": "2019-2020/HB1162",
+   "b": "2019-2020/HB1249",
+   "amendment": "2020-0655h",
+   "verdict": "correct"
+  },
+  {
+   "sample": 2,
+   "stratum": "S6",
+   "kind": "amendment",
+   "a": "2025-2026/SB218",
+   "b": "2021-2022/HB292",
+   "amendment": "2021-2222s",
+   "verdict": "unsure"
+  },
+  {
+   "sample": 2,
+   "stratum": "S6",
+   "kind": "amendment",
+   "a": "2021-2022/HB73",
+   "b": "2019-2020/SB163",
+   "amendment": "2019-1630h",
+   "verdict": "unsure"
+  },
+  {
+   "sample": 2,
+   "stratum": "S6",
+   "kind": "amendment",
+   "a": "2019-2020/HB1264",
+   "b": "2019-2020/SB496",
+   "amendment": "2020-0458s",
+   "verdict": "correct"
+  },
+  {
+   "sample": 2,
+   "stratum": "S6",
+   "kind": "amendment",
+   "a": "2019-2020/HB2",
+   "b": "2019-2020/SB236",
+   "amendment": "2019-0842s",
+   "verdict": "correct"
+  },
+  {
+   "sample": 2,
+   "stratum": "S6",
+   "kind": "amendment",
+   "a": "2017-2018/HB578",
+   "b": "2015-2016/HB1625",
+   "amendment": "2016-0869h",
+   "verdict": "correct"
+  },
+  {
+   "sample": 2,
+   "stratum": "S6",
+   "kind": "amendment",
+   "a": "2021-2022/HB167",
+   "b": "2019-2020/SB13",
+   "amendment": "2019-2873s",
+   "verdict": "correct"
+  }
+ ]
+}

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.541
+# GRANITE_VERSION: 2026-09-04.542
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -32765,6 +32765,53 @@ def _statutes_weekly(NI, B):
         "the kit does not carry the statute table as the night's, required"
     return "ok", ("94 of 100 refused, columns moved refused, 99 of 100 installed; "
                   "the pages say the table was taken on October 18, 2026")
+
+
+@check("build", "related bills: a sentence says which way the text went, and the judged sample's "
+       "rules hold", needs=("related_bills", "review"))
+def _related_judged(RB, R):
+    """The judged sample of 11 October 2026 (tests/related_judged_2026-10-11.json,
+    357 pairs judged at the person's request): a one-sided share called HB 2
+    "most of the text" of SB 124; a law passed before a bill "became law as
+    part of" it; amendments decades apart, short appropriations and the
+    decade's district tables read as the same language. Where
+    related_bills.json is on disk, no pair judged wrong in a stratum the
+    rules cover may be back."""
+    it = {"kind": "language", "a": "2023-2024/HB2", "b": "2023-2024/SB124", "share": 0.85,
+          "mine": 0.0, "theirs": 0.85}
+    assert R.related_sentence(it) == "It contains the text of SB 124 (2023-2024), a shorter bill.", \
+        R.related_sentence(it)
+    it = dict(it, a="2023-2024/SB124", b="2023-2024/HB2", mine=0.85, theirs=0.0)
+    assert R.related_sentence(it).startswith("Its text is also in HB 2 (2023-2024), a longer bill"), it
+    am = {"kind": "amendment", "direction": "bill_in_amendment", "order": "before", "amendment": "2016-0920h",
+          "b": "2015-2016/HB1696", "fate": "failed", "fate_body": "H", "fate_vote": "126-233"}
+    assert "had been offered before, as amendment 2016-0920h" in R.related_sentence(am)
+    assert RB.LAW_GAP == 2 and RB.AMEND_GAP == 3 and RB.REFILE_BIG_SHARE == 0.10
+    assert RB.APPROP.search("there is hereby appropriated to the department the sum of $1")
+    assert RB.DISTRICTS.search("1 state senate districts rsa 662:3 is repealed and reenacted")
+    judged = json.loads(Path("tests/related_judged_2026-10-11.json").read_text(encoding="utf-8"))["pairs"]
+    assert len(judged) >= 300 and sum(p["verdict"] == "correct" for p in judged) >= 250
+    rb = Path("related_bills.json")
+    if not rb.is_file():
+        return "ok", f"the sentences and the rules; {len(judged)} judged pairs, no related_bills.json here"
+    data = json.loads(rb.read_text(encoding="utf-8"))
+
+    def shown(p):
+        t, _, b = p["a"].partition("/")
+        for r in (data.get(t) or {}).get(b, []):
+            if r.get("band") != "line":
+                continue
+            if p["kind"] == "amendment" and r["kind"] == "amendment" and r.get("amendment") == p["amendment"]:
+                return True
+            if p["kind"] != "amendment" and r["kind"] == p["kind"] and r.get("other") == p["b"]:
+                return True
+        return False
+    right = [p for p in judged if p["verdict"] == "correct"]
+    kept = sum(shown(p) for p in right)
+    back = [p for p in judged if p["verdict"] == "wrong" and shown(p)]
+    assert kept >= 0.97 * len(right), f"only {kept} of {len(right)} pairs judged right are still found"
+    assert len(back) <= 4, f"{len(back)} pairs judged wrong are shown again: {back[:3]}"
+    return "ok", f"{kept} of {len(right)} judged right still found; {len(back)} judged wrong still shown"
 
 
 @check("build", "related bills: the same text hashes the same everywhere, quoted law is not shared "

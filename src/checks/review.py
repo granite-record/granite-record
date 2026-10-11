@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-09.20
+# GRANITE_VERSION: 2026-09-09.21
 """
 The bench: one sample at a time, judged by a person, written down for good.
 
@@ -803,6 +803,22 @@ def related_sentence(it):
              else "some of its text")
     if it["kind"] == "language":
         ta, tb = (it.get("a") or "")[:9], (it.get("b") or "")[:9]
+        # WHICH WAY THE TEXT WENT (the judged sample, 11 October 2026): a share
+        # measured on the smaller bill alone called SB 124's appropriation
+        # "most of the text" of HB 2. "mine" is how much of this bill is in
+        # the other, "theirs" how much of the other is in this one.
+        mine, theirs = it.get("mine"), it.get("theirs")
+        if mine is not None and theirs is not None:
+            if mine >= 0.8 and theirs < 0.6:
+                return (f"Its text is also in {other}, a longer bill." if ta == tb else
+                        f"Its text was filed again as part of {other}, a longer bill." if tb > ta else
+                        f"Its text was part of {other}, a longer bill filed before it.")
+            if theirs >= 0.8 and mine < 0.6:
+                return (f"It contains the text of {other}, a shorter bill." if ta == tb else
+                        f"Part of its text was filed again as {other}." if tb > ta else
+                        f"It contains the text of {other}, filed before it.")
+            words = ("the same text" if min(mine, theirs) >= 0.9 else "much the same text"
+                     if min(mine, theirs) >= 0.6 else words)
         if ta == tb:
             return f"This term's {other} has {words}."
         return (f"Filed before as {other}, with {words}." if tb < ta
@@ -821,9 +837,13 @@ def related_sentence(it):
         if not fate:
             return (f"Its language was in amendment {num} to {on}, whose fate the docket does not "
                     "record. (Not shown on the site.)")
+        if it.get("order") == "before":
+            return f"Its language had been offered before, as amendment {num} to {on}; {fate}."
         return f"Its language was offered as amendment {num} to {on}; {fate}."
     if not fate:
         return f"Amendment {num} to {on} carries language this bill has. (No fate on record: not shown.)"
+    if it.get("order") == "after":
+        return f"Amendment {num} to {on}, offered later, carries language this bill had; {fate}."
     return f"Amendment {num} to {on} carries language this bill has; {fate}."
 
 
@@ -861,7 +881,8 @@ def sample_related():
                 else:
                     continue
                 it = {"stratum": st, "kind": r["kind"], "a": a, "b": b,
-                      "share": r.get("share"), "amendment": r.get("amendment", ""),
+                      "share": r.get("share"), "mine": r.get("mine"), "theirs": r.get("theirs"),
+                      "order": r.get("order", ""), "amendment": r.get("amendment", ""),
                       "direction": r.get("direction", ""), "fate": r.get("fate", ""),
                       "fate_vote": r.get("fate_vote", ""), "fate_body": r.get("fate_body", "")}
                 it["key"] = f"related|{st}|{a}|{b}|{it['amendment']}"

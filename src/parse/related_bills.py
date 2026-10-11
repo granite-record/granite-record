@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-11.1
+# GRANITE_VERSION: 2026-10-11.2
 """
 Related bills: which bills and amendments share their proposed language.
 
@@ -84,6 +84,38 @@ MIN_PROP = 25    # proposed shingles the smaller side needs, about thirty words
 LINE = 0.8       # the starting line for "the same language"
 BELOW = 0.6      # the bench's lower band, shown nowhere
 LAW_RATIO = 3    # "inside a law": the law at least this many times the bill
+# THE JUDGED SAMPLE OF 11 OCTOBER 2026 (the person asked for it to be judged
+# here; 210 pairs, seven strata of thirty). Nearly every wrong pair was one of
+# two things, and these three rules remove them:
+#  - a short bill and a far larger one, in different terms, sharing a reprinted
+#    statute paragraph or a budget's boilerplate: HB 2 of 2023 "filed again" as
+#    SB 662, a three-sentence appropriation. A refiling across terms needs the
+#    shared language to be at least REFILE_BIG_SHARE of the larger bill too.
+#  - "became law as part of" a law passed before the bill was filed (a 2007 bill
+#    inside a 2003 law), or decades after it: the later document reprinting the
+#    statute the earlier one wrote. The law must come in the bill's year or up
+#    to LAW_GAP years after.
+#  - an amendment and a bill years apart sharing a statute paragraph both
+#    reprint (1999 and 2021, 2005 and 2024). Every right pair of the sample was
+#    within AMEND_GAP years; every one further apart was wrong.
+REFILE_BIG_SHARE = 0.10
+LAW_GAP = 2
+AMEND_GAP = 3
+# THE SECOND JUDGED SAMPLE (206 more pairs, drawn after the rules above):
+#  - LAW_GAP was 4; every pair four years apart was wrong or doubtful, every
+#    one two years apart right, so a law must come in the bill's term or the
+#    next.
+#  - a short appropriation ("there is hereby appropriated to the department
+#    of environmental services the sum of ...") matched the next term's
+#    budget, which appropriates to the same department in the same words. A
+#    short document that is mostly an appropriation is related only within
+#    its own term: APPROP_SHORT words or fewer.
+#  - redistricting: each decade's House and Senate district tables (RSA 662:3,
+#    662:5) list most of the same towns in the same words, so two of them look
+#    like one bill filed again. They are never related to each other.
+APPROP_SHORT = 200
+APPROP = re.compile(r"\bis hereby appropriated\b|\bthe sum of \$?\d", re.I)
+DISTRICTS = re.compile(r"\brsa\s+662[:\s]+(?:3|5)\b", re.I)
 
 ENACT = re.compile(r"be\s+it\s+(?:enacted|resolved)\b[^:]{0,160}:", re.I)
 RESOLVED = re.compile(r"\b(?:that\s+the\s+constitution|resolved\b)", re.I)
@@ -321,6 +353,14 @@ def amendment_fates(narratives):
 def relate(docs, table, became_law, fates=None):
     import numpy as np
     sh = Shingler(np)
+    for d in docs:
+        n = len(words_of(d["body"]))
+        d["_approp"] = n <= APPROP_SHORT and bool(APPROP.search(d["body"]))
+        d["_districts"] = bool(DISTRICTS.search(d["body"]))
+        # An amendment's own number names its year (2021-2222s), whatever
+        # record it was read from.
+        m = re.match(r"(\d{4})-", str(d.get("num") or ""))
+        d["_year"] = int(m.group(1)) if d["kind"] == "amend" and m else d["year"]
     sets = [sh(words_of(d.pop("body"))) for d in docs]
     allh = np.concatenate(sets)
     u, cnt = np.unique(allh, return_counts=True)
@@ -392,6 +432,10 @@ def relate(docs, table, became_law, fates=None):
         kinds = (di["kind"], dj["kind"])
         if kinds == ("amend", "amend"):
             continue
+        if di["_districts"] and dj["_districts"]:
+            continue       # two district tables (DISTRICTS)
+        if (di["_approp"] or dj["_approp"]) and di["term"] != dj["term"]:
+            continue       # a short appropriation and another term (APPROP_SHORT)
         if kinds == ("bill", "bill"):
             if (di["term"], di["bill"]) == (dj["term"], dj["bill"]):
                 continue
@@ -402,10 +446,17 @@ def relate(docs, table, became_law, fates=None):
             if share < BELOW:
                 continue
             band = "line" if share >= LINE else "below"
-            add(di, {"kind": "language", "other": key(dj), "share": round(share, 2), "band": band})
-            add(dj, {"kind": "language", "other": key(di), "share": round(share, 2), "band": band})
+            # How much of each is in the other: "mine" is this bill's own
+            # share, so a sentence can say which way the text went.
+            mine_i, mine_j = n / la, n / lb
+            if di["term"] == dj["term"] or min(mine_i, mine_j) >= REFILE_BIG_SHARE:
+                add(di, {"kind": "language", "other": key(dj), "share": round(share, 2), "band": band,
+                         "mine": round(mine_i, 2), "theirs": round(mine_j, 2)})
+                add(dj, {"kind": "language", "other": key(di), "share": round(share, 2), "band": band,
+                         "mine": round(mine_j, 2), "theirs": round(mine_i, 2)})
             small, big, ls, lbg = (di, dj, la, lb) if la <= lb else (dj, di, lb, la)
-            if share >= LINE and lbg >= LAW_RATIO * ls and enacted(big) and not enacted(small):
+            if share >= LINE and lbg >= LAW_RATIO * ls and enacted(big) and not enacted(small) \
+                    and 0 <= big["year"] - small["year"] <= LAW_GAP:
                 add(small, {"kind": "inside_law", "other": key(big), "share": round(share, 2),
                             "band": "line"})
             continue
@@ -413,6 +464,8 @@ def relate(docs, table, became_law, fates=None):
         A, B = docs[am], docs[bl]
         if A.get("on") == B["bill"] and A["term"] == B["term"]:
             continue       # its own amendment
+        if not A.get("on") or abs(A["_year"] - B["year"]) > AMEND_GAP:
+            continue       # no bill to name it by, or years apart (AMEND_GAP)
         n, pa, pb = split(am, bl)
         if min(pa, pb) < MIN_PROP:
             continue
@@ -424,6 +477,9 @@ def relate(docs, table, became_law, fates=None):
         fate = (fates or {}).get(A["num"].lower()) or {}
         add(B, {"kind": "amendment", "other": f"{A['term']}/{A['on']}" if A.get("on") else "",
                 "amendment": A["num"], "direction": direction, "share": round(share, 2),
+                # Which came first: an amendment of 2019 whose language was
+                # filed as a bill in 2021 reads the other way round.
+                "order": "before" if A["_year"] < B["year"] else "after" if A["_year"] > B["year"] else "same",
                 "band": "line", "fate": fate.get("outcome", "unknown"),
                 **({"fate_vote": fate["vote"]} if fate.get("vote") else {}),
                 **({"fate_body": fate["body"]} if fate.get("body") else {})})
