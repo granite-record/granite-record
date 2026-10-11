@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.255 */
+/* GRANITE_VERSION: 2026-09-07.256 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -6107,8 +6107,12 @@ border-bottom:2px solid var(--ink-2);transform:rotate(-45deg);transition:transfo
 /* NO BILL SEARCH ON A LAW'S PAGE. app.js hides the row on every GR_STATIC
    page once the bill index arrives; the Laws landing is a megabyte of
    directory, and on a phone the row stood on screen a second or more before
-   that (rendered 11 October 2026). A browser without :has() keeps the flash. */
-body:has(.rs-page) .searchrow{display:none}
+   that (rendered 11 October 2026). The shell's empty filter column the same:
+   app.js sets .nofacets at the same moment, and until then the Laws pages
+   stood in the right-hand column of two (the dry run of 45efda3). A browser
+   without :has() keeps the flash. */
+body:has(.rs-page) .searchrow,.shell:has(.rs-page) .facets,.shell:has(.rs-page) .ftoggle{display:none}
+.shell:has(.rs-page){grid-template-columns:1fr}
 
 /* THE CHAPTER PAGE: its sections in a sidebar beside the text, sticky and
    scrolling on its own; above the text, folded, on a narrow screen. */
