@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-11.1
+# GRANITE_VERSION: 2026-10-11.2
 """
 The statutes (RSA) as pages: /rsa, and one page a chapter at /rsa/<chapter>.
 
@@ -296,7 +296,12 @@ def build_indexes(table, cites):
         top = sorted(tf, key=lambda w: (-tf[w] * math.log(n / df[w]), w))[:12]
         for w in sorted(head | set(top)):
             post[w].append(idx[a])
-    words = {"sections": order, "words": {w: v for w, v in sorted(post.items())}}
+    # Postings as the gap from the one before, which compresses to about half
+    # (951 KB to 518 KB gzipped on 8 September 2026's table), and numbered by
+    # headings.json's own order, which is the same list -- so the sections are
+    # not written twice.
+    assert [h[0] for h in headings] == order, "headings.json and words.json list sections differently"
+    words = {"words": {w: [v[0]] + [b - a for a, b in zip(v, v[1:])] for w, v in sorted(post.items())}}
     return chapters, headings, words
 
 
@@ -435,7 +440,7 @@ LANDING_JS = """<script>
   function load(){return Promise.all([
     CH?CH:get("rsa/chapters.json").then(function(d){return CH=d||{};}),
     HD?HD:get("rsa/headings.json").then(function(d){return HD=d||[];}),
-    WD?WD:get("rsa/words.json").then(function(d){return WD=d||{sections:[],words:{}};})]);}
+    WD?WD:get("rsa/words.json").then(function(d){return WD=d||{words:{}};})]);}
   function run(){
     var q=box.value.trim();
     if(!q){out.innerHTML="";return;}
@@ -457,7 +462,10 @@ LANDING_JS = """<script>
           else if(known&&has(known,w))add(c,ch[c][0]+" (the "+ch[c][4][0]+")",w,3);});});
       hd.forEach(function(x){ws.forEach(function(w){if(has(x[1],w))add(x[0],x[1],w,2);});});
       var heads={};hd.forEach(function(x){heads[x[0]]=x[1];});
-      ws.forEach(function(w){(wd.words[w]||[]).forEach(function(i){var a=wd.sections[i];add(a,heads[a],w,1);});});
+      // words.json numbers sections by headings.json's order, each posting
+      // the gap from the one before.
+      ws.forEach(function(w){var i=0;(wd.words[w]||[]).forEach(function(g){i+=g;var a=(hd[i]||[])[0];
+        if(a)add(a,heads[a],w,1);});});
       var rows=Object.keys(hit).map(function(a){return [a,name[a]||heads[a]||"",Object.keys(hit[a].w).length,hit[a].s];})
         .filter(function(x){return x[2]>=Math.min(ws.length,Math.max(1,ws.length-1));})
         .sort(function(x,y){var cx=x[0].indexOf(":")<0,cy=y[0].indexOf(":")<0;

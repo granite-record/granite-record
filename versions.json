@@ -34,7 +34,7 @@
     "build_places.py": "2026-09-20.5",
     "build_proceedings.py": "2026-09-05.14",
     "build_search_index.py": "2026-10-01.9",
-    "build_rsa.py": "2026-10-11.1",
+    "build_rsa.py": "2026-10-11.2",
     "build_session_pages.py": "2026-09-19.39",
     "build_site_v2.py": "2026-09-05.201",
     "build_town_pages.py": "2026-09-09.29",
