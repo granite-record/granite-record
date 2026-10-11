@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.198
+# GRANITE_VERSION: 2026-09-05.199
 """
 Generate the faceted site from real General Court data.
 
@@ -1016,8 +1016,45 @@ def _chapter_key(ch):
     return (int(m.group(1)), (m.group(2) or "").upper()) if m else None
 
 
+_STATUTES = []
+
+
+def _statutes():
+    """The statute table (rsa.py), read once a run, or None where
+    db/NH_RSA.psv is not on this disk."""
+    if not _STATUTES:
+        try:
+            import rsa
+            _STATUTES.append(rsa.load())
+        except Exception:                                        # noqa: BLE001
+            _STATUTES.append(None)
+    return _STATUTES[0]
+
+
 def rsa_url(chapter, section=None):
-    """The General Court's own page for a citation, or "" if unresolvable."""
+    """Where a citation links: the site's own statute page where the table
+    holds it, else the General Court's, else "" (no link).
+
+    THE SITE'S OWN PAGE FIRST (RSA_PAGE.md §7; the person, 11 October 2026:
+    "the RSA pages should be linked throughout the site to the Granite
+    Record pages as an interlinked system"). Where the statute table is on
+    disk, a section it holds links to its anchor, /rsa/91-a#s4; a section it
+    does not hold -- one a bill would create, or one repealed and gone --
+    links to its chapter's page where the chapter is held; and an address
+    the table does not hold at all is left as words, because a link built
+    from the title table to gc.nh.gov for it may well 404 (RSA_PAGE.md §2:
+    20,358 of the bill texts' section citations name an address the table
+    lacks). Without the table, the General Court's page, as before."""
+    table = _statutes()
+    if table is not None:
+        ch = (chapter or "").upper()
+        kind, target = table.resolve(ch, section) if section else table.resolve(ch)
+        if kind in ("section", "range"):
+            c, _, sec = target.partition(":")
+            return f"/rsa/{c.lower()}#s{sec}"
+        if kind == "chapter" or (section and table.resolve(ch)[0] == "chapter"):
+            return f"/rsa/{ch.lower()}"
+        return ""
     key = _chapter_key(chapter)
     if not key:
         return ""

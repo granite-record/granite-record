@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.186
+// GRANITE_VERSION: 2026-09-07.187
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -3345,8 +3345,10 @@ function makeRsa(d){
     if(!ks.length)return s;
     const re=new RegExp("("+ks.sort((a,b)=>b.length-a.length)
       .map(k=>k.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")).join("|")+")([\\w:.-]*\\w)?","g");
-    return s.replace(re,(all,k)=>`<a href="${esc(m[k])}" target="_blank" rel="noopener"`
-      +` class="rsa">${esc(all)}</a>`);};
+    // The site's own statute pages open here; only the General Court's, where
+    // a night had no statute table, leave the site.
+    return s.replace(re,(all,k)=>`<a href="${esc(m[k])}"`
+      +(m[k].charAt(0)==="/"?"":` target="_blank" rel="noopener"`)+` class="rsa">${esc(all)}</a>`);};
 }
 
 // Quoted from the General Court's own bill status page, in the order that page
@@ -3575,7 +3577,8 @@ function rsaChapters(d){
     // The link is to the first SECTION of that chapter the bill cites,
     // because that is the address this site has and can stand behind. It
     // lands the reader in the right chapter either way.
-    if(m && !seen.has(m[1])) seen.set(m[1], u);
+    // The site's own page is the chapter's, not the cited section's anchor.
+    if(m && !seen.has(m[1])) seen.set(m[1], u.charAt(0)==="/"?u.split("#")[0]:u);
   }
   return [...seen.entries()];
 }
@@ -3729,7 +3732,7 @@ const RSA_SHOWN=8;
 function rsaLine(d){
   const ch=rsaChapters(d);
   if(!ch.length)return "";
-  const link=([n,u])=>`<a class="rsa" href="${esc(u)}" target="_blank" rel="noopener">${esc(n)}</a>`;
+  const link=([n,u])=>`<a class="rsa" href="${esc(u)}"${u.charAt(0)==="/"?"":' target="_blank" rel="noopener"'}>${esc(n)}</a>`;
   const lead=ch.length===1?"Amends RSA chapter":"Amends RSA chapters";
   if(ch.length<=RSA_SHOWN+2)return `<p class="rsaline">${lead} ${ch.map(link).join(", ")}</p>`;
   return `<div class="rsaline">${lead} <span class="rsaset">${ch.slice(0,RSA_SHOWN).map(link).join(", ")}</span>`

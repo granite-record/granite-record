@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.532
+# GRANITE_VERSION: 2026-09-04.533
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -32532,6 +32532,34 @@ def _session_suspend_two_thirds(SD, BSP, MO):
     ot = SD.Item("HB1", "2023-2024", {**e, "action": "Ought to Pass", "raw": "OTP, MF, RC 181-121"}, 0)
     assert BSP.vote_payload(ot, MO.classify("Ought to Pass", "HB1", "H")["mk"])["threshold_needed"] == 152
     return "ok", "a suspension 181-121 needs 202; Ought to Pass on the same count needs 152"
+
+
+@check("build", "a bill's statute citations open the site's own statute pages where the table holds "
+       "them, and leave the site only without it", needs=("build_site_v2", "rsa"))
+def _rsa_links_own_pages(B, RSA):
+    """The person, 11 October 2026: "the RSA pages should be linked throughout
+    the site to the Granite Record pages as an interlinked system". With the
+    statute table loaded, build_site_v2.rsa_url gives /rsa/<chapter>#s<section>
+    for a section the table holds, the chapter's page for one it does not
+    (a new section a bill writes), and nothing for a chapter it does not hold
+    -- never a gc.nh.gov address built for a page that may not exist. The
+    app's two link writers open the site's own pages in the same tab."""
+    cols = ["id", "TitleNo", "ChapterNo", "SectionNo", "Title", "Chapter", "Section", "SourceNote",
+            "rsa", "EntireRSA"]
+    t = RSA.Table([dict(zip(cols, ["1", "VI", "91-A", "91-A-4", "T", "CHAPTER 91-A X",
+                                   "Section 91-A:4 Minutes.", "", "", "<codesect>x</codesect>"]))])
+    keep = list(B._STATUTES)
+    try:
+        B._STATUTES[:] = [t]
+        got = (B.rsa_url("91-A", "4"), B.rsa_url("91-a", "33-h"), B.rsa_url("91-A"), B.rsa_url("999", "1"))
+        amends = B.bill_amends("1 Records. Amend RSA 91-A:4, IV to read as follows: IV. x")
+    finally:
+        B._STATUTES[:] = keep
+    assert got == ("/rsa/91-a#s4", "/rsa/91-a", "/rsa/91-a", ""), got
+    assert amends == {"RSA 91-A:4": "/rsa/91-a#s4"}, amends
+    app = Path("src/pages/app.js").read_text(encoding="utf-8")
+    assert app.count('charAt(0)==="/"') >= 3, "an app link writer sends the site's own statute page to a new tab"
+    return "ok", "91-A:4 to its anchor, a new section to its chapter, chapter 999 to nothing; same tab"
 
 
 @check("build", "a statute page links only what the table holds, tags a section a moving bill would "
