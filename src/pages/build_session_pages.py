@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-19.37
+# GRANITE_VERSION: 2026-09-19.38
 """
 A page for every day the House sat.
 
@@ -2453,7 +2453,10 @@ def main():
     used = {(b, s.lower()) for b, s, _n in members.respelled}
     for b, s, n in sorted(members.respelled):
         print(f"    spellings: {b} {s} read as {n} ({members.respelled[(b, s, n)]})")
-    idle = sorted(k for k in members.spellings if k not in used)
+    # This run's chamber only: the step runs once a chamber, and the Senate's
+    # run never meets a House name ("met on no session day: H poloszaj" in
+    # the dry run of e82bd06, beside the House run's "read as Ploszaj (2)").
+    idle = sorted(k for k in members.spellings if k not in used and k[0] == body)
     if idle:
         print(f"    spellings: {len(idle)} named in member_corrections.json and met on no "
               "session day: " + ", ".join(f"{b} {s}" for b, s in idle))
