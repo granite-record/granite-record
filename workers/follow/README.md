@@ -244,6 +244,10 @@ imports there, and have preflight hold the copies byte-identical to these.
 
 ## The front end's side
 
+The Turnstile widget's site key, public, for both graniterecord.org and the
+dry-run preview (the person, 11 October 2026): `0x4AAAAAAFTdC20uymy0Ut8h`.
+Its secret is `TURNSTILE_SECRET`, on Cloudflare only.
+
 The Follow control posts what the reader typed, and stores nothing:
 
     POST /api/follow/signup

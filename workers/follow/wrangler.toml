@@ -44,7 +44,7 @@ SITE_ORIGIN = "https://graniterecord.org"
 # The sending address on the domain verified with Resend, as
 # "Granite Record <name@your-verified-domain>". Left empty, nothing is sent
 # and the log says "follow sender.error.ConfigError".
-MAIL_FROM = ""
+MAIL_FROM = "Granite Record <noreply@mail.graniterecord.org>"
 # The feedback form linked in the footer of every page of the site.
 FEEDBACK_URL = "https://forms.gle/PYw9c3xgpDDwvX7E9"
 # A run is one Worker invocation, and two limits bound it; the sender stops
@@ -79,7 +79,7 @@ database_id = "00000000-0000-0000-0000-000000000000"   # FILL IN: wrangler d1 cr
 [env.preview.vars]
 # The preview deployment's own address, the branch alias Pages gives it.
 SITE_ORIGIN = "https://FILL-IN.graniterecord.pages.dev"
-MAIL_FROM = ""
+MAIL_FROM = "Granite Record <noreply@mail.graniterecord.org>"
 FEEDBACK_URL = "https://forms.gle/PYw9c3xgpDDwvX7E9"
 SEND_LIMIT = "40"
 D1_QUERIES_PER_RUN = "50"
