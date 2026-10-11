@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.543
+# GRANITE_VERSION: 2026-09-04.544
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -28500,6 +28500,7 @@ CLOCK_OF_THEIR_OWN = {
     "refusal.py": "the record of a refusal, and the night's window",
     "livestreams.py": "the night's own record of its livestream runs",
     "fetch_legislation.py": "the day a page was asked for, on the gone-list",
+    "guide_sources.py": "when the laptop read an official page; build_civics imports only its list",
     "parse_town_sites.py": "the day a town's site was read, in its own run by hand",
     "town_boards.py": "the day a town's boards were read, in its own run by hand",
     "freeze_term.py": "the day a term's freeze was made, in the freeze's own manifest; the "
@@ -32714,6 +32715,92 @@ def _rsa_landing(B, RSA, S):
     assert re.search(r"\.rs-banner\{[^}]*var\(--t-lead\)", css), "the repeal banner is not at the lead's size"
     return "ok", ("Title V names Chapter 72 before it opens; status, topic and title filters; 71 repealed "
                   "in 1973 and 373 moved to RSA 246, in words")
+
+
+@check("build", "a how-to guide is published only when every claim in it is checked, says when, "
+       "and states no figure the plan forbids", needs=("build_civics", "guides", "guide_sources", "rsa", "shell"))
+def _guides_gate(BC, G, GS, RSA, S):
+    """The person's resources plan (October 2026): "The feature only survives
+    as data with a freshness mechanism"; "Every entry shows when it was last
+    verified"; "Never publish eligibility math". guides.py holds each
+    statement beside the one source that supports it, and build_civics writes
+    a guide only when every one is checked. Here a guide with one claim
+    unchecked is held back and its old copy removed, the same guide checked is
+    written and listed on the hub with its date, and a check past
+    STALE_DAYS says the guide may be out of date."""
+    import contextlib
+    import io
+    import build_date
+    for g in G.GUIDES:
+        loose = [u for u in G.outside(g) if u not in {x for us in GS.SOURCES.values() for x in us}]
+        assert not loose, f"{g['slug']} links what guide_sources.py never reads, so no check covers it: {loose}"
+        assert not re.search(r"\$\s?\d|\d\s?%", g["body"]), \
+            f"{g['slug']} states a dollar or percentage figure; link the source that sets it instead"
+        for c in g["claims"]:
+            m = re.match(r"RSA (\d{1,3}(?:-[A-Z]{1,2})?):([0-9a-z-]+)$", c["source"])
+            if m:
+                assert f'href="/laws/{m.group(1).lower()}#s{m.group(2)}"' in g["body"], \
+                    f"{g['slug']}: a claim on {c['source']} is not linked to that section in the guide"
+            else:
+                assert c["source"].startswith("https://"), f"{g['slug']}: a claim's source is {c['source']!r}"
+    cols = ["id", "TitleNo", "ChapterNo", "SectionNo", "Title", "Chapter", "Section", "SourceNote",
+            "rsa", "EntireRSA"]
+    table = RSA.Table([dict(zip(cols, ["1", "VI", "91-A", "91-A-4", "TITLE VI", "CHAPTER 91-A ACCESS TO "
+                                        "GOVERNMENTAL RECORDS AND MEETINGS", "Section 91-A:4 Minutes.", "", "",
+                                        "<codesect> I. Every citizen</codesect>"]))])
+    url = next(iter(GS.SOURCES.values()))[0]
+    today = build_date.today().isoformat()
+
+    def one(checked):
+        return G.guide("test-guide", "A Test Guide", "What it does.",
+                       '<h2>Who to Ask</h2><p>Ask (<a href="/laws/91-a#s4">RSA 91-A:4</a>).</p>',
+                       [("RSA 91-A", "/laws/91-a"), ("The page", url)], ["91-A"],
+                       [G.claim("x", "RSA 91-A:4", today), G.claim("y", url, checked)])
+    tmpl = S.template(Path("site"))
+    here, tmp = os.getcwd(), Path(tempfile.mkdtemp(prefix="gr-guides-"))
+    saved = (G.GUIDES, RSA.load)
+    try:
+        os.chdir(tmp)
+        (tmp / "site" / "idx").mkdir(parents=True)
+        (tmp / "site" / "idx" / "2025-2026.json").write_text("[]", encoding="utf-8")
+        Path("rsa_citations.json").write_text(json.dumps({"bills": {}, "enacted": {
+            "91-A:4": [["2024", "49:1", "2023-2024/SB1"]]}}), encoding="utf-8")
+        RSA.load = lambda *a, **k: table
+        G.GUIDES = [one(None)]
+        with contextlib.redirect_stdout(io.StringIO()):
+            pub, _ = BC.build_guides(tmp / "site", tmpl, "https://graniterecord.org")
+        assert not pub and not (tmp / "site" / "guides" / "test-guide.html").exists(), \
+            "a guide with a claim not checked was published"
+        G.GUIDES = [one(today)]
+        with contextlib.redirect_stdout(io.StringIO()):
+            pub, urls = BC.build_guides(tmp / "site", tmpl, "https://graniterecord.org")
+        page = (tmp / "site" / "guides" / "test-guide.html").read_text(encoding="utf-8")
+        assert [g["slug"] for g in pub] == ["test-guide"] and urls, "a guide checked throughout was held back"
+        assert "Checked against its sources" in page and 'class="g-stale"' not in page and "Draft" not in page
+        assert 'href="/laws/91-a"' in page and "Laws that changed it since" in page, \
+            "the guide does not list the laws that changed its chapter"
+        hub = BC.hub_guides(pub)
+        assert "test-guide.html" in hub and "Checked " in hub and "no how-to guides yet" not in hub
+        old = "2020-01-01"
+        G.GUIDES = [G.guide(**{**{k: v for k, v in one(old).items() if k in ("slug", "title", "blurb", "body",
+                                                                              "sources", "laws", "see")},
+                               "claims": [G.claim("x", "RSA 91-A:4", old), G.claim("y", url, old)]})]
+        with contextlib.redirect_stdout(io.StringIO()):
+            BC.build_guides(tmp / "site", tmpl, "https://graniterecord.org")
+        page = (tmp / "site" / "guides" / "test-guide.html").read_text(encoding="utf-8")
+        assert 'class="g-stale"' in page and "may be out of date" in page, "a stale check is not said"
+        G.GUIDES = [one(None)]
+        with contextlib.redirect_stdout(io.StringIO()):
+            BC.build_guides(tmp / "site", tmpl, "https://graniterecord.org")
+        assert not (tmp / "site" / "guides" / "test-guide.html").exists(), \
+            "a guide no longer checked left its old page to be served"
+    finally:
+        os.chdir(here)
+        G.GUIDES, RSA.load = saved
+        shutil.rmtree(tmp, ignore_errors=True)
+    held = [g["slug"] for g in G.GUIDES if G.unchecked(g)]
+    return "ok", (f"{len(G.GUIDES)} guides, {len(held)} held back until their sources are read; "
+                  "unchecked held, checked published with its date, stale said, old copy removed")
 
 
 @check("build", "the changes files mark milestones, set a ballot beside its roll call, and let a "

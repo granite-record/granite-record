@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.43
+# GRANITE_VERSION: 2026-09-08.44
 """
 The civics section: a hub and one page per topic, in order.
 
@@ -39,6 +39,8 @@ from collections import Counter
 
 import build_date
 import civics
+import components as C
+import guides as G
 import learn_numbers
 import proceedings as P
 import shell as S
@@ -1051,11 +1053,22 @@ def hub_learn(topics):
     return "".join(out)
 
 
-def hub_guides():
-    """THERE ARE NONE YET, AND THE TAB SAYS SO. The list of guides coming
-    stays hidden until the first one exists (8 October 2026); the tab is
-    drawn anyway, because the person asked for a tab for each, and points to
-    the other two."""
+def hub_guides(published=()):
+    """The guides that passed guides.py's checks, each with its line and the
+    date it was checked. WHILE THERE ARE NONE, THE TAB SAYS SO: the list of
+    guides coming stays hidden until the first one exists (8 October 2026),
+    and the tab is drawn anyway, because the person asked for a tab for each,
+    and points to the other two."""
+    if published:
+        lis = "".join(
+            f'<li><a href="{E(guide_href(g["slug"]))}">{E(g["title"])}</a>'
+            f'<p>{dashes(E(g["blurb"]))}</p>'
+            f'<p class="r-checked">Checked {E(C.date_words(_day(G.checked_on(g)), "full"))}</p></li>'
+            for g in published)
+        return ('<p class="r-intro">Short, step-by-step guides to things people ask the state for. '
+                'Each one says what it was checked against and when, and links to the official '
+                'page that has the final word.</p>'
+                f'<ul class="r-topics">{lis}</ul>')
     return ('<p class="r-none">There are no how-to guides yet.</p>'
             '<p class="r-sub">Each guide will be listed here once it is written and checked '
             'against the official sources it cites.</p>'
@@ -1064,6 +1077,165 @@ def hub_guides():
             'government works.</span></a></li>'
             f'<li><a href="{HUB}#sources"><b>Official Sources</b><span>The state&rsquo;s own '
             'sites, where its records and services are.</span></a></li></ul>')
+
+
+# ---------------------------------------------------------------------------
+# THE HOW-TO GUIDES (guides.py says what they are and how each is checked).
+# A guide is written to /guides/<slug> only when every claim in it is checked
+# and every outside address it links is one guide_sources.py reads; --drafts
+# writes the rest too, marked, for a person to read, and is never the
+# night's.
+# ---------------------------------------------------------------------------
+GUIDE_DIR = "guides"
+LAWS_LINK = re.compile(r'href="/laws/([0-9a-z-]+)')
+
+
+def guide_href(slug):
+    return f"{GUIDE_DIR}/{slug}.html"
+
+
+def _day(iso):
+    import datetime
+    return datetime.date.fromisoformat(iso)
+
+
+def guide_ready(g, fetched, chapters):
+    """Why the guide may not be published yet, or "" when it may: a claim
+    not checked, an outside address the laptop's run does not read (so no
+    link check covers it), or a Laws page the statute table does not hold."""
+    if G.unchecked(g):
+        return f"{len(G.unchecked(g))} of {len(g['claims'])} claims not yet checked"
+    loose = [u for u in G.outside(g) if u not in fetched]
+    if loose:
+        return "not in guide_sources.SOURCES: " + ", ".join(loose)
+    laws = set(LAWS_LINK.findall(g["body"] + " ".join(u for _l, u in g["sources"])))
+    gone = sorted(c for c in laws if c.upper() not in chapters)
+    if gone:
+        return "links a Laws page the statute table does not hold: " + ", ".join(gone)
+    return ""
+
+
+def guide_record(g, data, bills, chapters):
+    """IN THE RECORD: what the legislature is doing to the law the guide
+    describes, by rule and without a word about it -- the bills now moving
+    that would change its chapters, and the laws that changed them most
+    recently, each with its chapter's own page. The plan: "here is how the
+    program works, and here is the legislature changing it"."""
+    import build_rsa as BR
+    rows = []
+    pend = BR.chapter_pending(data, bills)
+    for ch in g["laws"]:
+        if ch not in chapters:
+            continue
+        name = BR.chapter_label(ch, chapters[ch]["name"])
+        now = pend.get(ch, [])
+        recent = {}
+        for addr, hist in data.get("enacted", {}).items():
+            if addr == ch or addr.startswith(ch + ":"):
+                for y, _law, b in hist:
+                    if b and str(y).isdigit() and int(y) >= RECENT_FROM:
+                        recent[b] = int(y)
+        past = sorted(recent, key=lambda k: (-recent[k], BR.bill_order(k)))[:RECENT_SHOWN]
+        bits = [f'<h3 class="g-ch"><a href="/laws/{E(BR.chapter_slug(ch))}">{E(name)}</a></h3>']
+        if now:
+            bits.append('<p class="g-what">Bills now before the General Court that would change it:</p>'
+                        + BR.folded([bills.chip(k) for k in now]))
+        if past:
+            bits.append(f'<p class="g-what">Laws that changed it since {RECENT_FROM}, newest first:</p>'
+                        + BR.folded([bills.chip(k) for k in past]))
+        if not now and not past:
+            bits.append(f'<p class="g-what">No bill has changed it since {RECENT_FROM}, and none now '
+                        'before the General Court would.</p>')
+        rows.append("".join(bits))
+    return "".join(rows)
+
+
+RECENT_FROM = 2020
+RECENT_SHOWN = 8
+
+
+def guide_page(tmpl, g, base, record, draft_why=""):
+    """A guide: the Resources bar with How-To Guides marked, the head with
+    when it was checked, its sections, what the record holds on it, and its
+    sources. A check older than guides.STALE_DAYS puts a notice above it."""
+    path = "/" + guide_href(g["slug"])
+    secs = split_sections(g["body"], path)
+    if record:
+        secs.append(("in-the-record", "In the Record", record))
+    if g["see"]:
+        secs.append(("see-also", "See Also", '<ul class="g-see">' + "".join(
+            f'<li><a href="{E(u)}">{E(label)}</a></li>' for label, u in g["see"]) + "</ul>"))
+    secs.append(("sources", "Where This Comes From", sources_list(g["sources"])))
+    when = G.checked_on(g)
+    note = ""
+    if draft_why:
+        note = (f'<p class="g-draft" role="note"><strong>Draft, not published.</strong> '
+                f'{E(draft_why)}.</p>')
+    elif when and (build_date.today() - _day(when)).days > G.STALE_DAYS:
+        note = ('<p class="g-stale" role="note"><strong>This guide may be out of date.</strong> It was '
+                f'last checked {E(C.date_words(_day(when), "full"))}. Check each step against the '
+                'official page it links before you rely on it.</p>')
+    checked = (f'<p class="g-checked">Checked against its sources '
+               f'{E(C.date_words(_day(when), "full"))}.</p>' if when and not draft_why else "")
+    p = S.page(tmpl, path=path, base=base, title=S.title_of(g["title"], "Guides"),
+               og_title=g["title"], description=g["blurb"], og_image="og-learn.png", og_alt=OG_ALT,
+               globals={"GR_STATIC": True}, noscript="", skip_label="Skip to the guide", sr_title="",
+               nav_current="resources.html", cite=False)
+    items = "".join(f'<li><a href="{E(S.canon(path))}#{E(sid)}">{_plain(h)}</a></li>' for sid, h, _ in secs)
+    otp = ('<details class="l-otp"><summary>On this page</summary>'
+           f'<nav class="l-otpb" aria-label="On this page"><ol>{items}</ol></nav></details>')
+    acts = S.cite_block(path, g["title"], base, S.BUILT)
+    row = '<div class="pageacts" id="pageacts">'
+    assert acts.startswith(row), "shell.cite_block no longer opens with the row"
+    acts = row + otp + acts[len(row):]
+    headx = (f'<header class="l-head"><h1>{E(g["title"])}</h1><p class="l-lead">{dashes(E(g["blurb"]))}</p>'
+             + note + checked + acts + "</header>")
+    article = "".join(section(*s_) for s_ in secs)
+    return p.replace('<div id="results"></div>',
+                     '<div id="results"><div class="l-page g-page">' + hub_bar("guides") + headx
+                     + f'<div class="l-art">{article}</div></div>{OTP_JS}</div>', 1)
+
+
+def build_guides(site, tmpl, base, drafts=False):
+    """Writes the guides that may be published (and, with drafts, the rest,
+    marked) and returns (published, urls). Says why each one held back is."""
+    import build_rsa as BR
+    import guide_sources
+    fetched = {u for us in guide_sources.SOURCES.values() for u in us}
+    table = None
+    try:
+        import rsa
+        table = rsa.load()
+    except Exception as e:                      # noqa: BLE001 -- said, and no guide links a law then
+        print(f"  guides: the statute table could not be read ({type(e).__name__})")
+    chapters = table.chapters if table else {}
+    cit = Path("rsa_citations.json")
+    data = json.loads(cit.read_text(encoding="utf-8")) if cit.is_file() else {}
+    bills = BR.Bills(site, BR.term_of_year(build_date.today().year))
+    out = site / GUIDE_DIR
+    published, urls = [], []
+    for g in G.GUIDES:
+        why = guide_ready(g, fetched, chapters)
+        if why and not drafts:
+            print(f"  guides/{g['slug']}.html HELD BACK: {why}")
+            continue
+        out.mkdir(parents=True, exist_ok=True)
+        record = guide_record(g, data, bills, chapters)
+        (out / f"{g['slug']}.html").write_text(guide_page(tmpl, g, base, record, why), encoding="utf-8")
+        if not why:
+            published.append(g)
+            urls.append(base + S.canon("/" + guide_href(g["slug"])))
+        print(f"  guides/{g['slug']}.html" + (f" (DRAFT: {why})" if why else ", checked "
+                                                + G.checked_on(g)))
+    # A GUIDE HELD BACK LEAVES NO OLD COPY: a page written by an earlier build
+    # whose claims have since been unset is not served in its place.
+    if out.is_dir() and not drafts:
+        keep = {f"{g['slug']}.html" for g in published}
+        for f in out.glob("*.html"):
+            if f.name not in keep:
+                f.unlink()
+                print(f"  guides/{f.name}: removed, no longer published")
+    return published, urls
 
 
 def hub_sources(groups):
@@ -1080,7 +1252,7 @@ def hub_sources(groups):
             'for this.</p>')
 
 
-def hub_page(tmpl, base, topics, groups):
+def hub_page(tmpl, base, topics, groups, published=()):
     """The Resources hub: a list head (its title and one line; no trail and no
     Cite this page, which a hub does not carry), then the three tabs.
 
@@ -1095,7 +1267,7 @@ def hub_page(tmpl, base, topics, groups):
     n_learn = len(topics) + 1
     n_src = sum(len(rows) for _, rows in groups)
     panels = [("learn", "Learn", n_learn, hub_learn(topics)),
-              ("guides", "How-To Guides", 0, hub_guides()),
+              ("guides", "How-To Guides", len(published), hub_guides(published)),
               ("sources", "Official Sources", n_src, hub_sources(groups))]
     assert [p[:2] for p in panels] == list(HUB_TABS), "the hub's panels and HUB_TABS disagree"
     strip = ('<div class="twntabs r-tabs" role="tablist" aria-label="Resources" hidden>'
@@ -1146,6 +1318,9 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--site", default="site")
     ap.add_argument("--base", default="https://graniterecord.org")
+    ap.add_argument("--drafts", action="store_true",
+                    help="also write the guides not yet checked, marked as drafts (for a person to read; "
+                         "never the night's)")
     a = ap.parse_args()
 
     site = Path(a.site)
@@ -1206,9 +1381,12 @@ def main():
     urls.append(a.base + S.canon("/" + learn_href(NUMBERS_SLUG)))
     print("  learn/by-the-numbers.html: the page of statistics")
 
+    # ---- the how-to guides -------------------------------------------------
+    published, gurls = build_guides(site, tmpl, a.base, a.drafts)
+
     # ---- the hub ----------------------------------------------------------
     groups = official_sources(numbers_results(Path(".")))
-    (site / HUB_PAGE).write_text(hub_page(tmpl, a.base, topics, groups), encoding="utf-8")
+    (site / HUB_PAGE).write_text(hub_page(tmpl, a.base, topics, groups, published), encoding="utf-8")
     # THE OLD HUB'S FILE GOES. /learn redirects to the hub (_redirects), and a
     # learn.html left in the folder by an earlier build would be served in
     # the redirect's place by a host that prefers a file.
@@ -1221,6 +1399,9 @@ def main():
     added, dropped = S.sitemap_merge(site, a.base, urls, owns="/" + LEARN_DIR)
     if added or dropped:
         print(f"  sitemap.xml: {added} added, {dropped} dropped")
+    added, dropped = S.sitemap_merge(site, a.base, gurls, owns="/" + GUIDE_DIR)
+    if added or dropped:
+        print(f"  sitemap.xml: {added} guides added, {dropped} dropped")
 
     n_src = sum(len(t["sources"]) for t in topics)
     print(f"{len(topics)} topics -> {out}/, and {HUB_PAGE}: "

@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.256 */
+/* GRANITE_VERSION: 2026-09-07.257 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -4133,6 +4133,23 @@ a.l-pgm{font-weight:600;text-decoration:underline;text-decoration-thickness:1px;
 .r-srcs a:hover{color:var(--ink)}
 .r-srcs .l-dmeta{display:block;margin-top:.125rem}
 .r-close{font:400 var(--t-ui)/1.55 var(--sans);color:var(--ink-2);margin:1.25rem 0 0;max-width:46rem}
+/* THE HOW-TO GUIDES (build_civics.guide_page; guides.py). When each was
+   checked is said under its title and on the hub; a check past
+   guides.STALE_DAYS, or a draft drawn for a person to read, says so in a box
+   at the lead's size, as the Laws page's repeal banner does. */
+.r-topics p.r-checked{font-size:var(--t-sm);margin-top:.25rem}
+.g-checked{font:400 var(--t-sm)/1.45 var(--sans);color:var(--ink-2);margin:.25rem 0 .75rem}
+.g-stale,.g-draft{font:400 var(--t-ui)/1.5 var(--sans);color:var(--ink);background:var(--wash);
+  border:1px solid var(--rule-2);border-left:5px solid var(--ink);border-radius:var(--r-in);
+  padding:.75rem 1rem;margin:.75rem 0 1rem;max-width:46rem}
+.g-draft{border-left-color:var(--st-table)}
+.g-ch{font:600 var(--t-ui)/1.4 var(--sans);margin:1rem 0 .375rem}
+.g-ch:first-child{margin-top:0}
+.g-ch a{color:var(--pine)}
+.g-what{font:400 var(--t-sm)/1.45 var(--sans);color:var(--ink-2);margin:.375rem 0}
+.g-see{margin:0;padding-left:1.25rem}
+.g-see a{color:var(--pine)}
+.g-page .rs-list{margin-bottom:.5rem}
 .r-close a{color:var(--pine)}
 /* the guides' tab: nothing to list yet, said plainly, and where to go */
 .r-none{font:600 var(--t-read)/1.4 var(--serif);color:var(--ink);margin:0 0 .5rem}
