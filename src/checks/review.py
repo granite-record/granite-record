@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-09.18
+# GRANITE_VERSION: 2026-09-09.19
 """
 The bench: one sample at a time, judged by a person, written down for good.
 
@@ -762,6 +762,206 @@ def show_archive_rollcall(it):
             'under each heading?</p>')
 
 
+# ------------------------------------------------------------ related bills
+#
+# RELATED_BILLS.md §5: the gate before any relation is shown. Seven strata,
+# because precision differs by kind, thirty of each drawn with the design's
+# seed, so the draw is the one the design proposed and can be drawn again.
+# A stratum ships if at most two of its thirty are wrong (decision 2); S7,
+# the band below the line, only decides whether that band is ever shown.
+
+RELATED_SEED = 20261007
+RELATED_PER = 30
+RELATED_STRATA = {
+    "S1": "Refiled, nearly identical (95% or more)",
+    "S2": "Refiled, mostly the same (80 to 95%)",
+    "S3": "This term, mostly the same (80% or more)",
+    "S4": "A smaller bill inside a bill that became law",
+    "S5": "A bill's text inside an amendment to another bill",
+    "S6": "An amendment's text inside another bill",
+    "S7": "Below the line (60 to 80%): shown nowhere",
+}
+_RELATED_TEXTS = {}
+
+
+def _pct(x):
+    return f"{round(float(x) * 100)}%"
+
+
+def _bill_label(key):
+    term, _, bill = (key or "").partition("/")
+    m = re.match(r"([A-Z]+)(\d+)$", bill)
+    return f"{m.group(1)} {m.group(2)} ({term})" if m else key
+
+
+def related_sentence(it):
+    """The sentence the page would print for this relation, word for word
+    (RELATED_BILLS.md §6: plain words, not percentages; an amendment's fate
+    always stated, "added" only for one adopted)."""
+    other, share = _bill_label(it.get("b")), float(it.get("share") or 0)
+    words = ("the same text" if share >= 0.95 else "most of its text" if share >= 0.8
+             else "some of its text")
+    if it["kind"] == "language":
+        ta, tb = (it.get("a") or "")[:9], (it.get("b") or "")[:9]
+        if ta == tb:
+            return f"This term's {other} has {words}."
+        return (f"Filed before as {other}, with {words}." if tb < ta
+                else f"Filed again as {other}, with {words}.")
+    if it["kind"] == "inside_law":
+        return f"Nearly all of its text became law as part of {other}."
+    num, on = it.get("amendment") or "", _bill_label(it.get("b"))
+    house = {"H": "House", "S": "Senate"}.get(it.get("fate_body") or "", "chamber")
+    vote = f", {it['fate_vote']}" if it.get("fate_vote") else ""
+    fate = {"adopted": f"the {house} adopted it{vote}",
+            "failed": f"the {house} rejected it{vote}",
+            "withdrawn": "it was withdrawn",
+            "recommended": "its committee recommended it, and no vote on it is on record"}.get(
+                it.get("fate"), "")
+    if it.get("direction") == "bill_in_amendment":
+        if not fate:
+            return (f"Its language was in amendment {num} to {on}, whose fate the docket does not "
+                    "record. (Not shown on the site.)")
+        return f"Its language was offered as amendment {num} to {on}; {fate}."
+    if not fate:
+        return f"Amendment {num} to {on} carries language this bill has. (No fate on record: not shown.)"
+    return f"Amendment {num} to {on} carries language this bill has; {fate}."
+
+
+def sample_related():
+    p = Path("related_bills.json")
+    if not p.exists():
+        return []
+    data = json.loads(p.read_text(encoding="utf-8"))
+    pops = {k: [] for k in RELATED_STRATA}
+    seen = set()
+    for term, bills in sorted(data.items()):
+        for bill, rows in sorted(bills.items()):
+            a = f"{term}/{bill}"
+            for r in rows:
+                b = r.get("other") or ""
+                if r["kind"] == "language":
+                    pair = tuple(sorted((a, b)))
+                    if pair in seen:
+                        continue
+                    seen.add(pair)
+                    if r.get("band") != "line":
+                        st = "S7"
+                    elif a[:9] == b[:9]:
+                        st = "S3"
+                    else:
+                        st = "S1" if r["share"] >= 0.95 else "S2"
+                elif r["kind"] == "inside_law":
+                    st = "S4"
+                elif r["kind"] == "amendment":
+                    # Only a fate the docket records is ever shown, so only
+                    # those are worth a person's judgment.
+                    if r.get("fate") not in ("adopted", "failed", "withdrawn"):
+                        continue
+                    st = "S5" if r.get("direction") == "bill_in_amendment" else "S6"
+                else:
+                    continue
+                it = {"stratum": st, "kind": r["kind"], "a": a, "b": b,
+                      "share": r.get("share"), "amendment": r.get("amendment", ""),
+                      "direction": r.get("direction", ""), "fate": r.get("fate", ""),
+                      "fate_vote": r.get("fate_vote", ""), "fate_body": r.get("fate_body", "")}
+                it["key"] = f"related|{st}|{a}|{b}|{it['amendment']}"
+                pops[st].append(it)
+    rng = random.Random(RELATED_SEED)
+    out = []
+    for st in RELATED_STRATA:
+        pop = sorted(pops[st], key=lambda x: x["key"])
+        for it in rng.sample(pop, min(RELATED_PER, len(pop))):
+            it["sentence"] = related_sentence(it)
+            out.append(it)
+    return out
+
+
+def _related_text(key, amendment=""):
+    """A bill's or an amendment's proposed text, as related_bills.py reads it."""
+    import related_bills as RB
+    if not _RELATED_TEXTS:
+        docs = RB.documents(Path("."))
+        for d in docs:
+            k = f"am|{d['num']}" if d["kind"] == "amend" else f"{d['term']}/{d['bill']}"
+            _RELATED_TEXTS.setdefault(k, d["body"])
+    return _RELATED_TEXTS.get(f"am|{amendment}" if amendment else key, "")
+
+
+def _marked(text, shared, limit=1400):
+    """The text with the five-word runs both documents share in <mark>, the
+    long stretches of neither folded to an ellipsis."""
+    toks = [(m.start(), m.end(), m.group(0).lower()) for m in re.finditer(r"[A-Za-z0-9]+(?:[-'][A-Za-z0-9]+)*", text)]
+    on = [False] * len(toks)
+    for i in range(len(toks) - 4):
+        if tuple(t[2] for t in toks[i:i + 5]) in shared:
+            for j in range(i, i + 5):
+                on[j] = True
+    text = text.strip()
+    toks = [(m.start(), m.end(), m.group(0).lower()) for m in re.finditer(r"[A-Za-z0-9]+(?:[-'][A-Za-z0-9]+)*", text)]
+    on = [False] * len(toks)
+    for i in range(len(toks) - 4):
+        if tuple(t[2] for t in toks[i:i + 5]) in shared:
+            for j in range(i, i + 5):
+                on[j] = True
+    out, pos, words, run = [], 0, 0, []
+    for (st, en, _w), m in zip(toks, on):
+        gap = text[pos:st]
+        piece = E(gap) + (f"<mark>{E(text[st:en])}</mark>" if m else E(text[st:en]))
+        run.append((m, piece))
+        pos = en
+    # fold a stretch of more than 60 unshared words to its ends
+    i = 0
+    while i < len(run):
+        if run[i][0]:
+            out.append(run[i][1]); i += 1; continue
+        j = i
+        while j < len(run) and not run[j][0]:
+            j += 1
+        seg = [p for _m, p in run[i:j]]
+        out.extend(seg if len(seg) <= 60 else seg[:20] + [" &hellip; "] + seg[-20:])
+        words += len(seg)
+        i = j
+    # one mark for a run of shared words, not one a word
+    html_ = re.sub(r"</mark>(\s*)<mark>", r"\1", "".join(out)).strip()
+    return html_ if len(html_) < limit * 40 else html_[:limit * 40] + " &hellip;"
+
+
+def show_related(it):
+    a_txt = _related_text(it["a"])
+    b_txt = _related_text(it["b"], it.get("amendment") if it["kind"] == "amendment" else "")
+    def grams(t):
+        w = [x.lower() for x in re.findall(r"[A-Za-z0-9]+(?:[-'][A-Za-z0-9]+)*", re.sub(r"\[[^\[\]]{0,4000}\]", " ", t))]
+        return {tuple(w[i:i + 5]) for i in range(len(w) - 4)}
+    shared = grams(a_txt) & grams(b_txt)
+    right = (f"Amendment {it['amendment']} to {_bill_label(it['b'])}" if it["kind"] == "amendment"
+             else _bill_label(it["b"]))
+    def link(key):
+        term, _, bill = key.partition("/")
+        m = re.match(r"([A-Z]+)(\d+)$", bill)
+        yr = term[:4] if m else ""
+        return (f'<a href="https://graniterecord.org/bill/{E(yr)}/{E(bill.lower())}" target="_blank" '
+                f'rel="noopener">open its page</a>') if m else ""
+    return (f'<table class="facts"><tr><th>Stratum</th><td>{E(it["stratum"])}: '
+            f'{E(RELATED_STRATA.get(it["stratum"], ""))}</td></tr>'
+            f'<tr><th>Shared</th><td>{E(_pct(it.get("share")))} of the smaller text\'s proposed language'
+            + (f'; the docket: {E(it.get("fate") or "nothing")}' if it["kind"] == "amendment" else "")
+            + '</td></tr></table>'
+            f'<h3>What the page would say on {E(_bill_label(it["a"]))}</h3>'
+            f'<p class="prose">{E(it.get("sentence"))}</p>'
+            '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">'
+            f'<div><h3>{E(_bill_label(it["a"]))} &middot; {link(it["a"])}</h3>'
+            f'<div class="prose" style="font-size:13px;max-height:520px;overflow:auto">'
+            f'{_marked(a_txt, shared) or "(no text on this disk)"}</div></div>'
+            f'<div><h3>{E(right)} &middot; {link(it["b"])}</h3>'
+            f'<div class="prose" style="font-size:13px;max-height:520px;overflow:auto">'
+            f'{_marked(b_txt, shared) or "(no text on this disk)"}</div></div></div>'
+            '<p class="ask">Is the sentence above true, and would a reader of this bill want to '
+            'be shown the other? <b>Right</b> if so. <b>Related, wrong label</b> if they are '
+            'related but the sentence says the wrong thing (\"the same text\" where they only '
+            'amend the same section). <b>Not related</b> if the overlap is quoted law or '
+            'boilerplate. Marked passages are the five-word runs the two share.</p>')
+
+
 KINDS = {
     "archive_rollcall": {
         "label": "Roll calls read off the scanned journals",
@@ -876,6 +1076,17 @@ KINDS = {
         "sample": sample_vetoes, "show": show_vetoes,
         "fields": [("missing_text", "Anything cut off the start or end",
                     "the first or last words that should be there")],
+    },
+    "related": {
+        "label": "Related bills: shared language",
+        "blurb": "Two bills, or a bill and an amendment, whose proposed language overlaps, and "
+                 "the sentence the bill's page would print about it. Nothing here is on the site "
+                 "yet: each kind is shown only if at most two of its thirty are judged wrong. "
+                 "Thirty from each of seven strata (RELATED_BILLS.md section 5).",
+        "sample": sample_related, "show": show_related,
+        "fields": [],
+        "verdicts": [("correct", "Right"), ("wrong_label", "Related, wrong label"),
+                     ("wrong", "Not related"), ("unsure", "Cannot tell")],
     },
     "report": {
         "label": "Committee report reasoning",
@@ -1218,6 +1429,26 @@ def report():
         bits = ", ".join(f"{v} {w}" for (k, w), v in sorted(verd.items())
                          if k == kind)
         print(f"  {KINDS[kind]['label']:32} {per[kind]:5,}   {bits}")
+
+    # RELATED BILLS, STRATUM BY STRATUM (RELATED_BILLS.md decision 2): a
+    # stratum ships if at most two of its thirty are judged wrong; a wrong
+    # label counts as wrong for the label, not for the relation.
+    rel = [(key, entries[-1]) for (kind, key), entries in seen.items() if kind == "related"]
+    if rel:
+        print()
+        print("  Related bills, by stratum (ships at 30 judged with at most 2 Not related):")
+        for st, label in RELATED_STRATA.items():
+            got = [e for k, e in rel if k.split("|")[1] == st]
+            if not got:
+                continue
+            c = Counter(e.get("verdict") for e in got)
+            n = sum(v for w, v in c.items() if w != "unsure")
+            state = ("ships" if n >= RELATED_PER and c["wrong"] <= 2 else
+                     "does not ship" if c["wrong"] > 5 else
+                     "line rises, redraw" if c["wrong"] > 2 else "in progress")
+            print(f"    {st} {label[:46]:46} {len(got):3} judged: {c['correct']} right, "
+                  f"{c['wrong_label']} wrong label, {c['wrong']} not related, "
+                  f"{c['unsure']} cannot tell -- {state}")
 
     # WHICH TIMESTAMP VERDICTS WERE GRADED AGAINST THE WRONG NUMBER. Until
     # 9 September this bench showed proceedings.csv's predicted_offset, which
