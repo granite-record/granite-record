@@ -162,7 +162,7 @@ test("a week of dailies from the fixtures: each night once, the ending told, the
     };
     let m = await morning("2026-10-05");
     assert.equal(m.length, 1);
-    assert.match(m[0].subject, /^Granite Record: 1 update on what you follow$/);
+    assert.match(m[0].subject, /^1 update on what you follow$/, "no milestone, so the count");
     assert.match(m[0].text, /HB 9901 — Full Committee Work Session: 10\/02\/2026/);
     assert.match(m[0].text, /rebuilt once a night/);
 
@@ -173,6 +173,8 @@ test("a week of dailies from the fixtures: each night once, the ending told, the
 
     m = await morning("2026-10-07");
     assert.match(m[0].text, /HB 9902 was signed into law\. This follow has ended/);
+    assert.match(m[0].subject, /^HB 9902 was signed into law, and \d+ more updates$/,
+      "the subject names how a bill ended before anything else");
     assert.match(m[0].text, /Executive Session: 10\/06\/2026/);
     assert.deepEqual(await followsOf(w, s.id), ["bill:2026/HB9901", "bill:2026/HB9903",
       "committee:H90", "member:990001", "topic:housing"], "the ended bill's follow is gone");
@@ -180,7 +182,8 @@ test("a week of dailies from the fixtures: each night once, the ending told, the
     m = await morning("2026-10-08");
     assert.match(m[0].text, /The interim study committee recommended future legislation\./);
     assert.match(m[0].text, /Committee roll call: Ought to Pass, 11-9/);
-    assert.match(m[0].text, /yes on Ought to Pass/);
+    assert.match(m[0].text, /HB 9903-FN \(relative to an invented fee, written for these tests\) on Ought to Pass: voted yes; passed 11-9/,
+      "a followed legislator's ballot is set beside the roll call's result");
     assert.doesNotMatch(m[0].text, /HB 9902/, "nothing more about the bill that ended");
     assert.doesNotMatch(m[0].text, /HB 9904|05\/02\/2024/, "a topic sends the sitting term's items only");
 
@@ -213,14 +216,15 @@ test("the weekly: votes and executive sessions, hearings coming up, the study's 
     w.now = new Date("2026-10-10T12:00:00Z");      // Saturday, 8:00 EDT
     await run(w.env, w.now);
     const [m] = mailsTo(w, s.address);
-    assert.equal(m.subject, "Granite Record: your week to Saturday 10 October 2026");
+    assert.equal(m.subject, "Your week: 2 proceedings coming up, and HB 9903-FN — Committee roll call: Ought to Pass, 11-9");
+    assert.ok(m.text.indexOf("THE WEEK AHEAD") < m.text.indexOf("HB 9901 —"), "the weekly opens with the week ahead");
     const hb9903 = m.text.slice(m.text.indexOf("HB 9903-FN"),
       m.text.indexOf("https://graniterecord.org/committee/H90"));
     assert.match(hb9903, /This week: 1 roll call vote and 1 executive session\./);
-    assert.match(hb9903, /Coming up: 14 October 2026, 10:00 a\.m\., public hearing, House Example Committee, LOB 305\./);
+    assert.match(m.text, /Wednesday 14 October 2026, 10:00 a\.m\.: Public hearing, House Example Committee, LOB 305\. For HB 9903-FN and House Example Committee\./);
     assert.match(m.text, /HB 9901[\s\S]*No roll call votes or executive sessions this week\./);
     assert.match(m.text, /The interim study committee recommended future legislation\./);
-    assert.match(m.text, /Coming up: 13 October 2026, 1:00 p\.m\., executive session/);
+    assert.match(m.text, /Tuesday 13 October 2026, 1:00 p\.m\.: Executive session/);
     assert.doesNotMatch(m.text, /HB 9904/);
     assert.match(m.html, /This week: 1 roll call vote and 1 executive session\./);
     // A second run that Saturday sends nothing more.
@@ -306,7 +310,8 @@ test("a topic is followed for the sitting term only", async () => {
     const [m] = mailsTo(w, s.address);
     assert.match(m.text, /HB 9903-FN — Committee roll call/);
     assert.doesNotMatch(m.text, /HB 9904/);
-    assert.match(m.subject, /1 update/);
+    assert.equal(m.subject, "HB 9903-FN — Committee roll call: Ought to Pass, 11-9",
+      "one update, and a milestone: the subject is the update");
   } finally { w.close(); }
 });
 
@@ -612,4 +617,69 @@ test("the sender asks nothing but the site's changes files and Resend", async ()
     assert.ok(w.net.asked.filter(a => a.startsWith("https://graniterecord.org"))
       .every(a => /\/changes\/(current|\d{4}-\d{2}-\d{2})\.json$/.test(a)));
   } finally { w.close(); }
+});
+
+// ---- the reader's own settings (the manage page, 11 October 2026) ----------------------
+const setRow = (w, id, sql, ...v) => w.d1.sql.prepare(`UPDATE subscribers SET ${sql} WHERE id = ?`).run(...v, id);
+
+test("a pause sends nothing through its last day, and the day after starts from there", async () => {
+  const w = makeWorld();
+  try {
+    const s = await subscribe(w, "reader.pause", ["bill:2026/HB9903"], { cursor: "2026-10-04" });
+    setRow(w, s.id, "paused_until = ?", "2026-10-07");
+    for (const d of ["2026-10-07", "2026-10-08"]) {
+      siteAsOf(w, d);
+      w.now = new Date(`${d}T12:00:00Z`);
+      await run(w.env, w.now);
+    }
+    const m = mailsTo(w, s.address);
+    assert.equal(m.length, 1, "the 7th is paused, the 8th is not");
+    assert.ok(m[0].at.startsWith("2026-10-08"));
+    assert.match(m[0].text, /Committee roll call/, "the 8th's news");
+    assert.doesNotMatch(m[0].text, /Executive Session: 10\/06/, "not the news of the paused days");
+    assert.deepEqual(leaks(w), []);
+  } finally { w.close(); }
+});
+
+test("a pause until the reader turns it back on sends nothing at all", async () => {
+  const w = makeWorld();
+  try {
+    const s = await subscribe(w, "reader.away", ["bill:2026/HB9903"], { cursor: "2026-10-04" });
+    setRow(w, s.id, "paused_until = ?", "9999-12-31");
+    for (const d of ["2026-10-07", "2026-10-08", "2026-10-10"]) {
+      siteAsOf(w, d);
+      w.now = new Date(`${d}T12:00:00Z`);
+      await run(w.env, w.now);
+    }
+    assert.equal(mailsTo(w, s.address).length, 0);
+  } finally { w.close(); }
+});
+
+test("milestones only: the decisions and what is scheduled, not every docket line", async () => {
+  const w = makeWorld();
+  try {
+    const all = await subscribe(w, "reader.all", ["bill:2026/HB9901", "bill:2026/HB9903"], { cursor: "2026-10-04" });
+    const few = await subscribe(w, "reader.few", ["bill:2026/HB9901", "bill:2026/HB9903"], { cursor: "2026-10-04" });
+    setRow(w, few.id, "detail = ?", "milestones");
+    for (const d of ["2026-10-05", "2026-10-07"]) {
+      siteAsOf(w, d);
+      w.now = new Date(`${d}T12:00:00Z`);
+      await run(w.env, w.now);
+    }
+    const a = mailsTo(w, all.address), f = mailsTo(w, few.address);
+    assert.equal(a.length, 2);
+    assert.match(a[0].text, /Full Committee Work Session/, "everything has the work session");
+    assert.equal(f.length, 1, "the 5th held no milestone, so nothing went");
+    assert.match(f[0].text, /Executive Session: 10\/06\/2026/);
+    assert.match(f[0].text, /Public Hearing: 10\/14\/2026/);
+  } finally { w.close(); }
+});
+
+test("a law can be followed by its chapter, and is named by it", async () => {
+  const { parseKey, fallbackLabel } = await import("../../workers/follow/common.js");
+  assert.deepEqual(parseKey("law:91-A"), { kind: "law", ref: "91-A" });
+  assert.deepEqual(parseKey("law:674"), { kind: "law", ref: "674" });
+  assert.equal(parseKey("law:91-a"), null, "a chapter is in capitals, as its page names it");
+  assert.equal(parseKey("law:91-A:4"), null, "a chapter, not a section");
+  assert.equal(fallbackLabel("law", "91-A"), "RSA 91-A");
 });

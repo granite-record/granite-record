@@ -50,7 +50,12 @@ CREATE TABLE IF NOT EXISTS subscribers (
   unsub_hash    TEXT NOT NULL UNIQUE,   -- SHA-256 of the current unsubscribe link's token, hex
   last_sent_on  TEXT,                   -- New Hampshire date of the last scheduled run that took this row
   sent_date     TEXT,                   -- the cursor: the newest night already sent...
-  sent_built    TEXT                    -- ...and the build that wrote it (CHANGES_FORMAT.md)
+  sent_built    TEXT,                   -- ...and the build that wrote it (CHANGES_FORMAT.md)
+  -- THE READER'S OWN SETTINGS (the manage page, 11 October 2026). Added to a
+  -- database made before then by migrations/0001_manager.sql.
+  paused_until  TEXT,                   -- New Hampshire date nothing is sent through; NULL: not
+                                        -- paused; 9999-12-31: until the reader turns it back on
+  detail        TEXT NOT NULL DEFAULT 'all' CHECK (detail IN ('all', 'milestones'))
 );
 
 -- A request to follow something, waiting for its confirmation email to be

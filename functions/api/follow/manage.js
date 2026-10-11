@@ -14,6 +14,18 @@
  *
  * ACTIONS (POST, form-encoded, t = the token):
  *   view                    the page
+ *   save                    THE PAGE'S ONE FORM (the person, 11 October 2026: one
+ *                           Save; add "from the manager without a new
+ *                           confirmation email"; pause "for a set period or
+ *                           until you turn them back on"). Fields: listed (every
+ *                           record the page showed a box for) and keep (the boxes
+ *                           ticked); add_bill, add_law (typed: "HB 1442",
+ *                           "RSA 91-A") and add (a legislator or committee
+ *                           picked from the list); frequency, detail, and
+ *                           pause = none | until (with pause_until) | forever.
+ *                           Only what tonight's current.json lists can be
+ *                           added; the link proves the inbox, so nothing more
+ *                           is asked. Unticking everything deletes the address.
  *   frequency value=daily|weekly
  *   remove    follow=<kind>:<ref>   -- removing the last one deletes the address
  *   newlink                 the links move to a new generation in one statement,
@@ -22,10 +34,11 @@
  *   unsubscribe             the address and everything it follows, deleted
  */
 
-import { TOKEN, followHash, linksFor, openAddress, openFollow }
+import { TOKEN, followHash, linksFor, openAddress, openFollow, sealFollow }
   from "../../../workers/follow/address.js";
-import { errName, esc, fallbackLabel, keyOf, note, notHere, parseKey, plain,
-         readForm, redirect, rightPlace, sameSite, siteUrl } from "../../../workers/follow/common.js";
+import { MAX_FOLLOWS, addDays, clock, errName, esc, fallbackLabel, isoSeconds, keyOf, nhClock,
+         note, notHere, parseKey, plain, readForm, redirect, rightPlace, sameSite, siteUrl }
+  from "../../../workers/follow/common.js";
 import { readCurrent } from "../../../workers/follow/changes.js";
 import { newLinkEmail, sendMail } from "../../../workers/follow/mail.js";
 import { DELETES, deleted, message, page } from "../../../workers/follow/page.js";
@@ -37,7 +50,18 @@ const NOTICES = {
   confirmed: "Confirmed. You will get email updates on what is listed below.",
   saved: "Saved.",
   removed: "Removed.",
+  notfound: "Saved, but something you asked to add is not a bill, law, legislator or committee " +
+    "that can be followed this term, so it was left out.",
+  full: `Saved, but one address can follow at most ${MAX_FOLLOWS} records, so not everything ` +
+    "you asked to add was added.",
 };
+
+// A pause is at most a year ahead; "until I turn it back on" is kept as the
+// last date there is (schema.sql), which the sender reads the same way.
+const PAUSED_FOR_GOOD = "9999-12-31";
+const PAUSE_DAYS_MOST = 366;
+const GROUPS = [["bill", "Bills"], ["law", "Laws"], ["member", "Legislators"],
+                ["committee", "Committees"], ["topic", "Topics"]];
 
 const SHELL = () => page(200, {
   title: "Your email updates",
@@ -82,36 +106,90 @@ async function followed(env, db, sub) {
   return out.sort((a, b) => a.since.localeCompare(b.since) || a.key.localeCompare(b.key));
 }
 
-function render(origin, t, sub, follows, current, notice) {
-  const list = follows.map(({ key }) => {
+function render(origin, t, sub, follows, current, notice, today) {
+  const followed = new Set(follows.map(f => f.key));
+  const meta = key => current?.followable.get(key);
+  const box = (key, checked) => {
     const { kind, ref } = parseKey(key);
-    const meta = current?.followable.get(key);
-    const label = meta?.label || fallbackLabel(kind, ref);
-    const what = meta?.url
-      ? `<a href="${esc(siteUrl(origin, meta.url))}">${esc(label)}</a>` : esc(label);
-    const title = meta?.title ? `<span class="title">${esc(meta.title)}</span>` : "";
-    const last = follows.length === 1;
-    return `<li><span class="what">${what}${title}</span>
-<form method="post" action="${PATH}">${hidden(t, "remove",
-      `<input type="hidden" name="follow" value="${esc(key)}">`)}
-<button type="submit" class="plain">${last ? "Remove, and delete my address" : "Remove"}</button></form></li>`;
+    const m = meta(key);
+    const label = m?.label || fallbackLabel(kind, ref);
+    // A topic's box is a chip: the whole of it ticks, so its name is no link.
+    const what = m?.url && kind !== "topic"
+      ? `<a href="${esc(siteUrl(origin, m.url))}">${esc(label)}</a>` : esc(label);
+    const sub2 = [m?.title, m?.now ? `Now: ${m.now}` : ""].filter(Boolean)
+      .map(x => `<span class="title">${esc(x)}</span>`).join("");
+    return `<li><label><input type="checkbox" name="keep" value="${esc(key)}"${checked ? " checked" : ""}>` +
+      `<input type="hidden" name="listed" value="${esc(key)}">` +
+      `<span class="what">${what}${sub2}</span></label></li>`;
+  };
+  const options = kind => [...(current?.followable || new Map()).entries()]
+    .filter(([k]) => k.startsWith(kind + ":") && !followed.has(k))
+    .sort((a, b) => a[1].label.localeCompare(b[1].label))
+    .map(([k, v]) => `<option value="${esc(k)}">${esc(v.label)}</option>`).join("");
+  const groups = GROUPS.map(([kind, name]) => {
+    const mine = follows.filter(f => f.key.startsWith(kind + ":"));
+    let body = "", add = "";
+    if (kind === "topic") {
+      const all = [...(current?.followable || new Map()).keys()].filter(k => k.startsWith("topic:"));
+      const keys = [...new Set([...mine.map(f => f.key), ...all])]
+        .sort((a, b) => (meta(a)?.label || a).localeCompare(meta(b)?.label || b));
+      body = keys.length ? `<ul class="chips">${keys.map(k => box(k, followed.has(k))).join("")}</ul>`
+        : `<p class="quiet">No topic can be followed tonight.</p>`;
+      return `<h3>${name}</h3><p class="quiet">This term's bills on a subject. Tick to follow.</p>${body}`;
+    }
+    body = mine.length ? `<ul class="follows">${mine.map(f => box(f.key, true)).join("")}</ul>` : "";
+    if (kind === "bill")
+      add = `<p class="add"><label for="add_bill">Add a bill</label> <input id="add_bill" name="add_bill" ` +
+        `placeholder="HB 1442" maxlength="20" autocomplete="off"></p>`;
+    if (kind === "law")
+      add = `<p class="add"><label for="add_law">Add a law</label> <input id="add_law" name="add_law" ` +
+        `placeholder="RSA 91-A" maxlength="20" autocomplete="off"></p>`;
+    if (kind === "member" || kind === "committee") {
+      const o = options(kind);
+      if (o) add = `<p class="add"><label for="add_${kind}">Add a ${kind === "member" ? "legislator" : "committee"}</label> ` +
+        `<select id="add_${kind}" name="add"><option value="">Choose&hellip;</option>${o}</select></p>`;
+    }
+    return `<h3>${name}</h3>${body}${add}`;
   }).join("\n");
-  const daily = sub.frequency !== "weekly";
+  const freq = sub.frequency === "weekly" ? "weekly" : "daily";
+  const detail = sub.detail === "milestones" ? "milestones" : "all";
+  const p = sub.paused_until || "";
+  const pause = !p || p < today ? "none" : p === PAUSED_FOR_GOOD ? "forever" : "until";
+  const radio = (name, value, now, words, small) =>
+    `<label><input type="radio" name="${name}" value="${value}"${value === now ? " checked" : ""}>` +
+    `<span>${words}<small>${small}</small></span></label>`;
+  const status = pause === "forever" ? "Paused until you turn updates back on."
+    : pause === "until" ? `Paused through ${esc(p)}.` : "";
   const body = `<h1>Your email updates</h1>
 ${NOTICES[notice] ? `<p class="note">${esc(NOTICES[notice])}</p>` : ""}
+${status ? `<p class="note">${status}</p>` : ""}
+<form method="post" action="${PATH}">${hidden(t, "save")}
 <h2>How often</h2>
-<form method="post" action="${PATH}">${hidden(t, "frequency")}
 <fieldset><legend class="quiet">Send me updates</legend>
-<label><input type="radio" name="value" value="daily"${daily ? " checked" : ""}>
-<span>Daily, about 8:00 a.m. New Hampshire time, on days when something is new</span></label>
-<label><input type="radio" name="value" value="weekly"${daily ? "" : " checked"}>
-<span>Weekly, Saturday about 8:00 a.m., with the week's news and the hearings coming up</span></label>
-</fieldset><button type="submit">Save</button></form>
+${radio("frequency", "daily", freq, "Daily", "About 8:00 a.m. New Hampshire time, only on days when something is new")}
+${radio("frequency", "weekly", freq, "Weekly", "Saturday about 8:00 a.m.: the week ahead, then the week's news")}
+</fieldset>
+<h2>How much</h2>
+<fieldset><legend class="quiet">Include</legend>
+${radio("detail", "all", detail, "Everything", "Every entry on the record of what you follow")}
+${radio("detail", "milestones", detail, "Milestones only", "Hearings scheduled, committee votes, floor votes, and how a bill ended")}
+</fieldset>
+<h2>Pause</h2>
+<fieldset><legend class="quiet">Stop sending for a while, keeping what you follow</legend>
+${radio("pause", "none", pause, "Not paused", "")}
+<label><input type="radio" name="pause" value="until"${pause === "until" ? " checked" : ""}><span>Paused through
+<input type="date" name="pause_until" aria-label="the last day of the pause" min="${esc(today)}"
+ max="${esc(addDays(today, PAUSE_DAYS_MOST))}" value="${pause === "until" ? esc(p) : ""}"></span></label>
+${radio("pause", "forever", pause, "Paused until I turn updates back on", "")}
+</fieldset>
 <p class="quiet">The record is rebuilt once a night, so even the daily email reports
 the night before, not what is happening now.</p>
 <h2>What you follow</h2>
-${follows.length ? `<ul class="follows">${list}</ul>` : "<p>Nothing at the moment.</p>"}
-<p class="quiet">To follow something else, use Follow on its page.</p>
+<p class="quiet">Untick anything to stop following it. Adding here needs no confirmation email.
+Unticking everything deletes your address.</p>
+${groups}
+<p class="save"><button type="submit">Save changes</button></p>
+</form>
 <h2>A new link</h2>
 <p>This page's link is the same in every email we send you. If you forwarded one
 of them, or think someone else has this link, ask for a new one. It is sent to
@@ -124,6 +202,95 @@ links included.</p>
 <form method="post" action="${PATH}">${hidden(t, "unsubscribe")}
 <button type="submit" class="danger">Unsubscribe and delete my address</button></form>`;
   return page(200, { title: "Your email updates", body });
+}
+
+// What a typed bill or law means, from tonight's list: "HB 1442" is the
+// sitting term's HB 1442 (its newest filing year, where both have one), and
+// "RSA 91-a" or "91-A" is the chapter. null for anything that is not listed.
+export function typedKey(kind, raw, current) {
+  const s = String(raw || "").toUpperCase().replace(/\s+/g, "").replace(/^RSA/, "");
+  if (!s || !current) return null;
+  if (kind === "law") {
+    const k = `law:${s.replace(/:.*$/, "")}`;
+    return current.followable.has(k) ? k : null;
+  }
+  const m = /^([A-Z]{2,6})0*(\d{1,4})$/.exec(s);
+  if (!m) return null;
+  const tail = `/${m[1]}${m[2]}`;
+  const hits = [...current.followable.keys()].filter(k => k.startsWith("bill:") && k.endsWith(tail)).sort();
+  return hits.length ? hits[hits.length - 1] : null;
+}
+
+// THE ONE FORM. Returns the notice to show, or "gone" when nothing is left
+// followed and the address has been deleted.
+async function save(env, db, sub, form, current, now) {
+  const today = nhClock(now).date;
+  const listed = new Set(form.getAll("listed").filter(k => parseKey(k)));
+  const keep = new Set(form.getAll("keep").filter(k => listed.has(k)));
+  let notice = "saved";
+  const adds = [];
+  for (const [kind, field] of [["bill", "add_bill"], ["law", "add_law"]]) {
+    const raw = (form.get(field) || "").trim();
+    if (!raw) continue;
+    const k = typedKey(kind, raw, current);
+    if (k) adds.push(k); else notice = "notfound";
+  }
+  for (const k of form.getAll("add")) {
+    if (!k) continue;
+    if (parseKey(k) && current?.followable.has(k)) adds.push(k); else notice = "notfound";
+  }
+  // Topics ticked that were not followed are adds too: their boxes are listed.
+  const rows = (await db.prepare("SELECT follow_hmac, follow_enc FROM follows WHERE subscriber_id = ?1")
+    .bind(sub.id).all()).results || [];
+  const have = new Map();
+  for (const r of rows) {
+    try {
+      const k = await openFollow(env, r.follow_enc, sub.email_hmac);
+      if (parseKey(k)) have.set(k, r.follow_hmac);
+    } catch { /* an unreadable follow is left as it is */ }
+  }
+  for (const k of keep) if (!have.has(k) && current?.followable.has(k)) adds.push(k);
+  const drop = [...have.keys()].filter(k => listed.has(k) && !keep.has(k));
+  const fresh = [...new Set(adds)].filter(k => !have.has(k));
+  let room = MAX_FOLLOWS - (rows.length - drop.length);
+  if (fresh.length > room) notice = "full";
+  if (rows.length - drop.length + Math.min(fresh.length, Math.max(room, 0)) <= 0) {
+    await forget(db, { id: sub.id });
+    note("manage.forgot", 1);
+    return "gone";
+  }
+
+  const writes = [];
+  for (const k of drop)
+    writes.push(db.prepare("DELETE FROM follows WHERE subscriber_id = ?1 AND follow_hmac = ?2")
+      .bind(sub.id, have.get(k)));
+  for (const k of fresh) {
+    if (room-- <= 0) break;
+    writes.push(db.prepare("INSERT OR IGNORE INTO follows (subscriber_id, follow_hmac, follow_enc, since) " +
+      "VALUES (?1, ?2, ?3, ?4)").bind(sub.id, await followHash(env, sub.email_hmac, k),
+        await sealFollow(env, k, sub.email_hmac), today));
+  }
+  const frequency = ["daily", "weekly"].includes(form.get("frequency")) ? form.get("frequency") : sub.frequency;
+  const detail = ["all", "milestones"].includes(form.get("detail")) ? form.get("detail") : (sub.detail || "all");
+  let paused = sub.paused_until || null;
+  const pause = form.get("pause");
+  if (pause === "none") paused = null;
+  else if (pause === "forever") paused = PAUSED_FOR_GOOD;
+  else if (pause === "until") {
+    const d = form.get("pause_until") || "";
+    if (/^\d{4}-\d{2}-\d{2}$/.test(d) && d >= today && d <= addDays(today, PAUSE_DAYS_MOST)) paused = d;
+  }
+  // BACK FROM A PAUSE, a reader starts from now: nothing of the paused days.
+  const resumed = sub.paused_until && sub.paused_until >= today && !paused;
+  writes.push(resumed
+    ? db.prepare("UPDATE subscribers SET frequency = ?1, detail = ?2, paused_until = NULL, " +
+        "sent_date = ?3, sent_built = ?4 WHERE id = ?5").bind(frequency, detail, today, isoSeconds(now), sub.id)
+    : db.prepare("UPDATE subscribers SET frequency = ?1, detail = ?2, paused_until = ?3 WHERE id = ?4")
+        .bind(frequency, detail, paused, sub.id));
+  await db.batch(writes);
+  if (fresh.length) note("manage.added", Math.min(fresh.length, MAX_FOLLOWS));
+  if (drop.length) note("manage.removed", drop.length);
+  return notice;
 }
 
 // "SEND ME A NEW LINK". The links move to the next generation in ONE
@@ -182,6 +349,16 @@ export async function onRequest({ request, env }) {
     const action = form.get("action") || "view";
     const back = n => redirect(`${PATH}#t=${t}&n=${n}`);
 
+    if (action === "save") {
+      const cur = await readCurrent(p => env.ASSETS.fetch(new URL(p, request.url)));
+      if (!cur.value) {
+        note("manage.current-unreadable");
+        return message(503, "Please try again shortly",
+          "The site could not say what can be followed just now. Nothing has changed.");
+      }
+      const said = await save(env, db, sub, form, cur.value, clock(env));
+      return said === "gone" ? deleted() : back(said);
+    }
     if (action === "frequency") {
       const v = form.get("value");
       if (v !== "daily" && v !== "weekly") return back("");
@@ -217,7 +394,7 @@ export async function onRequest({ request, env }) {
     const follows = await followed(env, db, sub);
     const cur = await readCurrent(p => env.ASSETS.fetch(new URL(p, request.url)));
     if (!cur.value) note("manage.current-unreadable");
-    return render(origin, t, sub, follows, cur.value, form.get("notice") || "");
+    return render(origin, t, sub, follows, cur.value, form.get("notice") || "", nhClock(clock(env)).date);
   } catch (e) {
     note(`manage.error.${errName(e)}`);
     return message(503, "Please try again shortly",

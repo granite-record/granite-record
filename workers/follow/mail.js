@@ -119,12 +119,12 @@ function footer(origin, feedbackUrl, manage, unsub, gone) {
     lines.push(s, "");
     html.push(`<p style="${P};font-size:14px;color:#444">${esc(s)}</p>`);
   } else {
-    lines.push("Change what you follow, or whether it comes daily or weekly:",
+    lines.push("Change what you follow, how often, or pause:",
       manageLink(origin, manage), "",
       "Unsubscribe, deleting your address and everything you follow from our database at once:",
       unsubscribeLink(origin, unsub), "");
     html.push(`<p style="${P};font-size:14px">${a(manageLink(origin, manage),
-      "Change what you follow, or daily or weekly")}</p>`,
+      "Change what you follow, how often, or pause")}</p>`,
       `<p style="${P};font-size:14px">${a(unsubscribeLink(origin, unsub),
         "Unsubscribe")} — deletes your address and everything you follow from our ` +
         `database, at once.</p>`);
@@ -223,48 +223,165 @@ function weekLine(w) {
   return `This week: ${parts.join(" and ")}.`;
 }
 
+// THE ORDER A DIGEST IS IN (the design the person approved, 11 October
+// 2026): what matters most at a glance, then -- in the weekly -- the week
+// ahead, then each kind of record under its own heading.
+const GROUPS = [["bill", "Bills"], ["law", "Laws"], ["member", "Legislators"],
+                ["committee", "Committees"], ["topic", "Topics"]];
+
+// What most deserves the subject line and the "at a glance" list, best first:
+// how a record ended, then a roll call, a study's report, a proceeding
+// scheduled, an executive session, a committee report, any other milestone.
+const RANK = { vote: 1, study: 2, scheduled: 3, exec: 4, report: 5 };
+export function headlines(sections) {
+  const out = [];
+  for (const s of sections) {
+    if (s.ended && !s.ended.fallback && s.ended.summary) out.push([0, s.ended.summary]);
+    if (s.study) out.push([2, studyLine(s.study)]);
+    for (const it of s.items) {
+      if (it.milestone) out.push([RANK[it.kind] || 6, it.summary]);
+    }
+  }
+  const seen = new Set();
+  return out.sort((a, b) => a[0] - b[0])
+    .map(([, t]) => oneLine(t, 140).replace(/\.$/, ""))
+    .filter(t => !seen.has(t) && seen.add(t));
+}
+
+// The week ahead, from every section's upcoming: one row a proceeding, with
+// every followed record it concerns.
+function weekAhead(sections) {
+  const rows = new Map();
+  for (const s of sections) {
+    for (const u of s.upcoming || []) {
+      const k = [u.date, u.time, u.what, u.committee, u.venue].join("|");
+      if (!rows.has(k)) rows.set(k, { ...u, labels: [], urls: [] });
+      const r = rows.get(k);
+      if (!r.labels.includes(s.label)) { r.labels.push(s.label); r.urls.push(s.url); }
+    }
+  }
+  return [...rows.values()].sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time));
+}
+
+// One ballot beside its roll call: "voted yes; passed 201-163".
+function ballotLine(v) {
+  const out = v.result ? `; ${v.result}${v.tally ? ` ${v.tally}` : ""}` : (v.tally ? `; ${v.tally}` : "");
+  return `voted ${v.ballot}${out}`;
+}
+
 export function digestEmail({ origin, frequency, date, sections, manage, unsub,
                               feedbackUrl, gone = false }) {
   const weekly = frequency === "weekly";
-  const count = sections.reduce((n, s) => n + s.items.length + s.more +
+  const count = sections.reduce((n, s) => n + s.items.length + (s.votes || []).length + s.more +
     (s.study ? 1 : 0) + (s.ended ? 1 : 0), 0);
-  const subject = weekly
-    ? `Granite Record: your week to ${longDate(date, true)}`
-    : `Granite Record: ${plural(count, "update", "updates")} on what you follow`;
+  const tops = headlines(sections);
+  const ahead = weekly ? weekAhead(sections) : [];
+  const more = n => n > 0 ? `, and ${plural(n, "more update", "more updates")}` : "";
+  const subject = oneLine(weekly
+    ? (ahead.length
+        ? `Your week: ${plural(ahead.length, "proceeding", "proceedings")} coming up` +
+          (tops.length ? `, and ${tops[0]}` : "")
+        : tops.length ? `Your week: ${tops[0]}${more(count - 1)}`
+          : `Your week to ${longDate(date, true)}`)
+    : tops.length ? `${tops[0]}${more(count - 1)}`
+      : `${plural(count, "update", "updates")} on what you follow`, 150);
   const intro = weekly
     ? `Your week on the record you follow, to ${longDate(date, true)}.`
     : "What changed on the record you follow, as of last night's build.";
   const text = [intro, ""];
   let html = `<p style="${P}">${esc(intro)}</p>`;
 
-  for (const s of sections) {
-    const url = siteUrl(origin, s.url);
-    text.push(s.title ? `${s.label} — ${s.title}` : s.label, url);
-    html += `<h2 style="font-size:18px;margin:26px 0 4px;font-weight:600">${a(url, s.label)}</h2>`;
-    if (s.title) html += `<p style="margin:0 0 8px;color:#555;font-size:14px">${esc(s.title)}</p>`;
-    if (s.items.length) {
-      html += `<ul style="margin:0 0 10px;padding-left:20px">`;
-      for (const it of s.items) {
-        text.push(`  ${longDate(it.date)}  ${it.summary}`);
-        html += `<li style="margin:0 0 4px"><span style="color:#555">${esc(longDate(it.date))}</span>` +
-          ` — ${esc(it.summary)}</li>`;
-      }
-      html += "</ul>";
+  // AT A GLANCE: where there is enough to need it.
+  const glance = tops.slice(0, 3);
+  if (glance.length && (count >= 4 || sections.length >= 3)) {
+    text.push("At a glance:", ...glance.map(g => `  * ${g}`), "");
+    html += `<div style="border:1px solid #ddd;border-radius:4px;padding:12px 14px;margin:0 0 20px">` +
+      `<p style="margin:0 0 6px"><b>At a glance</b></p><ul style="margin:0;padding-left:18px">` +
+      glance.map(g => `<li style="margin:0 0 4px">${esc(g)}</li>`).join("") + "</ul></div>";
+  }
+
+  const heading = h => {
+    text.push(h.toUpperCase(), "");
+    html += `<h3 style="font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#555;` +
+      `margin:28px 0 8px;padding-top:12px;border-top:1px solid #ddd">${esc(h)}</h3>`;
+  };
+
+  if (ahead.length) {
+    heading("The week ahead");
+    html += `<table style="border-collapse:collapse;width:100%;font-size:15px">`;
+    for (const r of ahead) {
+      const when = [longDate(r.date, true), clockTime(r.time)].filter(Boolean).join(", ");
+      const what = r.what.charAt(0).toUpperCase() + r.what.slice(1);
+      const where = [r.committee, r.venue].filter(Boolean).join(", ");
+      text.push(`  ${when}: ${what}${where ? `, ${where}` : ""}. For ${r.labels.join(" and ")}.`);
+      html += `<tr><td style="padding:6px 10px 6px 0;border-bottom:1px solid #eee;color:#555;` +
+        `vertical-align:top;white-space:nowrap">${esc(when)}</td><td style="padding:6px 0;` +
+        `border-bottom:1px solid #eee"><b>${esc(what)}</b>${where ? `, ${esc(where)}` : ""}<br>` +
+        `<span style="font-size:14px">For ${r.labels.map((l, i) => a(siteUrl(origin, r.urls[i]), l))
+          .join(" and ")}</span></td></tr>`;
     }
-    const more = s.more ? `…and ${s.more} more on its page.` : "";
-    const lines = [more, s.study ? studyLine(s.study) : "",
-      weekLine(s.week),
-      ...(s.upcoming || []).map(u => `Coming up: ${upcomingLine(u)}.`)].filter(Boolean);
-    for (const l of lines) {
-      text.push(`  ${l}`);
-      html += `<p style="margin:0 0 8px">${esc(l)}</p>`;
-    }
-    if (s.ended) {
-      const how = s.ended.summary || `${s.label} has finished its course.`;
-      text.push(`  ${how} ${ENDED_TAIL}`);
-      html += `<p style="margin:0 0 8px"><b>${esc(how)}</b> ${esc(ENDED_TAIL)}</p>`;
-    }
+    html += "</table>";
     text.push("");
+  }
+
+  for (const [kind, name] of GROUPS) {
+    const mine = sections.filter(s => s.kind === kind);
+    if (!mine.length) continue;
+    if (weekly && ahead.length && !mine.some(s => s.items.length || (s.votes || []).length ||
+        s.study || s.ended || s.week)) continue;
+    heading(weekly && ahead.length && kind === GROUPS[0][0] ? `${name}: the week that was` : name);
+    for (const s of mine) {
+      const url = siteUrl(origin, s.url);
+      text.push(s.title ? `${s.label} — ${s.title}` : s.label, url);
+      html += `<h2 style="font-size:18px;margin:20px 0 4px;font-weight:600">${a(url, s.label)}</h2>`;
+      if (s.title) html += `<p style="margin:0 0 6px;color:#555;font-size:14px">${esc(s.title)}</p>`;
+      if (s.now) {
+        text.push(`  Now: ${s.now}`);
+        html += `<p style="margin:0 0 6px;font-size:14px">Now: ${esc(s.now)}</p>`;
+      }
+      if ((s.votes || []).length) {
+        text.push(`  Roll calls (${s.votes.length}):`);
+        html += `<table style="border-collapse:collapse;width:100%;font-size:14px;margin:0 0 10px">`;
+        for (const it of s.votes) {
+          const v = it.vote;
+          const on = v.motion ? ` on ${v.motion}` : "";
+          text.push(`  ${longDate(it.date)}  ${v.bill || ""}${v.title ? ` (${oneLine(v.title, 90)})` : ""}` +
+            `${on}: ${ballotLine(v)}`);
+          html += `<tr><td style="padding:5px 10px 5px 0;border-bottom:1px solid #eee;color:#555;` +
+            `vertical-align:top;white-space:nowrap">${esc(longDate(it.date))}</td>` +
+            `<td style="padding:5px 0;border-bottom:1px solid #eee">` +
+            (v.bill ? a(siteUrl(origin, it.url), v.bill) : "") +
+            (v.title ? ` <span style="color:#555">${esc(oneLine(v.title, 140))}</span>` : "") +
+            `<br>${esc(on.trim() ? on.trim().replace(/^on /, "On ") + ": " : "")}` +
+            `<b>${esc(ballotLine(v))}</b></td></tr>`;
+        }
+        html += "</table>";
+      }
+      if (s.items.length) {
+        html += `<ul style="margin:0 0 10px;padding-left:20px">`;
+        for (const it of s.items) {
+          text.push(`  ${longDate(it.date)}  ${it.summary}`);
+          const line = esc(it.summary);
+          html += `<li style="margin:0 0 4px"><span style="color:#555">${esc(longDate(it.date))}</span>` +
+            ` — ${it.milestone ? `<b>${line}</b>` : line}</li>`;
+        }
+        html += "</ul>";
+      }
+      const lines = [s.more ? `…and ${s.more} more on its page.` : "",
+        s.study ? studyLine(s.study) : "", weekLine(s.week),
+        ...(ahead.length ? [] : (s.upcoming || []).map(u => `Coming up: ${upcomingLine(u)}.`))]
+        .filter(Boolean);
+      for (const l of lines) {
+        text.push(`  ${l}`);
+        html += `<p style="margin:0 0 8px">${esc(l)}</p>`;
+      }
+      if (s.ended) {
+        const how = s.ended.summary || `${s.label} has finished its course.`;
+        text.push(`  ${how} ${ENDED_TAIL}`);
+        html += `<p style="margin:0 0 8px"><b>${esc(how)}</b> ${esc(ENDED_TAIL)}</p>`;
+      }
+      text.push("");
+    }
   }
   const f = footer(origin, feedbackUrl, manage, unsub, gone);
   text.push("----", f.text);

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.539
+# GRANITE_VERSION: 2026-09-04.540
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -32644,6 +32644,37 @@ def _rsa_pages(B, RSA, S):
         "the history is not newest first with its bill"
     assert "Access to Governmental Records and Meetings" in page, "the chapter's name is not in title case"
     return "ok", "91-A:4 tagged pending by HB 100, linked to 91-A:5 and not to 91-A:99, history 2019 then 1967"
+
+
+@check("build", "the changes files mark milestones, set a ballot beside its roll call, and let a "
+       "law be followed by its chapter", needs=("follow_changes",))
+def _follow_manager_contract(FC):
+    """The person, 11 October 2026: milestones only; "how they voted vs the
+    overall outcome of the vote, and the bill title with links"; following a
+    law. What the build writes for each, held to what the sender reads
+    (CHANGES_FORMAT.md)."""
+    assert FC.milestone("vote") and FC.milestone("scheduled") and FC.milestone("exec")
+    assert FC.milestone("action", "Ought to Pass: MA VV 03/06/2026")
+    assert FC.milestone("action", "Signed by Governor 06/01/2026; Chapter 0101")
+    assert not FC.milestone("action", "Introduced 01/03/2026 and referred to Education")
+    assert not FC.milestone("sponsor") and not FC.milestone("sitting")
+    v = FC.vote_detail("yes", result="passed", tally="214-119", motion="pass the bill",
+                       bill="HB 1442", title="relative to x")
+    assert v == {"ballot": "yes", "result": "passed", "tally": "214-119", "motion": "pass the bill",
+                 "bill": "HB 1442", "title": "relative to x"}, v
+    assert FC.vote_detail("") is None and "result" not in FC.vote_detail("no", result="maybe")
+    it = FC.item("g", "2026-03-06", "vote", "HB 1442 \u2014 yes on pass the bill", "/bill/2026/hb1442",
+                 "2025-2026", milestone=True, vote=v)
+    out = []
+    FC._item(dict(it, seen="2026-03-07T09:00:00Z"), "x", True, False, out)
+    assert not out, out
+    FC._item(dict(it, seen="2026-03-07T09:00:00Z", vote={"result": "won"}), "x", True, False, out)
+    assert out, "a ballot with no ballot passed the check"
+    assert FC.key_ok("law:91-A") and FC.key_ok("law:674") and not FC.key_ok("law:91-a")
+    js = Path("workers/follow/common.js").read_text(encoding="utf-8")
+    assert "law: /^\\d{1,3}(?:-[A-Z]{1,2})?$/" in js and FC.REF["law"].pattern == r"^\d{1,3}(?:-[A-Z]{1,2})?$", \
+        "the build and the sender read a law's key differently"
+    return "ok", "milestones by kind and by what a docket line decides; a ballot with its roll call; law:91-A"
 
 
 @check("build", "About and the Data page describe email updates only once production binds the "

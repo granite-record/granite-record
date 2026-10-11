@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.31
+# GRANITE_VERSION: 2026-09-04.32
 """
 Write RSS feeds so people can follow bills without a login.
 
@@ -350,6 +350,20 @@ def main():
 
     all_items, by_topic, nbill = [], {}, 0
     bill_items, topics_now = {}, {}
+    # THE LAWS (11 October 2026): every chapter build_rsa listed, and which
+    # chapters each of the sitting term's bills says it changes (rsa.py's
+    # rsa_citations.json). Neither is there on a build without the statute
+    # table, and then no law is followable.
+    law_items = {}
+    try:
+        law_names = json.loads((site / "laws" / "chapters.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        law_names = {}
+    try:
+        cited = json.loads(Path("rsa_citations.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        cited = {}
+
     # How a concluded bill's closing feed item names its ending. The index's
     # own `kind`, put into a sentence -- the record's word for what happened is
     # already on the page, and this is the feed saying the same thing once.
@@ -379,6 +393,8 @@ def main():
     # the per-bill feed only. The all-bills, committee and topic feeds are
     # unchanged, and every archived bill's history is on its page.
     current = max((b.get("term") or "" for b in idx), default="")
+    changes_of = {bid.upper(): sorted({str(c).split(":")[0].upper() for c in (r or {}).get("changes") or []})
+                  for bid, r in ((cited.get("bills") or {}).get(current) or {}).items()}
     # UNDER THE MEMBER THE BILL'S PAGE LINKS, where it links one. The record's
     # own id is an employee number or nothing on most sponsor records, and a
     # sitting member's feed filed under it missed the sponsorships their page
@@ -422,10 +438,12 @@ def main():
                 f"{slug(e.get('text',''))[:40]}"))
             if on_record:
                 t = items[-1]
-                it = FC.item(t[4], t[3][:10], FC.event_kind(e.get("text"), t[3][:10], TODAY),
+                ek = FC.event_kind(e.get("text"), t[3][:10], TODAY)
+                it = FC.item(t[4], t[3][:10], ek,
                              t[0], path_of(url), b.get("term") or "",
                              study=FC.STUDY_REPORT.match(str(e.get("text") or "").strip()) is not None,
-                             recommends=FC.study_says(e.get("text")))
+                             recommends=FC.study_says(e.get("text")),
+                             milestone=FC.milestone(ek, e.get("text")))
                 if it:
                     fc_items[t[4]] = it
 
@@ -484,11 +502,18 @@ def main():
         if on_record and S.still_moving(b, current) and str(b.get("year") or "").strip():
             followable[key] = {"label": FC.line(b["n"], 120),
                                "title": FC.line(b.get("title") or "", 300),
+                               "now": FC.line(b.get("chip") or "", 120),
                                "url": path_of(url)}
-            if not followable[key]["title"]:
-                del followable[key]["title"]
+            for f in ("title", "now"):
+                if not followable[key][f]:
+                    del followable[key][f]
         if on_record and (key in followable or key in want):
             lists[key] = fc_list(items[:a.per_feed], fc_items)
+        # A LAW'S FOLLOWERS hear what the sitting term's bills that would
+        # change it do (CHANGES_FORMAT.md, law), under the bills' own guids.
+        if (b.get("term") or "") == current and key in followable:
+            for ch in changes_of.get(b["id"].upper(), ()):
+                law_items.setdefault(ch, []).extend(items[:a.per_feed])
 
         if items and (b.get("term") or "") != current:
             skipped_closed += 1
@@ -550,6 +575,22 @@ def main():
         followable[key] = {"label": FC.line(name, 120),
                            "url": "/bills?topic=" + quote(name, safe="")}
         lists[key] = fc_list(newest(its), fc_items)
+
+    nlaw = 0
+    for ch, info in sorted(law_names.items()):
+        key = f"law:{ch}"
+        if not FC.key_ok(key) or (isinstance(info, list) and len(info) > 3 and info[3]):
+            continue                    # a repealed chapter is not followed
+        name = info[0] if isinstance(info, list) and info else ""
+        followable[key] = {"label": FC.line(f"RSA {ch}" + (f": {name}" if name else ""), 120),
+                           "url": path_of(base + S.canon(f"/laws/{ch.lower()}"))
+                           or f"/laws/{ch.lower()}"}
+        if law_items.get(ch):
+            lists[key] = fc_list(newest(law_items[ch]), fc_items)
+        nlaw += 1
+    if law_names:
+        print(f"  {nlaw:,} laws can be followed; {len(law_items):,} have a bill of "
+              f"{current} that would change them")
 
     (fd / "all.xml").write_text(
         feed("Granite Record — all activity",
@@ -692,6 +733,12 @@ def main():
     undated = 0
     empty = []
     lp = site / "legislators.json"
+    # Each roll call's outcome and tally, for the ballots the changes files
+    # set beside them (build_site_v2.write_rollcall_index).
+    try:
+        rc_index = json.loads((site / "rollcalls_index.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        rc_index = {}
     if lp.exists():
         (fd / "legislator").mkdir(parents=True, exist_ok=True)
         for m in json.loads(lp.read_text(encoding="utf-8")):
@@ -756,8 +803,15 @@ def main():
                         # The roll call's own key, so two ballots cast on one
                         # bill on one day are two items. See vote_guid.
                         vote_guid(mid, v, q)))
+                    rc = rc_index.get(v.get("k") or "") or {}
                     it = FC.item(items[-1][4], day, "vote", items[-1][0], path_of(items[-1][1]),
-                                 (bb or {}).get("term") or P.term_of(day))
+                                 (bb or {}).get("term") or P.term_of(day), milestone=True,
+                                 vote=FC.vote_detail(
+                                     how, motion=rc.get("q") or q,
+                                     result=("passed" if rc.get("p") else "failed") if rc else "",
+                                     tally=f"{rc['y']}-{rc['n']}" if rc.get("y") is not None
+                                     and rc.get("n") is not None else "",
+                                     bill=label, title=(bb or {}).get("title", "")))
                     if it:
                         mine[it["guid"]] = it
             for bb, burl, prime, filed in sponsored.get(mid, []):

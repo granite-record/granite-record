@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-07.2
+# GRANITE_VERSION: 2026-10-07.3
 """
 The nightly "what changed" files the email sender reads, and the first-seen
 ledger that decides what is new in them.
@@ -116,8 +116,12 @@ ITEM_KINDS = ("action", "hearing", "scheduled", "exec", "vote", "report", "spons
               "sitting", "study")
 ENDS = ("bill", "member", "committee")          # the kinds an ending is owed for
 
-# The four kinds of key, as workers/follow/common.js's REF has them.
+# The five kinds of key, as workers/follow/common.js's REF has them. A law is
+# a chapter of the statutes as its /laws page names it, in capitals: 91-A,
+# 674, 21-J (the person, 11 October 2026: "Following a law sounds like a good
+# idea").
 REF = {
+    "law": re.compile(r"^\d{1,3}(?:-[A-Z]{1,2})?$"),
     "bill": re.compile(r"^\d{4}/[A-Z]{2,6}\d{1,4}$"),
     "member": re.compile(r"^\d{1,7}$"),
     "committee": re.compile(r"^[A-Za-z]\d{2,3}(?:-\d{4})?$"),
@@ -183,6 +187,23 @@ REPORT = re.compile(r"^(?:(?:Majority|Minority|Conference) )?Committee Report\b"
 STUDY_REPORT = re.compile(r"^Interim Study Report\b", re.I)
 
 
+# WHAT "MILESTONES ONLY" SENDS (the person, 11 October 2026: the design's
+# "Hearings scheduled, committee votes, floor votes, and how a bill ended").
+# Every scheduled proceeding, executive session, committee report, roll call
+# and interim study step; and a docket entry of another kind only where it
+# decides something -- passes, adopts, kills, tables, signs, vetoes, enacts.
+MILESTONE_KINDS = ("scheduled", "exec", "report", "vote", "study")
+DECIDES = re.compile(
+    r"\b(?:passed|adopted|signed|vetoed|veto|law|chaptered|enrolled|tabled|laid on the table|"
+    r"indefinitely postponed|inexpedient to legislate|ought to pass|ought not to pass|killed|"
+    r"failed|concur(?:s|red)?|non-concur(?:s|red)?|died|withdrawn|override)\b", re.I)
+
+
+def milestone(kind, text=""):
+    """Whether an item of this kind and these words is a milestone."""
+    return kind in MILESTONE_KINDS or (kind == "action" and bool(DECIDES.search(str(text or ""))))
+
+
 def event_kind(text, day, tonight):
     """The contract's kind for one docket row. A meeting dated after tonight
     is "scheduled", whatever meeting it is: it is news that it will happen,
@@ -213,10 +234,32 @@ def study_says(text):
     return True if re.search(r"\bRecommended\b", t, re.I) else None
 
 
-def item(guid, day, kind, summary, url="", term="", study=False, recommends=None):
+# A MEMBER'S BALLOT, SAID WITH THE ROLL CALL IT WAS CAST IN (the person, 11
+# October 2026: "it should show all roll call votes they made the previous
+# week if any, how they voted vs the overall outcome of the vote, and the bill
+# title with links"). Optional on a vote item; every value plain text.
+VOTE_FIELDS = {"ballot": 20, "result": 10, "tally": 20, "motion": 160, "bill": 40, "title": 300}
+RESULTS = ("passed", "failed")
+
+
+def vote_detail(ballot, *, result="", tally="", motion="", bill="", title=""):
+    """A vote item's "vote", or None where there is no ballot to tell."""
+    out = {}
+    for f, v in (("ballot", ballot), ("result", result), ("tally", tally), ("motion", motion),
+                 ("bill", bill), ("title", title)):
+        v = line(v or "", VOTE_FIELDS[f])
+        if v and (f != "result" or v in RESULTS):
+            out[f] = v
+    return out if out.get("ballot") else None
+
+
+def item(guid, day, kind, summary, url="", term="", study=False, recommends=None,
+         milestone=False, vote=None):
     """One feed item as the changes files carry it, or None where it cannot
     be one (no guid, no date the contract reads). `study` marks a bill's
-    interim study report, which its bill's night carries as "study"."""
+    interim study report, which its bill's night carries as "study".
+    `milestone` marks what a reader who asked for milestones only is sent;
+    `vote` is a member's ballot with its roll call (vote_detail)."""
     guid = str(guid or "")
     if not guid or len(guid) > 300 or not DAY.match(str(day or "")):
         return None
@@ -231,6 +274,10 @@ def item(guid, day, kind, summary, url="", term="", study=False, recommends=None
         out["term"] = term
     if study:
         out["_study"] = recommends
+    if milestone:
+        out["milestone"] = True
+    if vote:
+        out["vote"] = vote
     return out
 
 
@@ -416,7 +463,8 @@ def night_file(ledger, d, new_by, followable, lists):
             if (key, it["guid"]) not in filed or it["guid"] in had:
                 continue
             had.add(it["guid"])
-            out = {f: it[f] for f in ("guid", "date", "kind", "summary", "url", "term") if f in it}
+            out = {f: it[f] for f in ("guid", "date", "kind", "summary", "url", "term",
+                                      "milestone", "vote") if f in it}
             if new_by == FIRST_SEEN:
                 out["seen"] = filed[(key, it["guid"])]
             if "_study" in it and kind_of_key(key) == "bill":
@@ -603,6 +651,17 @@ def _item(it, where, first_seen, topic, out):
         out.append(f"{where}: no seen, under first-seen")
     if it.get("url") not in (None, "") and not (isinstance(it["url"], str) and PATH.match(it["url"])):
         out.append(f"{where}: url is not a path on the site")
+    if "milestone" in it and it["milestone"] is not True:
+        out.append(f"{where}: milestone is not true")
+    if "vote" in it:
+        v = it["vote"]
+        if not isinstance(v, dict) or not v.get("ballot"):
+            out.append(f"{where}: vote has no ballot")
+        else:
+            for f, room in VOTE_FIELDS.items():
+                _text(v.get(f), room, f"{where} vote {f}", out, required=f == "ballot")
+            if v.get("result") not in (None, "") and v["result"] not in RESULTS:
+                out.append(f"{where}: vote result is neither passed nor failed")
     return it
 
 
@@ -637,6 +696,7 @@ def check_files(files):
                         continue
                     _text(v.get("label"), 120, f"followable {k} label", p)
                     _text(v.get("title"), 300, f"followable {k} title", p, required=False)
+                    _text(v.get("now"), 120, f"followable {k} now", p, required=False)
                     u = v.get("url")
                     if u not in (None, "") and not (isinstance(u, str) and PATH.match(u)):
                         p.append(f"followable {k}: url is not a path on the site")

@@ -47,7 +47,13 @@ export const SEND_UNTIL_HOUR = 20;    // a backlog past this waits for tomorrow
 export const WAIT_UNTIL_HOUR = 12;    // how long to wait for tonight's file
 export const NIGHTS_READ = 8;
 const PER_RECORD = 20;
+// A followed legislator's roll calls are listed whole (the person, 11 October
+// 2026: "all roll call votes they made the previous week"), up to the sixty a
+// member's feed carries; the rest of a record's items stay at PER_RECORD.
+const PER_MEMBER_VOTES = 60;
 const PER_EMAIL = 200;
+// A pause "until I turn it back on" is kept as this date (schema.sql).
+export const PAUSED_FOR_GOOD = "9999-12-31";
 
 // D1's limit on statements one Worker invocation may run. 50 on the Workers
 // Free plan and 1,000 on Workers Paid, as remembered when this was written:
@@ -102,10 +108,11 @@ const STOPPED = {
 };
 
 // nights: the nights read, oldest first. cursor: { date, built } of the newest
-// night already sent to this subscriber. follows: [{ kind, ref, fh }].
-// Returns one section per followed record with something to say
-// (mail.digestEmail's input).
-export function collect({ follows, nights, cursor, current, frequency, today }) {
+// night already sent to this subscriber. follows: [{ kind, ref, fh }]. detail:
+// "all", or "milestones" for the items CHANGES_FORMAT.md marks so. Returns one
+// section per followed record with something to say (mail.digestEmail's
+// input); a member's ballots come apart from its other items, as `votes`.
+export function collect({ follows, nights, cursor, current, frequency, today, detail = "all" }) {
   const sections = [];
   const listed = new Set([...current.followable.keys()].map(k => k.slice(0, k.indexOf(":"))));
   const after = t => !!t && !!cursor.built && Date.parse(t) > Date.parse(cursor.built);
@@ -129,6 +136,7 @@ export function collect({ follows, nights, cursor, current, frequency, today }) 
         if (!fresh(it) || guids.has(it.guid)) continue;
         // A topic is followed for the sitting term only.
         if (f.kind === "topic" && it.term !== current.sitting_term) continue;
+        if (detail === "milestones" && !it.milestone) continue;
         guids.add(it.guid);
         items.push(it);
       }
@@ -138,7 +146,11 @@ export function collect({ follows, nights, cursor, current, frequency, today }) 
     if (!ended && !meta && Object.hasOwn(STOPPED, f.kind) && listed.has(f.kind))
       ended = { how: "gone", summary: `${label} ${STOPPED[f.kind]}`, fallback: true };
     items.sort((a, b) => b.date.localeCompare(a.date));
-    const shown = items.slice(0, Math.min(PER_RECORD, room));
+    const ballots = f.kind === "member" ? items.filter(i => i.vote) : [];
+    const rest = ballots.length ? items.filter(i => !i.vote) : items;
+    const votes = ballots.slice(0, Math.min(PER_MEMBER_VOTES, room));
+    room -= votes.length;
+    const shown = rest.slice(0, Math.min(PER_RECORD, room));
     room -= shown.length;
     const week = frequency === "weekly" && f.kind === "bill"
       ? { votes: items.filter(i => i.kind === "vote").length,
@@ -148,10 +160,20 @@ export function collect({ follows, nights, cursor, current, frequency, today }) 
       ? (current.upcoming.get(key) || []).filter(u => u.date >= today).slice(0, 5) : [];
     if (!items.length && !study && !ended && !upcoming.length) continue;
     sections.push({ key, kind: f.kind, ref: f.ref, fh: f.fh, label, title: meta?.title || "",
-      url: meta?.url || "", items: shown, more: items.length - shown.length,
-      study, ended, week, upcoming });
+      now: meta?.now || "", url: meta?.url || "", items: shown, votes,
+      more: items.length - shown.length - votes.length, study, ended, week, upcoming });
   }
   return sections;
+}
+
+// A READER BACK FROM A PAUSE hears what is new since it ended, not the news
+// of the days they asked not to be sent: the cursor moves to the end of the
+// pause's last day where it is older than that.
+export function resumeFrom(s) {
+  const cursor = { date: s.sent_date || "", built: s.sent_built || "" };
+  const p = s.paused_until || "";
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(p) || p === PAUSED_FOR_GOOD) return cursor;
+  return cursor.date && cursor.date > p ? cursor : { date: p, built: `${p}T23:59:59Z` };
 }
 
 // ---- one run ------------------------------------------------------------------------------
@@ -202,9 +224,12 @@ export async function run(env, now = new Date()) {
   const freqs = when.weekly ? ["daily", "weekly"] : ["daily"];
   const limit = Math.max(1, Math.min(1000, Number(env.SEND_LIMIT) || 40));
   const subs = (await db.prepare(
-    "SELECT id, email_hmac, email_enc, frequency, link_gen, last_sent_on, sent_date, sent_built " +
+    "SELECT id, email_hmac, email_enc, frequency, link_gen, last_sent_on, sent_date, sent_built, " +
+    "paused_until, detail " +
     `FROM subscribers WHERE frequency IN (${freqs.map((_, i) => `?${i + 3}`).join(", ")}) ` +
     "AND (last_sent_on IS NULL OR last_sent_on < ?1) " +
+    // PAUSED THROUGH A DAY: nothing goes until the day after it.
+    "AND (paused_until IS NULL OR paused_until < ?1) " +
     "ORDER BY last_sent_on IS NOT NULL, last_sent_on, id LIMIT ?2")
     .bind(when.date, limit, ...freqs).all()).results || [];
   if (!subs.length) return done();
@@ -275,9 +300,8 @@ export async function run(env, now = new Date()) {
     let sections, ending, gone;
     try {
       const { follows, held } = await followsOf(env, db, s);
-      sections = collect({ follows, nights: ordered,
-        cursor: { date: s.sent_date || "", built: s.sent_built || "" },
-        current: cur.value, frequency: s.frequency, today: when.date });
+      sections = collect({ follows, nights: ordered, cursor: resumeFrom(s),
+        current: cur.value, frequency: s.frequency, today: when.date, detail: s.detail });
       if (!sections.length) {
         if (moveCursor) await moveCursor.run();
         continue;

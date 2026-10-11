@@ -8,7 +8,8 @@
     "bill:2026/HB9901": {
       "label": "HB 9901",
       "title": "establishing an invented commission to study an invented question",
-      "url": "/bill/2026/hb9901"
+      "url": "/bill/2026/hb9901",
+      "now": "In committee"
     },
     "bill:2026/HB9903": {
       "label": "HB 9903-FN",
@@ -30,18 +31,37 @@
     "topic:elections": {
       "label": "Elections",
       "url": "/bills?topic=Elections"
+    },
+    "law:91-A": {
+      "label": "RSA 91-A: Access to Governmental Records and Meetings",
+      "url": "/laws/91-a"
     }
   },
   "upcoming": {
     "bill:2026/HB9903": [
-      {"date": "2026-10-14", "time": "10:00", "what": "public hearing",
-       "committee": "House Example Committee", "venue": "LOB 305"}
+      {
+        "date": "2026-10-14",
+        "time": "10:00",
+        "what": "public hearing",
+        "committee": "House Example Committee",
+        "venue": "LOB 305"
+      }
     ],
     "committee:H90": [
-      {"date": "2026-10-14", "time": "10:00", "what": "public hearing",
-       "committee": "House Example Committee", "venue": "LOB 305"},
-      {"date": "2026-10-13", "time": "13:00", "what": "executive session",
-       "committee": "House Example Committee", "venue": "LOB 305"}
+      {
+        "date": "2026-10-14",
+        "time": "10:00",
+        "what": "public hearing",
+        "committee": "House Example Committee",
+        "venue": "LOB 305"
+      },
+      {
+        "date": "2026-10-13",
+        "time": "13:00",
+        "what": "executive session",
+        "committee": "House Example Committee",
+        "venue": "LOB 305"
+      }
     ]
   }
 }

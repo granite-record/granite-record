@@ -46,6 +46,19 @@ border:1px solid var(--accent);background:var(--accent);color:var(--on-accent)}
 button.plain{background:var(--card);color:var(--accent)}
 button.danger{background:var(--card);color:var(--danger);border-color:var(--danger)}
 button:disabled{opacity:.5;cursor:default}
+h3{font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:var(--quiet);margin:24px 0 6px}
+label small{display:block;color:var(--quiet);font-size:14px}
+ul.follows label{display:flex;gap:10px;align-items:baseline;margin:0;flex:1;min-width:0}
+ul.chips{list-style:none;padding:0;margin:6px 0 10px;display:flex;flex-wrap:wrap;gap:8px}
+ul.chips label{border:1px solid var(--rule);border-radius:999px;padding:4px 12px;margin:0;
+align-items:center;background:var(--card);font-size:15px}
+.add{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;margin:8px 0 4px}
+.add label{margin:0;font-size:15px}
+input[type=text],input:not([type]),input[type=date],select{font:inherit;font-size:16px;padding:6px 8px;
+border:1px solid var(--rule);border-radius:4px;background:var(--card);color:var(--fg);max-width:100%;min-width:0}
+.add select{flex:1 1 220px}
+.save{position:sticky;bottom:0;background:var(--bg);padding:12px 0;margin:20px 0 0;border-top:1px solid var(--rule)}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 `;
 
 export function nonce() {

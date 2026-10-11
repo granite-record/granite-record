@@ -137,5 +137,10 @@ test("ended, study and upcoming are read as written", () => {
   const cur = checkCurrent(structuredClone(fx.get("/changes/current.json"))).value;
   assert.deepEqual(cur.upcoming.get("committee:H90").map(u => u.date), ["2026-10-13", "2026-10-14"],
     "upcoming is put in date order");
-  assert.equal(cur.followable.size, 6);
+  assert.equal(cur.followable.size, 7);
+  assert.equal(cur.followable.get("bill:2026/HB9901").now, "In committee");
+  assert.equal(cur.followable.get("law:91-A").label, "RSA 91-A: Access to Governmental Records and Meetings");
+  const v = checkNight(night("2026-10-08"), "2026-10-08").value.refs.get("member:990001").items[0];
+  assert.deepEqual([v.milestone, v.vote.ballot, v.vote.result, v.vote.tally, v.vote.bill],
+    [true, "yes", "passed", "11-9", "HB 9903-FN"], "a ballot keeps its roll call");
 });

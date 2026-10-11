@@ -71,6 +71,7 @@ export function checkCurrent(obj) {
     if (!label) continue;
     followable.set(k, { label,
       title: text(v.title, 300, `followable ${k} title`, notes, false),
+      now: text(v.now, 120, `followable ${k} now`, notes, false),
       url: path(v.url, `followable ${k}`, notes) });
   }
   const upcoming = new Map();
@@ -93,6 +94,22 @@ export function checkCurrent(obj) {
   }
   return { value: { date: obj.date, built: obj.built, sitting_term: obj.sitting_term,
                     new_by: obj.new_by, followable, upcoming }, problems, notes };
+}
+
+// A member's ballot with its roll call (CHANGES_FORMAT.md, "vote"), or null.
+const VOTE_FIELDS = { ballot: 20, result: 10, tally: 20, motion: 160, bill: 40, title: 300 };
+function checkVote(v, where, notes) {
+  if (v === undefined || v === null) return null;
+  if (!isObj(v)) { notes.push(`${where}: vote is not an object`); return null; }
+  const out = {};
+  for (const [f, max] of Object.entries(VOTE_FIELDS))
+    out[f] = text(v[f], max, `${where} vote ${f}`, notes, f === "ballot") || "";
+  if (!out.ballot) return null;
+  if (out.result && out.result !== "passed" && out.result !== "failed") {
+    notes.push(`${where}: vote result is neither passed nor failed`);
+    out.result = "";
+  }
+  return out;
 }
 
 // ---- one night ---------------------------------------------------------------------
@@ -118,7 +135,9 @@ function checkItem(it, where, firstSeen, topic, notes) {
     else notes.push(`${where}: seen is not a UTC timestamp`);
   }
   if (firstSeen && !seen) notes.push(`${where}: no seen, under first-seen`);
-  return { guid, date: it.date, kind, summary, url: path(it.url, where, notes), term, seen };
+  if (it.milestone !== undefined && it.milestone !== true) notes.push(`${where}: milestone is not true`);
+  return { guid, date: it.date, kind, summary, url: path(it.url, where, notes), term, seen,
+           milestone: it.milestone === true, vote: checkVote(it.vote, where, notes) };
 }
 
 export function checkNight(obj, expectDate) {

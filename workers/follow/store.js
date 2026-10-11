@@ -86,7 +86,8 @@ export async function subscriberFor(db, token, purpose) {
   if (typeof token !== "string" || !TOKEN.test(token) || !Object.hasOwn(COLUMN, purpose))
     return null;
   return await db.prepare(
-    "SELECT id, email_hmac, email_enc, frequency, link_gen, manage_hash, unsub_hash " +
+    "SELECT id, email_hmac, email_enc, frequency, link_gen, manage_hash, unsub_hash, " +
+    "paused_until, detail " +
     `FROM subscribers WHERE ${COLUMN[purpose]} = ?1`).bind(await hashToken(token)).first();
 }
 

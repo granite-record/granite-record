@@ -12,10 +12,12 @@
  */
 
 // ---- what can be followed -------------------------------------------------
-// The four kinds, and the ref each page and feed is keyed by. The bill and
-// committee patterns are report.js's RECORD; a topic is its feed's slug.
-export const KINDS = ["bill", "member", "committee", "topic"];
+// The five kinds, and the ref each page and feed is keyed by. The bill and
+// committee patterns are report.js's RECORD; a topic is its feed's slug; a
+// law is a chapter of the statutes as its /laws page names it (91-A, 674).
+export const KINDS = ["bill", "member", "committee", "topic", "law"];
 const REF = {
+  law: /^\d{1,3}(?:-[A-Z]{1,2})?$/,
   bill: /^\d{4}\/[A-Z]{2,6}\d{1,4}$/,
   member: /^\d{1,7}$/,
   committee: /^[A-Za-z]\d{2,3}(?:-\d{4})?$/,
@@ -47,6 +49,7 @@ export function fallbackLabel(kind, ref) {
   }
   if (kind === "member") return `Legislator no. ${ref}`;
   if (kind === "committee") return `Committee ${ref}`;
+  if (kind === "law") return `RSA ${ref}`;
   return ref.split("-").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
 }
 

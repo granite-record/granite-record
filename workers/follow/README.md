@@ -115,6 +115,17 @@ on its own:
        npx wrangler d1 execute graniterecord-follow --remote --file workers/follow/schema.sql
        npx wrangler d1 execute graniterecord-follow-preview --remote --file workers/follow/schema.sql
 
+   **A database made before 11 October 2026** needs the manage page's two
+   settings (pause, and everything or milestones only) added once, with
+   `migrations/0001_manager.sql`. Both of this project's were (preview on 10
+   October, production on 11 October), so each takes it once; a database
+   made from today's `schema.sql` has them already and must not:
+
+       npx wrangler d1 execute graniterecord-follow-preview --remote --file workers/follow/migrations/0001_manager.sql
+       npx wrangler d1 execute graniterecord-follow --remote --file workers/follow/migrations/0001_manager.sql
+
+   Run a second time it answers "duplicate column name" and changes nothing.
+
 2. **Resend.** A verified sending domain; an API key restricted to sending
    from it; a webhook to `https://graniterecord.org/api/follow/bounce` for
    the events `email.bounced` and `email.complained`, whose signing secret is

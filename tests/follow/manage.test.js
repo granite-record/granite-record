@@ -78,7 +78,7 @@ test("how often, and removing a record", async () => {
     await act(w, s.manage, "remove", { follow: "<script>" });
     assert.equal(w.d1.rows("follows").length, 1);
     // The last one goes with the address, and the page says so first.
-    assert.match((await view(w, s.manage)).body, /Remove, and delete my address/);
+    assert.match((await view(w, s.manage)).body, /Unticking everything deletes your address/);
     r = await act(w, s.manage, "remove", { follow: "bill:2026/HB9901" });
     assert.match(r.body, /Your address has been deleted/);
     assert.equal(w.d1.rows("subscribers").length, 0);
@@ -225,5 +225,99 @@ test("a link that is not current says so, and nothing else", async () => {
       assert.match(r.body, /no longer current/);
       assert.doesNotMatch(r.body, /<script>alert/);
     }
+  } finally { w.close(); }
+});
+
+// ---- the one form (11 October 2026) -------------------------------------------------------
+const saveForm = (w, t, pairs, opts = {}) =>
+  w.call(handlers.manage, postForm("/api/follow/manage", [["t", t], ["action", "save"], ...pairs], opts));
+
+test("one Save: untick, add a bill and a law by typing, a legislator and a topic, with no email", async () => {
+  const w = makeWorld();
+  try {
+    const s = await join(w, "reader.saves", "bill", "2026/HB9901");
+    await signUp(w, s.address, "committee", "H90");
+    await confirmLatest(w, s.address);
+    const mails = w.net.outbox.length;
+    const page = (await view(w, s.manage)).body;
+    assert.match(page, /name="keep" value="topic:housing"/, "every topic tonight has a box");
+    assert.match(page, /<option value="member:990001">Rep\. Pat Example/, "legislators can be picked");
+    assert.match(page, /Now: In committee/, "a bill says where it stands");
+    const r = await saveForm(w, s.manage, [
+      ["listed", "bill:2026/HB9901"], ["keep", "bill:2026/HB9901"],
+      ["listed", "committee:H90"],                                 // unticked
+      ["listed", "topic:housing"], ["keep", "topic:housing"],      // ticked, not followed
+      ["listed", "topic:elections"],
+      ["add_bill", "hb 9903"], ["add_law", "RSA 91-a"], ["add", "member:990001"],
+      ["frequency", "weekly"], ["detail", "milestones"], ["pause", "none"]]);
+    assert.equal(r.status, 303);
+    assert.match(r.headers.location, /n=saved$/);
+    const id = w.d1.rows("subscribers")[0].id;
+    assert.deepEqual(await followKeys(w.d1, w.env), [`${id} bill:2026/HB9901`, `${id} bill:2026/HB9903`,
+      `${id} law:91-A`, `${id} member:990001`, `${id} topic:housing`]);
+    const row = w.d1.rows("subscribers")[0];
+    assert.deepEqual([row.frequency, row.detail, row.paused_until], ["weekly", "milestones", null]);
+    assert.equal(w.net.outbox.length, mails, "adding from the manager sends no confirmation email");
+    assert.equal(w.d1.rows("pending").length, 0);
+    assert.deepEqual(leaks(w), []);
+  } finally { w.close(); }
+});
+
+test("what cannot be followed tonight is not added, and the page says so", async () => {
+  const w = makeWorld();
+  try {
+    const s = await join(w, "reader.typos");
+    const r = await saveForm(w, s.manage, [["listed", "bill:2026/HB9901"], ["keep", "bill:2026/HB9901"],
+      ["add_bill", "HB 12345"], ["add", "member:12"], ["add_law", "RSA 999-ZZ"],
+      ["keep", "bill:2026/HB9903"]]);                     // a box the page never showed
+    assert.match(r.headers.location, /n=notfound$/);
+    const id = w.d1.rows("subscribers")[0].id;
+    assert.deepEqual(await followKeys(w.d1, w.env), [`${id} bill:2026/HB9901`]);
+  } finally { w.close(); }
+});
+
+test("a pause through a day, a pause for good, and back again from now", async () => {
+  const w = makeWorld();
+  try {
+    w.now = new Date("2026-10-08T15:00:00Z");
+    const s = await join(w, "reader.pauses");
+    const base = [["listed", "bill:2026/HB9901"], ["keep", "bill:2026/HB9901"]];
+    await saveForm(w, s.manage, [...base, ["pause", "until"], ["pause_until", "2026-10-20"]]);
+    assert.equal(w.d1.rows("subscribers")[0].paused_until, "2026-10-20");
+    assert.match((await view(w, s.manage)).body, /Paused through 2026-10-20/);
+    await saveForm(w, s.manage, [...base, ["pause", "until"], ["pause_until", "2026-10-01"]]);
+    assert.equal(w.d1.rows("subscribers")[0].paused_until, "2026-10-20", "a day already past is no pause");
+    await saveForm(w, s.manage, [...base, ["pause", "until"], ["pause_until", "2028-01-01"]]);
+    assert.equal(w.d1.rows("subscribers")[0].paused_until, "2026-10-20", "nor one more than a year off");
+    await saveForm(w, s.manage, [...base, ["pause", "forever"]]);
+    assert.equal(w.d1.rows("subscribers")[0].paused_until, "9999-12-31");
+    assert.match((await view(w, s.manage)).body, /Paused until you turn updates back on/);
+    await saveForm(w, s.manage, [...base, ["pause", "none"]]);
+    const row = w.d1.rows("subscribers")[0];
+    assert.equal(row.paused_until, null);
+    assert.deepEqual([row.sent_date, row.sent_built], ["2026-10-08", "2026-10-08T15:00:00Z"],
+      "back from a pause, the reader starts from now");
+  } finally { w.close(); }
+});
+
+test("unticking everything deletes the address, as removing the last record always has", async () => {
+  const w = makeWorld();
+  try {
+    const s = await join(w, "reader.leaves");
+    const r = await saveForm(w, s.manage, [["listed", "bill:2026/HB9901"]]);
+    assert.match(r.body, /Your address has been deleted/);
+    assert.equal(w.d1.rows("subscribers").length, 0);
+    assert.equal(w.d1.rows("follows").length, 0);
+  } finally { w.close(); }
+});
+
+test("the one form is refused from anywhere but the site's own page", async () => {
+  const w = makeWorld();
+  try {
+    const s = await join(w, "reader.guarded");
+    const before = snapshot(w);
+    const r = await saveForm(w, s.manage, [["listed", "bill:2026/HB9901"]], { origin: "https://evil.example" });
+    assert.equal(r.status, 403);
+    assert.deepEqual(snapshot(w), before);
   } finally { w.close(); }
 });

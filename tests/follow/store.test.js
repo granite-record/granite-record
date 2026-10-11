@@ -8,7 +8,11 @@ import { linksFor, lookupHash, mailboxHash, sealAddress, sealFollow }
   from "../../workers/follow/address.js";
 import { countConfirmed, dayFull, forget, purge, subscriberFor, underCeiling }
   from "../../workers/follow/store.js";
-import { FakeD1 } from "./fake_d1.js";
+import { DatabaseSync } from "node:sqlite";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { FakeD1, SCHEMA } from "./fake_d1.js";
+const MIGRATION = fileURLToPath(new URL("../../workers/follow/migrations/0001_manager.sql", import.meta.url));
 import { makeKeys } from "./fakes.js";
 import { insertSubscriber } from "./rows.js";
 
@@ -37,7 +41,8 @@ test("the schema has no column about a reader but the sealed address and its key
     sends: ["date", "frequency", "emails_sent", "items", "failed", "ended"],
     signup_days: ["day", "n"],
     subscribers: ["id", "email_hmac", "email_enc", "frequency", "confirmed_on", "link_gen",
-                  "manage_hash", "unsub_hash", "last_sent_on", "sent_date", "sent_built"],
+                  "manage_hash", "unsub_hash", "last_sent_on", "sent_date", "sent_built",
+                  "paused_until", "detail"],
   });
   const all = Object.values(cols).flat().join(" ");
   assert.doesNotMatch(all, /\b(ip|email|address|name|cookie|agent|referr?er|session)\b/i,
@@ -121,4 +126,19 @@ test("an address left following nothing is deleted a day or two on", async () =>
   const r = await purge(db, at(48));
   assert.equal(r.orphans, 1);
   assert.equal(db.rows("subscribers").length, 0);
+});
+
+test("the manager's migration brings a database made before it to today's schema", () => {
+  // A database made from schema.sql as it was on 10 October: the subscribers
+  // table without the two settings. The migration makes it the same as one
+  // made from today's schema, and a second run of it changes nothing.
+  const today = readFileSync(SCHEMA, "utf8");
+  const before = today.replace(/  sent_built    TEXT,[\s\S]*?'milestones'\)\)\n\);/, "  sent_built    TEXT\n);");
+  assert.notEqual(before, today, "the test could not make the older schema");
+  const old = new DatabaseSync(":memory:");
+  old.exec(before);
+  old.exec(readFileSync(MIGRATION, "utf8"));
+  const cols = old.prepare("PRAGMA table_info(subscribers)").all().map(r => r.name);
+  assert.deepEqual(cols, new FakeD1().columns("subscribers"));
+  assert.throws(() => old.exec(readFileSync(MIGRATION, "utf8")), /duplicate column/);
 });

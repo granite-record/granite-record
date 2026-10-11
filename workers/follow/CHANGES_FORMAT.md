@@ -33,8 +33,9 @@ Every record is named `<kind>:<ref>`, with the same ref its page and feed use:
 | `member` | the member's numeric id | `member:736` |
 | `committee` | the committee code, as its page is keyed | `committee:H05` |
 | `topic` | the topic's slug, as its feed is named | `topic:housing` |
+| `law` | a chapter of the statutes, as its `/laws` page names it, in capitals | `law:91-A` |
 
-`common.js` holds the four patterns (`refOk`). A key that does not match is
+`common.js` holds the five patterns (`refOk`). A key that does not match is
 dropped by the sender and refused at sign-up.
 
 ## `current.json`
@@ -79,7 +80,9 @@ dropped by the sender and refused at sign-up.
 
   Each entry has a `label` (at most 120 characters, plain text: what the
   record is called in an email and on the manage page), an optional `title`
-  (at most 300, plain text), and an optional `url`, a path on the site
+  (at most 300, plain text), an optional `now` (at most 120, plain text: where
+  a bill stands tonight, "In committee", as its search row says), and an
+  optional `url`, a path on the site
   beginning with one `/`, with any query already percent-encoded (a topic's
   is the bill search narrowed to it, `/bills?topic=Banking%20and%20Finance`).
   Sign-up refuses a key that is not here, and the manage page names each
@@ -92,6 +95,12 @@ dropped by the sender and refused at sign-up.
   time), `committee` and `venue`, each plain text of at most 120 characters.
   The weekly email lists these; it is state, not news, so it lives here and
   not in a night.
+
+A **law** (`law:<chapter>`) is listed for every chapter of the statute
+table. Its items are the sitting term's bills that say they change the
+chapter -- each bill's own items, under the bill's own guids -- so a
+reader following RSA 91-A hears when a bill proposing to change it is filed,
+heard, voted on or ends. A law has no `ended`.
 
 ## `<YYYY-MM-DD>.json`: one night
 
@@ -164,6 +173,16 @@ night. Each value may have:
     items: the sender sends a topic follower only items of `sitting_term`.
   - `seen` -- the `built` of the build that first published the item.
     Required under `first-seen`; absent under `record-date`.
+  - `milestone` -- optional, and only ever `true`: what a reader who asked
+    for milestones only is sent. A hearing scheduled, an executive session,
+    a committee report, a roll call, an interim study's step, and a docket
+    entry that passes, kills, tables, signs, vetoes or enacts.
+  - `vote` -- optional, on a member's `vote` item: the ballot with the roll
+    call it was cast in, every value plain text. `ballot` (required, at most
+    20: `yes`, `no`, `not voting`, `excused`), `result` (`passed` or
+    `failed`), `tally` ("201-163"), `motion` (at most 160, the question put),
+    `bill` (at most 40, "HB 1442") and `title` (at most 300). The email sets
+    each ballot beside the outcome.
 - `study` (bills referred for interim study): the study committee's report,
   once it exists. `recommends` is `true` (recommended future legislation),
   `false` (did not) or `null` (the report does not say). `summary`, `date`,
