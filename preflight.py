@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.536
+# GRANITE_VERSION: 2026-09-04.537
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -57025,12 +57025,29 @@ def _speaker_other_chamber(BSP):
     root = Path(tempfile.mkdtemp(prefix="gr-chambers-"))
     keep = BSP._careers
     try:
+        # The real shape: the roster's id is the PersonID (9406), careers.json
+        # is keyed by employee number (209106) and carries the PersonID inside
+        # -- the dry run of 3b43bf7 matched nobody while this test used one
+        # number for both.
         (root / "legislators.json").write_text(json.dumps([
-            {"id": 209106, "slug": "cindy-rosenwald-13", "name": "Rosenwald, Cindy", "chamber": "S"}]),
+            {"id": "9406", "slug": "cindy-rosenwald-13", "name": "Rosenwald, Cindy", "chamber": "S"}]),
             encoding="utf-8")
         (root / "former.json").write_text("[]", encoding="utf-8")
-        BSP._careers = lambda: {"209106": {"by_term": {"2017-2018": {"chambers": ["H"]},
-                                                       "2021-2022": {"chambers": ["S"]}}}}
+        real = {"209106": {"person_id": "9406", "employee_nos": ["209106", "376622"],
+                           "by_term": {"2017-2018": {"chambers": ["H"]},
+                                       "2021-2022": {"chambers": ["S"]}}}}
+        careers_file = root / "careers.json"
+        careers_file.write_text(json.dumps(real), encoding="utf-8")
+        here = Path.cwd()
+        (root / "generated").mkdir()
+        careers_file.rename(root / "generated" / "careers.json")
+        import os as _os
+        _os.chdir(root)
+        try:
+            table = keep()
+        finally:
+            _os.chdir(here)
+        BSP._careers = lambda: table
         m = BSP.Members(root)
         m.term = "2017-2018"
         then = m.slug("H", "Rosenwald")
