@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.44
+# GRANITE_VERSION: 2026-09-08.45
 """
 The civics section: a hub and one page per topic, in order.
 
@@ -1108,7 +1108,7 @@ def guide_ready(g, fetched, chapters):
     loose = [u for u in G.outside(g) if u not in fetched]
     if loose:
         return "not in guide_sources.SOURCES: " + ", ".join(loose)
-    laws = set(LAWS_LINK.findall(g["body"] + " ".join(u for _l, u in g["sources"])))
+    laws = set(LAWS_LINK.findall(G.text(g) + " ".join(f'href="{u}"' for _l, u in g["sources"])))
     gone = sorted(c for c in laws if c.upper() not in chapters)
     if gone:
         return "links a Laws page the statute table does not hold: " + ", ".join(gone)
@@ -1154,12 +1154,50 @@ RECENT_FROM = 2020
 RECENT_SHOWN = 8
 
 
+def guide_flow(g):
+    """THE DIAGRAM: the path through the guide, box to box, a question's
+    answers side by side. HTML rather than a picture, so a screen reader
+    reads it as the list it is, and it reflows on a phone."""
+    items = []
+    for node in g["flow"]:
+        if node[0] == "box":
+            items.append(f'<li class="g-fbox"><span>{node[1]}</span></li>')
+        else:
+            answers = "".join(f'<li><b>{a}</b><span>{then}</span></li>' for a, then in node[2])
+            items.append(f'<li class="g-fask"><p class="g-fq">{node[1]}</p>'
+                         f'<ul class="g-fans">{answers}</ul></li>')
+    return (f'<figure class="g-flow" role="group" aria-label="{E(g["title"])}, in short">'
+            f'<ol>{"".join(items)}</ol></figure>')
+
+
+def guide_steps(g):
+    """THE STEPS, numbered: each one's words, a note set apart where
+    something has changed, a button to the official page it needs, and the
+    sections of law it rests on, each linked to its place on the Laws
+    pages."""
+    out = []
+    for s_ in g["steps"]:
+        acts = "".join(f'<a class="g-btn" href="{E(u)}"'
+                       + ('' if u.startswith("/") else ' target="_blank" rel="noopener"')
+                       + f'>{E(label)}</a>' for label, u in s_["actions"])
+        law = ", ".join(f'<a href="{E(G.law_href(r))}">{E(r)}</a>' for r in s_["law"])
+        out.append(f'<li class="g-step"><h3 class="g-sh">{E(s_["title"])}</h3>{s_["text"]}'
+                   + (f'<p class="g-note" role="note">{s_["note"]}</p>' if s_["note"] else "")
+                   + (f'<p class="g-acts">{acts}</p>' if acts else "")
+                   + (f'<p class="g-law">The law: {law}</p>' if law else "") + "</li>")
+    return f'<ol class="g-steps">{"".join(out)}</ol>'
+
+
 def guide_page(tmpl, g, base, record, draft_why=""):
     """A guide: the Resources bar with How-To Guides marked, the head with
     when it was checked, its sections, what the record holds on it, and its
     sources. A check older than guides.STALE_DAYS puts a notice above it."""
     path = "/" + guide_href(g["slug"])
-    secs = split_sections(g["body"], path)
+    secs = [("at-a-glance", "At a Glance",
+             f'<p class="g-glance">{g["glance"]}</p>' + civics.wide(guide_flow(g))),
+            ("steps", "Step by Step", guide_steps(g))]
+    if g["more"]:
+        secs += split_sections(g["more"], path)
     if record:
         secs.append(("in-the-record", "In the Record", record))
     if g["see"]:

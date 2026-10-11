@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.259 */
+/* GRANITE_VERSION: 2026-09-07.260 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -1438,7 +1438,8 @@ line-height:1.1}
   .fhead .badge,.wkchips button[aria-pressed="true"],
   .cmgrid td.cmpick,.calviews button[aria-pressed="true"],.cdopen,
   .calcat input:checked + .cbx,.searchbig button,.wbtn.sel,h1.lockup,
-  .rtabs [role=tab][aria-selected=true],.l-g,.l-reach > span.is-me{
+  .rtabs [role=tab][aria-selected=true],.l-g,.l-reach > span.is-me,
+  .g-btn,.g-btn:hover,.g-step::before{
   -webkit-print-color-adjust:exact;print-color-adjust:exact}
 }
 
@@ -4143,6 +4144,52 @@ a.l-pgm{font-weight:600;text-decoration:underline;text-decoration-thickness:1px;
   border:1px solid var(--rule-2);border-left:5px solid var(--ink);border-radius:var(--r-in);
   padding:.75rem 1rem;margin:.75rem 0 1rem;max-width:46rem}
 .g-draft{border-left-color:var(--st-table)}
+/* A GUIDE FOR SOMEONE WITH NO CONTEXT (the person, 11 October 2026): the
+   answer first, at the lead's size; the path as a diagram, box to box, a
+   question's answers side by side and stacked on a phone; then the steps,
+   numbered, each with its button to the official page and its law. */
+.g-glance{font:400 var(--t-lead)/1.5 var(--serif);color:var(--ink);margin:0 0 1rem;max-width:46rem}
+.g-flow{margin:.5rem 0 0}
+.g-flow > ol{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;align-items:center;gap:1.75rem;
+  max-width:46rem;margin-inline:auto}
+.g-flow > ol > li{position:relative;width:100%;box-sizing:border-box}
+.g-flow > ol > li + li::before{content:"";position:absolute;left:50%;top:-1.5rem;height:1.125rem;
+  border-left:2px solid var(--edge);transform:translateX(-1px)}
+.g-flow > ol > li + li::after{content:"";position:absolute;left:50%;top:-.6rem;width:.5rem;height:.5rem;
+  border-right:2px solid var(--edge);border-bottom:2px solid var(--edge);transform:translate(-50%,-50%) rotate(45deg)}
+.g-fbox span,.g-fq{display:block;text-align:center;font:500 var(--t-ui)/1.45 var(--sans);color:var(--ink);
+  background:var(--surface);border:1px solid var(--rule-2);border-radius:var(--r-in);padding:.75rem 1rem;margin:0}
+.g-fq{font-weight:600;border-color:var(--pine);border-width:2px}
+.g-fans{list-style:none;margin:.75rem 0 0;padding:0;display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(min(100%,12rem),1fr));gap:.75rem}
+.g-fans li{background:var(--surface);border:1px solid var(--rule-2);border-top:3px solid var(--pine);
+  border-radius:var(--r-in);padding:.625rem .875rem;font:400 var(--t-sm)/1.45 var(--sans);color:var(--ink)}
+.g-fans b{display:block;font:600 var(--t-ui)/1.35 var(--sans);color:var(--pine);margin-bottom:.25rem}
+.g-steps{list-style:none;margin:0;padding:0;counter-reset:gstep}
+.g-step{counter-increment:gstep;position:relative;padding:0 0 1.5rem 3.25rem;margin:0}
+.g-step::before{content:counter(gstep);position:absolute;left:0;top:0;width:2.25rem;height:2.25rem;
+  border-radius:50%;background:var(--pine);color:var(--on-pine);font:700 var(--t-ui)/2.25rem var(--sans);text-align:center}
+.g-step:not(:last-child)::after{content:"";position:absolute;left:1.0625rem;top:2.5rem;bottom:.25rem;
+  border-left:2px solid var(--rule-2)}
+.g-sh{font:600 var(--t-lead)/1.3 var(--serif);color:var(--ink);margin:.25rem 0 .5rem}
+.g-step p,.g-step li{font:400 var(--t-ui)/1.6 var(--sans);color:var(--ink)}
+.g-step p{margin:0 0 .625rem}
+.g-step ul{margin:0 0 .625rem;padding-left:1.25rem}
+.g-acts{display:flex;flex-wrap:wrap;gap:.5rem;margin:.75rem 0 .5rem}
+.g-btn{display:inline-flex;align-items:center;min-height:2.75rem;box-sizing:border-box;padding:.5rem 1rem;
+  background:var(--pine);color:var(--on-pine);border-radius:var(--r-in);font:600 var(--t-ui)/1.3 var(--sans);
+  text-decoration:none}
+.g-btn:hover{background:var(--ink);color:var(--paper)}
+.g-btn:focus-visible{outline:2px solid var(--pine);outline-offset:2px}
+.g-law{font:400 var(--t-sm)/1.45 var(--sans)!important;color:var(--ink-2)!important;margin:.25rem 0 0!important}
+.g-law a{color:var(--pine)}
+.g-note{border:2px solid var(--ink);border-radius:var(--r-in);padding:.75rem 1rem;background:var(--wash);
+  margin:.75rem 0!important}
+.g-sample{border:1px dashed var(--edge);border-radius:var(--r-in);padding:.75rem 1rem;margin:.75rem 0;
+  background:var(--surface)}
+.g-sample p{font-family:var(--serif)}
+.g-sample-h{font:600 var(--t-label)/1.3 var(--sans)!important;letter-spacing:.06em;text-transform:uppercase;
+  color:var(--ink-2)!important}
 .g-ch{font:600 var(--t-ui)/1.4 var(--sans);margin:1rem 0 .375rem}
 .g-ch:first-child{margin-top:0}
 .g-ch a{color:var(--pine)}

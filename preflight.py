@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.546
+# GRANITE_VERSION: 2026-09-04.547
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -32742,12 +32742,20 @@ def _guides_gate(BC, G, GS, RSA, S):
     for g in G.GUIDES:
         loose = [u for u in G.outside(g) if u not in {x for us in GS.SOURCES.values() for x in us}]
         assert not loose, f"{g['slug']} links what guide_sources.py never reads, so no check covers it: {loose}"
-        assert not re.search(r"\$\s?\d|\d\s?%", g["body"]), \
+        words = G.text(g)
+        assert not re.search(r"\$\s?\d|\d\s?%", words), \
             f"{g['slug']} states a dollar or percentage figure; link the source that sets it instead"
+        # STEP BY STEP, FOR SOMEONE WITH NO CONTEXT (the person, 11 October
+        # 2026): the answer first, a diagram, numbered steps, and a button to
+        # the official page wherever a step sends the reader to one.
+        assert g["glance"] and g["flow"] and len(g["steps"]) >= 2, f"{g['slug']} is not a step-by-step guide"
+        for st in g["steps"]:
+            if re.search(r"Secretary of State&rsquo;s (?:lookup|page)|Department of Energy lists", st["text"]):
+                assert st["actions"], f"{g['slug']}: the step {st['title']!r} names a page and has no button to it"
         for c in g["claims"]:
             m = re.match(r"RSA (\d{1,3}(?:-[A-Z]{1,2})?):([0-9a-z-]+)$", c["source"])
             if m:
-                assert f'href="/laws/{m.group(1).lower()}#s{m.group(2)}"' in g["body"], \
+                assert f'href="/laws/{m.group(1).lower()}#s{m.group(2)}"' in words, \
                     f"{g['slug']}: a claim on {c['source']} is not linked to that section in the guide"
             else:
                 assert c["source"].startswith("https://"), f"{g['slug']}: a claim's source is {c['source']!r}"
@@ -32759,11 +32767,13 @@ def _guides_gate(BC, G, GS, RSA, S):
     url = next(iter(GS.SOURCES.values()))[0]
     today = build_date.today().isoformat()
 
-    def one(checked):
-        return G.guide("test-guide", "A Test Guide", "What it does.",
-                       '<h2>Who to Ask</h2><p>Ask (<a href="/laws/91-a#s4">RSA 91-A:4</a>).</p>',
+    def one(checked, when=None):
+        return G.guide("test-guide", "A Test Guide", "What it does.", "The answer.",
+                       [G.box("Ask."), G.ask("Did it work?", [("Yes", "Done."), ("No", "Ask again.")])],
+                       [G.step("Ask", "<p>Ask.</p>", actions=[("The page", url)], law=["RSA 91-A:4"]),
+                        G.step("Wait", "<p>Wait.</p>")],
                        [("RSA 91-A", "/laws/91-a"), ("The page", url)], ["91-A"],
-                       [G.claim("x", "RSA 91-A:4", today), G.claim("y", url, checked)])
+                       [G.claim("x", "RSA 91-A:4", when or today), G.claim("y", url, checked)])
     tmpl = S.template(Path("site"))
     here, tmp = os.getcwd(), Path(tempfile.mkdtemp(prefix="gr-guides-"))
     saved = (G.GUIDES, RSA.load)
@@ -32787,12 +32797,12 @@ def _guides_gate(BC, G, GS, RSA, S):
         assert "Checked against its sources" in page and 'class="g-stale"' not in page and "Draft" not in page
         assert 'href="/laws/91-a"' in page and "Laws that changed it since" in page, \
             "the guide does not list the laws that changed its chapter"
+        assert 'class="g-flow"' in page and page.count('class="g-step"') == 2 and 'class="g-btn"' in page \
+            and '<a href="/laws/91-a#s4">RSA 91-A:4</a>' in page, "the guide is not drawn as steps with a diagram"
         hub = BC.hub_guides(pub)
         assert "test-guide.html" in hub and "Checked " in hub and "no how-to guides yet" not in hub
         old = "2020-01-01"
-        G.GUIDES = [G.guide(**{**{k: v for k, v in one(old).items() if k in ("slug", "title", "blurb", "body",
-                                                                              "sources", "laws", "see")},
-                               "claims": [G.claim("x", "RSA 91-A:4", old), G.claim("y", url, old)]})]
+        G.GUIDES = [one(old, old)]
         with contextlib.redirect_stdout(io.StringIO()):
             BC.build_guides(tmp / "site", tmpl, "https://graniterecord.org")
         page = (tmp / "site" / "guides" / "test-guide.html").read_text(encoding="utf-8")
