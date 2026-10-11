@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.529
+# GRANITE_VERSION: 2026-09-04.530
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -59147,8 +59147,11 @@ def _follow_email():
     # folder form passed on Node 22 here and failed on GitHub's Node 24 under
     # Windows (the dry run of 51a6944). Node's one-time ExperimentalWarning for
     # node:sqlite (the fake D1) is not a log line of the code under test.
-    r = _run([node, "--disable-warning=ExperimentalWarning", "--test", "tests/follow/index.js"],
-             capture_output=True, text=True)
+    # TAP by name too: the count below is read off "# pass N", and Node 24's
+    # default reporter prints "ℹ pass N" instead (the dry run of 5e2ef8f,
+    # whose 106 tests all passed and whose count this check could not find).
+    r = _run([node, "--disable-warning=ExperimentalWarning", "--test", "--test-reporter=tap",
+              "tests/follow/index.js"], capture_output=True, text=True)
     out = r.stdout + r.stderr
     passed = re.search(r"^# pass (\d+)", out, re.M)
     assert r.returncode == 0 and passed and int(passed.group(1)) > 0, out.strip()[-600:]
