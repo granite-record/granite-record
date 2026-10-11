@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-10-09.8
+// GRANITE_VERSION: 2026-10-09.9
 /* THE SITE'S COMPONENTS, IN THE BROWSER. Published as site/components.js and
    loaded by every page, in its head, before app.js, find.js and any page's
    own script, so each of them draws a person, a committee, a date or a time
@@ -193,6 +193,8 @@ var ICONS={
   calendar:'<rect x="3.5" y="4.75" width="17" height="16" rx="1.5"/>'+
     '<path d="M3.5 9.75h17M8 2.75v4M16 2.75v4"/>'+
     '<path d="M7.25 13.25h3v3h-3z" fill="currentColor"/>',
+  law:'<path d="M12 3.25v17.5M7.75 20.75h8.5M4.75 6.75h14.5M12 3.25v3.5"/>'+
+    '<path d="M4.75 6.75 2.25 13a2.5 2.5 0 0 0 5 0zM19.25 6.75 16.75 13a2.5 2.5 0 0 0 5 0z"/>',
   cite:'<path fill="currentColor" stroke="none" d="M4.5 18v-4.6c0-3.4 1.7-6 4.6-7.4l.9 1.6c-1.7 '+
     '1-2.6 2.4-2.8 4.2H10V18zM13.5 18v-4.6c0-3.4 1.7-6 4.6-7.4l.9 1.6c-1.7 1-2.6 2.4-2.8 '+
     '4.2H19V18z"/>',

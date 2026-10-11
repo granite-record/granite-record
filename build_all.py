@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.66
+# GRANITE_VERSION: 2026-09-05.69
 """
 Run the whole pipeline in the right order.
 
@@ -512,6 +512,21 @@ def plan(a):
              note="11,812 bills across all 19 terms; 18 withheld where the "
                   "docket gives one number to two bills"),
 
+        # The statutes (RSA_PAGE.md, src/parse/rsa.py): what each bill says
+        # it changes and cites, each section's history of change from its
+        # source note, and what each section cites. After the chapters, which
+        # turn a source note's session law into the bill it was. Every page's
+        # header links the Laws, so where the build is the kit's a missing
+        # db/NH_RSA.psv stops it (kit_required); the weekly refreshes the
+        # table (nightly.STATUTE_VIEWS). Elsewhere it is skipped and named.
+        Step("the statutes, and the bills that change them",
+             ["rsa.py"],
+             needs=["db/NH_RSA.psv", "chapters.json"],
+             produces=["rsa_citations.json"],
+             kit_required=True,
+             note="on 8 September 2026's table: 90.6% of the clause reader's claims "
+                  "for enacted bills confirmed by a source note, 84.5% of the notes found"),
+
         # An archived term's docket, and the histories built from it. Both
         # are skipped when the file is not there, so a checkout without the
         # archive builds exactly as before.
@@ -719,6 +734,22 @@ def plan(a):
                   "calendar printed under another bill takes the text its "
                   "committee filed, or none, and the page says which"),
 
+        # Related bills (RELATED_BILLS.md, src/parse/related_bills.py): which
+        # bills and amendments share their proposed language, and what the
+        # docket says became of each amendment. After the bill versions,
+        # whose amendment texts it reads, and the histories, whose dockets
+        # give the fates. Writes a file no page reads yet: what ships is
+        # decided at the bench. Skipped, and named, without the statute
+        # table, because without it quoted law reads as shared language.
+        Step("related bills: shared language, and where it went",
+             ["related_bills.py"],
+             needs=["db/NH_RSA.psv", "chapters.json", "narratives.json"],
+             produces=["related_bills.json"],
+             kit_required=True,
+             note="on 8 September 2026's table: 5,194 pairs of bills sharing most "
+                  "of their language, 2,829 amendment relations, 461 bills inside a "
+                  "law; about two minutes and 1.5 GB"),
+
         Step("site data",
              ["build_site_v2.py", "--data", "data", "--out", "site",
               "--segments", "work"],
@@ -799,6 +830,18 @@ def plan(a):
              produces=["site/resources.html"],
              note="the Learn pages and the Resources hub they hang off; needs "
                   "no network, and it owns resources.html and learn/"),
+
+        # The statutes as pages (RSA_PAGE.md; build_rsa.py): /laws and a page a
+        # chapter, each section with its history of change, the bills now
+        # proposing to change it and its references both ways. After the site
+        # data, whose bill index says which bills are still moving.
+        Step("the statutes: a page a chapter, and their search",
+             ["build_rsa.py", "--site", "site", "--base", a.base],
+             needs=["db/NH_RSA.psv", "rsa_citations.json", "site/meta.json"],
+             produces=["site/laws.html"],
+             kit_required=True,
+             note="1,786 chapter pages and /laws, about 105 MB; search files about 3.5 MB, "
+                  "fetched only on a first search"),
 
         Step("a page per town and ward",
              ["build_town_pages.py", "--site", "site", "--base", a.base],

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.198
+# GRANITE_VERSION: 2026-09-05.202
 """
 Generate the faceted site from real General Court data.
 
@@ -1016,8 +1016,45 @@ def _chapter_key(ch):
     return (int(m.group(1)), (m.group(2) or "").upper()) if m else None
 
 
+_STATUTES = []
+
+
+def _statutes():
+    """The statute table (rsa.py), read once a run, or None where
+    db/NH_RSA.psv is not on this disk."""
+    if not _STATUTES:
+        try:
+            import rsa
+            _STATUTES.append(rsa.load())
+        except Exception:                                        # noqa: BLE001
+            _STATUTES.append(None)
+    return _STATUTES[0]
+
+
 def rsa_url(chapter, section=None):
-    """The General Court's own page for a citation, or "" if unresolvable."""
+    """Where a citation links: the site's own statute page where the table
+    holds it, else the General Court's, else "" (no link).
+
+    THE SITE'S OWN PAGE FIRST (RSA_PAGE.md §7; the person, 11 October 2026:
+    "the RSA pages should be linked throughout the site to the Granite
+    Record pages as an interlinked system"). Where the statute table is on
+    disk, a section it holds links to its anchor, /rsa/91-a#s4; a section it
+    does not hold -- one a bill would create, or one repealed and gone --
+    links to its chapter's page where the chapter is held; and an address
+    the table does not hold at all is left as words, because a link built
+    from the title table to gc.nh.gov for it may well 404 (RSA_PAGE.md §2:
+    20,358 of the bill texts' section citations name an address the table
+    lacks). Without the table, the General Court's page, as before."""
+    table = _statutes()
+    if table is not None:
+        ch = (chapter or "").upper()
+        kind, target = table.resolve(ch, section) if section else table.resolve(ch)
+        if kind in ("section", "range"):
+            c, _, sec = target.partition(":")
+            return f"/laws/{c.lower()}#s{sec}"
+        if kind == "chapter" or (section and table.resolve(ch)[0] == "chapter"):
+            return f"/laws/{ch.lower()}"
+        return ""
     key = _chapter_key(chapter)
     if not key:
         return ""
@@ -7857,6 +7894,63 @@ def bill_committees(b, bid):
                  cmtes[0] if cmtes else ""), cmtes)
 
 
+_CHANGES = []
+
+
+def statute_changes(term, bid):
+    """The chapters and sections a bill's own text says it changes, from
+    rsa.py's rsa_citations.json -- the bill search's RSA filter (the person,
+    11 October 2026: the statute search replaces the floor vote day filter).
+    Each section's chapter is listed with it, so a chapter matches a bill
+    that changes any section of it. [] where the file is not on this disk."""
+    if not _CHANGES:
+        p = Path("rsa_citations.json")
+        try:
+            _CHANGES.append(json.loads(p.read_text(encoding="utf-8")).get("bills", {}) if p.is_file() else {})
+        except (OSError, ValueError):
+            _CHANGES.append({})
+    got = ((_CHANGES[0].get(term) or {}).get(bid) or {}).get("changes") or []
+    out = set(got) | {a.split(":")[0] for a in got}
+
+    def key(a):
+        ch, _, sec = a.partition(":")
+        m = re.match(r"(\d+)(?:-([A-Z]+))?$", ch)
+        return ((int(m.group(1)), m.group(2) or "") if m else (99999, ch), sec)
+    return sorted(out, key=key)
+
+
+_ENACTED = []
+
+
+def statutes_enacted(term, bid):
+    """The statute sections the source notes say this bill wrote, as the law
+    it became (RSA_PAGE.md §7, "Changed these statutes"), in statute order:
+    the other way round from a section's history, so the two pages link both
+    ways. [] where rsa_citations.json is not on this disk or the bill became
+    no law a note names."""
+    if not _ENACTED:
+        inv = defaultdict(list)
+        p = Path("rsa_citations.json")
+        try:
+            data = json.loads(p.read_text(encoding="utf-8")) if p.is_file() else {}
+        except (OSError, ValueError):
+            data = {}
+        for addr, rows in (data.get("enacted") or {}).items():
+            for _y, _law, b in rows:
+                if b and addr not in inv[b]:
+                    inv[b].append(addr)
+        _ENACTED.append(inv)
+    got = list(_ENACTED[0].get(f"{term}/{bid}", []))
+
+    def key(a):
+        ch, _, sec = a.partition(":")
+        m = re.match(r"(\d+)(?:-([A-Z]+))?$", ch)
+        n = re.match(r"(\d+)(?:\.(\d+))?(?:-(.*))?$", sec)
+        return ((int(m.group(1)), m.group(2) or "") if m else (99999, ch),
+                (int(n.group(1)), int(n.group(2) or 0), n.group(3) or "") if n else (99999, 0, sec))
+    return sorted(got, key=key)
+
+
 def bill_index_row(bid, b, year, term, cmte, cmtes, disp, prime,
                    narr, rcs, coverage, carried, dates, chapter="",
                    passed=None, acted=None, live=False):
@@ -7929,6 +8023,9 @@ def bill_index_row(bid, b, year, term, cmte, cmtes, disp, prime,
         **({"chapter": chapter} if chapter else {}),
         "nrc": len([r for r in rcs if not r.get("procedural")]),
         "votedays": sorted({r["date"] for r in rcs if r.get("date")}),
+        # Only where the bill changes a statute, so the index grows by what
+        # the RSA filter needs and nothing on a night without the file.
+        **({"rsa": ch} if (ch := statute_changes(term, bid)) else {}),
     }
 
 # The record's own name for a stage a bill stopped at, for bill_disposition's
@@ -10858,6 +10955,11 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
             # adopted. A bill with no text on disk gets no row rather than a
             # row inferred from either.
             "amends": bill_amends((btext or {}).get("body", "")),
+            # WHAT IT CHANGED, AS THE LAW IT BECAME: the statute's own source
+            # notes, not the bill's text (RSA_PAGE.md §3: the two agree on
+            # about nine in ten of the text's claims). Only on a bill a note
+            # names, and only where the statute pages are built.
+            **({"changed": ch} if (ch := statutes_enacted(term, bid)) else {}),
         }), encoding="utf-8")
 
     if status_pages:

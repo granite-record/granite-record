@@ -68,9 +68,8 @@
       "paths": ["db/past/PastDocket.psv"]
     },
     {
-      "what": "The General Court's statute table, every RSA section with its text and source note (fetch_archive_db.py --only NH_RSA; 107.6 MB). rsa.py reads it for what each bill changes and each section's history (rsa_citations.json), and the statute pages will be built from it. Optional because the laptop has to send it first: a night that has none skips the statute step and names it. It changes only when the person refreshes the table, about once a year after the session's laws are codified.",
-      "owner": "laptop",
-      "optional": true,
+      "what": "The General Court's statute table, every RSA section with its text and source note (fetch_archive_db.py --only NH_RSA; about 108 MB). rsa.py reads it for what each bill changes and each section's history (rsa_citations.json), related_bills.py to tell quoted law from shared language, and build_rsa.py builds the Laws pages from it. Required: every page's header links the Laws, so a night without it stops. The weekly takes it fresh from the database each Sunday (nightly.STATUTE_VIEWS) and swaps it in only whole, with its columns unchanged and no more than 5% fewer sections; the laptop sends the first copy.",
+      "owner": "night",
       "paths": ["db/NH_RSA.psv"]
     },
     {

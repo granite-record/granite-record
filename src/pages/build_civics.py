@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.41
+# GRANITE_VERSION: 2026-09-08.43
 """
 The civics section: a hub and one page per topic, in order.
 
@@ -1040,6 +1040,14 @@ def hub_learn(topics):
         "numbers", f'<a href="{E(learn_href(NUMBERS_SLUG))}">{NUMBERS_TITLE}</a>',
         '<p class="r-intro">Counted from the General Court&rsquo;s own record.</p>'
         f'<p class="r-one">{curly(NUMBERS_WHAT[0].upper() + NUMBERS_WHAT[1:])}.</p>'))
+    # THE STATUTES, the next layer after the constitution (RSA_PAGE.md §10),
+    # where build_rsa.py will write them: only where the statute table is on
+    # this disk, so the hub never links a page a night did not build.
+    if Path("db/NH_RSA.psv").is_file():
+        out.append(hub_section(
+            "statutes", '<a href="/laws">Laws (RSA)</a>',
+            '<p class="r-intro">Every chapter of the state&rsquo;s laws, searchable by number or '
+            'subject, each section with the bills that changed it and the bills now proposing to.</p>'))
     return "".join(out)
 
 

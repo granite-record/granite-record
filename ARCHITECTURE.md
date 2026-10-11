@@ -1527,6 +1527,51 @@ Two things read it:
   build is recorded under a second `PYTHONHASHSEED`, and compares a later
   build with it -- so a baseline is built once per commit, not once per step.
 
+## The statutes and related bills (11 October 2026)
+
+Two parse steps and one page step, all asking nobody, all skipped and named
+on a machine without `db/NH_RSA.psv` (the General Court's statute table, an
+optional laptop file in the kit until the person sends it).
+
+- **`src/parse/rsa.py`** reads the table once and is the one reader of statute
+  citations: lists and ranges that drop "RSA", four-digit article sections,
+  resolution against the table, a bill's own instruction clauses (with the
+  new sections, new chapters and reenacted chapters it writes), and each
+  section's source note joined to `chapters.json` for the bill each session
+  law was. It writes `rsa_citations.json` (`bills`, `enacted`, `statute`,
+  `asof`). Scored against the source notes, which it did not write: 90.6% of
+  its section claims for enacted bills confirmed, 84.5% of the notes found
+  (`_rsa_reader` fails if either falls). The site's older readers in
+  `build_site_v2` and `topic_model` still stand beside it; moving them onto
+  it is its own change, checked byte for byte.
+- **`src/parse/related_bills.py`** finds bills and amendments sharing their
+  proposed language (five-word shingles, quoted law masked by the statute
+  text and `chapters.json`) and reads each amendment's fate from its bill's
+  docket. It writes `related_bills.json`, keyed `{term: {bill}}`. No page
+  reads it: `review.py`'s "related" kind is the gate, seven strata of thirty.
+- **`src/pages/build_rsa.py`** writes `/laws`, a page a chapter
+  (`/laws/91-a#s4`), and the landing page's search files
+  (`site/laws/chapters.json`, `headings.json`, `words.json`). Each section
+  carries a Pending tag for the sitting term's moving bills that name it,
+  its history from the source note, the other bills that proposed changes,
+  and its references both ways.
+  The header calls them Laws, beside Bills (the person, 11 October 2026),
+  and each page says when the table was taken.
+
+The table is the night's: the weekly takes `NH_RSA` from the General Court's
+database each Sunday (`nightly.STATUTE_VIEWS`), the SQL host and not the web
+server, and `take_views` swaps it in only whole, with the columns
+`db/_columns.json` reads it by and no more than 5% fewer sections. The kit
+carries it as required, and the three statute steps are `kit_required`, so a
+night without it stops rather than publish a header linking pages it did
+not build.
+
+Bill pages link into them: `build_site_v2.rsa_url` gives `/laws/...` where the
+table holds the address (the chapter's page for a section it lacks, nothing
+for a chapter it lacks), each index row carries `rsa` for the bill search's
+RSA (Statute) filter, and an enacted bill's record carries `changed`, the
+sections its law wrote.
+
 ## Known rough edges
 
 Each is described where it belongs; this is the list in one place.
