@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-09.19
+# GRANITE_VERSION: 2026-09-09.20
 """
 The bench: one sample at a time, judged by a person, written down for good.
 
@@ -1084,6 +1084,7 @@ KINDS = {
                  "yet: each kind is shown only if at most two of its thirty are judged wrong. "
                  "Thirty from each of seven strata (RELATED_BILLS.md section 5).",
         "sample": sample_related, "show": show_related,
+        "empty": "  -- no related_bills.json here: run python src/parse/related_bills.py first",
         "fields": [],
         "verdicts": [("correct", "Right"), ("wrong_label", "Related, wrong label"),
                      ("wrong", "Not related"), ("unsure", "Cannot tell")],
@@ -1112,11 +1113,19 @@ def pool_for(kind, refresh=False):
     cache = OUT / f".pool-{kind}.json"
     if not refresh and cache.exists():
         try:
-            return json.loads(cache.read_text(encoding="utf-8"))
+            cached = json.loads(cache.read_text(encoding="utf-8"))
         except ValueError:
-            pass
+            cached = None
+        # AN EMPTY POOL IS NOT KEPT. A kind whose source was not on disk yet
+        # (related_bills.json, before related_bills.py had run here) cached
+        # nothing, and every later start served that nothing from the cache.
+        if cached:
+            return cached
     items = KINDS[kind]["sample"]()
-    cache.write_text(json.dumps(items), encoding="utf-8")
+    if items:
+        cache.write_text(json.dumps(items), encoding="utf-8")
+    else:
+        cache.unlink(missing_ok=True)
     return items
 
 
@@ -1504,7 +1513,8 @@ def main():
         Bench.pool[name] = items
         took = time.time() - t0
         print(f"  {KINDS[name]['label']:32} {len(items):7,}"
-              + (f"  ({took:.0f}s)" if took > 2 else ""))
+              + (f"  ({took:.0f}s)" if took > 2 else "")
+              + (KINDS[name].get("empty", "") if not items else ""))
     # 127.0.0.1 AND NOT 0.0.0.0. This shows unpublished judgments and writes a
     # file the site is measured against; it has no business on a network.
     srv = HTTPServer(("127.0.0.1", a.port), Bench)
