@@ -1,0 +1,30 @@
+{
+  "format": 1,
+  "date": "2026-10-07",
+  "built": "2026-10-07T09:06:30Z",
+  "sitting_term": "2025-2026",
+  "new_by": "first-seen",
+  "refs": {
+    "bill:2026/HB9902": {
+      "items": [
+        {"guid": "2025-2026:HB9902:2026-10-06:signed-by-governor-10-06-2026-chapter-0999",
+         "date": "2026-10-06", "kind": "action",
+         "summary": "HB 9902 — Signed by Governor 10/06/2026; Chapter 0999",
+         "url": "/bill/2026/hb9902", "term": "2025-2026", "seen": "2026-10-07T09:06:30Z"}
+      ],
+      "ended": {"how": "law", "summary": "HB 9902 was signed into law.",
+                "date": "2026-10-06", "guid": "2025-2026:HB9902:closed:law"}
+    },
+    "bill:2026/HB9903": {
+      "items": [
+        {"guid": "2025-2026:HB9903:2026-10-06:executive-session-10-06-2026-1-00-pm-lob",
+         "date": "2026-10-06", "kind": "exec",
+         "summary": "HB 9903-FN — Executive Session: 10/06/2026 1:00 pm LOB 305",
+         "url": "/bill/2026/hb9903", "term": "2025-2026", "seen": "2026-10-07T09:06:30Z"},
+        {"guid": "hearing:HB9903:2026-10-14:10:00", "date": "2026-10-06", "kind": "scheduled",
+         "summary": "HB 9903-FN — Public Hearing: 10/14/2026 10:00 am LOB 305",
+         "url": "/bill/2026/hb9903", "term": "2025-2026", "seen": "2026-10-07T09:06:30Z"}
+      ]
+    }
+  }
+}

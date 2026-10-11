@@ -1,0 +1,17 @@
+{
+  "format": 1,
+  "date": "2026-10-05",
+  "built": "2026-10-05T09:04:11Z",
+  "sitting_term": "2025-2026",
+  "new_by": "first-seen",
+  "refs": {
+    "bill:2026/HB9901": {
+      "items": [
+        {"guid": "2025-2026:HB9901:2026-10-02:full-committee-work-session-10-02-2026-1",
+         "date": "2026-10-02", "kind": "action",
+         "summary": "HB 9901 — Full Committee Work Session: 10/02/2026 10:00 am LOB 305",
+         "url": "/bill/2026/hb9901", "term": "2025-2026", "seen": "2026-10-05T09:04:11Z"}
+      ]
+    }
+  }
+}
