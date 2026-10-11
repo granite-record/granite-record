@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.42
+# GRANITE_VERSION: 2026-09-08.43
 """
 The civics section: a hub and one page per topic, in order.
 
@@ -1045,7 +1045,7 @@ def hub_learn(topics):
     # this disk, so the hub never links a page a night did not build.
     if Path("db/NH_RSA.psv").is_file():
         out.append(hub_section(
-            "statutes", '<a href="/rsa">The Statutes (RSA)</a>',
+            "statutes", '<a href="/laws">Laws (RSA)</a>',
             '<p class="r-intro">Every chapter of the state&rsquo;s laws, searchable by number or '
             'subject, each section with the bills that changed it and the bills now proposing to.</p>'))
     return "".join(out)

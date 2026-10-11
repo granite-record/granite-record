@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.537
+# GRANITE_VERSION: 2026-09-04.538
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -27937,6 +27937,30 @@ def _built_site(here, root, brand=True, env=None):
         {"Raymond": {"0": seat}, "Stratham": {"0": seat},
          "Brentwood": floterial_town(6), "Fremont": floterial_town(7),
          "Danville": floterial_town(8)}), encoding="utf-8")
+    # THE LAWS, FROM A TWO-SECTION TABLE (11 October 2026). Every header
+    # links laws.html, so a fixture without the Laws pages is a site of
+    # broken links; build_rsa.py reads this folder's table (--db) and a
+    # citations file with no bills in it, since the fixture's bills cite none.
+    cols = ["id", "TitleNo", "ChapterNo", "SectionNo", "Title", "Chapter", "Section", "SourceNote",
+            "rsa", "EntireRSA", "titleNumber", "url"]
+    (root / "db").mkdir(exist_ok=True)
+    (root / "db" / "_columns.json").write_text(json.dumps({"NH_RSA": cols}), encoding="utf-8")
+    (root / "db" / "_manifest.json").write_text(json.dumps(
+        {"NH_RSA": {"rows": 2, "fetched": "2026-09-08T20:53:02"}}), encoding="utf-8")
+    (root / "db" / "NH_RSA.psv").write_text("\n".join("|".join(r) for r in (
+        ["1", "VI", "91-A", "91-A-4", "TITLE VI PUBLIC OFFICERS AND EMPLOYEES",
+         "CHAPTER 91-A ACCESS TO GOVERNMENTAL RECORDS AND MEETINGS",
+         "Section 91-A:4 Minutes and Records Available for Public Inspection.",
+         "<p><b>Source.</b> 1967, 251:1. </p>", "",
+         "<codesect> I. Every citizen ... except as otherwise prohibited by RSA 91-A:5.</codesect>",
+         "6", "VI\\91-A\\91-A-4.htm"],
+        ["2", "VI", "91-A", "91-A-5", "TITLE VI PUBLIC OFFICERS AND EMPLOYEES",
+         "CHAPTER 91-A ACCESS TO GOVERNMENTAL RECORDS AND MEETINGS", "Section 91-A:5 Exemptions.",
+         "", "", "<codesect> The following governmental records are exempted</codesect>", "6",
+         "VI\\91-A\\91-A-5.htm"])) + "\n", encoding="utf-8")
+    (root / "rsa_citations.json").write_text(json.dumps(
+        {"bills": {}, "enacted": {"91-A:4": [["1967", "251:1", ""]]}, "statute": {},
+         "asof": {"laws_through": 2025}}), encoding="utf-8")
     base = "https://graniterecord.org"
     steps = [
         # meta.json and the term files it names are the bill index; the
@@ -27961,6 +27985,7 @@ def _built_site(here, root, brand=True, env=None):
         ("build_committees.py", ["--site", "site", "--data", "data",
                                  "--base", base], "site/committees.json"),
         ("build_civics.py", ["--site", "site", "--base", base], "site/resources.html"),
+        ("build_rsa.py", ["--site", "site", "--base", base, "--db", "db"], "site/laws.html"),
         ("build_town_pages.py", ["--site", "site", "--base", base], "site/town"),
         # The district map's data, after the town pages, as in build_all.
         ("build_district_map.py", ["--site", "site"], "site/district_map.json"),
@@ -32539,7 +32564,7 @@ def _session_suspend_two_thirds(SD, BSP, MO):
 def _rsa_links_own_pages(B, RSA):
     """The person, 11 October 2026: "the RSA pages should be linked throughout
     the site to the Granite Record pages as an interlinked system". With the
-    statute table loaded, build_site_v2.rsa_url gives /rsa/<chapter>#s<section>
+    statute table loaded, build_site_v2.rsa_url gives /laws/<chapter>#s<section>
     for a section the table holds, the chapter's page for one it does not
     (a new section a bill writes), and nothing for a chapter it does not hold
     -- never a gc.nh.gov address built for a page that may not exist. The
@@ -32555,8 +32580,8 @@ def _rsa_links_own_pages(B, RSA):
         amends = B.bill_amends("1 Records. Amend RSA 91-A:4, IV to read as follows: IV. x")
     finally:
         B._STATUTES[:] = keep
-    assert got == ("/rsa/91-a#s4", "/rsa/91-a", "/rsa/91-a", ""), got
-    assert amends == {"RSA 91-A:4": "/rsa/91-a#s4"}, amends
+    assert got == ("/laws/91-a#s4", "/laws/91-a", "/laws/91-a", ""), got
+    assert amends == {"RSA 91-A:4": "/laws/91-a#s4"}, amends
     keep_e = list(B._ENACTED)
     try:
         B._ENACTED[:] = [{"2019-2020/HB286": ["91-A:4", "6:12", "91-A:1-a"]}]
@@ -32612,13 +32637,74 @@ def _rsa_pages(B, RSA, S):
         shutil.rmtree(root, ignore_errors=True)
     sec = page[page.index('id="s4"'):page.index('id="s5"')]
     assert "Pending: 1 bill" in sec and 'href="/bill/2025/hb100"' in sec, "the moving bill is not tagged"
-    assert 'href="/rsa/91-a#s5"' in sec, "a citation the table holds is not linked to its anchor"
-    assert "91-A:99" in sec and 'href="/rsa/91-a#s99"' not in sec, "a section the table lacks was linked"
+    assert 'href="/laws/91-a#s5"' in sec, "a citation the table holds is not linked to its anchor"
+    assert "91-A:99" in sec and 'href="/laws/91-a#s99"' not in sec, "a section the table lacks was linked"
     hist = sec[sec.index('class="rs-hist"'):]
     assert hist.index("2019") < hist.index("1967") and 'href="/bill/2019/hb286"' in hist, \
         "the history is not newest first with its bill"
     assert "Access to Governmental Records and Meetings" in page, "the chapter's name is not in title case"
     return "ok", "91-A:4 tagged pending by HB 100, linked to 91-A:5 and not to 91-A:99, history 2019 then 1967"
+
+
+@check("build", "the weekly takes the statutes whole: a short copy or one whose columns moved is "
+       "refused, and the Laws pages say when the table was taken", needs=("nightly", "build_rsa"))
+def _statutes_weekly(NI, B):
+    """nightly.STATUTE_VIEWS (the person, 11 October 2026: the statutes "need
+    to be confirmed and updated regularly automatically without requiring
+    maintenance from me"). The weekly asks fetch_archive_db.py for NH_RSA in a
+    scratch folder, here a stand-in that writes what a dump writes, and
+    take_views swaps it in only whole: as many lines as the query counted, no
+    more than STATUTE_SHRINK fewer than the copy it replaces, and the columns
+    db/_columns.json already reads it by."""
+    import contextlib
+    import io
+    import probe_db
+    cols = ["id", "ChapterNo", "SectionNo", "rsa"]
+    here, tmp = os.getcwd(), Path(tempfile.mkdtemp(prefix="gr-statutes-"))
+    saved = (NI.run, NI.LOG, NI.QUIET, probe_db.hold_standing)
+
+    def dump(n, columns):
+        def run(args, label, cwd=None):
+            assert args[0] == "fetch_archive_db.py" and "NH_RSA" in args, args
+            db = Path(cwd) / "db"
+            db.mkdir(parents=True, exist_ok=True)
+            (db / "NH_RSA.psv").write_text("".join(f"{i}|1|1-{i}|x\n" for i in range(n)), encoding="utf-8")
+            (db / "_manifest.json").write_text(json.dumps(
+                {"NH_RSA": {"rows": n, "fetched": "2026-10-18T09:00:00"}}), encoding="utf-8")
+            (db / "_columns.json").write_text(json.dumps({"NH_RSA": columns}), encoding="utf-8")
+            return 0
+        return run
+    try:
+        os.chdir(tmp)
+        NI.LOG, NI.QUIET = [], True
+        probe_db.hold_standing = lambda: None
+        Path("db").mkdir()
+        Path("db/_columns.json").write_text(json.dumps({"NH_RSA": cols}), encoding="utf-8")
+        Path("db/NH_RSA.psv").write_text("".join(f"{i}|1|1-{i}|x\n" for i in range(100)), encoding="utf-8")
+        got = []
+        for n, columns in ((94, cols), (99, cols[::-1]), (99, cols)):
+            NI.run = dump(n, columns)
+            with contextlib.redirect_stdout(io.StringIO()):
+                got.append(NI.take_views(NI.STATUTE_VIEWS, "the statutes", shrink=NI.STATUTE_SHRINK)["NH_RSA"])
+        assert got[0].startswith("not taken: 94 rows against 100"), got
+        assert got[1] == "not taken: its columns are not the ones db/_columns.json reads it by", got
+        assert got[2].startswith("installed, 99 rows"), got
+        assert NI.count_lines(Path("db/NH_RSA.psv")) == 99, "the installed copy is not the one taken"
+        assert B.taken_on("db") == "October 18, 2026", B.taken_on("db")
+    finally:
+        os.chdir(here)
+        NI.run, NI.LOG, NI.QUIET, probe_db.hold_standing = saved
+        shutil.rmtree(tmp, ignore_errors=True)
+    assert "NH_RSA" in NI.STATUTE_VIEWS and NI.STATUTE_SHRINK <= 0.05
+    src = Path(NI.__file__).read_text(encoding="utf-8")
+    assert re.search(r"take_views\(STATUTE_VIEWS, [^)]*shrink=STATUTE_SHRINK\)", src), \
+        "the weekly does not take the statutes with their own shrink"
+    kit = json.loads(Path(_paths.ROOT / "cloud_kit.json").read_text(encoding="utf-8"))["kit"]
+    e = [x for x in kit if "db/NH_RSA.psv" in x.get("paths", [])]
+    assert len(e) == 1 and e[0]["owner"] == "night" and not e[0].get("optional"), \
+        "the kit does not carry the statute table as the night's, required"
+    return "ok", ("94 of 100 refused, columns moved refused, 99 of 100 installed; "
+                  "the pages say the table was taken on October 18, 2026")
 
 
 @check("build", "related bills: the same text hashes the same everywhere, quoted law is not shared "
@@ -52626,7 +52712,7 @@ def _icons_named():
                              r'([^<]*)</a>', nav, re.S)
             # 404.html names them from the root, since it answers at any depth
             if [(h.lstrip("/"), s, w.strip()) for h, s, w in got] != want_nav:
-                bad.append(f"{where}: the header's sections are not NAV_TABS's five, each with its "
+                bad.append(f"{where}: the header's sections are not NAV_TABS's, each with its "
                            f"drawing: {[(h, w.strip()) for h, _s, w in got]}")
     # Follow, Report a problem and Share are mounted outside anything the
     # drawing records; _share_beside_report holds those three the same way.
@@ -53601,17 +53687,17 @@ def _nav_ladder():
     wide = _braced(shared, "@media (min-width:63em){")
     assert ".navtabs{position:static;transform:none;flex-wrap:nowrap;width:max-content;margin:0 auto}" \
         in wide and ".themer{margin-left:0}" in wide and "nav.top .in{position:static;flex-wrap:nowrap}" \
-        in wide, "from 1008px the five are not one row in the flow, centred between the wordmark and the controls"
+        in wide, "from 1008px the sections are not one row in the flow, centred between the wordmark and the controls"
     assert shared.index("@media (min-width:63em){") > shared.index("@media (min-width:68.75em){"), (
         "the strip centred on the bar comes after the rule that puts it in the flow, and wins")
     tab = _braced(shared, "@media (min-width:45.0625em) and (max-width:62.9375em){")
     assert ".navtabs{order:3;flex:1 0 100%;flex-wrap:nowrap" in tab \
         and "nav.top .navtabs a{flex:1 1 0;justify-content:center;min-height:44px" in tab, (
-            "on a tablet the five are not a row of their own in equal cells")
+            "on a tablet the sections are not a row of their own in equal cells")
     assert ".findbtn span{position:absolute;width:1px;height:1px" in shared.split("@media")[0] \
         or re.search(r"\n\.findbtn span\{position:absolute;width:1px;height:1px", shared), (
             "Search shows its word above a phone's width")
-    return "ok", ("one row from 1008px, in the flow; a row of five equal cells from 721 to 1007; "
+    return "ok", ("one row from 1008px, in the flow; a row of equal cells from 721 to 1007; "
                   "Search its drawing at every width")
 
 
@@ -70396,8 +70482,8 @@ def _stand_down(R, NI, FA):
         os.chdir(here)
         shutil.rmtree(tmp, ignore_errors=True)
 
-    assert set(FA.GITHUB_VIEWS) == set(NI.STUDY_NIGHTLY) | set(NI.STUDY_WEEKLY), (
-        "fetch_archive_db.GITHUB_VIEWS and nightly.py's study views disagree about which "
+    assert set(FA.GITHUB_VIEWS) == set(NI.STUDY_NIGHTLY) | set(NI.STUDY_WEEKLY) | set(NI.STATUTE_VIEWS), (
+        "fetch_archive_db.GITHUB_VIEWS and nightly.py's database views disagree about which "
         "views GitHub owns")
     bat = Path("publish.bat").read_text(encoding="utf-8", errors="replace")
     guard = bat.find('if exist "' + str(R.STANDDOWN).replace("/", "\\") + '"')

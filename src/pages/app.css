@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.252 */
+/* GRANITE_VERSION: 2026-09-07.253 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -6035,7 +6035,7 @@ border-bottom:2px solid var(--ink-2);transform:rotate(-45deg);transition:transfo
 /* POLISH 2 -- SESSION DAYS: END ----------------------------------------- */
 
 /* ==== THE STATUTES (build_rsa.py) ========================================
-   /rsa and /rsa/<chapter>. A section is an anchor on its chapter's page; its
+   /laws and /laws/<chapter>. A section is an anchor on its chapter's page; its
    heading in the serif, its text at reading size, and everything about it --
    the pending tag, how it has changed, who else proposed changes, what it
    cites and what cites it -- in folds of the sans at the size of meta, so a

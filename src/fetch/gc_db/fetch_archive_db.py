@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.11
+# GRANITE_VERSION: 2026-09-08.12
 """
 Every view in the General Court's public database, onto this disk.
 
@@ -80,7 +80,7 @@ MANIFEST = OUT / "_manifest.json"
 # Sunday nights. nightly.py names the same four, and preflight holds the two
 # lists together.
 GITHUB_VIEWS = ("StatStudDetails", "StatStudMembers", "StatStudMeetings",
-                "vStatStudTemp")
+                "vStatStudTemp", "NH_RSA")
 
 # (view, database, order-by or "", why). Ordered smallest-first so a run that
 # is going to fail on connection fails in seconds rather than after the

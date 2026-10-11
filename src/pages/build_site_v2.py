@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.201
+# GRANITE_VERSION: 2026-09-05.202
 """
 Generate the faceted site from real General Court data.
 
@@ -1051,9 +1051,9 @@ def rsa_url(chapter, section=None):
         kind, target = table.resolve(ch, section) if section else table.resolve(ch)
         if kind in ("section", "range"):
             c, _, sec = target.partition(":")
-            return f"/rsa/{c.lower()}#s{sec}"
+            return f"/laws/{c.lower()}#s{sec}"
         if kind == "chapter" or (section and table.resolve(ch)[0] == "chapter"):
-            return f"/rsa/{ch.lower()}"
+            return f"/laws/{ch.lower()}"
         return ""
     key = _chapter_key(chapter)
     if not key:

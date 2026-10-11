@@ -1549,14 +1549,24 @@ optional laptop file in the kit until the person sends it).
   text and `chapters.json`) and reads each amendment's fate from its bill's
   docket. It writes `related_bills.json`, keyed `{term: {bill}}`. No page
   reads it: `review.py`'s "related" kind is the gate, seven strata of thirty.
-- **`src/pages/build_rsa.py`** writes `/rsa`, a page a chapter
-  (`/rsa/91-a#s4`), and the landing page's search files
-  (`site/rsa/chapters.json`, `headings.json`, `words.json`). Each section
+- **`src/pages/build_rsa.py`** writes `/laws`, a page a chapter
+  (`/laws/91-a#s4`), and the landing page's search files
+  (`site/laws/chapters.json`, `headings.json`, `words.json`). Each section
   carries a Pending tag for the sitting term's moving bills that name it,
   its history from the source note, the other bills that proposed changes,
   and its references both ways.
+  The header calls them Laws, beside Bills (the person, 11 October 2026),
+  and each page says when the table was taken.
 
-Bill pages link into them: `build_site_v2.rsa_url` gives `/rsa/...` where the
+The table is the night's: the weekly takes `NH_RSA` from the General Court's
+database each Sunday (`nightly.STATUTE_VIEWS`), the SQL host and not the web
+server, and `take_views` swaps it in only whole, with the columns
+`db/_columns.json` reads it by and no more than 5% fewer sections. The kit
+carries it as required, and the three statute steps are `kit_required`, so a
+night without it stops rather than publish a header linking pages it did
+not build.
+
+Bill pages link into them: `build_site_v2.rsa_url` gives `/laws/...` where the
 table holds the address (the chapter's page for a section it lacks, nothing
 for a chapter it lacks), each index row carries `rsa` for the bill search's
 RSA (Statute) filter, and an enacted bill's record carries `changed`, the

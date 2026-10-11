@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.61
+# GRANITE_VERSION: 2026-09-04.62
 """
 The nightly run. Fetch the day's bulk files, rebuild, check, compile what
 readers reported and what changed -- and publish only if told to.
@@ -691,6 +691,18 @@ KIND_CAPTIONS_PUT_BACK = "the start times read tonight put back by the timestamp
 # What a captions state answers that does not say "captions waiting".
 CAPTIONS_WAITING = ("waiting", "deferred", "failed", "for-laptop", "none-yet")
 STUDY_WEEKLY = ("StatStudMembers", "vStatStudTemp")
+# THE STATUTES, WEEKLY (the person, 11 October 2026: the statutes list "needs
+# to be confirmed and updated regularly automatically without requiring
+# maintenance from me"). One view, NH_RSA: every section's text and source
+# note, about 30,000 rows and 108 MB, 17 seconds to dump on 8 September. The
+# SQL host the General Court publishes credentials for, not the web server;
+# once a week, in the weekly's own sequence, after the study views. The law
+# changes on fixed effective dates, so a week behind is never the news. Its
+# own shrink, whatever the New term box says: a statute table does not lose a
+# twentieth of its sections in a week, and one that seems to has come back
+# short.
+STATUTE_VIEWS = ("NH_RSA",)
+STATUTE_SHRINK = 0.05
 
 # A result this much smaller than the copy it would replace is not swapped in:
 # snapshot_gencourt's rule for the day's files, used for every other fetch.
@@ -3231,12 +3243,21 @@ def take_views(views, label, shrink=SWAP_SHRINK, not_again=False):
              label, cwd=scratch)
     man = load_json(scratch / "db" / "_manifest.json") or {}
     installed_man = load_json(Path("db") / "_manifest.json") or {}
+    # THE COLUMNS AS WELL AS THE ROWS. The dump has no header row: every
+    # reader maps a line by db/_columns.json's order, which is not swapped in
+    # with the view, so a view whose columns came back in another order or
+    # number would be read with the wrong names. Refused, as a short one is.
+    cols_new = load_json(scratch / "db" / "_columns.json") or {}
+    cols_old = load_json(Path("db") / "_columns.json") or {}
     took, out = False, {}
     for v in views:
         new, old = scratch / "db" / f"{v}.psv", Path("db") / f"{v}.psv"
         entry = man.get(v) or {}
         if entry.get("error") or not new.exists() or not entry.get("rows"):
             out[v] = ("not taken: " + str(entry.get("error") or f"nothing came back (exit {rc})"))[:240]
+            continue
+        if cols_old.get(v) and cols_new.get(v) != cols_old.get(v):
+            out[v] = "not taken: its columns are not the ones db/_columns.json reads it by"
             continue
         rows = count_lines(new)
         if rows != entry["rows"]:
@@ -4541,7 +4562,7 @@ def weekly(a):
               "former_members": load_json("former_members.json") or {},
               "committees": load_json("committees.json") or {},
               "study": {x: count_lines(Path("db") / f"{x}.psv")
-                        for x in STUDY_WEEKLY if (Path("db") / f"{x}.psv").exists()}}
+                        for x in STUDY_WEEKLY + STATUTE_VIEWS if (Path("db") / f"{x}.psv").exists()}}
     try:
         if a.new_term and (a.dry_run or a.no_fetch):
             # Clean, and having taken nothing, its page used to say the lists
@@ -4583,6 +4604,10 @@ def weekly(a):
             study = take_views(STUDY_WEEKLY, "the study committees' members and bills, "
                                              "from the database", shrink=shrink)
             res.update({f"study {k}": r for k, r in study.items()})
+            time.sleep(4)
+            laws = take_views(STATUTE_VIEWS, "the statutes, from the database",
+                              shrink=STATUTE_SHRINK)
+            res.update({f"statutes {k}": r for k, r in laws.items()})
             time.sleep(4)
             if refusal.MARK.exists():
                 res["committees"] = "not asked: a refusal is on file"
@@ -4684,6 +4709,11 @@ def write_weekly_report(day, before):
         p = Path("db") / f"{x}.psv"
         now = count_lines(p) if p.exists() else 0
         lines.append(f"- {x}: {now:,} rows, was {before['study'].get(x, 0):,}")
+    lines += ["", "## The statutes (db/)", ""]
+    for x in STATUTE_VIEWS:
+        p = Path("db") / f"{x}.psv"
+        now = count_lines(p) if p.exists() else 0
+        lines.append(f"- {x}: {now:,} sections, was {before['study'].get(x, 0):,}")
     out = REPORTS / f"gc-changes-weekly-{day}.md"
     REPORTS.mkdir(exist_ok=True)
     out.write_text("\n".join(lines) + "\n", encoding="utf-8", newline="\n")

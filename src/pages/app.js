@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.189
+// GRANITE_VERSION: 2026-09-07.190
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -2397,7 +2397,7 @@ let rsaText="";
 const RSA_SHAPE=/^\s*(?:rsa\s*)?(\d{1,3}(?:-[a-z]{1,2})?)(?:\s*:\s*([0-9]{1,4}(?:\.[0-9]{1,2})?(?:-[a-z0-9]{1,4})?))?\s*$/i;
 function rsaNorm(t){const m=RSA_SHAPE.exec(String(t||""));return m?m[1].toUpperCase()+(m[2]?":"+m[2].toLowerCase():""):"";}
 function rsaHas(b,want){return (b.rsa||[]).includes(want);}
-function rsaHref(a){const p=a.split(":");return "/rsa/"+p[0].toLowerCase()+(p[1]?"#s"+p[1]:"");}
+function rsaHref(a){const p=a.split(":");return "/laws/"+p[0].toLowerCase()+(p[1]?"#s"+p[1]:"");}
 let HAS_RSA=null;
 function hasRsa(){if(HAS_RSA===null&&IDX&&IDX.length)HAS_RSA=IDX.some(b=>b.rsa);return !!HAS_RSA;}
 // On a phone the filter column stacks ABOVE the results, and an open
@@ -3770,7 +3770,7 @@ const RSA_SHOWN=8;
 function changedLine(d){
   const a=d.changed||[];
   if(!a.length)return "";
-  const link=x=>{const p=x.split(":");return `<a class="rsa" href="/rsa/${esc(p[0].toLowerCase())}#s${esc(p[1]||"")}">${esc(x)}</a>`;};
+  const link=x=>{const p=x.split(":");return `<a class="rsa" href="/laws/${esc(p[0].toLowerCase())}#s${esc(p[1]||"")}">${esc(x)}</a>`;};
   const lead=a.length===1?"Changed RSA":"Changed these statutes:";
   if(a.length<=RSA_SHOWN+2)return `<p class="rsaline">${lead} ${a.map(link).join(", ")}</p>`;
   return `<div class="rsaline">${lead} <span class="rsaset">${a.slice(0,RSA_SHOWN).map(link).join(", ")}</span>`

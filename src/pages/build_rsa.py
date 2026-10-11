@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-11.2
+# GRANITE_VERSION: 2026-10-11.3
 """
-The statutes (RSA) as pages: /rsa, and one page a chapter at /rsa/<chapter>.
+The statutes (RSA) as pages: /laws, and one page a chapter at /laws/<chapter>.
 
     python3 src/pages/build_rsa.py --site site --base https://graniterecord.org
 
 Asks nobody. Reads the General Court's statute table through rsa.py, what
 rsa.py wrote (rsa_citations.json), and the bill index the site build wrote
 (site/idx/<term>.json) for each bill's number, title and whether it is still
-moving. Writes site/rsa.html, site/rsa/<chapter>.html and the three files the
-landing page's search reads, site/rsa/chapters.json, headings.json and
+moving. Writes site/laws.html, site/laws/<chapter>.html and the three files the
+landing page's search reads, site/laws/chapters.json, headings.json and
 words.json.
 
 THE DESIGN IS RSA_PAGE.md (7 October 2026), with the person's asks of 11
@@ -29,7 +29,7 @@ A CHAPTER PAGE, top to bottom (RSA_PAGE.md §5):
 2. Pending: the sitting term's bills still moving that say they change this
    chapter, as chips, each section they name tagged below.
 3. The sections in order, under the chapter's own inner headings, each an
-   anchor (/rsa/91-a#s4) carrying: its heading, a Pending tag where a bill
+   anchor (/laws/91-a#s4) carrying: its heading, a Pending tag where a bill
    still moving would change it, its text with every citation the table
    holds linked to its own anchor, its source note, and four folds -- How it
    has changed (the source note's laws, newest first, each the bill it was),
@@ -55,12 +55,14 @@ import _paths  # noqa: E402,F401
 
 import argparse
 import collections
+import datetime
 import html
 import json
 import math
 import re
 
 import build_date
+import components as C
 import rsa
 import shell as S
 
@@ -127,9 +129,9 @@ def sec_anchor(addr):
 
 
 def href(addr):
-    """The site's own address for a statute address: /rsa/91-a#s4, /rsa/91-a."""
+    """The site's own address for a statute address: /laws/91-a#s4, /laws/91-a."""
     ch, _, sec = addr.partition(":")
-    return f"/rsa/{chapter_slug(ch)}" + (f"#{sec_anchor(addr)}" if sec else "")
+    return f"/laws/{chapter_slug(ch)}" + (f"#{sec_anchor(addr)}" if sec else "")
 
 
 def term_of_year(y):
@@ -324,14 +326,14 @@ def chapter_page(tmpl, table, data, bills, ch, base):
     pending_ch = sorted({k for a, ks in proposed.items() for k in ks if bills.moving(k)},
                         key=bill_order)
     latest = data.get("asof", {}).get("laws_through") or ""
-    path = f"/rsa/{chapter_slug(ch)}"
+    path = f"/laws/{chapter_slug(ch)}"
     title = f"RSA {ch}: {nice(info['name'])}"
-    p = S.page(tmpl, path=path, base=base, title=S.title_of(f"RSA {ch}", "Statutes"),
+    p = S.page(tmpl, path=path, base=base, title=S.title_of(f"RSA {ch}", "Laws"),
                og_title=title, description=f"New Hampshire RSA chapter {ch}, {info['name']}: "
                "its text, the bills that changed it and the bills that would.",
                og_image="og-learn.png", og_alt=OG_ALT, globals={"GR_STATIC": True},
                noscript="", skip_label="Skip to the statute", sr_title="",
-               nav_current="resources.html", cite=False)
+               nav_current="laws.html", cite=False)
     first = table.sections[secs[0]] if secs else None
     # The General Court's own table of contents page for the chapter, the
     # address build_site_v2.rsa_url has linked for a chapter since 4
@@ -340,10 +342,10 @@ def chapter_page(tmpl, table, data, bills, ch, base):
     official = (f"https://gc.nh.gov/rsa/html/NHTOC/NHTOC-{tno}-{ch}.htm" if tno
                 else "https://gc.nh.gov/rsa/html/nhtoc.htm")
     lead = (f"The text as the General Court's table holds it, "
-            f"through the laws of {E(str(latest))}. "
+            f"{as_of(latest)}. "
             f'<a href="{E(official)}" rel="noopener">The official text on gc.nh.gov</a>.')
     crumb = nice(re.sub(r"^TITLE\s+(\S+)\s*", r"TITLE \1: ", first.title)) if first else ""
-    head = (f'<header class="l-head"><p class="rs-crumb"><a href="/rsa">The statutes</a> &rsaquo; '
+    head = (f'<header class="l-head"><p class="rs-crumb"><a href="/laws">Laws</a> &rsaquo; '
             f'{E(crumb)}</p><h1>{E(title)}</h1>'
             f'<p class="l-lead">{lead}</p>' + S.cite_block(path, title, base, S.BUILT) + "</header>")
     pend = ""
@@ -422,7 +424,7 @@ LANDING_JS = """<script>
   var CH=null,HD=null,WD=null;
   function get(u){return fetch(u).then(function(r){return r.ok?r.json():null;});}
   function esc(s){return String(s).replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c];});}
-  function link(a){var p=a.split(":");return "/rsa/"+p[0].toLowerCase()+(p[1]?"#s"+p[1]:"");}
+  function link(a){var p=a.split(":");return "/laws/"+p[0].toLowerCase()+(p[1]?"#s"+p[1]:"");}
   // The same light stem build_rsa.stem gives the index.
   function stem(w){w=w.toLowerCase().replace(/^'+|'+$/g,"");if(/'s$/.test(w))w=w.slice(0,-2);
     if(w.length>4&&/ies$/.test(w))return w.slice(0,-3)+"y";
@@ -438,9 +440,9 @@ LANDING_JS = """<script>
       return '<li><a href="'+link(r[0])+'">RSA '+esc(r[0])+'</a> '+esc(r[1]||"")+'</li>';}).join("")+'</ol>':'');
   }
   function load(){return Promise.all([
-    CH?CH:get("rsa/chapters.json").then(function(d){return CH=d||{};}),
-    HD?HD:get("rsa/headings.json").then(function(d){return HD=d||[];}),
-    WD?WD:get("rsa/words.json").then(function(d){return WD=d||{words:{}};})]);}
+    CH?CH:get("laws/chapters.json").then(function(d){return CH=d||{};}),
+    HD?HD:get("laws/headings.json").then(function(d){return HD=d||[];}),
+    WD?WD:get("laws/words.json").then(function(d){return WD=d||{words:{}};})]);}
   function run(){
     var q=box.value.trim();
     if(!q){out.innerHTML="";return;}
@@ -481,22 +483,43 @@ LANDING_JS = """<script>
 </script>"""
 
 
+# WHEN THE TABLE WAS TAKEN: db/_manifest.json's "fetched" for NH_RSA, which
+# the weekly refreshes (nightly.STATUTE_VIEWS). Set by main(); "" where the
+# manifest does not say, and then the pages say nothing of it.
+TABLE_TAKEN = ""
+
+
+def taken_on(db):
+    """'September 8, 2026' from <db>/_manifest.json's NH_RSA entry, or ""."""
+    try:
+        got = json.loads((Path(db) / "_manifest.json").read_text(encoding="utf-8"))["NH_RSA"]["fetched"]
+        d = datetime.date.fromisoformat(str(got)[:10])
+    except (OSError, ValueError, KeyError, TypeError):
+        return ""
+    return C.date_words(d, "full")
+
+
+def as_of(latest):
+    """The lead's clause on how current the text is."""
+    taken = f", taken from the General Court's database on {E(TABLE_TAKEN)}" if TABLE_TAKEN else ""
+    return f"through the laws of {E(str(latest))}{taken}"
+
+
 def landing_page(tmpl, table, data, base):
-    path = "/rsa"
-    title = "New Hampshire's statutes (RSA)"
-    p = S.page(tmpl, path=path, base=base, title=S.title_of(title, "Resources"),
+    path = "/laws"
+    title = "New Hampshire's laws (RSA)"
+    p = S.page(tmpl, path=path, base=base, title=S.title_of(title, "Laws"),
                og_title=title, description="Every chapter of the New Hampshire Revised Statutes "
                "Annotated: search by number, heading or subject, with the bills that changed each "
                "section and the bills that would.", og_image="og-learn.png", og_alt=OG_ALT,
-               globals={"GR_STATIC": True}, noscript="", skip_label="Skip to the statutes",
-               sr_title="", nav_current="resources.html", cite=False)
+               globals={"GR_STATIC": True}, noscript="", skip_label="Skip to the laws",
+               sr_title="", nav_current="laws.html", cite=False)
     latest = data.get("asof", {}).get("laws_through") or ""
     head = (f'<header class="l-head"><h1>{E(title)}</h1><p class="l-lead">The state\'s laws, '
-            f'chapter by chapter, as the General Court\'s table holds them through the laws of '
-            f'{E(str(latest))}, each section with the bills that changed it and the bills now '
+            f'chapter by chapter, as the General Court\'s table holds them {as_of(latest)}, each section with the bills that changed it and the bills now '
             'proposing to.</p>' + S.cite_block(path, title, base, S.BUILT) + "</header>")
     search = ('<form id="rsform" class="rs-search" role="search"><label for="rsq">Search the '
-              'statutes</label><input id="rsq" type="search" autocomplete="off" '
+              'laws</label><input id="rsq" type="search" autocomplete="off" '
               'placeholder="A number (91-A:4) or words (right to know, dog bite)">'
               '</form><div id="rsout" aria-live="polite"></div>')
     titles = collections.OrderedDict()
@@ -506,7 +529,7 @@ def landing_page(tmpl, table, data, base):
     blocks = []
     for (tno, tname), chs in titles.items():
         lis = "".join(
-            f'<li class="{"rs-off" if table.chapters[c]["repealed"] else ""}"><a href="/rsa/'
+            f'<li class="{"rs-off" if table.chapters[c]["repealed"] else ""}"><a href="/laws/'
             f'{E(chapter_slug(c))}">{E(c)}</a> {E(nice(table.chapters[c]["name"]))}</li>' for c in chs)
         tn = nice(re.sub(r"^TITLE\s+\S+\s*", "", tname))
         blocks.append(f'<details class="rs-title"><summary><span class="rs-tno">Title {E(tno)}</span> '
@@ -521,9 +544,15 @@ def main():
     ap.add_argument("--site", default="site")
     ap.add_argument("--base", default="https://graniterecord.org")
     ap.add_argument("--only", nargs="*", help="build these chapters alone (for a look), not the set")
+    # The fixture's own table, which preflight's chain builds the Laws pages
+    # from: the nav links laws.html from every page, so a fixture without
+    # them is a site of broken links.
+    ap.add_argument("--db", help="the folder holding NH_RSA.psv and _columns.json (default: db/)")
     a = ap.parse_args()
     site = Path(a.site)
-    table = rsa.load()
+    table = rsa.load(Path(a.db) / "NH_RSA.psv", Path(a.db) / "_columns.json") if a.db else rsa.load()
+    global TABLE_TAKEN
+    TABLE_TAKEN = taken_on(a.db or rsa.TABLE.parent)
     cit = Path("rsa_citations.json")
     if table is None or not cit.is_file():
         print("build_rsa: no statute table or rsa_citations.json here; no statute pages written")
@@ -532,13 +561,13 @@ def main():
     current = term_of_year(build_date.today().year)
     bills = Bills(site, current)
     tmpl = S.template(site)
-    out = site / "rsa"
+    out = site / "laws"
     out.mkdir(parents=True, exist_ok=True)
     chs = [c.upper() for c in a.only] if a.only else sorted(table.chapters, key=rsa.chap_key)
     for ch in chs:
         (out / f"{chapter_slug(ch)}.html").write_text(
             chapter_page(tmpl, table, data, bills, ch, a.base), encoding="utf-8")
-    (site / "rsa.html").write_text(landing_page(tmpl, table, data, a.base), encoding="utf-8")
+    (site / "laws.html").write_text(landing_page(tmpl, table, data, a.base), encoding="utf-8")
     chapters, headings, words = build_indexes(table, data)
     for name, obj in (("chapters.json", chapters), ("headings.json", headings), ("words.json", words)):
         (out / name).write_text(json.dumps(obj, ensure_ascii=False, separators=(",", ":")),
@@ -547,8 +576,8 @@ def main():
     print(f"build_rsa: {len(chs):,} chapter pages and the landing page; search files "
           + ", ".join(f"{n} {s / 1e6:.1f} MB" for n, s in sizes.items()))
     if not a.only:
-        S.sitemap_merge(site, a.base, [a.base + "/rsa"] + [a.base + f"/rsa/{chapter_slug(c)}" for c in chs],
-                        owns="/rsa")
+        S.sitemap_merge(site, a.base, [a.base + "/laws"] + [a.base + f"/laws/{chapter_slug(c)}" for c in chs],
+                        owns="/laws")
     return 0
 
 

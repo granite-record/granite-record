@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.68
+# GRANITE_VERSION: 2026-09-05.69
 """
 Run the whole pipeline in the right order.
 
@@ -515,13 +515,15 @@ def plan(a):
         # The statutes (RSA_PAGE.md, src/parse/rsa.py): what each bill says
         # it changes and cites, each section's history of change from its
         # source note, and what each section cites. After the chapters, which
-        # turn a source note's session law into the bill it was. Skipped, and
-        # named, where db/NH_RSA.psv is not on disk -- GitHub's night until
-        # the kit carries it. Writes a file no page reads yet.
+        # turn a source note's session law into the bill it was. Every page's
+        # header links the Laws, so where the build is the kit's a missing
+        # db/NH_RSA.psv stops it (kit_required); the weekly refreshes the
+        # table (nightly.STATUTE_VIEWS). Elsewhere it is skipped and named.
         Step("the statutes, and the bills that change them",
              ["rsa.py"],
              needs=["db/NH_RSA.psv", "chapters.json"],
              produces=["rsa_citations.json"],
+             kit_required=True,
              note="on 8 September 2026's table: 90.6% of the clause reader's claims "
                   "for enacted bills confirmed by a source note, 84.5% of the notes found"),
 
@@ -743,6 +745,7 @@ def plan(a):
              ["related_bills.py"],
              needs=["db/NH_RSA.psv", "chapters.json", "narratives.json"],
              produces=["related_bills.json"],
+             kit_required=True,
              note="on 8 September 2026's table: 5,194 pairs of bills sharing most "
                   "of their language, 2,829 amendment relations, 461 bills inside a "
                   "law; about two minutes and 1.5 GB"),
@@ -828,15 +831,16 @@ def plan(a):
              note="the Learn pages and the Resources hub they hang off; needs "
                   "no network, and it owns resources.html and learn/"),
 
-        # The statutes as pages (RSA_PAGE.md; build_rsa.py): /rsa and a page a
+        # The statutes as pages (RSA_PAGE.md; build_rsa.py): /laws and a page a
         # chapter, each section with its history of change, the bills now
         # proposing to change it and its references both ways. After the site
         # data, whose bill index says which bills are still moving.
         Step("the statutes: a page a chapter, and their search",
              ["build_rsa.py", "--site", "site", "--base", a.base],
              needs=["db/NH_RSA.psv", "rsa_citations.json", "site/meta.json"],
-             produces=["site/rsa.html"],
-             note="1,786 chapter pages and /rsa, about 105 MB; search files about 3.5 MB, "
+             produces=["site/laws.html"],
+             kit_required=True,
+             note="1,786 chapter pages and /laws, about 105 MB; search files about 3.5 MB, "
                   "fetched only on a first search"),
 
         Step("a page per town and ward",

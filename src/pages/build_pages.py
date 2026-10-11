@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.189
+# GRANITE_VERSION: 2026-09-04.190
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -1221,6 +1221,11 @@ def cal_notes(up, missing, esc):
 
 # THE SECTIONS, in the header's order, with each one's drawing.
 NAV_TABS = (("bills.html", "Bills", "bill"),
+            # LAWS, BESIDE BILLS (the person, 11 October 2026: "The top level
+            # nav and page urls should say Laws since that's the easiest thing
+            # to understand for newcomers"). A bill proposes to change a law;
+            # the two are read together. build_rsa.py writes /laws.
+            ("laws.html", "Laws", "law"),
             # OFFICIALS, NOT LEGISLATORS, AND RESOURCES, NOT LEARN (the
             # person, 8 October 2026, late evening: "the polish release's five
             # tabs are Bills, Officials, Calendar, Committees, Resources"). The
