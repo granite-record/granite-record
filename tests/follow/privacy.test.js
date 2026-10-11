@@ -174,5 +174,8 @@ test("no secret and no address is written in any file of the follow code", () =>
   const toml = source("workers/follow/wrangler.toml");
   assert.doesNotMatch(toml, /^\s*(RESEND_API_KEY|FOLLOW_ADDRESS_KEY|FOLLOW_LOOKUP_KEY|TURNSTILE_SECRET|RESEND_WEBHOOK_SECRET)\s*=/m,
     "a secret is set with wrangler secret put, never in the file");
-  assert.match(toml, /database_id = "00000000-0000-0000-0000-000000000000"/);
+  // The ids name the person's two databases (11 October 2026); an id is not
+  // a secret, and neither may go back to the zeros or be taken for the other.
+  const ids = [...toml.matchAll(/database_id = "([0-9a-f-]{36})"/g)].map(m => m[1]);
+  assert.deepEqual(ids, ["c43becf3-b914-4d17-8548-4f066af4544a", "296ea738-2f5f-4ec6-8951-6496282c35c3"]);
 });
