@@ -165,7 +165,10 @@ test("no secret and no address is written in any file of the follow code", () =>
     assert.doesNotMatch(text, /\bre_[A-Za-z0-9]{16,}/, `${f} carries a Resend key`);
     assert.doesNotMatch(text, /[A-Za-z0-9+/]{43}=/, `${f} carries a 32-byte key`);
     const addresses = text.match(/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g) || [];
-    assert.deepEqual(addresses.filter(x => !/@(example\.(com|org)|your-verified-domain)$/.test(x)), [],
+    // The site's own sending address (MAIL_FROM, noreply@ on the domain
+    // verified with Resend) is no reader's; any other address is.
+    assert.deepEqual(addresses.filter(x => !/@(example\.(com|org)|your-verified-domain)$/.test(x)
+                                           && x !== "noreply@mail.graniterecord.org"), [],
       `${f} names an address`);
   }
   const toml = source("workers/follow/wrangler.toml");
