@@ -80,7 +80,7 @@ database_id = "296ea738-2f5f-4ec6-8951-6496282c35c3"   # created by the person, 
 
 [env.preview.vars]
 # The preview deployment's own address, the branch alias Pages gives it.
-SITE_ORIGIN = "https://FILL-IN.graniterecord.pages.dev"
+SITE_ORIGIN = "https://dry-run.graniterecord.pages.dev"
 MAIL_FROM = "Granite Record <noreply@mail.graniterecord.org>"
 FEEDBACK_URL = "https://forms.gle/PYw9c3xgpDDwvX7E9"
 SEND_LIMIT = "200"
