@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.545
+# GRANITE_VERSION: 2026-09-04.546
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -32651,7 +32651,15 @@ def _rsa_pages(B, RSA, S):
     assert "<h1>Chapter 91-A: Access to Governmental Records and Meetings</h1>" in page, \
         "the chapter is not titled Chapter 91-A: its name"
     side = page[page.index('class="rs-side"'):page.index('class="rs-art"')]
-    assert 'href="#s4"' in side and 'href="#s5"' in side, "the sidebar does not list the chapter's sections"
+    assert 'href="/laws/91-a#s4"' in side and 'href="/laws/91-a#s5"' in side, \
+        "the sidebar does not list the chapter's sections"
+    # NO BARE FRAGMENT. Every page carries <base href="/">, so href="#s4"
+    # opened the home page (the person, 11 October 2026: some RSA links "lead
+    # to the homepage and didn't pull up the specific chapter").
+    assert 'href="#' not in page, "a link on a statute page is a bare #fragment, which <base> sends home"
+    assert B.chapter_file(Path("x"), "404") == Path("x/404/index.html") and \
+        B.chapter_file(Path("x"), "91-A") == Path("x/91-a.html"), \
+        "RSA 404's page is laws/404.html, which the host serves for every missing /laws/ address"
     assert "Other bills that proposed changes" not in sec and "Also proposed" not in sec, \
         "HB 286, in 91-A:4's history, is listed again as another bill that proposed changes"
     return "ok", ("91-A:4 tagged pending by HB 100, linked to 91-A:5 and not to 91-A:99, history 2019 then "

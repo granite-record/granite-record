@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.258 */
+/* GRANITE_VERSION: 2026-09-07.259 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -6163,10 +6163,18 @@ body:has(.rs-page) .searchrow,.shell:has(.rs-page) .facets,.shell:has(.rs-page) 
 .rs-sidebox li.rs-off a{color:var(--ink-2)}
 .rs-sidebox li.rs-off span{display:none}
 .rs-sidebox li.rs-off a::after{content:" (repealed)"}
+.rs-now{display:none}
+/* ON A PHONE the index is a bar held at the top of the screen as the chapter
+   scrolls, naming the section being read, and opens over the text. */
 @media (max-width:60em){
   .rs-chap{grid-template-columns:minmax(0,1fr);gap:var(--sp-6)}
-  .rs-side{position:static;max-height:none}
-  .rs-sidebox ol{max-height:60vh}
+  .rs-side{top:0;z-index:5;max-height:none;margin:0 calc(-1 * var(--sp-2))}
+  .rs-sidebox{box-shadow:0 2px 6px var(--shadow)}
+  .rs-sidebox > summary{display:flex;align-items:center;gap:.5rem;min-height:2.75rem;box-sizing:border-box}
+  .rs-sumw{flex:1 1 auto;min-width:0}
+  .rs-now{display:inline-block;flex:none;font-weight:600;color:var(--pine);font-variant-numeric:tabular-nums}
+  .rs-now:empty{display:none}
+  .rs-sidebox ol{max-height:min(60vh,28rem)}
 }
 
 /* THE LANDING, laid out as the bill search is (the person, 11 October

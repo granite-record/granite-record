@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-11.5
+# GRANITE_VERSION: 2026-10-11.6
 """
 The statutes (RSA) as pages: /laws, and one page a chapter at /laws/<chapter>.
 
@@ -122,6 +122,15 @@ def stem(w):
 
 def chapter_slug(ch):
     return ch.lower()
+
+
+def chapter_file(out, ch):
+    """Where a chapter's page is written. RSA 404's page is laws/404/index.html,
+    not laws/404.html: the host serves a folder's 404.html for every address
+    in it that has no page, so every mistyped /laws/ address showed chapter
+    404 (the preview, 11 October 2026). /laws/404 is answered from the folder."""
+    slug = chapter_slug(ch)
+    return out / slug / "index.html" if slug == "404" else out / f"{slug}.html"
 
 
 def sec_anchor(addr):
@@ -464,12 +473,12 @@ def chapter_page(tmpl, table, data, bills, ch, base):
             body.append(f'<h2 class="rs-sub">{E(sub)}</h2>')
         anchor = sec_anchor(a)
         if s.repealed:
-            body.append(f'<p class="rs-repealed" id="{E(anchor)}"><a href="#{E(anchor)}">{E(a)}</a> '
+            body.append(f'<p class="rs-repealed" id="{E(anchor)}"><a href="{E(path)}#{E(anchor)}">{E(a)}</a> '
                         f'<span class="rs-rbadge">Repealed</span> {E(s.heading)}</p>')
-            toc_items.append(f'<li class="rs-off"><a href="#{E(anchor)}">{E(a)}</a> '
+            toc_items.append(f'<li class="rs-off"><a href="{E(path)}#{E(anchor)}">{E(a)}</a> '
                              f'<span>Repealed</span></li>')
             continue
-        toc_items.append(f'<li><a href="#{E(anchor)}"><b>{E(a)}</b> {E(s.heading)}</a></li>')
+        toc_items.append(f'<li><a href="{E(path)}#{E(anchor)}"><b>{E(a)}</b> {E(s.heading)}</a></li>')
         pend_k = sorted((k for k in proposed.get(a, []) if bills.moving(k)), key=bill_order)
         hist = list(reversed(data.get("enacted", {}).get(a, [])))
         # A BILL IN THE HISTORY IS NOT ALSO "PROPOSED" (the person, 11 October
@@ -510,7 +519,7 @@ def chapter_page(tmpl, table, data, bills, ch, base):
             + (f'<p class="rs-note">{E(n)}</p>' if n else "") + f"{c}</details>"
             for h, n, c in rows)
         body.append(
-            f'<section class="rs-sec" id="{E(anchor)}"><h3 class="rs-h"><a href="#{E(anchor)}">'
+            f'<section class="rs-sec" id="{E(anchor)}"><h3 class="rs-h"><a href="{E(path)}#{E(anchor)}">'
             f'{E(a)}</a> {E(s.heading)}</h3>{tag}'
             f'<div class="rs-text">{linked_text(table, s.text, a)}</div>'
             + (f'<p class="rs-source">Source. {E(s.note)}</p>' if s.note else "")
@@ -522,8 +531,10 @@ def chapter_page(tmpl, table, data, bills, ch, base):
     toc = ""
     if toc_items:
         toc = (f'<nav class="rs-side" aria-label="Sections of chapter {E(ch)}"><details class="rs-sidebox" open>'
-               f'<summary>Chapter {E(ch)}: {len(toc_items)} section{"s" if len(toc_items) != 1 else ""}'
-               f'</summary><ol>{"".join(toc_items)}</ol></details></nav>')
+               f'<summary><span class="rs-sumw">Chapter {E(ch)}: {len(toc_items)} '
+               f'section{"s" if len(toc_items) != 1 else ""}</span>'
+               f'<span class="rs-now" aria-hidden="true"></span></summary>'
+               f'<ol>{"".join(toc_items)}</ol></details></nav>')
     art = f'<div class="rs-art">{pend}{"".join(body)}</div>'
     return p.replace('<div id="results"></div>',
                      f'<div id="results"><div class="l-page rs-page">{head}'
@@ -533,16 +544,23 @@ def chapter_page(tmpl, table, data, bills, ch, base):
 
 CHAPTER_JS = """<script>
 (function(){
-  // The sidebar's sections: folded on a narrow screen, and the one being
-  // read marked as the page scrolls past it.
+  // The sidebar's sections: the one being read marked as the page scrolls
+  // past it. ON A PHONE (the person, 11 October 2026: "The index is not
+  // accessible on mobile on individual chapters") the list is a bar held at
+  // the top of the screen, naming the section being read; it opens over the
+  // page, and choosing a section closes it.
   var d=document.querySelector(".rs-sidebox");if(!d)return;
-  if(window.matchMedia&&matchMedia("(max-width:60em)").matches)d.open=false;
-  var links={},box=d.querySelector("ol"),cur=null;
-  [].forEach.call(d.querySelectorAll("a[href^='#']"),function(a){links[a.getAttribute("href").slice(1)]=a;});
+  var narrow=function(){return window.matchMedia&&matchMedia("(max-width:60em)").matches;};
+  if(narrow())d.open=false;
+  var links={},box=d.querySelector("ol"),cur=null,now=d.querySelector(".rs-now");
+  [].forEach.call(d.querySelectorAll("a[href*='#']"),function(a){links[a.getAttribute("href").split("#")[1]]=a;});
+  d.addEventListener("click",function(e){if(e.target.closest("a")&&narrow())d.open=false;});
+  document.addEventListener("keydown",function(e){if(e.key==="Escape"&&d.open&&narrow()){d.open=false;d.querySelector("summary").focus();}});
   if(!("IntersectionObserver" in window)||!box)return;
   var io=new IntersectionObserver(function(es){es.forEach(function(e){
     if(!e.isIntersecting)return;var a=links[e.target.id];if(!a||a===cur)return;
     if(cur)cur.removeAttribute("aria-current");a.setAttribute("aria-current","location");cur=a;
+    if(now){var b=a.querySelector("b");now.textContent=b?b.textContent:a.textContent.split(" ")[0];}
     var li=a.parentNode;if(li.offsetTop<box.scrollTop||li.offsetTop>box.scrollTop+box.clientHeight-40)
       box.scrollTop=li.offsetTop-box.clientHeight/3;});},{rootMargin:"-15% 0px -75% 0px"});
   [].forEach.call(document.querySelectorAll(".rs-sec[id],.rs-repealed[id]"),function(s){io.observe(s);});
@@ -822,8 +840,12 @@ def main():
     out.mkdir(parents=True, exist_ok=True)
     chs = [c.upper() for c in a.only] if a.only else sorted(table.chapters, key=rsa.chap_key)
     for ch in chs:
-        (out / f"{chapter_slug(ch)}.html").write_text(
+        chapter_file(out, ch).parent.mkdir(parents=True, exist_ok=True)
+        chapter_file(out, ch).write_text(
             chapter_page(tmpl, table, data, bills, ch, a.base), encoding="utf-8")
+    stale = out / "404.html"       # an earlier build's RSA 404, before chapter_file
+    if not a.only and stale.is_file():
+        stale.unlink()
     topics, pending = chapter_topics(data, bills), chapter_pending(data, bills)
     (site / "laws.html").write_text(landing_page(tmpl, table, data, a.base, topics, pending), encoding="utf-8")
     chapters, headings, words = build_indexes(table, data, topics, pending)
