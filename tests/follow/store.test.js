@@ -132,7 +132,9 @@ test("the manager's migration brings a database made before it to today's schema
   // A database made from schema.sql as it was on 10 October: the subscribers
   // table without the two settings. The migration makes it the same as one
   // made from today's schema, and a second run of it changes nothing.
-  const today = readFileSync(SCHEMA, "utf8");
+  // As the file is on disk, which GitHub's Windows machine checks out with
+  // CRLF line ends: the pattern below is written for LF.
+  const today = readFileSync(SCHEMA, "utf8").replace(/\r\n/g, "\n");
   const before = today.replace(/  sent_built    TEXT,[\s\S]*?'milestones'\)\)\n\);/, "  sent_built    TEXT\n);");
   assert.notEqual(before, today, "the test could not make the older schema");
   const old = new DatabaseSync(":memory:");
