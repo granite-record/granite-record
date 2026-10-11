@@ -732,6 +732,21 @@ def plan(a):
                   "calendar printed under another bill takes the text its "
                   "committee filed, or none, and the page says which"),
 
+        # Related bills (RELATED_BILLS.md, src/parse/related_bills.py): which
+        # bills and amendments share their proposed language, and what the
+        # docket says became of each amendment. After the bill versions,
+        # whose amendment texts it reads, and the histories, whose dockets
+        # give the fates. Writes a file no page reads yet: what ships is
+        # decided at the bench. Skipped, and named, without the statute
+        # table, because without it quoted law reads as shared language.
+        Step("related bills: shared language, and where it went",
+             ["related_bills.py"],
+             needs=["db/NH_RSA.psv", "chapters.json", "narratives.json"],
+             produces=["related_bills.json"],
+             note="on 8 September 2026's table: 5,194 pairs of bills sharing most "
+                  "of their language, 2,829 amendment relations, 461 bills inside a "
+                  "law; about two minutes and 1.5 GB"),
+
         Step("site data",
              ["build_site_v2.py", "--data", "data", "--out", "site",
               "--segments", "work"],

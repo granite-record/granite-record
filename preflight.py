@@ -32534,6 +32534,48 @@ def _session_suspend_two_thirds(SD, BSP, MO):
     return "ok", "a suspension 181-121 needs 202; Ought to Pass on the same count needs 152"
 
 
+@check("build", "related bills: the same text hashes the same everywhere, quoted law is not shared "
+       "language, and an amendment's fate is the docket's", needs=("related_bills",))
+def _related_bills(RB):
+    """src/parse/related_bills.py (RELATED_BILLS.md). Three things a page
+    built on it relies on, each from the record:
+
+    - an amendment's fate is read off its bill's docket, line by line, and the
+      last decisive line wins. HB 2 of 2023's own lines: 2023-1247h adopted
+      351-38, 2023-1333h failed 72-300 -- the case RELATED_BILLS.md §2.2
+      names, where "HB 1499's language was added to HB 2" through 1333h
+      would be false;
+    - the shingles are the same on every machine and under every
+      PYTHONHASHSEED, so a night and a laptop find the same relations;
+    - a run of statute text both bills reprint is not shared language unless
+      only the later one could have put it into the law."""
+    nar = {"2023-2024": {"HB2": {"events": [
+        {"date": "2023-03-30", "type": "report", "body": "H", "raw": "Majority Committee Report: Ought "
+         "to Pass with Amendment #2023-1247h 03/30/2023 (Vote 14-11; RC)"},
+        {"date": "2023-04-06", "type": "amendment", "body": "H",
+         "raw": "Amendment #2023-1247h : AA DV 351-38 04/06/2023"},
+        {"date": "2023-04-06", "type": "amendment", "body": "H",
+         "raw": "FLAM #2023-1333h (Reps. Hoell, Prout, Comtois): AF DV 72-300 04/06/2023"}]}}}
+    f = RB.amendment_fates(nar)
+    assert f["2023-1247h"]["outcome"] == "adopted" and f["2023-1247h"]["vote"] == "351-38", f
+    assert f["2023-1333h"]["outcome"] == "failed" and f["2023-1333h"]["vote"] == "72-300", f
+    import numpy as np
+    sh = RB.Shingler(np)
+    words = RB.words_of("This act shall take effect 60 days after its passage [and not before].")
+    assert "before" not in words, "bracketed old law was read as proposed"
+    got = [int(x) for x in sh(words)]
+    # Six runs of five words, pinned: any machine that hashes them otherwise
+    # finds other relations than the night does.
+    assert got == [1501139938635658474, 1924498122979730118, 2445867956418451481,
+                   4083973422708187706, 5799543022023669206, 8824611947269029673], got
+    assert int(sh(RB.words_of("the commissioner shall adopt rules under RSA 541-A"))[0]) == \
+        int(RB.Shingler(np)(RB.words_of("the commissioner shall adopt rules under RSA 541-A"))[0])
+    body = RB.bill_body("AN ACT relative to X. Be it Enacted by the Senate and House of "
+                        "Representatives in General Court convened: 1 New Paragraph. Amend RSA 1:1.")
+    assert body.strip().startswith("1 New Paragraph"), body
+    return "ok", "2023-1247h adopted 351-38 and 2023-1333h failed 72-300, from HB 2's own docket"
+
+
 @check("build", "the statute reader takes a bill's own instructions, new sections and lists "
        "included, and holds its score against the source notes", needs=("rsa",))
 def _rsa_reader(RSA):
