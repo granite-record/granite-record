@@ -1,4 +1,4 @@
-# GRANITE_VERSION: 2026-09-12.4
+# GRANITE_VERSION: 2026-09-12.3
 #
 # The Pages project's configuration, which this file now owns. Until
 # 12 September there was none: the dashboard held a name and a compatibility
@@ -40,19 +40,6 @@ database_id = "1fb4afb6-62dc-455a-9357-0125bcf7577a"
 # <hash>.graniterecord.pages.dev address for good, and those are not the site.
 [env.production.vars]
 REPORT_ORIGINS = "graniterecord.org www.graniterecord.org"
-MAIL_FROM = "Granite Record <noreply@mail.graniterecord.org>"
-FEEDBACK_URL = "https://forms.gle/PYw9c3xgpDDwvX7E9"
-
-# EMAIL FOLLOWING, LIVE (the person, 12 October 2026: production's secrets
-# set, the Resend webhook and the Turnstile hostnames in place). With this
-# binding functions/api/follow/ answers on the site, and shell.follow_live()
-# reads it, so About and the Data page say what following keeps in the
-# person's approved words. The database is the person's, created 11 October
-# 2026; its secrets are on Cloudflare, never here.
-[[env.production.d1_databases]]
-binding = "FOLLOW_DB"
-database_name = "graniterecord-follow"
-database_id = "c43becf3-b914-4d17-8548-4f066af4544a"
 
 [env.preview]
 [[env.preview.d1_databases]]
@@ -60,11 +47,12 @@ binding = "DB"
 database_name = "graniterecord-reports-preview"
 database_id = "39c58ee3-73cd-41a5-b998-b259bcf1d902"
 
-# EMAIL FOLLOWING ON PREVIEWS (workers/follow/README.md), on a database of
-# its own so a test sign-up never reaches the live list. With FOLLOW_DB
-# bound, functions/api/follow/ answers; without it every one of them answers
-# 404. The database is the person's, created 11 October 2026, and its
-# secrets are set on Cloudflare, never here.
+# EMAIL FOLLOWING, ON PREVIEWS ONLY (workers/follow/README.md). With
+# FOLLOW_DB bound, functions/api/follow/ answers; without it every one of
+# them answers 404. Production binds it at go-live and not before: preflight
+# holds that production has no FOLLOW_DB until the About page says what
+# following by email keeps. The database is the person's, created 11 October
+# 2026, and its secrets are set on Cloudflare, never here.
 [[env.preview.d1_databases]]
 binding = "FOLLOW_DB"
 database_name = "graniterecord-follow-preview"

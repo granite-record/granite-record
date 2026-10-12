@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.549
+# GRANITE_VERSION: 2026-09-04.548
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -32861,10 +32861,7 @@ def _follow_privacy_gated(S, BP, BE):
     stands; after it, both say what is kept and how it is deleted."""
     tmp = Path(tempfile.mkdtemp(prefix="gr-live-"))
     try:
-        # The file as it stands, with production's FOLLOW_DB taken out and put
-        # back: before the go-live and after it, whichever it is today.
-        base = re.sub(r'\[\[env\.production\.d1_databases\]\]\s*binding\s*=\s*"FOLLOW_DB"[^\[]*', "",
-                      Path("wrangler.toml").read_text(encoding="utf-8"))
+        base = Path("wrangler.toml").read_text(encoding="utf-8")
         (tmp / "off.toml").write_text(base, encoding="utf-8")
         (tmp / "on.toml").write_text(base + '\n[[env.production.d1_databases]]\nbinding = "FOLLOW_DB"\n'
                                      'database_name = "graniterecord-follow"\ndatabase_id = "x"\n', encoding="utf-8")
@@ -59800,8 +59797,8 @@ process.exit(fail.length ? 1 : 0);
 """
 
 
-@check("build", "email following is bound in production only where About and the Data page say "
-       "what it keeps, and its 106 tests pass")
+@check("build", "email following is on previews only until the About page says what it keeps, "
+       "and its 106 tests pass")
 def _follow_email():
     """workers/follow/ and functions/api/follow/ (the person's accounts of 11
     October 2026). Every follow endpoint answers 404 without FOLLOW_DB, so the
@@ -59819,16 +59816,10 @@ def _follow_email():
     def binds(env):
         return any(d.get("binding") == "FOLLOW_DB" for d in envs.get(env, {}).get("d1_databases", []))
     assert binds("preview"), "previews do not bind FOLLOW_DB, so sign-ups cannot be tested"
-    # THE PAGES FOLLOW THE BINDING (12 October 2026): About and the Data page
-    # choose their wording by shell.follow_live(), which reads production's
-    # FOLLOW_DB, so the binding and the words go live together. Their two
-    # texts are held by _follow_privacy_gated.
-    exp = Path("src/pages/build_exports.py").read_text(encoding="utf-8")
-    pages = Path("src/pages/build_pages.py").read_text(encoding="utf-8")
-    told = ("PRIVACY_FOLLOW[shell.follow_live()" in exp and "ABOUT_FOLLOW[_shell.follow_live()" in pages
-            and "Email updates." in pages + exp)
+    about = Path("src/pages/build_exports.py").read_text(encoding="utf-8")
+    told = "Email updates." in about and "no email addresses" not in about
     assert told or not binds("production"), \
-        "production binds FOLLOW_DB while About and the Data page do not choose their words by it"
+        "production binds FOLLOW_DB while the About page still says the site keeps no email addresses"
     app = Path("src/pages/app.js").read_text(encoding="utf-8")
     assert '"/api/follow/count"' in app and '"/changes/current.json"' in app, \
         "the Follow pane offers email without asking whether this deployment can take it"
