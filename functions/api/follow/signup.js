@@ -17,7 +17,9 @@
  * the inbox can say the request is theirs. The other answers depend only on
  * what was sent or on the day:
  *   400 {"why":"invalid"}         not an address, not a record, not JSON
- *   400 {"why":"check"}           Turnstile said no, with its error codes when
+ *   400 {"why":"check"}           Turnstile said no, or said yes for another
+ *                                 form or site (action-mismatch,
+ *                                 hostname-mismatch), with its error codes when
  *                                 it gave any (its own fixed words, never the
  *                                 reader's: invalid-input-secret is a secret
  *                                 that is not this widget's)
@@ -58,16 +60,32 @@ const DOWN = () => json(503, { ok: false, why: "unavailable" });
 
 // Returns null for a yes, else the list of Turnstile's codes for its no
 // (empty when it gave none), each also a log line.
+//
+// SITEVERIFY SAYS NO WITH A 400 (found 12 October 2026, the person's sign-up
+// looping on "did not finish"): its refusal comes as HTTP 400 with the codes
+// in the body, and this read only a 200's body, so every refusal reached the
+// page with no reason at all. The body is read whatever the status. And a yes
+// counts only for this form and this site, as Cloudflare's own integration
+// guide asks: the widget is rendered with the action "follow" (app.js), and
+// the hostname it was solved on must be one of this deployment's own
+// (hostAllowed, the list the Origin check uses).
+const TS_ACTION = "follow";
 async function turnstileNo(env, token) {
   if (!env.TURNSTILE_SECRET) throw new ConfigError();
   if (typeof token !== "string" || !token || token.length > 2048) return ["missing-input-response"];
   // No remoteip: the check works without it, and this file handles no IP.
   const res = await fetch(TURNSTILE, { method: "POST",
     body: new URLSearchParams({ secret: env.TURNSTILE_SECRET, response: token }) });
-  if (!res.ok) { note("signup.check.http", res.status); return []; }
   const j = await res.json().catch(() => null);
-  if (j && j.success === true) return null;
-  const codes = (Array.isArray(j?.["error-codes"]) ? j["error-codes"] : []).filter(c => TS_CODES.has(c));
+  if (!j) { note("signup.check.http", res.status); return []; }
+  if (j.success === true) {
+    const why = j.action !== TS_ACTION ? "action-mismatch"
+      : !hostAllowed(`https://${j.hostname}`, env) ? "hostname-mismatch" : "";
+    if (!why) return null;
+    note(`signup.check.${why}`);
+    return [why];
+  }
+  const codes = (Array.isArray(j["error-codes"]) ? j["error-codes"] : []).filter(c => TS_CODES.has(c));
   note(`signup.check.${codes[0] || "no"}`);
   return codes;
 }

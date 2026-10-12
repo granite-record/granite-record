@@ -73,10 +73,17 @@ export class FakeNet {
     if (u.origin === "https://challenges.cloudflare.com" &&
         u.pathname === "/turnstile/v0/siteverify") {
       const f = new URLSearchParams(await req.text());
-      const ok = f.get("secret") === this.turnstileSecret && f.get("response") === "pass";
-      const codes = ok ? [] : f.get("secret") !== this.turnstileSecret ? ["invalid-input-secret"]
-        : f.get("response") === "quiet" ? [] : ["invalid-input-response", "a word of the reader's"];
-      return Response.json({ success: ok, "error-codes": codes });
+      // As Cloudflare answers: a yes names the action and the hostname it was
+      // solved for, and a no is a 400 with its codes in the body.
+      const r = f.get("response");
+      const ok = f.get("secret") === this.turnstileSecret &&
+        ["pass", "elsewhere", "other-form"].includes(r);
+      if (ok) return Response.json({ success: true, "error-codes": [],
+        action: r === "other-form" ? "contact" : "follow",
+        hostname: r === "elsewhere" ? "evil.example" : new URL(SITE).hostname });
+      const codes = f.get("secret") !== this.turnstileSecret ? ["invalid-input-secret"]
+        : r === "quiet" ? [] : ["invalid-input-response", "a word of the reader's"];
+      return Response.json({ success: false, "error-codes": codes }, { status: 400 });
     }
     if (u.origin === SITE) return this.asset(u.pathname);
     throw new Error(`the tests ask no network, and this asked ${u.origin}`);

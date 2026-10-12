@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.197
+// GRANITE_VERSION: 2026-09-07.198
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -5659,7 +5659,7 @@ function followCheck(w){
   FOLLOW_TS.set(w,st);
   const settle=()=>{const q=st.wait;st.wait=[];q.forEach(f=>f());};
   turnstileReady().then(t=>{
-    w.dataset.widget=t.render(w,{sitekey:FOLLOW_SITEKEY,size:"flexible",
+    w.dataset.widget=t.render(w,{sitekey:FOLLOW_SITEKEY,size:"flexible",action:"follow",
       "refresh-expired":"auto",
       callback:tok=>{st.token=tok||"";st.err="";settle();},
       "expired-callback":()=>{st.token="";},

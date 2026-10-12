@@ -152,6 +152,11 @@ test("Turnstile's no is an answer about the form, and keeps and sends nothing", 
     assert.deepEqual(JSON.parse(q.body), { ok: false, why: "check" });
     const n = await signUp(w, w.address("robot"), "bill", "2026/HB9901", { turnstile: "" });
     assert.deepEqual(JSON.parse(n.body), { ok: false, why: "check", codes: ["missing-input-response"] });
+    // A yes for another site, or for another form, is not a yes here.
+    const e = await signUp(w, w.address("robot"), "bill", "2026/HB9901", { turnstile: "elsewhere" });
+    assert.deepEqual(JSON.parse(e.body), { ok: false, why: "check", codes: ["hostname-mismatch"] });
+    const o = await signUp(w, w.address("robot"), "bill", "2026/HB9901", { turnstile: "other-form" });
+    assert.deepEqual(JSON.parse(o.body), { ok: false, why: "check", codes: ["action-mismatch"] });
     assert.equal(w.d1.rows("pending").length, 0);
   } finally { w.close(); }
 });
