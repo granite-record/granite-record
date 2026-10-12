@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.552
+# GRANITE_VERSION: 2026-09-04.554
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -28120,6 +28120,47 @@ def _fixture_site_whole(root):
     return base, ran
 
 
+@check("frontend", "every published guide is on the home page, in the site search and in the sitemap by the day it was checked, with HowTo data and the state in its title")
+def _guides_reach():
+    """The person, 12 October 2026: a link to the guides on the home page,
+    the guides in the site-wide search, and the guides optimized for SEO."""
+    absent = [x for x in CHAIN_NEEDS if not _paths.locate(x).exists()]
+    if absent:
+        return "skip", "not here: " + ", ".join(absent)
+    import guides as G
+    shared, base, _ran, _days = _fixture_site_shared()
+    site = shared / "site"
+    home = (site / "index.html").read_text(encoding="utf-8")
+    assert home.count("<!-- guides -->") == 1 and home.count("<!-- /guides -->") == 1, \
+        "the home page's guides slot is missing or doubled"
+    pages = sorted(p for p in (site / "guides").glob("*.html")
+                   if 'class="g-draft"' not in p.read_text(encoding="utf-8"))
+    find = json.loads((site / "find.json").read_text(encoding="utf-8"))
+    sm = (site / "sitemap.xml").read_text(encoding="utf-8")
+    by_slug = {g["slug"]: g for g in G.GUIDES}
+    bad = []
+    for p in pages:
+        g, t = by_slug[p.stem], p.read_text(encoding="utf-8")
+        addr = f"/guides/{p.stem}"
+        if f'href="{addr}"' not in home:
+            bad.append(f"{p.stem} is not on the home page")
+        if not any(r[0] == "guide" and r[3].lstrip("/") == addr.lstrip("/") for r in find):
+            bad.append(f"{p.stem} is not in find.json")
+        title = re.search(r"<title>([^<]*)</title>", t).group(1)
+        if "New Hampshire" not in title:
+            bad.append(f"{p.stem}'s title {title!r} does not say New Hampshire")
+        if '"@type": "HowTo"' not in t and '"@type":"HowTo"' not in t:
+            bad.append(f"{p.stem} carries no HowTo data")
+        if not re.search(re.escape(f"<loc>{base}{addr}</loc>") + r"<lastmod>\d{4}-\d\d-\d\d</lastmod>", sm):
+            bad.append(f"{p.stem}'s sitemap entry is not dated by its check")
+    if not pages and "hguides" in home:
+        bad.append("the home page lists guides while none is published")
+    assert not bad, "; ".join(bad)
+    return "ok", (f"{len(pages)} published guide{'s' if len(pages) != 1 else ''} on the home page, "
+                  "in the search and dated in the sitemap, each with HowTo data"
+                  if pages else "no guide published on the fixture; the home page's slot is empty")
+
+
 @check("frontend", "a member's structured data names their party as the party names itself, and an independent none")
 def _ld_party():
     """The SEO review of 12 October 2026: 1,962 Person blocks said "D Party",
@@ -32843,11 +32884,21 @@ def _guides_gate(BC, G, GS, RSA, S):
     import io
     import build_date
     for g in G.GUIDES:
-        loose = [u for u in G.outside(g) if u not in {x for us in GS.SOURCES.values() for x in us}]
+        loose = [u for u in G.outside(g) if u not in GS.cited()]
         assert not loose, f"{g['slug']} links what guide_sources.py never reads, so no check covers it: {loose}"
         words = G.text(g)
-        assert not re.search(r"\$\s?\d|\d\s?%", words), \
-            f"{g['slug']} states a dollar or percentage figure; link the source that sets it instead"
+        # A FIGURE ONLY AS A STATUTE STATES IT (the person, 12 October 2026:
+        # "Allow figures set by statute and have a way to check to make sure
+        # the costs are up to date"). Any other dollar or percentage figure is
+        # linked, never printed; each declared one rests on a section the
+        # guide cites, and build_civics.guide_ready finds its words in the
+        # statute table at every build.
+        assert not G.unbacked(g), \
+            f"{g['slug']} prints {G.unbacked(g)}, which no statute it cites is checked for; link the source instead"
+        cited = {c["source"] for c in g["claims"]}
+        for f_ in g.get("figures") or []:
+            assert f_["ref"] in cited and f_["text"] in words, \
+                f"{g['slug']}'s figure {f_['text']} rests on {f_['ref']}, which no claim of it cites"
         # STEP BY STEP, FOR SOMEONE WITH NO CONTEXT (the person, 11 October
         # 2026): the answer first, a diagram, numbered steps, and a button to
         # the official page wherever a step sends the reader to one.
@@ -32892,6 +32943,15 @@ def _guides_gate(BC, G, GS, RSA, S):
             pub, _ = BC.build_guides(tmp / "site", tmpl, "https://graniterecord.org")
         assert not pub and not (tmp / "site" / "guides" / "test-guide.html").exists(), \
             "a guide with a claim not checked was published"
+        # A figure the statute no longer states holds the guide back, by name.
+        stale = one(today)
+        stale["glance"] = "The fee is $15."
+        stale["figures"] = [G.fig("$15", "RSA 91-A:4", "the sum of $15")]
+        assert "no longer says" in BC.guide_ready(stale, GS.cited(), table.chapters, table.sections), \
+            "a guide whose figure its statute no longer states was let through"
+        stale["figures"] = [G.fig("$15", "RSA 91-A:4", "Every citizen")]
+        assert BC.guide_ready(stale, GS.cited(), table.chapters, table.sections) == "", \
+            "a guide whose figure its statute still states was held back"
         G.GUIDES = [one(today)]
         with contextlib.redirect_stdout(io.StringIO()):
             pub, urls = BC.build_guides(tmp / "site", tmpl, "https://graniterecord.org")

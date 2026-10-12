@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-16.21
+// GRANITE_VERSION: 2026-09-16.22
 /* FIND ANYTHING, FROM THE HEADER (16 September, asked for in these words:
    "a search icon in the header that lets you search for anything including
    legislators, committees, towns, and bills ... searching Litchfield would
@@ -50,7 +50,9 @@ const FIND={rows:null,loading:null,words:null};
    and one set of rows serve both. */
 const FIND_IDS={out:"findout",box:"findq",clear:"findclear",say:"findsay"};
 const FKIND={legislator:"Legislator",committee:"Committee",town:"Town",
-  page:"Page",former:"Former Member",topic:"Subject"};
+  page:"Page",former:"Former Member",topic:"Subject",
+  // The how-to guides and the Learn pages, from their own pages (12 October 2026).
+  guide:"How-To Guide",learn:"Learn"};
 const _fesc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>(
   {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 /* HALF AN EMOJI IS NOT AN ADDRESS. encodeURIComponent throws "URI malformed"

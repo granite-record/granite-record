@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-13.16
+# GRANITE_VERSION: 2026-09-13.17
 """
 The whole record as plain lists: every bill of every term, every sitting
 legislator, every town -- each a link a person or a crawler can follow.
@@ -41,6 +41,7 @@ sys.path += [str(p) for p in Path(__file__).resolve().parents if (p / "_paths.py
 import _paths  # noqa: E402,F401
 
 import argparse
+import html as _h
 import json
 import re
 from collections import defaultdict
@@ -385,6 +386,25 @@ def find_index(site, legs, towns):
               if mj.exists() else []):
         rows.append(["topic", t, "Bills on this subject",
                      S.canon("bills.html") + "?topic=" + quote_plus(t), ""])
+    # THE HOW-TO GUIDES AND THE LEARN PAGES (the person, 12 October 2026:
+    # "add them to the search system so you could search for them site
+    # wide"). Read off the pages build_civics wrote, by their own title and
+    # description, so a guide is findable the night it is published and a
+    # draft -- which says so on its face -- never is.
+    for kind, folder in (("guide", "guides"), ("learn", "learn")):
+        for p in sorted((site / folder).glob("*.html")):
+            if p.stem in ("index", "404"):
+                continue
+            html_ = p.read_text(encoding="utf-8", errors="replace")
+            if 'class="g-draft"' in html_:
+                continue
+            t = re.search(r'<meta property="og:title" content="([^"]*)"', html_)
+            dsc = re.search(r'<meta name="description" content="([^"]*)"', html_)
+            if not t:
+                continue
+            name = re.sub(r"\s*\|\s*Granite Record$", "", _h.unescape(t.group(1)))
+            rows.append([kind, name, _h.unescape(dsc.group(1)) if dsc else "",
+                         S.canon(f"{folder}/{p.name}"), ""])
     for name, path, what in (
             ("Bill search", "bills.html", "Every bill since 1989"),
             ("Officials", "officials.html", "Who represents your town, and the sitting roster"),

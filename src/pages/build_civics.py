@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.46
+# GRANITE_VERSION: 2026-09-08.49
 """
 The civics section: a hub and one page per topic, in order.
 
@@ -44,6 +44,7 @@ import guides as G
 import learn_numbers
 import proceedings as P
 import shell as S
+import structured as LD
 import site_read as SR
 
 
@@ -1099,7 +1100,7 @@ def _day(iso):
     return datetime.date.fromisoformat(iso)
 
 
-def guide_ready(g, fetched, chapters):
+def guide_ready(g, fetched, chapters, sections=None):
     """Why the guide may not be published yet, or "" when it may: a claim
     not checked, an outside address the laptop's run does not read (so no
     link check covers it), or a Laws page the statute table does not hold."""
@@ -1112,6 +1113,19 @@ def guide_ready(g, fetched, chapters):
     gone = sorted(c for c in laws if c.upper() not in chapters)
     if gone:
         return "links a Laws page the statute table does not hold: " + ", ".join(gone)
+    # A FIGURE ONLY AS THE LAW STATES IT, AND ONLY WHILE IT STILL DOES (the
+    # person, 12 October 2026). Every dollar or percentage printed is a
+    # guides.fig, and its section's words are found in this build's table.
+    loose = G.unbacked(g)
+    if loose:
+        return "prints a figure no statute it cites is checked for: " + ", ".join(loose)
+    for f in g.get("figures") or []:
+        m = re.match(r"RSA ([0-9A-Z-]+):([0-9a-z-]+)", f["ref"])
+        sec = (sections or {}).get(f"{m.group(1)}:{m.group(2)}") if m else None
+        said = re.sub(r"\s+", " ", (sec.text if sec else "") or "")
+        if f["says"] not in said:
+            return (f'{f["ref"]} no longer says "{f["says"]}", which its figure {f["text"]} '
+                    "rests on: check the figure against the law before publishing")
     return ""
 
 
@@ -1215,8 +1229,14 @@ def guide_page(tmpl, g, base, record, draft_why=""):
                 'official page it links before you rely on it.</p>')
     checked = (f'<p class="g-checked">Checked against its sources '
                f'{E(C.date_words(_day(when), "full"))}.</p>' if when and not draft_why else "")
-    p = S.page(tmpl, path=path, base=base, title=S.title_of(g["title"], "Guides"),
-               og_title=g["title"], description=g["blurb"], og_image="og-learn.png", og_alt=OG_ALT,
+    # THE STATE IN THE TITLE (the SEO review, 12 October 2026): a reader
+    # searches "how to get a public record in NH", and a guide whose name
+    # does not already say New Hampshire says it in the title a search
+    # result shows. The heading on the page is the guide's own name.
+    seo = g["title"] if "New Hampshire" in g["title"] else f'{g["title"]} in New Hampshire'
+    p = S.page(tmpl, path=path, base=base, title=S.title_of(seo),
+               og_title=seo, description=g["blurb"], og_image="og-learn.png", og_alt=OG_ALT,
+               jsonld=None if draft_why else LD.howto(g, base, S.canon(path), when or ""),
                globals={"GR_STATIC": True}, noscript="", skip_label="Skip to the guide", sr_title="",
                nav_current="resources.html", cite=False)
     items = "".join(f'<li><a href="{E(S.canon(path))}#{E(sid)}">{_plain(h)}</a></li>' for sid, h, _ in secs)
@@ -1234,16 +1254,47 @@ def guide_page(tmpl, g, base, record, draft_why=""):
                      + f'<div class="l-art">{article}</div></div>{OTP_JS}</div>', 1)
 
 
+HOME_SLOT = re.compile(r"<!-- guides -->.*?<!-- /guides -->", re.S)
+
+
+def home_guides(site, published):
+    """The home page's row of how-to guides, under its three cards: each
+    published guide by name, and the tab that lists them. The home page is
+    build_pages' and is written before this runs, so its slot is filled here,
+    and filled again rather than doubled on a second run. Nothing is drawn
+    while no guide has passed its checks."""
+    home = site / "index.html"
+    if not home.is_file():
+        return
+    text = home.read_text(encoding="utf-8")
+    if not HOME_SLOT.search(text):
+        print("  index.html has no guides slot: the home page lists no guides")
+        return
+    row = ""
+    if published:
+        row = ('<nav class="hguides" aria-labelledby="hguides-h">'
+               '<h2 id="hguides-h">How-To Guides</h2><ul>'
+               + "".join(f'<li><a href="{E(S.canon("/" + guide_href(g["slug"])))}">'
+                         f'{E(g["title"])}</a></li>' for g in published)
+               + '</ul><a class="hgall" href="/resources#guides">All guides</a></nav>')
+    home.write_text(HOME_SLOT.sub(lambda _m: f"<!-- guides -->{row}<!-- /guides -->", text, count=1),
+                    encoding="utf-8")
+    print(f"  index.html: {len(published)} guide{'s' if len(published) != 1 else ''} under the cards")
+
+
 def build_guides(site, tmpl, base, drafts=False):
     """Writes the guides that may be published (and, with drafts, the rest,
     marked) and returns (published, urls). Says why each one held back is."""
     import build_rsa as BR
     import guide_sources
-    fetched = {u for us in guide_sources.SOURCES.values() for u in us}
+    fetched = guide_sources.cited()
     table = None
     try:
         import rsa
-        table = rsa.load()
+        # THE TABLE OF THE PROJECT BEING BUILT, from the working folder, as
+        # build_rsa.py reads it with --db db: the Laws pages a guide links are
+        # built from that table, so the guide is held to the same one.
+        table = rsa.load(Path("db") / "NH_RSA.psv", Path("db") / "_columns.json")
     except Exception as e:                      # noqa: BLE001 -- said, and no guide links a law then
         print(f"  guides: the statute table could not be read ({type(e).__name__})")
     chapters = table.chapters if table else {}
@@ -1253,7 +1304,7 @@ def build_guides(site, tmpl, base, drafts=False):
     out = site / GUIDE_DIR
     published, urls = [], []
     for g in G.GUIDES:
-        why = guide_ready(g, fetched, chapters)
+        why = guide_ready(g, fetched, chapters, table.sections if table else {})
         if why and not drafts:
             print(f"  guides/{g['slug']}.html HELD BACK: {why}")
             continue
@@ -1422,6 +1473,8 @@ def main():
     # ---- the how-to guides -------------------------------------------------
     published, gurls = build_guides(site, tmpl, a.base, a.drafts)
 
+    home_guides(site, published)
+
     # ---- the hub ----------------------------------------------------------
     groups = official_sources(numbers_results(Path(".")))
     (site / HUB_PAGE).write_text(S.clean_links(hub_page(tmpl, a.base, topics, groups, published)), encoding="utf-8")
@@ -1437,7 +1490,15 @@ def main():
     added, dropped = S.sitemap_merge(site, a.base, urls, owns="/" + LEARN_DIR)
     if added or dropped:
         print(f"  sitemap.xml: {added} added, {dropped} dropped")
-    added, dropped = S.sitemap_merge(site, a.base, gurls, owns="/" + GUIDE_DIR)
+    # A guide's sitemap date is the day it was last checked against its
+    # sources: the day what it says last changed.
+    added, dropped = S.sitemap_merge(
+        site, a.base, gurls, owns="/" + GUIDE_DIR,
+        # never later than the build's own day, as a bill's is not
+        # (build_bill_pages.lastmod)
+        lastmod={a.base + S.canon("/" + guide_href(g["slug"])):
+                 min(G.checked_on(g), build_date.today().isoformat())
+                 for g in published if G.checked_on(g)})
     if added or dropped:
         print(f"  sitemap.xml: {added} guides added, {dropped} dropped")
 
