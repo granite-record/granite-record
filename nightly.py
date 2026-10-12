@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.62
+# GRANITE_VERSION: 2026-09-04.63
 """
 The nightly run. Fetch the day's bulk files, rebuild, check, compile what
 readers reported and what changed -- and publish only if told to.
@@ -1058,6 +1058,7 @@ def run(args, label, cwd=None):
     lock this process holds.
     """
     say(f"\n--- {label} ---")
+    WATCH["step"] = label
     t0 = time.time()
     mark = len(LOG)
     # The script by its bare name, in whichever code folder holds it
@@ -1319,6 +1320,7 @@ def main():
             return close_verdict(a)
         if a.deploy_to:
             return runner_deploy(a)
+        machine_watch()
         if a.weekly:
             return weekly(a)
     elif a.weekly or a.deploy_to or a.close or a.dry_run or a.new_term:
@@ -1693,6 +1695,8 @@ def main():
         say("\n" + "=" * 74)
         say(f"finished {datetime.now():%H:%M}, "
             f"{(datetime.now() - started).seconds // 60} min, exit {code}")
+        if machine_lows():
+            say(f"the machine: {machine_lows()}")
         logs = Path("logs")
         logs.mkdir(exist_ok=True)
         (logs / f"nightly-{day}.log").write_text("\n".join(LOG) + "\n", encoding="utf-8")
@@ -1754,10 +1758,114 @@ def deploy(a):
 
 def on_the_runner():
     """What --runner changes before anything else happens: a step's own output
-    goes to the log file only, and archive/ is there for what travels."""
+    goes to the log file only, archive/ is there for what travels, the night
+    runs below normal priority. The night and the weekly are watched
+    (machine_watch); a deploy and the verdict are minutes long."""
     global QUIET
     QUIET = True
     Path("archive").mkdir(exist_ok=True)
+    yield_to_runner()
+
+
+# A RUNNER LOST MID-NIGHT (run 70, 12 October 2026). GitHub said "The hosted
+# runner lost communication with the server", an hour into the night, with no
+# log kept and nothing after the step run: what ends that way is the machine,
+# not the code -- the agent that reports to GitHub starved of CPU or memory,
+# or the machine killed. Two things follow on GitHub's machine only.
+#
+# The night yields: this process runs below normal priority, which every
+# child it starts inherits on Windows, so the agent always has the CPU to
+# answer GitHub. Nothing here is waiting on an interactive reader, so the
+# night loses nothing it needs.
+#
+# And it says what the machine has, once a minute, in GitHub's log, which is
+# what a lost runner leaves behind: free memory, the commit charge against
+# its limit (memory and the page file together, which is what runs out),
+# free disk, and the step running. Numbers only; the log is public. The
+# lowest seen goes into the night's own log at the end, so a night that
+# lived says how close it came.
+WATCH = {"step": "", "low_mem": None, "low_commit": None, "low_disk": None}
+WATCH_EVERY = 60
+
+
+def yield_to_runner():
+    if os.name != "nt":
+        return
+    try:
+        import ctypes
+        k = ctypes.windll.kernel32
+        k.SetPriorityClass(k.GetCurrentProcess(), 0x4000)   # BELOW_NORMAL_PRIORITY_CLASS
+    except (OSError, AttributeError):
+        pass
+
+
+def machine_now():
+    """(free memory GB, commit headroom GB, commit limit GB, free disk GB);
+    None for what this machine cannot say."""
+    mem = head = limit = None
+    if os.name == "nt":
+        try:
+            import ctypes
+
+            class MS(ctypes.Structure):
+                _fields_ = [("len", ctypes.c_ulong), ("load", ctypes.c_ulong),
+                            ("total", ctypes.c_ulonglong), ("avail", ctypes.c_ulonglong),
+                            ("pagetotal", ctypes.c_ulonglong), ("pageavail", ctypes.c_ulonglong),
+                            ("virt", ctypes.c_ulonglong), ("virtavail", ctypes.c_ulonglong),
+                            ("ext", ctypes.c_ulonglong)]
+            m = MS()
+            m.len = ctypes.sizeof(MS)
+            if ctypes.windll.kernel32.GlobalMemoryStatusEx(ctypes.byref(m)):
+                mem, head, limit = m.avail / 2**30, m.pageavail / 2**30, m.pagetotal / 2**30
+        except (OSError, AttributeError):
+            pass
+    else:
+        try:
+            info = dict(ln.split(":", 1) for ln in Path("/proc/meminfo").read_text().splitlines())
+            kb = lambda k: int(info[k].split()[0]) / 2**20
+            mem, limit = kb("MemAvailable"), kb("CommitLimit")
+            head = limit - kb("Committed_AS")
+        except (OSError, KeyError, ValueError):
+            pass
+    try:
+        disk = shutil.disk_usage(".").free / 2**30
+    except OSError:
+        disk = None
+    return mem, head, limit, disk
+
+
+def machine_line():
+    mem, head, limit, disk = machine_now()
+    for k, v in (("low_mem", mem), ("low_commit", head), ("low_disk", disk)):
+        if v is not None and (WATCH[k] is None or v < WATCH[k][0]):
+            WATCH[k] = (v, WATCH["step"] or "-")
+    g = lambda v: "?" if v is None else f"{v:.1f}"
+    return (f"[machine {datetime.now():%H:%M}] memory free {g(mem)} GB, commit headroom "
+            f"{g(head)} of {g(limit)} GB, disk free {g(disk)} GB; step: {WATCH['step'] or '-'}")
+
+
+def machine_watch():
+    import threading
+
+    # Its own clock, not time.sleep, which the checks replace to count a
+    # night's waits.
+    tick = threading.Event()
+
+    def watch():
+        while True:
+            print(machine_line(), flush=True)
+            tick.wait(WATCH_EVERY)
+    threading.Thread(target=watch, name="machine-watch", daemon=True).start()
+
+
+def machine_lows():
+    """The lowest the watch saw, with the step it saw it in, for the night's log."""
+    out = []
+    for k, name in (("low_mem", "free memory"), ("low_commit", "commit headroom"),
+                    ("low_disk", "free disk")):
+        if WATCH[k]:
+            out.append(f"lowest {name} {WATCH[k][0]:.1f} GB, during {WATCH[k][1]}")
+    return "; ".join(out)
 
 
 def load_json(path):
@@ -4649,6 +4757,8 @@ def weekly(a):
         say("\n" + "=" * 74)
         say(f"finished {datetime.now():%H:%M}, "
             f"{(datetime.now() - started).seconds // 60} min, exit {code}")
+        if machine_lows():
+            say(f"the machine: {machine_lows()}")
         logs = Path("logs")
         logs.mkdir(exist_ok=True)
         (logs / f"weekly-{day}.log").write_text("\n".join(LOG) + "\n", encoding="utf-8")
