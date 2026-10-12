@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-11.3
+# GRANITE_VERSION: 2026-10-11.4
 """
 The official pages the how-to guides cite, onto this disk, to check them by.
 
@@ -114,11 +114,31 @@ SOURCES = {
         "https://www.insurance.nh.gov/appeals-external-reviews",
     ],
     "start_here": [
-        "https://nheasy.nh.gov/",
+        # read 12 October 2026: the Department of Health and Human Services' benefits site
+        "https://nheasy.nh.gov/#/",
         "https://www.dhhs.nh.gov/servicelink/contact-servicelink",
         "https://www.dhhs.nh.gov/programs-services/medicaid",
     ],
 }
+
+# NOT STATE AGENCIES, AND NEVER FETCHED. Where a guide sends a reader for help
+# a page cannot give -- legal aid, a lawyer, a counsellor -- it may name these,
+# which the person chose to cite and sent from a browser on 12 October 2026
+# (copies with the rest). This script asks state hosts only; these are here so
+# the guides' gate knows they were read.
+OTHER = {
+    "help": [
+        "https://nhcare-c.org/aging-and-disability-resource-center/",
+        "https://www.nhla.org",
+        "https://www.603legalaid.org/self-help-articles/",
+        "https://www.nhbar.org/lawyer-referral-service/",
+    ],
+}
+
+
+def cited():
+    """Every address a guide may cite: the state pages and OTHER."""
+    return {u for d in (SOURCES, OTHER) for us in d.values() for u in us}
 
 def state_host(url):
     host = url.split("/")[2].lower()

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.48
+# GRANITE_VERSION: 2026-09-08.49
 """
 The civics section: a hub and one page per topic, in order.
 
@@ -1100,7 +1100,7 @@ def _day(iso):
     return datetime.date.fromisoformat(iso)
 
 
-def guide_ready(g, fetched, chapters):
+def guide_ready(g, fetched, chapters, sections=None):
     """Why the guide may not be published yet, or "" when it may: a claim
     not checked, an outside address the laptop's run does not read (so no
     link check covers it), or a Laws page the statute table does not hold."""
@@ -1113,6 +1113,19 @@ def guide_ready(g, fetched, chapters):
     gone = sorted(c for c in laws if c.upper() not in chapters)
     if gone:
         return "links a Laws page the statute table does not hold: " + ", ".join(gone)
+    # A FIGURE ONLY AS THE LAW STATES IT, AND ONLY WHILE IT STILL DOES (the
+    # person, 12 October 2026). Every dollar or percentage printed is a
+    # guides.fig, and its section's words are found in this build's table.
+    loose = G.unbacked(g)
+    if loose:
+        return "prints a figure no statute it cites is checked for: " + ", ".join(loose)
+    for f in g.get("figures") or []:
+        m = re.match(r"RSA ([0-9A-Z-]+):([0-9a-z-]+)", f["ref"])
+        sec = (sections or {}).get(f"{m.group(1)}:{m.group(2)}") if m else None
+        said = re.sub(r"\s+", " ", (sec.text if sec else "") or "")
+        if f["says"] not in said:
+            return (f'{f["ref"]} no longer says "{f["says"]}", which its figure {f["text"]} '
+                    "rests on: check the figure against the law before publishing")
     return ""
 
 
@@ -1274,7 +1287,7 @@ def build_guides(site, tmpl, base, drafts=False):
     marked) and returns (published, urls). Says why each one held back is."""
     import build_rsa as BR
     import guide_sources
-    fetched = {u for us in guide_sources.SOURCES.values() for u in us}
+    fetched = guide_sources.cited()
     table = None
     try:
         import rsa
@@ -1291,7 +1304,7 @@ def build_guides(site, tmpl, base, drafts=False):
     out = site / GUIDE_DIR
     published, urls = [], []
     for g in G.GUIDES:
-        why = guide_ready(g, fetched, chapters)
+        why = guide_ready(g, fetched, chapters, table.sections if table else {})
         if why and not drafts:
             print(f"  guides/{g['slug']}.html HELD BACK: {why}")
             continue

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.553
+# GRANITE_VERSION: 2026-09-04.554
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -32884,11 +32884,21 @@ def _guides_gate(BC, G, GS, RSA, S):
     import io
     import build_date
     for g in G.GUIDES:
-        loose = [u for u in G.outside(g) if u not in {x for us in GS.SOURCES.values() for x in us}]
+        loose = [u for u in G.outside(g) if u not in GS.cited()]
         assert not loose, f"{g['slug']} links what guide_sources.py never reads, so no check covers it: {loose}"
         words = G.text(g)
-        assert not re.search(r"\$\s?\d|\d\s?%", words), \
-            f"{g['slug']} states a dollar or percentage figure; link the source that sets it instead"
+        # A FIGURE ONLY AS A STATUTE STATES IT (the person, 12 October 2026:
+        # "Allow figures set by statute and have a way to check to make sure
+        # the costs are up to date"). Any other dollar or percentage figure is
+        # linked, never printed; each declared one rests on a section the
+        # guide cites, and build_civics.guide_ready finds its words in the
+        # statute table at every build.
+        assert not G.unbacked(g), \
+            f"{g['slug']} prints {G.unbacked(g)}, which no statute it cites is checked for; link the source instead"
+        cited = {c["source"] for c in g["claims"]}
+        for f_ in g.get("figures") or []:
+            assert f_["ref"] in cited and f_["text"] in words, \
+                f"{g['slug']}'s figure {f_['text']} rests on {f_['ref']}, which no claim of it cites"
         # STEP BY STEP, FOR SOMEONE WITH NO CONTEXT (the person, 11 October
         # 2026): the answer first, a diagram, numbered steps, and a button to
         # the official page wherever a step sends the reader to one.
@@ -32933,6 +32943,15 @@ def _guides_gate(BC, G, GS, RSA, S):
             pub, _ = BC.build_guides(tmp / "site", tmpl, "https://graniterecord.org")
         assert not pub and not (tmp / "site" / "guides" / "test-guide.html").exists(), \
             "a guide with a claim not checked was published"
+        # A figure the statute no longer states holds the guide back, by name.
+        stale = one(today)
+        stale["glance"] = "The fee is $15."
+        stale["figures"] = [G.fig("$15", "RSA 91-A:4", "the sum of $15")]
+        assert "no longer says" in BC.guide_ready(stale, GS.cited(), table.chapters, table.sections), \
+            "a guide whose figure its statute no longer states was let through"
+        stale["figures"] = [G.fig("$15", "RSA 91-A:4", "Every citizen")]
+        assert BC.guide_ready(stale, GS.cited(), table.chapters, table.sections) == "", \
+            "a guide whose figure its statute still states was held back"
         G.GUIDES = [one(today)]
         with contextlib.redirect_stdout(io.StringIO()):
             pub, urls = BC.build_guides(tmp / "site", tmpl, "https://graniterecord.org")

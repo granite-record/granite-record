@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-11.5
+# GRANITE_VERSION: 2026-10-11.6
 """
 The how-to guides: their words, their sources, and what each was checked
 against. Read by build_civics.py, which draws them on the Resources hub's
@@ -71,6 +71,31 @@ def claim(says, source, checked=None):
     return {"says": says, "source": source, "checked": checked}
 
 
+# A FIGURE THE LAW SETS (the person, 12 October 2026: "Allow figures set by
+# statute and have a way to check to make sure the costs are up to date").
+# A guide may print a dollar amount or a percentage only as one of these: the
+# figure as printed, the section that sets it, and the words of that section
+# that state it. build_civics.guide_ready finds those words in the statute
+# table every build -- the weekly takes the table fresh from the General
+# Court's database -- and holds the guide back, naming the figure, the day
+# the law stops saying them. A figure from an agency's page, which no table
+# checks, is still never printed: the guide links the page.
+FIGURE = re.compile(r"\$\s?\d+(?:,\d{3})*(?:\.\d+)?|\d+(?:\.\d+)?\s?%")
+
+
+def fig(text, ref, says):
+    """`text` as the guide prints it ("$15"), the section that sets it
+    ("RSA 5-C:10") and words of that section that state it ("the sum of $15")."""
+    return {"text": text, "ref": ref, "says": says}
+
+
+def unbacked(g):
+    """The dollar and percentage figures the guide prints that no fig() of
+    it declares."""
+    declared = {f["text"] for f in g.get("figures") or []}
+    return sorted({m.group(0).replace(" ", "") for m in FIGURE.finditer(text(g))} - declared)
+
+
 def step(title, text, actions=(), law=(), note=""):
     """One numbered step: its words (HTML), the buttons to the official pages
     it needs [(label, url)], the sections of law it rests on ["RSA 654:7"],
@@ -88,7 +113,74 @@ def ask(question, answers):
     return ("ask", question, list(answers))
 
 
-def guide(slug, title, blurb, glance, flow, steps, sources, laws, claims, more="", see=()):
+# WHERE TO GET HELP FROM A PERSON (the person, 12 October 2026: "link to
+# official benefits assistance programs as well so that folks can speak
+# directly to experts if they need further assistance past the guides or
+# referrals for legal services"). Each entry is a line for a guide's Who Can
+# Help, its buttons, and the claims that check it, from pages the person sent.
+# Legal aid and the Bar's referral service are not state agencies; the person
+# chose them (guide_sources.OTHER).
+NHEASY = "https://nheasy.nh.gov/#/"
+ADRC = "https://nhcare-c.org/aging-and-disability-resource-center/"
+NHLA = "https://www.nhla.org"
+LEGAL_AID = "https://www.603legalaid.org/self-help-articles/"
+LRS = "https://www.nhbar.org/lawyer-referral-service/"
+HELP_CHECKED = "2026-10-12"
+HELP = {
+    "nheasy": (
+        "<li><b>NH Easy</b>, the Department of Health and Human Services&rsquo; benefits site: "
+        "apply for cash, medical, SNAP (food) and child care assistance, Medicare beneficiary "
+        "and long-term care assistance, or check first whether you might qualify. To speak to "
+        "someone, call 1-844-ASK-DHHS (1-844-275-3447).</li>",
+        [("NH Easy", NHEASY)],
+        [("NH Easy: apply for cash, medical, SNAP, child care, Medicare beneficiary and long term "
+          "care assistance; Do I Qualify?; customer service 1-844-ASK-DHHS (1-844-275-3447).", NHEASY)]),
+    "adrc": (
+        "<li><b>Aging and Disability Resource Centers</b> (formerly ServiceLink), a Department of "
+        "Health and Human Services program with local resource centers: free counselling for "
+        "older adults, adults with disabilities and caregivers, on benefits, applications, "
+        "housing, Medicare and Medicaid, with no eligibility requirement. Call 1-866-634-9412, "
+        "weekdays 8:30 a.m. to 4:30 p.m.</li>",
+        [],
+        [("ADRC, formerly ServiceLink, a DHHS program of locally accessible resource centers; "
+          "options counselling on benefits, applications, housing, Medicare and Medicaid; no fee "
+          "or eligibility requirement; 1-866-634-9412, Monday to Friday 8:30 to 4:30.", ADRC)]),
+    "legal_aid": (
+        "<li><b>Free civil legal aid.</b> New Hampshire Legal Assistance helps people with low "
+        "income and limited assets, and adults 60 and over, mainly with housing (eviction, "
+        "foreclosure and property tax deeding), domestic violence and family law, and public "
+        "benefits. Apply through 603 Legal Aid, online or at 1-800-639-5290; it also publishes "
+        "self-help articles.</li>",
+        [("603 Legal Aid", LEGAL_AID)],
+        [("NHLA: free civil legal aid, mainly housing including property tax deeding, domestic "
+          "violence and family law, public benefits; low income and limited assets, and 60 and "
+          "over; apply through 603 Legal Aid online or 1 (800) 639-5290.", NHLA),
+         ("603 Legal Aid publishes self-help articles, benefits among them.", LEGAL_AID)]),
+    "lawyer": (
+        "<li><b>The New Hampshire Bar Association&rsquo;s Lawyer Referral Service</b> refers you "
+        "to a lawyer who handles your kind of problem, for an administrative fee. Call "
+        "603-229-0002, weekdays 9 a.m. to 3:30 p.m., or ask online.</li>",
+        [("Lawyer Referral Service", LRS)],
+        [("NHBA Lawyer Referral Service: 603-229-0002, Monday to Friday 9 to 3:30, an "
+          "administrative fee, referral by phone or online.", LRS)]),
+}
+
+
+def helps(*keys):
+    """The Who Can Help list for these entries, with their buttons."""
+    acts = [a for k in keys for a in HELP[k][1]]
+    return ('<ul class="g-help">' + "".join(HELP[k][0] for k in keys) + "</ul>"
+            + ('<p class="g-acts">' + " ".join(
+                f'<a class="g-btn" href="{u}" target="_blank" rel="noopener">{label}</a>'
+                for label, u in acts) + "</p>" if acts else ""))
+
+
+def help_claims(*keys):
+    return [claim(says, src, HELP_CHECKED) for k in keys for says, src in HELP[k][2]]
+
+
+def guide(slug, title, blurb, glance, flow, steps, sources, laws, claims, more="", see=(),
+          figures=()):
     """`glance` is the answer in a sentence or three (HTML); `flow` the
     diagram, a list of box() and ask(); `steps` the numbered steps; `more`
     any section after them, in <h2> sections as a Learn page's are;
@@ -97,7 +189,7 @@ def guide(slug, title, blurb, glance, flow, steps, sources, laws, claims, more="
     site's own pages worth reading next [(label, path)]."""
     return {"slug": slug, "title": title, "blurb": blurb, "glance": glance, "flow": list(flow),
             "steps": list(steps), "more": more, "sources": sources, "laws": laws,
-            "claims": claims, "see": list(see)}
+            "claims": claims, "see": list(see), "figures": list(figures)}
 
 
 LAW_REF = re.compile(r"^RSA (\d{1,3}(?:-[A-Z]{1,2})?)(?::([0-9a-z-]+))?(.*)$")
@@ -415,14 +507,15 @@ PUBLIC_RECORD = guide(
            "still be filed in superior court.", OMBUDSMAN, CHECKED),
      claim("The Attorney General's memorandum explains RSA 91-A for citizens and officials; it is "
            "not legal advice, and people with specific questions should consult a lawyer.",
-           RTK, CHECKED)],
+           RTK, CHECKED)] + help_claims("lawyer"),
     more="<h2>Who Can Help</h2>"
          "<p>The office that keeps the record is the first place to ask how to get it. To "
          "understand the law in more depth, the Attorney General publishes a memorandum on the "
          "Right-to-Know Law for citizens and public officials alike. It says it is not legal "
          "advice, and that anyone with a specific question should consult a lawyer.</p>"
          f'<p class="g-acts"><a class="g-btn" href="{RTK_MEMO}" target="_blank" rel="noopener">'
-         "The Attorney General&rsquo;s memorandum</a></p>",
+         "The Attorney General&rsquo;s memorandum</a></p>"
+         + helps("lawyer"),
     see=[("Town meeting and local government", "/learn/local-government.html")])
 
 
@@ -509,17 +602,19 @@ ENERGY = guide(
            "or phone interview or mail-in application; no-heat emergencies go to the local agency.",
            DOE_CAA, CHECKED),
      claim("211, Neighbor Helping Neighbor (Eversource, Liberty and Unitil customers), Project Care "
-           "(NHEC customers) and NH Adult and Aging Care, 1-866-634-9412.", DOE_CAA, CHECKED)],
+           "(NHEC customers) and NH Adult and Aging Care, 1-866-634-9412.", DOE_CAA, CHECKED)]
+    + help_claims("nheasy", "adrc"),
     more="<h2>Who Can Help</h2>"
          "<p>Your community action agency is where to apply and where to ask about your "
          "household. The Department of Energy also lists these:</p><ul>"
          "<li><b>211 New Hampshire:</b> dial 211, or 1-866-444-4211, for help finding other "
          "assistance.</li>"
-         "<li><b>NH Adult and Aging Care:</b> 1-866-634-9412.</li>"
          "<li><b>Neighbor Helping Neighbor</b>, for customers of Eversource, Liberty and Unitil, "
          "and <b>Project Care</b>, for New Hampshire Electric Co-op customers.</li></ul>"
          f'<p class="g-acts"><a class="g-btn" href="{NH211}" target="_blank" rel="noopener">211 '
-         "New Hampshire</a></p>")
+         "New Hampshire</a></p>"
+         "<p>For help with other benefits, and someone to talk them through with:</p>"
+         + helps("nheasy", "adrc"))
 
 
 # ---------------------------------------------------------------------------
@@ -542,14 +637,14 @@ VITAL = guide(
     "bring and what it costs.",
     "Any of New Hampshire&rsquo;s 234 town and city clerks, or the state&rsquo;s Division of "
     "Vital Records Administration in Concord, can issue a certified copy. You fill in an "
-    "application, show photo identification, and pay a search fee that includes one copy, with "
-    "a smaller fee for each extra copy made at the same time. Only the person named, close "
-    "family and a few others may get a recent record.",
+    "application, show photo identification, and pay $15, which includes one copy; more copies "
+    "of the same record made at the same time are $10 each. Only the person named, close family "
+    "and a few others may get a recent record.",
     [ask("Is the record yours, or a close family member's?",
          [("Yes", "Apply with your photo ID."),
           ("No", "You may still qualify, with a letter showing why you need it.")]),
      box("Apply at your town or city clerk&rsquo;s office, or by mail to the state."),
-     box("Pay the search fee, which includes one copy.")],
+     box("Pay $15 for the search and one copy, and $10 for each extra copy.")],
     [step("Check that you may get the record",
           "<p>Birth records from before 1901, and death, marriage and divorce records from before "
           "1948, are public. A newer record is issued only to someone with a <em>direct and "
@@ -581,10 +676,9 @@ VITAL = guide(
           "there is a form listing the other documents that will do.</p>",
           actions=[("Request a certificate", DVRA_REQUEST), ("If you have no photo ID", DVRA_NO_ID)]),
      step("Pay the fee",
-          "<p>The search fee includes one copy, and each further copy of the same record issued "
-          "at the same time costs less. The law sets both, and the Secretary of State&rsquo;s "
-          "page gives the current amounts. The search fee is paid whether or not the record is "
-          "found, and a card payment may cost extra.</p>",
+          "<p>The fee is $15 for the search, which includes one copy, and $10 for each further "
+          "copy of the same record issued at the same time. The law sets both. The $15 is paid "
+          "whether or not the record is found, and a card payment may cost extra.</p>",
           actions=[("Current fees", DVRA_REQUEST)], law=["RSA 5-C:10"])],
     [("Vital Records (Secretary of State)", DVRA),
      ("Request for Certificates (Secretary of State)", DVRA_REQUEST),
@@ -615,7 +709,9 @@ VITAL = guide(
          "Find your town or city clerk</a> "
          f'<a class="g-btn" href="{DVRA_CONTACT}" target="_blank" rel="noopener">Contact Vital '
          "Records</a></p>",
-    see=[("How to vote in New Hampshire", "/guides/how-to-vote.html")])
+    see=[("How to vote in New Hampshire", "/guides/how-to-vote.html")],
+    figures=[fig("$15", "RSA 5-C:10", "the sum of $15 for making a search"),
+             fig("$10", "RSA 5-C:10", "$10 for each subsequent copy")])
 
 
 # ---------------------------------------------------------------------------
@@ -644,7 +740,7 @@ ABATEMENT = guide(
     [box("Apply to your town or city by March 1 after the final tax bill."),
      box("The town decides by July 1. No answer counts as a denial."),
      ask("Still disagree?",
-         [("Appeal to the Board of Tax and Land Appeals", "With a filing fee, by September 1."),
+         [("Appeal to the Board of Tax and Land Appeals", "$65, by September 1."),
           ("Or to the Superior Court", "By September 1. One or the other, not both.")])],
     [step("Know your deadlines",
           "<p>Every deadline counts from the <em>notice of tax</em>: the date your town mailed the "
@@ -682,8 +778,8 @@ ABATEMENT = guide(
      step("Appeal, if you still disagree",
           "<p>You can appeal to the <b>Board of Tax and Land Appeals</b> or to the <b>Superior "
           "Court</b>, but not both. For the Board, fill in its appeal form and mail it or hand it "
-          "in, with the filing fee its page states, by check or money order payable to "
-          "&ldquo;Treasurer, State of NH&rdquo;, to the Board of Tax and Land Appeals, 107 Pleasant Street, Johnson Hall, "
+          "in, with the $65 filing fee by check or money order payable to &ldquo;Treasurer, "
+          "State of NH&rdquo;, to the Board of Tax and Land Appeals, 107 Pleasant Street, Johnson Hall, "
           "Concord, NH 03301. It does not accept appeals filed electronically. Either way, the "
           "decision can then be appealed to the Supreme Court.</p>",
           actions=[("The Board's property tax page", BTLA), ("The Board's appeal form", BTLA_APPEAL),
@@ -714,7 +810,8 @@ ABATEMENT = guide(
      claim("2, 6 and 8 months where notice of tax is after December 31.", "RSA 76:16-d", CHECKED),
      claim("Date of the final tax bill and date of notice of tax defined.", "RSA 76:1-a", CHECKED),
      claim("Damaged buildings: apply within 60 days of the event or by March 1, whichever is "
-           "later; appeal as under 76:16-a or 76:17.", "RSA 76:21", CHECKED)],
+           "later; appeal as under 76:16-a or 76:17.", "RSA 76:21", CHECKED)]
+    + help_claims("legal_aid", "lawyer"),
     more="<h2>If a Fire or Disaster Damaged Your Building</h2>"
          "<p>When a fire you did not cause, or a natural disaster, leaves a building unusable "
          "during the tax year, its assessment is prorated for the days it could be used. Apply "
@@ -725,8 +822,12 @@ ABATEMENT = guide(
          "abatement. For questions about appealing, the Board of Tax and Land Appeals asks you to "
          "read its commonly asked questions or call its office at (603) 271-2578.</p>"
          f'<p class="g-acts"><a class="g-btn" href="{BTLA}" target="_blank" rel="noopener">The '
-         "Board of Tax and Land Appeals</a></p>",
-    see=[("Help paying property tax on a low or moderate income", "/guides/property-tax-relief.html")])
+         "Board of Tax and Land Appeals</a></p>"
+         "<p>For legal help, including if you are at risk of losing your home over unpaid "
+         "property taxes:</p>"
+         + helps("legal_aid", "lawyer"),
+    see=[("Help paying property tax on a low or moderate income", "/guides/property-tax-relief.html")],
+    figures=[fig("$65", "RSA 76:16-a", "upon payment of a $65 filing fee")])
 
 
 # ---------------------------------------------------------------------------
@@ -746,9 +847,10 @@ LMI = guide(
     "property-tax-relief", "How to Get Property Tax Relief on a Low or Moderate Income",
     "New Hampshire's Low and Moderate Income Homeowners Property Tax Relief: who qualifies, "
     "how much it can be, and how to apply between May 1 and June 30.",
-    "If you own and live in your home and your household income is under a limit the law sets, "
-    "the state refunds some or all of the State Education Property Tax on it. You apply to the "
-    "Department of Revenue Administration between May 1 and June 30, online or on Form DP-8.",
+    "If you own and live in your home and your household income is $37,000 or less (single) or "
+    "$47,000 or less (married or head of household), the state refunds some or all of the State "
+    "Education Property Tax on it. You apply to the Department of Revenue Administration "
+    "between May 1 and June 30, online or on Form DP-8.",
     [ask("Do you own and live in your home, and is your household income under the limit?",
          [("Yes", "Apply between May 1 and June 30."),
           ("Not sure", "Read who qualifies below, or call the Department.")]),
@@ -758,9 +860,8 @@ LMI = guide(
           "<p>You qualify if all of these are true:</p><ul>"
           "<li>you own a home, or an interest in one, that is subject to the State Education "
           "Property Tax;</li><li>you lived in it on April 1 of the year you are claiming for; "
-          "and</li><li>your household income is at or under the limit for a single person, or "
-          "the higher limit for a married person or head of household. The Department&rsquo;s "
-          "page gives both.</li></ul>"
+          "and</li><li>your household income is $37,000 or less if you are single, or $47,000 or "
+          "less if you are married or a head of household.</li></ul>"
           "<p><b>Household income</b> is the federal adjusted gross income of you and of every "
           "other adult who lives in the home.</p>",
           actions=[("Who qualifies, and the limits", DRA_LMI)],
@@ -794,19 +895,43 @@ LMI = guide(
            "RSA 198:57", CHECKED),
      claim("Appeal to the BTLA in writing within 30 days.", "RSA 198:60", CHECKED),
      claim("Certification within 120 days; notice of rejection within 90 days.", "RSA 198:61", CHECKED),
-     claim("A fraudulent claim is a misdemeanor; audits within 3 years.", "RSA 198:59", CHECKED)],
+     claim("A fraudulent claim is a misdemeanor; audits within 3 years.", "RSA 198:59", CHECKED)]
+    + help_claims("adrc", "legal_aid"),
     more="<h2>How Much It Can Be</h2>"
-         "<p>The relief is part or all of the State Education Property Tax on your home, on a "
-         "sliding scale by household income that the law sets out "
-         '(<a href="/laws/198#s57">RSA 198:57</a>). The Department works it out from your '
-         "claim. A false claim is a crime, and the Department may audit a claim within three "
-         'years of granting it (<a href="/laws/198#s59">RSA 198:59</a>).</p>'
+         "<p>The relief is a share of the State Education Property Tax on the lesser of your "
+         "home&rsquo;s assessed value and $220,000 multiplied by your town&rsquo;s equalization "
+         "ratio, at the education tax rate on your bill. The share depends on your household "
+         "income. The Department works it out from your claim.</p>"
+         + table("The share of the tax refunded (RSA 198:57, IV)",
+                 ["Share", "Single", "Married or head of household"],
+                 [["100%", "Under $23,100", "Under $29,400"],
+                  ["60%", "$23,100 to under $27,800", "$29,400 to under $35,300"],
+                  ["40%", "$27,800 to under $32,400", "$35,300 to under $41,100"],
+                  ["20%", "$32,400 to $37,000", "$41,100 to $47,000"]])
+         + "<p>A false claim is a crime, and the Department may audit a claim within three years "
+           'of granting it (<a href="/laws/198#s59">RSA 198:59</a>).</p>'
          "<h2>Who Can Help</h2>"
          "<p>The Department of Revenue Administration answers questions about this program at "
          "(603) 230-5920, and keeps a page of frequently asked questions.</p>"
          f'<p class="g-acts"><a class="g-btn" href="{DRA_LMI_FAQ}" target="_blank" rel="noopener">'
-         "Frequently asked questions</a></p>",
-    see=[("How to appeal your property tax assessment", "/guides/property-tax-abatement.html")])
+         "Frequently asked questions</a></p>"
+         "<p>For help with an application, or with other benefits, and for legal help if you are "
+         "at risk of losing your home over property taxes:</p>"
+         + helps("adrc", "legal_aid"),
+    see=[("How to appeal your property tax assessment", "/guides/property-tax-abatement.html")],
+    figures=[fig("$37,000", "RSA 198:57", "$37,000 or less if a single person"),
+             fig("$47,000", "RSA 198:57", "$47,000 or less if a married person or head of a New Hampshire household"),
+             fig("$220,000", "RSA 198:57", "Multiply $220,000 by the most current local equalization ratio"),
+             fig("100%", "RSA 198:57", "less than $23,100, 100 percent"),
+             fig("60%", "RSA 198:57", "$23,100 but less than $27,800, 60 percent"),
+             fig("40%", "RSA 198:57", "$27,800 but less than $32,400, 40 percent"),
+             fig("20%", "RSA 198:57", "$32,400 but less than or equal to $37,000, 20 percent"),
+             fig("$23,100", "RSA 198:57", "less than $23,100, 100 percent"),
+             fig("$27,800", "RSA 198:57", "$23,100 but less than $27,800, 60 percent"),
+             fig("$32,400", "RSA 198:57", "$27,800 but less than $32,400, 40 percent"),
+             fig("$29,400", "RSA 198:57", "less than $29,400, 100 percent"),
+             fig("$35,300", "RSA 198:57", "$29,400 but less than $35,300, 60 percent"),
+             fig("$41,100", "RSA 198:57", "$35,300 but less than $41,100, 40 percent")])
 
 
 GUIDES = [VOTING, PUBLIC_RECORD, ENERGY, VITAL, ABATEMENT, LMI]
