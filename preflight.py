@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.550
+# GRANITE_VERSION: 2026-09-04.551
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -54096,7 +54096,7 @@ def _nav_ladder():
                   "Search its drawing at every width")
 
 
-@check("frontend", "the bill search opens Status and Bill Type, puts a narrowed long list's "
+@check("frontend", "the bill search opens Status alone, puts a narrowed long list's "
                    "zeros last, and folds its filters behind the Filters button below 960px")
 def _search_filters_5acd():
     """The person's feedback of 9 October 2026, item 2: 5a approved (Status
@@ -54115,9 +54115,10 @@ def _search_filters_5acd():
     js = Path("src/pages/app.js").read_text(encoding="utf-8")
     css = Path("src/pages/app.css").read_text(encoding="utf-8")
     m = re.search(r"const openGroups=new Set\((\[[^\]]*\])\);", js)
-    assert m and json.loads(m.group(1)) == ["status", "type"], (
+    # 12 October 2026: Status alone open; Bill Type folds with the rest.
+    assert m and json.loads(m.group(1)) == ["status"], (
         f"the filter groups open at the start are {m.group(1) if m else 'not found'}, "
-        "not Status and Bill Type")
+        "not Status alone")
     fn = re.search(r"const ZEROS_LAST=.*?\nfunction zerosLast\(key,vals,counts\)\{.*?\n\}", js, re.S)
     assert fn, "app.js has no zerosLast"
     assert "zerosLast(key,vals,counts)" in js and "i===order.rule?' fzero'" in js, (
@@ -54151,7 +54152,7 @@ process.stdout.write(JSON.stringify(out));""")
         assert rule in body, f"below 960px the stylesheet has no {rule}"
     assert ".fopt.fzero{border-top:1px solid var(--rule)" in css, (
         "the first zero of a narrowed list has no rule above it")
-    return "ok", ("Status and Bill Type open at the start; a narrowed long list's options with "
+    return "ok", ("Status open at the start, Bill Type folded; a narrowed long list's options with "
                   "bills first and a ticked zero in its place among the zeros; Status in its "
                   "fixed order; the Filters button and its panel below 960px")
 

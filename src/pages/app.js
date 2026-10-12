@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.195
+// GRANITE_VERSION: 2026-09-07.196
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -2421,7 +2421,10 @@ const wideEnough=typeof matchMedia==="function"
 // question 8a, as recommended). Both are short and shown whole, and Status
 // answers the commonest question; the committee list is the long one.
 // wideEnough is kept for what else asks how wide the window is.
-const openGroups=new Set(["status","type"]);
+// STATUS ALONE SINCE 12 OCTOBER 2026 (the person: "Just have the status
+// filter open by default rather than status and bill type"). Bill Type is
+// folded with the rest, one tap away.
+const openGroups=new Set(["status"]);
 let sponsorFilter="";
 const openCards=new Set(),openTab={},detail={},segSel={},fullOpen=new Set();
 // The bills whose How it got here the reader opened past its first six lines.

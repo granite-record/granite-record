@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.263 */
+/* GRANITE_VERSION: 2026-09-07.264 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -1621,6 +1621,8 @@ stroke-width:1.8;stroke-linejoin:round}
   nav.top.setopen .navset{display:flex}
   .navset .ytbtn{border-top:1px solid var(--rule)}
 }
+.ytpanel .findin{max-width:40rem}
+.ytarow .ytbtn2{white-space:nowrap;flex:0 0 auto}
 .yttop{display:flex;align-items:baseline;justify-content:space-between;gap:var(--sp-4)}
 .ythead{font:600 var(--t-ui)/1.3 var(--sans);letter-spacing:.06em;text-transform:uppercase;
 color:var(--ink-2);margin:0 0 var(--sp-4)}
