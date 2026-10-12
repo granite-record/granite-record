@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-07.28
+# GRANITE_VERSION: 2026-09-07.29
 """
 The page every record's own address is: bills.html, with one record open.
 
@@ -323,7 +323,7 @@ def address(base, path):
     return base + canon(path)
 
 
-def sitemap_merge(site, base, urls, owns, whole=True):
+def sitemap_merge(site, base, urls, owns, whole=True, lastmod=None):
     """Put a builder's addresses in sitemap.xml, and take out its stale ones.
 
     build_bill_pages writes the file from scratch and the builders after it add
@@ -358,7 +358,12 @@ def sitemap_merge(site, base, urls, owns, whole=True):
                 continue
         have.add(loc)
         kept.append(line)
-    add = "".join(f"<url><loc>{u}</loc></url>\n" for u in want if u not in have)
+    # lastmod: {address: "YYYY-MM-DD"}, for a builder that knows the day a
+    # page's content last changed (a guide's last check).
+    dated = {E(k): v for k, v in (lastmod or {}).items()}
+    add = "".join(f"<url><loc>{u}</loc>"
+                  + (f"<lastmod>{dated[u]}</lastmod>" if dated.get(u) else "")
+                  + "</url>\n" for u in want if u not in have)
     if add or dropped:
         text = "".join(kept)
         assert "</urlset>" in text, f"{sm} has no </urlset> to add before"

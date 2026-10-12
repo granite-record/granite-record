@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-13.6
+# GRANITE_VERSION: 2026-09-13.7
 """
 What a search engine is told a page is about, in schema.org's vocabulary.
 
@@ -153,6 +153,29 @@ def committee(code, name, base, canon_path):
            "parentOrganization": CHAMBER.get(chamber, LEGISLATURE)}
     return [obj, _crumbs(base, [("Granite Record", "/"), ("Committees", "/committees"),
                                 (name, canon_path)])]
+
+
+def howto(g, base, canon_path, checked=""):
+    """A how-to guide (the person, 12 October 2026: "The guides should also
+    be optimized for SEO"): its steps as HowToSteps, each in the guide's own
+    words with its markup taken off, the day it was last checked against its
+    sources as dateModified, and the trail Resources > How-To Guides."""
+    import html as _h
+    import re
+    url = base + canon_path
+    plain = lambda t: re.sub(r"\s+", " ", _h.unescape(re.sub(r"<[^>]+>", " ", t or ""))).strip()
+    obj = {"@type": "HowTo", "@id": url + "#howto", "url": url, "name": g["title"],
+           "description": plain(g.get("blurb")), "inLanguage": "en-US",
+           "about": {"@type": "AdministrativeArea", "name": "New Hampshire"},
+           "step": [{"@type": "HowToStep", "position": i, "name": plain(s_["title"]),
+                     "text": plain(s_["text"]), "url": url + "#steps"}
+                    for i, s_ in enumerate(g.get("steps") or [], 1)],
+           "isPartOf": _site(base), "publisher": _publisher(base)}
+    if checked:
+        obj["dateModified"] = checked
+    return [obj, _crumbs(base, [("Granite Record", "/"), ("Resources", "/resources"),
+                                ("How-To Guides", "/resources#guides"),
+                                (g["title"], canon_path)])]
 
 
 def listing(name, description, base, canon_path):

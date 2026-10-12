@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.194
+# GRANITE_VERSION: 2026-09-04.195
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -3751,6 +3751,10 @@ committee. Your town shows who represents you.</p>
   <a href="resources.html">{icon("book")}<b>Resources</b><span>How a bill moves, what the shorthand
     means, and how to testify</span></a>
 </div>
+<!-- THE HOW-TO GUIDES, under the cards (the person, 12 October 2026: "a link
+     to them on the homepage in some form"). Filled by build_civics, which
+     knows which guides passed their checks; empty until one has. -->
+<!-- guides --><!-- /guides -->
 </div>
 <section class="hside hleft" aria-label="Where the General Court is, and what is coming up">
 <div id="state">{static_state}</div>

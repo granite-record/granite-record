@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.552
+# GRANITE_VERSION: 2026-09-04.553
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -28118,6 +28118,47 @@ def _fixture_site_whole(root):
     shared, base, ran, _days = _fixture_site_shared()
     shutil.copytree(shared, root, dirs_exist_ok=True)
     return base, ran
+
+
+@check("frontend", "every published guide is on the home page, in the site search and in the sitemap by the day it was checked, with HowTo data and the state in its title")
+def _guides_reach():
+    """The person, 12 October 2026: a link to the guides on the home page,
+    the guides in the site-wide search, and the guides optimized for SEO."""
+    absent = [x for x in CHAIN_NEEDS if not _paths.locate(x).exists()]
+    if absent:
+        return "skip", "not here: " + ", ".join(absent)
+    import guides as G
+    shared, base, _ran, _days = _fixture_site_shared()
+    site = shared / "site"
+    home = (site / "index.html").read_text(encoding="utf-8")
+    assert home.count("<!-- guides -->") == 1 and home.count("<!-- /guides -->") == 1, \
+        "the home page's guides slot is missing or doubled"
+    pages = sorted(p for p in (site / "guides").glob("*.html")
+                   if 'class="g-draft"' not in p.read_text(encoding="utf-8"))
+    find = json.loads((site / "find.json").read_text(encoding="utf-8"))
+    sm = (site / "sitemap.xml").read_text(encoding="utf-8")
+    by_slug = {g["slug"]: g for g in G.GUIDES}
+    bad = []
+    for p in pages:
+        g, t = by_slug[p.stem], p.read_text(encoding="utf-8")
+        addr = f"/guides/{p.stem}"
+        if f'href="{addr}"' not in home:
+            bad.append(f"{p.stem} is not on the home page")
+        if not any(r[0] == "guide" and r[3] == addr for r in find):
+            bad.append(f"{p.stem} is not in find.json")
+        title = re.search(r"<title>([^<]*)</title>", t).group(1)
+        if "New Hampshire" not in title:
+            bad.append(f"{p.stem}'s title {title!r} does not say New Hampshire")
+        if '"@type": "HowTo"' not in t and '"@type":"HowTo"' not in t:
+            bad.append(f"{p.stem} carries no HowTo data")
+        if f"<loc>{base}{addr}</loc><lastmod>{G.checked_on(g)}</lastmod>" not in sm:
+            bad.append(f"{p.stem}'s sitemap entry is not dated by its check")
+    if not pages and "hguides" in home:
+        bad.append("the home page lists guides while none is published")
+    assert not bad, "; ".join(bad)
+    return "ok", (f"{len(pages)} published guide{'s' if len(pages) != 1 else ''} on the home page, "
+                  "in the search and dated in the sitemap, each with HowTo data"
+                  if pages else "no guide published on the fixture; the home page's slot is empty")
 
 
 @check("frontend", "a member's structured data names their party as the party names itself, and an independent none")
