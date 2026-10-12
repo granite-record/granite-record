@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-07.27
+# GRANITE_VERSION: 2026-09-07.28
 """
 The page every record's own address is: bills.html, with one record open.
 
@@ -270,6 +270,38 @@ def canon(path):
     return path[:-5] if path.endswith(".html") else path
 
 
+# A LINK BETWEEN PAGES NAMES THE ADDRESS THE HOST SERVES (the SEO review of
+# 12 October 2026). canon() was applied to the canonical tag and the sitemap,
+# but every link in the pages themselves still said "bills.html",
+# "legislator/x.html", "bill/2026/hb1.html": about 670,000 of them across the
+# site, each answered by Cloudflare with a 308 to the address without the
+# extension -- a round trip for every reader's click and every crawler's
+# step, and a crawler told twice over that the page lives somewhere else.
+#
+# Applied to a whole page as it is written, by every builder that writes
+# one, so no link anywhere has to remember. Only an href attribute, only an
+# address on this site (relative, rooted, or graniterecord.org's own), and
+# never inside a <script>: app.js's templates and the gr-data JSON keep the
+# shapes their own code reads.
+_SCRIPT = re.compile(r"(<script\b.*?</script>)", re.S | re.I)
+_PAGE_HREF = re.compile(
+    r'(\bhref=")((?:https://graniterecord\.org)?(?![a-zA-Z][a-zA-Z0-9+.-]*:|//)'
+    r'[^"#?:]*?\.html)([?#][^"]*)?"')
+
+
+def clean_links(html):
+    """Every link to a page here, at the address the host serves it at."""
+    def one(m):
+        head, path, tail = m.group(1), m.group(2), m.group(3) or ""
+        site = "https://graniterecord.org" if path.startswith("https://graniterecord.org") else ""
+        p = canon(path[len(site):])
+        # "index.html" alone is the site's root; with a query or fragment it
+        # keeps them ("/#main").
+        return f'{head}{site}{p}{tail}"'
+    return "".join(part if part[:7].lower() == "<script" else _PAGE_HREF.sub(one, part)
+                   for part in _SCRIPT.split(html))
+
+
 def address(base, path):
     """A page's whole address: the site, then where the host serves the page.
 
@@ -464,7 +496,8 @@ def page(t, *, path, title, description, base, globals=None, noscript="",
          alternate="", skip_label="Skip to the content", og_title=None,
          sr_title=None, nav_current="", jsonld=None,
          data_json=None, data_url=None, og_type="article", og_image=None,
-         og_alt=None, cite=True, cite_title=None, canonical=None):
+         og_alt=None, cite=True, cite_title=None, canonical=None,
+         static=""):
     """One record's page: the template, told which record it is.
 
     sr_title replaces the template's own visually-hidden <h1>. bills.html
@@ -602,6 +635,16 @@ def page(t, *, path, title, description, base, globals=None, noscript="",
         out = out.replace(slot, cite_block(canonical or path,
                                            cite_title or og_title or title,
                                            base, BUILT) + slot, 1)
+
+    # THE RECORD AS PLAIN HTML (the SEO review of 12 October 2026), above
+    # the slot app.js draws into and after the citation, for a reader that
+    # runs no scripts. app.css hides it under html.js, which the head's
+    # inline script sets before the first paint, so a reader with scripts
+    # sees the page app.js draws and never this.
+    if static:
+        slot = '<div id="results">'
+        assert slot in out, "the template has no results slot for the record to sit above"
+        out = out.replace(slot, static + slot, 1)
 
     out = out.replace(
         NEEDS["script"],

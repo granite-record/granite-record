@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-09.30
+# GRANITE_VERSION: 2026-09-09.31
 """
 A page per town and ward: everyone who represents the people who live there.
 
@@ -1443,7 +1443,7 @@ def main():
         for ward in sorted(wards, key=lambda w: int(w) if w.isdigit() else 0):
             page = build(town, ward, wards, wards[ward], legs, off,
                          a.base, tmpl)
-            (out / f"{slug(town, ward)}.html").write_text(page,
+            (out / f"{slug(town, ward)}.html").write_text(S.clean_links(page),
                                                           encoding="utf-8")
             urls.append(a.base + town_path(town, ward))
             places.append(place_record(

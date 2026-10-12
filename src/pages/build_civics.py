@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.45
+# GRANITE_VERSION: 2026-09-08.46
 """
 The civics section: a hub and one page per topic, in order.
 
@@ -1259,7 +1259,7 @@ def build_guides(site, tmpl, base, drafts=False):
             continue
         out.mkdir(parents=True, exist_ok=True)
         record = guide_record(g, data, bills, chapters)
-        (out / f"{g['slug']}.html").write_text(guide_page(tmpl, g, base, record, why), encoding="utf-8")
+        (out / f"{g['slug']}.html").write_text(S.clean_links(guide_page(tmpl, g, base, record, why)), encoding="utf-8")
         if not why:
             published.append(g)
             urls.append(base + S.canon("/" + guide_href(g["slug"])))
@@ -1393,7 +1393,7 @@ def main():
                           lead=dashes(E(t["blurb"])) if t["blurb"] else "",
                           description=t["blurb"], secs=secs, foot=pager(i, topics),
                           base=a.base, after=all_topics(topics, t["slug"]))
-        (out / f"{t['slug']}.html").write_text(page, encoding="utf-8")
+        (out / f"{t['slug']}.html").write_text(S.clean_links(page), encoding="utf-8")
         urls.append(a.base + S.canon("/" + learn_href(t["slug"])))
 
     # ---- the record in numbers ------------------------------------------
@@ -1415,7 +1415,7 @@ def main():
     page = learn_page(tmpl, slug=NUMBERS_SLUG, title=NUMBERS_TITLE,
                       lead=curly(NUMBERS_DESC), description=NUMBERS_DESC, secs=nsecs,
                       foot=pager(None, topics), base=a.base)
-    (out / f"{NUMBERS_SLUG}.html").write_text(page, encoding="utf-8")
+    (out / f"{NUMBERS_SLUG}.html").write_text(S.clean_links(page), encoding="utf-8")
     urls.append(a.base + S.canon("/" + learn_href(NUMBERS_SLUG)))
     print("  learn/by-the-numbers.html: the page of statistics")
 
@@ -1424,7 +1424,7 @@ def main():
 
     # ---- the hub ----------------------------------------------------------
     groups = official_sources(numbers_results(Path(".")))
-    (site / HUB_PAGE).write_text(hub_page(tmpl, a.base, topics, groups, published), encoding="utf-8")
+    (site / HUB_PAGE).write_text(S.clean_links(hub_page(tmpl, a.base, topics, groups, published)), encoding="utf-8")
     # THE OLD HUB'S FILE GOES. /learn redirects to the hub (_redirects), and a
     # learn.html left in the folder by an earlier build would be served in
     # the redirect's place by a host that prefers a file.

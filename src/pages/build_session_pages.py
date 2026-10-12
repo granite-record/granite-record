@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-19.40
+# GRANITE_VERSION: 2026-09-19.41
 """
 A page for every day the House sat.
 
@@ -2429,7 +2429,7 @@ def main():
                 "</div></div>")
         html = html.replace('<div id="results"></div>', full, 1)
         assert 'class="wkpage sesspage"' in html, f"{path}: no results slot"
-        (site / path.lstrip("/")).write_text(html, encoding="utf-8")
+        (site / path.lstrip("/")).write_text(S.clean_links(html), encoding="utf-8")
         urls.append(base + S.canon(path))
         wrote += 1
 

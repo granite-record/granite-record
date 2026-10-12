@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-10.7
+# GRANITE_VERSION: 2026-10-10.8
 """
 The House and the Senate as committees of the whole: a card at the top of
 each column of /committees, and a page for each chamber's session days.
@@ -191,7 +191,7 @@ def day_section(body, d):
     said = [plural(c["bills"], "bill")] if c.get("bills") else []
     if c.get("roll_calls"):
         said.append(plural(c["roll_calls"], "roll call"))
-    links = [f'<a class="daylink" href="session/{body}/{E(date)}.html">The full session day</a>']
+    links = [f'<a class="daylink" href="session/{body}/{E(date)}">The full session day</a>']
     if d.get("journal_url"):
         links.append(f'<a href="{E(d["journal_url"])}">{E(journal_words(d.get("journal")))} '
                      "(PDF)</a>")
@@ -290,7 +290,7 @@ SCRIPT = """<script>
         +'<div class="pbar"><span class="pwho"><b>The '+word+'</b> &middot; '+esc(long(d.date))+'</span>'
         +'<a href="https://www.youtube.com/watch?v='+esc(v)+'" target="_blank" rel="noopener">On YouTube</a></div></div>';
     });
-    var links=['<a class="daylink" href="session/'+b+'/'+esc(d.date)+'.html">The full session day</a>'];
+    var links=['<a class="daylink" href="session/'+b+'/'+esc(d.date)+'">The full session day</a>'];
     if(d.journal_url)links.push('<a href="'+esc(d.journal_url)+'">'+esc(journal(d.journal))+' (PDF)</a>');
     return '<details class="cmeet" id="day-'+esc(d.date)+'" data-date="'+esc(d.date)+'">'
       +'<summary><span class="cmwhen"><b>'+esc(long(d.date))+'</b></span>'
@@ -364,7 +364,7 @@ def write_page(site, c, base):
     assert '<div id="results"></div>' in html, f"{path}: the template has no results slot"
     html = html.replace('<div id="results"></div>',
                         f'<div id="results">{page_body(c, path, base)}</div>{SCRIPT}', 1)
-    (Path(site) / "session" / f"{SLUG[body]}.html").write_text(html, encoding="utf-8")
+    (Path(site) / "session" / f"{SLUG[body]}.html").write_text(S.clean_links(html), encoding="utf-8")
     return base + S.canon(path)
 
 
@@ -397,7 +397,7 @@ def main():
             b = c["body"]
             text = pat.sub(lambda _m: f"<!-- chamber:{b} -->{card(c)}<!-- /chamber:{b} -->",
                            text, count=1)
-        page.write_text(text, encoding="utf-8")
+        page.write_text(S.clean_links(text), encoding="utf-8")
     for c in made:
         print(f"  session/{SLUG[c['body']]}.html: {len(c['terms'])} terms, the latest "
               f"{c['latest']} with {len(c['days'])} days written in; its card on committees.html")

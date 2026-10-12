@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-18.33
+# GRANITE_VERSION: 2026-09-18.34
 """
 The General Court's week, one page per week.
 
@@ -2596,7 +2596,7 @@ def week_page(site, base, key, weeks, order, at, titles, years, code, urls,
         assert '<div class="wkpage calapp"' in html, f"{f}: the template has no results slot"
         out = site / f.lstrip("/")
         out.parent.mkdir(parents=True, exist_ok=True)
-        out.write_text(html, encoding="utf-8")
+        out.write_text(S.clean_links(html), encoding="utf-8")
     urls.append(base + S.canon(path))
     return n
 
@@ -2682,7 +2682,7 @@ def documents_files(site, base, cdocs, left_out, urls):
                         f'<h1>{S.E(heading)}</h1><p class="src">{lead}</p>{body}</div></div>'
                         f"<script>{lean_js(CD.LIST_JS)}</script>", 1)
     assert '<div class="clist dirlist cdpage">' in html, f"{path}: the template has no results slot"
-    list_f.write_text(html, encoding="utf-8")
+    list_f.write_text(S.clean_links(html), encoding="utf-8")
     urls.append(base + S.canon(path))
     return len(blob.encode("utf-8"))
 

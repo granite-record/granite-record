@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-11.8
+# GRANITE_VERSION: 2026-10-11.9
 """
 The statutes (RSA) as pages: /laws, and one page a chapter at /laws/<chapter>.
 
@@ -857,12 +857,12 @@ def main():
     for ch in chs:
         chapter_file(out, ch).parent.mkdir(parents=True, exist_ok=True)
         chapter_file(out, ch).write_text(
-            chapter_page(tmpl, table, data, bills, ch, a.base), encoding="utf-8")
+            S.clean_links(chapter_page(tmpl, table, data, bills, ch, a.base)), encoding="utf-8")
     stale = out / "404.html"       # an earlier build's RSA 404, before chapter_file
     if not a.only and stale.is_file():
         stale.unlink()
     topics, pending = chapter_topics(data, bills), chapter_pending(data, bills)
-    (site / "laws.html").write_text(landing_page(tmpl, table, data, a.base, topics, pending), encoding="utf-8")
+    (site / "laws.html").write_text(S.clean_links(landing_page(tmpl, table, data, a.base, topics, pending)), encoding="utf-8")
     chapters, headings, words = build_indexes(table, data, topics, pending)
     for name, obj in (("chapters.json", chapters), ("headings.json", headings), ("words.json", words)):
         (out / name).write_text(json.dumps(obj, ensure_ascii=False, separators=(",", ":")),

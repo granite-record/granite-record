@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.193
+# GRANITE_VERSION: 2026-09-04.194
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -1316,7 +1316,8 @@ def shell(title, current, body, wide=False, script="", desc="",
                 f'<meta property="og:url" content="{_canon}">'
                 f'<meta property="og:site_name" content="Granite Record">'
                 f'<meta name="twitter:card" content="summary_large_image">') if desc else ""
-    return f"""<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
+    # Every link at the address the host serves (shell.clean_links).
+    return _shell.clean_links(f"""<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>{title}</title>{HEAD_SEO}{FONTS}{BRAND_HEAD}{themer("HEAD")}<link rel="stylesheet" href="style.css">
 <script src="/components.js"></script>
@@ -1363,7 +1364,7 @@ Court is right and we want to know.</p>
 <!-- The header's search, on every page this file writes. Its own file rather
      than app.js, which these pages do not load: 6 KB against 200. -->
 <script src="/find.js" defer></script>
-{script}</body></html>"""
+{script}</body></html>""")
 
 
 # SUPERSEDED, AND KEPT ON PURPOSE. This was the whole of "How it works"
@@ -3073,6 +3074,15 @@ def front_end(out, has_mark):
             body = without_mark(body)
         if name == "components.js":
             body = with_words(body.decode("utf-8")).encode("utf-8")
+        # THE PAGE IS CLEANED, THE TEMPLATE IS NOT. src/pages/bills.html is
+        # also the template every record's page is made from, and shell.page
+        # finds its tabs by their written addresses ("officials.html"), so
+        # it keeps them; the copy published as /bills gets the addresses the
+        # host serves (shell.clean_links), its og:url among them.
+        if name == "bills.html":
+            body = _shell.clean_links(body.decode("utf-8")).replace(
+                'content="https://graniterecord.org/bills.html"',
+                'content="https://graniterecord.org/bills"').encode("utf-8")
         if not dst.exists() or dst.read_bytes() != body:
             dst.write_bytes(body)
             wrote.append(name)
@@ -3822,7 +3832,7 @@ the <a href="/committees">committee list</a> are all plain pages.</p></noscript>
     search_page = search_page.replace(
         '<link rel="canonical" href="https://graniterecord.org/">',
         '<meta name="robots" content="noindex,follow">')
-    (out / "search.html").write_text(search_page, encoding="utf-8")
+    (out / "search.html").write_text(_shell.clean_links(search_page), encoding="utf-8")
 
     # THERE WAS NO 404 PAGE. Cloudflare Pages treats a project with no
     # top-level 404.html as a single-page app: every address it cannot find
@@ -3840,7 +3850,7 @@ the <a href="/committees">committee list</a> are all plain pages.</p></noscript>
                      page404)
     page404 = re.sub(r'<link rel="canonical"[^>]*>',
                      '<meta name="robots" content="noindex">', page404)
-    (out / "404.html").write_text(page404, encoding="utf-8")
+    (out / "404.html").write_text(_shell.clean_links(page404), encoding="utf-8")
 
     print(f"wrote officials.html ({len(legs)} members), "
           f"about.html, search.html, 404.html, style.css -> {out}/  (learn.html: build_civics.py)")
