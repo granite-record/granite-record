@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-07.58
+# GRANITE_VERSION: 2026-09-07.59
 """
 A page's worth of data for every committee.
 
@@ -801,6 +801,51 @@ def page_codes(site="site", data="data"):
     return out
 
 
+
+# How much of a committee's record the plain page lists: its newest term's
+# bills, and its latest meetings.
+STATIC_MEETINGS = 30
+
+
+def static_record(code, name, chamber_word, rec, sessions):
+    """A committee's page as plain HTML: who sits on it, what it is for, the
+    bills referred to it in its latest term and its latest meetings."""
+    E = S.E
+    out = ['<div class="static-rec" id="static-rec">', f"<h1>{E(name)}</h1>",
+           f"<p>The {chamber_word} Committee on {E(name)}"
+           + (f", chaired by {E(rec['chair'])}" if rec.get("chair") else "") + ".</p>"]
+    if rec.get("purpose"):
+        out.append(f"<p>{E(rec['purpose']['text'])}</p>")
+    mem = rec.get("members") or []
+    if mem:
+        out.append("<h2>Members</h2><ul>" + "".join(
+            "<li>" + (f'<a href="legislator/{E(x["slug"])}">{E(x.get("label") or x.get("name") or "")}</a>'
+                      if x.get("slug") else E(x.get("label") or x.get("name") or ""))
+            + (f" ({E(x['role'])})" if x.get("role") and x.get("role") != "Member" else "")
+            + "</li>" for x in mem) + "</ul>")
+    terms = sorted((t for t in (rec.get("bills") or {}) if t), reverse=True)
+    if terms:
+        t0, rows = terms[0], rec["bills"][terms[0]]
+        out.append(f"<h2>Bills Referred, {E(t0)}</h2><ul>" + "".join(
+            f'<li><a href="bill/{E(str(b.get("year")))}/{E(str(b.get("id", "")).lower())}">'
+            f'{E(b.get("n") or b.get("id") or "")}</a>'
+            + (f": {E(b['title'])}" if b.get("title") else "")
+            + (f" ({E(b['status'])})" if b.get("status") else "") + "</li>"
+            for b in rows if b.get("year") and b.get("id")) + "</ul>")
+        older = sum(len(rec["bills"][t]) for t in terms[1:])
+        if older:
+            out.append(f"<p>And {older:,} bills in {len(terms) - 1} earlier "
+                       f"term{'s' if len(terms) > 2 else ''}.</p>")
+    ss = sorted((x for x in sessions or [] if x.get("date")), key=lambda x: x["date"], reverse=True)
+    if ss:
+        out.append("<h2>Recent Meetings</h2><ul>" + "".join(
+            f"<li>{E(x.get('narrative') or x['date'])}</li>" for x in ss[:STATIC_MEETINGS]) + "</ul>")
+    links = [f'<a href="/committee/{E(code)}.json">This page&rsquo;s data as JSON</a>']
+    if rec.get("url"):
+        links.append(f'<a href="{E(rec["url"])}" rel="noopener">This committee on the General Court&rsquo;s site</a>')
+    out.append("<h2>Sources</h2><ul>" + "".join(f"<li>{x}</li>" for x in links) + "</ul></div>")
+    return "".join(out)
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--site", default="site")
@@ -1152,8 +1197,12 @@ def main():
         # A retired committee has no seats to count, and "0 members" in the
         # line a search result shows would read as a committee nobody sits on
         # today rather than one that no longer sits.
-        towns = (f"{len(rec['members'])} members, " if code not in retired
-                 else "")
+        # NOR A ROSTER THE RECORD DOES NOT HAVE (the SEO review of 12 October
+        # 2026): fourteen sitting committees with no members on file -- House
+        # Education among them -- were described as having 0 members. No
+        # count is given where there are none to count.
+        towns = (f"{len(rec['members'])} members, "
+                 if code not in retired and rec.get("members") else "")
         span_of[code] = sorted({t for t in rec["bills"] if t}
                                | {s["term"] for s in sessions if s.get("term")})
         # And its years beside its name, in the tab and the search result: a
@@ -1167,24 +1216,12 @@ def main():
                 f"referred and {met_days:,} meetings, each with what "
                 "was taken up and when. From the New Hampshire General Court's "
                 "own records.")
-        nos = ('<noscript><div class="wrap" style="max-width:70ch;'
-               'padding:26px 20px">'
-               f"<h1>{S.E(name)}</h1><p>The {chamber_word} Committee on "
-               f"{S.E(name)}"
-               + (f", chaired by {S.E(rec['chair'])}" if rec["chair"] else "")
-               + ".</p>"
-               + (f"<p>{S.E(rec['purpose']['text'])}</p>"
-                  if rec.get("purpose") else "")
-               + "<p>This page draws the committee's bills and meetings "
-                 "in the browser, so it needs JavaScript. Everything it "
-                 "shows comes from the file linked below, which needs none.</p>"
-                 f'<ul><li><a href="/committee/{S.E(code)}.json">this page\'s '
-                 "data as JSON</a></li>"
-               + (f'<li><a href="{S.E(rec["url"])}" rel="noopener">this '
-                  "committee on gencourt</a></li>" if rec.get("url") else "")
-               + '</ul><p><a href="/bills.html">All bills</a></p></div></noscript>')
+        # THE COMMITTEE'S RECORD IN THE PAGE ITSELF, for a reader with no
+        # JavaScript (the SEO review of 12 October 2026; shell.page's static),
+        # where a <noscript> line said the page needs JavaScript.
+        nos = static_record(code, name, chamber_word, rec, sessions)
         path = f"/committee/{code}.html"
-        (out / f"{code}.html").write_text(S.page(
+        (out / f"{code}.html").write_text(S.clean_links(S.page(
             t, path=path, base=a.base,
             title=f"{name}{when} — {chamber_word} committee | Granite Record",
             og_title=f"{name}{when} — New Hampshire {chamber_word}",
@@ -1197,14 +1234,14 @@ def main():
             alternate=feed_link(code, name) if S.committee_followable(rec) else "",
             jsonld=LD.committee(code, name, a.base, S.canon(path)),
             globals={"GR_COMMITTEE": code, "GR_STANDALONE": True},
-            noscript=nos, skip_label="Skip to this committee",
+            static=nos, skip_label="Skip to this committee",
                   # Without this the template's own marker stays on Bills,
                   # and every committee page told a screen reader it was
                   # Bills. shell.page only moves the marker when told where.
                   nav_current="committees.html",
                   # The page draws the committee's own <h1>; the template's
                   # hidden "New Hampshire bills" one went first until now.
-                  sr_title=""),
+                  sr_title="")),
             encoding="utf-8")
         urls.append(a.base + S.canon(path))
         written += 1
@@ -1355,7 +1392,7 @@ def main():
         f'<p class="src">Bill-first search answers what happened to a bill. '
         f'These answer what a committee did on a day.</p>'
         + "".join(body) + "</div></div>", 1)
-    (site / "committees.html").write_text(page_html, encoding="utf-8")
+    (site / "committees.html").write_text(S.clean_links(page_html), encoding="utf-8")
     print("committees.html written")
 
     assert written, ("no committee page was written. That means no committee "

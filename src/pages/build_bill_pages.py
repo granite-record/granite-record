@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.66
+# GRANITE_VERSION: 2026-09-04.67
 """
 Write a real address for every bill, and the sitemap that points at them.
 
@@ -88,58 +88,116 @@ def describe(b):
     return f"{lead}: {subject}{tail}".strip()
 
 
-def noscript(b, d, data_url=None):
-    """What a reader without JavaScript is told, and where to go instead.
+def _day(iso):
+    """A docket date in words, or the text as it came where it is not one."""
+    try:
+        return S.date_words(str(iso)[:10], "full")
+    except (ValueError, TypeError):
+        return str(iso or "")
 
-    Not an apology and not an empty div. It names the bill, says plainly that
-    the record is drawn in the browser, and gives two ways to the same facts
-    that do not need one: the General Court's own page, and this site's JSON.
+
+CHAMBER = {"H": "House", "S": "Senate"}
+
+
+def static_record(b, d, data_url=None):
+    """THE RECORD IN THE PAGE ITSELF, for a reader with no JavaScript.
+
+    The SEO review of 12 October 2026: everything on a bill's page was drawn
+    by app.js from the gr-data JSON, so a reader that does not run scripts --
+    most AI crawlers, a text browser, a reader with scripts off -- saw the
+    bill's name, the citation box and a <noscript> line saying the page needs
+    JavaScript. No sponsor, no vote, no hearing, no history.
+
+    So the page carries the record as plain HTML, from the same record the
+    script draws: what it is, where it stands, the story, the sponsors (each
+    to their page), hearings, roll calls, the docket, the laws it would
+    change, related bills and the General Court's own documents. html.js --
+    set in the head before the first paint, by the same inline script that
+    sets the theme -- hides it, and app.js draws the page as before; a reader
+    without scripts reads this instead. Nothing here is not also on the page
+    the script draws.
     """
-    bid, n = b["id"], (b.get("n") or b["id"])
+    n = b.get("n") or b["id"]
     yr = str(b.get("year") or "")
-    title = b.get("title") or ""
-    links = []
-    if d.get("docket_url"):
-        links.append(f'<a href="{E(d["docket_url"])}" rel="noopener">'
-                     "the General Court's own docket for this bill</a>")
-    # text_url, NOT text_pdf. The detail record has never carried a text_pdf
-    # key -- build_site_v2.bill_documents builds the value and returns it as
-    # text_url (:2631, :2680), and text_pdf is only the name of the raw column
-    # it is derived FROM (:2712). So this test was false on every page ever
-    # built, and the noscript block offered the docket and silently nothing
-    # else on 10,841 pages that have a bill text to give. A reader with
-    # JavaScript gets the link from d.documents and never saw the hole, which
-    # is why it survived the fix recorded just below.
-    if d.get("text_url"):
-        links.append(f'<a href="{E(d["text_url"])}" rel="noopener">'
-                     "the bill text</a>")
-    # A BILL WHOSE RECORD IS THE HOUSE JOURNAL'S (build_site_v2.journal_story)
-    # has no docket address and no text, so the list below said "the files
-    # linked below" over nothing. Its files are the journals it cites.
-    if d.get("status_source") == "House Journal":
-        for doc in d.get("documents") or []:
-            if doc.get("kind") == "record" and doc.get("url"):
-                links.append(f'<a href="{E(doc["url"])}" rel="noopener">'
-                             f'the House Journal, {E(doc.get("label") or "")}</a>')
-    # ONLY WHEN THERE IS A FILE TO OFFER. This linked to the bill's JSON
-    # unconditionally, and 33,585 of those files stopped existing the day
-    # their contents moved inside the page -- so the one thing this block
-    # exists to give a reader without JavaScript was a 404. check_site.py
-    # found it.
+    out = ['<div class="static-rec" id="static-rec">',
+           f'<p class="sx-name">{E(n)}{f" ({E(yr)})" if yr else ""}</p>']
+    title = b.get("title") or d.get("title") or ""
+    if title:
+        out.append(f'<p class="sx-title">{E(clean_title(title))}</p>')
+    facts = []
+    if b.get("status"):
+        facts.append(f"<b>Status:</b> {E(b['status'])}")
+    if b.get("term"):
+        facts.append(f"<b>Term:</b> {E(b['term'])}")
+    for ch, key in (("House", "house_committee"), ("Senate", "senate_committee")):
+        if d.get(key):
+            facts.append(f"<b>{ch} committee:</b> {E(d[key])}")
+    if d.get("subject"):
+        facts.append(f"<b>Subject:</b> {E(d['subject'])}")
+    if d.get("chapter"):
+        facts.append(f"<b>Chapter law:</b> {E(str(d['chapter']))}")
+    if facts:
+        out.append('<ul class="sx-facts">' + "".join(f"<li>{x}</li>" for x in facts) + "</ul>")
+    if d.get("narrative"):
+        out.append(f'<h2>The Story</h2><p>{E(d["narrative"])}</p>')
+    sp = d.get("sponsors") or []
+    if sp:
+        def who(s):
+            name = s.get("display_full") or s.get("label") or s.get("name") or ""
+            link = (f'<a href="legislator/{E(s["slug"])}">{E(name)}</a>'
+                    if s.get("slug") else E(name))
+            return link + (" (prime sponsor)" if s.get("prime") else "")
+        out.append("<h2>Sponsors</h2><ul>"
+                   + "".join(f"<li>{who(s)}</li>" for s in sp) + "</ul>")
+    st = [s for s in d.get("stations") or [] if s.get("when")]
+    if st:
+        out.append("<h2>Hearings and Sessions</h2><ul>" + "".join(
+            "<li>" + E(_day(s["when"])) + (f", {E(s['time'])}" if s.get("time") else "")
+            + ": " + E(s.get("what") or "")
+            + (", " + E(f"{CHAMBER.get(s.get('body'), '')} {s['committee']}".strip())
+               if s.get("committee") else "")
+            + (f", {E(s['venue'])}" if s.get("venue") else "") + "</li>" for s in st) + "</ul>")
+    rc = d.get("rollcalls") or []
+    if rc:
+        def vote(r):
+            how = (f"yeas {r['yeas']}, nays {r['nays']}" if r.get("yeas") is not None
+                   and r.get("nays") is not None else (r.get("vote_kind_label") or ""))
+            res = {True: "passed", False: "failed"}.get(r.get("passed"), "")
+            return (f"{E(_day(r.get('date')))}, {E(CHAMBER.get(r.get('body'), ''))}: "
+                    f"{E(r.get('question') or '')}" + (f" &mdash; {E(how)}" if how else "")
+                    + (f", {res}" if res else ""))
+        out.append("<h2>Votes</h2><ul>" + "".join(f"<li>{vote(r)}</li>" for r in rc) + "</ul>")
+    ev = [e for e in d.get("events") or [] if not e.get("cancelled")]
+    if ev:
+        # In the docket's own words, dates and all, as the page app.js draws
+        # gives them: class "sx-docket" is how the date check knows a quotation.
+        out.append('<h2>The Docket</h2><div class="sx-docket"><ul>' + "".join(
+            f"<li>{E(_day(e.get('date')))}: {E(e.get('text') or '')}</li>" for e in ev)
+            + "</ul></div>")
+    # The sections the bill amends, each to the statute's own page on the
+    # General Court's site, as the record names it.
+    am = d.get("amends") or {}
+    if am:
+        out.append("<h2>Laws It Would Change</h2><ul>" + "".join(
+            f'<li><a href="{E(u)}" rel="noopener">{E(r)}</a></li>' for r, u in am.items() if u)
+            + "</ul>")
+    rel = d.get("related") or []
+    if rel:
+        out.append("<h2>Related Bills</h2><ul>" + "".join(
+            f'<li><a href="bill/{E(str(r.get("y")))}/{E(str(r.get("o", "")).split("/")[-1].lower())}">'
+            f'{E(r.get("n") or "")} ({E(str(r.get("y")))})</a>'
+            + (f": {E(clean_title(r['t']))}" if r.get("t") else "") + "</li>"
+            for r in rel if r.get("o") and r.get("y")) + "</ul>")
+    docs = [x for x in d.get("documents") or [] if x.get("url")]
+    links = [f'<a href="{E(x["url"])}" rel="noopener">{E(x.get("label") or "Document")}</a>'
+             for x in docs]
     if data_url:
-        links.append(f'<a href="{E(data_url)}">this page\'s data as JSON</a>')
-    return (
-        '<noscript><div class="wrap" style="max-width:70ch;padding:26px 20px">'
-        f"<h1>{E(n)}</h1>"
-        + (f"<p>{E(title)}</p>" if title else "")
-        + (f"<p><b>Status:</b> {E(b.get('status', ''))}</p>"
-           if b.get("status") else "")
-        + "<p>This page draws the record — sponsors, votes, hearings, "
-          "committee reports and the bill text — in the browser, so it "
-          "needs JavaScript. Everything it shows comes from the files linked "
-          "below, which need none.</p><ul>"
-        + "".join(f"<li>{x}</li>" for x in links)
-        + '</ul><p><a href="/bills.html">All bills</a></p></div></noscript>')
+        links.append(f'<a href="{E(data_url)}">This page&rsquo;s data as JSON</a>')
+    if links:
+        out.append("<h2>From the General Court</h2><ul>"
+                   + "".join(f"<li>{x}</li>" for x in links) + "</ul>")
+    out.append("</div>")
+    return "".join(out)
 
 
 # HOW BIG A RECORD MAY TRAVEL INSIDE ITS PAGE.
@@ -195,7 +253,10 @@ def shell(t, b, d, base, raw=None, data_url=None, current_term=""):
         description=describe(b), alternate=feed,
         globals={"GR_BILL": f"{yr}/{bid}", "GR_STANDALONE": True},
         data_json=raw, data_url=data_url,
-        noscript=noscript(b, d, data_url), skip_label="Skip to this bill",
+        # The record itself is in the page now (static_record), so the
+        # <noscript> apology that stood in for it is gone.
+        static=static_record(b, d, data_url),
+        skip_label="Skip to this bill",
         # The page's heading for a screen reader. Every bill page kept the
         # search page's own hidden "New Hampshire bills", so 33,683 pages
         # announced themselves as the search.
@@ -307,7 +368,7 @@ def main():
                      raw=raw if small else None,
                      data_url=None if small else f"/bills/{yr}/{b['id']}.json",
                      current_term=current_term)
-        page.write_text(html, encoding="utf-8")
+        page.write_text(S.clean_links(html), encoding="utf-8")
         # THE PAGE IS WRITTEN BEFORE THE FILE IS REMOVED, and only the one
         # file whose contents are now inside it. A run that stops half way
         # leaves every bill either inlined or with its file, never neither.
@@ -434,7 +495,7 @@ def main():
         "",
         "## Data",
         "",
-        f"- [Bulk data]({a.base}/data/): CSV downloads of bills, legislators, "
+        f"- [Bulk data]({a.base}/data): CSV downloads of bills, legislators, "
         "roll calls, votes, sponsors and proceedings, with a data dictionary",
         f"- [Manifest]({a.base}/data/manifest.json): what each file holds and "
         "how complete each term is",

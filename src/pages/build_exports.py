@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-10.45
+# GRANITE_VERSION: 2026-09-10.46
 """
 The record as CSV, for anyone who wants to work with it rather than read it.
 
@@ -1109,7 +1109,7 @@ def data_page(site, out, tables, base, cov=()):
                   sr_title="", nav_current="data.html")
     page = page.replace('<div id="results"></div>',
                         f'<div id="results">{body}</div>', 1)
-    (site / "data.html").write_text(page, encoding="utf-8")
+    (site / "data.html").write_text(shell.clean_links(page), encoding="utf-8")
     print(f"  {'data.html':<28} the same tables, described")
 
 

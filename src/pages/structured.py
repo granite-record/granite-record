@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-13.5
+# GRANITE_VERSION: 2026-09-13.6
 """
 What a search engine is told a page is about, in schema.org's vocabulary.
 
@@ -67,6 +67,10 @@ def _crumbs(base, trail):
         for i, (name, url) in enumerate(trail, 1)]}
 
 
+# A member's party, by its first letter, as the parties name themselves.
+PARTY_NAME = {"D": "Democratic Party", "R": "Republican Party", "L": "Libertarian Party"}
+
+
 def bill(b, d, base, canon_path):
     """A bill's page. b is its index row, d its record."""
     import re
@@ -127,9 +131,13 @@ def person(m, base, canon_path):
         # The record's span is stated on the page, worded as a fact about the
         # record. Structured data has no way to say "this is when our evidence
         # starts", so it says nothing rather than something false.
-    if m.get("party"):
-        obj["affiliation"] = {"@type": "Organization", "name": f"{m['party']} Party"
-                              if not str(m["party"]).lower().endswith("party") else m["party"]}
+    # THE PARTY'S OWN NAME (the SEO review of 12 October 2026). This wrote
+    # "{party} Party", and the record gives the party as a code as often as a
+    # word: 1,962 pages said "D Party", "R Party" or "Democrat Party". An
+    # independent belongs to no party, so says none.
+    party = PARTY_NAME.get(str(m.get("party") or "").strip()[:1].upper())
+    if party:
+        obj["affiliation"] = {"@type": "Organization", "name": party}
     # Officials, where Legislators was: /legislators 301s to /officials
     # (decision 127, 8 October 2026), and a breadcrumb names the page itself.
     return [obj, _crumbs(base, [("Granite Record", "/"), ("Officials", "/officials"),

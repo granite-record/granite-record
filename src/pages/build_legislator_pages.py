@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.19
+# GRANITE_VERSION: 2026-09-04.20
 """
 An address for every sitting legislator, and the sitemap entries for them.
 
@@ -162,33 +162,80 @@ def head_name(m):
                   lambda g: f"{g.group(1) or ''}{HONORIFIC_FULL[g.group(2)]} ", heading(m))
 
 
-def noscript(m):
-    """What a reader without JavaScript is told, and where to go instead."""
-    who = E(head_name(m))
-    towns = m.get("towns") or []
+# How many of a member's bills and votes the plain page lists: the newest,
+# with the count of the rest. The longest-serving members filed over a
+# thousand bills and cast tens of thousands of votes; the page app.js draws
+# pages through them all, and so does the JSON linked below.
+STATIC_BILLS, STATIC_VOTES = 200, 100
+
+
+def static_record(m, rec):
+    """THE MEMBER'S RECORD IN THE PAGE ITSELF, for a reader with no
+    JavaScript (the SEO review of 12 October 2026; shell.page's static).
+    It replaced a <noscript> line saying the page needs JavaScript. m is the
+    roster's row, rec the member's own JSON (legislators/<id>.json), which
+    the page app.js draws reads too."""
+    rec = rec or {}
     yrs = _served_years(m) if m.get("former") else ""
-    # The heading says "Former" where it can, so the line under it gives only
-    # the years, as the page app.js draws does.
     titled = heading(m).startswith("Former ")
-    return (
-        '<noscript><div class="wrap" style="max-width:70ch;padding:26px 20px">'
-        f"<h1>{who}</h1>"
-        + ((f"<p>{E('On record ' + yrs + '. ') if yrs else ''}This page is their "
-            "record in the New Hampshire General Court; it is not a current "
-            "directory entry.</p>" if titled else
-            f"<p>Former member of the New Hampshire General Court"
-            f"{E(', ' + yrs) if yrs else ''}. This page is their record; it is "
-            "not a current directory entry.</p>") if m.get("former") else "")
-        + (f"<p>Represents {E(', '.join(towns))}.</p>" if towns else "")
-        + "<p>This page draws the record — bills sponsored and every recorded "
-          "roll call vote — in the browser, so it needs JavaScript. Everything "
-          "it shows comes from the file linked below, which needs none.</p>"
-          f'<ul><li><a href="/legislators/{E(str(m.get("id","")))}.json">this '
-          "page's data as JSON</a></li>"
-        + (f'<li><a href="{E(m["url"])}" rel="noopener">this member on '
-           "gencourt</a></li>" if m.get("url") else "")
-        + '</ul><p><a href="/officials#legislators">All legislators</a></p>'
-          "</div></noscript>")
+    out = ['<div class="static-rec" id="static-rec">', f"<h1>{E(head_name(m))}</h1>"]
+    if m.get("former"):
+        out.append(f"<p>{E('On record ' + yrs + '. ') if yrs else ''}This page is their "
+                   "record in the New Hampshire General Court; it is not a current "
+                   "directory entry.</p>" if titled else
+                   "<p>Former member of the New Hampshire General Court"
+                   f"{E(', ' + yrs) if yrs else ''}. This page is their record; it is "
+                   "not a current directory entry.</p>")
+    facts = []
+    towns = m.get("towns") or []
+    if towns and not m.get("former"):
+        facts.append(f"<b>Represents:</b> {E(', '.join(towns))}")
+    if m.get("committees") and not m.get("former"):
+        facts.append(f"<b>Committees:</b> {E(', '.join(m['committees']))}")
+    c = rec.get("counts") or {}
+    if c:
+        facts.append("<b>Recorded roll call votes:</b> " + E(", ".join(
+            f"{k} {v:,}" for k, v in c.items() if isinstance(v, int))))
+    if rec.get("n_sponsored"):
+        facts.append(f"<b>Bills sponsored:</b> {rec['n_sponsored']:,}"
+                     + (f", {rec['n_prime']:,} as prime sponsor" if rec.get("n_prime") else ""))
+    if facts:
+        out.append('<ul class="sx-facts">' + "".join(f"<li>{x}</li>" for x in facts) + "</ul>")
+    sp = sorted(rec.get("sponsored") or [], key=lambda x: (str(x.get("year") or ""),
+                                                            str(x.get("bill") or "")), reverse=True)
+    if sp:
+        out.append("<h2>Bills Sponsored</h2><ul>" + "".join(
+            f'<li><a href="bill/{E(str(x.get("year")))}/{E(str(x.get("bill", "")).lower())}">'
+            f'{E(x.get("n") or x.get("bill") or "")} ({E(str(x.get("year")))})</a>'
+            + (f": {E(x['title'])}" if x.get("title") else "")
+            + (" (prime sponsor)" if x.get("prime") else "") + "</li>"
+            for x in sp[:STATIC_BILLS] if x.get("year") and x.get("bill")) + "</ul>"
+            + (f"<p>And {len(sp) - STATIC_BILLS:,} earlier bills.</p>" if len(sp) > STATIC_BILLS else ""))
+    vs = rec.get("votes") or []
+    if vs:
+        def vote(x):
+            on = (f'<a href="bill/{E(str(x["y"]))}/{E(str(x["b"]).lower())}">{E(x["b"])}</a>'
+                  if x.get("b") and x.get("y") else E(x.get("b") or ""))
+            # "8/19/2026" as the site writes a date: "August 19, 2026".
+            d = re.fullmatch(r"(\d{1,2})/(\d{1,2})/(\d{4})", x.get("d") or "")
+            iso = (f"{d.group(3)}-{int(d.group(1)):02d}-{int(d.group(2)):02d}" if d
+                   else (x.get("d") or "")[:10])
+            try:
+                when = S.date_words(iso, "full")
+            except (ValueError, TypeError):
+                when = x.get("d") or ""
+            return (f"{E(when)}: {on}{', ' if on else ''}{E(x.get('q') or '')}"
+                    f" &mdash; {E(x.get('v') or '')}")
+        out.append("<h2>Recent Votes</h2><ul>"
+                   + "".join(f"<li>{vote(x)}</li>" for x in vs[:STATIC_VOTES]) + "</ul>"
+                   + (f"<p>And {len(vs) - STATIC_VOTES:,} earlier votes.</p>"
+                      if len(vs) > STATIC_VOTES else ""))
+    links = [f'<a href="/legislators/{E(str(m.get("id", "")))}.json">This page&rsquo;s data as JSON</a>']
+    if m.get("url"):
+        links.append(f'<a href="{E(m["url"])}" rel="noopener">This member on the General Court&rsquo;s site</a>')
+    out.append("<h2>Sources</h2><ul>" + "".join(f"<li>{x}</li>" for x in links) + "</ul>")
+    out.append("</div>")
+    return "".join(out)
 
 
 def main():
@@ -210,6 +257,14 @@ def main():
     out.mkdir(parents=True, exist_ok=True)
     t = S.template(site)
 
+    def own(m):
+        """The member's own JSON, which app.js draws their page from."""
+        f = site / "legislators" / f"{m.get('id')}.json"
+        try:
+            return json.loads(f.read_text(encoding="utf-8")) if f.is_file() else {}
+        except ValueError:
+            return {}
+
     urls, written, n_former = [], 0, 0
     for m in [*legs, *former]:
         slug = m.get("slug") or person_slug(m)
@@ -229,7 +284,7 @@ def main():
                 f'title="{E(named)} — Granite Record" '
                 f'href="/feed/legislator/{E(mid)}.xml">'
                 if S.member_followable(m) else "")
-        (out / f"{slug}.html").write_text(S.page(
+        (out / f"{slug}.html").write_text(S.clean_links(S.page(
             t, path=path, base=a.base,
             title=f"{who} | Granite Record",
             # The member's name and seat and nothing after it: "-- New Hampshire
@@ -248,7 +303,7 @@ def main():
             # sitting member is.
             globals={"GR_MEMBER": str(m.get("id", "")), "GR_STANDALONE": True,
                      **({"GR_FORMER": True} if m.get("former") else {})},
-            noscript=noscript(m), skip_label="Skip to this member",
+            static=static_record(m, own(m)), skip_label="Skip to this member",
             # Without this the template's marker stays on Bills, and all 406
             # member pages told a screen reader they were Bills.
             nav_current="officials.html",
@@ -256,7 +311,7 @@ def main():
             # the first heading, before the member's own -- which the page
             # draws (and its noscript carries), so the hidden one is removed
             # rather than renamed: two headings saying one name is worse.
-            sr_title=""),
+            sr_title="")),
             encoding="utf-8")
         urls.append(a.base + S.canon(path))
         written += 1

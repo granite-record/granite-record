@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.551
+# GRANITE_VERSION: 2026-09-04.552
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -28120,6 +28120,65 @@ def _fixture_site_whole(root):
     return base, ran
 
 
+@check("frontend", "a member's structured data names their party as the party names itself, and an independent none")
+def _ld_party():
+    """The SEO review of 12 October 2026: 1,962 Person blocks said "D Party",
+    "R Party" or "Democrat Party", because the record gives a party as a code
+    as often as a word and structured.person appended " Party" to either."""
+    import structured as LD
+    got = {}
+    for p in ("D", "Democrat", "Democratic", "R", "Republican", "L", "I", "Independent", ""):
+        blocks = LD.person({"id": "1", "name": "Doe, Jo", "display_plain": "Rep. Jo Doe",
+                            "party": p, "chamber": "H"}, "https://graniterecord.org",
+                           "/legislator/jo-doe")
+        aff = (blocks[0] if isinstance(blocks, list) else blocks).get("affiliation")
+        got[p] = aff and aff["name"]
+    want = {"D": "Democratic Party", "Democrat": "Democratic Party",
+            "Democratic": "Democratic Party", "R": "Republican Party",
+            "Republican": "Republican Party", "L": "Libertarian Party",
+            "I": None, "Independent": None, "": None}
+    assert got == want, f"structured.person names the parties {got}"
+    return "ok", "D, Democrat and Democratic are the Democratic Party; R the Republican, L the Libertarian; an independent names none"
+
+
+def _shell_canon(path):
+    """shell.canon, for a check that compares a built page's link with the
+    file it names."""
+    import shell as S
+    return S.canon(path)
+
+
+@check("frontend", "a page links every other page at the address the host serves, not its .html file")
+def _links_clean():
+    """The SEO review of 12 October 2026: about 670,000 links on the site
+    named a page by its file -- "bills.html", "legislator/x.html" -- and
+    Cloudflare answers each with a 308 to the address without it. Every
+    builder writes its pages through shell.clean_links now; this reads the
+    whole fixture build, outside its scripts, for a link that still names a
+    page here by its file, so a writer that forgets is named."""
+    absent = [x for x in CHAIN_NEEDS if not _paths.locate(x).exists()]
+    if absent:
+        return "skip", "not here: " + ", ".join(absent)
+    import shell as S
+    shared, _base, _ran, _days = _fixture_site_shared()
+    site = shared / "site"
+    bad, pages, links = {}, 0, 0
+    for f in sorted(site.rglob("*.html")):
+        text = f.read_text(encoding="utf-8")
+        pages += 1
+        for part in S._SCRIPT.split(text):
+            if part[:7].lower() == "<script":
+                continue
+            links += part.count('href="')
+            hit = S._PAGE_HREF.findall(part)
+            if hit:
+                bad[f.relative_to(site).as_posix()] = [h[1] for h in hit[:3]]
+    assert pages, "the fixture build wrote no pages"
+    assert not bad, (f"{len(bad)} pages link a page by its .html file, e.g. "
+                     + "; ".join(f"{k}: {v}" for k, v in list(bad.items())[:6]))
+    return "ok", f"{links:,} links on {pages} fixture pages, none naming a page here by its file"
+
+
 @check("frontend", "your town's places.json is the town pages' own facts, and the pages that use it carry it")
 def _your_town():
     """The header's Your town (12 October 2026) reads site/places.json, which
@@ -39398,8 +39457,10 @@ def _former_heading(BL):
         plain = re.sub(r"^Former ", "", name)
         got = {"title": between(page, "<title>", "</title>"),
                "link card": between(page, 'property="og:title" content="', '"'),
-               "no-script heading": between(between(page, "<noscript>", "</noscript>") or "",
-                                            "<h1>", "</h1>")}
+               # The plain record a reader without scripts reads (static_record,
+               # which replaced the <noscript> block on 12 October 2026).
+               "no-script heading": between(between(page, '<div class="static-rec" id="static-rec">',
+                                                    "</div>") or "", "<h1>", "</h1>")}
         want_of = {"title": f"{name} | Granite Record", "link card": name,
                    "no-script heading": _in_full(name)}
         bad += [f"member {mid}'s {k} reads {got[k]!r}, not {want_of[k]!r}"
@@ -39412,7 +39473,7 @@ def _former_heading(BL):
         ld = between(page, '<script type="application/ld+json">', "</script>") or ""
         if '"name":"Former ' in ld.replace('": "', '":"'):
             bad.append(f"member {mid}'s structured data calls them Former in the name")
-        ns = between(page, "<noscript>", "</noscript>") or ""
+        ns = between(page, '<div class="static-rec" id="static-rec">', "</div>") or ""
         if mid in years:
             if years[mid] not in ns:
                 bad.append(f"member {mid}'s no-script page lost the years {years[mid]}")
@@ -47995,7 +48056,9 @@ def _withdrawn_status(B, BP, BF):
         assert "do not list this bill" in page["notes"][0] and (
             "status page" not in page["notes"][0]), (
             f"the note speaks for more than was looked at: {page['notes']}")
-        html = BP.noscript(j, page)
+        # The record a reader without scripts reads (static_record, which
+        # replaced the noscript block on 12 October 2026) offers it too.
+        html = BP.static_record(j, page)
         assert "https://example.invalid/hj4.pdf" in html and "<ul></ul>" not in html, (
             f"a reader without JavaScript is offered no journal: {html[-300:]}")
         assert BF.filed_date(page) == "2025-01-09", (
@@ -51579,7 +51642,8 @@ def _calendar_chambers():
             for m in re.finditer(r'<details class="calmeet"([^>]*)>(.*?)</details>', t, re.S):
                 a = dict(re.findall(r' data-([a-z]+)="([^"]*)"', m.group(1)))
                 name = re.search(r'<span class="calcmte">([^<]*)</span>', m.group(2)).group(1)
-                link = re.search(r'href="committee/([A-Za-z0-9]+)\.html#day-', m.group(2))
+                # The address the host serves since 12 October 2026 (shell.clean_links).
+                link = re.search(r'href="committee/([A-Za-z0-9]+)(?:\.html)?#day-', m.group(2))
                 out[name] = dict(a, link=link.group(1) if link else "",
                                  items=len(re.findall(r'<a class="cbn"', m.group(2))), html=m.group(2))
             return out
@@ -53106,7 +53170,10 @@ def _icons_named():
             got = re.findall(r'<a href="([^"]+)"(?: aria-current="page")?>(<svg class="icon".*?</svg>)'
                              r'([^<]*)</a>', nav, re.S)
             # 404.html names them from the root, since it answers at any depth
-            if [(h.lstrip("/"), s, w.strip()) for h, s, w in got] != want_nav:
+            # and every page names them at the address the host serves
+            # (shell.clean_links, 12 October 2026): "bills", not "bills.html".
+            if [(h.lstrip("/"), s, w.strip()) for h, s, w in got] != \
+                    [(_shell_canon(h), s, w) for h, s, w in want_nav]:
                 bad.append(f"{where}: the header's sections are not NAV_TABS's, each with its "
                            f"drawing: {[(h, w.strip()) for h, _s, w in got]}")
     # Follow, Report a problem and Share are mounted outside anything the
@@ -53827,7 +53894,10 @@ def _one_date_formatter():
         # own text and the docket's lines are the General Court's words.
         t = re.sub(r'<div class="pageacts".*?</dl>|<span class="citeday">.*?</span>|'
                    r"<!--.*?-->|<script\b.*?</script>|<style\b.*?</style>|<pre\b.*?</pre>|"
-                   r'<div class="(?:billbody|docket)".*?</div>', " ", t, flags=re.S)
+                   # sx-docket: the docket's own words in a page's plain record
+                   # (static_record, 12 October 2026), as the page app.js draws
+                   # quotes them.
+                   r'<div class="(?:billbody|docket|sx-docket)".*?</div>', " ", t, flags=re.S)
         seen += 1
         # A tag is a boundary, not a space: "SC 9</span>...<span>Mar 10" is
         # two things, not "9 Mar".
@@ -53974,11 +54044,11 @@ def _committees_full_sessions():
         assert col, f"the Committees page has no {word} column"
         first = re.search(r"<a class=\"ccard[^\"]*\" href=\"([^\"]+)\"><span class=\"cc-n\">([^<]+)</span>"
                           r"<span class=\"cc-m\">([^<]*(?:<[^a/][^>]*>[^<]*)*)</span></a>", col.group(1))
-        assert first and first.group(1) == f"session/{FS.SLUG[b]}.html" \
+        assert first and first.group(1) == f"session/{FS.SLUG[b]}" \
             and first.group(2) == f"{word} Session Days", (
                 f"the {word} column does not open with its session days: "
                 f"{first.groups() if first else col.group(1)[:200]}")
-        assert col.group(1).count(f'href="session/{FS.SLUG[b]}.html"') == 1, (
+        assert col.group(1).count(f'href="session/{FS.SLUG[b]}"') == 1, (
             f"the {word} card is drawn twice")
         chamber = (site / "session" / f"{FS.SLUG[b]}.html").read_text(encoding="utf-8")
         terms = sorted((f.stem for f in (site / "session" / b).glob("*.json")
@@ -53996,7 +54066,7 @@ def _committees_full_sessions():
         assert drawn == sorted(days, reverse=True), (
             f"session/{FS.SLUG[b]}.html lists {drawn}, not {terms[0]}'s days newest first")
         for d in drawn:
-            assert f'<a class="daylink" href="session/{b}/{d}.html">' in chamber, (
+            assert f'<a class="daylink" href="session/{b}/{d}">' in chamber, (
                 f"{b} {d} does not lead to its own page")
             assert (site / "session" / b / f"{d}.html").exists(), f"session/{b}/{d}.html is not built"
         # The record head, as a committee's page has it since 10 October 2026.
@@ -56981,7 +57051,7 @@ def _officers_on_the_page(B, BLP, BSP, OF):
     assert BLP.head_name(gone) == "Former Representative Michael Gunski (R - Hills 6)"
     assert BLP.heading(spillane) == "Rep. James Spillane (R - Rock 2)", (
         "the page's title and link card lost the short form")
-    assert "<h1>Senator Sharon Carson (R - SD14)</h1>" in BLP.noscript(carson)
+    assert "<h1>Senator Sharon Carson (R - SD14)</h1>" in BLP.static_record(carson, {})
 
     import html as _html
     deb = {"bill": "SB62", "speeches": [
@@ -57778,9 +57848,10 @@ def _footer_credit():
     pages = sorted((shared / "site").rglob("*.html"))
     with_footer = [p for p in pages if "<footer>" in p.read_text(encoding="utf-8", errors="replace")]
     # The 404 page is served at any address, so its links are written from
-    # the root ("/about.html"), which is the same line.
+    # the root ("/about"), which is the same line; and every page names it at
+    # the address the host serves (shell.clean_links, 12 October 2026).
     said = re.compile(re.escape(line).replace(re.escape('href="about.html"'),
-                                              r'href="/?about\.html"'))
+                                              r'href="/?about"'))
     lacking = [p.relative_to(shared / "site").as_posix() for p in with_footer
                if len(said.findall(p.read_text(encoding="utf-8", errors="replace"))) != 1]
     assert with_footer and not lacking, (

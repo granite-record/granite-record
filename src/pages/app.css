@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.264 */
+/* GRANITE_VERSION: 2026-09-07.265 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -1675,6 +1675,21 @@ color:var(--pine);margin:0 0 var(--sp-3)}
 .yt .ytmeta{margin:var(--sp-3) 0 0;font-size:var(--t-sm)}
 @media print{.setbtn,.navset,.ytpanel,.yt{display:none !important}}
 /* ==== /YOUR TOWN, SHARED ================================================== */
+
+/* THE RECORD AS PLAIN HTML (the SEO review of 12 October 2026): what a bill's,
+   a member's and a committee's page say to a reader that runs no scripts --
+   most AI crawlers, a text browser, scripts turned off (shell.page's static).
+   Hidden once the head's inline script has set html.js, so a reader with
+   scripts sees only the page app.js draws, never this painted first. */
+html.js .static-rec{display:none}
+.static-rec{max-width:70ch;margin:0 0 var(--sp-8);font:400 var(--t-ui)/1.55 var(--sans);color:var(--ink)}
+.static-rec .sx-name{font:600 var(--t-lead)/1.3 var(--sans);color:var(--ink-2);margin:0}
+.static-rec .sx-title{font:400 1.5rem/1.3 var(--serif);margin:var(--sp-2) 0 var(--sp-5)}
+.static-rec h2{font:600 var(--t-lead)/1.3 var(--sans);margin:var(--sp-7) 0 var(--sp-3)}
+.static-rec ul{padding-left:1.25rem;margin:0}
+.static-rec ul.sx-facts{list-style:none;padding:0}
+.static-rec li{margin:var(--sp-2) 0}
+.static-rec a{color:var(--pine)}
 
 /* SHARED:END ------------------------------------------------------------ */
 

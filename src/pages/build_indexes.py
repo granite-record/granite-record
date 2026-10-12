@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-13.15
+# GRANITE_VERSION: 2026-09-13.16
 """
 The whole record as plain lists: every bill of every term, every sitting
 legislator, every town -- each a link a person or a crawler can follow.
@@ -84,7 +84,7 @@ def write(site, base, path, title, description, heading, lead, body, urls, nav="
     assert '<div class="clist dirlist">' in html, f"{path}: the template has no results slot"
     out = site / path.lstrip("/")
     out.parent.mkdir(parents=True, exist_ok=True)
-    out.write_text(html, encoding="utf-8")
+    out.write_text(S.clean_links(html), encoding="utf-8")
     urls.append(base + S.canon(path))
 
 
