@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.547
+# GRANITE_VERSION: 2026-09-04.548
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -32987,6 +32987,25 @@ def _related_judged(RB, R):
     assert kept >= 0.97 * len(right), f"only {kept} of {len(right)} pairs judged right are still found"
     assert len(back) <= 4, f"{len(back)} pairs judged wrong are shown again: {back[:3]}"
     return "ok", f"{kept} of {len(right)} judged right still found; {len(back)} judged wrong still shown"
+
+
+@check("frontend", "the Sponsor filter lists a chosen member's own bills first, then the bills they "
+       "co-sponsored")
+def _sponsor_prime_first():
+    """The person, 12 October 2026: "selecting sponsor in the bill search
+    filter shows the prime sponsored bills by the selected rep first and then
+    the bills they cosponsor". build_site_v2 writes each bill's co-sponsors
+    as `cosp`, by the name the filter groups on; app.js matches a sponsor on
+    either and puts primeChosen bills first, under two headings."""
+    src = Path("src/pages/build_site_v2.py").read_text(encoding="utf-8")
+    assert 'row["cosp"] = _cosp' in src and "person_name(s_.get(\"name\")" in src, \
+        "the index rows no longer carry their co-sponsors"
+    app = Path("src/pages/app.js").read_text(encoding="utf-8")
+    assert 'if(k==="sponsor")return b.cosp?[b.sponsor,...b.cosp]:[b.sponsor];' in app, \
+        "the Sponsor filter matches the prime sponsor alone"
+    assert "rows=rows.filter(primeChosen).concat(rows.filter(b=>!primeChosen(b)))" in app \
+        and '"Prime sponsored":"Co-sponsored"' in app, "a chosen sponsor's own bills are not listed first"
+    return "ok", "co-sponsors in the index; a chosen sponsor's prime bills first, then co-sponsored"
 
 
 @check("build", "related bills on a bill's page: only what the judged sample let through, each other "

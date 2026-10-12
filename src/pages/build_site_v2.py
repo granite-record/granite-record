@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.203
+# GRANITE_VERSION: 2026-09-05.204
 """
 Generate the faceted site from real General Court data.
 
@@ -10575,6 +10575,15 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
             acted=list(dict.fromkeys(s["body"] for s in jsteps
                                      if s["body"] in ("H", "S"))),
             live=own and not session_over)
+        # THE CO-SPONSORS, by the name the Sponsor filter groups on (the
+        # person, 12 October 2026: choosing a sponsor shows "the prime
+        # sponsored bills by the selected rep first and then the bills they
+        # cosponsor"). Only where there are any, so the index grows by little.
+        _cosp = list(dict.fromkeys(
+            n for n in (person_name(s_.get("name") or "") for s_ in sp_list if s_ is not prime)
+            if n and n != row.get("sponsor")))
+        if _cosp:
+            row["cosp"] = _cosp
         # NO RAIL FOR A BILL THAT WAS NEVER INTRODUCED. The rail's first stop
         # is "Introduced", drawn as passed, and its second is a chamber the
         # bill is shown stopping in. A bill the Senate refused to introduce,

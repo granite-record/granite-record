@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.192
+// GRANITE_VERSION: 2026-09-07.193
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -2338,8 +2338,14 @@ function facetVals(b,k){
   if(k==="status")return [statusCat(b)];
   if(k==="type")return [typeOf(b)];
   if(k==="committee")return b.committees||(b.committee?[b.committee]:[]);
+  // A SPONSOR IS THE PRIME SPONSOR OR A CO-SPONSOR (the person, 12 October
+  // 2026). build_site_v2 writes the co-sponsors' names as `cosp`, spelled as
+  // the prime sponsor's is; render() puts a chosen sponsor's own bills first.
+  if(k==="sponsor")return b.cosp?[b.sponsor,...b.cosp]:[b.sponsor];
   return [b[k]];
 }
+// Whether the bill's PRIME sponsor is one the Sponsor filter has chosen.
+const primeChosen=b=>sel.sponsor.has(b.sponsor);
 
 // NEWER TERM FIRST, which changes nothing in a list of one term and orders
 // the list on All terms: by number, two bills of one number (HB 1 is in
@@ -2878,7 +2884,7 @@ function matches(b,ignore){
 // `show`, where given, is what a value reads as, in HTML: the Bill Type
 // filter's "HB House Bill" for the value HB.
 // 5c (the person, 9 October 2026, item 2): ONCE A SEARCH OR A FILTER NARROWS
-// THE LIST, the long lists -- Committee, Topic, Prime Sponsor's found names,
+// THE LIST, the long lists -- Committee, Topic, Sponsor's found names,
 // Floor Vote Day -- put the options with bills first and the greyed zeros
 // after them, each part in the list's own order, with a rule above the first
 // zero. Unnarrowed, nothing moves. Status and Bill Type keep their fixed
@@ -2903,7 +2909,7 @@ function fgroup(key,label,vals,counts,searchable,paint,show){
     const shown=found.vals;
     inner=`${[...chosen].map(v=>`<span class="pill">${esc(v)}<button data-unpick="${esc(v)}">×</button></span>`).join("")
       ?`<div class="chosen">${[...chosen].map(v=>`<span class="pill">${esc(v)}<button data-unpick="${esc(v)}">×</button></span>`).join("")}</div>`:""}
-      <input class="sbox" id="sbox" aria-label="Find a prime sponsor by name" placeholder="Type a name…" value="${esc(sponsorFilter)}" autocomplete="off">`
+      <input class="sbox" id="sbox" aria-label="Find a sponsor by name" placeholder="Type a name…" value="${esc(sponsorFilter)}" autocomplete="off">`
       +(shown.map((v,i)=>`<label class="fopt ${!counts[v]?'off':''}${i===found.rule?' fzero':''}"><input type="checkbox" data-f="${key}"
         value="${esc(v)}" ${chosen.has(v)?"checked":""}><span>${esc(v)}</span>
         <span class="c">${(counts[v]||0).toLocaleString()}</span></label>`).join("")
@@ -2950,7 +2956,7 @@ function renderFacets(){
   const present=k=>[...new Set(inYear.flatMap(b=>facetVals(b,k)).filter(Boolean))].sort();
   let h="";
   // STATUS AND BILL TYPE FIRST (the person, 10 October 2026): the two that
-  // open by default head the list, above Committee, Topic and Prime Sponsor.
+  // open by default head the list, above Committee, Topic and Sponsor.
   // No "Year Filed" facet. The term picker above the list already chooses
   // the biennium, and splitting one term into its two filing years was a
   // second control for a distinction the card prints on its own. (The
@@ -2980,7 +2986,7 @@ function renderFacets(){
       TYPE_NAME[v]?`<span>${esc(TYPE_NAME[v])}</span>`:""}</span>`);
   h+=fgroup("committee","Committee",present("committee"),cnt("committee","committee"));
   h+=fgroup("topic","Topic",present("topic"),cnt("topic","topic"));
-  h+=fgroup("sponsor","Prime Sponsor",present("sponsor"),cnt("sponsor","sponsor"),true);
+  h+=fgroup("sponsor","Sponsor",present("sponsor"),cnt("sponsor","sponsor"),true);
   // THE STATUTE, where the Floor Vote Day filter was (the person, 11 October
   // 2026). A box for a chapter or a section, the bills' most changed chapters
   // under it as picks, and the statute itself one link away. A vote day an
@@ -7687,7 +7693,12 @@ function render(more){
     if(sortBy!==want){sortBy=want;const so=$("#sort");if(so)so.value=want;}
   }
   wantText();
-  const rows=sortRows(IDX.filter(b=>matches(b)));
+  let rows=sortRows(IDX.filter(b=>matches(b)));
+  // A CHOSEN SPONSOR'S OWN BILLS FIRST, then the bills they co-sponsored,
+  // each part in the order chosen (the person, 12 October 2026).
+  const bySponsor=sel.sponsor.size>0&&!billNumbers(query);
+  if(bySponsor)rows=rows.filter(primeChosen).concat(rows.filter(b=>!primeChosen(b)));
+  const spN=bySponsor?rows.filter(primeChosen).length:0;
   const inTerm=IDX.filter(inTermOf).length;
   // Say when a search matched on a synonym, so nobody wonders why a bill about
   // firearms turned up for "guns".
@@ -7786,8 +7797,11 @@ function render(more){
   // back in history only where back IS the search (backIsSearch), so the
   // list returns as it was left; everywhere else this is an ordinary link.
   parkActions(!fb);
-  $("#results").innerHTML=((rows.length||fb)?shown.map((b,gi,arr)=>`
-    ${!fb&&sortBy==="status"&&(gi===0||grpOf(arr[gi-1])!==grpOf(b))
+  const spHead=(b,gi,arr)=>!fb&&bySponsor&&(gi===0||primeChosen(arr[gi-1])!==primeChosen(b))
+    ?`<h2 class="grp">${primeChosen(b)?"Prime sponsored":"Co-sponsored"}
+       <span>${(primeChosen(b)?spN:rows.length-spN).toLocaleString()}</span></h2>`:"";
+  $("#results").innerHTML=((rows.length||fb)?shown.map((b,gi,arr)=>`${spHead(b,gi,arr)}
+    ${!fb&&!bySponsor&&sortBy==="status"&&(gi===0||grpOf(arr[gi-1])!==grpOf(b))
       ?`<h2 class="grp">${esc(grpOf(b)||"No status recorded")}
          <span>${(grpN[grpOf(b)]||0).toLocaleString()}</span></h2>`:""}
     ${b.lsr?lsrCardHtml(b):cardHtml(b,!!fb)}`).join("")+((!fb&&rows.length>SHOWN)?`<p class="more" id="more">Showing ${
