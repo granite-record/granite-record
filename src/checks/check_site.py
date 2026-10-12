@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.20
+# GRANITE_VERSION: 2026-09-04.21
 """
 Check the site is fit to publish before uploading it.
 
@@ -383,6 +383,14 @@ def main():
             errors.append(f"{len(noslash)} sitemap URLs have no slash after "
                           f"{root[:-1]}, e.g. {noslash[0]} - a builder passed "
                           "shell.page a path without its leading /")
+        # ONE FILE HOLDS 50,000 ADDRESSES AND 50 MB, and no more (the SEO
+        # review of 12 October 2026: 38,068 before the Laws pages). Past 45,000
+        # this warns, so the split into a sitemap index is made before a
+        # crawler starts ignoring what is past the limit, not after.
+        size = sm.stat().st_size
+        if len(locs) > 45_000 or size > 45_000_000:
+            warnings.append(f"sitemap.xml holds {len(locs):,} URLs in {size / 1e6:.1f} MB; one "
+                            "file may hold 50,000 and 50 MB: split it into a sitemap index soon")
         wrong_base = [u for u in locs if not u.startswith(root[:-1])]
         if wrong_base:
             errors.append(f"{len(wrong_base)} sitemap URLs use a different base "

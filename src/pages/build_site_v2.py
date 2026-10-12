@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.204
+# GRANITE_VERSION: 2026-09-05.205
 """
 Generate the faceted site from real General Court data.
 
@@ -1287,6 +1287,8 @@ _PARTY_TAIL_RE = re.compile(r"\s*\([RDILU](?:\s*[-\u2013][^)]*)?\)\s*$", re.I)
 # worse than one that guards against it: this cuts at the party marker
 # wherever it appears. No real name contains "(R)".
 _COMPOSITE_RE = re.compile(r"\s*\([RDILU]\)\s.*$")
+# A generational suffix, as the rosters write one.
+_SUFFIX_RE = re.compile(r"(?:Jr|Sr)\.?|II|III|IV|V", re.I)
 _PLACEHOLDER_RE = re.compile(r"^(?:Member\s*#|\(unknown)", re.I)
 
 
@@ -1305,7 +1307,13 @@ def person_name(raw):
             s = f"{parts[1]} {parts[0]}"
         elif len(parts) > 2:
             # "Smith, John, Jr." - the suffix belongs at the end, not the middle.
-            s = f"{parts[1]} {parts[0]} {' '.join(parts[2:])}"
+            # AND WHEREVER THE RECORD PUT IT: "Barnes, Jr., John" was drawn
+            # "Sen. Jr. Barnes John" on his page and in every list (found by
+            # the former members' directory, 12 October 2026). A part that is
+            # a suffix goes last, whichever comma it followed.
+            suf = [p for p in parts[1:] if _SUFFIX_RE.fullmatch(p)]
+            rest = [p for p in parts[1:] if not _SUFFIX_RE.fullmatch(p)]
+            s = " ".join([*rest, parts[0], *suf])
     return s.strip()
 
 

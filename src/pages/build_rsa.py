@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-11.9
+# GRANITE_VERSION: 2026-10-11.10
 """
 The statutes (RSA) as pages: /laws, and one page a chapter at /laws/<chapter>.
 
@@ -65,6 +65,7 @@ import build_date
 import components as C
 import rsa
 import shell as S
+import structured as LD
 
 E = html.escape
 SHOWN = 8          # a list folds after this many, as the bill page's Amends row does
@@ -428,12 +429,6 @@ def chapter_page(tmpl, table, data, bills, ch, base):
     latest = data.get("asof", {}).get("laws_through") or ""
     path = f"/laws/{chapter_slug(ch)}"
     title = chapter_label(ch, info["name"])
-    p = S.page(tmpl, path=path, base=base, title=S.title_of(f"Chapter {ch}", "Laws"),
-               og_title=title, description=f"New Hampshire RSA chapter {ch}, {info['name']}: "
-               "its text, the bills that changed it and the bills that would.",
-               og_image="og-learn.png", og_alt=OG_ALT, globals={"GR_STATIC": True, "GR_LAW": ch},
-               noscript="", skip_label="Skip to the statute", sr_title="",
-               nav_current="laws.html", cite=False)
     first = table.sections[secs[0]] if secs else None
     # The General Court's own table of contents page for the chapter, the
     # address build_site_v2.rsa_url has linked for a chapter since 4
@@ -441,6 +436,21 @@ def chapter_page(tmpl, table, data, bills, ch, base):
     tno = (first.url.split("/")[0] if first and first.url else "") or (first.title_no if first else "")
     official = (f"https://gc.nh.gov/rsa/html/NHTOC/NHTOC-{tno}-{ch}.htm" if tno
                 else "https://gc.nh.gov/rsa/html/nhtoc.htm")
+    # THE NAME A READER SEARCHES FOR (the SEO review, 12 October 2026). The
+    # title read "Chapter 91-A -- Laws": no "RSA", which is how the chapter is
+    # cited and searched, and no name. Now "RSA 91-A -- Access to Governmental
+    # Records and Meetings", with the state in the link card, and the page
+    # says what it is in structured data, as a bill's does.
+    name = nice(info["name"]) if info.get("name") else ""
+    p = S.page(tmpl, path=path, base=base, title=S.title_of(f"RSA {ch}", name),
+               og_title=f"New Hampshire RSA {ch}" + (f": {name}" if name else ""),
+               description=f"New Hampshire RSA chapter {ch}, {name or info['name']}: "
+               "its text, the bills that changed it and the bills that would.",
+               og_image="og-learn.png", og_alt=OG_ALT, globals={"GR_STATIC": True, "GR_LAW": ch},
+               noscript="", skip_label="Skip to the statute", sr_title="",
+               nav_current="laws.html", cite=False,
+               jsonld=LD.statute_chapter(ch, name, base, S.canon(path), official,
+                                         bool(info.get("repealed"))))
     lead = (f"The text as the General Court's table holds it, "
             f"{as_of(latest)}. "
             f'<a href="{E(official)}" rel="noopener">The official text on gc.nh.gov</a>.')
@@ -750,7 +760,12 @@ def landing_page(tmpl, table, data, base, topics, pending):
     right when one is chosen, with the way to its own page."""
     path = "/laws"
     title = "New Hampshire laws"
-    p = S.page(tmpl, path=path, base=base, title=S.title_of("Laws", "New Hampshire RSA"),
+    p = S.page(tmpl, path=path, base=base,
+               title=S.title_of("New Hampshire Laws", "every chapter of the RSA"),
+               jsonld=LD.listing("New Hampshire Revised Statutes Annotated",
+                                 "Every chapter of the New Hampshire Revised Statutes Annotated, "
+                                 "with the bills that changed each section and the bills that would.",
+                                 base, "/laws"),
                og_title=title, description="Every chapter of the New Hampshire Revised Statutes "
                "Annotated: browse by title or topic, search by number or words, with the bills that "
                "changed each section and the bills that would.", og_image="og-learn.png", og_alt=OG_ALT,

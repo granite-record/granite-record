@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.552
+# GRANITE_VERSION: 2026-09-04.553
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -28345,10 +28345,13 @@ def _chain():
         # reaches the members' data under /legislators/ or their pages.
         for old in ("/legislators", "/legislators.html"):
             assert f"\n{old} /officials 301\n" in red, f"_redirects does not send {old} to /officials"
+        # A PATTERN, that is: one renamed member's old address sent to the
+        # new one (build_pages.MOVED) reaches that page and no other.
         assert not any(ln.split()[0].startswith(("/legislators/", "/legislator/"))
-                       and ln.split()[-1] == "301" for ln in red.splitlines() if ln.strip()
+                       and ln.split()[-1] == "301" and re.search(r"[:*]", ln.split()[0])
+                       for ln in red.splitlines() if ln.strip()
                        and not ln.startswith("#")), (
-            "a redirect reaches the members' data or pages")
+            "a redirect pattern reaches the members' data or pages")
         assert not (root / "site" / "legislators.html").exists() and \
             (root / "site" / "officials.html").exists(), (
             "a legislators.html is in the site, or no officials.html, where /officials should answer")
