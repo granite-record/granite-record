@@ -164,7 +164,7 @@ def bills_page(site, base, term, rows, urls, label=""):
     return len(rows)
 
 
-def legislators_page(site, base, legs, urls):
+def legislators_page(site, base, legs, urls, former=0):
     by = {"H": [], "S": []}
     for m in legs:
         by.get(m.get("chamber"), by["H"]).append(m)
@@ -186,9 +186,52 @@ def legislators_page(site, base, legs, urls):
           "and district, each linked to their votes and sponsored bills.",
           "Every sitting legislator",
           f"{len(by['S'])} senators and {len(by['H'])} representatives, by surname. "
-          f'<a href="{S.canon("officials.html")}">Search by town or name</a> instead.',
+          f'<a href="{S.canon("officials.html")}">Search by town or name</a> instead'
+          + (f', or see <a href="{S.canon("directory/former-legislators.html")}">former '
+             "legislators</a>." if former else "."),
           "".join(body), urls, nav="officials.html")
     return len(legs)
+
+
+def former_page(site, base, urls):
+    """Every former member with a page of their own (the SEO review of 12
+    October 2026: 77 of their pages had no link to them from anywhere, and 83
+    more one). Named as the record names them -- "Former" is said on a
+    member's own page and in search results and nowhere else -- under a
+    heading that says what the list is; each with their chamber, seat and the
+    years the record holds them."""
+    fm = site / "former.json"
+    people = [m for m in (json.loads(fm.read_text(encoding="utf-8")) if fm.exists() else [])
+              if m.get("slug") and (site / "legislator" / f"{m['slug']}.html").exists()]
+    if not people:
+        return 0
+    by = {"H": [], "S": []}
+    for m in people:
+        by.get(m.get("chamber"), by["H"]).append(m)
+    body = []
+    for ch, name in (("S", "Senate"), ("H", "House of Representatives")):
+        rows = sorted(by[ch], key=lambda m: (m.get("name") or "").lower())
+        if not rows:
+            continue
+        body.append(f'<h2 id="{ch.lower()}">{name} <span class="dircount">{len(rows)}</span></h2>'
+                    '<ul class="dirpeople">')
+        for m in rows:
+            terms = (m.get("served") or {}).get("terms") or []
+            span = f"{terms[0].split('-')[0]}\u2013{terms[-1].split('-')[1]}" if terms else ""
+            seat = m.get("district_label") or ""
+            body.append(f'<li><a href="{S.E(S.canon("legislator/" + m["slug"] + ".html"))}">'
+                        f'{S.E(m.get("display_plain") or m.get("name"))}</a> <span class="dirstatus">'
+                        f'{S.E(", ".join(x for x in (m.get("party") or "", seat, span) if x))}</span></li>')
+        body.append("</ul>")
+    write(site, base, "/directory/former-legislators.html",
+          "Former legislators | Granite Record",
+          f"{len(people):,} former members of the New Hampshire House and Senate on record since "
+          "1999, with party, seat and years, each linked to their votes and sponsored bills.",
+          "Former legislators",
+          f"{len(by['S'])} former senators and {len(by['H']):,} former representatives with a "
+          "recorded roll call vote since 1999, by surname.",
+          "".join(body), urls, nav="officials.html")
+    return len(people)
 
 
 def towns_page(site, base, towns, urls):
@@ -442,7 +485,8 @@ def main():
     n_terms = len([t for t in terms if t not in named])
     legs = json.loads((site / "legislators.json").read_text(encoding="utf-8"))
     assert all(m.get("slug") for m in legs), "a legislator has no slug in legislators.json"
-    n_leg = legislators_page(site, base, legs, urls)
+    n_former = former_page(site, base, urls)
+    n_leg = legislators_page(site, base, legs, urls, former=n_former)
     towns = json.loads((site / "towns.json").read_text(encoding="utf-8"))
     n_town = towns_page(site, base, towns, urls)
     n_days = sessions_pages(site, base, urls)
@@ -457,6 +501,8 @@ def main():
     hub += ["</ul>", '<h2>People and places</h2><ul class="dirterms">',
             f'<li><a href="{S.canon("directory/legislators.html")}">Every sitting legislator</a> '
             f'<span class="dircount">{n_leg}</span></li>',
+            (f'<li><a href="{S.canon("directory/former-legislators.html")}">Former legislators</a> '
+             f'<span class="dircount">{n_former:,}</span></li>' if n_former else ""),
             f'<li><a href="{S.canon("directory/towns.html")}">Every town and ward</a> '
             f'<span class="dircount">{n_town}</span></li>',
             f'<li><a href="{S.canon("committees.html")}">Every committee</a></li>',

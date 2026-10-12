@@ -390,7 +390,8 @@ Honest list, not a roadmap.
 - **`proceedings.csv` reaches all nineteen terms**, but what is behind it is
   uneven: a term whose docket came from the database dump has no recordings to
   match against, because the House streamed nothing before May 2020.
-- **Email following is designed and not built.** RSS is live.
+- **Email following is built and not yet live.** It runs on the preview and
+  waits on a test; RSS is live.
 
 ---
 

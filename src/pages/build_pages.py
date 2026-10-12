@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.196
+# GRANITE_VERSION: 2026-09-04.197
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -321,7 +321,11 @@ COMMITTEE_TAB_SLUGS = ("sessions",)
 # members' data under /legislators/<id>.json and their pages under
 # /legislator/ are where they were, and no rule here reaches them.
 MOVED = (("/learn", "/resources"), ("/learn.html", "/resources"),
-         ("/legislators", "/officials"), ("/legislators.html", "/officials"))
+         ("/legislators", "/officials"), ("/legislators.html", "/officials"),
+         # Sen. John Barnes Jr.'s page, named from "Barnes, Jr., John" as
+         # "Jr. Barnes John" until build_site_v2.person_name put the suffix
+         # last (12 October 2026).
+         ("/legislator/jr-barnes-john-sd-17", "/legislator/john-barnes-jr-sd-17"))
 REDIRECTS = ("# Written by build_pages.py. Not an asset; Pages reads it.\n"
              + "".join(f"/bill/:year/:bill/{s} /bill/:year/:bill 200\n" for s in BILL_TAB_SLUGS)
              + "".join(f"/legislator/:who/{s} /legislator/:who 200\n" for s in MEMBER_TAB_SLUGS)
@@ -3015,6 +3019,28 @@ def committees_with_roster(out, data="data"):
 # components.js before app.js, the order every page loads them in.
 # print.js and print.css are a bill's print sheet, which a bill's page
 # loads when its Print button is pressed (print.js, GRPrint.open).
+def bills_page(t):
+    """The bill search as published at /bills, from the template (the SEO
+    review of 12 October 2026). Its title named the site and never the word
+    "bills"; its canonical and og:url named /bills.html, which redirects; and
+    to a reader without scripts it was nineteen characters. So the title says
+    what the page is, every address is the one the host serves, and the page
+    carries a plain paragraph and the way to every bill as a plain list,
+    hidden under html.js as a record page's static record is."""
+    t = _shell.clean_links(t).replace(
+        'content="https://graniterecord.org/bills.html"', 'content="https://graniterecord.org/bills"')
+    t = t.replace(_shell.NEEDS["title"],
+                  "<title>New Hampshire Bills \u2014 search every bill since 1989 | Granite Record</title>", 1)
+    plain = ('<div class="static-rec" id="static-rec"><p class="sx-name">New Hampshire Bills</p>'
+             "<p>Every bill filed in the New Hampshire General Court since 1989, searchable by "
+             "number, subject, sponsor, committee and status, each with its votes, hearings and "
+             "history. Searching needs JavaScript; without it, every bill is listed by term on "
+             '<a href="/directory">the whole record, as lists</a>, each linking its own page.</p></div>')
+    slot = '<div id="results"></div>'
+    assert slot in t, "bills.html has no results slot"
+    return t.replace(slot, plain + slot, 1)
+
+
 COPIED = ("bills.html", "app.css", "components.js", "app.js", "find.js",
           "print.js", "print.css")
 
@@ -3080,9 +3106,7 @@ def front_end(out, has_mark):
         # it keeps them; the copy published as /bills gets the addresses the
         # host serves (shell.clean_links), its og:url among them.
         if name == "bills.html":
-            body = _shell.clean_links(body.decode("utf-8")).replace(
-                'content="https://graniterecord.org/bills.html"',
-                'content="https://graniterecord.org/bills"').encode("utf-8")
+            body = bills_page(body.decode("utf-8")).encode("utf-8")
         if not dst.exists() or dst.read_bytes() != body:
             dst.write_bytes(body)
             wrote.append(name)

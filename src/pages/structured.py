@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-13.7
+# GRANITE_VERSION: 2026-09-13.8
 """
 What a search engine is told a page is about, in schema.org's vocabulary.
 
@@ -176,6 +176,27 @@ def howto(g, base, canon_path, checked=""):
     return [obj, _crumbs(base, [("Granite Record", "/"), ("Resources", "/resources"),
                                 ("How-To Guides", "/resources#guides"),
                                 (g["title"], canon_path)])]
+
+
+def statute_chapter(ch, name, base, canon_path, official="", repealed=False):
+    """A chapter of the Revised Statutes on its Laws page (the SEO review of
+    12 October 2026): the chapter is the General Court's law, and the page
+    about it is this site's, as a bill's is."""
+    url = base + canon_path
+    law = {"@type": "Legislation", "@id": url + "#legislation",
+           "name": f"RSA {ch}" + (f": {name}" if name else ""),
+           "legislationIdentifier": f"RSA {ch}", "legislationJurisdiction": JURISDICTION,
+           "legislationType": "statute",
+           "legislationLegalForce": "NotInForce" if repealed else "InForce",
+           "isPartOf": {"@type": "Legislation", "name": "New Hampshire Revised Statutes Annotated"},
+           "publisher": LEGISLATURE}
+    if official:
+        law["sameAs"] = official
+    page = {"@type": "WebPage", "@id": url, "url": url, "name": law["name"],
+            "about": {"@id": url + "#legislation"}, "isPartOf": _site(base),
+            "publisher": _publisher(base)}
+    return [page, law, _crumbs(base, [("Granite Record", "/"), ("Laws", "/laws"),
+                                      (f"RSA {ch}", canon_path)])]
 
 
 def listing(name, description, base, canon_path):
