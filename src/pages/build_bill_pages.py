@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.65
+# GRANITE_VERSION: 2026-09-04.66
 """
 Write a real address for every bill, and the sitemap that points at them.
 
@@ -351,8 +351,15 @@ def main():
         + "".join(f"<url><loc>{E(u)}</loc><lastmod>{m}</lastmod></url>\n"
                   for u, m in urls)
         + "</urlset>\n", encoding="utf-8")
+    # EVERY CRAWLER IS WELCOME, search engines and language models alike (the
+    # person, 12 October 2026: AI assistants should find "trustworthy
+    # sources" here for New Hampshire civics and bills). Only /api/, the
+    # report box and the email sign-up, is no page and is kept out.
     (site / "robots.txt").write_text(
-        f"User-agent: *\nAllow: /\nSitemap: {a.base}/sitemap.xml\n",
+        "# Granite Record: an independent public index of the New Hampshire General Court.\n"
+        "# Every page may be read and indexed, by search engines and AI crawlers alike.\n"
+        "# See /llms.txt for what the site holds and how to cite it.\n"
+        f"User-agent: *\nAllow: /\nDisallow: /api/\nSitemap: {a.base}/sitemap.xml\n",
         encoding="utf-8")
     # LLMS.TXT: what the site is, what it is not, and where things are, in the
     # plain-text form (llmstxt.org) a language model's crawler reads before
@@ -399,8 +406,31 @@ def main():
         f"session days at {a.base}/session/<H|S>/<YYYY-MM-DD>",
         f"- Towns: one page per city and town at {a.base}/town/<name>, saying "
         "who represents it and where to vote; the Legislators page finds yours",
-        f"- [Learn]({a.base}/learn): how a bill becomes law, the General Court, "
-        "testifying, and the state's other institutions",
+        f"- [Laws]({a.base}/laws): every chapter of the Revised Statutes Annotated "
+        f"(RSA), one page a chapter at {a.base}/laws/<chapter> and each section at "
+        f"{a.base}/laws/<chapter>#s<section> (RSA 91-A:4 is {a.base}/laws/91-a#s4), "
+        "with the bills that changed each section and the bills now proposing to",
+        f"- [Resources]({a.base}/resources): plain-language explainers of how a bill "
+        "becomes law, the General Court, testifying and the state's other "
+        f"institutions ({a.base}/learn/<topic>), and step-by-step how-to guides "
+        f"({a.base}/guides/<slug>), each saying what it was checked against and when",
+        "",
+        "## How to read the record",
+        "",
+        "- Dates, sponsors, vote tallies, committee assignments, hearing times and "
+        "statuses are taken from the General Court's own record. Committee reports "
+        "are reproduced in the committee's words.",
+        "- A bill's narrative is generated from those records by software, not "
+        "written by hand. A recording's start time is either the moment the chair "
+        "or clerk opened the item, or is marked approximate; the site does not "
+        "quote the captions.",
+        "- A bill's Related tab lists bills and amendments found by comparing their "
+        "text: a bill only where most of its language is shared, an amendment only "
+        "where the docket records what became of it. A match can be missed.",
+        "- A law's text is the General Court's statute table as of the date its page "
+        "states; the official text is at gc.nh.gov, and each page links it.",
+        "- Bill and member pages for the sitting term are rebuilt every night from "
+        f"the General Court's data. This file was written on {generated}.",
         "",
         "## Data",
         "",

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-11.1
+# GRANITE_VERSION: 2026-10-11.2
 """
 The official pages the how-to guides cite, onto this disk, to check them by.
 
@@ -14,6 +14,13 @@ October 2026. A guide states nothing its official page was not read to say
 (the person's resources plan: "ensure accuracy and refer people to official
 pages"), so the pages are read from here, where they answer, and the backup
 carries them to the bucket for the session that writes the guides.
+
+IT DOES NOT WORK, AND IS KEPT FOR WHAT IT RECORDS (12 October 2026). The
+person ran it on the laptop: every page answered 403 with 0 bytes. The state's
+web host refuses a script that says it is one, from a home connection as
+from a data centre, and this file will not pretend to be a browser. The pages
+are read in a real browser instead: a session on the laptop that browses, or
+a person saving each page. SOURCES stays the list of what the guides cite.
 
 WHAT IT ASKS. State agencies' public pages only, never the General Court's
 (gc.nh.gov: the statutes are on disk as db/NH_RSA.psv). One page at a time,

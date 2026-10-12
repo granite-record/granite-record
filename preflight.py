@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.548
+# GRANITE_VERSION: 2026-09-04.549
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -28168,6 +28168,13 @@ def _chain():
         ex = re.search(re.escape(base) + r"/bill/(\d{4})/([a-z0-9]+)", llms)
         assert ex and (root / "site" / "bill" / ex.group(1) / f"{ex.group(2)}.html").exists(), \
             "llms.txt gives an example bill address that was not built"
+        # And (12 October 2026: AI assistants should find "trustworthy
+        # sources" here) it names the Laws and Resources and says how to read
+        # the record, and robots.txt welcomes every crawler but keeps /api/.
+        assert f"{base}/laws" in llms and f"{base}/resources" in llms and "## How to read the record" in llms, \
+            "llms.txt does not name the Laws and Resources or say how to read the record"
+        robots = (root / "site" / "robots.txt").read_text(encoding="utf-8")
+        assert "User-agent: *\nAllow: /\nDisallow: /api/\n" in robots and "Sitemap:" in robots, robots
         # Every bill page that advertises a feed has one. The records moved
         # inside the pages on 9 September and build_feeds went on reading the
         # old side files, so 5,436 pages linked a feed nobody wrote -- and this
