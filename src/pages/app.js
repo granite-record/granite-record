@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.194
+// GRANITE_VERSION: 2026-09-07.195
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -5348,7 +5348,7 @@ function renderRelated(b,rel){
       +`<p class="rl-t">${esc(e.t)}${e.c?` <span class="rl-st">${esc(e.c)}</span>`:""}</p></li>`;
   };
   return groups.map((g,i)=>g.length
-    ?`<section class="rl-g"><h3>${RELATED_HEADS[i]}</h3><ul class="rl-list">${g.map(row).join("")}</ul></section>`:"").join("")
+    ?`<section class="rl-g"><h2>${RELATED_HEADS[i]}</h2><ul class="rl-list">${g.map(row).join("")}</ul></section>`:"").join("")
     +`<p class="src">Found by comparing the text of bills and their amendments. A bill is listed
       only where most of its language is shared, and an amendment only where the docket
       records what became of it; a match can be missed.</p>`;

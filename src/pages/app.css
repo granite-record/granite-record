@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.261 */
+/* GRANITE_VERSION: 2026-09-07.262 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -6109,7 +6109,7 @@ border-bottom:2px solid var(--ink-2);transform:rotate(-45deg);transition:transfo
 /* THE RELATED TAB (app.js renderRelated). Each row the sentence, at reading
    size, and the other bill's title and status under it at the size of meta. */
 .rl-g{margin:0 0 1.25rem}
-.rl-g h3{font:600 var(--t-ui)/1.35 var(--sans);color:var(--ink);margin:1rem 0 .5rem}
+.rl-g h2{font:600 var(--t-ui)/1.35 var(--sans);color:var(--ink);margin:1rem 0 .5rem}
 .rl-list{list-style:none;margin:0;padding:0}
 .rl-row{padding:.625rem 0;border-top:1px solid var(--rule)}
 .rl-s{font:400 var(--t-ui)/1.5 var(--sans);color:var(--ink);margin:0}
@@ -6134,8 +6134,9 @@ border-bottom:2px solid var(--ink-2);transform:rotate(-45deg);transition:transfo
 .rs-sec:target{background:linear-gradient(var(--pine-soft),var(--pine-soft)) left top/3px 100% no-repeat;
   padding-left:.875rem}
 .rs-h{font:600 var(--t-lead)/1.3 var(--serif);color:var(--ink);margin:0 0 .5rem}
-.rs-h a{color:var(--pine);text-decoration:none;margin-right:.375rem}
-.rs-h a:hover{text-decoration:underline}
+.rs-h a{color:var(--pine);text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:3px;
+  margin-right:.375rem}
+.rs-h a:hover{text-decoration-thickness:2px}
 .rs-text p{font:400 var(--t-ui)/1.65 var(--sans);color:var(--ink);margin:0 0 .625rem;max-width:var(--rs-meas)}
 .rs-text a{color:var(--pine)}
 .rs-gone,.rs-yr,.rs-st,.rs-note{color:var(--ink-2);font-size:var(--t-sm)}
@@ -6146,8 +6147,8 @@ border-bottom:2px solid var(--ink-2);transform:rotate(-45deg);transition:transfo
 /* The folds stack (the person, 11 October 2026: side by side, "opening one of
    them moves the other to a new line"). */
 .rs-folds{display:flex;flex-direction:column;align-items:flex-start;gap:.25rem;margin-top:.625rem}
-.rs-fold,.rs-tag,.rs-toc,.rs-title,.rs-more{font:500 var(--t-sm)/1.45 var(--sans)}
-.rs-fold > summary,.rs-toc > summary,.rs-more > summary{cursor:pointer;color:var(--pine);
+.rs-fold,.rs-tag,.rs-more{font:500 var(--t-sm)/1.45 var(--sans)}
+.rs-fold > summary,.rs-more > summary{cursor:pointer;color:var(--pine);
   padding:.25rem 0}
 .rs-fold[open]{align-self:stretch;background:var(--surface);border:1px solid var(--rule);
   border-radius:var(--r-in);padding:.25rem .875rem .625rem}

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-11.7
+# GRANITE_VERSION: 2026-10-11.8
 """
 The statutes (RSA) as pages: /laws, and one page a chapter at /laws/<chapter>.
 
@@ -709,6 +709,9 @@ LANDING_JS = """<script>
   // The filters fold on a narrow screen, where they would fill the first one.
   if(narrow())document.getElementById("lwfbox").open=false;
   var t=null;box.addEventListener("input",function(){clearTimeout(t);t=setTimeout(run,180);});
+  // The search's files are fetched once the box is chosen, not on the first
+  // letter typed, so the first answer does not wait for them.
+  box.addEventListener("focus",function(){chapters();heads();if(!WD)WD=get("laws/words.json").then(function(d){return WD=d||{words:{}};});},{once:true});
   document.getElementById("rsform").addEventListener("submit",function(e){e.preventDefault();run();});
   // A title linked from a chapter's breadcrumb (/laws#t-VI) opens.
   var h=location.hash.match(/^#t-(.+)$/);if(h){var d=document.getElementById("t-"+decodeURIComponent(h[1]));if(d){d.open=true;}}

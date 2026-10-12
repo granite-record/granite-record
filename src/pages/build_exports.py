@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-10.44
+# GRANITE_VERSION: 2026-09-10.45
 """
 The record as CSV, for anyone who wants to work with it rather than read it.
 
@@ -604,7 +604,8 @@ def ballot_words(path=Path("corrections/ballot_results.json")):
 # parts of How the Record Is Built under their old headings in Title Case, the
 # long second one in a closed fold, and Privacy in Detail open, because About
 # sends a reader straight to it and a statement of what is collected is not a
-# thing to keep behind a click.
+# thing to keep behind a click. The paragraph on related bills is the
+# person's own wording, approved 12 October 2026.
 HOW_BUILT = """
 <h3 class="dph3">What Is Taken from the Record and What Is Generated</h3>
 <p>Dates, sponsors, vote tallies, committee assignments and hearing times are taken
@@ -617,6 +618,10 @@ against the recording's captions. The player opens two seconds before that, whic
 is enough not to clip the first word. Where no boundary was heard, the site either
 shows a start marked <i>approximate</i> or links the recording with no time at
 all &#8212; it does not guess.</p>
+<p>Related bills are found by comparing the text of bills and their amendments. A bill
+is listed only where most of its language is shared, and an amendment only where the
+docket records what became of it, so a real connection can be missed but a weak one is
+not shown.</p>
 <details class="dpfold">
 <summary><span>How Much of This Is Timed, and How Well</span></summary>
 <p>The record here holds [[stations]] occasions on which a bill was taken up
