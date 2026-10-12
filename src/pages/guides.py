@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-11.6
+# GRANITE_VERSION: 2026-10-11.7
 """
 The how-to guides: their words, their sources, and what each was checked
 against. Read by build_civics.py, which draws them on the Resources hub's
@@ -435,8 +435,8 @@ PUBLIC_RECORD = guide(
           law=["RSA 91-A:4, I", "RSA 91-A:5"]),
      step("Ask, in writing",
           "<p>Describe what you want clearly enough that it can be found: the law covers a record "
-          "&ldquo;reasonably described&rdquo;. A letter or an email is enough, and keep a copy: if "
-          "you complain later, you will need it.</p>"
+          "&ldquo;reasonably described&rdquo;. A letter or an email is enough. Keep a copy: a "
+          "complaint to the ombudsman includes the request.</p>"
           "<p>The office does not have to create a record that does not exist, or put information "
           "together in a form it does not already keep. It may suggest narrowing your request so "
           "it can answer faster or for less.</p>"
@@ -462,7 +462,7 @@ PUBLIC_RECORD = guide(
           law=["RSA 91-A:4, IV(d)", "RSA 91-A:4, VIII"]),
      step("If the answer is no",
           "<p>A refusal must be in writing, name the specific exemption it relies on, and "
-          "briefly explain how it applies. If you think it is wrong, the law gives you two "
+          "briefly explain how it applies. To have a refusal reviewed, the law provides two "
           "routes, and choosing one closes the other:</p><ul>"
           "<li><b>Superior Court.</b> You can file a petition yourself, with or without a lawyer, "
           "and the court is to give it priority.</li>"
@@ -732,14 +732,14 @@ ABATEMENT = guide(
     "property-tax-abatement", "How to Appeal Your Property Tax Assessment",
     "Asking your town or city for a property tax abatement, and appealing to the Board of Tax "
     "and Land Appeals or the Superior Court if it says no, step by step, with every deadline.",
-    "If you think your property is assessed too high, or you cannot pay because of poverty, ask "
-    "your town or city for an <em>abatement</em> by March 1 after your final tax bill. It has "
+    "If you believe your assessment does not reflect your property&rsquo;s value, or you are "
+    "unable to pay because of poverty, you can ask your town or city for an <em>abatement</em> by March 1 after your final tax bill. It has "
     "until July 1 to decide, and silence counts as no. Then you can appeal to the Board of Tax "
     "and Land Appeals or the Superior Court, one or the other, by September 1. Keep paying your "
-    "taxes meanwhile: if you win, you are refunded with interest.",
+    "taxes meanwhile: if an abatement is granted, the amount abated is refunded with interest.",
     [box("Apply to your town or city by March 1 after the final tax bill."),
      box("The town decides by July 1. No answer counts as a denial."),
-     ask("Still disagree?",
+     ask("Was the abatement denied?",
          [("Appeal to the Board of Tax and Land Appeals", "$65, by September 1."),
           ("Or to the Superior Court", "By September 1. One or the other, not both.")])],
     [step("Know your deadlines",
@@ -762,7 +762,7 @@ ABATEMENT = guide(
           "by your town&rsquo;s equalization ratio.</li>"
           "<li><b>Poverty and inability to pay</b>, explained in detail, including why an "
           "abatement fits better than other help.</li></ul>"
-          "<p>&ldquo;Taxes too high&rdquo; is not enough: the application asks for specifics. "
+          "<p>The application asks for specific reasons, not a general statement about the tax. "
           "List every property you own in the town, not only the one you are appealing.</p>",
           law=["RSA 76:16"]),
      step("File the application with your town",
@@ -775,7 +775,7 @@ ABATEMENT = guide(
           "final bill went out after December 31. Not answering counts as a denial. A written "
           "decision tells you how to appeal and by when.</p>",
           law=["RSA 76:16, II"]),
-     step("Appeal, if you still disagree",
+     step("Appeal a denial",
           "<p>You can appeal to the <b>Board of Tax and Land Appeals</b> or to the <b>Superior "
           "Court</b>, but not both. For the Board, fill in its appeal form and mail it or hand it "
           "in, with the $65 filing fee by check or money order payable to &ldquo;Treasurer, "
