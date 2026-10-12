@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.192
+# GRANITE_VERSION: 2026-09-04.193
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -1511,6 +1511,15 @@ and a bill number starts again every two years.</p>
 <a href="committees.html">Committees</a> &middot; <a href="index.html">Home</a></p>
 <script>
 (function(){
+  // A LAW OR A BILL ASKED FOR IN CAPITALS, OR A STATUTE BY ITS CITATION
+  // (the polish of 12 October 2026): /laws/91-A is chapter 91-A's page and
+  // /laws/91-A:4 its section 4. Every such page's address is lower case, so
+  // the lower-case form is tried once; an address already in it is left
+  // here, which is what keeps this from going round.
+  var lp=location.pathname,c=lp.match(/^\\/laws\\/(\\d{1,3}(?:-[a-z]{1,2})?)(?::([0-9a-z.\\-]+))?\\/?$/i);
+  if(c&&(c[2]||c[1]!==c[1].toLowerCase())){
+    location.replace("/laws/"+c[1].toLowerCase()+(c[2]?"#s"+c[2].toLowerCase():location.hash));return;}
+  if(/^\\/(bill|laws)\\//.test(lp)&&lp!==lp.toLowerCase()){location.replace(lp.toLowerCase()+location.search+location.hash);return;}
   var m=location.pathname.match(/^\\/bill\\/(\\d{4})\\/([a-z]+)0*(\\d+)/i);
   if(!m)return;
   var id=(m[2]+m[3]).toUpperCase(),p=document.getElementById("nf-bill");

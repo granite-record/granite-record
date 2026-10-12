@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.193
+// GRANITE_VERSION: 2026-09-07.194
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -3822,6 +3822,13 @@ function renderSummary(b,d,rsa){
   else if(d.narrative)S.push(section("The Story",`<p class="story">${storyPeople(esc(d.narrative),d)}</p>`));
   const ending=endNote(d)+archivedNote(d);
   if(ending)S.push(section("How It Ended",ending,"ending"));
+  // ON THE SUMMARY, ONE SENTENCE AT MOST, and only for the strongest fact
+  // (RELATED_BILLS.md §6): where its language went, else where it was filed
+  // before or after. The rest are on the Related tab.
+  const rel=Array.isArray(d.related)?d.related:[];
+  const top=rel.find(e=>e.g===0)||rel.find(e=>e.g===1);
+  if(top)S.push(section("Related Bills",`<p class="story">${relatedSaid(b,top)}</p>`
+    +(rel.length>1?`<p class="src"><a href="bill/${esc(b.year)}/${esc(String(b.id).toLowerCase())}/related">All ${rel.length} related bills and amendments</a></p>`:""),"related"));
   if((d.events||[]).length)S.push(section("The Docket",`<details class="docket"><summary><span class="caret"></span>Show the docket&rsquo;s ${
       d.events.filter(e=>!e.cancelled).length} lines</summary>
       <p class="note">Every action the General Court recorded, in its own words
@@ -5323,15 +5330,20 @@ function renderDetail(b,d){
 // status under it. The sentence is related_bills.sentence's, the one the
 // bench judged, so the page says nothing the sample did not.
 const RELATED_HEADS=["Where its language went","Filed before and after","This term\u2019s bills with the same text"];
+// One relation's sentence, the other bill linked where it names it, and its
+// term beside it where that is not this bill's.
+function relatedSaid(b,e){
+  const id=String(e.o).split("/")[1]||"";
+  const other=String(e.o).slice(0,9)!==String(b.term||"");
+  const href=`bill/${e.y}/${id.toLowerCase()}.html`;
+  const name=`<a href="${esc(href)}">${esc(e.n)}</a>${other?` (${esc(String(e.o).slice(0,9)).replace("-","&ndash;")})`:""}`;
+  return esc(e.s).replace("{b}",name);
+}
 function renderRelated(b,rel){
   const groups=[[],[],[]];
   for(const e of rel)(groups[e.g]||groups[2]).push(e);
   const row=e=>{
-    const id=String(e.o).split("/")[1]||"";
-    const other=String(e.o).slice(0,9)!==String(b.term||"");
-    const href=`bill/${e.y}/${id.toLowerCase()}.html`;
-    const name=`<a href="${esc(href)}">${esc(e.n)}</a>${other?` (${esc(String(e.o).slice(0,9)).replace("-","&ndash;")})`:""}`;
-    const said=esc(e.s).replace("{b}",name);
+    const said=relatedSaid(b,e);
     return `<li class="rl-row"><p class="rl-s">${said}</p>`
       +`<p class="rl-t">${esc(e.t)}${e.c?` <span class="rl-st">${esc(e.c)}</span>`:""}</p></li>`;
   };

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-11.6
+# GRANITE_VERSION: 2026-10-11.7
 """
 The statutes (RSA) as pages: /laws, and one page a chapter at /laws/<chapter>.
 
@@ -592,7 +592,7 @@ LANDING_JS = """<script>
     var ch=chOf(a),li=root.querySelector('.lw-ch[data-ch="'+ch+'"]');
     [].forEach.call(root.querySelectorAll("[data-sec][aria-current]"),function(x){x.removeAttribute("aria-current");});
     [].forEach.call(root.querySelectorAll('[data-sec="'+a+'"]'),function(x){x.setAttribute("aria-current","true");});
-    var crumb=li?li.getAttribute("data-crumb"):"",name=li?li.getAttribute("data-label"):"Chapter "+ch;
+    var crumb=li?crumbOf(li):"",name=li?labelOf(li):"Chapter "+ch;
     read.innerHTML='<p class="lw-wait">Opening RSA '+esc(a)+'&hellip;</p>';
     page(ch).then(function(doc){
       var sec=doc&&doc.getElementById("s"+a.split(":")[1]);
@@ -607,11 +607,21 @@ LANDING_JS = """<script>
     var t=e.target.closest("[data-sec]");if(!t||e.metaKey||e.ctrlKey||e.shiftKey)return;
     if(narrow())return;e.preventDefault();open(t.getAttribute("data-sec"));});
 
-  // ---- A CHAPTER OPENED IN THE DIRECTORY lists its sections.
+  // A chapter's label and its title's name, from what the row already shows.
+  function labelOf(li){var n=li.querySelector(".lw-chname");return "Chapter "+li.getAttribute("data-ch")+": "+(n?n.textContent:"");}
+  function crumbOf(li){var t=li.closest(".lw-title"),a=t&&t.querySelector(".lw-tno"),b=t&&t.querySelector(".lw-tname");
+    return (a?a.textContent:"")+(b&&b.textContent?": "+b.textContent:"");}
+  // ---- A CHAPTER OPENED IN THE DIRECTORY lists its sections, and the way
+  // to its own page under them.
   root.addEventListener("toggle",function(e){
     var d=e.target;if(!d.classList||!d.classList.contains("lw-chd")||!d.open)return;
-    var ol=d.querySelector(".lw-secs");if(!ol||ol.getAttribute("data-done"))return;
-    ol.setAttribute("data-done","1");var ch=ol.getAttribute("data-ch");
+    if(d.querySelector(".lw-secs"))return;
+    var ch=d.parentNode.getAttribute("data-ch");
+    var ol=document.createElement("ol");ol.className="lw-secs";ol.setAttribute("data-ch",ch);
+    ol.innerHTML='<li class="lw-none">Loading the sections&hellip;</li>';
+    var own=document.createElement("p");own.className="lw-own";
+    own.innerHTML='<a href="'+link(ch)+'">Open Chapter '+esc(ch)+' on its own page</a>';
+    d.appendChild(ol);d.appendChild(own);
     heads().then(function(hd){
       var rows=hd.filter(function(x){return chOf(x[0])===ch;});
       ol.innerHTML=rows.length?rows.map(function(x){return '<li><a href="'+link(x[0])+'" data-sec="'+esc(x[0])
@@ -769,15 +779,17 @@ def landing_page(tmpl, table, data, base, topics, pending):
             badges = ((f'<span class="lw-badge lw-rep">{"Moved" if moved_to(info.get("note")) else "Repealed"}'
                        '</span>' if info["repealed"] else "")
                       + (f'<span class="lw-badge lw-pend">{pend} pending</span>' if pend else ""))
+            # THE LEAST A CHAPTER NEEDS UNTIL IT IS OPENED (the polish of 12
+            # October 2026): its sections, the way to its own page, its label
+            # and its title's name are drawn by LANDING_JS from what is here
+            # when it opens. Written into every one of 1,786 rows they were
+            # about half the page.
+            topic_attr = f' data-topics="{E("|".join(topics.get(c, [])))}"' if topics.get(c) else ""
             lis.append(
-                f'<li class="lw-ch" data-ch="{E(c)}" data-title="{E(tno)}" data-rep="{1 if info["repealed"] else 0}" '
-                f'data-pend="{pend}" data-topics="{E("|".join(topics.get(c, [])))}" '
-                f'data-label="{E(label)}" data-crumb="{E(tl)}: {E(tn)}">'
-                f'<details class="lw-chd"><summary><span class="lw-chn">Chapter {E(c)}:</span> '
-                f'{E(nice(info["name"]))}{badges}</summary>'
-                f'<ol class="lw-secs" data-ch="{E(c)}"><li class="lw-none">Loading the sections&hellip;</li></ol>'
-                f'<p class="lw-own"><a href="/laws/{E(chapter_slug(c))}">Open Chapter {E(c)} on its own page</a>'
-                f'</p></details></li>')
+                f'<li class="lw-ch" data-ch="{E(c)}" data-title="{E(tno)}"'
+                + (' data-rep="1"' if info["repealed"] else "") + (f' data-pend="{pend}"' if pend else "")
+                + f'{topic_attr}><details class="lw-chd"><summary><span class="lw-chn">Chapter {E(c)}:</span> '
+                f'<span class="lw-chname">{E(nice(info["name"]))}</span>{badges}</summary></details></li>')
         blocks.append(
             f'<details class="lw-title" id="t-{E(tno)}"><summary><span class="lw-tno">{E(tl)}</span>'
             f'<span class="lw-tname">{E(tn)}</span><span class="lw-tspan">{E(span)} &middot; '

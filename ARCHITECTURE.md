@@ -1547,14 +1547,33 @@ optional laptop file in the kit until the person sends it).
 - **`src/parse/related_bills.py`** finds bills and amendments sharing their
   proposed language (five-word shingles, quoted law masked by the statute
   text and `chapters.json`) and reads each amendment's fate from its bill's
-  docket. It writes `related_bills.json`, keyed `{term: {bill}}`. No page
-  reads it: `review.py`'s "related" kind is the gate, seven strata of thirty.
+  docket. It writes `related_bills.json`, keyed `{term: {bill}}`. A bill's
+  page shows only what `related_bills.shown` passes -- a relation at the
+  line, and an amendment only with a fate the docket records -- after the
+  357 pairs judged on 11 October 2026 (`tests/related_judged_2026-10-11.json`;
+  `_related_judged` holds the rules to it). `build_site_v2.add_related` runs
+  after the bill loop, once every bill's number and status is known, and
+  puts `related` into each bill's own record; `app.js` draws it as the
+  Related tab (`data-t` 7, `/related`), each row the sentence
+  `related_bills.sentence` writes, the same function the bench reads.
 - **`src/pages/build_rsa.py`** writes `/laws`, a page a chapter
   (`/laws/91-a#s4`), and the landing page's search files
-  (`site/laws/chapters.json`, `headings.json`, `words.json`). Each section
-  carries a Pending tag for the sitting term's moving bills that name it,
-  its history from the source note, the other bills that proposed changes,
-  and its references both ways.
+  (`site/laws/chapters.json`, `headings.json`, `words.json`). The landing is
+  laid out as the bill search is: filters at the side (status, a topic taken
+  from the bills that changed each chapter, title), the titles and their
+  chapters in the middle, each title naming its chapters before it opens,
+  and a chosen section's text on the right. A chapter is labelled "Chapter
+  71: The Tax Commission"; a repealed one says so in a banner, with the law
+  that repealed it in words, and the nine redesignated in 2024 say Moved and
+  link to where they went. Each section carries a Pending tag for the
+  sitting term's moving bills that name it, its history from the source
+  note, the other bills that proposed changes (not those already in its
+  history), and its references both ways; the chapter's sections are a
+  sidebar, a bar held at the top of a phone's screen.
+  Two traps, each with a check: every page carries `<base href="/">`, so a
+  link on a statute page is never a bare `#s4` (it opened the home page);
+  and RSA 404's page is `laws/404/index.html`, because the host serves a
+  folder's `404.html` for every address in it that has no page.
   The header calls them Laws, beside Bills (the person, 11 October 2026),
   and each page says when the table was taken.
 
@@ -1571,6 +1590,31 @@ table holds the address (the chapter's page for a section it lacks, nothing
 for a chapter it lacks), each index row carries `rsa` for the bill search's
 RSA (Statute) filter, and an enacted bill's record carries `changed`, the
 sections its law wrote.
+
+## The how-to guides (12 October 2026)
+
+`src/pages/guides.py` holds the Resources hub's how-to guides as data, the
+way `civics.py` holds the Learn pages: each guide's summary, its diagram (an
+HTML list, read aloud as text), its numbered steps with a button to the
+official page each needs and the sections of law each rests on, and every
+statement it makes as a claim beside the one source that supports it.
+`build_civics.build_guides` writes `/guides/<slug>` only when every claim is
+checked, every outside address is one `guide_sources.py` reads, and every
+Laws page it links exists; otherwise it says why in the log, removes an old
+copy, and the hub says there are no guides. `--drafts` draws the rest,
+marked, for a person to read, and is never the night's. A check older than
+`guides.STALE_DAYS` puts a notice above the guide. Statute claims are checked
+against the table on disk; agency claims against the pages
+`src/fetch/other/guide_sources.py` saves on the laptop, because the state's
+web host refuses data centres. `_guides_gate` holds it, and refuses a dollar
+or percentage figure in a guide.
+
+## The bill index's sponsors
+
+A row's `sponsor` is the prime sponsor and `cosp` the co-sponsors, by the
+same `person_name` spelling (only where a bill has any). The bill search's
+Sponsor filter matches either, and with a sponsor chosen lists their own
+bills, then the bills they co-sponsored (`_sponsor_prime_first`).
 
 ## Known rough edges
 
