@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-11.3
+# GRANITE_VERSION: 2026-10-11.4
 """
 The how-to guides: their words, their sources, and what each was checked
 against. Read by build_civics.py, which draws them on the Resources hub's
@@ -176,7 +176,9 @@ VOTING = guide(
                "your clerk if you are unsure."),
      step("Vote",
           "<p>On election day, go to your polling place. The Secretary of State&rsquo;s lookup "
-          "shows where it is and lets you see a sample ballot first.</p>",
+          "shows where it is and lets you see a sample ballot first.</p>"
+          # Your town's polling place and clerk, from places.json (find.js).
+          '<div class="yt" data-yt="vote" hidden></div>',
           actions=[("Find your polling place and sample ballot", SOS_POLLS)]),
      step("If you cannot go in person",
           "<p>You can vote by absentee ballot if, on election day, you will be away from the town "

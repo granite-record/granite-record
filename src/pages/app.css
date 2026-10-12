@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.262 */
+/* GRANITE_VERSION: 2026-09-07.264 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -1573,6 +1573,108 @@ overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
   .themer{margin-left:0}
 }
 /* ==== /HUBS, SHARED ======================================================= */
+
+/* ==== YOUR TOWN, SHARED (the person, 12 October 2026) ======================
+   The header's place button, beside the theme control, and its panel, which
+   is the search panel's shape (.findpanel) with its own contents; and the
+   Learn pages' "In your town" boxes. find.js draws all of it. */
+/* SITE SETTINGS (the person, 12 October 2026): the theme control and Your
+   town are one group, .navset, which find.js builds inside the sections
+   panel. On a phone its controls are the panel's last rows; from 45em the
+   group is the dropdown of the gear beside search, the gear a twin of the
+   search button. */
+.setbtn{display:none}
+.navset .themer,.navset .ytbtn{display:flex;align-items:center;justify-content:flex-start;
+gap:var(--sp-5);width:100%;min-height:44px;margin:0;padding:0 var(--sp-5);border:0;
+border-radius:0;background:none;font:inherit;font-size:var(--t-ui);color:var(--ink);
+text-align:left;cursor:pointer}
+.navset .themer:hover,.navset .ytbtn:hover{background:var(--wash);color:var(--pine)}
+.navset .themer .thword,.navset .ytbtn .ytword{position:static;width:auto;height:auto;
+margin:0;clip:auto;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.navset .themer .thword::after{content:" theme"}
+.navset .ytbtn.is-set{color:var(--pine)}
+.navset button:focus-visible{outline-offset:-2px}
+.ytbtn svg{width:18px;height:18px;flex:0 0 auto;stroke:currentColor;fill:none;
+stroke-width:1.8;stroke-linejoin:round}
+@media (max-width:45em){
+  .navset{display:flex;flex-direction:column}
+  .navset .ytbtn{border-top:1px solid var(--rule)}
+}
+/* Where the tabs share the row they are centred by their own auto margins,
+   as the theme button's margin-left:0 already said. */
+@media (min-width:63em){.setbtn{margin-left:0}}
+@media (min-width:45.0625em){
+  nav.top .in{position:relative}
+  .setbtn{display:inline-flex;align-items:center;justify-content:center;background:none;
+  border:1px solid var(--edge);border-radius:var(--r-in);color:var(--ink-2);cursor:pointer;
+  min-height:44px;min-width:44px;padding:var(--sp-3);margin-left:auto;flex:0 0 auto}
+  .setbtn:hover,.setbtn[aria-expanded="true"]{color:var(--pine);border-color:var(--pine)}
+  .setbtn svg{width:19px;height:19px;stroke:currentColor;fill:none;stroke-width:1.7;
+  stroke-linecap:round;stroke-linejoin:round}
+  .setbtn span{position:absolute;width:1px;height:1px;margin:-1px;overflow:hidden;
+  clip:rect(0 0 0 0);white-space:nowrap}
+  .setbtn + .findbtn{margin-left:0}
+  .navset{display:none;position:absolute;top:calc(100% - var(--sp-3));right:var(--sp-8);z-index:45;
+  flex-direction:column;min-width:16rem;max-width:22rem;padding:var(--sp-2) 0;
+  background:var(--surface);border:1px solid var(--edge);border-radius:var(--r-in);
+  box-shadow:0 10px 26px var(--shadow)}
+  nav.top.setopen .navset{display:flex}
+  .navset .ytbtn{border-top:1px solid var(--rule)}
+}
+.ytpanel .findin{max-width:40rem}
+.ytarow .ytbtn2{white-space:nowrap;flex:0 0 auto}
+.yttop{display:flex;align-items:baseline;justify-content:space-between;gap:var(--sp-4)}
+.ythead{font:600 var(--t-ui)/1.3 var(--sans);letter-spacing:.06em;text-transform:uppercase;
+color:var(--ink-2);margin:0 0 var(--sp-4)}
+.ytpanel .ytclose{display:inline-block;flex:0 0 auto;background:none;border:0;padding:var(--sp-3) 0;
+font:inherit;font-weight:600;font-size:var(--t-ui);color:var(--pine);cursor:pointer;min-height:44px}
+.ytplace{font:600 var(--t-lead)/1.3 var(--serif);margin:0 0 var(--sp-2)}
+.ytplace a{color:var(--pine)}
+.ytdist{font-size:var(--t-sm);color:var(--ink-2);margin:0 0 var(--sp-4)}
+.ytsub{font:600 var(--t-sm)/1.3 var(--sans);color:var(--ink);margin:var(--sp-5) 0 var(--sp-3)}
+.ytppl{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:var(--sp-3)}
+.ytlbl,.ytlbl2{display:block;font:600 var(--t-label)/1.3 var(--sans);letter-spacing:.06em;
+text-transform:uppercase;color:var(--ink-2);margin:0 0 var(--sp-2)}
+.ytpoll{font-size:var(--t-ui);font-weight:600;margin:0 0 var(--sp-3)}
+.ythrs{display:block;font-weight:400;font-size:var(--t-sm);color:var(--ink-2)}
+.ytwards{list-style:none;margin:0 0 var(--sp-3);padding:0;font-size:var(--t-sm)}
+.ytwards li{padding:var(--sp-2) 0;border-bottom:1px solid var(--rule)}
+.ytclerk{font-size:var(--t-sm);margin:0 0 var(--sp-3)}
+.ytwhen{font-size:var(--t-sm);color:var(--ink-2);margin:0}
+.ytnote{color:var(--ink-2);font-size:var(--t-sm);margin:var(--sp-3) 0}
+.ytpriv{color:var(--ink-2);font-size:var(--t-sm);margin:var(--sp-4) 0 0}
+.ytacts{display:flex;flex-wrap:wrap;gap:var(--sp-3);margin:var(--sp-5) 0 0}
+.ytbtn2,.ytopen{font:inherit;font-size:var(--t-sm);font-weight:600;color:var(--pine);
+background:var(--surface);border:1px solid var(--pine);border-radius:var(--r-in);
+padding:var(--sp-3) var(--sp-5);min-height:44px;cursor:pointer}
+.ytbtn2:hover,.ytopen:hover{background:var(--pine-soft)}
+.ytquiet{border-color:var(--edge);color:var(--ink-2)}
+.ytopen.link{border:0;background:none;padding:0;min-height:0;text-decoration:underline;
+text-underline-offset:2px}
+.ytout{display:flex;flex-direction:column;margin-top:var(--sp-2);max-height:min(40vh,320px);overflow-y:auto}
+.ytrow{display:block;width:100%;text-align:left;font:inherit;font-size:var(--t-ui);font-weight:600;
+color:var(--pine);background:none;border:0;border-bottom:1px solid var(--rule);
+padding:var(--sp-4);min-height:44px;cursor:pointer;border-radius:var(--r-in)}
+.ytrow:hover,.ytrow:focus-visible{background:var(--wash)}
+.ytthis{margin:0 0 var(--sp-4)}
+.ytaddr{margin-top:var(--sp-5);border-top:1px solid var(--rule);padding-top:var(--sp-4)}
+.ytaddr summary{cursor:pointer;color:var(--pine);font-weight:600;font-size:var(--t-ui)}
+.ytaform{margin-top:var(--sp-4)}
+.ytarow{display:flex;gap:var(--sp-3)}
+.ytarow input{flex:1 1 auto;min-width:0;font:inherit;font-size:var(--t-ui);padding:var(--sp-4);
+color:var(--ink);background:var(--paper);border:1px solid var(--edge);border-radius:var(--r-in)}
+.ytares p{margin:var(--sp-3) 0}
+.ytares .ytrow{margin:0}
+.yt{border:1px solid var(--rule-2);border-left:4px solid var(--pine);border-radius:var(--r-in);
+background:var(--surface);padding:var(--sp-5) var(--sp-6);margin:var(--sp-6) 0}
+.yt[hidden]{display:none}
+.yt p{margin:0 0 var(--sp-3)}
+.yt .ythead2{font:600 var(--t-label)/1.3 var(--sans);letter-spacing:.06em;text-transform:uppercase;
+color:var(--pine);margin:0 0 var(--sp-3)}
+.yt .ytppl{margin:0 0 var(--sp-4)}
+.yt .ytmeta{margin:var(--sp-3) 0 0;font-size:var(--t-sm)}
+@media print{.setbtn,.navset,.ytpanel,.yt{display:none !important}}
+/* ==== /YOUR TOWN, SHARED ================================================== */
 
 /* SHARED:END ------------------------------------------------------------ */
 

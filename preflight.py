@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.549
+# GRANITE_VERSION: 2026-09-04.551
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -28120,6 +28120,43 @@ def _fixture_site_whole(root):
     return base, ran
 
 
+@check("frontend", "your town's places.json is the town pages' own facts, and the pages that use it carry it")
+def _your_town():
+    """The header's Your town (12 October 2026) reads site/places.json, which
+    build_town_pages writes beside the pages. Every row is a page that was
+    built, every member it names has a page, and the Learn pages carry the
+    slots find.js fills; and find.js keeps the slug and nothing else."""
+    absent = [x for x in CHAIN_NEEDS if not _paths.locate(x).exists()]
+    if absent:
+        return "skip", "not here: " + ", ".join(absent)
+    shared, _base, _ran, _days = _fixture_site_shared()
+    site = shared / "site"
+    d = json.loads((site / "places.json").read_text(encoding="utf-8"))
+    places, people = d["places"], d["people"]
+    # Silence is not success: a file of no places is a picker with nothing in it.
+    assert places, "places.json has no towns"
+    towns = {p.stem for p in (site / "town").glob("*.html")}
+    assert {p["s"] for p in places} == towns, \
+        "places.json and the town pages name different places"
+    for p in places:
+        assert p["u"] == f"/town/{p['s']}", f"{p['s']}: its address is {p['u']}"
+        for m in p["m"]:
+            assert m in people and (site / "legislator" / f"{m}.html").exists(), \
+                f"{p['s']} names {m}, who has no page"
+    for page, kind in (("your-representatives", "reps"), ("county-government", "county"),
+                       ("city-and-town-government", "town")):
+        f = site / "learn" / f"{page}.html"
+        if f.exists():
+            assert f'data-yt="{kind}"' in f.read_text(encoding="utf-8"), \
+                f"learn/{page} lost its Your town box"
+    js = _paths.locate("src/pages/find.js").read_text(encoding="utf-8")
+    keeps = re.findall(r"localStorage\.setItem\(([^,]+),([^)]+)\)", js)
+    assert keeps == [("YT.key", "s")], \
+        f"find.js keeps something other than the place's slug: {keeps}"
+    return "ok", (f"{len(places)} places, each a built town page, naming "
+            f"{len(people)} members who each have a page; find.js keeps only the slug")
+
+
 @check("build", "every builder runs end to end on a fixture site")
 def _chain():
     """The check that would have caught the worst bug of the session.
@@ -54059,7 +54096,7 @@ def _nav_ladder():
                   "Search its drawing at every width")
 
 
-@check("frontend", "the bill search opens Status and Bill Type, puts a narrowed long list's "
+@check("frontend", "the bill search opens Status alone, puts a narrowed long list's "
                    "zeros last, and folds its filters behind the Filters button below 960px")
 def _search_filters_5acd():
     """The person's feedback of 9 October 2026, item 2: 5a approved (Status
@@ -54078,9 +54115,10 @@ def _search_filters_5acd():
     js = Path("src/pages/app.js").read_text(encoding="utf-8")
     css = Path("src/pages/app.css").read_text(encoding="utf-8")
     m = re.search(r"const openGroups=new Set\((\[[^\]]*\])\);", js)
-    assert m and json.loads(m.group(1)) == ["status", "type"], (
+    # 12 October 2026: Status alone open; Bill Type folds with the rest.
+    assert m and json.loads(m.group(1)) == ["status"], (
         f"the filter groups open at the start are {m.group(1) if m else 'not found'}, "
-        "not Status and Bill Type")
+        "not Status alone")
     fn = re.search(r"const ZEROS_LAST=.*?\nfunction zerosLast\(key,vals,counts\)\{.*?\n\}", js, re.S)
     assert fn, "app.js has no zerosLast"
     assert "zerosLast(key,vals,counts)" in js and "i===order.rule?' fzero'" in js, (
@@ -54114,7 +54152,7 @@ process.stdout.write(JSON.stringify(out));""")
         assert rule in body, f"below 960px the stylesheet has no {rule}"
     assert ".fopt.fzero{border-top:1px solid var(--rule)" in css, (
         "the first zero of a narrowed list has no rule above it")
-    return "ok", ("Status and Bill Type open at the start; a narrowed long list's options with "
+    return "ok", ("Status open at the start, Bill Type folded; a narrowed long list's options with "
                   "bills first and a ticked zero in its place among the zeros; Status in its "
                   "fixed order; the Filters button and its panel below 960px")
 
