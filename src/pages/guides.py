@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-11.2
+# GRANITE_VERSION: 2026-10-11.3
 """
 The how-to guides: their words, their sources, and what each was checked
 against. Read by build_civics.py, which draws them on the Resources hub's
@@ -287,14 +287,17 @@ PUBLIC_RECORD = guide(
           "<li><b>Superior Court.</b> You can file a petition yourself, with or without a lawyer, "
           "and the court is to give it priority.</li>"
           "<li><b>The Right-to-Know ombudsman.</b> A signed, written complaint with a fee, which "
-          "the ombudsman may waive. Before you choose this route, check the office&rsquo;s own "
-          "page for whether it is taking complaints.</li></ul>",
-          actions=[("The ombudsman's office", OMBUDSMAN)],
-          law=["RSA 91-A:4, IV(c)", "RSA 91-A:7", "RSA 91-A:7-b"])],
-    [("Right-to-Know Law, RSA 91-A", "/laws/91-a"),
-     ("Right-to-Know (New Hampshire Department of Justice)", RTK),
-     ("Memorandum on the Right-to-Know Law (Attorney General)", RTK_MEMO),
-     ("Office of the Right-to-Know Ombudsman", OMBUDSMAN)],
+          "the ombudsman may waive. Since 2025 the ombudsman&rsquo;s office has been attached to "
+          "the Office of State and Public Sector Labor Relations; before you choose this route, "
+          "ask that office whether the ombudsman is taking complaints.</li></ul>",
+          law=["RSA 91-A:4, IV(c)", "RSA 91-A:7", "RSA 91-A:7-a", "RSA 91-A:7-b"])],
+    # THE STATUTE ALONE, FOR NOW (the person, 12 October 2026: "get at least
+    # the prototype versions live"). The Department of Justice's page, the
+    # Attorney General's memorandum and the ombudsman's page (RTK, RTK_MEMO,
+    # OMBUDSMAN above) go back in, with their claims, once guide_sources.py's
+    # copies of them have been read; until then the guide says only what the
+    # statute on this disk says.
+    [("Right-to-Know Law, RSA 91-A", "/laws/91-a")],
     ["91-A"],
     [claim("Every citizen may inspect and copy governmental records during business hours at "
            "the body's office, unless a statute or RSA 91-A:5 exempts them.", "RSA 91-A:4", "2026-10-11"),
@@ -317,10 +320,8 @@ PUBLIC_RECORD = guide(
      claim("A petition may be filed with or without counsel and has high priority.", "RSA 91-A:7", "2026-10-11"),
      claim("The ombudsman complaint is signed, written, with a fee the ombudsman may waive.",
            "RSA 91-A:7-b", "2026-10-11"),
-     claim("The Department of Justice's Right-to-Know page exists and links the memorandum.", RTK),
-     claim("The Attorney General's memorandum explains the law and its exemptions.", RTK_MEMO),
-     claim("The ombudsman's page is the office's own, and is where to see whether it takes "
-           "complaints.", OMBUDSMAN)],
+     claim("The ombudsman's office is administratively attached to the office of state and public "
+           "sector labor relations (2025, 141:206).", "RSA 91-A:7-a", "2026-10-12")],
     see=[("Town meeting and local government", "/learn/local-government.html")])
 
 
