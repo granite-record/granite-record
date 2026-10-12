@@ -161,7 +161,7 @@ env:
   # environment line choosing "production-review" for a night the gate holds
   # and for every New term run, and "production", with no reviewer, for the
   # rest; preflight holds the two together.
-  REVIEW_GATE: shadow
+  REVIEW_GATE: "on"
 
 defaults:
   run:
@@ -469,11 +469,12 @@ jobs:
           curl.exe -fsS -m 15 --retry 3 -o NUL "$env:HC_URL$end"
           exit 0
 
-  # Production, and only through here. The "production" environment has the
-  # person as its required reviewer until five clean nights have passed, so
-  # this job waits for their approval; removing that rule is what makes
-  # publishing automatic -- except for a New term run, which must keep a
-  # required reviewer (the note above the new_term box). It deploys the very
+  # Production, and only through here. THE GATE IS ON (the person, 12 October
+  # 2026: publishing automatic when every check passes, held for approval when
+  # one raises a concern). A night the gate clears goes through "production",
+  # which has no reviewer; a night it holds, a missing verdict, and every New
+  # term run go through "production-review", where the person is the required
+  # reviewer (the note above the new_term box). It deploys the very
   # build the night checked (by fingerprint), by that night's own verdict,
   # which comes down with the site; and nightly.py refuses an older night's
   # only once a newer night has built a site fit for production. A dry run,
@@ -489,7 +490,7 @@ jobs:
     runs-on: windows-2022
     timeout-minutes: 60
     environment:
-      name: production
+      name: ${{ (needs.night.outputs.review == 'false' && !(github.event_name == 'workflow_dispatch' && inputs.new_term)) && 'production' || 'production-review' }}
       url: https://graniterecord.org
     steps:
       - name: Check out main
@@ -566,6 +567,29 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python src/ops/cloud.py state-up
           exit $LASTEXITCODE
+
+      # THE LIVE SITE'S OWN DEAD-MAN'S SWITCH (12 October 2026), last in the
+      # job because a New term run's release must follow the deploy directly. The night's
+      # Healthchecks check says a night ran; it cannot say the site moved. A
+      # night held for approval, an approval nobody gave, a deploy refused for
+      # a newer night: each leaves the live site standing still while every
+      # night pings on time. This check is pinged only when production has
+      # just been deployed, so it goes quiet -- and Healthchecks writes to the
+      # person -- once the live site has not changed for longer than its
+      # period allows. A second check, a second secret; with none, no ping.
+      - name: Tell Healthchecks the live site was published
+        env:
+          HC_URL: ${{ secrets.HEALTHCHECKS_PUBLISH_URL }}
+        run: |
+          if (-not $env:HC_URL) {
+            Write-Output "No HEALTHCHECKS_PUBLISH_URL secret, so no ping."
+            exit 0
+          }
+          curl.exe -fsS -m 15 --retry 3 -o NUL "$env:HC_URL"
+          if ($LASTEXITCODE -ne 0) {
+            Write-Output "Healthchecks did not answer. The site is published all the same."
+          }
+          exit 0
 
   # GitHub switches a public repository's scheduled workflows off after 60
   # days without activity in it. Each scheduled night re-enables this
