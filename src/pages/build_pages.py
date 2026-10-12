@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.195
+# GRANITE_VERSION: 2026-09-04.196
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -3774,6 +3774,15 @@ committee. Your town shows who represents you.</p>
 </div>
 <div id="composition"></div>
 <div id="notable" hidden></div>"""
+    # THE GUIDES' ROW IS KEPT. build_civics fills the home page's guides slot
+    # after this writes it (home_guides); a run of this step alone -- the
+    # front end's fast path, or build_pages by hand -- keeps the row the last
+    # full build put there rather than emptying it until the next night.
+    prev = out / "index.html"
+    kept = re.search(r"<!-- guides -->.*?<!-- /guides -->",
+                     prev.read_text(encoding="utf-8"), re.S) if prev.is_file() else None
+    if kept:
+        home_body = home_body.replace("<!-- guides --><!-- /guides -->", kept.group(0), 1)
     (out / "index.html").write_text(
         shell("Granite Record \u2014 the New Hampshire legislative record",
               # THE FULL PAGE WIDTH, which is what "offset to the left"

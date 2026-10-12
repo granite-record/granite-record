@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-11.2
+# GRANITE_VERSION: 2026-10-11.3
 """
 The official pages the how-to guides cite, onto this disk, to check them by.
 
@@ -52,48 +52,66 @@ STATE_HOSTS = ("nh.gov",)          # every host below must end with one of these
 
 # Grouped by the guide that cites them. A page added here must be a state
 # agency's own; anything else is the person's decision first.
+#
+# READ BY THE PERSON, 12 OCTOBER 2026. Each page below was opened in a browser
+# and sent as a PDF; the copies are in guides/sources/2026-10-12/, and the
+# addresses are the ones each page ended at, which its PDF's footer prints --
+# several moved from the addresses first listed here (absentee ballots, fuel
+# assistance, the Department of Revenue's two pages). A form or a lookup
+# listed under a page is one that page links, by the address its link gives.
 SOURCES = {
     "voting": [
         "https://www.sos.nh.gov/elections/register-vote",
-        "https://www.sos.nh.gov/elections/frequently-asked-questions/how-register-vote",
         "https://www.sos.nh.gov/proof-voter-registration-qualifications",
-        "https://www.sos.nh.gov/elections/register-vote/town-or-city-clerks-office",
-        "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/docs/registering-to-vote-in-new-hampshire-6.3.2026.final_.pdf",
+        "https://www.sos.nh.gov/elections/absentee-ballots",
         "https://mm.nh.gov/files/uploads/sos/docs/5-29-26-secretary-of-state-issues-statement-on-hb-1569.pdf",
-        "https://www.sos.nh.gov/elections/voters/absentee-ballots",
-        "https://app.sos.nh.gov/viphome",
-        "https://app.sos.nh.gov/statelistclerkandpolling",
+        # linked from the pages above
+        "https://app.sos.nh.gov/",
         "https://app.sos.nh.gov/clerkinformation",
-        "https://app.sos.nh.gov/pollingplacesampleballot",
+        "https://www.sos.nh.gov/elections/register-vote/registration-deadlines",
+        "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/docs/absentee-ballot-application-state-election-eff-9.30.25-3.pdf",
+        "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/application-for-a-free-certified-copy-of-a-new-hampshire-vital-record-for-voter-registration.pdf",
     ],
+    "vital_records": [
+        "https://www.sos.nh.gov/vital-records-0",
+        "https://www.sos.nh.gov/vital-records-0/purchasing-correcting-vital-records/request-certificates",
+        "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/vital-record-application-2.pdf",
+        # linked from the pages above
+        "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/documentary-evidence-required.pdf",
+        "https://www.sos.nh.gov/vital-records-0/vital-records-contact-information",
+    ],
+    "right_to_know": [
+        "https://www.doj.nh.gov/resources/forms-publications/right-know",
+        "https://www.sos.nh.gov/administration/office-right-know-ombudsman",
+        # linked from the Department of Justice's page
+        "https://mm.nh.gov/files/uploads/doj/remote-docs/right-to-know.pdf",
+    ],
+    "energy": [
+        "https://www.energy.nh.gov/fap",
+        "https://www.energy.nh.gov/consumers/help-energy-and-utility-bills/community-action-agencies",
+    ],
+    "property_tax": [
+        "https://www.btla.nh.gov/jurisdiction/property-tax",
+        "https://www.btla.nh.gov/sites/g/files/ehbemt601/files/inline-documents/sonh/abatement.pdf",
+        "https://www.revenue.nh.gov/about-dra/municipal-and-property-division/property-bureau/property-tax-abatement-appeal-process",
+        "https://www.revenue.nh.gov/resource-center/taxpayer-assistance/low-and-moderate-income-homeowners-property-tax-relief",
+        # linked from the pages above
+        "https://www.btla.nh.gov/sites/g/files/ehbemt601/files/inline-documents/sonh/appeals.pdf",
+        "https://www.btla.nh.gov/sites/g/files/ehbemt601/files/inline-documents/sonh/commonly-asked-questions-pt.pdf",
+        "https://gtc.revenue.nh.gov/TAP/_/",
+        "https://www.revenue.nh.gov/nhdra-home/resource-center/current-year-forms-instructions",
+        "https://www.revenue.nh.gov/resource-center/frequently-asked-questions/low-moderate-property-tax-relief",
+    ],
+    # Not yet read: the guides these would serve are not written.
     "car": [
         "https://www.dmv.nh.gov/vehicles-boats-and-titles/vehicle-registrations",
         "https://www.dmv.nh.gov/vehicles-boats-or-titles/vehicle-registrations/new-resident-new-hampshire",
         "https://www.dmv.nh.gov/tabbed-content/new-registrations",
         "https://www.dmv.nh.gov/vehicles-boats-and-titles/apply-title",
-        "https://www.doj.nh.gov/news-and-media/public-guidance-vehicle-inspection-program-status",
-    ],
-    "town_clerk": [
-        "https://www.sos.nh.gov/vital-records-0/purchasing-correcting-vital-records/request-certificates",
-        "https://www.sos.nh.gov/vital-records",
-    ],
-    "right_to_know": [
-        "https://www.doj.nh.gov/resources/forms-publications/right-know",
-        "https://mm.nh.gov/files/uploads/doj/remote-docs/right-to-know.pdf",
-        "https://www.sos.nh.gov/administration/office-right-know-ombudsman",
-    ],
-    "energy": [
-        "https://www.energy.nh.gov/consumers/help-energy-and-utility-bills",
-        "https://www.energy.nh.gov/consumers/help-energy-and-utility-bills/fuel-assistance-program",
-        "https://www.energy.nh.gov/consumers/help-energy-and-utility-bills/community-action-agencies",
     ],
     "insurance_appeal": [
         "https://www.insurance.nh.gov/consumers",
         "https://www.insurance.nh.gov/appeals-external-reviews",
-    ],
-    "property_tax": [
-        "https://www.revenue.nh.gov/assistance/low-and-moderate-income-homeowners-property-tax-relief",
-        "https://www.revenue.nh.gov/municipal-and-property-division/property-tax-abatements-and-exemptions",
     ],
     "start_here": [
         "https://nheasy.nh.gov/",
@@ -101,7 +119,6 @@ SOURCES = {
         "https://www.dhhs.nh.gov/programs-services/medicaid",
     ],
 }
-
 
 def state_host(url):
     host = url.split("/")[2].lower()

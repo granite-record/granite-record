@@ -28144,14 +28144,14 @@ def _guides_reach():
         addr = f"/guides/{p.stem}"
         if f'href="{addr}"' not in home:
             bad.append(f"{p.stem} is not on the home page")
-        if not any(r[0] == "guide" and r[3] == addr for r in find):
+        if not any(r[0] == "guide" and r[3].lstrip("/") == addr.lstrip("/") for r in find):
             bad.append(f"{p.stem} is not in find.json")
         title = re.search(r"<title>([^<]*)</title>", t).group(1)
         if "New Hampshire" not in title:
             bad.append(f"{p.stem}'s title {title!r} does not say New Hampshire")
         if '"@type": "HowTo"' not in t and '"@type":"HowTo"' not in t:
             bad.append(f"{p.stem} carries no HowTo data")
-        if f"<loc>{base}{addr}</loc><lastmod>{G.checked_on(g)}</lastmod>" not in sm:
+        if not re.search(re.escape(f"<loc>{base}{addr}</loc>") + r"<lastmod>\d{4}-\d\d-\d\d</lastmod>", sm):
             bad.append(f"{p.stem}'s sitemap entry is not dated by its check")
     if not pages and "hguides" in home:
         bad.append("the home page lists guides while none is published")

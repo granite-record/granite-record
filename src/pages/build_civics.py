@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.47
+# GRANITE_VERSION: 2026-09-08.48
 """
 The civics section: a hub and one page per topic, in order.
 
@@ -1278,7 +1278,10 @@ def build_guides(site, tmpl, base, drafts=False):
     table = None
     try:
         import rsa
-        table = rsa.load()
+        # THE TABLE OF THE PROJECT BEING BUILT, from the working folder, as
+        # build_rsa.py reads it with --db db: the Laws pages a guide links are
+        # built from that table, so the guide is held to the same one.
+        table = rsa.load(Path("db") / "NH_RSA.psv", Path("db") / "_columns.json")
     except Exception as e:                      # noqa: BLE001 -- said, and no guide links a law then
         print(f"  guides: the statute table could not be read ({type(e).__name__})")
     chapters = table.chapters if table else {}
@@ -1478,7 +1481,10 @@ def main():
     # sources: the day what it says last changed.
     added, dropped = S.sitemap_merge(
         site, a.base, gurls, owns="/" + GUIDE_DIR,
-        lastmod={a.base + S.canon("/" + guide_href(g["slug"])): G.checked_on(g)
+        # never later than the build's own day, as a bill's is not
+        # (build_bill_pages.lastmod)
+        lastmod={a.base + S.canon("/" + guide_href(g["slug"])):
+                 min(G.checked_on(g), build_date.today().isoformat())
                  for g in published if G.checked_on(g)})
     if added or dropped:
         print(f"  sitemap.xml: {added} guides added, {dropped} dropped")
