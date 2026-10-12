@@ -17,7 +17,10 @@
  * the inbox can say the request is theirs. The other answers depend only on
  * what was sent or on the day:
  *   400 {"why":"invalid"}         not an address, not a record, not JSON
- *   400 {"why":"check"}           Turnstile said no
+ *   400 {"why":"check"}           Turnstile said no, with its error codes when
+ *                                 it gave any (its own fixed words, never the
+ *                                 reader's: invalid-input-secret is a secret
+ *                                 that is not this widget's)
  *   400 {"why":"not-followable"}  not followable tonight (current.json)
  *   429 {"why":"busy"}            the day's confirmation emails are used up
  *   503 {"why":"unavailable"}     the changes file, the database or a secret is missing
@@ -47,17 +50,26 @@ const DAILY_CEILING = 50;
 
 const SENT = () => json(202, { ok: true });
 const NO = why => json(400, { ok: false, why });
+// Siteverify's own vocabulary, and nothing else is passed on.
+const TS_CODES = new Set(["missing-input-secret", "invalid-input-secret", "missing-input-response",
+  "invalid-input-response", "bad-request", "timeout-or-duplicate", "internal-error"]);
+const NO_CHECK = codes => codes.length ? json(400, { ok: false, why: "check", codes }) : NO("check");
 const DOWN = () => json(503, { ok: false, why: "unavailable" });
 
-async function turnstileOk(env, token) {
+// Returns null for a yes, else the list of Turnstile's codes for its no
+// (empty when it gave none), each also a log line.
+async function turnstileNo(env, token) {
   if (!env.TURNSTILE_SECRET) throw new ConfigError();
-  if (typeof token !== "string" || !token || token.length > 2048) return false;
+  if (typeof token !== "string" || !token || token.length > 2048) return ["missing-input-response"];
   // No remoteip: the check works without it, and this file handles no IP.
   const res = await fetch(TURNSTILE, { method: "POST",
     body: new URLSearchParams({ secret: env.TURNSTILE_SECRET, response: token }) });
-  if (!res.ok) return false;
+  if (!res.ok) { note("signup.check.http", res.status); return []; }
   const j = await res.json().catch(() => null);
-  return !!(j && j.success === true);
+  if (j && j.success === true) return null;
+  const codes = (Array.isArray(j?.["error-codes"]) ? j["error-codes"] : []).filter(c => TS_CODES.has(c));
+  note(`signup.check.${codes[0] || "no"}`);
+  return codes;
 }
 
 // AFTER THE ANSWER: keep the request if its inbox has room, raise the day's
@@ -118,7 +130,8 @@ export async function onRequest(context) {
     const address = cleanAddress(body.email);
     const kind = String(body.kind ?? ""), ref = String(body.ref ?? "");
     if (!address || !refOk(kind, ref)) return NO("invalid");
-    if (!(await turnstileOk(env, body.turnstile))) return NO("check");
+    const no = await turnstileNo(env, body.turnstile);
+    if (no) return NO_CHECK(no);
 
     const cur = await readCurrent(p => env.ASSETS.fetch(new URL(p, request.url)));
     if (!cur.value) { note("signup.current-unreadable"); return DOWN(); }

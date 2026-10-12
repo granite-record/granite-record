@@ -74,7 +74,9 @@ export class FakeNet {
         u.pathname === "/turnstile/v0/siteverify") {
       const f = new URLSearchParams(await req.text());
       const ok = f.get("secret") === this.turnstileSecret && f.get("response") === "pass";
-      return Response.json({ success: ok });
+      const codes = ok ? [] : f.get("secret") !== this.turnstileSecret ? ["invalid-input-secret"]
+        : f.get("response") === "quiet" ? [] : ["invalid-input-response", "a word of the reader's"];
+      return Response.json({ success: ok, "error-codes": codes });
     }
     if (u.origin === SITE) return this.asset(u.pathname);
     throw new Error(`the tests ask no network, and this asked ${u.origin}`);

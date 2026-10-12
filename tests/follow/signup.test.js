@@ -144,8 +144,14 @@ test("Turnstile's no is an answer about the form, and keeps and sends nothing", 
   try {
     const r = await signUp(w, w.address("robot"), "bill", "2026/HB9901", { turnstile: "fail" });
     assert.equal(r.status, 400);
-    assert.deepEqual(JSON.parse(r.body), { ok: false, why: "check" });
+    // Turnstile's own codes are passed on, and nothing else it said.
+    assert.deepEqual(JSON.parse(r.body), { ok: false, why: "check", codes: ["invalid-input-response"] });
     assert.equal(w.net.outbox.length, 0);
+    assert.equal(w.d1.rows("pending").length, 0);
+    const q = await signUp(w, w.address("robot"), "bill", "2026/HB9901", { turnstile: "quiet" });
+    assert.deepEqual(JSON.parse(q.body), { ok: false, why: "check" });
+    const n = await signUp(w, w.address("robot"), "bill", "2026/HB9901", { turnstile: "" });
+    assert.deepEqual(JSON.parse(n.body), { ok: false, why: "check", codes: ["missing-input-response"] });
     assert.equal(w.d1.rows("pending").length, 0);
   } finally { w.close(); }
 });

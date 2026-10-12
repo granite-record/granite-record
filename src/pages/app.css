@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.266 */
+/* GRANITE_VERSION: 2026-09-07.267 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -3471,11 +3471,12 @@ overflow-wrap:anywhere}
 .feedurl{display:flex;flex-wrap:wrap;gap:var(--sp-3) var(--sp-5);align-items:center;margin:0}
 /* Email, under the feed, where the deployment offers it (app.js followMail):
    the address and its button on one line as the feed's address is, the
-   Turnstile check under them (drawn only if it needs the reader), the answer
-   below. */
-.followmail{margin-top:var(--sp-5);padding-top:var(--sp-5);border-top:1px solid var(--rule-2)}
-/* A law has no feed: the email box is the pane's first thing, with no rule above it. */
-.followpane > .followmail:first-child{margin-top:0;padding-top:0;border-top:0}
+   Turnstile check under them, kept in view while it runs, the answer
+   below. Email comes first and RSS under it (the person, 12 October 2026). */
+.followmail{margin-bottom:var(--sp-5);padding-bottom:var(--sp-5);border-bottom:1px solid var(--rule-2)}
+/* A law has no feed: the email box is the pane's only thing, with no rule under it. */
+.followpane > .followmail:last-child{margin-bottom:0;padding-bottom:0;border-bottom:0}
+.followcheck:not(:empty){margin:var(--sp-3) 0}
 .followaddr{display:flex;flex-wrap:wrap;gap:var(--sp-3) var(--sp-5);align-items:flex-end}
 .followaddr label{flex:1 1 16rem;display:flex;flex-direction:column;gap:var(--sp-2);min-width:0}
 .followaddr input{font:inherit;padding:var(--sp-2) var(--sp-4);color:var(--ink);
