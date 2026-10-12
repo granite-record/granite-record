@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.41
+# GRANITE_VERSION: 2026-09-08.42
 """
 The topics of the civics section: their order, their names, and their prose.
 
@@ -1682,6 +1682,8 @@ the state representatives of the representative districts of the county
 the House from a district in Grafton County is, by that fact alone, a member
 of the Grafton County convention.</p>
 
+<div class="yt" data-yt="county" hidden></div>
+
 <p>You will meet it under two names. The statutes say convention; legislators,
 county staff and county budget papers usually say <b>delegation</b>. They are
 the same body, and the statute itself uses both words in one sentence:
@@ -1879,6 +1881,7 @@ ordinances.</p>
 elected council, and so it is in a town whose charter replaced the meeting
 with a town council (RSA 49-D:3). Nearly everything else follows from that one
 difference.</p>
+<div class="yt" data-yt="town" hidden></div>
 """ + TOWN_FORMS + """
 
 <h2>A Town: The Meeting Decides, the Selectboard Carries It Out</h2>
@@ -2221,6 +2224,8 @@ show a floterial district plainly.</p>
 <p>Who holds each of those seats today is on <a href="[[reps_town_url]]">
 [[reps_town]]'s own page</a>, and every other town and ward has one like
 it.</p>
+
+<div class="yt" data-yt="reps" hidden></div>
 
 <h2>What the District Numbering Means</h2>
 <p>A House district is written as a county and a number: Rockingham 13,

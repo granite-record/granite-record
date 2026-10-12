@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-09.29
+# GRANITE_VERSION: 2026-09-09.30
 """
 A page per town and ward: everyone who represents the people who live there.
 
@@ -1121,6 +1121,44 @@ def build(town, ward, wards, dist, legs, off, base, tmpl):
                      + (MAP_JS if 'id="twnmap"' in "".join(body) else "") + "</div>", 1)
 
 
+def place_record(town, ward, wards, dist, legs, loc):
+    """One row of places.json: what "your town" carries round the site.
+
+    THE SAME FACTS THE PAGE PRINTS, FROM THE SAME DATA, so the header picker
+    cannot say a different district or polling place from the town's own
+    page. The browser keeps only the slug ("concord-ward-4"); the rest is
+    read from here when a page needs it. Members are the ones state_house
+    and the Senate card match, by the same test."""
+    house = dist.get("house") or []
+    m = [x.get("slug") for h in house for x in legs
+         if x.get("chamber") == "H" and x.get("slug")
+         and (x.get("county") or "") == h.get("county")
+         and str(x.get("district") or "") == str(h.get("district"))]
+    sd = dist.get("senate")
+    m += [x.get("slug") for x in legs if sd and x.get("chamber") == "S"
+          and x.get("slug") and str(x.get("district") or "") == str(sd)]
+    rec = {"s": slug(town, ward), "n": where(town, ward, wards), "t": town,
+           "u": town_path(town, ward),
+           "h": [[h.get("county"), h.get("district"), 1 if h.get("floterial")
+                  else 0] for h in house],
+           "co": next((h.get("county") for h in house if h.get("county")), None),
+           "sd": sd, "ec": dist.get("council"), "cd": dist.get("congress"),
+           "m": m}
+    if slug(town, "0") in CITIES:
+        rec["c"] = 1
+    if len(wards) > 1:
+        rec["w"] = ward
+    vote = {"poll": loc.get("polling_place"), "hours": loc.get("state_hours"),
+            "clerk": loc.get("clerk"), "phone": loc.get("phone"),
+            "email": loc.get("email") if maillink(loc.get("email")) else None,
+            "when": election_line(loc.get("election", "")) or None,
+            "wards": [[w.get("ward"), w.get("polling_place"),
+                       w.get("state_hours")]
+                      for w in loc.get("polling_by_ward") or []] or None}
+    rec.update({k: v for k, v in vote.items() if v})
+    return rec
+
+
 # The map's code for a county (build_district_map.CODE): a State House
 # district is "ST14", Strafford 14.
 MAP_COUNTY = {"Belknap": "BE", "Carroll": "CA", "Cheshire": "CH", "Coos": "CO",
@@ -1399,7 +1437,7 @@ def main():
 
     out = site / "town"
     out.mkdir(parents=True, exist_ok=True)
-    urls, n = [], 0
+    urls, places, n = [], [], 0
     for town in sorted(districts):
         wards = districts[town]
         for ward in sorted(wards, key=lambda w: int(w) if w.isdigit() else 0):
@@ -1408,6 +1446,9 @@ def main():
             (out / f"{slug(town, ward)}.html").write_text(page,
                                                           encoding="utf-8")
             urls.append(a.base + town_path(town, ward))
+            places.append(place_record(
+                town, ward, wards, wards[ward], legs,
+                (off.get("_local") or {}).get(slug(town, ward)) or {}))
             n += 1
 
     # Silence is not success.
@@ -1423,6 +1464,20 @@ def main():
     named += sum(1 for s in (off.get("us_senate", {}).get("seats") or [])
                  if (s.get("name") or "").strip())
     print(f"{n:,} town-ward pages -> {out}/")
+    # Your town (the person, 12 October 2026): the header picker's one file.
+    # The people by slug, once, rather than in every row they sit for: the
+    # name the chip draws and the party its colour is.
+    people = {x["slug"]: [x.get("display_full") or x.get("label") or x.get("name"),
+                          str(x.get("party_code") or x.get("party") or "")[:1].upper()]
+              for x in legs if x.get("slug")
+              and any(x["slug"] in p["m"] for p in places)}
+    (site / "places.json").write_text(
+        json.dumps({"places": places, "people": people},
+                   separators=(",", ":"), ensure_ascii=False),
+        encoding="utf-8")
+    print(f"  places.json: {len(places)} towns and wards, "
+          f"{sum(1 for p in places if p.get('poll') or p.get('wards'))} "
+          "with a polling place")
     print(f"  {named} of 10 other offices name who holds them; the rest link "
           "to the official directory")
 

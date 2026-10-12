@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-16.20
+// GRANITE_VERSION: 2026-09-16.21
 /* FIND ANYTHING, FROM THE HEADER (16 September, asked for in these words:
    "a search icon in the header that lets you search for anything including
    legislators, committees, towns, and bills ... searching Litchfield would
@@ -939,3 +939,364 @@ document.addEventListener("click",function(e){
   if(!/\bnoopener\b/.test(a.getAttribute("rel")||""))
     a.setAttribute("rel",((a.getAttribute("rel")||"")+" noopener").trim());
 },true);
+
+/* YOUR TOWN (the person, 12 October 2026: "select your town / ward in the
+   top right of the website next to the light/dark icon and it will stay in
+   your browser and carry over different pages and will highlight your
+   legislators and district ... on how to vote it would pull up your polling
+   location [and] town clerk and also show up on the learn pages").
+
+   WHAT IS KEPT IS THE PLACE, NEVER THE ADDRESS. The browser keeps one slug --
+   "concord-ward-4" -- under gr-town, and nothing is sent to this site. The
+   address lookup ("Not sure what ward you're in? Input your address to
+   confirm.") asks the US Census Bureau's geocoder, the one outside service
+   this page talks to, straight from the reader's browser; the address is
+   held in the box until the page is left and is written nowhere.
+
+   EVERY FACT IS places.json's, which build_town_pages writes from the data
+   the town's own page prints, so the header cannot name a different
+   district, member or polling place from that page. Fetched the first time
+   it is needed -- on a page with a town saved, or when the panel opens. */
+const YT={key:"gr-town",data:null,loading:null};
+function ytGet(){try{return localStorage.getItem(YT.key)||"";}catch(e){return "";}}
+function ytSave(s){
+  try{s?localStorage.setItem(YT.key,s):localStorage.removeItem(YT.key);}catch(e){}
+  ytApply();
+}
+function ytLoad(){
+  if(YT.data)return Promise.resolve(YT.data);
+  return YT.loading||(YT.loading=fetch("/places.json").then(r=>{
+    if(!r.ok)throw new Error(r.status);return r.json();
+  }).then(d=>{
+    YT.data=d;YT.by={};d.places.forEach(p=>{YT.by[p.s]=p;});return d;
+  }).catch(e=>{YT.loading=null;throw e;}));
+}
+const _ynorm=s=>String(s||"").toLowerCase().normalize("NFKD")
+  .replace(/[̀-ͯ]/g,"").replace(/[^a-z0-9]+/g," ").trim();
+function ytPlace(){return YT.by&&YT.by[ytGet()]||null;}
+// "Merrimack districts 18 and 29 (floterial)", in the words the town's page
+// uses in its first line.
+function ytDistricts(p){
+  const h=p.h||[];
+  const say=h.map(x=>`${x[0]} ${x[1]}${x[2]?" (floterial)":""}`);
+  const bits=[];
+  if(say.length)bits.push("State House "+(say.length>1
+    ?say.slice(0,-1).join(", ")+" and "+say[say.length-1]:say[0]));
+  if(p.sd)bits.push("State Senate district "+p.sd);
+  if(p.ec)bits.push("Executive Council district "+p.ec);
+  if(p.cd)bits.push("US House district "+p.cd);
+  return bits;
+}
+function ytPeople(p){
+  const ppl=(YT.data&&YT.data.people)||{};
+  return '<ul class="ytppl">'+(p.m||[]).map(s=>{
+    const w=ppl[s]||[s,""];
+    return `<li><span class="mchip p-${_fesc(w[1]||"X")}"><a href="/legislator/${_fesc(s)}">${_fesc(w[0])}</a></span></li>`;
+  }).join("")+"</ul>";
+}
+function ytVote(p){
+  const out=[];
+  if(p.poll)out.push(`<p class="ytpoll"><span class="ytlbl">Where you vote</span>${_fesc(p.poll)}${p.hours?`<span class="ythrs">Polls open ${_fesc(p.hours)}</span>`:""}</p>`);
+  if(p.wards)out.push(`<p class="ytlbl">${_fesc(p.t)} votes in ${p.wards.length} places, by ward</p><ul class="ytwards">`
+    +p.wards.map(w=>`<li><b>Ward ${_fesc(w[0])}</b> ${_fesc(w[1])}${w[2]?` <span class="ythrs">${_fesc(w[2])}</span>`:""}</li>`).join("")+"</ul>");
+  if(!p.poll&&!p.wards)out.push(`<p class="ytnote">The Secretary of State&rsquo;s list has no polling place recorded for ${_fesc(p.n)}. The clerk is who to ask.</p>`);
+  if(p.clerk)out.push(`<p class="ytclerk"><span class="ytlbl">${p.c?"City":"Town"} clerk</span>${_fesc(p.clerk)}`
+    +(p.phone?` &middot; <a href="tel:${_fesc(p.phone.replace(/[^0-9+]/g,""))}">${_fesc(p.phone)}</a>`:"")
+    +(p.email?` &middot; <a href="mailto:${_fesc(p.email)}">${_fesc(p.email)}</a>`:"")+"</p>");
+  if(p.when)out.push(`<p class="ytwhen">${_fesc(p.when)}</p>`);
+  return out.join("");
+}
+// THE MEMBERS, MARKED WHEREVER THEY ARE LINKED: one stylesheet rule per
+// member, so a chip app.js draws after this has run is marked as well.
+function ytMark(p){
+  let st=document.getElementById("ytstyle");
+  if(!st){st=document.createElement("style");st.id="ytstyle";document.head.appendChild(st);}
+  if(!p){st.textContent="";return;}
+  const sel=(s,after)=>`a[href*="legislator/${s}."]${after},a[href$="legislator/${s}"]${after}`;
+  const rep=(p.m||[]).filter(s=>!/-sd-\d+$/.test(s)),sen=(p.m||[]).filter(s=>/-sd-\d+$/.test(s));
+  let css="";
+  if(rep.length)css+=rep.map(s=>sel(s,"::after")).join(",")+'{content:"Your rep"}';
+  if(sen.length)css+=sen.map(s=>sel(s,"::after")).join(",")+'{content:"Your senator"}';
+  if(css)css+=(p.m||[]).map(s=>sel(s,"::after")).join(",")
+    +"{display:inline-block;margin-left:.375rem;padding:0 .375rem;border-radius:999px;"
+    +"font:600 .75rem/1.5 var(--sans);letter-spacing:.02em;text-transform:none;"
+    +"text-decoration:none;background:var(--pine-soft);color:var(--pine);vertical-align:.08em}"
+    +".ytpanel a::after,.yt a::after{content:none !important}"
+    // On a town page the chip sits in a narrow cell beside the contact
+    // column, and the tag ran out of the chip into it: it goes under the name.
+    +(p.m||[]).map(s=>sel(s,"::after").split(",").map(x=>".offwho "+x).join(",")).join(",")
+    +"{display:block;width:max-content;margin:.25rem 0 0}";
+  st.textContent=css;
+}
+// THE LEARN PAGES' SLOTS: <div class="yt" data-yt="reps|vote|county|town">,
+// written by the builders where an example from the reader's own town
+// belongs. With no town saved, each offers the picker.
+function ytSlots(p){
+  document.querySelectorAll(".yt[data-yt]").forEach(el=>{
+    const k=el.dataset.yt;
+    if(!p){
+      el.innerHTML=`<p class="ythead2">For your town</p><p>Choose your town or ward to see this for where you live.</p>`
+        +'<button type="button" class="ytopen">Choose your town</button>';
+      el.hidden=false;return;
+    }
+    const link=`<a href="${_fesc(p.u)}">${_fesc(p.n)}&rsquo;s page</a>`;
+    let body="";
+    if(k==="reps")body=`<p>${_fesc(p.n)} is represented in ${ytDistricts(p).map(_fesc).join("; ")}.</p>`
+      +ytPeople(p)+`<p>Every seat, with how to reach each person, is on ${link}.</p>`;
+    else if(k==="vote")body=ytVote(p)+`<p>More on ${link}.</p>`;
+    else if(k==="county")body=p.co?`<p>${_fesc(p.n)} is in ${_fesc(p.co)} County, so its county convention is the State House members elected from ${_fesc(p.co)} County &mdash; yours among them.</p>`
+      +ytPeople({m:(p.m||[]).filter(s=>!/-sd-\d+$/.test(s))})
+      +`<p>The county&rsquo;s own officials are under <a href="/officials#counties">County Officials</a>.</p>`:"";
+    else if(k==="town")body=`<p>${_fesc(p.t)} is ${p.c?"a city":"a town"}. Who runs it is on the ${p.c?"City":"Town"} Officials tab of <a href="${_fesc(p.u)}">${_fesc(p.n)}&rsquo;s page</a>.</p>`;
+    if(!body){el.hidden=true;return;}
+    el.innerHTML=`<p class="ythead2">In your town: ${_fesc(p.n)}</p>`+body
+      +'<p class="ytmeta"><button type="button" class="ytopen link">Change your town</button></p>';
+    el.hidden=false;
+  });
+}
+function ytApply(){
+  const s=ytGet(),btn=document.getElementById("ytbtn");
+  const done=()=>{
+    const p=ytPlace();
+    if(btn){
+      const w=btn.querySelector(".ytword");
+      if(w)w.textContent=p?`Your town: ${p.n}`:"Choose your town";
+      btn.setAttribute("aria-label",p?`Your town: ${p.n}`:"Choose your town");
+      btn.title=p?`Your town: ${p.n}`:"Choose your town";
+      btn.classList.toggle("is-set",!!p);
+    }
+    ytMark(p);ytSlots(p);
+    const panel=document.getElementById("ytpanel");
+    if(panel&&!panel.hidden)ytDraw();
+    // The map on Officials goes to it (LEGFIND_JS's own event).
+    if(p&&document.getElementById("ofmap"))
+      dispatchEvent(new CustomEvent("grtown",{detail:p.t}));
+  };
+  if(s||document.querySelector(".yt[data-yt]"))
+    ytLoad().then(done,()=>{ytMark(null);});
+  else done();
+}
+
+/* THE ADDRESS, ASKED OF THE CENSUS BUREAU. Its geocoder answers a script tag
+   (JSONP) and not a fetch -- it sends no CORS header -- with every layer the
+   point falls in: the town (County Subdivisions) and the State House
+   district (State Legislative Districts - Lower, "Merrimack 18"). A city
+   ward is then the one ward of that town in that district. In 57 of the 61
+   city districts that is one ward; where it is several, the reader is
+   asked which, and told where their ward is written. */
+function ytGeocode(addr){
+  return new Promise((ok,no)=>{
+    const cb="grgeo"+Date.now().toString(36);
+    const sc=document.createElement("script");
+    const t=setTimeout(()=>{end();no(new Error("timeout"));},20000);
+    function end(){clearTimeout(t);try{delete window[cb];}catch(e){window[cb]=undefined;}sc.remove();}
+    window[cb]=d=>{end();ok(d);};
+    sc.onerror=()=>{end();no(new Error("load"));};
+    if(!/\b(nh|new hampshire)\b/i.test(addr))addr+=", NH";
+    sc.src="https://geocoding.geo.census.gov/geocoder/geographies/onelineaddress?address="
+      +_fenc(addr)+"&benchmark=Public_AR_Current&vintage=Current_Current&layers=all"
+      +"&format=jsonp&callback="+cb;
+    document.head.appendChild(sc);
+  });
+}
+function ytFromCensus(d){
+  const m=d&&d.result&&(d.result.addressMatches||[])[0];
+  if(!m)return {why:"none"};
+  const g=m.geographies||{};
+  const layer=re=>{const k=Object.keys(g).find(k=>re.test(k));return k&&g[k][0]||null;};
+  const st=layer(/^States$/);
+  if(st&&st.STUSAB&&st.STUSAB!=="NH")return {why:"state",addr:m.matchedAddress};
+  const sub=layer(/^County Subdivisions$/),low=layer(/State Legislative Districts - Lower$/);
+  const town=sub&&_ynorm(sub.BASENAME);
+  const all=YT.data.places.filter(p=>_ynorm(p.t)===town);
+  if(!all.length)return {why:"town",addr:m.matchedAddress,name:sub&&sub.BASENAME};
+  if(all.length===1)return {pick:all[0],addr:m.matchedAddress};
+  const dm=low&&/^(.*\S)\s+0*(\d+)$/.exec(low.BASENAME||"");
+  const fit=dm?all.filter(p=>(p.h||[]).some(h=>!h[2]&&_ynorm(h[0])===_ynorm(dm[1])&&String(h[1])===dm[2])):[];
+  if(fit.length===1)return {pick:fit[0],addr:m.matchedAddress};
+  return {wards:fit.length?fit:all,addr:m.matchedAddress,town:all[0].t};
+}
+
+function ytRows(q){
+  const n=_ynorm(q);if(!n||!YT.data)return [];
+  const ps=YT.data.places;
+  const starts=ps.filter(p=>_ynorm(p.n).startsWith(n));
+  const has=ps.filter(p=>!_ynorm(p.n).startsWith(n)&&(" "+_ynorm(p.n)).includes(" "+n));
+  return starts.concat(has).slice(0,12);
+}
+function ytDraw(){
+  const panel=document.getElementById("ytpanel");if(!panel)return;
+  const out=panel.querySelector("#ytbody");
+  const p=ytPlace();
+  const here=(location.pathname.match(/^\/town\/([a-z0-9-]+?)(?:\.html)?$/)||[])[1];
+  const herep=here&&YT.by&&YT.by[here];
+  let h="";
+  if(p&&!panel.dataset.changing){
+    h+=`<div class="ytnow"><p class="ytplace"><a href="${_fesc(p.u)}">${_fesc(p.n)}</a></p>`
+      +`<p class="ytdist">${p.co?_fesc(p.co)+" County. ":""}${ytDistricts(p).map(_fesc).join(" &middot; ")}</p>`
+      +`<h3 class="ytsub">Your state legislators</h3>`+ytPeople(p)
+      +`<h3 class="ytsub">Voting</h3>`+ytVote(p)
+      +'<p class="ytacts"><button type="button" class="ytbtn2" id="ytchange">Change town</button>'
+      +'<button type="button" class="ytbtn2 ytquiet" id="ytforget">Forget it</button></p></div>';
+  }else{
+    h+=(herep&&herep.s!==ytGet()?`<p class="ytthis"><button type="button" class="ytbtn2" data-pick="${_fesc(herep.s)}">Use ${_fesc(herep.n)}, this page&rsquo;s town</button></p>`:"")
+      +'<div class="findbox"><label for="ytq" class="ytlbl2">Your town, or your city and ward</label>'
+      +'<input id="ytq" type="search" autocomplete="off" placeholder="Town, or city and ward" aria-controls="ytout"></div>'
+      +'<p class="sr" id="ytqsay" role="status"></p><div class="ytout" id="ytout"></div>'
+      +'<details class="ytaddr" id="ytaddrbox"><summary>Not sure what ward you&rsquo;re in? Enter your address to confirm.</summary>'
+      +'<form id="ytaform" class="ytaform"><label for="ytaddr" class="ytlbl2">Street address and town</label>'
+      +'<div class="ytarow"><input id="ytaddr" type="text" autocomplete="street-address" placeholder="12 Main Street, Concord">'
+      +'<button type="submit" class="ytbtn2">Look up</button></div></form>'
+      +'<div class="ytares" id="ytares" role="status"></div>'
+      +'<p class="ytpriv">The address goes from your browser to the US Census Bureau&rsquo;s address lookup and is not kept anywhere. Only the town or ward it finds is saved.</p></details>'
+      +(p?'<p class="ytacts"><button type="button" class="ytbtn2 ytquiet" id="ytback">Keep '+_fesc(p.n)+"</button></p>":"");
+  }
+  h+='<p class="ytpriv">Saved in this browser only. Nothing about it is sent to Granite Record.</p>';
+  out.innerHTML=h;
+  const q=out.querySelector("#ytq");
+  if(q){
+    const list=()=>{
+      const rows=ytRows(q.value);
+      out.querySelector("#ytout").innerHTML=rows.map(r=>
+        `<button type="button" class="ytrow" data-pick="${_fesc(r.s)}">${_fesc(r.n)}</button>`).join("")
+        +(q.value.trim()&&!rows.length?'<p class="ytnote">No town or ward by that name.</p>':"");
+      out.querySelector("#ytqsay").textContent=q.value.trim()?`${rows.length} place${rows.length===1?"":"s"}`:"";
+    };
+    q.addEventListener("input",list);
+    q.addEventListener("keydown",e=>{
+      if(e.key==="Enter"){const b=out.querySelector(".ytrow");if(b){e.preventDefault();b.click();}}
+    });
+  }
+  const f=out.querySelector("#ytaform");
+  if(f)f.addEventListener("submit",e=>{
+    e.preventDefault();
+    const a=out.querySelector("#ytaddr").value.trim(),res=out.querySelector("#ytares");
+    if(!a)return;
+    res.innerHTML='<p class="ytnote">Looking it up&hellip;</p>';
+    ytGeocode(a).then(d=>{
+      const r=ytFromCensus(d);
+      const said=r.addr?`<p class="ytnote">Matched: ${_fesc(r.addr)}</p>`:"";
+      if(r.pick){res.innerHTML=said+`<p>That address is in <b>${_fesc(r.pick.n)}</b>.</p>`
+        +`<button type="button" class="ytbtn2" data-pick="${_fesc(r.pick.s)}">Make ${_fesc(r.pick.n)} my town</button>`;}
+      else if(r.wards){res.innerHTML=said+`<p>That address is in ${_fesc(r.town)}, in a district that holds more than one ward, so the lookup cannot say which. Your ward is on your voter registration, or the clerk can tell you.</p>`
+        +r.wards.map(w=>`<button type="button" class="ytrow" data-pick="${_fesc(w.s)}">${_fesc(w.n)}</button>`).join("");}
+      else if(r.why==="state")res.innerHTML=said+"<p>That address is not in New Hampshire.</p>";
+      else if(r.why==="town")res.innerHTML=said+`<p>The lookup placed it in ${_fesc(r.name||"a place")}, which this site has no page for. Choose your town from the list above.</p>`;
+      else res.innerHTML="<p>The Census lookup did not recognise that address. Try the street number, street and town, or choose your town from the list above.</p>";
+    },()=>{res.innerHTML="<p>The Census lookup did not answer. Choose your town from the list above, or try again in a minute.</p>";});
+  });
+}
+function ytMount(){
+  const bar=document.querySelector("nav.top .in");
+  if(!bar||document.getElementById("ytbtn"))return;
+  const btn=document.createElement("button");
+  btn.id="ytbtn";btn.className="ytbtn";btn.type="button";
+  btn.setAttribute("aria-expanded","false");btn.setAttribute("aria-controls","ytpanel");
+  btn.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-6.5-6.1-6.5-11a6.5 6.5 0 0 1 13 0c0 4.9-6.5 11-6.5 11z"/><circle cx="12" cy="10" r="2.4"/></svg><span class="ytword">Your town</span>';
+  // SITE-WIDE SETTINGS, IN ONE PLACE (the person, 12 October 2026: "under
+  // the hamburger menu on mobile like the light and dark mode is, or on
+  // desktop maybe there's a setting icon that drops down to allow you to
+  // select town or ward and light/dark mode and other site-wide settings").
+  // The theme control and this button go into one group, .navset, at the
+  // end of the sections panel: on a phone they are its last rows, under the
+  // menu button; on a wider screen the group is the dropdown of a settings
+  // button beside search. One copy of each control, as there is one copy of
+  // the sections. Anything site-wide added later is a row in this group.
+  const drop=document.getElementById("navdrop"),th=document.getElementById("themer");
+  const set=document.createElement("div");
+  set.id="navset";set.className="navset";
+  set.setAttribute("role","group");set.setAttribute("aria-label","Site settings");
+  if(drop){
+    if(th&&th.parentNode===drop)drop.insertBefore(set,th);else drop.appendChild(set);
+    if(th)set.appendChild(th);
+    set.appendChild(btn);
+  }else bar.appendChild(btn);
+  const gear=document.createElement("button");
+  gear.id="setbtn";gear.className="setbtn";gear.type="button";
+  gear.setAttribute("aria-expanded","false");gear.setAttribute("aria-controls","navset");
+  gear.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg><span>Settings</span>';
+  const fb=document.getElementById("findbtn");
+  if(fb&&fb.parentNode===bar)bar.insertBefore(gear,fb);else bar.appendChild(gear);
+  const nav=document.querySelector("nav.top");
+  const setShut=()=>{nav.classList.remove("setopen");gear.setAttribute("aria-expanded","false");};
+  gear.addEventListener("click",()=>{
+    if(nav.classList.contains("setopen")){setShut();return;}
+    // Hung from the gear itself: between 45em and 63em the bar is two rows
+    // and the bar's own bottom edge is under the tabs, not under the gear.
+    set.style.top=(gear.offsetTop+gear.offsetHeight+6)+"px";
+    set.style.right=Math.max(0,bar.clientWidth-gear.offsetLeft-gear.offsetWidth)+"px";
+    nav.classList.add("setopen");gear.setAttribute("aria-expanded","true");
+    const f=set.querySelector("button:not([hidden])");if(f)f.focus();
+  });
+  set.addEventListener("focusout",e=>{
+    const to=e.relatedTarget;
+    if(nav.classList.contains("setopen")&&to&&!set.contains(to)&&to!==gear)setShut();
+  });
+  document.addEventListener("click",e=>{
+    if(nav.classList.contains("setopen")&&!set.contains(e.target)&&!gear.contains(e.target))setShut();
+  });
+  document.addEventListener("keydown",e=>{
+    if(e.key==="Escape"&&nav.classList.contains("setopen")){setShut();gear.focus();}
+  });
+  // Where the focus goes back to when the panel closes: the control a reader
+  // can see -- the settings button, or the phone's menu button -- since the
+  // town button itself is folded away again by then.
+  const home=()=>[gear,document.getElementById("navmenu")].find(x=>x&&x.offsetParent)||btn;
+  const scrim=document.createElement("div");
+  scrim.className="findscrim";scrim.hidden=true;
+  const panel=document.createElement("div");
+  panel.id="ytpanel";panel.className="findpanel ytpanel";panel.hidden=true;
+  panel.setAttribute("role","region");panel.setAttribute("aria-label","Your town");
+  panel.innerHTML='<div class="findin"><div class="findgrab" aria-hidden="true"></div>'
+    +'<div class="yttop"><h2 class="ythead">Your town</h2>'
+    +'<button type="button" class="findcancel ytclose" id="ytclose">Close</button></div>'
+    +'<div id="ytbody"><p class="ytnote">Loading&hellip;</p></div></div>';
+  nav.parentNode.insertBefore(scrim,nav.nextSibling);
+  nav.parentNode.insertBefore(panel,scrim.nextSibling);
+  const shut=()=>{
+    panel.hidden=true;scrim.hidden=true;delete panel.dataset.changing;
+    document.documentElement.classList.remove("findopen");
+    btn.setAttribute("aria-expanded","false");
+  };
+  const open=(change)=>{
+    // Out of the menu or the settings dropdown it was chosen from.
+    setShut();
+    if(nav.classList.contains("open")){nav.classList.remove("open");
+      const mb=document.getElementById("navmenu");if(mb)mb.setAttribute("aria-expanded","false");}
+    const fp=document.getElementById("findpanel");
+    if(fp&&!fp.hidden)document.getElementById("findbtn").click();
+    panel.hidden=false;scrim.hidden=false;
+    if(change)panel.dataset.changing="1";
+    document.documentElement.classList.add("findopen");
+    btn.setAttribute("aria-expanded","true");
+    ytLoad().then(()=>{ytDraw();
+      const f=panel.querySelector("#ytq")||panel.querySelector(".ytplace a");if(f)f.focus();
+    },()=>{panel.querySelector("#ytbody").innerHTML='<p class="ytnote">The list of towns did not load. Try again in a moment.</p>';});
+  };
+  btn.addEventListener("click",()=>{panel.hidden?open():shut();});
+  panel.querySelector("#ytclose").addEventListener("click",()=>{shut();home().focus();});
+  scrim.addEventListener("click",shut);
+  if(fb)fb.addEventListener("click",()=>{if(!panel.hidden)shut();});
+  panel.addEventListener("click",e=>{
+    const t=e.target.closest("button");if(!t)return;
+    e.stopPropagation();
+    if(t.dataset.pick){delete panel.dataset.changing;ytSave(t.dataset.pick);
+      const a=panel.querySelector(".ytplace a");if(a)a.focus();}
+    else if(t.id==="ytchange"){panel.dataset.changing="1";ytDraw();const q=panel.querySelector("#ytq");if(q)q.focus();}
+    else if(t.id==="ytback"){delete panel.dataset.changing;ytDraw();}
+    else if(t.id==="ytforget"){delete panel.dataset.changing;ytSave("");const q=panel.querySelector("#ytq");if(q)q.focus();}
+  });
+  document.addEventListener("click",e=>{
+    const o=e.target.closest&&e.target.closest(".ytopen");
+    if(o){e.preventDefault();open(!!ytGet());return;}
+    if(!panel.hidden&&!panel.contains(e.target)&&!btn.contains(e.target)&&e.target!==scrim)shut();
+  });
+  document.addEventListener("keydown",e=>{
+    if(e.key!=="Escape"||panel.hidden)return;
+    const inside=panel.contains(document.activeElement);shut();if(inside)home().focus();
+  });
+  // Another tab that changes it changes it here.
+  addEventListener("storage",e=>{if(e.key===YT.key)ytApply();});
+  ytApply();
+}
+ytMount();

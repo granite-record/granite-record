@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.549
+# GRANITE_VERSION: 2026-09-04.550
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -28118,6 +28118,43 @@ def _fixture_site_whole(root):
     shared, base, ran, _days = _fixture_site_shared()
     shutil.copytree(shared, root, dirs_exist_ok=True)
     return base, ran
+
+
+@check("frontend", "your town's places.json is the town pages' own facts, and the pages that use it carry it")
+def _your_town():
+    """The header's Your town (12 October 2026) reads site/places.json, which
+    build_town_pages writes beside the pages. Every row is a page that was
+    built, every member it names has a page, and the Learn pages carry the
+    slots find.js fills; and find.js keeps the slug and nothing else."""
+    absent = [x for x in CHAIN_NEEDS if not _paths.locate(x).exists()]
+    if absent:
+        return "skip", "not here: " + ", ".join(absent)
+    shared, _base, _ran, _days = _fixture_site_shared()
+    site = shared / "site"
+    d = json.loads((site / "places.json").read_text(encoding="utf-8"))
+    places, people = d["places"], d["people"]
+    # Silence is not success: a file of no places is a picker with nothing in it.
+    assert places, "places.json has no towns"
+    towns = {p.stem for p in (site / "town").glob("*.html")}
+    assert {p["s"] for p in places} == towns, \
+        "places.json and the town pages name different places"
+    for p in places:
+        assert p["u"] == f"/town/{p['s']}", f"{p['s']}: its address is {p['u']}"
+        for m in p["m"]:
+            assert m in people and (site / "legislator" / f"{m}.html").exists(), \
+                f"{p['s']} names {m}, who has no page"
+    for page, kind in (("your-representatives", "reps"), ("county-government", "county"),
+                       ("city-and-town-government", "town")):
+        f = site / "learn" / f"{page}.html"
+        if f.exists():
+            assert f'data-yt="{kind}"' in f.read_text(encoding="utf-8"), \
+                f"learn/{page} lost its Your town box"
+    js = _paths.locate("src/pages/find.js").read_text(encoding="utf-8")
+    keeps = re.findall(r"localStorage\.setItem\(([^,]+),([^)]+)\)", js)
+    assert keeps == [("YT.key", "s")], \
+        f"find.js keeps something other than the place's slug: {keeps}"
+    return "ok", (f"{len(places)} places, each a built town page, naming "
+            f"{len(people)} members who each have a page; find.js keeps only the slug")
 
 
 @check("build", "every builder runs end to end on a fixture site")
