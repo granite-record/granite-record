@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.555
+# GRANITE_VERSION: 2026-09-04.556
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -17068,11 +17068,16 @@ const panel = document.getElementById("findout");
 const draw = (s) => { F.findDraw(s); return panel.innerHTML; };
 (async () => {
   const res = {q: {}, panel: {}};
-  draw(""); draw("hb 115");
+  draw("");
   res.askedIdle = ASKED.slice();
+  // A bill number asks for this term's index (the person, 12 October 2026):
+  // its own bill is offered first, as a name is.
+  draw("hb 115");
+  res.askedNumber = ASKED.slice();
   res.loading = draw("firearms");
   await F.findBillsLoad(); await ticks(5);
   res.state = F.FBILLS.rows ? "ready" : F.FBILLS.failed ? "failed" : "none";
+  res.number = draw("hb 0101"); res.prefix = draw("HB 14");
   res.asked = ASKED.slice(); res.scripts = SCRIPTS.slice();
   for (const s of Q) {
     const B = F.findBills(s, 5);
@@ -17375,10 +17380,20 @@ def _find_bills(BP):
         and A["q"]["insurance coverage"]["ids"][:2] == ["HB1442", "HB100"], (
         f"the fixture no longer exercises the matcher: {n}")
 
-    # Nothing is fetched for the bills until a word is typed.
+    # Nothing is fetched for the bills until something is typed; a bill
+    # number asks for this term's index, and its own bill leads the list, so
+    # Return opens it (the person, 12 October 2026), with the numbers that
+    # start with what was typed after it.
     assert not [a for a in P["askedIdle"] if "idx/" in a or "meta" in a], (
-        f"the panel fetched {P['askedIdle']} before anything but a bill "
-        f"number was typed -- the index is for readers who search words")
+        f"the panel fetched {P['askedIdle']} before anything was typed")
+    assert [a for a in P["askedNumber"] if "meta" in a], (
+        f"a bill number asked for {P['askedNumber']}, not this term's bills")
+    first = re.search(r'<a\b[^>]*href="([^"]*)"', P["number"] or "")
+    assert first and first.group(1).endswith("/hb101") and \
+        P["number"].index("hb101") < P["number"].index("open this bill number"), (
+        f"HB 0101 does not lead with its bill: {(P['number'] or '')[:300]}")
+    assert "/hb1442" in (P["prefix"] or ""), (
+        f"HB 14 does not offer HB 1442 as the numbers starting with it: {(P['prefix'] or '')[:300]}")
     assert P["scripts"] == ["https://x/billmatch.js"] and \
         P["asked"].count("/idx/2025-2026.json") == 1, (
         f"the panel loaded {P['scripts']} and asked for {P['asked']}: the "
@@ -17423,10 +17438,12 @@ def _find_bills(BP):
     if first(pan["bailey"]) != "/legislator/glenn-bailey-straf-2":
         bad.append(f"'bailey' leads with {first(pan['bailey'])!r}, not the "
                    "member whose whole name it is")
-    # A bill number: this term's in the bill search first, and /search, which
-    # has it in every term, last.
+    # A bill number: this term's bill first, when the term has one (12
+    # October 2026), else the number in the bill search; that row always;
+    # and /search, which has it in every term, last.
     sb = pan["SB 5"]
-    if first(sb) != "/bills?q=SB%205" or sb.rfind("/search?q=SB%205") <= 0:
+    if not (first(sb).endswith("/sb5") or first(sb) == "/bills?q=SB%205") \
+            or "/bills?q=SB%205" not in sb or sb.rfind("/search?q=SB%205") <= 0:
         bad.append("'SB 5' does not offer this term's bill first and every "
                    "term's under it")
     if "/bills?q=firearms" not in P["loading"] or "No matching" in P["loading"]:

@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-16.22
+// GRANITE_VERSION: 2026-09-16.23
 /* FIND ANYTHING, FROM THE HEADER (16 September, asked for in these words:
    "a search icon in the header that lets you search for anything including
    legislators, committees, towns, and bills ... searching Litchfield would
@@ -109,6 +109,29 @@ function findBill(q){
   if(!m)return "";
   const kind=m[1].toUpperCase();
   return FBILLKIND.has(kind)?`${kind} ${m[2]}`:"";
+}
+/* A BILL NUMBER OPENS THE BILL (the person, 12 October 2026: "typing a bill
+   number in the searchbar will pull up the bill number from this term that
+   matches like the legislators do when you type their name rather than first
+   taking you to the general page"). The bill of this term with the number
+   typed is the first row, so Return opens its page, and the numbers that
+   start with it follow as the reader types -- "HB 14" offers HB 14, then
+   HB 140 to HB 149 and on -- the way a name is offered from its first
+   letters. It reads the current term's index, which a number used to cost
+   nothing; a number this term does not have is answered by the rows below
+   it, as before. */
+function findBillNumber(num,limit){
+  if(!FBILLS.rows)return {state:FBILLS.failed?"failed":"loading"};
+  const id=String(num||"").replace(/\s+/g,"").toUpperCase();
+  const exact=[],starts=[];
+  for(const b of FBILLS.rows){
+    const bid=String(b.id).toUpperCase();
+    if(bid===id)exact.push(b);
+    else if(bid.startsWith(id)&&/^\d/.test(bid.slice(id.length)))starts.push(b);
+  }
+  const n=b=>parseInt(String(b.id).replace(/^\D+/,""),10)||0;
+  starts.sort((x,y)=>n(x)-n(y));
+  return {state:"ready",top:exact.concat(starts).slice(0,limit==null?5:limit)};
 }
 
 // A former member's row is named "Former Rep. Suzanne Vail", and the word
@@ -658,7 +681,8 @@ function findDraw(q,ids){
   // answer; shown uncounted while they are fetched, and redrawn when they
   // arrive with whatever is in the box by then.
   const B=num?null:findBills(s,3);
-  if(B&&B.state==="loading"&&!FBILLS.redraw){
+  const N=num?findBillNumber(num):null;
+  if(((B&&B.state==="loading")||(N&&N.state==="loading"))&&!FBILLS.redraw){
     FBILLS.redraw=true;
     findBillsLoad().then(()=>{
       const box=document.getElementById(ids.box);
@@ -701,7 +725,8 @@ function findDraw(q,ids){
     if(none||did.length)tail=`<p class="fnote">${none}${did.length
       ?`${none?" ":""}Did you mean ${did.join(" or ")}?`:""}</p>`;
   }
-  out.innerHTML=num?all+list+every+tail:list+all+tail;
+  const own=N&&N.state==="ready"?N.top.map(b=>findBillRow(b,s,false)).join(""):"";
+  out.innerHTML=num?own+all+list+every+tail:list+all+tail;
   findSay(out.innerHTML,ids);
 }
 
