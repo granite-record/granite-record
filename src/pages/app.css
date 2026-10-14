@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.268 */
+/* GRANITE_VERSION: 2026-09-07.269 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -1711,7 +1711,7 @@ html.js .static-rec{display:none}
    else moves. /mark.png is that ink as an alpha mask at three times the box,
    so it is sharp on a 2x laptop and a 3x phone, and it takes .brand's colour
    as the clipart mark did: ink on paper in light, light ink on dark, pine
-   under the pointer. The favicon and the tab icons stay the clipart.
+   under the pointer. The favicon and the tab icons are a silhouette of the drawing (build_brand.py, 14 October 2026).
 
    A REGION OF ITS OWN, BECAUSE A FORK HAS NO DRAWING. The file is licensed,
    never in the repository, and reaches a build only through

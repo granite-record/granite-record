@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-12.14
+# GRANITE_VERSION: 2026-09-12.15
 """
 Turn the drawn logo and icon into the files a site needs, once.
 
@@ -28,8 +28,10 @@ The clipart below is the SMALL mark. Since 24 September the logo proper is
 Debra Caplan's drawing (see write_licensed): her lockups draw the home page's
 heading and the link cards, and since 1 October her drawing alone is the
 header's mark, all into assets/licensed/, which build_pages.py lays over
-these. The favicon and the tab icons stay this clipart, which reads at 16 to
-32 pixels where the detailed drawing does not.
+these. The favicon and the tab icons were this clipart until 14 October
+2026; since then they are a silhouette of her drawing (BBOX, below), because
+the detailed drawing does not read at 16 to 32 pixels and the silhouette
+does.
 
 WHAT IS DERIVED, AND WHY EACH ONE
 
@@ -90,10 +92,13 @@ ROOT = _paths.ROOT
 BRAND = ROOT / "brand"
 OUT = ROOT / "assets"
 
-# The profile's own bounding box inside the drawing's 210x297 viewBox, read
-# with getBBox() in a browser rather than estimated from the path data. It is
-# the project's clipart's: a fork with its own old-man.svg measures its own.
-BBOX = (23.805, 15.638, 156.228, 248.628)
+# The profile's own bounding box inside brand/old-man.svg's viewBox. Since 14
+# October 2026 the small mark is no longer the bought clipart (whose box in
+# its 210x297 viewBox was 23.805, 15.638, 156.228, 248.628) but a silhouette
+# of Debra Caplan's drawing, the person's choice "E": the drawing closed
+# into one solid shape and traced, signature left out, in a viewBox cut to
+# the shape's own pixel box. A fork with its own old-man.svg measures its own.
+BBOX = (0.0, 0.0, 425.0, 724.0)
 
 # What a fork puts in brand/ to draw its own icons, said once and printed by
 # need() and --check. The project's own are not in the repository.

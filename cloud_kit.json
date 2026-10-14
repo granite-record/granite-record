@@ -162,7 +162,7 @@
       "globs": ["assets/licensed/*"]
     },
     {
-      "what": "The bought clipart the build copies into the site: the favicon, the tab and app icons, and the clipart lockup and link cards, which assets/licensed/ replaces file for file where it holds one of the same name. Private like the licensed logo and for the same reason: not part of the open-source release, so not in the repository since 1 October 2026. Named one by one, so that a kit missing any single icon is refused rather than built. The header's mark is not among them: it is the artist's drawing, mark.png in assets/licensed/, has no clipart twin, and is named in the entry above. brand/, which build_brand.py draws them from, goes to the backup only.",
+      "what": "The small mark and the bought clipart the build copies into the site: the favicon, the tab and app icons (a silhouette of the artist's drawing since 14 October 2026, drawn by build_brand.py), and the clipart lockup and link cards, which assets/licensed/ replaces file for file where it holds one of the same name. Private like the licensed logo and for the same reason: not part of the open-source release, so not in the repository since 1 October 2026. Named one by one, so that a kit missing any single icon is refused rather than built. The header's mark is not among them: it is the artist's drawing, mark.png in assets/licensed/, has no clipart twin, and is named in the entry above. brand/, which build_brand.py draws them from, goes to the backup only.",
       "owner": "laptop",
       "paths": ["assets/favicon.ico", "assets/icon.svg", "assets/icon-32.png", "assets/icon-180.png",
                 "assets/icon-512.png", "assets/icon-512-pad.png", "assets/lockup.png", "assets/og.png",
