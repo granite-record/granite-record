@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.267 */
+/* GRANITE_VERSION: 2026-09-07.268 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -2854,7 +2854,7 @@ text-transform:uppercase;color:var(--ink-2);margin:0 0 var(--sp-2);font-family:v
   .card.focus .rep .repbody :is(p,.amdtext,.testimony){max-width:var(--measure)}
 }
 .antext{font-family:var(--serif);font-size:var(--t-read);line-height:1.65;max-width:var(--measure)}
-.anbox.clamped .antext{display:-webkit-box;-webkit-line-clamp:6;
+.anbox.clamped .antext{display:-webkit-box;-webkit-line-clamp:9;
 -webkit-box-orient:vertical;overflow:hidden}
 .anmore{margin-top:var(--sp-4);font-size:var(--t-ui);color:var(--pine);border:1px solid var(--edge);
 border-radius:var(--r-in);padding:var(--sp-1) var(--sp-5);background:var(--surface)}
@@ -6405,12 +6405,9 @@ body:has(.rs-page) .searchrow,.shell:has(.rs-page) .facets,.shell:has(.rs-page) 
   transform:rotate(-45deg);transition:transform .15s}
 .lw-title[open] > summary::before,.lw-chd[open] > summary::before{transform:rotate(45deg)}
 .lw-title > summary:hover .lw-tname{color:var(--pine)}
-.lw-tno{grid-row:1 / span 3;font:600 var(--t-ui)/1.4 var(--sans);color:var(--ink-2)}
+.lw-tno{grid-row:1 / span 2;font:600 var(--t-ui)/1.4 var(--sans);color:var(--ink-2)}
 .lw-tname{font:600 var(--t-ui)/1.4 var(--sans);color:var(--ink)}
 .lw-tspan{font:500 var(--t-sm)/1.4 var(--sans);color:var(--ink-2)}
-.lw-tpeek{font:400 var(--t-sm)/1.4 var(--sans);color:var(--ink-2);overflow:hidden;
-  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
-.lw-title[open] > summary .lw-tpeek{display:none}
 .lw-chs{list-style:none;margin:0 0 .75rem;padding:0 0 0 1.25rem}
 .lw-ch{border-top:1px solid var(--rule)}
 .lw-chd > summary{cursor:pointer;list-style:none;position:relative;padding:.4375rem .25rem .4375rem 1.125rem;

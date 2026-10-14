@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.67
+# GRANITE_VERSION: 2026-09-04.68
 """
 Write a real address for every bill, and the sitemap that points at them.
 
@@ -53,6 +53,7 @@ import json
 import re
 
 import build_date
+import rsa
 import shell as S
 import site_read as SR
 import structured as LD
@@ -65,6 +66,23 @@ E = html.escape
 # nothing about the bill.
 NEW_TITLE = re.compile(r"^\s*\((?:New Title|Second New Title)\)\s*", re.I)
 
+
+
+# THE CHAPTERS /laws HAS A PAGE FOR: build_rsa.py writes one for every
+# chapter of the statute table, and only where the table is on this disk, so
+# the same table says which addresses will resolve. None where it is absent.
+_LAWS = []
+
+
+def law_href(cite):
+    """/laws/91-a#s4 for "RSA 91-A:4" where /laws has that chapter, else ""."""
+    if not _LAWS:
+        t = rsa.load()
+        _LAWS.append({k.upper() for k in t.chapters} if t else set())
+    m = re.search(r"\bRSA\s+(\d{1,3}(?:-[A-Z]{1,2})?)(?::(\S+?))?(?=[\s,;.)]|$)", cite, re.I)
+    if not m or m.group(1).upper() not in _LAWS[0]:
+        return ""
+    return f"/laws/{m.group(1).lower()}" + (f"#s{m.group(2)}" if m.group(2) else "")
 
 def clean_title(s):
     return NEW_TITLE.sub("", s or "").strip()
@@ -174,13 +192,19 @@ def static_record(b, d, data_url=None):
         out.append('<h2>The Docket</h2><div class="sx-docket"><ul>' + "".join(
             f"<li>{E(_day(e.get('date')))}: {E(e.get('text') or '')}</li>" for e in ev)
             + "</ul></div>")
-    # The sections the bill amends, each to the statute's own page on the
-    # General Court's site, as the record names it.
+    # The sections the bill amends, each to the site's own page for its
+    # chapter at /laws, as the app's Laws tab links them (14 October 2026),
+    # and to the General Court's page only where this build has no page for
+    # that chapter: a chapter the statute table does not hold, or a build
+    # with no statute table at all.
     am = d.get("amends") or {}
     if am:
+        def law(r, u):
+            h = law_href(r)
+            return (f'<li><a href="{E(h)}">{E(r)}</a></li>' if h
+                    else f'<li><a href="{E(u)}" rel="noopener">{E(r)}</a></li>')
         out.append("<h2>Laws It Would Change</h2><ul>" + "".join(
-            f'<li><a href="{E(u)}" rel="noopener">{E(r)}</a></li>' for r, u in am.items() if u)
-            + "</ul>")
+            law(r, u) for r, u in am.items() if u) + "</ul>")
     rel = d.get("related") or []
     if rel:
         out.append("<h2>Related Bills</h2><ul>" + "".join(

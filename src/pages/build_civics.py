@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.49
+# GRANITE_VERSION: 2026-09-08.50
 """
 The civics section: a hub and one page per topic, in order.
 
@@ -705,6 +705,46 @@ NUMBERS_DESC = ("Statistics counted from the New Hampshire General Court's own r
                 + NUMBERS_WHAT + ".")
 
 
+# THE GLOSSARY (14 October 2026, the person's ask): every entry of
+# src/pages/words/glossary.json -- the file the term popovers read -- on one
+# page, A to Z by its name in full with the abbreviation after it, so the page
+# and a popover can never say two things. Like The Record in Numbers it is not
+# one of the numbered topics: it is looked things up in, not read in order,
+# and the footer links it on every page.
+GLOSSARY_SLUG = "glossary"
+GLOSSARY_TITLE = "Glossary"
+GLOSSARY_DESC = ("The words and abbreviations of the New Hampshire General Court's record, "
+                 "from ITL and OTP to crossover and committee of conference, each in plain English.")
+
+
+def _gloss_abbr(key, name):
+    """The abbreviation a key stands for, or "" where the key is a word: OTP
+    and RC-calendar are abbreviations (RC), Reconsider and Chaptered are not."""
+    k = key.split("-")[0]
+    if k == name or " " in k or not (k.upper() == k or any(ch.isdigit() for ch in k)):
+        return ""
+    return k
+
+
+def glossary_secs():
+    """[(id, heading, content)], one section a letter, each a table of terms."""
+    rows = []
+    for key, e in C.WORDBOOK["glossary"].items():
+        says = (e.get("says") or "").strip()
+        if not says:
+            raise SystemExit(f"glossary.json: {key} has nothing to say on the glossary page")
+        abbr = _gloss_abbr(key, e["name"])
+        says = says[0].upper() + says[1:] + ("" if says.endswith(".") else ".")
+        rows.append((e["name"].casefold(), key, e["name"], abbr, says))
+    by = {}
+    for sort, key, name, abbr, says in sorted(rows):
+        by.setdefault(name[0].upper(), []).append(
+            f'<tr id="t-{_slug(key)}"><th scope="row"><b>{E(name)}</b>'
+            + (f' ({E(abbr)})' if abbr else "") + f'</th><td>{dashes(curly(says))}</td></tr>')
+    return [(f"s-{L.lower()}", L, "<table><tbody>" + "".join(trs) + "</tbody></table>\n")
+            for L, trs in sorted(by.items())]
+
+
 def curly(text):
     """Escaped for the page, with the apostrophe a reader sees (the meta
     description keeps the plain one it has always had)."""
@@ -1043,6 +1083,9 @@ def hub_learn(topics):
         "numbers", f'<a href="{E(learn_href(NUMBERS_SLUG))}">{NUMBERS_TITLE}</a>',
         '<p class="r-intro">Counted from the General Court&rsquo;s own record.</p>'
         f'<p class="r-one">{curly(NUMBERS_WHAT[0].upper() + NUMBERS_WHAT[1:])}.</p>'))
+    out.append(hub_section(
+        "glossary", f'<a href="{E(learn_href(GLOSSARY_SLUG))}">{GLOSSARY_TITLE}</a>',
+        '<p class="r-intro">The record&rsquo;s words and abbreviations, A to Z.</p>'))
     # THE STATUTES, the next layer after the constitution (RSA_PAGE.md §10),
     # where build_rsa.py will write them: only where the statute table is on
     # this disk, so the hub never links a page a night did not build.
@@ -1469,6 +1512,14 @@ def main():
     (out / f"{NUMBERS_SLUG}.html").write_text(S.clean_links(page), encoding="utf-8")
     urls.append(a.base + S.canon("/" + learn_href(NUMBERS_SLUG)))
     print("  learn/by-the-numbers.html: the page of statistics")
+
+    # ---- the glossary -----------------------------------------------------
+    page = learn_page(tmpl, slug=GLOSSARY_SLUG, title=GLOSSARY_TITLE,
+                      lead=curly(GLOSSARY_DESC), description=GLOSSARY_DESC,
+                      secs=glossary_secs(), foot=pager(None, topics), base=a.base)
+    (out / f"{GLOSSARY_SLUG}.html").write_text(S.clean_links(page), encoding="utf-8")
+    urls.append(a.base + S.canon("/" + learn_href(GLOSSARY_SLUG)))
+    print(f"  learn/{GLOSSARY_SLUG}.html: {len(C.WORDBOOK['glossary'])} terms")
 
     # ---- the how-to guides -------------------------------------------------
     published, gurls = build_guides(site, tmpl, a.base, a.drafts)

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-11.10
+# GRANITE_VERSION: 2026-10-11.11
 """
 The statutes (RSA) as pages: /laws, and one page a chapter at /laws/<chapter>.
 
@@ -788,7 +788,6 @@ def landing_page(tmpl, table, data, base, topics, pending):
         tl, tn = title_label(tno, tname)
         live = [c for c in chs if not table.chapters[c]["repealed"]]
         span = f"Chapters {chs[0]} to {chs[-1]}" if len(chs) > 1 else f"Chapter {chs[0]}"
-        peek = "; ".join(nice(table.chapters[c]["name"]) for c in live[:3]) + ("; &hellip;" if len(live) > 3 else "")
         lis = []
         for c in chs:
             info = table.chapters[c]
@@ -812,7 +811,9 @@ def landing_page(tmpl, table, data, base, topics, pending):
             f'<details class="lw-title" id="t-{E(tno)}"><summary><span class="lw-tno">{E(tl)}</span>'
             f'<span class="lw-tname">{E(tn)}</span><span class="lw-tspan">{E(span)} &middot; '
             f'<span class="lw-tn" data-all="{len(chs)} chapters">{len(chs)} chapters</span></span>'
-            f'<span class="lw-tpeek">{peek}</span></summary><ul class="lw-chs">{"".join(lis)}</ul></details>')
+            # A title's first three chapter names stood under its count until
+            # 14 October 2026; the person asked for the count alone.
+            f'</summary><ul class="lw-chs">{"".join(lis)}</ul></details>')
         title_opts.append(f'<li><label><input type="checkbox" name="ti" value="{E(tno)}"> '
                           f'<span><b>{E(tl)}</b> {E(tn)}</span></label></li>')
     topic_opts = "".join(f'<li><label><input type="checkbox" name="tp" value="{E(t)}"> <span>{E(t)}</span>'

@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.198
+// GRANITE_VERSION: 2026-09-07.199
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -3419,9 +3419,10 @@ const PANE_NOTE={
   // a line under the player saying what the number is -- so the paragraph was
   // the same thing said twice, above rather than beside the claim it was
   // about.
-  reports:`The recommendation, the vote and the day it was signed come from the
-    docket; the reasoning, where there is any, is reproduced from the House
-    Calendar in the committee\u2019s own words.`,
+  // The Reports tab's note ("The recommendation, the vote and the day it was
+  // signed come from the docket; the reasoning ... in the committee's own
+  // words") came out on 14 October 2026 at the person's ask, for the same
+  // reason: each report already names its source under it.
 };
 const paneNote=(k)=>PANE_NOTE[k]?`<p class="src">${PANE_NOTE[k]}</p>`:"";
 
@@ -6223,6 +6224,9 @@ function cardBackground(e){
 // A box is clamped unless the reader opened it, and gets a button only if it
 // actually overflows -- which is a measurement, not a guess: the same 300
 // characters are three lines on a desktop and eight on a phone.
+// The clamp is 9 lines in app.css (.anbox.clamped); AN_SPARE is how far past it
+// a text may run and still be shown whole rather than behind a button.
+const AN_SPARE=3;
 function clampAnalysis(){
   document.querySelectorAll(".card").forEach(card=>{
     const id=card.dataset.id;
@@ -6239,7 +6243,18 @@ function clampAnalysis(){
       const key=id+"#"+i;
       const open=anOpen.has(key);
       box.classList.toggle("clamped",!open);
-      const over=text.scrollHeight>text.clientHeight+2;
+      let over=text.scrollHeight>text.clientHeight+2;
+      // NOT FOR A FEW LINES (14 October 2026, the person's ask): a button
+      // that hides two lines costs the reader a click to save them a glance,
+      // and many analyses ended just past the clamp. So the box opens in full
+      // when no more than AN_SPARE lines are past it.
+      if(over&&!open){
+        const lh=typeof getComputedStyle==="function"?parseFloat(getComputedStyle(text).lineHeight)||0:0;
+        if(lh&&text.scrollHeight-text.clientHeight<=AN_SPARE*lh+2){
+          box.classList.remove("clamped");
+          over=false;
+        }
+      }
       let btn=box.querySelector(".anmore");
       if(over||open){
         if(!btn){

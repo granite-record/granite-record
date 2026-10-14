@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.556
+# GRANITE_VERSION: 2026-09-04.557
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -32830,6 +32830,24 @@ def _rsa_pages(B, RSA, S):
                   "1967 and HB 286 not repeated; titled Chapter 91-A, its sections in the sidebar")
 
 
+@check("build", "the glossary page lists every glossary.json entry once, by its name in full, "
+       "and both footers lead to it", needs=("build_civics", "components"))
+def _glossary_page(B, C):
+    """The person, 14 October 2026: a glossary "linked somewhere directly on
+    the homepage without being too intrusive", the footer chosen. The page is
+    drawn from the file the popovers read, so the two cannot disagree."""
+    secs = B.glossary_secs()
+    body = "".join(c for _, _, c in secs)
+    for key, e in C.WORDBOOK["glossary"].items():
+        assert body.count(f'id="t-{B._slug(key)}"') == 1, f"{key} is not on the glossary page exactly once"
+        assert f"<b>{B.E(e['name'])}</b>" in body, f"{key}'s name in full is missing"
+    assert [h for _, h, _ in secs] == sorted(h for _, h, _ in secs), "the letters are out of order"
+    for f in ("src/pages/build_pages.py", "src/pages/bills.html"):
+        assert '<a href="learn/glossary.html">Glossary</a>' in Path(f).read_text(encoding="utf-8"), \
+            f"{f}'s footer does not lead to the glossary"
+    return "ok", f"{len(C.WORDBOOK['glossary'])} terms under {len(secs)} letters, linked from both footers"
+
+
 @check("build", "the Laws landing: titles say which chapters they hold, chapters carry their name, "
        "status and topic, and a repealed or moved chapter says so in words", needs=("build_rsa", "rsa", "shell"))
 def _rsa_landing(B, RSA, S):
@@ -32866,9 +32884,14 @@ def _rsa_landing(B, RSA, S):
         shutil.rmtree(root, ignore_errors=True)
     assert topics.get("72") == ["Taxes - State"] and pending.get("72"), (topics, pending)
     title = page[page.index('id="t-V"'):]
-    assert '<span class="lw-tno">Title V</span>' in title and "Chapter 72 &middot;" in title \
-        and "Persons and Property Liable to Taxation" in title[:title.index('class="lw-chs"')], \
+    # The span and the count, and since 14 October 2026 (the person's ask) not
+    # the first chapters' names as well: a closed title is its number, its
+    # name, its span and how many chapters it holds.
+    closed = title[:title.index('class="lw-chs"')]
+    assert '<span class="lw-tno">Title V</span>' in title and "Chapter 72 &middot;" in title, \
         "Title V does not say which chapters it holds before it is opened"
+    assert "Persons and Property Liable to Taxation" not in closed and "lw-tpeek" not in closed, \
+        "a closed title lists its chapters' names again, under the count"
     assert '<span class="lw-chn">Chapter 72:</span>' in page and 'data-topics="Taxes - State"' in page \
         and 'data-pend="1"' in page and "1 pending" in page, "the chapter's label, topic or pending count is missing"
     for name in ("st", "tp", "ti"):

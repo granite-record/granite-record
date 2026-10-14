@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.197
+# GRANITE_VERSION: 2026-09-04.198
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -1350,7 +1350,7 @@ Court is right and we want to know.</p>
 <p class="fcolhead">The record</p>
 <ul class="flinks">
 <li><a href="data.html">Bulk data</a></li>
-<li><a href="about.html">How this is made</a></li>
+<li><a href="learn/glossary.html">Glossary</a></li>
 <li><a class="out" href="{REPO}" target="_blank" rel="noopener">Source on GitHub</a></li>
 </ul>
 </div>
