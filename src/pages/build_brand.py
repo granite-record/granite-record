@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-12.15
+# GRANITE_VERSION: 2026-09-12.16
 """
 Turn the drawn logo and icon into the files a site needs, once.
 
@@ -95,10 +95,14 @@ OUT = ROOT / "assets"
 # The profile's own bounding box inside brand/old-man.svg's viewBox. Since 14
 # October 2026 the small mark is no longer the bought clipart (whose box in
 # its 210x297 viewBox was 23.805, 15.638, 156.228, 248.628) but a silhouette
-# of Debra Caplan's drawing, the person's choice "E": the drawing closed
-# into one solid shape and traced, signature left out, in a viewBox cut to
-# the shape's own pixel box. A fork with its own old-man.svg measures its own.
-BBOX = (0.0, 0.0, 425.0, 724.0)
+# of Debra Caplan's drawing, the person's choice "E": the gaps between her
+# strokes bridged with a round brush (up to 8px of the 474x774 drawing, at 4x)
+# and the holes filled, her ink kept exactly, the signature left out, and the
+# one shape traced -- so the outline is her own outer strokes. The first cut
+# used a square 31px brush and its edge read as blocky and jagged (the person,
+# 14 October 2026). The viewBox is the drawing's; this is the shape's box in
+# it. A fork with its own old-man.svg measures its own.
+BBOX = (24.75, 24.75, 425.0, 724.25)
 
 # What a fork puts in brand/ to draw its own icons, said once and printed by
 # need() and --check. The project's own are not in the repository.
