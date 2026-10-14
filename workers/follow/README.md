@@ -24,6 +24,8 @@ up to last night's build. Nothing here implies real time.
 | `wrangler.toml` | The sender's own configuration: cron, the D1 binding, plain settings. No secret. |
 | `CHANGES_FORMAT.md` | The contract for the files the nightly build publishes under `/changes/`, which are all the sender reads. |
 
+A digest can be rendered without sending it: `node tests/follow/preview_digest.js [--weekly] [--follow kind:ref ...] [--site URL | --dir site]` reads a site's real `/changes/` files and writes the email's HTML and text, through the sender's own `collect()` and `digestEmail()`, to `preview-mail/`. No database, no Resend, no address. It sits beside the tests because it prints, and nothing in the Worker may.
+
 And under `functions/api/follow/`, Pages Functions on the site's own origin:
 
 | Address | What it does |
