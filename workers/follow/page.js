@@ -16,49 +16,89 @@
 import { b64urlEncode } from "./address.js";
 import { esc, htmlResponse } from "./common.js";
 
+// THE SITE'S OWN LOOK (the person's manage-page redesign, 14 October 2026):
+// the site's palette and spacing, its serif for headings and its sans for the
+// rest -- by name, where the reader has them, since the page's policy loads no
+// font from anywhere (common.js, default-src 'none'), and the system's own
+// otherwise. Each part of the page is a card; a choice of two is a segmented
+// switch; following is a switch beside each record; Save stays in reach.
 const STYLE = `
-:root{--bg:#fbfaf7;--fg:#1a1a1a;--quiet:#555;--rule:#e3e0d8;--accent:#1d4e89;--on-accent:#fff;
---note:#eef3f9;--danger:#8a1c1c;--card:#fff}
-@media (prefers-color-scheme: dark){:root{--bg:#16181b;--fg:#e9e6df;--quiet:#a9a59c;
---rule:#34373c;--accent:#8db4e6;--on-accent:#101215;--note:#1e2833;--danger:#e39a9a;--card:#1d2024}}
+:root{--paper:#E9EAEC;--surface:#FBFBFC;--wash:#DFE1E4;--ink:#1C2126;--ink-2:#4A5259;--rule:#D3D6DA;
+--edge:#767E86;--pine:#14514C;--pine-soft:#DFEBEA;--on-pine:#fff;--brick:#9E2B25;--brick-soft:#FAE7E5;
+--sans:"Public Sans",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+--serif:"Source Serif 4",Georgia,"Times New Roman",serif}
+@media (prefers-color-scheme: dark){:root{--paper:#171B1C;--surface:#21282A;--wash:#2C3436;--ink:#E6E9E8;
+--ink-2:#A7B0B0;--rule:#3D4547;--edge:#7C8687;--pine:#7FB9B1;--pine-soft:#1B302E;--on-pine:#0F1414;
+--brick:#F0938C;--brick-soft:#43211F}}
 *{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--fg);
-font:17px/1.55 "Source Serif 4",Georgia,"Times New Roman",serif}
-main{max-width:640px;margin:0 auto;padding:32px 16px 64px}
-.brand{font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:var(--quiet);margin:0 0 24px}
-.brand a{color:inherit;text-decoration:none}
-h1{font-size:28px;line-height:1.2;margin:0 0 16px}
-h2{font-size:20px;line-height:1.3;margin:36px 0 8px}
-p{margin:0 0 14px}
-a{color:var(--accent)}
-.note{padding:10px 14px;border-left:4px solid var(--accent);background:var(--note);margin:0 0 20px}
-.quiet{color:var(--quiet);font-size:15px}
-ul.follows{list-style:none;padding:0;margin:0 0 10px;border-top:1px solid var(--rule)}
-ul.follows li{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;
-gap:8px 16px;padding:10px 0;border-bottom:1px solid var(--rule)}
-ul.follows .what{min-width:0;overflow-wrap:anywhere}
-ul.follows .title{display:block;color:var(--quiet);font-size:14px}
-form{margin:0 0 12px}
-fieldset{border:0;padding:0;margin:0 0 12px}
+body{margin:0;background:var(--paper);color:var(--ink);font:16px/1.55 var(--sans)}
+main{max-width:720px;margin:0 auto;padding:20px 16px 72px}
+.brand{font:600 20px/1 var(--serif);margin:4px 0 24px}
+.brand a{color:var(--ink);text-decoration:none}
+h1{font:600 30px/1.2 var(--serif);margin:0 0 6px}
+.lede{color:var(--ink-2);margin:0 0 20px}
+h2{font:600 20px/1.3 var(--serif);margin:0 0 4px}
+h3{font:600 12px/1 var(--sans);letter-spacing:.07em;text-transform:uppercase;color:var(--ink-2);margin:22px 0 8px}
+p{margin:0 0 12px}
+a{color:var(--pine)}
+.card{background:var(--surface);border:1px solid var(--rule);border-radius:10px;padding:18px 20px;margin:0 0 16px}
+.card > h2 + .quiet{margin-top:2px}
+.pair{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:0 0 16px}
+.pair .card{margin:0}
+.note{padding:10px 14px;border-left:4px solid var(--pine);background:var(--pine-soft);border-radius:4px;margin:0 0 16px}
+.quiet{color:var(--ink-2);font-size:14px}
+fieldset{border:0;padding:0;margin:10px 0 0;min-width:0}
+legend{padding:0}
 label{display:flex;gap:10px;align-items:baseline;margin:0 0 8px}
-button{font:inherit;font-size:15px;padding:8px 16px;border-radius:4px;cursor:pointer;
-border:1px solid var(--accent);background:var(--accent);color:var(--on-accent)}
-button.plain{background:var(--card);color:var(--accent)}
-button.danger{background:var(--card);color:var(--danger);border-color:var(--danger)}
-button:disabled{opacity:.5;cursor:default}
-h3{font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:var(--quiet);margin:24px 0 6px}
-label small{display:block;color:var(--quiet);font-size:14px}
-ul.follows label{display:flex;gap:10px;align-items:baseline;margin:0;flex:1;min-width:0}
+label small{display:block;color:var(--ink-2);font-size:13.5px;line-height:1.4;margin-top:2px}
+input[type=radio],input[type=checkbox]{accent-color:var(--pine)}
+/* A CHOICE OF TWO, as a segmented switch: the radios stay radios. */
+.seg{display:grid;grid-template-columns:1fr 1fr;gap:0;border:1px solid var(--edge);border-radius:8px;overflow:hidden}
+.seg label{margin:0;padding:10px 12px;display:block;cursor:pointer;border-left:1px solid var(--rule)}
+.seg label:first-child{border-left:0}
+.seg input{position:absolute;opacity:0;width:1px;height:1px}
+.seg label span{font-weight:600}
+.seg label small{font-weight:400}
+.seg label:has(input:checked){background:var(--pine-soft);box-shadow:inset 0 -3px 0 var(--pine)}
+.seg label:has(input:checked) span{color:var(--pine)}
+.seg label:has(input:focus-visible){outline:2px solid var(--pine);outline-offset:-2px}
+.pauses label{padding:6px 0;margin:0}
+/* WHAT YOU FOLLOW: one row a record, its switch at the end. */
+ul.follows{list-style:none;padding:0;margin:0 0 10px;border-top:1px solid var(--rule)}
+ul.follows li{border-bottom:1px solid var(--rule)}
+ul.follows label{display:flex;justify-content:space-between;align-items:center;gap:16px;margin:0;padding:12px 0;cursor:pointer}
+ul.follows .what{min-width:0;overflow-wrap:anywhere;font-weight:600}
+ul.follows .title{display:block;color:var(--ink-2);font-size:14px;font-weight:400}
+input.sw{appearance:none;-webkit-appearance:none;flex:none;order:2;width:42px;height:24px;border-radius:999px;
+background:var(--wash);border:1px solid var(--edge);position:relative;cursor:pointer;margin:0}
+input.sw::after{content:"";position:absolute;top:2px;left:2px;width:18px;height:18px;border-radius:50%;
+background:var(--surface);box-shadow:0 1px 2px rgba(0,0,0,.25);transition:transform .15s}
+input.sw:checked{background:var(--pine);border-color:var(--pine)}
+input.sw:checked::after{transform:translateX(18px)}
 ul.chips{list-style:none;padding:0;margin:6px 0 10px;display:flex;flex-wrap:wrap;gap:8px}
-ul.chips label{border:1px solid var(--rule);border-radius:999px;padding:4px 12px;margin:0;
-align-items:center;background:var(--card);font-size:15px}
-.add{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;margin:8px 0 4px}
-.add label{margin:0;font-size:15px}
-input[type=text],input:not([type]),input[type=date],select{font:inherit;font-size:16px;padding:6px 8px;
-border:1px solid var(--rule);border-radius:4px;background:var(--card);color:var(--fg);max-width:100%;min-width:0}
-.add select{flex:1 1 220px}
-.save{position:sticky;bottom:0;background:var(--bg);padding:12px 0;margin:20px 0 0;border-top:1px solid var(--rule)}
-:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+ul.chips label{border:1px solid var(--edge);border-radius:999px;padding:5px 12px;margin:0;align-items:center;
+background:var(--surface);font-size:14.5px;cursor:pointer}
+ul.chips label:has(input:checked){background:var(--pine-soft);border-color:var(--pine);color:var(--pine);font-weight:600}
+ul.chips input{accent-color:var(--pine)}
+.add{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;margin:10px 0 4px}
+.add label{margin:0;font-size:14px;font-weight:600;color:var(--ink-2)}
+input[type=text],input:not([type]),input[type=date],select{font:inherit;font-size:16px;padding:8px 10px;min-height:42px;
+border:1px solid var(--edge);border-radius:6px;background:var(--surface);color:var(--ink);max-width:100%;min-width:0}
+.add select,.add input:not([type]){flex:1 1 220px}
+button{font:inherit;font-size:15px;font-weight:600;padding:10px 18px;min-height:44px;border-radius:6px;cursor:pointer;
+border:1px solid var(--pine);background:var(--pine);color:var(--on-pine)}
+button.plain{background:var(--surface);color:var(--pine)}
+button.danger{background:var(--surface);color:var(--brick);border-color:var(--brick)}
+button:disabled{opacity:.5;cursor:default}
+.save{position:sticky;bottom:0;z-index:2;display:flex;justify-content:flex-end;gap:12px;align-items:center;
+background:var(--surface);border:1px solid var(--rule);border-radius:10px;padding:10px 14px;margin:16px 0;
+box-shadow:0 -2px 10px rgba(0,0,0,.08)}
+.save .quiet{margin:0 auto 0 0}
+.save button{white-space:nowrap}
+.card.danger{border-color:var(--brick);background:linear-gradient(var(--brick-soft),var(--brick-soft)) top/100% 4px no-repeat,var(--surface)}
+:focus-visible{outline:2px solid var(--pine);outline-offset:2px}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+@media (max-width:600px){.pair{grid-template-columns:1fr}.card{padding:16px}h1{font-size:26px}}
 `;
 
 export function nonce() {

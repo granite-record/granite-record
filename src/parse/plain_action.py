@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-14.1
+# GRANITE_VERSION: 2026-10-14.2
 """
 A docket line in plain words, for a reader who does not know the clerk's
 shorthand -- the email digest and the Documents tab (the person's choices of
@@ -121,11 +121,74 @@ def _rec(rec):
     return gloss[:1].lower() + gloss[1:] if gloss and "{" not in gloss else ""
 
 
+# THE LINES narrative.classify KEEPS AS "other" or reads too coarsely for a
+# sentence, read here first (14 October 2026, from 865 docket lines of 89
+# bills of 2025-2026, of which these were most of the 13% left as written).
+# Each answers (match) -> words, or "" to fall through.
+_AMEND = re.compile(
+    r"^(?:(?P<who>(?:Sen|Rep)\.\s+[\w.' -]+?)\s+)?(?P<what>Committee Amendment|Floor Amendment|FLAM|"
+    r"Enrolled Bill Amendment|Amendment)\s*#?\s*(?P<num>(?:\d{4}-)?\d+[a-z]*)"
+    r"(?:\s*\(NT\))?(?:\s*\((?P<by>(?:Rep|Sen)s?\.[^)]*)\))?[\s,:;]*"
+    r"(?P<out>AA|AF|Adopted|Failed)\b", re.I)
+_SIMPLE = [
+    (re.compile(r"^Died on (?:the )?Table\b", re.I), lambda m, r: "Died on the table when the session ended"),
+    (re.compile(r"^Referred to (?!Interim)(?P<c>[A-Z][\w ,&]+?)\s+\d{1,2}/\d{1,2}/\d{4}", re.I),
+     lambda m, r: f"Referred to {m.group('c')}"),
+    (re.compile(r"^Referral Waived by Committee Chair", re.I),
+     lambda m, r: "Its second committee's chair waived the referral"),
+    (re.compile(r"Removed from (?:the )?Consent", re.I),
+     lambda m, r: "Removed from the consent calendar, to be debated"),
+    (re.compile(r"^Committee of Conference Meeting\s*:", re.I),
+     lambda m, r: "Committee of conference meeting" + _where(r)),
+    (re.compile(r"^Conference Committee Report\b.*?\b(?P<o>Adopted|Failed|Rejected)\b", re.I),
+     lambda m, r: f"Conference committee report {m.group('o').lower()}" + _how(r)),
+    (re.compile(r"^Conference Committee Report\b.*?\bNot (?:Signed Off|Filed)\b", re.I),
+     lambda m, r: "The committee of conference filed no agreed report"),
+    (re.compile(r"^Conference Committee Report\b.*?\bFiled\b", re.I),
+     lambda m, r: "Conference committee report filed"),
+    (re.compile(r"^Speaker Appoints\s*:\s*(?P<w>.+?)\s*(?:\d{1,2}/\d{1,2}/\d{4}|\(|$)", re.I),
+     lambda m, r: f"The Speaker named the House conferees: {m.group('w').strip(' ;,')}"),
+    (re.compile(r"^President Appoints\s*:\s*(?P<w>.+?)\s*(?:;|\(|\d{1,2}/\d{1,2}/\d{4}|$)", re.I),
+     lambda m, r: f"The Senate President named the Senate conferees: {m.group('w').strip(' ;,')}"),
+    (re.compile(r"^Conferee Change\s*:\s*(?P<a>.+?)\s+Replaces\s+(?P<b>.+?)\s+\d{1,2}/\d{1,2}/\d{4}", re.I),
+     lambda m, r: f"Conferee changed: {m.group('a')} replaces {m.group('b')}"),
+    (re.compile(r"^Interim Study Report\s*:\s*(?P<no>Not )?Recommended for Future Legislation", re.I),
+     lambda m, r: ("Interim study report: does not recommend future legislation" if m.group("no")
+                   else "Interim study report: recommends future legislation")
+     + (lambda v: f", {v.group(1)}\u2013{v.group(2)}" if v else "")(_VOTE.search(r))),
+    (re.compile(r"^(?P<who>(?:Sen|Rep)\.\s+[\w.' -]+?)\s+Moved\s+(?P<m>.+?)\s*;", re.I),
+     lambda m, r: (lambda w: f"{m.group('who')} moved to {w[:1].lower() + w[1:]}" if w else "")(_rec(m.group("m")))),
+]
+
+
+def _amendment(raw):
+    m = _AMEND.search(raw)
+    if not m:
+        return ""
+    kind = {"committee amendment": "Committee amendment", "floor amendment": "Floor amendment",
+            "flam": "Floor amendment", "enrolled bill amendment": "Enrolled bill amendment"}.get(
+        m.group("what").lower(), "Amendment")
+    who = m.group("who") or m.group("by")
+    out = "adopted" if m.group("out").upper() in ("AA", "ADOPTED") else "failed"
+    return f"{kind} {m.group('num')}" + (f" ({who.strip()})" if who else "") + f" {out}" + _how(raw)
+
+
 def plain(raw, bill="", body=""):
     """The line in plain words, or "" where it is of a kind not known here."""
     raw = (raw or "").strip()
     if not raw:
         return ""
+    if raw.upper().startswith("==CANCELLED=="):
+        return ""
+    words = _amendment(raw)
+    if words:
+        return words
+    for pat, say in _SIMPLE:
+        m = pat.search(raw)
+        if m:
+            words = say(m, raw)
+            if words:
+                return words
     d = N.classify(raw)
     k = d.get("_type")
     if k == "introduced":

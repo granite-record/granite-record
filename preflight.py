@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.558
+# GRANITE_VERSION: 2026-09-04.559
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -32858,13 +32858,19 @@ def _plain_action(PA):
             "Motion to kill the bill and bar its subject for the term failed, 133\u2013205 on a roll call",
         "Signed by the Governor on 06/30/2026; Chapter 0123; Effective 07/01/2026":
             "Signed by the Governor, chapter 123",
-        "Referral Waived by Committee Chair per House Rule 47(f) 01/08/2026": "",
+        "FLAM # 2025-0274h (Rep. Berry): AA VV 02/06/2025":
+            "Floor amendment 2025-0274h (Rep. Berry) adopted, on a voice vote",
+        "Amendment # 2025-2345h: AF DV 103-215 06/05/2025":
+            "Amendment 2025-2345h failed, 103\u2013215 on a division vote",
+        "Died on Table, Session ended 12/17/2025": "Died on the table when the session ended",
+        "Conference Committee Report: Not Filed": "The committee of conference filed no agreed report",
+        "I. Section 1 Effective 01/01/2026": "",
     }
     for raw, want in cases.items():
         got = PA.plain(raw)
         assert got == want, f"{raw!r} reads {got!r}, not {want!r}"
         assert not re.search(r"\d{1,2}/\d{1,2}/\d{4}", got), f"{raw!r} keeps the clerk's date"
-    return "ok", f"{len(cases)} docket lines read as the approved words say, and one left as written"
+    return "ok", f"{len(cases)} docket lines read as the approved words say, and two left as written"
 
 
 @check("build", "the glossary page lists every glossary.json entry once, by its name in full, "

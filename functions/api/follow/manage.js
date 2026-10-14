@@ -118,7 +118,8 @@ function render(origin, t, sub, follows, current, notice, today) {
       ? `<a href="${esc(siteUrl(origin, m.url))}">${esc(label)}</a>` : esc(label);
     const sub2 = [m?.title, m?.now ? `Now: ${m.now}` : ""].filter(Boolean)
       .map(x => `<span class="title">${esc(x)}</span>`).join("");
-    return `<li><label><input type="checkbox" name="keep" value="${esc(key)}"${checked ? " checked" : ""}>` +
+    // A switch on a record of its own, a chip's own box on a topic (page.js).
+    return `<li><label><input type="checkbox"${kind === "topic" ? "" : ' class="sw"'} name="keep" value="${esc(key)}"${checked ? " checked" : ""}>` +
       `<input type="hidden" name="listed" value="${esc(key)}">` +
       `<span class="what">${what}${sub2}</span></label></li>`;
   };
@@ -161,21 +162,29 @@ function render(origin, t, sub, follows, current, notice, today) {
   const status = pause === "forever" ? "Paused until you turn updates back on."
     : pause === "until" ? `Paused through ${esc(p)}.` : "";
   const body = `<h1>Your email updates</h1>
+<p class="lede">What you follow, how often, and how much. Nothing changes until you save.</p>
 ${NOTICES[notice] ? `<p class="note">${esc(NOTICES[notice])}</p>` : ""}
 ${status ? `<p class="note">${status}</p>` : ""}
 <form method="post" action="${PATH}">${hidden(t, "save")}
-<h2>How often</h2>
-<fieldset><legend class="quiet">Send me updates</legend>
+<div class="pair">
+<section class="card"><h2>How often</h2>
+<fieldset class="seg"><legend class="sr">Send me updates</legend>
 ${radio("frequency", "daily", freq, "Daily", "About 8:00 a.m. New Hampshire time, only on days when something is new")}
 ${radio("frequency", "weekly", freq, "Weekly", "Saturday about 8:00 a.m.: the week ahead, then the week's news")}
-</fieldset>
-<h2>How much</h2>
-<fieldset><legend class="quiet">Include</legend>
+</fieldset></section>
+<section class="card"><h2>How much</h2>
+<fieldset class="seg"><legend class="sr">Include</legend>
 ${radio("detail", "all", detail, "Everything", "Every entry on the record of what you follow")}
 ${radio("detail", "milestones", detail, "Milestones only", "Hearings scheduled, committee votes, floor votes, and how a bill ended")}
-</fieldset>
-<h2>Pause</h2>
-<fieldset><legend class="quiet">Stop sending for a while, keeping what you follow</legend>
+</fieldset></section>
+</div>
+<section class="card"><h2>What you follow</h2>
+<p class="quiet">Untick anything to stop following it. Adding here needs no confirmation email.
+Unticking everything deletes your address.</p>
+${groups}
+</section>
+<section class="card"><h2>Pause</h2>
+<fieldset class="pauses"><legend class="quiet">Stop sending for a while, keeping what you follow</legend>
 ${radio("pause", "none", pause, "Not paused", "")}
 <label><input type="radio" name="pause" value="until"${pause === "until" ? " checked" : ""}><span>Paused through
 <input type="date" name="pause_until" aria-label="the last day of the pause" min="${esc(today)}"
@@ -184,23 +193,22 @@ ${radio("pause", "forever", pause, "Paused until I turn updates back on", "")}
 </fieldset>
 <p class="quiet">The record is rebuilt once a night, so even the daily email reports
 the night before, not what is happening now.</p>
-<h2>What you follow</h2>
-<p class="quiet">Untick anything to stop following it. Adding here needs no confirmation email.
-Unticking everything deletes your address.</p>
-${groups}
-<p class="save"><button type="submit">Save changes</button></p>
+</section>
+<p class="save"><span class="quiet">Nothing changes until you save.</span><button type="submit">Save changes</button></p>
 </form>
-<h2>A new link</h2>
+<section class="card"><h2>A new link</h2>
 <p>This page's link is the same in every email we send you. If you forwarded one
 of them, or think someone else has this link, ask for a new one. It is sent to
 your address, and every link in earlier emails stops working, their unsubscribe
 links included.</p>
 <form method="post" action="${PATH}">${hidden(t, "newlink")}
 <button type="submit" class="plain">Send me a new link</button></form>
-<h2>Unsubscribe</h2>
+</section>
+<section class="card danger"><h2>Unsubscribe</h2>
 <p>${esc(DELETES)}</p>
 <form method="post" action="${PATH}">${hidden(t, "unsubscribe")}
-<button type="submit" class="danger">Unsubscribe and delete my address</button></form>`;
+<button type="submit" class="danger">Unsubscribe and delete my address</button></form>
+</section>`;
   return page(200, { title: "Your email updates", body });
 }
 
