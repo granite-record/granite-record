@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.272 */
+/* GRANITE_VERSION: 2026-09-07.273 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -2221,12 +2221,16 @@ padding-inline:var(--sp-2)}
    stop the bill passed, the stopped colour after one it ended at, the
    study's and the table's after theirs, and the rule's grey after the stop
    it is at now or one it never reached. So a vetoed bill's line runs green
-   into a red Governor, and a bill that died in the House has a grey line
-   into its red Law. */
+   into a red Governor and red on to the override. */
 :is(.card.focus,.rrail) .rail.dated .stop.s-p:before{background:var(--st-law)}
-:is(.card.focus,.rrail) .rail.dated .stop.s-x:before{background:var(--st-done)}
-:is(.card.focus,.rrail) .rail.dated .stop.s-istudy:before{background:var(--st-study)}
-:is(.card.focus,.rrail) .rail.dated .stop.s-ontable:before{background:var(--st-table)}
+/* AND A BILL THAT STOPPED STOPS THERE (the person, later the same day): the
+   line out of a stop it ended at -- killed, tabled, sent to interim study --
+   is coloured only where it leads to another stop the record marks (a veto,
+   then the override that failed); into a stop it never reached it stays
+   grey, so the rail does not look as if the bill went on. */
+:is(.card.focus,.rrail) .rail.dated .stop.s-x:not(:has(+ .stop.s-o)):before{background:var(--st-done)}
+:is(.card.focus,.rrail) .rail.dated .stop.s-istudy:not(:has(+ .stop.s-o)):before{background:var(--st-study)}
+:is(.card.focus,.rrail) .rail.dated .stop.s-ontable:not(:has(+ .stop.s-o)):before{background:var(--st-table)}
 :is(.card.focus,.rrail) .rail.dated .stop:is(.s-p,.s-x,.s-h,.s-istudy,.s-ontable) i{color:var(--ink);font-weight:600}
 
 @container rail (max-width:34.5em){.rail.dated small .ry{display:block}}

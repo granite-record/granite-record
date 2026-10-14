@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.200
+// GRANITE_VERSION: 2026-09-07.201
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -3032,10 +3032,10 @@ function simpleDonut(rc,bid,i){
   // palette with no threshold at all, which made the same 191 to 158 look like
   // a different kind of vote.
   const y=rc.yeas||0,n=rc.nays||0,tot=(y+n)||1;
-  const R=60,C=2*Math.PI*R,GAP=32,gap=C*GAP/360,avail=C-gap;
+  const R=60,C=2*Math.PI*R,GAP=32,gap=C*GAP/360,avail=C-gap-C*1.4/360;  // a hair's break where Yes meets No (ring 1c)
   const won=!!rc.passed;
   const seg=(len,fill,sideWon)=>`<circle r="${R}" cx="86" cy="86" fill="none" stroke="${fill}"
-    stroke-width="28" opacity="${sideWon?1:.75}"
+    stroke-width="24" opacity="${sideWon?1:.75}"
     stroke-dasharray="${len} ${C-len}" stroke-dashoffset="${-gap/2}"></circle>`;
   const need=rc.threshold_needed||Math.floor(tot/2)+1;
   const frac=Math.min(1,Math.max(0,need/tot));
@@ -3123,7 +3123,7 @@ function donut(bid,i,rc){
   const total=segs.reduce((a,s)=>a+s.n,0)||1;
   // A wider gap: at ten degrees the two sides read as one ring with a nick in
   // it. At twenty-five they read as two sides of a question.
-  const R=60,C=2*Math.PI*R,GAP=32,gap=C*GAP/360,avail=C-gap;
+  const R=60,C=2*Math.PI*R,GAP=32,gap=C*GAP/360,avail=C-gap-C*1.4/360;  // a hair's break where Yes meets No (ring 1c)
   const key=`${bid}|${i}`,chosen=segSel[key];
   // At rest each side is one unbroken colour, because the first question is
   // whether it passed and a ring cut into party blocks answers a different one
@@ -3136,7 +3136,7 @@ function donut(bid,i,rc){
     // the numbers do. A chosen group overrides that: then the question is who,
     // not which.
     const dim=chosen?(chosen===s.key?1:.28):(sideWon?1:.75);
-    return `<circle r="${R}" cx="86" cy="86" fill="none" stroke="${fill}" stroke-width="28"
+    return `<circle r="${R}" cx="86" cy="86" fill="none" stroke="${fill}" stroke-width="24"
       stroke-dasharray="${len} ${C-len}" stroke-dashoffset="${o}" opacity="${dim}"
       data-seg="${key}|${s.key}"></circle>`;
     }).join("");};
@@ -3151,7 +3151,7 @@ function donut(bid,i,rc){
   const need=rc.threshold_needed||Math.floor(voting/2)+1;
   const frac=voting?Math.min(1,Math.max(0,need/voting)):0.5;
   const a=(180+GAP/2+(360-GAP)*frac)*Math.PI/180;
-  // The ring is 28 wide about radius R, so its edges are at R-14 and R+14. The
+  // The ring is 24 wide about radius R (ring 1c), so its edges are at R-12 and R+12. The
   // tick starts flush with the inner edge and runs six past the outer one:
   // grounded on the inside, proud on the outside, so it reads as a mark
   // against the ring rather than a line drawn through it.
@@ -3214,37 +3214,21 @@ function marker(a,R,need,rule){
   const [rx,ry]=px(out,half/out);
   return `<polygon points="${tx.toFixed(1)},${ty.toFixed(1)}
     ${lx.toFixed(1)},${ly.toFixed(1)} ${rx.toFixed(1)},${ry.toFixed(1)}"
-    fill="var(--ink-2)"><title>${need} needed${rule?` \u2014 ${esc(rule)}`:""}</title></polygon>`;
+    fill="var(--ink)"><title>${need} needed${rule?` \u2014 ${esc(rule)}`:""}</title></polygon>`;
 }
 
 function yn(GAP,R,won){
-  // Below the ring rather than on it. Following the curve put them at an angle
-  // to each other and close together near the gap, which read as decoration on
-  // the chart; set on a line underneath, they read as labels for the two sides.
-  // The legend beside the donut is taller than the donut, so this space costs
-  // nothing.
-  const Y=188;
-  // --ink-2 FOR THE LOSING LETTER, and it was --ink-3, which has not existed
-  // since the palette went to two inks on 7 September. An unresolved var() in
-  // an SVG fill does not inherit and does not warn: it falls back to the
-  // property's initial value, which for fill is BLACK. On the light palette
-  // black read as emphasis and nobody noticed for five days; on the dark one
-  // the losing side's Y or N was black on a dark card and effectively gone.
-  //
-  // Worth knowing why every search missed it: the token name is BUILT here by
-  // concatenation, so the string "--ink-3" appears nowhere in this file and
-  // grep for it finds only comments. The same shape of bug is already
-  // recorded in app.css about --brick, which was used and never defined, so
-  // color-mix() dropped the whole declaration silently. A var() that does not
-  // resolve is the quietest failure in this codebase.
-  const at=(x,txt,won)=>`<text x="${x}" y="${Y}" text-anchor="middle" font-size="30"
-      letter-spacing=".04em" font-weight="${won?700:400}"
-      fill="var(--ink${won?"":"-2"})">${txt}</text>`
-    // Bold and underlined, so the prevailing side survives being printed in
-    // grey, photocopied, or read by somebody who cannot see the colours.
-    +(won?`<line x1="${x-14}" y1="${Y+8}" x2="${x+14}" y2="${Y+8}"
-      stroke="var(--ink)" stroke-width="2.5"></line>`:"");
-  return at(42,"Y",won)+at(130,"N",!won);
+  // YES AND NO IN WORDS (the person, 14 October 2026, ring 1c): under the
+  // two ends of the ring, set wider apart than the ends themselves so each
+  // reads as its side's label, the side that carried in bold. They were a
+  // 30px Y and N with the winner underlined.
+  // --ink-2 FOR THE LOSING WORD, never a token that does not exist: an
+  // unresolved var() in an SVG fill falls back to black without a warning
+  // (see the note on --ink-3 in the history of this function).
+  const Y=190;
+  const at=(x,txt,won)=>`<text x="${x}" y="${Y}" text-anchor="middle" font-size="17"
+      font-weight="${won?700:400}" fill="var(--ink${won?"":"-2"})">${txt}</text>`;
+  return at(36,"Yes",won)+at(136,"No",!won);
 }
 
 // The count in the middle, with the side that prevailed in bold.
@@ -3254,10 +3238,13 @@ function yn(GAP,R,won){
 // the yes side won a vote it lost. The threshold tick on the ring shows why,
 // and this agrees with it.
 function score(y,n,won){
-  const part=(v,b)=>`<tspan font-weight="${b?700:400}">${v}</tspan>`;
-  return `<text x="86" y="91" text-anchor="middle" font-size="16" fill="var(--ink)"
-    font-variant-numeric="tabular-nums">${part(y,won)}<tspan fill="var(--rule-2)"
-    font-weight="400" dx="2" dy="0">\u2009|\u2009</tspan>${part(n,!won)}</text>`;
+  // The tally in the serif, and under it in small capitals whether the vote
+  // carried (ring 1c, 14 October 2026) -- the word, not a bolder number, says
+  // which side prevailed, which on a failed override is the smaller one.
+  return `<text x="86" y="90" text-anchor="middle" font-size="18" font-weight="600"
+    style="font-family:var(--serif)" fill="var(--ink)" font-variant-numeric="tabular-nums">${y}\u2013${n}</text>
+    <text x="86" y="109" text-anchor="middle" font-size="13" font-weight="700" letter-spacing="1"
+    fill="var(${won?"--st-law":"--st-done"})">${won?"PASSED":"FAILED"}</text>`;
 }
 
 function fullRecord(bid,i,rc){
@@ -3955,9 +3942,9 @@ const thou=n=>Number(n||0).toLocaleString("en-US");
 const share=(n,of)=>`${(of?100*n/of:0).toFixed(1)}%`;
 function ballotRing(y,n,won){
   const tot=(y+n)||1;
-  const R=60,C=2*Math.PI*R,GAP=32,gap=C*GAP/360,avail=C-gap;
+  const R=60,C=2*Math.PI*R,GAP=32,gap=C*GAP/360,avail=C-gap-C*1.4/360;  // a hair's break where Yes meets No (ring 1c)
   const seg=(len,fill,sideWon)=>`<circle r="${R}" cx="86" cy="86" fill="none" stroke="${fill}"
-    stroke-width="28" opacity="${sideWon?1:.75}"
+    stroke-width="24" opacity="${sideWon?1:.75}"
     stroke-dasharray="${len} ${C-len}" stroke-dashoffset="${-gap/2}"></circle>`;
   // Two thirds of the way round from the gap: where the yes side had to reach.
   const a=(180+GAP/2+(360-GAP)*2/3)*Math.PI/180;
@@ -3969,8 +3956,8 @@ function ballotRing(y,n,won){
     <g transform="rotate(90 86 86)">${seg(avail*y/tot,"var(--yes)",won)}</g>
     <g transform="translate(172,0) scale(-1,1)"><g transform="rotate(90 86 86)">${seg(avail*n/tot,"var(--no)",!won)}</g></g>
     ${marker(a,R,"Two thirds of the votes cast","")}${yn(GAP,R,won)}
-    <text x="86" y="89" text-anchor="middle" font-size="18" font-weight="${won?700:400}"
-      fill="var(--ink)" font-variant-numeric="tabular-nums">${share(y,tot)}</text>
+    <text x="86" y="89" text-anchor="middle" font-size="18" font-weight="600"
+      style="font-family:var(--serif)" fill="var(--ink)" font-variant-numeric="tabular-nums">${share(y,tot)}</text>
     <text x="86" y="107" text-anchor="middle" font-size="14" fill="var(--ink-2)">yes</text></svg>
     <div class="legend">
       <div class="lrow"><span class="sw" style="background:var(--yes)"></span>
