@@ -168,6 +168,11 @@ night. Each value may have:
     `action`, so the list can grow without breaking an older sender.
   - `summary` -- one line of plain text, at most 300 characters: the feed
     item's title. No HTML; the sender escapes it.
+  - `plain` -- optional, one line of plain text, at most 300 characters: the
+    same event in plain words (`src/parse/plain_action.py`), which the email
+    prints in place of `summary`. Absent where the line is of a kind those
+    words do not cover; the email then prints `summary`. Added 14 October
+    2026; a sender that does not know it ignores it.
   - `url` -- optional, a path on the site beginning with one `/`.
   - `term` -- the term the item belongs to, `YYYY-YYYY`. Required on a topic's
     items: the sender sends a topic follower only items of `sitting_term`.

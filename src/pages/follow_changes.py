@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-07.3
+# GRANITE_VERSION: 2026-10-07.4
 """
 The nightly "what changed" files the email sender reads, and the first-seen
 ledger that decides what is new in them.
@@ -254,12 +254,13 @@ def vote_detail(ballot, *, result="", tally="", motion="", bill="", title=""):
 
 
 def item(guid, day, kind, summary, url="", term="", study=False, recommends=None,
-         milestone=False, vote=None):
+         milestone=False, vote=None, plain=""):
     """One feed item as the changes files carry it, or None where it cannot
     be one (no guid, no date the contract reads). `study` marks a bill's
     interim study report, which its bill's night carries as "study".
     `milestone` marks what a reader who asked for milestones only is sent;
-    `vote` is a member's ballot with its roll call (vote_detail)."""
+    `vote` is a member's ballot with its roll call (vote_detail); `plain` the
+    line in plain words (plain_action.py), which the email prints first."""
     guid = str(guid or "")
     if not guid or len(guid) > 300 or not DAY.match(str(day or "")):
         return None
@@ -278,6 +279,9 @@ def item(guid, day, kind, summary, url="", term="", study=False, recommends=None
         out["milestone"] = True
     if vote:
         out["vote"] = vote
+    plain = line(plain, 300)
+    if plain:
+        out["plain"] = plain
     return out
 
 
@@ -463,7 +467,7 @@ def night_file(ledger, d, new_by, followable, lists):
             if (key, it["guid"]) not in filed or it["guid"] in had:
                 continue
             had.add(it["guid"])
-            out = {f: it[f] for f in ("guid", "date", "kind", "summary", "url", "term",
+            out = {f: it[f] for f in ("guid", "date", "kind", "summary", "plain", "url", "term",
                                       "milestone", "vote") if f in it}
             if new_by == FIRST_SEEN:
                 out["seen"] = filed[(key, it["guid"])]
@@ -639,6 +643,8 @@ def _item(it, where, first_seen, topic, out):
         out.append(f"{where}: date is not YYYY-MM-DD")
         return None
     _text(it.get("summary"), 300, f"{where} summary", out)
+    if "plain" in it:
+        _text(it.get("plain"), 300, f"{where} plain", out)
     if not isinstance(it.get("kind"), str) or not it["kind"]:
         out.append(f"{where}: no kind")
     if "term" in it and not (isinstance(it["term"], str) and TERM.match(it["term"])):

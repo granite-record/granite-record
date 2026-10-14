@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.199
+// GRANITE_VERSION: 2026-09-07.200
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -4887,45 +4887,58 @@ function renderBillText(b,d,rsa){
   return btBlock;
 }
 
+// THE DOCUMENTS TAB, GROUPED (the person's choice A, 14 October 2026): the
+// bill's own three links first, then its calendars and its journals, each
+// row dated and saying what happened in plain words, the clerk's line under
+// them as the citation. The note that opened the tab ("Everything below is
+// published by the General Court...") is gone: every row names whose it is.
+const DOCSRC={HC:"House Calendar",SC:"Senate Calendar",HJ:"House Journal",SJ:"Senate Journal"};
+const docLong=l=>String(l||"").replace(/^(HC|SC|HJ|SJ)\b/,m=>DOCSRC[m]);
+const DOCGROUPS=[["bill","The Bill"],["cal","Calendars"],["jour","Journals"],["other","Other Records"]];
+function docGroup(x){
+  if(x.kind!=="record")return "bill";
+  const m=/^(H|S)(C|J)\b/.exec(String(x.label||""));
+  return m?(m[2]==="C"?"cal":"jour"):"other";
+}
 function renderDocuments(b,d){
-  // The status fields the site quotes, with the documents it quotes them
-  // alongside. This is the provenance tab, and the table is provenance: nine
-  // values taken from the General Court's own status page rather than worked
-  // out from anything.
-  // factsTable used to open this tab with the status page's own fields --
-  // status, the date introduced, the committee code. Every one of them is
-  // already on the summary, in a sentence, above the tab strip.
-  return ((d.documents||[]).length
-      ? `<p class="note">Everything below is published by the General Court. This
-         site quotes and summarises these; they are the record itself.</p>
-         <ul class="docs">${d.documents.map(x=>{
-           // THE ACTIONS THIS CITATION IS THE RECORD OF. The docket carries
-           // the same citation on the event it belongs to, so the two are
-           // joined on it -- and a citation covering several actions names
-           // all of them, because it is the record of all of them. Where
-           // nothing matches, DOCWHAT's sentence stands as it always did.
-           // NOT A ROW THAT CALLS A MEETING OFF (e.called_off, 7 October
-           // 2026): the docket list shows it with the note that says so, and
-           // here, its mark stripped as every line's is, it would read as the
-           // notice it cancels.
-           const acts=(d.events||[]).filter(e=>e.cite&&e.cite===x.label&&!e.called_off);
-           const src=x.kind==="record"?citeSource(x.label):"";
-           const when=acts.length?dateWords(acts[0].date):"";
-           const of=[src,when].filter(Boolean).join(" \u00b7 ");
-           // ONE DOCUMENT ROW, components.doc_row (the plan's step 7).
-           return docRow({kind:x.kind,label:x.label,url:x.url,of,what:acts.length
-             ? `<span class="docacts">${acts.map(e=>esc(e.text)).join("<br>")}</span>`
-             // NOT "the page this site takes a bill's status from" where it
-             // did not: a bill the House Journal leaves out of those it
-             // introduced reads Not introduced here and IN COMMITTEE there.
-             : `<span>${x.kind==="status"&&d.status_source==="House Journal"
-                 ? STATUS_NOT_FROM_PAGE
-                 : x.kind==="status"&&d.ballot&&!d.ballot.pending
-                 ? statusUpToTheVoters(d) : (DOCWHAT[x.kind]||"")}</span>`});
-         }).join("")}</ul>`
-      : `<p class="note">No official documents on file for this bill yet. The
+  const docs=d.documents||[];
+  if(!docs.length)return `<p class="note">No official documents on file for this bill yet. The
          bill text and docket links come from the General Court's status page,
-         which is fetched separately.</p>`);
+         which is fetched separately.</p>`;
+  const rows={bill:[],cal:[],jour:[],other:[]};
+  docs.forEach(x=>{
+    // THE ACTIONS THIS CITATION IS THE RECORD OF. The docket carries the
+    // same citation on the event it belongs to, so the two are joined on it
+    // -- and a citation covering several actions names all of them, because
+    // it is the record of all of them. Where nothing matches, DOCWHAT's
+    // sentence stands as it always did.
+    // NOT A ROW THAT CALLS A MEETING OFF (e.called_off, 7 October 2026): the
+    // docket list shows it with the note that says so, and here, its mark
+    // stripped as every line's is, it would read as the notice it cancels.
+    const acts=(d.events||[]).filter(e=>e.cite&&e.cite===x.label&&!e.called_off);
+    const g=docGroup(x);
+    // The day, which the grouped rows show in a column of their own; a key
+    // link of the bill's own carries none.
+    const of=acts.length?dateWords(acts[0].date):"";
+    // Plain words first where the build wrote them, the clerk's line under
+    // them as the citation; the line alone where there are none.
+    const what=acts.length
+      ? `<span class="docacts">${acts.map(e=>e.plain
+          ? `<span class="docplain">${esc(e.plain)}</span><span class="docraw">${esc(e.text)}</span>`
+          : `<span class="docplain">${esc(e.text)}</span>`).join("")}</span>`
+      // NOT "the page this site takes a bill's status from" where it did
+      // not: a bill the House Journal leaves out of those it introduced reads
+      // Not introduced here and IN COMMITTEE there.
+      : `<span class="${x.kind==="record"?"docacts":"docwhat"}">${x.kind==="status"&&d.status_source==="House Journal"
+          ? STATUS_NOT_FROM_PAGE
+          : x.kind==="status"&&d.ballot&&!d.ballot.pending
+          ? statusUpToTheVoters(d) : (DOCWHAT[x.kind]||"")}</span>`;
+    // ONE DOCUMENT ROW, components.doc_row (the plan's step 7).
+    rows[g].push(docRow({kind:x.kind,label:x.kind==="record"?docLong(x.label):x.label,
+      url:x.url,of,what}));
+  });
+  return DOCGROUPS.filter(([k])=>rows[k].length).map(([k,h])=>
+    `<h3 class="docgrp">${h}</h3><ul class="docs docs-${k}">${rows[k].join("")}</ul>`).join("");
 }
 
 // The tabs, and one call per pane. Everything this reads is either a
@@ -5228,6 +5241,13 @@ function wantVersionBody(b){
   });
 }
 
+
+// A TAB'S COUNT AS A BADGE (the person's choice A, 14 October 2026). The
+// words stay "Votes (5)": the brackets are in the text, hidden from sight and
+// read aloud, so a screen reader, a copied label and the report box's tab
+// name are what they were, and only the look changes.
+const tabN=n=>`<span class="tn"><span class="tnp"> (</span>${n}<span class="tnp">)</span></span>`;
+
 function renderDetail(b,d){
   const rsa=makeRsa(d);
   // Below the tabs, outside every pane, and only in the expanded view. The
@@ -5264,7 +5284,7 @@ function renderDetail(b,d){
     ||!!(d.amendments||[]).length;
   const btTab=btHas
     ? `<button class="tab" role="tab" id="tab_${b.id}_6" aria-controls="pane_${b.id}_6"
-        aria-selected="false" data-t="6">Bill Text${d.nver>1?` (${d.nver})`:""}</button>`
+        aria-selected="false" data-t="6">Bill Text${d.nver>1?tabN(d.nver):""}</button>`
     : "";
   const btPane=btHas
     ? `<div class="pane" role="tabpanel" id="pane_${b.id}_6" aria-labelledby="tab_${b.id}_6"
@@ -5276,7 +5296,7 @@ function renderDetail(b,d){
   // relation the judged sample let through. data-t 7, after the six.
   const rel=Array.isArray(d.related)?d.related:[];
   const relTab=rel.length
-    ? `<button class="tab" role="tab" id="tab_${b.id}_7" aria-controls="pane_${b.id}_7" aria-selected="false" data-t="7">Related${rel.length?` (${rel.length})`:""}</button>`
+    ? `<button class="tab" role="tab" id="tab_${b.id}_7" aria-controls="pane_${b.id}_7" aria-selected="false" data-t="7">Related${rel.length?tabN(rel.length):""}</button>`
     : "";
   const relPane=rel.length
     ? `<div class="pane" role="tabpanel" id="pane_${b.id}_7" aria-labelledby="tab_${b.id}_7"
@@ -5294,7 +5314,7 @@ function renderDetail(b,d){
         // votes were voice votes, which showed "Votes" with nothing beside
         // it and 3 sections beneath.
         // And the voters' vote on an amendment they were sent, once cast.
-        votesDrawn(d)?` (${votesDrawn(d)})`:""}</button>
+        votesDrawn(d)?tabN(votesDrawn(d)):""}</button>
     <!-- HEARINGS, NOT VIDEOS. The tab lists a bill's sittings -- the date, the
          time and the room -- and a recording where one exists. Recordings
          begin on 14 May 2020, so for fifteen of the nineteen terms the tab was
@@ -5304,14 +5324,14 @@ function renderDetail(b,d){
          count stays the count of recordings, which is why it is absent on the
          terms that have none. data-t stays "2": renumbering would repoint
          every saved link. -->
-    <button class="tab" role="tab" id="tab_${b.id}_2" aria-controls="pane_${b.id}_2" aria-selected="false" data-t="2">Hearings${videoCount(d)?` (${videoCount(d)})`:""}</button>
+    <button class="tab" role="tab" id="tab_${b.id}_2" aria-controls="pane_${b.id}_2" aria-selected="false" data-t="2">Hearings${videoCount(d)?tabN(videoCount(d)):""}</button>
     <button class="tab" role="tab" id="tab_${b.id}_3" aria-controls="pane_${b.id}_3" aria-selected="false" data-t="3">Reports${
-      reportCount(d)?` (${reportCount(d)})`:""}</button>
-    <button class="tab" role="tab" id="tab_${b.id}_4" aria-controls="pane_${b.id}_4" aria-selected="false" data-t="4">Sponsors${(d.sponsors||[]).length?` (${(d.sponsors||[]).length})`:""}</button>
+      reportCount(d)?tabN(reportCount(d)):""}</button>
+    <button class="tab" role="tab" id="tab_${b.id}_4" aria-controls="pane_${b.id}_4" aria-selected="false" data-t="4">Sponsors${(d.sponsors||[]).length?tabN((d.sponsors||[]).length):""}</button>
 
     <button class="tab" role="tab" id="tab_${b.id}_5" aria-controls="pane_${b.id}_5"
       aria-selected="false" data-t="5">Documents${
-        (d.documents||[]).length?` (${d.documents.length})`:""}</button>${relTab}</div>
+        (d.documents||[]).length?tabN(d.documents.length):""}</button>${relTab}</div>
     <div class="pane" role="tabpanel" id="pane_${b.id}_0" aria-labelledby="tab_${b.id}_0" tabindex="0" data-t="0">${renderSummary(b,d,rsa)}</div>
     ${/* ONLY WHERE THERE IS SOMETHING TO SHOW. 1,149 of 2,234 bills have a
           second version; a tab on the other 1,085 would say "there is one
@@ -5607,13 +5627,18 @@ function mountFollow(kind,feed,ref){
   else res.before(div);
 }
 function followMailForm(key){
+  // ONE PANEL WITH CHOOSING YOUR TOWN (the person's choice A, 14 October
+  // 2026): a heading, one sentence, one field and its button, and the
+  // promises in the small print under them -- the same words as before.
   return `<form class="followform" novalidate>
-    <p><b>By email</b>, daily or weekly: ${esc(FOLLOWS[key.split(":")[0]]||"what is new here")}.
-      Nothing is sent until you confirm from the first email, and every email has a link to
-      change what you follow or to unsubscribe, which deletes your address from our database at once.</p>
-    <p class="followaddr"><label>Your email address
-      <input type="email" name="email" autocomplete="email" maxlength="254" required></label>
+    <p class="panh">Follow by email</p>
+    <p class="pansay">Daily or weekly: ${esc(FOLLOWS[key.split(":")[0]]||"what is new here")}.</p>
+    <p class="followaddr"><label><span class="sr">Your email address</span>
+      <input type="email" name="email" autocomplete="email" maxlength="254" required
+        placeholder="you@example.com"></label>
       <button type="submit" class="followsend">Email me updates</button></p>
+    <p class="panfine">Nothing is sent until you confirm from the first email, and every email has a link to
+      change what you follow or to unsubscribe, which deletes your address from our database at once.</p>
     <p style="position:absolute;left:-9999px" aria-hidden="true"><label>Leave this empty
     <input name="website" tabindex="-1" autocomplete="off"></label></p>
     <div class="followcheck"></div>
@@ -6392,7 +6417,7 @@ document.addEventListener("focusin",e=>{
 function tabStrip(tabs){
   return `<div class="tabs" role="tablist">${tabs.map((t,i)=>
     `<button class="tab" role="tab" id="ptab_${i}" aria-controls="ppane" data-pt="${i}" aria-selected="${
-      i===PAGE_TAB}">${esc(t[0])}${t[1]?` (${t[1].toLocaleString()})`:""}</button>`
+      i===PAGE_TAB}">${esc(t[0])}${t[1]?tabN(t[1].toLocaleString()):""}</button>`
   ).join("")}</div>`;
 }
 function pagePane(html){

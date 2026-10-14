@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.557
+# GRANITE_VERSION: 2026-09-04.558
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -16476,6 +16476,10 @@ def _class_collisions():
     was already the third name in this docstring's first line.
     """
     SHARED = {
+        # Your town's slot: a builder writes the empty box where an example
+        # from the reader's own town belongs, and find.js fills it (the My
+        # Town card, 14 October 2026).
+        "yt",
         # the header and the footer, written once in bills.html for the record
         # pages and again in build_pages.shell() for the static ones
         "brand", "navdrop", "navmenu", "navtabs", "top", "in", "skip", "sr",
@@ -23665,8 +23669,12 @@ for (var fi = 0; fi < fixtures.length; fi++) {
                     + (html ? html.length : 0) + " chars");
         process.exit(1); }
       var want = (fx.want || []).concat(pass ? (fx.wantFocused || []) : []);
+      // Words a reader sees may be split by tags -- a tab's count is a badge
+      // since 14 October 2026, "Reports" then (6) in spans -- so a wanted
+      // phrase is looked for in the markup and in its text.
+      var bare = html.replace(/<[^>]+>/g, "");
       for (var wi = 0; wi < want.length; wi++) {
-        if (html.indexOf(want[wi]) < 0) {
+        if (html.indexOf(want[wi]) < 0 && bare.indexOf(want[wi]) < 0) {
           console.log("RENDERDETAIL (" + mode + ") drew " + html.length
                       + " chars but not " + JSON.stringify(want[wi]));
           process.exit(1); }
@@ -25301,7 +25309,7 @@ process.stdout.write("\\n@@" + JSON.stringify(out));
             f"an election past with no count in the file is drawn as {flat(over)[:200]!a}")
     assert (got["lostN"], got["wonN"], got["pendingN"]) == (2, 2, 1), (
         f"the Votes tab counts {got['lostN']}, {got['wonN']}, {got['pendingN']}")
-    assert re.search(r">Votes\s*\(2\)\s*</button>", got["tabs"]), (
+    assert re.search(r">Votes\s*\(2\)\s*</button>", re.sub(r"<(?!/?button)[^>]+>", "", got["tabs"])), (
             "the Votes tab of a CACR with one chamber vote and the voters' does not say 2")
     # The Documents tab: the status page is not where a CACR's voters' answer
     # is from, and says where it is; an election to come keeps the plain line.
@@ -30007,7 +30015,7 @@ process.stdout.write("\\n@@" + JSON.stringify([scope.renderDetail(row, d),
                 and docket.count("==CANCELLED==") == 3, (
                 "the page does not draw every row the docket cancelled, each with the clerk's "
                 "mark and its note")
-            assert "HC 5" in docs and docs.count(heard) == 1 and "CANCELLED" not in docs, (
+            assert "House Calendar 5" in docs and docs.count(heard) == 1 and "CANCELLED" not in docs, (
                 "the Documents tab names a row that calls a meeting off among the actions its "
                 "calendar records, where it reads as a second notice of the meeting")
         return "ok", ("every row the docket cancelled is on the docket list with the clerk's "
@@ -32828,6 +32836,35 @@ def _rsa_pages(B, RSA, S):
         "HB 286, in 91-A:4's history, is listed again as another bill that proposed changes"
     return "ok", ("91-A:4 tagged pending by HB 100, linked to 91-A:5 and not to 91-A:99, history 2019 then "
                   "1967 and HB 286 not repeated; titled Chapter 91-A, its sections in the sidebar")
+
+
+@check("build", "a docket line in plain words says what the record says, in the approved vote words, "
+       "and says nothing for a line it does not know", needs=("plain_action",))
+def _plain_action(PA):
+    """The email and the Documents tab print these first and the clerk's line
+    under them (the person's choices of 14 October 2026). Each pair is a real
+    line of the 2025-2026 docket."""
+    cases = {
+        "Ought to Pass: MA, VV; OT3rdg; 02/19/2026": "Bill passed, on a voice vote",
+        "Majority Committee Report: Ought to Pass with Amendment # 2025-2969h 10/01/2025 (Vote 12-3; RC)":
+            "Majority committee report: pass the bill with changes (amendment 2025-2969h), 12\u20133",
+        "Executive Session: 06/15/2026 10:30 am GP 159": "Executive session, 10:30 a.m., Granite Place 159",
+        "Hearing: 02/04/2026, Room 100, SH, 09:45 am": "Public hearing, 9:45 a.m., Room 100, State House",
+        "Refer to Interim Study, RC 13Y-9N, MA; 05/07/2026": "Sent to interim study, 13\u20139 on a roll call",
+        "Committee Report: Referred to Interim Study, 05/07/2026; Vote 3-2; CC":
+            "Committee report: send the bill to interim study, 3\u20132, for the consent calendar",
+        "Inexpedient to Legislate, MF, VV; 04/23/2026": "Motion to kill the bill failed, on a voice vote",
+        "Indefinitely Postpone, MF, RC 133-205; 01/07/2026":
+            "Motion to kill the bill and bar its subject for the term failed, 133\u2013205 on a roll call",
+        "Signed by the Governor on 06/30/2026; Chapter 0123; Effective 07/01/2026":
+            "Signed by the Governor, chapter 123",
+        "Referral Waived by Committee Chair per House Rule 47(f) 01/08/2026": "",
+    }
+    for raw, want in cases.items():
+        got = PA.plain(raw)
+        assert got == want, f"{raw!r} reads {got!r}, not {want!r}"
+        assert not re.search(r"\d{1,2}/\d{1,2}/\d{4}", got), f"{raw!r} keeps the clerk's date"
+    return "ok", f"{len(cases)} docket lines read as the approved words say, and one left as written"
 
 
 @check("build", "the glossary page lists every glossary.json entry once, by its name in full, "

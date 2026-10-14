@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.205
+# GRANITE_VERSION: 2026-09-05.206
 """
 Generate the faceted site from real General Court data.
 
@@ -41,6 +41,7 @@ from seating import SPEAKER_SEAT
 # The words the pages say, src/pages/words/: here, the chip's six (CHIP_WORDS).
 from components import WORDBOOK as _WORDBOOK
 import narrative as N
+import plain_action as PA
 import fiscal
 import proceedings as P
 import report_check as RC
@@ -517,6 +518,20 @@ def _paired_by_count(raws, mine):
 #
 # Every one of the 188 keys on file yields a year this way.
 SOURCE_YEAR = re.compile(r"(?:%5C|/)(\d{4})(?:%5C|/)", re.I)
+
+
+def _with_plain(events, bill):
+    """Each cited docket line with its plain words beside it (plain_action.py),
+    which the Documents tab prints first and the clerk's line under them (the
+    person's choice A, 14 October 2026). Only a line with a citation: those
+    are the Documents tab's rows, and the rest would only make the page
+    heavier."""
+    for ev in events:
+        if ev.get("cite"):
+            words = PA.plain(ev.get("text") or "", bill)
+            if words:
+                ev["plain"] = words
+    return events
 
 
 def _cite(ev, sources, year=""):
@@ -10875,7 +10890,7 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
             # A DATE A PERSON CORRECTED (docket_corrections.json) is shown on
             # the day it happened, beside the clerk's line, which still says
             # the other date -- so the line carries why, in plain words.
-            "events": [{"date": e["date"], "text": listed_line(e),
+            "events": _with_plain([{"date": e["date"], "text": listed_line(e),
                         "routine": is_routine(docket_line(e)),
                         **({"date_as_recorded": e["date_as_recorded"],
                             "date_note": e.get("date_note") or (
@@ -10914,7 +10929,7 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
                             e, tdb, testimony.get(bid) if own else None)),
                         **_cite(e, sources,
                                 e.get("cite_year") or (e.get("date") or "")[:4])}
-                       for e in docket_lines(narr)],
+                       for e in docket_lines(narr)], bid),
             # Prefer what the General Court says over what we would infer.
             # Where the docket has settled the bill, the per-chamber fields
             # are describing a superseded state and reading them beside

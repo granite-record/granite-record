@@ -136,7 +136,10 @@ function checkItem(it, where, firstSeen, topic, notes) {
   }
   if (firstSeen && !seen) notes.push(`${where}: no seen, under first-seen`);
   if (it.milestone !== undefined && it.milestone !== true) notes.push(`${where}: milestone is not true`);
-  return { guid, date: it.date, kind, summary, url: path(it.url, where, notes), term, seen,
+  // The plain sentence beside the record's line (CHANGES_FORMAT.md), optional:
+  // an older build writes none, and the email then prints the line itself.
+  const plain = it.plain === undefined ? "" : text(it.plain, 300, `${where} plain`, notes, false);
+  return { guid, date: it.date, kind, summary, plain, url: path(it.url, where, notes), term, seen,
            milestone: it.milestone === true, vote: checkVote(it.vote, where, notes) };
 }
 

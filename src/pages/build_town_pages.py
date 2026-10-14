@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-09.32
+# GRANITE_VERSION: 2026-09-09.33
 """
 A page per town and ward: everyone who represents the people who live there.
 
@@ -1473,8 +1473,16 @@ def main():
                           str(x.get("party_code") or x.get("party") or "")[:1].upper()]
               for x in legs if x.get("slug")
               and any(x["slug"] in p["m"] for p in places)}
+    # THE TWO OFFICES A TOWN ELECTS THAT ARE NOT LEGISLATORS, by district, as
+    # the town pages name them (corrections/officials.json): the My Town tab's
+    # card says who holds each seat (the person's choice A, 14 October 2026).
+    offices = {k: {d: [v.get("name") or "", str(v.get("party") or "")[:1].upper(),
+                       v.get("official_url") or ""]
+                   for d, v in (off.get(src, {}).get("districts") or {}).items()
+                   if (v.get("name") or "").strip()}
+               for k, src in (("ec", "council"), ("cd", "us_house"))}
     (site / "places.json").write_text(
-        json.dumps({"places": places, "people": people},
+        json.dumps({"places": places, "people": people, "offices": offices},
                    separators=(",", ":"), ensure_ascii=False),
         encoding="utf-8")
     print(f"  places.json: {len(places)} towns and wards, "

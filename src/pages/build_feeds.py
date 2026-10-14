@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.32
+# GRANITE_VERSION: 2026-09-04.33
 """
 Write RSS feeds so people can follow bills without a login.
 
@@ -43,6 +43,7 @@ import _paths  # noqa: E402,F401
 import argparse
 import build_date
 import follow_changes as FC
+import plain_action as PA
 import json
 import proceedings as P
 import re
@@ -443,7 +444,9 @@ def main():
                              t[0], path_of(url), b.get("term") or "",
                              study=FC.STUDY_REPORT.match(str(e.get("text") or "").strip()) is not None,
                              recommends=FC.study_says(e.get("text")),
-                             milestone=FC.milestone(ek, e.get("text")))
+                             milestone=FC.milestone(ek, e.get("text")),
+                             plain=(lambda w: f"{b['n']} \u2014 {w}" if w else "")(
+                                 PA.plain(e.get("text") or "", b["id"])))
                 if it:
                     fc_items[t[4]] = it
 

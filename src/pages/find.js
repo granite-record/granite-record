@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-16.23
+// GRANITE_VERSION: 2026-09-16.24
 /* FIND ANYTHING, FROM THE HEADER (16 September, asked for in these words:
    "a search icon in the header that lets you search for anything including
    legislators, committees, towns, and bills ... searching Litchfield would
@@ -1058,9 +1058,44 @@ function ytMark(p){
 // THE LEARN PAGES' SLOTS: <div class="yt" data-yt="reps|vote|county|town">,
 // written by the builders where an example from the reader's own town
 // belongs. With no town saved, each offers the picker.
+// THE MY TOWN TAB'S CARD (the person's choice A, 14 October 2026): with a
+// town saved, the tab opens on who represents it -- each seat and who holds
+// it -- and the search below it becomes "Look Up Another Town". With none,
+// the card is not drawn and the tab is the search, as before.
+function ytChip(name,party,href,out){
+  const a=href?`<a href="${_fesc(href)}"${out?' target="_blank" rel="noopener"':""}>${_fesc(name)}</a>`:_fesc(name);
+  return `<li><span class="mchip p-${_fesc(party||"X")}">${a}</span></li>`;
+}
+function ytSeats(p){
+  const ppl=(YT.data&&YT.data.people)||{},off=(YT.data&&YT.data.offices)||{};
+  const reps=(p.m||[]).filter(s=>!/-sd-\d+$/.test(s)),sens=(p.m||[]).filter(s=>/-sd-\d+$/.test(s));
+  const who=list=>`<ul class="ytppl">${list.map(s=>{const w=ppl[s]||[s,""];return ytChip(w[0],w[1],"/legislator/"+s);}).join("")}</ul>`;
+  const h=(p.h||[]).map(x=>`${x[0]} ${x[1]}${x[2]?" (floterial)":""}`);
+  const seat=(office,where,body)=>`<div class="ytseat"><p class="ytoff">${office}<span>${_fesc(where)}</span></p>${body}</div>`;
+  const named=(k,d)=>{const o=(off[k]||{})[String(d)];
+    return o&&o[0]?`<ul class="ytppl">${ytChip(o[0],o[1],o[2],true)}</ul>`:'<p class="ytnote">Not on file.</p>';};
+  const seats=[];
+  if(h.length)seats.push(seat("State House",h.length>1?h.slice(0,-1).join(", ")+" and "+h[h.length-1]:h[0],
+    reps.length?who(reps):'<p class="ytnote">No sitting member on file.</p>'));
+  if(p.sd)seats.push(seat("State Senate","District "+p.sd,sens.length?who(sens):'<p class="ytnote">No sitting senator on file.</p>'));
+  if(p.ec)seats.push(seat("Executive Council","District "+p.ec,named("ec",p.ec)));
+  if(p.cd)seats.push(seat("US House","District "+p.cd,named("cd",p.cd)));
+  const sub=[p.co?`${p.co} County`:"",p.poll?`votes at ${p.poll.split(/\s+\d/)[0]}`:""].filter(Boolean).join(" \u00b7 ");
+  return `<div class="ytstop"><div><p class="ythead2">Your Town</p><p class="ytname">${_fesc(p.n)}</p>`
+    +(sub?`<p class="ytsub">${_fesc(sub)}</p>`:"")+`</div><div class="ytacts">`
+    +`<button type="button" class="ytopen">Change town</button>`
+    +`<a class="ytgo" href="${_fesc(p.u)}">${_fesc(p.n)}&rsquo;s page &rarr;</a></div></div>`
+    +`<div class="ytgrid">${seats.join("")}</div>`;
+}
 function ytSlots(p){
+  const fh=document.getElementById("of-find");
+  if(fh)fh.textContent=p?"Look Up Another Town":"Find Your Town";
   document.querySelectorAll(".yt[data-yt]").forEach(el=>{
     const k=el.dataset.yt;
+    if(k==="seats"){
+      if(!p){el.hidden=true;el.innerHTML="";return;}
+      el.innerHTML=ytSeats(p);el.hidden=false;return;
+    }
     if(!p){
       el.innerHTML=`<p class="ythead2">For your town</p><p>Choose your town or ward to see this for where you live.</p>`
         +'<button type="button" class="ytopen">Choose your town</button>';

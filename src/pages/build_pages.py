@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.198
+# GRANITE_VERSION: 2026-09-04.199
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -3616,7 +3616,8 @@ the House does.</p>
         officers = []
     today = build_date.today().isoformat()
     of_panes = [
-        ("my-town", "My Town", None, f"""<section class="ofpart" aria-labelledby="of-find">
+        ("my-town", "My Town", None, f"""<div class="yt ytcard" data-yt="seats" hidden></div>
+<section class="ofpart" aria-labelledby="of-find">
 <h3 id="of-find">Find Your Town</h3>
 <p class="src fill">Type a town to see who represents it, or a name, county,
 party or committee to find a member.</p>

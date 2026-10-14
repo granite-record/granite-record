@@ -19,7 +19,7 @@
  */
 
 import { ConfigError } from "./address.js";
-import { esc, oneLine, siteUrl } from "./common.js";
+import { addDays, esc, oneLine, siteUrl } from "./common.js";
 
 const RESEND = "https://api.resend.com/emails";
 
@@ -226,6 +226,39 @@ function weekLine(w) {
 // THE ORDER A DIGEST IS IN (the design the person approved, 11 October
 // 2026): what matters most at a glance, then -- in the weekly -- the week
 // ahead, then each kind of record under its own heading.
+// AN ITEM IN PLAIN WORDS (the person's choice of 14 October 2026): the
+// build's plain sentence where it has one (CHANGES_FORMAT.md, "plain"), the
+// clerk's line where it does not. A newly recorded old event says so, and a
+// proceeding still to come says it is scheduled, so neither reads as last
+// night's news.
+const LATE_DAYS = 14;        // older than this when first seen: "Newly recorded"
+const LATE_SHOWN = 3;        // newly recorded entries listed a record, the rest counted
+const said = it => it.plain || it.summary;
+export const late = it => !!it.seen && it.date < addDays(String(it.seen).slice(0, 10), -LATE_DAYS);
+function itemWords(it, date) {
+  if (it.date > date) return `Scheduled: ${said(it)}`;
+  return late(it) ? `Newly recorded: ${said(it)}` : said(it);
+}
+
+// EACH ITEM ONCE AN EMAIL, under the most particular record it is followed
+// by: a bill's executive session is news on the bill, and was printed again
+// under the law it amends and the topic it is filed under. GROUPS' order is
+// that order.
+export function onceEach(sections) {
+  const seen = new Set(), out = [];
+  for (const [kind] of GROUPS) {
+    for (const s of sections.filter(x => x.kind === kind)) {
+      const items = s.items.filter(it => !seen.has(it.guid));
+      for (const it of s.items) seen.add(it.guid);
+      const dropped = s.items.length - items.length;
+      if (!items.length && dropped && !(s.votes || []).length && !s.study && !s.ended &&
+          !(s.upcoming || []).length && !s.more) continue;
+      out.push(dropped ? { ...s, items } : s);
+    }
+  }
+  return out;
+}
+
 const GROUPS = [["bill", "Bills"], ["law", "Laws"], ["member", "Legislators"],
                 ["committee", "Committees"], ["topic", "Topics"]];
 
@@ -233,13 +266,16 @@ const GROUPS = [["bill", "Bills"], ["law", "Laws"], ["member", "Legislators"],
 // how a record ended, then a roll call, a study's report, a proceeding
 // scheduled, an executive session, a committee report, any other milestone.
 const RANK = { vote: 1, study: 2, scheduled: 3, exec: 4, report: 5 };
-export function headlines(sections) {
+export function headlines(sections, date = "", skipAhead = false) {
   const out = [];
   for (const s of sections) {
     if (s.ended && !s.ended.fallback && s.ended.summary) out.push([0, s.ended.summary]);
     if (s.study) out.push([2, studyLine(s.study)]);
     for (const it of s.items) {
-      if (it.milestone) out.push([RANK[it.kind] || 6, it.summary]);
+      if (!it.milestone || late(it)) continue;
+      // What is still to come is the week ahead's in a weekly that has one.
+      if (date && it.date > date && skipAhead) continue;
+      out.push([RANK[it.kind] || 6, date ? itemWords(it, date) : said(it)]);
     }
   }
   const seen = new Set();
@@ -269,13 +305,14 @@ function ballotLine(v) {
   return `voted ${v.ballot}${out}`;
 }
 
-export function digestEmail({ origin, frequency, date, sections, manage, unsub,
+export function digestEmail({ origin, frequency, date, sections: given, manage, unsub,
                               feedbackUrl, gone = false }) {
   const weekly = frequency === "weekly";
+  const sections = onceEach(given);
   const count = sections.reduce((n, s) => n + s.items.length + (s.votes || []).length + s.more +
     (s.study ? 1 : 0) + (s.ended ? 1 : 0), 0);
-  const tops = headlines(sections);
   const ahead = weekly ? weekAhead(sections) : [];
+  const tops = headlines(sections, date, ahead.length > 0);
   const more = n => n > 0 ? `, and ${plural(n, "more update", "more updates")}` : "";
   const subject = oneLine(weekly
     ? (ahead.length
@@ -357,17 +394,25 @@ export function digestEmail({ origin, frequency, date, sections, manage, unsub,
         }
         html += "</table>";
       }
-      if (s.items.length) {
+      // What is still to come is the week ahead's, in the weekly; and of
+      // the old events newly recorded, the first few, the rest counted.
+      const fresh = s.items.filter(it => !late(it) && !(weekly && ahead.length && it.date > date));
+      const old = s.items.filter(it => late(it));
+      const shown = [...fresh, ...old.slice(0, LATE_SHOWN)];
+      const earlier = old.length - Math.min(old.length, LATE_SHOWN);
+      if (shown.length) {
         html += `<ul style="margin:0 0 10px;padding-left:20px">`;
-        for (const it of s.items) {
-          text.push(`  ${longDate(it.date)}  ${it.summary}`);
-          const line = esc(it.summary);
+        for (const it of shown) {
+          const words = itemWords(it, date);
+          text.push(`  ${longDate(it.date)}  ${words}`);
+          const line = esc(words);
           html += `<li style="margin:0 0 4px"><span style="color:#555">${esc(longDate(it.date))}</span>` +
-            ` — ${it.milestone ? `<b>${line}</b>` : line}</li>`;
+            ` — ${it.milestone && !late(it) ? `<b>${line}</b>` : line}</li>`;
         }
         html += "</ul>";
       }
       const lines = [s.more ? `…and ${s.more} more on its page.` : "",
+        earlier ? `…and ${plural(earlier, "earlier entry", "earlier entries")} newly on the record, on its page.` : "",
         s.study ? studyLine(s.study) : "", weekLine(s.week),
         ...(ahead.length ? [] : (s.upcoming || []).map(u => `Coming up: ${upcomingLine(u)}.`))]
         .filter(Boolean);
