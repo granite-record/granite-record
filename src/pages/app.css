@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.271 */
+/* GRANITE_VERSION: 2026-09-07.272 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -2207,24 +2207,26 @@ padding-inline:var(--sp-2)}
 .rail.dated{container:rail / inline-size;flex-wrap:wrap}
 /* THE RAIL WITH MORE WEIGHT (the person's choice A, 14 October 2026), on a
    bill's own page and an opened card -- a list's compact rail is as it was.
-   The line fills in the stop's own colour up to where the bill got -- the
-   law's green to a stop it passed or is at, the stopped colour into the stop
-   it ended at, the study's and the table's into theirs -- and stays the
-   rule's grey past it. The dots are larger and solid, a reached stop's name
-   is in ink, and the days stay quieter. No reason is written under a stop:
-   the summary under the rail says it (the person: "visual clutter in an
-   already tight space"). Each segment is its stop's :before, so the colour is
-   read off the stop it runs into (:has), and only from a stop the bill
-   passed: a segment out of a stop it never reached stays grey. */
+   The line between two stops takes the colour of the stop on its left
+   (below). The dots are larger and solid, a reached stop's name is in ink,
+   and the days stay quieter. No reason is written under a stop: the summary
+   under the rail says it (the person: "visual clutter in an already tight
+   space"). Each segment is its stop's :before. */
 :is(.card.focus,.rrail) .rail.dated .stop{padding-top:1.625rem}
 :is(.card.focus,.rrail) .rail.dated .stop b{width:1.25rem;height:1.25rem;margin-left:-.625rem;
   line-height:1rem;border-width:2px}
 :is(.card.focus,.rrail) .rail.dated .stop:before{top:calc(.6875rem - 1.5px);height:3px;
   background:var(--rule-2)}
-:is(.card.focus,.rrail) .rail.dated .stop.s-p:has(+ .stop:is(.s-p,.s-h)):before{background:var(--st-law)}
-:is(.card.focus,.rrail) .rail.dated .stop.s-p:has(+ .stop.s-x):before{background:var(--st-done)}
-:is(.card.focus,.rrail) .rail.dated .stop.s-p:has(+ .stop.s-istudy):before{background:var(--st-study)}
-:is(.card.focus,.rrail) .rail.dated .stop.s-p:has(+ .stop.s-ontable):before{background:var(--st-table)}
+/* EACH LINE IS ITS LEFT STOP'S (the person, 14 October 2026): green after a
+   stop the bill passed, the stopped colour after one it ended at, the
+   study's and the table's after theirs, and the rule's grey after the stop
+   it is at now or one it never reached. So a vetoed bill's line runs green
+   into a red Governor, and a bill that died in the House has a grey line
+   into its red Law. */
+:is(.card.focus,.rrail) .rail.dated .stop.s-p:before{background:var(--st-law)}
+:is(.card.focus,.rrail) .rail.dated .stop.s-x:before{background:var(--st-done)}
+:is(.card.focus,.rrail) .rail.dated .stop.s-istudy:before{background:var(--st-study)}
+:is(.card.focus,.rrail) .rail.dated .stop.s-ontable:before{background:var(--st-table)}
 :is(.card.focus,.rrail) .rail.dated .stop:is(.s-p,.s-x,.s-h,.s-istudy,.s-ontable) i{color:var(--ink);font-weight:600}
 
 @container rail (max-width:34.5em){.rail.dated small .ry{display:block}}
