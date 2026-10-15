@@ -142,8 +142,10 @@ night, a dry run -- every run off `main` among them -- or a rejected switch
 changes nothing the next night reads.
 With no ledger it goes by the record's own dates for that night, and the
 verdict says so.
-The second job deploys to production. It sits behind GitHub's `production`
-environment, so it waits for a person's approval, and
+The second job deploys to production. It sits behind one of two GitHub
+environments, which the release gate below chooses between: `production`,
+which has no reviewer, for a night the gate clears, and `production-review`,
+which waits for a person's approval, for every other. And
 `nightly.py --deploy-to production` deploys a run's own build by that night's
 own verdict, which `cloud.py site-up` sends with the site and `site-down`
 brings back: a dry run's verdict, a site whose fingerprint is not the one
@@ -194,21 +196,39 @@ then the next scheduled night meets the smaller files again, refuses them,
 and says why. Item 3 under *What is structurally wrong* says how a frozen
 term is read.
 
-**The release gate, in shadow.** Every night that builds records in its
-verdict whether it could have gone to production without a person
-(`review`: `needed` and `why`), and the run's page says in one line what the
-gate would have done. It would hold a New term run; the first night after a
-release; a night that changed far more than a data night does -- a finished
-term's bill list rewritten, or more than `REVIEW_ROWS_MOST` of the current
-term's rows; and a night with a kind of warning that neither the build
-production serves nor a night published in the last fourteen days carried.
-The day's files coming from the database, and an error on the run's page,
-hold nothing: both stay on the page and in the verdict for the morning. The
-workflow's `REVIEW_GATE` is `shadow`, so every night still waits for approval
-in `production` and the gate decides nothing. Set to `on`, a cleared night
-would deploy through `production` with no reviewer, and a held one, and every
-New term run, through `production-review`, which keeps one. `preflight` holds the workflow's
-setting and its environment line together.
+**The release gate.** Every night that builds records in its verdict whether
+it may go to production without a person (`review`: `needed` and `why`), and
+the run's page says in one line what the gate decided. It holds a New term
+run; the first night after a release; a night that changed far more than a
+data night does -- a finished term's bill list rewritten, or more than
+`REVIEW_ROWS_MOST` of the current term's rows; and a night with a kind of
+warning that neither the build production serves nor a night published in the
+last fourteen days carried. The day's files coming from the database, and an
+error on the run's page, hold nothing: both stay on the page and in the
+verdict for the morning. The workflow's `REVIEW_GATE` is `on`: a night the
+gate clears deploys through `production`, with no reviewer, and a night it
+holds, a night with no verdict and every New term run through
+`production-review`, which keeps one. From 6 October 2026 it ran as `shadow`,
+when every night waited for approval in `production` and the gate decided
+nothing but its line on the page. `preflight` holds the workflow's setting and
+its environment line together, so going back to `shadow` is both at once.
+
+**What reaches the person.** With no one approving each night, two
+Healthchecks checks are how a problem is heard of, and neither is pinged by a
+dry run. The night's check is pinged at the end of every real night, as
+`/fail` when the night failed -- and also when `nightly.py --close` wrote
+anything to `logs/alert.txt` (`ALERT_FILE`, from `alerts_of()`): a refusal from
+the General Court on file, a hold on the SQL host, or a night that was not
+clean, one sentence each, sent as the ping's body so that Healthchecks puts it
+in its email. Healthchecks writes when a check goes down and again when it
+comes back, not every night between, so a refusal held for three nights is
+one email and its recovery is the sign it was cleared. The second check
+(`HEALTHCHECKS_PUBLISH_URL`) is pinged only once production has been
+deployed, so it goes quiet -- and Healthchecks writes -- when the live site
+has stood still longer than its period allows: a held night nobody approved,
+or deploys refused for a newer night, while every night pings on time. The
+captions backlog is not an alert yet: it stands every night while YouTube
+refuses GitHub's machines, and an alert that never clears hides every other.
 
 **The morning triage.** On the maintainer's laptop,
 `cloud.py pull --changes-only` brings down what the triage reads and nothing else: the

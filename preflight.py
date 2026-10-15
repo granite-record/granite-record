@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.560
+# GRANITE_VERSION: 2026-09-04.561
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -46223,6 +46223,34 @@ def _handoff_reads_this_run(H):
                   "moved under the run; preflight is started only then; and refused when it "
                   "ran nothing, is a day old, was another Python's or a copy's; the data "
                   "checks are reported only while the data is as they read it")
+
+
+@check("files", "handoff.py finds a listed script wherever it sits, as inventory.py does",
+       needs=("handoff",))
+def _handoff_finds_moved_scripts(H):
+    """handoff.py looked for each file versions.json lists at the root, by its
+    bare name, and the folder move put most of them under src/. For a week
+    after stage 6 STATE.md said "190 listed but not present" and listed only
+    the root's files as recently changed, while inventory.py, run a minute
+    before it, found every one through _paths.locate. So the two are held to
+    one answer: the files handoff says are missing are the ones locate cannot
+    find."""
+    listed = json.loads((_paths.ROOT / "versions.json").read_text(encoding="utf-8")).get("files", {})
+    gone = sorted(f for f in listed if not _paths.locate(f).exists())
+    here, out = os.getcwd(), []
+    try:
+        os.chdir(_paths.ROOT)
+        H.section_files(out)
+    finally:
+        os.chdir(here)
+    said = "\n".join(out)
+    m = re.search(r"\*\*([\d,]+) listed but not present", said)
+    named = int(m.group(1).replace(",", "")) if m else 0
+    assert named == len(gone), (
+        f"handoff.py says {named} listed files are not present, and _paths.locate cannot find "
+        f"{len(gone)}{': ' + ', '.join(gone[:5]) if gone else ''}; it is looking for a moved "
+        "script at the root")
+    return "ok", f"{len(listed)} listed, {len(gone)} not here, and handoff.py says the same"
 
 
 @check("cloud", "seed-kit --only sends only the files it names, and every other copy stands",

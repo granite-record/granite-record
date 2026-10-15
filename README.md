@@ -213,8 +213,9 @@ the published CSV, documented by its own manifest.
 the day's files from the General Court — from its SQL host instead, when the
 export comes back empty — rebuilds the site with `build_all.py --local`
 (less the steps that read caption files, which that machine does not hold),
-checks it, and puts it on a preview address; production waits for a person's
-approval. Everything the build reads that git does not hold comes down from a
+checks it, and puts it on a preview address; it publishes to production on its
+own when the release gate clears the night, and waits for a person's approval
+when the gate holds it. Everything the build reads that git does not hold comes down from a
 private R2 bucket through the list in `cloud_kit.json`. `ARCHITECTURE.md`
 says how the night, the term turnover and the caption job fit together.
 

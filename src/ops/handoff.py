@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.18
+# GRANITE_VERSION: 2026-09-05.19
 """
 Write STATE.md from what is actually on disk.
 
@@ -270,13 +270,15 @@ def rows(p):
 def section_files(out):
     v = jload("versions.json", {}).get("files", {})
     out.append(f"## Files\n\n{n(len(v))} scripts, listed in `versions.json`.\n")
-    missing = [f for f in v if not Path(f).exists()]
+    # By bare name wherever it sits, as inventory.py finds it: since the folder
+    # move most of what versions.json lists is under src/, not at the root.
+    missing = [f for f in v if not _paths.locate(f).exists()]
     if missing:
         out.append(f"**{len(missing)} listed but not present:** "
                    + ", ".join(sorted(missing)[:8]) + "\n")
     recent = []
     for f in v:
-        p = Path(f)
+        p = _paths.locate(f)
         if p.exists():
             recent.append((p.stat().st_mtime, f, v[f]))
     recent.sort(reverse=True)
