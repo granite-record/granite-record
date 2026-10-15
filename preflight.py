@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.565
+# GRANITE_VERSION: 2026-09-04.566
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -45636,6 +45636,8 @@ def _documents_night(NI, CA, CL):
             rc = r.returncode
         elif name == "build_all.py":
             _runner_site(100)
+        elif name == "preflight.py" and "--built" in args:
+            _fake_built()
         elif name == "fetch_archive_db.py":
             _runner_fake_views(args, cwd)
         elif name == "fetch_lsrs.py":
@@ -61967,6 +61969,17 @@ def _nightly_reports_loud(NI):
 # running it too is the stand-down. Everything here is driven in a throwaway
 # folder with every step faked: no network, no fetch, no deploy.
 
+def _fake_built():
+    """What a fixture night's `preflight.py --built` leaves: one check of its
+    site, passed (nightly.BUILT_CHECKS). Without it the night reads no list,
+    takes the checks for not run, and holds every fixture night for it."""
+    out = Path("logs") / "built-checks.json"
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(json.dumps([{"fn": "_fixture", "group": "data", "status": "ok", "msg": "",
+                                "name": "the fixture's built site", "tier": "hold"}]),
+                   encoding="utf-8")
+
+
 def _runner_site(n_bills, legislators=40, feeds=5, terms=None, changes="first-seen"):
     """A built site as small as the census can count. The bills are rows of a
     term's file, as the pages read them, with meta.json naming the terms:
@@ -62080,6 +62093,8 @@ def _nightly_runner(NI):
             return 1
         if name == "build_all.py":
             _runner_site(size["bills"])
+        elif name == "preflight.py" and "--built" in args:
+            _fake_built()
         elif name == "fetch_archive_db.py":
             _runner_fake_views(args, cwd)
         elif name == "fetch_lsrs.py":
@@ -62576,6 +62591,8 @@ class _GateNights:
         name, rc = Path(args[0]).name, 0
         if name == "build_all.py":
             self.build()
+        elif name == "preflight.py" and "--built" in args:
+            _fake_built()
         elif name == "fetch_archive_db.py":
             _runner_fake_views(args, cwd)
         elif name == "fetch_lsrs.py":
@@ -65317,6 +65334,8 @@ def _nightly_new_term(NI, SG, BA):
             rc = 0 if ok else 1
         elif name == "build_all.py":
             _runner_site(how["bills"], how.get("legs", 40), how.get("feeds", 5), how.get("terms"))
+        elif name == "preflight.py" and "--built" in args:
+            _fake_built()
         elif name == "fetch_archive_db.py":
             _runner_fake_views(args, cwd, how["rows"])
         elif name == "fetch_lsrs.py":
@@ -66109,6 +66128,8 @@ def _new_term_waits_for_publish(NI, SG, CL, BA):
                  "shrunk": [{"name": n, "bytes": now, "installed_bytes": was}
                             for n, now, was in verdict["shrunk"]]}), encoding="utf-8")
             rc = 0 if ok else 1
+        elif name == "preflight.py" and "--built" in args:
+            _fake_built()
         elif name == "build_all.py":
             # A feed for every ten docket lines, and one output the build
             # carries forward. Feeds, and not bills, since 5 October 2026: a
@@ -69110,6 +69131,8 @@ def _nightly_falls_back(NI, DF, PD, SG):
             return knob["db_rc"]
         if name == "build_all.py":
             _runner_site(100)
+        elif name == "preflight.py" and "--built" in args:
+            _fake_built()
         elif name == "fetch_archive_db.py" and knob["study"] == "stop":
             raise Stopped()
         elif name == "fetch_archive_db.py" and knob["study"] == "fail":
@@ -85437,6 +85460,132 @@ def _member_figures_on_the_site():
                   "roll calls")
 
 
+# =========================================================== the night's own ==
+# THE CHECKS OF A SITE JUST BUILT (15 October 2026, the person's decision;
+# nightly.BUILT_CHECKS says what the night does with them). The night runs
+# --code before it builds, so a check that reads the built site skipped there,
+# and the data group never ran on GitHub at all: from 12 to 15 October the
+# report box dropped readers' reports from nearly every legislator page and no
+# night could say so. --built is what the night runs after check_site: the
+# code checks that read a built site (BUILT_CODE), again, and every data check
+# but those that need the laptop (NOT_ON_THE_NIGHT). Which was which was
+# measured, not guessed: each check was run alone under an audit hook on
+# 15 October and every file it opened placed in the checkout, the kit, the
+# build's own output, the site, or the laptop alone. A data check added later
+# runs on the night unless it is put on the list here, with its reason.
+BUILT_OUT = Path("logs/built-checks.json")
+BUILT_CODE = {"_asset_headers", "_bill_shell", "_palette", "_shared_region", "_heading_levels",
+              "_placeholder_colour", "_civics_examples", "_header_mark", "_one_stylesheet",
+              "_card_words_short", "_one_head"}
+NOT_ON_THE_NIGHT = {
+    "_nightly_logs": "judges the nightly by its own logs: on the night, the run it is part of",
+    "_full_pull_fresh": "the laptop's last pull from the bucket",
+    "_refusal_reached_the_bucket": "the laptop's refusal record against the bucket's",
+    "_kit_entries_match": "the laptop's own copies against the kit's list; the night has what came "
+                          "down",
+    "_dayfiles_pair": "the 8 September dump against the 6 September export, neither in the kit",
+    "_dayfiles_pair_doctored": "the same pair, doctored, neither in the kit",
+    "_late_captions_site": "the raw caption files in work/, which never leave the laptop",
+    "_caption_summary_data": "the raw caption files in work/, which never leave the laptop",
+    "_committee_codes_pages": "the saved status-page samples in archive_samples/",
+    "_full_names_on_disk": "the dump's Committees.psv, not in the kit",
+    "_hr69_title_in_journal": "the scanned 1992 House Journal in archive/unh/raw/",
+    "_schedule": "the old fetched schedule.json, the laptop's",
+}
+# WHAT A FAILURE DOES ON A NIGHT THAT IS NOT A DRY RUN. A check against the
+# official record -- one that reads the journals, calendars, dockets or the
+# database dump beside the site -- and a reminder that fails on a date until a
+# person acts only WARN: a slip or a change in the record must never stop the
+# site. Every other check of the built site HOLDS the night for approval.
+# (On a dry run any failure makes it not clean.)
+RECORD_CHECKS = {
+    "_a_dump_holds_the_terms_it_fills", "_calendar_copies", "_calendar_documents_on_disk",
+    "_calendar_meetings", "_cite_survives", "_corrections_still_match",
+    "_docket_dotted_month_on_disk", "_dropped", "_every_speaker_where_the_journal_decides",
+    "_first_referral_on_disk", "_freeze_on_disk", "_introductions_against_journal",
+    "_journal_intros_on_record", "_learn_statutes_in_force", "_manifests_hold_no_called_off_sitting",
+    "_no_phantom_sittings", "_own_lsr_on_disk", "_past_flags_data", "_past_measures_on_record",
+    "_rail_endings_on_the_site", "_report_rec", "_rollcall_outcomes_data",
+    "_session_designations_built", "_sitting_consent_on_disk", "_sponsors_on_record",
+    "_vote_identity"}
+REMINDERS = {"_probate_after_the_vote", "_session_over_current"}
+
+
+def built_selected(c):
+    """Whether --built runs check c: a code check that reads a built site, or
+    a data check the laptop is not needed for."""
+    fn = c["fn"].__name__
+    return fn in BUILT_CODE or (c["group"] == "data" and fn not in NOT_ON_THE_NIGHT)
+
+
+def built_tier(c):
+    """"warn" for a check against the record or a reminder, "hold" for the rest."""
+    return "warn" if c["fn"].__name__ in RECORD_CHECKS | REMINDERS else "hold"
+
+
+@check("files", "the night runs the checks of the site it built, and each failure holds the night "
+       "or warns as the person decided", needs=("nightly",))
+def _built_checks_night(NI):
+    """THE CHECKS OF A SITE JUST BUILT (15 October 2026; the block above says
+    why). Held here: every name on the lists is a check, in the group its list
+    means, and no check is both left off the night and given a tier; --built
+    runs the code checks that read a site and every data check but those left
+    off, and refuses to be combined with another selection; nightly.py runs it
+    after check_site and before the gate, and reads the file it writes; and
+    what a failure does -- on a dry run, not clean; a check of the site
+    itself, a reason for the gate to wait; one against the record, a warning
+    of a kind that never holds; either, an alert."""
+    import inspect
+    by_fn = {c["fn"].__name__: c for c in CHECKS}
+    for name, group in ([(n, "code") for n in BUILT_CODE] + [(n, "data") for n in NOT_ON_THE_NIGHT]
+                        + [(n, "data") for n in RECORD_CHECKS | REMINDERS]):
+        assert name in by_fn, f"{name} is on the night's lists and is no check"
+        assert (by_fn[name]["group"] == "data") == (group == "data"), (
+            f"{name} is listed as a {group} check and is in the group {by_fn[name]['group']}")
+    assert not set(NOT_ON_THE_NIGHT) & (RECORD_CHECKS | REMINDERS), \
+        "a check is both left off the night and given a tier there"
+    assert all(isinstance(r, str) and r.strip() for r in NOT_ON_THE_NIGHT.values()), \
+        "a check is left off the night with no reason"
+    data = [c for c in CHECKS if c["group"] == "data"]
+    chosen = [c for c in CHECKS if built_selected(c)]
+    assert len(chosen) == len(data) - len(NOT_ON_THE_NIGHT) + len(BUILT_CODE), (
+        len(chosen), len(data), len(NOT_ON_THE_NIGHT), len(BUILT_CODE))
+    warn = [c["fn"].__name__ for c in chosen if built_tier(c) == "warn"]
+    assert set(warn) == RECORD_CHECKS | REMINDERS, sorted(set(warn) ^ (RECORD_CHECKS | REMINDERS))
+    assert BUILT_OUT == NI.BUILT_CHECKS, (BUILT_OUT, NI.BUILT_CHECKS)
+    r = _run([sys.executable, _paths.script("preflight.py"), "--built", "--code"],
+             capture_output=True, text=True, timeout=300)
+    assert r.returncode == 2 and "selection of its own" in (r.stderr or ""), (
+        "--built with --code ran", r.returncode)
+    src = Path(NI.__file__).read_text(encoding="utf-8")
+    site_at = src.find('run(["check_site.py"')
+    run_at = src.find('night.v["built_checks"] = built_checks()')
+    judge_at = src.find("night.judge(site, before, after")
+    assert -1 < site_at < run_at < judge_at, (
+        "nightly.py does not run the checks of its build after check_site and before the gate",
+        site_at, run_at, judge_at)
+    assert '"preflight.py", "--built"' in inspect.getsource(NI.built_checks)
+    # What a failure does, on each tier, a missing run and none.
+    ok, hold = {"ran": True, "hold": [], "warn": []}, {"ran": True, "hold": ["x"], "warn": []}
+    warned_only, unrun = {"ran": True, "hold": [], "warn": ["y"]}, {"ran": False}
+    for b in (None, ok):
+        assert not (NI.built_problems(b) or NI.built_review(b) or NI.built_warned(b)
+                    or NI.built_alert(b)), b
+    assert NI.built_problems(hold) and "x" in NI.built_review(hold)[0] \
+        and not NI.built_warned(hold) and "held for approval: x" in NI.built_alert(hold)
+    w = NI.built_warned(warned_only)
+    assert NI.built_problems(warned_only) and not NI.built_review(warned_only) and len(w) == 1 \
+        and w[0][0].startswith(NI.KIND_BUILT_WARN) and "published all the same: y" in \
+        NI.built_alert(warned_only), (w, NI.built_alert(warned_only))
+    assert not NI.warning_reasons(w, served=[], recent=()), \
+        "a failed check against the record holds the night as a new kind of warning"
+    assert NI.built_problems(unrun) and NI.built_review(unrun) and NI.built_alert(unrun)
+    return "ok", (f"{len(chosen)} checks run on the night ({len(BUILT_CODE)} of the code half, "
+                  f"{len(data) - len(NOT_ON_THE_NIGHT)} of the data half; {len(NOT_ON_THE_NIGHT)} "
+                  f"left to the laptop, each with its reason); {len(warn)} warn, the rest hold; "
+                  "nightly.py runs them after check_site and acts on each tier as decided")
+
+
 # ======================================================================= main ==
 
 def main():
@@ -85448,6 +85597,10 @@ def main():
                     help="only the checks the files changed since BASE can reach (default: "
                          "the merge base with dev), and the always-run guards "
                          "(check_select.py) -- NOT the full suite")
+    ap.add_argument("--built", action="store_true",
+                    help="the checks of a site just built, as the night runs them after "
+                         "check_site (BUILT_CODE, and the data checks but NOT_ON_THE_NIGHT); "
+                         f"writes {BUILT_OUT.as_posix()} with each one's tier")
     a = ap.parse_args()
     # NOT BOTH. --code leaves the data checks out and --data runs only them,
     # so together they ran no check at all, printed "0 passed", exited 0 and
@@ -85455,6 +85608,8 @@ def main():
     if a.code and a.data:
         ap.error("--code leaves the data checks out and --data runs only them: together "
                  "they run nothing")
+    if a.built and (a.code or a.data or a.changed is not None):
+        ap.error("--built is a selection of its own: the checks of a site just built")
 
     sys.path.insert(0, ".")
     # NOTHING HERE REACHES THE BUCKET. Since 26 September refusal.note() sends
@@ -85486,18 +85641,20 @@ def main():
     print(f"python {sys.version.split()[0]}")
     print("=" * 74)
     chosen = _changed_choice(a) if a.changed is not None else None
-    if chosen is not None:
-        # NOT RECORDED: a --changed run vouches for part of the suite, and
-        # handoff.py reads a record as a run of all of it.
+    if chosen is not None or a.built:
+        # NOT RECORDED: a --changed or --built run vouches for part of the
+        # suite, and handoff.py reads a record as a run of all of it.
         handoff = None
 
-    results, group = [], None
+    results, group, built = [], None, []
     for c in CHECKS:
         if a.code and c["group"] == "data":
             continue
         if a.data and c["group"] != "data":
             continue
         if chosen is not None and id(c) not in chosen["ids"]:
+            continue
+        if a.built and not built_selected(c):
             continue
         if c["group"] != group:
             group = c["group"]
@@ -85523,6 +85680,9 @@ def main():
                     traceback.print_exc()
             status, msg = _settle(status, msg, c.get("expect_fail"))
         results.append((c["group"], c["name"], status, msg))
+        if a.built:
+            built.append({"fn": c["fn"].__name__, "group": c["group"], "name": c["name"],
+                          "status": status, "msg": str(msg)[:600], "tier": built_tier(c)})
         mark = {"ok": "  ok  ", "skip": " skip ", "FAIL": " FAIL ",
                 "ERROR": "ERROR ", "xfail": "xfail "}[status]
         print(f"  [{mark}] {c['name']}")
@@ -85534,6 +85694,11 @@ def main():
     skipped = [r for r in results if r[2] == "skip"]
     ok = [r for r in results if r[2] == "ok"]
     expected = [r for r in results if r[2] == "xfail"]
+    if a.built:
+        # What nightly.py reads (its BUILT_CHECKS): every check run, its
+        # status and its tier.
+        BUILT_OUT.parent.mkdir(parents=True, exist_ok=True)
+        BUILT_OUT.write_text(json.dumps(built, indent=1), encoding="utf-8")
     if handoff:
         handoff.record_run("code" if a.code else "data" if a.data else "all", results,
                            tree, _time.time() - began, data=data)

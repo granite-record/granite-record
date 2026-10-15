@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.65
+# GRANITE_VERSION: 2026-09-04.66
 """
 The nightly run. Fetch the day's bulk files, rebuild, check, compile what
 readers reported and what changed -- and publish only if told to.
@@ -924,6 +924,25 @@ KIND_DB_NOTHING = "the export's files after the database installed nothing: "
 KIND_STUDY_NOT_AGAIN = "the study committees' meetings not asked for: not asked twice"
 KINDS_FALLBACK = (KIND_FROM_DB, KIND_DB_FILES, KIND_DB_NOTHING, KIND_STUDY_NOT_AGAIN)
 #
+# THE CHECKS OF TONIGHT'S BUILD (15 October 2026, the person's decision).
+# preflight.py --code runs before the night fetches or builds, so every check
+# that reads the built site skipped there or never ran, and from 12 to 15
+# October the report box dropped readers' reports from nearly every
+# legislator page with no night to say so. Now, after check_site, the night
+# runs `preflight.py --built` -- the data checks and the code checks that read
+# a built site, less those that need the laptop -- and it writes BUILT_CHECKS,
+# each check's status and tier: "hold", a check of the site itself, or
+# "warn", a check of the site against the official record, or a reminder that
+# waits on a date. What a failure does: on a dry run, any makes it not clean,
+# so a release that breaks one is never proven; on a real night a failed
+# "hold" check is a reason for the gate to wait for a person, and a failed
+# "warn" check a warning of a kind that never holds -- a slip or a change in
+# the record never stops the site -- and both reach the person as an alert.
+BUILT_CHECKS = Path("logs/built-checks.json")
+KIND_BUILT_WARN = "a check of the built site against the record: "
+REVIEW_BUILT = "a check of the built site failed: {names}"
+BUILT_NAMES_SAID = 4
+#
 # AN ERROR ON THE PAGE HOLDS NOTHING EITHER (the same decision). Night.alarms()
 # -- the seventh database night in a row, the fallback stopped by its own
 # checks night after night -- is what somebody has to act on, and the build is
@@ -1609,6 +1628,10 @@ def main():
                     night.v.update(build="passed", check_site="failed")
                 return 1
             rebuilt = True
+            # The checks of tonight's build (BUILT_CHECKS), before the census
+            # and the gate, which read what they found.
+            if night:
+                night.v["built_checks"] = built_checks()
             # A finished term's rows in tonight's files, left out of the build
             # (build_data.LEFT_OUT), go on the run's page: the count reached
             # build_data's log and nothing else (the review of 5 October 2026).
@@ -3694,6 +3717,94 @@ def fallback_kind(kind):
     return str(kind).startswith(KINDS_FALLBACK)
 
 
+def built_checks():
+    """Run the checks of tonight's build (BUILT_CHECKS) and say what they
+    found: {"ran", "code", "passed", "skipped", "hold", "warn"}, the last two
+    the names of the failed checks of each tier. "ran" is False where
+    preflight wrote no list it could read -- which holds the night, since
+    what the checks would have found is not known."""
+    if BUILT_CHECKS.exists():
+        BUILT_CHECKS.unlink()
+    code = run(["preflight.py", "--built"], "the checks of tonight's build")
+    rows = load_json(BUILT_CHECKS)
+    if not isinstance(rows, list) or not rows:
+        return {"ran": False, "code": code}
+    bad = [r for r in rows if isinstance(r, dict) and r.get("status") in ("FAIL", "ERROR")]
+    out = {"ran": True, "code": code,
+           "passed": sum(1 for r in rows if isinstance(r, dict) and r.get("status") == "ok"),
+           "skipped": sum(1 for r in rows if isinstance(r, dict) and r.get("status") == "skip"),
+           "hold": [str(r.get("name")) for r in bad if r.get("tier") != "warn"],
+           "warn": [str(r.get("name")) for r in bad if r.get("tier") == "warn"]}
+    say(f"\n  the checks of tonight's build: {out['passed']} passed, {out['skipped']} skipped, "
+        f"{len(out['hold'])} failed that hold the night, {len(out['warn'])} that warn")
+    return out
+
+
+def _names_said(names):
+    names = [str(n) for n in names]
+    return "; ".join(names[:BUILT_NAMES_SAID]) + (
+        f" and {len(names) - BUILT_NAMES_SAID} more" if len(names) > BUILT_NAMES_SAID else "")
+
+
+def built_failed(b):
+    """The failed checks of tonight's build, both tiers, or a sentence for
+    checks that did not run; [] for none, or for a night that ran none
+    (no build, or no record of them)."""
+    if not isinstance(b, dict):
+        return []
+    if not b.get("ran"):
+        return ["the checks of tonight's build did not run, so what they would have found is "
+                "not known"]
+    return list(b.get("hold") or []) + list(b.get("warn") or [])
+
+
+def built_problems(b):
+    """A dry run's reason it was not clean, from the checks of its build:
+    any failure, of either tier."""
+    failed = built_failed(b)
+    if not failed:
+        return []
+    if isinstance(b, dict) and not b.get("ran"):
+        return failed
+    return ["checks of the built site failed: " + _names_said(failed)]
+
+
+def built_review(b):
+    """The gate's reason to wait for a person, from the checks of tonight's
+    build: a failed check of the site itself, or checks that did not run."""
+    if not isinstance(b, dict):
+        return []
+    if not b.get("ran"):
+        return [REVIEW_BUILT.format(names="the checks did not run")]
+    if b.get("hold"):
+        return [REVIEW_BUILT.format(names=_names_said(b["hold"]))]
+    return []
+
+
+def built_warned(b):
+    """[(kind, sentence)] for each failed check of tonight's build against the
+    record, a kind that never holds the night (KIND_BUILT_WARN)."""
+    if not isinstance(b, dict):
+        return []
+    return [(KIND_BUILT_WARN + str(n), f"a check of the built site against the record failed, "
+             f"and the night went ahead: {n}") for n in b.get("warn") or []]
+
+
+def built_alert(b):
+    """The alert's sentence for the checks of tonight's build; "" for none."""
+    failed = built_failed(b)
+    if not failed:
+        return ""
+    if not b.get("ran"):
+        return "The checks of tonight's build did not run, so the night waits for approval."
+    bits = []
+    if b.get("hold"):
+        bits.append("held for approval: " + _names_said(b["hold"]))
+    if b.get("warn"):
+        bits.append("against the record, published all the same: " + _names_said(b["warn"]))
+    return "Checks of tonight's built site failed -- " + "; ".join(bits) + "."
+
+
 def warning_reasons(warned, served, recent=()):
     """The gate's fourth reason, one for each kind of warning tonight that
     the build production serves did not carry, nor a night published in the
@@ -3706,7 +3817,9 @@ def warning_reasons(warned, served, recent=()):
     said_as = REVIEW_WARNING if served is not None else REVIEW_WARNING_UNKNOWN
     seen, out = set(served or []) | set(recent or ()), []
     for kind, said in warned:
-        if kind in seen or fallback_kind(kind):
+        # Nor a failed check of the built site against the record (BUILT_CHECKS):
+        # it warns and never holds.
+        if kind in seen or fallback_kind(kind) or str(kind).startswith(KIND_BUILT_WARN):
             continue
         seen.add(kind)
         said = str(said)
@@ -4041,6 +4154,7 @@ class Night:
                 echo=False)
             why = [REVIEW_FAILED.format(what="how much tonight changed", kind=type(e).__name__)]
         self.review_why += why
+        self.review_why += built_review(v.get("built_checks"))
         del served
         # A New term run goes to the publish job even when production already
         # serves this very build: publishing is what lets what it accepted be
@@ -4095,6 +4209,10 @@ class Night:
             why.append(f"check_site: {v.get('check_site', 'not run')}")
         else:
             why += [b for b in v.get("blocking", []) if b not in why]
+            # A dry run proves a commit: any check of its build that failed,
+            # of either tier, and it is not clean (BUILT_CHECKS).
+            if self.a.dry_run:
+                why += built_problems(v.get("built_checks"))
         return why
 
     def warnings(self):
@@ -4211,6 +4329,7 @@ class Night:
                         f"{'s' if rec['read'] != 1 else ''} tonight were not kept, and "
                         "candidate_segments.json and caption_spans.json are as they came "
                         f"down: {rec['guard'][len('put back: '):]}"))
+        out += built_warned(self.v.get("built_checks"))
         return out
 
     def alarms(self):
@@ -4529,7 +4648,8 @@ ALERT_FILE = Path("logs/alert.txt")
 def alerts_of(v):
     """What a person has to act on after tonight, whether or not the night
     was clean: a refusal from the General Court on file, a hold on the SQL
-    host, and a night that was not clean, in that order. [] for none."""
+    host, a check of tonight's build that failed (BUILT_CHECKS), and a night
+    that was not clean, in that order. [] for none."""
     out = []
     if refusal.MARK.exists():
         d = load_json(refusal.MARK)
@@ -4544,6 +4664,9 @@ def alerts_of(v):
         held = None
     if held:
         out.append("The General Court's database is on hold: " + probe_db.hold_sentence(held) + ".")
+    said = built_alert(v.get("built_checks"))
+    if said:
+        out.append(said)
     if not v.get("clean"):
         out.append("The night was not clean: " + plain_why(v))
     return out
