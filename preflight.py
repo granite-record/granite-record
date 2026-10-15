@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.564
+# GRANITE_VERSION: 2026-09-04.565
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -74630,12 +74630,49 @@ def _every_speaker_where_the_journal_decides():
     root, jroot = Path("site/session"), Path("journals")
     if not (root / "H").exists() or not jroot.exists():
         return "skip", "no site/session/H or journals/ here"
-    bad, held = _speakers_against_journal(root, jroot)
+    bad, held, slips = _speakers_against_journal(root, jroot)
     assert held, "no counted motion of a House sitting page was held to the journal"
     assert not bad, (f"{len(bad)} speaker(s) the journal does not place where the page does: "
                      + "; ".join(bad[:4]))
     return "ok", (f"{held:,} counted motions held to the journal: every speaker named on one "
-                  "spoke on its question, and every speech decided by its count is named")
+                  "spoke on its question, and every speech decided by its count is named"
+                  + (f"; the journal's own slips, read as the member each names and said here "
+                     f"so they are seen: {'; '.join(slips)}" if slips else ""))
+
+
+def _member_surnames():
+    """Every surname the record knows a member by, in lower case, the last word
+    of each: careers.json's, the roster's and the two lists of members who have
+    left. Empty where none of them is here."""
+    out = set()
+    for f, pick in ((Path("generated/careers.json"), lambda d: [v.get("last") for v in d.values()]),
+                    (Path("data/legislators.json"), lambda d: [v.get("last") for v in d]),
+                    (Path("former_members.json"), lambda d: [v.get("name") for v in d.values()]),
+                    (Path("past_members.json"), lambda d: list(d.values()))):
+        try:
+            names = pick(json.loads(f.read_text(encoding="utf-8")))
+        except (OSError, ValueError, AttributeError, TypeError):
+            continue
+        for n in names:
+            n = re.sub(r"^(?:Rep|Sen)\.\s+", "", str(n or "")).split(",")[0].split("(")[0].strip()
+            if n:
+                out.add(n.split()[-1].lower())
+    return out
+
+
+def _one_edit(a, b):
+    """Whether two different words are one letter apart: one changed, added or
+    dropped."""
+    if a == b or abs(len(a) - len(b)) > 1:
+        return False
+    if len(a) == len(b):
+        return sum(x != y for x, y in zip(a, b)) == 1
+    if len(a) > len(b):
+        a, b = b, a
+    i = 0
+    while i < len(a) and a[i] == b[i]:
+        i += 1
+    return a[i:] == b[i + 1:]
 
 
 def _speakers_against_journal(root, jroot):
@@ -74803,6 +74840,24 @@ def _speakers_against_journal(root, jroot):
         return abs(a[0] - b[0]) <= 1 and abs(a[1] - b[1]) <= 1
 
     bad, held = [], 0
+    # A SLIP OF THE JOURNAL'S IS SAID, NOT FAILED (the person, 15 October
+    # 2026: "I don't want our website to stop working because of a typo in the
+    # official record, but we should still flag it"). The House Journal of
+    # 9 April 2026 prints "Reps. Poloszaj, Terry, Comtois and St. Clair spoke
+    # against" for Rep. Tom Ploszaj, whom the page names. A journal surname no
+    # member of the record has ever had, one letter from a member's the page
+    # names, is that member; each is returned to be said in the check's
+    # message, and goes on the clerk's list.
+    known, slips = _member_surnames(), set()
+
+    def same(j, n, where):
+        if j == n:
+            return True
+        if known and j not in known and n in known and _one_edit(j, n):
+            slips.add(f"{j.capitalize()} for {n.capitalize()} ({where})")
+            return True
+        return False
+
     for p in sorted((root / "H").glob("*.html")):
         date = p.stem
         bl = blocks(date)
@@ -74835,9 +74890,11 @@ def _speakers_against_journal(root, jroot):
             landing = [s for j, s, sb, at in landed if j == i and sb == b and at == P]
             ended = [s for _j, s, sb, at in landed if sb == b and at == "END"] \
                 if per_bill[b] == 1 else []
+            where = f"H {date} {mo['bill']}"
             for side, names in mo["sides"].items():
                 for n in names:
-                    if not any(s[2] == side and any(x.split()[-1].lower() == n for x in s[3])
+                    if not any(s[2] == side and any(same(x.split()[-1].lower(), n, where)
+                                                    for x in s[3])
                                for s in landing + ended):
                         bad.append(f"H {date} {mo['bill']} {c[0]}-{c[1]}: {n} ({side}) is named, "
                                    "and the journal decides no speech of theirs there")
@@ -74850,10 +74907,12 @@ def _speakers_against_journal(root, jroot):
                 for x in s[3]:
                     sur = x.split()[-1].lower()
                     if (s[2], sur) not in named and not (sur in both and sur in mo["also"]):
+                        if any(sd == s[2] and same(sur, nn, where) for sd, nn in named):
+                            continue
                         bad.append(f"H {date} {mo['bill']} {c[0]}-{c[1]}: {x} ({s[2]}) spoke on it "
                                    "and is " + ("named only as having spoken during the bill"
                                                 if sur in mo["also"] else "named nowhere on it"))
-    return bad, held
+    return bad, held, sorted(slips)
 
 
 @check("data", "every docket date a person corrected still matches its row")
