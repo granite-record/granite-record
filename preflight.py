@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.562
+# GRANITE_VERSION: 2026-09-04.563
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -19957,9 +19957,15 @@ def _bill_shell():
         assert '<base href="/">' in t, (
             f"{f} has no <base>, so every relative link app.js writes resolves "
             f"under {folder}/ and 404s")
-        assert "<noscript>" in t, (
-            f"{f} has no <noscript>: a reader without JavaScript gets a blank "
-            "page and no way to the General Court")
+        # The record as plain HTML, for a reader that runs no scripts, ahead
+        # of the slot app.js draws into. It replaced the <noscript> line on
+        # 12 October 2026 (f4dad63, shell.page's static=), and this asked for
+        # the <noscript> until 15 October: a data check, so no night ran it,
+        # and the laptop's build was older than the change.
+        rec, slot = t.find('id="static-rec"'), t.find('<div id="results">')
+        assert -1 < rec < slot, (
+            f"{f} carries no record as plain HTML before the results slot: a reader "
+            "without JavaScript gets a blank page and no way to the General Court")
         # The three things that make a record findable, and the whole reason
         # these pages exist rather than a fragment on the search page.
         assert "<title>" in t and "| Granite Record</title>" in t, f"{f}: no title"

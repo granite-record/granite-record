@@ -82,6 +82,11 @@ journal_bills.json
 # Which House committee reports the calendar printed under another bill,
 # rebuilt whole by report_check.py on every build.
 report_corrections.json
+# The statutes each bill cites and changes (rsa.py), and the bills sharing
+# their language (related_bills.py): both rebuilt whole on every build since
+# 11 October 2026, and both at the root, where they showed as untracked.
+/rsa_citations.json
+/related_bills.json
 # The governor's veto messages, read off the calendars' text by
 # extract_vetoes.py on every build, GitHub's included (the kit carries the
 # calendars' text, calendars.json and archive/queue.csv it reads). Tracked

@@ -48,13 +48,14 @@ it and what reads it.
 **Three things worth knowing before you read the code.**
 
 *It is files on a CDN.* Every page is static HTML, every record is JSON. A full
-rebuild takes about twenty minutes and produces a directory you can serve with
-anything. That constraint is deliberate: a public record should not stop
-working because a bill went unpaid or a runtime got deprecated. One endpoint is
-the exception and is the only thing here that runs:
-`functions/api/report.js`, which takes a reader's "this is wrong" report. It is
-write-only, on no page's critical path, and the box on the page falls back to
-an email link when it is down.
+rebuild produces a directory you can serve with anything. That constraint is
+deliberate: a public record should not stop working because a bill went unpaid
+or a runtime got deprecated. Two things here run, and no page waits on either
+to draw itself: `functions/api/report.js`, which takes a reader's "this is
+wrong" report, is write-only, and the box on the page falls back to an email
+link when it is down; and email following -- the endpoints under
+`functions/api/follow/` and the sender Worker in `workers/follow/` -- which
+only a reader who asks for updates ever reaches.
 
 *Nothing that cannot be checked is published as though it could be.* A
 timestamp taken from a chair saying "we'll open the hearing on House Bill 1123"

@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-12.10
+// GRANITE_VERSION: 2026-09-12.11
 /*
  * POST /api/report -- a reader says something on a page is wrong.
  *
@@ -148,12 +148,20 @@ export function validate(body) {
 
 // A member's address is a slug the sender chose, so it is only accepted if
 // the built page at that address is the page of that member.
+//
+// THE WHOLE PAGE (15 October 2026). This looked for the member's line in the
+// first 20,000 characters, and from 12 October a legislator page carried its
+// record as plain HTML ahead of that line: on 2,184 of 2,191 pages it stood
+// past the 20,000th character (median 28,005), so a report from nearly every
+// member's page was dropped while the reader was thanked. The page is read
+// whole by text() either way, so the cut bounded nothing but the search;
+// preflight sends a report from every built page through this.
 export async function memberPageMatches(env, request, url, id) {
   if (!env.ASSETS) return false;
   try {
     const res = await env.ASSETS.fetch(new URL(url, request.url));
     if (!res.ok) return false;
-    const html = (await res.text()).slice(0, 20000);
+    const html = await res.text();
     return html.includes(`window.GR_MEMBER="${id}"`);
   } catch {
     return false;

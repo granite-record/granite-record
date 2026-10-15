@@ -322,8 +322,11 @@ generator writes, after being lost twice as columns of a file that rebuilds
 overwrote.
 
 **The site is static.** Files on a CDN, nothing to go down at two in the
-morning, and exactly one write-only Function that no page waits on --
-`functions/api/report.js`, behind the "report a problem" box. That constraint
+morning, and two things that run, neither of which a page waits on to draw
+itself: the write-only Function behind the "report a problem" box,
+`functions/api/report.js`, and email following, whose endpoints are under
+`functions/api/follow/` and whose sender is a Worker of its own,
+`workers/follow/`, both on one D1 database. That constraint
 is also what forces the file cap under item 4 below, but it is the right
 constraint.
 
