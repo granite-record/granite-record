@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.563
+# GRANITE_VERSION: 2026-09-04.564
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -72843,7 +72843,13 @@ MAIN_REF = "refs/heads/main"
 # Taken out is not enough for it: a missing ref is not main's either (nightly's
 # MAIN IS MAIN_REF EXACTLY), so main() then names main, and a fixture on
 # GitHub's machine is a run of main unless its check names another ref.
-WORKFLOW_WORDS = ("DRY_RUN", "GITHUB_REF", "GITHUB_REF_NAME")
+# REVIEW_GATE TOO (15 October 2026). The workflow sets it for every step, and
+# from 1436c5c it says "on": the first dry run after the switch stopped at
+# "preflight failed. Nothing fetched, nothing built", because
+# _nightly_review_says, reading the night's page lines, found the gate-on
+# wording where its fixture expects shadow's. A laptop run never has the word,
+# so no run here could see it. A check that wants the gate on sets it itself.
+WORKFLOW_WORDS = ("DRY_RUN", "GITHUB_REF", "GITHUB_REF_NAME", "REVIEW_GATE")
 CHECKS_REF = ("GITHUB_REF", MAIN_REF)
 
 # EVERY KIND OF RUN, AND WHAT EACH MUST BE (7 October 2026). For each
@@ -73117,8 +73123,16 @@ def _preflight_not_the_runs(NI, CL):
          "environment", NI.REF_ENV, CL.REF_ENV, WORKFLOW_WORDS)
     assert CHECKS_REF == (NI.REF_ENV, NI.MAIN_REF) == (CL.REF_ENV, CL.MAIN_REF), \
         ("the checks' fixtures are not put back as runs of main", CHECKS_REF)
+    assert NI.GATE_ENV in WORKFLOW_WORDS, (
+        "the workflow's word for the gate is not taken out of the checks' environment, so on "
+        "GitHub's machine a check reads the gate as on", NI.GATE_ENV, WORKFLOW_WORDS)
     saved = {k: os.environ.get(k) for k in ("GITHUB_ACTIONS",) + WORKFLOW_WORDS}
     try:
+        # The gate, as the workflow sets it for every step since 1436c5c.
+        os.environ[NI.GATE_ENV] = NI.GATE_ON
+        assert NI.gate_on(), "nightly.gate_on() does not read the workflow's word"
+        _not_the_runs()
+        assert not NI.gate_on(), "the gate's word on GitHub's machine reaches the checks"
         # A dry run by the box, a run of dev with the box unticked, and a run
         # whose ref is missing -- not main's either -- as GitHub's machine
         # hands each to preflight.

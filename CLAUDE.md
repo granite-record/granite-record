@@ -11,11 +11,14 @@ moment in the recording where a chair took the bill up.
 Every hand-written document here drifts, this one included; `STATE.md` is
 generated and does not, so where a count disagrees, `STATE.md` wins.
 
-Static site: files on a CDN. That constraint is deliberate. There is exactly
-one exception: `functions/api/report.js`, the POST endpoint behind the "report
-a problem" box. It is write-only, on no page's critical path, and the box falls
-back to an email link when it is down, which is why it is acceptable on a site
-that is static on purpose.
+Static site: files on a CDN. That constraint is deliberate. Two things run,
+and no page waits on either to draw itself: `functions/api/report.js`, the
+write-only POST endpoint behind the "report a problem" box, which falls back
+to an email link when it is down; and email following -- the endpoints under
+`functions/api/follow/` and the sender Worker in `workers/follow/`, on one D1
+database -- which only a reader who asks for updates ever reaches. That is why
+they are acceptable on a site that is static on purpose, and why a third needs
+asking first.
 
 ---
 
