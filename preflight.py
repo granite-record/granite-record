@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.559
+# GRANITE_VERSION: 2026-09-04.560
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -71966,7 +71966,7 @@ WORKFLOW_DIR = Path(".github/workflows")
 # The secrets the workflows may name, and nothing else: CLOUD_MOVE.md's list.
 WORKFLOW_SECRETS = {"R2_ACCOUNT_ID", "R2_ACCESS_KEY_ID", "R2_SECRET_ACCESS_KEY", "R2_BUCKET",
                     "CLOUDFLARE_API_TOKEN", "CLOUDFLARE_ACCOUNT_ID", "YOUTUBE_API_KEY",
-                    "HEALTHCHECKS_URL"}
+                    "HEALTHCHECKS_URL", "HEALTHCHECKS_PUBLISH_URL"}
 
 
 def _workflows():

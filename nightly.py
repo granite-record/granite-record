@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.63
+# GRANITE_VERSION: 2026-09-04.64
 """
 The nightly run. Fetch the day's bulk files, rebuild, check, compile what
 readers reported and what changed -- and publish only if told to.
@@ -4499,6 +4499,45 @@ def upload_and_check(a, site, target, base):
     return False
 
 
+# ALERTS THAT REACH THE PERSON (14 October 2026, Batch C: the site looks after
+# itself, so nobody reads the run's page every morning). A failed night already
+# reaches them: its Healthchecks ping is /fail, and Healthchecks writes. These
+# are the states that leave a night succeeding while something waits for a
+# person, which the page said and nobody was told. --close writes them to
+# ALERT_FILE, one line each, and the workflow's Healthchecks step sends /fail
+# with the file as the ping's body, which Healthchecks puts in its email. It
+# writes once when the check goes down and once when it comes back, not every
+# night between: a refusal held for three nights is one email, and its "up"
+# is the sign that it was cleared. Each line is this file's own sentence and
+# none of a server's words. The captions backlog is not among them yet: it
+# stands every night while YouTube refuses GitHub's machines, and an alert
+# that never clears hides every other (Batch C item 4 adds it with the runner).
+ALERT_FILE = Path("logs/alert.txt")
+
+
+def alerts_of(v):
+    """What a person has to act on after tonight, whether or not the night
+    was clean: a refusal from the General Court on file, a hold on the SQL
+    host, and a night that was not clean, in that order. [] for none."""
+    out = []
+    if refusal.MARK.exists():
+        d = load_json(refusal.MARK)
+        at = d.get("at", "an unknown time") if isinstance(d, dict) else "an unknown time"
+        out.append(f"A refusal from the General Court has been on file since {at}. Every fetch "
+                   "waits until a person clears it: python3 netcheck.py says what kind it was, "
+                   "then python3 src/ops/cloud.py clear-refusal.")
+    try:
+        import probe_db
+        held = probe_db.hold_standing()
+    except Exception:   # noqa: BLE001 -- an alert must not stop the verdict
+        held = None
+    if held:
+        out.append("The General Court's database is on hold: " + probe_db.hold_sentence(held) + ".")
+    if not v.get("clean"):
+        out.append("The night was not clean: " + plain_why(v))
+    return out
+
+
 def close_verdict(a):
     """--close: the workflow's own step results, folded into the verdict.
 
@@ -4575,6 +4614,10 @@ def close_verdict(a):
             carried = v.pop(FIT_CARRIED, None)
             v[NEWEST_FIT] = carried if isinstance(carried, dict) else None
     v["closed"] = datetime.now().isoformat(timespec="seconds")
+    if not a.weekly and not a.dry_run:
+        v["alerts"] = alerts_of(v)
+        ALERT_FILE.parent.mkdir(parents=True, exist_ok=True)
+        ALERT_FILE.write_text("".join(x + "\n" for x in v["alerts"]), encoding="utf-8")
     write_json(path, v)
     print(f"{path}: {'CLEAN' if v.get('clean') else 'NOT CLEAN'}"
           + ("" if v.get("clean") else " -- " + "; ".join(v.get("not_clean", [])[:4])))
