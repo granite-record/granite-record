@@ -234,6 +234,24 @@ one has built, which `nightly.py` says in `logs/publish-quiet.txt`
 (`PUBLISH_QUIET`) and the step reads. The captions backlog is not an alert yet: it stands every night while YouTube
 refuses GitHub's machines, and an alert that never clears hides every other.
 
+**The checks of the night's own build.** `preflight.py --code` runs before the
+night fetches or builds, so a check that reads a built site skips there, and
+the data checks never ran on GitHub's machine at all -- which is how the
+report box dropped readers' reports from nearly every legislator page for
+four days in October 2026 with no night to say so. After `check_site`, the
+night runs `preflight.py --built`: the code checks that read a built site,
+again, and every data check but the dozen that need the laptop
+(`NOT_ON_THE_NIGHT` in `preflight.py`, each with its reason; a data check
+added later runs on the night unless it is put there). Each check carries a
+tier, and what a failure does follows it: on a dry run any failure makes it
+not clean, so a release that breaks one is never proven; on a real night a
+failed check of the site itself is a reason for the gate to wait for
+approval, while a failed check against the official record -- one that reads
+the journals, calendars, dockets or the database dump -- or a date reminder
+is a warning of a kind that never holds, because a slip or a change in the
+record must not stop the site. Either kind is a line in the Healthchecks
+alert. A run that left no list of what it checked holds the night.
+
 **Which build is live.** After every deploy, preview or production,
 `src/checks/check_live.py --gate` asks the address deployed to for a handful
 of files and holds each to the build: the home page and the bills page, the
