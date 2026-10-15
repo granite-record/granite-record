@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.561
+# GRANITE_VERSION: 2026-09-04.562
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -19285,6 +19285,11 @@ def _check_live_reads_what_it_checks():
     "dashboard settings": the newest index empty, not JSON, or the home page
     in its place; meta.json naming no term, or the home page in its place;
     and meta.json naming other terms than the build's.
+
+    AND IT IS THIS BUILD (15 October 2026). All of the above passed
+    yesterday's build: the same template, terms and feed. The served
+    /build.json must name the build site/'s does -- the moment it finished,
+    and the commit where both name one -- or the deploy did not land.
     """
     import contextlib
     import io
@@ -19339,6 +19344,8 @@ def _check_live_reads_what_it_checks():
         assert "/index.json" not in asked, f"check_live still asks for /index.json: {asked}"
         assert "/meta.json" in asked and "/idx/2025-2026.json" in asked, (
             f"check_live does not ask for meta.json and the newest term's index: {asked}")
+        assert "/build.json" not in asked, (
+            f"check_live asked for build.json with none in site/ to compare it with: {asked}")
         home = good["/"]
         wrong = []
         for why, path, answer in (
@@ -19375,6 +19382,37 @@ def _check_live_reads_what_it_checks():
             f"as unchecked with its own exit ({code}):\n{out[-600:]}")
         assert "DID NOT LAND" not in out, (
             "a file too large to read is reported as a deploy that did not land")
+
+        # WHICH BUILD (15 October 2026): with a build.json in site/, the
+        # served one must name the same build. Yesterday's, one naming none,
+        # or none at all is a deploy that did not land; a laptop's build,
+        # which names no commit, is told by the moment it finished alone.
+        built = {"finished": "2026-10-15T05:53:06", "commit": "a" * 40, "ok": True}
+        (root / "build.json").write_text(json.dumps(built), encoding="utf-8")
+        good["/build.json"] = (200, "application/json", json.dumps(built).encode())
+        serve()
+        code, out = gate()
+        assert code == 0 and "/build.json" in asked and "match" in out, (
+            f"check_live --gate fails, or does not compare, a site serving the build it was "
+            f"given ({code}):\n{out[-600:]}")
+        for why, answer in (
+                ("build.json is yesterday's build", (200, "application/json", json.dumps(
+                    {"finished": "2026-10-14T05:41:00", "commit": "b" * 40}).encode())),
+                ("build.json names no build", (200, "application/json", b'{"ok": true}')),
+                ("build.json is not there", (404, "text/html", b"not found"))):
+            serve()
+            served["/build.json"] = answer
+            code, out = gate()
+            assert code == 1 and "DID NOT LAND" in out, (
+                f"check_live --gate passes a deploy when {why} ({code}):\n{out[-600:]}")
+            wrong.append(why)
+        (root / "build.json").write_text(json.dumps({"finished": built["finished"]}),
+                                         encoding="utf-8")
+        serve()
+        code, out = gate()
+        assert code == 0, f"a laptop's build, naming no commit, failed the gate:\n{out[-600:]}"
+        (root / "build.json").unlink()
+        del good["/build.json"]
 
         # The nightly, given that exit: said as not checked, and not looked at
         # again; given a deploy that did not land, it looks every time and
@@ -73406,6 +73444,64 @@ def _workflows_healthchecks():
         held.append(f"{name} ({len(pings)} step{'s' if len(pings) > 1 else ''})")
     return "ok", (f"{', '.join(held)}: each ping evaluated for every kind of run; none for a dry "
                   "run, by the box or by the branch, and each for every run that is not one")
+
+
+@check("workflows", "the publish job tells the publish check of a publish and of a publish that "
+       "failed, and stays quiet for a deploy refused on purpose")
+def _workflows_publish_pings():
+    """THE LIVE SITE'S DEAD-MAN'S SWITCH, AND A FAILURE SAID AT ONCE (15
+    October 2026). The publish job pings HEALTHCHECKS_PUBLISH_URL once
+    production is deployed, so the check goes quiet when the site stands
+    still; but a failed publish was then heard of only when the check's
+    period ran out, two days on. So the job's last step pings the same
+    check's /fail when any step failed -- unless nightly.py refused on
+    purpose, an older night approved after a newer one built, which it says
+    in PUBLISH_QUIET and the step reads. Held here: the two steps, in that
+    order after the deploy, the failure step last, its if failure() and its
+    /fail, the file it reads being nightly.py's, and runner_deploy writing
+    that file at the newer-night refusal and nowhere else."""
+    import ast as _ast
+    import nightly as NI
+    wf = WORKFLOW_DIR / "nightly.yml"
+    if not wf.is_file():
+        return "skip", "no nightly.yml here"
+    jobs = _wf_jobs(wf.read_text(encoding="utf-8"))
+    publish = [j for j, jl in jobs.items() if "production" in _wf_environment(_wf_code(jl))]
+    assert len(publish) == 1, f"no one job deploys behind the production environment: {publish}"
+    steps = _wf_steps(_wf_code(jobs[publish[0]]))
+    names = [re.sub(r"^\s*- name:\s*", "", st[0]).strip() for st in steps]
+    deploy = [i for i, st in enumerate(steps) if "--deploy-to production" in "\n".join(st)]
+    pings = [i for i, st in enumerate(steps) if "secrets.HEALTHCHECKS_PUBLISH_URL" in "\n".join(st)]
+    assert deploy and len(pings) == 2 and deploy[0] < pings[0] < pings[1] == len(steps) - 1, (
+        "the publish job should deploy, then ping the publish check, then -- last -- ping it "
+        f"when the job failed; its steps are {names}")
+    good, bad = ("\n".join(steps[i]) for i in pings)
+    good_if = re.search(r"^        if:\s*(.+?)\s*$", good, re.M)
+    assert not good_if and "/fail" not in good, (
+        f"{names[pings[0]]!r} should ping a publish, unconditionally after the deploy: "
+        f"{good_if.group(1) if good_if else 'it pings /fail'}")
+    bad_if = re.search(r"^        if:\s*(.+?)\s*$", bad, re.M)
+    assert bad_if and _gh_unwrap(bad_if.group(1)) == "failure()" and '/fail"' in bad, (
+        f"{names[pings[1]]!r} should ping /fail when the job failed, and only then")
+    quiet = NI.PUBLISH_QUIET.as_posix()
+    assert f"'{quiet}'" in bad, (
+        f"{names[pings[1]]!r} does not read nightly.PUBLISH_QUIET ({quiet}), so a deploy refused "
+        "on purpose would be told to Healthchecks as a failed publish")
+    fn = next(n for n in _ast.walk(_ast.parse(Path(NI.__file__).read_text(encoding="utf-8")))
+              if isinstance(n, _ast.FunctionDef) and n.name == "runner_deploy")
+
+    def writes(node):
+        return [c for c in _ast.walk(node) if isinstance(c, _ast.Call)
+                and isinstance(c.func, _ast.Attribute) and c.func.attr == "write_text"
+                and isinstance(c.func.value, _ast.Name) and c.func.value.id == "PUBLISH_QUIET"]
+    refusal = [n for n in _ast.walk(fn) if isinstance(n, _ast.If)
+               and isinstance(n.test, _ast.Name) and n.test.id == "newer"]
+    assert len(writes(fn)) == 1 and refusal and len(writes(refusal[0])) == 1, (
+        "nightly.runner_deploy should write PUBLISH_QUIET at the newer-night refusal and nowhere "
+        "else: anywhere more and a real failure is kept from the person, nowhere and a refusal on "
+        "purpose emails them")
+    return "ok", (f"{names[pings[0]]!r} after the deploy, {names[pings[1]]!r} last, on failure() "
+                  f"to /fail, quiet where {quiet} is, which only the newer-night refusal writes")
 
 
 # ONE DRY RUN AT A TIME (the review of 7 October 2026): the group every dry

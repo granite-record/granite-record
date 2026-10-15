@@ -226,9 +226,23 @@ one email and its recovery is the sign it was cleared. The second check
 (`HEALTHCHECKS_PUBLISH_URL`) is pinged only once production has been
 deployed, so it goes quiet -- and Healthchecks writes -- when the live site
 has stood still longer than its period allows: a held night nobody approved,
-or deploys refused for a newer night, while every night pings on time. The
-captions backlog is not an alert yet: it stands every night while YouTube
+or deploys refused for a newer night, while every night pings on time. And a
+publish job that failed pings that check's `/fail` at once, with the run's
+address as the body, rather than leaving it to go quiet for two days -- except
+for the one refusal that is no failure, an older night approved after a newer
+one has built, which `nightly.py` says in `logs/publish-quiet.txt`
+(`PUBLISH_QUIET`) and the step reads. The captions backlog is not an alert yet: it stands every night while YouTube
 refuses GitHub's machines, and an alert that never clears hides every other.
+
+**Which build is live.** After every deploy, preview or production,
+`src/checks/check_live.py --gate` asks the address deployed to for a handful
+of files and holds each to the build: the home page and the bills page, the
+stylesheet served as CSS, `meta.json` naming the build's terms, the newest
+term's index, the feed. Those show a sound build is served, and yesterday's
+would pass them all, so it also reads the served `/build.json`, which every
+build writes with the moment it finished and the night with its commit: one
+naming another build, or none, is a deploy that did not land, and the night
+looks again a few times before it says so.
 
 **The morning triage.** On the maintainer's laptop,
 `cloud.py pull --changes-only` brings down what the triage reads and nothing else: the

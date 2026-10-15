@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.16
+# GRANITE_VERSION: 2026-09-04.17
 """
 What is the live site actually serving?
 
@@ -40,6 +40,10 @@ WHAT IT CHECKS
                         search load first: served as JSON, parses, has bills
   /legislators          served, and is a different page from /
   /feed/all.xml         served as XML
+  /build.json           the build the site's own build.json names: the moment
+                        it finished, and the night's commit -- the one test
+                        here that yesterday's build would fail (asked only
+                        where the site/ compared with holds one)
 
 The last one matters more than it looks: if / and /bills return the same bytes,
 every path is falling through to the home page, which is the failure that
@@ -203,6 +207,25 @@ def terms_differ(served, built):
                     + (f" and {len(extra) - 3} more" if len(extra) > 3 else "")
                     + ", which the build does not")
     return "; ".join(bits)
+
+
+def which_build(body):
+    """The build a build.json's bytes name, as (finished, commit) -- commit ""
+    where it names none, as a laptop's build does -- or None where it is not
+    JSON or names no moment it finished."""
+    try:
+        d = json.loads(body.decode("utf-8"))
+    except (ValueError, AttributeError, UnicodeDecodeError):
+        return None
+    if not isinstance(d, dict) or not isinstance(d.get("finished"), str) or not d["finished"]:
+        return None
+    commit = d.get("commit")
+    return d["finished"], (commit if isinstance(commit, str) else "")
+
+
+def build_said(b):
+    """A build as which_build gives it, in words."""
+    return f"the build finished {b[0]}" + (f", commit {b[1][:12]}" if b[1] else "")
 
 
 def _flat(s):
@@ -426,6 +449,28 @@ def main():
             problems.append(f"/meta.json is not the file in {site}/: {differ}")
     row("/legislators", "html")
     row("/feed/all.xml", "xml")
+    # WHICH BUILD IS SERVED (15 October 2026). Everything above shows that a
+    # sound build is served, not that it is this one: yesterday's passes every
+    # test it makes, its template, its terms and its feed looking just the
+    # same. build.json is written by every build with the moment it finished,
+    # and by the night with the commit it was built from, so no two builds
+    # share one; asked last, so a deploy still arriving has had the longest.
+    # A served one that names another build is a deploy that did not land.
+    # Where site/ holds no build.json to compare with, nothing is asked.
+    built = which_build((site / "build.json").read_bytes()) if (site / "build.json").is_file() else None
+    served_build = None
+    if built:
+        row("/build.json", "json")
+        st, _, body = seen.get("/build.json", (None, "", b""))
+        if st == 200 and not any(p.startswith("/build.json ") for p in problems):
+            served_build = which_build(body)
+            if served_build is None:
+                problems.append(f"/build.json is not the file in {site}/: it names no build")
+            elif served_build[0] != built[0] or (
+                    served_build[1] and built[1] and served_build[1] != built[1]):
+                problems.append(f"/build.json is not the file in {site}/: it is "
+                                f"{build_said(served_build)}, and {site}/ holds "
+                                f"{build_said(built)}")
 
     # Everything falling through to the home page is the failure that also
     # takes the formatting with it, and it is invisible one URL at a time.
@@ -482,6 +527,9 @@ def main():
         if local and live and not agree:
             problems.append("the live bills page is not the file in "
                             f"{site}/ -- deploy again")
+    if built:
+        print(f"  build served         {build_said(served_build) if served_build else '(none read)'}"
+              f"   {'match' if served_build and served_build[0] == built[0] else 'DIFFERENT'}")
 
     # How long it took, because "the site is slow" and "this connection is
     # slow" feel identical and are fixed differently. A static file from a CDN

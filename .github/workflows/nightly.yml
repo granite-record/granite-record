@@ -578,8 +578,9 @@ jobs:
           python src/ops/cloud.py state-up
           exit $LASTEXITCODE
 
-      # THE LIVE SITE'S OWN DEAD-MAN'S SWITCH (12 October 2026), last in the
-      # job because a New term run's release must follow the deploy directly. The night's
+      # THE LIVE SITE'S OWN DEAD-MAN'S SWITCH (12 October 2026), last of the
+      # steps a good publish runs, because a New term run's release must
+      # follow the deploy directly. The night's
       # Healthchecks check says a night ran; it cannot say the site moved. A
       # night held for approval, an approval nobody gave, a deploy refused for
       # a newer night: each leaves the live site standing still while every
@@ -598,6 +599,41 @@ jobs:
           curl.exe -fsS -m 15 --retry 3 -o NUL "$env:HC_URL"
           if ($LASTEXITCODE -ne 0) {
             Write-Output "Healthchecks did not answer. The site is published all the same."
+          }
+          exit 0
+
+      # A PUBLISH THAT FAILED IS SAID AT ONCE (15 October 2026). Without this
+      # the check above only went quiet, and Healthchecks wrote once its
+      # period ran out, two days later. Any step of this job failing -- the
+      # site not coming down, a deploy that did not land, a fingerprint that
+      # differs -- pings the same check's /fail, with the run's address as the
+      # body, which Healthchecks puts in its email; the next published night
+      # brings it back up. One refusal is not a failure: an older night
+      # approved after a newer one, which nightly.py says in its
+      # PUBLISH_QUIET file, and then this says why and pings nothing.
+      - name: Tell Healthchecks the publish failed
+        if: failure()
+        env:
+          HC_URL: ${{ secrets.HEALTHCHECKS_PUBLISH_URL }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          if (-not $env:HC_URL) {
+            Write-Output "No HEALTHCHECKS_PUBLISH_URL secret, so no ping."
+            exit 0
+          }
+          $quiet = 'logs/publish-quiet.txt'
+          if (Test-Path $quiet) {
+            Get-Content -Raw $quiet
+            Write-Output "Not deployed on purpose, so Healthchecks is not told the publish failed."
+            exit 0
+          }
+          New-Item -ItemType Directory -Force logs | Out-Null
+          $said = 'logs/publish-failed.txt'
+          "The publish job failed, so the live site was not updated: $env:RUN_URL" |
+            Out-File -Encoding utf8 -NoNewline $said
+          curl.exe -fsS -m 15 --retry 3 -o NUL --data-binary "@$said" "$env:HC_URL/fail"
+          if ($LASTEXITCODE -ne 0) {
+            Write-Output "Healthchecks did not answer."
           }
           exit 0
 

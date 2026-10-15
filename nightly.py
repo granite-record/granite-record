@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.64
+# GRANITE_VERSION: 2026-09-04.65
 """
 The nightly run. Fetch the day's bulk files, rebuild, check, compile what
 readers reported and what changed -- and publish only if told to.
@@ -574,6 +574,14 @@ WEEKLY_DRY_VERDICT = Path("archive/last-dry-weekly.json")
 # cloud.py site-down brings down with that site (cloud.SITE_VERDICT, which
 # preflight holds to this). --deploy-to production reads nothing else for it.
 RUN_VERDICT = Path("archive/run-verdict.json")
+# A DEPLOY NOT MADE ON PURPOSE (15 October 2026). The publish job's last step
+# tells Healthchecks' publish check that the publish failed whenever the job
+# failed, so the person hears in minutes rather than when the check's period
+# runs out. One refusal is no failure: an older night approved after a newer
+# one has built a site fit for production. With the gate on that is any held
+# night approved late. --deploy-to production writes its sentence here then,
+# and the workflow's step stays quiet where this file is.
+PUBLISH_QUIET = Path("logs/publish-quiet.txt")
 # The workflow's word that a run is a dry run (its top-level env, which every
 # step inherits). cloud.DRY_ENV is the same name; preflight holds the two and
 # the workflow's line together.
@@ -4417,11 +4425,14 @@ def runner_deploy(a):
             return 1
         newer = newer_fit(load_json(VERDICT), v)
         if newer:
-            say(f"\nNOT DEPLOYED: a newer night, run {newer.get('run_id')} of "
-                f"{newer.get('day') or '?'}, has built a site fit for production since this one, "
-                "and this older build is not deployed over it; approve that one. (A dry run, or "
-                "a newer night that did not build or was kept from production, does not stop "
-                "this.)")
+            said = (f"NOT DEPLOYED: a newer night, run {newer.get('run_id')} of "
+                    f"{newer.get('day') or '?'}, has built a site fit for production since this "
+                    "one, and this older build is not deployed over it; approve that one. (A dry "
+                    "run, or a newer night that did not build or was kept from production, does "
+                    "not stop this.)")
+            say("\n" + said)
+            PUBLISH_QUIET.parent.mkdir(parents=True, exist_ok=True)
+            PUBLISH_QUIET.write_text(said + "\n", encoding="utf-8")
             return 1
         if fingerprint(site) != v.get("fingerprint"):
             say("\nNOT DEPLOYED: the site in this folder is not the build tonight's checks "
