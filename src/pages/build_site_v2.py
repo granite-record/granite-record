@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.206
+# GRANITE_VERSION: 2026-09-05.207
 """
 Generate the faceted site from real General Court data.
 
@@ -525,10 +525,16 @@ def _with_plain(events, bill):
     which the Documents tab prints first and the clerk's line under them (the
     person's choice A, 14 October 2026). Only a line with a citation: those
     are the Documents tab's rows, and the rest would only make the page
-    heavier."""
-    for ev in events:
+    heavier.
+
+    Each is read with the docket line after it, in the list's order: HB 2023
+    of 2022's "Introduced and Adopted: MA DV 259-66" is its introduction
+    because "Ought to Pass" follows it, and HB 1703 of 2016's, with nothing
+    after it, its passage too (plain_action._introduced, 16 October 2026)."""
+    lines = [ev.get("text") or "" for ev in events]
+    for i, ev in enumerate(events):
         if ev.get("cite"):
-            words = PA.plain(ev.get("text") or "", bill)
+            words = PA.plain(lines[i], bill, next_line=lines[i + 1] if i + 1 < len(lines) else "")
             if words:
                 ev["plain"] = words
     return events
