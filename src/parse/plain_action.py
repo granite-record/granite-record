@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-14.6
+# GRANITE_VERSION: 2026-10-14.7
 """
 A docket line in plain words, for a reader who does not know the clerk's
 shorthand -- the email digest and the Documents tab (the person's choices of
@@ -27,6 +27,11 @@ beside them, and the clerk wrote it in a form ("06/15/2026") the site does not
 use, so it is dropped here rather than said twice. The one date said is a
 law's effective date ("II. Remainder Effective 06/10/2025"), which is what
 that line is about and not the day it was entered.
+
+ONE LINE AT A TIME, AND THE LINE AFTER IT. A caller that has the bill's
+docket passes the line that follows (next_line): one kind of line, "Introduced
+and Adopted" on a bill, means one thing or another by what comes next
+(_introduced).
 
 Standard library only, beside narrative.py and motions.py.
 """
@@ -178,13 +183,18 @@ _SIMPLE = [
     # 15 OCTOBER 2026, from the 1,066 lines of the session's docket still left
     # as written: the kinds below say what lines already said here say, in the
     # same words. The Senate's own forms of a hearing, a conferee change and a
-    # resolution's adoption (_introduced, which needs the bill); and a report
-    # that recommends nothing.
+    # resolution's adoption (_introduced, which needs the bill and the line
+    # after it); and a report that recommends nothing.
     #
     # A TWO-DIGIT YEAR IS A YEAR (16 October 2026). The Senate's clerk wrote
     # "Hearing: 3/29/11, Room 102, LOB, 10:00 a.m.; SC17" from 2011 to 2015,
-    # and a rule that wanted four digits left those rows as written: 2,190 of
-    # them, each counted once though two dockets on disk hold 2015.
+    # and a rule that wanted four digits left those rows as written: 2,459 of
+    # them as the build reads them (listed_line, the clerk's flags out but a
+    # cancel mark kept), each counted once though three dockets on disk hold
+    # 2015. 269 of those carry a flag in the middle ("=== RESCHEDULED ===",
+    # "=== TIME CHANGE ===", "=== RECESSED ===", "=== RECONVENE ===") and read
+    # as such a row of four digits already did; a cancelled one is still no
+    # hearing.
     (re.compile(r"^Hearing\s*:\s*\d{1,2}/\d{1,2}/(?:\d{4}|\d{2})(?!\d)", re.I),
      lambda m, r: "Public hearing" + _where(r)),
     # A veto vote, in the House's form and the Senate's ("Notwithstanding the
@@ -274,15 +284,19 @@ _SIMPLE = [
                 r"governor", re.I),
      lambda m, r: "Became law without the Governor's signature"
      + (lambda c: f", chapter {int(c.group(1))}" if c else "")(_CHAPTER_ANY.search(r))),
-    # Set for the next session day, with or without the motion's "MA": the
-    # same order reads the same either way, so the 167 lines with "MA" that
-    # the vote words gave "Rescheduled" read this too, and the ones without
-    # it are no longer left as written. A dated special order, or one to a
-    # place in a calendar, is still "Rescheduled".
+    # Set for the next session day, where the vote words leave the line as
+    # written: 189 lines, "Special Order to Next Session, Without Objection".
+    # A LINE THE VOTE WORDS ALREADY READ KEEPS THEIR WORD (the review of 16
+    # October 2026). 167 lines with the motion's "MA" read "Rescheduled",
+    # which is votes.json's head for the same motion on the Votes tab, and
+    # these words over them would give a reader two words for one vote.
+    # Whether they too should read "Set for the next session day" is the
+    # person's to say. A dated special order is "Rescheduled" either way.
     (re.compile(r"^(?:Without\s+Objection,?\s+)?(?:[A-Z]{2,5}\s*\d+(?:-[A-Z]+)*\s+is\s+)?Special\s+Order(?:ed)?\s+"
                 r"(?:[A-Z]{2,5}\s*\d+(?:-[A-Z]+)*\s+)?to\s+(?:to\s+)?(?:the\s+)?Next\s+Session(?:\s+(?:Day|Date))?"
                 r"(?:\s+in\s+(?:the\s+)?Regular\s+Calendar\s+Order)?\s*(?=[,;:(]|Without\b|[HS]J\b|$)", re.I),
-     lambda m, r: "" if re.search(r"\bMF\b", r) else "Set for the next session day" + _how(r)),
+     lambda m, r: "" if re.search(r"\bMF\b", r) or _vote_words(N.classify(r), r)
+     else "Set for the next session day" + _how(r)),
     (re.compile(r"^The\s+Chair\s+ruled\s+the\s+Question\s+Divisible\b", re.I),
      lambda m, r: "The chair ruled the question could be divided"),
     # One amendment's sections only: "..., and the following Amendments
@@ -338,7 +352,8 @@ def _effective(m):
     elif m.group("part"):
         what = "Part " + m.group("part").split()[-1].upper()
     elif m.group("rsa"):
-        what = re.sub(r"\bSection\b", "section", re.sub(r"\s+", " ", m.group("rsa")), flags=re.I)
+        what = re.sub(r"\bas inserted by section\b", "as inserted by section", re.sub(r"\s+", " ", m.group("rsa")),
+                      flags=re.I)
     else:
         what = _sections(m.group("nums") or "")
     if not what:
@@ -353,25 +368,55 @@ def _effective(m):
     return f"{what} {verb} effect {day}" + (f", at {_clock(at)}" if at else "")
 
 
-# "INTRODUCED AND ADOPTED" ON A BILL IS ITS INTRODUCTION (16 October 2026).
-# A resolution is introduced and adopted in one motion, and the words say so.
-# A bill let in after the deadline is written the same way -- "Introduced and
-# Adopted: MA DV 259-66 By Necessary Two-Thirds Vote" (HB 2023 of 2022), then
-# "Ought to Pass: MA VV" -- and there the tally is the vote to admit it, not
-# to pass it: "Introduced and adopted, 259-66" read as the House passing the
-# bill by that count. Five lines on disk, all of them House bills.
+# "INTRODUCED AND ADOPTED" ON A BILL IS ITS INTRODUCTION WHEN ITS PASSAGE
+# FOLLOWS (16 October 2026). A resolution is introduced and adopted in one
+# motion, and the words say so. A bill let in after the deadline is written
+# the same way, and the line means one of two things by what comes after it:
+#
+#   HB 2023 of 2022   "Introduced and Adopted: MA DV 259-66 By Necessary
+#                     Two-Thirds Vote", then "Ought to Pass : MA VV". The
+#                     journal gives 259-66 as the two-thirds vote to suspend
+#                     the rules and let the bill in, and "Introduced and
+#                     adopted, 259-66" read as the House passing it by that
+#                     count. So it is "Introduced by a two-thirds vote,
+#                     259-66 on a division vote". HB 3 and HB 4 of 2019 are
+#                     the same, with "Ought to Pass" next.
+#   HB 1703 of 2016   "Introduced and Adopted: MA RC 314-25 By Necessary
+#                     Two-Thirds Vote", and no line after it. The journal
+#                     (HJ 42) gives the suspension 253-87, then "Ought to
+#                     Pass" 314-25 and third reading: the one line is the
+#                     introduction and the passage, and 314-25 is the
+#                     passage's. So it keeps "Introduced and adopted, 314-25
+#                     on a roll call", as HB 1702 of 2016 keeps its own.
+#
+# The line alone cannot tell the two apart, so the caller passes the line
+# after it (next_line); without one, a line reads as the whole of what it
+# records, as it did before. Five lines on disk, all of them House bills.
 _INTRO_ADOPTED = re.compile(r"^Introduced\s+and\s+Adopted\b", re.I)
 _BILL = re.compile(r"^\s*(?:SS)?[HS]B\s*\d", re.I)
+_PASSAGE = re.compile(r"^\s*Ought\s+to\s+Pass\b", re.I)
 
 
-def _introduced(raw, bill):
-    """The words for an "Introduced and Adopted" line: a resolution's
-    adoption, or a bill's introduction, by two thirds where the line says
-    the vote needed them. A line read without its bill is a resolution's."""
-    if not _BILL.match(bill or ""):
+def _introduced(raw, bill, next_line=""):
+    """The words for an "Introduced and Adopted" line: a bill's introduction,
+    by two thirds where the line says the vote needed them, where the vote
+    on its passage is the next line; else "Introduced and adopted", which is
+    a resolution's adoption and a bill's introduction and passage in one."""
+    if not (_BILL.match(bill or "") and _PASSAGE.match(next_line or "")):
         return "Introduced and adopted" + _how(raw)
     two_thirds = re.search(r"\btwo[- ]thirds\b|\b2/3\b", raw, re.I)
     return "Introduced" + (" by a two-thirds vote" if two_thirds else "") + _how(raw)
+
+
+def _vote_words(d, raw, bill="", body=""):
+    """A floor vote's words, from narrative.classify's reading of the line
+    (d): votes.json's head for the motion's outcome and the count, or "" for
+    a line that is not a floor vote or a motion the words do not name."""
+    if d.get("_type") != "floor":
+        return ""
+    carried = (d.get("motion") or "").upper() == "MA"
+    head = _motion_words(d.get("action") or raw, carried, bill, body)
+    return head + _how(raw) if head else ""
 
 
 def _amendment(raw):
@@ -386,8 +431,10 @@ def _amendment(raw):
     return f"{kind} {m.group('num')}" + (f" ({who.strip()})" if who else "") + f" {out}" + _how(raw)
 
 
-def plain(raw, bill="", body=""):
-    """The line in plain words, or "" where it is of a kind not known here."""
+def plain(raw, bill="", body="", next_line=""):
+    """The line in plain words, or "" where it is of a kind not known here.
+    next_line is the bill's docket line after this one, where the caller has
+    the docket (_introduced)."""
     raw = (raw or "").strip()
     if not raw:
         return ""
@@ -397,7 +444,7 @@ def plain(raw, bill="", body=""):
     if words:
         return words
     if _INTRO_ADOPTED.search(raw):
-        return _introduced(raw, bill)
+        return _introduced(raw, bill, next_line)
     for pat, say in _SIMPLE:
         m = pat.search(raw)
         if m:
@@ -433,9 +480,7 @@ def plain(raw, bill="", body=""):
             out += ", for the consent calendar"
         return out
     if k == "floor":
-        carried = (d.get("motion") or "").upper() == "MA"
-        head = _motion_words(d.get("action") or raw, carried, bill, body)
-        return head + _how(raw) if head else ""
+        return _vote_words(d, raw, bill, body)
     if k == "governor":
         w = (d.get("what") or "").lower()
         if w.startswith("signed"):

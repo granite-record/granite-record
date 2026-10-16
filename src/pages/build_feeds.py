@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.33
+# GRANITE_VERSION: 2026-09-04.34
 """
 Write RSS feeds so people can follow bills without a login.
 
@@ -122,6 +122,16 @@ def feed_events(d):
     stripped as every line's mark is, reads as a notice of the very meeting
     it cancels. So the feeds tell what they told before the page listed it."""
     return [e for e in (d.get("events") or []) if e.get("date") and not e.get("called_off")]
+
+
+def next_lines(d):
+    """{id(event): the docket line after it} for one bill's record, in the
+    order its page lists them, which plain_action reads a line with: an
+    "Introduced and Adopted" line on a bill is its introduction only where
+    "Ought to Pass" follows it (plain_action._introduced, 16 October 2026).
+    A feed reads its events newest first, so the order is the record's."""
+    evs = d.get("events") or []
+    return {id(x): y.get("text") or "" for x, y in zip(evs, evs[1:])}
 
 
 def filed_date(d):
@@ -410,6 +420,7 @@ def main():
         if d is None:
             continue
         url = bill_url(b)
+        then = next_lines(d)
         events = feed_events(d)
         events.sort(key=lambda e: e["date"], reverse=True)
         # A BILL WITH NO DOCKET is dated by its introduction: filed_date.
@@ -446,7 +457,7 @@ def main():
                              recommends=FC.study_says(e.get("text")),
                              milestone=FC.milestone(ek, e.get("text")),
                              plain=(lambda w: f"{b['n']} \u2014 {w}" if w else "")(
-                                 PA.plain(e.get("text") or "", b["id"])))
+                                 PA.plain(e.get("text") or "", b["id"], next_line=then.get(id(e), ""))))
                 if it:
                     fc_items[t[4]] = it
 

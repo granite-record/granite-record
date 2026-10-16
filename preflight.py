@@ -33039,8 +33039,8 @@ def _rsa_pages(B, RSA, S):
 
 
 @check("build", "a docket line in plain words says what the record says, in the approved vote words, "
-       "and says nothing for a line it does not know", needs=("plain_action",))
-def _plain_action(PA):
+       "and says nothing for a line it does not know", needs=("plain_action", "build_site_v2", "build_feeds"))
+def _plain_action(PA, B, BF):
     """The email and the Documents tab print these first and the clerk's line
     under them (the person's choices of 14 October 2026). Each pair is a real
     line of a docket on disk, of 2025-2026 where that term has the variant."""
@@ -33109,6 +33109,8 @@ def _plain_action(PA):
         "II. Remainder Effective 07/06/15": "The rest of the act takes effect July 6, 2015",
         "I. Sections 4 and 6 of this act shall take effect as provided in Section 7":
             "Sections 4 and 6 take effect as section 7 provides",
+        "I. RSA 332-I:3, IV as Inserted by Section 4 Effective as Provided in Section 5":
+            "RSA 332-I:3, IV as inserted by section 4 takes effect as section 5 provides",
         "Part II Effective 10/09/2021": "Part II takes effect October 9, 2021",
         "Without Objection, the Clerk is authorized to make technical and administrative corrections which "
         "are necessary to reflect the intent of the Senate, MA; 06/26/2025;  SJ 17":
@@ -33123,10 +33125,12 @@ def _plain_action(PA):
             "Became law without the Governor's signature, chapter 329",
         "Enacted in accordance with Article 44 PartII of the N.H. Constitution without the signature of the "
         "governor. Chapter 340;eff. 01/01/2027": "Became law without the Governor's signature, chapter 340",
-        # The same order with the motion's "MA" or without it reads the same;
-        # a dated special order is still the vote words' "Rescheduled".
+        # The approved words where the vote words leave the line as written;
+        # a line they already read keeps their "Rescheduled", the Votes tab's
+        # word for the same motion (the review of 16 October 2026).
         "Special Order to Next Session, Without Objection; 01/30/2025;  SJ 4": "Set for the next session day",
-        "Special Order to Next Session, Without Objection, MA; 05/08/2025;  SJ 12": "Set for the next session day",
+        "Special Order HB 328 to the Next Session, Without Objection, MA; SJ 15": "Set for the next session day",
+        "Special Order to Next Session, Without Objection, MA; 05/08/2025;  SJ 12": "Rescheduled",
         "Special Order to 05/08/2025, Without Objection, MA; 05/01/2025  SJ 11": "Rescheduled",
         "The Chair ruled the Question Divisible; 06/05/2025;  SJ 15": "The chair ruled the question could be divided",
         "The Chair ruled the Question Non-Divisible; 01/07/2026;  SJ 1": "",
@@ -33142,20 +33146,46 @@ def _plain_action(PA):
         "Hearing: 05/05/15, Representatives' Hall, SH 3:00 p.m.-5:00 p.m.; and 6:00 p.m.-8:00 p.m. HB1 and HB2; "
         "SC18": "Public hearing, 3:00 p.m.",
     }
-    # "INTRODUCED AND ADOPTED" ON A BILL IS ITS INTRODUCTION (16 October
-    # 2026): the tally is the vote to let it in, not to pass it.
+    # "INTRODUCED AND ADOPTED" ON A BILL IS ITS INTRODUCTION WHEN "OUGHT TO
+    # PASS" FOLLOWS IT (16 October 2026): HB 2023 of 2022's 259-66 is the
+    # two-thirds vote to let it in. HB 1703 of 2016's line is the whole of
+    # its docket, and its 314-25 is the House passing it (HJ 42), so it reads
+    # as it did; and so does a line read without the one after it.
+    hb2023 = "Introduced and Adopted: MA DV 259-66 By Necessary Two-Thirds Vote 09/15/2022 HJ 15"
     on_bill = {
-        ("Introduced and Adopted: MA DV 259-66 By Necessary Two-Thirds Vote 09/15/2022 HJ 15", "HB2023"):
+        (hb2023, "HB2023", "Ought to Pass : MA VV 09/15/2022 HJ 15"):
             "Introduced by a two-thirds vote, 259–66 on a division vote",
-        ("Introduced and Adopted (without objection) 09/25/2019 HJ 23 P. 4", "HB3"): "Introduced",
-        ("Introduced and Adopted, VV; 12/04/2024;  SJ 1", "SR1"): "Introduced and adopted, on a voice vote",
+        ("Introduced and Adopted (without objection) 09/25/2019 HJ 23 P. 4", "HB3",
+         "Ought to Pass : MA RC 327-29 09/25/2019 HJ 23 P. 4"): "Introduced",
+        ("Introduced and Adopted: MA RC 314-25 By Necessary Two-Thirds Vote 06/01/2016 HJ 42 P. 35", "HB1703", ""):
+            "Introduced and adopted, 314–25 on a roll call",
+        ("Introduced and Adopted: MA VV By Necessary Two-Thirds Vote 06/01/2016 HJ 42 P. 3", "HB1702", ""):
+            "Introduced and adopted, on a voice vote",
+        (hb2023, "HB2023", ""): "Introduced and adopted, 259–66 on a division vote",
+        ("Introduced and Adopted, VV; 12/04/2024;  SJ 1", "SR1", ""): "Introduced and adopted, on a voice vote",
     }
-    for (raw, bill), want in [((r, ""), w) for r, w in cases.items()] + list(on_bill.items()):
-        got = PA.plain(raw, bill)
+    for (raw, bill, then), want in [((r, "", ""), w) for r, w in cases.items()] + list(on_bill.items()):
+        got = PA.plain(raw, bill, next_line=then)
         assert got == want, f"{raw!r} on {bill or 'no bill'} reads {got!r}, not {want!r}"
         assert not re.search(r"\d{1,2}/\d{1,2}/\d{4}", got), f"{raw!r} keeps the clerk's date"
+    # Both callers pass the line after it, in the record's order: the bill
+    # page's Documents tab, on the lines as the page lists them, and the
+    # feed, which reads its events newest first.
+    listed = [{"text": "Introduced and Adopted: MA DV 259-66 By Necessary Two-Thirds Vote 09/15/2022", "cite": "HJ 15"},
+              {"text": "Ought to Pass : MA VV 09/15/2022", "cite": "HJ 15"}]
+    got = [e.get("plain") for e in B._with_plain([dict(e) for e in listed], "HB2023")]
+    assert got == ["Introduced by a two-thirds vote, 259–66 on a division vote", "Bill passed, on a voice vote"], \
+        f"HB 2023 of 2022's Documents tab reads {got}"
+    got = B._with_plain([{"text": "Introduced and Adopted: MA RC 314-25 By Necessary Two-Thirds Vote 06/01/2016",
+                          "cite": "HJ 42"}], "HB1703")[0].get("plain")
+    assert got == "Introduced and adopted, 314–25 on a roll call", f"HB 1703 of 2016's Documents tab reads {got!r}"
+    then = BF.next_lines({"events": listed})
+    assert then == {id(listed[0]): listed[1]["text"]}, f"the feed reads HB 2023's first line beside {then}"
+    calls = re.findall(r"PA\.plain\([^\n]*", Path("src/pages/build_feeds.py").read_text(encoding="utf-8"))
+    assert calls and all("next_line=" in c for c in calls), f"a feed reads a line without the one after it: {calls}"
     return "ok", (f"{len(cases) + len(on_bill)} docket lines read as the approved words say, and "
-                  f"{sum(not w for w in cases.values())} left as written")
+                  f"{sum(not w for w in cases.values())} left as written; the Documents tab and the feed "
+                  f"read each with the line after it")
 
 
 @check("build", "the glossary page lists every glossary.json entry once, by its name in full, "
