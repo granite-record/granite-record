@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-09.4
+# GRANITE_VERSION: 2026-09-09.5
 """
 The built site, read back: one reader of the record inside a page.
 
@@ -41,6 +41,8 @@ from pathlib import Path
 
 INLINE = re.compile(
     r'<script type="application/json" id="gr-data">(.*?)</script>', re.S)
+INLINE_OPEN = '<script type="application/json" id="gr-data">'
+INLINE_CLOSE = "</script>"
 META = re.compile(r'<meta name="gr-data" content="([^"]+)"')
 
 
@@ -72,9 +74,17 @@ def _page_record(site, f):
     page: the caller counts them rather than having the walk stop on it.
     """
     text = f.read_text(encoding="utf-8", errors="replace")
-    m = INLINE.search(text)
-    if m:
-        raw = m.group(1)
+    # INLINE's own span, found by str.find (16 October 2026, private/
+    # BUILD_SPEED.md, F): the first opening tag and the first closing tag
+    # after it, which is what the lazy pattern matched -- and a closing tag
+    # missing after the first opening tag is missing after any later one.
+    # The pattern stepped through every character of a page to get there,
+    # twice over every bill page a night reads back. INLINE stays the
+    # definition, and preflight holds the two to the same answer.
+    i = text.find(INLINE_OPEN)
+    j = text.find(INLINE_CLOSE, i + len(INLINE_OPEN)) if i >= 0 else -1
+    if j >= 0:
+        raw = text[i + len(INLINE_OPEN):j]
     else:
         mm = META.search(text)
         if not mm:

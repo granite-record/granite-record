@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.574
+# GRANITE_VERSION: 2026-09-04.575
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -77617,6 +77617,47 @@ def _bill_versions_early(BV, BB):
     assert early == want, ("the pool's answers are not the loop's", sorted(early), sorted(want))
     return "ok", ("three pairs of two bills compared in a pool equal compare()'s, keyed as the "
                   "loop meets them, marks and all; at the real mark nothing short is sent")
+
+
+@check("build", "a bill page's inline record is read by str.find as the pattern that defines "
+       "it reads it", needs=("site_read",))
+def _page_record_find(SR):
+    """site_read._page_record finds the inline record with two str.find calls
+    rather than INLINE's lazy pattern (16 October 2026: 7.8 s to 3.2 s a walk
+    over 33,717 pages, every record the same). Held here on the shapes that
+    could part them: two inline blocks, a block that never closes, a closing
+    tag before the opening one, an empty record, and a page with none, which
+    falls to the sidecar as before."""
+    o, c = SR.INLINE_OPEN, SR.INLINE_CLOSE
+    pages = {
+        "plain": f'<p>x</p>{o}{{"id": 1}}{c}<p>y</p>',
+        "two": f'{o}{{"id": 1}}{c}<script>z</script>{o}{{"id": 2}}{c}',
+        "unclosed": f'<p>x</p>{o}{{"id": 1}}',
+        "close first": f'{c}<p>x</p>{o}{{"id": 3}}{c}',
+        "empty": f"{o}{c}",
+        "none": '<meta name="gr-data" content="/bill/2026/hb1.json"><p>x</p>',
+    }
+    tmp = Path(tempfile.mkdtemp(prefix="gr-record-"))
+    try:
+        (tmp / "bill" / "2026").mkdir(parents=True)
+        (tmp / "bill" / "2026" / "hb1.json").write_text('{"id": "side"}', encoding="utf-8")
+        for name, html in pages.items():
+            f = tmp / f"{name.replace(' ', '_')}.html"
+            f.write_text(html, encoding="utf-8")
+            m = SR.INLINE.search(html)
+            if m:
+                try:
+                    want = json.loads(m.group(1))
+                except ValueError:
+                    want = None
+            else:
+                want = {"id": "side"} if 'name="gr-data"' in html else None
+            got = SR._page_record(tmp, f)
+            assert got == want, (f"the {name!r} page's record is {got!r} where the pattern "
+                                 f"reads {want!r}")
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    return "ok", "six shapes of page, each read as INLINE reads it, the sidecar where none is inline"
 
 
 @check("build", "a past term's bill versions outlive the database's current views",
