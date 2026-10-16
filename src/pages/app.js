@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.207
+// GRANITE_VERSION: 2026-09-07.208
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -5668,7 +5668,9 @@ const FOLLOW_SAID={invalid:"That does not look like an email address.",
   broken:"The check that you are a person could not run on this page",
   "not-followable":"This can no longer be followed by email.",
   busy:"Too many sign-ups today. Please try again tomorrow.",
-  unavailable:"Email updates are not working right now. The feed above still is."};
+  // Not "the feed above still is" (16 October 2026): the feed has sat below the
+  // email box since 12 October, and a law has no feed at all.
+  unavailable:"Email updates are not working right now. Please try again later."};
 function mountFollow(kind,feed,ref){
   const link=feed?null:document.querySelector('link[rel="alternate"][type="application/rss+xml"]');
   const res=$("#results");
@@ -5687,14 +5689,21 @@ function mountFollow(kind,feed,ref){
   // row, and Follow makes its own as it always did.
   const acts=document.getElementById("pageacts");
   if(acts)div.className="followin";
+  // THE ADDRESS TO COPY, AND NOTHING THAT OPENS THE FEED (the person,
+  // 16 October 2026). "Open the feed" sat beside Copy the address, and on a
+  // phone it showed the feed's raw XML, which reads as a broken page. A feed
+  // is for a feed reader, which wants its address, so the pane gives the
+  // address in its box and a button to copy it; a reader whose browser
+  // follows feeds finds this one named in the head of the record's own page.
+  // Only there: a bill focused in the search list has its feed from the page
+  // focusActions fetched, and the search page's head does not name it.
   div.innerHTML=`<details class="follow"><summary>${icon("follow")}Follow</summary>
     <div class="followpane"><div class="followmail" hidden></div>${href?`<p><b>By RSS</b>, in any feed reader: ${esc(FOLLOWS[kind]||"what is new here")}.
         The record is rebuilt once a night, so an update arrives the morning after
         it happens.</p>
       <p class="feedurl"><input type="text" readonly aria-label="The feed's address"
         value="${esc(new URL(href,location.origin).href)}">
-        <button type="button" class="link" data-copyfeed="1">Copy the address</button>
-        <a href="${esc(href)}">Open the feed</a></p>`:""}
+        <button type="button" class="link" data-copyfeed="1">Copy the address</button></p>`:""}
     </div></details>`;
   if(acts){const c=acts.querySelector(".pcite");acts.insertBefore(div,c?c.nextSibling:acts.firstChild);}
   else res.before(div);
