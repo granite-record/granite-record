@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.199
+# GRANITE_VERSION: 2026-09-04.200
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -2931,15 +2931,31 @@ document.addEventListener("click",e=>{
 // ids, draws the header panel's rows into the box's dropdown -- the same
 // matcher, the same order, the same rows, so the two boxes cannot disagree.
 // find.js is deferred, so it is asked for when a reader types, not now.
-// Return takes the first row, as in the header; Search opens every result
-// (/search), and with nothing typed the bill search, as it always did.
+// GO IS SEARCH HERE (the webinar's phone check, 16 October 2026; the person
+// approved it). This box has a Search button, and Return or a phone's Go key
+// took the first row instead, as the header's finder does: "housing" opened
+// the House Housing committee where the reader wanted the housing bills. So
+// Return does what the button does -- every result (/search), and with
+// nothing typed the bill search, as it always did -- except for a bill
+// number, which opens the bill as in the header (find.js's findBill: the
+// person's rule of 12 October). A row is still one tap away.
 const HQ={out:"hqout",box:"hq",clear:"",say:"hqsay"};
 const hq=document.getElementById("hq"),hqout=document.getElementById("hqout");
+// ABOVE THE KEYBOARD. On a phone this box stands most of the way down the
+// first screen, and the keyboard covered the rows it opens; as they first
+// appear, the box is brought up to the top of the window.
+function hqLift(){
+  if(!(window.matchMedia&&matchMedia("(max-width:45em)").matches))return;
+  const top=hq.getBoundingClientRect().top;
+  if(top>80)window.scrollBy({top:top-16,behavior:"smooth"});
+}
 function hqDraw(){
   const v=hq.value;
   if(!v.trim()||typeof findDraw!=="function"){hqout.hidden=true;return;}
+  const opening=hqout.hidden;
   hqout.hidden=false;
   findDraw(v,HQ);
+  if(opening)hqLift();
   findRows().then(()=>{if(hq.value===v&&!hqout.hidden)findDraw(v,HQ);});
 }
 // Half an emoji is not an address (find.js, _fwell).
@@ -2952,7 +2968,8 @@ hq.addEventListener("keydown",e=>{
   if(e.key!=="Enter")return;
   e.preventDefault();
   const first=hqout.hidden?null:hqout.querySelector("a");
-  location.href=first?first.href:hqAddr(hq.value);
+  const bill=typeof findBill==="function"&&findBill(hq.value);
+  location.href=first&&bill?first.href:hqAddr(hq.value);
 });
 document.getElementById("hgo").addEventListener("click",()=>{location.href=hqAddr(hq.value);});
 // Away from the box, the dropdown closes; "Did you mean" searches again here.

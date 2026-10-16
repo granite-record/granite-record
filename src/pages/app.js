@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.201
+// GRANITE_VERSION: 2026-09-07.202
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -5655,6 +5655,8 @@ function followMail(box){
       slot.innerHTML=followMailForm(key);
       slot.hidden=false;
       box.dataset.mail="shown";
+      // The email box arrives after the pane opened, and lengthens it.
+      paneInView(box.querySelector(".followpane"));
       followCheck(slot.querySelector(".followcheck"));
     }).catch(()=>{});
 }
@@ -5694,12 +5696,29 @@ function followUsed(w){
   if(st)st.token="";
   if(window.turnstile&&w&&w.dataset.widget)try{window.turnstile.reset(w.dataset.widget);}catch(_){}
 }
+// A PANE THAT OPENS BELOW THE FOLD IS BROUGHT INTO VIEW (the webinar's phone
+// check, 16 October 2026). Follow's and Cite's panes hang under their buttons,
+// and on a phone with the action row near the foot of the screen Follow's
+// opened at y=842 of 812: the press seemed to do nothing. The window moves
+// only as far as shows the pane, and only when some of it is out of sight;
+// the button pressed stays where the reader's finger is whenever the pane
+// fits below it.
+function paneInView(p){
+  if(!p||typeof p.getBoundingClientRect!=="function")return;
+  (window.requestAnimationFrame||setTimeout)(()=>{
+    const r=p.getBoundingClientRect(), h=window.innerHeight||0;
+    if(h&&(r.bottom>h||r.top<0))
+      p.scrollIntoView({block:r.height>h?"start":"nearest",behavior:"smooth"});
+  });
+}
 document.addEventListener("toggle",e=>{
   const d=e.target;
   if(d.classList&&d.classList.contains("follow")&&d.open){
     const box=d.closest("#followbox");
     if(box)followMail(box);
   }
+  if(d.open&&d.classList&&(d.classList.contains("follow")||d.classList.contains("pcite")))
+    paneInView(d.querySelector(".followpane,.citebody"));
 },true);
 // Sent through the page's one submit listener, the report box's, below.
 async function followSubmit(e,form){

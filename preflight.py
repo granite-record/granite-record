@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.576
+# GRANITE_VERSION: 2026-09-04.577
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -56572,6 +56572,13 @@ def _home_finder_suggests_towns():
     assert 'const HQ={out:"hqout",box:"hq",clear:"",say:"hqsay"};' in js \
         and "findDraw(v,HQ)" in js and 'id="hqsay"' in page, (
             "the home box does not draw with find.js's findDraw into its own ids")
+    # GO IS SEARCH (16 October 2026): Return does what the box's Search button
+    # does, but for a bill number, which opens the bill as the header does.
+    assert "location.href=first&&bill?first.href:hqAddr(hq.value);" in js \
+        and 'const bill=typeof findBill==="function"&&findBill(hq.value);' in js \
+        and "location.href=first?first.href:hqAddr(hq.value);" not in js, (
+            "the home box's Return takes the first row again, where the reader asked for results")
+    assert "if(opening)hqLift();" in js, "the home box's rows open under a phone's keyboard again"
     fj = Path("src/pages/find.js").read_text(encoding="utf-8").replace("\r\n", "\n")
     assert 'const FIND_IDS={out:"findout",box:"findq",clear:"findclear",say:"findsay"};' in fj \
         and "function findDraw(q,ids){\n  ids=ids||FIND_IDS;" in fj \
@@ -56585,6 +56592,24 @@ def _home_finder_suggests_towns():
             "style.css does not put the dropdown under the box, or still styles the old finder")
     return "ok", ("one box, the header's finder, its top results in its own dropdown under it; "
                   "no finder of towns beside it")
+
+
+@check("frontend", "Follow's and Cite's panes, opened below the fold, are brought into view")
+def _panes_into_view():
+    """The webinar's phone check (16 October 2026): on a phone with the action
+    row near the foot of the screen, Follow's pane opened at y=842 of 812 and
+    the press seemed to do nothing. app.js's toggle listener now hands both
+    record panes to paneInView, which moves the window only when some of the
+    pane is out of sight, and again when the email box lengthens Follow's."""
+    js = Path("src/pages/app.js").read_text(encoding="utf-8").replace("\r\n", "\n")
+    assert "function paneInView(p){" in js and "if(h&&(r.bottom>h||r.top<0))" in js, (
+        "app.js has no paneInView, or it moves the window when the pane is already in sight")
+    assert 'd.classList.contains("follow")||d.classList.contains("pcite")' in js \
+        and 'paneInView(d.querySelector(".followpane,.citebody"));' in js, (
+            "opening Follow or Cite no longer brings its pane into view")
+    assert 'paneInView(box.querySelector(".followpane"));' in js, (
+        "the email box lengthens Follow's pane past the fold and nothing brings it back")
+    return "ok", "both panes, on opening, and Follow's again when its email box arrives"
 
 
 @check("frontend", "the Officials page is five tabs, My Town, Legislators, Federal Delegation, "
