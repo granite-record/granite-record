@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.66
+# GRANITE_VERSION: 2026-09-04.67
 """
 The nightly run. Fetch the day's bulk files, rebuild, check, compile what
 readers reported and what changed -- and publish only if told to.
@@ -3602,6 +3602,42 @@ def code_differs(sha, served):
     return sha != served
 
 
+# A RELEASE PROVEN BY ITS DRY RUN (15 October 2026, the person's decision:
+# "It should clear if the dry run came back clean"). The first night after a
+# release waits for a person (REVIEW_RELEASE), so a merge was approved twice:
+# once as the release and again as its first night. Where the newest dry
+# run's verdict (DRY_VERDICT, which state-down brings) is of exactly tonight's
+# commit, built and CLEAN, and closed within DRY_PROVEN_HOURS, that one reason
+# is let go and the verdict says by which run (release_proven). Only the
+# newest dry run's verdict is kept, so a release is proven this way only when
+# nothing else was dry-run between it and tonight; otherwise the night waits,
+# as before. Never a New term run, and never the reasons that a commit is not
+# known: only "tonight's code is not production's". Since 15 October a dry
+# run is not clean when a check of its build failed (BUILT_CHECKS), so a
+# release that breaks one is never proven.
+DRY_PROVEN_HOURS = 48
+
+
+def proven_by_dry_run(sha, now=None):
+    """{"run_id", "closed"} of the dry run that proves tonight's commit (the
+    newest dry run's verdict, of this commit, built and CLEAN, closed within
+    DRY_PROVEN_HOURS), or None."""
+    d = load_json(DRY_VERDICT)
+    if not isinstance(d, dict) or not COMMIT.fullmatch(str(sha or "")):
+        return None
+    if d.get("sha") != sha or not d.get("clean") or not d.get("built") \
+            or not (d.get("asked") or {}).get("dry_run"):
+        return None
+    try:
+        closed = datetime.fromisoformat(str(d.get("closed") or d.get("finished") or ""))
+    except ValueError:
+        return None
+    from datetime import timedelta
+    if not timedelta(0) <= (now or datetime.now()) - closed <= timedelta(hours=DRY_PROVEN_HOURS):
+        return None
+    return {"run_id": str(d.get("run_id") or ""), "closed": closed.isoformat(timespec="seconds")}
+
+
 def release_reasons(sha, served):
     """The gate's second reason, as a list: [] on a night whose code is the
     code of the build production serves; one sentence where it is not, or
@@ -4145,7 +4181,15 @@ class Night:
         # finish() adds the warnings' and writes the verdict's "review".
         if a.new_term:
             self.review_why.append(REVIEW_NEW_TERM)
-        self.review_why += release_reasons(v["sha"], v["live_commit"])
+        released = release_reasons(v["sha"], v["live_commit"])
+        proof = (proven_by_dry_run(v["sha"]) if released and not a.dry_run and not a.new_term
+                 and code_differs(v["sha"], v["live_commit"]) else None)
+        if proof:
+            v["release_proven"] = proof
+            say(f"\n  tonight's code is a release, proven CLEAN by dry run {proof['run_id']} of "
+                f"the same commit ({proof['closed']}): the gate does not hold it for that")
+        else:
+            self.review_why += released
         try:
             why, v["against_production"] = size_reasons(
                 site, served, code_differs(v["sha"], v["live_commit"]))

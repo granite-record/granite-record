@@ -40,6 +40,12 @@ export class FakeNet {
   constructor() {
     this.outbox = [];               // what Resend was asked to send
     this.resendStatus = 200;        // what Resend answers
+    // Idempotency keys Resend holds, as it does for 24 hours: a request with
+    // one it holds is refused with 409 and nothing is sent (repeats counts
+    // them). loseAnswer: Resend takes the next email and the answer is lost.
+    this.keys = new Set();
+    this.repeats = 0;
+    this.loseAnswer = false;
     this.turnstileSecret = "";
     this.site = new Map();          // path -> JSON value
     this.asked = [];                // every address asked, origin and path
@@ -59,6 +65,12 @@ export class FakeNet {
       const body = await req.json();
       const mail = { ...body, auth: req.headers.get("Authorization"),
                      at: this.clock ? new Date(this.clock()).toISOString() : null };
+      const key = req.headers.get("Idempotency-Key");
+      if (key && this.keys.has(key)) {
+        this.repeats++;
+        return Response.json({ statusCode: 409, name: "invalid_idempotent_request" },
+          { status: 409 });
+      }
       if (this.resendStatus !== 200) {
         this.refused = (this.refused || 0) + 1;
         // Resend's error names the address it refused, which is exactly why
@@ -68,6 +80,11 @@ export class FakeNet {
           { status: this.resendStatus, headers: { "Content-Type": "application/json" } });
       }
       this.outbox.push(mail);
+      if (key) this.keys.add(key);
+      if (this.loseAnswer) {
+        this.loseAnswer = false;
+        return new Response("the answer was lost on the way back", { status: 502 });
+      }
       return Response.json({ id: `fake-${this.outbox.length}` });
     }
     if (u.origin === "https://challenges.cloudflare.com" &&

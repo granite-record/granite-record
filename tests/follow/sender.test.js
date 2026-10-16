@@ -414,6 +414,30 @@ test("a refused send is given back and tried again next hour", async () => {
   } finally { w.close(); }
 });
 
+test("an email Resend took whose answer was lost is not sent again", async () => {
+  const w = makeWorld();
+  try {
+    siteAsOf(w, "2026-10-05");
+    const s = await subscribe(w, "reader.lost", ["bill:2026/HB9901"]);
+    w.net.loseAnswer = true;
+    w.now = new Date("2026-10-05T12:00:00Z");
+    let r = await run(w.env, w.now);
+    assert.equal(r.failed, 1);
+    assert.equal(mailsTo(w, s.address).length, 1, "Resend took it");
+    assert.equal(w.d1.rows("subscribers")[0].last_sent_on, "2026-10-04",
+      "the answer lost, the day is given back");
+    w.now = new Date("2026-10-05T13:00:00Z");
+    r = await run(w.env, w.now);
+    assert.equal(mailsTo(w, s.address).length, 1, "the same key again, and Resend sent nothing");
+    assert.equal(w.net.repeats, 1);
+    assert.deepEqual([...w.net.keys], [`digest/2026-10-05/daily/${s.id}`]);
+    assert.equal(w.d1.rows("subscribers")[0].last_sent_on, "2026-10-05", "the day stays taken");
+    assert.equal(w.d1.rows("subscribers")[0].sent_date, "2026-10-05", "and the cursor moves on");
+    assert.ok(w.logs.lines.includes("follow sender.resend-already-has-it 1"));
+    assert.deepEqual(leaks(w), []);
+  } finally { w.close(); }
+});
+
 test("Resend's rate limit stops the run, and the rest go next hour", async () => {
   const w = makeWorld();
   try {

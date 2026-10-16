@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-14.2
+# GRANITE_VERSION: 2026-10-14.4
 """
 A docket line in plain words, for a reader who does not know the clerk's
 shorthand -- the email digest and the Documents tab (the person's choices of
@@ -129,17 +129,49 @@ _AMEND = re.compile(
     r"^(?:(?P<who>(?:Sen|Rep)\.\s+[\w.' -]+?)\s+)?(?P<what>Committee Amendment|Floor Amendment|FLAM|"
     r"Enrolled Bill Amendment|Amendment)\s*#?\s*(?P<num>(?:\d{4}-)?\d+[a-z]*)"
     r"(?:\s*\(NT\))?(?:\s*\((?P<by>(?:Rep|Sen)s?\.[^)]*)\))?[\s,:;]*"
+    # The Senate's clerk puts a roll call before the outcome: "Sen. Rosenwald
+    # Floor Amendment # 2025-2660s, RC 8Y-16N, AF" (15 October 2026); _how
+    # reads the count from the whole line either way.
+    r"(?:(?:RC|DV)\s*\d+\s*Y?\s*-\s*\d+\s*N?[\s,:;]*)?"
     r"(?P<out>AA|AF|Adopted|Failed)\b", re.I)
 _SIMPLE = [
     (re.compile(r"^Died on (?:the )?Table\b", re.I), lambda m, r: "Died on the table when the session ended"),
+    # The history's words for the same row (narrative.SENATE_RULE_KILL_RE),
+    # and the status chip's, "Died on the table" (15 October 2026).
+    (re.compile(r"^Inexpedient\s+to\s+Legislate,?\s*(?:\d{4}\s+Adjournment,?\s*)?Senate\s+Rule\s+3-23\b",
+                re.I),
+     lambda m, r: "Died on the table under Senate Rule 3-23"),
     (re.compile(r"^Referred to (?!Interim)(?P<c>[A-Z][\w ,&]+?)\s+\d{1,2}/\d{1,2}/\d{4}", re.I),
      lambda m, r: f"Referred to {m.group('c')}"),
     (re.compile(r"^Referral Waived by Committee Chair", re.I),
      lambda m, r: "Its second committee's chair waived the referral"),
     (re.compile(r"Removed from (?:the )?Consent", re.I),
      lambda m, r: "Removed from the consent calendar, to be debated"),
-    (re.compile(r"^Committee of Conference Meeting\s*:", re.I),
+    # The Senate's clerk writes the same meeting the other way round.
+    (re.compile(r"^(?:Committee of Conference|Conference Committee) Meeting\s*:", re.I),
      lambda m, r: "Committee of conference meeting" + _where(r)),
+    # 15 OCTOBER 2026, from the 1,066 lines of the session's docket still left
+    # as written: the kinds below say what lines already said here say, in the
+    # same words. The Senate's own forms of a hearing, a conferee change and a
+    # resolution's adoption; and a report that recommends nothing.
+    (re.compile(r"^Hearing\s*:\s*\d{1,2}/\d{1,2}/\d{4}", re.I),
+     lambda m, r: "Public hearing" + _where(r)),
+    (re.compile(r"^Introduced and Adopted\b", re.I),
+     lambda m, r: "Introduced and adopted" + _how(r)),
+    # A veto vote, in the House's form and the Senate's ("Notwithstanding the
+    # Governor's Veto, Shall SB 213 Become Law: RC 0Y-24N, Veto Sustained"), in
+    # votes.json's words for it -- "Veto Sustained", "Overridden in the
+    # {Chamber}" -- without the chamber, which the line does not give; and
+    # never "became law", which one chamber's override does not make it.
+    (re.compile(r"^(?:Notwithstanding the Governor's Veto\b.*?\b)?Veto\s+(?P<o>Sustained|Overridden)\b",
+                re.I),
+     lambda m, r: ("Veto sustained" if m.group("o").lower() == "sustained" else "Veto overridden")
+     + _how(r)),
+    (re.compile(r"^(?:(?P<side>Majority|Minority)\s+)?Committee Report\s*:\s*Without Recommendation",
+                re.I),
+     lambda m, r: (f"{m.group('side')} committee report" if m.group("side") else "Committee report")
+     + ": makes no recommendation"
+     + (lambda v: f", {v.group(1)}–{v.group(2)}" if v else "")(_VOTE.search(r))),
     (re.compile(r"^Conference Committee Report\b.*?\b(?P<o>Adopted|Failed|Rejected)\b", re.I),
      lambda m, r: f"Conference committee report {m.group('o').lower()}" + _how(r)),
     (re.compile(r"^Conference Committee Report\b.*?\bNot (?:Signed Off|Filed)\b", re.I),
@@ -150,10 +182,13 @@ _SIMPLE = [
      lambda m, r: f"The Speaker named the House conferees: {m.group('w').strip(' ;,')}"),
     (re.compile(r"^President Appoints\s*:\s*(?P<w>.+?)\s*(?:;|\(|\d{1,2}/\d{1,2}/\d{4}|$)", re.I),
      lambda m, r: f"The Senate President named the Senate conferees: {m.group('w').strip(' ;,')}"),
-    (re.compile(r"^Conferee Change\s*:\s*(?P<a>.+?)\s+Replaces\s+(?P<b>.+?)\s+\d{1,2}/\d{1,2}/\d{4}", re.I),
+    (re.compile(r"^Conferee Change\s*[:;]\s*(?P<a>.+?)\s+Replaces\s+(?P<b>.+?)\s*"
+                r"(?:;|\s\d{1,2}/\d{1,2}/\d{4}|$)", re.I),
      lambda m, r: f"Conferee changed: {m.group('a')} replaces {m.group('b')}"),
-    (re.compile(r"^Interim Study Report\s*:\s*(?P<no>Not )?Recommended for Future Legislation", re.I),
-     lambda m, r: ("Interim study report: does not recommend future legislation" if m.group("no")
+    (re.compile(r"^Interim Study Report\s*:\s*(?:(?P<no>Not )?Recommended for Future Legislation|"
+                r"(?P<none>Without Recommendation))", re.I),
+     lambda m, r: ("Interim study report: makes no recommendation" if m.group("none") else
+                   "Interim study report: does not recommend future legislation" if m.group("no")
                    else "Interim study report: recommends future legislation")
      + (lambda v: f", {v.group(1)}\u2013{v.group(2)}" if v else "")(_VOTE.search(r))),
     (re.compile(r"^(?P<who>(?:Sen|Rep)\.\s+[\w.' -]+?)\s+Moved\s+(?P<m>.+?)\s*;", re.I),

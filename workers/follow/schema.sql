@@ -57,6 +57,10 @@ CREATE TABLE IF NOT EXISTS subscribers (
                                         -- paused; 9999-12-31: until the reader turns it back on
   detail        TEXT NOT NULL DEFAULT 'all' CHECK (detail IN ('all', 'milestones'))
 );
+-- The sender's question every hour: who of this frequency is not yet sent
+-- today, least recently served first (sender.js run). Added 15 October 2026;
+-- a database made before then takes it from migrations/0002_due_index.sql.
+CREATE INDEX IF NOT EXISTS subscribers_due ON subscribers(frequency, last_sent_on);
 
 -- A request to follow something, waiting for its confirmation email to be
 -- clicked. One row per request; one inbox may have at most three at once.

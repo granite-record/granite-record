@@ -314,8 +314,17 @@ export async function run(env, now = new Date()) {
       const to = await openAddress(env, s.email_enc, s.email_hmac);
       const mail = digestEmail({ origin, frequency: s.frequency, date: when.date, sections,
         manage: links.manage, unsub: links.unsub, feedbackUrl: env.FEEDBACK_URL, gone });
-      const r = await sendMail(env, { to, ...mail });
-      if (!r.ok) {
+      // ONE EMAIL A READER A DAY, EVEN IF AN ANSWER IS LOST (15 October 2026).
+      // Resend can take an email and the answer never arrive; the day was then
+      // given back and the next run sent it again. The key is the reader's row
+      // and the day, so Resend sends the second request's email only if it has
+      // none under that key from the last 24 hours. Its 409 is that refusal:
+      // an email under this key is with Resend already, so the day stays taken
+      // and the bookkeeping below runs as for any email sent.
+      const r = await sendMail(env, { to, ...mail }, `digest/${when.date}/${s.frequency}/${s.id}`);
+      if (!r.ok && r.status === 409) {
+        note("sender.resend-already-has-it", 1);
+      } else if (!r.ok) {
         tally[s.frequency].failed++;
         out.failed++;
         await giveBack();

@@ -60,11 +60,16 @@ SEND_LIMIT = "200"
 # D1_QUERIES_PER_RUN: database statements a run, counted one by one, a
 # batch's included (D1 allows a thousand an invocation on Paid, fifty on
 # Free). A reader costs at most five, so a run serves about 180 readers.
-# While Resend is on its free plan its daily cap (about a hundred, shared
-# with confirmations) binds first; what it refuses waits for the next run.
+# Resend is on Pro since 15 October 2026: 50,000 emails a month, no daily
+# cap. At about 128 readers a run (the budget less the room kept for the
+# next reader) and the twelve runs from 8:00 to 20:00, this serves about
+# 1,500 readers a day; past that, run the cron every quarter hour, or send
+# through Resend's batch endpoint and take a run's readers in fewer
+# statements.
 D1_QUERIES_PER_RUN = "900"
-# Milliseconds between emails, under Resend's default rate of two a second.
-SEND_GAP_MS = "600"
+# Milliseconds between emails, under Resend Pro's ten requests a second,
+# with room for the confirmations the site sends meanwhile.
+SEND_GAP_MS = "150"
 
 [env.preview]
 name = "graniterecord-follow-sender-preview"
@@ -85,4 +90,4 @@ MAIL_FROM = "Granite Record <noreply@mail.graniterecord.org>"
 FEEDBACK_URL = "https://forms.gle/PYw9c3xgpDDwvX7E9"
 SEND_LIMIT = "200"
 D1_QUERIES_PER_RUN = "900"
-SEND_GAP_MS = "600"
+SEND_GAP_MS = "150"

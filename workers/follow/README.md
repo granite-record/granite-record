@@ -126,6 +126,13 @@ on its own:
        npx wrangler d1 execute graniterecord-follow-preview --remote --file workers/follow/migrations/0001_manager.sql
        npx wrangler d1 execute graniterecord-follow --remote --file workers/follow/migrations/0001_manager.sql
 
+   **And the sender's index** (15 October 2026), on any database made before
+   that day, both of this project's included; running it again changes
+   nothing:
+
+       npx wrangler d1 execute graniterecord-follow-preview --remote --file workers/follow/migrations/0002_due_index.sql
+       npx wrangler d1 execute graniterecord-follow --remote --file workers/follow/migrations/0002_due_index.sql
+
    Run a second time it answers "duplicate column name" and changes nothing.
 
 2. **Resend.** A verified sending domain; an API key restricted to sending

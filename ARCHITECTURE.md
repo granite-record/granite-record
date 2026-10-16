@@ -199,7 +199,10 @@ term is read.
 **The release gate.** Every night that builds records in its verdict whether
 it may go to production without a person (`review`: `needed` and `why`), and
 the run's page says in one line what the gate decided. It holds a New term
-run; the first night after a release; a night that changed far more than a
+run; the first night after a release, unless the newest dry run was of that
+very commit and came back CLEAN within two days (`proven_by_dry_run`; the
+verdict says by which run, `release_proven`), so a release proven on `dev`
+and fast-forwarded to `main` is approved once rather than twice; a night that changed far more than a
 data night does -- a finished term's bill list rewritten, or more than
 `REVIEW_ROWS_MOST` of the current term's rows; and a night with a kind of
 warning that neither the build production serves nor a night published in the

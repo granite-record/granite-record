@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.566
+# GRANITE_VERSION: 2026-09-04.569
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -32909,12 +32909,34 @@ def _plain_action(PA):
         "Died on Table, Session ended 12/17/2025": "Died on the table when the session ended",
         "Conference Committee Report: Not Filed": "The committee of conference filed no agreed report",
         "I. Section 1 Effective 01/01/2026": "",
+        # 15 October 2026: kinds the session's docket still left as written,
+        # in the words lines already said here say.
+        "Interim Study Report: Without Recommendation 10/13/2026 (Vote 7-7; )":
+            "Interim study report: makes no recommendation, 7–7",
+        "Committee Report: Without Recommendation  02/12/2025 (Vote 9-9; RC)  HC 14  P. 24":
+            "Committee report: makes no recommendation, 9–9",
+        "Conference Committee Meeting: 04/30/2026 10:00 am GP 229":
+            "Committee of conference meeting, 10:00 a.m., Granite Place 229",
+        "Hearing: 01/22/2026, Room 103, SH, 10:00 am;  SC 47A":
+            "Public hearing, 10:00 a.m., Room 103, State House",
+        "Conferee Change; Senator Rochefort Replaces Senator Perkins Kwoka;  SJ 17":
+            "Conferee changed: Senator Rochefort replaces Senator Perkins Kwoka",
+        "Introduced and Adopted, VV; 12/04/2024;  SJ 1": "Introduced and adopted, on a voice vote",
+        "Inexpedient to Legislate, Senate Rule 3-23, 10/31/2025;  SJ 1":
+            "Died on the table under Senate Rule 3-23",
+        "Sen. Rosenwald Floor Amendment # 2025-2660s, RC 8Y-16N, AF; 06/05/2025;  SJ 15":
+            "Floor amendment 2025-2660s (Sen. Rosenwald) failed, 8–16 on a roll call",
+        "Veto Sustained 12/17/2025: RC 1-347 Lacking Necessary Two-Thirds Vote  HJ 19":
+            "Veto sustained, 1–347 on a roll call",
+        "Notwithstanding the Governor's Veto, Shall HB 2026 Become Law: RC 24Y-0N, Veto Overridden "
+        "by necessary two-thirds vote; 08/19/2026;  SJ 15": "Veto overridden, 24–0 on a roll call",
     }
     for raw, want in cases.items():
         got = PA.plain(raw)
         assert got == want, f"{raw!r} reads {got!r}, not {want!r}"
         assert not re.search(r"\d{1,2}/\d{1,2}/\d{4}", got), f"{raw!r} keeps the clerk's date"
-    return "ok", f"{len(cases)} docket lines read as the approved words say, and two left as written"
+    return "ok", (f"{len(cases)} docket lines read as the approved words say, and "
+                  f"{sum(not w for w in cases.values())} left as written")
 
 
 @check("build", "the glossary page lists every glossary.json entry once, by its name in full, "
@@ -62950,9 +62972,34 @@ def _nightly_review_release(NI):
         code, _ = g.night("--runner", "--no-fetch", run_id="338", sha="")
         v = g.verdict()
         assert code == 0 and v["review"]["why"] == [NI.REVIEW_SHA_UNKNOWN], v.get("review")
+
+        # A RELEASE PROVEN BY ITS DRY RUN (15 October 2026): the newest dry
+        # run, of the very commit and CLEAN, lets the release's night go; a
+        # newer dry run of another commit, and it waits as before.
+        from datetime import datetime, timedelta
+        c, d = "c" * 40, "d" * 40
+        g.how["touch"] = 6
+        g.night("--runner", "--no-fetch", "--dry-run", run_id="339", sha=c)
+        code, _ = g.night("--runner", "--no-fetch", run_id="340", sha=c)
+        v = g.verdict()
+        assert code == 0 and v["publishable"] and v["review"] == {"needed": False, "why": []} \
+            and (v.get("release_proven") or {}).get("run_id") == "339", (
+                "a release proven CLEAN by a dry run of the same commit was held",
+                v.get("review"), v.get("release_proven"))
+        g.night("--runner", "--no-fetch", "--dry-run", run_id="341", sha=d)
+        assert NI.proven_by_dry_run(d) and not NI.proven_by_dry_run(c) and \
+            not NI.proven_by_dry_run(d, now=datetime.now() + timedelta(hours=49)), \
+            "a dry run proves a commit it is not of, or one closed more than two days ago"
+        code, _ = g.night("--runner", "--no-fetch", run_id="342", sha=c)
+        v = g.verdict()
+        assert v["review"] == {"needed": True, "why": [NI.REVIEW_RELEASE.format(
+            tonight=c[:12], served=b[:12])]} and not v.get("release_proven"), (
+                "a release whose newest dry run is another commit's was let go", v.get("review"))
         assert not g.stray, f"the nights asked something other than production: {g.stray}"
     return "ok", ("a night whose commit is not production's waits, and the one after the release "
-                  "is published does not; production unreadable or no commit tonight waits")
+                  "is published does not; production unreadable or no commit tonight waits; a "
+                  "release the newest dry run proved CLEAN, of the same commit within two days, "
+                  "goes, and one it did not waits")
 
 
 @check("build", "the gate holds a night that changed far more than a data night does: a finished "
