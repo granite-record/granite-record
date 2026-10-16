@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-05.8
+# GRANITE_VERSION: 2026-10-05.9
 """
 A finished term's inputs, frozen before the General Court turns its files over.
 
@@ -812,7 +812,18 @@ def _lines(data):
 
 def views_intact(root, term):
     """Problems with db/term/<term>/, the same way; [] when it is whole and
-    holds both years of the term in Legislation."""
+    holds both years of the term in Legislation.
+
+    extra/ IS CHECKED WHERE IT IS HERE, AND ONLY THERE (16 October 2026). The
+    kit carries db/term/*/*, one level deep, so the sign-ins backup in extra/
+    never reaches GitHub's machine, by design -- and this said every freeze
+    there was not whole. The first dry run to read it, under preflight
+    --built, came back not clean on that alone; and the same answer would
+    have refused the New term run (ready(), which snapshot_gencourt asks on
+    GitHub's machine) and then every night's build of the finished term
+    (build_data --frozen-terms). No folder at all is the kit's shape and
+    passes; a folder that is here and short of its file, or holds other
+    bytes, is broken as before."""
     base = Path(root) / VIEWS_DIR / term
     rec = load_json(base / MANIFEST)
     if not isinstance(rec, dict):
@@ -820,6 +831,8 @@ def views_intact(root, term):
     bad = []
     for rel, e in (rec.get("files") or {}).items():
         p = base / rel
+        if rel.startswith(EXTRA + "/") and not (base / EXTRA).is_dir():
+            continue
         if not p.exists():
             bad.append(f"{VIEWS_DIR.as_posix()}/{term}/{rel} is missing")
         elif p.stat().st_size != e.get("bytes") or sha256_of(p) != e.get("sha256"):
@@ -964,6 +977,11 @@ def check(root=Path("."), term=None):
         lines.append("  the views:     " + ("whole" if not view_bad else
                                             "not yet frozen (--views has not run)"
                                             if views_yet else "; ".join(view_bad)))
+        if not view_bad and not (root / VIEWS_DIR / t / EXTRA).is_dir() and any(
+                k.startswith(EXTRA + "/") for k in
+                ((load_json(root / VIEWS_DIR / t / MANIFEST) or {}).get("files") or {})):
+            lines.append(f"  its {EXTRA}/ backup is not on this machine, which the kit's "
+                         "db/term/*/* does not carry: not checked here")
         if mine and not session_bad:
             moved = differs(root, t)
             lines.append("  against the files installed: "

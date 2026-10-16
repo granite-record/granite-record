@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.570
+# GRANITE_VERSION: 2026-09-04.571
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -64397,6 +64397,22 @@ def _freeze_term(FT, P):
         assert any("not the file its manifest names" in x for x in FT.views_intact(".", T)), \
             "a tampered frozen view of the same size passed"
         kept.write_bytes(b)
+        # NO extra/ AT ALL IS THE KIT'S SHAPE: db/term/*/* is one level deep, so
+        # GitHub's machine never has it, and the New term run's ready() and the
+        # night's build of a finished term read this answer there. An extra/
+        # that is here and short of its file is still broken.
+        shutil.move(str(kept.parent), "extra-aside")
+        assert FT.views_intact(".", T) == [], (
+            "a freeze without the extra/ the kit leaves behind was called broken",
+            FT.views_intact(".", T))
+        assert any("not on this machine" in ln for ln in FT.check(".", T)[1]), \
+            "freeze_term --check passed a freeze without its extra/ and did not say so"
+        kept.parent.mkdir()
+        assert any("extra/houseRemoteTestify.psv is missing" in x for x in FT.views_intact(".", T)), \
+            "an extra/ folder that is here without its file passed"
+        kept.parent.rmdir()
+        shutil.move("extra-aside", str(kept.parent))
+        assert FT.views_intact(".", T) == [], "the extra/ put back is not whole"
         views()
         (Path("db") / "_manifest.json").write_text(json.dumps(
             {"Legislation": {"rows": 99, "fetched": "2026-09-08T20:45:00"}}), encoding="utf-8")
