@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.200
+# GRANITE_VERSION: 2026-09-04.202
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -2194,19 +2194,23 @@ if(!box||!out)return;
 const GROUPS=[
   {t:"Senators",            k:r=>r[0]==="legislator"&&/^Senate/.test(r[2])},
   {t:"Representatives",     k:r=>r[0]==="legislator"},
-  {t:"Committees",          k:r=>r[0]==="committee"},
+  // A committee that no longer sits goes with the people who have left, below
+  // the ones that do (find.js, _fgone).
+  {t:"Committees",          k:r=>r[0]==="committee"&&!r[5]},
   {t:"Towns and wards",     k:r=>r[0]==="town"},
   {t:"Subjects",            k:r=>r[0]==="topic"},
   {t:"Former senators",     k:r=>r[0]==="former"&&/^Senate/.test(r[2])},
   {t:"Former representatives",k:r=>r[0]==="former"&&/^House/.test(r[2])},
   {t:"Former members",      k:r=>r[0]==="former"},
+  {t:"Former committees",   k:r=>r[0]==="committee"},
   {t:"Pages on this site",  k:r=>r[0]==="page"}
 ];
 
+// A committee by its chamber, as the header's rows show it (find.js, findName).
 const row=(r,q)=>`<a href="${esc(_froot(r[3]))}">
-  <span class="fl1"><span class="fname">${_fmark(r[1],q)}</span>
-  ${chip(FKIND[r[0]]||r[0],"fkind")}</span>
-  ${r[2]?`<span class="fwhat">${esc(r[2])}</span>`:""}</a>`;
+  <span class="fl1"><span class="fname">${_fmark(findName(r),q)}</span>
+  ${chip(findKind(r),"fkind")}</span>
+  ${findWhat(r)?`<span class="fwhat">${esc(findWhat(r))}</span>`:""}</a>`;
 
 // THE BILLS, counted. Until 24 September this was one card at the foot of the
 // page, "Search every bill for firearms", under a line saying nothing on the

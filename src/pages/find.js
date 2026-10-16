@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-16.24
+// GRANITE_VERSION: 2026-09-16.26
 /* FIND ANYTHING, FROM THE HEADER (16 September, asked for in these words:
    "a search icon in the header that lets you search for anything including
    legislators, committees, towns, and bills ... searching Litchfield would
@@ -55,6 +55,41 @@ const FKIND={legislator:"Legislator",committee:"Committee",town:"Town",
   guide:"How-To Guide",learn:"Learn"};
 const _fesc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>(
   {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+/* A COMMITTEE IS NAMED WITH ITS CHAMBER (the person, 16 October 2026:
+   "Committees in the search should show as House Housing Committee or Senate
+   Judiciary Committee rather than just Housing so they aren't confused with a
+   topic"). find.json keeps the committee's own name, and the matcher reads
+   that -- so "house" does not bring every House committee to the top -- and
+   this is what a row shows: the chamber from the row's line, and "Committee"
+   where the name does not already say it. "Special Committee on Housing" is
+   "House Special Committee on Housing"; "Senate Special Committee on
+   Redistricting" already names both and stays as it is. */
+function findName(r){
+  if(!r||r[0]!=="committee")return r?r[1]:"";
+  const name=String(r[1]||""), ch=(/^(House|Senate)\b/.exec(String(r[2]||""))||[])[1]||"";
+  const named=/\bcommittee\b/i.test(name)?name:`${name} Committee`;
+  return !ch||name.startsWith(ch+" ")?named:`${ch} ${named}`;
+}
+/* A COMMITTEE THAT NO LONGER SITS (the person, 16 October 2026: "some
+   indicator of former committees that are no longer meeting like the special
+   committee on housing that turned into the standing committee ... so those
+   aren't prioritized in the search results"). find.json gives such a row the
+   year it last sat in r[5], as a former member's has, and its years in r[6].
+   It is a "Former Committee", in the words "Former Member" is, its line says
+   what its own page says -- not on the General Court's list today, and when
+   it sat -- and it falls in behind the committees that sit, as a member who
+   has left falls in behind those who have not, and never above the bills. */
+const _fgone=r=>!!r&&(r[0]==="former"||(r[0]==="committee"&&!!r[5]));
+function findKind(r){
+  return r&&r[0]==="committee"&&r[5]?"Former Committee":(FKIND[r&&r[0]]||(r&&r[0])||"");
+}
+// The line under a row -- but not "House committee" under a name that now says it.
+function findWhat(r){
+  const w=r?String(r[2]||""):"";
+  if(r&&r[0]==="committee"&&r[5])
+    return "Not on the General Court’s list today"+(r[6]?` · ${r[6]}`:"");
+  return r&&r[0]==="committee"&&/^(House|Senate) committee$/i.test(w)?"":w;
+}
 /* HALF AN EMOJI IS NOT AN ADDRESS. encodeURIComponent throws "URI malformed"
    on a surrogate with no partner, which is what the box holds for a moment
    while some keyboards type an emoji and what a paste cut in the wrong place
@@ -246,7 +281,8 @@ function findMatch(q,limit){
     // ones" means with a list this long. A former member whose name begins
     // with the query still outranks a town that merely mentions it, which is
     // the answer a reader wants.
-    const gone=r[0]==="former"?1:0;
+    // And a committee that no longer sits falls in behind those that do.
+    const gone=_fgone(r)?1:0;
     // Among former members, the most recent first. r[5] is the year they last
     // sat; negated so one sort direction serves both this and name length.
     hit.push([_fpart(r,s),rank,gone,gone?-(r[5]||0):0,name.length,r]);
@@ -673,9 +709,9 @@ function findDraw(q,ids){
     <span class="fl1"><span class="fname">${_fesc(num)}</span></span>
     <span class="fwhat">open this bill number in the bill search</span></a>`:every;
   const row=r=>`<a href="${_fesc(_froot(r[3]))}">
-      <span class="fl1"><span class="fname">${_fmark(r[1],s)}</span>
-      ${chip(FKIND[r[0]]||r[0],"fkind")}</span>
-      ${r[2]?`<span class="fwhat">${_fesc(r[2])}</span>`:""}</a>`;
+      <span class="fl1"><span class="fname">${_fmark(findName(r),s)}</span>
+      ${chip(findKind(r),"fkind")}</span>
+      ${findWhat(r)?`<span class="fwhat">${_fesc(findWhat(r))}</span>`:""}</a>`;
   // The bills, for anything that is not a bill number: the count and the
   // first three. Hidden once counted at none, because "All 0 bills" is not an
   // answer; shown uncounted while they are fetched, and redrawn when they
@@ -699,7 +735,7 @@ function findDraw(q,ids){
   // leads with the bills and Gunski follows, and "bail" leads with the bail
   // bills and Rep. Bailey follows. Return takes the first row, so for a
   // subject word it opens the bill search on it.
-  const named=rows.filter(r=>r[0]!=="former"&&_fwhole(r,s));
+  const named=rows.filter(r=>!_fgone(r)&&_fwhole(r,s));
   const list=named.map(row).join("")+bills
     +rows.filter(r=>!named.includes(r)).map(row).join("");
   // "No matching results." -- the person's words -- only when nothing here

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-13.17
+# GRANITE_VERSION: 2026-09-13.18
 """
 The whole record as plain lists: every bill of every term, every sitting
 legislator, every town -- each a link a person or a crawler can follow.
@@ -352,7 +352,9 @@ def find_index(site, legs, towns):
     Each row is [kind, name, detail, address, extra search words]. A list rather
     than an object per row because this file is fetched by a phone: the keys
     would be a third of it. A former member's row carries a sixth: the year
-    they last sat, which is how the box orders them among themselves.
+    they last sat, which is how the box orders them among themselves. A
+    committee no longer on the General Court's list carries the same sixth,
+    the year it last sat, and a seventh, the years its page gives.
 
     FORMER MEMBERS AND SUBJECTS ARE IN IT, asked for on 18 September in these
     words: "Search bar should also list former legislators in the results, but
@@ -381,12 +383,33 @@ def find_index(site, legs, towns):
         # A name the committee carried before is a word to find it by: a
         # reader typing "Corrections and Criminal Justice" off a 1995 bill is
         # looking for H26.
-        rows.append(["committee", c.get("name") or c["code"],
-                     ("Senate" if str(c.get("chamber", "")).upper().startswith("S")
-                      else "House") + " committee",
-                     S.canon(f"committee/{c['code']}.html"),
-                     " ".join(x for x in [c.get("chair") or "",
-                                          *(c.get("formerly") or [])] if x)])
+        row = ["committee", c.get("name") or c["code"],
+               ("Senate" if str(c.get("chamber", "")).upper().startswith("S")
+                else "House") + " committee",
+               S.canon(f"committee/{c['code']}.html"),
+               " ".join(x for x in [c.get("chair") or "",
+                                    *(c.get("formerly") or [])] if x)]
+        # A COMMITTEE THAT NO LONGER SITS SAYS SO, AND WAITS ITS TURN (the
+        # person, 16 October 2026: "There should be some indicator of former
+        # committees that are no longer meeting like the special committee on
+        # housing that turned into the standing committee ... so those aren't
+        # prioritized in the search results"). build_committees decides it --
+        # off the General Court's list today and its record ending before the
+        # term now sitting -- and writes the years into the committee's own
+        # JSON, which it builds before this step; a retired committee's row
+        # carries the year it last sat, as a former member's does (the box
+        # orders by it), and the years its page gives.
+        cf = site / "committee" / f"{c['code']}.json"
+        try:
+            gone = (json.loads(cf.read_text(encoding="utf-8")).get("archived") or {}) \
+                if cf.exists() else {}
+        except ValueError:
+            gone = {}
+        years = str(gone.get("years") or "")
+        last = [int(y) for y in re.findall(r"\b(?:19|20)\d\d\b", years)]
+        if last:
+            row += [max(last), years]
+        rows.append(row)
     pages = {p.stem for p in (site / "town").glob("*.html")}
     for town, seats in sorted(towns.items()):
         county = (seats[0].get("county") if seats else "") or ""

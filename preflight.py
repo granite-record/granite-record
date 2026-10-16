@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.579
+# GRANITE_VERSION: 2026-09-04.580
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -19097,6 +19097,104 @@ def _search_work():
 
 # The header's box (find.js) on its own: the three things the third review
 # found in it, 2 October.
+_FIND_COMMITTEE_JS = r"""
+require("./stub.js");
+const fs = require("fs"), vm = require("vm");
+globalThis.fetch = async () => ({ ok: false, status: 404, json: async () => { throw new Error("404"); } });
+// components.js's chip, which every page loads ahead of find.js; its words are
+// not what this test is about.
+globalThis.chip = (t, cls) => `<span class="${cls}">${t}</span>`;
+vm.runInThisContext(fs.readFileSync("./find.js", "utf8"), { filename: "find.js" });
+const F = vm.runInThisContext("({FIND, findDraw, findMatch, findName, findWhat, findKind})");
+const rows = JSON.parse(fs.readFileSync("./rows.json", "utf8"));
+F.FIND.rows = rows;
+const panel = document.getElementById("findout");
+F.findDraw("housing");
+console.log(JSON.stringify({
+  names: rows.map(r => F.findName(r)), whats: rows.map(r => F.findWhat(r)),
+  kinds: rows.map(r => F.findKind(r)), housing: F.findMatch("housing", 50).map(r => r[1]),
+  senate: F.findMatch("senate", 50).map(r => r[1]), html: panel.innerHTML,
+}));
+"""
+
+
+@check("frontend", "the search names a committee with its chamber, House Housing Committee, so "
+       "it is not taken for the subject of the same name; it is still found by its own name",
+       needs=("build_pages",))
+def _find_committee_names(BP):
+    """The person, 16 October 2026: "Committees in the search should show as
+    House Housing Committee or Senate Judiciary Committee rather than just
+    Housing so they aren't confused with a topic." find.js's findName draws
+    the row (the header's panel, the home page's box) and the search page's
+    script draws its own rows with it too; find.json keeps the committee's
+    own name, which the matcher reads, so "house" does not find every House
+    committee. Here: each shape of name, the line no longer repeating "House
+    committee", a drawn panel, the matcher, and the search page using it."""
+    if shutil.which("node") is None:
+        return "skip", "node is not installed"
+    rows = [
+        ["committee", "Housing", "House committee", "committee/H64", ""],
+        ["topic", "Housing", "Bills on this subject", "bills?topic=Housing", ""],
+        # No longer sitting: the year it last sat and its years (build_indexes).
+        ["committee", "Special Committee on Housing", "House committee", "committee/H58", "",
+         2024, "2023 to 2024"],
+        ["committee", "Judiciary", "Senate committee", "committee/S09", ""],
+        ["committee", "Senate Special Committee on Redistricting", "Senate committee",
+         "committee/s100", ""],
+        ["town", "Housing Town", "Somewhere County", "town/x", ""],
+    ]
+    root = Path(tempfile.mkdtemp())
+    try:
+        (root / "stub.js").write_text(Path("tests/dom_stub.js").read_text(encoding="utf-8"),
+                                      encoding="utf-8")
+        (root / "find.js").write_text(Path("src/pages/find.js").read_text(encoding="utf-8"),
+                                      encoding="utf-8")
+        (root / "rows.json").write_text(json.dumps(rows), encoding="utf-8")
+        (root / "go.js").write_text(_FIND_COMMITTEE_JS, encoding="utf-8")
+        r = _run(["node", "go.js"], cwd=root, capture_output=True, text=True, timeout=60)
+        said = (r.stdout + r.stderr).strip()
+        last = (said.splitlines() or ["no output"])[-1]
+        assert r.returncode == 0 and last.startswith("{"), (
+            "node go.js: " + " / ".join(said.splitlines()[-3:])[:300])
+        got = json.loads(last)
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    assert got["names"] == ["House Housing Committee", "Housing", "House Special Committee on Housing",
+                            "Senate Judiciary Committee", "Senate Special Committee on Redistricting",
+                            "Housing Town"], got["names"]
+    assert got["whats"] == ["", "Bills on this subject",
+                            "Not on the General Court’s list today · 2023 to 2024", "", "",
+                            "Somewhere County"], got["whats"]
+    assert "House Housing Committee" in re.sub(r"<[^>]+>", "", got["html"]) and \
+        "House committee" not in got["html"], "the drawn panel still names the committee bare"
+    # A COMMITTEE THAT NO LONGER SITS (the person, 16 October 2026): called a
+    # Former Committee, found after the one that sits, and drawn after it.
+    assert got["kinds"][0] == "Committee" and got["kinds"][2] == "Former Committee", got["kinds"]
+    h = got["housing"]
+    assert "Housing" in h and "Special Committee on Housing" in h and \
+        h.index("Special Committee on Housing") > max(i for i, n in enumerate(h) if n == "Housing"), (
+            "a committee that no longer sits is found ahead of the one that does", h)
+    text = re.sub(r"<[^>]+>", "", got["html"])
+    assert text.index("House Special Committee on Housing") > text.index("House Housing Committee"), (
+        "the drawn panel puts the former committee first")
+    assert '{t:"Former committees",' in Path("src/pages/build_pages.py").read_text(encoding="utf-8") \
+        and 'k:r=>r[0]==="committee"&&!r[5]}' in Path("src/pages/build_pages.py").read_text(
+            encoding="utf-8"), "the search page lists former committees among the ones that sit"
+    bi = Path("src/pages/build_indexes.py").read_text(encoding="utf-8")
+    assert '.get("archived")' in bi and "row += [max(last), years]" in bi, (
+        "build_indexes no longer marks a committee that no longer sits")
+    # The matcher is find.json's, untouched by the label: a committee is found
+    # by its own name and its line as before ("senate" finds the Senate's).
+    assert "Judiciary" in got["senate"], ("the label changed what the matcher finds", got["senate"])
+    js = BP.SEARCH_JS if hasattr(BP, "SEARCH_JS") else Path("src/pages/build_pages.py").read_text(
+        encoding="utf-8")
+    assert "_fmark(findName(r),q)" in js and "_fmark(r[1],q)" not in js, (
+        "the search page draws its committee rows by the bare name")
+    return "ok", ("House Housing Committee, House Special Committee on Housing, Senate Judiciary "
+                  "Committee, the Senate's own name kept; no repeated line; matched as before; a "
+                  "committee that no longer sits called a Former Committee and found after")
+
+
 _FIND_DETAILS_JS = r"""
 require("./stub.js");
 const fs = require("fs"), vm = require("vm");
