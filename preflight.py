@@ -60652,9 +60652,16 @@ if (!fed.includes('data-copyfeed="1">Copy the address</button>'))
   fail.push("Follow lost Copy the address: " + fed.slice(0, 400));
 if (!fed.includes("<b>By RSS</b>, in any feed reader: ") || !fed.includes("The record is rebuilt once a night"))
   fail.push("Follow lost its RSS sentence: " + fed.slice(0, 400));
-const opens = (fed.match(/<a\b[^>]*>/g) || []).filter(a => {
-  const h = (a.match(/\bhref="([^"]*)"/) || [])[1];
-  return h !== undefined && (/\.xml(?:[?#]|$)/i.test(h) || new URL(h, location.origin).href === feedAt);
+// The href is read however it is quoted -- double, single or bare -- since
+// the template is a string and a link back written <a href='...'> is as much
+// a link (the review of 16 October 2026).
+const opens = (fed.match(/<a\b[^>]*>/gi) || []).filter(a => {
+  const m = a.match(/\bhref\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'>]+))/i);
+  if (!m) return false;
+  const h = m[1] ?? m[2] ?? m[3];
+  let at = "";
+  try { at = new URL(h, location.origin).href; } catch (_) {}
+  return /\.xml(?:[?#]|$)/i.test(h) || at === feedAt;
 });
 if (opens.length || /open the feed/i.test(fed))
   fail.push("the Follow panel has a link that opens the feed itself: " + (opens.join(" ") || "Open the feed"));

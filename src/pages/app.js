@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.203
+// GRANITE_VERSION: 2026-09-07.204
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -5606,7 +5606,9 @@ function mountFollow(kind,feed,ref){
   // phone it showed the feed's raw XML, which reads as a broken page. A feed
   // is for a feed reader, which wants its address, so the pane gives the
   // address in its box and a button to copy it; a reader whose browser
-  // follows feeds still finds this one named in the page's head.
+  // follows feeds finds this one named in the head of the record's own page.
+  // Only there: a bill focused in the search list has its feed from the page
+  // focusActions fetched, and the search page's head does not name it.
   div.innerHTML=`<details class="follow"><summary>${icon("follow")}Follow</summary>
     <div class="followpane"><div class="followmail" hidden></div>${href?`<p><b>By RSS</b>, in any feed reader: ${esc(FOLLOWS[kind]||"what is new here")}.
         The record is rebuilt once a night, so an update arrives the morning after
