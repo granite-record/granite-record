@@ -33043,7 +33043,7 @@ def _rsa_pages(B, RSA, S):
 def _plain_action(PA):
     """The email and the Documents tab print these first and the clerk's line
     under them (the person's choices of 14 October 2026). Each pair is a real
-    line of the 2025-2026 docket."""
+    line of a docket on disk, of 2025-2026 where that term has the variant."""
     cases = {
         "Ought to Pass: MA, VV; OT3rdg; 02/19/2026": "Bill passed, on a voice vote",
         "Majority Committee Report: Ought to Pass with Amendment # 2025-2969h 10/01/2025 (Vote 12-3; RC)":
@@ -33064,7 +33064,7 @@ def _plain_action(PA):
             "Amendment 2025-2345h failed, 103\u2013215 on a division vote",
         "Died on Table, Session ended 12/17/2025": "Died on the table when the session ended",
         "Conference Committee Report: Not Filed": "The committee of conference filed no agreed report",
-        "I. Section 1 Effective 01/01/2026": "",
+        "Pending Motion Committee Amendment # 2025-1630s; 05/01/2025;  SJ 11": "",
         # 15 October 2026: kinds the session's docket still left as written,
         # in the words lines already said here say.
         "Interim Study Report: Without Recommendation 10/13/2026 (Vote 7-7; )":
@@ -33093,12 +33093,68 @@ def _plain_action(PA):
             "Veto sustained, 14–10 to override on a roll call, short of two thirds",
         "Notwithstanding the Governor's Veto, Shall HB 2026 Become Law: RC 24Y-0N, Veto Overridden "
         "by necessary two-thirds vote; 08/19/2026;  SJ 15": "Veto overridden, 24–0 on a roll call",
+        # 16 OCTOBER 2026: the words the person approved for the kinds most
+        # often left as written, on real lines of each variant.
+        "Pending Motion OT3rdg; 01/30/2025;  SJ 4": "Motion left pending: order the bill to a third reading",
+        "Pending Motion Ought to Pass; 05/01/2025;  SJ 11": "Motion left pending: pass the bill",
+        "Pending Motion Inexpedient to Legislate; 04/17/2025;  SJ 10": "Motion left pending: kill the bill",
+        "Pending Motion Interim Study; 01/29/2026;  SJ 2": "Motion left pending: send the bill to interim study",
+        "Pending Motion Ought to Pass with Amendment #2026-1734s; 05/07/2026;  SJ 11": "",
+        "II. Remainder Effective 06/10/2025": "The rest of the act takes effect June 10, 2025",
+        "I. Section 5 Effective 06/30/2025": "Section 5 takes effect June 30, 2025",
+        "I. Section 1 Effective 01/01/2026": "Section 1 takes effect January 1, 2026",
+        "I. Sections 7 & 8 Effective 01/01/2027": "Sections 7 and 8 take effect January 1, 2027",
+        "I. Section 1-3 Effective 07/01/2026": "Sections 1 to 3 take effect July 1, 2026",
+        "I. Section 1 Effective 07/01/2027 at 12:01 AM": "Section 1 takes effect July 1, 2027, at 12:01 a.m.",
+        "II. Remainder Effective 07/06/15": "The rest of the act takes effect July 6, 2015",
+        "I. Sections 4 and 6 of this act shall take effect as provided in Section 7":
+            "Sections 4 and 6 take effect as section 7 provides",
+        "Part II Effective 10/09/2021": "Part II takes effect October 9, 2021",
+        "Without Objection, the Clerk is authorized to make technical and administrative corrections which "
+        "are necessary to reflect the intent of the Senate, MA; 06/26/2025;  SJ 17":
+            "The clerk may make technical corrections to the text",
+        "Vacated and Referred to Commerce and Consumer Affairs (Rep. Lynn): MA VV 01/09/2025  HJ 3  P. 28":
+            "Moved to another committee, Commerce and Consumer Affairs, on a voice vote",
+        "HB517 is vacated from Judiciary and referred to Finance; (In recess 03/27/2025);  SJ 10":
+            "Moved to another committee, Finance",
+        "Law Without Signature 05/23/2026; Chapter 86; eff. 07/01/2026":
+            "Became law without the Governor's signature, chapter 86",
+        "BECAME LAW WITHOUT SIGNATURE 06/24/93  EFF. 06/24/93  CHAP.0329":
+            "Became law without the Governor's signature, chapter 329",
+        "Enacted in accordance with Article 44 PartII of the N.H. Constitution without the signature of the "
+        "governor. Chapter 340;eff. 01/01/2027": "Became law without the Governor's signature, chapter 340",
+        # The same order with the motion's "MA" or without it reads the same;
+        # a dated special order is still the vote words' "Rescheduled".
+        "Special Order to Next Session, Without Objection; 01/30/2025;  SJ 4": "Set for the next session day",
+        "Special Order to Next Session, Without Objection, MA; 05/08/2025;  SJ 12": "Set for the next session day",
+        "Special Order to 05/08/2025, Without Objection, MA; 05/01/2025  SJ 11": "Rescheduled",
+        "The Chair ruled the Question Divisible; 06/05/2025;  SJ 15": "The chair ruled the question could be divided",
+        "The Chair ruled the Question Non-Divisible; 01/07/2026;  SJ 1": "",
+        "Chair Ruled Sections of Amendment # 2025-0752s Non-Germane, 03/06/2025;  SJ 6":
+            "The chair ruled parts of amendment 2025-0752s off the bill's subject",
+        "Chair Ruled Sections of Amendment #2018-1905s Non-Germane, and the following Amendments Non-Germane, "
+        "05/03/2018; SJ 16": "",
+        # A two-digit year is a year; a cancelled hearing is still no hearing,
+        # and "SH 3:00 p.m." is an hour, not room 3.
+        "Hearing: 3/29/11, Room 102, LOB, 10:00 a.m.; SC17":
+            "Public hearing, 10:00 a.m., Room 102, Legislative Office Building",
+        "Hearing:=== CANCELLED ===  1/27/15, Room 101, LOB, 2:00 p.m.; SC7": "",
+        "Hearing: 05/05/15, Representatives' Hall, SH 3:00 p.m.-5:00 p.m.; and 6:00 p.m.-8:00 p.m. HB1 and HB2; "
+        "SC18": "Public hearing, 3:00 p.m.",
     }
-    for raw, want in cases.items():
-        got = PA.plain(raw)
-        assert got == want, f"{raw!r} reads {got!r}, not {want!r}"
+    # "INTRODUCED AND ADOPTED" ON A BILL IS ITS INTRODUCTION (16 October
+    # 2026): the tally is the vote to let it in, not to pass it.
+    on_bill = {
+        ("Introduced and Adopted: MA DV 259-66 By Necessary Two-Thirds Vote 09/15/2022 HJ 15", "HB2023"):
+            "Introduced by a two-thirds vote, 259–66 on a division vote",
+        ("Introduced and Adopted (without objection) 09/25/2019 HJ 23 P. 4", "HB3"): "Introduced",
+        ("Introduced and Adopted, VV; 12/04/2024;  SJ 1", "SR1"): "Introduced and adopted, on a voice vote",
+    }
+    for (raw, bill), want in [((r, ""), w) for r, w in cases.items()] + list(on_bill.items()):
+        got = PA.plain(raw, bill)
+        assert got == want, f"{raw!r} on {bill or 'no bill'} reads {got!r}, not {want!r}"
         assert not re.search(r"\d{1,2}/\d{1,2}/\d{4}", got), f"{raw!r} keeps the clerk's date"
-    return "ok", (f"{len(cases)} docket lines read as the approved words say, and "
+    return "ok", (f"{len(cases) + len(on_bill)} docket lines read as the approved words say, and "
                   f"{sum(not w for w in cases.values())} left as written")
 
 
