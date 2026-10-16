@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-09.7
+# GRANITE_VERSION: 2026-10-09.8
 """
 The site's components, in Python: what the builders draw a person, a
 committee, a chip, a date and a time with, and the words they say.
@@ -653,3 +653,33 @@ def section(heading, body, sid=""):
     i = f' id="{esc(sid)}"' if sid else ""
     return (f'<section class="w4"{i}><h2 class="w4h">{esc(heading)}</h2>'
             f'<div class="w4b">{body}</div></section>')
+
+
+# WHAT RETIRES ON A DAY (the members-elect, the person's decisions of 16
+# October 2026). A member-elect is drawn until Organization Day and not on
+# it, and a page built on the 1st may still be read on the 3rd: a night held,
+# a copy a browser kept. So whatever retires carries its last day in
+# data-until, and components.js's behaviour hides it by the reader's own
+# clock, as the home page's stale warning works its age out again. The build
+# also stops writing site/members_elect.json that day; this is the reader's
+# half of the same rule.
+UNTIL_DAY = re.compile(r"[0-9]{4}-[0-9]{2}-[0-9]{2}")
+
+
+def until_attrs(until, today):
+    """The attributes of an element that retires on `until` ("YYYY-MM-DD",
+    or a date), as drawn on `today` -- the build's day in Python, the
+    reader's in the browser:
+
+        until_attrs("2026-12-02", "2026-11-20")  -> ' data-until="2026-12-02"'
+        until_attrs("2026-12-02", "2026-12-02")  -> ' data-until="2026-12-02" hidden'
+
+    Hidden from its day on. An `until` that is no day is hidden at once: a
+    block that cannot say when it ends is not shown at all. A `today` that
+    is no day leaves the judging to the reader's clock."""
+    u = "" if until is None else str(until)[:10]
+    t = "" if today is None else str(today)[:10]
+    if not UNTIL_DAY.fullmatch(u):
+        return " hidden"
+    gone = bool(UNTIL_DAY.fullmatch(t)) and t >= u
+    return f' data-until="{esc(u)}"' + (" hidden" if gone else "")

@@ -1701,6 +1701,32 @@ against the table on disk; agency claims against the pages
 web host refuses data centres. `_guides_gate` holds it, and refuses a dollar
 or percentage figure in a guide.
 
+## Members-elect (16 October 2026)
+
+Between a general election and Organization Day the site can say who was
+elected, from one file: `site/members_elect.json`, which
+`src/parse/build_members_elect.py` writes straight after the site data and
+before every page. It never touches `legislators.json` or `former.json`,
+which a dozen builders and the night's census read as who sits now. It reads
+the newest `collected/election_<year>.json` -- the Secretary of State's State
+Representative and State Senate results in this project's shape, keyed as
+`site/districts.json` keys a race (`H|Rockingham|13`, `S|24`); its docstring
+gives the shape, and `tests/election_fixture.json` is a made-up one -- and the
+person's `corrections/members_elect.json`, which settles names, marks a race
+not final and holds a winner off the pages.
+
+Three rules, the person's. The file is written only while the build's day is
+after the election and before Organization Day (`proceedings.organization_day`)
+and `site/meta.json`'s newest term is the one before theirs; otherwise the
+step removes it and says why, so they retire on their own, and
+`src/checks/check_site.py` refuses a file still there on its `takes_office`. A winner is
+linked to a page only as the seat's sitting member or as the one former
+member of that name whose county is the race's; anything less is drawn
+unlinked and printed for the person. And whatever the pages draw of them
+carries `data-until`, which `components.until_attrs` writes and the
+browser's behaviour in `components.js` hides by the reader's own clock from
+that day on. The pages that draw the file are the second pass.
+
 ## The bill index's sponsors
 
 A row's `sponsor` is the prime sponsor and `cosp` the co-sponsors, by the

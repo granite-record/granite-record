@@ -1,0 +1,19 @@
+{
+  "_whose": "This file belongs to the person who runs Granite Record, like member_corrections.json and ballot_results.json. Claude laid out its shape on 16 October 2026, empty; every entry in it is the person's. No generator writes it, and preflight fails if any build_* or fetch_* script opens it for writing (HANDMADE).",
+
+  "_what": "What the person settles about the members-elect of a general election, keyed by the election's day, so that one election's answers never reach another's. src/parse/build_members_elect.py reads it and prints what is left to settle each night between the election and Organization Day.",
+
+  "_how": "Under the election's day: \"matches\" maps a race and a winner's name, exactly as the results file prints it, to the member they are -- a sitting or a former member's id, which links them to that member's page -- or to null, which says they are new and nobody on file. \"not_final\" marks a race not final, with whether a recount was requested ({\"recount\": true}) and, where only some of its seats are in doubt, how many ({\"seats\": 1}); the winners with the fewest votes give way to them. \"held\" keeps a winner off the pages ({\"Name\": \"why\"}). A race is a key of site/districts.json: \"H|Rockingham|13\", \"S|24\". A reason ('why') is private and never published.",
+
+  "_example": {
+    "matches": {"H|Rockingham|13": {"John Smith": "900002", "Pat Newell": null}},
+    "not_final": {"H|Rockingham|8": {"recount": true, "why": "a recount was requested on 12 November"}},
+    "held": {}
+  },
+
+  "2026-11-03": {
+    "matches": {},
+    "not_final": {},
+    "held": {}
+  }
+}

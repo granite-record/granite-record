@@ -28,5 +28,12 @@ and the diff is the review.
 - `granit_layers.json` -- what each of NH GRANIT's district layers is, where
   it came from, and whether it agrees with the House districts
   (`src/towns/parse_granit.py`).
+- `election_<year>.json` -- a general election's State Representative and
+  State Senate results, as the Secretary of State posted them, by the race
+  keys of `site/districts.json`; `src/parse/build_members_elect.py` reads the
+  newest, and its docstring gives the shape. The reader of the Secretary of
+  State's own files is written once the 2024 files are saved and seen; until
+  then there is none here, and `tests/election_fixture.json` is the shape,
+  made up.
 
 The documents the town files were read from are in `records/sources/`.
