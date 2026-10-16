@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.70
+# GRANITE_VERSION: 2026-09-04.71
 """
 The nightly run. Fetch the day's bulk files, rebuild, check, compile what
 readers reported and what changed -- and publish only if told to.
@@ -964,6 +964,23 @@ KIND_BUILT_WARN = "a check of the built site against the record: "
 # reader that cannot tell. It is the vocabulary of version names, some forty
 # rows the term does not change, and a name it lacks reads as unknown rather
 # than as wrong (build_bill_versions counts them). The laptop's, as before.
+#
+# ONE TERM, AND THE THREE TOGETHER (16 October 2026, the release review). Each
+# view was first judged on its own, and against the whole installed copy, and
+# December breaks both. After the New term run the views hold 2027-2028 alone,
+# a few hundred rows against 2025-2026's thousands, and SWAP_SHRINK would have
+# refused them against the old term for months, so the new term's bills had
+# no text and no versions from the database; and a view taken beside another
+# refused could leave a Legislation of one term beside a LegislationText of
+# the other, whose legislationID starts again every term -- bill_text_from_db
+# and build_bill_versions would have filed 2026's printings under 2027's
+# bills. So the three are taken together or not at all (take_views, together):
+# none goes in unless all may, and the night says which held the rest and why.
+# Each is judged against the installed copy's rows of the same term
+# (view_terms), so a view that has turned is not refused for being smaller
+# than the term it replaces; and a text or a report of a term Legislation does
+# not hold refuses the set whole (term_set). The first is the record the other
+# two are filed against, and preflight holds it there.
 TERM_VIEWS = ("Legislation", "LegislationText", "CandH_Reports")
 TERM_FILES = (
     ("the Senate's committee reports, from the database", "fetch_reports_db.py",
@@ -3386,7 +3403,7 @@ def take_documents(v=None):
     return what
 
 
-def take_views(views, label, shrink=SWAP_SHRINK, not_again=False):
+def take_views(views, label, shrink=SWAP_SHRINK, not_again=False, together=False):
     """The study committees' views from the database, whole or not at all.
 
     fetch_archive_db.py writes straight over db/<view>.psv and exits 0 even
@@ -3396,6 +3413,10 @@ def take_views(views, label, shrink=SWAP_SHRINK, not_again=False):
     it replaces (any fall, on the New term run; never empty). The views'
     entries in db/_manifest.json follow them in; the
     calendar reads the meetings' date from there. {view: what happened}.
+
+    together, for the current term's views (TERM_VIEWS, whose block says
+    why): all of `views` go in or none does, and the fall is judged against
+    the installed copy's rows of the same term (take_together).
 
     Not asked at all while a hold on the host stands (STUDY_HELD), or, with
     not_again, on a night the database was asked for the day's files and did
@@ -3426,7 +3447,7 @@ def take_views(views, label, shrink=SWAP_SHRINK, not_again=False):
     # number would be read with the wrong names. Refused, as a short one is.
     cols_new = load_json(scratch / "db" / "_columns.json") or {}
     cols_old = load_json(Path("db") / "_columns.json") or {}
-    took, out = False, {}
+    took, out, ready = False, {}, []
     for v in views:
         new, old = scratch / "db" / f"{v}.psv", Path("db") / f"{v}.psv"
         entry = man.get(v) or {}
@@ -3442,6 +3463,9 @@ def take_views(views, label, shrink=SWAP_SHRINK, not_again=False):
                       f"counted {entry['rows']:,}")
             continue
         was = count_lines(old) if old.exists() else 0
+        if together:
+            ready.append((v, new, old, entry, rows, was))
+            continue
         if was and rows < was * (1 - shrink):
             out[v] = f"not taken: {rows:,} rows against {was:,} installed"
             continue
@@ -3450,12 +3474,173 @@ def take_views(views, label, shrink=SWAP_SHRINK, not_again=False):
         installed_man[v] = entry
         took = True
         out[v] = f"installed, {rows:,} rows (was {was:,})"
+    if together and ready:
+        for v, entry in take_together(views, ready, out, cols_new, cols_old, shrink,
+                                      scratch / "was"):
+            installed_man[v] = entry
+            took = True
     if took:
         write_json(Path("db") / "_manifest.json", installed_man)
     shutil.rmtree(scratch, ignore_errors=True)
+    out = {v: out[v] for v in views if v in out}
     for v, what in out.items():
         say(f"  {v}: {what}")
     return out
+
+
+# THE TERM A ROW IS OF, for the views taken together (TERM_VIEWS). Legislation
+# says it in its session year and CandH_Reports in its release date, the
+# columns freeze_term.VIEW_YEAR names. LegislationText says it only in
+# SessionID, an internal number: 6 on all 6,825 rows of 8 September, and 6 on
+# every row of DocumentVersion as well, stamped from 2015 to 2024 -- so whether
+# it moves when the term turns is not known, and a rule resting on it would
+# refuse the new term's printings for good if it does not. A printing states
+# its own session under its heading instead ("2025 SESSION  25-0215" in the
+# dump's Text column, which keeps a line break as a space). Measured on the
+# dump of 8 September: 4,802 of the 6,825 rows state it, within the first 335
+# characters; the 2,023 that do not are the Office of Legislative Services'
+# amendment releases (2,009) and the housekeeping and memorial resolutions,
+# whose printings carry no heading. The only other year before the word that
+# the first 2,000 characters of any row hold, "the Rules of the 2024 session"
+# and "the 2026 session of the general court", is in lower case, and the
+# pattern does not read it.
+PRINTED_SESSION = re.compile(r"(?<![\w-])(20\d\d)\s+SESSION\b")
+PRINTED_WITHIN = 2000
+
+
+def view_terms(path, columns, view):
+    """{term: rows} of a dumped view, by the term each row says it is of (the
+    block above), and under "" the rows that say none or are not as wide as
+    the view."""
+    import freeze_term as FT
+    import proceedings as P
+    text = columns.index("Text") if view == "LegislationText" and "Text" in columns else None
+    out = {}
+    with open(path, encoding="utf-8", errors="replace", newline="") as fh:
+        for line in fh:
+            if not line.strip():
+                continue
+            f = line.rstrip("\r\n").split("|")
+            if view == "LegislationText":
+                m = (PRINTED_SESSION.search(f[text][:PRINTED_WITHIN])
+                     if text is not None and len(f) == len(columns) else None)
+                year = m.group(1) if m else ""
+            else:
+                year = FT.row_part(f, columns, view)
+            t = P.term_of(year) if re.fullmatch(r"\d{4}", year) else ""
+            out[t] = out.get(t, 0) + 1
+    return out
+
+
+def by_term(rows, newest):
+    """view_terms' count, with the rows that say no term counted as `newest`'s:
+    within one term, the whole view, as it was weighed before."""
+    out = {t: n for t, n in rows.items() if t}
+    if rows.get(""):
+        out[newest] = out.get(newest, 0) + rows[""]
+    return out
+
+
+def term_set(views, fresh, have, shrink):
+    """{view: why it is not taken}, of the term's views judged as one record of
+    one term; {} where every one may go in. `fresh` and `have` are each view's
+    view_terms, tonight's and the installed copy's ({} where there is none);
+    the first of `views` is the record the others are filed against.
+
+    A text or a report of a term the first does not hold refuses the set
+    whole: it would be filed under another term's bill. Otherwise each view's
+    rows of every term the first holds are weighed against the installed
+    copy's rows of that term, as fetch_reports_db.shrunk weighs its file: a
+    view that has turned, whose new term the installed copy holds none of, is
+    not refused for being smaller than the old one."""
+    first = views[0]
+    stated = {v: {t for t in fresh[v] if t} for v in views}
+    stray = [(v, sorted(stated[v] - stated[first])) for v in views[1:]
+             if stated[v] - stated[first]]
+    if stray:
+        said = "; ".join(f"{v} holds rows of {', '.join(t)}" for v, t in stray)
+        return {v: (f"not taken: {said}, and {first} none: they are one record of one term, "
+                    "each row filed under its bill by an id that starts again every term")
+                for v in views}
+    terms = stated[first]
+    if not terms:
+        return {v: f"not taken: no row of {first} says which term it is of" for v in views}
+    out = {}
+    for v in views:
+        now = by_term(fresh[v], max(stated[v] or terms))
+        was = by_term(have[v], max({t for t in have[v] if t} or terms))
+        for t in sorted(terms):
+            if was.get(t) and now.get(t, 0) < was[t] * (1 - shrink):
+                out[v] = f"not taken: {now.get(t, 0):,} rows of {t} against {was[t]:,} installed"
+                break
+    return out
+
+
+def swap_together(pairs, aside):
+    """Each new file of `pairs` [(new, installed)] in place of its installed
+    copy, all or none: the installed copies are moved into `aside` first and
+    put back if any move fails. None, or what failed, for the log."""
+    aside.mkdir(parents=True, exist_ok=True)
+    moved, placed = [], []
+    try:
+        for _new, old in pairs:
+            if old.exists():
+                os.replace(old, aside / old.name)
+                moved.append(old)
+        for new, old in pairs:
+            old.parent.mkdir(parents=True, exist_ok=True)
+            os.replace(new, old)
+            placed.append(old)
+        return None
+    except OSError as e:
+        failed = f"{type(e).__name__}: {e}"
+    try:
+        for old in placed:
+            if old not in moved:
+                old.unlink()
+        for old in moved:
+            os.replace(aside / old.name, old)
+    except OSError as e:
+        return f"{failed}; and putting the installed copies back failed: {type(e).__name__}: {e}"
+    return failed
+
+
+def take_together(views, ready, out, cols_new, cols_old, shrink, aside):
+    """take_views' `together`: the views of `ready` -- each that came back
+    whole, as (view, new, old, entry, rows, was) -- in place if every one of
+    `views` came back and term_set refuses none, and otherwise none of them.
+    Says in `out` what became of each; [(view, entry)] of those put in."""
+    came = [r[0] for r in ready]
+    held = [v for v in views if v not in came]
+    fresh, have = {}, {}
+    if not held:
+        cols = {v: cols_new.get(v) or cols_old.get(v) or [] for v in came}
+        fresh = {v: view_terms(new, cols[v], v) for v, new, *_ in ready}
+        have = {v: view_terms(old, cols[v], v) if old.exists() else {} for v, _n, old, *_ in ready}
+        why = term_set(views, fresh, have, shrink)
+        out.update(why)
+        held = [v for v in views if v in why]
+    if held:
+        for v in came:
+            out.setdefault(v, f"not taken: {' and '.join(held)} "
+                              f"{'was' if len(held) == 1 else 'were'} not, and the term's "
+                              "views go in together or not at all")
+        return []
+    failed = swap_together([(new, old) for _v, new, old, *_ in ready], aside)
+    if failed:
+        say(f"  {failed}", echo=False)
+        back = "putting the installed copies back failed" not in failed
+        for v in came:
+            out[v] = ("not taken: the views could not be put in place together"
+                      + ("" if back else ", and the installed copies were not all put back"))
+        return []
+    for v, _n, _o, entry, rows, was in ready:
+        newest = max((t for t in fresh[v] if t), default="")
+        mine = {t for t in have[v] if t}
+        out[v] = f"installed, {rows:,} rows (was {was:,})" + (
+            f": it holds {newest}, of which the copy it replaced held none"
+            if newest and mine and newest not in mine else "")
+    return [(v, entry) for v, _n, _o, entry, *_ in ready]
 
 
 def take_json(label, args, installed, count, seed=False, shrink=SWAP_SHRINK):
@@ -3506,13 +3691,14 @@ def _bills_in(d):
 
 def take_term_data(not_again=False):
     """The current term's views and files from the database (TERM_VIEWS,
-    TERM_FILES), each whole or not at all: {piece: what happened}. Each file's
-    fetch merges into the copy at its --out, so the installed copy is seeded in
-    first, and the archived terms it holds stay."""
+    TERM_FILES), each whole or not at all, and the views all three or none:
+    {piece: what happened}. Each file's fetch merges into the copy at its
+    --out, so the installed copy is seeded in first, and the archived terms it
+    holds stay."""
     import probe_db
     say("\n--- the current term's data, from the General Court's database ---")
     out = dict(take_views(TERM_VIEWS, "the current term's bills, texts and hearing reports, from "
-                                      "the database", not_again=not_again))
+                                      "the database", not_again=not_again, together=True))
     held = probe_db.hold_standing()
     for label, script, path in TERM_FILES:
         if held or not_again:

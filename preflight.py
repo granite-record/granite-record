@@ -16414,7 +16414,10 @@ def _bill_text_from_db(BT, BP, FB):
     all 2,234 bills of 2025-2026, and the record bill_page.parse_text reads off
     it is the web's for 2,192 and the same words for the other 42 (--check says
     it again on any dump). This holds the rules that measurement rests on: the
-    order of printings, the records it may write, and that it asks nobody."""
+    order of printings, the records it may write, and that it asks nobody; and
+    (16 October 2026) that a printing whose own heading names another bill --
+    an old term's text filed under a new term's id -- is skipped and counted:
+    with the dump's ids moved one bill along, 2,218 of 2,234 were."""
     assert FB.parse_text is BP.parse_text and FB.text_of is BP.text_of, \
         "fetch_bill_text reads the web's pages with another parser than bill_page's"
     src = _paths.locate("bill_text_from_db.py").read_text(encoding="utf-8")
@@ -16445,6 +16448,12 @@ def _bill_text_from_db(BT, BP, FB):
         # a printing it would be the latest, and no bill at all.
         ("6", page("HB6", "AS INTRODUCED"), "Introduced", "01/05/2025 10:00:00"),
         ("6", "<p>Amendment 2025-0002h</p>", "OLS Release", "02/01/2025 10:00:00"),
+        # A PRINTING NAMES ITS OWN BILL (16 October 2026): filed under HB 7 by
+        # an id that starts again every term, its heading -- 2026 HB 1442's,
+        # as printed -- names another bill, and it is skipped; SB 290's real
+        # heading names no number at all, and says nothing either way.
+        ("7", page("HB1442-FN", "AS INTRODUCED"), "Introduced", "01/05/2025 10:00:00"),
+        ("8", page("SB", "AS INTRODUCED"), "Introduced", "01/05/2025 10:00:00"),
     ]
     web = {"bill": "HB1", "year": "2025", "version": "AS INTRODUCED", "text": "ANALYSIS\nweb's"}
     tmp = Path(tempfile.mkdtemp(prefix="gr-btdb-"))
@@ -16457,17 +16466,32 @@ def _bill_text_from_db(BT, BP, FB):
                 "Legislation": ["sessionyear", "CondensedBillNo", "legislationID"],
                 "LegislationText": lt}), encoding="utf-8")
             (tmp / "db" / "Legislation.psv").write_text(
-                "".join(f"2025|HB {i}|{i}\r\n" for i in "12346"), encoding="utf-8")
+                "".join(f"2025|HB {i}|{i}\r\n" for i in "123467") + "2025|SB 290|8\r\n",
+                encoding="utf-8")
             (tmp / "db" / "LegislationText.psv").write_text(
                 "".join("|".join(r) + "\r\n" for r in text_rows), encoding="utf-8")
         dump(rows)
         (tmp / "data" / "bills.json").write_text(json.dumps(
-            {"2025-2026": {b: {} for b in ("HB1", "HB2", "HB3", "HB5", "HB6")}}), encoding="utf-8")
+            {"2025-2026": {b: {} for b in ("HB1", "HB2", "HB3", "HB5", "HB6", "HB7", "SB290")}}),
+            encoding="utf-8")
         ours = {"bill": "HB5", "source": BT.SOURCE, "text": "a bill the view no longer prints"}
+        ours7 = {"bill": "HB7", "source": BT.SOURCE, "text": "HB 7's own earlier printing"}
         out = tmp / "bill_text.json"
-        out.write_text(json.dumps({"2025-2026": {"HB1": web, "HB5": ours}}), encoding="utf-8")
+        out.write_text(json.dumps({"2025-2026": {"HB1": web, "HB5": ours, "HB7": ours7}}),
+                       encoding="utf-8")
         added, refreshed, kept, said = BT.fill(tmp)
         got = json.loads(out.read_text(encoding="utf-8"))["2025-2026"]
+        assert got.get("HB7") == ours7, \
+            ("a printing whose own heading names HB 1442 was filed under HB 7", got.get("HB7"))
+        assert "1 printings whose own heading names another bill, skipped (HB7's names HB1442)" \
+            in said, said
+        assert got.get("SB290", {}).get("version") == "AS INTRODUCED", \
+            ("a printing whose heading names no number was skipped", got.get("SB290"))
+        assert (BT.heading_bill("<p>CACR 19 - AS INTRODUCED</p><p>2025 SESSION</p>"),
+                BT.heading_bill(page("SB", "AS AMENDED BY THE SENATE")),
+                BT.names_another("HB0007", {"HTMLText": page("HB7", "AS INTRODUCED")}),
+                BT.names_another("SB7", {"HTMLText": page("HB7", "AS INTRODUCED")})) == \
+            ("CACR19", "", "", "HB7"), "a heading's bill is not read by its kind and its number"
         assert got["HB1"] == web and kept == 1, \
             ("a web record was replaced by the database's newer printing", got["HB1"])
         assert got["HB2"]["version"] == "AS AMENDED BY THE HOUSE" and \
@@ -16484,7 +16508,7 @@ def _bill_text_from_db(BT, BP, FB):
         assert got["HB2"] == {**BP.parse_text(rows[2][1], "HB2", "2025"),
                               "source": BT.SOURCE, "printed": "2025-03-01T10:00:00"}, \
             "the record is not bill_page.parse_text's of the printing"
-        assert (added, refreshed) == (3, 0), (added, refreshed, said)
+        assert (added, refreshed) == (4, 0), (added, refreshed, said)
         before = out.read_bytes()
         assert BT.fill(tmp)[:2] == (0, 0) and out.read_bytes() == before, \
             "a second run over the same dump wrote the file again"
@@ -16507,8 +16531,9 @@ def _bill_text_from_db(BT, BP, FB):
     return "ok", ("a web record is kept over a newer printing; a missing bill gets its chaptered, "
                   "then both-bodies, then latest amended printing, never an OLS release, as "
                   "bill_page.parse_text reads it; a newer printing refreshes only the database's "
-                  "own record; a bill not in data/bills.json is left out; a second run writes "
-                  "nothing; a dump of another shape stops; neither file asks the network")
+                  "own record; a bill not in data/bills.json is left out; a printing headed with "
+                  "another bill is skipped and counted; a second run writes nothing; a dump of "
+                  "another shape stops; neither file asks the network")
 
 
 @check("frontend", "the Bill Text tab asks for a version index only where one exists")
@@ -62239,19 +62264,52 @@ def _runner_site(n_bills, legislators=40, feeds=5, terms=None, changes="first-se
              "followable": {}, "upcoming": {}}), encoding="utf-8")
 
 
+# The current term's views as a fixture night's dump gives them: rows that say
+# their term, 2025-2026, by the columns nightly.view_terms reads (16 October
+# 2026). Without them every fixture night that fetches warns that the three
+# were not taken, since no row of Legislation would say which term it is of.
+_TERM_VIEW_COLUMNS = {
+    "Legislation": ["sessionyear", "CondensedBillNo", "legislationID"],
+    "LegislationText": ["LegislationID", "Text", "DocumentVersion", "SessionID"],
+    "CandH_Reports": ["LegislationID", "BillNbr", "ReleaseDate"]}
+
+
+def _term_view_line(cols, i):
+    """Row `i` of a term view with these columns, of 2025 or 2026."""
+    y = 2025 + i % 2
+    said = {"sessionyear": str(y), "CondensedBillNo": f"HB{i}", "legislationID": str(i),
+            "LegislationID": str(i), "Text": f"{y} SESSION  \t{y % 100}-{i:04d}  \tHOUSE BILL {i}",
+            "DocumentVersion": "Introduced", "SessionID": "6", "BillNbr": f"HB{i}",
+            "ReleaseDate": f"01/14/{y} 00:00:00"}
+    return "|".join(said.get(c, "") for c in cols)
+
+
 def _runner_fake_views(args, cwd, rows=None):
     """What fetch_archive_db.py leaves in its scratch folder: one .psv per view
-    asked for, and a manifest counting its rows."""
+    asked for, and a manifest counting its rows; and for the current term's
+    views their columns, as the installed db/_columns.json lists them where it
+    does."""
     views = [args[i + 1] for i, x in enumerate(args) if x == "--only"]
     db = Path(cwd) / "db"
     db.mkdir(parents=True, exist_ok=True)
-    man = {}
+    try:
+        listed = json.loads(Path("db/_columns.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        listed = {}
+    man, cols = {}, {}
     for v in views:
         n = (rows or {}).get(v, 30)
-        (db / f"{v}.psv").write_text("".join(f"{v}|{i}\n" for i in range(n)), encoding="utf-8")
+        if v in _TERM_VIEW_COLUMNS:
+            cols[v] = (listed.get(v) if isinstance(listed, dict) else None) or _TERM_VIEW_COLUMNS[v]
+            text = "".join(_term_view_line(cols[v], i) + "\n" for i in range(n))
+        else:
+            text = "".join(f"{v}|{i}\n" for i in range(n))
+        (db / f"{v}.psv").write_text(text, encoding="utf-8")
         man[v] = {"database": "NHLegislatureDB", "rows": n, "bytes": 1,
                   "fetched": "2026-09-26T02:20:00"}
     (db / "_manifest.json").write_text(json.dumps(man), encoding="utf-8")
+    if cols:
+        (db / "_columns.json").write_text(json.dumps(cols), encoding="utf-8")
 
 
 @check("build", "on GitHub's machine the nightly keeps its gates, its refusal record and its "
@@ -85979,7 +86037,16 @@ def _night_term_data(NI):
     the gate never holds a night for; and each file's fetch, which merges into
     the copy at its --out, is seeded with the installed copy, so the archived
     terms it holds stay -- a writer run on part of a file must not lose the
-    rest, which is how the manifest lost its hand-marked times twice."""
+    rest, which is how the manifest lost its hand-marked times twice.
+
+    And (16 October 2026, the release review) the three views go in together
+    or not at all, each judged against the installed copy's rows of its own
+    term: take_views itself, with a stand-in for fetch_archive_db.py that
+    writes what a dump writes, takes a smaller new term's views whole after
+    the turn, refuses a set whose terms disagree whole, and keeps all three
+    where one is refused, saying which and why."""
+    import contextlib
+    import io
     import types
     import probe_db
     kit = json.loads(Path("cloud_kit.json").read_text(encoding="utf-8"))
@@ -86002,7 +86069,7 @@ def _night_term_data(NI):
         "a piece of the term's data not taken holds the night as a new kind of warning"
 
     here, tmp = os.getcwd(), Path(tempfile.mkdtemp(prefix="gr-termdata-"))
-    saved = (NI.run, NI.take_views, NI.LOG[:], probe_db.hold_standing)
+    saved = (NI.run, NI.take_views, NI.LOG[:], probe_db.hold_standing, NI.QUIET)
     seen = []
 
     def fake(args, label, cwd=None):
@@ -86012,14 +86079,133 @@ def _night_term_data(NI):
         have["2025-2026"] = {"HB1": {}, "HB2": {}, "HB3": {}}
         out.write_text(json.dumps(have), encoding="utf-8")
         return 0
+
+    # The three views, as a dump of a term writes them. The Text column's lines
+    # are the dump's own shapes: a printing states its session under its
+    # heading; an amendment the OLS released and a housekeeping resolution
+    # state none, and the lower-case years they do write are not read.
+    L, T, C = NI.TERM_VIEWS
+    assert (L, T, C) == ("Legislation", "LegislationText", "CandH_Reports"), (
+        "the first of TERM_VIEWS is no longer Legislation, the record the other two are filed "
+        "against", NI.TERM_VIEWS)
+    cols = {L: ["sessionyear", "CondensedBillNo", "legislationID"],
+            T: ["LegislationID", "Text", "DocumentVersion", "SessionID"],
+            C: ["LegislationID", "BillNbr", "ReleaseDate"]}
+
+    def term(start, bills, printed, ols, reports):
+        """{view: its file} of the term starting in `start`."""
+        def y(i):
+            return start + i % 2
+        return {
+            L: "".join(f"{y(i)}|HB{i}|{i}\n" for i in range(1, bills + 1)),
+            T: "".join(f"{i}|6Feb{y(i)}... 0067h  {y(i)} SESSION  \t{y(i) % 100}-{i:04d}  \t05/09"
+                       f"    HOUSE BILL {i}|Introduced|6\n" for i in range(1, printed + 1))
+               + "".join(f"{i}|  \t\tIII.  To decide whether the amendments of the constitution "
+                         f"proposed by the {start + 1} session of the general court shall be "
+                         "approved.|OLS Release|6\n" for i in range(1, ols + 1))
+               + (f"{bills}|Senate Resolutions 1-5 were housekeeping resolutions adopted during "
+                  f"the {start} Legislative Session, and are recorded in the {start} Senate "
+                  "Journals.|Introduced|6\n"),
+            C: "".join(f"{i}|HB{i}|0{1 + i % 9}/14/{y(i)} 00:00:00\n" for i in range(1, reports + 1)),
+        }
+
+    def install(views):
+        Path("db").mkdir(exist_ok=True)
+        for v, text in views.items():
+            Path(f"db/{v}.psv").write_text(text, encoding="utf-8")
+        Path("db/_columns.json").write_text(json.dumps(cols), encoding="utf-8")
+        Path("db/_manifest.json").write_text(json.dumps(
+            {v: {"rows": text.count("\n"), "fetched": "2026-09-08T20:45:53"}
+             for v, text in views.items()}), encoding="utf-8")
+
+    def installed():
+        return {v: Path(f"db/{v}.psv").read_text(encoding="utf-8") for v in (L, T, C)}
+
+    def take(views, failed=None):
+        """take_views of the term's views, the dump giving `views`, and the
+        query of `failed` failing."""
+        def run(args, label, cwd=None):
+            assert args[0] == "fetch_archive_db.py" and args.count("--only") == 3, args
+            db = Path(cwd) / "db"
+            db.mkdir(parents=True, exist_ok=True)
+            man = {}
+            for v, text in views.items():
+                if v == failed:
+                    man[v] = {"error": "QUERY_FAIL Execution Timeout Expired (fixture)"}
+                    continue
+                (db / f"{v}.psv").write_text(text, encoding="utf-8")
+                man[v] = {"rows": text.count("\n"), "fetched": "2027-01-08T05:00:00"}
+            (db / "_manifest.json").write_text(json.dumps(man), encoding="utf-8")
+            (db / "_columns.json").write_text(json.dumps(cols), encoding="utf-8")
+            return 0
+        NI.run = run
+        with contextlib.redirect_stdout(io.StringIO()):
+            return NI.take_views(NI.TERM_VIEWS, "the current term's views", together=True)
+
+    old, new = term(2025, 100, 100, 40, 100), term(2027, 12, 5, 2, 3)
     try:
         os.chdir(tmp)
+        NI.QUIET = True
+        probe_db.hold_standing = lambda: None
+        Path("db").mkdir()
+        Path("db/t.psv").write_text(old[T], encoding="utf-8")
+        assert NI.view_terms(Path("db/t.psv"), cols[T], T) == {"2025-2026": 100, "": 41}, \
+            NI.view_terms(Path("db/t.psv"), cols[T], T)
+        # After the turn: the new term's views, a tenth of the old term's
+        # size, go in whole -- the whole-file rule refused them for months.
+        install(old)
+        got = take(new)
+        assert all(got[v].startswith("installed") and "held none" in got[v] for v in (L, T, C)) \
+            and installed() == new, ("a smaller new term's views were not taken", got)
+        man = json.loads(Path("db/_manifest.json").read_text(encoding="utf-8"))
+        assert all(man[v]["fetched"].startswith("2027") for v in (L, T, C)), man
+        # A new term's bills beside the old term's printings: refused whole.
+        install(old)
+        got = take({L: new[L], T: old[T], C: new[C]})
+        assert all(got[v].startswith("not taken: LegislationText holds rows of 2025-2026, and "
+                                     "Legislation none") for v in (L, T, C)) \
+            and installed() == old, ("a set whose terms disagree was taken", got)
+        # One refused keeps all three, and the night says which and why.
+        install(old)
+        got = take(term(2025, 101, 101, 40, 50))
+        assert got[C] == "not taken: 50 rows of 2025-2026 against 100 installed" and \
+            got[L] == got[T] == ("not taken: CandH_Reports was not, and the term's views go in "
+                                 "together or not at all") and installed() == old, got
+        got = take(term(2025, 101, 101, 40, 101), failed=T)
+        assert got[T].startswith("not taken: QUERY_FAIL") and got[L] == got[C] == (
+            "not taken: LegislationText was not, and the term's views go in together or not "
+            "at all") and installed() == old, got
+        # Within a term, a view that grew goes in as it always did.
+        grown = term(2025, 101, 101, 40, 101)
+        got = take(grown)
+        assert all(got[v].startswith("installed") and "held none" not in got[v]
+                   for v in (L, T, C)) and installed() == grown, got
+        # The rows that say no term count with their view's newest: an
+        # amendment release lost is still a fall. And while Legislation holds
+        # both terms, the old term's texts and reports are not strays.
+        one = {L: {"2025-2026": 10}, T: {"2025-2026": 10}, C: {"2025-2026": 10}}
+        assert NI.term_set(NI.TERM_VIEWS, one, {**one, T: {"2025-2026": 10, "": 40}}, 0.3) == \
+            {T: "not taken: 10 rows of 2025-2026 against 50 installed"}
+        assert NI.term_set(NI.TERM_VIEWS, {**one, L: {"2025-2026": 10, "2027-2028": 3}}, one,
+                           0.3) == {}
+        # Put in together or not at all: a move that fails puts back the rest.
+        Path("x.new").write_text("tonight's", encoding="utf-8")
+        for v in ("x", "y"):
+            Path(f"db/{v}.psv").write_text("installed", encoding="utf-8")
+        failed = NI.swap_together([(Path("x.new"), Path("db/x.psv")),
+                                   (Path("y.new"), Path("db/y.psv"))], Path("aside"))
+        assert failed and "putting" not in failed and all(
+            Path(f"db/{v}.psv").read_text(encoding="utf-8") == "installed" for v in "xy"), failed
+
         for _l, _s, p in NI.TERM_FILES:
             Path(p).write_text(json.dumps({"2025-2026": {"HB1": {}}, "2023-2024": {"HB9": {}}}),
                                encoding="utf-8")
         NI.run, probe_db.hold_standing = fake, (lambda: None)
-        NI.take_views = lambda views, label, **k: {v: "installed, 1 rows (was 1)" for v in views}
+        asked = {}
+        NI.take_views = lambda views, label, **k: (
+            asked.update(k) or {v: "installed, 1 rows (was 1)" for v in views})
         got = NI.take_term_data()
+        assert asked.get("together") is True, ("the night takes the term's views one by one", asked)
         for _l, script, p in NI.TERM_FILES:
             d = json.loads(Path(p).read_text(encoding="utf-8"))
             assert sorted(d) == ["2023-2024", "2025-2026"] and len(d["2025-2026"]) == 3, (p, d)
@@ -86032,12 +86218,13 @@ def _night_term_data(NI):
     finally:
         os.chdir(here)
         NI.run, NI.take_views, probe_db.hold_standing = saved[0], saved[1], saved[3]
-        NI.LOG[:] = saved[2]
+        NI.LOG[:], NI.QUIET = saved[2], saved[4]
         shutil.rmtree(tmp, ignore_errors=True)
     return "ok", (f"{len(NI.TERM_VIEWS)} views and {len(NI.TERM_FILES)} files, the night's in the "
                   "kit, taken after the study committees and not on a New term run; each file's "
                   "fetch merges into the installed copy and keeps its archived terms; a hold asks "
-                  "nothing; a piece not taken warns and never holds")
+                  "nothing; a piece not taken warns and never holds; the views go in all three or "
+                  "none, a smaller new term's after the turn, never a set whose terms disagree")
 
 
 # ======================================================================= main ==
