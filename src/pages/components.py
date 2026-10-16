@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-09.7
+# GRANITE_VERSION: 2026-10-09.8
 """
 The site's components, in Python: what the builders draw a person, a
 committee, a chip, a date and a time with, and the words they say.
@@ -186,6 +186,21 @@ def cmte_link(name, term, codes):
     code = v if isinstance(v, str) else (
         (v[term] if term and term in v else v.get("")) if v else "")
     return f'<a href="committee/{esc(code)}.html">{esc(name)}</a>' if code else esc(name)
+
+
+def cmte_title(name, chamber=""):
+    """A committee's whole name for a sentence: components.js's cmteTitle.
+    "Housing" of the House is "House Committee on Housing"; a name that says
+    "Committee" itself takes only the chamber -- "House Special Committee on
+    Housing", where the page said "The House Committee on Special Committee
+    on Housing" (16 October 2026) -- and one that already names its chamber
+    is left as it is. Text, not markup: the caller escapes it."""
+    name, chamber = str(name or ""), str(chamber or "")
+    if chamber and name.lower().startswith(chamber.lower() + " "):
+        return name
+    if re.search(r"\bcommittee\b", name, re.I):
+        return f"{chamber} {name}".strip()
+    return f"{chamber} Committee on {name}".strip()
 
 
 # THE PARTY AND DISTRICT ARE ONE UNIT (the look of 7 October 2026). Where a

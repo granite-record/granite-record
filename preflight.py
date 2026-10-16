@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.584
+# GRANITE_VERSION: 2026-09-04.585
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -19224,6 +19224,7 @@ F.findDraw("housing");
 console.log(JSON.stringify({
   names: rows.map(r => F.findName(r)), whats: rows.map(r => F.findWhat(r)),
   kinds: rows.map(r => F.findKind(r)), housing: F.findMatch("housing", 50).map(r => r[1]),
+  formerly: ["housing", "criminal", "state institutions"].map(q => F.findWhat(rows[6], q)),
   senate: F.findMatch("senate", 50).map(r => r[1]), html: panel.innerHTML,
 }));
 """
@@ -19253,6 +19254,9 @@ def _find_committee_names(BP):
         ["committee", "Senate Special Committee on Redistricting", "Senate committee",
          "committee/s100", ""],
         ["town", "Housing Town", "Somewhere County", "town/x", ""],
+        # Found by an earlier name (r[7]): once State Institutions and Housing.
+        ["committee", "Criminal Justice and Public Safety", "House committee", "committee/H26",
+         "Terry Roy State Institutions and Housing", None, None, ["State Institutions and Housing"]],
     ]
     root = Path(tempfile.mkdtemp())
     try:
@@ -19272,10 +19276,14 @@ def _find_committee_names(BP):
         shutil.rmtree(root, ignore_errors=True)
     assert got["names"] == ["House Housing Committee", "Housing", "House Special Committee on Housing",
                             "Senate Judiciary Committee", "Senate Special Committee on Redistricting",
-                            "Housing Town"], got["names"]
-    assert got["whats"] == ["", "Bills on this subject",
-                            "Not on the General Court’s list today · 2023 to 2024", "", "",
-                            "Somewhere County"], got["whats"]
+                            "Housing Town", "House Criminal Justice and Public Safety Committee"], got["names"]
+    assert got["whats"] == ["", "Bills on this subject", "No longer meets · 2023 to 2024", "", "",
+                            "Somewhere County", ""], got["whats"]
+    # FORMERLY, only where an old name is what matched (16 October 2026).
+    assert got["formerly"] == ["Formerly State Institutions and Housing", "",
+                               "Formerly State Institutions and Housing"], got["formerly"]
+    assert "Formerly State Institutions and Housing" in got["html"], (
+        "the drawn panel does not say which old name matched")
     assert "House Housing Committee" in re.sub(r"<[^>]+>", "", got["html"]) and \
         "House committee" not in got["html"], "the drawn panel still names the committee bare"
     # A COMMITTEE THAT NO LONGER SITS (the person, 16 October 2026): called a
@@ -77136,7 +77144,10 @@ def _committee_attribution():
             # and the page narrates those days under that name. Any name the
             # page ever had would let a report under one back a day narrated
             # under the other.
-            m = re.match(r"(?:The Committee on )?(.+?) "
+            # "The Committee on Housing", and since 16 October 2026 "The Special
+            # Committee on Housing" for a name that says Committee itself
+            # (components.cmte_title): the article goes either way.
+            m = re.match(r"(?:The (?:Committee on )?)?(.+?) "
                          r"(?:met|is scheduled to meet) on ", narr)
             want = (m.group(1) if m else c.get("name") or "").strip().lower()
             for it in sess.get("items", []):

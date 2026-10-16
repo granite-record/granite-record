@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-07.59
+# GRANITE_VERSION: 2026-09-07.60
 """
 A page's worth of data for every committee.
 
@@ -77,6 +77,7 @@ import build_date
 import committee_acts as CA
 import committee_details as CD
 import committee_names as CN
+import components as C
 import names
 import report_check as RC
 import shell as S
@@ -183,7 +184,9 @@ def narrate(name, chamber, date, items, reports):
     if not kinds:
         return ""
 
-    who = f"The Committee on {name}" if not name.lower().startswith("committee") \
+    # A name that says "Committee" itself is not "the Committee on" it
+    # (components.cmte_title, 16 October 2026).
+    who = f"The {C.cmte_title(name)}" if not name.lower().startswith("committee") \
         else name
     out = []
     first = kinds[0]
@@ -812,7 +815,7 @@ def static_record(code, name, chamber_word, rec, sessions):
     bills referred to it in its latest term and its latest meetings."""
     E = S.E
     out = ['<div class="static-rec" id="static-rec">', f"<h1>{E(name)}</h1>",
-           f"<p>The {chamber_word} Committee on {E(name)}"
+           f"<p>The {E(C.cmte_title(name, chamber_word))}"
            + (f", chaired by {E(rec['chair'])}" if rec.get("chair") else "") + ".</p>"]
     if rec.get("purpose"):
         out.append(f"<p>{E(rec['purpose']['text'])}</p>")
@@ -1211,7 +1214,7 @@ def main():
         # what tells the two apart before the page is open.
         when = (f" ({runs(span_of[code])})"
                 if code in retired and span_of[code] else "")
-        desc = (f"The {chamber_word} Committee on {name}{when}. "
+        desc = (f"The {C.cmte_title(name, chamber_word)}{when}. "
                 f"{towns}{sum(len(v) for v in rec['bills'].values()):,} bills "
                 f"referred and {met_days:,} meetings, each with what "
                 "was taken up and when. From the New Hampshire General Court's "

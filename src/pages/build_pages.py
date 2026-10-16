@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.204
+# GRANITE_VERSION: 2026-09-04.205
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -2214,7 +2214,7 @@ const GROUPS=[
 const row=(r,q)=>`<a href="${esc(_froot(r[3]))}">
   <span class="fl1"><span class="fname">${_fmark(findName(r),q)}</span>
   ${chip(findKind(r),"fkind")}</span>
-  ${findWhat(r)?`<span class="fwhat">${esc(findWhat(r))}</span>`:""}</a>`;
+  ${findWhat(r,q)?`<span class="fwhat">${esc(findWhat(r,q))}</span>`:""}</a>`;
 
 // THE BILLS, counted. Until 24 September this was one card at the foot of the
 // page, "Search every bill for firearms", under a line saying nothing on the

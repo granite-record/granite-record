@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-16.28
+// GRANITE_VERSION: 2026-09-16.29
 /* FIND ANYTHING, FROM THE HEADER (16 September, asked for in these words:
    "a search icon in the header that lets you search for anything including
    legislators, committees, towns, and bills ... searching Litchfield would
@@ -83,12 +83,31 @@ const _fgone=r=>!!r&&(r[0]==="former"||(r[0]==="committee"&&!!r[5]));
 function findKind(r){
   return r&&r[0]==="committee"&&r[5]?"Former Committee":(FKIND[r&&r[0]]||(r&&r[0])||"");
 }
-// The line under a row -- but not "House committee" under a name that now says it.
-function findWhat(r){
+/* FORMERLY, WHEN AN OLD NAME IS WHAT MATCHED (the person, 16 October 2026: "A
+   committee should say formerly if it's an old name"). A committee's earlier
+   names are search words, so "housing" finds Criminal Justice and Public
+   Safety, which was State Institutions and Housing; a row that then said only
+   its name looked like a wrong answer. r[7] is the list of earlier names
+   (find.json); the one every word typed is in is named, and only where the
+   committee's own name does not hold them all. */
+function _fwasNamed(r,s){
+  const old=Array.isArray(r&&r[7])?r[7]:[];
+  const words=s?_fwords(s):[];
+  if(!old.length||!words.length)return "";
+  if(words.every(w=>_fhas(String(r[1]||"").toLowerCase(),w)))return "";
+  return old.find(n=>words.every(w=>_fhas(String(n).toLowerCase(),w)))||"";
+}
+// The line under a row -- but not "House committee" under a name that now says
+// it. A committee that no longer sits says so in the person's own words for it
+// ("former committees that are no longer meeting"), with its years; one found
+// by an old name says which.
+function findWhat(r,s){
   const w=r?String(r[2]||""):"";
-  if(r&&r[0]==="committee"&&r[5])
-    return "Not on the General Court’s list today"+(r[6]?` · ${r[6]}`:"");
-  return r&&r[0]==="committee"&&/^(House|Senate) committee$/i.test(w)?"":w;
+  if(!r||r[0]!=="committee")return w;
+  const was=_fwasNamed(r,s);
+  const bits=[was?`Formerly ${was}`:"",
+    r[5]?"No longer meets"+(r[6]?` · ${r[6]}`:""):""].filter(Boolean);
+  return bits.length?bits.join("; "):/^(House|Senate) committee$/i.test(w)?"":w;
 }
 /* HALF AN EMOJI IS NOT AN ADDRESS. encodeURIComponent throws "URI malformed"
    on a surrogate with no partner, which is what the box holds for a moment
@@ -723,7 +742,7 @@ function findDraw(q,ids){
   const row=r=>`<a href="${_fesc(_froot(r[3]))}">
       <span class="fl1"><span class="fname">${_fmark(findName(r),s)}</span>
       ${chip(findKind(r),"fkind")}</span>
-      ${findWhat(r)?`<span class="fwhat">${_fesc(findWhat(r))}</span>`:""}</a>`;
+      ${findWhat(r,s)?`<span class="fwhat">${_fesc(findWhat(r,s))}</span>`:""}</a>`;
   // The bills, for anything that is not a bill number: the count and the
   // first three. Hidden once counted at none, because "All 0 bills" is not an
   // answer; shown uncounted while they are fetched, and redrawn when they

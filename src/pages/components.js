@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-10-09.9
+// GRANITE_VERSION: 2026-10-09.10
 /* THE SITE'S COMPONENTS, IN THE BROWSER. Published as site/components.js and
    loaded by every page, in its head, before app.js, find.js and any page's
    own script, so each of them draws a person, a committee, a date or a time
@@ -108,6 +108,14 @@ function cmteLink(name,term,codes){
   const code=typeof v==="string"?v
     :v?((term&&Object.prototype.hasOwnProperty.call(v,term))?v[term]:v[""]):"";
   return code?`<a href="committee/${esc(code)}.html">${esc(name)}</a>`:esc(name);
+}
+
+// A committee's whole name for a sentence: components.py's cmte_title.
+function cmteTitle(name,chamber){
+  name=String(name==null?"":name);chamber=String(chamber==null?"":chamber);
+  if(chamber&&name.toLowerCase().startsWith(chamber.toLowerCase()+" "))return name;
+  if(/\bcommittee\b/i.test(name))return `${chamber} ${name}`.trim();
+  return `${chamber} Committee on ${name}`.trim();
 }
 
 // ONE CHIP FOR A PERSON, wherever they appear. A committee's members were

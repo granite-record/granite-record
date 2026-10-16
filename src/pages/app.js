@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.206
+// GRANITE_VERSION: 2026-09-07.207
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -7538,7 +7538,9 @@ function renderCommitteeHead(c){
   const next=UPCOMING===null?"":cmteUpcoming(c).length?""
     :`Nothing is scheduled in the next two weeks.${met?` Its last meeting was on <a href="#${
       esc(dayId(met))}">${esc(dateWords(met,"long"))}</a>.`:""}`;
-  const line=`The ${ch} Committee on ${esc(c.name||"")}${chair?`, chaired by ${chair}`:""}.`;
+  // "The House Special Committee on Housing", not "The House Committee on
+  // Special Committee on Housing" (components.js's cmteTitle, 16 October 2026).
+  const line=`The ${esc(cmteTitle(c.name||"",ch))}${chair?`, chaired by ${chair}`:""}.`;
   const notes=[c.archived?`Not on the General Court&rsquo;s list of committees today.
       Its bills and meetings on this record run ${esc(c.archived.years||"")}; the
       records do not say whether it was renamed, divided, merged or ended.`:"",

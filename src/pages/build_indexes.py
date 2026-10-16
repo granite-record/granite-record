@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-13.18
+# GRANITE_VERSION: 2026-09-13.19
 """
 The whole record as plain lists: every bill of every term, every sitting
 legislator, every town -- each a link a person or a crawler can follow.
@@ -409,6 +409,13 @@ def find_index(site, legs, towns):
         last = [int(y) for y in re.findall(r"\b(?:19|20)\d\d\b", years)]
         if last:
             row += [max(last), years]
+        # ITS EARLIER NAMES, AS A LIST (the person, 16 October 2026: "A
+        # committee should say formerly if it's an old name"). They are in the
+        # search words above already, which is how "housing" finds Criminal
+        # Justice and Public Safety, once State Institutions and Housing; the
+        # list is what lets the row say so when an old name is what matched.
+        if c.get("formerly"):
+            row += [None] * (7 - len(row)) + [list(c["formerly"])]
         rows.append(row)
     pages = {p.stem for p in (site / "town").glob("*.html")}
     for town, seats in sorted(towns.items()):

@@ -279,5 +279,16 @@
   "section": [
     {"args": ["Official Legislative Analysis", "<p>x</p>", "analysis"], "want": "<section class=\"w4\" id=\"analysis\"><h2 class=\"w4h\">Official Legislative Analysis</h2><div class=\"w4b\"><p>x</p></div></section>"},
     {"args": ["House Committee (Housing)", "<p>y</p>", ""]}
+  ],
+  "cmte_title": [
+    {"args": ["Housing", "House"], "want": "House Committee on Housing"},
+    {"args": ["Special Committee on Housing", "House"], "want": "House Special Committee on Housing"},
+    {"args": ["Senate Special Committee on Redistricting", "Senate"],
+     "want": "Senate Special Committee on Redistricting"},
+    {"args": ["Judiciary", "Senate"], "want": "Senate Committee on Judiciary"},
+    {"args": ["Housing", ""], "want": "Committee on Housing"},
+    {"args": ["Committee of Conference", ""], "want": "Committee of Conference"},
+    {"args": [null, "House"], "want": "House Committee on"},
+    {"args": ["Housing", null], "want": "Committee on Housing"}
   ]
 }
