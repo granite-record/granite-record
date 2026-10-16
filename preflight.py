@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.569
+# GRANITE_VERSION: 2026-09-04.570
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -45660,6 +45660,8 @@ def _documents_night(NI, CA, CL):
             _runner_site(100)
         elif name == "preflight.py" and "--built" in args:
             _fake_built()
+        elif name in _TERM_FETCHERS:
+            _fake_term_file(args)
         elif name == "fetch_archive_db.py":
             _runner_fake_views(args, cwd)
         elif name == "fetch_lsrs.py":
@@ -62002,6 +62004,20 @@ def _fake_built():
                    encoding="utf-8")
 
 
+_TERM_FETCHERS = ("fetch_reports_db.py", "fetch_testimony_db.py", "fetch_status_db.py")
+
+
+def _fake_term_file(args):
+    """What a fixture night's fetch of one of the current term's files from
+    the database leaves at its --out (nightly.TERM_FILES): the copy it was
+    seeded with, and the term's bills. Without it every fixture night that
+    fetches warns that the three were not taken."""
+    out = Path(args[args.index("--out") + 1])
+    have = json.loads(out.read_text(encoding="utf-8")) if out.exists() else {}
+    have.setdefault("2025-2026", {"HB1": {}, "HB2": {}})
+    out.write_text(json.dumps(have), encoding="utf-8")
+
+
 def _runner_site(n_bills, legislators=40, feeds=5, terms=None, changes="first-seen"):
     """A built site as small as the census can count. The bills are rows of a
     term's file, as the pages read them, with meta.json naming the terms:
@@ -62117,6 +62133,8 @@ def _nightly_runner(NI):
             _runner_site(size["bills"])
         elif name == "preflight.py" and "--built" in args:
             _fake_built()
+        elif name in _TERM_FETCHERS:
+            _fake_term_file(args)
         elif name == "fetch_archive_db.py":
             _runner_fake_views(args, cwd)
         elif name == "fetch_lsrs.py":
@@ -62615,6 +62633,8 @@ class _GateNights:
             self.build()
         elif name == "preflight.py" and "--built" in args:
             _fake_built()
+        elif name in _TERM_FETCHERS:
+            _fake_term_file(args)
         elif name == "fetch_archive_db.py":
             _runner_fake_views(args, cwd)
         elif name == "fetch_lsrs.py":
@@ -65383,6 +65403,8 @@ def _nightly_new_term(NI, SG, BA):
             _runner_site(how["bills"], how.get("legs", 40), how.get("feeds", 5), how.get("terms"))
         elif name == "preflight.py" and "--built" in args:
             _fake_built()
+        elif name in _TERM_FETCHERS:
+            _fake_term_file(args)
         elif name == "fetch_archive_db.py":
             _runner_fake_views(args, cwd, how["rows"])
         elif name == "fetch_lsrs.py":
@@ -66177,6 +66199,8 @@ def _new_term_waits_for_publish(NI, SG, CL, BA):
             rc = 0 if ok else 1
         elif name == "preflight.py" and "--built" in args:
             _fake_built()
+        elif name in _TERM_FETCHERS:
+            _fake_term_file(args)
         elif name == "build_all.py":
             # A feed for every ten docket lines, and one output the build
             # carries forward. Feeds, and not bills, since 5 October 2026: a
@@ -69180,6 +69204,8 @@ def _nightly_falls_back(NI, DF, PD, SG):
             _runner_site(100)
         elif name == "preflight.py" and "--built" in args:
             _fake_built()
+        elif name in _TERM_FETCHERS:
+            _fake_term_file(args)
         elif name == "fetch_archive_db.py" and knob["study"] == "stop":
             raise Stopped()
         elif name == "fetch_archive_db.py" and knob["study"] == "fail":
@@ -85631,6 +85657,79 @@ def _built_checks_night(NI):
                   f"{len(data) - len(NOT_ON_THE_NIGHT)} of the data half; {len(NOT_ON_THE_NIGHT)} "
                   f"left to the laptop, each with its reason); {len(warn)} warn, the rest hold; "
                   "nightly.py runs them after check_site and acts on each tier as decided")
+
+
+@check("files", "the night takes the current term's data from the database, keeps the archived "
+       "terms each file holds, owns what it takes, and only warns for a piece not taken",
+       needs=("nightly",))
+def _night_term_data(NI):
+    """THE CURRENT TERM'S DATA FROM THE DATABASE (16 October 2026; nightly's
+    TERM_VIEWS block says why). Held here: every view and file the night takes
+    is the night's in cloud_kit.json, so its copy goes back to the bucket and
+    the laptop's older one never goes over it; nightly.py takes them after the
+    study committees and not on a New term run; a piece not taken is a warning
+    the gate never holds a night for; and each file's fetch, which merges into
+    the copy at its --out, is seeded with the installed copy, so the archived
+    terms it holds stay -- a writer run on part of a file must not lose the
+    rest, which is how the manifest lost its hand-marked times twice."""
+    import types
+    import probe_db
+    kit = json.loads(Path("cloud_kit.json").read_text(encoding="utf-8"))
+    owner = {p: e.get("owner") for e in kit["kit"] for p in (e.get("paths") or [])}
+    wanted = [f"db/{v}.psv" for v in NI.TERM_VIEWS] + [p for _l, _s, p in NI.TERM_FILES]
+    assert all(owner.get(p) == "night" for p in wanted), \
+        {p: owner.get(p) for p in wanted if owner.get(p) != "night"}
+    src = Path(NI.__file__).read_text(encoding="utf-8")
+    study_at = src.find('night.v["study_meetings"] = take_views(')
+    term_at = src.find('night.v["term_data"] = take_term_data(')
+    assert -1 < study_at < term_at, "nightly.py does not take the term's data after the study views"
+    between = src[study_at:term_at]
+    assert "if a.new_term:" in between and "elif not refusal.MARK.exists():" in between, \
+        "the term's data is not left alone on a New term run"
+    v = {"term_data": {"senate_reports.json": "installed, 1,254 (was 1,254)",
+                       "LegislationText": "not taken: 10 rows against 90,000 installed"}}
+    w = NI.term_warned(v)
+    assert len(w) == 1 and w[0][0].startswith(NI.KIND_TERM_DATA) and "LegislationText" in w[0][1], w
+    assert not NI.warning_reasons(w, served=[], recent=()), \
+        "a piece of the term's data not taken holds the night as a new kind of warning"
+
+    here, tmp = os.getcwd(), Path(tempfile.mkdtemp(prefix="gr-termdata-"))
+    saved = (NI.run, NI.take_views, NI.LOG[:], probe_db.hold_standing)
+    seen = []
+
+    def fake(args, label, cwd=None):
+        out = Path(args[args.index("--out") + 1])
+        have = json.loads(out.read_text(encoding="utf-8")) if out.exists() else {}
+        seen.append((Path(args[0]).name, sorted(have)))
+        have["2025-2026"] = {"HB1": {}, "HB2": {}, "HB3": {}}
+        out.write_text(json.dumps(have), encoding="utf-8")
+        return 0
+    try:
+        os.chdir(tmp)
+        for _l, _s, p in NI.TERM_FILES:
+            Path(p).write_text(json.dumps({"2025-2026": {"HB1": {}}, "2023-2024": {"HB9": {}}}),
+                               encoding="utf-8")
+        NI.run, probe_db.hold_standing = fake, (lambda: None)
+        NI.take_views = lambda views, label, **k: {v: "installed, 1 rows (was 1)" for v in views}
+        got = NI.take_term_data()
+        for _l, script, p in NI.TERM_FILES:
+            d = json.loads(Path(p).read_text(encoding="utf-8"))
+            assert sorted(d) == ["2023-2024", "2025-2026"] and len(d["2025-2026"]) == 3, (p, d)
+            assert (script, ["2023-2024", "2025-2026"]) in seen, (
+                f"{script} was not given the installed copy to merge into", seen)
+            assert str(got[p]).startswith("installed"), got
+        probe_db.hold_standing = lambda: {"held": True}
+        held = NI.take_term_data()
+        assert all(held[p] == NI.STUDY_HELD for _l, _s, p in NI.TERM_FILES), held
+    finally:
+        os.chdir(here)
+        NI.run, NI.take_views, probe_db.hold_standing = saved[0], saved[1], saved[3]
+        NI.LOG[:] = saved[2]
+        shutil.rmtree(tmp, ignore_errors=True)
+    return "ok", (f"{len(NI.TERM_VIEWS)} views and {len(NI.TERM_FILES)} files, the night's in the "
+                  "kit, taken after the study committees and not on a New term run; each file's "
+                  "fetch merges into the installed copy and keeps its archived terms; a hold asks "
+                  "nothing; a piece not taken warns and never holds")
 
 
 # ======================================================================= main ==

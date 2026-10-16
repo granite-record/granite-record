@@ -34,8 +34,7 @@
     {
       "what": "The database views the build reads, of the 31 in the dump, and of the six Past* views the one report_check.py reads: the House committee reports of 2016-2024 as the committees filed them.",
       "owner": "laptop",
-      "paths": ["db/Docket.psv", "db/Legislation.psv", "db/LegislationText.psv", "db/DocumentVersion.psv",
-                "db/CandH_Reports.psv", "db/Towns.psv", "db/_columns.json",
+      "paths": ["db/Docket.psv", "db/Towns.psv", "db/_columns.json",
                 "db/past/PastCommitteeReports.jsonl"]
     },
     {
@@ -85,6 +84,12 @@
                 "db/vStatStudTemp.psv", "db/_manifest.json"]
     },
     {
+      "what": "The current term's data, which the night takes from the General Court's database every night since 16 October 2026 (nightly.TERM_VIEWS, TERM_FILES): the bills, their texts and versions, the Senate's hearing reports, and the Senate's committee reports, the hearings' sign-ins and what the status pages left blank. Each is taken whole or not at all, and a piece not taken leaves this copy. The laptop's until then, as its dump of 8 September and its fetches left them.",
+      "owner": "night",
+      "paths": ["db/Legislation.psv", "db/LegislationText.psv", "db/DocumentVersion.psv",
+                "db/CandH_Reports.psv", "bill_status.json", "senate_reports.json", "testimony_db.json"]
+    },
+    {
       "what": "Who sits on each committee, who chairs it, and the members who have left; the night's weekly job refreshes them.",
       "owner": "night",
       "paths": ["data/committee_members.json", "committees.json", "former_members.json"]
@@ -113,10 +118,9 @@
     {
       "what": "What the laptop's jobs make and the build reads.",
       "owner": "laptop",
-      "paths": ["meetings.json", "schedule_pages/_events.json", "bill_status.json", "member_party.json",
+      "paths": ["meetings.json", "schedule_pages/_events.json", "member_party.json",
                 "archive_bills.json", "bill_text.json", "amendments.json", "committee_reports.json",
-                "senate_reports.json", "testimony_db.json", "journals.json",
-                "calendars.json", "past_members.json"]
+                "journals.json", "calendars.json", "past_members.json"]
     },
     {
       "what": "The General Court's list of its calendars and journals, a row a document with the viewer address its own page gives: the Calendar page's picker and the cards' document links are built from it. The night's since 1 October 2026: nightly.take_documents reads the two index pages (fetch_calendar_archive.py --listing) and adds what is new, whole or not at all. Until then it was the laptop's, last discovered on 13 September, and the laptop's seed-kit sent the copy the night started from.",

@@ -158,6 +158,18 @@ night: the committee rosters, the members who have left and the study
 committees, each fetch whole or not at all. It publishes nothing; Monday's
 night builds what it took.
 
+**The current term's data, from the database** (since 16 October 2026). After
+the day's files and the study committees, a night that fetches takes from the
+same SQL host the current term's bills, their texts and versions and the
+Senate's hearing reports (`TERM_VIEWS`, swapped in by `take_views`), and the
+Senate's committee reports, the hearings' sign-ins and what the status pages
+left blank (`TERM_FILES`, each fetch seeded with the installed copy so that
+the archived terms it holds stay). Until then these came from the laptop alone,
+as it last fetched them. Each is taken whole or not at all; one not taken is a
+warning the gate never holds a night for, and the site goes out with the copy
+it had. They are the night's files in the kit. Not on a New term run, whose
+term turns under them; the freeze keeps the finished term's.
+
 **When the export comes back empty.** The General Court's export has come back
 empty on whole nights. When it does and nothing else is wrong, the night
 turns at once to the SQL host the General Court publishes credentials for:

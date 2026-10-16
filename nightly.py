@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.67
+# GRANITE_VERSION: 2026-09-04.68
 """
 The nightly run. Fetch the day's bulk files, rebuild, check, compile what
 readers reported and what changed -- and publish only if told to.
@@ -940,6 +940,29 @@ KINDS_FALLBACK = (KIND_FROM_DB, KIND_DB_FILES, KIND_DB_NOTHING, KIND_STUDY_NOT_A
 # the record never stops the site -- and both reach the person as an alert.
 BUILT_CHECKS = Path("logs/built-checks.json")
 KIND_BUILT_WARN = "a check of the built site against the record: "
+#
+# THE CURRENT TERM'S DATA FROM THE DATABASE (16 October 2026; the person, 15
+# October: "The night may read the current term's data from the sql host
+# nightly"). Until then the bills' texts and their versions, the Senate's
+# hearing and committee reports, the hearings' sign-ins and what the bill
+# status pages left blank came to the night from the laptop alone, as the
+# laptop last fetched them -- the views from a dump of 8 September -- and in
+# session every new bill would have arrived with none of them. The host is the
+# one the night asks for the study committees every night, the General
+# Court's published database and not the web server, and each piece is taken
+# as theirs are, whole or not at all (take_views, take_json). A piece not taken
+# is a warning of a kind that never holds the night, and the night goes out
+# with the copy it had. Not on a New term run, whose term turns under these
+# views; the freeze (freeze_term.py) keeps the finished term's.
+TERM_VIEWS = ("Legislation", "LegislationText", "DocumentVersion", "CandH_Reports")
+TERM_FILES = (
+    ("the Senate's committee reports, from the database", "fetch_reports_db.py",
+     "senate_reports.json"),
+    ("the hearings' sign-ins, from the database", "fetch_testimony_db.py", "testimony_db.json"),
+    ("what the bill status pages left blank, from the database", "fetch_status_db.py",
+     "bill_status.json"),
+)
+KIND_TERM_DATA = "the current term's data from the database: "
 REVIEW_BUILT = "a check of the built site failed: {names}"
 BUILT_NAMES_SAID = 4
 #
@@ -1522,6 +1545,11 @@ def main():
                             if a.new_term:
                                 night.v["new_term"]["study views"] = "; ".join(
                                     f"{k} {r}" for k, r in night.v["study_meetings"].items())
+                            # And the current term's data, from the same host
+                            # (TERM_VIEWS, TERM_FILES): not on a New term run.
+                            elif not refusal.MARK.exists():
+                                night.v["term_data"] = take_term_data(
+                                    not_again=db_asked_in_vain(night.v))
                             # And next session's bill requests, from the site.
                             EXITS.clear()
                             if not refusal.MARK.exists():
@@ -3459,6 +3487,44 @@ def take_json(label, args, installed, count, seed=False, shrink=SWAP_SHRINK):
     return what, rc
 
 
+def _bills_in(d):
+    """The bills of every term a term-keyed file holds: what take_json weighs
+    a fetch of one by."""
+    return sum(len(v) for v in d.values() if isinstance(v, (dict, list))) if isinstance(d, dict) \
+        else 0
+
+
+def take_term_data(not_again=False):
+    """The current term's views and files from the database (TERM_VIEWS,
+    TERM_FILES), each whole or not at all: {piece: what happened}. Each file's
+    fetch merges into the copy at its --out, so the installed copy is seeded in
+    first, and the archived terms it holds stay."""
+    import probe_db
+    say("\n--- the current term's data, from the General Court's database ---")
+    out = dict(take_views(TERM_VIEWS, "the current term's bills, texts and hearing reports, from "
+                                      "the database", not_again=not_again))
+    held = probe_db.hold_standing()
+    for label, script, path in TERM_FILES:
+        if held or not_again:
+            out[path] = STUDY_HELD if held else STUDY_NOT_AGAIN
+            say(f"  {path}: {out[path]}")
+            continue
+        out[path], _rc = take_json(label, [script], path, _bills_in, seed=True)
+    return out
+
+
+def term_warned(v):
+    """[(kind, sentence)] for each piece of the current term's data not taken
+    tonight, of a kind that never holds the night (KIND_TERM_DATA). One that
+    was not asked for -- a hold on the host, or the day's files already failed
+    there tonight -- says so as well: the copy the night went out with is an
+    older one either way."""
+    got = v.get("term_data") if isinstance(v.get("term_data"), dict) else {}
+    return [(KIND_TERM_DATA + str(piece), f"the current term's {piece} were not taken from the "
+             f"General Court's database tonight, and the site went out with the copy it had: {what}"
+             [:300]) for piece, what in got.items() if not str(what).startswith("installed")]
+
+
 def captions_compared(work="work", markers="candidate_segments.json"):
     """(compared, recordings): the late-caption check, as the build makes it.
 
@@ -3853,9 +3919,11 @@ def warning_reasons(warned, served, recent=()):
     said_as = REVIEW_WARNING if served is not None else REVIEW_WARNING_UNKNOWN
     seen, out = set(served or []) | set(recent or ()), []
     for kind, said in warned:
-        # Nor a failed check of the built site against the record (BUILT_CHECKS):
-        # it warns and never holds.
-        if kind in seen or fallback_kind(kind) or str(kind).startswith(KIND_BUILT_WARN):
+        # Nor a failed check of the built site against the record (BUILT_CHECKS),
+        # nor a piece of the current term's data not taken (KIND_TERM_DATA):
+        # each warns and never holds.
+        if kind in seen or fallback_kind(kind) or str(kind).startswith((KIND_BUILT_WARN,
+                                                                       KIND_TERM_DATA)):
             continue
         seen.add(kind)
         said = str(said)
@@ -4374,6 +4442,7 @@ class Night:
                         "candidate_segments.json and caption_spans.json are as they came "
                         f"down: {rec['guard'][len('put back: '):]}"))
         out += built_warned(self.v.get("built_checks"))
+        out += term_warned(self.v)
         return out
 
     def alarms(self):
