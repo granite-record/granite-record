@@ -80123,6 +80123,66 @@ def _town_tel(B):
     return "ok", f"{len(want)} numbers, extensions dialled after the number"
 
 
+@check("build", "a town page's election heading says Next Election until the day and Last "
+                "election after it", needs=("build_town_pages",))
+def _town_election_heading(B):
+    """How to Vote's card is headed with the Secretary of State's election
+    date, and election_line says "Next Election" only while that date is
+    ahead of the build. After it the heading said "Election on file"; the
+    person approved "Last election: November 3, 2026" in its place on
+    16 October 2026, with "Next Election" kept as it stands.
+
+    Real rows of collected/town_clerks.json: Allenstown's "11/03/2026-STATE
+    GENERAL ELECTION", and Concord ward 4's, which names the school
+    district's election after the state's. Each is built at four stated days
+    (build_date.py) -- before the election, on its day, the day after and in
+    December -- through election_line, the built page's card heading and the
+    row of places.json that the header's "your town" panel prints (find.js,
+    ytVote)."""
+    import json as _json
+    import shell as S
+    tmpl = S.template()
+    local = _json.loads(Path("collected/town_clerks.json").read_text(encoding="utf-8"))
+    wards = {str(w): {} for w in range(1, 11)}
+    towns = [("Allenstown", "0", {"0": {}}), ("Concord", "4", wards)]
+    for town, ward, _w in towns:
+        assert (local.get(B.slug(town, ward)) or {}).get("election", "").startswith(
+            "11/03/2026-STATE GENERAL ELECTION"), (
+            f"collected/town_clerks.json no longer names 3 November 2026 for {town}; "
+            "this check's cases are that row")
+    off = {"_local": local}
+    days = (("2026-10-16", "Next Election"), ("2026-11-03", "Next Election"),
+            ("2026-11-04", "Last election"), ("2026-12-15", "Last election"))
+    bad = []
+    was = os.environ.get("GRANITE_BUILD_DATE")
+    try:
+        for day, words in days:
+            os.environ["GRANITE_BUILD_DATE"] = day
+            want = f"{words}: November 3, 2026"
+            for town, ward, w in towns:
+                loc = local[B.slug(town, ward)]
+                got = B.election_line(loc["election"])
+                if got != want:
+                    bad.append(f"{town} {ward} built {day}: election_line said {got!r}, not {want!r}")
+                page = B.build(town, ward, w, {}, [], off, "https://x.test", tmpl)
+                if f'<h3 class="twnh">{want}</h3>' not in page:
+                    heads = re.findall(r'<h3 class="twnh">([^<]*(?:Election|election)[^<]*)</h3>', page)
+                    bad.append(f"{town} {ward} built {day}: the How to Vote card is headed {heads}, "
+                               f"not {want!r}")
+                rec = B.place_record(town, ward, w, {}, [], loc)
+                if rec.get("when") != want:
+                    bad.append(f"{town} {ward} built {day}: places.json says {rec.get('when')!r}, "
+                               f"not {want!r}")
+    finally:
+        if was is None:
+            os.environ.pop("GRANITE_BUILD_DATE", None)
+        else:
+            os.environ["GRANITE_BUILD_DATE"] = was
+    assert not bad, "\n  ".join(bad)
+    return "ok", ("Allenstown and Concord ward 4: Next Election through 3 November 2026, "
+                  "Last election from the 4th, on the page and in places.json")
+
+
 @check("build", "a town page names one clerk, the Secretary of State's",
        needs=("build_town_pages",))
 def _town_one_clerk(B):

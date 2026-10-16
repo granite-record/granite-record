@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-09.33
+# GRANITE_VERSION: 2026-09-09.34
 """
 A page per town and ward: everyone who represents the people who live there.
 
@@ -735,9 +735,19 @@ def election_line(raw):
     (shell.date_words, 8 October 2026). It was "November 3rd", with the year
     only when it was not this one.
 
-    It says "Next Election" only while the date is ahead of the build. After
-    that it says "Election on file": a heading still promising "next" in
-    December would be wrong about the one thing the section is for.
+    It says "Next Election" only while the date is ahead of the build, and on
+    the day itself. After that it says "Last election": a heading still
+    promising "next" in December would be wrong about the one thing the
+    section is for.
+
+    "Last election", where it said "Election on file" (the person, 16 October
+    2026). The date comes from the Secretary of State's list as it was last
+    read (collected/town_clerks.json), which goes on naming the election just
+    held until the list is read again, so a date that has passed is the
+    town's last election and the heading says that. The capitals are as
+    approved: "Next Election" keeps its own, and "Last election" is written
+    as the approved wording writes it. preflight's _town_election_heading
+    holds both sides of the day.
     """
     m = re.match(r"\s*(\d{1,2})/(\d{1,2})/(\d{4})\s*-\s*(.+)$", raw or "")
     if not m:
@@ -751,7 +761,7 @@ def election_line(raw):
     except ValueError:
         return ""
     ahead = (yy, mm, dd) >= (today.year, today.month, today.day)
-    return f"{'Next Election' if ahead else 'Election on file'}: {when}"
+    return f"{'Next Election' if ahead else 'Last election'}: {when}"
 
 
 def ward_picker(town, ward, wards):
@@ -1042,8 +1052,9 @@ def vote_sections(town, loc, town_off):
         inner += ('<p class="note">The Secretary of State\'s list has no '
                   'polling place recorded for here. The town clerk above is '
                   'who to ask.</p>')
-    # The date is the card's heading: "Next Election: November 3rd" while it
-    # is ahead, "Election on file" after it -- see election_line.
+    # The date is the card's heading: "Next Election: November 3, 2026" while
+    # it is ahead, "Last election: November 3, 2026" after it -- see
+    # election_line.
     when = election_line(loc.get("election", ""))
     return [card(E(when) if when else "Where you vote", inner, wide=True)]
 
