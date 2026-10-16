@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.202
+# GRANITE_VERSION: 2026-09-04.204
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -2077,13 +2077,17 @@ SEATING_JS = """
 # and spelling and wordsAdd (a misspelt word offered as the word it sounds
 # like, once sidx/words.json says it is no word of any bill), and since
 # 2 October knownWord (so the header offers no member's name for a word the
-# bills use: "zebra" was offered "debra"). find.js loads
-# it only when somebody types, and only on a page that does not already run
-# app.js.
+# bills use: "zebra" was offered "debra"); and since 16 October 2026
+# titleShare and statusCat, best match's tie-break -- a bill still moving
+# first where its title has the search, then the most of the title that is
+# the search -- so that the header and /search break a tie as /bills does.
+# find.js loads it only when somebody types, and only on a page that does
+# not already run app.js.
 BILLMATCH_BEGIN, BILLMATCH_END = "// BILLMATCH:BEGIN", "// BILLMATCH:END"
 BILLMATCH_EXPORTS = ("queryGroups", "groupWeight", "billNumbers", "billKey",
                      "looseness", "indexAdd", "readShort", "whyListed",
-                     "spelling", "wordsAdd", "knownWord", "matchScore")
+                     "spelling", "wordsAdd", "knownWord", "matchScore",
+                     "titleShare", "statusCat")
 
 
 def bill_matcher_js(app_js):
