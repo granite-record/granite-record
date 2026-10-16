@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.587
+# GRANITE_VERSION: 2026-09-04.588
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -80799,6 +80799,186 @@ def _town_tel(B):
     return "ok", f"{len(want)} numbers, extensions dialled after the number"
 
 
+@check("build", "a town page's election heading says Next Election until the day, Last election "
+                "until the town could have voted again, and then no date",
+       needs=("build_town_pages",))
+def _town_election_heading(B):
+    """How to Vote's card is headed with the Secretary of State's election
+    date, and election_line says "Next Election" only while that date is
+    ahead of the build. After it the heading said "Election on file"; the
+    person approved "Last election: November 3, 2026" in its place on
+    16 October 2026, with "Next Election" kept as it stands. The list is
+    read by hand, so a passed date is the town's last election only until
+    the town could have voted again (next_possible_election); from that day
+    the card is headed "Where you vote", as it is wherever the list names no
+    date, and places.json's row has no "when" (a review's finding, the same
+    day).
+
+    The horizon is held on stated days first, worked out by hand from the
+    statutes its docstring cites and a calendar, so that this is not the
+    function read back to itself.
+
+    Then real rows of collected/town_clerks.json: Allenstown's, and Concord
+    ward 4's, which names the school district's election beside the state's.
+    Each is built on days worked out from its own date -- the day before it,
+    the day, the day after, the last day it is still the town's last
+    election and the first it is not -- through election_line, the built
+    page's card heading and the row of places.json that the header's "your
+    town" panel prints (find.js, ytVote). So a fresh reading of the list
+    that names another day moves the days and not the verdict (the same
+    review). A row the list has since left blank is tried with the date it
+    named when this was written and the rest of the row as it stands, and
+    the result says so: skipping it would hold nothing."""
+    import datetime as _dt
+    import json as _json
+    import shell as S
+    D = _dt.date
+    stated = {D(2026, 11, 3): D(2027, 3, 1),     # school district meetings open 1 March
+              D(2026, 9, 8): D(2026, 11, 3),     # the state primary, then the general election
+              D(2027, 3, 1): D(2027, 3, 9),      # a school meeting, then the second Tuesday
+              D(2027, 3, 9): D(2027, 4, 13),     # March's town elections, then April's
+              D(2027, 5, 11): D(2027, 9, 14),    # May's, then September, taken in odd years too
+              D(2027, 11, 2): D(2028, 1, 1),     # a city's November, then a presidential year
+              D(2028, 11, 7): D(2029, 3, 1)}
+    bad = [f"next_possible_election({d}) is {B.next_possible_election(d)}, not {h}"
+           for d, h in stated.items() if B.next_possible_election(d) != h]
+
+    tmpl = S.template()
+    local = _json.loads(Path("collected/town_clerks.json").read_text(encoding="utf-8"))
+    wards = {str(w): {} for w in range(1, 11)}
+    towns = [("Allenstown", "0", {"0": {}}), ("Concord", "4", wards)]
+    # What the two rows named on 16 October 2026, for a reading that leaves
+    # one blank.
+    then = {"allenstown": "11/03/2026-STATE GENERAL ELECTION",
+            "concord-ward-4": ("11/03/2026-STATE GENERAL ELECTION, "
+                               "11/03/2026-CONCORD SCHOOL DISTRICT ELECTION")}
+    rows, lent = {}, []
+    for town, ward, _w in towns:
+        key = B.slug(town, ward)
+        assert key in then and isinstance(local.get(key), dict), (
+            f"collected/town_clerks.json has no row {key!r}; this check's cases are that row")
+        rows[key] = dict(local[key])
+        if B.election_day(rows[key].get("election")) is None:
+            rows[key]["election"] = then[key]
+            lent.append(key)
+    off = {"_local": {**local, **rows}}
+    said = []
+    was = os.environ.get("GRANITE_BUILD_DATE")
+    try:
+        for town, ward, w in towns:
+            loc = rows[B.slug(town, ward)]
+            d = B.election_day(loc["election"])
+            h = B.next_possible_election(d)
+            when = f"{d:%B} {d.day}, {d.year}"
+            one = _dt.timedelta(days=1)
+            said.append(f"{town}{'' if ward == '0' else ' ward ' + ward} {when}, Last election "
+                        f"to {h - one}")
+            for day, want in ((d - one, f"Next Election: {when}"), (d, f"Next Election: {when}"),
+                              (d + one, f"Last election: {when}"),
+                              (h - one, f"Last election: {when}"), (h, "")):
+                os.environ["GRANITE_BUILD_DATE"] = day.isoformat()
+                got = B.election_line(loc["election"])
+                if got != want:
+                    bad.append(f"{town} {ward} built {day}: election_line said {got!r}, not {want!r}")
+                page = B.build(town, ward, w, {}, [], off, "https://x.test", tmpl)
+                head = want or "Where you vote"
+                dated = re.findall(r'<h3 class="twnh">([^<]*lection[^<]*)</h3>', page)
+                if f'<h3 class="twnh">{head}</h3>' not in page or (dated and not want):
+                    bad.append(f"{town} {ward} built {day}: the How to Vote card is headed "
+                               f"{dated or 'otherwise'}, not {head!r}")
+                rec = B.place_record(town, ward, w, {}, [], loc)
+                if rec.get("when") != (want or None):
+                    bad.append(f"{town} {ward} built {day}: places.json says {rec.get('when')!r}, "
+                               f"not {want or None!r}")
+    finally:
+        if was is None:
+            os.environ.pop("GRANITE_BUILD_DATE", None)
+        else:
+            os.environ["GRANITE_BUILD_DATE"] = was
+    assert not bad, "\n  ".join(bad)
+    return "ok", (f"{len(stated)} stated horizons; " + "; ".join(said)
+                  + ", then Where you vote, on the page and in places.json"
+                  + (f" ({', '.join(lent)} blank on the list now, tried with its 16 October date)"
+                     if lent else ""))
+
+
+@check("data", "the Secretary of State's clerk list is read again once its election date has "
+       "stopped heading the town pages", needs=("build_town_pages", "parse_clerks_csv"))
+def _town_clerks_reread(B, PC):
+    """A REMINDER, the register of probate paragraph's kind
+    (_probate_after_the_vote).
+
+    How to Vote's card on a town page is headed with the election
+    collected/town_clerks.json names, and election_line stops calling a
+    passed one the town's last on the first day the town could have voted
+    again (next_possible_election): from then the card says only "Where you
+    vote", which is true and says less. Nothing reads the Secretary of
+    State's list on a schedule -- a person downloads its CSV and runs
+    src/towns/parse_clerks_csv.py -- so without this the date would drop off
+    every town page that had one and nobody would be told (a review's
+    finding, 16 October 2026).
+
+    It fails from that day for as long as the list was last read before it
+    (parse_clerks_csv.READ_ON, the export's own day), and passes once the
+    list is read again, whatever the new one names: a list read after that
+    day which still names the old election is the Secretary of State's word,
+    not a stale copy of it. A data check, and a reminder (REMINDERS): on the
+    night it warns, because a list to reread is no reason to hold the site.
+
+    The rule is run on fixed days before it is run on the clock, so a
+    reminder that could never fire fails now rather than passing quietly
+    through the day it was written for."""
+    import datetime as _dt
+    import build_date
+    D = _dt.date
+
+    def rule(today, rows, read_on):
+        """{election day: the rows naming it}, for each election that has
+        stopped heading the pages by `today` on a list read before it did."""
+        out = {}
+        for key, row in rows.items():
+            d = B.election_day((row or {}).get("election") if isinstance(row, dict) else None)
+            if d is None:
+                continue
+            h = B.next_possible_election(d)
+            if h <= today and read_on < h:
+                out.setdefault(d, []).append(key)
+        return out
+
+    one = {"allenstown": {"election": "11/03/2026-STATE GENERAL ELECTION"}}
+    sept = D(2026, 9, 20)
+    assert not rule(D(2027, 2, 28), one, sept), \
+        "the reminder fires on 28 February 2027, before the town could have voted again"
+    assert rule(D(2027, 3, 1), one, sept) == {D(2026, 11, 3): ["allenstown"]}, \
+        "the reminder does not fire on 1 March 2027 for a list read in September 2026"
+    assert not rule(D(2027, 3, 1), one, D(2027, 3, 1)), \
+        "a list read again on 1 March 2027 does not quiet the reminder"
+
+    try:
+        read_on = D.fromisoformat(str(PC.READ_ON))
+    except ValueError:
+        raise AssertionError(f"parse_clerks_csv.READ_ON is {PC.READ_ON!r}, which is not a day: "
+                             "write the day the Secretary of State's export was made, as "
+                             "\"2026-09-20\"") from None
+    local = json.loads(Path("collected/town_clerks.json").read_text(encoding="utf-8"))
+    today = build_date.today()
+    stale = rule(today, local, read_on)
+    words = lambda d: f"{d:%B} {d.day}, {d.year}"         # noqa: E731
+    assert not stale, "; ".join(
+        f"{len(keys)} rows of collected/town_clerks.json name the election of {words(d)}, and "
+        f"since {words(B.next_possible_election(d))}, when those towns could have voted again, "
+        "the town pages' How to Vote card has been headed only \"Where you vote\""
+        for d, keys in sorted(stale.items())) + (
+        f". The list was last read on {read_on}: download the Secretary of State's list again "
+        f"as CSV ({PC.SOURCE_URL}; a person's to start, it is somebody else's server), point "
+        "CSV_IN and READ_ON in src/towns/parse_clerks_csv.py at it, and run that script")
+    dated = sorted({d for d in map(B.election_day, (r.get("election") for r in local.values()
+                                                    if isinstance(r, dict))) if d})
+    return "ok", (f"the list read {read_on} names {', '.join(map(str, dated)) or 'no election'}, "
+                  "and no date of it has stopped heading the town pages since it was read; the "
+                  "rule fires on 1 March 2027 for a list read in September 2026")
+
+
 @check("build", "a town page names one clerk, the Secretary of State's",
        needs=("build_town_pages",))
 def _town_one_clerk(B):
@@ -86565,7 +86745,7 @@ RECORD_CHECKS = {
     "_rail_endings_on_the_site", "_report_rec", "_rollcall_outcomes_data",
     "_session_designations_built", "_sitting_consent_on_disk", "_sponsors_on_record",
     "_vote_identity"}
-REMINDERS = {"_probate_after_the_vote", "_session_over_current"}
+REMINDERS = {"_probate_after_the_vote", "_session_over_current", "_town_clerks_reread"}
 
 
 def built_selected(c):

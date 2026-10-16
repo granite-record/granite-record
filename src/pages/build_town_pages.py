@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-09.33
+# GRANITE_VERSION: 2026-09-09.35
 """
 A page per town and ward: everyone who represents the people who live there.
 
@@ -50,6 +50,7 @@ sys.path += [str(p) for p in Path(__file__).resolve().parents if (p / "_paths.py
 import _paths  # noqa: E402,F401
 
 import argparse
+import datetime
 import json
 import re
 
@@ -727,6 +728,61 @@ def _is_address(host):
     return bool(host) and "." in host and " " not in host and "@" not in host
 
 
+def election_day(raw):
+    """The day "11/03/2026-STATE GENERAL ELECTION" names, as a date, or None
+    where the list's cell names none (many of its rows are blank) or names
+    one that is no day. Where a cell names two elections, as Concord's and
+    Laconia's name a school election beside the state's, the first is the
+    one read; on the list the two fall on the same day."""
+    m = re.match(r"\s*(\d{1,2})/(\d{1,2})/(\d{4})\s*-\s*(.+)$", raw or "")
+    if not m:
+        return None
+    try:
+        return datetime.date(int(m.group(3)), int(m.group(1)), int(m.group(2)))
+    except ValueError:
+        return None
+
+
+def next_possible_election(day):
+    """The first day after `day` on which a New Hampshire town may vote again
+    in the ordinary course of the law: from it, an election the Secretary of
+    State's list names and that has passed can no longer be called the
+    town's last.
+
+    The days are the statutes', read in db/NH_RSA.psv on 16 October 2026:
+    the school district meetings that choose district officers, from 1 March
+    (RSA 197:1); town elections on the second Tuesday of March, April or May
+    (RSA 669:1 and 40:14, X); the state primary on the second Tuesday of
+    September (RSA 653:8); the general election on the first Tuesday after
+    the first Monday of November (RSA 653:7), which is also the day a charter
+    town may elect in an odd year (RSA 669:1, II); and the presidential
+    primary, whose day the Secretary of State sets (RSA 653:9).
+
+    EARLY WHERE THE LAW LEAVES ROOM, ON PURPOSE. The statutes hold the state
+    primary and the general election in even years; every year is taken
+    here, because the cities elect their own officers in the odd years under
+    charters this file has not read, and may hold primaries before them. The
+    presidential primary is taken as 1 January of a presidential year, which
+    is a guess: the statute lets it come as early as the year before. Ending
+    early costs a date in a heading; ending late states something untrue.
+    A special election can come sooner than any of these and nothing here
+    can know of one, which is a reason to read the list again rather than
+    something this function can answer.
+    """
+    def tuesday(y, m, nth):
+        first = datetime.date(y, m, 1)
+        return first + datetime.timedelta(days=(1 - first.weekday()) % 7 + 7 * (nth - 1))
+
+    days = []
+    for y in (day.year, day.year + 1):
+        nov = datetime.date(y, 11, 1)
+        days += [datetime.date(y, 3, 1), tuesday(y, 3, 2), tuesday(y, 4, 2), tuesday(y, 5, 2),
+                 tuesday(y, 9, 2), nov + datetime.timedelta(days=(0 - nov.weekday()) % 7 + 1)]
+        if y % 4 == 0:
+            days.append(datetime.date(y, 1, 1))
+    return min(d for d in days if d > day)
+
+
 def election_line(raw):
     """"11/03/2026-STATE GENERAL ELECTION" as a date in a heading.
 
@@ -735,23 +791,42 @@ def election_line(raw):
     (shell.date_words, 8 October 2026). It was "November 3rd", with the year
     only when it was not this one.
 
-    It says "Next Election" only while the date is ahead of the build. After
-    that it says "Election on file": a heading still promising "next" in
-    December would be wrong about the one thing the section is for.
+    It says "Next Election" only while the date is ahead of the build, and on
+    the day itself. After that it says "Last election": a heading still
+    promising "next" in December would be wrong about the one thing the
+    section is for.
+
+    "Last election", where it said "Election on file" (the person, 16 October
+    2026). The capitals are as approved: "Next Election" keeps its own, and
+    "Last election" is written as the approved wording writes it.
+
+    ONLY UNTIL THE TOWN COULD HAVE VOTED AGAIN, THEN NO DATE (16 October
+    2026, a review's finding). The date comes from the Secretary of State's
+    list as it was last read (collected/town_clerks.json), and nothing reads
+    that list on a schedule: a person does (src/towns/parse_clerks_csv.py).
+    So the date it names is the town's last election only until the town
+    could have held another, and "Last election: November 3, 2026" after the
+    town elections of March would be wrong in a way "Election on file" never
+    was. From next_possible_election() this returns "", and the card takes
+    the heading it has wherever the list names no date, "Where you vote";
+    places.json's row drops "when" with it. preflight's
+    _town_election_heading holds the three stretches on real rows, and
+    _town_clerks_reread is the reminder, from the day the third begins, that
+    the list wants reading again.
     """
-    m = re.match(r"\s*(\d{1,2})/(\d{1,2})/(\d{4})\s*-\s*(.+)$", raw or "")
-    if not m:
+    day = election_day(raw)
+    if day is None:
         return ""
-    mm, dd, yy = int(m.group(1)), int(m.group(2)), int(m.group(3))
-    if not 1 <= mm <= 12:
-        return ""
-    today = build_date.today()
     try:
-        when = S.date_words(f"{yy:04d}-{mm:02d}-{dd:02d}", "full")
+        when = S.date_words(day.isoformat(), "full")
     except ValueError:
         return ""
-    ahead = (yy, mm, dd) >= (today.year, today.month, today.day)
-    return f"{'Next Election' if ahead else 'Election on file'}: {when}"
+    today = build_date.today()
+    if day >= today:
+        return f"Next Election: {when}"
+    if today < next_possible_election(day):
+        return f"Last election: {when}"
+    return ""
 
 
 def ward_picker(town, ward, wards):
@@ -1042,8 +1117,9 @@ def vote_sections(town, loc, town_off):
         inner += ('<p class="note">The Secretary of State\'s list has no '
                   'polling place recorded for here. The town clerk above is '
                   'who to ask.</p>')
-    # The date is the card's heading: "Next Election: November 3rd" while it
-    # is ahead, "Election on file" after it -- see election_line.
+    # The date is the card's heading: "Next Election: November 3, 2026" while
+    # it is ahead, "Last election: November 3, 2026" after it, and "Where you
+    # vote" once the town could have voted again -- see election_line.
     when = election_line(loc.get("election", ""))
     return [card(E(when) if when else "Where you vote", inner, wide=True)]
 
