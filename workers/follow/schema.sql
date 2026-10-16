@@ -71,7 +71,11 @@ CREATE TABLE IF NOT EXISTS pending (
   mailbox_hmac        TEXT NOT NULL,         -- keyed hash of the inbox, for the limit on requests
   follow_enc          TEXT NOT NULL,         -- the record's key, sealed, bound to email_hmac
   confirm_token_hash  TEXT NOT NULL UNIQUE,  -- SHA-256 of the token in the email, hex
-  created_at          TEXT NOT NULL
+  created_at          TEXT NOT NULL,
+  -- THE SIGN-UP BOX'S DAILY OR WEEKLY (the person, 16 October 2026), which
+  -- the confirmation gives a new subscriber. Added to a database made before
+  -- then by migrations/0003_pending_frequency.sql.
+  frequency           TEXT NOT NULL DEFAULT 'daily' CHECK (frequency IN ('daily', 'weekly'))
 );
 CREATE INDEX IF NOT EXISTS pending_hmac ON pending(email_hmac);
 CREATE INDEX IF NOT EXISTS pending_mailbox ON pending(mailbox_hmac);

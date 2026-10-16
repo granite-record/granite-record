@@ -133,7 +133,20 @@ on its own:
        npx wrangler d1 execute graniterecord-follow-preview --remote --file workers/follow/migrations/0002_due_index.sql
        npx wrangler d1 execute graniterecord-follow --remote --file workers/follow/migrations/0002_due_index.sql
 
-   Run a second time it answers "duplicate column name" and changes nothing.
+   **And the sign-up box's daily or weekly** (16 October 2026), kept with a
+   request until its confirmation, on any database made before that day,
+   both of this project's included; a database made from today's
+   `schema.sql` has it already and must not. **Run it before the Functions
+   that write it deploy** -- the preview's first, since every dev dry run
+   deploys the preview with the database bound: without the column every
+   sign-up is answered "on its way", sends nothing, and logs only
+   `follow signup.error.Error`.
+
+       npx wrangler d1 execute graniterecord-follow-preview --remote --file workers/follow/migrations/0003_pending_frequency.sql
+       npx wrangler d1 execute graniterecord-follow --remote --file workers/follow/migrations/0003_pending_frequency.sql
+
+   `0001` and `0003` add columns: run a second time, each answers "duplicate
+   column name" and changes nothing.
 
 2. **Resend.** A verified sending domain; an API key restricted to sending
    from it; a webhook to `https://graniterecord.org/api/follow/bounce` for
@@ -272,16 +285,20 @@ The Follow control posts what the reader typed, and stores nothing:
 
     POST /api/follow/signup
     Content-Type: application/json
-    {"email": "...", "kind": "bill", "ref": "2026/HB1442",
+    {"email": "...", "kind": "bill", "ref": "2026/HB1442", "frequency": "daily",
      "turnstile": "<the widget's token>", "website": ""}
 
-`website` is a honeypot: an input a person never sees, left empty. The
-answers:
+`frequency` is the box's Daily or Weekly (16 October 2026), `"daily"` or
+`"weekly"`; the confirmation gives it to a new subscriber, and one already
+subscribed keeps their own, which the manage page changes. A request that
+names none is daily, as a page loaded before the box had the choice sends
+none; any other value is refused as `invalid`. `website` is a honeypot: an
+input a person never sees, left empty. The answers:
 
 | Status | Body | Means |
 |---|---|---|
 | 202 | `{"ok":true}` | Accepted -- whatever the address. The request is kept and the email sent after the answer, so the answer takes as long for every address; if the inbox already has three waiting, or Resend refuses, nothing arrives and the log says which. The box should say "if this address can take it, a confirmation is on its way". |
-| 400 | `{"ok":false,"why":"invalid"}` | Not an address, or not a record key. |
+| 400 | `{"ok":false,"why":"invalid"}` | Not an address, not a record key, or a frequency other than daily or weekly. |
 | 400 | `{"ok":false,"why":"check"}` | Turnstile said no; try again. |
 | 400 | `{"ok":false,"why":"not-followable"}` | Not followable tonight. |
 | 429 | `{"ok":false,"why":"busy"}` | The day's confirmation emails are used up. |

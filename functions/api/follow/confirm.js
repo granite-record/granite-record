@@ -8,9 +8,14 @@
  *
  * POST, from that page only (same-site, common.sameSite), with a token for a
  * request younger than 48 hours: the address becomes a subscriber if it was
- * not one (daily, the default), the record is added to what it follows, the
- * request is deleted, and the reader is sent to their manage page -- by the
- * same manage link every email of theirs carries.
+ * not one (daily or weekly, as the sign-up box was set), the record is added
+ * to what it follows, the request is deleted, and the reader is sent to their
+ * manage page -- by the same manage link every email of theirs carries.
+ *
+ * A READER ALREADY SUBSCRIBED KEEPS THEIR FREQUENCY (16 October 2026). The
+ * box opens on Daily, so a weekly reader who follows one more record without
+ * touching it would otherwise be turned daily by a choice they never made.
+ * The manage page the confirmation lands on shows how often, and changes it.
  */
 
 import { TOKEN, followHash, hashToken, linksFor, openFollow }
@@ -51,7 +56,7 @@ export async function onRequest({ request, env }) {
     const db = env.FOLLOW_DB;
     const now = clock(env);
     const p = await db.prepare(
-      "SELECT id, email_hmac, email_enc, follow_enc FROM pending " +
+      "SELECT id, email_hmac, email_enc, follow_enc, frequency FROM pending " +
       "WHERE confirm_token_hash = ?1 AND created_at >= ?2")
       .bind(await hashToken(t),
             isoSeconds(new Date(now.getTime() - PENDING_HOURS * 3600000))).first();
@@ -75,14 +80,17 @@ export async function onRequest({ request, env }) {
 
     const today = nhClock(now).date;
     const first = await linksFor(env, p.email_hmac, 0);
+    // The table allows only the two words; anything else read back is daily,
+    // as the manage page reads a subscriber's.
+    const frequency = p.frequency === "weekly" ? "weekly" : "daily";
     // A new subscriber starts from now: nothing already published is sent,
     // and the first email is the first run of a later day.
     await db.prepare(
       "INSERT INTO subscribers (email_hmac, email_enc, frequency, confirmed_on, link_gen, " +
       "manage_hash, unsub_hash, last_sent_on, sent_date, sent_built) " +
-      "VALUES (?1, ?2, 'daily', ?3, 0, ?4, ?5, ?3, ?3, ?6) ON CONFLICT(email_hmac) DO NOTHING")
+      "VALUES (?1, ?2, ?7, ?3, 0, ?4, ?5, ?3, ?3, ?6) ON CONFLICT(email_hmac) DO NOTHING")
       .bind(p.email_hmac, p.email_enc, today, first.manageHash, first.unsubHash,
-            isoSeconds(now)).run();
+            isoSeconds(now), frequency).run();
     const sub = await db.prepare("SELECT id, link_gen FROM subscribers WHERE email_hmac = ?1")
       .bind(p.email_hmac).first();
     const fh = await followHash(env, p.email_hmac, key);

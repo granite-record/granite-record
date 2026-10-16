@@ -13,6 +13,8 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { FakeD1, SCHEMA } from "./fake_d1.js";
 const MIGRATION = fileURLToPath(new URL("../../workers/follow/migrations/0001_manager.sql", import.meta.url));
+const FREQUENCY = fileURLToPath(new URL("../../workers/follow/migrations/0003_pending_frequency.sql",
+  import.meta.url));
 import { makeKeys } from "./fakes.js";
 import { insertSubscriber } from "./rows.js";
 
@@ -37,7 +39,7 @@ test("the schema has no column about a reader but the sealed address and its key
   assert.deepEqual(cols, {
     follows: ["subscriber_id", "follow_hmac", "follow_enc", "since"],
     pending: ["id", "email_hmac", "email_enc", "mailbox_hmac", "follow_enc",
-              "confirm_token_hash", "created_at"],
+              "confirm_token_hash", "created_at", "frequency"],
     sends: ["date", "frequency", "emails_sent", "items", "failed", "ended"],
     signup_days: ["day", "n"],
     subscribers: ["id", "email_hmac", "email_enc", "frequency", "confirmed_on", "link_gen",
@@ -143,4 +145,29 @@ test("the manager's migration brings a database made before it to today's schema
   const cols = old.prepare("PRAGMA table_info(subscribers)").all().map(r => r.name);
   assert.deepEqual(cols, new FakeD1().columns("subscribers"));
   assert.throws(() => old.exec(readFileSync(MIGRATION, "utf8")), /duplicate column/);
+});
+
+test("the sign-up's frequency migration brings a pending table made before it to today's", () => {
+  // A database made from schema.sql as it was before 16 October: pending
+  // without the box's daily or weekly, and a request already waiting in it.
+  // The migration gives that request daily -- what it was asked as -- makes
+  // the table the same as today's schema makes it, holds the column to the
+  // two words, and a second run of it changes nothing.
+  const today = readFileSync(SCHEMA, "utf8").replace(/\r\n/g, "\n");
+  const before = today.replace(/(  created_at          TEXT NOT NULL),\n[\s\S]*?'weekly'\)\)\n\);/,
+    "$1\n);");
+  assert.notEqual(before, today, "the test could not make the older schema");
+  const old = new DatabaseSync(":memory:");
+  old.exec(before);
+  assert.ok(!old.prepare("PRAGMA table_info(pending)").all().some(c => c.name === "frequency"));
+  old.exec("INSERT INTO pending (email_hmac, email_enc, mailbox_hmac, follow_enc, confirm_token_hash, " +
+    "created_at) VALUES ('h', 'v1.a.b', 'm', 'v1.c.d', 't', '2026-10-15T12:00:00Z')");
+  old.exec(readFileSync(FREQUENCY, "utf8"));
+  const cols = old.prepare("PRAGMA table_info(pending)").all().map(r => r.name);
+  assert.deepEqual(cols, new FakeD1().columns("pending"));
+  assert.deepEqual(old.prepare("SELECT frequency FROM pending").all().map(r => r.frequency), ["daily"]);
+  assert.throws(() => old.exec("INSERT INTO pending (email_hmac, email_enc, mailbox_hmac, follow_enc, " +
+    "confirm_token_hash, created_at, frequency) VALUES ('h', 'e', 'm', 'f', 'u', 'x', 'monthly')"),
+    /CHECK constraint/);
+  assert.throws(() => old.exec(readFileSync(FREQUENCY, "utf8")), /duplicate column/);
 });
