@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.71
+# GRANITE_VERSION: 2026-09-04.72
 """
 The nightly run. Fetch the day's bulk files, rebuild, check, compile what
 readers reported and what changed -- and publish only if told to.
@@ -981,6 +981,23 @@ KIND_BUILT_WARN = "a check of the built site against the record: "
 # than the term it replaces; and a text or a report of a term Legislation does
 # not hold refuses the set whole (term_set). The first is the record the other
 # two are filed against, and preflight holds it there.
+#
+# AND NOT BEFORE THE NEW TERM RUN (16 October 2026, the review of the above).
+# Weighing each term on its own would let a turned set in on any ordinary
+# night, and an ordinary night refuses files that name a newer term than the
+# installed ones (A NEW TERM IS SEEN BY ITS YEARS, above); these views were the
+# one path left that took one. It matters: build_bill_versions reads the
+# current views for the session's term, and the freeze of a term waits while
+# it is still the session's, so views of 2027-2028 alone, taken while the day
+# files are still 2025-2026's, would have taken every 2025-2026 bill's
+# Versions tab off the site. What kept that from happening was coincidence --
+# a turned CandH_Reports holds no report until the term's first (released on
+# 10 January in 2025), and an empty view is refused; and a refused export
+# leaves the views unasked. So a set whose Legislation holds a later term than
+# the installed files' (proceedings.session_term) and none of theirs is
+# refused whole, saying so, until the New term run has turned them. A
+# Legislation that holds 2025-2026 and next session's first requests as well
+# is still taken, as it is one more term the first holds.
 TERM_VIEWS = ("Legislation", "LegislationText", "CandH_Reports")
 TERM_FILES = (
     ("the Senate's committee reports, from the database", "fetch_reports_db.py",
@@ -3415,8 +3432,9 @@ def take_views(views, label, shrink=SWAP_SHRINK, not_again=False, together=False
     calendar reads the meetings' date from there. {view: what happened}.
 
     together, for the current term's views (TERM_VIEWS, whose block says
-    why): all of `views` go in or none does, and the fall is judged against
-    the installed copy's rows of the same term (take_together).
+    why): all of `views` go in or none does, the fall is judged against the
+    installed copy's rows of the same term, and a set of a later term than the
+    installed files' waits for the New term run (take_together, term_set).
 
     Not asked at all while a hold on the host stands (STUDY_HELD), or, with
     not_again, on a night the database was asked for the day's files and did
@@ -3532,43 +3550,69 @@ def view_terms(path, columns, view):
     return out
 
 
-def by_term(rows, newest):
-    """view_terms' count, with the rows that say no term counted as `newest`'s:
+def by_term(rows, fold):
+    """view_terms' count, with the rows that say no term counted as `fold`'s:
     within one term, the whole view, as it was weighed before."""
     out = {t: n for t, n in rows.items() if t}
     if rows.get(""):
-        out[newest] = out.get(newest, 0) + rows[""]
+        out[fold] = out.get(fold, 0) + rows[""]
     return out
 
 
-def term_set(views, fresh, have, shrink):
+def term_set(views, fresh, have, shrink, session=""):
     """{view: why it is not taken}, of the term's views judged as one record of
     one term; {} where every one may go in. `fresh` and `have` are each view's
     view_terms, tonight's and the installed copy's ({} where there is none);
-    the first of `views` is the record the others are filed against.
+    the first of `views` is the record the others are filed against, and
+    `session` the term of the installed day files (proceedings.session_term),
+    or "" where none says.
 
     A text or a report of a term the first does not hold refuses the set
-    whole: it would be filed under another term's bill. Otherwise each view's
-    rows of every term the first holds are weighed against the installed
-    copy's rows of that term, as fetch_reports_db.shrunk weighs its file: a
-    view that has turned, whose new term the installed copy holds none of, is
-    not refused for being smaller than the old one."""
+    whole: it would be filed under another term's bill. So does a first that
+    holds a later term than `session` and none of it: the views turn after the
+    New term run, not before (TERM_VIEWS's block). Otherwise each view's rows
+    of every term the first holds are weighed against the installed copy's
+    rows of that term, as fetch_reports_db.shrunk weighs its file: a view that
+    has turned, whose new term the installed copy holds none of, is not
+    refused for being smaller than the old one."""
     first = views[0]
     stated = {v: {t for t in fresh[v] if t} for v in views}
     stray = [(v, sorted(stated[v] - stated[first])) for v in views[1:]
              if stated[v] - stated[first]]
+    # SHORT, BECAUSE THE PAGE CUTS AT 300 (16 October 2026). term_warned puts
+    # each of these after a sentence of its own and cuts the whole at 300
+    # characters, and the run's page is public: the first wording of this one,
+    # which explained the id, was cut off mid-word there. Views that stray to
+    # the same terms are named together for the same reason.
     if stray:
-        said = "; ".join(f"{v} holds rows of {', '.join(t)}" for v, t in stray)
-        return {v: (f"not taken: {said}, and {first} none: they are one record of one term, "
-                    "each row filed under its bill by an id that starts again every term")
+        alike = {}
+        for v, t in stray:
+            alike.setdefault(", ".join(t), []).append(v)
+        said = "; ".join(f"{' and '.join(vs)} hold{'s' if len(vs) == 1 else ''} rows of {t}"
+                         for t, vs in alike.items())
+        return {v: f"not taken: {said}, and {first} none; they are one term's record"
                 for v in views}
     terms = stated[first]
     if not terms:
         return {v: f"not taken: no row of {first} says which term it is of" for v in views}
+    if session and session not in terms and max(terms) > session:
+        return {v: (f"not taken: {first} holds {max(terms)} and none of {session}, the installed "
+                    "files' term; the views turn after the New term run") for v in views}
     out = {}
     for v in views:
-        now = by_term(fresh[v], max(stated[v] or terms))
-        was = by_term(have[v], max({t for t in have[v] if t} or terms))
+        # THE ROWS THAT SAY NO TERM go with the term both copies hold, where
+        # they hold one (16 October 2026, the review). Counted with the fresh
+        # view's newest instead, one printing of 2027 in LegislationText,
+        # beside a Legislation holding both terms, moved the 2,023 of its
+        # 6,825 rows that say no term off 2025-2026 tonight and not in the
+        # installed copy: 4,802 weighed against 6,825, 25 rows short of a
+        # refusal that would have misstated the installed count. Where the
+        # copies share no term the view has turned, and each side's go with
+        # its own newest, as before.
+        mine, kept = stated[v], {t for t in have[v] if t}
+        both = mine & kept
+        now = by_term(fresh[v], max(both or mine or terms))
+        was = by_term(have[v], max(both or kept or terms))
         for t in sorted(terms):
             if was.get(t) and now.get(t, 0) < was[t] * (1 - shrink):
                 out[v] = f"not taken: {now.get(t, 0):,} rows of {t} against {was[t]:,} installed"
@@ -3576,17 +3620,35 @@ def term_set(views, fresh, have, shrink):
     return out
 
 
+def keep_aside(path, aside):
+    """A second name for `path` in the folder `aside`: a hard link where the
+    disk allows one, which costs nothing, and otherwise a copy."""
+    dest = aside / path.name
+    try:
+        os.link(path, dest)
+    except OSError:
+        shutil.copy2(path, dest)
+    return dest
+
+
 def swap_together(pairs, aside):
     """Each new file of `pairs` [(new, installed)] in place of its installed
-    copy, all or none: the installed copies are moved into `aside` first and
-    put back if any move fails. None, or what failed, for the log."""
+    copy, all or none: a second name for each installed copy is kept in
+    `aside` first, and put back over any already replaced if a move fails.
+    None, or what failed, for the log.
+
+    KEPT, NOT MOVED (16 October 2026, the review). The first version moved the
+    installed copies into `aside` and then the new ones in, so a night killed
+    between the two left db/<view>.psv missing, and the next take_views begins
+    by deleting the scratch folder `aside` is in. Now every installed copy is
+    where it was until the new one replaces it in a single os.replace, and
+    `aside` holds only spare names."""
     aside.mkdir(parents=True, exist_ok=True)
-    moved, placed = [], []
+    kept, placed = {}, []
     try:
         for _new, old in pairs:
             if old.exists():
-                os.replace(old, aside / old.name)
-                moved.append(old)
+                kept[old] = keep_aside(old, aside)
         for new, old in pairs:
             old.parent.mkdir(parents=True, exist_ok=True)
             os.replace(new, old)
@@ -3596,10 +3658,10 @@ def swap_together(pairs, aside):
         failed = f"{type(e).__name__}: {e}"
     try:
         for old in placed:
-            if old not in moved:
+            if old in kept:
+                os.replace(kept[old], old)
+            else:
                 old.unlink()
-        for old in moved:
-            os.replace(aside / old.name, old)
     except OSError as e:
         return f"{failed}; and putting the installed copies back failed: {type(e).__name__}: {e}"
     return failed
@@ -3610,6 +3672,7 @@ def take_together(views, ready, out, cols_new, cols_old, shrink, aside):
     whole, as (view, new, old, entry, rows, was) -- in place if every one of
     `views` came back and term_set refuses none, and otherwise none of them.
     Says in `out` what became of each; [(view, entry)] of those put in."""
+    import proceedings as P
     came = [r[0] for r in ready]
     held = [v for v in views if v not in came]
     fresh, have = {}, {}
@@ -3617,7 +3680,7 @@ def take_together(views, ready, out, cols_new, cols_old, shrink, aside):
         cols = {v: cols_new.get(v) or cols_old.get(v) or [] for v in came}
         fresh = {v: view_terms(new, cols[v], v) for v, new, *_ in ready}
         have = {v: view_terms(old, cols[v], v) if old.exists() else {} for v, _n, old, *_ in ready}
-        why = term_set(views, fresh, have, shrink)
+        why = term_set(views, fresh, have, shrink, session=P.session_term())
         out.update(why)
         held = [v for v in views if v in why]
     if held:

@@ -86044,7 +86044,10 @@ def _night_term_data(NI):
     term: take_views itself, with a stand-in for fetch_archive_db.py that
     writes what a dump writes, takes a smaller new term's views whole after
     the turn, refuses a set whose terms disagree whole, and keeps all three
-    where one is refused, saying which and why."""
+    where one is refused, saying which and why. And (the review of that) a
+    set of a later term than the installed day files' waits for the New term
+    run; each refusal reaches the run's page whole; and a night killed while
+    it swaps leaves every installed view where it was."""
     import contextlib
     import io
     import types
@@ -86121,6 +86124,14 @@ def _night_term_data(NI):
     def installed():
         return {v: Path(f"db/{v}.psv").read_text(encoding="utf-8") for v in (L, T, C)}
 
+    def day_files(year):
+        """The installed day files, naming the session `year` as the docket's
+        first column does (proceedings.session_term reads it)."""
+        Path("Docket.txt").write_text(f"{year}|HB1|1|01/04/{year}|H|Introduced\n",
+                                      encoding="utf-8")
+
+    refusals = []
+
     def take(views, failed=None):
         """take_views of the term's views, the dump giving `views`, and the
         query of `failed` failing."""
@@ -86140,7 +86151,9 @@ def _night_term_data(NI):
             return 0
         NI.run = run
         with contextlib.redirect_stdout(io.StringIO()):
-            return NI.take_views(NI.TERM_VIEWS, "the current term's views", together=True)
+            got = NI.take_views(NI.TERM_VIEWS, "the current term's views", together=True)
+        refusals.extend(what for what in got.values() if what.startswith("not taken"))
+        return got
 
     old, new = term(2025, 100, 100, 40, 100), term(2027, 12, 5, 2, 3)
     try:
@@ -86151,20 +86164,37 @@ def _night_term_data(NI):
         Path("db/t.psv").write_text(old[T], encoding="utf-8")
         assert NI.view_terms(Path("db/t.psv"), cols[T], T) == {"2025-2026": 100, "": 41}, \
             NI.view_terms(Path("db/t.psv"), cols[T], T)
+        # Before the New term run, the day files still 2025-2026's: a set of
+        # 2027-2028 alone is refused whole, for it would take every 2025-2026
+        # bill's versions off the site (TERM_VIEWS's block); an ordinary
+        # night takes no newer term than the installed files'.
+        day_files(2026)
+        install(old)
+        got = take(new)
+        assert all(got[v] == ("not taken: Legislation holds 2027-2028 and none of 2025-2026, the "
+                              "installed files' term; the views turn after the New term run")
+                   for v in (L, T, C)) and installed() == old, \
+            ("a new term's views were taken before the New term run", got)
         # After the turn: the new term's views, a tenth of the old term's
         # size, go in whole -- the whole-file rule refused them for months.
-        install(old)
+        day_files(2027)
         got = take(new)
         assert all(got[v].startswith("installed") and "held none" in got[v] for v in (L, T, C)) \
             and installed() == new, ("a smaller new term's views were not taken", got)
         man = json.loads(Path("db/_manifest.json").read_text(encoding="utf-8"))
         assert all(man[v]["fetched"].startswith("2027") for v in (L, T, C)), man
-        # A new term's bills beside the old term's printings: refused whole.
+        day_files(2026)
+        # A new term's bills beside the old term's printings: refused whole,
+        # and two that stray alike named together.
         install(old)
         got = take({L: new[L], T: old[T], C: new[C]})
-        assert all(got[v].startswith("not taken: LegislationText holds rows of 2025-2026, and "
-                                     "Legislation none") for v in (L, T, C)) \
+        assert all(got[v] == ("not taken: LegislationText holds rows of 2025-2026, and "
+                              "Legislation none; they are one term's record") for v in (L, T, C)) \
             and installed() == old, ("a set whose terms disagree was taken", got)
+        got = take({L: new[L], T: old[T], C: old[C]})
+        assert all(got[v] == ("not taken: LegislationText and CandH_Reports hold rows of "
+                              "2025-2026, and Legislation none; they are one term's record")
+                   for v in (L, T, C)) and installed() == old, got
         # One refused keeps all three, and the night says which and why.
         install(old)
         got = take(term(2025, 101, 101, 40, 50))
@@ -86187,7 +86217,21 @@ def _night_term_data(NI):
         assert NI.term_set(NI.TERM_VIEWS, one, {**one, T: {"2025-2026": 10, "": 40}}, 0.3) == \
             {T: "not taken: 10 rows of 2025-2026 against 50 installed"}
         assert NI.term_set(NI.TERM_VIEWS, {**one, L: {"2025-2026": 10, "2027-2028": 3}}, one,
-                           0.3) == {}
+                           0.3, session="2025-2026") == {}
+        # ... and the rows that say no term go with the term both copies hold:
+        # one printing of 2027 beside a Legislation of both terms does not
+        # move them off 2025-2026 on one side only (40 weighed against 60 was
+        # a refusal).
+        assert NI.term_set(NI.TERM_VIEWS,
+                           {**one, L: {"2025-2026": 10, "2027-2028": 3},
+                            T: {"2025-2026": 40, "2027-2028": 1, "": 20}},
+                           {**one, T: {"2025-2026": 40, "": 20}}, 0.3, session="2025-2026") == {}
+        # Every refusal is whole on the run's page, which cuts at 300.
+        assert len(refusals) > 9 and all(
+            s.endswith(what) for what in refusals
+            for _k, s in NI.term_warned({"term_data": {L: what}})), \
+            [s for what in refusals for _k, s in NI.term_warned({"term_data": {L: what}})
+             if not s.endswith(what)]
         # Put in together or not at all: a move that fails puts back the rest.
         Path("x.new").write_text("tonight's", encoding="utf-8")
         for v in ("x", "y"):
@@ -86196,6 +86240,25 @@ def _night_term_data(NI):
                                    (Path("y.new"), Path("db/y.psv"))], Path("aside"))
         assert failed and "putting" not in failed and all(
             Path(f"db/{v}.psv").read_text(encoding="utf-8") == "installed" for v in "xy"), failed
+        # ... and a night killed while it swaps leaves every view in place:
+        # the installed copies are kept aside, never moved there.
+        Path("x.new").write_text("tonight's", encoding="utf-8")
+        real = os.replace
+
+        def killed(src, dst):
+            if str(src).endswith(".new"):
+                raise KeyboardInterrupt("the night was killed")
+            return real(src, dst)
+        os.replace = killed
+        try:
+            NI.swap_together([(Path("x.new"), Path("db/x.psv"))], Path("aside2"))
+        except KeyboardInterrupt:
+            pass
+        finally:
+            os.replace = real
+        assert Path("db/x.psv").is_file() and \
+            Path("db/x.psv").read_text(encoding="utf-8") == "installed", \
+            "a night killed between moving a view aside and putting the new one in loses it"
 
         for _l, _s, p in NI.TERM_FILES:
             Path(p).write_text(json.dumps({"2025-2026": {"HB1": {}}, "2023-2024": {"HB9": {}}}),
@@ -86224,7 +86287,8 @@ def _night_term_data(NI):
                   "kit, taken after the study committees and not on a New term run; each file's "
                   "fetch merges into the installed copy and keeps its archived terms; a hold asks "
                   "nothing; a piece not taken warns and never holds; the views go in all three or "
-                  "none, a smaller new term's after the turn, never a set whose terms disagree")
+                  "none, a smaller new term's after the New term run and not before, never a set "
+                  "whose terms disagree")
 
 
 # ======================================================================= main ==
