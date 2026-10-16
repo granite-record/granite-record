@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-11.12
+# GRANITE_VERSION: 2026-09-11.13
 """
 Plain-language histories for every archived term whose docket is on disk.
 
@@ -47,9 +47,14 @@ sys.path += [str(p) for p in Path(__file__).resolve().parents if (p / "_paths.py
 import _paths  # noqa: E402,F401
 
 import argparse
+import concurrent.futures
 import glob
+import json
+import os
 import re
+import shutil
 import subprocess
+import tempfile
 
 TERM = re.compile(r"^Docket(?:_db)?_(\d{4}-\d{4})\.txt$")
 # narrative.py's own account of which rows the LSRs took off a bill or gave to
@@ -64,6 +69,16 @@ PAST_DOCKET = Path("db/past/PastDocket.psv")
 PAST_SAID = re.compile(r"rows from the past docket \(.*\): ([\d,]+) row\(s\) given to "
                        r"the ([\d,]+) bill\(s\)[^(]*(?:\((.*)\))?")
 CHAPTERS = Path("chapters.json")
+# THE TERMS AT ONCE, MERGED IN THEIR ORDER (16 October 2026,
+# private/BUILD_SPEED.md, B). narrative.py was run once a term, one after
+# another, and each run read the whole of narratives.json (240 MB) only to
+# write it back with its own term moved to the end. Now the terms run
+# WORKERS at a time, each into a file of its own, and the merge narrative.py
+# did eighteen times is done here once, term by term in the same order, with
+# the same rule and the same write -- so the file is the one the runs one
+# after another left, byte for byte; the scratch build of 16 October was.
+# narrative.py writes no file but its --out, so the runs share nothing.
+WORKERS = 4
 
 
 def dockets():
@@ -120,45 +135,81 @@ def main():
     # rule): said once more after the count, where build_all's summary of
     # this step shows it, and not only among thirty-six lines it does not.
     unchecked = []
-    for term, path in found.items():
+
+    def command(term, path, out):
         # A FROZEN TERM IS TOLD WITH ITS OWN ROSTER (5 October 2026): the one
         # build_data --frozen-terms wrote beside the term's build, so a motion
         # by a member who has since left still reads with their full name, as
         # it did while the term was the session's.
         frozen_roster = Path(a.bills).parent / "frozen" / term / "legislators.json"
         members = str(frozen_roster) if frozen_roster.exists() else a.members
-        r = subprocess.run(
-            [sys.executable, _paths.script("narrative.py"), "--docket", path, "--all",
-             "--out", a.out, "--members", members, "--bills", a.bills] + extra,
-            capture_output=True, text=True, encoding="utf-8", errors="replace")
-        if r.returncode != 0:
-            tail = (r.stderr or r.stdout).strip().splitlines()[-1:]
-            sys.exit(f"narrative.py failed on {path}: {tail}")
-        m = re.search(r"([\d,]+) bills across", r.stdout or "")
-        n = int(m.group(1).replace(",", "")) if m else 0
-        bills += n
-        print(f"  {term:11} {n:6,} bills  <- {path}")
-        # What docket_corrections.json did, and above all what it failed to
-        # do: an entry that stopped matching lets a mistyped date back onto
-        # the site, and this run's output is captured, so it is passed on.
-        # And which rows the LSRs took off a bill or gave to one: a rule that
-        # stopped working looks exactly like a docket with nothing misfiled.
-        for line in (r.stdout or "").splitlines():
-            if "docket_corrections.json" in line or "rows by LSR" in line:
-                print("    " + line.strip())
-            if "whole-day rule not applied" in line or "moved-session rule not applied" in line:
-                print("    " + line.strip())
-                unchecked.append(f"{term}: {line.strip()}")
-            said = LSR_SAID.search(line)
-            if said:
-                lsr = [x + int(y.replace(",", "")) for x, y in
-                       zip(lsr or [0] * 5, said.groups())]
-            said = PAST_SAID.search(line)
-            if said and int(said.group(2).replace(",", "")):
-                print("    " + line.strip())
-                past[0] += int(said.group(1).replace(",", ""))
-                past[1] += int(said.group(2).replace(",", ""))
-                past[2] += [f"{b} {term}" for b in (said.group(3) or "").split(", ") if b]
+        return [sys.executable, _paths.script("narrative.py"), "--docket", path, "--all",
+                "--out", out, "--members", members, "--bills", a.bills] + extra
+
+    tmp = Path(tempfile.mkdtemp(prefix="narrate-archive-"))
+    try:
+        workers = max(1, min(WORKERS, os.cpu_count() or 1, len(found)))
+        print(f"  {len(found)} terms, {workers} at a time", flush=True)
+        with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as pool:
+            runs = {term: pool.submit(subprocess.run, command(term, path, str(tmp / f"{term}.json")),
+                                      capture_output=True, text=True, encoding="utf-8",
+                                      errors="replace")
+                    for term, path in found.items()}
+        merged = None
+        for term, path in found.items():
+            r = runs[term].result()
+            part = tmp / f"{term}.json"
+            if r.returncode != 0 or not part.exists():
+                # As a run one at a time left it: the terms before this one in.
+                if merged is not None:
+                    with open(a.out, "w", encoding="utf-8") as fh:
+                        json.dump(merged, fh, indent=2)
+                tail = (r.stderr or r.stdout).strip().splitlines()[-1:]
+                sys.exit(f"narrative.py failed on {path}: {tail}")
+            if merged is None:
+                # Read once, after the runs, so it is not held beside them.
+                merged = {}
+                if Path(a.out).exists():
+                    try:
+                        merged = json.loads(Path(a.out).read_text(encoding="utf-8"))
+                    except ValueError:
+                        merged = {}
+            results = json.loads(part.read_text(encoding="utf-8"))
+            # narrative.py's own merge: the terms it did not build kept in
+            # place, its own replaced whole and put last.
+            merged = ({**{t: merged[t] for t in merged if t not in results}, **results}
+                      if isinstance(merged, dict) else results)
+            m = re.search(r"([\d,]+) bills across", r.stdout or "")
+            n = int(m.group(1).replace(",", "")) if m else 0
+            bills += n
+            print(f"  {term:11} {n:6,} bills  <- {path}")
+            # What docket_corrections.json did, and above all what it failed to
+            # do: an entry that stopped matching lets a mistyped date back onto
+            # the site, and this run's output is captured, so it is passed on.
+            # And which rows the LSRs took off a bill or gave to one: a rule that
+            # stopped working looks exactly like a docket with nothing misfiled.
+            for line in (r.stdout or "").splitlines():
+                if "docket_corrections.json" in line or "rows by LSR" in line:
+                    print("    " + line.strip())
+                if "whole-day rule not applied" in line or "moved-session rule not applied" in line:
+                    print("    " + line.strip())
+                    unchecked.append(f"{term}: {line.strip()}")
+                said = LSR_SAID.search(line)
+                if said:
+                    lsr = [x + int(y.replace(",", "")) for x, y in
+                           zip(lsr or [0] * 5, said.groups())]
+                said = PAST_SAID.search(line)
+                if said and int(said.group(2).replace(",", "")):
+                    print("    " + line.strip())
+                    past[0] += int(said.group(1).replace(",", ""))
+                    past[1] += int(said.group(2).replace(",", ""))
+                    past[2] += [f"{b} {term}" for b in (said.group(3) or "").split(", ") if b]
+        # One write, as narrative.py writes it.
+        if merged is not None:
+            with open(a.out, "w", encoding="utf-8") as fh:
+                json.dump(merged, fh, indent=2)
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
     # What the past docket view gave, or that it is not here to give it.
     if PAST_DOCKET.exists():
         print(f"rows from the past docket, every term: {past[0]:,} row(s) given to the "

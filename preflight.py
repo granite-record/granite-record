@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.573
+# GRANITE_VERSION: 2026-09-04.574
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -30347,6 +30347,11 @@ def _narrative_own_lsr(N):
                  cwd=tmp, capture_output=True, text=True, timeout=300)
         assert r.returncode == 0, "narrate_archive.py failed: " + (r.stderr or r.stdout)[-300:]
         arch = json.loads((tmp / "arch.json").read_text(encoding="utf-8"))
+        # The terms run several at a time and are merged in their order, so
+        # the file is the one runs one after another wrote, whichever term
+        # finished first (narrate_archive.WORKERS).
+        assert len(arch) > 1 and list(arch) == sorted(arch), \
+            ("the archive's terms were merged out of their order", list(arch))
         scr2 = arch["1989-1990"]["SCR2"]
         assert "SSHB1" in arch["1989-1990"] and "1101" not in arch["1999-2000"] and \
             "HB 0306" in arch["1995-1996"] and \

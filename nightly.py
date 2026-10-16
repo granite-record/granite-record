@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.68
+# GRANITE_VERSION: 2026-09-04.69
 """
 The nightly run. Fetch the day's bulk files, rebuild, check, compile what
 readers reported and what changed -- and publish only if told to.
@@ -954,7 +954,16 @@ KIND_BUILT_WARN = "a check of the built site against the record: "
 # is a warning of a kind that never holds the night, and the night goes out
 # with the copy it had. Not on a New term run, whose term turns under these
 # views; the freeze (freeze_term.py) keeps the finished term's.
-TERM_VIEWS = ("Legislation", "LegislationText", "DocumentVersion", "CandH_Reports")
+#
+# NOT DocumentVersion (16 October 2026). It was here, and the first dry run to
+# fetch (38911019354) refused it as take_views should: the column list the
+# host gives for it is not the installed one, and its rows were already wider
+# than that list (freeze_term.view_rows says so; document_versions_from_db
+# reads it by position), so a swapped copy could move its fields under a
+# reader that cannot tell. It is the vocabulary of version names, some forty
+# rows the term does not change, and a name it lacks reads as unknown rather
+# than as wrong (build_bill_versions counts them). The laptop's, as before.
+TERM_VIEWS = ("Legislation", "LegislationText", "CandH_Reports")
 TERM_FILES = (
     ("the Senate's committee reports, from the database", "fetch_reports_db.py",
      "senate_reports.json"),

@@ -34,7 +34,7 @@
     {
       "what": "The database views the build reads, of the 31 in the dump, and of the six Past* views the one report_check.py reads: the House committee reports of 2016-2024 as the committees filed them.",
       "owner": "laptop",
-      "paths": ["db/Docket.psv", "db/Towns.psv", "db/_columns.json",
+      "paths": ["db/Docket.psv", "db/Towns.psv", "db/_columns.json", "db/DocumentVersion.psv",
                 "db/past/PastCommitteeReports.jsonl"]
     },
     {
@@ -84,9 +84,9 @@
                 "db/vStatStudTemp.psv", "db/_manifest.json"]
     },
     {
-      "what": "The current term's data, which the night takes from the General Court's database every night since 16 October 2026 (nightly.TERM_VIEWS, TERM_FILES): the bills, their texts and versions, the Senate's hearing reports, and the Senate's committee reports, the hearings' sign-ins and what the status pages left blank. Each is taken whole or not at all, and a piece not taken leaves this copy. The laptop's until then, as its dump of 8 September and its fetches left them.",
+      "what": "The current term's data, which the night takes from the General Court's database every night since 16 October 2026 (nightly.TERM_VIEWS, TERM_FILES): the bills, their texts and printings, the Senate's hearing reports, and the Senate's committee reports, the hearings' sign-ins and what the status pages left blank. Each is taken whole or not at all, and a piece not taken leaves this copy. The laptop's until then, as its dump of 8 September and its fetches left them.",
       "owner": "night",
-      "paths": ["db/Legislation.psv", "db/LegislationText.psv", "db/DocumentVersion.psv",
+      "paths": ["db/Legislation.psv", "db/LegislationText.psv",
                 "db/CandH_Reports.psv", "bill_status.json", "senate_reports.json", "testimony_db.json"]
     },
     {
