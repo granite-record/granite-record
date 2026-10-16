@@ -62,6 +62,15 @@ input[type=radio],input[type=checkbox]{accent-color:var(--pine)}
 .seg label:has(input:checked){background:var(--pine-soft);box-shadow:inset 0 -3px 0 var(--pine)}
 .seg label:has(input:checked) span{color:var(--pine)}
 .seg label:has(input:focus-visible){outline:2px solid var(--pine);outline-offset:-2px}
+/* IN FORCED COLOURS the wash and the rule under the chosen one are painted
+   away and the radios are out of sight, so the two were the same (the review
+   of 16 October 2026): the chosen one takes the system's selection colours,
+   and its focus ring the selection's text colour, as the sign-up box's does
+   (app.css .followfreq). */
+@media (forced-colors:active){
+.seg label:has(input:checked){forced-color-adjust:none;background:Highlight;color:HighlightText;box-shadow:none}
+.seg label:has(input:checked) span,.seg label:has(input:checked) small{color:HighlightText}
+.seg label:has(input:checked:focus-visible){outline-color:HighlightText;outline-offset:-4px}}
 .pauses label{padding:6px 0;margin:0}
 /* WHAT YOU FOLLOW: one row a record, its switch at the end. */
 ul.follows{list-style:none;padding:0;margin:0 0 10px;border-top:1px solid var(--rule)}

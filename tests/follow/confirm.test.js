@@ -185,10 +185,13 @@ test("a sign-up that names no frequency is confirmed as daily", async () => {
   } finally { w.close(); }
 });
 
-test("a reader already subscribed keeps how often they chose, whatever the box said", async () => {
+test("a reader already subscribed keeps how often they chose, and is told so when the box asked otherwise", async () => {
   // The box opens on Daily, so a weekly reader following one more record
   // without touching it must not be turned daily; nor a daily reader weekly
-  // by a second sign-up. The manage page is where it changes.
+  // by a second sign-up. Where the box asked for the other one, the manage
+  // page says how often they still come instead of a plain "Confirmed.", and
+  // its How often is where it changes. A second sign-up that asked for what
+  // is kept is confirmed plainly.
   const w = makeWorld();
   try {
     const weekly = w.address("chose.weekly"), daily = w.address("chose.daily");
@@ -198,13 +201,42 @@ test("a reader already subscribed keeps how often they chose, whatever the box s
     await confirmLatest(w, daily);
     await signUp(w, weekly, "topic", "housing", { frequency: "daily" });
     await signUp(w, daily, "committee", "H90", { frequency: "weekly" });
-    assert.equal((await confirmLatest(w, weekly)).status, 303);
-    assert.equal((await confirmLatest(w, daily)).status, 303);
+    const rw = await confirmLatest(w, weekly), rd = await confirmLatest(w, daily);
+    for (const r of [rw, rd]) {
+      assert.equal(r.status, 303);
+      assert.match(r.headers.location, /^\/api\/follow\/manage#t=[A-Za-z0-9_-]{43}&n=kept$/);
+    }
     const by = new Map(w.d1.rows("subscribers").map(s => [s.email_hmac, s.frequency]));
     assert.equal(by.get(await lookupHash(w.env, weekly)), "weekly");
     assert.equal(by.get(await lookupHash(w.env, daily)), "daily");
     assert.equal(w.d1.rows("follows").length, 4, "the second records were followed all the same");
     assert.equal(w.d1.rows("pending").length, 0);
+    // The shell passes on the "n=kept" after "#" as the view's notice.
+    const seen = async r => (await w.call(handlers.manage, postForm("/api/follow/manage",
+      { t: manageToken(r), action: "view", notice: "kept" }))).body;
+    const pw = await seen(rw), pd = await seen(rd);
+    assert.match(pw, /<p class="note">Confirmed\. You will get email updates on what is listed below, weekly as before: signing up again does not change how often\. To change it, choose under How often and save\.<\/p>/);
+    assert.match(pw, /<input type="radio" name="frequency" value="weekly" checked>/);
+    assert.match(pd, /listed below, daily as before: signing up again does not change how often/);
+    assert.match(pd, /<input type="radio" name="frequency" value="daily" checked>/);
+    // Asked for what is kept: nothing to tell.
+    await signUp(w, weekly, "bill", "2026/HB9903", { frequency: "weekly" });
+    assert.match((await confirmLatest(w, weekly)).headers.location, /&n=confirmed$/);
+    assert.deepEqual(leaks(w), []);
+  } finally { w.close(); }
+});
+
+test("the manage page shows only its own notices, whatever notice it is handed", async () => {
+  const w = makeWorld();
+  try {
+    const s = await join(w, "types.a.notice");
+    for (const notice of ["constructor", "toString", "__proto__", "hasOwnProperty", "nonsense"]) {
+      const page = await w.call(handlers.manage, postForm("/api/follow/manage",
+        { t: s.manage, action: "view", notice }));
+      assert.equal(page.status, 200, notice);
+      assert.doesNotMatch(page.body, /<p class="note">/, notice);
+    }
+    assert.deepEqual(leaks(w), []);
   } finally { w.close(); }
 });
 

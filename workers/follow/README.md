@@ -137,10 +137,15 @@ on its own:
    request until its confirmation, on any database made before that day,
    both of this project's included; a database made from today's
    `schema.sql` has it already and must not. **Run it before the Functions
-   that write it deploy** -- the preview's first, since every dev dry run
-   deploys the preview with the database bound: without the column every
+   that read and write it deploy** -- the preview's first, since every dev
+   dry run deploys the preview with the database bound, so no dry run of a
+   commit with these Functions may start until the preview's has run.
+   Without the column both halves fail, and nothing offline can tell: every
    sign-up is answered "on its way", sends nothing, and logs only
-   `follow signup.error.Error`.
+   `follow signup.error.Error`; and every confirmation -- a link from a
+   request made before the deploy included -- answers "Something went wrong
+   on our side. Your link still works for 48 hours." and logs only
+   `follow confirm.error.Error`, because confirm.js reads the column back.
 
        npx wrangler d1 execute graniterecord-follow-preview --remote --file workers/follow/migrations/0003_pending_frequency.sql
        npx wrangler d1 execute graniterecord-follow --remote --file workers/follow/migrations/0003_pending_frequency.sql
@@ -290,10 +295,13 @@ The Follow control posts what the reader typed, and stores nothing:
 
 `frequency` is the box's Daily or Weekly (16 October 2026), `"daily"` or
 `"weekly"`; the confirmation gives it to a new subscriber, and one already
-subscribed keeps their own, which the manage page changes. A request that
-names none is daily, as a page loaded before the box had the choice sends
-none; any other value is refused as `invalid`. `website` is a honeypot: an
-input a person never sees, left empty. The answers:
+subscribed keeps their own -- the box opens on Daily, and a weekly reader
+must not be made daily by not touching it. Where the box asked for the
+other one, the manage page the confirmation lands on says so ("daily as
+before" or "weekly as before"), above the How often that changes it. A
+request that names none is daily, as a page loaded before the box had the
+choice sends none; any other value is refused as `invalid`. `website` is a
+honeypot: an input a person never sees, left empty. The answers:
 
 | Status | Body | Means |
 |---|---|---|

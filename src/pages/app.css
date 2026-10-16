@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.274 */
+/* GRANITE_VERSION: 2026-09-07.275 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -3610,6 +3610,21 @@ overflow-wrap:anywhere}
 .followfreq label:has(input:checked){background:var(--pine-soft);box-shadow:inset 0 -3px 0 var(--pine)}
 .followfreq label:has(input:checked) span{color:var(--pine)}
 .followfreq label:has(input:focus-visible){outline:2px solid var(--pine);outline-offset:-2px}
+/* IN FORCED COLOURS DAILY AND WEEKLY CAME OUT THE SAME (the review of 16
+   October 2026, in Edge with high contrast on): the system paints the wash
+   away and draws no box-shadow, so the rule under the chosen one goes too,
+   and the radios are out of sight. The chosen one takes the system's colours
+   for a selection, as a list's chosen item does, and its focus ring the
+   selection's text colour inside it, so that being chosen and having the
+   keyboard stay two things. Kept out of the system's hands to keep those
+   colours, it would keep the pine rule too, which is taken off. The manage
+   page's .seg does the same (page.js). */
+@media (forced-colors:active){
+  .followfreq label:has(input:checked){forced-color-adjust:none;background:Highlight;color:HighlightText;
+    box-shadow:none}
+  .followfreq label:has(input:checked) span{color:HighlightText}
+  .followfreq label:has(input:checked:focus-visible){outline-color:HighlightText;outline-offset:-4px}
+}
 .followstate{margin:var(--sp-4) 0 0;color:var(--ink-2)}
 .followsend{font:inherit;color:var(--ink);background:none;cursor:pointer;
   border:1px solid var(--rule-2);border-radius:var(--r-in);padding:var(--sp-2) var(--sp-5)}

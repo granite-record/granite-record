@@ -60424,8 +60424,8 @@ function form(choice) {
 """
 
 
-@check("build", "the email sign-up asks daily or weekly as the manage page does, Daily chosen, "
-       "and every follow migration has its two commands")
+@check("build", "the email sign-up asks daily or weekly as the manage page does, Daily chosen and "
+       "told apart in forced colours, and every follow migration has its two commands")
 def _follow_signup_frequency():
     """The person, 16 October 2026: a "Daily or weekly" choice beside the
     email field, Daily selected, just before the "Email me updates" button.
@@ -60439,12 +60439,23 @@ def _follow_signup_frequency():
     close the p there and leave the button outside the row. followSubmit
     sends the choice it is given, Weekly and Daily each. The endpoints' side
     -- kept with the request, confirmed as weekly, none at all confirmed as
-    daily, any other value refused, the migration -- is tests/follow/'s,
-    whose cases are run here by name so that one taken out is missed.
+    daily, any other value refused, a subscriber's own kept and the manage
+    page saying so where the box asked otherwise, the migration -- is
+    tests/follow/'s, whose cases are run here by name so that one taken out
+    is missed.
+
+    IN FORCED COLOURS the chosen one is told from the other, in the box
+    (app.css .followfreq) and on the manage page (page.js .seg): the system
+    paints away the wash and the rule under it, and the radios are out of
+    sight, so in Edge with high contrast on the two came out the same (the
+    review of 16 October 2026). The chosen one keeps the system's selection
+    colours.
 
     And README.md gives every file in workers/follow/migrations/ its command
     for both databases: a column the Functions write that a database lacks is
-    a sign-up answered "on its way" that sends nothing."""
+    a sign-up answered "on its way" that sends nothing. 0003's paragraph
+    names both log lines its absence leaves, the sign-up's and the
+    confirmation's, since confirm.js reads the column too."""
     from html.parser import HTMLParser
     if not Path("workers/follow").is_dir():
         return "skip", "no workers/follow here"
@@ -60455,6 +60466,26 @@ def _follow_signup_frequency():
               for db in ("graniterecord-follow-preview", "graniterecord-follow")
               if f"npx wrangler d1 execute {db} --remote --file workers/follow/migrations/{m}" not in readme]
     assert not untold, "workers/follow/README.md gives no command for " + ", ".join(untold)
+    begin = readme.find("sign-up box's daily or weekly")
+    told = readme[begin:readme.find("migrations/0003_pending_frequency.sql", begin)] if begin >= 0 else ""
+    assert all(f"`follow {x}.error.Error`" in told for x in ("signup", "confirm")), \
+        "README.md's paragraph on 0003 no longer says that sign-ups and confirmations both fail without it"
+
+    # Chosen and not chosen, told apart in forced colours: the selection's
+    # system colours, held from the system's repainting, on the chosen label.
+    def forced(css, seg):
+        got = {}
+        for ats, sel, body, _ in _css_rules(css):
+            if any("forced-colors" in a for a in ats) and \
+                    f"{seg} label:has(input:checked)" in [s.strip() for s in sel.split(",")]:
+                got.update(_css_decls(body))
+        return got.get("forced-color-adjust") == "none" and got.get("background", "").lower() == "highlight"
+    style = re.search(r"const STYLE = `(.*?)`;", Path("workers/follow/page.js").read_text(encoding="utf-8"), re.S)
+    blind = [name for name, css, seg in (
+        ("the sign-up box (app.css .followfreq)", Path("src/pages/app.css").read_text(encoding="utf-8"), ".followfreq"),
+        ("the manage page (page.js .seg)", style.group(1) if style else "", ".seg")) if not forced(css, seg)]
+    assert not blind, ("in forced colours the chosen one of two is drawn like the other on "
+                       + " and ".join(blind) + ": no Highlight ground for label:has(input:checked)")
 
     manage = Path("functions/api/follow/manage.js").read_text(encoding="utf-8")
     words = dict(re.findall(r'radio\("frequency", "(daily|weekly)", freq, "([^"]+)"', manage))
@@ -60530,7 +60561,8 @@ def _follow_signup_frequency():
 
     cases = ("how often is kept with the request", "a frequency the box cannot send is refused",
              "a weekly sign-up is confirmed as weekly", "names no frequency is confirmed as daily",
-             "keeps how often they chose", "frequency migration brings a pending table")
+             "keeps how often they chose, and is told so", "shows only its own notices",
+             "frequency migration brings a pending table")
     r = _run([node, "--disable-warning=ExperimentalWarning", "--test", "--test-reporter=tap",
               "--test-name-pattern=" + "|".join(cases), "tests/follow/index.js"],
              capture_output=True, text=True)
@@ -60541,7 +60573,8 @@ def _follow_signup_frequency():
         "tests/follow/ no longer passes the frequency cases "
         + ", ".join(repr(c) for c in cases if c not in passed) + ": " + out.strip()[-400:])
     return "ok", (f"the box draws {words['daily']} (chosen) and {words['weekly']} under "
-                  f"{legend.group(1)!r} and sends each; {len(cases)} cases pass; "
+                  f"{legend.group(1)!r} and sends each, told apart in forced colours there and on "
+                  f"the manage page; {len(cases)} cases pass; "
                   f"{len(migrations)} migrations, each told for both databases")
 
 
