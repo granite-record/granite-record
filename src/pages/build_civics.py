@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.50
+# GRANITE_VERSION: 2026-09-08.51
 """
 The civics section: a hub and one page per topic, in order.
 
@@ -1396,9 +1396,16 @@ def hub_page(tmpl, base, topics, groups, published=()):
     written hidden and the script shows it.
     """
     import build_town_pages
-    n_learn = len(topics) + 1
+    # THE PAGES THE PANEL LINKS, COUNTED OFF THE PANEL (16 October 2026). This
+    # was len(topics) + 1 -- the topics and By the Numbers, when those were
+    # all the panel held -- and the glossary and Laws arrived after it, so the
+    # tab read "Learn (14)" over a panel of sixteen links whose first line
+    # says "Thirteen short pages" (the webinar's phone check). Counted from
+    # what is drawn, each page once, it cannot fall behind the panel again.
+    learn = hub_learn(topics)
+    n_learn = len(set(re.findall(r'<a href="([^"]+)"', learn)))
     n_src = sum(len(rows) for _, rows in groups)
-    panels = [("learn", "Learn", n_learn, hub_learn(topics)),
+    panels = [("learn", "Learn", n_learn, learn),
               ("guides", "How-To Guides", len(published), hub_guides(published)),
               ("sources", "Official Sources", n_src, hub_sources(groups))]
     assert [p[:2] for p in panels] == list(HUB_TABS), "the hub's panels and HUB_TABS disagree"

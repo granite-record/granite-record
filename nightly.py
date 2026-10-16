@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.69
+# GRANITE_VERSION: 2026-09-04.70
 """
 The nightly run. Fetch the day's bulk files, rebuild, check, compile what
 readers reported and what changed -- and publish only if told to.
@@ -827,7 +827,8 @@ REVIEW_SHA_UNKNOWN = ("tonight's own commit is not known, so whether its code is
 # printed on every page, so every page changes every night (38,013 of the
 # 54,975 files between the builds of 25 and 26 September 2026). Two measures,
 # both only on a night whose code is not known to be a release's, which
-# rewrites what it likes and waits anyway:
+# rewrites what it likes and waits anyway -- or on a release a dry run has
+# proven (proven_by_dry_run), which no longer waits, and is measured:
 #
 #   a finished term   its list differing from production's at all. A data night
 #                     does not rewrite a finished term: of the nights whose
@@ -3750,7 +3751,9 @@ def size_reasons(site, served, differs):
     current term, its bills, how many of their rows changed against
     production's, the finished terms whose lists differ, and the lists that
     could not be read. The reasons are given only where `differs` is not True
-    (code_differs): a release waits anyway, and rewrites what it likes."""
+    (code_differs): a release waits anyway, and rewrites what it likes. A
+    release a dry run has proven does not wait, so judge() passes False for it
+    and it is measured like a data night."""
     site = Path(site)
     mp = site / "meta.json"
     meta = _meta_of(mp.read_bytes()) if mp.exists() else {}
@@ -4267,9 +4270,14 @@ class Night:
                 f"the same commit ({proof['closed']}): the gate does not hold it for that")
         else:
             self.review_why += released
+        # A PROVEN RELEASE IS STILL MEASURED (the review of 16 October 2026).
+        # size_reasons passes over a release because a release used to wait
+        # anyway; a proven one does not, so it was published with nothing
+        # looking at how much it changed -- and the proof is of a dry run's
+        # build, not of tonight's data. Only the release reason is let go.
         try:
             why, v["against_production"] = size_reasons(
-                site, served, code_differs(v["sha"], v["live_commit"]))
+                site, served, code_differs(v["sha"], v["live_commit"]) and not proof)
         except Exception as e:          # noqa: BLE001 -- the gate never stops a night
             say(f"  the gate could not measure tonight's change: {type(e).__name__}: {e}",
                 echo=False)

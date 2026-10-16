@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-14.4
+# GRANITE_VERSION: 2026-10-14.5
 """
 A docket line in plain words, for a reader who does not know the clerk's
 shorthand -- the email digest and the Documents tab (the person's choices of
@@ -89,6 +89,25 @@ def _how(raw):
     return f", {words}"
 
 
+def _veto(outcome, raw):
+    """A veto vote's words. THE TALLY IS THE OVERRIDE'S (the review of 16
+    October 2026). Everywhere else "<outcome>, Y–N" gives the votes FOR that
+    outcome, so "Veto sustained, 176–175" read as the House sustaining the
+    veto 176 to 175, where 176 voted to override and the override failed only
+    for want of two thirds -- 195 lines of the record, 21 of them this term's
+    (HB 358 is that one). So a sustained veto's count is named as the
+    override's, in the words the bill's passage rail already gives the same
+    vote ("Veto sustained, 176–175 to override, short of two thirds"). An
+    overridden veto's yeas are the outcome's own, and read as they always did."""
+    if outcome.lower() != "sustained":
+        return "Veto overridden" + _how(raw)
+    t = _TALLY.search(raw)
+    if t and t.group(1).upper() in ("RC", "DV") and t.group(2) and t.group(3):
+        words = {"RC": "on a roll call", "DV": "on a division vote"}[t.group(1).upper()]
+        return f"Veto sustained, {t.group(2)}–{t.group(3)} to override {words}, short of two thirds"
+    return "Veto sustained" + _how(raw)
+
+
 def _sentence(s):
     s = s.replace("{Bill} ", "Bill ").replace("{Bill}", "Bill").strip()
     return s[:1].upper() + s[1:].lower() if s else s
@@ -165,8 +184,7 @@ _SIMPLE = [
     # never "became law", which one chamber's override does not make it.
     (re.compile(r"^(?:Notwithstanding the Governor's Veto\b.*?\b)?Veto\s+(?P<o>Sustained|Overridden)\b",
                 re.I),
-     lambda m, r: ("Veto sustained" if m.group("o").lower() == "sustained" else "Veto overridden")
-     + _how(r)),
+     lambda m, r: _veto(m.group("o"), r)),
     (re.compile(r"^(?:(?P<side>Majority|Minority)\s+)?Committee Report\s*:\s*Without Recommendation",
                 re.I),
      lambda m, r: (f"{m.group('side')} committee report" if m.group("side") else "Committee report")

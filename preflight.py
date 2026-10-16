@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.577
+# GRANITE_VERSION: 2026-09-04.579
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -28610,6 +28610,16 @@ def _chain():
         for pid in ("learn", "guides", "sources"):
             assert f'id="tab-{pid}"' in hub and f'<div class="twnpane r-sheet" id="{pid}"' in hub, (
                 f"the Resources hub has no {pid} tab")
+        # THE LEARN TAB COUNTS WHAT ITS PANEL LINKS (16 October 2026): it read
+        # "Learn (14)" over sixteen links when the glossary and Laws came in
+        # after the count was typed as the topics plus one.
+        said = re.search(r'id="tab-learn"[^>]*>Learn <span class="r-n">\((\d+)\)</span>', hub)
+        pane = hub[hub.index('<div class="twnpane r-sheet" id="learn"'):
+                   hub.index('<div class="twnpane r-sheet" id="guides"')]
+        linked = len(set(re.findall(r'<a href="([^"]+)"', pane)))
+        assert said and int(said.group(1)) == linked, (
+            f"the Learn tab says {said.group(1) if said else 'no count'} over a panel of "
+            f"{linked} pages")
 
         # COMING UP ON THE BUILT HOME PAGE IS THE BUILD DATE'S WEEK: no day
         # before the build date or after that week's Sunday, and every day in
@@ -33072,8 +33082,15 @@ def _plain_action(PA):
             "Died on the table under Senate Rule 3-23",
         "Sen. Rosenwald Floor Amendment # 2025-2660s, RC 8Y-16N, AF; 06/05/2025;  SJ 15":
             "Floor amendment 2025-2660s (Sen. Rosenwald) failed, 8–16 on a roll call",
+        # THE TALLY IS THE OVERRIDE'S (16 October 2026): with more yeas than
+        # nays, "Veto sustained, 176-175" read as a vote to sustain.
         "Veto Sustained 12/17/2025: RC 1-347 Lacking Necessary Two-Thirds Vote  HJ 19":
-            "Veto sustained, 1–347 on a roll call",
+            "Veto sustained, 1–347 to override on a roll call, short of two thirds",
+        "Veto Sustained 12/17/2025: RC 176-175 Lacking Necessary Two-Thirds Vote  HJ 19":
+            "Veto sustained, 176–175 to override on a roll call, short of two thirds",
+        "Notwithstanding the Governor's Veto, Shall SB 10 Become Law: RC 14Y-10N, Veto Sustained, "
+        "lacking the necessary two-thirds vote":
+            "Veto sustained, 14–10 to override on a roll call, short of two thirds",
         "Notwithstanding the Governor's Veto, Shall HB 2026 Become Law: RC 24Y-0N, Veto Overridden "
         "by necessary two-thirds vote; 08/19/2026;  SJ 15": "Veto overridden, 24–0 on a roll call",
     }
@@ -63260,6 +63277,19 @@ def _nightly_review_size(NI):
             v["against_production"]["finished_differ"] == ["2023-2024"] and \
             v["against_production"]["rows_changed"] == 897, \
             (v.get("review"), v.get("against_production"))
+
+        # A RELEASE A DRY RUN HAS PROVEN (the review of 16 October 2026) does
+        # not wait as a release, so what it changed is held as on a data
+        # night: the proof is of the dry run's build, not of tonight's data.
+        c = "c" * 40
+        g.night("--runner", "--no-fetch", "--dry-run", run_id="346-dry", sha=c)
+        code, _ = g.night("--runner", "--no-fetch", run_id="346-proven", sha=c)
+        v = g.verdict()
+        assert code == 0 and v.get("release_proven") and v["review"]["needed"] and \
+            NI.REVIEW_FINISHED.format(terms="2023-2024") in v["review"]["why"] and \
+            NI.REVIEW_RELEASE.format(tonight=c[:12], served=a[:12]) not in v["review"]["why"], (
+                "a proven release went out with nothing measuring how much it changed",
+                v.get("review"), v.get("release_proven"))
 
         # Production that cannot be read: not known, so wait.
         g.how["rewrite"], g.how["touch"] = None, 4
