@@ -17760,7 +17760,7 @@ def _find_bills(BP):
                   "a whole word of what was typed")
 
 
-# THE FIXTURE FOR _best_match_words: twenty-eight real bills, their titles,
+# THE FIXTURE FOR _best_match_words: thirty-seven real bills, their titles,
 # sponsors and committees as the index carries them, in four terms. Each
 # search below meets some of them by a word of the title or of the sponsor's
 # name -- the word itself, with an ending ("taxes", "taxing", "posting",
@@ -17772,16 +17772,21 @@ def _find_bills(BP):
 # name. The order before 25 September -- best score, then the newer term,
 # then the number -- put a longer word above the word itself in every one of
 # these searches, and the town of Hillsborough above Sugar Hill for "hill".
+# The nine that carry a chip are the tie-break's (_BEST_MATCH_TIES), each
+# with the chip, kind and status the index gave it on 16 October 2026.
 def _best_match_fixture():
-    def bill(key, sponsor, committees, title, term):
+    def bill(key, sponsor, committees, title, term, chip=None):
         bid, year = key.split("/")
         kind = re.match(r"[A-Z]+", bid).group(0)
-        return {"id": bid, "n": f"{kind} {bid[len(kind):]}", "year": int(year),
-                "title": title, "sponsor": sponsor,
-                "sponsor_label": f"Rep. {sponsor}", "committee": committees[0],
-                "committees": committees, "topic": "Other", "kind": "active",
-                "status": "Introduced", "term": term,
-                "last_action": f"{year}-01-15", "votedays": []}
+        row = {"id": bid, "n": f"{kind} {bid[len(kind):]}", "year": int(year),
+               "title": title, "sponsor": sponsor,
+               "sponsor_label": f"Rep. {sponsor}", "committee": committees[0],
+               "committees": committees, "topic": "Other", "kind": "active",
+               "status": "Introduced", "term": term,
+               "last_action": f"{year}-01-15", "votedays": []}
+        if chip:
+            row["chip"], row["kind"], row["status"] = chip
+        return row
     cj, mc = "House Criminal Justice and Public Safety", "House Municipal and County Government"
     sm = "Senate Election Law and Municipal Affairs"
     now = [
@@ -17828,6 +17833,30 @@ def _best_match_fixture():
          "subjecting taxpayer funded investigations to the right-to-know law."),
         ("HB1781/2026", "Wayne Burton", ["House Education Funding"], "relative to "
          "child support obligations during postsecondary education."),
+        ("HB465/2026", "Alice Wade", ["House Housing"], "relative to the housing "
+         "opportunity zone program.", ("Died", "done", "Killed")),
+        ("HB628/2025", "Timothy Horrigan", ["House Housing"], "prohibiting landlords "
+         "from discriminating against prospective tenants holding certain vouchers "
+         "under the housing choice voucher program.", ("Died", "done", "Killed")),
+        ("HB1007/2026", "Len Turcotte", ["House Housing"], "relative to manufactured "
+         "housing.", ("Died", "done", "Killed")),
+        ("HB1017/2026", "David Preece", ["House Housing"], "relative to accessory "
+         "dwelling units and workforce housing.",
+         ("Died", "done", "Died when the session ended")),
+        ("HB1396/2026", "Joe Sweeney", ["House Election Law"], "relative to "
+         "vacancies in state offices.", ("Died", "done", "Died on the table")),
+        ("CACR13/2026", "Dennis Mannion", ["House Judiciary", "Senate Executive "
+         "Departments and Administration"], "relating to registers of probate. "
+         "Providing that the office of register of probate and all references to "
+         "such office be eliminated.",
+         ("Passed both chambers, goes to the voters in November 2026", "adopted",
+          "Passed both chambers, goes to the voters in November 2026")),
+        ("HB109/2026", "Dennis Mannion", ["House Criminal Justice and Public Safety",
+         "Senate Judiciary"], "relative to false reports to law enforcement.",
+         ("Became Law", "law", "Signed into law")),
+        ("HB1070/2026", "Dennis Mannion", ["House Health, Human Services and "
+         "Elderly Affairs"], "relative to the involuntary emergency admission "
+         "process.", ("Died", "done", "Killed")),
     ]
     before = [
         ("HB1414/2024", "Barbara Comtois", [mc], "relative to the Gunstock Area "
@@ -17837,6 +17866,10 @@ def _best_match_fixture():
          "pistols permitted for taking game."),
         ("SB248/2024", "Daryl Abbas", [cj, "Senate Judiciary"], "relative to bail "
          "for a defendant."),
+        ("SB306/2024", "Kevin Avard", ["House Executive Departments and "
+         "Administration", "Senate Executive Departments and Administration"],
+         "relative to manufactured housing rulemaking authority.",
+         ("Became Law", "law", "Signed into law")),
     ]
     fg = "House Fish and Game and Marine Resources"
     earlier = [
@@ -17861,7 +17894,8 @@ def _best_match_fixture():
     ]
     terms = {"2025-2026": now, "2023-2024": before, "2017-2018": earlier,
              "2009-2010": long_ago}
-    idx = {f"/idx/{t}.json": [bill(*row, t) for row in rows] for t, rows in terms.items()}
+    idx = {f"/idx/{t}.json": [bill(*row[:4], t, *row[4:]) for row in rows]
+           for t, rows in terms.items()}
     find = [
         ["town", "Hill", "Merrimack County", "town/hill", "Merrimack"],
         ["town", "Hillsborough", "Hillsborough County", "town/hillsborough",
@@ -17925,6 +17959,33 @@ _BEST_MATCH_NAMES = {
     # district, and "hills" alone is the start of a place's name (below).
     "hills 10": ({"Rep. Bill Ohm (R - Hills 10)"}, set()),
     "hills": (set(), {"Hillsborough", "Rep. Bill Ohm (R - Hills 10)"}),
+}
+
+# BETWEEN BILLS THAT MATCH EQUALLY WELL (16 October 2026, approved by the
+# person that day): a bill still moving first, where its title has the
+# search; then the newer term; then the most of the title that is the search
+# (app.js's titleShare); then the number. Each search lists these bills in
+# exactly this order, on /bills and in the header (this term's) and on /bills
+# on All terms and /search (every term's), each tied with the others on
+# looseness and matchScore:
+# - "housing": the titles that are most nearly the search first. Before
+#   this, HB 465 and HB 628 -- a landlord's vouchers, housing one word in
+#   fourteen -- led "relative to manufactured housing" by number, as on the
+#   site, where HB 465 opened the term's 138. SB 306 of 2024, a quarter
+#   housing, still follows every bill of this term: the newer term is the
+#   key before the share.
+# - "office": CACR 13, on the index of 16 October 2026 the one bill of
+#   33,717 still moving (it goes to the voters in November), before HB 1396,
+#   whose title is twice as much the search and whose number comes first.
+# - "mannion": the sponsor's bills in number order, CACR 13 last. No title
+#   says the search, so none is put first for still moving: read without
+#   that guard, CACR 13 led his bills on the real index, and of 24 searches
+#   by the term's most prolific sponsors' names, 20 reordered once every
+#   fifth bill was marked as moving.
+_BEST_MATCH_TIES = {
+    "housing": ["HB1007/2026", "HB1017/2026", "HB465/2026", "HB628/2025", "SB306/2024"],
+    "office": ["CACR13/2026", "HB1396/2026"],
+    "mannion": ["HB109/2026", "HB1070/2026", "CACR13/2026"],
 }
 
 # /bills, typed into: the cards in the order drawn, each with the year its
@@ -18022,6 +18083,11 @@ def _best_match_words(BP):
 
     Every bill here is real, copied from the index, and every search here
     put a longer word above the word itself in the order before this.
+
+    And since 16 October 2026 the order between bills that match equally
+    well, which the bill number alone decided (_BEST_MATCH_TIES): "housing"
+    and "office" list their bills in another order under the rule before
+    it, and "mannion" under the rule without its guard.
     """
     if not shutil.which("node"):
         return "skip", "node is not installed"
@@ -18041,7 +18107,8 @@ def _best_match_words(BP):
                  "app.js": _with_components(app), "billmatch.js": matcher,
                  "find.js": Path("src/pages/find.js").read_text(encoding="utf-8"),
                  "fixture.json": json.dumps(fx),
-                 "queries.json": json.dumps(list(_BEST_MATCH_WORDS)),
+                 "queries.json": json.dumps(list(_BEST_MATCH_WORDS)
+                                            + list(_BEST_MATCH_TIES)),
                  "names.json": json.dumps(list(_BEST_MATCH_NAMES)),
                  "app_side.js": _BEST_MATCH_APP,
                  "panel_side.js": _BEST_MATCH_PANEL}
@@ -18097,6 +18164,20 @@ def _best_match_words(BP):
     assert not thin, f"the fixture no longer pits a word against a longer one for {thin}"
     assert not bad, "best match: " + " | ".join(bad[:3])
 
+    # Between bills that match equally well: still moving, the newer term,
+    # the share of the title, the number (_BEST_MATCH_TIES).
+    tied = []
+    for where, got, scope in lists:
+        for q, want in _BEST_MATCH_TIES.items():
+            want = [k for k in want if scope is None or k in scope]
+            order = [k for k in got.get(q) or [] if k in want]
+            if order != want:
+                tied.append(f"{where} lists {order} for {q!r}, not {want}")
+    assert not tied, ("best match between bills that match equally well -- a bill "
+                      "still moving first where its title has the search, then the "
+                      "newer term, then the most of the title that is the search: "
+                      + " | ".join(tied[:3]))
+
     wrong = []
     for q, (whole, part) in _BEST_MATCH_NAMES.items():
         order = P["names"].get(q) or []
@@ -18122,7 +18203,9 @@ def _best_match_words(BP):
     return "ok", (f"{len(_BEST_MATCH_WORDS)} searches over {n} real bills: the word "
                   "itself, then a longer word, then a committee's name, in /bills, "
                   "the header, /bills on All terms and /search; 'hill' lists Hill "
-                  "and Sugar Hill before Hillsborough")
+                  "and Sugar Hill before Hillsborough; and between equals 'housing' "
+                  "opens on manufactured housing, 'office' on CACR 13, still "
+                  "moving, and 'mannion' keeps his bills in number order")
 
 
 # REAL SEARCHES, REAL BILLS (1 October 2026). The frontend check further down
@@ -18159,7 +18242,7 @@ const window = {};
 new Function("window", fs.readFileSync(matcherFile, "utf8"))(window);
 const A = window.GR_BILLMATCH;
 const C = JSON.parse(fs.readFileSync(casesFile, "utf8"));
-const need = ["queryGroups", "groupWeight", "looseness", "billKey", "indexAdd", "readShort", "spelling", "wordsAdd", "whyListed", "matchScore", "CONCEPTS", "SYN", "altRx", "wordKeys", "stem"];
+const need = ["queryGroups", "groupWeight", "looseness", "billKey", "indexAdd", "readShort", "spelling", "wordsAdd", "whyListed", "matchScore", "titleShare", "statusCat", "CONCEPTS", "SYN", "altRx", "wordKeys", "stem"];
 const lacking = need.filter(f => !A || A[f] == null);
 if (lacking.length) { out.fails.push("the matcher cut from app.js does not define " + lacking.join(", ")
   + ": it is the search as it was before it read the bills' own words"); done(); process.exit(0); }
@@ -18191,17 +18274,20 @@ else { const ws = new Set(C.known || []);
 if (!KNOWN || !A.wordsAdd(KNOWN)) out.fails.push("sidx/words.json, the words every bill uses, is not there or was refused: a misspelt search is offered nothing");
 else for (const w of C.known || []) if (!(" " + KNOWN.words + " ").includes(" " + w + " "))
   out.fails.push(`${JSON.stringify(w)} is a word bills use and is not in sidx/words.json: it would be offered as another word`);
-// What /bills?q= lists, in best-match order: find.js's findBills. The newer
-// term first among equals, as both of those break a tie across terms.
+// What /bills?q= lists, in best-match order: find.js's findBills. Among
+// equals a bill still moving whose title has the search, then the newer
+// term, then the most of the title that is the search (16 October 2026),
+// as both of those break a tie.
 function search(rows, q) {
   const gs = A.readShort(A.queryGroups(q), rows), hit = [];
   for (const b of rows) {
     const sc = A.matchScore(b, gs);
     if (!sc) continue;
-    hit.push([A.looseness(b, gs), -sc, A.billKey(b), b, A.whyListed(b, gs), gs.length]);
+    const share = A.titleShare(b, gs), live = share > 0 && A.statusCat(b) === "In Progress" ? 1 : 0;
+    hit.push([A.looseness(b, gs), -sc, A.billKey(b), b, A.whyListed(b, gs), gs.length, share, live]);
   }
   const newer = (x, y) => { const a = String(x[3].term || ""), b = String(y[3].term || ""); return a < b ? 1 : a > b ? -1 : 0; };
-  hit.sort((x, y) => x[0] - y[0] || x[1] - y[1] || newer(x, y) || x[2][0] - y[2][0] || x[2][1] - y[2][1]);
+  hit.sort((x, y) => x[0] - y[0] || x[1] - y[1] || y[7] - x[7] || newer(x, y) || y[6] - x[6] || x[2][0] - y[2][0] || x[2][1] - y[2][1]);
   return hit;
 }
 const fails = out.fails, stale = out.stale, said = q => JSON.stringify(q);

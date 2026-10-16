@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.202
+// GRANITE_VERSION: 2026-09-07.203
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -111,6 +111,10 @@ const STATUSCATS=Object.keys(WORDBOOK.chips.category);
 const catsOffered=(have,chosen)=>STATUSCATS.filter(c=>have.has(c)||chosen.has(c));
 // Each in its chip's class, in the sidebar and in a record page's select.
 const CATCLASS=Object.assign(Object.create(null),WORDBOOK.chips.category);
+// BILLMATCH:BEGIN -- a bill's category, which best match reads to put a bill
+// still moving first (sortRows, 16 October 2026); see the note above SYN.
+// From here, and not from the filter's lines above it: statusCat needs
+// nothing they declare.
 // Each word a chip can say that is not a stage, and what it is. Not
 // introduced, and the one bill only proposed for the 2006 special session
 // (HB 3, whose record says nothing after the proposal), ended there; a
@@ -155,6 +159,7 @@ function statusCat(b){
   if(!c)return "";
   return catOfChip(c)||CAT_OF_KIND[b.kind]||"In Progress";
 }
+// BILLMATCH:END
 const catCmp=(a,b)=>{const x=STATUSCATS.indexOf(a),y=STATUSCATS.indexOf(b);
   return (x<0?STATUSCATS.length:x)-(y<0?STATUSCATS.length:y);};
 // A category, or a word a chip says, in any case, as the category it is in:
@@ -1887,6 +1892,65 @@ function matchScore(b,gs){
      ||(typed.includes(" ")&&typed!==words&&b.hayT.includes(typed)))s+=2;
   return s;
 }
+/* HOW MUCH OF THE TITLE IS THE SEARCH: what best match breaks a tie by,
+   after looseness and matchScore (16 October 2026, approved by the person
+   that day). For a search of one word every bill whose title has it scores
+   the same, and the bill number decided: "housing" opened on HB 465, 530,
+   572 and 628 -- a revenue transfer, a program, a landlord's vouchers --
+   while "relative to manufactured housing" was eighth, and 42 of the
+   term's 138 housing bills shared that first place.
+   The share is the title's words that carry a subject (not the words a
+   search skips) that some part of the search has, over all of them: a word
+   counted as often as the title says it, a synonym counted as matchScore
+   counts it in a title, a phrase of the search covering each of its words.
+   "manufactured housing" is half the search; "increasing the amount of
+   revenue transfered from the real estate transfer tax to the affordable
+   housing fund" is one word in eleven.
+   A part counts as itself or with an ending (altRx), never as the start of
+   a longer word: looseness has already put those below, and read as starts,
+   "lang", typed for Sen. Lang, reordered the bills it found titled
+   "language", and "rep. watters" Sen. Watters' own two by "report" and
+   "reporting". Nor does "rep" or "senator" count at all, which the search
+   reads as the sponsor's title and not as anything a bill is about.
+   It reads the title and nothing else, so it cannot read an outcome: over
+   fourteen searches the Passed and the Died among the first ten stayed near
+   the share of each among everything listed. It was measured beside a
+   bill's topic, which names a subject for five of the fourteen searches and
+   is blind to the rest, and its latest action, which filled the first
+   places with Interim Study, whose study hearings come in the autumn -- one
+   outcome ranked above another, which the Status sort's own note forbids. */
+// altRx's pattern, to find every place a title says it.
+const RXSHARE=Object.create(null);
+const shareRx=alt=>RXSHARE[alt]||(RXSHARE[alt]=new RegExp(altRx(alt).source,"g"));
+// Worked out once for each bill and each reading of a search, as fit() is:
+// /bills sorts again for every hundred cards scrolled to and every card
+// opened, and on All terms "education" lists 4,042 bills.
+function titleShare(b,gs){
+  const of=gs._share||(gs._share=new Map());
+  let s=of.get(b);
+  if(s===undefined){s=shareNow(b,gs);of.set(b,s);}
+  return s;
+}
+function shareNow(b,gs){
+  const t=String(b.title||"").toLowerCase().replace(/-/g," ");
+  // Each word's start and end: "authority's" is one word, as it is read.
+  const at=[];
+  for(const m of t.matchAll(/[a-z0-9]+(?:['’][a-z]+)*/g))
+    if(!STOPSET.has(m[0]))at.push([m.index,m.index+m[0].length]);
+  if(!at.length)return 0;
+  const said=new Set();
+  for(const g of gs){
+    if(g.hon)continue;
+    // And two words typed that the title writes as one (WRITTEN AS ONE
+    // WORD, OR TWO, OR WITH A HYPHEN).
+    for(const a of g.joins?g.alts.concat(g.joins):g.alts)
+      if(altRx(a).test(t))for(const m of t.matchAll(shareRx(a))){
+        const end=m.index+m[0].length;
+        at.forEach((w,i)=>{if(w[0]<end&&m.index<w[1])said.add(i);});
+      }
+  }
+  return said.size/at.length;
+}
 /* WHY A BILL IS LISTED, where its title does not have the reader's word: in
    the bill's own words, never the reader's. "topic: Housing"; "in the bill's
    text" for the word typed; "text says: lavatory" for a word this file
@@ -2350,7 +2414,8 @@ const primeChosen=b=>sel.sponsor.has(b.sponsor);
 // NEWER TERM FIRST, which changes nothing in a list of one term and orders
 // the list on All terms: by number, two bills of one number (HB 1 is in
 // every term) run newest first; by best match, among bills that match
-// equally well, the newer term's come first and then by number. Without it
+// equally well, the newer term's come first (after a bill still moving) and
+// then by the share of the title and the number (sortRows). Without it
 // those came in whichever order the terms' indexes happened to arrive, and
 // /search's list of every term's bills (find.js's findBills, which orders
 // them this way) could not be the same list (24 September).
@@ -2380,15 +2445,27 @@ function sortRows(rows){
   }[sortBy]||(()=>0);
   // BEST MATCH: every word of the search as a word of the title or the
   // sponsor's name before the start of a longer one (looseness), then the
-  // most of the search in the title, then the sponsor, then the committee,
-  // and bill number within each.
+  // most of the search in the title, then the sponsor, then the committee
+  // (matchScore). Among bills that match equally well (16 October 2026): a
+  // bill still moving first, where its title has the search; then the newer
+  // term; then the most of the title that is the search (titleShare); and
+  // bill number last.
+  // "Still moving" is the one category put above another, for the reason
+  // the Status sort gives -- a reader can still do something about it -- and
+  // nothing else here reads a bill's status: Passed is not put above Died,
+  // nor Died above Interim Study. Only where the title has the search, so
+  // that a search by a sponsor's name keeps their bills in number order.
+  // The newer term before the share, so that All terms still runs newest
+  // term first; only the newest term holds a bill still moving.
   if(sortBy==="best"){
     const gs=groupsFor(query.trim());
     const lo=new Map(rows.map(b=>[b,looseness(b,gs)]));
     const sc=new Map(rows.map(b=>[b,scoreOf(b)]));
+    const sh=new Map(rows.map(b=>[b,titleShare(b,gs)]));
+    const live=b=>sh.get(b)>0&&statusCat(b)==="In Progress"?1:0;
     const num=(a,b)=>{const x=billKey(a),y=billKey(b);return x[0]-y[0]||x[1]-y[1];};
     return rows.slice().sort((a,b)=>lo.get(a)-lo.get(b)||sc.get(b)-sc.get(a)
-      ||newerTerm(a,b)||num(a,b));
+      ||live(b)-live(a)||newerTerm(a,b)||sh.get(b)-sh.get(a)||num(a,b));
   }
   return rows.slice().sort(by);
 }

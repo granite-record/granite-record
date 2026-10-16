@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-16.24
+// GRANITE_VERSION: 2026-09-16.25
 /* FIND ANYTHING, FROM THE HEADER (16 September, asked for in these words:
    "a search icon in the header that lets you search for anything including
    legislators, committees, towns, and bills ... searching Litchfield would
@@ -410,7 +410,9 @@ function _fbillApi(){
     return {queryGroups,groupWeight,billNumbers,billKey,looseness,indexAdd,
             readShort,whyListed,spelling,wordsAdd,
             knownWord:typeof knownWord==="function"?knownWord:null,
-            matchScore:typeof matchScore==="function"?matchScore:null};
+            matchScore:typeof matchScore==="function"?matchScore:null,
+            titleShare:typeof titleShare==="function"?titleShare:null,
+            statusCat:typeof statusCat==="function"?statusCat:null};
   return window.GR_BILLMATCH||null;
 }
 const _fdata=f=>new URL(f,location.origin+"/").href;
@@ -495,7 +497,13 @@ function findBillsLoadAll(){
    would with ?term=all. A bill number is unique only within a term, so
    there the ties between terms go to the newer term -- app.js's sortRows
    breaks them the same way -- which puts this term's answer ahead of
-   1995's. */
+   1995's.
+   Among bills that match equally well, a bill still moving whose title has
+   the search comes first, and after the newer term the most of the title
+   that is the search (16 October 2026): the matcher's own titleShare() and
+   statusCat(), in sortRows' order, so that "housing" opens here on the
+   bills /bills opens on. A matcher from before them, still in a reader's
+   cache, breaks the tie by number as it did. */
 function findBills(q,limit,allTerms){
   const s=(q||"").trim();
   if(!s)return null;
@@ -529,13 +537,17 @@ function findBills(q,limit,allTerms){
       if(gs.length>1&&b.hayT.includes(words))sc+=2;
       loose=A.looseness(b,gs);
     }
-    hit.push([sc,A.billKey(b),b,loose]);
+    // The title's share of the search, and 1 for a bill still moving whose
+    // title has it: sortRows' `sh` and `live`.
+    const share=gs&&A.titleShare?A.titleShare(b,gs):0;
+    const live=share>0&&A.statusCat&&A.statusCat(b)==="In Progress"?1:0;
+    hit.push([sc,A.billKey(b),b,loose,share,live]);
   }
   const newer=(x,y)=>{const a=String(x[2].term||""),b=String(y[2].term||"");
     return a<b?1:a>b?-1:0;};
   const num=(x,y)=>x[1][0]-y[1][0]||x[1][1]-y[1][1];
   hit.sort(ids?(x,y)=>num(x,y)||newer(x,y)
-    :(x,y)=>x[3]-y[3]||y[0]-x[0]||newer(x,y)||num(x,y));
+    :(x,y)=>x[3]-y[3]||y[0]-x[0]||y[5]-x[5]||newer(x,y)||y[4]-x[4]||num(x,y));
   const top=hit.slice(0,limit==null?3:limit).map(h=>h[2]);
   // Why each row shown is listed, where its title does not have the word.
   const why=new Map();
