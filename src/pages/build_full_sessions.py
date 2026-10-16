@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-10.8
+# GRANITE_VERSION: 2026-10-10.9
 """
 The House and the Senate as committees of the whole: a card at the top of
 each column of /committees, and a page for each chamber's session days.
@@ -283,7 +283,7 @@ SCRIPT = """<script>
     if(c.bills)said.push(plural(c.bills,"bill"));
     if(c.roll_calls)said.push(plural(c.roll_calls,"roll call"));
     (d.videos||[]).forEach(function(v){
-      var pid="c"+String(d.date).replace(/-/g,"")+"_"+String(v).replace(/[^\w-]/g,"");
+      var pid="c"+String(d.date).replace(/-/g,"")+"_"+String(v).replace(/[^\\w-]/g,"");
       pl+='<div class="player" data-player="'+esc(pid)+'"><button type="button" class="pstub" data-title="'
         +esc("Recording of the "+word+", "+long(d.date))+'" data-embed="'+esc(v)+'|0|'+esc(pid)+'">'
         +'<span>'+(typeof icon==="function"?icon("play"):"")+'</span><span>Play the recording</span></button>'
@@ -330,7 +330,7 @@ SCRIPT = """<script>
   // A day the address names (a session day's trail leads here at
   // #day-<date>) is opened, as a committee's meeting is.
   function opened(){
-    var m=/^#day-(\d{4}-\d\d-\d\d)$/.exec(location.hash||"");
+    var m=/^#day-(\\d{4}-\\d\\d-\\d\\d)$/.exec(location.hash||"");
     var d=m&&document.getElementById("day-"+m[1]);
     if(d&&d.tagName==="DETAILS"){d.open=true;}
   }

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.575
+# GRANITE_VERSION: 2026-09-04.576
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -1799,6 +1799,31 @@ def _git_hidden(root=None):
     untracked = [p for p in loose.stdout.split("\0")
                  if p and "__pycache__/" not in p and not p.endswith(".pyc")]
     return hidden, untracked
+
+
+@check("files", "no Python file holds an escape a future Python will refuse")
+def _no_invalid_escapes():
+    """A backslash before a letter Python gives no meaning, inside a string that
+    is not raw, is kept as it stands today and is a SyntaxWarning that a later
+    Python turns into an error. build_full_sessions.py carried two, in the
+    JavaScript its SCRIPT writes (/[^\\w-]/ and /^#day-(\\d{4}...)$/), and
+    every build printed the warning to a log nobody reads (16 October 2026).
+    Doubled, the string is the same; compiled here, every code file is held to
+    it, so the next one fails here rather than on the night Python moves."""
+    import warnings
+    bad = []
+    for f in _paths.code_files():
+        with warnings.catch_warnings(record=True) as seen:
+            warnings.simplefilter("always")
+            try:
+                compile(f.read_text(encoding="utf-8"), str(f), "exec")
+            except SyntaxError as e:
+                bad.append(f"{f.name}:{e.lineno}: {e.msg}")
+                continue
+        bad += [f"{f.name}:{w.lineno}: {w.message}" for w in seen
+                if issubclass(w.category, SyntaxWarning)]
+    assert not bad, "; ".join(bad[:6])
+    return "ok", "every code file compiles without a SyntaxWarning"
 
 
 @check("files", "git sees all the code: no tracked code path is caught by .gitignore, and "
