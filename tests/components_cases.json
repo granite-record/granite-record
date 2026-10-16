@@ -188,6 +188,8 @@
     {"args": ["Retained in committee", ""], "want": "Retained"},
     {"args": ["In committee"], "want": "In Committee"},
     {"args": ["Passed both chambers, goes to the voters in November 2026", ""], "want": "To the Voters"},
+    {"args": ["Passed both chambers, went to the voters in November 2026", "Hpp--"], "want": "To the Voters"},
+    {"args": ["Passed both chambers, went to the voters", ""], "want": "To the Voters"},
     {"args": ["Passed one chamber", "Hp---"], "want": "Passed House"},
     {"args": ["Passed one chamber", "Spp--"], "want": "Passed House"},
     {"args": ["In progress", "Hpp--"], "want": "Passed Senate"},
