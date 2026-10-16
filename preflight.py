@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.572
+# GRANITE_VERSION: 2026-09-04.573
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -77562,6 +77562,56 @@ def _reports_keep_terms(fetch_reports_db, senate_hearing_reports):
                for e in kit["kit"]), "the kit does not carry db/term/, so GitHub's build would not"
     return "ok", ("a 2027 run keeps 2025-2026 and is judged against 2027 alone; a frozen term "
                   "supplies only what the current dump lacks; the kit carries it")
+
+
+@check("build", "the longest pairs of versions, compared in processes of their own, give what the "
+       "loop gives, keyed as the loop meets them, and the loop refuses one it never took",
+       needs=("build_bill_versions", "bill_blocks"))
+def _bill_versions_early(BV, BB):
+    """compare_early hands the few pairs whose words multiply past BIG_PAIR --
+    HB 2 of 2025's four, 3.3 to 8.9 billion, against 0.27 billion for the next
+    pair of the term -- to a pool of processes, and main() takes each where it
+    would have compared it. Here BIG_PAIR is lowered so a fixture's pairs
+    qualify: the pool's answers must be compare()'s for the same two versions,
+    keyed by the order the loop meets them in (the amendment set aside, the
+    versions sorted), and at the real mark the fixture's pairs stay in the
+    loop. Marks are exercised too: each version carries its blocks."""
+    def v(label, sort, date, words):
+        return {"label": label, "sort": sort, "date": date, "text": " ".join(words),
+                "blocks": BB.blocks("".join(f'<p class="csABCDEF12"><span class="csABCDEF12">'
+                                            f"{w} of the act</span></p>" for w in words))}
+    base = [f"word{i}" for i in range(60)]
+    per = {("HB9", "2025"): [v("As Amended by the House", 2, "03/01/2025",
+                               base[:40] + ["new"] + base[40:]),
+                             v("OLS Release", 0, "02/01/2025", ["amend"] * 30),
+                             v("Introduced", 1, "01/01/2025", base),
+                             v("As Amended by the Senate", 3, "05/01/2025", base[:10] + base[20:])],
+           ("SB3", "2026"): [v("Introduced", 1, "01/01/2026", base),
+                             v("As Amended by the Senate", 3, "02/01/2026", base[5:])]}
+    want = {}
+    for (bill, year), vs in per.items():
+        vs, _ = BV.ordered(vs)
+        assert all(x["label"] != "OLS Release" for x in vs), "an amendment was diffed as a version"
+        for i in range(len(vs) - 1):
+            want[(bill, year, i)] = BV.compare(vs[i], vs[i + 1])
+    assert len(want) == 3 and any(r[1] for r in want.values()), \
+        "the fixture's pairs have no marks to compare"
+    assert BV.compare_early(per) == {}, "a short pair was sent to the pool at the real mark"
+    was = BV.BIG_PAIR
+    try:
+        BV.BIG_PAIR = 1
+        early = BV.compare_early(per)
+    finally:
+        BV.BIG_PAIR = was
+    src = _paths.locate("build_bill_versions.py").read_text(encoding="utf-8")
+    assert "early.pop((bill, year, i), None)" in src and "were not met by the" in src, \
+        "main() no longer takes the early pairs where it meets them, or no longer refuses a left one"
+    if (os.cpu_count() or 1) < 2:
+        assert early == {}, "a pool was started on one processor"
+        return "ok", "one processor: nothing compared ahead, and the loop does it all as before"
+    assert early == want, ("the pool's answers are not the loop's", sorted(early), sorted(want))
+    return "ok", ("three pairs of two bills compared in a pool equal compare()'s, keyed as the "
+                  "loop meets them, marks and all; at the real mark nothing short is sent")
 
 
 @check("build", "a past term's bill versions outlive the database's current views",

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-09.12
+# GRANITE_VERSION: 2026-09-09.13
 """
 Every version of a bill, in order, and what each amendment changed.
 
@@ -66,8 +66,10 @@ import _paths  # noqa: E402,F401
 
 import argparse
 import collections
+import concurrent.futures
 import difflib
 import json
+import os
 import re
 
 import bill_blocks
@@ -187,6 +189,64 @@ def runs(a, b):
     return out
 
 
+def compare(a, b):
+    """One version against the next: (runs, marks, m_added, m_removed)."""
+    r = runs(a["text"], b["text"])
+    mk, m_add, m_rem = (bill_blocks.marks(a["blocks"], b["blocks"])
+                        if a.get("blocks") and b.get("blocks") else ([], 0, 0))
+    return r, mk, m_add, m_rem
+
+
+# THE FEW VERY LONG PAIRS, AT ONCE (16 October 2026, private/BUILD_SPEED.md).
+# A word diff with autojunk off grows with the product of the two lengths,
+# and the budget's are of another order: HB 2 of 2025's four longest pairs
+# multiply to 3.3 to 8.9 billion, the next pair of the term to 0.27 billion,
+# and those four took 302 of the 377 seconds of diffing on the laptop, one
+# after another. They are compared first, in processes of their own, longest
+# first, by the compare() the loop uses, and the loop takes each result where
+# it would have computed it: the same function on the same two versions, so
+# the same output by construction, and the scratch build of 16 October was
+# byte for byte the build before it. A pair below BIG_PAIR stays in the loop,
+# where a process would cost more to start than it saves.
+BIG_PAIR = 1_000_000_000
+POOL_MOST = 4
+
+
+def ordered(vs):
+    """(versions, amendments) of one bill, as the loop diffs them."""
+    amendments = [v for v in vs if v["label"] in AMENDMENT_LABELS]
+    vs = [v for v in vs if v["label"] not in AMENDMENT_LABELS]
+    vs.sort(key=lambda v: (v["sort"], v["date"]))
+    amendments.sort(key=lambda v: v["date"])
+    return vs, amendments
+
+
+def compare_early(per):
+    """{(bill, year, i): compare()} of the pairs whose words multiply past
+    BIG_PAIR, computed in a pool; {} where there are fewer than two of them or
+    one processor, which the loop does as before."""
+    big = []
+    for key, vs in per.items():
+        vs, _ = ordered(vs)
+        for i in range(len(vs) - 1):
+            a, b = vs[i]["text"], vs[i + 1]["text"]
+            # Characters first: no pair has more words than characters, so a
+            # pair short of the mark in characters is short of it in words.
+            if len(a) * len(b) < BIG_PAIR:
+                continue
+            n = len(WORD.findall(a)) * len(WORD.findall(b))
+            if n >= BIG_PAIR:
+                big.append((n, key, i, vs[i], vs[i + 1]))
+    cpus = os.cpu_count() or 1
+    if len(big) < 2 or cpus < 2:
+        return {}
+    big.sort(key=lambda x: -x[0])
+    with concurrent.futures.ProcessPoolExecutor(
+            max_workers=min(POOL_MOST, len(big), cpus)) as pool:
+        futures = {(*key, i): pool.submit(compare, va, vb) for _, key, i, va, vb in big}
+        return {k: f.result() for k, f in futures.items()}
+
+
 def read_versions(folder, C, order, unknown):
     """{(bill, year): [version]} out of one dump's LegislationText, joined to
     the same dump's Legislation."""
@@ -278,6 +338,8 @@ def main():
     order = json.loads((DB / "document_versions.json").read_text(encoding="utf-8"))
     unknown = collections.Counter()
     per = all_versions(order, unknown)
+    # --limit stops the loop part way, so nothing is compared ahead of it.
+    early = {} if a.limit else compare_early(per)
 
     out = Path(a.site) / "versions"
     written = steps_total = texts = amds = lone = 0
@@ -291,16 +353,13 @@ def main():
         multi += 1
         if a.limit and written >= a.limit:
             break
-        amendments = [v for v in vs if v["label"] in AMENDMENT_LABELS]
-        vs = [v for v in vs if v["label"] not in AMENDMENT_LABELS]
+        vs, amendments = ordered(vs)
         if len(vs) < 2:
             # A bill whose only extra documents were amendments still has
             # something worth showing, but nothing to diff.
             lone += 1
             if not amendments:
                 continue
-        vs.sort(key=lambda v: (v["sort"], v["date"]))
-        amendments.sort(key=lambda v: v["date"])
         # A label used twice in one bill gets its date, so the two can be told
         # apart on a page that lists them.
         seen = collections.Counter(v["label"] for v in vs)
@@ -309,7 +368,6 @@ def main():
                           if seen[v["label"]] > 1 else v["label"])
         steps = []
         for i in range(len(vs) - 1):
-            r = runs(vs[i]["text"], vs[i + 1]["text"])
             # MARKS BESIDE RUNS, not instead of them. runs is the comparison
             # as an excerpt -- changed passages with context, the unchanged
             # bulk elided. marks is the same comparison expressed as positions
@@ -324,10 +382,8 @@ def main():
             # the "+N -N words" line; recomputing them from a different stream
             # would change numbers the site already states on 1,149 bills for
             # no reader-visible gain.
-            mk, m_add, m_rem = ((bill_blocks.marks(vs[i]["blocks"],
-                                                   vs[i + 1]["blocks"]))
-                                if vs[i].get("blocks") and vs[i + 1].get("blocks")
-                                else ([], 0, 0))
+            got = early.pop((bill, year, i), None)
+            r, mk, m_add, m_rem = got if got else compare(vs[i], vs[i + 1])
             steps.append({
                 "from": i, "to": i + 1,
                 "added": sum(len(t.split()) for op, t in r if op == "+"),
@@ -416,6 +472,11 @@ def main():
                                 "amendments": len(amendments),
                                 "steps": len(steps)}
         written += 1
+    # A pair compared early that the loop never took is a pair whose diff
+    # went nowhere: the two lists of versions came out in different orders.
+    if early:
+        raise SystemExit(f"STOP: {len(early)} pair(s) compared ahead were not met by the "
+                         f"loop, e.g. {next(iter(early))}; nothing more is written")
 
     # A MANIFEST, SO THE PAGE KNOWS BEFORE IT ASKS. Only 1,149 of 2,234 bills
     # have a second version, so a Versions tab on every bill would be a tab
