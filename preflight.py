@@ -41597,6 +41597,14 @@ _STATUS_CATEGORY = {
     "Passed both chambers, goes to the voters": "In Progress",
     "Passed both chambers, goes to the voters in November 2026": "In Progress",
     "Passed both chambers, goes to the voters in November 2028": "In Progress",
+    # Nor have they, as far as the record says, from the day after the
+    # election until a person types the count in, and the line says "went"
+    # (the release review of 16 October 2026: CACR 13 from 4 November 2026,
+    # and, if its term closes first, the line with no November in it). The
+    # same category as the day before; _cacr_went_to_the_voters.
+    "Passed both chambers, went to the voters": "In Progress",
+    "Passed both chambers, went to the voters in November 2026": "In Progress",
+    "Passed both chambers, went to the voters in November 2028": "In Progress",
     # Ended: never introduced, only proposed for the 2006 special session
     # (HB 3, whose record says nothing after it), turned down at the ballot.
     "Proposed for the special session": "Died", "Not introduced": "Died",
@@ -41704,6 +41712,8 @@ def _status_categories(B):
                 pairs.add((B.chip_word(kind, status, live), kind))
     for w in ("Adopted by the House", "Adopted by the Senate", "Adopted by both chambers",
               "Passed both chambers, goes to the voters",
+              "Passed both chambers, went to the voters",
+              "Passed both chambers, went to the voters in November 2026",
               "Passed both chambers, ratified by the voters",
               "Passed both chambers, not ratified by the voters"):
         for live in (False, True):
@@ -41715,9 +41725,11 @@ def _status_categories(B):
     words = sorted(_STATUS_CATEGORY) + _STATUS_CATS + [c.lower() for c in _STATUS_CATS] \
         + ["IN PROGRESS", "  Passed ", "", "Killed", "constructor", "__proto__", "toString",
            "Filed as a request", "nonsense", "in committee", "became law",
-           "adopted by the house", "passed both chambers, goes to the voters in november 2030"]
+           "adopted by the house", "passed both chambers, goes to the voters in november 2030",
+           "passed both chambers, went to the voters in november 2030"]
     lower = {k.lower(): v for k, v in _STATUS_CATEGORY.items()}
     lower["passed both chambers, goes to the voters in november 2030"] = "In Progress"
+    lower["passed both chambers, went to the voters in november 2030"] = "In Progress"
     got = _node_app(_STATUSCAT_HARNESS, {
         "pairs.json": json.dumps(sorted(pairs)), "words.json": json.dumps(words)})
     if got is None:
@@ -41786,6 +41798,98 @@ def _status_categories_built():
     assert not bad, "; ".join(bad[:6])
     return "ok", (f"{bills:,} bills of the built site, {len(pairs)} pairs of chip and kind, "
                   "each filed by its word or its kind")
+
+
+@check("frontend", "a constitutional amendment whose election has passed, and whose count is not "
+                   "in yet, keeps the category and the card's word it had the day before: In "
+                   "Progress, To the Voters", needs=("build_site_v2", "member_figures"))
+def _cacr_went_to_the_voters(B, MF):
+    """THE NIGHT OF 4 NOVEMBER 2026 (a finding of the release review of 16
+    October 2026, confirmed). CACR 13 of 2025-2026 goes to the voters on 3
+    November 2026; from the next day build_site_v2.cacr_to_the_voters says it
+    "went to the voters in November 2026", and says so until a person types
+    the count into corrections/ballot_results.json. Two checks the night runs
+    on its built site did not know those words: _status_categories_built
+    found no category written down for them, and app.js filed them by the
+    kind, adopted, under Passed, whatever two thirds of the voters said;
+    _card_words_short found the card saying them in nine words. Both hold the
+    night, so every night from the 4th would have held for approval and
+    every dry run said NOT CLEAN.
+
+    Held as the night builds it: bill_disposition, as build_bills calls it
+    with no day of its own, over CACR 13's own docket rows (Docket.txt, as
+    _between_chambers quotes them), its own text's election and its own row
+    of ballot_results.json with no count in it, the build's day stated as
+    build_date reads one. On election day the line goes; on the day after it
+    went; once its term has closed it went with no November named. Each
+    line's chip, in session and out, must be filed by app.js's statusCat by
+    its word, not its kind, under the category of the day before
+    (_STATUS_CATEGORY), as member_figures files it, and come out of
+    components.card_word as To the Voters: what _status_categories_built and
+    _card_words_short ask of every chip the built site carries."""
+    import build_date
+    import components as C
+    rows = json.loads(Path(B.BALLOTS).read_text(encoding="utf-8"))["rows"]
+    own = next((r for r in rows if (r.get("term"), r.get("bill")) == ("2025-2026", "CACR13")),
+               None)
+    assert own, f"{B.BALLOTS} no longer holds CACR 13 of 2025-2026"
+    assert own["election"] == "2026-11-03" == B.election_day(2026).isoformat(), (
+        f"CACR 13's row says its election is {own['election']}, not 3 November 2026")
+    # Until the count is typed in; the row as it stands may hold it by now.
+    ballot = {**own, "yes": None, "no": None}
+    st = {"gen_status": "SENATE", "senate_status": "PASSED/ADOPTED", "body": "H"}
+    n = _nar(_ev("H", "Introduced 01/07/2026 and referred to Judiciary", "introduced"),
+             _ev("H", "Ought to Pass: MA DV 325-15 By Necessary Three-Fifths Vote 02/05/2026",
+                 "floor", "MA", "Ought to Pass"),
+             _ev("S", "Ought to Pass, RC 23Y-1N, MA, by Necessary 3/5; OT3rdg; 03/26/2026"))
+    text = ("That the above amendments proposed to the constitution be submitted to the "
+            "qualified voters of the state at the state general election to be held in "
+            "November, 2026.")
+    goes = "Passed both chambers, goes to the voters in November 2026"
+    want = {("2026-11-03", "2025-2026"): goes,
+            ("2026-11-04", "2025-2026"): "Passed both chambers, went to the voters in November 2026",
+            ("2027-01-06", "2027-2028"): "Passed both chambers, went to the voters"}
+    was = os.environ.get(build_date.ENV)
+    got = {}
+    try:
+        for (day, current), _w in want.items():
+            os.environ[build_date.ENV] = day
+            d = B.bill_disposition({}, "CACR13", st, n, [], "2025-2026", current,
+                                   term_over=True, text=text, ballot=ballot)
+            got[(day, current)] = (d.kind, d.status)
+    finally:
+        if was is None:
+            os.environ.pop(build_date.ENV, None)
+        else:
+            os.environ[build_date.ENV] = was
+    bad = [f"on {day} (current term {cur}) CACR 13 says {g!r}, not {('adopted', w)!r}"
+           for (day, cur), w in want.items() for g in [got[(day, cur)]] if g != ("adopted", w)]
+    assert not bad, "; ".join(bad)
+    chips = sorted({B.chip_word(k, s, live) for k, s in got.values() for live in (False, True)})
+    pairs = [[c, "adopted"] for c in chips]
+    day_before = _STATUS_CATEGORY[goes]
+    for c in chips:
+        if _STATUS_CATEGORY.get(c) != day_before:
+            bad.append(f"{c!r} is filed under {_STATUS_CATEGORY.get(c)!r} here, not "
+                       f"{day_before!r} as the day before")
+        if MF.status_category({"chip": c, "kind": "adopted"}) != day_before:
+            bad.append(f"member_figures files {c!r} under "
+                       f"{MF.status_category({'chip': c, 'kind': 'adopted'})!r}")
+        if C.card_word(c, "Hpp--") != C.card_word(goes, "Hpp--") or \
+                C.card_word(c, "Hpp--") != "To the Voters":
+            bad.append(f"a card says {c!r} as {C.card_word(c, 'Hpp--')!r}, not 'To the Voters'")
+    ran = _node_app(_STATUSCAT_HARNESS, {"pairs.json": json.dumps(pairs), "words.json": "[]"})
+    if ran is not None:
+        assert "threw" not in ran, f"statusCat threw {ran['threw']}"
+        for chip, _kind, cat, by_word, _by_kind in ran["pairs"]:
+            if not by_word:
+                bad.append(f"app.js files {chip!r} by its kind, as {cat!r}, not by its word")
+            elif cat != day_before:
+                bad.append(f"app.js files {chip!r} under {cat!r}, not {day_before!r}")
+    assert not bad, "; ".join(bad[:6])
+    return "ok", (f"CACR 13 goes on 3 November 2026 and went from the 4th; {len(chips)} lines, "
+                  f"each {day_before} by its word in app.js and member_figures and To the Voters "
+                  "on its card" + ("" if ran is not None else " (app.js or node is not here)"))
 
 
 # The bill search as bills.html runs it, in node: meta.json and three terms'
@@ -53012,6 +53116,12 @@ def _card_words_short():
         except (OSError, ValueError):
             continue
         words |= {r.get("chip") for r in rows if r.get("chip")}
+    # And the words no index carries until an election has passed: CACR 13's
+    # from the night of 4 November 2026 (the release review of 16 October
+    # 2026), which this check on the night's built site would have failed
+    # every night from then (_cacr_went_to_the_voters).
+    words |= {"Passed both chambers, went to the voters in November 2026",
+              "Passed both chambers, went to the voters"}
     bad = []
     for w in sorted(words):
         for passage in ("Hp---", "Hpp--", "S----", ""):
@@ -53023,6 +53133,8 @@ def _card_words_short():
     assert not bad, f"{len(bad)} chips a card would say at length: " + "; ".join(sorted(set(bad))[:6])
     assert C.card_word("Passed one chamber", "Hp---") == "Passed House"
     assert C.card_word("Passed both chambers, goes to the voters in November 2028", "") == "To the Voters"
+    assert C.card_word("Passed both chambers, went to the voters in November 2026", "Hpp--") == \
+        "To the Voters", "an amendment whose election has passed is not To the Voters on its card"
     head = app[app.index("function billHead("):app.index("function billHead(") + 3000]
     assert 'chip(chipOf(b),`cstat ${chipCls(b)}`,"m")' in head, (
         "the bill's own head no longer draws its chip's full word")

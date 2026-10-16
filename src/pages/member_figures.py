@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-09.1
+# GRANITE_VERSION: 2026-10-09.2
 """
 A member's term at a glance: the figures a member's page heads its term with.
 
@@ -54,13 +54,17 @@ CAT_OF_KIND = {"active": "In Progress", "law": "Passed", "adopted": "Passed",
 
 
 def cat_of_chip(chip):
-    """app.js catOfChip."""
+    """app.js catOfChip. An amendment that went to the voters and whose
+    count is not in yet is where it was before its election (the release
+    review of 16 October 2026): filed by its kind, adopted, it was a bill
+    the member passed from the day after the vote, whatever the vote was."""
     s = str(chip or "")
     if s in CAT_OF_CHIP:
         return CAT_OF_CHIP[s]
     if s.startswith("Adopted by "):
         return "Passed"
-    if s.startswith("Passed both chambers, goes to the voters"):
+    if s.startswith(("Passed both chambers, goes to the voters",
+                     "Passed both chambers, went to the voters")):
         return "In Progress"
     return ""
 

@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.202
+// GRANITE_VERSION: 2026-09-07.203
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -142,11 +142,20 @@ const CAT_OF_KIND=Object.assign(Object.create(null),{active:"In Progress",
 // the words above, any resolution adopted (Adopted by the House, by the
 // Senate, by both chambers) and an amendment still going to the voters,
 // whatever November its line names.
+//
+// AND ONE THAT WENT TO THEM, WHOSE ANSWER IS NOT IN (the release review of 16
+// October 2026). From the day after its election the same amendment says
+// "went to the voters" (build_site_v2.cacr_to_the_voters) until a person
+// types the count into ballot_results.json, and then Ratified or Not
+// Ratified. Its kind is adopted, so it fell to CAT_OF_KIND and read Passed:
+// CACR 13 would have been filed under Passed on 4 November 2026 whatever two
+// thirds of the voters said. Nothing has concluded that the record knows of,
+// so it stays where it was the day before.
 function catOfChip(c){
   const s=String(c||"");
   if(CAT_OF_CHIP[s])return CAT_OF_CHIP[s];
   if(/^Adopted by /.test(s))return "Passed";
-  if(/^Passed both chambers, goes to the voters/.test(s))return "In Progress";
+  if(/^Passed both chambers, (?:goes|went) to the voters/.test(s))return "In Progress";
   return "";
 }
 // "" for a row with no chip -- a request, which is not a bill yet.
