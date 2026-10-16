@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.70
+# GRANITE_VERSION: 2026-09-05.71
 """
 Run the whole pipeline in the right order.
 
@@ -389,6 +389,21 @@ def plan(a):
              ["build_data.py", "--dir", ".", "--out", "data"],
              needs=["Docket.txt"], produces=["data/bills.json"], again=True,
              note="picks up the names and titles the two steps above found"),
+
+        # AFTER build_data, whose data/bills.json says which bills a term has,
+        # and BEFORE every reader of bill_text.json: the topics, archive_text,
+        # the related bills, the statutes, the search and the site. No network:
+        # the dump the night takes every night (nightly.TERM_VIEWS), or the
+        # laptop's own. It adds nothing while the web fetch is whole; it is
+        # there for the bills printed since, which in January is the new term.
+        Step("the text of bills the web fetch has not read, from the database",
+             ["bill_text_from_db.py"],
+             needs=["data/bills.json", "db/Legislation.psv", "db/LegislationText.psv",
+                    "db/_columns.json"],
+             note="each bill's current printing, read with the parser "
+                  "fetch_bill_text uses (bill_page), for the bills bill_text.json "
+                  "has no web record of; marked \"source\": \"database\", and a "
+                  "web record is never touched"),
 
         # AFTER build_data, because it reads data/bills.json, and before
         # build_site_v2, which merges its answers in. Regenerated every run

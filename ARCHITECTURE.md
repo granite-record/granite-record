@@ -168,7 +168,9 @@ the archived terms it holds stay). Until then these came from the laptop alone,
 as it last fetched them. Each is taken whole or not at all; one not taken is a
 warning the gate never holds a night for, and the site goes out with the copy
 it had. They are the night's files in the kit. Not on a New term run, whose
-term turns under them; the freeze keeps the finished term's.
+term turns under them; the freeze keeps the finished term's. The texts reach
+the bill pages too: `bill_text_from_db.py` fills `bill_text.json` from them for
+any bill the web fetch has not read (section 10).
 
 **When the export comes back empty.** The General Court's export has come back
 empty on whole nights. When it does and nothing else is wrong, the night
@@ -1412,6 +1414,26 @@ Across all 2,234 bills of the current term the scraped `text_id` equals
 absent. The equality is not circular: `fetch_status_db.py` leaves all three
 fields out of what it fills, and `fetch_bill_status.py` reads them out of the
 page's own link.
+
+**The text itself, from the database (16 October 2026).**
+`src/parse/bill_text_from_db.py` reads each bill's current printing out of
+`LegislationText` -- the chaptered text, else the version adopted by both
+bodies, else the latest amended printing, else the introduced one; never an
+`OLS Release` row, which is an amendment and not a printing -- with
+`bill_page.parse_text`, the parser `fetch_bill_text.py` reads the web pages
+with. The parser moved out of the fetcher for this, line for line, so the two
+share it without the reader importing anything that asks the network; it gives
+the same record as before for all 2,234 saved pages and all 6,825 printings.
+Over the 2,234 bills both hold, the chosen printing is the web page's version
+for every one, and the record is the web's for 2,192; the other 42 have the
+same words and lose a line break the dump turned into a space. It adds a
+record only for a bill `bill_text.json` has no web record of, marked
+`"source": "database"` with the printing's `printed` stamp, refreshes its own
+records each run, and never touches a web record. So a bill printed since the
+last web fetch -- in January, the whole new term -- has its text after the
+next night, with no request to `bs2016`. A web record the database has since
+printed past is left as it is: whether the newer printing should replace it is
+a decision, and `--check` counts them.
 
 `LegislationText.LegislationTextID` is a different id space -- HB1442 is
 `legislationID` 1937 and has seven `LegislationTextID`s, 23441 among them --

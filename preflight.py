@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.571
+# GRANITE_VERSION: 2026-09-04.572
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -16274,7 +16274,8 @@ def _status_own_term(build_data):
 def _chrome_spares_statute():
     """682 words of statute were deleted from five bills by a menu heading.
 
-    fetch_bill_text.CHROME lists the General Court's page furniture so a bill
+    bill_page.CHROME (fetch_bill_text's until 16 October 2026) lists the
+    General Court's page furniture so a bill
     can be told apart from a navigation page, and strip_chrome drops any LINE
     that contains one of those phrases. The body of a bill is rendered a
     paragraph to a line, so a paragraph containing one of them went entirely.
@@ -16296,9 +16297,9 @@ def _chrome_spares_statute():
     No data on disk and no network: the samples below are the real sentences,
     so this runs under --code.
     """
-    f = imp("fetch_bill_text")
+    f = imp("bill_page")
     if f is None:
-        return "skip", "fetch_bill_text will not import"
+        return "skip", "bill_page will not import"
     statute = (
         'II. "Real property" means property consisting of land, buildings, '
         "crops, or other resources still attached to or within the land or "
@@ -16334,7 +16335,8 @@ def _chrome_spares_statute():
 def _version_is_not_the_fiscal_note():
     """SB139 and SB290 were published as fiscal notes. They are not.
 
-    fetch_bill_text takes the FIRST line matching VERSION_RE as the version,
+    bill_page.parse_text, which fetch_bill_text and bill_text_from_db both
+    read printings with, takes the FIRST line matching VERSION_RE as the version,
     so a heading shape the pattern does not accept is not a missing version --
     it is the wrong one. A bill carrying a fiscal note prints a section
     heading like "SB 290-FN- FISCAL NOTE" partway down, and that line matches
@@ -16353,9 +16355,9 @@ def _version_is_not_the_fiscal_note():
 
     The samples are the real lines, so this needs nothing on disk.
     """
-    f = imp("fetch_bill_text")
+    f = imp("bill_page")
     if f is None:
-        return "skip", "fetch_bill_text will not import"
+        return "skip", "bill_page will not import"
     for line, want in (("SB - AS INTRODUCED", "AS INTRODUCED"),
                        ("SB 139 -FN - AS INTRODUCED", "AS INTRODUCED"),
                        ("HB 1442-FN - AS AMENDED BY THE HOUSE",
@@ -16376,6 +16378,112 @@ def _version_is_not_the_fiscal_note():
         f"({got!r}), which is how SB139 and SB290 came to be published as "
         "fiscal notes")
     return "ok", "the bill's own heading wins, in all five printed shapes"
+
+
+@check("build", "the database's printings fill only the bills bill_text.json has no web record of, "
+       "with the record the web page gives and the bill's current printing, and never touch a "
+       "web record", needs=("bill_text_from_db", "bill_page", "fetch_bill_text"))
+def _bill_text_from_db(BT, BP, FB):
+    """bill_text_from_db.py, on a fixture dump of five bills. Measured on the
+    dump of 8 September: the printing it chooses is the web page's version for
+    all 2,234 bills of 2025-2026, and the record bill_page.parse_text reads off
+    it is the web's for 2,192 and the same words for the other 42 (--check says
+    it again on any dump). This holds the rules that measurement rests on: the
+    order of printings, the records it may write, and that it asks nobody."""
+    assert FB.parse_text is BP.parse_text and FB.text_of is BP.text_of, \
+        "fetch_bill_text reads the web's pages with another parser than bill_page's"
+    src = _paths.locate("bill_text_from_db.py").read_text(encoding="utf-8")
+    assert not re.search(r"^\s*(?:import|from)\s+(?:urllib|socket|http|subprocess|probe_db|"
+                         r"refusal|child|fetch_\w+)\b", src, re.M), \
+        "bill_text_from_db.py imports something that could ask the network"
+    src = _paths.locate("bill_page.py").read_text(encoding="utf-8")
+    assert not re.search(r"^\s*(?:import|from)\s+(?:urllib|socket|http|subprocess|refusal)\b",
+                         src, re.M), "bill_page.py imports something that could ask the network"
+
+    def page(bill, version, body="This bill does a thing."):
+        return (f"<p>{bill[:2]} {bill[2:]} - {version}</p><p>2025 SESSION</p>"
+                f"<p>AN ACT relative to {bill}.</p><p>SPONSORS: Rep. Smith, Hills. 1</p>"
+                "<p>COMMITTEE: Finance</p><p>------------------------------</p>"
+                f"<p>ANALYSIS</p><p>{body}</p><p>{'Be it Enacted. ' * 40}</p>")
+    lt = ["LegislationID", "HTMLText", "DocumentVersion", "DateTimeStamp"]
+    rows = [  # (id, html, version, stamp)
+        ("1", page("HB1", "AS AMENDED BY THE HOUSE"), "As Amended by the House", "03/01/2025 10:00:00"),
+        ("2", page("HB2", "AS INTRODUCED"), "Introduced", "01/05/2025 10:00:00"),
+        ("2", page("HB2", "AS AMENDED BY THE HOUSE", "Amended."), "As Amended by the House",
+         "03/01/2025 10:00:00"),
+        ("2", "<p>Amendment 2025-0001h</p>", "OLS Release", "04/01/2025 10:00:00"),
+        ("3", page("HB3", "FINAL VERSION"), "CHAPTERED FINAL VERSION", "07/23/2025 09:13:13"),
+        ("3", page("HB3", "VERSION ADOPTED BY BOTH BODIES"), "Version adopted by both bodies",
+         "07/23/2025 14:19:34"),
+        ("4", page("HB4", "AS INTRODUCED"), "Introduced", "01/05/2025 10:00:00"),
+        # An amendment the OLS released after the bill's only printing: read as
+        # a printing it would be the latest, and no bill at all.
+        ("6", page("HB6", "AS INTRODUCED"), "Introduced", "01/05/2025 10:00:00"),
+        ("6", "<p>Amendment 2025-0002h</p>", "OLS Release", "02/01/2025 10:00:00"),
+    ]
+    web = {"bill": "HB1", "year": "2025", "version": "AS INTRODUCED", "text": "ANALYSIS\nweb's"}
+    tmp = Path(tempfile.mkdtemp(prefix="gr-btdb-"))
+    try:
+        (tmp / "db").mkdir()
+        (tmp / "data").mkdir()
+
+        def dump(text_rows):
+            (tmp / "db" / "_columns.json").write_text(json.dumps({
+                "Legislation": ["sessionyear", "CondensedBillNo", "legislationID"],
+                "LegislationText": lt}), encoding="utf-8")
+            (tmp / "db" / "Legislation.psv").write_text(
+                "".join(f"2025|HB {i}|{i}\r\n" for i in "12346"), encoding="utf-8")
+            (tmp / "db" / "LegislationText.psv").write_text(
+                "".join("|".join(r) + "\r\n" for r in text_rows), encoding="utf-8")
+        dump(rows)
+        (tmp / "data" / "bills.json").write_text(json.dumps(
+            {"2025-2026": {b: {} for b in ("HB1", "HB2", "HB3", "HB5", "HB6")}}), encoding="utf-8")
+        ours = {"bill": "HB5", "source": BT.SOURCE, "text": "a bill the view no longer prints"}
+        out = tmp / "bill_text.json"
+        out.write_text(json.dumps({"2025-2026": {"HB1": web, "HB5": ours}}), encoding="utf-8")
+        added, refreshed, kept, said = BT.fill(tmp)
+        got = json.loads(out.read_text(encoding="utf-8"))["2025-2026"]
+        assert got["HB1"] == web and kept == 1, \
+            ("a web record was replaced by the database's newer printing", got["HB1"])
+        assert got["HB2"]["version"] == "AS AMENDED BY THE HOUSE" and \
+            got["HB2"]["source"] == BT.SOURCE and got["HB2"]["printed"] == "2025-03-01T10:00:00" \
+            and "Amended." in got["HB2"]["text"], \
+            ("the latest amended printing was not taken, or an OLS release was", got["HB2"])
+        assert got["HB3"]["version"] == "FINAL VERSION", \
+            ("the later-stamped printing adopted by both bodies beat the chaptered text",
+             got["HB3"].get("version"))
+        assert got.get("HB6", {}).get("version") == "AS INTRODUCED", \
+            ("an OLS release was read as the bill's latest printing", got.get("HB6"))
+        assert "HB4" not in got, "a printing of a bill data/bills.json does not have was added"
+        assert "HB5" not in got, "a record of the database's whose bill the view dropped was kept"
+        assert got["HB2"] == {**BP.parse_text(rows[2][1], "HB2", "2025"),
+                              "source": BT.SOURCE, "printed": "2025-03-01T10:00:00"}, \
+            "the record is not bill_page.parse_text's of the printing"
+        assert (added, refreshed) == (3, 0), (added, refreshed, said)
+        before = out.read_bytes()
+        assert BT.fill(tmp)[:2] == (0, 0) and out.read_bytes() == before, \
+            "a second run over the same dump wrote the file again"
+        # A newer printing replaces the database's own record of the bill.
+        dump(rows + [("2", page("HB2", "AS AMENDED BY THE SENATE", "Later."),
+                      "As Amended by the Senate", "05/01/2025 10:00:00")])
+        assert BT.fill(tmp)[:2] == (0, 1), "a newer printing did not refresh the database's record"
+        got = json.loads(out.read_text(encoding="utf-8"))["2025-2026"]
+        assert got["HB2"]["version"] == "AS AMENDED BY THE SENATE" and got["HB1"] == web
+        # A dump of another shape writes nothing and says so.
+        before = out.read_bytes()
+        (tmp / "db" / "LegislationText.psv").write_text("only|three|fields\r\n", encoding="utf-8")
+        try:
+            BT.fill(tmp)
+            raise AssertionError("a dump with no row as wide as its columns was read as empty")
+        except SystemExit as e:
+            assert "STOP" in str(e) and out.read_bytes() == before, str(e)
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    return "ok", ("a web record is kept over a newer printing; a missing bill gets its chaptered, "
+                  "then both-bodies, then latest amended printing, never an OLS release, as "
+                  "bill_page.parse_text reads it; a newer printing refreshes only the database's "
+                  "own record; a bill not in data/bills.json is left out; a second run writes "
+                  "nothing; a dump of another shape stops; neither file asks the network")
 
 
 @check("frontend", "the Bill Text tab asks for a version index only where one exists")
@@ -22668,6 +22776,12 @@ def _plan(build_all):
     steps = [s.name for s in build_all.plan(A())]
     def at(frag):
         return next(i for i, n in enumerate(steps) if frag in n)
+    assert at("build data (second pass)") < at("not read, from the database") < min(
+        at("a topic for the bills"), at("the text of every archived bill"),
+        at("related bills"), at("the statutes, and the bills"), at("for the search"),
+        at("site data")), \
+        "the database's bill text is filled in after the readers of bill_text.json, or before " \
+        "data/bills.json says which bills a term has"
     assert at("plain-language") > at("build data (second pass)"), \
         "narratives are built before the roster they now need"
     assert at("adopt boundaries") < at("site data"), \
@@ -22707,6 +22821,8 @@ ic_SOURCES = {
     "legislation": "fetch_legislation.py -- a directory of saved bill pages",
     "db/DocumentVersion.psv": "fetch_archive_db.py, which dumps the SQL views",
     "db/LegislationText.psv": "fetch_archive_db.py, which dumps the SQL views",
+    "db/Legislation.psv": "fetch_archive_db.py, which dumps the SQL views; the night's "
+                          "take_views every night",
     "db/CandH_Reports.psv": "fetch_archive_db.py, which dumps the SQL views",
     "db/Legislators.psv": "fetch_archive_db.py, which dumps the SQL views",
     "db/_columns.json": "fetch_archive_db.py, the column order of each view it dumps",
