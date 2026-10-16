@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.580
+# GRANITE_VERSION: 2026-09-04.581
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -28304,9 +28304,9 @@ def _built_site(here, root, brand=True, env=None):
         # the Senate first, as build_all runs them (2 October 2026): the
         # directory lists every day each chamber sat, so a fixture that built
         # the House's pages alone listed a Senate day with no page behind it.
-        ("build_session_pages.py", ["--site", "site", "--base", base, "--body", "S"],
-         "site/session/S"),
-        ("build_session_pages.py", ["--site", "site", "--base", base],
+        # IN ONE RUN since 16 October 2026 (private/BUILD_SPEED.md, D), --body
+        # S,H, as build_all runs it now: the sitting days are loaded once.
+        ("build_session_pages.py", ["--site", "site", "--base", base, "--body", "S,H"],
          "site/session/H"),
         # The chambers' cards on the Committees page and their pages, after
         # both chambers' term files, as build_all runs it.
@@ -54633,7 +54633,8 @@ def _committees_full_sessions():
             f"the script draws a day as {r.stdout[:200]!r}, the page as {FS.day_section('H', d)[:200]!r}")
     plan = Path("build_all.py").read_text(encoding="utf-8")
     assert plan.index('"build_full_sessions.py"') > plan.index(
-        '"a page for every day the House sat"'), "build_all draws the chambers before their pages"
+        '"a page for every day the Senate and the House sat"'), \
+        "build_all draws the chambers before their pages"
     return "ok", (f"{' and '.join(FS.CHAMBER[b] for b in bodies)} first in their columns, each "
                   f"leading to its page of every term; {n_days} days of the latest terms, newest "
                   "first, each on a built page; the script draws a day as the page does")
@@ -77836,6 +77837,196 @@ def _page_record_find(SR):
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
     return "ok", "six shapes of page, each read as INLINE reads it, the sidecar where none is inline"
+
+
+@check("session", "a journal pattern found only where it can begin is finditer's own list",
+       needs=("journal_days", "session_days"))
+def _journal_found_is_finditer(JD, SD):
+    """bill_marks and _journal_day ask journal_days.found() for each pattern,
+    which tries it only where a character of the class it is given begins a
+    match, and decisions() for DECIDED, which tries it only where a verdict
+    follows (16 October 2026, private/BUILD_SPEED.md, item C). Both were
+    proved the same as finditer over every journal block on disk; this holds
+    them to it on the journal fixtures as written, cleaned and joined, and on
+    a text with a match at its first character, matches back to back, the
+    letters re.IGNORECASE reads from outside ASCII and verdicts in every
+    case. A class short of a letter's other case, or a pattern edited to begin
+    on a letter its class does not hold, loses matches here before it loses
+    them on a page. And the two still ask: undone, the five steps that load
+    the sitting days are each slower, and nothing else would say so."""
+    odd = ("HB 1, first.\fSB 2, second.\n  HB 3-FN, third. Rep. Kurk moved that the House "
+           "reconſider its action whereby it passed SB 9. Rep. Ball moved that the House "
+           "RECONSIDER its action whereby it killed HB 4.Reps. Ohm and Lı offered the "
+           "following: RESOLVED, that. yeas 12 - nays 3YEAS 4 NAYS 5 On a division vote, 12 "
+           "members having voted in the affirmative and 4 in the negative.\nAdopted.\n\n"
+           "The report was ADOPTED. Floor amendment failed; motion LOST. Mr. Lee moved that "
+           "the House reconsider its action whereby it tabled CACR 7. İ")
+    texts = [_JOURNAL_RECONSIDER, _JOURNAL_MOTION_AFTER, _JOURNAL_DECIDED, _JOURNAL_WALK,
+             _JOURNAL_WALK_MORE]
+    texts += [JD.clean(t) for t in texts] + [JD.clean(t, lines=True) for t in texts]
+    texts += ["\n".join(texts), odd, odd.replace("ſ", "s").replace("ı", "i").replace("İ", "I")]
+    # The classes the code gives found() itself: _journal_day's read of a
+    # House and a Senate journal of these, which asks bill_marks too.
+    root = Path(tempfile.mkdtemp())
+    was = (JD.HOUSE, JD.SENATE, dict(SD._SAT), dict(JD._AT), JD.decisions)
+    voiced = []
+    try:
+        for d, head in (("H", "HOUSE JOURNAL NO. 5\n\nThursday, February 13, 2025\n\n"),
+                        ("S", "The Senate met at 10:00 a.m., February 13, 2025.\n")):
+            (root / d / "2025").mkdir(parents=True)
+            (root / d / "2025" / "J.txt").write_text(head + "\n".join(texts), encoding="utf-8")
+        JD.HOUSE, JD.SENATE = root / "H", root / "S"
+        JD.decisions = lambda s: (voiced.append(s), was[4](s))[1]
+        SD._SAT.clear()
+        JD._AT.clear()
+        assert SD._journal_day("H", "2025-02-13") and SD._journal_day("S", "2025-02-13"), (
+            "a fixture journal opens no sitting")
+        asked = list(JD._AT)
+    finally:
+        JD.HOUSE, JD.SENATE, JD.decisions = was[0], was[1], was[4]
+        SD._SAT.clear()
+        SD._SAT.update(was[2])
+        JD._AT.update(was[3])
+        shutil.rmtree(root, ignore_errors=True)
+    names = {rx.pattern for rx, _first in asked}
+    want = (JD.BILL_HEAD, JD.CONFERENCE_HEAD, JD.RECONSIDER, JD.RESOLUTION_OFFERED, JD.TALLY,
+            SD.SENATE_TALLY, SD.JOURNAL_DIVISION, SD.JOURNAL_BILL)
+    assert voiced and all(rx.pattern in names for rx in want), (
+        "bill_marks or _journal_day tries a pattern at every character again: "
+        f"{[rx.pattern[:30] for rx in want if rx.pattern not in names] or 'DECIDED'}")
+    # Every character a pattern's own case rule reads as one of its class is
+    # in the class as written (the Kelvin sign, ſ, ı and İ are why).
+    every = "".join(map(chr, range(0x110000)))
+    for rx, first in asked:
+        read = set(re.findall(first, every, rx.flags & re.I))
+        assert all(re.fullmatch(first, c) for c in read), (
+            f"{first} misses a character {rx.pattern[:30]!r} can begin with")
+    rows = lambda it: [(m.span(), m.groups()) for m in it]
+    for t in texts:
+        for rx, first in asked:
+            assert rows(JD.found(rx, t, first)) == rows(rx.finditer(t)), (
+                f"found() is not finditer for {rx.pattern[:50]!r}")
+        joined = re.sub(r"(?<!\n)\n(?!\n)", " ", t)
+        assert SD.LINE_BREAK.sub(" ", t) == joined, "LINE_BREAK joins the lines another way"
+        for s in (t, joined):
+            assert rows(JD.decisions(s)) == rows(JD.DECIDED.finditer(s)), (
+                "decisions() is not DECIDED.finditer")
+    return "ok", (f"{len(asked)} patterns and DECIDED read only where they can begin, "
+                  "as finditer reads them")
+
+
+@check("pipeline", "both chambers' sitting days in one run are the two runs one after another, file "
+       "for file, and build_all asks for them that way", needs=("build_all",))
+def _session_pages_one_load(build_all):
+    """private/BUILD_SPEED.md, D (16 October 2026): build_all draws the Senate's and the House's
+    session days in one run of build_session_pages, --body S,H, so session_days.load() is paid
+    once and not twice. That is right only while the one run is the two: the Senate's and then
+    the House's, each writing days.json, the sitemap and its term files as its own process did.
+    A chamber that changed a Day the other reads, or a cache one fills and the other trusts,
+    would pass every other check and publish a different site; so a two-chamber record is built
+    both ways under a stated day and compared a sha256 a file."""
+    import hashlib
+
+    class A:
+        key = None
+        session = "2026"
+        base = "https://graniterecord.org"
+        archive = "nh-archive"
+    plan = build_all.plan(A())
+    runs = [(i, s) for i, s in enumerate(plan) if s.args[0] == "build_session_pages.py"]
+    assert len(runs) == 1 and "--body" in runs[0][1].args and \
+        runs[0][1].args[runs[0][1].args.index("--body") + 1] == "S,H", (
+            "build_all no longer draws both chambers' sitting days in one run, the Senate first: "
+            + "; ".join(f"{s.name!r} {s.args[1:]}" for _i, s in runs))
+    full = next(k for k, s in enumerate(plan) if s.args[0] == "build_full_sessions.py")
+    assert [s.name for s in plan].index("the whole record, as lists") < runs[0][0] < full, (
+        "the chambers' sitting days left their place, after the lists and before the chambers' "
+        "committee pages that read their term files")
+    here = Path(".").resolve()
+    if not (here / "src/pages/bills.html").exists():
+        return "skip", "no bills.html here to build a page from"
+    root = Path(tempfile.mkdtemp())
+    try:
+        (root / "src" / "pages").mkdir(parents=True)
+        shutil.copy2(here / "src/pages/bills.html", root / "src/pages/bills.html")
+
+        def floor(body, date, kind="VV", y="", n=""):
+            return {"date": date, "body": body, "type": "floor", "action": "Ought to Pass",
+                    "raw": f"Ought to Pass, MA, {kind}", "motion": "MA", "vote_kind": kind,
+                    "yeas": y, "nays": n}
+        (root / "narratives.json").write_text(json.dumps({"2025-2026": {
+            "SB1": {"events": [floor("S", "2026-02-19"), floor("H", "2026-04-09")]},
+            "HB2": {"events": [floor("H", "2026-02-19", "DV", "190", "170"),
+                               floor("S", "2026-05-07")]}}}), encoding="utf-8")
+        base = "https://graniterecord.org"
+        env = dict(os.environ, GRANITE_BUILD_DATE="2026-10-16")
+
+        def build(site, *bodies):
+            (root / site / "session").mkdir(parents=True)
+            (root / site / "sitemap.xml").write_text('<?xml version="1.0"?><urlset>\n</urlset>',
+                                                     encoding="utf-8")
+            for b in bodies:
+                r = _run([sys.executable, _paths.script("build_session_pages.py"), "--site", site,
+                          "--base", base, "--body", b], cwd=root, capture_output=True, text=True,
+                         timeout=180, env=env)
+                assert r.returncode == 0, f"build_session_pages --body {b}: " + (r.stderr or r.stdout)[-300:]
+            return {p.relative_to(root / site).as_posix(): hashlib.sha256(p.read_bytes()).hexdigest()
+                    for p in sorted((root / site).rglob("*")) if p.is_file()}
+        two, one = build("two", "S", "H"), build("one", "S,H")
+        assert one == two and sum(k.endswith(".html") for k in two) == 4, (
+            "both chambers in one run are not the two runs one after another: "
+            + ", ".join(sorted(k for k in set(one) | set(two) if one.get(k) != two.get(k)))[:300]
+            + f" ({len(two)} files the two runs wrote)")
+        return "ok", (f"one step, --body S,H, between the lists and the chambers' pages; {len(two)} "
+                      "files of a two-chamber fixture the same either way")
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+
+
+@check("build", "the search index reads a phrase in the bills that have its words, found by "
+       "their sets as asking each bill found them, in the plan's order",
+       needs=("build_search_index",))
+def _search_phrase_asks(SI):
+    """build_search_index.phrase_asks gathers the bills that have each word a
+    phrase needs and hands a phrase to the bills in all of those sets, where
+    build_term used to ask every bill about every phrase (16 October 2026,
+    private/BUILD_SPEED.md, item H). Held here to that question, asked the
+    old way, on the shapes that could part them: a word only in the
+    analysis, only in the text, a word counted 0, a phrase whose earlier
+    words are no words at all ("a b"), one needing two words that no bill
+    has together, and a bill with none -- and every bill's list in the
+    plan's order, so that nothing written can move. And build_term must
+    still read its phrases through it."""
+    C = Counter
+    counts = {"HB1": (C({"gender": 1}), C()),
+              "HB2": (C(), C({"gender": 3, "identity": 2, "risk": 1})),
+              "HB3": (C({"gender": 0}), C({"risk": 1, "protection": 2})),
+              "HB4": (C(), C()),
+              "SB5": (C({"protection": 1}), C({"gender": 1}))}
+    plan = [(p, None, need, False, len(p.split()))
+            for p, need in (("gender identity", ["gender"]),
+                            ("risk protection order", ["risk", "protection"]),
+                            ("a b", []),
+                            ("protection gender", ["protection"]),
+                            ("gender risk x", ["gender", "risk"]),
+                            ("identity protection y", ["identity", "protection"]))]
+    want = {bid: [a for a in plan if not any(not (ta[k] or tb[k]) for k in a[2])]
+            for bid, (ta, tb) in counts.items()}
+    got = SI.phrase_asks(plan, counts)
+    assert got == want, ("phrase_asks gives bills other phrases than asking each bill gives",
+                         {b: [a[0] for a in got.get(b, [])] for b in counts},
+                         {b: [a[0] for a in want[b]] for b in counts})
+    said = {b: [a[0] for a in v] for b, v in want.items()}
+    assert said["HB4"] == ["a b"] and "gender identity" not in said["HB3"] \
+        and "protection gender" in said["SB5"] \
+        and not any("identity protection y" in v for v in said.values()), \
+        ("the fixture no longer has a bill each way", said)
+    src = _paths.locate("build_search_index.py").read_text(encoding="utf-8")
+    assert "phrase_asks(plan, {bid: tok[bid][:2] for bid in docs})" in src \
+        and "in asks[bid]:" in src, \
+        "build_term no longer reads its phrases through phrase_asks"
+    return "ok", (f"{len(plan)} phrases over {len(counts)} bills go where asking each bill "
+                  "sent them, in the plan's order")
 
 
 @check("build", "a past term's bill versions outlive the database's current views",

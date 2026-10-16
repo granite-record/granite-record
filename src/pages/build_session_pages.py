@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-19.41
+# GRANITE_VERSION: 2026-09-19.42
 """
 A page for every day the House sat.
 
     python3 src/pages/build_session_pages.py --site site --base https://graniterecord.org
+    python3 src/pages/build_session_pages.py --site site --body S,H   # both chambers, as build_all
 
 WHAT IS ON ONE
 
@@ -2266,8 +2267,9 @@ def main():
     ap.add_argument("--site", default="site")
     ap.add_argument("--base", default="https://graniterecord.org")
     ap.add_argument("--body", default="H",
-                    help="H or S. A Senate page carries the record and who was "
-                         "excused: its journal records no speakers")
+                    help="H or S, or S,H for both, in that order, from one load. "
+                         "A Senate page carries the record and who was excused: "
+                         "its journal records no speakers")
     ap.add_argument("--limit", type=int, default=0)
     ap.add_argument("--prune", action="store_true",
                     help=f"remove more than {PRUNE_CEILING} pages of sittings "
@@ -2275,9 +2277,32 @@ def main():
                          "removal is refused")
     a = ap.parse_args()
     site, base = Path(a.site), a.base.rstrip("/")
-    body = a.body.strip().upper()
+    bodies = [b.strip().upper() for b in a.body.split(",")]
+    if not all(b in CHAMBER for b in bodies) or len(set(bodies)) != len(bodies):
+        ap.error(f"--body {a.body!r}: H, S, or both as S,H, each chamber once")
 
+    # BOTH CHAMBERS FROM ONE LOAD (16 October 2026, private/BUILD_SPEED.md,
+    # D). build_all ran this script once a chamber, the Senate and then the
+    # House, and each run spent about a minute in session_days.load() reading
+    # the same narratives.json, roll calls and journals, to draw half of what
+    # it read. Now one run loads them once and draws the chambers in the order
+    # given. chamber() is what each run did after its load, unchanged, so it
+    # still reads afresh everything it read: days.json and the sitemap, which
+    # both chambers write, are read after the Senate has written them, as the
+    # House's own process read them. The sittings are only read -- neither
+    # chamber changes a Day or an Item -- and the scratch build of 16 October,
+    # both chambers the old way and this way under two hash seeds, was the
+    # same site byte for byte.
     days = session_days.load()
+    for body in bodies:
+        chamber(a, site, base, body, days)
+    return 0
+
+
+def chamber(a, site, base, body, days):
+    """One chamber's pages, its days.json list, its term files and its
+    sitemap entries, from the sittings load() gave -- what a run of this
+    script with that --body did after its load."""
     today = build_date.today().isoformat()
     built, later = sittings(days, today)
     ahead = [k for k in later if k[0] == body]
@@ -2496,14 +2521,13 @@ def main():
     used = {(b, s.lower()) for b, s, _n in members.respelled}
     for b, s, n in sorted(members.respelled):
         print(f"    spellings: {b} {s} read as {n} ({members.respelled[(b, s, n)]})")
-    # This run's chamber only: the step runs once a chamber, and the Senate's
-    # run never meets a House name ("met on no session day: H poloszaj" in
-    # the dry run of e82bd06, beside the House run's "read as Ploszaj (2)").
+    # This chamber's only: each chamber is drawn by a run of its own, and the
+    # Senate's never meets a House name ("met on no session day: H poloszaj"
+    # in the dry run of e82bd06, beside the House run's "read as Ploszaj (2)").
     idle = sorted(k for k in members.spellings if k not in used and k[0] == body)
     if idle:
         print(f"    spellings: {len(idle)} named in member_corrections.json and met on no "
               "session day: " + ", ".join(f"{b} {s}" for b, s in idle))
-    return 0
 
 
 # A DAY THAT STOPPED EXISTING KEEPS ITS PAGE unless this removes it. This step
