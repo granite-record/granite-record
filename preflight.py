@@ -60639,7 +60639,26 @@ mountFollow("bill");
 const follow = made.map(e => e.innerHTML).find(h => h.includes('class="follow"')) || "";
 if (!follow.includes("<summary>" + want.follow + "Follow</summary>"))
   fail.push("Follow is not its drawing and its word: " + follow.slice(0, 160));
-console.log("@@" + JSON.stringify({ report: box, share: shareBox(), follow }));
+// FOLLOW WITH A FEED gives the feed's address in its box, a button to copy
+// it and the RSS sentence, and no link that opens the feed itself (the
+// person, 16 October 2026: on a phone "Open the feed" showed raw XML).
+made.length = 0;
+mountFollow("bill", want.feed, "2026/HB100");
+const fed = made.map(e => e.innerHTML).find(h => h.includes('class="follow"')) || "";
+const feedAt = new URL(want.feed, location.origin).href;
+if (!fed.includes('aria-label="The feed\'s address"') || !fed.includes('value="' + feedAt + '"'))
+  fail.push("the feed's address is not in its box: " + fed.slice(0, 400));
+if (!fed.includes('data-copyfeed="1">Copy the address</button>'))
+  fail.push("Follow lost Copy the address: " + fed.slice(0, 400));
+if (!fed.includes("<b>By RSS</b>, in any feed reader: ") || !fed.includes("The record is rebuilt once a night"))
+  fail.push("Follow lost its RSS sentence: " + fed.slice(0, 400));
+const opens = (fed.match(/<a\b[^>]*>/g) || []).filter(a => {
+  const h = (a.match(/\bhref="([^"]*)"/) || [])[1];
+  return h !== undefined && (/\.xml(?:[?#]|$)/i.test(h) || new URL(h, location.origin).href === feedAt);
+});
+if (opens.length || /open the feed/i.test(fed))
+  fail.push("the Follow panel has a link that opens the feed itself: " + (opens.join(" ") || "Open the feed"));
+console.log("@@" + JSON.stringify({ report: box, share: shareBox(), follow, fed }));
 console.log(fail.length ? "FAILED: " + fail.join("; ") : "ALL OK");
 process.exit(fail.length ? 1 : 0);
 })();
@@ -60666,10 +60685,13 @@ def _share_beside_report():
     and says "Link copied"; where the reader closes the sheet, nothing more
     happens; where the sheet fails, it copies instead; and where the
     clipboard is missing or refused, it says the address to copy. Nothing is
-    sent anywhere: no share service and no fetch. And the three buttons
-    mounted where drawn_pages does not record them -- Report a problem, Share
-    and Follow -- are held to _icons_named's rules: one drawing each, hidden,
-    in a button or a summary with words of its own."""
+    sent anywhere: no share service and no fetch. Follow, on a page with a
+    feed, gives the RSS sentence, the feed's address in its box and Copy the
+    address, and no link that opens the feed itself: "Open the feed" was
+    dropped on 16 October 2026, because on a phone it showed raw XML. And the
+    three buttons mounted where drawn_pages does not record them -- Report a
+    problem, Share and Follow -- are held to _icons_named's rules: one drawing
+    each, hidden, in a button or a summary with words of its own."""
     import components as C
     app, stub = Path("src/pages/app.js"), Path("tests/dom_stub.js")
     if not (app.exists() and stub.exists()):
@@ -60692,6 +60714,9 @@ def _share_beside_report():
                  '<a href="mailto:contact@graniterecord.org">contact@graniterecord.org</a>'],
         "fields": ["date", "status", "sponsor", "vote", "hearing", "committee", "text", "link",
                    "chapter", "veto", "topic", "fiscal", "other"],
+        # The feed /bill/2026/hb100.html names in its head on the night of
+        # 16 October 2026, a bill still moving.
+        "feed": "/feed/bill/2026/hb100.xml",
     }
     root = Path(tempfile.mkdtemp(prefix="gr-share-"))
     try:
@@ -60705,7 +60730,8 @@ def _share_beside_report():
     finally:
         shutil.rmtree(root, ignore_errors=True)
     # The three controls held to _icons_named's rules: each drawing hidden,
-    # and each in a button or a summary that says what it is in words.
+    # and each in a button or a summary that says what it is in words. Follow
+    # is held twice, without a feed and with one.
     for what, html in drawn.items():
         found = _icons_in(html)
         assert len(found) == 1, f"{what} carries {len(found)} drawings, not one"
@@ -60716,7 +60742,8 @@ def _share_beside_report():
     return "ok", ("the report box's form and its thirteen kinds unchanged behind its drawing, and "
                   "opening it starts its clock; Share hands the sheet the title and the address, "
                   "copies and says \"Link copied\" without one or when it fails, does nothing when "
-                  "closed, and says the address when the clipboard is missing or refused")
+                  "closed, and says the address when the clipboard is missing or refused; Follow "
+                  "gives a feed's address to copy and no link that opens it")
 
 
 REPORT_GENUINE = [
