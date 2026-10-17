@@ -46521,6 +46521,180 @@ def _cloud_seed_only(CL):
     return "ok", "--only sends what it names; every other change waits, in the bucket and its manifest"
 
 
+def _send_night_fixture(root, kit_src):
+    """_pull_fixture with the two caption-results files as the real kit
+    carries them, the night's: three recordings' times, the two maps beside
+    them, and where each recording's captions stop."""
+    _pull_fixture(root, kit_src)
+    kit = json.loads((root / "cloud_kit.json").read_text(encoding="utf-8"))
+    kit["kit"].append({"what": "caption results", "owner": "night",
+                       "paths": ["candidate_segments.json", "caption_spans.json"]})
+    (root / "cloud_kit.json").write_text(json.dumps(kit), encoding="utf-8")
+    (root / "candidate_segments.json").write_text(json.dumps({
+        "VIDA": {"HB1": [{"start": 10.0, "end": 50.0, "how": "number"}]},
+        "VIDB": {"HB2": [{"start": 70.0, "end": 90.0, "how": "number"}]},
+        "_absent": {"VIDA": ["HB3"]}, "_sequence": {"VIDA": [], "VIDB": []}}),
+        encoding="utf-8")
+    (root / "caption_spans.json").write_text(json.dumps({"about": "x", "recordings": {
+        "VIDA": {"last": 60.0}, "VIDB": {"last": 95.0}}}), encoding="utf-8")
+
+
+@check("cloud", "send-night sends a night's file only when a person names it, never a subset of "
+                "its recordings, and the next pull and night take it", needs=("cloud", "refusal"))
+def _cloud_send_night(CL, R):
+    """THE DELIBERATE SEND (17 October 2026). The caption results have been
+    the night's since 10 October and seed-kit never sends the laptop's copy
+    over the night's, so a re-read on the laptop after a change to the
+    patterns could reach no site. send-night is that send, and each of its
+    guards is a way to lose what the night holds. Against a folder bucket,
+    with the window's clock set (refusal.CLOCK_ENV):
+
+      - --dry-run says what would change and writes nothing, here or there;
+      - a path of the laptop's, on the never list, under site/ or not in the
+        kit is refused, by name, and sends nothing;
+      - a copy holding a subset of the bucket's recordings -- the re-read of
+        one recording that once cost 842 their results -- is refused, dry or
+        not, for both files, and so is one that drops a map beside them;
+        --allow-dropping accepts a named loss;
+      - inside GitHub's night window, or past a refusal here the bucket does
+        not hold, nothing is sent;
+      - a send replaces the bucket's copy, keeping the old under replaced/,
+        and records it as the laptop's copy in common, so --changes-only
+        counts nothing waiting, the next pull reports no clash and the next
+        night's kit-down takes it; a --from copy takes the laptop's copy's
+        place, setting the laptop's aside.
+    """
+    import hashlib
+    import time
+    from datetime import datetime
+    real = json.loads(Path(CL.KIT_FILE).read_text(encoding="utf-8"))
+    tmp = Path(tempfile.mkdtemp(prefix="gr-sendnight-"))
+    names = ("GITHUB_ACTIONS", CL.NO_BUCKET, R.CLOCK_ENV)
+    saved = {k: os.environ.get(k) for k in names}
+    today = f"{datetime.now():%Y-%m-%d}"
+    try:
+        os.environ.pop("GITHUB_ACTIONS", None)
+        os.environ[CL.NO_BUCKET] = "1"
+        outside, inside = "2026-10-14T18:00:00Z", "2026-10-14T09:00:00Z"
+        os.environ[R.CLOCK_ENV] = outside
+        bucket, laptop, night = tmp / "bucket", tmp / "laptop", tmp / "night"
+        for d in (laptop, night):
+            d.mkdir()
+            _send_night_fixture(d, real)
+        (night / "logs/nightly-2026-09-25.log").unlink()
+        (night / "reports/gc-changes-2026-09-25.md").unlink()
+
+        def call(root, *argv):
+            return _cloud_call(CL, *argv, "--root", str(root), "--local-bucket", str(bucket))
+
+        def doc(path):
+            return json.loads(Path(path).read_text(encoding="utf-8"))
+
+        def put(path, d):
+            Path(path).write_text(json.dumps(d), encoding="utf-8")
+
+        CS, SP = "candidate_segments.json", "caption_spans.json"
+        assert call(laptop, "seed-kit")[0] == 0
+        assert call(night, "state-down")[0] == 0 and call(night, "kit-down")[0] == 0
+        # The night captions a recording and merges it into both files.
+        cs, sp = doc(night / CS), doc(night / SP)
+        cs["VIDC"] = {"HB4": [{"start": 5.0, "end": 9.0, "how": "number"}]}
+        sp["recordings"]["VIDC"] = {"last": 30.0}
+        put(night / CS, cs)
+        put(night / SP, sp)
+        assert call(night, "kit-up")[0] == 0
+        code, out = call(laptop, "pull")
+        assert code == 0, out[-400:]
+        # The laptop re-reads after a change to the patterns: VIDA's time moves.
+        cs = doc(laptop / CS)
+        cs["VIDA"]["HB1"][0]["start"] = 12.0
+        put(laptop / CS, cs)
+
+        before, here = _tree(bucket), _tree(laptop)
+        code, out = call(laptop, "send-night", CS, "--dry-run")
+        assert code == 0 and "nothing sent" in out and "1 changed, 0 dropped" in out, out[-500:]
+        assert _tree(bucket) == before and _tree(laptop) == here, \
+            "send-night --dry-run wrote to the bucket or the laptop"
+
+        for p, why in (("legislation/2026/HB1.html", "the laptop's"),
+                       ("secrets.json", "never list"), ("site/committees.json", "built site"),
+                       ("elsewhere.json", "not in the kit")):
+            code, out = call(laptop, "send-night", p)
+            assert code == 1 and why in out, f"send-night {p} was not refused as {why}: {out[-300:]}"
+        assert _tree(bucket) == before, "a refused send-night wrote to the bucket"
+
+        sub = tmp / "subset.json"
+        put(sub, {"VIDA": cs["VIDA"], "_absent": cs["_absent"], "_sequence": cs["_sequence"]})
+        for dry in ((), ("--dry-run",)):
+            code, out = call(laptop, "send-night", CS, "--from", str(sub), *dry)
+            assert code == 1 and "drops 2" in out and "VIDB" in out and "VIDC" in out, \
+                f"a re-read of one recording was not refused{dry}: {out[-400:]}"
+        put(sub, {"about": "x", "recordings": {"VIDA": {"last": 60.0}}})
+        code, out = call(laptop, "send-night", SP, "--from", str(sub))
+        assert code == 1 and "VIDB" in out, f"caption_spans.json's subset was not refused: {out[-300:]}"
+        put(sub, {k: v for k, v in cs.items() if k != "_sequence"})
+        code, out = call(laptop, "send-night", CS, "--from", str(sub))
+        assert code == 1 and "_sequence" in out, f"a map gone whole was not refused: {out[-300:]}"
+        put(sub, {k: v for k, v in cs.items() if k != "VIDB"})
+        code, out = call(laptop, "send-night", CS, "--from", str(sub), "--allow-dropping", "VIDB",
+                         "--dry-run")
+        assert code == 0 and "named by --allow-dropping" in out, out[-400:]
+
+        os.environ[R.CLOCK_ENV] = inside
+        code, out = call(laptop, "send-night", CS)
+        assert code == 1 and "night window" in out, f"a send inside the night window: {out[-300:]}"
+        os.environ[R.CLOCK_ENV] = outside
+        put(laptop / "archive/refused.json", {"at": "now", "epoch": time.time(), "where": "a test"})
+        code, out = call(laptop, "send-night", CS)
+        assert code == 1 and "send-refusal" in out, f"a send past an unsent refusal: {out[-300:]}"
+        (laptop / "archive/refused.json").unlink()
+        assert _tree(bucket) == before, "a refused send-night wrote to the bucket"
+
+        was = (bucket / "kit" / CS).read_bytes()
+        code, out = call(laptop, "send-night", CS)
+        assert code == 0 and "sent 1 files" in out, out[-400:]
+        sent = (laptop / CS).read_bytes()
+        assert (bucket / "kit" / CS).read_bytes() == sent, "the bucket does not hold the copy sent"
+        # The night's kit-up kept a copy there today already, so this one may
+        # carry the time after its name (Replacer).
+        assert any(p.read_bytes() == was for p in (bucket / f"replaced/{today}/kit").glob(f"{CS}*")), \
+            "the bucket's previous copy was not kept under replaced/"
+        assert doc(bucket / "state/kit-manifest.json")["files"][CS]["sha256"] == \
+            hashlib.sha256(sent).hexdigest(), "the kit manifest does not record the copy sent"
+        code, out = call(laptop, "pull", "--changes-only")
+        assert code == 0 and "has 0 of the night's" in out, \
+            f"the pull record does not hold the copy sent: {out[-400:]}"
+        code, out = call(laptop, "pull")
+        assert code == 0 and "0 clashing" in out, f"the next pull clashed on the copy sent: {out[-400:]}"
+        code, out = call(night, "kit-down")
+        assert code == 0 and (night / CS).read_bytes() == sent, \
+            f"the next night did not take the copy sent: {out[-300:]}"
+
+        merged, mine = tmp / "merged.json", (laptop / SP).read_bytes()
+        sp = doc(laptop / SP)
+        sp["recordings"]["VIDA"]["last"] = 61.0
+        put(merged, sp)
+        code, out = call(laptop, "send-night", SP, "--from", str(merged))
+        assert code == 0, out[-400:]
+        assert (laptop / SP).read_bytes() == merged.read_bytes() == (bucket / "kit" / SP).read_bytes(), \
+            "a --from copy did not take the laptop's copy's place"
+        assert (laptop / f"{CL.SET_ASIDE}/{today}/{SP}").read_bytes() == mine, \
+            "the laptop's own copy was not set aside"
+        code, out = call(laptop, "pull")
+        assert code == 0 and "0 clashing" in out, f"the next pull clashed on a --from copy: {out[-400:]}"
+    finally:
+        for k, v in saved.items():
+            if v is None:
+                os.environ.pop(k, None)
+            else:
+                os.environ[k] = v
+        shutil.rmtree(tmp, ignore_errors=True)
+    return "ok", ("a dry run writes nothing; the laptop's, never, site/ and unknown paths and a "
+                  "subset of either file's recordings are refused, and so is a send in the night "
+                  "window or past an unsent refusal; a send keeps the old copy, and the next pull "
+                  "and night take it without a clash")
+
+
 @check("livestreams", "the night keeps a reading of its new recordings only past the "
                       "timestamp guard, and its verdict says when one was put back",
        needs=("livestreams", "nightly", "probe_alignment", "caption_span"))
