@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.13
+# GRANITE_VERSION: 2026-09-05.14
 """
 The phrasings the marker patterns must match, and the ones they must not.
 
@@ -399,6 +399,21 @@ def run():
         S.fill_ends(byb, {"HB1118": last, "HB1119": 610.0}, evidence)
         s = byb["HB1118"][0]
         return s.get("end"), s.get("end_from")
+    # What end_evidence counts as a vote, read in the ends it made: spoken.
+    for text, want, where in (
+            ("chairman Lynn yes motion passes 19 to1 um uh consent", True, "a5nhRJLyv0M 4:38:09"),
+            ("yes Mr chairman the vote is 19-6 in favor of the motion okay that's adopted",
+             True, "lXP6sTGwRJw 2:22:19"),
+            ("via alleged search violations it failed miserably not only did it fail",
+             False, "-JbQ-7NpeNg 2:48:31"),
+            ("1633 and in 6 639 that passed the house last year it did not allow",
+             False, "M9yjz-9dtw4 4:48:10"),
+            ("Okay, we are now moving on to the regular calendar. the first bill um we "
+             "will take up", False, "XJsE-D96t2w 0:21:51")):
+        w = [(i * 0.4, x) for i, x in enumerate(text.split())]
+        got = any(k == "vote result" for _t, k in S.end_evidence(w, ["HB5"]))
+        if got != want:
+            fails.append(f"end_evidence ({where}) read a vote: {got}, wanted {want}")
     votes = [(300.0, "vote result"), (400.0, "vote result"), (700.0, "vote result")]
     for got, want, why in (
             (ends(110.0, votes), (400.0, "vote result"), "the last vote before the next boundary"),

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.47
+# GRANITE_VERSION: 2026-09-05.48
 """
 Segment a recording on what the chair says, not on where bill numbers cluster.
 
@@ -919,13 +919,19 @@ def last_mentions(words, candidates):
 # "the motion passes", "that'll go on consent". fill_ends uses these only for
 # a segment whose bill was last named within 30 seconds of its opening, and
 # only before the next boundary.
+#
+# NOT "IT" OR "THAT" PASSED, AND NOT THE REGULAR CALENDAR ALONE. Read in the
+# ends the first version made: "it failed miserably" and "that passed the
+# house last year" were testimony, "it fails to report" a bill's text, "it is
+# approved by them" a conference's aside, and "moving on to the regular
+# calendar" the Senate's order of business. A vote is the motion's or the
+# amendment's, a count, or the bill being sent to a calendar.
 VOTE_RESULT_RE = re.compile(
-    r"\b(?:the\s+)?(?:motion|it|that|amendment)\s+(?:passes|carries|fails|failed|passed|"
+    r"\b(?:the\s+)?(?:motion|amendment)\s+(?:passes|carries|fails|failed|passed|"
     r"is\s+adopted|is\s+approved)\b"
     r"|\bthe\s+vote\s+(?:is|being|was)\s+\d"
     r"|\b(?:goes?|go|put\s+(?:it|this|that)|place\s+(?:it|this|that)|placed?|be)\s+on\s+"
-    r"(?:the\s+)?consent\b"
-    r"|\bregular\s+calendar\b", re.I)
+    r"(?:the\s+)?(?:consent|regular\s+calendar)\b", re.I)
 
 
 def _joined(words):
