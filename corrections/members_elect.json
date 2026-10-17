@@ -3,7 +3,7 @@
 
   "_what": "What the person settles about the members-elect of a general election, keyed by the election's day, so that one election's answers never reach another's. src/parse/build_members_elect.py reads it and prints what is left to settle each night between the election and Organization Day.",
 
-  "_how": "Under the election's day: \"matches\" maps a race and a winner's name, exactly as the results file prints it, to the member they are -- a sitting or a former member's id, which links them to that member's page -- or to null, which says they are new and nobody on file. \"not_final\" marks a race not final, with whether a recount was requested ({\"recount\": true}) and, where only some of its seats are in doubt, how many ({\"seats\": 1}); the winners with the fewest votes give way to them. \"held\" keeps a winner off the pages ({\"Name\": \"why\"}). A race is a key of site/districts.json: \"H|Rockingham|13\", \"S|24\". A reason ('why') is private and never published.",
+  "_how": "Under the election's day: \"recount_deadline\" is the last day a recount may be asked for, as the Secretary of State gives it (\"YYYY-MM-DD\"); while it is null, and on every day up to and including it, no race is drawn as final but one whose count the results file marks a recount's -- the rule of 16 October 2026 that a race is final once posted and past its recount deadline, or once its recount result is out. \"matches\" maps a race and a winner's name, exactly as the results file prints it, to the member they are -- a sitting or a former member's id, which links them to that member's page -- or to null, which says they are new and nobody on file. \"not_final\" marks a race not final past the deadline -- a recount asked for and its result not out -- with whether a recount was requested ({\"recount\": true}) and, where only some of its seats are in doubt, how many ({\"seats\": 1}); the winners with the fewest votes give way to them. \"held\" keeps a winner off the pages ({\"Name\": \"why\"}). A race is a key of site/districts.json: \"H|Rockingham|13\", \"S|24\". A reason ('why') is private and never published.",
 
   "_example": {
     "matches": {"H|Rockingham|13": {"John Smith": "900002", "Pat Newell": null}},
@@ -12,6 +12,7 @@
   },
 
   "2026-11-03": {
+    "recount_deadline": null,
     "matches": {},
     "not_final": {},
     "held": {}

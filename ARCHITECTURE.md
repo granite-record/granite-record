@@ -1715,17 +1715,23 @@ gives the shape, and `tests/election_fixture.json` is a made-up one -- and the
 person's `corrections/members_elect.json`, which settles names, marks a race
 not final and holds a winner off the pages.
 
-Three rules, the person's. The file is written only while the build's day is
+Four rules, the person's. The file is written only while the build's day is
 after the election and before Organization Day (`proceedings.organization_day`)
 and `site/meta.json`'s newest term is the one before theirs; otherwise the
 step removes it and says why, so they retire on their own, and
 `src/checks/check_site.py` refuses a file still there on its `takes_office`. A winner is
-linked to a page only as the seat's sitting member or as the one former
-member of that name whose county is the race's; anything less is drawn
-unlinked and printed for the person. And whatever the pages draw of them
-carries `data-until`, which `components.until_attrs` writes and the
-browser's behaviour in `components.js` hides by the reader's own clock from
-that day on. The pages that draw the file are the second pass.
+linked to a page only as the seat's sitting member (the same first name, or a
+short form `member_links.SHORT` lists) or as the one former member of the same
+name whose county is the race's; a first name that fits only as the start of
+another (Pat, Patricia) never links, and anything less than certain is drawn
+unlinked and printed for the person. A race is final once its results are
+posted and the recount deadline has passed -- the person enters the deadline
+in the hand file, and until the build's day is past it every race is drawn
+not final -- or once the results mark it recounted. And whatever the pages
+draw of them carries `data-until`, which `components.until_attrs` writes and
+the browser's behaviour in `components.js` hides by the reader's own clock
+from that day on, with a rule in `app.css`'s shared region that no page's own
+style can outrank. The pages that draw the file are the second pass.
 
 ## The bill index's sponsors
 

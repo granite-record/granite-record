@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.73
+# GRANITE_VERSION: 2026-09-05.74
 """
 Run the whole pipeline in the right order.
 
@@ -787,7 +787,8 @@ def plan(a):
         # says why, so a file is never left to outlive its day.
         Step("members-elect, until they take office",
              ["build_members_elect.py", "--site", "site"],
-             needs=["site/meta.json", "site/legislators.json", "site/districts.json"],
+             needs=["site/meta.json", "site/legislators.json", "site/former.json",
+                    "site/districts.json"],
              produces=["site/members_elect.json"],
              note="who November's election sent to the General Court, from the "
                   "Secretary of State's results in collected/election_<year>.json, "

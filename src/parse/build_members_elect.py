@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-16.1
+# GRANITE_VERSION: 2026-10-16.2
 """
 Who November's election sent to the General Court, for the weeks before they sit.
 
@@ -41,10 +41,14 @@ reopen:
      that name whose recorded county is the race's; anything less is drawn
      unlinked and printed here for the person to settle in the hand file.
   4. A RACE COUNTS AS FINAL once posted and past its recount deadline, or
-     once its recount result is out. The Secretary of State's file does not
-     say which; the person marks a race not final in the hand file, with
-     whether a recount was requested. A tie for the last seat is not final
-     by itself.
+     once its recount result is out. The deadline is the person's to enter
+     in the hand file ("recount_deadline", the last day a recount may be
+     asked for), because it is not in the Secretary of State's results and
+     this does not guess it; until the build's day is after it, every race
+     is not final but one whose count the results file marks a recount's
+     ("recounted"). Past it, the person marks a race whose recount was asked
+     for not final in the hand file, until its result is out. A tie for the
+     last seat is not final by itself.
   5. STATE REPRESENTATIVE AND STATE SENATOR ONLY. The Governor, the Council
      and Congress are the person's corrections/officials.json, and take
      office in January.
@@ -72,7 +76,9 @@ Secretary of State prints it. A party is its letters in lower case, joined
 by "/" where the candidate was cross-nominated ("r/d"); "" where none was
 printed (a write-in). `elected` is true, false, or null where the count does
 not decide it: a tie for the last seat. Scatter is counted and never drawn.
-Each _source's sha256 is held to the saved file when it is on disk.
+A race may carry "recounted": true where its count is a recount's result,
+which makes it final before the recount deadline has passed. Each _source's
+sha256 is held to the saved file when it is on disk.
 
 THE FILE IT WRITES, site/members_elect.json:
 
@@ -98,23 +104,31 @@ THE HAND FILE, corrections/members_elect.json, keyed by the election it
 settles so that one election's answers never reach another's:
 
     {"2026-11-03": {
+        "recount_deadline": "2026-11-13",
         "matches":   {"H|Rockingham|13": {"John Smith": "900002",
                                           "Pat Newell": null}},
         "not_final": {"H|Rockingham|8": {"recount": true, "seats": 1,
                                          "why": "private"}},
         "held":      {"S|24": {"Debra Altschiller": "private"}}}}
 
-`matches` names the member a winner is (a sitting or a former member's id),
-or null for "confirmed new"; it is the person's word and is taken over the
-rule, which is printed where the two differ. `not_final` marks seats of a
-race not final -- all of them where `seats` is not given -- and the winners
-with the fewest votes give way to them. `held` keeps a winner off the pages.
+`recount_deadline` is the last day a recount may be asked for, as the
+Secretary of State gives it; null or absent until the person knows it, and
+until then no race is final but a recounted one (rule 4). `matches` names
+the member a winner is (a sitting or a former member's id), or null for
+"confirmed new"; it is the person's word and is taken over the rule, which
+is printed where the two differ. `not_final` marks seats of a race not final
+-- all of them where `seats` is not given -- and the winners with the fewest
+votes give way to them. `held` keeps a winner off the pages.
 
 IT PRINTS, FOR THE PERSON, every winner it could not link with certainty and
 why, every new person, and every race whose elected, not final and held do
-not add up to its seats -- silence is not success. A results file or a hand
-file it cannot read stops it, having removed any file the last build left:
-a hand file it could not read might have marked a race not final.
+not add up to its seats -- silence is not success -- and, while the recount
+deadline has not passed, that no race is final yet. A results file or a hand
+file it cannot read, or a source whose sha256 is not the one the results
+name, stops it, having removed any file the last build left, and says why on
+stderr, where build_all reads a failed step's reason: a hand file it could
+not read might have marked a race not final. So does any error nobody
+foresaw.
 
 Nothing here asks the network.
 """
@@ -136,7 +150,7 @@ from collections import Counter, defaultdict
 
 import build_date
 import proceedings
-from member_links import COUNTIES, first_names, same_first, split_name, surname
+from member_links import COUNTIES, SHORT, first_names, same_first, split_name, surname
 
 # The file every page draws from, in site/. Named once, apart from where it
 # is written: the hand file has the same name in corrections/, and preflight's
@@ -145,7 +159,9 @@ OUT_NAME = "members_elect.json"
 HAND_DEFAULT = Path("corrections") / "members_elect.json"
 
 RESULTS_RE = re.compile(r"^election_(\d{4})\.json$")
-KEY_RE = re.compile(r"^(?:H\|([A-Za-z]+)\|([1-9]\d*)|S\|([1-9]\d*))$")
+# A county is any run of letters, accented ones too: a "Coös" in the district
+# table would otherwise be no key, and stop the step on a race it cannot order.
+KEY_RE = re.compile(r"^(?:H\|([^\W\d_]+)\|([1-9]\d*)|S\|([1-9]\d*))$")
 DAY_RE = re.compile(r"^\d{4}-\d\d-\d\d$")
 
 # A SUFFIX ON ONE SIDE ONLY IS NOT A MATCH. member_links.surname strips Jr.,
@@ -257,27 +273,45 @@ def readings(raw):
     return [(sur, first) for sur, first in out if sur], sfx
 
 
-def answers(p, rd, exact=False):
+def answers(p, rd, test=same_first):
     """Does member `p` answer to a name read as `rd`: a reading's surname
-    theirs, and its first name theirs -- the same letter for letter where
-    `exact`, or one member_links.same_first allows (a short form, a prefix)?"""
-    test = first_equal if exact else same_first
+    theirs, and its first name theirs by `test` -- first_equal, known_first,
+    or member_links.same_first, the loosest, which also takes a bare prefix?"""
     return any(ps == s and test(f, pf) for s, f in rd for ps, pf in p["readings"])
 
 
 def first_equal(a, b):
-    """The same first name, letter for letter, in some form either gives:
-    the rule where two members of one seat share a surname."""
+    """The same first name, letter for letter, in some form either gives
+    ("Robert (Bob)" gives both): the rule for a former member, and where two
+    members of one seat share a surname."""
     return bool(first_names(a) & first_names(b))
+
+
+def known_first(a, b):
+    """The same first name, or a short form member_links.SHORT lists for it
+    (Bob and Robert, Sue and Susan): the rule for the seat's one sitting
+    member of that surname.
+
+    NEVER A BARE PREFIX (the review of 16 October 2026). same_first also
+    takes any three letters that begin the other name, which is right for
+    rejoining one member's two records of votes and wrong for a ballot: on
+    the real roster it took "Joelle Alexander" to Rep. Joe Alexander's page
+    and "Pat Cote" to Patricia Cote's. Pat may be Patrick or Patricia, so a
+    name that fits only that way goes to the person."""
+    xa, xb = first_names(a), first_names(b)
+    return bool(xa & xb) or any(SHORT.get(x) == y or SHORT.get(y) == x for x in xa for y in xb)
 
 
 def reading_order(raw):
     """A name as the pages draw it, first name first: "Nelson, Jodi" is
-    "Jodi Nelson"; a name already that way round is left as it is."""
+    "Jodi Nelson", and "Smith, Jr., John" is "John Smith Jr."; a name
+    already that way round is left as it is."""
     s = " ".join(str(raw or "").split())
-    parts = [p.strip() for p in s.split(",")]
-    if len(parts) == 2 and parts[1] and not SUFFIX.fullmatch(parts[1]):
-        return f"{parts[1]} {parts[0]}"
+    parts = [p.strip() for p in s.split(",") if p.strip()]
+    sfx = [p for p in parts if SUFFIX.fullmatch(p)]
+    rest = [p for p in parts if not SUFFIX.fullmatch(p)]
+    if "," in s and len(rest) == 2:
+        return " ".join([rest[1], rest[0]] + sfx)
     return s
 
 
@@ -287,6 +321,13 @@ def party_letters(raw):
 
 
 # ---- the races the district table names ------------------------------------
+
+def number(x):
+    """A district or a count of seats as a whole number above nought, or None:
+    13, "13" and " 013 " are 13."""
+    s = str(x if x is not None else "").strip()
+    return int(s) if s.isdecimal() and s.isascii() and int(s) > 0 else None
+
 
 def races_on_file(districts):
     """{race key: {"seats", "floterial", "towns", "counties"}} from
@@ -300,16 +341,28 @@ def races_on_file(districts):
             place = town if str(ward) in ("", "0") else f"{town} Ward {ward}"
             counties = {h.get("county") for h in d.get("house") or [] if h.get("county")}
             for h in d.get("house") or []:
-                key = f"H|{h.get('county')}|{int(h.get('district'))}"
-                r = out.setdefault(key, {"seats": int(h.get("seats") or 0),
+                n, seats = number(h.get("district")), number(h.get("seats"))
+                key = f"H|{h.get('county')}|{n}"
+                # A district the table cannot name is said and left out,
+                # never a crash: a crash would stop the build on a table a
+                # page could still draw.
+                if n is None or seats is None or not KEY_RE.match(key):
+                    clash.append(f"{place} names a House district that is no race: county "
+                                 f"{h.get('county')!r}, district {h.get('district')!r}, seats "
+                                 f"{h.get('seats')!r}")
+                    continue
+                r = out.setdefault(key, {"seats": seats,
                                          "floterial": bool(h.get("floterial")),
                                          "towns": [], "counties": {h.get("county")}})
-                if r["seats"] != int(h.get("seats") or 0):
+                if r["seats"] != seats:
                     clash.append(f"{key} is {r['seats']} seats in one town and "
-                                 f"{h.get('seats')} in {place}")
+                                 f"{seats} in {place}")
                 r["towns"].append(place)
-            if d.get("senate"):
-                key = f"S|{int(d['senate'])}"
+            if d.get("senate") and number(d["senate"]) is None:
+                clash.append(f"{place} names a Senate district that is no number: "
+                             f"{d['senate']!r}")
+            elif d.get("senate"):
+                key = f"S|{number(d['senate'])}"
                 r = out.setdefault(key, {"seats": 1, "floterial": False, "towns": [],
                                          "counties": set()})
                 r["towns"].append(place)
@@ -380,6 +433,8 @@ def read_results(path):
                            "(\"elected\": true, false or null)")
             elif not isinstance(c.get("votes"), int):
                 bad.append(f"{key}'s {c.get('name')} has no count of votes")
+        if not isinstance(r.get("recounted", False), bool):
+            bad.append(f"{key}'s \"recounted\" is neither true nor false")
     if bad:
         raise Refused(f"{path}: " + "; ".join(bad[:6]) + (" ..." if len(bad) > 6 else ""))
     sources = doc.get("_source") or []
@@ -407,11 +462,12 @@ def sources_hold(doc, root, notes):
 
 def read_hand(path, election):
     """The person's entries for this election: {"matches", "not_final",
-    "held"}, each a dict, empty where the file or the election is absent."""
+    "held"}, each a dict, empty where the file or the election is absent,
+    and "recount_deadline", a day or None."""
     empty = {"matches": {}, "not_final": {}, "held": {}}
     p = Path(path)
     if not p.is_file():
-        return empty, f"no {p.as_posix()}: nothing settled by hand"
+        return dict(empty, recount_deadline=None), f"no {p.as_posix()}: nothing settled by hand"
     try:
         doc = json.loads(p.read_text(encoding="utf-8"))
     except (OSError, ValueError) as e:
@@ -419,13 +475,28 @@ def read_hand(path, election):
                       "final, so nothing is drawn until it reads")
     mine = doc.get(election) if isinstance(doc, dict) else None
     if mine is None:
-        return empty, f"{p.as_posix()} settles nothing for {election}"
-    shape = (f"{p.as_posix()}'s \"{election}\" is not {{\"matches\": {{race: {{name: id or "
-             "null}}}, \"not_final\": {race: {\"seats\": n, \"recount\": true, \"why\": "
-             "\"...\"}}, \"held\": {race: {name: \"why\"}}}")
+        return dict(empty, recount_deadline=None), f"{p.as_posix()} settles nothing for {election}"
+    shape = (f"{p.as_posix()}'s \"{election}\" is not {{\"recount_deadline\": \"YYYY-MM-DD\" or "
+             "null, \"matches\": {race: {name: id or null}}, \"not_final\": {race: {\"seats\": "
+             "n, \"recount\": true, \"why\": \"...\"}}, \"held\": {race: {name: \"why\"}}}")
     if not isinstance(mine, dict) or any(not isinstance(mine.get(k) or {}, dict) for k in empty):
         raise Refused(shape)
     got = {k: mine.get(k) or {} for k in empty}
+    # A DEADLINE THAT IS NO DAY, OR NOT AFTER THE ELECTION, IS REFUSED rather
+    # than read as none: read as none it would hold every race back, and read
+    # as a day it would let them all through, and either is a guess.
+    deadline = mine.get("recount_deadline")
+    if deadline is not None:
+        try:
+            ok = DAY_RE.match(str(deadline)) and \
+                datetime.date.fromisoformat(deadline).isoformat() > election
+        except (TypeError, ValueError):
+            ok = False
+        if not ok:
+            raise Refused(f"{p.as_posix()}'s \"{election}\" -> \"recount_deadline\" is "
+                          f"{deadline!r}: a day after the election (\"YYYY-MM-DD\"), or null "
+                          "until it is known")
+    got["recount_deadline"] = deadline
     # EVERY ENTRY IS READ OR REFUSED, never passed over. A not-final mark the
     # step could not read and went on without would put a race's winners on
     # the pages that the person had held back.
@@ -506,23 +577,30 @@ def who(p):
 def auto_link(key, name, people, races):
     """(the member a winner is, "") on a certain match, or (None, why not).
 
-    1. Sitting, same seat: the same surname and a first name that fits
-       (member_links.same_first, with its short forms) -- and, where two
-       members of the seat share the surname (Hillsborough 1's two Mannions),
-       the same first name.
+    1. Sitting, same seat: the same surname and the same first name, or a
+       short form member_links.SHORT lists for it (known_first) -- and, where
+       two members of the seat share the surname (Hillsborough 1's two
+       Mannions), the same first name.
     2. Former, returning: no sitting member of that name anywhere, and
-       exactly one former record of that name, whose recorded county is the
-       race's (for the Senate, a county of its towns).
-    Never linked by rule: a sitting member of that name in another seat or
+       exactly one former record that answers to the name even loosely, whose
+       first name is the same (first_equal) and whose recorded county is the
+       race's (for the Senate, a county of its towns). "The same name and
+       county" is the person's rule (16 October 2026), and the plan's rule 2
+       says the same first name: Bob is not certainly that Robert, and Don
+       was Donna Sytek.
+    Never linked by rule: a first name that fits only as the start of the
+    other (Pat, Patricia); a sitting member of that name in another seat or
     chamber; a Jr. or Sr. on one side only; a former member with no county;
-    and a changed surname, which reads as a new person."""
+    and a changed surname, which reads as a new person. Where the rule
+    refuses, the test that refuses is the loose one, same_first: what might
+    be somebody else is enough to send a name to the person."""
     rd, sfx = readings(name)
     if not rd:
         return None, "no surname could be read from the name"
     surs = {s for s, _f in rd}
     seat = [p for p in people.by_seat.get(key, [])
             if surs & {s for s, _f in p["readings"]}]
-    fits = [p for p in seat if answers(p, rd, exact=len(seat) > 1)]
+    fits = [p for p in seat if answers(p, rd, first_equal if len(seat) > 1 else known_first)]
     if len(fits) > 1:
         return None, (f"{len(fits)} sitting members of {race_words(key)} answer to that name: "
                       + ", ".join(who(p) for p in fits))
@@ -532,9 +610,13 @@ def auto_link(key, name, people, races):
             return None, f"a Jr. or Sr. on one side only: {who(p)} sits for {race_words(key)}"
         return p, ""
     near = [p for p in seat if answers(p, rd)]
-    if near:
+    if near and len(seat) > 1:
         return None, (f"{len(seat)} sitting members of {race_words(key)} share the surname, and "
                       "the name fits only by a short form: " + ", ".join(who(p) for p in near))
+    if near:
+        return None, ("the first name fits only as the start of the sitting member's, which may "
+                      f"be somebody else's (Pat is Patrick or Patricia): {who(near[0])} sits for "
+                      f"{race_words(key)}")
     elsewhere = [p for p in people.named("sitting", rd) if p["seat"] != key and answers(p, rd)]
     if elsewhere:
         return None, ("a sitting member of that name holds another seat: "
@@ -542,10 +624,16 @@ def auto_link(key, name, people, races):
     former = [p for p in people.named("former", rd) if answers(p, rd)]
     if not former:
         return None, NEW
+    loose = [p for p in former if not answers(p, rd, first_equal)]
     if len(former) > 1:
-        return None, (f"{len(former)} former members of that name: "
+        return None, (f"{len(former)} former members of that name"
+                      + (f", {len(loose)} of them by a short form or the start of the first name"
+                         if loose else "") + ": "
                       + ", ".join(f"{who(p)} ({p['county'] or 'no county'})" for p in former))
     p = former[0]
+    if loose:
+        return None, ("the one former member who might be this winner has the first name only by "
+                      f"a short form or as the start of it, which is not the same name: {who(p)}")
     if not p["county"]:
         return None, f"the one former member of that name has no county on record: {who(p)}"
     if p["county"] not in races[key]["counties"]:
@@ -558,12 +646,27 @@ def auto_link(key, name, people, races):
 
 # ---- the races, decided ----------------------------------------------------
 
-def members_elect(results, sitting, former, districts, hand):
+def recount_open(today, deadline, election):
+    """Why no race is final yet on `today` but a recounted one, or "" once
+    `today` is past the hand file's recount deadline (rule 4)."""
+    if not deadline:
+        return (f"no recount deadline is entered for the election of {election} "
+                "(\"recount_deadline\" in the hand file), so no race is final but a recounted "
+                "one, and every other is drawn as not final until it is")
+    if str(today) <= str(deadline):
+        return (f"the recount deadline, {deadline}, has not passed on {today}: no race is final "
+                "but a recounted one, and every other is drawn as not final until it has")
+    return ""
+
+
+def members_elect(results, sitting, former, districts, hand, today):
     """(races, report): what site/members_elect.json says of each race, and
-    what the person is to read. Pure: nothing is read or written here."""
+    what the person is to read, on the build's day `today`. Pure: nothing is
+    read or written here."""
     on_file, clash = races_on_file(districts)
     people = People(sitting, former)
-    report = {"unlinked": [], "new": [], "short": [], "notes": list(clash)}
+    pending = recount_open(today, hand.get("recount_deadline"), results.get("election"))
+    report = {"unlinked": [], "new": [], "short": [], "notes": list(clash), "pending": pending}
     races_in = results.get("races") or {}
     for key in sorted(set(races_in) - set(on_file), key=race_order):
         report["notes"].append(f"{key} is in the results and in no district on file: not drawn")
@@ -609,13 +712,22 @@ def members_elect(results, sitting, former, districts, hand):
             not_final = max(not_final, min(nf.get("seats") or seats, seats - len(held)))
             if nf.get("recount"):
                 row["recount"] = True
-        won = won[:max(0, seats - len(held) - not_final)]
+        # BEFORE THE RECOUNT DEADLINE NO RACE IS FINAL but one the results
+        # mark recounted (the person's rule, 16 October 2026): a winner drawn
+        # the day after the count, before anyone could ask for a recount,
+        # would be drawn as final when the rule says it is not.
+        if pending and r.get("recounted") is not True:
+            not_final = seats - len(held)
+        drawn = max(0, seats - len(held) - not_final)
         row["not_final"], row["held"] = not_final, len(held)
         named = hand["matches"].get(key) or {}
         for name in sorted(set(named) - {c["name"] for c in cands if c.get("elected") is True}):
             report["notes"].append(f"{key}: the hand file matches {name}, who is not a "
                                    "winner here")
-        for c in won:
+        # EVERY WINNER IS MATCHED, DRAWN OR NOT, so that a name the rule
+        # cannot settle is put to the person while its race is still not
+        # final, and is settled by the day it is drawn.
+        for i, c in enumerate(won):
             entry = {"n": reading_order(c["name"]), "p": party_letters(c.get("party"))}
             rule, why = auto_link(key, c["name"], people, on_file)
             if c["name"] in named:
@@ -631,6 +743,8 @@ def members_elect(results, sitting, former, districts, hand):
                 p = rule
                 if not p:
                     report["new" if why == NEW else "unlinked"].append((key, c["name"], why))
+            if i >= drawn:
+                continue
             entry["k"] = p["kind"] if p else "new"
             if p:
                 entry["id"], entry["s"] = p["id"], p["slug"]
@@ -694,65 +808,92 @@ def say_report(report, hand_path, election):
             print(f"  {n}")
 
 
+def decide(a, site, hand_path):
+    """(the results file, what it says, the file to write, the report), or
+    None where no member-elect is shown, the reason said. Refused where an
+    input cannot be used."""
+    path = newest_results(a.collected)
+    if path is None:
+        remove_stale(site, f"no election results in {Path(a.collected).as_posix()}/ "
+                           "(election_<year>.json)")
+        return None
+    results = read_results(path)
+    election = datetime.date.fromisoformat(results["election"])
+    takes_office = proceedings.organization_day(election.year)
+    today = build_date.today()
+    why = dates_why(today, election, takes_office)
+    if not why:
+        meta = load_json(site / "meta.json", "the site's meta.json, which names its terms")
+        terms = meta.get("terms") if isinstance(meta, dict) else None
+        why = term_why(terms[0] if isinstance(terms, list) and terms else None,
+                       results["term"])
+    if why:
+        remove_stale(site, f"{path.as_posix()}: {why}")
+        return None
+    notes = []
+    sources_hold(results, ".", notes)
+    hand, hand_note = read_hand(hand_path, results["election"])
+    sitting = load_json(site / "legislators.json", "the sitting roster")
+    former = load_json(site / "former.json", "the former members")
+    districts = load_json(site / "districts.json", "the district table")
+    races, report = members_elect(results, sitting, former, districts, hand, today.isoformat())
+    report["notes"][:0] = notes + ([hand_note] if hand_note else [])
+    doc = {"election": results["election"], "takes_office": takes_office.isoformat(),
+           "term": results["term"],
+           "sources": [s.get("url") for s in results.get("_source") or [] if s.get("url")],
+           "races": races}
+    return path, results, doc, report
+
+
 def main():
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0].strip())
     ap.add_argument("--site", default="site")
     ap.add_argument("--collected", default="collected")
     ap.add_argument("--hand", default=str(HAND_DEFAULT))
     a = ap.parse_args()
     site, hand_path = Path(a.site), Path(a.hand)
-    path = newest_results(a.collected)
-    if path is None:
-        remove_stale(site, f"no election results in {Path(a.collected).as_posix()}/ "
-                           "(election_<year>.json)")
-        return 0
+    # A REFUSAL IS SAID ON STDERR (the review of 16 October 2026): build_all
+    # prints a failed step's last line of stderr and keeps its stderr in
+    # build.json, so a refusal said only on stdout stopped the night with "no
+    # error text". And whatever stops the step, foreseen or not, first
+    # removes the file the last build left: a step that cannot decide must
+    # not leave last night's members-elect on the pages.
+    dest = site / OUT_NAME
     try:
-        results = read_results(path)
-        election = datetime.date.fromisoformat(results["election"])
-        takes_office = proceedings.organization_day(election.year)
-        why = dates_why(build_date.today(), election, takes_office)
-        if not why:
-            meta = load_json(site / "meta.json", "the site's meta.json, which names its terms")
-            terms = meta.get("terms") if isinstance(meta, dict) else None
-            why = term_why(terms[0] if isinstance(terms, list) and terms else None,
-                           results["term"])
-        if why:
-            remove_stale(site, f"{path.as_posix()}: {why}")
+        got = decide(a, site, hand_path)
+        if got is None:
             return 0
-        notes = []
-        sources_hold(results, ".", notes)
-        hand, hand_note = read_hand(hand_path, results["election"])
-        sitting = load_json(site / "legislators.json", "the sitting roster")
-        former = load_json(site / "former.json", "the former members")
-        districts = load_json(site / "districts.json", "the district table")
+        path, results, doc, report = got
+        tmp = dest.with_suffix(".json.tmp")
+        tmp.write_text(json.dumps(doc, ensure_ascii=False, separators=(",", ":")),
+                       encoding="utf-8")
+        os.replace(tmp, dest)
     except Refused as e:
         remove_stale(site, "nothing could be decided")
-        print(f"REFUSED: {e}")
+        print(f"REFUSED: {e}", file=sys.stderr)
         return 1
-    races, report = members_elect(results, sitting, former, districts, hand)
-    report["notes"][:0] = notes + ([hand_note] if hand_note else [])
-    doc = {"election": results["election"], "takes_office": takes_office.isoformat(),
-           "term": results["term"],
-           "sources": [s.get("url") for s in results.get("_source") or [] if s.get("url")],
-           "races": races}
-    dest = site / OUT_NAME
-    tmp = dest.with_suffix(".json.tmp")
-    tmp.write_text(json.dumps(doc, ensure_ascii=False, separators=(",", ":")),
-                   encoding="utf-8")
-    os.replace(tmp, dest)
+    except Exception:
+        remove_stale(site, "the step failed before it could write")
+        raise
+    races = doc["races"]
+    say_report(report, hand_path, results["election"])
+    # The summary comes last, where build_all's tail of a step that passed
+    # shows it.
     seats = sum(r["seats"] for r in races.values())
     elected = [e for r in races.values() for e in r["elected"]]
     kinds = Counter(e["k"] for e in elected)
-    print(f"members-elect: {path.as_posix()}, the general election of {results['election']} "
+    print(f"\nmembers-elect: {path.as_posix()}, the general election of {results['election']} "
           f"for {results['term']}")
     print(f"  {len(races)} races, {seats} seats: {len(elected)} elected ({kinds['sitting']} "
           f"sitting, {kinds['former']} returning, {kinds['new']} drawn unlinked), "
           f"{sum(r['not_final'] for r in races.values())} not final, "
           f"{sum(r['held'] for r in races.values())} held")
-    print(f"  wrote {dest.as_posix()}; it is shown until {takes_office.isoformat()}, "
+    if report["pending"]:
+        print(f"  NOT FINAL YET: {report['pending']}")
+    print(f"  wrote {dest.as_posix()}; it is shown until {doc['takes_office']}, "
           "Organization Day")
-    say_report(report, hand_path, results["election"])
     return 0
 
 
