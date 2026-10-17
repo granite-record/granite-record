@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-11.12
+# GRANITE_VERSION: 2026-10-11.13
 """
 The statutes (RSA) as pages: /laws, and one page a chapter at /laws/<chapter>.
 
@@ -125,6 +125,13 @@ def chapter_slug(ch):
     return ch.lower()
 
 
+# The chapters whose page is a folder's index.html (chapter_file), and so
+# whose address ends in a slash (chapter_path). Two scripts cannot import
+# this and say it again -- app.js's LAW_FOLDERS and build_pages.NOT_FOUND's
+# -- and preflight holds both to this one (16 October 2026).
+FOLDER_CHAPTERS = ("404",)
+
+
 def chapter_file(out, ch):
     """Where a chapter's page is written. RSA 404's page is laws/404/index.html,
     not laws/404.html: the host serves a folder's 404.html for every address
@@ -133,23 +140,23 @@ def chapter_file(out, ch):
     folder, and /laws/404 with a redirect to it, so chapter_path gives the
     address with its slash."""
     slug = chapter_slug(ch)
-    return out / slug / "index.html" if slug == "404" else out / f"{slug}.html"
+    return out / slug / "index.html" if slug in FOLDER_CHAPTERS else out / f"{slug}.html"
 
 
-def chapter_path(ch):
+def chapter_path(ch, sec=""):
     """The address the host serves a chapter's page at: /laws/91-a, and
-    /laws/404/ for the one chapter chapter_file puts in a folder.
+    /laws/404/ for the one chapter chapter_file puts in a folder; with
+    `sec`, that section's anchor on it (/laws/404/#s5).
 
     THE SLASH IS PART OF RSA 404'S ADDRESS (the sitemap audit, 16 October
     2026). The host answers /laws/404 with a 308 to /laws/404/, measured on
     the live site, so the sitemap listed an address that redirects and the
     page named as its canonical the address that redirected back to it. Every
     place that writes a chapter's address asks here: the links, the sitemap,
-    the page's canonical, og:url and citation, and build_bill_pages' links to
-    a law. The folder is read off chapter_file, so the two cannot disagree
-    about which chapter it is."""
+    the page's canonical, og:url and citation, and the bill records, bill
+    pages, feeds and guides that link a law."""
     slug = chapter_slug(ch)
-    return f"/laws/{slug}/" if chapter_file(Path("laws"), ch).name == "index.html" else f"/laws/{slug}"
+    return f"/laws/{slug}" + ("/" if slug in FOLDER_CHAPTERS else "") + (f"#s{sec}" if sec else "")
 
 
 def sec_anchor(addr):

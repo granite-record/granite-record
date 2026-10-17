@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.23
+# GRANITE_VERSION: 2026-09-04.24
 """
 Check the site is fit to publish before uploading it.
 
@@ -365,7 +365,7 @@ def _no_meeting(p):
     return 'class="wkpage calapp"' in t and 'class="calmeet"' not in t
 
 
-def pages_listed(site, locs, root, errors):
+def pages_listed(site, locs, root, errors, warnings):
     """EVERY PAGE THAT ASKS TO BE INDEXED AT ITS OWN ADDRESS IS IN THE
     SITEMAP (the sitemap audit, 16 October 2026). The checks above go from
     the sitemap to the files; this goes the other way, so a builder that
@@ -378,10 +378,20 @@ def pages_listed(site, locs, root, errors):
     whose page is /calendar), and a calendar week with no meeting at all,
     which build_calendar lists once it has one. A page naming no canonical
     is counted and said, and not refused: it asks nothing of a search engine
-    either way."""
+    either way.
+
+    A PAGE THIS BUILD DID NOT WRITE IS A WARNING, NOT A REFUSAL (16 October
+    2026). A site/ kept between builds -- publish.bat's, a laptop's night --
+    still holds the pages of a member, a town or a week a builder no longer
+    writes, each its own canonical and rightly out of the sitemap; refusing
+    those would hold a sound publish. So an unlisted page older than the
+    build's start (build_began) is said by name as left from an earlier
+    build, and one this build wrote is still refused. Where site/ holds no
+    build.json, every unlisted page is refused, as before."""
     origin = root[:-1]
     listed = {html.unescape(u) for u in locs}
-    unlisted, aside = [], Counter()
+    began = build_began(site)
+    unlisted, stale, aside = [], [], Counter()
     for p in sorted(site.rglob("*.html")):
         own = origin + canon("/" + p.relative_to(site).as_posix())
         head = _head(p)
@@ -400,12 +410,33 @@ def pages_listed(site, locs, root, errors):
         if _no_meeting(p):
             aside["a calendar week with no meeting yet"] += 1
             continue
+        if began is not None and p.stat().st_mtime < began:
+            stale.append(own)
+            continue
         unlisted.append(own)
     print(f"\npages not in the sitemap: {len(unlisted):,} that should be"
+          + (f"; {len(stale):,} left from an earlier build" if stale else "")
           + "".join(f"; {n:,} {why}" for why, n in sorted(aside.items())))
     if unlisted:
         errors.append(f"{len(unlisted):,} page(s) ask to be indexed at their own address and are "
                       f"not in the sitemap, e.g. {', '.join(unlisted[:3])}")
+    if stale:
+        warnings.append(f"{len(stale):,} page(s) left from an earlier build are in {site} and not "
+                        f"in the sitemap, e.g. {', '.join(stale[:3])} - no builder wrote them this "
+                        "time; delete them, or build into an empty site/")
+
+
+def build_began(site):
+    """When the build that wrote site/ began, as a POSIX time, or None: its
+    build.json's "finished" less its "seconds" (build_all writes both, in the
+    machine's local time, as a file's time is read). Two seconds earlier
+    still, since "finished" is cut to the second, so a page written in the
+    build's first moment is not taken for an older one."""
+    try:
+        d = json.loads((site / "build.json").read_text(encoding="utf-8"))
+        return datetime.fromisoformat(str(d["finished"])).timestamp() - float(d["seconds"]) - 2
+    except (OSError, ValueError, KeyError, TypeError):
+        return None
 
 
 def sitemap_checks(site, base, errors, warnings):
@@ -467,7 +498,7 @@ def sitemap_checks(site, base, errors, warnings):
             errors.append(f"{len(wrong_base)} sitemap URLs use a different base "
                           f"than {base} - rerun python3 src/pages/build_bill_pages.py --base")
         laws_linked(site, locs, root, errors)
-        pages_listed(site, locs, root, errors)
+        pages_listed(site, locs, root, errors, warnings)
     else:
         # AN ERROR, NOT A WARNING (the sitemap audit, 16 October 2026).
         # build_bill_pages writes it on every build, so a site without one is

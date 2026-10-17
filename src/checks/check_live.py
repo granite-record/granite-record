@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.18
+# GRANITE_VERSION: 2026-09-04.19
 """
 What is the live site actually serving?
 
@@ -342,6 +342,7 @@ def one_bill(base, site, bid, year, tries=3):
 # have read a tenth of today's.
 SITEMAP_LIMIT = 52_000_000
 LOC = re.compile(rb"<loc>([^<]*)</loc>")
+SITEMAP_LINE = re.compile(r"(?mi)^\s*Sitemap:\s*(\S+)\s*$")
 
 
 def locs_of(body):
@@ -357,7 +358,7 @@ def sitemap(base, site, seen, problems, row):
     the home page, would have passed every test here. So /sitemap.xml is
     asked for once, read whole, and held to the file in site/: answered 200
     as XML, with the same number of addresses and the same first and last.
-    And /robots.txt must name it, as the file build_bill_pages writes does.
+    And /robots.txt must name the sitemap that site/robots.txt names.
     """
     row("/sitemap.xml", "xml", limit=SITEMAP_LIMIT)
     st, ct, body = seen.get("/sitemap.xml", (None, "", b""))
@@ -385,19 +386,24 @@ def sitemap(base, site, seen, problems, row):
                         + (f" from {built[0]} to {built[-1]}" if built else ""))
             elif not served:
                 problems.append("/sitemap.xml lists no URL")
+    # THE SERVED LINE AGAINST THE BUILT ONE, NOT AGAINST --base (16 October
+    # 2026). A preview deploy and a dry run are asked at their own
+    # <branch>.<project>.pages.dev address (nightly.py), while the robots.txt
+    # built for them names graniterecord.org's sitemap, as it must: so
+    # comparing with --base called every preview a problem. Where site/ holds
+    # no robots.txt to compare with, the served one must name some sitemap.
     row("/robots.txt", "text")
     st, ct, body = seen.get("/robots.txt", (None, "", b""))
     if st == 200:
-        want = f"{base}/sitemap.xml"
-        named = re.findall(r"(?mi)^\s*Sitemap:\s*(\S+)\s*$", body.decode("utf-8", "replace"))
-        if want not in named:
-            local = site / "robots.txt"
-            built = (re.findall(r"(?mi)^\s*Sitemap:\s*(\S+)\s*$", local.read_text(encoding="utf-8"))
-                     if local.is_file() else [])
-            problems.append(
-                (f"/robots.txt is not the file in {site}/: " if want in built else "/robots.txt ")
-                + (f"names {', '.join(named)} as its sitemap, not {want}" if named
-                   else f"names no sitemap; it should say Sitemap: {want}"))
+        named = SITEMAP_LINE.findall(body.decode("utf-8", "replace"))
+        local = site / "robots.txt"
+        built = SITEMAP_LINE.findall(local.read_text(encoding="utf-8")) if local.is_file() else []
+        if built and named != built:
+            problems.append(f"/robots.txt is not the file in {site}/: it names "
+                            + (", ".join(named) if named else "no sitemap")
+                            + f", and {site}/'s names {', '.join(built)}")
+        elif not built and not named:
+            problems.append("/robots.txt names no sitemap")
 
 
 def main():
