@@ -24641,6 +24641,62 @@ def _conference_folded(build_site_v2):
                   "HB 1541's two notices with no recording stand")
 
 
+@check("markers", "a roll call that day overrules the consent calendar, and a committee "
+       "of conference takes the chair's convening", needs=("build_site_v2",))
+def _floor_station_rules(build_site_v2):
+    """Two rules of station_for_floor, both of 17 October 2026.
+
+    The consent calendar is inferred from the captions never naming the bill,
+    and the captions garble numbers: HB 1002 (EXjvgzYBkb8, 12 February 2026,
+    tabled 187-157) and HB 1602 (V8T49pbn0UU, 19 February 2026, two roll
+    calls) were drawn as passed on consent. A roll call on the day is the
+    chamber's own record that the bill was voted on by itself.
+
+    And a committee of conference's convening is a marker of its own kind,
+    "committee of conference", which the floor accepted only as "" or "floor
+    debate": 25 conference sittings drew no time, and HB 710 on dIumWRhMDrY
+    the chair's "open the door" at 1:20:08 instead of the convening at 0:16:39.
+    """
+    B = build_site_v2
+
+    def row(kind, tallies=(), precise=False, debate_end=None):
+        return {"date": "2026-02-12", "body": "H", "video_id": "VIDX",
+                "motions": ["Table"] if tallies else [], "tallies": list(tallies),
+                "kind": kind, "debate_end": debate_end, "window_start": 0.0,
+                "precise": precise, "whole_video": False, "title": "",
+                "time": "", "venue": ""}
+    absent = {"_absent": {"VIDX": ["HB1002"]}}
+    st = B.station_for_floor(row("floor debate"), "HB1002", absent)
+    assert st["state"] == "consent", (
+        f"a bill never named with no roll call is {st['state']!r}, not the consent calendar")
+    st = B.station_for_floor(row("floor debate", ["187-157"], True, 18914.0),
+                             "HB1002", absent)
+    assert st["state"] == "floor_precise" and st["what"] == "floor debate", (
+        f"a bill tabled 187-157 by roll call is drawn as {st['state']!r} {st['what']!r}; "
+        "a roll call overrules the consent calendar")
+    st = B.station_for_floor(row("floor debate", ["84-254"]), "HB1002", absent)
+    assert st["state"] != "consent", (
+        "a roll call stamped with the date alone (the Senate's) still drew the consent calendar")
+
+    def mk(start, what):
+        return {"start": start, "end": None, "how": "number", "what": what, "said": "x"}
+    marks = {"VIDX": {"HB710": [mk(999.8, "committee of conference"), mk(4808.6, "")]}}
+    st = B.station_for_floor(row("committee of conference"), "HB710", marks)
+    assert st.get("start") == 999.8, (
+        f"a conference sitting took {st.get('start')} over the chair's convening at 999.8")
+    st = B.station_for_floor(row("floor debate"), "HB710", marks)
+    assert st.get("start") == 4808.6, (
+        f"a floor debate took a committee of conference's convening: {st.get('start')}")
+    # The first spoken, not its own kind first: "We'll open a COC on Senate
+    # Bill 96" (89R50nnQFrE 0:02:48) opens the sitting that "convene the
+    # committee of conference on Senate Bill 96" resumes at 2:31:27.
+    marks = {"VIDX": {"SB96": [mk(168.2, ""), mk(9087.8, "committee of conference")]}}
+    st = B.station_for_floor(row("committee of conference"), "SB96", marks)
+    assert st.get("start") == 168.2, f"SB 96's conference opened at {st.get('start')}, not 168.2"
+    return "ok", ("a roll call overrules the consent calendar, clocked or not; a conference "
+                  "takes its own convening, and the first opening spoken")
+
+
 @check("frontend", "a Senate hearing report draws closed under its hearing, "
        "speakers under their names", needs=("build_site_v2", "senate_hearing_reports"))
 def _hearing_report_drawn(build_site_v2, senate_hearing_reports):

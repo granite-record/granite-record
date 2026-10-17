@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.207
+# GRANITE_VERSION: 2026-09-05.208
 """
 Generate the faceted site from real General Court data.
 
@@ -2568,8 +2568,18 @@ def station_for_floor(f, bid, marks):
     # consent calendar: adopted as part of a block, never read out,
     # never debated. Offering to play a nine-hour session for it invites
     # a reader to listen for something that is not there.
-    if bid in (marks.get("_absent") or {}).get(f.get("video_id") or "",
-                                               []):
+    #
+    # A recorded roll call on the bill that day overrules it. (17 October
+    # 2026.) "Never named" is read off the captions, and the captions garble
+    # bill numbers: HB 1002 was tabled 187-157 on 12 February 2026 while
+    # the clerk's reading came out as "house bill 10002", and HB 1602 had two
+    # roll calls on 19 February, so both were drawn as passed on the consent
+    # calendar, which is a wrong fact rather than a missing time. A roll call
+    # is the chamber's own record that the bill was voted on by itself, and
+    # a bill on the consent calendar never is. The roll call's tallies are
+    # what proceedings.csv carries for that day, so they decide it.
+    if (bid in (marks.get("_absent") or {}).get(f.get("video_id") or "", [])
+            and not f.get("tallies")):
         st["state"] = "consent"
         st["start"] = None
         # Not a debate. The heading read "House floor debate" over a paragraph
@@ -2578,11 +2588,24 @@ def station_for_floor(f, bid, marks):
         st["what"] = "consent calendar"
         return st
 
+    # A COMMITTEE OF CONFERENCE TAKES ITS OWN OPENING. (17 October 2026.)
+    # segment_markers names one "committee of conference" when the chair
+    # convenes it, and this accepted only "" or "floor debate", so 25
+    # conference sittings with the chair's own words on record drew no time
+    # and 2 drew a later, wrong one: HB 710 on dIumWRhMDrY showed 1:20:08,
+    # "open the door", where the chair said "convene the Committee of
+    # Conference on House Bill 710" at 0:16:39. Still the first one spoken,
+    # not its own kind first: "We'll open a COC on Senate Bill 96" at 0:02:48
+    # on 89R50nnQFrE is the opening and names no proceeding the patterns
+    # know, and "convene the committee of conference on Senate Bill 96" is
+    # the same sitting coming back two and a half hours later.
+    kinds = ("", "floor debate") + (("committee of conference",)
+                                    if kind == "committee of conference" else ())
     said_f = None
     for cand in (marks.get(f.get("video_id") or "") or {}).get(bid, []):
         if not isinstance(cand, dict) or cand.get("start") is None:
             continue
-        if str(cand.get("what") or "") not in ("", "floor debate"):
+        if str(cand.get("what") or "") not in kinds:
             continue
         end = f.get("debate_end")
         if precise and end and not (0 <= end - cand["start"] <= 7200):
