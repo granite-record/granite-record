@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.210
+# GRANITE_VERSION: 2026-09-04.211
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -35,6 +35,7 @@ import shell as _shell
 from components import WORDBOOK, chip, clock, date_span, icon, pchip, until_attrs
 import seating
 import json
+import legislative_year as _year
 import re
 import shutil
 from collections import OrderedDict, defaultdict, namedtuple
@@ -2650,6 +2651,18 @@ Promise.all([fetch(DATA("districts.json")).then(r=>r.json()).catch(()=>({})),
 </script>"""
 
 
+# THE WAY FROM THE STATUS BOX TO THE LEGISLATURE'S YEAR (the person, 17
+# October 2026: a page on the schedule "which links to the homepage status in
+# some way so that folks understand when the legislature is in session and the
+# various deadlines around filing bills"). One line at the foot of the box,
+# written once here for both of its renderers -- the box main() builds and
+# HOME_JS's copy -- so that the two cannot say different things; the address
+# and the link's words are legislative_year's, the page's own.
+YEAR_LINK = (f'<p class="statenote stateyear"><a href="{_year.HREF}">'
+             + _html.escape(_year.HOME_LINK).replace("&#x27;", "&rsquo;")
+             + '</a>: when it sits, and the deadlines a bill must meet.</p>')
+
+
 HOME_JS = """
 <script>
 // The day without its year where the year goes without saying ("Oct 7" in
@@ -2731,7 +2744,7 @@ fetch(DATA("home.json")).then(r=>r.json()).then(H=>{
         :(S.updated?`<p class="statemeta upd" style="margin-top:8px"
           data-updated="${esc(S.updated)}">Summary Updated:
           ${fdy(S.updated)}</p>`:"")}
-    </div>`;
+    """ + YEAR_LINK + """</div>`;
   const C=H.composition||{};
   // Five seats do not want a proportional bar; list them. The Council is also
   // executive branch, so it is set apart from the two chambers rather than
@@ -3330,7 +3343,7 @@ def main():
                else (f'<p class="statemeta upd" style="margin-top:8px" '
                      f'data-updated="{esc(S.get("updated") or "")}">Summary Updated: '
                      f'{fdy(S["updated"])}</p>' if S.get("updated") else ""))
-            + "</div>")
+            + YEAR_LINK + "</div>")
 
     # The five counts the home page drew here are gone, for the reason the
     # script's copy above gives. The data page still counts, which is where

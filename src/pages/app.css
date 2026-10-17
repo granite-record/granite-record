@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.279 */
+/* GRANITE_VERSION: 2026-09-07.280 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -1460,7 +1460,11 @@ line-height:1.1}
   .cmgrid td.cmpick,.calviews button[aria-pressed="true"],.cdopen,
   .calcat input:checked + .cbx,.searchbig button,.wbtn.sel,h1.lockup,
   .rtabs [role=tab][aria-selected=true],.l-g,.l-reach > span.is-me,
-  .g-btn,.g-btn:hover,.g-step::before,.tab[aria-selected=true] .tn{
+  .g-btn,.g-btn:hover,.g-step::before,.tab[aria-selected=true] .tn,
+  /* the legislature's year: You Are Here's words on their pine, and its
+     line, and the stretches of a term's bars with their swatches, which
+     are what the key's words name (17 October 2026) */
+  .l-yrpin > span,.l-yrpin::before,.l-yr .l-barb > i,.l-yr .l-sw{
   -webkit-print-color-adjust:exact;print-color-adjust:exact}
 }
 
@@ -4775,6 +4779,116 @@ a.l-pgm{font-weight:600;text-decoration:underline;text-decoration-thickness:1px;
   .l-term td:not(:last-child) .l-tbox.is-go::after{display:none}
 }
 @media (max-width:37.5em){.l-term .l-stack .l-table td{grid-template-columns:minmax(0,1fr);gap:.25rem}}
+
+/* ---- THE LEGISLATURE'S YEAR (legislative_year.py, 17 October 2026) --------
+   Three figures. Where Things Stand: the day the page was built, in pine,
+   which is where-you-are's colour and nothing else's here, and the next
+   three dates. The usual shape of a term: a year to a bar of months, each
+   stretch named in the key beside its swatch, never by colour alone, and You
+   Are Here pinned on its own year. The term date by date: a rail of dated
+   rows in seasons, each date over the document it is printed in, the past
+   seasons folded shut. Lists all of it, so a screen reader reads the order a
+   sighted reader sees; on a phone the dates go over their rows and the rail
+   runs down the left edge. */
+.l-yrhere{font:400 var(--t-read)/1.6 var(--serif);color:var(--ink);margin:0 0 .75rem;max-width:var(--l-meas);
+  border-left:4px solid var(--pine);padding:.125rem 0 .125rem .875rem}
+.l-yrnext{font:600 var(--t-label)/1.3 var(--sans);letter-spacing:.07em;text-transform:uppercase;color:var(--ink-2);margin:1.125rem 0 .375rem}
+.l-yrsoon{list-style:none;margin:0 0 1rem;padding:0;border-top:1px solid var(--rule);max-width:var(--l-meas)}
+.l-yrsoon li{display:grid;grid-template-columns:12rem minmax(0,1fr);gap:.125rem 1rem;padding:.5rem 0;
+  border-bottom:1px solid var(--rule);font:400 var(--t-ui)/1.45 var(--sans);color:var(--ink)}
+.l-yrsoon time{font-weight:600;font-variant-numeric:tabular-nums}
+.l-yrsoon span{display:flex;flex-wrap:wrap;align-items:baseline;gap:.25rem .625rem}
+@media (max-width:30em){.l-yrsoon li{grid-template-columns:minmax(0,1fr)}}
+
+.l-yr{max-width:60rem}
+.l-yrrow{margin:0 0 1.75rem}
+.l-yrh{margin:0 0 .5rem;font:400 var(--t-ui)/1.4 var(--sans);color:var(--ink-2)}
+.l-yrh b{font:600 var(--t-h3)/1.2 var(--serif);color:var(--ink);margin-right:.25rem}
+.l-yrbar{position:relative}
+.l-yrrow.is-now .l-yrbar{padding-top:2rem}
+.l-yr .l-barb{height:2rem}
+.l-yr .is-ses{background:var(--st-active)}
+.l-yr .is-off{background:var(--rule-2)}
+.l-yr .is-fall{background:var(--cal-meet)}
+.l-yr .is-study{background:var(--st-study)}
+.l-yr .is-vote{background:var(--ink-2)}
+.l-yr .is-org{background:var(--cal-floor)}
+/* the months, under the bar they name; the bar's 2px gaps are too small to
+   move a letter off its month */
+.l-yrmon{list-style:none;margin:.25rem 0 0;padding:0;display:grid;grid-template-columns:repeat(12,minmax(0,1fr));
+  font:500 var(--t-sm)/1.2 var(--sans);color:var(--ink-2);text-align:center}
+/* You Are Here: a pine line through the bar, its words over it, held inside
+   the bar's ends so they cannot run off a phone's edge */
+.l-yrpin{position:absolute;top:0;bottom:-.25rem;width:0}
+.l-yrpin::before{content:"";position:absolute;top:1.5rem;bottom:0;left:-1.5px;width:3px;background:var(--pine);
+  box-shadow:0 0 0 1px var(--surface)}
+.l-yrpin > span{position:absolute;top:0;left:0;transform:translateX(-50%);white-space:nowrap;
+  font:600 var(--t-sm)/1.2 var(--sans);color:var(--on-pine);background:var(--pine);padding:.1875rem .5rem;border-radius:var(--r-in)}
+.l-yrpin.is-r > span{transform:translateX(-100%)}
+.l-yrpin.is-l > span{transform:none}
+.l-yr .l-barkey{grid-template-columns:repeat(auto-fill,minmax(min(100%,17rem),1fr))}
+.l-yr .l-barkey .l-sw{align-self:flex-start;margin-top:.25rem}
+.l-yr .l-barkey .l-sub{display:block;margin-top:.125rem}
+.l-yr .l-cap b{color:var(--ink)}
+
+.l-tl{max-width:60rem}
+.l-tlseasons{list-style:none;margin:0;padding:0}
+.l-tlseason{border-top:1px solid var(--ink)}
+.l-tlseason:last-child{border-bottom:1px solid var(--rule)}
+.l-tlseason > details > summary{display:flex;flex-wrap:wrap;align-items:center;gap:.25rem .875rem;min-height:2.75rem;
+  padding:.5rem 0;cursor:pointer;list-style:none}
+.l-tlseason > details > summary::-webkit-details-marker{display:none}
+.l-tlseason > details > summary::before{content:"";flex:0 0 auto;width:.875rem;height:.875rem;background:var(--ink-2);
+  -webkit-mask:var(--l-chev) center/contain no-repeat;mask:var(--l-chev) center/contain no-repeat;transition:transform .15s}
+.l-tlseason > details[open] > summary::before{transform:rotate(90deg)}
+.l-tlseason > details > summary:hover .l-tlh{color:var(--pine)}
+.l-tlh{font:600 var(--t-h3)/1.3 var(--serif);color:var(--ink);margin:0}
+.l-tlwhen{font:400 var(--t-sm)/1.4 var(--sans);color:var(--ink-2)}
+.l-tlseason.is-here .l-tlwhen{color:var(--pine);font-weight:600}
+.l-tlsteps{list-style:none;margin:0 0 .75rem;padding:0;position:relative}
+/* the rail, down the middle of the gap between the dates and their rows */
+.l-tlsteps::before{content:"";position:absolute;left:calc(8.5rem + 1rem - 1px);top:.75rem;bottom:.75rem;
+  border-left:2px solid var(--rule-2)}
+.l-tlstep{position:relative;display:grid;grid-template-columns:8.5rem minmax(0,1fr);column-gap:2rem;
+  padding:.5rem 0 .625rem;scroll-margin-top:1rem}
+.l-tlstep::before{content:"";position:absolute;left:calc(8.5rem + 1rem - 6px);top:.8125rem;width:12px;height:12px;
+  box-sizing:border-box;border-radius:50%;background:var(--surface);border:2px solid var(--edge)}
+.l-tlstep.is-key::before{left:calc(8.5rem + 1rem - 8px);top:.6875rem;width:16px;height:16px;border:3px solid var(--ink)}
+.l-tlstep.is-past::before{background:var(--ink-2);border-color:var(--ink-2)}
+.l-tlstep.is-usual::before{border-style:dashed}
+.l-tld{margin:0;text-align:right;font:600 var(--t-ui)/1.45 var(--sans);color:var(--ink);font-variant-numeric:tabular-nums}
+.l-tlstep.is-past .l-tld{font-weight:500;color:var(--ink-2)}
+.l-tlus{font-style:italic}
+.l-tlb{min-width:0}
+.l-tln{margin:0;display:flex;flex-wrap:wrap;align-items:baseline;gap:.25rem .625rem;font:400 var(--t-ui)/1.45 var(--sans);color:var(--ink)}
+/* A landmark is told by its heavier mark, not a larger name: a name in the
+   season heading's own serif read as a heading under it. */
+.l-tln b{font-weight:600}
+.l-tlwho{font:500 var(--t-sm)/1.35 var(--sans);color:var(--ink-2);border:1px solid var(--rule-2);border-radius:var(--r-in);
+  padding:0 .375rem;white-space:nowrap}
+.l-tlw{margin:.1875rem 0 0;font:400 var(--t-ui)/1.5 var(--sans);color:var(--ink-2);max-width:42rem}
+.l-tlsub{list-style:none;margin:.5rem 0 0;padding:0 0 0 .75rem;border-left:2px solid var(--rule);display:grid;gap:.3125rem;
+  font:400 var(--t-sm)/1.45 var(--sans);color:var(--ink)}
+.l-tlsub li{display:grid;grid-template-columns:3.75rem minmax(0,1fr);gap:.5rem}
+.l-tlsub time{font-weight:600;font-variant-numeric:tabular-nums}
+.l-tlsub span{display:flex;flex-wrap:wrap;align-items:baseline;gap:.125rem .5rem}
+.l-tlsub .l-tlwho{font-size:var(--t-sm)}
+.l-tls{margin:.375rem 0 0;font:400 var(--t-sm)/1.45 var(--sans);color:var(--ink-2)}
+.l-tls a{color:var(--pine);text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:3px}
+.l-tls a:hover{color:var(--ink)}
+/* You Are Here, in pine, on a pine ground */
+.l-tlnow{background:var(--pine-soft);border-radius:var(--r-in);margin:.25rem 0}
+.l-tlnow::before{background:var(--pine);border-color:var(--pine);box-shadow:0 0 0 3px var(--pine-soft)}
+.l-tlnow .l-tld,.l-tlnow .l-tln b{color:var(--pine)}
+.l-tlnow .l-tlw{color:var(--ink)}
+@media (prefers-reduced-motion:reduce){.l-tlseason > details > summary::before{transition:none}}
+@media (max-width:37.5em){
+  .l-tlsteps::before{left:.4375rem}
+  .l-tlstep{grid-template-columns:minmax(0,1fr);padding-left:1.75rem;row-gap:.125rem}
+  .l-tlstep::before{left:calc(.5rem - 6px);top:.6875rem}
+  .l-tlstep.is-key::before{left:calc(.5rem - 8px);top:.5625rem}
+  .l-tld{text-align:left}
+}
 
 /* everyone who represents one town: each seat's reach under its row */
 .l-reach{display:flex;flex-wrap:wrap;gap:3px;margin-top:.5rem}

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.603
+# GRANITE_VERSION: 2026-09-04.604
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -43150,6 +43150,255 @@ def _status_box_parity():
     assert "fdy(S.last_session)" in js and 'fdy(S["last_session"])' in py, \
         "the two copies write the last floor session's date differently"
     return "ok", "floor session, hearings, date and stale warning in both copies"
+
+
+# ---- THE LEGISLATURE'S YEAR (17 October 2026) ---------------------------------
+#
+# The person asked for a page explaining the legislature's schedule, its
+# deadlines from bill filing to crossover and interim study, "which links to
+# the homepage status in some way". legislative_year.py draws it as a Learn
+# topic, holds every date with the calendar it is printed in, and pins You Are
+# Here on the build's day. The four checks below hold the three promises that
+# make it worth having -- it is built and the status box leads to it, no date
+# is stated as this term's without its document, and You Are Here moves with
+# the day -- and, where the calendars are on this disk, the dates themselves.
+
+def _year_steps(page):
+    """The timeline's rows in a drawn page, in order: [(classes, the first
+    datetime of the row's own date or "", the row's html)]. A row's deadlines
+    (its l-tlsub list) are inside its html and are not rows of their own."""
+    out = []
+    parts = page.split('<li class="l-tlstep')[1:]
+    for part in parts:
+        cls = part[:part.index('"')]
+        head = part[:part.find('<div class="l-tlb">')]
+        m = re.search(r'<time datetime="(\d{4}-\d\d-\d\d)"', head)
+        out.append((cls, m.group(1) if m else "", part))
+    return out
+
+
+@check("build", "the legislature's year is a Learn page, and the home page's status box links to it",
+       needs=("legislative_year", "civics", "build_pages"))
+def _year_page_from_home(legislative_year, civics, build_pages):
+    """The page is built from the fixture as every Learn topic is -- on the
+    Resources hub's Learn tab and in the sitemap -- and build_pages writes
+    YEAR_LINK at the foot of the status box: in the box it builds, and in
+    HOME_JS's copy, which draws where the built page has none.
+
+    The fixture holds no status/status.txt, so its home page has no box of
+    its own. This gives a copy of the built fixture a status in home.json and
+    builds the home page again. Fails where the page is not built or carries
+    no shape and no timeline, where the hub or the sitemap leaves it out, and
+    where either copy of the box does not link it."""
+    LY, BP = legislative_year, build_pages
+    assert LY.SLUG in [t["slug"] for t in civics.TOPICS], (
+        f"civics.TOPICS has no {LY.SLUG}: the page is not one of the Learn topics")
+    assert BP.YEAR_LINK in BP.HOME_JS, "HOME_JS's copy of the status box does not carry YEAR_LINK"
+    assert f'href="{LY.HREF}"' in BP.YEAR_LINK, f"YEAR_LINK does not link {LY.HREF}"
+    root = Path(tempfile.mkdtemp(prefix="gr-year-home-"))
+    try:
+        _base, _ran = _fixture_site_whole(root)
+        site = root / "site"
+        page = site / LY.HREF
+        assert page.is_file(), f"build_civics wrote no {LY.HREF}"
+        text = page.read_text(encoding="utf-8")
+        for what, part in (("the usual shape of a term", 'class="l-fig l-yr"'),
+                           ("the term date by date", 'class="l-fig l-tl"'),
+                           ("You Are Here", f'id="{LY.HERE_ID}"')):
+            assert part in text, f"{LY.HREF} draws no {what}"
+        assert "[[" not in text, f"{LY.HREF} carries an unfilled figure"
+        listed = re.compile(rf'href="/?learn/{re.escape(LY.SLUG)}(?:\.html)?"')
+        assert listed.search((site / "resources.html").read_text(encoding="utf-8")), (
+            "the Resources hub's Learn tab does not list the page")
+        assert f"/learn/{LY.SLUG}<" in (site / "sitemap.xml").read_text(encoding="utf-8"), (
+            "the sitemap does not list the page")
+        hj = site / "home.json"
+        home = json.loads(hj.read_text(encoding="utf-8")) if hj.exists() else {}
+        home["status"] = {"phase": "out of session", "headline": "The session is over.",
+                          "note": "The chambers last met for veto day.", "updated": "2026-10-17",
+                          "milestones": []}
+        hj.write_text(json.dumps(home), encoding="utf-8")
+        r = _run([sys.executable, _paths.script("build_pages.py"), "--out", "site"],
+                 cwd=root, capture_output=True, text=True, timeout=180)
+        assert r.returncode == 0, "build_pages.py failed: " + (r.stderr or r.stdout or "")[-400:]
+        index = (site / "index.html").read_text(encoding="utf-8")
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    i = index.find('<div id="state">')
+    box = index[i:index.find('<div id="upcoming">', i)] if i >= 0 else ""
+    assert 'class="statebox' in box, "the home page built with a status drew no status box"
+    assert 'class="statenote stateyear"' in box and re.search(
+        rf'href="/?learn/{re.escape(LY.SLUG)}(?:\.html)?"', box), (
+        f"the home page's status box does not link the page: {box[-300:]!a}")
+    assert index.count('class="statenote stateyear"') >= 2, (
+        "the home page carries the link once: the box its script draws has lost it")
+    return "ok", (f"{LY.HREF} built with its shape, its timeline and You Are Here, on the hub "
+                  "and in the sitemap; both copies of the status box link it")
+
+
+@check("frontend", "every date the legislature's year states as this term's names its document",
+       needs=("legislative_year",))
+def _year_dates_sourced(legislative_year):
+    """A date stated as this term's is one printed in a House or Senate
+    calendar or journal on this disk, and the page names that document under
+    it (the person, 17 October 2026: "say plainly which dates are this term's
+    and which are the usual pattern"). In legislative_year.TERMS that is a
+    cite on every dated step and on every deadline it gathers, naming a
+    document DOCS holds; on the drawn page it is a Source line under every
+    dated row, and Usually in place of a date on every row without one.
+
+    Fails where a dated step or one of its deadlines cites nothing or a
+    document DOCS does not name, where a document lacks its set, date, number
+    or text, and where a drawn row shows a date with no source, or no date
+    and no Usually."""
+    from datetime import date
+    LY = legislative_year
+    bad = []
+    for key, d in LY.DOCS.items():
+        if d.set != "status" and not (d.set in LY.ONE and d.day and d.number and d.path):
+            bad.append(f"DOCS[{key!r}] lacks its set, date, number or text")
+    n = 0
+    for term, seasons in LY.TERMS.items():
+        for s in seasons:
+            for st in s.steps:
+                if not st.day:
+                    if not st.when or st.cites or st.subs:
+                        bad.append(f"{term} {st.name}: undated, so it needs a when and no cites")
+                    continue
+                n += 1
+                if not st.cites and not st.subs:
+                    bad.append(f"{term} {st.name} ({st.day}) cites no document")
+                days = {day for _doc, day, _w in st.cites}
+                if st.cites and st.day not in days and not st.subs:
+                    bad.append(f"{term} {st.name}: no cite is of its own day {st.day}")
+                if st.until and st.cites and st.until not in days:
+                    bad.append(f"{term} {st.name}: no cite is of its last day {st.until}")
+                for doc, _day, _w in st.cites:
+                    if doc not in LY.DOCS:
+                        bad.append(f"{term} {st.name} cites {doc}, which DOCS does not name")
+                for day, _who, name, cites in st.subs:
+                    if not cites or any(doc not in LY.DOCS for doc, _w in cites):
+                        bad.append(f"{term} {st.name}: {name} ({day}) cites no document DOCS holds")
+    assert not bad, "; ".join(bad[:5])
+    rows = 0
+    for term in LY.TERMS:
+        a = int(term[:4])
+        for day in (date(a, 3, 1), date(a + 1, 10, 1)):
+            for cls, when, html_ in _year_steps(LY.timeline(term, day, {})):
+                if "l-tlnow" in cls:
+                    continue
+                rows += 1
+                said = re.search(r'<p class="l-tls">(.*?)</p>', html_)
+                said = re.sub(r"<[^>]+>", "", said.group(1)) if said else ""
+                if when and not re.search(r"Sources?: (?:(?:House|Senate) (?:Calendar|Journal) "
+                                          r"\d+, \w+ \d+, \d{4}|the session status)", said):
+                    bad.append(f"{term} on {day}: the row dated {when} names no document "
+                               f"({said[:80]!a})")
+                if not when and "Usually" not in html_[:html_.find('<div class="l-tlb">')]:
+                    bad.append(f"{term} on {day}: a row with no date does not say Usually")
+    assert not bad, "; ".join(bad[:5])
+    return "ok", (f"{n} dated steps across {len(LY.TERMS)} term(s), each citing a document; "
+                  f"{rows} drawn rows, each dated over its source or marked Usually")
+
+
+@check("frontend", "the legislature's year puts You Are Here on the day the site was built",
+       needs=("legislative_year", "build_civics"))
+def _year_here_follows_date(legislative_year, build_civics):
+    """You Are Here is the build's day (build_date.today(), so a build that
+    states GRANITE_BUILD_DATE draws that day), and three figures draw it: the
+    timeline puts its row after every dated row on or before the day and
+    before every one after it, the shape of a term pins it on the bar of the
+    day's own year at the day's place in that year, and Where Things Stand
+    opens with it.
+
+    Held on a day in each season of the term, before it and after it, and on
+    the fixture's own build. Fails where any of the three is drawn on another
+    day or in another place, and where build_civics stops giving the
+    figures the build's day."""
+    import inspect
+    from datetime import date
+    LY = legislative_year
+    import components
+    days = [date(2024, 10, 1), date(2024, 12, 20), date(2025, 3, 27), date(2025, 9, 15),
+            date(2026, 3, 26), date(2026, 8, 19), date(2026, 10, 17), date(2026, 12, 10),
+            date(2027, 2, 1)]
+    bad = []
+    for day in days:
+        term, _cur = LY.shown_term(day)
+        rows = _year_steps(LY.timeline(term, day, {}))
+        here = [k for k, (cls, _w, _h) in enumerate(rows) if "l-tlnow" in cls]
+        if len(here) != 1:
+            bad.append(f"{day}: {len(here)} You Are Here rows")
+            continue
+        k = here[0]
+        if rows[k][1] != day.isoformat():
+            bad.append(f"{day}: You Are Here is dated {rows[k][1]}")
+        before = [w for _c, w, _h in rows[:k] if w]
+        after = [w for _c, w, _h in rows[k + 1:] if w]
+        if any(w > day.isoformat() for w in before) or any(w <= day.isoformat() for w in after):
+            bad.append(f"{day}: You Are Here sits between {before[-1:] or 'nothing'} and "
+                       f"{after[:1] or 'nothing'}")
+        shape = LY.shape(day)
+        pins = re.findall(r'<div class="l-yrrow[^"]*"><p class="l-yrh"><b>(\d{4})</b>'
+                          r'(?:(?!<div class="l-yrrow).)*?class="l-yrpin[^"]*" style="left:([\d.]+)%"',
+                          shape, re.S)
+        jan1 = date(day.year, 1, 1)
+        want = 100 * ((day - jan1).days + 0.5) / (date(day.year + 1, 1, 1) - jan1).days
+        if len(pins) != 1 or pins[0][0] != str(day.year) or abs(float(pins[0][1]) - want) > 0.01:
+            bad.append(f"{day}: the shape's pin is {pins}, not {day.year} at {want:.2f}%")
+        now = LY.now_html(term, day, "/learn/x")
+        if f"<b>You are here: {components.date_words(day, 'full')}.</b>" not in now:
+            bad.append(f"{day}: Where Things Stand opens {now[:90]!a}")
+    src = inspect.getsource(build_civics.record_figures)
+    if "legislative_year.figures(build_date.today()" not in src:
+        bad.append("build_civics.record_figures does not give the page the build's day")
+    shared, _base, _ran, built_on = _fixture_site_shared()
+    page = shared / "site" / LY.HREF
+    if page.is_file():
+        rows = _year_steps(page.read_text(encoding="utf-8"))
+        drawn = [w for cls, w, _h in rows if "l-tlnow" in cls]
+        if drawn[:1] not in ([d.isoformat()] for d in built_on):
+            bad.append(f"the fixture, built on {[str(d) for d in built_on]}, drew You Are Here "
+                       f"on {drawn}")
+    else:
+        bad.append(f"the fixture built no {LY.HREF}")
+    assert not bad, "; ".join(bad[:4])
+    return "ok", (f"on {len(days)} days from {days[0]} to {days[-1]}, and on the fixture's "
+                  "build, the timeline, the shape and Where Things Stand each draw You Are Here "
+                  "on the day, in its place")
+
+
+@check("data", "the legislature's year's dates are printed where it says, beside the words it gives",
+       needs=("legislative_year",))
+def _year_dates_printed(legislative_year):
+    """Each date legislative_year.TERMS cites is held to the text beside its
+    document: the text must print the date and the deadline's own words. The
+    text cannot pair the two -- the House's two columns come apart in it, and
+    in every 2026 House calendar it puts CROSSOVER beside May 7 or May 14
+    where the PDF prints it beside March 26 -- so where pdfplumber and the
+    PDFs are on this disk the words are also held to the date's own block of
+    rows on the page (legislative_year.paired). Nothing here asks the network.
+
+    The one date cited to corrections/status/status.txt, the person's file,
+    is not a failure when the file stops naming it: the page then draws that
+    row undated, and this says so."""
+    LY = legislative_year
+    problems, checked, absent = LY.verify(Path("."), pdf=True)
+    if not checked:
+        return "skip", "none of the cited calendars' text is on this disk"
+    status = [(k, why) for k, why in problems if "status.txt" in why]
+    rest = [(k, why) for k, why in problems if "status.txt" not in why]
+    assert not rest, f"{len(rest)} cited date(s) not printed as cited: " + "; ".join(
+        f"{k}: {why}" for k, why in rest[:4])
+    try:
+        import pdfplumber  # noqa: F401
+        how = "and each pairing read off its PDF's rows"
+    except ImportError:
+        how = "(pdfplumber is not here, so no pairing was read off a PDF)"
+    return "ok", (f"{checked} cited dates printed in their documents' text {how}; "
+                  f"{absent} with no text here"
+                  + (f"; the status file no longer names {len(status)}, drawn undated"
+                     if status else ""))
 
 
 @check("frontend", "tab strips keep the keyboard's place and a page opens on its own first tab")
