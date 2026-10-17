@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.589
+# GRANITE_VERSION: 2026-09-04.590
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -23051,6 +23051,7 @@ ic_SOURCES = {
     "data/member_votes.json": "build_data.py, which does not declare it",
     "verification_manifest.csv": "build_manifest.py",
     "site/legislators.json": "build_site_v2.py, which does not declare it",
+    "site/former.json": "build_site_v2.py, which does not declare it",
     "site/towns.json": "build_town_pages.py, which does not declare it",
     "site/idx": "build_indexes.py, which does not declare it",
     "bill_text.json": "fetch_bill_text.py, the current term's bills as the "
@@ -82395,6 +82396,796 @@ def _granit_carries_our_districts():
                   f"layers; {len(hc['granit_base'])} base and "
                   f"{len(hc['granit_floterial'])} floterial House districts "
                   f"agreeing with districts/house.txt")
+
+
+# ============================================================= members-elect ==
+#
+# WHO NOVEMBER'S ELECTION SENT, UNTIL THEY SIT (the person's decisions of 16
+# October 2026; private/MEMBERS_ELECT_PLAN.md). src/parse/build_members_elect.py
+# writes site/members_elect.json, the one file the pages will draw a
+# member-elect from, and the rules it holds are each one a page could break
+# quietly: written only between the election and Organization Day while the
+# site's newest term is the one before theirs; a winner linked to a page only
+# on a certain match; the roster files left byte for byte; the person's file
+# read and never written; every race adding up to its seats. These hold them
+# on a copy of the fixture's built site, with tests/election_fixture.json as
+# its results and three former members added to its former.json -- not to
+# _site_fixture, whose page counts other checks hold. The pages that draw the
+# file are a later pass, and its checks with them.
+
+_ELECT_SOURCE = b"A stand-in for the Secretary of State's results, for preflight's fixture.\n"
+# A day between the fixture's election, 3 November 2026, and Organization Day.
+_ELECT_IN = "2026-11-20"
+
+
+def _elect_former(sur, first, mid, county, district, slug):
+    """A former representative's row, in the shape build_site_v2 writes
+    former.json."""
+    abbr = {"Rockingham": "Rock", "Belknap": "Belk"}.get(county, county)
+    label = f"Rep. {first} {sur}"
+    return {"id": mid, "name": f"{sur}, {first}", "chamber": "H", "party": "R",
+            "county": county, "county_abbr": abbr, "district": district, "label": None,
+            "email": "", "url": None, "url_past": None, "towns": [], "committees": [],
+            "title": None, "phone": "", "seat": "", "display_plain": label,
+            "display": f"{label} (R)", "display_full": f"{label} (R - {abbr} {district})",
+            "district_label": f"{abbr} {district}", "sort": f"{sur.lower()}, {first.lower()}",
+            "n_votes": 0, "counts": {}, "n_sponsored": 0, "slug": slug, "former": True,
+            "served": {"first": "1/4/2017", "last": "6/30/2022", "terms": ["2017-2018"]}}
+
+
+# Michael Vose, the one former member of his name, of Rockingham: returning,
+# and linked. Two John Smiths, both of Rockingham: a name the rule cannot
+# settle, until the person's file says which.
+_ELECT_FORMER = [
+    _elect_former("Vose", "Michael", "900001", "Rockingham", "5", "michael-vose-rock-5"),
+    _elect_former("Smith", "John", "900002", "Rockingham", "3", "john-smith-rock-3"),
+    _elect_former("Smith", "John", "900003", "Rockingham", "20", "john-smith-rock-20")]
+
+# The fixture's recount deadline, made up like the rest of its election: a
+# day between the election and _ELECT_IN, so that on _ELECT_IN every race the
+# person has not held back is final (the person's rule, 16 October 2026: final
+# once posted and past the recount deadline, or once recounted).
+_ELECT_DEADLINE = "2026-11-13"
+
+# The person's file for the fixture's election: John Smith is 900002, Pat
+# Newell is confirmed new, Danville's race is not final with a recount asked
+# for, and Fremont's write-in winner is held off the pages. The reasons are
+# private, and must never reach the site.
+_ELECT_HAND = {"2026-11-03": {
+    "recount_deadline": _ELECT_DEADLINE,
+    "matches": {"H|Rockingham|13": {"John Smith": "900002"},
+                "H|Rockingham|32": {"Pat Newell": None}},
+    "not_final": {"H|Rockingham|8": {"recount": True, "why": "PRIVATE-NOT-FINAL"}},
+    "held": {"H|Rockingham|7": {"Sam Wright": "PRIVATE-HELD"}}}}
+
+# The person's file with the deadline in it and nothing settled: what the
+# rule does alone, past the deadline.
+_ELECT_DEADLINE_ONLY = {"2026-11-03": {"recount_deadline": _ELECT_DEADLINE}}
+
+
+def _elect_absent():
+    """What the members-elect checks need and this folder lacks."""
+    return [x for x in CHAIN_NEEDS + ["build_members_elect.py"] if not _paths.locate(x).exists()] \
+        + [x for x in ("tests/election_fixture.json",) if not Path(x).exists()]
+
+
+def _elect_fixture(root):
+    """The fixture's built project in `root` (_fixture_site_whole), with the
+    election's results in collected/, their saved source in records/sources/,
+    and the three former members above in site/former.json. Returns site/."""
+    _fixture_site_whole(root)
+    site = root / "site"
+    fp = site / "former.json"
+    former = json.loads(fp.read_text(encoding="utf-8")) if fp.exists() else []
+    fp.write_text(json.dumps(former + _ELECT_FORMER), encoding="utf-8")
+    (root / "collected").mkdir(exist_ok=True)
+    shutil.copy2(Path("tests/election_fixture.json"), root / "collected" / "election_2026.json")
+    src = root / "records" / "sources" / "sos-general-election-2026-fixture.txt"
+    src.parent.mkdir(parents=True, exist_ok=True)
+    src.write_bytes(_ELECT_SOURCE)
+    return site
+
+
+def _elect_run(root, day, hand=None, err=False):
+    """build_members_elect.py in `root` with its day stated, the person's
+    file written first where one is given: (exit code, what it printed, the
+    file it left in site/ or None) -- and, where `err`, what it printed on
+    stderr alone after the rest."""
+    if hand is not None:
+        (root / "corrections").mkdir(exist_ok=True)
+        (root / "corrections" / "members_elect.json").write_text(json.dumps(hand),
+                                                                 encoding="utf-8")
+    r = _run([sys.executable, _paths.script("build_members_elect.py")], cwd=root,
+             capture_output=True, text=True, timeout=120, env={"GRANITE_BUILD_DATE": day})
+    f = root / "site" / "members_elect.json"
+    got = (r.returncode, (r.stdout or "") + (r.stderr or ""),
+           json.loads(f.read_text(encoding="utf-8")) if f.exists() else None)
+    return got + ((r.stderr or "",) if err else ())
+
+
+def _elect_part(out, title):
+    """One part of the step's report, from its title to the next blank line."""
+    at = out.find(title)
+    return "" if at < 0 else out[at:].split("\n\n")[0]
+
+
+@check("build", "members-elect: a winner is linked to a page only on a certain match -- the "
+                "seat's sitting member, or the one former member of that name and county -- and "
+                "a name the rule cannot settle only once the person's file says who it is")
+def _elect_links():
+    """The person's rule (16 October 2026): a link only on a certain match,
+    because a stranger's record under a member-elect's name is worse than a
+    missing link. On the fixture's election: Jodi Nelson and Debra
+    Altschiller, re-elected to their own seats, link to their own pages;
+    Michael Vose, the one former member of his name, of Rockingham, links to
+    his; John Smith, two former members of Rockingham, is drawn unlinked and
+    named to the person, and links to the one the person's file names; and
+    the new people -- a write-in among them -- are drawn unlinked. Every link
+    is to the record of the id it names, and a winner with no link carries
+    neither id nor page."""
+    absent = _elect_absent()
+    if absent:
+        return "skip", "not here: " + ", ".join(absent)
+    root = Path(tempfile.mkdtemp(prefix="gr-elect-links-"))
+    try:
+        site = _elect_fixture(root)
+        sitting = {str(m["id"]): m for m in json.loads((site / "legislators.json").read_text(
+            encoding="utf-8"))}
+        former = {str(m["id"]): m for m in json.loads((site / "former.json").read_text(
+            encoding="utf-8"))}
+        nelson = next(m for m in sitting.values() if m["name"].startswith("Nelson,"))
+        senator = next(m for m in sitting.values() if m["name"].startswith("Altschiller,"))
+        code, out, doc = _elect_run(root, _ELECT_IN, hand=_ELECT_DEADLINE_ONLY)
+        assert code == 0 and doc, f"the step wrote no file on {_ELECT_IN}: {out[-300:]}"
+
+        def drawn(d, key, name):
+            hit = [e for e in d["races"][key]["elected"] if e["n"] == name]
+            assert len(hit) == 1, f"{name} is not drawn once in {key}: {d['races'][key]}"
+            return hit[0]
+        want = {("H|Rockingham|13", "Jodi Nelson"): ("sitting", nelson["id"], nelson["slug"]),
+                ("S|24", "Debra Altschiller"): ("sitting", senator["id"], senator["slug"]),
+                ("H|Rockingham|6", "Michael Vose"): ("former", "900001", "michael-vose-rock-5"),
+                ("H|Rockingham|13", "John Smith"): ("new", None, None),
+                ("H|Rockingham|32", "Pat Newell"): ("new", None, None),
+                ("H|Rockingham|7", "Sam Wright"): ("new", None, None)}
+        bad = []
+        for (key, name), w in want.items():
+            e = drawn(doc, key, name)
+            if (e["k"], e.get("id"), e.get("s")) != w:
+                bad.append(f"{name} in {key} is {(e['k'], e.get('id'), e.get('s'))}, not {w}")
+        for d in (doc,):
+            for key, r in d["races"].items():
+                for e in r["elected"]:
+                    own = {"sitting": sitting, "former": former}.get(e["k"], {}).get(e.get("id"))
+                    if e["k"] == "new" and ("id" in e or "s" in e):
+                        bad.append(f"{e['n']} in {key} is new and carries a link: {e}")
+                    elif e["k"] != "new" and (not own or own["slug"] != e.get("s")):
+                        bad.append(f"{e['n']} in {key} links to {e.get('s')}, which is not the "
+                                   f"page of {e['k']} member {e.get('id')}")
+        assert not bad, "; ".join(bad)
+        unlinked, new = _elect_part(out, "NOT LINKED"), _elect_part(out, "NEW --")
+        assert "John Smith: 2 former members of that name" in unlinked, (
+            "the name the rule cannot settle is not put to the person: " + out[-400:])
+        assert "Pat Newell" in new and "Sam Wright" in new and "Jodi Nelson" not in out, (
+            "the new people are not listed for the person, or a linked one is: " + out[-400:])
+        code, out, doc = _elect_run(root, _ELECT_IN, hand=_ELECT_HAND)
+        assert code == 0 and doc, f"the step with the person's file wrote nothing: {out[-300:]}"
+        e = drawn(doc, "H|Rockingham|13", "John Smith")
+        assert (e["k"], e.get("id"), e.get("s")) == ("former", "900002", "john-smith-rock-3"), (
+            f"John Smith, whom the person's file names 900002, is drawn as {e}")
+        assert "John Smith" not in _elect_part(out, "NOT LINKED") and \
+            "Pat Newell" not in _elect_part(out, "NEW --"), (
+            "a name the person's file settles is still put to the person: " + out[-400:])
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    return "ok", ("Nelson and Altschiller to their own pages, Vose to his as the one former "
+                  "member of his name and county; John Smith unlinked and named to the person "
+                  "until the person's file names 900002; the new people unlinked")
+
+
+@check("build", "members-elect: what the rule cannot be certain of goes to the person, never "
+                "to a page", needs=("build_members_elect",))
+def _elect_rule(BME):
+    """The failure cases of the matching rule (private/MEMBERS_ELECT_PLAN.md),
+    each sent to the report and never linked: a sitting member of that name in
+    another seat or chamber; a Jr. or Sr. on one side only, which
+    member_links.surname strips; a former member with no county, or of
+    another county; two of a surname in one seat, where the first names must
+    be equal and a short form does not do; a surname of two words read as
+    one ("St. Clair" is not "Clair"); a first name that fits only as the start
+    of the other's (Joelle for Joe, Pat for Patricia), in the seat or out of
+    it; a former member who fits only by a short form (Bob for Robert: the
+    person's rule says the same name, 16 October 2026); two former records
+    that answer to one name; and two winners taken to one member. And what
+    is certain links: the seat's member under a short form member_links.SHORT
+    lists, the name either way round, a suffix on both sides, a former
+    representative elected to a Senate district in the county he sat for."""
+    sitting = [
+        {"id": "s1", "name": "Nelson, Jodi", "chamber": "H", "county": "Rockingham",
+         "district": "13", "slug": "jodi-nelson-rock-13"},
+        {"id": "s2", "name": "Mannion, William", "chamber": "H", "county": "Hillsborough",
+         "district": "1", "slug": "william-mannion-hills-1"},
+        {"id": "s3", "name": "Mannion, Dennis", "chamber": "H", "county": "Hillsborough",
+         "district": "1", "slug": "dennis-mannion-hills-1"},
+        {"id": "s4", "name": "Perkins Kwoka, Rebecca", "chamber": "S", "county": "Rockingham",
+         "district": "24", "slug": "rebecca-perkins-kwoka-sd-24"},
+        {"id": "s5", "name": "Sabourin dit Choinière, Matt", "chamber": "H",
+         "county": "Hillsborough", "district": "1", "slug": "matt-sabourin-hills-1"},
+        # Two the review of 16 October 2026 found taking a stranger's first
+        # name by its first letters: Rep. Joe Alexander, Rep. Louise Andrus.
+        {"id": "s6", "name": "Alexander, Joe", "chamber": "H", "county": "Coos",
+         "district": "1", "slug": "joe-alexander-coos-1"},
+        {"id": "s7", "name": "Andrus, Louise", "chamber": "H", "county": "Belknap",
+         "district": "5", "slug": "louise-andrus-belk-5"}]
+    former = [
+        # As former.json writes 953 of its counties: the abbreviation.
+        {"id": "f6", "name": "Kittredge, Mac", "chamber": "H", "county": "Belk",
+         "district": "2", "slug": "mac-kittredge-belk-2"},
+        {"id": "f1", "name": "Clegg, Robert", "chamber": "H", "county": "Rockingham",
+         "district": "3", "slug": "robert-clegg-rock-3"},
+        {"id": "f2", "name": "Roberge, Sheila", "chamber": "S", "county": "", "district": "9",
+         "slug": "sheila-roberge-sd-9"},
+        {"id": "f3", "name": "Barnes, Jr., John", "chamber": "H", "county": "Rockingham",
+         "district": "8", "slug": "john-barnes-rock-8"},
+        {"id": "f4", "name": "Clair, Charlie", "chamber": "H", "county": "Rockingham",
+         "district": "9", "slug": "charlie-clair-rock-9"},
+        {"id": "f5", "name": "St. Clair, Charlie", "chamber": "H", "county": "Belknap",
+         "district": "5", "slug": "charlie-st-clair-belk-5"},
+        # Patricia Cote and Donna Sytek, whose pages "Pat Cote" and "Don
+        # Sytek" reached by the first three letters (the review of 16
+        # October 2026); and one person's two records under two spellings,
+        # as member_links.py tells of the Longs, which no rule may choose
+        # between.
+        {"id": "f7", "name": "Cote, Patricia", "chamber": "H", "county": "Rock",
+         "district": "9", "slug": "patricia-cote-rock-9"},
+        {"id": "f8", "name": "Sytek, Donna", "chamber": "H", "county": "Rockingham",
+         "district": "4", "slug": "donna-sytek-rock-4"},
+        {"id": "f9", "name": "Long, Pat", "chamber": "S", "county": "Hillsborough",
+         "district": "20", "slug": "pat-long-sd-20"},
+        {"id": "f10", "name": "Long, Patrick", "chamber": "H", "county": "Hills",
+         "district": "23", "slug": "patrick-long-hills-23"}]
+
+    def town(county, n, senate):
+        return {"0": {"senate": senate, "house": [
+            {"county": county, "district": n, "floterial": False, "seats": 2}]}}
+    districts = {"Raymond": town("Rockingham", 13, 24), "Bedford": town("Hillsborough", 1, 9),
+                 "Berlin": town("Coos", 1, 1), "Laconia": town("Belknap", 5, 7)}
+    races, clash = BME.races_on_file(districts)
+    assert not clash and sorted(races) == sorted(
+        ["H|Rockingham|13", "H|Hillsborough|1", "H|Coos|1", "H|Belknap|5", "S|24", "S|9",
+         "S|1", "S|7"]), f"the races on file read as {sorted(races)} {clash}"
+    people = BME.People(sitting, former)
+    cases = [
+        ("H|Rockingham|13", "Jodi Nelson", "s1", ""),
+        ("H|Rockingham|13", "Nelson, Jodi", "s1", ""),
+        ("H|Rockingham|13", "Jodi Nelson Jr.", None, "Jr. or Sr."),
+        ("S|24", "Jodi Nelson", None, "holds another seat"),
+        ("H|Hillsborough|1", "William Mannion", "s2", ""),
+        ("H|Hillsborough|1", "Dennis Mannion", "s3", ""),
+        ("H|Hillsborough|1", "Bill Mannion", None, "only by a short form"),
+        ("H|Coos|1", "Joe Alexander", "s6", ""),
+        ("H|Coos|1", "Joseph Alexander", "s6", ""),
+        ("H|Coos|1", "Joelle Alexander", None, "only as the start"),
+        ("H|Belknap|5", "Louise Andrus", "s7", ""),
+        ("H|Belknap|5", "Louis Andrus", None, "only as the start"),
+        ("H|Rockingham|13", "Bob Clegg", None, "only by a short form"),
+        ("H|Rockingham|13", "Pat Cote", None, "only by a short form"),
+        ("H|Rockingham|13", "Patricia Cote", "f7", ""),
+        ("H|Rockingham|13", "Don Sytek", None, "only by a short form"),
+        ("H|Rockingham|13", "Donna Sytek", "f8", ""),
+        ("H|Hillsborough|1", "Patrick Long", None, "2 former members of that name, 1 of them"),
+        ("S|24", "Robert Clegg", "f1", ""),
+        ("H|Coos|1", "Robert Clegg", None, "sat in Rockingham"),
+        ("S|9", "Sheila Roberge", None, "no county on record"),
+        ("H|Rockingham|13", "John Barnes", None, "Jr. or Sr."),
+        ("H|Rockingham|13", "John Barnes Jr.", "f3", ""),
+        ("H|Rockingham|13", "Charlie St. Clair", None, "sat in Belknap"),
+        ("H|Belknap|5", "Charlie St. Clair", "f5", ""),
+        ("S|24", "Rebecca Perkins Kwoka", "s4", ""),
+        ("H|Hillsborough|1", "Matt Sabourin dit Choiniere", "s5", ""),
+        ("H|Belknap|5", "Mac Kittredge", "f6", ""),
+        ("H|Rockingham|13", "Pat Newell", None, BME.NEW),
+    ]
+    bad = []
+    for key, name, mid, why in cases:
+        p, said = BME.auto_link(key, name, people, races)
+        if (p or {}).get("id") != mid or (why and why not in said):
+            bad.append(f"{name} in {key}: {(p or {}).get('id')} ({said!r}), not {mid} ({why!r})")
+    # Two winners taken to one member: neither is linked, and both are named.
+    results = {"races": {"H|Rockingham|13": {"seats": 2, "candidates": [
+        {"name": "Jodi Nelson", "party": "r", "votes": 9, "elected": True},
+        {"name": "J. Nelson", "party": "r", "votes": 8, "elected": True}]}}}
+    hand = {"matches": {"H|Rockingham|13": {"J. Nelson": "s1"}}, "not_final": {}, "held": {},
+            "recount_deadline": _ELECT_DEADLINE}
+    got, report = BME.members_elect(results, sitting, former, districts, hand, _ELECT_IN)
+    drawn = got["H|Rockingham|13"]["elected"]
+    if any("id" in e or e["k"] != "new" for e in drawn) or \
+            sorted(n for _k, n, _w in report["unlinked"]) != ["J. Nelson", "Jodi Nelson"]:
+        bad.append(f"two winners taken to one member: drawn {drawn}, named {report['unlinked']}")
+    assert not bad, f"{len(bad)} of the rule's cases: " + "; ".join(bad)
+    return "ok", (f"{len(cases)} names, each linked only where certain and otherwise put to the "
+                  "person with why; two winners taken to one member, neither linked")
+
+
+@check("build", "members-elect: written only after the election and before Organization Day while "
+                "the site's newest term is the one before theirs; otherwise none, and the last "
+                "build's removed and the reason said")
+def _elect_retires():
+    """The person's decisions of 16 October 2026: members-elect retire by
+    themselves on Organization Day, 2 December 2026, or as soon as the site's
+    newest term is theirs, whichever is first, and a build before the
+    election shows none. The fixture's election, its step dated 20 November,
+    writes the file; dated 2 December, on the election day itself and in
+    October it writes none, removes one an earlier build left and says why;
+    so it does once site/meta.json's newest term is 2027-2028; and so with no
+    results file at all. None of these is a failure of the build. A results
+    file that will not read is: it stops the step, having removed the last
+    build's file."""
+    absent = _elect_absent()
+    if absent:
+        return "skip", "not here: " + ", ".join(absent)
+    root = Path(tempfile.mkdtemp(prefix="gr-elect-days-"))
+    try:
+        site = _elect_fixture(root)
+        stale = site / "members_elect.json"
+        code, out, doc = _elect_run(root, _ELECT_IN)
+        assert code == 0 and doc and doc["takes_office"] == "2026-12-02" and \
+            doc["election"] == "2026-11-03" and doc["term"] == "2027-2028", (
+            f"dated {_ELECT_IN} the step wrote {doc and {k: doc[k] for k in doc if k != 'races'}}: "
+            + out[-300:])
+        old = stale.read_bytes()
+        bad = []
+
+        def gone(day, why, label):
+            stale.write_bytes(old)
+            code, out, doc = _elect_run(root, day)
+            if code != 0 or doc is not None or why not in out or "Removed" not in out:
+                bad.append(f"{label}: exit {code}, {'a file left' if doc else 'no file'}, said "
+                           f"{out.strip()[-160:]!r}")
+        gone("2026-12-02", "on or after Organization Day", "dated 2 December")
+        gone("2027-01-06", "on or after Organization Day", "dated January")
+        gone("2026-11-03", "is not after the election", "dated the election day")
+        gone("2026-10-16", "is not after the election", "dated October")
+        meta_p = site / "meta.json"
+        meta = json.loads(meta_p.read_text(encoding="utf-8"))
+        meta_p.write_text(json.dumps(dict(meta, terms=["2027-2028"] + meta["terms"])),
+                          encoding="utf-8")
+        gone(_ELECT_IN, "the term is theirs now", "with terms[0] at 2027-2028")
+        meta_p.write_text(json.dumps(meta), encoding="utf-8")
+        results = root / "collected" / "election_2026.json"
+        kept = results.read_bytes()
+        results.unlink()
+        gone(_ELECT_IN, "no election results", "with no results file")
+        results.write_text("{not json", encoding="utf-8")
+        stale.write_bytes(old)
+        code, out, doc, err = _elect_run(root, _ELECT_IN, err=True)
+        last = (err.strip().splitlines() or [""])[-1]
+        if code == 0 or doc is not None or not last.startswith("REFUSED"):
+            bad.append(f"a results file that will not read: exit {code}, "
+                       f"{'a file left' if doc else 'no file'}, its last line on stderr {last!r}")
+        results.write_bytes(kept)
+        assert not bad, "; ".join(bad)
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    return "ok", ("written on 20 November; none, the last build's removed and why said, on 2 "
+                  "December, in January, on the election day, in October, with 2027-2028 the "
+                  "newest term and with no results; a results file that will not read stops it")
+
+
+@check("build", "members-elect: the step leaves every other file of the site byte for byte as it "
+                "was -- legislators.json and former.json among them -- and never writes the "
+                "person's file")
+def _elect_never_the_roster():
+    """A member-elect never enters the roster (the person, 16 October 2026): a
+    dozen builders read site/legislators.json as who sits now and the night's
+    census gates count it, and former.json is kept apart for the same reason.
+    So every file of the fixture's built site is the same, byte for byte,
+    before the step and after it, but the one it adds, site/members_elect.json;
+    and the person's corrections/members_elect.json is the same too, which the
+    step reads. preflight's hand-made-files guard reads the step's source, as
+    a build_ script, for any write into corrections/."""
+    import hashlib
+    absent = _elect_absent()
+    if absent:
+        return "skip", "not here: " + ", ".join(absent)
+    scanned = {f.name for f in _paths.code_files("build_*.py")}
+    assert "build_members_elect.py" in scanned, (
+        "build_members_elect.py is not among the build_ scripts the hand-made-files guard reads")
+    root = Path(tempfile.mkdtemp(prefix="gr-elect-roster-"))
+    try:
+        site = _elect_fixture(root)
+        hand = root / "corrections" / "members_elect.json"
+
+        def sums():
+            files = [f for f in site.rglob("*") if f.is_file()] + [hand]
+            return {f.relative_to(root).as_posix(): hashlib.sha256(f.read_bytes()).hexdigest()
+                    for f in files if f.exists()}
+        _elect_run(root, "2026-10-16", hand=_ELECT_HAND)
+        before = sums()
+        assert "site/legislators.json" in before and "site/former.json" in before, (
+            "the fixture has no roster to hold")
+        code, out, doc = _elect_run(root, _ELECT_IN)
+        after = sums()
+        assert code == 0 and doc, f"the step wrote nothing on {_ELECT_IN}: {out[-300:]}"
+        changed = sorted(k for k in before if after.get(k) != before[k])
+        added = sorted(set(after) - set(before))
+        assert not changed and added == ["site/members_elect.json"], (
+            f"the step changed {changed} and added {added}; it may add site/members_elect.json "
+            "and nothing else")
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    return "ok", (f"{len(before):,} files of the fixture's site, legislators.json and former.json "
+                  "among them, and the person's file, the same byte for byte after the step; "
+                  "members_elect.json the one file added")
+
+
+@check("build", "members-elect: in every race the elected, the not final and the held add up to "
+                "its seats, every race on file is there, and what does not add up is printed for "
+                "the person")
+def _elect_adds_up():
+    """Check 4 of the plan: each race's elected, not final and held are its
+    seats. On the fixture's election with the person's file: Senate 23's tie
+    is one seat not final; Danville's race, marked not final with a recount
+    asked for, is one seat not final and says so; Fremont's write-in winner,
+    held, is one held seat; and every other race's winners fill it. Every
+    district on file is a race in the file. No reason the person gave is in
+    it. And a race the results lose is still there, its seats with no
+    member-elect on file, and printed under DO NOT ADD UP."""
+    absent = _elect_absent()
+    if absent:
+        return "skip", "not here: " + ", ".join(absent)
+    root = Path(tempfile.mkdtemp(prefix="gr-elect-seats-"))
+    try:
+        site = _elect_fixture(root)
+        code, out, doc = _elect_run(root, _ELECT_IN, hand=_ELECT_HAND)
+        assert code == 0 and doc, f"the step wrote nothing: {out[-300:]}"
+        races = doc["races"]
+        districts = json.loads((site / "districts.json").read_text(encoding="utf-8"))
+        on_file = {f"H|{h['county']}|{h['district']}" for w in districts.values()
+                   for d in w.values() for h in d["house"]} | {
+            f"S|{d['senate']}" for w in districts.values() for d in w.values()}
+        assert set(races) == on_file, (
+            f"the file's races are {sorted(races)}, the district table's {sorted(on_file)}")
+        bad = [f"{k}: {len(r['elected'])} + {r['not_final']} + {r['held']} != {r['seats']}"
+               for k, r in races.items()
+               if len(r["elected"]) + r["not_final"] + r["held"] != r["seats"]]
+        assert not bad, "races that do not add up to their seats: " + "; ".join(bad)
+        want = {"S|23": (0, 1, 0, None), "H|Rockingham|8": (0, 1, 0, True),
+                "H|Rockingham|7": (0, 0, 1, None), "H|Rockingham|13": (2, 0, 0, None),
+                "S|24": (1, 0, 0, None)}
+        got = {k: (len(races[k]["elected"]), races[k]["not_final"], races[k]["held"],
+                   races[k].get("recount")) for k in want}
+        assert got == want, f"elected, not final, held and recount read {got}, not {want}"
+        text = json.dumps(doc)
+        assert "PRIVATE" not in text and "why" not in text, (
+            "a reason from the person's file reached the site")
+        assert "DO NOT ADD UP" not in out, f"the step says a whole race does not add up: {out}"
+        results = root / "collected" / "election_2026.json"
+        r = json.loads(results.read_text(encoding="utf-8"))
+        del r["races"]["H|Rockingham|6"]
+        results.write_text(json.dumps(r), encoding="utf-8")
+        code, out, doc = _elect_run(root, _ELECT_IN, hand=_ELECT_HAND)
+        lost = doc["races"].get("H|Rockingham|6") if doc else None
+        assert code == 0 and lost == {"seats": 1, "elected": [], "not_final": 0, "held": 0}, (
+            f"a race the results lost is drawn as {lost}")
+        assert "H|Rockingham|6" in _elect_part(out, "DO NOT ADD UP"), (
+            "a race the results lost is not printed for the person: " + out[-400:])
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    return "ok", (f"{len(races)} races, each its seats: the tie and the recount not final, the "
+                  "write-in held, no private reason published; a race the results lost is "
+                  "there with no member-elect and printed for the person")
+
+
+@check("build", "members-elect: no race is final until the build's day is past the recount "
+                "deadline the person entered, but one the results mark recounted; a not-final "
+                "mark for some seats holds back only those; and the person's entries reach only "
+                "their own election")
+def _elect_final():
+    """The person's rule of 16 October 2026: a race counts as final once
+    posted and past its recount deadline, or once its recount result is out.
+    The deadline is the person's to enter, in the hand file, because the
+    results do not carry it and the step does not guess it (the review of 16
+    October 2026 found every winner drawn the day the results were
+    committed). On the fixture's election:
+
+      - with no deadline entered, on 20 November no race is final and no
+        winner is drawn, and the step says why -- and John Smith, whom the
+        rule cannot settle, is put to the person all the same, so that he
+        is settled by the day his race is drawn;
+      - with the deadline 13 November, a build on the 13th draws none, and
+        one on the 14th draws the winners;
+      - a race the results mark recounted is drawn on the 10th, before the
+        deadline, and no other is;
+      - a not-final mark with "seats": 1 on Rockingham 13's two seats holds
+        one back, and the winner with the more votes is drawn;
+      - entries under another election's day change nothing of this one's:
+        not its matches, its not-final marks, its held winners, nor -- the
+        2024 deadline long past -- whether its races are final."""
+    absent = _elect_absent()
+    if absent:
+        return "skip", "not here: " + ", ".join(absent)
+    root = Path(tempfile.mkdtemp(prefix="gr-elect-final-"))
+
+    def drawn(doc):
+        return {k: [e["n"] for e in r["elected"]] for k, r in (doc or {}).get("races", {}).items()
+                if r["elected"]}
+
+    def all_held_back(doc):
+        return bool(doc) and not drawn(doc) and all(
+            r["not_final"] + r["held"] == r["seats"] for r in doc["races"].values())
+    try:
+        _elect_fixture(root)
+        bad = []
+        deadline = {"2026-11-03": {"recount_deadline": _ELECT_DEADLINE}}
+        code, out, doc = _elect_run(root, _ELECT_IN, hand={"2026-11-03": {}})
+        if code or not all_held_back(doc) or "no recount deadline is entered" not in out:
+            bad.append(f"no deadline entered, on {_ELECT_IN}: exit {code}, drawn {drawn(doc)}")
+        if "John Smith: 2 former members of that name" not in _elect_part(out, "NOT LINKED"):
+            bad.append("a winner whose race is not final yet is not put to the person")
+        code, out, doc = _elect_run(root, _ELECT_DEADLINE, hand=deadline)
+        if code or not all_held_back(doc) or "has not passed" not in out:
+            bad.append(f"on the deadline day: exit {code}, drawn {drawn(doc)}")
+        code, out, doc = _elect_run(root, "2026-11-14", hand=deadline)
+        if code or drawn(doc).get("H|Rockingham|6") != ["Michael Vose"] or "NOT FINAL YET" in out:
+            bad.append(f"the day after the deadline: exit {code}, drawn {drawn(doc)}")
+        results = root / "collected" / "election_2026.json"
+        kept = results.read_bytes()
+        r = json.loads(kept)
+        r["races"]["H|Rockingham|6"]["recounted"] = True
+        results.write_text(json.dumps(r), encoding="utf-8")
+        code, out, doc = _elect_run(root, "2026-11-10", hand=deadline)
+        if code or drawn(doc) != {"H|Rockingham|6": ["Michael Vose"]}:
+            bad.append(f"a recounted race before the deadline: exit {code}, drawn {drawn(doc)}")
+        results.write_bytes(kept)
+        code, out, doc = _elect_run(root, _ELECT_IN, hand={"2026-11-03": dict(
+            deadline["2026-11-03"], not_final={"H|Rockingham|13": {"seats": 1}})})
+        r13 = (doc or {}).get("races", {}).get("H|Rockingham|13") or {}
+        if code or [e["n"] for e in r13.get("elected", [])] != ["Jodi Nelson"] or \
+                r13.get("not_final") != 1:
+            bad.append(f"one of Rockingham 13's two seats marked not final: {r13}")
+        other = {"recount_deadline": "2024-11-08",
+                 "matches": {"H|Rockingham|13": {"John Smith": "900003"}},
+                 "not_final": {"H|Rockingham|6": {"recount": True}},
+                 "held": {"S|24": {"Debra Altschiller": "PRIVATE"}}}
+        code, out, doc = _elect_run(root, _ELECT_IN, hand=dict(deadline, **{"2024-11-05": other}))
+        races = (doc or {}).get("races", {})
+        smith = [e for e in races.get("H|Rockingham|13", {}).get("elected", [])
+                 if e["n"] == "John Smith"]
+        if code or drawn(doc).get("H|Rockingham|6") != ["Michael Vose"] or \
+                races["H|Rockingham|6"].get("recount") or races["S|24"]["held"] or \
+                drawn(doc).get("S|24") != ["Debra Altschiller"] or \
+                [e["k"] for e in smith] != ["new"]:
+            bad.append(f"2024's entries reached 2026's races: drawn {drawn(doc)}, Smith {smith}")
+        code, out, doc = _elect_run(root, _ELECT_IN, hand={"2024-11-05": other})
+        if code or not all_held_back(doc):
+            bad.append(f"2024's recount deadline made 2026's races final: drawn {drawn(doc)}")
+        assert not bad, "; ".join(bad)
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    return "ok", ("none final with no deadline or on its day, all the day after, a recounted race "
+                  "before it; one seat of two held back; 2024's entries reach nothing of 2026; "
+                  "a name to settle is put to the person while its race is not final")
+
+
+@check("build", "members-elect: a source changed since the results were read, a hand file that "
+                "will not read or says what it cannot mean, and an error nobody foresaw each stop "
+                "the step, the last build's file removed and the reason the last line on stderr")
+def _elect_refuses():
+    """Check 5 of the plan, and the step's refusals: each _source's sha256 is
+    the saved file's, and a source changed since the results were read is
+    refused, since the results would no longer be what it says; a hand file
+    that will not read is refused, since it might mark a race not final; so
+    is a recount deadline that is no day or not after the election, and a
+    not-final mark whose seats are no number; and an error nobody foresaw --
+    here, the file it writes cannot be written -- stops it too. Each exits
+    other than 0, removes the file the last build left, and says why in the
+    last line on stderr, which is what build_all prints of a failed step and
+    keeps in build.json (the review of 16 October 2026 found a refusal said
+    only on stdout, which reached the night's log as "no error text")."""
+    absent = _elect_absent()
+    if absent:
+        return "skip", "not here: " + ", ".join(absent)
+    root = Path(tempfile.mkdtemp(prefix="gr-elect-refuses-"))
+    try:
+        site = _elect_fixture(root)
+        stale = site / "members_elect.json"
+        code, out, doc = _elect_run(root, _ELECT_IN, hand=_ELECT_HAND)
+        assert code == 0 and doc, f"the step wrote nothing on {_ELECT_IN}: {out[-300:]}"
+        old = stale.read_bytes()
+        bad = []
+
+        def refused(label, want, hand=None):
+            stale.write_bytes(old)
+            code, out, doc, err = _elect_run(root, _ELECT_IN, hand=hand, err=True)
+            last = (err.strip().splitlines() or [""])[-1]
+            if code == 0 or doc is not None or "Removed" not in out or want not in last:
+                bad.append(f"{label}: exit {code}, {'a file left' if doc else 'no file'}, last "
+                           f"on stderr {last[-200:]!r}")
+        src = root / "records" / "sources" / "sos-general-election-2026-fixture.txt"
+        src.write_bytes(_ELECT_SOURCE + b"changed since\n")
+        refused("a source changed since the results were read",
+                "REFUSED: records/sources/sos-general-election-2026-fixture.txt is not the file")
+        src.write_bytes(_ELECT_SOURCE)
+        (root / "corrections" / "members_elect.json").write_text("{not json", encoding="utf-8")
+        refused("a hand file that will not read", "REFUSED: corrections/members_elect.json will "
+                                                  "not read")
+        for day in ("13 November", "2026-11-03"):
+            refused(f"a recount deadline of {day!r}", "\"recount_deadline\" is",
+                    hand={"2026-11-03": {"recount_deadline": day}})
+        refused("a not-final mark whose seats are no number", "not_final['H|Rockingham|8']",
+                hand={"2026-11-03": {"not_final": {"H|Rockingham|8": {"seats": "one"}}}})
+        tmp = site / "members_elect.json.tmp"
+        tmp.mkdir()
+        refused("the file cannot be written", "Error", hand=_ELECT_HAND)
+        tmp.rmdir()
+        stale.write_bytes(old)
+        code, out, doc = _elect_run(root, _ELECT_IN, hand=_ELECT_HAND)
+        if code or not doc:
+            bad.append(f"once each is put right the step does not write again: exit {code}")
+        assert not bad, "; ".join(bad)
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    return "ok", ("a changed source, an unreadable hand file, two deadlines that are no deadline, "
+                  "a not-final mark of no seats and a file that cannot be written each stop it, "
+                  "the last file removed and the reason last on stderr")
+
+
+@check("build", "check_site refuses a site/members_elect.json on or after the day its "
+                "members-elect take office, which holds the night", needs=("check_site",))
+def _elect_refused_on_the_day(CS):
+    """Check 6 of the plan: the third guard after the step and the browser.
+    A members_elect.json still in the site on its takes_office, or after, is
+    a site that would call sitting members members-elect; check_site refuses
+    it, and a refusal there holds the night. Before the day it passes, and
+    says until when; a file that names no day is refused, since nothing
+    would take it down. And main() runs it: a site dated 2 December with the
+    file in it is refused by name."""
+    from datetime import date
+    root = Path(tempfile.mkdtemp(prefix="gr-elect-check-"))
+    try:
+        site = root / "site"
+        site.mkdir()
+        p = site / "members_elect.json"
+        p.write_text(json.dumps({"election": "2026-11-03", "takes_office": "2026-12-02",
+                                 "term": "2027-2028", "races": {}}), encoding="utf-8")
+        got = {}
+        for day in (date(2026, 11, 20), date(2026, 12, 1), date(2026, 12, 2), date(2027, 1, 6)):
+            errors = []
+            CS.members_elect(site, errors, today=day)
+            got[day.isoformat()] = bool(errors)
+        assert got == {"2026-11-20": False, "2026-12-01": False, "2026-12-02": True,
+                       "2027-01-06": True}, f"check_site refuses members_elect.json on {got}"
+        p.write_text(json.dumps({"election": "2026-11-03", "races": {}}), encoding="utf-8")
+        errors = []
+        CS.members_elect(site, errors, today=date(2026, 11, 20))
+        assert errors and "takes_office" in errors[0], (
+            "check_site passes a members_elect.json that names no day it retires on")
+        p.unlink()
+        errors = []
+        CS.members_elect(site, errors, today=date(2027, 1, 6))
+        assert not errors, f"check_site refuses a site with no members_elect.json: {errors}"
+        p.write_text(json.dumps({"takes_office": "2026-12-02", "races": {}}), encoding="utf-8")
+        # The files every site must hold, as stand-ins, so that the refusal
+        # is among the first errors main() prints rather than after them.
+        for name in CS.REQUIRED:
+            (site / name).write_text('{"x": 1}' if name.endswith(".json") else "<p>x</p>",
+                                     encoding="utf-8")
+        r = _run([sys.executable, _paths.script("check_site.py"), "--site", str(site)],
+                 capture_output=True, text=True, timeout=120,
+                 env={"GRANITE_BUILD_DATE": "2026-12-02"})
+        said = (r.stdout or "") + (r.stderr or "")
+        assert r.returncode != 0 and "members_elect.json is still in the site on 2026-12-02" in said, (
+            "check_site.py, run on a site dated 2 December with members_elect.json in it, does "
+            "not refuse it by name: " + said[-300:])
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    return "ok", ("passed on 20 November and 1 December, refused on 2 December and after, and "
+                  "refused with no takes_office; main() refuses it by name")
+
+
+@check("pipeline", "build_all runs the members-elect step after the site data writes the roster "
+                   "and before every page that draws a member-elect", needs=("build_all",))
+def _elect_step_order(build_all):
+    """The step reads what the site data writes -- legislators.json,
+    former.json, meta.json -- and the district table the district files'
+    step writes, and the pages draw what it writes: build_pages' Officials
+    tab, the legislator pages, the town pages and places.json, the district
+    map and the lists. So it runs after the first two and before all of
+    those, or a page would draw last night's file; it asks no network; and
+    it declares what it needs and what it makes."""
+    class A:
+        key = None
+        session = "2026"
+        base = "https://graniterecord.org"
+        archive = "nh-archive"
+    steps = build_all.plan(A())
+    scripts = [s.args[0] for s in steps]
+    assert scripts.count("build_members_elect.py") == 1, (
+        f"build_all runs build_members_elect.py {scripts.count('build_members_elect.py')} times")
+    at = scripts.index("build_members_elect.py")
+    step = steps[at]
+    first = {n: scripts.index(n) for n in ("build_site_v2.py", "parse_districts.py") if n in scripts}
+    assert len(first) == 2 and all(i < at for i in first.values()), (
+        f"the members-elect step runs at {at}, before what it reads: {first}")
+    drawers = ("build_pages.py", "build_legislator_pages.py", "build_town_pages.py",
+               "build_district_map.py", "build_indexes.py", "build_committees.py")
+    early = [n for n in drawers if n in scripts and scripts.index(n) < at]
+    assert not early, f"these pages are drawn before the members-elect step: {early}"
+    needs = sorted(str(p).replace("\\", "/") for p in step.needs)
+    made = [str(p).replace("\\", "/") for p in step.produces]
+    assert needs == ["site/districts.json", "site/former.json", "site/legislators.json",
+                     "site/meta.json"] and \
+        made == ["site/members_elect.json"] and not step.network, (
+        f"the step needs {needs}, makes {made}, network {step.network}")
+    return "ok", (f"step {at + 1} of {len(steps)}: after the site data and the district files, "
+                  "before every page that draws a member-elect")
+
+
+_UNTIL_NODE = r"""
+// The reader's clock, fixed at __DAY__ 09:30 local, and a page of five
+// elements: retiring on the day, the day after and the day before, one that
+// names no day, and one the build already hid.
+const RealDate = Date;
+global.Date = class extends RealDate {
+  constructor(...a) { if (a.length) super(...a); else super(__Y__, __M__, __D__, 9, 30); }
+};
+const els = ["2026-12-02", "2026-12-03", "2026-12-01", "after the recount", "2026-12-09"]
+  .map((u, i) => ({hidden: i === 4, getAttribute: n => n === "data-until" ? u : null}));
+global.document = {readyState: "complete", documentElement: {},
+  querySelectorAll: sel => sel === "[data-until]" ? els : []};
+"""
+
+
+@check("frontend", "what retires on a day is hidden by the reader's own clock from that day on "
+                   "(components.js's behaviour, through untilAttrs)")
+def _until_by_the_reader():
+    """The browser's half of retiring on Organization Day (the person's
+    decisions of 16 October 2026): a page built on 1 December and read on the
+    3rd -- a night held, a copy a browser kept -- must show no member-elect.
+    components.js's behaviour judges every element carrying data-until by
+    untilAttrs with the reader's own date, when the page loads and whenever it
+    draws itself again, and hides it from its day on; it only ever hides. Run
+    in node on a stand-in page, with the reader's clock at 2 December and then
+    at 1 December. untilAttrs itself is held to components.py's until_attrs by
+    _components_agree.
+
+    And no page's own style can bring one back (the review of 16 October
+    2026): hidden loses to any display a page's own rule gives an element, so
+    app.css's shared region, which style.css takes too, says that an element
+    with data-until and hidden is not drawn, with !important."""
+    js = _components_js()
+    a, b = js.find("// BEHAVIOUR:START"), js.find("// BEHAVIOUR:END")
+    assert 0 < a < b and "[data-until]" in js[a:b] and "untilAttrs(" in js[a:b], (
+        "components.js's behaviour no longer judges [data-until] by untilAttrs")
+    css = Path("src/pages/app.css").read_text(encoding="utf-8")
+    sa, sb = css.find("/* SHARED:START"), css.find("/* SHARED:END")
+    assert 0 <= sa < sb and re.search(
+        r"(?m)^\[data-until\]\[hidden\]\s*\{\s*display\s*:\s*none\s*!important\s*;?\s*\}",
+        css[sa:sb]), (
+        "app.css's shared region does not say [data-until][hidden]{display:none!important}: a "
+        "member-elect block a page styles as flex or grid would be drawn after the day they "
+        "take office")
+    node = shutil.which("node") or shutil.which("node.exe")
+    if not node:
+        assert not os.environ.get("GITHUB_ACTIONS"), "node is not on PATH on the nightly"
+        return "skip", "node is not on PATH, so the behaviour could not be run"
+    got = {}
+    for day in ("2026-12-02", "2026-12-01"):
+        y, m, d = (int(x) for x in day.split("-"))
+        prog = (_UNTIL_NODE.replace("__DAY__", day).replace("__Y__", str(y))
+                .replace("__M__", str(m - 1)).replace("__D__", str(d))
+                + js + '\nprocess.stdout.write("\\n@@" + JSON.stringify(els.map(e => e.hidden)));\n')
+        r = _node_file(node, prog, capture_output=True, text=True, encoding="utf-8", timeout=60)
+        assert r.returncode == 0 and "@@" in (r.stdout or ""), (
+            "components.js would not run on the stand-in page: " + (r.stderr or "")[-300:])
+        got[day] = json.loads(r.stdout.rsplit("@@", 1)[1])
+    want = {"2026-12-02": [True, False, True, True, True],
+            "2026-12-01": [False, False, True, True, True]}
+    assert got == want, (f"hidden, by the reader's day, for elements retiring on 2, 3 and 1 "
+                         f"December, on no day, and one the build hid: {got}, not {want}")
+    return "ok", ("on 2 December the element retiring that day is hidden and the next day's is "
+                  "not; on 1 December neither; no day is hidden at once; the build's hidden stays")
 
 
 # ========================================================== the district map ==

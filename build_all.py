@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.72
+# GRANITE_VERSION: 2026-09-05.75
 """
 Run the whole pipeline in the right order.
 
@@ -772,6 +772,29 @@ def plan(a):
               "--segments", "work"],
              needs=["data/bills.json"],
              produces=["site/meta.json", "site/idx"]),
+
+        # MEMBERS-ELECT, STRAIGHT AFTER THE SITE DATA AND BEFORE EVERY PAGE
+        # (the person's decisions of 16 October 2026). It reads what the site
+        # data has just written -- site/legislators.json and site/former.json,
+        # which it matches each winner against and never writes, and
+        # site/meta.json, whose newest term is half of whether they are shown
+        # -- and nothing any later step writes. And it writes the one file the
+        # pages draw a member-elect from: build_pages' Officials tab, the
+        # legislator pages, the town pages and places.json, and the district
+        # map all come after it, so none of them can draw last night's file.
+        # It runs every night, with or without results: outside the weeks
+        # between the election and Organization Day it removes the file and
+        # says why, so a file is never left to outlive its day.
+        Step("members-elect, until they take office",
+             ["build_members_elect.py", "--site", "site"],
+             needs=["site/meta.json", "site/legislators.json", "site/former.json",
+                    "site/districts.json"],
+             produces=["site/members_elect.json"],
+             note="who November's election sent to the General Court, from the "
+                  "Secretary of State's results in collected/election_<year>.json, "
+                  "each linked to a page only where the match is certain; written "
+                  "only after the election and before Organization Day, and "
+                  "removed otherwise"),
 
         # AFTER THE SITE DATA, because what it reads is the site's own word for
         # which bills were vetoed. It was the end of the step that writes the

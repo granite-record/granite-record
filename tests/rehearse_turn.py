@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-05.9
+# GRANITE_VERSION: 2026-10-05.10
 """
 The turn from one term to the next, rehearsed offline on a copy.
 
@@ -871,6 +871,13 @@ def check_new_term(root, batches, label):
     note(want <= set(new), f"{label}: data/bills.json {NEW} holds the batch's "
                            f"{len(want)} measures ({len(new)} in all)", sorted(want - set(new))[:6])
     note((root / "site" / "idx" / f"{NEW}.json").exists(), f"{label}: site/idx/{NEW}.json written")
+    # NO MEMBER-ELECT ONCE THE TERM IS THEIRS (the person's decisions of 16
+    # October 2026): build_members_elect.py removes site/members_elect.json
+    # once site/meta.json's newest term is the one they were elected to, so a
+    # New term run that turned the site leaves none, whatever day it is. The
+    # pages' half, no data-elect block, comes with the pages that draw one.
+    note(not (root / "site" / "members_elect.json").exists(),
+         f"{label}: no site/members_elect.json once {NEW} is the site's newest term")
     old_titles = {r.get("title") for r in (bills.get(TERM) or {}).values() if r.get("title")}
     # EACH 2027 PAGE'S OWN RECORD (the review of 5 October 2026): these read
     # site/bills/2027/*.json, which the build does not write for records this

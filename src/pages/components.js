@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-10-09.10
+// GRANITE_VERSION: 2026-10-09.11
 /* THE SITE'S COMPONENTS, IN THE BROWSER. Published as site/components.js and
    loaded by every page, in its head, before app.js, find.js and any page's
    own script, so each of them draws a person, a committee, a date or a time
@@ -405,6 +405,17 @@ function section(heading,body,sid){
     `<div class="w4b">${body}</div></section>`;
 }
 
+// WHAT RETIRES ON A DAY (the members-elect, 16 October 2026):
+// components.until_attrs. An element that retires on `until` carries it in
+// data-until, and is hidden from that day on -- by the reader's own date in
+// the browser, which the behaviour below hands it.
+function untilAttrs(until,today){
+  const u=until==null?"":String(until).slice(0,10), t=today==null?"":String(today).slice(0,10);
+  if(!/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(u))return " hidden";
+  const gone=/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(t)&&t>=u;
+  return ` data-until="${esc(u)}"`+(gone?" hidden":"");
+}
+
 // BEHAVIOUR:START
 // THE TERM POPOVERS (the component plan's C9, approved 9 October 2026: "for
 // the tooltips they would show up on a tap or on a mouse hover after a short
@@ -511,5 +522,30 @@ function section(heading,body,sid){
   if(typeof MutationObserver!=="undefined")
     new MutationObserver(soon).observe(document.documentElement,{childList:true,subtree:true,
       attributes:true,attributeFilter:["hidden"]});
+})();
+// WHAT RETIRES ON A DAY GOES BY THE READER'S CLOCK (the members-elect, 16
+// October 2026). Every element carrying data-until is judged by untilAttrs
+// with the reader's own date, when the page loads and whenever it draws
+// itself again, and hidden from that day on: a page built on 1 December and
+// read on the 3rd -- a night held, a copy a browser kept -- shows no
+// member-elect, because the day they take office has come. Only ever hides:
+// what the build hid stays hidden whatever the reader's clock says.
+(function(){
+  if(typeof document==="undefined"||!document.querySelectorAll)return;
+  function day(){
+    var d=new Date();
+    return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+
+      String(d.getDate()).padStart(2,"0");
+  }
+  function judge(){
+    var t=day(), all=document.querySelectorAll("[data-until]");
+    for(var i=0;i<all.length;i++){
+      var el=all[i];
+      if(!el.hidden&&/ hidden$/.test(untilAttrs(el.getAttribute("data-until"),t)))el.hidden=true;
+    }
+  }
+  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",judge);else judge();
+  if(typeof MutationObserver!=="undefined")
+    new MutationObserver(judge).observe(document.documentElement,{childList:true,subtree:true});
 })();
 // BEHAVIOUR:END

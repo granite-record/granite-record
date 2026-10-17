@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.273 */
+/* GRANITE_VERSION: 2026-09-07.274 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -420,6 +420,15 @@ color-scheme:dark}
    and the nav is on every page. It sits last in the nav row and is pushed to
    the end, so it reads as a setting rather than as an eighth section of the
    site. Sized as a real tap target on a phone like every other nav item. */
+/* WHAT RETIRES ON A DAY STAYS GONE (the members-elect, 16 October 2026).
+   components.js hides an element carrying data-until from its day on by
+   setting hidden, and the browser's own [hidden] rule loses to any display
+   a page's own rule gives the element -- which is why this file says
+   .pane[hidden] and the rest one class at a time. A member-elect block
+   styled as a flex row would have stayed on the page after the day they
+   take office. So it is said once, here in the part both stylesheets take,
+   and with !important, so that no page's style can bring one back. */
+[data-until][hidden]{display:none!important}
 /* A TITLE ON A PHONE IS 28px (D3 of the polish plan): at 34px a member's or
    a committee's name took three lines of a 375px screen, and at the 19px it
    was before it read as smaller than the heading of a part. */

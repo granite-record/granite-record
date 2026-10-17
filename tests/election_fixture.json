@@ -1,0 +1,52 @@
+{
+  "_about": [
+    "A general election's results in the shape src/parse/build_members_elect.py reads, collected/election_<year>.json: what the Secretary of State said, and nothing this project decided. preflight's members-elect checks copy it into the fixture's collected/ as election_2026.json.",
+    "It is made up, over the fixture's own districts (preflight._built_site): Rockingham 13, two seats over Raymond and Stratham; the floterial Rockingham 32 over Brentwood, Fremont and Danville, which are Rockingham 6, 7 and 8, one seat each; and Senate districts 24 and 23. Jodi Nelson and Debra Altschiller are the fixture's sitting members; Michael Vose and John Smith are former members the checks add to its former.json.",
+    "Between them the races hold a two-seat district, a floterial, one-seat districts, two Senate districts, a write-in who won, a cross-nominated winner, a tie for the last seat (elected null on both), and a loser on each side. A race the person marks not final is the hand file's (corrections/members_elect.json), which the checks write beside it.",
+    "_source's file is a stand-in the checks write, whose sha256 this names."
+  ],
+  "_source": [
+    {"file": "records/sources/sos-general-election-2026-fixture.txt",
+     "url": "https://www.sos.nh.gov/elections/election-results",
+     "saved": "2026-11-05",
+     "sha256": "983965222d9fb3172f7439f657c65e77e080d0097a4e5551460be62ab241941c"}
+  ],
+  "election": "2026-11-03",
+  "term": "2027-2028",
+  "races": {
+    "S|23": {"seats": 1, "floterial": false, "towns": ["Brentwood", "Danville", "Fremont"],
+             "candidates": [
+               {"name": "Kim Dowd", "party": "r", "votes": 9104, "write_in": false, "elected": null},
+               {"name": "Lee Rourke", "party": "d", "votes": 9104, "write_in": false, "elected": null}],
+             "scatter": 3},
+    "S|24": {"seats": 1, "floterial": false, "towns": ["Raymond", "Stratham"],
+             "candidates": [
+               {"name": "Debra Altschiller", "party": "d", "votes": 15022, "write_in": false, "elected": true},
+               {"name": "Tom Brandt", "party": "r", "votes": 14310, "write_in": false, "elected": false}],
+             "scatter": 7},
+    "H|Rockingham|6": {"seats": 1, "floterial": false, "towns": ["Brentwood"],
+                       "candidates": [
+                         {"name": "Michael Vose", "party": "r", "votes": 2410, "write_in": false, "elected": true},
+                         {"name": "Ruth Gale", "party": "d", "votes": 1985, "write_in": false, "elected": false}],
+                       "scatter": 0},
+    "H|Rockingham|7": {"seats": 1, "floterial": false, "towns": ["Fremont"],
+                       "candidates": [
+                         {"name": "Sam Wright", "party": "", "votes": 212, "write_in": true, "elected": true}],
+                       "scatter": 41},
+    "H|Rockingham|8": {"seats": 1, "floterial": false, "towns": ["Danville"],
+                       "candidates": [
+                         {"name": "Dana Ricard", "party": "d", "votes": 1203, "write_in": false, "elected": true},
+                         {"name": "Paul Moody", "party": "r", "votes": 1199, "write_in": false, "elected": false}],
+                       "scatter": 1},
+    "H|Rockingham|13": {"seats": 2, "floterial": false, "towns": ["Raymond", "Stratham"],
+                        "candidates": [
+                          {"name": "Jodi Nelson", "party": "r", "votes": 5120, "write_in": false, "elected": true},
+                          {"name": "John Smith", "party": "r", "votes": 4987, "write_in": false, "elected": true},
+                          {"name": "Ann Other", "party": "d", "votes": 4402, "write_in": false, "elected": false}],
+                        "scatter": 12},
+    "H|Rockingham|32": {"seats": 1, "floterial": true, "towns": ["Brentwood", "Danville", "Fremont"],
+                        "candidates": [
+                          {"name": "Pat Newell", "party": "r/d", "votes": 6011, "write_in": false, "elected": true}],
+                        "scatter": 88}
+  }
+}

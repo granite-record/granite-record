@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.21
+# GRANITE_VERSION: 2026-09-04.22
 """
 Check the site is fit to publish before uploading it.
 
@@ -29,7 +29,9 @@ import argparse
 import json
 import re
 from collections import Counter
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
+
+import build_date
 
 # The logo and the icons, by name: the one list, kept where the build places
 # them. They are not in the repository, so a site built from a bare clone has
@@ -184,6 +186,46 @@ def search_index(site, errors, warnings):
         (warnings if allowed else errors).append(said)
 
 
+def members_elect(site, errors, today=None):
+    """site/members_elect.json, refused on or after the day its members take
+    office (the person's decisions of 16 October 2026).
+
+    Members-elect retire by themselves on Organization Day: the step that
+    writes the file (build_members_elect.py) writes none from that day, and
+    the browser hides what a page drew of them by the reader's clock. This is
+    the third guard, for a file that outlived both -- a build that skipped
+    the step and left the last one in site/, or a site built before the day
+    and published on it. Such a site would tell a reader that people who sit
+    now are still to take office, so it is not published, and the night that
+    built it is held. A file that names no day it retires on is refused too:
+    nothing could ever take it down.
+
+    `today` is the day to judge by: by default the later of the build's day
+    (build_date) and the clock's, since a site is published now whatever day
+    its build was told it was. Returns the day they are shown until, or ""
+    where there is no file or it is refused."""
+    p = Path(site) / "members_elect.json"
+    if not p.exists():
+        return ""
+    try:
+        doc = json.loads(p.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return ""           # the JSON check above has already refused it
+    takes = str(doc.get("takes_office") or "") if isinstance(doc, dict) else ""
+    day = today or max(build_date.today(), date.today())
+    if not re.fullmatch(r"\d{4}-\d\d-\d\d", takes):
+        errors.append("members_elect.json names no takes_office, the day its members-elect "
+                      "retire, so nothing would ever take them down")
+        return ""
+    if day.isoformat() >= takes:
+        errors.append(f"members_elect.json is still in the site on {day.isoformat()}, and its "
+                      f"members-elect took office on {takes}: the pages would call sitting "
+                      "members members-elect. build_members_elect.py writes none from that "
+                      "day; run the build again")
+        return ""
+    return takes
+
+
 def redirect_rules(site):
     """The left-hand side of every rule in the site's _redirects, as path
     segments. Pages answers each one -- a tab's address with its record's page,
@@ -270,6 +312,11 @@ def main():
             errors.append(f"{f.name} is empty")
     for k, v in sorted(counts.items()):
         print(f"  {k:<22} {v:,} entries")
+
+    # ---- members-elect, gone on the day they take office --------------------
+    until = members_elect(site, errors)
+    if until:
+        print(f"\nmembers-elect: shown until {until}")
 
     # ---- the logo and the icons ---------------------------------------------
     # ONE PLAIN ERROR, NOT TEN BROKEN LINKS. Without this a site built from a
