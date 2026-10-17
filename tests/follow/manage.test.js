@@ -399,6 +399,24 @@ test("a list without sort names or chambers is one group in the label's order", 
   } finally { w.close(); }
 });
 
+test("a committee of neither chamber comes last, under a heading of its own", async () => {
+  const w = makeWorld();
+  try {
+    sitting(w);
+    sitting(w, { "committee:J90": { label: "Joint Example Committee", url: "/committee/J90" } });
+    const s = await join(w, "reader.joint");
+    const [, committees] = lists((await view(w, s.manage)).body);
+    assert.deepEqual(committees.sets, [{ chamber: "House", keys: ["committee:H91", "committee:H90"] },
+                                       { chamber: "Senate", keys: ["committee:S90"] },
+                                       { chamber: "Joint and other committees", keys: ["committee:J90"] }]);
+    // Still so when every committee with a chamber is followed already.
+    await saveForm(w, s.manage, [["listed", "bill:2026/HB9901"], ["keep", "bill:2026/HB9901"],
+      ["add", "committee:H90"], ["add", "committee:H91"], ["add", "committee:S90"]]);
+    const [, left] = lists((await view(w, s.manage)).body);
+    assert.deepEqual(left.sets, [{ chamber: "Joint and other committees", keys: ["committee:J90"] }]);
+  } finally { w.close(); }
+});
+
 test("without script the whole list shows, and the find box waits for the script", async () => {
   const w = makeWorld();
   try {
@@ -417,6 +435,13 @@ test("without script the whole list shows, and the find box waits for the script
     // The district is one unit that a narrow row does not break inside.
     assert.match(page, /value="member:990001"><span>Rep\. Pat Example <span class="tag">\(Merrimack 99\)<\/span><\/span>/);
     assert.match(page, /\.picklist \.tag\{white-space:nowrap\}/);
+    // The summary says it opens: the browser's triangle, which a flex summary
+    // loses in some browsers and not others, is put away everywhere, and the
+    // page's own chevron turns when the list is open.
+    assert.match(page, /details\.pick > summary::-webkit-details-marker\{display:none\}/);
+    assert.match(page, /details\.pick > summary::marker\{content:""\}/);
+    assert.match(page, /details\.pick > summary::before\{content:"";[^}]*border-right:2px solid currentColor;[^}]*transform:rotate\(-45deg\)\}/);
+    assert.match(page, /details\.pick\[open\] > summary::before\{transform:rotate\(45deg\)\}/);
   } finally { w.close(); }
 });
 
@@ -448,6 +473,13 @@ function runPicker(block) {
     box, none, count, sets, shown,
     type(v) { box.value = v; on.input(); return shown(); },
     tick(key, yes = true) { rows.find(r => r.input.value === key).input.checked = yes; on["d.change"](); },
+    // A key pressed in the find box: whether the script stopped what the
+    // browser would have done with it.
+    key(k) {
+      let stopped = false;
+      on.keydown({ key: k, keyCode: k === "Enter" ? 13 : 0, preventDefault() { stopped = true; } });
+      return stopped;
+    },
   };
 }
 
@@ -480,6 +512,11 @@ test("the find box narrows the list as the reader types, case and accents aside,
     assert.equal(p.count.textContent, "");
     const c = runPicker(committees.block);
     assert.deepEqual(c.type("senate"), ["committee:S90"]);
+    // Enter in the box does not send the page's one form: a phone's Search
+    // key would save it halfway through ticking. Other keys are typed.
+    assert.equal(p.key("Enter"), true, "Enter in the find box submitted the form");
+    assert.equal(c.key("Enter"), true);
+    assert.equal(p.key("a"), false);
   } finally { w.close(); }
 });
 

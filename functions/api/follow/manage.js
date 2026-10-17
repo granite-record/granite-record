@@ -258,11 +258,17 @@ const rowName = label => {
 };
 
 function picker(kind, current, followed) {
-  const rows = [...(current?.followable || new Map()).entries()]
-    .filter(([k]) => k.startsWith(kind + ":") && !followed.has(k));
+  const all = [...(current?.followable || new Map()).entries()].filter(([k]) => k.startsWith(kind + ":"));
+  const rows = all.filter(([k]) => !followed.has(k));
   if (!rows.length) return "";
   const what = kind === "member" ? ["legislators", "legislator", "Name or district"]
     : ["committees", "committee", "Name"];
+  // Those of neither chamber come last and are named for what they are (the
+  // review of 16 October 2026: a joint committee sat under the Senate's
+  // heading with none of its own). Where nothing has a chamber -- a build
+  // before these were written -- the one group needs no heading.
+  const chambered = all.some(([, v]) => v.chamber);
+  const other = kind === "committee" ? "Joint and other committees" : "Other legislators";
   const sets = CHAMBER_ORDER.map(ch => {
     const mine = rows.filter(([, v]) => (v.chamber || "") === ch)
       .sort(([ka, a], [kb, b]) => byName(a.sort || a.label, b.sort || b.label) ||
@@ -271,7 +277,8 @@ function picker(kind, current, followed) {
     const items = mine.map(([k, v]) =>
       `<li><label><input type="checkbox" name="add" value="${esc(k)}"><span>${rowName(v.label)}</span></label></li>`)
       .join("\n");
-    return `<fieldset>${ch ? `<legend>${ch}</legend>` : ""}<ul>\n${items}\n</ul></fieldset>`;
+    const legend = ch || (chambered ? other : "");
+    return `<fieldset>${legend ? `<legend>${legend}</legend>` : ""}<ul>\n${items}\n</ul></fieldset>`;
   }).join("");
   return `<details class="pick" data-pick><summary>Add ${what[0]} <span class="picked" data-picked></span></summary>
 <p class="pickfind" hidden><label for="find_${kind}">Find</label>

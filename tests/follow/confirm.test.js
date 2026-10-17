@@ -306,6 +306,31 @@ test("a subscriber adding a record is told it, with their count, how often as be
   } finally { w.close(); }
 });
 
+test("a pause is told through its last day, and not once that day has gone by", async () => {
+  // Nothing clears paused_until when its day passes; the sender and the
+  // manage page read a date before today as no pause, and so does this.
+  const w = makeWorld();
+  try {
+    const a = w.address("pause.ends");
+    await signUp(w, a, "bill", "2026/HB9901");
+    const first = await confirmLatest(w, a);
+    await act(w, manageToken(first), "save", { listed: "bill:2026/HB9901", keep: "bill:2026/HB9901",
+      frequency: "daily", pause: "until", pause_until: "2026-10-08" });
+    assert.equal(w.d1.rows("subscribers")[0].paused_until, "2026-10-08");
+    w.at("2026-10-08T15:00:00Z");                          // its last day, in New Hampshire
+    await signUp(w, a, "committee", "H90");
+    await confirmLatest(w, a);
+    assert.match(welcomes(w, a)[1].text, /Your updates are paused through 8 October 2026\./);
+    w.at("2026-10-20T15:00:00Z");
+    await signUp(w, a, "topic", "housing");
+    await confirmLatest(w, a);
+    const m = welcomes(w, a)[2];
+    assert.ok(m, "the third confirmation sent its email");
+    assert.doesNotMatch(m.text + m.html, /paused/i, "a pause that has ended is not told");
+    assert.equal(w.d1.rows("subscribers")[0].paused_until, "2026-10-08", "and nothing was written to say so");
+  } finally { w.close(); }
+});
+
 test("a confirmation that adds nothing sends nothing, and two presses at once send one", async () => {
   const w = makeWorld();
   try {
@@ -351,14 +376,15 @@ test("a confirmation still confirms when its email cannot be sent, and says noth
   }
 });
 
-test("a spent link says the email sent on confirming has the way back", async () => {
+test("a spent link says every email we send has the way back", async () => {
   const w = makeWorld();
   try {
     const s = await join(w, "lost.the.page");
     const again = await confirmLatest(w, s.address);
     assert.equal(again.status, 400);
     assert.match(again.body, /expired or been used/);
-    assert.match(again.body, /A confirmation link works once, for 48 hours\.[^<]*<\/p>\s*<p>If you have already confirmed, the email we sent you when you did has the link to your page for email updates, where you can change what you follow\.<\/p>/);
+    // True also for a reader who confirmed before that email was sent at all.
+    assert.match(again.body, /A confirmation link works once, for 48 hours\.[^<]*<\/p>\s*<p>If you have already confirmed, the link to your page for email updates, where you can change what you follow, is at the foot of every email we send you about them\. If you cannot find one, your next update will have it\.<\/p>/);
   } finally { w.close(); }
 });
 

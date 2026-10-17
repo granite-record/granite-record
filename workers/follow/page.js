@@ -103,7 +103,16 @@ border:1px solid var(--edge);border-radius:6px;background:var(--surface);color:v
 [hidden]{display:none!important}
 details.pick{margin:10px 0 4px;border:1px solid var(--edge);border-radius:8px;background:var(--surface)}
 details.pick > summary{cursor:pointer;padding:10px 14px;font-weight:600;color:var(--pine);min-height:44px;
-display:flex;align-items:center;gap:10px}
+display:flex;align-items:center;gap:10px;list-style:none}
+/* The summary is a flex row, which takes away the browser's own triangle in
+   Chromium and Firefox and not always in Safari; so each is put away, and one
+   chevron of the page's own says it opens: pointing on while closed, down
+   while open. Drawn in currentColor, so forced colours keep it. */
+details.pick > summary::-webkit-details-marker{display:none}
+details.pick > summary::marker{content:""}
+details.pick > summary::before{content:"";flex:none;width:7px;height:7px;margin:0 2px 0 1px;
+border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(-45deg)}
+details.pick[open] > summary::before{transform:rotate(45deg)}
 details.pick > summary .picked{font-weight:400;font-size:14px;color:var(--ink-2)}
 details.pick[open] > summary{border-bottom:1px solid var(--rule)}
 .pickfind{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;margin:0;padding:10px 14px 4px}
@@ -156,12 +165,15 @@ Open the link from your most recent email from Granite Record, whole.</p>`;
 // be added is never hidden, and the summary counts them while the list is
 // closed. The box itself is hidden in the markup and shown here: without
 // script the whole list shows, and no box is offered that does nothing.
+// Enter in the box does nothing: it is the one form of the page, and a
+// phone's Search or Go key would otherwise save it halfway through ticking
+// (the review of 16 October 2026). Save is the page's own button.
 // String.raw, so the page receives the backslashes as written, and the
 // accents and curly quotes are written as escapes rather than as the
 // characters, which an editor or a copy can silently turn into others.
 export const PICK_SCRIPT = String.raw`(function(){
-function fold(s){return String(s).normalize("NFD").replace(/[̀-ͯ]/g,"").toLowerCase()
-.replace(/['‘’\x60]/g,"").replace(/[^a-z0-9]+/g," ").trim();}
+function fold(s){return String(s).normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase()
+.replace(/['\u2018\u2019\x60]/g,"").replace(/[^a-z0-9]+/g," ").trim();}
 var picks=document.querySelectorAll("[data-pick]");
 for(var i=0;i<picks.length;i++)(function(d){
 var box=d.querySelector("[data-find]"),rows=d.querySelectorAll("li"),sets=d.querySelectorAll("fieldset"),
@@ -175,7 +187,8 @@ if(!hit){hit=true;for(var w=0;w<q.length;w++)if(names[j].indexOf(q[w])<0){hit=fa
 rows[j].hidden=!hit;if(hit)any=true;}
 for(var k=0;k<sets.length;k++)sets[k].hidden=!sets[k].querySelector("li:not([hidden])");
 none.hidden=any;count.textContent=ticked?ticked+" ticked":"";}
-box.parentNode.hidden=false;box.addEventListener("input",show);d.addEventListener("change",show);show();
+box.parentNode.hidden=false;box.addEventListener("input",show);d.addEventListener("change",show);
+box.addEventListener("keydown",function(e){if(e.key==="Enter"||e.keyCode===13)e.preventDefault();});show();
 })(picks[i]);
 })();`;
 

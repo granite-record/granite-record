@@ -60,20 +60,25 @@ the address with it, is deleted within 48 hours without being used.</p>`,
 });
 
 // The second paragraph is for the reader who confirmed and came back by the
-// same link, looking for their page: the email a confirmation sends has it.
+// same link, looking for their page. It names every email, not only the one
+// a confirmation sends: a reader who confirmed before that email existed
+// (16 October 2026) was never sent it, and will find the link in their next
+// update.
 const SPENT = () => message(400, "This link has expired or been used",
   "A confirmation link works once, for 48 hours. If you still want these updates, " +
   "use Follow on the record's page again and a new link will be sent.",
-  "If you have already confirmed, the email we sent you when you did has the link to " +
-  "your page for email updates, where you can change what you follow.");
+  "If you have already confirmed, the link to your page for email updates, where you " +
+  "can change what you follow, is at the foot of every email we send you about them. " +
+  "If you cannot find one, your next update will have it.");
 
 // AFTER THE ANSWER: the "You're following" email. Every outcome is a log line
 // of a code, and nothing of it reaches the reader.
-async function welcome(env, { origin, sub, key, meta, frequency, kept, total, newcomer, links }) {
+async function welcome(env, { origin, sub, key, meta, frequency, kept, pausedUntil, total, newcomer,
+                              links }) {
   try {
     const { kind } = parseKey(key);
     const mail = welcomeEmail({ origin, kind, label: meta.label, title: meta.title, url: meta.url,
-      frequency, kept, pausedUntil: sub.paused_until || "", total, newcomer,
+      frequency, kept, pausedUntil, total, newcomer,
       manage: links.manage, unsub: links.unsub, feedbackUrl: env.FEEDBACK_URL });
     const sent = await sendMail(env, { to: await openAddress(env, sub.email_enc, sub.email_hmac),
                                        ...mail });
@@ -160,10 +165,16 @@ export async function onRequest(context) {
     // Only where the follow went in: a record already followed, or two
     // presses of Confirm at once of which the other added it, sends nothing.
     if (added?.meta?.changes) {
+      // A pause is told only while it lasts. Nothing clears paused_until once
+      // its day has gone by; the sender and the manage page read a date
+      // before today as no pause (the review of 16 October 2026: one ended on
+      // 8 October was told on the 20th as "paused through 8 October 2026").
+      const p = sub.paused_until || "";
+      const pausedUntil = p && p >= today ? p : "";
       // Started on the next turn, so that the answer is not held for it.
       const job = new Promise(r => setTimeout(r, 0)).then(() => welcome(env, {
         origin: new URL(request.url).origin, sub, key, meta: cur.value.followable.get(key),
-        frequency: sub.frequency === "weekly" ? "weekly" : "daily", kept,
+        frequency: sub.frequency === "weekly" ? "weekly" : "daily", kept, pausedUntil,
         total: Number(has.n) + 1, newcomer: !!made?.meta?.changes, links }));
       if (typeof context.waitUntil === "function") context.waitUntil(job);
       else await job;

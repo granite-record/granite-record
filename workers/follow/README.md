@@ -18,7 +18,7 @@ up to last night's build. Nothing here implies real time.
 | `common.js` | What a follow is, the log (`note`), the site's own names, headers, escaping, New Hampshire's clock. |
 | `store.js` | Database calls more than one endpoint makes: forgetting an address, finding the reader a link belongs to, the purge, the count, the day's ceiling. |
 | `changes.js` | Reading the site's `/changes/` files and holding them to `CHANGES_FORMAT.md`. |
-| `mail.js` | The one call to Resend, and the confirmation, new-link, daily and weekly emails, in plain text and simple HTML. |
+| `mail.js` | The one call to Resend, and the five emails: the confirmation, the "You're following" a confirmation sends, a new link, the daily and the weekly, in plain text and simple HTML. |
 | `page.js` | The HTML of the confirm, manage and unsubscribe pages. |
 | `sender.js` | The scheduled Worker that sends the daily and weekly emails. |
 | `wrangler.toml` | The sender's own configuration: cron, the D1 binding, plain settings. No secret. |
