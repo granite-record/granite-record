@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.208
+# GRANITE_VERSION: 2026-09-04.209
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -1362,7 +1362,7 @@ Court is right and we want to know.</p>
 <a href="mailto:contact@graniterecord.org">contact@graniterecord.org</a></p>
 </div>
 </div>
-<p class="footdata"><span id="built"></span><span class="lic">MIT Open Source Licensed</span></p>
+<p class="footdata"><span id="built"></span><span class="lic">Open source (MIT License)</span></p>
 </div></footer>{FOOT_JS}
 {themer("JS")}
 <!-- The header's search, on every page this file writes. Its own file rather
@@ -1508,8 +1508,8 @@ NOT_FOUND = """
 <p class="note">NO PAGE AT THIS ADDRESS</p>
 <h1>Nothing is published here</h1>
 <p class="lead">The address may be mistyped, or name a bill in a year it does
-not exist in: every bill since 1989 has a page at <code>/bill/&lt;year&gt;/&lt;number&gt;</code>,
-and a bill number starts again every two years.</p>
+not exist in: every bill since 1989 has a page of its own, for example
+<code>/bill/2026/hb1</code>, and a bill number starts again every two years.</p>
 <p id="nf-bill" hidden></p>
 <p><a href="bills.html">Search every bill</a> &middot;
 <a href="officials.html">Officials</a> &middot;

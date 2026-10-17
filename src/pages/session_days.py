@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-19.32
+# GRANITE_VERSION: 2026-09-19.33
 """
 A sitting day of the House or Senate, assembled from what is already parsed.
 
@@ -3491,8 +3491,11 @@ def load(path=NARRATIVES, rollcalls=None, sat=None, journals=None):
                 if got and len(got) == 1:
                     it.need = next(iter(got))
             if it.counted and not it.need and it.kind in ("DV", "DIV"):
-                d = RO.division_threshold(it.bill, it.action, it.raw, it.yeas, it.nays,
-                                          in_office.get((body, date)), it.carried)
+                d = RO.division_threshold(
+                    it.bill, it.action, it.raw, it.yeas, it.nays, in_office.get((body, date)),
+                    it.carried,
+                    RO.journal_division_words(".", body, date, it.yeas, it.nays)
+                    if (it.bill or "").upper().startswith("CACR") else "")
                 if d.get("threshold_needed"):
                     it.need, it.fifths = d["threshold_needed"], False
                 elif d.get("threshold_unknown"):

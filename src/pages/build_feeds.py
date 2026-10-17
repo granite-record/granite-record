@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.38
+# GRANITE_VERSION: 2026-09-04.39
 """
 Write RSS feeds so people can follow bills without a login.
 
@@ -267,6 +267,17 @@ def clip(s, n=88):
 
 def slug(s):
     return re.sub(r"-+", "-", re.sub(r"[^a-z0-9]+", "-", (s or "").lower())).strip("-")
+
+
+# A TOPIC RENAMED KEEPS ITS FEED'S ADDRESS (17 October 2026): two topics took a
+# reader's words (build_site_v2.TOPIC_WORDS), and their feeds and follow keys
+# stay where a reader already subscribed to them.
+TOPIC_ADDRESS = {"Crimes, Criminal Procedure and Corrections": slug("Crimes, Crim.Proc. & Corr."),
+                 "Constitutional Amendments": slug("CACR")}
+
+
+def topic_slug(name):
+    return TOPIC_ADDRESS.get(name) or slug(name)
 
 
 def long_date(d):
@@ -644,7 +655,7 @@ def main():
         return sorted(items, key=lambda x: x[3], reverse=True)[:a.per_feed]
 
     for name, its in topics_now.items():
-        key = f"topic:{slug(name)}"
+        key = f"topic:{topic_slug(name)}"
         followable[key] = {"label": FC.line(name, 120),
                            "url": "/bills?topic=" + quote(name, safe="")}
         lists[key] = fc_list(newest(its), fc_items)
@@ -748,12 +759,12 @@ def main():
         ncmte += 1
 
     for name, items in by_topic.items():
-        out = fd / "topic" / f"{slug(name)}.xml"
+        out = fd / "topic" / f"{topic_slug(name)}.xml"
         written.append(out)
         out.write_text(
             feed(f"{name} — Granite Record",
                  f"Activity on New Hampshire bills about {name}.",
-                 bills_page, f"{base}/feed/topic/{slug(name)}.xml",
+                 bills_page, f"{base}/feed/topic/{topic_slug(name)}.xml",
                  newest(items), base), encoding="utf-8")
 
     # Upcoming hearings. Dated in the FUTURE, which most readers handle by

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.70
+# GRANITE_VERSION: 2026-09-04.71
 """
 Write a real address for every bill, and the sitemap that points at them.
 
@@ -524,7 +524,7 @@ def main():
         f"- [Laws]({a.base}/laws): every chapter of the Revised Statutes Annotated "
         f"(RSA), one page a chapter at {a.base}/laws/<chapter> and each section at "
         f"{a.base}/laws/<chapter>#s<section> (RSA 91-A:4 is {a.base}/laws/91-a#s4), "
-        "with the bills that changed each section and the bills now proposing to",
+        "with the bills that changed each section and the bills that would",
         f"- [Resources]({a.base}/resources): plain-language explainers of how a bill "
         "becomes law, the General Court, testifying and the state's other "
         f"institutions ({a.base}/learn/<topic>), and step-by-step how-to guides "

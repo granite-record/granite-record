@@ -13817,6 +13817,48 @@ def _division_thresholds(RO, B):
         "Amendment #2128h: AA DIV 200-100; Ought to Pass: MF DIV 201-150 Lacking Necessary "
         "Three-Fifths", 200, 100, 390, True)
     assert got == {}, got
+    # THE REVIEW OF 17 OCTOBER 2026. A CACR's passage is three fifths of the
+    # members in office whatever fraction the docket line names (2025's CACR
+    # 8, "Lacking Necessary Two-Thirds Vote"; HJ 14: "3/5ths").
+    got = RO.division_threshold(
+        "CACR8", "Ought to Pass",
+        "Ought to Pass: MF DV 203-158 Lacking Necessary Two-Thirds Vote 05/08/2025", 203, 158,
+        398, False)
+    assert (got.get("threshold_needed"), got.get("threshold_rule")) == (
+        239, "three fifths of the 398 members in office"), got
+    # The 1989-1998 dockets' bare "ADOPTED" of a CACR's report is its passage.
+    got = RO.division_threshold("CACR25", "Adopt", "ADOPTED DIV(278-67); HJ27,P834", 278, 67,
+                                None, True)
+    assert got.get("threshold_unknown"), got
+    # A fraction the docket names over a suspension's two thirds.
+    got = RO.division_threshold(
+        "CACR2", "Susp Rules for 3rd reading",
+        "Rep Chandler Susp Rules for 3rd reading, MA by nec 3/5 DIV(286-43); HJ35", 286, 43,
+        398, True)
+    assert got.get("threshold_needed") == 239, got
+    # The Journal's sentence, where the docket line names no fraction.
+    d = Path(tempfile.mkdtemp())
+    try:
+        (d / "journals" / "2000").mkdir(parents=True)
+        (d / "journals" / "2000" / "HJ012.txt").write_text(
+            "Rep. Mock moved that CACR 2 be removed from the table.\n\nOn a division vote, 251 "
+            "members having voted in the affirmative and 87 in the negative, the motion\nwas "
+            "adopted by the necessary three-fifths.\n", encoding="utf-8")
+        said = RO.journal_division_words(d, "H", "2000-04-13", 251, 87)
+    finally:
+        shutil.rmtree(d, ignore_errors=True)
+    assert "three-fifths" in said, said
+    got = RO.division_threshold("CACR2", "Taken from the Table",
+                                "Taken from the Table, Rep Mock MA DIV(251-87)", 251, 87, 398,
+                                True, said)
+    assert got.get("threshold_needed") == 239, got
+    # Three fifths named of a question that is not a CACR: of those voting.
+    got = RO.division_threshold(
+        "HB1414", "Special Order HB1414",
+        "Special Order HB1414 (Rep. Huot): MA DV 236-137 By Necessary 3/5 03/21/2024", 236, 137,
+        390, True)
+    assert (got.get("threshold_needed"), got.get("threshold_rule")) == (
+        224, "three fifths of the 373 members voting"), got
     rolls = {"2025-2026": {"_procedural": [
         {"body": "H", "date": "2026-02-05", "seated": 394},
         {"body": "H", "date": "2026-02-05", "seated": 394},
@@ -16650,7 +16692,75 @@ def _archive_text_no_application_tail():
     plain = "I. The act shall take effect upon its passage.\nEB\n5"
     assert at.application_tail_off(plain) == plain, (
         "a page with no program file named was cut: " + repr(at.application_tail_off(plain)))
-    return "ok", "1995 HB 101 ends at its effective date, and a page with no tail is untouched"
+    # ONLY THE BINARY (the review of 17 October 2026): a fiscal note's table
+    # above the tail, as 1990 HB 1023's ends, and a sentence sharing its line
+    # with the binary, as 1989 SB 175's does -- and "ntdll.dllB", which a \b
+    # after "dll" missed.
+    hb1023 = ("Balance to state $40,032,000 $37,530,000\n\nDifference = $2,502,000\n\n_%__\n\n"
+              "$RNPWinword.exe68C:\\WINNT\\System32\\ntdll.dllB\ufffd7EB\n\n"
+              "?\\C:\\PROGRA~1\\MICROS~1\\Office\\wwintl32.dll")
+    got = at.application_tail_off(hb1023)
+    assert got == "Balance to state $40,032,000 $37,530,000\n\nDifference = $2,502,000", repr(got)
+    sb175 = ("FISCAL NOTE for an act making an appropriation.\n\nFISCAL IMPACT: This bill "
+             "appropriates $50,000 for FY 1990 to the N.H. Council on the Arts, for "
+             "\\\\capitol\\viewlibrary\\prior session bills\\1989\\senate\\SB")
+    got = at.application_tail_off(sb175)
+    assert got.endswith("to the N.H. Council on the Arts, for") and "viewlibrary" not in got, repr(got)
+    nt = "2 Effective Date. This act shall take effect January 1, 1991.\n\nk66\n\nntdll.dllB\ufffdxEB"
+    assert at.application_tail_off(nt).endswith("January 1, 1991."), repr(at.application_tail_off(nt))
+    return "ok", ("1995 HB 101 ends at its effective date, a fiscal note's table and a sentence "
+                  "beside the binary are kept, and a page with no tail is untouched")
+
+
+@check("data", "on every saved page of 1989-1999 carrying a Word file's tail, the cut takes the "
+       "binary and never a line of text: a run of four words, a sum of money, FISCAL")
+def _archive_text_tail_on_disk():
+    """The review of 17 October 2026: the first cut of the Word binary
+    (archive_text.application_tail_off) deleted real fiscal-note text on 19
+    pages -- tables, and sentences sharing a line with the binary -- and
+    left it on 34 that wrote "ntdll.dllB". Over every saved page that names a
+    program file: each line of text, or the text before the binary starts
+    in its line, is still there, and no program file is left. Fails if the
+    cut is undone either way."""
+    at = imp("archive_text")
+    FL = imp("fetch_legislation")
+    root = Path("legislation")
+    if at is None or FL is None:
+        return "skip", "archive_text or fetch_legislation will not import"
+    years = sorted(p for p in root.glob("19[89]?") if p.is_dir()) if root.is_dir() else []
+    if not years:
+        return "skip", "no legislation/ of 1989-1999 here"
+    raw = re.compile(rb"PROGRA~|WINNT|\.dll|\.exe|MSO97|CLIPPIT|CAPITOL|viewlibrary", re.I)
+    texty = re.compile(r"\$\s?\d[\d,]*(?:\.\d+)?(?=[\s,.;:)]|$)|FISCAL|"
+                       r"[A-Za-z]+(?:[ ,;:]+[A-Za-z]+){3}")
+    cut, pages, lost, left = at.application_tail_off, 0, [], []
+    try:
+        for y in years:
+            for f in sorted(y.glob("*.html")):
+                b = f.read_bytes()
+                if not raw.search(b):
+                    continue
+                html = FL.decode(b)
+                at.application_tail_off = lambda t: t
+                whole = at.flatten(html)
+                at.application_tail_off = cut
+                out = at.flatten(html)
+                if not at.APPLICATION.search(whole):
+                    continue
+                pages += 1
+                got = set(out.split("\n"))
+                for line in whole.split("\n"):
+                    m = at.BINARY_STARTS.search(line)
+                    keep = line[:m.start()].rstrip() if m else line
+                    if keep and texty.search(keep) and keep not in got:
+                        lost.append(f"{f}: {keep[:60]!r}")
+                if at.APPLICATION.search(out):
+                    left.append(str(f))
+    finally:
+        at.application_tail_off = cut
+    assert not lost, f"{len(lost)} lines of text cut with the binary: " + "; ".join(lost[:5])
+    assert not left, f"{len(left)} pages keep a program file: " + ", ".join(left[:5])
+    return "ok", f"{pages:,} pages cut to their text, no line of text lost and no program file left"
 
 
 def _printing(label, marks, lsr, number, title, analysis, sections, law=None,
@@ -22987,6 +23097,9 @@ def _learn_figures_term(SR, build_civics, learn_numbers):
     assert SR.figures_term(done + half) == new, SR.figures_term(done + half)
     # One term, as the fixture site is: that term, however far along.
     assert SR.figures_term(early) == new, SR.figures_term(early)
+    # Nor a term of one bill, decided (the review of 17 October 2026).
+    one = [{"term": new, "id": "HB1", "kind": "done"}]
+    assert SR.figures_term(done + one) == old, SR.figures_term(done + one)
     import inspect
     for mod, fn in ((build_civics, "record_figures"), (learn_numbers, "body")):
         src = inspect.getsource(getattr(mod, fn))
@@ -25279,7 +25392,9 @@ def _conference_folded(build_site_v2):
     if html_ is not None:
         assert "No recording matched" not in html_, (
             "HB 485's page still says no recording matched its conference of 16 June 2025")
-        assert "Jun 16, 2025 at 9:30 AM · LOB 206-208" in html_, (
+        # The room as the Documents tab names it (the person, approved 17
+        # October 2026).
+        assert "Jun 16, 2025 at 9:30 AM · Legislative Office Building 206-208" in html_, (
             "HB 485's conference is not headed with the time and room its notice gives")
     return "ok", ("HB 485's conference of 16 June 2025 is one station, 09:30 in LOB 206-208, "
                   "playing its recording; HB 1709's is one per recording and SB 108's one; "
@@ -27683,21 +27798,21 @@ def _rail_endings(N, B):
                        ("S", "died", "x", "2020-09-16",
                         "Killed under Senate Rule 3-23, still on the table at adjournment")]),
             ("SB570", [("H", "study", "s", "2026-05-14", "Sent to interim study on a voice vote"),
-                       ("H", "died", "x", "2026-08-19", "Still in interim study when the House last "
-                                                        "sat; died when the session ended"),
+                       ("H", "died", "x", "2026-08-19", "In interim study: the committee studies the "
+                                                        "subject in the fall of 2026; the bill goes no further"),
                        ("H", "study_report", "f", "2026-09-28", "Interim study report: recommended "
                                                                  "for future legislation, 9–0")]),
             ("HB561", [("H", "study", "s", "2026-01-07", "Sent to interim study on a voice vote"),
-                       ("H", "died", "x", "2026-08-19", "Still in interim study when the House last "
-                                                        "sat; died when the session ended"),
+                       ("H", "died", "x", "2026-08-19", "In interim study: the committee studies the "
+                                                        "subject in the fall of 2026; the bill goes no further"),
                        ("H", "study_report", "s", "2026-09-29", "Interim study report: not "
                                                                  "recommended for future legislation, 8–2")]),
             ("HB741", [("S", "study", "s", "2026-01-07", "Sent to interim study on a voice vote"),
-                       ("S", "died", "x", "2026-08-19", "Still in interim study when the Senate last "
-                                                        "sat; died when the session ended")]),
+                       ("S", "died", "x", "2026-08-19", "In interim study: the committee studies the "
+                                                        "subject in the fall of 2026; the bill goes no further")]),
             ("HB1179", [("H", "study", "s", "1996-02-01", "Sent to interim study on a voice vote"),
-                        ("H", "died", "x", "1996-06-13", "Still in interim study when the House last "
-                                                         "sat; died when the session ended"),
+                        ("H", "died", "x", "1996-06-13", "In interim study: the committee studies the "
+                                                         "subject in the fall of 1996; the bill goes no further"),
                         ("H", "study_report", "f", "1996-10-29", "Interim study report: recommended "
                                                                   "for legislation in 1997, 17–0; filed "
                                                                   "again as HB 154 of 1997")])):
@@ -78789,7 +78904,7 @@ def _rail_endings_on_the_site(B):
         elif chip == "Interim Study":
             over = term != current or over_now
             said = [s for s in steps if s.get("act") == "died"
-                    and (s.get("text") or "").startswith("Still in interim study when")]
+                    and (s.get("text") or "").startswith("In interim study:")]
             n["study over" if over else "study sitting"] += 1
             if not over:
                 if said or law.get("mark") not in (None, "-"):
@@ -81704,7 +81819,22 @@ def _language_sweep_words(civics, C):
             ("Learn", learn, "without dividing it by party", "did not split cleanly"),
             ("Learn", learn, "<b>Sponsors</b>, and <b>Documents</b>", "<b>Documents</b> &mdash;"),
             ("Learn", learn, "Filed as an LSR", "Legislative Service Request, or LSR"),
-            ("Learn", learn, "legislative branch is made up", "is called the <b>General Court</b>")):
+            ("Learn", learn, "legislative branch is made up", "is called the <b>General Court</b>"),
+            # The person's judgment calls, approved 17 October 2026.
+            ("Learn", learn, "<h2>A Term Is Two Years</h2>\n<p>The General Court sits in two-year "
+             "terms beginning in odd years. Bill", "[[org_day]]"),
+            ("app.js", app, '?"Amends RSA chapter":', "Changes these chapters of state law (RSA)"),
+            ("app.js", app, "the times on the cards move this player",
+             "Choose a time on a card to jump the recording there."),
+            ("app.js", app, 's.venue?" · "+esc(s.venue)', "roomWords(s.venue)"),
+            ("build_pages.py", pages, "MIT Open Source Licensed", "Open source (MIT License)"),
+            ("build_pages.py", pages, "/bill/&lt;year&gt;/&lt;number&gt;", "<code>/bill/2026/hb1</code>"),
+            ("build_rsa.py", src("build_rsa.py"), "the bills now proposing to",
+             "laws not yet included."),
+            ("build_site_v2.py", src("build_site_v2.py"), '"text": f"Still in interim study when',
+             "In interim study: the committee studies the subject in the fall of"),
+            ("build_site_v2.py", src("build_site_v2.py"), "TOPIC_WORDS = {}",
+             '"CACR": "Constitutional Amendments"')):
         if gone in text:
             bad.append(f"{where} says {gone!r} again")
         if there not in text:

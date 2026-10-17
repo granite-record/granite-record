@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.55
+# GRANITE_VERSION: 2026-09-08.56
 """
 The civics section: a hub and one page per topic, in order.
 
@@ -232,6 +232,23 @@ def _cacr_hurdle(idx, every_narr, term):
                 f"{'CACR' if len(short) == 1 else 'CACRs'} won a majority of those "
                 "voting in the House and still fell short.")
     return out
+
+
+def org_day(today):
+    """"The next is December 2, 2026, for the legislature elected on November
+    3." -- the next Organization Day on or after `today`, and the election
+    before it (the person, approved 17 October 2026: the General Court page
+    never named the day the new legislature takes office)."""
+    y = today.year if today.year % 2 == 0 else today.year + 1
+    od = P.organization_day(y)
+    if today > od:
+        y += 2
+        od = P.organization_day(y)
+    vote = datetime.date(y, 11, 2)
+    while vote.weekday() != 1:
+        vote += datetime.timedelta(days=1)
+    return (f"The next is {S.date_words(od, 'full')}, for the legislature elected on "
+            f"{S.date_words(vote, 'full')}.")
 
 
 PROBATE_CACR = ("2025-2026", "CACR13")
@@ -550,6 +567,8 @@ def record_figures(site, root=Path(".")):
         # Not a count: what Using This Site says of email, which changes the
         # day email following goes live (civics.FOLLOW_EMAIL).
         "follow_email": civics.FOLLOW_EMAIL[S.follow_live()],
+        # Nor this: the next Organization Day, from the build's day (org_day).
+        "org_day": org_day(build_date.today()),
         # Nor this: the register of probate paragraph's last sentence, told
         # in the tense the build's day gives CACR 13's vote (probate_vote).
         "probate_vote": probate_vote(
@@ -1139,7 +1158,7 @@ def hub_learn(topics):
         out.append(hub_section(
             "statutes", '<a href="/laws">Laws (RSA)</a>',
             '<p class="r-intro">Every chapter of the state&rsquo;s laws, searchable by number or '
-            'subject, each section with the bills that changed it and the bills now proposing to.</p>'))
+            'subject, each section with the bills that changed it and the bills that would.</p>'))
     return "".join(out)
 
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-23.5
+# GRANITE_VERSION: 2026-09-23.6
 """
 What each roll call decided, from the General Court's own record, and what it
 needed to carry.
@@ -393,9 +393,13 @@ NOT_PASSAGE = re.compile(
     r"inexpedient|\bITL\b|table|interim study|\bRFS\b|recommit|re-?refer|special order|"
     r"indefinite|postpone|reconsider|non-?concur|print|limit debate|ruling|previous question",
     re.I)
+# A BARE "ADOPT" IS THE REPORT'S ADOPTION (17 October 2026). The dockets of
+# 1989-1998 write the House adopting a CACR's committee report as "ADOPTED
+# DIV(278-67)", which narrative.py names "Adopt"; that is the vote on passing
+# it, and without this ten of them were marked at a majority.
 PASSAGE = re.compile(
     r"ought to pass|\bOTP|final passage|third reading|3rd reading|\bconcur|conference|"
-    r"\bC OF C\b|adopt as amended|adoption\b|\bpassage\b", re.I)
+    r"\bC OF C\b|adopt as amended|adoption\b|\bpassage\b|^\s*adopt(?:ed)?\s*$", re.I)
 
 
 def cacr_passage(bill, question):
@@ -443,10 +447,24 @@ def threshold(r, words=""):
     said2 = bool(TWO_THIRDS.search(words) or TWO_THIRDS.search(q))
     suspension = ((bool(SUSPEND.search(q)) and not re.search(r"reconsider", q, re.I))
                   or suspends(words))
-    if VETO.search(q) or suspension or (said2 and not said3):
+    veto = bool(VETO.search(q))
+    cacr = norm_bill(r.get("bill")).startswith("CACR")
+    # PASSING A CACR IS THREE FIFTHS OF THE MEMBERS IN OFFICE, WHATEVER A
+    # DOCKET LINE CALLS IT (17 October 2026). 2025's CACR 8 reads "MF DV
+    # 203-158 Lacking Necessary Two-Thirds Vote", and was marked at two thirds
+    # of those voting; House Journal 14 says it "failed lacking the necessary
+    # 3/5ths vote", which Part II, Article 100 requires. The docket's slip is on
+    # the list for the Clerk. A rules suspension on its way is still two thirds.
+    if cacr_passage(r.get("bill"), q) and not veto and not suspension:
+        if seated:
+            return -(-3 * seated // 5), f"three fifths of the {seated} members in office"
+        return None, None
+    # A fraction the record names for this vote is the vote's: 1999's CACR 2,
+    # "Susp Rules for 3rd reading, MA by nec 3/5 DIV(286-43)", was drawn at the
+    # two thirds a suspension otherwise needs.
+    if veto or ((suspension or said2) and not said3):
         return two_thirds(y, n)
-    if seated and (cacr_passage(r.get("bill"), q)
-                   or (said3 and norm_bill(r.get("bill")).startswith("CACR"))):
+    if seated and said3 and cacr:
         return -(-3 * seated // 5), f"three fifths of the {seated} members in office"
     return None, None
 
@@ -494,26 +512,79 @@ def _division_words(raw, y, n):
     return raw[cs:m.end()] + (after[:b.start()] if b else after)
 
 
-def division_threshold(bill, question, raw, yeas, nays, seated, carried):
+# WHAT THE JOURNAL SAYS OF A DIVISION (17 October 2026). The House Journal
+# prints a division in a sentence of its own, with the threshold where there
+# was one: "On a division vote, 251 members having voted in the affirmative
+# and 87 in the negative, the motion was adopted by the necessary
+# three-fifths" (HJ 12 of 2000, CACR 2 taken from the table, which the
+# docket writes "Taken from the Table, Rep Mock MA DIV(251-87)"). Read for a
+# CACR's division whose docket line names no fraction.
+J_DIVISION = re.compile(
+    r"On\s+a\s+division\s+vote,\s*(\d+)\s+members?\s+having\s+voted\s+in\s+the\s+"
+    r"affirmative,?\s+and\s+(\d+)\s+in\s+the\s+negative,?\s*(.{0,240}?\.)(?=\s|$)", re.I | re.S)
+_DIVISIONS = {}
+
+
+def journal_divisions(root, body, year):
+    """{(yeas, nays): [the sentence after the count]} for the House Journal's
+    divisions of `year`; {} for the Senate, or where no journal is here."""
+    key = (str(root), body, str(year))
+    if key in _DIVISIONS:
+        return _DIVISIONS[key]
+    out = defaultdict(list)
+    if body == "H":
+        for f in journal_files(root, body, year):
+            with open(f, encoding="utf-8", errors="replace") as fh:
+                for m in J_DIVISION.finditer(fh.read()):
+                    out[(int(m.group(1)), int(m.group(2)))].append(
+                        re.sub(r"\s+", " ", m.group(3)))
+    _DIVISIONS[key] = dict(out)
+    return _DIVISIONS[key]
+
+
+def journal_division_words(root, body, date, yeas, nays):
+    """The Journal's words for the division of `yeas` to `nays` in that
+    chamber's year, where it prints that count once or always the same way;
+    "" otherwise."""
+    said = set(journal_divisions(root, body, str(date or "")[:4]).get((yeas, nays), ()))
+    return next(iter(said)) if len(said) == 1 else ""
+
+
+def division_threshold(bill, question, raw, yeas, nays, seated, carried, journal=""):
     """The threshold fields of a counted vote whose ballots were not recorded
     -- a division -- by the rule threshold() applies to a roll call:
     threshold_needed, threshold_rule and threshold_note, and threshold_unknown
     where more than a majority was needed of a count the record does not
-    give. {} for a majority question, which the chart marks as it always has."""
+    give. {} for a majority question, which the chart marks as it always has.
+    `journal` is the Journal's sentence for this division
+    (journal_division_words), read where the docket line names no fraction."""
     words = _division_words(raw, yeas, nays)
+    if journal and not (THREE_FIFTHS.search(words) or TWO_THIRDS.search(words)):
+        words = f"{words} {journal}"
     r = {"yeas": yeas, "nays": nays, "seated": seated,
          "question_raw": question, "bill": bill}
     need, rule = threshold(r, words)
     if need:
         return {"threshold_needed": need, "threshold_rule": rule,
                 "threshold_note": note(carried, yeas, nays, need, rule)}
+    cacr = norm_bill(bill).startswith("CACR")
+    said3 = bool(THREE_FIFTHS.search(words)) and not TWO_THIRDS.search(words)
+    if said3 and not cacr:
+        # THREE FIFTHS OF THOSE VOTING, where the record names three fifths
+        # of a question that is not a constitutional amendment (17 October
+        # 2026): 2024's special orders of HB 1414 and HB 1416, "By Necessary
+        # 3/5", carried 236-137 and 336-29, each three fifths of those voting.
+        v = yeas + nays
+        need, rule = -(-3 * v // 5), f"three fifths of the {v} members voting"
+        return {"threshold_needed": need, "threshold_rule": rule,
+                "threshold_note": note(carried, yeas, nays, need, rule)}
     if cacr_passage(bill, question):
         said = ("Passing a constitutional amendment needs three fifths of the "
                 "members in office; how many were in office that day is not "
                 "on record.")
-    elif THREE_FIFTHS.search(words):
-        said = ("The docket records that this needed three fifths; of how many "
-                "is not on record.")
+    elif said3:
+        said = ("The record says this needed three fifths of the members in "
+                "office; how many were in office that day is not on record.")
     else:
         return {}
     return {"threshold_needed": None, "threshold_rule": None,

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.45
+# GRANITE_VERSION: 2026-09-08.46
 """
 The topics of the civics section: their order, their names, and their prose.
 
@@ -1105,7 +1105,10 @@ the House moves.</p>
 [[fig_seats]]
 
 <h2>A Term Is Two Years</h2>
-<p>The General Court sits in two-year terms beginning in odd years. Bill
+<p>The General Court sits in two-year terms beginning in odd years. A term
+begins on <b>Organization Day</b>, the first Wednesday of December after the
+November election, when the newly elected members are sworn in and elect the
+Speaker and the Senate President. [[org_day]] Bill
 numbers are unique across the whole term, so there is only ever one HB 84 in
 2025&ndash;2026, and there will be another in the next term. That is why every
 address on this site carries the year.</p>

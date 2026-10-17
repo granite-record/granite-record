@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.220
+# GRANITE_VERSION: 2026-09-05.221
 """
 Generate the faceted site from real General Court data.
 
@@ -7428,8 +7428,14 @@ def study_ending(narr, steps, rail, term, sittings, lsrs=None):
     if study is not None and day and (study.get("date") or "") > day:
         day = study["date"]
     out = [{"date": day, "body": body, "act": "died", "mark": "x",
-            "text": f"Still in interim study when the {chamber} last sat; died when the "
-                    "session ended", "short": "died in interim study"}]
+            # THE PERSON'S WORDS (approved 17 October 2026), with the fall
+            # named by its year so the line reads true in any later year: it
+            # said "Still in interim study when the House last sat; died when
+            # the session ended" beside an Interim Study chip and a work
+            # session still to come.
+            "text": (f"In interim study: the committee studies the subject in the fall of "
+                     f"{term_years(term)[1]}; the bill goes no further"),
+            "short": "died in interim study"}]
     rep = interim_report(narr, term)
     if rep:
         words = {"rec": "recommended for " + (f"legislation in {rep['year']}" if rep["year"]
@@ -7523,7 +7529,7 @@ def index_rail(jrail):
 
 # The lines the session's end makes (table_death_line, study_ending), which
 # no row of the docket decided.
-SESSION_END_DEATHS = ("Still in interim study when", "Still on the table when",
+SESSION_END_DEATHS = ("In interim study:", "Still on the table when",
                       "Died on the table when the session ended")
 
 
@@ -10025,13 +10031,20 @@ def bill_rollcalls(bid, term, rcs, narr, votes_by_bill, legs, unnamed,
         # These cards carried no threshold, so the chart marked a majority of
         # those voting on every one: "171 needed" beside the House's 325-15
         # on CACR 13, which needed three fifths of the 394 members in office,
-        # 237. 174 counted divisions of 1989-2026 needed more than a majority
-        # by their docket line or their question (rollcall_outcomes.
-        # division_threshold); seven of them of a count not on record, which
-        # the chart now leaves unmarked rather than marked wrong.
-        need = (RO.division_threshold(bid, question, e.get("raw") or "", int(y), int(n),
-                                      (in_office or {}).get((e.get("body"), e["date"])),
-                                      passed)
+        # 237. 185 counted divisions of 1989-2026 needed more than a majority
+        # by their docket line, their question or the Journal
+        # (rollcall_outcomes.division_threshold); fifteen of them of a count
+        # not on record, which the chart leaves unmarked rather than marked
+        # wrong.
+        # And a CACR's division whose docket line names no fraction is read
+        # with the House Journal's sentence for it (rollcall_outcomes.
+        # journal_division_words): 2000's CACR 2, taken from the table "by
+        # the necessary three-fifths", 17 October 2026.
+        need = (RO.division_threshold(
+                    bid, question, e.get("raw") or "", int(y), int(n),
+                    (in_office or {}).get((e.get("body"), e["date"])), passed,
+                    RO.journal_division_words(".", e.get("body"), e["date"], int(y), int(n))
+                    if bid.upper().startswith("CACR") else "")
                 if y and n else {})
         rc_out.append({
             "date": e["date"], "body": e.get("body"),
@@ -10113,6 +10126,16 @@ def merge_guessed_topics(bills):
 ADDED_CODES = TM.ADDED_CODES
 
 
+# TWO OF THE GENERAL COURT'S TOPIC NAMES IN A READER'S WORDS (the person,
+# approved 17 October 2026): "Crimes, Crim.Proc. & Corr." on 384 bills, and
+# "CACR", a kind of measure rather than a subject, on the constitutional
+# amendments. Applied after the model's vocabulary, which is measured in the
+# General Court's own names; build_feeds keeps each topic's old feed address
+# (feeds.TOPIC_ADDRESS) so a feed already followed goes on working.
+TOPIC_WORDS = {"Crimes, Crim.Proc. & Corr.": "Crimes, Criminal Procedure and Corrections",
+               "CACR": "Constitutional Amendments"}
+
+
 def unify_vocabulary(bills):
     """ONE VOCABULARY ACROSS ALL NINETEEN TERMS, applied last and to everything.
 
@@ -10148,6 +10171,7 @@ def unify_vocabulary(bills):
                 moved["retired"] += 1
                 continue
             new_s = TM.remap_gold(s, rec)
+            new_s = TOPIC_WORDS.get(new_s, new_s)
             if new_s != s:
                 rec["subject"] = new_s
                 rec["subject_code"] = ADDED_CODES.get(new_s) or rec.get("subject_code") or ""

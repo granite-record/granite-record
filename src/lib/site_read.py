@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-09.6
+# GRANITE_VERSION: 2026-09-09.7
 """
 The built site, read back: one reader of the record inside a page.
 
@@ -259,7 +259,8 @@ def bill_index(site="site"):
 
 def figures_term(rows):
     """The term the Learn pages' figures describe: the newest term at most
-    half of whose bills are still moving, else the newest there is.
+    half of whose bills are still moving and with at least half as many bills
+    as the term before it, else the newest there is.
 
     A TERM IS DESCRIBED ONCE IT HAS A STORY (17 October 2026). The pages took
     the newest term in the index, the term the bill search opens on, and
@@ -270,6 +271,11 @@ def figures_term(rows):
     those sentences would have told it. A term is described once most of its
     bills have been decided, which is the first year's session ending, and
     until then the term before it is, by name, as it was.
+
+    AND ONCE IT HAS ENOUGH OF ONE (the review of 17 October 2026): a 2027
+    term of one bill, already decided, is "at most half still moving" too. So
+    a term is described only once it holds at least half as many bills as
+    the term before it.
     """
     by = {}
     for r in rows or ():
@@ -278,8 +284,11 @@ def figures_term(rows):
             n = by.setdefault(t, [0, 0])
             n[0] += 1
             n[1] += r.get("kind") == "active"
-    for t in sorted(by, reverse=True):
-        if by[t][1] * 2 <= by[t][0]:
+    terms = sorted(by)
+    for i in range(len(terms) - 1, -1, -1):
+        t = terms[i]
+        big = i == 0 or by[t][0] * 2 >= by[terms[i - 1]][0]
+        if big and by[t][1] * 2 <= by[t][0]:
             return t
     return max(by, default="")
 

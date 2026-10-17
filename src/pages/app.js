@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.217
+// GRANITE_VERSION: 2026-09-07.218
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -3894,7 +3894,9 @@ function rsaLine(d){
   const ch=rsaChapters(d);
   if(!ch.length)return changedLine(d);
   const link=([n,u])=>`<a class="rsa" href="${esc(u)}"${u.charAt(0)==="/"?"":' target="_blank" rel="noopener"'}>${esc(n)}</a>`;
-  const lead=ch.length===1?"Amends RSA chapter":"Amends RSA chapters";
+  // The person's words, approved 17 October 2026, for "Amends RSA chapters".
+  const lead=ch.length===1?"Changes this chapter of state law (RSA):"
+    :"Changes these chapters of state law (RSA):";
   if(ch.length<=RSA_SHOWN+2)return `<p class="rsaline">${lead} ${ch.map(link).join(", ")}</p>`+changedLine(d);
   return `<div class="rsaline">${lead} <span class="rsaset">${ch.slice(0,RSA_SHOWN).map(link).join(", ")}</span>`
     +`<details class="rsamore"><summary><span class="shut">Show all ${ch.length} chapters</span>`
@@ -4280,6 +4282,11 @@ const NOT_NAMED=`The recording&rsquo;s captions never name this bill, by
   number or by title, so no moment in it is marked. The recording is the
   whole meeting.`;
 
+// A ROOM AS THE DOCUMENTS TAB SAYS IT (the person, approved 17 October 2026):
+// "Legislative Office Building 210-211" for the clerk's "LOB 210-211", with
+// plain_action.BUILDINGS' three buildings.
+const ROOM_BUILDINGS={LOB:"Legislative Office Building",SH:"State House",GP:"Granite Place"};
+const roomWords=v=>String(v||"").replace(/^(LOB|SH|GP)\s*(?=\d)/,(m,k)=>ROOM_BUILDINGS[k]+" ");
 function renderHearings(b,d){
   // si, because the pid was built from the video and the timestamp, so two
   // proceedings on the same recording resolving to the same second shared one
@@ -4586,7 +4593,7 @@ function renderHearings(b,d){
     // pending dot while an unlocated estimate wore the finished one. It now
     // follows the branch that actually ran.
     return `<div class="stn ${placed?"done":"pend"}">
-      <div class="w">${esc(dateWords(s.when))}${s.time?" at "+esc(clock(s.time)):""}${s.venue?" · "+esc(s.venue):""}</div>
+      <div class="w">${esc(dateWords(s.when))}${s.time?" at "+esc(clock(s.time)):""}${s.venue?" · "+esc(roomWords(s.venue)):""}</div>
       <div class="t">${esc(stationTitle(b,s))}</div>${
         signins(s.testimony)}${inner}${(s.reports||[]).map(r=>
           hearingReport(r,inner.includes('class="player"'))).join("")}</div>`;}).join("")
@@ -7290,7 +7297,7 @@ function meetingPlayers(s,items){
         kinds.length?` &middot; ${esc(kinds.join(", "))}`:""}</span>
         <a href="https://www.youtube.com/watch?v=${esc(vid)}&t=${from}s" target="_blank"
           rel="noopener">On YouTube</a>
-        <span class="tolnote">${timed.length?"the times on the cards move this player"
+        <span class="tolnote">${timed.length?"Choose a time on a card to jump the recording there."
           :"no moment in this recording has been identified yet"}</span></div></div>`;}).join("");
 }
 // What changed at the meeting, in one sentence (item 12): what the committee
