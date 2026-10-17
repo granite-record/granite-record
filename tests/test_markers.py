@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.10
+# GRANITE_VERSION: 2026-09-05.11
 """
 The phrasings the marker patterns must match, and the ones they must not.
 
@@ -194,8 +194,62 @@ MUST_NOT_MATCH = [
 ]
 
 
+# Spoken, with the bill the docket scheduled, and read on 17 October 2026 as a
+# published start that was not an opening. (text, the bill it must not open,
+# the other scheduled bills, where it was said.)
+NOT_OPENINGS = [
+    ("begin the roll call vote on house bill 1430. the motion is itl we'll start "
+     "with representative abrami", "HB1430", [], "kTWMOT-FfVI 0:32:37"),
+    ("beginning of house 25 that worksheet starts at the laps extension part",
+     "HB25", [], "-AaP0NKGK4Q 0:08:52"),
+    ("open for further discussion and amendment. Okay. Seeing none, the question "
+     "is on the adoption of ought to pass as amended on Senate Bill 482",
+     "SB482", [], "-IqRWnHKSlQ 1:05:11"),
+    ("open to any questions that you may have and happy to help okay thank you "
+     "Mr trelli any questions seeing none thank you HB 138", "HB138", [],
+     "1SigcuPF4dM 1:53:59"),
+    ("Open Democracy and I'm going to be testifying in opposition to SB 223.",
+     "SB223", [], "4Yho2i88AZw 0:06:04"),
+    ("open the door to censorship. Not now, not ever. Vote no on the amendment "
+     "to SB 33.", "SB33", [], "itJRViVSJqk 6:01:13"),
+    ("open meeting law and the Public's right to know Senate Bill 259 "
+     "strengthens accessibility", "SB259", [], "2oN7obi1qfE 0:17:32"),
+    ("going to do is close this hearing see I don't have any further pin cards "
+     "on 739 and we're going to move into the last one", "HB739", [],
+     "0Y2d_XDakUY 1:46:00"),
+    ("will open we'll close the hearing on house bill 89 and open the hearing on "
+     "house bill 163 and recognize the sponsor", "HB89", ["HB163"],
+     "BIpJk7K-k34 0:16:32"),
+    ("introduced and he was telling me there a that there is money in it and "
+     "they're going to take $100,000 out the money that", "SB100", [],
+     "5zhoZ4k_UNY 1:44:14"),
+]
+# And spoken openings of the same shapes, which those guards must leave alone.
+STILL_OPENINGS = [
+    ("beginning with Senate Bill 400 um representative mlan thank you Mr chair",
+     "SB400", "GdUz9CRluqE 2:08:30"),
+    ("open the meeting on HP 10:21. It is 9:33 in the morning. I recognize the "
+     "prime sponsor, Representative David Walker.", "HB1021", "YrSXjhMWh-8 0:39:08"),
+    ("will open we'll close the hearing on house bill 89 and open the hearing on "
+     "house bill 163 and recognize the sponsor", "HB163", "BIpJk7K-k34 0:16:32"),
+]
+
+
 def run():
     fails = []
+
+    for text, bill, others, where in NOT_OPENINGS:
+        w = [(i * 0.4, x) for i, x in enumerate(text.split())]
+        got = [m for m in S.find_markers(w, [bill] + others, {}) if m["bill"] == bill
+               and m["kind"] == "open"]
+        if got:
+            fails.append(f"OPENED  ({where}): {text[:60]}")
+    for text, bill, where in STILL_OPENINGS:
+        w = [(i * 0.4, x) for i, x in enumerate(text.split())]
+        cands = [bill, "HB89"] if bill == "HB163" else [bill]
+        if not any(m["bill"] == bill and m["kind"] == "open"
+                   for m in S.find_markers(w, cands, {})):
+            fails.append(f"NOT OPENED ({where}): {text[:60]}")
 
     # The patterns find_markers actually runs, read from it rather than listed
     # again here. This list used to be a second copy, and the copies drifted
@@ -293,7 +347,7 @@ def run():
 
 if __name__ == "__main__":
     bad = run()
-    n = len(MUST_MATCH) + len(MUST_NOT_MATCH) + 5
+    n = len(MUST_MATCH) + len(MUST_NOT_MATCH) + len(NOT_OPENINGS) + len(STILL_OPENINGS) + 5
     if bad:
         print(f"{len(bad)} of {n} failed:")
         for b in bad:
@@ -301,4 +355,5 @@ if __name__ == "__main__":
         sys.exit(1)
     print(f"{n} marker cases pass "
           f"({len(MUST_MATCH)} spoken phrasings, {len(MUST_NOT_MATCH)} decoys, "
-          "5 behaviours)")
+          f"{len(NOT_OPENINGS)} spoken non-openings, {len(STILL_OPENINGS)} spoken "
+          "openings beside them, 5 behaviours)")

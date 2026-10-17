@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.43
+# GRANITE_VERSION: 2026-09-05.44
 """
 Segment a recording on what the chair says, not on where bill numbers cluster.
 
@@ -367,6 +367,50 @@ COMMITTEE_PATS = (
     (NEXT2_RE, "open", True),
 )
 
+# WORDS THAT READ LIKE AN OPENING AND ARE NOT ONE. (17 October 2026.) Each
+# was read in the published starts, which held about 114 of them, and each
+# kind is matched where the phrase's own verb stands, not anywhere before the
+# bill:
+#
+#   "begin the roll call vote on house bill 1430"   the vote, at the end
+#   "beginning of house 25 that worksheet"          a noun, not a verb
+#   "open for further discussion"                   the floor, mid-item
+#   "open to any questions"
+#   "Open Democracy"                                a group testifying
+#   "open the door to censorship"                   an adjective, in
+#   "open meeting law", "open enrollment schools"   testimony
+#   "what I'm going to do is close this hearing"    a close
+#
+# "beginning with House Bill 1377" is an opening and is left alone, and so
+# is "open the meeting on HP 10:21".
+NOT_AN_OPENING = re.compile(
+    r"begin(?:ning)?\s+(?:the\s+|a\s+)?(?:roll[\s-]*call|vote)\b"
+    r"|beginning\b(?!\s+with\b)"
+    r"|open(?:ed)?\s+(?:it\s+)?(?:up\s+)?(?:for|to)\s+(?:any\s+)?(?:further|questions?|"
+    r"discussion|comments?|amendments?|motions?)\b"
+    r"|open\s+(?:democracy|doors?|the\s+doors?|meetings?|enrollment|spaces?|government|"
+    r"records?|mind(?:ed)?)\b"
+    r"|going\s+to\s+do\s+is\s+(?:clos|recess)", re.I)
+OPENING_VERB = re.compile(r"\b(?:open|begin|going\s+to\s+do)", re.I)
+# And a close between the opening phrase and its bill: "will open we'll close
+# the hearing on house bill 89 and open the hearing on house bill 163" names
+# 89 to close it. About half of the 24 published spans under 30 seconds the
+# chair "closed" were a close or an aside read as an opening.
+CLOSE_WORD = re.compile(r"\bclos(?:e|es|ed|ing)\b", re.I)
+
+
+def not_an_opening(text, start, upto):
+    """What makes the opening phrase at text[start], whose bill is named at
+    text[upto], not an opening -- or "" when nothing does."""
+    v = OPENING_VERB.search(text, start, min(upto, start + 40))
+    if v:
+        m = NOT_AN_OPENING.match(text, v.start())
+        if m:
+            return m.group(0)
+    m = CLOSE_WORD.search(text, start, upto)
+    return m.group(0) if m else ""
+
+
 # THE OPENINGS AFTER WHICH A TITLE MAY STAND FOR THE NUMBER. (17 October
 # 2026.) With the titles restored (title_lookup), the fallback placed 326
 # bills that had no opening and moved 129 first openings by more than a
@@ -381,7 +425,11 @@ TITLED = (OPEN_RE, CONF_OPEN_RE, FLOOR_OPEN_RE)
 BILL_SPOKEN = re.compile(
     r"\b(?:(House|Senate)\s*Bill|(HB|HP|SB|SP|CACR|CAC|HR|SR|HCR|SCR|HJR))\s*#?\s*"
     r"(\d[\d\s:]{0,6}\d|\d)", re.I)
-BARE_NUM = re.compile(r"\b(\d{2,4})\b")
+# A FIGURE IS NOT A BILL NUMBER. (17 October 2026.) The hand-timed set's
+# worst error, 88 minutes, was SB 100 on 5zhoZ4k_UNY placed by the "100" of
+# "$100,000" read after "introduced". Digits after a dollar sign, or inside a
+# figure with a comma or a point ("100,000", "2.50"), are an amount.
+BARE_NUM = re.compile(r"(?<![$\d,.])(?<!\$\s)\b(\d{2,4})\b(?![,.]\d)")
 LETTER_FIX = {"HP": "HB", "SP": "SB", "CAC": "CACR"}
 
 STOP = set("""a an the of to in on for and or by with at from as is are be been
@@ -528,6 +576,15 @@ def match_bill(text, candidates, titles):
     write HB 1381 as HP 1381 and House Bill 1135 as "House Bill 11:35", and a
     garbled number only has to pick one out of twenty.
     """
+    got = bill_at(text, candidates, titles)
+    return (got[0], got[1]) if got else (None, "")
+
+
+def bill_at(text, candidates, titles):
+    """match_bill's answer with where in `text` the bill is named: (bill,
+    how, start, end), or None. The place is what lets find_markers read the
+    words between an opening phrase and its bill (not_an_opening) and the
+    words after it (block_partner, recessed)."""
     bydigits = defaultdict(list)
     for c in candidates:
         bydigits[re.sub(r"[^0-9]", "", c)].append(c)
@@ -541,11 +598,11 @@ def match_bill(text, candidates, titles):
         pick = next((c for c in same if c.startswith(kind)), None) \
             or (same[0] if same else None)
         if pick:
-            return pick, "number"
+            return pick, "number", m.start(), m.end()
     for m in BARE_NUM.finditer(text):
         same = bydigits.get(m.group(1), [])
         if len(same) == 1:
-            return same[0], "bare number"
+            return same[0], "bare number", m.start(1), m.end(1)
 
     # Title words, which the captions handle far better than digits.
     words = set(norm(text).split())
@@ -559,8 +616,13 @@ def match_bill(text, candidates, titles):
         if hit > score:
             best, score = b, hit
     if best and score >= 0.6:
-        return best, "title"
-    return None, ""
+        kw = {w for w in norm(titles.get(best, "")).split()
+              if w not in STOP and len(w) > 3}
+        low = text.lower()
+        at = [m.start() for w in kw
+              for m in [re.search(r"\b" + re.escape(w) + r"\b", low)] if m]
+        return best, "title", min(at) if at else 0, len(text)
+    return None
 
 
 def find_markers(words, candidates, titles, span=28, floor=False):
@@ -599,9 +661,11 @@ def find_markers(words, candidates, titles, span=28, floor=False):
             # the hearing on Y" names two bills and the second belongs to the
             # opening.
             after = text[m.end():m.end() + 220]
-            bill, how = match_bill(after, candidates,
-                                   titles if rx in TITLED else {})
-            if not bill:
+            got = bill_at(after, candidates, titles if rx in TITLED else {})
+            if not got:
+                continue
+            bill, how, b0, _b1 = got
+            if kind == "open" and not_an_opening(text, m.start(), m.end() + b0):
                 continue
             # An agenda being read is not an opening. "these are in numerical
             # order house bill 27 289 323 365 385 418" names six bills in one
