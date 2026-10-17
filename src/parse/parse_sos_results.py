@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-17.1
+# GRANITE_VERSION: 2026-10-17.2
 """
 The Secretary of State's count of one general election's State Representative
 and State Senate races, read into collected/election_<year>.json.
@@ -61,12 +61,21 @@ recount's carries "recounted": true.
 
 IT REFUSES RATHER THAN GUESSES, saying which file, sheet and row, and writes
 nothing: a title, header or cell it does not recognise; a district or a place
-the district table does not name; seats, a floterial mark or a district's
-towns that disagree with the district table; a race the table names and no
-file holds; a town's count missing for a candidate; a column that does not
-add up to the Totals the file prints beside it, which are the Secretary of
-State's own sums; fewer named candidates than seats, where a write-in nobody
-named may have won; and a file of another election, or a county's file twice.
+the district table does not name; seats or a district's towns that disagree
+with the district table; a race the table names and no file holds; a town's
+count missing for a candidate; a column that does not add up to the Totals
+the file prints beside it, which are the Secretary of State's own sums; a
+write-in the file does not name who may have won -- fewer named candidates
+than seats, or scattered write-ins as many as the last seat's votes; and a
+file of another election, or a county's file twice under one number.
+
+THE PERSON'S DECISIONS OF 17 OCTOBER 2026 about the reader, each as
+recommended after the 2024 files were read: a printed floterial mark the
+towns contradict is flagged in "_notes" and decides nothing (a typo in the
+official record flags rather than fails); a write-in winner the file does not
+name is refused, never guessed; and a county's file saved again after a
+recount, under the Secretary of State's next number ("_8" after "_7"),
+replaces the earlier, which is said in "_notes" and not read.
 """
 
 # The bootstrap: _paths.py, found above this file, puts every code folder on the import path.
@@ -375,13 +384,15 @@ def district(blocks, seats, where):
             raise Refused(f"{again[0].where}: the recount's towns or candidates are not the "
                           "first count's")
         cands, scatter, recounted = c2, s2, True
-    return {"towns": towns, "candidates": elect(cands, seats, where), "scatter": scatter,
-            "recounted": recounted}
+    return {"towns": towns, "candidates": elect(cands, seats, where, scatter),
+            "scatter": scatter, "recounted": recounted}
 
 
-def elect(cands, seats, where):
+def elect(cands, seats, where, scatter=None):
     """The candidates, each marked elected, not, or tied for the last seat
-    (null): the files mark no winner, so the count decides."""
+    (null): the files mark no winner, so the count decides. `scatter` is
+    the write-ins the file counts and does not name, or None where it does
+    not count them for every place."""
     if len(cands) < seats:
         raise Refused(f"{where}: {len(cands)} named candidate(s) for {seats} seat(s) -- a write-in "
                       "the file does not name may have won, and this does not guess who")
@@ -389,6 +400,15 @@ def elect(cands, seats, where):
     cut = by[seats - 1]
     if cut == 0:
         raise Refused(f"{where}: a seat whose winner has no votes")
+    # A WRITE-IN WINNER THE FILE DOES NOT NAME IS REFUSED, NOT GUESSED (the
+    # person's decision of 17 October 2026). The scattered write-ins are one
+    # count for many names, so where it reaches the last seat's votes one of
+    # those names may hold the seat, and which is not in the file. In 2024
+    # the most it came to was 128 against 3,389 (Rockingham 4).
+    if scatter is not None and scatter >= cut:
+        raise Refused(f"{where}: the write-ins the file does not name come to {scatter:,}, and the "
+                      f"last seat was won with {cut:,} -- one of them may have won, and this does "
+                      "not guess who")
     above = sum(1 for v in by if v > cut)
     at = sum(1 for v in by if v == cut)
     tie = above + at > seats
@@ -526,31 +546,58 @@ def read_senate(path, election):
     return {n: district(d["blocks"], 1, d["where"]) for n, d in found.items()}
 
 
+def upload_number(p):
+    """Where a saved file stands among the Secretary of State's uploads of
+    one name: none (-1) before "_0", "_0" before "_1", and so on."""
+    m = re.search(r"_(\d+)\.xlsx?$", p.name)
+    return int(m.group(1)) if m else -1
+
+
+def latest(files, what, replaced):
+    """The one of `files` the Secretary of State uploaded last, by the
+    number on its name; each earlier one is added to `replaced` as (the
+    earlier, the later).
+
+    A RECOUNT'S RE-DOWNLOAD REPLACES THE COUNTY'S FILE (the person's
+    decision of 17 October 2026). The number on a saved file's name rises
+    with each upload of that name -- the 2024 Hillsborough file, which
+    carries four recounts, is "_7" -- so a recount's figures saved beside
+    the first count are, by that sign and not by anything the Secretary of
+    State has said, the higher number; and the later is the results. Until
+    then two files of one county stopped the reader. Two under the same
+    number are still refused: which is the later is then not in their
+    names."""
+    files = sorted(files, key=lambda p: (upload_number(p), p.name))
+    if len(files) > 1 and upload_number(files[-1]) == upload_number(files[-2]):
+        raise Refused(f"{files[-2].name} and {files[-1].name} are both {what}, under one number: "
+                      "which the Secretary of State published later is not in their names; keep "
+                      "the one saved last")
+    replaced.extend((old, files[-1]) for old in files[:-1])
+    return files[-1]
+
+
 def source_files(root, year):
-    """{"house": {county: path}, "senate": path}: the year's saved files,
-    each county once."""
+    """{"house": {county: path}, "senate": path, "replaced": [(earlier,
+    later), ...]}: the year's saved files, each county's latest once."""
     d = Path(root) / SOURCES
-    house, senate = {}, []
+    house, senate, replaced = {}, [], []
     for p in sorted(d.glob(f"{year}-ge-*")) if d.is_dir() else []:
         m = HOUSE_FILE.match(p.name)
         if m and m.group(1) == str(year):
             if m.group(2) not in COUNTIES:
                 raise Refused(f"{p.name} names no county of New Hampshire")
-            if m.group(2) in house:
-                raise Refused(f"{house[m.group(2)].name} and {p.name} are both {m.group(2)}'s "
-                              "House results: keep the one saved last, as the Secretary of "
-                              "State named it")
-            house[m.group(2)] = p
+            house.setdefault(m.group(2), []).append(p)
         elif SENATE_FILE.match(p.name):
             senate.append(p)
     missing = [c for c in COUNTIES if c not in house]
     if missing:
         raise Refused(f"no {year} House results saved in {d.as_posix()}/ for "
                       + ", ".join(missing))
-    if len(senate) != 1:
-        raise Refused(f"{len(senate)} {year} State Senate files in {d.as_posix()}/, where there is "
-                      "one: " + ", ".join(p.name for p in senate))
-    return {"house": house, "senate": senate[0]}
+    if not senate:
+        raise Refused(f"no {year} State Senate file in {d.as_posix()}/")
+    return {"house": {c: latest(ps, f"{c}'s House results", replaced) for c, ps in house.items()},
+            "senate": latest(senate, "the State Senate results", replaced),
+            "replaced": replaced}
 
 
 def described(p, root, saved=None):
@@ -582,7 +629,9 @@ def read_all(root, year, districts, saved=None):
             if places.setdefault(k, t) != t:
                 raise Refused(f"the district table names {places[k]!r} and {t!r}, which read as "
                               "one place")
-    races, notes = {}, []
+    races = {}
+    notes = [f"{new.name} is read, and replaces {old.name}: the Secretary of State's later upload "
+             "of the same results, as after a recount" for old, new in files["replaced"]]
 
     def settle(key, rec, seats, flo, where):
         if key not in on_file:
@@ -618,6 +667,13 @@ def read_all(root, year, districts, saved=None):
                 "candidates": rec["candidates"], "scatter": rec["scatter"]}
         if rec["recounted"]:
             race["recounted"] = True
+        # WHERE THE FILE COUNTS NO SCATTERED WRITE-INS, THAT IS SAID (17
+        # October 2026): elect() could not hold them to the last seat, and
+        # silence is not success. In 2024, Hillsborough 12's one town prints
+        # none.
+        if rec["scatter"] is None:
+            notes.append(f"{where}: the file counts no scattered write-ins for every place, so "
+                         "whether a write-in it does not name won could not be checked")
         races[key] = race
 
     for county, path in files["house"].items():

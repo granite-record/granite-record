@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.608
+# GRANITE_VERSION: 2026-09-04.609
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -85805,18 +85805,21 @@ def _elect_links():
 def _elect_rule(BME):
     """The failure cases of the matching rule (private/MEMBERS_ELECT_PLAN.md),
     each sent to the report and never linked: a sitting member of that name in
-    another seat or chamber; a Jr. or Sr. on one side only, which
-    member_links.surname strips; a former member with no county, or of
-    another county; two of a surname in one seat, where the first names must
-    be equal and a short form does not do; a surname of two words read as
-    one ("St. Clair" is not "Clair"); a first name that fits only as the start
-    of the other's (Joelle for Joe, Pat for Patricia), in the seat or out of
-    it; a former member who fits only by a short form (Bob for Robert: the
-    person's rule says the same name, 16 October 2026); two former records
-    that answer to one name; and two winners taken to one member. And what
-    is certain links: the seat's member under a short form member_links.SHORT
-    lists, the name either way round, a suffix on both sides, a former
-    representative elected to a Senate district in the county he sat for."""
+    another seat where the ballot was not read; a Jr. and a Sr. on the two
+    sides; a former member with no county, or of another county; two of a
+    surname in one seat, where the first names must be equal and a short
+    form does not do; a surname of two words read as one ("St. Clair" is not
+    "Clair"); a first name that fits only as the start of the other's by
+    three letters or by one letter more (Joelle for Joe, Pat for Patricia,
+    Louis for Louise), in the seat or out of it; a former member who fits
+    only by a short form (Bob for Robert: the person's rule says the same
+    name, 16 October 2026); two former records that answer to one name; and
+    two winners taken to one member. And what is certain links: the seat's
+    member under a short form member_links.SHORT lists, the name either way
+    round, a suffix on both sides or -- since the person's widening of 17
+    October 2026 -- on one side only, a former representative elected to a
+    Senate district in the county he sat for. _elect_widened holds the
+    widenings on the 2024 names."""
     sitting = [
         {"id": "s1", "name": "Nelson, Jodi", "chamber": "H", "county": "Rockingham",
          "district": "13", "slug": "jodi-nelson-rock-13"},
@@ -85875,8 +85878,10 @@ def _elect_rule(BME):
     cases = [
         ("H|Rockingham|13", "Jodi Nelson", "s1", ""),
         ("H|Rockingham|13", "Nelson, Jodi", "s1", ""),
-        ("H|Rockingham|13", "Jodi Nelson Jr.", None, "Jr. or Sr."),
-        ("S|24", "Jodi Nelson", None, "holds another seat"),
+        # A suffix on one side only is passed over (17 October 2026), and a
+        # move to another seat links only where the ballot was read.
+        ("H|Rockingham|13", "Jodi Nelson Jr.", "s1", ""),
+        ("S|24", "Jodi Nelson", None, "the ballot was not read"),
         ("H|Hillsborough|1", "William Mannion", "s2", ""),
         ("H|Hillsborough|1", "Dennis Mannion", "s3", ""),
         ("H|Hillsborough|1", "Bill Mannion", None, "only by a short form"),
@@ -85894,8 +85899,9 @@ def _elect_rule(BME):
         ("S|24", "Robert Clegg", "f1", ""),
         ("H|Coos|1", "Robert Clegg", None, "sat in Rockingham"),
         ("S|9", "Sheila Roberge", None, "no county on record"),
-        ("H|Rockingham|13", "John Barnes", None, "Jr. or Sr."),
+        ("H|Rockingham|13", "John Barnes", "f3", ""),
         ("H|Rockingham|13", "John Barnes Jr.", "f3", ""),
+        ("H|Rockingham|13", "John Barnes Sr.", None, "Jr. or Sr. on each side"),
         ("H|Rockingham|13", "Charlie St. Clair", None, "sat in Belknap"),
         ("H|Belknap|5", "Charlie St. Clair", "f5", ""),
         ("S|24", "Rebecca Perkins Kwoka", "s4", ""),
@@ -85922,6 +85928,129 @@ def _elect_rule(BME):
     assert not bad, f"{len(bad)} of the rule's cases: " + "; ".join(bad)
     return "ok", (f"{len(cases)} names, each linked only where certain and otherwise put to the "
                   "person with why; two winners taken to one member, neither linked")
+
+
+def _elect_rep(mid, sur, first, county, n, chamber="H"):
+    """A sitting member's roster row, as much of it as the rule reads."""
+    return {"id": mid, "name": f"{sur}, {first}", "chamber": chamber, "county": county,
+            "district": str(n), "slug": f"{first}-{sur}-{n}".lower()}
+
+
+@check("build", "members-elect: the person's three widenings of 17 October 2026 link the 2024 "
+                "winners they were made for, and still not Joelle for Joe, Louis for Louise, Pat "
+                "Long, Patrick N. Long or a move the ballot does not settle",
+       needs=("build_members_elect",))
+def _elect_widened(BME):
+    """The 2024 test (score_members_elect) left 24 winners the record knew
+    for the person, and on 17 October 2026 the person widened the rule for
+    three kinds of them. Each case here is a real 2024 winner with the
+    sitting member's real id and seat as of that Election Day, so undoing a
+    widening fails on the names it was made for:
+
+      1. a Jr., Sr. or numeral on one side only is passed over: Thackston
+         III, Tierney Jr., Melvin Sr., Kaczynski Jr., each re-elected to
+         their own seat;
+      2. for the seat's own sitting member, a first name of four letters or
+         more that the other runs on from by two or more: Chris Herbert,
+         Greg Hill, Doug Thomas -- and never three letters (Joelle Alexander
+         is not Rep. Joe Alexander) or one letter more (Louis Andrus is not
+         Rep. Louise Andrus), and never for a member of another seat;
+      3. a sitting member who ran for another seat, on the exact name, the
+         one sitting member of it, from the House to another district of
+         their own county or to the Senate, with no other candidate on the
+         ballot answering to them: three senators-elect and seven
+         representatives-elect. Not Pat Long, elected senator, whose record
+         says Patrick; not the first-term Patrick N. Long, because "Pat Long"
+         was on the same ballot; not a move to another county, a senator's
+         move, or a name a former member answers to as well.
+
+    Joelle Alexander, Louis Andrus, the senator (a stand-in id), the former
+    namesake and the moves to another county or seat are made up; the rest
+    are the 2024 ballot's. Two different suffixes, one on each side, are
+    _elect_rule's John Barnes Sr."""
+    sitting = [
+        _elect_rep("6938", "Thackston", "Dick", "Cheshire", 12),
+        _elect_rep("8023", "Tierney", "James", "Coos", 1),
+        _elect_rep("8419", "Melvin", "Charles", "Rockingham", 20),
+        _elect_rep("915", "Kaczynski", "Thomas", "Strafford", 5),
+        _elect_rep("856", "Herbert", "Christopher", "Hillsborough", 24),
+        _elect_rep("943", "Hill", "Gregory", "Merrimack", 2),
+        _elect_rep("907", "Thomas", "Douglas", "Rockingham", 16),
+        _elect_rep("9165", "Alexander", "Joe", "Hillsborough", 29),
+        _elect_rep("9920", "Andrus", "Louise", "Merrimack", 5),
+        _elect_rep("10614", "Rochefort", "David", "Grafton", 1),
+        _elect_rep("488", "McConkey", "Mark", "Carroll", 8),
+        _elect_rep("5686", "McGough", "Tim", "Hillsborough", 12),
+        _elect_rep("10577", "Brown", "Richard", "Carroll", 3),
+        _elect_rep("10748", "Germana", "Nicholas", "Cheshire", 1),
+        _elect_rep("10620", "Sellers", "John", "Grafton", 18),
+        _elect_rep("9134", "Wilhelm", "Matthew", "Hillsborough", 40),
+        _elect_rep("10666", "Corcoran", "Travis", "Hillsborough", 44),
+        _elect_rep("502", "Boehm", "Ralph", "Hillsborough", 14),
+        _elect_rep("9919", "Berry", "Ross", "Hillsborough", 39),
+        _elect_rep("540", "Long", "Patrick", "Hillsborough", 23),
+        _elect_rep("s24", "Altschiller", "Debra", "Rockingham", 24, chamber="S")]
+    linked = [
+        # 1. A suffix on one side only.
+        ("H|Cheshire|12", "Dick H. Thackston III", "6938"),
+        ("H|Coos|1", "James W. Tierney Jr.", "8023"),
+        ("H|Rockingham|20", "Charles R. Melvin Sr.", "8419"),
+        ("H|Strafford|5", "Thomas L. Kaczynski Jr.", "915"),
+        # 2. The start of the first name, four letters or more, own seat.
+        ("H|Hillsborough|24", "Chris Herbert", "856"),
+        ("H|Merrimack|2", "Greg Hill", "943"),
+        ("H|Rockingham|16", "Doug Thomas", "907"),
+        ("H|Hillsborough|29", "Joe Alexander", "9165"),
+        ("H|Merrimack|5", "Louise Andrus", "9920"),
+        # 3. A move from the House, on the exact name.
+        ("S|1", "David Rochefort", "10614"),
+        ("S|3", "Mark McConkey", "488"),
+        ("S|11", "Tim McGough", "5686"),
+        ("H|Carroll|8", "Richard R. Brown", "10577"),
+        ("H|Cheshire|15", "Nicholas Germana", "10748"),
+        ("H|Grafton|10", "John Sellers", "10620"),
+        ("H|Hillsborough|21", "Matthew B. Wilhelm", "9134"),
+        ("H|Hillsborough|28", "Travis Corcoran", "10666"),
+        ("H|Hillsborough|38", "Ralph G. Boehm", "502"),
+        ("H|Hillsborough|44", "Ross Berry", "9919")]
+    # The ballot: those winners, the two Longs, and Dylan Germana, elected in
+    # Cheshire 1 the day Rep. Nicholas Germana moved out of it -- a surname
+    # on the ballot twice, which is not a rival where the first names part.
+    ballot = [(k, n) for k, n, _m in linked] + [
+        ("S|20", "Pat Long"), ("H|Hillsborough|26", "Patrick N. Long"),
+        ("H|Cheshire|1", "Dylan Germana")]
+    refused = [
+        ("H|Hillsborough|29", "Joelle Alexander", "only as the start"),
+        ("H|Merrimack|5", "Louis Andrus", "only as the start"),
+        ("H|Hillsborough|5", "Chris Herbert", "by a short form or its start"),
+        ("S|20", "Pat Long", "by a short form or its start"),
+        ("H|Hillsborough|26", "Patrick N. Long", "another candidate on the ballot answers"),
+        ("H|Rockingham|5", "Ross Berry", "in another county"),
+        ("H|Rockingham|20", "Debra Altschiller", "a sitting senator")]
+    keys = {k for k, *_x in linked + refused}
+    races = {k: {"counties": {k.split("|")[1]} if k.startswith("H|") else set()} for k in keys}
+    people = BME.People(sitting, [], ballot)
+    bad = []
+    for key, name, mid in linked:
+        p, why = BME.auto_link(key, name, people, races)
+        if (p or {}).get("id") != mid:
+            bad.append(f"{name} in {key} is not linked to {mid}: {why}")
+    for key, name, said in refused:
+        p, why = BME.auto_link(key, name, people, races)
+        if p or said not in why:
+            bad.append(f"{name} in {key}: {(p or {}).get('id')} ({why!r}), not refused for "
+                       f"{said!r}")
+    # A former member who answers to the name as well: the move is then the
+    # person's to settle, as a returning namesake might be the winner.
+    namesake = [{"id": "f1", "name": "Sellers, John", "chamber": "H", "county": "Grafton",
+                 "district": "9", "slug": "john-sellers-graf-9"}]
+    p, why = BME.auto_link("H|Grafton|10", "John Sellers",
+                           BME.People(sitting, namesake, ballot), races)
+    if p or "a former member answers to it too" not in why:
+        bad.append(f"John Sellers with a former namesake: {(p or {}).get('id')} ({why!r})")
+    assert not bad, f"{len(bad)} of the widened rule's cases: " + "; ".join(bad)
+    return "ok", (f"{len(linked)} real 2024 winners linked by the widened rule; {len(refused) + 1} "
+                  "kept for the person, Joelle Alexander, Louis Andrus and both Longs among them")
 
 
 @check("build", "members-elect: written only after the election and before Organization Day while "
@@ -86347,7 +86476,70 @@ def _elect_step_order(build_all):
 # collected/election_2024.json, and the rule, run as of that Election Day,
 # must link no winner to anyone but the person who took the seat. On 17
 # October 2026: 424 winners, 293 linked and every one right, none wrong, 131
-# left for the person -- 106 new, 24 the record knew, 1 who never sat.
+# left for the person -- 106 new, 24 the record knew, 1 who never sat. The
+# same day the person widened the rule for three kinds of the 24
+# (_elect_widened), and it links 310, still none wrong: 114 left, 7 of them
+# the record knew.
+
+@check("build", "members-elect: the results reader refuses a write-in winner the file does not "
+                "name, and reads a county's later upload in place of the earlier",
+       needs=("parse_sos_results",))
+def _elect_reader_decisions(PSR):
+    """The person's decisions of 17 October 2026 about parse_sos_results,
+    held without the saved files. A write-in winner the file does not name
+    is refused, not guessed: the scattered write-ins reaching the last
+    seat's votes is refused, one short of it is read, and a race whose file
+    counts none is read (and flagged by read_all, which _elect_2024_read_again
+    holds on Hillsborough 12). A recount's re-download replaces the county's
+    file: of a county's two uploads the later by the Secretary of State's
+    number is read and the earlier named, the unnumbered first of all; two
+    under one number are refused. (The third decision, that a printed
+    floterial mark the towns contradict is flagged and decides nothing, is
+    held on the four 2024 files that print one wrong, by
+    _elect_2024_read_again's comparison of _notes.)"""
+    cands = [{"name": "Ann Ames", "party": "r", "votes": 100, "write_in": False},
+             {"name": "Bo Bell", "party": "d", "votes": 90, "write_in": False}]
+    try:
+        PSR.elect(cands, 1, "a race", scatter=100)
+        raise AssertionError("scattered write-ins as many as the winner's 100 votes were read, "
+                             "where an unnamed write-in may have won")
+    except PSR.Refused as e:
+        assert "may have won" in str(e), f"refused, but not for the write-ins: {e}"
+    for scatter in (99, None):
+        got = PSR.elect(cands, 1, "a race", scatter=scatter)
+        assert [c["elected"] for c in got] == [True, False], (
+            f"with scatter {scatter} the count does not elect Ann Ames: {got}")
+    root = Path(tempfile.mkdtemp(prefix="gr-sos-files-"))
+    try:
+        d = root / PSR.SOURCES
+        d.mkdir(parents=True)
+        names = [f"2024-ge-house-{c}_0.xls" for c in PSR.COUNTIES if c not in ("belknap",
+                                                                                   "hillsborough")]
+        names += ["2024-ge-house-belknap.xls", "2024-ge-house-belknap_0.xlsx",
+                  "2024-ge-house-hillsborough_7.xls", "2024-ge-house-hillsborough_8.xls",
+                  "2024-ge-state-senate-district-1-24_4.xls"]
+        for n in names:
+            (d / n).write_bytes(b"")
+        got = PSR.source_files(root, 2024)
+        assert got["house"]["hillsborough"].name == "2024-ge-house-hillsborough_8.xls" and \
+            got["house"]["belknap"].name == "2024-ge-house-belknap_0.xlsx", (
+            f"the later uploads are not the ones read: {got['house']}")
+        pairs = sorted((a.name, b.name) for a, b in got["replaced"])
+        assert pairs == [("2024-ge-house-belknap.xls", "2024-ge-house-belknap_0.xlsx"),
+                         ("2024-ge-house-hillsborough_7.xls", "2024-ge-house-hillsborough_8.xls")], (
+            f"the files replaced are said as {pairs}")
+        (d / "2024-ge-house-hillsborough_8.xlsx").write_bytes(b"")
+        try:
+            PSR.source_files(root, 2024)
+            raise AssertionError("two Hillsborough files under one number, _8, were read")
+        except PSR.Refused as e:
+            assert "under one number" in str(e), f"refused, but not for the number: {e}"
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    return "ok", ("write-ins the file does not name, as many as the last seat's votes, refused; "
+                  "a county's later upload read in place of its earlier, two under one number "
+                  "refused")
+
 
 @check("data", "members-elect: the Secretary of State's 2024 results, read again, are "
                "collected/election_2024.json -- every column at the file's own Totals, every "
@@ -86391,9 +86583,12 @@ def _elect_2024_scored(SME):
     rule on the 2024 results, and holds every link to the 2025-2026 roll
     calls. A link to anyone but the person who took the seat fails: a
     stranger's record under a member-elect's name is worse than a missing
-    link (the person's rule, 16 October 2026). And so few links that the
-    rule has plainly stopped linking fails too -- silence is not success:
-    293 of 424 linked on 17 October 2026, and a floor well under that."""
+    link (the person's rule, 16 October 2026). And fewer links than the
+    widened rule made fails too -- silence is not success: 310 of 424 on
+    17 October 2026, 293 before the person's widening that day, and each of
+    the 17 it added by name, so that undoing one of the three fails on the
+    winners it was made for. Pat Long and Patrick N. Long, the two the
+    widening must not reach, must stay unlinked."""
     miss = SME.absent(".", 2024)
     if miss:
         return "skip", "not here: " + ", ".join(miss)
@@ -86407,9 +86602,29 @@ def _elect_2024_scored(SME):
     unread = [f"{r['race']} {r['name']} -> [{r['link']}]: {r['why_truth']}" for r in s["unverified"]]
     assert not unread, (f"{len(unread)} link(s) the next term's roll calls cannot confirm: "
                         + "; ".join(unread[:5]))
-    assert len(s["correct"]) >= 250, (
-        f"only {len(s['correct'])} of the 2024 winners link at all (293 on 17 October 2026): "
-        "the rule has stopped linking")
+    assert len(s["correct"]) >= 310, (
+        f"only {len(s['correct'])} of the 2024 winners link (310 on 17 October 2026, after the "
+        "person's widening): the rule links less than it did")
+    # THE WIDENING'S 17, BY NAME (17 October 2026): four by a suffix on one
+    # side, three by the start of the first name, ten moves from the House.
+    right = {(r["race"], r["name"]) for r in s["correct"]}
+    widened = [
+        ("H|Cheshire|12", "Dick H. Thackston III"), ("H|Coos|1", "James W. Tierney Jr."),
+        ("H|Rockingham|20", "Charles R. Melvin Sr."), ("H|Strafford|5", "Thomas L. Kaczynski Jr."),
+        ("H|Hillsborough|24", "Chris Herbert"), ("H|Merrimack|2", "Greg Hill"),
+        ("H|Rockingham|16", "Doug Thomas"),
+        ("S|1", "David Rochefort"), ("S|3", "Mark McConkey"), ("S|11", "Tim McGough"),
+        ("H|Carroll|8", "Richard R. Brown"), ("H|Cheshire|15", "Nicholas Germana"),
+        ("H|Grafton|10", "John Sellers"), ("H|Hillsborough|21", "Matthew B. Wilhelm"),
+        ("H|Hillsborough|28", "Travis Corcoran"), ("H|Hillsborough|38", "Ralph G. Boehm"),
+        ("H|Hillsborough|44", "Ross Berry")]
+    lost = [f"{n} ({k})" for k, n in widened if (k, n) not in right]
+    assert not lost, (f"{len(lost)} of the 17 winners the widening of 17 October 2026 linked are "
+                      "not linked rightly now: " + ", ".join(lost))
+    longs = [f"{r['name']} -> [{r['link']}]" for k in ("correct", "wrong", "unverified")
+             for r in s[k] if r["name"] in ("Pat Long", "Patrick N. Long")]
+    assert not longs, ("a Long is linked by the rule, which must leave both to the person (the "
+                       "two Patrick Longs of member_links.py): " + "; ".join(longs))
     left = sum(len(s[k]) for k in ("unlinked_known", "unlinked_new", "unlinked_unread"))
     return "ok", (f"{len(s['correct'])} linked, every one to the person who took the seat "
                   f"({s['kinds']['sitting']} sitting, {s['kinds']['former']} returning); "
