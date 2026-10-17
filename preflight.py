@@ -85906,6 +85906,84 @@ def _elect_step_order(build_all):
                   "before every page that draws a member-elect")
 
 
+# THE 2024 ELECTION, READ AND SCORED (17 October 2026). The plan said to
+# measure the matching rule on 2024 first, against something this project
+# did not make, and the person saved the Secretary of State's 2024 results in
+# records/sources/ to make that possible. Two checks, each run only where
+# what it reads is on disk: the files read again must be the committed
+# collected/election_2024.json, and the rule, run as of that Election Day,
+# must link no winner to anyone but the person who took the seat. On 17
+# October 2026: 424 winners, 293 linked and every one right, none wrong, 131
+# left for the person -- 106 new, 24 the record knew, 1 who never sat.
+
+@check("data", "members-elect: the Secretary of State's 2024 results, read again, are "
+               "collected/election_2024.json -- every column at the file's own Totals, every "
+               "race at the district table's seats and towns", needs=("parse_sos_results",))
+def _elect_2024_read_again(PSR):
+    """parse_sos_results reads the saved spreadsheets and refuses a layout it
+    does not recognise; this holds what it reads today to what was
+    committed, so that a saved file changed since, or a reader changed in a
+    way that reads them differently, is caught before a page draws it. And
+    every race elects exactly its seats, which is the count the results
+    file is for."""
+    committed, table = Path("collected/election_2024.json"), Path("site/districts.json")
+    missing = [p.as_posix() for p in (committed, table) if not p.exists()]
+    if missing:
+        return "skip", ("not here: " + ", ".join(missing)
+                        + " -- the results are held to a built site's district table")
+    try:
+        doc = PSR.read_all(".", 2024, json.loads(table.read_text(encoding="utf-8")))
+    except PSR.Unreadable as e:
+        return "skip", str(e)
+    except PSR.Refused as e:
+        if not any(Path("records/sources").glob("2024-ge-*")):
+            return "skip", "the 2024 results files are not in records/sources/"
+        raise AssertionError(f"the reader refuses the saved 2024 files: {e}")
+    diff = PSR.differences(doc, json.loads(committed.read_text(encoding="utf-8")))
+    assert not diff, (f"collected/election_2024.json is not what the saved files say "
+                      f"({len(diff)}): " + "; ".join(diff[:6]))
+    short = [k for k, r in doc["races"].items()
+             if sum(c["elected"] is True for c in r["candidates"]) != r["seats"]]
+    assert not short, f"races whose winners are not their seats: {short[:6]}"
+    return "ok", PSR.summary(doc) + f" {len(doc.get('_notes') or [])} flagged in _notes."
+
+
+@check("data", "members-elect: on the 2024 election, as of its own day, the matching rule links "
+               "no winner to anyone but the person who took the seat",
+       needs=("score_members_elect",))
+def _elect_2024_scored(SME):
+    """score_members_elect builds the record as it stood on 5 November 2024
+    -- sitting, everyone who voted that year; former, everyone who voted
+    before; each at the seat they held then -- runs build_members_elect's
+    rule on the 2024 results, and holds every link to the 2025-2026 roll
+    calls. A link to anyone but the person who took the seat fails: a
+    stranger's record under a member-elect's name is worse than a missing
+    link (the person's rule, 16 October 2026). And so few links that the
+    rule has plainly stopped linking fails too -- silence is not success:
+    293 of 424 linked on 17 October 2026, and a floor well under that."""
+    miss = SME.absent(".", 2024)
+    if miss:
+        return "skip", "not here: " + ", ".join(miss)
+    s = SME.score(".", 2024)
+    wrong = [f"{r['race']} {r['name']} -> {r['link_name']} [{r['link']}], the seat went to "
+             f"{r['truth_name']} [{r['truth']}]" for r in s["wrong"]]
+    assert not wrong, f"{len(wrong)} winner(s) linked to somebody else: " + "; ".join(wrong[:5])
+    # A LINK THE ROLL CALLS CANNOT CONFIRM IS NOT A LINK SHOWN RIGHT (17
+    # October 2026): none on 2024, so one appearing is a change to read by
+    # hand (python3 src/parse/score_members_elect.py names it).
+    unread = [f"{r['race']} {r['name']} -> [{r['link']}]: {r['why_truth']}" for r in s["unverified"]]
+    assert not unread, (f"{len(unread)} link(s) the next term's roll calls cannot confirm: "
+                        + "; ".join(unread[:5]))
+    assert len(s["correct"]) >= 250, (
+        f"only {len(s['correct'])} of the 2024 winners link at all (293 on 17 October 2026): "
+        "the rule has stopped linking")
+    left = sum(len(s[k]) for k in ("unlinked_known", "unlinked_new", "unlinked_unread"))
+    return "ok", (f"{len(s['correct'])} linked, every one to the person who took the seat "
+                  f"({s['kinds']['sitting']} sitting, {s['kinds']['former']} returning); "
+                  f"{left} left for the person, {len(s['unlinked_known'])} of them people the "
+                  "record knew; none wrong")
+
+
 _UNTIL_NODE = r"""
 // The reader's clock, fixed at __DAY__ 09:30 local, and a page of five
 // elements: retiring on the day, the day after and the day before, one that
@@ -91095,8 +91173,12 @@ RECORD_CHECKS = {
     "_no_phantom_sittings", "_own_lsr_on_disk", "_past_flags_data", "_past_measures_on_record",
     "_rail_endings_on_the_site", "_report_rec", "_rollcall_outcomes_data",
     "_session_designations_built", "_sitting_consent_on_disk", "_sponsors_on_record",
-    "_vote_identity"}
-REMINDERS = {"_probate_after_the_vote", "_session_over_current", "_town_clerks_reread"}
+    "_vote_identity",
+    # A past election, against the Secretary of State's saved files and the
+    # roll calls (17 October 2026): what they find is the record's, or the
+    # rule's, and never last night's.
+    "_elect_2024_read_again", "_elect_2024_scored"}
+REMINDERS ={"_probate_after_the_vote", "_session_over_current", "_town_clerks_reread"}
 
 
 def built_selected(c):

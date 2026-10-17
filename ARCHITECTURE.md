@@ -1762,6 +1762,21 @@ file every page is the page it was, byte for byte. preflight's
 hold the person's three rules on the fixture's election built with the file
 and without.
 
+The results file is written by `src/parse/parse_sos_results.py` from the
+Secretary of State's spreadsheets, saved by a person in `records/sources/`:
+a county's House file, a sheet with each district's header, a row per town
+and a Totals row, and the Senate file, a sheet for one to three districts.
+It refuses a header, place or seat count it does not recognise, holds every
+column to the file's own Totals and every race to the district table's
+seats and towns, and reads which districts float from the file's own towns,
+because the printed "FL" mark was wrong four times in 2024. The files mark
+no winner, so a race's top counts win and a tie for the last seat is null.
+`src/parse/score_members_elect.py` replays the rule on 2024 as of Election
+Day -- sitting and former members from the roll calls before it, each at the
+seat its term's bills printed -- and holds every link to the 2025-2026 roll
+calls; preflight's `_elect_2024_read_again` and `_elect_2024_scored` run them
+where the files are on disk.
+
 ## The bill index's sponsors
 
 A row's `sponsor` is the prime sponsor and `cosp` the co-sponsors, by the
