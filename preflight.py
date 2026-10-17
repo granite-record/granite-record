@@ -25154,10 +25154,16 @@ def _invented_end_withheld(build_site_v2):
     assert st["start"] == 976.0 and st["end"] is None, (
         f"an end 62 s after the only mention of the bill was published: {st['end']}")
     assert st["end_from"] == "last mention of the bill", st["end_from"]
-    for end, frm in ((1763.0, "last mention of the bill"), (1100.0, "vote result"),
-                     (1050.0, "unnamed close")):
+    for end, frm in ((1763.0, "last mention of the bill"), (1050.0, "unnamed close")):
         st = B.station_for_proceeding(p, "HB122", {}, mk(end, frm))
         assert st["end"] == end, f"an end {frm} at {end} was withheld: {st['end']}"
+    # A hearing takes no vote, so a vote result does not end one; an
+    # executive session's does (after review, 17 October 2026).
+    st = B.station_for_proceeding(p, "HB122", {}, mk(1100.0, "vote result"))
+    assert st["end"] is None, f"a vote result ended a hearing: {st['end']}"
+    ex = dict(p, proceeding="executive session")
+    st = B.station_for_proceeding(ex, "HB122", {}, mk(1100.0, "vote result", "executive session"))
+    assert st["end"] == 1100.0, f"a vote result did not end an executive session: {st['end']}"
     f = {"date": "2026-01-20", "body": "H", "video_id": "VIDX", "motions": [],
          "tallies": [], "kind": "floor debate", "debate_end": None, "window_start": None,
          "precise": False, "whole_video": False, "title": "", "time": "", "venue": ""}

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.18
+# GRANITE_VERSION: 2026-09-05.19
 """
 The phrasings the marker patterns must match, and the ones they must not.
 
@@ -484,10 +484,10 @@ def run():
     # October 2026). Last named 10 s after its opening, it ends at the first
     # close naming no bill before the next boundary, else the last vote
     # result, else nowhere; a bill named again later keeps last mention + 60.
-    def ends(last, evidence):
-        byb = {"HB1118": [{"start": 100.0, "end": None}],
+    def ends(last, evidence, named=(), what=""):
+        byb = {"HB1118": [{"start": 100.0, "end": None, "what": what}],
                "HB1119": [{"start": 600.0, "end": None}]}
-        S.fill_ends(byb, {"HB1118": last, "HB1119": 610.0}, evidence)
+        S.fill_ends(byb, {"HB1118": last, "HB1119": 610.0}, evidence, list(named))
         s = byb["HB1118"][0]
         return s.get("end"), s.get("end_from")
     # What end_evidence counts as a vote, read in the ends it made: spoken.
@@ -506,10 +506,19 @@ def run():
         if got != want:
             fails.append(f"end_evidence ({where}) read a vote: {got}, wanted {want}")
     votes = [(300.0, "vote result"), (400.0, "vote result"), (700.0, "vote result")]
+    # The first vote, not the last; nothing past another scheduled bill
+    # named; no vote at all on a hearing (after review, 17 October 2026).
     for got, want, why in (
-            (ends(110.0, votes), (400.0, "vote result"), "the last vote before the next boundary"),
+            (ends(110.0, votes), (300.0, "vote result"), "the first vote after the opening"),
             (ends(110.0, votes + [(250.0, "unnamed close")]), (250.0, "unnamed close"),
              "a close naming no bill"),
+            (ends(110.0, votes, [(102.0, "HB1118"), (104.0, "HB1120"), (280.0, "HB1120")]),
+             (None, None), "another scheduled bill named before any vote"),
+            (ends(110.0, votes + [(450.0, "unnamed close")], [(420.0, "HB1120")]),
+             (300.0, "vote result"), "a close past another bill named is that bill's"),
+            (ends(110.0, votes, (), "public hearing"), (None, None), "a vote ending a hearing"),
+            (ends(110.0, votes + [(350.0, "unnamed close")], (), "hearing"),
+             (350.0, "unnamed close"), "a hearing's close"),
             (ends(110.0, []), (None, None), "nothing to end it on"),
             (ends(300.0, votes), (360.0, "last mention of the bill"), "named again later")):
         if got != want:

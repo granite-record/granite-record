@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.52
+# GRANITE_VERSION: 2026-09-05.53
 """
 Segment a recording on what the chair says, not on where bill numbers cluster.
 
@@ -1046,7 +1046,27 @@ def end_evidence(words, candidates, floor=False):
     return sorted(out)
 
 
-def fill_ends(byb, last_seen=None, evidence=None):
+HEARING_WORD = re.compile(r"hearing|testimony", re.I)
+
+
+def all_mentions(words, candidates):
+    """[(second, bill)] for every time any scheduled bill is named by its
+    digits, in order: the same comparison last_mentions makes, kept whole so
+    fill_ends can tell where the next item begins."""
+    if not words:
+        return []
+    text, when = _joined(words)
+    out = []
+    for b in candidates:
+        d = re.sub(r"[^0-9]", "", b)
+        if not d:
+            continue
+        for m in re.finditer(r"(?<!\d)" + r"[\s,]*".join(list(d)) + r"(?!\d)", text):
+            out.append((when(m.start()), b))
+    return sorted(out)
+
+
+def fill_ends(byb, last_seen=None, evidence=None, named=None):
     """A segment with no close ends where the next one begins.
 
     The chair announces a close far less often than an opening: 1,687 of 4,537
@@ -1083,16 +1103,31 @@ def fill_ends(byb, last_seen=None, evidence=None):
         # read the number, whatever the item ran: 761 ends were made so, and
         # the three a person timed ran 809, 142 and 227 seconds against the
         # 62, 62 and 89 published. Such an item ends at the first close that
-        # names no bill before the next boundary, or else at the last vote
-        # result announced before it, or has no end at all.
+        # names no bill, or else at the first vote result announced, or has
+        # no end at all.
+        #
+        # SEARCHED ONLY UP TO THE NEXT SCHEDULED BILL NAMED, AND NOT FOR A
+        # VOTE ON A HEARING. (17 October 2026, after review.) Searched to the
+        # next boundary and taking the last vote, 53 of the 358 such ends
+        # published had another scheduled bill named inside them and 36 ran
+        # over half an hour: HB1463's hearing on dUWQvf7KxZM swallowed
+        # HB1812's, HB457's on u3DpAFHuLcI ended 57 minutes on at another
+        # bill's 10-9 vote, and HB121 on xxJfM53Aedo, taken off the agenda,
+        # ended on HB86's. Another bill named is another item begun; the
+        # first vote after the opening is this item's; and four of the five
+        # votes that ended a hearing were testimony or an aside, since a
+        # hearing takes none.
         if how == "last mention of the bill" and cap - start < 30:
-            inside = [(t, k) for t, k in (evidence or ()) if start + 5 < t < nxt]
+            stop = min(nxt, next((t for t, b in (named or ())
+                                  if t > start + 5 and b != _b_), nxt))
+            inside = [(t, k) for t, k in (evidence or ()) if start + 5 < t < stop]
             close = next((t for t, k in inside if k == "unnamed close"), None)
-            votes = [t for t, k in inside if k == "vote result"]
+            votes = ([] if HEARING_WORD.search(str(seg.get("what") or ""))
+                     else [t for t, k in inside if k == "vote result"])
             if close is not None:
                 end, how = close, "unnamed close"
             elif votes:
-                end, how = votes[-1], "vote result"
+                end, how = votes[0], "vote result"
             else:
                 continue
         if end > start:
@@ -1131,7 +1166,8 @@ def read_recording(words, cands, titles, is_floor=False, floor_ent=None, vid="")
     counts["ends the chair stated"] += sum(
         1 for v in segs.values() for x in v if x.get("end") is not None)
     counts["ends from the next boundary"] += fill_ends(
-        segs, last_mentions(words, cands), end_evidence(words, cands, is_floor))
+        segs, last_mentions(words, cands), end_evidence(words, cands, is_floor),
+        all_mentions(words, cands))
     # On a floor recording, separate "no boundary found" from "not on this
     # recording at all". Only the first is a shortcoming. By number alone:
     # "never named" is what decides the consent calendar, and a title read

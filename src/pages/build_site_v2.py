@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.212
+# GRANITE_VERSION: 2026-09-05.213
 """
 Generate the faceted site from real General Court data.
 
@@ -2397,6 +2397,12 @@ def station_for_proceeding(p, bid, segs, marks, claimed=None):
         end_from = "clustered"
         end_val = seg_end
     if end_from in UNPUBLISHABLE or (said and invented_end(said)):
+        end_val = None
+    # A HEARING TAKES NO VOTE, so a vote result does not end one. (17 October
+    # 2026, after review.) segment_markers knows the proceeding only where the
+    # chair named it; four of the five vote-result ends published on hearings
+    # were testimony or an aside. The docket's kind is the one that knows.
+    if end_from == "vote result" and "hearing" in str(p.get("proceeding") or "").lower():
         end_val = None
 
     # The state the page will actually see, computed once: the key below has
