@@ -8,9 +8,20 @@
  *
  * POST, from that page only (same-site, common.sameSite), with a token for a
  * request younger than 48 hours: the address becomes a subscriber if it was
- * not one (daily, the default), the record is added to what it follows, the
- * request is deleted, and the reader is sent to their manage page -- by the
- * same manage link every email of theirs carries.
+ * not one (daily or weekly, as the sign-up box was set), the record is added
+ * to what it follows, the request is deleted, and the reader is sent to their
+ * manage page -- by the same manage link every email of theirs carries.
+ *
+ * A READER ALREADY SUBSCRIBED KEEPS THEIR FREQUENCY, AND IS TOLD SO. This is
+ * the sign-up change's own choice, not one the person made, and it is put to
+ * them to keep or overturn (16 October 2026). The box opens on Daily, so a
+ * weekly reader who follows one more record without touching it would
+ * otherwise be turned daily by a choice they never made. The cost falls the
+ * other way: a daily reader who picks Weekly in the box stays daily. So
+ * where the box asked for the other one, the manage page the confirmation
+ * lands on says how often they still come, above the How often that changes
+ * it ("kept", manage.js), rather than the plain "Confirmed." that would let
+ * the reader think the box's choice was made.
  */
 
 import { TOKEN, followHash, hashToken, linksFor, openFollow }
@@ -51,7 +62,7 @@ export async function onRequest({ request, env }) {
     const db = env.FOLLOW_DB;
     const now = clock(env);
     const p = await db.prepare(
-      "SELECT id, email_hmac, email_enc, follow_enc FROM pending " +
+      "SELECT id, email_hmac, email_enc, follow_enc, frequency FROM pending " +
       "WHERE confirm_token_hash = ?1 AND created_at >= ?2")
       .bind(await hashToken(t),
             isoSeconds(new Date(now.getTime() - PENDING_HOURS * 3600000))).first();
@@ -75,16 +86,23 @@ export async function onRequest({ request, env }) {
 
     const today = nhClock(now).date;
     const first = await linksFor(env, p.email_hmac, 0);
+    // The table allows only the two words; anything else read back is daily,
+    // as the manage page reads a subscriber's.
+    const frequency = p.frequency === "weekly" ? "weekly" : "daily";
     // A new subscriber starts from now: nothing already published is sent,
     // and the first email is the first run of a later day.
     await db.prepare(
       "INSERT INTO subscribers (email_hmac, email_enc, frequency, confirmed_on, link_gen, " +
       "manage_hash, unsub_hash, last_sent_on, sent_date, sent_built) " +
-      "VALUES (?1, ?2, 'daily', ?3, 0, ?4, ?5, ?3, ?3, ?6) ON CONFLICT(email_hmac) DO NOTHING")
+      "VALUES (?1, ?2, ?7, ?3, 0, ?4, ?5, ?3, ?3, ?6) ON CONFLICT(email_hmac) DO NOTHING")
       .bind(p.email_hmac, p.email_enc, today, first.manageHash, first.unsubHash,
-            isoSeconds(now)).run();
-    const sub = await db.prepare("SELECT id, link_gen FROM subscribers WHERE email_hmac = ?1")
+            isoSeconds(now), frequency).run();
+    const sub = await db.prepare(
+      "SELECT id, link_gen, frequency FROM subscribers WHERE email_hmac = ?1")
       .bind(p.email_hmac).first();
+    // A new subscriber has the box's frequency by the insert above; one that
+    // differs is a subscriber's own, kept.
+    const kept = (sub.frequency === "weekly" ? "weekly" : "daily") !== frequency;
     const fh = await followHash(env, p.email_hmac, key);
     const has = await db.prepare(
       "SELECT COUNT(*) AS n, SUM(follow_hmac = ?2) AS already FROM follows " +
@@ -103,7 +121,7 @@ export async function onRequest({ request, env }) {
     ]);
     note("confirm.confirmed", 1);
     const { manage } = await linksFor(env, p.email_hmac, sub.link_gen);
-    return redirect(`/api/follow/manage#t=${manage}&n=confirmed`);
+    return redirect(`/api/follow/manage#t=${manage}&n=${kept ? "kept" : "confirmed"}`);
   } catch (e) {
     note(`confirm.error.${errName(e)}`);
     return message(503, "Please try again shortly",

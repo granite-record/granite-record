@@ -46,8 +46,16 @@ import { forget, subscriberFor } from "../../../workers/follow/store.js";
 
 const PATH = "/api/follow/manage";
 
+// A notice is its words, or a function of how often the reader's updates
+// come that returns them.
 const NOTICES = {
   confirmed: "Confirmed. You will get email updates on what is listed below.",
+  // A reader already subscribed whose sign-up box asked for the other
+  // frequency (confirm.js): theirs was kept, so the page says so, in the
+  // words of the How often below it, where the reader can change it.
+  kept: freq => `Confirmed. You will get email updates on what is listed below, ${freq} as ` +
+    "before: signing up again does not change how often. To change it, choose under How often " +
+    "and save.",
   saved: "Saved.",
   removed: "Removed.",
   notfound: "Saved, but something you asked to add is not a bill, law, legislator or committee " +
@@ -153,6 +161,10 @@ function render(origin, t, sub, follows, current, notice, today) {
     return `<h3>${name}</h3>${body}${add}`;
   }).join("\n");
   const freq = sub.frequency === "weekly" ? "weekly" : "daily";
+  // Its own notices only: the name comes from after "#", which anyone can
+  // type, and "constructor" would otherwise find Object's and call it.
+  const said = Object.hasOwn(NOTICES, notice) ? NOTICES[notice] : "";
+  const noticeText = typeof said === "function" ? said(freq) : said;
   const detail = sub.detail === "milestones" ? "milestones" : "all";
   const p = sub.paused_until || "";
   const pause = !p || p < today ? "none" : p === PAUSED_FOR_GOOD ? "forever" : "until";
@@ -163,7 +175,7 @@ function render(origin, t, sub, follows, current, notice, today) {
     : pause === "until" ? `Paused through ${esc(p)}.` : "";
   const body = `<h1>Your email updates</h1>
 <p class="lede">What you follow, how often, and how much. Nothing changes until you save.</p>
-${NOTICES[notice] ? `<p class="note">${esc(NOTICES[notice])}</p>` : ""}
+${noticeText ? `<p class="note">${esc(noticeText)}</p>` : ""}
 ${status ? `<p class="note">${status}</p>` : ""}
 <form method="post" action="${PATH}">${hidden(t, "save")}
 <div class="pair">

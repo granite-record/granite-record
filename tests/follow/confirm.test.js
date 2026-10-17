@@ -1,11 +1,13 @@
 // functions/api/follow/confirm.js: a GET changes nothing, a confirmation
 // works once and for 48 hours, only from the site's own page, and only for
-// what can still be followed.
+// what can still be followed; a new subscriber gets daily or weekly as the
+// sign-up box was set, and one already subscribed keeps their own.
 
 import test from "node:test";
 import assert from "node:assert/strict";
-import { hashToken, openFollow } from "../../workers/follow/address.js";
-import { get, lastMailTo, leaks, makeWorld, postForm, tokensIn } from "./fakes.js";
+import { hashToken, lookupHash, openFollow } from "../../workers/follow/address.js";
+import { run } from "../../workers/follow/sender.js";
+import { get, lastMailTo, leaks, makeWorld, postForm, postJson, tokensIn } from "./fakes.js";
 import { confirmLatest, handlers, join, manageToken, signUp, snapshot, view } from "./flows.js";
 import { insertFollow } from "./rows.js";
 
@@ -133,6 +135,108 @@ test("a record that ends before the confirmation is not followed", async () => {
     assert.match(r.body, /can no longer be followed/);
     assert.equal(w.d1.rows("subscribers").length, 0);
     assert.equal(w.d1.rows("pending").length, 0);
+  } finally { w.close(); }
+});
+
+// THE BOX'S DAILY OR WEEKLY (16 October 2026), carried from the sign-up to
+// the subscriber, and on to what the sender does with it.
+test("a weekly sign-up is confirmed as weekly, and its first email is Saturday's week", async () => {
+  const w = makeWorld();                                   // Tuesday 6 October
+  try {
+    const a = w.address("weekly.reader");
+    await signUp(w, a, "bill", "2026/HB9903", { frequency: "weekly" });
+    assert.deepEqual(w.d1.rows("pending").map(p => p.frequency), ["weekly"]);
+    const r = await confirmLatest(w, a);
+    assert.equal(r.status, 303);
+    const [s] = w.d1.rows("subscribers");
+    assert.equal(s.frequency, "weekly");
+    assert.equal(w.d1.rows("pending").length, 0);
+    // The manage page it lands on has Weekly chosen.
+    const page = await view(w, manageToken(r));
+    assert.match(page.body, /<input type="radio" name="frequency" value="weekly" checked>/);
+    assert.doesNotMatch(page.body, /name="frequency" value="daily" checked/);
+    // Sent as a weekly reader is: nothing on a weekday, the week on Saturday.
+    const to = () => w.net.outbox.filter(m => m.to.includes(a));
+    w.at("2026-10-08T12:00:00Z");                          // Thursday, 8:00 EDT
+    await run(w.env, w.now);
+    assert.equal(to().length, 1, "only the confirmation on a Thursday");
+    w.at("2026-10-10T12:00:00Z");                          // Saturday, 8:00 EDT
+    await run(w.env, w.now);
+    assert.equal(to().length, 2);
+    assert.match(to()[1].subject, /^Your week/);
+    assert.deepEqual(leaks(w), []);
+  } finally { w.close(); }
+});
+
+test("a sign-up that names no frequency is confirmed as daily", async () => {
+  const w = makeWorld();
+  try {
+    const a = w.address("box.from.before");
+    // As a page loaded before the box had the choice sends it: no frequency.
+    await w.call(handlers.signup, postJson("/api/follow/signup",
+      { email: a, kind: "bill", ref: "2026/HB9903", turnstile: "pass", website: "" }));
+    assert.deepEqual(w.d1.rows("pending").map(p => p.frequency), ["daily"]);
+    const r = await confirmLatest(w, a);
+    assert.equal(r.status, 303);
+    assert.deepEqual(w.d1.rows("subscribers").map(s => s.frequency), ["daily"]);
+    assert.match((await view(w, manageToken(r))).body,
+      /<input type="radio" name="frequency" value="daily" checked>/);
+    assert.deepEqual(leaks(w), []);
+  } finally { w.close(); }
+});
+
+test("a reader already subscribed keeps how often they chose, and is told so when the box asked otherwise", async () => {
+  // The box opens on Daily, so a weekly reader following one more record
+  // without touching it must not be turned daily; nor a daily reader weekly
+  // by a second sign-up. Where the box asked for the other one, the manage
+  // page says how often they still come instead of a plain "Confirmed.", and
+  // its How often is where it changes. A second sign-up that asked for what
+  // is kept is confirmed plainly.
+  const w = makeWorld();
+  try {
+    const weekly = w.address("chose.weekly"), daily = w.address("chose.daily");
+    await signUp(w, weekly, "bill", "2026/HB9901", { frequency: "weekly" });
+    await confirmLatest(w, weekly);
+    await signUp(w, daily, "bill", "2026/HB9901", { frequency: "daily" });
+    await confirmLatest(w, daily);
+    await signUp(w, weekly, "topic", "housing", { frequency: "daily" });
+    await signUp(w, daily, "committee", "H90", { frequency: "weekly" });
+    const rw = await confirmLatest(w, weekly), rd = await confirmLatest(w, daily);
+    for (const r of [rw, rd]) {
+      assert.equal(r.status, 303);
+      assert.match(r.headers.location, /^\/api\/follow\/manage#t=[A-Za-z0-9_-]{43}&n=kept$/);
+    }
+    const by = new Map(w.d1.rows("subscribers").map(s => [s.email_hmac, s.frequency]));
+    assert.equal(by.get(await lookupHash(w.env, weekly)), "weekly");
+    assert.equal(by.get(await lookupHash(w.env, daily)), "daily");
+    assert.equal(w.d1.rows("follows").length, 4, "the second records were followed all the same");
+    assert.equal(w.d1.rows("pending").length, 0);
+    // The shell passes on the "n=kept" after "#" as the view's notice.
+    const seen = async r => (await w.call(handlers.manage, postForm("/api/follow/manage",
+      { t: manageToken(r), action: "view", notice: "kept" }))).body;
+    const pw = await seen(rw), pd = await seen(rd);
+    assert.match(pw, /<p class="note">Confirmed\. You will get email updates on what is listed below, weekly as before: signing up again does not change how often\. To change it, choose under How often and save\.<\/p>/);
+    assert.match(pw, /<input type="radio" name="frequency" value="weekly" checked>/);
+    assert.match(pd, /listed below, daily as before: signing up again does not change how often/);
+    assert.match(pd, /<input type="radio" name="frequency" value="daily" checked>/);
+    // Asked for what is kept: nothing to tell.
+    await signUp(w, weekly, "bill", "2026/HB9903", { frequency: "weekly" });
+    assert.match((await confirmLatest(w, weekly)).headers.location, /&n=confirmed$/);
+    assert.deepEqual(leaks(w), []);
+  } finally { w.close(); }
+});
+
+test("the manage page shows only its own notices, whatever notice it is handed", async () => {
+  const w = makeWorld();
+  try {
+    const s = await join(w, "types.a.notice");
+    for (const notice of ["constructor", "toString", "__proto__", "hasOwnProperty", "nonsense"]) {
+      const page = await w.call(handlers.manage, postForm("/api/follow/manage",
+        { t: s.manage, action: "view", notice }));
+      assert.equal(page.status, 200, notice);
+      assert.doesNotMatch(page.body, /<p class="note">/, notice);
+    }
+    assert.deepEqual(leaks(w), []);
   } finally { w.close(); }
 });
 

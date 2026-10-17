@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.275 */
+/* GRANITE_VERSION: 2026-09-07.276 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -1417,7 +1417,8 @@ line-height:1.1}
      ground, and with no ground printed it is white on white. */
   nav.top,.skip,.calskip,.searchrow,.ftoggle,.backto,.pageacts,.findpanel,
   .findscrim,details.report,.pshare,.sharestate,.player iframe,.fbk,
-  .ytcard .ytgo,.ytpanel .ytaform button[type=submit],.followmail .followsend{display:none !important}
+  .ytcard .ytgo,.ytpanel .ytaform button[type=submit],.followmail .followsend,
+  .followmail .followfreq{display:none !important}
   /* A STATUTE ON PAPER IS THE STATUTE (the polish of 12 October 2026): a
      chapter page prints its sections in one column, without the sidebar
      that lists them; the Laws landing its directory, without the filters
@@ -1740,9 +1741,9 @@ html.js .static-rec{display:none}
 .followmail .panh{font:600 var(--t-h3,1.125rem)/1.25 var(--serif);color:var(--ink);margin:0 0 var(--sp-2)}
 .followmail .pansay{margin:0 0 var(--sp-4);color:var(--ink-2)}
 .followmail .panfine,.ytpanel .ytpriv{font-size:var(--t-sm);color:var(--ink-2);margin:var(--sp-3) 0 0;line-height:1.45}
-.followmail .followaddr input,.ytpanel #ytq,.ytpanel #ytaddr{border:1px solid var(--edge);border-radius:var(--r-in);
+.followmail .followaddr input[type=email],.ytpanel #ytq,.ytpanel #ytaddr{border:1px solid var(--edge);border-radius:var(--r-in);
   background:var(--paper);min-height:44px}
-.followmail .followaddr input:focus-visible,.ytpanel #ytq:focus-visible,.ytpanel #ytaddr:focus-visible{
+.followmail .followaddr input[type=email]:focus-visible,.ytpanel #ytq:focus-visible,.ytpanel #ytaddr:focus-visible{
   outline:2px solid var(--pine);outline-offset:1px;border-color:var(--pine)}
 .followmail .followsend,.ytpanel .ytaform button[type=submit]{background:var(--pine);color:var(--on-pine);
   border:1px solid var(--pine);border-radius:var(--r-in);font-weight:600;min-height:44px;padding:0 var(--sp-5)}
@@ -3599,10 +3600,46 @@ overflow-wrap:anywhere}
 /* A law has no feed: the email box is the pane's only thing, with no rule under it. */
 .followpane > .followmail:last-child{margin-bottom:0;padding-bottom:0;border-bottom:0}
 .followcheck:not(:empty){margin:var(--sp-3) 0}
-.followaddr{display:flex;flex-wrap:wrap;gap:var(--sp-3) var(--sp-5);align-items:flex-end}
-.followaddr label{flex:1 1 16rem;display:flex;flex-direction:column;gap:var(--sp-2);min-width:0}
-.followaddr input{font:inherit;padding:var(--sp-2) var(--sp-4);color:var(--ink);
+/* A div since 16 October 2026, so it takes the pane's paragraph margin
+   itself; its label is the address's alone, and 12rem rather than 16 lets
+   the address, Daily or weekly and the button share one line in the pane. */
+.followaddr{display:flex;flex-wrap:wrap;gap:var(--sp-3) var(--sp-5);align-items:flex-end;margin:0 0 var(--sp-4)}
+.followaddr > label{flex:1 1 12rem;display:flex;flex-direction:column;gap:var(--sp-2);min-width:0}
+.followaddr input[type=email]{font:inherit;padding:var(--sp-2) var(--sp-4);color:var(--ink);
   background:var(--paper);border:1px solid var(--edge);border-radius:var(--r-in)}
+/* DAILY OR WEEKLY (the person, 16 October 2026): the manage page's "How
+   often" control (page.js .seg) at the size of the row -- the two words in
+   one outlined box, the chosen one on the pine wash with the pine rule under
+   it, as tall as the field and the button beside it. The radios stay in the
+   page for the keyboard and a screen reader, out of sight. The height is
+   the labels': a fieldset lays out its children in a box of its own, which
+   does not take the fieldset's min-height, so the chosen one's wash stopped
+   short of the edge when the 44px was set on the fieldset. */
+.followfreq{display:inline-flex;margin:0;padding:0;min-width:0;
+  border:1px solid var(--edge);border-radius:var(--r-in);overflow:hidden}
+.followfreq label{display:flex;align-items:center;min-height:42px;padding:0 var(--sp-5);cursor:pointer;
+  border-left:1px solid var(--rule)}
+.followfreq label:first-of-type{border-left:0}
+.followfreq input{position:absolute;opacity:0;width:1px;height:1px;margin:0}
+.followfreq span{font-weight:600}
+.followfreq label:has(input:checked){background:var(--pine-soft);box-shadow:inset 0 -3px 0 var(--pine)}
+.followfreq label:has(input:checked) span{color:var(--pine)}
+.followfreq label:has(input:focus-visible){outline:2px solid var(--pine);outline-offset:-2px}
+/* IN FORCED COLOURS DAILY AND WEEKLY CAME OUT THE SAME (the review of 16
+   October 2026, in Edge with high contrast on): the system paints the wash
+   away and draws no box-shadow, so the rule under the chosen one goes too,
+   and the radios are out of sight. The chosen one takes the system's colours
+   for a selection, as a list's chosen item does, and its focus ring the
+   selection's text colour inside it, so that being chosen and having the
+   keyboard stay two things. Kept out of the system's hands to keep those
+   colours, it would keep the pine rule too, which is taken off. The manage
+   page's .seg does the same (page.js). */
+@media (forced-colors:active){
+  .followfreq label:has(input:checked){forced-color-adjust:none;background:Highlight;color:HighlightText;
+    box-shadow:none}
+  .followfreq label:has(input:checked) span{color:HighlightText}
+  .followfreq label:has(input:checked:focus-visible){outline-color:HighlightText;outline-offset:-4px}
+}
 .followstate{margin:var(--sp-4) 0 0;color:var(--ink-2)}
 .followsend{font:inherit;color:var(--ink);background:none;cursor:pointer;
   border:1px solid var(--rule-2);border-radius:var(--r-in);padding:var(--sp-2) var(--sp-5)}

@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.209
+// GRANITE_VERSION: 2026-09-07.210
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -5712,13 +5712,23 @@ function followMailForm(key){
   // ONE PANEL WITH CHOOSING YOUR TOWN (the person's choice A, 14 October
   // 2026): a heading, one sentence, one field and its button, and the
   // promises in the small print under them -- the same words as before.
+  // DAILY OR WEEKLY BESIDE THE ADDRESS (the person, 16 October 2026), Daily
+  // chosen, just before the button: the manage page's own control, in its
+  // words and its markup (manage.js, "How often"), so the sign-up and the
+  // page that changes it later ask the same question the same way. Before
+  // this a sign-up was always daily. A div, not a p, holds the row: a
+  // fieldset is not allowed inside a p, and the parser would close the p
+  // before it and leave the button outside the row.
   return `<form class="followform" novalidate>
     <p class="panh">Follow by email</p>
     <p class="pansay">Daily or weekly: ${esc(FOLLOWS[key.split(":")[0]]||"what is new here")}.</p>
-    <p class="followaddr"><label><span class="sr">Your email address</span>
+    <div class="followaddr"><label><span class="sr">Your email address</span>
       <input type="email" name="email" autocomplete="email" maxlength="254" required
         placeholder="you@example.com"></label>
-      <button type="submit" class="followsend">Email me updates</button></p>
+      <fieldset class="followfreq"><legend class="sr">Send me updates</legend>
+        <label><input type="radio" name="frequency" value="daily" checked><span>Daily</span></label>
+        <label><input type="radio" name="frequency" value="weekly"><span>Weekly</span></label></fieldset>
+      <button type="submit" class="followsend">Email me updates</button></div>
     <p class="panfine">Nothing is sent until you confirm from the first email, and every email has a link to
       change what you follow or to unsubscribe, which deletes your address from our database at once.</p>
     <p style="position:absolute;left:-9999px" aria-hidden="true"><label>Leave this empty
@@ -5830,10 +5840,15 @@ async function followSubmit(e,form){
     btn.disabled=false;return;
   }
   st.textContent="Sending…";
+  // The radio that is checked; daily where none is, which is what the
+  // sign-up makes of a request that names none.
+  const fq=form.querySelector('input[name="frequency"]:checked');
+  const freq=fq&&fq.value==="weekly"?"weekly":"daily";
   let said;
   try{
     const r=await fetch("/api/follow/signup",{method:"POST",headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({email,kind,ref:rest.join(":"),turnstile:pass,website:form.elements.website.value})});
+      body:JSON.stringify({email,kind,ref:rest.join(":"),frequency:freq,turnstile:pass,
+        website:form.elements.website.value})});
     const j=await r.json().catch(()=>({}));
     said=r.status===202?"If this address can take email, a confirmation is on its way. "+
       "Nothing is sent until you confirm from it.":(FOLLOW_SAID[j.why]||FOLLOW_SAID.unavailable);
