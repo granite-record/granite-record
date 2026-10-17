@@ -25043,6 +25043,17 @@ def _floor_station_rules(build_site_v2):
     st = B.station_for_floor(row("floor debate", ["84-254"]), "HB1002", absent)
     assert st["state"] != "consent", (
         "a roll call stamped with the date alone (the Senate's) still drew the consent calendar")
+    # Nor a concurrence or a conference (after review, 17 October 2026):
+    # HB 250's non-concurrence of 22 May 2025 on YobZAwJsSQo drew consent.
+    for motion in ("House Non-Concurs with Senate Amendment 2025-1234s and Requests C of C",
+                   "Accedes to House Request for Committee of Conference",
+                   "Nonconcur with the House Amendment; Requests C of C"):
+        st = B.station_for_floor(dict(row("floor debate"), motions=[motion]), "HB1002", absent)
+        assert st["state"] == "floor_dated", (
+            f"{motion!r}, never named on the recording, drew {st['state']!r}; "
+            "business between the chambers is never the consent calendar")
+    st = B.station_for_floor(dict(row("floor debate"), motions=["Ought to Pass"]), "HB1002", absent)
+    assert st["state"] == "consent", f"an Ought to Pass never named drew {st['state']!r}"
 
     def mk(start, what):
         return {"start": start, "end": None, "how": "number", "what": what, "said": "x"}

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.213
+# GRANITE_VERSION: 2026-09-05.214
 """
 Generate the faceted site from real General Court data.
 
@@ -2185,6 +2185,18 @@ def next_step(narr, bill, prefix=""):
     return "In progress"
 
 
+CONCURRENCE = re.compile(r"concur|conference|\bc\s*of\s*c\b|accede|recede", re.I)
+
+
+def concurrence_action(f):
+    """True for a floor row that is a committee of conference, or whose
+    action is a concurrence, a non-concurrence, a request for a committee of
+    conference, an accession or a recession -- business between the chambers
+    that the consent calendar never carries (station_for_floor)."""
+    return (f.get("kind") == "committee of conference"
+            or any(CONCURRENCE.search(str(x)) for x in (f.get("motions") or [])))
+
+
 def invented_end(said):
     """True for an end segment_markers took from the bill's last mention
     where that mention was within 30 seconds of the opening, so the end is a
@@ -2638,8 +2650,16 @@ def station_for_floor(f, bid, marks):
     # is the chamber's own record that the bill was voted on by itself, and
     # a bill on the consent calendar never is. The roll call's tallies are
     # what proceedings.csv carries for that day, so they decide it.
+    #
+    # NOR IS A CONCURRENCE OR A CONFERENCE EVER THE CONSENT CALENDAR. (After
+    # review, 17 October 2026.) Concurring or not with the other chamber's
+    # amendment, asking for a committee of conference, acceding to one and
+    # adopting its report are taken up in their own order, and often off any
+    # recording of the day's session: HB 250's non-concurrence of 22 May 2025
+    # (YobZAwJsSQo) was drawn as passed on consent, and 74 consent stations
+    # of the 15 October build were actions of that kind. They show the day.
     if (bid in (marks.get("_absent") or {}).get(f.get("video_id") or "", [])
-            and not f.get("tallies")):
+            and not f.get("tallies") and not concurrence_action(f)):
         st["state"] = "consent"
         st["start"] = None
         # Not a debate. The heading read "House floor debate" over a paragraph
