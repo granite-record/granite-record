@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-11.9
+# GRANITE_VERSION: 2026-10-11.10
 """
 The how-to guides: their words, their sources, and what each was checked
 against. Read by build_civics.py, which draws them on the Resources hub's
@@ -941,6 +941,792 @@ LMI = guide(
 
 
 GUIDES = [VOTING, PUBLIC_RECORD, ENERGY, VITAL, ABATEMENT, LMI]
+
+
+# ---------------------------------------------------------------------------
+# THE SEVEN GUIDES OF 17 OCTOBER 2026, which the person chose that day for the
+# soft launch of 10 November. Each agency page was read on 17 October 2026 in
+# the desktop app's browser on the laptop, one page at a time, because the
+# state's web host answered a fetch from anywhere else with 403 that day as it
+# did on the 11th; each statute was read in the table on this disk. A form or
+# a lookup a guide links is one the page it was read on links, by that link's
+# address. The forms themselves were not opened, because there a PDF downloads
+# rather than displays, so no guide says what a form contains. They are added
+# to the list here, after it, so that guides written beside them on the same
+# day go in without touching these.
+# ---------------------------------------------------------------------------
+READ = "2026-10-17"
+
+DMV_RENEW = "https://www.dmv.nh.gov/drivers-licensenon-driver-ids/renew-driver-licensenon-driver-id"
+DMV_ONLINE = "https://www.dmv.nh.gov/online-services/online-renewals"
+DMV_APPT = "https://www.dmv.nh.gov/appointments-and-services"
+DMV_FEES = "https://www.dmv.nh.gov/drivers-licensenon-driver-ids/licensing-fees"
+DMV_REALID = "https://www.dmv.nh.gov/drivers-licensenon-driver-ids/real-id"
+DMV_TRANSFER = "https://www.dmv.nh.gov/drivers-licensenon-driver-ids/transfer-license-another-state"
+DMV_REG = "https://www.dmv.nh.gov/vehicles-boats-and-titles/vehicle-registrations"
+DMV_NEW = "https://www.dmv.nh.gov/vehicles-boats-and-titles/vehicle-registrations/new-resident-new-hampshire"
+# Linked from the pages above.
+DMV_APP = "https://www.dmv.nh.gov/sites/g/files/ehbemt416/files/inline-documents/dsmv450.pdf"
+DMV_REALID_DOCS = "https://www.dmv.nh.gov/sites/g/files/ehbemt416/files/inline-documents/sonh/dsmv634a.pdf"
+DMV_DOC_CHECK = "https://www.app-support.nh.gov/erealid/"
+DMV_NON_US = "https://www.dmv.nh.gov/drivers-licensenon-driver-ids/non-us-citizen"
+DMV_LOCATIONS = "https://www.dmv.nh.gov/hours-and-locations"
+DMV_FEE_EST = "https://services.dos.nh.gov/mos/vfchk"
+DMV_TEMP_PLATES = "https://www.dmv.nh.gov/vehicles-boats-and-titles/temporary-plates"
+DMV_VIN = "https://www.dmv.nh.gov/sites/g/files/ehbemt416/files/inline-documents/tdmv19a.pdf"
+# The federal page the person named for REAL ID (guide_sources.OTHER).
+TSA_REALID = "https://www.tsa.gov/real-id"
+
+DMV_HELP = ("<h2>Who Can Help</h2>"
+            "<p>The Division of Motor Vehicles answers questions and books appointments at "
+            "603-227-4000.</p>"
+            f'<p class="g-acts"><a class="g-btn" href="{DMV_LOCATIONS}" target="_blank" '
+            'rel="noopener">DMV offices and hours</a></p>')
+
+
+# ---------------------------------------------------------------------------
+# RENEWING A DRIVER'S LICENSE. From the DMV's renewal, online renewal,
+# appointments and fees pages, and RSA 263. The two fees are printed because
+# RSA 263:42 sets them, and the DMV's fee table says the same. The DMV mails its
+# notice about two months ahead where RSA 263:10 asks for 30 days, so the
+# guide gives the DMV's practice, with its page, rather than the law's floor.
+# ---------------------------------------------------------------------------
+LICENSE = guide(
+    "renew-drivers-license", "How to Renew Your Driver's License",
+    "Renewing a New Hampshire driver's license or non-driver ID online or at a DMV appointment, "
+    "step by step: what to bring, what it costs, and what to do if it has expired.",
+    "A New Hampshire driver&rsquo;s license expires on your birthday in the fifth year after it "
+    "was issued. About two months before, the Division of Motor Vehicles mails you a renewal "
+    "notice. If the notice says you can renew online, you can; otherwise make an appointment at a "
+    "DMV office. A renewal costs $50, or $60 for a REAL ID license.",
+    [ask("Does your renewal notice say you can renew online?",
+         [("Yes", "Renew online with the Renewal Identification Number on the notice."),
+          ("No, or no notice", "Make an appointment at a DMV office and bring what it asks for.")]),
+     box("Getting a REAL ID for the first time? That renewal is in person."),
+     box("You leave with a 60-day paper license, and the new card comes by mail within 60 days.")],
+    [step("Watch for your renewal notice",
+          "<p>About two months before your license expires, the DMV mails a renewal notice to the "
+          "address it has for you. You will not get one if your mail is forwarded, if you moved and "
+          "did not tell the DMV your new address, or if your license is suspended.</p>"
+          "<p>The expiration date is printed in red on the front of your license.</p>",
+          law=["RSA 263:10, I"]),
+     step("Renew online, if your notice says you can",
+          "<p>You need:</p><ul>"
+          "<li>the <b>Renewal Identification Number</b> from your notice, which works from 60 days "
+          "before your birthday to 60 days after it;</li>"
+          "<li>your current license in hand, because you will type in details printed on it;</li>"
+          "<li>a MasterCard, VISA, Discover or American Express card; and</li>"
+          "<li>a printer, to print the temporary license you carry with your old card until the "
+          "new one arrives.</li></ul>"
+          "<p>Only you can renew your own license, and your current photo is reused. The law allows "
+          "an online renewal only every other time, so the renewal after an online one is in "
+          "person.</p>",
+          actions=[("Renew online", DMV_ONLINE)], law=["RSA 263:10, II"]),
+     step("Or renew at a DMV appointment",
+          "<p>DMV offices see people by appointment. Book online, or call 603-227-4000. Bring:</p><ul>"
+          "<li>the completed Application for Driver License (form DSMV 450);</li>"
+          "<li>your current license, or other proof of identity if you cannot find it;</li>"
+          "<li>the fee; and</li><li>be ready for a vision test.</li></ul>"
+          "<p>To upgrade to a REAL ID at the same time, bring the extra documents it needs. If you "
+          "are not a U.S. citizen, the DMV lists what to bring on a page of its own.</p>",
+          actions=[("Make an appointment", DMV_APPT), ("Application (DSMV 450)", DMV_APP),
+                   ("If you are not a U.S. citizen", DMV_NON_US)]),
+     step("Pay the fee",
+          "<p>A renewed license costs $50, or $60 for a REAL ID license. The law sets both. The DMV "
+          "takes credit cards, cash in person, and checks or money orders payable to &ldquo;State of "
+          "NH - DMV&rdquo;. Its fees page lists the rest, for youth, motorcycle and commercial "
+          "licenses.</p>",
+          actions=[("All licensing fees", DMV_FEES)], law=["RSA 263:42, I"]),
+     step("If your license has already expired",
+          "<p>You may not drive until you renew it. What you need depends on how long ago it "
+          "expired:</p><ul>"
+          "<li><b>Less than a year:</b> renew as usual.</li>"
+          "<li><b>One to three years:</b> bring proof of identity and residence for your kind of "
+          "license to a DMV office.</li>"
+          "<li><b>Three years or more:</b> the same documents, and you must pass a vision test, a "
+          "knowledge test and a road test.</li></ul>",
+          actions=[("Renewal requirements", DMV_RENEW)])],
+    [("Renew a Driver License/CDL/Non Driver ID (Division of Motor Vehicles)", DMV_RENEW),
+     ("Online Renewals (Division of Motor Vehicles)", DMV_ONLINE),
+     ("Appointments and Services (Division of Motor Vehicles)", DMV_APPT),
+     ("Licensing Fees (Division of Motor Vehicles)", DMV_FEES),
+     ("Drivers' Licenses, RSA 263", "/laws/263")],
+    ["263"],
+    [claim("The DMV mails a renewal notice about two months before expiry, not if mail is forwarded, "
+           "the address was not updated or the license is suspended; the date is in red on the "
+           "front; renew online if the notice allows, or by appointment with the DSMV 450, the "
+           "current license or other proof of identity, the fee and a vision test; a REAL ID "
+           "upgrade needs more documents; non-citizens have their own page; expired under a year, "
+           "one to three years, three years or more, with the tests; a CDL and a non-driver ID "
+           "renew the same ways.", DMV_RENEW, READ),
+     claim("Online: the RIN on the notice, valid 60 days before and after the birthday; only you "
+           "can renew your own; have the current card; MasterCard, VISA, Discover or American "
+           "Express; print the temporary, which with the old card serves until the new one is "
+           "mailed within 60 days; the current photo is reused; a first REAL ID is in person.",
+           DMV_ONLINE, READ),
+     claim("The DMV is fully appointment based; book online or call 603-227-4000.", DMV_APPT, READ),
+     claim("Payment by credit card, cash in person, or check or money order payable to State of NH "
+           "- DMV; $50 operator, $60 REAL ID operator, and the youth, motorcycle and CDL fees.",
+           DMV_FEES, READ),
+     claim("A license expires on the fifth anniversary of the holder's birth date following issue; "
+           "online renewal only once in every other renewal cycle, the next in person.",
+           "RSA 263:10", READ),
+     claim("$60 for a Real ID Act compliant license, $50 for each other license, original or "
+           "renewal.", "RSA 263:42", READ)],
+    more=DMV_HELP,
+    see=[("How to get a REAL ID", "/guides/real-id.html"),
+         ("New to New Hampshire: license, registration and voting", "/guides/new-to-new-hampshire.html")],
+    figures=[fig("$60", "RSA 263:42", "$60 for a Real ID Act compliant license"),
+             fig("$50", "RSA 263:42", "$50 for each other license")])
+
+
+# ---------------------------------------------------------------------------
+# REGISTERING A CAR. The DMV's own words: "a two-part process", the town first
+# and then the state. From its Vehicle Registrations page and RSA 261. The fees
+# depend on the vehicle -- the town's on its list price and age (RSA 261:153),
+# the state's set out in RSA 261:141 -- so the guide links the DMV's estimator
+# rather than print a figure.
+# ---------------------------------------------------------------------------
+CAR = guide(
+    "register-a-car", "How to Register a Car",
+    "Registering a vehicle in New Hampshire in its two parts, at your town or city clerk and then "
+    "for the state, step by step: what to bring for each kind of purchase, how the fees work, and "
+    "renewing.",
+    "Registering a vehicle in New Hampshire is a two-part process. You start at the town or city "
+    "clerk where you live, who confirms that you live there and collects the town&rsquo;s fee. The "
+    "second part is the state&rsquo;s registration, which many clerks can complete for you for an "
+    "extra fee; otherwise you finish it with the Division of Motor Vehicles.",
+    [box("Go to the town or city clerk where you live, with your title or bill of sale and photo ID."),
+     box("Pay the town&rsquo;s fee there. The state cannot register the vehicle until it is paid."),
+     ask("Can your clerk do the state part too?",
+         [("Yes", "Finish there, for an extra fee."),
+          ("No", "Finish with the DMV, by appointment or drop box.")])],
+    [step("Gather what you need",
+          "<p>Bring a current government photo ID, and proof that you live in the town if your clerk "
+          "has not already seen it. What else depends on how you got the vehicle:</p><ul>"
+          "<li><b>From a New Hampshire dealer:</b> the certificate of title, or the blue copies of "
+          "the title application.</li>"
+          "<li><b>From a dealer in another state:</b> the title from the dealer, or the New "
+          "Hampshire title application from your lender. For a brand-new vehicle, the "
+          "manufacturer&rsquo;s statement of origin.</li>"
+          "<li><b>From a private seller:</b> the title, properly signed over to you.</li>"
+          "<li><b>A vehicle exempt from titling, from a private seller:</b> a bill of sale with "
+          "the details the law lists, and proof of the vehicle identification number (VIN): the "
+          "title or a copy, a past New Hampshire registration or a copy, or the DMV&rsquo;s VIN "
+          "verification form.</li></ul>"
+          "<p>If the vehicle is leased or financed through a lender in another state, start with "
+          "the DMV&rsquo;s page on 60-day temporary plates.</p>",
+          actions=[("Vehicle registrations", DMV_REG), ("VIN verification form", DMV_VIN),
+                   ("Temporary plates", DMV_TEMP_PLATES)],
+          law=["RSA 261:148"]),
+     step("Start at your town or city clerk",
+          "<p>Every motor vehicle except a moped starts at the clerk&rsquo;s office of the town or "
+          "city where you live. The clerk confirms your residence and issues the town&rsquo;s "
+          "permit, which the state needs before it will register the vehicle. The town&rsquo;s "
+          "fee is set by law from the maker&rsquo;s list price, and gets smaller as the vehicle "
+          "ages.</p>",
+          actions=[("Find your town or city clerk", SOS_CLERKS)],
+          law=["RSA 261:148", "RSA 261:153"]),
+     step("Finish the state part",
+          "<p>Many clerks are agents of the state and can complete the state registration too, "
+          "for an extra fee. If you have the title, or the vehicle needs none, you may be able to "
+          "do everything at the clerk&rsquo;s office. Otherwise, the DMV completes the state part by "
+          "appointment or through its drop box service.</p>",
+          actions=[("DMV appointments and drop box", DMV_APPT)], law=["RSA 261:74-a"]),
+     step("Know what you will pay",
+          "<p>You pay fees to both the town and the state, and a plate fee the first time you order "
+          "plates. The amount differs for each vehicle, so use the DMV&rsquo;s estimator, or ask "
+          "your clerk.</p>",
+          actions=[("Estimate your fees", DMV_FEE_EST)], law=["RSA 261:141", "RSA 261:153"]),
+     step("Renew every year",
+          "<p>A registration in your own name expires at the end of the month of your birthday. To "
+          "renew, bring your registration or renewal notice to your town or city and pay the "
+          "town&rsquo;s fees first; many towns can take the state&rsquo;s part as well. Ask your "
+          "clerk or tax collector whether your town takes renewals online or by mail.</p>",
+          law=["RSA 261:62"])],
+    [("Vehicle Registrations (Division of Motor Vehicles)", DMV_REG),
+     ("Appointments and Services (Division of Motor Vehicles)", DMV_APPT),
+     ("Town and city clerks (Secretary of State)", SOS_CLERKS),
+     ("Certificates of Title and Registration of Vehicles, RSA 261", "/laws/261")],
+    ["261"],
+    [claim("Two-part process; all motor vehicles but mopeds begin at the town or city clerk where "
+           "they reside, who determines residency; the clerk may be a municipal agent and do the "
+           "state part for an additional fee; with a title or a title-exempt vehicle the whole "
+           "transaction may be done at the clerk; out-of-state loan or lease: the 60-day temporary "
+           "plate page; fees to both, RSA 261:141 and 261:153, an $8 plate fee the first time, the "
+           "estimator; the documents for a NH dealer, an out-of-state dealer (MSO if new), a "
+           "private sale and a title-exempt private sale (bill of sale per RSA 261:148, proof of "
+           "VIN by title, past NH registration or the VIN form); proof of residency; renewals at "
+           "the town with town fees first, municipal agents, ask the clerk or tax collector about "
+           "online or mail.", DMV_REG, READ),
+     claim("New/Transfer Registration (state portion only) and Registration Renewal (state portion "
+           "only): drop box or appointment.", DMV_APPT, READ),
+     claim("No registration until the town's permit; the clerk needs a current government-issued "
+           "photo ID and the title or title application, or for a title-exempt vehicle a bill of "
+           "sale with the listed details.", "RSA 261:148", READ),
+     claim("The town's permit fee is a number of mills on the maker's list price, falling with each "
+           "model year to the fifth.", "RSA 261:153", READ),
+     claim("The department's registration fees.", "RSA 261:141", READ),
+     claim("Municipal officials may be appointed agents to issue, renew or transfer registrations.",
+           "RSA 261:74-a", READ),
+     claim("An individual's registration expires at the end of the month of the registrant's "
+           "birthday, the first after issue or, for an original issued in the four months before "
+           "it, the second.", "RSA 261:62", READ)],
+    more="<h2>Who Can Help</h2>"
+         "<p>Your town or city clerk is the place to start, and can tell you what your town asks "
+         "for and whether it does the state&rsquo;s part. The Division of Motor Vehicles answers "
+         "questions at 603-227-4000.</p>"
+         f'<p class="g-acts"><a class="g-btn" href="{SOS_CLERKS}" target="_blank" rel="noopener">'
+         "Find your town or city clerk</a></p>",
+    see=[("New to New Hampshire: license, registration and voting", "/guides/new-to-new-hampshire.html")])
+
+
+# ---------------------------------------------------------------------------
+# A REAL ID. From the DMV's REAL ID page and the Transportation Security
+# Administration's, the federal page the person named. RSA 263:14-b names
+# citizenship among the documents and the DMV's page does not, so the guide
+# follows the DMV for what to bring and sends anyone who is not a citizen to
+# the DMV's own page, citing the statute only for the fee.
+# ---------------------------------------------------------------------------
+REAL_ID = guide(
+    "real-id", "How to Get a REAL ID",
+    "Getting a REAL ID driver's license or non-driver ID in New Hampshire, step by step: whether "
+    "you need one, the documents to bring to a DMV appointment, and what it costs.",
+    "A REAL ID is a driver&rsquo;s license or non-driver ID marked with a star. Since May 7, 2025, "
+    "you need one, or a passport or another accepted ID, to board a domestic flight or enter a "
+    "secure federal building. In New Hampshire it is voluntary. You get one in person at a DMV "
+    "office, when you renew or by appointment, with documents proving your identity, your Social "
+    "Security number and that you live in New Hampshire.",
+    [ask("Will you fly within the U.S. or enter secure federal buildings without a passport?",
+         [("Yes", "Consider a REAL ID, and plan at least three months ahead."),
+          ("No", "You might not need one. A card without the star says Not for Federal "
+                 "Identification.")]),
+     box("Check which documents to bring, then make a DMV appointment."),
+     box("Go in person: a first REAL ID cannot be done online.")],
+    [step("Decide whether you need one",
+          "<p>A REAL ID license or ID has a star in the top right corner. Since May 7, 2025, you "
+          "need one, or a passport or another accepted ID, to board a domestic flight or enter a "
+          "secure federal facility such as a military base or a courthouse.</p>"
+          "<p>REAL ID is voluntary in New Hampshire. A card without the star is marked &ldquo;NOT "
+          "FOR FEDERAL IDENTIFICATION&rdquo;, and you would show a passport or another accepted "
+          "ID for those purposes instead. The Transportation Security Administration charges a fee "
+          "to travelers who arrive without an accepted ID.</p>",
+          actions=[("REAL ID (DMV)", DMV_REALID), ("REAL ID (TSA)", TSA_REALID)]),
+     step("Gather your documents",
+          "<p>You prove three things: your identity, your Social Security number, and that you live "
+          "in New Hampshire. The DMV&rsquo;s online document checker shows what to bring for your "
+          "situation.</p>"
+          "<p>If your name has changed, through marriage, divorce, adoption or otherwise, your "
+          "birth certificate or passport will show a different name, so bring proof of each change "
+          "that links it to your current name. The document checker&rsquo;s Name Change Wizard "
+          "helps. If you are not a U.S. citizen, the DMV lists what to bring on its own page.</p>",
+          actions=[("Online document checker", DMV_DOC_CHECK), ("The list of documents", DMV_REALID_DOCS),
+                   ("If you are not a U.S. citizen", DMV_NON_US)]),
+     step("Make an appointment",
+          "<p>You can get a REAL ID when you renew, or upgrade before then by appointment. The DMV "
+          "suggests booking at least three months before you need it. Bring the application for "
+          "your kind of license (form DSMV 450 for a driver&rsquo;s license or non-driver ID) with "
+          "your documents. A first REAL ID cannot be done by online renewal.</p>",
+          actions=[("Make an appointment", DMV_APPT), ("Application (DSMV 450)", DMV_APP)]),
+     step("Pay the fee",
+          "<p>At renewal, a REAL ID license costs $60, against $50 for a license without the "
+          "star. The law sets both. If you upgrade before your renewal is due, the DMV also "
+          "charges a replacement fee, which its REAL ID page gives.</p>",
+          actions=[("Licensing fees", DMV_FEES)], law=["RSA 263:42, I"])],
+    [("REAL ID (Division of Motor Vehicles)", DMV_REALID),
+     ("REAL ID (Transportation Security Administration)", TSA_REALID),
+     ("Appointments and Services (Division of Motor Vehicles)", DMV_APPT),
+     ("Drivers' Licenses, RSA 263", "/laws/263")],
+    ["263"],
+    [claim("From May 7, 2025, a federally compliant license or ID, or a passport, to board domestic "
+           "flights or enter a secure federal facility (a military base or courthouse); the star "
+           "in the top right; voluntary in NH; otherwise the card says NOT FOR FEDERAL "
+           "IDENTIFICATION; plan at least three months ahead; at renewal or by appointment, with "
+           "documents proving identity, Social Security number and NH residency; the online "
+           "document checker and its Name Change Wizard; proof of each name change; a replacement "
+           "fee to opt in before renewal; bring the application for the license type.",
+           DMV_REALID, READ),
+     claim("A first REAL ID needs an in-person appointment, not an online renewal.", DMV_ONLINE, READ),
+     claim("Upgrade to REAL ID outside renewal by appointment; a renewal may upgrade.", DMV_APPT, READ),
+     claim("Enforcement began May 7, 2025; REAL ID compliant to board domestic flights and access "
+           "certain federal facilities; a star; a passport is acceptable; travelers without an "
+           "acceptable ID pay a fee.", TSA_REALID, READ),
+     claim("Operator $50, REAL ID operator $60.", DMV_FEES, READ),
+     claim("$60 for a Real ID Act compliant license, $50 for each other license.", "RSA 263:42", READ)],
+    more=DMV_HELP,
+    see=[("How to renew your driver's license", "/guides/renew-drivers-license.html")],
+    figures=[fig("$60", "RSA 263:42", "$60 for a Real ID Act compliant license"),
+             fig("$50", "RSA 263:42", "$50 for each other license")])
+
+
+# ---------------------------------------------------------------------------
+# NEW TO NEW HAMPSHIRE. The two 60-day deadlines are the statute's (RSA
+# 263:35 and 261:45), and the DMV's New Resident page says the same. That page
+# also says every vehicle must be safety inspected, but the statute table holds
+# RSA 266:1 repealed from January 31, 2026 (2025, 141:253), so the guide says
+# nothing about inspection until the two agree. It says too that a voter
+# without proof may sign an affidavit for any qualification, which the 2026
+# changes narrowed, so voting is left to the Secretary of State's page and How
+# to Vote.
+# ---------------------------------------------------------------------------
+NEW_RESIDENT = guide(
+    "new-to-new-hampshire", "New to New Hampshire: License, Registration and Voting",
+    "Moving to New Hampshire: the 60-day deadlines to get a New Hampshire driver's license and "
+    "register your vehicle, where to go for each, and how to register to vote.",
+    "Once New Hampshire is your home, you have 60 days to get a New Hampshire driver&rsquo;s "
+    "license if you drive here, and 60 days to register any vehicle you own and use here. The "
+    "license comes from a DMV office, by appointment; the registration starts at your town or city "
+    "clerk. You can register to vote with your clerk before an election, or at your polling place "
+    "on election day, with no waiting period.",
+    [box("Make a home in a New Hampshire town or city: the 60 days start then."),
+     ask("Do you drive here, or own a vehicle you use here?",
+         [("I drive here", "Get a New Hampshire license from the DMV within 60 days."),
+          ("I own a vehicle", "Register it within 60 days, starting at your town or city clerk.")]),
+     box("Register to vote with your clerk, or at the polls on election day.")],
+    [step("Know when the 60 days start",
+          "<p>They start when you make a town or city ward in New Hampshire your home: your "
+          "principal place of physical presence, to the exclusion of every other. Actions such as "
+          "buying or leasing your main house or apartment, registering a vehicle here, putting "
+          "your children in a public school, or registering to vote show that you have.</p>",
+          actions=[("New to New Hampshire (DMV)", DMV_NEW)]),
+     step("Get a New Hampshire driver's license",
+          "<p>If you drive in New Hampshire, get a New Hampshire license within 60 days. If you do "
+          "not drive here, you do not need one.</p>"
+          "<p>Make an appointment at a DMV office, and bring the completed application (form DSMV "
+          "450), proof of your identity and residence for the kind of license you want (a REAL ID "
+          "or not), and the fee; there is a vision test. You must hand in every license from "
+          "another state. You leave with a 60-day paper license, and the card comes by mail within "
+          "60 days. If you are not a U.S. citizen, the DMV&rsquo;s page explains where to "
+          "apply.</p>"
+          "<p>The DMV lists a few kinds of out-of-state license that are not valid for driving in "
+          "New Hampshire, on its page about transferring a license.</p>",
+          actions=[("Transfer a license from another state", DMV_TRANSFER),
+                   ("Make an appointment", DMV_APPT), ("If you are not a U.S. citizen", DMV_NON_US)],
+          law=["RSA 263:35, I", "RSA 263:4"]),
+     step("Register your vehicle",
+          "<p>If you own a vehicle you use in New Hampshire, register it here within 60 days. Take "
+          "the title and proof of your residence to the clerk&rsquo;s office of the town or city "
+          "where you live. If the vehicle is leased, financed, or exempt from titling, bring "
+          "your registration from the other state, the lease if there is one, your lender&rsquo;s "
+          "name and address, and proof of residence. The clerk prepares a New Hampshire title "
+          "application. Fees differ for each vehicle, so ask your clerk.</p>",
+          actions=[("Find your town or city clerk", SOS_CLERKS)], law=["RSA 261:45, I"]),
+     step("Register to vote",
+          "<p>There is no minimum time you must live here before registering. Register with your "
+          "town or city clerk, or at a session of the supervisors of the checklist, up to 6 to 13 "
+          "days before an election, or at your polling place on election day. Bring proof of your "
+          "identity, age, citizenship and domicile; How to Vote lists what counts.</p>"
+          "<p>You do not need a New Hampshire driver&rsquo;s license to register or to vote.</p>",
+          actions=[("Register to vote", SOS_REGISTER)]),
+     step("Keep your address up to date",
+          "<p>Once you hold a New Hampshire license, tell the DMV within 30 days whenever you change "
+          "your name, your home or your mailing address. An address change can go through the "
+          "DMV&rsquo;s drop box service.</p>",
+          actions=[("DMV appointments and drop box", DMV_APPT)], law=["RSA 263:9"])],
+    [("New Resident to New Hampshire (Division of Motor Vehicles)", DMV_NEW),
+     ("Transfer License From Another State (Division of Motor Vehicles)", DMV_TRANSFER),
+     ("Register to vote (Secretary of State)", SOS_REGISTER),
+     ("Drivers' Licenses, RSA 263", "/laws/263"),
+     ("Certificates of Title and Registration of Vehicles, RSA 261", "/laws/261")],
+    ["263", "261"],
+    [claim("Domicile/residence is making a town or ward the principal place of physical presence to "
+           "the exclusion of all others, shown by actions such as a home, a resident registration, "
+           "children in public school, registering to vote; a driver gets a NH license within 60 "
+           "days, a non-driver need not; a vehicle owner registers within 60 days with the town or "
+           "city; title and proof of residency, or for leased, financed or title-exempt vehicles "
+           "the out-of-state registration, lease, lienholder and proof of residency; fees differ, "
+           "contact the town; title applications prepared by a clerk, dealer or lender; a NH "
+           "license is not needed to register to vote or vote; out-of-state licenses surrendered; "
+           "a 60-day paper temporary and the card mailed within 60 days.", DMV_NEW, READ),
+     claim("A NH license within 60 days of residency; by appointment with the DSMV 450, proof of "
+           "identity and residency for REAL ID or not, the fee and a vision test; non-citizens see "
+           "their page; listed out-of-state license classes are invalid in NH.", DMV_TRANSFER, READ),
+     claim("Address change by drop box service.", DMV_APPT, READ),
+     claim("Citizen, 18 on election day, resident of the town or ward, no minimum period; register "
+           "with the clerk or supervisors 6 to 13 days before, or at the polls; proof of identity, "
+           "age, citizenship and domicile.", SOS_REGISTER, READ),
+     claim("A nonresident with a valid license from another jurisdiction has 60 days from "
+           "establishing bona fide residency to obtain a NH license.", "RSA 263:35", READ),
+     claim("No license until every other jurisdiction's license is surrendered.", "RSA 263:4", READ),
+     claim("A new resident has 60 days from residency to register vehicles in NH.", "RSA 261:45", READ),
+     claim("A licensed driver notifies the director within 30 days of a change of legal name, "
+           "permanent residence or mailing address.", "RSA 263:9", READ)],
+    more="<h2>Who Can Help</h2>"
+         "<p>Your town or city clerk handles both your vehicle registration and your voter "
+         "registration. The Division of Motor Vehicles answers licensing questions at "
+         "603-227-4000.</p>"
+         f'<p class="g-acts"><a class="g-btn" href="{SOS_CLERKS}" target="_blank" rel="noopener">'
+         "Find your town or city clerk</a></p>",
+    see=[("How to vote in New Hampshire", "/guides/how-to-vote.html"),
+         ("How to register a car", "/guides/register-a-car.html"),
+         ("How to get a REAL ID", "/guides/real-id.html")])
+
+
+# ---------------------------------------------------------------------------
+# FOOD AND HEALTH ASSISTANCE. One application covers SNAP and Medicaid, so one
+# guide. From the Department of Health and Human Services' SNAP, Medicaid,
+# Apply for Assistance, Stay Covered and Administrative Appeals pages. Income
+# limits and benefit amounts are the Department's and change, and the plan
+# forbids eligibility math, so none is printed. The note on work requirements
+# gives the change as the Department states it, and names the 2025 federal law
+# by its date, as the SNAP page does.
+# ---------------------------------------------------------------------------
+DHHS_SNAP = ("https://www.dhhs.nh.gov/programs-services/food-meals-assistance/"
+             "supplemental-nutrition-assistance-program-snap")
+DHHS_MEDICAID = "https://www.dhhs.nh.gov/programs-services/medicaid"
+DHHS_APPLY = "https://www.dhhs.nh.gov/apply-assistance"
+DHHS_STAY = "https://www.dhhs.nh.gov/programs-services/stay-covered-new-hampshire"
+DHHS_APPEALS = "https://www.dhhs.nh.gov/doing-business-dhhs/legal-services/administrative-appeals"
+# Linked from the pages above.
+DHHS_PROOF = "https://nheasy.nh.gov/forms/E/800V.pdf"
+DHHS_OFFICES = "https://www.dhhs.nh.gov/about-dhhs/locations-facilities#locations"
+
+BENEFITS = guide(
+    "food-and-health-assistance", "How to Apply for Food or Health Assistance",
+    "Applying for SNAP food benefits and Medicaid health coverage through New Hampshire's "
+    "Department of Health and Human Services, online at NH Easy or on paper, step by step, and "
+    "what to do if you disagree with a decision.",
+    "The Department of Health and Human Services takes applications for SNAP (food assistance) and "
+    "Medicaid (health coverage) together. Apply online at NH Easy, or on the paper Application for "
+    "Assistance mailed to your local District Office. After you apply you may have an interview, "
+    "and you will be asked for proof of your household&rsquo;s circumstances. The Department says "
+    "the only way to find out whether you qualify is to apply.",
+    [ask("How do you want to apply?",
+         [("Online", "Apply at NH Easy, for SNAP, Medicaid, cash and child care at once."),
+          ("On paper", "Fill in the Application for Assistance and mail it to your District Office.")]),
+     box("Answer the Department&rsquo;s questions: an interview if it asks, and proof of your "
+         "household&rsquo;s circumstances."),
+     box("Read the Notice of Decision. If you disagree, you can appeal.")],
+    [step("Know what you are applying for",
+          "<ul><li><b>SNAP</b>, the Supplemental Nutrition Assistance Program, gives eligible "
+          "low-income people and families benefits to buy food, paid each month onto an EBT card "
+          "used like a debit card at the checkout. Whether you qualify depends on your household&rsquo;s "
+          "size, income, expenses and resources. You may qualify whether you own a home, have none, "
+          "live alone or with others, and whether or not you work or have children.</li>"
+          "<li><b>Medicaid</b> is health coverage, paid for by the federal and state governments, "
+          "for people and families who meet its eligibility requirements.</li></ul>",
+          actions=[("SNAP", DHHS_SNAP), ("Medicaid", DHHS_MEDICAID)], law=["RSA 167:4"],
+          note="<b>Work requirements changed in 2025.</b> Since November 1, 2025, under federal "
+               "legislation passed on July 4, 2025, adults aged 18 through 64 who are able to work "
+               "and have no child under 14 in their household must work, volunteer or take part in "
+               "training at least 80 hours a month to get SNAP for more than three months in three "
+               "years, unless they are exempt; the SNAP page lists the exemptions. The Department is "
+               "also preparing for changes to Medicaid eligibility, including work or other "
+               "community engagement requirements for people covered through the Granite Advantage "
+               "Health Care Program; its Stay Covered New Hampshire page has them. This is what the "
+               "Department said on October 17, 2026: check its pages before you apply."),
+     step("Apply online or on paper",
+          "<p><b>Online:</b> NH Easy, the Department&rsquo;s benefits site, takes one application "
+          "for cash, SNAP, child care and Medicaid, and can tell you first whether you might "
+          "qualify.</p>"
+          "<p><b>On paper:</b> to apply for every kind of assistance, fill in both the Application "
+          "for Assistance (Form 800) and its Medical Assistance insert, and mail them to your local "
+          "District Office. Both come in Spanish too. For Medicaid alone there is a shorter form, "
+          "800MA. For SNAP, you can also call 603-271-9700 to have an application mailed to "
+          "you.</p>"
+          "<p>If someone is helping you apply, you both fill in the Authorized Representative "
+          "Declaration (Form 778).</p>",
+          actions=[("NH Easy", NHEASY), ("Paper applications", DHHS_APPLY)]),
+     step("After you apply",
+          "<p>You may need to talk with a Department specialist about your situation in an "
+          "interview; the Department tells you if one is needed. You will also give proof of your "
+          "household&rsquo;s circumstances. Form 800V gives examples of what is accepted, and you "
+          "can upload documents through NH Easy. Have them with you at an interview to avoid "
+          "delays.</p>",
+          actions=[("Examples of acceptable proof (Form 800V)", DHHS_PROOF)]),
+     step("If you disagree with a decision",
+          "<p>You can ask for an administrative appeal hearing. Ask in writing, on the "
+          "Department&rsquo;s appeal request form or in a letter, and drop it off or mail it to "
+          "your District Office, mail it to the Administrative Appeals Unit, or email it. If you "
+          "cannot write, tell a Department representative that you want to appeal.</p>"
+          "<p>Generally you have 30 days from the date on your Notice of Decision, or 90 days for "
+          "SNAP; your notice gives your deadline. If you appeal within 15 days, you may in some "
+          "cases keep your benefits at the same level until the appeal is decided, but must repay "
+          "them if the Department&rsquo;s decision is upheld. You do not need a lawyer.</p>",
+          actions=[("Administrative appeals", DHHS_APPEALS)])],
+    [("Supplemental Nutrition Assistance Program (Department of Health and Human Services)", DHHS_SNAP),
+     ("Medicaid (Department of Health and Human Services)", DHHS_MEDICAID),
+     ("Apply for Assistance (Department of Health and Human Services)", DHHS_APPLY),
+     ("Stay Covered New Hampshire (Department of Health and Human Services)", DHHS_STAY),
+     ("Administrative Appeals (Department of Health and Human Services)", DHHS_APPEALS),
+     ("Public Assistance, RSA 167", "/laws/167")],
+    ["167"],
+    [claim("SNAP gives nutrition benefits to eligible low-income individuals and families; "
+           "eligibility depends on household size, income, expenses and resources, whether or not "
+           "you own a home, have none, live alone or with others, work or have children; the only "
+           "way to find out is to apply; NH Easy, or call 603-271-9700 for a mailed application; "
+           "monthly deposits to an EBT card; from November 1, 2025, after federal legislation of "
+           "July 4, 2025, ABAWDs 18 through 64 with no child under 14 and able to work need 80 "
+           "hours a month of work, volunteering or training for SNAP beyond three months in three "
+           "years, with listed exemptions.", DHHS_SNAP, READ),
+     claim("Medicaid is a federal and state funded health care program for those who meet "
+           "eligibility requirements; DHHS is preparing for eligibility changes including work or "
+           "community engagement requirements for Granite Advantage; NH Easy takes applications "
+           "for cash, SNAP, child care and Medicaid; the Authorized Representative Declaration "
+           "(778); 1-844-ASK-DHHS, weekdays 8 to 4; the District Office.", DHHS_MEDICAID, READ),
+     claim("Preparing for Medicaid changes after 2025 federal legislation, including work or other "
+           "community engagement requirements for Granite Advantage.", DHHS_STAY, READ),
+     claim("Apply online or print, complete and mail to the District Office; for all types, both "
+           "Form 800 and the Form 800 Insert, with Spanish versions; Medicaid only, Form 800MA; "
+           "after applying, an interview if required and proof per Form 800V, uploaded or brought "
+           "to the interview.", DHHS_APPLY, READ),
+     claim("Appeal in writing by form or letter, to the District Office, by mail to the AAU, or by "
+           "email, or by telling a DHHS representative; generally 30 days from the Notice of "
+           "Decision, 90 for SNAP; within 15 days benefits may continue, repaid if upheld; no "
+           "attorney needed and none appointed.", DHHS_APPEALS, READ),
+     claim("Public assistance, including medical assistance and food stamps, is granted under RSA "
+           "167 or RSA 161 to eligible people without sufficient income or resources.",
+           "RSA 167:4", READ)]
+    + help_claims("nheasy", "adrc", "legal_aid"),
+    more="<h2>Who Can Help</h2>"
+         "<p>The Department&rsquo;s customer service center answers questions about applying, and "
+         "your local District Office can help in person.</p>"
+         f'<p class="g-acts"><a class="g-btn" href="{DHHS_OFFICES}" target="_blank" rel="noopener">'
+         "Find your District Office</a></p>"
+         "<p>For help with an application, someone to talk your options through with, and free "
+         "legal help if a benefit is denied or cut:</p>"
+         + helps("nheasy", "adrc", "legal_aid"),
+    see=[("How to get help with heating and electric bills", "/guides/heating-and-electric-help.html")])
+
+
+# ---------------------------------------------------------------------------
+# UNEMPLOYMENT. From New Hampshire Employment Security's File, Eligibility
+# and Appeals pages and RSA 282-A. The earnings a claim needs are on the
+# Eligibility page and are not printed (the plan: no eligibility math); the
+# appeal window is the statute's 14 calendar days, which NHES gives too.
+# ---------------------------------------------------------------------------
+NHES_FILE = "https://www.nhes.nh.gov/individuals/file-unemployment-benefits"
+NHES_ELIG = "https://www.nhes.nh.gov/individuals/unemployment-eligibility"
+NHES_APPEALS = "https://www.nhes.nh.gov/individuals/unemployment-appeals"
+NHES_OFFICES = "https://www.nhes.nh.gov/resources/office-locations"
+
+UNEMPLOYMENT = guide(
+    "file-for-unemployment", "How to File for Unemployment",
+    "Filing an unemployment claim with New Hampshire Employment Security, step by step: what to "
+    "have ready, the weekly claims and work search that follow, and how to appeal a determination.",
+    "If you are out of work, or your hours were cut, through no fault of your own, you can file a "
+    "claim for unemployment benefits with New Hampshire Employment Security, online. File with the "
+    "state where you physically worked. You will be told whether your past wages qualify and how "
+    "much you could receive, and each week after that you file a claim and, unless you are told "
+    "otherwise, look for work.",
+    [box("File your claim online with New Hampshire Employment Security."),
+     box("Read your monetary determination: whether your past wages qualify, and how much."),
+     box("Each week, file your weekly claim and do your work search."),
+     ask("Do you disagree with a determination?",
+         [("Yes", "Appeal within 14 calendar days, as the determination explains."),
+          ("No", "Keep filing each week while you are out of work.")])],
+    [step("Check that unemployment fits your situation",
+          "<p>Unemployment insurance replaces part of your wages if you are unemployed, fully or "
+          "partly, through no fault of your own. To be paid for a week you must be able to work, "
+          "available for work, and looking for it unless you are exempt, and you must file your "
+          "claims on time. Working part-time does not rule you out; working full-time does. School "
+          "employees between terms are judged case by case.</p>"
+          "<p>You must also have earned enough in a base period of four calendar quarters before "
+          "your claim; New Hampshire Employment Security&rsquo;s eligibility page gives the "
+          "amounts.</p>",
+          actions=[("Unemployment eligibility", NHES_ELIG)], law=["RSA 282-A:31, I"]),
+     step("Have these ready",
+          "<ul><li>your Social Security number;</li>"
+          "<li>if you are not a U.S. citizen, your alien registration number and its expiration "
+          "date;</li>"
+          "<li>the name, address and phone number of every employer you worked for in the last 18 "
+          "months;</li>"
+          "<li>your DD 214, if you were in the military in the last 18 months; and</li>"
+          "<li>your bank details, if you want payments by direct deposit.</li></ul>"),
+     step("File your claim online",
+          "<p>On New Hampshire Employment Security&rsquo;s filing page, choose Register or Login "
+          "and create an account in Workforce Connect, its claims site. From your dashboard choose "
+          "File for Benefits, then Apply for Unemployment Insurance Benefits. Answer every question "
+          "accurately, since your answers affect your claim; review and certify it; and print the "
+          "confirmation for your records.</p>",
+          actions=[("File for unemployment benefits", NHES_FILE)]),
+     step("Every week: file a claim and look for work",
+          "<p>You file a claim for each week. Unless you are told you are exempt, you must also look "
+          "for work every week and report it on your weekly claim: contacting employers, and taking "
+          "part in activities that prepare you to go back to work. If you work part-time, report "
+          "your hours and earnings on the weekly claim.</p>"),
+     step("If you disagree with a determination",
+          "<p>Every determination on your claim is on your dashboard and explains how to appeal. "
+          "You have 14 calendar days from when it was issued. After you appeal you will get an "
+          "Appeal Request Notice, and the hearing is held by an Appeal Tribunal chairperson.</p>",
+          actions=[("Unemployment appeals", NHES_APPEALS)], law=["RSA 282-A:48"])],
+    [("File for Unemployment Benefits (New Hampshire Employment Security)", NHES_FILE),
+     ("Unemployment Eligibility (New Hampshire Employment Security)", NHES_ELIG),
+     ("Unemployment Appeals (New Hampshire Employment Security)", NHES_APPEALS),
+     ("Unemployment Compensation, RSA 282-A", "/laws/282-a")],
+    ["282-A"],
+    [claim("Register or log in to Workforce Connect, File for Benefits, Apply for Unemployment "
+           "Insurance Benefits, answer accurately, review and certify, print the confirmation; what "
+           "to have ready; a weekly work search unless notified of an exemption, contacting "
+           "employers and reemployment activities; a monetary determination of wage requirements "
+           "and amounts, with appeal rights; part-time may qualify, hours and earnings reported "
+           "weekly, full-time does not; school workers case by case; file where you physically "
+           "worked; unemployed through no fault of your own; the hotline (603) 271-7700, weekdays "
+           "8:00 to 4:30.", NHES_FILE, READ),
+     claim("Partial wage replacement for those unemployed through no fault of their own; minimum "
+           "base-period earnings; totally or partially unemployed, available, able, seeking work "
+           "unless exempted, filing timely claims; weekly work search with proof on the weekly "
+           "claim; NHWorks offices and the hotline.", NHES_ELIG, READ),
+     claim("Determinations on the dashboard with instructions to appeal; 14 calendar days from "
+           "issue; an Appeal Request Notice; a hearing by an Appeal Tribunal Chairperson.",
+           NHES_APPEALS, READ),
+     claim("Eligible for a week only if registered for work, a claim made, able and available, and "
+           "seeking work, with the exemption for a definite return date.", "RSA 282-A:31", READ),
+     claim("An appeal received or postmarked within 14 calendar days after the determination was "
+           "mailed, extendable for sufficient grounds.", "RSA 282-A:48", READ)],
+    more="<h2>Who Can Help</h2>"
+         "<p>New Hampshire Employment Security&rsquo;s unemployment hotline, (603) 271-7700, "
+         "answers questions on weekdays from 8:00 a.m. to 4:30 p.m. Its NH Works offices help in "
+         "person, with claims and with finding work.</p>"
+         f'<p class="g-acts"><a class="g-btn" href="{NHES_OFFICES}" target="_blank" rel="noopener">'
+         "NH Works offices</a></p>")
+
+
+# ---------------------------------------------------------------------------
+# RUNNING FOR OFFICE. From the Secretary of State's Running for Office and
+# Qualifications for Office pages, RSA 655 and RSA 669:19, and the City of
+# Concord's filing page as one city's example. The fees and petition counts
+# are printed because RSA 655:19-c sets them, and the Secretary of State's
+# 2026 table says the same.
+# ---------------------------------------------------------------------------
+SOS_RUN = "https://www.sos.nh.gov/elections/running-office"
+SOS_QUAL = "https://www.sos.nh.gov/elections/qualifications-office"
+# A city's own page (guide_sources.OTHER), the example of a city's calendar.
+CONCORD_FILE = "https://concordnh.gov/1088/Filing-for-Office"
+
+RUN = guide(
+    "run-for-office", "How to Run for Office in New Hampshire",
+    "Filing to run for elected office in New Hampshire, from governor to town and city offices, "
+    "step by step: who files where, the filing period, the fee or petitions, and who is eligible.",
+    "To run in a party primary for a state, federal or county office, you file a declaration of "
+    "candidacy in a filing period of about ten days in June of a state election year: with the "
+    "Secretary of State for most offices, or with your town or city clerk if you are running for "
+    "state representative. You pay a fee the law sets, or file petitions signed by voters of your "
+    "party instead. Town and city offices are filed with your town or city clerk, on dates of "
+    "their own.",
+    [ask("Which office?",
+         [("Governor, Congress, Executive Council, state senate or county",
+           "File with the Secretary of State in June."),
+          ("State representative", "File in June, with your town or city clerk or the Secretary of "
+                                   "State."),
+          ("Town or city office", "File with your town or city clerk, on its own dates.")]),
+     box("Pay the fee the law sets, or file primary petitions from voters of your party instead."),
+     box("Running without a party&rsquo;s primary? File a declaration of intent, the fee, and "
+         "nomination papers.")],
+    [step("Check that you qualify",
+          "<p>To hold any elected office in New Hampshire, you must be domiciled in the state. Each "
+          "office adds its own requirements:</p>"
+          + table("Qualifications by office (Secretary of State, October 17, 2026)",
+                  ["Office", "Age", "Also"],
+                  [["Governor", "30", "Registered voter; domiciled in New Hampshire 7 years"],
+                   ["U.S. senator", "30", "U.S. citizen 9 years; living in New Hampshire when elected"],
+                   ["U.S. representative", "25", "U.S. citizen 7 years; living in New Hampshire when "
+                    "elected"],
+                   ["Executive councilor", "30", "Registered voter; domiciled in New Hampshire 7 "
+                    "years; living in the district"],
+                   ["State senator", "30", "Registered voter; domiciled in New Hampshire 7 years; "
+                    "living in the district"],
+                   ["State representative", "18", "Registered voter; domiciled in New Hampshire 2 "
+                    "years; living in the town or ward"],
+                   ["County officer", "18", "Registered voter in the county where you live"]]),
+          actions=[("Qualifications for office", SOS_QUAL)], law=["RSA 655:2"]),
+     step("File in the June filing period",
+          "<p>To run in a party&rsquo;s primary you must be a registered member of that party. File "
+          "a declaration of candidacy, with a statement of financial interests, between the first "
+          "Wednesday in June and the Friday of the following week. In 2026 that was June 3 to June "
+          "12. A filing on the last day must be made in person by the candidate, by 5 p.m.</p>"
+          "<p>Candidates for governor, U.S. senator, U.S. representative, executive councilor, "
+          "state senator and county office file with the Secretary of State. Candidates for state "
+          "representative may file with the clerk of the town or city where they live.</p>",
+          actions=[("Running for office", SOS_RUN), ("Find your town or city clerk", SOS_CLERKS)],
+          law=["RSA 655:14", "RSA 655:15"]),
+     step("Pay the fee, or file petitions instead",
+          "<p>With your declaration, pay the fee for your office, or instead file the number of "
+          "primary petitions below, each signed by a registered member of your party, together "
+          "with one written assent to your candidacy.</p>"
+          + table("Fees and primary petitions (RSA 655:19-c)",
+                  ["Office", "Fee", "Or primary petitions"],
+                  [["Governor", "$100", "200"], ["U.S. senator", "$100", "200"],
+                   ["U.S. representative", "$50", "100"], ["Executive councilor", "$25", "50"],
+                   ["State senator", "$10", "20"], ["County officer", "$10", "50"],
+                   ["State representative", "$2", "5"]]),
+          actions=[("Running for office", SOS_RUN)], law=["RSA 655:19-c"]),
+     step("Running without a party's primary",
+          "<p>To reach the general election ballot by another route, file a declaration of intent "
+          "with the Secretary of State in the same June period, pay the same fee, and file "
+          "nomination papers signed by registered voters: 3,000 for governor or U.S. senator, 1,500 "
+          "from each congressional district; 1,500 for U.S. representative; 750 for executive "
+          "councilor or state senator; and 150 for state representative or county officer. The "
+          "papers go first to the supervisors of the checklist in each town or city, on deadlines in the "
+          "summer that the Secretary of State&rsquo;s page gives.</p>",
+          actions=[("Running for office", SOS_RUN)], law=["RSA 655:14-a", "RSA 655:42"]),
+     step("Town and city offices",
+          "<p><b>In a town</b> that uses the nonpartisan ballot, file a declaration of candidacy "
+          "with the town clerk. Filing opens on the seventh Wednesday before the town election and "
+          "closes on the Friday of the following week, and a filing on the last day must be made in "
+          "person. Your town clerk can tell you which offices are on the ballot.</p>"
+          "<p><b>In a city</b>, ask the city clerk. In Concord, for example, candidates for mayor, "
+          "city council and ward offices file at the City Clerk&rsquo;s Office, from September 3 to "
+          "13, 2027, for the election of November 2, 2027, with a fee or by petition.</p>",
+          actions=[("Find your town or city clerk", SOS_CLERKS), ("Concord's filing page", CONCORD_FILE)],
+          law=["RSA 669:19"])],
+    [("Running For Office (Secretary of State)", SOS_RUN),
+     ("Qualifications for Office (Secretary of State)", SOS_QUAL),
+     ("Filing for Office (City of Concord)", CONCORD_FILE),
+     ("Nominations, RSA 655", "/laws/655"),
+     ("Town Elections, RSA 669", "/laws/669")],
+    ["655", "669"],
+    [claim("The qualifications for president, governor, U.S. senator, U.S. representative, "
+           "executive councilor, state senator, state representative and county officer, as "
+           "tabled.", SOS_QUAL, READ),
+     claim("To hold any elective office in the state, a person must have a domicile in the state.",
+           "RSA 655:2", READ),
+     claim("A primary candidate is a registered member of the party, meets the age and domicile "
+           "qualifications by the general election, and files a declaration of candidacy between "
+           "the first Wednesday in June and the Friday of the following week.", "RSA 655:14", READ),
+     claim("The appropriate official: the Secretary of State for governor, U.S. senator, "
+           "representative in Congress, councilor, state senator and county office; the town or "
+           "city clerk, or the Secretary of State, for state representative.", "RSA 655:15", READ),
+     claim("2026: filing June 3-12; a declaration of candidacy with a Statement of Financial "
+           "Interests and the fee, or primary petitions with an assent; last-day filings in person "
+           "by 5:00 p.m.; who files with the Secretary of State and who may file with the town or "
+           "city clerk; the fee and petition table; declarations of intent, the fee and nomination "
+           "papers, first to the supervisors of the checklist, with the summer deadlines; the "
+           "Elections Division at 603-271-3242 and elections@sos.nh.gov.", SOS_RUN, READ),
+     claim("The administrative assessment for governor and U.S. senator $100, Congress $50, "
+           "councilor $25, state senator $10, county officer $10, state representative $2; or "
+           "primary petitions 200, 100, 50, 20, 50 and 5 with one written assent to candidacy; "
+           "declarations of intent pay the assessment and file nomination papers.",
+           "RSA 655:19-c", READ),
+     claim("A candidate for the general election ballot other than by party primary files a "
+           "declaration of intent with the Secretary of State in the same period.",
+           "RSA 655:14-a", READ),
+     claim("Nomination papers: 3,000, 1,500 from each congressional district, for president, U.S. "
+           "senator or governor; 1,500 for U.S. representative; 750 for councilor or state senator; "
+           "150 for state representative or county officer.", "RSA 655:42", READ),
+     claim("In a nonpartisan-ballot town, a declaration of candidacy with the town clerk, from the "
+           "seventh Wednesday to the Friday of the following week before the town election; "
+           "last-day filings in person.", "RSA 669:19", READ),
+     claim("Concord: mayor, ward councilor, councilor-at-large, ward moderator, ward clerk and "
+           "supervisor of the checklist; filings at the City Clerk's Office, September 3 to 13, "
+           "2027, for the election of November 2, 2027; a fee, or by petition until September 17, "
+           "2027.", CONCORD_FILE, READ)],
+    more="<h2>Who Can Help</h2>"
+         "<p>The Secretary of State&rsquo;s Elections Division answers questions about filing for "
+         "state and federal office at 603-271-3242 or elections@sos.nh.gov. For town and city "
+         "offices, ask your town or city clerk.</p>"
+         f'<p class="g-acts"><a class="g-btn" href="{SOS_RUN}" target="_blank" rel="noopener">'
+         "Running for office</a></p>",
+    see=[("How to vote in New Hampshire", "/guides/how-to-vote.html"),
+         ("Finding your representatives", "/learn/your-representatives.html")],
+    figures=[fig("$100", "RSA 655:19-c", "For governor and United States senator, $100"),
+             fig("$50", "RSA 655:19-c", "For representative to Congress, $50"),
+             fig("$25", "RSA 655:19-c", "For executive councilor, $25"),
+             fig("$10", "RSA 655:19-c", "For state senator, $10"),
+             fig("$2", "RSA 655:19-c", "For state representative, $2")])
+
+
+GUIDES += [LICENSE, CAR, REAL_ID, NEW_RESIDENT, BENEFITS, UNEMPLOYMENT, RUN]
 
 
 def text(g):

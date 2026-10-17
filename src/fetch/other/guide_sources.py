@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-11.4
+# GRANITE_VERSION: 2026-10-11.5
 """
 The official pages the how-to guides cite, onto this disk, to check them by.
 
@@ -119,6 +119,52 @@ SOURCES = {
         "https://www.dhhs.nh.gov/servicelink/contact-servicelink",
         "https://www.dhhs.nh.gov/programs-services/medicaid",
     ],
+    # READ IN A BROWSER ON THE LAPTOP, 17 OCTOBER 2026, for the seven guides of
+    # that day. The state's host refused a fetch with 403 that day too, so each
+    # page was read in the desktop app's browser pane, one at a time. The
+    # Vehicle Registrations page in "car" above, NH Easy and the Medicaid page in
+    # "start_here", and the Secretary of State's register-to-vote page and clerk
+    # finder in "voting" were read again then and are not listed twice. A form or
+    # lookup under a page is one that page links, by its link's address; a PDF
+    # downloads there rather than displays, so none of the forms was opened.
+    "dmv": [
+        "https://www.dmv.nh.gov/drivers-licensenon-driver-ids/renew-driver-licensenon-driver-id",
+        "https://www.dmv.nh.gov/online-services/online-renewals",
+        "https://www.dmv.nh.gov/appointments-and-services",
+        "https://www.dmv.nh.gov/drivers-licensenon-driver-ids/licensing-fees",
+        "https://www.dmv.nh.gov/drivers-licensenon-driver-ids/real-id",
+        "https://www.dmv.nh.gov/drivers-licensenon-driver-ids/transfer-license-another-state",
+        "https://www.dmv.nh.gov/vehicles-boats-and-titles/vehicle-registrations/new-resident-new-hampshire",
+        # linked from the pages above
+        "https://www.dmv.nh.gov/sites/g/files/ehbemt416/files/inline-documents/dsmv450.pdf",
+        "https://www.dmv.nh.gov/sites/g/files/ehbemt416/files/inline-documents/sonh/dsmv634a.pdf",
+        "https://www.app-support.nh.gov/erealid/",
+        "https://www.dmv.nh.gov/drivers-licensenon-driver-ids/non-us-citizen",
+        "https://www.dmv.nh.gov/hours-and-locations",
+        "https://services.dos.nh.gov/mos/vfchk",
+        "https://www.dmv.nh.gov/vehicles-boats-and-titles/temporary-plates",
+        "https://www.dmv.nh.gov/sites/g/files/ehbemt416/files/inline-documents/tdmv19a.pdf",
+    ],
+    "food_and_health": [
+        "https://www.dhhs.nh.gov/programs-services/food-meals-assistance/supplemental-nutrition-assistance-program-snap",
+        "https://www.dhhs.nh.gov/apply-assistance",
+        "https://www.dhhs.nh.gov/programs-services/stay-covered-new-hampshire",
+        "https://www.dhhs.nh.gov/doing-business-dhhs/legal-services/administrative-appeals",
+        # linked from the pages above
+        "https://nheasy.nh.gov/forms/E/800V.pdf",
+        "https://www.dhhs.nh.gov/about-dhhs/locations-facilities#locations",
+    ],
+    "unemployment": [
+        "https://www.nhes.nh.gov/individuals/file-unemployment-benefits",
+        "https://www.nhes.nh.gov/individuals/unemployment-eligibility",
+        "https://www.nhes.nh.gov/individuals/unemployment-appeals",
+        # linked from the pages above
+        "https://www.nhes.nh.gov/resources/office-locations",
+    ],
+    "run_for_office": [
+        "https://www.sos.nh.gov/elections/running-office",
+        "https://www.sos.nh.gov/elections/qualifications-office",
+    ],
 }
 
 # NOT STATE AGENCIES, AND NEVER FETCHED. Where a guide sends a reader for help
@@ -132,6 +178,15 @@ OTHER = {
         "https://www.nhla.org",
         "https://www.603legalaid.org/self-help-articles/",
         "https://www.nhbar.org/lawyer-referral-service/",
+    ],
+    # THE FEDERAL REAL ID PAGE AND ONE CITY'S FILING PAGE, which the person named
+    # as sources for the guides of 17 October 2026 and which were read that day:
+    # the Transportation Security Administration's page, where the Department
+    # of Homeland Security's REAL ID address now sends a reader, and the City of
+    # Concord's, the example of how a city takes filings for its own offices.
+    "federal_and_city": [
+        "https://www.tsa.gov/real-id",
+        "https://concordnh.gov/1088/Filing-for-Office",
     ],
 }
 
