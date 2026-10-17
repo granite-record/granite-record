@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-25.12
+# GRANITE_VERSION: 2026-09-25.13
 """
 New livestreams, every night: the recordings the House and Senate channels
 finished since the last run, indexed and captioned, and read into the start
@@ -1818,20 +1818,38 @@ def inbox_problem(vid, raw, folder):
         return f"{name} did not come down with its manifest"
     data = f.read_bytes()
     try:
+        # JSON reads "size": Infinity as a float, and int() of it overflows:
+        # one malformed manifest must be refused, not stop the night's step.
         size = int(doc.get("size"))
-    except (TypeError, ValueError):
+    except (TypeError, ValueError, OverflowError):
         return "its manifest gives no size"
     if len(data) != size:
         return f"{name} is {len(data):,} bytes and its manifest says {size:,}"
     if hashlib.sha256(data).hexdigest() != str(doc.get("sha256") or ""):
         return f"{name}'s sha256 is not its manifest's"
-    import segment_markers
-    try:
-        if not segment_markers.read_words(f.parent):
-            return f"{name} holds no words"
-    except (ValueError, OSError, AttributeError, TypeError) as e:
-        return f"{name} will not read as captions ({type(e).__name__})"
+    if not words_in(f):
+        return f"{name} holds no words this step can read"
     return ""
+
+
+def words_in(f):
+    """Whether this one caption file holds words, read by segment_markers'
+    own reader in a folder of its own (17 October 2026). read_words takes the
+    first file of a folder that answers, so read in the folder a file came
+    from, a wordless captions.en.json3 was vouched for by a transcript or
+    another track beside it: the laptop sent it, the night refused it, and the
+    laptop sent it again every evening. The night judges an entry the same
+    way, so the two cannot disagree about a file."""
+    import segment_markers
+    import tempfile
+    d = Path(tempfile.mkdtemp(prefix="gr-words-"))
+    try:
+        shutil.copyfile(f, d / Path(f).name)
+        return bool(segment_markers.read_words(d))
+    except (ValueError, OSError, AttributeError, TypeError, RecursionError):
+        return False
+    finally:
+        shutil.rmtree(d, ignore_errors=True)
 
 
 def take_inbox(st, now, folder, work=WORK):
@@ -2309,14 +2327,12 @@ def to_inbox(a):
     caught = [vid for vid in want if shadow["videos"][vid].get("captions") == "captioned"]
     sent, size, unsent, there = 0, 0, [], 0
     for vid in here + caught:
-        f = caption_file(vid)
-        try:
-            import segment_markers
-            readable = bool(segment_markers.read_words(f.parent))
-        except (ValueError, OSError, AttributeError, TypeError):
-            readable = False
-        if not readable:
-            unsent.append(f"{vid} ({f.name} holds no words)")
+        # The first caption file that holds words by itself, judged as the
+        # night will judge it (words_in): never one vouched for by another.
+        f = next((WORK / vid / n for n in CAPTION_FILES
+                  if (WORK / vid / n).is_file() and words_in(WORK / vid / n)), None)
+        if f is None:
+            unsent.append(f"{vid} (no caption file of {', '.join(CAPTION_FILES)} holds words)")
             continue
         fetched = iso(now) if vid in caught else \
             iso(datetime.fromtimestamp(f.stat().st_mtime, timezone.utc))

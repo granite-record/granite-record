@@ -290,11 +290,14 @@ jobs:
       # Scheduler) and puts each caption file in the bucket's inbox. This
       # brings every entry down, whatever its bytes, and writes nothing in the
       # bucket; the livestream step judges each one itself. A failure here
-      # leaves the step without an inbox, which it says, and the night goes on.
+      # leaves the step without an inbox, which it says, and the night goes on:
+      # continue-on-error, or an R2 hiccup here would skip the night itself.
+      # Its own short limit, since a hung transfer must not eat the night.
       - name: Bring the captions inbox down from R2
         id: inboxdown
         if: env.FETCH == 'true'
         continue-on-error: true
+        timeout-minutes: 10
         env:
           R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
           R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
@@ -475,10 +478,14 @@ jobs:
       # state did not go back clears nothing (cloud.py, THE CAPTIONS INBOX).
       # Never on a dry run, whose takings went into a state that stays here:
       # the next real night must find the entries. cloud.py refuses on a dry
-      # night itself too.
+      # night itself too. Only after a kit-up that succeeded: the state can say
+      # a recording was read while the readings in candidate_segments.json
+      # never went back, and clearing its entry then would lose the captions
+      # the next night needs to read it again.
       - name: Clear what the night took from the captions inbox
-        if: always() && steps.inboxdown.outcome == 'success' && env.DRY_RUN == 'false'
+        if: always() && steps.inboxdown.outcome == 'success' && steps.kitup.outcome == 'success' && env.DRY_RUN == 'false'
         continue-on-error: true
+        timeout-minutes: 10
         env:
           R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
           R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}

@@ -16453,6 +16453,13 @@ def _inbox_laptop(livestreams, cloud):
         every key it writes is under the inbox, every key that was there is
         as it was, and no copy of the night's state appears on the laptop;
       - each manifest names its file's size and sha256 truly;
+      - a waiting recording that already has an entry is not asked for,
+        though its captions are not on this disk (the entered filter);
+      - a captions.en.json3 with no words of its own is never sent on the
+        word of a file beside it (the review of 17 October 2026): the track
+        that holds words is sent instead, and with only a transcript beside
+        it nothing is, and it is said -- sent, it would be refused by the
+        night and sent again every evening;
       - run again, it asks and sends nothing;
       - inbox_add leaves an entry already there alone, and refuses a key
         outside the inbox or a file that is not a caption file before
@@ -16509,6 +16516,9 @@ def _inbox_laptop(livestreams, cloud):
         state = {"version": 1, "channels": {}, "last_run": {}, "refusals": {}, "videos": {
             "PFDEFER01": dict(fin, captions="deferred"),
             "PFHERE01": dict(fin, captions="waiting"),
+            "PFENTER1": dict(fin, captions="deferred"),
+            "PFMUTE01": dict(fin, captions="waiting"),
+            "PFMUTE02": dict(fin, captions="waiting"),
             "PFREAD01": dict(fin, captions="captioned", by="runner", read="2026-10-16"),
             "PFFAIL01": dict(fin, captions="failed", tries=L.MAX_TRIES),
             "PFLIVE01": {"status": "live", "chamber": "house", "captions": "waiting"}}}
@@ -16519,11 +16529,21 @@ def _inbox_laptop(livestreams, cloud):
             (bucket / rel).parent.mkdir(parents=True, exist_ok=True)
             (bucket / rel).write_text(body, encoding="utf-8")
         words = _inbox_words()
-        for vid in ("PFDEFER01", "PFREAD01", "PFFAIL01", "PFLIVE01"):
+        mute = json.dumps({"wireMagic": "pb3", "events": [{"tStartMs": 0, "id": 1}]})
+        for vid in ("PFDEFER01", "PFREAD01", "PFFAIL01", "PFLIVE01", "PFENTER1"):
             (laptop / "src" / vid).mkdir(parents=True)
             (laptop / "src" / vid / "captions.en.json3").write_text(words, encoding="utf-8")
-        (laptop / "work" / "PFHERE01").mkdir(parents=True)
-        (laptop / "work" / "PFHERE01" / "captions.en.json3").write_text(words, encoding="utf-8")
+        for vid, files in (("PFHERE01", {"captions.en.json3": words}),
+                           ("PFMUTE01", {"captions.en.json3": mute,
+                                         "captions.en-orig.json3": words}),
+                           ("PFMUTE02", {"captions.en.json3": mute, "transcript.json": json.dumps(
+                               [{"start": 5.0, "end": 9.0, "text": "opening the hearing"}])})):
+            (laptop / "work" / vid).mkdir(parents=True)
+            for name, body in files.items():
+                (laptop / "work" / vid / name).write_text(body, encoding="utf-8")
+        assert CL.inbox_add(real_folder(bucket, create=False), "PFENTER1",
+                            laptop / "src" / "PFENTER1" / "captions.en.json3",
+                            {"fetched": now}), "the fixture's entry already in the inbox"
         os.chdir(laptop)
         before = _inbox_files(bucket)
 
@@ -16536,7 +16556,8 @@ def _inbox_laptop(livestreams, cloud):
         code, said = run()
         last = said.strip().splitlines()[-1]
         assert code == 0 and last.startswith("LIVESTREAMS TO-INBOX:") \
-            and "2 sent to the inbox" in last, said[-500:]
+            and "3 sent to the inbox" in last and "1 not sent" in last \
+            and "NOT sent: PFMUTE02" in said, said[-700:]
         assert asked == ["PFDEFER01"], f"--to-inbox asked YouTube for {asked}"
         after = _inbox_files(bucket)
         changed = [k for k, v in before.items() if after.get(k) != v]
@@ -16548,11 +16569,12 @@ def _inbox_laptop(livestreams, cloud):
         assert not (laptop / "archive" / "livestreams.json").exists(), \
             "--to-inbox wrote a copy of the night's state on the laptop"
         entries = CL.inbox_listing(real_folder(bucket, create=False))
-        assert sorted(entries) == ["PFDEFER01", "PFHERE01"], entries
+        assert sorted(entries) == ["PFDEFER01", "PFENTER1", "PFHERE01", "PFMUTE01"], entries
         for vid, e in entries.items():
             doc = json.loads((bucket / e["manifest"]).read_text(encoding="utf-8"))
             body = (bucket / doc["key"]).read_bytes()
-            assert doc["video"] == vid and doc["file"] == "captions.en.json3" \
+            want = "captions.en-orig.json3" if vid == "PFMUTE01" else "captions.en.json3"
+            assert doc["video"] == vid and doc["file"] == want and body == words.encode("utf-8") \
                 and doc["size"] == len(body) \
                 and doc["sha256"] == hashlib.sha256(body).hexdigest(), doc
 
@@ -16578,7 +16600,8 @@ def _inbox_laptop(livestreams, cloud):
                 pass
         assert _inbox_files(bucket) == snap, "a refused inbox_add still wrote something"
         return "ok", ("a dry run asks, sends and writes nothing; the run asks for the one waiting "
-                      "recording it lacks, sends it and the one already here, writes only under "
+                      "recording it lacks and none already entered, sends it and two already "
+                      "here, never a file without words of its own, writes only under "
                       "inbox/captions/ with true sizes and sha256s and no state; again, nothing; "
                       "an entry already there and a key outside the inbox are refused")
     finally:
@@ -16601,9 +16624,10 @@ def _inbox_night(livestreams):
         its file in work/ byte for byte;
       - an entry a byte longer than its manifest, one whose sha256 is not
         its manifest's, one with no words, one naming a file outside its
-        folder, and one whose manifest names another recording are each
-        refused: the recording waits, the state names the entry (the sha256
-        of its manifest), and nothing of it reaches work/;
+        folder, one whose manifest names another recording, and one whose
+        size is Infinity, which int() overflows on, are each refused: the
+        recording waits, the state names the entry (the sha256 of its
+        manifest), and nothing of it reaches work/;
       - a recording already captioned, one failed out, and one the state
         never listed are not taken, and their state is as it was;
       - --markers reads the taken recording and the guard judges it, as it
@@ -16612,7 +16636,9 @@ def _inbox_night(livestreams):
         counted; a New term run takes nothing; and a night whose inbox did
         not come down says so on its last line;
       - inbox_spent keeps an entry taken and not yet read, and spends a
-        refused one, a read one and one for a recording the state dropped.
+        refused one, a read one and one for a recording the state dropped;
+        and prune keeps the state's entry for such a recording, and lets a
+        read one go.
     """
     import contextlib
     import hashlib
@@ -16640,7 +16666,7 @@ def _inbox_night(livestreams):
         os.chdir(root)
         fin = {"status": "finished", "chamber": "house", "title": "x",
                "ended": "2026-10-16T18:00:00Z", "captions": "deferred"}
-        refused = ["PFSIZE01", "PFSHA01", "PFWORD01", "PFPATH01", "PFNAME01"]
+        refused = ["PFSIZE01", "PFSHA01", "PFWORD01", "PFPATH01", "PFNAME01", "PFINF01"]
         state = {"version": 1, "last_run": {"at": "2026-10-17T08:30:00Z"},
                  "channels": {c: {"uploads": "UU" + c} for c in ("house", "senate")},
                  "refusals": {"runner": {"at": "2026-10-17T08:40:00Z", "count": 1,
@@ -16681,6 +16707,9 @@ def _inbox_night(livestreams):
         entry("PFWORD01", b'{"wireMagic": "pb3", "events": []}')
         entry("PFPATH01", good, file="../../archive/livestreams.json")
         entry("PFNAME01", good, video="PFTAKE01")
+        # "size": Infinity, which JSON reads and int() overflows on: refused, not a crash.
+        entry("PFINF01", good, size=float("inf"))
+        assert b"Infinity" in (inbox / "PFINF01.json").read_bytes()
         for vid in ("PFREAD01", "PFFAIL01", "PFNONE01"):
             entry(vid, good)
 
@@ -16710,6 +16739,16 @@ def _inbox_night(livestreams):
         assert L.inbox_spent(st["videos"]["PFREAD01"], manifests["PFREAD01"])
         assert L.inbox_spent(None, manifests["PFNONE01"])
         assert L.inbox_spent(dict(st["videos"]["PFTAKE01"], read="2026-10-18"), None)
+
+        # prune keeps a recording taken from the inbox and not yet read, as it
+        # keeps one the night captioned itself: its entry is still wanted.
+        old = {"status": "finished", "captions": "captioned", "seen": "2026-07-01T00:00:00Z"}
+        pst = {"videos": {"PFOLD01": dict(old, by="inbox"),
+                          "PFOLD02": dict(old, by="inbox", read="2026-07-02"),
+                          "PFOLD03": dict(old, by="found")}}
+        L.prune(pst, L.utcnow(t0))
+        assert sorted(pst["videos"]) == ["PFOLD01"], \
+            f"prune kept {sorted(pst['videos'])}, where only the unread inbox capture stays"
 
         seen = {}
 
@@ -16765,7 +16804,8 @@ def _inbox_night(livestreams):
 def _inbox_bucket(CL, livestreams):
     """inbox-down brings every entry down, whatever its bytes, against a
     bucket that refuses every write; the corrupt one is named, and the night
-    refuses it. inbox-clear clears nothing on a dry night -- by its flag, by
+    refuses it; its --dry-run writes nothing on this machine either, not
+    even the lock's folder. inbox-clear clears nothing on a dry night -- by its flag, by
     the workflow's DRY_RUN, or as any run off main -- nor under --dry-run,
     nor with no state in the bucket. On a real night it removes the entries
     the bucket's state no longer waits for (read, refused, dropped), each
@@ -16819,6 +16859,11 @@ def _inbox_bucket(CL, livestreams):
                 self._no(key)
 
         CL.open_bucket = lambda a, preview=False: ReadOnly(a.local_bucket, create=False)
+        # A dry run says what would come down and writes nothing, here or there.
+        code, said = _cloud_call(CL, "inbox-down", "--dry-run", "--root", str(night),
+                                 "--local-bucket", str(bucket))
+        assert code == 0 and "would come down" in said and not (night / "archive").exists(), \
+            f"inbox-down --dry-run wrote under {night / 'archive'}: {said}"
         code, said = _cloud_call(CL, "inbox-down", "--root", str(night),
                                  "--local-bucket", str(bucket))
         CL.open_bucket = real_open
@@ -75839,7 +75884,17 @@ def _workflows_captions_inbox(CL):
     reads the state the bucket holds, with a condition that is false on a
     dry run -- cloud.py refuses a dry night itself as well, but a step that
     ran there would be a step that could. No other job, and no other
-    workflow, clears the inbox."""
+    workflow, clears the inbox.
+
+    And what a failure costs (the review of 17 October 2026, which found all
+    three of these could be dropped with every workflow check still green):
+    both inbox steps carry continue-on-error and a short timeout-minutes of
+    their own -- without it an R2 hiccup in inbox-down would skip the night
+    itself, which only a step that succeeded or carried on is followed by --
+    and the clear step's condition requires, as plain conjuncts with no
+    "||", that inbox-down and kit-up both succeeded: a kit-up that failed
+    left the readings behind while the state says they were read, and the
+    entry is what the next night takes again."""
     files = _workflows()
     wf = WORKFLOW_DIR / "nightly.yml"
     if not files or not wf.exists():
@@ -75868,11 +75923,29 @@ def _workflows_captions_inbox(CL):
         f"nightly.yml's livestream step does not take the inbox from {CL.INBOX_LOCAL}"
     assert clear[0] > max(ups), \
         "nightly.yml clears the captions inbox before the night's state has gone back"
+    for k, what in ((down[0], "inbox-down"), (clear[0], "inbox-clear")):
+        assert re.search(r"^        continue-on-error: true\s*$", steps[k], re.M), \
+            f"nightly.yml's {what} step has no continue-on-error, so its failure stops the night"
+        lim = re.search(r"^        timeout-minutes:\s*(\d+)\s*$", steps[k], re.M)
+        assert lim and int(lim.group(1)) <= 15, \
+            f"nightly.yml's {what} step has no timeout-minutes of its own, of 15 or less"
+
+    def sid(k):
+        m = re.search(r"^        id:\s*(\S+)\s*$", steps[k], re.M)
+        return m.group(1) if m else None
+    kit = at(r"python src/ops/cloud\.py kit-up")
+    assert len(kit) == 1 and sid(down[0]) and sid(kit[0]) and kit[0] < clear[0], \
+        "nightly.yml's inbox-down or kit-up step has no id, or kit-up comes after inbox-clear"
     cond = re.search(r"^        if:\s*(.+)$", steps[clear[0]], re.M)
-    assert cond and "env.DRY_RUN == 'false'" in cond.group(1), \
-        "nightly.yml's inbox-clear step can run on a dry run"
+    terms = {t.strip() for t in cond.group(1).split("&&")} if cond else set()
+    want = {"env.DRY_RUN == 'false'", f"steps.{sid(down[0])}.outcome == 'success'",
+            f"steps.{sid(kit[0])}.outcome == 'success'"}
+    assert cond and "||" not in cond.group(1) and want <= terms, (
+        f"nightly.yml's inbox-clear step's condition is {cond.group(1) if cond else None!r}; it "
+        f"must require each of {sorted(want)}, joined by && alone")
     return "ok", (f"inbox-down before the livestream step, --inbox {CL.INBOX_LOCAL}, inbox-clear "
-                  "after the last state-up and only when DRY_RUN is false; nowhere else")
+                  "after the last state-up, only when DRY_RUN is false and inbox-down and kit-up "
+                  "succeeded; both carry on past a failure inside their own limits; nowhere else")
 
 
 @check("workflows", "the built site reaches the publish job through the private bucket, never as "
