@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-16.3
+# GRANITE_VERSION: 2026-10-16.4
 """
 Who November's election sent to the General Court, for the weeks before they sit.
 
@@ -55,11 +55,12 @@ reopen:
      and Congress are the person's corrections/officials.json, and take
      office in January.
 
-THE RESULTS FILE, collected/election_<year>.json -- written by a reader of
-the Secretary of State's own files, run by a person and committed so the
-diff is the review (that reader is written against the saved files
-themselves, which it has not seen yet; tests/election_fixture.json is the
-shape, made up):
+THE RESULTS FILE, collected/election_<year>.json -- written by
+src/parse/parse_sos_results.py, the reader of the Secretary of State's own
+files, run by a person and committed so the diff is the review. It was
+written against the 2024 files on 17 October 2026, and
+src/parse/score_members_elect.py scores this rule on them;
+tests/election_fixture.json is the shape, made up:
 
     {"_source": [{"file": "records/sources/...", "url": "...",
                   "saved": "2026-11-05", "sha256": "..."}],

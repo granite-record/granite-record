@@ -19,7 +19,11 @@ edited by hand or rewritten by a build; a correction goes in `corrections/`.
 - `sources/` -- documents saved byte for byte: the Secretary of State's clerk
   and polling-place list, county roster and district table, and NHDOT's
   directory of municipal officials. The readers in `src/towns/` turn them
-  into the files in `collected/`. NH GRANIT's shapefiles go in `sources/gis/`
+  into the files in `collected/`. The Secretary of State's general election
+  results, `<year>-ge-house-<county>*.xls(x)` and
+  `<year>-ge-state-senate-district-1-24*.xls`, under the names it gave them,
+  are read by `src/parse/parse_sos_results.py` into
+  `collected/election_<year>.json`. NH GRANIT's shapefiles go in `sources/gis/`
   and are not tracked.
 - `docket_abbrev.json` -- the General Court's own key to its docket's
   abbreviations, copied verbatim; read by `src/parse/referrals.py`.

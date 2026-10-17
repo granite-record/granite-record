@@ -11,6 +11,10 @@
 *.webp  -text
 *.gz    -text
 *.zip   -text
+# The Secretary of State's results spreadsheets in records/sources/, whose
+# sha256 collected/election_<year>.json names (17 October 2026).
+*.xls   -text
+*.xlsx  -text
 
 # And these are text, everywhere, whatever the checkout does: the version
 # stamps and the palette are compared byte for byte by preflight.
