@@ -38,7 +38,7 @@
 import { ConfigError, linksFor, openAddress, openFollow } from "./address.js";
 import { addDays, errName, fallbackLabel, keyOf, nhClock, note, parseKey } from "./common.js";
 import { readCurrent, readNight } from "./changes.js";
-import { digestEmail, sendMail } from "./mail.js";
+import { digestEmail, pageNames, sendMail } from "./mail.js";
 import { forget, purge } from "./store.js";
 
 export { nhClock };
@@ -244,6 +244,10 @@ export async function run(env, now = new Date()) {
     return done();
   }
   let mended = cur.notes || 0;
+  // Every page an email can link a name to, read once for the run (mail.js,
+  // pageNames): the person asked, 17 October 2026, for every bill an email
+  // names to link to its page.
+  const names = pageNames(cur.value);
 
   const nights = new Map();
   const tonight = await readNight(get, when.date);
@@ -313,7 +317,7 @@ export async function run(env, now = new Date()) {
       const links = gone ? { manage: "", unsub: "" } : await linksFor(env, s.email_hmac, s.link_gen);
       const to = await openAddress(env, s.email_enc, s.email_hmac);
       const mail = digestEmail({ origin, frequency: s.frequency, date: when.date, sections,
-        manage: links.manage, unsub: links.unsub, feedbackUrl: env.FEEDBACK_URL, gone });
+        manage: links.manage, unsub: links.unsub, feedbackUrl: env.FEEDBACK_URL, gone, names });
       // ONE EMAIL A READER A DAY, EVEN IF AN ANSWER IS LOST (15 October 2026).
       // Resend can take an email and the answer never arrive; the day was then
       // given back and the next run sent it again. The key is the reader's row

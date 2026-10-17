@@ -40,7 +40,7 @@ import { MAX_FOLLOWS, addDays, clock, errName, esc, fallbackLabel, isoSeconds, k
          note, notHere, parseKey, plain, readForm, redirect, rightPlace, sameSite, siteUrl }
   from "../../../workers/follow/common.js";
 import { readCurrent } from "../../../workers/follow/changes.js";
-import { newLinkEmail, sendMail } from "../../../workers/follow/mail.js";
+import { longDate, newLinkEmail, sendMail } from "../../../workers/follow/mail.js";
 import { DELETES, PICK_SCRIPT, deleted, message, page } from "../../../workers/follow/page.js";
 import { forget, subscriberFor } from "../../../workers/follow/store.js";
 
@@ -60,9 +60,16 @@ const NOTICES = {
   removed: "Removed.",
   notfound: "Saved, but something you asked to add is not a bill, law, legislator or committee " +
     "that can be followed this term, so it was left out.",
-  full: `Saved, but one address can follow at most ${MAX_FOLLOWS} records, so not everything ` +
-    "you asked to add was added.",
+  full: `Saved, but one address can follow at most ${MAX_FOLLOWS} bills, laws, legislators, ` +
+    "committees and topics in all, so not everything you asked to add was added.",
 };
+
+// THE PAGE IN A READER'S WORDS (the language sweep, 17 October 2026): no
+// "records" (the database's noun), no "tonight" or "rebuilt" (the build's
+// clock), a date as the site writes one, and "check" where this said "tick",
+// which is British.
+const UPDATED_DAILY = "Granite Record is updated once a day, overnight, so even the daily " +
+  "email reports what had reached the record by early that morning, not what is happening now.";
 
 // A pause is at most a year ahead; "until I turn it back on" is kept as the
 // last date there is (schema.sql), which the sender reads the same way.
@@ -148,8 +155,8 @@ function render(origin, t, sub, follows, current, notice, today) {
       const keys = [...new Set([...mine.map(f => f.key), ...all])]
         .sort((a, b) => (meta(a)?.label || a).localeCompare(meta(b)?.label || b));
       body = keys.length ? `<ul class="chips">${keys.map(k => box(k, followed.has(k))).join("")}</ul>`
-        : `<p class="quiet">No topic can be followed tonight.</p>`;
-      return `<h3>${name}</h3><p class="quiet">This term's bills on a subject. Tick to follow.</p>${body}`;
+        : `<p class="quiet">No topic can be followed right now.</p>`;
+      return `<h3>${name}</h3><p class="quiet">This term's bills on a subject. Check one to follow it.</p>${body}`;
     }
     body = mine.length ? `<ul class="follows">${mine.map(f => box(f.key, true)).join("")}</ul>` : "";
     if (kind === "bill")
@@ -173,7 +180,7 @@ function render(origin, t, sub, follows, current, notice, today) {
     `<label><input type="radio" name="${name}" value="${value}"${value === now ? " checked" : ""}>` +
     `<span>${words}<small>${small}</small></span></label>`;
   const status = pause === "forever" ? "Paused until you turn updates back on."
-    : pause === "until" ? `Paused through ${esc(p)}.` : "";
+    : pause === "until" ? `Paused through ${esc(longDate(p))}.` : "";
   const body = `<h1>Your email updates</h1>
 <p class="lede">What you follow, how often, and how much. Nothing changes until you save.</p>
 ${noticeText ? `<p class="note">${esc(noticeText)}</p>` : ""}
@@ -192,8 +199,8 @@ ${radio("detail", "milestones", detail, "Milestones only", "Hearings scheduled, 
 </fieldset></section>
 </div>
 <section class="card"><h2>What you follow</h2>
-<p class="quiet">Untick anything to stop following it. Adding here needs no confirmation email.
-Unticking everything deletes your address.</p>
+<p class="quiet">Uncheck anything to stop following it. Adding here needs no confirmation email.
+Unchecking everything deletes your address.</p>
 ${groups}
 </section>
 <section class="card"><h2>Pause</h2>
@@ -204,8 +211,7 @@ ${radio("pause", "none", pause, "Not paused", "")}
  max="${esc(addDays(today, PAUSE_DAYS_MOST))}" value="${pause === "until" ? esc(p) : ""}"></span></label>
 ${radio("pause", "forever", pause, "Paused until I turn updates back on", "")}
 </fieldset>
-<p class="quiet">The record is rebuilt once a night, so even the daily email reports
-the night before, not what is happening now.</p>
+<p class="quiet">${esc(UPDATED_DAILY)}</p>
 </section>
 <p class="save"><span class="quiet">Nothing changes until you save.</span><button type="submit">Save changes</button></p>
 </form>

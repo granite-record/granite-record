@@ -15,7 +15,8 @@
     "committee:H90": {
       "items": [
         {"guid": "committee:H90:2026-10-05", "date": "2026-10-05", "kind": "sitting",
-         "summary": "House Example Committee — 5 October 2026",
+         "summary": "House Example Committee — October 5, 2026",
+         "plain": "Public hearing on HB 9903-FN",
          "url": "/committee/H90", "term": "2025-2026", "seen": "2026-10-06T09:02:58Z"}
       ]
     }

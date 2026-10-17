@@ -239,7 +239,8 @@ database_id = "<from wrangler d1 create>"
 and, in each environment's `vars`, `MAIL_FROM` and `FEEDBACK_URL` as the
 sender has them. The site's names come from `REPORT_ORIGINS`, which each
 environment already sets; `FOLLOW_ORIGINS` overrides it for following alone.
-`SIGNUP_DAILY_CEILING` (default 50) caps confirmation emails a day.
+`SIGNUP_DAILY_CEILING` (default 1,000, enough for a webinar's sign-ups;
+`signup.js` says why) caps confirmation emails a day.
 
 ## What reads this database, and what must not
 

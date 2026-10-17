@@ -186,7 +186,7 @@ if(on)ticked++;
 if(!hit){hit=true;for(var w=0;w<q.length;w++)if(names[j].indexOf(q[w])<0){hit=false;break;}}
 rows[j].hidden=!hit;if(hit)any=true;}
 for(var k=0;k<sets.length;k++)sets[k].hidden=!sets[k].querySelector("li:not([hidden])");
-none.hidden=any;count.textContent=ticked?ticked+" ticked":"";}
+none.hidden=any;count.textContent=ticked?ticked+" checked":"";}
 box.parentNode.hidden=false;box.addEventListener("input",show);d.addEventListener("change",show);
 box.addEventListener("keydown",function(e){if(e.key==="Enter"||e.keyCode===13)e.preventDefault();});show();
 })(picks[i]);
