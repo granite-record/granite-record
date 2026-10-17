@@ -198,10 +198,10 @@ there, though the build still goes out.
 only, so before they turn over, the finished term's inputs are frozen:
 `src/lib/freeze_term.py --views` copies the database's views of the term into
 `db/term/<term>/` -- the three the night takes (Legislation, LegislationText,
-CandH_Reports) of one dump, the laptop's insurance views of whichever dump
-they are, each view's dump time in the manifest -- and `--session` the day
-files as installed into `frozen/<term>/`, with the term's docket and
-manifest under the archived terms' names (`Docket_<term>.txt`,
+CandH_Reports) of one dump its manifest dates, the laptop's insurance views
+of whichever dump they are, each view's dump time in the manifest -- and
+`--session` the day files as installed into `frozen/<term>/`, with the
+term's docket and manifest under the archived terms' names (`Docket_<term>.txt`,
 `verification_manifest_<term>.csv`) and its roll calls in
 `records/rollcalls/`. After the turn,
 `python3 src/parse/build_data.py --frozen-terms` builds that term

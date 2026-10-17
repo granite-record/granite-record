@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-05.10
+# GRANITE_VERSION: 2026-10-05.11
 """
 A finished term's inputs, frozen before the General Court turns its files over.
 
@@ -78,8 +78,10 @@ WHAT IT REFUSES
               manifest says it was, or empty; Legislation, LegislationText
               and CandH_Reports dumped more than a day apart (two dumps are
               not one record; the other views may be of another dump, and
-              the manifest says which); and any view holding fewer rows of
-              the term than the freeze it would replace
+              the manifest says which), or any of the three whose dump time
+              the dump's manifest does not give (its last dump failed and
+              left an earlier file, or no manifest says); and any view
+              holding fewer rows of the term than the freeze it would replace
   --session   files that hold any year outside the term (a turn has begun, or
               some of tonight's files are another term's); a docket without
               both years of the term; a file missing or empty; a docket that
@@ -455,14 +457,33 @@ def freeze_views(term, src=Path("db"), out_root=VIEWS_DIR):
             when[v] = datetime.fromisoformat(str((dump.get(v) or {}).get("fetched")))
         except ValueError:
             pass
-    required = [when[v] for v in VIEWS_REQUIRED if v in when]
-    if required and (max(required) - min(required)).total_seconds() > ONE_DUMP_HOURS * 3600:
+    # A REQUIRED VIEW WITH NO DUMP TIME IS REFUSED (16 October 2026, the
+    # review). With the one-dump rule asked of these three alone, a view among
+    # them whose time the dump's manifest does not give was let through as if
+    # it were of the others' dump. That is what a failed re-dump leaves:
+    # fetch_archive_db writes its error over the view's entry and leaves the
+    # earlier file where it was, so the file is of a dump nothing dates, and
+    # the short-view test below, which reads the same entry, has no count to
+    # hold it to. Nothing then says the three are one record, and they are
+    # refused. A dump with no manifest at all dates none of them either.
+    blind = [v for v in VIEWS_REQUIRED if v not in when]
+    if blind:
+        why = "; ".join(
+            f"{v}'s last dump failed ({str((dump.get(v) or {}).get('error'))[:120]}) and left "
+            "an earlier file" if (dump.get(v) or {}).get("error") else f"{v} has no time"
+            for v in blind)
+        raise Refused(f"{src / '_manifest.json'} does not say when "
+                      f"{', '.join(blind)} {'was' if len(blind) == 1 else 'were'} dumped ({why}): "
+                      f"{', '.join(VIEWS_REQUIRED)} are frozen only as one dump, because they are "
+                      "read together, and nothing says this is one")
+    required = [when[v] for v in VIEWS_REQUIRED]
+    if (max(required) - min(required)).total_seconds() > ONE_DUMP_HOURS * 3600:
         raise Refused(f"{', '.join(VIEWS_REQUIRED)} in {src} were dumped from "
                       f"{min(required):%Y-%m-%d} to {max(required):%Y-%m-%d}: more than a day "
                       "apart is not one dump, and they are read together")
     another = {}
     for v, t in when.items():
-        if v in VIEWS_REQUIRED or not required:
+        if v in VIEWS_REQUIRED:
             continue
         if (max(required + [t]) - min(required + [t])).total_seconds() > ONE_DUMP_HOURS * 3600:
             another[v] = {"dumped": t.isoformat(timespec="seconds"),

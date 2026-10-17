@@ -64857,7 +64857,9 @@ def _freeze_term(FT, P):
     seventh column, which a database night rewrites, has moved. And (16
     October 2026, the person's decision) --views freezes the required views
     of one dump beside insurance views of an older one, each with its own
-    dump's time and the older named, and refuses required views of two."""
+    dump's time and the older named, and refuses required views of two, or a
+    required view whose dump its manifest does not date (a failed re-dump's
+    error over its entry, or no entry)."""
     here = os.getcwd()
     tmp = Path(tempfile.mkdtemp(prefix="gr-freeze-"))
     T = "2025-2026"
@@ -64973,8 +64975,12 @@ def _freeze_term(FT, P):
         shutil.move("extra-aside", str(kept.parent))
         assert FT.views_intact(".", T) == [], "the extra/ put back is not whole"
         views()
-        (Path("db") / "_manifest.json").write_text(json.dumps(
-            {"Legislation": {"rows": 99, "fetched": "2026-09-08T20:45:00"}}), encoding="utf-8")
+        # The dump's manifest dates all three (a required view it does not
+        # date is refused for that, below) and counts more Legislation rows
+        # than the file holds.
+        short = json.loads((Path("db") / "_manifest.json").read_text(encoding="utf-8"))
+        short["Legislation"]["rows"] = 99
+        (Path("db") / "_manifest.json").write_text(json.dumps(short), encoding="utf-8")
         assert "cut short" in refused(FT.freeze_views, T, Path("db")), "a short view was frozen"
         views()
         # fetch_archive_db swaps a view in only when every term it drops is frozen.
@@ -65043,6 +65049,26 @@ def _freeze_term(FT, P):
         assert "more than a day apart" in msg and \
             (FT.VIEWS_DIR / T / FT.MANIFEST).read_bytes() == before, \
             ("two required views of different dumps were frozen as one", msg)
+        # A REQUIRED VIEW NOTHING DATES (16 October 2026, the review) is not
+        # taken for one of the others' dump: a failed re-dump writes its error
+        # over the view's entry and leaves the earlier file in place, and a
+        # view with no entry at all is dated by nothing either. Each is
+        # refused, the freeze on disk kept.
+        for blank in ({"error": "QUERY_FAIL: timeout", "database": "NHLMS", "seconds": 600.0},
+                      None):
+            dump_at()
+            man = json.loads((db / "_manifest.json").read_text(encoding="utf-8"))
+            if blank is None:
+                del man["LegislationText"]
+            else:
+                man["LegislationText"] = blank
+            (db / "_manifest.json").write_text(json.dumps(man), encoding="utf-8")
+            msg = refused(FT.freeze_views, T, db)
+            assert "LegislationText" in msg and "does not say when" in msg and \
+                (FT.VIEWS_DIR / T / FT.MANIFEST).read_bytes() == before, \
+                ("a required view whose dump nothing dates was frozen as one with the others",
+                 blank, msg)
+        dump_at()
         for v in ("Sponsors", "VHearings", "DocumentVersion"):
             (db / f"{v}.psv").unlink()
 
@@ -65104,7 +65130,7 @@ def _freeze_term(FT, P):
                   "rows of a dump that has begun to turn over an earlier freeze and refuses one "
                   "with none, and carries a view the next dump lacks; the required views of one "
                   "dump beside older insurance views are frozen and said, two dumps of the "
-                  "required refused; a same-size tampered file "
+                  "required refused, and one of them nothing dates; a same-size tampered file "
                   "is not whole; --session writes the day files, the docket, the manifest and "
                   "the roll-call copies, refuses another term's rows, lost ones and a roster of "
                   "strangers, and keeps the term's roster over one that turned; ready() "
@@ -65304,6 +65330,11 @@ def _turn_views(cols):
                                             encoding="utf-8")
     (db / "CandH_Reports.psv").write_text(
         row("CandH_Reports", LegislationID="6", ReleaseDate="02/03/2026 10:00:00"), encoding="utf-8")
+    # The dump's own manifest, dating the three as one dump: freeze_term
+    # refuses required views whose dump nothing dates (16 October 2026).
+    (db / "_manifest.json").write_text(json.dumps(
+        {v: {"rows": 2 if v == "Legislation" else 1, "fetched": "2026-11-28T05:10:00"}
+         for v in ("Legislation", "LegislationText", "CandH_Reports")}), encoding="utf-8")
 
 
 @check("build", "the turn, built on a fixture: a finished term is its freeze's whole, the next "
@@ -86921,7 +86952,8 @@ def _empty_view_read(FT, SHR, BTD):
     reads a view freeze_term.counted_none vouches for -- no bytes, and a dump
     manifest counting its query's rows as none -- as none yet; an empty view
     with no such count, or one with lines and nothing readable, stops it as
-    before."""
+    before, and so does a view counted none where no freeze gives a Senate
+    report either."""
     import contextlib
     import io
     here, tmp = os.getcwd(), Path(tempfile.mkdtemp(prefix="gr-emptyview-"))
@@ -86974,6 +87006,18 @@ def _empty_view_read(FT, SHR, BTD):
             code, got = senate()
             assert got is None and "NOT WRITING" in str(code), (
                 "an empty or unreadable CandH_Reports nothing vouches for was written", rows, code)
+        # ... AND A VIEW COUNTED NONE, WITH NO FREEZE TO GIVE ANY REPORT, IS
+        # REFUSED AS BEFORE (16 October 2026, the review). Written, it would be
+        # an empty file the site shows as no Senate hearing report anywhere: a
+        # counted-empty view on the laptop before the turn, or on a machine
+        # without the freezes, is that and not a new term's first weeks.
+        shutil.rmtree(frozen.parent.parent)
+        Path("db/CandH_Reports.psv").write_text("", encoding="utf-8")
+        manifest(CandH_Reports=0)
+        code, got = senate()
+        assert got is None and "NOT WRITING" in str(code), (
+            "an empty CandH_Reports counted none was written with no freeze to give a report",
+            code, got)
 
         cols = {"Legislation": ["legislationID", "CondensedBillNo", "sessionyear"],
                 "LegislationText": ["LegislationID", "DocumentVersion", "HTMLText", "DateTimeStamp"]}
@@ -87006,7 +87050,8 @@ def _empty_view_read(FT, SHR, BTD):
         shutil.rmtree(tmp, ignore_errors=True)
     return "ok", ("senate_hearing_reports writes the finished terms' reports beside a new term's "
                   "empty view, and bill_text_from_db adds nothing and does not stop; an empty view "
-                  "with no count of none, or lines and no report, stops each as before")
+                  "with no count of none, or lines and no report, stops each as before, and a "
+                  "view counted none with no freeze's report stops senate_hearing_reports")
 
 
 # ======================================================================= main ==
