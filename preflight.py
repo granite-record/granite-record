@@ -34656,6 +34656,69 @@ def _organization_day_votes(P, BD, SD, BSP):
                   "day's sitting; a key naming two terms' votes stops careers.json")
 
 
+@check("session", "a roll call's term is read once for each year and day, and what is kept is "
+       "what a fresh reading gives, either side of Organization Day and for an argument no "
+       "dict can hold", needs=("proceedings",))
+def _vote_term_kept(P):
+    """proceedings.vote_term keeps its answer for each (year, day) it is asked
+    (16 October 2026, private/SITE_DATA_PROFILE.md, P1): the site data step
+    asked it 13 million times for 718 different pairs, about a minute of the
+    step. Held here against _vote_term, the same reading done afresh: the
+    days either side of Organization Day of 2024 and 2026, in both shapes a
+    roll call's day comes in, with the year as a number and as words, each
+    asked twice so that the second answer is the kept one; 1 and then True
+    and 1.0, which a dict takes for one key and term_of reads apart (1-2, and
+    nothing); an argument no dict can hold, read afresh rather than raising;
+    and a pair asked twice read once. Undone, the step is a minute slower
+    and nothing else would say so."""
+    import datetime as _dt
+    plain = P._vote_term
+    cases = []
+    for y in (2024, 2026):
+        org = P.organization_day(y)
+        for d in (org - _dt.timedelta(days=1), org, org + _dt.timedelta(days=1)):
+            for year in (y, str(y), y + 1, str(y + 1)):
+                for when in (d.isoformat(), f"{d.month}/{d.day}/{d.year} 10:31:07 AM"):
+                    cases.append((year, when))
+    # 1 before True and 1.0, so that a key blind to the type hands them 1's.
+    cases += [(1, ""), (True, ""), (1.0, ""), (2026, ""), (2026.0, ""), ("2026", None),
+              (2026.0, "2026-12-02"), ("", ""), (None, None)]
+    P._VOTE_TERMS.clear()
+    bad = []
+    for rnd in ("first", "kept"):
+        for year, when in cases:
+            got, want = P.vote_term(year, when), plain(year, when)
+            if got != want or type(got) is not type(want):
+                bad.append(f"{rnd} asking ({year!r}, {when!r}): {got!r}, read afresh {want!r}")
+    for year, when in ((["2026"], "2026-12-02"), (["2026"], ""), ("2026", ["2026-12-02"]),
+                       ({"y": 2026}, "12/2/2026 10:31:07 AM")):
+        try:
+            got = P.vote_term(year, when)
+        except TypeError as e:
+            bad.append(f"({year!r}, {when!r}), which no dict can hold, raises: {e}")
+            continue
+        if got != plain(year, when):
+            bad.append(f"({year!r}, {when!r}), which no dict can hold, is {got!r}, "
+                       f"read afresh {plain(year, when)!r}")
+    asked = []
+    P._VOTE_TERMS.clear()
+    P._vote_term = lambda year, when="": (asked.append((year, when)), plain(year, when))[1]
+    try:
+        for _ in range(3):
+            P.vote_term("2026", "2026-12-02")
+    finally:
+        P._vote_term = plain
+        P._VOTE_TERMS.clear()
+    if len(asked) != 1:
+        bad.append(f"a pair asked three times is read by _vote_term {len(asked)} times, not "
+                   "once: vote_term keeps nothing, or reads it some other way, and the site "
+                   "data step asks 718 pairs 13 million times")
+    assert not bad, "\n".join(bad[:8])
+    return "ok", (f"{len(cases)} (year, day) pairs kept as read afresh, around Organization "
+                  "Day of 2024 and 2026, 1 apart from True and 1.0; an argument no dict can "
+                  "hold read afresh; a pair asked three times read once")
+
+
 @check("session", "a veto override the other chamber carried too says the bill became law, on "
                   "both chambers' sitting pages", needs=("session_days",))
 def _session_both_overrides(SD):
