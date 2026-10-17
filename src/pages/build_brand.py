@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-12.18
+# GRANITE_VERSION: 2026-09-12.19
 """
 Turn the drawn logo and icon into the files a site needs, once.
 
@@ -25,7 +25,8 @@ and this stops at the first missing original, saying what a fork should put
 there to draw its own (need(), below).
 
 THE FAVICON SET IS A MONOGRAM SINCE 17 OCTOBER 2026: Playfair Display's "G" at
-weight 600 -- the logo wordmark's own face and weight, matched letter for letter
+weight 700 -- the logo wordmark's own face, a step bolder than the wordmark's 600
+so it holds at 16 pixels (the person, 17 October 2026), matched letter for letter
 against the lockup after a first draw in the header's Source Serif read as a
 different font (the person) -- light on the site's dark ground,
 the person's choice A of three (G alone, GR side by side, GR stacked), because
@@ -112,7 +113,7 @@ OUT = ROOT / "assets"
 # it. A fork with its own old-man.svg measures its own.
 # Since 17 October 2026 the icons are the monogram: its path's box is the
 # glyph's own, moved to the origin when the path was taken from the font.
-BBOX = (0.0, 0.0, 651.0, 736.0)
+BBOX = (0.0, 0.0, 669.0, 736.0)
 ICON_SVG = "monogram.svg"
 ICON_PNG = "monogram.png"
 
