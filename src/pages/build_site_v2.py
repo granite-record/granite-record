@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.209
+# GRANITE_VERSION: 2026-09-05.210
 """
 Generate the faceted site from real General Court data.
 
@@ -10475,6 +10475,11 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
         if "keys" not in _jk:
             _jk["keys"] = journal_keys_from_queue()
         return _jk["keys"]
+    # ONE MKDIR A YEAR FOLDER (16 October 2026, private/SITE_DATA_PROFILE.md,
+    # section 5). Each bill made its year's folder, which already stood for
+    # every bill but the year's first: 33,717 calls and about 13 seconds on
+    # Windows. The folders made are kept here, and each is made once.
+    year_dirs = set()
     for bid, b in ((k, v) for byb in bills.values() for k, v in byb.items()):
         # New Hampshire sits in two-year terms beginning in odd years. Bill
         # numbers are unique across the whole term, so the term -- not the year
@@ -10896,7 +10901,9 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
         # as many words -- and both of them read THIS file, so the year they
         # were keeping the pages apart by was doing nothing for the data.
         _bd = out / "bills" / str(year)
-        _bd.mkdir(parents=True, exist_ok=True)
+        if _bd not in year_dirs:
+            _bd.mkdir(parents=True, exist_ok=True)
+            year_dirs.add(_bd)
         # The stages' text run together; of the stages as they are told,
         # where one of them is told without its enrolment (stages_told).
         _narrative = (" ".join(s_["text"] for s_ in stages_told(narr, kind, row["passage"]))
