@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.212
+// GRANITE_VERSION: 2026-09-07.213
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -4244,6 +4244,16 @@ function hearingReport(r,video){
     </div></details>`;
 }
 
+// A SITTING WHOSE RECORDING NEVER NAMES ITS BILL (17 October 2026, the
+// wording the person approved). segment_markers found the bill nowhere in the
+// recording's captions, by number or by title, so there is no moment to mark
+// and none is coming; the page says that rather than "ongoing work". It names
+// the captions because they are what was read: a chair may have said a number
+// the captions lost, and "the recording does not name it" would then be false.
+const NOT_NAMED=`The recording&rsquo;s captions never name this bill, by
+  number or by title, so no moment in it is marked. The recording is the
+  whole meeting.`;
+
 function renderHearings(b,d){
   // si, because the pid was built from the video and the timestamp, so two
   // proceedings on the same recording resolving to the same second shared one
@@ -4326,7 +4336,17 @@ function renderHearings(b,d){
       // Open a few minutes before the scheduled time, since hearings run late
       // and never early. It is a place to start scrubbing, not a claim.
       const from=Math.max(secs(s.predicted)-300,0);
-      inner=player(from,
+      // NOT NAMED ON THE RECORDING (17 October 2026, the wording the person
+      // approved). Where the recording's captions never name the bill, no
+      // moment can be marked, and "not done" promised work that cannot come.
+      if(s.not_named)inner=player(from,
+        `Play the recording from ${hms(from)} \u2014 scheduled for ${
+          esc(s.time||"this day")}`,
+        "bill not named in the captions")
+        +`<p class="note" style="margin-top:8px">${NOT_NAMED} Hearings run
+        behind, so the bill is usually after the scheduled time rather than
+        before it.</p>`;
+      else inner=player(from,
         `Play the recording from ${hms(from)} \u2014 scheduled for ${
           esc(s.time||"this day")}, start time not identified yet`,
         "start time not identified yet")
@@ -4525,6 +4545,10 @@ function renderHearings(b,d){
     // still offer the recording. Saying "no recording" when one is right there
     // is the worst possible failure -- it hides working data and looks like the
     // site has less than it does.
+    else if(s.video_id&&s.not_named)inner=player(0,
+      "Play the recording \u2014 the bill is not named in it",
+      "bill not named in the captions")
+      +`<p class="note" style="margin-top:8px">${NOT_NAMED}</p>`;
     else if(s.video_id)inner=player(0,
       "Play the recording \u2014 the moment was not identified",
       "moment not identified")
