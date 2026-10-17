@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.48
+# GRANITE_VERSION: 2026-09-05.49
 """
 Segment a recording on what the chair says, not on where bill numbers cluster.
 
@@ -508,6 +508,19 @@ def not_an_opening(text, start, upto):
 # an item is being taken up, and the title after it is that item. A bare
 # "open" or "introduce" says nothing of the kind, and keeps to the number.
 TITLED = (OPEN_RE, CONF_OPEN_RE, FLOOR_OPEN_RE)
+# Read in every opening the titles gained or moved, two were not openings:
+# "let me start my testimony with a little bit of a story" (hIbS7l-s6QY
+# 4:02:46), a witness, whose "testimony" is their own and not a proceeding;
+# and "we will start up again with another hearing at 2:15" (maO9FgPtnGY
+# 4:10:14), a chair announcing the afternoon, whose title words came after
+# the recess, beyond the 220 characters' worth of silence the window spans.
+# A title read after an opening is read within half a minute of it -- except
+# the clerk's, which is the opening however long the room takes: "to which was
+# referred house bill ... when it quiets down I'll continue" (uVvh7EfGSTg
+# 7:48:15) reaches the title 35 seconds on, and ExENFHFMqiU's captions jump 36
+# seconds inside HB 1184's.
+OWN_TESTIMONY = re.compile(r"\b(?:my|our|your|his|her|their)\s+testimony\b", re.I)
+TITLE_WITHIN = 30
 
 BILL_SPOKEN = re.compile(
     r"\b(?:(House|Senate)\s*Bill|(HB|HP|SB|SP|CACR|CAC|HR|SR|HCR|SCR|HJR))\s*#?\s*"
@@ -775,10 +788,14 @@ def find_markers(words, candidates, titles, span=28, floor=False):
             # the hearing on Y" names two bills and the second belongs to the
             # opening.
             after = text[m.end():m.end() + 220]
-            got = bill_at(after, candidates, titles if rx in TITLED else {})
+            titled = rx in TITLED and not OWN_TESTIMONY.search(m.group(0))
+            got = bill_at(after, candidates, titles if titled else {})
             if not got:
                 continue
             bill, how, b0, b1 = got
+            if (how == "title" and rx is not FLOOR_OPEN_RE
+                    and when(m.end() + b0) - when(m.start()) > TITLE_WITHIN):
+                continue
             if kind == "open" and not_an_opening(text, m.start(), m.end() + b0):
                 continue
             # An agenda being read is not an opening. "these are in numerical

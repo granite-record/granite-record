@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.14
+# GRANITE_VERSION: 2026-09-05.15
 """
 The phrasings the marker patterns must match, and the ones they must not.
 
@@ -354,6 +354,38 @@ def run():
         fails.append(f"the clerk's reading of HB 564 by its title gave {mk}")
     if S.find_markers(w5, list(t5), {}, floor=True):
         fails.append("a garbled number with no titles to go on was still placed")
+    # Not after a witness's own testimony (hIbS7l-s6QY 4:02:46), and not a
+    # title read beyond half a minute of the phrase: maO9FgPtnGY's chair
+    # announced the afternoon at 4:10:14 and opened HB 1819 at 4:18:22, both
+    # spoken as below, with the recess between them.
+    t6 = {"HB1632": "relative to out-of-state solid waste."}
+    w6 = [(i * 0.4, x) for i, x in enumerate(
+        "so let me start my testimony with a little bit of a story so round about 38 "
+        "years ago there was a decision in the state of New Hampshire to privatize "
+        "Solid Waste and we have a disproportionate amount of out of state waste".split())]
+    if S.find_markers(w6, list(t6), t6):
+        fails.append("a witness's 'start my testimony' was placed by the bill's title")
+    t7 = {"HB1819": "relative to review of education freedom account service providers."}
+    w7 = ([(15014.0 + i * 0.4, x) for i, x in enumerate(
+        "And we will start up again with another hearing at 2:15. >> [laughter]".split())]
+          + [(15502.0 + i * 0.4, x) for i, x in enumerate(
+              "we'll open the hearing on House Bill 18/19FN relative to review of education "
+              "freedom account service providers".split())])
+    got = [m["t"] for m in S.find_markers(w7, list(t7), t7)]
+    if got != [15502.0]:
+        fails.append(f"a title read after the recess placed the announcement: {got}")
+    # The clerk's reading is the opening however long the room takes
+    # (uVvh7EfGSTg 7:48:15, spoken so, the title 35 seconds on).
+    t8 = {"HB475": "relative to reductions from the default budget for official ballot "
+                   "town meetings"}
+    w8 = ([(28096.0 + i * 0.3, x) for i, x in enumerate(
+        "majority of the committee on the municipal and County government to which "
+        "was referred house bill when it quiets down I'll".split())]
+          + [(28133.0 + i * 0.4, x) for i, x in enumerate(
+              "continue act relative to the reductions from the default budget for official "
+              "ballot Town meetings".split())])
+    if [m["t"] for m in S.find_markers(w8, list(t8), t8, floor=True)] != [28096.0]:
+        fails.append("the clerk's reading interrupted before its title was not placed")
 
     # Two bills opened in one breath share the moment; a correction is not a
     # block; opened and recessed is not a span, and coming out of a recess is
