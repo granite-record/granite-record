@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.50
+# GRANITE_VERSION: 2026-09-05.51
 """
 Segment a recording on what the chair says, not on where bill numbers cluster.
 
@@ -385,8 +385,15 @@ CONF_CALL_RE = re.compile(
     r"\b(?:call|convene|reconvene|order)\w*\s+(?:\w+\s+){0,4}?committee\s+(?:of|a|on)\s+"
     r"conference\b", re.I)
 ATTENTIVE_RE = re.compile(r"\battentive\s+to\s+the\s+clerk\b", re.I)
+# No number before "referred": read in what it gained, the first version also
+# took the clerk's list of second referrals, "the committee on criminal
+# justice and public safety, SP 145 FN is referred to the committee on
+# finance", where the bill comes before the verb and nothing is being
+# debated. (Not "are referred" as such: "elderly affairs to which are
+# referred to House Bill 1734", b9vTd1d8PuI 9:56:55, is a reading.)
 GARBLED_READING_RE = re.compile(
-    r"\bcommittee\s+on\s+[\w ,\-]{4,70}?\s*,?\s*(?:\w+\s+){0,3}?(?:re-?|de|p)?referr?ed\b", re.I)
+    r"\bcommittee\s+on\s+[A-Za-z ,\-]{4,70}?\s*,?\s*(?:[A-Za-z]+\s+){0,3}?"
+    r"(?:re-?|de|p)?referr?ed\b", re.I)
 # The bill is named BEFORE these: "House Bill 184 establishing ... and I
 # welcome the prime sponsor". The marker is the moment the bill was named, the
 # last scheduled bill named in the 160 characters before the phrase.
@@ -870,7 +877,16 @@ def find_markers(words, candidates, titles, span=28, floor=False):
             for bm in BILL_SPOKEN.finditer(text, max(0, m.start() - 160), m.start()):
                 b, _how = match_bill(bm.group(0), candidates, {})
                 if b:
-                    last = (b, bm.start())
+                    last = (b, bm.start(), bm.end())
+            # Another scheduled bill's number between the bill and the phrase
+            # is that bill: "HB 704 FNA and open the public hearing on 743 FN
+            # and recognize the prime sponsor" opens 743, read in what this
+            # gained. Any other number is not: "house bill 1088 relative to
+            # employment protection for kobe 19 in the workplace ...
+            # recognized for a motion" (NbX26UHaEc0 2:11:24).
+            others = {re.sub(r"[^0-9]", "", c) for c in candidates if last and c != last[0]}
+            if last and others & set(re.findall(r"\b\d{2,4}\b", text[last[2]:m.start()])):
+                continue
             if last:
                 place(when(last[1]), "open", last[0], "", "number",
                       WS.sub(" ", text[last[1]:m.end()])[:160], True)

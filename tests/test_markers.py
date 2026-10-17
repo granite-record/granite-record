@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.16
+# GRANITE_VERSION: 2026-09-05.17
 """
 The phrasings the marker patterns must match, and the ones they must not.
 
@@ -179,6 +179,8 @@ MUST_MATCH = [
      "the clerk's reading, 'which' captioned 'wish' (5a1rrU9MYcU 1:17:30)"),
     ("committee on election art to referred to House Bill 481, an act relative to "
      "moving the state primary date", "the clerk's reading, words lost (5NhVPeBehr8 1:02:18)"),
+    ("Committee on Health, Human Services and elderly affairs to which are referred to "
+     "House Bill 1734, FN", "the clerk's reading, 'are referred' (b9vTd1d8PuI 9:56:55)"),
 ]
 
 # Spoken, the bill named BEFORE the phrase: the marker is the moment the bill
@@ -191,6 +193,10 @@ BILL_BEFORE = [
     ("hb750 relative making incentive grants for school districts that improve "
      "in certain assessment scores I recognize represent peoples for a motion",
      "HB750", "0Y2d_XDakUY 1:08:31"),
+    # A number between that is no scheduled bill does not stop it.
+    ("house bill 1088 relative to employment protection for kobe 19 in the workplace "
+     "representative um uh huff you're recognized for a motion", "HB1088",
+     "NbX26UHaEc0 2:11:24"),
 ]
 
 # Look like openings. Are not.
@@ -250,6 +256,15 @@ NOT_OPENINGS = [
     ("introduced and he was telling me there a that there is money in it and "
      "they're going to take $100,000 out the money that", "SB100", [],
      "5zhoZ4k_UNY 1:44:14"),
+    # A weak phrase whose bill comes before it, with another bill between.
+    ("HB 704 FNA and open the public hearing on 743 FN and recognize the prime sponsor",
+     "HB704", ["HB743"], "f0HyxRD3fCA 1:15:12"),
+]
+# Floor: the clerk's list of second referrals is not a debate opening.
+NOT_FLOOR_OPENINGS = [
+    ("committee on criminal justice and public safety, SP 145 FN is referred to the "
+     "committee on finance. From the committee on housing, SP 173 is referred to the "
+     "committee on ways and means.", "SB173", ["SB145"], "8gFNudlxXDo 0:35:41"),
 ]
 # And spoken openings of the same shapes, which those guards must leave alone.
 STILL_OPENINGS = [
@@ -285,6 +300,10 @@ def run():
                and m["kind"] == "open"]
         if got:
             fails.append(f"OPENED  ({where}): {text[:60]}")
+    for text, bill, others, where in NOT_FLOOR_OPENINGS:
+        w = [(i * 0.4, x) for i, x in enumerate(text.split())]
+        if S.find_markers(w, [bill] + others, {}, floor=True):
+            fails.append(f"OPENED ON THE FLOOR ({where}): {text[:60]}")
     for text, bill, where in STILL_OPENINGS:
         w = [(i * 0.4, x) for i, x in enumerate(text.split())]
         cands = [bill, "HB89"] if bill == "HB163" else [bill]
@@ -475,7 +494,8 @@ def run():
 
 if __name__ == "__main__":
     bad = run()
-    n = (len(MUST_MATCH) + len(MUST_NOT_MATCH) + len(NOT_OPENINGS) + len(STILL_OPENINGS)
+    n = (len(MUST_MATCH) + len(MUST_NOT_MATCH) + len(NOT_OPENINGS) + len(NOT_FLOOR_OPENINGS)
+         + len(STILL_OPENINGS)
          + len(BILL_BEFORE) + 6)
     if bad:
         print(f"{len(bad)} of {n} failed:")
@@ -484,5 +504,6 @@ if __name__ == "__main__":
         sys.exit(1)
     print(f"{n} marker cases pass "
           f"({len(MUST_MATCH)} spoken phrasings, {len(MUST_NOT_MATCH)} decoys, "
-          f"{len(NOT_OPENINGS)} spoken non-openings, {len(STILL_OPENINGS)} spoken "
+          f"{len(NOT_OPENINGS) + len(NOT_FLOOR_OPENINGS)} spoken non-openings, "
+          f"{len(STILL_OPENINGS)} spoken "
           f"openings beside them, {len(BILL_BEFORE)} named before the phrase, 6 behaviours)")
