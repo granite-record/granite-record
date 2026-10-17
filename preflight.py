@@ -14330,6 +14330,87 @@ def _markers_named_before(segment_markers):
         shutil.rmtree(root, ignore_errors=True)
 
 
+@check("markers", "segment_markers lists the committee bills a recording never names, by number, "
+                  "digits or title, and the list survives a run over another recording",
+       needs=("segment_markers",))
+def _markers_not_named(segment_markers):
+    """WHERE A RECORDING NEVER NAMES ITS BILL THE PAGE SAYS SO (17 October
+    2026, the wording the person approved): 222 committee sittings read
+    "ongoing work" where the recording's captions never name the bill. The
+    build has no captions, so segment_markers writes those bills as
+    _not_named, keyed on recording, and a later run over another recording
+    -- as the night's livestreams --markers is -- keeps them. Named means by
+    number, by any run of the bill's digits (an amount counts: the claim is
+    made only where nothing could be the bill) or by title, as the clerk
+    read HB 564 with its number captioned "5604". A floor recording's
+    never-named bills are the consent calendar, _absent, and are not listed
+    again. Every line below was spoken."""
+    if not _paths.locate("segment_markers.py").exists():
+        return "skip", "segment_markers.py not here"
+    root = Path(tempfile.mkdtemp())
+    try:
+        bills = {"2025-2026": {
+            "HB1315": {"title": "relative to the sale of tobacco products"},
+            "HB564": {"title": "relative to the adoption of school administrative unit budgets"},
+            "HB1281": {"title": "relative to comfort dogs"},
+            "SB100": {"title": "relative to election administration"},
+            "HB639": {"title": "relative to the legalization and regulation of cannabis and "
+                               "making appropriations therefor."},
+            "HB1598": {"title": "(New Title) relative to notice and proceedings for tenants and "
+                                "landlords engaged in eviction processes."},
+            "HB77": {"title": "relative to the state forester"}}}
+        reading = ("Majority of the committee on education policy and administration to "
+                   "which was referred House Bill 5604, an act relative to the adoption of "
+                   "school administrative unit budgets, considered the same")
+        on_to = "On to House Bill 1315 relative to the sale of tobacco products,"
+        comm = (["move unanimously."] * 3
+                + ["Representative Hunt, second by Representative Patusk moves to pass."] * 3
+                + [reading] + ["they're going to take $100,000 out the money that"]
+                # BNKsnAKlHeo 1:24:12, the chair taking up HB 639 by two words of
+                # its title, which the first reading called never named.
+                + ["okay okay next legalization and regulation okay so um I have sent out"]
+                # Ody4amuX03Q 0:39:03: HB 1598's title words, the other way round.
+                + ["one of the situations that I think benefits both landlords and tenants"]
+                + ["good morning"] * 3)
+        env = _markers_fixture(
+            root, bills,
+            [("2025-2026", b, "H", "public hearing", "PFCOMM")
+             for b in ("HB1315", "HB564", "HB1281", "SB100", "HB639", "HB1598")]
+            + [("2025-2026", "HB77", "H", "floor debate", "PFFLOOR"),
+               ("2025-2026", "HB1315", "H", "floor debate", "PFFLOOR")],
+            {"PFCOMM": comm,
+             "PFFLOOR": ["good morning"] * 3 + [on_to]})
+        cmd = [sys.executable, _paths.script("segment_markers.py"), "--data", "data",
+               "--quiet", "--cache", "cache.json", "--transcript"]
+
+        def run(*vids):
+            r = _run(cmd + [f"work/{v}" for v in vids], cwd=str(root), env=env,
+                     capture_output=True, text=True, timeout=120)
+            assert r.returncode == 0, (r.stderr or r.stdout)[-300:]
+            return json.loads((root / "candidate_segments.json").read_text(encoding="utf-8"))
+        got = run("PFCOMM", "PFFLOOR")
+        nn = got.get("_not_named") or {}
+        assert nn.get("PFCOMM") == ["HB1315", "HB1281"], (
+            f"the committee recording's never-named bills are {nn.get('PFCOMM')}, not HB 1315 "
+            "and HB 1281")
+        assert "PFFLOOR" not in nn and "HB77" in (got.get("_absent") or {}).get("PFFLOOR", []), (
+            f"the floor recording's bill never named went to _not_named, or not to _absent: {got}")
+        got = run("PFFLOOR")
+        assert (got.get("_not_named") or {}).get("PFCOMM") == ["HB1315", "HB1281"], (
+            "a run over another recording dropped this one's _not_named")
+        (root / "work" / "PFCOMM" / "captions.en.json3").write_text(json.dumps(_json3(
+            comm[:3] + [on_to] + comm[3:])), encoding="utf-8")
+        got = run("PFCOMM")
+        assert (got.get("_not_named") or {}).get("PFCOMM") == ["HB1281"], (
+            "a recording read again that now names HB 1315 did not answer for itself: "
+            f"{(got.get('_not_named') or {}).get('PFCOMM')}")
+        return "ok", ("HB 1281 listed; HB 564 by title, HB 639 and HB 1598 by two words of it, "
+                      "SB 100 by digits and HB 1315 once said not; the floor's to _absent; kept "
+                      "across runs, answered by a fresh read")
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+
+
 @check("data", "segment_markers' title lookup holds more than a thousand titles",
        needs=("segment_markers",))
 def _markers_title_count(segment_markers):
@@ -25167,6 +25248,54 @@ def _cluster_needs_a_mention(build_site_v2):
     st = B.station_for_proceeding(p, "HB152", seg(0), other)
     assert st["start"] is None, "another proceeding's mention kept this placement"
     return "ok", "no mention inside: no start, no end, no suggestion; two mentions: placed"
+
+
+@check("markers", "a sitting whose recording never names its bill says so, and only there",
+       needs=("build_site_v2", "segment_markers"))
+def _station_not_named(build_site_v2, segment_markers):
+    """222 committee sittings drew "Matching proceedings to the moment they
+    begin is ongoing work, and this one is not done" where the
+    recording's captions never name the bill at all, so no moment could ever
+    be marked (17 October 2026; the person approved the new words).
+    segment_markers lists such bills under _not_named; station_for_proceeding
+    sets not_named on a sitting drawn with no start, and app.js says the
+    captions never name the bill, keeps the player at the scheduled time,
+    and keeps the old words where the bill is named but no opening found."""
+    B = build_site_v2
+    p = {"bill": "HB152", "body": "H", "committee": "Judiciary",
+         "proceeding": "public hearing", "sched_date": "2026-02-03",
+         "sched_time": "10:00", "venue": "LOB 206", "video_id": "VIDX",
+         "predicted_offset": 600, "candidate_ids": ""}
+    nn = {"_not_named": {"VIDX": ["HB152"]}}
+    st = B.station_for_proceeding(p, "HB152", {}, nn)
+    assert st["state"] == "approximate" and st.get("not_named") is True, (
+        f"a sitting whose recording never names its bill is not marked so: {st}")
+    plain = B.station_for_proceeding(p, "HB152", {}, {"_not_named": {"VIDX": ["HB153"]}})
+    assert "not_named" not in plain, "another bill's entry marked this sitting not named"
+    assert "not_named" not in B.station_for_proceeding(p, "HB152", {}, {"_not_named": {"VIDY": ["HB152"]}}), (
+        "another recording's entry marked this sitting not named")
+    said = dict(nn, VIDX={"HB152": [{"start": 700.0, "end": None, "how": "number",
+                                     "what": "public hearing", "said": "x"}]})
+    st2 = B.station_for_proceeding(p, "HB152", {}, said)
+    assert st2["state"] == "stated" and "not_named" not in st2, (
+        "a sitting with a stated start is marked not named")
+    assert "_not_named" in segment_markers.SIDES, (
+        "_not_named is not one of segment_markers.SIDES, so the late-caption withholding keeps it")
+    html_ = _app_js("[scope.renderHearings({id:'HB152', n:'HB 152'}, {stations:"
+                    + json.dumps([st]) + "}), scope.renderHearings({id:'HB152', n:'HB 152'}, "
+                    "{stations:" + json.dumps([plain]) + "})]")
+    if html_ is not None:
+        named, other = (re.sub(r"\s+", " ", h) for h in html_)
+        for want in ("The recording&rsquo;s captions never name this bill, by number or by title, "
+                     "so no moment in it is marked. The recording is the whole meeting.",
+                     "bill not named in the captions", "Play the recording from 00:05:00",
+                     'data-embed="VIDX|300|'):
+            assert want in named, f"the not-named sitting does not say {want!r}"
+        assert "ongoing work" not in named and "not identified" not in named, (
+            "the not-named sitting still says the matching is unfinished")
+        assert "ongoing work" in other and "not named" not in other, (
+            "a sitting whose bill is named lost the words for an opening not found")
+    return "ok", "marked only where its recording never names it and no start is drawn; drawn with the new words"
 
 
 @check("markers", "a marker naming no proceeding serves one sitting of the bill, the first "
@@ -48030,7 +48159,7 @@ def _cloud_send_night(CL, R, livestreams):
 
 
 @check("livestreams", "the maps beside the recordings are one list, segment_markers', and the "
-                      "night's guard keeps a reading whose merge carries _named_before",
+                      "night's guard keeps a reading whose merge carries _named_before or _not_named",
        needs=("livestreams", "segment_markers", "cloud"))
 def _ls_sides_one_list(livestreams, segment_markers, CL):
     """ONE DEFINITION OF THE SIDES (17 October 2026). segment_markers writes
@@ -48043,7 +48172,7 @@ def _ls_sides_one_list(livestreams, segment_markers, CL):
     that adds tonight's recording's _named_before is kept; one that changes
     another recording's is still caught."""
     S = segment_markers.SIDES
-    assert "_named_before" in S and livestreams.SIDES is S, \
+    assert {"_named_before", "_not_named"} <= set(S) and livestreams.SIDES is S, \
         "livestreams does not read segment_markers' list of the maps beside the recordings"
     recs, sides = CL.recordings_in("candidate_segments.json", json.dumps(
         {"V1": {}, **{s: {"V1": []} for s in S}}).encode("utf-8"))
@@ -48081,12 +48210,31 @@ def _ls_sides_one_list(livestreams, segment_markers, CL):
         assert why == "", f"a reading carrying tonight's _named_before was put back: {why}"
         why = night({"PFOTHER": ["HB10|hearing"], "PFNEW": ["HB1|hearing"]})
         assert "_named_before/PFOTHER" in why, f"another recording's _named_before changed unseen: {why!r}"
+        # _not_named, the committee bills a recording never names (17 October
+        # 2026), is held the same way: tonight's added is kept, and another
+        # recording's, changed or gone, is caught.
+        was["_not_named"] = {"PFOTHER": ["HB12"]}
+        Path("kept/candidate_segments.json").write_text(json.dumps(was), encoding="utf-8")
+
+        def night_nn(nn):
+            now = json.loads(json.dumps(was))
+            now["PFNEW"] = {"HB1": [{"start": 5.0}]}
+            now["_not_named"] = nn
+            Path("candidate_segments.json").write_text(json.dumps(now), encoding="utf-8")
+            s = json.loads(json.dumps(spans))
+            s["recordings"]["PFNEW"] = {"last": 30.0}
+            Path("caption_spans.json").write_text(json.dumps(s), encoding="utf-8")
+            return livestreams.guard(Copies(), {"PFNEW"})[0]
+        why = night_nn({"PFOTHER": ["HB12"], "PFNEW": ["HB2"]})
+        assert why == "", f"a reading carrying tonight's _not_named was put back: {why}"
+        why = night_nn({"PFNEW": ["HB2"]})
+        assert "_not_named/PFOTHER" in why, f"another recording's _not_named went unseen: {why!r}"
     finally:
         livestreams.probe = real_probe
         os.chdir(here)
         shutil.rmtree(tmp, ignore_errors=True)
-    return "ok", (f"{len(S)} maps, one list; a merge carrying tonight's _named_before is kept, "
-                  "another recording's changed is caught")
+    return "ok", (f"{len(S)} maps, one list; a merge carrying tonight's _named_before or "
+                  "_not_named is kept, another recording's changed is caught")
 
 
 @check("livestreams", "the night keeps a reading of its new recordings only past the "
@@ -57423,7 +57571,7 @@ const CLOCK=new RegExp("^\\d{1,2}:\\d\\d"+NB+"(AM|PM)(–\\d{1,2}:\\d\\d"+NB+"(A
      && W9.addr()==="/calendar?week=2026-W12&day=2026-03-18&view=week",
      "an old address on the tab: "+W9.addr()+" "+W9.keys());
   // ---- a week's own page, and the first move from it ----
-  // /calendar/2026-W10 is what the sitemap lists: it opens on its own week
+  // /calendar/2026-W10 is the week's own address: it opens on its own week
   // and keeps its address; the first move goes to the calendar's own, and
   // Back returns to it.
   const WA=world("calendar/2026-W10.html","/calendar/2026-W10");
@@ -91125,7 +91273,9 @@ def _sitemap_both_ways(CS):
     one file's limit of 50,000 addresses is an error; no sitemap.xml is an
     error; and an indexable page naming itself as canonical must be
     listed, the exceptions read off the pages themselves -- noindex, a
-    canonical naming another page, a calendar week with no meeting card."""
+    canonical naming another page. Since 17 October 2026 every calendar
+    week's own page is noindex, meeting or none, and a page the sitemap
+    lists that asks not to be indexed is an error."""
     import contextlib
     import io
     base = "https://graniterecord.org"
@@ -91160,10 +91310,10 @@ def _sitemap_both_ways(CS):
         page("a.html", canon("/a"))
         page("404.html", '<meta name="robots" content="noindex">')
         page("calendar.html", canon("/calendar"), '<div class="wkpage calapp"><details class="calmeet"></details></div>')
-        page("calendar/2026-W11.html", canon("/calendar"), '<div class="wkpage calapp"></div>')
-        page("calendar/2026-W13.html", canon("/calendar/2026-W13"),
-             '<div class="wkpage calapp"><p class="calempty">No meetings scheduled.</p></div>'
-             '<script>x=\'<details class="calmeet">\'</script>')
+        robots = '<meta name="robots" content="noindex,follow">'
+        page("calendar/2026-W11.html", robots + canon("/calendar"), '<div class="wkpage calapp"></div>')
+        page("calendar/2026-W13.html", robots + canon("/calendar/2026-W13"),
+             '<div class="wkpage calapp"><p class="calempty">No meetings scheduled.</p></div>')
         assert not CS.served(site / "laws/404", folder=False) and CS.served(site / "laws/404"), (
             "a folder's index.html is not told apart from an address with no slash")
         assert CS.served(site / "bills", folder=False), "bills.html beside bills/ does not answer /bills"
@@ -91201,14 +91351,24 @@ def _sitemap_both_ways(CS):
             f"a page this build wrote, unlisted, was only warned of: {errors} {warnings}")
         (site / "b.html").unlink()
         (site / "build.json").unlink()
+        # A CALENDAR WEEK IS NOINDEX AND UNLISTED, MEETING OR NONE (17 October
+        # 2026): only /calendar is listed. A week page that lost its noindex
+        # is refused as left out, and one the sitemap lists is refused for
+        # asking not to be indexed.
         assert not any("2026-W13" in e for e in errors), (
-            "a week with no meeting card (one drawn by its script does not count) was refused as "
-            f"left out: {errors}")
+            f"a noindex week with no meeting was refused as left out: {errors}")
+        page("calendar/2026-W13.html", robots + canon("/calendar/2026-W13"),
+             '<div class="wkpage calapp"><details class="calmeet"></details></div>')
+        errors, _w = run(good)
+        assert not errors, f"a noindex week holding a meeting was refused: {errors}"
+        errors, _w = run(good + ["/calendar/2026-W13"])
+        assert any("ask not to be indexed" in e and "2026-W13" in e for e in errors), (
+            f"check_site passes a sitemap that lists a week asking not to be indexed: {errors}")
         page("calendar/2026-W13.html", canon("/calendar/2026-W13"),
              '<div class="wkpage calapp"><details class="calmeet"></details></div>')
         errors, _w = run(good)
         assert any("not in the sitemap" in e and "2026-W13" in e for e in errors), (
-            f"check_site passes a week holding a meeting that the sitemap leaves out: {errors}")
+            f"check_site passes an unlisted week page that lost its noindex: {errors}")
         (site / "calendar/2026-W13.html").unlink()
         # Past one file's limit, held with the limit made small so the check
         # does not stat 50,000 files; the limit itself is the protocol's.
@@ -91234,8 +91394,8 @@ def _sitemap_both_ways(CS):
     finally:
         shutil.rmtree(root, ignore_errors=True)
     return "ok", ("/laws/404 refused and /laws/404/ passed; an unlisted indexable page refused, and "
-                  "one an earlier build left warned of by name; a noindex page, a copy and a week "
-                  "with no meeting left out; past one file's limit an error; no sitemap an error")
+                  "one an earlier build left warned of by name; a noindex page and a copy left out, "
+                  "a noindex page listed refused; past one file's limit an error; no sitemap an error")
 
 
 @check("build", "check_live asks for the sitemap and robots.txt, reads the sitemap whole, and holds "
@@ -91343,43 +91503,70 @@ def _check_live_sitemap(CL):
                   "checked")
 
 
-@check("build", "a calendar week with no meeting at all is written and left out of the sitemap, and "
-       "listed once it holds one", needs=("build_calendar", "check_site"))
-def _week_without_meeting_unlisted(BC, CS):
-    """The sitemap audit's third finding (16 October 2026): 2026-W45, W48 and
-    W51 were listed, each a page saying only "No meetings are scheduled yet
-    for this week". week_page writes every week as before and lists one only
-    when it holds a meeting -- a cancelled one included, since its card is on
-    the page -- with the current week listed as /calendar whatever it holds.
-    check_site reads such a week off its page and does not call it missing."""
+@check("build", "only /calendar is in the sitemap: every week's page is written noindex,follow and "
+       "left out, an earlier build's week addresses are taken out, and /calendar is indexable",
+       needs=("build_calendar", "check_site"))
+def _calendar_weeks_noindex(BC, CS):
+    """The person, 17 October 2026: one link to the calendar, /calendar,
+    which opens on the current week, is the page search engines list, not
+    each week. It replaced the rule of 16 October that listed a week once it
+    held a meeting (the sitemap audit's third finding), so a week with a
+    meeting and one without are both held here. Each week's page, the
+    current week's dated copy included, carries noindex,follow and keeps its
+    canonical; /calendar carries no robots line. A sitemap an earlier build
+    wrote with week addresses in it keeps none after the merge, and
+    check_site finds nothing on the calendar to call unlisted or contrary."""
+    import contextlib
     import datetime as _dt
-    root = Path(tempfile.mkdtemp(prefix="gr-wkempty-"))
+    import io
+    import shell as S
+    root = Path(tempfile.mkdtemp(prefix="gr-wknoindex-"))
     try:
         site, weeks, order, urls, _m = _cal_fixture(root)
         today = _dt.date(*CAL_TODAY)
         here = BC.week_key(today)
-        empty = [k for k in order if not BC.week_facts(k, weeks, today)["meets"]]
-        assert empty and any(k != here for k in empty), (
-            f"the fixture has no week without a meeting to hold this to: {order}")
         base = "https://graniterecord.org"
+        meets = {k: bool(BC.week_facts(k, weeks, today)["meets"]) for k in order}
+        assert here in order and any(meets.values()) and not all(meets.values()), (
+            f"the fixture lacks the current week, a week with a meeting or one without: {meets}")
+        assert urls == [base + "/calendar"], f"the week pages listed {urls}, not /calendar alone"
+        robots = re.compile(r'<meta name="robots" content="([^"]*)"')
         for k in order:
-            addr = base + ("/calendar" if k == here else f"/calendar/{k}")
             page = site / "calendar" / f"{k}.html"
             assert page.is_file(), f"calendar/{k}.html was not written"
-            if k == here:
-                assert addr in urls, "the current week, /calendar, is not listed"
-            elif k in empty:
-                assert addr not in urls, f"{k} holds no meeting and is listed"
-                assert "No meetings are" in page.read_text(encoding="utf-8"), (
-                    f"{k}'s page no longer says it holds no meeting")
-                assert CS._no_meeting(page), f"check_site does not read {k} as a week with no meeting"
-            else:
-                assert addr in urls, f"{k} holds a meeting and is not listed"
-                assert not CS._no_meeting(page), f"check_site reads {k}, which holds a meeting, as empty"
+            head = page.read_text(encoding="utf-8").split("</head>")[0]
+            said = robots.findall(head)
+            assert said == ["noindex,follow"], f"calendar/{k}.html's robots lines are {said}"
+            want = base + ("/calendar" if k == here else f"/calendar/{k}")
+            assert f'<link rel="canonical" href="{want}">' in head, (
+                f"calendar/{k}.html lost its canonical link to {want}")
+        head = (site / "calendar.html").read_text(encoding="utf-8").split("</head>")[0]
+        assert not robots.search(head) and f'<link rel="canonical" href="{base}/calendar">' in head, (
+            "/calendar carries a robots line or no canonical of its own")
+        # An earlier build's sitemap, which listed every week with a meeting.
+        (site / "sitemap.xml").write_text(
+            '<?xml version="1.0" encoding="UTF-8"?>\n<urlset>\n'
+            + "".join(f"<url><loc>{base}/calendar/{k}</loc></url>\n" for k in order)
+            + f"<url><loc>{base}/bills</loc></url>\n</urlset>\n", encoding="utf-8")
+        with contextlib.redirect_stdout(io.StringIO()):
+            S.sitemap_merge(site, base, urls, "/calendar")
+        locs = re.findall(r"<loc>([^<]*)</loc>", (site / "sitemap.xml").read_text(encoding="utf-8"))
+        cal = sorted(u for u in locs if u.startswith(base + "/calendar"))
+        assert cal == [base + "/calendar"] and base + "/bills" in locs, (
+            f"after the merge the sitemap's calendar addresses are {cal}")
+        errors, warnings = [], []
+        with contextlib.redirect_stdout(io.StringIO()):
+            CS.pages_listed(site, locs, base + "/", errors, warnings)
+        assert not [e for e in errors if "calendar" in e], f"check_site refuses the calendar: {errors}"
+        errors = []
+        with contextlib.redirect_stdout(io.StringIO()):
+            CS.pages_listed(site, locs + [f"{base}/calendar/{order[0]}"], base + "/", errors, warnings)
+        assert any("ask not to be indexed" in e for e in errors), (
+            f"check_site passes a sitemap listing a noindex week: {errors}")
     finally:
         shutil.rmtree(root, ignore_errors=True)
-    return "ok", (f"{len(order)} weeks written, {sum(1 for k in empty if k != here)} with no meeting "
-                  "left out of the sitemap, the rest and /calendar listed")
+    return "ok", (f"{len(order)} week pages noindex,follow ({sum(meets.values())} with a meeting), "
+                  "none listed after the merge; /calendar listed and indexable")
 
 
 @check("build", "a bill's sitemap date stays put from one night to the next: a meeting to come does "

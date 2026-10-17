@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.58
+# GRANITE_VERSION: 2026-09-05.59
 """
 Segment a recording on what the chair says, not on where bill numbers cluster.
 
@@ -81,8 +81,10 @@ WORK_FILES = ["captions.en.json3", "captions.en-orig.json3", "transcript.json"]
 # livestreams and handoff did not hear of it: the night's guard took the map
 # for a recording that had changed and put back every reading that carried
 # one. SIDES_ANSWERED are those a recording read again answers for itself.
-SIDES = ("_absent", "_sequence", "_named_before")
-SIDES_ANSWERED = ("_absent", "_named_before")
+# _not_named, the committee bills a recording never names (not_named), joined
+# them on 17 October 2026, and answers for a recording as _absent does.
+SIDES = ("_absent", "_sequence", "_named_before", "_not_named")
+SIDES_ANSWERED = ("_absent", "_named_before", "_not_named")
 WS = re.compile(r"\s+")
 NONWORD = re.compile(r"[^a-z0-9 ]+")
 
@@ -1017,6 +1019,71 @@ def never_named(words, candidates, titles, found, step=12):
     return out
 
 
+# A one-digit bill read out in words, which is the only number short enough
+# for the captions to spell.
+ONES = "zero one two three four five six seven eight nine".split()
+
+
+def not_named(words, candidates, titles, found):
+    """The scheduled bills a committee recording's captions never name: not
+    by number, in any of the garbled forms match_bill already reads, not by a
+    bare run of the bill's digits anywhere in the recording, and not by title.
+
+    WHERE A RECORDING NEVER NAMES ITS BILL, THE PAGE SAYS SO (17 October
+    2026, approved by the person). A committee sitting drew "this one is not
+    done" or "that work is ongoing" where no pattern can ever mark a moment,
+    because the bill is never named on the recording; the diagnosis of that
+    day counted about 650 never named by number, and this reading, which
+    asks more before it says so, finds 222 sittings. The build has no
+    captions to look, so the answer travels in the candidate file as
+    _not_named. It is the conservative reading: any run of the bill's digits,
+    even inside an amount, counts as naming it, so the claim is made only
+    where nothing on the track could be the bill. `found` are the bills a
+    boundary was stated for, which were named by definition.
+
+    A TITLE IS NAMED BY TWO OF ITS WORDS. (After reading twenty, 17 October
+    2026.) match_bill wants most of a title's words inside twenty seconds,
+    and a chair names a bill by a piece of it: "okay next legalization and
+    regulation" took up HB 639, "relative to the legalization and regulation
+    of cannabis", on BNKsnAKlHeo at 1:24:12, and the first reading called it
+    never named. So two words next to each other in the title, in either
+    order and with stop words between them allowed, count as naming it --
+    "landlords and tenants" names HB 1598's "tenants and landlords"
+    (Ody4amuX03Q 0:39:03), and "web pages" HB 1606's "agency web pages"
+    (UvzoENtrA98 4:58:59), which a second reading of twenty found -- and so
+    does one of match_bill's title words just before "bill". That also
+    counts "New Hampshire" or "school district" as naming a bill whose title
+    holds them, which is the price of a claim that is true where it is made:
+    such a sitting keeps the words for an opening not found.
+    """
+    left = [b for b in candidates if b not in found]
+    if not words or not left:
+        return []
+    said = " ".join(w for _t, w in words)
+    spoken = [w for w in norm(said).split() if w not in STOP and len(w) > 1]
+    pairs = {frozenset(p) for p in zip(spoken, spoken[1:])}
+    before_bill = {a for a, n in zip(spoken, spoken[1:]) if n in ("bill", "bills")}
+    out = []
+    for b in left:
+        digits = re.sub(r"[^0-9]", "", b)
+        if len(digits) > 1 and re.search(
+                r"(?<!\d)" + r"[\s,:.\-]*".join(digits) + r"(?!\d)", said):
+            continue
+        if len(digits) == 1 and re.search(
+                r"\b(?:bill|hb|sb|hp|sp)\s*(?:number\s*)?" + ONES[int(digits)] + r"\b",
+                said, re.I):
+            continue
+        # "(New Title)" and "(Second New Title)" are the record's, not words
+        # anyone says.
+        named = [w for w in norm(re.sub(r"^\s*\([^)]*title\)", "", titles.get(b, ""),
+                                        flags=re.I)).split() if w not in STOP and len(w) > 1]
+        if ({frozenset(p) for p in zip(named, named[1:]) if p[0] != p[1]} & pairs
+                or {w for w in named if len(w) > 3} & before_bill):
+            continue
+        out.append(b)
+    return never_named(words, out, titles, set()) if out else []
+
+
 def last_mentions(words, candidates):
     """{bill: the last second at which it was spoken of}.
 
@@ -1588,6 +1655,9 @@ def main():
                 stats["never named on the recording"] += len(hit["absent"])
             if hit.get("named_before"):
                 result.setdefault("_named_before", {})[vid] = hit["named_before"]
+            if hit.get("not_named"):
+                result.setdefault("_not_named", {})[vid] = hit["not_named"]
+                stats["committee bills never named on the recording"] += len(hit["not_named"])
             result[vid] = segs
             stats["recordings read"] += 1
             stats["unchanged since last run"] += 1
@@ -1629,7 +1699,14 @@ def main():
         if before:
             stats["clustered placements named just before"] += len(before)
             result.setdefault("_named_before", {})[vid] = before
-        cache[vid] = {"key": key, "segs": segs, "absent": absent, "named_before": before}
+        # A floor recording's bills never named are the consent calendar,
+        # _absent above, and its station says so already.
+        unnamed = [] if is_floor else not_named(words, cands, titles, set(segs))
+        if unnamed:
+            stats["committee bills never named on the recording"] += len(unnamed)
+            result.setdefault("_not_named", {})[vid] = unnamed
+        cache[vid] = {"key": key, "segs": segs, "absent": absent, "named_before": before,
+                      "not_named": unnamed}
         stats["recordings read"] += 1
         stats["bills with a stated start"] += len(segs)
         stats["proceedings found"] += sum(len(v) for v in segs.values())

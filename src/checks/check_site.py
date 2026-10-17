@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.24
+# GRANITE_VERSION: 2026-09-04.25
 """
 Check the site is fit to publish before uploading it.
 
@@ -356,15 +356,6 @@ def _head(p):
     return t[:t.find("</head>")] if "</head>" in t else t
 
 
-def _no_meeting(p):
-    """Is this a calendar week holding no meeting at all? build_calendar
-    leaves such a week out of the sitemap until one is set. Read off the
-    page: a week's page with no meeting card outside its scripts, which draw
-    cards of their own."""
-    t = _SCRIPTS.sub(" ", p.read_text(encoding="utf-8", errors="replace"))
-    return 'class="wkpage calapp"' in t and 'class="calmeet"' not in t
-
-
 def pages_listed(site, locs, root, errors, warnings):
     """EVERY PAGE THAT ASKS TO BE INDEXED AT ITS OWN ADDRESS IS IN THE
     SITEMAP (the sitemap audit, 16 October 2026). The checks above go from
@@ -373,12 +364,18 @@ def pages_listed(site, locs, root, errors, warnings):
     none -- is caught rather than left to search engines to find by chance.
 
     The pages left out on purpose are read off the pages themselves, not
-    kept on a list here: one marked noindex (404.html, search.html), one
-    whose canonical names another address (the current week's dated copy,
-    whose page is /calendar), and a calendar week with no meeting at all,
-    which build_calendar lists once it has one. A page naming no canonical
-    is counted and said, and not refused: it asks nothing of a search engine
-    either way.
+    kept on a list here: one marked noindex (404.html, search.html, and
+    since 17 October 2026 every calendar week's own page, build_calendar's
+    WEEK_ROBOTS), and one whose canonical names another address. A page
+    naming no canonical is counted and said, and not refused: it asks
+    nothing of a search engine either way. The rule of 16 October that let a
+    calendar week with no meeting stand unlisted went then: no week is
+    listed, and each says so in its head.
+
+    AND A PAGE THE SITEMAP LISTS DOES NOT ASK NOT TO BE INDEXED (17 October
+    2026). The two say opposite things to a search engine; a builder that
+    went back to listing its week pages, or a noindex put on a page that is
+    listed, is refused rather than left for a crawler to settle.
 
     A PAGE THIS BUILD DID NOT WRITE IS A WARNING, NOT A REFUSAL (16 October
     2026). A site/ kept between builds -- publish.bat's, a laptop's night --
@@ -391,12 +388,14 @@ def pages_listed(site, locs, root, errors, warnings):
     origin = root[:-1]
     listed = {html.unescape(u) for u in locs}
     began = build_began(site)
-    unlisted, stale, aside = [], [], Counter()
+    unlisted, stale, aside, contrary = [], [], Counter(), []
     for p in sorted(site.rglob("*.html")):
         own = origin + canon("/" + p.relative_to(site).as_posix())
         head = _head(p)
         if _NOINDEX.search(head):
             aside["noindex"] += 1
+            if own in listed:
+                contrary.append(own)
             continue
         m = _CANONICAL.search(head)
         if not m:
@@ -406,9 +405,6 @@ def pages_listed(site, locs, root, errors, warnings):
             aside["a copy naming another page as canonical"] += 1
             continue
         if own in listed:
-            continue
-        if _no_meeting(p):
-            aside["a calendar week with no meeting yet"] += 1
             continue
         if began is not None and p.stat().st_mtime < began:
             stale.append(own)
@@ -420,6 +416,9 @@ def pages_listed(site, locs, root, errors, warnings):
     if unlisted:
         errors.append(f"{len(unlisted):,} page(s) ask to be indexed at their own address and are "
                       f"not in the sitemap, e.g. {', '.join(unlisted[:3])}")
+    if contrary:
+        errors.append(f"{len(contrary):,} page(s) in the sitemap ask not to be indexed, e.g. "
+                      f"{', '.join(contrary[:3])} - list a page or mark it noindex, not both")
     if stale:
         warnings.append(f"{len(stale):,} page(s) left from an earlier build are in {site} and not "
                         f"in the sitemap, e.g. {', '.join(stale[:3])} - no builder wrote them this "

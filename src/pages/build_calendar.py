@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-18.35
+# GRANITE_VERSION: 2026-09-18.36
 """
 The General Court's week, one page per week.
 
@@ -73,8 +73,10 @@ is a fetch_*_db.py run, which is the person's to start -- so the build says
 on every run which copy it read. The page said so too until the person asked
 on 25 September for that explanation to come off it.
 
-ONE ADDRESS (25 September 2026). Every week keeps its own page, which is what
-the sitemap lists and a canonical link names; moving about the calendar with
+ONE ADDRESS (25 September 2026). Every week keeps its own page, which a
+canonical link names; since 17 October 2026 only /calendar is in the sitemap
+and each week's page asks search engines not to index it (WEEK_ROBOTS);
+moving about the calendar with
 the script keeps the reader on /calendar, with the week, the day, the view
 and the filters in the query -- /calendar?week=2026-W28 -- so a reload or a
 link sent opens what was on the screen. WEEK_JS says how.
@@ -2494,6 +2496,16 @@ def week_labels(site, today=None):
     return {k: week_facts(k, weeks, today)["label"] for k in weeks}
 
 
+# ONE CALENDAR PAGE FOR SEARCH ENGINES (17 October 2026, the person's
+# decision). The person wants one link to the calendar, /calendar, which opens
+# on the current week, to be the page search engines list, rather than a
+# page for every week. So no week is in the sitemap, and every week's own
+# page, the current week's dated copy included, carries this: not indexed,
+# its links still followed, so the bills and sittings a week links are found
+# through it. /calendar itself carries nothing and is listed.
+WEEK_ROBOTS = '<meta name="robots" content="noindex,follow">'
+
+
 def week_page(site, base, key, weeks, order, at, titles, years, code, urls,
               today, sessions=frozenset(), study=False, docs=None, picker=""):
     """Write one week's page. `study` is whether the calendar holds the study
@@ -2594,19 +2606,18 @@ def week_page(site, base, key, weeks, order, at, titles, years, code, urls,
                                         base, S.canon(path)))
         html = html.replace('<div id="results"></div>', block, 1)
         assert '<div class="wkpage calapp"' in html, f"{f}: the template has no results slot"
+        if f != "/calendar.html":
+            html = html.replace('<link rel="canonical"', WEEK_ROBOTS + '\n<link rel="canonical"', 1)
+            assert WEEK_ROBOTS in html, f"{f}: the page has no canonical link to put WEEK_ROBOTS beside"
         out = site / f.lstrip("/")
         out.parent.mkdir(parents=True, exist_ok=True)
         out.write_text(S.clean_links(html), encoding="utf-8")
-    # A WEEK WITH NO MEETING AT ALL STAYS OUT OF THE SITEMAP UNTIL IT HAS ONE
-    # (the sitemap audit, 16 October 2026). Its page is written as it always
-    # was, and the weeks either side still link it, but a page saying only
-    # "No meetings are scheduled yet for this week" is not one to ask a
-    # search engine to index; the run that finds a meeting in it lists it,
-    # and sitemap_merge takes it out again if every meeting goes. A cancelled
-    # meeting is still a card on the page, so a week of cancellations stays
-    # listed. The current week is /calendar, the tab, and is listed whatever
-    # it holds.
-    if meets or path == "/calendar.html":
+    # ONLY /calendar GOES IN THE SITEMAP (17 October 2026, WEEK_ROBOTS says
+    # why). This replaced the rule of 16 October that left out a week with no
+    # meeting until it had one: with no week listed, that rule has nothing to
+    # decide. sitemap_merge takes out every week address an earlier build put
+    # there.
+    if path == "/calendar.html":
         urls.append(base + S.canon(path))
     return n
 
@@ -2880,17 +2891,14 @@ def main():
           "the same ones the week pages draw), and committees.json for the picker")
 
     # Every week is rebuilt on every run, so a calendar address in the sitemap
-    # that this run did not list -- the current week's dated copy, a week
-    # that no longer has a proceeding, a week with no meeting at all
-    # (week_page) -- is taken out, not left beside the rest.
+    # that this run did not list -- any week's own page, since 17 October
+    # 2026 (WEEK_ROBOTS) -- is taken out, not left beside the rest.
     added, dropped = S.sitemap_merge(site, base, urls, "/calendar")
     if added or dropped:
         print(f"  sitemap.xml: {added} added, {dropped} no longer written taken out")
-    listed = set(urls)
-    unlisted = [k for k in order if href_for(k, today) != "/calendar.html"
-                and base + S.canon(href_for(k, today)) not in listed]
-    print(f"  {len(unlisted)} week(s) with no meeting at all left out of the sitemap "
-          "until one is set" + (": " + ", ".join(unlisted[:8]) if unlisted else ""))
+    # Every week has a dated page, the current one's being its copy.
+    print(f"  /calendar in the sitemap; {len(order)} week pages written noindex,follow "
+          "and left out of it")
 
     print(f"  {len(order)} weeks -> calendar.html and calendar/ "
           f"({total:,} sittings; {here} is this week; {empty} weeks with "

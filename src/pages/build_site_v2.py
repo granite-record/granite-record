@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.217
+# GRANITE_VERSION: 2026-09-05.218
 """
 Generate the faceted site from real General Court data.
 
@@ -2454,6 +2454,15 @@ def station_for_proceeding(p, bid, segs, marks, claimed=None):
         # way "archived" is absent on a current bill: every key is paid for
         # 33,683 times.
         **({"candidate_ids": cands} if shown == "candidates" else {}),
+        # NOT NAMED ON THE RECORDING (17 October 2026, the wording the person
+        # approved). Where the recording's captions never name the bill, by
+        # number or by title, no pattern can mark a moment in it, and the
+        # page said the matching "is not done". segment_markers lists such
+        # bills under _not_named; the page now says the recording does not
+        # name the bill. Only on a sitting drawn with no start, and absent
+        # elsewhere, as candidate_ids is.
+        **({"not_named": True} if shown == "approximate" and bid in (
+            (marks.get("_not_named") or {}).get(p.get("video_id") or "") or []) else {}),
         # The aligner sets a tolerance per segment from how much
         # evidence it had -- 3 minutes with many bill mentions, 30 with
         # a short span and few. Dropping it here made every hearing on
