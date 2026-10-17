@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.21
+# GRANITE_VERSION: 2026-09-05.22
 """
 The phrasings the marker patterns must match, and the ones they must not.
 
@@ -420,6 +420,13 @@ def run():
         "Solid Waste and we have a disproportionate amount of out of state waste".split())]
     if S.find_markers(w6, list(t6), t6):
         fails.append("a witness's 'start my testimony' was placed by the bill's title")
+    # Nor where "you" start it (r9q9bnsslqs 0:30:14, spoken; after review).
+    t6b = {"SB314": "relative to pre-trial competency evaluations."}
+    w6b = [(i * 0.4, x) for i, x in enumerate(
+        "might think when you start hearing the word competency evaluations it's very "
+        "common for people to think you're talking about serious crimes".split())]
+    if S.find_markers(w6b, list(t6b), t6b):
+        fails.append("a witness's 'when you start hearing' was placed by the bill's title")
     t7 = {"HB1819": "relative to review of education freedom account service providers."}
     w7 = ([(15014.0 + i * 0.4, x) for i, x in enumerate(
         "And we will start up again with another hearing at 2:15. >> [laughter]".split())]

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.55
+# GRANITE_VERSION: 2026-09-05.56
 """
 Segment a recording on what the chair says, not on where bill numbers cluster.
 
@@ -600,6 +600,11 @@ TITLED = (OPEN_RE, CONF_OPEN_RE, FLOOR_OPEN_RE)
 # 7:48:15) reaches the title 35 seconds on, and ExENFHFMqiU's captions jump 36
 # seconds inside HB 1184's.
 OWN_TESTIMONY = re.compile(r"\b(?:my|our|your|his|her|their)\s+testimony\b", re.I)
+# Nor where "you" are the one starting: a witness's "when you start hearing
+# the word competency evaluations" (r9q9bnsslqs 0:30:14), whose words are
+# SB 314's title, is not a chair opening a hearing. (After review.)
+YOU_BEFORE = re.compile(r"\byou(?:'?ll|'?re)?\s+(?:(?:will|can|could|would|to|might|may)\s+)?$",
+                        re.I)
 TITLE_WITHIN = 30
 
 BILL_SPOKEN = re.compile(
@@ -871,7 +876,8 @@ def find_markers(words, candidates, titles, span=28, floor=False):
             # the hearing on Y" names two bills and the second belongs to the
             # opening.
             after = text[m.end():m.end() + 220]
-            titled = rx in TITLED and not OWN_TESTIMONY.search(m.group(0))
+            titled = (rx in TITLED and not OWN_TESTIMONY.search(m.group(0))
+                      and not YOU_BEFORE.search(text[max(0, m.start() - 25):m.start()]))
             got = bill_at(after, candidates, titles if titled else {})
             if not got:
                 continue
