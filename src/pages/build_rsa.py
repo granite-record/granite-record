@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-11.13
+# GRANITE_VERSION: 2026-10-11.14
 """
 The statutes (RSA) as pages: /laws, and one page a chapter at /laws/<chapter>.
 
@@ -479,8 +479,7 @@ def chapter_page(tmpl, table, data, bills, ch, base):
                nav_current="laws.html", cite=False,
                jsonld=LD.statute_chapter(ch, name, base, S.canon(path), official,
                                          bool(info.get("repealed"))))
-    lead = (f"The text as the General Court's table holds it, "
-            f"{as_of(latest)}. "
+    lead = (f"The text as the General Court's table holds it. {as_of(latest)} "
             f'<a href="{E(official)}" rel="noopener">The official text on gc.nh.gov</a>.')
     tl, tn = title_label(info["title_no"], info["title"])
     crumb = f"{tl}: {tn}" if tn else tl
@@ -778,9 +777,18 @@ def taken_on(db):
 
 
 def as_of(latest):
-    """The lead's clause on how current the text is."""
-    taken = f", taken from the General Court's database on {E(TABLE_TAKEN)}" if TABLE_TAKEN else ""
-    return f"through the laws of {E(str(latest))}{taken}"
+    """The lead's sentences on how current the text is.
+
+    IN THE PERSON'S WORDS (approved 17 October 2026): "Includes changes
+    through 2025; 2026 laws not yet included." It said the table held the
+    text "through the laws of 2025", which left a reader to work out that a
+    law of 2026 was not in it."""
+    taken = (f" Taken from the General Court's database on {E(TABLE_TAKEN)}."
+             if TABLE_TAKEN else "")
+    y = str(latest or "")
+    if not y.isdigit():
+        return taken.strip()
+    return f"Includes changes through {E(y)}; {int(y) + 1} laws not yet included.{taken}"
 
 
 def landing_page(tmpl, table, data, base, topics, pending):
@@ -804,8 +812,8 @@ def landing_page(tmpl, table, data, base, topics, pending):
                sr_title="", nav_current="laws.html", cite=False)
     latest = data.get("asof", {}).get("laws_through") or ""
     head = (f'<header class="l-head"><h1>{E(title)}</h1><p class="l-lead">The Revised Statutes '
-            f'Annotated (RSA), chapter by chapter, as the General Court\'s table holds them {as_of(latest)}: '
-            'each section with the bills that changed it and the bills now proposing to.</p>'
+            'Annotated (RSA), chapter by chapter, as the General Court\'s table holds them: '
+            f'each section with the bills that changed it and the bills that would. {as_of(latest)}</p>'
             + S.cite_block(path, title, base, S.BUILT) + "</header>")
     groups = collections.OrderedDict()
     for ch in sorted(table.chapters, key=rsa.chap_key):

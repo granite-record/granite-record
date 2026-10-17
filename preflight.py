@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.601
+# GRANITE_VERSION: 2026-09-04.602
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -3219,8 +3219,8 @@ def _nongermane_hearing_told(N, B):
     change)."""
     want = {
         "HB519": ("2025-02-11", "The committee held a public hearing on February 11, 2025 on a "
-                  "proposed non-germane amendment (2025-0102h), with online testimony at 13 signed "
-                  "in support, 2 in opposition and 1 neutral."),
+                  "proposed non-germane amendment (2025-0102h), with 16 people signed in online: 13 "
+                  "in support, 2 in opposition and 1 as neutral."),
         "HB1300": ("2026-01-20", "The committee held a public hearing on January 20, 2026 on a "
                    "proposed non-germane amendment (2026-0093h)."),
         "SB425": ("2026-02-18", "The committee held a public hearing on February 18, 2026 on a "
@@ -3253,7 +3253,7 @@ def _nongermane_hearing_told(N, B):
                 bad.append(f"{bill} of {term} does not tell {s!r} once: {told!r}")
             if not ng or {e["date"] for e in ng} != {day}:
                 bad.append(f"{bill} of {term}'s non-germane hearing rows: {ng!r}")
-            if bill == "HB1300" and ("January 20, 2026, with online testimony at 4 signed in "
+            if bill == "HB1300" and ("January 20, 2026, with 9 people signed in online: 4 in "
                                      "support and 5 in opposition.") not in told:
                 bad.append(f"HB1300 of 2026's own hearing lost the day's sign-ins: {told!r}")
             if bill == "HB292" and [st["label"] for st in rec["stages"]] != [
@@ -3663,14 +3663,14 @@ _SENT_ON_HEADS = {
     # Commerce's straight after the sentence that sent the bill to Finance.
     ("HB1076", "2023-2024"): (["Senate Committee (Commerce)", "On the Senate Floor",
                                "Senate Committee (Finance)"],
-                              ["held a public hearing on April 16, 2024. The committee recommended "
-                               "that the Senate pass it unanimously, 4–0."], []),
+                              ["held a public hearing on April 16, 2024. The committee voted "
+                               "unanimously, 4–0, to recommend that the Senate pass it."], []),
     # And so is the amendment that report carried, adopted on the 15th, after
     # the report that carried it.
     ("HB1380", "2023-2024"): (["Senate Committee (Commerce)", "On the Senate Floor",
                                "Senate Committee (Finance)"],
-                              ["(amendment 2024-1826s) unanimously, 4–0. The committee's amendment "
-                               "(2024-1826s) was adopted"], []),
+                              ["to recommend that the Senate pass it with changes (amendment "
+                               "2024-1826s). The committee's amendment (2024-1826s) was adopted"], []),
     # "PASSED AND REF TO FIN DIV": no name the record lets this give, until
     # the hearing's row says Capital Budget. The sentence keeps the clerk's
     # "Fin" until the person names the 1993 Senate's finance divisions.
@@ -4592,14 +4592,16 @@ _REFERRAL_UNMADE_HEADS = {
     # the floor that adopted it (narrative.amendment_after_report).
     ("HB658", "2025-2026"): (["Senate Committee (Ways and Means)", "On the Senate Floor",
                               "Senate Committee (Finance)"],
-                             ["(amendment 2025-1642s) unanimously, 5–0, and the report was placed on the "
-                              "consent calendar. The committee's amendment (2025-1642s) was adopted"], []),
+                             ["voted unanimously, 5–0, to recommend that the Senate pass it with changes "
+                              "(amendment 2025-1642s), and the report was placed on the consent calendar. The "
+                              "committee's amendment (2025-1642s) was adopted"], []),
     # HHS's report, dated the calendar's 16 May and entered on the 6th, before
     # the vote on the amendment it carried.
     ("HB1568", "2023-2024"): (["Senate Committee (Health and Human Services)", "On the Senate Floor",
                                "Senate Committee (Finance)"],
-                              ["(amendment 2024-1727s) unanimously, 5–0, and the report was placed on the "
-                               "consent calendar. The committee's amendment (2024-1727s) was adopted"],
+                              ["voted unanimously, 5–0, to recommend that the Senate pass it with changes "
+                               "(amendment 2024-1727s), and the report was placed on the consent calendar. The "
+                               "committee's amendment (2024-1727s) was adopted"],
                               []),
     # Sent on to Finance by suspending the rules, on a row of its own: after
     # the passage (SB 173), before it (HB 650), the day before (HB 1633), and
@@ -5145,7 +5147,7 @@ def _lower_case_chamber(N):
                        f"{sorted({e.get('body') for e in n['events']})}")
     text = " ".join(s["text"] for s in _told_from_rows(
         N, "1999-2000", "HB120", _DOCKET_LOWER_CHAMBER[("HB120", "1999-2000")])["stages"])
-    if "recommended that the House kill it" not in text:
+    if "that the House kill it" not in text:
         bad.append(f"HB 120 of 1999's report is told: {text!r}")
     assert not bad, "\n".join(bad)
     return "ok", ("HB 120's and SB 182's lower-case rows of 1999 are the House's and the "
@@ -8193,8 +8195,11 @@ def _between_chambers(build_site_v2):
                  "MA", "Ought to Pass with Amendment"),
              _ev("S", "Sen. Ward Moved Nonconcur with the House Amendment, MA, VV; 02/05/2026",
                  "floor", "MA"))
+    d = B.bill_disposition({}, "SB34", st, n, [], "2025-2026", "2025-2026")
+    want("One chamber did not concur", d.status, "SB34 2026, in session")
+    # And once the session is over, that is how it died (17 October 2026).
     d = B.bill_disposition({}, "SB34", st, n, [], "2025-2026", "2025-2026", term_over=True)
-    want("One chamber did not concur", d.status, "SB34 2026")
+    want("Died: the chambers did not agree on a version", d.status, "SB34 2026")
     # HB 549 of 1991: both chambers' fields say PASSED/ADOPTED, the Senate's
     # WITH AMENDMENT, and the House never took the amendment up -- not
     # "Passed one chamber". A House resolution the docket shows "Introduced
@@ -8215,6 +8220,14 @@ def _between_chambers(build_site_v2):
              _ev("S", "Sen. Birdsell Refused to Accede to House Request for Committee of Conference, MA, VV; 05/12/2022", "floor", "MA"))
     want(("active", "One chamber did not concur; a committee of conference was asked for"),
          B.between_chambers(n, "In a committee of conference"), "HB1432 2022")
+    # And its term over, that refusal is how it died, as HB 191 of 2026's
+    # was (the language sweep of 17 October 2026): not a conference pending.
+    d = B.bill_disposition({}, "HB1432", {"gen_status": "HOUSE",
+                                          "house_status": "CONFERENCE COMMITTEE",
+                                          "senate_status": "CONFERENCE COMMITTEE"},
+                           n, [], "2021-2022", "2025-2026")
+    want(("done", "Died: the chambers did not agree on a version"), (d.kind, d.status),
+         "HB1432 2022, its term over")
     # HB 589 of 2002: retained, then passed both chambers and went to conference.
     n = _nar(_ev("H", "Retained in Committee", "retained"),
              _ev("H", "Comm Am{2307}, AA VV; Passed with Am VV", "floor", "MA", "Ought to Pass with Amendment"),
@@ -8371,8 +8384,8 @@ def _ought_not_to_pass(N, B):
     assert "On June 2, 2010 the House voted to kill it on a division vote 220\u2013106." in (
         narr[("HA1", "2009-2010")]["narrative"]), narr[("HA1", "2009-2010")]["narrative"]
     is_("HA1 of 2018's history", narr[("HA1", "2017-2018")]["narrative"],
-        "The committee recommended that the House kill it unanimously, 17\u20130, and the "
-        "report was placed on the consent calendar. On March 6, 2018 the House voted to "
+        "The committee voted unanimously, 17\u20130, to recommend that the House kill it, and "
+        "the report was placed on the consent calendar. On March 6, 2018 the House voted to "
         "kill it on a voice vote.")
     for key in _DOCKET_OUGHT_NOT:
         said = narr[key]["narrative"]
@@ -8982,18 +8995,21 @@ def _tabled_is_the_last_decision(N, B):
     filed = {"gen_status": "HOUSE", "house_status": "REPORT FILED", "senate_status": ""}
     d = B.bill_disposition({}, "HB1668", filed, narr[("HB1668", "1997-1998")], [],
                            "1997-1998", "2025-2026")
-    is_("HB1668 of 1998", (d.kind, d.status), ("done", "Laid on the table"))
+    # In a term that has ended, a tabling that stood is how the bill died, and
+    # the status says so (17 October 2026: it said "Laid on the table" beside
+    # the Died chip on 52 bills of 2026 and read as still to be decided).
+    is_("HB1668 of 1998", (d.kind, d.status), ("done", "Died on the table"))
     n = _narrated(N, "1997-1998", "HB1681", _DOCKET_FAILED_PASSAGE[("HB1681", "1997-1998")])
     is_("HB1681 of 1998",
         B.bill_disposition({}, "HB1681", filed, n, [], "1997-1998", "2025-2026").status,
-        "Laid on the table")
+        "Died on the table")
     for bill in ("SB476", "SB651"):
         n = narr[(bill, "2025-2026")]
         # Moving, while the session has days left; finished with the session.
         d = B.bill_disposition({}, bill, {}, n, [], "2025-2026", "2025-2026")
         is_(f"{bill} of 2026, in session", (d.kind, d.status), ("active", "Laid on the table"))
         d = B.bill_disposition({}, bill, {}, n, [], "2025-2026", "2025-2026", term_over=True)
-        is_(f"{bill} of 2026", (d.kind, d.status), ("done", "Laid on the table"))
+        is_(f"{bill} of 2026", (d.kind, d.status), ("done", "Died on the table"))
     # A row that says how it ended is the answer, not the tabling before it.
     d = B.bill_disposition({}, "SB14", {}, narr[("SB14", "2025-2026")], [], "2025-2026",
                            "2025-2026", term_over=True)
@@ -9006,8 +9022,8 @@ def _tabled_is_the_last_decision(N, B):
                            n, [], "2011-2012", "2025-2026").status, "Failed to pass")
     assert not bad, "; ".join(bad)
     return "ok", ("HB 1668 and HB 1681 of 1998 and SB 476 and SB 651 of 2026 read Laid on the "
-                  "table from their dockets; a later row that ends the bill, and a tabling "
-                  "undone, are not that")
+                  "table from their dockets, and Died on the table once their term is over; a "
+                  "later row that ends the bill, and a tabling undone, are not that")
 
 
 # THE CHIP, ENDING BY ENDING (the person, 5 October 2026): "Became Law, Died,
@@ -9040,6 +9056,7 @@ _CHIP_FINISHED = {
         "Killed", "Died on the table", "Died when the session ended", "Failed to pass",
         "Indefinitely postponed", "Refused introduction",
         "Died when the conference report was rejected", "Died: conferees could not agree",
+        "Died: the chambers did not agree on a version",
         "Laid on the table", *_CHIP_STAGES)},
              **{s: "Withdrawn" for s in ("Withdrawn", "Withdrawn prior to introduction")},
              **{s: s for s in _CHIP_OWN}},
@@ -9164,7 +9181,8 @@ def _chip_words(N, B):
             + [res for _p, res in B.DISPOSED]
             + [("done", lab) for _n, lab in B.STAGE_STATED]
             + [("done", B.CONF_REJECTED), ("done", B.CONF_UNABLE), ("done", B.WITHDRAWN_PRIOR),
-               ("done", B.NOT_INTRODUCED), ("done", B.PROPOSED_ONLY)])
+               ("done", B.NOT_INTRODUCED), ("done", B.PROPOSED_ONLY)]
+            + [("done", lab) for lab in B.ENDED_AS.values()])
     missing = sorted({lab for k, lab in said if lab not in _CHIP_FINISHED.get(k, {})})
     if missing:
         bad.append(f"endings the status can carry that the chip table does not: {missing}")
@@ -9203,7 +9221,7 @@ def _chip_words(N, B):
             ("SB476 of 2026, in session", chip("SB476", {}, n476, "2025-2026"),
              ("Laid on the table", "Tabled")),
             ("SB476 of 2026, session over", chip("SB476", {}, n476, "2025-2026", True),
-             ("Laid on the table", "Died")),
+             ("Died on the table", "Died")),
             ("SB14 of 2025, session over", chip("SB14", {}, narr[("SB14", "2025-2026")],
                                                 "2025-2026", True),
              ("Died on the table", "Died")),
@@ -9322,17 +9340,21 @@ def _died_on_the_table_row(N, B):
         "2025|0228|11/20/2025 12:00:00 AM|SB14|S|(SENATE CLERK'S NOTE: The roll call vote below "
         "on SB 14 was inadvertently entered in the Daily Journal and has been corrected in the "
         "Senate Permanent Journal)|11/20/2025 12:00:00 AM"])
+    # `between` says the docket's closing row decided it: since 17 October
+    # 2026 a tabling in an ended term reads "Died on the table" either way
+    # (ENDED_AS), so the word alone no longer shows which row was read.
     d = B.bill_disposition({}, "SB14", {"senate_status": "LAID ON TABLE"}, n, [], "2025-2026",
                            "2025-2026", term_over=True)
-    is_("SB14 of 2025 with a clerk's note after its closing row", (d.kind, d.status),
-        ("done", "Died on the table"))
-    # No closing row: the record's word stands.
+    is_("SB14 of 2025 with a clerk's note after its closing row", (d.kind, d.status, d.between),
+        ("done", "Died on the table", True))
+    # No closing row: the record's word stands while the term sits, and is
+    # how the bill died once it has ended.
     d = B.bill_disposition({}, "SB476", {"gen_status": "SENATE", "senate_status": "LAID ON TABLE"},
                            narr[("SB476", "2015-2016")], [], "2015-2016", "2025-2026")
-    is_("SB476 of 2016", (d.kind, d.status), ("done", "Laid on the table"))
+    is_("SB476 of 2016", (d.kind, d.status, d.between), ("done", "Died on the table", False))
     assert not bad, "; ".join(bad)
     return "ok", ("HB 112 and HCR 3 of 2015 died on the table by the House's own row, SB 14 of "
-                  "2025 by Senate Rule 3-23; SB 476 of 2016, with no such row, is laid on it")
+                  "2025 by Senate Rule 3-23; SB 476 of 2016, with no such row, by its term's end")
 
 
 # Real rows: Docket.txt lines 22638 and 23632 (HB 1768) and 23373, 23536-23537,
@@ -9386,7 +9408,9 @@ def _nonconcurrence_under_session_ended(N, B):
         {}, "HB1768", {"gen_status": "HOUSE", "house_status": "DIED, SESSION ENDED",
                        "senate_status": "PASSED/ADOPTED WITH AMENDMENT"},
         narr["HB1768"], [], "2025-2026", "2025-2026", term_over=True)
-    assert (d.kind, d.status, d.between) == ("done", "One chamber did not concur", True), (
+    # In words of how it died, the session being over (17 October 2026).
+    assert (d.kind, d.status, d.between) == (
+        "done", "Died: the chambers did not agree on a version", True), (
         d.kind, d.status, d.between)
     assert B.between_chambers(narr["HB1768"], "Died when the session ended") == (
         "active", "One chamber did not concur")
@@ -9397,7 +9421,8 @@ def _nonconcurrence_under_session_ended(N, B):
         {}, "HB1709", {"gen_status": "SENATE", "house_status": "DIED, SESSION ENDED",
                        "senate_status": "LAID ON TABLE"},
         narr["HB1709"], [], "2025-2026", "2025-2026", term_over=True)
-    assert not d.status.startswith("One chamber did not concur"), d.status
+    assert not (d.status.startswith("One chamber did not concur")
+                or d.status == "Died: the chambers did not agree on a version"), d.status
     # HB 1685 of 2026: the refusal to concur reads as a bare one -- its row
     # does not say a conference was asked for -- and no chamber voted on a
     # report, so only the docket's rows about a conference say this bill did
@@ -9412,7 +9437,7 @@ def _nonconcurrence_under_session_ended(N, B):
     assert got is None, f"HB1685 of 2026, whose conference the Senate refused, read {got}"
     # And nothing else under that label moves: a kill is a kill.
     assert B.between_chambers(narr["HB1768"], "Killed") is None
-    return "ok", ("HB 1768 of 2026 reads One chamber did not concur over the House's DIED, "
+    return "ok", ("HB 1768 of 2026 reads that the chambers did not agree over the House's DIED, "
                   "SESSION ENDED; HB 1709, which reached a conference, is not read so")
 
 
@@ -9679,12 +9704,13 @@ def _database_fills_a_blank_status(N, B):
     st = {"gen_status": "HOUSE", "house_status": None,
           "senate_status": "PASSED/ADOPTED WITH AMENDMENT"}
     d = read("HB1768", st, {**st, "house_status": "DIED, SESSION ENDED"})
+    # Each in the words of how it died, the session being over (ENDED_AS).
     is_("HB1768's rows under HB292's fields", (d.status, d.source),
-        ("One chamber did not concur", ""))
+        ("Died: the chambers did not agree on a version", ""))
     # Outranked by a page field that already answers.
     st = {"gen_status": "SENATE", "house_status": None, "senate_status": "LAID ON TABLE"}
     d = read("HB1709", st, {**st, "house_status": "DIED, SESSION ENDED"})
-    is_("HB1709 of 2026", (d.status, d.source), ("Laid on the table", ""))
+    is_("HB1709 of 2026", (d.status, d.source), ("Died on the table", ""))
     # MADE FOR THE GUARD: no row of the dump says this. HCR 1's own rows, with
     # a database code that its journey contradicts -- the House adopted it.
     d = read("HCR1", blank, {**blank, "house_status": "IN COMMITTEE"})
@@ -9863,8 +9889,10 @@ def _finished_term_is_finished(N, B):
              "In committee"),
             ("PET10", "2011-2012", {"gen_status": "HOUSE", "house_status": "REPORT FILED"},
              "Committee report filed"),
+            # Left at its last word, said as how it died (17 October 2026):
+            # a conference that never reported is chambers that never agreed.
             ("HB146", "1991-1992", {**conf, "gen_status": "SENATE"},
-             "In a committee of conference"),
+             "Died: the chambers did not agree on a version"),
             ("HB258", "1991-1992", {"gen_status": "SENATE", "house_status": "PASSED/ADOPTED",
                                     "senate_status": "IN COMMITTEE"}, "Passed one chamber"),
             ("HCR8", "2019-2020", {"gen_status": "HOUSE", "house_status": "PASSED/ADOPTED"},
@@ -10765,7 +10793,7 @@ def _rail_against_the_record(N, B):
             if len(noted) != 1 or noted[0]["body"] != "H" or "under the Senate" not in noted[0]["row_note"]:
                 bad.append(f"{key[1]}: the row filed under S is not told as the House's, with a note")
     n, _s, _r = told(("1991-1992", "HB1371"))
-    if "recommended that the House kill it" not in n["narrative"]:
+    if "that the House kill it" not in n["narrative"]:
         bad.append("HB1371's report is told: " + n["narrative"])
     # The Senate's one row on HB 2002 stays the Senate's.
     n, _s, _r = told(("2001-2002", "HB2002"))
@@ -12966,10 +12994,12 @@ def _conferees_never_signed(N, build_site_v2):
              "the bill died in the committee")):
         # What the label was without the docket's word: the check is about
         # these classes, so a fixture that stopped reaching them fails too.
+        # Asked as of its own term sitting: once a term has ended, the two
+        # conference stages read as how the bill died (ENDED_AS, 17 October
+        # 2026), and the classes would no longer be told apart.
         without = [e for e in n["events"]
                    if not re.search(r"not signed|not filed|died in comm", e["raw"], re.I)]
-        d = B.bill_disposition({}, bid, st, _nar(*without), [], term, "2025-2026",
-                               term_over=True)
+        d = B.bill_disposition({}, bid, st, _nar(*without), [], term, term)
         if d.status != was:
             bad.append(f"{bid} of {term} no longer starts from {was!r} ({d.status!r})")
         d = B.bill_disposition({}, bid, st, n, [], term, "2025-2026", term_over=True)
@@ -13747,6 +13777,103 @@ def _rollcall_outcomes(rollcall_outcomes):
                       "from the docket, the Journal, the count or the rule")
     finally:
         shutil.rmtree(d, ignore_errors=True)
+
+
+@check("rollcalls", "a division is marked against what a roll call on the same question "
+       "needs: three fifths of the members in office for a CACR, two thirds where the "
+       "docket says so", needs=("rollcall_outcomes", "build_site_v2"))
+def _division_thresholds(RO, B):
+    """The language sweep of 17 October 2026: CACR 13's House chart said "171
+    needed", a majority of the 340 voting, where the docket says "MA DV 325-15
+    By Necessary Three-Fifths Vote" and three fifths of the 394 members in
+    office that day was 237. Bill pages took a threshold from the roll-call
+    file only, and a division is not in it, so every division was marked at a
+    majority -- 174 of them, 1989-2026, needed more.
+
+    This fails if a division goes back to a majority mark, if three fifths is
+    taken of those voting rather than of the members in office, if a fraction
+    named for another count on the same docket line is borrowed, or if a
+    CACR's division with no count of members in office is given a number."""
+    cacr13 = "Ought to Pass: MA DV 325-15 By Necessary Three-Fifths Vote 02/05/2026"
+    got = RO.division_threshold("CACR13", "Ought to Pass", cacr13, 325, 15, 394, True)
+    assert (got.get("threshold_needed"), got.get("threshold_rule")) == (
+        237, "three fifths of the 394 members in office"), got
+    # No roll call that day, so no count of the members in office: no number.
+    got = RO.division_threshold("CACR25", "Third Reading", "3RD READING MA DIV(280-17); HJ27,P859",
+                                280, 17, None, True)
+    assert got.get("threshold_unknown") and not got.get("threshold_needed"), got
+    # Two thirds is of those voting, and a suspension needs it unnamed.
+    got = RO.division_threshold(
+        "HB1426", "Susp Rules for New Conf Comm",
+        "Rep Welch Susp Rules for New Conf Comm, MA 2/3DIV(258-58); House Acceded", 258, 58,
+        390, True)
+    assert got.get("threshold_needed") == 211, got
+    # A majority question keeps the majority mark.
+    assert RO.division_threshold("HB1", "Ought to Pass", "Ought to Pass: MA DV 200-150", 200,
+                                 150, 390, True) == {}
+    # A fraction named for the next count on the line is not this one's.
+    got = RO.division_threshold(
+        "CACR9", "Adopt Committee Amendment",
+        "Amendment #2128h: AA DIV 200-100; Ought to Pass: MF DIV 201-150 Lacking Necessary "
+        "Three-Fifths", 200, 100, 390, True)
+    assert got == {}, got
+    # THE REVIEW OF 17 OCTOBER 2026. A CACR's passage is three fifths of the
+    # members in office whatever fraction the docket line names (2025's CACR
+    # 8, "Lacking Necessary Two-Thirds Vote"; HJ 14: "3/5ths").
+    got = RO.division_threshold(
+        "CACR8", "Ought to Pass",
+        "Ought to Pass: MF DV 203-158 Lacking Necessary Two-Thirds Vote 05/08/2025", 203, 158,
+        398, False)
+    assert (got.get("threshold_needed"), got.get("threshold_rule")) == (
+        239, "three fifths of the 398 members in office"), got
+    # The 1989-1998 dockets' bare "ADOPTED" of a CACR's report is its passage.
+    got = RO.division_threshold("CACR25", "Adopt", "ADOPTED DIV(278-67); HJ27,P834", 278, 67,
+                                None, True)
+    assert got.get("threshold_unknown"), got
+    # A fraction the docket names over a suspension's two thirds.
+    got = RO.division_threshold(
+        "CACR2", "Susp Rules for 3rd reading",
+        "Rep Chandler Susp Rules for 3rd reading, MA by nec 3/5 DIV(286-43); HJ35", 286, 43,
+        398, True)
+    assert got.get("threshold_needed") == 239, got
+    # The Journal's sentence, where the docket line names no fraction.
+    d = Path(tempfile.mkdtemp())
+    try:
+        (d / "journals" / "2000").mkdir(parents=True)
+        (d / "journals" / "2000" / "HJ012.txt").write_text(
+            "Rep. Mock moved that CACR 2 be removed from the table.\n\nOn a division vote, 251 "
+            "members having voted in the affirmative and 87 in the negative, the motion\nwas "
+            "adopted by the necessary three-fifths.\n", encoding="utf-8")
+        said = RO.journal_division_words(d, "H", "2000-04-13", 251, 87)
+    finally:
+        shutil.rmtree(d, ignore_errors=True)
+    assert "three-fifths" in said, said
+    got = RO.division_threshold("CACR2", "Taken from the Table",
+                                "Taken from the Table, Rep Mock MA DIV(251-87)", 251, 87, 398,
+                                True, said)
+    assert got.get("threshold_needed") == 239, got
+    # Three fifths named of a question that is not a CACR: of those voting.
+    got = RO.division_threshold(
+        "HB1414", "Special Order HB1414",
+        "Special Order HB1414 (Rep. Huot): MA DV 236-137 By Necessary 3/5 03/21/2024", 236, 137,
+        390, True)
+    assert (got.get("threshold_needed"), got.get("threshold_rule")) == (
+        224, "three fifths of the 373 members voting"), got
+    rolls = {"2025-2026": {"_procedural": [
+        {"body": "H", "date": "2026-02-05", "seated": 394},
+        {"body": "H", "date": "2026-02-05", "seated": 394},
+        {"body": "H", "date": "2026-02-05", "seated": 39}]}}
+    office = RO.members_in_office(rolls)
+    assert office == {("H", "2026-02-05"): 394}, office
+    rec = {"events": [{"date": "2026-02-05", "type": "floor", "body": "H", "raw": cacr13,
+                       "action": "Ought to Pass", "motion": "MA", "vote_kind": "DV",
+                       "yeas": "325", "nays": "15", "cancelled": False}]}
+    cards = [v for v in B.bill_rollcalls("CACR13", "2025-2026", [], rec, {}, [], set(), office)
+             if v.get("vote_kind") == "DV"]
+    assert cards and cards[0].get("threshold_needed") == 237 and "237" in (
+        cards[0].get("threshold_note") or ""), (
+        f"CACR 13's division on its Votes tab: {cards}")
+    return "ok", "a CACR's division is marked at 237 of 394, not 171 of 340"
 
 
 @check("data", "every roll call's outcome is the one the record gives it",
@@ -16996,6 +17123,108 @@ def _archive_text_as_shown():
         "!supportLists]> was lost, or the title was: " + repr(got[:80]))
     return "ok", ("Word's properties stay out, and a tag before punctuation "
                   "is no space while a tag between words still is")
+
+
+@check("frontend", "an archived page's text stops at the bill: the Word binary a converted "
+                   "page of 1989-1995 carries after it is not printed")
+def _archive_text_no_application_tail():
+    """The language sweep of 17 October 2026: 1995 HB 101's Bill Text ran on
+    from "This act shall take effect January 1, 1996." into "EB",
+    "?\\C:\\PROGRA~1\\MICROS~1\\Office\\wwintl32.dll" and the Legislative
+    Services machines' search path -- the binary tail of the Word file the
+    page was converted from, on 1,365 saved pages of 1989-1995. The page
+    below is the end of the real HB 101 of 1995, so this needs no data.
+
+    Fails if the tail, or the fragments of it above the first program file,
+    come back, or if the cut takes a line of the bill."""
+    at = imp("archive_text")
+    if at is None:
+        return "skip", "archive_text will not import"
+    page = (
+        '<P><FONT FACE="Courier New">I.  No person shall drive a motor vehicle while carrying '
+        'a child less than [12] <B><I>18</I></B> years of age.</FONT></P>\r\n'
+        '<P><FONT FACE="Courier New">2  Effective Date.  This act shall take effect January 1, '
+        '1996.</FONT></P>\r\n</UL><P><FONT FACE="Courier New">EB</FONT></P>\r\n'
+        '<P><FONT FACE="Courier New">?\\C:\\PROGRA~1\\MICROS~1\\Office\\wwintl32.dllE '
+        '&amp;&amp;)E</FONT> </P>\r\n<P><FONT FACE="Courier New">?\\C:\\PROGRA~1\\MICROS~1'
+        '\\Office\\MSO97.DLLll-ECAPITOL\\LSSOFTWARE\\LSNT\\CLIPPIT.ACTT;.;C:\\WINNT\\System32;'
+        '</FONT></P>\r\n<P><FONT FACE="Courier New">C:\\PROGRA~1\\MICROS~1\\O</FONT></P>')
+    got = at.flatten(page)
+    assert got.endswith("This act shall take effect January 1, 1996."), (
+        "the Word binary after the bill is printed as its text: " + repr(got[-160:]))
+    assert "less than [12] 18 years" in got, repr(got)
+    plain = "I. The act shall take effect upon its passage.\nEB\n5"
+    assert at.application_tail_off(plain) == plain, (
+        "a page with no program file named was cut: " + repr(at.application_tail_off(plain)))
+    # ONLY THE BINARY (the review of 17 October 2026): a fiscal note's table
+    # above the tail, as 1990 HB 1023's ends, and a sentence sharing its line
+    # with the binary, as 1989 SB 175's does -- and "ntdll.dllB", which a \b
+    # after "dll" missed.
+    hb1023 = ("Balance to state $40,032,000 $37,530,000\n\nDifference = $2,502,000\n\n_%__\n\n"
+              "$RNPWinword.exe68C:\\WINNT\\System32\\ntdll.dllB\ufffd7EB\n\n"
+              "?\\C:\\PROGRA~1\\MICROS~1\\Office\\wwintl32.dll")
+    got = at.application_tail_off(hb1023)
+    assert got == "Balance to state $40,032,000 $37,530,000\n\nDifference = $2,502,000", repr(got)
+    sb175 = ("FISCAL NOTE for an act making an appropriation.\n\nFISCAL IMPACT: This bill "
+             "appropriates $50,000 for FY 1990 to the N.H. Council on the Arts, for "
+             "\\\\capitol\\viewlibrary\\prior session bills\\1989\\senate\\SB")
+    got = at.application_tail_off(sb175)
+    assert got.endswith("to the N.H. Council on the Arts, for") and "viewlibrary" not in got, repr(got)
+    nt = "2 Effective Date. This act shall take effect January 1, 1991.\n\nk66\n\nntdll.dllB\ufffdxEB"
+    assert at.application_tail_off(nt).endswith("January 1, 1991."), repr(at.application_tail_off(nt))
+    return "ok", ("1995 HB 101 ends at its effective date, a fiscal note's table and a sentence "
+                  "beside the binary are kept, and a page with no tail is untouched")
+
+
+@check("data", "on every saved page of 1989-1999 carrying a Word file's tail, the cut takes the "
+       "binary and never a line of text: a run of four words, a sum of money, FISCAL")
+def _archive_text_tail_on_disk():
+    """The review of 17 October 2026: the first cut of the Word binary
+    (archive_text.application_tail_off) deleted real fiscal-note text on 19
+    pages -- tables, and sentences sharing a line with the binary -- and
+    left it on 34 that wrote "ntdll.dllB". Over every saved page that names a
+    program file: each line of text, or the text before the binary starts
+    in its line, is still there, and no program file is left. Fails if the
+    cut is undone either way."""
+    at = imp("archive_text")
+    FL = imp("fetch_legislation")
+    root = Path("legislation")
+    if at is None or FL is None:
+        return "skip", "archive_text or fetch_legislation will not import"
+    years = sorted(p for p in root.glob("19[89]?") if p.is_dir()) if root.is_dir() else []
+    if not years:
+        return "skip", "no legislation/ of 1989-1999 here"
+    raw = re.compile(rb"PROGRA~|WINNT|\.dll|\.exe|MSO97|CLIPPIT|CAPITOL|viewlibrary", re.I)
+    texty = re.compile(r"\$\s?\d[\d,]*(?:\.\d+)?(?=[\s,.;:)]|$)|FISCAL|"
+                       r"[A-Za-z]+(?:[ ,;:]+[A-Za-z]+){3}")
+    cut, pages, lost, left = at.application_tail_off, 0, [], []
+    try:
+        for y in years:
+            for f in sorted(y.glob("*.html")):
+                b = f.read_bytes()
+                if not raw.search(b):
+                    continue
+                html = FL.decode(b)
+                at.application_tail_off = lambda t: t
+                whole = at.flatten(html)
+                at.application_tail_off = cut
+                out = at.flatten(html)
+                if not at.APPLICATION.search(whole):
+                    continue
+                pages += 1
+                got = set(out.split("\n"))
+                for line in whole.split("\n"):
+                    m = at.BINARY_STARTS.search(line)
+                    keep = line[:m.start()].rstrip() if m else line
+                    if keep and texty.search(keep) and keep not in got:
+                        lost.append(f"{f}: {keep[:60]!r}")
+                if at.APPLICATION.search(out):
+                    left.append(str(f))
+    finally:
+        at.application_tail_off = cut
+    assert not lost, f"{len(lost)} lines of text cut with the binary: " + "; ".join(lost[:5])
+    assert not left, f"{len(left)} pages keep a program file: " + ", ".join(left[:5])
+    return "ok", f"{pages:,} pages cut to their text, no line of text lost and no program file left"
 
 
 def _printing(label, marks, lsr, number, title, analysis, sections, law=None,
@@ -23312,6 +23541,37 @@ def _ln_ev(body, raw, type_="other", date="2025-03-01", **kw):
     return dict({"body": body, "raw": raw, "type": type_, "date": date, "cancelled": False}, **kw)
 
 
+@check("frontend", "the Learn pages' term figures stay on a term with a story until the next "
+       "has one: not the newest term while most of its bills are still moving",
+       needs=("site_read", "build_civics", "learn_numbers"))
+def _learn_figures_term(SR, build_civics, learn_numbers):
+    """The language sweep of 17 October 2026: the Learn pages took the newest
+    term in the index for "The ... term filed ... bills ... were killed ...
+    were signed into law", the closest votes and each committee's record, and
+    the day the first bill of 2027 is introduced that term is a few dozen
+    bills with nothing decided. site_read.figures_term keeps them on the
+    newest term at most half of whose bills are still moving.
+
+    Fails if either page goes back to the newest term, or the rule does."""
+    old, new = "2025-2026", "2027-2028"
+    done = [{"term": old, "id": f"HB{i}", "kind": "done"} for i in range(10)]
+    early = [{"term": new, "id": f"HB{i}", "kind": "active"} for i in range(6)]
+    assert SR.figures_term(done + early) == old, SR.figures_term(done + early)
+    half = early[:3] + [dict(r, kind="law") for r in early[3:]]
+    assert SR.figures_term(done + half) == new, SR.figures_term(done + half)
+    # One term, as the fixture site is: that term, however far along.
+    assert SR.figures_term(early) == new, SR.figures_term(early)
+    # Nor a term of one bill, decided (the review of 17 October 2026).
+    one = [{"term": new, "id": "HB1", "kind": "done"}]
+    assert SR.figures_term(done + one) == old, SR.figures_term(done + one)
+    import inspect
+    for mod, fn in ((build_civics, "record_figures"), (learn_numbers, "body")):
+        src = inspect.getsource(getattr(mod, fn))
+        assert "figures_term(" in src, f"{mod.__name__}.{fn} no longer asks figures_term"
+    return "ok", ("a 2027 term of six moving bills leaves the figures on 2025-2026; half "
+                  "decided, they move to it")
+
+
 @check("frontend", "numbers: how each bill ended counts House and Senate bills by their card's word",
        needs=("learn_numbers",))
 def _numbers_outcomes(learn_numbers):
@@ -24859,7 +25119,8 @@ var fixtures = [
          // The Senate's written report is headed by its own chamber and cites
          // the Senate's calendar, not the database it was read out of.
          "Senate Judiciary",
-         '<a href="https://gc.nh.gov/sc18a.pdf" rel="noopener">SC 18A</a>',
+         // In words, as the House's "House Calendar 14" is (17 October 2026).
+         '<a href="https://gc.nh.gov/sc18a.pdf" rel="noopener">Senate Calendar 18A</a>',
          "Senator Debra Altschiller",
          "Amendment 2026-1219s.",
          "the federal rule is settled",
@@ -24923,7 +25184,7 @@ var fixtures = [
   // session, and nothing here had ever drawn one.
   {name:"empty", d:{next_step:"Introduced"},
    want:["No roll call votes on this bill",
-         "No scheduled proceedings on file",
+         "No hearing or meeting is on record for this bill",
          "No committee report on file",
          "No sponsors on file"]},
   // Amendments filed, text not read in yet. This is the only way to reach the
@@ -24977,15 +25238,15 @@ var fixtures = [
          "A notice, for a bill the House did not introduce.",
          "The docket gave notice of a meeting on this bill",
          "the status shown here is read from the House Journal instead"],
-   wantNot:["No scheduled proceedings on file",
-            "the page this site takes a bill's status from"]},
+   wantNot:["No hearing or meeting is on record for this bill",
+            "the General Court's page saying where the bill stands"]},
   // And the same documents under a status the status page did give.
   {name:"status from the status page",
    d:{next_step:"Introduced", status_source:"General Court bill status page",
       documents:[{label:"Bill status page", kind:"status",
                   url:"https://gc.nh.gov/bill_status/legacy/bs2016/Bill_status.aspx"}]},
-   want:["the page this site takes a bill's status from",
-         "No scheduled proceedings on file"],
+   want:["the General Court's page saying where the bill stands",
+         "No hearing or meeting is on record for this bill"],
    wantNot:["read from the House Journal instead"]}
 ];
 
@@ -25595,7 +25856,9 @@ def _conference_folded(build_site_v2):
     if html_ is not None:
         assert "No recording matched" not in html_, (
             "HB 485's page still says no recording matched its conference of 16 June 2025")
-        assert "Jun 16, 2025 at 9:30 AM · LOB 206-208" in html_, (
+        # The room as the Documents tab names it (the person, approved 17
+        # October 2026).
+        assert "Jun 16, 2025 at 9:30 AM · Legislative Office Building 206-208" in html_, (
             "HB 485's conference is not headed with the time and room its notice gives")
     return "ok", ("HB 485's conference of 16 June 2025 is one station, 09:30 in LOB 206-208, "
                   "playing its recording; HB 1709's is one per recording and SB 108's one; "
@@ -25932,7 +26195,7 @@ fs.writeFileSync("./out.json", JSON.stringify(out));
         f"{one.count('<h2>')} section headings and {one.count('<h3>')} "
         "speaker headings, not 3+ and 4")
     assert "<h3>" not in prose and 'class="hrpara"' in prose and \
-        "could not be read from its layout" in prose, (
+        "does not make clear who said which part" in prose, (
         "a report kept as text was drawn as speakers, or without saying why")
     assert tab.index('class="player"') < tab.index('class="hrep"'), (
         "the report is not under the hearing's recording")
@@ -26923,9 +27186,9 @@ process.stdout.write("\\n@@" + JSON.stringify(out));
     for k, where in (("docsBallot", "the count on the Votes tab"),
                      ("docsDocket", "its docket's referendum line")):
         assert f"whether the voters ratified it is read from {where}" in flat(got[k]) \
-            and "takes a bill's status from" not in got[k], (
+            and "saying where the bill stands" not in got[k], (
                 f"a CACR's status page is credited with the voters' answer: {flat(got[k])[:300]!a}")
-    assert "takes a bill's status from" in got["docsPending"], (
+    assert "saying where the bill stands" in got["docsPending"], (
         f"a CACR still to go to the voters lost its status page's line: {flat(got['docsPending'])!a}")
     return "ok", ("452,307 and 237,221 whole in the legend, 65.6% in the ring, the mark two "
                   "thirds round, Not ratified in words; 85.7% Ratified; the docket's 159,439 "
@@ -27999,21 +28262,21 @@ def _rail_endings(N, B):
                        ("S", "died", "x", "2020-09-16",
                         "Killed under Senate Rule 3-23, still on the table at adjournment")]),
             ("SB570", [("H", "study", "s", "2026-05-14", "Sent to interim study on a voice vote"),
-                       ("H", "died", "x", "2026-08-19", "Still in interim study when the House last "
-                                                        "sat; died when the session ended"),
+                       ("H", "died", "x", "2026-08-19", "In interim study: the committee studies the "
+                                                        "subject in the fall of 2026; the bill goes no further"),
                        ("H", "study_report", "f", "2026-09-28", "Interim study report: recommended "
                                                                  "for future legislation, 9–0")]),
             ("HB561", [("H", "study", "s", "2026-01-07", "Sent to interim study on a voice vote"),
-                       ("H", "died", "x", "2026-08-19", "Still in interim study when the House last "
-                                                        "sat; died when the session ended"),
+                       ("H", "died", "x", "2026-08-19", "In interim study: the committee studies the "
+                                                        "subject in the fall of 2026; the bill goes no further"),
                        ("H", "study_report", "s", "2026-09-29", "Interim study report: not "
                                                                  "recommended for future legislation, 8–2")]),
             ("HB741", [("S", "study", "s", "2026-01-07", "Sent to interim study on a voice vote"),
-                       ("S", "died", "x", "2026-08-19", "Still in interim study when the Senate last "
-                                                        "sat; died when the session ended")]),
+                       ("S", "died", "x", "2026-08-19", "In interim study: the committee studies the "
+                                                        "subject in the fall of 2026; the bill goes no further")]),
             ("HB1179", [("H", "study", "s", "1996-02-01", "Sent to interim study on a voice vote"),
-                        ("H", "died", "x", "1996-06-13", "Still in interim study when the House last "
-                                                         "sat; died when the session ended"),
+                        ("H", "died", "x", "1996-06-13", "In interim study: the committee studies the "
+                                                         "subject in the fall of 1996; the bill goes no further"),
                         ("H", "study_report", "f", "1996-10-29", "Interim study report: recommended "
                                                                   "for legislation in 1997, 17–0; filed "
                                                                   "again as HB 154 of 1997")])):
@@ -57016,7 +57279,7 @@ def _calendar_page_shape():
             f"the row of boxes is {boxes}: six, every one on but Study Committee")
         assert re.search(r'<legend class="sr">[^<]+</legend><div class="calcatrow">', t), (
             "the row of boxes has no name for a screen reader to give the group")
-        assert '<ul class="calkey" aria-label="What the colours mean">' in t, (
+        assert '<ul class="calkey" aria-label="What the colors mean">' in t, (
             "a reader without script is given no key to the colours")
         assert '<p class="calhint" id="pickhint" hidden>' in t, (
             "the committees chosen by name do not say they are still shown in the kinds ticked")
@@ -63926,8 +64189,13 @@ def _about_data_claims(build_pages, about_figures, build_site_v2):
             "a bill that carries its own text is told its text is elsewhere")
         assert "where the record starts" not in n1991 and "roll-call files" in n1991, (
             "the before-1999 note does not name the roll-call files as what begins in 1999")
-        assert "linked rather than loaded" in n1997, (
+        assert "the Documents tab links to it" in n1997, (
             "a bill with no text of its own is no longer told where its text is")
+        # Not the files' names, nor this site's own word for an old term
+        # (the language sweep of 17 October 2026).
+        for n in (n1991, n1997, n2005):
+            assert "RollCall" not in n and "archived" not in n and "fetched" not in n, (
+                f"the archived note speaks the site's own language: {n[:200]!r}")
         assert "the House committees' written reports" in n2005, (
             "a 2005 bill with no written report is no longer told the House's reports are a gap")
         return "ok", ("About and Data pages and the manifest free of the 23 September sentences; "
@@ -79177,7 +79445,7 @@ def _rail_endings_on_the_site(B):
         elif chip == "Interim Study":
             over = term != current or over_now
             said = [s for s in steps if s.get("act") == "died"
-                    and (s.get("text") or "").startswith("Still in interim study when")]
+                    and (s.get("text") or "").startswith("In interim study:")]
             n["study over" if over else "study sitting"] += 1
             if not over:
                 if said or law.get("mark") not in (None, "-"):
@@ -82052,6 +82320,133 @@ def _learn_statutes_in_force():
                   f"{len(LEARN_STATUTE_CLAIMS)} anchored claims say what their sections say")
 
 
+@check("frontend", "the language sweep's clear fixes hold: plain words for the record's "
+       "machinery, one How It Ended, US spelling in what a reader sees",
+       needs=("civics", "components"))
+def _language_sweep_words(civics, C):
+    """The language sweep of 17 October 2026 (private/LANGUAGE_SWEEP_2026-10-17.md,
+    its clear fixes): sentences that spoke the site's own machinery to a
+    reader ("Not yet fetched for this term", "RollCallHistory.txt and
+    RollCallSummary.txt", "Other -- 27 not in chart", "SC 13"), contradicted
+    the page beside them ("whatever its last recorded status says", a second
+    How It Ended, "without dividing it by party" before a party split), or
+    spelled for a British reader. Each pair below is a sentence that must be
+    gone and the one that replaced it; fails if one comes back."""
+    src = lambda p: _paths.locate(p).read_text(encoding="utf-8")   # noqa: E731
+    app = src("app.js")
+    pages = src("build_pages.py")
+    learn = " ".join(v for k, v in vars(civics).items()
+                     if isinstance(v, str) and k.isupper())
+    learn += " ".join(json.dumps(v) for k, v in vars(civics).items()
+                      if k.startswith("FLOW") and isinstance(v, list))
+    gloss = C.WORDBOOK["glossary"]
+    bad = []
+    for where, text, gone, there in (
+            ("app.js", app, "whatever its last recorded", "went no further"),
+            ("app.js", app, "not in chart</span>", "Did not vote — ${oTot}"),
+            ("app.js", app, "Everything above is this site", "The other tabs are this site"),
+            ("app.js", app, "RollCallHistory.txt\n    and RollCallSummary", "About This Record"),
+            ("app.js", app, "Not yet fetched for this term", "Not on this site yet for its term"),
+            ("app.js", app, "This term is archived", "This bill is from an earlier term"),
+            ("app.js", app, "The calendar carrying this report has not been read", "begin in 1997"),
+            ("app.js", app, '"of roll calls recorded on"', '"of roll calls taken part in"'),
+            ("app.js", app, "r.body===\"S\"?r.cite:", "docLong(r.cite)"),
+            ("app.js", app, "the page this site takes a bill's status from",
+             "saying where the bill stands"),
+            ("build_pages.py", pages, "the whole record, as lists</a>", "the directory</a> lists"),
+            ("build_pages.py", pages, "rows.length} matches on this site", "pages on this site"),
+            ("Learn", learn, "following an executive", "in an executive"),
+            ("Learn", learn, "cover several towns or wards", "laid over two or more"),
+            ("Learn", learn, "without dividing it by party", "did not split cleanly"),
+            ("Learn", learn, "<b>Sponsors</b>, and <b>Documents</b>", "<b>Documents</b> &mdash;"),
+            ("Learn", learn, "Filed as an LSR", "Legislative Service Request, or LSR"),
+            ("Learn", learn, "legislative branch is made up", "is called the <b>General Court</b>"),
+            # The person's judgment calls, approved 17 October 2026.
+            ("Learn", learn, "<h2>A Term Is Two Years</h2>\n<p>The General Court sits in two-year "
+             "terms beginning in odd years. Bill", "[[org_day]]"),
+            ("app.js", app, '?"Amends RSA chapter":', "Changes these chapters of state law (RSA)"),
+            ("app.js", app, "the times on the cards move this player",
+             "Choose a time on a card to jump the recording there."),
+            ("app.js", app, 's.venue?" · "+esc(s.venue)', "roomWords(s.venue)"),
+            ("build_pages.py", pages, "MIT Open Source Licensed", "Open source (MIT License)"),
+            ("build_pages.py", pages, "/bill/&lt;year&gt;/&lt;number&gt;", "<code>/bill/2026/hb1</code>"),
+            ("build_rsa.py", src("build_rsa.py"), "the bills now proposing to",
+             "laws not yet included."),
+            ("build_site_v2.py", src("build_site_v2.py"), '"text": f"Still in interim study when',
+             "In interim study: the committee studies the subject in the fall of"),
+            ("build_site_v2.py", src("build_site_v2.py"), "TOPIC_WORDS = {}",
+             '"CACR": "Constitutional Amendments"')):
+        if gone in text:
+            bad.append(f"{where} says {gone!r} again")
+        if there not in text:
+            bad.append(f"{where} no longer says {there!r}")
+    british = re.compile(r"\b(autumn|licen[cs]es?(?! plate)|licence|neighbour\w*|councillors?|"
+                         r"[Ee]nrolment|by-elections?|organis\w+|summaris\w+|authoris\w+|"
+                         r"itemis\w+|favour|colour\w*|misdemeanour\w*|\brota\b)\b")
+    for where, text in (("Learn", learn), ("the glossary", json.dumps(gloss))):
+        hit = sorted(set(m.group(0) for m in british.finditer(text) if m.group(0) != "license"
+                         and m.group(0) != "licenses"))
+        if hit:
+            bad.append(f"{where} spells {hit} for a British reader")
+    if "second year only" in gloss["IS"]["says"] or "kill it\"" in json.dumps(gloss["ITL"]):
+        bad.append("the glossary's IS or ITL no longer defines its term")
+    for key in ("Died", "Floterial district", "Docket", "Indefinitely postponed"):
+        if key not in gloss:
+            bad.append(f"the glossary has no entry for {key}")
+    # A how-to guide is not drawn from the General Court's record, so its
+    # citation note does not tell a reader to cite the General Court.
+    import shell as _S
+    guide = _S.cite_block("/guides/how-to-vote.html", "How to Vote | Granite Record", "")
+    bill = _S.cite_block("/bill/2026/hb1.html", "HB 1 | Granite Record", "")
+    if "cite the General Court" in guide or "cite the General Court" not in bill:
+        bad.append("a guide's citation note says to cite the General Court, or a bill's no longer does")
+    assert not bad, "; ".join(bad)
+    return "ok", "the sweep's plain words in place, its old ones gone, US spelling on Learn"
+
+
+@check("frontend", "the pages that tell CACR 13's vote read true the day after it: the county "
+       "page by the day, and Using This Site and the Data page by whether email is live",
+       needs=("build_civics", "civics", "build_exports", "officials_tabs"))
+def _ballot_words_by_the_day(BC, civics, build_exports, OT):
+    """The language sweep of 17 October 2026, out of date before 10 November:
+    county government's register of probate paragraph said CACR 13 went to
+    the voters "at the November 2026 general election" and would have said it
+    after; Using This Site said "There is no email option yet" and the Data
+    page "Following a bill takes no account and no email address", neither
+    switched by shell.follow_live() as About and the Data page's privacy are.
+    Fails if the sentence stops following the day, invents a result the file
+    does not hold, or either page stops following the switch."""
+    import datetime as _dt
+    row = {"term": "2025-2026", "bill": "CACR13", "election": "2026-11-03",
+           "yes": None, "no": None}
+    before = BC.probate_vote([row], _dt.date(2026, 11, 2))
+    assert "at the general election of November 3, 2026." in before, before
+    after = BC.probate_vote([row], _dt.date(2026, 11, 4))
+    assert ("The vote was on November 3, 2026; the Secretary of State&rsquo;s count is not on "
+            "the site yet.") in after and "ratif" not in after, after
+    fell = BC.probate_vote([dict(row, yes=500, no=400)], _dt.date(2026, 11, 20))
+    assert "did not reach the two thirds" in fell and "55.6%" in fell, fell
+    won = BC.probate_vote([dict(row, yes=700, no=300)], _dt.date(2026, 11, 20))
+    assert "ratified it: 70.0%" in won, won
+    assert BC.probate_vote([], _dt.date(2026, 11, 4)).endswith("CACR 13 (2026)</a>."), (
+        "with no ballot row the sentence claims a date or a result")
+    assert "[[probate_vote]]" in civics.BODY_COUNTY and "[[follow_email]]" in civics.BODY_SITE, (
+        "the county page or Using This Site no longer asks for its sentence")
+    assert "no email option" in civics.FOLLOW_EMAIL[False] and \
+        "no email option" not in civics.FOLLOW_EMAIL[True], civics.FOLLOW_EMAIL
+    import inspect
+    src = inspect.getsource(build_exports.feeds)
+    assert "follow_live()" in src, "the Data page's Feeds line no longer follows the switch"
+    # County Officials' "Most of these seats are on the November 2026 ballot".
+    assert OT.ballot_line(_dt.date(2026, 11, 3)) == (
+        "Most of these seats are on the ballot on November 3, 2026."), OT.ballot_line(_dt.date(2026, 11, 3))
+    assert OT.ballot_line(_dt.date(2026, 11, 4)).startswith(
+        "Most of these seats were on the ballot on November 3, 2026"), OT.ballot_line(_dt.date(2026, 11, 4))
+    return "ok", ("CACR 13's sentence is ahead on 2 November, past without a count on 4 "
+                  "November, and the count once entered; the county roster's ballot line the "
+                  "same; email's two sentences follow the switch")
+
+
 @check("data", "the register of probate paragraph is reread once the November 2026 vote is in")
 def _probate_after_the_vote():
     """A REMINDER, and a failing check is the one kind that gets read.
@@ -82068,12 +82463,23 @@ def _probate_after_the_vote():
 
     A note in a document is read by whoever goes looking for it. preflight is
     the first thing every session runs (CLAUDE.md, "Do this first"), so a
-    check that starts failing on 4 November is read by the first session after
-    the vote, and its message says what to change and on which line. It
-    passes again once civics.REGISTER_OF_PROBATE_REVIEWED holds the date of
-    that review: on or after 4 November, because a review before the result
-    is not the one this asks for, and not after today, because a date in the
-    future is a way to silence it early.
+    failing check is read by the first session after it fires, and its message
+    says what to change and on which line. It passes again once
+    civics.REGISTER_OF_PROBATE_REVIEWED holds the date of that review: on or
+    after the day it fired, because a review before the result is not the one
+    this asks for, and not after today, because a date in the future is a way
+    to silence it early.
+
+    IT FIRES ON THE RESULT, NOT ON THE DAY AFTER THE VOTE (17 October 2026).
+    The paragraph's last sentence is written by the day since then
+    (build_civics.probate_vote: "The vote was on November 3, 2026; the
+    Secretary of State's count is not on the site yet"), so on 4 November the
+    page is true and nothing needs a hand; failing every preflight and every
+    dry run from that morning, on the eve of the release freeze of 6-10
+    November, would have asked for a review with nothing yet to review. It
+    fires the day the count is entered in corrections/ballot_results.json (its
+    row's `read`), when "still elected" may have stopped being true, and on 2
+    December 2026, Organization Day, if no count has been entered by then.
 
     A data check and not a code one, on purpose, for the reason
     _learn_statutes_in_force gives above: nightly.py gates itself on
@@ -82090,7 +82496,7 @@ def _probate_after_the_vote():
     except Exception as e:                      # noqa: BLE001
         return "skip", f"civics.py did not import ({e})"
     vote = _dt.date(2026, 11, 3)
-    due = vote + _dt.timedelta(days=1)
+    backstop = _dt.date(2026, 12, 2)
     on = f"{vote.day} {vote:%B %Y}"
     src = _paths.locate("civics.py").read_text(encoding="utf-8").splitlines()
 
@@ -82098,8 +82504,20 @@ def _probate_after_the_vote():
         n = next((i for i, s in enumerate(src, 1) if text in s), None)
         return f" (civics.py line {n})" if n else ""
 
-    def rule(today, reviewed):
+    def due_on(row):
+        """The day the reminder fires: the day the count was entered, never
+        before the day after the vote; the backstop while there is none."""
+        if (row or {}).get("yes") is None:
+            return backstop
+        try:
+            read = _dt.date.fromisoformat(str(row.get("read")))
+        except ValueError:
+            read = vote
+        return max(read, vote + _dt.timedelta(days=1))
+
+    def rule(today, reviewed, row=None):
         """None while the paragraph needs nothing, or what to do about it."""
+        due = due_on(row)
         if reviewed:
             try:
                 when = _dt.date.fromisoformat(reviewed)
@@ -82114,28 +82532,43 @@ def _probate_after_the_vote():
                 return None
         if today < due:
             return None
+        said = (f"the count of the vote of {on} is in corrections/ballot_results.json: reread"
+                if (row or {}).get("yes") is not None else
+                f"the vote was on {on} and no count has been entered in "
+                "corrections/ballot_results.json: enter the Secretary of State's, then reread")
         return (
-            "the register of probate paragraph on learn/county-government still "
-            f"says CACR 13 (2026) goes to the voters, and the vote was on {on}. "
-            "In civics.py's BODY_COUNTY, rewrite the paragraph beginning "
-            f"\"Register of probate:\"{at('<p><b>Register of probate:</b>')} to say "
-            "what the voters decided -- an amendment needs two thirds of those "
-            "voting on it -- and, if it passed, the sentence \"Five county "
-            f"officers are elected\"{at('Five county officers are elected')}, which "
-            "counts the register among them. Then set REGISTER_OF_PROBATE_REVIEWED"
+            f"{said} the register of probate paragraph on "
+            "learn/county-government, beginning "
+            f"\"Register of probate:\"{at('<p><b>Register of probate:</b>')}, whose last "
+            "sentence the build now writes from that count -- an amendment needs two "
+            "thirds of those voting on it -- and, if it passed, its \"still elected\" and "
+            f"the sentence \"Five county officers are elected\"{at('Five county officers are elected')}, "
+            "which counts the register among them. Then set REGISTER_OF_PROBATE_REVIEWED"
             f"{at('REGISTER_OF_PROBATE_REVIEWED =')} to the date of the review."
-            + (f" It holds {reviewed!r}, which is before {due.day} November and "
-               "so before the result." if reviewed else ""))
+            + (f" It holds {reviewed!r}, which is before {due} and so before the result."
+               if reviewed else ""))
 
-    for day, reviewed, fires in ((vote, "", False), (due, "", True),
-                                 (due, due.isoformat(), False),
-                                 (due + _dt.timedelta(days=90), "2026-11-02", True),
-                                 (due, "2026-11-05", True), (due, "soon", True)):
-        got = rule(day, reviewed)
+    counted = {"yes": 300000, "no": 100000, "read": "2026-11-20"}
+    for day, reviewed, row, fires in (
+            # The day after the vote, and every day to the backstop: quiet.
+            (vote, "", None, False), (_dt.date(2026, 11, 4), "", None, False),
+            (_dt.date(2026, 12, 1), "", None, False),
+            # No count by Organization Day: it fires.
+            (backstop, "", None, True), (backstop, backstop.isoformat(), None, False),
+            # The count entered on 20 November: it fires that day, until a
+            # review on or after it.
+            (_dt.date(2026, 11, 19), "", counted, False), (_dt.date(2026, 11, 20), "", counted, True),
+            (_dt.date(2026, 11, 21), "2026-11-05", counted, True),
+            (_dt.date(2026, 11, 21), "2026-11-20", counted, False),
+            (_dt.date(2027, 2, 1), "2026-11-02", counted, True),
+            (_dt.date(2026, 11, 20), "2026-11-25", counted, True),
+            (_dt.date(2026, 11, 20), "soon", counted, True)):
+        got = rule(day, reviewed, row)
         assert (got is not None) == fires, (
-            f"on {day} with the review dated {reviewed!r}, the reminder "
+            f"on {day} with the review dated {reviewed!r} and "
+            f"{'a count' if row else 'no count'}, the reminder "
             + ("stays quiet, and should fire" if fires else f"fires ({got[:80]}), and should not"))
-    assert "Register of probate:" in (rule(due, "") or ""), (
+    assert "Register of probate:" in (rule(backstop, "") or ""), (
         "the reminder no longer names the paragraph it is for")
 
     reviewed = getattr(civics, "REGISTER_OF_PROBATE_REVIEWED", None)
@@ -82144,12 +82577,18 @@ def _probate_after_the_vote():
         "register of probate paragraph is marked as reread after the November "
         "2026 vote")
     today = _dt.date.today()
-    msg = rule(today, reviewed)
+    p = Path("corrections/ballot_results.json")
+    rows = (json.loads(p.read_text(encoding="utf-8")).get("rows") or []) if p.exists() else []
+    row = next((r for r in rows if (r.get("term"), r.get("bill")) == ("2025-2026", "CACR13")),
+               None)
+    msg = rule(today, reviewed, row)
     assert msg is None, msg
     if reviewed:
         return "ok", f"reread on {reviewed}, after the vote of {on}"
-    return "ok", (f"the vote is on {on}; this fails from {due.day} November until "
-                  f"the paragraph is reread, {(due - today).days} days from now")
+    due = due_on(row)
+    return "ok", (f"the vote is on {on}; this fails once its count is entered, or on {due} "
+                  f"if none is, until the paragraph is reread ({(due - today).days} days "
+                  "from now at the latest)")
 
 
 @check("data", "a committee's members are the ones on it today, not every seat the table still holds")
@@ -86078,7 +86517,7 @@ def _elect_pages_words():
 
     def text(h):
         return " ".join(_h.unescape(re.sub(r"<[^>]+>", "", h)).replace("’", "'").split())
-    note = "Each district coloured by the party of its sitting members"
+    note = "Each district colored by the party of its sitting members"
     towns = sorted((ws / "town").glob("*.html"))
     if not towns:
         bad.append("the fixture built no town page")

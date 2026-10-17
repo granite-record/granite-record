@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.69
+# GRANITE_VERSION: 2026-09-04.71
 """
 Write a real address for every bill, and the sitemap that points at them.
 
@@ -54,6 +54,7 @@ import re
 
 import build_date
 import build_rsa as BR
+from components import clock
 import rsa
 import shell as S
 import site_read as SR
@@ -173,7 +174,9 @@ def static_record(b, d, data_url=None):
     st = [s for s in d.get("stations") or [] if s.get("when")]
     if st:
         out.append("<h2>Hearings and Sessions</h2><ul>" + "".join(
-            "<li>" + E(_day(s["when"])) + (f", {E(s['time'])}" if s.get("time") else "")
+            # "8:30 AM", not "08:30" (17 October 2026), as every other
+            # time on the site is printed (components.clock).
+            "<li>" + E(_day(s["when"])) + (f", {E(clock(s['time']))}" if s.get("time") else "")
             + ": " + E(s.get("what") or "")
             + (", " + E(f"{CHAMBER.get(s.get('body'), '')} {s['committee']}".strip())
                if s.get("committee") else "")
@@ -521,7 +524,7 @@ def main():
         f"- [Laws]({a.base}/laws): every chapter of the Revised Statutes Annotated "
         f"(RSA), one page a chapter at {a.base}/laws/<chapter> and each section at "
         f"{a.base}/laws/<chapter>#s<section> (RSA 91-A:4 is {a.base}/laws/91-a#s4), "
-        "with the bills that changed each section and the bills now proposing to",
+        "with the bills that changed each section and the bills that would",
         f"- [Resources]({a.base}/resources): plain-language explainers of how a bill "
         "becomes law, the General Court, testifying and the state's other "
         f"institutions ({a.base}/learn/<topic>), and step-by-step how-to guides "

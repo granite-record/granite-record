@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.42
+# GRANITE_VERSION: 2026-09-08.46
 """
 The topics of the civics section: their order, their names, and their prose.
 
@@ -85,6 +85,19 @@ def topic(slug, title, group, blurb, body, sources, holds=""):
 # margin, so a page reads as one column of sections (C7).
 SHOWS = ('<h2>In the Record</h2>{}')
 
+# WHAT USING THIS SITE SAYS OF EMAIL, BEFORE AND AFTER IT GOES LIVE (17
+# October 2026). It said "There is no email option yet" in prose, and would
+# have gone on saying it beside the sign-up box from the day email following
+# opened; shell.follow_live() decides, as it does for the About and Data
+# pages. The first is the text it replaces, unchanged.
+FOLLOW_EMAIL = {
+    False: "There is no email option yet. No account, no email address, nothing to leak.",
+    True: ("A feed needs no account and no email address. Updates can also come by "
+           "email: sign up in the same <b>Follow</b> control, and the "
+           '<a href="data.html#privacy">Data page</a> says what is kept and for how '
+           "long."),
+}
+
 
 # ---------------------------------------------------------------------------
 # THE COURSE OF A BILL, AS A DIAGRAM.
@@ -104,8 +117,9 @@ SHOWS = ('<h2>In the Record</h2>{}')
 # ---------------------------------------------------------------------------
 FLOW = [
     ("Before It Is a Bill", [
-        ("Filed as an LSR", "A title and an idea, filed in the autumn. "
-         "Attorneys at the Office of Legislative Services draft the text.", ""),
+        ("Filed as a request", "A Legislative Service Request, or LSR: a title "
+         "and an idea, filed in the fall. Attorneys at the Office of Legislative "
+         "Services draft the text.", ""),
     ]),
     ("The First Chamber", [
         ("Introduced and referred", "It gets a number and goes to a committee "
@@ -143,7 +157,7 @@ FLOW = [
          "must then adopt the report unchanged.", "stop"),
     ]),
     ("The Governor", [
-        ("Enrolment", "A final check of the text for errors before it is "
+        ("Enrollment", "A final check of the text for errors before it is "
          "sent.", ""),
         ("Signed, vetoed, or left unsigned", "A bill left unsigned for five "
          "days, Sundays excepted, becomes law without a signature, unless the "
@@ -536,7 +550,7 @@ FLOW_CHARTER = [
     ]),
     ("The Voters Again", [
         ("The charter goes back to the voters", "It takes effect only if three fifths of the "
-         "ballots cast on the question favour it. (RSA 49-B:6)",
+         "ballots cast on the question favor it. (RSA 49-B:6)",
          ("needs", "Three fifths of the ballots cast on it")),
     ]),
 ]
@@ -628,14 +642,14 @@ def term_figure(term):
         f'<th scope="col">{second}</th><th scope="col">{then}</th></tr></thead><tbody>'
         '<tr><th scope="row" class="is-text">Retained<span class="l-sub">first year only</span></th>'
         f'<td data-l="{first}">' + box("is-keep", "", "Kept by the committee",
-                                       "for more work, and studied over the autumn.", True) + "</td>"
+                                       "for more work, and studied over the fall.", True) + "</td>"
         f'<td data-l="{second}">' + box("is-keep", "is-p", "Reported and voted on",
                                         "like any other bill. It keeps its number, and shows here "
                                         "as carried over.") + "</td>"
         + none.format(then) + "</tr>"
         '<tr><th scope="row" class="is-text">Interim study<span class="l-sub">second year only</span></th>'
         + none.format(first)
-        + f'<td data-l="{second}">' + box("is-study", "is-study", "Studied over the autumn",
+        + f'<td data-l="{second}">' + box("is-study", "is-study", "Studied over the fall",
                                           "The committee may report on it, but the bill itself dies "
                                           "with the term.", True) + "</td>"
         f'<td data-l="{then}">' + box("is-new", "", "Filed again",
@@ -894,12 +908,12 @@ FLOW_TESTIFY = [
     ("Find Out", [
         ("The calendar", "Hearings are announced in the chamber's weekly "
          "calendar and on the General Court's meeting schedule. The median "
-         "notice this term is five days; some give one.",
+         "notice in the [[term]] term was [[notice_median]] days; some give one.",
          ""),
     ]),
     ("Sign In", [
         ("Online, for or against", "Your name and town, whether you are a "
-         "member of the public or representing an organisation, and which "
+         "member of the public or representing an organization, and which "
          "side. You may attach written testimony.",
          ("rec", "Counted, and published")),
         ("Before the day ends", "The window opens once the hearing is "
@@ -973,7 +987,7 @@ FLOW_RULES = [
         ("The committee has 60 days", "The Joint Legislative Committee on "
          "Administrative Rules &mdash; JLCAR, legislators from both chambers "
          "&mdash; may approve the rule, approve it on a stated condition, or "
-         "object to it.", "stop"),
+         "object to it.", ""),
         ("Silence is approval", "If the 60 days pass with no notice of "
          "approval, conditional approval or objection, the statute deems the "
          "rule approved. A rule can take effect without anyone having voted "
@@ -1013,7 +1027,8 @@ FLOW_RULES = [
 # the vote, and in an SB 2 town it is a different day from it.
 CMP_TOWN = [
     ("The Warrant",
-     "The selectmen sign a warrant listing each question to be decided, "
+     "The selectmen, the town's elected board, sign a warrant listing each "
+     "question to be decided, "
      "called an article, for a single meeting. Voters can add an article by "
      "petition, due five Tuesdays before the meeting.",
      "The same warrant, except that it sets a day for each of two sessions, "
@@ -1073,7 +1088,8 @@ MOTIONS = _motions()
 
 BODY_GENERAL_COURT = """
 <h2>The Largest State Legislature</h2>
-<p>The New Hampshire legislative branch is made up of 400 representatives and
+<p>New Hampshire's legislature is called the <b>General Court</b>, the name the
+state constitution gives it. It is made up of 400 representatives and
 24 senators. It is the largest state legislature in the country: the last
 redistricting drew House districts to <b>3,444 residents a seat</b>.</p>
 
@@ -1084,12 +1100,15 @@ Most have other jobs, and the session is arranged around that: the House meets
 on a small number of full days, and committee work fills the rest.</p>
 
 <p>Four hundred is the number of seats, not the number of members. Seats fall
-vacant and are filled at by-elections through the term, so the working size of
+vacant and are filled at special elections through the term, so the working size of
 the House moves.</p>
 [[fig_seats]]
 
 <h2>A Term Is Two Years</h2>
-<p>The General Court sits in two-year terms beginning in odd years. Bill
+<p>The General Court sits in two-year terms beginning in odd years. A term
+begins on <b>Organization Day</b>, the first Wednesday of December after the
+November election, when the newly elected members are sworn in and elect the
+Speaker and the Senate President. [[org_day]] Bill
 numbers are unique across the whole term, so there is only ever one HB 84 in
 2025&ndash;2026, and there will be another in the next term. That is why every
 address on this site carries the year.</p>
@@ -1098,14 +1117,14 @@ things can happen to the rest, and they are not the same thing, though they
 are easily confused because both leave a bill unfinished at the end of a
 year.</p>
 <p><b>Retaining</b> happens in the first year only. A committee keeps the bill
-for more work, studies it over the autumn, and reports it to the chamber in
+for more work, studies it over the fall, and reports it to the chamber in
 the second year, where it is voted on like any other bill. A retained bill
 survives into the second year and keeps its number. Those show as
 <b>carried over</b> here, and they are the ones people most often fail to
 find, because they search the current year for a bill filed in the previous
 one.</p>
 <p><b>Interim study</b> happens in the second year only, and it ends the
-bill. The committee studies it over the autumn and may report on it, but the
+bill. The committee studies it over the fall and may report on it, but the
 bill itself dies with the term. To come back it has to be filed again in the
 next term, where it will be a new bill with a new number &mdash; so a bill
 sent to interim study is not waiting to be taken up again, whatever the name
@@ -1141,25 +1160,26 @@ three-fifths vote in both chambers and a two-thirds majority of voters. See
 
 <h2>How Committees Work</h2>
 <p>Every bill is referred to a committee chosen by subject, and the committee
-holds the public hearing, votes on a recommendation following an executive
+holds the public hearing, votes on a recommendation in an executive
 session, and writes a report explaining its reasoning. If the committee is
 split on what action to recommend, there are separate reports from the
 majority and the minority. The full chamber is not bound by those
-recommendations, but [[follows_committee]]% of the bills it decided this term
-went the way its committee recommended.</p>
+recommendations, but [[follows_committee]]% of the bills it decided in the
+[[term]] term went the way its committee recommended.</p>
 
 <p>The motions a committee most often recommends are these:</p>
 """ + MOTIONS + """
 """ + SHOWS.format("""
-<p>The [[term]] term filed <b>[[bills]] bills and resolutions</b>: [[hb]] House
+<p>In the [[term]] term, members filed <b>[[bills]] bills and resolutions</b>: [[hb]] House
 bills, [[sb]] Senate bills, [[cacr]] constitutional amendments and [[resolutions]] resolutions.</p>
 <p>The House is <b>[[house_seats]] seats and [[house_sitting]] sitting members</b> as
 the record stands, with [[house_vacant]] vacant. The record shows that moving:
-roll calls this term were taken with as many as [[seated_most]] members seated
+roll calls of the [[term]] term were taken with as many as [[seated_most]] members seated
 and as few as [[seated_fewest]].</p>
 <p>There are <b>[[house_districts]] House districts and [[senate_districts]] Senate
-districts</b>. [[floterial]] of those House districts are floterial districts,
-which cover several towns or wards together &mdash; see
+districts</b>. [[floterial]] of those House districts are floterial districts:
+each is laid over two or more neighboring districts and elects a representative
+of its own, whom their voters elect as well as their own district's &mdash; see
 <a href="learn/your-representatives.html">Finding your
 representatives</a>.</p>
 <p><a href="committees.html">Every committee</a>, who sits on it, and what it
@@ -1196,8 +1216,10 @@ Council</a> for the last stage.</p>
 <p>Of the [[bills]] bills and resolutions filed in the [[term]] term,
 <b>[[killed]] were killed</b> on a motion of Inexpedient to Legislate, written <b>ITL</b>, and
 <b>[[signed]] were signed into law</b>. Among the rest, [[study]] were sent
-for interim study, [[tabled]] died on the table, and [[session_end]] died when
-the session ended without a final vote. Dying is the ordinary outcome, not a
+for interim study (the committee studies the subject after the session, and
+the bill goes no further), [[tabled]] died on the table (set aside by a vote
+and never taken up again), and [[session_end]] died when the session ended
+without a final vote. Dying is the ordinary outcome, not a
 failure of the bill or its sponsor.</p>
 [[fig_ends]]
 
@@ -1246,10 +1268,10 @@ the House since January 2023, and two senators in the Senate since April
 2026; before that, one member's request was enough in either chamber.</p>
 
 <h2>Two Bills, Followed All the Way</h2>
-<p>Both went through both chambers, and in each the closest roll call divided
-the House without dividing it by party. A majority of Republicans voted one
-way, a majority of Democrats the other, and a substantial minority of each
-party voted against its own side.</p>
+<p>Both went through both chambers, and on each the closest roll call in the
+House did not split cleanly along party lines: a majority of Republicans voted
+one way and a majority of Democrats the other, but a substantial minority of
+each party voted against its own side.</p>
 
 <h3>HB 1002 (2024): What a Public Record May Cost</h3>
 <p>A town or agency answering a
@@ -1284,7 +1306,7 @@ among them. The House then rejected the conference report <b>102 to 261</b>,
 and the bill did not become law.</p>
 <p class="l-note">Both are offered as examples of the process and not as
 settled questions. The site takes no position on either. The arguments above
-are summarised from what was said for and against, and the recordings are
+are summarized from what was said for and against, and the recordings are
 there so you can check whether that summary is fair.</p>
 """ + SHOWS.format("""
 <p>Follow the two worked examples through the record:
@@ -1298,7 +1320,8 @@ died.</p>
 <p><b>Signed into law:</b>
 <a href="bill/2025/hb2.html">HB 2</a>, the budget trailer bill, which carries
 the statutory changes the state budget needs, with [[hb2_rollcalls]] recorded
-votes.</p>
+votes. The letters after its number say it has a fiscal note (FN), an
+appropriation (A) and a local fiscal impact (LOCAL).</p>
 <p><b>Vetoed, and the override failed:</b>
 <a href="bill/2026/hb349.html">HB 349</a>, on whether optometrists may perform
 ophthalmic laser procedures. It passed both chambers and was vetoed, and the
@@ -1312,7 +1335,7 @@ motor vehicle operators, which passed in the second year and became law.</p>
 <p>Of the [[law]] bills that became law in the [[term]] term,
 [[law_no_rollcall]] did so without a roll call on the floor of either
 chamber.</p>
-<p>Of the [[narrated]] bills with a narrative this term, <b>[[both_chambers]]
+<p>Of the [[narrated]] bills with a narrative in the [[term]] term, <b>[[both_chambers]]
 reached both chambers</b> and <b>[[conference]] went to a committee of
 conference</b>. [[law]] became law: [[signed]] signed, [[unsigned]] without a
 signature, and [[overridden]] over a veto.</p>""")
@@ -1348,7 +1371,7 @@ in the House and Senate calendars, and this site carries [[veto_messages]] of th
 [[vetoed]].</p>
 
 <h2>The Executive Council</h2>
-<p>Five councillors, each elected by district, meeting with the Governor.
+<p>Five councilors, each elected by district, meeting with the Governor.
 Almost no state has anything like it, and not many people can describe what it
 does.</p>
 <p>Its approval is required for a great deal of what the executive branch
@@ -1363,7 +1386,7 @@ and not the Council cannot simply proceed.</p>
 <p>The Council is genuinely debated. Supporters say it is a check on
 executive power that no single elected officer should be without. Critics say
 it gives five people a veto over routine administration and slows work that
-has already been authorised. Both are arguments about the same fact.</p>
+has already been authorized. Both are arguments about the same fact.</p>
 """
 
 BODY_GOVERNOR_HOLDS = """This site indexes the legislature, and it holds
@@ -1384,7 +1407,8 @@ law means.</li>
 <li>The <b>Superior Court</b> holds jury trials and hears the more serious civil
 and criminal cases.</li>
 <li>The <b>Circuit Court</b> handles the highest volume of cases each year,
-including misdemeanours, small claims, probate and domestic relations.</li>
+including misdemeanors, small claims, probate, and family cases such as
+divorce and custody.</li>
 </ol>
 
 <h2>How a Judge Gets the Job</h2>
@@ -1398,7 +1422,8 @@ Council is for. There is no judicial election in New Hampshire at any level.
 No one may serve as a judge after the age of seventy, which is set by the
 constitution itself: Part Second, Article 78. Raising it to seventy-five has
 been tried. A 2023 amendment to do so passed both chambers and went to the
-voters in November 2024, and a 2026 proposal to make the same change, which
+voters in November 2024, where 65.6% voted yes, short of the two thirds an
+amendment needs; and a 2026 proposal to make the same change, which
 failed in the House, still described the limit as seventy.</p>
 
 <h2>Where the Courts and the Legislature Meet</h2>
@@ -1456,8 +1481,9 @@ Hampshire.</p>
      "confirmed by the Executive Council, for a fixed term."),
     ("The agency decides the detail", "It cannot give itself powers the statute does not "
      "grant. It writes administrative rules."),
-    ("JLCAR reviews the rule", "Every rule except an emergency rule, before it is adopted: "
-     "approve, approve on a condition, or object. No action within 60 days and the rule is "
+    ("A legislative committee reviews it", "The Joint Legislative Committee on "
+     "Administrative Rules (JLCAR) reviews every rule except an emergency rule, before "
+     "it is adopted: approve, approve on a condition, or object. No action within 60 days and the rule is "
      "treated as approved.")], wide_=True) + """
 
 <h2>How a Commissioner Gets the Job</h2>
@@ -1502,7 +1528,7 @@ BODY_RULES = """
 statute. Rules are made under RSA 541-A, the Administrative Procedure Act.</p>
 
 <p>A statute rarely says how. The detail &mdash; the form, the threshold, the
-deadline, the licence conditions &mdash; is left to the rule, and an
+deadline, the license conditions &mdash; is left to the rule, and an
 <a href="learn/state-agencies.html">agency</a> writes it, not the legislature.
 A bill often says so in as many words: "the department shall adopt rules under
 RSA 541-A". [[rules_delegated]] of the [[bills]] bills and resolutions filed in the
@@ -1543,7 +1569,7 @@ not in a chamber calendar.</p>
 
 BODY_RULES_HOLDS = """This site does not carry administrative rules
 themselves, and does not track a rulemaking after a bill becomes law. The
-rules register and JLCAR's own dockets are where that continues, linked
+rulemaking register and JLCAR's own dockets are where that continues, linked
 below."""
 
 
@@ -1575,8 +1601,9 @@ application of 25 registered voters, or of 2 percent of the town's registered
 voters, whichever is fewer (RSA 39:3). The articles are debated and amended
 from the floor, and the budget is decided in the room: where an article asks
 for a sum of money the meeting may vote more or less than it asks (RSA 39:2),
-though a town under the municipal budget law is held to the limit in RSA
-32:18.</p>
+though in a town under the municipal budget law the meeting may not raise the
+total more than 10 percent above what the budget committee recommends, with
+some exceptions (RSA 32:18).</p>
 
 <h2>How SB 2 Towns Vote</h2>
 <p>The meeting is held in two sessions. The first is usually called the
@@ -1653,14 +1680,21 @@ them assume you already know all of this."""
 # begins "Register of probate:" says so in the future tense, and the "Five
 # county officers" sentence above it counts the register among the offices on
 # the ballot. CACR 13's own page will say how the vote went once the docket
-# records it, as it recorded the referendums of 1992 and 1998; these two
-# sentences are written by hand, and no build will change them.
+# records it, as it recorded the referendums of 1992 and 1998.
 #
-# Once the result is in, rewrite the paragraph to say what the voters decided
-# -- an amendment needs two thirds of those voting on it -- and, if it passed,
-# the county officers sentence too; then set this to the date of that review,
-# as "2026-11-05". preflight's full run fails from 4 November 2026 until this
-# holds a date on or after that day, which is the reminder.
+# THE PARAGRAPH'S LAST SENTENCE TELLS THE VOTE BY THE DAY (17 October 2026):
+# [[probate_vote]], which build_civics.probate_vote writes from the build's
+# day and CACR 13's row of corrections/ballot_results.json -- the election
+# ahead, then "the vote was on November 3, 2026" with the count not yet on
+# the site, then the count once a person has entered it. So the page reads
+# true on 4 November without a hand on it, and the reminder below waits for
+# the result rather than the date.
+#
+# Once the count is in, reread the paragraph -- if two thirds said yes, its
+# "still elected" and the county officers sentence are no longer true -- and
+# set this to the date of that review, as "2026-11-20". preflight's reminder
+# (_probate_after_the_vote) fails from the day the count is entered, or from
+# 2 December 2026 if it never is, until this holds a date on or after it.
 REGISTER_OF_PROBATE_REVIEWED = ""
 
 BODY_COUNTY = """
@@ -1732,7 +1766,7 @@ appropriate.</p>
 are the convention's powers, not the commissioners' (RSA 24:13), so the figure
 the convention adopts may be above or below the one the commissioners
 recommended. The vote cannot be taken until 28 days have passed since the
-recommendations were mailed (RSA 24:21-a, III). Appropriations are itemised in
+recommendations were mailed (RSA 24:21-a, III). Appropriations are itemized in
 detail and the clerk keeps the record of them (RSA 24:14, I).</p>
 
 <p><b>Missing the deadline has a consequence.</b> The convention must adopt
@@ -1822,9 +1856,7 @@ in articles 71 and 81 of Part Second, so removing it takes an amendment and
 not a bill: <a href="bill/2022/cacr21.html">CACR 21 (2022)</a> would have
 struck it out, passed both chambers, and went to the voters, where it did not
 reach the <a href="learn/the-constitution.html">two thirds of those
-voting</a> an amendment needs. In 2026 the legislature sent the question to
-the voters again, as <a href="bill/2026/cacr13.html">CACR 13 (2026)</a>, at
-the November 2026 general election.</p>
+voting</a> an amendment needs. [[probate_vote]]</p>
 
 <p><b>Coroner:</b> New Hampshire elects none. Sudden, unexpected or unnatural
 deaths are investigated by medical examiners of the Office of the Chief
@@ -1941,7 +1973,7 @@ any department under the manager's control, and prepares the year's
 expenditure and revenue estimates (RSA 37:6). What the manager does not get
 are the things the meeting and the selectmen keep, among them warning town
 meetings, making bylaws, borrowing money, assessing or collecting taxes,
-granting licences and laying out highways; nor does the manager supervise the
+granting licenses and laying out highways; nor does the manager supervise the
 town clerk or the town treasurer (RSA 37:5).</p>
 
 <p>A <b>town administrator</b> is a different thing, and the difference
@@ -1985,7 +2017,7 @@ committee or conservation commission (RSA 669:17).</p>
 
 <table><tbody>
 <tr><th scope="row"><b>Town clerk</b></th><td>Keeps the town's records, issues the
-licences and registrations, and runs the mechanics of elections. A town may
+licenses and registrations, and runs the mechanics of elections. A town may
 vote to make the term 3 years (RSA 41:16-b).</td></tr>
 <tr><th scope="row"><b>Tax collector</b></th><td>Collects the taxes the selectmen commit,
 remits them to the treasurer at least weekly, and daily once receipts reach
@@ -2063,7 +2095,7 @@ voters, or 2 percent of them, whichever is less and never fewer than 10, the
 voters are asked whether a charter commission shall be established
 (RSA 49-B:3). If they say yes, a commission of nine is elected (RSA 49-B:4),
 it reports, and the charter it writes goes back to the voters, where it takes
-effect only if three fifths of the ballots cast on the question favour it
+effect only if three fifths of the ballots cast on the question favor it
 (RSA 49-B:6).</p>
 """ + flow_diagram(FLOW_CHARTER, "How a charter is adopted", level_names=True) + """
 
@@ -2090,7 +2122,7 @@ manager form (RSA 49-D:2).</p>
 
 <p>This is why two towns of the same size, ten miles apart, can be run in
 entirely different ways, and why the offices on your ballot are not the
-offices on your neighbour's.</p>
+offices on your neighbor's.</p>
 """ + SHOWS.format("""
 <p><a href="directory/towns.html">Every town and ward</a> is listed here with
 the House and Senate districts that cover it, which is the route from where
@@ -2143,25 +2175,26 @@ named in older notices.</td></tr>
 House committee meetings are now held.</td></tr>
 </tbody></table>
 <p>The Legislative Office Building is expected back in service around the
-start of the next term, and Granite Place to drop out of the rota when it is.
+start of the next term, and Granite Place to drop out of the rotation when it is.
 <b>Go by the notice for the
 hearing you are attending</b> &mdash; it names the building and the room, and
 it is right about the day it was published whatever this page says.</p>
-<p>Both chambers live stream their standing committee hearings, so a hearing
-can be watched as it happens.</p>
+<p>Both chambers live stream the hearings of their standing committees, the
+permanent committees bills are referred to, so a hearing can be watched as it
+happens.</p>
 
 <h2>Signing In</h2>
 <p>The House takes sign-ins online, before and during the hearing. You give
 your name and town, say whether you are a member of the public or representing
-an organisation, and mark yourself supporting, opposing or neutral. You may
+an organization, and mark yourself supporting, opposing or neutral. You may
 attach written testimony. The committee is given the counts, and the sign-ins
 are published after the hearing.</p>
 <p>The window is not open indefinitely. It opens once the hearing is scheduled
 and published, and it closes at the end of the day of the hearing. If the bill
 passes one chamber and gets a hearing in the other, there is a second window on
 the same terms.</p>
-<p>The sign-ins are not part of the bill's docket, and no link on the docket
-leads to them. They are kept in the General Court's own sign-in records, which
+<p>The sign-ins are not part of the bill's docket, the General Court's list of
+every action on it, and no link on the docket leads to them. They are kept in the General Court's own sign-in records, which
 its website offers as a lookup of its own.</p>
 
 <h2>The Steps, in Order</h2>
@@ -2233,7 +2266,7 @@ Hillsborough 44, or abbreviated to <b>Rock 13</b>. The number is not a rank or
 a size. It is an index within that county, and the map is redrawn every ten
 years after the federal census.</p>
 <p>A district may be a single town, one or more wards of a city, several towns
-together, or a city's wards joined with neighbouring towns. Where it has more
+together, or a city's wards joined with neighboring towns. Where it has more
 than one seat, its members are elected at large across the whole of it, not
 one to each town. The largest elects [[largest]] representatives.</p>
 <p>Senate districts are numbered 1 to [[senate_districts]] across the whole
@@ -2242,7 +2275,7 @@ senator, and district 22 is written <b>SD22</b>.</p>
 
 <h2>What a Floterial District Is</h2>
 <p>A floterial district is a House district laid exactly over two or more
-neighbouring House districts in the same county, each of which already elects
+neighboring House districts in the same county, each of which already elects
 its own members. It elects one or more additional members across all of them
 together. [[reps_town]]'s is laid over [[reps_under_n]] districts.</p>
 [[reps_band]]
@@ -2283,7 +2316,7 @@ from the General Court's published files, and this page was last built on
 [[built_on]].</p>
 
 <p>Older terms hold less, and every bill's page says what its term carries and
-what has not been fetched.</p>
+what is not on the site yet.</p>
 
 <h2>How to Find a Bill, a Member or a Town</h2>
 <p>The <b>Search</b> button in the header, drawn as a magnifier, finds
@@ -2314,8 +2347,9 @@ the bill was taken up.</li>
 <li><b>Reports</b> &mdash; what the committee recommended and why, in the
 committee's own words, and the Governor's message where a bill was
 vetoed.</li>
-<li><b>Sponsors</b>, and <b>Documents</b> &mdash; the official pages this all
-comes from.</li>
+<li><b>Sponsors</b> &mdash; the member who filed the bill and those who signed
+on to it.</li>
+<li><b>Documents</b> &mdash; the official pages this all comes from.</li>
 <li><b>Related</b>, where there is any &mdash; bills and amendments that share
 most of its language: the same text filed in another year, or carried into
 another bill or an amendment to one, with what became of it. Found by
@@ -2341,8 +2375,13 @@ is the evidence.</p>
 <h2>Reading the Shorthand</h2>
 <table><tbody>
 <tr><th scope="row"><b>OTP</b></th><td><b>Ought to Pass:</b> a motion to pass the bill</td></tr>
-<tr><th scope="row"><b>OTP/A</b></th><td><b>Ought to Pass with Amendment</b></td></tr>
-<tr><th scope="row"><b>ITL</b></th><td><b>Inexpedient to Legislate:</b> a motion to kill it</td></tr>
+<tr><th scope="row"><b>OTPA</b></th><td><b>Ought to Pass with Amendment:</b> a motion to pass
+the bill with the committee's amendment (the docket also writes OTP/A or OTP/AM)</td></tr>
+<tr><th scope="row"><b>ITL</b></th><td><b>Inexpedient to Legislate:</b> a motion to kill the bill</td></tr>
+<tr><th scope="row"><b>IS</b></th><td><b>Interim Study:</b> a motion to have the committee study
+the subject after the session; the bill itself goes no further this term</td></tr>
+<tr><th scope="row"><b>Retain</b></th><td><b>Retained:</b> a House committee keeps the bill
+through the fall and reports it in the second year of the term</td></tr>
 <tr><th scope="row"><b>MA</b> / <b>MF</b></th><td><b>Motion Adopted / Motion Failed</b></td></tr>
 <tr><th scope="row"><b>VV</b></th><td><b>Voice vote:</b> no count and no names</td></tr>
 <tr><th scope="row"><b>DV</b></th><td><b>Division vote:</b> counted, names not recorded</td></tr>
@@ -2356,7 +2395,8 @@ chamber's own record of the day, cited by issue and sometimes page</td></tr>
 <tr><th scope="row"><b>-FN</b></th><td><b>Fiscal note:</b> an estimate of what the bill
 would cost</td></tr>
 <tr><th scope="row"><b>-A</b></th><td><b>Appropriation:</b> the bill contains one</td></tr>
-<tr><th scope="row"><b>-LOCAL</b></th><td><b>Local fiscal impact:</b> on towns or schools</td></tr>
+<tr><th scope="row"><b>-LOCAL</b></th><td><b>Local fiscal impact:</b> the bill may change
+what counties, cities, towns or school districts spend or collect</td></tr>
 </tbody></table>
 
 <h2>Following a Bill</h2>
@@ -2364,8 +2404,7 @@ would cost</td></tr>
 does every sitting member, every current committee, and every topic. The
 <b>Follow</b> control on a record's page gives the address where there is one.
 There are also feeds for the record's newest actions and for hearings coming
-up. A bill's feed ends once the bill is settled. There is no email option yet.
-No account, no email address, nothing to leak.</p>
+up. A bill's feed ends once the bill is settled. [[follow_email]]</p>
 
 <h2>How to Report an Error</h2>
 <p>Every bill's, legislator's and committee's page carries a <b>Report a problem</b>
@@ -2486,7 +2525,7 @@ TOPICS = [
            SRC_FIND_MEMBER]),
 
     topic("how-a-bill-becomes-law", "How a Bill Becomes Law", HOW,
-          "From an idea filed in the autumn to a law that takes effect, and "
+          "From an idea filed in the fall to a law that takes effect, and "
           "the several places along the way where a bill can stop.",
           BODY_BILL,
           [SRC_HOUSE_RULES, SRC_SENATE_RULES, SRC_CALENDARS,

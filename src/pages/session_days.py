@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-19.31
+# GRANITE_VERSION: 2026-09-19.33
 """
 A sitting day of the House or Senate, assembled from what is already parsed.
 
@@ -68,6 +68,7 @@ from datetime import date as _date
 import build_date
 import shell
 import narrative
+import rollcall_outcomes as RO
 
 NARRATIVES = "narratives.json"
 
@@ -3477,12 +3478,28 @@ def load(path=NARRATIVES, rollcalls=None, sat=None, journals=None):
     rolls = _read_rollcalls(Path(path).parent / ROLLCALLS if rollcalls is None
                             else rollcalls)
     need = _fifths_from_rollcalls(rolls)
+    # A DIVISION BY THE ROLL CALL'S RULE (17 October 2026), as the bill page
+    # reads it (rollcall_outcomes.division_threshold): three fifths to pass a
+    # constitutional amendment is of the members in office, which a roll call
+    # of the same chamber that day counts, so 2016's CACR 21, "MF DV 181-171"
+    # with no fraction named, is drawn against 239 rather than a majority.
+    in_office = RO.members_in_office(rolls)
     for (body, date), items in grouped.items():
         for it in items:
             if it.fifths and it.counted:
                 got = need.get((body, date, it.yeas, it.nays))
                 if got and len(got) == 1:
                     it.need = next(iter(got))
+            if it.counted and not it.need and it.kind in ("DV", "DIV"):
+                d = RO.division_threshold(
+                    it.bill, it.action, it.raw, it.yeas, it.nays, in_office.get((body, date)),
+                    it.carried,
+                    RO.journal_division_words(".", body, date, it.yeas, it.nays)
+                    if (it.bill or "").upper().startswith("CACR") else "")
+                if d.get("threshold_needed"):
+                    it.need, it.fifths = d["threshold_needed"], False
+                elif d.get("threshold_unknown"):
+                    it.fifths = True
 
     calendars = _calendar_rollcalls(rolls)
     for key, items in grouped.items():
