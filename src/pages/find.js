@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-16.31
+// GRANITE_VERSION: 2026-09-16.32
 /* FIND ANYTHING, FROM THE HEADER (16 September, asked for in these words:
    "a search icon in the header that lets you search for anything including
    legislators, committees, towns, and bills ... searching Litchfield would
@@ -446,12 +446,13 @@ function _ftext(term){
   return _fjson("sidx/"+encodeURIComponent(term)+".json")
     .then(j=>A.indexAdd(term,j)).catch(()=>false);
 }
-// The three haystacks exactly as app.js's ensureTerm() builds them.
+// The haystacks exactly as app.js's ensureTerm() builds them: the title and
+// the committees. NO SPONSOR (17 October 2026): a name typed here lists the
+// legislator, never their bills (app.js, A NAME IS NOT WHAT A BILL IS ABOUT).
 function _fprep(rows){
   const norm=s=>String(s||"").toLowerCase().replace(/-/g," ");
   return (Array.isArray(rows)?rows:[]).map(b=>{
     b.hayT=norm([b.id,b.n,b.title].join(" "));
-    b.hayS=norm(b.sponsor);
     b.hayC=norm((b.committees||[b.committee||""]).join(" | "));
     return b;});
 }
@@ -540,9 +541,9 @@ function findBillsLoadAll(){
    {state:"failed"} until then; and null for a search with nothing in it to
    match -- "?" on its own, which the bill search reads as every bill. The
    order is app.js's "best match" (its looseness, scoreOf and sortRows):
-   every word of the search as a word of the title or the sponsor's name
-   before the start of a longer one -- "bail" before "bailiffs" -- then the
-   most of the search in the title, then the sponsor, then the committee, the
+   every word of the search as a word of the title before the start of a
+   longer one -- "bail" before "bailiffs" -- then the most of the search in
+   the title, then the committee (never the sponsor, since 17 October 2026), the
    search's own words in order worth two more, and bill number within each.
    That second number is the matcher's own matchScore(), the one /bills
    orders by: this file added it up for itself until 2 October, a copy that

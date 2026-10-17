@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.607
+# GRANITE_VERSION: 2026-09-04.608
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -18285,6 +18285,11 @@ def _find_bills_fixture():
              "Senate Judiciary"),
         bill("HB1441", 2026, "relative to snowmobile trail funding", "Glenn Bailey",
              "House Resources, Recreation and Development"),
+        # A town that is also a sitting member's surname (17 October 2026):
+        # "nelson" lists this bill by its title and none of Rep. Jodi
+        # Nelson's by her name.
+        bill("HB470", 2026, "relative to a conservation easement in the town "
+             "of Nelson", "Rick Ladd", "House Municipal and County Government"),
     ]
     other = bill("HB103", 2023, "relative to firearms storage", "Alan Smith",
                  "House Criminal Justice and Public Safety")
@@ -18387,6 +18392,10 @@ require("./stub.js");
 // "all": opened as /search's every-term link opens it, /bills?term=all.
 if (MODE === "all") location.search = "?term=all";
 const box = document.querySelector("#q"); box.disabled = true;
+// The page's own click listeners, kept so that a check can click a link the
+// list drew (the stub's document drops them).
+const DOCON = {};
+document.addEventListener = (t, f) => { (DOCON[t] = DOCON[t] || []).push(f); };
 let scope;
 try { scope = (0, eval)(fs.readFileSync("./app.js", "utf8")
                         + ";({getIDX: () => IDX, getTerm: () => term})"); }
@@ -18423,6 +18432,23 @@ catch (e) { console.log("LOAD " + e.message); process.exit(1); }
     return document.querySelector("#results").innerHTML; };
   out.offer = {typo: await empty("pistal"), word: await empty("pistil")};
   out.askedLast = ASKED.slice();
+  // A NAME TYPED (17 October 2026). It lists no bill by its sponsor; where
+  // it lists nothing at all the list offers the Sponsor filter, and the
+  // offer, clicked, ticks that person and empties the box.
+  out.names = {abbas: await empty("abbas"), nelson: await empty("nelson"),
+               jodi: await empty("jodi nelson")};
+  const link = /<a class="qsponsor" href="([^"]*)" data-sponsor="([^"]*)"/.exec(out.names.abbas);
+  out.names.link = link ? {href: link[1], name: link[2]} : null;
+  if (link) {
+    const target = {dataset: {sponsor: link[2].replace(/&amp;/g, "&")},
+                    closest: (sel) => sel === "[data-sponsor]" ? target : null};
+    for (const f of DOCON.click || [])
+      try { f({target, detail: 1, button: 0, preventDefault() {}, stopPropagation() {}}); } catch (e) {}
+    await settle();
+    const html = document.querySelector("#results").innerHTML;
+    out.names.after = {q: box.value, ids: [...html.matchAll(
+      /<article class="card[^"]*" data-id="([^"]+)"/g)].map(m => m[1])};
+  }
   console.log(JSON.stringify(out));
 })().catch(e => { console.log("RUN " + e.message); process.exit(1); });
 """
@@ -18933,6 +18959,42 @@ def _find_bills(BP):
         "the header's offer is a button with data-q, which app.js reads on "
         "any page as a search to run in the bill list")
 
+    # A NAME IS NOT WHAT A BILL IS ABOUT (the person, 17 October 2026: a
+    # representative's name should not show the bills they sponsored on the
+    # bill search or the general search, "since there's a separate filter for
+    # searching by rep"). Sen. Abbas sponsors four bills of the term and Rep.
+    # Nelson four; their names list none of them, here or in the header, and
+    # "nelson" lists the one bill whose title names the town of Nelson.
+    nm = A["names"]
+    for q, want in (("abbas", []), ("nelson", ["HB470"]), ("bailey", [])):
+        for where, got in (("/bills", A["q"][q]), ("the header", P["q"][q])):
+            ids = (got or {}).get("ids") if isinstance(got, dict) else None
+            assert ids == want, (
+                f"{where} lists {ids} for {q!r}, not {want}: a legislator's name "
+                "lists the bills they sponsored, which is the Sponsor filter's job")
+    assert "data-sponsor" not in nm["nelson"] and "Looking for bills" not in nm["nelson"], (
+        "/bills offers the Sponsor filter for 'nelson', which lists a bill by its "
+        "title: the offer is only for a name that lists nothing")
+    for q, who in (("abbas", "Daryl Abbas"), ("jodi", "Jodi Nelson")):
+        assert f"Looking for bills sponsored by Rep. {who}?" in nm[q] \
+            and f'data-sponsor="{who}"' in nm[q] and "Did you mean" not in nm[q], (
+            f"/bills lists nothing for {q!r} and does not offer the Sponsor filter "
+            f"for {who} in one line, or offers another word for a name: {nm[q][-300:]!r}")
+    lk = nm["link"] or {}
+    assert lk.get("href") == "/bills?sponsor=Daryl+Abbas", (
+        f"the offer's link is {lk.get('href')!r}: it should open the bill search "
+        "on the Sponsor filter alone, without the name typed")
+    after = nm.get("after") or {}
+    assert after.get("q") == "" and sorted(after.get("ids") or []) == \
+        ["SB248", "SB40", "SB5", "SB77"], (
+        f"taking the offer leaves the box holding {after.get('q')!r} and lists "
+        f"{after.get('ids')}: it should empty the box and list Sen. Abbas's four "
+        "bills through the Sponsor filter")
+    ab = P["search"]["abbas"]["html"]
+    assert "/legislator/daryl-abbas-sd-22" in ab and "None in any of the 2 terms" in ab, (
+        "/search?q=abbas does not list the senator, or lists bills he sponsored: "
+        "a name finds the person, and the Sponsor filter their bills")
+
     # The panel is this term's; the other term's index is /search's alone.
     assert "/idx/2023-2024.json" not in P["askedPanel"], (
         "the header panel fetched an earlier term's index: only /search "
@@ -19019,19 +19081,20 @@ def _find_bills(BP):
                   f"/bills and the header (firearms {n['firearms']}, guns "
                   f"{n['guns']}), and by /bills on All terms and /search "
                   f"(firearms {na['firearms']}); bills lead where no name is "
-                  "a whole word of what was typed")
+                  "a whole word of what was typed; a name lists no bill by its "
+                  "sponsor, and /bills offers the Sponsor filter for it")
 
 
 # THE FIXTURE FOR _best_match_words: thirty-seven real bills, their titles,
 # sponsors and committees as the index carries them, in four terms. Each
-# search below meets some of them by a word of the title or of the sponsor's
-# name -- the word itself, with an ending ("taxes", "taxing", "posting",
-# "post-arrest", "fishing"), a synonym ("firearm" and "pistols" for "gun"),
-# or a sponsor named Post -- and some only by the start of a longer word
-# ("taxable", "taxpayer", "firearm" for "fire", "postpartum", "Gunstock",
-# "bailiffs", "municipalities", "fisheries"); "fish" meets Rep. Fisher's
-# bill, and "municipal" and "fish" some bills only through a committee's
-# name. The order before 25 September -- best score, then the newer term,
+# search below meets some of them by a word of the title -- the word itself,
+# with an ending ("taxes", "taxing", "posting", "post-arrest", "fishing"), or
+# a synonym ("firearm" and "pistols" for "gun") -- and some only by the start
+# of a longer word ("taxable", "taxpayer", "firearm" for "fire",
+# "postpartum", "Gunstock", "bailiffs", "municipalities", "fisheries");
+# "municipal" and "fish" some bills only through a committee's name; and
+# "post" and "fish" two bills only through a sponsor's name, Rep. Post's and
+# Rep. Fisher's, which must not list them (17 October 2026). The order before 25 September -- best score, then the newer term,
 # then the number -- put a longer word above the word itself in every one of
 # these searches, and the town of Hillsborough above Sugar Hill for "hill".
 # The nine that carry a chip are the tie-break's (_BEST_MATCH_TIES), each
@@ -19181,21 +19244,23 @@ def _best_match_fixture():
 
 
 # What each search meets each bill by, read off the titles above, in the
-# order best match must list them: a word of the title or of the sponsor's
-# name; only a longer word of the title; only the sponsor's name with an
-# ending (Rep. Fisher, for "fish"); only a committee's name. Every bill of
-# one kind before any of the next -- and every one of them listed, because a
-# longer word is still a match.
-_BM_WORD = "a word of its title or sponsor's name"
+# order best match must list them: a word of the title; only a longer word
+# of the title; only a committee's name. Every bill of one kind before any of
+# the next -- and every one of them listed, because a longer word is still a
+# match. And none besides (A NAME IS NOT WHAT A BILL IS ABOUT, 17 October
+# 2026): "post" meets Rep. Lisa Post's HB 194 and "fish" Rep. Fisher's HB 515
+# only by the sponsor's name, and a bill listed that the table does not name
+# fails as a stray. Until that day both were listed, Rep. Post's among the
+# words and Rep. Fisher's after the longer words.
+_BM_WORD = "a word of its title"
 _BM_LONGER = "only a longer word of its title"
-_BM_ENDING = "only its sponsor's name with an ending"
 _BM_COMMITTEE = "only a committee's name"
 _BEST_MATCH_WORDS = {
     "tax": [(_BM_WORD, {"HB99/2025", "HB1227/2026", "HB1293/2026"}),
             (_BM_LONGER, {"HB402/2025", "HB1746/2026"})],
     "fire": [(_BM_WORD, {"HB91/2025", "HB390/2025"}),
              (_BM_LONGER, {"HB56/2025", "HB352/2025"})],
-    "post": [(_BM_WORD, {"HB87/2025", "HB194/2026", "HB1302/2026"}),
+    "post": [(_BM_WORD, {"HB87/2025", "HB1302/2026"}),
              (_BM_LONGER, {"HB1250/2026", "HB1781/2026"})],
     "municipal": [(_BM_WORD, {"HB124/2025"}),
                   (_BM_LONGER, {"HB84/2025", "HB375/2025"}),
@@ -19207,9 +19272,13 @@ _BEST_MATCH_WORDS = {
              (_BM_LONGER, {"HB275/2009"})],
     "fish": [(_BM_WORD, {"HB224/2017", "HB467/2017"}),
              (_BM_LONGER, {"HB190/2017"}),
-             (_BM_ENDING, {"HB515/2017"}),
              (_BM_COMMITTEE, {"HB126/2017", "HB1424/2024"})],
 }
+# A legislator's name, first, last or whole, lists no bill anywhere: not the
+# three Rep. Mannion sponsored, nor HB 465, Rep. Alice Wade's (17 October
+# 2026). The person themselves is /search's and the header's to list, and
+# their bills the Sponsor filter's.
+_BEST_MATCH_NAMES_NO_BILL = ("mannion", "dennis mannion", "alice", "alice wade")
 # And the names /search and the header list: every word typed as a whole
 # word of the name first, a name it only begins after.
 _BEST_MATCH_NAMES = {
@@ -19239,15 +19308,11 @@ _BEST_MATCH_NAMES = {
 # - "office": CACR 13, on the index of 16 October 2026 the one bill of
 #   33,717 still moving (it goes to the voters in November), before HB 1396,
 #   whose title is twice as much the search and whose number comes first.
-# - "mannion": the sponsor's bills in number order, CACR 13 last. No title
-#   says the search, so none is put first for still moving: read without
-#   that guard, CACR 13 led his bills on the real index, and of 24 searches
-#   by the term's most prolific sponsors' names, 20 reordered once every
-#   fifth bill was marked as moving.
+# "mannion" was the third, his bills in number order, until a name stopped
+# listing bills (17 October 2026; _BEST_MATCH_NAMES_NO_BILL).
 _BEST_MATCH_TIES = {
     "housing": ["HB1007/2026", "HB1017/2026", "HB465/2026", "HB628/2025", "SB306/2024"],
     "office": ["CACR13/2026", "HB1396/2026"],
-    "mannion": ["HB109/2026", "HB1070/2026", "CACR13/2026"],
 }
 
 # /bills, typed into: the cards in the order drawn, each with the year its
@@ -19325,19 +19390,17 @@ def _best_match_words(BP):
     2009 bill about bailiffs came fortieth for "bail", above thirty-six bail
     bills, and the Gunstock Area Commission's came forty-eighth for "gun",
     above two hundred and forty-eight gun bills. app.js's looseness adds up
-    how far each part of a search falls short of a word of the bill's title
-    or sponsor's name, and best match sorts by it first -- in /bills, and
-    through billmatch.js in the header panel and /search, which must list
-    bills in /bills' order.
+    how far each part of a search falls short of a word of the bill's title,
+    and best match sorts by it first -- in /bills, and through billmatch.js
+    in the header panel and /search, which must list bills in /bills' order.
 
     A committee's name stays below a longer word in the title, because "Best
     match puts the title first" is a rule of its own (app.js, above
     groupWeight): counted as a direct match, it listed 187 bills whose only
     link to "municipal" was a committee's name above the 26 titled
-    "municipalities". And a sponsor's name counts only as itself: "post"
-    meets Rep. Lisa Post's bills as a whole word, where "fish" meets Rep.
-    Fisher's only as the matcher's "fish" with an ending, which a name is
-    not, so they follow the titles that say "fisheries".
+    "municipalities". And since 17 October 2026 a sponsor's name counts for
+    nothing: "post" no longer meets Rep. Lisa Post's bills, nor "fish" Rep.
+    Fisher's, and "mannion" or "alice wade" lists no bill at all.
 
     The names in the header and on /search follow the same rule: "hill"
     lists Hill, Sugar Hill and the members named Hill before Hillsborough and
@@ -19349,7 +19412,7 @@ def _best_match_words(BP):
     And since 16 October 2026 the order between bills that match equally
     well, which the bill number alone decided (_BEST_MATCH_TIES): "housing"
     and "office" list their bills in another order under the rule before
-    it, and "mannion" under the rule without its guard.
+    it.
     """
     if not shutil.which("node"):
         return "skip", "node is not installed"
@@ -19370,7 +19433,8 @@ def _best_match_words(BP):
                  "find.js": Path("src/pages/find.js").read_text(encoding="utf-8"),
                  "fixture.json": json.dumps(fx),
                  "queries.json": json.dumps(list(_BEST_MATCH_WORDS)
-                                            + list(_BEST_MATCH_TIES)),
+                                            + list(_BEST_MATCH_TIES)
+                                            + list(_BEST_MATCH_NAMES_NO_BILL)),
                  "names.json": json.dumps(list(_BEST_MATCH_NAMES)),
                  "app_side.js": _BEST_MATCH_APP,
                  "panel_side.js": _BEST_MATCH_PANEL}
@@ -19439,6 +19503,11 @@ def _best_match_words(BP):
                       "still moving first where its title has the search, then the "
                       "newer term, then the most of the title that is the search: "
                       + " | ".join(tied[:3]))
+    named = [f"{where} lists {got.get(q)} for {q!r}"
+             for where, got, _ in lists for q in _BEST_MATCH_NAMES_NO_BILL if got.get(q)]
+    assert not named, ("a legislator's name lists the bills they sponsored, which "
+                       "is the Sponsor filter's job (17 October 2026): "
+                       + " | ".join(named[:3]))
 
     wrong = []
     for q, (whole, part) in _BEST_MATCH_NAMES.items():
@@ -19465,9 +19534,9 @@ def _best_match_words(BP):
     return "ok", (f"{len(_BEST_MATCH_WORDS)} searches over {n} real bills: the word "
                   "itself, then a longer word, then a committee's name, in /bills, "
                   "the header, /bills on All terms and /search; 'hill' lists Hill "
-                  "and Sugar Hill before Hillsborough; and between equals 'housing' "
-                  "opens on manufactured housing, 'office' on CACR 13, still "
-                  "moving, and 'mannion' keeps his bills in number order")
+                  "and Sugar Hill before Hillsborough; between equals 'housing' "
+                  "opens on manufactured housing and 'office' on CACR 13, still "
+                  "moving; and a member's name lists none of their bills")
 
 
 # REAL SEARCHES, REAL BILLS (1 October 2026). The frontend check further down
@@ -19508,7 +19577,11 @@ const need = ["queryGroups", "groupWeight", "looseness", "billKey", "indexAdd", 
 const lacking = need.filter(f => !A || A[f] == null);
 if (lacking.length) { out.fails.push("the matcher cut from app.js does not define " + lacking.join(", ")
   + ": it is the search as it was before it read the bills' own words"); done(); process.exit(0); }
-// The three haystacks exactly as app.js's ensureTerm() and find.js's _fprep() build them.
+// The haystacks as app.js's ensureTerm() and find.js's _fprep() build them,
+// and one more they no longer build: hayS, the prime sponsor's name. Since 17
+// October 2026 a name lists no bill, and the page stopped making it; it is
+// made here so that a matcher that read it again lists a sponsor's bills for
+// their name, and the name cases fail.
 const norm = s => String(s || "").toLowerCase().replace(/-/g, " ");
 const prep = b => { b.hayT = norm([b.id, b.n, b.title].join(" ")); b.hayS = norm(b.sponsor);
   b.hayC = norm((b.committees || [b.committee || ""]).join(" | ")); return b; };
@@ -19795,7 +19868,10 @@ def _search_cases(BP):
     - the word people use finds the bills that use another: "voting
       machines", "telehealth", "expungement", "cops", "dmv", "forever
       chemicals";
-    - a name is found as it is said: "senator carson", "tim lang";
+    - a name is found as it is said: "senator carson", "tim lang" (until 17
+      October 2026, when the person asked that a name list no bill by its
+      sponsor: those cases, "alice" and "alice wade" now hold that none of
+      the member's bills is listed, and "post" that a title's word still is);
     - the record's own slips are offered their word: "goverment", "libary";
     - and a word that is a property of an object ("constructor") is a word.
 
@@ -20050,6 +20126,20 @@ def _search_index_builds(BP, SI):
         f"{note_words}: the check that the note is not read can no longer fail")
     if any(w > 0 for _a, w in has("w", "bathroom", "HB1450")):
         wrong.append("HB1450 mentions a bathroom once and is filed as about one")
+    # THE SPONSORS' NAMES ARE NOT THE BILL'S WORDS (17 October 2026). HB 232
+    # given the front matter thirteen archived texts open with, in both of
+    # its spellings: the names in it are filed under nothing, and the
+    # analysis after it is still read as the analysis.
+    fronted = SI.unpack(SI.build_term(term, rows, dict(bills, HB232=dict(
+        bills["HB232"], text="INTRODUCED BY: Rep. Lefebvre of Hills 31; Rep.\n\n"
+        "Packard of Rock 3\n\nREFERRED TO: Judiciary\n\nSPONSORS: Rep. Wade, "
+        "Straf 15\n\nCOMMITTEE: Judiciary\n\n" + bills["HB232"]["text"])), table)[0])
+    named = [k for k in ("lefebvre", "packard", "wade")
+             if any(b == "HB232" for b, _a, _w in fronted["w"].get(k, []))]
+    if named or not any(a and b == "HB232" for b, a, _w in fronted["w"].get("abortion", [])):
+        wrong.append(f"HB232, with a list of sponsors before its analysis, is filed "
+                     f"under {named or 'their names'} or no longer under its "
+                     "analysis's abortion: a name lists the bills its member filed")
     assert not wrong, "the search index, on eight real texts: " + "; ".join(wrong[:3])
     # only() cuts a file down and must not change what it says of a bill.
     part = SI.unpack(SI.only(data, {"HB712", "HB232"}))
@@ -25461,6 +25551,13 @@ var bill = function (t, s, c) { return {hayT: t, hayS: s || "", hayC: c || ""}; 
 var bail = scope.queryGroups("bail")[0], imm = scope.queryGroups("immigration")[0];
 if (scope.groupWeight(bill("hb1 relative to hunting licenses", "bailey, ann"), bail) > 0) {
   console.log("SEARCH: 'bail' matched a sponsor named Bailey"); process.exit(1); }
+// And no name at all (17 October 2026): a sponsor's whole name, first or
+// last, matches nothing; the same word in a title still does.
+var wade = bill("hb21 relative to housing", "alice wade");
+if (scope.queryGroups("alice wade").some(function (g) { return scope.groupWeight(wade, g) > 0; })
+    || scope.groupWeight(wade, scope.queryGroups("alice")[0]) > 0
+    || scope.groupWeight(bill("hb22 relative to the alice peck day hospital", "jo smith"), scope.queryGroups("alice")[0]) !== 3) {
+  console.log("SEARCH: a sponsor's name matches their bill, or a title that says the word no longer does"); process.exit(1); }
 if (scope.groupWeight(bill("hb2 relative to parental alienation"), imm) > 0
     || scope.groupWeight(bill("hb3 relative to aliens residing in new hampshire"), imm) !== 3) {
   console.log("SEARCH: a synonym matched inside another word, or missed its plural"); process.exit(1); }
@@ -25625,8 +25722,10 @@ if (scope.spelling(scope.queryGroups("haiti"), rs.concat([tb("HB21", "hb21 relat
   console.log("SEARCH: a short word two letters from another is offered as it ('haiti' as 'hate')"); process.exit(1); }
 // Two letters, as the start of a word: only in a term where the search as
 // typed lists nothing, and decided term by term, so that searching more
-// terms never lists fewer of one term's bills.
-var u1 = bill("hb1 relative to special number plates", "ed smith"), u2 = bill("hb2 relative to special education aid");
+// terms never lists fewer of one term's bills. The term that lists something
+// has "ed" as a word of a title: until 17 October 2026 it was a sponsor named
+// Ed, and a name now lists nothing.
+var u1 = bill("hb1 naming the ed smith special olympics field"), u2 = bill("hb2 relative to special education aid");
 u1.id = "HB1"; u1.term = "U"; u2.id = "HB2"; u2.term = "U";
 var both = rs.concat([u1, u2]), se = scope.readShort(scope.queryGroups("special ed"), both);
 if (!all(rs[4], se) || !all(u1, se) || all(u2, se) || all(rs[4], scope.queryGroups("special ed"))
