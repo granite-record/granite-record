@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-24.5
+# GRANITE_VERSION: 2026-09-24.6
 """
 The Senate committees' own hearing reports, read out of the database dump
 already on this disk.
@@ -88,6 +88,7 @@ import json
 import re
 from html.parser import HTMLParser
 
+import freeze_term as FT
 import proceedings as P
 
 SOURCE = Path("db") / "CandH_Reports.psv"
@@ -1091,7 +1092,22 @@ def main():
     # SILENCE IS NOT SUCCESS. A dump that changed shape reads as zero reports
     # and would otherwise write an empty file the site then shows as "no
     # hearing reports anywhere".
-    if not c["rows"]:
+    #
+    # BUT A NEW TERM'S VIEW HOLDS NONE YET (16 October 2026). The night now
+    # takes a CandH_Reports that came back with no rows once the term has
+    # turned (nightly.TERM_VIEWS): a new term has no report until its first,
+    # released on 10 January in 2025. This stopped on it before it wrote the
+    # finished terms' reports from their freezes, and on GitHub's machine,
+    # which keeps no copy of this file, every Senate hearing report would have
+    # left the site until then. A source that holds no line and whose dump
+    # counts its query's rows as none (freeze_term.counted_none) is that view,
+    # and what the freezes give is written; one with lines and no report, or
+    # with nothing from any freeze either, is refused as before.
+    none = not c["rows"] and FT.counted_none(src)
+    if none and out:
+        print(f"  {src} holds no row, and its dump counted none: the term's view before "
+              "its first report. The finished terms' reports are written from their freezes.")
+    elif not c["rows"]:
         sys.exit(f"NOT WRITING {a.out}: no Senate hearing report rows in "
                  f"{src}. The table held 1,294 on 8 September 2026.")
     if c["parsed"] < c["rows"] * 0.9:

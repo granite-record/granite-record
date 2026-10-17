@@ -168,7 +168,14 @@ the archived terms it holds stay). Until then these came from the laptop alone,
 as it last fetched them. Each is taken whole or not at all; one not taken is a
 warning the gate never holds a night for, and the site goes out with the copy
 it had. They are the night's files in the kit. Not on a New term run, whose
-term turns under them; the freeze keeps the finished term's. The texts reach
+term turns under them; the freeze keeps the finished term's. The three views
+go in together or not at all, each weighed against the installed copy's rows
+of its own term, and a set of a newer term waits for the New term run. After
+it, a view that comes back with no rows -- the new term's committee reports,
+of which there are none until January -- is taken as the empty view it is,
+where its query succeeded and the installed copy holds none of the term, and
+the run's page says so (`TAKEN_EMPTY`); an empty view of the term the
+installed copy holds is still refused, and holds the other two. The texts reach
 the bill pages too: `bill_text_from_db.py` fills `bill_text.json` from them for
 any bill the web fetch has not read (section 10).
 
@@ -190,10 +197,13 @@ there, though the build still goes out.
 **The term turnover.** The General Court's files describe the current term
 only, so before they turn over, the finished term's inputs are frozen:
 `src/lib/freeze_term.py --views` copies the database's views of the term into
-`db/term/<term>/`, and `--session` the day files as installed into
-`frozen/<term>/`, with the term's docket and manifest under the archived
-terms' names (`Docket_<term>.txt`, `verification_manifest_<term>.csv`) and
-its roll calls in `records/rollcalls/`. After the turn,
+`db/term/<term>/` -- the three the night takes (Legislation, LegislationText,
+CandH_Reports) of one dump, the laptop's insurance views of whichever dump
+they are, each view's dump time in the manifest -- and `--session` the day
+files as installed into `frozen/<term>/`, with the term's docket and
+manifest under the archived terms' names (`Docket_<term>.txt`,
+`verification_manifest_<term>.csv`) and its roll calls in
+`records/rollcalls/`. After the turn,
 `python3 src/parse/build_data.py --frozen-terms` builds that term
 from them every night, so a correction still reaches it. An ordinary night
 refuses files that name a newer term than the installed ones, whatever their

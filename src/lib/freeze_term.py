@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-05.9
+# GRANITE_VERSION: 2026-10-05.10
 """
 A finished term's inputs, frozen before the General Court turns its files over.
 
@@ -48,8 +48,10 @@ WHAT IT WRITES
               _columns.json they were dumped with and the dump's own entries
               for them; houseRemoteTestify, 103 MB, in extra/, a backup that
               the kit's db/term/*/* does not carry to every night; and
-              manifest.json, last: each file's sha256 and bytes, and its rows
-              by session year (or by SessionID, where a view has no year)
+              manifest.json, last: each file's sha256 and bytes, its rows
+              by session year (or by SessionID, where a view has no year),
+              and when its dump was made; and the views of another dump
+              than the required three's, with whether it was older or newer
   --session   frozen/<term>/day/: the fourteen files snapshot_gencourt
               installs, byte for byte as installed, and manifest.json, last,
               with the same for each; Docket_<term>.txt, the archived terms'
@@ -73,9 +75,11 @@ WHAT IT REFUSES
               freeze of the term is on disk to say which of its rows are the
               term's (with one, the term's rows are frozen out of it and the
               later years left out, below); a view shorter than the dump's own
-              manifest says it was, or empty; views dumped more than a day
-              apart (two dumps are not one record); and any view holding
-              fewer rows of the term than the freeze it would replace
+              manifest says it was, or empty; Legislation, LegislationText
+              and CandH_Reports dumped more than a day apart (two dumps are
+              not one record; the other views may be of another dump, and
+              the manifest says which); and any view holding fewer rows of
+              the term than the freeze it would replace
   --session   files that hold any year outside the term (a turn has begun, or
               some of tonight's files are another term's); a docket without
               both years of the term; a file missing or empty; a docket that
@@ -207,7 +211,8 @@ VIEW_YEAR = {"Legislation": ("sessionyear", "year"),
              "houseRemoteTestify": ("CommitteeDate", "date"),
              "LegislationText": ("SessionID", "id"),
              "DocumentVersion": ("SessionID", "id")}
-# Views dumped further apart than this are not one dump.
+# Views dumped further apart than this are not one dump. VIEWS_REQUIRED must be
+# one; the others may be of another, and the freeze says so (freeze_views).
 ONE_DUMP_HOURS = 24
 
 # A freeze is not replaced by one that has lost more than this share of any
@@ -336,6 +341,29 @@ def view_rows(path, columns, view):
     return n, dict(sorted(parts.items()))
 
 
+def counted_none(path):
+    """Whether the dumped view at `path` is empty because its query counted no
+    rows: a file of no bytes, to which its dump's own _manifest.json beside it
+    gives a count of 0 and no error.
+
+    A NEW TERM'S EMPTY VIEW (16 October 2026). The night now takes a view of
+    the current term that came back with no rows where the term has turned and
+    has none yet (nightly.TERM_VIEWS), and the readers that stopped on an empty
+    view as a dump whose shape had moved read one this vouches for as "none
+    yet" instead. A file with lines in it, or an empty one the manifest does
+    not count as none, is what it was before."""
+    path = Path(path)
+    try:
+        if path.stat().st_size:
+            return False
+    except OSError:
+        return False
+    man = load_json(path.parent / "_manifest.json")
+    e = man.get(path.stem) if isinstance(man, dict) else None
+    return isinstance(e, dict) and type(e.get("rows")) is int and e["rows"] == 0 \
+        and not e.get("error")
+
+
 def of_term(entry, term):
     """Rows of `term` in a view's manifest entry: by its years where it has
     them, else all of its rows."""
@@ -404,15 +432,41 @@ def freeze_views(term, src=Path("db"), out_root=VIEWS_DIR):
     # ONE DUMP. The views are read together -- a LegislationText row is
     # joined to its Legislation row by an id that restarts every term -- so
     # views asked for on different days are not one record.
-    when = []
+    #
+    # ONE DUMP FOR THE VIEWS READ TOGETHER (16 October 2026, the person's
+    # decision). That reason is the three VIEWS_REQUIRED's: a frozen term's
+    # LegislationText is joined to its Legislation by that id
+    # (build_bill_versions), and its reports are the same term's record, which
+    # is why the night takes the three as one set (nightly.TERM_VIEWS). The
+    # night owns those three now (cloud_kit.json) and the laptop still holds
+    # the others from its own dump of 8 September, so every --views on the
+    # laptop after a night would have refused "more than a day apart". So the
+    # required views must still be of one dump, and one of them out of step
+    # with the others is refused as before; the rest may be of another:
+    # VIEWS_INSURANCE, the database's own record of the term, which no builder
+    # joins to them, and VIEWS_EXTRA, whose sign-ins testimony_from_db reads
+    # only for the term their own dates name. Each is frozen as it stands,
+    # with its own dump's time beside it in the manifest ("dumped"), and named
+    # there and to the person where that dump is older or newer than the
+    # required views' ("another_dump").
+    when = {}
     for v in have:
         try:
-            when.append(datetime.fromisoformat(str((dump.get(v) or {}).get("fetched"))))
+            when[v] = datetime.fromisoformat(str((dump.get(v) or {}).get("fetched")))
         except ValueError:
             pass
-    if when and (max(when) - min(when)).total_seconds() > ONE_DUMP_HOURS * 3600:
-        raise Refused(f"the views in {src} were dumped from {min(when):%Y-%m-%d} to "
-                      f"{max(when):%Y-%m-%d}: more than a day apart is not one dump")
+    required = [when[v] for v in VIEWS_REQUIRED if v in when]
+    if required and (max(required) - min(required)).total_seconds() > ONE_DUMP_HOURS * 3600:
+        raise Refused(f"{', '.join(VIEWS_REQUIRED)} in {src} were dumped from "
+                      f"{min(required):%Y-%m-%d} to {max(required):%Y-%m-%d}: more than a day "
+                      "apart is not one dump, and they are read together")
+    another = {}
+    for v, t in when.items():
+        if v in VIEWS_REQUIRED or not required:
+            continue
+        if (max(required + [t]) - min(required + [t])).total_seconds() > ONE_DUMP_HOURS * 3600:
+            another[v] = {"dumped": t.isoformat(timespec="seconds"),
+                          "than_required": "older" if t < min(required) else "newer"}
 
     entries = {}
     for v in have:
@@ -506,10 +560,18 @@ def freeze_views(term, src=Path("db"), out_root=VIEWS_DIR):
         else:
             shutil.copyfile(src / f"{v}.psv", tmp)
         os.replace(tmp, part / rel)
-        files[rel] = {"sha256": sha256_of(part / rel), "bytes": (part / rel).stat().st_size, **e}
+        files[rel] = {"sha256": sha256_of(part / rel), "bytes": (part / rel).stat().st_size, **e,
+                      **({"dumped": when[v].isoformat(timespec="seconds")} if v in when else {})}
         said.append(f"  {rel:32} {e['rows']:>9,} rows  "
                     + ", ".join(f"{k} {n:,}" for k, n in (e.get("years") or {}).items())
                     + (f"; {e['left_out']:,} of later years left out" if e.get("left_out") else ""))
+    # Only the views frozen from this dump: one carried from the earlier
+    # freeze is that freeze's, and says so in its own entry.
+    another = {v: a for v, a in another.items() if v in entries}
+    for v, a in another.items():
+        said.append(f"  {v}: of another dump, {a['dumped'][:10]}, {a['than_required']} than "
+                    f"the one of {', '.join(VIEWS_REQUIRED)} ({min(required):%Y-%m-%d}): "
+                    "frozen as it stands")
     was_cols = load_json(final / "_columns.json") or {}
     for v, why in carried.items():
         rel = f"{EXTRA}/{v}.psv" if v in VIEWS_EXTRA else f"{v}.psv"
@@ -530,6 +592,7 @@ def freeze_views(term, src=Path("db"), out_root=VIEWS_DIR):
     write_bytes(part / MANIFEST, json.dumps({
         "term": term, "frozen": stamp(), "from": str(src).replace("\\", "/"),
         "dump": dumped, "files": files,
+        **({"another_dump": another} if another else {}),
         **({"left_out_years": past} if past else {})}, indent=1).encode("utf-8"))
     put_in_place(part, final)
     said.append(f"{final}: {len(entries)} views of {term}"

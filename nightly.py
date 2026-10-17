@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.72
+# GRANITE_VERSION: 2026-09-04.73
 """
 The nightly run. Fetch the day's bulk files, rebuild, check, compile what
 readers reported and what changed -- and publish only if told to.
@@ -998,7 +998,28 @@ KIND_BUILT_WARN = "a check of the built site against the record: "
 # refused whole, saying so, until the New term run has turned them. A
 # Legislation that holds 2025-2026 and next session's first requests as well
 # is still taken, as it is one more term the first holds.
+#
+# AN EMPTY VIEW OF A NEW TERM IS TAKEN (16 October 2026, the person's
+# decision). After the New term run the term's committee reports can come back
+# with no rows for weeks -- a new term has none until its first, released on
+# 10 January in 2025 -- and an empty view was refused as "nothing came back".
+# Taken together, that one refusal held Legislation and LegislationText back
+# with it, and the new term's bills would have had no text from the database
+# until that first report. So a view that comes back with no rows is taken, as
+# the empty view it is and with its manifest entry, where the query itself
+# succeeded (no error, an empty file for the query's count of none, and a
+# fetch that finished) and the installed copy of that view holds no row of any
+# term Legislation holds tonight: a set that has turned (term_set). Legislation
+# itself never: it is what says which term the set is. An empty view of a
+# term the installed copy holds is still refused, and holds the other two:
+# that is a failure, not a new term. The run's page says of every view taken
+# empty that it was (term_warned), and the two readers that stopped on an
+# empty view take one the dump's own manifest counts no rows of as "none yet"
+# (senate_hearing_reports, bill_text_from_db).
 TERM_VIEWS = ("Legislation", "LegislationText", "CandH_Reports")
+# What take_views says of a view of the term taken with no rows, and what
+# term_warned knows one by.
+TAKEN_EMPTY = "installed, no rows"
 TERM_FILES = (
     ("the Senate's committee reports, from the database", "fetch_reports_db.py",
      "senate_reports.json"),
@@ -3427,14 +3448,17 @@ def take_views(views, label, shrink=SWAP_SHRINK, not_again=False, together=False
     when a view fails, so it is run in a scratch folder, and each view replaces
     the installed copy only if the query succeeded, the file holds exactly the
     rows the query counted, and it is not more than `shrink` smaller than what
-    it replaces (any fall, on the New term run; never empty). The views'
-    entries in db/_manifest.json follow them in; the
-    calendar reads the meetings' date from there. {view: what happened}.
+    it replaces (any fall, on the New term run; never empty, but as below).
+    The views' entries in db/_manifest.json follow them in; the calendar
+    reads the meetings' date from there. {view: what happened}.
 
     together, for the current term's views (TERM_VIEWS, whose block says
     why): all of `views` go in or none does, the fall is judged against the
     installed copy's rows of the same term, and a set of a later term than the
     installed files' waits for the New term run (take_together, term_set).
+    And a view that came back with no rows may go in with them, where its
+    query succeeded, its file is empty and the fetch finished: term_set takes
+    it only for a term its installed copy holds none of (TAKEN_EMPTY).
 
     Not asked at all while a hold on the host stands (STUDY_HELD), or, with
     not_again, on a night the database was asked for the day's files and did
@@ -3469,7 +3493,15 @@ def take_views(views, label, shrink=SWAP_SHRINK, not_again=False, together=False
     for v in views:
         new, old = scratch / "db" / f"{v}.psv", Path("db") / f"{v}.psv"
         entry = man.get(v) or {}
-        if entry.get("error") or not new.exists() or not entry.get("rows"):
+        # NONE, AS AN ANSWER (TERM_VIEWS's block, 16 October 2026). Only for
+        # the views taken together, where term_set can tell a turned set from
+        # a failed one; and only where the query's own count is a plain 0, it
+        # recorded no error, and the fetch finished: a run cut short leaves a
+        # view unasked or half written, and "none" read from that is a guess.
+        # The file is held to that count below, as every view's is.
+        none = (together and type(entry.get("rows")) is int and entry["rows"] == 0
+                and not entry.get("error") and new.exists() and rc == 0)
+        if not none and (entry.get("error") or not new.exists() or not entry.get("rows")):
             out[v] = ("not taken: " + str(entry.get("error") or f"nothing came back (exit {rc})"))[:240]
             continue
         if cols_old.get(v) and cols_new.get(v) != cols_old.get(v):
@@ -3479,6 +3511,11 @@ def take_views(views, label, shrink=SWAP_SHRINK, not_again=False, together=False
         if rows != entry["rows"]:
             out[v] = (f"not taken: the file holds {rows:,} lines and the query "
                       f"counted {entry['rows']:,}")
+            continue
+        # count_lines counts line ends, and a file of bytes with none in them
+        # counts 0: the query's none is an empty file and nothing else.
+        if none and new.stat().st_size:
+            out[v] = "not taken: the query counted no rows and the file is not empty"
             continue
         was = count_lines(old) if old.exists() else 0
         if together:
@@ -3574,8 +3611,19 @@ def term_set(views, fresh, have, shrink, session=""):
     of every term the first holds are weighed against the installed copy's
     rows of that term, as fetch_reports_db.shrunk weighs its file: a view that
     has turned, whose new term the installed copy holds none of, is not
-    refused for being smaller than the old one."""
+    refused for being smaller than the old one.
+
+    A view after the first that holds no row at all ({} in `fresh`) is taken
+    only where the installed copy holds no row of any term the first holds:
+    the set has turned, and its term has none yet. Where the installed copy
+    holds rows of one, the view is refused, and the set with it (TERM_VIEWS's
+    block). The first is never taken empty."""
     first = views[0]
+    # THE FIRST IS NEVER TAKEN EMPTY (16 October 2026): it is what says which
+    # term the set is, and with no row of it nothing does.
+    if not fresh[first]:
+        return {v: f"not taken: {first} came back with no rows, and it is the record the others "
+                   "are filed against" for v in views}
     stated = {v: {t for t in fresh[v] if t} for v in views}
     stray = [(v, sorted(stated[v] - stated[first])) for v in views[1:]
              if stated[v] - stated[first]]
@@ -3613,6 +3661,18 @@ def term_set(views, fresh, have, shrink, session=""):
         both = mine & kept
         now = by_term(fresh[v], max(both or mine or terms))
         was = by_term(have[v], max(both or kept or terms))
+        if not fresh[v]:
+            # EMPTY: A NEW TERM'S, OR A FAILURE (16 October 2026). The installed
+            # copy's rows that say no term are counted with its own newest, or
+            # with the set's where it states none, as the fall below counts
+            # them: an installed copy that cannot say which term its rows are
+            # of is not one that holds none of this term's.
+            held = [(t, was[t]) for t in sorted(terms) if was.get(t)]
+            if held:
+                out[v] = (f"not taken: it came back with no rows, and the installed copy holds "
+                          f"{held[-1][1]:,} of {held[-1][0]}; an empty view of the term it holds "
+                          "is a failure, not a new term")
+            continue
         for t in sorted(terms):
             if was.get(t) and now.get(t, 0) < was[t] * (1 - shrink):
                 out[v] = f"not taken: {now.get(t, 0):,} rows of {t} against {was[t]:,} installed"
@@ -3669,9 +3729,10 @@ def swap_together(pairs, aside):
 
 def take_together(views, ready, out, cols_new, cols_old, shrink, aside):
     """take_views' `together`: the views of `ready` -- each that came back
-    whole, as (view, new, old, entry, rows, was) -- in place if every one of
-    `views` came back and term_set refuses none, and otherwise none of them.
-    Says in `out` what became of each; [(view, entry)] of those put in."""
+    whole, or empty as its query counted, as (view, new, old, entry, rows,
+    was) -- in place if every one of `views` came back and term_set refuses
+    none, and otherwise none of them. Says in `out` what became of each, an
+    empty one put in as TAKEN_EMPTY; [(view, entry)] of those put in."""
     import proceedings as P
     came = [r[0] for r in ready]
     held = [v for v in views if v not in came]
@@ -3697,9 +3758,14 @@ def take_together(views, ready, out, cols_new, cols_old, shrink, aside):
             out[v] = ("not taken: the views could not be put in place together"
                       + ("" if back else ", and the installed copies were not all put back"))
         return []
+    turned = ", ".join(sorted(t for t in fresh[views[0]] if t))
     for v, _n, _o, entry, rows, was in ready:
         newest = max((t for t in fresh[v] if t), default="")
         mine = {t for t in have[v] if t}
+        if not fresh[v]:
+            out[v] = (f"{TAKEN_EMPTY} (was {was:,}): {turned} has none yet, and the copy it "
+                      "replaced held none of it")
+            continue
         out[v] = f"installed, {rows:,} rows (was {was:,})" + (
             f": it holds {newest}, of which the copy it replaced held none"
             if newest and mine and newest not in mine else "")
@@ -3777,11 +3843,26 @@ def term_warned(v):
     tonight, of a kind that never holds the night (KIND_TERM_DATA). One that
     was not asked for -- a hold on the host, or the day's files already failed
     there tonight -- says so as well: the copy the night went out with is an
-    older one either way."""
+    older one either way.
+
+    And one taken with no rows (TAKEN_EMPTY), as the empty view of a new term
+    it is: the night went out with no row of it, and the run's page says so in
+    as many words rather than leave an "installed" to stand for it (16
+    October 2026). Its kind is its own, and like the rest it never holds."""
     got = v.get("term_data") if isinstance(v.get("term_data"), dict) else {}
-    return [(KIND_TERM_DATA + str(piece), f"the current term's {piece} were not taken from the "
-             f"General Court's database tonight, and the site went out with the copy it had: {what}"
-             [:300]) for piece, what in got.items() if not str(what).startswith("installed")]
+    out = []
+    for piece, what in got.items():
+        what = str(what)
+        if what.startswith(TAKEN_EMPTY):
+            out.append((KIND_TERM_DATA + f"{piece} taken with no rows",
+                        f"the current term's {piece} came back from the General Court's database "
+                        f"with no rows, and were taken as the empty view of a new term: {what}"
+                        [:300]))
+        elif not what.startswith("installed"):
+            out.append((KIND_TERM_DATA + str(piece), f"the current term's {piece} were not taken "
+                        "from the General Court's database tonight, and the site went out with "
+                        f"the copy it had: {what}"[:300]))
+    return out
 
 
 def captions_compared(work="work", markers="candidate_segments.json"):
