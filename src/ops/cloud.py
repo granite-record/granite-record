@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-25.21
+# GRANITE_VERSION: 2026-09-25.22
 """
 The nightly's kit and the laptop's backup, in the project's private R2 bucket.
 
@@ -31,9 +31,11 @@ The nightly's kit and the laptop's backup, in the project's private R2 bucket.
                                                        or it waited behind another
     python3 src/ops/cloud.py send-night PATH [PATH ...] [--from FILE ...]
                              [--allow-dropping NAME ...] [--dry-run]
-                                                       a night's kit file, this laptop's
+                                                       the caption results, this laptop's
                                                        copy (or FILE) over the bucket's:
-                                                       a person's deliberate send
+                                                       a person's deliberate send. PATH
+                                                       straight after send-night; --from
+                                                       and --allow-dropping once for each
 
     --local-bucket FOLDER   a folder stands in for the bucket, for testing
     --root FOLDER           the working folder (default: the current one)
@@ -259,55 +261,83 @@ October 2026, and seed-kit never sends the laptop's copy over the night's.
 But a change to segment_markers.py's patterns reaches older recordings only
 by a re-read on the laptop, which holds the captions the night does not, and
 until this nothing could send that re-read. send-night is that send, and it
-is a person's: each PATH named, which must be a night's kit file, goes from
-this laptop -- or from the FILE given by --from, one for each PATH in order
--- over the bucket's copy, and nothing else does. It refuses, saying why and
-exiting 1, and sends nothing:
+is a person's: each PATH named, which must be one of the two caption-results
+files, goes from this laptop -- or from the FILE given by --from, once for
+each PATH, in order -- over the bucket's copy, and nothing else does. It
+refuses, saying why and exiting 1, and sends nothing:
 
-  a path that is not the night's   the laptop's (seed-kit sends those), one
-                                   the kit does not hold, anything under
-                                   site/, and anything on the "never" list
-  a copy that drops a recording    candidate_segments.json's recordings and
-                                   its two maps beside them, and
-                                   caption_spans.json's recordings: every one
-                                   the bucket's copy holds must be in the copy
-                                   sent, because a re-read on a subset is how
-                                   842 recordings' results were lost once
-                                   (CLAUDE.md). --allow-dropping NAME ... names
-                                   the ones a person accepts losing. A copy
-                                   sent that will not read as its file is
-                                   refused too; a bucket's copy that will not
-                                   read protects nothing and is replaced
+  a path that is not theirs        the laptop's (seed-kit sends those), one the
+                                   kit does not hold, anything under site/ or
+                                   on the "never" list, and any other file of
+                                   the night's, which goes back only with the
+                                   night's own kit-up: these two are the files
+                                   whose recordings this can count and whose
+                                   times it can score
+  a copy that drops a recording    candidate_segments.json's recordings and the
+                                   maps beside them (segment_markers.SIDES),
+                                   and caption_spans.json's recordings: every
+                                   one the bucket's copy holds must be in the
+                                   copy sent, because a re-read on a subset is
+                                   how 842 recordings' results were lost once
+                                   (CLAUDE.md). --allow-dropping NAME, once for
+                                   each, names the ones a person accepts
+                                   losing. A copy sent that will not read as
+                                   its file is refused too; a bucket's copy
+                                   that will not read protects nothing
+  a copy that scores worse         candidate_segments.json is scored by the
+                                   timestamp probe (probe_alignment.py --truth,
+                                   through livestreams.probe, in the working
+                                   folder), the bucket's copy and the copy
+                                   sent, and a worse median or fewer of the
+                                   same hand-timed proceedings placed
+                                   (livestreams.worse) is refused, as the
+                                   laptop's evening job refused it before 10
+                                   October 2026 -- the night's own guard takes
+                                   whatever kit/ holds as its baseline. A probe
+                                   that will not run is a refusal too
   a night that may hold the copy   inside GitHub's night window
-                                   (refusal.NIGHT_WINDOWS), when a scheduled
-                                   night or weekly may have taken the copy down
-                                   -- its kit-up would find this one in its
-                                   place, keep it, and fail; and while a build
-                                   or a nightly writes here (.build.lock,
-                                   .nightly.lock). A night started by hand is
-                                   not known here: a dry run never sends these
-                                   files back, but look at GitHub's Actions tab
-                                   for a run of main first
+                                   (refusal.NIGHT_WINDOWS); after it, until the
+                                   night that opened it has sent its verdict
+                                   (state/last-night.json, of that day), for as
+                                   long as its job may run (NIGHT_JOB_MINUTES
+                                   past the window, nightly.yml's timeout,
+                                   from a start that is often late); and while
+                                   a build or a nightly writes here
+                                   (.build.lock, .nightly.lock). A night's
+                                   kit-up would find the copy sent in place of
+                                   the one it took down, keep it, and fail. A
+                                   run started by hand is not known here: a dry
+                                   run never sends these files back, but look
+                                   at GitHub's Actions tab for a run of main
   a release still waiting          a New term run's night that holds the file
                                    for kit-release, which refuses to release
                                    over a copy that is not the one it took down
   a refusal the bucket lacks       one on file here, in force or marked unsent,
                                    while the bucket holds none: send-refusal
                                    first, which is the more urgent send
-  the bucket's copy moved          the kit manifest's copy changed between the
+  another writer's copy            kit/ holding a copy that is neither the one
+                                   the manifest records nor the one sent, or
+                                   the manifest's copy changing between the
                                    comparison and the send
 
 --dry-run is what a person runs first: for each file its size and sha256 and
-the bucket's, and the recordings added, changed and dropped, and nothing is
-sent or written. The send keeps the bucket's copy under replaced/<day>/kit/
+the bucket's, the recordings added, changed and dropped, and both copies'
+timestamp probe, and nothing is sent or written; what would refuse the send
+now is said. The send keeps the bucket's copy under replaced/<day>/kit/
 first, reads each copy back against its sha256, and writes the kit manifest,
 so the next night takes the new copy. On this laptop it records the copy sent
 in pull's record (archive/cloud/pull.json) as the copy it holds in common
 with the bucket, so the next pull reports no clash for it; a --from FILE
 also takes this laptop's copy's place, which is set aside under
-archive/cloud/set-aside/<day>/ first, as pull --take does. --local-bucket in
-the stood-down repository that holds secrets.json needs --allow-local-bucket,
-as pull does.
+archive/cloud/set-aside/<day>/ first, as pull --take does.
+
+A send that stops after the upload and before the manifest is written
+leaves kit/ holding the new copy under the old manifest, which the next
+night's kit-down calls a short kit. Run again, it finds kit/ already holding
+the copy sent -- by that copy's own sha256, as resumed() does for seed-kit --
+compares it with the copy it replaced (under replaced/) as the first run did,
+and records it without sending it again. --local-bucket in the stood-down
+repository that holds secrets.json needs --allow-local-bucket, as pull does.
 """
 
 # The bootstrap: _paths.py, found above this file, puts every code folder on the import path.
@@ -3210,21 +3240,33 @@ def cmd_pull(a, root):
 # A PERSON'S SEND OF A NIGHT'S FILE (17 October 2026). The module docstring
 # says what it is for and what it refuses; what follows keeps those rules.
 
-# The night's files whose entries are recordings. A re-read on a subset of
-# the recordings is how 842 recordings' results were once discarded
-# (CLAUDE.md), so a copy sent that drops one the bucket's copy holds is
-# refused unless --allow-dropping names it.
+# The only files send-night sends: the caption results, whose entries are
+# recordings it can count, and whose times the timestamp probe can score. A
+# re-read on a subset of the recordings is how 842 recordings' results were
+# once discarded (CLAUDE.md). Every other file of the night's goes back only
+# with the night's own kit-up: a laptop's copy of the day's files or the
+# archive is something this could check against nothing.
 KEYED = ("candidate_segments.json", "caption_spans.json")
-# candidate_segments.json's two maps beside its recordings, each keyed on
-# recording (livestreams.SIDES, which segment_markers merges one recording at
-# a time). Their entries come and go with a re-read -- a recording read again
-# answers for its own _absent -- so only a map gone whole counts as dropped.
-MARKER_SIDES = ("_absent", "_sequence")
+# The one of them the timestamp probe scores (livestreams.MARKERS).
+SCORED = "candidate_segments.json"
+# How long GitHub gives the night's job: nightly.yml's timeout-minutes, which
+# preflight holds this to. A night started as late as its window allows may
+# still be running this long after the window closes, and the job is often
+# started late.
+NIGHT_JOB_MINUTES = 300
 
 
 def recordings_in(rel, data):
     """({recording: entry}, {side: map}) of a caption-results file's bytes.
-    ValueError when the bytes are not that file's shape."""
+    ValueError when the bytes are not that file's shape.
+
+    The maps beside candidate_segments.json's recordings are segment_markers'
+    one definition of them (SIDES): this kept a copy of that list for an
+    afternoon, and it lacked _named_before, which would have counted as a
+    recording. Their entries come and go with a re-read -- a recording read
+    again answers for its own _absent -- so only a map gone whole counts as
+    dropped."""
+    from segment_markers import SIDES
     doc = json.loads(data)
     if not isinstance(doc, dict):
         raise ValueError("not a JSON object")
@@ -3233,11 +3275,11 @@ def recordings_in(rel, data):
         if not isinstance(recs, dict):
             raise ValueError('no "recordings" map')
         return recs, {}
-    sides = {s: doc[s] for s in MARKER_SIDES if s in doc}
+    sides = {s: doc[s] for s in SIDES if s in doc}
     bad = [s for s, v in sides.items() if not isinstance(v, dict)]
     if bad:
         raise ValueError(f"{', '.join(bad)} is not a map of recordings")
-    return {k: v for k, v in doc.items() if k not in MARKER_SIDES}, sides
+    return {k: v for k, v in doc.items() if k not in SIDES}, sides
 
 
 def send_night_late(root):
@@ -3248,20 +3290,65 @@ def send_night_late(root):
     would find this one in its place, keep it, file the night's under
     replaced/ and fail, and what that night read would reach no site. And a
     build or a nightly writing here would have this send a file half
-    written. A run started by hand is not known here; the docstring says
-    where to look."""
+    written. night_unfinished() asks the bucket about the time after the
+    window."""
     import refusal
     w = refusal.night_window()
     if w:
         s, e, what = w
         return (f"GitHub's night window is open ({refusal.describe_window(s, e, what)}), so a "
                 "night may hold the copy it took down, and its kit-up would find this one in "
-                "its place. Send once the window has closed.")
+                "its place. Send once the window has closed")
     try:
         quiet_disk(root)
     except Failed as e:
-        return str(e)
+        return str(e).rstrip(".")
     return ""
+
+
+def last_night(now):
+    """(start, end) of the newest nightly window to have opened by `now`:
+    the entry of refusal.NIGHT_WINDOWS that is every day's."""
+    import refusal
+    from datetime import timedelta, timezone
+    (sh, sm), (eh, em) = next((s, e) for wd, s, e, _ in refusal.NIGHT_WINDOWS if wd is None)
+    for back in (0, 1):
+        d = (now - timedelta(days=back)).date()
+        start = datetime(d.year, d.month, d.day, sh, sm, tzinfo=timezone.utc)
+        if start <= now:
+            return start, datetime(d.year, d.month, d.day, eh, em, tzinfo=timezone.utc)
+    raise Failed("refusal.NIGHT_WINDOWS has no window that opened in the last two days")
+
+
+def night_unfinished(bucket):
+    """The sentence for a night that may still be running past its window,
+    or "".
+
+    THE WINDOW IS NOT THE NIGHT. It closes at 13:30 UTC, but GitHub often
+    starts the night late and gives its job NIGHT_JOB_MINUTES, so a night
+    can be running well after. The tool learns that a night has finished
+    the way pull does: its verdict, state/last-night.json, which the night
+    sends at its end whatever happened, carrying the day it started in
+    Eastern time. Until that day's verdict is there, and until no night
+    started inside the window could still be running, nothing is sent. The
+    clock is the one refusal's guards read (GRANITE_CLOCK_UTC in a test)."""
+    import refusal
+    from datetime import timedelta
+    now = refusal._utc()
+    start, end = last_night(now)
+    until = end + timedelta(minutes=NIGHT_JOB_MINUTES)
+    if now >= until:
+        return ""
+    day = refusal.eastern(start)[0].date().isoformat()
+    raw = bucket.get_bytes("state/last-night.json")
+    had = str((_refusal_doc(raw) if raw is not None else {}).get("day") or "")
+    if had >= day:
+        return ""
+    return (f"the night of {day} has sent no verdict to state/last-night.json (the newest is "
+            f"{had or 'none'}), and GitHub gives its job {NIGHT_JOB_MINUTES} minutes from a start "
+            f"that is often late, so it may still hold the copy it took down until "
+            f"{until:%H:%M} UTC. Look at the Actions tab; send once its verdict is in, or after "
+            "then")
 
 
 def refusal_unsent(bucket, root, kit):
@@ -3309,10 +3396,76 @@ def waiting_release(bucket, cur, rels):
     return out
 
 
+def kept_copy(bucket, key, sha, today, days=7):
+    """The bytes of the copy of `key` whose sha256 is `sha` that a Replacer
+    kept under replaced/<day>/ in the last `days` days, newest first, or None:
+    what a send that stopped halfway replaced, and so what it compared with."""
+    from datetime import timedelta
+    folder, name = key.rsplit("/", 1)
+    for back in range(days):
+        d = f"{today - timedelta(days=back):%Y-%m-%d}"
+        prefix = f"replaced/{d}/{folder}/"
+        names = [k for k in bucket.list(prefix)
+                 if k == prefix + name or k.startswith(prefix + name + "~")]
+        for k in sorted(names, reverse=True):
+            data = bucket.get_bytes(k)
+            if data is not None and _sha(data) == sha:
+                return data
+    return None
+
+
+def probe_line(score):
+    """The timestamp probe's header for one copy, in the words the night's
+    verdict uses (livestreams)."""
+    if score is None:
+        return "the probe would not run"
+    if not score.get("marked"):
+        return "nothing to score"
+    return (f"places {score['placed']} of {score['marked']} hand-timed proceedings, median "
+            f"{score['median']}s")
+
+
+def score_markers(root, old, new):
+    """(why the copy sent scores worse, or "", the probe of the bucket's copy,
+    the probe of the copy sent).
+
+    THE TIMESTAMP GUARD, kept by the send that brings a pattern re-read to
+    the site. CLAUDE.md: nothing about timestamps goes on the site before
+    probe_alignment.py --truth has been run and the median has not
+    regressed. The laptop's evening job held its send to that until it was
+    retired on 10 October 2026, and the night's own guard (livestreams.guard)
+    holds every reading of the night's to it -- taking whatever copy kit/
+    holds as its baseline, so a worse copy sent from here would become the
+    standard the night is measured by. Both copies are scored by livestreams'
+    own probe and judged by its own rule (worse), run in the working folder,
+    where the hand-timed proceedings are."""
+    import livestreams
+    import tempfile
+    d = Path(tempfile.mkdtemp(prefix="gr-send-probe-"))
+    try:
+        before = {"marked": 0, "placed": 0, "median": None}
+        if old is not None:
+            (d / "bucket.json").write_bytes(old)
+            before = livestreams.probe(d / "bucket.json", cwd=root)
+        (d / "sent.json").write_bytes(new)
+        after = livestreams.probe(d / "sent.json", cwd=root)
+    finally:
+        shutil.rmtree(d, ignore_errors=True)
+    if after is None or before is None:
+        return ("the timestamp probe (probe_alignment.py --truth) would not run on "
+                + ("either copy" if after is None and before is None else
+                   "the copy sent" if after is None else "the bucket's copy")
+                + ", so the copy sent could not be scored"), before, after
+    if before.get("marked"):
+        return livestreams.worse(before, after), before, after
+    return "", before, after
+
+
 def cmd_send_night(a, root):
-    """A night's kit file, from this laptop, over the bucket's copy: a
+    """A night's caption results, from this laptop, over the bucket's copy: a
     person's deliberate act. The module docstring says why, and what it
     refuses; --dry-run is what the person runs first."""
+    import tempfile
     if os.environ.get("GITHUB_ACTIONS") == "true":
         raise Failed("send-night is a person's, on the laptop. On GitHub's machine kit-up "
                      "sends what the night changed.")
@@ -3330,8 +3483,8 @@ def cmd_send_night(a, root):
     like = "as cloud_kit.json names it: candidate_segments.json"
     rels = [rel_path(root, p, "send-night", like) for p in a.paths or []]
     if not rels:
-        raise Failed("send-night sends the night's kit files a person names, and none was "
-                     "named: python3 src/ops/cloud.py send-night candidate_segments.json "
+        raise Failed("send-night sends the night's caption results a person names, and none "
+                     "was named: python3 src/ops/cloud.py send-night candidate_segments.json "
                      "caption_spans.json --dry-run")
     twice = sorted({r for r in rels if rels.count(r) > 1})
     if twice:
@@ -3341,7 +3494,7 @@ def cmd_send_night(a, root):
         raise Failed(f"--from names {len(froms)} file(s) for {len(rels)} path(s): give one "
                      "--from for each PATH, in the same order, or none to send this laptop's "
                      "own copies")
-    # ONLY THE NIGHT'S FILES, AND NEVER WHAT NO COMMAND SENDS.
+    # ONLY THE CAPTION RESULTS, AND NEVER WHAT NO COMMAND SENDS.
     never = never_rx(kit)
     for rel in rels:
         if any(rx.match(rel) for rx in never):
@@ -3357,6 +3510,11 @@ def cmd_send_night(a, root):
         if owner != "night":
             raise Failed(f"{rel} is not in the kit {KIT_FILE} describes, so it is no night's "
                          "file. Nothing was sent.")
+        if rel not in KEYED:
+            raise Failed(f"{rel} is the night's, but send-night sends only the caption results "
+                         f"({', '.join(KEYED)}), whose recordings it can count and whose times "
+                         "it can score; the night's other files go back only with its own "
+                         "kit-up. Nothing was sent.")
     srcs = {}
     for i, rel in enumerate(rels):
         src = (Path(froms[i]) if froms else local(root, rel)).resolve()
@@ -3365,7 +3523,7 @@ def cmd_send_night(a, root):
         srcs[rel] = src
     late = send_night_late(root)
     if late and not a.dry_run:
-        raise Failed(late + " Nothing was sent.")
+        raise Failed(late + ". Nothing was sent.")
     bucket = open_bucket(a)
     man, _ = read_manifest(bucket, "kit")
     if man is None:
@@ -3373,58 +3531,83 @@ def cmd_send_night(a, root):
                      "run, so there is no kit to send a night's file into")
     cur = man["files"]
     remote = bucket.list("kit/")
+    running = night_unfinished(bucket)
     unsent = refusal_unsent(bucket, root, kit)
+    if not a.dry_run:
+        for why in (running, unsent):
+            if why:
+                raise Failed(why + ". Nothing was sent.")
     waiting = waiting_release(bucket, cur, rels)
     allowed = set(a.allow_dropping or [])
-    say(f"send-night{' --dry-run' if a.dry_run else ''}: {len(rels)} of the night's kit "
-        f"file{'s' if len(rels) != 1 else ''} to kit/ in {bucket.describe()}")
-    plan, todo, same, refused, used = {}, [], [], [], set()
+    now = datetime.now()
+    today, day = now.date(), f"{now:%Y-%m-%d}"
+    say(f"send-night{' --dry-run' if a.dry_run else ''}: {len(rels)} of the night's caption "
+        f"results to kit/ in {bucket.describe()}")
+    plan, todo, halfway, same, refused, used = {}, [], [], [], [], set()
     for rel in rels:
         src, key, there = srcs[rel], f"kit/{rel}", cur.get(rel)
-        st = src.stat()
-        ent = {"size": st.st_size, "sha256": sha256_of(src), "mtime_ns": st.st_mtime_ns}
-        plan[rel] = {"src": src, "ent": ent}
+        # The bytes read once, so the copy counted and scored is the copy sent.
+        data = src.read_bytes()
+        ent = {"size": len(data), "sha256": _sha(data), "mtime_ns": src.stat().st_mtime_ns}
+        plan[rel] = {"src": src, "ent": ent, "data": data}
         mine_is = "this laptop's own copy" if src == local(root, rel).resolve() else f"--from {src}"
         say(f"  {rel}, {mine_is}")
         say(f"    sends {ent['size']:>13,} bytes, sha256 {ent['sha256']}")
         if there is not None and key not in remote:
             raise Failed(f"the bucket's kit manifest records {rel}, and {key} is not there: "
                          "the kit is not what its manifest says. Nothing was sent.")
-        old = None
         if there is not None:
             say(f"    over  {there['size']:>13,} bytes, sha256 {there['sha256']}, the bucket's")
-            # The bucket's copy must be the one its manifest records: anything
-            # else is another writer's, mid-send, and is not compared with.
-            meta = bucket.head(key) or {}
-            if meta.get("sha256") not in (None, there["sha256"]):
-                raise Failed(f"{key} is not the copy the kit manifest records (its sha256 is "
-                             f"{meta['sha256'][:12]}, the manifest's {there['sha256'][:12]}): "
-                             "another machine may be sending it now. Nothing was sent.")
-            if rel in KEYED:
-                old = bucket.get_bytes(key)
-                if old is None or _sha(old) != there["sha256"]:
-                    raise Failed(f"{key} did not read as the copy the kit manifest records. "
-                                 "Nothing was sent.")
         else:
-            say("    the bucket's kit holds no copy of it")
+            say("    the bucket's kit manifest records no copy of it")
         if there is not None and there["sha256"] == ent["sha256"] and there["size"] == ent["size"]:
             say("    already the bucket's copy: nothing to send")
             same.append(rel)
             continue
-        todo.append(rel)
-        if rel not in KEYED:
-            continue
+        # A SEND THAT STOPPED HALFWAY (the review of 17 October 2026): kit/
+        # already holds this very copy, and the manifest and this laptop's
+        # record were never written, so the next night's kit-down would find
+        # the kit short. Its own sha256 says so, as resumed() reads one for
+        # seed-kit: it is compared with what it replaced, as that send
+        # compared it, and recorded, not sent again. Any other copy in kit/
+        # that the manifest does not record is another writer's.
+        meta = (bucket.head(key) or {}) if key in remote else None
+        old = None
+        if meta is not None and meta.get("sha256") == ent["sha256"]:
+            halfway.append(rel)
+            say("    kit/ holds this copy already, from a send that stopped before it was "
+                "recorded: compared as that send compared it, and recorded, not sent again")
+            if there is not None:
+                old = kept_copy(bucket, key, there["sha256"], today)
+                if old is None:
+                    raise Failed(f"{key} is the copy sent, from a send that stopped halfway, "
+                                 f"but the copy it replaced (sha256 {there['sha256'][:12]}) is "
+                                 "not under replaced/ to be compared with. Nothing was recorded.")
+        elif meta is not None and (there is None
+                                   or meta.get("sha256") not in (None, there["sha256"])):
+            raise Failed(f"{key} is not the copy the kit manifest records (its sha256 is "
+                         f"{str(meta.get('sha256'))[:12]}, the manifest's "
+                         f"{(there or {}).get('sha256', 'none')[:12]}): another machine may be "
+                         "sending it now. Nothing was sent.")
+        else:
+            todo.append(rel)
+            if there is not None:
+                old = bucket.get_bytes(key)
+                if old is None or _sha(old) != there["sha256"]:
+                    raise Failed(f"{key} did not read as the copy the kit manifest records. "
+                                 "Nothing was sent.")
         # WHAT THE COPY SENT HOLDS, against what the bucket's does.
         try:
-            mine, mine_sides = recordings_in(rel, src.read_bytes())
+            mine, mine_sides = recordings_in(rel, data)
         except ValueError as e:
             refused.append(f"{rel} from {src} will not read as {rel} ({e})")
             continue
-        theirs, their_sides = {}, {}
+        theirs, their_sides, old_reads = {}, {}, old is not None
         if old is not None:
             try:
                 theirs, their_sides = recordings_in(rel, old)
             except ValueError as e:
+                old_reads = False
                 say(f"    THE BUCKET'S COPY WILL NOT READ ({e}): it holds no recording this "
                     "send can keep or lose, and goes to replaced/ like any other")
         added = sorted(set(mine) - set(theirs))
@@ -3453,6 +3636,14 @@ def cmd_send_night(a, root):
                            f"({', '.join(lost[:8])}{' ...' if len(lost) > 8 else ''}): a "
                            "re-read on a subset destroys the rest. --allow-dropping names the "
                            "ones a person accepts losing")
+        if rel == SCORED:
+            why, before, after = score_markers(root, old if old_reads else None, data)
+            say(f"    timestamp probe, the bucket's copy: {probe_line(before)}")
+            say(f"    timestamp probe, the copy sent:     {probe_line(after)}")
+            if why:
+                refused.append(f"{rel} from {src} scores worse than the bucket's: {why}. "
+                               "Nothing about timestamps goes on the site that makes the "
+                               "probe's median worse (CLAUDE.md)")
     if allowed - used:
         say(f"  --allow-dropping names {', '.join(sorted(allowed - used))}, which no copy "
             "sent drops")
@@ -3462,47 +3653,59 @@ def cmd_send_night(a, root):
                        "send once that run is released or gone")
     if refused:
         raise Failed("; ".join(refused) + ". Nothing was sent.")
-    day = f"{datetime.now():%Y-%m-%d}"
     total = sum(plan[r]["ent"]["size"] for r in todo)
     if a.dry_run:
-        for why in (late, unsent):
+        for why in (late, running, unsent):
             if why:
                 say(f"  A SEND NOW WOULD BE REFUSED: {why}")
         say(f"--dry-run: nothing sent. {len(todo):,} files, {human(total)} would go to kit/ "
             f"in {bucket.describe()}, each copy it replaces kept under replaced/{day}/kit/ "
-            f"first; {len(same):,} already the bucket's.")
+            f"first; {len(halfway):,} left in kit/ by a send that stopped would be recorded; "
+            f"{len(same):,} already the bucket's.")
         return
-    if unsent:
-        raise Failed(unsent + ". Nothing was sent.")
     # THE COPY EACH REPLACES MUST STILL BE THE ONE COMPARED WITH: a night's
     # kit-up between the comparison and the send would otherwise be written
     # over by a copy that was never compared with what it sent.
-    now, _ = read_manifest(bucket, "kit")
-    moved = [r for r in todo if ((now or {}).get("files", {}).get(r) or {}).get("sha256")
+    now_man, _ = read_manifest(bucket, "kit")
+    moved = [r for r in todo + halfway
+             if ((now_man or {}).get("files", {}).get(r) or {}).get("sha256")
              != (cur.get(r) or {}).get("sha256")]
     if moved:
         raise Failed(f"the bucket's copy of {', '.join(moved)} changed while this ran, so it "
                      "is not the one compared with. Nothing was sent; run it again.")
     rep = Replacer(bucket, day)
     sent, fails = {}, []
-    for rel in todo:
-        src, ent, key = plan[rel]["src"], plan[rel]["ent"], f"kit/{rel}"
+    stage = Path(tempfile.mkdtemp(prefix="gr-send-night-"))
+    try:
+        for rel in todo + halfway:
+            ent, key = plan[rel]["ent"], f"kit/{rel}"
+            try:
+                if rel in todo:
+                    staged = stage / rel
+                    staged.write_bytes(plan[rel]["data"])
+                    if key in remote:
+                        rep.keep(key)
+                    bucket.put_file(staged, key, {"sha256": ent["sha256"],
+                                                  "mtime_ns": str(ent["mtime_ns"])})
+                back = bucket.get_bytes(key)
+                if back is None or len(back) != ent["size"] or _sha(back) != ent["sha256"]:
+                    raise OSError(f"{key} did not read back as it was sent; the copy it "
+                                  f"replaced is under replaced/")
+            except Exception as e:                              # noqa: BLE001
+                fails.append(f"{rel}: {type(e).__name__}: {e}")
+                continue
+            sent[rel] = ent
+    finally:
+        shutil.rmtree(stage, ignore_errors=True)
+    doc = None
+    if sent:
         try:
-            st = src.stat()
-            if st.st_size != ent["size"] or st.st_mtime_ns != ent["mtime_ns"]:
-                raise OSError("it changed while this ran, and was not sent")
-            if key in remote:
-                rep.keep(key)
-            bucket.put_file(src, key, {"sha256": ent["sha256"], "mtime_ns": str(ent["mtime_ns"])})
-            back = bucket.get_bytes(key)
-            if back is None or len(back) != ent["size"] or _sha(back) != ent["sha256"]:
-                raise OSError(f"{key} did not read back as it was sent; the copy it replaced "
-                              f"is under replaced/{day}/")
+            doc = write_manifest(bucket, "kit", sent, [], "send-night", rep)
         except Exception as e:                                  # noqa: BLE001
-            fails.append(f"{rel}: {type(e).__name__}: {e}")
-            continue
-        sent[rel] = ent
-    doc = write_manifest(bucket, "kit", sent, [], "send-night", rep) if sent else None
+            raise Failed(f"{', '.join(sent)} went to kit/, and the kit manifest was not written "
+                         f"({type(e).__name__}: {e}), so the next night's kit-down would find "
+                         "the kit short. Run send-night again: it finds the copy sent in kit/ "
+                         "and records it.")
     # THIS LAPTOP'S SIDE. The copy sent is now the one this laptop holds in
     # common with the bucket, so pull's record says so and the next pull
     # finds no clash. A --from copy takes this laptop's copy's place, which
@@ -3518,14 +3721,7 @@ def cmd_send_night(a, root):
             if src != dst.resolve():
                 if dst.exists() and sha256_of(dst) != ent["sha256"]:
                     aside.append(set_aside(root, rel, day))
-                tmp = dst.with_name(dst.name + ".part")
-                dst.parent.mkdir(parents=True, exist_ok=True)
-                shutil.copyfile(src, tmp)
-                if sha256_of(tmp) != ent["sha256"]:
-                    tmp.unlink(missing_ok=True)
-                    raise OSError(f"{src} changed after it was sent, and was not put in this "
-                                  "laptop's copy's place")
-                os.replace(tmp, dst)
+                write_whole(dst, plan[rel]["data"])
                 os.utime(dst, ns=(ent["mtime_ns"], ent["mtime_ns"]))
                 st = dst.stat()
                 hashes.seen[rel] = [st.st_size, st.st_mtime_ns, ent["sha256"]]
@@ -3537,15 +3733,17 @@ def cmd_send_night(a, root):
     save_pull_record(root, rec)
     for p in aside:
         say(f"  this laptop's own copy kept at {p}; the copy sent is in its place")
-    say(f"send-night: sent {len(sent):,} files, {human(sum(e['size'] for e in sent.values()))}; "
-        f"{len(same):,} already the bucket's; {rep.n:,} older copies kept under "
-        f"replaced/{day}/; {PULL_RECORD} records the copy sent")
+    fresh = [r for r in sent if r in todo]
+    say(f"send-night: sent {len(fresh):,} files, "
+        f"{human(sum(sent[r]['size'] for r in fresh))}; {len(sent) - len(fresh):,} a stopped "
+        f"send left in kit/ recorded; {len(same):,} already the bucket's; {rep.n:,} older "
+        f"copies kept under replaced/{day}/; {PULL_RECORD} records the copy sent")
     if doc:
         say(f"  {MANIFEST.format('kit')}: {doc['count']:,} files, {human(doc['bytes'])}")
     if fails:
-        raise Failed(f"{len(fails)} of {len(todo) + len(same):,} did not go whole: "
-                     f"{'; '.join(fails[:4])}. Run send-night again: what did send is recorded "
-                     "and is not sent twice.")
+        raise Failed(f"{len(fails)} of {len(todo) + len(halfway) + len(same):,} did not go "
+                     f"whole: {'; '.join(fails[:4])}. Run send-night again: a copy that reached "
+                     "kit/ is found there and recorded, not sent twice.")
 
 
 COMMANDS = {"kit-list": cmd_kit_list, "seed-kit": cmd_seed_kit,
@@ -3568,9 +3766,9 @@ def main(argv=None):
     ap.add_argument("--from", dest="from_files", action="append", metavar="FILE",
                     help="send-night: send this file as the PATH in the same place, instead "
                          "of this laptop's copy; once for each PATH, in order")
-    ap.add_argument("--allow-dropping", nargs="+", metavar="NAME",
-                    help="send-night: the recordings of the bucket's copy a person accepts "
-                         "the copy sent not holding")
+    ap.add_argument("--allow-dropping", action="append", metavar="NAME",
+                    help="send-night: a recording of the bucket's copy a person accepts the "
+                         "copy sent not holding; once for each")
     ap.add_argument("--dry-run", action="store_true",
                     help="say what would be sent, and send nothing")
     ap.add_argument("--sizes", action="store_true", help="kit-list: with sizes")
@@ -3611,8 +3809,6 @@ def main(argv=None):
                          "stood-down repository that holds secrets.json (pull's read of the "
                          "refusal record still never counts)")
     a = ap.parse_args(argv)
-    # A path given to any other command is a mistake that would otherwise be
-    # ignored: `pull Docket.txt` would run a whole pull (17 October 2026).
     if a.paths and a.command != "send-night":
         ap.error(f"{a.command} takes no PATH; only send-night does (pull names its paths "
                  "with --take)")

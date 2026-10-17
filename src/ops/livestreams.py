@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-25.10
+# GRANITE_VERSION: 2026-09-25.11
 """
 New livestreams, every night: the recordings the House and Senate channels
 finished since the last run, indexed and captioned, and read into the start
@@ -1617,8 +1617,12 @@ def carry_list(st=None):
     return [p.as_posix() for p in (STATE, csv_path("house"), csv_path("senate"))]
 
 
-# candidate_segments.json's two maps beside its recordings (segment_markers).
-SIDES = ("_absent", "_sequence")
+# candidate_segments.json's maps beside its recordings: segment_markers' own
+# definition, read rather than copied (17 October 2026). A copy here lacked
+# _named_before, so changed_besides took that map for a recording that had
+# changed, and the guard put back every reading of a new recording that
+# carried one.
+from segment_markers import SIDES  # noqa: E402
 
 
 def in_files(markers=MARKERS, summary=None, named=None):
@@ -2162,19 +2166,22 @@ def changed_besides(before, after, tonight):
     return out
 
 
-def probe(candidate):
+def probe(candidate, cwd=None):
     """probe_alignment.py --truth on one candidate file: {"marked", "placed",
     "median"} (seconds, None where nothing was placed), or None when the
     probe would not run. Its scoreboard is read from the file --score-out
-    writes, in a folder of its own, not from what it prints."""
+    writes, in a folder of its own, not from what it prints. `cwd` is the
+    working folder whose hand-timed proceedings it reads (cloud.py
+    send-night's --root, since 17 October 2026); this one by default."""
     import child
     import tempfile
     d = Path(tempfile.mkdtemp(prefix="gr-probe-"))
     try:
         out = d / "score.json"
         r = child.run([sys.executable, _paths.script("probe_alignment.py"), "--truth",
-                       "--candidate", str(candidate), "--score-out", str(out)],
-                      capture_output=True, text=True)
+                       "--candidate", str(Path(candidate).resolve()), "--score-out", str(out)],
+                      capture_output=True, text=True,
+                      cwd=None if cwd is None else str(cwd))
         if r.returncode != 0 or not out.exists():
             return None
         doc = json.loads(out.read_text(encoding="utf-8"))
