@@ -94,6 +94,34 @@ ul.chips input{accent-color:var(--pine)}
 input[type=text],input:not([type]),input[type=date],select{font:inherit;font-size:16px;padding:8px 10px;min-height:42px;
 border:1px solid var(--edge);border-radius:6px;background:var(--surface);color:var(--ink);max-width:100%;min-width:0}
 .add select,.add input:not([type]){flex:1 1 220px}
+/* ADDING LEGISLATORS AND COMMITTEES (the person's test of 16 October 2026: not
+   searchable, ordered by first name, one at a time). A closed details a kind,
+   so the page stays short on a phone until it is wanted; inside it a box that
+   narrows the list as the reader types, shown only where the script runs, and
+   a list of boxes to tick, the House and the Senate apart, that scrolls within
+   a height a phone shows whole -- every ticked one is added on Save. */
+[hidden]{display:none!important}
+details.pick{margin:10px 0 4px;border:1px solid var(--edge);border-radius:8px;background:var(--surface)}
+details.pick > summary{cursor:pointer;padding:10px 14px;font-weight:600;color:var(--pine);min-height:44px;
+display:flex;align-items:center;gap:10px}
+details.pick > summary .picked{font-weight:400;font-size:14px;color:var(--ink-2)}
+details.pick[open] > summary{border-bottom:1px solid var(--rule)}
+.pickfind{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;margin:0;padding:10px 14px 4px}
+.pickfind label{margin:0;font-size:14px;font-weight:600;color:var(--ink-2)}
+.pickfind input{flex:1 1 200px}
+input[type=search]{font:inherit;font-size:16px;padding:8px 10px;min-height:42px;border:1px solid var(--edge);
+border-radius:6px;background:var(--surface);color:var(--ink);max-width:100%;min-width:0}
+.picklist{max-height:min(22rem,60vh);overflow-y:auto;overscroll-behavior:contain;padding:0 14px 8px}
+.picklist fieldset{margin:8px 0 0}
+.picklist legend{font:600 12px/1 var(--sans);letter-spacing:.07em;text-transform:uppercase;color:var(--ink-2);
+padding:8px 0 6px}
+.picklist ul{list-style:none;margin:0;padding:0}
+.picklist li{border-top:1px solid var(--rule)}
+.picklist label{display:flex;align-items:center;gap:12px;margin:0;padding:9px 2px;min-height:44px;cursor:pointer;
+overflow-wrap:anywhere}
+.picklist input[type=checkbox]{flex:none;width:20px;height:20px;margin:0}
+.picklist .tag{white-space:nowrap}
+.picklist .none{margin:10px 0 2px}
 button{font:inherit;font-size:15px;font-weight:600;padding:10px 18px;min-height:44px;border-radius:6px;cursor:pointer;
 border:1px solid var(--pine);background:var(--pine);color:var(--on-pine)}
 button.plain{background:var(--surface);color:var(--pine)}
@@ -121,12 +149,44 @@ to any server, and a few lines of script on this page read it from there.</p></n
 const MISSING = `<p id="missing" class="note" hidden>This link is missing its private part.
 Open the link from your most recent email from Granite Record, whole.</p>`;
 
+// THE FIND BOX OF EACH LIST TO ADD FROM (manage.js picker). A few lines that
+// narrow the list as the reader types: case and accents ignored, and every
+// word typed found somewhere in a row's name -- "aldrich glen", "belk 6",
+// "sd22". A ticked row stays in sight whatever is typed, so what is about to
+// be added is never hidden, and the summary counts them while the list is
+// closed. The box itself is hidden in the markup and shown here: without
+// script the whole list shows, and no box is offered that does nothing.
+// String.raw, so the page receives the backslashes as written, and the
+// accents and curly quotes are written as escapes rather than as the
+// characters, which an editor or a copy can silently turn into others.
+export const PICK_SCRIPT = String.raw`(function(){
+function fold(s){return String(s).normalize("NFD").replace(/[̀-ͯ]/g,"").toLowerCase()
+.replace(/['‘’\x60]/g,"").replace(/[^a-z0-9]+/g," ").trim();}
+var picks=document.querySelectorAll("[data-pick]");
+for(var i=0;i<picks.length;i++)(function(d){
+var box=d.querySelector("[data-find]"),rows=d.querySelectorAll("li"),sets=d.querySelectorAll("fieldset"),
+none=d.querySelector("[data-none]"),count=d.querySelector("[data-picked]"),names=[];
+for(var j=0;j<rows.length;j++)names.push(fold(rows[j].textContent));
+function show(){
+var q=fold(box.value).split(" ").filter(Boolean),any=false,ticked=0;
+for(var j=0;j<rows.length;j++){var on=rows[j].querySelector("input").checked,hit=on;
+if(on)ticked++;
+if(!hit){hit=true;for(var w=0;w<q.length;w++)if(names[j].indexOf(q[w])<0){hit=false;break;}}
+rows[j].hidden=!hit;if(hit)any=true;}
+for(var k=0;k<sets.length;k++)sets[k].hidden=!sets[k].querySelector("li:not([hidden])");
+none.hidden=any;count.textContent=ticked?ticked+" ticked":"";}
+box.parentNode.hidden=false;box.addEventListener("input",show);d.addEventListener("change",show);show();
+})(picks[i]);
+})();`;
+
 // status, title (plain text), body (HTML already escaped by the caller), and
 // fill: the name of the form field the token from "#" goes into, if any, and
-// submit: the id of a form to post as soon as it is filled.
-export function page(status, { title, body, fill = "", submit = "" }) {
-  const n = fill ? nonce() : "";
-  const script = fill ? `(function(){
+// submit: the id of a form to post as soon as it is filled; script: one more
+// script of this file's own (PICK_SCRIPT), never a caller's text, run under
+// the same per-answer nonce.
+export function page(status, { title, body, fill = "", submit = "", script: more = "" }) {
+  const n = fill || more ? nonce() : "";
+  const script = (fill ? `(function(){
 var h=new URLSearchParams(location.hash.slice(1)),v=h.get(${JSON.stringify(fill)})||"";
 if(location.hash){try{history.replaceState(null,"",location.pathname);}catch(e){}}
 var fs=document.querySelectorAll('input[name=${JSON.stringify(fill)}]');
@@ -135,7 +195,7 @@ if(!v||!/^[A-Za-z0-9_-]{43}$/.test(v)){document.getElementById("missing").hidden
 var b=document.querySelectorAll("form button");for(var j=0;j<b.length;j++)b[j].disabled=true;return;}
 ${submit ? `var f=document.getElementById(${JSON.stringify(submit)}),k=h.get("n")||"";
 if(f.notice)f.notice.value=k;f.submit();` : ""}
-})();` : "";
+})();` : "") + more;
   const html = `<!doctype html>
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -146,7 +206,7 @@ if(f.notice)f.notice.value=k;f.submit();` : ""}
 <p class="brand"><a href="/">Granite Record</a></p>
 ${fill ? NOSCRIPT + MISSING : ""}
 ${body}
-</main>${fill ? `<script nonce="${n}">${script}</script>` : ""}</body></html>`;
+</main>${script ? `<script nonce="${n}">${script}</script>` : ""}</body></html>`;
   return htmlResponse(status, html, n);
 }
 

@@ -1,7 +1,7 @@
 /*
- * The mail: one call to Resend, and the four emails this sends -- the
- * confirmation, a new link, the daily and the weekly -- each in plain text
- * and in simple HTML.
+ * The mail: one call to Resend, and the five emails this sends -- the
+ * confirmation, the "you are following" a confirmation sends, a new link, the
+ * daily and the weekly -- each in plain text and in simple HTML.
  *
  * NO REPLY ADDRESS. Nothing here sets Reply-To, and every email says where to
  * go instead: the report box on the record's page, or the feedback form. An
@@ -108,11 +108,14 @@ function frame(inner) {
 }
 const a = (href, label) => `<a href="${esc(href)}" style="color:#1d4e89">${esc(label)}</a>`;
 
-function footer(origin, feedbackUrl, manage, unsub, gone) {
+// nightly: whether the email reports anything, and so needs saying that the
+// record is as of last night's build. An email that reports nothing (the one
+// a confirmation sends) leaves it out rather than say "this reports".
+function footer(origin, feedbackUrl, manage, unsub, gone, nightly = true) {
   const fb = feedbackUrl ? siteOrForm(feedbackUrl) : "";
-  const lines = [NIGHTLY, ""];
+  const lines = nightly ? [NIGHTLY, ""] : [];
   const html = [`<hr style="border:0;border-top:1px solid #ddd;margin:28px 0 16px">`,
-    `<p style="${P};font-size:14px;color:#444">${esc(NIGHTLY)}</p>`];
+    ...(nightly ? [`<p style="${P};font-size:14px;color:#444">${esc(NIGHTLY)}</p>`] : [])];
   if (gone) {
     const s = "That was the last thing you followed, so your address has been deleted " +
       "from our database with it. To follow something again, use Follow on its page.";
@@ -167,6 +170,75 @@ export function confirmationEmail({ origin, label, title, token }) {
     `<p style="${P};font-size:13px;color:#555">Granite Record is a public record of the ` +
     `New Hampshire General Court. This address takes no replies.</p>`);
   return { subject, text, html };
+}
+
+// ---- you are following ------------------------------------------------------------------
+// THE EMAIL A CONFIRMATION SENDS (the person's test of 16 October 2026: once
+// the confirmation link was spent, "I don't have a way to get back to the
+// manage page yet without another email update or signing myself up to
+// follow another subject"). The manage link is the one at the foot of every
+// email, and until the first update no email carried it. So a confirmation
+// that adds a record sends this, at once: what is now followed, how often it
+// comes, and the manage and unsubscribe links every other email carries, with
+// the one-click headers.
+//
+// What a record is called in a sentence: a bill, a law or a legislator by its
+// label; a committee, whose label is "House Education Committee", with "the";
+// a topic as a topic, since "Housing" alone could be anything.
+export function followName(kind, label) {
+  const l = oneLine(label, 120);
+  if (kind === "committee") return /^(House|Senate|Joint)\b/.test(l) ? `the ${l}` : l;
+  if (kind === "topic") return `the topic ${l}`;
+  return l;
+}
+
+// How often, in the manage page's words for it (manage.js, "How often").
+const OFTEN = {
+  daily: ["Updates come daily", "about 8:00 a.m. New Hampshire time, and only on days when something is new"],
+  weekly: ["Updates come weekly", "on Saturday about 8:00 a.m., with the week ahead and then the week's news"],
+};
+
+// kind, label, title and url: the record, as current.json has it. total: how
+// many records the address follows now, this one included. kept: the reader
+// was subscribed already and the sign-up box asked for the other frequency
+// (confirm.js), so theirs stands. pausedUntil: the subscriber's own, "" for
+// none. newcomer: this confirmation made the subscriber. Only a newcomer is
+// told to keep the email "until your first update arrives": a reader who
+// subscribed weeks ago has had updates, each with the link, and that
+// sentence would be wrong for them.
+export function welcomeEmail({ origin, kind, label, title, url, frequency, kept = false,
+                               pausedUntil = "", total = 1, newcomer = true, manage, unsub,
+                               feedbackUrl }) {
+  const subject = oneLine(`You're following ${followName(kind, label)}`, 150);
+  const what = oneLine(label, 120) + (title ? ` — ${oneLine(title, 160)}` : "");
+  const page = url ? siteUrl(origin, url) : "";
+  const [often, when] = OFTEN[frequency === "weekly" ? "weekly" : "daily"];
+  const how = `${often}${kept ? ", as before" : ""}: ${when}.` +
+    (kept ? " Signing up again does not change how often." : "");
+  const paused = !pausedUntil ? "" : pausedUntil === "9999-12-31"
+    ? "Your updates are paused until you turn them back on."
+    : `Your updates are paused through ${longDate(pausedUntil)}.`;
+  const count = total > 1 ? `You follow ${plural(total, "record", "records")} in all.` : "";
+  const keep = newcomer
+    ? "Keep this email until your first update arrives: the link below opens your " +
+      "page for email updates, where you can change what you follow and how often, and " +
+      "every update carries the same link."
+    : "The link below opens your page for email updates, where you can change what you " +
+      "follow and how often. Every update carries the same link.";
+  const f = footer(origin, feedbackUrl, manage, unsub, false, false);
+  const text = ["You are now following:", "", `  ${what}`, ...(page ? [`  ${page}`] : []), "",
+    ...(count ? [count, ""] : []), how, ...(paused ? ["", paused] : []), "", keep, "",
+    "----", f.text].join("\n");
+  const html = frame(
+    `<p style="${P}">You are now following:</p>` +
+    `<p style="${P};padding-left:12px;border-left:3px solid #ccc">` +
+    (page ? a(page, oneLine(label, 120)) : esc(oneLine(label, 120))) +
+    (title ? ` — ${esc(oneLine(title, 160))}` : "") + "</p>" +
+    (count ? `<p style="${P}">${esc(count)}</p>` : "") +
+    `<p style="${P}">${esc(how)}</p>` +
+    (paused ? `<p style="${P}">${esc(paused)}</p>` : "") +
+    `<p style="${P}">${esc(keep)}</p>` + f.html);
+  return { subject, text, html, headers: listHeaders(origin, unsub) };
 }
 
 // ---- a new link -----------------------------------------------------------------------

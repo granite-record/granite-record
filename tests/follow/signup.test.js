@@ -36,8 +36,11 @@ test("sign-up says the same thing whether or not the address is already subscrib
     for (const r of [again, more, fourth, upper]) assert.equal(same(r), same(fresh));
     assert.equal(fresh.status, 202);
     assert.deepEqual(JSON.parse(fresh.body), { ok: true });
-    // Every one but the fourth was sent a confirmation, subscriber or not.
-    const sent = a => w.net.outbox.filter(m => m.to[0].toLowerCase() === a.toLowerCase()).length;
+    // Every one but the fourth was sent a confirmation, subscriber or not. The
+    // confirmations alone: the join's own confirming sent "You're following"
+    // besides (confirm.js, 16 October 2026).
+    const sent = a => w.net.outbox.filter(m => m.to[0].toLowerCase() === a.toLowerCase() &&
+                                               m.subject.startsWith("Confirm:")).length;
     assert.equal(sent(known), 4, "the join's own, then again, more and upper");
     assert.equal(sent(busy), 3);
     assert.deepEqual(leaks(w), []);

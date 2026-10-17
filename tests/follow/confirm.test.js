@@ -8,7 +8,7 @@ import assert from "node:assert/strict";
 import { hashToken, lookupHash, openFollow } from "../../workers/follow/address.js";
 import { run } from "../../workers/follow/sender.js";
 import { get, lastMailTo, leaks, makeWorld, postForm, postJson, tokensIn } from "./fakes.js";
-import { confirmLatest, handlers, join, manageToken, signUp, snapshot, view } from "./flows.js";
+import { act, confirmLatest, handlers, join, manageToken, signUp, snapshot, view } from "./flows.js";
 import { insertFollow } from "./rows.js";
 
 test("opening the link changes nothing, and offers one button", async () => {
@@ -156,14 +156,16 @@ test("a weekly sign-up is confirmed as weekly, and its first email is Saturday's
     assert.match(page.body, /<input type="radio" name="frequency" value="weekly" checked>/);
     assert.doesNotMatch(page.body, /name="frequency" value="daily" checked/);
     // Sent as a weekly reader is: nothing on a weekday, the week on Saturday.
-    const to = () => w.net.outbox.filter(m => m.to.includes(a));
+    // The confirmation and the "You're following" it sent are not updates.
+    const to = () => w.net.outbox.filter(m => m.to.includes(a) &&
+                                              !/^(Confirm:|You're following)/.test(m.subject));
     w.at("2026-10-08T12:00:00Z");                          // Thursday, 8:00 EDT
     await run(w.env, w.now);
-    assert.equal(to().length, 1, "only the confirmation on a Thursday");
+    assert.equal(to().length, 0, "no update on a Thursday");
     w.at("2026-10-10T12:00:00Z");                          // Saturday, 8:00 EDT
     await run(w.env, w.now);
-    assert.equal(to().length, 2);
-    assert.match(to()[1].subject, /^Your week/);
+    assert.equal(to().length, 1);
+    assert.match(to()[0].subject, /^Your week/);
     assert.deepEqual(leaks(w), []);
   } finally { w.close(); }
 });
@@ -240,6 +242,126 @@ test("the manage page shows only its own notices, whatever notice it is handed",
   } finally { w.close(); }
 });
 
+// THE EMAIL A CONFIRMATION SENDS (the person's test of 16 October 2026: the
+// confirmation link was spent, no other email had come, and there was no way
+// back to the manage page).
+const RESEND = "https://api.resend.com/emails";
+const welcomes = (w, a) => w.net.outbox.filter(m => m.to.includes(a) && /^You're following /.test(m.subject));
+
+test("a confirmation sends one email, You're following, whose manage link opens the manage page", async () => {
+  const w = makeWorld();
+  try {
+    const a = w.address("comes.back");
+    await signUp(w, a, "bill", "2026/HB9903");
+    const r = await confirmLatest(w, a);
+    assert.equal(r.status, 303);
+    assert.ok(!r.beforeAnswer.asked.includes(RESEND), "the confirmation is answered before the email goes");
+    const [m, ...more] = welcomes(w, a);
+    assert.ok(m, "no email was sent on confirming");
+    assert.equal(more.length, 0, "one email a confirmation");
+    assert.equal(m.subject, "You're following HB 9903-FN");
+    assert.match(m.text, /^You are now following:\n\n  HB 9903-FN — relative to an invented fee, written for these tests\n  https:\/\/graniterecord\.org\/bill\/2026\/hb9903\n/);
+    assert.match(m.text, /Updates come daily: about 8:00 a\.m\. New Hampshire time, and only on days when something is new\./);
+    assert.match(m.text, /Keep this email until your first update arrives/);
+    assert.doesNotMatch(m.text, /You follow \d+ records/, "a new subscriber follows the one record");
+    assert.doesNotMatch(m.text + m.html, /this reports what changed/, "it reports nothing, and does not say it does");
+    // Its manage link is the one the confirmation landed on, and it opens the page.
+    const t = tokensIn(m);
+    assert.equal(t.manage, manageToken(r));
+    const page = await view(w, t.manage);
+    assert.equal(page.status, 200);
+    assert.match(page.body, /HB 9903-FN/);
+    // The way out every other email carries: the link, and the one-click header.
+    assert.ok(t.unsub && t.header);
+    assert.equal(m.headers["List-Unsubscribe-Post"], "List-Unsubscribe=One-Click");
+    assert.match(m.html, /Change what you follow, how often, or pause/);
+    assert.match(m.html, /<a href="https:\/\/graniterecord\.org\/bill\/2026\/hb9903"[^>]*>HB 9903-FN<\/a>/);
+    assert.ok(w.logs.lines.includes("follow confirm.welcome-sent 1"));
+    assert.deepEqual(leaks(w), []);
+  } finally { w.close(); }
+});
+
+test("a subscriber adding a record is told it, with their count, how often as before, and a pause", async () => {
+  const w = makeWorld();
+  try {
+    const a = w.address("adds.a.committee");
+    await signUp(w, a, "bill", "2026/HB9901", { frequency: "weekly" });
+    const first = await confirmLatest(w, a);
+    assert.equal(welcomes(w, a).length, 1);
+    await act(w, manageToken(first), "save", { listed: "bill:2026/HB9901", keep: "bill:2026/HB9901",
+      frequency: "weekly", pause: "until", pause_until: "2026-10-20" });
+    await signUp(w, a, "committee", "H90");                // the box left on Daily
+    const r = await confirmLatest(w, a);
+    assert.match(r.headers.location, /&n=kept$/);
+    const m = welcomes(w, a)[1];
+    assert.equal(m.subject, "You're following the House Example Committee");
+    assert.match(m.text, /You follow 2 records in all\./);
+    assert.match(m.text, /Updates come weekly, as before: on Saturday about 8:00 a\.m\., with the week ahead and then the week's news\. Signing up again does not change how often\./);
+    assert.match(m.text, /Your updates are paused through 20 October 2026\./);
+    // A subscriber already is not told to wait for a first update.
+    assert.doesNotMatch(m.text + m.html, /until your first update arrives/);
+    assert.match(m.text, /The link below opens your page for email updates, where you can change what you follow and how often\. Every update carries the same link\./);
+    assert.equal(tokensIn(m).manage, manageToken(first), "the same link as every other email");
+    assert.deepEqual(leaks(w), []);
+  } finally { w.close(); }
+});
+
+test("a confirmation that adds nothing sends nothing, and two presses at once send one", async () => {
+  const w = makeWorld();
+  try {
+    const s = await join(w, "follows.it.already");
+    assert.equal(welcomes(w, s.address).length, 1);
+    await signUp(w, s.address);                            // HB 9901 again
+    const r = await confirmLatest(w, s.address);
+    assert.equal(r.status, 303);
+    assert.equal(w.d1.rows("pending").length, 0, "the request is spent all the same");
+    assert.equal(welcomes(w, s.address).length, 1, "nothing was added, so nothing was sent");
+    // Confirm pressed twice at once: one follow, one email.
+    const b = w.address("double.confirm");
+    await signUp(w, b, "topic", "housing");
+    const t = tokensIn(lastMailTo(w, b)).confirm;
+    const both = await Promise.all([1, 2].map(() => w.call(handlers.confirm, postForm("/api/follow/confirm", { t }))));
+    assert.ok(both.some(x => x.status === 303));
+    assert.equal(welcomes(w, b).length, 1, "one email for one follow");
+    assert.deepEqual(leaks(w), []);
+  } finally { w.close(); }
+});
+
+test("a confirmation still confirms when its email cannot be sent, and says nothing of it", async () => {
+  for (const fault of ["refused", "unconfigured"]) {
+    const w = makeWorld();
+    try {
+      const a = w.address(`unlucky.${fault}`);
+      await signUp(w, a, "topic", "elections");
+      if (fault === "refused") w.net.resendStatus = 500;
+      else w.env.MAIL_FROM = "";                           // sendMail throws ConfigError
+      const r = await confirmLatest(w, a);
+      assert.equal(r.status, 303, fault);
+      assert.match(r.headers.location, /&n=confirmed$/);
+      assert.equal(w.d1.rows("subscribers").length, 1);
+      assert.equal(w.d1.rows("follows").length, 1);
+      assert.equal(welcomes(w, a).length, 0);
+      assert.ok(w.logs.lines.includes(fault === "refused" ? "follow confirm.welcome-refused.500"
+        : "follow confirm.welcome-error.ConfigError"), w.logs.lines.join(" / "));
+      const page = await view(w, manageToken(r));
+      assert.equal(page.status, 200, "the manage page opens, and shows no error");
+      assert.doesNotMatch(page.body, /went wrong|could not be sent/);
+      assert.deepEqual(leaks(w), []);
+    } finally { w.close(); }
+  }
+});
+
+test("a spent link says the email sent on confirming has the way back", async () => {
+  const w = makeWorld();
+  try {
+    const s = await join(w, "lost.the.page");
+    const again = await confirmLatest(w, s.address);
+    assert.equal(again.status, 400);
+    assert.match(again.body, /expired or been used/);
+    assert.match(again.body, /A confirmation link works once, for 48 hours\.[^<]*<\/p>\s*<p>If you have already confirmed, the email we sent you when you did has the link to your page for email updates, where you can change what you follow\.<\/p>/);
+  } finally { w.close(); }
+});
+
 test("one address follows at most 200 records", async () => {
   const w = makeWorld();
   try {
@@ -251,5 +373,6 @@ test("one address follows at most 200 records", async () => {
     const r = await confirmLatest(w, s.address);
     assert.match(r.body, /follow as many records as this allows/);
     assert.equal(w.d1.rows("follows").length, 200);
+    assert.equal(welcomes(w, s.address).length, 1, "the join's own; a follow refused sends nothing");
   } finally { w.close(); }
 });

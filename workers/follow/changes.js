@@ -22,6 +22,7 @@ const PATH = /^\/(?!\/)[A-Za-z0-9\-._~/?=&%+]*$/;
 export const ITEM_KINDS = new Set(["action", "hearing", "scheduled", "exec", "vote",
   "report", "sponsor", "sitting", "study"]);
 const BASES = new Set(["first-seen", "record-date"]);
+const CHAMBERS = new Set(["House", "Senate"]);
 
 const isObj = o => !!o && typeof o === "object" && !Array.isArray(o);
 
@@ -69,9 +70,19 @@ export function checkCurrent(obj) {
     if (!isObj(v)) { notes.push(`followable ${k}: not an object`); continue; }
     const label = text(v.label, 120, `followable ${k} label`, notes);
     if (!label) continue;
+    // A legislator's sort name and a legislator's or committee's chamber
+    // (CHANGES_FORMAT.md): what the manage page orders and groups its lists
+    // by. Optional, as an older build wrote neither.
+    let chamber = "";
+    if (v.chamber !== undefined && v.chamber !== null && v.chamber !== "") {
+      if (CHAMBERS.has(v.chamber)) chamber = v.chamber;
+      else notes.push(`followable ${k}: chamber is neither House nor Senate`);
+    }
     followable.set(k, { label,
       title: text(v.title, 300, `followable ${k} title`, notes, false),
       now: text(v.now, 120, `followable ${k} now`, notes, false),
+      sort: text(v.sort, 120, `followable ${k} sort`, notes, false),
+      chamber,
       url: path(v.url, `followable ${k}`, notes) });
   }
   const upcoming = new Map();

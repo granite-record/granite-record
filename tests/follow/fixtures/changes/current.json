@@ -18,10 +18,13 @@
     },
     "member:990001": {
       "label": "Rep. Pat Example (Merrimack 99)",
+      "sort": "example, pat",
+      "chamber": "House",
       "url": "/legislator/pat-example-merrimack-99"
     },
     "committee:H90": {
       "label": "House Example Committee",
+      "chamber": "House",
       "url": "/committee/H90"
     },
     "topic:housing": {

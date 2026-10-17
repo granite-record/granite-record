@@ -38046,6 +38046,83 @@ def _changes_node(folder):
     return [] if r.returncode == 0 else [ln.strip() for ln in said.splitlines() if ln.strip()]
 
 
+@check("build", "the way back to the manage page and its lists to add from: a committee named "
+       "as the search names it, a chamber that is the House or the Senate in both readers of "
+       "current.json, and tests/follow/'s cases for the email a confirmation sends and the "
+       "lists, run by name", needs=("follow_changes",))
+def _follow_manage_lists(FC):
+    """16 October 2026, from the person's test of email following: once the
+    confirmation link was spent there was no way back to the manage page, and
+    its legislators were a drop-down by first name, one pick a Save.
+
+    current.json now names a committee as the search does ("House Housing
+    Committee", follow_changes.committee_label, find.js findName) and carries
+    a member's roster sort name and a member's or committee's chamber, which
+    the manage page orders and groups its lists by. A chamber other than the
+    House or the Senate is refused by follow_changes.check and by the
+    sender's own reader (check_changes.js) alike. What the endpoints do with
+    it -- the "You're following" email a confirmation sends, the spent link
+    pointing to it, the lists by last name with the chambers apart, several
+    added in one Save, the page without script -- is tests/follow/'s, whose
+    cases are run here by name so that one taken out is missed. build_feeds
+    writing the fields is _changes_on_fixture's."""
+    named = {("Housing", "House"): "House Housing Committee",
+             ("Special Committee on Housing", "House"): "House Special Committee on Housing",
+             ("Senate Special Committee on Redistricting", "Senate"):
+                 "Senate Special Committee on Redistricting",
+             ("Education", "Senate"): "Senate Education Committee",
+             ("Education", ""): "Education Committee"}
+    got = {k: FC.committee_label(*k) for k in named}
+    assert got == named, f"follow_changes.committee_label no longer names as the search does: {got}"
+
+    fixtures = Path("tests/follow/fixtures/changes")
+    if not fixtures.is_dir():
+        return "skip", "no tests/follow/fixtures/changes here"
+    root = Path(tempfile.mkdtemp(prefix="gr-follow-lists-"))
+    try:
+        bad = root / "changes"
+        shutil.copytree(fixtures, bad)
+        cur = json.loads((bad / "current.json").read_text(encoding="utf-8"))
+        member = next(k for k in cur["followable"] if k.startswith("member:"))
+        assert cur["followable"][member].get("sort") and cur["followable"][member].get("chamber"), \
+            "the fixtures' member carries no sort name or chamber for the lists to be tested by"
+        cur["followable"][member]["chamber"] = "Joint"
+        (bad / "current.json").write_text(json.dumps(cur), encoding="utf-8")
+        said = {"follow_changes.check": FC.check(bad), "check_changes.js": _changes_node(bad)}
+        missed = [who for who, p in said.items()
+                  if p is not None and not any("chamber is neither House nor Senate" in x for x in p)]
+        assert not missed, f"a chamber of Joint passed {', '.join(missed)}: {said}"
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+
+    node = shutil.which("node") or shutil.which("node.exe")
+    if not (node and Path("tests/follow/index.js").is_file()):
+        return "skip", "node or tests/follow/ is not here; committee_label and the chamber hold"
+    cases = ("a confirmation sends one email, You're following",
+             "a subscriber adding a record is told it",
+             "a confirmation that adds nothing sends nothing",
+             "a confirmation still confirms when its email cannot be sent",
+             "a spent link says the email sent on confirming has the way back",
+             "the House and the Senate apart, by last name",
+             "a list without sort names or chambers is one group",
+             "without script the whole list shows",
+             "the find box narrows the list as the reader types",
+             "every legislator and committee ticked is added on one Save",
+             "a Save that ticks more than the room left")
+    r = _run([node, "--disable-warning=ExperimentalWarning", "--test", "--test-reporter=tap",
+              "--test-name-pattern=" + "|".join(cases), "tests/follow/index.js"],
+             capture_output=True, text=True)
+    out = r.stdout + r.stderr
+    passed = [c for c in cases
+              if re.search(rf"^ok \d+ - [^\n]*{re.escape(c)}(?![^\n]*# SKIP)", out, re.M)]
+    assert r.returncode == 0 and len(passed) == len(cases), (
+        "tests/follow/ no longer passes the manage page's cases "
+        + ", ".join(repr(c) for c in cases if c not in passed) + ": " + out.strip()[-400:])
+    return "ok", (f"committees named as the search names them; a chamber of Joint refused by "
+                  f"{' and '.join(k for k, v in said.items() if v is not None)}; "
+                  f"{len(cases)} cases pass")
+
+
 def _changes_scenario(FC):
     """Sixteen nights of a followable world, as build_feeds hands it over: a
     bill, a second bill that concludes, a member who leaves, a committee, a
@@ -38390,6 +38467,19 @@ def _changes_on_fixture(FC):
                 "record's dates, with a ledger beside them", names)
         assert {"bill:2026/HB1442", "member:377204", "committee:H43", "topic:insurance"} <= \
             set(cur["followable"]), sorted(cur["followable"])
+        # What the manage page's lists to add from are ordered and grouped by
+        # (the person's test of 16 October 2026: legislators "sorted ... by
+        # first name instead of last name"): a member carries the roster's own
+        # sort name and chamber, and a committee its chamber and the name the
+        # search gives it.
+        nelson, commerce = cur["followable"]["member:377204"], cur["followable"]["committee:H43"]
+        assert (nelson.get("sort"), nelson.get("chamber")) == ("nelson, jodi", "House"), (
+            "build_feeds no longer hands the manage page a legislator's sort name and chamber",
+            nelson)
+        assert (commerce.get("label"), commerce.get("chamber")) == \
+            ("House Commerce Committee", "House"), (
+                "build_feeds no longer names a committee as the search does, with its chamber",
+                commerce)
         probs = FC.check(ch) + (_changes_node(ch) or [])
         assert not probs, probs[:4]
 

@@ -8,6 +8,7 @@ import assert from "node:assert/strict";
 import { get, lastMailTo, leaks, makeWorld, postForm, SITE, tokensIn } from "./fakes.js";
 import { act, confirmLatest, handlers, join, manageToken, signUp, snapshot, view } from "./flows.js";
 import { followKeys } from "./rows.js";
+import { PICK_SCRIPT } from "../../workers/follow/page.js";
 
 // What a browser sends on a form post from a page whose referrer policy
 // withholds its origin: seen in a real browser against these Functions.
@@ -52,7 +53,13 @@ test("the page shows what is followed and how often, and never the address", asy
     assert.match(r.body, /value="daily" checked/);
     assert.match(r.body, /rebuilt once a night/);
     assert.ok(!r.body.toLowerCase().includes("reader.manages"), "no address on the page");
-    assert.doesNotMatch(r.body, /<script/, "the page itself runs no script");
+    // One script, under the answer's nonce: the find box of the lists to add
+    // from (page.js PICK_SCRIPT), which reads nothing of the link.
+    const scripts = r.body.match(/<script[^>]*>[\s\S]*?<\/script>/g) || [];
+    assert.equal(scripts.length, 1, "the page runs one script, its lists' find box");
+    assert.ok(scripts[0].includes(PICK_SCRIPT));
+    assert.doesNotMatch(scripts[0], /location|history|submit\(|fetch|cookie|storage/i,
+      "the find box reads no link, and sends and keeps nothing");
     assert.deepEqual(leaks(w), []);
   } finally { w.close(); }
 });
@@ -192,7 +199,7 @@ test("a post from another site, or with no Origin, or a GET with an action, chan
   const w = makeWorld();
   try {
     const s = await join(w, "reader.targeted");
-    const before = snapshot(w);
+    const before = snapshot(w), mails = w.net.outbox.length;
     for (const opts of [{ origin: "https://evil.example.com" }, { origin: null },
                         { fetchSite: "cross-site" }, { fetchSite: "same-site" },
                         { origin: "null", fetchSite: "cross-site" }, { origin: "null", fetchSite: null },
@@ -211,7 +218,7 @@ test("a post from another site, or with no Origin, or a GET with an action, chan
       body: JSON.stringify({ t: s.manage, action: "unsubscribe" }) }));
     assert.equal(j.status, 400);
     assert.deepEqual(snapshot(w), before);
-    assert.equal(w.net.outbox.length, 1, "no new-link email went out");
+    assert.equal(w.net.outbox.length, mails, "no new-link email went out");
   } finally { w.close(); }
 });
 
@@ -241,7 +248,8 @@ test("one Save: untick, add a bill and a law by typing, a legislator and a topic
     const mails = w.net.outbox.length;
     const page = (await view(w, s.manage)).body;
     assert.match(page, /name="keep" value="topic:housing"/, "every topic tonight has a box");
-    assert.match(page, /<option value="member:990001">Rep\. Pat Example/, "legislators can be picked");
+    assert.match(page, /<input type="checkbox" name="add" value="member:990001"><span>Rep\. Pat Example/,
+      "legislators can be ticked");
     assert.match(page, /Now: In committee/, "a bill says where it stands");
     const r = await saveForm(w, s.manage, [
       ["listed", "bill:2026/HB9901"], ["keep", "bill:2026/HB9901"],
@@ -308,6 +316,216 @@ test("unticking everything deletes the address, as removing the last record alwa
     assert.match(r.body, /Your address has been deleted/);
     assert.equal(w.d1.rows("subscribers").length, 0);
     assert.equal(w.d1.rows("follows").length, 0);
+  } finally { w.close(); }
+});
+
+// ---- the lists to add from (the person's test of 16 October 2026) ---------------------
+// "The legislators were not searchable and the drop-down sorted them by first
+// name instead of last name. You could only select one committee and
+// legislator at a time until you save." Both chambers sitting, beside the
+// fixture's own Rep. Pat Example and House Example Committee: a surname of
+// three words the roster sorts under V, which the label's last word would put
+// under B; an accent; and a committee of each chamber.
+const SITTING = {
+  "member:990002": { label: "Sen. Ann Zed (D - SD5)", sort: "zed, ann", chamber: "Senate" },
+  "member:990003": { label: "Rep. Zoë Abbott (R - Hills 3)", sort: "abbott, zoë", chamber: "House" },
+  "member:990004": { label: "Rep. Al Young (D - Coos 1)", sort: "young, al", chamber: "House" },
+  "member:990005": { label: "Sen. Bo Adams (R - SD2)", sort: "adams, bo", chamber: "Senate" },
+  "member:990006": { label: "Rep. Mary Van Der Berg (D - Straf 2)", sort: "van der berg, mary",
+                     chamber: "House" },
+  "committee:S90": { label: "Senate Example Committee", chamber: "Senate" },
+  "committee:H91": { label: "House Another Committee", chamber: "House" },
+};
+const sitting = (w, more = SITTING) =>
+  Object.assign(w.net.site.get("/changes/current.json").followable, structuredClone(more));
+
+// One list to add from as the page draws it: its chambers in order, and the
+// records each offers, in order.
+function lists(html) {
+  return (html.match(/<details class="pick" data-pick>[\s\S]*?<\/details>/g) || []).map(block => ({
+    block,
+    summary: /<summary>([^<]*)/.exec(block)[1].trim(),
+    sets: (block.match(/<fieldset>[\s\S]*?<\/fieldset>/g) || []).map(f => ({
+      chamber: (/<legend>([^<]*)<\/legend>/.exec(f) || [])[1] || "",
+      keys: [...f.matchAll(/name="add" value="([^"]+)"/g)].map(m => m[1]),
+    })),
+  }));
+}
+
+test("the lists to add from: the House and the Senate apart, by last name, without what is followed", async () => {
+  const w = makeWorld();
+  try {
+    sitting(w);
+    const s = await join(w, "reader.picks", "member", "990001");
+    await signUp(w, s.address, "committee", "H90");
+    await confirmLatest(w, s.address);
+    const page = (await view(w, s.manage)).body;
+    assert.doesNotMatch(page, /<select/, "no drop-down");
+    const [members, committees, ...rest] = lists(page);
+    assert.equal(rest.length, 0);
+    assert.equal(members.summary, "Add legislators");
+    assert.deepEqual(members.sets, [
+      { chamber: "House", keys: ["member:990003", "member:990006", "member:990004"] },
+      { chamber: "Senate", keys: ["member:990005", "member:990002"] }],
+      "by the roster's sort name, Abbott, Van Der Berg, Young; Adams, Zed -- and Pat Example, followed, left out");
+    assert.equal(committees.summary, "Add committees");
+    assert.deepEqual(committees.sets, [{ chamber: "House", keys: ["committee:H91"] },
+                                       { chamber: "Senate", keys: ["committee:S90"] }]);
+    // What is followed is in the list of what is followed, and only there.
+    assert.match(page, /name="keep" value="member:990001"/);
+    assert.match(page, /name="keep" value="committee:H90"/);
+    assert.doesNotMatch(page, /name="add" value="(member:990001|committee:H90)"/);
+    assert.deepEqual(leaks(w), []);
+  } finally { w.close(); }
+});
+
+test("a list without sort names or chambers is one group in the label's order", async () => {
+  // As current.json was before 16 October 2026; the page must still list
+  // every one, and work it out from no label.
+  const w = makeWorld();
+  try {
+    sitting(w);
+    for (const v of Object.values(w.net.site.get("/changes/current.json").followable)) {
+      delete v.sort;
+      delete v.chamber;
+    }
+    const s = await join(w, "reader.older.build");
+    const [members, committees] = lists((await view(w, s.manage)).body);
+    assert.deepEqual(members.sets, [{ chamber: "", keys: ["member:990004", "member:990006",
+      "member:990001", "member:990003", "member:990002", "member:990005"] }],
+      "Rep. Al, Rep. Mary, Rep. Pat, Rep. Zoë, Sen. Ann, Sen. Bo: the labels' own order");
+    assert.deepEqual(committees.sets, [{ chamber: "", keys: ["committee:H91", "committee:H90",
+      "committee:S90"] }]);
+  } finally { w.close(); }
+});
+
+test("without script the whole list shows, and the find box waits for the script", async () => {
+  const w = makeWorld();
+  try {
+    sitting(w);
+    const s = await join(w, "reader.no.script");
+    const page = (await view(w, s.manage)).body;
+    for (const block of lists(page).map(l => l.block)) {
+      assert.match(block, /<p class="pickfind" hidden>/, "the box is hidden until the script shows it");
+      assert.doesNotMatch(block, /<(li|fieldset|ul|div)[^>]* hidden/, "no row or chamber starts hidden");
+      assert.match(block, /<p class="quiet none" data-none hidden>/);
+      assert.match(block, /<input type="search" id="find_(member|committee)" data-find/);
+    }
+    const ticks = [...page.matchAll(/name="add" value="([^"]+)"/g)].map(m => m[1]).sort();
+    assert.deepEqual(ticks, ["committee:H90", "committee:H91", "committee:S90", "member:990001", "member:990002",
+      "member:990003", "member:990004", "member:990005", "member:990006"]);
+    // The district is one unit that a narrow row does not break inside.
+    assert.match(page, /value="member:990001"><span>Rep\. Pat Example <span class="tag">\(Merrimack 99\)<\/span><\/span>/);
+    assert.match(page, /\.picklist \.tag\{white-space:nowrap\}/);
+  } finally { w.close(); }
+});
+
+// The page's own script on a document made of the list as drawn: enough of
+// the DOM for PICK_SCRIPT, and no more.
+function runPicker(block) {
+  const text = s => s.replace(/<[^>]+>/g, "").replace(/&amp;/g, "&").replace(/&#39;/g, "'")
+    .replace(/&quot;/g, '"').replace(/&lt;/g, "<").replace(/&gt;/g, ">");
+  const on = {};
+  const sets = (block.match(/<fieldset>[\s\S]*?<\/fieldset>/g) || []).map(f => {
+    const rows = (f.match(/<li>[\s\S]*?<\/li>/g) || []).map(li => {
+      const input = { checked: false, value: /value="([^"]+)"/.exec(li)[1] };
+      return { textContent: text(li), hidden: false, input, querySelector: () => input };
+    });
+    return { hidden: false, rows, querySelector: () => rows.find(r => !r.hidden) || null };
+  });
+  const rows = sets.flatMap(x => x.rows);
+  const box = { value: "", parentNode: { hidden: true },
+                addEventListener: (t, f) => { on[t] = f; } };
+  const none = { hidden: true }, count = { textContent: "" };
+  const d = {
+    querySelector: q => ({ "[data-find]": box, "[data-none]": none, "[data-picked]": count })[q],
+    querySelectorAll: q => (q === "li" ? rows : q === "fieldset" ? sets : []),
+    addEventListener: (t, f) => { on[`d.${t}`] = f; },
+  };
+  new Function("document", PICK_SCRIPT)({ querySelectorAll: q => (q === "[data-pick]" ? [d] : []) });
+  const shown = () => rows.filter(r => !r.hidden).map(r => r.input.value);
+  return {
+    box, none, count, sets, shown,
+    type(v) { box.value = v; on.input(); return shown(); },
+    tick(key, yes = true) { rows.find(r => r.input.value === key).input.checked = yes; on["d.change"](); },
+  };
+}
+
+test("the find box narrows the list as the reader types, case and accents aside, by name or district", async () => {
+  const w = makeWorld();
+  try {
+    sitting(w);
+    const s = await join(w, "reader.types");
+    const [members, committees] = lists((await view(w, s.manage)).body);
+    const p = runPicker(members.block);
+    assert.equal(p.box.parentNode.hidden, false, "with script, the box is shown");
+    assert.equal(p.shown().length, 6, "everyone to begin with");
+    assert.deepEqual(p.type("ZOE"), ["member:990003"], "case and the accent of Zoë aside");
+    assert.equal(p.sets[1].hidden, true, "a chamber with nobody left is hidden with its heading");
+    assert.deepEqual(p.type("berg van"), ["member:990006"], "every word, anywhere in the name");
+    assert.deepEqual(p.type("hills"), ["member:990003"], "the district the label carries");
+    assert.deepEqual(p.type("sd2"), ["member:990005"]);
+    assert.deepEqual(p.type("Merrimack 99"), ["member:990001"]);
+    assert.equal(p.type("  ").length, 6, "nothing typed is everyone");
+    assert.equal(p.sets[1].hidden, false);
+    // A ticked one stays in sight whatever is typed, and is counted.
+    p.tick("member:990004");
+    assert.equal(p.count.textContent, "1 ticked");
+    assert.deepEqual(p.type("adams"), ["member:990004", "member:990005"]);
+    assert.deepEqual(p.type("nobody at all"), ["member:990004"]);
+    assert.equal(p.none.hidden, true, "a ticked one is still there to see");
+    p.tick("member:990004", false);
+    assert.deepEqual(p.shown(), []);
+    assert.equal(p.none.hidden, false, "and with none at all, it says so");
+    assert.equal(p.count.textContent, "");
+    const c = runPicker(committees.block);
+    assert.deepEqual(c.type("senate"), ["committee:S90"]);
+  } finally { w.close(); }
+});
+
+test("every legislator and committee ticked is added on one Save", async () => {
+  const w = makeWorld();
+  try {
+    sitting(w);
+    const s = await join(w, "reader.ticks.four");
+    const mails = w.net.outbox.length;
+    const r = await saveForm(w, s.manage, [["listed", "bill:2026/HB9901"], ["keep", "bill:2026/HB9901"],
+      ["add", "member:990002"], ["add", "member:990003"], ["add", "member:990006"],
+      ["add", "committee:S90"], ["add", "committee:H91"]]);
+    assert.match(r.headers.location, /n=saved$/);
+    const id = w.d1.rows("subscribers")[0].id;
+    assert.deepEqual(await followKeys(w.d1, w.env), [`${id} bill:2026/HB9901`, `${id} committee:H91`,
+      `${id} committee:S90`, `${id} member:990002`, `${id} member:990003`, `${id} member:990006`]);
+    assert.equal(w.net.outbox.length, mails, "adding from the manager sends nothing");
+    // And what was added leaves the lists to add from.
+    const sets = lists((await view(w, s.manage)).body).map(l => l.sets);
+    assert.deepEqual(sets, [[{ chamber: "House", keys: ["member:990001", "member:990004"] },
+                             { chamber: "Senate", keys: ["member:990005"] }],
+                            [{ chamber: "House", keys: ["committee:H90"] }]],
+      "what was added is no longer offered, and a chamber with nothing left has no heading");
+    assert.deepEqual(leaks(w), []);
+  } finally { w.close(); }
+});
+
+test("a Save that ticks more than the room left adds up to 200, however long the form", async () => {
+  const w = makeWorld();
+  try {
+    const many = Object.fromEntries(Array.from({ length: 260 }, (_, i) => [`member:${991000 + i}`,
+      { label: `Rep. Member ${i} (R - Hills ${i})`, sort: `member, ${String(i).padStart(3, "0")}`,
+        chamber: "House" }]));
+    sitting(w, many);
+    const s = await join(w, "reader.ticks.everyone");
+    const fields = [["listed", "bill:2026/HB9901"], ["keep", "bill:2026/HB9901"],
+      ...Object.keys(many).map(k => ["add", k])];
+    assert.ok(new URLSearchParams(fields).toString().length > 4096,
+      "longer than the 4 KiB that was once read as no form at all");
+    const r = await saveForm(w, s.manage, fields);
+    assert.equal(r.status, 303, "a long form is a form");
+    assert.match(r.headers.location, /n=full$/);
+    assert.equal(w.d1.rows("follows").length, 200);
+    const said = await w.call(handlers.manage, postForm("/api/follow/manage",
+      { t: s.manage, action: "view", notice: "full" }));
+    assert.match(said.body, /one address can follow at most 200 records, so not everything you asked to add was added/);
   } finally { w.close(); }
 });
 

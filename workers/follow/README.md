@@ -331,6 +331,8 @@ nothing a person could read a name in:
 | `follow sender.after-send-failed.Error 1` | An email went, and the cursor or ended follows could not be written twice over; tomorrow's email repeats its news. |
 | `follow sender.error.ConfigError 1` | A secret or `MAIL_FROM` is missing. |
 | `follow signup.sent 1`, `follow confirm.confirmed 1` | One confirmation emailed; one confirmed. |
+| `follow confirm.welcome-sent 1` | A confirmation that added a record sent its "You're following ..." email, which carries the manage link (16 October 2026). One a confirmation at most, so never more than the day's confirmations. |
+| `follow confirm.welcome-refused.429`, `follow confirm.welcome-error.Error` | That email was not sent. The confirmation stands and its page says nothing of it; the reader's way back is then the first update. |
 | `follow signup.waiting-enough`, `follow signup.day-full` | A request not sent: its inbox has three waiting, or the day's ceiling is reached. |
 | `follow unsubscribe.one-click-matched-nothing` | A provider's one-click carried a link that is no longer current; nothing was deleted. |
 | `follow manage.new-link-already-moving` | "Send me a new link" pressed twice at once; one email went. |
