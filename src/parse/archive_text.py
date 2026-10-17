@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-16.7
+# GRANITE_VERSION: 2026-09-16.9
 """
 The text of every archived bill, read off the pages already on this disk.
 
@@ -117,6 +117,84 @@ XML = re.compile(r"<xml\b.*?</xml\s*>", re.S | re.I)
 # not a space and not the end of another tag.
 TAG_BEFORE_MARK = re.compile(r"(?<=[^\s>])(?:<[^>]+>)+(?=[,.;:!?)\]])")
 
+# WHAT WORD LEFT AT THE END OF THE FILE, PRINTED AS THOUGH IT WERE THE BILL
+# (17 October 2026). 1,365 saved pages of 1989-1995 end in the binary tail of
+# the Word document they were converted from, which the conversion wrote out as
+# paragraphs: 1995 HB 101's Bill Text ran on from "This act shall take effect
+# January 1, 1996." into "EB", "?\C:\PROGRA~1\MICROS~1\Office\wwintl32.dll",
+# "\\CAPITOL\LSSOFTWARE\LSNT\CLIPPIT.ACT" and the Legislative Services
+# machines' search path. Measured over all 1,365: the tail always begins with
+# a line naming a program file or a Windows folder, nothing that reads as prose
+# ever follows it, and what stands between it and the bill's last real line is
+# a few fragments of the same binary -- "EB", "E &&)E", "__", "a11".
+#
+# ONLY THE BINARY, NEVER THE BILL (the review of 17 October 2026). The first
+# cut took every line after the first program file, and every line above it
+# that was short or less than half letters -- and that is a fiscal note's
+# table: 1990 HB 1023's "Difference = $2,502,000", 1994 SB 766's revenue rows,
+# 1993 SB 219's "Total $3,331,658". And a sentence can share its line with the
+# binary: 1989 SB 175's "FISCAL IMPACT: This bill appropriates $50,000 ...
+# for \\capitol\viewlibrary\...". So the tail is read line by line: a
+# line keeps whatever comes before the binary starts in it where that is text
+# -- a run of four words, a sum of money, FISCAL -- and a line with no text in
+# it goes; above the first program file, only the binary's own fragments go.
+# "ntdll.dllB" is a program file too, which the \b after "dll" missed on 34
+# pages.
+APPLICATION = re.compile(r"PROGRA~\d|\\WINNT\b|WINNT\\|\.dll|\.exe\b|Winword\.exe|\bMSO97\b|"
+                         r"CLIPPIT\.ACT|\\\\CAPITOL\\|viewlibrary|\bNormal\.dot\b", re.I)
+# Where the binary starts inside a line: a path, a file name, a control
+# character -- or anything APPLICATION names.
+BINARY_STARTS = re.compile(r"[A-Za-z]:\\|\\\\|\S*\.(?:dll|exe)|\S*\.(?:doc|dot)(?![a-z])|PROGRA~\d|"
+                           r"WINNT|MSO97|CLIPPIT|Winword|viewlibrary|"
+                           r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f\ufffd]", re.I)
+MONEY = re.compile(r"\$\s?\d{1,3}(?:,\d{3})*(?:\.\d+)?\b")
+FOUR_WORDS = re.compile(r"\b[A-Za-z][A-Za-z'-]+(?:[ ,;:]{1,2}[A-Za-z][A-Za-z'-]+){3}\b")
+
+
+def is_text(line):
+    """A run of four words, a sum of money, or FISCAL: what a cut never takes."""
+    return bool(FOUR_WORDS.search(line) or MONEY.search(line) or "FISCAL" in line)
+
+
+def _fragment(line):
+    """A line of the binary's own fragments: "EB", "E &&)E", "_%__" -- short,
+    or mostly not letters, and neither text nor a word standing alone."""
+    s = line.strip()
+    if not s:
+        return True
+    if is_text(s) or re.fullmatch(r"[A-Za-z]{4,}", s):
+        return False
+    return len(s) <= 6 or sum(c.isalpha() for c in s) < len(s) / 2
+
+
+def application_tail_off(t):
+    """`t` without the Word binary a converted page carries after the bill
+    (APPLICATION, above): from the first line naming a program file, each
+    line keeps the text before the binary starts in it and a line with no
+    text goes; above it, the binary's fragments go back to the bill's last
+    line. A line of text is never taken."""
+    lines = t.split("\n")
+    at = next((i for i, line in enumerate(lines) if APPLICATION.search(line)), None)
+    if at is None:
+        return t
+    top = at
+    while top > 0 and _fragment(lines[top - 1]):
+        top -= 1
+    # The bill's last line can carry the binary's first bytes: 1991 SB 72's
+    # "... proposed in the original legislation. \x7f@@".
+    if top > 0:
+        m = BINARY_STARTS.search(lines[top - 1])
+        if m and is_text(lines[top - 1][:m.start()]):
+            lines[top - 1] = lines[top - 1][:m.start()].rstrip()
+    kept = []
+    for line in lines[at:]:
+        m = BINARY_STARTS.search(line)
+        head = line[:m.start()].rstrip() if m else line
+        if is_text(head):
+            kept.append(head)
+    return "\n".join(lines[:top] + ([""] + kept if kept else [])).rstrip()
+
+
 # The Basic Multilingual Plane's private-use area and planes 15-16.
 PRIVATE = re.compile("[-\U000f0000-\U0010ffff]")
 
@@ -156,7 +234,7 @@ def flatten(html):
     # Spaces collapse; newlines do not, beyond a blank line.
     t = re.sub(r"[ \t\r\f\v]+", " ", t)
     t = re.sub(r" *\n *", "\n", t)
-    return re.sub(r"\n{3,}", "\n\n", t).strip()
+    return application_tail_off(re.sub(r"\n{3,}", "\n\n", t).strip())
 
 
 # The rule the archive draws under the front matter, as a line of its own.

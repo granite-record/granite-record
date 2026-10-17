@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.218
+# GRANITE_VERSION: 2026-09-05.221
 """
 Generate the faceted site from real General Court data.
 
@@ -45,6 +45,7 @@ import plain_action as PA
 import fiscal
 import proceedings as P
 import report_check as RC
+import rollcall_outcomes as RO
 import senate_hearing_reports as SHR
 import site_read
 import spellings
@@ -7427,8 +7428,14 @@ def study_ending(narr, steps, rail, term, sittings, lsrs=None):
     if study is not None and day and (study.get("date") or "") > day:
         day = study["date"]
     out = [{"date": day, "body": body, "act": "died", "mark": "x",
-            "text": f"Still in interim study when the {chamber} last sat; died when the "
-                    "session ended", "short": "died in interim study"}]
+            # THE PERSON'S WORDS (approved 17 October 2026), with the fall
+            # named by its year so the line reads true in any later year: it
+            # said "Still in interim study when the House last sat; died when
+            # the session ended" beside an Interim Study chip and a work
+            # session still to come.
+            "text": (f"In interim study: the committee studies the subject in the fall of "
+                     f"{term_years(term)[1]}; the bill goes no further"),
+            "short": "died in interim study"}]
     rep = interim_report(narr, term)
     if rep:
         words = {"rec": "recommended for " + (f"legislation in {rep['year']}" if rep["year"]
@@ -7522,7 +7529,7 @@ def index_rail(jrail):
 
 # The lines the session's end makes (table_death_line, study_ending), which
 # no row of the docket decided.
-SESSION_END_DEATHS = ("Still in interim study when", "Still on the table when",
+SESSION_END_DEATHS = ("In interim study:", "Still on the table when",
                       "Died on the table when the session ended")
 
 
@@ -7650,7 +7657,8 @@ def journey_disagrees(steps, kind, status, rail, bid):
             return ""
         return (f"{status}, and the last decision is "
                 f"{last['text'][:40]!r}" if last else f"{status}, and no chamber decided")
-    if status.startswith("One chamber did not concur") or status == "In a committee of conference":
+    if (status.startswith("One chamber did not concur")
+            or status in ("In a committee of conference", CHAMBERS_APART)):
         if any(f["act"] in ("nonconcurred", "conf_refused", "concurred") for f in finals):
             return ""
         return f"{status}, and the last decision is {last['text'][:40]!r}" if last else (
@@ -8323,6 +8331,23 @@ CONF_REJECTED = "Died when the conference report was rejected"
 # House and Senate members agreed to disagree" (SB 326, 2000).
 CONF_UNABLE = "Died: conferees could not agree"
 CONF_UNABLE_RE = re.compile(r"\bunable\s+to\s+(?:reach\s+)?agree", re.I)
+
+# THE STAGES A BILL CAN DIE AT, AND THE WORD FOR DYING THERE (17 October
+# 2026, the language sweep's items 13 and 14). Once a term has no session days
+# left, a bill whose last word is one of these did not go on, and its chip
+# already says Died; the status said "Laid on the table" or "One chamber did
+# not concur; a committee of conference was asked for", which read as though
+# a vote were still to come. The table's is the General Court's own phrase
+# (its docket's "Died on Table"); the chambers' is said in the same form as
+# CONF_UNABLE, and is true whether the second chamber refused a conference
+# (HB 191 of 2026), none was asked for, or the conferees never reported.
+CHAMBERS_APART = "Died: the chambers did not agree on a version"
+ENDED_AS = {
+    "Laid on the table": "Died on the table",
+    "One chamber did not concur": CHAMBERS_APART,
+    "One chamber did not concur; a committee of conference was asked for": CHAMBERS_APART,
+    "In a committee of conference": CHAMBERS_APART,
+}
 
 # AND CONFEREES WHO NEVER SIGNED A REPORT AT ALL. A conference's report is
 # signed off by its conferees, and where they did not settle the versions and
@@ -9282,8 +9307,9 @@ def bill_disposition(b, bid, st, narr, rcs, term, current, law_line="",
     # committee, some since 1989. Read literally that is a 37-year-old
     # bill awaiting a hearing.
     #
-    # The word is left exactly as the record gives it, because it is what
-    # the record last said and this site does not rewrite that. What
+    # The word is left as the record gives it, because it is what the record
+    # last said -- except the stages a bill dies at, which say how it died
+    # (ENDED_AS, below, since 17 October 2026). What
     # changes is the KIND, which drives the colour and the rail: in a
     # closed term the bill did not go on from there, so it is finished
     # rather than moving. The current term is untouched -- a bill laid on
@@ -9359,6 +9385,16 @@ def bill_disposition(b, bid, st, narr, rcs, term, current, law_line="",
             status, st, narr, bid, term):
         kind, status = "done", "Died when the session ended"
         told, stated, source = None, 0, ENDED_WITH_TERM
+    # HOW IT ENDED, IN THE WORDS OF AN ENDING (17 October 2026). Where the
+    # record's last word is a stage -- on the table, or the chambers apart --
+    # and the term has no session days left, that stage is how the bill died,
+    # and the status says so beside the Died chip rather than reading as
+    # though something were still to come: "Laid on the table" on 52 bills of
+    # 2026 where 197 others already said "Died on the table", and "a committee
+    # of conference was asked for" on HB 191 of 2026, whose conference the
+    # Senate refused. ENDED_AS has the words.
+    if (term != current or term_over) and kind in ("active", "done"):
+        status = ENDED_AS.get(status, status)
     if kind == "active" and (term != current or term_over):
         kind = "done"
         stale = 1
@@ -9880,7 +9916,8 @@ def bill_stations(bid, term, procs, segs, marks):
                                            x["sched_time"] or ""))]
 
 
-def bill_rollcalls(bid, term, rcs, narr, votes_by_bill, legs, unnamed):
+def bill_rollcalls(bid, term, rcs, narr, votes_by_bill, legs, unnamed,
+                   in_office=None):
     """Every recorded vote on one bill, in the order the docket took them.
 
     Lifted verbatim out of build_bills except for indentation.
@@ -9990,6 +10027,25 @@ def bill_rollcalls(bid, term, rcs, narr, votes_by_bill, legs, unnamed):
             continue          # RC is already covered by the roll call file
         label, _ = kind
         y, n = e.get("yeas"), e.get("nays")
+        # WHAT A DIVISION NEEDED, BY THE ROLL CALL'S RULE (17 October 2026).
+        # These cards carried no threshold, so the chart marked a majority of
+        # those voting on every one: "171 needed" beside the House's 325-15
+        # on CACR 13, which needed three fifths of the 394 members in office,
+        # 237. 185 counted divisions of 1989-2026 needed more than a majority
+        # by their docket line, their question or the Journal
+        # (rollcall_outcomes.division_threshold); fifteen of them of a count
+        # not on record, which the chart leaves unmarked rather than marked
+        # wrong.
+        # And a CACR's division whose docket line names no fraction is read
+        # with the House Journal's sentence for it (rollcall_outcomes.
+        # journal_division_words): 2000's CACR 2, taken from the table "by
+        # the necessary three-fifths", 17 October 2026.
+        need = (RO.division_threshold(
+                    bid, question, e.get("raw") or "", int(y), int(n),
+                    (in_office or {}).get((e.get("body"), e["date"])), passed,
+                    RO.journal_division_words(".", e.get("body"), e["date"], int(y), int(n))
+                    if bid.upper().startswith("CACR") else "")
+                if y and n else {})
         rc_out.append({
             "date": e["date"], "body": e.get("body"),
             "question": question,
@@ -10004,6 +10060,7 @@ def bill_rollcalls(bid, term, rcs, narr, votes_by_bill, legs, unnamed):
             "threshold_note": None, "tally": {}, "members": [],
             # The amendment's or the report's number, beside the question.
             "amendment": number, "_ord": (e["date"], _i),
+            **need,
         })
     # By the docket's own sequence, not by the wording of the motion.
     rc_out.sort(key=lambda r: r["_ord"])
@@ -10069,6 +10126,16 @@ def merge_guessed_topics(bills):
 ADDED_CODES = TM.ADDED_CODES
 
 
+# TWO OF THE GENERAL COURT'S TOPIC NAMES IN A READER'S WORDS (the person,
+# approved 17 October 2026): "Crimes, Crim.Proc. & Corr." on 384 bills, and
+# "CACR", a kind of measure rather than a subject, on the constitutional
+# amendments. Applied after the model's vocabulary, which is measured in the
+# General Court's own names; build_feeds keeps each topic's old feed address
+# (feeds.TOPIC_ADDRESS) so a feed already followed goes on working.
+TOPIC_WORDS = {"Crimes, Crim.Proc. & Corr.": "Crimes, Criminal Procedure and Corrections",
+               "CACR": "Constitutional Amendments"}
+
+
 def unify_vocabulary(bills):
     """ONE VOCABULARY ACROSS ALL NINETEEN TERMS, applied last and to everything.
 
@@ -10104,6 +10171,7 @@ def unify_vocabulary(bills):
                 moved["retired"] += 1
                 continue
             new_s = TM.remap_gold(s, rec)
+            new_s = TOPIC_WORDS.get(new_s, new_s)
             if new_s != s:
                 rec["subject"] = new_s
                 rec["subject_code"] = ADDED_CODES.get(new_s) or rec.get("subject_code") or ""
@@ -10611,6 +10679,9 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
     # every bill but the year's first: 33,717 calls and about 13 seconds on
     # Windows. The folders made are kept here, and each is made once.
     year_dirs = set()
+    # How many members were in office on each day a chamber took a roll call,
+    # which is what three fifths is of on a division (bill_rollcalls).
+    in_office = RO.members_in_office(rollcalls)
     for bid, b in ((k, v) for byb in bills.values() for k, v in byb.items()):
         # New Hampshire sits in two-year terms beginning in odd years. Bill
         # numbers are unique across the whole term, so the term -- not the year
@@ -10883,7 +10954,7 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
         btext = bill_text_block(P.per_term(bill_texts, term, current).get(bid), narr)
 
         rc_out = bill_rollcalls(bid, term, rcs, narr,
-                                votes_by_bill, legs, unnamed)
+                                votes_by_bill, legs, unnamed, in_office)
         for r in rc_out:
             r.pop("_ord", None)
             # THE VOTE WORDS' KEY (the person, 8 October 2026; motions.py):
@@ -11171,8 +11242,9 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
                        "senate_status", "date_introduced", "floor_date",
                        "committee_code") if st.get(k)},
             # THE END OF A BILL THAT SIMPLY RAN OUT OF DAYS. The record's own
-            # word stays in the status -- "Laid on the table", where the chip
-            # says Died -- and this says
+            # word stays in the status -- "Committee report filed", where the
+            # chip says Died; a tabling or a disagreement between the chambers
+            # says how it died (ENDED_AS) -- and this says
             # why nothing follows it, on the bills of the current term only:
             # an archived term says the same thing in its coverage note.
             **({"session_over": session_over}

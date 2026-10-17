@@ -1,11 +1,11 @@
-// GRANITE_VERSION: 2026-09-07.213
+// GRANITE_VERSION: 2026-09-07.218
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
 // it: the chip's classes and the kinds of meeting are read from there (C3).
 // What each kind of document actually is, said once rather than in every row.
 const DOCWHAT={text:"the bill as it currently stands",
-  status:"the page this site takes a bill's status from",
+  status:"the General Court's page saying where the bill stands",
   docket:"every recorded action, in the General Court's own words",
   record:"the official record of one action",
   report:"the calendar a committee report was printed in"};
@@ -45,6 +45,12 @@ const PARTY_RANK={R:0,D:1};
 const partyRank=p=>(p in PARTY_RANK)?PARTY_RANK[p]:2;
 const byParty=(a,b)=>partyRank(a)-partyRank(b)||String(a).localeCompare(String(b));
 const yeaFirst=(a,b)=>a===b?0:(a==="Yea"?-1:1);
+// A BALLOT IN THE BILL PAGES' WORDS (17 October 2026): a member's own page
+// listed "Yea", "Nay" and "Not Voting/Not Excused" where every roll call says
+// Yes, No and "Absent, not excused" (OTHER, below). The value filtered on is
+// still the record's.
+const ballotWord=v=>v==="Yea"?"Yes":v==="Nay"?"No"
+  :(OTHER.find(o=>o[0]===v)||[])[1]||v;
 // A chip's class by the bill's kind, for a word that is not one of the six.
 // It and CHIPCLASS below are words, written once (the component plan's C3,
 // 9 October 2026): src/pages/words/chips.json, which components.js carries
@@ -3138,10 +3144,14 @@ function simpleDonut(rc,bid,i){
   // count it was needed of is not on record -- three fifths of the members in
   // office, on a division, where nobody's ballot was recorded. A majority mark
   // there would be a wrong one.
-  const tick=rc.threshold_unknown?"":marker(a,R,need,"");
+  // The rule rides on the mark as a roll call's does (17 October 2026): a
+  // division on a constitutional amendment now carries three fifths of the
+  // members in office, and "237 needed" alone does not say of what.
+  const tick=rc.threshold_unknown?"":marker(a,R,need,rc.threshold_rule||"");
   return `<div class="votewrap"><svg class="donut" viewBox="0 0 172 206" width="172" height="206"
     role="img" aria-label="Division vote, ${y} yes to ${n} no, needing ${
-      rc.threshold_unknown?"more than a majority":need}">
+      rc.threshold_unknown?"more than a majority":need}${
+      rc.threshold_rule?`, ${esc(rc.threshold_rule)}`:""}">
     <g transform="rotate(90 86 86)">${seg(avail*y/tot,"var(--yes)",won)}</g>
     <g transform="translate(172,0) scale(-1,1)"><g transform="rotate(90 86 86)">${seg(avail*n/tot,"var(--no)",!won)}</g></g>
     ${tick}${yn(GAP,R,won)}
@@ -3265,7 +3275,10 @@ function donut(bid,i,rc){
     <span class="c">${s.n}</span></button>`;}).join("");
   const others=OTHER.map(([st,label])=>({st,label,n:(rc.members||[]).filter(m=>m.v===st).length})).filter(o=>o.n);
   const oTot=others.reduce((a,o)=>a+o.n,0);
-  const oRows=others.length?`<div class="othergrp"><div class="otherhd">Other — ${oTot}<span class="c">not in chart</span></div>
+  // "DID NOT VOTE", NOT "OTHER ... NOT IN CHART" (17 October 2026): every
+  // ballot here is a member who cast no yes or no -- presiding, excused or
+  // absent -- which is what the reader needs to know of them.
+  const oRows=others.length?`<div class="othergrp"><div class="otherhd">Did not vote — ${oTot}</div>
     ${others.map(o=>`<button type="button" class="lrow ${chosen==="other-"+o.st?'sel':''}" aria-pressed="${chosen==="other-"+o.st}" data-seg="${key}|other-${o.st}">
     <span class="sw sw-o"></span><span>${o.label}</span><span class="c">${o.n}</span></button>`).join("")}</div>`:"";
   let list="";
@@ -3577,9 +3590,8 @@ function archivedNote(d){
   // false for every one of those 8,525 pages. What begins in 1999 is the
   // General Court's roll-call files, and the sentence now says so.
   const before1999=(!c.votes&&y&&y<1999)?` No roll call from before 1999 is
-    listed by name here: the General Court's roll-call files, RollCallHistory.txt
-    and RollCallSummary.txt, which every named vote on this site is read from,
-    begin with the 1999 session. The docket gives the tallies it recorded, and
+    listed by name here: the General Court's roll-call files, which every named
+    vote on this site is read from, begin with the 1999 session. The docket gives the tallies it recorded, and
     the printed journals name who voted which way.`:"";
 
   // WHERE THE WRITTEN REPORTS START, which is the same kind of boundary. The
@@ -3628,8 +3640,8 @@ function archivedNote(d){
     if(!c.reports&&y>=1997)gaps.push("the House committees' written reports");
     if(!c.votes&&y>=1999)gaps.push("the roll calls");
     if(!c.hearings)gaps.push("its hearings");
-    return P(`This term is archived. Here: ${and(have)}. Not yet on this
-      site for it: ${and(gaps)}.${before1997}${before1999}`);
+    return P(`This bill is from an earlier term. Here: ${and(have)}. Not on
+      this site yet for its term: ${and(gaps)}.${before1997}${before1999}`);
   }
 
   // Has a docket. What is missing beyond it is what the reader needs told.
@@ -3657,16 +3669,17 @@ function archivedNote(d){
     if(c.reports)have.push("the House committees' written reports");
     if(c.votes)have.push("the recorded votes");
     const lead=(c.reports&&c.votes)
-      ?`This term is archived, but its record is close to complete:
-      ${and(have)} are all here.`
-      :`This term is archived, and ${and(have)} are here.`;
-    return P(`${lead}${hasText?"":` What a current term adds is the
-      bill's own text, which is linked rather than loaded.`}${
+      ?`This bill is from an earlier term, and its record here is close to
+      complete: ${and(have)} are all here.`
+      :`This bill is from an earlier term, and ${and(have)} are here.`;
+    return P(`${lead}${hasText?"":` The bill's own text is not on this
+      page; the Documents tab links to it.`}${
       before1997}${before1999}`);
   }
-  return P(`This term is archived, and its docket is here: every action the
-    General Court recorded, and the committee's recommendation and the vote on
-    it. Not yet fetched for this term: ${and(gaps)}.${before1997}${before1999}`);
+  return P(`This bill is from an earlier term, and its docket is here: every
+    action the General Court recorded, and the committee's recommendation and
+    the vote on it. Not on this site yet for its term: ${and(gaps)}.${
+    before1997}${before1999}`);
 }
 
 // ===================================================== the bill's own facts ==
@@ -3826,8 +3839,9 @@ function journeyList(b,d){
 //    the page said nothing, so "Referred for interim study" stood as the last
 //    word for months after the committee had answered.
 //  - a term that has run out of session days finishes every bill still
-//    pending. The status keeps the record's own word ("Laid on the table",
-//    where the chip says Died);
+//    pending. The status keeps the record's own word ("Committee report
+//    filed", where the chip says Died; since 17 October 2026 a tabling reads
+//    "Died on the table");
 //    this says why nothing follows it. status/status.txt sets the date.
 // Since 9 October 2026 the report is read in every wording the docket has
 // used (build_site_v2.interim_report), and says one of three things: the
@@ -3843,10 +3857,12 @@ function endNote(d){
   if(s)out.push(`<p class="note"><b>Interim study report${s.date?`, ${
     esc(dateWords(s.date))}`:""}:</b> the committee ${said}${
       s.vote?`, ${esc(s.vote)}`:""}.</p>`);
+  // NOT "WHATEVER ITS LAST RECORDED STATUS SAYS" (17 October 2026): that
+  // set the page against its own Status line, and since the language sweep
+  // a stage the bill died at says so there (build_site_v2.ENDED_AS).
   if(d.session_over)out.push(`<p class="note">The chambers do not sit again
-    this term: the last session day was ${esc(dateWords(d.session_over))}. A bill
-    that had not passed by then did not advance, whatever its last recorded
-    status says.</p>`);
+    this term: the last session day was ${esc(dateWords(d.session_over))}, and a
+    bill that had not passed both chambers by then went no further.</p>`);
   return out.join("");
 }
 
@@ -3878,7 +3894,9 @@ function rsaLine(d){
   const ch=rsaChapters(d);
   if(!ch.length)return changedLine(d);
   const link=([n,u])=>`<a class="rsa" href="${esc(u)}"${u.charAt(0)==="/"?"":' target="_blank" rel="noopener"'}>${esc(n)}</a>`;
-  const lead=ch.length===1?"Amends RSA chapter":"Amends RSA chapters";
+  // The person's words, approved 17 October 2026, for "Amends RSA chapters".
+  const lead=ch.length===1?"Changes this chapter of state law (RSA):"
+    :"Changes these chapters of state law (RSA):";
   if(ch.length<=RSA_SHOWN+2)return `<p class="rsaline">${lead} ${ch.map(link).join(", ")}</p>`+changedLine(d);
   return `<div class="rsaline">${lead} <span class="rsaset">${ch.slice(0,RSA_SHOWN).map(link).join(", ")}</span>`
     +`<details class="rsamore"><summary><span class="shut">Show all ${ch.length} chapters</span>`
@@ -3902,11 +3920,22 @@ function renderSummary(b,d,rsa){
   if(jl)S.push(section("How It Got Here",jl+(an?"":`<p class="src">Source: ${gcSource(d)}</p>${rsaLine(d)}`),"journey"));
   else if(!an&&(d.docket_url||rsaChapters(d).length))
     S.push(section("Source",`<p class="src">Source: ${gcSource(d)}</p>${rsaLine(d)}`,"source"));
-  if(d.stages&&d.stages.length)d.stages.forEach(st=>S.push(section(st.label||"The Story",
-    `<p class="story">${storyPeople(esc(st.text),d)}</p>${(st.notes||[]).map(n=>`<p class="note">${esc(n)}</p>`).join("")}`)));
+  // ONE HOW IT ENDED (17 October 2026). The story's own closing stage and
+  // the session's end were two sections under the same heading; the notes
+  // join the stage where the story has one. And what this site holds of an
+  // earlier term is not how the bill ended -- a law read it under that
+  // heading -- so it has a section of its own.
+  const ending=endNote(d);
+  let ended=false;
+  if(d.stages&&d.stages.length)d.stages.forEach(st=>{
+    const here=!!ending&&st.label==="How It Ended";
+    if(here)ended=true;
+    S.push(section(st.label||"The Story",
+    `<p class="story">${storyPeople(esc(st.text),d)}</p>${(st.notes||[]).map(n=>`<p class="note">${esc(n)}</p>`).join("")}${here?ending:""}`));});
   else if(d.narrative)S.push(section("The Story",`<p class="story">${storyPeople(esc(d.narrative),d)}</p>`));
-  const ending=endNote(d)+archivedNote(d);
-  if(ending)S.push(section("How It Ended",ending,"ending"));
+  if(ending&&!ended)S.push(section("How It Ended",ending,"ending"));
+  const kept=archivedNote(d);
+  if(kept)S.push(section("About This Record",kept,"about-record"));
   // ON THE SUMMARY, ONE SENTENCE AT MOST, and only for the strongest fact
   // (RELATED_BILLS.md §6): where its language went, else where it was filed
   // before or after. The rest are on the Related tab.
@@ -4238,8 +4267,7 @@ function hearingReport(r,video){
       const empty=!(s.text||[]).length&&!(s.speakers||[]).length;
       return `<h2>${esc(s.label)}</h2>${s.text&&s.text.length
         ?`<p class="hrnote">This section is shown as the report sets it out,
-          because who said which part could not be read from its layout with
-          confidence.</p>`:""}${
+          because the report does not make clear who said which part.</p>`:""}${
         empty?`<p class="hrnone">${esc(s.note||"None.")}</p>`:body}`;}).join("")}
     </div></details>`;
 }
@@ -4254,6 +4282,11 @@ const NOT_NAMED=`The recording&rsquo;s captions never name this bill, by
   number or by title, so no moment in it is marked. The recording is the
   whole meeting.`;
 
+// A ROOM AS THE DOCUMENTS TAB SAYS IT (the person, approved 17 October 2026):
+// "Legislative Office Building 210-211" for the clerk's "LOB 210-211", with
+// plain_action.BUILDINGS' three buildings.
+const ROOM_BUILDINGS={LOB:"Legislative Office Building",SH:"State House",GP:"Granite Place"};
+const roomWords=v=>String(v||"").replace(/^(LOB|SH|GP)\s*(?=\d)/,(m,k)=>ROOM_BUILDINGS[k]+" ");
 function renderHearings(b,d){
   // si, because the pid was built from the video and the timestamp, so two
   // proceedings on the same recording resolving to the same second shared one
@@ -4560,7 +4593,7 @@ function renderHearings(b,d){
     // pending dot while an unlocated estimate wore the finished one. It now
     // follows the branch that actually ran.
     return `<div class="stn ${placed?"done":"pend"}">
-      <div class="w">${esc(dateWords(s.when))}${s.time?" at "+esc(clock(s.time)):""}${s.venue?" · "+esc(s.venue):""}</div>
+      <div class="w">${esc(dateWords(s.when))}${s.time?" at "+esc(clock(s.time)):""}${s.venue?" · "+esc(roomWords(s.venue)):""}</div>
       <div class="t">${esc(stationTitle(b,s))}</div>${
         signins(s.testimony)}${inner}${(s.reports||[]).map(r=>
           hearingReport(r,inner.includes('class="player"'))).join("")}</div>`;}).join("")
@@ -4573,7 +4606,7 @@ function renderHearings(b,d){
       ? `<p class="note">The docket gave notice of a meeting on this bill, and
          none is drawn here. The history on the Summary tab says why, and the
          docket there lists the notice.</p>`
-      : `<p class="note">No scheduled proceedings on file.</p>`);
+      : `<p class="note">No hearing or meeting is on record for this bill.</p>`);
 }
 
 // Each calendar entry carries the majority's recommendation and, when the
@@ -4601,6 +4634,10 @@ const videoCount=d=>(d.stations||[])
 const reportCount=d=>(d.reports||[]).reduce((n,r)=>n+((r.reports||[]).length),0)
                      +(d.docket_reports||[]).length;
 
+// The first year of a bill's term, or 0 (17 October 2026: a 1995 report
+// was told its calendar "has not been read into the site yet", and no
+// calendar before 1997 is online to read).
+const termStartOf=d=>parseInt(String((d&&(d.term||d.year))||"").slice(0,4),10)||0;
 function renderReports(b,d,rsa){
   const recFor=(r,side)=>side==="Minority"
       ? (r.minority_recommendation||"") : (r.majority_recommendation||"");
@@ -4625,7 +4662,9 @@ function renderReports(b,d,rsa){
     // The Senate's reports come from the General Court's database and their
     // source names that, which is not what a reader wants beside a committee's
     // name; the docket's own citation for the same report is.
-    const t=esc(r.body==="S"?r.cite:(r.source||r.cite));
+    // "Senate Calendar 13" beside the House's "House Calendar 14", not "SC
+    // 13" (17 October 2026): docLong spells out the docket's shorthand.
+    const t=esc(r.body==="S"?docLong(r.cite):(r.source||r.cite));
     // NO LEADING SEPARATOR. It divided the citation from the date when the two
     // shared a line; in the wide layout the date is above it in a column and
     // the dot divides it from nothing.
@@ -4720,9 +4759,9 @@ function renderReports(b,d,rsa){
         <span class="secsub">${esc(r.side||"Committee")}</span>${vote}
         ${r.recommendation?chip(titleWords(r.recommendation),`cstat ${recColour(r.recommendation)}`):""}</div>
       ${amd}
-      <p class="note" style="margin:var(--sp-5) 0 0">${r.body==="S"
-        ? "The written report for this one is not on the site; this is what the docket records of it."
-        : "The calendar carrying this report has not been read into the site yet, so only what the docket states is shown."}</p>`);}).join("");
+      <p class="note" style="margin:var(--sp-5) 0 0">${r.body!=="S"&&termStartOf(d)&&termStartOf(d)<1997
+        ? "The written report for this one is not on the site: the General Court’s online calendars, which print the reports, begin in 1997. This is what the docket records of it."
+        : "The written report for this one is not on the site; this is what the docket records of it."}</p>`);}).join("");
 
   return veto(d)+((written||docket)?written+docket
     :`<p class="note">No committee report on file. A report is recorded in the docket
@@ -4892,14 +4931,17 @@ function billTextSection(b,d,rsa){
         const what=nAmd?`the text and ${nAmd} amendment${nAmd===1?"":"s"}`
                        :"the text";
         return `<section class="btsec"><h2 class="amdsec">Bill text</h2>
-        <p class="btwhat">The bill and its amendments, as the General Court publishes them. Everything above is this site’s account of the record; this is the document.</p>
+        <p class="btwhat">The bill and its amendments, as the General Court publishes them. The other tabs are this site’s account of the record; this is the document.</p>
         <details class="btdoc"${shut?"":" open"}><summary><span class="shut">Show ${
           what}</span><span class="open">Hide ${what}</span></summary>${
         renderBillText(b,d,rsa)}</details></section>`;}
 
 function renderBillText(b,d,rsa){
-  const brackets=(s)=>s.replace(/\[([^\]]{1,400})\]/g,
-    (_,inner)=>`<del class="cut" title="removed by this amendment">${inner}</del>`);
+  // What the mark says on hover: an amendment's bracket is the amendment's,
+  // and the bill's own is the bill's (17 October 2026: the Bill Text said
+  // "removed by this amendment" of a bill with no amendment).
+  const brackets=(s,why="removed by this amendment")=>s.replace(/\[([^\]]{1,400})\]/g,
+    (_,inner)=>`<del class="cut" title="${why}">${inner}</del>`);
   const amds=(d.amendments||[]).map(x=>{
     const who=x.mover||x.proposed_by||"";
     const state=x.adopted===true?"adopted":x.adopted===false?"rejected":"";
@@ -4942,7 +4984,7 @@ function renderBillText(b,d,rsa){
     .flatMap(l=>l.split(OUTLINE)).map(raw=>{
     const line=raw.trim();
     if(!line)return "";
-    const html=brackets(rsa(esc(line)));
+    const html=brackets(rsa(esc(line)),"removed from current law by this bill");
     if(/^(?:Be it Enacted|That the following|Whereas\b|RESOLVED\b)/i.test(line))
       return `<p class="enact">${html}</p>`;
     const m=SEC.exec(line);
@@ -5031,7 +5073,7 @@ function renderDocuments(b,d){
       ? `<span class="docacts">${acts.map(e=>e.plain
           ? `<span class="docplain">${esc(e.plain)}</span><span class="docraw">${esc(e.text)}</span>`
           : `<span class="docplain">${esc(e.text)}</span>`).join("")}</span>`
-      // NOT "the page this site takes a bill's status from" where it did
+      // NOT "the General Court's page saying where the bill stands" where it did
       // not: a bill the House Journal leaves out of those it introduced reads
       // Not introduced here and IN COMMITTEE there.
       : `<span class="${x.kind==="record"?"docacts":"docwhat"}">${x.kind==="status"&&d.status_source==="House Journal"
@@ -6846,7 +6888,7 @@ function renderMemberVotes(m){
   return `<div class="bfilt"><label>Vote
       <select data-pf="vfilter"><option value="">Any</option>
       ${Object.keys(tally).sort().map(k=>`<option value="${esc(k.toLowerCase())}"${
-        q===k.toLowerCase()?" selected":""}>${esc(k)} (${tally[k]})</option>`).join("")}
+        q===k.toLowerCase()?" selected":""}>${esc(ballotWord(k))} (${tally[k]})</option>`).join("")}
       </select></label>${marked.length?`<label>Their party
       <select data-pf="vparty"><option value="">Any</option>
         <option value="with"${pf==="with"?" selected":""}>Voted with ${
@@ -6909,7 +6951,7 @@ function voteRow(r){
       /* "Not Voting/Excused" may break after its slash: on a phone at a
          24px text size the half row it has was narrower than the word, which
          ran into the tally beside it (the review of 8 October 2026). */
-      esc(x.v||"").replace("/","/<wbr>")}</span>${
+      esc(ballotWord(x.v||""))}</span>${
       r.mark?`<i class="pm${r.mark.agreed?"":" broke"}">${
         r.mark.agreed?"with":"against"} ${esc(r.mark.word)}</i>`:""}</td>
     <td class="o" data-l="Outcome">${rc
@@ -7008,7 +7050,7 @@ function termGlance(m,t){
   const took=r=>(r.voted||0)+(r.presided||0)+(r.conflict||0);
   const att=a?fig(`${pctOf(a.attended,a.days)}%`,"of session days attended",
       `${num(a.attended)} of ${num(a.days)} days &middot; absent ${num(a.days-a.attended)}`)
-    +fig(`${pctOf(took(a),a.roll_calls)}%`,"of roll calls recorded on",
+    +fig(`${pctOf(took(a),a.roll_calls)}%`,"of roll calls taken part in",
       `${joinList([`Voted on ${num(a.voted)}`,...(a.presided?[`presided over ${num(a.presided)}`]:[]),
         ...(a.conflict?[`declared a conflict on ${num(a.conflict)}`]:[])],"and")} of ${
         num(a.roll_calls)} &middot; missed ${num((a.roll_calls||0)-took(a))}`)
@@ -7255,7 +7297,7 @@ function meetingPlayers(s,items){
         kinds.length?` &middot; ${esc(kinds.join(", "))}`:""}</span>
         <a href="https://www.youtube.com/watch?v=${esc(vid)}&t=${from}s" target="_blank"
           rel="noopener">On YouTube</a>
-        <span class="tolnote">${timed.length?"the times on the cards move this player"
+        <span class="tolnote">${timed.length?"Choose a time on a card to jump the recording there."
           :"no moment in this recording has been identified yet"}</span></div></div>`;}).join("");
 }
 // What changed at the meeting, in one sentence (item 12): what the committee
@@ -7339,7 +7381,7 @@ function renderCommitteeSessions(c){
       <option value="old"${old?" selected":""}>Oldest first</option></select></label></div>
     <p class="src"><b>${met.toLocaleString()} meeting${met===1?"":"s"}</b>${t?` in ${esc(termDash(t))}`:""}${
       ahead?`, and ${ahead.toLocaleString()} still to come`:""}, ${old?"the oldest":"the newest"} first.
-      One entry a day, each kind of meeting in its colour; opened, each bill&rsquo;s card says
+      One entry a day, each kind of meeting in its color; opened, each bill&rsquo;s card says
       what happened to it at that meeting.</p>
     <div class="cmeets">${order.map(s=>meetingHtml(s,isOpen(s))).join("")}</div>`;
 }

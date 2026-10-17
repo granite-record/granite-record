@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-07.63
+# GRANITE_VERSION: 2026-09-07.64
 """
 A page's worth of data for every committee.
 
@@ -485,7 +485,8 @@ def committee_card(c, dated=False):
     # The earlier name on the card too, so a reader scanning this page for
     # "Corrections and Criminal Justice" finds where it went.
     if c.get("formerly"):
-        bits.append("earlier " + S.E("; ".join(c["formerly"])))
+        # "Formerly", as the search says it (17 October 2026).
+        bits.append("Formerly " + S.E("; ".join(c["formerly"])))
     if c["chair"]:
         bits.append(f"Chaired by {S.E(c['chair'])}")
     if c["n_members"]:
@@ -1338,9 +1339,8 @@ def main():
         # .fill: the note takes the width the cards under it take (F9).
         body.append('<h2>No bills or meetings on record</h2>'
                     '<p class="src fill">These committees have a roster, and in '
-                    "some cases a chair, but no bill referred to them and no "
-                    "meeting in the proceedings this site holds. Whether each "
-                    "still meets is not something those records say."
+                    "some cases a chair, but no bill has been referred to them "
+                    "and no meeting of theirs is on record here."
                     '</p><div class="ccards">'
                     + "".join(_card(c) for c in
                               sorted(past, key=lambda x: x["name"]))

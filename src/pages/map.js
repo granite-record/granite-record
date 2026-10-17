@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-10-09.5
+// GRANITE_VERSION: 2026-10-09.6
 /* THE DISTRICT MAP (map v1), as a module a page mounts:
 
      <link rel="stylesheet" href="/map.css">
@@ -474,7 +474,7 @@ function mount(root,opts){
       <div class="gmrow gmlabrow"><span class="gmlabhead" id="${id}lab" aria-hidden="true">Labels</span>${seg("lb","Labels on the map",LABELS,opts.labels)}</div>
     </div>`:"")+
     `<div class="gmstage">`+
-    (opts.legend?`<div class="gmkey"><div class="gmleg" role="list" aria-label="What the colours mean"></div>${opts.note?`<p class="gmnote gmexplain"></p>`:""}</div>`:"")+
+    (opts.legend?`<div class="gmkey"><div class="gmleg" role="list" aria-label="What the colors mean"></div>${opts.note?`<p class="gmnote gmexplain"></p>`:""}</div>`:"")+
     `<div class="gmbox">
       <div class="gmwrap" tabindex="0" role="group" aria-label="The map. Arrow keys move it; plus and minus zoom in and out."><svg class="gmsvg" role="img" aria-label="Map of New Hampshire"></svg></div>
       ${opts.zoom?`<div class="gmzoom"><button type="button" class="zo" aria-label="Zoom out">&minus;</button><button type="button" class="zi" aria-label="Zoom in">+</button><button type="button" class="zf" aria-label="Fit the whole map">Fit</button></div>`:""}
@@ -542,7 +542,7 @@ function mount(root,opts){
     svg.textContent="";
     const lk=layer;
     root.classList.toggle("tinted",!!TINTED[lk]);
-    svg.setAttribute("aria-label",`Map of New Hampshire's ${LAYER_WORDS[lk]}`+(TINTED[lk]?", each coloured by the party of who represents it":"")+
+    svg.setAttribute("aria-label",`Map of New Hampshire's ${LAYER_WORDS[lk]}`+(TINTED[lk]?", each colored by the party of who represents it":"")+
       (opts.list?". Every one is listed below the map.":"."));
     svg.appendChild(defs());
     const fills=el("g",{});
@@ -596,8 +596,8 @@ function mount(root,opts){
     if(!TINTED[layer]){
       box.innerHTML="";
       say(layer==="county"
-        ?"<b>Counties are not coloured by party.</b> Each elects eight officers of its own (three commissioners, a sheriff, an attorney, a treasurer and two registers), several of them on both parties&rsquo; tickets, so no one official&rsquo;s party could stand for a county. Choose one to see its State House delegation."
-        :"<b>Towns are not coloured.</b> This layer is for finding a place: choose a town to see every district it votes in.");
+        ?"<b>Counties are not colored by party.</b> Each elects eight officers of its own (three commissioners, a sheriff, an attorney, a treasurer and two registers), several of them on both parties&rsquo; tickets, so no one official&rsquo;s party could stand for a county. Choose one to see its State House delegation."
+        :"<b>Towns are not colored.</b> This layer is for finding a place: choose a town to see every district it votes in.");
       return;}
     const s=present(),k=(cls,txt)=>`<span class="k" role="listitem"><span class="sw ${cls}" aria-hidden="true"></span>${txt}</span>`;
     let h=k("p-R",PARTY.R)+k("p-D",PARTY.D);
@@ -610,10 +610,10 @@ function mount(root,opts){
     if(layer==="base"&&floOn())h+=`<span class="k" role="listitem"><span class="sw frame p-R" aria-hidden="true"></span><span class="sw frame p-D" aria-hidden="true"></span>Floterial district, framed in its members&rsquo; party</span>`;
     box.innerHTML=h;
     let e="";
-    if(s.has("mix"))e+="<b>Both colours means members of both parties</b>, drawn evenly whatever the count. ";
-    if(layer==="base")e+="A floterial district (neighbouring districts that elect extra members together) is "+(floOn()?"framed in its members&rsquo; party. ":"outlined when you choose a district or turn on Floterial districts. ");
+    if(s.has("mix"))e+="<b>Both colors means members of both parties</b>, drawn evenly whatever the count. ";
+    if(layer==="base")e+="A floterial district (neighboring districts that elect extra members together) is "+(floOn()?"framed in its members&rsquo; party. ":"outlined when you choose a district or turn on Floterial districts. ");
     if(mode==="names")e+="A district&rsquo;s name and number show when you choose it. ";
-    e+="Colour shows who represents a district, not how many people live there.";
+    e+="Color shows who represents a district, not how many people live there.";
     say(e);
   }
   function select(lk,fid,say=true){
@@ -668,8 +668,8 @@ function mount(root,opts){
     let h=`<h4>${esc(NAME[lk]?NAME[lk]+" ":"")}${esc(label(lk,fid))}</h4>`;
     if(lk==="base"||lk==="senate"||lk==="float")h+=seatLine(lk,fid);
     if(lk==="base"&&M.flo[fid]){const f=M.flo[fid];
-      h+=`<div class="flobox"><p>Also elects, with its neighbours, <b>floterial district ${esc(label("float",f))}</b>:</p>${seatLine("float",f)}</div>`;}
-    if(lk==="exec")h+=`<div class="pk">Executive councillor</div><div class="chips">${sitting(M,lk,fid).map(chip).join("")}</div>`;
+      h+=`<div class="flobox"><p>Also elects, with its neighbors, <b>floterial district ${esc(label("float",f))}</b>:</p>${seatLine("float",f)}</div>`;}
+    if(lk==="exec")h+=`<div class="pk">Executive councilor</div><div class="chips">${sitting(M,lk,fid).map(chip).join("")}</div>`;
     if(lk==="cong")h+=`<div class="pk">US representative</div><div class="chips">${sitting(M,lk,fid).map(chip).join("")}</div>`;
     if(lk==="county"){const n=Object.keys(M.T.who).filter(k=>/^(base|float)\|/.test(k)&&CC[k.split("|")[1].slice(0,2)]===fid).reduce((a,k)=>a+M.T.who[k].length,0);
       h+=`<div class="pk">House delegation &middot; ${n}</div><p class="quiet">The county&rsquo;s state representatives also sit as its county convention, which raises county taxes and makes its appropriations.</p>`;}

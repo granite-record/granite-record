@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-10.3
+# GRANITE_VERSION: 2026-10-10.4
 """
 The Officials page's tabs that are not the legislators' (Polish 3, the
 person's feedback of 9 October 2026, item 4, and the decisions of that day):
@@ -41,8 +41,11 @@ from pathlib import Path
 sys.path += [str(p) for p in Path(__file__).resolve().parents if (p / "_paths.py").is_file()][:1]
 import _paths  # noqa: E402,F401
 
+import datetime
 import html as _html
 import re
+
+import build_date
 
 from components import date_words, elect_race, pchip, until_attrs
 from build_town_pages import tel, maillink, weblink
@@ -199,7 +202,24 @@ def statewide(off):
     return body + f'<p class="ofsrcs">{line}.</p>'
 
 
-def county(off, legs):
+# THE ROSTER'S ELECTION, IN THE TENSE OF THE DAY (17 October 2026). The line
+# under the county roster said "Most of these seats are on the November 2026
+# ballot", typed, and would have said it after the vote. The roster is the
+# 2025-2026 one, so its seats were on the ballot of the general election of
+# 2026, and the line says so before that day and after it; whether the list
+# has been read again since is the source line's "read".
+ROSTER_ELECTION = datetime.date(2026, 11, 3)
+
+
+def ballot_line(today):
+    """The sentence under the county roster about its election."""
+    on = date_words(ROSTER_ELECTION, "full")
+    if today <= ROSTER_ELECTION:
+        return f"Most of these seats are on the ballot on {on}."
+    return f"Most of these seats were on the ballot on {on}; this is the roster read before it."
+
+
+def county(off, legs, today=None):
     """Each county's elected officers: its three commissioners, then its
     sheriff, county attorney, treasurer and two registers; and its county
     convention, the county's state representatives, counted from the roster."""
@@ -240,7 +260,7 @@ def county(off, legs):
         src = (f'<p class="ofsrcs">Kept by hand, read from the Secretary of State&rsquo;s '
                f'county roster for 2025&ndash;2026, dated {E(_long(co["as_of"]))}'
                + (f"; read {E(_long(co['read']))}" if co.get("read") else "")
-               + ". Most of these seats are on the November 2026 ballot.</p>")
+               + ". " + ballot_line(build_date.today() if today is None else today) + "</p>")
     return (f'<div class="ofintro">{about}</div>' if about else "") + "".join(parts) + src
 
 

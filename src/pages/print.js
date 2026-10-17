@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-10-09.5
+// GRANITE_VERSION: 2026-10-09.7
 /* A BILL'S PRINT SHEET. A reference sheet of one bill's record for paper,
    composed in the reader's browser from the record the page already holds,
    beside a short menu of settings, and printed with the browser's own dialog
@@ -644,7 +644,7 @@ function glance(d,b,ctx,W){
     fact("Introduced",intro?`${esc(dateWords(intro.date))}${where?`, in the ${esc(where)}`:""}`:""),
     fact("Chapter law",d.chapter?`Chapter ${esc(d.chapter)}, Laws of ${esc(d.year)}${
       law?`, in effect ${esc(dateWords(law.date))}`:""}`:""),
-    fact(ch.length>1?"Amends RSA chapters":"Amends RSA chapter",ch.join(", ")),
+    fact(ch.length>1?"Changes these chapters of state law (RSA)":"Changes this chapter of state law (RSA)",ch.join(", ")),
     fact("Subject",subject?esc(subject):""),
     fact("Request number",d.lsr?`LSR ${esc(d.lsr)}`:""),
   ].join("");
@@ -917,7 +917,7 @@ function menu(d,b,ctx,st){
     textChoice(d,ctx,st)===v?" checked":""}><span>${label}</span></label>`:"";
   return `<form class="ps-form" novalidate>
 <h3 class="ps-mh" id="ps-mh">Print This Bill</h3>
-<p class="ps-mlead">A reference sheet of ${esc(num)}&rsquo;s record, for paper. It reads in black and white: nothing on it is said by colour alone.</p>
+<p class="ps-mlead">A reference sheet of ${esc(num)}&rsquo;s record, for paper. It reads in black and white: nothing on it is said by color alone.</p>
 <fieldset class="ps-fs"><legend>What the sheet holds</legend>
 <p class="ps-always">Always: the bill&rsquo;s number, title and status, At a Glance${
   ((d.journey||{}).steps||[]).length?", and How It Got Here":""}.</p>

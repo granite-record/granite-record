@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.52
+# GRANITE_VERSION: 2026-09-08.56
 """
 The civics section: a hub and one page per topic, in order.
 
@@ -31,6 +31,7 @@ sys.path += [str(p) for p in Path(__file__).resolve().parents if (p / "_paths.py
 import _paths  # noqa: E402,F401
 
 import argparse
+import datetime
 import html
 import json
 import re
@@ -233,6 +234,58 @@ def _cacr_hurdle(idx, every_narr, term):
     return out
 
 
+def org_day(today):
+    """"The next is December 2, 2026, for the legislature elected on November
+    3." -- the next Organization Day on or after `today`, and the election
+    before it (the person, approved 17 October 2026: the General Court page
+    never named the day the new legislature takes office)."""
+    y = today.year if today.year % 2 == 0 else today.year + 1
+    od = P.organization_day(y)
+    if today > od:
+        y += 2
+        od = P.organization_day(y)
+    vote = datetime.date(y, 11, 2)
+    while vote.weekday() != 1:
+        vote += datetime.timedelta(days=1)
+    return (f"The next is {S.date_words(od, 'full')}, for the legislature elected on "
+            f"{S.date_words(vote, 'full')}.")
+
+
+PROBATE_CACR = ("2025-2026", "CACR13")
+
+
+def probate_vote(rows, today):
+    """The register of probate paragraph's last sentence (civics.py,
+    [[probate_vote]]), in the tense the build's day gives it: CACR 13's
+    election ahead, past with its count not on the site yet, or past with the
+    count a person entered in ballot_results.json. `rows` is that file's rows.
+
+    WRITTEN BY THE DAY, NOT BY HAND (17 October 2026). The sentence said the
+    question went to the voters "at the November 2026 general election" and
+    would have gone on saying so after the vote; a reminder failing preflight
+    from 4 November was what was to catch it, on the eve of a release freeze.
+    Nothing here is a result the file does not hold."""
+    link = '<a href="bill/2026/cacr13.html">CACR 13 (2026)</a>'
+    lead = f"In 2026 the legislature sent the question to the voters again, as {link}"
+    row = next((r for r in rows or () if (r.get("term"), r.get("bill")) == PROBATE_CACR), None)
+    try:
+        day = datetime.date.fromisoformat((row or {}).get("election") or "")
+    except ValueError:
+        return lead + "."
+    on = S.date_words(day, "full")
+    y, n = row.get("yes"), row.get("no")
+    if y is None or n is None or y + n <= 0:
+        if today <= day:
+            return f"{lead}, at the general election of {on}."
+        return (f"{lead}. The vote was on {on}; the Secretary of State&rsquo;s count is not "
+                "on the site yet.")
+    share = f"{100 * y / (y + n):.1f}%"
+    if 3 * y >= 2 * (y + n):
+        return f"{lead}, and on {on} the voters ratified it: {share} voted yes, where two thirds was needed."
+    return (f"{lead}, and on {on} it did not reach the two thirds it needed: {share} of "
+            "those voting on it voted yes.")
+
+
 def _voters_verb(label, n):
     """"Passed both chambers, goes to the voters in November 2026" -> "goes to
     the voters at the state general election in November 2026", agreeing
@@ -377,7 +430,9 @@ def record_figures(site, root=Path(".")):
     # stops where there is none: from a missing file this read [] and filled
     # every figure with a count of nothing.
     idx = SR.bill_index_or_stop(site, "build_civics.py")
-    term = max((r.get("term") or "" for r in idx), default="")
+    # Not simply the newest term: one whose bills are mostly still to be
+    # decided has no story yet to tell (site_read.figures_term).
+    term = SR.figures_term(idx)
     cur = [r for r in idx if r.get("term") == term]
     status = Counter(r.get("status") for r in cur)
     kind = Counter(r.get("kind") for r in cur)
@@ -509,6 +564,16 @@ def record_figures(site, root=Path(".")):
         # follows it", which is true and says nothing: it is 98%, and the 2%
         # is the interesting part.
         "follows_committee": _follows_committee(narr),
+        # Not a count: what Using This Site says of email, which changes the
+        # day email following goes live (civics.FOLLOW_EMAIL).
+        "follow_email": civics.FOLLOW_EMAIL[S.follow_live()],
+        # Nor this: the next Organization Day, from the build's day (org_day).
+        "org_day": org_day(build_date.today()),
+        # Nor this: the register of probate paragraph's last sentence, told
+        # in the tense the build's day gives CACR 13's vote (probate_vote).
+        "probate_vote": probate_vote(
+            _load(Path(root) / "corrections" / "ballot_results.json", {}).get("rows"),
+            build_date.today()),
         # Eight more the rewritten pages asked for, each counted from the file
         # named beside it rather than typed. A page may state a figure only if
         # the site can produce it, which is the rule that keeps this section
@@ -596,7 +661,7 @@ def record_figures(site, root=Path(".")):
         "Bills with and without a recorded roll call",
         [(figures["all_rollcall"], "c-rc", "with at least one recorded roll call"),
          (no_rc - figures["pre_rollcall_bills"], "c-none",
-          f"<b>{no_rc:,}</b> with none (the grey and the hatched)", False),
+          f"<b>{no_rc:,}</b> with none (the gray and the hatched)", False),
          (figures["pre_rollcall_bills"], "c-old",
           f'<span class="l-sub">of those from before {rc_first}, where this record&rsquo;s '
           "roll calls begin</span>")])
@@ -998,7 +1063,7 @@ OTP_JS = """<script>
 START = [("how-a-bill-becomes-law",
           "The course a bill runs, and the stages it can die at."),
          ("general-court",
-          "Who the 424 of them are, and how a two-year term is shaped."),
+          "The 400 representatives and 24 senators, and how a two-year term is shaped."),
          ("testifying",
           "Anyone may speak on any bill. This is how.")]
 
@@ -1093,7 +1158,7 @@ def hub_learn(topics):
         out.append(hub_section(
             "statutes", '<a href="/laws">Laws (RSA)</a>',
             '<p class="r-intro">Every chapter of the state&rsquo;s laws, searchable by number or '
-            'subject, each section with the bills that changed it and the bills now proposing to.</p>'))
+            'subject, each section with the bills that changed it and the bills that would.</p>'))
     return "".join(out)
 
 

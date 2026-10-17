@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.38
+# GRANITE_VERSION: 2026-09-04.40
 """
 Write RSS feeds so people can follow bills without a login.
 
@@ -269,6 +269,17 @@ def slug(s):
     return re.sub(r"-+", "-", re.sub(r"[^a-z0-9]+", "-", (s or "").lower())).strip("-")
 
 
+# A TOPIC RENAMED KEEPS ITS FEED'S ADDRESS (17 October 2026): two topics took a
+# reader's words (build_site_v2.TOPIC_WORDS), and their feeds and follow keys
+# stay where a reader already subscribed to them.
+TOPIC_ADDRESS = {"Crimes, Criminal Procedure and Corrections": slug("Crimes, Crim.Proc. & Corr."),
+                 "Constitutional Amendments": slug("CACR")}
+
+
+def topic_slug(name):
+    return TOPIC_ADDRESS.get(name) or slug(name)
+
+
 def long_date(d):
     """2026-02-12 -> February 12, 2026, the way a feed title reads aloud:
     shell.date_words, month first like every date the site writes."""
@@ -501,7 +512,10 @@ def main():
                 f"{b['n']} \u2014 {clip(e.get('text',''))}",
                 url,
                 f"{b.get('title','')}\n\n{e.get('text','')}\n\n"
-                f"Status: {d.get('next_step','')}",
+                # The bill's status as its page says it, not the General
+                # Court's two fields run together ("House: INTERIM STUDY ·
+                # Senate: PASSED/ADOPTED WITH AMENDMENT"), 17 October 2026.
+                f"Status: {b.get('status') or d.get('next_step','')}",
                 e["date"],
                 f"{b.get('term','')}:{b['id']}:{e['date']}:"
                 f"{slug(e.get('text',''))[:40]}"))
@@ -646,7 +660,7 @@ def main():
         return sorted(items, key=lambda x: x[3], reverse=True)[:a.per_feed]
 
     for name, its in topics_now.items():
-        key = f"topic:{slug(name)}"
+        key = f"topic:{topic_slug(name)}"
         followable[key] = {"label": FC.line(name, 120),
                            "url": "/bills?topic=" + quote(name, safe="")}
         lists[key] = fc_list(newest(its), fc_items)
@@ -671,7 +685,7 @@ def main():
     (fd / "all.xml").write_text(
         feed("Granite Record — all activity",
              "Every recorded action on New Hampshire legislation, newest "
-             "first. Proceedings still to come are in the hearings feed.",
+             "first. Hearings and sessions still to come are in the hearings feed.",
              f"{base}/", f"{base}/feed/all.xml", newest(all_items), base),
         encoding="utf-8")
 
@@ -750,12 +764,12 @@ def main():
         ncmte += 1
 
     for name, items in by_topic.items():
-        out = fd / "topic" / f"{slug(name)}.xml"
+        out = fd / "topic" / f"{topic_slug(name)}.xml"
         written.append(out)
         out.write_text(
             feed(f"{name} — Granite Record",
                  f"Activity on New Hampshire bills about {name}.",
-                 bills_page, f"{base}/feed/topic/{slug(name)}.xml",
+                 bills_page, f"{base}/feed/topic/{topic_slug(name)}.xml",
                  newest(items), base), encoding="utf-8")
 
     # Upcoming hearings. Dated in the FUTURE, which most readers handle by

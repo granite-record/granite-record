@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-09.37
+# GRANITE_VERSION: 2026-09-09.38
 """
 A page per town and ward: everyone who represents the people who live there.
 
@@ -1225,7 +1225,7 @@ def build(town, ward, wards, dist, legs, off, base, tmpl, elect=None):
 
     path = town_file(town, ward)
     desc = (f"Who represents {label}: state representatives, state senator, "
-            "executive councillor, US representative, US senators and the "
+            "executive councilor, US representative, US senators and the "
             "governor, with how to reach each of them.")
     p = S.page(tmpl, path=path, base=base,
                # The state in the title a search result shows (the SEO review,
@@ -1315,7 +1315,7 @@ def map_section(town, ward, dist):
     base = next((h for h in dist.get("house") or [] if not h.get("floterial")), None)
     pick = (MAP_COUNTY.get(base.get("county"), "") + str(base.get("district") or "")) \
         if base and MAP_COUNTY.get(base.get("county")) else ""
-    inner = ('<p class="note">Each district coloured by the party of its sitting '
+    inner = ('<p class="note">Each district colored by the party of its sitting '
              'members. Choose a kind of district, then a district on the map.</p>'
              f'<div class="twnmap" id="twnmap" data-town="{E(town)}"'
              + (f' data-ward="{E(ward)}"' if ward and ward != "0" else "")
