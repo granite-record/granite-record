@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-23.4
+# GRANITE_VERSION: 2026-09-23.5
 """
 What each roll call decided, from the General Court's own record, and what it
 needed to carry.
@@ -449,6 +449,75 @@ def threshold(r, words=""):
                    or (said3 and norm_bill(r.get("bill")).startswith("CACR"))):
         return -(-3 * seated // 5), f"three fifths of the {seated} members in office"
     return None, None
+
+
+# A DIVISION NEEDS WHAT A ROLL CALL ON THE SAME QUESTION NEEDS (17 October
+# 2026). The House passed CACR 13 on 5 February 2026 by "MA DV 325-15 By
+# Necessary Three-Fifths Vote", and its chart marked 171 needed, a majority of
+# those voting, because the bill page took a threshold only from the roll-call
+# file and a division is not in it. Three fifths of the members in office was
+# 237 of the 394 whose ballots were on that day's roll calls. So a division is
+# put through the same rule as a roll call, with its own docket words, and the
+# members in office are taken from a roll call of the same chamber on the same
+# day. Where no roll call that day says how many were in office -- every year
+# before 1999 -- the answer is "more than a majority, of a count not on
+# record", and the chart draws no mark rather than a wrong one.
+
+
+def members_in_office(rollcalls):
+    """{(body, date): members in office}, from the ballots of each day's roll
+    calls in rollcalls.json ({term: {bill: [row]}}). Where a day's roll calls
+    disagree, the count most of them give."""
+    seen = defaultdict(Counter)
+    for bills in (rollcalls or {}).values():
+        if not isinstance(bills, dict):
+            continue
+        for rows in bills.values():
+            for r in rows or ():
+                if r.get("seated") and r.get("date"):
+                    seen[(r.get("body"), r["date"])][r["seated"]] += 1
+    return {k: c.most_common(1)[0][0] for k, c in seen.items()}
+
+
+def _division_words(raw, y, n):
+    """The docket's words for this one count: the clause it sits in, up to the
+    count and after it only to the next action, as own_words reads a roll
+    call's. "" where the line does not carry the count in a form read here."""
+    m = re.search(rf"(?<!\d){y}\s*[Yy]?\s*[-–]\s*{n}(?!\d)", raw or "")
+    if not m:
+        return ""
+    cs = raw.rfind(";", 0, m.start()) + 1
+    after = raw[m.end():]
+    ce = after.find(";")
+    after = after if ce < 0 else after[:ce]
+    b = NEXT_ACTION.search(after)
+    return raw[cs:m.end()] + (after[:b.start()] if b else after)
+
+
+def division_threshold(bill, question, raw, yeas, nays, seated, carried):
+    """The threshold fields of a counted vote whose ballots were not recorded
+    -- a division -- by the rule threshold() applies to a roll call:
+    threshold_needed, threshold_rule and threshold_note, and threshold_unknown
+    where more than a majority was needed of a count the record does not
+    give. {} for a majority question, which the chart marks as it always has."""
+    words = _division_words(raw, yeas, nays)
+    r = {"yeas": yeas, "nays": nays, "seated": seated,
+         "question_raw": question, "bill": bill}
+    need, rule = threshold(r, words)
+    if need:
+        return {"threshold_needed": need, "threshold_rule": rule,
+                "threshold_note": note(carried, yeas, nays, need, rule)}
+    if cacr_passage(bill, question):
+        said = ("Passing a constitutional amendment needs three fifths of the "
+                "members in office; how many were in office that day is not "
+                "on record.")
+    elif THREE_FIFTHS.search(words):
+        said = ("The docket records that this needed three fifths; of how many "
+                "is not on record.")
+    else:
+        return {}
+    return {"threshold_needed": None, "threshold_rule": None,
+            "threshold_note": said, "threshold_unknown": True}
 
 
 def plausible(carried, y, n, need, words, question):

@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.212
+// GRANITE_VERSION: 2026-09-07.213
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -3138,10 +3138,14 @@ function simpleDonut(rc,bid,i){
   // count it was needed of is not on record -- three fifths of the members in
   // office, on a division, where nobody's ballot was recorded. A majority mark
   // there would be a wrong one.
-  const tick=rc.threshold_unknown?"":marker(a,R,need,"");
+  // The rule rides on the mark as a roll call's does (17 October 2026): a
+  // division on a constitutional amendment now carries three fifths of the
+  // members in office, and "237 needed" alone does not say of what.
+  const tick=rc.threshold_unknown?"":marker(a,R,need,rc.threshold_rule||"");
   return `<div class="votewrap"><svg class="donut" viewBox="0 0 172 206" width="172" height="206"
     role="img" aria-label="Division vote, ${y} yes to ${n} no, needing ${
-      rc.threshold_unknown?"more than a majority":need}">
+      rc.threshold_unknown?"more than a majority":need}${
+      rc.threshold_rule?`, ${esc(rc.threshold_rule)}`:""}">
     <g transform="rotate(90 86 86)">${seg(avail*y/tot,"var(--yes)",won)}</g>
     <g transform="translate(172,0) scale(-1,1)"><g transform="rotate(90 86 86)">${seg(avail*n/tot,"var(--no)",!won)}</g></g>
     ${tick}${yn(GAP,R,won)}

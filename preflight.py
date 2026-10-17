@@ -13749,6 +13749,61 @@ def _rollcall_outcomes(rollcall_outcomes):
         shutil.rmtree(d, ignore_errors=True)
 
 
+@check("rollcalls", "a division is marked against what a roll call on the same question "
+       "needs: three fifths of the members in office for a CACR, two thirds where the "
+       "docket says so", needs=("rollcall_outcomes", "build_site_v2"))
+def _division_thresholds(RO, B):
+    """The language sweep of 17 October 2026: CACR 13's House chart said "171
+    needed", a majority of the 340 voting, where the docket says "MA DV 325-15
+    By Necessary Three-Fifths Vote" and three fifths of the 394 members in
+    office that day was 237. Bill pages took a threshold from the roll-call
+    file only, and a division is not in it, so every division was marked at a
+    majority -- 174 of them, 1989-2026, needed more.
+
+    This fails if a division goes back to a majority mark, if three fifths is
+    taken of those voting rather than of the members in office, if a fraction
+    named for another count on the same docket line is borrowed, or if a
+    CACR's division with no count of members in office is given a number."""
+    cacr13 = "Ought to Pass: MA DV 325-15 By Necessary Three-Fifths Vote 02/05/2026"
+    got = RO.division_threshold("CACR13", "Ought to Pass", cacr13, 325, 15, 394, True)
+    assert (got.get("threshold_needed"), got.get("threshold_rule")) == (
+        237, "three fifths of the 394 members in office"), got
+    # No roll call that day, so no count of the members in office: no number.
+    got = RO.division_threshold("CACR25", "Third Reading", "3RD READING MA DIV(280-17); HJ27,P859",
+                                280, 17, None, True)
+    assert got.get("threshold_unknown") and not got.get("threshold_needed"), got
+    # Two thirds is of those voting, and a suspension needs it unnamed.
+    got = RO.division_threshold(
+        "HB1426", "Susp Rules for New Conf Comm",
+        "Rep Welch Susp Rules for New Conf Comm, MA 2/3DIV(258-58); House Acceded", 258, 58,
+        390, True)
+    assert got.get("threshold_needed") == 211, got
+    # A majority question keeps the majority mark.
+    assert RO.division_threshold("HB1", "Ought to Pass", "Ought to Pass: MA DV 200-150", 200,
+                                 150, 390, True) == {}
+    # A fraction named for the next count on the line is not this one's.
+    got = RO.division_threshold(
+        "CACR9", "Adopt Committee Amendment",
+        "Amendment #2128h: AA DIV 200-100; Ought to Pass: MF DIV 201-150 Lacking Necessary "
+        "Three-Fifths", 200, 100, 390, True)
+    assert got == {}, got
+    rolls = {"2025-2026": {"_procedural": [
+        {"body": "H", "date": "2026-02-05", "seated": 394},
+        {"body": "H", "date": "2026-02-05", "seated": 394},
+        {"body": "H", "date": "2026-02-05", "seated": 39}]}}
+    office = RO.members_in_office(rolls)
+    assert office == {("H", "2026-02-05"): 394}, office
+    rec = {"events": [{"date": "2026-02-05", "type": "floor", "body": "H", "raw": cacr13,
+                       "action": "Ought to Pass", "motion": "MA", "vote_kind": "DV",
+                       "yeas": "325", "nays": "15", "cancelled": False}]}
+    cards = [v for v in B.bill_rollcalls("CACR13", "2025-2026", [], rec, {}, [], set(), office)
+             if v.get("vote_kind") == "DV"]
+    assert cards and cards[0].get("threshold_needed") == 237 and "237" in (
+        cards[0].get("threshold_note") or ""), (
+        f"CACR 13's division on its Votes tab: {cards}")
+    return "ok", "a CACR's division is marked at 237 of 394, not 171 of 340"
+
+
 @check("data", "every roll call's outcome is the one the record gives it",
        needs=("rollcall_outcomes",))
 def _rollcall_outcomes_data(rollcall_outcomes):

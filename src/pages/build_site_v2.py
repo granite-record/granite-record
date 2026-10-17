@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.217
+# GRANITE_VERSION: 2026-09-05.218
 """
 Generate the faceted site from real General Court data.
 
@@ -45,6 +45,7 @@ import plain_action as PA
 import fiscal
 import proceedings as P
 import report_check as RC
+import rollcall_outcomes as RO
 import senate_hearing_reports as SHR
 import site_read
 import spellings
@@ -9871,7 +9872,8 @@ def bill_stations(bid, term, procs, segs, marks):
                                            x["sched_time"] or ""))]
 
 
-def bill_rollcalls(bid, term, rcs, narr, votes_by_bill, legs, unnamed):
+def bill_rollcalls(bid, term, rcs, narr, votes_by_bill, legs, unnamed,
+                   in_office=None):
     """Every recorded vote on one bill, in the order the docket took them.
 
     Lifted verbatim out of build_bills except for indentation.
@@ -9981,6 +9983,18 @@ def bill_rollcalls(bid, term, rcs, narr, votes_by_bill, legs, unnamed):
             continue          # RC is already covered by the roll call file
         label, _ = kind
         y, n = e.get("yeas"), e.get("nays")
+        # WHAT A DIVISION NEEDED, BY THE ROLL CALL'S RULE (17 October 2026).
+        # These cards carried no threshold, so the chart marked a majority of
+        # those voting on every one: "171 needed" beside the House's 325-15
+        # on CACR 13, which needed three fifths of the 394 members in office,
+        # 237. 174 counted divisions of 1989-2026 needed more than a majority
+        # by their docket line or their question (rollcall_outcomes.
+        # division_threshold); seven of them of a count not on record, which
+        # the chart now leaves unmarked rather than marked wrong.
+        need = (RO.division_threshold(bid, question, e.get("raw") or "", int(y), int(n),
+                                      (in_office or {}).get((e.get("body"), e["date"])),
+                                      passed)
+                if y and n else {})
         rc_out.append({
             "date": e["date"], "body": e.get("body"),
             "question": question,
@@ -9995,6 +10009,7 @@ def bill_rollcalls(bid, term, rcs, narr, votes_by_bill, legs, unnamed):
             "threshold_note": None, "tally": {}, "members": [],
             # The amendment's or the report's number, beside the question.
             "amendment": number, "_ord": (e["date"], _i),
+            **need,
         })
     # By the docket's own sequence, not by the wording of the motion.
     rc_out.sort(key=lambda r: r["_ord"])
@@ -10602,6 +10617,9 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
     # every bill but the year's first: 33,717 calls and about 13 seconds on
     # Windows. The folders made are kept here, and each is made once.
     year_dirs = set()
+    # How many members were in office on each day a chamber took a roll call,
+    # which is what three fifths is of on a division (bill_rollcalls).
+    in_office = RO.members_in_office(rollcalls)
     for bid, b in ((k, v) for byb in bills.values() for k, v in byb.items()):
         # New Hampshire sits in two-year terms beginning in odd years. Bill
         # numbers are unique across the whole term, so the term -- not the year
@@ -10874,7 +10892,7 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
         btext = bill_text_block(P.per_term(bill_texts, term, current).get(bid), narr)
 
         rc_out = bill_rollcalls(bid, term, rcs, narr,
-                                votes_by_bill, legs, unnamed)
+                                votes_by_bill, legs, unnamed, in_office)
         for r in rc_out:
             r.pop("_ord", None)
             # THE VOTE WORDS' KEY (the person, 8 October 2026; motions.py):
