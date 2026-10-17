@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-09.5
+# GRANITE_VERSION: 2026-09-09.6
 """
 The built site, read back: one reader of the record inside a page.
 
@@ -255,6 +255,33 @@ def bill_index(site="site"):
         raise Broken(f"{idx} holds {', '.join(stray[:3])}, which {mp} does not name: "
                      "a term no page offers, or one an earlier build left behind")
     return rows
+
+
+def figures_term(rows):
+    """The term the Learn pages' figures describe: the newest term at most
+    half of whose bills are still moving, else the newest there is.
+
+    A TERM IS DESCRIBED ONCE IT HAS A STORY (17 October 2026). The pages took
+    the newest term in the index, the term the bill search opens on, and
+    their figures are a term's whole story -- "The 2025-2026 term filed ...
+    bills ... were killed ... were signed into law", the closest votes, each
+    committee's record. The day the first bill of 2027 is introduced the
+    newest term is a few dozen bills with nothing decided, and every one of
+    those sentences would have told it. A term is described once most of its
+    bills have been decided, which is the first year's session ending, and
+    until then the term before it is, by name, as it was.
+    """
+    by = {}
+    for r in rows or ():
+        t = r.get("term") or ""
+        if TERM_FILE.fullmatch(t):
+            n = by.setdefault(t, [0, 0])
+            n[0] += 1
+            n[1] += r.get("kind") == "active"
+    for t in sorted(by, reverse=True):
+        if by[t][1] * 2 <= by[t][0]:
+            return t
+    return max(by, default="")
 
 
 def bill_index_or_stop(site="site", who=""):

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.52
+# GRANITE_VERSION: 2026-09-08.53
 """
 The civics section: a hub and one page per topic, in order.
 
@@ -377,7 +377,9 @@ def record_figures(site, root=Path(".")):
     # stops where there is none: from a missing file this read [] and filled
     # every figure with a count of nothing.
     idx = SR.bill_index_or_stop(site, "build_civics.py")
-    term = max((r.get("term") or "" for r in idx), default="")
+    # Not simply the newest term: one whose bills are mostly still to be
+    # decided has no story yet to tell (site_read.figures_term).
+    term = SR.figures_term(idx)
     cur = [r for r in idx if r.get("term") == term]
     status = Counter(r.get("status") for r in cur)
     kind = Counter(r.get("kind") for r in cur)

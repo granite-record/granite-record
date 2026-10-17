@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-14.17
+# GRANITE_VERSION: 2026-09-14.18
 """
 The record in numbers: a Learn page of statistics computed from the site's own data.
 
@@ -754,7 +754,9 @@ def body(site=Path("site"), root=Path("."), strict=True):
     rollcalls = _load(root / "rollcalls.json", {})
     YEAR.update({(r.get("term"), r.get("id")): str(r.get("year") or "") for r in idx})
     terms = sorted({r.get("term") for r in idx if r.get("term")})
-    current = terms[-1] if terms else ""
+    # The term the page's "In the ... term" figures tell: not the newest one
+    # while most of its bills are still to be decided (site_read.figures_term).
+    current = SR.figures_term(idx)
     recent = terms[-10:]
     if strict and idx and not any("chip" in r for r in idx):
         raise SystemExit("learn_numbers.py: the bill index carries no chip; it was built before "

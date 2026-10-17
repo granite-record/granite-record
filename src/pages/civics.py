@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.42
+# GRANITE_VERSION: 2026-09-08.43
 """
 The topics of the civics section: their order, their names, and their prose.
 
@@ -1145,8 +1145,8 @@ holds the public hearing, votes on a recommendation following an executive
 session, and writes a report explaining its reasoning. If the committee is
 split on what action to recommend, there are separate reports from the
 majority and the minority. The full chamber is not bound by those
-recommendations, but [[follows_committee]]% of the bills it decided this term
-went the way its committee recommended.</p>
+recommendations, but [[follows_committee]]% of the bills it decided in the
+[[term]] term went the way its committee recommended.</p>
 
 <p>The motions a committee most often recommends are these:</p>
 """ + MOTIONS + """
@@ -1155,7 +1155,7 @@ went the way its committee recommended.</p>
 bills, [[sb]] Senate bills, [[cacr]] constitutional amendments and [[resolutions]] resolutions.</p>
 <p>The House is <b>[[house_seats]] seats and [[house_sitting]] sitting members</b> as
 the record stands, with [[house_vacant]] vacant. The record shows that moving:
-roll calls this term were taken with as many as [[seated_most]] members seated
+roll calls of the [[term]] term were taken with as many as [[seated_most]] members seated
 and as few as [[seated_fewest]].</p>
 <p>There are <b>[[house_districts]] House districts and [[senate_districts]] Senate
 districts</b>. [[floterial]] of those House districts are floterial districts,
@@ -1312,7 +1312,7 @@ motor vehicle operators, which passed in the second year and became law.</p>
 <p>Of the [[law]] bills that became law in the [[term]] term,
 [[law_no_rollcall]] did so without a roll call on the floor of either
 chamber.</p>
-<p>Of the [[narrated]] bills with a narrative this term, <b>[[both_chambers]]
+<p>Of the [[narrated]] bills with a narrative in the [[term]] term, <b>[[both_chambers]]
 reached both chambers</b> and <b>[[conference]] went to a committee of
 conference</b>. [[law]] became law: [[signed]] signed, [[unsigned]] without a
 signature, and [[overridden]] over a veto.</p>""")

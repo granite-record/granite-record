@@ -22850,6 +22850,34 @@ def _ln_ev(body, raw, type_="other", date="2025-03-01", **kw):
     return dict({"body": body, "raw": raw, "type": type_, "date": date, "cancelled": False}, **kw)
 
 
+@check("frontend", "the Learn pages' term figures stay on a term with a story until the next "
+       "has one: not the newest term while most of its bills are still moving",
+       needs=("site_read", "build_civics", "learn_numbers"))
+def _learn_figures_term(SR, build_civics, learn_numbers):
+    """The language sweep of 17 October 2026: the Learn pages took the newest
+    term in the index for "The ... term filed ... bills ... were killed ...
+    were signed into law", the closest votes and each committee's record, and
+    the day the first bill of 2027 is introduced that term is a few dozen
+    bills with nothing decided. site_read.figures_term keeps them on the
+    newest term at most half of whose bills are still moving.
+
+    Fails if either page goes back to the newest term, or the rule does."""
+    old, new = "2025-2026", "2027-2028"
+    done = [{"term": old, "id": f"HB{i}", "kind": "done"} for i in range(10)]
+    early = [{"term": new, "id": f"HB{i}", "kind": "active"} for i in range(6)]
+    assert SR.figures_term(done + early) == old, SR.figures_term(done + early)
+    half = early[:3] + [dict(r, kind="law") for r in early[3:]]
+    assert SR.figures_term(done + half) == new, SR.figures_term(done + half)
+    # One term, as the fixture site is: that term, however far along.
+    assert SR.figures_term(early) == new, SR.figures_term(early)
+    import inspect
+    for mod, fn in ((build_civics, "record_figures"), (learn_numbers, "body")):
+        src = inspect.getsource(getattr(mod, fn))
+        assert "figures_term(" in src, f"{mod.__name__}.{fn} no longer asks figures_term"
+    return "ok", ("a 2027 term of six moving bills leaves the figures on 2025-2026; half "
+                  "decided, they move to it")
+
+
 @check("frontend", "numbers: how each bill ended counts House and Senate bills by their card's word",
        needs=("learn_numbers",))
 def _numbers_outcomes(learn_numbers):
