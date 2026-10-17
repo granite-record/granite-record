@@ -3219,8 +3219,8 @@ def _nongermane_hearing_told(N, B):
     change)."""
     want = {
         "HB519": ("2025-02-11", "The committee held a public hearing on February 11, 2025 on a "
-                  "proposed non-germane amendment (2025-0102h), with online testimony at 13 signed "
-                  "in support, 2 in opposition and 1 neutral."),
+                  "proposed non-germane amendment (2025-0102h), with 16 people signed in online: 13 "
+                  "in support, 2 in opposition and 1 as neutral."),
         "HB1300": ("2026-01-20", "The committee held a public hearing on January 20, 2026 on a "
                    "proposed non-germane amendment (2026-0093h)."),
         "SB425": ("2026-02-18", "The committee held a public hearing on February 18, 2026 on a "
@@ -3253,7 +3253,7 @@ def _nongermane_hearing_told(N, B):
                 bad.append(f"{bill} of {term} does not tell {s!r} once: {told!r}")
             if not ng or {e["date"] for e in ng} != {day}:
                 bad.append(f"{bill} of {term}'s non-germane hearing rows: {ng!r}")
-            if bill == "HB1300" and ("January 20, 2026, with online testimony at 4 signed in "
+            if bill == "HB1300" and ("January 20, 2026, with 9 people signed in online: 4 in "
                                      "support and 5 in opposition.") not in told:
                 bad.append(f"HB1300 of 2026's own hearing lost the day's sign-ins: {told!r}")
             if bill == "HB292" and [st["label"] for st in rec["stages"]] != [
@@ -3663,14 +3663,14 @@ _SENT_ON_HEADS = {
     # Commerce's straight after the sentence that sent the bill to Finance.
     ("HB1076", "2023-2024"): (["Senate Committee (Commerce)", "On the Senate Floor",
                                "Senate Committee (Finance)"],
-                              ["held a public hearing on April 16, 2024. The committee recommended "
-                               "that the Senate pass it unanimously, 4–0."], []),
+                              ["held a public hearing on April 16, 2024. The committee voted "
+                               "unanimously, 4–0, to recommend that the Senate pass it."], []),
     # And so is the amendment that report carried, adopted on the 15th, after
     # the report that carried it.
     ("HB1380", "2023-2024"): (["Senate Committee (Commerce)", "On the Senate Floor",
                                "Senate Committee (Finance)"],
-                              ["(amendment 2024-1826s) unanimously, 4–0. The committee's amendment "
-                               "(2024-1826s) was adopted"], []),
+                              ["to recommend that the Senate pass it with changes (amendment "
+                               "2024-1826s). The committee's amendment (2024-1826s) was adopted"], []),
     # "PASSED AND REF TO FIN DIV": no name the record lets this give, until
     # the hearing's row says Capital Budget. The sentence keeps the clerk's
     # "Fin" until the person names the 1993 Senate's finance divisions.
@@ -4592,14 +4592,16 @@ _REFERRAL_UNMADE_HEADS = {
     # the floor that adopted it (narrative.amendment_after_report).
     ("HB658", "2025-2026"): (["Senate Committee (Ways and Means)", "On the Senate Floor",
                               "Senate Committee (Finance)"],
-                             ["(amendment 2025-1642s) unanimously, 5–0, and the report was placed on the "
-                              "consent calendar. The committee's amendment (2025-1642s) was adopted"], []),
+                             ["voted unanimously, 5–0, to recommend that the Senate pass it with changes "
+                              "(amendment 2025-1642s), and the report was placed on the consent calendar. The "
+                              "committee's amendment (2025-1642s) was adopted"], []),
     # HHS's report, dated the calendar's 16 May and entered on the 6th, before
     # the vote on the amendment it carried.
     ("HB1568", "2023-2024"): (["Senate Committee (Health and Human Services)", "On the Senate Floor",
                                "Senate Committee (Finance)"],
-                              ["(amendment 2024-1727s) unanimously, 5–0, and the report was placed on the "
-                               "consent calendar. The committee's amendment (2024-1727s) was adopted"],
+                              ["voted unanimously, 5–0, to recommend that the Senate pass it with changes "
+                               "(amendment 2024-1727s), and the report was placed on the consent calendar. The "
+                               "committee's amendment (2024-1727s) was adopted"],
                               []),
     # Sent on to Finance by suspending the rules, on a row of its own: after
     # the passage (SB 173), before it (HB 650), the day before (HB 1633), and
@@ -5145,7 +5147,7 @@ def _lower_case_chamber(N):
                        f"{sorted({e.get('body') for e in n['events']})}")
     text = " ".join(s["text"] for s in _told_from_rows(
         N, "1999-2000", "HB120", _DOCKET_LOWER_CHAMBER[("HB120", "1999-2000")])["stages"])
-    if "recommended that the House kill it" not in text:
+    if "that the House kill it" not in text:
         bad.append(f"HB 120 of 1999's report is told: {text!r}")
     assert not bad, "\n".join(bad)
     return "ok", ("HB 120's and SB 182's lower-case rows of 1999 are the House's and the "
@@ -8382,8 +8384,8 @@ def _ought_not_to_pass(N, B):
     assert "On June 2, 2010 the House voted to kill it on a division vote 220\u2013106." in (
         narr[("HA1", "2009-2010")]["narrative"]), narr[("HA1", "2009-2010")]["narrative"]
     is_("HA1 of 2018's history", narr[("HA1", "2017-2018")]["narrative"],
-        "The committee recommended that the House kill it unanimously, 17\u20130, and the "
-        "report was placed on the consent calendar. On March 6, 2018 the House voted to "
+        "The committee voted unanimously, 17\u20130, to recommend that the House kill it, and "
+        "the report was placed on the consent calendar. On March 6, 2018 the House voted to "
         "kill it on a voice vote.")
     for key in _DOCKET_OUGHT_NOT:
         said = narr[key]["narrative"]
@@ -10791,7 +10793,7 @@ def _rail_against_the_record(N, B):
             if len(noted) != 1 or noted[0]["body"] != "H" or "under the Senate" not in noted[0]["row_note"]:
                 bad.append(f"{key[1]}: the row filed under S is not told as the House's, with a note")
     n, _s, _r = told(("1991-1992", "HB1371"))
-    if "recommended that the House kill it" not in n["narrative"]:
+    if "that the House kill it" not in n["narrative"]:
         bad.append("HB1371's report is told: " + n["narrative"])
     # The Senate's one row on HB 2002 stays the Senate's.
     n, _s, _r = told(("2001-2002", "HB2002"))
@@ -24459,7 +24461,8 @@ var fixtures = [
          // The Senate's written report is headed by its own chamber and cites
          // the Senate's calendar, not the database it was read out of.
          "Senate Judiciary",
-         '<a href="https://gc.nh.gov/sc18a.pdf" rel="noopener">SC 18A</a>',
+         // In words, as the House's "House Calendar 14" is (17 October 2026).
+         '<a href="https://gc.nh.gov/sc18a.pdf" rel="noopener">Senate Calendar 18A</a>',
          "Senator Debra Altschiller",
          "Amendment 2026-1219s.",
          "the federal rule is settled",
@@ -24523,7 +24526,7 @@ var fixtures = [
   // session, and nothing here had ever drawn one.
   {name:"empty", d:{next_step:"Introduced"},
    want:["No roll call votes on this bill",
-         "No scheduled proceedings on file",
+         "No hearing or meeting is on record for this bill",
          "No committee report on file",
          "No sponsors on file"]},
   // Amendments filed, text not read in yet. This is the only way to reach the
@@ -24577,15 +24580,15 @@ var fixtures = [
          "A notice, for a bill the House did not introduce.",
          "The docket gave notice of a meeting on this bill",
          "the status shown here is read from the House Journal instead"],
-   wantNot:["No scheduled proceedings on file",
-            "the page this site takes a bill's status from"]},
+   wantNot:["No hearing or meeting is on record for this bill",
+            "the General Court's page saying where the bill stands"]},
   // And the same documents under a status the status page did give.
   {name:"status from the status page",
    d:{next_step:"Introduced", status_source:"General Court bill status page",
       documents:[{label:"Bill status page", kind:"status",
                   url:"https://gc.nh.gov/bill_status/legacy/bs2016/Bill_status.aspx"}]},
-   want:["the page this site takes a bill's status from",
-         "No scheduled proceedings on file"],
+   want:["the General Court's page saying where the bill stands",
+         "No hearing or meeting is on record for this bill"],
    wantNot:["read from the House Journal instead"]}
 ];
 
@@ -25484,7 +25487,7 @@ fs.writeFileSync("./out.json", JSON.stringify(out));
         f"{one.count('<h2>')} section headings and {one.count('<h3>')} "
         "speaker headings, not 3+ and 4")
     assert "<h3>" not in prose and 'class="hrpara"' in prose and \
-        "could not be read from its layout" in prose, (
+        "does not make clear who said which part" in prose, (
         "a report kept as text was drawn as speakers, or without saying why")
     assert tab.index('class="player"') < tab.index('class="hrep"'), (
         "the report is not under the hearing's recording")
@@ -26475,9 +26478,9 @@ process.stdout.write("\\n@@" + JSON.stringify(out));
     for k, where in (("docsBallot", "the count on the Votes tab"),
                      ("docsDocket", "its docket's referendum line")):
         assert f"whether the voters ratified it is read from {where}" in flat(got[k]) \
-            and "takes a bill's status from" not in got[k], (
+            and "saying where the bill stands" not in got[k], (
                 f"a CACR's status page is credited with the voters' answer: {flat(got[k])[:300]!a}")
-    assert "takes a bill's status from" in got["docsPending"], (
+    assert "saying where the bill stands" in got["docsPending"], (
         f"a CACR still to go to the voters lost its status page's line: {flat(got['docsPending'])!a}")
     return "ok", ("452,307 and 237,221 whole in the legend, 65.6% in the ring, the mark two "
                   "thirds round, Not ratified in words; 85.7% Ratified; the docket's 159,439 "
@@ -56414,7 +56417,7 @@ def _calendar_page_shape():
             f"the row of boxes is {boxes}: six, every one on but Study Committee")
         assert re.search(r'<legend class="sr">[^<]+</legend><div class="calcatrow">', t), (
             "the row of boxes has no name for a screen reader to give the group")
-        assert '<ul class="calkey" aria-label="What the colours mean">' in t, (
+        assert '<ul class="calkey" aria-label="What the colors mean">' in t, (
             "a reader without script is given no key to the colours")
         assert '<p class="calhint" id="pickhint" hidden>' in t, (
             "the committees chosen by name do not say they are still shown in the kinds ticked")
@@ -63324,8 +63327,13 @@ def _about_data_claims(build_pages, about_figures, build_site_v2):
             "a bill that carries its own text is told its text is elsewhere")
         assert "where the record starts" not in n1991 and "roll-call files" in n1991, (
             "the before-1999 note does not name the roll-call files as what begins in 1999")
-        assert "linked rather than loaded" in n1997, (
+        assert "the Documents tab links to it" in n1997, (
             "a bill with no text of its own is no longer told where its text is")
+        # Not the files' names, nor this site's own word for an old term
+        # (the language sweep of 17 October 2026).
+        for n in (n1991, n1997, n2005):
+            assert "RollCall" not in n and "archived" not in n and "fetched" not in n, (
+                f"the archived note speaks the site's own language: {n[:200]!r}")
         assert "the House committees' written reports" in n2005, (
             "a 2005 bill with no written report is no longer told the House's reports are a gap")
         return "ok", ("About and Data pages and the manifest free of the 23 September sentences; "
@@ -81403,6 +81411,75 @@ def _learn_statutes_in_force():
                   f"{len(LEARN_STATUTE_CLAIMS)} anchored claims say what their sections say")
 
 
+@check("frontend", "the language sweep's clear fixes hold: plain words for the record's "
+       "machinery, one How It Ended, US spelling in what a reader sees",
+       needs=("civics", "components"))
+def _language_sweep_words(civics, C):
+    """The language sweep of 17 October 2026 (private/LANGUAGE_SWEEP_2026-10-17.md,
+    its clear fixes): sentences that spoke the site's own machinery to a
+    reader ("Not yet fetched for this term", "RollCallHistory.txt and
+    RollCallSummary.txt", "Other -- 27 not in chart", "SC 13"), contradicted
+    the page beside them ("whatever its last recorded status says", a second
+    How It Ended, "without dividing it by party" before a party split), or
+    spelled for a British reader. Each pair below is a sentence that must be
+    gone and the one that replaced it; fails if one comes back."""
+    src = lambda p: _paths.locate(p).read_text(encoding="utf-8")   # noqa: E731
+    app = src("app.js")
+    pages = src("build_pages.py")
+    learn = " ".join(v for k, v in vars(civics).items()
+                     if isinstance(v, str) and k.isupper())
+    learn += " ".join(json.dumps(v) for k, v in vars(civics).items()
+                      if k.startswith("FLOW") and isinstance(v, list))
+    gloss = C.WORDBOOK["glossary"]
+    bad = []
+    for where, text, gone, there in (
+            ("app.js", app, "whatever its last recorded", "went no further"),
+            ("app.js", app, "not in chart</span>", "Did not vote — ${oTot}"),
+            ("app.js", app, "Everything above is this site", "The other tabs are this site"),
+            ("app.js", app, "RollCallHistory.txt\n    and RollCallSummary", "About This Record"),
+            ("app.js", app, "Not yet fetched for this term", "Not on this site yet for its term"),
+            ("app.js", app, "This term is archived", "This bill is from an earlier term"),
+            ("app.js", app, "The calendar carrying this report has not been read", "begin in 1997"),
+            ("app.js", app, '"of roll calls recorded on"', '"of roll calls taken part in"'),
+            ("app.js", app, "r.body===\"S\"?r.cite:", "docLong(r.cite)"),
+            ("app.js", app, "the page this site takes a bill's status from",
+             "saying where the bill stands"),
+            ("build_pages.py", pages, "the whole record, as lists</a>", "the directory</a> lists"),
+            ("build_pages.py", pages, "rows.length} matches on this site", "pages on this site"),
+            ("Learn", learn, "following an executive", "in an executive"),
+            ("Learn", learn, "cover several towns or wards", "laid over two or more"),
+            ("Learn", learn, "without dividing it by party", "did not split cleanly"),
+            ("Learn", learn, "<b>Sponsors</b>, and <b>Documents</b>", "<b>Documents</b> &mdash;"),
+            ("Learn", learn, "Filed as an LSR", "Legislative Service Request, or LSR"),
+            ("Learn", learn, "legislative branch is made up", "is called the <b>General Court</b>")):
+        if gone in text:
+            bad.append(f"{where} says {gone!r} again")
+        if there not in text:
+            bad.append(f"{where} no longer says {there!r}")
+    british = re.compile(r"\b(autumn|licen[cs]es?(?! plate)|licence|neighbour\w*|councillors?|"
+                         r"[Ee]nrolment|by-elections?|organis\w+|summaris\w+|authoris\w+|"
+                         r"itemis\w+|favour|colour\w*|misdemeanour\w*|\brota\b)\b")
+    for where, text in (("Learn", learn), ("the glossary", json.dumps(gloss))):
+        hit = sorted(set(m.group(0) for m in british.finditer(text) if m.group(0) != "license"
+                         and m.group(0) != "licenses"))
+        if hit:
+            bad.append(f"{where} spells {hit} for a British reader")
+    if "second year only" in gloss["IS"]["says"] or "kill it\"" in json.dumps(gloss["ITL"]):
+        bad.append("the glossary's IS or ITL no longer defines its term")
+    for key in ("Died", "Floterial district", "Docket", "Indefinitely postponed"):
+        if key not in gloss:
+            bad.append(f"the glossary has no entry for {key}")
+    # A how-to guide is not drawn from the General Court's record, so its
+    # citation note does not tell a reader to cite the General Court.
+    import shell as _S
+    guide = _S.cite_block("/guides/how-to-vote.html", "How to Vote | Granite Record", "")
+    bill = _S.cite_block("/bill/2026/hb1.html", "HB 1 | Granite Record", "")
+    if "cite the General Court" in guide or "cite the General Court" not in bill:
+        bad.append("a guide's citation note says to cite the General Court, or a bill's no longer does")
+    assert not bad, "; ".join(bad)
+    return "ok", "the sweep's plain words in place, its old ones gone, US spelling on Learn"
+
+
 @check("frontend", "the pages that tell CACR 13's vote read true the day after it: the county "
        "page by the day, and Using This Site and the Data page by whether email is live",
        needs=("build_civics", "civics", "build_exports", "officials_tabs"))
@@ -85516,7 +85593,7 @@ def _elect_pages_words():
 
     def text(h):
         return " ".join(_h.unescape(re.sub(r"<[^>]+>", "", h)).replace("’", "'").split())
-    note = "Each district coloured by the party of its sitting members"
+    note = "Each district colored by the party of its sitting members"
     towns = sorted((ws / "town").glob("*.html"))
     if not towns:
         bad.append("the fixture built no town page")

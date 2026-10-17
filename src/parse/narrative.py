@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.112
+# GRANITE_VERSION: 2026-09-04.113
 """
 Turn a bill's docket entries into a plain-language history.
 
@@ -2703,10 +2703,20 @@ def signins(bill, date):
     h = next((x for x in rec.get("hearings", []) if x.get("date") == iso), None)
     if not h or not h.get("total"):
         return ""
-    bits = [f"{h[k]:,} {word}" for k, word in
-            (("support", "signed in support"), ("oppose", "in opposition"),
-             ("neutral", "neutral")) if h.get(k)]
-    return ", with online testimony at " + and_list(bits) if bits else ""
+    # PEOPLE SIGNED IN, NOT "TESTIMONY AT" A NUMBER (17 October 2026): the
+    # history read "with online testimony at 3 signed in support and 5 in
+    # opposition". It says how many people signed in and then how they
+    # split, in words that fit a hearing held and one still to come.
+    parts = [(h[k], word) for k, word in
+             (("support", "in support"), ("oppose", "in opposition"),
+              ("neutral", "as neutral")) if h.get(k)]
+    if not parts:
+        return ""
+    total = sum(n for n, _ in parts)
+    if total == 1:
+        return f", with one person signed in online {parts[0][1]}"
+    return (f", with {total:,} people signed in online: "
+            + and_list([f"{n:,} {word}" for n, word in parts]))
 
 
 # The Senate puts the mover in FRONT and folds the verb in with the name:
@@ -2946,9 +2956,25 @@ def describe(ev, body, seen_intro=False):
         side = {"Majority": "the majority",
                 "Minority": "the minority"}.get(report_side(ev.get("side")), "")
         who = f"{side.capitalize()} of the committee" if side else "The committee"
-        if plain:
+        # THE VOTE BEFORE THE RECOMMENDATION (17 October 2026). After it,
+        # "recommended that the House study it after the session ends
+        # unanimously, 16-0" read as though the session would end
+        # unanimously; the vote is the committee's, and is said as its act.
+        # Not a majority's or a minority's report, which the history joins
+        # into one sentence with the vote at its end (DIVIDED, tell()).
+        if plain and side:
             return (f"{who} recommended that the {chamber} {plain}"
                     f"{amend}{vote}{cal}.")
+        if plain:
+            said = f"that the {chamber} {plain}{amend}{cal}."
+            if _y.isdigit() and _n.isdigit() and int(_n) == 0 and int(_y) > 0:
+                return f"{who} voted unanimously, {_y}–{_n}, to recommend {said}"
+            if _y.isdigit() and _n.isdigit() and int(_y) == int(_n):
+                return (f"{who} recommended, on a tied vote of {_y}–{_n}, which carries "
+                        f"no majority, {said}")
+            if _y.isdigit() and _n.isdigit():
+                return f"{who} voted {_y}–{_n} to recommend {said}"
+            return f"{who} recommended {said}"
         rec = (ev.get("rec") or "").strip()
         # THE CLERK'S OWN WORD FOR NO RECOMMENDATION. SB 466 of 2000 read
         # "The committee reported: None." -- which looks like this site

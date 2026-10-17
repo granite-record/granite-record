@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-11.8
+# GRANITE_VERSION: 2026-10-11.9
 """
 The how-to guides: their words, their sources, and what each was checked
 against. Read by build_civics.py, which draws them on the Resources hub's
@@ -137,13 +137,13 @@ HELP = {
           "care assistance; Do I Qualify?; customer service 1-844-ASK-DHHS (1-844-275-3447).", NHEASY)]),
     "adrc": (
         "<li><b>Aging and Disability Resource Centers</b> (formerly ServiceLink), a Department of "
-        "Health and Human Services program with local resource centers: free counselling for "
+        "Health and Human Services program with local resource centers: free counseling for "
         "older adults, adults with disabilities and caregivers, on benefits, applications, "
         "housing, Medicare and Medicaid, with no eligibility requirement. Call 1-866-634-9412, "
         "weekdays 8:30 a.m. to 4:30 p.m.</li>",
         [],
         [("ADRC, formerly ServiceLink, a DHHS program of locally accessible resource centers; "
-          "options counselling on benefits, applications, housing, Medicare and Medicaid; no fee "
+          "options counseling on benefits, applications, housing, Medicare and Medicaid; no fee "
           "or eligibility requirement; 1-866-634-9412, Monday to Friday 8:30 to 4:30.", ADRC)]),
     "legal_aid": (
         "<li><b>Free civil legal aid.</b> New Hampshire Legal Assistance helps people with low "
@@ -283,7 +283,8 @@ VOTING = guide(
      step("Register with your clerk, or at the polls",
           "<p>You fill in a voter registration form, and you can do it in any of these ways:</p><ul>"
           "<li><b>Before the election</b>, at your town or city clerk&rsquo;s office in office "
-          "hours, or at a session of the supervisors of the checklist. Registration before an "
+          "hours, or at a session of the supervisors of the checklist (the elected board "
+          "that keeps your town's list of voters). Registration before an "
           "election closes 6 to 13 days before it, on a date your supervisors set, so ask your "
           "clerk for it.</li>"
           "<li><b>On election day</b>, at your polling place. You register, then vote at that "
@@ -318,10 +319,11 @@ VOTING = guide(
                    ("Free vital record for voter registration", SOS_FREE_VITAL)],
           law=["RSA 654:12"],
           note="<b>This changed in 2026, and the courts are still involved.</b> After a court order "
-               "of May 28, 2026, you may again prove <em>citizenship only</em> by signing a "
-               "qualified voter affidavit, if you lack the documents; an affidavit cannot prove "
-               "identity, age or domicile. A further order of October 2, 2026 lets a student ID "
-               "be weighed with other evidence of identity. This is what the Secretary of State "
+               "of May 28, 2026, if you lack the documents to prove your citizenship you may again "
+               "sign a qualified voter affidavit instead. The affidavit covers citizenship and "
+               "nothing else: you still need proof of identity, age and domicile. A further "
+               "order of October 2, 2026 lets election officials consider a student ID, together "
+               "with other evidence, as proof of identity when you register. This is what the Secretary of State "
                "said on October 12, 2026: check the page before you go."),
      step("Vote",
           "<p>On election day, go to your polling place. Every voter must show proof of identity "
@@ -339,7 +341,7 @@ VOTING = guide(
           "misdemeanor conviction or awaiting trial;</li><li>you are in the Attorney "
           "General&rsquo;s Address Confidentiality Program or protected by a domestic violence "
           "order; or</li><li>the National Weather Service has issued a winter storm, blizzard or "
-          "ice storm warning for your town and you are worried about travelling.</li></ul>"
+          "ice storm warning for your town and you are worried about traveling.</li></ul>"
           "<p>Send the absentee ballot application to your town or city clerk, not the state, "
           "with the proof of identity the form asks for. You can apply up to six months before "
           "the election. The deadline to ask by mail is noon the day before the election, and "

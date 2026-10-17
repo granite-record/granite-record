@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.69
+# GRANITE_VERSION: 2026-09-04.70
 """
 Write a real address for every bill, and the sitemap that points at them.
 
@@ -54,6 +54,7 @@ import re
 
 import build_date
 import build_rsa as BR
+from components import clock
 import rsa
 import shell as S
 import site_read as SR
@@ -173,7 +174,9 @@ def static_record(b, d, data_url=None):
     st = [s for s in d.get("stations") or [] if s.get("when")]
     if st:
         out.append("<h2>Hearings and Sessions</h2><ul>" + "".join(
-            "<li>" + E(_day(s["when"])) + (f", {E(s['time'])}" if s.get("time") else "")
+            # "8:30 AM", not "08:30" (17 October 2026), as every other
+            # time on the site is printed (components.clock).
+            "<li>" + E(_day(s["when"])) + (f", {E(clock(s['time']))}" if s.get("time") else "")
             + ": " + E(s.get("what") or "")
             + (", " + E(f"{CHAMBER.get(s.get('body'), '')} {s['committee']}".strip())
                if s.get("committee") else "")

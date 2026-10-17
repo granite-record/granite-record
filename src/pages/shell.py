@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-07.29
+# GRANITE_VERSION: 2026-09-07.30
 """
 The page every record's own address is: bills.html, with one record open.
 
@@ -166,6 +166,16 @@ def title_stops(name):
     return core + quotes, closed, (closed if "." in run else name)
 
 
+# A HOW-TO GUIDE'S CITATION NOTE (17 October 2026). The guides are written
+# here from the state agencies' own pages, not drawn from the General Court's
+# record, and the note every page carried told a reader to cite the General
+# Court for them.
+GUIDE_CITE = ('<p class="citenote">This guide is written by Granite Record from the '
+              'official pages it links to. Where a citation allows only one source, '
+              'cite the official page for the part you rely on. The date below is the '
+              'day the page was read.</p>')
+
+
 def cite_block(path, title, base, built=""):
     """How to cite this page, in the four forms a paper or a newsroom asks for.
 
@@ -231,12 +241,13 @@ def cite_block(path, title, base, built=""):
     return ('<div class="pageacts" id="pageacts"><details class="pcite">'
             f'<summary>{icon("cite")}Cite this page</summary>'
             '<div class="citebody">'
+            + (GUIDE_CITE if canon(path).lstrip("/").startswith("guides") else
             '<p class="citenote">Granite Record indexes the General '
             'Court&rsquo;s record; it is not that record. Where a citation '
             'allows only one source, cite the General Court &mdash; every page '
             'here links to what it is drawn from. The date below is the day '
-            'the page was read.</p>'
-            f'<dl class="citeforms">{rows}</dl>'
+            'the page was read.</p>')
+            + f'<dl class="citeforms">{rows}</dl>'
             # Where a copy is announced: "The MLA citation is copied", or,
             # where the browser would not copy, that it is selected instead.
             '<p class="citestate" id="citestate" role="status" '

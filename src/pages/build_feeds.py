@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.36
+# GRANITE_VERSION: 2026-09-04.37
 """
 Write RSS feeds so people can follow bills without a login.
 
@@ -445,7 +445,10 @@ def main():
                 f"{b['n']} \u2014 {clip(e.get('text',''))}",
                 url,
                 f"{b.get('title','')}\n\n{e.get('text','')}\n\n"
-                f"Status: {d.get('next_step','')}",
+                # The bill's status as its page says it, not the General
+                # Court's two fields run together ("House: INTERIM STUDY ·
+                # Senate: PASSED/ADOPTED WITH AMENDMENT"), 17 October 2026.
+                f"Status: {b.get('status') or d.get('next_step','')}",
                 e["date"],
                 f"{b.get('term','')}:{b['id']}:{e['date']}:"
                 f"{slug(e.get('text',''))[:40]}"))
@@ -611,7 +614,7 @@ def main():
     (fd / "all.xml").write_text(
         feed("Granite Record — all activity",
              "Every recorded action on New Hampshire legislation, newest "
-             "first. Proceedings still to come are in the hearings feed.",
+             "first. Hearings and sessions still to come are in the hearings feed.",
              f"{base}/", f"{base}/feed/all.xml", newest(all_items), base),
         encoding="utf-8")
 

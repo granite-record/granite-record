@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.207
+# GRANITE_VERSION: 2026-09-04.208
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -803,7 +803,7 @@ def calendar_html(out, today=None, rows=None):
             # MOSTLY (the survey of 7 October 2026): both chambers sat until veto
             # day, 19 August, in 2026, and into the autumn in most years.
             note += (" The General Court sits mostly from January to June, and "
-                     "committees meet on bills from the autumn filing period "
+                     "committees meet on bills from the fall filing period "
                      "onwards.")
         return (f'<section class="cal" data-mon="{monday.isoformat()}"><h2>Coming up</h2>'
                 f'{label}<p class="note">{esc(note)}</p>{more}</section>')
@@ -1397,11 +1397,11 @@ unique across the whole term, so there is only ever one HB 84 in 2025–2026 —
 there will be another in the next term.</p>
 <p>Most bills are settled in the year they are filed. Two things happen to the rest,
 and they are not the same. <b>Retaining</b> is a first-year move: the committee keeps
-the bill, works on it over the autumn and reports it in the second year, so it
+the bill, works on it over the fall and reports it in the second year, so it
 survives and keeps its number. Those show as <b>carried over</b> here, and they are
 the ones people most often fail to find, because they search the current year for a
 bill filed in the previous one. <b>Interim study</b> is a second-year move and it
-ends the bill: the committee studies it that autumn, but the bill dies with the term
+ends the bill: the committee studies it that fall, but the bill dies with the term
 and has to be filed again, with a new number, to come back.</p>
 
 <h2>The path a bill takes</h2>
@@ -1649,7 +1649,7 @@ __PRIVACY__
 <h2>Free and Open Source</h2>
 <p>Granite Record is free to use, now and always. Its code is public on
 <a href="__REPO__" rel="noopener">GitHub</a>
-under the MIT licence, and the whole record can be downloaded as spreadsheets
+under the MIT License, and the whole record can be downloaded as spreadsheets
 from the <a href="data.html">Data page</a>.</p>
 
 <h2>Independence</h2>
@@ -1658,7 +1658,7 @@ Court, and it takes no position on any bill.</p>
 
 <h2>The Logo</h2>
 __LOGO__<p>The Granite Record logo was drawn by Debra Caplan, an artist in Peterborough,
-New Hampshire, and is used under licence from her. More of her work is at
+New Hampshire, and is used under license from her. More of her work is at
 <a href="https://www.linescapesnh.com/" rel="noopener">linescapesnh.com</a>.
 In her own words:</p>
 <blockquote class="artist">
@@ -2255,7 +2255,7 @@ const bills=(q,B,C,counting)=>{
     ?`<a class="fbills" href="/bills?q=${_fenc(q)}">
       <span class="fl1"><span class="fname">${C.n.toLocaleString()} of them in
         the ${esc(C.term)} term</span></span>
-      <span class="fwhat">The term the bill search opens on.</span></a>`:"";
+      <span class="fwhat">The current term, where the bill search starts.</span></a>`:"";
   const top=B&&B.top?(B.numbers?B.top:B.top.slice(0,5)):[];
   const body=counted&&B.n
     ?findBillsAll(B,q,what)+now+top.map(b=>findBillRow(b,q,every,B.why.get(b))).join("")
@@ -2307,8 +2307,11 @@ function draw(q){
   head.innerHTML=`Results for &ldquo;${esc(s)}&rdquo;`;
   // The answer first. "0 matches on this site, and the bills" is a sentence
   // nobody would write, and "nothing matches" above 30 bills is false.
-  const here=rows.length===1?"One match on this site"
-    :`${rows.length} matches on this site`;
+  // PAGES, NOT "MATCHES ON THIS SITE" (17 October 2026): "4 matches on this
+  // site, and 940 bills" left a reader to work out that the four are the
+  // legislators, committees, towns and subjects listed below.
+  const here=rows.length===1?"One page on this site"
+    :`${rows.length} pages on this site`;
   const some=nB===1?`One bill ${term}`:`${(nB||0).toLocaleString()} bills ${term}`;
   lead.textContent=(!rows.length
     ?(nB?`${some} ${nB===1?"matches":"match"}. No legislator, committee, `
@@ -3062,8 +3065,9 @@ def bills_page(t):
     plain = ('<div class="static-rec" id="static-rec"><p class="sx-name">New Hampshire Bills</p>'
              "<p>Every bill filed in the New Hampshire General Court since 1989, searchable by "
              "number, subject, sponsor, committee and status, each with its votes, hearings and "
-             "history. Searching needs JavaScript; without it, every bill is listed by term on "
-             '<a href="/directory">the whole record, as lists</a>, each linking its own page.</p></div>')
+             "history. Searching needs JavaScript; without it, "
+             '<a href="/directory">the directory</a> lists every bill by term, each linking '
+             "to its own page.</p></div>")
     slot = '<div id="results"></div>'
     assert slot in t, "bills.html has no results slot"
     return t.replace(slot, plain + slot, 1)
@@ -3423,7 +3427,7 @@ def main():
         does not. So the Senate is listed under the chart, and says why.
 
         The seat number is the reason people look this up at all: a
-        representative's licence plate carries it.
+        representative's license plate carries it.
         """
         H = sorted((m for m in legs if m.get("chamber") == "H"),
                    key=lambda m: int(m.get("seat") or 0))
@@ -3552,7 +3556,7 @@ its own.</p>
 <div class="rpane" id="pane-seat" role="tabpanel" aria-labelledby="tab-seat">
 <h2>Where they sit</h2>
 <p class="src">Every representative has a numbered seat in Representatives
-Hall, and it is the number on their licence plate. Tap a seat to see who is in
+Hall, and it is the number on their license plate. Tap a seat to see who is in
 it; tapping does not leave the page, and the name it gives you is the link. This is a diagram of the
 five divisions, not a drawing of the room: it is faithful to which division a
 seat is in and to the seat&rsquo;s number, and not to the true distances.
@@ -3672,7 +3676,7 @@ party or committee to find a member.</p>
 </section>
 <section class="ofpart ofmap" aria-labelledby="of-map">
 <h3 id="of-map">The Map</h3>
-<p class="src fill">Each district coloured by the party of its sitting
+<p class="src fill">Each district colored by the party of its sitting
 members, each town by its name, and a city&rsquo;s wards once you zoom in.
 Choose a district to see who sits for it and the towns it holds, each with
 its own page.</p>

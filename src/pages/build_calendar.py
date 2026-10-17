@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-18.35
+# GRANITE_VERSION: 2026-09-18.36
 """
 The General Court's week, one page per week.
 
@@ -2313,7 +2313,7 @@ def week_facts(key, weeks, today):
         lead = (("No meetings are on the record for this week. " if last < today
                  else "No meetings are scheduled yet for this week. ")
                 + "The General Court sits mostly from January to June, and committees "
-                "meet on bills from the autumn filing period onwards.")
+                "meet on bills from the fall filing period onward.")
     return {"first": first, "last": last, "label": label, "short": short, "days": days,
             "meets": meets, "n": n, "lead": lead}
 
@@ -2367,7 +2367,7 @@ def cats_html():
     return ('<fieldset class="calcats" id="calcats" hidden>'
             '<legend class="sr">Kinds of meeting to show</legend>'
             f'<div class="calcatrow">{boxes}</div></fieldset>'
-            '<ul class="calkey" aria-label="What the colours mean">'
+            '<ul class="calkey" aria-label="What the colors mean">'
             + "".join(f'<li><i class="{c}" aria-hidden="true"></i>{S.E(w)}</li>'
                       for c, w in BP.MEET_LEGEND)
             + "</ul>")

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.54
+# GRANITE_VERSION: 2026-09-08.55
 """
 The civics section: a hub and one page per topic, in order.
 
@@ -642,7 +642,7 @@ def record_figures(site, root=Path(".")):
         "Bills with and without a recorded roll call",
         [(figures["all_rollcall"], "c-rc", "with at least one recorded roll call"),
          (no_rc - figures["pre_rollcall_bills"], "c-none",
-          f"<b>{no_rc:,}</b> with none (the grey and the hatched)", False),
+          f"<b>{no_rc:,}</b> with none (the gray and the hatched)", False),
          (figures["pre_rollcall_bills"], "c-old",
           f'<span class="l-sub">of those from before {rc_first}, where this record&rsquo;s '
           "roll calls begin</span>")])
@@ -1044,7 +1044,7 @@ OTP_JS = """<script>
 START = [("how-a-bill-becomes-law",
           "The course a bill runs, and the stages it can die at."),
          ("general-court",
-          "Who the 424 of them are, and how a two-year term is shaped."),
+          "The 400 representatives and 24 senators, and how a two-year term is shaped."),
          ("testifying",
           "Anyone may speak on any bill. This is how.")]
 

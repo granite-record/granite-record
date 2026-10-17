@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-12.16
+# GRANITE_VERSION: 2026-09-12.17
 """
 Turn the drawn logo and icon into the files a site needs, once.
 
@@ -119,7 +119,7 @@ def need(p):
         sys.exit(
             f"missing {p.relative_to(ROOT).as_posix()}.\n"
             "The project's logo and icons are not in the repository: they are "
-            "used under licence and are not part of the open-source release "
+            "used under license and are not part of the open-source release "
             "(DATA.md).\nTo draw your own, put these in brand/ and run this "
             "again:\n"
             + "".join(f"  brand/{name:<18} {what}\n" for name, what in ORIGINALS)

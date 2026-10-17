@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-16.30
+// GRANITE_VERSION: 2026-09-16.31
 /* FIND ANYTHING, FROM THE HEADER (16 September, asked for in these words:
    "a search icon in the header that lets you search for anything including
    legislators, committees, towns, and bills ... searching Litchfield would
@@ -1331,7 +1331,7 @@ function ytDraw(){
         +r.wards.map(w=>`<button type="button" class="ytrow" data-pick="${_fesc(w.s)}">${_fesc(w.n)}</button>`).join("");}
       else if(r.why==="state")res.innerHTML=said+"<p>That address is not in New Hampshire.</p>";
       else if(r.why==="town")res.innerHTML=said+`<p>The lookup placed it in ${_fesc(r.name||"a place")}, which this site has no page for. Choose your town from the list above.</p>`;
-      else res.innerHTML="<p>The Census lookup did not recognise that address. Try the street number, street and town, or choose your town from the list above.</p>";
+      else res.innerHTML="<p>The Census lookup did not recognize that address. Try the street number, street and town, or choose your town from the list above.</p>";
     },()=>{res.innerHTML="<p>The Census lookup did not answer. Choose your town from the list above, or try again in a minute.</p>";});
   });
 }

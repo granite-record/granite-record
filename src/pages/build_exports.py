@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-10.47
+# GRANITE_VERSION: 2026-09-10.48
 """
 The record as CSV, for anyone who wants to work with it rather than read it.
 
@@ -651,8 +651,7 @@ recording's captions; some are a roll call's own clock time from the General
 Court's record, which involves no speech recognition at all; the rest are
 inferred from where the bill is discussed, and those are the ones marked
 <i>approximate</i>. Only that word separates an inferred start from a quoted
-one. The site used to print the margin and the method beside every timestamp,
-and that turned out to be methodology in the reader's way.</p>
+one.</p>
 <p>The timing is checked against [[marked]] proceedings that a person timed by
 watching the recording, across [[marked_videos]] recordings. Of these it places
 [[marked_placed]]: the median is out by [[median]], and [[within_minute]] of
@@ -664,7 +663,7 @@ than a guessed one. Opening each recording at its scheduled time
 instead &#8212; the obvious method, and the one this replaced &#8212; would be
 out by [[schedule_median]] at the median. Last measured [[measured]].</p>
 <p>Speech recognition is worst at exactly the things that matter most — names,
-numbers and organisations. Check the recording before quoting anything.</p>
+numbers and organizations. Check the recording before quoting anything.</p>
 </details>
 """
 
@@ -1037,7 +1036,7 @@ def data_page(site, out, tables, base, cov=()):
       figure here can be traced to the line that produced it.</p>
     <p><a class="out" href="https://github.com/granite-record/granite-record"
       target="_blank" rel="noopener">granite-record on GitHub</a> &mdash; MIT
-      licensed. The logo and icons are not in it: they are used under licence
+      licensed. The logo and icons are not in it: they are used under license
       from their owners.</p>
     <dl class="repo">
       <dt>What a clone gets</dt>
@@ -1091,7 +1090,7 @@ def data_page(site, out, tables, base, cov=()):
       and sitting legislators behind this site are free to download as
       spreadsheets, built from the General Court&#39;s own records:
       {sum(t["rows"] for t in tables):,} rows across {len(tables)} tables, as
-      CSV. The code that builds them is public under the MIT licence.</p>
+      CSV. The code that builds them is public under the MIT License.</p>
     <details class="dponp"><summary>On this page</summary>
       <nav class="dponpb" aria-label="On this page"><ol>{onp}</ol></nav></details>
   </header>{secs}

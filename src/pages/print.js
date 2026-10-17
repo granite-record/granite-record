@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-10-09.5
+// GRANITE_VERSION: 2026-10-09.6
 /* A BILL'S PRINT SHEET. A reference sheet of one bill's record for paper,
    composed in the reader's browser from the record the page already holds,
    beside a short menu of settings, and printed with the browser's own dialog
@@ -917,7 +917,7 @@ function menu(d,b,ctx,st){
     textChoice(d,ctx,st)===v?" checked":""}><span>${label}</span></label>`:"";
   return `<form class="ps-form" novalidate>
 <h3 class="ps-mh" id="ps-mh">Print This Bill</h3>
-<p class="ps-mlead">A reference sheet of ${esc(num)}&rsquo;s record, for paper. It reads in black and white: nothing on it is said by colour alone.</p>
+<p class="ps-mlead">A reference sheet of ${esc(num)}&rsquo;s record, for paper. It reads in black and white: nothing on it is said by color alone.</p>
 <fieldset class="ps-fs"><legend>What the sheet holds</legend>
 <p class="ps-always">Always: the bill&rsquo;s number, title and status, At a Glance${
   ((d.journey||{}).steps||[]).length?", and How It Got Here":""}.</p>

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-14.18
+# GRANITE_VERSION: 2026-09-14.19
 """
 The record in numbers: a Learn page of statistics computed from the site's own data.
 
@@ -875,7 +875,7 @@ def body(site=Path("site"), root=Path("."), strict=True):
                    f"sign-ins in the {_t(current)} term: one "
                    "bill on one House committee date, with the title it had when it was heard. "
                    "A sign-in is a position registered, not a vote and not a person counted: "
-                   "one person may sign in on many bills, nobody is sampled, and an organised "
+                   "one person may sign in on many bills, nobody is sampled, and an organized "
                    "appeal can bring thousands. The busiest hearings were seldom closely "
                    f"divided: {lop} of these {len(allh)} drew nine in ten sign-ins or more on "
                    f"one side, and {against} drew more against the bill than for it. So the "
