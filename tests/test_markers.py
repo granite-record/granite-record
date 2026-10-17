@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.11
+# GRANITE_VERSION: 2026-09-05.12
 """
 The phrasings the marker patterns must match, and the ones they must not.
 
@@ -164,6 +164,33 @@ MUST_MATCH = [
     ("It is now 931 according to my phone so I am going to convene and call "
      "to order the committee of conference on House bill 1738",
      "two verbs before the noun -- work/DxY8IqDXajc"),
+
+    # -- weak phrases agreeing with a stated opening 89% or more, 17 October
+    # 2026, each read off the recording and time beside it ------------------
+    ("next hearing which is on 527 HP 527 replacing Statewide education property tax",
+     "next hearing which is (0mwuMat8uGI 4:33:27)"),
+    ("call the committee of conference to order on Senate Bill 221.",
+     "the noun before 'to order' (Hhj-jGwswUw 0:03:33)"),
+    ("order the committee of conference on House Bill 1623 for the house we have "
+     "Representatives Harrington", "order the committee (7sSEP3Vjn9w 0:32:50)"),
+    ("attentive to the clerk. Senate Bill 65 FN relative to storm water management "
+     "for solar arrays.", "the Senate's clerk (9Mv01Z_AsjU 0:22:48)"),
+    ("committee on Election law Municipal Affairs to wish was referred C Bill 219 FN",
+     "the clerk's reading, 'which' captioned 'wish' (5a1rrU9MYcU 1:17:30)"),
+    ("committee on election art to referred to House Bill 481, an act relative to "
+     "moving the state primary date", "the clerk's reading, words lost (5NhVPeBehr8 1:02:18)"),
+]
+
+# Spoken, the bill named BEFORE the phrase: the marker is the moment the bill
+# was named. (text, bill, where.) Weak phrases of 89% and over, 17 October 2026.
+BILL_BEFORE = [
+    ("House Bill 184 establishing a committee to study changing school start "
+     "times and I welcome the prime sponsor", "HB184", "EyOi37y9mNU 6:10:20"),
+    ("House Bill 1280 I'll open the public hearing on that and recognize the "
+     "prime sponsor", "HB1280", "3EjgNRn8UqA 0:03:33"),
+    ("hb750 relative making incentive grants for school districts that improve "
+     "in certain assessment scores I recognize represent peoples for a motion",
+     "HB750", "0Y2d_XDakUY 1:08:31"),
 ]
 
 # Look like openings. Are not.
@@ -257,9 +284,15 @@ def run():
     # reported as MISSED by a test whose own list did not contain it.
     for text, why in MUST_MATCH:
         hit = (any(rx.search(text) for rx, _, _ in S.COMMITTEE_PATS)
-               or S.FLOOR_OPEN_RE.search(text))
+               or S.FLOOR_OPEN_RE.search(text)
+               or any(rx.search(text) for rx, _, _ in S.FLOOR_WEAK_PATS))
         if not hit:
             fails.append(f"MISSED  ({why}): {text[:70]}")
+    for text, bill, where in BILL_BEFORE:
+        w = [(i * 0.4, x) for i, x in enumerate(text.split())]
+        got = [m for m in S.find_markers(w, [bill], {}) if m["bill"] == bill]
+        if not got or got[0]["t"] != 0.0 or "weak" not in got[0]["how"]:
+            fails.append(f"BILL BEFORE ({where}): {got}")
 
     # Tested through find_markers, not against the patterns alone. "turn to"
     # matches in "turn to page five of the handout", and that is fine: a phrase
@@ -347,7 +380,8 @@ def run():
 
 if __name__ == "__main__":
     bad = run()
-    n = len(MUST_MATCH) + len(MUST_NOT_MATCH) + len(NOT_OPENINGS) + len(STILL_OPENINGS) + 5
+    n = (len(MUST_MATCH) + len(MUST_NOT_MATCH) + len(NOT_OPENINGS) + len(STILL_OPENINGS)
+         + len(BILL_BEFORE) + 5)
     if bad:
         print(f"{len(bad)} of {n} failed:")
         for b in bad:
@@ -356,4 +390,4 @@ if __name__ == "__main__":
     print(f"{n} marker cases pass "
           f"({len(MUST_MATCH)} spoken phrasings, {len(MUST_NOT_MATCH)} decoys, "
           f"{len(NOT_OPENINGS)} spoken non-openings, {len(STILL_OPENINGS)} spoken "
-          "openings beside them, 5 behaviours)")
+          f"openings beside them, {len(BILL_BEFORE)} named before the phrase, 5 behaviours)")

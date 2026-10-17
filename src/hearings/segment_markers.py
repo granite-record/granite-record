@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.44
+# GRANITE_VERSION: 2026-09-05.45
 """
 Segment a recording on what the chair says, not on where bill numbers cluster.
 
@@ -358,6 +358,48 @@ NEXT_RE = re.compile(
 # documents and recesses. Those are used only where nothing stronger fired.
 # The floor patterns are not here: find_markers adds them only for a floor
 # recording, and they are wrong for a committee room.
+# THE PHRASES THAT AGREE WITH A STATED OPENING NINE TIMES IN TEN, AS WEAK
+# MARKERS. (17 October 2026.) A second pass over every recording counted each
+# candidate phrase only where a scheduled bill was named beside it, and
+# measured it against the bills that already had a chair's stated opening, on
+# recordings where the bill had one proceeding: within 60 seconds of it, how
+# often. These seven are those of 89% and over; each is weak, so it is used
+# only where no other pattern placed the bill, and the page says so.
+#
+#   phrase                          agrees   of    median offset
+#   garbled clerk's reading           99%   1,199   0.2 s   floor
+#   attentive to the clerk            99%     456   2.8 s   floor
+#   welcome the prime sponsor        100%      18           bill named before
+#   recognizes the prime sponsor      95%     541   1.7 s   bill named before
+#   call the committee a conference   93%      30
+#   for a motion                      89%     742   2.2 s   bill named before
+#   next hearing which is             89%      97   0 s
+#
+# Those below 89% -- "moving on" 76%, "next bill will be" 74%, "here to
+# present" 73%, "prime sponsor of" 71%, "first bill is" 68%, the bill read
+# with its title 82% -- wait for a person's sample at the bench.
+F_ = r"(?:(?:um|uh|er|ah|okay|so|and)[\s,.]+|\[[^\]]{0,24}\]\s*)*"
+NEXT_HEARING_RE = re.compile(
+    r"\bnext\s+" + F_ + r"(?:public\s+)?hearing\s+" + F_ + r"(?:which\s+)?is(?:\s+on)?\b", re.I)
+CONF_CALL_RE = re.compile(
+    r"\b(?:call|convene|reconvene|order)\w*\s+(?:\w+\s+){0,4}?committee\s+(?:of|a|on)\s+"
+    r"conference\b", re.I)
+ATTENTIVE_RE = re.compile(r"\battentive\s+to\s+the\s+clerk\b", re.I)
+GARBLED_READING_RE = re.compile(
+    r"\bcommittee\s+on\s+[\w ,\-]{4,70}?\s*,?\s*(?:\w+\s+){0,3}?(?:re-?|de|p)?referr?ed\b", re.I)
+# The bill is named BEFORE these: "House Bill 184 establishing ... and I
+# welcome the prime sponsor". The marker is the moment the bill was named, the
+# last scheduled bill named in the 160 characters before the phrase.
+WELCOME_PRIME_RE = re.compile(
+    r"\b(?:i|we)\s+(?:would\s+like\s+to\s+)?welcome\s+(?:the\s+)?prime\s+sponsor\b", re.I)
+RECOGNIZE_PRIME_RE = re.compile(
+    r"\b(?:the\s+chair\s+)?recogni[sz]es?\s+(?:the\s+)?prime\s+sponsor\b", re.I)
+FOR_A_MOTION_RE = re.compile(
+    r"\b(?:call\s+on|recogni[sz]e\w*)\s+(?:\w+\s+){0,4}?for\s+a\s+motion\b", re.I)
+BEFORE_PATS = (WELCOME_PRIME_RE, RECOGNIZE_PRIME_RE, FOR_A_MOTION_RE)
+# On a floor recording only, after every other pattern.
+FLOOR_WEAK_PATS = ((GARBLED_READING_RE, "open", True), (ATTENTIVE_RE, "open", True))
+
 COMMITTEE_PATS = (
     (OPEN_RE, "open", False),
     (CLOSE_RE, "close", False),
@@ -365,6 +407,8 @@ COMMITTEE_PATS = (
     (CONF_OPEN_RE, "open", False),
     (NEXT_RE, "open", True),
     (NEXT2_RE, "open", True),
+    (NEXT_HEARING_RE, "open", True),
+    (CONF_CALL_RE, "open", True),
 )
 
 # WORDS THAT READ LIKE AN OPENING AND ARE NOT ONE. (17 October 2026.) Each
@@ -473,7 +517,9 @@ def pattern_signature():
         blob = "".join(parts)
     except (OSError, ValueError, tokenize.TokenError, SyntaxError):
         pats = [OPEN_RE, CLOSE_RE, OPEN_DIRECT_RE, CONF_OPEN_RE, NEXT_RE,
-                NEXT2_RE, FLOOR_OPEN_RE, FLOOR_CLOSE_RE, BILL_SPOKEN, BARE_NUM]
+                NEXT2_RE, FLOOR_OPEN_RE, FLOOR_CLOSE_RE, BILL_SPOKEN, BARE_NUM,
+                NEXT_HEARING_RE, CONF_CALL_RE, ATTENTIVE_RE, GARBLED_READING_RE,
+                WELCOME_PRIME_RE, RECOGNIZE_PRIME_RE, FOR_A_MOTION_RE]
         blob = "|".join(r.pattern for r in pats) + "|".join(sorted(STOP))
     return hashlib.sha1(blob.encode()).hexdigest()[:12]
 
@@ -653,9 +699,33 @@ def find_markers(words, candidates, titles, span=28, floor=False):
         return time_at_[max(0, k)]
 
     out, seen = [], set()
+
+    def place(t, kind, bill, what, how, said, weak):
+        """Keep one marker unless it repeats one already found or, being
+        weak, something else already placed the bill."""
+        # Within a minute of one already found for the same bill and the
+        # same kind is the same moment. Bucketing by round(t/30) let
+        # 1:11:44 and 1:11:48 fall either side of a boundary and both be
+        # kept -- the clerk reading the majority report and then the
+        # minority is one debate, not two.
+        if any(o["bill"] == bill and o["kind"] == kind
+               and abs(o["t"] - t) < 60 for o in out):
+            return
+        key = (kind, bill, round(t / 30))
+        if key in seen:
+            return
+        if weak and any(o["bill"] == bill and o["kind"] == kind for o in out):
+            return          # something stronger already placed it
+        seen.add(key)
+        out.append({"t": round(t, 1), "kind": kind, "bill": bill,
+                    "what": "" if weak else what,
+                    "how": how + (" (weak marker)" if weak else ""),
+                    "said": said})
+
     pats = ([(FLOOR_OPEN_RE, "open", False),
              (FLOOR_CLOSE_RE, "close", False)] if floor else [])
-    for rx, kind, weak in pats + list(COMMITTEE_PATS):
+    for rx, kind, weak in (pats + list(COMMITTEE_PATS)
+                           + (list(FLOOR_WEAK_PATS) if floor else [])):
         for m in rx.finditer(text):
             # The words after the phrase only: "close the hearing on X. Open
             # the hearing on Y" names two bills and the second belongs to the
@@ -698,31 +768,27 @@ def find_markers(words, candidates, titles, span=28, floor=False):
             # HB 123" is a real opening and is exactly this shape.
             if HEDGE.search(text[max(0, m.start() - 40):m.start()]):
                 continue
-            t = when(m.start())
-            # Within a minute of one already found for the same bill and the
-            # same kind is the same moment. Bucketing by round(t/30) let
-            # 1:11:44 and 1:11:48 fall either side of a boundary and both be
-            # kept -- the clerk reading the majority report and then the
-            # minority is one debate, not two.
-            if any(o["bill"] == bill and o["kind"] == kind
-                   and abs(o["t"] - t) < 60 for o in out):
-                continue
-            key = (kind, bill, round(t / 30))
-            if key in seen:
-                continue
-            if weak and any(o["bill"] == bill and o["kind"] == kind
-                            for o in out):
-                continue          # something stronger already placed it
-            seen.add(key)
             what = "floor debate" if rx in (FLOOR_OPEN_RE, FLOOR_CLOSE_RE) else ""
             for g in ("what", "what2"):
                 if g in (rx.groupindex or {}) and m.group(g):
                     what = WS.sub(" ", m.group(g)).lower()
                     break
-            out.append({"t": round(t, 1), "kind": kind, "bill": bill,
-                        "what": "" if weak else what,
-                        "how": how + (" (weak marker)" if weak else ""),
-                        "said": WS.sub(" ", text[m.start():m.start() + 130])})
+            place(when(m.start()), kind, bill, what, how,
+                  WS.sub(" ", text[m.start():m.start() + 130]), weak)
+    # The phrases whose bill was named BEFORE them (BEFORE_PATS): the moment
+    # is the last scheduled bill named, by number, in the 160 characters
+    # before the phrase. Weak, and last, so anything else that placed the
+    # bill comes first.
+    for rx in BEFORE_PATS:
+        for m in rx.finditer(text):
+            last = None
+            for bm in BILL_SPOKEN.finditer(text, max(0, m.start() - 160), m.start()):
+                b, _how = match_bill(bm.group(0), candidates, {})
+                if b:
+                    last = (b, bm.start())
+            if last:
+                place(when(last[1]), "open", last[0], "", "number",
+                      WS.sub(" ", text[last[1]:m.end()])[:160], True)
     out.sort(key=lambda x: x["t"])
     return out
 
