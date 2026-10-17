@@ -215,6 +215,20 @@ night. Each value may have:
     with Amendment (OTPA, Pass the bill with changes)"), `bill` (at most 40,
     "HB 1442") and `title` (at most 300). The email sets each ballot beside
     the outcome, in the site's words for it ("excused absence").
+  - `meeting` -- optional, on an item whose line sets a meeting
+    (`plain_action.meeting`): `what` (required, at most 120, the kind in lower
+    case: `public hearing`, `executive session`, `work session`, `full
+    committee work session`, `subcommittee work session`, `committee of
+    conference meeting`, ...), `date` (required, `YYYY-MM-DD`, the meeting's
+    own day, which may not be the item's), `time` (`HH:MM`, 24-hour), `venue`
+    (at most 120, the room in words, "Legislative Office Building 305") and
+    `state` (`rescheduled`, `recessed`, `cancelled`, `time changed` or `room
+    changed`, where the clerk marked the line so). The email says the meeting
+    in its own words and dates in place of `plain` and `summary` -- "HB 1442 —
+    Hearing set for Wednesday, October 14, 10:00 a.m., Legislative Office
+    Building 305" -- and the feed keeps the clerk's line (17 October 2026: the
+    person approved plain words for an email's hearing entries). A line any
+    part of which `plain_action.meeting` does not understand carries none.
 - A committee's `sitting` item carries `plain`: the kinds of meeting the day
   held and the bills each took up, "Executive session on HB 1767-FN and SB
   416" (17 October 2026), because the feed's title is only the committee and

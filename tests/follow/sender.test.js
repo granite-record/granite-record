@@ -164,22 +164,23 @@ test("a week of dailies from the fixtures: each night once, the ending told, the
     let m = await morning("2026-10-05");
     assert.equal(m.length, 1);
     assert.match(m[0].subject, /^1 update on what you follow$/, "no milestone, so the count");
-    // The day once: the clerk's "10/02/2026" after the entry's own date is
-    // not printed again (the language sweep, 17 October 2026).
-    assert.match(m[0].text, /October 2, 2026 {2}HB 9901 — Full Committee Work Session: 10:00 am LOB 305/);
+    // The day once: the meeting's day, the entry's own date, is not printed
+    // again (the language sweep, 17 October 2026), and the meeting is said in
+    // plain words (the person's approval of the same day).
+    assert.match(m[0].text, /October 2, 2026 {2}HB 9901 — Full committee work session set for 10:00 a\.m\., Legislative Office Building 305\n/);
     assert.match(m[0].text, /updated once a day, overnight/);
 
     m = await morning("2026-10-06");
     assert.match(m[0].text, /prime sponsor/);
     // A committee's day says what kind of meeting it was (17 October 2026).
     assert.match(m[0].text, /October 5, 2026 {2}Public hearing on HB 9903-FN/);
-    assert.doesNotMatch(m[0].text, /Work Session/, "the 5th's news is not sent twice");
+    assert.doesNotMatch(m[0].text, /work session/i, "the 5th's news is not sent twice");
 
     m = await morning("2026-10-07");
     assert.match(m[0].text, /HB 9902 — Signed into law\. There will be no more updates on it/);
     assert.match(m[0].subject, /^HB 9902 — Signed into law, and \d+ more updates$/,
       "the subject names how a bill ended before anything else");
-    assert.match(m[0].text, /October 6, 2026 {2}HB 9903-FN — Executive Session: 1:00 pm LOB 305/);
+    assert.match(m[0].text, /October 6, 2026 {2}HB 9903-FN — Executive session set for 1:00 p\.m\., Legislative Office Building 305\n/);
     assert.deepEqual(await followsOf(w, s.id), ["bill:2026/HB9901", "bill:2026/HB9903",
       "committee:H90", "member:990001", "topic:housing"], "the ended bill's follow is gone");
 
@@ -195,7 +196,7 @@ test("a week of dailies from the fixtures: each night once, the ending told, the
     assert.equal(m.length, 0, "a night with nothing new sends nothing");
 
     m = await morning("2026-10-10");
-    assert.match(m[0].text, /Executive Session: 10\/13\/2026/);
+    assert.match(m[0].text, /Executive session set for Tuesday, October 13, 1:00 p\.m\./);
     assert.equal(mailsTo(w, s.address).length, 5);
 
     // The send log is counts and nothing else.
@@ -230,10 +231,10 @@ test("the weekly: votes and executive sessions, hearings coming up, the study's 
       m.text.indexOf("https://graniterecord.org/committee/H90"));
     assert.match(hb9903, /This week: 1 roll call vote and 1 executive session\./);
     // The committee that sits is named once, and not again after "For".
-    assert.match(m.text, /Wednesday, October 14, 10:00 a\.m\.: Public hearing, House Example Committee, LOB 305\. For HB 9903-FN\.\n/);
+    assert.match(m.text, /Wednesday, October 14, 10:00 a\.m\.: Public hearing, House Example Committee, Legislative Office Building 305\. For HB 9903-FN\.\n/);
     assert.match(m.text, /HB 9901[\s\S]*No roll call votes or executive sessions this week\./);
     assert.match(m.text, /HB 9901 — Interim study report: recommends future legislation/);
-    assert.match(m.text, /Tuesday, October 13, 1:00 p\.m\.: Executive session, House Example Committee, LOB 305\.\n/);
+    assert.match(m.text, /Tuesday, October 13, 1:00 p\.m\.: Executive session, House Example Committee, Legislative Office Building 305\.\n/);
     assert.doesNotMatch(m.text, /HB 9904/);
     assert.match(m.html, /This week: 1 roll call vote and 1 executive session\./);
     // A second run that Saturday sends nothing more.
@@ -682,7 +683,7 @@ test("a pause sends nothing through its last day, and the day after starts from 
     assert.equal(m.length, 1, "the 7th is paused, the 8th is not");
     assert.ok(m[0].at.startsWith("2026-10-08"));
     assert.match(m[0].text, /Committee roll call/, "the 8th's news");
-    assert.doesNotMatch(m[0].text, /Executive Session: 10\/06/, "not the news of the paused days");
+    assert.doesNotMatch(m[0].text, /HB 9903-FN — Executive session/i, "not the news of the paused days");
     assert.deepEqual(leaks(w), []);
   } finally { w.close(); }
 });
@@ -714,10 +715,11 @@ test("milestones only: the decisions and what is scheduled, not every docket lin
     }
     const a = mailsTo(w, all.address), f = mailsTo(w, few.address);
     assert.equal(a.length, 2);
-    assert.match(a[0].text, /Full Committee Work Session/, "everything has the work session");
+    assert.match(a[0].text, /Full committee work session set for/, "everything has the work session");
     assert.equal(f.length, 1, "the 5th held no milestone, so nothing went");
-    assert.match(f[0].text, /October 6, 2026 {2}HB 9903-FN — Executive Session: 1:00 pm/);
-    assert.match(f[0].text, /Public Hearing: 10\/14\/2026/, "a meeting on another day keeps its date");
+    assert.match(f[0].text, /October 6, 2026 {2}HB 9903-FN — Executive session set for 1:00 p\.m\./);
+    assert.match(f[0].text, /October 6, 2026 {2}HB 9903-FN — Hearing set for Wednesday, October 14, 10:00 a\.m\./,
+      "a meeting on another day keeps its date");
   } finally { w.close(); }
 });
 

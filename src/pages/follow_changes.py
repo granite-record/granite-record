@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-07.7
+# GRANITE_VERSION: 2026-10-07.8
 """
 The nightly "what changed" files the email sender reads, and the first-seen
 ledger that decides what is new in them.
@@ -274,14 +274,42 @@ def vote_detail(ballot, *, result="", tally="", motion="", bill="", title=""):
     return out if out.get("ballot") else None
 
 
+# A MEETING THE LINE SETS, FOR THE EMAIL TO SAY IN ITS OWN WORDS (17 October
+# 2026). The person approved plain words for an email's hearing entries; the
+# build knows the clerk's rooms (plain_action.place) and the email knows how
+# it writes a day, so the build hands over the facts and the email words them.
+# Optional on any item; plain_action.meeting is what makes one.
+MEETING_STATES = ("rescheduled", "recessed", "cancelled", "time changed", "room changed")
+
+
+def meeting_detail(m):
+    """An item's "meeting", or None where there is no kind and day to tell."""
+    if not isinstance(m, dict) or not DAY.match(str(m.get("date") or "")):
+        return None
+    what = line(m.get("what") or "", 120)
+    if not what:
+        return None
+    out = {"what": what, "date": m["date"]}
+    if TIME.match(str(m.get("time") or "")):
+        out["time"] = m["time"]
+    venue = line(m.get("venue") or "", 120)
+    if venue:
+        out["venue"] = venue
+    if m.get("state") in MEETING_STATES:
+        out["state"] = m["state"]
+    return out
+
+
 def item(guid, day, kind, summary, url="", term="", study=False, recommends=None,
-         milestone=False, vote=None, plain=""):
+         milestone=False, vote=None, plain="", meeting=None):
     """One feed item as the changes files carry it, or None where it cannot
     be one (no guid, no date the contract reads). `study` marks a bill's
     interim study report, which its bill's night carries as "study".
     `milestone` marks what a reader who asked for milestones only is sent;
     `vote` is a member's ballot with its roll call (vote_detail); `plain` the
-    line in plain words (plain_action.py), which the email prints first."""
+    line in plain words (plain_action.py), which the email prints first;
+    `meeting` the meeting the line sets (meeting_detail), which the email
+    words before either."""
     guid = str(guid or "")
     if not guid or len(guid) > 300 or not DAY.match(str(day or "")):
         return None
@@ -303,6 +331,9 @@ def item(guid, day, kind, summary, url="", term="", study=False, recommends=None
     plain = line(plain, 300)
     if plain:
         out["plain"] = plain
+    meeting = meeting_detail(meeting)
+    if meeting:
+        out["meeting"] = meeting
     return out
 
 
@@ -509,7 +540,7 @@ def night_file(ledger, d, new_by, followable, lists):
                 continue
             had.add(it["guid"])
             out = {f: it[f] for f in ("guid", "date", "kind", "summary", "plain", "url", "term",
-                                      "milestone", "vote") if f in it}
+                                      "milestone", "vote", "meeting") if f in it}
             if new_by == FIRST_SEEN:
                 out["seen"] = filed[(key, it["guid"])]
             if "_study" in it and kind_of_key(key) == "bill":
@@ -709,6 +740,11 @@ def _item(it, where, first_seen, topic, out):
                 _text(v.get(f), room, f"{where} vote {f}", out, required=f == "ballot")
             if v.get("result") not in (None, "") and v["result"] not in RESULTS:
                 out.append(f"{where}: vote result is neither passed nor failed")
+    if "meeting" in it:
+        m = it["meeting"]
+        if meeting_detail(m) != m:
+            out.append(f"{where}: meeting is not a kind and a day, with an optional time, "
+                       "venue and state")
     return it
 
 

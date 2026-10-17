@@ -34477,8 +34477,38 @@ def _follow_email_words(FC, BF, PA):
         assert PA.place(raw) == want, (raw, PA.place(raw))
     assert "FC.committee_label(name, word)" in src and "PA.place(u.get(\"venue\")" in src, \
         "the week ahead's committee or room is back in the clerk's form"
+    # A MEETING SET, AS FACTS THE EMAIL WORDS (17 October 2026: "emails can use
+    # plain words for hearing entries"). tests/follow/meeting_cases.json is the
+    # one table: this holds plain_action.meeting to each case's meeting, and
+    # tests/follow/mail.test.js holds the email to its words. The fixtures'
+    # meetings are what the build would write for their lines, and the feed
+    # item keeps the clerk's line, which is the record.
+    cases = json.loads(Path("tests/follow/meeting_cases.json").read_text(encoding="utf-8"))["cases"]
+    for c in cases:
+        assert PA.meeting(c["line"]) == c["meeting"], (c["form"], PA.meeting(c["line"]), c["meeting"])
+        if c["meeting"]:
+            out = []
+            it = FC.item("g", c["date"], "scheduled", f"HB 1 — {c['line']}", meeting=PA.meeting(c["line"]))
+            assert it.get("meeting") == c["meeting"] and it["summary"].endswith(c["line"]), (c["form"], it)
+            FC._item(it, "x", False, False, out)
+            assert not out, (c["form"], out)
+    out = []
+    FC._item({"guid": "g", "date": "2026-10-06", "kind": "exec", "summary": "x",
+              "meeting": {"what": "executive session", "date": "10/13/2026"}}, "x", False, False, out)
+    assert out, "a meeting with the clerk's date passed the check"
+    seen = 0
+    for night in sorted(Path("tests/follow/fixtures/changes").glob("2026-*.json")):
+        for r in json.loads(night.read_text(encoding="utf-8"))["refs"].values():
+            for i in r.get("items") or []:
+                said = i["summary"].split(" — ", 1)[-1]
+                assert PA.meeting(said) == i.get("meeting"), (night.name, said, i.get("meeting"))
+                seen += bool(i.get("meeting"))
+    assert seen >= 3, "the fixtures carry no meeting for the email to word"
+    assert "meeting=PA.meeting(e.get(\"text\"))" in src and "f\"{b['n']} \\u2014 {clip(e.get('text',''))}\"" in src, \
+        "the email is not handed the meeting, or the feed lost the clerk's line"
     return "ok", ("a law's months-old item not new, this week's hearing new on night 3; a topic's meeting new; endings "
-                  "by status; a committee's day by kind; ballots, motions and rooms in words")
+                  "by status; a committee's day by kind; ballots, motions and rooms in words; "
+                  f"{sum(bool(c['meeting']) for c in cases)} meetings set, as the email words them")
 
 
 @check("build", "About and the Data page describe email updates only once production binds the "

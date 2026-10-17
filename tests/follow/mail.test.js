@@ -12,7 +12,7 @@ import vm from "node:vm";
 import { checkCurrent, checkNight } from "../../workers/follow/changes.js";
 import { parseKey } from "../../workers/follow/common.js";
 import { MARK, PALETTE, ballotWords, confirmationEmail, dateOnce, dayDate, digestEmail, longDate,
-         newLinkEmail, pageNames, welcomeEmail } from "../../workers/follow/mail.js";
+         meetingWords, newLinkEmail, pageNames, welcomeEmail } from "../../workers/follow/mail.js";
 import { collect } from "../../workers/follow/sender.js";
 import { SITE, loadFixtures } from "./fakes.js";
 
@@ -200,6 +200,71 @@ test("a committee's day says what kind of meeting it was, and every day is said 
   assert.equal(dateOnce("House Labor Committee — 13 October 2026", "2026-10-13"), "House Labor Committee");
   assert.equal(dateOnce("Public Hearing: 10/14/2026 10:00 am LOB 305", "2026-10-06"),
     "Public Hearing: 10/14/2026 10:00 am LOB 305", "a meeting on another day keeps its date: that is the news");
+});
+
+// ---- a meeting set, in plain words --------------------------------------------------------
+// The person, 17 October 2026: "emails can use plain words for hearing
+// entries". meeting_cases.json is the table: preflight holds
+// plain_action.meeting to each case's `meeting`, and these hold the email to
+// its `words`, one test a form, each failing if the email goes back to the
+// clerk's line.
+const MEETINGS = JSON.parse(readFileSync(new URL("./meeting_cases.json", import.meta.url), "utf8")).cases;
+const billWith = items => ({ key: "bill:2026/HB9903", kind: "bill", ref: "2026/HB9903", label: "HB 9903-FN",
+  url: "/bill/2026/hb9903", title: "", now: "", items, votes: [], more: 0, study: null, ended: null,
+  week: null, upcoming: [] });
+const meetingItem = (c, extra = {}) => ({ guid: `m:${c.form}`, date: c.date, kind: "scheduled", milestone: true,
+  summary: `HB 9903-FN — ${c.line}`, plain: "", url: "/bill/2026/hb9903",
+  ...(c.meeting ? { meeting: { time: "", venue: "", state: "", ...c.meeting } } : {}), ...extra });
+
+for (const c of MEETINGS) {
+  test(`an email says a docket line in plain words where it sets a meeting: ${c.form}`, () => {
+    const m = digestEmail({ origin: SITE, frequency: "daily", date: TODAY, sections: [billWith([meetingItem(c)])],
+      names: pageNames(CURRENT), ...LINKS });
+    if (!c.meeting) {
+      // A line the email does not word stays as the clerk wrote it.
+      assert.ok(m.text.includes(`  ${longDate(c.date)}  HB 9903-FN — ${dateOnce(c.line, c.date)}\n`), m.text);
+      return;
+    }
+    assert.ok(m.text.includes(`  ${longDate(c.date)}  HB 9903-FN — ${c.words}\n`),
+      `the plain text lacks: ${c.words}\n${m.text}`);
+    assert.ok(visible(m.html).includes(`${longDate(c.date)} — HB 9903-FN — ${c.words}\n`),
+      `the HTML lacks: ${c.words}`);
+    const clerk = c.line.slice(c.line.indexOf(":") + 1).trim();
+    assert.ok(!(m.text + visible(m.html)).includes(clerk), `the clerk's line is still printed: ${clerk}`);
+    assert.doesNotMatch(m.text, /\b\d{1,2}\/\d{1,2}\/\d{2,4}\b|\b\d{1,2}:\d{2} ?(?:am|pm|AM|PM)\b|Scheduled:|==/,
+      "a date, an hour or a mark in the clerk's form");
+    // The contract carries it: the build's meeting passes changes.js as it is.
+    const night = { format: 1, date: "2026-10-10", built: "2026-10-10T09:00:00Z", sitting_term: "2025-2026",
+      new_by: "record-date", refs: { "bill:2026/HB9903": { items: [{ guid: "g", date: c.date, kind: "scheduled",
+        summary: `HB 9903-FN — ${c.line}`, meeting: c.meeting }] } } };
+    const r = checkNight(night, "2026-10-10");
+    assert.deepEqual(r.notes, []);
+    assert.equal(meetingWords(r.value.refs.get("bill:2026/HB9903").items[0].meeting, c.date), c.words);
+  });
+}
+
+test("a meeting's day is said where no date stands beside it: the subject and at a glance", () => {
+  const same = MEETINGS.find(c => c.form === "same day");
+  const m = digestEmail({ origin: SITE, frequency: "daily", date: TODAY, sections: [billWith([meetingItem(same)])],
+    names: pageNames(CURRENT), ...LINKS });
+  assert.equal(m.subject, "HB 9903-FN — Executive session set for Tuesday, October 6, 1:00 p.m., " +
+    "Legislative Office Building 305");
+  assert.match(m.text, /October 6, 2026 {2}HB 9903-FN — Executive session set for 1:00 p\.m\., Legislative Office Building 305\n/,
+    "beside its own date, the hour alone");
+  // A meeting still to come is "set for", so it is not also "Scheduled:".
+  const ahead = { ...same, date: "2026-10-14",
+    meeting: { ...same.meeting, date: "2026-10-14", what: "public hearing" } };
+  const later = digestEmail({ origin: SITE, frequency: "daily", date: TODAY,
+    sections: [billWith([meetingItem(ahead)])], names: pageNames(CURRENT), ...LINKS });
+  assert.match(later.text, /October 14, 2026 {2}HB 9903-FN — Hearing set for 1:00 p\.m\., Legislative Office Building 305\n/);
+  assert.match(later.subject, /^HB 9903-FN — Hearing set for Wednesday, October 14, 1:00 p\.m\./);
+  assert.doesNotMatch(later.text + later.subject, /Scheduled:/);
+  // A meeting the contract does not know how to read is left out, with a note.
+  const bad = checkNight({ format: 1, date: "2026-10-10", built: "2026-10-10T09:00:00Z", sitting_term: "2025-2026",
+    new_by: "record-date", refs: { "bill:2026/HB9903": { items: [{ guid: "g", date: "2026-10-06", kind: "exec",
+      summary: "HB 9903-FN — x", meeting: { what: "executive session", date: "10/13/2026" } }] } } }, "2026-10-10");
+  assert.equal(bad.value.refs.get("bill:2026/HB9903").items[0].meeting, null);
+  assert.equal(bad.notes.length, 1);
 });
 
 test("the week ahead lists what a meeting concerns without a run-on, and the sitting committee once", () => {

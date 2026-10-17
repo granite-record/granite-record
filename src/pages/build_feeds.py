@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.37
+# GRANITE_VERSION: 2026-09-04.38
 """
 Write RSS feeds so people can follow bills without a login.
 
@@ -508,13 +508,18 @@ def main():
             if on_record:
                 t = items[-1]
                 ek = FC.event_kind(e.get("text"), t[3][:10], TODAY)
+                # A line that sets a meeting goes to the email as the meeting
+                # too, which the email says in its own words (17 October
+                # 2026: "emails can use plain words for hearing entries"). The
+                # feed item above keeps the clerk's line.
                 it = FC.item(t[4], t[3][:10], ek,
                              t[0], path_of(url), b.get("term") or "",
                              study=FC.STUDY_REPORT.match(str(e.get("text") or "").strip()) is not None,
                              recommends=FC.study_says(e.get("text")),
                              milestone=FC.milestone(ek, e.get("text")),
                              plain=(lambda w: f"{b['n']} \u2014 {w}" if w else "")(
-                                 PA.plain(e.get("text") or "", b["id"], next_line=then.get(id(e), ""))))
+                                 PA.plain(e.get("text") or "", b["id"], next_line=then.get(id(e), ""))),
+                             meeting=PA.meeting(e.get("text")))
                 if it:
                     fc_items[t[4]] = it
 
