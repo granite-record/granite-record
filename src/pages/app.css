@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.280 */
+/* GRANITE_VERSION: 2026-09-07.281 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -7665,11 +7665,12 @@ font-weight:600;font-variant-numeric:tabular-nums;color:var(--ink-2)}
 /* ==== HUBS, PAGES (Polish 3, ws/hubs, 10 October 2026) =====================
    The hubs' page-only rules, scoped to body.pg as this region is. */
 
-/* THE OFFICIALS PAGE'S FIVE TABS (officials_tabs.py, build_pages.py; the
-   approved drawing, private/design/polish/proto/officials.html). The strip
-   is the town pages' (.twntabs), with each tab on one line and its count
-   quieter; on a phone the strip scrolls rather than wrapping "Statewide
-   Officials (9)" into three lines a word each. */
+/* THE OFFICIALS PAGE'S TABS (officials_tabs.py, build_pages.py; the
+   approved drawing, private/design/polish/proto/officials.html; Executive
+   Branch and Judicial Branch since 17 October 2026). The strip is the town
+   pages' (.twntabs), with each tab on one line and its count quieter; on a
+   phone the strip scrolls rather than wrapping "Executive Branch (26)" into
+   three lines a word each. */
 :where(body.pg) .oftabs [role=tab]{white-space:nowrap}
 :where(body.pg) .oftabs .ofn{font-weight:400;color:var(--ink-2)}
 /* Below 1024px the strip scrolls, closer, its edge saying so, as the drawing
@@ -7724,6 +7725,27 @@ margin:var(--sp-6) 0 0;max-width:51rem}
 margin:var(--sp-9) 0 0;padding-top:var(--sp-5);border-top:1px solid var(--rule);max-width:51rem}
 :where(body.pg) .ofintro{margin:0 0 var(--sp-8);max-width:51rem}
 :where(body.pg) .ofintro .ofwhy{margin:0 0 var(--sp-4)}
+/* THE DEPARTMENT HEADS AND THE SUPERIOR COURT, COMPACTLY (17 October 2026;
+   officials_tabs.departments and judicial). The person asked for the
+   commissioners "compactly", so they are a table of two columns -- the
+   department, linked to its site, and its head with the title under the
+   name -- which at 375px is two columns of about 160px and wraps inside
+   them. The page's table rules give a cell no side padding, so the first
+   column is held off the second. The Superior Court's justices are names
+   in columns of their own, the chief's title after the name. */
+:where(body.pg) .ofdepts{margin:0}
+:where(body.pg) .ofdepts th:first-child,:where(body.pg) .ofdepts td:first-child{
+padding-right:var(--sp-5);width:45%}
+:where(body.pg) .ofdepts .ofk{display:block;color:var(--ink-2);margin-top:var(--sp-1)}
+:where(body.pg) .ofdepts .mchip{margin:0}
+:where(body.pg) .ofname{color:var(--ink)}
+:where(body.pg) .ofnames{list-style:none;margin:0;padding:0;columns:14rem;
+column-gap:var(--sp-9);font-size:var(--t-ui);line-height:1.6}
+:where(body.pg) .ofnames li{break-inside:avoid;margin:0 0 var(--sp-2)}
+:where(body.pg) .ofnames .ofk{color:var(--ink-2)}
+:where(body.pg) .ofsub{font:600 var(--t-ui)/1.35 var(--sans);color:var(--ink);
+margin:var(--sp-6) 0 var(--sp-2)}
+:where(body.pg) .ofline{font-size:var(--t-ui);line-height:1.55;margin:0;max-width:51rem}
 /* THE MEMBERS-ELECT TAB (16 October 2026; officials_tabs.members_elect): the
    Senate, then the House under each county's name, a district a row -- its
    number and seats beside who it elected on a desktop, over them on a
