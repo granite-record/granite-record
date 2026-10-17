@@ -24,7 +24,9 @@ edited by hand or rewritten by a build; a correction goes in `corrections/`.
   `<year>-ge-state-senate-district-1-24*.xls`, under the names it gave them,
   are read by `src/parse/parse_sos_results.py` into
   `collected/election_<year>.json`. NH GRANIT's shapefiles go in `sources/gis/`
-  and are not tracked.
+  and are not tracked. Also the Senate's Public Guidance for Committee
+  Meetings of September 7, 2021, which `src/pages/guides.py` cites for how
+  the Senate takes sign-ins, written testimony and requests to speak.
 - `docket_abbrev.json` -- the General Court's own key to its docket's
   abbreviations, copied verbatim; read by `src/parse/referrals.py`.
 

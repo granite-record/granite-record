@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.7
+# GRANITE_VERSION: 2026-09-08.8
 """
 Do the civics pages' source links actually go anywhere?
 
@@ -58,7 +58,10 @@ def links():
     seen, out = set(), []
     for t in civics.TOPICS:
         for label, url in t["sources"]:
-            if url in seen:
+            # A source named and not linked -- the Senate's saved guidance,
+            # the editor's observed practice -- has no address to ask
+            # (17 October 2026).
+            if not url or url in seen:
                 continue
             seen.add(url)
             out.append((label, url, t["slug"]))

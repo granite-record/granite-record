@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.606
+# GRANITE_VERSION: 2026-09-04.607
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -35022,9 +35022,11 @@ def _guides_gate(BC, G, GS, RSA, S):
     import contextlib
     import io
     import build_date
-    on_record = off_disk = 0
+    on_record = off_disk = seen_only = 0
     for g in G.GUIDES:
-        loose = [u for u in G.outside(g) if u not in GS.cited()]
+        # The General Court's two sign-in forms are linked and never fetched,
+        # so they are civics.py's and not guide_sources.py's (17 October 2026).
+        loose = [u for u in G.outside(g) if u not in GS.cited() | G.GENERAL_COURT_LINKS]
         assert not loose, f"{g['slug']} links what guide_sources.py never reads, so no check covers it: {loose}"
         words = G.text(g)
         # A FIGURE ONLY AS A STATUTE STATES IT (the person, 12 October 2026:
@@ -35051,8 +35053,9 @@ def _guides_gate(BC, G, GS, RSA, S):
             if m:
                 assert f'href="/laws/{m.group(1).lower()}#s{m.group(2)}"' in words, \
                     f"{g['slug']}: a claim on {c['source']} is not linked to that section in the guide"
-            elif not (c.get("path") or c["source"].startswith("/")):
+            elif not (c.get("path") or c.get("observed") or c["source"].startswith("/")):
                 assert c["source"].startswith("https://"), f"{g['slug']}: a claim's source is {c['source']!r}"
+        seen_only += sum(1 for c in g["claims"] if c.get("observed"))
         # THE GENERAL COURT'S OWN DOCUMENTS, AND THIS SITE'S PAGES (17 October
         # 2026). A claim on a calendar, a journal, a bill or a table of the
         # Court's database names the document and the words of it that state
@@ -35097,6 +35100,26 @@ def _guides_gate(BC, G, GS, RSA, S):
         restyled = dict(page, words=['<span class="plain">added'])
         assert G.claim_faults(dict(probe_g, claims=[restyled]), probe)[0], \
             "words set in another style than the page's were found"
+        # OBSERVED PRACTICE (17 October 2026): a claim only the editor's own
+        # account supports carries its label, is shown to readers as practice
+        # -- named under Where This Comes From, and "in practice" in the words
+        # -- and never states a fee, a deadline of law or a number of seats.
+        seen = G.observed("Chairs often give each speaker two or three minutes.", "2099-01-01")
+        shown = dict(probe_g, claims=[seen], sources=[(G.OBSERVED, "")],
+                     glance="In practice chairs often limit speakers.")
+        assert G.claim_faults(shown, probe) == ([], 0, 0), \
+            f"an observed claim shown as practice was faulted: {G.claim_faults(shown, probe)[0]}"
+        for bad, why in ((dict(seen, source="A friend's account"), "labelled"),
+                         (G.observed("The sign-in fee is $5.", "2099-01-01"), "fee"),
+                         (G.observed("Sign-ins close at the deadline the statute sets.", "2099-01-01"),
+                          "deadline"),
+                         (G.observed("The committee room has 40 seats.", "2099-01-01"), "seats")):
+            got = G.claim_faults(dict(shown, claims=[bad]), probe)[0]
+            assert got and why in got[0], f"an observed claim that should fail with {why!r} gave {got}"
+        for unshown, why in ((dict(shown, sources=[]), "Where This Comes From"),
+                             (dict(shown, glance="Chairs often limit speakers."), "in practice")):
+            got = G.claim_faults(unshown, probe)[0]
+            assert got and why in got[0], f"observed practice not shown as such passed: {got}"
     finally:
         shutil.rmtree(probe, ignore_errors=True)
     cols = ["id", "TitleNo", "ChapterNo", "SectionNo", "Title", "Chapter", "Section", "SourceNote",
@@ -35181,7 +35204,8 @@ def _guides_gate(BC, G, GS, RSA, S):
     return "ok", (f"{len(G.GUIDES)} guides, {len(held)} held back until their sources are read; "
                   "unchecked held, checked published with its date, stale said, old copy removed; "
                   f"{on_record} claims found in the General Court's documents"
-                  + (f", {off_disk} on documents not on this disk" if off_disk else ""))
+                  + (f", {off_disk} on documents not on this disk" if off_disk else "")
+                  + f"; {seen_only} observed in practice, each labelled and shown as such")
 
 
 @check("build", "the changes files mark milestones, set a ballot beside its roll call, and let a "
