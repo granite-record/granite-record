@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.208
+# GRANITE_VERSION: 2026-09-05.209
 """
 Generate the faceted site from real General Court data.
 
@@ -7679,6 +7679,20 @@ def check_notes(notes, bills):
               "would exit zero having done it.")
 
 
+# ONE LABEL A NAME, CHAMBER AND PARTY (16 October 2026,
+# private/SITE_DATA_PROFILE.md, P3). bill_rollcalls asks vote_member for each
+# of 2.2 million ballots, and each asking ran member_labels -- person_name,
+# sort_name and three patterns -- for the same few thousand people. The pair
+# vote_member uses, the name drawn and the name sorted, depends only on the
+# name it settles on, the chamber and the party, so the pair is kept by those
+# three. The entry is built fresh around it on every call and the dict
+# member_labels returns is never kept, so no caller can change what the next
+# is given. The unnamed member is noted before the pair is looked up, so that
+# every ballot naming nobody is noted, kept pair or not. A key no dict can hold
+# is labelled afresh, as before.
+_VOTE_LABELS = {}
+
+
 def vote_member(m, body, legs, unnamed):
     """One member's entry in a roll call.
 
@@ -7704,11 +7718,17 @@ def vote_member(m, body, legs, unnamed):
     if not raw or raw.lower().startswith(("member #", "former member")):
         unnamed.add(str(m.get("member_id")))
         raw = f"Member #{m.get('member_id')}"
-    lab = member_labels(raw, chamber=(legs.get(m.get("member_id"), {})
-                                      .get("chamber") or body),
-                        party=m.get("party"))
-    return {"n": lab["display"], "s": lab["sort"] or sort_name(raw),
-            "p": m.get("party") or "X", "v": m.get("vote")}
+    chamber = legs.get(m.get("member_id"), {}).get("chamber") or body
+    key = (raw, chamber, m.get("party"))
+    try:
+        display, sort = _VOTE_LABELS[key]
+    except KeyError:
+        lab = member_labels(raw, chamber=chamber, party=m.get("party"))
+        display, sort = _VOTE_LABELS[key] = (lab["display"], lab["sort"] or sort_name(raw))
+    except TypeError:
+        lab = member_labels(raw, chamber=chamber, party=m.get("party"))
+        display, sort = lab["display"], lab["sort"] or sort_name(raw)
+    return {"n": display, "s": sort, "p": m.get("party") or "X", "v": m.get("vote")}
 
 
 MOVER_HONORIFIC = re.compile(r"^(?:Rep|Sen|Representative|Senator)s?\.?\s+", re.I)

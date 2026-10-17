@@ -13253,6 +13253,124 @@ def _placeholder(build_site_v2):
     return "ok", "no honorific, no party letter"
 
 
+@check("naming", "a roll call's member is labelled once for each name, chamber and party: what "
+       "is kept is what labelling afresh gives, the unnamed are noted on every ballot, and a "
+       "caller's change to an entry stays its own", needs=("build_site_v2",))
+def _vote_member_kept(build_site_v2):
+    """vote_member keeps the label pair it draws -- the name shown and the
+    name sorted -- by the name it settles on, the chamber and the party (16
+    October 2026, private/SITE_DATA_PROFILE.md, P3): bill_rollcalls asks it
+    for 2.2 million ballots of a few thousand people. Held here against the
+    plain path, member_labels asked for every ballot as vote_member did
+    before, on the fixture's ballots and roster and on the shapes a ballot's
+    name comes in: the roster's name where the vote has none, a placeholder
+    noted as unnamed, the roster's chamber over the vote's, a member who
+    changed party, a party in lower case or missing. Each ballot is asked
+    cold and again warm. A member who names nobody is noted in whatever set
+    the caller passes, kept pair or not; a caller that changes the entry it
+    was given does not change the next caller's; a chamber no dict can hold
+    fails as member_labels fails; and a member asked three times is labelled
+    once. Undone, the step is slower and nothing else would say so."""
+    B = build_site_v2
+    tmp = Path(tempfile.mkdtemp(prefix="gr-vote-member-"))
+    try:
+        _site_fixture(tmp)
+        votes = json.loads((tmp / "data" / "member_votes.json").read_text(encoding="utf-8"))
+        roster = json.loads((tmp / "data" / "legislators.json").read_text(encoding="utf-8"))
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    legs = {str(r["id"]): r for r in roster}
+    legs["377299"] = {"name": "Barnes, Jr., John", "chamber": "S"}
+    ballots = [(v, v.get("body") or "H") for v in votes]
+    jodi = {"member_id": "377204", "name": "Nelson, Jodi", "vote": "Yea"}
+    ballots += [
+        ({**jodi, "party": "D"}, "H"),                       # the same member, another party
+        ({**jodi, "party": "r"}, "H"),
+        ({**jodi, "party": None}, "H"),
+        ({**jodi, "party": "R", "name": "  Rep. Jodi  Nelson (R) "}, "H"),
+        ({**jodi, "party": "R"}, "S"),                       # the roster's chamber over the vote's
+        ({"member_id": "377207", "name": "", "party": "D", "vote": "Nay"}, "H"),
+        ({"member_id": "377299", "name": None, "party": "R", "vote": "Nay"}, "H"),
+        ({"member_id": "377299", "name": "Former Member", "party": "R", "vote": "Yea"}, "S"),
+        ({"member_id": "990001", "name": "Member #990001", "party": "R", "vote": "Yea"}, "H"),
+        ({"member_id": "990002", "name": "", "party": "", "vote": "Excused"}, "S"),
+        ({"member_id": "990003", "name": "Smith, John, Jr.", "party": "I", "vote": "Yea"}, "S"),
+        ({"member_id": "990003", "name": "Smith, John, Jr.", "party": "I", "vote": "Yea"}, "H"),
+    ]
+
+    def plain(m, body, legs, unnamed):
+        # vote_member as it read before 16 October 2026: member_labels asked
+        # for every ballot.
+        raw = (m.get("name") or "").strip()
+        if not raw or raw.lower().startswith(("member #", "former member")):
+            raw = (legs.get(m.get("member_id"), {}).get("name") or raw or "").strip()
+        if not raw or raw.lower().startswith(("member #", "former member")):
+            unnamed.add(str(m.get("member_id")))
+            raw = f"Member #{m.get('member_id')}"
+        lab = B.member_labels(raw, chamber=(legs.get(m.get("member_id"), {})
+                                            .get("chamber") or body), party=m.get("party"))
+        return {"n": lab["display"], "s": lab["sort"] or B.sort_name(raw),
+                "p": m.get("party") or "X", "v": m.get("vote")}
+    want_unnamed = set()
+    want = [plain(m, body, legs, want_unnamed) for m, body in ballots]
+    bad = []
+    B._VOTE_LABELS.clear()
+    for when in ("cold", "warm"):
+        unnamed = set()
+        got = [B.vote_member(m, body, legs, unnamed) for m, body in ballots]
+        for (m, body), g, w in zip(ballots, got, want):
+            if g != w:
+                bad.append(f"{when}: {m.get('name')!r} ({m.get('party')!r}, {body}) is {g}, "
+                           f"labelled afresh {w}")
+        if unnamed != want_unnamed:
+            bad.append(f"{when}: the unnamed are {sorted(unnamed)}, labelled afresh "
+                       f"{sorted(want_unnamed)}")
+    # Noted in every set it is handed, the pair kept or not.
+    for m, body in ballots:
+        mine, theirs = set(), set()
+        B.vote_member(m, body, legs, mine)
+        plain(m, body, legs, theirs)
+        if mine != theirs:
+            bad.append(f"{m.get('name')!r} asked again notes {sorted(mine)} as unnamed, not "
+                       f"{sorted(theirs)}")
+    # A caller's change to its entry stays its own.
+    for (m, body), w in zip(ballots, want):
+        entry = B.vote_member(m, body, legs, set())
+        entry.update(n="a name the caller changed", s="zz", p="Q")
+        again = B.vote_member(m, body, legs, set())
+        if again != w or again is entry:
+            bad.append(f"a caller that changes its entry changes the next caller's: "
+                       f"{m.get('name')!r} now reads {again}")
+            break
+    # A chamber no dict can hold fails as member_labels fails, not as a key.
+    odd = {"x": {"name": "Odd, Pat", "chamber": ["H"]}}
+    for fn in (plain, B.vote_member):
+        try:
+            fn({"member_id": "x", "name": "", "party": "R", "vote": "Yea"}, "H", odd, set())
+            bad.append(f"{fn.__name__} labels a chamber of ['H'] without complaint")
+        except AttributeError:
+            pass
+        except TypeError as e:
+            bad.append(f"a chamber no dict can hold is refused as a key: {e}")
+    asked = []
+    labels = B.member_labels
+    B.member_labels = lambda *a, **k: (asked.append(a), labels(*a, **k))[1]
+    try:
+        B._VOTE_LABELS.clear()
+        for _ in range(3):
+            B.vote_member(dict(jodi, party="R"), "H", legs, set())
+    finally:
+        B.member_labels = labels
+    if len(asked) != 1:
+        bad.append(f"a member asked three times is labelled by member_labels {len(asked)} "
+                   "times, not once: vote_member keeps no pair, or labels some other way, and "
+                   "bill_rollcalls labels 2.2 million ballots")
+    assert not bad, "\n".join(bad[:6])
+    return "ok", (f"{len(ballots)} ballots labelled cold and warm as afresh, {len(want_unnamed)} "
+                  "unnamed noted in every set; a caller's change to its entry stays its own; "
+                  "a member asked three times labelled once")
+
+
 # ========================================================== code: roll calls ==
 
 SUMMARY_LINE = ("2026|H|123|03/06/2026 11:12:09 AM|HB1442|197|151|24|23|0|0|"
