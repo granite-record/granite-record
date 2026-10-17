@@ -118,12 +118,14 @@ A **law** (`law:<chapter>`) is listed for every chapter of the statute
 table. Its items are the sitting term's bills that say they change the
 chapter -- each bill's own items, under the bill's own guids -- so a
 reader following RSA 91-A hears when a bill proposing to change it is filed,
-heard, voted on or ends. A law has no `ended`. **A law's item is new only
-where it is new to the record** (17 October 2026): an item its bill already
-carried is not news to the law's follower when it first enters the law's
-list -- because the bill came to cite the chapter, because another bill
-left room in the law's newest sixty, or because laws had just become
-followable. A topic's item older than the eight nights is held the same way.
+heard, voted on or ends. A law has no `ended`. **An old item is not new to a
+law** (17 October 2026): an item another record already carried, dated
+before the eight nights, is not news to the law's follower when it first
+enters the law's list -- because the bill came to cite the chapter, because
+another bill left room in the law's newest sixty, or because laws had just
+become followable. One dated within the eight nights is, so a reader who
+follows only the law still hears of this week's hearing. A topic's items are
+held the same way.
 
 ## `<YYYY-MM-DD>.json`: one night
 

@@ -11,8 +11,8 @@ import { readFileSync } from "node:fs";
 import vm from "node:vm";
 import { checkCurrent, checkNight } from "../../workers/follow/changes.js";
 import { parseKey } from "../../workers/follow/common.js";
-import { MARK, PALETTE, confirmationEmail, dateOnce, dayDate, digestEmail, longDate, newLinkEmail,
-         pageNames, welcomeEmail } from "../../workers/follow/mail.js";
+import { MARK, PALETTE, ballotWords, confirmationEmail, dateOnce, dayDate, digestEmail, longDate,
+         newLinkEmail, pageNames, welcomeEmail } from "../../workers/follow/mail.js";
 import { collect } from "../../workers/follow/sender.js";
 import { SITE, loadFixtures } from "./fakes.js";
 
@@ -236,6 +236,19 @@ test("a ballot and its motion are said in the site's words", () => {
   // The words are app.js's own for the three that are neither yes nor no.
   const app = readFileSync(new URL("../../src/pages/app.js", import.meta.url), "utf8");
   for (const w of ["Excused absence", "Absent, not excused", "Presiding"]) assert.ok(app.includes(`"${w}"`), w);
+});
+
+// ONLY A YES OR A NO IS "VOTED" ANYTHING (the review of 17 October 2026): the
+// older terms' "No vote recorded" read "voted no vote recorded".
+test("a ballot code that is not a yes or a no is never said as a vote", () => {
+  assert.equal(ballotWords("No vote recorded"), "no vote recorded");
+  assert.equal(ballotWords("NO VOTE RECORDED"), "no vote recorded");
+  assert.equal(ballotWords("Paired"), "recorded as “Paired”");
+  assert.equal(ballotWords(""), "no vote recorded");
+  assert.equal(ballotWords("No"), "voted no");
+  assert.equal(ballotWords("Nay"), "voted no");
+  for (const code of ["No vote recorded", "Paired", "Not Present", "Abstain", "?"])
+    assert.doesNotMatch(ballotWords(code), /^voted /, code);
 });
 
 test("an ending says what happened, and a follow's end in a reader's words", () => {

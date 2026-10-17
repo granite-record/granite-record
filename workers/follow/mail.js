@@ -564,15 +564,21 @@ function weekAhead(sections) {
 // sends the contract's short words (CHANGES_FORMAT.md, "vote"); the roll
 // call's own codes, which a build before this sent cut to twenty characters,
 // are read as well.
+//
+// ONLY A YES OR A NO IS "VOTED" ANYTHING (the review of 17 October 2026). A
+// code this does not know was printed after "voted", so the older terms'
+// "No vote recorded" (567 ballots) read "voted no vote recorded". It has its
+// own words now, and any other code is told as what the record calls it.
 const BALLOT = { yes: "voted yes", yea: "voted yes", no: "voted no", nay: "voted no",
   excused: "excused absence", "not voting/excused": "excused absence",
   "not voting": "absent, not excused", "not voting/not excused": "absent, not excused",
-  presiding: "presiding" };
+  presiding: "presiding", "no vote recorded": "no vote recorded" };
 export function ballotWords(ballot) {
-  const b = String(ballot ?? "").trim().toLowerCase();
+  const said = oneLine(ballot ?? "", 40);
+  const b = said.toLowerCase();
   const k = b.startsWith("not voting/not") ? "not voting/not excused"
     : b.startsWith("not voting/exc") ? "not voting/excused" : b;
-  return BALLOT[k] || `voted ${b}`;
+  return BALLOT[k] || (said ? `recorded as “${said}”` : "no vote recorded");
 }
 // One ballot beside its roll call: "voted yes; the motion passed, 201-163".
 function ballotLine(v) {
