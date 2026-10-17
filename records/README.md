@@ -20,7 +20,9 @@ edited by hand or rewritten by a build; a correction goes in `corrections/`.
   and polling-place list, county roster and district table, and NHDOT's
   directory of municipal officials. The readers in `src/towns/` turn them
   into the files in `collected/`. NH GRANIT's shapefiles go in `sources/gis/`
-  and are not tracked.
+  and are not tracked. Also the Senate's Public Guidance for Committee
+  Meetings of September 7, 2021, which `src/pages/guides.py` cites for how
+  the Senate takes sign-ins, written testimony and requests to speak.
 - `docket_abbrev.json` -- the General Court's own key to its docket's
   abbreviations, copied verbatim; read by `src/parse/referrals.py`.
 

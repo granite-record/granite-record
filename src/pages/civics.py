@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.48
+# GRANITE_VERSION: 2026-09-08.49
 """
 The topics of the civics section: their order, their names, and their prose.
 
@@ -914,18 +914,22 @@ FLOW_TESTIFY = [
          ""),
     ]),
     ("Sign In", [
-        ("Online, for or against", "Your name and town, whether you are a "
-         "member of the public or representing an organization, and which "
-         "side. You may attach written testimony.",
-         ("rec", "Counted, and published")),
+        # BOTH CHAMBERS (17 October 2026): the Senate's guidance and its
+        # calendars name its own online form, which this said nothing of.
+        ("Online, for or against", "In either chamber, on its own form: "
+         "your name and town, whether you are a member of the public or "
+         "representing an organization, and which side. In the House you may "
+         "attach written testimony.",
+         ("rec", "Counted, and part of the record")),
         ("Before the day ends", "The window opens once the hearing is "
-         "scheduled and closes at the end of the day of the hearing.", ""),
+         "scheduled and, in practice, closes at midnight at the end of the "
+         "day of the hearing.", ""),
     ]),
     ("At the Hearing", [
         ("Speaking is separate", "A different act from signing in, and the "
-         "chambers ask for it differently: a pink card in the House, a "
-         "column to tick on the Senate's sheet. The sponsor speaks first, "
-         "and a chair may set a time limit for everyone after.", "say"),
+         "chambers ask for it differently: a pink card in the House, the "
+         "sign-up sheet in the Senate's committee room. The sponsor speaks "
+         "first, and the chair decides whether to limit everyone after.", "say"),
         ("You need not speak", "A sign-in without a word said is in the "
          "record and is counted.", ""),
     ]),
@@ -1276,6 +1280,30 @@ at the end of the regular calendar. Taking one off has needed ten members in
 the House since January 2023, and two senators in the Senate since April
 2026; before that, one member's request was enough in either chamber.</p>
 
+<h2>A House Session Day, in Order</h2>
+<p><b>The House does not schedule its votes to a time.</b> Its calendar lists
+the bills for the day grouped by the committee that reported them, or on some
+days, such as a veto day, in order by number, and that is the order they are
+taken up in unless the House votes to take one up at a set point in the day,
+which is called making it a special order. In practice a session day runs like
+this:</p>
+<ol>
+<li><b>The consent calendar</b>, first. The bills taken off it are announced,
+and the rest are decided in one vote.</li>
+<li><b>The regular calendar</b>, committee by committee, sometimes broken by a
+lunch recess, with the rest of it after lunch.</li>
+<li><b>The bills taken off the consent calendar</b>, each debated and voted on
+by itself.</li>
+<li><b>Adjournment</b>, followed by <b>unanimous consent speeches</b>: any
+member may speak on something that matters to them, a constituent's story or
+a holiday, in remarks meant to be non-partisan. No vote is usually taken,
+unless a member objects to a speaker continuing; then the House votes on
+whether the member may go on, as it did a few times in 2026.</li>
+</ol>
+<p>A motion to reprimand or censure a member can be brought up at any point in
+the day. So a vote you are waiting for has no set time: the calendar tells you
+only where in the day's order its bill falls.</p>
+
 <h2>Two Bills, Followed All the Way</h2>
 <p>Both went through both chambers, and on each the closest roll call in the
 House did not split cleanly along party lines: a majority of Republicans voted
@@ -1432,7 +1460,9 @@ above are read from.</p>
 <p>The days each chamber actually sat, term by term:
 <a href="session/house.html">the House's session days</a> and
 <a href="session/senate.html">the Senate's</a>. Each day's page retells what
-the chamber did, from its own journal.</p>
+the chamber did, from its own journal. How a House session day runs, in order,
+is under <a href="learn/how-a-bill-becomes-law.html#s-a-house-session-day-in-order">How
+a Bill Becomes Law</a>.</p>
 <p><a href="/#state">The status box on the home page</a> says, in a line or
 two, whether the House and Senate are sitting and what comes next, and links
 back here.</p>""")
@@ -2281,15 +2311,20 @@ permanent committees bills are referred to, so a hearing can be watched as it
 happens.</p>
 
 <h2>Signing In</h2>
-<p>The House takes sign-ins online, before and during the hearing. You give
-your name and town, say whether you are a member of the public or representing
-an organization, and mark yourself supporting, opposing or neutral. You may
-attach written testimony. The committee is given the counts, and the sign-ins
-are published after the hearing.</p>
+<p><b>Both chambers take sign-ins online</b>, each through its own form on the
+General Court's website, linked below. You choose the hearing's day, the
+committee and the bill, say whether you are a member of the public, an elected
+official, a lobbyist or agency staff, and whom you represent if anyone, and
+mark yourself supporting, opposing or neutral. On the House's form you may
+attach written testimony; the Senate's tells you on its confirmation page how
+to send yours. In the House the committee is given the counts, and the
+sign-ins are published after the hearing.</p>
 <p>The window is not open indefinitely. It opens once the hearing is scheduled
-and published, and it closes at the end of the day of the hearing. If the bill
-passes one chamber and gets a hearing in the other, there is a second window on
-the same terms.</p>
+and published &mdash; the Senate's guidance says you can sign in on a bill as
+soon as its hearing is scheduled, and not before, and encourages signing in
+well ahead &mdash; and in practice it closes at midnight at the end of the day
+of the hearing, in both chambers. If the bill passes one chamber and gets a
+hearing in the other, there is a second window on the same terms.</p>
 <p>The sign-ins are not part of the bill's docket, the General Court's list of
 every action on it, and no link on the docket leads to them. They are kept in the General Court's own sign-in records, which
 its website offers as a lookup of its own.</p>
@@ -2297,29 +2332,72 @@ its website offers as a lookup of its own.</p>
 <h2>The Steps, in Order</h2>
 """ + flow_diagram(FLOW_TESTIFY, "How to testify, in order") + """
 
+<h2>When a Hearing Starts</h2>
+<p>In practice a committee meeting <b>never starts before the time its
+notice gives, and often starts later</b>. An earlier hearing in the same room
+may have run long with more speakers than expected, or a lunch break or a
+caucus before the meeting may have run over. The time in the notice is the
+earliest it will begin, not a promise, so plan to wait.</p>
+
 <h2>Speaking at the Hearing</h2>
-<p>Speaking is a separate act from signing in, and the two chambers ask for it
-differently. In the <b>House</b> you fill in a pink card. In the <b>Senate</b>
-there is one sign-in sheet for everything, with a column to tick if you want
-to speak.</p>
+<p>Speaking is a separate act from signing in, and spoken testimony is given
+in person. The two chambers ask for it differently:</p>
+<ul>
+<li>In the <b>House</b>, in practice there is a stack of pink cards on a table
+and a registration sheet near the front of the room. Anyone may sign the sheet
+with their name and whether they support or oppose the bill. To speak, fill
+out a pink card and hand it to a staff member or a committee member, who
+passes it to the chair.</li>
+<li>In the <b>Senate</b>, its guidance says to sign up on the sheets in the
+committee room on the day of the hearing, and its calendars tell those who
+wish to speak to sign up in person. In practice the sheet has a box to mark
+if you want to speak.</li>
+</ul>
 <p>The sponsor speaks first, then the committee generally hears anyone who has
-asked to. <b>No rule sets a time limit, but chairs may set one and often do</b>
-&mdash; commonly the sponsor is given as long as they need and everyone else
-about three minutes. A chair will also ask you to be brief when many people are
-waiting, and repeating what the last speaker said is the thing most likely to
-get you moved along.</p>
+asked to. <b>No rule sets a time limit</b>: whether to set one, and when a
+speaker's time is up, is the chair's call. With a few speakers there may be no
+limit at all. With many, more than about ten, chairs often give each person
+two or three minutes, the sponsor as long as they need, and ask speakers not
+to repeat points already made several times, so that each brings their own
+view.</p>
+<p>You may read from prepared notes or from your phone. Props are not allowed
+while you testify, and signs are allowed in the hallways but not in the
+committee room. Before closing the hearing the chair usually asks whether
+anyone who has not yet spoken would like to speak on the bill &mdash; a last
+chance for anyone who did not sign up &mdash; and if no one does, the hearing
+is closed.</p>
 <p>You do not have to be an expert. The most useful testimony is the most
 concrete: what this bill would do to you, in your town, said in particulars
 rather than in general &mdash; the cost, the date it would take effect, the
 number of people it would reach, whatever the specific is in your case.</p>
+
+<h2>Written Testimony</h2>
+<p>You can give a committee your testimony in writing, as well as or instead
+of speaking. The Senate's guidance says to send it by email through the
+&ldquo;Email All Committee Members&rdquo; link on the committee's page on the
+General Court's website, and <a href="committees.html">every committee's page
+here</a> has a button that does the same. On the House's online form you can
+also attach it to your sign-in. In practice you may bring it on paper too: one
+printed copy for each member of the committee, which they will take and pass
+around. Paper copies are optional.</p>
 
 <h2>What Happens After the Hearing</h2>
 <p>The committee votes on what to recommend at a separate meeting called an
 executive session. It may be days later, or straight after the hearing: Senate
 hearing notices often say an executive session may follow, and the House's
 rules let a committee hold one right after a noticed hearing without further
-notice. It is public and you may attend it, but no testimony is taken at it.
-The committee then reports its recommendation to the chamber, and
+notice. It is public and you may attend it, but no testimony is taken at it.</p>
+<p>An executive session can be hard to catch. Some notices set aside one block
+of time for it, and the chair then takes up the bills in it in any order. And
+many House committee notices carry this line: &ldquo;Executive session on
+pending legislation may be held throughout the day, time permitting, from the
+time the committee is initially convened.&rdquo; It means that once the
+committee has met that day, it may vote on any bill it has pending at any
+point before it adjourns, and the notice gives no time for any one vote. To
+see a particular vote you may have to watch the whole day, and you may learn
+when it happened only afterward. House calendars have printed the line since
+at least February 1997, and still do.</p>
+<p>The committee then reports its recommendation to the chamber, and
 where it was split the majority and the minority each write a report. Whether
 you spoke or only signed in, the counts and any written testimony stay in the
 record.</p>
@@ -2331,8 +2409,10 @@ recorded &mdash; [[hearing_video_bills]] bills[[hearing_video_since]]
 was taken up when that moment has been found.
 <a href="committees.html">A committee's page</a> lists every day it met and
 what it heard.</p>
-<p>Bills also carry the sign-in counts: how many people registered supporting,
-opposing and neutral. Names and written testimony are not published here.</p>""")
+<p>Bills also carry the House's online sign-in counts: how many people
+registered supporting, opposing and neutral. The Senate's online sign-ins are
+not among the General Court's tables this site reads. Names and written
+testimony are not published here.</p>""")
 
 
 BODY_REPS = """
@@ -2545,6 +2625,22 @@ SRC_FIND_MEMBER = ("Find your legislators, by town",
                    "/directory")
 SRC_TESTIFY = ("House online testimony sign-in",
                GC + "/house/committees/remotetestimony/")
+# The Senate's own sign-in form. The person supplied the address on 17
+# October 2026, and Senate Calendar No. 20 of May 8, 2025 prints it beside
+# the budget hearing's notice; the Senate's guidance of 2021 gives the same
+# path on the General Court's old host. Linked, never fetched from here.
+SRC_SENATE_TESTIFY = ("Senate online sign-in",
+                      GC + "/remotecommittee/senate.aspx")
+# TWO SOURCES WITH NO ADDRESS (17 October 2026). The Senate's written
+# guidance for the public is saved byte for byte in records/sources/, and no
+# address of it is known that this project has read, so it is named and not
+# linked. The other is the person's own account of how hearings and session
+# days run, which says plainly whose it is: the pages state it as practice
+# ("in practice", "usually"), never as a rule. build_civics.sources_list draws
+# a source with no address as a row with no link.
+SRC_SENATE_GUIDANCE = ("Public Guidance for Committee Meetings, September 7, 2021 "
+                       "(New Hampshire Senate)", "")
+SRC_OBSERVED = ("Observed practice, reported by the site's editor, October 2026", "")
 SRC_SCHEDULE = ("House meeting schedule", GC + "/house/schedule/dailyschedule.aspx")
 SRC_SENATE_SCHEDULE = ("Senate meeting schedule",
                        GC + "/senate/schedule/dailyschedule.aspx")
@@ -2602,7 +2698,7 @@ ELECTIONS_GROUP = "Elections and the Constitution"
 SOURCE_GROUPS = [
     ("The General Court", [SRC_RSA, SRC_RULES, SRC_HOUSE_RULES, SRC_SENATE_RULES,
                            SRC_CALENDARS, SRC_SENATE_CALENDARS, SRC_SCHEDULE,
-                           SRC_SENATE_SCHEDULE, SRC_TESTIFY, SRC_JLCAR]),
+                           SRC_SENATE_SCHEDULE, SRC_TESTIFY, SRC_SENATE_TESTIFY, SRC_JLCAR]),
     ("The Governor and State Agencies", [SRC_GOVERNOR, SRC_COUNCIL, SRC_AGENCIES, SRC_DOJ]),
     ("The Courts", [SRC_COURTS]),
     (ELECTIONS_GROUP, [SRC_SOS, SRC_CONSTITUTION]),
@@ -2634,7 +2730,7 @@ TOPICS = [
           "the several places along the way where a bill can stop.",
           BODY_BILL,
           [SRC_HOUSE_RULES, SRC_SENATE_RULES, SRC_CALENDARS,
-           SRC_CONSTITUTION]),
+           SRC_CONSTITUTION, SRC_OBSERVED]),
 
     # NEXT AFTER HOW A BILL BECOMES LAW, which ends at the Governor: this is
     # the same course laid on the calendar, and the home page's status box
@@ -2709,7 +2805,8 @@ TOPICS = [
           "The most open part of the process and the least known. Anyone may "
           "speak on any bill, and you do not need to be invited.",
           BODY_TESTIFYING,
-          [SRC_TESTIFY, SRC_SCHEDULE, SRC_SENATE_SCHEDULE, SRC_CALENDARS]),
+          [SRC_TESTIFY, SRC_SENATE_TESTIFY, SRC_SCHEDULE, SRC_SENATE_SCHEDULE, SRC_CALENDARS,
+           SRC_SENATE_CALENDARS, SRC_SENATE_GUIDANCE, SRC_OBSERVED]),
 
     topic("your-representatives", "Finding Your Representatives", PART,
           "By town and by district, and what the district numbering means.",

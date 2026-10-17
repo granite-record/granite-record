@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.58
+# GRANITE_VERSION: 2026-09-08.59
 """
 The civics section: a hub and one page per topic, in order.
 
@@ -928,8 +928,19 @@ def sources_list(sources):
     pages already hold what it gave -- and sending a reader to our own page
     in a new tab, marked as though it were elsewhere, tells them something
     untrue about where they are going. Its row says Granite Record.
+
+    A SOURCE WITH NO ADDRESS IS NAMED, NOT LINKED (17 October 2026). The
+    Senate's written guidance, kept byte for byte in records/sources/, and the
+    editor's own account of how hearings run in practice have no page to send
+    a reader to. The row names the source, and the bracket at the end of its
+    name, where there is one, says who published it.
     """
     def one(label, u):
+        if not u:
+            m = re.match(r"^(.*?) \(([^()]*)\)$", label)
+            name, meta = (m.group(1), m.group(2)) if m else (label, "Granite Record")
+            return (f'<li class="l-doc"><span>{E(name)}</span>'
+                    f'<span class="l-dmeta">{E(meta)}</span></li>')
         if not u.startswith("http"):
             return (f'<li class="l-doc"><a href="{E(u)}">{E(label)}</a>'
                     f'<span class="l-dmeta">Granite Record</span></li>')
@@ -1413,7 +1424,9 @@ def build_guides(site, tmpl, base, drafts=False):
     marked) and returns (published, urls). Says why each one held back is."""
     import build_rsa as BR
     import guide_sources
-    fetched = guide_sources.cited()
+    # The General Court's two sign-in forms, which a guide links and nothing
+    # here fetches, are civics.py's (guides.GENERAL_COURT_LINKS says why).
+    fetched = guide_sources.cited() | G.GENERAL_COURT_LINKS
     table = None
     try:
         import rsa

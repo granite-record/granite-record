@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-11.5
+# GRANITE_VERSION: 2026-10-11.6
 """
 The official pages the how-to guides cite, onto this disk, to check them by.
 
@@ -191,6 +191,19 @@ OTHER = {
 }
 
 
+# THE GENERAL COURT'S OWN PAGES ARE NOT LISTED HERE (17 October 2026). The
+# hearing and testimony guides link the House's and the Senate's online
+# sign-in forms, and a reader uses them on the General Court's site; nothing
+# in this project fetches them. Their addresses are civics.py's
+# (SRC_TESTIFY and SRC_SENATE_TESTIFY), where check_civics_links.py, under
+# the refusal guard and only when a person starts it, asks whether they still
+# answer, and guides.GENERAL_COURT_LINKS adds them to what a guide may link.
+# They are kept out of this file because it makes requests: a fetching script
+# that names the General Court's address is held to the refusal guard, and
+# this one must never ask that server -- main() refuses its host outright.
+GENERAL_COURT_HOST = "gc.nh.gov"
+
+
 def cited():
     """Every address a guide may cite: the state pages and OTHER."""
     return {u for d in (SOURCES, OTHER) for us in d.values() for u in us}
@@ -219,6 +232,11 @@ def main():
     bad = [u for _g, u in pages if not state_host(u)]
     if bad:
         raise SystemExit("not a state agency's page: " + ", ".join(bad))
+    # The General Court's host ends in nh.gov like any agency's, so it is
+    # refused by name: this script never asks that server (17 October 2026).
+    court = [u for _g, u in pages if u.split("/")[2].lower().endswith(GENERAL_COURT_HOST)]
+    if court:
+        raise SystemExit("the General Court's server is never asked from here: " + ", ".join(court))
     if a.list:
         for g, u in pages:
             print(f"{g:16} {u}")

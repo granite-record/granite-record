@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-11.13
+# GRANITE_VERSION: 2026-10-11.14
 """
 The how-to guides: their words, their sources, and what each was checked
 against. Read by build_civics.py, which draws them on the Resources hub's
@@ -31,6 +31,21 @@ memory or another site, because the state's web host refuses this project's
 cloud machines and a guess is exactly what the plan forbids. A claim is
 checked when its "checked" date is set, by the person or the session that
 read the source, and not before.
+
+OBSERVED PRACTICE IS A SOURCE OF ITS OWN KIND (17 October 2026). How a
+hearing runs in the room -- the House's pink cards, a chair's time limit, the
+last call before the hearing closes, a meeting that starts late -- is written
+in no rule or notice on this disk, and the person, who attends hearings and
+session days, set it down first-hand. Such a claim is an observed() one: it
+carries the label OBSERVED, never a document's name; the guide shows it to
+readers as practice, by saying "in practice" and by naming OBSERVED under
+Where This Comes From; and it may never state a fee, a deadline or any other
+requirement of law, or a number of seats, which only a statute, a rule or an
+official count can support. Where an official document says the same thing,
+the guide cites the document instead -- the Senate's own guidance for the
+public, saved in records/sources/, confirms its online sign-in and its
+sign-up sheets, so those are record() claims and only the box on the sheet
+for speaking is observed.
 
 A GUIDE IS PUBLISHED WHEN EVERY CLAIM IN IT IS CHECKED and every outside
 address it links is one guide_sources.py reads, so the laptop's run checks
@@ -64,6 +79,11 @@ TABLE = "2026-09-08"
 
 
 import re
+
+# The General Court's addresses are civics.py's, the one file that holds them
+# (17 October 2026): a guide that links the chambers' sign-in forms takes them
+# from there rather than writing them a second time.
+import civics
 
 
 def claim(says, source, checked=None):
@@ -960,18 +980,24 @@ LMI = guide(
 # names the page of this site that shows or explains it, and the guide must
 # link that page, so a reader can see for themselves.
 #
-# What these guides do NOT say, because only the General Court's website says
-# it and no document on this disk does: when the House's online sign-in
-# closes, how a speaker asks to be heard in each chamber, and whether the
-# Senate takes sign-ins online. Testifying and Attending is linked for the
-# first two; the third is left unsaid. Nor does a guide cite House Rule 44's
-# requirement of a hearing on every bill, or its notice period: the adopted
-# text of the current rules is not on this disk, only amendments to them
-# that were tabled or failed, and an amendment's words are not the rule's
-# (the fact-check of 17 October 2026).
+# WHAT THE FIRST DRAFT LEFT UNSAID, AND WHAT SAYS IT NOW (17 October 2026).
+# When the online sign-ins close, how a speaker asks to be heard in each
+# chamber, and whether the Senate takes sign-ins online were left out at
+# first, because no document on this disk said them. The Senate's own Public
+# Guidance for Committee Meetings (September 7, 2021), which the person saved
+# byte for byte into records/sources/, says the third and part of the second,
+# and Senate Calendar No. 20 of 2025 prints its form's address; the rest is
+# the person's first-hand account, cited as observed() practice. Still not
+# cited: House Rule 44's requirement of a hearing on every bill, or its notice
+# period, because the adopted text of the current rules is not on this disk,
+# only amendments to them that were tabled or failed, and an amendment's words
+# are not the rule's (the fact-check of 17 October 2026).
 # ---------------------------------------------------------------------------
+# The chambers' own guidance for the public, saved in records/sources/ under
+# the chamber's name, is the General Court's document as much as a calendar.
 RECORD_HOMES = ("calendars/", "calendars_senate/", "journals/", "journals_senate/",
-                "legislation/", "bill_text/", "db/", "Members.txt")
+                "legislation/", "bill_text/", "db/", "Members.txt",
+                "records/sources/senate-", "records/sources/house-")
 READ = "2026-10-17"   # the day these documents were read for the four guides below
 
 
@@ -991,6 +1017,31 @@ def ours(says, page, checked=None):
     return claim(says, page, checked)
 
 
+# OBSERVED PRACTICE (the docstring says what it is). The label is the one
+# readers see under Where This Comes From, civics.py's, so a guide and a
+# Learn page name the same source in the same words.
+OBSERVED = civics.SRC_OBSERVED[0]
+# What an observed claim may never state, with the word a fault names it by:
+# a fee or any figure of money or share, a deadline or other requirement of
+# law, a number of seats. Each is a statute's, a rule's or an official
+# count's to say, never one person's account of a room.
+NEVER_OBSERVED = (
+    ("fee", re.compile(r"\bfees?\b|" + FIGURE.pattern, re.I)),
+    ("deadline set by law", re.compile(r"\bdeadlines?\b|\b(?:by|under|in) (?:law|statute)\b|"
+                                       r"\brequired by\b|\bRSA\b|\bRule \d", re.I)),
+    ("number of seats", re.compile(r"\bseats?\b", re.I)),
+)
+
+
+def observed(says, checked=None):
+    """A claim only the person's own first-hand account supports: how a
+    hearing or a session day runs in practice. It carries OBSERVED as its
+    source, and claim_faults holds it to the rules above."""
+    c = claim(says, OBSERVED, checked)
+    c["observed"] = True
+    return c
+
+
 def links(g):
     """Every page of this site the guide links, without its #section."""
     found = ({u for _l, u in g["sources"]} | {u for _l, u in g["see"]}
@@ -1001,9 +1052,21 @@ def links(g):
 
 def _document(path):
     """A document as it is, and its words: a saved page's with its markup
-    taken off, any other file's as it is."""
+    taken off, a PDF's as pdfplumber reads them, any other file's as it is.
+    None where a PDF cannot be read here, which counts as not on this disk."""
     import html
     from pathlib import Path
+    # A PDF IS READ FOR ITS WORDS (17 October 2026): the Senate's guidance is
+    # kept as the PDF it was published as, so its words are taken from the
+    # PDF itself, page by page, and never from a copy typed out of it.
+    if path.lower().endswith(".pdf"):
+        try:
+            import pdfplumber
+        except ImportError:
+            return None
+        with pdfplumber.open(path) as pdf:
+            words = "\n\f".join(p.extract_text() or "" for p in pdf.pages)
+        return words, words
     raw = Path(path).read_text(encoding="utf-8", errors="replace")
     if path.endswith((".html", ".htm")):
         return raw, html.unescape(re.sub(r"<[^>]+>", " ", raw))
@@ -1021,14 +1084,32 @@ def _says(words, document):
 
 
 def claim_faults(g, root="."):
-    """What is wrong with the guide's record and site claims, and how many
+    """What is wrong with the guide's record, site and observed claims, and how many
     record claims a document on this disk confirmed: (faults, confirmed,
     absent). A document is read once, and a large table is searched as it
     is, with the words' spaces matching any whitespace, so that the House's
     100 MB sign-in table costs a second and not a copy of itself."""
     from pathlib import Path
     faults, confirmed, absent, read = [], 0, 0, {}
+    # OBSERVED PRACTICE IS SHOWN AS PRACTICE (17 October 2026): a guide that
+    # rests anything on the editor's account names it under Where This Comes
+    # From and says "in practice" in its own words, so a reader can tell a
+    # rule from what usually happens.
+    if any(c.get("observed") for c in g["claims"]):
+        if OBSERVED not in {label for label, _u in g["sources"]}:
+            faults.append(f"it rests on observed practice and does not name {OBSERVED!r} "
+                          "under Where This Comes From")
+        if "in practice" not in text(g).lower():
+            faults.append("it rests on observed practice and never says 'in practice' to its readers")
     for c in g["claims"]:
+        if c.get("observed"):
+            if c["source"] != OBSERVED:
+                faults.append(f"an observed claim is labelled {c['source']!r}, not {OBSERVED!r}")
+            for what, pattern in NEVER_OBSERVED:
+                if pattern.search(c["says"]):
+                    faults.append(f"an observed claim states a {what}, which no account of a room "
+                                  f"can support: {c['says'][:70]}")
+            continue
         if c.get("path"):
             if not c["path"].startswith(RECORD_HOMES):
                 faults.append(f"{c['source']}: {c['path']} is not one of the General Court's documents")
@@ -1042,6 +1123,9 @@ def claim_faults(g, root="."):
                 continue
             if c["path"] not in read:
                 read[c["path"]] = _document(str(f))
+            if read[c["path"]] is None:      # a PDF, and no pdfplumber here to read it
+                absent += 1
+                continue
             gone = [w for w in c["words"] if not _says(w, read[c["path"]])]
             if gone:
                 faults.append(f"{c['source']} ({c['path']}) does not say: " + "; ".join(gone))
@@ -1072,6 +1156,26 @@ VERSIONS = "db/DocumentVersion.psv"
 MEMBERS = "Members.txt"
 DB = "the General Court's database, as copied to this disk on September 8, 2026"
 DOCS = "/calendar.html#cdocs"   # the Calendar page's Calendars & Journals: every build writes it
+# Read for the hearing and testimony guides' second pass (17 October 2026).
+# The first House calendar on this disk to print the executive-session line
+# "may be held throughout the day" in full (HC 21 of five days earlier has a
+# shorter form), and the first of 2026 to print it.
+HC23_97 = "calendars/1997/HC023.txt"
+HC2_26 = "calendars/2026/HC002.txt"
+HC7_21 = "calendars/2021/HC007.txt"
+SC20_25 = "calendars_senate/2025/SC020.txt"
+SENATE_GUIDANCE = "records/sources/senate-public-guidance-committee-meetings-2021-09-07.pdf"
+GUIDANCE = "New Hampshire Senate, Public Guidance for Committee Meetings, September 7, 2021"
+
+# THE GENERAL COURT'S OWN PAGES A GUIDE MAY LINK (17 October 2026): the two
+# chambers' online sign-in forms, which a reader uses on that site. They are
+# civics.py's, where check_civics_links.py -- under the refusal guard, and only
+# when a person starts it -- asks whether they still answer. They are not in
+# guide_sources.py, which makes requests: nothing here asks the General
+# Court's server, and a fetching script that named its address would be one.
+HOUSE_SIGNIN = civics.SRC_TESTIFY[1]
+SENATE_SIGNIN = civics.SRC_SENATE_TESTIFY[1]
+GENERAL_COURT_LINKS = {HOUSE_SIGNIN, SENATE_SIGNIN}
 
 # The rules both chambers work under in 2025-2026, which more than one guide
 # rests on. The Senate printed its rules whole on Organization Day 2022 and
@@ -1092,13 +1196,28 @@ EXEC_MAY_FOLLOW = [
            HJ2, ["Executive Sessions may also be held without further notice if held immediately after "
                  "the close of a duly noticed public hearing",
                  "amendment to House Rule 44 (b) was adopted"], READ)]
+# The Senate's online sign-in, as its own calendar of 2025 prints it. The
+# words are built from the address the guides link, so the day civics.py's
+# address and the calendar's part, this claim fails (17 October 2026).
+SENATE_ONLINE = record(
+    "The Senate takes positions online, at the address the guides link.",
+    "Senate Calendar No. 20, May 8, 2025, p. 24", SC20_25,
+    ["Individuals looking to register their position may do so remotely",
+     "Link: " + SENATE_SIGNIN], READ)
+# The line many House committee notices end with, in the calendars' words.
+EXEC_THROUGHOUT = ("Executive session on pending legislation may be held throughout the day, time "
+                   "permitting, from the time the committee is initially convened")
 
 
 # ---------------------------------------------------------------------------
 # ATTENDING AND SPEAKING AT A PUBLIC HEARING (17 October 2026). Testifying
 # and Attending explains hearings at length; this is the same ground as a
 # sequence of things to do, and it links that page for what it already says
-# well -- the buildings, and how each chamber takes a request to speak.
+# well -- the buildings, and how each chamber takes a request to speak. The
+# second pass of the same day added what a reader meets in the room -- the
+# pink card, the Senate's sign-up sheet, the chair's time and last call, a
+# meeting that starts late -- from the Senate's guidance and the person's
+# first-hand account, the second cited as practice.
 # ---------------------------------------------------------------------------
 HEARING = guide(
     "attend-a-hearing", "How to Attend and Speak at a Public Hearing",
@@ -1108,12 +1227,17 @@ HEARING = guide(
     "Senate&rsquo;s rules require one on every bill sent to a committee. You may attend and "
     "testify. Find the hearing in the chamber&rsquo;s "
     "calendar or on the bill&rsquo;s page here, go to the room the notice names or watch the "
-    "live stream, and tell the committee you want to speak. If you cannot go, you can send "
-    "your position in writing instead.",
+    "live stream, and ask to speak when you arrive: on a pink card in the House, on the "
+    "sign-up sheet in the committee room in the Senate. In practice a hearing never starts "
+    "before the time in its notice, and often starts later. If you cannot go, you can sign "
+    "in online or send your position in writing instead.",
     [box("Find the hearing: the committee, the room, the day, and the time for your bill."),
      ask("Can you go in person?",
-         [("Yes", "Go to the room, and tell the committee you want to speak."),
-          ("No", "Watch the live stream, and send your position in writing.")]),
+         [("Yes", "Go to the room, and ask to speak: a pink card in the House, the sign-up sheet "
+                  "in the Senate."),
+          ("No", "Watch the live stream, and sign in online or send your position in writing.")]),
+     box("When the chair calls you, speak briefly. Before closing, the chair asks whether anyone "
+         "else wishes to speak."),
      box("Afterward, the committee votes on what to recommend, sometimes the same day.")],
     [step("Find the hearing",
           "<p>A hearing is announced in the calendar of the chamber holding it. The notice names "
@@ -1124,7 +1248,11 @@ HEARING = guide(
           "<p>On this site, a bill&rsquo;s page lists its hearings with the day, time and room, "
           "and the Calendar shows the week&rsquo;s hearings by committee. Follow on a "
           "bill&rsquo;s page gives you its new actions as they are recorded, and the site keeps a "
-          "feed of hearings coming up as well.</p>",
+          "feed of hearings coming up as well.</p>"
+          "<p>In practice a committee meeting never starts before the time its notice gives, "
+          "and it often starts later: an earlier hearing in the same room ran long with more "
+          "speakers than expected, or a lunch break or a caucus before the meeting ran over. "
+          "Plan to wait.</p>",
           actions=[("This week's hearings", "/calendar.html"), ("Find a bill", "/bills.html")]),
      step("Decide how to take part",
           "<p>Legislative committee meetings, executive sessions included, are open to the "
@@ -1134,32 +1262,68 @@ HEARING = guide(
           "<li><b>watch</b>: the House and the Senate live stream their standing "
           "committees&rsquo; hearings, and a bill&rsquo;s page here links the recording where "
           "there is one; or</li>"
-          "<li><b>send your position in writing</b>, with or without going: online for a House "
-          "hearing, or by email to the committee.</li></ul>",
+          "<li><b>sign in or send your position in writing</b>, with or without going: the House "
+          "and the Senate both take sign-ins online, and written testimony goes to the "
+          "committee&rsquo;s members by email, or on paper at the hearing.</li></ul>",
           actions=[("The buildings", "/learn/testifying.html#s-how-hearings-are-announced"),
                    ("Submit testimony", "/guides/submit-testimony.html")],
           law=["RSA 91-A:1-a, VI(a)", "RSA 91-A:2, II"]),
      step("Ask to speak",
-          "<p>Tell the committee you want to speak when you arrive. The House and the Senate each "
-          "ask for it their own way, and Testifying and Attending explains both. When the chair "
-          "calls you, say who you are, where you live and whether you speak for an "
-          "organization, then whether you support or oppose the bill, and why. The most useful "
-          "testimony is specific: what the bill would do to you, in your town.</p>",
+          "<p>Speaking is a separate step from signing in, and spoken testimony is given in "
+          "person. Each chamber asks for it its own way:</p><ul>"
+          "<li><b>In the House</b>, in practice there is a stack of pink cards on a table and a "
+          "registration sheet near the front of the room. Anyone may sign the sheet with their "
+          "name and whether they support or oppose the bill. To speak, fill out a pink card and "
+          "hand it to a staff member or a committee member, who passes it to the chair.</li>"
+          "<li><b>In the Senate</b>, sign up on the sheet in the committee room on the day of "
+          "the hearing: the Senate&rsquo;s guidance says so, and its notices tell anyone who "
+          "wishes to speak to sign up in person. In practice the sheet has a box to mark if you "
+          "want to speak.</li></ul>",
           actions=[("Speaking at the hearing", "/learn/testifying.html#s-speaking-at-the-hearing")]),
+     step("When you speak",
+          "<p>When the chair calls you, say who you are, where you live and whether you speak "
+          "for an organization, then whether you support or oppose the bill, and why. The most "
+          "useful testimony is specific: what the bill would do to you, in your town.</p>"
+          "<p>In practice:</p><ul>"
+          "<li><b>The chair sets the time.</b> Whether to limit speakers, and when to stop one, "
+          "is the chair&rsquo;s call. With a few speakers there may be no limit. With many, "
+          "more than about ten, chairs often give each person two or three minutes and ask "
+          "speakers not to repeat points already made several times, so that each brings their "
+          "own view.</li>"
+          "<li><b>Notes are fine.</b> You may read from prepared notes or from your phone.</li>"
+          "<li><b>No props.</b> Props are not allowed while you testify. Signs are allowed in "
+          "the hallways, not in the committee room.</li>"
+          "<li><b>Paper copies are optional.</b> To hand the committee written testimony, bring "
+          "one printed copy for each member; they will take them and pass them around.</li>"
+          "<li><b>The last call.</b> Before closing the hearing, the chair usually asks whether "
+          "anyone who has not yet spoken would like to speak on the bill: a last chance for "
+          "anyone who did not sign up. If no one does, the hearing is closed.</li></ul>",
+          actions=[("Written testimony", "/guides/submit-testimony.html")]),
      step("After the hearing",
           "<p>The committee votes on what to recommend at an executive session, which you may "
           "watch. It can follow the hearing directly: Senate notices often say so, and a House "
-          "committee may hold one right after a noticed hearing. The recommendation, such as "
-          "Ought to Pass or Inexpedient to Legislate, goes to the full chamber. If the bill "
-          "passes, a committee of the other chamber holds its own hearing on it.</p>"
+          "committee may hold one right after a noticed hearing. Some notices give one block of "
+          "time to &ldquo;executive session on pending legislation&rdquo;, and in practice the "
+          "chair then takes up the bills in any order.</p>"
+          "<p>Many House committee notices also say that an &ldquo;executive session on pending "
+          "legislation may be held throughout the day, time permitting, from the time the "
+          "committee is initially convened&rdquo;. That means the committee may vote on any bill "
+          "it has pending at any point in that day, so the notice gives the vote no time, and "
+          "you may learn when it happened only afterward. House calendars have printed that "
+          "line since at least February 1997.</p>"
+          "<p>The recommendation, such as Ought to Pass or Inexpedient to Legislate, goes to the "
+          "full chamber. If the bill passes, a committee of the other chamber holds its own "
+          "hearing on it.</p>"
           "<p>In the Senate, the committee&rsquo;s hearing report lists who supported, opposed "
           "or was neutral on the bill and summarizes the testimony.</p>",
           actions=[("How a bill becomes law", "/learn/how-a-bill-becomes-law.html")])],
-    [("House Calendars No. 8 (2025) and No. 6 (2026), Senate Calendar No. 3 (2026), House Journal "
-      "No. 2 (2025) and Senate Journals No. 1 (2022 and 2024): open them from the Calendar's "
-      "Calendars & Journals", DOCS),
+    [("House Calendars No. 23 (1997), No. 7 (2021), No. 8 (2025) and Nos. 2 and 6 (2026), Senate "
+      "Calendars No. 20 (2025) and No. 3 (2026), House Journal No. 2 (2025) and Senate Journals "
+      "No. 1 (2022 and 2024): open them from the Calendar's Calendars & Journals", DOCS),
+     civics.SRC_SENATE_GUIDANCE,
      ("Testifying and Attending", "/learn/testifying.html"),
-     ("Right-to-Know Law, RSA 91-A", "/laws/91-a")],
+     ("Right-to-Know Law, RSA 91-A", "/laws/91-a"),
+     (OBSERVED, "")],
     ["91-A"],
     [record("Senate Rule 4-1: a hearing on each bill referred to a committee, advertised at least 4 "
             "days before in the Senate Calendar.", "Senate Journal No. 1, December 7, 2022, p. 21",
@@ -1197,7 +1361,52 @@ HEARING = guide(
      ours("The buildings the notices name; the chambers take requests to speak differently; the "
           "most useful testimony is concrete.", "/learn/testifying.html", READ),
      ours("A bill that passes is referred to a committee of the second chamber, which holds its own "
-          "public hearing.", "/learn/how-a-bill-becomes-law.html", READ)]
+          "public hearing.", "/learn/how-a-bill-becomes-law.html", READ),
+     # The second pass (17 October 2026): the Senate's guidance and notices,
+     # the House's pink card, the executive-session line, and the practice.
+     SENATE_ONLINE,
+     record("The Senate's guidance: spoken testimony is given in person at the State House complex, "
+            "signing up on the sheets in the committee rooms on the day of the hearing.",
+            GUIDANCE, SENATE_GUIDANCE,
+            ["All spoken testimony before the committee will be done in person at the State House "
+             "Complex", "please use the sign-up sheets provided in the committee rooms on the day of "
+                        "the hearing"], READ),
+     record("A Senate notice: those who wish to speak sign up in person.",
+            "Senate Calendar No. 20, May 8, 2025, p. 24", SC20_25,
+            "Individuals who wish to speak will need to sign up in person", READ),
+     record("The House's ways of taking part in a hearing include a pink card and a blue sheet, for "
+            "which the remote hearings of 2021 needed equivalents.",
+            "House Calendar No. 7, January 15, 2021, p. 1", HC7_21,
+            "hearing participation (pink card equivalent, blue sheet equivalent", READ),
+     record("Some notices give one block of time to executive session on pending legislation, "
+            "naming no bill.", "Senate Calendar No. 20, May 8, 2025, p. 24", SC20_25,
+            ["JUDICIARY, Room 100, SH", "1:00 p.m. EXECUTIVE SESSION ON PENDING LEGISLATION"], READ),
+     record("The first House calendar on this disk to print the line in full: executive session on "
+            "pending legislation may be held throughout the day, time permitting, from the time the "
+            "committee is initially convened.", "House Calendar No. 23, February 19, 1997, p. 13",
+            HC23_97, EXEC_THROUGHOUT, READ),
+     record("House notices still print it in 2026, as Education Policy and Administration's of "
+            "January 2026 does.", "House Calendar No. 2, January 9, 2026, p. 4", HC2_26,
+            ["EDUCATION POLICY AND ADMINISTRATION, Room 232, GP", EXEC_THROUGHOUT], READ),
+     observed("A committee meeting never starts before the time its notice gives, and often starts "
+              "later: an earlier hearing ran long, or a lunch break or a caucus before the meeting "
+              "ran over.", READ),
+     observed("House: a stack of pink cards on a table and a registration sheet near the front of "
+              "the room; anyone may sign the sheet with their name and position; to speak, a pink "
+              "card handed to a staff member or a committee member, who passes it to the chair.", READ),
+     observed("Senate: the sign-up sheet has a box to mark if you want to speak.", READ),
+     observed("Whether to limit speakers, and when to stop one, is the chair's call: with a few "
+              "speakers often no limit; with many, more than about ten, two or three minutes each, "
+              "and no repeating points already made several times.", READ),
+     observed("Speakers may read from prepared notes or a phone; no props while testifying; signs in "
+              "the hallways, not in the committee room.", READ),
+     observed("Written testimony on paper: one printed copy for each member, taken and passed "
+              "around; paper copies are optional.", READ),
+     observed("Before closing, the chair usually asks whether anyone who has not yet spoken would "
+              "like to speak on the bill; if no one does, the hearing is closed.", READ),
+     observed("Where a notice gives one block of time to executive session, the chair takes up the "
+              "bills in any order; the throughout-the-day line makes it hard to know when a vote "
+              "happened until afterward.", READ)]
     + EXEC_MAY_FOLLOW
     + [record("Senate Rule 4-2: every bill is reported out with a recommendation, among them ought to "
               "pass and inexpedient to legislate.", "Senate Journal No. 1, December 7, 2022, p. 21",
@@ -1220,39 +1429,55 @@ HEARING = guide(
 # notices that name it and say where its submissions go, and the columns and
 # choices of the sign-in table in the Court's database. No name or word of
 # anyone's testimony is read into this file or printed by the guide; the
-# words checked are the form's own choices.
+# words checked are the form's own choices. The Senate's form is described
+# from the Senate's own guidance for the public and its calendar of May 2025,
+# and the two chambers' forms' closing time and testimony on paper from the
+# person's account, as practice (the second pass, 17 October 2026).
 # ---------------------------------------------------------------------------
 TESTIMONY = guide(
     "submit-testimony", "How to Submit Testimony Online or in Writing",
     "Registering your position on a bill and sending a committee written testimony without "
     "going to Concord, and when to send it.",
-    "For a House hearing, you can sign in online to say whether you support or oppose a bill, "
-    "and attach written testimony. For a hearing in either chamber, you can email the "
-    "committee&rsquo;s members. Send it before the hearing: committee members receive the "
-    "online testimony at the end of each hearing day, and a committee may vote as soon as its "
-    "hearing ends.",
+    "The House and the Senate both take sign-ins online: you say whether you support or oppose "
+    "a bill, and on the House&rsquo;s form you can attach written testimony. To give a "
+    "committee written testimony, email its members, or bring one printed copy for each member "
+    "to the hearing. You can sign in once the hearing is scheduled, and in practice the forms "
+    "close at midnight at the end of the day of the hearing. Send it early: a committee may "
+    "vote as soon as its hearing ends.",
     [box("Find the hearing: which committee, and which day."),
-     box("A House hearing: sign in online, for or against, with written testimony if you wish."),
-     box("Any hearing: email the committee&rsquo;s members from its page here."),
+     box("Sign in online, House or Senate: for, against or neutral, once the hearing is "
+         "scheduled."),
+     box("Written testimony: email the committee&rsquo;s members, or bring a printed copy for "
+         "each."),
      box("Send it before the hearing. The committee may vote the same day.")],
     [step("Find the hearing",
           "<p>Open the bill&rsquo;s page here: it lists each hearing with the committee, the day "
           "and the time. The Calendar shows the week&rsquo;s hearings.</p>",
           actions=[("Find a bill", "/bills.html"), ("This week's hearings", "/calendar.html")]),
-     step("Sign in online for a House hearing",
-          "<p>The House&rsquo;s Sign-in Form and Online Testimony Submission is on the General "
-          "Court&rsquo;s website, and Testifying and Attending links it. Each sign-in is for one "
-          "bill at one committee&rsquo;s hearing on one day. Among other things, it asks "
-          "for:</p><ul>"
+     step("Sign in online",
+          "<p>Each chamber has its own online form on the General Court&rsquo;s website, and each "
+          "sign-in is for one bill at one committee&rsquo;s hearing on one day. You can sign in "
+          "once the hearing is scheduled, and not before: the Senate&rsquo;s guidance says so of "
+          "its form, and encourages you to sign in well ahead of the hearing. In practice the "
+          "House&rsquo;s opens the same way, and both close at midnight at the end of the day of "
+          "the hearing.</p>"
+          "<p><b>The House&rsquo;s</b> Sign-in Form and Online Testimony Submission asks, among "
+          "other things, for:</p><ul>"
           "<li>your name, town and state;</li>"
           "<li>who you are, such as a member of the public, an elected official, a lobbyist or "
           "state agency staff, and whom you represent, if anyone; and</li>"
           "<li>whether you support the bill, oppose it, or are neutral.</li></ul>"
-          "<p>You may attach written testimony, or sign in without it: a sign-in for or against is "
-          "part of the record and is counted. What you submit goes to the committee&rsquo;s "
-          "members. This site publishes only how many people signed in supporting, opposing and "
-          "neutral, never names or written testimony.</p>",
-          actions=[("Where to sign in", "/learn/testifying.html#sources")]),
+          "<p>You may attach written testimony, or sign in without it. What you submit goes to "
+          "the committee&rsquo;s members.</p>"
+          "<p><b>The Senate&rsquo;s</b> form asks you to choose the day, the committee and the "
+          "bill; whether you are an elected official, a lobbyist, agency staff or a member of the "
+          "public, and whom you represent, if anyone; whether you support the bill, oppose it or "
+          "are neutral; and your name and contact information. Its confirmation page says how to "
+          "send written testimony.</p>"
+          "<p>A sign-in for or against is part of the record and is counted. For House hearings "
+          "this site publishes only how many people signed in supporting, opposing and neutral, "
+          "never names or written testimony.</p>",
+          actions=[("House sign-in", HOUSE_SIGNIN), ("Senate sign-in", SENATE_SIGNIN)]),
      step("Write it so it is useful",
           "<p>Start with the bill&rsquo;s number, HB or SB and then the number, and say whether "
           "you support or oppose it. Then say why in a few specific sentences: what the bill "
@@ -1265,15 +1490,24 @@ TESTIMONY = guide(
           "ends: Senate notices often say &ldquo;executive session may follow&rdquo;, and a House "
           "committee may meet in executive session straight after a noticed hearing. So send "
           "your testimony before the hearing, as soon as you can once it is scheduled.</p>"),
-     step("Or email the committee",
-          "<p>Every committee&rsquo;s page here lists its members and has a button that opens "
-          "one email to all of them. Put the bill&rsquo;s number in the subject line. It works for "
-          "a House or a Senate committee, and for a bill whose hearing has passed but whose "
-          "committee has not yet voted.</p>",
+     step("Email it, or bring it on paper",
+          "<p>The Senate&rsquo;s guidance says to send written testimony to the committee through "
+          "the &ldquo;Email All Committee Members&rdquo; link on the committee&rsquo;s page on "
+          "the General Court&rsquo;s website. Every committee&rsquo;s page here does the same: it "
+          "lists the members and has a button that opens one email to all of them. Put the "
+          "bill&rsquo;s number in the subject line. It works for a House or a Senate committee, "
+          "and for a bill whose hearing has passed but whose committee has not yet voted.</p>"
+          "<p>In practice you can also bring written testimony to the hearing on paper: one "
+          "printed copy for each member of the committee, which they will take and pass around. "
+          "Paper copies are optional; an email reaches the same members.</p>",
           actions=[("Committees", "/committees.html")])],
-    [("House Calendars No. 8 and No. 14 (2025), House Journal No. 2 (2025) and Senate Calendar "
-      "No. 3 (2026): open them from the Calendar's Calendars & Journals", DOCS),
-     ("Testifying and Attending", "/learn/testifying.html")],
+    [("House Calendars No. 8 and No. 14 (2025), House Journal No. 2 (2025) and Senate Calendars "
+      "No. 20 (2025) and No. 3 (2026): open them from the Calendar's Calendars & Journals", DOCS),
+     civics.SRC_SENATE_GUIDANCE,
+     civics.SRC_TESTIFY,
+     civics.SRC_SENATE_TESTIFY,
+     ("Testifying and Attending", "/learn/testifying.html"),
+     (OBSERVED, "")],
     [],
     [ours("A bill's page lists each hearing with the committee, day and time.",
           "/learn/using-this-site.html", READ),
@@ -1308,7 +1542,37 @@ TESTIMONY = guide(
             "shall be numbered serially according to the type of bill or resolution", READ)]
     + EXEC_MAY_FOLLOW
     + [ours("Every committee page lists its members and has a button that opens an email to all of "
-            "them at once.", "/learn/your-representatives.html", READ)],
+            "them at once.", "/learn/your-representatives.html", READ),
+       # The second pass (17 October 2026): the Senate's own form and
+       # guidance, and the practice of both chambers' forms and of paper.
+       SENATE_ONLINE,
+       record("The Senate's form registers support or opposition on a bill with a public hearing "
+              "scheduled, from the moment it is scheduled and not before; signing in well ahead is "
+              "encouraged.", GUIDANCE, SENATE_GUIDANCE,
+              ["To register support or opposition on a bill that has a public hearing scheduled",
+               "remotecommittee/senate.aspx",
+               "This online form will allow you to sign in on a bill as soon as it has been "
+               "scheduled for a hearing", "If no hearings are scheduled, no positions can be registered",
+               "You are encouraged to sign in well in advance of the hearing"], READ),
+       record("The Senate's form: the day, the committee and the bill; a category of elected "
+              "official, lobbyist, agency staff or member of the public; whom you represent; support, "
+              "oppose or neutral; name and contact information; a confirmation page that says how "
+              "to send testimony.", GUIDANCE, SENATE_GUIDANCE,
+              ["Click on the date that the bill you are interested in is being heard",
+               "Select the committee that is hearing the bill", "Select the bill you are interested in",
+               "Select a category (elected official, lobbyist, agency staff, member of the public)",
+               "If you are representing an entity or someone other than yourself",
+               "Indicate whether you support, oppose or are neutral on the bill",
+               "Enter your name and contact information",
+               "the confirmation page will include instructions for submitting testimony"], READ),
+       record("The Senate's guidance: written testimony goes to the committee through the Email All "
+              "Committee Members link on the committee's web page.", GUIDANCE, SENATE_GUIDANCE,
+              ["Written testimony should be submitted to the committee via the",
+               "Email All Committee Members", "link found on the relevant committee web page"], READ),
+       observed("The House's online sign-in, like the Senate's, opens when the hearing is scheduled; "
+                "both close at midnight at the end of the day of the hearing.", READ),
+       observed("Written testimony may be brought on paper, one printed copy for each committee "
+                "member, which they take and pass around; paper copies are optional.", READ)],
     see=[("Testifying and attending", "/learn/testifying.html"),
          ("How to attend and speak at a public hearing", "/guides/attend-a-hearing.html"),
          ("How to contact your legislators", "/guides/contact-your-legislators.html"),

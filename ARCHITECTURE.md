@@ -1711,6 +1711,20 @@ against the table on disk; agency claims against the pages
 web host refuses data centres. `_guides_gate` holds it, and refuses a dollar
 or percentage figure in a guide.
 
+The four legislature guides of 17 October 2026 add three more kinds of
+claim. A `record()` claim names a General Court document on this disk -- a
+calendar, a journal, a bill, a table of the database, or a chamber's own
+guidance saved in `records/sources/` (a PDF is read with pdfplumber) -- and
+the words of it that state the claim, which `claim_faults` finds there. An
+`ours()` claim rests on a page of this site the guide links. An `observed()`
+claim is the editor's first-hand account of how hearings and session days
+run: it carries the label `guides.OBSERVED`, the guide must name that source
+under Where This Comes From and say "in practice" to its readers, and it may
+never state a fee, a deadline of law or a number of seats. The General
+Court's two online sign-in forms a guide links are `civics.py`'s
+(`guides.GENERAL_COURT_LINKS`), never `guide_sources.py`'s, because that
+script makes requests and never asks the General Court.
+
 ## Members-elect (16 October 2026)
 
 Between a general election and Organization Day the site can say who was
