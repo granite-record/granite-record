@@ -203,7 +203,7 @@
     {"path": "archive/last-dry-weekly.json", "key": "last-dry-weekly.json",
      "what": "A dry weekly's verdict -- every run of the weekly on a branch other than main, since 7 October 2026 (nightly.WEEKLY_DRY_VERDICT) -- kept apart from the week's, which the morning reads. No night reads it."},
     {"path": "archive/livestreams.json", "key": "livestreams.json",
-     "what": "What livestreams.py has seen and waits for, YouTube's refusal of the night's machine and its hold, and how the last reading of new recordings was judged (until 10 October 2026, also what it read off recordings the laptop had not yet read). The night writes it; the laptop's by-hand --catch-up only reads it."},
+     "what": "What livestreams.py has seen and waits for, YouTube's refusal of the night's machine and its hold, and how the last reading of new recordings was judged (until 10 October 2026, also what it read off recordings the laptop had not yet read). The night writes it; the laptop's by-hand --catch-up only reads it, and so does its evening --to-inbox (since 17 October 2026), which reads the bucket's copy in memory for the recordings waiting for captions, asks YouTube for them and adds each caption file under inbox/captions/, never here. cloud.py inbox-clear reads the bucket's copy after the night has sent it, to clear the inbox entries it no longer waits for."},
     {"path": "archive/sql-held.json", "key": "sql-held.json",
      "what": "A hold on the General Court's SQL host: a connection the night could not open (probe_db.py). It expires by itself and lengthens; the night is its one writer, and the web server's refusal record is a different file about a different server."},
     {"path": "reports/.cursor-production", "key": "cursor-production",
