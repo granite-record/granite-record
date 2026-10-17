@@ -16,8 +16,15 @@ export const signUp = (w, address, kind = "bill", ref = "2026/HB9901", extra = {
   w.call(signup, postJson("/api/follow/signup",
     { email: address, kind, ref, turnstile: "pass", website: "", ...extra }));
 
+// The newest confirmation link sent to the address. Not simply the newest
+// email: a confirmation is followed by "You're following ...", which carries
+// no confirmation link (16 October 2026), and pressing the same link again
+// must press that link, not nothing.
+export const confirmationTo = (w, address) =>
+  [...w.net.outbox].reverse().find(m => (m.to || []).includes(address) && tokensIn(m).confirm);
+
 export async function confirmLatest(w, address, opts = {}) {
-  const t = tokensIn(lastMailTo(w, address)).confirm;
+  const t = tokensIn(confirmationTo(w, address) || lastMailTo(w, address)).confirm;
   return w.call(confirm, postForm("/api/follow/confirm", { t }, opts));
 }
 

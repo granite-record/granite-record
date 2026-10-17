@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.593
+# GRANITE_VERSION: 2026-09-04.594
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -38053,6 +38053,85 @@ def _changes_node(folder):
     return [] if r.returncode == 0 else [ln.strip() for ln in said.splitlines() if ln.strip()]
 
 
+@check("build", "the way back to the manage page and its lists to add from: a committee named "
+       "as the search names it, a chamber that is the House or the Senate in both readers of "
+       "current.json, and tests/follow/'s cases for the email a confirmation sends and the "
+       "lists, run by name", needs=("follow_changes",))
+def _follow_manage_lists(FC):
+    """16 October 2026, from the person's test of email following: once the
+    confirmation link was spent there was no way back to the manage page, and
+    its legislators were a drop-down by first name, one pick a Save.
+
+    current.json now names a committee as the search does ("House Housing
+    Committee", follow_changes.committee_label, find.js findName) and carries
+    a member's roster sort name and a member's or committee's chamber, which
+    the manage page orders and groups its lists by. A chamber other than the
+    House or the Senate is refused by follow_changes.check and by the
+    sender's own reader (check_changes.js) alike. What the endpoints do with
+    it -- the "You're following" email a confirmation sends, the spent link
+    pointing to it, the lists by last name with the chambers apart, several
+    added in one Save, the page without script -- is tests/follow/'s, whose
+    cases are run here by name so that one taken out is missed. build_feeds
+    writing the fields is _changes_on_fixture's."""
+    named = {("Housing", "House"): "House Housing Committee",
+             ("Special Committee on Housing", "House"): "House Special Committee on Housing",
+             ("Senate Special Committee on Redistricting", "Senate"):
+                 "Senate Special Committee on Redistricting",
+             ("Education", "Senate"): "Senate Education Committee",
+             ("Education", ""): "Education Committee"}
+    got = {k: FC.committee_label(*k) for k in named}
+    assert got == named, f"follow_changes.committee_label no longer names as the search does: {got}"
+
+    fixtures = Path("tests/follow/fixtures/changes")
+    if not fixtures.is_dir():
+        return "skip", "no tests/follow/fixtures/changes here"
+    root = Path(tempfile.mkdtemp(prefix="gr-follow-lists-"))
+    try:
+        bad = root / "changes"
+        shutil.copytree(fixtures, bad)
+        cur = json.loads((bad / "current.json").read_text(encoding="utf-8"))
+        member = next(k for k in cur["followable"] if k.startswith("member:"))
+        assert cur["followable"][member].get("sort") and cur["followable"][member].get("chamber"), \
+            "the fixtures' member carries no sort name or chamber for the lists to be tested by"
+        cur["followable"][member]["chamber"] = "Joint"
+        (bad / "current.json").write_text(json.dumps(cur), encoding="utf-8")
+        said = {"follow_changes.check": FC.check(bad), "check_changes.js": _changes_node(bad)}
+        missed = [who for who, p in said.items()
+                  if p is not None and not any("chamber is neither House nor Senate" in x for x in p)]
+        assert not missed, f"a chamber of Joint passed {', '.join(missed)}: {said}"
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+
+    node = shutil.which("node") or shutil.which("node.exe")
+    if not (node and Path("tests/follow/index.js").is_file()):
+        return "skip", "node or tests/follow/ is not here; committee_label and the chamber hold"
+    cases = ("a confirmation sends one email, You're following",
+             "a subscriber adding a record is told it",
+             "a pause is told through its last day, and not once that day has gone by",
+             "a confirmation that adds nothing sends nothing",
+             "a confirmation still confirms when its email cannot be sent",
+             "a spent link says every email we send has the way back",
+             "the House and the Senate apart, by last name",
+             "a list without sort names or chambers is one group",
+             "a committee of neither chamber comes last, under a heading of its own",
+             "without script the whole list shows",
+             "the find box narrows the list as the reader types",
+             "every legislator and committee ticked is added on one Save",
+             "a Save that ticks more than the room left")
+    r = _run([node, "--disable-warning=ExperimentalWarning", "--test", "--test-reporter=tap",
+              "--test-name-pattern=" + "|".join(cases), "tests/follow/index.js"],
+             capture_output=True, text=True)
+    out = r.stdout + r.stderr
+    passed = [c for c in cases
+              if re.search(rf"^ok \d+ - [^\n]*{re.escape(c)}(?![^\n]*# SKIP)", out, re.M)]
+    assert r.returncode == 0 and len(passed) == len(cases), (
+        "tests/follow/ no longer passes the manage page's cases "
+        + ", ".join(repr(c) for c in cases if c not in passed) + ": " + out.strip()[-400:])
+    return "ok", (f"committees named as the search names them; a chamber of Joint refused by "
+                  f"{' and '.join(k for k, v in said.items() if v is not None)}; "
+                  f"{len(cases)} cases pass")
+
+
 def _changes_scenario(FC):
     """Sixteen nights of a followable world, as build_feeds hands it over: a
     bill, a second bill that concludes, a member who leaves, a committee, a
@@ -38397,6 +38476,19 @@ def _changes_on_fixture(FC):
                 "record's dates, with a ledger beside them", names)
         assert {"bill:2026/HB1442", "member:377204", "committee:H43", "topic:insurance"} <= \
             set(cur["followable"]), sorted(cur["followable"])
+        # What the manage page's lists to add from are ordered and grouped by
+        # (the person's test of 16 October 2026: legislators "sorted ... by
+        # first name instead of last name"): a member carries the roster's own
+        # sort name and chamber, and a committee its chamber and the name the
+        # search gives it.
+        nelson, commerce = cur["followable"]["member:377204"], cur["followable"]["committee:H43"]
+        assert (nelson.get("sort"), nelson.get("chamber")) == ("nelson, jodi", "House"), (
+            "build_feeds no longer hands the manage page a legislator's sort name and chamber",
+            nelson)
+        assert (commerce.get("label"), commerce.get("chamber")) == \
+            ("House Commerce Committee", "House"), (
+                "build_feeds no longer names a committee as the search does, with its chamber",
+                commerce)
         probs = FC.check(ch) + (_changes_node(ch) or [])
         assert not probs, probs[:4]
 
@@ -60952,6 +61044,191 @@ def _follow_email():
     assert r.returncode == 0 and passed and int(passed.group(1)) > 0, out.strip()[-600:]
     return "ok", (f"previews bind FOLLOW_DB, production {'does' if binds('production') else 'does not'}; "
                   f"tests/follow: {passed.group(1)} passed")
+
+
+# The sign-up box's daily or weekly drawn and sent by app.js under node, with
+# a form of the box's own parts: the Turnstile token already in hand, the
+# answer a 202, and every request the box makes kept for the check to read.
+_FOLLOW_FREQ_JS = """
+require("./stub.js");
+const fs = require("fs");
+let s;
+try { s = (0, eval)(fs.readFileSync("./page.js", "utf8") + "; ({followMailForm, followSubmit, FOLLOW_TS})"); }
+catch (e) { console.log("LOAD " + e.constructor.name + ": " + e.message); process.exit(1); }
+const sent = [];
+globalThis.fetch = async (u, init) => { sent.push({ url: String(u), body: JSON.parse(init.body) });
+  return { ok: true, status: 202, json: async () => ({ ok: true }) }; };
+function form(choice) {
+  const st = { textContent: "" }, btn = { disabled: false }, w = { dataset: {} };
+  s.FOLLOW_TS.set(w, { token: "pass", err: "", wait: [] });
+  const radio = { value: choice, checked: true };
+  return {
+    closest: () => ({ dataset: { fkey: "bill:2026/HB1442" } }),
+    querySelector: q => q === ".followstate" ? st : q === ".followsend" ? btn : q === ".followcheck" ? w
+      : /frequency/.test(q) && /:checked/.test(q) ? radio : null,
+    elements: { email: { value: "reader@example.com" }, website: { value: "" }, frequency: radio },
+  };
+}
+(async () => {
+  const html = s.followMailForm("bill:2026/HB1442");
+  for (const c of ["weekly", "daily"]) await s.followSubmit({ preventDefault() {} }, form(c));
+  process.stdout.write("\\n@@" + JSON.stringify({ html, sent }));
+})().catch(e => { console.log("RUN " + e.constructor.name + ": " + e.message); process.exit(1); });
+"""
+
+
+@check("build", "the email sign-up asks daily or weekly as the manage page does, Daily chosen and "
+       "told apart in forced colours, and every follow migration has its two commands")
+def _follow_signup_frequency():
+    """The person, 16 October 2026: a "Daily or weekly" choice beside the
+    email field, Daily selected, just before the "Email me updates" button.
+    Until then a sign-up always became daily, and only the manage page could
+    make it weekly.
+
+    The box as a record's Follow pane draws it (app.js followMailForm, under
+    node) carries the manage page's own words and legend for the choice
+    (manage.js, "How often"), with Daily the one checked, between the address
+    and the button, and no fieldset opened inside a p -- the parser would
+    close the p there and leave the button outside the row. followSubmit
+    sends the choice it is given, Weekly and Daily each. The endpoints' side
+    -- kept with the request, confirmed as weekly, none at all confirmed as
+    daily, any other value refused, a subscriber's own kept and the manage
+    page saying so where the box asked otherwise, the migration -- is
+    tests/follow/'s, whose cases are run here by name so that one taken out
+    is missed.
+
+    IN FORCED COLOURS the chosen one is told from the other, in the box
+    (app.css .followfreq) and on the manage page (page.js .seg): the system
+    paints away the wash and the rule under it, and the radios are out of
+    sight, so in Edge with high contrast on the two came out the same (the
+    review of 16 October 2026). The chosen one keeps the system's selection
+    colours.
+
+    And README.md gives every file in workers/follow/migrations/ its command
+    for both databases: a column the Functions write that a database lacks is
+    a sign-up answered "on its way" that sends nothing. 0003's paragraph
+    names both log lines its absence leaves, the sign-up's and the
+    confirmation's, since confirm.js reads the column too."""
+    from html.parser import HTMLParser
+    if not Path("workers/follow").is_dir():
+        return "skip", "no workers/follow here"
+    readme = Path("workers/follow/README.md").read_text(encoding="utf-8")
+    migrations = sorted(p.name for p in Path("workers/follow/migrations").glob("*.sql"))
+    assert "0003_pending_frequency.sql" in migrations, "the sign-up's frequency migration is gone"
+    untold = [f"{m} on {db}" for m in migrations
+              for db in ("graniterecord-follow-preview", "graniterecord-follow")
+              if f"npx wrangler d1 execute {db} --remote --file workers/follow/migrations/{m}" not in readme]
+    assert not untold, "workers/follow/README.md gives no command for " + ", ".join(untold)
+    begin = readme.find("sign-up box's daily or weekly")
+    told = readme[begin:readme.find("migrations/0003_pending_frequency.sql", begin)] if begin >= 0 else ""
+    assert all(f"`follow {x}.error.Error`" in told for x in ("signup", "confirm")), \
+        "README.md's paragraph on 0003 no longer says that sign-ups and confirmations both fail without it"
+
+    # Chosen and not chosen, told apart in forced colours: the selection's
+    # system colours, held from the system's repainting, on the chosen label.
+    def forced(css, seg):
+        got = {}
+        for ats, sel, body, _ in _css_rules(css):
+            if any("forced-colors" in a for a in ats) and \
+                    f"{seg} label:has(input:checked)" in [s.strip() for s in sel.split(",")]:
+                got.update(_css_decls(body))
+        return got.get("forced-color-adjust") == "none" and got.get("background", "").lower() == "highlight"
+    style = re.search(r"const STYLE = `(.*?)`;", Path("workers/follow/page.js").read_text(encoding="utf-8"), re.S)
+    blind = [name for name, css, seg in (
+        ("the sign-up box (app.css .followfreq)", Path("src/pages/app.css").read_text(encoding="utf-8"), ".followfreq"),
+        ("the manage page (page.js .seg)", style.group(1) if style else "", ".seg")) if not forced(css, seg)]
+    assert not blind, ("in forced colours the chosen one of two is drawn like the other on "
+                       + " and ".join(blind) + ": no Highlight ground for label:has(input:checked)")
+
+    manage = Path("functions/api/follow/manage.js").read_text(encoding="utf-8")
+    words = dict(re.findall(r'radio\("frequency", "(daily|weekly)", freq, "([^"]+)"', manage))
+    legend = re.search(r'<legend class="sr">([^<]+)</legend>\s*\$\{radio\("frequency"', manage)
+    assert set(words) == {"daily", "weekly"} and legend, \
+        "manage.js's How often control is not where this check reads its words"
+
+    js, stub = Path("src/pages/app.js"), Path("tests/dom_stub.js")
+    node = shutil.which("node") or shutil.which("node.exe")
+    if not (js.exists() and stub.exists() and node):
+        return "skip", "app.js, dom_stub.js or node is not here"
+    root = Path(tempfile.mkdtemp())
+    try:
+        (root / "page.js").write_text(_with_components(js.read_text(encoding="utf-8")), encoding="utf-8")
+        (root / "stub.js").write_text(stub.read_text(encoding="utf-8"), encoding="utf-8")
+        (root / "go.js").write_text(_FOLLOW_FREQ_JS, encoding="utf-8")
+        r = _run([node, "go.js"], cwd=root, capture_output=True, text=True, timeout=60)
+        assert r.returncode == 0 and "@@" in (r.stdout or ""), (
+            "app.js did not draw and send the email box under node: " + (r.stderr or r.stdout or "")[-300:])
+        got = json.loads(r.stdout.rsplit("@@", 1)[1])
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+
+    class Box(HTMLParser):
+        def __init__(self):
+            super().__init__()
+            self.radios, self.legend, self.inside_p = [], "", False
+            self.fieldset_in_p, self.here, self.texting = False, None, None
+
+        def handle_starttag(self, tag, attrs):
+            a = dict(attrs)
+            if tag == "p":
+                self.inside_p = True
+            elif tag == "fieldset" and self.inside_p:
+                self.fieldset_in_p = True
+            elif tag == "legend":
+                self.texting = "legend"
+            elif tag == "input" and a.get("type") == "radio" and a.get("name") == "frequency":
+                self.here = {"value": a.get("value"), "checked": "checked" in a, "words": ""}
+                self.texting = "label"
+
+        def handle_endtag(self, tag):
+            if tag == "p":
+                self.inside_p = False
+            elif tag == "legend":
+                self.texting = None
+            elif tag == "label" and self.here:
+                self.radios.append(self.here)
+                self.here, self.texting = None, None
+
+        def handle_data(self, data):
+            if self.texting == "legend":
+                self.legend += data
+            elif self.texting == "label" and self.here:
+                self.here["words"] += data
+
+    html = got["html"]
+    box = Box()
+    box.feed(html)
+    drawn = [(x["value"], x["checked"], x["words"].strip()) for x in box.radios]
+    want = [("daily", True, words["daily"]), ("weekly", False, words["weekly"])]
+    assert drawn == want, f"the email box offers {drawn}, not the manage page's {want} with Daily chosen"
+    assert box.legend.strip() == legend.group(1), \
+        f"the email box asks {box.legend.strip()!r} where the manage page asks {legend.group(1)!r}"
+    at = [html.find('type="email"'), html.find("<fieldset"), html.find("Email me updates")]
+    assert -1 not in at and at == sorted(at), \
+        "Daily or weekly is not between the address and the Email me updates button"
+    assert not box.fieldset_in_p, \
+        "the email box opens its fieldset inside a p: the parser closes the p and the row falls apart"
+    sent = [(s["url"], s["body"].get("frequency")) for s in got["sent"]]
+    assert sent == [("/api/follow/signup", "weekly"), ("/api/follow/signup", "daily")], \
+        f"the email box sent {sent} for Weekly and then Daily"
+
+    cases = ("how often is kept with the request", "a frequency the box cannot send is refused",
+             "a weekly sign-up is confirmed as weekly", "names no frequency is confirmed as daily",
+             "keeps how often they chose, and is told so", "shows only its own notices",
+             "frequency migration brings a pending table")
+    r = _run([node, "--disable-warning=ExperimentalWarning", "--test", "--test-reporter=tap",
+              "--test-name-pattern=" + "|".join(cases), "tests/follow/index.js"],
+             capture_output=True, text=True)
+    out = r.stdout + r.stderr
+    passed = [c for c in cases
+              if re.search(rf"^ok \d+ - [^\n]*{re.escape(c)}(?![^\n]*# SKIP)", out, re.M)]
+    assert r.returncode == 0 and len(passed) == len(cases), (
+        "tests/follow/ no longer passes the frequency cases "
+        + ", ".join(repr(c) for c in cases if c not in passed) + ": " + out.strip()[-400:])
+    return "ok", (f"the box draws {words['daily']} (chosen) and {words['weekly']} under "
+                  f"{legend.group(1)!r} and sends each, told apart in forced colours there and on "
+                  f"the manage page; {len(cases)} cases pass; "
+                  f"{len(migrations)} migrations, each told for both databases")
 
 
 @check("build", "the report endpoint accepts only what a page can name, and stores nothing about the reader")

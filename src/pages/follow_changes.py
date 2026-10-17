@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-07.4
+# GRANITE_VERSION: 2026-10-07.5
 """
 The nightly "what changed" files the email sender reads, and the first-seen
 ledger that decides what is new in them.
@@ -152,6 +152,27 @@ def line(s, room):
     cut = s[:room - 1]
     sp = cut.rfind(" ")
     return (cut[:sp] if sp > room * 0.6 else cut).rstrip(" ,;:-–—") + "…"
+
+
+# ---- what a followed record is called, and how the manage page lists it ------------
+# A COMMITTEE IS NAMED AS THE SEARCH NAMES IT (16 October 2026). The person
+# asked the search to say "House Housing Committee" rather than "Housing", so
+# that a committee is not taken for the subject of the same name (find.js
+# findName). The manage page sets committees and topics side by side, and the
+# emails name both, so current.json's label for a committee follows the same
+# rule: "Committee" where the name does not already say it, and the chamber
+# in front unless the name begins with it. A committee's label is the whole of
+# what an email or the manage page calls it.
+CHAMBERS = {"H": "House", "S": "Senate"}
+
+
+def committee_label(name, chamber=""):
+    """A committee's name as the search draws it: "House Housing Committee",
+    "House Special Committee on Housing", "Senate Special Committee on
+    Redistricting". Text, not markup."""
+    name, chamber = " ".join(str(name or "").split()), str(chamber or "")
+    named = name if re.search(r"\bcommittee\b", name, re.I) else f"{name} Committee"
+    return named if not chamber or name.startswith(chamber + " ") else f"{chamber} {named}"
 
 
 def stamp(dt):
@@ -703,6 +724,9 @@ def check_files(files):
                     _text(v.get("label"), 120, f"followable {k} label", p)
                     _text(v.get("title"), 300, f"followable {k} title", p, required=False)
                     _text(v.get("now"), 120, f"followable {k} now", p, required=False)
+                    _text(v.get("sort"), 120, f"followable {k} sort", p, required=False)
+                    if v.get("chamber") not in (None, "") and v["chamber"] not in CHAMBERS.values():
+                        p.append(f"followable {k}: chamber is neither House nor Senate")
                     u = v.get("url")
                     if u not in (None, "") and not (isinstance(u, str) and PATH.match(u)):
                         p.append(f"followable {k}: url is not a path on the site")

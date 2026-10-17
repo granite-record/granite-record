@@ -18,7 +18,7 @@ up to last night's build. Nothing here implies real time.
 | `common.js` | What a follow is, the log (`note`), the site's own names, headers, escaping, New Hampshire's clock. |
 | `store.js` | Database calls more than one endpoint makes: forgetting an address, finding the reader a link belongs to, the purge, the count, the day's ceiling. |
 | `changes.js` | Reading the site's `/changes/` files and holding them to `CHANGES_FORMAT.md`. |
-| `mail.js` | The one call to Resend, and the confirmation, new-link, daily and weekly emails, in plain text and simple HTML. |
+| `mail.js` | The one call to Resend, and the five emails: the confirmation, the "You're following" a confirmation sends, a new link, the daily and the weekly, in plain text and simple HTML. |
 | `page.js` | The HTML of the confirm, manage and unsubscribe pages. |
 | `sender.js` | The scheduled Worker that sends the daily and weekly emails. |
 | `wrangler.toml` | The sender's own configuration: cron, the D1 binding, plain settings. No secret. |
@@ -133,7 +133,25 @@ on its own:
        npx wrangler d1 execute graniterecord-follow-preview --remote --file workers/follow/migrations/0002_due_index.sql
        npx wrangler d1 execute graniterecord-follow --remote --file workers/follow/migrations/0002_due_index.sql
 
-   Run a second time it answers "duplicate column name" and changes nothing.
+   **And the sign-up box's daily or weekly** (16 October 2026), kept with a
+   request until its confirmation, on any database made before that day,
+   both of this project's included; a database made from today's
+   `schema.sql` has it already and must not. **Run it before the Functions
+   that read and write it deploy** -- the preview's first, since every dev
+   dry run deploys the preview with the database bound, so no dry run of a
+   commit with these Functions may start until the preview's has run.
+   Without the column both halves fail, and nothing offline can tell: every
+   sign-up is answered "on its way", sends nothing, and logs only
+   `follow signup.error.Error`; and every confirmation -- a link from a
+   request made before the deploy included -- answers "Something went wrong
+   on our side. Your link still works for 48 hours." and logs only
+   `follow confirm.error.Error`, because confirm.js reads the column back.
+
+       npx wrangler d1 execute graniterecord-follow-preview --remote --file workers/follow/migrations/0003_pending_frequency.sql
+       npx wrangler d1 execute graniterecord-follow --remote --file workers/follow/migrations/0003_pending_frequency.sql
+
+   `0001` and `0003` add columns: run a second time, each answers "duplicate
+   column name" and changes nothing.
 
 2. **Resend.** A verified sending domain; an API key restricted to sending
    from it; a webhook to `https://graniterecord.org/api/follow/bounce` for
@@ -272,16 +290,23 @@ The Follow control posts what the reader typed, and stores nothing:
 
     POST /api/follow/signup
     Content-Type: application/json
-    {"email": "...", "kind": "bill", "ref": "2026/HB1442",
+    {"email": "...", "kind": "bill", "ref": "2026/HB1442", "frequency": "daily",
      "turnstile": "<the widget's token>", "website": ""}
 
-`website` is a honeypot: an input a person never sees, left empty. The
-answers:
+`frequency` is the box's Daily or Weekly (16 October 2026), `"daily"` or
+`"weekly"`; the confirmation gives it to a new subscriber, and one already
+subscribed keeps their own -- the box opens on Daily, and a weekly reader
+must not be made daily by not touching it. Where the box asked for the
+other one, the manage page the confirmation lands on says so ("daily as
+before" or "weekly as before"), above the How often that changes it. A
+request that names none is daily, as a page loaded before the box had the
+choice sends none; any other value is refused as `invalid`. `website` is a
+honeypot: an input a person never sees, left empty. The answers:
 
 | Status | Body | Means |
 |---|---|---|
 | 202 | `{"ok":true}` | Accepted -- whatever the address. The request is kept and the email sent after the answer, so the answer takes as long for every address; if the inbox already has three waiting, or Resend refuses, nothing arrives and the log says which. The box should say "if this address can take it, a confirmation is on its way". |
-| 400 | `{"ok":false,"why":"invalid"}` | Not an address, or not a record key. |
+| 400 | `{"ok":false,"why":"invalid"}` | Not an address, not a record key, or a frequency other than daily or weekly. |
 | 400 | `{"ok":false,"why":"check"}` | Turnstile said no; try again. |
 | 400 | `{"ok":false,"why":"not-followable"}` | Not followable tonight. |
 | 429 | `{"ok":false,"why":"busy"}` | The day's confirmation emails are used up. |
@@ -306,6 +331,8 @@ nothing a person could read a name in:
 | `follow sender.after-send-failed.Error 1` | An email went, and the cursor or ended follows could not be written twice over; tomorrow's email repeats its news. |
 | `follow sender.error.ConfigError 1` | A secret or `MAIL_FROM` is missing. |
 | `follow signup.sent 1`, `follow confirm.confirmed 1` | One confirmation emailed; one confirmed. |
+| `follow confirm.welcome-sent 1` | A confirmation that added a record sent its "You're following ..." email, which carries the manage link (16 October 2026). One a confirmation at most, so never more than the day's confirmations. |
+| `follow confirm.welcome-refused.429`, `follow confirm.welcome-error.Error` | That email was not sent. The confirmation stands and its page says nothing of it; the reader's way back is then the first update. |
 | `follow signup.waiting-enough`, `follow signup.day-full` | A request not sent: its inbox has three waiting, or the day's ceiling is reached. |
 | `follow unsubscribe.one-click-matched-nothing` | A provider's one-click carried a link that is no longer current; nothing was deleted. |
 | `follow manage.new-link-already-moving` | "Send me a new link" pressed twice at once; one email went. |

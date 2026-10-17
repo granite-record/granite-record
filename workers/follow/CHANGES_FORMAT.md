@@ -49,8 +49,10 @@ dropped by the sender and refused at sign-up.
   "new_by": "first-seen",
   "followable": {
     "bill:2026/HB1442":  {"label": "HB 1442", "title": "relative to ...", "url": "/bill/2026/hb1442"},
-    "member:736":        {"label": "Rep. A. Example (Merrimack 12)", "url": "/legislator/a-example-merrimack-12"},
-    "committee:H05":     {"label": "House Education", "url": "/committee/H05"},
+    "member:736":        {"label": "Rep. A. Example (Merrimack 12)", "sort": "example, a.",
+                          "chamber": "House", "url": "/legislator/a-example-merrimack-12"},
+    "committee:H05":     {"label": "House Education Committee", "chamber": "House",
+                          "url": "/committee/H05"},
     "topic:housing":     {"label": "Housing", "url": "/bills?topic=Housing"}
   },
   "upcoming": {
@@ -87,6 +89,19 @@ dropped by the sender and refused at sign-up.
   is the bill search narrowed to it, `/bills?topic=Banking%20and%20Finance`).
   Sign-up refuses a key that is not here, and the manage page names each
   followed record by its label.
+
+  A **committee's** label is its name as the search draws it (16 October
+  2026): "Committee" where the name does not say it already, and its chamber
+  in front, "House Education Committee" -- so that beside the topics on the
+  manage page and in an email it is not taken for the subject of the same
+  name (`follow_changes.committee_label`). A **member** and a **committee**
+  also carry `chamber`, `"House"` or `"Senate"`, and a member carries `sort`
+  (at most 120, plain text), the roster's own sort name, `"aldrich, glen"`.
+  The manage page lists the legislators it offers by `sort` and the House and
+  the Senate apart, and groups the committees by `chamber`; both are
+  optional to the reader, since a build before 16 October 2026 wrote
+  neither, and a list without them falls back to the label's order in one
+  group.
 - `upcoming` holds, for any key, the proceedings scheduled from `date` onward
   as the build knows them -- the hearings feed's rows, filed under each bill
   and under the committee that will sit. Each has `date` (`YYYY-MM-DD`) and
