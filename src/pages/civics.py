@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.46
+# GRANITE_VERSION: 2026-09-08.47
 """
 The topics of the civics section: their order, their names, and their prose.
 
@@ -928,8 +928,13 @@ FLOW_TESTIFY = [
          "record and is counted.", ""),
     ]),
     ("Afterwards", [
+        # A SEPARATE MEETING, NOT ALWAYS A LATER DAY (the fact-check of 17
+        # October 2026): Senate notices often end "executive session may
+        # follow", and House Rule 44(b) as amended on Convening Day 2025 lets
+        # one follow a noticed hearing without further notice.
         ("Executive session", "The committee votes on its recommendation at "
-         "a later meeting. Testimony is not taken at it.", ""),
+         "a separate meeting, which may follow the hearing directly. Testimony "
+         "is not taken at it.", ""),
         ("The other chamber", "If the bill passes, it gets a hearing in the "
          "second chamber and a second sign-in window on the same terms.",
          "say"),
@@ -2217,9 +2222,12 @@ rather than in general &mdash; the cost, the date it would take effect, the
 number of people it would reach, whatever the specific is in your case.</p>
 
 <h2>What Happens After the Hearing</h2>
-<p>The committee votes on what to recommend at a later meeting called an
-executive session. It is public and you may attend it, but no testimony is
-taken at it. The committee then reports its recommendation to the chamber, and
+<p>The committee votes on what to recommend at a separate meeting called an
+executive session. It may be days later, or straight after the hearing: Senate
+hearing notices often say an executive session may follow, and the House's
+rules let a committee hold one right after a noticed hearing without further
+notice. It is public and you may attend it, but no testimony is taken at it.
+The committee then reports its recommendation to the chamber, and
 where it was split the majority and the minority each write a report. Whether
 you spoke or only signed in, the counts and any written testimony stay in the
 record.</p>

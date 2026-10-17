@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-11.10
+# GRANITE_VERSION: 2026-10-11.11
 """
 The how-to guides: their words, their sources, and what each was checked
 against. Read by build_civics.py, which draws them on the Resources hub's
@@ -964,7 +964,11 @@ LMI = guide(
 # it and no document on this disk does: when the House's online sign-in
 # closes, how a speaker asks to be heard in each chamber, and whether the
 # Senate takes sign-ins online. Testifying and Attending is linked for the
-# first two; the third is left unsaid.
+# first two; the third is left unsaid. Nor does a guide cite House Rule 44's
+# requirement of a hearing on every bill, or its notice period: the adopted
+# text of the current rules is not on this disk, only amendments to them
+# that were tabled or failed, and an amendment's words are not the rule's
+# (the fact-check of 17 October 2026).
 # ---------------------------------------------------------------------------
 RECORD_HOMES = ("calendars/", "calendars_senate/", "journals/", "journals_senate/",
                 "legislation/", "bill_text/", "db/", "Members.txt")
@@ -996,14 +1000,24 @@ def links(g):
 
 
 def _document(path):
-    """A document's words: a saved page's with its markup taken off, any
-    other file's as it is."""
+    """A document as it is, and its words: a saved page's with its markup
+    taken off, any other file's as it is."""
     import html
     from pathlib import Path
     raw = Path(path).read_text(encoding="utf-8", errors="replace")
     if path.endswith((".html", ".htm")):
-        raw = html.unescape(re.sub(r"<[^>]+>", " ", raw))
-    return raw
+        return raw, html.unescape(re.sub(r"<[^>]+>", " ", raw))
+    return raw, raw
+
+
+def _says(words, document):
+    """Whether the document says the words. WORDS WITH MARKUP IN THEM ARE
+    MATCHED AGAINST THE PAGE AS SAVED (17 October 2026): a claim about how a
+    bill prints its changes -- which words are bold italic and which are
+    plain -- is a claim about the markup, and only the markup can check it."""
+    raw, words_of = document
+    return re.search(r"\s+".join(map(re.escape, words.split())),
+                     raw if "<" in words or "{" in words else words_of) is not None
 
 
 def claim_faults(g, root="."):
@@ -1028,8 +1042,7 @@ def claim_faults(g, root="."):
                 continue
             if c["path"] not in read:
                 read[c["path"]] = _document(str(f))
-            gone = [w for w in c["words"]
-                    if not re.search(r"\s+".join(map(re.escape, w.split())), read[c["path"]])]
+            gone = [w for w in c["words"] if not _says(w, read[c["path"]])]
             if gone:
                 faults.append(f"{c['source']} ({c['path']}) does not say: " + "; ".join(gone))
             else:
@@ -1063,7 +1076,8 @@ DOCS = "/calendar.html#cdocs"   # the Calendar page's Calendars & Journals: ever
 # The rules both chambers work under in 2025-2026, which more than one guide
 # rests on. The Senate printed its rules whole on Organization Day 2022 and
 # readopted them in 2024 with three changes, none to the rules cited here;
-# the House's are cited from the votes of Convening Day 2025.
+# the House's one rule cited here, 44(b), is the floor amendment Convening
+# Day 2025 adopted, whose text the journal prints whole.
 SENATE_RULES_KEPT = record(
     "The Senate adopted the 2023-2024 rules as its 2025-2026 rules, changing Rules 2-33, 4-7 and "
     "7-1 only.", "Senate Journal No. 1, December 4, 2024, p. 6", SJ24,
@@ -1090,8 +1104,9 @@ HEARING = guide(
     "attend-a-hearing", "How to Attend and Speak at a Public Hearing",
     "Finding a bill's public hearing, going in person or watching it, and asking to speak, "
     "step by step, with what happens after.",
-    "Every bill sent to a committee gets a public hearing, in the House and again in the "
-    "Senate, and you may attend it and testify. Find the hearing in the chamber&rsquo;s "
+    "Committees of the House and of the Senate hold public hearings on bills, and the "
+    "Senate&rsquo;s rules require one on every bill sent to a committee. You may attend and "
+    "testify. Find the hearing in the chamber&rsquo;s "
     "calendar or on the bill&rsquo;s page here, go to the room the notice names or watch the "
     "live stream, and tell the committee you want to speak. If you cannot go, you can send "
     "your position in writing instead.",
@@ -1102,9 +1117,9 @@ HEARING = guide(
      box("Afterward, the committee votes on what to recommend, sometimes the same day.")],
     [step("Find the hearing",
           "<p>A hearing is announced in the calendar of the chamber holding it. The notice names "
-          "the committee, the building and room, the day, and a time for each bill. The "
-          "House&rsquo;s rules require public hearings to be advertised in the House Calendar, "
-          "and the Senate&rsquo;s require at least 4 days&rsquo; notice in the Senate "
+          "the committee, the building and room, the day, and a time for each bill. The House "
+          "lists its hearings under Committee Meetings in the House Calendar, and the "
+          "Senate&rsquo;s rules require at least 4 days&rsquo; notice in the Senate "
           "Calendar.</p>"
           "<p>On this site, a bill&rsquo;s page lists its hearings with the day, time and room, "
           "and the Calendar shows the week&rsquo;s hearings by committee. Follow on a "
@@ -1146,26 +1161,17 @@ HEARING = guide(
      ("Testifying and Attending", "/learn/testifying.html"),
      ("Right-to-Know Law, RSA 91-A", "/laws/91-a")],
     ["91-A"],
-    [record("House Rule 44: a hearing is held on each bill referred to a committee; the amendment of "
-            "January 8, 2025 that would have added exceptions was laid on the table.",
-            "House Journal No. 2, January 8, 2025, pp. 19-20", HJ2,
-            ["A hearing shall be held on each bill referred to a committee",
-             "Amendment to House Rules 44, 45 and 52 be laid on the table. Motion was adopted"], READ),
-     record("Senate Rule 4-1: a hearing on each bill referred to a committee, advertised at least 4 "
+    [record("Senate Rule 4-1: a hearing on each bill referred to a committee, advertised at least 4 "
             "days before in the Senate Calendar.", "Senate Journal No. 1, December 7, 2022, p. 21",
             SJ22, "A hearing shall be held upon each bill or resolution referred to a committee, and "
                   "notice of such hearing shall be advertised at least 4 days before such hearing in "
                   "the Senate Calendar", READ),
      SENATE_RULES_KEPT,
-     record("House Rule 44(a): public hearings are advertised in the House Calendar; a floor "
-            "amendment of January 8, 2025 to lengthen the notice failed.",
-            "House Journal No. 2, January 8, 2025, p. 26", HJ2,
-            ["Public hearings shall be advertised in the House Calendar no less than",
-             "ment to House Rule 44 (a) failed"], READ),
-     record("A House notice gives the committee, the room and building, and a time for each bill.",
+     record("The House Calendar lists House public hearings on bills under Committee Meetings, each "
+            "notice giving the committee, the room and building, and a time for each bill.",
             "House Calendar No. 6, February 6, 2026, p. 22", HC6,
-            "STATE-FEDERAL RELATIONS AND VETERANS AFFAIRS, Room 228, GP 9:00 a.m. Continued public "
-            "hearing on HB 1287", READ),
+            ["COMMITTEE MEETINGS", "STATE-FEDERAL RELATIONS AND VETERANS AFFAIRS, Room 228, GP "
+             "9:00 a.m. Continued public hearing on HB 1287"], READ),
      record("A Senate notice gives the committee, the room and building, its members and a time for "
             "each bill.", "Senate Calendar No. 3, January 22, 2026, p. 25", SC3,
             ["COMMERCE, Room 100, SH", "9:45 a.m. SB 482-FN"], READ),
@@ -1236,7 +1242,8 @@ TESTIMONY = guide(
      step("Sign in online for a House hearing",
           "<p>The House&rsquo;s Sign-in Form and Online Testimony Submission is on the General "
           "Court&rsquo;s website, and Testifying and Attending links it. Each sign-in is for one "
-          "bill at one committee&rsquo;s hearing on one day. It asks for:</p><ul>"
+          "bill at one committee&rsquo;s hearing on one day. Among other things, it asks "
+          "for:</p><ul>"
           "<li>your name, town and state;</li>"
           "<li>who you are, such as a member of the public, an elected official, a lobbyist or "
           "state agency staff, and whom you represent, if anyone; and</li>"
@@ -1252,8 +1259,9 @@ TESTIMONY = guide(
           "would do to you, your family, your work or your town. If you write for an "
           "organization, say so.</p>"),
      step("Send it before the hearing",
-          "<p>Committee members are sent links to the testimony submitted online at the end of "
-          "each day their committee holds hearings. A committee can vote as soon as its hearing "
+          "<p>Committee members can read what is submitted online in the House&rsquo;s portal, "
+          "bill by bill, and are sent links to it at the end of each day their committee holds "
+          "hearings. A committee can vote as soon as its hearing "
           "ends: Senate notices often say &ldquo;executive session may follow&rdquo;, and a House "
           "committee may meet in executive session straight after a noticed hearing. So send "
           "your testimony before the hearing, as soon as you can once it is scheduled.</p>"),
@@ -1380,7 +1388,8 @@ CONTACT = guide(
           "phone the member lists.", "/officials.html", READ),
      record("The General Court's member list carries each member's address, phone and email. Read on "
             "October 17, 2026: every senator a State House or State House Annex office and phone; "
-            "382 of 384 representatives an email address and 242 a phone number.",
+            "of the 366 sitting representatives (the 18 rows marked Former left out), 364 an email "
+            "address and 227 a phone number.",
             "The General Court's member list (Members.txt), as taken on this disk", MEMBERS,
             "Address address2 city Zipcode State Phone WorkEmail", READ),
      record("Bills are numbered by type, and a Senate bill is marked Senate Bill.",
@@ -1412,22 +1421,31 @@ CONTACT = guide(
 # of 2024 as introduced, for the parts and the marking of changes, chosen
 # because it is short and its change is plain to see; a fiscal note's parts
 # from an introduced bill that carries one. What the letters and the note
-# are for is RSA 14:44-48. The guide prints no bill's subject.
+# are for is RSA 14:44-48.
+#
+# REGULAR TYPE IS NOT ONLY "ALL NEW" (the fact-check of 17 October 2026).
+# The bill's own note says regular type is matter all new or repealed and
+# reenacted, and the first draft said only that; but in a paragraph being
+# amended, the words kept from current law are regular type too, with the
+# additions in bold italics -- HB 1001's first section is exactly that. So
+# the guide says both, and the claim is checked against the saved page's
+# markup, where the plain and the bold italic runs are two styles.
 # ---------------------------------------------------------------------------
 READ_BILL = guide(
     "read-a-bill", "How to Read a Bill",
     "The parts of a New Hampshire bill, how its text marks what it adds to the law and what it "
     "removes, what amendments and fiscal notes are, and what the letters after its number mean.",
     "A bill is a set of changes to the state&rsquo;s laws. Its first page gives its title, "
-    "sponsors and committee, and a short analysis. Each section then says which law it changes: "
-    "words in <b><i>bold italics</i></b> are being added, words [<s>in brackets and struck "
-    "through</s>] are being removed, and regular type is all new. Letters after the number "
-    "flag money: FN means a fiscal note is attached, and LOCAL that local governments&rsquo; "
-    "spending or revenue may be affected.",
+    "sponsors and committee, and a short analysis. Each section then says which law it changes. "
+    "Where it rewrites part of a law, regular type is the law as it stands, words in "
+    "<b><i>bold italics</i></b> are being added, and words [<s>in brackets and struck "
+    "through</s>] are being removed; a section that is all new is printed wholly in regular "
+    "type. Letters after the number flag money: FN means a fiscal note is attached, and LOCAL "
+    "that local governments&rsquo; spending or revenue may be affected.",
     [box("The first page: the number and its letters, the title, the sponsors, the committee and "
          "the analysis."),
-     box("The sections: each changes a law. Bold italics are added, [<s>struck</s>] words "
-         "removed, regular type all new."),
+     box("The sections: each changes a law. Regular type is the law as it stands, bold italics "
+         "are added, [<s>struck</s>] words removed; an all-new section is wholly regular type."),
      ask("Has the bill been amended?",
          [("Yes", "Read the latest version, and each amendment for what it changed."),
           ("No", "The text as introduced is the current one.")]),
@@ -1460,10 +1478,14 @@ READ_BILL = guide(
           "<p>After the words &ldquo;Be it Enacted by the Senate and House of Representatives in "
           "General Court convened&rdquo;, each numbered section names the law it changes, such as "
           "&ldquo;Amend RSA 72:23-c, I to read as follows&rdquo;, and prints that law as it would "
-          "read. A note on the first page explains the type:</p><ul>"
-          "<li><b><i>Bold italics</i></b>: words being added to current law.</li>"
-          "<li>[<s>Brackets, struck through</s>]: words being removed.</li>"
-          "<li>Regular type: matter that is all new, or repealed and written again.</li></ul>"
+          "read. The type shows what changes:</p><ul>"
+          "<li>In a section that rewrites part of a law, <b>regular type</b> is the law as it "
+          "stands, <b><i>bold italics</i></b> are words being added, and [<s>brackets, struck "
+          "through</s>] are words being removed. In HB 1001 of 2024, the first section prints a "
+          "paragraph of current law in regular type with one phrase in bold italics: the "
+          "addition.</li>"
+          "<li>A section that is all new, or repealed and written again, is printed wholly in "
+          "regular type, as a note on the first page says.</li></ul>"
           "<p>The last section says when the change would take effect. To read a law as it "
           "stands now, look it up in Laws.</p>",
           actions=[("Laws", "/laws.html")]),
@@ -1532,6 +1554,16 @@ READ_BILL = guide(
                      "Matter removed from current law appears [ in brackets and struckthrough",
                      "Matter which is either (a) all new or (b) repealed and reenacted appears in "
                      "regular type", "This act shall take effect"], READ),
+     record("In a paragraph being amended, the words kept from current law are regular type and the "
+            "addition bold italic: section 1 reprints RSA 72:23-c, I in the plain style with only "
+            "'Masonic lodge or Masonic association,' in the bold italic one, as the page's own "
+            "styles define them.", "HB 1001 of 2024, as introduced, section 1", HB1001,
+            ['charitable organization, Grange, </span><span class="cs22FF6315">Masonic lodge or '
+             'Masonic association, </span><span class="csDD5E5F52">the Veterans of Foreign Wars',
+             ".cs22FF6315{color:#000000;background-color:transparent;font-family:'Century "
+             "Schoolbook';font-size:10pt;font-weight:bold;font-style:italic;}",
+             ".csDD5E5F52{color:#000000;background-color:transparent;font-family:'Century "
+             "Schoolbook';font-size:10pt;font-weight:normal;font-style:normal;}"], READ),
      record("An amendment has its own number and says what to replace, a subparagraph or all after "
             "the enacting clause.", "Senate Calendar No. 3, January 22, 2026, pp. 13 and 25", SC3,
             ["2026-0176s", "Amend the bill by replacing all after the enacting clause with the following",

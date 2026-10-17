@@ -35085,6 +35085,18 @@ def _guides_gate(BC, G, GS, RSA, S):
             assert got and why in got[0], f"a claim that should fail with {why!r} gave {got}"
         assert G.claim_faults(probe_g, probe / "elsewhere") == ([], 0, 1), \
             "a document not on this disk was counted as read"
+        # Words with markup are matched against the page as saved, so a claim
+        # about which words a bill sets in bold italics is checked by its style.
+        (probe / "legislation" / "2099").mkdir(parents=True)
+        (probe / "legislation" / "2099" / "HB0001.html").write_text(
+            '<p><span class="plain">kept </span><span class="added">added</span></p>', encoding="utf-8")
+        page = G.record("x", "HB 1 of 2099", "legislation/2099/HB0001.html",
+                        ['kept </span><span class="added">added', "kept added"], "2099-01-01")
+        assert G.claim_faults(dict(probe_g, claims=[page]), probe) == ([], 1, 0), \
+            "a page's markup, or its words without it, were not found"
+        restyled = dict(page, words=['<span class="plain">added'])
+        assert G.claim_faults(dict(probe_g, claims=[restyled]), probe)[0], \
+            "words set in another style than the page's were found"
     finally:
         shutil.rmtree(probe, ignore_errors=True)
     cols = ["id", "TitleNo", "ChapterNo", "SectionNo", "Title", "Chapter", "Section", "SourceNote",
