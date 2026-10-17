@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.20
+# GRANITE_VERSION: 2026-09-05.21
 """
 The phrasings the marker patterns must match, and the ones they must not.
 
@@ -475,6 +475,39 @@ def run():
                 "on Representative", ["HB1241"])
     if not got or got["HB1241"].get("recessed"):
         fails.append(f"coming out of a recess (T5AtXiL_VVc 0:33:02) read as one: {got}")
+    # A close does not attach to an opening that was recessed: on a9iqYhIVaA8
+    # the chair said the first sentence at 3:00:15 and the second at 5:22:27,
+    # a sitting between them whose own opening was not caught.
+    w10 = ([(10815.0 + i * 0.4, x) for i, x in enumerate(
+        "will open the hearing on HB 289 and then recess it until one o'clock so that "
+        "people that are here for that".split())]
+           + [(19347.0 + i * 0.4, x) for i, x in enumerate(
+               "going to close the hearing on that and I would like to um I had recessed the "
+               "hearing earlier on HB 289".split())])
+    segs = S.to_segments(S.find_markers(w10, ["HB289"], {}), ["HB289"])
+    first = (segs.get("HB289") or [{}])[0]
+    if not first.get("recessed") or first.get("end") is not None:
+        fails.append(f"a close attached to an opening that was recessed (a9iqYhIVaA8): {first}")
+    # Coming back is not a recess (RESUMING): G5a_5cNnorE at 1:38:27, spoken.
+    got = opens("opened at ten o'clock and then recess we will now come out of recess on hb "
+                "487 and i will recommend recognize the sponsor of the bill", ["HB487"])
+    if not got or got["HB487"].get("recessed"):
+        fails.append(f"coming out of a recess (G5a_5cNnorE 1:38:27) read as one: {got}")
+    # The title stands for a bill only after an opening that names a
+    # proceeding (TITLED). Spoken, and placed by title before that rule:
+    for text, bill, title, where in (
+            ("opens a door to listing you know a myriad of other conditions because there's "
+             "really two categories of Health there's physical health and mental health and "
+             "everything falls under one of those", "SB151",
+             "relative to mental health education.", "NHUzbncPxRU 3:40:16"),
+            ("a way of opening this conversation and trying to find a way to fund the "
+             "university system and the community college system in a way that makes sense, "
+             "that helps to retain uh our youngest and brightest students here in New "
+             "Hampshire.", "SB604", "making an appropriation to the university system of New "
+             "Hampshire.", "rnZQ363ufk4 0:17:08")):
+        w = [(i * 0.4, x) for i, x in enumerate(text.split())]
+        if S.find_markers(w, [bill], {bill: title}):
+            fails.append(f"a title placed {bill} after an opening naming no proceeding ({where})")
     # Narrowed after reading what it gave on every recording, spoken as here.
     got = opens("turn to public hearings for two more bills HB 759 and HB 760 so we'll begin "
                 "the activity of the afternoon", ["HB759", "HB760"])
