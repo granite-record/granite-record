@@ -212,6 +212,35 @@ test("the day's ceiling answers 429 for everyone alike", async () => {
   } finally { w.close(); }
 });
 
+// THE DAY'S CEILING SERVES A WEBINAR (17 October 2026). It was 50 with
+// SIGNUP_DAILY_CEILING unset on production, so sign-up 51 of the 10 November
+// walkthrough would have been refused. The default is now 1,000, and the
+// setting still overrides it.
+test("with no ceiling set, a webinar's sign-ups all go: the 51st and the 1,000th, and not the 1,001st", async () => {
+  const w = makeWorld();
+  try {
+    assert.equal(w.env.SIGNUP_DAILY_CEILING, undefined, "as production has it");
+    const day = w.now.toISOString().slice(0, 10);
+    const countIs = n => w.d1.sql.prepare("INSERT INTO signup_days (day, n) VALUES (?, ?) " +
+      "ON CONFLICT(day) DO UPDATE SET n = excluded.n").run(day, n);
+    countIs(50);
+    assert.equal((await signUp(w, w.address("fifty.first"))).status, 202);
+    assert.equal(w.net.outbox.length, 1, "the 51st sign-up of the day is sent its confirmation");
+    countIs(999);
+    assert.equal((await signUp(w, w.address("one.thousandth"))).status, 202);
+    assert.equal(w.net.outbox.length, 2, "and so is the 1,000th");
+    const over = await signUp(w, w.address("one.too.many"));
+    assert.equal(over.status, 429);
+    assert.deepEqual(JSON.parse(over.body), { ok: false, why: "busy" });
+    assert.equal(w.net.outbox.length, 2, "the 1,001st is not: the ceiling still bounds a flood");
+    w.env.SIGNUP_DAILY_CEILING = "1500";
+    assert.equal((await signUp(w, w.address("raised.ceiling"))).status, 202, "the setting raises it");
+    w.env.SIGNUP_DAILY_CEILING = "not a number";
+    assert.equal((await signUp(w, w.address("default.again"))).status, 429,
+      "a setting that is no number leaves the default");
+  } finally { w.close(); }
+});
+
 test("a refused email or a failing database after the answer keeps nothing, and logs only a code", async () => {
   const w = makeWorld();
   try {

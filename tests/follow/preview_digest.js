@@ -11,6 +11,11 @@
  *   node tests/follow/preview_digest.js --weekly --nights 7 --out preview-mail
  *   node tests/follow/preview_digest.js --site https://graniterecord.org
  *   node tests/follow/preview_digest.js --dir site           a built site on this disk
+ *   node tests/follow/preview_digest.js --dir tests/follow/fixtures --welcome --follow bill:2026/HB9903
+ *
+ * --welcome renders the email a confirmation sends ("You're following"), for
+ * the first record followed, in place of a digest (17 October 2026: the
+ * person reads the three emails side by side, and this one had no preview).
  *
  * With no --follow, it takes the records with the most news in the nights
  * read -- three bills, a legislator, a committee, a law and a topic, where
@@ -26,7 +31,7 @@ import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { readCurrent, readNight } from "../../workers/follow/changes.js";
 import { addDays, keyOf, parseKey } from "../../workers/follow/common.js";
-import { digestEmail } from "../../workers/follow/mail.js";
+import { digestEmail, pageNames, welcomeEmail } from "../../workers/follow/mail.js";
 import { collect } from "../../workers/follow/sender.js";
 
 const args = process.argv.slice(2);
@@ -44,6 +49,7 @@ const list = name => {
 const site = opt("--site", "https://dry-run.graniterecord.pages.dev").replace(/\/$/, "");
 const dir = opt("--dir", "");
 const frequency = args.includes("--weekly") ? "weekly" : "daily";
+const welcome = args.includes("--welcome");
 const nightsRead = Number(opt("--nights", frequency === "weekly" ? "7" : "1"));
 const out = opt("--out", "preview-mail");
 const detail = args.includes("--milestones") ? "milestones" : "all";
@@ -96,15 +102,23 @@ follows.sort((a, b) => keyOf(a.kind, a.ref).localeCompare(keyOf(b.kind, b.ref)))
 const sections = collect({ follows, nights, cursor: {}, current: cur.value, frequency,
   today, detail });
 const origin = dir ? "https://graniterecord.org" : site;
-const mail = digestEmail({ origin, frequency, date: today, sections,
-  manage: "#preview-manage", unsub: "#preview-unsubscribe",
-  feedbackUrl: "https://forms.gle/PYw9c3xgpDDwvX7E9" });
+const links = { manage: "#preview-manage", unsub: "#preview-unsubscribe",
+                feedbackUrl: "https://forms.gle/PYw9c3xgpDDwvX7E9" };
+const first = follows[0] && cur.value.followable.get(keyOf(follows[0].kind, follows[0].ref));
+if (welcome && !first) {
+  console.error("preview: --welcome needs a --follow that current.json lists");
+  process.exit(1);
+}
+const mail = welcome
+  ? welcomeEmail({ origin, kind: follows[0].kind, label: first.label, title: first.title,
+      url: first.url, frequency, total: follows.length, newcomer: true, ...links })
+  : digestEmail({ origin, frequency, date: today, sections, names: pageNames(cur.value), ...links });
 
 mkdirSync(out, { recursive: true });
-const base = join(out, `digest-${frequency}`);
+const base = join(out, welcome ? "welcome" : `digest-${frequency}`);
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 const strip = `<div style="font:13px/1.5 system-ui,sans-serif;background:#eef0f2;border-bottom:1px solid #d3d6da;padding:10px 16px">
-<b>Preview, not sent.</b> ${esc(frequency)} digest of ${esc(today)} from ${esc(dir || site)}, ${nights.length} night${nights.length === 1 ? "" : "s"} read<br>
+<b>Preview, not sent.</b> ${esc(welcome ? "welcome email" : `${frequency} digest`)} of ${esc(today)} from ${esc(dir || site)}, ${nights.length} night${nights.length === 1 ? "" : "s"} read<br>
 <b>Subject:</b> ${esc(mail.subject)}<br>
 <b>Following:</b> ${esc(follows.map(f => keyOf(f.kind, f.ref)).join(", ") || "nothing")}</div>`;
 writeFileSync(`${base}.html`, mail.html.replace(/<body([^>]*)>/i, m => m + strip));

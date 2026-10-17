@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.36
+# GRANITE_VERSION: 2026-09-04.37
 """
 Write RSS feeds so people can follow bills without a login.
 
@@ -43,6 +43,7 @@ import _paths  # noqa: E402,F401
 import argparse
 import build_date
 import build_rsa as BR
+import components as C
 import follow_changes as FC
 import plain_action as PA
 import json
@@ -75,6 +76,69 @@ FOLLOW_FROM = "2026-09-17"
 # How a vote is written. Anything not listed is passed through as the record
 # has it rather than translated into a word it did not use.
 VOTE_WORD = {"Yea": "yes", "Nay": "no"}
+
+# A BALLOT IN THE CHANGES FILES' WORDS (17 October 2026, the language sweep:
+# an email read "voted Not Voting/Excused"). The contract's ballot is "yes",
+# "no", "not voting" or "excused", in at most twenty characters, and the roll
+# call's "Not Voting/Not Excused" is twenty-two, so it reached the email cut
+# to "Not Voting/Not Exc…". The email says each in the site's own words
+# (mail.js ballotWords, from app.js's names for them).
+BALLOT_WORD = {"Yea": "yes", "Nay": "no", "Not Voting/Excused": "excused",
+               "Not Voting/Not Excused": "not voting", "Presiding": "presiding"}
+
+
+def ballot_word(v):
+    """A member's ballot as the changes files carry it: the contract's word,
+    or the record's own where it is none of these."""
+    return BALLOT_WORD.get(v, v or "")
+
+
+# HOW A BILL ENDED, IN THE SITE'S WORDS FOR IT (17 October 2026, the language
+# sweep). The closing item and the email's ending line put the index's kind
+# into a sentence, so every law "was signed into law" -- one that became law
+# unsigned or over a veto too -- and every bill killed, tabled to death or
+# otherwise done "has finished its course". The index's status is what the
+# bill's page, its rail and its search row already say ("Became law
+# unsigned", "Veto overridden, became law", "Killed"), and the ending says
+# the same. A row with no status falls back to its kind, in words that claim
+# no more than the kind does.
+ENDED_KIND = {"law": "Became law", "veto": "Vetoed", "adopted": "Adopted",
+              "study": "Referred for interim study"}
+
+
+def ending_words(b):
+    """ "HB 1442 — Became law unsigned." from a bill's index row."""
+    said = str(b.get("status") or "").strip().rstrip(".")
+    said = said or ENDED_KIND.get(str(b.get("kind") or "").lower(), "Concluded")
+    return f"{b['n']} — {said[:1].upper()}{said[1:]}."
+
+
+# WHAT KIND OF MEETING A COMMITTEE'S DAY WAS (the person, 17 October 2026:
+# "The committee page didn't list what kind of session the labor committee
+# was having, just the days"). A day's feed item is the committee and the
+# date, and the email shows the date beside it already; this is what the email
+# prints instead, from the day's own items, each bill under the kind of meeting
+# the record names for it, in the site's words for the kind: "Executive session
+# on HB 1767-FN and SB 416; full committee work session on HB 303-FN".
+def sitting_words(session, most=6):
+    kinds = C.WORDBOOK["meeting_kinds"]["kinds"]
+    by_kind = {}
+    for i in session.get("items") or []:
+        k = " ".join(str(i.get("kind") or "").lower().split())
+        n = str(i.get("n") or i.get("bill") or "").strip()
+        if not k or not n:
+            continue
+        name = (kinds.get(k) or [k])[0].lower()
+        if n not in by_kind.setdefault(name, []):
+            by_kind[name].append(n)
+    parts = []
+    for name, bills in by_kind.items():
+        if len(bills) > most:
+            bills = bills[:most - 1] + [f"{len(bills) - most + 1} more"]
+        listed = bills[0] if len(bills) == 1 else ", ".join(bills[:-1]) + " and " + bills[-1]
+        parts.append(f"{name} on {listed}")
+    out = "; ".join(parts) or "the committee met"
+    return out[:1].upper() + out[1:]
 
 # The body letter in a roll call key, spelled out. A ballot the clerk filed
 # under no bill has nothing else to name it by.
@@ -376,16 +440,8 @@ def main():
     except (OSError, ValueError):
         cited = {}
 
-    # How a concluded bill's closing feed item names its ending. The index's
-    # own `kind`, put into a sentence -- the record's word for what happened is
-    # already on the page, and this is the feed saying the same thing once.
-    OUTCOME = {
-        "law": "was signed into law",
-        "done": "has finished its course",
-        "veto": "was vetoed",
-        "adopted": "was adopted",
-        "study": "was referred for interim study",
-    }
+    # How a concluded bill's closing feed item names its ending: ending_words,
+    # the index's own status, which is what the bill's page says.
     skipped_closed = retired = skipped_concluded = 0
     noyear = []
     sponsored = {}
@@ -493,12 +549,12 @@ def main():
                     and not S.still_moving(b, current)
                     and events[0]["date"][:10] >= FOLLOW_FROM)
         if _closing:
-            _end = OUTCOME.get((b.get("kind") or "").lower(), "has concluded")
+            _end = ending_words(b)
             items.insert(0, (
-                f"{b['n']} — {_end}. This feed is now closed.",
+                f"{_end} This feed is now closed.",
                 url,
-                f"{b.get('title','')}\n\n{b['n']} {_end}. No further updates "
-                "will be posted here: a bill that has finished its course has "
+                f"{b.get('title','')}\n\n{_end} No further updates "
+                "will be posted here: a bill that has concluded has "
                 "nothing more to report. Its full history stays on its page.",
                 events[0]["date"],
                 f"{b.get('term','')}:{b['id']}:closed:{(b.get('kind') or '')}"))
@@ -508,12 +564,11 @@ def main():
             hints[key] = {"closing": {
                 "how": (b.get("kind") or "").lower() if FC.HOW.match((b.get("kind") or "").lower())
                 else "done",
-                "summary": f"{b['n']} {_end}.", "date": events[0]["date"][:10],
+                "summary": _end, "date": events[0]["date"][:10],
                 "guid": items[0][4]}}
         elif key in want:
             hints[key] = {"kind": (b.get("kind") or "").lower(), "term": b.get("term") or "",
-                          "said": f"{b['n']} "
-                                  f"{OUTCOME.get((b.get('kind') or '').lower(), 'has concluded')}."}
+                          "said": ending_words(b)}
         if on_record and S.still_moving(b, current) and str(b.get("year") or "").strip():
             followable[key] = {"label": FC.line(b["n"], 120),
                                "title": FC.line(b.get("title") or "", 300),
@@ -659,7 +714,7 @@ def main():
                    if taken else ""),
                 d, f"committee:{code}:{d}"))
             it = FC.item(items[-1][4], d[:10], "sitting", items[-1][0], path_of(page),
-                         s.get("term") or P.term_of(d))
+                         s.get("term") or P.term_of(d), plain=sitting_words(s))
             if it:
                 mine[it["guid"]] = it
         if not items:
@@ -729,10 +784,15 @@ def main():
             name = str(u.get("committee") or "").strip()
             sits = cmte_code.get((body, name.lower()))
             word = CHAMBER.get(body, "")
+            # THE COMMITTEE BY ITS FOLLOW LABEL, THE ROOM IN WORDS (17 October
+            # 2026). The email names the committee as current.json does, so
+            # that it is the same name as the reader's own heading and links
+            # to the committee's page, and says "Granite Place 231" where the
+            # clerk wrote "GP 231", as every other line of the email does.
             row = FC.upcoming_row(
                 when[:10], u.get("what") or "hearing", u.get("time") or "",
-                f"{word} {name}".strip() if name and not name.startswith(word) else name,
-                u.get("venue") or "")
+                FC.committee_label(name, word) if name else "",
+                PA.place(u.get("venue") or ""))
             if row:
                 for k in ([f"bill:{b.get('year')}/{b['id'].upper()}"] if b else []) + \
                         ([f"committee:{sits}"] if sits else []):
@@ -829,10 +889,17 @@ def main():
                         # bill on one day are two items. See vote_guid.
                         vote_guid(mid, v, q)))
                     rc = rc_index.get(v.get("k") or "") or {}
+                    # The ballot and the motion in the site's words (17 October
+                    # 2026): "On OTPA: voted Not Voting/Excused" was the roll
+                    # call's codes. The feed's own title is left as it was.
+                    asked = rc.get("q") or q
                     it = FC.item(items[-1][4], day, "vote", items[-1][0], path_of(items[-1][1]),
                                  (bb or {}).get("term") or P.term_of(day), milestone=True,
                                  vote=FC.vote_detail(
-                                     how, motion=rc.get("q") or q,
+                                     ballot_word(v.get("v")),
+                                     motion=PA.motion_words(asked, (bb or {}).get("id") or "",
+                                                            {"House": "H", "Senate": "S"}.get(seat, ""))
+                                     or asked,
                                      result=("passed" if rc.get("p") else "failed") if rc else "",
                                      tally=f"{rc['y']}-{rc['n']}" if rc.get("y") is not None
                                      and rc.get("n") is not None else "",

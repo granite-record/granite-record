@@ -5,6 +5,7 @@
 
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { hashToken } from "../../workers/follow/address.js";
 import { digestEmail } from "../../workers/follow/mail.js";
 import { due, nhClock, run } from "../../workers/follow/sender.js";
@@ -163,26 +164,29 @@ test("a week of dailies from the fixtures: each night once, the ending told, the
     let m = await morning("2026-10-05");
     assert.equal(m.length, 1);
     assert.match(m[0].subject, /^1 update on what you follow$/, "no milestone, so the count");
-    assert.match(m[0].text, /HB 9901 — Full Committee Work Session: 10\/02\/2026/);
-    assert.match(m[0].text, /rebuilt once a night/);
+    // The day once: the clerk's "10/02/2026" after the entry's own date is
+    // not printed again (the language sweep, 17 October 2026).
+    assert.match(m[0].text, /October 2, 2026 {2}HB 9901 — Full Committee Work Session: 10:00 am LOB 305/);
+    assert.match(m[0].text, /updated once a day, overnight/);
 
     m = await morning("2026-10-06");
     assert.match(m[0].text, /prime sponsor/);
-    assert.match(m[0].text, /House Example Committee — 5 October 2026/);
+    // A committee's day says what kind of meeting it was (17 October 2026).
+    assert.match(m[0].text, /October 5, 2026 {2}Public hearing on HB 9903-FN/);
     assert.doesNotMatch(m[0].text, /Work Session/, "the 5th's news is not sent twice");
 
     m = await morning("2026-10-07");
-    assert.match(m[0].text, /HB 9902 was signed into law\. This follow has ended/);
-    assert.match(m[0].subject, /^HB 9902 was signed into law, and \d+ more updates$/,
+    assert.match(m[0].text, /HB 9902 — Signed into law\. There will be no more updates on it/);
+    assert.match(m[0].subject, /^HB 9902 — Signed into law, and \d+ more updates$/,
       "the subject names how a bill ended before anything else");
-    assert.match(m[0].text, /Executive Session: 10\/06\/2026/);
+    assert.match(m[0].text, /October 6, 2026 {2}HB 9903-FN — Executive Session: 1:00 pm LOB 305/);
     assert.deepEqual(await followsOf(w, s.id), ["bill:2026/HB9901", "bill:2026/HB9903",
       "committee:H90", "member:990001", "topic:housing"], "the ended bill's follow is gone");
 
     m = await morning("2026-10-08");
-    assert.match(m[0].text, /The interim study committee recommended future legislation\./);
+    assert.match(m[0].text, /HB 9901 — Interim study report: recommends future legislation/);
     assert.match(m[0].text, /Committee roll call: Ought to Pass, 11-9/);
-    assert.match(m[0].text, /HB 9903-FN \(relative to an invented fee, written for these tests\) on Ought to Pass: voted yes; passed 11-9/,
+    assert.match(m[0].text, /HB 9903-FN \(relative to an invented fee, written for these tests\) — On Ought to Pass \(OTP, Pass the bill\): voted yes; the motion passed, 11-9/,
       "a followed legislator's ballot is set beside the roll call's result");
     assert.doesNotMatch(m[0].text, /HB 9902/, "nothing more about the bill that ended");
     assert.doesNotMatch(m[0].text, /HB 9904|05\/02\/2024/, "a topic sends the sitting term's items only");
@@ -216,15 +220,20 @@ test("the weekly: votes and executive sessions, hearings coming up, the study's 
     w.now = new Date("2026-10-10T12:00:00Z");      // Saturday, 8:00 EDT
     await run(w.env, w.now);
     const [m] = mailsTo(w, s.address);
-    assert.equal(m.subject, "Your week: 2 proceedings coming up, and HB 9903-FN — Committee roll call: Ought to Pass, 11-9");
-    assert.ok(m.text.indexOf("THE WEEK AHEAD") < m.text.indexOf("HB 9901 —"), "the weekly opens with the week ahead");
+    assert.equal(m.subject, "Your week: 2 committee meetings coming up, and HB 9903-FN — Committee roll call: Ought to Pass, 11-9");
+    assert.ok(m.text.indexOf("COMING UP") > 0 &&
+      m.text.indexOf("COMING UP") < m.text.indexOf("BILLS YOU FOLLOW"), "the weekly opens with the week ahead");
+    // Plain headings (the person, 17 October 2026: "'Bills: the week that
+    // was'" read confusingly).
+    assert.doesNotMatch(m.text + m.html, /week that was|WEEK THAT WAS|THE WEEK AHEAD/);
     const hb9903 = m.text.slice(m.text.indexOf("HB 9903-FN"),
       m.text.indexOf("https://graniterecord.org/committee/H90"));
     assert.match(hb9903, /This week: 1 roll call vote and 1 executive session\./);
-    assert.match(m.text, /Wednesday 14 October 2026, 10:00 a\.m\.: Public hearing, House Example Committee, LOB 305\. For HB 9903-FN and House Example Committee\./);
+    // The committee that sits is named once, and not again after "For".
+    assert.match(m.text, /Wednesday, October 14, 10:00 a\.m\.: Public hearing, House Example Committee, LOB 305\. For HB 9903-FN\.\n/);
     assert.match(m.text, /HB 9901[\s\S]*No roll call votes or executive sessions this week\./);
-    assert.match(m.text, /The interim study committee recommended future legislation\./);
-    assert.match(m.text, /Tuesday 13 October 2026, 1:00 p\.m\.: Executive session/);
+    assert.match(m.text, /HB 9901 — Interim study report: recommends future legislation/);
+    assert.match(m.text, /Tuesday, October 13, 1:00 p\.m\.: Executive session, House Example Committee, LOB 305\.\n/);
     assert.doesNotMatch(m.text, /HB 9904/);
     assert.match(m.html, /This week: 1 roll call vote and 1 executive session\./);
     // A second run that Saturday sends nothing more.
@@ -249,7 +258,7 @@ test("every update carries a manage link, an unsubscribe link and the RFC 8058 h
       `<https://graniterecord.org/api/follow/unsubscribe?u=${unsub}>`);
     assert.equal(m.headers["List-Unsubscribe-Post"], "List-Unsubscribe=One-Click");
     assert.ok(!("reply_to" in m) && !("replyTo" in m), "no reply address");
-    assert.match(m.text, /takes no replies[\s\S]*Report a problem with this page[\s\S]*feedback form/);
+    assert.match(m.text, /takes no replies[\s\S]*“Report a problem” on the bill's, legislator's or committee's page[\s\S]*feedback form/);
     const [row] = w.d1.rows("subscribers");
     assert.equal(row.manage_hash, await hashToken(manage));
     assert.equal(row.unsub_hash, await hashToken(unsub));
@@ -268,7 +277,7 @@ test("when every follow ends, the address goes with them and the email says so",
     w.now = new Date("2026-10-07T12:00:00Z");
     await run(w.env, w.now);
     const [m] = mailsTo(w, s.address);
-    assert.match(m.text, /HB 9902 was signed into law\./);
+    assert.match(m.text, /HB 9902 — Signed into law\./);
     assert.match(m.text, /That was the last thing you followed, so your address has been deleted/);
     assert.doesNotMatch(m.text, /manage#t=|unsubscribe#u=/, "no link that would not work");
     assert.equal(m.headers, undefined);
@@ -287,7 +296,7 @@ test("a followed bill that drops off the list with no ending is told as stopped,
     w.now = new Date("2026-10-09T12:00:00Z");
     await run(w.env, w.now);
     const [m] = mailsTo(w, s.address);
-    assert.match(m.text, /HB 9905 \(2026\) is no longer moving on the record\. This follow has ended/);
+    assert.match(m.text, /HB 9905 \(2026\) is no longer moving on the record\. There will be no more updates on it/);
     assert.deepEqual(await followsOf(w, s.id), ["bill:2026/HB9901"]);
     // But an empty list is a broken build, not every bill ending at once.
     const v = await subscribe(w, "reader.emptylist", ["bill:2026/HB9906"], { cursor: "2026-10-09" });
@@ -386,7 +395,7 @@ test("under record-date, the same week reads the same, with no seen at all", asy
     w.now = new Date("2026-10-08T12:00:00Z");
     await run(w.env, w.now);
     const [m] = mailsTo(w, s.address);
-    assert.match(m.text, /recommended future legislation/);
+    assert.match(m.text, /recommends future legislation/);
     assert.match(m.text, /Ought to Pass, 11-9/);
     assert.equal(w.logs.lines.filter(l => l.startsWith("follow sender.entries")).length, 0);
   } finally { w.close(); }
@@ -574,24 +583,37 @@ test("a member or committee that leaves the list is told as stopped; a topic is 
     w.now = new Date("2026-10-09T12:00:00Z");
     await run(w.env, w.now);
     const [m] = mailsTo(w, s.address);
-    assert.match(m.text, /Legislator no\. 990009 is no longer among the sitting legislators on the record\. This follow has ended/);
-    assert.match(m.text, /Committee H99 is no longer among the committees on the record\. This follow has ended/);
+    assert.match(m.text, /Legislator no\. 990009 is no longer among the sitting legislators on the record\. There will be no more updates on it/);
+    assert.match(m.text, /Committee H99 is no longer among the committees on the record\. There will be no more updates on it/);
     assert.doesNotMatch(m.text, /Fisheries/, "a topic out of the list for now is not ended");
     assert.deepEqual(await followsOf(w, s.id), ["bill:2026/HB9901", "topic:fisheries"]);
   } finally { w.close(); }
 });
 
-test("an interim study's sentence is said once, and the record's own words after it", () => {
+// THE INTERIM STUDY REPORT, SAID ONE WAY (the language sweep, 17 October
+// 2026): it was a fixed sentence, the clerk's line after it, and the sentence
+// again at a glance and in the subject, naming no bill.
+test("an interim study's report is said one way, in plain_action's words, naming its bill", () => {
   const base = { origin: "https://graniterecord.org", frequency: "daily", date: "2026-10-08",
     manage: "M".repeat(43), unsub: "U".repeat(43) };
   const section = study => ({ key: "bill:2026/HB9901", kind: "bill", ref: "2026/HB9901",
-    label: "HB 9901", title: "", url: "", items: [], more: 0, study, ended: null, week: null, upcoming: [] });
-  const echo = digestEmail({ ...base, sections: [section({ recommends: true,
-    summary: "The interim study committee recommended future legislation." })] });
-  assert.equal((echo.text.match(/recommended future legislation/g) || []).length, 1);
-  const own = digestEmail({ ...base, sections: [section({ recommends: true,
-    summary: "Interim Study Report: Recommended for Future Legislation 10/07/2026" })] });
-  assert.match(own.text, /The interim study committee recommended future legislation\. Interim Study Report: Recommended for Future Legislation 10\/07\/2026/);
+    label: "HB 9901", title: "", url: "/bill/2026/hb9901", items: [], more: 0, study, ended: null,
+    week: null, upcoming: [] });
+  const words = { true: "recommends future legislation", false: "does not recommend future legislation",
+                  null: "makes no recommendation" };
+  for (const [recommends, said] of [[true, words.true], [false, words.false], [null, words.null]]) {
+    const m = digestEmail({ ...base, sections: [section({ recommends, date: "2026-10-07",
+      summary: "Interim Study Report: Recommended for Future Legislation 10/07/2026 (Vote 12-2; )" })] });
+    assert.equal(m.subject, `HB 9901 — Interim study report: ${said}`, "the subject names the bill");
+    assert.equal((m.text.match(/Interim study report/g) || []).length, 1, "said once in the text");
+    assert.match(m.text, new RegExp(`October 7, 2026 {2}HB 9901 — Interim study report: ${said}\\n`));
+    assert.doesNotMatch(m.text + m.html, /Interim Study Report:|interim study committee|Vote 12-2/,
+      "the clerk's line and the old sentence are gone");
+  }
+  // plain_action.py says the same report in the same words, so a law's or a
+  // topic's line for it reads as the bill's does.
+  const pa = readFileSync(new URL("../../src/parse/plain_action.py", import.meta.url), "utf8");
+  for (const said of Object.values(words)) assert.ok(pa.includes(`Interim study report: ${said}`), said);
 });
 
 test("at most SEND_LIMIT emails a run; the next hour finishes the list", async () => {
@@ -694,8 +716,8 @@ test("milestones only: the decisions and what is scheduled, not every docket lin
     assert.equal(a.length, 2);
     assert.match(a[0].text, /Full Committee Work Session/, "everything has the work session");
     assert.equal(f.length, 1, "the 5th held no milestone, so nothing went");
-    assert.match(f[0].text, /Executive Session: 10\/06\/2026/);
-    assert.match(f[0].text, /Public Hearing: 10\/14\/2026/);
+    assert.match(f[0].text, /October 6, 2026 {2}HB 9903-FN — Executive Session: 1:00 pm/);
+    assert.match(f[0].text, /Public Hearing: 10\/14\/2026/, "a meeting on another day keeps its date");
   } finally { w.close(); }
 });
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-14.7
+# GRANITE_VERSION: 2026-10-14.8
 """
 A docket line in plain words, for a reader who does not know the clerk's
 shorthand -- the email digest and the Documents tab (the person's choices of
@@ -496,6 +496,37 @@ def plain(raw, bill="", body="", next_line=""):
     if k == "retained":
         return "Retained in committee"
     return ""
+
+
+# THE ROOM AND THE MOTION, FOR THE EMAIL'S OWN LINES (17 October 2026, the
+# language sweep). The week ahead printed the clerk's "GP 231", and a
+# legislator's roll call "On OTPA", where every line above them in the same
+# email already said "Granite Place 229" and the vote words. These are the
+# same words, for the two fields the changes files carry on their own.
+def place(raw):
+    """A meeting's room in the words the calendar uses: "GP 231" is "Granite
+    Place 231", "Room 100, SH" is "Room 100, State House". Anything else
+    comes back as it was, spaces made single."""
+    t = " ".join(str(raw or "").split())
+    t = _ROOM.sub(lambda m: f"Room {m.group(1).strip()}, "
+                            f"{BUILDINGS.get(m.group(2).upper(), m.group(2))}", t)
+    return _BLDG.sub(lambda m: f"{BUILDINGS[m.group(1)]} {m.group(2)}", t)
+
+
+def motion_words(raw, bill="", body=""):
+    """A floor motion as a vote card heads it (votes.json, the person's rule of
+    8 October 2026): the motion's own name, then in brackets the abbreviation
+    where it has one and a plain gloss -- "Ought to Pass with Amendment (OTPA,
+    Pass the bill with changes)". "" for a motion the words do not name, and
+    the caller keeps the record's own. `bill` is "HB1681", `body` "H" or "S"."""
+    row = VOTES["motions"].get(M.classify(raw or "", bill, body).get("mk") or "")
+    name = (row or {}).get("motion") or ""
+    if not name or "{" in name:
+        return ""
+    gloss = (row.get("gloss") or "").strip()
+    gloss = "" if "{" in gloss else gloss
+    abbr = f"{row['abbr']}, " if row.get("abbr") and gloss else (row.get("abbr") or "")
+    return name + (f" ({abbr}{gloss})" if gloss or abbr else "")
 
 
 if __name__ == "__main__":

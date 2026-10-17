@@ -13,4 +13,5 @@ import "./unsubscribe.test.js";
 import "./count.test.js";
 import "./bounce.test.js";
 import "./html.test.js";
+import "./mail.test.js";
 import "./privacy.test.js";

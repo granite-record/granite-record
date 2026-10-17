@@ -263,8 +263,8 @@ test("a confirmation sends one email, You're following, whose manage link opens 
     assert.match(m.text, /^You are now following:\n\n  HB 9903-FN — relative to an invented fee, written for these tests\n  https:\/\/graniterecord\.org\/bill\/2026\/hb9903\n/);
     assert.match(m.text, /Updates come daily: about 8:00 a\.m\. New Hampshire time, and only on days when something is new\./);
     assert.match(m.text, /Keep this email until your first update arrives/);
-    assert.doesNotMatch(m.text, /You follow \d+ records/, "a new subscriber follows the one record");
-    assert.doesNotMatch(m.text + m.html, /this reports what changed/, "it reports nothing, and does not say it does");
+    assert.doesNotMatch(m.text, /You now follow \d+ things/, "a new subscriber follows the one record");
+    assert.doesNotMatch(m.text + m.html, /this email reports/, "it reports nothing, and does not say it does");
     // Its manage link is the one the confirmation landed on, and it opens the page.
     const t = tokensIn(m);
     assert.equal(t.manage, manageToken(r));
@@ -295,9 +295,11 @@ test("a subscriber adding a record is told it, with their count, how often as be
     assert.match(r.headers.location, /&n=kept$/);
     const m = welcomes(w, a)[1];
     assert.equal(m.subject, "You're following the House Example Committee");
-    assert.match(m.text, /You follow 2 records in all\./);
+    // A reader's noun, not the database's, and a date as the site writes one
+    // (the language sweep, 17 October 2026).
+    assert.match(m.text, /You now follow 2 things in all\./);
     assert.match(m.text, /Updates come weekly, as before: on Saturday about 8:00 a\.m\., with the week ahead and then the week's news\. Signing up again does not change how often\./);
-    assert.match(m.text, /Your updates are paused through 20 October 2026\./);
+    assert.match(m.text, /Your updates are paused through October 20, 2026\./);
     // A subscriber already is not told to wait for a first update.
     assert.doesNotMatch(m.text + m.html, /until your first update arrives/);
     assert.match(m.text, /The link below opens your page for email updates, where you can change what you follow and how often\. Every update carries the same link\./);
@@ -320,7 +322,7 @@ test("a pause is told through its last day, and not once that day has gone by", 
     w.at("2026-10-08T15:00:00Z");                          // its last day, in New Hampshire
     await signUp(w, a, "committee", "H90");
     await confirmLatest(w, a);
-    assert.match(welcomes(w, a)[1].text, /Your updates are paused through 8 October 2026\./);
+    assert.match(welcomes(w, a)[1].text, /Your updates are paused through October 8, 2026\./);
     w.at("2026-10-20T15:00:00Z");
     await signUp(w, a, "topic", "housing");
     await confirmLatest(w, a);
@@ -397,7 +399,9 @@ test("one address follows at most 200 records", async () => {
       await insertFollow(w.d1, w.env, row.id, row.email_hmac, `bill:2026/SB${i}`);
     await signUp(w, s.address, "committee", "H90");
     const r = await confirmLatest(w, s.address);
-    assert.match(r.body, /follow as many records as this allows/);
+    assert.match(r.body, /You follow as many things as one address can/);
+    assert.match(r.body, /200 bills, laws, legislators, committees and topics in all/);
+    assert.doesNotMatch(r.body, /records/, "not the database's noun");
     assert.equal(w.d1.rows("follows").length, 200);
     assert.equal(welcomes(w, s.address).length, 1, "the join's own; a follow refused sends nothing");
   } finally { w.close(); }
