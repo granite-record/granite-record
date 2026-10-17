@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-16.2
+# GRANITE_VERSION: 2026-10-16.3
 """
 The text of a bill the web fetch has not read yet, from the General Court's
 database: each bill's current printing, for the bills bill_text.json lacks.
@@ -8,7 +8,8 @@ database: each bill's current printing, for the bills bill_text.json lacks.
     python3 src/parse/bill_text_from_db.py           # add what bill_text.json lacks
 
 No network. Reads db/Legislation.psv, db/LegislationText.psv, db/_columns.json
-and data/bills.json; writes bill_text.json by merging.
+and data/bills.json (and db/_manifest.json, where LegislationText is empty);
+writes bill_text.json by merging.
 
 WHY
 
@@ -96,6 +97,7 @@ from collections import Counter
 from datetime import datetime
 
 import bill_page
+import freeze_term as FT
 import proceedings as P
 
 LEGISLATION = Path("db/Legislation.psv")
@@ -156,7 +158,15 @@ def printings(root="."):
     cols = json.loads((root / COLUMNS).read_text(encoding="utf-8"))
     leg, odd_l = rows(root / LEGISLATION, cols["Legislation"])
     txt, odd_t = rows(root / TEXT, cols["LegislationText"])
-    if not leg or not txt:
+    # A NEW TERM'S PRINTINGS MAY BE NONE YET (16 October 2026). The night now
+    # takes a LegislationText that came back with no rows once the term has
+    # turned and before its first printing (nightly.TERM_VIEWS), and this step
+    # is not optional: a STOP here would have stopped the night's build. A
+    # view whose dump counts its query's rows as none (freeze_term.counted_none)
+    # has no printing to add, and nothing is; one with lines and none of them
+    # as wide as its columns is still a shape that moved.
+    none = not txt and FT.counted_none(root / TEXT)
+    if not leg or (not txt and not none):
         raise SystemExit(f"STOP: {LEGISLATION} gave {len(leg):,} rows and {TEXT} {len(txt):,} "
                          "as wide as db/_columns.json says. The dump's shape moved; nothing "
                          "written.")
@@ -177,7 +187,7 @@ def printings(root="."):
         if r:
             out.setdefault(P.term_of(year), {})[bill] = (year, r)
     return out, {"odd lines": odd_l + odd_t, "bills": len(by_id),
-                 "with a printing": sum(len(v) for v in out.values())}
+                 "with a printing": sum(len(v) for v in out.values()), "none yet": none}
 
 
 def heading_bill(html):
@@ -303,7 +313,9 @@ def fill(root=".", out=OUT):
             have[term] = now
         else:
             have.pop(term, None)
-    said = (f"{notes['with a printing']:,} bills with a printing in the database; {web:,} have "
+    said = ((f"{TEXT} holds no printing, and its dump counted none: the term's view before its "
+             "first printing; " if notes["none yet"] else "")
+            + f"{notes['with a printing']:,} bills with a printing in the database; {web:,} have "
             f"the web's record, kept; {added:,} added from the database and {refreshed:,} "
             f"refreshed" + (f"; {removed:,} of its own taken back" if removed else "")
             + (f"; {unknown:,} not in {BILLS}, left out" if unknown else "")
