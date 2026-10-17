@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-17.1
+# GRANITE_VERSION: 2026-10-17.2
 """
 build_members_elect's matching rule, scored on an election already decided.
 
@@ -302,7 +302,9 @@ def score(root=".", year=2024, results=None):
     today = (election + datetime.timedelta(days=14)).isoformat()
     races, report = BME.members_elect(results, sitting, former, districts, hand, today)
     on_file, _ = BME.races_on_file(districts)
-    people = BME.People(sitting, former)
+    # THE BALLOT TOO (17 October 2026): the step's rule for a sitting member
+    # who moved seats reads it, and the reasons printed here are the step's.
+    people = BME.People(sitting, former, BME.ballot_of(results))
     known = {r["id"]: r for r in former}
     known.update({r["id"]: r for r in sitting})
     out = {"correct": [], "wrong": [], "unverified": [], "unlinked_known": [],
@@ -355,11 +357,19 @@ def score(root=".", year=2024, results=None):
 def bucket(why):
     """A rule's reason, in a few words."""
     for start, words in (
+            ("another candidate on the ballot answers", "another candidate answers to the name"),
+            ("two or more sitting members of that name", "two or more sitting of that name"),
+            ("a sitting senator of that name", "a senator elected to another seat"),
+            ("a sitting member of that name sits for", "sits for another county"),
+            ("a sitting member of that name holds another seat, and a former member",
+             "sits for another seat, and a former member of the name"),
+            ("a sitting member of that name holds another seat, and the first name",
+             "sits for another seat, by a short form"),
             ("a sitting member of that name holds another seat", "sits for another seat"),
             ("the one former member of that name sat in", "former member of another county"),
             ("the first name fits only as the start", "first name only a prefix"),
             ("the one former member who might be", "former member by a short form only"),
-            ("a Jr. or Sr.", "a Jr. or Sr. on one side"),
+            ("a Jr. or Sr.", "a different Jr. or Sr. on each side"),
             ("the one former member of that name has no county", "former member, no county"),
             (BME.NEW, "no record of that name")):
         if why.startswith(start):
