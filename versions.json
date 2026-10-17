@@ -160,7 +160,7 @@
     "rollcall_parser.py": "2026-09-04.17",
     "rollcalls_from_db.py": "2026-09-10.4",
     "seating.py": "2026-09-18.14",
-    "segment_markers.py": "2026-09-05.46",
+    "segment_markers.py": "2026-09-05.47",
     "senate_hearing_reports.py": "2026-09-24.6",
     "session_days.py": "2026-09-19.31",
     "shell.py": "2026-09-07.29",

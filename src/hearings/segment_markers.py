@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.46
+# GRANITE_VERSION: 2026-09-05.47
 """
 Segment a recording on what the chair says, not on where bill numbers cluster.
 
@@ -1232,7 +1232,7 @@ def collect_phrases(words, segs, candidates, titles, bag):
                 bag[" ".join(lead[k:k + size])] += 1
 
 
-def report_phrases(bag, out_path="missing_phrases.txt"):
+def report_phrases(bag, out_path=None):
     never = bag.pop("never named", 0)
     # Phrases that already appear in a pattern are not news.
     known = re.compile(r"open|clos|hearing|executive session|work session|"
@@ -1254,6 +1254,9 @@ def report_phrases(bag, out_path="missing_phrases.txt"):
     print(f"\n{'=' * 70}\nWHAT IS SAID WHERE NO BOUNDARY WAS FOUND\n{'=' * 70}")
     print(f"  {never:,} proceedings were never named at all -- probably not "
           "taken up.\n")
+    if out_path:
+        Path(out_path).write_text(
+            "\n".join(f"{c}\t{ph}" for c, ph in rows), encoding="utf-8")
     if not rows:
         print("  No phrase recurs five times or more. The remaining gaps are "
               "not a\n  shared convention this is missing.")
@@ -1262,9 +1265,10 @@ def report_phrases(bag, out_path="missing_phrases.txt"):
     print("  Anything already covered by a pattern is left out.\n")
     for c, ph in rows[:30]:
         print(f"    {c:>5}  {ph}")
-    Path(out_path).write_text(
-        "\n".join(f"{c}\t{ph}" for c, ph in rows), encoding="utf-8")
-    print(f"\n  {len(rows):,} phrases -> {out_path}")
+    if out_path:
+        print(f"\n  {len(rows):,} phrases -> {out_path}")
+    else:
+        print(f"\n  {len(rows):,} phrases counted; --phrases-out FILE writes them all")
     print("  A phrase used by many chairs is a convention worth a pattern. One "
           "used\n  twice is not, and adding it would be fitting to noise.")
 
@@ -1284,6 +1288,9 @@ def main():
     ap.add_argument("--gaps", action="store_true",
                     help="for proceedings with no stated boundary, print what "
                          "the chair says where one was expected")
+    ap.add_argument("--phrases-out", metavar="FILE",
+                    help="with --phrases, also write every counted phrase "
+                         "here; a diagnostic writes nothing unless told where")
     ap.add_argument("--cache", default=".segment_cache.json",
                     help="results per recording, reused where its captions, "
                          "bill list and the patterns are all unchanged")
@@ -1463,11 +1470,21 @@ def main():
             merged[side] = both
     result = merged
 
-    if not a.gaps and not a.phrases:
+    # A DIAGNOSTIC WRITES NOTHING THE BUILD READS. (17 October 2026.) --gaps
+    # and --phrases print what the chair says where no boundary was found,
+    # and they also wrote --out, merged with this run's reading, and
+    # missing_phrases.txt into the working folder: a question asked of the
+    # captions changed candidate_segments.json, which build_site_v2 publishes
+    # from. Their counting goes only where --phrases-out names.
+    diagnostic = a.gaps or a.phrases
+    if not diagnostic:
         cache_path.write_text(json.dumps(cache), encoding="utf-8")
     if a.phrases:
-        report_phrases(phrase_bag)
-    Path(a.out).write_text(json.dumps(result, indent=2), encoding="utf-8")
+        report_phrases(phrase_bag, a.phrases_out)
+    if diagnostic:
+        print(f"\n  --gaps/--phrases: a diagnostic, so {a.out} was not written")
+    else:
+        Path(a.out).write_text(json.dumps(result, indent=2), encoding="utf-8")
     # WHERE EACH RECORDING'S CAPTIONS STOP, for the machine that has only the
     # boundaries above and not the files they were read from. The nightly's
     # machine is given candidate_segments.json and caption_spans.json and none
@@ -1520,6 +1537,8 @@ def main():
                   "boundaries, they are bills that were not debated.)")
         print("  Where a bill was taken up and no boundary was stated, this "
               "says so\n  rather than estimating one.")
+    if diagnostic:
+        return
     print(f"\n-> {a.out}")
     print("\nNothing is on the site until this is scored:\n"
           "  python3 src/hearings/probe_alignment.py --truth "

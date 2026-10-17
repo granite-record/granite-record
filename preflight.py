@@ -14001,6 +14001,49 @@ def _markers_titles_by_term(segment_markers):
         shutil.rmtree(root, ignore_errors=True)
 
 
+@check("markers", "segment_markers --gaps and --phrases write nothing the build reads",
+       needs=("segment_markers",))
+def _markers_diagnostics_write_nothing(segment_markers):
+    """--gaps and --phrases are questions asked of the captions, and they
+    rewrote --out (candidate_segments.json, which build_site_v2 publishes
+    from) and missing_phrases.txt in the working folder (17 October 2026).
+    Run on a fixture with a candidate file already there, each leaves the
+    folder as it was; --phrases-out is the one place counting goes."""
+    if not _paths.locate("segment_markers.py").exists():
+        return "skip", "segment_markers.py not here"
+    root = Path(tempfile.mkdtemp())
+    try:
+        env = _markers_fixture(
+            root, {"2025-2026": {"HB1491": {"title": "relative to x"},
+                                 "HB77": {"title": "relative to y"}}},
+            [("2025-2026", "HB1491", "H", "public hearing", "PFCOMM"),
+             ("2025-2026", "HB77", "H", "public hearing", "PFCOMM")],
+            {"PFCOMM": ["good morning"] * 3 + ["I am opening the hearing on House Bill 1491"]
+             + ["thank you mister chair"] * 4})
+        prior = json.dumps({"PFCOMM": {"HB5": [{"start": 1.0, "end": None}]}})
+        (root / "candidate_segments.json").write_text(prior, encoding="utf-8")
+        before = sorted(p.name for p in root.iterdir())
+        for flag in ("--gaps", "--phrases"):
+            r = _run([sys.executable, _paths.script("segment_markers.py"),
+                      "--transcript", "work/PFCOMM", "--data", "data", flag,
+                      "--cache", "cache.json"],
+                     cwd=str(root), env=env, capture_output=True, text=True, timeout=120)
+            assert r.returncode == 0, (r.stderr or r.stdout)[-300:]
+            assert (root / "candidate_segments.json").read_text(encoding="utf-8") == prior, (
+                f"segment_markers {flag} rewrote candidate_segments.json")
+            assert sorted(p.name for p in root.iterdir()) == before, (
+                f"segment_markers {flag} wrote {sorted(set(p.name for p in root.iterdir()) - set(before))}")
+        r = _run([sys.executable, _paths.script("segment_markers.py"),
+                  "--transcript", "work/PFCOMM", "--data", "data", "--phrases",
+                  "--phrases-out", "counted.txt", "--cache", "cache.json"],
+                 cwd=str(root), env=env, capture_output=True, text=True, timeout=120)
+        assert r.returncode == 0 and (root / "counted.txt").exists(), (
+            "--phrases-out did not write where it was told")
+        return "ok", "--gaps and --phrases leave the folder as it was; --phrases-out writes its file"
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+
+
 @check("data", "segment_markers' title lookup holds more than a thousand titles",
        needs=("segment_markers",))
 def _markers_title_count(segment_markers):
