@@ -16536,6 +16536,40 @@ def _archive_text_as_shown():
                   "is no space while a tag between words still is")
 
 
+@check("frontend", "an archived page's text stops at the bill: the Word binary a converted "
+                   "page of 1989-1995 carries after it is not printed")
+def _archive_text_no_application_tail():
+    """The language sweep of 17 October 2026: 1995 HB 101's Bill Text ran on
+    from "This act shall take effect January 1, 1996." into "EB",
+    "?\\C:\\PROGRA~1\\MICROS~1\\Office\\wwintl32.dll" and the Legislative
+    Services machines' search path -- the binary tail of the Word file the
+    page was converted from, on 1,365 saved pages of 1989-1995. The page
+    below is the end of the real HB 101 of 1995, so this needs no data.
+
+    Fails if the tail, or the fragments of it above the first program file,
+    come back, or if the cut takes a line of the bill."""
+    at = imp("archive_text")
+    if at is None:
+        return "skip", "archive_text will not import"
+    page = (
+        '<P><FONT FACE="Courier New">I.  No person shall drive a motor vehicle while carrying '
+        'a child less than [12] <B><I>18</I></B> years of age.</FONT></P>\r\n'
+        '<P><FONT FACE="Courier New">2  Effective Date.  This act shall take effect January 1, '
+        '1996.</FONT></P>\r\n</UL><P><FONT FACE="Courier New">EB</FONT></P>\r\n'
+        '<P><FONT FACE="Courier New">?\\C:\\PROGRA~1\\MICROS~1\\Office\\wwintl32.dllE '
+        '&amp;&amp;)E</FONT> </P>\r\n<P><FONT FACE="Courier New">?\\C:\\PROGRA~1\\MICROS~1'
+        '\\Office\\MSO97.DLLll-ECAPITOL\\LSSOFTWARE\\LSNT\\CLIPPIT.ACTT;.;C:\\WINNT\\System32;'
+        '</FONT></P>\r\n<P><FONT FACE="Courier New">C:\\PROGRA~1\\MICROS~1\\O</FONT></P>')
+    got = at.flatten(page)
+    assert got.endswith("This act shall take effect January 1, 1996."), (
+        "the Word binary after the bill is printed as its text: " + repr(got[-160:]))
+    assert "less than [12] 18 years" in got, repr(got)
+    plain = "I. The act shall take effect upon its passage.\nEB\n5"
+    assert at.application_tail_off(plain) == plain, (
+        "a page with no program file named was cut: " + repr(at.application_tail_off(plain)))
+    return "ok", "1995 HB 101 ends at its effective date, and a page with no tail is untouched"
+
+
 def _printing(label, marks, lsr, number, title, analysis, sections, law=None,
               approved=None):
     """(html, text) of one printing of a 2018 bill, in the shapes the archive's

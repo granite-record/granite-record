@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.214
+// GRANITE_VERSION: 2026-09-07.215
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -4879,8 +4879,11 @@ function billTextSection(b,d,rsa){
         renderBillText(b,d,rsa)}</details></section>`;}
 
 function renderBillText(b,d,rsa){
-  const brackets=(s)=>s.replace(/\[([^\]]{1,400})\]/g,
-    (_,inner)=>`<del class="cut" title="removed by this amendment">${inner}</del>`);
+  // What the mark says on hover: an amendment's bracket is the amendment's,
+  // and the bill's own is the bill's (17 October 2026: the Bill Text said
+  // "removed by this amendment" of a bill with no amendment).
+  const brackets=(s,why="removed by this amendment")=>s.replace(/\[([^\]]{1,400})\]/g,
+    (_,inner)=>`<del class="cut" title="${why}">${inner}</del>`);
   const amds=(d.amendments||[]).map(x=>{
     const who=x.mover||x.proposed_by||"";
     const state=x.adopted===true?"adopted":x.adopted===false?"rejected":"";
@@ -4923,7 +4926,7 @@ function renderBillText(b,d,rsa){
     .flatMap(l=>l.split(OUTLINE)).map(raw=>{
     const line=raw.trim();
     if(!line)return "";
-    const html=brackets(rsa(esc(line)));
+    const html=brackets(rsa(esc(line)),"removed from current law by this bill");
     if(/^(?:Be it Enacted|That the following|Whereas\b|RESOLVED\b)/i.test(line))
       return `<p class="enact">${html}</p>`;
     const m=SEC.exec(line);

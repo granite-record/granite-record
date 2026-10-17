@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-16.7
+# GRANITE_VERSION: 2026-09-16.8
 """
 The text of every archived bill, read off the pages already on this disk.
 
@@ -117,6 +117,38 @@ XML = re.compile(r"<xml\b.*?</xml\s*>", re.S | re.I)
 # not a space and not the end of another tag.
 TAG_BEFORE_MARK = re.compile(r"(?<=[^\s>])(?:<[^>]+>)+(?=[,.;:!?)\]])")
 
+# WHAT WORD LEFT AT THE END OF THE FILE, PRINTED AS THOUGH IT WERE THE BILL
+# (17 October 2026). 1,365 saved pages of 1989-1995 end in the binary tail of
+# the Word document they were converted from, which the conversion wrote out as
+# paragraphs: 1995 HB 101's Bill Text ran on from "This act shall take effect
+# January 1, 1996." into "EB", "?\C:\PROGRA~1\MICROS~1\Office\wwintl32.dll",
+# "\\CAPITOL\LSSOFTWARE\LSNT\CLIPPIT.ACT" and the Legislative Services
+# machines' search path. Measured over all 1,365: the tail always begins with
+# a line naming a program file or a Windows folder, nothing that reads as prose
+# ever follows it, and what stands between it and the bill's last real line is
+# a few fragments of the same binary -- "EB", "E &&)E", "__", "a11". So the
+# text is cut at the first such line, and the noise just above it goes too: a
+# line of six characters or fewer, or one less than half letters.
+APPLICATION = re.compile(r"PROGRA~\d|\\WINNT\b|\.dll\b|\bMSO97\b|CLIPPIT\.ACT|"
+                         r"\\\\CAPITOL\\|\bNormal\.dot\b", re.I)
+
+
+def application_tail_off(t):
+    """`t` without the Word binary a converted page carries after the bill:
+    from the first line naming a program file or a Windows folder to the end,
+    with the binary's fragments just above that line."""
+    lines = t.split("\n")
+    at = next((i for i, line in enumerate(lines) if APPLICATION.search(line)), None)
+    if at is None:
+        return t
+    while at > 0:
+        line = lines[at - 1].strip()
+        if line and len(line) > 6 and sum(c.isalpha() for c in line) >= len(line) / 2:
+            break
+        at -= 1
+    return "\n".join(lines[:at]).rstrip()
+
+
 # The Basic Multilingual Plane's private-use area and planes 15-16.
 PRIVATE = re.compile("[-\U000f0000-\U0010ffff]")
 
@@ -156,7 +188,7 @@ def flatten(html):
     # Spaces collapse; newlines do not, beyond a blank line.
     t = re.sub(r"[ \t\r\f\v]+", " ", t)
     t = re.sub(r" *\n *", "\n", t)
-    return re.sub(r"\n{3,}", "\n\n", t).strip()
+    return application_tail_off(re.sub(r"\n{3,}", "\n\n", t).strip())
 
 
 # The rule the archive draws under the front matter, as a line of its own.
