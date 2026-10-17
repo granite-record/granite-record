@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.17
+# GRANITE_VERSION: 2026-09-04.18
 """
 What is the live site actually serving?
 
@@ -40,6 +40,10 @@ WHAT IT CHECKS
                         search load first: served as JSON, parses, has bills
   /legislators          served, and is a different page from /
   /feed/all.xml         served as XML
+  /sitemap.xml          served as XML and read whole: the same number of
+                        addresses, and the same first and last, as the
+                        site/sitemap.xml that was built
+  /robots.txt           names that sitemap on its Sitemap line
   /build.json           the build the site's own build.json names: the moment
                         it finished, and the night's commit -- the one test
                         here that yesterday's build would fail (asked only
@@ -333,6 +337,69 @@ def one_bill(base, site, bid, year, tries=3):
     return steady
 
 
+# What a sitemap may weigh (50 MB, sitemaps.org) and a little over, so the
+# largest legal file is read to its end and judged; get()'s usual 400 KB would
+# have read a tenth of today's.
+SITEMAP_LIMIT = 52_000_000
+LOC = re.compile(rb"<loc>([^<]*)</loc>")
+
+
+def locs_of(body):
+    """The addresses a sitemap's bytes list, in order."""
+    return [m.decode("utf-8", "replace") for m in LOC.findall(body or b"")]
+
+
+def sitemap(base, site, seen, problems, row):
+    """THE SITEMAP AND THE robots.txt LINE THAT POINTS AT IT, AS SERVED (the
+    sitemap audit, 16 October 2026). Nothing asked the live host for either:
+    check_site reads the file before it leaves this machine, and a deploy
+    that left yesterday's sitemap behind, or a rule that answered it with
+    the home page, would have passed every test here. So /sitemap.xml is
+    asked for once, read whole, and held to the file in site/: answered 200
+    as XML, with the same number of addresses and the same first and last.
+    And /robots.txt must name it, as the file build_bill_pages writes does.
+    """
+    row("/sitemap.xml", "xml", limit=SITEMAP_LIMIT)
+    st, ct, body = seen.get("/sitemap.xml", (None, "", b""))
+    if st == 200 and body:
+        kind = ct.split(";")[0].strip().lower()
+        if "html" in kind:
+            problems.append("/sitemap.xml is being served as a web page")
+        elif kind not in ("application/xml", "text/xml"):
+            problems.append(f"/sitemap.xml is served as {kind or 'no type'}, not as XML")
+        if len(body) >= SITEMAP_LIMIT:
+            problems.append(f"/sitemap.xml is {SITEMAP_LIMIT:,} bytes or more, larger than this "
+                            "reads, so it was not checked")
+        else:
+            served = locs_of(body)
+            print(f"  {'':<22}{'':<8}{'':<26}{len(served):,} URLs"
+                  + (f", {served[0]} to {served[-1]}" if served else ""))
+            local = site / "sitemap.xml"
+            if local.is_file():
+                built = locs_of(local.read_bytes())
+                if (len(served), served[:1], served[-1:]) != (len(built), built[:1], built[-1:]):
+                    problems.append(
+                        f"/sitemap.xml is not the file in {site}/: it lists {len(served):,} URLs"
+                        + (f" from {served[0]} to {served[-1]}" if served else "")
+                        + f", and {site}/'s lists {len(built):,}"
+                        + (f" from {built[0]} to {built[-1]}" if built else ""))
+            elif not served:
+                problems.append("/sitemap.xml lists no URL")
+    row("/robots.txt", "text")
+    st, ct, body = seen.get("/robots.txt", (None, "", b""))
+    if st == 200:
+        want = f"{base}/sitemap.xml"
+        named = re.findall(r"(?mi)^\s*Sitemap:\s*(\S+)\s*$", body.decode("utf-8", "replace"))
+        if want not in named:
+            local = site / "robots.txt"
+            built = (re.findall(r"(?mi)^\s*Sitemap:\s*(\S+)\s*$", local.read_text(encoding="utf-8"))
+                     if local.is_file() else [])
+            problems.append(
+                (f"/robots.txt is not the file in {site}/: " if want in built else "/robots.txt ")
+                + (f"names {', '.join(named)} as its sitemap, not {want}" if named
+                   else f"names no sitemap; it should say Sitemap: {want}"))
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--gate", action="store_true",
@@ -380,9 +447,10 @@ def main():
 
     seen, problems = {}, []
 
-    def row(path, want_type, note=""):
-        # JSON has to arrive whole to be judged; HTML and CSS do not.
-        limit = 12_000_000 if want_type == "json" else 400_000
+    def row(path, want_type, note="", limit=None):
+        # JSON has to arrive whole to be judged; HTML and CSS do not. A
+        # caller that must read a file whole names its own limit (sitemap).
+        limit = limit or (12_000_000 if want_type == "json" else 400_000)
         st, ct, body, err = get(base + path, limit)
         seen[path] = (st, ct, body)
         if err:
@@ -449,6 +517,7 @@ def main():
             problems.append(f"/meta.json is not the file in {site}/: {differ}")
     row("/legislators", "html")
     row("/feed/all.xml", "xml")
+    sitemap(base, site, seen, problems, row)
     # WHICH BUILD IS SERVED (15 October 2026). Everything above shows that a
     # sound build is served, not that it is this one: yesterday's passes every
     # test it makes, its template, its terms and its feed looking just the

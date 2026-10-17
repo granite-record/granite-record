@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.22
+# GRANITE_VERSION: 2026-09-04.23
 """
 Check the site is fit to publish before uploading it.
 
@@ -26,6 +26,7 @@ sys.path += [str(p) for p in Path(__file__).resolve().parents if (p / "_paths.py
 import _paths  # noqa: E402,F401
 
 import argparse
+import html
 import json
 import re
 from collections import Counter
@@ -38,6 +39,7 @@ import build_date
 # none of them, and every page's head still links four.
 from build_pages import BRAND_FILES
 import site_read
+from shell import canon
 
 # A JSON file here whose emptiness is a fact about the record rather than a
 # build that produced nothing. Every other empty one is a failure: silence is
@@ -256,7 +258,7 @@ def redirected(site, target, rules):
     return False
 
 
-def served(target):
+def served(target, folder=True):
     """Is this address one the host will answer?
 
     Cloudflare Pages serves /bill/2026/hb1442 from hb1442.html and redirects
@@ -266,13 +268,213 @@ def served(target):
     exact name calls every one of them broken. It did: 34,154 of them.
 
     A directory is served by its index.html for the same reason.
+
+    BUT ONLY AT ITS ADDRESS WITH THE SLASH (the sitemap audit, 16 October
+    2026). The host answers /laws/404 with a 308 to /laws/404/, where the
+    folder's index.html is, so an address with no slash that nothing but a
+    folder answers is a redirect: fine for a link, which follows it, and
+    wrong for a sitemap entry, which must answer 200 itself. That is
+    `folder=False`. /bills, /laws, /data, /directory and /calendar are each
+    a folder and also a page of their own (bills.html beside bills/), and the
+    page is what the host serves, so they pass either way.
     """
-    if target.exists():
+    if target.is_file():
         return True
+    if target.with_suffix(target.suffix + ".html").exists() \
+            or target.with_name(target.name + ".html").exists():
+        return True
+    # A FOLDER STILL PASSES A LINK AS IT ALWAYS DID (16 October 2026),
+    # whatever is in it: a link follows the host's redirect, so the slash rule
+    # is the sitemap's alone, and the broken-link check, which the night holds
+    # on, is made no stricter by it.
     if target.is_dir():
-        return (target / "index.html").exists()
-    return target.with_suffix(target.suffix + ".html").exists() \
-        or target.with_name(target.name + ".html").exists()
+        return folder
+    return False
+
+
+# What one sitemap file may hold (sitemaps.org; Google and Bing read no
+# further), and what check_site refuses past (16 October 2026).
+SITEMAP_MAX_URLS = 50_000
+SITEMAP_MAX_BYTES = 50_000_000
+
+_SCRIPTS = re.compile(r"<script\b.*?</script>", re.S | re.I)
+_CANONICAL = re.compile(r'<link rel="canonical" href="([^"]*)"', re.I)
+_NOINDEX = re.compile(r'<meta name="robots" content="[^"]*noindex', re.I)
+
+
+def _path_of(href, origin):
+    """A link's address on this site as a path from the root ("/laws/3-a"),
+    or None for one that leaves it. Every page carries <base href="/">, so
+    a relative link is read from the root."""
+    href = html.unescape(href).split("#")[0].split("?")[0]
+    if href.startswith(origin + "/"):
+        href = href[len(origin):]
+    elif href.startswith(("http:", "https:", "mailto:", "tel:", "data:", "//")):
+        return None
+    return href if href.startswith("/") else "/" + href
+
+
+def laws_linked(site, locs, root, errors):
+    """EVERY CHAPTER IN THE SITEMAP HAS A PLAIN LINK ON /laws (the sitemap
+    audit, 16 October 2026). The landing's link to a chapter's page was
+    written by its script, and only once a reader opened the chapter's row,
+    which a crawler never does: /laws linked no chapter at all, and 315 of
+    the 1,786 had no link from anywhere on the site, so the sitemap was the
+    only way to them. A link inside a <script> is not counted, because it is
+    the script's and not the page's."""
+    origin = root[:-1]
+    chapters = {html.unescape(u)[len(origin):] for u in locs if u.startswith(root + "laws/")}
+    if not chapters:
+        return
+    page = site / "laws.html"
+    if not page.is_file():
+        errors.append(f"laws.html is not here, and {len(chapters):,} chapter pages are in the "
+                      "sitemap with no page linking them")
+        return
+    txt = _SCRIPTS.sub(" ", page.read_text(encoding="utf-8", errors="replace"))
+    linked = {_path_of(h, origin) for h in re.findall(r'href="([^"]+)"', txt)}
+    unlinked = sorted(chapters - linked)
+    print(f"\nlaws: {len(chapters) - len(unlinked):,} of the {len(chapters):,} chapters in the "
+          "sitemap have a plain link on /laws")
+    if unlinked:
+        errors.append(f"{len(unlinked):,} chapter page(s) in the sitemap have no plain link on /laws "
+                      f"(outside its scripts), e.g. {', '.join(unlinked[:3])} - build_rsa.landing_page "
+                      "writes one into each chapter's row")
+
+
+def _head(p):
+    """A page's <head>, read no further than it goes: a few kilobytes of each
+    of 40,000 pages rather than the 2 GB of all of them."""
+    with p.open("rb") as fh:
+        b = fh.read(8192)
+        while b"</head>" not in b:
+            more = fh.read(8192)
+            if not more:
+                break
+            b += more
+    t = b.decode("utf-8", errors="replace")
+    return t[:t.find("</head>")] if "</head>" in t else t
+
+
+def _no_meeting(p):
+    """Is this a calendar week holding no meeting at all? build_calendar
+    leaves such a week out of the sitemap until one is set. Read off the
+    page: a week's page with no meeting card outside its scripts, which draw
+    cards of their own."""
+    t = _SCRIPTS.sub(" ", p.read_text(encoding="utf-8", errors="replace"))
+    return 'class="wkpage calapp"' in t and 'class="calmeet"' not in t
+
+
+def pages_listed(site, locs, root, errors):
+    """EVERY PAGE THAT ASKS TO BE INDEXED AT ITS OWN ADDRESS IS IN THE
+    SITEMAP (the sitemap audit, 16 October 2026). The checks above go from
+    the sitemap to the files; this goes the other way, so a builder that
+    stopped listing its pages -- or a run that wrote some of them and listed
+    none -- is caught rather than left to search engines to find by chance.
+
+    The pages left out on purpose are read off the pages themselves, not
+    kept on a list here: one marked noindex (404.html, search.html), one
+    whose canonical names another address (the current week's dated copy,
+    whose page is /calendar), and a calendar week with no meeting at all,
+    which build_calendar lists once it has one. A page naming no canonical
+    is counted and said, and not refused: it asks nothing of a search engine
+    either way."""
+    origin = root[:-1]
+    listed = {html.unescape(u) for u in locs}
+    unlisted, aside = [], Counter()
+    for p in sorted(site.rglob("*.html")):
+        own = origin + canon("/" + p.relative_to(site).as_posix())
+        head = _head(p)
+        if _NOINDEX.search(head):
+            aside["noindex"] += 1
+            continue
+        m = _CANONICAL.search(head)
+        if not m:
+            aside["naming no canonical"] += 1
+            continue
+        if html.unescape(m.group(1)) != own:
+            aside["a copy naming another page as canonical"] += 1
+            continue
+        if own in listed:
+            continue
+        if _no_meeting(p):
+            aside["a calendar week with no meeting yet"] += 1
+            continue
+        unlisted.append(own)
+    print(f"\npages not in the sitemap: {len(unlisted):,} that should be"
+          + "".join(f"; {n:,} {why}" for why, n in sorted(aside.items())))
+    if unlisted:
+        errors.append(f"{len(unlisted):,} page(s) ask to be indexed at their own address and are "
+                      f"not in the sitemap, e.g. {', '.join(unlisted[:3])}")
+
+
+def sitemap_checks(site, base, errors, warnings):
+    """The sitemap against the site: every address it lists answers 200 at
+    that address, it is within one file's limits, and the pages it should
+    list are in it (laws_linked, pages_listed). Out of main() on 16 October
+    2026, so preflight can hold each rule to a site of a few files."""
+    sm = site / "sitemap.xml"
+    if sm.exists():
+        locs = re.findall(r"<loc>([^<]+)</loc>", sm.read_text(encoding="utf-8"))
+        # THE BASE AND ITS SLASH, together. This used to take the base off
+        # and then lstrip("/") whatever was left, so
+        # "https://graniterecord.orgsession/H/2026-05-21" became a path that
+        # exists and passed -- 1,669 of them, on the live sitemap, until 24
+        # September. An address with no slash after the domain is one no
+        # browser will open, so it is counted here and not resolved.
+        root = base.rstrip("/") + "/"
+        missing, folder_only = 0, []
+        for u in locs:
+            rel = u[len(root):] if u.startswith(root) else None
+            if rel and not served(site / rel, folder=rel.endswith("/")):
+                if served(site / rel):
+                    folder_only.append(u)
+                else:
+                    missing += 1
+        print(f"\nsitemap: {len(locs):,} URLs, {missing:,} pointing at files "
+              "that are not here")
+        if missing:
+            errors.append(f"{missing} sitemap URLs have no file")
+        # AN ADDRESS ONLY A FOLDER ANSWERS IS LISTED WITH ITS SLASH (served).
+        # /laws/404 was, without one, until 16 October 2026: a sitemap entry
+        # the host answered with a 308, on a page whose canonical named it.
+        if folder_only:
+            errors.append(f"{len(folder_only)} sitemap URL(s) are answered only by a folder's "
+                          f"index.html, and the host redirects them to the address with a slash: "
+                          f"{', '.join(folder_only[:3])} - list each with its slash")
+        noslash = [u for u in locs if u.startswith(root[:-1]) and not u.startswith(root)]
+        if noslash:
+            errors.append(f"{len(noslash)} sitemap URLs have no slash after "
+                          f"{root[:-1]}, e.g. {noslash[0]} - a builder passed "
+                          "shell.page a path without its leading /")
+        # ONE FILE HOLDS 50,000 ADDRESSES AND 50 MB, and no more (the SEO
+        # review of 12 October 2026: 38,068 before the Laws pages). Past 45,000
+        # this warns, so the split into a sitemap index is made before a
+        # crawler starts ignoring what is past the limit, not after.
+        # PAST THE LIMIT IS AN ERROR (the sitemap audit, 16 October 2026): a
+        # crawler reads a file that size no further, so the addresses after
+        # the limit would quietly not be listed at all.
+        size = sm.stat().st_size
+        if len(locs) > SITEMAP_MAX_URLS or size > SITEMAP_MAX_BYTES:
+            errors.append(f"sitemap.xml holds {len(locs):,} URLs in {size / 1e6:.1f} MB, past "
+                          f"the {SITEMAP_MAX_URLS:,} URLs and {SITEMAP_MAX_BYTES // 1_000_000} MB "
+                          "one file may hold: split it into a sitemap index")
+        elif len(locs) > 45_000 or size > 45_000_000:
+            warnings.append(f"sitemap.xml holds {len(locs):,} URLs in {size / 1e6:.1f} MB; one "
+                            "file may hold 50,000 and 50 MB: split it into a sitemap index soon")
+        wrong_base = [u for u in locs if not u.startswith(root[:-1])]
+        if wrong_base:
+            errors.append(f"{len(wrong_base)} sitemap URLs use a different base "
+                          f"than {base} - rerun python3 src/pages/build_bill_pages.py --base")
+        laws_linked(site, locs, root, errors)
+        pages_listed(site, locs, root, errors)
+    else:
+        # AN ERROR, NOT A WARNING (the sitemap audit, 16 October 2026).
+        # build_bill_pages writes it on every build, so a site without one is
+        # a build that lost it, and would publish a site search engines are
+        # told nothing about.
+        errors.append("no sitemap.xml - build_bill_pages.py writes it, and search engines "
+                      "would be told of no page")
 
 
 def main():
@@ -406,44 +608,7 @@ def main():
         warnings.append("no RSS feeds - run build_feeds.py")
 
     # ---- sitemap points only at files that exist ----------------------------
-    sm = site / "sitemap.xml"
-    if sm.exists():
-        locs = re.findall(r"<loc>([^<]+)</loc>", sm.read_text(encoding="utf-8"))
-        # THE BASE AND ITS SLASH, together. This used to take the base off
-        # and then lstrip("/") whatever was left, so
-        # "https://graniterecord.orgsession/H/2026-05-21" became a path that
-        # exists and passed -- 1,669 of them, on the live sitemap, until 24
-        # September. An address with no slash after the domain is one no
-        # browser will open, so it is counted here and not resolved.
-        root = a.base.rstrip("/") + "/"
-        missing = 0
-        for u in locs:
-            rel = u[len(root):] if u.startswith(root) else None
-            if rel and not served(site / rel):
-                missing += 1
-        print(f"\nsitemap: {len(locs):,} URLs, {missing:,} pointing at files "
-              "that are not here")
-        if missing:
-            errors.append(f"{missing} sitemap URLs have no file")
-        noslash = [u for u in locs if u.startswith(root[:-1]) and not u.startswith(root)]
-        if noslash:
-            errors.append(f"{len(noslash)} sitemap URLs have no slash after "
-                          f"{root[:-1]}, e.g. {noslash[0]} - a builder passed "
-                          "shell.page a path without its leading /")
-        # ONE FILE HOLDS 50,000 ADDRESSES AND 50 MB, and no more (the SEO
-        # review of 12 October 2026: 38,068 before the Laws pages). Past 45,000
-        # this warns, so the split into a sitemap index is made before a
-        # crawler starts ignoring what is past the limit, not after.
-        size = sm.stat().st_size
-        if len(locs) > 45_000 or size > 45_000_000:
-            warnings.append(f"sitemap.xml holds {len(locs):,} URLs in {size / 1e6:.1f} MB; one "
-                            "file may hold 50,000 and 50 MB: split it into a sitemap index soon")
-        wrong_base = [u for u in locs if not u.startswith(root[:-1])]
-        if wrong_base:
-            errors.append(f"{len(wrong_base)} sitemap URLs use a different base "
-                          f"than {a.base} - rerun python3 src/pages/build_bill_pages.py --base")
-    else:
-        warnings.append("no sitemap.xml - search engines will find less")
+    sitemap_checks(site, a.base, errors, warnings)
 
     # ---- nothing still points at a local server -----------------------------
     leaked = []
