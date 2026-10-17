@@ -35022,6 +35022,7 @@ def _guides_gate(BC, G, GS, RSA, S):
     import contextlib
     import io
     import build_date
+    on_record = off_disk = 0
     for g in G.GUIDES:
         loose = [u for u in G.outside(g) if u not in GS.cited()]
         assert not loose, f"{g['slug']} links what guide_sources.py never reads, so no check covers it: {loose}"
@@ -35050,8 +35051,42 @@ def _guides_gate(BC, G, GS, RSA, S):
             if m:
                 assert f'href="/laws/{m.group(1).lower()}#s{m.group(2)}"' in words, \
                     f"{g['slug']}: a claim on {c['source']} is not linked to that section in the guide"
-            else:
+            elif not (c.get("path") or c["source"].startswith("/")):
                 assert c["source"].startswith("https://"), f"{g['slug']}: a claim's source is {c['source']!r}"
+        # THE GENERAL COURT'S OWN DOCUMENTS, AND THIS SITE'S PAGES (17 October
+        # 2026). A claim on a calendar, a journal, a bill or a table of the
+        # Court's database names the document and the words of it that state
+        # the claim, and the words must be in it wherever it is on this disk;
+        # a claim about this site rests on a page of it the guide links.
+        faults, found, absent = G.claim_faults(g)
+        assert not faults, f"{g['slug']}: " + "; ".join(faults[:3])
+        on_record += found
+        off_disk += absent
+    # The two kinds caught failing, on a document made here: words it does not
+    # say, a file outside the Court's folders, and a site page the guide does
+    # not link.
+    probe = Path(tempfile.mkdtemp(prefix="gr-records-"))
+    try:
+        (probe / "calendars" / "2099").mkdir(parents=True)
+        (probe / "calendars" / "2099" / "HC001.txt").write_text(
+            "A hearing shall be held\non each bill.\fPage two.", encoding="utf-8")
+        said = G.record("x", "House Calendar No. 1, 2099, p. 1", "calendars/2099/HC001.txt",
+                        "hearing shall be held on each bill", "2099-01-01")
+        fake = dict(said, words=["no hearing shall be held"])
+        loose = dict(said, path="notes/HC001.txt")
+        unlinked = G.ours("y", "/learn/testifying.html", "2099-01-01")
+        probe_g = {"claims": [said], "sources": [], "see": [], "steps": [], "glance": "", "more": "",
+                   "flow": []}
+        assert G.claim_faults(probe_g, probe) == ([], 1, 0), \
+            "a document that says a claim's words, across a line break, was not found to say them"
+        for bad, why in ((fake, "does not say"), (loose, "is not one of the General Court's"),
+                         (unlinked, "does not link")):
+            got = G.claim_faults(dict(probe_g, claims=[bad]), probe)[0]
+            assert got and why in got[0], f"a claim that should fail with {why!r} gave {got}"
+        assert G.claim_faults(probe_g, probe / "elsewhere") == ([], 0, 1), \
+            "a document not on this disk was counted as read"
+    finally:
+        shutil.rmtree(probe, ignore_errors=True)
     cols = ["id", "TitleNo", "ChapterNo", "SectionNo", "Title", "Chapter", "Section", "SourceNote",
             "rsa", "EntireRSA"]
     table = RSA.Table([dict(zip(cols, ["1", "VI", "91-A", "91-A-4", "TITLE VI", "CHAPTER 91-A ACCESS TO "
@@ -35103,6 +35138,18 @@ def _guides_gate(BC, G, GS, RSA, S):
             and '<a href="/laws/91-a#s4">RSA 91-A:4</a>' in page, "the guide is not drawn as steps with a diagram"
         hub = BC.hub_guides(pub)
         assert "test-guide.html" in hub and "Checked " in hub and "no how-to guides yet" not in hub
+        # A guide held back is not linked from one published (17 October
+        # 2026): its button and its See Also line are left out, the rest kept.
+        linker = one(today)
+        linker["see"] = [("The other guide", "/guides/held-guide.html"), ("Learn", "/learn/testifying.html")]
+        linker["steps"][1]["actions"] = [("The other guide", "/guides/held-guide.html#steps")]
+        G.GUIDES = [linker, dict(one(None), slug="held-guide")]
+        with contextlib.redirect_stdout(io.StringIO()):
+            BC.build_guides(tmp / "site", tmpl, "https://graniterecord.org")
+        page = (tmp / "site" / "guides" / "test-guide.html").read_text(encoding="utf-8")
+        assert "held-guide" not in page and "/learn/testifying" in page \
+            and not (tmp / "site" / "guides" / "held-guide.html").exists(), \
+            "a published guide links a guide held back, or lost a link it should keep"
         old = "2020-01-01"
         G.GUIDES = [one(old, old)]
         with contextlib.redirect_stdout(io.StringIO()):
@@ -35120,7 +35167,9 @@ def _guides_gate(BC, G, GS, RSA, S):
         shutil.rmtree(tmp, ignore_errors=True)
     held = [g["slug"] for g in G.GUIDES if G.unchecked(g)]
     return "ok", (f"{len(G.GUIDES)} guides, {len(held)} held back until their sources are read; "
-                  "unchecked held, checked published with its date, stale said, old copy removed")
+                  "unchecked held, checked published with its date, stale said, old copy removed; "
+                  f"{on_record} claims found in the General Court's documents"
+                  + (f", {off_disk} on documents not on this disk" if off_disk else ""))
 
 
 @check("build", "the changes files mark milestones, set a ballot beside its roll call, and let a "

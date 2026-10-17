@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.56
+# GRANITE_VERSION: 2026-09-08.57
 """
 The civics section: a hub and one page per topic, in order.
 
@@ -1390,6 +1390,17 @@ def home_guides(site, published):
     print(f"  index.html: {len(published)} guide{'s' if len(published) != 1 else ''} under the cards")
 
 
+def unlinked(g, held):
+    """The guide without its buttons and See Also lines to the pages in
+    `held`: the guides this build does not publish."""
+    if not held:
+        return g
+    keep = lambda u: u.split("#")[0] not in held  # noqa: E731
+    return dict(g, see=[(label, u) for label, u in g["see"] if keep(u)],
+                steps=[dict(s_, actions=[(label, u) for label, u in s_["actions"] if keep(u)])
+                       for s_ in g["steps"]])
+
+
 def build_guides(site, tmpl, base, drafts=False):
     """Writes the guides that may be published (and, with drafts, the rest,
     marked) and returns (published, urls). Says why each one held back is."""
@@ -1411,14 +1422,24 @@ def build_guides(site, tmpl, base, drafts=False):
     bills = BR.Bills(site, BR.term_of_year(build_date.today().year))
     out = site / GUIDE_DIR
     published, urls = [], []
+    ready = {g["slug"]: guide_ready(g, fetched, chapters, table.sections if table else {})
+             for g in G.GUIDES}
+    # A GUIDE HELD BACK IS NOT LINKED (17 October 2026). The four civic
+    # guides send a reader on to one another, and a guide held back is not
+    # written, so a published guide's button or See Also line to it would be
+    # a dead link -- as on the fixture, whose statute table holds the Right-
+    # to-Know Law and not RSA 14 or 662. A draft build writes every guide,
+    # so there nothing is held and every link stays.
+    held = set() if drafts else {"/" + guide_href(s) for s, why in ready.items() if why}
     for g in G.GUIDES:
-        why = guide_ready(g, fetched, chapters, table.sections if table else {})
+        why = ready[g["slug"]]
         if why and not drafts:
             print(f"  guides/{g['slug']}.html HELD BACK: {why}")
             continue
         out.mkdir(parents=True, exist_ok=True)
         record = guide_record(g, data, bills, chapters)
-        (out / f"{g['slug']}.html").write_text(S.clean_links(guide_page(tmpl, g, base, record, why)), encoding="utf-8")
+        (out / f"{g['slug']}.html").write_text(
+            S.clean_links(guide_page(tmpl, unlinked(g, held), base, record, why)), encoding="utf-8")
         if not why:
             published.append(g)
             urls.append(base + S.canon("/" + guide_href(g["slug"])))
