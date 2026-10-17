@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.218
+// GRANITE_VERSION: 2026-09-07.219
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -1277,7 +1277,6 @@ function queryGroups(raw){
       g.nam=g.alts.length;g.alts=g.alts.concat(c.named.filter(t=>!g.alts.includes(t)));
       nearTerms(g,[w,one]);
     }
-    if(HONORIFIC[w])g.hon=HONORIFIC[w];
     if(before){
       const j=before.word+w;
       (before.joins||(before.joins=[])).push(j);
@@ -1311,7 +1310,9 @@ function queryGroups(raw){
      topic reading "...Mental Health". See THE BILLS' OWN WORDS, below, for
      how a topic counts now and why that search is still not answered by one.
    - a SPONSOR's name read as the start of a word: "bail" found every bill of a
-     member named Bailey. A name matches as a whole word.
+     member named Bailey. A name matched as a whole word after that, and
+     since 17 October 2026 matches nothing (A NAME IS NOT WHAT A BILL IS
+     ABOUT, below).
    - a SYNONYM read as the start of a word: "alien" found "parental alienation".
      The reader's own word still matches as a start ("educat" finds education),
      but a word this file supplies matches as itself, or with an ending.
@@ -1445,9 +1446,8 @@ function inText(hay,g,alt,term){ return typedAlt(g,alt,term)?hasTerm(hay,alt):al
    determination" -- and each of the wrong ones above has them apart.
 
    Not asked of a word the table owns or supplies (that wording is specific
-   already), of a typed phrase, of a word beside a sponsor's name ("lang
-   cannabis" is his bills that say it), nor beside a two-letter word read as
-   a start, which is itself a last resort. Nor where every other part of the
+   already), of a typed phrase, nor beside a two-letter word read as a
+   start, which is itself a last resort. Nor where every other part of the
    search is the table's and the TITLE has it: a bill titled for the
    right-to-know law is about public records, and "public records request"
    lists it for the requests its text is about, wherever they stand. That
@@ -1648,16 +1648,13 @@ const topicHay=b=>{
    [how far short, why, and under `with` the second thing found]:
      0     a word of the title -- the word itself, with one of altRx's
            endings ("guns", "taxes"), one of its synonyms, or the letters
-           typed written out in full ("dwi", driving while intoxicated) --
-           or exactly a word of the sponsor's name, since a name is not a
-           word with an ending: "fish" is not Rep. Fisher, nor "mun" Rep.
-           Muns;
+           typed written out in full ("dwi", driving while intoxicated);
      0.5   a word of the topic the bill is filed under;
      0.6 to 0.96   in the analysis or the text, the most central first;
      1     the title has only a longer word the part begins ("bail" and the
            bailiffs, "gun" and the Gunstock Area Commission), or a term of
            the table that is the word with another ending ("eviction" and
-           "evict"), or the sponsor's name only the word with an ending;
+           "evict");
      1.2 to 1.5    the analysis or text has only such a longer word;
      1.45  the bill has both things an entry's `with` asks for;
      1.5   the title has none of the reader's words and has one of the terms
@@ -1668,22 +1665,27 @@ const topicHay=b=>{
            before the rest of the firearms entry;)
      2     only a committee's name has it; 3 where that has a longer word.
    Best match orders by the total before anything else, so a bill whose title
-   or sponsor has every word of the search is never listed below one that has
-   only the start of one, and a bill the table found is never listed above
-   either.
+   has every word of the search is never listed below one that has only the
+   start of one, and a bill the table found is never listed above either.
    A committee's name counts for less than a longer word in the title: that
    is "Best match puts the title first", above, kept. Counted as direct, the
    committee put the 187 bills of 2025-2026 whose only link to "municipal"
    is a committee named for municipal affairs above the 26 whose titles say
    "municipalities".
-   A sponsor's name counts for as little, when the word is one the table
-   owns. Across the nineteen terms "gay" is also Rep. Betty Gay, and her 36
-   bills -- election officers, drivers' licenses -- stood above every bill
-   the word was typed to find. They are still listed, after them. */
-const RXN=Object.create(null);
-function nameRx(term){
-  return RXN[term]||(RXN[term]=new RegExp("\\b"+rxEsc(term)+"\\b"));
-}
+
+   A NAME IS NOT WHAT A BILL IS ABOUT (17 October 2026). The person: "Searching
+   a representative's name like alice should not show bills sponsored by alice
+   wade on the bill search page or the general search page since there's a
+   separate filter for searching by rep." Until that day a word of the prime
+   sponsor's name counted as a word of the title, and the notes here had grown
+   rules to keep it in its place: "bail" was not Rep. Bailey, "weeds" not Rep.
+   Weed, "gay" not Rep. Betty Gay's 36 bills on election officers. Every one of
+   those rules existed because a name kept answering searches about subjects.
+   Now the sponsor and the co-sponsors are matched by nothing typed in the box:
+   the Sponsor filter is where a person's bills are found, /search and the
+   header list the person themselves, and /bills offers that filter when the
+   name typed lists nothing (sponsorHint, below). A bill whose title, topic,
+   analysis or text has the word still lists, whoever filed it. */
 function fitAlone(b,g){
   let d=4,why=null;
   const out=g.not&&g.not.some(t=>hasTerm(b.hayT,t));
@@ -1696,13 +1698,10 @@ function fitAlone(b,g){
       if(!out&&d>far&&altRx(alt).test(b.hayT)){d=far;why=far?["title",alt]:null;}
       continue;
     }
-    // A name is the word as typed, never its singular: "weeds" is not Rep.
-    // Weed, whose bills stood above every bill about weeds.
-    const own=typedAlt(g,alt)||alt===g.word,name=alt===g.word&&!g.exact;
-    if(altRx(alt).test(b.hayT)||(name&&nameRx(alt).test(b.hayS))
-       ||(own&&!g.exact&&asOne(b,alt))){d=0;why=null;break;}
-    if(d>1&&(inText(b.hayT,g,alt,b.term)||(name&&altRx(alt).test(b.hayS)))){d=1;why=null;}
-    if(d>2&&own&&(altRx(alt).test(b.hayC)||(g.exact&&altRx(alt).test(b.hayS)))){d=2;why=null;}
+    const own=typedAlt(g,alt)||alt===g.word;
+    if(altRx(alt).test(b.hayT)||(own&&!g.exact&&asOne(b,alt))){d=0;why=null;break;}
+    if(d>1&&inText(b.hayT,g,alt,b.term)){d=1;why=null;}
+    if(d>2&&own&&altRx(alt).test(b.hayC)){d=2;why=null;}
     if(d>3&&own&&inText(b.hayC,g,alt,b.term)){d=3;why=null;}
   }
   // Two words typed that the title writes as one: "day care" and daycare,
@@ -1755,41 +1754,28 @@ function fitAlone(b,g){
    Not for a two-letter word read as a start (readShort): that reading is
    itself the last resort of a search that listed nothing.
 
-   THE SAME OF EVERY GUESS (2 October). A committee's name is a guess too,
-   and so is a sponsor's name with an ending. "child labor" listed two bills
-   heard by a Labor committee whose text says "child"; "tim lang", across
-   the terms, listed one bill -- "compensation for time lost by state
-   employees", sponsor Ray Langer. So none of the three counts beside a word
-   found only outside the title, and no two of them count together, unless
-   both are the committee's name ("ways means").
+   THE SAME OF EVERY GUESS (2 October). A committee's name is a guess too.
+   "child labor" listed two bills heard by a Labor committee whose text says
+   "child". So neither counts beside a word found only outside the title,
+   and the two do not count together, unless both are the committee's name
+   ("ways means").
    And a two-letter word read as a start counts beside the reader's own
    words, not beside a synonym this file supplied: "student id" listed
    "identifying certain school district offices" (id, identifying; student,
    school).
 
-   A TITLE BEFORE A NAME, AND A FIRST NAME BEFORE A SURNAME. "senator
-   carson" listed nothing in a term where Sen. Sharon Carson has nine bills,
-   and "tim lang" nothing where Sen. Timothy Lang has his: the sponsor's
-   name was read a word at a time, each whole. Beside a word that is a whole
-   word of the sponsor's name, "rep", "representative", "sen" and "senator"
-   are read as the sponsor's title -- and agree with it, where the index
-   says which chamber -- and another word may be the start of another word
-   of that name. Such a bill is listed after the ones that have the name
-   whole.
+   NO NAME, AND NO TITLE BEFORE ONE (17 October 2026). From 2 October a
+   sponsor's name was read here too -- "senator carson" as Sen. Sharon
+   Carson's bills, "tim lang" as Sen. Timothy Lang's -- with "rep" and
+   "senator" read as the sponsor's title. The person asked that a name not
+   list bills at all (A NAME IS NOT WHAT A BILL IS ABOUT, above), so that
+   reading is gone, and "rep" or "senator" is a word like any other.
 
    And a plain word found only in the analysis or the text counts only
    where it stands beside another word of the search there: WORDS THAT
    STAND TOGETHER, above. */
-const HONORIFIC=Object.assign(Object.create(null),
-  {rep:"Rep.",representative:"Rep.",sen:"Sen.",senator:"Sen."});
-// A longer word in the title, a name with an ending, a committee's name.
+// A longer word in the title, or a committee's name.
 const weakFit=f=>f[0]>=1&&!f[1];
-// This part of the search is a whole word of the sponsor's name.
-const namesSponsor=(b,o)=>!o.exact&&!o.hon&&!o.word.includes(" ")&&nameRx(o.word).test(b.hayS);
-// This part begins another word of the sponsor's name than the one a peer
-// is: "tim", of Timothy Lang -- not "car", of Carson, beside "carson".
-const startsName=(b,g,peers)=>b.hayS.split(/[^a-z0-9']+/).some(w=>
-  w.length>g.word.length&&w.startsWith(g.word)&&!peers.some(o=>o.word===w));
 // The title has this part in the reader's own word, not a synonym of it.
 const ownInTitle=(b,o)=>ownAlts(o).some(a=>altRx(a).test(b.hayT)||asOne(b,a))
   ||!!(o.joins&&o.joins.some(j=>altRx(j).test(b.hayT)||asOne(b,j)));
@@ -1824,10 +1810,6 @@ function fitNow(b,g){
   const peers=g.peers;
   if(!peers)return f;
   const t=b.term||"";
-  if(g.hon&&(!f||f[0]>0)&&peers.some(o=>namesSponsor(b,o))
-     &&(!b.sponsor_label||String(b.sponsor_label).startsWith(g.hon)))f=[0,null];
-  if(!f&&!g.exact&&g.tab==null&&!g.word.includes(" ")&&g.word.length>2
-     &&peers.some(o=>namesSponsor(b,o))&&startsName(b,g,peers))f=[1,null];
   if(!f)return null;
   if(weakFit(f)){
     const short=!!(g.short&&g.short.has(t));
@@ -1835,7 +1817,7 @@ function fitNow(b,g){
       const x=fitAlone(b,o);
       if(!x)continue;
       if(short){
-        if(x[0]===0&&!x[1]&&!o.exact&&!namesSponsor(b,o)&&!ownInTitle(b,o))return null;
+        if(x[0]===0&&!x[1]&&!o.exact&&!ownInTitle(b,o))return null;
         continue;
       }
       if(x[1]&&x[1][0]!=="title")return null;
@@ -1845,7 +1827,7 @@ function fitNow(b,g){
   }
   if(!g.exact&&g.tab==null&&!g.word.includes(" ")&&f[1]&&!f[1][1]
      &&(f[1][0]==="analysis"||f[1][0]==="text")){
-    const others=peers.filter(o=>!o.hon&&!namesSponsor(b,o));
+    const others=peers;
     if(others.length&&!others.some(o=>o.short&&o.short.has(t))
        &&!others.every(o=>tableInTitle(b,o))){
       const beside=besideHits(g,t);
@@ -1854,11 +1836,12 @@ function fitNow(b,g){
   }
   return f;
 }
-// 3 in the title, 2 in the sponsor's name, 1 in a committee's name, 0 not at
-// all; and 2.5 where it is the topic, the analysis or the text that has it.
-// A sponsor's name or a committee's matches only what the reader typed: a
-// synonym found in a committee's name ("energy", for "electric vehicles") put a
-// bill about hunting from a vehicle in the results.
+// 3 in the title, 1 in a committee's name, 0 not at all; and 2.5 where it is
+// the topic, the analysis or the text that has it. The sponsor's name is not
+// read (A NAME IS NOT WHAT A BILL IS ABOUT, 17 October 2026). A committee's
+// name matches only what the reader typed: a synonym found in a committee's
+// name ("energy", for "electric vehicles") put a bill about hunting from a
+// vehicle in the results.
 function groupWeight(b,g){
   const of=recall(g,"_w");
   let w=of.get(b);
@@ -1873,7 +1856,6 @@ function weightNow(b,g){
   for(const alt of g.alts){
     if(inText(b.hayT,g,alt,b.term))return 3;
     if(!(typedAlt(g,alt)||alt===g.word))continue;
-    if(w<2&&altRx(alt).test(b.hayS))w=2;
     if(w<1&&inText(b.hayC,g,alt,b.term))w=1;
   }
   return w||2.5;
@@ -1923,10 +1905,7 @@ function matchScore(b,gs){
    housing fund" is one word in eleven.
    A part counts as itself or with an ending (altRx), never as the start of
    a longer word: looseness has already put those below, and read as starts,
-   "lang", typed for Sen. Lang, reordered the bills it found titled
-   "language", and "rep. watters" Sen. Watters' own two by "report" and
-   "reporting". Nor does "rep" or "senator" count at all, which the search
-   reads as the sponsor's title and not as anything a bill is about.
+   "lang" counted every "language" in a title, and "rep" every "report".
    It reads the title and nothing else, so it cannot read an outcome: over
    fourteen searches the Passed and the Died among the first ten stayed near
    the share of each among everything listed. It was measured beside a
@@ -1955,7 +1934,6 @@ function shareNow(b,gs){
   if(!at.length)return 0;
   const said=new Set();
   for(const g of gs){
-    if(g.hon)continue;
     // And two words typed that the title writes as one (WRITTEN AS ONE
     // WORD, OR TWO, OR WITH A HYPHEN).
     for(const a of g.joins?g.alts.concat(g.joins):g.alts)
@@ -1969,8 +1947,8 @@ function shareNow(b,gs){
 /* WHY A BILL IS LISTED, where its title does not have the reader's word: in
    the bill's own words, never the reader's. "topic: Housing"; "in the bill's
    text" for the word typed; "text says: lavatory" for a word this file
-   stood the typed one for. Nothing for a bill whose title, sponsor or
-   committee has the word -- the card shows those. */
+   stood the typed one for. Nothing for a bill whose title or committee has
+   the word -- the card shows those. */
 function whyListed(b,gs){
   const said=[];
   for(const g of gs){
@@ -1994,7 +1972,8 @@ function whyListed(b,gs){
    the word, and for a search that finds something. It is decided term by
    term: read over every term at once, "special ed" listed one bill, a 2001
    bill on number plates whose sponsor is an Ed, where this term alone
-   listed 29. A wider search must never list less.
+   listed 29. A wider search must never list less. (A sponsor's name lists
+   nothing since 17 October 2026; a word of a title can do the same.)
 
    A WORD NO BILL HAS EVER USED, OFFERED AS THE WORD IT SOUNDS LIKE.
    "medicade" and "fentynal" find nothing. The page then offers the word of
@@ -2178,6 +2157,75 @@ const FEWER_MOST=6;
    two (2 October). So the sentence is drawn at once and the offers are
    counted one at a time, the page free to answer between them, and written
    under it when the last is in. A search typed meanwhile drops them. */
+/* A NAME TYPED IN THE BOX IS OFFERED THE SPONSOR FILTER (17 October 2026).
+   Since that day a name lists no bill here (A NAME IS NOT WHAT A BILL IS
+   ABOUT), and a reader who typed "alice wade" was most likely after her
+   bills: an empty list with nowhere to go would read as though she had filed
+   nothing. So when the search lists nothing and every word typed belongs to
+   the name of a sponsor or co-sponsor of the bills in view, one line offers
+   the Sponsor filter for that person, which is where their bills are listed.
+   Never when the words also list a bill: the person asked for the line only
+   where nothing else matched.
+   A word may be the start of a word of the name ("tim", for Timothy Lang)
+   so long as another is a whole word of it, the way a name is typed from
+   memory. "rep" or "senator" must agree with the chamber the index gives the
+   prime sponsor, and a co-sponsor the index gives no chamber is not ruled
+   out by it. The three people with the most bills in view at most: a surname
+   that more share is for the filter's own name box to narrow. */
+const HINT_TITLE=Object.assign(Object.create(null),
+  {rep:"Rep.",reps:"Rep.",representative:"Rep.",sen:"Sen.",senator:"Sen."});
+const HINT_MOST=3;
+// A name's letters as a search reads them: lower case, accents off, a hyphen
+// or a full stop a space.
+const hintWords=s=>String(s||"").normalize("NFD").replace(/[̀-ͯ]/g,"")
+  .toLowerCase().replace(/’/g,"'").split(/[^a-z0-9']+/).filter(Boolean);
+function sponsorHint(q,rows){
+  let title="";
+  const want=[];
+  for(const w of hintWords(q)){
+    if(HINT_TITLE[w])title=HINT_TITLE[w];
+    else if(!STOPSET.has(w))want.push(w);
+  }
+  if(!want.length)return [];
+  const who=new Map();
+  for(const b of rows||[]){
+    for(const name of b.cosp?[b.sponsor,...b.cosp]:[b.sponsor]){
+      if(!name)continue;
+      let p=who.get(name);
+      if(!p)who.set(name,p={name,n:0,label:""});
+      p.n++;
+      if(name===b.sponsor&&!p.label&&b.sponsor_label)
+        p.label=String(b.sponsor_label).replace(/\s*\(.*$/,"");
+    }
+  }
+  const out=[];
+  for(const p of who.values()){
+    const parts=hintWords(p.name);
+    if(!want.some(w=>parts.includes(w)))continue;
+    if(!want.every(w=>parts.includes(w)||(w.length>2&&parts.some(x=>x.length>w.length&&x.startsWith(w)))))continue;
+    if(title&&p.label&&!p.label.startsWith(title))continue;
+    out.push(p);
+  }
+  return out.sort((a,b)=>b.n-a.n||(a.name<b.name?-1:a.name>b.name?1:0)).slice(0,HINT_MOST);
+}
+// The Sponsor filter for one person, as an address /bills reads (addressList):
+// the term kept, the search left out, since the name typed lists nothing.
+function sponsorHref(name){
+  const p=new URLSearchParams(),terms=(META&&META.terms)||[];
+  if(term&&term!==terms[0])p.set("term",term);
+  p.append("sponsor",name);
+  return `${BASE}bills?${p.toString()}`;
+}
+function sponsorHintLine(list){
+  if(!list.length)return "";
+  const named=p=>esc(p.label||p.name);
+  const a=(p,text)=>`<a class="qsponsor" href="${esc(sponsorHref(p.name))}" data-sponsor="${
+    esc(p.name)}">${text}</a>`;
+  return list.length===1
+    ?`<br><br>Looking for bills sponsored by ${named(list[0])}? ${a(list[0],"Use the sponsor filter")}.`
+    :`<br><br>Looking for bills sponsored by ${list.map(p=>a(p,named(p))).join(" or ")}? `
+      +"Choose one to use the sponsor filter.";
+}
 let OFFERS={key:null,html:""};
 function emptyResult(){
   const gs=query.trim()&&!billNumbers(query)?groupsFor(query.trim()):[];
@@ -2194,15 +2242,20 @@ function emptyResult(){
     OFFERS={key,html:""};
     const count=q=>{const g2=readShort(queryGroups(q),inTerm);
       return inTerm.filter(b=>g2.every(g=>groupWeight(b,g)>0)).length;};
-    let did="";
+    let did="",who="";
     const parts=[],fewer=[];
     const jobs=[];
     // A word no bill has ever used, offered as the word it sounds like -- an
     // offer, and never a list drawn in its place (see A SEARCH THAT LISTS
     // NOTHING, above). Only where the search itself lists nothing in the
     // term: a list a filter emptied is not a spelling.
+    // And a sponsor's name, offered the Sponsor filter (sponsorHint), under
+    // the same condition. A name in the bills is a word and not a
+    // misspelling, so it is offered no other word.
     if(gs.length)jobs.push(()=>{
       if(inTerm.some(b=>gs.every(g=>groupWeight(b,g)>0)))return;
+      who=sponsorHintLine(sponsorHint(query.trim(),inTerm));
+      if(who)return;
       const sp=spelling(gs,inTerm);
       if(sp&&sp.need)wantWords();
       else if(sp)did=`<br><br>Did you mean <button class="link" data-q="${esc(sp.q)}">${
@@ -2225,7 +2278,10 @@ function emptyResult(){
       if(OFFERS.key!==key)return;
       const job=jobs.shift();
       if(job){job();setTimeout(step,0);return;}
-      OFFERS.html=`${did}${fewer.length?`<br><br>Without one word: ${offer(fewer)}`:""}${
+      // A name's own line stands alone: "On their own: senator (6)" beside
+      // the offer for Sen. Carson was a list of guesses at a search that is
+      // already answered.
+      OFFERS.html=who||`${did}${fewer.length?`<br><br>Without one word: ${offer(fewer)}`:""}${
         parts.length?`<br><br>On their own: ${offer(parts)}`:""}`;
       const at=document.getElementById("offers");
       if(at)at.innerHTML=OFFERS.html;
@@ -2690,10 +2746,12 @@ function ensureTerm(t){
   if(!t||LOADED.has(t))return Promise.resolve();
   return need("idx/"+encodeURIComponent(t)+".json").then(rows=>{
     LOADED.add(t);
+    // TWO HAYSTACKS, NOT THREE (17 October 2026): the sponsor's name had one
+    // of its own until a name stopped listing bills (A NAME IS NOT WHAT A
+    // BILL IS ABOUT, above).
     rows.forEach(b=>{
       const norm=s=>String(s||"").toLowerCase().replace(/-/g," ");
       b.hayT=norm([b.id,b.n,b.title].join(" "));
-      b.hayS=norm(b.sponsor);
       b.hayC=norm((b.committees||[b.committee||""]).join(" | "));
     });
     IDX=IDX.concat(rows);
@@ -8598,6 +8656,19 @@ document.addEventListener("click",e=>{
   const pk=e.target.closest&&e.target.closest("[data-rsapick]");
   if(!pk||PAGE)return;
   const a=pk.dataset.rsapick;sel.rsa.clear();if(a)sel.rsa.add(a);rsaText=a;render();
+});
+// THE SPONSOR FILTER OFFERED FOR A NAME IS TAKEN IN PLACE (sponsorHint, 17
+// October 2026). The name typed lists nothing, so it leaves the box, and the
+// person is ticked as the one sponsor chosen; the list and its address follow.
+// A click with a modifier key is left to the link, which opens the same
+// address in a new tab.
+document.addEventListener("click",e=>{
+  const sp=e.target.closest&&e.target.closest("[data-sponsor]");
+  if(!sp||PAGE||e.ctrlKey||e.metaKey||e.shiftKey||e.button)return;
+  if(e.preventDefault)e.preventDefault();
+  query="";$("#q").value="";clearTimeout(QDRAW);addressSearch("");
+  sel.sponsor.clear();sel.sponsor.add(sp.dataset.sponsor);render();
+  if(e.detail===0)$("#q").focus();
 });
 document.addEventListener("input",e=>{
   if(e.target.id==="rsabox"){rsaText=e.target.value;clearTimeout(RSADRAW);

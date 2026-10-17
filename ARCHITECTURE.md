@@ -608,8 +608,11 @@ count the same bills, and a change to the marked lines changes all three.
 
 It reads, for each bill, in the order it lists them:
 
-1. **the title**, the prime sponsor's name and the committees' names, from
-   `site/idx/<term>.json` -- the word itself before a longer word it begins;
+1. **the title** and the committees' names, from `site/idx/<term>.json` --
+   the word itself before a longer word it begins. Never a sponsor's name
+   (17 October 2026): a name finds the legislator on `/search` and in the
+   header, their bills are the Sponsor filter's, and `/bills` offers that
+   filter in one line when a name typed lists nothing;
 2. **the topic** the bill is filed under, for a single typed word that is the
    topic's name, and only where the topic names one subject. In a search of
    several words a topic stands for one of them only when it is that word
@@ -706,12 +709,11 @@ facilities authority, "small claims" a tariff credit for small businesses and
 "eminent domain" the right to hunt and fish. The index keeps each pair as
 five letters of a hash, under `"b"`, because spelt out they were more than
 the rest of the file; the docstring of `build_search_index.py` has the
-numbers. Not asked of the table's own wording, of a word beside a sponsor's
-name, nor where every other part of the search is the table's and the title
-has it ("public records request", for a bill titled for the right-to-know
-law). The same rule covers the other guesses: a longer word in the title, a
-committee's name and a sponsor's name with an ending each count beside words
-the title has, and never two of them together.
+numbers. Not asked of the table's own wording, nor where every other part of
+the search is the table's and the title has it ("public records request",
+for a bill titled for the right-to-know law). The same rule covers the other
+guesses: a longer word in the title and a committee's name each count beside
+words the title has, and never the two together.
 
 *A repeat is not a second mention.* "The text uses it twice" is counted in
 sentences that say different things: a constitutional amendment printed as

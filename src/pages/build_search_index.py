@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-01.10
+# GRANITE_VERSION: 2026-10-01.11
 """
 What each bill is about, in its own words, as a file the search can ask.
 
@@ -334,9 +334,40 @@ FURNITURE = re.compile(
     r"In the Year of Our Lord.*|Be it (?:Enacted|Resolved).*)$", re.M | re.I)
 
 
+# THE SPONSORS' NAMES ARE NOT THE BILL'S WORDS (17 October 2026). Thirteen
+# archived texts open with the bill's front matter -- "INTRODUCED BY: Sen. Bond
+# of Dist. 1; Sen. Currier of Dist. 7" in 1989, "SPONSORS: Rep. Lefebvre, Hills
+# 31" from 1993 -- and those names were read as the drafters' analysis, which
+# counts for the most, so a member's surname listed the bills they filed. A
+# name lists no bill on this site any more (app.js, A NAME IS NOT WHAT A BILL IS
+# ABOUT), so the list comes off before anything is counted: from its label to
+# the label that follows it, REFERRED TO: or COMMITTEE:, which every one of the
+# thirteen has within SPONSOR_SPAN characters; failing that, to the end of the
+# label's own line. Upper case only, as the front matter prints them, so that a
+# sentence of the bill that says "sponsors:" is left as it is.
+SPONSOR_LABEL = re.compile(r"^[ \t]*(?:SPONSORS?|INTRODUCED BY)[ \t]*:", re.M)
+AFTER_SPONSORS = re.compile(r"^[ \t]*(?:REFERRED TO|COMMITTEE)[ \t]*:", re.M)
+SPONSOR_SPAN = 800
+
+
+def unsponsored(text):
+    """A bill's text with its front matter's list of sponsors taken out."""
+    out, at = [], 0
+    for m in SPONSOR_LABEL.finditer(text):
+        if m.start() < at:
+            continue
+        nxt = AFTER_SPONSORS.search(text, m.end(), m.end() + SPONSOR_SPAN)
+        end = nxt.start() if nxt else text.find("\n", m.end())
+        out.append(text[at:m.start()])
+        at = end if end >= 0 else len(text)
+    out.append(text[at:])
+    return "".join(out)
+
+
 def split(text):
-    """(analysis, body) of a bill's text, the fiscal note taken off the body."""
-    text = text or ""
+    """(analysis, body) of a bill's text, the fiscal note taken off the body,
+    and the sponsors' names off both (unsponsored)."""
+    text = unsponsored(text or "")
     cut = ENACTING.search(text)
     head = text[:cut.start()] if cut else ""
     rest = text[cut.start():] if cut else text
