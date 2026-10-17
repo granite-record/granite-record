@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.45
+# GRANITE_VERSION: 2026-09-05.46
 """
 Segment a recording on what the chair says, not on where bill numbers cluster.
 
@@ -443,6 +443,49 @@ OPENING_VERB = re.compile(r"\b(?:open|begin|going\s+to\s+do)", re.I)
 CLOSE_WORD = re.compile(r"\bclos(?:e|es|ed|ing)\b", re.I)
 
 
+# TWO BILLS OPENED IN ONE BREATH SHARE THE MOMENT. (17 October 2026.) "will
+# start the day today with a work session on HB 56 and HB 253", "call the
+# committee of conference on HB1 and HB2 to order": 81 openings named two
+# scheduled bills, and the second -- 21 of them on no other marker -- went
+# unplaced. Only "<bill> and <bill>", the second straight after the first:
+# "open the executive session on House Bill 1097 and recognize I think you
+# wrote 1197" is a correction, not a block, and is not one.
+BLOCK_RE = re.compile(
+    r"\s*(?:,\s*(?:and\s+)?|and\s+|&\s*)"
+    r"((?:(?:house|senate)\s*bill|hb|hp|sb|sp)?\s*#?\s*\d{1,4})\b", re.I)
+
+
+def block_partner(tail, candidates, bill):
+    """The second scheduled bill of "<bill> and <bill>", where `tail` is what
+    follows the first; None where there is none."""
+    m = BLOCK_RE.match(tail)
+    if not m:
+        return None
+    got = bill_at(m.group(1), [c for c in candidates if c != bill], {})
+    return got[0] if got else None
+
+
+# OPENED AND RECESSED IS NOT A SITTING. (17 October 2026.) "going to open up
+# the public hearing on HB1357 and recess the public hearing on HB1357 till
+# February 3rd", "open and recess the uh hearing for HCR16": the item is
+# opened and set aside in one sentence, and the span from there to the next
+# boundary is whatever came between. The opening stands, and gets no end and
+# no close. Coming back from a recess is not one: "opening and coming out of
+# recess for House Bill 1241", "the public hearing on House Bill 1641 that was
+# recessed from January 14th".
+RECESS_WORD = re.compile(r"\brecess(?:ed|ing)?\b(?!\s+(?:from|on)\b)", re.I)
+RESUMING = re.compile(
+    r"\b(?:out\s+of|from|back\s+from)\s+(?:the\s+|a\s+|our\s+)?recess\b"
+    r"|\bthe\s+recessed\b|\brecessed\s+(?:hearing|session)\b", re.I)
+
+
+def recessed(head, tail):
+    """True when the opening phrase (`head`, up to its bill) or the words
+    straight after its bill (`tail`) set the item aside as it is opened."""
+    s = head + " " + tail
+    return not RESUMING.search(s) and bool(RECESS_WORD.search(s))
+
+
 def not_an_opening(text, start, upto):
     """What makes the opening phrase at text[start], whose bill is named at
     text[upto], not an opening -- or "" when nothing does."""
@@ -700,9 +743,10 @@ def find_markers(words, candidates, titles, span=28, floor=False):
 
     out, seen = [], set()
 
-    def place(t, kind, bill, what, how, said, weak):
+    def place(t, kind, bill, what, how, said, weak, held=False):
         """Keep one marker unless it repeats one already found or, being
-        weak, something else already placed the bill."""
+        weak, something else already placed the bill. `held`: opened and
+        recessed in one breath (recessed)."""
         # Within a minute of one already found for the same bill and the
         # same kind is the same moment. Bucketing by round(t/30) let
         # 1:11:44 and 1:11:48 fall either side of a boundary and both be
@@ -720,7 +764,7 @@ def find_markers(words, candidates, titles, span=28, floor=False):
         out.append({"t": round(t, 1), "kind": kind, "bill": bill,
                     "what": "" if weak else what,
                     "how": how + (" (weak marker)" if weak else ""),
-                    "said": said})
+                    "said": said, **({"recessed": True} if held else {})})
 
     pats = ([(FLOOR_OPEN_RE, "open", False),
              (FLOOR_CLOSE_RE, "close", False)] if floor else [])
@@ -734,7 +778,7 @@ def find_markers(words, candidates, titles, span=28, floor=False):
             got = bill_at(after, candidates, titles if rx in TITLED else {})
             if not got:
                 continue
-            bill, how, b0, _b1 = got
+            bill, how, b0, b1 = got
             if kind == "open" and not_an_opening(text, m.start(), m.end() + b0):
                 continue
             # An agenda being read is not an opening. "these are in numerical
@@ -773,8 +817,15 @@ def find_markers(words, candidates, titles, span=28, floor=False):
                 if g in (rx.groupindex or {}) and m.group(g):
                     what = WS.sub(" ", m.group(g)).lower()
                     break
-            place(when(m.start()), kind, bill, what, how,
-                  WS.sub(" ", text[m.start():m.start() + 130]), weak)
+            said = WS.sub(" ", text[m.start():m.start() + 130])
+            held = kind == "open" and recessed(text[m.start():m.end() + b0],
+                                               after[b1:b1 + 80])
+            place(when(m.start()), kind, bill, what, how, said, weak, held)
+            partner = (block_partner(after[b1:], candidates, bill)
+                       if kind == "open" and not weak else None)
+            if partner:
+                place(when(m.start()), kind, partner, what, "number (block)", said,
+                      weak, held)
     # The phrases whose bill was named BEFORE them (BEFORE_PATS): the moment
     # is the last scheduled bill named, by number, in the 160 characters
     # before the phrase. Weak, and last, so anything else that placed the
@@ -930,8 +981,8 @@ def fill_ends(byb, last_seen=None, evidence=None):
                   key=lambda x: x[0])
     n = 0
     for i, (start, _b_, seg) in enumerate(flat):
-        if seg.get("end") is not None:
-            continue
+        if seg.get("end") is not None or seg.get("recessed"):
+            continue          # a stated close, or opened and recessed: no span
         nxt = next((st for st, _, _ in flat[i + 1:] if st > start), None)
         if nxt is None:
             continue
@@ -1036,10 +1087,14 @@ def to_segments(markers, candidates):
         b = m["bill"]
         if m["kind"] == "open":
             segs[b].append({"start": m["t"], "end": None, "how": m["how"],
-                            "what": m["what"], "said": m["said"]})
+                            "what": m["what"], "said": m["said"],
+                            **({"recessed": True} if m.get("recessed") else {})})
         else:
+            # Not onto one opened and recessed: its close, if it comes,
+            # closes the sitting that resumed, whose opening was not heard.
             open_ones = [s for s in segs.get(b, [])
-                         if s["end"] is None and m["t"] > s["start"]]
+                         if s["end"] is None and not s.get("recessed")
+                         and m["t"] > s["start"]]
             if open_ones:
                 open_ones[-1]["end"] = m["t"]
     return {b: v for b, v in segs.items() if v}

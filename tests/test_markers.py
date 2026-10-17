@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.12
+# GRANITE_VERSION: 2026-09-05.13
 """
 The phrasings the marker patterns must match, and the ones they must not.
 
@@ -355,6 +355,40 @@ def run():
     if S.find_markers(w5, list(t5), {}, floor=True):
         fails.append("a garbled number with no titles to go on was still placed")
 
+    # Two bills opened in one breath share the moment; a correction is not a
+    # block; opened and recessed is not a span, and coming out of a recess is
+    # not a recess (17 October 2026). Each spoken, at the recording and time
+    # beside it.
+    def opens(text, cands, at=0.0):
+        w = [(at + i * 0.4, x) for i, x in enumerate(text.split())]
+        return {m["bill"]: m for m in S.find_markers(w, cands, {}) if m["kind"] == "open"}
+    got = opens("will start the day today with a work session on HB 56 and HB 253 let's "
+                "start this morning with the Pledge of Allegiance", ["HB56", "HB253"])
+    if sorted(got) != ["HB253", "HB56"] or got["HB56"]["t"] != got["HB253"]["t"]:
+        fails.append(f"a block opening (-iWFQuQeru0 0:06:39) gave {got}")
+    got = opens("open the executive session on House Bill 1097 and recognize I think you "
+                "wrote 1197 representative", ["HB1097", "HB1197"])
+    if "HB1197" in got:
+        fails.append("a correction (-eGkacU96-Q 1:48:14) was read as a block")
+    for text, where in (
+            ("going to open up the public hearing on HB1357 and recess the public "
+             "hearing on HB1357 till February 3rd at 3:15. Thank you.", "IQ2_t0-5Y9w 0:01:36"),
+            ("open and recess the uh hearing for HCR16. uh the prime sponsor was not here",
+             "HpDeBZsI2wU 2:41:53")):
+        bill = "HB1357" if "1357" in text else "HCR16"
+        w = ([(i * 0.4, x) for i, x in enumerate(text.split())]
+             + [(900 + i * 0.4, x) for i, x in enumerate(
+                 f"we have more on {bill} later I'll open the hearing on House Bill 1442".split())])
+        segs = S.to_segments(S.find_markers(w, [bill, "HB1442"], {}), [bill, "HB1442"])
+        S.fill_ends(segs, S.last_mentions(w, [bill, "HB1442"]), [])
+        first = (segs.get(bill) or [{}])[0]
+        if not first.get("recessed") or first.get("end") is not None:
+            fails.append(f"opened and recessed ({where}) became a span: {first}")
+    got = opens("opening and coming out of recess for House Bill 1241. And then I will call "
+                "on Representative", ["HB1241"])
+    if not got or got["HB1241"].get("recessed"):
+        fails.append(f"coming out of a recess (T5AtXiL_VVc 0:33:02) read as one: {got}")
+
     # A bill named only as it was opened gives its end nothing to go on (17
     # October 2026). Last named 10 s after its opening, it ends at the first
     # close naming no bill before the next boundary, else the last vote
@@ -381,7 +415,7 @@ def run():
 if __name__ == "__main__":
     bad = run()
     n = (len(MUST_MATCH) + len(MUST_NOT_MATCH) + len(NOT_OPENINGS) + len(STILL_OPENINGS)
-         + len(BILL_BEFORE) + 5)
+         + len(BILL_BEFORE) + 6)
     if bad:
         print(f"{len(bad)} of {n} failed:")
         for b in bad:
@@ -390,4 +424,4 @@ if __name__ == "__main__":
     print(f"{n} marker cases pass "
           f"({len(MUST_MATCH)} spoken phrasings, {len(MUST_NOT_MATCH)} decoys, "
           f"{len(NOT_OPENINGS)} spoken non-openings, {len(STILL_OPENINGS)} spoken "
-          f"openings beside them, {len(BILL_BEFORE)} named before the phrase, 5 behaviours)")
+          f"openings beside them, {len(BILL_BEFORE)} named before the phrase, 6 behaviours)")
