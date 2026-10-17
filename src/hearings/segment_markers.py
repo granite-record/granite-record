@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.53
+# GRANITE_VERSION: 2026-09-05.54
 """
 Segment a recording on what the chair says, not on where bill numbers cluster.
 
@@ -456,15 +456,44 @@ NOT_AN_OPENING = re.compile(
     r"comments?|amendments?)\b"
     r"|open\s+(?:democracy|doors?|the\s+doors?|meetings?|enrollment|spaces?|government|"
     r"records?|mind(?:ed)?)\b"
+    r"|open\s+for\s+\d+\s+seconds\b"
     r"|going\s+to\s+do\s+is\s+(?:clos|recess)", re.I)
+# "open for 30 seconds" was read among the openings the first guards dropped
+# only through a close word, which no longer does so alone (below): "voting
+# stations are open for 30 seconds represent Bernardi yes it won't because
+# it's closed" (KaNJiVdJBos 3:20:41) is the floor's voting board, and so is
+# EXjvgzYBkb8's at 4:32:39, which then names HB 1607 being laid on the table.
 OPENING_VERB = re.compile(r"\b(?:open|begin|going\s+to\s+do)", re.I)
-# And a close between the opening phrase and its bill: "will open we'll close
-# the hearing on house bill 89 and open the hearing on house bill 163" names
-# 89 to close it. About half of the 24 published spans under 30 seconds the
-# chair "closed" were a close or an aside read as an opening.
-# Not a "closed session", which is a kind of sitting: "opening a closed
-# session on HB 2026" (ClkTYzvmn84 0:08:08) opens one.
-CLOSE_WORD = re.compile(r"\bclos(?:e|es|ing)\b|\bclosed\b(?!\s+(?:session|meeting))", re.I)
+# And a close of a proceeding between the opening phrase and its bill: "will
+# open we'll close the hearing on house bill 89 and open the hearing on house
+# bill 163" names 89 to close it. About half of the 24 published spans under
+# 30 seconds the chair "closed" were a close or an aside read as an opening.
+#
+# A CLOSE OF THE ITEM BEING OPENED IS NOT ONE. (After review, 17 October
+# 2026.) "close" alone cancelled "we'd introduce it and close it so we had
+# our hearing so what we'll do right now I'll welcome representative cordelli
+# to our our hearing today on 147" (c2VFUD5sfM0 0:51:00) and "just open it up
+# and close it ... for today it's HB 1534" (Hcd1VaWItFE 5:22:21): the chair
+# saying what they will do with the item they are opening. A close cancels
+# only where it closes a proceeding by name -- the hearing, the session, the
+# testimony -- and "a closed session" (ClkTYzvmn84 0:08:08) is a kind of
+# sitting, not a close.
+CLOSE_OF_ITEM = re.compile(
+    r"\b(?:clos(?:e|es|ing)|closed(?=\s+(?:the|this|that|our)\b))\s+(?:out\s+|up\s+|down\s+)?"
+    r"(?:the\s+|this\s+|that\s+|our\s+|a\s+)?(?:[a-z]+\s+){0,2}?"
+    r"(?:hearing|session|testimony|meeting)s?\b"
+    r"|\bclosed\s+(?:public\s+)?hearing", re.I)
+VERB_WORDS = {"open", "opened", "begin", "beginning", "the", "a", "to", "for", "up", "it",
+              "going", "do", "is"}
+
+
+def in_title(said, title):
+    """True when the words a guard matched, past the verb, are the bill's own
+    title's: HB 771 is "relative to funding for open enrollment schools", and
+    "open enrollment" read before it (YnRjE5qQj3w 0:38:56) is the bill."""
+    have = set(norm(title).split())
+    want = [w for w in norm(said).split() if w not in VERB_WORDS]
+    return bool(have) and bool(want) and all(w in have for w in want)
 
 
 # TWO BILLS OPENED IN ONE BREATH SHARE THE MOMENT. (17 October 2026.) "will
@@ -534,16 +563,19 @@ def recessed(head, tail):
     return bool(RECESS_HEAD.search(head) or RECESS_TAIL.search(tail))
 
 
-def not_an_opening(text, start, upto):
+def not_an_opening(text, start, upto, title=""):
     """What makes the opening phrase at text[start], whose bill is named at
-    text[upto], not an opening -- or "" when nothing does."""
+    text[upto], not an opening -- or "" when nothing does. Words of the
+    bill's own `title` are the bill, and do not count against it."""
     v = OPENING_VERB.search(text, start, min(upto, start + 40))
     if v:
         m = NOT_AN_OPENING.match(text, v.start())
-        if m:
+        if m and not in_title(m.group(0), title):
             return m.group(0)
-    m = CLOSE_WORD.search(text, start, upto)
-    return m.group(0) if m else ""
+    m = CLOSE_OF_ITEM.search(text, start, upto)
+    if m and not re.search(r"\bclos", norm(title)):
+        return m.group(0)
+    return ""
 
 
 # THE OPENINGS AFTER WHICH A TITLE MAY STAND FOR THE NUMBER. (17 October
@@ -844,7 +876,8 @@ def find_markers(words, candidates, titles, span=28, floor=False):
             if (how == "title" and rx is not FLOOR_OPEN_RE
                     and when(m.end() + b0) - when(m.start()) > TITLE_WITHIN):
                 continue
-            if kind == "open" and not_an_opening(text, m.start(), m.end() + b0):
+            if kind == "open" and not_an_opening(text, m.start(), m.end() + b0,
+                                                 titles.get(bill) or ""):
                 continue
             # An agenda being read is not an opening. "these are in numerical
             # order house bill 27 289 323 365 385 418" names six bills in one

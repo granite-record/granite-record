@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.19
+# GRANITE_VERSION: 2026-09-05.20
 """
 The phrasings the marker patterns must match, and the ones they must not.
 
@@ -256,6 +256,10 @@ NOT_OPENINGS = [
     ("introduced and he was telling me there a that there is money in it and "
      "they're going to take $100,000 out the money that", "SB100", [],
      "5zhoZ4k_UNY 1:44:14"),
+    ("Voting stations are open for 30 seconds. >> [music] >> Well, members president "
+     "had an opportunity to vote. House will attend to the state of the vote. With 188 "
+     "voting in the affirmative and 166 voting in the negative, House Bill 1607 is laid "
+     "on the", "HB1607", [], "EXjvgzYBkb8 4:32:39"),
     # A weak phrase whose bill comes before it, with another bill between.
     ("HB 704 FNA and open the public hearing on 743 FN and recognize the prime sponsor",
      "HB704", ["HB743"], "f0HyxRD3fCA 1:15:12"),
@@ -288,6 +292,12 @@ STILL_OPENINGS = [
      "HB2", "z0XsJZl7JDw 0:00:38"),
     ("opening a closed session on HB 2026 to improve the state's transportation "
      "infrastructure", "HB2026", "ClkTYzvmn84 0:08:08"),
+    # A close of the item being opened does not cancel it (after review).
+    ("introduce the bill we'd introduce it and close it so we had our hearing so what "
+     "we'll do right now I'll welcome representative cordelli to our our hearing today "
+     "on 147.", "HB147", "c2VFUD5sfM0 0:51:00"),
+    ("quickly just open it up and close it it used to be if a person didn't show up "
+     "for today it's HB 1534", "HB1534", "Hcd1VaWItFE 5:22:21"),
 ]
 
 
@@ -300,6 +310,18 @@ def run():
                and m["kind"] == "open"]
         if got:
             fails.append(f"OPENED  ({where}): {text[:60]}")
+    # A guard's words that are the bill's own title do not count against it
+    # (after review): HB 771 is "relative to funding for open enrollment
+    # schools", spoken so on YnRjE5qQj3w at 0:38:56.
+    w = [(i * 0.4, x) for i, x in enumerate(
+        "relative to funding for open enrollment schools? Representative Lad moves we "
+        "concur. Chair recognizes Representative Crein to speak against the motion. Thank "
+        "you, Mr. Speaker. HB771 would require".split())]
+    t771 = {"HB771": "relative to funding for open enrollment schools."}
+    if not [m for m in S.find_markers(w, ["HB771"], t771) if m["kind"] == "open"]:
+        fails.append("'open enrollment' in HB 771's own title (YnRjE5qQj3w 0:38:56) was guarded")
+    if S.find_markers(w, ["HB771"], {}):
+        fails.append("'open enrollment' with no title to go on was not guarded")
     for text, bill, others, where in NOT_FLOOR_OPENINGS:
         w = [(i * 0.4, x) for i, x in enumerate(text.split())]
         if S.find_markers(w, [bill] + others, {}, floor=True):
