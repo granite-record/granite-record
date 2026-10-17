@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.8
+# GRANITE_VERSION: 2026-09-05.9
 """
 The phrasings the marker patterns must match, and the ones they must not.
 
@@ -251,12 +251,32 @@ def run():
         fails.append(f"marker timed at {mk[0]['t']}s -- that is the window's "
                      "start, not the phrase's")
 
+    # A bill named only as it was opened gives its end nothing to go on (17
+    # October 2026). Last named 10 s after its opening, it ends at the first
+    # close naming no bill before the next boundary, else the last vote
+    # result, else nowhere; a bill named again later keeps last mention + 60.
+    def ends(last, evidence):
+        byb = {"HB1118": [{"start": 100.0, "end": None}],
+               "HB1119": [{"start": 600.0, "end": None}]}
+        S.fill_ends(byb, {"HB1118": last, "HB1119": 610.0}, evidence)
+        s = byb["HB1118"][0]
+        return s.get("end"), s.get("end_from")
+    votes = [(300.0, "vote result"), (400.0, "vote result"), (700.0, "vote result")]
+    for got, want, why in (
+            (ends(110.0, votes), (400.0, "vote result"), "the last vote before the next boundary"),
+            (ends(110.0, votes + [(250.0, "unnamed close")]), (250.0, "unnamed close"),
+             "a close naming no bill"),
+            (ends(110.0, []), (None, None), "nothing to end it on"),
+            (ends(300.0, votes), (360.0, "last mention of the bill"), "named again later")):
+        if got != want:
+            fails.append(f"fill_ends, {why}: {got}, wanted {want}")
+
     return fails
 
 
 if __name__ == "__main__":
     bad = run()
-    n = len(MUST_MATCH) + len(MUST_NOT_MATCH) + 3
+    n = len(MUST_MATCH) + len(MUST_NOT_MATCH) + 4
     if bad:
         print(f"{len(bad)} of {n} failed:")
         for b in bad:
@@ -264,4 +284,4 @@ if __name__ == "__main__":
         sys.exit(1)
     print(f"{n} marker cases pass "
           f"({len(MUST_MATCH)} spoken phrasings, {len(MUST_NOT_MATCH)} decoys, "
-          "3 behaviours)")
+          "4 behaviours)")

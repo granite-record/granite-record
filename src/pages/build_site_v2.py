@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.210
+# GRANITE_VERSION: 2026-09-05.211
 """
 Generate the faceted site from real General Court data.
 
@@ -2181,6 +2181,22 @@ def next_step(narr, bill, prefix=""):
     return "In progress"
 
 
+def invented_end(said):
+    """True for an end segment_markers took from the bill's last mention
+    where that mention was within 30 seconds of the opening, so the end is a
+    minute after the chair read the number whatever the item ran.
+
+    (17 October 2026.) 761 such ends were published; the three a person
+    timed ran 809, 142 and 227 seconds against the 62, 62 and 89 shown.
+    segment_markers no longer writes them -- it ends such an item at a close
+    naming no bill or a vote's result, or not at all -- and this keeps a
+    candidate file written before that from publishing one. last mention + 60
+    under 90 seconds after the start is exactly a mention within 30."""
+    return (said.get("end_from") == "last mention of the bill"
+            and said.get("end") is not None and said.get("start") is not None
+            and said["end"] - said["start"] < 90)
+
+
 def station_for_proceeding(p, bid, segs, marks, claimed=None):
     """One committee proceeding -- a hearing or an executive session -- as the
     station the page draws. `claimed` is the set of the bill's recordings
@@ -2376,7 +2392,7 @@ def station_for_proceeding(p, bid, segs, marks, claimed=None):
     elif seg_end is not None:
         end_from = "clustered"
         end_val = seg_end
-    if end_from in UNPUBLISHABLE:
+    if end_from in UNPUBLISHABLE or (said and invented_end(said)):
         end_val = None
 
     # The state the page will actually see, computed once: the key below has
@@ -2651,7 +2667,7 @@ def station_for_floor(f, bid, marks):
         st["debate_start"] = said_f["start"]
         st["start_stated"] = True
         st["said_how"] = said_f.get("how")
-        if not precise and said_f.get("end"):
+        if not precise and said_f.get("end") and not invented_end(said_f):
             st["debate_end"] = said_f["end"]
             st["state"] = "floor_stated"
     return st

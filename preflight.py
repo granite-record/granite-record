@@ -24767,6 +24767,40 @@ def _ambiguous_marker_once(build_site_v2):
     return "ok", "the first sitting in docket order takes it, a later one none; own markers kept"
 
 
+@check("markers", "an end a minute after the only mention of the bill is not published",
+       needs=("build_site_v2",))
+def _invented_end_withheld(build_site_v2):
+    """761 published ends were the bill's last mention plus 60 seconds where
+    that mention was within 30 seconds of the opening (17 October 2026): the
+    three a person timed ran 809, 142 and 227 seconds against 62, 62 and 89.
+    segment_markers no longer writes them; the station functions refuse one
+    from an older candidate file, on a committee sitting and on the floor."""
+    B = build_site_v2
+    p = {"bill": "HB122", "body": "H", "committee": "Ways and Means",
+         "proceeding": "public hearing", "sched_date": "2026-01-20",
+         "sched_time": "10:00", "venue": "LOB 202", "video_id": "VIDX",
+         "predicted_offset": 0, "candidate_ids": ""}
+
+    def mk(end, end_from, what="public hearing"):
+        return {"VIDX": {"HB122": [{"start": 976.0, "end": end, "end_from": end_from,
+                                    "how": "number", "what": what, "said": "x"}]}}
+    st = B.station_for_proceeding(p, "HB122", {}, mk(1038.0, "last mention of the bill"))
+    assert st["start"] == 976.0 and st["end"] is None, (
+        f"an end 62 s after the only mention of the bill was published: {st['end']}")
+    assert st["end_from"] == "last mention of the bill", st["end_from"]
+    for end, frm in ((1763.0, "last mention of the bill"), (1100.0, "vote result"),
+                     (1050.0, "unnamed close")):
+        st = B.station_for_proceeding(p, "HB122", {}, mk(end, frm))
+        assert st["end"] == end, f"an end {frm} at {end} was withheld: {st['end']}"
+    f = {"date": "2026-01-20", "body": "H", "video_id": "VIDX", "motions": [],
+         "tallies": [], "kind": "floor debate", "debate_end": None, "window_start": None,
+         "precise": False, "whole_video": False, "title": "", "time": "", "venue": ""}
+    st = B.station_for_floor(f, "HB122", mk(1038.0, "last mention of the bill", ""))
+    assert st["start"] == 976.0 and st["state"] == "floor_dated" and st["debate_end"] is None, (
+        f"the floor published an end 62 s after the only mention: {st['state']} {st['debate_end']}")
+    return "ok", "a last mention within 30 s of the opening gives no end, committee or floor"
+
+
 @check("frontend", "a Senate hearing report draws closed under its hearing, "
        "speakers under their names", needs=("build_site_v2", "senate_hearing_reports"))
 def _hearing_report_drawn(build_site_v2, senate_hearing_reports):

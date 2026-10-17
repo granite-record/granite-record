@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.41
+# GRANITE_VERSION: 2026-09-05.42
 """
 Segment a recording on what the chair says, not on where bill numbers cluster.
 
@@ -690,7 +690,56 @@ def last_mentions(words, candidates):
     return out
 
 
-def fill_ends(byb, last_seen=None):
+# THE ROOM'S OWN WORDS FOR AN ITEM BEING DONE, WHERE NO BILL IS NAMED. (17
+# October 2026.) Read off the recordings where the last-mention end was
+# invented: "the vote is 14 to 8 and that will go on the regular calendar",
+# "the motion passes", "that'll go on consent". fill_ends uses these only for
+# a segment whose bill was last named within 30 seconds of its opening, and
+# only before the next boundary.
+VOTE_RESULT_RE = re.compile(
+    r"\b(?:the\s+)?(?:motion|it|that|amendment)\s+(?:passes|carries|fails|failed|passed|"
+    r"is\s+adopted|is\s+approved)\b"
+    r"|\bthe\s+vote\s+(?:is|being|was)\s+\d"
+    r"|\b(?:goes?|go|put\s+(?:it|this|that)|place\s+(?:it|this|that)|placed?|be)\s+on\s+"
+    r"(?:the\s+)?consent\b"
+    r"|\bregular\s+calendar\b", re.I)
+
+
+def _joined(words):
+    """The words as one string, and a function from a character in it back to
+    the second the word holding it was spoken."""
+    parts, char_at, pos = [], [], 0
+    for _t, w in words:
+        char_at.append(pos)
+        parts.append(w)
+        pos += len(w) + 1
+    times = [t for t, _ in words]
+
+    def when(char):
+        k = bisect.bisect_right(char_at, char) - 1
+        return times[max(0, k)]
+    return " ".join(parts), when
+
+
+def end_evidence(words, candidates, floor=False):
+    """[(seconds, "unnamed close" | "vote result")] in order: a chair closing
+    something without naming a scheduled bill, and a vote's result being
+    announced. What fill_ends may end an item at when the bill's own name
+    gives it nothing to go on."""
+    if not words:
+        return []
+    text, when = _joined(words)
+    out = []
+    for m in CLOSE_RE.finditer(text):
+        if match_bill(text[m.end():m.end() + 120], candidates, {})[0] is None:
+            out.append((when(m.start()), "unnamed close"))
+    for rx in (VOTE_RESULT_RE,) + ((FLOOR_CLOSE_RE,) if floor else ()):
+        for m in rx.finditer(text):
+            out.append((when(m.start()), "vote result"))
+    return sorted(out)
+
+
+def fill_ends(byb, last_seen=None, evidence=None):
     """A segment with no close ends where the next one begins.
 
     The chair announces a close far less often than an opening: 1,687 of 4,537
@@ -720,12 +769,68 @@ def fill_ends(byb, last_seen=None):
         # hours later, so the uncapped rule called it a two-hour hearing.
         cap = (last_seen or {}).get(_b_)
         end = nxt if cap is None else min(nxt, cap + 60)
+        how = "next boundary" if end == nxt else "last mention of the bill"
+        # A BILL NAMED ONLY AS IT WAS OPENED GIVES ITS END NOTHING TO GO ON.
+        # (17 October 2026.) Where the last mention falls within 30 seconds
+        # of the opening, "last mention + 60 s" is a minute after the chair
+        # read the number, whatever the item ran: 761 ends were made so, and
+        # the three a person timed ran 809, 142 and 227 seconds against the
+        # 62, 62 and 89 published. Such an item ends at the first close that
+        # names no bill before the next boundary, or else at the last vote
+        # result announced before it, or has no end at all.
+        if how == "last mention of the bill" and cap - start < 30:
+            inside = [(t, k) for t, k in (evidence or ()) if start + 5 < t < nxt]
+            close = next((t for t, k in inside if k == "unnamed close"), None)
+            votes = [t for t, k in inside if k == "vote result"]
+            if close is not None:
+                end, how = close, "unnamed close"
+            elif votes:
+                end, how = votes[-1], "vote result"
+            else:
+                continue
         if end > start:
             seg["end"] = round(end, 1)
-            seg["end_from"] = ("next boundary" if end == nxt
-                               else "last mention of the bill")
+            seg["end_from"] = how
             n += 1
     return n
+
+
+def read_recording(words, cands, titles, is_floor=False, floor_ent=None, vid=""):
+    """One recording's answer: ({bill: [segment]}, [bills never named], counts).
+
+    What main does for each recording it reads, in one function, so that a
+    measurement of a change runs exactly what the build runs rather than a
+    copy of it that can drift (17 October 2026).
+    """
+    counts = Counter()
+    markers = find_markers(words, cands, titles, floor=is_floor)
+    segs = to_segments(markers, cands)
+    # A roll call closes the item, and its clock time is known to the
+    # second from a source that has nothing to do with captions. Where one
+    # exists it replaces a transcript-derived end outright.
+    if is_floor:
+        for b, ss in segs.items():
+            e = (floor_ent or {}).get((vid, b))
+            if e and e["precise"] and e["debate_end"]:
+                for s in ss:
+                    if s["start"] < e["debate_end"]:
+                        s["end"] = float(e["debate_end"])
+                        s["end_from"] = "roll call clock"
+                        counts["ends from the roll call clock"] += 1
+                        break
+    # Ends the chair did not state: the next boundary on the recording,
+    # after the roll call clock has had its say above. Counted separately,
+    # because one is a quotation and the other is an inference.
+    counts["ends the chair stated"] += sum(
+        1 for v in segs.values() for x in v if x.get("end") is not None)
+    counts["ends from the next boundary"] += fill_ends(
+        segs, last_mentions(words, cands), end_evidence(words, cands, is_floor))
+    # On a floor recording, separate "no boundary found" from "not on this
+    # recording at all". Only the first is a shortcoming. By number alone:
+    # "never named" is what decides the consent calendar, and a title read
+    # out is not the bill being taken up.
+    absent = never_named(words, cands, {}, set(segs)) if is_floor else []
+    return segs, absent, counts
 
 
 def sequence_of(byb):
@@ -1051,28 +1156,9 @@ def main():
                 unread.setdefault(", ".join(here[:3]), []).append(vid)
             continue
         is_floor = vid in floor_vids
-        markers = find_markers(words, cands, titles, floor=is_floor)
-        segs = to_segments(markers, cands)
-        # A roll call closes the item, and its clock time is known to the
-        # second from a source that has nothing to do with captions. Where one
-        # exists it replaces a transcript-derived end outright.
-        if is_floor:
-            for b, ss in segs.items():
-                e = floor_ent.get((vid, b))
-                if e and e["precise"] and e["debate_end"]:
-                    for s in ss:
-                        if s["start"] < e["debate_end"]:
-                            s["end"] = float(e["debate_end"])
-                            s["end_from"] = "roll call clock"
-                            stats["ends from the roll call clock"] += 1
-                            break
-        # Ends the chair did not state: the next boundary on the recording,
-        # after the roll call clock has had its say above. Counted separately,
-        # because one is a quotation and the other is an inference.
-        stats["ends the chair stated"] += sum(
-            1 for v in segs.values() for x in v if x.get("end") is not None)
-        stats["ends from the next boundary"] += fill_ends(
-            segs, last_mentions(words, cands))
+        segs, absent, counts = read_recording(words, cands, titles, is_floor,
+                                              floor_ent, vid)
+        stats.update(counts)
         result[vid] = segs
         result.setdefault("_sequence", {})[vid] = sequence_of(segs)
         if a.phrases:
@@ -1080,9 +1166,6 @@ def main():
         if a.gaps and not a.quiet:
             print(f"\n{vid}")
             show_gaps(words, segs, cands, titles)
-        # On a floor recording, separate "no boundary found" from "not on this
-        # recording at all". Only the first is a shortcoming.
-        absent = never_named(words, cands, titles, set(segs)) if is_floor else []
         if absent:
             stats["never named on the recording"] += len(absent)
             result.setdefault("_absent", {})[vid] = absent
