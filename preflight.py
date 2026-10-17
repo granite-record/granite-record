@@ -35008,6 +35008,172 @@ def _rsa_landing(B, RSA, S):
                   "in 1973 and 373 moved to RSA 246, in words")
 
 
+@check("build", "the Constitution as nh.gov publishes it: every article of the saved pages read, numbered as the "
+       "Constitution numbers them, each page's own list accounted for, and collected/constitution.json what the "
+       "saved pages give", needs=("parse_constitution",))
+def _constitution_read(PC):
+    """The person, 17 October 2026: "Can you fetch the constitution at least
+    so we can present that on the laws page". Read that day in a browser,
+    since the host refuses a script, and saved in records/sources/constitution/
+    with each page's sha256; parse_constitution reads them.
+
+    WHAT IS HELD. The saved pages are what was read (parse refuses a page whose
+    body's sha256 differs from its header). The committed file is what they
+    give, so an edit to either alone fails here. Every entry of every page's
+    own list is an article read, and the one article read that no list names
+    is Part Second's 26, which the Senate page holds and does not list. No
+    number is missing from 1 to 39 or 1 to 101, and the lettered articles are
+    the Constitution's. The three repairs are each held to what they found:
+    Article 50 out of 49-a's row with 49-a's date, Article 61 read from "6l",
+    and Article 71's 1792 and 1877 notes apart."""
+    con = PC.parse()
+    assert PC.OUT.is_file(), ("collected/constitution.json is missing: python3 src/parse/parse_constitution.py "
+                              "writes it from records/sources/constitution/")
+    want = json.dumps(con, ensure_ascii=False, indent=1) + "\n"
+    assert PC.OUT.read_text(encoding="utf-8") == want, (
+        "collected/constitution.json is not what records/sources/constitution/ gives: run "
+        "python3 src/parse/parse_constitution.py and commit the file")
+    assert con["counts"] == {"part1": 44, "part2": 112}, f"the articles read per part: {con['counts']}"
+    lost = [(t["file"], t["listed_not_found"]) for t in con["toc"] if t["listed_not_found"]]
+    assert not lost, f"a page lists articles the reading did not find: {lost}"
+    unlisted = [(t["part"], k) for t in con["toc"] for k in t["not_listed"]]
+    assert unlisted == [(2, "26")], f"articles read that no page's own list names: {unlisted}"
+    listed = sum(len(t["listed"]) for t in con["toc"])
+    assert listed + len(unlisted) == 156, f"{listed} listed and {len(unlisted)} unlisted, against 156 read"
+    assert PC.gaps(con) == {1: [], 2: []}, f"article numbers missing: {PC.gaps(con)}"
+    arts = PC.articles(con)
+    top = {p: max(int(a["num"]) for q, a in arts if q == p) for p in (1, 2)}
+    assert top == {1: 39, 2: 101}, f"the last article of each part: {top}"
+    lettered = {p: [a["key"] for q, a in arts if q == p and a["letter"]] for p in (1, 2)}
+    assert lettered == {1: ["2-a", "2-b", "12-a", "28-a", "36-a"],
+                        2: ["5-a", "5-b", "6-a", "6-b", "9-a", "11-a", "18-a", "26-a", "49-a", "72-a", "73-a"]}, \
+        f"the lettered articles: {lettered}"
+    by = {a["anchor"]: a for _, a in arts}
+    assert len(by) == len(arts) == 156, "two articles share an anchor"
+    assert all(a["text"] for a in by.values()), "an article read with no text"
+    assert by["part2-art49-a"]["notes"] == ["November 28, 1984"], by["part2-art49-a"]["notes"]
+    assert by["part2-art50"]["text"][0].startswith("The governor, with advice of council"), \
+        "Article 50 is not read out of 49-a's row"
+    assert by["part2-art61"]["title"] == "Vacancies, How Filled, if No Choice", "Article 61 is not read from 6l"
+    assert len(by["part2-art71"]["notes"]) == 4, f"Article 71's notes run together: {by['part2-art71']['notes']}"
+    gone = sorted((p, a["key"]) for p, a in arts if a["repealed"])
+    assert len(gone) == 11 and (2, "10") in gone and (2, "99") in gone, f"the repealed articles: {gone}"
+    return "ok", (f"{con['counts']['part1']} articles in Part First and {con['counts']['part2']} in Part "
+                  f"Second from {len(con['toc'])} pages, {listed} on their own lists and Part Second 26 not; "
+                  f"{len(con['repairs'])} repairs said")
+
+
+@check("build", "the Laws page has a Constitution tab: every article under its own anchor with a link to itself, "
+       "a lead saying what it is and when nh.gov's text was read, and an address naming an article opens it",
+       needs=("build_rsa", "constitution_tab", "parse_constitution", "rsa", "shell"))
+def _constitution_tab(B, CT, PC, RSA, S):
+    """The person, 17 October 2026: the Constitution "on the laws page,
+    possibly on its own tab". The statutes stay the first tab and read as
+    they did; the Constitution is the second, laid out as a statute chapter
+    is, each article at /laws#part1-art2-a and each part at /laws#part1.
+    Without collected/constitution.json the page is built as it was, with no
+    tabs. And the site the fixture builds -- build_rsa's main(), not only
+    this function -- carries the tab with all 156 articles."""
+    con = PC.load()
+    assert con, "collected/constitution.json is not on this disk"
+    data = {"bills": {}, "statute": {}, "enacted": {}, "asof": {"laws_through": 2025}}
+    t = _rsa_fixture_table(RSA)
+    page = B.landing_page(S.template(Path("site")), t, data, "https://graniterecord.org", {}, {}, con=con)
+    assert 'role="tablist"' in page and page.index('id="tab-statutes"') < page.index('id="tab-constitution"'), \
+        "the Laws page has no tabs, or the Constitution is not the second"
+    assert 'id="constitution" role="tabpanel"' in page and 'id="statutes" role="tabpanel"' in page
+    panel = page[page.index('id="constitution" role="tabpanel"'):]
+    missing, unlinked = [], []
+    for p, a in PC.articles(con):
+        if panel.count(f'id="{a["anchor"]}"') != 1:
+            missing.append(a["anchor"])
+        if f'href="/laws#{a["anchor"]}"' not in panel:
+            unlinked.append(a["anchor"])
+    assert not missing, f"articles not on the tab once under their anchor: {missing[:8]}"
+    assert not unlinked, f"articles with no link to themselves: {unlinked[:8]}"
+    assert panel.count('class="rs-sec cn-art"') == 156, panel.count('class="rs-sec cn-art"')
+    assert 'id="part1"' in panel and 'id="part2"' in panel, "a part has no anchor"
+    assert "read on October 17, 2026" in panel and 'href="https://www.nh.gov/glance/state-constitution"' in panel, \
+        "the lead does not say when nh.gov's text was read, or does not link it"
+    assert "Includes changes through 2025" in page, "the statutes' own lead is gone from their tab"
+    # An address naming an article, not a panel, opens the panel that holds it.
+    assert 'closest(".twnpane")' in CT.TABS_JS and "scrollIntoView" in CT.TABS_JS, \
+        "an address naming an article does not open the Constitution tab"
+    bare = B.landing_page(S.template(Path("site")), t, data, "https://graniterecord.org", {}, {}, con={})
+    assert 'role="tablist"' not in bare and 'id="lw"' in bare, "without the file the page is not the one it was"
+    css = Path("src/pages/app.css").read_text(encoding="utf-8")
+    assert ".cn-notes{" in css and ".lw-tabs{" in css, "app.css has no rules for the Constitution tab"
+    absent = [x for x in CHAIN_NEEDS + ["build_rsa.py"] if not _paths.locate(x).exists()]
+    if absent:
+        return "ok", "the tab held; the fixture site was not built: not here, " + ", ".join(absent)
+    shared, _base, _ran, _days = _fixture_site_shared()
+    built = (shared / "site" / "laws.html").read_text(encoding="utf-8")
+    assert 'id="tab-constitution"' in built and built.count('class="rs-sec cn-art"') == 156, (
+        "the fixture's laws.html, as build_rsa's main() wrote it, has no Constitution tab of 156 articles")
+    return "ok", "156 articles on the second tab, each anchored and linked; the fixture's laws.html carries it"
+
+
+@check("build", "a CACR links the articles of the Constitution its own text says it changes, and a Learn page each "
+       "article it cites; nothing a clause does not say plainly",
+       needs=("parse_constitution", "constitution_tab", "build_site_v2", "build_bill_pages"))
+def _cacr_articles(PC, CT, BSV, BBP):
+    """The person, 17 October 2026: where the site shows a constitutional
+    amendment, link the article it would change when the CACR's text names
+    it, only where certain. Read from the resolving clauses, in the three
+    forms every CACR of 2025-2026 but one uses; that one (CACR 16, "That the
+    following new article of part I of the constitution after article 2-b:")
+    names nothing, and neither does the question put to the voters."""
+    con = PC.load()
+    assert con, "collected/constitution.json is not on this disk"
+
+    def got(s):
+        return [(x["verb"], x["part"], x["art"], x["href"]) for x in PC.cacr_targets(s, con)]
+
+    cases = (
+        ("I. That article 78 of the second part of the constitution be amended to read as follows:",
+         [("amend", 2, "78", "/laws#part2-art78")]),
+        ("I. That articles 41, 42, 49, and 49-a of the second part of the constitution be amended to read",
+         [("amend", 2, k, f"/laws#part2-art{k}") for k in ("41", "42", "49", "49-a")]),
+        ("II. That article 72-a of the second part of the constitution, relative to the supreme and superior "
+         "courts, be repealed.", [("repeal", 2, "72-a", "/laws#part2-art72-a")]),
+        ("I. That the first part of the constitution be amended by inserting after article 2-b the following new "
+         "article:", [("insert_after", 1, "2-b", "/laws#part1-art2-b")]),
+        ("I. That the first part of the constitution be repealed and reenacted to read as follows:",
+         [("reenact_part", 1, "", "/laws#part1")]),
+        ("I. That the following new article of part I of the constitution after article 2-b:", []),
+        ("I. That article 140 of the second part of the constitution be amended to read as follows:", []),
+        ("Are you in favor of amending article 78 of the second part of the constitution", []),
+    )
+    for text, want in cases:
+        assert got(text) == want, f"{text[:60]!r} read as {got(text)}"
+    src = Path("src/pages/build_site_v2.py").read_text(encoding="utf-8")
+    assert '{"constitution": c}' in src and 'bid.startswith("CACR")' in src, \
+        "a CACR's record does not carry the articles it changes"
+    assert BSV.constitution_targets("I. That article 78 of the second part of the constitution be amended")[0][
+        "label"] == "Part Second, Article 78"
+    rec = BBP.static_record({"id": "CACR9", "n": "CACR 9", "year": 2026},
+                            {"constitution": PC.cacr_targets(cases[0][0] + " " + cases[3][0], con)})
+    assert '<a href="/laws#part2-art78">Part Second, Article 78</a> of the state Constitution' in rec \
+        and "A new article of the state Constitution, after" in rec, "the page without scripts does not link them"
+    said = ""
+    app = _app_js('scope.constLine({constitution:[{verb:"amend",part:2,art:"78",href:"/laws#part2-art78",'
+                  'label:"Part Second, Article 78"},{verb:"insert_after",part:1,art:"2-b",href:"/laws#part1-art2-b",'
+                  'label:"Part First, Article 2-b"}]})', names=("constLine",))
+    if app is None:
+        said = "; node not here for app.js"
+    else:
+        assert ('Changes this article of the state Constitution: <a class="rsa" href="/laws#part2-art78">' in app
+                and "Adds a new article to the state Constitution, after" in app), f"app.js draws {app}"
+    learn = CT.link_citations('Part Second, Article 44 and Part II, Article 9; articles 71 and 81 of Part '
+                              'Second; Part Second, Article 140; <a href="x">Part First, Article 2</a>', con)
+    assert ('<a href="/laws#part2-art44">Part Second, Article 44</a>' in learn
+            and '<a href="/laws#part2-art9">Part II, Article 9</a>' in learn
+            and 'articles <a href="/laws#part2-art71">71</a> and <a href="/laws#part2-art81">81</a> of Part Second'
+            in learn and "Part Second, Article 140;" in learn and '<a href="x">Part First, Article 2</a>' in learn), \
+        f"the Learn pages' citations link as {learn}"
+    return "ok", f"{len(cases)} clauses read as they say, and no more; both bill pages and the Learn pages link{said}"
+
+
 @check("build", "a how-to guide is published only when every claim in it is checked, says when, "
        "and states no figure the plan forbids", needs=("build_civics", "guides", "guide_sources", "rsa", "shell"))
 def _guides_gate(BC, G, GS, RSA, S):

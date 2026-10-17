@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.218
+// GRANITE_VERSION: 2026-09-07.219
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -3890,7 +3890,30 @@ function changedLine(d){
     +`<span class="open">Show fewer</span></summary><span class="rsaset">${
       a.slice(RSA_SHOWN).map(link).join(", ")}</span></details></div>`;
 }
+// THE ARTICLES OF THE STATE CONSTITUTION A CACR CHANGES (17 October 2026),
+// which build_site_v2 reads from the CACR's own resolving clauses: each
+// linked to its article on the Laws page's Constitution tab. Said the way the
+// RSA line says a bill's chapters, in the present tense of what the measure
+// does, whatever became of it. A new article is placed after one that exists,
+// and that one is the link.
+function constLine(d){
+  const a=Array.isArray(d.constitution)?d.constitution:[];
+  if(!a.length)return "";
+  const link=x=>`<a class="rsa" href="${esc(x.href)}">${esc(x.label)}</a>`;
+  const out=[];
+  const ch=a.filter(x=>x.verb==="amend"||x.verb==="repeal");
+  if(ch.length)out.push(`<p class="rsaline">${ch.length===1?"Changes this article of the state Constitution:"
+    :"Changes these articles of the state Constitution:"} ${ch.map(link).join(", ")}</p>`);
+  a.filter(x=>x.verb==="insert_after").forEach(x=>out.push(
+    `<p class="rsaline">Adds a new article to the state Constitution, after ${link(x)}</p>`));
+  a.filter(x=>x.verb==="reenact_part").forEach(x=>out.push(
+    `<p class="rsaline">Rewrites ${link(x)} of the state Constitution</p>`));
+  return out.join("");
+}
 function rsaLine(d){
+  return rsaLines(d)+constLine(d);
+}
+function rsaLines(d){
   const ch=rsaChapters(d);
   if(!ch.length)return changedLine(d);
   const link=([n,u])=>`<a class="rsa" href="${esc(u)}"${u.charAt(0)==="/"?"":' target="_blank" rel="noopener"'}>${esc(n)}</a>`;
@@ -3918,7 +3941,7 @@ function renderSummary(b,d,rsa){
      <p class="src">Source: ${gcSource(d)}</p>${rsaLine(d)}`,"analysis"));
   const jl=journeyList(b,d);
   if(jl)S.push(section("How It Got Here",jl+(an?"":`<p class="src">Source: ${gcSource(d)}</p>${rsaLine(d)}`),"journey"));
-  else if(!an&&(d.docket_url||rsaChapters(d).length))
+  else if(!an&&(d.docket_url||rsaChapters(d).length||(d.constitution||[]).length))
     S.push(section("Source",`<p class="src">Source: ${gcSource(d)}</p>${rsaLine(d)}`,"source"));
   // ONE HOW IT ENDED (17 October 2026). The story's own closing stage and
   // the session's end were two sections under the same heading; the notes

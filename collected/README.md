@@ -12,6 +12,11 @@ and the diff is the review.
   `src/ops/livestreams.py` and carried from one night to the next in the
   kit, never committed. Every reader takes both through
   `proceedings.video_indexes()`.
+- `constitution.json` -- New Hampshire's Constitution, article by article,
+  with nh.gov's notes on when each was adopted and amended, read from the
+  pages saved in `records/sources/constitution/`
+  (`src/parse/parse_constitution.py`). The Laws page's Constitution tab is
+  drawn from it, and a CACR's page links the articles it would change.
 - `town_clerks.json` -- each town's clerk and polling place, from the
   Secretary of State's list (`src/towns/parse_clerks_csv.py`).
 - `town_officials.json` -- NHDOT's directory of municipal officials
