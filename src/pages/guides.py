@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-11.9
+# GRANITE_VERSION: 2026-10-11.11
 """
 The how-to guides: their words, their sources, and what each was checked
 against. Read by build_civics.py, which draws them on the Resources hub's
@@ -940,7 +940,672 @@ LMI = guide(
              fig("$41,100", "RSA 198:57", "$35,300 but less than $41,100, 40 percent")])
 
 
-GUIDES = [VOTING, PUBLIC_RECORD, ENERGY, VITAL, ABATEMENT, LMI]
+# ---------------------------------------------------------------------------
+# THE GENERAL COURT'S OWN DOCUMENTS AS A SOURCE (17 October 2026). The four
+# guides below were picked by the person for the soft launch of 10 November:
+# how to take part in the General Court itself. What they rest on is the
+# Court's own record -- the chamber rules as its journals print them, the
+# notices in its calendars, its bills' own text and the tables of its
+# database -- and none of that is an agency page guide_sources.py could read.
+# The Court's website is never asked anything from here (the project's rule
+# since its address was blocked), so each of these claims names the document
+# on this disk it was read in, as a reader would find it ("House Calendar
+# No. 8, January 17, 2025, p. 1"), and carries words of that document that
+# state it. preflight finds those words in the document wherever it is on
+# disk, the way build_civics finds a figure's words in the statute table, and
+# a machine that does not hold the calendars says how many it could not read
+# rather than passing them as read.
+#
+# A CLAIM ABOUT THIS SITE ITSELF -- that a bill's page lists its hearings --
+# names the page of this site that shows or explains it, and the guide must
+# link that page, so a reader can see for themselves.
+#
+# What these guides do NOT say, because only the General Court's website says
+# it and no document on this disk does: when the House's online sign-in
+# closes, how a speaker asks to be heard in each chamber, and whether the
+# Senate takes sign-ins online. Testifying and Attending is linked for the
+# first two; the third is left unsaid. Nor does a guide cite House Rule 44's
+# requirement of a hearing on every bill, or its notice period: the adopted
+# text of the current rules is not on this disk, only amendments to them
+# that were tabled or failed, and an amendment's words are not the rule's
+# (the fact-check of 17 October 2026).
+# ---------------------------------------------------------------------------
+RECORD_HOMES = ("calendars/", "calendars_senate/", "journals/", "journals_senate/",
+                "legislation/", "bill_text/", "db/", "Members.txt")
+READ = "2026-10-17"   # the day these documents were read for the four guides below
+
+
+def record(says, cite, path, words, checked=None):
+    """A claim on one of the General Court's own documents on this disk:
+    `cite` names it as a reader would find it, `path` is where it is here,
+    and `words` are the words of it (one string or several) that state the
+    claim, matched with any run of spaces and line breaks between them."""
+    c = claim(says, cite, checked)
+    c.update(path=path, words=[words] if isinstance(words, str) else list(words))
+    return c
+
+
+def ours(says, page, checked=None):
+    """A claim about this site, resting on the page of it (a path) that shows
+    or explains what is claimed. The guide must link that page."""
+    return claim(says, page, checked)
+
+
+def links(g):
+    """Every page of this site the guide links, without its #section."""
+    found = ({u for _l, u in g["sources"]} | {u for _l, u in g["see"]}
+             | {u for s_ in g["steps"] for _l, u in s_["actions"]}
+             | set(re.findall(r'href="([^"]+)"', text(g))))
+    return {u.split("#")[0] for u in found if u.startswith("/")}
+
+
+def _document(path):
+    """A document as it is, and its words: a saved page's with its markup
+    taken off, any other file's as it is."""
+    import html
+    from pathlib import Path
+    raw = Path(path).read_text(encoding="utf-8", errors="replace")
+    if path.endswith((".html", ".htm")):
+        return raw, html.unescape(re.sub(r"<[^>]+>", " ", raw))
+    return raw, raw
+
+
+def _says(words, document):
+    """Whether the document says the words. WORDS WITH MARKUP IN THEM ARE
+    MATCHED AGAINST THE PAGE AS SAVED (17 October 2026): a claim about how a
+    bill prints its changes -- which words are bold italic and which are
+    plain -- is a claim about the markup, and only the markup can check it."""
+    raw, words_of = document
+    return re.search(r"\s+".join(map(re.escape, words.split())),
+                     raw if "<" in words or "{" in words else words_of) is not None
+
+
+def claim_faults(g, root="."):
+    """What is wrong with the guide's record and site claims, and how many
+    record claims a document on this disk confirmed: (faults, confirmed,
+    absent). A document is read once, and a large table is searched as it
+    is, with the words' spaces matching any whitespace, so that the House's
+    100 MB sign-in table costs a second and not a copy of itself."""
+    from pathlib import Path
+    faults, confirmed, absent, read = [], 0, 0, {}
+    for c in g["claims"]:
+        if c.get("path"):
+            if not c["path"].startswith(RECORD_HOMES):
+                faults.append(f"{c['source']}: {c['path']} is not one of the General Court's documents")
+                continue
+            if not c["words"] or not all(w.strip() for w in c["words"]):
+                faults.append(f"{c['source']}: no words of the document are given")
+                continue
+            f = Path(root) / c["path"]
+            if not f.is_file():
+                absent += 1
+                continue
+            if c["path"] not in read:
+                read[c["path"]] = _document(str(f))
+            gone = [w for w in c["words"] if not _says(w, read[c["path"]])]
+            if gone:
+                faults.append(f"{c['source']} ({c['path']}) does not say: " + "; ".join(gone))
+            else:
+                confirmed += 1
+        elif c["source"].startswith("/") and c["source"].split("#")[0] not in links(g):
+            faults.append(f"a claim rests on {c['source']}, which the guide does not link")
+    return faults, confirmed, absent
+
+
+# Where the documents are, and how each is cited. A journal's or calendar's
+# page is the page of the PDF, which is the page it prints.
+HC5 = "calendars/2025/HC005.txt"
+HC8 = "calendars/2025/HC008.txt"
+HC14 = "calendars/2025/HC014.txt"
+HC6 = "calendars/2026/HC006.txt"
+SC3 = "calendars_senate/2026/SC003.txt"
+HJ2 = "journals/2025/HJ 02 January 8, 2025.txt"
+SJ22 = "journals_senate/2023/SJ 01 December 7, 2022 - Organization Day.txt"
+SJ24 = "journals_senate/2025/SJ 01 December 4, 2024 Organization Day.txt"
+HB1001 = "legislation/2024/HB1001.html"
+HB15 = "legislation/2024/HB0015.html"
+HB2 = "bill_text/HB2.html"
+SIGNINS = "db/houseRemoteTestify.psv"
+COLUMNS = "db/_columns.json"
+REPORTS = "db/CandH_Reports.psv"
+VERSIONS = "db/DocumentVersion.psv"
+MEMBERS = "Members.txt"
+DB = "the General Court's database, as copied to this disk on September 8, 2026"
+DOCS = "/calendar.html#cdocs"   # the Calendar page's Calendars & Journals: every build writes it
+
+# The rules both chambers work under in 2025-2026, which more than one guide
+# rests on. The Senate printed its rules whole on Organization Day 2022 and
+# readopted them in 2024 with three changes, none to the rules cited here;
+# the House's one rule cited here, 44(b), is the floor amendment Convening
+# Day 2025 adopted, whose text the journal prints whole.
+SENATE_RULES_KEPT = record(
+    "The Senate adopted the 2023-2024 rules as its 2025-2026 rules, changing Rules 2-33, 4-7 and "
+    "7-1 only.", "Senate Journal No. 1, December 4, 2024, p. 6", SJ24,
+    ["RESOLVED, that the Rules of the 2023-2024 Session be adopted as the Rules of the 2025-2026 "
+     "Session", "Amend Senate Rule 2-33", "Amend Senate Rule 4-7", "Amend Senate Rule 7-1"], READ)
+EXEC_MAY_FOLLOW = [
+    record("Senate hearing notices end a committee's list with 'executive session may follow'.",
+           "Senate Calendar No. 3, January 22, 2026, pp. 25-26", SC3, "EXECUTIVE SESSION MAY FOLLOW", READ),
+    record("House Rule 44(b), as amended and adopted January 8, 2025: an executive session may be "
+           "held without further notice immediately after a duly noticed public hearing, with the "
+           "chair's and ranking member's concurrence.", "House Journal No. 2, January 8, 2025, p. 20",
+           HJ2, ["Executive Sessions may also be held without further notice if held immediately after "
+                 "the close of a duly noticed public hearing",
+                 "amendment to House Rule 44 (b) was adopted"], READ)]
+
+
+# ---------------------------------------------------------------------------
+# ATTENDING AND SPEAKING AT A PUBLIC HEARING (17 October 2026). Testifying
+# and Attending explains hearings at length; this is the same ground as a
+# sequence of things to do, and it links that page for what it already says
+# well -- the buildings, and how each chamber takes a request to speak.
+# ---------------------------------------------------------------------------
+HEARING = guide(
+    "attend-a-hearing", "How to Attend and Speak at a Public Hearing",
+    "Finding a bill's public hearing, going in person or watching it, and asking to speak, "
+    "step by step, with what happens after.",
+    "Committees of the House and of the Senate hold public hearings on bills, and the "
+    "Senate&rsquo;s rules require one on every bill sent to a committee. You may attend and "
+    "testify. Find the hearing in the chamber&rsquo;s "
+    "calendar or on the bill&rsquo;s page here, go to the room the notice names or watch the "
+    "live stream, and tell the committee you want to speak. If you cannot go, you can send "
+    "your position in writing instead.",
+    [box("Find the hearing: the committee, the room, the day, and the time for your bill."),
+     ask("Can you go in person?",
+         [("Yes", "Go to the room, and tell the committee you want to speak."),
+          ("No", "Watch the live stream, and send your position in writing.")]),
+     box("Afterward, the committee votes on what to recommend, sometimes the same day.")],
+    [step("Find the hearing",
+          "<p>A hearing is announced in the calendar of the chamber holding it. The notice names "
+          "the committee, the building and room, the day, and a time for each bill. The House "
+          "lists its hearings under Committee Meetings in the House Calendar, and the "
+          "Senate&rsquo;s rules require at least 4 days&rsquo; notice in the Senate "
+          "Calendar.</p>"
+          "<p>On this site, a bill&rsquo;s page lists its hearings with the day, time and room, "
+          "and the Calendar shows the week&rsquo;s hearings by committee. Follow on a "
+          "bill&rsquo;s page gives you its new actions as they are recorded, and the site keeps a "
+          "feed of hearings coming up as well.</p>",
+          actions=[("This week's hearings", "/calendar.html"), ("Find a bill", "/bills.html")]),
+     step("Decide how to take part",
+          "<p>Legislative committee meetings, executive sessions included, are open to the "
+          "public, with narrow exceptions in the law, and anyone may record them. You can:</p><ul>"
+          "<li><b>go in person</b>, to the building and room the notice names. Testifying and "
+          "Attending explains the buildings;</li>"
+          "<li><b>watch</b>: the House and the Senate live stream their standing "
+          "committees&rsquo; hearings, and a bill&rsquo;s page here links the recording where "
+          "there is one; or</li>"
+          "<li><b>send your position in writing</b>, with or without going: online for a House "
+          "hearing, or by email to the committee.</li></ul>",
+          actions=[("The buildings", "/learn/testifying.html#s-how-hearings-are-announced"),
+                   ("Submit testimony", "/guides/submit-testimony.html")],
+          law=["RSA 91-A:1-a, VI(a)", "RSA 91-A:2, II"]),
+     step("Ask to speak",
+          "<p>Tell the committee you want to speak when you arrive. The House and the Senate each "
+          "ask for it their own way, and Testifying and Attending explains both. When the chair "
+          "calls you, say who you are, where you live and whether you speak for an "
+          "organization, then whether you support or oppose the bill, and why. The most useful "
+          "testimony is specific: what the bill would do to you, in your town.</p>",
+          actions=[("Speaking at the hearing", "/learn/testifying.html#s-speaking-at-the-hearing")]),
+     step("After the hearing",
+          "<p>The committee votes on what to recommend at an executive session, which you may "
+          "watch. It can follow the hearing directly: Senate notices often say so, and a House "
+          "committee may hold one right after a noticed hearing. The recommendation, such as "
+          "Ought to Pass or Inexpedient to Legislate, goes to the full chamber. If the bill "
+          "passes, a committee of the other chamber holds its own hearing on it.</p>"
+          "<p>In the Senate, the committee&rsquo;s hearing report lists who supported, opposed "
+          "or was neutral on the bill and summarizes the testimony.</p>",
+          actions=[("How a bill becomes law", "/learn/how-a-bill-becomes-law.html")])],
+    [("House Calendars No. 8 (2025) and No. 6 (2026), Senate Calendar No. 3 (2026), House Journal "
+      "No. 2 (2025) and Senate Journals No. 1 (2022 and 2024): open them from the Calendar's "
+      "Calendars & Journals", DOCS),
+     ("Testifying and Attending", "/learn/testifying.html"),
+     ("Right-to-Know Law, RSA 91-A", "/laws/91-a")],
+    ["91-A"],
+    [record("Senate Rule 4-1: a hearing on each bill referred to a committee, advertised at least 4 "
+            "days before in the Senate Calendar.", "Senate Journal No. 1, December 7, 2022, p. 21",
+            SJ22, "A hearing shall be held upon each bill or resolution referred to a committee, and "
+                  "notice of such hearing shall be advertised at least 4 days before such hearing in "
+                  "the Senate Calendar", READ),
+     SENATE_RULES_KEPT,
+     record("The House Calendar lists House public hearings on bills under Committee Meetings, each "
+            "notice giving the committee, the room and building, and a time for each bill.",
+            "House Calendar No. 6, February 6, 2026, p. 22", HC6,
+            ["COMMITTEE MEETINGS", "STATE-FEDERAL RELATIONS AND VETERANS AFFAIRS, Room 228, GP "
+             "9:00 a.m. Continued public hearing on HB 1287"], READ),
+     record("A Senate notice gives the committee, the room and building, its members and a time for "
+            "each bill.", "Senate Calendar No. 3, January 22, 2026, p. 25", SC3,
+            ["COMMERCE, Room 100, SH", "9:45 a.m. SB 482-FN"], READ),
+     record("Legislators and citizens may submit testimony online for bills coming up for a House "
+            "public hearing.", "House Calendar No. 8, January 17, 2025, p. 1", HC8,
+            "Legislators and citizens are reminded of the availability to submit testimony online for "
+            "bills coming up for a public hearing", READ),
+     record("All onsite public meetings of House standing committees are livestreamed and archived.",
+            "House Calendar No. 8, January 17, 2025, p. 1", HC8,
+            "All onsite public meetings of standing committees are livestreamed and archived", READ),
+     record("All Senate standing committee hearings are livestreamed.",
+            "Senate Calendar No. 3, January 22, 2026, p. 1", SC3,
+            "All Standing Committee hearings will be livestreamed on the NH Senate's YouTube channel",
+            READ),
+     claim("The general court, including executive sessions of committees, is a public body.",
+           "RSA 91-A:1-a", READ),
+     claim("All meetings are open to the public, subject to RSA 91-A:3; any person may use recording "
+           "devices.", "RSA 91-A:2", READ),
+     ours("A bill's page lists each hearing with its day, time and room, and the recording where "
+          "there is one; Follow gives a bill's feed; there is a feed of hearings coming up.",
+          "/learn/using-this-site.html", READ),
+     ours("The Calendar shows the week's hearings by committee.", "/calendar.html", READ),
+     ours("The buildings the notices name; the chambers take requests to speak differently; the "
+          "most useful testimony is concrete.", "/learn/testifying.html", READ),
+     ours("A bill that passes is referred to a committee of the second chamber, which holds its own "
+          "public hearing.", "/learn/how-a-bill-becomes-law.html", READ)]
+    + EXEC_MAY_FOLLOW
+    + [record("Senate Rule 4-2: every bill is reported out with a recommendation, among them ought to "
+              "pass and inexpedient to legislate.", "Senate Journal No. 1, December 7, 2022, p. 21",
+              SJ22, "All bills and resolutions in the possession of committees shall be reported out "
+                    "with one of the following recommendations: ought to pass, ought to pass with "
+                    "amendment, rerefer to committee, inexpedient to legislate", READ),
+       record("A Senate hearing report lists who supports, opposes and is neutral on the bill, and "
+              "summarizes the testimony.", "Senate committee hearing reports (CandH_Reports), " + DB,
+              REPORTS, ["Who supports the bill", "Who opposes the bill", "Who is neutral on the bill",
+                        "Summary of testimony presented in support"], READ)],
+    see=[("Testifying and attending", "/learn/testifying.html"),
+         ("How to submit testimony online or in writing", "/guides/submit-testimony.html"),
+         ("How to contact your legislators", "/guides/contact-your-legislators.html"),
+         ("Using this site", "/learn/using-this-site.html")])
+
+
+# ---------------------------------------------------------------------------
+# SUBMITTING TESTIMONY ONLINE OR IN WRITING (17 October 2026). The House's
+# online form is described from the House's own records of it: the calendar
+# notices that name it and say where its submissions go, and the columns and
+# choices of the sign-in table in the Court's database. No name or word of
+# anyone's testimony is read into this file or printed by the guide; the
+# words checked are the form's own choices.
+# ---------------------------------------------------------------------------
+TESTIMONY = guide(
+    "submit-testimony", "How to Submit Testimony Online or in Writing",
+    "Registering your position on a bill and sending a committee written testimony without "
+    "going to Concord, and when to send it.",
+    "For a House hearing, you can sign in online to say whether you support or oppose a bill, "
+    "and attach written testimony. For a hearing in either chamber, you can email the "
+    "committee&rsquo;s members. Send it before the hearing: committee members receive the "
+    "online testimony at the end of each hearing day, and a committee may vote as soon as its "
+    "hearing ends.",
+    [box("Find the hearing: which committee, and which day."),
+     box("A House hearing: sign in online, for or against, with written testimony if you wish."),
+     box("Any hearing: email the committee&rsquo;s members from its page here."),
+     box("Send it before the hearing. The committee may vote the same day.")],
+    [step("Find the hearing",
+          "<p>Open the bill&rsquo;s page here: it lists each hearing with the committee, the day "
+          "and the time. The Calendar shows the week&rsquo;s hearings.</p>",
+          actions=[("Find a bill", "/bills.html"), ("This week's hearings", "/calendar.html")]),
+     step("Sign in online for a House hearing",
+          "<p>The House&rsquo;s Sign-in Form and Online Testimony Submission is on the General "
+          "Court&rsquo;s website, and Testifying and Attending links it. Each sign-in is for one "
+          "bill at one committee&rsquo;s hearing on one day. Among other things, it asks "
+          "for:</p><ul>"
+          "<li>your name, town and state;</li>"
+          "<li>who you are, such as a member of the public, an elected official, a lobbyist or "
+          "state agency staff, and whom you represent, if anyone; and</li>"
+          "<li>whether you support the bill, oppose it, or are neutral.</li></ul>"
+          "<p>You may attach written testimony, or sign in without it: a sign-in for or against is "
+          "part of the record and is counted. What you submit goes to the committee&rsquo;s "
+          "members. This site publishes only how many people signed in supporting, opposing and "
+          "neutral, never names or written testimony.</p>",
+          actions=[("Where to sign in", "/learn/testifying.html#sources")]),
+     step("Write it so it is useful",
+          "<p>Start with the bill&rsquo;s number, HB or SB and then the number, and say whether "
+          "you support or oppose it. Then say why in a few specific sentences: what the bill "
+          "would do to you, your family, your work or your town. If you write for an "
+          "organization, say so.</p>"),
+     step("Send it before the hearing",
+          "<p>Committee members can read what is submitted online in the House&rsquo;s portal, "
+          "bill by bill, and are sent links to it at the end of each day their committee holds "
+          "hearings. A committee can vote as soon as its hearing "
+          "ends: Senate notices often say &ldquo;executive session may follow&rdquo;, and a House "
+          "committee may meet in executive session straight after a noticed hearing. So send "
+          "your testimony before the hearing, as soon as you can once it is scheduled.</p>"),
+     step("Or email the committee",
+          "<p>Every committee&rsquo;s page here lists its members and has a button that opens "
+          "one email to all of them. Put the bill&rsquo;s number in the subject line. It works for "
+          "a House or a Senate committee, and for a bill whose hearing has passed but whose "
+          "committee has not yet voted.</p>",
+          actions=[("Committees", "/committees.html")])],
+    [("House Calendars No. 8 and No. 14 (2025), House Journal No. 2 (2025) and Senate Calendar "
+      "No. 3 (2026): open them from the Calendar's Calendars & Journals", DOCS),
+     ("Testifying and Attending", "/learn/testifying.html")],
+    [],
+    [ours("A bill's page lists each hearing with the committee, day and time.",
+          "/learn/using-this-site.html", READ),
+     ours("The Calendar shows the week's hearings.", "/calendar.html", READ),
+     record("The House's online form is its House Sign-in Form and Online Testimony Submission, on "
+            "the General Court website, for bills coming up for a public hearing.",
+            "House Calendar No. 8, January 17, 2025, p. 1", HC8,
+            "submit testimony online for bills coming up for a public hearing using our House Sign-in "
+            "Form and Online Testimony Submission on the General Court website", READ),
+     ours("Testifying and Attending links the House online testimony sign-in; a sign-in for or "
+          "against is part of the record and counted; specific testimony is the most useful; this "
+          "site publishes the counts, not names or written testimony.", "/learn/testifying.html", READ),
+     record("Each sign-in records a hearing date, a committee and a bill; name, town and state; who "
+            "the person is, whom they represent, their position; and any testimony text.",
+            "The House's online sign-ins (houseRemoteTestify), its columns, " + DB, COLUMNS,
+            '"CommitteeDate", "committeeID", "legislationID", "whoIsName", "Expr1", "representing", '
+            '"Town", "State", "nonGermane", "Expr2_bytes", "TestimonyText"', READ),
+     record("Who the person is: a member of the public, an elected official, a lobbyist or state "
+            "agency staff, among others; position: support, oppose or neutral.",
+            "The House's online sign-ins (houseRemoteTestify), " + DB, SIGNINS,
+            ["A Member of the Public|support|", "A Member of the Public|oppose|", "|neutral|",
+             "|An Elected Official|", "|A Lobbyist|", "|State Agency Staff|"], READ),
+     record("Testimony submitted online goes to the committee: its members view submissions by "
+            "committee and bill, and are emailed links at the end of each day it holds hearings.",
+            "House Calendar No. 14, February 28, 2025, p. 1", HC14,
+            ["choose your Committee from the drop-down list, and choose the bills you wish to view "
+             "submissions on",
+             "Emails containing links to testimony your committee receives through the online portal "
+             "will be sent at the end of the days your committee has hearings"], READ),
+     record("Bills are numbered by type, and a Senate bill is marked Senate Bill.",
+            "Senate Journal No. 1, December 7, 2022, p. 19", SJ22,
+            "shall be numbered serially according to the type of bill or resolution", READ)]
+    + EXEC_MAY_FOLLOW
+    + [ours("Every committee page lists its members and has a button that opens an email to all of "
+            "them at once.", "/learn/your-representatives.html", READ)],
+    see=[("Testifying and attending", "/learn/testifying.html"),
+         ("How to attend and speak at a public hearing", "/guides/attend-a-hearing.html"),
+         ("How to contact your legislators", "/guides/contact-your-legislators.html"),
+         ("Using this site", "/learn/using-this-site.html"),
+         ("Finding your representatives", "/learn/your-representatives.html")])
+
+
+# ---------------------------------------------------------------------------
+# CONTACTING YOUR LEGISLATORS (17 October 2026). Who represents a reader is
+# the statute's (RSA 662) and the town finder's; how to reach them is the
+# member list the General Court publishes, which every senator fills with a
+# Concord office and most representatives with an email address. The advice
+# on what to write is the procedure's own logic -- a member represents a
+# district of towns, votes on a numbered bill and on a committee's
+# recommendation -- and not anybody's view of what persuades.
+# ---------------------------------------------------------------------------
+CONTACT = guide(
+    "contact-your-legislators", "How to Contact Your Legislators",
+    "Finding who represents you in the New Hampshire House and Senate, choosing between email "
+    "and a call, and writing a message a legislator can act on.",
+    "You have one state senator and one or more state representatives, set by the town or "
+    "city ward you live in. Find them by your town here: each member&rsquo;s page gives the "
+    "email address and phone number they list with the General Court. Say where you live, "
+    "name the bill by its number, say how you want them to vote, and send it before the "
+    "vote.",
+    [box("Find who represents your town: one senator, and one or more representatives."),
+     box("Choose email or a call. Senators list an office in Concord; most representatives list "
+         "an email address."),
+     box("Say where you live, name the bill, and say how you want them to vote, before the vote.")],
+    [step("Find who represents you",
+          "<p>Every town and city ward is in one of 24 Senate districts, each electing one "
+          "senator, and in a House district, which may elect several representatives. Some are "
+          "also in a floterial district laid over their own, which elects more. Choose your town "
+          "to see them all.</p>"
+          # Your town's districts and members, from places.json (find.js).
+          '<div class="yt" data-yt="reps" hidden></div>',
+          actions=[("Find your town", "/officials.html#my-town")],
+          law=["RSA 662:3", "RSA 662:5"]),
+     step("Find how to reach them",
+          "<p>A member&rsquo;s page here, and your town&rsquo;s page, give the email address and "
+          "phone number the member lists with the General Court. Senators list an office in "
+          "Concord with its phone number. Most representatives list an email address, and many "
+          "a phone number. To write to every member of a committee at once, use the button on "
+          "the committee&rsquo;s page.</p>",
+          actions=[("Committees", "/committees.html")]),
+     step("Choose email or a call",
+          "<p><b>Email</b> reaches nearly every member, gives them your words exactly, and can go "
+          "to a whole committee at once. <b>A call</b> is quicker when a vote is close, to a "
+          "member who lists a number. Either way, keep to one bill.</p>"),
+     step("Say what you are asking",
+          "<ul><li><b>Say where you live.</b> Each member represents the towns and wards of a "
+          "district, so your town tells them you are a constituent.</li>"
+          "<li><b>Name the bill by its number</b>, HB or SB and then the number.</li>"
+          "<li><b>Say how you want them to vote.</b> The chamber votes on its committee&rsquo;s "
+          "recommendation, such as Ought to Pass or Inexpedient to Legislate.</li>"
+          "<li><b>Say why</b>, in a few sentences, from what it would mean for you or your "
+          "town.</li></ul>"),
+     step("Send it before the vote",
+          "<p>Write to a committee before its executive session, where it votes on its "
+          "recommendation, and to your own members before the vote of the full House or Senate. "
+          "Each chamber&rsquo;s calendar lists the committee meetings and prints the "
+          "committees&rsquo; reports on the bills coming to a vote.</p>",
+          actions=[("This week's calendar", "/calendar.html")])],
+    [("Every sitting legislator, from the General Court's member list (Granite Record)", "/officials.html"),
+     ("Representatives and senators' districts, RSA 662", "/laws/662"),
+     ("Finding Your Representatives", "/learn/your-representatives.html"),
+     ("House Calendar No. 6 (2026) and Senate Journal No. 1 (2022): open them from the Calendar's "
+      "Calendars & Journals", DOCS)],
+    ["662"],
+    [claim("The state is divided into 24 senatorial districts, each electing one senator.", "RSA 662:3", READ),
+     claim("The state is divided into districts for state representatives, each electing the number "
+           "set forth opposite it.", "RSA 662:5", READ),
+     ours("A floterial district is laid over two or more House districts and elects additional "
+          "members; a town's page and the town finder name its districts and members; committee "
+          "pages have a button that emails all their members.", "/learn/your-representatives.html", READ),
+     ours("My Town shows who represents a town; a member's page and a town's page give the email and "
+          "phone the member lists.", "/officials.html", READ),
+     record("The General Court's member list carries each member's address, phone and email. Read on "
+            "October 17, 2026: every senator a State House or State House Annex office and phone; "
+            "of the 366 sitting representatives (the 18 rows marked Former left out), 364 an email "
+            "address and 227 a phone number.",
+            "The General Court's member list (Members.txt), as taken on this disk", MEMBERS,
+            "Address address2 city Zipcode State Phone WorkEmail", READ),
+     record("Bills are numbered by type, and a Senate bill is marked Senate Bill.",
+            "Senate Journal No. 1, December 7, 2022, p. 19", SJ22,
+            ["shall be numbered serially according to the type of bill or resolution",
+             'Each bill shall be marked on the first page "Senate Bill"'], READ),
+     record("Senate Rule 4-2: every bill is reported out with a recommendation, among them ought to "
+            "pass and inexpedient to legislate.", "Senate Journal No. 1, December 7, 2022, p. 21",
+            SJ22, "shall be reported out with one of the following recommendations: ought to pass", READ),
+     SENATE_RULES_KEPT,
+     record("A House calendar holds the committee reports and the week's committee meetings, among "
+            "them reports of Ought to Pass with Amendment.", "House Calendar No. 6, February 6, 2026, "
+            "pp. 1, 5 and 22", HC6, ["Contains: Amendments; Committee Reports", "OUGHT TO PASS WITH "
+                                     "AMENDMENT", "COMMITTEE MEETINGS"], READ),
+     record("Senate Rule 4-4: the list of bills with the committee's report is published in the "
+            "Senate Calendar for the day of action.", "Senate Journal No. 1, December 7, 2022, p. 21",
+            SJ22, "a list of such bills and resolutions with the report of the committee thereon shall "
+                  "be published in the senate calendar for the day on which action shall be taken",
+            READ),
+     ours("The Calendar lists the week's committee meetings.", "/calendar.html", READ)],
+    see=[("Finding your representatives", "/learn/your-representatives.html"),
+         ("How to submit testimony online or in writing", "/guides/submit-testimony.html"),
+         ("How to attend and speak at a public hearing", "/guides/attend-a-hearing.html")])
+
+
+# ---------------------------------------------------------------------------
+# READING A BILL (17 October 2026). Every statement about a bill's layout is
+# read off real bills' own pages as the General Court published them: HB 1001
+# of 2024 as introduced, for the parts and the marking of changes, chosen
+# because it is short and its change is plain to see; a fiscal note's parts
+# from an introduced bill that carries one. What the letters and the note
+# are for is RSA 14:44-48.
+#
+# REGULAR TYPE IS NOT ONLY "ALL NEW" (the fact-check of 17 October 2026).
+# The bill's own note says regular type is matter all new or repealed and
+# reenacted, and the first draft said only that; but in a paragraph being
+# amended, the words kept from current law are regular type too, with the
+# additions in bold italics -- HB 1001's first section is exactly that. So
+# the guide says both, and the claim is checked against the saved page's
+# markup, where the plain and the bold italic runs are two styles.
+# ---------------------------------------------------------------------------
+READ_BILL = guide(
+    "read-a-bill", "How to Read a Bill",
+    "The parts of a New Hampshire bill, how its text marks what it adds to the law and what it "
+    "removes, what amendments and fiscal notes are, and what the letters after its number mean.",
+    "A bill is a set of changes to the state&rsquo;s laws. Its first page gives its title, "
+    "sponsors and committee, and a short analysis. Each section then says which law it changes. "
+    "Where it rewrites part of a law, regular type is the law as it stands, words in "
+    "<b><i>bold italics</i></b> are being added, and words [<s>in brackets and struck "
+    "through</s>] are being removed; a section that is all new is printed wholly in regular "
+    "type. Letters after the number flag money: FN means a fiscal note is attached, and LOCAL "
+    "that local governments&rsquo; spending or revenue may be affected.",
+    [box("The first page: the number and its letters, the title, the sponsors, the committee and "
+         "the analysis."),
+     box("The sections: each changes a law. Regular type is the law as it stands, bold italics "
+         "are added, [<s>struck</s>] words removed; an all-new section is wholly regular type."),
+     ask("Has the bill been amended?",
+         [("Yes", "Read the latest version, and each amendment for what it changed."),
+          ("No", "The text as introduced is the current one.")]),
+     box("FN after the number? The fiscal note after the text estimates the cost.")],
+    [step("Start with the number and its letters",
+          "<p>The number says which chamber the bill began in: HB for a House bill, SB for a "
+          "Senate bill. Letters after the number flag money:</p><ul>"
+          "<li><b>FN</b>: the bill carries a fiscal note, an estimate of its cost, printed after "
+          "its text.</li>"
+          "<li><b>LOCAL</b>: the bill may affect what local governments spend, or require the "
+          "state to pass revenue on to cities and towns.</li></ul>"
+          "<p>The other letters are explained under Reading the Shorthand.</p>",
+          actions=[("Reading the shorthand", "/learn/using-this-site.html#s-reading-the-shorthand")],
+          law=["RSA 14:48"]),
+     step("Find its request number",
+          "<p>Before a bill has a number it is a Legislative Service Request, or LSR: a "
+          "legislator&rsquo;s request, which the Office of Legislative Services drafts into a "
+          "bill. When the bill is introduced it gets its number, and its text keeps the "
+          "request&rsquo;s number near the top: HB 1001 of 2024 prints 24-2288, the "
+          "session&rsquo;s year and then the request&rsquo;s own number. While requests for the "
+          "next session are being filed, this site&rsquo;s bill search lists them by title and "
+          "prime sponsor.</p>",
+          actions=[("Search bills and requests", "/bills.html")]),
+     step("Read the first page",
+          "<p>The first page gives the bill&rsquo;s title, which begins &ldquo;AN ACT&rdquo;; its "
+          "sponsors, each with their district; the committee it was sent to; and an "
+          "<b>analysis</b>, a short summary of what it does. A bill that has been amended carries "
+          "an amended analysis.</p>"),
+     step("Read what it changes",
+          "<p>After the words &ldquo;Be it Enacted by the Senate and House of Representatives in "
+          "General Court convened&rdquo;, each numbered section names the law it changes, such as "
+          "&ldquo;Amend RSA 72:23-c, I to read as follows&rdquo;, and prints that law as it would "
+          "read. The type shows what changes:</p><ul>"
+          "<li>In a section that rewrites part of a law, <b>regular type</b> is the law as it "
+          "stands, <b><i>bold italics</i></b> are words being added, and [<s>brackets, struck "
+          "through</s>] are words being removed. In HB 1001 of 2024, the first section prints a "
+          "paragraph of current law in regular type with one phrase in bold italics: the "
+          "addition.</li>"
+          "<li>A section that is all new, or repealed and written again, is printed wholly in "
+          "regular type, as a note on the first page says.</li></ul>"
+          "<p>The last section says when the change would take effect. To read a law as it "
+          "stands now, look it up in Laws.</p>",
+          actions=[("Laws", "/laws.html")]),
+     step("Check for amendments",
+          "<p>A committee or a member can propose an amendment: a separate document with its own "
+          "number, such as 2026-0176s, that says what to replace in the bill, from one paragraph "
+          "to everything after the enacting clause. A committee&rsquo;s amendment is printed in "
+          "the calendar with its report, before the chamber votes on it. Once a chamber adopts "
+          "amendments, the bill is printed again as amended by the House or the Senate, and the "
+          "text both chambers pass is published as the final version.</p>"
+          "<p>On a bill&rsquo;s page here, the Bill Text tab shows the text and its "
+          "amendments.</p>"),
+     step("Read the fiscal note",
+          "<p>With some exceptions, such as the budget bills, a bill that would change what the "
+          "state, a county, a city or a town spends or collects carries a fiscal note. If the "
+          "effect is $10,000 or more in each fiscal year the note covers, the note sets out the "
+          "estimate; if less, it says so. The Office of Legislative Budget Assistant prepares it "
+          "and names its sources, and the note is corrected to match the bill as it is "
+          "amended.</p>"
+          "<p>The note marks whether the state, counties or local governments are affected, "
+          "estimates the change in appropriations, revenue and spending by fiscal year, and "
+          "explains how under Methodology. An effect it cannot put a number on may be called "
+          "indeterminable.</p>",
+          law=["RSA 14:44", "RSA 14:46", "RSA 14:47"])],
+    [("HB 1001 of 2024 (Granite Record)", "/bill/2024/hb1001.html"),
+     ("House Calendars No. 5 (December 27, 2024) and No. 6 (2026), Senate Calendar No. 3 (2026) "
+      "and Senate Journal No. 1 (2022): open them from the Calendar's Calendars & Journals", DOCS),
+     ("Legislative Officers and Proceedings, RSA 14", "/laws/14"),
+     ("Using This Site", "/learn/using-this-site.html")],
+    ["14"],
+    [record("HB 1001 of 2024 is marked House Bill and prints its LSR number, 24-2288, under the "
+            "session's year.", "HB 1001 of 2024, as introduced", HB1001,
+            ["2024 SESSION 24-2288", "HOUSE BILL 1001"], READ),
+     record("Bills are numbered by type, and a Senate bill is marked Senate Bill.",
+            "Senate Journal No. 1, December 7, 2022, p. 19", SJ22,
+            'Each bill shall be marked on the first page "Senate Bill"', READ),
+     record("A bill whose number carries FN prints a fiscal note after its text, headed with that "
+            "number.", "HB 15-FN of 2023, as introduced", HB15,
+            ["HOUSE BILL 15-FN", "HB 15-FN- FISCAL NOTE"], READ),
+     claim("LOCAL is placed after the number of bills and amendments which may impact local "
+           "expenditures or require the state to forward designated revenues to cities or towns.",
+           "RSA 14:48", READ),
+     ours("Reading the Shorthand explains the letters after a bill's number; the Bill Text tab shows "
+          "the text and its amendments.", "/learn/using-this-site.html", READ),
+     record("The Office of Legislative Services prepares the bills to be introduced.",
+            "Senate Journal No. 1, December 7, 2022, p. 19", SJ22,
+            "shall be delivered or caused to be delivered to the Office of Legislative Services, who "
+            "shall prepare the items in proper form", READ),
+     record("The House calls the requests LSRs: the last day to sign off on them.",
+            "House Calendar No. 5, December 27, 2024, p. 2", HC5,
+            "Last day to sign-off on all LSRs", READ),
+     SENATE_RULES_KEPT,
+     ours("While requests for the next session are being filed, the bill search lists them by title "
+          "and prime sponsor.", "/bills.html", READ),
+     record("The first page: the title beginning AN ACT, the sponsors with their districts, the "
+            "committee and the analysis.", "HB 1001 of 2024, as introduced", HB1001,
+            ["AN ACT relative to exempting", "SPONSORS: Rep. Packard, Rock. 16",
+             "COMMITTEE: Municipal and County Government", "ANALYSIS This bill adds"], READ),
+     record("An amended bill carries an amended analysis.", "HB 2 of 2025, final version", HB2,
+            "AMENDED ANALYSIS", READ),
+     record("The enacting clause; a section naming the law it amends; the explanation of bold "
+            "italics, brackets and regular type; the effective date.", "HB 1001 of 2024, as introduced",
+            HB1001, ["Be it Enacted by the Senate and House of Representatives in General Court convened",
+                     "Amend RSA 72:23-c, I to read as follows",
+                     "Matter added to current law appears in bold italics",
+                     "Matter removed from current law appears [ in brackets and struckthrough",
+                     "Matter which is either (a) all new or (b) repealed and reenacted appears in "
+                     "regular type", "This act shall take effect"], READ),
+     record("In a paragraph being amended, the words kept from current law are regular type and the "
+            "addition bold italic: section 1 reprints RSA 72:23-c, I in the plain style with only "
+            "'Masonic lodge or Masonic association,' in the bold italic one, as the page's own "
+            "styles define them.", "HB 1001 of 2024, as introduced, section 1", HB1001,
+            ['charitable organization, Grange, </span><span class="cs22FF6315">Masonic lodge or '
+             'Masonic association, </span><span class="csDD5E5F52">the Veterans of Foreign Wars',
+             ".cs22FF6315{color:#000000;background-color:transparent;font-family:'Century "
+             "Schoolbook';font-size:10pt;font-weight:bold;font-style:italic;}",
+             ".csDD5E5F52{color:#000000;background-color:transparent;font-family:'Century "
+             "Schoolbook';font-size:10pt;font-weight:normal;font-style:normal;}"], READ),
+     record("An amendment has its own number and says what to replace, a subparagraph or all after "
+            "the enacting clause.", "Senate Calendar No. 3, January 22, 2026, pp. 13 and 25", SC3,
+            ["2026-0176s", "Amend the bill by replacing all after the enacting clause with the following",
+             "Amend subparagraph I(b) as inserted by section 2 of the bill by replacing it with the "
+             "following"], READ),
+     record("Senate Rule 3-15: amendments are in writing, with the senator's name or, for a committee "
+            "amendment, the committee's.", "Senate Journal No. 1, December 7, 2022, p. 20", SJ22,
+            "or in the case of a committee amendment the name of the committee that recommended it", READ),
+     record("Senate Rule 4-4: a committee's amendment is printed in the Senate Calendar on the day its "
+            "report is listed for action.", "Senate Journal No. 1, December 7, 2022, p. 21", SJ22,
+            "The amendment shall be printed in the senate calendar on the date that the report is "
+            "listed for action", READ),
+     record("A House calendar carries amendments, committee reports and revised fiscal notes.",
+            "House Calendar No. 6, February 6, 2026, p. 1", HC6,
+            ["Contains: Amendments; Committee Reports", "Revised Fiscal Notes"], READ),
+     record("A bill's text is published as introduced, as amended by the House, as amended by the "
+            "Senate, as the version adopted by both bodies, and as the final version.",
+            "Document versions (DocumentVersion), " + DB, VERSIONS,
+            ["|Introduced|", "|As Amended by the House|", "|As Amended by the Senate|",
+             "|Version adopted by both bodies|", "|FINAL VERSION|"], READ),
+     claim("A fiscal note for bills with a total fiscal impact of $10,000 or more a year on the state, "
+           "a city, town or county; a note saying so below that; none for budget bills, among other "
+           "exceptions.", "RSA 14:44", READ),
+     claim("The legislative budget assistant prepares fiscal notes and identifies the sources of the "
+           "data.", "RSA 14:46", READ),
+     claim("The fiscal note accompanies the bill and is amended to correct errors or agree with "
+           "substantive amendments.", "RSA 14:47", READ),
+     record("A fiscal note marks the state, county or local impact, estimates appropriation, revenue "
+            "and expenditures by fiscal year, explains its methodology, and may find an effect "
+            "indeterminable.", "HB 15-FN of 2023, as introduced, its fiscal note", HB15,
+            ["FISCAL IMPACT:", "Estimated Increase / (Decrease)", "Appropriation", "Revenue",
+             "Expenditures", "METHODOLOGY:", "Indeterminable Decrease", "AGENCIES CONTACTED:"], READ)],
+    see=[("Reading the shorthand", "/learn/using-this-site.html#s-reading-the-shorthand"),
+         ("How a bill becomes law", "/learn/how-a-bill-becomes-law.html"),
+         ("Glossary", "/learn/glossary.html"),
+         ("How to contact your legislators", "/guides/contact-your-legislators.html")],
+    figures=[fig("$10,000", "RSA 14:44", "total fiscal impact of $10,000 or more")])
+
+CIVIC = [HEARING, TESTIMONY, CONTACT, READ_BILL]
+
+
+GUIDES = [VOTING, PUBLIC_RECORD, ENERGY, VITAL, ABATEMENT, LMI] + CIVIC
 
 
 def text(g):
