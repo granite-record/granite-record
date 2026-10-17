@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.56
+# GRANITE_VERSION: 2026-09-08.57
 """
 The civics section: a hub and one page per topic, in order.
 
@@ -43,6 +43,7 @@ import civics
 import components as C
 import guides as G
 import learn_numbers
+import legislative_year
 import proceedings as P
 import shell as S
 import structured as LD
@@ -685,6 +686,12 @@ def record_figures(site, root=Path(".")):
         figures.update(civics.reps_example(dist))
         figures["reps_town_url"] = build_town_pages.town_file(
             figures["reps_town"], "0").lstrip("/")
+    # THE LEGISLATURE'S YEAR, from the build's day (17 October 2026): where
+    # the term stands, the usual shape of a term with that day pinned on it,
+    # and the term's dates with the calendar each is printed in. The day is
+    # build_date's, as org_day's is, so a build that states its date draws
+    # You Are Here on that date.
+    figures.update(legislative_year.figures(build_date.today(), Path(root)))
     return {k: (f"{v:,}" if isinstance(v, int) else v) for k, v in figures.items()}
 
 
