@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-05.10
+# GRANITE_VERSION: 2026-10-05.11
 """
 The turn from one term to the next, rehearsed offline on a copy.
 
@@ -874,10 +874,25 @@ def check_new_term(root, batches, label):
     # NO MEMBER-ELECT ONCE THE TERM IS THEIRS (the person's decisions of 16
     # October 2026): build_members_elect.py removes site/members_elect.json
     # once site/meta.json's newest term is the one they were elected to, so a
-    # New term run that turned the site leaves none, whatever day it is. The
-    # pages' half, no data-elect block, comes with the pages that draw one.
+    # New term run that turned the site leaves none, whatever day it is.
     note(not (root / "site" / "members_elect.json").exists(),
          f"{label}: no site/members_elect.json once {NEW} is the site's newest term")
+    # AND THE PAGES' HALF (the pages' pass, 16 October 2026): nothing that
+    # draws a member-elect drew one -- no element carrying data-elect on the
+    # Officials page, a town page or a member's page, no GR_ELECT, and no
+    # "elect" in places.json or the map's file -- since the pages read the
+    # file through build_members_elect.for_pages, which holds the same window.
+    site = root / "site"
+    drawn = [p.relative_to(site).as_posix()
+             for p in [site / "officials.html", *sorted((site / "town").glob("*.html")),
+                       *sorted((site / "legislator").glob("*.html"))]
+             if p.is_file() and re.search(r"\sdata-elect\b|GR_ELECT",
+                                          p.read_text(encoding="utf-8", errors="replace"))]
+    drawn += [name for name in ("places.json", "district_map.json")
+              if (site / name).is_file()
+              and "elect" in json.loads((site / name).read_text(encoding="utf-8"))]
+    note(not drawn, f"{label}: no member-elect drawn once {NEW} is the site's newest term",
+         drawn[:6])
     old_titles = {r.get("title") for r in (bills.get(TERM) or {}).values() if r.get("title")}
     # EACH 2027 PAGE'S OWN RECORD (the review of 5 October 2026): these read
     # site/bills/2027/*.json, which the build does not write for records this

@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-16.29
+// GRANITE_VERSION: 2026-09-16.30
 /* FIND ANYTHING, FROM THE HEADER (16 September, asked for in these words:
    "a search icon in the header that lets you search for anything including
    legislators, committees, towns, and bills ... searching Litchfield would
@@ -1133,6 +1133,24 @@ function ytChip(name,party,href,out){
   const a=href?`<a href="${_fesc(href)}"${out?' target="_blank" rel="noopener"':""}>${_fesc(name)}</a>`:_fesc(name);
   return `<li><span class="mchip p-${_fesc(party||"X")}">${a}</span></li>`;
 }
+/* WHO NOVEMBER'S ELECTION SENT, IN THE CARD (the person's decisions of 16
+   October 2026): between the election and Organization Day a place's "e"
+   names its races in places.json's "elect", and the State House and Senate
+   seats draw them under the sitting members, with "Serving now" over those,
+   in components.js's electBlock and electNow -- the town page's own block,
+   with untilAttrs, handed no day so that the behaviour judges it by the
+   reader's clock. The House seat can be two districts, a floterial over a
+   town's own, so where it is each race says which. Outside those weeks
+   there is no "e" and the card is what it was. */
+function ytElect(p,chamber){
+  const E=typeof electBlock==="function"&&YT.data&&YT.data.elect||null;
+  const keys=E?(p.e||[]).filter(k=>k.charAt(0)===chamber&&E.races&&E.races[k]):[];
+  if(!keys.length)return ["",""];
+  const say=k=>{const x=(p.h||[]).find(h=>"H|"+h[0]+"|"+h[1]===k);
+    return x?`${x[0]} ${x[1]}${x[2]?" (floterial)":""}`:k;};
+  return [electNow(E.takes_office,null),
+    electBlock(keys.map(k=>[keys.length>1?say(k):"",E.races[k]]),E.election,E.takes_office,null)];
+}
 function ytSeats(p){
   const ppl=(YT.data&&YT.data.people)||{},off=(YT.data&&YT.data.offices)||{};
   const reps=(p.m||[]).filter(s=>!/-sd-\d+$/.test(s)),sens=(p.m||[]).filter(s=>/-sd-\d+$/.test(s));
@@ -1141,10 +1159,12 @@ function ytSeats(p){
   const seat=(office,where,body)=>`<div class="ytseat"><p class="ytoff">${office}<span>${_fesc(where)}</span></p>${body}</div>`;
   const named=(k,d)=>{const o=(off[k]||{})[String(d)];
     return o&&o[0]?`<ul class="ytppl">${ytChip(o[0],o[1],o[2],true)}</ul>`:'<p class="ytnote">Not on file.</p>';};
+  const eh=ytElect(p,"H"),es=ytElect(p,"S");
   const seats=[];
   if(h.length)seats.push(seat("State House",h.length>1?h.slice(0,-1).join(", ")+" and "+h[h.length-1]:h[0],
-    reps.length?who(reps):'<p class="ytnote">No sitting member on file.</p>'));
-  if(p.sd)seats.push(seat("State Senate","District "+p.sd,sens.length?who(sens):'<p class="ytnote">No sitting senator on file.</p>'));
+    eh[0]+(reps.length?who(reps):'<p class="ytnote">No sitting member on file.</p>')+eh[1]));
+  if(p.sd)seats.push(seat("State Senate","District "+p.sd,
+    es[0]+(sens.length?who(sens):'<p class="ytnote">No sitting senator on file.</p>')+es[1]));
   if(p.ec)seats.push(seat("Executive Council","District "+p.ec,named("ec",p.ec)));
   if(p.cd)seats.push(seat("US House","District "+p.cd,named("cd",p.cd)));
   const sub=[p.co?`${p.co} County`:"",p.poll?`votes at ${p.poll.split(/\s+\d/)[0]}`:""].filter(Boolean).join(" \u00b7 ");

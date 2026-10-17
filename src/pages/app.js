@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.208
+// GRANITE_VERSION: 2026-09-07.209
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -6931,7 +6931,18 @@ function renderMemberHead(m){
   const note=former?`<p class="rnote">${!/^(Rep|Sen)\. /.test(plain)?`Former member${
     yrs?` &middot; on record ${esc(yrs)}`:""}. `:""}This page is their record in the
     General Court; it is not a current directory entry.</p>`:"";
-  return head+note;
+  // A MEMBER-ELECT'S ONE LINE (the person's decisions of 16 October 2026):
+  // "Elected November 3, 2026, for Rockingham district 13. Takes office
+  // December 2, 2026.", which build_legislator_pages hands this page in
+  // GR_ELECT from site/members_elect.json, and only on the page of the
+  // member it names -- so the id is held to the record being drawn, and a
+  // reader who goes on to another member here is shown nothing of it.
+  // components.js's electLine, handed no day, leaves the retiring to the
+  // reader's clock. The heading above is left as it is until they sit.
+  const G=window.GR_ELECT;
+  const elect=G&&typeof electLine==="function"&&String(G.id)===String(m.id)
+    ?electLine(G.key,G.election,G.takes_office,null):"";
+  return head+note+elect;
 }
 
 // THE TERM AT A GLANCE (the person's feedback of 9 October 2026, item 7:

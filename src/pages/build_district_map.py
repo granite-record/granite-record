@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-09.1
+# GRANITE_VERSION: 2026-10-09.2
 """
 The district map's data, and its script and stylesheet, into the site.
 
@@ -35,6 +35,10 @@ WHAT THE FILE HOLDS, and where each part comes from:
                          seat is vacant. A base district by its OWN members
                          (method (a), 8 October 2026), its floterial framed
                          in the floterial's. Counties and towns are not filled
+    elect                between a general election and Organization Day
+                         only: each district's members-elect, keyed as `who`,
+                         from site/members_elect.json (elect_of), for the
+                         panel's list. Never in the fill
 
 THE PARTY IS THE RECORD'S. A member's party is site/legislators.json's, as
 every page shows it; a councillor's or a representative's is officials.json's,
@@ -58,6 +62,9 @@ import re
 import shutil
 
 import town_boards
+# Who November's election sent, while there are any: the one reader of
+# site/members_elect.json, beside its one writer (16 October 2026).
+from build_members_elect import for_pages as members_elect
 
 GEOMETRY = "generated/district_geometry.json"
 SCRIPT, STYLE = "src/pages/map.js", "src/pages/map.css"
@@ -142,6 +149,33 @@ def who_sits(legislators, officials, places):
                 out[f"{lk}|{int(num)}"] = [{"n": o["name"], "p": letter(o.get("party")),
                                             "u": o.get("official_url") or o.get("url") or ""}]
     return out
+
+
+def elect_of(elect, places):
+    """{"election", "takes_office", "races": {"base|RO13": race, "float|RO32":
+    race, "senate|24": race}} from the members-elect file, keyed as `who`
+    is, or None where there is no file.
+
+    A LIST IN THE PANEL, THE FILL UNCHANGED (the person's decisions of 16
+    October 2026). map.js draws each district's members-elect in its panel
+    under the sitting members, with components.js's electBlock -- the town
+    page's own block -- and colours the district by who sits, as it always
+    has: fills() reads `who` and never this. A House race is a base district
+    or a floterial by which kind its code is, as who_sits decides; a county
+    the map has no code for is left out rather than guessed."""
+    if not elect:
+        return None
+    flo = {w[1] for t in places.values() for w in t["w"].values() if w[1]}
+    races = {}
+    for key, race in (elect.get("races") or {}).items():
+        parts = key.split("|")
+        if parts[0] == "S" and len(parts) == 2:
+            races[f"senate|{int(parts[1])}"] = race
+        elif parts[0] == "H" and len(parts) == 3 and parts[1] in CODE:
+            code = f"{CODE[parts[1]]}{int(parts[2])}"
+            races[("float|" if code in flo else "base|") + code] = race
+    return {"election": elect["election"], "takes_office": elect["takes_office"],
+            "races": races}
 
 
 def fills(geom, who):
@@ -260,8 +294,10 @@ def ward_groups(geom, places, cities):
 
 # --------------------------------------------------------------- the file ---
 
-def build(geom_bytes, districts, legislators, officials):
-    """site/district_map.json, as a dict."""
+def build(geom_bytes, districts, legislators, officials, elect=None):
+    """site/district_map.json, as a dict. `elect` is the members-elect file
+    (build_members_elect.for_pages), or None, and then the file has no
+    "elect" and is what it was."""
     geom = json.loads(geom_bytes)
     places = places_table(districts)
     missing = sorted(set(places) - set(geom["layers"]["towns"]["f"]))
@@ -271,7 +307,8 @@ def build(geom_bytes, districts, legislators, officials):
     legs = legislators if isinstance(legislators, list) else list(legislators.values())
     who = who_sits(legs, officials, places)
     cities = sorted(t for t in places if slug(t) in town_boards.CITIES)
-    return {
+    more = {"elect": elect_of(elect, places)} if elect else {}
+    return {**more,
         "_what": ("The district map's data: NH GRANIT's 2022 boundaries "
                   "(generated/district_geometry.json), every town and ward and the "
                   "districts it votes in, who sits for each district and the party "
@@ -301,7 +338,7 @@ def main():
         return json.loads(Path(p).read_text(encoding="utf-8"))
     geom_bytes = Path(a.geometry).read_bytes()
     data = build(geom_bytes, read(site / "districts.json"),
-                 read(site / "legislators.json"), read(a.officials))
+                 read(site / "legislators.json"), read(a.officials), members_elect(site))
     # A district every seat of which is vacant is drawn hatched, and a site
     # whose every district were so would be a roster that failed to load:
     # silence is not success.

@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-10-09.11
+// GRANITE_VERSION: 2026-10-09.12
 /* THE SITE'S COMPONENTS, IN THE BROWSER. Published as site/components.js and
    loaded by every page, in its head, before app.js, find.js and any page's
    own script, so each of them draws a person, a committee, a date or a time
@@ -414,6 +414,45 @@ function untilAttrs(until,today){
   if(!/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(u))return " hidden";
   const gone=/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(t)&&t>=u;
   return ` data-until="${esc(u)}"`+(gone?" hidden":"");
+}
+
+// MEMBERS-ELECT, DRAWN ONE WAY (the person's decisions of 16 October 2026):
+// components.elect_now, elect_race, elect_block and elect_line, which say
+// why. The My Town card, the district map's panel and a member's own page
+// draw them here, the town pages and the Officials tab in Python, and
+// preflight holds the two to one answer. Each element carries data-elect
+// and untilAttrs; handed no day, as the browser's scripts hand it, the
+// behaviour below judges it by the reader's clock.
+function electNow(takesOffice,today){
+  return `<p class="elnow" data-elect${untilAttrs(takesOffice,today)}>Serving now</p>`;
+}
+function electRace(race){
+  const r=race||{}, won=r.elected||[];
+  const chips=won.map(e=>{
+    const p=String(e.p||"");
+    return "<li>"+pchip({party_code:p.length===1?p:"X",
+      display_full:p?`${e.n||""} (${p})`:(e.n||""),
+      slug:e.id&&e.s?e.s:""})+"</li>";
+  });
+  const left=(r.seats||0)-won.length-(r.not_final||0);
+  return (chips.length?'<ul class="ellist">'+chips.join("")+"</ul>":"")
+    +(r.not_final?'<p class="elnf"><b>Result not final</b>'
+      +(r.recount?" &mdash; a recount was requested":"")+"</p>":"")
+    +(left>0?`<p class="elnone">No member-elect on file for ${left} seat${left===1?"":"s"}.</p>`:"");
+}
+function electBlock(races,election,takesOffice,today){
+  const body=(races||[]).map(([label,race])=>
+    (label?`<p class="elwhere">${esc(label)}</p>`:"")+electRace(race)).join("");
+  return `<div class="elect" data-elect${untilAttrs(takesOffice,today)}>`+
+    `<p class="elhead"><b>Elected ${esc(dateWords(election,"full"))}</b> `+
+    `<span>Takes office ${esc(dateWords(takesOffice,"full"))}.</span></p>${body}</div>`;
+}
+function electLine(key,election,takesOffice,today){
+  const m=/^(?:H\|([^|]+)\|([0-9]+)|S\|([0-9]+))$/.exec(key==null?"":String(key));
+  const where=!m?"":m[3]?`Senate District ${m[3]}`:`${m[1]} district ${m[2]}`;
+  return `<p class="elline" data-elect${untilAttrs(takesOffice,today)}>`+
+    `Elected ${esc(dateWords(election,"full"))}`+(where?`, for ${esc(where)}`:"")+
+    `. Takes office ${esc(dateWords(takesOffice,"full"))}.</p>`;
 }
 
 // BEHAVIOUR:START

@@ -1,20 +1,23 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-10.2
+# GRANITE_VERSION: 2026-10-10.3
 """
 The Officials page's tabs that are not the legislators' (Polish 3, the
 person's feedback of 9 October 2026, item 4, and the decisions of that day):
 Federal Delegation, Statewide Officials and County Officials, and the
-Presiding Officers at the head of the Legislators tab.
+Presiding Officers at the head of the Legislators tab; and, between a
+general election and Organization Day, Members-Elect (16 October 2026).
 
     import officials_tabs as OT
     OT.federal(off), OT.statewide(off), OT.county(off, legs), OT.presiding(officers, legs)
+    OT.members_elect(elect, today), OT.elect_count(elect)
 
 Each returns the panel's inner markup, or "" where the file holds nothing to
 draw, and build_pages.officials_page() puts them into the page beside My
 Town and Legislators, which are build_pages' own. Nothing here is fetched
 and nothing is written: every name is corrections/officials.json's, the
 person's hand-kept file (read, never written), or the build's own
-legislators.json and officers.json.
+legislators.json and officers.json -- or, on the Members-Elect tab, the
+build's site/members_elect.json, as build_members_elect.for_pages reads it.
 
 THE APPROVED DRAWING is the prototype of 9 October
 (private/design/polish/proto/officials.html; "Statewide Officials: good",
@@ -41,8 +44,9 @@ import _paths  # noqa: E402,F401
 import html as _html
 import re
 
-from components import pchip
+from components import date_words, elect_race, pchip, until_attrs
 from build_town_pages import tel, maillink, weblink
+from build_members_elect import KEY_RE, race_order
 
 E = lambda s: _html.escape(str(s or ""), quote=True)  # noqa: E731
 
@@ -292,6 +296,67 @@ def presiding(officers, legs, today):
             '<p class="ofwhy">The Speaker presides over the House, and the Deputy Speaker '
             "sometimes in the Speaker&rsquo;s place; the Senate President presides over "
             "the Senate.</p></section>")
+
+
+def members_elect(elect, today):
+    """THE MEMBERS-ELECT TAB (the person's decisions of 16 October 2026):
+    who November's election sent to the General Court, for the weeks before
+    they sit -- the approved sentence, then the Senate, then the House by
+    county and district, each race as components.elect_race draws it on a
+    town page. Drawn from site/members_elect.json alone (`elect`, from
+    build_members_elect.for_pages) and never beside the roster, which stays
+    on the Legislators tab as who holds each seat; so no "Serving now" here.
+    No contact detail: a member-elect holds no office yet. "" where there is
+    no file, and the tab is then not drawn at all.
+
+    The whole tab carries data-elect and retires on the day they take
+    office, the panel's own content as well as the panel: the tab strip's
+    script shows a panel by its address, and the content's own data-until
+    keeps a page read after that day empty even then."""
+    races = (elect or {}).get("races") or {}
+    if not races:
+        return ""
+    election, takes = elect.get("election"), elect.get("takes_office")
+    src = next((s for s in elect.get("sources") or []
+                if re.fullmatch(r"https?://\S+", str(s or ""))), "")
+    by = (f'<a href="{E(src)}" rel="noopener">the Secretary of State&rsquo;s count</a>' if src
+          else "the Secretary of State&rsquo;s count")
+    intro = (f'<div class="ofintro"><p class="ofwhy">Elected {E(date_words(election, "full"))}, '
+             f'by {by}. They take office on {E(date_words(takes, "full"))}; until then the '
+             '<a href="officials.html#legislators">Legislators tab</a> lists who holds each '
+             'seat.</p></div>')
+
+    def row(n, r):
+        seats = r.get("seats") or 0
+        return (f'<li class="elrow"><span class="elseat">District {E(n)} <small>{seats} '
+                f'seat{"" if seats == 1 else "s"}</small></span>'
+                f'<div class="elwho">{elect_race(r)}</div></li>')
+    senate, house = [], {}
+    for k in sorted(races, key=race_order):
+        m = KEY_RE.match(k)
+        if m.group(3):
+            senate.append(row(m.group(3), races[k]))
+        else:
+            house.setdefault(m.group(1), []).append(row(m.group(2), races[k]))
+    parts = [intro]
+    if senate:
+        parts.append('<section class="ofsec" aria-labelledby="of-elect-senate">'
+                     '<h3 class="ofsech" id="of-elect-senate">State Senate</h3>'
+                     f'<div class="ofsecb"><ul class="elrows">{"".join(senate)}</ul></div></section>')
+    if house:
+        parts.append('<section class="ofsec" aria-labelledby="of-elect-house">'
+                     '<h3 class="ofsech" id="of-elect-house">State House</h3><div class="ofsecb">'
+                     + "".join(f'<h4 class="elcounty">{E(c)} County</h4>'
+                               f'<ul class="elrows">{"".join(rows)}</ul>'
+                               for c, rows in house.items())
+                     + "</div></section>")
+    return f'<div class="elpane" data-elect{until_attrs(takes, today)}>' + "".join(parts) + "</div>"
+
+
+def elect_count(elect):
+    """How many members-elect the file names, for the tab's label: the
+    winners drawn, not the seats, so a race not final counts none."""
+    return sum(len(r.get("elected") or []) for r in ((elect or {}).get("races") or {}).values())
 
 
 def _long(iso):

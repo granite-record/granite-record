@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.274 */
+/* GRANITE_VERSION: 2026-09-07.275 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -1710,6 +1710,36 @@ color:var(--pine);margin:0 0 var(--sp-3)}
 @media (max-width:45em){.yt.ytcard{padding:var(--sp-5) var(--sp-4)}}
 @media print{.setbtn,.navset,.ytpanel,.yt{display:none !important}}
 /* ==== /YOUR TOWN, SHARED ================================================== */
+
+/* ==== MEMBERS-ELECT, SHARED (the person's decisions of 16 October 2026) =====
+   Who November's election sent, for the weeks before they sit: the block
+   components.elect_block and electBlock draw on a town page, in the My Town
+   card and in the district map's panel, "Serving now" over the sitting
+   members beside it, and a returning member's one line. Here, the part both
+   stylesheets take, because a town page reads app.css and the Officials
+   page style.css. The block is set apart from the sitting members it
+   follows -- a pine edge on the wash, under its own heading -- so the two
+   lists of people under one district never read as one; its chips are the
+   site's one chip, unchanged. Each element carries data-until, and the rule
+   at the head of this region keeps it gone from that day. */
+.elnow{font:600 var(--t-label)/1.3 var(--sans);letter-spacing:.06em;text-transform:uppercase;
+  color:var(--ink-2);margin:var(--sp-3) 0 var(--sp-2)}
+.elect{margin:var(--sp-4) 0 var(--sp-5);padding:var(--sp-3) var(--sp-4);background:var(--wash);
+  border-left:3px solid var(--pine);border-radius:0 var(--r-in) var(--r-in) 0;max-width:100%}
+.elect p{margin:0}
+.elect .elhead{font-size:var(--t-sm);line-height:1.45;color:var(--ink-2);margin:0 0 var(--sp-3)}
+.elect .elhead b{display:block;font-size:var(--t-ui);font-weight:600;color:var(--ink)}
+.elect .elwhere{font:600 var(--t-sm)/1.35 var(--sans);color:var(--ink);margin:var(--sp-4) 0 var(--sp-2)}
+.elect .elhead + .elwhere{margin-top:0}
+.ellist{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:var(--sp-2)}
+.ellist li{max-width:100%}
+.ellist .mchip{max-width:100%;white-space:normal}
+.elnf,.elnone{font-size:var(--t-sm);line-height:1.45;color:var(--ink-2)}
+.elect .ellist + p,.elect .elnf + .elnone{margin-top:var(--sp-2)}
+.elnf b{font-weight:600;color:var(--ink)}
+.elline{font-size:var(--t-ui);line-height:1.5;color:var(--ink);margin:var(--sp-4) 0 0;max-width:46rem;
+  padding-left:var(--sp-3);border-left:3px solid var(--pine)}
+/* ==== /MEMBERS-ELECT, SHARED ============================================== */
 
 /* THE HOME PAGE'S HOW-TO GUIDES, under its three cards (build_civics.home_guides). */
 .hguides{margin:var(--sp-6) 0 0;padding:var(--sp-5) 0 0;border-top:1px solid var(--rule)}
@@ -7523,6 +7553,25 @@ margin:var(--sp-6) 0 0;max-width:51rem}
 margin:var(--sp-9) 0 0;padding-top:var(--sp-5);border-top:1px solid var(--rule);max-width:51rem}
 :where(body.pg) .ofintro{margin:0 0 var(--sp-8);max-width:51rem}
 :where(body.pg) .ofintro .ofwhy{margin:0 0 var(--sp-4)}
+/* THE MEMBERS-ELECT TAB (16 October 2026; officials_tabs.members_elect): the
+   Senate, then the House under each county's name, a district a row -- its
+   number and seats beside who it elected on a desktop, over them on a
+   phone -- each race as a town page draws it (.elect's inner parts). */
+:where(body.pg) .elrows{list-style:none;margin:0 0 var(--sp-6);padding:0}
+:where(body.pg) .elrow{display:grid;grid-template-columns:minmax(7.5rem,10rem) minmax(0,1fr);
+gap:var(--sp-2) var(--sp-5);padding:var(--sp-3) 0;border-bottom:1px solid var(--rule)}
+:where(body.pg) .elseat{font-weight:600;color:var(--ink)}
+:where(body.pg) .elseat small{display:block;font-weight:400;font-size:var(--t-sm);color:var(--ink-2)}
+:where(body.pg) .elwho{min-width:0}
+:where(body.pg) .elwho .ellist + p,:where(body.pg) .elwho .elnf + .elnone{margin-top:var(--sp-2)}
+:where(body.pg) .elwho p{margin:0}
+:where(body.pg) .elcounty{font:600 var(--t-ui)/1.35 var(--sans);color:var(--ink);
+margin:var(--sp-6) 0 var(--sp-2)}
+:where(body.pg) .elcounty:first-child{margin-top:0}
+@media (max-width:30em){
+  :where(body.pg) .elrow{grid-template-columns:minmax(0,1fr)}
+  :where(body.pg) .elseat small{display:inline;margin-left:var(--sp-2)}
+}
 /* THE HOME PAGE'S ONE BOX (D13): find.js's rows in a dropdown under the
    box, over the cards, as the header's panel is a dropdown under the bar.
    The rows are the panel's own (.findout, in the shared region); this is
