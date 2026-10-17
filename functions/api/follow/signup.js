@@ -2,10 +2,10 @@
  * POST /api/follow/signup -- a reader asks for email updates on one record.
  *
  * Nothing is followed here. This keeps the request -- the address sealed,
- * its lookup hash, its inbox's hash, the record sealed, and the hash of a
- * confirmation token -- and emails the address a link to confirm it. Only
- * the confirmation makes a subscriber (confirm.js), and a request not
- * confirmed within 48 hours is deleted.
+ * its lookup hash, its inbox's hash, the record sealed, the hash of a
+ * confirmation token, and daily or weekly as the box was set -- and emails
+ * the address a link to confirm it. Only the confirmation makes a subscriber
+ * (confirm.js), and a request not confirmed within 48 hours is deleted.
  *
  * THE ANSWER DOES NOT DEPEND ON THE ADDRESS, in what it says or in how long
  * it takes. Everything this file does with the address happens after the
@@ -16,7 +16,8 @@
  * all. Even an existing subscriber gets a confirmation email, because only
  * the inbox can say the request is theirs. The other answers depend only on
  * what was sent or on the day:
- *   400 {"why":"invalid"}         not an address, not a record, not JSON
+ *   400 {"why":"invalid"}         not an address, not a record, not JSON, or a
+ *                                 frequency other than daily or weekly
  *   400 {"why":"check"}           Turnstile said no, or said yes for another
  *                                 form or site (action-mismatch,
  *                                 hostname-mismatch), with its error codes when
@@ -58,6 +59,23 @@ const TS_CODES = new Set(["missing-input-secret", "invalid-input-secret", "missi
 const NO_CHECK = codes => codes.length ? json(400, { ok: false, why: "check", codes }) : NO("check");
 const DOWN = () => json(503, { ok: false, why: "unavailable" });
 
+// HOW OFTEN, CHOSEN IN THE BOX (the person, 16 October 2026: "Daily or
+// weekly" beside the address, Daily selected), and kept with the request
+// until confirm.js gives it to the new subscriber. Returns the frequency, or
+// null for one to refuse.
+//
+// None at all is daily: a page loaded before the box had the choice sends
+// none, and daily is what such a sign-up always became. Anything else is
+// refused as "invalid", as a kind or a record the form cannot send is, rather
+// than quietly made daily: the form's two radios can send nothing but these
+// two words, so another value is not a reader's choice, and a reader who did
+// choose would get a frequency they had not asked for and no word of it.
+const FREQUENCIES = new Set(["daily", "weekly"]);
+function frequencyOf(raw) {
+  if (raw === undefined || raw === null || raw === "") return "daily";
+  return typeof raw === "string" && FREQUENCIES.has(raw) ? raw : null;
+}
+
 // Returns null for a yes, else the list of Turnstile's codes for its no
 // (empty when it gave none), each also a log line.
 //
@@ -93,7 +111,7 @@ async function turnstileNo(env, token) {
 // AFTER THE ANSWER: keep the request if its inbox has room, raise the day's
 // count, send. Every outcome is a log line of a code, and nothing is
 // answered, so nothing here can be timed from outside.
-async function keepAndSend(env, now, { address, key, meta, origin, ceiling }) {
+async function keepAndSend(env, now, { address, key, meta, origin, ceiling, frequency }) {
   const db = env.FOLLOW_DB;
   try {
     await purgePending(db, now);
@@ -103,11 +121,11 @@ async function keepAndSend(env, now, { address, key, meta, origin, ceiling }) {
     // a dozen requests at once cannot all read "two waiting" and all go in.
     const id = await db.prepare(
       "INSERT INTO pending (email_hmac, email_enc, mailbox_hmac, follow_enc, " +
-      "confirm_token_hash, created_at) SELECT ?1, ?2, ?3, ?4, ?5, ?6 " +
+      "confirm_token_hash, created_at, frequency) SELECT ?1, ?2, ?3, ?4, ?5, ?6, ?8 " +
       "WHERE (SELECT COUNT(*) FROM pending WHERE mailbox_hmac = ?3) < ?7 RETURNING id")
       .bind(hmac, await sealAddress(env, address, hmac), await mailboxHash(env, address),
             await sealFollow(env, key, hmac), await hashToken(token), isoSeconds(now),
-            PENDING_PER_MAILBOX).first("id");
+            PENDING_PER_MAILBOX, frequency).first("id");
     if (id === null || id === undefined) { note("signup.waiting-enough"); return; }
     const drop = () => db.prepare("DELETE FROM pending WHERE id = ?1").bind(id).run();
     if ((await underCeiling(db, isoSeconds(now).slice(0, 10), ceiling)) === null) {
@@ -147,7 +165,8 @@ export async function onRequest(context) {
     if (body.website) return SENT();     // the honeypot is told what a person is
     const address = cleanAddress(body.email);
     const kind = String(body.kind ?? ""), ref = String(body.ref ?? "");
-    if (!address || !refOk(kind, ref)) return NO("invalid");
+    const frequency = frequencyOf(body.frequency);
+    if (!address || !refOk(kind, ref) || !frequency) return NO("invalid");
     const no = await turnstileNo(env, body.turnstile);
     if (no) return NO_CHECK(no);
 
@@ -170,7 +189,7 @@ export async function onRequest(context) {
     // first await at once, and nothing about the address may happen before
     // the answer has been handed back.
     const job = new Promise(r => setTimeout(r, 0)).then(() => keepAndSend(env, now,
-      { address, key, meta, origin: new URL(request.url).origin, ceiling }));
+      { address, key, meta, origin: new URL(request.url).origin, ceiling, frequency }));
     if (typeof context.waitUntil === "function") context.waitUntil(job);
     else await job;
     return SENT();

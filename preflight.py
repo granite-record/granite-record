@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.590
+# GRANITE_VERSION: 2026-09-04.595
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -16944,6 +16944,13 @@ def _class_collisions():
         # the House's and the Senate's session days, drawn as a committee's
         # page at the person's asking (10 October 2026)
         "cmtehead", "cinfo", "bfilt", "pterm", "cday", "daylink", "cnarr",
+        # THE MEMBERS-ELECT (the pages' pass, 16 October 2026): the block, its
+        # head, its list and its notes, "Serving now" and a member's own
+        # line, written by components.js and components.py alike (elect_now,
+        # elect_race, elect_block, elect_line) and held to one answer by
+        # _components_agree -- a town page draws in Python what the My Town
+        # card and the map's panel draw in the browser
+        "elect", "elhead", "elwhere", "ellist", "elnf", "elnone", "elnow", "elline",
     }
     here = Path(".")
     # The components draw on both sides by design: components.js with the
@@ -19895,6 +19902,11 @@ def _check_live_reads_what_it_checks():
         "/idx/2025-2026.json": (200, "application/json", b'[{"id":"HB1"}]'),
         "/legislators": (200, "text/html", b"<!doctype html><html>members</html>"),
         "/feed/all.xml": (200, "application/rss+xml", b'<?xml version="1.0"?><rss/>'),
+        # Asked for since 16 October 2026 (_check_live_sitemap holds what is
+        # made of them); served here as a sound deploy serves them.
+        "/sitemap.xml": (200, "application/xml",
+                         b'<?xml version="1.0"?><urlset><url><loc>http://site.invalid/</loc></url></urlset>'),
+        "/robots.txt": (200, "text/plain", b"User-agent: *\nSitemap: http://site.invalid/sitemap.xml\n"),
     }
     asked = []
 
@@ -28610,7 +28622,7 @@ def _built_site(here, root, brand=True, env=None):
     (root / "db").mkdir(exist_ok=True)
     (root / "db" / "_columns.json").write_text(json.dumps({"NH_RSA": cols}), encoding="utf-8")
     (root / "db" / "_manifest.json").write_text(json.dumps(
-        {"NH_RSA": {"rows": 2, "fetched": "2026-09-08T20:53:02"}}), encoding="utf-8")
+        {"NH_RSA": {"rows": 3, "fetched": "2026-09-08T20:53:02"}}), encoding="utf-8")
     (root / "db" / "NH_RSA.psv").write_text("\n".join("|".join(r) for r in (
         ["1", "VI", "91-A", "91-A-4", "TITLE VI PUBLIC OFFICERS AND EMPLOYEES",
          "CHAPTER 91-A ACCESS TO GOVERNMENTAL RECORDS AND MEETINGS",
@@ -28621,9 +28633,17 @@ def _built_site(here, root, brand=True, env=None):
         ["2", "VI", "91-A", "91-A-5", "TITLE VI PUBLIC OFFICERS AND EMPLOYEES",
          "CHAPTER 91-A ACCESS TO GOVERNMENTAL RECORDS AND MEETINGS", "Section 91-A:5 Exemptions.",
          "", "", "<codesect> The following governmental records are exempted</codesect>", "6",
-         "VI\\91-A\\91-A-5.htm"])) + "\n", encoding="utf-8")
+         "VI\\91-A\\91-A-5.htm"],
+        # RSA 404, the one chapter whose page is a folder's and whose address
+        # ends in a slash, citing 91-A:4 so that 91-A's page links it back
+        # (16 October 2026): _chapter_addresses_one_rule reads every built
+        # file for an address of it without its slash.
+        ["3", "XXXVII", "404", "404-1", "TITLE XXXVII INSURANCE",
+         "CHAPTER 404 SAFETY FUNDS OF FIRE INSURANCE COMPANIES", "Section 404:1 Definitions.",
+         "", "", "<codesect> In this chapter, see RSA 91-A:4.</codesect>", "37",
+         "XXXVII\\404\\404-1.htm"])) + "\n", encoding="utf-8")
     (root / "rsa_citations.json").write_text(json.dumps(
-        {"bills": {}, "enacted": {"91-A:4": [["1967", "251:1", ""]]}, "statute": {},
+        {"bills": {}, "enacted": {"91-A:4": [["1967", "251:1", ""]]}, "statute": {"404:1": ["91-A:4"]},
          "asof": {"laws_through": 2025}}), encoding="utf-8")
     base = "https://graniterecord.org"
     steps = [
@@ -38345,6 +38365,85 @@ def _changes_node(folder):
     return [] if r.returncode == 0 else [ln.strip() for ln in said.splitlines() if ln.strip()]
 
 
+@check("build", "the way back to the manage page and its lists to add from: a committee named "
+       "as the search names it, a chamber that is the House or the Senate in both readers of "
+       "current.json, and tests/follow/'s cases for the email a confirmation sends and the "
+       "lists, run by name", needs=("follow_changes",))
+def _follow_manage_lists(FC):
+    """16 October 2026, from the person's test of email following: once the
+    confirmation link was spent there was no way back to the manage page, and
+    its legislators were a drop-down by first name, one pick a Save.
+
+    current.json now names a committee as the search does ("House Housing
+    Committee", follow_changes.committee_label, find.js findName) and carries
+    a member's roster sort name and a member's or committee's chamber, which
+    the manage page orders and groups its lists by. A chamber other than the
+    House or the Senate is refused by follow_changes.check and by the
+    sender's own reader (check_changes.js) alike. What the endpoints do with
+    it -- the "You're following" email a confirmation sends, the spent link
+    pointing to it, the lists by last name with the chambers apart, several
+    added in one Save, the page without script -- is tests/follow/'s, whose
+    cases are run here by name so that one taken out is missed. build_feeds
+    writing the fields is _changes_on_fixture's."""
+    named = {("Housing", "House"): "House Housing Committee",
+             ("Special Committee on Housing", "House"): "House Special Committee on Housing",
+             ("Senate Special Committee on Redistricting", "Senate"):
+                 "Senate Special Committee on Redistricting",
+             ("Education", "Senate"): "Senate Education Committee",
+             ("Education", ""): "Education Committee"}
+    got = {k: FC.committee_label(*k) for k in named}
+    assert got == named, f"follow_changes.committee_label no longer names as the search does: {got}"
+
+    fixtures = Path("tests/follow/fixtures/changes")
+    if not fixtures.is_dir():
+        return "skip", "no tests/follow/fixtures/changes here"
+    root = Path(tempfile.mkdtemp(prefix="gr-follow-lists-"))
+    try:
+        bad = root / "changes"
+        shutil.copytree(fixtures, bad)
+        cur = json.loads((bad / "current.json").read_text(encoding="utf-8"))
+        member = next(k for k in cur["followable"] if k.startswith("member:"))
+        assert cur["followable"][member].get("sort") and cur["followable"][member].get("chamber"), \
+            "the fixtures' member carries no sort name or chamber for the lists to be tested by"
+        cur["followable"][member]["chamber"] = "Joint"
+        (bad / "current.json").write_text(json.dumps(cur), encoding="utf-8")
+        said = {"follow_changes.check": FC.check(bad), "check_changes.js": _changes_node(bad)}
+        missed = [who for who, p in said.items()
+                  if p is not None and not any("chamber is neither House nor Senate" in x for x in p)]
+        assert not missed, f"a chamber of Joint passed {', '.join(missed)}: {said}"
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+
+    node = shutil.which("node") or shutil.which("node.exe")
+    if not (node and Path("tests/follow/index.js").is_file()):
+        return "skip", "node or tests/follow/ is not here; committee_label and the chamber hold"
+    cases = ("a confirmation sends one email, You're following",
+             "a subscriber adding a record is told it",
+             "a pause is told through its last day, and not once that day has gone by",
+             "a confirmation that adds nothing sends nothing",
+             "a confirmation still confirms when its email cannot be sent",
+             "a spent link says every email we send has the way back",
+             "the House and the Senate apart, by last name",
+             "a list without sort names or chambers is one group",
+             "a committee of neither chamber comes last, under a heading of its own",
+             "without script the whole list shows",
+             "the find box narrows the list as the reader types",
+             "every legislator and committee ticked is added on one Save",
+             "a Save that ticks more than the room left")
+    r = _run([node, "--disable-warning=ExperimentalWarning", "--test", "--test-reporter=tap",
+              "--test-name-pattern=" + "|".join(cases), "tests/follow/index.js"],
+             capture_output=True, text=True)
+    out = r.stdout + r.stderr
+    passed = [c for c in cases
+              if re.search(rf"^ok \d+ - [^\n]*{re.escape(c)}(?![^\n]*# SKIP)", out, re.M)]
+    assert r.returncode == 0 and len(passed) == len(cases), (
+        "tests/follow/ no longer passes the manage page's cases "
+        + ", ".join(repr(c) for c in cases if c not in passed) + ": " + out.strip()[-400:])
+    return "ok", (f"committees named as the search names them; a chamber of Joint refused by "
+                  f"{' and '.join(k for k, v in said.items() if v is not None)}; "
+                  f"{len(cases)} cases pass")
+
+
 def _changes_scenario(FC):
     """Sixteen nights of a followable world, as build_feeds hands it over: a
     bill, a second bill that concludes, a member who leaves, a committee, a
@@ -38689,6 +38788,19 @@ def _changes_on_fixture(FC):
                 "record's dates, with a ledger beside them", names)
         assert {"bill:2026/HB1442", "member:377204", "committee:H43", "topic:insurance"} <= \
             set(cur["followable"]), sorted(cur["followable"])
+        # What the manage page's lists to add from are ordered and grouped by
+        # (the person's test of 16 October 2026: legislators "sorted ... by
+        # first name instead of last name"): a member carries the roster's own
+        # sort name and chamber, and a committee its chamber and the name the
+        # search gives it.
+        nelson, commerce = cur["followable"]["member:377204"], cur["followable"]["committee:H43"]
+        assert (nelson.get("sort"), nelson.get("chamber")) == ("nelson, jodi", "House"), (
+            "build_feeds no longer hands the manage page a legislator's sort name and chamber",
+            nelson)
+        assert (commerce.get("label"), commerce.get("chamber")) == \
+            ("House Commerce Committee", "House"), (
+                "build_feeds no longer names a committee as the search does, with its chamber",
+                commerce)
         probs = FC.check(ch) + (_changes_node(ch) or [])
         assert not probs, probs[:4]
 
@@ -39332,9 +39444,13 @@ def _committees_archived(BC):
     src = _paths.locate("build_committees.py").read_text(encoding="utf-8")
     assert 'rec["archived"] = {"years": runs(c["span"])}' in src, \
         "archived committees' JSON no longer carries the years"
+    # The whole function, to the next one: a fixed 1,200 characters lost the
+    # note when a comment above it grew (16 October 2026).
     head = Path("src/pages/app.js").read_text(encoding="utf-8")
-    head = head[head.find("function renderCommitteeHead"):][:1200]
-    assert "c.archived" in head, "a committee's page no longer says it is not on the list today"
+    head = head[head.find("function renderCommitteeHead"):]
+    head = head[:head.find("\nfunction ", 1)]
+    assert "c.archived" in head and "A former committee." in head, (
+        "a committee's page no longer says it is a former committee")
     return "ok", "not listed and ended before this term; no record means no claim"
 
 
@@ -57713,7 +57829,7 @@ def _committee_notes_fill():
     import build_committees as BCM
     src = inspect.getsource(BCM)
     for head in ("<h2>No bills or meetings on record</h2>",
-                 "<h2 id=\"archived\">Not on the General Court&rsquo;s list today</h2>"):
+                 "<h2 id=\"archived\">Former committees</h2>"):
         at = src.index(head)
         assert "'<p class=\"src fill\">" in src[at:at + 200], (
             f"the note under {head} is held to the measure")
@@ -57739,12 +57855,145 @@ def _committee_notes_fill():
     head, sess = got
     assert re.search(r'<header class="rhead [^"]*\bcmtehead\b', head), (
         "a committee page's head does not say it is one, so app.css cannot widen its notes")
-    assert re.search(r'<p class="src fill rnote">Not on the General Court&rsquo;s list of committees', head), (
-        "a committee page's \"not on the list\" note is held to the measure")
+    assert re.search(r'<p class="src fill rnote">A former committee\.', head), (
+        "a committee page's \"former committee\" note is held to the measure")
     assert '<p class="src fill">No day of this committee is' in sess, (
         "a committee page's \"no day on record\" note is held to the measure")
     return "ok", ("the index's two section notes and a committee page's own fill the width "
                   "they have")
+
+
+@check("frontend", "the committees list says what it holds, and a former committee says it is "
+                   "one plainly", needs=("build_committees",))
+def _committee_explanations_plain(BCM):
+    """"The explanation at the top of the committee page is confusing to
+    readers, either remove it or replace it" (the person, 16 October 2026),
+    who took the replacement offered for it and for a former committee's own
+    note. The list opens with what it holds, where it set committees against
+    bill search ("These answer what a committee did on a day"); a former
+    committee's page says it is one, that it no longer meets -- the search's
+    own words for it -- and the years of its record, where it explained what
+    the records cannot say. Drawn from build_committees' source and from
+    app.js in node."""
+    import inspect
+    src = inspect.getsource(BCM)
+    assert ("<p class=\"src\">Every committee of the House and the Senate: who sits " in src
+            and "on it, what it does, and the bills and meetings on its record.</p>" in src), (
+        "the committees list does not open with what it holds")
+    assert "These answer what a committee did on a day.</p>" not in src, (
+        "the committees list still sets committees against bill search")
+    # Its former committees under the search's own name for them, in a line.
+    assert ("<h2 id=\"archived\">Former committees</h2>'\n"
+            "                    '<p class=\"src fill\">Committees that no longer meet, with the '\n"
+            "                    \"years of their record.</p>\"") in src.replace("\r\n", "\n"), (
+        "the committees list does not head its former committees as Former committees, in a line")
+    assert "page does not guess which" not in src, (
+        "the committees list still explains what the records cannot say about former committees")
+    got = _app_js('[scope.renderCommitteeHead({name:"Old", chamber:"H",'
+                  ' archived:{years:"1999 to 2004"}}),'
+                  ' scope.renderCommitteeHead({name:"Old", chamber:"H", archived:{}}),'
+                  ' scope.renderCommitteeHead({name:"Sitting", chamber:"S"})]',
+                  names=("renderCommitteeHead",))
+    if got is None:
+        return "ok", "the list's opening line is plain; node is not here to draw a committee page"
+    ran, bare, sitting = got
+    assert ('<p class="src fill rnote">A former committee. It no longer meets; its bills and '
+            'meetings here run from 1999 to 2004.</p>') in ran, (
+        "a former committee's page does not say plainly that it is one, and the years of its record")
+    assert '<p class="src fill rnote">A former committee. It no longer meets.</p>' in bare, (
+        "a former committee with no years on record draws an empty \"run from\"")
+    assert not any("renamed, divided" in h for h in got), (
+        "a former committee's page still explains what the records cannot say")
+    assert "former committee" not in sitting, "a sitting committee is called a former one"
+    return "ok", ("the committees list opens with what it holds, and a former committee says "
+                  "it is one, that it no longer meets, and its years")
+
+
+_GRID_FIRST = {"1", "auto", "1/-1", "1/2", "1/auto", "span1", "1/span1"}
+
+
+def _grid_one_track(v):
+    """Whether a grid-template-columns value is one column: minmax(0,1fr) is,
+    7.5rem minmax(0,1fr) is not, and repeat(n, ...) is one only for n = 1."""
+    v = re.sub(r"repeat\(\s*1\s*,", "(", v)
+    if "repeat(" in v:
+        return False
+    depth, n, tok = 0, 0, False
+    for ch in v:
+        depth += (ch == "(") - (ch == ")")
+        if ch.isspace() and depth == 0:
+            tok = False
+        elif not tok:
+            n, tok = n + 1, True
+    return n == 1
+
+
+def _grid_column(body):
+    v = next((v for k, v in reversed(_css_decls(body))
+              if k in ("grid-column", "grid-column-start")), None)
+    return None if v is None else "".join(v.split())
+
+
+def _phone_grid_strays(css):
+    """[(grid, child, its column, the @media, line)] for every child of a grid
+    that a max-width @media makes one column, which a rule elsewhere puts in
+    a later column and nothing in that @media puts back in the first. Such a
+    child makes a second, implicit column that takes the width it wants; the
+    one column the @media meant shrinks to nothing, and its text runs under
+    the child's."""
+    rules = _css_rules(css)
+    out = []
+    for at, sel, body, _ in rules:
+        if not any(a.startswith("@media") and "max-width" in a for a in at):
+            continue
+        tpl = next((v for k, v in reversed(_css_decls(body)) if k == "grid-template-columns"), None)
+        if tpl is None or not _grid_one_track(tpl):
+            continue
+        for g in _css_selectors(sel):
+            for at2, sel2, body2, line2 in rules:
+                c = _grid_column(body2)
+                if at2 == at or c is None or c in _GRID_FIRST:
+                    continue
+                for s in _css_selectors(sel2):
+                    if not s.startswith(g + " "):
+                        continue
+                    back = [_grid_column(b3) for a3, s3, b3, _ in rules
+                            if a3 == at and s in _css_selectors(s3)]
+                    if not any(x in _GRID_FIRST for x in back if x):
+                        out.append((g, s, c, at[-1], line2))
+    return out
+
+
+@check("frontend", "a grid that drops to one column on a phone leaves none of its parts in a "
+                   "second column")
+def _phone_grid_one_column():
+    """"On mobile, the documents tab has overlapping text" (the person,
+    16 October 2026). A calendar's or a journal's row is a grid of the day
+    beside the citation and what happened; on a phone the @media made it one
+    column and moved the day above the citation, but the citation and the
+    plain words kept the wide layout's grid-column:2. That made a second
+    column which took the whole width, the day's column shrank to nothing,
+    and the date ran under the words. Read for every grid in the
+    stylesheets, not for that one: the same three lines in another rule
+    would draw the same overlap."""
+    broken = (".g .row{display:grid;grid-template-columns:7rem minmax(0,1fr)}"
+              ".g .row > a{grid-column:2}"
+              "@media (max-width:45em){.g .row{grid-template-columns:minmax(0,1fr)}}")
+    assert _phone_grid_strays(broken), "the check cannot see a child left in a second column"
+    assert not _phone_grid_strays(broken[:-1] + ".g .row > a{grid-column:1}}"), (
+        "the check flags a child that the @media puts back in the first column")
+    bad, grids = [], 0
+    for name in ("app.css", "map.css"):
+        css = Path("src/pages", name).read_text(encoding="utf-8")
+        bad += [f"{name}:{line} {child} keeps grid-column:{col} where {media} makes {grid} "
+                f"one column" for grid, child, col, media, line in _phone_grid_strays(css)]
+        grids += sum(1 for at, _, body, _ in _css_rules(css)
+                     if any(a.startswith("@media") and "max-width" in a for a in at)
+                     and any(k == "grid-template-columns" and _grid_one_track(v)
+                             for k, v in _css_decls(body)))
+    assert grids, "no grid is made one column on a phone, so this check reads nothing"
+    assert not bad, "a phone's one-column grid has a part in a second column: " + "; ".join(bad)
+    return "ok", f"{grids} grid rules made one column on a phone keep every part in it"
 
 
 @check("frontend", "a committee's Sessions tab counts the days it met, and a day still to "
@@ -61107,6 +61356,191 @@ def _follow_email():
     assert r.returncode == 0 and passed and int(passed.group(1)) > 0, out.strip()[-600:]
     return "ok", (f"previews bind FOLLOW_DB, production {'does' if binds('production') else 'does not'}; "
                   f"tests/follow: {passed.group(1)} passed")
+
+
+# The sign-up box's daily or weekly drawn and sent by app.js under node, with
+# a form of the box's own parts: the Turnstile token already in hand, the
+# answer a 202, and every request the box makes kept for the check to read.
+_FOLLOW_FREQ_JS = """
+require("./stub.js");
+const fs = require("fs");
+let s;
+try { s = (0, eval)(fs.readFileSync("./page.js", "utf8") + "; ({followMailForm, followSubmit, FOLLOW_TS})"); }
+catch (e) { console.log("LOAD " + e.constructor.name + ": " + e.message); process.exit(1); }
+const sent = [];
+globalThis.fetch = async (u, init) => { sent.push({ url: String(u), body: JSON.parse(init.body) });
+  return { ok: true, status: 202, json: async () => ({ ok: true }) }; };
+function form(choice) {
+  const st = { textContent: "" }, btn = { disabled: false }, w = { dataset: {} };
+  s.FOLLOW_TS.set(w, { token: "pass", err: "", wait: [] });
+  const radio = { value: choice, checked: true };
+  return {
+    closest: () => ({ dataset: { fkey: "bill:2026/HB1442" } }),
+    querySelector: q => q === ".followstate" ? st : q === ".followsend" ? btn : q === ".followcheck" ? w
+      : /frequency/.test(q) && /:checked/.test(q) ? radio : null,
+    elements: { email: { value: "reader@example.com" }, website: { value: "" }, frequency: radio },
+  };
+}
+(async () => {
+  const html = s.followMailForm("bill:2026/HB1442");
+  for (const c of ["weekly", "daily"]) await s.followSubmit({ preventDefault() {} }, form(c));
+  process.stdout.write("\\n@@" + JSON.stringify({ html, sent }));
+})().catch(e => { console.log("RUN " + e.constructor.name + ": " + e.message); process.exit(1); });
+"""
+
+
+@check("build", "the email sign-up asks daily or weekly as the manage page does, Daily chosen and "
+       "told apart in forced colours, and every follow migration has its two commands")
+def _follow_signup_frequency():
+    """The person, 16 October 2026: a "Daily or weekly" choice beside the
+    email field, Daily selected, just before the "Email me updates" button.
+    Until then a sign-up always became daily, and only the manage page could
+    make it weekly.
+
+    The box as a record's Follow pane draws it (app.js followMailForm, under
+    node) carries the manage page's own words and legend for the choice
+    (manage.js, "How often"), with Daily the one checked, between the address
+    and the button, and no fieldset opened inside a p -- the parser would
+    close the p there and leave the button outside the row. followSubmit
+    sends the choice it is given, Weekly and Daily each. The endpoints' side
+    -- kept with the request, confirmed as weekly, none at all confirmed as
+    daily, any other value refused, a subscriber's own kept and the manage
+    page saying so where the box asked otherwise, the migration -- is
+    tests/follow/'s, whose cases are run here by name so that one taken out
+    is missed.
+
+    IN FORCED COLOURS the chosen one is told from the other, in the box
+    (app.css .followfreq) and on the manage page (page.js .seg): the system
+    paints away the wash and the rule under it, and the radios are out of
+    sight, so in Edge with high contrast on the two came out the same (the
+    review of 16 October 2026). The chosen one keeps the system's selection
+    colours.
+
+    And README.md gives every file in workers/follow/migrations/ its command
+    for both databases: a column the Functions write that a database lacks is
+    a sign-up answered "on its way" that sends nothing. 0003's paragraph
+    names both log lines its absence leaves, the sign-up's and the
+    confirmation's, since confirm.js reads the column too."""
+    from html.parser import HTMLParser
+    if not Path("workers/follow").is_dir():
+        return "skip", "no workers/follow here"
+    readme = Path("workers/follow/README.md").read_text(encoding="utf-8")
+    migrations = sorted(p.name for p in Path("workers/follow/migrations").glob("*.sql"))
+    assert "0003_pending_frequency.sql" in migrations, "the sign-up's frequency migration is gone"
+    untold = [f"{m} on {db}" for m in migrations
+              for db in ("graniterecord-follow-preview", "graniterecord-follow")
+              if f"npx wrangler d1 execute {db} --remote --file workers/follow/migrations/{m}" not in readme]
+    assert not untold, "workers/follow/README.md gives no command for " + ", ".join(untold)
+    begin = readme.find("sign-up box's daily or weekly")
+    told = readme[begin:readme.find("migrations/0003_pending_frequency.sql", begin)] if begin >= 0 else ""
+    assert all(f"`follow {x}.error.Error`" in told for x in ("signup", "confirm")), \
+        "README.md's paragraph on 0003 no longer says that sign-ups and confirmations both fail without it"
+
+    # Chosen and not chosen, told apart in forced colours: the selection's
+    # system colours, held from the system's repainting, on the chosen label.
+    def forced(css, seg):
+        got = {}
+        for ats, sel, body, _ in _css_rules(css):
+            if any("forced-colors" in a for a in ats) and \
+                    f"{seg} label:has(input:checked)" in [s.strip() for s in sel.split(",")]:
+                got.update(_css_decls(body))
+        return got.get("forced-color-adjust") == "none" and got.get("background", "").lower() == "highlight"
+    style = re.search(r"const STYLE = `(.*?)`;", Path("workers/follow/page.js").read_text(encoding="utf-8"), re.S)
+    blind = [name for name, css, seg in (
+        ("the sign-up box (app.css .followfreq)", Path("src/pages/app.css").read_text(encoding="utf-8"), ".followfreq"),
+        ("the manage page (page.js .seg)", style.group(1) if style else "", ".seg")) if not forced(css, seg)]
+    assert not blind, ("in forced colours the chosen one of two is drawn like the other on "
+                       + " and ".join(blind) + ": no Highlight ground for label:has(input:checked)")
+
+    manage = Path("functions/api/follow/manage.js").read_text(encoding="utf-8")
+    words = dict(re.findall(r'radio\("frequency", "(daily|weekly)", freq, "([^"]+)"', manage))
+    legend = re.search(r'<legend class="sr">([^<]+)</legend>\s*\$\{radio\("frequency"', manage)
+    assert set(words) == {"daily", "weekly"} and legend, \
+        "manage.js's How often control is not where this check reads its words"
+
+    js, stub = Path("src/pages/app.js"), Path("tests/dom_stub.js")
+    node = shutil.which("node") or shutil.which("node.exe")
+    if not (js.exists() and stub.exists() and node):
+        return "skip", "app.js, dom_stub.js or node is not here"
+    root = Path(tempfile.mkdtemp())
+    try:
+        (root / "page.js").write_text(_with_components(js.read_text(encoding="utf-8")), encoding="utf-8")
+        (root / "stub.js").write_text(stub.read_text(encoding="utf-8"), encoding="utf-8")
+        (root / "go.js").write_text(_FOLLOW_FREQ_JS, encoding="utf-8")
+        r = _run([node, "go.js"], cwd=root, capture_output=True, text=True, timeout=60)
+        assert r.returncode == 0 and "@@" in (r.stdout or ""), (
+            "app.js did not draw and send the email box under node: " + (r.stderr or r.stdout or "")[-300:])
+        got = json.loads(r.stdout.rsplit("@@", 1)[1])
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+
+    class Box(HTMLParser):
+        def __init__(self):
+            super().__init__()
+            self.radios, self.legend, self.inside_p = [], "", False
+            self.fieldset_in_p, self.here, self.texting = False, None, None
+
+        def handle_starttag(self, tag, attrs):
+            a = dict(attrs)
+            if tag == "p":
+                self.inside_p = True
+            elif tag == "fieldset" and self.inside_p:
+                self.fieldset_in_p = True
+            elif tag == "legend":
+                self.texting = "legend"
+            elif tag == "input" and a.get("type") == "radio" and a.get("name") == "frequency":
+                self.here = {"value": a.get("value"), "checked": "checked" in a, "words": ""}
+                self.texting = "label"
+
+        def handle_endtag(self, tag):
+            if tag == "p":
+                self.inside_p = False
+            elif tag == "legend":
+                self.texting = None
+            elif tag == "label" and self.here:
+                self.radios.append(self.here)
+                self.here, self.texting = None, None
+
+        def handle_data(self, data):
+            if self.texting == "legend":
+                self.legend += data
+            elif self.texting == "label" and self.here:
+                self.here["words"] += data
+
+    html = got["html"]
+    box = Box()
+    box.feed(html)
+    drawn = [(x["value"], x["checked"], x["words"].strip()) for x in box.radios]
+    want = [("daily", True, words["daily"]), ("weekly", False, words["weekly"])]
+    assert drawn == want, f"the email box offers {drawn}, not the manage page's {want} with Daily chosen"
+    assert box.legend.strip() == legend.group(1), \
+        f"the email box asks {box.legend.strip()!r} where the manage page asks {legend.group(1)!r}"
+    at = [html.find('type="email"'), html.find("<fieldset"), html.find("Email me updates")]
+    assert -1 not in at and at == sorted(at), \
+        "Daily or weekly is not between the address and the Email me updates button"
+    assert not box.fieldset_in_p, \
+        "the email box opens its fieldset inside a p: the parser closes the p and the row falls apart"
+    sent = [(s["url"], s["body"].get("frequency")) for s in got["sent"]]
+    assert sent == [("/api/follow/signup", "weekly"), ("/api/follow/signup", "daily")], \
+        f"the email box sent {sent} for Weekly and then Daily"
+
+    cases = ("how often is kept with the request", "a frequency the box cannot send is refused",
+             "a weekly sign-up is confirmed as weekly", "names no frequency is confirmed as daily",
+             "keeps how often they chose, and is told so", "shows only its own notices",
+             "frequency migration brings a pending table")
+    r = _run([node, "--disable-warning=ExperimentalWarning", "--test", "--test-reporter=tap",
+              "--test-name-pattern=" + "|".join(cases), "tests/follow/index.js"],
+             capture_output=True, text=True)
+    out = r.stdout + r.stderr
+    passed = [c for c in cases
+              if re.search(rf"^ok \d+ - [^\n]*{re.escape(c)}(?![^\n]*# SKIP)", out, re.M)]
+    assert r.returncode == 0 and len(passed) == len(cases), (
+        "tests/follow/ no longer passes the frequency cases "
+        + ", ".join(repr(c) for c in cases if c not in passed) + ": " + out.strip()[-400:])
+    return "ok", (f"the box draws {words['daily']} (chosen) and {words['weekly']} under "
+                  f"{legend.group(1)!r} and sends each, told apart in forced colours there and on "
+                  f"the manage page; {len(cases)} cases pass; "
+                  f"{len(migrations)} migrations, each told for both databases")
 
 
 @check("build", "the report endpoint accepts only what a page can name, and stores nothing about the reader")
@@ -83487,6 +83921,696 @@ def _until_by_the_reader():
                   "not; on 1 December neither; no day is hidden at once; the build's hidden stays")
 
 
+# ---- the pages that draw them (the pages' pass, 16 October 2026) -----------
+#
+# The town pages and places.json (with find.js's My Town card), the Officials
+# page's sixth tab, a re-elected or returning member's own page (with
+# app.js), and the district map's panel draw who the election sent, from
+# site/members_elect.json alone, through build_members_elect.for_pages and
+# the components elect_now, elect_race, elect_block and elect_line. The
+# person's rules, which each of these holds: a member-elect is never drawn
+# as sitting; a link goes to their own member's page and a new person has
+# none; and nothing is drawn on Organization Day, before the election, or
+# once the term is theirs. They read the fixture's election built twice --
+# the step run and not -- with the four builders run again over each, once
+# a run (_elect_built).
+
+_ELECT_BASE = "https://graniterecord.org"
+# The builders that draw a member-elect, in build_all's order. build_indexes
+# and build_committees follow the step too (_elect_step_order) but draw none.
+_ELECT_PAGES = (("build_pages.py", ["--out", "site"]),
+                ("build_legislator_pages.py", ["--site", "site", "--base", _ELECT_BASE]),
+                ("build_town_pages.py", ["--site", "site", "--base", _ELECT_BASE]),
+                ("build_district_map.py", ["--site", "site"]))
+# An element that is the members-elect's: whatever carries data-elect, whole.
+_ELECT_TAG = re.compile(r"<([a-z][a-z0-9]*)\b[^>]*\sdata-elect\b[^>]*>")
+
+
+def _elect_pages(root, day):
+    """The four page builders run again over `root`'s built site, dated
+    `day`. Returns what they printed."""
+    said = []
+    for script, args in _ELECT_PAGES:
+        r = _run([sys.executable, _paths.script(script), *args], cwd=root, capture_output=True,
+                 text=True, timeout=180, env={"GRANITE_BUILD_DATE": day})
+        tail = (r.stderr or r.stdout or "").strip().splitlines()
+        assert r.returncode == 0, (f"{script} dated {day} stopped: "
+                                   + (tail[-1][:200] if tail else "no output"))
+        said.append(r.stdout or "")
+    return "\n".join(said)
+
+
+def _elect_blocks(html):
+    """[(start, end), ...]: each element of `html` that carries data-elect,
+    its closing tag found by counting its own name in and out."""
+    spans, i = [], 0
+    while True:
+        m = _ELECT_TAG.search(html, i)
+        if not m:
+            return spans
+        tag = re.compile(r"<(/?)" + m.group(1) + r"\b[^>]*>")
+        depth, j = 1, m.end()
+        while depth:
+            n = tag.search(html, j)
+            assert n, f"an element with data-elect is never closed: {html[m.start():m.start() + 160]}"
+            depth += -1 if n.group(1) else 1
+            j = n.end()
+        spans.append((m.start(), j))
+        i = j
+
+
+def _elect_strip(html):
+    """`html` with every element carrying data-elect taken out whole, and a
+    member page's GR_ELECT: what the page is once the members-elect are
+    taken out of it."""
+    out, i = [], 0
+    for a, b in _elect_blocks(html):
+        out.append(html[i:a])
+        i = b
+    return re.sub(r"window\.GR_ELECT=\{[^{}]*\};", "", "".join(out) + html[i:])
+
+
+def _elect_built():
+    """(with, without, the file, what the builders printed with it): two
+    copies of the fixture's built site with the election's results and the
+    person's file (_elect_fixture, _ELECT_HAND, which names winners and holds
+    and marks races not final), the step run on _ELECT_IN in one and the file
+    taken out of the other, and the four page builders run again over both,
+    dated _ELECT_IN. Once a run, for reading only: a check that writes takes
+    a copy."""
+    def build():
+        a, b = _shared_root("gr-elect-with-"), _shared_root("gr-elect-without-")
+        _elect_fixture(a)
+        code, out, doc = _elect_run(a, _ELECT_IN, hand=_ELECT_HAND)
+        assert code == 0 and doc, f"the step wrote no file on {_ELECT_IN}: {out[-300:]}"
+        shutil.copytree(a, b, dirs_exist_ok=True)
+        (b / "site" / "members_elect.json").unlink()
+        said = _elect_pages(a, _ELECT_IN)
+        _elect_pages(b, _ELECT_IN)
+        return a, b, doc, said
+    return _once_a_run("the members-elect pages, with the file and without", build)
+
+
+_ELECT_CARD_JS = r"""
+require("./stub.js");
+const fs = require("fs"), vm = require("vm");
+vm.runInThisContext(fs.readFileSync("./find.js", "utf8"), { filename: "find.js" });
+const F = vm.runInThisContext("({YT, ytSeats})");
+const out = {};
+for (const name of ["with", "without"]) {
+  const d = JSON.parse(fs.readFileSync("./" + name + ".json", "utf8"));
+  F.YT.data = d; out[name] = {};
+  for (const p of d.places) out[name][p.s] = F.ytSeats(p);
+}
+process.stdout.write("\n@@" + JSON.stringify(out));
+"""
+
+
+def _elect_card(with_places, without_places):
+    """{"with": {slug: html}, "without": {...}}: find.js's My Town card
+    (ytSeats) for every place, drawn in node from each places.json, with
+    components.js loaded first as every page loads it. None without node."""
+    node = shutil.which("node") or shutil.which("node.exe")
+    if not node:
+        assert not os.environ.get("GITHUB_ACTIONS"), "node is not on PATH on the nightly"
+        return None
+    root = Path(tempfile.mkdtemp(prefix="gr-elect-card-"))
+    try:
+        (root / "stub.js").write_text(Path("tests/dom_stub.js").read_text(encoding="utf-8"),
+                                      encoding="utf-8")
+        (root / "find.js").write_text(_with_components(
+            Path("src/pages/find.js").read_text(encoding="utf-8")), encoding="utf-8")
+        (root / "with.json").write_bytes(with_places.read_bytes())
+        (root / "without.json").write_bytes(without_places.read_bytes())
+        (root / "go.js").write_text(_ELECT_CARD_JS, encoding="utf-8")
+        r = _run([node, "go.js"], cwd=root, capture_output=True, text=True, encoding="utf-8",
+                 timeout=60)
+        said = (r.stderr or r.stdout or "").strip()
+        assert r.returncode == 0 and "@@" in (r.stdout or ""), (
+            "find.js would not draw the My Town card in node: " + said[-300:])
+        return json.loads(r.stdout.rsplit("@@", 1)[1])
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+
+
+@check("build", "members-elect on the pages: never drawn as sitting -- the roster, former.json, "
+                "places.json's members and the census the same with the file and without, and "
+                "every page, places.json, the map's file and the My Town card the same once what "
+                "carries data-elect is taken out")
+def _elect_pages_never_sitting():
+    """The plan's check 1, for the pages (the person's decisions of 16 October
+    2026: members-elect are drawn from site/members_elect.json alone and
+    never as sitting members). On the fixture's election, built with the file
+    and without it on the same day: legislators.json and former.json are the
+    same byte for byte; places.json is the same but for its "elect" and each
+    place's "e", so "m" and "people" -- who sits -- are untouched; the
+    night's census (nightly.census) is the same but for the one file added;
+    district_map.json is the same but for its "elect", its fill the sitting
+    members' as before; every other file is the same byte for byte; and
+    every page is the same byte for byte once each element carrying
+    data-elect is taken out whole -- so no member-elect's chip, and no
+    "Serving now", stands anywhere outside one. And find.js's My Town card
+    is the same once its data-elect blocks are taken out. Silence is not
+    success: the file must also have been drawn, on the Officials page, every
+    town page, the pages of the members it links, places.json, the map's file
+    and the card. No reason the person gave reaches any page."""
+    absent = _elect_absent()
+    if absent:
+        return "skip", "not here: " + ", ".join(absent)
+    import nightly as NI
+    w, o, doc, _said = _elect_built()
+    ws, os_ = w / "site", o / "site"
+    bad = []
+    for name in ("legislators.json", "former.json"):
+        if (ws / name).read_bytes() != (os_ / name).read_bytes():
+            bad.append(f"{name} differs with the file")
+    cw, co = NI.census(ws), NI.census(os_)
+    if {**cw, "files": cw["files"] - 1} != co:
+        bad.append(f"the census reads {cw} with the file and {co} without")
+    pw, po = (json.loads((s / "places.json").read_text(encoding="utf-8")) for s in (ws, os_))
+    keyed = [p["s"] for p in pw["places"] if p.get("e")]
+    if "elect" not in pw or not keyed:
+        bad.append("places.json carries no members-elect with the file")
+    if {**{k: v for k, v in pw.items() if k != "elect"},
+        "places": [{k: v for k, v in p.items() if k != "e"} for p in pw["places"]]} != po:
+        bad.append("places.json differs with the file beyond its \"elect\" and \"e\" (its "
+                   "members, people or anything else)")
+    dw, do = (json.loads((s / "district_map.json").read_text(encoding="utf-8")) for s in (ws, os_))
+    if not (dw.get("elect") or {}).get("races"):
+        bad.append("district_map.json carries no members-elect with the file")
+    if {k: v for k, v in dw.items() if k != "elect"} != do:
+        bad.append("district_map.json differs with the file beyond its \"elect\" -- its fill "
+                   + ("among it" if dw.get("fill") != do.get("fill") else "the same"))
+    files = {f.relative_to(ws).as_posix() for f in ws.rglob("*") if f.is_file()}
+    other = {f.relative_to(os_).as_posix() for f in os_.rglob("*") if f.is_file()}
+    if files - other != {"members_elect.json"} or other - files:
+        bad.append(f"the site's files differ: {sorted(files ^ other)[:6]}")
+    drawn, differ = [], []
+    for rel in sorted(files & other):
+        a, b = (ws / rel).read_bytes(), (os_ / rel).read_bytes()
+        if rel.endswith(".html"):
+            t = a.decode("utf-8")
+            if "data-elect" in t:
+                drawn.append(rel)
+            if _elect_strip(t).encode("utf-8") != b:
+                differ.append(rel)
+            if "PRIVATE" in t:
+                bad.append(f"a reason from the person's file is on {rel}")
+        elif rel not in ("places.json", "district_map.json") and a != b:
+            differ.append(rel)
+    if differ:
+        bad.append(f"{len(differ)} file(s) differ with the file once their data-elect is taken "
+                   f"out: {differ[:6]}")
+    towns = sorted(f"town/{f.name}" for f in (ws / "town").glob("*.html"))
+    pages = {f"legislator/{e['s']}.html" for r in doc["races"].values() for e in r["elected"]
+             if e.get("s")}
+    unseen = sorted(({"officials.html"} | set(towns) | pages) - set(drawn))
+    if unseen:
+        bad.append(f"no members-elect drawn on {unseen[:6]}")
+    card = _elect_card(ws / "places.json", os_ / "places.json")
+    if card is not None:
+        for s in keyed:
+            if "data-elect" not in card["with"][s]:
+                bad.append(f"the My Town card for {s} draws no members-elect")
+        for s, html in card["with"].items():
+            if _elect_strip(html) != card["without"][s]:
+                bad.append(f"the My Town card for {s} differs with the file outside data-elect")
+    assert not bad, "; ".join(bad)
+    return "ok", (f"the roster, former.json and the census the same; {len(drawn)} pages drawing "
+                  f"them, every one the same without its data-elect, {len(files) - len(drawn)} "
+                  "other files the same but places.json's and the map's own keys"
+                  + ("; the My Town card the same outside its blocks" if card else
+                     "; node not here for the card"))
+
+
+@check("build", "members-elect on the pages: each one linked goes to their own member's page, a "
+                "new person to none, and the line is on the own page of each re-elected or "
+                "returning member and of nobody else")
+def _elect_pages_link_own():
+    """The plan's check 2, for the pages (the person's decisions of 16 October
+    2026). On the fixture's election with the person's file: every link
+    inside an element carrying data-elect -- on the town pages, the Officials
+    tab and the My Town card -- goes to the page of the member the file
+    names, that page's GR_MEMBER the file's id, and every member the file
+    links is linked somewhere; Pat Newell, new and cross-nominated, is drawn
+    on the neutral chip with both letters and never as a link; and the one
+    line -- "Elected November 3, 2026, for Rockingham district 6. Takes
+    office December 2, 2026." -- is on the own page of Jodi Nelson, Debra
+    Altschiller, Michael Vose and the John Smith the person's file names
+    (900002), each naming the race's own county and district (Vose's is
+    district 6, where his former seat was 5), and on no other page: not on
+    the other John Smith's (900003), nor on any sitting member's the list
+    does not name. app.js draws the same line from GR_ELECT, and only for
+    the member it names. And a place's "e" is its own races."""
+    absent = _elect_absent()
+    if absent:
+        return "skip", "not here: " + ", ".join(absent)
+    w, _o, doc, _said = _elect_built()
+    ws = w / "site"
+    want = {}
+    for key, r in doc["races"].items():
+        for e in r["elected"]:
+            if e.get("s"):
+                want[e["s"]] = (str(e["id"]), key)
+    assert {s: k for s, (_i, k) in want.items() if s.startswith(("michael-vose", "john-smith"))} \
+        == {"michael-vose-rock-5": "H|Rockingham|6", "john-smith-rock-3": "H|Rockingham|13"} \
+        and len(want) == 4, f"the fixture's file links {want}, not the four the check is about"
+    bad, linked = [], set()
+
+    def member_of(slug):
+        f = ws / "legislator" / f"{slug}.html"
+        m = re.search(r'window\.GR_MEMBER=("[^"]*")', f.read_text(encoding="utf-8")) \
+            if f.exists() else None
+        return json.loads(m.group(1)) if m else None
+    sources = {f.relative_to(ws).as_posix(): f.read_text(encoding="utf-8")
+               for f in ws.rglob("*.html")}
+    card = _elect_card(ws / "places.json", ws / "places.json")
+    if card is not None:
+        sources.update({f"(My Town card) {s}": h for s, h in card["with"].items()})
+    for rel, text in sources.items():
+        for a, b in _elect_blocks(text):
+            for slug in re.findall(r'href="/?legislator/([a-z0-9-]+?)(?:\.html)?"', text[a:b]):
+                linked.add(slug)
+                if slug not in want:
+                    bad.append(f"{rel} links a member-elect to {slug}, which the file names for "
+                               "nobody")
+                elif member_of(slug) != want[slug][0]:
+                    bad.append(f"{rel} links a member-elect to {slug}, the page of "
+                               f"{member_of(slug)}, not {want[slug][0]}")
+        if re.search(r"<a\b[^>]*>Pat Newell", text):
+            bad.append(f"{rel} links Pat Newell, a new person")
+    if set(want) - linked:
+        bad.append(f"never linked: {sorted(set(want) - linked)}")
+    newell = ('<span class="mchip p-X">Pat Newell <span class="mtag">(R/D)</span></span>')
+    for rel in ("officials.html", "town/brentwood.html", "town/danville.html", "town/fremont.html"):
+        if newell not in sources[rel]:
+            bad.append(f"{rel} does not draw Pat Newell on the neutral chip with both letters")
+    words = {"H|Rockingham|13": "Rockingham district 13", "H|Rockingham|6": "Rockingham district 6",
+             "S|24": "Senate District 24"}
+    lines = {}
+    for f in (ws / "legislator").glob("*.html"):
+        t = f.read_text(encoding="utf-8")
+        line = re.findall(r'<p class="elline" data-elect data-until="2026-12-02">(.*?)</p>', t)
+        g = re.findall(r"window\.GR_ELECT=(\{[^{}]*\});", t)
+        if line or g or "data-elect" in t:
+            lines[f.stem] = (line, [json.loads(x) for x in g])
+    if set(lines) != set(want):
+        bad.append(f"the line is on {sorted(lines)}, not on {sorted(want)}")
+    for slug, (line, g) in lines.items():
+        mid, key = want.get(slug, ("", ""))
+        if line != [f"Elected November 3, 2026, for {words.get(key)}. Takes office December 2, "
+                    "2026."] or g != [{"id": mid, "key": key, "election": "2026-11-03",
+                                       "takes_office": "2026-12-02"}]:
+            bad.append(f"{slug}'s page says {line} and hands app.js {g}")
+    for p in json.loads((ws / "places.json").read_text(encoding="utf-8"))["places"]:
+        own = [f"H|{h[0]}|{h[1]}" for h in p["h"]] + ([f"S|{p['sd']}"] if p.get("sd") else [])
+        if p.get("e") != own:
+            bad.append(f"places.json gives {p['s']} the races {p.get('e')}, not its own {own}")
+    vose = {"id": "900001", "name": "Vose, Michael", "chamber": "H", "former": True,
+            "display_full": "Rep. Michael Vose (R - Rock 5)", "party": "R"}
+    smith = dict(vose, id="900003", name="Smith, John", display_full="Rep. John Smith (R - Rock 20)")
+    g = json.dumps({"id": "900001", "key": "H|Rockingham|6", "election": "2026-11-03",
+                    "takes_office": "2026-12-02"})
+    got = _app_js("[(window.GR_ELECT=" + g + ", scope.renderMemberHead(" + json.dumps(vose) + ")), "
+                  "scope.renderMemberHead(" + json.dumps(smith) + "), "
+                  "(delete window.GR_ELECT, scope.renderMemberHead(" + json.dumps(vose) + "))]",
+                  names=("renderMemberHead",))
+    if got is not None:
+        line = ('<p class="elline" data-elect data-until="2026-12-02">Elected November 3, 2026, '
+                "for Rockingham district 6. Takes office December 2, 2026.</p>")
+        if [line in h for h in got] != [True, False, False]:
+            bad.append("app.js draws the line on the member's page "
+                       f"{[line in h for h in got]}: wanted on Vose's with GR_ELECT naming him, "
+                       "not on another member's, and not without GR_ELECT")
+    assert not bad, "; ".join(bad)
+    return "ok", (f"{len(linked)} members-elect linked, each to their own page; Pat Newell "
+                  "unlinked on the neutral chip; the line on the four own pages and no other, in "
+                  "the race's own words"
+                  + (", and app.js draws it only for the member named" if got is not None else ""))
+
+
+@check("build", "members-elect on the pages: nothing drawn on 2 December, before the election or "
+                "once the term is theirs, even from a file left behind; every element drawn "
+                "carries the day it retires", needs=("build_members_elect",))
+def _elect_pages_retire(BME):
+    """The plan's check 3, for the pages (the person's decisions of 16 October
+    2026: a block retires itself on 2 December). Every element the fixture's
+    pages draw with data-elect carries data-until="2026-12-02" and is not
+    hidden on 20 November. The pages hold the step's window themselves
+    (build_members_elect.for_pages), so a file a build left behind is not
+    drawn by a page builder run on its own: the four builders run on 2
+    December over the site with the file still in it draw no data-elect,
+    no tab, no "e" or "elect" in places.json, none in the map's file and no
+    GR_ELECT, and say why -- and the site they leave is, byte for byte but
+    the file itself, the site the same builders leave on that day with no
+    file at all. And for_pages, on the same file, gives it to the
+    pages on 20 November and 1 December and not on the election day, in
+    October, on 2 December, in January, once site/meta.json's newest term is
+    2027-2028, or with no meta.json; a file that will not read stops it."""
+    import contextlib
+    import io
+    absent = _elect_absent()
+    if absent:
+        return "skip", "not here: " + ", ".join(absent)
+    w, o, doc, _said = _elect_built()
+    bad = []
+    for f in sorted((w / "site").rglob("*.html")):
+        t = f.read_text(encoding="utf-8")
+        for a, b in _elect_blocks(t):
+            head = _ELECT_TAG.match(t, a).group(0)
+            if 'data-until="2026-12-02"' not in head or re.search(r"\shidden\b", head):
+                bad.append(f"{f.relative_to(w / 'site').as_posix()}: {head[:120]}")
+    root = Path(tempfile.mkdtemp(prefix="gr-elect-gone-"))
+    bare = Path(tempfile.mkdtemp(prefix="gr-elect-none-"))
+    saved = os.environ.get("GRANITE_BUILD_DATE")
+    try:
+        # THE PROOF THE PERSON ASKED FOR: on 2 December the site built with
+        # the last file still in it is the site built with none, byte for
+        # byte, but for the file itself -- every page, places.json and the
+        # map's file.
+        shutil.copytree(w, root, dirs_exist_ok=True)
+        shutil.copytree(o, bare, dirs_exist_ok=True)
+        site = root / "site"
+        said = _elect_pages(root, "2026-12-02")
+        _elect_pages(bare, "2026-12-02")
+        if said.count("is not drawn -- the build's day, 2026-12-02, is on or after "
+                      "Organization Day") != len(_ELECT_PAGES):
+            bad.append("the builders dated 2 December do not each say why the file is not drawn")
+        left = [f.relative_to(site).as_posix() for f in site.rglob("*.html")
+                if re.search(r"data-elect|GR_ELECT", f.read_text(encoding="utf-8"))]
+        places = json.loads((site / "places.json").read_text(encoding="utf-8"))
+        if left or "elect" in places or any("e" in p for p in places["places"]) \
+                or "elect" in json.loads((site / "district_map.json").read_text(encoding="utf-8")):
+            bad.append(f"drawn on 2 December from a file left behind: {left[:6]}, places.json "
+                       f"{'elect' in places}, the map's file")
+        mine = {f.relative_to(site).as_posix(): f.read_bytes() for f in site.rglob("*")
+                if f.is_file()}
+        none = {f.relative_to(bare / "site").as_posix(): f.read_bytes()
+                for f in (bare / "site").rglob("*") if f.is_file()}
+        differ = sorted(k for k in set(mine) | set(none)
+                        if k != "members_elect.json" and mine.get(k) != none.get(k))
+        if differ:
+            bad.append(f"on 2 December the site built with the last file in it differs from the "
+                       f"site built with none: {differ[:6]}")
+        meta_p = site / "meta.json"
+        meta = json.loads(meta_p.read_text(encoding="utf-8"))
+
+        def shown(day, terms=None, no_meta=False):
+            os.environ["GRANITE_BUILD_DATE"] = day
+            if no_meta:
+                meta_p.unlink()
+            else:
+                meta_p.write_text(json.dumps(dict(meta, terms=terms or meta["terms"])),
+                                  encoding="utf-8")
+            with contextlib.redirect_stdout(io.StringIO()):
+                got = BME.for_pages(site)
+            return got is not None and got["races"] == doc["races"]
+        got = {label: shown(*args) for label, args in (
+            ("20 November", ("2026-11-20",)), ("1 December", ("2026-12-01",)),
+            ("the election day", ("2026-11-03",)), ("October", ("2026-10-16",)),
+            ("2 December", ("2026-12-02",)), ("January", ("2027-01-06",)),
+            ("2027-2028 the newest term", ("2026-11-20", ["2027-2028"] + meta["terms"])),
+            ("no meta.json", ("2026-11-20", None, True)))}
+        want = {k: k in ("20 November", "1 December") for k in got}
+        if got != want:
+            bad.append(f"for_pages draws the file {[k for k, v in got.items() if v]}, wanted on "
+                       f"{[k for k, v in want.items() if v]}")
+        meta_p.write_text(json.dumps(meta), encoding="utf-8")
+        os.environ["GRANITE_BUILD_DATE"] = "2026-11-20"
+        (site / "members_elect.json").write_text("{not json", encoding="utf-8")
+        try:
+            with contextlib.redirect_stdout(io.StringIO()):
+                BME.for_pages(site)
+            bad.append("a file that will not read is drawn from, or passed over in silence")
+        except SystemExit as e:
+            if "will not read" not in str(e):
+                bad.append(f"a file that will not read stops for_pages saying {e}")
+    finally:
+        if saved is None:
+            os.environ.pop("GRANITE_BUILD_DATE", None)
+        else:
+            os.environ["GRANITE_BUILD_DATE"] = saved
+        shutil.rmtree(root, ignore_errors=True)
+        shutil.rmtree(bare, ignore_errors=True)
+    assert not bad, "; ".join(bad)
+    return "ok", ("every element drawn retires on 2 December; on that day a file left behind is "
+                  f"drawn nowhere, each builder says why, and the site's {len(none):,} files are "
+                  "the site built with no file, byte for byte; drawn on 20 November and 1 "
+                  "December, not on the election day, in October, in January, once the term is "
+                  "theirs or with no meta.json; a file that will not read stops the page")
+
+
+# map.js mounted in node on dom_stub.js, with components.js loaded first as
+# every page loads it, and each district of the filled layers chosen in turn:
+# what the panel says of it. The stub's querySelector makes a new element on
+# every call, so the root here gives back the same one for the same selector,
+# and the panel mount() writes into can be read after it. No labels and no
+# zoom: the panel is what is read, and those need a browser's measure.
+_ELECT_MAP_JS = r"""
+require("./stub.js");
+globalThis.CSS = { escape: s => String(s) };
+document.createElementNS = (ns, t) => document.createElement(t);
+const fs = require("fs");
+const G = require("./map.js");
+function held() {
+  const e = document.createElement("div"), q = {};
+  e.querySelector = sel => (q[sel] = q[sel] || held());
+  e.style.setProperty = () => {};
+  return e;
+}
+(async () => {
+  const out = {};
+  for (const name of ["with", "without"]) {
+    const T = JSON.parse(fs.readFileSync("./" + name + ".json", "utf8"));
+    globalThis.fetch = async () => ({ ok: true, status: 200, json: async () => T });
+    const root = held();
+    const api = G.mount(root, { labels: "none", zoom: false, data: "/" + name + ".json" });
+    await api.ready;
+    const panel = root.querySelector(".gmpanel");
+    out[name] = {};
+    for (const lk of ["base", "float", "senate", "exec", "cong"])
+      for (const fid of Object.keys(T.layers[lk].f)) {
+        api.select(lk, fid);
+        out[name][lk + "|" + fid] = panel.innerHTML;
+      }
+  }
+  process.stdout.write("\n@@" + JSON.stringify(out));
+})().catch(e => { console.error(String(e && e.stack || e)); process.exit(1); });
+"""
+
+
+def _elect_map_panels(with_map, without_map):
+    """{"with": {"layer|district": html}, "without": {...}}: the district
+    map's panel (map.js's describe and seatLine) for every district of the
+    State House, floterial, Senate, Council and US House layers, drawn in
+    node from each district_map.json. None without node."""
+    node = shutil.which("node") or shutil.which("node.exe")
+    if not node:
+        assert not os.environ.get("GITHUB_ACTIONS"), "node is not on PATH on the nightly"
+        return None
+    root = Path(tempfile.mkdtemp(prefix="gr-elect-map-"))
+    try:
+        (root / "stub.js").write_text(Path("tests/dom_stub.js").read_text(encoding="utf-8"),
+                                      encoding="utf-8")
+        (root / "map.js").write_text(_with_components(
+            Path("src/pages/map.js").read_text(encoding="utf-8")), encoding="utf-8")
+        (root / "with.json").write_bytes(with_map.read_bytes())
+        (root / "without.json").write_bytes(without_map.read_bytes())
+        (root / "go.js").write_text(_ELECT_MAP_JS, encoding="utf-8")
+        r = _run([node, "go.js"], cwd=root, capture_output=True, text=True, encoding="utf-8",
+                 timeout=120)
+        said = (r.stderr or r.stdout or "").strip()
+        assert r.returncode == 0 and "@@" in (r.stdout or ""), (
+            "map.js would not draw the district panel in node: " + said[-300:])
+        return json.loads(r.stdout.rsplit("@@", 1)[1])
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+
+
+# "Serving now", then who sits (or the words for nobody), then the block: the
+# order the person's decision draws them in, on each surface's own markup.
+def _elect_order(sitting):
+    return re.compile(r'<p class="elnow" data-elect data-until="2026-12-02">Serving now</p>'
+                      r"(?:" + sitting + r')<div class="elect" data-elect data-until="2026-12-02">',
+                      re.S)
+
+
+@check("build", "members-elect in the district map's panel: drawn only for a district whose race "
+                "the file holds, every one inside data-elect with \"Serving now\" over the sitting "
+                "members, none among them, and nothing without the file")
+def _elect_map_panel():
+    """The plan's check 1 for the one surface the built pages do not hold:
+    the district map's panel, which map.js draws in the browser from
+    district_map.json's "elect" (the person's decisions of 16 October 2026: a
+    list in the panel, the fill unchanged, members-elect never drawn as
+    sitting). map.js is mounted in node with the fixture's district_map.json
+    built with the file and without, and every district of the State House,
+    floterial, Senate, Council and US House layers chosen in turn. Without
+    the file no panel carries data-elect or "Serving now". With it every
+    panel is the same as without once each element carrying data-elect is
+    taken out whole -- so no member-elect's chip stands among the sitting
+    members or anywhere outside a block -- and a panel draws one block for
+    each race of the file it shows (a State House district's own and its
+    floterial's), each after "Serving now" and who sits, and each holding
+    the race's members-elect by name. Silence is not success: every race of
+    the file is a district of the map, and is drawn."""
+    import html as _h
+    absent = _elect_absent()
+    if absent:
+        return "skip", "not here: " + ", ".join(absent)
+    w, o, doc, _said = _elect_built()
+    mw, mo = w / "site" / "district_map.json", o / "site" / "district_map.json"
+    dw = json.loads(mw.read_text(encoding="utf-8"))
+    races = (dw.get("elect") or {}).get("races") or {}
+    got = _elect_map_panels(mw, mo)
+    if got is None:
+        return "skip", "node is not here"
+    bad = []
+    if not races:
+        bad.append("the fixture's district_map.json carries no members-elect")
+    if set(got["with"]) != set(got["without"]) or not got["without"]:
+        bad.append("the map's districts differ with the file and without")
+    off = sorted(set(races) - set(got["with"]))
+    if off:
+        bad.append(f"races of the file that are no district of the map: {off[:6]}")
+    flo = {ws[0]: ws[1] for t in dw["places"].values() for ws in t["w"].values() if ws[1]}
+    order = _elect_order(r'<div class="chips">.*?</div>|<p class="quiet">Every seat is vacant\.</p>')
+    drawn = 0
+    for k, html in sorted(got["without"].items()):
+        if "data-elect" in html or "Serving now" in html:
+            bad.append(f"the panel for {k} draws a member-elect with no file: {html[:160]}")
+    for k, html in sorted(got["with"].items()):
+        if _elect_strip(html) != got["without"].get(k):
+            bad.append(f"the panel for {k} differs with the file outside its data-elect elements")
+        lk, fid = k.split("|", 1)
+        shows = [x for x in [k] + ([f"float|{flo[fid]}"] if lk == "base" and fid in flo else [])
+                 if x in races]
+        blocks = html.count('<div class="elect" data-elect')
+        nows = html.count('<p class="elnow" data-elect')
+        if not blocks == nows == len(order.findall(html)) == len(shows):
+            bad.append(f"the panel for {k} draws {blocks} block(s) and {nows} \"Serving now\", "
+                       f"{len(order.findall(html))} of them in order, for {len(shows)} race(s)")
+        inside = "".join(html[a:b] for a, b in _elect_blocks(html))
+        for e in (e for x in shows for e in races[x]["elected"]):
+            if _h.escape(e["n"]) not in inside:
+                bad.append(f"the panel for {k} does not name {e['n']} in its block")
+        drawn += bool(shows)
+    assert not bad, "; ".join(bad[:8])
+    return "ok", (f"{len(got['with'])} districts chosen: {drawn} panels draw the file's races, "
+                  "each block after \"Serving now\" and who sits, every panel the same as without "
+                  "the file outside its data-elect, and none drawn without it")
+
+
+@check("build", "members-elect: the approved words where the pages draw them -- the map's note in "
+                "both copies, \"Serving now\" over the sitting members on a town page's State House "
+                "and Senate cards and in the My Town card, and the Officials tab's label and "
+                "sentence")
+def _elect_pages_words():
+    """The person's words of 16 October 2026, read where the fixture's pages
+    and find.js draw them rather than from the source that writes them.
+
+    THE MAP'S NOTE, BOTH COPIES, WITH THE FILE AND WITHOUT: every town page's
+    District Map tab and the Officials page's map say "Each district coloured
+    by the party of its sitting members", and neither says "the members it
+    elected" -- the old words, which from the day after an election read as
+    the people just elected. They are the one change a page shows with no
+    file, so they are read in both builds.
+
+    "SERVING NOW" WHEREVER A BLOCK IS DRAWN BESIDE THE SITTING MEMBERS: on
+    every town page's Representatives tab, the State House card and the
+    State Senate card each draw, for every district, "Serving now", then who
+    sits (or that nobody is matched), then the block -- as many of each as
+    there are blocks, and at least one; and so does each House and Senate
+    seat of the My Town card (find.js, in node) for a place whose races the
+    file holds.
+
+    THE OFFICIALS TAB: its label is "Members-Elect (N)", N the winners the
+    file names, and its sentence is "Elected November 3, 2026, by the
+    Secretary of State's count. They take office on December 2, 2026; until
+    then the Legislators tab lists who holds each seat." -- the fixture's
+    days, the person's words."""
+    import html as _h
+    absent = _elect_absent()
+    if absent:
+        return "skip", "not here: " + ", ".join(absent)
+    w, o, doc, _said = _elect_built()
+    ws, os_ = w / "site", o / "site"
+    bad = []
+
+    def text(h):
+        return " ".join(_h.unescape(re.sub(r"<[^>]+>", "", h)).replace("’", "'").split())
+    note = "Each district coloured by the party of its sitting members"
+    towns = sorted((ws / "town").glob("*.html"))
+    if not towns:
+        bad.append("the fixture built no town page")
+    for site in (ws, os_):
+        for f in [site / "officials.html", *sorted((site / "town").glob("*.html"))]:
+            t = text(f.read_text(encoding="utf-8"))
+            end = "," if f.name == "officials.html" else "."
+            if note + end not in t or "members it elected" in t:
+                bad.append(f"{f.relative_to(site.parent).as_posix()} does not say \"{note}{end}\" "
+                           "in its map's note, or still says \"the members it elected\"")
+    sec = re.compile(r'<section class="twnsec[^"]*"><h3 class="twnh">(State House|State Senate[^<]*)'
+                     r"</h3>(.*?)</section>", re.S)
+    town_order = _elect_order(r'<ul class="offlist">.*?</ul>|<p class="note">[^<]*</p>')
+    senates = 0
+    for f in towns:
+        t = f.read_text(encoding="utf-8")
+        a = t.find('<div class="twnpane" id="representatives"')
+        b = t.find('<div class="twnpane"', a + 1)
+        cards = sec.findall(t[a:b if b > a else len(t)]) if a >= 0 else []
+        if not any(h == "State House" for h, _b in cards):
+            bad.append(f"town/{f.name}: no State House card on its Representatives tab")
+        for head, body in cards:
+            senates += head.startswith("State Senate")
+            n = body.count('<div class="elect" data-elect')
+            if not n or n != body.count('<p class="elnow" data-elect') \
+                    or n != len(town_order.findall(body)):
+                bad.append(f"town/{f.name}'s {head} card: {n} block(s), "
+                           f"{body.count('Serving now')} \"Serving now\", "
+                           f"{len(town_order.findall(body))} in order")
+    if not senates:
+        bad.append("no town page of the fixture has a State Senate card to read")
+    pw = json.loads((ws / "places.json").read_text(encoding="utf-8"))
+    card = _elect_card(ws / "places.json", os_ / "places.json")
+    yt_order = _elect_order(r'<ul class="ytppl">.*?</ul>|<p class="ytnote">[^<]*</p>')
+    seats = 0
+    if card is not None:
+        for p in pw["places"]:
+            for chunk in card["with"][p["s"]].split('<div class="ytseat">')[1:]:
+                office = re.match(r'<p class="ytoff">([^<]*)', chunk)
+                ch = {"State House": "H", "State Senate": "S"}.get(office.group(1) if office else "")
+                if not ch:
+                    continue
+                want = int(any(k.startswith(ch + "|") for k in p.get("e") or []))
+                got = (chunk.count('<div class="elect" data-elect'),
+                       chunk.count('<p class="elnow" data-elect'), len(yt_order.findall(chunk)))
+                seats += want
+                if got != (want, want, want):
+                    bad.append(f"the My Town card for {p['s']}, {office.group(1)}: blocks, "
+                               f"\"Serving now\" and the two in order {got}, not {want} each")
+        if not seats:
+            bad.append("the My Town card draws no House or Senate seat with members-elect")
+    t = (ws / "officials.html").read_text(encoding="utf-8")
+    n = sum(len(r["elected"]) for r in doc["races"].values())
+    tab = re.search(r'<button[^>]*\bid="tab-members-elect"[^>]*>(.*?)</button>', t, re.S)
+    if not n or not tab or text(tab.group(1)) != f"Members-Elect ({n:,})":
+        bad.append(f"the Officials tab reads {text(tab.group(1)) if tab else None!r}, not "
+                   f"\"Members-Elect ({n:,})\"")
+    pane = re.search(r'<div class="elpane"[^>]*>.*?<p class="ofwhy">(.*?)</p>', t, re.S)
+    said = ("Elected November 3, 2026, by the Secretary of State's count. They take office on "
+            "December 2, 2026; until then the Legislators tab lists who holds each seat.")
+    if not pane or text(pane.group(1)) != said:
+        bad.append(f"the Officials tab says {text(pane.group(1)) if pane else None!r}, not "
+                   f"{said!r}")
+    assert not bad, "; ".join(bad[:8])
+    return "ok", (f"the map's note in both copies on {len(towns) + 1} pages, with the file and "
+                  f"without; \"Serving now\" before who sits and the block on {len(towns)} town "
+                  f"pages' House and Senate cards"
+                  + (f" and {seats} seats of the My Town card" if card is not None else "")
+                  + f"; \"Members-Elect ({n:,})\" and its sentence")
+
+
 # ========================================================== the district map ==
 #
 # MAP V1 (9 October 2026): src/pages/map.js and map.css, a module a page
@@ -89045,6 +90169,558 @@ def _site_manifest_compares(SM, BI):
         shutil.rmtree(tmp, ignore_errors=True)
     return "ok", ("kept once, proved under a second seed, a changed, an added and a removed "
                   "file named, other data not comparable, a site not the record's refused")
+
+
+# ---- the sitemap audit's fixes (16 October 2026) -------------------------------
+#
+# Four read-only audits of the sitemap and a skeptic for each finding, on 16
+# October 2026. Each rule the fixes added is held here, and each check fails
+# if its rule is undone.
+
+def _rsa_fixture_table(RSA):
+    """A statute table of two chapters: RSA 3-A, and RSA 404, the one chapter
+    whose page is a folder's index.html (build_rsa.chapter_file)."""
+    cols = ["id", "TitleNo", "ChapterNo", "SectionNo", "Title", "Chapter", "Section", "SourceNote",
+            "rsa", "EntireRSA", "titleNumber", "url"]
+    return RSA.Table([dict(zip(cols, r)) for r in (
+        ["1", "I", "3-A", "3-A-1", "TITLE I THE STATE AND ITS GOVERNMENT", "CHAPTER 3-A POET LAUREATE",
+         "Section 3-A:1 Appointment.", "", "", "<codesect> The governor shall appoint.</codesect>", "1",
+         "I\\3-A\\3-A-1.htm"],
+        ["2", "XXXVII", "404", "404-1", "TITLE XXXVII INSURANCE",
+         "CHAPTER 404 SAFETY FUNDS OF FIRE INSURANCE COMPANIES", "Section 404:1 Definitions.", "", "",
+         "<codesect> In this chapter, see RSA 3-A:1.</codesect>", "37", "XXXVII\\404\\404-1.htm"])])
+
+
+@check("build", "every chapter's row on /laws carries a plain link to its page, beside the row's "
+       "summary, and RSA 404 is written everywhere at the address the host serves",
+       needs=("build_rsa", "rsa", "shell", "check_site", "build_bill_pages"))
+def _laws_rows_link_chapters(B, RSA, S, CS, BBP):
+    """THE SITEMAP AUDIT'S FIRST FINDING (16 October 2026): /laws linked no
+    chapter at all. The way to a chapter's page was written by LANDING_JS
+    only once a reader opened its row, which a crawler never does, and 315 of
+    the 1,786 chapter pages had no link from anywhere on the site. Each row
+    carries a plain <a href> now, beside its <summary> so the row still opens
+    on a click of the name; check_site.laws_linked refuses a site where a
+    chapter in the sitemap has none.
+
+    And /laws/404 (the fourth finding): the host answers it with a 308 to
+    /laws/404/, where chapter_file writes the page, so its address is written
+    with the slash wherever it is written -- the row's link, the sitemap, the
+    page's canonical, og:url and citation, a section's link to it, and a bill
+    page's link to the law (build_bill_pages.law_href)."""
+    import contextlib
+    import io
+    t = _rsa_fixture_table(RSA)
+    assert {"3-A", "404"} <= set(t.chapters), sorted(t.chapters)
+    assert B.chapter_path("404") == "/laws/404/" and B.chapter_path("3-A") == "/laws/3-a", (
+        f"chapter_path gives {B.chapter_path('404')!r} and {B.chapter_path('3-A')!r}, not the "
+        "addresses the host serves (/laws/404/ and /laws/3-a)")
+    assert B.href("404:1") == "/laws/404/#s1", f"a section of RSA 404 is linked at {B.href('404:1')}"
+    data = {"bills": {}, "statute": {"404:1": ["3-A:1"]}, "enacted": {}, "asof": {"laws_through": 2025}}
+    root = Path(tempfile.mkdtemp(prefix="gr-lawlinks-"))
+    try:
+        (root / "idx").mkdir()
+        bills = B.Bills(root, "2025-2026")
+        tmpl = S.template(Path("site"))
+        page = B.landing_page(tmpl, t, data, "https://graniterecord.org", {}, {})
+        ch404 = B.chapter_page(tmpl, t, data, bills, "404", "https://graniterecord.org")
+        ch3a = B.chapter_page(tmpl, t, data, bills, "3-A", "https://graniterecord.org")
+        plain = CS._SCRIPTS.sub(" ", page)
+        for c in ("3-A", "404"):
+            row = plain[plain.index(f'<li class="lw-ch" data-ch="{c}"'):]
+            row = row[:row.index("</li>")]
+            want = f'<a class="lw-go" href="{B.chapter_path(c)}">'
+            assert want in row, f"Chapter {c}'s row on /laws carries no plain link to its page: {row[:300]}"
+            summary = row[row.index("<summary>"):row.index("</summary>")]
+            assert "<a " not in summary, (
+                f"Chapter {c}'s link is inside its <summary>, so a click on its name leaves the "
+                "page instead of opening the row")
+        assert "> .lw-go" in B.LANDING_JS, (
+            "the landing's script builds a chapter's address itself, not from the row's link, "
+            "so RSA 404's loses its slash there")
+        base = "https://graniterecord.org"
+        for what, pat in (("canonical", r'<link rel="canonical" href="([^"]*)"'),
+                          ("og:url", r'<meta property="og:url" content="([^"]*)"')):
+            got = re.findall(pat, ch404)
+            assert got == [f"{base}/laws/404/"], f"RSA 404's {what} is {got}, not {base}/laws/404/"
+        cites = re.findall(re.escape(base) + r"/laws/404/?", ch404[ch404.index('class="citeforms"'):])
+        assert cites and all(u == f"{base}/laws/404/" for u in cites), (
+            f"RSA 404's citation names {sorted(set(cites))}")
+        assert 'href="/laws/404/#s1"' in ch3a, "RSA 3-A's Cited by does not link RSA 404:1 at /laws/404/"
+        assert 'href="/laws/404#' not in ch404 + ch3a + page, "an address of RSA 404 without its slash is left"
+
+        # check_site holds every chapter in the sitemap to a plain link on /laws.
+        site = root / "site"
+        site.mkdir()
+        locs = [f"{base}/laws", f"{base}/laws/3-a", f"{base}/laws/404/"]
+        (site / "laws.html").write_text(page, encoding="utf-8")
+        errors = []
+        with contextlib.redirect_stdout(io.StringIO()):
+            CS.laws_linked(site, locs, base + "/", errors)
+        assert not errors, f"check_site refuses a /laws that links every chapter: {errors}"
+        (site / "laws.html").write_text(re.sub(r'<a class="lw-go"[^>]*>[^<]*</a>', "", page),
+                                        encoding="utf-8")
+        with contextlib.redirect_stdout(io.StringIO()):
+            CS.laws_linked(site, locs, base + "/", errors)
+        assert errors and "no plain link on /laws" in errors[0] and "/laws/404/" in errors[0], (
+            f"check_site passes a /laws that links no chapter: {errors}")
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    saved = list(BBP._LAWS)
+    BBP._LAWS[:] = [{"404", "3-A"}]
+    try:
+        assert BBP.law_href("RSA 404:5") == "/laws/404/#s5" and BBP.law_href("RSA 404") == "/laws/404/" \
+            and BBP.law_href("RSA 3-A:1") == "/laws/3-a#s1", (
+            "a bill page links RSA 404 at " + repr(BBP.law_href("RSA 404")))
+    finally:
+        BBP._LAWS[:] = saved
+    css = Path("src/pages/app.css").read_text(encoding="utf-8")
+    assert re.search(r"\.lw-ch\{[^}]*position:relative", css) and \
+        re.search(r"\.lw-go\{[^}]*position:absolute", css), (
+            "app.css does not set the chapter's link at its row's right")
+    return "ok", ("each chapter's row links its page beside the summary, check_site refuses a /laws "
+                  "that does not, and RSA 404 is /laws/404/ in its link, canonical, og:url, citation "
+                  "and a bill's link to it")
+
+
+@check("build", "every chapter address is written by one rule, RSA 404's with its slash: the bill "
+       "records, the guides, the app and the not-found page, and no file of the built fixture "
+       "writes it without", needs=("build_rsa", "build_site_v2", "guides", "build_pages", "rsa"))
+def _chapter_addresses_one_rule(BR, BSV, G, BP, RSA):
+    """RSA 404 WITHOUT ITS SLASH, OUTSIDE build_rsa (the review of the sitemap
+    fixes, 16 October 2026). build_rsa wrote /laws/404/ and seven other
+    writers still built a chapter's address themselves: the bill record's
+    statute links (build_site_v2.rsa_url), the guides' (guides.law_href) and
+    the Laws section's on a guide's page, a law's follow address
+    (build_feeds), the app's two (rsaHref, changedLine), and the not-found
+    page's script that lower-cases a typed citation. The Python ones ask
+    build_rsa.chapter_path; the two scripts, which cannot, carry
+    FOLDER_CHAPTERS as a list held to it here. And every file of the
+    fixture site, whose statute table carries RSA 404, is read for an
+    address of it without the slash, so a writer added later is caught by
+    what it writes rather than by its name."""
+    for ch in BR.FOLDER_CHAPTERS:
+        assert BR.chapter_file(Path("laws"), ch).name == "index.html" \
+            and BR.chapter_path(ch).endswith("/"), f"RSA {ch}'s file and address disagree"
+    assert BR.chapter_path("91-A", "4") == "/laws/91-a#s4" and BR.chapter_path("404", "5") == "/laws/404/#s5"
+    t = _rsa_fixture_table(RSA)
+    keep = list(BSV._STATUTES)
+    try:
+        BSV._STATUTES[:] = [t]
+        got = (BSV.rsa_url("404", "1"), BSV.rsa_url("404"), BSV.rsa_url("404", "99"), BSV.rsa_url("3-A", "1"))
+    finally:
+        BSV._STATUTES[:] = keep
+    assert got == ("/laws/404/#s1", "/laws/404/", "/laws/404/", "/laws/3-a#s1"), (
+        f"a bill record links RSA 404 at {got}")
+    assert (G.law_href("RSA 404:1, I"), G.law_href("RSA 91-A:4")) == ("/laws/404/#s1", "/laws/91-a#s4"), (
+        f"a guide links RSA 404:1 at {G.law_href('RSA 404:1, I')}")
+    js = Path("src/pages/app.js").read_text(encoding="utf-8")
+    for where, text, pat in (("app.js", js, r"const LAW_FOLDERS=(\[[^\]]*\]);"),
+                             ("build_pages.NOT_FOUND", BP.NOT_FOUND, r"var FOLDERS=(\[[^\]]*\]);")):
+        m = re.search(pat, text)
+        assert m and tuple(json.loads(m.group(1))) == tuple(BR.FOLDER_CHAPTERS), (
+            f"{where}'s list of chapters in a folder is {m and m.group(1)}, not build_rsa.FOLDER_CHAPTERS "
+            f"{BR.FOLDER_CHAPTERS}")
+    said = []
+    app = _app_js('[scope.rsaHref("404:1"), scope.rsaHref("404"), scope.rsaHref("91-A:4"), '
+                  'scope.changedLine({changed:["404:2"]})]', names=("rsaHref", "changedLine"))
+    if app is None:
+        said.append("node not here for app.js")
+    else:
+        assert app[:3] == ["/laws/404/#s1", "/laws/404/", "/laws/91-a#s4"] and 'href="/laws/404/#s2"' in app[3], (
+            f"app.js links RSA 404 at {app}")
+    node = shutil.which("node")
+    if node:
+        script = re.search(r"<script>(.*?)</script>", BP.NOT_FOUND, re.S).group(1)
+        prog = ("function go(p){var res=null;var location={pathname:p,search:'',hash:'',"
+                "replace:function(u){res=u;}};var document={getElementById:function(){return null;}};"
+                "(function(location,document){" + script + "})(location,document);return res;}\n"
+                "process.stdout.write(JSON.stringify([go('/laws/404:5'),go('/laws/91-A:4'),go('/laws/91-A')]));\n")
+        r = _node_file(node, prog, capture_output=True, text=True, timeout=60)
+        assert r.returncode == 0, f"the not-found page's script did not run: {(r.stderr or '')[-300:]}"
+        nf = json.loads(r.stdout)
+        assert nf == ["/laws/404/#s5", "/laws/91-a#s4", "/laws/91-a"], (
+            f"the not-found page sends /laws/404:5, /laws/91-A:4 and /laws/91-A to {nf}")
+    else:
+        said.append("node not here for the not-found page")
+    absent = [x for x in CHAIN_NEEDS + ["build_rsa.py"] if not _paths.locate(x).exists()]
+    if absent:
+        return "ok", "the writers held; the fixture site was not built: not here, " + ", ".join(absent)
+    shared, base, _ran, _days = _fixture_site_shared()
+    site = shared / "site"
+    bad, good = [], Counter()
+    for p in site.rglob("*"):
+        if p.suffix not in (".html", ".json", ".xml", ".txt", ".js") or not p.is_file():
+            continue
+        b = p.read_bytes()
+        rel = p.relative_to(site).as_posix()
+        bad += [f"{rel}: ...{b[max(0, m.start() - 60):m.end() + 10].decode('utf-8', 'replace')}"
+                for m in re.finditer(rb"/laws/404(?![/\w-])", b)]
+        if b.count(b"/laws/404/"):
+            good[rel] += b.count(b"/laws/404/")
+    assert not bad, f"{len(bad)} address(es) of RSA 404 without its slash in the built fixture: {bad[:3]}"
+    for rel in ("laws.html", "laws/404/index.html", "laws/91-a.html", "sitemap.xml"):
+        assert good.get(rel), f"the fixture's {rel} does not link RSA 404 at all, so this held nothing there"
+    return "ok", (f"bill records, guides, app.js and the not-found page give /laws/404/; "
+                  f"{sum(good.values())} addresses of it across {len(good)} built files, none without "
+                  "its slash" + ("; " + "; ".join(said) if said else ""))
+
+
+@check("build", "check_site holds the sitemap to the site both ways: an address only a folder answers "
+       "needs its slash, one file's limits are an error past them, and an indexable page is listed",
+       needs=("check_site",))
+def _sitemap_both_ways(CS):
+    """The sitemap audit's eighth finding (16 October 2026): no check would
+    catch a future break. check_site went from the sitemap to the files and
+    never back, called a folder served at an address the host redirects
+    (/laws/404, its fourth finding), only warned past one file's limits and
+    of a site with no sitemap at all. Here, on a site of a few files: a
+    folder answers its address with the slash and not without (a page of its
+    own beside it, as bills.html beside bills/, answers either way); past
+    one file's limit of 50,000 addresses is an error; no sitemap.xml is an
+    error; and an indexable page naming itself as canonical must be
+    listed, the exceptions read off the pages themselves -- noindex, a
+    canonical naming another page, a calendar week with no meeting card."""
+    import contextlib
+    import io
+    base = "https://graniterecord.org"
+    root = Path(tempfile.mkdtemp(prefix="gr-smboth-"))
+
+    def page(path, head="", body=""):
+        f = site / path
+        f.parent.mkdir(parents=True, exist_ok=True)
+        f.write_text(f"<!doctype html><html><head><title>x</title>{head}</head><body>{body}</body></html>",
+                     encoding="utf-8")
+
+    def canon(addr):
+        return f'<link rel="canonical" href="{base}{addr}">'
+
+    def run(locs):
+        (site / "sitemap.xml").write_text(
+            '<?xml version="1.0" encoding="UTF-8"?>\n<urlset>\n'
+            + "".join(f"<url><loc>{base}{u}</loc></url>\n" for u in locs) + "</urlset>\n",
+            encoding="utf-8")
+        errors, warnings = [], []
+        with contextlib.redirect_stdout(io.StringIO()):
+            CS.sitemap_checks(site, base, errors, warnings)
+        return errors, warnings
+
+    try:
+        site = root / "site"
+        page("index.html", canon("/"))
+        page("bills.html", canon("/bills"))
+        (site / "bills").mkdir()
+        page("laws/404/index.html", canon("/laws/404/"))
+        page("laws.html", canon("/laws"), '<a class="lw-go" href="/laws/404/">RSA 404</a>')
+        page("a.html", canon("/a"))
+        page("404.html", '<meta name="robots" content="noindex">')
+        page("calendar.html", canon("/calendar"), '<div class="wkpage calapp"><details class="calmeet"></details></div>')
+        page("calendar/2026-W11.html", canon("/calendar"), '<div class="wkpage calapp"></div>')
+        page("calendar/2026-W13.html", canon("/calendar/2026-W13"),
+             '<div class="wkpage calapp"><p class="calempty">No meetings scheduled.</p></div>'
+             '<script>x=\'<details class="calmeet">\'</script>')
+        assert not CS.served(site / "laws/404", folder=False) and CS.served(site / "laws/404"), (
+            "a folder's index.html is not told apart from an address with no slash")
+        assert CS.served(site / "bills", folder=False), "bills.html beside bills/ does not answer /bills"
+        good = ["/", "/bills", "/laws", "/laws/404/", "/a", "/calendar"]
+        errors, warnings = run(good)
+        assert not errors and not warnings, f"check_site refuses a sound sitemap: {errors} {warnings}"
+        errors, _w = run(["/", "/bills", "/laws", "/laws/404", "/a", "/calendar"])
+        assert any("answered only by a folder" in e and f"{base}/laws/404" in e for e in errors), (
+            f"check_site passes /laws/404, which the host answers with a 308: {errors}")
+        errors, _w = run([u for u in good if u != "/a"])
+        assert any("not in the sitemap" in e and f"{base}/a" in e for e in errors), (
+            f"check_site passes an indexable page the sitemap leaves out: {errors}")
+        # A SITE KEPT BETWEEN BUILDS (16 October 2026): with a build.json to
+        # say when the build began, an unlisted page older than that is one
+        # no builder wrote this time, and is warned of by name; one written
+        # since is still refused.
+        import time as _time
+        from datetime import datetime as _dtm
+        began = _time.time() - 600
+        (site / "build.json").write_text(json.dumps(
+            {"finished": _dtm.fromtimestamp(began + 300).isoformat(timespec="seconds"),
+             "seconds": 300.0}), encoding="utf-8")
+        assert abs(CS.build_began(site) - (began - 2)) < 1.5, (
+            f"check_site reads the build's start as {CS.build_began(site)}, not {began - 2}")
+        page("b.html", canon("/b"))
+        os.utime(site / "a.html", (began - 3600, began - 3600))
+        errors, warnings = run([u for u in good if u != "/a"] + ["/b"])
+        assert not any("not in the sitemap" in e for e in errors) and any(
+            "left from an earlier build" in w and f"{base}/a" in w and f"{base}/b" not in w for w in warnings), (
+            f"a page an earlier build left, unlisted, was refused or not named: {errors} {warnings}")
+        os.utime(site / "a.html", None)
+        errors, warnings = run([u for u in good if u != "/a"] + ["/b"])
+        assert any("not in the sitemap" in e and f"{base}/a" in e for e in errors) and not any(
+            "earlier build" in w for w in warnings), (
+            f"a page this build wrote, unlisted, was only warned of: {errors} {warnings}")
+        (site / "b.html").unlink()
+        (site / "build.json").unlink()
+        assert not any("2026-W13" in e for e in errors), (
+            "a week with no meeting card (one drawn by its script does not count) was refused as "
+            f"left out: {errors}")
+        page("calendar/2026-W13.html", canon("/calendar/2026-W13"),
+             '<div class="wkpage calapp"><details class="calmeet"></details></div>')
+        errors, _w = run(good)
+        assert any("not in the sitemap" in e and "2026-W13" in e for e in errors), (
+            f"check_site passes a week holding a meeting that the sitemap leaves out: {errors}")
+        (site / "calendar/2026-W13.html").unlink()
+        # Past one file's limit, held with the limit made small so the check
+        # does not stat 50,000 files; the limit itself is the protocol's.
+        assert (CS.SITEMAP_MAX_URLS, CS.SITEMAP_MAX_BYTES) == (50_000, 50_000_000), (
+            f"check_site's limits are {CS.SITEMAP_MAX_URLS:,} URLs and {CS.SITEMAP_MAX_BYTES:,} bytes, "
+            "not the 50,000 and 50 MB one sitemap may hold")
+        saved = CS.SITEMAP_MAX_URLS
+        CS.SITEMAP_MAX_URLS = len(good)
+        try:
+            errors, _w = run(good)
+            assert not any("past the" in e for e in errors), f"a sitemap at the limit is refused: {errors}"
+            errors, _w = run(good + ["/a"])
+            assert any(f"past the {len(good)} URLs" in e for e in errors), (
+                f"check_site only warns of a sitemap past one file's limit: {errors[:3]}")
+        finally:
+            CS.SITEMAP_MAX_URLS = saved
+        (site / "sitemap.xml").unlink()
+        errors, warnings = [], []
+        with contextlib.redirect_stdout(io.StringIO()):
+            CS.sitemap_checks(site, base, errors, warnings)
+        assert any("no sitemap.xml" in e for e in errors), (
+            f"check_site only warns of a site with no sitemap: {errors} {warnings}")
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    return "ok", ("/laws/404 refused and /laws/404/ passed; an unlisted indexable page refused, and "
+                  "one an earlier build left warned of by name; a noindex page, a copy and a week "
+                  "with no meeting left out; past one file's limit an error; no sitemap an error")
+
+
+@check("build", "check_live asks for the sitemap and robots.txt, reads the sitemap whole, and holds "
+       "it to the file in site/", needs=("check_live",))
+def _check_live_sitemap(CL):
+    """The sitemap audit's eighth finding (16 October 2026): nothing asked the
+    live host for /sitemap.xml or /robots.txt, so a deploy that left either
+    behind passed. Against a site served from memory: a sitemap served as XML
+    with the build's count and first and last address passes; another count
+    or another first address is a deploy that did not land, and so is the
+    home page in its place; robots.txt must name it; and the request reads up
+    to SITEMAP_LIMIT, past which it is not checked rather than passed."""
+    import contextlib as _cl
+    import io as _io
+    base = "http://site.invalid"
+    root = Path(tempfile.mkdtemp(prefix="gr-livesm-"))
+
+    def sm(*paths):
+        return ('<?xml version="1.0" encoding="UTF-8"?>\n<urlset>\n'
+                + "".join(f"<url><loc>{base}{p}</loc></url>\n" for p in paths) + "</urlset>\n").encode()
+
+    built = sm("/", "/bills", "/laws/404/")
+    (root / "sitemap.xml").write_bytes(built)
+    (root / "robots.txt").write_text(f"User-agent: *\nSitemap: {base}/sitemap.xml\n", encoding="utf-8")
+    page = b"<!doctype html><html>home</html>"
+    good = {
+        "/": (200, "text/html", page),
+        "/bills": (200, "text/html", b"<!doctype html><html>bills</html>"),
+        "/style.css": (200, "text/css", b"body{}"),
+        "/meta.json": (200, "application/json", b'{"terms": ["2025-2026"]}'),
+        "/idx/2025-2026.json": (200, "application/json", b'[{"id":"HB1"}]'),
+        "/legislators": (200, "text/html", b"<!doctype html><html>members</html>"),
+        "/feed/all.xml": (200, "application/rss+xml", b'<?xml version="1.0"?><rss/>'),
+        "/sitemap.xml": (200, "application/xml", built),
+        "/robots.txt": (200, "text/plain", f"User-agent: *\nSitemap: {base}/sitemap.xml\n".encode()),
+    }
+    served, limits = dict(good), {}
+
+    def fake_get(url, limit=400_000):
+        path = url[len(base):]
+        limits[path] = limit
+        st, ct, body = served.get(path, (404, "text/html", b"not found"))
+        return st, ct, body[:limit], None
+
+    def gate(**change):
+        served.clear()
+        served.update(good)
+        served.update(change)
+        saved = (CL.get, sys.argv)
+        CL.get = fake_get
+        sys.argv = ["check_live.py", "--gate", "--base", base, "--site", str(root)]
+        try:
+            with _cl.redirect_stdout(_io.StringIO()) as out:
+                code = CL.main()
+        finally:
+            CL.get, sys.argv = saved
+        return code, out.getvalue()
+
+    try:
+        code, out = gate()
+        assert code == 0, f"check_live --gate fails a site serving the sitemap it built:\n{out[-600:]}"
+        assert limits.get("/sitemap.xml", 0) >= CL.SITEMAP_LIMIT >= 50_000_000 and "/robots.txt" in limits, (
+            f"the sitemap was not read to 50 MB, or robots.txt not asked for: {limits}")
+        for why, change in (
+                ("the sitemap lists another count", {"/sitemap.xml": (200, "application/xml",
+                                                                      sm("/", "/bills"))}),
+                ("the sitemap starts elsewhere", {"/sitemap.xml": (200, "application/xml",
+                                                                   sm("/a", "/bills", "/laws/404/"))}),
+                ("the sitemap is the home page", {"/sitemap.xml": (200, "text/html", page)}),
+                ("the sitemap is not there", {"/sitemap.xml": (404, "text/html", b"not found")}),
+                ("robots.txt names no sitemap", {"/robots.txt": (200, "text/plain", b"User-agent: *\n")})):
+            code, out = gate(**change)
+            assert code == 1 and "DID NOT LAND" in out, (
+                f"check_live --gate passes a deploy when {why} ({code}):\n{out[-600:]}")
+        # A PREVIEW OR A DRY RUN (16 October 2026): asked at its own address,
+        # here site.invalid, while the robots.txt built for it names the
+        # site's sitemap. The served line is held to the built one, not to
+        # --base, so that passes, and a served line naming another fails.
+        live = "Sitemap: https://graniterecord.org/sitemap.xml\n"
+        (root / "robots.txt").write_text("User-agent: *\n" + live, encoding="utf-8")
+        code, out = gate(**{"/robots.txt": (200, "text/plain", ("User-agent: *\n" + live).encode())})
+        assert code == 0 and "/robots.txt is" not in out and "/robots.txt names" not in out, (
+                f"check_live --gate fails a preview whose robots.txt is the one built:\n{out[-600:]}")
+        code, out = gate()
+        assert code == 1 and "DID NOT LAND" in out and "/robots.txt is not the file" in out, (
+            f"check_live --gate passes a robots.txt naming another sitemap than the built one ({code}):\n"
+            f"{out[-600:]}")
+        (root / "robots.txt").write_text(f"User-agent: *\nSitemap: {base}/sitemap.xml\n", encoding="utf-8")
+        code, out = gate(**{"/sitemap.xml": (200, "text/plain", built)})
+        assert "served as text/plain, not as XML" in out, f"a sitemap served as text/plain was not said:\n{out[-400:]}"
+        saved = CL.SITEMAP_LIMIT
+        CL.SITEMAP_LIMIT = 50
+        try:
+            code, out = gate()
+        finally:
+            CL.SITEMAP_LIMIT = saved
+        assert code == CL.NOT_CHECKED and "DID NOT LAND" not in out, (
+            f"a sitemap larger than check_live reads passed, or was called a deploy that did not land "
+            f"({code}):\n{out[-600:]}")
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    return "ok", ("the sitemap read to 50 MB and held to site/'s count, first and last address; the "
+                  "home page in its place, another count, no robots.txt line each a deploy that did "
+                  "not land; robots.txt held to site/'s, so a preview passes; too large to read, not "
+                  "checked")
+
+
+@check("build", "a calendar week with no meeting at all is written and left out of the sitemap, and "
+       "listed once it holds one", needs=("build_calendar", "check_site"))
+def _week_without_meeting_unlisted(BC, CS):
+    """The sitemap audit's third finding (16 October 2026): 2026-W45, W48 and
+    W51 were listed, each a page saying only "No meetings are scheduled yet
+    for this week". week_page writes every week as before and lists one only
+    when it holds a meeting -- a cancelled one included, since its card is on
+    the page -- with the current week listed as /calendar whatever it holds.
+    check_site reads such a week off its page and does not call it missing."""
+    import datetime as _dt
+    root = Path(tempfile.mkdtemp(prefix="gr-wkempty-"))
+    try:
+        site, weeks, order, urls, _m = _cal_fixture(root)
+        today = _dt.date(*CAL_TODAY)
+        here = BC.week_key(today)
+        empty = [k for k in order if not BC.week_facts(k, weeks, today)["meets"]]
+        assert empty and any(k != here for k in empty), (
+            f"the fixture has no week without a meeting to hold this to: {order}")
+        base = "https://graniterecord.org"
+        for k in order:
+            addr = base + ("/calendar" if k == here else f"/calendar/{k}")
+            page = site / "calendar" / f"{k}.html"
+            assert page.is_file(), f"calendar/{k}.html was not written"
+            if k == here:
+                assert addr in urls, "the current week, /calendar, is not listed"
+            elif k in empty:
+                assert addr not in urls, f"{k} holds no meeting and is listed"
+                assert "No meetings are" in page.read_text(encoding="utf-8"), (
+                    f"{k}'s page no longer says it holds no meeting")
+                assert CS._no_meeting(page), f"check_site does not read {k} as a week with no meeting"
+            else:
+                assert addr in urls, f"{k} holds a meeting and is not listed"
+                assert not CS._no_meeting(page), f"check_site reads {k}, which holds a meeting, as empty"
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    return "ok", (f"{len(order)} weeks written, {sum(1 for k in empty if k != here)} with no meeting "
+                  "left out of the sitemap, the rest and /calendar listed")
+
+
+@check("build", "a bill's sitemap date stays put from one night to the next: a meeting to come does "
+       "not date it, a bill with no date has none, and three standing pages carry none",
+       needs=("build_bill_pages",))
+def _bill_lastmod_stays_put(B):
+    """The sitemap audit's fifth finding (16 October 2026): about 27 dates
+    moved every night with nothing changed. 17 bills of the sitting term with
+    a meeting still to come took the build's day, as did the three whose
+    docket names no date, and /about, /bills and /officials took it as
+    standing pages. lastmod() now dates a bill with a meeting to come by the
+    latest day in its docket that has happened, gives none where there is no
+    such day, and leaves every bill whose last action is past as it was; and
+    the fixture site's sitemap carries no date for those three pages while
+    the home page and /data, which do change every night, keep the build's."""
+    built = "2026-10-16"
+    ev = {"events": [{"date": "2026-03-11"}, {"date": "2026-10-15"}, {"date": "2026-10-22"}]}
+    cases = [({"last_action": "2026-03-11"}, None, "2026-03-11"),
+             ({"last_action": "2003-05-08"}, ev, "2003-05-08"),
+             ({"last_action": "2026-10-16"}, ev, "2026-10-16"),
+             ({"last_action": "2026-10-22"}, ev, "2026-10-15"),
+             ({"last_action": "2026-10-22"}, {"events": [{"date": "2026-10-22"}]}, None),
+             ({"last_action": "2026-10-22"}, None, None),
+             ({"last_action": ""}, ev, None), ({}, None, None)]
+    for b, d, want in cases:
+        got = B.lastmod(b, built, d)
+        assert got == want, f"lastmod({b}, {built}, {d}) is {got!r}, not {want!r}"
+    absent = [x for x in CHAIN_NEEDS if not _paths.locate(x).exists()]
+    if absent:
+        return "ok", f"{len(cases)} cases; the fixture site was not built: not here, " + ", ".join(absent)
+    shared, base, _ran, days = _fixture_site_shared()
+    sm = (shared / "site" / "sitemap.xml").read_text(encoding="utf-8")
+    on = {m.group(1): m.group(2) for m in
+          re.finditer(r"<url><loc>([^<]*)</loc>(?:<lastmod>([^<]*)</lastmod>)?</url>", sm)}
+    for addr in ("/about", "/bills", "/officials"):
+        assert base + addr in on and on[base + addr] is None, (
+            f"{addr} is not listed, or carries a date that moves every night: {on.get(base + addr)}")
+    for addr in ("/", "/data"):
+        assert on.get(base + addr) in {d.isoformat() for d in days}, (
+            f"{addr} does not carry the build's day: {on.get(base + addr)}")
+    late = [u for u, m in on.items() if m and m > max(days).isoformat()]
+    assert not late, f"sitemap dates after the build's day: {late[:3]}"
+    return "ok", (f"{len(cases)} cases of lastmod(); on the fixture, /about, /bills and /officials "
+                  "undated and / and /data dated by the build")
+
+
+@check("build", "the legislator, committee, town and directory builders put their addresses in the "
+       "sitemap through shell.sitemap_merge, which takes out what they no longer write",
+       needs=("shell",))
+def _sitemap_writers_merge(S):
+    """The sitemap audit's eighth finding (16 October 2026): four builders
+    added their addresses by asking whether each appeared anywhere in the
+    file's text, which takes /town/chester as listed wherever
+    /town/chesterfield is, and none took out an address it had stopped
+    writing. All four go through shell.sitemap_merge now, each owning its
+    part of the site whole. Here each one's source is read for the call and
+    for the text test it replaced, and sitemap_merge is held to the two
+    cases: the shorter address added beside the longer, and a stale one of
+    the builder's own taken out while another builder's stays."""
+    owns = {"build_legislator_pages.py": '"/legislator"', "build_committees.py": '"/committee"',
+            "build_town_pages.py": '"/town"', "build_indexes.py": '"/directory"'}
+    for f, own in owns.items():
+        src = _paths.locate(f).read_text(encoding="utf-8")
+        assert re.search(r"S\.sitemap_merge\([^)]*" + re.escape(own) + r"\)", src), (
+            f"{f} does not put its addresses in the sitemap through S.sitemap_merge(..., {own})")
+        assert not re.search(r"not in text\b", src), (
+            f"{f} still tests whether an address is anywhere in the sitemap's text")
+    base = "https://graniterecord.org"
+    root = Path(tempfile.mkdtemp(prefix="gr-smmerge-"))
+    try:
+        sm = root / "sitemap.xml"
+        sm.write_text('<?xml version="1.0" encoding="UTF-8"?>\n<urlset>\n'
+                      f"<url><loc>{base}/town/chesterfield</loc></url>\n"
+                      f"<url><loc>{base}/town/gone</loc></url>\n"
+                      f"<url><loc>{base}/towns-elsewhere</loc></url>\n</urlset>\n", encoding="utf-8")
+        added, dropped = S.sitemap_merge(root, base, [f"{base}/town/chesterfield", f"{base}/town/chester"],
+                                         "/town")
+        locs = re.findall(r"<loc>([^<]*)</loc>", sm.read_text(encoding="utf-8"))
+        assert f"{base}/town/chester" in locs and locs.count(f"{base}/town/chesterfield") == 1, (
+            f"the shorter address was not added beside the longer, or one was doubled: {locs}")
+        assert f"{base}/town/gone" not in locs and f"{base}/towns-elsewhere" in locs \
+            and (added, dropped) == (1, 1), (
+            f"a town no longer written was kept, or another builder's address taken: {locs}")
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    return "ok", "four builders merge through sitemap_merge; chester added beside chesterfield, a stale town out"
 
 
 if __name__ == "__main__":

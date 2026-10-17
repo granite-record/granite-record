@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.208
+// GRANITE_VERSION: 2026-09-07.212
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -2489,7 +2489,15 @@ let rsaText="";
 const RSA_SHAPE=/^\s*(?:rsa\s*)?(\d{1,3}(?:-[a-z]{1,2})?)(?:\s*:\s*([0-9]{1,4}(?:\.[0-9]{1,2})?(?:-[a-z0-9]{1,4})?))?\s*$/i;
 function rsaNorm(t){const m=RSA_SHAPE.exec(String(t||""));return m?m[1].toUpperCase()+(m[2]?":"+m[2].toLowerCase():""):"";}
 function rsaHas(b,want){return (b.rsa||[]).includes(want);}
-function rsaHref(a){const p=a.split(":");return "/laws/"+p[0].toLowerCase()+(p[1]?"#s"+p[1]:"");}
+// A CHAPTER'S ADDRESS, AS build_rsa.chapter_path WRITES IT (the sitemap
+// audit, 16 October 2026): RSA 404's page is a folder's index.html, which the
+// host serves at the address with a slash and redirects to from the one
+// without. LAW_FOLDERS is build_rsa.FOLDER_CHAPTERS, and preflight holds the
+// two to each other. Every chapter address this file draws comes from here.
+const LAW_FOLDERS=["404"];
+function lawPath(ch,sec){const s=String(ch).toLowerCase();
+  return "/laws/"+s+(LAW_FOLDERS.includes(s)?"/":"")+(sec?"#s"+sec:"");}
+function rsaHref(a){const p=a.split(":");return lawPath(p[0],p[1]);}
 let HAS_RSA=null;
 function hasRsa(){if(HAS_RSA===null&&IDX&&IDX.length)HAS_RSA=IDX.some(b=>b.rsa);return !!HAS_RSA;}
 // On a phone the filter column stacks ABOVE the results, and an open
@@ -3858,7 +3866,7 @@ const RSA_SHOWN=8;
 function changedLine(d){
   const a=d.changed||[];
   if(!a.length)return "";
-  const link=x=>{const p=x.split(":");return `<a class="rsa" href="/laws/${esc(p[0].toLowerCase())}#s${esc(p[1]||"")}">${esc(x)}</a>`;};
+  const link=x=>{const p=x.split(":");return `<a class="rsa" href="${esc(lawPath(p[0],p[1]||""))}">${esc(x)}</a>`;};
   const lead=a.length===1?"Changed RSA":"Changed these statutes:";
   if(a.length<=RSA_SHOWN+2)return `<p class="rsaline">${lead} ${a.map(link).join(", ")}</p>`;
   return `<div class="rsaline">${lead} <span class="rsaset">${a.slice(0,RSA_SHOWN).map(link).join(", ")}</span>`
@@ -5712,13 +5720,23 @@ function followMailForm(key){
   // ONE PANEL WITH CHOOSING YOUR TOWN (the person's choice A, 14 October
   // 2026): a heading, one sentence, one field and its button, and the
   // promises in the small print under them -- the same words as before.
+  // DAILY OR WEEKLY BESIDE THE ADDRESS (the person, 16 October 2026), Daily
+  // chosen, just before the button: the manage page's own control, in its
+  // words and its markup (manage.js, "How often"), so the sign-up and the
+  // page that changes it later ask the same question the same way. Before
+  // this a sign-up was always daily. A div, not a p, holds the row: a
+  // fieldset is not allowed inside a p, and the parser would close the p
+  // before it and leave the button outside the row.
   return `<form class="followform" novalidate>
     <p class="panh">Follow by email</p>
     <p class="pansay">Daily or weekly: ${esc(FOLLOWS[key.split(":")[0]]||"what is new here")}.</p>
-    <p class="followaddr"><label><span class="sr">Your email address</span>
+    <div class="followaddr"><label><span class="sr">Your email address</span>
       <input type="email" name="email" autocomplete="email" maxlength="254" required
         placeholder="you@example.com"></label>
-      <button type="submit" class="followsend">Email me updates</button></p>
+      <fieldset class="followfreq"><legend class="sr">Send me updates</legend>
+        <label><input type="radio" name="frequency" value="daily" checked><span>Daily</span></label>
+        <label><input type="radio" name="frequency" value="weekly"><span>Weekly</span></label></fieldset>
+      <button type="submit" class="followsend">Email me updates</button></div>
     <p class="panfine">Nothing is sent until you confirm from the first email, and every email has a link to
       change what you follow or to unsubscribe, which deletes your address from our database at once.</p>
     <p style="position:absolute;left:-9999px" aria-hidden="true"><label>Leave this empty
@@ -5830,10 +5848,15 @@ async function followSubmit(e,form){
     btn.disabled=false;return;
   }
   st.textContent="Sending…";
+  // The radio that is checked; daily where none is, which is what the
+  // sign-up makes of a request that names none.
+  const fq=form.querySelector('input[name="frequency"]:checked');
+  const freq=fq&&fq.value==="weekly"?"weekly":"daily";
   let said;
   try{
     const r=await fetch("/api/follow/signup",{method:"POST",headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({email,kind,ref:rest.join(":"),turnstile:pass,website:form.elements.website.value})});
+      body:JSON.stringify({email,kind,ref:rest.join(":"),frequency:freq,turnstile:pass,
+        website:form.elements.website.value})});
     const j=await r.json().catch(()=>({}));
     said=r.status===202?"If this address can take email, a confirmation is on its way. "+
       "Nothing is sent until you confirm from it.":(FOLLOW_SAID[j.why]||FOLLOW_SAID.unavailable);
@@ -6931,7 +6954,18 @@ function renderMemberHead(m){
   const note=former?`<p class="rnote">${!/^(Rep|Sen)\. /.test(plain)?`Former member${
     yrs?` &middot; on record ${esc(yrs)}`:""}. `:""}This page is their record in the
     General Court; it is not a current directory entry.</p>`:"";
-  return head+note;
+  // A MEMBER-ELECT'S ONE LINE (the person's decisions of 16 October 2026):
+  // "Elected November 3, 2026, for Rockingham district 13. Takes office
+  // December 2, 2026.", which build_legislator_pages hands this page in
+  // GR_ELECT from site/members_elect.json, and only on the page of the
+  // member it names -- so the id is held to the record being drawn, and a
+  // reader who goes on to another member here is shown nothing of it.
+  // components.js's electLine, handed no day, leaves the retiring to the
+  // reader's clock. The heading above is left as it is until they sit.
+  const G=window.GR_ELECT;
+  const elect=G&&typeof electLine==="function"&&String(G.id)===String(m.id)
+    ?electLine(G.key,G.election,G.takes_office,null):"";
+  return head+note+elect;
 }
 
 // THE TERM AT A GLANCE (the person's feedback of 9 October 2026, item 7:
@@ -7550,9 +7584,13 @@ function renderCommitteeHead(c){
   // "The House Special Committee on Housing", not "The House Committee on
   // Special Committee on Housing" (components.js's cmteTitle, 16 October 2026).
   const line=`The ${esc(cmteTitle(c.name||"",ch))}${chair?`, chaired by ${chair}`:""}.`;
-  const notes=[c.archived?`Not on the General Court&rsquo;s list of committees today.
-      Its bills and meetings on this record run ${esc(c.archived.years||"")}; the
-      records do not say whether it was renamed, divided, merged or ended.`:"",
+  // A FORMER COMMITTEE, SAID PLAINLY (the person, 16 October 2026). The note
+  // this replaced explained what the records cannot say -- renamed, divided,
+  // merged or ended -- and readers found it confusing. "No longer meets" is
+  // the search's own line for the same committees.
+  const ran=c.archived&&c.archived.years;
+  const notes=[c.archived?`A former committee. It no longer meets${ran
+      ?`; its bills and meetings here run from ${esc(ran)}`:""}.`:"",
     (c.names||[]).length?`Named ${c.names.map(n=>`<b>${esc(n.name)}</b> (${esc(n.years||"")})`)
       .join(" and ")} on this record&rsquo;s earlier bills and meetings, which the General
       Court&rsquo;s own records file under this committee.`:"",next].filter(Boolean);

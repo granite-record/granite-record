@@ -20,8 +20,8 @@
  *                           until you turn them back on"). Fields: listed (every
  *                           record the page showed a box for) and keep (the boxes
  *                           ticked); add_bill, add_law (typed: "HB 1442",
- *                           "RSA 91-A") and add (a legislator or committee
- *                           picked from the list); frequency, detail, and
+ *                           "RSA 91-A") and add (every legislator and
+ *                           committee ticked in the lists); frequency, detail, and
  *                           pause = none | until (with pause_until) | forever.
  *                           Only what tonight's current.json lists can be
  *                           added; the link proves the inbox, so nothing more
@@ -41,13 +41,21 @@ import { MAX_FOLLOWS, addDays, clock, errName, esc, fallbackLabel, isoSeconds, k
   from "../../../workers/follow/common.js";
 import { readCurrent } from "../../../workers/follow/changes.js";
 import { newLinkEmail, sendMail } from "../../../workers/follow/mail.js";
-import { DELETES, deleted, message, page } from "../../../workers/follow/page.js";
+import { DELETES, PICK_SCRIPT, deleted, message, page } from "../../../workers/follow/page.js";
 import { forget, subscriberFor } from "../../../workers/follow/store.js";
 
 const PATH = "/api/follow/manage";
 
+// A notice is its words, or a function of how often the reader's updates
+// come that returns them.
 const NOTICES = {
   confirmed: "Confirmed. You will get email updates on what is listed below.",
+  // A reader already subscribed whose sign-up box asked for the other
+  // frequency (confirm.js): theirs was kept, so the page says so, in the
+  // words of the How often below it, where the reader can change it.
+  kept: freq => `Confirmed. You will get email updates on what is listed below, ${freq} as ` +
+    "before: signing up again does not change how often. To change it, choose under How often " +
+    "and save.",
   saved: "Saved.",
   removed: "Removed.",
   notfound: "Saved, but something you asked to add is not a bill, law, legislator or committee " +
@@ -60,6 +68,15 @@ const NOTICES = {
 // last date there is (schema.sql), which the sender reads the same way.
 const PAUSED_FOR_GOOD = "9999-12-31";
 const PAUSE_DAYS_MOST = 366;
+// THE LONGEST SAVE THIS TAKES. The form sends a "listed" field for every box
+// it shows -- each followed record and every topic -- a "keep" for each ticked,
+// and now an "add" for every legislator and committee ticked in one go. The
+// 4 KiB every other endpoint reads was spent by fifty or so followed bills
+// beside the forty-odd topics, and a longer form was not refused but read as
+// no form at all: "This link is no longer current". 64 KiB holds MAX_FOLLOWS records
+// listed and kept, every topic, and every legislator and committee there is
+// ticked at once, several times over.
+const MAX_FORM = 65536;
 const GROUPS = [["bill", "Bills"], ["law", "Laws"], ["member", "Legislators"],
                 ["committee", "Committees"], ["topic", "Topics"]];
 
@@ -123,10 +140,6 @@ function render(origin, t, sub, follows, current, notice, today) {
       `<input type="hidden" name="listed" value="${esc(key)}">` +
       `<span class="what">${what}${sub2}</span></label></li>`;
   };
-  const options = kind => [...(current?.followable || new Map()).entries()]
-    .filter(([k]) => k.startsWith(kind + ":") && !followed.has(k))
-    .sort((a, b) => a[1].label.localeCompare(b[1].label))
-    .map(([k, v]) => `<option value="${esc(k)}">${esc(v.label)}</option>`).join("");
   const groups = GROUPS.map(([kind, name]) => {
     const mine = follows.filter(f => f.key.startsWith(kind + ":"));
     let body = "", add = "";
@@ -145,14 +158,14 @@ function render(origin, t, sub, follows, current, notice, today) {
     if (kind === "law")
       add = `<p class="add"><label for="add_law">Add a law</label> <input id="add_law" name="add_law" ` +
         `placeholder="RSA 91-A" maxlength="20" autocomplete="off"></p>`;
-    if (kind === "member" || kind === "committee") {
-      const o = options(kind);
-      if (o) add = `<p class="add"><label for="add_${kind}">Add a ${kind === "member" ? "legislator" : "committee"}</label> ` +
-        `<select id="add_${kind}" name="add"><option value="">Choose&hellip;</option>${o}</select></p>`;
-    }
+    if (kind === "member" || kind === "committee") add = picker(kind, current, followed);
     return `<h3>${name}</h3>${body}${add}`;
   }).join("\n");
   const freq = sub.frequency === "weekly" ? "weekly" : "daily";
+  // Its own notices only: the name comes from after "#", which anyone can
+  // type, and "constructor" would otherwise find Object's and call it.
+  const said = Object.hasOwn(NOTICES, notice) ? NOTICES[notice] : "";
+  const noticeText = typeof said === "function" ? said(freq) : said;
   const detail = sub.detail === "milestones" ? "milestones" : "all";
   const p = sub.paused_until || "";
   const pause = !p || p < today ? "none" : p === PAUSED_FOR_GOOD ? "forever" : "until";
@@ -163,7 +176,7 @@ function render(origin, t, sub, follows, current, notice, today) {
     : pause === "until" ? `Paused through ${esc(p)}.` : "";
   const body = `<h1>Your email updates</h1>
 <p class="lede">What you follow, how often, and how much. Nothing changes until you save.</p>
-${NOTICES[notice] ? `<p class="note">${esc(NOTICES[notice])}</p>` : ""}
+${noticeText ? `<p class="note">${esc(noticeText)}</p>` : ""}
 ${status ? `<p class="note">${status}</p>` : ""}
 <form method="post" action="${PATH}">${hidden(t, "save")}
 <div class="pair">
@@ -209,7 +222,70 @@ links included.</p>
 <form method="post" action="${PATH}">${hidden(t, "unsubscribe")}
 <button type="submit" class="danger">Unsubscribe and delete my address</button></form>
 </section>`;
-  return page(200, { title: "Your email updates", body });
+  return page(200, { title: "Your email updates", body, script: PICK_SCRIPT });
+}
+
+// ADDING LEGISLATORS AND COMMITTEES (the person's test of 16 October 2026:
+// "The legislators were not searchable and the drop-down sorted them by first
+// name instead of last name. You could only select one committee and
+// legislator at a time until you save."). Each was a <select> ordered by its
+// label, which begins "Rep. Glen" -- one pick a Save.
+//
+// Now a closed <details> a kind, "Add legislators" and "Add committees", so
+// the page at 375 px is as short as it was until the reader opens one. Inside
+// it a box that narrows the list as they type (page.js PICK_SCRIPT, shown only
+// where the script runs) and the whole list as boxes to tick, every one named
+// "add", so one Save adds all that are ticked (save() takes every add, up to
+// MAX_FOLLOWS). The list scrolls within a height a phone shows whole, rather
+// than pushing How often and Save a full roster's length down the page.
+//
+// The House and the Senate apart, as every listing of legislators on the site
+// is; legislators by the roster's own sort name ("aldrich, glen", current.json
+// "sort"), committees by their names, which carry the chamber as the search
+// writes them ("House Education Committee"). What is followed already is left
+// out. A list without chambers (a build before these were written) is one
+// group in the label's order.
+const CHAMBER_ORDER = ["House", "Senate", ""];
+const byName = (a, b) => a.localeCompare(b, "en", { sensitivity: "base" });
+// The party and district are one unit, as on every chip on the site
+// (components.py CHIP_TAG): at 375 px a row broke inside them, "(R - Rock" on
+// one line and "25)" on the next. The trailing "(...)" is its own span, which
+// page.js keeps on one line. The text is unchanged.
+const TAG = /^(.*\S)\s+(\([^()]*\))$/;
+const rowName = label => {
+  const m = TAG.exec(label);
+  return m ? `${esc(m[1])} <span class="tag">${esc(m[2])}</span>` : esc(label);
+};
+
+function picker(kind, current, followed) {
+  const all = [...(current?.followable || new Map()).entries()].filter(([k]) => k.startsWith(kind + ":"));
+  const rows = all.filter(([k]) => !followed.has(k));
+  if (!rows.length) return "";
+  const what = kind === "member" ? ["legislators", "legislator", "Name or district"]
+    : ["committees", "committee", "Name"];
+  // Those of neither chamber come last and are named for what they are (the
+  // review of 16 October 2026: a joint committee sat under the Senate's
+  // heading with none of its own). Where nothing has a chamber -- a build
+  // before these were written -- the one group needs no heading.
+  const chambered = all.some(([, v]) => v.chamber);
+  const other = kind === "committee" ? "Joint and other committees" : "Other legislators";
+  const sets = CHAMBER_ORDER.map(ch => {
+    const mine = rows.filter(([, v]) => (v.chamber || "") === ch)
+      .sort(([ka, a], [kb, b]) => byName(a.sort || a.label, b.sort || b.label) ||
+        byName(a.label, b.label) || ka.localeCompare(kb));
+    if (!mine.length) return "";
+    const items = mine.map(([k, v]) =>
+      `<li><label><input type="checkbox" name="add" value="${esc(k)}"><span>${rowName(v.label)}</span></label></li>`)
+      .join("\n");
+    const legend = ch || (chambered ? other : "");
+    return `<fieldset>${legend ? `<legend>${legend}</legend>` : ""}<ul>\n${items}\n</ul></fieldset>`;
+  }).join("");
+  return `<details class="pick" data-pick><summary>Add ${what[0]} <span class="picked" data-picked></span></summary>
+<p class="pickfind" hidden><label for="find_${kind}">Find</label>
+<input type="search" id="find_${kind}" data-find placeholder="${what[2]}" autocomplete="off" spellcheck="false"></p>
+<div class="picklist">${sets}
+<p class="quiet none" data-none hidden>No ${what[1]} matches. Clear the box to see them all.</p></div>
+</details>`;
 }
 
 // What a typed bill or law means, from tonight's list: "HB 1442" is the
@@ -347,7 +423,7 @@ export async function onRequest({ request, env }) {
   if (request.method !== "POST") return plain(405, "GET or POST\n", { Allow: "GET, POST" });
   if (!sameSite(request, env)) return plain(403, "Forbidden\n");
   try {
-    const form = await readForm(request);
+    const form = await readForm(request, MAX_FORM);
     const t = form && form.get("t");
     if (!t || !TOKEN.test(t)) return STALE();
     const db = env.FOLLOW_DB;

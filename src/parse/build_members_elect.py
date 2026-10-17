@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-16.2
+# GRANITE_VERSION: 2026-10-16.3
 """
 Who November's election sent to the General Court, for the weeks before they sit.
 
@@ -16,7 +16,9 @@ and never writes, and which may be absent.
 
 WHAT IT WRITES. site/members_elect.json, the one file every page draws a
 member-elect from, or nothing. Nothing else: the roster files are read and
-left byte for byte as the site data wrote them.
+left byte for byte as the site data wrote them. Every page reads the file
+through for_pages(), below, which holds the same window, and through
+nothing else.
 
 THE PERSON'S DECISIONS OF 16 OCTOBER 2026, which this holds and does not
 reopen:
@@ -766,6 +768,65 @@ def members_elect(results, sitting, former, districts, hand, today):
         report["short"].append((key, on_file[key]["seats"], 0, 0, 0, False))
     report["short"].sort(key=lambda x: race_order(x[0]))
     return out, report
+
+
+# ---- what the pages read ---------------------------------------------------
+
+def for_pages(site):
+    """site/members_elect.json as every page draws it, or None where there
+    is nothing to draw.
+
+    ONE READER, BESIDE THE ONE WRITER (the pages' pass, 16 October 2026).
+    The town pages and places.json, the Officials page's tab, the legislator
+    pages and the district map each draw a member-elect from this and from
+    nothing else -- never from the roster -- so that no two of them can come
+    to read the file differently, and none of them names the file itself.
+
+    THE PAGES HOLD THE WINDOW TOO. The step removes the file outside the
+    weeks between the election and Organization Day, and check_site refuses
+    one left on the night. But a page builder is also run on its own, by a
+    person, on a site the step has not touched since: a file written on 1
+    December and a town page built from it on the 2nd would put members-elect
+    in the page the day they take office, hidden by until_attrs and still
+    there. So a file outside the window, by the step's own rule (window()),
+    is not drawn, and the builder says why.
+
+    A FILE THAT WILL NOT READ STOPS THE BUILDER. The step writes it whole, so
+    one that does not parse, or names no days or no races, is a fault to
+    look at -- silence is not success -- and not a block to leave out."""
+    p = Path(site) / OUT_NAME
+    if not p.is_file():
+        return None
+    try:
+        doc = json.loads(p.read_text(encoding="utf-8"))
+        election = datetime.date.fromisoformat(doc["election"])
+        takes_office = datetime.date.fromisoformat(doc["takes_office"])
+        term, races = str(doc["term"]), doc["races"]
+        bad = [k for k, r in races.items()
+               if not KEY_RE.match(k) or not isinstance(r, dict)
+               or not isinstance(r.get("elected"), list) or not isinstance(r.get("seats"), int)]
+    except (OSError, ValueError, KeyError, TypeError, AttributeError) as e:
+        raise SystemExit(f"{p.as_posix()} will not read as the members-elect ({type(e).__name__}: "
+                         f"{e}): build_members_elect.py writes it whole, so this is a fault to look "
+                         "at, not a block to leave out")
+    if bad:
+        raise SystemExit(f"{p.as_posix()} holds {len(bad)} race(s) not in the shape the step "
+                         f"writes, {', '.join(map(repr, bad[:4]))}: a fault to look at, not a block "
+                         "to leave out")
+    try:
+        meta = json.loads((Path(site) / "meta.json").read_text(encoding="utf-8"))
+        terms = meta.get("terms") if isinstance(meta, dict) else None
+    except (OSError, ValueError):
+        terms = None
+    newest = terms[0] if isinstance(terms, list) and terms else None
+    why = window(build_date.today(), election, takes_office, newest, term)
+    if why:
+        print(f"  members-elect: {p.as_posix()} is not drawn -- {why}")
+        return None
+    n = sum(len(r["elected"]) for r in races.values())
+    print(f"  members-elect: drawn from {p.as_posix()}, {len(races)} races, {n} elected, "
+          f"until {doc['takes_office']}")
+    return doc
 
 
 # ---- the step --------------------------------------------------------------

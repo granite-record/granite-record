@@ -1741,7 +1741,26 @@ not final -- or once the results mark it recounted. And whatever the pages
 draw of them carries `data-until`, which `components.until_attrs` writes and
 the browser's behaviour in `components.js` hides by the reader's own clock
 from that day on, with a rule in `app.css`'s shared region that no page's own
-style can outrank. The pages that draw the file are the second pass.
+style can outrank.
+
+The pages read the file through one function beside its writer,
+`build_members_elect.for_pages`, which holds the same window -- so a file a
+build left behind is not drawn by a page builder run on its own on 2
+December -- and stops on a file that will not read. They draw with four
+components, `elect_now`, `elect_race`, `elect_block` and `elect_line`, in
+`components.py` and `components.js` alike, every element carrying
+`data-elect`: under each district's race on a town page's Representatives
+tab and its Senate card, with "Serving now" over the sitting members; in
+`places.json`, as `elect` (the races) and `e` on each place (its own race
+keys), which `find.js` draws in the My Town card; as the Officials page's
+sixth tab, Members-Elect, the Senate and then the House by county; as one
+line on the page of each member the file links, which `app.js` draws from
+`GR_ELECT` only for that member; and in the district map's panel, from
+`district_map.json`'s `elect`, the fill still the sitting members'. With no
+file every page is the page it was, byte for byte. preflight's
+`_elect_pages_never_sitting`, `_elect_pages_link_own` and `_elect_pages_retire`
+hold the person's three rules on the fixture's election built with the file
+and without.
 
 ## The bill index's sponsors
 

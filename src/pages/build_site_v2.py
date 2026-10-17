@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.210
+# GRANITE_VERSION: 2026-09-05.211
 """
 Generate the faceted site from real General Court data.
 
@@ -1071,11 +1071,14 @@ def rsa_url(chapter, section=None):
     if table is not None:
         ch = (chapter or "").upper()
         kind, target = table.resolve(ch, section) if section else table.resolve(ch)
+        # The chapter's address as build_rsa writes it, RSA 404's with its
+        # slash (build_rsa.chapter_path, the sitemap audit, 16 October 2026).
+        import build_rsa
         if kind in ("section", "range"):
             c, _, sec = target.partition(":")
-            return f"/laws/{c.lower()}#s{sec}"
+            return build_rsa.chapter_path(c, sec)
         if kind == "chapter" or (section and table.resolve(ch)[0] == "chapter"):
-            return f"/laws/{ch.lower()}"
+            return build_rsa.chapter_path(ch)
         return ""
     key = _chapter_key(chapter)
     if not key:

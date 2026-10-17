@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-11.7
+# GRANITE_VERSION: 2026-10-11.8
 """
 The how-to guides: their words, their sources, and what each was checked
 against. Read by build_civics.py, which draws them on the Resources hub's
@@ -200,7 +200,11 @@ def law_href(ref):
     m = LAW_REF.match(ref)
     if not m:
         raise ValueError(f"not a statute reference: {ref!r}")
-    return f"/laws/{m.group(1).lower()}" + (f"#s{m.group(2)}" if m.group(2) else "")
+    # The chapter's address as build_rsa writes it, RSA 404's with its slash
+    # (build_rsa.chapter_path, the sitemap audit, 16 October 2026). Imported
+    # here rather than above, so the guides' words load with nothing else.
+    import build_rsa
+    return build_rsa.chapter_path(m.group(1), m.group(2) or "")
 
 
 # ---------------------------------------------------------------------------

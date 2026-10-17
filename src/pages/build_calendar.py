@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-18.34
+# GRANITE_VERSION: 2026-09-18.35
 """
 The General Court's week, one page per week.
 
@@ -2597,7 +2597,17 @@ def week_page(site, base, key, weeks, order, at, titles, years, code, urls,
         out = site / f.lstrip("/")
         out.parent.mkdir(parents=True, exist_ok=True)
         out.write_text(S.clean_links(html), encoding="utf-8")
-    urls.append(base + S.canon(path))
+    # A WEEK WITH NO MEETING AT ALL STAYS OUT OF THE SITEMAP UNTIL IT HAS ONE
+    # (the sitemap audit, 16 October 2026). Its page is written as it always
+    # was, and the weeks either side still link it, but a page saying only
+    # "No meetings are scheduled yet for this week" is not one to ask a
+    # search engine to index; the run that finds a meeting in it lists it,
+    # and sitemap_merge takes it out again if every meeting goes. A cancelled
+    # meeting is still a card on the page, so a week of cancellations stays
+    # listed. The current week is /calendar, the tab, and is listed whatever
+    # it holds.
+    if meets or path == "/calendar.html":
+        urls.append(base + S.canon(path))
     return n
 
 
@@ -2870,11 +2880,17 @@ def main():
           "the same ones the week pages draw), and committees.json for the picker")
 
     # Every week is rebuilt on every run, so a calendar address in the sitemap
-    # that this run did not write -- the current week's dated copy, a week
-    # that no longer has a proceeding -- is taken out, not left beside the rest.
+    # that this run did not list -- the current week's dated copy, a week
+    # that no longer has a proceeding, a week with no meeting at all
+    # (week_page) -- is taken out, not left beside the rest.
     added, dropped = S.sitemap_merge(site, base, urls, "/calendar")
     if added or dropped:
         print(f"  sitemap.xml: {added} added, {dropped} no longer written taken out")
+    listed = set(urls)
+    unlisted = [k for k in order if href_for(k, today) != "/calendar.html"
+                and base + S.canon(href_for(k, today)) not in listed]
+    print(f"  {len(unlisted)} week(s) with no meeting at all left out of the sitemap "
+          "until one is set" + (": " + ", ".join(unlisted[:8]) if unlisted else ""))
 
     print(f"  {len(order)} weeks -> calendar.html and calendar/ "
           f"({total:,} sittings; {here} is this week; {empty} weeks with "

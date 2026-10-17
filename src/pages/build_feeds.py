@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.34
+# GRANITE_VERSION: 2026-09-04.36
 """
 Write RSS feeds so people can follow bills without a login.
 
@@ -42,6 +42,7 @@ import _paths  # noqa: E402,F401
 
 import argparse
 import build_date
+import build_rsa as BR
 import follow_changes as FC
 import plain_action as PA
 import json
@@ -597,8 +598,9 @@ def main():
             continue                    # a repealed chapter is not followed
         name = info[0] if isinstance(info, list) and info else ""
         followable[key] = {"label": FC.line(f"RSA {ch}" + (f": {name}" if name else ""), 120),
-                           "url": path_of(base + S.canon(f"/laws/{ch.lower()}"))
-                           or f"/laws/{ch.lower()}"}
+                           # RSA 404's with its slash (build_rsa.chapter_path,
+                           # the sitemap audit, 16 October 2026).
+                           "url": BR.chapter_path(ch)}
         if law_items.get(ch):
             lists[key] = fc_list(newest(law_items[ch]), fc_items)
         nlaw += 1
@@ -665,7 +667,16 @@ def main():
                 for r in rows or []:
                     items += bill_items.get((str(r.get("year") or ""), str(r.get("id") or "").upper()), [])
         key = f"committee:{code}"
-        followable[key] = {"label": FC.line(who, 120), "url": path_of(page)}
+        # NAMED AS THE SEARCH NAMES IT, WITH ITS CHAMBER BESIDE (16 October
+        # 2026). The emails and the manage page call a committee by this label,
+        # and the manage page sets committees beside the topics, so it reads
+        # "House Housing Committee" and is not taken for the subject
+        # (follow_changes.committee_label). The chamber apart is what the
+        # manage page's list of committees is grouped by.
+        followable[key] = {"label": FC.line(FC.committee_label(c.get("name") or code, chamber), 120),
+                           "url": path_of(page)}
+        if chamber:
+            followable[key]["chamber"] = chamber
         lists[key] = fc_list(newest(items), mine, fc_items)
         # Written empty rather than skipped: the committee's page names this
         # feed on the same test, and an address a page offers must answer.
@@ -845,6 +856,18 @@ def main():
                                if m.get("slug") else ""}
             if not followable[key]["url"]:
                 del followable[key]["url"]
+            # THE ROSTER'S OWN SORT NAME AND CHAMBER (the person's test of 16
+            # October 2026: the manage page's list "sorted them by first name
+            # instead of last name"). The label begins with the title and the
+            # first name, so the page orders legislators by the roster's
+            # "aldrich, glen" and sets the House and the Senate apart, as every
+            # listing of legislators on the site does. Carried, not worked out
+            # again from the label: a surname of two words, or a first name
+            # the roster gives in another form, would be split wrongly.
+            if FC.line(m.get("sort") or "", 120):
+                followable[key]["sort"] = FC.line(m["sort"], 120)
+            if FC.CHAMBERS.get(str(m.get("chamber") or "").upper()):
+                followable[key]["chamber"] = FC.CHAMBERS[str(m["chamber"]).upper()]
             lists[key] = fc_list(newest(items), mine)
             if not items:
                 # The roster counts a vote or a sponsorship that neither the

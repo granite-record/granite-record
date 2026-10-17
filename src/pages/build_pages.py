@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.205
+# GRANITE_VERSION: 2026-09-04.207
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -32,7 +32,7 @@ import bill_order as BO
 import build_date
 import html as _html
 import shell as _shell
-from components import WORDBOOK, chip, clock, date_span, icon, pchip
+from components import WORDBOOK, chip, clock, date_span, icon, pchip, until_attrs
 import seating
 import json
 import re
@@ -1521,9 +1521,12 @@ and a bill number starts again every two years.</p>
   // /laws/91-A:4 its section 4. Every such page's address is lower case, so
   // the lower-case form is tried once; an address already in it is left
   // here, which is what keeps this from going round.
+  // RSA 404's page is a folder's, at its address with a slash: FOLDERS is
+  // build_rsa.FOLDER_CHAPTERS, which preflight holds this to (16 October 2026).
+  var FOLDERS=["404"];
   var lp=location.pathname,c=lp.match(/^\\/laws\\/(\\d{1,3}(?:-[a-z]{1,2})?)(?::([0-9a-z.\\-]+))?\\/?$/i);
-  if(c&&(c[2]||c[1]!==c[1].toLowerCase())){
-    location.replace("/laws/"+c[1].toLowerCase()+(c[2]?"#s"+c[2].toLowerCase():location.hash));return;}
+  if(c&&(c[2]||c[1]!==c[1].toLowerCase())){var s=c[1].toLowerCase();
+    location.replace("/laws/"+s+(FOLDERS.indexOf(s)>=0?"/":"")+(c[2]?"#s"+c[2].toLowerCase():location.hash));return;}
   if(/^\\/(bill|laws)\\//.test(lp)&&lp!==lp.toLowerCase()){location.replace(lp.toLowerCase()+location.search+location.hash);return;}
   var m=location.pathname.match(/^\\/bill\\/(\\d{4})\\/([a-z]+)0*(\\d+)/i);
   if(!m)return;
@@ -3640,6 +3643,18 @@ the House does.</p>
     except (OSError, ValueError, AttributeError):
         officers = []
     today = build_date.today().isoformat()
+    # THE SIXTH TAB, MEMBERS-ELECT (the person's decisions of 16 October
+    # 2026): who November's election sent, from site/members_elect.json alone
+    # (build_members_elect.for_pages), between the election and Organization
+    # Day. With no file the tab and its panel are not drawn and the page is
+    # the page it was; with one, the tab, its panel and the panel's content
+    # each carry data-elect and retire on the day they take office. And the
+    # map's note under My Town says "its sitting members", as the town pages'
+    # copy does, the year round (build_town_pages.map_section says why).
+    from build_members_elect import for_pages as members_elect
+    elect = members_elect(out)
+    elect_attrs = (f" data-elect{until_attrs(elect['takes_office'], today)}"
+                   if elect else "")
     of_panes = [
         ("my-town", "My Town", None, f"""<div class="yt ytcard" data-yt="seats" hidden></div>
 <section class="ofpart" aria-labelledby="of-find">
@@ -3657,8 +3672,8 @@ party or committee to find a member.</p>
 </section>
 <section class="ofpart ofmap" aria-labelledby="of-map">
 <h3 id="of-map">The Map</h3>
-<p class="src fill">Each district coloured by the party of the members it
-elected, each town by its name, and a city&rsquo;s wards once you zoom in.
+<p class="src fill">Each district coloured by the party of its sitting
+members, each town by its name, and a city&rsquo;s wards once you zoom in.
 Choose a district to see who sits for it and the towns it holds, each with
 its own page.</p>
 <div class="ofmapbox" id="ofmap"></div>
@@ -3674,16 +3689,21 @@ ward</a>.</p></noscript>
         ("statewide", "Statewide Officials", OT.count(off, "statewide"), OT.statewide(off)),
         # #counties, not #county: the roster's By county button is tab-county.
         ("counties", "County Officials", OT.count(off, "county"), OT.county(off, legs)),
+        # "Members-Elect (N)", N the winners the file names: a race not
+        # final counts none, and a tab of none says no number, as any tab.
+        ("members-elect", "Members-Elect", OT.elect_count(elect),
+         OT.members_elect(elect, today)),
     ]
     of_panes = [p for p in of_panes if p[3]]
     of_tabs = "".join(
         f'<button type="button" role="tab" id="tab-{pid}" data-pane="{pid}" '
         f'aria-controls="{pid}" aria-selected="{"true" if i == 0 else "false"}" '
-        f'tabindex="{0 if i == 0 else -1}">{name}'
+        f'tabindex="{0 if i == 0 else -1}"{elect_attrs if pid == "members-elect" else ""}>{name}'
         + (f' <span class="ofn">({n:,})</span>' if n else "") + "</button>"
         for i, (pid, name, n, _h) in enumerate(of_panes))
     of_body = "".join(
-        f'<div class="twnpane" id="{pid}" role="tabpanel" aria-labelledby="tab-{pid}">'
+        f'<div class="twnpane" id="{pid}" role="tabpanel" aria-labelledby="tab-{pid}"'
+        f'{elect_attrs if pid == "members-elect" else ""}>'
         f'<h2 class="twnph">{name}</h2>{inner}</div>'
         for pid, name, _n, inner in of_panes)
     leg_body = f"""<h1>Officials</h1>
