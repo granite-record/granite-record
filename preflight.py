@@ -83634,6 +83634,257 @@ def _elect_pages_retire(BME):
                   "theirs or with no meta.json; a file that will not read stops the page")
 
 
+# map.js mounted in node on dom_stub.js, with components.js loaded first as
+# every page loads it, and each district of the filled layers chosen in turn:
+# what the panel says of it. The stub's querySelector makes a new element on
+# every call, so the root here gives back the same one for the same selector,
+# and the panel mount() writes into can be read after it. No labels and no
+# zoom: the panel is what is read, and those need a browser's measure.
+_ELECT_MAP_JS = r"""
+require("./stub.js");
+globalThis.CSS = { escape: s => String(s) };
+document.createElementNS = (ns, t) => document.createElement(t);
+const fs = require("fs");
+const G = require("./map.js");
+function held() {
+  const e = document.createElement("div"), q = {};
+  e.querySelector = sel => (q[sel] = q[sel] || held());
+  e.style.setProperty = () => {};
+  return e;
+}
+(async () => {
+  const out = {};
+  for (const name of ["with", "without"]) {
+    const T = JSON.parse(fs.readFileSync("./" + name + ".json", "utf8"));
+    globalThis.fetch = async () => ({ ok: true, status: 200, json: async () => T });
+    const root = held();
+    const api = G.mount(root, { labels: "none", zoom: false, data: "/" + name + ".json" });
+    await api.ready;
+    const panel = root.querySelector(".gmpanel");
+    out[name] = {};
+    for (const lk of ["base", "float", "senate", "exec", "cong"])
+      for (const fid of Object.keys(T.layers[lk].f)) {
+        api.select(lk, fid);
+        out[name][lk + "|" + fid] = panel.innerHTML;
+      }
+  }
+  process.stdout.write("\n@@" + JSON.stringify(out));
+})().catch(e => { console.error(String(e && e.stack || e)); process.exit(1); });
+"""
+
+
+def _elect_map_panels(with_map, without_map):
+    """{"with": {"layer|district": html}, "without": {...}}: the district
+    map's panel (map.js's describe and seatLine) for every district of the
+    State House, floterial, Senate, Council and US House layers, drawn in
+    node from each district_map.json. None without node."""
+    node = shutil.which("node") or shutil.which("node.exe")
+    if not node:
+        assert not os.environ.get("GITHUB_ACTIONS"), "node is not on PATH on the nightly"
+        return None
+    root = Path(tempfile.mkdtemp(prefix="gr-elect-map-"))
+    try:
+        (root / "stub.js").write_text(Path("tests/dom_stub.js").read_text(encoding="utf-8"),
+                                      encoding="utf-8")
+        (root / "map.js").write_text(_with_components(
+            Path("src/pages/map.js").read_text(encoding="utf-8")), encoding="utf-8")
+        (root / "with.json").write_bytes(with_map.read_bytes())
+        (root / "without.json").write_bytes(without_map.read_bytes())
+        (root / "go.js").write_text(_ELECT_MAP_JS, encoding="utf-8")
+        r = _run([node, "go.js"], cwd=root, capture_output=True, text=True, encoding="utf-8",
+                 timeout=120)
+        said = (r.stderr or r.stdout or "").strip()
+        assert r.returncode == 0 and "@@" in (r.stdout or ""), (
+            "map.js would not draw the district panel in node: " + said[-300:])
+        return json.loads(r.stdout.rsplit("@@", 1)[1])
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+
+
+# "Serving now", then who sits (or the words for nobody), then the block: the
+# order the person's decision draws them in, on each surface's own markup.
+def _elect_order(sitting):
+    return re.compile(r'<p class="elnow" data-elect data-until="2026-12-02">Serving now</p>'
+                      r"(?:" + sitting + r')<div class="elect" data-elect data-until="2026-12-02">',
+                      re.S)
+
+
+@check("build", "members-elect in the district map's panel: drawn only for a district whose race "
+                "the file holds, every one inside data-elect with \"Serving now\" over the sitting "
+                "members, none among them, and nothing without the file")
+def _elect_map_panel():
+    """The plan's check 1 for the one surface the built pages do not hold:
+    the district map's panel, which map.js draws in the browser from
+    district_map.json's "elect" (the person's decisions of 16 October 2026: a
+    list in the panel, the fill unchanged, members-elect never drawn as
+    sitting). map.js is mounted in node with the fixture's district_map.json
+    built with the file and without, and every district of the State House,
+    floterial, Senate, Council and US House layers chosen in turn. Without
+    the file no panel carries data-elect or "Serving now". With it every
+    panel is the same as without once each element carrying data-elect is
+    taken out whole -- so no member-elect's chip stands among the sitting
+    members or anywhere outside a block -- and a panel draws one block for
+    each race of the file it shows (a State House district's own and its
+    floterial's), each after "Serving now" and who sits, and each holding
+    the race's members-elect by name. Silence is not success: every race of
+    the file is a district of the map, and is drawn."""
+    import html as _h
+    absent = _elect_absent()
+    if absent:
+        return "skip", "not here: " + ", ".join(absent)
+    w, o, doc, _said = _elect_built()
+    mw, mo = w / "site" / "district_map.json", o / "site" / "district_map.json"
+    dw = json.loads(mw.read_text(encoding="utf-8"))
+    races = (dw.get("elect") or {}).get("races") or {}
+    got = _elect_map_panels(mw, mo)
+    if got is None:
+        return "skip", "node is not here"
+    bad = []
+    if not races:
+        bad.append("the fixture's district_map.json carries no members-elect")
+    if set(got["with"]) != set(got["without"]) or not got["without"]:
+        bad.append("the map's districts differ with the file and without")
+    off = sorted(set(races) - set(got["with"]))
+    if off:
+        bad.append(f"races of the file that are no district of the map: {off[:6]}")
+    flo = {ws[0]: ws[1] for t in dw["places"].values() for ws in t["w"].values() if ws[1]}
+    order = _elect_order(r'<div class="chips">.*?</div>|<p class="quiet">Every seat is vacant\.</p>')
+    drawn = 0
+    for k, html in sorted(got["without"].items()):
+        if "data-elect" in html or "Serving now" in html:
+            bad.append(f"the panel for {k} draws a member-elect with no file: {html[:160]}")
+    for k, html in sorted(got["with"].items()):
+        if _elect_strip(html) != got["without"].get(k):
+            bad.append(f"the panel for {k} differs with the file outside its data-elect elements")
+        lk, fid = k.split("|", 1)
+        shows = [x for x in [k] + ([f"float|{flo[fid]}"] if lk == "base" and fid in flo else [])
+                 if x in races]
+        blocks = html.count('<div class="elect" data-elect')
+        nows = html.count('<p class="elnow" data-elect')
+        if not blocks == nows == len(order.findall(html)) == len(shows):
+            bad.append(f"the panel for {k} draws {blocks} block(s) and {nows} \"Serving now\", "
+                       f"{len(order.findall(html))} of them in order, for {len(shows)} race(s)")
+        inside = "".join(html[a:b] for a, b in _elect_blocks(html))
+        for e in (e for x in shows for e in races[x]["elected"]):
+            if _h.escape(e["n"]) not in inside:
+                bad.append(f"the panel for {k} does not name {e['n']} in its block")
+        drawn += bool(shows)
+    assert not bad, "; ".join(bad[:8])
+    return "ok", (f"{len(got['with'])} districts chosen: {drawn} panels draw the file's races, "
+                  "each block after \"Serving now\" and who sits, every panel the same as without "
+                  "the file outside its data-elect, and none drawn without it")
+
+
+@check("build", "members-elect: the approved words where the pages draw them -- the map's note in "
+                "both copies, \"Serving now\" over the sitting members on a town page's State House "
+                "and Senate cards and in the My Town card, and the Officials tab's label and "
+                "sentence")
+def _elect_pages_words():
+    """The person's words of 16 October 2026, read where the fixture's pages
+    and find.js draw them rather than from the source that writes them.
+
+    THE MAP'S NOTE, BOTH COPIES, WITH THE FILE AND WITHOUT: every town page's
+    District Map tab and the Officials page's map say "Each district coloured
+    by the party of its sitting members", and neither says "the members it
+    elected" -- the old words, which from the day after an election read as
+    the people just elected. They are the one change a page shows with no
+    file, so they are read in both builds.
+
+    "SERVING NOW" WHEREVER A BLOCK IS DRAWN BESIDE THE SITTING MEMBERS: on
+    every town page's Representatives tab, the State House card and the
+    State Senate card each draw, for every district, "Serving now", then who
+    sits (or that nobody is matched), then the block -- as many of each as
+    there are blocks, and at least one; and so does each House and Senate
+    seat of the My Town card (find.js, in node) for a place whose races the
+    file holds.
+
+    THE OFFICIALS TAB: its label is "Members-Elect (N)", N the winners the
+    file names, and its sentence is "Elected November 3, 2026, by the
+    Secretary of State's count. They take office on December 2, 2026; until
+    then the Legislators tab lists who holds each seat." -- the fixture's
+    days, the person's words."""
+    import html as _h
+    absent = _elect_absent()
+    if absent:
+        return "skip", "not here: " + ", ".join(absent)
+    w, o, doc, _said = _elect_built()
+    ws, os_ = w / "site", o / "site"
+    bad = []
+
+    def text(h):
+        return " ".join(_h.unescape(re.sub(r"<[^>]+>", "", h)).replace("’", "'").split())
+    note = "Each district coloured by the party of its sitting members"
+    towns = sorted((ws / "town").glob("*.html"))
+    if not towns:
+        bad.append("the fixture built no town page")
+    for site in (ws, os_):
+        for f in [site / "officials.html", *sorted((site / "town").glob("*.html"))]:
+            t = text(f.read_text(encoding="utf-8"))
+            end = "," if f.name == "officials.html" else "."
+            if note + end not in t or "members it elected" in t:
+                bad.append(f"{f.relative_to(site.parent).as_posix()} does not say \"{note}{end}\" "
+                           "in its map's note, or still says \"the members it elected\"")
+    sec = re.compile(r'<section class="twnsec[^"]*"><h3 class="twnh">(State House|State Senate[^<]*)'
+                     r"</h3>(.*?)</section>", re.S)
+    town_order = _elect_order(r'<ul class="offlist">.*?</ul>|<p class="note">[^<]*</p>')
+    senates = 0
+    for f in towns:
+        t = f.read_text(encoding="utf-8")
+        a = t.find('<div class="twnpane" id="representatives"')
+        b = t.find('<div class="twnpane"', a + 1)
+        cards = sec.findall(t[a:b if b > a else len(t)]) if a >= 0 else []
+        if not any(h == "State House" for h, _b in cards):
+            bad.append(f"town/{f.name}: no State House card on its Representatives tab")
+        for head, body in cards:
+            senates += head.startswith("State Senate")
+            n = body.count('<div class="elect" data-elect')
+            if not n or n != body.count('<p class="elnow" data-elect') \
+                    or n != len(town_order.findall(body)):
+                bad.append(f"town/{f.name}'s {head} card: {n} block(s), "
+                           f"{body.count('Serving now')} \"Serving now\", "
+                           f"{len(town_order.findall(body))} in order")
+    if not senates:
+        bad.append("no town page of the fixture has a State Senate card to read")
+    pw = json.loads((ws / "places.json").read_text(encoding="utf-8"))
+    card = _elect_card(ws / "places.json", os_ / "places.json")
+    yt_order = _elect_order(r'<ul class="ytppl">.*?</ul>|<p class="ytnote">[^<]*</p>')
+    seats = 0
+    if card is not None:
+        for p in pw["places"]:
+            for chunk in card["with"][p["s"]].split('<div class="ytseat">')[1:]:
+                office = re.match(r'<p class="ytoff">([^<]*)', chunk)
+                ch = {"State House": "H", "State Senate": "S"}.get(office.group(1) if office else "")
+                if not ch:
+                    continue
+                want = int(any(k.startswith(ch + "|") for k in p.get("e") or []))
+                got = (chunk.count('<div class="elect" data-elect'),
+                       chunk.count('<p class="elnow" data-elect'), len(yt_order.findall(chunk)))
+                seats += want
+                if got != (want, want, want):
+                    bad.append(f"the My Town card for {p['s']}, {office.group(1)}: blocks, "
+                               f"\"Serving now\" and the two in order {got}, not {want} each")
+        if not seats:
+            bad.append("the My Town card draws no House or Senate seat with members-elect")
+    t = (ws / "officials.html").read_text(encoding="utf-8")
+    n = sum(len(r["elected"]) for r in doc["races"].values())
+    tab = re.search(r'<button[^>]*\bid="tab-members-elect"[^>]*>(.*?)</button>', t, re.S)
+    if not n or not tab or text(tab.group(1)) != f"Members-Elect ({n:,})":
+        bad.append(f"the Officials tab reads {text(tab.group(1)) if tab else None!r}, not "
+                   f"\"Members-Elect ({n:,})\"")
+    pane = re.search(r'<div class="elpane"[^>]*>.*?<p class="ofwhy">(.*?)</p>', t, re.S)
+    said = ("Elected November 3, 2026, by the Secretary of State's count. They take office on "
+            "December 2, 2026; until then the Legislators tab lists who holds each seat.")
+    if not pane or text(pane.group(1)) != said:
+        bad.append(f"the Officials tab says {text(pane.group(1)) if pane else None!r}, not "
+                   f"{said!r}")
+    assert not bad, "; ".join(bad[:8])
+    return "ok", (f"the map's note in both copies on {len(towns) + 1} pages, with the file and "
+                  f"without; \"Serving now\" before who sits and the block on {len(towns)} town "
+                  f"pages' House and Senate cards"
+                  + (f" and {seats} seats of the My Town card" if card is not None else "")
+                  + f"; \"Members-Elect ({n:,})\" and its sentence")
+
+
 # ========================================================== the district map ==
 #
 # MAP V1 (9 October 2026): src/pages/map.js and map.css, a module a page
