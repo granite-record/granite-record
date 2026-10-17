@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.8
+# GRANITE_VERSION: 2026-09-05.23
 """
 The phrasings the marker patterns must match, and the ones they must not.
 
@@ -164,6 +164,39 @@ MUST_MATCH = [
     ("It is now 931 according to my phone so I am going to convene and call "
      "to order the committee of conference on House bill 1738",
      "two verbs before the noun -- work/DxY8IqDXajc"),
+
+    # -- weak phrases agreeing with a stated opening 89% or more, 17 October
+    # 2026, each read off the recording and time beside it ------------------
+    ("next hearing which is on 527 HP 527 replacing Statewide education property tax",
+     "next hearing which is (0mwuMat8uGI 4:33:27)"),
+    ("call the committee of conference to order on Senate Bill 221.",
+     "the noun before 'to order' (Hhj-jGwswUw 0:03:33)"),
+    ("order the committee of conference on House Bill 1623 for the house we have "
+     "Representatives Harrington", "order the committee (7sSEP3Vjn9w 0:32:50)"),
+    ("attentive to the clerk. Senate Bill 65 FN relative to storm water management "
+     "for solar arrays.", "the Senate's clerk (9Mv01Z_AsjU 0:22:48)"),
+    ("committee on Election law Municipal Affairs to wish was referred C Bill 219 FN",
+     "the clerk's reading, 'which' captioned 'wish' (5a1rrU9MYcU 1:17:30)"),
+    ("committee on election art to referred to House Bill 481, an act relative to "
+     "moving the state primary date", "the clerk's reading, words lost (5NhVPeBehr8 1:02:18)"),
+    ("Committee on Health, Human Services and elderly affairs to which are referred to "
+     "House Bill 1734, FN", "the clerk's reading, 'are referred' (b9vTd1d8PuI 9:56:55)"),
+]
+
+# Spoken, the bill named BEFORE the phrase: the marker is the moment the bill
+# was named. (text, bill, where.) Weak phrases of 89% and over, 17 October 2026.
+BILL_BEFORE = [
+    ("House Bill 184 establishing a committee to study changing school start "
+     "times and I welcome the prime sponsor", "HB184", "EyOi37y9mNU 6:10:20"),
+    ("House Bill 1280 I'll open the public hearing on that and recognize the "
+     "prime sponsor", "HB1280", "3EjgNRn8UqA 0:03:33"),
+    ("hb750 relative making incentive grants for school districts that improve "
+     "in certain assessment scores I recognize represent peoples for a motion",
+     "HB750", "0Y2d_XDakUY 1:08:31"),
+    # A number between that is no scheduled bill does not stop it.
+    ("house bill 1088 relative to employment protection for kobe 19 in the workplace "
+     "representative um uh huff you're recognized for a motion", "HB1088",
+     "NbX26UHaEc0 2:11:24"),
 ]
 
 # Look like openings. Are not.
@@ -194,8 +227,115 @@ MUST_NOT_MATCH = [
 ]
 
 
+# Spoken, with the bill the docket scheduled, and read on 17 October 2026 as a
+# published start that was not an opening. (text, the bill it must not open,
+# the other scheduled bills, where it was said.)
+NOT_OPENINGS = [
+    ("begin the roll call vote on house bill 1430. the motion is itl we'll start "
+     "with representative abrami", "HB1430", [], "kTWMOT-FfVI 0:32:37"),
+    ("beginning in fiscal year 202 26 thank you madam president thank you Senator "
+     "Pearl the motion is to refer SB 202", "SB202", [], "5a1rrU9MYcU 4:57:08"),
+    ("open for further discussion and amendment. Okay. Seeing none, the question "
+     "is on the adoption of ought to pass as amended on Senate Bill 482",
+     "SB482", [], "-IqRWnHKSlQ 1:05:11"),
+    ("open to any questions that you may have and happy to help okay thank you "
+     "Mr trelli any questions seeing none thank you HB 138", "HB138", [],
+     "1SigcuPF4dM 1:53:59"),
+    ("Open Democracy and I'm going to be testifying in opposition to SB 223.",
+     "SB223", [], "4Yho2i88AZw 0:06:04"),
+    ("open the door to censorship. Not now, not ever. Vote no on the amendment "
+     "to SB 33.", "SB33", [], "itJRViVSJqk 6:01:13"),
+    ("open meeting law and the Public's right to know Senate Bill 259 "
+     "strengthens accessibility", "SB259", [], "2oN7obi1qfE 0:17:32"),
+    ("going to do is close this hearing see I don't have any further pin cards "
+     "on 739 and we're going to move into the last one", "HB739", [],
+     "0Y2d_XDakUY 1:46:00"),
+    ("will open we'll close the hearing on house bill 89 and open the hearing on "
+     "house bill 163 and recognize the sponsor", "HB89", ["HB163"],
+     "BIpJk7K-k34 0:16:32"),
+    ("introduced and he was telling me there a that there is money in it and "
+     "they're going to take $100,000 out the money that", "SB100", [],
+     "5zhoZ4k_UNY 1:44:14"),
+    ("Voting stations are open for 30 seconds. >> [music] >> Well, members president "
+     "had an opportunity to vote. House will attend to the state of the vote. With 188 "
+     "voting in the affirmative and 166 voting in the negative, House Bill 1607 is laid "
+     "on the", "HB1607", [], "EXjvgzYBkb8 4:32:39"),
+    # A close of a bill by its number cancels the opening it sits in.
+    ("So we'll open on 111 what's that oh have we officially closed 111 yeah i'm sorry i "
+     "was about to thank you though zen doily great okay sp 111 is closed 154 moving on",
+     "SB111", ["SB154"], "V4ktDpuwgDM 1:35:01"),
+    # A weak phrase whose bill comes before it, with another bill between.
+    ("HB 704 FNA and open the public hearing on 743 FN and recognize the prime sponsor",
+     "HB704", ["HB743"], "f0HyxRD3fCA 1:15:12"),
+]
+# Floor: the clerk's list of second referrals is not a debate opening.
+NOT_FLOOR_OPENINGS = [
+    ("committee on criminal justice and public safety, SP 145 FN is referred to the "
+     "committee on finance. From the committee on housing, SP 173 is referred to the "
+     "committee on ways and means.", "SB173", ["SB145"], "8gFNudlxXDo 0:35:41"),
+]
+# And spoken openings of the same shapes, which those guards must leave alone.
+STILL_OPENINGS = [
+    ("beginning with Senate Bill 400 um representative mlan thank you Mr chair",
+     "SB400", "GdUz9CRluqE 2:08:30"),
+    ("open the meeting on HP 10:21. It is 9:33 in the morning. I recognize the "
+     "prime sponsor, Representative David Walker.", "HB1021", "YrSXjhMWh-8 0:39:08"),
+    ("will open we'll close the hearing on house bill 89 and open the hearing on "
+     "house bill 163 and recognize the sponsor", "HB163", "BIpJk7K-k34 0:16:32"),
+    # Real openings the first version of the guards dropped, read on every
+    # recording on 17 October 2026; the guards were narrowed to keep them.
+    ("will open it up to discussion if people have a different take on this but "
+     "my impression on 396 is that", "HB396", "9yzcPQyUVbE 1:09:55"),
+    ("open up for discussion purposes for the HB 443 so let's turn to that bill",
+     "HB443", "0Y2d_XDakUY 0:06:33"),
+    ("Now open up for motion on 1148 which is relative to the fishing Game Commission",
+     "HB1148", "BiiKMa_5KIg 0:14:26"),
+    ("beginning here it's HB 497 I hope everybody has that in front of them",
+     "HB497", "byME6vPFS3U 0:08:20"),
+    ("beginning of house bill 2 and go through the sections each of you have a packet",
+     "HB2", "z0XsJZl7JDw 0:00:38"),
+    ("opening a closed session on HB 2026 to improve the state's transportation "
+     "infrastructure", "HB2026", "ClkTYzvmn84 0:08:08"),
+    # A close of the item being opened does not cancel it (after review).
+    ("introduce the bill we'd introduce it and close it so we had our hearing so what "
+     "we'll do right now I'll welcome representative cordelli to our our hearing today "
+     "on 147.", "HB147", "c2VFUD5sfM0 0:51:00"),
+    ("quickly just open it up and close it it used to be if a person didn't show up "
+     "for today it's HB 1534", "HB1534", "Hcd1VaWItFE 5:22:21"),
+]
+
+
 def run():
     fails = []
+
+    for text, bill, others, where in NOT_OPENINGS:
+        w = [(i * 0.4, x) for i, x in enumerate(text.split())]
+        got = [m for m in S.find_markers(w, [bill] + others, {}) if m["bill"] == bill
+               and m["kind"] == "open"]
+        if got:
+            fails.append(f"OPENED  ({where}): {text[:60]}")
+    # A guard's words that are the bill's own title do not count against it
+    # (after review): HB 771 is "relative to funding for open enrollment
+    # schools", spoken so on YnRjE5qQj3w at 0:38:56.
+    w = [(i * 0.4, x) for i, x in enumerate(
+        "relative to funding for open enrollment schools? Representative Lad moves we "
+        "concur. Chair recognizes Representative Crein to speak against the motion. Thank "
+        "you, Mr. Speaker. HB771 would require".split())]
+    t771 = {"HB771": "relative to funding for open enrollment schools."}
+    if not [m for m in S.find_markers(w, ["HB771"], t771) if m["kind"] == "open"]:
+        fails.append("'open enrollment' in HB 771's own title (YnRjE5qQj3w 0:38:56) was guarded")
+    if S.find_markers(w, ["HB771"], {}):
+        fails.append("'open enrollment' with no title to go on was not guarded")
+    for text, bill, others, where in NOT_FLOOR_OPENINGS:
+        w = [(i * 0.4, x) for i, x in enumerate(text.split())]
+        if S.find_markers(w, [bill] + others, {}, floor=True):
+            fails.append(f"OPENED ON THE FLOOR ({where}): {text[:60]}")
+    for text, bill, where in STILL_OPENINGS:
+        w = [(i * 0.4, x) for i, x in enumerate(text.split())]
+        cands = [bill, "HB89"] if bill == "HB163" else [bill]
+        if not any(m["bill"] == bill and m["kind"] == "open"
+                   for m in S.find_markers(w, cands, {})):
+            fails.append(f"NOT OPENED ({where}): {text[:60]}")
 
     # The patterns find_markers actually runs, read from it rather than listed
     # again here. This list used to be a second copy, and the copies drifted
@@ -203,9 +343,15 @@ def run():
     # reported as MISSED by a test whose own list did not contain it.
     for text, why in MUST_MATCH:
         hit = (any(rx.search(text) for rx, _, _ in S.COMMITTEE_PATS)
-               or S.FLOOR_OPEN_RE.search(text))
+               or S.FLOOR_OPEN_RE.search(text)
+               or any(rx.search(text) for rx, _, _ in S.FLOOR_WEAK_PATS))
         if not hit:
             fails.append(f"MISSED  ({why}): {text[:70]}")
+    for text, bill, where in BILL_BEFORE:
+        w = [(i * 0.4, x) for i, x in enumerate(text.split())]
+        got = [m for m in S.find_markers(w, [bill], {}) if m["bill"] == bill]
+        if not got or got[0]["t"] != 0.0 or "weak" not in got[0]["how"]:
+            fails.append(f"BILL BEFORE ({where}): {got}")
 
     # Tested through find_markers, not against the patterns alone. "turn to"
     # matches in "turn to page five of the handout", and that is fine: a phrase
@@ -251,12 +397,207 @@ def run():
         fails.append(f"marker timed at {mk[0]['t']}s -- that is the window's "
                      "start, not the phrase's")
 
+    # The title stands for a garbled number after an opening that names a
+    # proceeding (17 October 2026). Spoken, itJRViVSJqk at 5:33:24: the
+    # clerk's reading of HB 564 with the number captioned "5604", placed by
+    # its title alone -- which no marker had been since data/bills.json was
+    # keyed by term.
+    w5 = [(i * 0.4, x) for i, x in enumerate(
+        "Majority of the committee on education policy and administration to "
+        "which was referred House Bill 5604, an act relative to the adoption of "
+        "school administrative unit budgets, considered the same".split())]
+    t5 = {"HB564": "relative to the adoption of school administrative unit budgets",
+          "HB56": "relative to the state forester"}
+    mk = S.find_markers(w5, list(t5), t5, floor=True)
+    if [(m["bill"], m["how"]) for m in mk] != [("HB564", "title")]:
+        fails.append(f"the clerk's reading of HB 564 by its title gave {mk}")
+    if S.find_markers(w5, list(t5), {}, floor=True):
+        fails.append("a garbled number with no titles to go on was still placed")
+    # Not after a witness's own testimony (hIbS7l-s6QY 4:02:46), and not a
+    # title read beyond half a minute of the phrase: maO9FgPtnGY's chair
+    # announced the afternoon at 4:10:14 and opened HB 1819 at 4:18:22, both
+    # spoken as below, with the recess between them.
+    t6 = {"HB1632": "relative to out-of-state solid waste."}
+    w6 = [(i * 0.4, x) for i, x in enumerate(
+        "so let me start my testimony with a little bit of a story so round about 38 "
+        "years ago there was a decision in the state of New Hampshire to privatize "
+        "Solid Waste and we have a disproportionate amount of out of state waste".split())]
+    if S.find_markers(w6, list(t6), t6):
+        fails.append("a witness's 'start my testimony' was placed by the bill's title")
+    # Nor where "you" start it (r9q9bnsslqs 0:30:14, spoken; after review).
+    t6b = {"SB314": "relative to pre-trial competency evaluations."}
+    w6b = [(i * 0.4, x) for i, x in enumerate(
+        "might think when you start hearing the word competency evaluations it's very "
+        "common for people to think you're talking about serious crimes".split())]
+    if S.find_markers(w6b, list(t6b), t6b):
+        fails.append("a witness's 'when you start hearing' was placed by the bill's title")
+    t7 = {"HB1819": "relative to review of education freedom account service providers."}
+    w7 = ([(15014.0 + i * 0.4, x) for i, x in enumerate(
+        "And we will start up again with another hearing at 2:15. >> [laughter]".split())]
+          + [(15502.0 + i * 0.4, x) for i, x in enumerate(
+              "we'll open the hearing on House Bill 18/19FN relative to review of education "
+              "freedom account service providers".split())])
+    got = [m["t"] for m in S.find_markers(w7, list(t7), t7)]
+    if got != [15502.0]:
+        fails.append(f"a title read after the recess placed the announcement: {got}")
+    # The clerk's reading is the opening however long the room takes
+    # (uVvh7EfGSTg 7:48:15, spoken so, the title 35 seconds on).
+    t8 = {"HB475": "relative to reductions from the default budget for official ballot "
+                   "town meetings"}
+    w8 = ([(28096.0 + i * 0.3, x) for i, x in enumerate(
+        "majority of the committee on the municipal and County government to which "
+        "was referred house bill when it quiets down I'll".split())]
+          + [(28133.0 + i * 0.4, x) for i, x in enumerate(
+              "continue act relative to the reductions from the default budget for official "
+              "ballot Town meetings".split())])
+    if [m["t"] for m in S.find_markers(w8, list(t8), t8, floor=True)] != [28096.0]:
+        fails.append("the clerk's reading interrupted before its title was not placed")
+
+    # Two bills opened in one breath share the moment; a correction is not a
+    # block; opened and recessed is not a span, and coming out of a recess is
+    # not a recess (17 October 2026). Each spoken, at the recording and time
+    # beside it.
+    def opens(text, cands, at=0.0):
+        w = [(at + i * 0.4, x) for i, x in enumerate(text.split())]
+        return {m["bill"]: m for m in S.find_markers(w, cands, {}) if m["kind"] == "open"}
+    got = opens("will start the day today with a work session on HB 56 and HB 253 let's "
+                "start this morning with the Pledge of Allegiance", ["HB56", "HB253"])
+    if sorted(got) != ["HB253", "HB56"] or got["HB56"]["t"] != got["HB253"]["t"]:
+        fails.append(f"a block opening (-iWFQuQeru0 0:06:39) gave {got}")
+    got = opens("open the executive session on House Bill 1097 and recognize I think you "
+                "wrote 1197 representative", ["HB1097", "HB1197"])
+    if "HB1197" in got:
+        fails.append("a correction (-eGkacU96-Q 1:48:14) was read as a block")
+    for text, where in (
+            ("going to open up the public hearing on HB1357 and recess the public "
+             "hearing on HB1357 till February 3rd at 3:15. Thank you.", "IQ2_t0-5Y9w 0:01:36"),
+            ("open and recess the uh hearing for HCR16. uh the prime sponsor was not here",
+             "HpDeBZsI2wU 2:41:53")):
+        bill = "HB1357" if "1357" in text else "HCR16"
+        w = ([(i * 0.4, x) for i, x in enumerate(text.split())]
+             + [(900 + i * 0.4, x) for i, x in enumerate(
+                 f"we have more on {bill} later I'll open the hearing on House Bill 1442".split())])
+        segs = S.to_segments(S.find_markers(w, [bill, "HB1442"], {}), [bill, "HB1442"])
+        S.fill_ends(segs, S.last_mentions(w, [bill, "HB1442"]), [])
+        first = (segs.get(bill) or [{}])[0]
+        if not first.get("recessed") or first.get("end") is not None:
+            fails.append(f"opened and recessed ({where}) became a span: {first}")
+    got = opens("opening and coming out of recess for House Bill 1241. And then I will call "
+                "on Representative", ["HB1241"])
+    if not got or got["HB1241"].get("recessed"):
+        fails.append(f"coming out of a recess (T5AtXiL_VVc 0:33:02) read as one: {got}")
+    # A close does not attach to an opening that was recessed: on a9iqYhIVaA8
+    # the chair said the first sentence at 3:00:15 and the second at 5:22:27,
+    # a sitting between them whose own opening was not caught.
+    w10 = ([(10815.0 + i * 0.4, x) for i, x in enumerate(
+        "will open the hearing on HB 289 and then recess it until one o'clock so that "
+        "people that are here for that".split())]
+           + [(19347.0 + i * 0.4, x) for i, x in enumerate(
+               "going to close the hearing on that and I would like to um I had recessed the "
+               "hearing earlier on HB 289".split())])
+    segs = S.to_segments(S.find_markers(w10, ["HB289"], {}), ["HB289"])
+    first = (segs.get("HB289") or [{}])[0]
+    if not first.get("recessed") or first.get("end") is not None:
+        fails.append(f"a close attached to an opening that was recessed (a9iqYhIVaA8): {first}")
+    # Coming back is not a recess (RESUMING): G5a_5cNnorE at 1:38:27, spoken.
+    got = opens("opened at ten o'clock and then recess we will now come out of recess on hb "
+                "487 and i will recommend recognize the sponsor of the bill", ["HB487"])
+    if not got or got["HB487"].get("recessed"):
+        fails.append(f"coming out of a recess (G5a_5cNnorE 1:38:27) read as one: {got}")
+    # The title stands for a bill only after an opening that names a
+    # proceeding (TITLED). Spoken, and placed by title before that rule:
+    for text, bill, title, where in (
+            ("opens a door to listing you know a myriad of other conditions because there's "
+             "really two categories of Health there's physical health and mental health and "
+             "everything falls under one of those", "SB151",
+             "relative to mental health education.", "NHUzbncPxRU 3:40:16"),
+            ("a way of opening this conversation and trying to find a way to fund the "
+             "university system and the community college system in a way that makes sense, "
+             "that helps to retain uh our youngest and brightest students here in New "
+             "Hampshire.", "SB604", "making an appropriation to the university system of New "
+             "Hampshire.", "rnZQ363ufk4 0:17:08")):
+        w = [(i * 0.4, x) for i, x in enumerate(text.split())]
+        if S.find_markers(w, [bill], {bill: title}):
+            fails.append(f"a title placed {bill} after an opening naming no proceeding ({where})")
+    # Narrowed after reading what it gave on every recording, spoken as here.
+    got = opens("turn to public hearings for two more bills HB 759 and HB 760 so we'll begin "
+                "the activity of the afternoon", ["HB759", "HB760"])
+    if "HB760" in got:
+        fails.append("the day described (tGTxrTv7BA4 4:11:25) was read as a block")
+    for text, cands, bill, want, where in (
+            ("open this hearing at one o'clock on recess till 1 30. open the hearing on "
+             "House Bill 49 FNA call on the prime sponsor", ["HB49"], "HB49", False,
+             "V6IY6c_XJwk 3:32:17"),
+            ("now open the reopen the public hearing on House Bill 567 FN and because we "
+             "recessed this public hearing last year or last week", ["HB567"], "HB567",
+             False, "xAFePV5Jckw 0:06:10"),
+            ("I'll open the committee on committee of conference on HB1 and HB2 and "
+             "announce that we are in a break.", ["HB1", "HB2"], "HB1", True,
+             "1SIDO6pM17w 0:04:55")):
+        got = opens(text, cands)
+        if bill not in got or bool(got[bill].get("recessed")) != want:
+            fails.append(f"recessed ({where}): {got.get(bill)}, wanted {want}")
+    t9 = {"HB1507": "requiring schools to provide a minimum amount of time for recess "
+                    "per day."}
+    w9 = [(i * 0.4, x) for i, x in enumerate(
+        "will open the executive session on HB1507 requiring schools to provide a minimum "
+        "amount of time for recess per day. And I recognize".split())]
+    got = [m for m in S.find_markers(w9, list(t9), t9) if m["kind"] == "open"]
+    if not got or got[0].get("recessed"):
+        fails.append(f"a title that speaks of recess (9FFIBlZjGXU 1:50:15) was read as one: {got}")
+
+    # A bill named only as it was opened gives its end nothing to go on (17
+    # October 2026). Last named 10 s after its opening, it ends at the first
+    # close naming no bill before the next boundary, else the last vote
+    # result, else nowhere; a bill named again later keeps last mention + 60.
+    def ends(last, evidence, named=(), what=""):
+        byb = {"HB1118": [{"start": 100.0, "end": None, "what": what}],
+               "HB1119": [{"start": 600.0, "end": None}]}
+        S.fill_ends(byb, {"HB1118": last, "HB1119": 610.0}, evidence, list(named))
+        s = byb["HB1118"][0]
+        return s.get("end"), s.get("end_from")
+    # What end_evidence counts as a vote, read in the ends it made: spoken.
+    for text, want, where in (
+            ("chairman Lynn yes motion passes 19 to1 um uh consent", True, "a5nhRJLyv0M 4:38:09"),
+            ("yes Mr chairman the vote is 19-6 in favor of the motion okay that's adopted",
+             True, "lXP6sTGwRJw 2:22:19"),
+            ("via alleged search violations it failed miserably not only did it fail",
+             False, "-JbQ-7NpeNg 2:48:31"),
+            ("1633 and in 6 639 that passed the house last year it did not allow",
+             False, "M9yjz-9dtw4 4:48:10"),
+            ("Okay, we are now moving on to the regular calendar. the first bill um we "
+             "will take up", False, "XJsE-D96t2w 0:21:51")):
+        w = [(i * 0.4, x) for i, x in enumerate(text.split())]
+        got = any(k == "vote result" for _t, k in S.end_evidence(w, ["HB5"]))
+        if got != want:
+            fails.append(f"end_evidence ({where}) read a vote: {got}, wanted {want}")
+    votes = [(300.0, "vote result"), (400.0, "vote result"), (700.0, "vote result")]
+    # The first vote, not the last; nothing past another scheduled bill
+    # named; no vote at all on a hearing (after review, 17 October 2026).
+    for got, want, why in (
+            (ends(110.0, votes), (300.0, "vote result"), "the first vote after the opening"),
+            (ends(110.0, votes + [(250.0, "unnamed close")]), (250.0, "unnamed close"),
+             "a close naming no bill"),
+            (ends(110.0, votes, [(102.0, "HB1118"), (104.0, "HB1120"), (280.0, "HB1120")]),
+             (None, None), "another scheduled bill named before any vote"),
+            (ends(110.0, votes + [(450.0, "unnamed close")], [(420.0, "HB1120")]),
+             (300.0, "vote result"), "a close past another bill named is that bill's"),
+            (ends(110.0, votes, (), "public hearing"), (None, None), "a vote ending a hearing"),
+            (ends(110.0, votes + [(350.0, "unnamed close")], (), "hearing"),
+             (350.0, "unnamed close"), "a hearing's close"),
+            (ends(110.0, []), (None, None), "nothing to end it on"),
+            (ends(300.0, votes), (360.0, "last mention of the bill"), "named again later")):
+        if got != want:
+            fails.append(f"fill_ends, {why}: {got}, wanted {want}")
+
     return fails
 
 
 if __name__ == "__main__":
     bad = run()
-    n = len(MUST_MATCH) + len(MUST_NOT_MATCH) + 3
+    n = (len(MUST_MATCH) + len(MUST_NOT_MATCH) + len(NOT_OPENINGS) + len(NOT_FLOOR_OPENINGS)
+         + len(STILL_OPENINGS)
+         + len(BILL_BEFORE) + 6)
     if bad:
         print(f"{len(bad)} of {n} failed:")
         for b in bad:
@@ -264,4 +605,6 @@ if __name__ == "__main__":
         sys.exit(1)
     print(f"{n} marker cases pass "
           f"({len(MUST_MATCH)} spoken phrasings, {len(MUST_NOT_MATCH)} decoys, "
-          "3 behaviours)")
+          f"{len(NOT_OPENINGS) + len(NOT_FLOOR_OPENINGS)} spoken non-openings, "
+          f"{len(STILL_OPENINGS)} spoken "
+          f"openings beside them, {len(BILL_BEFORE)} named before the phrase, 6 behaviours)")

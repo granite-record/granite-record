@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.211
+# GRANITE_VERSION: 2026-09-05.216
 """
 Generate the faceted site from real General Court data.
 
@@ -2185,9 +2185,39 @@ def next_step(narr, bill, prefix=""):
     return "In progress"
 
 
-def station_for_proceeding(p, bid, segs, marks):
+CONCURRENCE = re.compile(r"concur|conference|\bc\s*of\s*c\b|accede|recede", re.I)
+
+
+def concurrence_action(f):
+    """True for a floor row that is a committee of conference, or whose
+    action is a concurrence, a non-concurrence, a request for a committee of
+    conference, an accession or a recession -- business between the chambers
+    that the consent calendar never carries (station_for_floor)."""
+    return (f.get("kind") == "committee of conference"
+            or any(CONCURRENCE.search(str(x)) for x in (f.get("motions") or [])))
+
+
+def invented_end(said):
+    """True for an end segment_markers took from the bill's last mention
+    where that mention was within 30 seconds of the opening, so the end is a
+    minute after the chair read the number whatever the item ran.
+
+    (17 October 2026.) 761 such ends were published; the three a person
+    timed ran 809, 142 and 227 seconds against the 62, 62 and 89 shown.
+    segment_markers no longer writes them -- it ends such an item at a close
+    naming no bill or a vote's result, or not at all -- and this keeps a
+    candidate file written before that from publishing one. last mention + 60
+    under 90 seconds after the start is exactly a mention within 30."""
+    return (said.get("end_from") == "last mention of the bill"
+            and said.get("end") is not None and said.get("start") is not None
+            and said["end"] - said["start"] < 90)
+
+
+def station_for_proceeding(p, bid, segs, marks, claimed=None):
     """One committee proceeding -- a hearing or an executive session -- as the
-    station the page draws.
+    station the page draws. `claimed` is the set of the bill's recordings
+    whose marker naming no proceeding a sitting has already taken, which
+    bill_stations shares across the bill's sittings in docket order.
 
     Split out of main() with station_for_floor below it. The two used to sit
     ninety lines apart inside one 955-line function, which is how a lookup
@@ -2198,6 +2228,26 @@ def station_for_proceeding(p, bid, segs, marks):
         if s.get("bill", "").upper() == bid and s.get("kind") == p["proceeding"]:
             seg = s
             break
+    # A CLUSTERING PLACEMENT WITH NO MENTION OF THE BILL INSIDE IT IS NOT
+    # PUBLISHED. (17 October 2026.) The aligner gives every scheduled
+    # proceeding a span, and where the bill is never named inside the span it
+    # chose, the span is a slot the docket's order left over, most often its
+    # 30-second minimum: 321 of the site's 1,099 clustered placements were
+    # exactly 30 seconds, and 399 had no mention of the bill inside. The four
+    # of them a person timed were 4, 30, 77 and 202 minutes out. Without one
+    # the sitting keeps its recording and says the start was not identified,
+    # which is true, and offers no "automatic pass suggested" time either.
+    #
+    # A mention in the minute before the span counts as inside it. (After
+    # review, 17 October 2026.) 27 of the 372 withheld had the bill named just
+    # before: "On to House Bill 1315 relative to the sale of tobacco products"
+    # at 3:42:30 on 120gOWa2Jl0, its 30-second slot half a minute on.
+    # segment_markers finds those where the captions are and lists them under
+    # _named_before as "BILL|kind".
+    if (seg and seg.get("located") and seg.get("mentions_inside") == 0
+            and f"{bid}|{p['proceeding']}" not in
+            ((marks.get("_named_before") or {}).get(p.get("video_id") or "") or [])):
+        seg = None
     # THE RECORDINGS THIS SITTING COULD BE, where the matcher declined to
     # pick one of them. build_manifest writes the ids whenever more than one
     # recording of the committee exists that day; build_proceedings carries
@@ -2284,8 +2334,29 @@ def station_for_proceeding(p, bid, segs, marks):
     usable = [c for c in (marks.get(p.get("video_id") or "") or {}).get(bid, [])
               if isinstance(c, dict) and c.get("start") is not None]
     said = next((c for c in usable if _matches(c) is True), None)
-    if said is None:
+    # AN AMBIGUOUS MARKER SERVES ONE PROCEEDING. (17 October 2026.) A marker
+    # that names no proceeding is a fallback for whichever sitting of the
+    # bill on this recording has none of its own, and the first such marker
+    # was handed to every one of them: 341 moments were published on two
+    # proceedings of one bill, 687 stations, chiefly an executive session and
+    # the hearing or full committee work session before it. bill_stations
+    # calls this in docket order with one `claimed` for the bill, so the
+    # first sitting with no marker of its own takes the first such marker
+    # spoken, and the later ones take none.
+    #
+    # Not the next one along, which was tried first and read: of the 39
+    # sittings it moved to a second marker that names no proceeding, about
+    # nine were their own openings ("open up executive uh session on HB
+    # 1256") and most of the rest were the same hearing a minute on -- the
+    # sponsor's "introduce house bill 10 40" 68 seconds after the chair's
+    # "begin house bill 1040" -- or a remark ("open to everyone for people to
+    # enjoy"). A later sitting falls back to the clustering, or to the
+    # recording with its start not identified.
+    vid = p.get("video_id") or ""
+    if said is None and (claimed is None or vid not in claimed):
         said = next((c for c in usable if _matches(c) is None), None)
+        if said is not None and claimed is not None:
+            claimed.add(vid)
 
     # The clustering's end, but only where it is describing the same span.
     #
@@ -2306,7 +2377,11 @@ def station_for_proceeding(p, bid, segs, marks):
     # its stated start and no end, which the page already draws as "from
     # 1:19:26".
     seg_end = None
-    if seg and seg.get("located") and seg.get("end") is not None:
+    # Not where the bill was named only before the span (_named_before): the
+    # start is the item, a little late, and the end is the aligner's
+    # 30-second minimum, which is no measurement of how long it ran.
+    if (seg and seg.get("located") and seg.get("end") is not None
+            and seg.get("mentions_inside") != 0):
         anchor = said["start"] if said else seg.get("start")
         near = (abs(seg["start"] - anchor) <= (seg.get("tolerance") or 300)
                 if said else True)
@@ -2346,7 +2421,13 @@ def station_for_proceeding(p, bid, segs, marks):
     elif seg_end is not None:
         end_from = "clustered"
         end_val = seg_end
-    if end_from in UNPUBLISHABLE:
+    if end_from in UNPUBLISHABLE or (said and invented_end(said)):
+        end_val = None
+    # A HEARING TAKES NO VOTE, so a vote result does not end one. (17 October
+    # 2026, after review.) segment_markers knows the proceeding only where the
+    # chair named it; four of the five vote-result ends published on hearings
+    # were testimony or an aside. The docket's kind is the one that knows.
+    if end_from == "vote result" and "hearing" in str(p.get("proceeding") or "").lower():
         end_val = None
 
     # The state the page will actually see, computed once: the key below has
@@ -2572,8 +2653,26 @@ def station_for_floor(f, bid, marks):
     # consent calendar: adopted as part of a block, never read out,
     # never debated. Offering to play a nine-hour session for it invites
     # a reader to listen for something that is not there.
-    if bid in (marks.get("_absent") or {}).get(f.get("video_id") or "",
-                                               []):
+    #
+    # A recorded roll call on the bill that day overrules it. (17 October
+    # 2026.) "Never named" is read off the captions, and the captions garble
+    # bill numbers: HB 1002 was tabled 187-157 on 12 February 2026 while
+    # the clerk's reading came out as "house bill 10002", and HB 1602 had two
+    # roll calls on 19 February, so both were drawn as passed on the consent
+    # calendar, which is a wrong fact rather than a missing time. A roll call
+    # is the chamber's own record that the bill was voted on by itself, and
+    # a bill on the consent calendar never is. The roll call's tallies are
+    # what proceedings.csv carries for that day, so they decide it.
+    #
+    # NOR IS A CONCURRENCE OR A CONFERENCE EVER THE CONSENT CALENDAR. (After
+    # review, 17 October 2026.) Concurring or not with the other chamber's
+    # amendment, asking for a committee of conference, acceding to one and
+    # adopting its report are taken up in their own order, and often off any
+    # recording of the day's session: HB 250's non-concurrence of 22 May 2025
+    # (YobZAwJsSQo) was drawn as passed on consent, and 74 consent stations
+    # of the 15 October build were actions of that kind. They show the day.
+    if (bid in (marks.get("_absent") or {}).get(f.get("video_id") or "", [])
+            and not f.get("tallies") and not concurrence_action(f)):
         st["state"] = "consent"
         st["start"] = None
         # Not a debate. The heading read "House floor debate" over a paragraph
@@ -2582,11 +2681,24 @@ def station_for_floor(f, bid, marks):
         st["what"] = "consent calendar"
         return st
 
+    # A COMMITTEE OF CONFERENCE TAKES ITS OWN OPENING. (17 October 2026.)
+    # segment_markers names one "committee of conference" when the chair
+    # convenes it, and this accepted only "" or "floor debate", so 25
+    # conference sittings with the chair's own words on record drew no time
+    # and 2 drew a later, wrong one: HB 710 on dIumWRhMDrY showed 1:20:08,
+    # "open the door", where the chair said "convene the Committee of
+    # Conference on House Bill 710" at 0:16:39. Still the first one spoken,
+    # not its own kind first: "We'll open a COC on Senate Bill 96" at 0:02:48
+    # on 89R50nnQFrE is the opening and names no proceeding the patterns
+    # know, and "convene the committee of conference on Senate Bill 96" is
+    # the same sitting coming back two and a half hours later.
+    kinds = ("", "floor debate") + (("committee of conference",)
+                                    if kind == "committee of conference" else ())
     said_f = None
     for cand in (marks.get(f.get("video_id") or "") or {}).get(bid, []):
         if not isinstance(cand, dict) or cand.get("start") is None:
             continue
-        if str(cand.get("what") or "") not in ("", "floor debate"):
+        if str(cand.get("what") or "") not in kinds:
             continue
         end = f.get("debate_end")
         if precise and end and not (0 <= end - cand["start"] <= 7200):
@@ -2598,7 +2710,7 @@ def station_for_floor(f, bid, marks):
         st["debate_start"] = said_f["start"]
         st["start_stated"] = True
         st["said_how"] = said_f.get("how")
-        if not precise and said_f.get("end"):
+        if not precise and said_f.get("end") and not invented_end(said_f):
             st["debate_end"] = said_f["end"]
             st["state"] = "floor_stated"
     return st
@@ -2654,7 +2766,7 @@ def withhold_late_captions(segs, marks, work, summary=caption_span.SUMMARY):
     for v in list(late) + list(unknown):
         segs.pop(v, None)
         marks.pop(v, None)
-        for side in ("_absent", "_sequence"):
+        for side in ("_absent", "_sequence", "_named_before"):
             if isinstance(marks.get(side), dict):
                 marks[side].pop(v, None)
     print(f"caption tracks: {compared:,} recordings compared with the length "
@@ -9745,8 +9857,13 @@ def bill_stations(bid, term, procs, segs, marks):
     A leaf: one output, no other reader in the loop, nothing captured that is
     not passed. Keyed (term, bid) because a bill number names a different bill
     in each biennium.
+
+    In docket order, sharing one `claimed` between the sittings, so a marker
+    that names no proceeding goes to one of them and not to all
+    (station_for_proceeding, 17 October 2026).
     """
-    return [station_for_proceeding(p, bid, segs, marks)
+    claimed = set()
+    return [station_for_proceeding(p, bid, segs, marks, claimed)
             for p in sorted(procs.get((term, bid), []),
                             key=lambda x: (x["sched_date"],
                                            x["sched_time"] or ""))]

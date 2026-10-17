@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.41
+# GRANITE_VERSION: 2026-09-05.57
 """
 Segment a recording on what the chair says, not on where bill numbers cluster.
 
@@ -358,6 +358,55 @@ NEXT_RE = re.compile(
 # documents and recesses. Those are used only where nothing stronger fired.
 # The floor patterns are not here: find_markers adds them only for a floor
 # recording, and they are wrong for a committee room.
+# THE PHRASES THAT AGREE WITH A STATED OPENING NINE TIMES IN TEN, AS WEAK
+# MARKERS. (17 October 2026.) A second pass over every recording counted each
+# candidate phrase only where a scheduled bill was named beside it, and
+# measured it against the bills that already had a chair's stated opening, on
+# recordings where the bill had one proceeding: within 60 seconds of it, how
+# often. These seven are those of 89% and over; each is weak, so it is used
+# only where no other pattern placed the bill, and the page says so.
+#
+#   phrase                          agrees   of    median offset
+#   garbled clerk's reading           99%   1,199   0.2 s   floor
+#   attentive to the clerk            99%     456   2.8 s   floor
+#   welcome the prime sponsor        100%      18           bill named before
+#   recognizes the prime sponsor      95%     541   1.7 s   bill named before
+#   call the committee a conference   93%      30
+#   for a motion                      89%     742   2.2 s   bill named before
+#   next hearing which is             89%      97   0 s
+#
+# Those below 89% -- "moving on" 76%, "next bill will be" 74%, "here to
+# present" 73%, "prime sponsor of" 71%, "first bill is" 68%, the bill read
+# with its title 82% -- wait for a person's sample at the bench.
+F_ = r"(?:(?:um|uh|er|ah|okay|so|and)[\s,.]+|\[[^\]]{0,24}\]\s*)*"
+NEXT_HEARING_RE = re.compile(
+    r"\bnext\s+" + F_ + r"(?:public\s+)?hearing\s+" + F_ + r"(?:which\s+)?is(?:\s+on)?\b", re.I)
+CONF_CALL_RE = re.compile(
+    r"\b(?:call|convene|reconvene|order)\w*\s+(?:\w+\s+){0,4}?committee\s+(?:of|a|on)\s+"
+    r"conference\b", re.I)
+ATTENTIVE_RE = re.compile(r"\battentive\s+to\s+the\s+clerk\b", re.I)
+# No number before "referred": read in what it gained, the first version also
+# took the clerk's list of second referrals, "the committee on criminal
+# justice and public safety, SP 145 FN is referred to the committee on
+# finance", where the bill comes before the verb and nothing is being
+# debated. (Not "are referred" as such: "elderly affairs to which are
+# referred to House Bill 1734", b9vTd1d8PuI 9:56:55, is a reading.)
+GARBLED_READING_RE = re.compile(
+    r"\bcommittee\s+on\s+[A-Za-z ,\-]{4,70}?\s*,?\s*(?:[A-Za-z]+\s+){0,3}?"
+    r"(?:re-?|de|p)?referr?ed\b", re.I)
+# The bill is named BEFORE these: "House Bill 184 establishing ... and I
+# welcome the prime sponsor". The marker is the moment the bill was named, the
+# last scheduled bill named in the 160 characters before the phrase.
+WELCOME_PRIME_RE = re.compile(
+    r"\b(?:i|we)\s+(?:would\s+like\s+to\s+)?welcome\s+(?:the\s+)?prime\s+sponsor\b", re.I)
+RECOGNIZE_PRIME_RE = re.compile(
+    r"\b(?:the\s+chair\s+)?recogni[sz]es?\s+(?:the\s+)?prime\s+sponsor\b", re.I)
+FOR_A_MOTION_RE = re.compile(
+    r"\b(?:call\s+on|recogni[sz]e\w*)\s+(?:\w+\s+){0,4}?for\s+a\s+motion\b", re.I)
+BEFORE_PATS = (WELCOME_PRIME_RE, RECOGNIZE_PRIME_RE, FOR_A_MOTION_RE)
+# On a floor recording only, after every other pattern.
+FLOOR_WEAK_PATS = ((GARBLED_READING_RE, "open", True), (ATTENTIVE_RE, "open", True))
+
 COMMITTEE_PATS = (
     (OPEN_RE, "open", False),
     (CLOSE_RE, "close", False),
@@ -365,12 +414,213 @@ COMMITTEE_PATS = (
     (CONF_OPEN_RE, "open", False),
     (NEXT_RE, "open", True),
     (NEXT2_RE, "open", True),
+    (NEXT_HEARING_RE, "open", True),
+    (CONF_CALL_RE, "open", True),
 )
+
+# WORDS THAT READ LIKE AN OPENING AND ARE NOT ONE. (17 October 2026.) Each
+# was read in the published starts, which held about 114 of them, and each
+# kind is matched where the phrase's own verb stands, not anywhere before the
+# bill:
+#
+#   "begin the roll call vote on house bill 1430"   the vote, at the end
+#   "beginning in fiscal year 2026"                 a noun, not a verb
+#   "open for further discussion"                   the floor, mid-item
+#   "open to any questions"
+#   "Open Democracy"                                a group testifying
+#   "open the door to censorship"                   an adjective, in
+#   "open meeting law", "open enrollment schools"   testimony
+#   "what I'm going to do is close this hearing"    a close
+#
+# "beginning with House Bill 1377" is an opening and is left alone, and so
+# is "open the meeting on HP 10:21".
+#
+# NARROWED AFTER READING EVERY OPENING THE FIRST VERSION DROPPED (83 gone, 46
+# moved, across every recording). It took nine real ones, and each kind is
+# now left alone: a chair's "will open it up to discussion ... my impression
+# on 396" (9yzcPQyUVbE 1:09:55), "open up for discussion purposes for the HB
+# 443" (0Y2d_XDakUY 0:06:33) and "Now open up for motion on 1148"
+# (BiiKMa_5KIg 0:14:26) -- so "discussion" and "motion" are not on the list,
+# only "further", questions, comments and amendments; and "beginning here
+# it's HB 497" (byME6vPFS3U 0:08:20), "beginning of house bill 2 and go
+# through the sections" (z0XsJZl7JDw 0:00:38) -- so "beginning" is not an
+# opening only before the words it was read before and nowhere else: "in
+# fiscal year", "date", "that", "by age", "somewhere", "because", "my third
+# term", "to see", "at one o'clock", "is of the pandemic", "on line six",
+# "and the bill", "yeah", "but". "beginning of ..." stays as it was, since
+# it went both ways.
+NOT_AN_OPENING = re.compile(
+    r"begin(?:ning)?\s+(?:the\s+|a\s+)?(?:roll[\s-]*call|vote)\b"
+    r"|beginning\s+(?:in|date|that|by|somewhere|because|my|to|at|is|on|and|yeah|but)\b"
+    r"|open(?:ed)?\s+(?:it\s+)?(?:up\s+)?(?:for|to)\s+(?:any\s+)?(?:further|questions?|"
+    r"comments?|amendments?)\b"
+    r"|open\s+(?:democracy|doors?|the\s+doors?|meetings?|enrollment|spaces?|government|"
+    r"records?|mind(?:ed)?)\b"
+    r"|open\s+for\s+\d+\s+seconds\b"
+    r"|going\s+to\s+do\s+is\s+(?:clos|recess)", re.I)
+# "open for 30 seconds" was read among the openings the first guards dropped
+# only through a close word, which no longer does so alone (below): "voting
+# stations are open for 30 seconds represent Bernardi yes it won't because
+# it's closed" (KaNJiVdJBos 3:20:41) is the floor's voting board, and so is
+# EXjvgzYBkb8's at 4:32:39, which then names HB 1607 being laid on the table.
+OPENING_VERB = re.compile(r"\b(?:open|begin|going\s+to\s+do)", re.I)
+# And a close of a proceeding between the opening phrase and its bill: "will
+# open we'll close the hearing on house bill 89 and open the hearing on house
+# bill 163" names 89 to close it. About half of the 24 published spans under
+# 30 seconds the chair "closed" were a close or an aside read as an opening.
+#
+# A CLOSE OF THE ITEM BEING OPENED IS NOT ONE. (After review, 17 October
+# 2026.) "close" alone cancelled "we'd introduce it and close it so we had
+# our hearing so what we'll do right now I'll welcome representative cordelli
+# to our our hearing today on 147" (c2VFUD5sfM0 0:51:00) and "just open it up
+# and close it ... for today it's HB 1534" (Hcd1VaWItFE 5:22:21): the chair
+# saying what they will do with the item they are opening. A close cancels
+# only where it closes a proceeding by name -- the hearing, the session, the
+# testimony -- and "a closed session" (ClkTYzvmn84 0:08:08) is a kind of
+# sitting, not a close.
+CLOSE_OF_ITEM = re.compile(
+    r"\b(?:clos(?:e|es|ing)|closed(?=\s+(?:the|this|that|our)\b))\s+(?:out\s+|up\s+|down\s+)?"
+    r"(?:the\s+|this\s+|that\s+|our\s+|a\s+)?(?:[a-z]+\s+){0,2}?"
+    r"(?:hearing|session|testimony|meeting)s?\b"
+    r"|\bclosed\s+(?:public\s+)?hearing"
+    # And a close of a bill by its number: read in what the narrower rule
+    # gave back, "open and closing uh 695 ... we'll start actually with uh 768"
+    # (73sLapY1jRw 1:33:37) and "we'll open on 111 what's that oh have we
+    # officially closed 111" (V4ktDpuwgDM 1:35:01) name a bill to close it.
+    r"|\b(?:clos(?:e|es|ing)|closed)\s+(?:(?:uh|um|out|up|on)\s+)*"
+    r"(?:(?:house|senate)\s+bill\s+|hb\s*|sb\s*)?\d{2,4}\b", re.I)
+VERB_WORDS = {"open", "opened", "begin", "beginning", "the", "a", "to", "for", "up", "it",
+              "going", "do", "is"}
+
+
+def in_title(said, title):
+    """True when the words a guard matched, past the verb, are the bill's own
+    title's: HB 771 is "relative to funding for open enrollment schools", and
+    "open enrollment" read before it (YnRjE5qQj3w 0:38:56) is the bill."""
+    have = set(norm(title).split())
+    want = [w for w in norm(said).split() if w not in VERB_WORDS]
+    return bool(have) and bool(want) and all(w in have for w in want)
+
+
+# TWO BILLS OPENED IN ONE BREATH SHARE THE MOMENT. (17 October 2026.) "will
+# start the day today with a work session on HB 56 and HB 253", "call the
+# committee of conference on HB1 and HB2 to order": 81 openings named two
+# scheduled bills, and the second -- 21 of them on no other marker -- went
+# unplaced. Only "<bill> and <bill>", the second straight after the first:
+# "open the executive session on House Bill 1097 and recognize I think you
+# wrote 1197" is a correction, not a block, and is not one.
+BLOCK_RE = re.compile(
+    r"\s*(?:,\s*(?:and\s+)?|and\s+|&\s*)"
+    r"((?:(?:house|senate)\s*bill|hb|hp|sb|sp)?\s*#?\s*\d{1,4})\b", re.I)
+# NARROWED AFTER READING ALL 25 IT GAVE: only after an opening that names the
+# proceeding (TITLED), with the first bill straight after the noun. The rest
+# were the day being described, not two items opened: "turn to public
+# hearings for two more bills HB 759 and HB 760" (tGTxrTv7BA4 4:11:25, an
+# hour and a half before HB 760's own hearing), "the session today for the
+# subcommittee dealing with uh HB510 and HB 112", "we looked at uh HB 542 and
+# HP 744", "a couple of bills i think 112 and 102". What it keeps: "a work
+# session on HB 56 and HB 253", "the committee of conference on HB1 and HB2",
+# "the public hearing on House Bill 603 and House Bill 238".
+BLOCK_LEAD = re.compile(r"\s*(?:(?:on|for|of|the|uh|um)\s+)*", re.I)
+
+
+def block_partner(tail, candidates, bill):
+    """The second scheduled bill of "<bill> and <bill>", where `tail` is what
+    follows the first; None where there is none."""
+    m = BLOCK_RE.match(tail)
+    if not m:
+        return None
+    got = bill_at(m.group(1), [c for c in candidates if c != bill], {})
+    return got[0] if got else None
+
+
+# OPENED AND RECESSED IS NOT A SITTING. (17 October 2026.) "going to open up
+# the public hearing on HB1357 and recess the public hearing on HB1357 till
+# February 3rd", "open and recess the uh hearing for HCR16": the item is
+# opened and set aside in one sentence, and the span from there to the next
+# boundary is whatever came between. The opening stands, and gets no end and
+# no close. Coming back from a recess is not one: "opening and coming out of
+# recess for House Bill 1241", "the public hearing on House Bill 1641 that was
+# recessed from January 14th".
+#
+# NARROWED AFTER READING THE 265 IT FLAGGED. Before the bill only "and
+# recess" or "then recess" sets the item aside: "open this hearing at one
+# o'clock on recess till 1 30. open the hearing on House Bill 49" (V6IY6c_XJwk
+# 3:32:17) is the room coming back and then the opening, and flagging it cost
+# the chair's own close. After the bill, a recess now or to come ("recess",
+# "recessing", "is now recessed", "we are in a break", which 1SIDO6pM17w's
+# chair said of HB 1 and HB 2 at 0:04:55), not one past: "because we recessed
+# this public hearing last week" reopens it, and so does "the continuation of
+# the recess hearing".
+RECESS_HEAD = re.compile(r"\b(?:and|then)\s+(?:(?:immediately|now)\s+)?recess(?:ing|ed)?\b", re.I)
+RECESS_TAIL = re.compile(
+    r"\brecess(?:ing)?\b(?!\s+(?:from|on|hearing)\b)|\b(?:is|are|now)\s+recessed\b"
+    r"|\bin\s+a\s+break\b", re.I)
+RESUMING = re.compile(
+    r"\b(?:out\s+of|from|back\s+from)\s+(?:the\s+|a\s+|our\s+)?recess\b"
+    r"|\bthe\s+recessed\b|\brecessed\s+(?:hearing|session)\b", re.I)
+
+
+def recessed(head, tail):
+    """True when the opening phrase (`head`, up to its bill) or the words
+    straight after its bill (`tail`) set the item aside as it is opened."""
+    if RESUMING.search(head + " " + tail):
+        return False
+    return bool(RECESS_HEAD.search(head) or RECESS_TAIL.search(tail))
+
+
+def not_an_opening(text, start, upto, title=""):
+    """What makes the opening phrase at text[start], whose bill is named at
+    text[upto], not an opening -- or "" when nothing does. Words of the
+    bill's own `title` are the bill, and do not count against it."""
+    v = OPENING_VERB.search(text, start, min(upto, start + 40))
+    if v:
+        m = NOT_AN_OPENING.match(text, v.start())
+        if m and not in_title(m.group(0), title):
+            return m.group(0)
+    m = CLOSE_OF_ITEM.search(text, start, upto)
+    if m and not re.search(r"\bclos", norm(title)):
+        return m.group(0)
+    return ""
+
+
+# THE OPENINGS AFTER WHICH A TITLE MAY STAND FOR THE NUMBER. (17 October
+# 2026.) With the titles restored (title_lookup), the fallback placed 326
+# bills that had no opening and moved 129 first openings by more than a
+# minute, and the moves included a door and a conversation: "I think it opens
+# a door" and "opening this conversation" followed by enough of a title's
+# words. A phrase that names a proceeding -- the hearing, the executive
+# session, the committee of conference, the clerk's committee report -- says
+# an item is being taken up, and the title after it is that item. A bare
+# "open" or "introduce" says nothing of the kind, and keeps to the number.
+TITLED = (OPEN_RE, CONF_OPEN_RE, FLOOR_OPEN_RE)
+# Read in every opening the titles gained or moved, two were not openings:
+# "let me start my testimony with a little bit of a story" (hIbS7l-s6QY
+# 4:02:46), a witness, whose "testimony" is their own and not a proceeding;
+# and "we will start up again with another hearing at 2:15" (maO9FgPtnGY
+# 4:10:14), a chair announcing the afternoon, whose title words came after
+# the recess, beyond the 220 characters' worth of silence the window spans.
+# A title read after an opening is read within half a minute of it -- except
+# the clerk's, which is the opening however long the room takes: "to which was
+# referred house bill ... when it quiets down I'll continue" (uVvh7EfGSTg
+# 7:48:15) reaches the title 35 seconds on, and ExENFHFMqiU's captions jump 36
+# seconds inside HB 1184's.
+OWN_TESTIMONY = re.compile(r"\b(?:my|our|your|his|her|their)\s+testimony\b", re.I)
+# Nor where "you" are the one starting: a witness's "when you start hearing
+# the word competency evaluations" (r9q9bnsslqs 0:30:14), whose words are
+# SB 314's title, is not a chair opening a hearing. (After review.)
+YOU_BEFORE = re.compile(r"\byou(?:'?ll|'?re)?\s+(?:(?:will|can|could|would|to|might|may)\s+)?$",
+                        re.I)
+TITLE_WITHIN = 30
 
 BILL_SPOKEN = re.compile(
     r"\b(?:(House|Senate)\s*Bill|(HB|HP|SB|SP|CACR|CAC|HR|SR|HCR|SCR|HJR))\s*#?\s*"
     r"(\d[\d\s:]{0,6}\d|\d)", re.I)
-BARE_NUM = re.compile(r"\b(\d{2,4})\b")
+# A FIGURE IS NOT A BILL NUMBER. (17 October 2026.) The hand-timed set's
+# worst error, 88 minutes, was SB 100 on 5zhoZ4k_UNY placed by the "100" of
+# "$100,000" read after "introduced". Digits after a dollar sign, or inside a
+# figure with a comma or a point ("100,000", "2.50"), are an amount.
+BARE_NUM = re.compile(r"(?<![$\d,.])(?<!\$\s)\b(\d{2,4})\b(?![,.]\d)")
 LETTER_FIX = {"HP": "HB", "SP": "SB", "CAC": "CACR"}
 
 STOP = set("""a an the of to in on for and or by with at from as is are be been
@@ -414,22 +664,57 @@ def pattern_signature():
         blob = "".join(parts)
     except (OSError, ValueError, tokenize.TokenError, SyntaxError):
         pats = [OPEN_RE, CLOSE_RE, OPEN_DIRECT_RE, CONF_OPEN_RE, NEXT_RE,
-                NEXT2_RE, FLOOR_OPEN_RE, FLOOR_CLOSE_RE, BILL_SPOKEN, BARE_NUM]
+                NEXT2_RE, FLOOR_OPEN_RE, FLOOR_CLOSE_RE, BILL_SPOKEN, BARE_NUM,
+                NEXT_HEARING_RE, CONF_CALL_RE, ATTENTIVE_RE, GARBLED_READING_RE,
+                WELCOME_PRIME_RE, RECOGNIZE_PRIME_RE, FOR_A_MOTION_RE]
         blob = "|".join(r.pattern for r in pats) + "|".join(sorted(STOP))
     return hashlib.sha1(blob.encode()).hexdigest()[:12]
 
 
-def cache_key(folder, candidates, sig):
+def cache_key(folder, candidates, sig, titles=None):
     """What can make a recording's answer stale: its captions, its bill list,
-    and this module's own code -- see pattern_signature, which is where the
-    claim that nothing else mattered used to live."""
+    their titles, and this module's own code -- see pattern_signature, which
+    is where the claim that nothing else mattered used to live."""
     p = Path(folder)
+    named = hashlib.sha1(json.dumps(titles or {}, sort_keys=True).encode()).hexdigest()[:8]
+    # And the clustering's placements, which named_before reads.
+    sf = p / "segments.json"
+    placed = (f"{sf.stat().st_size}:{int(sf.stat().st_mtime)}" if sf.exists() else "-")
     for name in WORK_FILES:
         f = p / name
         if f.exists():
             st = f.stat()
-            return f"{sig}|{','.join(sorted(candidates))}|{name}:{st.st_size}:{int(st.st_mtime)}"
-    return f"{sig}|{','.join(sorted(candidates))}|none"
+            return (f"{sig}|{','.join(sorted(candidates))}|{named}|{placed}|"
+                    f"{name}:{st.st_size}:{int(st.st_mtime)}")
+    return f"{sig}|{','.join(sorted(candidates))}|{named}|{placed}|none"
+
+
+def title_lookup(data_dir):
+    """{term: {bill: title}}, from data/bills.json.
+
+    THE TITLE FALLBACK HAD NOT RUN SINCE THE FILE WAS KEYED BY TERM. (17
+    October 2026.) This read data/bills.json as a list of bills, and it is
+    {term: {bill: record}}: the "bills" were terms, every one had neither "id"
+    nor "bill", and the lookup came out as {None: ""}. match_bill's title
+    path, which the docstring at the top credits with taking the hit rate from
+    83% to 94%, found nothing for any of 16,321 markers and nothing said so.
+    preflight now fails when the real file gives fewer than a thousand titles.
+    """
+    bills = json.loads((Path(data_dir) / "bills.json").read_text(encoding="utf-8"))
+    if bills and not P.term_keyed(bills):
+        sys.exit(f"{Path(data_dir) / 'bills.json'} is keyed on bill number, not "
+                 "on term. Rebuild it: python3 src/parse/build_data.py --dir . --out data")
+    return {term: {b: str((rec or {}).get("title") or "") for b, rec in byb.items()}
+            for term, byb in (bills or {}).items()}
+
+
+def titles_for(by_term, terms, cands):
+    """The titles of one recording's scheduled bills, from the term most of
+    its proceedings belong to: a bill number names a different bill in each
+    term."""
+    term = terms.most_common(1)[0][0] if terms else None
+    known = by_term.get(term) or {}
+    return {b: known.get(b, "") for b in cands}
 
 
 def read_words(folder):
@@ -487,6 +772,15 @@ def match_bill(text, candidates, titles):
     write HB 1381 as HP 1381 and House Bill 1135 as "House Bill 11:35", and a
     garbled number only has to pick one out of twenty.
     """
+    got = bill_at(text, candidates, titles)
+    return (got[0], got[1]) if got else (None, "")
+
+
+def bill_at(text, candidates, titles):
+    """match_bill's answer with where in `text` the bill is named: (bill,
+    how, start, end), or None. The place is what lets find_markers read the
+    words between an opening phrase and its bill (not_an_opening) and the
+    words after it (block_partner, recessed)."""
     bydigits = defaultdict(list)
     for c in candidates:
         bydigits[re.sub(r"[^0-9]", "", c)].append(c)
@@ -500,11 +794,11 @@ def match_bill(text, candidates, titles):
         pick = next((c for c in same if c.startswith(kind)), None) \
             or (same[0] if same else None)
         if pick:
-            return pick, "number"
+            return pick, "number", m.start(), m.end()
     for m in BARE_NUM.finditer(text):
         same = bydigits.get(m.group(1), [])
         if len(same) == 1:
-            return same[0], "bare number"
+            return same[0], "bare number", m.start(1), m.end(1)
 
     # Title words, which the captions handle far better than digits.
     words = set(norm(text).split())
@@ -518,8 +812,13 @@ def match_bill(text, candidates, titles):
         if hit > score:
             best, score = b, hit
     if best and score >= 0.6:
-        return best, "title"
-    return None, ""
+        kw = {w for w in norm(titles.get(best, "")).split()
+              if w not in STOP and len(w) > 3}
+        low = text.lower()
+        at = [m.start() for w in kw
+              for m in [re.search(r"\b" + re.escape(w) + r"\b", low)] if m]
+        return best, "title", min(at) if at else 0, len(text)
+    return None
 
 
 def find_markers(words, candidates, titles, span=28, floor=False):
@@ -550,16 +849,50 @@ def find_markers(words, candidates, titles, span=28, floor=False):
         return time_at_[max(0, k)]
 
     out, seen = [], set()
+
+    def place(t, kind, bill, what, how, said, weak, held=False):
+        """Keep one marker unless it repeats one already found or, being
+        weak, something else already placed the bill. `held`: opened and
+        recessed in one breath (recessed)."""
+        # Within a minute of one already found for the same bill and the
+        # same kind is the same moment. Bucketing by round(t/30) let
+        # 1:11:44 and 1:11:48 fall either side of a boundary and both be
+        # kept -- the clerk reading the majority report and then the
+        # minority is one debate, not two.
+        if any(o["bill"] == bill and o["kind"] == kind
+               and abs(o["t"] - t) < 60 for o in out):
+            return
+        key = (kind, bill, round(t / 30))
+        if key in seen:
+            return
+        if weak and any(o["bill"] == bill and o["kind"] == kind for o in out):
+            return          # something stronger already placed it
+        seen.add(key)
+        out.append({"t": round(t, 1), "kind": kind, "bill": bill,
+                    "what": "" if weak else what,
+                    "how": how + (" (weak marker)" if weak else ""),
+                    "said": said, **({"recessed": True} if held else {})})
+
     pats = ([(FLOOR_OPEN_RE, "open", False),
              (FLOOR_CLOSE_RE, "close", False)] if floor else [])
-    for rx, kind, weak in pats + list(COMMITTEE_PATS):
+    for rx, kind, weak in (pats + list(COMMITTEE_PATS)
+                           + (list(FLOOR_WEAK_PATS) if floor else [])):
         for m in rx.finditer(text):
             # The words after the phrase only: "close the hearing on X. Open
             # the hearing on Y" names two bills and the second belongs to the
             # opening.
             after = text[m.end():m.end() + 220]
-            bill, how = match_bill(after, candidates, titles)
-            if not bill:
+            titled = (rx in TITLED and not OWN_TESTIMONY.search(m.group(0))
+                      and not YOU_BEFORE.search(text[max(0, m.start() - 25):m.start()]))
+            got = bill_at(after, candidates, titles if titled else {})
+            if not got:
+                continue
+            bill, how, b0, b1 = got
+            if (how == "title" and rx is not FLOOR_OPEN_RE
+                    and when(m.end() + b0) - when(m.start()) > TITLE_WITHIN):
+                continue
+            if kind == "open" and not_an_opening(text, m.start(), m.end() + b0,
+                                                 titles.get(bill) or ""):
                 continue
             # An agenda being read is not an opening. "these are in numerical
             # order house bill 27 289 323 365 385 418" names six bills in one
@@ -592,31 +925,47 @@ def find_markers(words, candidates, titles, span=28, floor=False):
             # HB 123" is a real opening and is exactly this shape.
             if HEDGE.search(text[max(0, m.start() - 40):m.start()]):
                 continue
-            t = when(m.start())
-            # Within a minute of one already found for the same bill and the
-            # same kind is the same moment. Bucketing by round(t/30) let
-            # 1:11:44 and 1:11:48 fall either side of a boundary and both be
-            # kept -- the clerk reading the majority report and then the
-            # minority is one debate, not two.
-            if any(o["bill"] == bill and o["kind"] == kind
-                   and abs(o["t"] - t) < 60 for o in out):
-                continue
-            key = (kind, bill, round(t / 30))
-            if key in seen:
-                continue
-            if weak and any(o["bill"] == bill and o["kind"] == kind
-                            for o in out):
-                continue          # something stronger already placed it
-            seen.add(key)
             what = "floor debate" if rx in (FLOOR_OPEN_RE, FLOOR_CLOSE_RE) else ""
             for g in ("what", "what2"):
                 if g in (rx.groupindex or {}) and m.group(g):
                     what = WS.sub(" ", m.group(g)).lower()
                     break
-            out.append({"t": round(t, 1), "kind": kind, "bill": bill,
-                        "what": "" if weak else what,
-                        "how": how + (" (weak marker)" if weak else ""),
-                        "said": WS.sub(" ", text[m.start():m.start() + 130])})
+            said = WS.sub(" ", text[m.start():m.start() + 130])
+            # Not a recess the bill's own title speaks of: "the executive
+            # session on HB1507 requiring schools to provide a minimum amount
+            # of time for recess per day" (9FFIBlZjGXU 1:50:15).
+            held = (kind == "open" and "recess" not in str(titles.get(bill) or "").lower()
+                    and recessed(text[m.start():m.end() + b0], after[b1:b1 + 80]))
+            place(when(m.start()), kind, bill, what, how, said, weak, held)
+            partner = (block_partner(after[b1:], candidates, bill)
+                       if kind == "open" and not weak and rx in TITLED
+                       and BLOCK_LEAD.fullmatch(after[:b0]) else None)
+            if partner:
+                place(when(m.start()), kind, partner, what, "number (block)", said,
+                      weak, held)
+    # The phrases whose bill was named BEFORE them (BEFORE_PATS): the moment
+    # is the last scheduled bill named, by number, in the 160 characters
+    # before the phrase. Weak, and last, so anything else that placed the
+    # bill comes first.
+    for rx in BEFORE_PATS:
+        for m in rx.finditer(text):
+            last = None
+            for bm in BILL_SPOKEN.finditer(text, max(0, m.start() - 160), m.start()):
+                b, _how = match_bill(bm.group(0), candidates, {})
+                if b:
+                    last = (b, bm.start(), bm.end())
+            # Another scheduled bill's number between the bill and the phrase
+            # is that bill: "HB 704 FNA and open the public hearing on 743 FN
+            # and recognize the prime sponsor" opens 743, read in what this
+            # gained. Any other number is not: "house bill 1088 relative to
+            # employment protection for kobe 19 in the workplace ...
+            # recognized for a motion" (NbX26UHaEc0 2:11:24).
+            others = {re.sub(r"[^0-9]", "", c) for c in candidates if last and c != last[0]}
+            if last and others & set(re.findall(r"\b\d{2,4}\b", text[last[2]:m.start()])):
+                continue
+            if last:
+                place(when(last[1]), "open", last[0], "", "number",
+                      WS.sub(" ", text[last[1]:m.end()])[:160], True)
     out.sort(key=lambda x: x["t"])
     return out
 
@@ -690,7 +1039,82 @@ def last_mentions(words, candidates):
     return out
 
 
-def fill_ends(byb, last_seen=None):
+# THE ROOM'S OWN WORDS FOR AN ITEM BEING DONE, WHERE NO BILL IS NAMED. (17
+# October 2026.) Read off the recordings where the last-mention end was
+# invented: "the vote is 14 to 8 and that will go on the regular calendar",
+# "the motion passes", "that'll go on consent". fill_ends uses these only for
+# a segment whose bill was last named within 30 seconds of its opening, and
+# only before the next boundary.
+#
+# NOT "IT" OR "THAT" PASSED, AND NOT THE REGULAR CALENDAR ALONE. Read in the
+# ends the first version made: "it failed miserably" and "that passed the
+# house last year" were testimony, "it fails to report" a bill's text, "it is
+# approved by them" a conference's aside, and "moving on to the regular
+# calendar" the Senate's order of business. A vote is the motion's or the
+# amendment's, a count, or the bill being sent to a calendar.
+VOTE_RESULT_RE = re.compile(
+    r"\b(?:the\s+)?(?:motion|amendment)\s+(?:passes|carries|fails|failed|passed|"
+    r"is\s+adopted|is\s+approved)\b"
+    r"|\bthe\s+vote\s+(?:is|being|was)\s+\d"
+    r"|\b(?:goes?|go|put\s+(?:it|this|that)|place\s+(?:it|this|that)|placed?|be)\s+on\s+"
+    r"(?:the\s+)?(?:consent|regular\s+calendar)\b", re.I)
+
+
+def _joined(words):
+    """The words as one string, and a function from a character in it back to
+    the second the word holding it was spoken."""
+    parts, char_at, pos = [], [], 0
+    for _t, w in words:
+        char_at.append(pos)
+        parts.append(w)
+        pos += len(w) + 1
+    times = [t for t, _ in words]
+
+    def when(char):
+        k = bisect.bisect_right(char_at, char) - 1
+        return times[max(0, k)]
+    return " ".join(parts), when
+
+
+def end_evidence(words, candidates, floor=False):
+    """[(seconds, "unnamed close" | "vote result")] in order: a chair closing
+    something without naming a scheduled bill, and a vote's result being
+    announced. What fill_ends may end an item at when the bill's own name
+    gives it nothing to go on."""
+    if not words:
+        return []
+    text, when = _joined(words)
+    out = []
+    for m in CLOSE_RE.finditer(text):
+        if match_bill(text[m.end():m.end() + 120], candidates, {})[0] is None:
+            out.append((when(m.start()), "unnamed close"))
+    for rx in (VOTE_RESULT_RE,) + ((FLOOR_CLOSE_RE,) if floor else ()):
+        for m in rx.finditer(text):
+            out.append((when(m.start()), "vote result"))
+    return sorted(out)
+
+
+HEARING_WORD = re.compile(r"hearing|testimony", re.I)
+
+
+def all_mentions(words, candidates):
+    """[(second, bill)] for every time any scheduled bill is named by its
+    digits, in order: the same comparison last_mentions makes, kept whole so
+    fill_ends can tell where the next item begins."""
+    if not words:
+        return []
+    text, when = _joined(words)
+    out = []
+    for b in candidates:
+        d = re.sub(r"[^0-9]", "", b)
+        if not d:
+            continue
+        for m in re.finditer(r"(?<!\d)" + r"[\s,]*".join(list(d)) + r"(?!\d)", text):
+            out.append((when(m.start()), b))
+    return sorted(out)
+
+
+def fill_ends(byb, last_seen=None, evidence=None, named=None):
     """A segment with no close ends where the next one begins.
 
     The chair announces a close far less often than an opening: 1,687 of 4,537
@@ -709,8 +1133,8 @@ def fill_ends(byb, last_seen=None):
                   key=lambda x: x[0])
     n = 0
     for i, (start, _b_, seg) in enumerate(flat):
-        if seg.get("end") is not None:
-            continue
+        if seg.get("end") is not None or seg.get("recessed"):
+            continue          # a stated close, or opened and recessed: no span
         nxt = next((st for st, _, _ in flat[i + 1:] if st > start), None)
         if nxt is None:
             continue
@@ -720,12 +1144,123 @@ def fill_ends(byb, last_seen=None):
         # hours later, so the uncapped rule called it a two-hour hearing.
         cap = (last_seen or {}).get(_b_)
         end = nxt if cap is None else min(nxt, cap + 60)
+        how = "next boundary" if end == nxt else "last mention of the bill"
+        # A BILL NAMED ONLY AS IT WAS OPENED GIVES ITS END NOTHING TO GO ON.
+        # (17 October 2026.) Where the last mention falls within 30 seconds
+        # of the opening, "last mention + 60 s" is a minute after the chair
+        # read the number, whatever the item ran: 761 ends were made so, and
+        # the three a person timed ran 809, 142 and 227 seconds against the
+        # 62, 62 and 89 published. Such an item ends at the first close that
+        # names no bill, or else at the first vote result announced, or has
+        # no end at all.
+        #
+        # SEARCHED ONLY UP TO THE NEXT SCHEDULED BILL NAMED, AND NOT FOR A
+        # VOTE ON A HEARING. (17 October 2026, after review.) Searched to the
+        # next boundary and taking the last vote, 53 of the 358 such ends
+        # published had another scheduled bill named inside them and 36 ran
+        # over half an hour: HB1463's hearing on dUWQvf7KxZM swallowed
+        # HB1812's, HB457's on u3DpAFHuLcI ended 57 minutes on at another
+        # bill's 10-9 vote, and HB121 on xxJfM53Aedo, taken off the agenda,
+        # ended on HB86's. Another bill named is another item begun; the
+        # first vote after the opening is this item's; and four of the five
+        # votes that ended a hearing were testimony or an aside, since a
+        # hearing takes none.
+        if how == "last mention of the bill" and cap - start < 30:
+            stop = min(nxt, next((t for t, b in (named or ())
+                                  if t > start + 5 and b != _b_), nxt))
+            inside = [(t, k) for t, k in (evidence or ()) if start + 5 < t < stop]
+            close = next((t for t, k in inside if k == "unnamed close"), None)
+            votes = ([] if HEARING_WORD.search(str(seg.get("what") or ""))
+                     else [t for t, k in inside if k == "vote result"])
+            if close is not None:
+                end, how = close, "unnamed close"
+            elif votes:
+                end, how = votes[0], "vote result"
+            else:
+                continue
         if end > start:
             seg["end"] = round(end, 1)
-            seg["end_from"] = ("next boundary" if end == nxt
-                               else "last mention of the bill")
+            seg["end_from"] = how
             n += 1
     return n
+
+
+def read_recording(words, cands, titles, is_floor=False, floor_ent=None, vid=""):
+    """One recording's answer: ({bill: [segment]}, [bills never named], counts).
+
+    What main does for each recording it reads, in one function, so that a
+    measurement of a change runs exactly what the build runs rather than a
+    copy of it that can drift (17 October 2026).
+    """
+    counts = Counter()
+    markers = find_markers(words, cands, titles, floor=is_floor)
+    segs = to_segments(markers, cands)
+    # A roll call closes the item, and its clock time is known to the
+    # second from a source that has nothing to do with captions. Where one
+    # exists it replaces a transcript-derived end outright.
+    if is_floor:
+        for b, ss in segs.items():
+            e = (floor_ent or {}).get((vid, b))
+            if e and e["precise"] and e["debate_end"]:
+                for s in ss:
+                    if s["start"] < e["debate_end"]:
+                        s["end"] = float(e["debate_end"])
+                        s["end_from"] = "roll call clock"
+                        counts["ends from the roll call clock"] += 1
+                        break
+    # Ends the chair did not state: the next boundary on the recording,
+    # after the roll call clock has had its say above. Counted separately,
+    # because one is a quotation and the other is an inference.
+    counts["ends the chair stated"] += sum(
+        1 for v in segs.values() for x in v if x.get("end") is not None)
+    counts["ends from the next boundary"] += fill_ends(
+        segs, last_mentions(words, cands), end_evidence(words, cands, is_floor),
+        all_mentions(words, cands))
+    # On a floor recording, separate "no boundary found" from "not on this
+    # recording at all". Only the first is a shortcoming. By number alone:
+    # "never named" is what decides the consent calendar, and a title read
+    # out is not the bill being taken up.
+    absent = never_named(words, cands, {}, set(segs)) if is_floor else []
+    return segs, absent, counts
+
+
+def named_before(words, folder, window=60):
+    """["BILL|kind"] for each clustering placement in the folder's
+    segments.json that has no mention of its bill inside it but has one, by
+    number, in the `window` seconds before it starts.
+
+    (After review, 17 October 2026.) build_site_v2 withholds a placement with
+    no mention of its bill inside, and 27 of the 372 it withheld had the bill
+    named just before the span: on 120gOWa2Jl0 the chair said "On to House
+    Bill 1315 relative to the sale of tobacco products" at 3:42:30, and the
+    aligner's 30-second slot for HB 1315's executive session began half a
+    minute later. Such a placement is the item, a little late. The build has
+    no captions to look, so the answer travels in the candidate file."""
+    f = Path(folder) / "segments.json"
+    if not words or not f.exists():
+        return []
+    try:
+        placed = json.loads(f.read_text(encoding="utf-8"))
+    except (ValueError, OSError):
+        return []
+    if not isinstance(placed, list):
+        return []
+    times = [t for t, _ in words]
+    out = []
+    for s in placed:
+        if (not isinstance(s, dict) or not s.get("located")
+                or s.get("mentions_inside") != 0 or s.get("start") is None):
+            continue
+        bill = str(s.get("bill") or "").upper()
+        digits = re.sub(r"[^0-9]", "", bill)
+        if not digits:
+            continue
+        lo = bisect.bisect_left(times, s["start"] - window)
+        hi = bisect.bisect_left(times, s["start"])
+        said = " ".join(w for _t, w in words[lo:hi])
+        if re.search(r"(?<!\d)" + r"[\s,]*".join(digits) + r"(?!\d)", said):
+            out.append(f"{bill}|{s.get('kind')}")
+    return out
 
 
 def sequence_of(byb):
@@ -759,10 +1294,14 @@ def to_segments(markers, candidates):
         b = m["bill"]
         if m["kind"] == "open":
             segs[b].append({"start": m["t"], "end": None, "how": m["how"],
-                            "what": m["what"], "said": m["said"]})
+                            "what": m["what"], "said": m["said"],
+                            **({"recessed": True} if m.get("recessed") else {})})
         else:
+            # Not onto one opened and recessed: its close, if it comes,
+            # closes the sitting that resumed, whose opening was not heard.
             open_ones = [s for s in segs.get(b, [])
-                         if s["end"] is None and m["t"] > s["start"]]
+                         if s["end"] is None and not s.get("recessed")
+                         and m["t"] > s["start"]]
             if open_ones:
                 open_ones[-1]["end"] = m["t"]
     return {b: v for b, v in segs.items() if v}
@@ -900,7 +1439,7 @@ def collect_phrases(words, segs, candidates, titles, bag):
                 bag[" ".join(lead[k:k + size])] += 1
 
 
-def report_phrases(bag, out_path="missing_phrases.txt"):
+def report_phrases(bag, out_path=None):
     never = bag.pop("never named", 0)
     # Phrases that already appear in a pattern are not news.
     known = re.compile(r"open|clos|hearing|executive session|work session|"
@@ -922,6 +1461,9 @@ def report_phrases(bag, out_path="missing_phrases.txt"):
     print(f"\n{'=' * 70}\nWHAT IS SAID WHERE NO BOUNDARY WAS FOUND\n{'=' * 70}")
     print(f"  {never:,} proceedings were never named at all -- probably not "
           "taken up.\n")
+    if out_path:
+        Path(out_path).write_text(
+            "\n".join(f"{c}\t{ph}" for c, ph in rows), encoding="utf-8")
     if not rows:
         print("  No phrase recurs five times or more. The remaining gaps are "
               "not a\n  shared convention this is missing.")
@@ -930,9 +1472,10 @@ def report_phrases(bag, out_path="missing_phrases.txt"):
     print("  Anything already covered by a pattern is left out.\n")
     for c, ph in rows[:30]:
         print(f"    {c:>5}  {ph}")
-    Path(out_path).write_text(
-        "\n".join(f"{c}\t{ph}" for c, ph in rows), encoding="utf-8")
-    print(f"\n  {len(rows):,} phrases -> {out_path}")
+    if out_path:
+        print(f"\n  {len(rows):,} phrases -> {out_path}")
+    else:
+        print(f"\n  {len(rows):,} phrases counted; --phrases-out FILE writes them all")
     print("  A phrase used by many chairs is a convention worth a pattern. One "
           "used\n  twice is not, and adding it would be fitting to noise.")
 
@@ -952,6 +1495,9 @@ def main():
     ap.add_argument("--gaps", action="store_true",
                     help="for proceedings with no stated boundary, print what "
                          "the chair says where one was expected")
+    ap.add_argument("--phrases-out", metavar="FILE",
+                    help="with --phrases, also write every counted phrase "
+                         "here; a diagnostic writes nothing unless told where")
     ap.add_argument("--cache", default=".segment_cache.json",
                     help="results per recording, reused where its captions, "
                          "bill list and the patterns are all unchanged")
@@ -971,10 +1517,9 @@ def main():
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
     import csv
-    bills = json.loads((Path(a.data) / "bills.json").read_text(encoding="utf-8"))
-    if isinstance(bills, dict):
-        bills = list(bills.values())
-    titles = {b.get("id") or b.get("bill"): b.get("title", "") for b in bills}
+    by_term = title_lookup(a.data)
+    print(f"{sum(len(t) for t in by_term.values()):,} bill titles across "
+          f"{len(by_term)} terms from {Path(a.data) / 'bills.json'}")
 
     # One table, one reader. Committee proceedings and floor debates in the
     # same shape, so the floor cannot be silently left out again -- which it
@@ -983,8 +1528,10 @@ def main():
     if not prows:
         sys.exit("No proceedings.csv. Run: python3 src/hearings/build_proceedings.py")
     byvid = defaultdict(list)
+    vterm = defaultdict(Counter)
     for v, rs in P.by_video(prows).items():
         for r in rs:
+            vterm[v][r["term"]] += 1
             if r["bill"] not in byvid[v]:
                 byvid[v].append(r["bill"])
     floor_vids = P.floor_videos(prows)
@@ -1020,13 +1567,16 @@ def main():
         if not cands:
             stats["no scheduled bills"] += 1
             continue
-        key = cache_key(folder, cands, sig)
+        titles = titles_for(by_term, vterm[vid], cands)
+        key = cache_key(folder, cands, sig, titles)
         hit = cache.get(vid)
         if hit and hit.get("key") == key and not a.gaps and not a.phrases:
             segs = hit["segs"]
             if hit.get("absent"):
                 result.setdefault("_absent", {})[vid] = hit["absent"]
                 stats["never named on the recording"] += len(hit["absent"])
+            if hit.get("named_before"):
+                result.setdefault("_named_before", {})[vid] = hit["named_before"]
             result[vid] = segs
             stats["recordings read"] += 1
             stats["unchanged since last run"] += 1
@@ -1051,28 +1601,9 @@ def main():
                 unread.setdefault(", ".join(here[:3]), []).append(vid)
             continue
         is_floor = vid in floor_vids
-        markers = find_markers(words, cands, titles, floor=is_floor)
-        segs = to_segments(markers, cands)
-        # A roll call closes the item, and its clock time is known to the
-        # second from a source that has nothing to do with captions. Where one
-        # exists it replaces a transcript-derived end outright.
-        if is_floor:
-            for b, ss in segs.items():
-                e = floor_ent.get((vid, b))
-                if e and e["precise"] and e["debate_end"]:
-                    for s in ss:
-                        if s["start"] < e["debate_end"]:
-                            s["end"] = float(e["debate_end"])
-                            s["end_from"] = "roll call clock"
-                            stats["ends from the roll call clock"] += 1
-                            break
-        # Ends the chair did not state: the next boundary on the recording,
-        # after the roll call clock has had its say above. Counted separately,
-        # because one is a quotation and the other is an inference.
-        stats["ends the chair stated"] += sum(
-            1 for v in segs.values() for x in v if x.get("end") is not None)
-        stats["ends from the next boundary"] += fill_ends(
-            segs, last_mentions(words, cands))
+        segs, absent, counts = read_recording(words, cands, titles, is_floor,
+                                              floor_ent, vid)
+        stats.update(counts)
         result[vid] = segs
         result.setdefault("_sequence", {})[vid] = sequence_of(segs)
         if a.phrases:
@@ -1080,13 +1611,14 @@ def main():
         if a.gaps and not a.quiet:
             print(f"\n{vid}")
             show_gaps(words, segs, cands, titles)
-        # On a floor recording, separate "no boundary found" from "not on this
-        # recording at all". Only the first is a shortcoming.
-        absent = never_named(words, cands, titles, set(segs)) if is_floor else []
         if absent:
             stats["never named on the recording"] += len(absent)
             result.setdefault("_absent", {})[vid] = absent
-        cache[vid] = {"key": key, "segs": segs, "absent": absent}
+        before = named_before(words, folder)
+        if before:
+            stats["clustered placements named just before"] += len(before)
+            result.setdefault("_named_before", {})[vid] = before
+        cache[vid] = {"key": key, "segs": segs, "absent": absent, "named_before": before}
         stats["recordings read"] += 1
         stats["bills with a stated start"] += len(segs)
         stats["proceedings found"] += sum(len(v) for v in segs.values())
@@ -1133,7 +1665,8 @@ def main():
     # A recording read this run answers for itself: its _absent is what this
     # run found, or nothing. Its _sequence is written only by a fresh read, so
     # one taken from the cache keeps the sequence it already had.
-    sides = ("_absent", "_sequence")
+    # _named_before (named_before) answers for a recording as _absent does.
+    sides = ("_absent", "_sequence", "_named_before")
     read_now = {k for k in result if k not in sides}
     kept = len({k for k in prior if k not in sides} - read_now)
     if kept:
@@ -1144,18 +1677,28 @@ def main():
     for side in sides:
         was = prior.get(side) if isinstance(prior.get(side), dict) else {}
         new = result.get(side) or {}
-        answers = read_now if side == "_absent" else set(new)
+        answers = read_now if side in ("_absent", "_named_before") else set(new)
         both = {v: x for v, x in was.items() if v not in answers}
         both.update(new)
         if both or side in prior:
             merged[side] = both
     result = merged
 
-    if not a.gaps and not a.phrases:
+    # A DIAGNOSTIC WRITES NOTHING THE BUILD READS. (17 October 2026.) --gaps
+    # and --phrases print what the chair says where no boundary was found,
+    # and they also wrote --out, merged with this run's reading, and
+    # missing_phrases.txt into the working folder: a question asked of the
+    # captions changed candidate_segments.json, which build_site_v2 publishes
+    # from. Their counting goes only where --phrases-out names.
+    diagnostic = a.gaps or a.phrases
+    if not diagnostic:
         cache_path.write_text(json.dumps(cache), encoding="utf-8")
     if a.phrases:
-        report_phrases(phrase_bag)
-    Path(a.out).write_text(json.dumps(result, indent=2), encoding="utf-8")
+        report_phrases(phrase_bag, a.phrases_out)
+    if diagnostic:
+        print(f"\n  --gaps/--phrases: a diagnostic, so {a.out} was not written")
+    else:
+        Path(a.out).write_text(json.dumps(result, indent=2), encoding="utf-8")
     # WHERE EACH RECORDING'S CAPTIONS STOP, for the machine that has only the
     # boundaries above and not the files they were read from. The nightly's
     # machine is given candidate_segments.json and caption_spans.json and none
@@ -1208,6 +1751,8 @@ def main():
                   "boundaries, they are bills that were not debated.)")
         print("  Where a bill was taken up and no boundary was stated, this "
               "says so\n  rather than estimating one.")
+    if diagnostic:
+        return
     print(f"\n-> {a.out}")
     print("\nNothing is on the site until this is scored:\n"
           "  python3 src/hearings/probe_alignment.py --truth "

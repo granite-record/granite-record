@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.596
+# GRANITE_VERSION: 2026-09-04.597
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -14170,6 +14170,181 @@ def _markers_merge_siblings():
         shutil.rmtree(root, ignore_errors=True)
 
 
+def _markers_fixture(root, bills, rows, captions):
+    """A folder segment_markers can run in: data/bills.json as given, a
+    proceedings.csv of (term, bill, body, kind, video) rows, and a json3
+    caption file per recording. Returns the environment to run it with."""
+    (root / "data").mkdir(parents=True, exist_ok=True)
+    (root / "data" / "bills.json").write_text(json.dumps(bills), encoding="utf-8")
+    cols = ["term", "bill", "body", "kind", "date", "time", "committee", "venue",
+            "video_id", "video_title", "stream_start", "predicted_offset", "match",
+            "debate_end", "window_start", "precise", "motions", "tallies",
+            "whole_video", "source"]
+    with open(root / "proceedings.csv", "w", newline="", encoding="utf-8") as fh:
+        w = csv.DictWriter(fh, fieldnames=cols)
+        w.writeheader()
+        for term, bill, body, kind, vid in rows:
+            w.writerow({"term": term, "bill": bill, "body": body, "kind": kind,
+                        "date": "2026-03-05", "video_id": vid, "source": "docket"})
+    for vid, lines in captions.items():
+        (root / "work" / vid).mkdir(parents=True, exist_ok=True)
+        (root / "work" / vid / "captions.en.json3").write_text(
+            json.dumps(_json3(lines)), encoding="utf-8")
+    return dict(os.environ, GRANITE_PROCEEDINGS=str(root / "proceedings.csv"))
+
+
+@check("markers", "segment_markers reads each recording's titles from its own term",
+       needs=("segment_markers",))
+def _markers_titles_by_term(segment_markers):
+    """data/bills.json is {term: {bill: record}}, and segment_markers read it
+    as a list of bills, so its title lookup was {None: ""} and the title
+    fallback placed nothing from the day the file was keyed by term until 17
+    October 2026. The clerk's reading below was spoken (itJRViVSJqk 5:33:24)
+    with the number captioned "5604": only the title of the term's HB 564
+    places it, and another term's HB 564 must not."""
+    if not _paths.locate("segment_markers.py").exists():
+        return "skip", "segment_markers.py not here"
+    root = Path(tempfile.mkdtemp())
+    try:
+        title = "relative to the adoption of school administrative unit budgets"
+        bills = {"2025-2026": {"HB564": {"title": title}, "HB56": {"title": "relative to the state forester"}},
+                 "2023-2024": {"HB564": {"title": "relative to the cutting of timber"}}}
+        reading = ["the senate will come to order"] * 3 + [
+            "Majority of the committee on education policy and administration to "
+            "which was referred House Bill 5604, an act relative to the adoption of "
+            "school administrative unit budgets, considered the same"] + ["thank you"] * 3
+        env = _markers_fixture(
+            root, bills,
+            [("2025-2026", "HB564", "S", "floor debate", "PFNOW"),
+             ("2025-2026", "HB56", "S", "floor debate", "PFNOW"),
+             ("2023-2024", "HB564", "S", "floor debate", "PFTHEN"),
+             ("2023-2024", "HB56", "S", "floor debate", "PFTHEN")],
+            {"PFNOW": reading, "PFTHEN": reading})
+        r = _run([sys.executable, _paths.script("segment_markers.py"),
+                  "--transcript", "work/PFNOW", "work/PFTHEN", "--data", "data",
+                  "--quiet", "--cache", "cache.json"],
+                 cwd=str(root), env=env, capture_output=True, text=True, timeout=120)
+        assert r.returncode == 0, (r.stderr or r.stdout)[-300:]
+        got = json.loads((root / "candidate_segments.json").read_text(encoding="utf-8"))
+        now = (got.get("PFNOW") or {}).get("HB564") or []
+        assert now and now[0].get("how") == "title", (
+            f"the clerk's reading of HB 564 was not placed by its title: {got.get('PFNOW')}")
+        assert "HB564" not in (got.get("PFTHEN") or {}), (
+            "a 2023-2024 recording was placed by the 2025-2026 bill's title")
+        assert "bill titles across 2 terms" in r.stdout, r.stdout[-300:]
+        return "ok", "the title of the recording's own term places a garbled number; another term's does not"
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+
+
+@check("markers", "segment_markers --gaps and --phrases write nothing the build reads",
+       needs=("segment_markers",))
+def _markers_diagnostics_write_nothing(segment_markers):
+    """--gaps and --phrases are questions asked of the captions, and they
+    rewrote --out (candidate_segments.json, which build_site_v2 publishes
+    from) and missing_phrases.txt in the working folder (17 October 2026).
+    Run on a fixture with a candidate file already there, each leaves the
+    folder as it was; --phrases-out is the one place counting goes."""
+    if not _paths.locate("segment_markers.py").exists():
+        return "skip", "segment_markers.py not here"
+    root = Path(tempfile.mkdtemp())
+    try:
+        env = _markers_fixture(
+            root, {"2025-2026": {"HB1491": {"title": "relative to x"},
+                                 "HB77": {"title": "relative to y"}}},
+            [("2025-2026", "HB1491", "H", "public hearing", "PFCOMM"),
+             ("2025-2026", "HB77", "H", "public hearing", "PFCOMM")],
+            {"PFCOMM": ["good morning"] * 3 + ["I am opening the hearing on House Bill 1491"]
+             + ["thank you mister chair"] * 4})
+        prior = json.dumps({"PFCOMM": {"HB5": [{"start": 1.0, "end": None}]}})
+        (root / "candidate_segments.json").write_text(prior, encoding="utf-8")
+        before = sorted(p.name for p in root.iterdir())
+        for flag in ("--gaps", "--phrases"):
+            r = _run([sys.executable, _paths.script("segment_markers.py"),
+                      "--transcript", "work/PFCOMM", "--data", "data", flag,
+                      "--cache", "cache.json"],
+                     cwd=str(root), env=env, capture_output=True, text=True, timeout=120)
+            assert r.returncode == 0, (r.stderr or r.stdout)[-300:]
+            assert (root / "candidate_segments.json").read_text(encoding="utf-8") == prior, (
+                f"segment_markers {flag} rewrote candidate_segments.json")
+            assert sorted(p.name for p in root.iterdir()) == before, (
+                f"segment_markers {flag} wrote {sorted(set(p.name for p in root.iterdir()) - set(before))}")
+        r = _run([sys.executable, _paths.script("segment_markers.py"),
+                  "--transcript", "work/PFCOMM", "--data", "data", "--phrases",
+                  "--phrases-out", "counted.txt", "--cache", "cache.json"],
+                 cwd=str(root), env=env, capture_output=True, text=True, timeout=120)
+        assert r.returncode == 0 and (root / "counted.txt").exists(), (
+            "--phrases-out did not write where it was told")
+        return "ok", "--gaps and --phrases leave the folder as it was; --phrases-out writes its file"
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+
+
+@check("markers", "segment_markers lists the clustered placements whose bill is named just "
+                  "before them", needs=("segment_markers",))
+def _markers_named_before(segment_markers):
+    """build_site_v2 withholds a clustering placement with no mention of its
+    bill inside, and 27 of 372 had it named in the minute before (after
+    review, 17 October 2026): on 120gOWa2Jl0 the chair said "On to House Bill
+    1315 relative to the sale of tobacco products" at 3:42:30 and the slot
+    began at 3:43:00. The build has no captions, so segment_markers writes
+    the answer as _named_before, and a later run on another recording keeps
+    it. The words below were spoken there."""
+    if not _paths.locate("segment_markers.py").exists():
+        return "skip", "segment_markers.py not here"
+    root = Path(tempfile.mkdtemp())
+    try:
+        env = _markers_fixture(
+            root, {"2025-2026": {"HB1315": {"title": "relative to the sale of tobacco products"},
+                                 "HB1281": {"title": "relative to comfort dogs"}}},
+            [("2025-2026", "HB1315", "H", "executive session", "PFEXEC"),
+             ("2025-2026", "HB1281", "H", "executive session", "PFEXEC"),
+             ("2025-2026", "HB1281", "H", "executive session", "PFOTHER")],
+            {"PFEXEC": ["move unanimously."] * 3
+             + ["On to House Bill 1315 relative to the sale of tobacco products,"]
+             + ["Representative Hunt, second by Representative Patusk moves to pass."] * 3,
+             "PFOTHER": ["good morning"] * 3})
+        # The aligner's slots: HB 1315's 30 s after its mention, HB 1281's
+        # nowhere near one.
+        (root / "work" / "PFEXEC" / "segments.json").write_text(json.dumps([
+            {"bill": "HB1315", "kind": "executive session", "located": True,
+             "start": 30.0, "end": 60.0, "mentions_inside": 0},
+            {"bill": "HB1281", "kind": "executive session", "located": True,
+             "start": 400.0, "end": 430.0, "mentions_inside": 0}]), encoding="utf-8")
+        cmd = [sys.executable, _paths.script("segment_markers.py"), "--data", "data",
+               "--quiet", "--cache", "cache.json", "--transcript"]
+        r = _run(cmd + ["work/PFEXEC"], cwd=str(root), env=env, capture_output=True,
+                 text=True, timeout=120)
+        assert r.returncode == 0, (r.stderr or r.stdout)[-300:]
+        got = json.loads((root / "candidate_segments.json").read_text(encoding="utf-8"))
+        assert (got.get("_named_before") or {}).get("PFEXEC") == ["HB1315|executive session"], (
+            f"the placement named just before was not listed: {got.get('_named_before')}")
+        r = _run(cmd + ["work/PFOTHER"], cwd=str(root), env=env, capture_output=True,
+                 text=True, timeout=120)
+        assert r.returncode == 0, (r.stderr or r.stdout)[-300:]
+        got = json.loads((root / "candidate_segments.json").read_text(encoding="utf-8"))
+        assert (got.get("_named_before") or {}).get("PFEXEC") == ["HB1315|executive session"], (
+            "a run over another recording dropped this one's _named_before")
+        return "ok", "HB 1315's slot, named 30 s before it, listed; HB 1281's not; kept across runs"
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+
+
+@check("data", "segment_markers' title lookup holds more than a thousand titles",
+       needs=("segment_markers",))
+def _markers_title_count(segment_markers):
+    """The lookup was {None: ""} -- one empty title -- for as long as
+    data/bills.json has been keyed by term, and every count stayed plausible
+    (17 October 2026). A thousand is far below any term's bill count."""
+    if not Path("data/bills.json").exists():
+        return "skip", "no data/bills.json"
+    by_term = segment_markers.title_lookup("data")
+    n = sum(1 for t in by_term.values() for v in t.values() if v.strip())
+    assert n > 1000, (f"segment_markers.title_lookup gives {n} titles across "
+                      f"{len(by_term)} terms; the title fallback is not running")
+    return "ok", f"{n:,} titles across {len(by_term)} terms"
+
+
 # ============================================= code: the video index's rows ==
 
 # fetch_channel_index.py's columns, for the checks that write an index.
@@ -24880,6 +25055,194 @@ def _conference_folded(build_site_v2):
     return "ok", ("HB 485's conference of 16 June 2025 is one station, 09:30 in LOB 206-208, "
                   "playing its recording; HB 1709's is one per recording and SB 108's one; "
                   "HB 1541's two notices with no recording stand")
+
+
+@check("markers", "a roll call that day overrules the consent calendar, and a committee "
+       "of conference takes the chair's convening", needs=("build_site_v2",))
+def _floor_station_rules(build_site_v2):
+    """Two rules of station_for_floor, both of 17 October 2026.
+
+    The consent calendar is inferred from the captions never naming the bill,
+    and the captions garble numbers: HB 1002 (EXjvgzYBkb8, 12 February 2026,
+    tabled 187-157) and HB 1602 (V8T49pbn0UU, 19 February 2026, two roll
+    calls) were drawn as passed on consent. A roll call on the day is the
+    chamber's own record that the bill was voted on by itself.
+
+    And a committee of conference's convening is a marker of its own kind,
+    "committee of conference", which the floor accepted only as "" or "floor
+    debate": 25 conference sittings drew no time, and HB 710 on dIumWRhMDrY
+    the chair's "open the door" at 1:20:08 instead of the convening at 0:16:39.
+    """
+    B = build_site_v2
+
+    def row(kind, tallies=(), precise=False, debate_end=None):
+        return {"date": "2026-02-12", "body": "H", "video_id": "VIDX",
+                "motions": ["Table"] if tallies else [], "tallies": list(tallies),
+                "kind": kind, "debate_end": debate_end, "window_start": 0.0,
+                "precise": precise, "whole_video": False, "title": "",
+                "time": "", "venue": ""}
+    absent = {"_absent": {"VIDX": ["HB1002"]}}
+    st = B.station_for_floor(row("floor debate"), "HB1002", absent)
+    assert st["state"] == "consent", (
+        f"a bill never named with no roll call is {st['state']!r}, not the consent calendar")
+    st = B.station_for_floor(row("floor debate", ["187-157"], True, 18914.0),
+                             "HB1002", absent)
+    assert st["state"] == "floor_precise" and st["what"] == "floor debate", (
+        f"a bill tabled 187-157 by roll call is drawn as {st['state']!r} {st['what']!r}; "
+        "a roll call overrules the consent calendar")
+    st = B.station_for_floor(row("floor debate", ["84-254"]), "HB1002", absent)
+    assert st["state"] != "consent", (
+        "a roll call stamped with the date alone (the Senate's) still drew the consent calendar")
+    # Nor a concurrence or a conference (after review, 17 October 2026):
+    # HB 250's non-concurrence of 22 May 2025 on YobZAwJsSQo drew consent.
+    for motion in ("House Non-Concurs with Senate Amendment 2025-1234s and Requests C of C",
+                   "Accedes to House Request for Committee of Conference",
+                   "Nonconcur with the House Amendment; Requests C of C"):
+        st = B.station_for_floor(dict(row("floor debate"), motions=[motion]), "HB1002", absent)
+        assert st["state"] == "floor_dated", (
+            f"{motion!r}, never named on the recording, drew {st['state']!r}; "
+            "business between the chambers is never the consent calendar")
+    st = B.station_for_floor(dict(row("floor debate"), motions=["Ought to Pass"]), "HB1002", absent)
+    assert st["state"] == "consent", f"an Ought to Pass never named drew {st['state']!r}"
+
+    def mk(start, what):
+        return {"start": start, "end": None, "how": "number", "what": what, "said": "x"}
+    marks = {"VIDX": {"HB710": [mk(999.8, "committee of conference"), mk(4808.6, "")]}}
+    st = B.station_for_floor(row("committee of conference"), "HB710", marks)
+    assert st.get("start") == 999.8, (
+        f"a conference sitting took {st.get('start')} over the chair's convening at 999.8")
+    st = B.station_for_floor(row("floor debate"), "HB710", marks)
+    assert st.get("start") == 4808.6, (
+        f"a floor debate took a committee of conference's convening: {st.get('start')}")
+    # The first spoken, not its own kind first: "We'll open a COC on Senate
+    # Bill 96" (89R50nnQFrE 0:02:48) opens the sitting that "convene the
+    # committee of conference on Senate Bill 96" resumes at 2:31:27.
+    marks = {"VIDX": {"SB96": [mk(168.2, ""), mk(9087.8, "committee of conference")]}}
+    st = B.station_for_floor(row("committee of conference"), "SB96", marks)
+    assert st.get("start") == 168.2, f"SB 96's conference opened at {st.get('start')}, not 168.2"
+    return "ok", ("a roll call overrules the consent calendar, clocked or not; a conference "
+                  "takes its own convening, and the first opening spoken")
+
+
+@check("markers", "a clustering placement with no mention of the bill inside is not published",
+       needs=("build_site_v2",))
+def _cluster_needs_a_mention(build_site_v2):
+    """Of the 1,099 clustered placements the site published on 15 October
+    2026, 399 had no mention of their bill inside the span, 321 of them the
+    aligner's 30-second minimum; the four a person had timed were 4, 30, 77
+    and 202 minutes out (17 October 2026). Such a placement gives neither a
+    start, an end beside a stated start, nor a suggested time."""
+    B = build_site_v2
+    p = {"bill": "HB152", "body": "H", "committee": "Judiciary",
+         "proceeding": "executive session", "sched_date": "2026-02-03",
+         "sched_time": "10:00", "venue": "LOB 206", "video_id": "VIDX",
+         "predicted_offset": 600, "candidate_ids": ""}
+
+    def seg(inside):
+        return {"VIDX": [{"bill": "HB152", "kind": "executive session", "located": True,
+                          "short": True, "tolerance": 1800, "start": 2520.0,
+                          "end": 2550.0, "mentions_inside": inside, "mentions_total": 4}]}
+    st = B.station_for_proceeding(p, "HB152", seg(0), {})
+    assert st["state"] == "approximate" and st["start"] is None, (
+        f"a placement with no mention inside is published: {st['state']} at {st['start']}")
+    assert st.get("candidate") is None and st.get("end") is None, (
+        f"a placement with no mention inside is still suggested: {st.get('candidate')}")
+    st = B.station_for_proceeding(p, "HB152", seg(2), {})
+    assert st["state"] == "located" and st["start"] == 2520.0, (
+        f"a placement with two mentions inside is withheld: {st['state']}")
+    said = {"VIDX": {"HB152": [{"start": 2530.0, "end": None, "how": "number",
+                                "what": "executive session", "said": "x"}]}}
+    st = B.station_for_proceeding(p, "HB152", seg(0), said)
+    assert st["start"] == 2530.0 and st["end"] is None, (
+        f"a stated start took its end from a placement with no mention inside: {st['end']}")
+    # Named in the minute before the span counts as inside (after review):
+    # segment_markers lists those under _named_before.
+    before = {"_named_before": {"VIDX": ["HB152|executive session"]}}
+    st = B.station_for_proceeding(p, "HB152", seg(0), before)
+    assert st["state"] == "located" and st["start"] == 2520.0, (
+        f"a placement whose bill was named just before it was withheld: {st['state']}")
+    assert st["end"] is None, (
+        f"a placement named only before it published the aligner's minimum as its end: {st['end']}")
+    other = {"_named_before": {"VIDX": ["HB152|public hearing"]}}
+    st = B.station_for_proceeding(p, "HB152", seg(0), other)
+    assert st["start"] is None, "another proceeding's mention kept this placement"
+    return "ok", "no mention inside: no start, no end, no suggestion; two mentions: placed"
+
+
+@check("markers", "a marker naming no proceeding serves one sitting of the bill, the first "
+       "in docket order", needs=("build_site_v2",))
+def _ambiguous_marker_once(build_site_v2):
+    """341 moments were published on two proceedings of one bill on 15
+    October 2026 (687 stations): a marker that names no proceeding was the
+    fallback of every sitting of the bill on the recording that had none of
+    its own (17 October 2026). It goes to the first in docket order now, and
+    the later ones take no such marker -- not the next one along, which read
+    mostly as the same hearing a minute on."""
+    B = build_site_v2
+
+    def sitting(kind, time):
+        return {"bill": "HB1040", "body": "H", "committee": "Public Works",
+                "proceeding": kind, "sched_date": "2026-01-20", "sched_time": time,
+                "venue": "LOB 201", "video_id": "VIDX", "predicted_offset": 0,
+                "candidate_ids": ""}
+
+    def mk(start, what):
+        return {"start": start, "end": None, "how": "number", "what": what, "said": "x"}
+    procs = {("2025-2026", "HB1040"): [sitting("executive session", "13:00"),
+                                       sitting("public hearing", "09:30")]}
+    marks = {"VIDX": {"HB1040": [mk(93.0, ""), mk(161.0, "")]}}
+    sts = {s["what"]: s for s in B.bill_stations("HB1040", "2025-2026", procs, {}, marks)}
+    assert sts["public hearing"]["start"] == 93.0, (
+        f"the first sitting in docket order took {sts['public hearing']['start']}, not 93.0")
+    assert sts["executive session"]["start"] is None, (
+        f"a later sitting took a marker naming no proceeding: {sts['executive session']['start']}; "
+        "one such marker serves one sitting")
+    marks = {"VIDX": {"HB1040": [mk(93.0, ""), mk(4000.0, "executive session")]}}
+    sts = {s["what"]: s for s in B.bill_stations("HB1040", "2025-2026", procs, {}, marks)}
+    assert (sts["public hearing"]["start"], sts["executive session"]["start"]) == (93.0, 4000.0), (
+        "a sitting with a marker of its own lost it, or the other lost the fallback: "
+        f"{sts['public hearing']['start']}, {sts['executive session']['start']}")
+    return "ok", "the first sitting in docket order takes it, a later one none; own markers kept"
+
+
+@check("markers", "an end a minute after the only mention of the bill is not published",
+       needs=("build_site_v2",))
+def _invented_end_withheld(build_site_v2):
+    """761 published ends were the bill's last mention plus 60 seconds where
+    that mention was within 30 seconds of the opening (17 October 2026): the
+    three a person timed ran 809, 142 and 227 seconds against 62, 62 and 89.
+    segment_markers no longer writes them; the station functions refuse one
+    from an older candidate file, on a committee sitting and on the floor."""
+    B = build_site_v2
+    p = {"bill": "HB122", "body": "H", "committee": "Ways and Means",
+         "proceeding": "public hearing", "sched_date": "2026-01-20",
+         "sched_time": "10:00", "venue": "LOB 202", "video_id": "VIDX",
+         "predicted_offset": 0, "candidate_ids": ""}
+
+    def mk(end, end_from, what="public hearing"):
+        return {"VIDX": {"HB122": [{"start": 976.0, "end": end, "end_from": end_from,
+                                    "how": "number", "what": what, "said": "x"}]}}
+    st = B.station_for_proceeding(p, "HB122", {}, mk(1038.0, "last mention of the bill"))
+    assert st["start"] == 976.0 and st["end"] is None, (
+        f"an end 62 s after the only mention of the bill was published: {st['end']}")
+    assert st["end_from"] == "last mention of the bill", st["end_from"]
+    for end, frm in ((1763.0, "last mention of the bill"), (1050.0, "unnamed close")):
+        st = B.station_for_proceeding(p, "HB122", {}, mk(end, frm))
+        assert st["end"] == end, f"an end {frm} at {end} was withheld: {st['end']}"
+    # A hearing takes no vote, so a vote result does not end one; an
+    # executive session's does (after review, 17 October 2026).
+    st = B.station_for_proceeding(p, "HB122", {}, mk(1100.0, "vote result"))
+    assert st["end"] is None, f"a vote result ended a hearing: {st['end']}"
+    ex = dict(p, proceeding="executive session")
+    st = B.station_for_proceeding(ex, "HB122", {}, mk(1100.0, "vote result", "executive session"))
+    assert st["end"] == 1100.0, f"a vote result did not end an executive session: {st['end']}"
+    f = {"date": "2026-01-20", "body": "H", "video_id": "VIDX", "motions": [],
+         "tallies": [], "kind": "floor debate", "debate_end": None, "window_start": None,
+         "precise": False, "whole_video": False, "title": "", "time": "", "venue": ""}
+    st = B.station_for_floor(f, "HB122", mk(1038.0, "last mention of the bill", ""))
+    assert st["start"] == 976.0 and st["state"] == "floor_dated" and st["debate_end"] is None, (
+        f"the floor published an end 62 s after the only mention: {st['state']} {st['debate_end']}")
+    return "ok", "a last mention within 30 s of the opening gives no end, committee or floor"
 
 
 @check("frontend", "a Senate hearing report draws closed under its hearing, "
