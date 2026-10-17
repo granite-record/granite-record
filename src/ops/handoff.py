@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.19
+# GRANITE_VERSION: 2026-09-05.20
 """
 Write STATE.md from what is actually on disk.
 
@@ -364,7 +364,9 @@ def section_timestamps(out):
     # _absent and _sequence are maps keyed on recording, beside the
     # recordings. Counting _sequence as one added a recording, every item of
     # every sequence it held as a proceeding, and its video ids as bills.
-    sides = ("_absent", "_sequence")
+    # segment_markers' own list of them since 17 October 2026, which a copy
+    # here missed _named_before from.
+    from segment_markers import SIDES as sides
     vids = [k for k in cs if k not in sides]
     # Proceedings, not bills: a bill heard in the morning and voted in the
     # afternoon is two, and the same bill on two recordings is two more. The

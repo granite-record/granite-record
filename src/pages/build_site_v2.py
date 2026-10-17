@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.216
+# GRANITE_VERSION: 2026-09-05.217
 """
 Generate the faceted site from real General Court data.
 
@@ -2763,10 +2763,12 @@ def withhold_late_captions(segs, marks, work, summary=caption_span.SUMMARY):
                 sum(1 for v in vs for s in (segs.get(v) or []) if s.get("located")))
     said, placed = read_off(late)
     u_said, u_placed = read_off(unknown)
+    # segment_markers' one list of the maps beside the recordings.
+    from segment_markers import SIDES
     for v in list(late) + list(unknown):
         segs.pop(v, None)
         marks.pop(v, None)
-        for side in ("_absent", "_sequence", "_named_before"):
+        for side in SIDES:
             if isinstance(marks.get(side), dict):
                 marks[side].pop(v, None)
     print(f"caption tracks: {compared:,} recordings compared with the length "

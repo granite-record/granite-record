@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.57
+# GRANITE_VERSION: 2026-09-05.58
 """
 Segment a recording on what the chair says, not on where bill numbers cluster.
 
@@ -72,6 +72,17 @@ import tokenize
 from collections import Counter, defaultdict
 
 WORK_FILES = ["captions.en.json3", "captions.en-orig.json3", "transcript.json"]
+
+# THE MAPS BESIDE THE RECORDINGS in candidate_segments.json, each keyed on
+# recording, and the one definition of them (17 October 2026). This file
+# writes them; livestreams' guard, cloud.py send-night and handoff read the
+# file and must not take one for a recording. Until today each kept its own
+# copy of the list, and when _named_before was added here the copies in
+# livestreams and handoff did not hear of it: the night's guard took the map
+# for a recording that had changed and put back every reading that carried
+# one. SIDES_ANSWERED are those a recording read again answers for itself.
+SIDES = ("_absent", "_sequence", "_named_before")
+SIDES_ANSWERED = ("_absent", "_named_before")
 WS = re.compile(r"\s+")
 NONWORD = re.compile(r"[^a-z0-9 ]+")
 
@@ -1666,7 +1677,7 @@ def main():
     # run found, or nothing. Its _sequence is written only by a fresh read, so
     # one taken from the cache keeps the sequence it already had.
     # _named_before (named_before) answers for a recording as _absent does.
-    sides = ("_absent", "_sequence", "_named_before")
+    sides = SIDES
     read_now = {k for k in result if k not in sides}
     kept = len({k for k in prior if k not in sides} - read_now)
     if kept:
@@ -1677,7 +1688,7 @@ def main():
     for side in sides:
         was = prior.get(side) if isinstance(prior.get(side), dict) else {}
         new = result.get(side) or {}
-        answers = read_now if side in ("_absent", "_named_before") else set(new)
+        answers = read_now if side in SIDES_ANSWERED else set(new)
         both = {v: x for v, x in was.items() if v not in answers}
         both.update(new)
         if both or side in prior:
