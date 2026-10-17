@@ -8193,8 +8193,11 @@ def _between_chambers(build_site_v2):
                  "MA", "Ought to Pass with Amendment"),
              _ev("S", "Sen. Ward Moved Nonconcur with the House Amendment, MA, VV; 02/05/2026",
                  "floor", "MA"))
+    d = B.bill_disposition({}, "SB34", st, n, [], "2025-2026", "2025-2026")
+    want("One chamber did not concur", d.status, "SB34 2026, in session")
+    # And once the session is over, that is how it died (17 October 2026).
     d = B.bill_disposition({}, "SB34", st, n, [], "2025-2026", "2025-2026", term_over=True)
-    want("One chamber did not concur", d.status, "SB34 2026")
+    want("Died: the chambers did not agree on a version", d.status, "SB34 2026")
     # HB 549 of 1991: both chambers' fields say PASSED/ADOPTED, the Senate's
     # WITH AMENDMENT, and the House never took the amendment up -- not
     # "Passed one chamber". A House resolution the docket shows "Introduced
@@ -8215,6 +8218,14 @@ def _between_chambers(build_site_v2):
              _ev("S", "Sen. Birdsell Refused to Accede to House Request for Committee of Conference, MA, VV; 05/12/2022", "floor", "MA"))
     want(("active", "One chamber did not concur; a committee of conference was asked for"),
          B.between_chambers(n, "In a committee of conference"), "HB1432 2022")
+    # And its term over, that refusal is how it died, as HB 191 of 2026's
+    # was (the language sweep of 17 October 2026): not a conference pending.
+    d = B.bill_disposition({}, "HB1432", {"gen_status": "HOUSE",
+                                          "house_status": "CONFERENCE COMMITTEE",
+                                          "senate_status": "CONFERENCE COMMITTEE"},
+                           n, [], "2021-2022", "2025-2026")
+    want(("done", "Died: the chambers did not agree on a version"), (d.kind, d.status),
+         "HB1432 2022, its term over")
     # HB 589 of 2002: retained, then passed both chambers and went to conference.
     n = _nar(_ev("H", "Retained in Committee", "retained"),
              _ev("H", "Comm Am{2307}, AA VV; Passed with Am VV", "floor", "MA", "Ought to Pass with Amendment"),
@@ -8982,18 +8993,21 @@ def _tabled_is_the_last_decision(N, B):
     filed = {"gen_status": "HOUSE", "house_status": "REPORT FILED", "senate_status": ""}
     d = B.bill_disposition({}, "HB1668", filed, narr[("HB1668", "1997-1998")], [],
                            "1997-1998", "2025-2026")
-    is_("HB1668 of 1998", (d.kind, d.status), ("done", "Laid on the table"))
+    # In a term that has ended, a tabling that stood is how the bill died, and
+    # the status says so (17 October 2026: it said "Laid on the table" beside
+    # the Died chip on 52 bills of 2026 and read as still to be decided).
+    is_("HB1668 of 1998", (d.kind, d.status), ("done", "Died on the table"))
     n = _narrated(N, "1997-1998", "HB1681", _DOCKET_FAILED_PASSAGE[("HB1681", "1997-1998")])
     is_("HB1681 of 1998",
         B.bill_disposition({}, "HB1681", filed, n, [], "1997-1998", "2025-2026").status,
-        "Laid on the table")
+        "Died on the table")
     for bill in ("SB476", "SB651"):
         n = narr[(bill, "2025-2026")]
         # Moving, while the session has days left; finished with the session.
         d = B.bill_disposition({}, bill, {}, n, [], "2025-2026", "2025-2026")
         is_(f"{bill} of 2026, in session", (d.kind, d.status), ("active", "Laid on the table"))
         d = B.bill_disposition({}, bill, {}, n, [], "2025-2026", "2025-2026", term_over=True)
-        is_(f"{bill} of 2026", (d.kind, d.status), ("done", "Laid on the table"))
+        is_(f"{bill} of 2026", (d.kind, d.status), ("done", "Died on the table"))
     # A row that says how it ended is the answer, not the tabling before it.
     d = B.bill_disposition({}, "SB14", {}, narr[("SB14", "2025-2026")], [], "2025-2026",
                            "2025-2026", term_over=True)
@@ -9006,8 +9020,8 @@ def _tabled_is_the_last_decision(N, B):
                            n, [], "2011-2012", "2025-2026").status, "Failed to pass")
     assert not bad, "; ".join(bad)
     return "ok", ("HB 1668 and HB 1681 of 1998 and SB 476 and SB 651 of 2026 read Laid on the "
-                  "table from their dockets; a later row that ends the bill, and a tabling "
-                  "undone, are not that")
+                  "table from their dockets, and Died on the table once their term is over; a "
+                  "later row that ends the bill, and a tabling undone, are not that")
 
 
 # THE CHIP, ENDING BY ENDING (the person, 5 October 2026): "Became Law, Died,
@@ -9040,6 +9054,7 @@ _CHIP_FINISHED = {
         "Killed", "Died on the table", "Died when the session ended", "Failed to pass",
         "Indefinitely postponed", "Refused introduction",
         "Died when the conference report was rejected", "Died: conferees could not agree",
+        "Died: the chambers did not agree on a version",
         "Laid on the table", *_CHIP_STAGES)},
              **{s: "Withdrawn" for s in ("Withdrawn", "Withdrawn prior to introduction")},
              **{s: s for s in _CHIP_OWN}},
@@ -9164,7 +9179,8 @@ def _chip_words(N, B):
             + [res for _p, res in B.DISPOSED]
             + [("done", lab) for _n, lab in B.STAGE_STATED]
             + [("done", B.CONF_REJECTED), ("done", B.CONF_UNABLE), ("done", B.WITHDRAWN_PRIOR),
-               ("done", B.NOT_INTRODUCED), ("done", B.PROPOSED_ONLY)])
+               ("done", B.NOT_INTRODUCED), ("done", B.PROPOSED_ONLY)]
+            + [("done", lab) for lab in B.ENDED_AS.values()])
     missing = sorted({lab for k, lab in said if lab not in _CHIP_FINISHED.get(k, {})})
     if missing:
         bad.append(f"endings the status can carry that the chip table does not: {missing}")
@@ -9203,7 +9219,7 @@ def _chip_words(N, B):
             ("SB476 of 2026, in session", chip("SB476", {}, n476, "2025-2026"),
              ("Laid on the table", "Tabled")),
             ("SB476 of 2026, session over", chip("SB476", {}, n476, "2025-2026", True),
-             ("Laid on the table", "Died")),
+             ("Died on the table", "Died")),
             ("SB14 of 2025, session over", chip("SB14", {}, narr[("SB14", "2025-2026")],
                                                 "2025-2026", True),
              ("Died on the table", "Died")),
@@ -9322,17 +9338,21 @@ def _died_on_the_table_row(N, B):
         "2025|0228|11/20/2025 12:00:00 AM|SB14|S|(SENATE CLERK'S NOTE: The roll call vote below "
         "on SB 14 was inadvertently entered in the Daily Journal and has been corrected in the "
         "Senate Permanent Journal)|11/20/2025 12:00:00 AM"])
+    # `between` says the docket's closing row decided it: since 17 October
+    # 2026 a tabling in an ended term reads "Died on the table" either way
+    # (ENDED_AS), so the word alone no longer shows which row was read.
     d = B.bill_disposition({}, "SB14", {"senate_status": "LAID ON TABLE"}, n, [], "2025-2026",
                            "2025-2026", term_over=True)
-    is_("SB14 of 2025 with a clerk's note after its closing row", (d.kind, d.status),
-        ("done", "Died on the table"))
-    # No closing row: the record's word stands.
+    is_("SB14 of 2025 with a clerk's note after its closing row", (d.kind, d.status, d.between),
+        ("done", "Died on the table", True))
+    # No closing row: the record's word stands while the term sits, and is
+    # how the bill died once it has ended.
     d = B.bill_disposition({}, "SB476", {"gen_status": "SENATE", "senate_status": "LAID ON TABLE"},
                            narr[("SB476", "2015-2016")], [], "2015-2016", "2025-2026")
-    is_("SB476 of 2016", (d.kind, d.status), ("done", "Laid on the table"))
+    is_("SB476 of 2016", (d.kind, d.status, d.between), ("done", "Died on the table", False))
     assert not bad, "; ".join(bad)
     return "ok", ("HB 112 and HCR 3 of 2015 died on the table by the House's own row, SB 14 of "
-                  "2025 by Senate Rule 3-23; SB 476 of 2016, with no such row, is laid on it")
+                  "2025 by Senate Rule 3-23; SB 476 of 2016, with no such row, by its term's end")
 
 
 # Real rows: Docket.txt lines 22638 and 23632 (HB 1768) and 23373, 23536-23537,
@@ -9386,7 +9406,9 @@ def _nonconcurrence_under_session_ended(N, B):
         {}, "HB1768", {"gen_status": "HOUSE", "house_status": "DIED, SESSION ENDED",
                        "senate_status": "PASSED/ADOPTED WITH AMENDMENT"},
         narr["HB1768"], [], "2025-2026", "2025-2026", term_over=True)
-    assert (d.kind, d.status, d.between) == ("done", "One chamber did not concur", True), (
+    # In words of how it died, the session being over (17 October 2026).
+    assert (d.kind, d.status, d.between) == (
+        "done", "Died: the chambers did not agree on a version", True), (
         d.kind, d.status, d.between)
     assert B.between_chambers(narr["HB1768"], "Died when the session ended") == (
         "active", "One chamber did not concur")
@@ -9397,7 +9419,8 @@ def _nonconcurrence_under_session_ended(N, B):
         {}, "HB1709", {"gen_status": "SENATE", "house_status": "DIED, SESSION ENDED",
                        "senate_status": "LAID ON TABLE"},
         narr["HB1709"], [], "2025-2026", "2025-2026", term_over=True)
-    assert not d.status.startswith("One chamber did not concur"), d.status
+    assert not (d.status.startswith("One chamber did not concur")
+                or d.status == "Died: the chambers did not agree on a version"), d.status
     # HB 1685 of 2026: the refusal to concur reads as a bare one -- its row
     # does not say a conference was asked for -- and no chamber voted on a
     # report, so only the docket's rows about a conference say this bill did
@@ -9412,7 +9435,7 @@ def _nonconcurrence_under_session_ended(N, B):
     assert got is None, f"HB1685 of 2026, whose conference the Senate refused, read {got}"
     # And nothing else under that label moves: a kill is a kill.
     assert B.between_chambers(narr["HB1768"], "Killed") is None
-    return "ok", ("HB 1768 of 2026 reads One chamber did not concur over the House's DIED, "
+    return "ok", ("HB 1768 of 2026 reads that the chambers did not agree over the House's DIED, "
                   "SESSION ENDED; HB 1709, which reached a conference, is not read so")
 
 
@@ -9679,12 +9702,13 @@ def _database_fills_a_blank_status(N, B):
     st = {"gen_status": "HOUSE", "house_status": None,
           "senate_status": "PASSED/ADOPTED WITH AMENDMENT"}
     d = read("HB1768", st, {**st, "house_status": "DIED, SESSION ENDED"})
+    # Each in the words of how it died, the session being over (ENDED_AS).
     is_("HB1768's rows under HB292's fields", (d.status, d.source),
-        ("One chamber did not concur", ""))
+        ("Died: the chambers did not agree on a version", ""))
     # Outranked by a page field that already answers.
     st = {"gen_status": "SENATE", "house_status": None, "senate_status": "LAID ON TABLE"}
     d = read("HB1709", st, {**st, "house_status": "DIED, SESSION ENDED"})
-    is_("HB1709 of 2026", (d.status, d.source), ("Laid on the table", ""))
+    is_("HB1709 of 2026", (d.status, d.source), ("Died on the table", ""))
     # MADE FOR THE GUARD: no row of the dump says this. HCR 1's own rows, with
     # a database code that its journey contradicts -- the House adopted it.
     d = read("HCR1", blank, {**blank, "house_status": "IN COMMITTEE"})
@@ -9863,8 +9887,10 @@ def _finished_term_is_finished(N, B):
              "In committee"),
             ("PET10", "2011-2012", {"gen_status": "HOUSE", "house_status": "REPORT FILED"},
              "Committee report filed"),
+            # Left at its last word, said as how it died (17 October 2026):
+            # a conference that never reported is chambers that never agreed.
             ("HB146", "1991-1992", {**conf, "gen_status": "SENATE"},
-             "In a committee of conference"),
+             "Died: the chambers did not agree on a version"),
             ("HB258", "1991-1992", {"gen_status": "SENATE", "house_status": "PASSED/ADOPTED",
                                     "senate_status": "IN COMMITTEE"}, "Passed one chamber"),
             ("HCR8", "2019-2020", {"gen_status": "HOUSE", "house_status": "PASSED/ADOPTED"},
@@ -12966,10 +12992,12 @@ def _conferees_never_signed(N, build_site_v2):
              "the bill died in the committee")):
         # What the label was without the docket's word: the check is about
         # these classes, so a fixture that stopped reaching them fails too.
+        # Asked as of its own term sitting: once a term has ended, the two
+        # conference stages read as how the bill died (ENDED_AS, 17 October
+        # 2026), and the classes would no longer be told apart.
         without = [e for e in n["events"]
                    if not re.search(r"not signed|not filed|died in comm", e["raw"], re.I)]
-        d = B.bill_disposition({}, bid, st, _nar(*without), [], term, "2025-2026",
-                               term_over=True)
+        d = B.bill_disposition({}, bid, st, _nar(*without), [], term, term)
         if d.status != was:
             bad.append(f"{bid} of {term} no longer starts from {was!r} ({d.status!r})")
         d = B.bill_disposition({}, bid, st, n, [], term, "2025-2026", term_over=True)

@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.213
+// GRANITE_VERSION: 2026-09-07.214
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -3830,8 +3830,9 @@ function journeyList(b,d){
 //    the page said nothing, so "Referred for interim study" stood as the last
 //    word for months after the committee had answered.
 //  - a term that has run out of session days finishes every bill still
-//    pending. The status keeps the record's own word ("Laid on the table",
-//    where the chip says Died);
+//    pending. The status keeps the record's own word ("Committee report
+//    filed", where the chip says Died; since 17 October 2026 a tabling reads
+//    "Died on the table");
 //    this says why nothing follows it. status/status.txt sets the date.
 // Since 9 October 2026 the report is read in every wording the docket has
 // used (build_site_v2.interim_report), and says one of three things: the
