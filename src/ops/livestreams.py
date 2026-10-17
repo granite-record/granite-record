@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-25.11
+# GRANITE_VERSION: 2026-09-25.13
 """
 New livestreams, every night: the recordings the House and Senate channels
 finished since the last run, indexed and captioned, and read into the start
@@ -13,6 +13,16 @@ times the site publishes -- by the night alone, with no laptop in the loop.
                                                    from there and reads what it gets
                                                    into the laptop's own files; sends
                                                    nothing anywhere
+    python3 src/ops/livestreams.py --to-inbox [--dry-run]
+                                                   on the laptop, from Task Scheduler:
+                                                   asks YouTube for what the night's
+                                                   state says waits, and puts each
+                                                   caption file in the bucket's inbox
+                                                   (THE CAPTIONS INBOX); writes no state
+    python3 src/ops/livestreams.py --since-state --inbox DIR
+                                                   the nightly step, taking waiting
+                                                   recordings' captions from the inbox
+                                                   cloud.py inbox-down brought to DIR
     python3 src/ops/livestreams.py --status        what the state says; asks nothing
     python3 src/ops/livestreams.py --carry         the files carried between nights
 
@@ -305,6 +315,47 @@ along: approximate starts for new recordings, and every recording already
 read keeps its times. Getting past the refusal from GitHub's address (a
 newer yt-dlp, or a route that costs money) is a person's decision, not
 something this step tries by itself.
+
+THE CAPTIONS INBOX (17 October 2026)
+
+YouTube has answered every caption GitHub's machine asked for since 12
+October 2026 with its bot check, and it answers the laptop. So the laptop
+asks and the night still decides (the design the person approved on 16
+October, private/AUTOMATION_ROADBLOCKS.md).
+
+--to-inbox, on the laptop from Task Scheduler of an evening, reads the night's
+state from the bucket (state/livestreams.json), in memory: it is never written,
+in the bucket or on the laptop. It asks YouTube for each recording that state
+lists as waiting, through the same queue, pauses, budget and tracks as a
+night, under the laptop's own refusal record (archive/youtube.refused.json, as
+--catch-up keeps it), and puts each caption file in the bucket under
+inbox/captions/ with a manifest beside it saying its name, size and sha256
+(cloud.inbox_add). A recording that already has an entry there is not asked
+for, and one whose captions are already on this disk is sent without asking.
+The laptop only ever adds a key that is not there: never kit/, never state/,
+never an entry the night has not cleared.
+
+The night brings the inbox down before this step (cloud.py inbox-down) and
+--since-state --inbox DIR takes a waiting recording's captions from it: only
+a recording its state lists as waiting, and only a file whose size and sha256
+are its manifest's and which reads as captions. It copies the file into
+work/<video>/ and calls the recording captioned "by inbox", so --markers reads
+it under the timestamp probe's guard exactly as a caption this step fetched.
+An entry that fails a test is refused: the recording waits as it did, and the
+state names the entry, so that it is cleared and the laptop can send another.
+A recording the inbox has nothing for is left as it was, waiting and never
+counted as asked, which --captions-from could not do: there a missing folder
+reads "no captions".
+
+The night is the state's one writer and the inbox's one remover. cloud.py
+inbox-clear, after the state goes back, reads the bucket's copy of it and
+removes (to replaced/, as everything removed from the bucket) each entry it
+no longer waits for -- read, settled, gone or refused (inbox_spent) -- and
+keeps one whose recording was taken and not yet read, so a reading the guard
+put back, or a build that never ran, takes it again the next night instead
+of asking YouTube. A dry run takes from the inbox into its own state, which
+never goes back, and clears nothing. A New term run takes nothing, as it asks
+for nothing.
 
 A NEW TERM RUN ASKS FOR NO CAPTIONS
 
@@ -1680,7 +1731,8 @@ def prune(st, now):
         if v.get("status") == "gone" or v.get("captions") in (
                 "none-published", "not-needed", "for-laptop") or (
                 v.get("captions") == "captioned"
-                and (v.get("read") or v.get("adopted") or v.get("by") != "runner")):
+                and (v.get("read") or v.get("adopted")
+                     or v.get("by") not in ("runner", "inbox"))):
             del st["videos"][vid]
 
 
@@ -1722,6 +1774,165 @@ def restore_results(st, markers=MARKERS, summary=None, work=WORK):
     return back
 
 
+# ----------------------------------------------------- the captions inbox --
+
+# A video id as YouTube makes them, and nothing that could climb out of a
+# folder: an inbox entry is named for its recording, and the name becomes a
+# path on the night's machine.
+VIDEO_ID = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
+
+
+def inbox_wants(v):
+    """Whether the night would take a recording's captions from the inbox,
+    and so whether the laptop asks YouTube for them: finished, and still
+    waiting for captions. Not one that has failed MAX_TRIES times, which
+    caption_queue leaves for a person ("for-laptop"): taking it again would
+    be a loop of readings the guard puts back."""
+    if not isinstance(v, dict) or v.get("status") != "finished":
+        return False
+    c = v.get("captions")
+    if c not in WAITING:
+        return False
+    return not (c == "failed" and int(v.get("tries") or 0) >= MAX_TRIES)
+
+
+def inbox_problem(vid, raw, folder):
+    """Why an inbox entry, as cloud.py inbox-down brought it to `folder`, is
+    not taken, or "" when it is sound: its manifest (`raw`) names this
+    recording and a caption file of the kind segment_markers reads, and the
+    file beside it is that size, that sha256, and reads as captions. The
+    night tests what it takes itself rather than trust the step that brought
+    it down: a laptop's half-sent entry and a corrupt copy look alike from
+    here, and both must wait rather than go into the start times."""
+    try:
+        doc = json.loads(raw.decode("utf-8"))
+    except (ValueError, UnicodeDecodeError) as e:
+        return f"its manifest will not read ({type(e).__name__})"
+    if not isinstance(doc, dict) or doc.get("video") != vid:
+        return "its manifest names another recording"
+    name = doc.get("file")
+    if name not in CAPTION_FILES:
+        return f"its manifest names {str(name)[:60]!r}, not a caption file this step reads"
+    f = Path(folder) / vid / name
+    if not f.is_file():
+        return f"{name} did not come down with its manifest"
+    data = f.read_bytes()
+    try:
+        # JSON reads "size": Infinity as a float, and int() of it overflows:
+        # one malformed manifest must be refused, not stop the night's step.
+        size = int(doc.get("size"))
+    except (TypeError, ValueError, OverflowError):
+        return "its manifest gives no size"
+    if len(data) != size:
+        return f"{name} is {len(data):,} bytes and its manifest says {size:,}"
+    if hashlib.sha256(data).hexdigest() != str(doc.get("sha256") or ""):
+        return f"{name}'s sha256 is not its manifest's"
+    if not words_in(f):
+        return f"{name} holds no words this step can read"
+    return ""
+
+
+def words_in(f):
+    """Whether this one caption file holds words, read by segment_markers'
+    own reader in a folder of its own (17 October 2026). read_words takes the
+    first file of a folder that answers, so read in the folder a file came
+    from, a wordless captions.en.json3 was vouched for by a transcript or
+    another track beside it: the laptop sent it, the night refused it, and the
+    laptop sent it again every evening. The night judges an entry the same
+    way, so the two cannot disagree about a file."""
+    import segment_markers
+    import tempfile
+    d = Path(tempfile.mkdtemp(prefix="gr-words-"))
+    try:
+        shutil.copyfile(f, d / Path(f).name)
+        return bool(segment_markers.read_words(d))
+    except (ValueError, OSError, AttributeError, TypeError, RecursionError):
+        return False
+    finally:
+        shutil.rmtree(d, ignore_errors=True)
+
+
+def take_inbox(st, now, folder, work=WORK):
+    """The night's take from the inbox in `folder`: a Counter of taken,
+    refused, and the entries for recordings it does not wait for.
+
+    Only a recording the state lists as waiting (inbox_wants) is taken, and
+    only from a sound entry (inbox_problem). Its file goes into work/<video>/,
+    where --markers and caption_span look, and the recording is captioned "by
+    inbox" with the entry's manifest named (its sha256), so --markers reads it
+    exactly as one this step fetched. A refused entry is named in the state
+    ("inbox_refused") and the recording waits as it did; cloud.py inbox-clear
+    then removes that entry, and the laptop may send another. Nothing here
+    counts as an ask of YouTube: a recording the inbox has nothing for is
+    left as it was."""
+    got = Counter()
+    for mf in sorted(Path(folder).glob("*.json")):
+        vid = mf.stem
+        v = st["videos"].get(vid) if VIDEO_ID.match(vid) else None
+        if v is None:
+            got["not in the state"] += 1
+            continue
+        if not inbox_wants(v):
+            got["not waiting"] += 1
+            continue
+        raw = mf.read_bytes()
+        entry = hashlib.sha256(raw).hexdigest()
+        why = inbox_problem(vid, raw, folder)
+        if why:
+            v["inbox_refused"] = {"entry": entry, "why": why[:200], "at": iso(now)}
+            got["refused"] += 1
+            print(f"  {vid}: the inbox's captions REFUSED -- {why}; it waits as it did")
+            continue
+        doc = json.loads(raw.decode("utf-8"))
+        if doc.get("file") not in CAPTION_FILES:
+            # inbox_problem has refused this already; a name becomes a path
+            # here, so it is held to the list again rather than trusted.
+            raise Broken(f"{vid}: an inbox entry naming {doc.get('file')!r} reached the take")
+        if not has_captions(vid, work):
+            d = Path(work) / vid
+            d.mkdir(parents=True, exist_ok=True)
+            tmp = d / (doc["file"] + ".tmp")
+            shutil.copyfile(Path(folder) / vid / doc["file"], tmp)
+            os.replace(tmp, d / doc["file"])
+        # "tries" stays: a recording whose reading the guard keeps putting
+        # back reaches MAX_TRIES and is left for a person, not taken for ever.
+        v.update(captions="captioned", by="inbox", inbox=entry, why="",
+                 fetched=str(doc.get("fetched") or "") or iso(now))
+        for k in ("asks", "again", "vouched", "refused", "inbox_refused"):
+            v.pop(k, None)
+        got["taken"] += 1
+        print(f"  {vid}: captioned from the inbox ({doc['file']}, fetched "
+              f"{doc.get('fetched') or 'when, it does not say'})   {str(v.get('title') or '')[:60]}")
+    return got
+
+
+def inbox_spent(v, entry):
+    """Why the night no longer needs an inbox entry, or "" while it may: the
+    rule cloud.py inbox-clear removes entries by, read against the state the
+    night sent. `v` is the recording's entry in that state (None when it has
+    left it), `entry` the sha256 of the inbox entry's manifest (None for a
+    file whose manifest is not there).
+
+    Kept while the recording waits, and while it was taken from the inbox
+    and its reading is not kept yet: the next night takes it again if the
+    guard put the reading back or the build never ran. Spent once the state
+    has refused that very entry, or settled the recording any other way."""
+    if not isinstance(v, dict):
+        return "the night's state no longer lists the recording"
+    refused = v.get("inbox_refused") or {}
+    if entry and refused.get("entry") == entry:
+        return f"the night refused it ({refused.get('why')})"
+    if inbox_wants(v):
+        return ""
+    if v.get("captions") == "captioned" and v.get("by") == "inbox" \
+            and not (v.get("read") or v.get("adopted")):
+        return ""
+    if v.get("captions") == "captioned":
+        return ("its captions were read" if v.get("read") or v.get("adopted")
+                else f"captioned by {v.get('by') or 'the night'}")
+    return f"the night's state says {v.get('captions') or v.get('status')}"
+
+
 # ----------------------------------------------------------------- run --
 
 def since_state(a):
@@ -1746,8 +1957,12 @@ def since_state(a):
         # machine: as a failure, so that after MAX_TRIES it is left for a
         # person rather than asked every night. A reading an older night
         # still carries in the state is not: --markers folds it in.
+        # Captions taken from the inbox are the same case (17 October 2026):
+        # they came down to that night's machine only, and the inbox keeps
+        # the entry until the reading is kept (inbox_spent), so the night
+        # that finds them missing takes them from the inbox again.
         again = [vid for vid, v in st["videos"].items()
-                 if v.get("captions") == "captioned" and v.get("by") == "runner"
+                 if v.get("captions") == "captioned" and v.get("by") in ("runner", "inbox")
                  and not v.get("carry") and vid not in done and not has_captions(vid)]
         for vid in again:
             v = st["videos"][vid]
@@ -1793,6 +2008,20 @@ def since_state(a):
     # one whose captions are already on this disk -- before the queue is
     # made, so one that is not due tonight is seen as well.
     settle(st, now, done)
+    # What the laptop put in the captions inbox, for recordings still waiting
+    # once settle() has seen what needs nothing (THE CAPTIONS INBOX). Before
+    # the queue is made, so a recording taken here is not asked for tonight.
+    inbox = Counter()
+    if a.inbox:
+        if a.origin == "runner" and os.environ.get(NEW_TERM_ENV) == "true":
+            print("  a New term run: nothing is taken from the captions inbox tonight")
+        elif not Path(a.inbox).is_dir():
+            notes.append("the captions inbox did not come down")
+            print(f"  {Path(a.inbox).as_posix()} is not here: the captions inbox did not "
+                  "come down, so nothing is taken from it tonight")
+        else:
+            inbox = take_inbox(st, now, a.inbox)
+            save_state(st)
     first, again = caption_queue(st, now)
     kit = {}
     if (first or again) and a.origin == "runner" \
@@ -1824,9 +2053,21 @@ def since_state(a):
                     "now over and indexed"
                     + (f", {counts['not yet over']} not yet over"
                        if counts["not yet over"] else ""))
+    if inbox:
+        said.append("from the captions inbox: " + ", ".join(
+            f"{n} {k}" for k, n in sorted(inbox.items())))
     if got:
         said.append("captions: " + ", ".join(f"{n} {k}" for k, n in got.items()))
     head = "; ".join(said) if said else "nothing new"
+    # The night's verdict counts "captioned" (nightly.captions_line): a
+    # recording taken from the inbox is captioned tonight as much as one
+    # this machine asked for, and the inbox's own share is said beside it.
+    asked = dict(got)
+    if inbox["taken"]:
+        asked["captioned"] = asked.get("captioned", 0) + inbox["taken"]
+        asked["from the inbox"] = inbox["taken"]
+    if inbox["refused"]:
+        asked["refused from the inbox"] = inbox["refused"]
     tail = [f"{waiting} wait for captions"] if waiting else []
     tail += [f"{carried} older reading(s) to fold into the caption results"] if carried else []
     tail.append(f"{units} API unit{'' if units == 1 else 's'}")
@@ -1835,48 +2076,33 @@ def since_state(a):
     # What the night's verdict reads (nightly.captions_record): tonight's
     # answers by outcome, what still waits, and the setup that asked.
     st["last_run"] = {"at": iso(now), "origin": a.origin, "units": units,
-                      "captions": dict(got), "waiting": waiting,
+                      "captions": asked, "waiting": waiting,
                       "verdict": line, **({"setup": kit} if kit else {})}
     save_state(st)
     print("\n" + line)
     return code
 
 
-def catch_up(a):
-    """On the laptop, by hand: caption the night's new recordings that are not
-    here -- the ones YouTube refused GitHub's machine, and the ones it
-    captioned there, whose files the kit never brings back -- then read them.
+def laptop_counted(st, table):
+    """{video: entry} of the laptop's own record (`table`, the content of
+    archive/youtube.refused.json) that still stands against the night's state
+    `st`: what --catch-up and --to-inbox count against a recording.
 
-    Until 8 October 2026 the laptop's evening job ran this every evening and
-    sent the two files it reads into to the kit. Now it is a person's tool:
-    a test of whether YouTube answers this machine (its own refusal record,
-    archive/youtube.refused.json, says what happened), and captions for
-    development. Reads the nightly's state and never writes it. What it reads
-    goes into the laptop's own candidate_segments.json and caption summary,
-    and no further: both are the night's files in the kit since 10 October
-    2026, and cloud.py seed-kit never sends a night's file over the night's
-    copy. The night asks for these recordings itself.
+    What this machine has asked for and got no captions. The state is
+    GitHub's and is not written here, so without this the laptop would open
+    every evening with the same recordings -- 127 of the 3,490 in
+    archive/captions.json on 1 October 2026 have no captions published --
+    and never learn to ask them less often, or last.
+    An entry leaves when the night's state has dropped the recording; when
+    the recording needs nothing more from this machine; or when GitHub's
+    machine got captions for it AFTER this machine last asked, which is
+    news -- they exist now, whatever was answered here before.
+    Not merely because the state calls it captioned: this machine still
+    wants a recording GitHub's machine captioned, whose files never come
+    here. For a day such an entry was dropped every evening, so one that
+    answered this machine "no captions" or "private" was asked every
+    evening, ahead of the new ones, its count stuck at one.
     """
-    if a.origin == "runner":
-        raise Broken("--catch-up is the laptop's; on GitHub's machine run "
-                     "--since-state")
-    now = utcnow(a.now)
-    st = load_state()
-    table = load_laptop_refusals()
-    # What this machine has asked for and got no captions. The state is
-    # GitHub's and is not written here, so without this the laptop would open
-    # every evening with the same recordings -- 127 of the 3,490 in
-    # archive/captions.json on 1 October 2026 have no captions published --
-    # and never learn to ask them less often, or last.
-    # An entry leaves when the night's state has dropped the recording; when
-    # the recording needs nothing more from this machine; or when GitHub's
-    # machine got captions for it AFTER this machine last asked, which is
-    # news -- they exist now, whatever was answered here before.
-    # Not merely because the state calls it captioned: this machine still
-    # wants a recording GitHub's machine captioned, whose files never come
-    # here. For a day such an entry was dropped every evening, so one that
-    # answered this machine "no captions" or "private" was asked every
-    # evening, ahead of the new ones, its count stuck at one.
     def stands(vid, e):
         v = st["videos"].get(vid)
         if not isinstance(e, dict) or v is None:
@@ -1887,17 +2113,14 @@ def catch_up(a):
             return False
         return not str(v.get("fetched") or "") > str(e.get("tried") or "")
 
-    mine = {vid: dict(e) for vid, e in (table.get(ASKED) or {}).items()
+    return {vid: dict(e) for vid, e in (table.get(ASKED) or {}).items()
             if stands(vid, e)}
-    closed = {vid for vid, e in mine.items() if e.get("closed")}
-    want = [vid for vid, v in st["videos"].items()
-            if v.get("status") == "finished"
-            and v.get("captions") in ("waiting", "deferred", "failed",
-                                      "for-laptop", "none-yet", "captioned")
-            and not v.get("adopted") and not v.get("read") and not has_captions(vid)
-            and vid not in closed]
-    # The night's entry for each, as this machine sees it: waiting, and
-    # carrying what this machine's own asks have counted against it.
+
+
+def laptop_shadow(st, want, mine):
+    """The night's entry for each recording in `want`, as this machine sees
+    it: waiting, and carrying what this machine's own asks (`mine`) have
+    counted against it, never the night's."""
     shadow = {"videos": {}}
     for vid in want:
         v = dict(st["videos"][vid], captions="waiting")
@@ -1906,21 +2129,13 @@ def catch_up(a):
         v.update({k: mine[vid][k] for k in ("asks", "again", "vouched", "refused")
                   if (mine.get(vid) or {}).get(k)})
         shadow["videos"][vid] = v
-    first, again = caption_queue(shadow, now)
-    later = len(want) - len(first) - len(again)
-    was = Counter("captioned on GitHub's machine"
-                  if st["videos"][v].get("captions") == "captioned"
-                  else "not captioned there" for v in want)
-    print(f"{len(want)} of the night's recording(s) have no captions here"
-          + (": " + ", ".join(f"{n} {k}" for k, n in was.items()) if want else "")
-          + (f"; {len(again)} of them asked before and due again" if again else "")
-          + (f"; {later} asked before and not due yet" if later else "")
-          + (f"; {len(closed)} more are no longer asked for" if closed else ""))
-    if (first or again) and not yt_dlp_here(a):
-        raise Broken("yt-dlp is not installed here: python3 -m pip install "
-                     "yt-dlp, at the version the nightly pins")
-    got, refused = run_captions(shadow, first, again, Refusals(table, "laptop"),
-                                now, a)
+    return shadow
+
+
+def laptop_remember(table, mine, want, shadow, got, now):
+    """What a laptop run's asks of `want` came to, into its own record
+    (LAPTOP_REFUSAL), with the refusal run_captions wrote into `table`. The
+    only file of the night's caption bookkeeping the laptop writes."""
     for vid in want:
         v = shadow["videos"][vid]
         if v.get("captions") == "captioned":
@@ -1952,6 +2167,54 @@ def catch_up(a):
     if mine:
         table[ASKED] = mine
     atomic_write(LAPTOP_REFUSAL, json.dumps(table, indent=1, sort_keys=True) + "\n")
+
+
+def catch_up(a):
+    """On the laptop, by hand: caption the night's new recordings that are not
+    here -- the ones YouTube refused GitHub's machine, and the ones it
+    captioned there, whose files the kit never brings back -- then read them.
+
+    Until 8 October 2026 the laptop's evening job ran this every evening and
+    sent the two files it reads into to the kit. Now it is a person's tool:
+    a test of whether YouTube answers this machine (its own refusal record,
+    archive/youtube.refused.json, says what happened), and captions for
+    development. Reads the nightly's state and never writes it. What it reads
+    goes into the laptop's own candidate_segments.json and caption summary,
+    and no further: both are the night's files in the kit since 10 October
+    2026, and cloud.py seed-kit never sends a night's file over the night's
+    copy. The night asks for these recordings itself.
+    """
+    if a.origin == "runner":
+        raise Broken("--catch-up is the laptop's; on GitHub's machine run "
+                     "--since-state")
+    now = utcnow(a.now)
+    st = load_state()
+    table = load_laptop_refusals()
+    mine = laptop_counted(st, table)
+    closed = {vid for vid, e in mine.items() if e.get("closed")}
+    want = [vid for vid, v in st["videos"].items()
+            if v.get("status") == "finished"
+            and v.get("captions") in ("waiting", "deferred", "failed",
+                                      "for-laptop", "none-yet", "captioned")
+            and not v.get("adopted") and not v.get("read") and not has_captions(vid)
+            and vid not in closed]
+    shadow = laptop_shadow(st, want, mine)
+    first, again = caption_queue(shadow, now)
+    later = len(want) - len(first) - len(again)
+    was = Counter("captioned on GitHub's machine"
+                  if st["videos"][v].get("captions") == "captioned"
+                  else "not captioned there" for v in want)
+    print(f"{len(want)} of the night's recording(s) have no captions here"
+          + (": " + ", ".join(f"{n} {k}" for k, n in was.items()) if want else "")
+          + (f"; {len(again)} of them asked before and due again" if again else "")
+          + (f"; {later} asked before and not due yet" if later else "")
+          + (f"; {len(closed)} more are no longer asked for" if closed else ""))
+    if (first or again) and not yt_dlp_here(a):
+        raise Broken("yt-dlp is not installed here: python3 -m pip install "
+                     "yt-dlp, at the version the nightly pins")
+    got, refused = run_captions(shadow, first, again, Refusals(table, "laptop"),
+                                now, a)
+    laptop_remember(table, mine, want, shadow, got, now)
     done = [vid for vid in want
             if shadow["videos"][vid].get("captions") == "captioned"]
     code = 0
@@ -1967,6 +2230,138 @@ def catch_up(a):
         print("\nWhat was read is in this laptop's candidate_segments.json and caption "
               "summary, and goes no further: the night owns both in the kit, and asks "
               "YouTube for these recordings itself.")
+    return code
+
+
+# The bucket's copy of the night's state (cloud_kit.json's state entry for
+# STATE): the waiting list --to-inbox reads, and inbox-clear reads after the
+# night has sent it.
+STATE_KEY = "state/livestreams.json"
+
+
+def to_inbox(a):
+    """On the laptop, from Task Scheduler: the laptop's half of THE CAPTIONS
+    INBOX. The exit status: 0 done, refusals and nothing to do included; 1
+    when the bucket, the state in it or a send failed; 3 when yt-dlp is not
+    installed and something was to be asked for.
+
+    Reads the night's state from the bucket and never writes it, here or
+    there. Asks YouTube for the recordings it lists as waiting that have no
+    entry in the inbox, gently and as a night would (run_captions, under the
+    laptop's own refusal record), and sends each caption file it then holds,
+    with those already on this disk, to the inbox (cloud.inbox_add, which
+    adds and never replaces). Run again with nothing new, it asks and sends
+    nothing. --dry-run says what it would ask for and send, and asks, sends
+    and writes nothing."""
+    if a.origin == "runner":
+        raise Broken("--to-inbox is the laptop's: GitHub's machine is the one "
+                     "YouTube refuses, and its night takes the inbox with --since-state")
+    import cloud
+    now = utcnow(a.now)
+    try:
+        bucket = (cloud.FolderBucket(a.local_bucket, create=False) if a.local_bucket
+                  else cloud.make_bucket(None, 2))
+        raw = bucket.get_bytes(STATE_KEY)
+        have = cloud.inbox_listing(bucket)
+    except cloud.Failed as e:
+        raise Broken(str(e))
+    except Exception as e:                                      # noqa: BLE001
+        raise Broken(cloud.scrub(f"the bucket could not be read: {type(e).__name__}: {e}"))
+    if raw is None:
+        raise Broken(f"{bucket.describe()} holds no {STATE_KEY}, so there is no waiting "
+                     "list to read: nothing was asked for")
+    try:
+        st = json.loads(raw.decode("utf-8"))
+        if not isinstance(st, dict) or not isinstance(st.get("videos"), dict):
+            raise ValueError("not a livestreams state")
+    except (ValueError, UnicodeDecodeError) as e:
+        raise Broken(f"the bucket's {STATE_KEY} will not read ({e}); nothing was asked for")
+    waiting = sorted(vid for vid, v in st["videos"].items()
+                     if VIDEO_ID.match(vid) and inbox_wants(v))
+    entered = [vid for vid in waiting if (have.get(vid) or {}).get("manifest")]
+    todo = [vid for vid in waiting if vid not in entered]
+    here = [vid for vid in todo if has_captions(vid)]
+    table = load_laptop_refusals()
+    mine = laptop_counted(st, table)
+    closed = {vid for vid, e in mine.items() if e.get("closed")}
+    want = [vid for vid in todo if vid not in here and vid not in closed]
+    shadow = laptop_shadow(st, want, mine)
+    first, again = caption_queue(shadow, now)
+    later = len(want) - len(first) - len(again)
+    # The time first: Task Scheduler appends each evening's run to one log.
+    print(f"{iso(now)}: {len(waiting)} recording(s) wait for captions in the night's state, in "
+          f"{bucket.describe()}"
+          + (f"; {len(entered)} already in the inbox" if entered else "")
+          + (f"; {len(here)} with captions on this disk, sent without asking" if here else "")
+          + (f"; {len(set(todo) & closed)} no longer asked for from here"
+             if set(todo) & closed else "")
+          + (f"; {later} asked before and not due yet" if later else ""))
+    refusals = Refusals(table, "laptop")
+    if a.dry_run:
+        if (first or again) and refusals.held(now):
+            r = refusals.record()
+            plan, why = [], (f"YouTube refused this machine at {r.get('at')}, and nothing "
+                             f"is asked of it until {r.get('until_iso')}")
+        else:
+            plan, _ = tonight(first, again, refusals.most(a.max_captions),
+                              lambda vid: len(tracks_for(shadow["videos"][vid], now)))
+            why = ""
+        for vid in plan:
+            print(f"  would ask YouTube for {vid}   {str(st['videos'][vid].get('title') or '')[:60]}")
+        for vid in here:
+            print(f"  would send {vid} from {caption_file(vid).as_posix()}")
+        print(f"\nLIVESTREAMS TO-INBOX (dry run): would ask YouTube for {len(plan)}, would "
+              f"send {len(here)} already here and whatever the asks bring; "
+              + (why + "; " if why else "") + "asked, sent and wrote nothing")
+        return 0
+    code, got, refused, kit = 0, Counter(), None, {}
+    if first or again:
+        if not yt_dlp_here(a):
+            code = 3
+        else:
+            if not a.captions_from:
+                kit = setup()
+                print(f"  asking with {setup_said(kit)}")
+            got, refused = run_captions(shadow, first, again, refusals, now, a)
+            laptop_remember(table, mine, want, shadow, got, now)
+    caught = [vid for vid in want if shadow["videos"][vid].get("captions") == "captioned"]
+    sent, size, unsent, there = 0, 0, [], 0
+    for vid in here + caught:
+        # The first caption file that holds words by itself, judged as the
+        # night will judge it (words_in): never one vouched for by another.
+        f = next((WORK / vid / n for n in CAPTION_FILES
+                  if (WORK / vid / n).is_file() and words_in(WORK / vid / n)), None)
+        if f is None:
+            unsent.append(f"{vid} (no caption file of {', '.join(CAPTION_FILES)} holds words)")
+            continue
+        fetched = iso(now) if vid in caught else \
+            iso(datetime.fromtimestamp(f.stat().st_mtime, timezone.utc))
+        try:
+            m = cloud.inbox_add(bucket, vid, f, {
+                "fetched": fetched, "by": "laptop", "sent": iso(now),
+                "state": st["videos"][vid].get("captions"), **({"setup": kit} if kit else {})})
+        except Exception as e:                                  # noqa: BLE001
+            unsent.append(cloud.scrub(f"{vid} ({type(e).__name__}: {e})")[:200])
+            code = 1
+            continue
+        if m is None:
+            there += 1
+            continue
+        sent += 1
+        size += m["size"]
+        print(f"  {vid}: sent to the inbox ({m['file']}, {m['size']:,} bytes)")
+    for u in unsent:
+        print(f"  NOT sent: {u}")
+    asked = ", ".join(f"{n} {k}" for k, n in (+got).items()) or "nothing"
+    line = (f"LIVESTREAMS TO-INBOX: {len(waiting)} waiting in the night's state, "
+            f"{len(entered) + there} already in the inbox; asked YouTube: {asked}; "
+            f"{sent} sent to the inbox ({size:,} bytes), {len(unsent)} not sent")
+    if refused:
+        line += f"; YouTube refused this machine ({refused})"
+    if code == 3:
+        line += ("; yt-dlp is not installed here, so nothing was asked for "
+                 "(python3 -m pip install yt-dlp yt-dlp-ejs, at the versions the nightly pins)")
+    print("\n" + line)
     return code
 
 
@@ -2365,6 +2760,10 @@ def main(argv=None):
     mode.add_argument("--catch-up", action="store_true",
                       help="on the laptop, by hand: ask YouTube from there for what "
                            "the nightly could not caption; sends nothing")
+    mode.add_argument("--to-inbox", action="store_true",
+                      help="on the laptop, from Task Scheduler: ask YouTube for what the "
+                           "night's state in the bucket lists as waiting, and put each "
+                           "caption file in the bucket's captions inbox; writes no state")
     mode.add_argument("--markers", action="store_true",
                       help="build_all's step: segment_markers over this step's "
                            "recordings only, scored before it is kept")
@@ -2396,6 +2795,14 @@ def main(argv=None):
                     help="keep the API's answers here; never the key")
     ap.add_argument("--captions-from", metavar="DIR",
                     help="captions from DIR/<video>/ instead of YouTube")
+    ap.add_argument("--inbox", metavar="DIR",
+                    help="--since-state: take waiting recordings' captions from the "
+                         "captions inbox, as cloud.py inbox-down brought it to DIR")
+    ap.add_argument("--dry-run", action="store_true",
+                    help="--to-inbox: say what would be asked for and sent; ask, send "
+                         "and write nothing")
+    ap.add_argument("--local-bucket", metavar="FOLDER",
+                    help="--to-inbox: a folder stands in for the bucket (tests)")
     ap.add_argument("--now", help="the time to act as of, for tests")
     ap.add_argument("--origin", choices=["runner", "laptop"],
                     help="which machine this is; GITHUB_ACTIONS decides by default")
@@ -2404,15 +2811,24 @@ def main(argv=None):
                             else "laptop")
     if a.replay and a.record:
         ap.error("--replay and --record cannot be used together")
+    if a.inbox and not a.since_state:
+        ap.error("--inbox is the night's, with --since-state")
+    if (a.dry_run or a.local_bucket) and not a.to_inbox:
+        ap.error("--dry-run and --local-bucket go with --to-inbox")
     try:
         if a.status:
             return status(a)
         if a.carry:
             print("\n".join(carry_list()))
             return 0
+        if a.to_inbox and a.dry_run:
+            # A dry run writes nothing, not even the lock.
+            return to_inbox(a)
         with lock():
             if a.markers:
                 return markers(a)
+            if a.to_inbox:
+                return to_inbox(a)
             return catch_up(a) if a.catch_up else since_state(a)
     except Broken as e:
         print(f"\nLIVESTREAMS: broken -- {e}")

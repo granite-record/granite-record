@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-25.22
+# GRANITE_VERSION: 2026-09-25.23
 """
 The nightly's kit and the laptop's backup, in the project's private R2 bucket.
 
@@ -36,6 +36,10 @@ The nightly's kit and the laptop's backup, in the project's private R2 bucket.
                                                        a person's deliberate send. PATH
                                                        straight after send-night; --from
                                                        and --allow-dropping once for each
+    python3 src/ops/cloud.py inbox-down                the night takes the captions inbox
+                                                       down, before its livestream step
+    python3 src/ops/cloud.py inbox-clear [--dry-run]   ... and clears what its sent state no
+                                                       longer waits for; never on a dry run
 
     --local-bucket FOLDER   a folder stands in for the bucket, for testing
     --root FOLDER           the working folder (default: the current one)
@@ -94,6 +98,9 @@ THE BUCKET
                            kit-manifest.json and backup-manifest.json, the size,
                            sha256 and date of every file sent, which is how an
                            unchanged file is never sent twice
+    inbox/captions/        the captions inbox: <video>.json, a manifest, and
+                           <video>/<sha256>/<file>, the caption file it names
+                           (THE CAPTIONS INBOX)
 
 On a machine, small state lives under archive/ -- archive/refused.json,
 archive/census.json -- and only the bucket calls it state/. This machine's
@@ -338,6 +345,32 @@ the copy sent -- by that copy's own sha256, as resumed() does for seed-kit --
 compares it with the copy it replaced (under replaced/) as the first run did,
 and records it without sending it again. --local-bucket in the stood-down
 repository that holds secrets.json needs --allow-local-bucket, as pull does.
+
+THE CAPTIONS INBOX: inbox-down, inbox-clear (17 October 2026)
+
+YouTube refuses GitHub's machine and answers the laptop, so the laptop asks
+for the captions the night's state says wait (livestreams.py --to-inbox, from
+Task Scheduler) and puts each caption file under inbox/captions/ through
+inbox_add, which only ever adds: a key that is not there, under that prefix,
+read back against its sha256 before the manifest naming it is written. The
+laptop writes nothing else in the bucket, no state and no kit.
+
+inbox-down is the night's, before its livestream step: every entry, its
+manifest and the file the manifest names, to archive/captions-inbox/ (laid out
+<video>.json and <video>/<file>), and it writes nothing in the bucket. It
+brings an entry down whatever its bytes and says which do not match their
+manifest: the livestream step judges each one itself (livestreams.py, THE
+CAPTIONS INBOX), and a refusal it records is what clears the entry, so the
+laptop can send another. Leaving one in the bucket would keep the laptop from
+ever replacing it.
+
+inbox-clear is the night's too, after its last state-up: it reads the state
+the bucket now holds (state/livestreams.json, never this machine's copy, so a
+night whose state did not go back clears nothing) and removes each entry that
+state no longer waits for, by livestreams.inbox_spent, copying it to
+replaced/ first. A dry run's never: what a dry run took went into its own
+state, which does not go back, so the entry must still be there for the next
+real night. --dry-run says what it would clear.
 """
 
 # The bootstrap: _paths.py, found above this file, puts every code folder on the import path.
@@ -417,6 +450,18 @@ DRY_NEVER = ("census.json", "last-night.json", "last-weekly.json", "first-seen.j
 # run's: site-up refuses a dry run -- every run off main -- before it reads it.
 FIRST_SEEN_NEXT = "archive/first-seen.next.json"
 PULL_DAYS = 7
+# THE CAPTIONS INBOX: the bucket's prefix, where the night's inbox-down puts it
+# (livestreams.py --since-state --inbox names the same folder; preflight holds
+# the workflow to both), and the bucket's copy of the livestream state that
+# says what still waits.
+INBOX = "inbox/captions/"
+INBOX_LOCAL = "archive/captions-inbox"
+INBOX_STATE = "state/livestreams.json"
+# A manifest is <video>.json, its file <video>/<sha256>/<name>: a video id as
+# YouTube makes them, and a caption file's name, nothing that climbs a folder.
+_INBOX_MANIFEST = re.compile(r"^inbox/captions/([A-Za-z0-9_-]{1,64})\.json$")
+_INBOX_FILE = re.compile(r"^inbox/captions/([A-Za-z0-9_-]{1,64})/[0-9a-f]{64}/"
+                         r"(captions\.[A-Za-z-]{1,20}\.json3)$")
 # What pull takes from logs/<day>/, and the folder each goes to. Anything
 # else there stays in the bucket: a name this does not know could be one the
 # laptop uses for a log of its own.
@@ -3746,6 +3791,163 @@ def cmd_send_night(a, root):
                      "kit/ is found there and recorded, not sent twice.")
 
 
+# ------------------------------------------------------- the captions inbox --
+
+def inbox_listing(bucket):
+    """{video: {"manifest": key or None, "files": {key: size}}}: what the inbox
+    holds, from one listing. A key under INBOX of no shape inbox_add writes is
+    filed under the video "", so that inbox-clear can say it is there; no
+    command here writes one, and none removes one."""
+    out = {}
+    for key, size in sorted(bucket.list(INBOX).items()):
+        m, f = _INBOX_MANIFEST.match(key), _INBOX_FILE.match(key)
+        e = out.setdefault((m or f).group(1) if (m or f) else "",
+                           {"manifest": None, "files": {}})
+        if m:
+            e["manifest"] = key
+        else:
+            e["files"][key] = size
+    return out
+
+
+def inbox_add(bucket, video, src, doc):
+    """The laptop's one write to the bucket (livestreams.py --to-inbox): one
+    recording's caption file, and the manifest naming it, under INBOX. The
+    manifest written, or None where the recording has one already, which is
+    left as it is.
+
+    It adds and never replaces. The file goes to a key named for its own
+    sha256, sent only where nothing is, and is read back against that sha256
+    before the manifest is written, so a manifest never names a file that is
+    not whole in the bucket; the manifest goes last, and only where there is
+    none. Removing an entry is the night's (inbox-clear), never the laptop's.
+    A key outside INBOX, or of another shape, is refused before anything is
+    sent."""
+    src = Path(src)
+    data = src.read_bytes()
+    sha = hashlib.sha256(data).hexdigest()
+    mkey, fkey = f"{INBOX}{video}.json", f"{INBOX}{video}/{sha}/{src.name}"
+    if not (_INBOX_MANIFEST.match(mkey) and _INBOX_FILE.match(fkey)):
+        raise Failed(f"{fkey} is not an inbox key: only a recording's caption file goes "
+                     "in the captions inbox")
+    if bucket.head(mkey) is not None:
+        return None
+    if bucket.head(fkey) is None:
+        bucket.put_file(src, fkey, {"sha256": sha})
+    back = bucket.get_bytes(fkey)
+    if back is None or hashlib.sha256(back).hexdigest() != sha:
+        raise Failed(f"{fkey} did not read back as the file sent, so its manifest was not "
+                     "written; the next run sends it again")
+    manifest = dict(doc, video=video, file=src.name, key=fkey, size=len(data), sha256=sha)
+    bucket.put_bytes(mkey, (json.dumps(manifest, indent=1, sort_keys=True)
+                            + "\n").encode("utf-8"))
+    return manifest
+
+
+def cmd_inbox_down(a, root):
+    """The night's, before its livestream step: every entry of the captions
+    inbox to INBOX_LOCAL, whatever its bytes (THE CAPTIONS INBOX). Writes
+    nothing in the bucket."""
+    bucket = open_bucket(a)
+    entries = inbox_listing(bucket)
+    dst = local(root, INBOX_LOCAL)
+    if not a.dry_run:
+        # What an earlier run left here is not tonight's inbox.
+        shutil.rmtree(dst, ignore_errors=True)
+        dst.mkdir(parents=True, exist_ok=True)
+    whole, short, loose, size = 0, [], 0, 0
+    for vid, e in sorted(entries.items()):
+        if not vid or not e["manifest"]:
+            loose += len(e["files"])
+            continue
+        raw = bucket.get_bytes(e["manifest"])
+        if raw is None:
+            continue
+        why, doc, data, name = "", None, None, ""
+        try:
+            doc = json.loads(raw.decode("utf-8"))
+            key, name = str(doc.get("key") or ""), str(doc.get("file") or "")
+            fm = _INBOX_FILE.match(key)
+            if not (fm and fm.group(1) == vid and fm.group(2) == name):
+                why = "its manifest names no caption file of its own"
+        except (ValueError, UnicodeDecodeError, AttributeError):
+            why = "its manifest will not read"
+        if not why:
+            data = bucket.get_bytes(key)
+            if data is None:
+                why = f"{name} is not in the bucket"
+            elif len(data) != doc.get("size") \
+                    or hashlib.sha256(data).hexdigest() != doc.get("sha256"):
+                why = f"{name} does not match its manifest"
+        if not a.dry_run:
+            write_whole(dst / f"{vid}.json", raw)
+            if data is not None:
+                write_whole(dst / vid / name, data)
+        size += len(raw) + len(data or b"")
+        if why:
+            short.append(f"{vid} ({why})")
+        else:
+            whole += 1
+    for s in short:
+        say(f"  does not pass, and the livestream step will refuse it: {s}")
+    say(f"inbox-down: {whole} entr{'y' if whole == 1 else 'ies'} whole, {len(short)} that "
+        f"will not pass, {loose} loose file(s) with no manifest; {human(size)} "
+        + ("would come down (dry run)" if a.dry_run else f"to {INBOX_LOCAL}"))
+
+
+def cmd_inbox_clear(a, root):
+    """The night's, after its last state-up: each entry the bucket's state no
+    longer waits for (livestreams.inbox_spent) copied to replaced/ and
+    removed (THE CAPTIONS INBOX). Never on a dry night."""
+    if dry_night(a):
+        say("inbox-clear: a dry run clears nothing from the captions inbox. What it took "
+            "went into its own state, which does not go back, so the next real night "
+            "takes it again.")
+        return
+    bucket = open_bucket(a)
+    entries = inbox_listing(bucket)
+    unknown = len((entries.pop("", None) or {}).get("files") or {})
+    raw = bucket.get_bytes(INBOX_STATE)
+    if raw is None:
+        say(f"inbox-clear: {bucket.describe()} holds no {INBOX_STATE}, so nothing says what "
+            f"the night took; nothing is cleared, and {len(entries)} entr"
+            f"{'y stays' if len(entries) == 1 else 'ies stay'}")
+        return
+    try:
+        videos = json.loads(raw.decode("utf-8")).get("videos")
+        if not isinstance(videos, dict):
+            raise ValueError("no videos table")
+    except (ValueError, UnicodeDecodeError, AttributeError) as e:
+        raise Failed(f"{INBOX_STATE} in {bucket.describe()} will not read ({e}); nothing "
+                     "was cleared from the captions inbox")
+    import livestreams
+    spent, kept = {}, 0
+    for vid, e in sorted(entries.items()):
+        entry = None
+        if e["manifest"]:
+            mraw = bucket.get_bytes(e["manifest"])
+            entry = hashlib.sha256(mraw).hexdigest() if mraw is not None else None
+        why = livestreams.inbox_spent(videos.get(vid), entry)
+        if why:
+            # The manifest first: an entry cut short is then loose files, which
+            # no laptop mistakes for an entry and the next clear removes.
+            spent[vid] = (why, ([e["manifest"]] if e["manifest"] else []) + sorted(e["files"]))
+        else:
+            kept += 1
+    for vid, (why, _) in spent.items():
+        say(f"  {vid}: {'would be ' if a.dry_run else ''}cleared -- {why}")
+    if spent and not a.dry_run:
+        rep = Replacer(bucket, f"{datetime.now():%Y-%m-%d}")
+        for _, keys in spent.values():
+            for key in keys:
+                rep.keep(key)
+                bucket.delete(key)
+    say(f"inbox-clear: {len(spent)} entr{'y' if len(spent) == 1 else 'ies'} "
+        + ("would be cleared (dry run)" if a.dry_run else "cleared, to replaced/")
+        + f", {kept} kept for the night" + (f", {unknown} key(s) of no inbox shape left "
+                                              "alone" if unknown else ""))
+
+
 COMMANDS = {"kit-list": cmd_kit_list, "seed-kit": cmd_seed_kit,
             "kit-down": cmd_kit_down, "kit-up": cmd_kit_up,
             "state-down": cmd_state_down, "state-up": cmd_state_up,
@@ -3753,7 +3955,8 @@ COMMANDS = {"kit-list": cmd_kit_list, "seed-kit": cmd_seed_kit,
             "site-up": cmd_site_up, "site-down": cmd_site_down,
             "kit-release": cmd_kit_release,
             "backup": cmd_backup, "pull": cmd_pull, "send-refusal": cmd_send_refusal,
-            "send-night": cmd_send_night}
+            "send-night": cmd_send_night,
+            "inbox-down": cmd_inbox_down, "inbox-clear": cmd_inbox_clear}
 
 
 def main(argv=None):
@@ -3784,7 +3987,8 @@ def main(argv=None):
                                   "(GitHub's run id), which names nights/<run>/")
     ap.add_argument("--dry-night", action="store_true",
                     help="kit-up, state-up: a dry run's night -- only what it fetched, its "
-                         "logs apart and a refusal, a hold and its own verdict go back; on "
+                         "logs apart and a refusal, a hold and its own verdict go back; "
+                         "inbox-clear: nothing is cleared; on "
                          "GitHub's machine the workflow's DRY_RUN, or a run of a branch "
                          "other than main, says so whatever is passed")
     ap.add_argument("--hold", metavar="RUN",
@@ -3817,11 +4021,11 @@ def main(argv=None):
     try:
         if a.command == "kit-list":
             cmd_kit_list(a, root)
-        elif a.command in ("pull", "send-night") and a.dry_run:
+        elif a.command in ("pull", "send-night", "inbox-down", "inbox-clear") and a.dry_run:
             # A dry pull writes nothing, so there is no writer for the lock to
             # keep out -- and taking it would make archive/cloud/, a folder a
             # dry run has no business making. A dry send-night writes nothing
-            # either (17 October 2026).
+            # either, nor a dry inbox-down or inbox-clear (17 October 2026).
             COMMANDS[a.command](a, root)
         else:
             with machine_lock(root):
