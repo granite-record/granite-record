@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-07.61
+# GRANITE_VERSION: 2026-09-07.62
 """
 A page's worth of data for every committee.
 
@@ -1359,17 +1359,13 @@ def main():
                 cols.append(f"<section><h2>{word}</h2><div class=\"ccards\">"
                             + "".join(_card(c, dated=True) for c in rows_)
                             + "</div></section>")
-        body.append('<h2 id="archived">Not on the General Court&rsquo;s list today</h2>'
-                    '<p class="src fill">Committees on this record that the General '
-                    "Court does not list among its committees now, with the "
-                    "years their bills and meetings cover. The records "
-                    "show when a committee stops appearing, not why&thinsp;&mdash;&thinsp;it may "
-                    "have been renamed, divided, merged or ended&thinsp;&mdash;&thinsp;and this "
-                    "page does not guess which. Where the General Court&rsquo;s "
-                    "own records file one committee&rsquo;s bills under two "
-                    "names, the card gives the earlier one. Each keeps its "
-                    "page, so the bills it handled still have somewhere to "
-                    "point.</p>"
+        # "Former committees", as the search groups them and as each one's own
+        # page says (the person, 16 October 2026). The paragraph this
+        # replaced explained what the records cannot say -- renamed, divided,
+        # merged or ended -- and readers found that confusing.
+        body.append('<h2 id="archived">Former committees</h2>'
+                    '<p class="src fill">Committees that no longer meet, with the '
+                    "years of their record.</p>"
                     '<div class="ctwo">' + "".join(cols) + "</div>")
 
     page_html = S.page(

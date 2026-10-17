@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.591
+# GRANITE_VERSION: 2026-09-04.592
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -57418,7 +57418,7 @@ def _committee_notes_fill():
     import build_committees as BCM
     src = inspect.getsource(BCM)
     for head in ("<h2>No bills or meetings on record</h2>",
-                 "<h2 id=\"archived\">Not on the General Court&rsquo;s list today</h2>"):
+                 "<h2 id=\"archived\">Former committees</h2>"):
         at = src.index(head)
         assert "'<p class=\"src fill\">" in src[at:at + 200], (
             f"the note under {head} is held to the measure")
@@ -57471,6 +57471,13 @@ def _committee_explanations_plain(BCM):
         "the committees list does not open with what it holds")
     assert "These answer what a committee did on a day.</p>" not in src, (
         "the committees list still sets committees against bill search")
+    # Its former committees under the search's own name for them, in a line.
+    assert ("<h2 id=\"archived\">Former committees</h2>'\n"
+            "                    '<p class=\"src fill\">Committees that no longer meet, with the '\n"
+            "                    \"years of their record.</p>\"") in src.replace("\r\n", "\n"), (
+        "the committees list does not head its former committees as Former committees, in a line")
+    assert "page does not guess which" not in src, (
+        "the committees list still explains what the records cannot say about former committees")
     got = _app_js('[scope.renderCommitteeHead({name:"Old", chamber:"H",'
                   ' archived:{years:"1999 to 2004"}}),'
                   ' scope.renderCommitteeHead({name:"Old", chamber:"H", archived:{}}),'
