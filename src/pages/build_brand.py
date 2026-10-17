@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-12.16
+# GRANITE_VERSION: 2026-09-12.17
 """
 Turn the drawn logo and icon into the files a site needs, once.
 
@@ -24,7 +24,15 @@ private kit (cloud_kit.json). DATA.md has the terms. So a clone has no brand/
 and this stops at the first missing original, saying what a fork should put
 there to draw its own (need(), below).
 
-The clipart below is the SMALL mark. Since 24 September the logo proper is
+THE FAVICON SET IS A MONOGRAM SINCE 17 OCTOBER 2026: Playfair Display's "G" at
+weight 600 -- the logo wordmark's own face and weight, matched letter for letter
+against the lockup after a first draw in the header's Source Serif read as a
+different font (the person) -- light on the site's dark ground,
+the person's choice A of three (G alone, GR side by side, GR stacked), because
+it reads at 16 pixels where the silhouette below did not read easily. Its
+outline is the glyph's own, taken from the font (OFL) with fontTools into
+brand/monogram.svg, one path with its box at the origin, and brand/monogram.png
+is the same letter white on a black square. The clipart below is the SMALL mark. Since 24 September the logo proper is
 Debra Caplan's drawing (see write_licensed): her lockups draw the home page's
 heading and the link cards, and since 1 October her drawing alone is the
 header's mark, all into assets/licensed/, which build_pages.py lays over
@@ -102,14 +110,18 @@ OUT = ROOT / "assets"
 # used a square 31px brush and its edge read as blocky and jagged (the person,
 # 14 October 2026). The viewBox is the drawing's; this is the shape's box in
 # it. A fork with its own old-man.svg measures its own.
-BBOX = (24.75, 24.75, 425.0, 724.25)
+# Since 17 October 2026 the icons are the monogram: its path's box is the
+# glyph's own, moved to the origin when the path was taken from the font.
+BBOX = (0.0, 0.0, 651.0, 736.0)
+ICON_SVG = "monogram.svg"
+ICON_PNG = "monogram.png"
 
 # What a fork puts in brand/ to draw its own icons, said once and printed by
 # need() and --check. The project's own are not in the repository.
 ORIGINALS = (
-    ("old-man.svg", "the mark as an SVG with exactly one <path> (and BBOX in "
-                    "this file set to that path's own box)"),
-    ("icon.png", "the mark, light on a flat dark square"),
+    ("monogram.svg", "the icon's letter as an SVG with exactly one <path> (and "
+                     "BBOX in this file set to that path's own box)"),
+    ("monogram.png", "the icon's letter, light on a flat dark square"),
     ("logo-on-white.png", "the mark with the site's name, dark ink on white"),
 )
 
@@ -133,10 +145,10 @@ def need(p):
 
 def path_data():
     """The one path out of the drawn SVG, with nothing else it carries."""
-    src = need(BRAND / "old-man.svg").read_text(encoding="utf-8")
+    src = need(BRAND / ICON_SVG).read_text(encoding="utf-8")
     paths = re.findall(r'<path\b[^>]*\sd="([^"]+)"', src)
     if len(paths) != 1:
-        sys.exit(f"brand/old-man.svg has {len(paths)} paths; this expects one")
+        sys.exit(f"brand/{ICON_SVG} has {len(paths)} paths; this expects one")
     return paths[0]
 
 
@@ -147,7 +159,7 @@ def icon_framing():
     is the same composition as the PNG rather than a fresh guess at it.
     """
     from PIL import Image
-    im = Image.open(need(BRAND / "icon.png")).convert("L")
+    im = Image.open(need(BRAND / ICON_PNG)).convert("L")
     W, H = im.size
     px = im.load()
     # The drawing is a white shape on a black tile; anything bright is shape.
@@ -160,7 +172,7 @@ def icon_framing():
                 if i > maxx: maxx = i
                 if j > maxy: maxy = j
     if maxx < 0:
-        sys.exit("brand/icon.png has no light pixels; is it the icon?")
+        sys.exit(f"brand/{ICON_PNG} has no light pixels; is it the icon?")
     return (minx / W, miny / H, (maxx - minx + 1) / W, (maxy - miny + 1) / H)
 
 
@@ -186,7 +198,7 @@ def write_icon_svg(d, frame):
 
 def write_pngs():
     from PIL import Image
-    src = Image.open(need(BRAND / "icon.png")).convert("RGB")
+    src = Image.open(need(BRAND / ICON_PNG)).convert("RGB")
     said = []
     for n in (32, 180, 512):
         im = src.resize((n, n), Image.LANCZOS)
@@ -209,7 +221,7 @@ def write_pngs():
     corners = [src.getpixel(p) for p in
                ((0, 0), (w - 1, 0), (0, h - 1), (w - 1, h - 1))]
     if len(set(corners)) != 1:
-        sys.exit(f"brand/icon.png's corners are not one colour ({corners}), so "
+        sys.exit(f"brand/{ICON_PNG}'s corners are not one colour ({corners}), so "
                  "the maskable icon cannot be padded without inventing a "
                  "background. Redraw it with a flat ground, or pad it by hand.")
     pad = Image.new("RGB", (512, 512), corners[0])
