@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.9
+# GRANITE_VERSION: 2026-09-05.10
 """
 The phrasings the marker patterns must match, and the ones they must not.
 
@@ -251,6 +251,23 @@ def run():
         fails.append(f"marker timed at {mk[0]['t']}s -- that is the window's "
                      "start, not the phrase's")
 
+    # The title stands for a garbled number after an opening that names a
+    # proceeding (17 October 2026). Spoken, itJRViVSJqk at 5:33:24: the
+    # clerk's reading of HB 564 with the number captioned "5604", placed by
+    # its title alone -- which no marker had been since data/bills.json was
+    # keyed by term.
+    w5 = [(i * 0.4, x) for i, x in enumerate(
+        "Majority of the committee on education policy and administration to "
+        "which was referred House Bill 5604, an act relative to the adoption of "
+        "school administrative unit budgets, considered the same".split())]
+    t5 = {"HB564": "relative to the adoption of school administrative unit budgets",
+          "HB56": "relative to the state forester"}
+    mk = S.find_markers(w5, list(t5), t5, floor=True)
+    if [(m["bill"], m["how"]) for m in mk] != [("HB564", "title")]:
+        fails.append(f"the clerk's reading of HB 564 by its title gave {mk}")
+    if S.find_markers(w5, list(t5), {}, floor=True):
+        fails.append("a garbled number with no titles to go on was still placed")
+
     # A bill named only as it was opened gives its end nothing to go on (17
     # October 2026). Last named 10 s after its opening, it ends at the first
     # close naming no bill before the next boundary, else the last vote
@@ -276,7 +293,7 @@ def run():
 
 if __name__ == "__main__":
     bad = run()
-    n = len(MUST_MATCH) + len(MUST_NOT_MATCH) + 4
+    n = len(MUST_MATCH) + len(MUST_NOT_MATCH) + 5
     if bad:
         print(f"{len(bad)} of {n} failed:")
         for b in bad:
@@ -284,4 +301,4 @@ if __name__ == "__main__":
         sys.exit(1)
     print(f"{n} marker cases pass "
           f"({len(MUST_MATCH)} spoken phrasings, {len(MUST_NOT_MATCH)} decoys, "
-          "4 behaviours)")
+          "5 behaviours)")

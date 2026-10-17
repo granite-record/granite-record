@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.42
+# GRANITE_VERSION: 2026-09-05.43
 """
 Segment a recording on what the chair says, not on where bill numbers cluster.
 
@@ -367,6 +367,17 @@ COMMITTEE_PATS = (
     (NEXT2_RE, "open", True),
 )
 
+# THE OPENINGS AFTER WHICH A TITLE MAY STAND FOR THE NUMBER. (17 October
+# 2026.) With the titles restored (title_lookup), the fallback placed 326
+# bills that had no opening and moved 129 first openings by more than a
+# minute, and the moves included a door and a conversation: "I think it opens
+# a door" and "opening this conversation" followed by enough of a title's
+# words. A phrase that names a proceeding -- the hearing, the executive
+# session, the committee of conference, the clerk's committee report -- says
+# an item is being taken up, and the title after it is that item. A bare
+# "open" or "introduce" says nothing of the kind, and keeps to the number.
+TITLED = (OPEN_RE, CONF_OPEN_RE, FLOOR_OPEN_RE)
+
 BILL_SPOKEN = re.compile(
     r"\b(?:(House|Senate)\s*Bill|(HB|HP|SB|SP|CACR|CAC|HR|SR|HCR|SCR|HJR))\s*#?\s*"
     r"(\d[\d\s:]{0,6}\d|\d)", re.I)
@@ -419,17 +430,47 @@ def pattern_signature():
     return hashlib.sha1(blob.encode()).hexdigest()[:12]
 
 
-def cache_key(folder, candidates, sig):
+def cache_key(folder, candidates, sig, titles=None):
     """What can make a recording's answer stale: its captions, its bill list,
-    and this module's own code -- see pattern_signature, which is where the
-    claim that nothing else mattered used to live."""
+    their titles, and this module's own code -- see pattern_signature, which
+    is where the claim that nothing else mattered used to live."""
     p = Path(folder)
+    named = hashlib.sha1(json.dumps(titles or {}, sort_keys=True).encode()).hexdigest()[:8]
     for name in WORK_FILES:
         f = p / name
         if f.exists():
             st = f.stat()
-            return f"{sig}|{','.join(sorted(candidates))}|{name}:{st.st_size}:{int(st.st_mtime)}"
-    return f"{sig}|{','.join(sorted(candidates))}|none"
+            return (f"{sig}|{','.join(sorted(candidates))}|{named}|"
+                    f"{name}:{st.st_size}:{int(st.st_mtime)}")
+    return f"{sig}|{','.join(sorted(candidates))}|{named}|none"
+
+
+def title_lookup(data_dir):
+    """{term: {bill: title}}, from data/bills.json.
+
+    THE TITLE FALLBACK HAD NOT RUN SINCE THE FILE WAS KEYED BY TERM. (17
+    October 2026.) This read data/bills.json as a list of bills, and it is
+    {term: {bill: record}}: the "bills" were terms, every one had neither "id"
+    nor "bill", and the lookup came out as {None: ""}. match_bill's title
+    path, which the docstring at the top credits with taking the hit rate from
+    83% to 94%, found nothing for any of 16,321 markers and nothing said so.
+    preflight now fails when the real file gives fewer than a thousand titles.
+    """
+    bills = json.loads((Path(data_dir) / "bills.json").read_text(encoding="utf-8"))
+    if bills and not P.term_keyed(bills):
+        sys.exit(f"{Path(data_dir) / 'bills.json'} is keyed on bill number, not "
+                 "on term. Rebuild it: python3 src/parse/build_data.py --dir . --out data")
+    return {term: {b: str((rec or {}).get("title") or "") for b, rec in byb.items()}
+            for term, byb in (bills or {}).items()}
+
+
+def titles_for(by_term, terms, cands):
+    """The titles of one recording's scheduled bills, from the term most of
+    its proceedings belong to: a bill number names a different bill in each
+    term."""
+    term = terms.most_common(1)[0][0] if terms else None
+    known = by_term.get(term) or {}
+    return {b: known.get(b, "") for b in cands}
 
 
 def read_words(folder):
@@ -558,7 +599,8 @@ def find_markers(words, candidates, titles, span=28, floor=False):
             # the hearing on Y" names two bills and the second belongs to the
             # opening.
             after = text[m.end():m.end() + 220]
-            bill, how = match_bill(after, candidates, titles)
+            bill, how = match_bill(after, candidates,
+                                   titles if rx in TITLED else {})
             if not bill:
                 continue
             # An agenda being read is not an opening. "these are in numerical
@@ -1076,10 +1118,9 @@ def main():
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
     import csv
-    bills = json.loads((Path(a.data) / "bills.json").read_text(encoding="utf-8"))
-    if isinstance(bills, dict):
-        bills = list(bills.values())
-    titles = {b.get("id") or b.get("bill"): b.get("title", "") for b in bills}
+    by_term = title_lookup(a.data)
+    print(f"{sum(len(t) for t in by_term.values()):,} bill titles across "
+          f"{len(by_term)} terms from {Path(a.data) / 'bills.json'}")
 
     # One table, one reader. Committee proceedings and floor debates in the
     # same shape, so the floor cannot be silently left out again -- which it
@@ -1088,8 +1129,10 @@ def main():
     if not prows:
         sys.exit("No proceedings.csv. Run: python3 src/hearings/build_proceedings.py")
     byvid = defaultdict(list)
+    vterm = defaultdict(Counter)
     for v, rs in P.by_video(prows).items():
         for r in rs:
+            vterm[v][r["term"]] += 1
             if r["bill"] not in byvid[v]:
                 byvid[v].append(r["bill"])
     floor_vids = P.floor_videos(prows)
@@ -1125,7 +1168,8 @@ def main():
         if not cands:
             stats["no scheduled bills"] += 1
             continue
-        key = cache_key(folder, cands, sig)
+        titles = titles_for(by_term, vterm[vid], cands)
+        key = cache_key(folder, cands, sig, titles)
         hit = cache.get(vid)
         if hit and hit.get("key") == key and not a.gaps and not a.phrases:
             segs = hit["segs"]

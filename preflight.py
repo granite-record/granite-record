@@ -13934,6 +13934,88 @@ def _markers_merge_siblings():
         shutil.rmtree(root, ignore_errors=True)
 
 
+def _markers_fixture(root, bills, rows, captions):
+    """A folder segment_markers can run in: data/bills.json as given, a
+    proceedings.csv of (term, bill, body, kind, video) rows, and a json3
+    caption file per recording. Returns the environment to run it with."""
+    (root / "data").mkdir(parents=True, exist_ok=True)
+    (root / "data" / "bills.json").write_text(json.dumps(bills), encoding="utf-8")
+    cols = ["term", "bill", "body", "kind", "date", "time", "committee", "venue",
+            "video_id", "video_title", "stream_start", "predicted_offset", "match",
+            "debate_end", "window_start", "precise", "motions", "tallies",
+            "whole_video", "source"]
+    with open(root / "proceedings.csv", "w", newline="", encoding="utf-8") as fh:
+        w = csv.DictWriter(fh, fieldnames=cols)
+        w.writeheader()
+        for term, bill, body, kind, vid in rows:
+            w.writerow({"term": term, "bill": bill, "body": body, "kind": kind,
+                        "date": "2026-03-05", "video_id": vid, "source": "docket"})
+    for vid, lines in captions.items():
+        (root / "work" / vid).mkdir(parents=True, exist_ok=True)
+        (root / "work" / vid / "captions.en.json3").write_text(
+            json.dumps(_json3(lines)), encoding="utf-8")
+    return dict(os.environ, GRANITE_PROCEEDINGS=str(root / "proceedings.csv"))
+
+
+@check("markers", "segment_markers reads each recording's titles from its own term",
+       needs=("segment_markers",))
+def _markers_titles_by_term(segment_markers):
+    """data/bills.json is {term: {bill: record}}, and segment_markers read it
+    as a list of bills, so its title lookup was {None: ""} and the title
+    fallback placed nothing from the day the file was keyed by term until 17
+    October 2026. The clerk's reading below was spoken (itJRViVSJqk 5:33:24)
+    with the number captioned "5604": only the title of the term's HB 564
+    places it, and another term's HB 564 must not."""
+    if not _paths.locate("segment_markers.py").exists():
+        return "skip", "segment_markers.py not here"
+    root = Path(tempfile.mkdtemp())
+    try:
+        title = "relative to the adoption of school administrative unit budgets"
+        bills = {"2025-2026": {"HB564": {"title": title}, "HB56": {"title": "relative to the state forester"}},
+                 "2023-2024": {"HB564": {"title": "relative to the cutting of timber"}}}
+        reading = ["the senate will come to order"] * 3 + [
+            "Majority of the committee on education policy and administration to "
+            "which was referred House Bill 5604, an act relative to the adoption of "
+            "school administrative unit budgets, considered the same"] + ["thank you"] * 3
+        env = _markers_fixture(
+            root, bills,
+            [("2025-2026", "HB564", "S", "floor debate", "PFNOW"),
+             ("2025-2026", "HB56", "S", "floor debate", "PFNOW"),
+             ("2023-2024", "HB564", "S", "floor debate", "PFTHEN"),
+             ("2023-2024", "HB56", "S", "floor debate", "PFTHEN")],
+            {"PFNOW": reading, "PFTHEN": reading})
+        r = _run([sys.executable, _paths.script("segment_markers.py"),
+                  "--transcript", "work/PFNOW", "work/PFTHEN", "--data", "data",
+                  "--quiet", "--cache", "cache.json"],
+                 cwd=str(root), env=env, capture_output=True, text=True, timeout=120)
+        assert r.returncode == 0, (r.stderr or r.stdout)[-300:]
+        got = json.loads((root / "candidate_segments.json").read_text(encoding="utf-8"))
+        now = (got.get("PFNOW") or {}).get("HB564") or []
+        assert now and now[0].get("how") == "title", (
+            f"the clerk's reading of HB 564 was not placed by its title: {got.get('PFNOW')}")
+        assert "HB564" not in (got.get("PFTHEN") or {}), (
+            "a 2023-2024 recording was placed by the 2025-2026 bill's title")
+        assert "bill titles across 2 terms" in r.stdout, r.stdout[-300:]
+        return "ok", "the title of the recording's own term places a garbled number; another term's does not"
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+
+
+@check("data", "segment_markers' title lookup holds more than a thousand titles",
+       needs=("segment_markers",))
+def _markers_title_count(segment_markers):
+    """The lookup was {None: ""} -- one empty title -- for as long as
+    data/bills.json has been keyed by term, and every count stayed plausible
+    (17 October 2026). A thousand is far below any term's bill count."""
+    if not Path("data/bills.json").exists():
+        return "skip", "no data/bills.json"
+    by_term = segment_markers.title_lookup("data")
+    n = sum(1 for t in by_term.values() for v in t.values() if v.strip())
+    assert n > 1000, (f"segment_markers.title_lookup gives {n} titles across "
+                      f"{len(by_term)} terms; the title fallback is not running")
+    return "ok", f"{n:,} titles across {len(by_term)} terms"
+
+
 # ============================================= code: the video index's rows ==
 
 # fetch_channel_index.py's columns, for the checks that write an index.
