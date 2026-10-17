@@ -25161,6 +25161,8 @@ def _cluster_needs_a_mention(build_site_v2):
     st = B.station_for_proceeding(p, "HB152", seg(0), before)
     assert st["state"] == "located" and st["start"] == 2520.0, (
         f"a placement whose bill was named just before it was withheld: {st['state']}")
+    assert st["end"] is None, (
+        f"a placement named only before it published the aligner's minimum as its end: {st['end']}")
     other = {"_named_before": {"VIDX": ["HB152|public hearing"]}}
     st = B.station_for_proceeding(p, "HB152", seg(0), other)
     assert st["start"] is None, "another proceeding's mention kept this placement"

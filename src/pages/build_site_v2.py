@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.215
+# GRANITE_VERSION: 2026-09-05.216
 """
 Generate the faceted site from real General Court data.
 
@@ -2377,7 +2377,11 @@ def station_for_proceeding(p, bid, segs, marks, claimed=None):
     # its stated start and no end, which the page already draws as "from
     # 1:19:26".
     seg_end = None
-    if seg and seg.get("located") and seg.get("end") is not None:
+    # Not where the bill was named only before the span (_named_before): the
+    # start is the item, a little late, and the end is the aligner's
+    # 30-second minimum, which is no measurement of how long it ran.
+    if (seg and seg.get("located") and seg.get("end") is not None
+            and seg.get("mentions_inside") != 0):
         anchor = said["start"] if said else seg.get("start")
         near = (abs(seg["start"] - anchor) <= (seg.get("tolerance") or 300)
                 if said else True)
