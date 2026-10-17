@@ -24697,6 +24697,40 @@ def _floor_station_rules(build_site_v2):
                   "takes its own convening, and the first opening spoken")
 
 
+@check("markers", "a clustering placement with no mention of the bill inside is not published",
+       needs=("build_site_v2",))
+def _cluster_needs_a_mention(build_site_v2):
+    """Of the 1,099 clustered placements the site published on 15 October
+    2026, 399 had no mention of their bill inside the span, 321 of them the
+    aligner's 30-second minimum; the four a person had timed were 4, 30, 77
+    and 202 minutes out (17 October 2026). Such a placement gives neither a
+    start, an end beside a stated start, nor a suggested time."""
+    B = build_site_v2
+    p = {"bill": "HB152", "body": "H", "committee": "Judiciary",
+         "proceeding": "executive session", "sched_date": "2026-02-03",
+         "sched_time": "10:00", "venue": "LOB 206", "video_id": "VIDX",
+         "predicted_offset": 600, "candidate_ids": ""}
+
+    def seg(inside):
+        return {"VIDX": [{"bill": "HB152", "kind": "executive session", "located": True,
+                          "short": True, "tolerance": 1800, "start": 2520.0,
+                          "end": 2550.0, "mentions_inside": inside, "mentions_total": 4}]}
+    st = B.station_for_proceeding(p, "HB152", seg(0), {})
+    assert st["state"] == "approximate" and st["start"] is None, (
+        f"a placement with no mention inside is published: {st['state']} at {st['start']}")
+    assert st.get("candidate") is None and st.get("end") is None, (
+        f"a placement with no mention inside is still suggested: {st.get('candidate')}")
+    st = B.station_for_proceeding(p, "HB152", seg(2), {})
+    assert st["state"] == "located" and st["start"] == 2520.0, (
+        f"a placement with two mentions inside is withheld: {st['state']}")
+    said = {"VIDX": {"HB152": [{"start": 2530.0, "end": None, "how": "number",
+                                "what": "executive session", "said": "x"}]}}
+    st = B.station_for_proceeding(p, "HB152", seg(0), said)
+    assert st["start"] == 2530.0 and st["end"] is None, (
+        f"a stated start took its end from a placement with no mention inside: {st['end']}")
+    return "ok", "no mention inside: no start, no end, no suggestion; two mentions: placed"
+
+
 @check("frontend", "a Senate hearing report draws closed under its hearing, "
        "speakers under their names", needs=("build_site_v2", "senate_hearing_reports"))
 def _hearing_report_drawn(build_site_v2, senate_hearing_reports):

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.208
+# GRANITE_VERSION: 2026-09-05.209
 """
 Generate the faceted site from real General Court data.
 
@@ -2194,6 +2194,17 @@ def station_for_proceeding(p, bid, segs, marks):
         if s.get("bill", "").upper() == bid and s.get("kind") == p["proceeding"]:
             seg = s
             break
+    # A CLUSTERING PLACEMENT WITH NO MENTION OF THE BILL INSIDE IT IS NOT
+    # PUBLISHED. (17 October 2026.) The aligner gives every scheduled
+    # proceeding a span, and where the bill is never named inside the span it
+    # chose, the span is a slot the docket's order left over, most often its
+    # 30-second minimum: 321 of the site's 1,099 clustered placements were
+    # exactly 30 seconds, and 399 had no mention of the bill inside. The four
+    # of them a person timed were 4, 30, 77 and 202 minutes out. Without one
+    # the sitting keeps its recording and says the start was not identified,
+    # which is true, and offers no "automatic pass suggested" time either.
+    if seg and seg.get("located") and seg.get("mentions_inside") == 0:
+        seg = None
     # THE RECORDINGS THIS SITTING COULD BE, where the matcher declined to
     # pick one of them. build_manifest writes the ids whenever more than one
     # recording of the committee exists that day; build_proceedings carries
