@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.278 */
+/* GRANITE_VERSION: 2026-09-07.279 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -278,6 +278,10 @@
    elements on the home page, having measured no expanded card -- where the
    other four rules are. Two faces, clearly distinct, each with a job. */
 --serif:"Source Serif 4",Georgia,serif;
+/* THE WORDMARK'S FACE IS THE LOGO'S (the person, 17 October 2026): the
+   header's "Granite Record" in Playfair Display, as the home page's lockup is
+   drawn, so the two read as one name. Headings and text stay the serif. */
+--brand-face:"Playfair Display",Georgia,serif;
 /* The meta lines at the foot of the page -- "Data rebuilt October 8,
    2026." and "MIT Open Source Licensed" -- are IBM Plex Mono in the settled
    footer, and so is every <code> since 8 October 2026: an address, a
@@ -1359,10 +1363,10 @@ justify-content:space-between;font-size:var(--t-sm)}
    h1 and h2 take hero and title. h3 stays where the page put it: it is a
    label far more often than a heading here -- a committee's column head, a
    day's date, a section marker -- and those are interface. */
-h1,h2,.brand,.lockup{font-family:var(--serif)}
+h1,h2,.lockup{font-family:var(--serif)}
 h1{font-weight:700;line-height:1.2}
 h2{font-weight:600;line-height:1.25}
-.brand{font-family:var(--serif);font-weight:600;font-size:var(--t-lead);
+.brand{font-family:var(--brand-face);font-weight:600;font-size:var(--t-lead);
 line-height:1.1}
 /* Reading text is the serif, a step up from the interface's size because a
    serif needs it to hold the same apparent size.
