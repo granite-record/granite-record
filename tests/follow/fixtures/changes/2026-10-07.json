@@ -35,7 +35,9 @@
           "url": "/bill/2026/hb9903",
           "term": "2025-2026",
           "seen": "2026-10-07T09:06:30Z",
-          "milestone": true
+          "milestone": true,
+          "meeting": {"what": "executive session", "date": "2026-10-06", "time": "13:00",
+                      "venue": "Legislative Office Building 305"}
         },
         {
           "guid": "hearing:HB9903:2026-10-14:10:00",
@@ -45,7 +47,9 @@
           "url": "/bill/2026/hb9903",
           "term": "2025-2026",
           "seen": "2026-10-07T09:06:30Z",
-          "milestone": true
+          "milestone": true,
+          "meeting": {"what": "public hearing", "date": "2026-10-14", "time": "10:00",
+                      "venue": "Legislative Office Building 305"}
         }
       ]
     }

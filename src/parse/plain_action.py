@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-14.9
+# GRANITE_VERSION: 2026-10-14.10
 """
 A docket line in plain words, for a reader who does not know the clerk's
 shorthand -- the email digest and the Documents tab (the person's choices of
@@ -530,6 +530,96 @@ def place(raw):
     t = _ROOM.sub(lambda m: f"Room {m.group(1).strip()}, "
                             f"{BUILDINGS.get(m.group(2).upper(), m.group(2))}", t)
     return _PLACE_BLDG.sub(lambda m: f"{_PLACE_BUILDINGS[m.group(1)]} {m.group(2)}", t)
+
+
+# A MEETING THE DOCKET SETS, AS FACTS FOR THE EMAIL TO SAY (17 October 2026).
+# The person, approving it that day: "emails can use plain words for hearing
+# entries". An email printed the clerk's "Public Hearing: 10/14/2026 10:00 am
+# LOB 305" under the day the notice was posted, and plain() above drops the
+# meeting's own date, which is right where the line's date is the meeting's
+# and wrong where it is the notice's. So this hands the email what the line
+# says -- the kind of meeting, its day, its hour, its room in place()'s words
+# and whether the clerk marked it rescheduled, recessed or cancelled -- and the
+# email words it with its own dates. The site's docket and the feeds keep the
+# clerk's line, which is the record.
+#
+# ANYTHING NOT UNDERSTOOD LEAVES THE LINE AS IT WAS. A mark this does not know
+# ("==Executive Session To Follow==", "==Continued=="), a line that does not
+# start with the meeting ("Retained Bill - Executive Session"), or a "room"
+# that is a paragraph (the 2020-21 Zoom notices) answers None, and the email
+# prints the line as before rather than words that leave something out.
+_MARK = re.compile(r"=+\s*([A-Za-z][A-Za-z ]*?)\s*(?:\([^)]*\))?\s*=+")
+_MARKS = {"CANCELLED": "cancelled", "CANCELED": "cancelled", "RESCHEDULED": "rescheduled",
+          "RECESSED": "recessed", "TIME CHANGE": "time changed", "ROOM CHANGE": "room changed"}
+_MEETING = re.compile(
+    r"^(?:Public Hearing on non-germane Amendment\s*#\s*(?P<amd>(?:\d{4}-)?\d+[a-z]*)"
+    r"|(?P<hearing>Public Hearing|Hearing)|(?P<exec>Executive Session)"
+    r"|(?:(?P<part>Full Committee|Subcommittee|Division [IVX]+)\s+)?(?P<work>Work Session)"
+    r"|(?P<conf>Conference Committee Meeting|Committee of Conference Meeting))\s*:\s*", re.I)
+_ON = re.compile(r"^(\d{1,2})/(\d{1,2})/(\d{4}|\d{2})(?![\d/])[\s,]*")
+# The Senate's calendar reference after the room: "; SC17", "SC 12, Pg.8".
+_SENATE_CAL = re.compile(r"[;,]?\s*SC\s*\d+[A-Z]?(?:\s*,?\s*Pg\.?\s*\d+)?\s*$", re.I)
+_ROOMLIKE = re.compile(r"^[\w' .,\-]{1,60}$")
+
+
+def meeting(raw):
+    """A docket line that sets a meeting, as {"what", "date", "time"?,
+    "venue"?, "state"?}, or None for any other line. "what" is the kind in
+    lower case ("public hearing", "executive session", "full committee work
+    session"), "date" YYYY-MM-DD, "time" HH:MM on a 24-hour clock, "venue" the
+    room as place() spells it, and "state" one of rescheduled, recessed,
+    cancelled, time changed, room changed."""
+    t = " ".join(str(raw or "").split())
+    states = []
+
+    def mark(m):
+        states.append(_MARKS.get(" ".join(m.group(1).upper().split())))
+        return " "
+    t = " ".join(_MARK.sub(mark, t).split())
+    if None in states or len(set(states)) > 1:
+        return None
+    k = _MEETING.match(t)
+    if not k:
+        return None
+    if k.group("amd"):
+        what = f"public hearing on non-germane amendment {k.group('amd')}"
+    elif k.group("hearing"):
+        what = "public hearing"
+    elif k.group("exec"):
+        what = "executive session"
+    elif k.group("work"):
+        part = (k.group("part") or "").split()
+        part = [w.lower() if not re.fullmatch(r"[IVX]+", w) else w for w in part]
+        what = " ".join(part + ["work session"])
+    else:
+        what = "committee of conference meeting"
+    rest = t[k.end():]
+    on = _ON.match(rest)
+    if not on:
+        return None
+    year = int(on.group(3)) + (2000 if len(on.group(3)) == 2 else 0)
+    try:
+        day = date(year, int(on.group(1)), int(on.group(2))).isoformat()
+    except ValueError:
+        return None
+    rest = rest[on.end():]
+    out = {"what": what, "date": day}
+    hour = _TIME.search(rest)
+    if hour:
+        h = int(hour.group(1))
+        if not 1 <= h <= 12:
+            return None
+        out["time"] = f"{h % 12 + (12 if hour.group(3).lower() == 'p' else 0):02d}:{hour.group(2)}"
+        rest = rest[:hour.start()] + " " + rest[hour.end():]
+    room = " ".join(_SENATE_CAL.sub("", rest.strip(" ,;")).strip(" ,;").split())
+    room = re.sub(r"\s+,", ",", room)
+    if room:
+        if not _ROOMLIKE.match(room) or _TIME.search(room) or _ON.match(room):
+            return None
+        out["venue"] = place(room)
+    if states:
+        out["state"] = states[0]
+    return out
 
 
 def motion_words(raw, bill="", body=""):

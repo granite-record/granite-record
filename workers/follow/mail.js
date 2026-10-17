@@ -468,10 +468,47 @@ const LATE_DAYS = 14;        // older than this when first seen: "Newly recorded
 const LATE_SHOWN = 3;        // newly recorded entries listed a record, the rest counted
 const said = it => it.plain || it.summary;
 export const late = it => !!it.seen && it.date < addDays(String(it.seen).slice(0, 10), -LATE_DAYS);
-function itemWords(it, date) {
+// beside: whether the entry's own date is printed beside these words, as it
+// is in a record's list and is not in the subject or "at a glance".
+function itemWords(it, date, beside = true) {
+  if (it.meeting) {
+    const w = meetingLine(it, beside);
+    return late(it) ? `Newly recorded: ${w}` : w;
+  }
   if (it.date > date) return `Scheduled: ${said(it)}`;
   const w = dateOnce(said(it), it.date);
   return late(it) ? `Newly recorded: ${w}` : w;
+}
+
+// A MEETING SET, IN PLAIN WORDS (the person, 17 October 2026: "emails can use
+// plain words for hearing entries"). An entry printed the clerk's "Public
+// Hearing: 10/14/2026 10:00 am LOB 305" under October 6, the day the notice
+// was posted, and a reader had to work out which date was the hearing's. The
+// build hands over what the line says (plain_action.meeting, the room in
+// place()'s words) and this says it with the email's own dates: "Hearing set
+// for Wednesday, October 14, 10:00 a.m., Legislative Office Building 305". A
+// meeting the clerk marked rescheduled, recessed, cancelled or moved says so
+// in the same way. The meeting's day is said once, as every entry's is: where
+// it is the entry's own date, printed beside, the hour says when; the
+// subject and "at a glance" have no date beside them, so they always say it.
+const SET = {
+  "": (k, when) => `${k} set for ${when}`,
+  rescheduled: (k, when) => `${k} rescheduled for ${when}`,
+  "time changed": (k, when) => `${k} moved to ${when}`,
+  "room changed": (k, when) => `${k} moved to ${when}`,
+  cancelled: (k, when) => `${k} cancelled: it was set for ${when}`,
+  recessed: (k, when) => `${k} recessed: it was set for ${when}`,
+};
+export function meetingWords(m, day = "") {
+  const kind = cap(String(m.what).replace(/^public hearing\b/, "hearing"));
+  const time = clockTime(m.time);
+  const when = [m.date === day && time ? "" : dayDate(m.date), time, m.venue].filter(Boolean).join(", ");
+  return (SET[m.state || ""] || SET[""])(kind, when);
+}
+// The name the line opens with, "HB 9903-FN — ", stays in front of the words.
+function meetingLine(it, beside) {
+  const lead = /^(.+?) — /.exec(said(it) || "");
+  return (lead ? `${lead[1]} — ` : "") + meetingWords(it.meeting, beside ? it.date : "");
 }
 
 // A DAY SAID ONCE (the language sweep, 17 October 2026). Every entry is
@@ -533,7 +570,7 @@ export function headlines(sections, date = "", skipAhead = false) {
       if (!it.milestone || late(it)) continue;
       // What is still to come is the week ahead's in a weekly that has one.
       if (date && it.date > date && skipAhead) continue;
-      out.push([RANK[it.kind] || 6, date ? itemWords(it, date) : said(it)]);
+      out.push([RANK[it.kind] || 6, date || it.meeting ? itemWords(it, date, false) : said(it)]);
     }
   }
   const seen = new Set();

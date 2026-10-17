@@ -123,6 +123,26 @@ function checkVote(v, where, notes) {
   return out;
 }
 
+// A MEETING, AS FACTS THE EMAIL WORDS (17 October 2026). The meeting a docket
+// line sets (CHANGES_FORMAT.md, "meeting"), or null. The build hands the day,
+// hour and room rather than a sentence so that the email says them with its
+// own dates. An older build writes none, and the email then prints the line
+// as before.
+export const MEETING_STATES = new Set(["rescheduled", "recessed", "cancelled", "time changed",
+  "room changed"]);
+function checkMeeting(m, where, notes) {
+  if (m === undefined || m === null) return null;
+  if (!isObj(m) || !DAY.test(m.date ?? "")) { notes.push(`${where}: meeting has no date`); return null; }
+  const what = text(m.what, 120, `${where} meeting what`, notes);
+  if (!what) return null;
+  if (m.time !== undefined && m.time !== "" && !TIME.test(m.time)) notes.push(`${where}: meeting time is not HH:MM`);
+  if (m.state !== undefined && m.state !== "" && !MEETING_STATES.has(m.state))
+    notes.push(`${where}: meeting state is not one the contract names`);
+  return { what, date: m.date, time: TIME.test(m.time ?? "") ? m.time : "",
+           venue: text(m.venue, 120, `${where} meeting venue`, notes, false),
+           state: MEETING_STATES.has(m.state) ? m.state : "" };
+}
+
 // ---- one night ---------------------------------------------------------------------
 function checkItem(it, where, firstSeen, topic, notes) {
   if (!isObj(it)) { notes.push(`${where}: not an object`); return null; }
@@ -151,7 +171,8 @@ function checkItem(it, where, firstSeen, topic, notes) {
   // an older build writes none, and the email then prints the line itself.
   const plain = it.plain === undefined ? "" : text(it.plain, 300, `${where} plain`, notes, false);
   return { guid, date: it.date, kind, summary, plain, url: path(it.url, where, notes), term, seen,
-           milestone: it.milestone === true, vote: checkVote(it.vote, where, notes) };
+           milestone: it.milestone === true, vote: checkVote(it.vote, where, notes),
+           meeting: checkMeeting(it.meeting, where, notes) };
 }
 
 export function checkNight(obj, expectDate) {

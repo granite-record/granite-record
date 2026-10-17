@@ -47,7 +47,7 @@
         "time": "10:00",
         "what": "public hearing",
         "committee": "House Example Committee",
-        "venue": "LOB 305"
+        "venue": "Legislative Office Building 305"
       }
     ],
     "committee:H90": [
@@ -56,14 +56,14 @@
         "time": "10:00",
         "what": "public hearing",
         "committee": "House Example Committee",
-        "venue": "LOB 305"
+        "venue": "Legislative Office Building 305"
       },
       {
         "date": "2026-10-13",
         "time": "13:00",
         "what": "executive session",
         "committee": "House Example Committee",
-        "venue": "LOB 305"
+        "venue": "Legislative Office Building 305"
       }
     ]
   }
