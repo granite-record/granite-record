@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.15
+# GRANITE_VERSION: 2026-09-05.16
 """
 The phrasings the marker patterns must match, and the ones they must not.
 
@@ -227,8 +227,8 @@ MUST_NOT_MATCH = [
 NOT_OPENINGS = [
     ("begin the roll call vote on house bill 1430. the motion is itl we'll start "
      "with representative abrami", "HB1430", [], "kTWMOT-FfVI 0:32:37"),
-    ("beginning of house 25 that worksheet starts at the laps extension part",
-     "HB25", [], "-AaP0NKGK4Q 0:08:52"),
+    ("beginning in fiscal year 202 26 thank you madam president thank you Senator "
+     "Pearl the motion is to refer SB 202", "SB202", [], "5a1rrU9MYcU 4:57:08"),
     ("open for further discussion and amendment. Okay. Seeing none, the question "
      "is on the adoption of ought to pass as amended on Senate Bill 482",
      "SB482", [], "-IqRWnHKSlQ 1:05:11"),
@@ -259,6 +259,20 @@ STILL_OPENINGS = [
      "prime sponsor, Representative David Walker.", "HB1021", "YrSXjhMWh-8 0:39:08"),
     ("will open we'll close the hearing on house bill 89 and open the hearing on "
      "house bill 163 and recognize the sponsor", "HB163", "BIpJk7K-k34 0:16:32"),
+    # Real openings the first version of the guards dropped, read on every
+    # recording on 17 October 2026; the guards were narrowed to keep them.
+    ("will open it up to discussion if people have a different take on this but "
+     "my impression on 396 is that", "HB396", "9yzcPQyUVbE 1:09:55"),
+    ("open up for discussion purposes for the HB 443 so let's turn to that bill",
+     "HB443", "0Y2d_XDakUY 0:06:33"),
+    ("Now open up for motion on 1148 which is relative to the fishing Game Commission",
+     "HB1148", "BiiKMa_5KIg 0:14:26"),
+    ("beginning here it's HB 497 I hope everybody has that in front of them",
+     "HB497", "byME6vPFS3U 0:08:20"),
+    ("beginning of house bill 2 and go through the sections each of you have a packet",
+     "HB2", "z0XsJZl7JDw 0:00:38"),
+    ("opening a closed session on HB 2026 to improve the state's transportation "
+     "infrastructure", "HB2026", "ClkTYzvmn84 0:08:08"),
 ]
 
 

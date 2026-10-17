@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.49
+# GRANITE_VERSION: 2026-09-05.50
 """
 Segment a recording on what the chair says, not on where bill numbers cluster.
 
@@ -417,7 +417,7 @@ COMMITTEE_PATS = (
 # bill:
 #
 #   "begin the roll call vote on house bill 1430"   the vote, at the end
-#   "beginning of house 25 that worksheet"          a noun, not a verb
+#   "beginning in fiscal year 2026"                 a noun, not a verb
 #   "open for further discussion"                   the floor, mid-item
 #   "open to any questions"
 #   "Open Democracy"                                a group testifying
@@ -427,11 +427,26 @@ COMMITTEE_PATS = (
 #
 # "beginning with House Bill 1377" is an opening and is left alone, and so
 # is "open the meeting on HP 10:21".
+#
+# NARROWED AFTER READING EVERY OPENING THE FIRST VERSION DROPPED (83 gone, 46
+# moved, across every recording). It took nine real ones, and each kind is
+# now left alone: a chair's "will open it up to discussion ... my impression
+# on 396" (9yzcPQyUVbE 1:09:55), "open up for discussion purposes for the HB
+# 443" (0Y2d_XDakUY 0:06:33) and "Now open up for motion on 1148"
+# (BiiKMa_5KIg 0:14:26) -- so "discussion" and "motion" are not on the list,
+# only "further", questions, comments and amendments; and "beginning here
+# it's HB 497" (byME6vPFS3U 0:08:20), "beginning of house bill 2 and go
+# through the sections" (z0XsJZl7JDw 0:00:38) -- so "beginning" is not an
+# opening only before the words it was read before and nowhere else: "in
+# fiscal year", "date", "that", "by age", "somewhere", "because", "my third
+# term", "to see", "at one o'clock", "is of the pandemic", "on line six",
+# "and the bill", "yeah", "but". "beginning of ..." stays as it was, since
+# it went both ways.
 NOT_AN_OPENING = re.compile(
     r"begin(?:ning)?\s+(?:the\s+|a\s+)?(?:roll[\s-]*call|vote)\b"
-    r"|beginning\b(?!\s+with\b)"
+    r"|beginning\s+(?:in|date|that|by|somewhere|because|my|to|at|is|on|and|yeah|but)\b"
     r"|open(?:ed)?\s+(?:it\s+)?(?:up\s+)?(?:for|to)\s+(?:any\s+)?(?:further|questions?|"
-    r"discussion|comments?|amendments?|motions?)\b"
+    r"comments?|amendments?)\b"
     r"|open\s+(?:democracy|doors?|the\s+doors?|meetings?|enrollment|spaces?|government|"
     r"records?|mind(?:ed)?)\b"
     r"|going\s+to\s+do\s+is\s+(?:clos|recess)", re.I)
@@ -440,7 +455,9 @@ OPENING_VERB = re.compile(r"\b(?:open|begin|going\s+to\s+do)", re.I)
 # the hearing on house bill 89 and open the hearing on house bill 163" names
 # 89 to close it. About half of the 24 published spans under 30 seconds the
 # chair "closed" were a close or an aside read as an opening.
-CLOSE_WORD = re.compile(r"\bclos(?:e|es|ed|ing)\b", re.I)
+# Not a "closed session", which is a kind of sitting: "opening a closed
+# session on HB 2026" (ClkTYzvmn84 0:08:08) opens one.
+CLOSE_WORD = re.compile(r"\bclos(?:e|es|ing)\b|\bclosed\b(?!\s+(?:session|meeting))", re.I)
 
 
 # TWO BILLS OPENED IN ONE BREATH SHARE THE MOMENT. (17 October 2026.) "will
