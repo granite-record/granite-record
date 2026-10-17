@@ -15,10 +15,11 @@ file the map draws, and which a page mounts with `GRMap.mount()`: the
 Officials page's My Town tab and every town page's District Map tab.
 
 The hubs (Polish 3, 10 October 2026). The Officials page, `/officials`
-(`/legislators` answers with a 301 to it), is `build_pages.py`'s, in five
-tabs; its Federal Delegation, Statewide Officials and County Officials are
-drawn by `officials_tabs.py` from `corrections/officials.json`, which it reads
-and never writes. The House and the Senate are each a card at the
+(`/legislators` answers with a 301 to it), is `build_pages.py`'s, in six
+tabs; its Federal Delegation, Executive Branch (Statewide Officials until 17
+October 2026; `#statewide` still opens it), Judicial Branch and County
+Officials are drawn by `officials_tabs.py` from `corrections/officials.json`,
+which it reads and never writes. The House and the Senate are each a card at the
 top of their column of `/committees`, drawn as a committee's card is, and each
 card leads to the chamber's page of session days, `/session/house` and
 `/session/senate`, beside the day pages: a term picker over every term, the

@@ -1,15 +1,26 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-10.4
+# GRANITE_VERSION: 2026-10-10.5
 """
 The Officials page's tabs that are not the legislators' (Polish 3, the
 person's feedback of 9 October 2026, item 4, and the decisions of that day):
-Federal Delegation, Statewide Officials and County Officials, and the
-Presiding Officers at the head of the Legislators tab; and, between a
+Federal Delegation, Executive Branch, Judicial Branch and County Officials,
+and the Presiding Officers at the head of the Legislators tab; and, between a
 general election and Organization Day, Members-Elect (16 October 2026).
 
     import officials_tabs as OT
-    OT.federal(off), OT.statewide(off), OT.county(off, legs), OT.presiding(officers, legs)
+    OT.federal(off), OT.executive(off, has_page), OT.judicial(off)
+    OT.county(off, legs), OT.presiding(officers, legs)
     OT.members_elect(elect, today), OT.elect_count(elect)
+
+THE EXECUTIVE BRANCH AND THE JUDICIAL BRANCH (the person's approval of 17
+October 2026: "rename the tab Executive Branch with the note; add a thin
+Judicial Branch tab (Supreme and Superior Court listed, Circuit Court by
+link); add commissioners compactly inside Executive Branch, kept by hand for
+now"). Statewide Officials became Executive Branch, under one line saying
+that two of its officers are chosen by the legislature, and gained a compact
+table of the department heads; Judicial Branch is new. Both read
+officials.json's department_heads and judicial, which carry the page each
+name was read from and the day it was read, as the file's other records do.
 
 Each returns the panel's inner markup, or "" where the file holds nothing to
 draw, and build_pages.officials_page() puts them into the page beside My
@@ -118,9 +129,19 @@ def section(sid, title, people, why="", source=""):
     is, and where the names were read."""
     if not people:
         return ""
+    return framed(sid, title, f'<ul class="ofwhos">{"".join(people)}</ul>', why, source)
+
+
+def framed(sid, title, inner, why="", source=""):
+    """A section's frame around markup of its own: the heading in the
+    margin, then the markup, what it is and where it was read. A compact
+    table or list of names goes in the same frame as an office's chips, so
+    the tab reads as one column of sections."""
+    if not inner:
+        return ""
     return (f'<section class="ofsec" aria-labelledby="of-{sid}">'
             f'<h3 class="ofsech" id="of-{sid}">{E(title)}</h3><div class="ofsecb">'
-            f'<ul class="ofwhos">{"".join(people)}</ul>'
+            + inner
             + (f'<p class="ofwhy">{why}</p>' if why else "")
             + (f'<p class="ofsrc">Source: {source}</p>' if source else "")
             + "</div></section>")
@@ -162,9 +183,90 @@ def federal(off):
                    f"from; checked {E(_long(checked))}.</p>" if checked else "")
 
 
+# TWO OF THE BRANCH'S OFFICERS ARE CHOSEN BY THE LEGISLATURE (17 October
+# 2026). The tab is named for the branch, and a reader who knows the
+# Secretary of State and the Treasurer are not on the ballot would otherwise
+# ask why they are under it. The Constitution's Part Second, Article 67 is
+# the article that says so; Article 68, which was named beside it in the
+# brief, is where the state's records are kept, read that day on nh.gov's
+# copy of the Constitution, so only 67 is cited. Cited by its number and not
+# quoted: the Constitution's text is not yet on this disk.
+CHOSEN_BY_LEGISLATURE = ("The Secretary of State and the State Treasurer are elected by the "
+                         "legislature, the House and Senate together, by joint ballot "
+                         "(New Hampshire Constitution, Part Second, Article 67).")
+
+
+def executive(off, has_page=None):
+    """The Executive Branch tab (named Statewide Officials until 17 October
+    2026): the line on the two officers the legislature chooses, the
+    Governor, the Executive Council, the Secretary of State, the State
+    Treasurer and the Attorney General, and then the heads of the executive
+    departments. `has_page` says whether the site has a page for a member's
+    address, for a department head the site already draws (see head())."""
+    body = statewide(off)
+    depts = departments(off, has_page)
+    if not body and not depts:
+        return ""
+    line = "Kept by hand, each name with the page it was read from"
+    if off.get("_checked") and body:
+        line += f"; the Governor and the Council checked {E(_long(off['_checked']))}"
+    read = {(off.get(k) or {}).get("read") for k in ("secretary_of_state", "treasurer",
+                                                     "attorney_general")
+            if (off.get(k) or {}).get("name")} - {None}
+    if len(read) == 1:
+        line += (". The Secretary of State, the State Treasurer and the Attorney General "
+                 f"were read on {E(_long(next(iter(read))))}")
+    dh = off.get("department_heads") or {}
+    if depts and dh.get("read"):
+        line += (". The department heads were read from each department&rsquo;s own site "
+                 f"on {E(_long(dh['read']))}")
+    return (f'<div class="ofintro"><p class="ofwhy">{E(CHOSEN_BY_LEGISLATURE)}</p></div>'
+            + body + depts + f'<p class="ofsrcs">{line}.</p>')
+
+
+def head(rec, has_page=None):
+    """A department head's name: the site's chip, linked to their page,
+    where the record names a member page the site has -- a former member of
+    the General Court -- and their plain name otherwise. The chip is the
+    neutral one, as a sheriff's is: the office is not a party's, whatever
+    party the person sat for (the person's rule for county officers, 9
+    October 2026)."""
+    name = (rec.get("name") or "").strip()
+    slug = str(rec.get("member") or "").strip()
+    if slug and has_page and has_page(slug):
+        return pchip({"display_full": name, "party_code": "X", "slug": slug})
+    return f'<span class="ofname">{E(name)}</span>'
+
+
+def departments(off, has_page=None):
+    """THE DEPARTMENT HEADS, COMPACTLY (17 October 2026): a table of each
+    executive department, linked to its own site, beside its head and the
+    head's title, from officials.json's department_heads. A record with no
+    name -- a department whose site named nobody on the pages read -- draws
+    no row, rather than a row that says nothing."""
+    dh = off.get("department_heads") or {}
+    rows = []
+    for r in dh.get("departments") or []:
+        if not (r.get("name") or "").strip():
+            continue
+        dept = weblink(r.get("official_url"), r.get("department")) or E(r.get("department"))
+        rows.append(f'<tr><td>{dept}</td><td>{head(r, has_page)}'
+                    f'<span class="ofk">{E(r.get("title"))}</span></td></tr>')
+    if not rows:
+        return ""
+    table = ('<table class="ofdepts"><thead><tr><th scope="col">Department</th>'
+             '<th scope="col">Head</th></tr></thead><tbody>' + "".join(rows) + "</tbody></table>")
+    listed = weblink(dh.get("official_url"), "the state’s list of agencies")
+    return framed("departments", "Department Heads", table,
+                  E(" ".join(dh.get("about") or [])),
+                  "each department&rsquo;s own site, linked from its name"
+                  + (f"; the departments are those on {listed}" if listed else ""))
+
+
 def statewide(off):
     """The Governor, the Executive Council, the Secretary of State, the
-    State Treasurer and the Attorney General."""
+    State Treasurer and the Attorney General: the Executive Branch tab's
+    offices, before its department heads."""
     g = off.get("governor") or {}
     c = off.get("council") or {}
     parts = [section("governor", "Governor", [who(g)] if g.get("name") else [],
@@ -174,15 +276,12 @@ def statewide(off):
     parts.append(section("council", "Executive Council", [p for p in council if p],
                          E(" ".join(c.get("about") or [])) + " Which district is yours? "
                          + FIND_TOWN, source_link(c.get("source"))))
-    read = set()
     for key, title in (("secretary_of_state", "Secretary of State"),
                        ("treasurer", "State Treasurer"),
                        ("attorney_general", "Attorney General")):
         r = off.get(key) or {}
         if not r.get("name"):
             continue
-        if r.get("read"):
-            read.add(r["read"])
         # The source line where the record's source is a page of its own
         # office, as the drawing has it; the Attorney General's is the
         # office's site, already under the name.
@@ -190,16 +289,70 @@ def statewide(off):
             else ""
         parts.append(section(key.replace("_", "-"), title, [who(r)],
                              E(" ".join(r.get("about") or [])), source_link(src)))
+    return "".join(parts)
+
+
+def judicial(off):
+    """THE JUDICIAL BRANCH TAB, THIN (17 October 2026): the Supreme Court's
+    justices, each on the neutral chip with their title and their page on
+    the Judicial Branch's site, as the Executive Branch draws its officers;
+    the Superior Court's justices as a compact list of names, its chief
+    marked, which is what the court's own page gives; and the Circuit Court
+    as one line linking to the court's own list of judges, which is long and
+    changes. Everything from officials.json's judicial, and nothing said
+    that its pages do not say."""
+    j = off.get("judicial") or {}
+    sc, su, cc = (j.get("supreme_court") or {}, j.get("superior_court") or {},
+                  j.get("circuit_court") or {})
+    parts = []
+    people = []
+    for r in sc.get("justices") or []:
+        name = (r.get("name") or "").strip()
+        if not name:
+            continue
+        bio = weblink(r.get("official_url"), "Biography")
+        people.append(f'<li class="ofwho">{person(name)}<span class="ofseat">{E(r.get("title"))}</span>'
+                      + (f'<ul class="ofhow"><li>{bio}</li></ul>' if bio else "") + "</li>")
+    chief = sc.get("chief") or {}
+    why = " ".join([E(" ".join(sc.get("about") or [])), E(chief.get("text"))]).strip()
+    # A label's apostrophe as the character: weblink escapes its label.
+    told = weblink(chief.get("source"), "the Judicial Branch’s announcement") \
+        if chief.get("text") else ""
+    src = source_link(sc.get("source"))
+    parts.append(section("supreme-court", sc.get("name") or "Supreme Court", people, why,
+                         src + (f", and {told}" if src and told else told)))
+    # The Superior Court: the justices, the chief marked, then each other
+    # title the page lists (its senior justices on active status) under a
+    # line of its own.
+    groups = {}
+    for r in su.get("justices") or []:
+        name = (r.get("name") or "").strip()
+        if not name:
+            continue
+        title = (r.get("title") or "Justice").strip()
+        key = "Justice" if title in ("Justice", "Chief Justice") else title
+        mark = f' <span class="ofk">{E(title)}</span>' if title == "Chief Justice" else ""
+        groups.setdefault(key, []).append(f'<li><span class="ofname">{E(name)}</span>{mark}</li>')
+    inner = ""
+    for key, rows in groups.items():
+        if key != "Justice":
+            inner += f'<p class="ofsub">{E(re.sub(r"Justice", "Justices", key, count=1))}</p>'
+        inner += f'<ul class="ofnames">{"".join(rows)}</ul>'
+    parts.append(framed("superior-court", su.get("name") or "Superior Court", inner, "",
+                        source_link(su.get("source"))))
+    judges = weblink(cc.get("judges_url"), "the court’s own page")
+    if judges:
+        parts.append(framed("circuit-court", cc.get("name") or "Circuit Court",
+                            f'<p class="ofline">{E(cc.get("about"))} Its judges are listed on '
+                            f"{judges}.</p>"))
     body = "".join(parts)
     if not body:
         return ""
-    line = "Kept by hand, each name with the page it was read from"
-    if off.get("_checked"):
-        line += f"; the Governor and the Council checked {E(_long(off['_checked']))}"
-    if len(read) == 1:
-        line += (". The Secretary of State, the State Treasurer and the Attorney General "
-                 f"were read on {E(_long(next(iter(read))))}")
-    return body + f'<p class="ofsrcs">{line}.</p>'
+    about = "".join(f'<p class="ofwhy">{E(p)}</p>' for p in j.get("about") or [])
+    return ((f'<div class="ofintro">{about}</div>' if about else "") + body
+            + '<p class="ofsrcs">Kept by hand, each name with the Judicial Branch&rsquo;s page it '
+            + (f"was read from; read {E(_long(j['read']))}." if j.get("read") else "was read from.")
+            + "</p>")
 
 
 # THE ROSTER'S ELECTION, IN THE TENSE OF THE DAY (17 October 2026). The line
@@ -270,13 +423,20 @@ def count(off, which):
         return (len([s for s in (off.get("us_senate") or {}).get("seats") or [] if s.get("name")])
                 + len([r for r in ((off.get("us_house") or {}).get("districts") or {}).values()
                        if r.get("name")]))
-    if which == "statewide":
+    if which == "executive":
         n = 1 if (off.get("governor") or {}).get("name") else 0
         n += len([r for r in ((off.get("council") or {}).get("districts") or {}).values()
                   if r.get("name")])
         n += len([k for k in ("secretary_of_state", "treasurer", "attorney_general")
                   if (off.get(k) or {}).get("name")])
+        n += len([r for r in (off.get("department_heads") or {}).get("departments") or []
+                  if (r.get("name") or "").strip()])
         return n
+    if which == "judicial":
+        j = off.get("judicial") or {}
+        return sum(len([r for r in (j.get(c) or {}).get("justices") or []
+                        if (r.get("name") or "").strip()])
+                   for c in ("supreme_court", "superior_court"))
     if which == "county":
         n = 0
         for c in ((off.get("county") or {}).get("counties") or {}).values():

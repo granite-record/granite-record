@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.609
+# GRANITE_VERSION: 2026-09-04.610
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -59694,14 +59694,17 @@ def _panes_into_view():
     return "ok", "both panes, on opening, and Follow's again when its email box arrives"
 
 
-@check("frontend", "the Officials page is five tabs, My Town, Legislators, Federal Delegation, "
-                   "Statewide Officials and County Officials, drawn as the town pages' tabs are")
+@check("frontend", "the Officials page is six tabs, My Town, Legislators, Federal Delegation, "
+                   "Executive Branch, Judicial Branch and County Officials, drawn as the town "
+                   "pages' tabs are")
 def _legislators_page_tabs():
     """The person's feedback of 9 October 2026, item 4, and decision 127: the
-    Legislators page is Officials, in five tabs -- My Town (the town finder and
-    the district map), Legislators (the roster), Federal Delegation, Statewide
-    Officials and County Officials -- the strip and the switching script the
-    town pages' (F5, 7 October 2026), as the page's two tabs were.
+    Legislators page is Officials, in tabs -- My Town (the town finder and
+    the district map), Legislators (the roster), Federal Delegation, Executive
+    Branch (Statewide Officials until the person's approval of 17 October
+    2026, which also added Judicial Branch beside it) and County Officials --
+    the strip and the switching script the town pages' (F5, 7 October 2026),
+    as the page's two tabs were.
 
     Read off the fixture's built page: one strip, written hidden for the
     script to show, with the five in that order, each panel under its own
@@ -59723,8 +59726,8 @@ def _legislators_page_tabs():
                      page), "the strip is not written hidden for the script to show"
     tabs = re.findall(r'role="tab" id="tab-([a-z-]+)" data-pane="([a-z-]+)"[^>]*>([^<]+)', strips[0])
     want = [("my-town", "My Town"), ("legislators", "Legislators"),
-            ("federal", "Federal Delegation"), ("statewide", "Statewide Officials"),
-            ("counties", "County Officials")]
+            ("federal", "Federal Delegation"), ("executive", "Executive Branch"),
+            ("judicial", "Judicial Branch"), ("counties", "County Officials")]
     assert [(t, n.strip()) for t, p, n in tabs if t == p] == want, f"the strip's tabs are {tabs}"
     panes = {}
     starts = [(page.index(f'<div class="twnpane" id="{pid}" role="tabpanel" '
@@ -59743,12 +59746,14 @@ def _legislators_page_tabs():
     assert 'id="roster"' in legs and 'id="lq"' not in legs, "the Legislators panel does not hold the roster"
     if 'class="comp-wrap"' in page:
         assert 'class="comp-wrap"' in legs, "who holds the seats is outside the Legislators panel"
-    # The other three are officials.json's people, each the one person chip.
+    # The other tabs' offices are officials.json's people, each the one
+    # person chip (the department heads and the judges are
+    # _officials_heads_and_judges's).
     import json as _json
     off = _json.loads(Path("corrections/officials.json").read_text(encoding="utf-8"))
     for pid, names in (("federal", [s["name"] for s in off["us_senate"]["seats"]]
                         + [r["name"] for r in off["us_house"]["districts"].values()]),
-                       ("statewide", [off["governor"]["name"]]
+                       ("executive", [off["governor"]["name"]]
                         + [r["name"] for r in off["council"]["districts"].values()]),
                        ("counties", [r["name"] for c in off["county"]["counties"].values()
                                    for r in c["commissioners"].values()])):
@@ -59826,10 +59831,167 @@ def _legislators_page_tabs():
     assert app.count(".twntabs{display:flex") == 1, "app.css draws the strip twice"
     assert app.index(".twntabs{display:flex") < app.index("/* SHARED:END"), (
         "the strip's rules are not in app.css's shared region")
-    return "ok", ("My Town, Legislators, Federal Delegation, Statewide Officials and County "
-                  "Officials, each a panel under its own heading, switched by the town pages' "
-                  "script and drawn by the same rules in both stylesheets; My Town the finder "
-                  "over its 260px window and the map under it; the officials as person chips")
+    return "ok", ("My Town, Legislators, Federal Delegation, Executive Branch, Judicial Branch "
+                  "and County Officials, each a panel under its own heading, switched by the "
+                  "town pages' script and drawn by the same rules in both stylesheets; My Town "
+                  "the finder over its 260px window and the map under it; the officials as "
+                  "person chips")
+
+
+@check("frontend", "the Statewide Officials tab is Executive Branch, /officials#statewide still "
+                   "opens it, and it says the legislature elects two of its officers")
+def _executive_branch_renamed():
+    """The person's approval of 17 October 2026: "rename the tab Executive
+    Branch with the note". Read off the fixture's built page: the tab and its
+    panel are #executive, labelled Executive Branch, and nothing on the page
+    still says Statewide Officials or carries the old id; the panel opens
+    with officials_tabs.CHOSEN_BY_LEGISLATURE, which cites the Constitution's
+    Part Second, Article 67 by its number. And the old address still opens
+    the tab: build_pages.OFFICIALS_HASH_JS, run in node against a stub
+    location, rewrites #statewide to #executive at load and on a hashchange
+    (and #towns to #my-town, as before), and leaves a live address alone.
+    Fails if the tab is named back, the line goes, or the alias does."""
+    import build_pages as BP
+    import officials_tabs as OT
+    import html as _html
+    shared, _base, _ran, _days = _fixture_site_shared()
+    page = (shared / "site" / "officials.html").read_text(encoding="utf-8")
+    assert "Statewide Officials" not in page and 'id="statewide"' not in page \
+        and 'data-pane="statewide"' not in page, "the page still names Statewide Officials"
+    assert re.search(r'role="tab" id="tab-executive" data-pane="executive"[^>]*>Executive Branch',
+                     page), "no Executive Branch tab at #executive"
+    start = page.index('<div class="twnpane" id="executive" role="tabpanel"')
+    pane = page[start:page.index('<div class="twnpane"', start + 1)]
+    line = OT.CHOSEN_BY_LEGISLATURE
+    assert "Secretary of State" in line and "Treasurer" in line and "legislature" in line \
+        and "Part Second, Article 67" in line, f"the note reads {line!r}"
+    assert re.match(r'<div class="twnpane" id="executive"[^>]*><h2 class="twnph">Executive Branch'
+                    r'</h2><div class="ofintro"><p class="ofwhy">' + re.escape(_html.escape(line))
+                    + r"</p></div>", pane), "the Executive Branch panel does not open with the note"
+    if not shutil.which("node"):
+        return "skip", "the tab and its note are in place; node is not installed to run the alias"
+    script = re.search(r"<script>(.*?)</script>", BP.OFFICIALS_HASH_JS, re.S)
+    assert script, "build_pages.OFFICIALS_HASH_JS carries no <script>"
+    probe = ("var L={},loc={pathname:'/officials',search:'',hash:'#statewide'};"
+             "global.location=loc;global.history={replaceState:function(s,t,u){"
+             "var i=u.indexOf('#');loc.hash=i<0?'':u.slice(i);}};"
+             "global.addEventListener=function(n,f){(L[n]=L[n]||[]).push(f);};"
+             + script.group(1) +
+             ";var out=[loc.hash];['#towns','#statewide','#federal'].forEach(function(h){"
+             "loc.hash=h;(L.hashchange||[]).forEach(function(f){f();});out.push(loc.hash);});"
+             "console.log(JSON.stringify(out));")
+    root = Path(tempfile.mkdtemp())
+    try:
+        (root / "probe.js").write_text(probe, encoding="utf-8")
+        r = _run(["node", "probe.js"], cwd=root, capture_output=True, text=True, timeout=60)
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    assert r.returncode == 0, f"the alias script does not run: {(r.stderr or r.stdout)[-200:]}"
+    got = json.loads(r.stdout.strip().splitlines()[-1])
+    assert got == ["#executive", "#my-town", "#executive", "#federal"], (
+        f"the old addresses go to {got}: #statewide at load, then #towns, #statewide and "
+        "#federal on a hashchange")
+    return "ok", ("#executive, labelled Executive Branch, under the note citing Part Second, "
+                  "Article 67; #statewide opens it at load and on a hashchange, #towns My Town")
+
+
+@check("frontend", "the Executive Branch's department heads and the Judicial Branch's justices "
+                   "are corrections/officials.json's, each with the page it was read from and "
+                   "the day it was read")
+def _officials_heads_and_judges():
+    """The person's approval of 17 October 2026: the commissioners compactly
+    inside Executive Branch, a thin Judicial Branch tab -- the Supreme and
+    Superior Courts listed, the Circuit Court by link -- both kept by hand.
+    In the hand file (corrections/officials.json, which no builder writes:
+    _record_untouched): every named department head and every justice carries
+    an https source and the ISO day it was read, a department head its
+    department's site, and a record with no name says why it has none; the
+    Supreme Court's note about its Chief Justice has its source too, and the
+    Circuit Court its own list of judges. On the fixture's built page: every
+    named head in the Executive Branch's table with its department linked to
+    its site, no row for a nameless one; every Supreme Court justice on the
+    neutral chip with their page; every Superior Court justice as a plain
+    name; the Circuit Court's line linking to its list; and each tab's count
+    the people it names. And a head the record ties to a member's page is
+    that member's chip, neutral, where the build has the page, and a plain
+    name where it has not."""
+    import officials_tabs as OT
+    import html as _html
+    off = json.loads(Path("corrections/officials.json").read_text(encoding="utf-8"))
+    dh = (off.get("department_heads") or {}).get("departments") or []
+    j = off.get("judicial") or {}
+    sup = (j.get("supreme_court") or {}).get("justices") or []
+    sop = (j.get("superior_court") or {}).get("justices") or []
+    cc = j.get("circuit_court") or {}
+    url = re.compile(r"https://\S+")
+    day = re.compile(r"\d{4}-\d{2}-\d{2}")
+    named = [r for r in dh if (r.get("name") or "").strip()]
+    assert len(named) >= 15, f"the hand file names {len(named)} department heads"
+    assert len(sup) >= 4 and len(sop) >= 15, (
+        f"the hand file names {len(sup)} Supreme Court and {len(sop)} Superior Court justices")
+    bad = []
+    for where, r in ([("department_heads", r) for r in named]
+                     + [("supreme_court", r) for r in sup] + [("superior_court", r) for r in sop]):
+        if not url.fullmatch(r.get("source") or ""):
+            bad.append(f"{where}: {r.get('name')} has no page it was read from")
+        if not day.fullmatch(r.get("read") or ""):
+            bad.append(f"{where}: {r.get('name')} has no day it was read")
+    for r in dh:
+        if not url.fullmatch(r.get("official_url") or ""):
+            bad.append(f"department_heads: {r.get('department')} has no site")
+        if r not in named and not (r.get("unread") or "").strip():
+            bad.append(f"department_heads: {r.get('department')} has no name and no reason why")
+    chief = (j.get("supreme_court") or {}).get("chief") or {}
+    if chief.get("text") and not (url.fullmatch(chief.get("source") or "")
+                                  and day.fullmatch(chief.get("read") or "")):
+        bad.append("the Supreme Court's note on its Chief Justice has no source or day")
+    if not (url.fullmatch(cc.get("judges_url") or "") and day.fullmatch(cc.get("read") or "")):
+        bad.append("the Circuit Court has no list of judges or no day it was read")
+    assert not bad, "; ".join(bad)
+    shared, _base, _ran, _days = _fixture_site_shared()
+    page = (shared / "site" / "officials.html").read_text(encoding="utf-8")
+
+    def pane(pid):
+        i = page.index(f'<div class="twnpane" id="{pid}" role="tabpanel"')
+        k = page.find('<div class="twnpane"', i + 1)
+        return page[i:k if k > 0 else len(page)]
+    exe, jud = pane("executive"), pane("judicial")
+    table = re.search(r'<table class="ofdepts">.*?</table>', exe, re.S)
+    assert table, "the Executive Branch draws no table of department heads"
+    rows = re.findall(r"<tr><td>(.*?)</td><td>(.*?)</td></tr>", table.group(0), re.S)
+    assert len(rows) == len(named), f"the table has {len(rows)} rows for {len(named)} named heads"
+    for (dept, who), r in zip(rows, named):
+        assert (f'href="{_html.escape(r["official_url"])}"' in dept
+                and _html.escape(r["department"]) in dept), (
+            f"{r['department']} is not linked to its site in its row")
+        assert _html.escape(r["name"]) in who and _html.escape(r["title"]) in who, (
+            f"{r['name']}, {r['title']}, is not in {r['department']}'s row")
+    for r in sup:
+        assert re.search(r'<span class="mchip p-X">' + re.escape(_html.escape(r["name"])) + "</span>",
+                         jud) and f'href="{_html.escape(r["official_url"])}"' in jud, (
+            f"Justice {r['name']} is not on the neutral chip with their page")
+    for r in sop:
+        assert f'<span class="ofname">{_html.escape(r["name"])}</span>' in jud, (
+            f"Justice {r['name']} of the Superior Court is not on the Judicial Branch tab")
+    assert f'href="{_html.escape(cc["judges_url"])}"' in jud, (
+        "the Circuit Court's line does not link to the court's own list of judges")
+    for pid, name in (("executive", "Executive Branch"), ("judicial", "Judicial Branch")):
+        n = OT.count(off, pid)
+        assert re.search(rf'id="tab-{pid}"[^>]*>{name} <span class="ofn">\({n:,}\)</span>', page), (
+            f"the {name} tab does not count its {n}")
+    assert n == len(sup) + len(sop), f"Judicial Branch counts {n} for {len(sup) + len(sop)} justices"
+    # A head the site has a page for is that member's chip, neutral; drawn
+    # plain where the build has no such page.
+    tied = [r for r in named if r.get("member")]
+    for r in tied:
+        chip = f'<span class="mchip p-X"><a href="legislator/{_html.escape(r["member"])}.html">'
+        assert chip in OT.executive(off, lambda s: True), f"{r['name']} is not their member chip"
+        assert chip not in OT.executive(off, lambda s: False), (
+            f"{r['name']} is linked to a member page the build does not have")
+    return "ok", (f"{len(named)} department heads and {len(sup) + len(sop)} justices, each with "
+                  f"its page and its day; {len(dh) - len(named)} nameless heads undrawn and "
+                  f"said why; the Circuit Court by its own list; {len(tied)} head drawn as "
+                  "the member the site has")
 
 
 @check("frontend", "the vacancy list says \"District\" and how a seat is filled, from RSA 661:8")
