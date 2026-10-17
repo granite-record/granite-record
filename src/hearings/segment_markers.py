@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.54
+# GRANITE_VERSION: 2026-09-05.55
 """
 Segment a recording on what the chair says, not on where bill numbers cluster.
 
@@ -666,13 +666,16 @@ def cache_key(folder, candidates, sig, titles=None):
     is where the claim that nothing else mattered used to live."""
     p = Path(folder)
     named = hashlib.sha1(json.dumps(titles or {}, sort_keys=True).encode()).hexdigest()[:8]
+    # And the clustering's placements, which named_before reads.
+    sf = p / "segments.json"
+    placed = (f"{sf.stat().st_size}:{int(sf.stat().st_mtime)}" if sf.exists() else "-")
     for name in WORK_FILES:
         f = p / name
         if f.exists():
             st = f.stat()
-            return (f"{sig}|{','.join(sorted(candidates))}|{named}|"
+            return (f"{sig}|{','.join(sorted(candidates))}|{named}|{placed}|"
                     f"{name}:{st.st_size}:{int(st.st_mtime)}")
-    return f"{sig}|{','.join(sorted(candidates))}|{named}|none"
+    return f"{sig}|{','.join(sorted(candidates))}|{named}|{placed}|none"
 
 
 def title_lookup(data_dir):
@@ -1209,6 +1212,45 @@ def read_recording(words, cands, titles, is_floor=False, floor_ent=None, vid="")
     return segs, absent, counts
 
 
+def named_before(words, folder, window=60):
+    """["BILL|kind"] for each clustering placement in the folder's
+    segments.json that has no mention of its bill inside it but has one, by
+    number, in the `window` seconds before it starts.
+
+    (After review, 17 October 2026.) build_site_v2 withholds a placement with
+    no mention of its bill inside, and 27 of the 372 it withheld had the bill
+    named just before the span: on 120gOWa2Jl0 the chair said "On to House
+    Bill 1315 relative to the sale of tobacco products" at 3:42:30, and the
+    aligner's 30-second slot for HB 1315's executive session began half a
+    minute later. Such a placement is the item, a little late. The build has
+    no captions to look, so the answer travels in the candidate file."""
+    f = Path(folder) / "segments.json"
+    if not words or not f.exists():
+        return []
+    try:
+        placed = json.loads(f.read_text(encoding="utf-8"))
+    except (ValueError, OSError):
+        return []
+    if not isinstance(placed, list):
+        return []
+    times = [t for t, _ in words]
+    out = []
+    for s in placed:
+        if (not isinstance(s, dict) or not s.get("located")
+                or s.get("mentions_inside") != 0 or s.get("start") is None):
+            continue
+        bill = str(s.get("bill") or "").upper()
+        digits = re.sub(r"[^0-9]", "", bill)
+        if not digits:
+            continue
+        lo = bisect.bisect_left(times, s["start"] - window)
+        hi = bisect.bisect_left(times, s["start"])
+        said = " ".join(w for _t, w in words[lo:hi])
+        if re.search(r"(?<!\d)" + r"[\s,]*".join(digits) + r"(?!\d)", said):
+            out.append(f"{bill}|{s.get('kind')}")
+    return out
+
+
 def sequence_of(byb):
     """The recording as an ordered list of what was taken up, in order.
 
@@ -1521,6 +1563,8 @@ def main():
             if hit.get("absent"):
                 result.setdefault("_absent", {})[vid] = hit["absent"]
                 stats["never named on the recording"] += len(hit["absent"])
+            if hit.get("named_before"):
+                result.setdefault("_named_before", {})[vid] = hit["named_before"]
             result[vid] = segs
             stats["recordings read"] += 1
             stats["unchanged since last run"] += 1
@@ -1558,7 +1602,11 @@ def main():
         if absent:
             stats["never named on the recording"] += len(absent)
             result.setdefault("_absent", {})[vid] = absent
-        cache[vid] = {"key": key, "segs": segs, "absent": absent}
+        before = named_before(words, folder)
+        if before:
+            stats["clustered placements named just before"] += len(before)
+            result.setdefault("_named_before", {})[vid] = before
+        cache[vid] = {"key": key, "segs": segs, "absent": absent, "named_before": before}
         stats["recordings read"] += 1
         stats["bills with a stated start"] += len(segs)
         stats["proceedings found"] += sum(len(v) for v in segs.values())
@@ -1605,7 +1653,8 @@ def main():
     # A recording read this run answers for itself: its _absent is what this
     # run found, or nothing. Its _sequence is written only by a fresh read, so
     # one taken from the cache keeps the sequence it already had.
-    sides = ("_absent", "_sequence")
+    # _named_before (named_before) answers for a recording as _absent does.
+    sides = ("_absent", "_sequence", "_named_before")
     read_now = {k for k in result if k not in sides}
     kept = len({k for k in prior if k not in sides} - read_now)
     if kept:
@@ -1616,7 +1665,7 @@ def main():
     for side in sides:
         was = prior.get(side) if isinstance(prior.get(side), dict) else {}
         new = result.get(side) or {}
-        answers = read_now if side == "_absent" else set(new)
+        answers = read_now if side in ("_absent", "_named_before") else set(new)
         both = {v: x for v, x in was.items() if v not in answers}
         both.update(new)
         if both or side in prior:

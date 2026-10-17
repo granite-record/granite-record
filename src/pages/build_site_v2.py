@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.214
+# GRANITE_VERSION: 2026-09-05.215
 """
 Generate the faceted site from real General Court data.
 
@@ -2237,7 +2237,16 @@ def station_for_proceeding(p, bid, segs, marks, claimed=None):
     # of them a person timed were 4, 30, 77 and 202 minutes out. Without one
     # the sitting keeps its recording and says the start was not identified,
     # which is true, and offers no "automatic pass suggested" time either.
-    if seg and seg.get("located") and seg.get("mentions_inside") == 0:
+    #
+    # A mention in the minute before the span counts as inside it. (After
+    # review, 17 October 2026.) 27 of the 372 withheld had the bill named just
+    # before: "On to House Bill 1315 relative to the sale of tobacco products"
+    # at 3:42:30 on 120gOWa2Jl0, its 30-second slot half a minute on.
+    # segment_markers finds those where the captions are and lists them under
+    # _named_before as "BILL|kind".
+    if (seg and seg.get("located") and seg.get("mentions_inside") == 0
+            and f"{bid}|{p['proceeding']}" not in
+            ((marks.get("_named_before") or {}).get(p.get("video_id") or "") or [])):
         seg = None
     # THE RECORDINGS THIS SITTING COULD BE, where the matcher declined to
     # pick one of them. build_manifest writes the ids whenever more than one
@@ -2753,7 +2762,7 @@ def withhold_late_captions(segs, marks, work, summary=caption_span.SUMMARY):
     for v in list(late) + list(unknown):
         segs.pop(v, None)
         marks.pop(v, None)
-        for side in ("_absent", "_sequence"):
+        for side in ("_absent", "_sequence", "_named_before"):
             if isinstance(marks.get(side), dict):
                 marks[side].pop(v, None)
     print(f"caption tracks: {compared:,} recordings compared with the length "

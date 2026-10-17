@@ -14280,6 +14280,56 @@ def _markers_diagnostics_write_nothing(segment_markers):
         shutil.rmtree(root, ignore_errors=True)
 
 
+@check("markers", "segment_markers lists the clustered placements whose bill is named just "
+                  "before them", needs=("segment_markers",))
+def _markers_named_before(segment_markers):
+    """build_site_v2 withholds a clustering placement with no mention of its
+    bill inside, and 27 of 372 had it named in the minute before (after
+    review, 17 October 2026): on 120gOWa2Jl0 the chair said "On to House Bill
+    1315 relative to the sale of tobacco products" at 3:42:30 and the slot
+    began at 3:43:00. The build has no captions, so segment_markers writes
+    the answer as _named_before, and a later run on another recording keeps
+    it. The words below were spoken there."""
+    if not _paths.locate("segment_markers.py").exists():
+        return "skip", "segment_markers.py not here"
+    root = Path(tempfile.mkdtemp())
+    try:
+        env = _markers_fixture(
+            root, {"2025-2026": {"HB1315": {"title": "relative to the sale of tobacco products"},
+                                 "HB1281": {"title": "relative to comfort dogs"}}},
+            [("2025-2026", "HB1315", "H", "executive session", "PFEXEC"),
+             ("2025-2026", "HB1281", "H", "executive session", "PFEXEC"),
+             ("2025-2026", "HB1281", "H", "executive session", "PFOTHER")],
+            {"PFEXEC": ["move unanimously."] * 3
+             + ["On to House Bill 1315 relative to the sale of tobacco products,"]
+             + ["Representative Hunt, second by Representative Patusk moves to pass."] * 3,
+             "PFOTHER": ["good morning"] * 3})
+        # The aligner's slots: HB 1315's 30 s after its mention, HB 1281's
+        # nowhere near one.
+        (root / "work" / "PFEXEC" / "segments.json").write_text(json.dumps([
+            {"bill": "HB1315", "kind": "executive session", "located": True,
+             "start": 30.0, "end": 60.0, "mentions_inside": 0},
+            {"bill": "HB1281", "kind": "executive session", "located": True,
+             "start": 400.0, "end": 430.0, "mentions_inside": 0}]), encoding="utf-8")
+        cmd = [sys.executable, _paths.script("segment_markers.py"), "--data", "data",
+               "--quiet", "--cache", "cache.json", "--transcript"]
+        r = _run(cmd + ["work/PFEXEC"], cwd=str(root), env=env, capture_output=True,
+                 text=True, timeout=120)
+        assert r.returncode == 0, (r.stderr or r.stdout)[-300:]
+        got = json.loads((root / "candidate_segments.json").read_text(encoding="utf-8"))
+        assert (got.get("_named_before") or {}).get("PFEXEC") == ["HB1315|executive session"], (
+            f"the placement named just before was not listed: {got.get('_named_before')}")
+        r = _run(cmd + ["work/PFOTHER"], cwd=str(root), env=env, capture_output=True,
+                 text=True, timeout=120)
+        assert r.returncode == 0, (r.stderr or r.stdout)[-300:]
+        got = json.loads((root / "candidate_segments.json").read_text(encoding="utf-8"))
+        assert (got.get("_named_before") or {}).get("PFEXEC") == ["HB1315|executive session"], (
+            "a run over another recording dropped this one's _named_before")
+        return "ok", "HB 1315's slot, named 30 s before it, listed; HB 1281's not; kept across runs"
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+
+
 @check("data", "segment_markers' title lookup holds more than a thousand titles",
        needs=("segment_markers",))
 def _markers_title_count(segment_markers):
@@ -25105,6 +25155,15 @@ def _cluster_needs_a_mention(build_site_v2):
     st = B.station_for_proceeding(p, "HB152", seg(0), said)
     assert st["start"] == 2530.0 and st["end"] is None, (
         f"a stated start took its end from a placement with no mention inside: {st['end']}")
+    # Named in the minute before the span counts as inside (after review):
+    # segment_markers lists those under _named_before.
+    before = {"_named_before": {"VIDX": ["HB152|executive session"]}}
+    st = B.station_for_proceeding(p, "HB152", seg(0), before)
+    assert st["state"] == "located" and st["start"] == 2520.0, (
+        f"a placement whose bill was named just before it was withheld: {st['state']}")
+    other = {"_named_before": {"VIDX": ["HB152|public hearing"]}}
+    st = B.station_for_proceeding(p, "HB152", seg(0), other)
+    assert st["start"] is None, "another proceeding's mention kept this placement"
     return "ok", "no mention inside: no start, no end, no suggestion; two mentions: placed"
 
 
