@@ -51,7 +51,12 @@ test("the page shows what is followed and how often, and never the address", asy
     assert.match(r.body, /<a href="https:\/\/graniterecord\.org\/bill\/2026\/hb9901">HB 9901<\/a>/);
     assert.match(r.body, /House Example Committee/);
     assert.match(r.body, /value="daily" checked/);
-    assert.match(r.body, /rebuilt once a night/);
+    // In a reader's words (the language sweep, 17 October 2026): not the
+    // build's "rebuilt once a night", not "tonight", not "tick".
+    assert.match(r.body, /updated once a day, overnight, so even the daily email reports/);
+    assert.match(r.body, /This term's bills on a subject\. Check one to follow it\./);
+    assert.doesNotMatch(r.body.replace(/<style>[\s\S]*?<\/style>|<script[\s\S]*?<\/script>/g, ""),
+      /rebuilt|tonight|\b[Uu]n?tick|records/);
     assert.ok(!r.body.toLowerCase().includes("reader.manages"), "no address on the page");
     // One script, under the answer's nonce: the find box of the lists to add
     // from (page.js PICK_SCRIPT), which reads nothing of the link.
@@ -85,7 +90,7 @@ test("how often, and removing a record", async () => {
     await act(w, s.manage, "remove", { follow: "<script>" });
     assert.equal(w.d1.rows("follows").length, 1);
     // The last one goes with the address, and the page says so first.
-    assert.match((await view(w, s.manage)).body, /Unticking everything deletes your address/);
+    assert.match((await view(w, s.manage)).body, /Unchecking everything deletes your address/);
     r = await act(w, s.manage, "remove", { follow: "bill:2026/HB9901" });
     assert.match(r.body, /Your address has been deleted/);
     assert.equal(w.d1.rows("subscribers").length, 0);
@@ -292,7 +297,8 @@ test("a pause through a day, a pause for good, and back again from now", async (
     const base = [["listed", "bill:2026/HB9901"], ["keep", "bill:2026/HB9901"]];
     await saveForm(w, s.manage, [...base, ["pause", "until"], ["pause_until", "2026-10-20"]]);
     assert.equal(w.d1.rows("subscribers")[0].paused_until, "2026-10-20");
-    assert.match((await view(w, s.manage)).body, /Paused through 2026-10-20/);
+    // A date as the site writes one, never the ISO form (17 October 2026).
+    assert.match((await view(w, s.manage)).body, /Paused through October 20, 2026\./);
     await saveForm(w, s.manage, [...base, ["pause", "until"], ["pause_until", "2026-10-01"]]);
     assert.equal(w.d1.rows("subscribers")[0].paused_until, "2026-10-20", "a day already past is no pause");
     await saveForm(w, s.manage, [...base, ["pause", "until"], ["pause_until", "2028-01-01"]]);
@@ -502,7 +508,7 @@ test("the find box narrows the list as the reader types, case and accents aside,
     assert.equal(p.sets[1].hidden, false);
     // A ticked one stays in sight whatever is typed, and is counted.
     p.tick("member:990004");
-    assert.equal(p.count.textContent, "1 ticked");
+    assert.equal(p.count.textContent, "1 checked");
     assert.deepEqual(p.type("adams"), ["member:990004", "member:990005"]);
     assert.deepEqual(p.type("nobody at all"), ["member:990004"]);
     assert.equal(p.none.hidden, true, "a ticked one is still there to see");
@@ -562,7 +568,7 @@ test("a Save that ticks more than the room left adds up to 200, however long the
     assert.equal(w.d1.rows("follows").length, 200);
     const said = await w.call(handlers.manage, postForm("/api/follow/manage",
       { t: s.manage, action: "view", notice: "full" }));
-    assert.match(said.body, /one address can follow at most 200 records, so not everything you asked to add was added/);
+    assert.match(said.body, /one address can follow at most 200 bills, laws, legislators, committees and topics in all, so not everything you asked to add was added/);
   } finally { w.close(); }
 });
 

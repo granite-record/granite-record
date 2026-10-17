@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-07.5
+# GRANITE_VERSION: 2026-10-07.7
 """
 The nightly "what changed" files the email sender reads, and the first-seen
 ledger that decides what is new in them.
@@ -427,7 +427,27 @@ def decide(led, *, tonight, built, sitting_term, followable, lists, hints):
         here = nights.setdefault(tonight, {"built": built, "sitting_term": sitting_term,
                                            "first_seen": {}, "ended": {}})
         here["built"], here["sitting_term"] = built, sitting_term
-        new = sorted(kg for kg in fileable if kg not in known)
+        # NEW TO THE RECORD, NOT NEW TO A LIST (17 October 2026). The person's
+        # weekly email listed under Laws "a bunch of entries from months ago as
+        # new". A law's items are the items of the bills that cite it, its
+        # newest sixty across them all (build_feeds.py), so an item enters a
+        # law's list whenever a bill comes to cite the chapter, whenever a
+        # bill above it in that sixty stops moving and leaves room, and on the
+        # night laws could first be followed -- and each time it was first seen
+        # under the law, with tonight's stamp, though its bill's follower had
+        # it long before. "New" means new since the reader's last email, so an
+        # item another record already had is not new to a law or a topic when
+        # it is dated before the nights the files carry: a bill filed under a
+        # new subject, or newly citing a chapter, brings its old items with it,
+        # and they are not news. One dated within those nights still is (the
+        # review of 17 October 2026): a hearing its bill's follower heard of on
+        # Monday is news to a reader who follows only RSA 91-A when the bill
+        # comes to cite it on Wednesday, as a meeting is a topic's news the
+        # night it sits (BY RECORD, above).
+        had = {g for _, g in known}
+        new = sorted(kg for kg in fileable if kg not in known and not (
+            kg[1] in had and kind_of_key(kg[0]) in ("law", "topic")
+            and fileable[kg]["date"] < days[0]))
         if new:
             file_under(here["first_seen"], built, new)
         counts["new"] = len(new)

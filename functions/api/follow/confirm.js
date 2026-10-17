@@ -66,7 +66,7 @@ the address with it, is deleted within 48 hours without being used.</p>`,
 // update.
 const SPENT = () => message(400, "This link has expired or been used",
   "A confirmation link works once, for 48 hours. If you still want these updates, " +
-  "use Follow on the record's page again and a new link will be sent.",
+  "use Follow on its page again and a new link will be sent.",
   "If you have already confirmed, the link to your page for email updates, where you " +
   "can change what you follow, is at the foot of every email we send you about them. " +
   "If you cannot find one, your next update will have it.");
@@ -150,9 +150,12 @@ export async function onRequest(context) {
       "WHERE subscriber_id = ?1").bind(sub.id, fh).first();
     if (Number(has.n) >= MAX_FOLLOWS && !Number(has.already)) {
       await dropRequest();
-      return message(200, "You follow as many records as this allows",
-        `One address can follow ${MAX_FOLLOWS} records. Remove one on the page linked ` +
-        "at the foot of any of our emails, then use Follow on this record's page again.");
+      // In a reader's words (the language sweep, 17 October 2026): "records"
+      // was the database's noun for what a reader follows.
+      return message(200, "You follow as many things as one address can",
+        `One address can follow ${MAX_FOLLOWS} bills, laws, legislators, committees and ` +
+        "topics in all. Remove one on the page linked at the foot of any of our emails, " +
+        "then use Follow on its page again.");
     }
     // The sealed key moves across as it is: it is bound to the same reader.
     const [added] = await db.batch([

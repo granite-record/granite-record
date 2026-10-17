@@ -131,7 +131,7 @@ test("a bill, member or committee that leaves the list must say it ended; a topi
 test("ended, study and upcoming are read as written", () => {
   const e = checkNight(night("2026-10-07"), "2026-10-07").value.refs.get("bill:2026/HB9902");
   assert.equal(e.ended.how, "law");
-  assert.equal(e.ended.summary, "HB 9902 was signed into law.");
+  assert.equal(e.ended.summary, "HB 9902 — Signed into law.");
   const s = checkNight(night("2026-10-08"), "2026-10-08").value.refs.get("bill:2026/HB9901");
   assert.equal(s.study.recommends, true);
   const cur = checkCurrent(structuredClone(fx.get("/changes/current.json"))).value;

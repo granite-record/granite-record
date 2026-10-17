@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.598
+# GRANITE_VERSION: 2026-09-04.599
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -34253,6 +34253,105 @@ def _follow_manager_contract(FC):
     return "ok", "milestones by kind and by what a docket line decides; a ballot with its roll call; law:91-A"
 
 
+@check("build", "the update emails are told what is new and in the site's words: a law's months-old item "
+       "is not new and this week's is, a bill's ending is its status, a committee's day its "
+       "kind of meeting, a ballot, a motion and a room as the site says them",
+       needs=("follow_changes", "build_feeds", "plain_action"))
+def _follow_email_words(FC, BF, PA):
+    """The person's notes of 17 October 2026 on a daily, a weekly and the
+    welcome email, and the language sweep of the same day. The weekly's Laws
+    section listed "a bunch of entries from months ago as new": a law's items
+    are its bills' own, its newest sixty across them, and an item that
+    entered a law's list -- a bill newly citing the chapter, another leaving
+    room, laws first becoming followable -- was first seen under the law
+    that night though its bill had carried it for months. But one dated within
+    the eight nights is still news to a reader who follows only the law (the
+    review of 17 October 2026): the bill's hearing first seen on night 1, when
+    the bill comes to cite the chapter on night 3. The rest is what the build
+    hands the email in words: tests/follow/ holds how it prints them."""
+    old = {"guid": "2025-2026:HB1:2026-05-01:otp", "date": "2026-05-01"}
+    heard = {"guid": "2025-2026:HB1:2026-10-14:hearing", "date": "2026-10-14"}
+    fresh = {"guid": "2025-2026:HB1:2026-10-16:report", "date": "2026-10-16"}
+    led = {"format": FC.LEDGER_FORMAT, "date": "2026-10-14", "built": "2026-10-14T09:00:00Z",
+           "sitting_term": "2025-2026", "new_by": FC.FIRST_SEEN,
+           "followable": {"bill:2026/HB1": "HB 1", "topic:housing": "Housing"}, "nights": {},
+           "carried": {"2026-10-14": {"bill:2026/HB1": [old["guid"]]}}}
+    bill_only = {"bill:2026/HB1": {"label": "HB 1"}, "topic:housing": {"label": "Housing"}}
+    cites = dict(bill_only, **{"law:91-A": {"label": "RSA 91-A"}})
+    nights = (("2026-10-15", bill_only, {"bill:2026/HB1": [old, heard]}),             # night 1
+              ("2026-10-16", bill_only, {"bill:2026/HB1": [old, heard]}),             # night 2
+              ("2026-10-17", cites, {"bill:2026/HB1": [old, heard, fresh],            # night 3: cites 91-A
+                                     "law:91-A": [old, heard, fresh], "topic:housing": [old, heard]}))
+    for tonight, followable, lists in nights:
+        led, _, _ = FC.decide(led, tonight=tonight, built=f"{tonight}T09:00:00Z",
+                              sitting_term="2025-2026", followable=followable, lists=lists, hints={})
+
+    def filed(night):
+        return {(k, g) for by in led["nights"][night]["first_seen"].values()
+                for k, gs in by.items() for g in gs}
+    assert ("bill:2026/HB1", heard["guid"]) in filed("2026-10-15"), "night 1 did not tell the bill's hearing"
+    assert ("law:91-A", old["guid"]) not in filed("2026-10-17"), \
+        "an item months old was new to the law the night it entered the law's list"
+    assert ("law:91-A", heard["guid"]) in filed("2026-10-17"), \
+        "a reader who follows only the law never heard of this week's hearing, which its bill had on night 1"
+    assert {("law:91-A", fresh["guid"]), ("bill:2026/HB1", fresh["guid"])} <= filed("2026-10-17"), \
+        "an item new to the record was not new to its law"
+    assert ("bill:2026/HB1", heard["guid"]) not in filed("2026-10-17"), "the bill was told its hearing twice"
+    assert ("topic:housing", heard["guid"]) in filed("2026-10-17"), "a meeting this week was not its topic's news"
+    assert ("topic:housing", old["guid"]) not in filed("2026-10-17"), \
+        "a bill under a new subject brought its old items as new"
+    known = {(k, g) for by in led["carried"].values() for k, gs in by.items() for g in gs}
+    assert ("law:91-A", old["guid"]) in known, "the law's list is not remembered, so it would be new tomorrow"
+
+    for row, want in (({"n": "HB 1", "kind": "law", "status": "Became law unsigned"}, "HB 1 — Became law unsigned."),
+                      ({"n": "HB 2", "kind": "law", "status": "Veto overridden, became law"},
+                       "HB 2 — Veto overridden, became law."),
+                      ({"n": "HB 3", "kind": "done", "status": "Killed"}, "HB 3 — Killed."),
+                      ({"n": "HB 4", "kind": "law"}, "HB 4 — Became law."),
+                      ({"n": "HB 5", "kind": "done", "status": ""}, "HB 5 — Concluded.")):
+        assert BF.ending_words(row) == want, (BF.ending_words(row), want)
+    src = Path(BF.__file__).read_text(encoding="utf-8")
+    assert '"law": "was signed into law"' not in src and '"done": "has finished its course"' not in src, \
+        "an ending is put back into the kind's sentence, which a law unsigned or overridden is not"
+    assert "_end = ending_words(b)" in src and '"said": ending_words(b)' in src
+
+    s = {"items": [{"n": "HB 303-FN", "kind": "executive session"},
+                   {"n": "HB 1767-FN", "kind": "full committee work session"},
+                   {"n": "HB 303-FN", "kind": "full committee work session"},
+                   {"n": "SB 416", "kind": "full committee work session"}]}
+    assert BF.sitting_words(s) == ("Executive session on HB 303-FN; full committee work session on "
+                                   "HB 1767-FN, HB 303-FN and SB 416"), BF.sitting_words(s)
+    assert BF.sitting_words({"items": [{"n": "HB 1", "kind": "hearing"}]}) == "Public hearing on HB 1"
+    assert BF.sitting_words({"items": []}) == "The committee met"
+    assert "plain=sitting_words(s)" in src, "a committee's day goes to the email as its date alone"
+
+    assert [BF.ballot_word(v) for v in ("Yea", "Nay", "Not Voting/Excused", "Not Voting/Not Excused",
+                                        "Presiding")] == ["yes", "no", "excused", "not voting", "presiding"]
+    assert FC.vote_detail(BF.ballot_word("Not Voting/Not Excused"))["ballot"] == "not voting", \
+        "a ballot is cut to the contract's twenty characters"
+    assert "ballot_word(v.get(\"v\"))" in src and "PA.motion_words(asked" in src
+    assert PA.motion_words("OTPA") == "Ought to Pass with Amendment (OTPA, Pass the bill with changes)"
+    assert PA.motion_words("Lay on the Table") == "Lay on the Table (Set the bill aside)"
+    assert PA.motion_words("Affirm The Report") == "", "a motion the words do not name keeps the record's"
+    # The rooms as 2025-2026's committee days and upcoming rows spell them,
+    # the run-together and misspelt ones too (the review of 17 October 2026).
+    hall = "Representatives' Hall, State House"
+    for raw, want in (("GP 231", "Granite Place 231"), ("LOB 305", "Legislative Office Building 305"),
+                      ("Room 100, SH", "Room 100, State House"), ("SH 122-123", "State House 122-123"),
+                      ("GP231", "Granite Place 231"), ("GP153", "Granite Place 153"),
+                      ("GP159", "Granite Place 159"), ("GP228", "Granite Place 228"),
+                      ("GP232", "Granite Place 232"), ("LOBO 202-204", "Legislative Office Building 202-204"),
+                      ("LOB", "Legislative Office Building"), ("SH Reps Hall", hall),
+                      ("SH Representatives Hall", hall), ("Reps Hall", hall),
+                      ("Representatives' Hall, SH", hall), ("SL Map Room", "SL Map Room"),
+                      ("302-304", "302-304"), ("", "")):
+        assert PA.place(raw) == want, (raw, PA.place(raw))
+    assert "FC.committee_label(name, word)" in src and "PA.place(u.get(\"venue\")" in src, \
+        "the week ahead's committee or room is back in the clerk's form"
+    return "ok", ("a law's months-old item not new, this week's hearing new on night 3; a topic's meeting new; endings "
+                  "by status; a committee's day by kind; ballots, motions and rooms in words")
+
+
 @check("build", "About and the Data page describe email updates only once production binds the "
        "follow database, in the person's approved words", needs=("shell", "build_pages", "build_exports"))
 def _follow_privacy_gated(S, BP, BE):
@@ -39209,9 +39308,11 @@ def _changes_on_fixture(FC):
         with open(root / "verification_manifest.csv", newline="", encoding="utf-8") as fh:
             ahead = [r["sched_date"] for r in csv.DictReader(fh) if r.get("bill") == "HB1443"]
         assert len(ahead) == 1, ("the fixture's hearing still to come is not one row", ahead)
+        # The committee by its follow label and the room in words (17 October
+        # 2026), so the email names it as the reader's heading does and links it.
         assert f7["current.json"]["upcoming"] == {"committee:H43": [{
             "date": ahead[0], "what": "subcommittee work session", "time": "09:30",
-            "committee": "House Commerce", "venue": "LOB 302"}]}, \
+            "committee": "House Commerce Committee", "venue": "Legislative Office Building 302"}]}, \
             ("a hearing was not filed under the committee that will sit",
              f7["current.json"]["upcoming"])
         # ... and on the 10th the record moves on: the bill is signed, the
@@ -39223,8 +39324,12 @@ def _changes_on_fixture(FC):
         sd = root / "site"
         meta = json.loads((sd / "meta.json").read_text(encoding="utf-8"))
         rows = json.loads((sd / "idx" / "2025-2026.json").read_text(encoding="utf-8"))
+        # Signed, as a real row says it: the kind and the status together. The
+        # ending is told in the status's words since 17 October 2026
+        # (build_feeds.ending_words), which a kind alone does not give.
         for r in rows:
-            r["kind"] = "law" if r["id"] == "HB1442" else r["kind"]
+            if r["id"] == "HB1442":
+                r["kind"], r["status"] = "law", "Signed into law"
         older = [dict(r, term="2023-2024", topic="Taxation") for r in rows if r["id"] == "SB900"]
         assert older and "Taxation" not in {r.get("topic") for r in rows}, older
         (sd / "idx" / "2025-2026.json").write_text(
@@ -39242,7 +39347,7 @@ def _changes_on_fixture(FC):
         # its bill's news on the 8th and the topic's once its day has come.
         assert {k: r for k, r in refs.items() if k != "topic:insurance"} == {
             "bill:2026/HB1442": {"ended": {
-                "how": "law", "summary": "HB 1442 was signed into law.", "date": "2026-03-10",
+                "how": "law", "summary": "HB 1442 — Signed into law.", "date": "2026-03-10",
                 "guid": "2025-2026:HB1442:closed:law"}},
             "member:377204": {"ended": {
                 "how": "left", "date": "2026-03-10", "guid": "member:377204:ended:left",

@@ -49,7 +49,18 @@ import { PENDING_PER_MAILBOX, dayFull, purgePending, underCeiling }
 const PATH = "/api/follow/signup";
 const MAX_BODY = 4096;
 const TURNSTILE = "https://challenges.cloudflare.com/turnstile/v0/siteverify";
-const DAILY_CEILING = 50;
+// THE DAY'S CEILING SERVES A WEBINAR (17 October 2026). It was 50, and with
+// SIGNUP_DAILY_CEILING unset on production the 51st sign-up of the 10
+// November walkthrough would have been told "too many sign-ups today". A
+// webinar's audience is a few hundred, each following perhaps two or three
+// things, one confirmation email each: 1,000 holds that with room. It still
+// bounds abuse once Turnstile, the rate rule and the three waiting requests
+// an inbox may have let a request through: a day at the ceiling is 2% of
+// Resend Pro's 50,000 emails a month (the plan the person chose; its figures
+// as remembered, to check on Resend's pricing page), so a flood shows in the
+// log as signup.day-full long before it can spend the month.
+// SIGNUP_DAILY_CEILING still overrides it, either way.
+const DAILY_CEILING = 1000;
 
 const SENT = () => json(202, { ok: true });
 const NO = why => json(400, { ok: false, why });

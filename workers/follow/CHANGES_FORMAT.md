@@ -108,6 +108,9 @@ dropped by the sender and refused at sign-up.
   `what` (`public hearing`, `executive session`, `work session`, or the
   record's own words), and may have `time` (`HH:MM`, 24-hour, New Hampshire
   time), `committee` and `venue`, each plain text of at most 120 characters.
+  Since 17 October 2026 `committee` is the committee's `label` as
+  `followable` gives it, so the email can link it to its page, and `venue`
+  is the room in words, "Granite Place 231" for the clerk's "GP 231".
   The weekly email lists these; it is state, not news, so it lives here and
   not in a night.
 
@@ -115,7 +118,14 @@ A **law** (`law:<chapter>`) is listed for every chapter of the statute
 table. Its items are the sitting term's bills that say they change the
 chapter -- each bill's own items, under the bill's own guids -- so a
 reader following RSA 91-A hears when a bill proposing to change it is filed,
-heard, voted on or ends. A law has no `ended`.
+heard, voted on or ends. A law has no `ended`. **An old item is not new to a
+law** (17 October 2026): an item another record already carried, dated
+before the eight nights, is not news to the law's follower when it first
+enters the law's list -- because the bill came to cite the chapter, because
+another bill left room in the law's newest sixty, or because laws had just
+become followable. One dated within the eight nights is, so a reader who
+follows only the law still hears of this week's hearing. A topic's items are
+held the same way.
 
 ## `<YYYY-MM-DD>.json`: one night
 
@@ -139,7 +149,7 @@ heard, voted on or ends. A law has no `ended`.
                 "summary": "Interim Study Report: Recommended for Future Legislation 10/07/2026",
                 "date": "2026-10-07", "guid": "2025-2026:HB1442:study-report",
                 "seen": "2026-10-08T09:02:40Z"},
-      "ended": {"how": "law", "summary": "HB 1442 was signed into law.",
+      "ended": {"how": "law", "summary": "HB 1442 — Signed into law.",
                 "date": "2026-10-07", "guid": "2025-2026:HB1442:closed:law"}
     }
   }
@@ -199,18 +209,24 @@ night. Each value may have:
     entry that passes, kills, tables, signs, vetoes or enacts.
   - `vote` -- optional, on a member's `vote` item: the ballot with the roll
     call it was cast in, every value plain text. `ballot` (required, at most
-    20: `yes`, `no`, `not voting`, `excused`), `result` (`passed` or
-    `failed`), `tally` ("201-163"), `motion` (at most 160, the question put),
-    `bill` (at most 40, "HB 1442") and `title` (at most 300). The email sets
-    each ballot beside the outcome.
+    20: `yes`, `no`, `not voting`, `excused`, `presiding`), `result`
+    (`passed` or `failed`), `tally` ("201-163"), `motion` (at most 160, the
+    question put, in the vote cards' words where they name it: "Ought to Pass
+    with Amendment (OTPA, Pass the bill with changes)"), `bill` (at most 40,
+    "HB 1442") and `title` (at most 300). The email sets each ballot beside
+    the outcome, in the site's words for it ("excused absence").
+- A committee's `sitting` item carries `plain`: the kinds of meeting the day
+  held and the bills each took up, "Executive session on HB 1767-FN and SB
+  416" (17 October 2026), because the feed's title is only the committee and
+  the date.
 - `study` (bills referred for interim study): the study committee's report,
   once it exists. `recommends` is `true` (recommended future legislation),
   `false` (did not) or `null` (the report does not say). `summary`, `date`,
-  `guid` and, under `first-seen`, `seen`, as for an item. The email prints
-  its own sentence for `recommends` first ("The interim study committee
-  recommended future legislation."), so `summary` is **the record's own
-  words** for the report -- the feed item's title -- and not that sentence
-  again; a summary that only repeats it is printed once.
+  `guid` and, under `first-seen`, `seen`, as for an item. `summary` is **the
+  record's own words** for the report -- the feed item's title. The email
+  says the report one way, in `plain_action.py`'s words for `recommends`
+  ("Interim study report: recommends future legislation"), and prints
+  `summary` nowhere (17 October 2026).
 - `ended`: the record has finished. For a bill, the night it concludes --
   signed, vetoed and settled, killed, died, or its term ended -- with `how`
   (the index's own word: `law`, `veto`, `done`, `adopted`, `dead`,
