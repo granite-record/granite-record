@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.20
+# GRANITE_VERSION: 2026-09-04.21
 """
 An address for every sitting legislator, and the sitemap entries for them.
 
@@ -19,7 +19,10 @@ WHAT A MEMBER'S PAGE ANSWERS
 Which bills they put their name to, prime and co-sponsored, filterable by term
 and outcome; every roll call they are recorded in, filterable by how they voted;
 the district they sit for and the towns in it, ward by ward where a city is
-split between members.
+split between members. Between a general election and Organization Day, a
+member the election sent back -- sitting or returning -- also has one line
+saying so under their name, from site/members_elect.json alone (the person's
+decisions of 16 October 2026); nobody else's page says anything about it.
 
 Writes site/legislator/<slug>.html and appends them to sitemap.xml. Each page
 names the member's feed in its head, on the test build_feeds writes it on.
@@ -36,8 +39,11 @@ import json
 import re
 import unicodedata
 
+import build_date
 import shell as S
 import structured as LD
+from build_members_elect import for_pages as members_elect
+from components import elect_line
 
 E = S.E
 
@@ -169,12 +175,32 @@ def head_name(m):
 STATIC_BILLS, STATIC_VOTES = 200, 100
 
 
-def static_record(m, rec):
+def elected_pages(elect):
+    """{(id, slug): race key} for each member-elect the members-elect file
+    links to a page: a sitting member re-elected, or a former member
+    returning. A new person has no page and is not here.
+
+    ONE LINE ON THEIR OWN PAGE, AND ONLY THEIRS (the person's decisions of 16
+    October 2026). The file names the id and the page together only on a
+    certain match, so the line goes on the page that is both -- never on
+    another record of the same name -- and says nothing on any other page:
+    a sitting member who is not on the list is not said to be anything."""
+    out = {}
+    for key, race in ((elect or {}).get("races") or {}).items():
+        for e in race.get("elected") or []:
+            if e.get("k") in ("sitting", "former") and e.get("id") and e.get("s"):
+                out[(str(e["id"]), str(e["s"]))] = key
+    return out
+
+
+def static_record(m, rec, elected=""):
     """THE MEMBER'S RECORD IN THE PAGE ITSELF, for a reader with no
     JavaScript (the SEO review of 12 October 2026; shell.page's static).
     It replaced a <noscript> line saying the page needs JavaScript. m is the
     roster's row, rec the member's own JSON (legislators/<id>.json), which
-    the page app.js draws reads too."""
+    the page app.js draws reads too. `elected` is the member-elect's line
+    (components.elect_line) where the member is one, under the heading,
+    which is left as it is until they take office."""
     rec = rec or {}
     yrs = _served_years(m) if m.get("former") else ""
     titled = heading(m).startswith("Former ")
@@ -186,6 +212,8 @@ def static_record(m, rec):
                    "<p>Former member of the New Hampshire General Court"
                    f"{E(', ' + yrs) if yrs else ''}. This page is their record; it is "
                    "not a current directory entry.</p>")
+    if elected:
+        out.append(elected)
     facts = []
     towns = m.get("towns") or []
     if towns and not m.get("former"):
@@ -256,6 +284,11 @@ def main():
     out = site / "legislator"
     out.mkdir(parents=True, exist_ok=True)
     t = S.template(site)
+    # The members-elect, while there are any, by the page each is linked to.
+    elect = members_elect(site)
+    elected = elected_pages(elect)
+    today = build_date.today().isoformat()
+    n_elected = 0
 
     def own(m):
         """The member's own JSON, which app.js draws their page from."""
@@ -284,6 +317,15 @@ def main():
                 f'title="{E(named)} — Granite Record" '
                 f'href="/feed/legislator/{E(mid)}.xml">'
                 if S.member_followable(m) else "")
+        # A MEMBER-ELECT'S ONE LINE (16 October 2026), in the plain page and,
+        # through GR_ELECT, in the page app.js draws (renderMemberHead), which
+        # draws it only for this id: a reader who goes on from here to another
+        # member within the page is not shown this member's line there.
+        race = elected.get((mid, slug))
+        n_elected += race is not None
+        line = elect_line(race, elect["election"], elect["takes_office"], today) if race else ""
+        also = ({"GR_ELECT": {"id": mid, "key": race, "election": elect["election"],
+                              "takes_office": elect["takes_office"]}} if race else {})
         (out / f"{slug}.html").write_text(S.clean_links(S.page(
             t, path=path, base=a.base,
             title=f"{who} | Granite Record",
@@ -302,8 +344,8 @@ def main():
             # in a roll call or a sponsor list they are named exactly as a
             # sitting member is.
             globals={"GR_MEMBER": str(m.get("id", "")), "GR_STANDALONE": True,
-                     **({"GR_FORMER": True} if m.get("former") else {})},
-            static=static_record(m, own(m)), skip_label="Skip to this member",
+                     **({"GR_FORMER": True} if m.get("former") else {}), **also},
+            static=static_record(m, own(m), line), skip_label="Skip to this member",
             # Without this the template's marker stays on Bills, and all 406
             # member pages told a screen reader they were Bills.
             nav_current="officials.html",
@@ -320,6 +362,17 @@ def main():
     assert written or not legs, (
         "no legislator page was written, and legislators.json holds "
         f"{len(legs)}. That is a run that failed, not a roster that emptied.")
+    # SILENCE IS NOT SUCCESS: a members-elect file that links members to
+    # pages, and pages none of which took the line, is a mismatch to see.
+    if elected:
+        print(f"  members-elect: the line on {n_elected} of the {len(elected)} pages the file "
+              "links a member-elect to")
+        if n_elected < len(elected):
+            missing = sorted(f"{i} ({s})" for i, s in elected
+                             if not any(str(m.get("id") or "") == i
+                                        and (m.get("slug") or person_slug(m)) == s
+                                        for m in [*legs, *former]))
+            print("  members-elect: no page here for " + ", ".join(missing[:8]))
 
     # sitemap.xml is written by build_bill_pages.py, which runs first. Appended
     # rather than replaced: rewriting it here would drop 4,230 bill URLs.
