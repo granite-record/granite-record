@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.56
+# GRANITE_VERSION: 2026-09-05.57
 """
 Segment a recording on what the chair says, not on where bill numbers cluster.
 
@@ -482,7 +482,13 @@ CLOSE_OF_ITEM = re.compile(
     r"\b(?:clos(?:e|es|ing)|closed(?=\s+(?:the|this|that|our)\b))\s+(?:out\s+|up\s+|down\s+)?"
     r"(?:the\s+|this\s+|that\s+|our\s+|a\s+)?(?:[a-z]+\s+){0,2}?"
     r"(?:hearing|session|testimony|meeting)s?\b"
-    r"|\bclosed\s+(?:public\s+)?hearing", re.I)
+    r"|\bclosed\s+(?:public\s+)?hearing"
+    # And a close of a bill by its number: read in what the narrower rule
+    # gave back, "open and closing uh 695 ... we'll start actually with uh 768"
+    # (73sLapY1jRw 1:33:37) and "we'll open on 111 what's that oh have we
+    # officially closed 111" (V4ktDpuwgDM 1:35:01) name a bill to close it.
+    r"|\b(?:clos(?:e|es|ing)|closed)\s+(?:(?:uh|um|out|up|on)\s+)*"
+    r"(?:(?:house|senate)\s+bill\s+|hb\s*|sb\s*)?\d{2,4}\b", re.I)
 VERB_WORDS = {"open", "opened", "begin", "beginning", "the", "a", "to", "for", "up", "it",
               "going", "do", "is"}
 

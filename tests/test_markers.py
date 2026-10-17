@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.22
+# GRANITE_VERSION: 2026-09-05.23
 """
 The phrasings the marker patterns must match, and the ones they must not.
 
@@ -260,6 +260,10 @@ NOT_OPENINGS = [
      "had an opportunity to vote. House will attend to the state of the vote. With 188 "
      "voting in the affirmative and 166 voting in the negative, House Bill 1607 is laid "
      "on the", "HB1607", [], "EXjvgzYBkb8 4:32:39"),
+    # A close of a bill by its number cancels the opening it sits in.
+    ("So we'll open on 111 what's that oh have we officially closed 111 yeah i'm sorry i "
+     "was about to thank you though zen doily great okay sp 111 is closed 154 moving on",
+     "SB111", ["SB154"], "V4ktDpuwgDM 1:35:01"),
     # A weak phrase whose bill comes before it, with another bill between.
     ("HB 704 FNA and open the public hearing on 743 FN and recognize the prime sponsor",
      "HB704", ["HB743"], "f0HyxRD3fCA 1:15:12"),
