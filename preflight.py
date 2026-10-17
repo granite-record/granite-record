@@ -12709,6 +12709,124 @@ def _rail_reconsider_own_outcome(build_site_v2):
                   "its own ML; HB 278's note between reports quotes the whole line")
 
 
+@check("status", "the journey reads a bill's rows once, and its clause readers keep only what a "
+       "fresh reading gives, over every real docket row the checks hold",
+       needs=("narrative", "build_site_v2"))
+def _journey_clauses_kept(N, build_site_v2):
+    """journey reads a bill's rows once, and _j_act, _j_has_outcome and
+    _j_clauses (behind _j_segments) keep their answers by their argument (16
+    October 2026, private/SITE_DATA_PROFILE.md, P2): together a minute and a
+    half of the site data step. A memo is right only while what it keeps
+    depends on its argument alone, so this holds the kept answers to the
+    same readings done afresh (their __wrapped__) over every real docket row
+    the checks here hold (the _DOCKET_ fixtures, each bill told by
+    narrative.build): every line and clause read, and every bill's journey,
+    asked cold and again warm. A clause reader that came to read a term, a
+    bill or anything a caller sets would differ here before it differed on
+    a page. And _j_segments hands each caller a list of its own: one a
+    caller changes does not change the next caller's. Undone, the step is
+    slower and nothing else would say so."""
+    B = build_site_v2
+    kept = ("_j_act", "_j_has_outcome", "_j_clauses")
+    missing = [n for n in kept if not hasattr(getattr(B, n), "cache_info")]
+    assert not missing, (f"{', '.join(missing)} no longer keep what they read: the site data "
+                         "step reads the same clauses millions of times over")
+    # Every real docket row the checks hold, a bill at a time as each fixture
+    # gives them, told by narrative.build.
+    groups = []
+
+    def rows_in(v):
+        if isinstance(v, str):
+            if v.count("|") >= 6:
+                yield v
+        elif isinstance(v, dict):
+            for x in v.values():
+                yield from rows_in(x)
+        elif isinstance(v, (list, tuple)):
+            for x in v:
+                yield from rows_in(x)
+    for name, value in sorted(globals().items()):
+        if not name.startswith("_DOCKET_"):
+            continue
+        parts = value.values() if isinstance(value, dict) else [value]
+        for part in parts:
+            by = {}
+            for row in rows_in(part):
+                f = row.split("|")
+                by.setdefault((f[3], f[0]), []).append(row)
+            groups += [(name, bill, year, rows) for (bill, year), rows in by.items()]
+    told = []
+    for name, bill, year, rows in groups:
+        y = int(year) if year.isdigit() else 0
+        term = f"{y if y % 2 else y - 1}-{(y if y % 2 else y - 1) + 1}"
+        try:
+            told.append((bill, term, _narrated(N, term, bill, rows)))
+        except Exception:                                        # noqa: BLE001
+            continue
+    assert len(told) >= 100, (f"only {len(told)} of the {len(groups)} real dockets here were "
+                              "told: too few for this check to hold the clause readers to")
+    lines = sorted({B.docket_line(e) for _b, _t, rec in told
+                    for e in (rec or {}).get("events", [])} - {""})
+    clauses = sorted({c for line in lines for c in
+                      list(B._j_clauses.__wrapped__(line)) + [x.strip() for x in line.split(";")]})
+    clauses += [f"{a} {b}" for a, b in zip(clauses, clauses[1:])]
+
+    def read_all():
+        segs = {line: B._j_segments(line) for line in lines}
+        acts = {c: (B._j_act(c), B._j_has_outcome(c)) for c in clauses}
+        trips = {(i, bill, term): B.journey(rec, bill, [], "", "", term)
+                 for i, (bill, term, rec) in enumerate(told)}
+        return segs, acts, trips
+    real = {n: getattr(B, n) for n in kept}
+    try:
+        for n in kept:
+            setattr(B, n, real[n].__wrapped__)
+        fresh = read_all()
+    finally:
+        for n in kept:
+            setattr(B, n, real[n])
+    bad = []
+    for n in kept:
+        getattr(B, n).cache_clear()
+    for when in ("cold", "warm"):
+        got = read_all()
+        for what, a, b in zip(("clauses of a line", "a clause's act and outcome",
+                               "a journey"), got, fresh):
+            differ = [k for k in b if a.get(k) != b[k]]
+            if differ:
+                bad.append(f"{when}: {len(differ)} of {len(b)} differ from the fresh reading in "
+                           f"{what}, first {differ[0]!r}: {a.get(differ[0])!r}, "
+                           f"afresh {b[differ[0]]!r}"[:600])
+    hits = {n: getattr(B, n).cache_info().hits for n in kept}
+    if not all(hits.values()):
+        bad.append(f"a reader kept nothing that was asked again: {hits}")
+    for line in lines:
+        mine = B._j_segments(line)
+        mine.append("a clause the caller added")
+        mine[0] = "a clause the caller changed"
+        mine.reverse()
+        again = B._j_segments(line)
+        if again != fresh[0][line] or again is mine:
+            bad.append(f"a caller that changes _j_segments' list changes the next caller's: "
+                       f"{line!r} now reads {again!r}")
+            break
+    asked = []
+    rows = B._j_rows
+    B._j_rows = lambda evs: (asked.append(1), rows(evs))[1]
+    try:
+        for bill, term, rec in told:
+            B.journey(rec, bill, [], "", "", term)
+    finally:
+        B._j_rows = rows
+    if len(asked) != len(told):
+        bad.append(f"journey read the rows {len(asked)} times for {len(told)} bills, not once a "
+                   "bill")
+    assert not bad, "\n".join(bad[:6])
+    return "ok", (f"{len(told)} real dockets told: {len(lines)} lines, {len(clauses)} clauses and "
+                  f"{len(told)} journeys read cold and warm as they read afresh; a caller's "
+                  "change to its list stays its own; the rows read once a journey")
+
+
 # Real rows: Docket_db_1997-1998.txt lines 8360 and 8365-8383 (HB 723);
 # Docket_db_1989-1990.txt 17563-17584 (HB 1182).
 _DOCKET_NEW_CONFERENCE = {
