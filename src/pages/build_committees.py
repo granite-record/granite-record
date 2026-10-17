@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-07.60
+# GRANITE_VERSION: 2026-09-07.61
 """
 A page's worth of data for every committee.
 
@@ -1392,8 +1392,11 @@ def main():
     page_html = page_html.replace(
         '<div id="results"></div>',
         f'<div id="results"><div class="clist"><h1>Committees</h1>'
-        f'<p class="src">Bill-first search answers what happened to a bill. '
-        f'These answer what a committee did on a day.</p>'
+        # What the page holds, in a reader's words (the person, 16 October
+        # 2026). The line this replaced set committees against bill search
+        # ("These answer what a committee did on a day") and read as a riddle.
+        '<p class="src">Every committee of the House and the Senate: who sits '
+        'on it, what it does, and the bills and meetings on its record.</p>'
         + "".join(body) + "</div></div>", 1)
     (site / "committees.html").write_text(S.clean_links(page_html), encoding="utf-8")
     print("committees.html written")

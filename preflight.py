@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.590
+# GRANITE_VERSION: 2026-09-04.591
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -39033,9 +39033,13 @@ def _committees_archived(BC):
     src = _paths.locate("build_committees.py").read_text(encoding="utf-8")
     assert 'rec["archived"] = {"years": runs(c["span"])}' in src, \
         "archived committees' JSON no longer carries the years"
+    # The whole function, to the next one: a fixed 1,200 characters lost the
+    # note when a comment above it grew (16 October 2026).
     head = Path("src/pages/app.js").read_text(encoding="utf-8")
-    head = head[head.find("function renderCommitteeHead"):][:1200]
-    assert "c.archived" in head, "a committee's page no longer says it is not on the list today"
+    head = head[head.find("function renderCommitteeHead"):]
+    head = head[:head.find("\nfunction ", 1)]
+    assert "c.archived" in head and "A former committee." in head, (
+        "a committee's page no longer says it is a former committee")
     return "ok", "not listed and ended before this term; no record means no claim"
 
 
@@ -57440,12 +57444,138 @@ def _committee_notes_fill():
     head, sess = got
     assert re.search(r'<header class="rhead [^"]*\bcmtehead\b', head), (
         "a committee page's head does not say it is one, so app.css cannot widen its notes")
-    assert re.search(r'<p class="src fill rnote">Not on the General Court&rsquo;s list of committees', head), (
-        "a committee page's \"not on the list\" note is held to the measure")
+    assert re.search(r'<p class="src fill rnote">A former committee\.', head), (
+        "a committee page's \"former committee\" note is held to the measure")
     assert '<p class="src fill">No day of this committee is' in sess, (
         "a committee page's \"no day on record\" note is held to the measure")
     return "ok", ("the index's two section notes and a committee page's own fill the width "
                   "they have")
+
+
+@check("frontend", "the committees list says what it holds, and a former committee says it is "
+                   "one plainly", needs=("build_committees",))
+def _committee_explanations_plain(BCM):
+    """"The explanation at the top of the committee page is confusing to
+    readers, either remove it or replace it" (the person, 16 October 2026),
+    who took the replacement offered for it and for a former committee's own
+    note. The list opens with what it holds, where it set committees against
+    bill search ("These answer what a committee did on a day"); a former
+    committee's page says it is one, that it no longer meets -- the search's
+    own words for it -- and the years of its record, where it explained what
+    the records cannot say. Drawn from build_committees' source and from
+    app.js in node."""
+    import inspect
+    src = inspect.getsource(BCM)
+    assert ("<p class=\"src\">Every committee of the House and the Senate: who sits " in src
+            and "on it, what it does, and the bills and meetings on its record.</p>" in src), (
+        "the committees list does not open with what it holds")
+    assert "These answer what a committee did on a day.</p>" not in src, (
+        "the committees list still sets committees against bill search")
+    got = _app_js('[scope.renderCommitteeHead({name:"Old", chamber:"H",'
+                  ' archived:{years:"1999 to 2004"}}),'
+                  ' scope.renderCommitteeHead({name:"Old", chamber:"H", archived:{}}),'
+                  ' scope.renderCommitteeHead({name:"Sitting", chamber:"S"})]',
+                  names=("renderCommitteeHead",))
+    if got is None:
+        return "ok", "the list's opening line is plain; node is not here to draw a committee page"
+    ran, bare, sitting = got
+    assert ('<p class="src fill rnote">A former committee. It no longer meets; its bills and '
+            'meetings here run from 1999 to 2004.</p>') in ran, (
+        "a former committee's page does not say plainly that it is one, and the years of its record")
+    assert '<p class="src fill rnote">A former committee. It no longer meets.</p>' in bare, (
+        "a former committee with no years on record draws an empty \"run from\"")
+    assert not any("renamed, divided" in h for h in got), (
+        "a former committee's page still explains what the records cannot say")
+    assert "former committee" not in sitting, "a sitting committee is called a former one"
+    return "ok", ("the committees list opens with what it holds, and a former committee says "
+                  "it is one, that it no longer meets, and its years")
+
+
+_GRID_FIRST = {"1", "auto", "1/-1", "1/2", "1/auto", "span1", "1/span1"}
+
+
+def _grid_one_track(v):
+    """Whether a grid-template-columns value is one column: minmax(0,1fr) is,
+    7.5rem minmax(0,1fr) is not, and repeat(n, ...) is one only for n = 1."""
+    v = re.sub(r"repeat\(\s*1\s*,", "(", v)
+    if "repeat(" in v:
+        return False
+    depth, n, tok = 0, 0, False
+    for ch in v:
+        depth += (ch == "(") - (ch == ")")
+        if ch.isspace() and depth == 0:
+            tok = False
+        elif not tok:
+            n, tok = n + 1, True
+    return n == 1
+
+
+def _grid_column(body):
+    v = next((v for k, v in reversed(_css_decls(body))
+              if k in ("grid-column", "grid-column-start")), None)
+    return None if v is None else "".join(v.split())
+
+
+def _phone_grid_strays(css):
+    """[(grid, child, its column, the @media, line)] for every child of a grid
+    that a max-width @media makes one column, which a rule elsewhere puts in
+    a later column and nothing in that @media puts back in the first. Such a
+    child makes a second, implicit column that takes the width it wants; the
+    one column the @media meant shrinks to nothing, and its text runs under
+    the child's."""
+    rules = _css_rules(css)
+    out = []
+    for at, sel, body, _ in rules:
+        if not any(a.startswith("@media") and "max-width" in a for a in at):
+            continue
+        tpl = next((v for k, v in reversed(_css_decls(body)) if k == "grid-template-columns"), None)
+        if tpl is None or not _grid_one_track(tpl):
+            continue
+        for g in _css_selectors(sel):
+            for at2, sel2, body2, line2 in rules:
+                c = _grid_column(body2)
+                if at2 == at or c is None or c in _GRID_FIRST:
+                    continue
+                for s in _css_selectors(sel2):
+                    if not s.startswith(g + " "):
+                        continue
+                    back = [_grid_column(b3) for a3, s3, b3, _ in rules
+                            if a3 == at and s in _css_selectors(s3)]
+                    if not any(x in _GRID_FIRST for x in back if x):
+                        out.append((g, s, c, at[-1], line2))
+    return out
+
+
+@check("frontend", "a grid that drops to one column on a phone leaves none of its parts in a "
+                   "second column")
+def _phone_grid_one_column():
+    """"On mobile, the documents tab has overlapping text" (the person,
+    16 October 2026). A calendar's or a journal's row is a grid of the day
+    beside the citation and what happened; on a phone the @media made it one
+    column and moved the day above the citation, but the citation and the
+    plain words kept the wide layout's grid-column:2. That made a second
+    column which took the whole width, the day's column shrank to nothing,
+    and the date ran under the words. Read for every grid in the
+    stylesheets, not for that one: the same three lines in another rule
+    would draw the same overlap."""
+    broken = (".g .row{display:grid;grid-template-columns:7rem minmax(0,1fr)}"
+              ".g .row > a{grid-column:2}"
+              "@media (max-width:45em){.g .row{grid-template-columns:minmax(0,1fr)}}")
+    assert _phone_grid_strays(broken), "the check cannot see a child left in a second column"
+    assert not _phone_grid_strays(broken[:-1] + ".g .row > a{grid-column:1}}"), (
+        "the check flags a child that the @media puts back in the first column")
+    bad, grids = [], 0
+    for name in ("app.css", "map.css"):
+        css = Path("src/pages", name).read_text(encoding="utf-8")
+        bad += [f"{name}:{line} {child} keeps grid-column:{col} where {media} makes {grid} "
+                f"one column" for grid, child, col, media, line in _phone_grid_strays(css)]
+        grids += sum(1 for at, _, body, _ in _css_rules(css)
+                     if any(a.startswith("@media") and "max-width" in a for a in at)
+                     and any(k == "grid-template-columns" and _grid_one_track(v)
+                             for k, v in _css_decls(body)))
+    assert grids, "no grid is made one column on a phone, so this check reads nothing"
+    assert not bad, "a phone's one-column grid has a part in a second column: " + "; ".join(bad)
+    return "ok", f"{grids} grid rules made one column on a phone keep every part in it"
 
 
 @check("frontend", "a committee's Sessions tab counts the days it met, and a day still to "

@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.208
+// GRANITE_VERSION: 2026-09-07.209
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -7550,9 +7550,13 @@ function renderCommitteeHead(c){
   // "The House Special Committee on Housing", not "The House Committee on
   // Special Committee on Housing" (components.js's cmteTitle, 16 October 2026).
   const line=`The ${esc(cmteTitle(c.name||"",ch))}${chair?`, chaired by ${chair}`:""}.`;
-  const notes=[c.archived?`Not on the General Court&rsquo;s list of committees today.
-      Its bills and meetings on this record run ${esc(c.archived.years||"")}; the
-      records do not say whether it was renamed, divided, merged or ended.`:"",
+  // A FORMER COMMITTEE, SAID PLAINLY (the person, 16 October 2026). The note
+  // this replaced explained what the records cannot say -- renamed, divided,
+  // merged or ended -- and readers found it confusing. "No longer meets" is
+  // the search's own line for the same committees.
+  const ran=c.archived&&c.archived.years;
+  const notes=[c.archived?`A former committee. It no longer meets${ran
+      ?`; its bills and meetings here run from ${esc(ran)}`:""}.`:"",
     (c.names||[]).length?`Named ${c.names.map(n=>`<b>${esc(n.name)}</b> (${esc(n.years||"")})`)
       .join(" and ")} on this record&rsquo;s earlier bills and meetings, which the General
       Court&rsquo;s own records file under this committee.`:"",next].filter(Boolean);

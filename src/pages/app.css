@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.274 */
+/* GRANITE_VERSION: 2026-09-07.275 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -3014,10 +3014,16 @@ border-bottom:1px solid var(--rule);font-size:var(--t-ui)}
 .docs-cal .doc .docacts,.docs-jour .doc .docacts,.docs-other .doc .docacts{grid-column:2}
 .doc .docplain{display:block;color:var(--ink);font-size:var(--t-ui)}
 .doc .docraw{display:block;font:500 var(--t-sm)/1.45 var(--mono);color:var(--ink-2);margin:2px 0 var(--sp-2)}
+/* EVERY PART IN THE ONE COLUMN (16 October 2026, the person: "on mobile,
+   the documents tab has overlapping text"). The citation and the plain
+   words kept the wide layout's grid-column:2, which made a second column
+   that took the whole width; the day's column shrank to nothing and the
+   date ran under the words. Day, citation, then what happened. */
 @media (max-width:45em){
   .docs-cal .doc,.docs-jour .doc,.docs-other .doc{grid-template-columns:minmax(0,1fr)}
-  .docs-cal .doc > a,.docs-jour .doc > a,.docs-other .doc > a{grid-row:2}
+  .docs-cal .doc > a,.docs-jour .doc > a,.docs-other .doc > a{grid-column:1;grid-row:2}
   .docs-cal .doc .docof,.docs-jour .doc .docof,.docs-other .doc .docof{grid-column:1;grid-row:1}
+  .docs-cal .doc .docacts,.docs-jour .doc .docacts,.docs-other .doc .docacts{grid-column:1;grid-row:3}
 }
 .ramd{font-weight:400;font-size:var(--t-ui);color:var(--ink-2);background:var(--wash);
 border-radius:var(--r-in);padding:1px var(--sp-3);font-variant-numeric:tabular-nums}
