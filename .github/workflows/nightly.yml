@@ -284,13 +284,34 @@ jobs:
           python src/ops/cloud.py kit-down
           exit $LASTEXITCODE
 
+      # THE CAPTIONS INBOX (17 October 2026). YouTube refuses this machine with
+      # its bot check and answers the laptop, so the laptop asks for what the
+      # night's state says waits (livestreams.py --to-inbox, from Task
+      # Scheduler) and puts each caption file in the bucket's inbox. This
+      # brings every entry down, whatever its bytes, and writes nothing in the
+      # bucket; the livestream step judges each one itself. A failure here
+      # leaves the step without an inbox, which it says, and the night goes on.
+      - name: Bring the captions inbox down from R2
+        id: inboxdown
+        if: env.FETCH == 'true'
+        continue-on-error: true
+        env:
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+        run: |
+          python src/ops/cloud.py inbox-down
+          exit $LASTEXITCODE
+
       # YouTube, not the General Court. Before the build, which reads what it
       # adds; its --markers step runs inside build_all, after the step
       # --no-captions skips, and keeps what it reads in the kit's
       # candidate_segments.json and caption_spans.json, the night's files since
-      # 10 October 2026, behind the timestamp probe's guard. No laptop takes
-      # part: the evening job that captioned what this step could not was
-      # switched off on 8 October 2026. Exit 0 is success, including "nothing
+      # 10 October 2026, behind the timestamp probe's guard. The laptop takes
+      # part only through the inbox (above): --inbox takes a waiting
+      # recording's captions from it, and those are read under the same guard
+      # as captions this step fetched. Exit 0 is success, including "nothing
       # new" and "captions deferred": YouTube refusing this machine is
       # recorded and held (livestreams.py, A REFUSAL), never asked again in
       # the same run, and the recordings keep the schedule's approximate
@@ -317,7 +338,7 @@ jobs:
             Write-Output "src/ops/livestreams.py is not in this commit yet, so this step does nothing."
             exit 0
           }
-          python src/ops/livestreams.py --since-state
+          python src/ops/livestreams.py --since-state --inbox archive/captions-inbox
           $rc = $LASTEXITCODE
           if ($rc -eq 3) {
             Write-Output "livestreams.py exit 3: not set up. The night goes on, and fails at its end."
@@ -447,6 +468,24 @@ jobs:
           R2_BUCKET: ${{ secrets.R2_BUCKET }}
         run: |
           python src/ops/cloud.py state-up
+          exit $LASTEXITCODE
+
+      # The captions inbox is cleared of what the state just sent no longer
+      # waits for, read from the bucket's copy of that state, so a night whose
+      # state did not go back clears nothing (cloud.py, THE CAPTIONS INBOX).
+      # Never on a dry run, whose takings went into a state that stays here:
+      # the next real night must find the entries. cloud.py refuses on a dry
+      # night itself too.
+      - name: Clear what the night took from the captions inbox
+        if: always() && steps.inboxdown.outcome == 'success' && env.DRY_RUN == 'false'
+        continue-on-error: true
+        env:
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+        run: |
+          python src/ops/cloud.py inbox-clear
           exit $LASTEXITCODE
 
       # Never for a dry run (the note above the first step).

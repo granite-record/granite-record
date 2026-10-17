@@ -16272,7 +16272,8 @@ def _ls_ignored():
     """GitHub's machine refuses to deploy a tree with a changed tracked file,
     and livestreams.py writes these there every night."""
     names = ["videos_house_livestreams.csv", "videos_senate_livestreams.csv",
-             "archive/livestreams.json", "archive/livestreams.lock"]
+             "archive/livestreams.json", "archive/livestreams.lock",
+             "archive/captions-inbox/PFX.json"]
     r = _run(["git", "check-ignore", *names], capture_output=True, text=True)
     if r.returncode not in (0, 1):
         return "skip", "git check-ignore would not run"
@@ -16282,6 +16283,469 @@ def _ls_ignored():
     t = _run(["git", "ls-files", "--", *names], capture_output=True, text=True)
     assert not (t.stdout or "").strip(), "tracked: " + t.stdout.strip()
     return "ok", f"{len(names)} ignored and untracked"
+
+
+# ===================================================== code: the captions inbox ==
+#
+# THE CAPTIONS INBOX (17 October 2026). YouTube refuses GitHub's machine and
+# answers the laptop, so the laptop asks for what the night's state says
+# waits and puts each caption file in the bucket's inbox (livestreams.py
+# --to-inbox), and the night takes them (--since-state --inbox) and clears
+# what it no longer waits for (cloud.py inbox-down, inbox-clear). Each rule
+# of that design has a check here: the laptop adds inbox entries and writes
+# no state and no kit; the night takes only a waiting recording's captions,
+# and only a sound entry; a dry night consumes nothing. None of them asks
+# YouTube or R2: saved caption files and a folder standing in for the bucket.
+
+def _inbox_words():
+    return json.dumps(_json3(["I am opening the hearing on House Bill 1491"]))
+
+
+def _inbox_files(bucket):
+    """{path: bytes} of everything in a folder bucket, its .meta included."""
+    bucket = Path(bucket)
+    return {p.relative_to(bucket).as_posix(): p.read_bytes()
+            for p in bucket.rglob("*") if p.is_file()} if bucket.exists() else {}
+
+
+@check("livestreams", "the captions inbox, the laptop's side: it asks YouTube only for what the "
+       "night's state lists as waiting, adds only inbox entries, never writes state or kit, "
+       "and asks and sends nothing twice", needs=("livestreams", "cloud"))
+def _inbox_laptop(livestreams, cloud):
+    """The laptop is to write no state: the night is its one writer. So
+    --to-inbox reads the bucket's state/livestreams.json in memory and puts
+    caption files under inbox/captions/ through cloud.inbox_add, which adds
+    and never replaces. From a bucket folder holding the state, the kit
+    manifest and a kit file, and saved caption answers:
+
+      - a dry run says what it would ask for, and asks, sends and writes
+        nothing, not even archive/;
+      - the run asks YouTube for the one waiting recording without captions
+        on this disk, and none of the captioned, failed-out or unfinished
+        ones; sends that and the one whose captions are already here; and
+        every key it writes is under the inbox, every key that was there is
+        as it was, and no copy of the night's state appears on the laptop;
+      - each manifest names its file's size and sha256 truly;
+      - run again, it asks and sends nothing;
+      - inbox_add leaves an entry already there alone, and refuses a key
+        outside the inbox or a file that is not a caption file before
+        sending anything.
+    """
+    import contextlib
+    import hashlib
+    import io
+    L, CL = livestreams, cloud
+    root = Path(tempfile.mkdtemp(prefix="gr-inbox-"))
+    here = os.getcwd()
+    real_ask, real_folder = L.ask_track, CL.FolderBucket
+    saved = {k: os.environ.get(k) for k in ("GITHUB_ACTIONS", CL.NO_BUCKET)}
+    asked, writes = [], []
+
+    def ask(vid, track, work=L.WORK, source=None, timeout=300):
+        assert source, f"{vid}: an ask with no saved answers would have started yt-dlp"
+        asked.append(vid)
+        return real_ask(vid, track, work, source, timeout)
+
+    class Watched(real_folder):
+        def put_file(self, src, key, meta):
+            writes.append(key)
+            super().put_file(src, key, meta)
+
+        def put_bytes(self, key, data):
+            writes.append(key)
+            super().put_bytes(key, data)
+
+        def copy(self, src, dst):
+            writes.append(dst)
+            super().copy(src, dst)
+
+        def delete(self, key):
+            writes.append(f"delete {key}")
+            super().delete(key)
+
+    bucket, laptop = root / "bucket", root / "laptop"
+    now = "2026-10-17T23:30:00Z"
+
+    def run(*extra):
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            code = L.main(["--to-inbox", "--local-bucket", str(bucket), "--captions-from",
+                           "src", "--origin", "laptop", "--now", now, *extra])
+        return code, out.getvalue()
+
+    try:
+        os.environ.pop("GITHUB_ACTIONS", None)
+        os.environ[CL.NO_BUCKET] = "1"
+        L.ask_track, CL.FolderBucket = ask, Watched
+        fin = {"status": "finished", "chamber": "house", "title": "x",
+               "ended": "2026-10-16T18:00:00Z"}
+        state = {"version": 1, "channels": {}, "last_run": {}, "refusals": {}, "videos": {
+            "PFDEFER01": dict(fin, captions="deferred"),
+            "PFHERE01": dict(fin, captions="waiting"),
+            "PFREAD01": dict(fin, captions="captioned", by="runner", read="2026-10-16"),
+            "PFFAIL01": dict(fin, captions="failed", tries=L.MAX_TRIES),
+            "PFLIVE01": {"status": "live", "chamber": "house", "captions": "waiting"}}}
+        for rel, body in {"state/livestreams.json": json.dumps(state),
+                          "state/refused.json": "{}", "kit/x.json": "{}",
+                          "state/kit-manifest.json": json.dumps(
+                              {"files": {"x.json": {"size": 2}}})}.items():
+            (bucket / rel).parent.mkdir(parents=True, exist_ok=True)
+            (bucket / rel).write_text(body, encoding="utf-8")
+        words = _inbox_words()
+        for vid in ("PFDEFER01", "PFREAD01", "PFFAIL01", "PFLIVE01"):
+            (laptop / "src" / vid).mkdir(parents=True)
+            (laptop / "src" / vid / "captions.en.json3").write_text(words, encoding="utf-8")
+        (laptop / "work" / "PFHERE01").mkdir(parents=True)
+        (laptop / "work" / "PFHERE01" / "captions.en.json3").write_text(words, encoding="utf-8")
+        os.chdir(laptop)
+        before = _inbox_files(bucket)
+
+        code, said = run("--dry-run")
+        last = said.strip().splitlines()[-1]
+        assert code == 0 and "would ask YouTube for 1," in last, said[-500:]
+        assert not asked and not writes and _inbox_files(bucket) == before, (asked, writes)
+        assert not (laptop / "archive").exists(), "a dry run of --to-inbox wrote under archive/"
+
+        code, said = run()
+        last = said.strip().splitlines()[-1]
+        assert code == 0 and last.startswith("LIVESTREAMS TO-INBOX:") \
+            and "2 sent to the inbox" in last, said[-500:]
+        assert asked == ["PFDEFER01"], f"--to-inbox asked YouTube for {asked}"
+        after = _inbox_files(bucket)
+        changed = [k for k, v in before.items() if after.get(k) != v]
+        assert not changed, f"--to-inbox changed what the bucket held: {changed}"
+        added = sorted(set(after) - set(before))
+        assert added and all(k.startswith((CL.INBOX, ".meta/" + CL.INBOX)) for k in added) \
+            and all(w.startswith(CL.INBOX) for w in writes), \
+            f"--to-inbox wrote outside {CL.INBOX}: {added} {writes}"
+        assert not (laptop / "archive" / "livestreams.json").exists(), \
+            "--to-inbox wrote a copy of the night's state on the laptop"
+        entries = CL.inbox_listing(real_folder(bucket, create=False))
+        assert sorted(entries) == ["PFDEFER01", "PFHERE01"], entries
+        for vid, e in entries.items():
+            doc = json.loads((bucket / e["manifest"]).read_text(encoding="utf-8"))
+            body = (bucket / doc["key"]).read_bytes()
+            assert doc["video"] == vid and doc["file"] == "captions.en.json3" \
+                and doc["size"] == len(body) \
+                and doc["sha256"] == hashlib.sha256(body).hexdigest(), doc
+
+        del asked[:], writes[:]
+        code, said = run()
+        assert code == 0 and not asked and not writes \
+            and "0 sent to the inbox" in said.strip().splitlines()[-1], (asked, writes, said[-300:])
+
+        b = real_folder(bucket, create=False)
+        held = (bucket / "inbox/captions/PFDEFER01.json").read_bytes()
+        assert CL.inbox_add(b, "PFDEFER01", laptop / "work/PFHERE01/captions.en.json3",
+                            {}) is None, "inbox_add wrote over an entry already there"
+        assert (bucket / "inbox/captions/PFDEFER01.json").read_bytes() == held
+        snap = _inbox_files(bucket)
+        for vid, name in (("../../state/livestreams", "captions.en.json3"),
+                          ("PFX", "livestreams.json")):
+            src = root / name
+            src.write_text(words, encoding="utf-8")
+            try:
+                CL.inbox_add(b, vid, src, {})
+                raise AssertionError(f"inbox_add took {vid}/{name}, outside the inbox's shape")
+            except CL.Failed:
+                pass
+        assert _inbox_files(bucket) == snap, "a refused inbox_add still wrote something"
+        return "ok", ("a dry run asks, sends and writes nothing; the run asks for the one waiting "
+                      "recording it lacks, sends it and the one already here, writes only under "
+                      "inbox/captions/ with true sizes and sha256s and no state; again, nothing; "
+                      "an entry already there and a key outside the inbox are refused")
+    finally:
+        L.ask_track, CL.FolderBucket = real_ask, real_folder
+        for k, v in saved.items():
+            os.environ.pop(k, None) if v is None else os.environ.__setitem__(k, v)
+        os.chdir(here)
+        shutil.rmtree(root, ignore_errors=True)
+
+
+@check("livestreams", "the captions inbox, the night's side: only a waiting recording's captions "
+       "are taken, a corrupt or mismatched entry is refused, and what is taken is read and "
+       "judged as the night's own", needs=("livestreams",))
+def _inbox_night(livestreams):
+    """The night stays the one writer of the state, and the inbox is only
+    ever a source of caption files. From an inbox laid out as inbox-down
+    lays it, on a night whose own asks of YouTube are held by its refusal:
+
+      - the waiting recording with a sound entry is captioned "by inbox",
+        its file in work/ byte for byte;
+      - an entry a byte longer than its manifest, one whose sha256 is not
+        its manifest's, one with no words, one naming a file outside its
+        folder, and one whose manifest names another recording are each
+        refused: the recording waits, the state names the entry (the sha256
+        of its manifest), and nothing of it reaches work/;
+      - a recording already captioned, one failed out, and one the state
+        never listed are not taken, and their state is as it was;
+      - --markers reads the taken recording and the guard judges it, as it
+        does a recording this step fetched;
+      - a night that finds the reading lost takes the entry again, its try
+        counted; a New term run takes nothing; and a night whose inbox did
+        not come down says so on its last line;
+      - inbox_spent keeps an entry taken and not yet read, and spends a
+        refused one, a read one and one for a recording the state dropped.
+    """
+    import contextlib
+    import hashlib
+    import io
+    L = livestreams
+    root = Path(tempfile.mkdtemp(prefix="gr-inbox-night-"))
+    here = os.getcwd()
+    saved = {k: os.environ.get(k) for k in ("YOUTUBE_API_KEY", "GITHUB_ACTIONS", L.NEW_TERM_ENV)}
+    real = (L.read_markers, L.summarize, L.guard)
+    t0 = "2026-10-18T08:30:00Z"
+
+    def night(*argv, at=t0):
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            code = L.main(list(argv) + ["--origin", "runner", "--now", at])
+        return code, out.getvalue()
+
+    def since(inbox="inbox", at=t0):
+        return night("--since-state", "--inbox", inbox, "--replay", "api",
+                     "--captions-from", "nosrc", at=at)
+
+    try:
+        for k in saved:
+            os.environ.pop(k, None)
+        os.chdir(root)
+        fin = {"status": "finished", "chamber": "house", "title": "x",
+               "ended": "2026-10-16T18:00:00Z", "captions": "deferred"}
+        refused = ["PFSIZE01", "PFSHA01", "PFWORD01", "PFPATH01", "PFNAME01"]
+        state = {"version": 1, "last_run": {"at": "2026-10-17T08:30:00Z"},
+                 "channels": {c: {"uploads": "UU" + c} for c in ("house", "senate")},
+                 "refusals": {"runner": {"at": "2026-10-17T08:40:00Z", "count": 1,
+                                         "why": "Sign in to confirm you're not a bot",
+                                         "until": 4102444800, "until_iso": "2100-01-01T00:00:00Z"}},
+                 "videos": {vid: dict(fin) for vid in ["PFTAKE01"] + refused}}
+        state["videos"]["PFREAD01"] = dict(fin, captions="captioned", by="runner", read="2026-10-16")
+        state["videos"]["PFFAIL01"] = dict(fin, captions="failed", tries=L.MAX_TRIES)
+        (root / "archive").mkdir()
+        (root / "archive" / "livestreams.json").write_text(json.dumps(state), encoding="utf-8")
+        api = root / "api"
+        api.mkdir()
+        idx = {}
+        for c in ("house", "senate"):
+            (api / f"pl-{c}.json").write_text('{"items": []}', encoding="utf-8")
+            idx[L.canonical("playlistItems", {"part": "contentDetails,snippet",
+                                              "playlistId": "UU" + c, "maxResults": 50})] = f"pl-{c}.json"
+        (api / "index.json").write_text(json.dumps(idx), encoding="utf-8")
+        (root / "nosrc").mkdir()
+        inbox = root / "inbox"
+        good = _inbox_words().encode("utf-8")
+        manifests = {}
+
+        def entry(vid, body, **over):
+            (inbox / vid).mkdir(parents=True, exist_ok=True)
+            (inbox / vid / "captions.en.json3").write_bytes(body)
+            doc = {"video": vid, "file": "captions.en.json3", "size": len(body),
+                   "sha256": hashlib.sha256(body).hexdigest(), "fetched": "2026-10-17T23:30:00Z",
+                   "key": f"inbox/captions/{vid}/x/captions.en.json3"}
+            doc.update(over)
+            raw = json.dumps(doc).encode("utf-8")
+            (inbox / f"{vid}.json").write_bytes(raw)
+            manifests[vid] = hashlib.sha256(raw).hexdigest()
+
+        entry("PFTAKE01", good)
+        entry("PFSIZE01", good, size=len(good) + 1)
+        entry("PFSHA01", good.replace(b"1491", b"1492"), sha256=hashlib.sha256(good).hexdigest())
+        entry("PFWORD01", b'{"wireMagic": "pb3", "events": []}')
+        entry("PFPATH01", good, file="../../archive/livestreams.json")
+        entry("PFNAME01", good, video="PFTAKE01")
+        for vid in ("PFREAD01", "PFFAIL01", "PFNONE01"):
+            entry(vid, good)
+
+        code, said = since()
+        st = json.loads((root / "archive" / "livestreams.json").read_text(encoding="utf-8"))
+        v = st["videos"]["PFTAKE01"]
+        assert code == 0 and v.get("captions") == "captioned" and v.get("by") == "inbox" \
+            and v.get("inbox") == manifests["PFTAKE01"], (code, v, said[-500:])
+        assert (root / "work" / "PFTAKE01" / "captions.en.json3").read_bytes() == good
+        for vid in refused:
+            v = st["videos"][vid]
+            assert v.get("captions") in L.WAITING and \
+                (v.get("inbox_refused") or {}).get("entry") == manifests[vid], (vid, v)
+            assert not (root / "work" / vid).exists(), f"{vid}'s refused captions reached work/"
+        assert st["videos"]["PFREAD01"] == state["videos"]["PFREAD01"], st["videos"]["PFREAD01"]
+        assert st["videos"]["PFFAIL01"].get("captions") != "captioned" \
+            and "PFNONE01" not in st["videos"], st["videos"]
+        assert not any((root / "work" / vid).exists() for vid in ("PFREAD01", "PFFAIL01", "PFNONE01"))
+        caps = st["last_run"]["captions"]
+        assert caps.get("captioned") == 1 and caps.get("from the inbox") == 1 \
+            and caps.get("refused from the inbox") == len(refused), caps
+        assert "from the captions inbox:" in said.strip().splitlines()[-1], said[-300:]
+
+        assert L.inbox_spent(st["videos"]["PFTAKE01"], manifests["PFTAKE01"]) == ""
+        assert L.inbox_spent(st["videos"]["PFSIZE01"], manifests["PFSIZE01"])
+        assert L.inbox_spent(st["videos"]["PFSIZE01"], "another entry") == ""
+        assert L.inbox_spent(st["videos"]["PFREAD01"], manifests["PFREAD01"])
+        assert L.inbox_spent(None, manifests["PFNONE01"])
+        assert L.inbox_spent(dict(st["videos"]["PFTAKE01"], read="2026-10-18"), None)
+
+        seen = {}
+
+        def read(vids):
+            seen["read"] = list(vids)
+            return 0
+
+        def judged(copies, tonight):
+            seen["judged"] = sorted(tonight)
+            return "", None
+        L.read_markers, L.summarize, L.guard = read, (lambda vids, work=L.WORK: 0), judged
+        code, said = night("--markers")
+        assert code == 0 and "PFTAKE01" in seen.get("read", []) \
+            and "PFTAKE01" in seen.get("judged", []), (seen, said[-300:])
+        L.read_markers, L.summarize, L.guard = real
+
+        (root / "candidate_segments.json").write_text("{}", encoding="utf-8")
+        shutil.rmtree(root / "work" / "PFTAKE01")
+        code, said = since(at="2026-10-19T08:30:00Z")
+        v = json.loads((root / "archive" / "livestreams.json").read_text(
+            encoding="utf-8"))["videos"]["PFTAKE01"]
+        assert code == 0 and v.get("captions") == "captioned" and v.get("by") == "inbox" \
+            and v.get("tries") == 1 and (root / "work" / "PFTAKE01").is_dir(), (v, said[-400:])
+
+        st = json.loads((root / "archive" / "livestreams.json").read_text(encoding="utf-8"))
+        st["videos"]["PFTAKE01"] = dict(fin)
+        (root / "archive" / "livestreams.json").write_text(json.dumps(st), encoding="utf-8")
+        shutil.rmtree(root / "work" / "PFTAKE01")
+        os.environ[L.NEW_TERM_ENV] = "true"
+        code, said = since(at="2026-10-20T08:30:00Z")
+        os.environ.pop(L.NEW_TERM_ENV, None)
+        v = json.loads((root / "archive" / "livestreams.json").read_text(
+            encoding="utf-8"))["videos"]["PFTAKE01"]
+        assert v.get("captions") != "captioned" and not (root / "work" / "PFTAKE01").exists(), \
+            f"a New term run took from the inbox: {v}"
+        code, said = since(inbox="not-here", at="2026-10-21T08:30:00Z")
+        assert code == 0 and "the captions inbox did not come down" in \
+            said.strip().splitlines()[-1], said[-300:]
+        return "ok", (f"one waiting recording taken and read under the guard, {len(refused)} "
+                      "unsound entries refused and named, three not waiting left alone; a lost "
+                      "reading taken again, a New term run taking nothing, a missing inbox said")
+    finally:
+        L.read_markers, L.summarize, L.guard = real
+        for k, v in saved.items():
+            os.environ.pop(k, None) if v is None else os.environ.__setitem__(k, v)
+        os.chdir(here)
+        shutil.rmtree(root, ignore_errors=True)
+
+
+@check("cloud", "the captions inbox in the bucket: inbox-down writes nothing there, and "
+       "inbox-clear removes only what the night's sent state no longer waits for, keeps a copy, "
+       "and clears nothing on a dry night", needs=("cloud", "livestreams"))
+def _inbox_bucket(CL, livestreams):
+    """inbox-down brings every entry down, whatever its bytes, against a
+    bucket that refuses every write; the corrupt one is named, and the night
+    refuses it. inbox-clear clears nothing on a dry night -- by its flag, by
+    the workflow's DRY_RUN, or as any run off main -- nor under --dry-run,
+    nor with no state in the bucket. On a real night it removes the entries
+    the bucket's state no longer waits for (read, refused, dropped), each
+    copied to replaced/ first, and keeps what still waits, what was taken
+    and not yet read, and a loose file a laptop has not finished sending."""
+    import hashlib
+    L = livestreams
+    tmp = Path(tempfile.mkdtemp(prefix="gr-inbox-bucket-"))
+    names = ("GITHUB_ACTIONS", CL.DRY_ENV, CL.REF_ENV, CL.NO_BUCKET)
+    saved = {k: os.environ.get(k) for k in names}
+    real_open = CL.open_bucket
+    bucket, night = tmp / "bucket", tmp / "night"
+    try:
+        for k in names:
+            os.environ.pop(k, None)
+        os.environ[CL.NO_BUCKET] = "1"
+        night.mkdir()
+        b = CL.FolderBucket(bucket)
+        src = tmp / "captions.en.json3"
+        src.write_text(_inbox_words(), encoding="utf-8")
+        vids = ("PFWAIT01", "PFTOOK01", "PFREAD01", "PFREFU01", "PFGONE01", "PFBAD01")
+        for vid in vids:
+            assert CL.inbox_add(b, vid, src, {"fetched": "2026-10-17T23:30:00Z"})
+        bad = json.loads(b.get_bytes(f"{CL.INBOX}PFBAD01.json"))["key"]
+        b.put_bytes(bad, b"not the file sent")
+        b.put_bytes(f"{CL.INBOX}PFLOOSE1/{'0' * 64}/captions.en.json3", src.read_bytes())
+        fin = {"status": "finished", "captions": "deferred"}
+        state = {"videos": {
+            "PFWAIT01": fin, "PFBAD01": fin, "PFLOOSE1": fin,
+            "PFTOOK01": dict(fin, captions="captioned", by="inbox"),
+            "PFREAD01": dict(fin, captions="captioned", by="inbox", read="2026-10-18"),
+            "PFREFU01": dict(fin, inbox_refused={"entry": hashlib.sha256(
+                b.get_bytes(f"{CL.INBOX}PFREFU01.json")).hexdigest(), "why": "x"})}}
+        b.put_bytes(CL.INBOX_STATE, json.dumps(state).encode("utf-8"))
+        before = _inbox_files(bucket)
+
+        class ReadOnly(CL.FolderBucket):
+            def _no(self, key):
+                raise AssertionError(f"inbox-down tried to write {key} in the bucket")
+
+            def put_file(self, src, key, meta):
+                self._no(key)
+
+            def put_bytes(self, key, data):
+                self._no(key)
+
+            def copy(self, src, dst):
+                self._no(dst)
+
+            def delete(self, key):
+                self._no(key)
+
+        CL.open_bucket = lambda a, preview=False: ReadOnly(a.local_bucket, create=False)
+        code, said = _cloud_call(CL, "inbox-down", "--root", str(night),
+                                 "--local-bucket", str(bucket))
+        CL.open_bucket = real_open
+        down = night / CL.INBOX_LOCAL
+        assert code == 0 and sorted(p.stem for p in down.glob("*.json")) == sorted(vids), said
+        assert (down / "PFBAD01" / "captions.en.json3").read_bytes() == b"not the file sent" \
+            and "PFBAD01" in said and not (down / "PFLOOSE1").exists(), said
+        assert L.inbox_problem("PFBAD01", (down / "PFBAD01.json").read_bytes(), down)
+        assert not L.inbox_problem("PFWAIT01", (down / "PFWAIT01.json").read_bytes(), down)
+        assert _inbox_files(bucket) == before
+
+        for argv, env in ((["--dry-night"], {}), (["--dry-run"], {}),
+                          ([], {"GITHUB_ACTIONS": "true", CL.DRY_ENV: "true",
+                                CL.REF_ENV: CL.MAIN_REF}),
+                          ([], {"GITHUB_ACTIONS": "true", CL.DRY_ENV: "false",
+                                CL.REF_ENV: "refs/heads/dev"})):
+            os.environ.update(env)
+            code, said = _cloud_call(CL, "inbox-clear", *argv, "--root", str(night),
+                                     "--local-bucket", str(bucket))
+            for k in env:
+                os.environ.pop(k, None)
+            assert code == 0 and _inbox_files(bucket) == before, \
+                f"inbox-clear {argv} {env} cleared something: {said}"
+
+        code, said = _cloud_call(CL, "inbox-clear", "--root", str(night),
+                                 "--local-bucket", str(bucket))
+        after = _inbox_files(bucket)
+        left = CL.inbox_listing(CL.FolderBucket(bucket, create=False))
+        assert code == 0 and sorted(left) == ["PFBAD01", "PFLOOSE1", "PFTOOK01", "PFWAIT01"], \
+            (sorted(left), said)
+        gone = [k for k in before if k.startswith(CL.INBOX) and k not in after]
+        assert gone and all(k.split("/")[2].split(".")[0] in ("PFREAD01", "PFREFU01", "PFGONE01")
+                            for k in gone), gone
+        from datetime import datetime
+        day = f"{datetime.now():%Y-%m-%d}"
+        assert all(after.get(f"replaced/{day}/{k}") == before[k] for k in gone), \
+            "inbox-clear removed an entry without keeping a copy under replaced/"
+        assert all(after.get(k) == v for k, v in before.items()
+                   if not k.startswith((CL.INBOX, ".meta/"))), "inbox-clear touched the rest"
+
+        b.delete(CL.INBOX_STATE)
+        snap = _inbox_files(bucket)
+        code, said = _cloud_call(CL, "inbox-clear", "--root", str(night),
+                                 "--local-bucket", str(bucket))
+        assert code == 0 and _inbox_files(bucket) == snap, said
+        return "ok", ("inbox-down writes nothing in the bucket and names the corrupt entry, which "
+                      "the night refuses; a dry night, a run off main, --dry-run and a bucket "
+                      "with no state clear nothing; a real night clears the read, refused and "
+                      "dropped entries, to replaced/ first, and keeps the rest")
+    finally:
+        CL.open_bucket = real_open
+        for k, v in saved.items():
+            os.environ.pop(k, None) if v is None else os.environ.__setitem__(k, v)
+        shutil.rmtree(tmp, ignore_errors=True)
 
 
 # ============================================================ code: front end ==
@@ -75094,6 +75558,53 @@ def _livestream_step_limits(name, job, step, body):
             f"the workflow pins {ejs.group(1)}")
     return (f"its own limit {limit} min for a longest run of {need:g}, inside the night window "
             f"and the job; {L.SOLVER} {ejs.group(1)}")
+
+
+@check("workflows", "the captions inbox comes down before the livestream step, is taken from "
+       "where it came down, and is cleared only after the night's last state-up and never on "
+       "a dry run", needs=("cloud",))
+def _workflows_captions_inbox(CL):
+    """THE CAPTIONS INBOX (17 October 2026) in nightly.yml's night job, in
+    order: cloud.py inbox-down on a fetching night, before the livestream
+    step; that step's --inbox naming the folder inbox-down fills
+    (cloud.INBOX_LOCAL); and inbox-clear after the last state-up, since it
+    reads the state the bucket holds, with a condition that is false on a
+    dry run -- cloud.py refuses a dry night itself as well, but a step that
+    ran there would be a step that could. No other job, and no other
+    workflow, clears the inbox."""
+    files = _workflows()
+    wf = WORKFLOW_DIR / "nightly.yml"
+    if not files or not wf.exists():
+        return "skip", "no .github/workflows/nightly.yml here"
+    elsewhere = [f"{f.name}:{j}" for f in files
+                 for j, jl in _wf_jobs(f.read_text(encoding="utf-8")).items()
+                 if (f.name, j) != ("nightly.yml", "night")
+                 and any("cloud.py inbox-" in ln for ln in _wf_code(jl))]
+    assert not elsewhere, f"the captions inbox is brought down or cleared in {elsewhere}"
+    night = _wf_jobs(wf.read_text(encoding="utf-8")).get("night") or []
+    steps = ["\n".join(s) for s in _wf_steps(_wf_code(night))]
+
+    def at(pat):
+        return [k for k, s in enumerate(steps) if re.search(pat, s)]
+    down, ls = at(r"python src/ops/cloud\.py inbox-down"), \
+        at(r"python src/ops/livestreams\.py --since-state")
+    ups, clear = at(r"python src/ops/cloud\.py state-up"), at(r"python src/ops/cloud\.py inbox-clear")
+    assert len(down) == 1 and len(ls) == 1 and len(clear) == 1 and ups, \
+        f"nightly.yml's night: inbox-down at {down}, the livestream step at {ls}, inbox-clear " \
+        f"at {clear}, state-up at {ups}; one of each is wanted"
+    assert down[0] < ls[0], "nightly.yml brings the captions inbox down after the livestream step"
+    assert re.search(r"^        if: env\.FETCH == 'true'\s*$", steps[down[0]], re.M), \
+        "nightly.yml's inbox-down step does not run on a fetching night only, as the livestreams do"
+    assert re.search(r"--since-state --inbox " + re.escape(CL.INBOX_LOCAL) + r"\s*$",
+                     steps[ls[0]], re.M), \
+        f"nightly.yml's livestream step does not take the inbox from {CL.INBOX_LOCAL}"
+    assert clear[0] > max(ups), \
+        "nightly.yml clears the captions inbox before the night's state has gone back"
+    cond = re.search(r"^        if:\s*(.+)$", steps[clear[0]], re.M)
+    assert cond and "env.DRY_RUN == 'false'" in cond.group(1), \
+        "nightly.yml's inbox-clear step can run on a dry run"
+    return "ok", (f"inbox-down before the livestream step, --inbox {CL.INBOX_LOCAL}, inbox-clear "
+                  "after the last state-up and only when DRY_RUN is false; nowhere else")
 
 
 @check("workflows", "the built site reaches the publish job through the private bucket, never as "
