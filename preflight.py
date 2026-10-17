@@ -30180,8 +30180,13 @@ def _guides_reach():
     home = (site / "index.html").read_text(encoding="utf-8")
     assert home.count("<!-- guides -->") == 1 and home.count("<!-- /guides -->") == 1, \
         "the home page's guides slot is missing or doubled"
+    # The three Learn pages that became guides (civics.HOW_TO, 17 October
+    # 2026) share the folder and are held by _how_to_moved, below: they are
+    # explanations, with no HowTo steps and no date of checking.
+    import civics as _civ
     pages = sorted(p for p in (site / "guides").glob("*.html")
-                   if 'class="g-draft"' not in p.read_text(encoding="utf-8"))
+                   if 'class="g-draft"' not in p.read_text(encoding="utf-8")
+                   and p.stem not in _civ.HOW_TO)
     find = json.loads((site / "find.json").read_text(encoding="utf-8"))
     sm = (site / "sitemap.xml").read_text(encoding="utf-8")
     by_slug = {g["slug"]: g for g in G.GUIDES}
@@ -30206,6 +30211,134 @@ def _guides_reach():
     return "ok", (f"{len(pages)} published guide{'s' if len(pages) != 1 else ''} on the home page, "
                   "in the search and dated in the sitemap, each with HowTo data"
                   if pages else "no guide published on the fixture; the home page's slot is empty")
+
+
+@check("build", "the how-to guides are listed by task: every guide and every Learn page that became one "
+       "is under one task, the hub opens on How-To Guides, and no page links a moved page's old address",
+       needs=("guides", "civics", "build_civics", "build_pages"))
+def _how_to_tasks(G, civics, BC, BP):
+    """The person, 17 October 2026: "refine how the how to guides are
+    displayed on the main resources page and the homepage so it's more
+    intuitive for the general public"; "Certain pages currently on learn can
+    move to how to like using this site, finding your representatives, how to
+    testify or attend meetings"; "How to guides should be the default tab when
+    opening the resources page". guides.TASKS is the tab's list; civics.HOW_TO
+    the pages that moved; build_pages.MOVED their 301s. Here, from the code:
+    each guide and moved page under exactly one task, each task naming one of
+    them, no moved slug a guide's too, the tab order, the redirects, and no
+    builder or guide still writing a link to a moved page's /learn/ address."""
+    slugs = [t["slug"] for _g, ts in G.TASKS for t in ts]
+    want = [g["slug"] for g in G.GUIDES] + list(civics.HOW_TO)
+    twice = sorted({s for s in slugs if slugs.count(s) > 1})
+    assert not twice, f"a guide is under two tasks: {twice}"
+    assert not set(want) - set(slugs), f"no task lists {sorted(set(want) - set(slugs))}"
+    assert not set(slugs) - set(want), f"a task names no guide: {sorted(set(slugs) - set(want))}"
+    assert not set(civics.HOW_TO) & {g["slug"] for g in G.GUIDES}, \
+        "a page that moved to /guides/ has the slug of a guide"
+    for _g, ts in G.TASKS:
+        for t in ts:
+            assert t["does"] and t["line"] and "How to" not in t["does"], \
+                f"{t['slug']}: a task is named by the guide's title, not in a reader's words: {t['does']!r}"
+    assert {s for s, _w in G.HOME} <= set(want), "the home page's row names a guide that does not exist"
+    assert BC.HUB_TABS[0][0] == "guides", "the Resources hub no longer opens on How-To Guides"
+    red = BP.REDIRECTS
+    for s in civics.HOW_TO:
+        for x in ("", ".html"):
+            assert f"\n/learn/{s}{x} /guides/{s} 301\n" in red, f"/learn/{s}{x} does not 301 to /guides/{s}"
+    assert BC.article_href(civics.HOW_TO[0]).startswith("guides/") and \
+        BC.article_href("general-court").startswith("learn/"), "article_href puts a page in the wrong folder"
+    stale = []
+    for f in ("src/pages/civics.py", "src/pages/guides.py", "src/pages/build_civics.py",
+              "src/pages/build_pages.py", "src/pages/legislative_year.py"):
+        text = Path(f).read_text(encoding="utf-8")
+        stale += [f"{f}: learn/{s}" for s in civics.HOW_TO
+                  if re.search(rf'href="/?learn/{re.escape(s)}\b|"/learn/{re.escape(s)}\.html', text)]
+    assert not stale, "a link to a moved page's old address: " + "; ".join(stale)
+    return "ok", (f"{len(slugs)} guides under {len(G.TASKS)} tasks, {len(civics.HOW_TO)} of them moved from "
+                  "Learn and redirected; the hub opens on How-To Guides")
+
+
+@check("frontend", "the Resources hub opens on How-To Guides grouped by task; the three moved pages are "
+       "at /guides/ with How-To marked; Learn walks only its own pages and links the guides; other "
+       "ways to follow legislation are listed official first, then independent sites alphabetically")
+def _how_to_moved():
+    """Read off the fixture's built site (17 October 2026): the hub's first
+    tab and panel are the guides, under guides.TASKS' groups, the moved pages
+    among them; each moved page is at /guides/<slug>, its /learn/ copy gone,
+    its bar marking How-To Guides and its foot leading back to every guide;
+    Learn's pages walk Learn's own order and name the guides that do what
+    they explain; and the Official Sources tab ends with the other ways to
+    follow legislation, the General Court's own site first, the independent
+    ones in alphabetical order, with no image and no General Court page that
+    guides.GENERAL_COURT_LINKS does not hold."""
+    absent = [x for x in CHAIN_NEEDS if not _paths.locate(x).exists()]
+    if absent:
+        return "skip", "not here: " + ", ".join(absent)
+    import civics as _civ
+    import guides as G
+    import build_civics as BC
+    shared, _base, _ran, _days = _fixture_site_shared()
+    site = shared / "site"
+    hub = (site / "resources.html").read_text(encoding="utf-8")
+    tabs = re.findall(r'<button type="button" role="tab" id="tab-(\w+)"[^>]*aria-selected="(\w+)"', hub)
+    assert tabs and tabs[0] == ("guides", "true"), f"the hub does not open on How-To Guides: {tabs}"
+    panes = re.findall(r'<div class="twnpane r-sheet" id="(\w+)"', hub)
+    assert panes[0] == "guides", f"the How-To Guides panel is not first: {panes}"
+    at = hub.index('<div class="twnpane r-sheet" id="guides"')
+    guides_pane = hub[at:hub.index('<div class="twnpane r-sheet"', at + 1)]
+    at = hub.index('<div class="twnpane r-sheet" id="learn"')
+    learn_pane = hub[at:hub.index('<div class="twnpane r-sheet"', at + 1)]
+
+    def links_to(html_, slug):
+        """Whether the markup links /guides/<slug>, as written or as served
+        (shell.clean_links takes the .html off)."""
+        return re.search(rf'href="/?guides/{re.escape(slug)}(?:\.html)?(?:#[^"]*)?"', html_) is not None
+    for s in _civ.HOW_TO:
+        page = site / "guides" / f"{s}.html"
+        assert page.is_file() and not (site / "learn" / f"{s}.html").exists(), \
+            f"{s} is not at /guides/, or a copy is left at /learn/"
+        t = page.read_text(encoding="utf-8")
+        assert re.search(r'class="l-hubtab" href="[^"]*#guides" aria-current="true"', t), \
+            f"guides/{s} does not mark How-To Guides on its bar"
+        assert "All How-To Guides" in t and "Previous Topic" not in t and "Next Topic" not in t, \
+            f"guides/{s} still walks Learn's order"
+        assert links_to(guides_pane, s), f"the How-To Guides tab does not list {s}"
+        assert f'learn/{s}' not in learn_pane, f"the Learn tab still links {s} at its old address"
+    for group, _ts in G.TASKS:
+        if any(links_to(guides_pane, t["slug"]) for t in _ts):
+            assert f">{group}</h3>" in guides_pane, f"the How-To tab does not head the group {group!r}"
+    assert 'class="r-tasks"' in guides_pane and "How to " not in re.sub(r"<[^>]+>", " ", guides_pane), \
+        "the How-To tab lists guides by their titles rather than by task"
+    learn = BC.learn_topics(_civ.TOPICS)
+    for p in sorted((site / "learn").glob("*.html")):
+        t = p.read_text(encoding="utf-8")
+        for s in _civ.HOW_TO:
+            assert f'href="learn/{s}' not in t and f'href="/learn/{s}' not in t, \
+                f"learn/{p.name} links {s} at its old address"
+    gc = (site / "learn" / "general-court.html").read_text(encoding="utf-8")
+    word = BC.NUMBER_WORD.get(len(learn), str(len(learn)))
+    assert f"The {word} Pages" in gc, f"Learn's list at the foot is not of its {len(learn)} pages"
+    assert 'id="how-to-guides"' in gc and links_to(gc, "your-representatives"), \
+        "a Learn page does not name the guides that do what it explains"
+    # Other ways to follow legislation, at the foot of Official Sources.
+    at = hub.index('<div class="twnpane r-sheet" id="sources"')
+    src = hub[at:]
+    assert BC.FOLLOW_HEADING in src, "the Official Sources tab has no section on other ways to follow"
+    sec = src[src.index(BC.FOLLOW_HEADING):]
+    sec = sec[:sec.index("</section>")]
+    names = re.findall(r'<li><a href="([^"]+)" target="_blank" rel="noopener">([^<]+)</a>', sec)
+    want = [(u, n) for n, u, _l in _civ.FOLLOW_OFFICIAL + _civ.FOLLOW_INDEPENDENT]
+    assert [(u, n) for u, n in names[:len(want)]] == want, f"the sites are not listed as civics.py lists them: {names}"
+    indep = [n for n, _u, _l in _civ.FOLLOW_INDEPENDENT]
+    assert indep == sorted(indep, key=str.casefold), "the independent sites are ranked, not alphabetical"
+    assert "<img" not in sec, "a tracker is shown with a logo"
+    court = set(re.findall(r'href="(https?://(?:[^/"]*\.)?gc\.nh\.gov[^"]*)"', sec))
+    assert court and court <= G.GENERAL_COURT_LINKS, \
+        f"a General Court page linked that guides.GENERAL_COURT_LINKS does not hold: {court}"
+    for w in ("best", "recommend", "trusted", "excellent", "leading", "top "):
+        assert w not in re.sub(r"<[^>]+>", " ", sec).lower(), f"a tracker's line says {w!r}"
+    return "ok", (f"How-To Guides first, by task; {len(_civ.HOW_TO)} moved pages at /guides/; Learn's "
+                  f"{len(learn)} pages; {len(indep)} independent trackers after the General Court")
 
 
 @check("frontend", "a member's structured data names their party as the party names itself, and an independent none")
@@ -30290,9 +30423,12 @@ def _your_town():
         for m in p["m"]:
             assert m in people and (site / "legislator" / f"{m}.html").exists(), \
                 f"{p['s']} names {m}, who has no page"
+    # Finding Your Representatives is a how-to guide now, at /guides/ (civics.
+    # HOW_TO, 17 October 2026); held where it is, so the box is not let off
+    # by a page that moved.
     for page, kind in (("your-representatives", "reps"), ("county-government", "county"),
                        ("city-and-town-government", "town")):
-        f = site / "learn" / f"{page}.html"
+        f = site / ("guides" if page == "your-representatives" else "learn") / f"{page}.html"
         if f.exists():
             assert f'data-yt="{kind}"' in f.read_text(encoding="utf-8"), \
                 f"learn/{page} lost its Your town box"
@@ -30451,8 +30587,10 @@ def _chain():
         # "Learn (14)" over sixteen links when the glossary and Laws came in
         # after the count was typed as the topics plus one.
         said = re.search(r'id="tab-learn"[^>]*>Learn <span class="r-n">\((\d+)\)</span>', hub)
-        pane = hub[hub.index('<div class="twnpane r-sheet" id="learn"'):
-                   hub.index('<div class="twnpane r-sheet" id="guides"')]
+        # The Learn panel to the next one, whichever follows it: How-To Guides
+        # comes first since 17 October 2026.
+        at = hub.index('<div class="twnpane r-sheet" id="learn"')
+        pane = hub[at:hub.find('<div class="twnpane r-sheet"', at + 1)]
         linked = len(set(re.findall(r'<a href="([^"]+)"', pane)))
         assert said and int(said.group(1)) == linked, (
             f"the Learn tab says {said.group(1) if said else 'no count'} over a panel of "
@@ -35176,7 +35314,7 @@ def _guides_gate(BC, G, GS, RSA, S):
                         "hearing shall be held on each bill", "2099-01-01")
         fake = dict(said, words=["no hearing shall be held"])
         loose = dict(said, path="notes/HC001.txt")
-        unlinked = G.ours("y", "/learn/testifying.html", "2099-01-01")
+        unlinked = G.ours("y", "/guides/testifying.html", "2099-01-01")
         probe_g = {"claims": [said], "sources": [], "see": [], "steps": [], "glance": "", "more": "",
                    "flow": []}
         assert G.claim_faults(probe_g, probe) == ([], 1, 0), \
@@ -35271,17 +35409,19 @@ def _guides_gate(BC, G, GS, RSA, S):
         assert 'class="g-flow"' in page and page.count('class="g-step"') == 2 and 'class="g-btn"' in page \
             and '<a href="/laws/91-a#s4">RSA 91-A:4</a>' in page, "the guide is not drawn as steps with a diagram"
         hub = BC.hub_guides(pub)
-        assert "test-guide.html" in hub and "Checked " in hub and "no how-to guides yet" not in hub
+        # Listed by task since 17 October 2026, its date on its own page; a
+        # guide no task names, as this one, under More Guides.
+        assert "test-guide.html" in hub and G.MORE in hub and "no how-to guides yet" not in hub
         # A guide held back is not linked from one published (17 October
         # 2026): its button and its See Also line are left out, the rest kept.
         linker = one(today)
-        linker["see"] = [("The other guide", "/guides/held-guide.html"), ("Learn", "/learn/testifying.html")]
+        linker["see"] = [("The other guide", "/guides/held-guide.html"), ("Learn", "/learn/general-court.html")]
         linker["steps"][1]["actions"] = [("The other guide", "/guides/held-guide.html#steps")]
         G.GUIDES = [linker, dict(one(None), slug="held-guide")]
         with contextlib.redirect_stdout(io.StringIO()):
             BC.build_guides(tmp / "site", tmpl, "https://graniterecord.org")
         page = (tmp / "site" / "guides" / "test-guide.html").read_text(encoding="utf-8")
-        assert "held-guide" not in page and "/learn/testifying" in page \
+        assert "held-guide" not in page and "/learn/general-court" in page \
             and not (tmp / "site" / "guides" / "held-guide.html").exists(), \
             "a published guide links a guide held back, or lost a link it should keep"
         old = "2020-01-01"
@@ -61763,7 +61903,9 @@ def _every_fetcher_checks_refusal():
     ASKS = _re.compile(r"urlopen|urlretrieve|urllib\.request\.Request|requests\.(?:get|post)"
                        r"|http\.client")
     NAMED = ("fetch_committee_details.py",)
-    ADDRESSES = ("civics",)         # modules holding gc.nh.gov addresses scripts ask
+    # modules holding gc.nh.gov addresses scripts ask; guides holds
+    # GENERAL_COURT_LINKS, which check_civics_links asks after (17 October 2026)
+    ADDRESSES = ("civics", "guides")
 
     def read(name, src, tree=None):
         """(asks the General Court, calls refusal.check with refusal imported).

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-11.14
+# GRANITE_VERSION: 2026-10-11.15
 """
 The how-to guides: their words, their sources, and what each was checked
 against. Read by build_civics.py, which draws them on the Resources hub's
@@ -423,7 +423,7 @@ VOTING = guide(
          "live: what to bring, the deadline, and absentee ballots. The Secretary of State calls "
          "local and state election officials voters&rsquo; trusted source of election "
          "information.</p>",
-    see=[("Finding your representatives", "/learn/your-representatives.html"),
+    see=[("Finding your representatives", "/guides/your-representatives.html"),
          ("How to get a birth or other vital record", "/guides/vital-records.html")])
 
 
@@ -1175,7 +1175,12 @@ GUIDANCE = "New Hampshire Senate, Public Guidance for Committee Meetings, Septem
 # Court's server, and a fetching script that named its address would be one.
 HOUSE_SIGNIN = civics.SRC_TESTIFY[1]
 SENATE_SIGNIN = civics.SRC_SENATE_TESTIFY[1]
-GENERAL_COURT_LINKS = {HOUSE_SIGNIN, SENATE_SIGNIN}
+# And the General Court's own site, which the Resources hub names first among
+# the other ways to follow legislation (civics.FOLLOW_OFFICIAL, 17 October
+# 2026): a link to gc.nh.gov anywhere in the guides' part of the site is one
+# of these, so the one list says every address of the Court's this part
+# links and nothing here asks.
+GENERAL_COURT_LINKS = {HOUSE_SIGNIN, SENATE_SIGNIN, civics.SRC_GENERAL_COURT[1]}
 
 # The rules both chambers work under in 2025-2026, which more than one guide
 # rests on. The Senate printed its rules whole on Organization Day 2022 and
@@ -1265,7 +1270,7 @@ HEARING = guide(
           "<li><b>sign in or send your position in writing</b>, with or without going: the House "
           "and the Senate both take sign-ins online, and written testimony goes to the "
           "committee&rsquo;s members by email, or on paper at the hearing.</li></ul>",
-          actions=[("The buildings", "/learn/testifying.html#s-how-hearings-are-announced"),
+          actions=[("The buildings", "/guides/testifying.html#s-how-hearings-are-announced"),
                    ("Submit testimony", "/guides/submit-testimony.html")],
           law=["RSA 91-A:1-a, VI(a)", "RSA 91-A:2, II"]),
      step("Ask to speak",
@@ -1279,7 +1284,7 @@ HEARING = guide(
           "the hearing: the Senate&rsquo;s guidance says so, and its notices tell anyone who "
           "wishes to speak to sign up in person. In practice the sheet has a box to mark if you "
           "want to speak.</li></ul>",
-          actions=[("Speaking at the hearing", "/learn/testifying.html#s-speaking-at-the-hearing")]),
+          actions=[("Speaking at the hearing", "/guides/testifying.html#s-speaking-at-the-hearing")]),
      step("When you speak",
           "<p>When the chair calls you, say who you are, where you live and whether you speak "
           "for an organization, then whether you support or oppose the bill, and why. The most "
@@ -1321,7 +1326,7 @@ HEARING = guide(
       "Calendars No. 20 (2025) and No. 3 (2026), House Journal No. 2 (2025) and Senate Journals "
       "No. 1 (2022 and 2024): open them from the Calendar's Calendars & Journals", DOCS),
      civics.SRC_SENATE_GUIDANCE,
-     ("Testifying and Attending", "/learn/testifying.html"),
+     ("Testifying and Attending", "/guides/testifying.html"),
      ("Right-to-Know Law, RSA 91-A", "/laws/91-a"),
      (OBSERVED, "")],
     ["91-A"],
@@ -1356,10 +1361,10 @@ HEARING = guide(
            "devices.", "RSA 91-A:2", READ),
      ours("A bill's page lists each hearing with its day, time and room, and the recording where "
           "there is one; Follow gives a bill's feed; there is a feed of hearings coming up.",
-          "/learn/using-this-site.html", READ),
+          "/guides/using-this-site.html", READ),
      ours("The Calendar shows the week's hearings by committee.", "/calendar.html", READ),
      ours("The buildings the notices name; the chambers take requests to speak differently; the "
-          "most useful testimony is concrete.", "/learn/testifying.html", READ),
+          "most useful testimony is concrete.", "/guides/testifying.html", READ),
      ours("A bill that passes is referred to a committee of the second chamber, which holds its own "
           "public hearing.", "/learn/how-a-bill-becomes-law.html", READ),
      # The second pass (17 October 2026): the Senate's guidance and notices,
@@ -1417,10 +1422,10 @@ HEARING = guide(
               "summarizes the testimony.", "Senate committee hearing reports (CandH_Reports), " + DB,
               REPORTS, ["Who supports the bill", "Who opposes the bill", "Who is neutral on the bill",
                         "Summary of testimony presented in support"], READ)],
-    see=[("Testifying and attending", "/learn/testifying.html"),
+    see=[("Testifying and attending", "/guides/testifying.html"),
          ("How to submit testimony online or in writing", "/guides/submit-testimony.html"),
          ("How to contact your legislators", "/guides/contact-your-legislators.html"),
-         ("Using this site", "/learn/using-this-site.html")])
+         ("Using this site", "/guides/using-this-site.html")])
 
 
 # ---------------------------------------------------------------------------
@@ -1506,11 +1511,11 @@ TESTIMONY = guide(
      civics.SRC_SENATE_GUIDANCE,
      civics.SRC_TESTIFY,
      civics.SRC_SENATE_TESTIFY,
-     ("Testifying and Attending", "/learn/testifying.html"),
+     ("Testifying and Attending", "/guides/testifying.html"),
      (OBSERVED, "")],
     [],
     [ours("A bill's page lists each hearing with the committee, day and time.",
-          "/learn/using-this-site.html", READ),
+          "/guides/using-this-site.html", READ),
      ours("The Calendar shows the week's hearings.", "/calendar.html", READ),
      record("The House's online form is its House Sign-in Form and Online Testimony Submission, on "
             "the General Court website, for bills coming up for a public hearing.",
@@ -1519,7 +1524,7 @@ TESTIMONY = guide(
             "Form and Online Testimony Submission on the General Court website", READ),
      ours("Testifying and Attending links the House online testimony sign-in; a sign-in for or "
           "against is part of the record and counted; specific testimony is the most useful; this "
-          "site publishes the counts, not names or written testimony.", "/learn/testifying.html", READ),
+          "site publishes the counts, not names or written testimony.", "/guides/testifying.html", READ),
      record("Each sign-in records a hearing date, a committee and a bill; name, town and state; who "
             "the person is, whom they represent, their position; and any testimony text.",
             "The House's online sign-ins (houseRemoteTestify), its columns, " + DB, COLUMNS,
@@ -1542,7 +1547,7 @@ TESTIMONY = guide(
             "shall be numbered serially according to the type of bill or resolution", READ)]
     + EXEC_MAY_FOLLOW
     + [ours("Every committee page lists its members and has a button that opens an email to all of "
-            "them at once.", "/learn/your-representatives.html", READ),
+            "them at once.", "/guides/your-representatives.html", READ),
        # The second pass (17 October 2026): the Senate's own form and
        # guidance, and the practice of both chambers' forms and of paper.
        SENATE_ONLINE,
@@ -1573,11 +1578,11 @@ TESTIMONY = guide(
                 "both close at midnight at the end of the day of the hearing.", READ),
        observed("Written testimony may be brought on paper, one printed copy for each committee "
                 "member, which they take and pass around; paper copies are optional.", READ)],
-    see=[("Testifying and attending", "/learn/testifying.html"),
+    see=[("Testifying and attending", "/guides/testifying.html"),
          ("How to attend and speak at a public hearing", "/guides/attend-a-hearing.html"),
          ("How to contact your legislators", "/guides/contact-your-legislators.html"),
-         ("Using this site", "/learn/using-this-site.html"),
-         ("Finding your representatives", "/learn/your-representatives.html")])
+         ("Using this site", "/guides/using-this-site.html"),
+         ("Finding your representatives", "/guides/your-representatives.html")])
 
 
 # ---------------------------------------------------------------------------
@@ -1638,7 +1643,7 @@ CONTACT = guide(
           actions=[("This week's calendar", "/calendar.html")])],
     [("Every sitting legislator, from the General Court's member list (Granite Record)", "/officials.html"),
      ("Representatives and senators' districts, RSA 662", "/laws/662"),
-     ("Finding Your Representatives", "/learn/your-representatives.html"),
+     ("Finding Your Representatives", "/guides/your-representatives.html"),
      ("House Calendar No. 6 (2026) and Senate Journal No. 1 (2022): open them from the Calendar's "
       "Calendars & Journals", DOCS)],
     ["662"],
@@ -1647,7 +1652,7 @@ CONTACT = guide(
            "set forth opposite it.", "RSA 662:5", READ),
      ours("A floterial district is laid over two or more House districts and elects additional "
           "members; a town's page and the town finder name its districts and members; committee "
-          "pages have a button that emails all their members.", "/learn/your-representatives.html", READ),
+          "pages have a button that emails all their members.", "/guides/your-representatives.html", READ),
      ours("My Town shows who represents a town; a member's page and a town's page give the email and "
           "phone the member lists.", "/officials.html", READ),
      record("The General Court's member list carries each member's address, phone and email. Read on "
@@ -1674,7 +1679,7 @@ CONTACT = guide(
                   "be published in the senate calendar for the day on which action shall be taken",
             READ),
      ours("The Calendar lists the week's committee meetings.", "/calendar.html", READ)],
-    see=[("Finding your representatives", "/learn/your-representatives.html"),
+    see=[("Finding your representatives", "/guides/your-representatives.html"),
          ("How to submit testimony online or in writing", "/guides/submit-testimony.html"),
          ("How to attend and speak at a public hearing", "/guides/attend-a-hearing.html")])
 
@@ -1722,7 +1727,7 @@ READ_BILL = guide(
           "<li><b>LOCAL</b>: the bill may affect what local governments spend, or require the "
           "state to pass revenue on to cities and towns.</li></ul>"
           "<p>The other letters are explained under Reading the Shorthand.</p>",
-          actions=[("Reading the shorthand", "/learn/using-this-site.html#s-reading-the-shorthand")],
+          actions=[("Reading the shorthand", "/guides/using-this-site.html#s-reading-the-shorthand")],
           law=["RSA 14:48"]),
      step("Find its request number",
           "<p>Before a bill has a number it is a Legislative Service Request, or LSR: a "
@@ -1778,7 +1783,7 @@ READ_BILL = guide(
      ("House Calendars No. 5 (December 27, 2024) and No. 6 (2026), Senate Calendar No. 3 (2026) "
       "and Senate Journal No. 1 (2022): open them from the Calendar's Calendars & Journals", DOCS),
      ("Legislative Officers and Proceedings, RSA 14", "/laws/14"),
-     ("Using This Site", "/learn/using-this-site.html")],
+     ("Using This Site", "/guides/using-this-site.html")],
     ["14"],
     [record("HB 1001 of 2024 is marked House Bill and prints its LSR number, 24-2288, under the "
             "session's year.", "HB 1001 of 2024, as introduced", HB1001,
@@ -1793,7 +1798,7 @@ READ_BILL = guide(
            "expenditures or require the state to forward designated revenues to cities or towns.",
            "RSA 14:48", READ),
      ours("Reading the Shorthand explains the letters after a bill's number; the Bill Text tab shows "
-          "the text and its amendments.", "/learn/using-this-site.html", READ),
+          "the text and its amendments.", "/guides/using-this-site.html", READ),
      record("The Office of Legislative Services prepares the bills to be introduced.",
             "Senate Journal No. 1, December 7, 2022, p. 19", SJ22,
             "shall be delivered or caused to be delivered to the Office of Legislative Services, who "
@@ -1863,7 +1868,7 @@ READ_BILL = guide(
             "indeterminable.", "HB 15-FN of 2023, as introduced, its fiscal note", HB15,
             ["FISCAL IMPACT:", "Estimated Increase / (Decrease)", "Appropriation", "Revenue",
              "Expenditures", "METHODOLOGY:", "Indeterminable Decrease", "AGENCIES CONTACTED:"], READ)],
-    see=[("Reading the shorthand", "/learn/using-this-site.html#s-reading-the-shorthand"),
+    see=[("Reading the shorthand", "/guides/using-this-site.html#s-reading-the-shorthand"),
          ("How a bill becomes law", "/learn/how-a-bill-becomes-law.html"),
          ("Glossary", "/learn/glossary.html"),
          ("How to contact your legislators", "/guides/contact-your-legislators.html")],
@@ -2676,7 +2681,7 @@ RUN = guide(
          f'<p class="g-acts"><a class="g-btn" href="{SOS_RUN}" target="_blank" rel="noopener">'
          "Running for office</a></p>",
     see=[("How to vote in New Hampshire", "/guides/how-to-vote.html"),
-         ("Finding your representatives", "/learn/your-representatives.html")],
+         ("Finding your representatives", "/guides/your-representatives.html")],
     figures=[fig("$100", "RSA 655:19-c", "For governor and United States senator, $100"),
              fig("$50", "RSA 655:19-c", "For representative to Congress, $50"),
              fig("$25", "RSA 655:19-c", "For executive councilor, $25"),
@@ -2685,6 +2690,113 @@ RUN = guide(
 
 
 GUIDES += [LICENSE, CAR, REAL_ID, NEW_RESIDENT, BENEFITS, UNEMPLOYMENT, RUN]
+
+
+# ---------------------------------------------------------------------------
+# THE GUIDES BY TASK (the person, 17 October 2026: "refine how the how to
+# guides are displayed on the main resources page and the homepage so it's
+# more intuitive for the general public"). A reader arrives with something to
+# do -- renew a license, find out who represents them, speak on a bill -- and
+# not with the name of a guide, so the How-To Guides tab lists them under the
+# task they serve, each by a plain task title and one line, and the home
+# page's "How do I...?" row offers the few most people come for. A guide's
+# own title ("How to Renew Your Driver's License") stays on its page and in
+# search results; these are the words of the list.
+#
+# A slug here is a guide above or one of civics.HOW_TO, the three Learn pages
+# that became guides the same day. preflight holds the two lists together:
+# every guide and every one of those pages is under exactly one task, and
+# every task names one of them. A guide published that is under no task --
+# a guide added without a line here -- is still listed, under More Guides,
+# rather than left off the tab.
+# ---------------------------------------------------------------------------
+def task(slug, does, line):
+    """One entry of the How-To Guides tab: the guide's slug, the task in a
+    reader's words ("Renew your driver's license") and one line on it."""
+    return {"slug": slug, "does": does, "line": line}
+
+
+TASKS = [
+    ("Take Part in the Legislature", [
+        task("your-representatives", "Find your representatives",
+             "Who represents your town in the House and the Senate, and what the district "
+             "numbers mean."),
+        task("contact-your-legislators", "Contact your legislators",
+             "Email or call the people who represent you, and write a message they can act on."),
+        task("attend-a-hearing", "Attend or speak at a public hearing",
+             "Find a bill&rsquo;s hearing, go in person or watch it, and ask to speak."),
+        task("submit-testimony", "Send testimony online or in writing",
+             "Tell a committee where you stand on a bill without going to Concord."),
+        task("testifying", "Learn how hearings work before you go",
+             "The notices, signing in, speaking, written testimony and what follows a hearing, "
+             "in one place."),
+        task("read-a-bill", "Read a bill",
+             "What the parts of a bill are, and how its text shows what it changes."),
+        task("using-this-site", "Use this site to follow a bill",
+             "What each tab holds, how to follow a bill, and how to tell us when something is "
+             "wrong."),
+    ]),
+    ("Voting and Elections", [
+        task("how-to-vote", "Vote",
+             "Check that you are registered, register if you are not, and find what to bring "
+             "and where to go."),
+        task("run-for-office", "Run for office",
+             "Who files where and when, and what it takes, from governor to town offices."),
+    ]),
+    ("Driving and Vehicles", [
+        task("renew-drivers-license", "Renew your driver&rsquo;s license",
+             "Online or at a DMV appointment, and what to do if it has expired."),
+        task("register-a-car", "Register a car",
+             "At your town or city clerk and then for the state, and renewing it."),
+        task("real-id", "Get a REAL ID",
+             "Whether you need one, and the documents to bring."),
+        task("new-to-new-hampshire", "Move to New Hampshire",
+             "Your license, your vehicle&rsquo;s registration and registering to vote."),
+    ]),
+    ("Help and Benefits", [
+        task("food-and-health-assistance", "Apply for food or health assistance",
+             "SNAP and Medicaid, online at NH Easy or on paper."),
+        task("file-for-unemployment", "File for unemployment",
+             "Your claim, the weekly claims that follow, and how to appeal."),
+        task("heating-and-electric-help", "Get help with heating and electric bills",
+             "Fuel assistance, help with electric bills, weatherization, and what to do with no "
+             "heat."),
+    ]),
+    ("Property and Records", [
+        task("property-tax-abatement", "Appeal your property tax assessment",
+             "Ask your town for an abatement, and appeal if it says no."),
+        task("property-tax-relief", "Get property tax relief on a low or moderate income",
+             "Who qualifies for the state&rsquo;s relief, and how to apply."),
+        task("public-records", "Get a public record",
+             "Ask a town, school district, county or state agency for its records."),
+        task("vital-records", "Get a birth, death, marriage or divorce certificate",
+             "From your town or city clerk or the state: who may ask and what to bring."),
+    ]),
+]
+MORE = "More Guides"
+
+# THE HOME PAGE'S "HOW DO I...?" ROW (17 October 2026): the few guides most
+# people come for, each as the end of the question. Chosen by judgment, not
+# counted -- the site keeps no count of which guides are read -- from what a
+# member of the public most often has to do with the state: vote, find who
+# represents them, speak on a bill, and the license, the car and the help
+# with food and health care that the DMV and DHHS guides answer. A pick whose
+# guide is held back is left off the row.
+HOME = [("how-to-vote", "Vote"),
+        ("your-representatives", "Find my representatives"),
+        ("attend-a-hearing", "Speak at a hearing"),
+        ("renew-drivers-license", "Renew my driver&rsquo;s license"),
+        ("register-a-car", "Register a car"),
+        ("food-and-health-assistance", "Get food or health help")]
+
+
+def task_of(slug):
+    """(group, task) for the guide, or (None, None) where no task names it."""
+    for group, tasks in TASKS:
+        for t in tasks:
+            if t["slug"] == slug:
+                return group, t
+    return None, None
 
 
 def text(g):

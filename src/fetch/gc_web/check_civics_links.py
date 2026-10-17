@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.8
+# GRANITE_VERSION: 2026-09-08.9
 """
 Do the civics pages' source links actually go anywhere?
 
@@ -48,6 +48,7 @@ import urllib.request
 from collections import Counter
 
 import civics
+import guides
 import refusal
 
 UA = {"User-Agent": "granite-record/1.0 (civic transparency project; "
@@ -65,6 +66,13 @@ def links():
                 continue
             seen.add(url)
             out.append((label, url, t["slug"]))
+    # AND THE GENERAL COURT'S PAGES THE GUIDES AND THE HUB LINK (17 October
+    # 2026): guides.GENERAL_COURT_LINKS, which no Learn page may cite -- the
+    # Court's own site, named first among the other ways to follow
+    # legislation -- and which nothing else asks after.
+    for url in sorted(guides.GENERAL_COURT_LINKS - seen):
+        seen.add(url)
+        out.append(("linked from the guides or the Resources hub", url, "guides"))
     return out
 
 

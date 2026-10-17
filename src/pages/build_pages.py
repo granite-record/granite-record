@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.211
+# GRANITE_VERSION: 2026-09-04.212
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -30,6 +30,7 @@ import argparse
 import about_figures
 import bill_order as BO
 import build_date
+import civics as _civics
 import html as _html
 import shell as _shell
 from components import WORDBOOK, chip, clock, date_span, icon, pchip, until_attrs
@@ -321,7 +322,14 @@ COMMITTEE_TAB_SLUGS = ("sessions",)
 # and /legislators.html answer the same way. Only those two addresses: the
 # members' data under /legislators/<id>.json and their pages under
 # /legislator/ are where they were, and no rule here reaches them.
-MOVED = (("/learn", "/resources"), ("/learn.html", "/resources"),
+# AND THREE LEARN PAGES BECAME HOW-TO GUIDES (the person, 17 October 2026:
+# "Certain pages currently on learn can move to how to like using this site,
+# finding your representatives, how to testify or attend meetings"). Each is
+# at /guides/<slug> now (civics.HOW_TO), and its /learn/ address, which
+# search engines have indexed and bookmarks hold, answers with a 301 to it,
+# in both spellings for the reason above.
+MOVED =(("/learn", "/resources"), ("/learn.html", "/resources"),
+         *((f"/learn/{s}{x}", f"/guides/{s}") for s in _civics.HOW_TO for x in ("", ".html")),
          ("/legislators", "/officials"), ("/legislators.html", "/officials"),
          # Sen. John Barnes Jr.'s page, named from "Barnes, Jr., John" as
          # "Jr. Barnes John" until build_site_v2.person_name put the suffix

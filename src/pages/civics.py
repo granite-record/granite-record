@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.49
+# GRANITE_VERSION: 2026-09-08.50
 """
 The topics of the civics section: their order, their names, and their prose.
 
@@ -1193,7 +1193,7 @@ and as few as [[seated_fewest]].</p>
 districts</b>. [[floterial]] of those House districts are floterial districts:
 each is laid over two or more neighboring districts and elects a representative
 of its own, whom their voters elect as well as their own district's &mdash; see
-<a href="learn/your-representatives.html">Finding your
+<a href="guides/your-representatives.html">Finding your
 representatives</a>.</p>
 <p><a href="committees.html">Every committee</a>, who sits on it, and what it
 did on each day it met. <a href="officials.html">Every member</a>, with how
@@ -1220,7 +1220,7 @@ usually covering several bills at once. A committee cannot end a bill there:
 the rules of both chambers require it to report every bill it is given, with
 no recommendation if it cannot agree on one, and the full chamber decides.
 See
-<a href="learn/testifying.html">Testifying and attending</a> for what happens
+<a href="guides/testifying.html">Testifying and attending</a> for what happens
 at each, and
 <a href="learn/governor-and-council.html">The Governor and the Executive
 Council</a> for the last stage.</p>
@@ -2686,6 +2686,12 @@ SRC_BALLOT_LIST = ("Past amendments and their vote shares (Ballotpedia, "
 # The office that answers for a court decision on a statute, which is
 # where a reader of the courts page most often wants to go next.
 SRC_DOJ = ("New Hampshire Department of Justice", "https://www.doj.nh.gov")
+# THE GENERAL COURT'S OWN SITE, WHOLE (17 October 2026). The Resources hub's
+# section on other ways to follow legislation names the legislature's own
+# site first, before any tracker. Linked, never fetched from here: it is one
+# of guides.GENERAL_COURT_LINKS, which check_civics_links.py asks after only
+# when a person starts it.
+SRC_GENERAL_COURT = ("The General Court", GC + "/")
 
 # THE RESOURCES HUB'S OFFICIAL SOURCES TAB: every outside source these pages
 # cite, grouped by who publishes it (the groups' names are the approved
@@ -2818,4 +2824,78 @@ TOPICS = [
           "how to follow a bill, and how to tell us we are wrong.",
           BODY_SITE,
           [SRC_CALENDARS, SRC_RSA]),
+]
+
+
+# THREE PAGES ARE HOW-TO GUIDES NOW (the person, 17 October 2026: "Certain
+# pages currently on learn can move to how to like using this site, finding
+# your representatives, how to testify or attend meetings, while the learn
+# page should focus more on educational content while still linking to those
+# other guides when applicable"). They are the How to Take Part group, the
+# pages a reader opens to do something rather than to understand something.
+# Their words stay here, with the other pages', so every check that reads
+# civics.TOPICS still reads them; build_civics writes them at
+# /guides/<slug>, lists them on the How-To Guides tab and leaves them out of
+# Learn's own order, and build_pages.MOVED sends their old /learn/ addresses
+# to the new ones, so nothing already indexed or bookmarked breaks.
+HOW_TO = ("your-representatives", "testifying", "using-this-site")
+
+# THE GUIDES A LEARN PAGE POINTS TO (17 October 2026, the same request):
+# where a page explains something a reader may then want to do, it ends with
+# the guides that do it. Slugs of guides.py's guides or of HOW_TO; a guide
+# that is held back is left off the page that would have linked it.
+GUIDES_FOR = {
+    "general-court": ("your-representatives", "contact-your-legislators"),
+    "how-a-bill-becomes-law": ("attend-a-hearing", "submit-testimony", "read-a-bill"),
+    legislative_year.SLUG: ("attend-a-hearing", "submit-testimony"),
+    "the-constitution": ("how-to-vote",),
+    "state-agencies": ("public-records", "renew-drivers-license", "food-and-health-assistance"),
+    "local-government": ("how-to-vote", "run-for-office"),
+    "county-government": ("your-representatives",),
+    "city-and-town-government": ("property-tax-abatement", "public-records", "run-for-office"),
+}
+
+
+# ---------------------------------------------------------------------------
+# OTHER WAYS TO FOLLOW NEW HAMPSHIRE LEGISLATION (the person, 17 October
+# 2026: official sources first, then the independent trackers, each with a
+# neutral line on what it offers, nonpartisan ones only, no logos, no
+# ranking and no word of endorsement). The Resources hub draws them at the
+# foot of its Official Sources tab, the General Court's own site first.
+#
+# Each line says what the site offers in its own terms, read on its own
+# front page on 17 October 2026, one page each. Who runs each, as far as the
+# site says: Citizens Count's footer names the Live Free or Die Alliance, a
+# 501(c)(3) nonprofit; FastDemocracy's page names FastDemocracy Corp. of
+# St. Louis; LegiScan's own page asked for a bot check, which is not ours to
+# pass, so its line rests on the description it publishes of itself ("the
+# nation's first impartial real-time legislative tracking service", every
+# bill in the fifty states and Congress, registration free); Citizen in a
+# Republic and Granite Docket name no operator, and neither states a party,
+# a cause or a mission beyond "independent". None states a party or a
+# policy position, which is the test for being listed; the person was told
+# of the two that name no operator. Listed in alphabetical order, which is
+# no ranking.
+# ---------------------------------------------------------------------------
+FOLLOW_OFFICIAL = [
+    (SRC_GENERAL_COURT[0], SRC_GENERAL_COURT[1],
+     "The legislature&rsquo;s own site, which publishes every bill, the House and Senate "
+     "calendars and journals, and each chamber&rsquo;s pages."),
+]
+FOLLOW_INDEPENDENT = [
+    ("Citizen in a Republic", "https://citizeninarepublic.com/",
+     "Reporting on the State House, with a briefing page for each bill, a tracker of bills "
+     "being drafted, and a search of written testimony to the House."),
+    ("Citizens Count", "https://www.citizenscount.org/",
+     "Plain-language summaries of New Hampshire bills, legislators&rsquo; voting records and "
+     "candidates&rsquo; positions, from the Live Free or Die Alliance, a nonprofit."),
+    ("FastDemocracy", "https://fastdemocracy.com/states/nh",
+     "Bill tracking with a daily or weekly email when the bills you follow move, free; paid "
+     "plans add real-time alerts."),
+    ("Granite Docket", "https://granitedocket.com/",
+     "A guide to New Hampshire&rsquo;s public records, among them bills, committees and roll "
+     "calls, free to read."),
+    ("LegiScan", "https://legiscan.com/NH",
+     "Every bill in the fifty state legislatures and Congress, with bill tracking for "
+     "registered users."),
 ]

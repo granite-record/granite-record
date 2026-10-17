@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.280 */
+/* GRANITE_VERSION: 2026-09-07.281 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -4463,6 +4463,28 @@ a.l-pgm{font-weight:600;text-decoration:underline;text-decoration-thickness:1px;
 .r-srcs a:hover{color:var(--ink)}
 .r-srcs .l-dmeta{display:block;margin-top:.125rem}
 .r-close{font:400 var(--t-ui)/1.55 var(--sans);color:var(--ink-2);margin:1.25rem 0 0;max-width:46rem}
+/* THE HOW-TO GUIDES BY TASK (build_civics.hub_guides, 17 October 2026: the
+   person asked for the guides to read more intuitively to the public). Each
+   task is a row the size of a finger, its whole box the link: the task in the
+   serif at the reading size, which outranks the sans line under it, and the
+   rows two abreast where the sheet is wide enough, one on a phone. */
+.r-tasks{list-style:none;margin:0;padding:0;display:grid;gap:.625rem 1rem;
+  grid-template-columns:repeat(auto-fill,minmax(min(100%,19rem),1fr))}
+.r-tasks a{display:block;height:100%;box-sizing:border-box;border:1px solid var(--rule-2);
+  border-radius:var(--r-out);padding:.75rem 1rem .875rem;text-decoration:none;color:var(--ink)}
+.r-tasks a:hover{border-color:var(--pine)}
+.r-tasks b{display:block;font:600 var(--t-read)/1.3 var(--serif);color:var(--pine);
+  text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:3px}
+.r-tasks a:hover b{color:var(--ink)}
+.r-tasks span{display:block;margin-top:.3125rem;font:400 var(--t-ui)/1.5 var(--sans);color:var(--ink-2)}
+/* OTHER WAYS TO FOLLOW LEGISLATION (build_civics.follow_elsewhere): each
+   site's name as the link, the line on what it offers, then its host. */
+.r-follow{margin-bottom:1.25rem}
+.r-follow .r-fline{display:block;margin-top:.125rem;color:var(--ink)}
+/* A LEARN PAGE'S GUIDES (civics.GUIDES_FOR): the guides that do what the
+   page explains, as a plain list of links in the section's prose column. */
+.l-guides{margin:0;padding-left:1.25rem}
+.l-guides li{margin:.25rem 0}
 /* THE HOW-TO GUIDES (build_civics.guide_page; guides.py). When each was
    checked is said under its title and on the hub; a check past
    guides.STALE_DAYS, or a draft drawn for a person to read, says so in a box
