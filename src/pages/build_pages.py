@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.206
+# GRANITE_VERSION: 2026-09-04.207
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -1521,9 +1521,12 @@ and a bill number starts again every two years.</p>
   // /laws/91-A:4 its section 4. Every such page's address is lower case, so
   // the lower-case form is tried once; an address already in it is left
   // here, which is what keeps this from going round.
+  // RSA 404's page is a folder's, at its address with a slash: FOLDERS is
+  // build_rsa.FOLDER_CHAPTERS, which preflight holds this to (16 October 2026).
+  var FOLDERS=["404"];
   var lp=location.pathname,c=lp.match(/^\\/laws\\/(\\d{1,3}(?:-[a-z]{1,2})?)(?::([0-9a-z.\\-]+))?\\/?$/i);
-  if(c&&(c[2]||c[1]!==c[1].toLowerCase())){
-    location.replace("/laws/"+c[1].toLowerCase()+(c[2]?"#s"+c[2].toLowerCase():location.hash));return;}
+  if(c&&(c[2]||c[1]!==c[1].toLowerCase())){var s=c[1].toLowerCase();
+    location.replace("/laws/"+s+(FOLDERS.indexOf(s)>=0?"/":"")+(c[2]?"#s"+c[2].toLowerCase():location.hash));return;}
   if(/^\\/(bill|laws)\\//.test(lp)&&lp!==lp.toLowerCase()){location.replace(lp.toLowerCase()+location.search+location.hash);return;}
   var m=location.pathname.match(/^\\/bill\\/(\\d{4})\\/([a-z]+)0*(\\d+)/i);
   if(!m)return;

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.21
+# GRANITE_VERSION: 2026-09-04.22
 """
 An address for every sitting legislator, and the sitemap entries for them.
 
@@ -374,19 +374,17 @@ def main():
                                         for m in [*legs, *former]))
             print("  members-elect: no page here for " + ", ".join(missing[:8]))
 
-    # sitemap.xml is written by build_bill_pages.py, which runs first. Appended
-    # rather than replaced: rewriting it here would drop 4,230 bill URLs.
-    sm = site / "sitemap.xml"
-    if sm.exists():
-        text = sm.read_text(encoding="utf-8")
-        add = "".join(f"<url><loc>{E(u)}</loc></url>\n" for u in urls
-                      if E(u) not in text)
-        if add:
-            sm.write_text(text.replace("</urlset>", add + "</urlset>"),
-                          encoding="utf-8")
-            print(f"{len(add.splitlines())} added to sitemap.xml")
-        else:
-            print("sitemap already lists legislator pages; left alone")
+    # sitemap.xml is written by build_bill_pages.py, which runs first, and
+    # this adds to it rather than replacing it. THROUGH shell.sitemap_merge,
+    # AS THE OTHER BUILDERS ADD THEIRS (the sitemap audit, 16 October 2026):
+    # the test here was whether an address appeared anywhere in the file's
+    # text, which takes /legislator/x as listed wherever /legislator/x-y is,
+    # and nothing ever took out the page of a member this run no longer
+    # writes. Every member's page is written on every run, current and
+    # former alike, so this run owns /legislator whole.
+    added, dropped = S.sitemap_merge(site, a.base, urls, "/legislator")
+    if added or dropped:
+        print(f"sitemap.xml: {added} added, {dropped} no longer written taken out")
 
     total = sum(p.stat().st_size for p in out.glob("*.html"))
     print(f"{written} legislator pages -> {out}/  ({total/1e6:.1f} MB)"

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-13.19
+# GRANITE_VERSION: 2026-09-13.20
 """
 The whole record as plain lists: every bill of every term, every sitting
 legislator, every town -- each a link a person or a crawler can follow.
@@ -558,11 +558,16 @@ def main():
           "The same record the search draws, as plain lists: nothing to type, "
           "nothing that needs JavaScript.", "".join(hub), urls)
 
-    sm = site / "sitemap.xml"
-    if sm.exists():
-        text = sm.read_text(encoding="utf-8")
-        add = "".join(f"<url><loc>{S.E(u)}</loc></url>\n" for u in urls if S.E(u) not in text)
-        sm.write_text(text.replace("</urlset>", add + "</urlset>"), encoding="utf-8")
+    # THROUGH shell.sitemap_merge, AS THE OTHER BUILDERS ADD THEIRS (the
+    # sitemap audit, 16 October 2026): the test here was whether an address
+    # appeared anywhere in the file's text, which takes an address as listed
+    # wherever a longer one starting with it is, and nothing ever took out a
+    # list this run no longer writes -- the session days' two, which it
+    # leaves unwritten where narratives.json is not here. Every list is
+    # written on every run, so this run owns /directory whole.
+    added, dropped = S.sitemap_merge(site, base, urls, "/directory")
+    if added or dropped:
+        print(f"  sitemap.xml: {added} added, {dropped} no longer written taken out")
     links = linked + n_leg + n_town + sum(n_days.values())
     print(f"{len(urls)} directory pages -> {site / 'directory'}, {links:,} links to record pages")
     print(f"  {n_terms} terms of bills, {n_leg} legislators, {n_town} towns and wards"

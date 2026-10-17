@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.35
+# GRANITE_VERSION: 2026-09-04.36
 """
 Write RSS feeds so people can follow bills without a login.
 
@@ -42,6 +42,7 @@ import _paths  # noqa: E402,F401
 
 import argparse
 import build_date
+import build_rsa as BR
 import follow_changes as FC
 import plain_action as PA
 import json
@@ -597,8 +598,9 @@ def main():
             continue                    # a repealed chapter is not followed
         name = info[0] if isinstance(info, list) and info else ""
         followable[key] = {"label": FC.line(f"RSA {ch}" + (f": {name}" if name else ""), 120),
-                           "url": path_of(base + S.canon(f"/laws/{ch.lower()}"))
-                           or f"/laws/{ch.lower()}"}
+                           # RSA 404's with its slash (build_rsa.chapter_path,
+                           # the sitemap audit, 16 October 2026).
+                           "url": BR.chapter_path(ch)}
         if law_items.get(ch):
             lists[key] = fc_list(newest(law_items[ch]), fc_items)
         nlaw += 1

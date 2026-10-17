@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-11.11
+# GRANITE_VERSION: 2026-10-11.13
 """
 The statutes (RSA) as pages: /laws, and one page a chapter at /laws/<chapter>.
 
@@ -125,13 +125,38 @@ def chapter_slug(ch):
     return ch.lower()
 
 
+# The chapters whose page is a folder's index.html (chapter_file), and so
+# whose address ends in a slash (chapter_path). Two scripts cannot import
+# this and say it again -- app.js's LAW_FOLDERS and build_pages.NOT_FOUND's
+# -- and preflight holds both to this one (16 October 2026).
+FOLDER_CHAPTERS = ("404",)
+
+
 def chapter_file(out, ch):
     """Where a chapter's page is written. RSA 404's page is laws/404/index.html,
     not laws/404.html: the host serves a folder's 404.html for every address
     in it that has no page, so every mistyped /laws/ address showed chapter
-    404 (the preview, 11 October 2026). /laws/404 is answered from the folder."""
+    404 (the preview, 11 October 2026). /laws/404/ is answered from the
+    folder, and /laws/404 with a redirect to it, so chapter_path gives the
+    address with its slash."""
     slug = chapter_slug(ch)
-    return out / slug / "index.html" if slug == "404" else out / f"{slug}.html"
+    return out / slug / "index.html" if slug in FOLDER_CHAPTERS else out / f"{slug}.html"
+
+
+def chapter_path(ch, sec=""):
+    """The address the host serves a chapter's page at: /laws/91-a, and
+    /laws/404/ for the one chapter chapter_file puts in a folder; with
+    `sec`, that section's anchor on it (/laws/404/#s5).
+
+    THE SLASH IS PART OF RSA 404'S ADDRESS (the sitemap audit, 16 October
+    2026). The host answers /laws/404 with a 308 to /laws/404/, measured on
+    the live site, so the sitemap listed an address that redirects and the
+    page named as its canonical the address that redirected back to it. Every
+    place that writes a chapter's address asks here: the links, the sitemap,
+    the page's canonical, og:url and citation, and the bill records, bill
+    pages, feeds and guides that link a law."""
+    slug = chapter_slug(ch)
+    return f"/laws/{slug}" + ("/" if slug in FOLDER_CHAPTERS else "") + (f"#s{sec}" if sec else "")
 
 
 def sec_anchor(addr):
@@ -141,7 +166,7 @@ def sec_anchor(addr):
 def href(addr):
     """The site's own address for a statute address: /laws/91-a#s4, /laws/91-a."""
     ch, _, sec = addr.partition(":")
-    return f"/laws/{chapter_slug(ch)}" + (f"#{sec_anchor(addr)}" if sec else "")
+    return chapter_path(ch) + (f"#{sec_anchor(addr)}" if sec else "")
 
 
 def term_of_year(y):
@@ -427,7 +452,10 @@ def chapter_page(tmpl, table, data, bills, ch, base):
     pending_ch = sorted({k for a, ks in proposed.items() for k in ks if bills.moving(k)},
                         key=bill_order)
     latest = data.get("asof", {}).get("laws_through") or ""
-    path = f"/laws/{chapter_slug(ch)}"
+    # THE PAGE'S OWN ADDRESS, AS THE HOST SERVES IT (16 October 2026): the
+    # canonical, og:url, citation and the sections' own links all start from
+    # this, so RSA 404's carry its slash (chapter_path).
+    path = chapter_path(ch)
     title = chapter_label(ch, info["name"])
     first = table.sections[secs[0]] if secs else None
     # The General Court's own table of contents page for the chapter, the
@@ -588,7 +616,10 @@ LANDING_JS = """<script>
   function get(u){return fetch(u).then(function(r){return r.ok?r.json():null;});}
   function esc(s){return String(s).replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c];});}
   function chOf(a){return a.split(":")[0];}
-  function link(a){var p=a.split(":");return "/laws/"+p[0].toLowerCase()+(p[1]?"#s"+p[1]:"");}
+  // A chapter's address is the one its row links (build_rsa.chapter_path),
+  // so RSA 404's keeps the slash the host serves it at.
+  function link(a){var p=a.split(":"),g=root.querySelector('.lw-ch[data-ch="'+p[0]+'"] > .lw-go');
+    return (g?g.getAttribute("href"):"/laws/"+p[0].toLowerCase())+(p[1]?"#s"+p[1]:"");}
   function heads(){return HD?Promise.resolve(HD):get("laws/headings.json").then(function(d){return HD=d||[];});}
   function chapters(){return CH?Promise.resolve(CH):get("laws/chapters.json").then(function(d){return CH=d||{};});}
 
@@ -797,16 +828,28 @@ def landing_page(tmpl, table, data, base, topics, pending):
                        '</span>' if info["repealed"] else "")
                       + (f'<span class="lw-badge lw-pend">{pend} pending</span>' if pend else ""))
             # THE LEAST A CHAPTER NEEDS UNTIL IT IS OPENED (the polish of 12
-            # October 2026): its sections, the way to its own page, its label
-            # and its title's name are drawn by LANDING_JS from what is here
-            # when it opens. Written into every one of 1,786 rows they were
-            # about half the page.
+            # October 2026): its sections, its label and its title's name are
+            # drawn by LANDING_JS from what is here when it opens. Written
+            # into every one of 1,786 rows they were about half the page.
+            #
+            # BUT THE WAY TO ITS OWN PAGE IS IN THE HTML (the sitemap audit,
+            # 16 October 2026). It was drawn by the script too, only once a
+            # reader opened the row, and a crawler opens none: /laws linked
+            # no chapter at all, and 315 chapter pages had no link from
+            # anywhere on the site. So each row carries one plain link,
+            # "RSA 3-A", beside its summary and not inside it: a link inside
+            # a <summary> would make the chapter's name a second control in
+            # the one that opens the row, and a click on the name would leave
+            # the page instead of listing the sections, which is what the
+            # row is for. app.css sets it at the row's right, level with the
+            # name, on a phone as on a desktop.
             topic_attr = f' data-topics="{E("|".join(topics.get(c, [])))}"' if topics.get(c) else ""
             lis.append(
                 f'<li class="lw-ch" data-ch="{E(c)}" data-title="{E(tno)}"'
                 + (' data-rep="1"' if info["repealed"] else "") + (f' data-pend="{pend}"' if pend else "")
                 + f'{topic_attr}><details class="lw-chd"><summary><span class="lw-chn">Chapter {E(c)}:</span> '
-                f'<span class="lw-chname">{E(nice(info["name"]))}</span>{badges}</summary></details></li>')
+                f'<span class="lw-chname">{E(nice(info["name"]))}</span>{badges}</summary></details>'
+                f'<a class="lw-go" href="{E(chapter_path(c))}">RSA {E(c)}</a></li>')
         blocks.append(
             f'<details class="lw-title" id="t-{E(tno)}"><summary><span class="lw-tno">{E(tl)}</span>'
             f'<span class="lw-tname">{E(tn)}</span><span class="lw-tspan">{E(span)} &middot; '
@@ -889,7 +932,7 @@ def main():
     print(f"build_rsa: {len(chs):,} chapter pages and the landing page; search files "
           + ", ".join(f"{n} {s / 1e6:.1f} MB" for n, s in sizes.items()))
     if not a.only:
-        S.sitemap_merge(site, a.base, [a.base + "/laws"] + [a.base + f"/laws/{chapter_slug(c)}" for c in chs],
+        S.sitemap_merge(site, a.base, [a.base + "/laws"] + [a.base + chapter_path(c) for c in chs],
                         owns="/laws")
     return 0
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.594
+# GRANITE_VERSION: 2026-09-04.595
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -19666,6 +19666,11 @@ def _check_live_reads_what_it_checks():
         "/idx/2025-2026.json": (200, "application/json", b'[{"id":"HB1"}]'),
         "/legislators": (200, "text/html", b"<!doctype html><html>members</html>"),
         "/feed/all.xml": (200, "application/rss+xml", b'<?xml version="1.0"?><rss/>'),
+        # Asked for since 16 October 2026 (_check_live_sitemap holds what is
+        # made of them); served here as a sound deploy serves them.
+        "/sitemap.xml": (200, "application/xml",
+                         b'<?xml version="1.0"?><urlset><url><loc>http://site.invalid/</loc></url></urlset>'),
+        "/robots.txt": (200, "text/plain", b"User-agent: *\nSitemap: http://site.invalid/sitemap.xml\n"),
     }
     asked = []
 
@@ -28381,7 +28386,7 @@ def _built_site(here, root, brand=True, env=None):
     (root / "db").mkdir(exist_ok=True)
     (root / "db" / "_columns.json").write_text(json.dumps({"NH_RSA": cols}), encoding="utf-8")
     (root / "db" / "_manifest.json").write_text(json.dumps(
-        {"NH_RSA": {"rows": 2, "fetched": "2026-09-08T20:53:02"}}), encoding="utf-8")
+        {"NH_RSA": {"rows": 3, "fetched": "2026-09-08T20:53:02"}}), encoding="utf-8")
     (root / "db" / "NH_RSA.psv").write_text("\n".join("|".join(r) for r in (
         ["1", "VI", "91-A", "91-A-4", "TITLE VI PUBLIC OFFICERS AND EMPLOYEES",
          "CHAPTER 91-A ACCESS TO GOVERNMENTAL RECORDS AND MEETINGS",
@@ -28392,9 +28397,17 @@ def _built_site(here, root, brand=True, env=None):
         ["2", "VI", "91-A", "91-A-5", "TITLE VI PUBLIC OFFICERS AND EMPLOYEES",
          "CHAPTER 91-A ACCESS TO GOVERNMENTAL RECORDS AND MEETINGS", "Section 91-A:5 Exemptions.",
          "", "", "<codesect> The following governmental records are exempted</codesect>", "6",
-         "VI\\91-A\\91-A-5.htm"])) + "\n", encoding="utf-8")
+         "VI\\91-A\\91-A-5.htm"],
+        # RSA 404, the one chapter whose page is a folder's and whose address
+        # ends in a slash, citing 91-A:4 so that 91-A's page links it back
+        # (16 October 2026): _chapter_addresses_one_rule reads every built
+        # file for an address of it without its slash.
+        ["3", "XXXVII", "404", "404-1", "TITLE XXXVII INSURANCE",
+         "CHAPTER 404 SAFETY FUNDS OF FIRE INSURANCE COMPANIES", "Section 404:1 Definitions.",
+         "", "", "<codesect> In this chapter, see RSA 91-A:4.</codesect>", "37",
+         "XXXVII\\404\\404-1.htm"])) + "\n", encoding="utf-8")
     (root / "rsa_citations.json").write_text(json.dumps(
-        {"bills": {}, "enacted": {"91-A:4": [["1967", "251:1", ""]]}, "statute": {},
+        {"bills": {}, "enacted": {"91-A:4": [["1967", "251:1", ""]]}, "statute": {"404:1": ["91-A:4"]},
          "asof": {"laws_through": 2025}}), encoding="utf-8")
     base = "https://graniterecord.org"
     steps = [
@@ -89857,6 +89870,558 @@ def _site_manifest_compares(SM, BI):
         shutil.rmtree(tmp, ignore_errors=True)
     return "ok", ("kept once, proved under a second seed, a changed, an added and a removed "
                   "file named, other data not comparable, a site not the record's refused")
+
+
+# ---- the sitemap audit's fixes (16 October 2026) -------------------------------
+#
+# Four read-only audits of the sitemap and a skeptic for each finding, on 16
+# October 2026. Each rule the fixes added is held here, and each check fails
+# if its rule is undone.
+
+def _rsa_fixture_table(RSA):
+    """A statute table of two chapters: RSA 3-A, and RSA 404, the one chapter
+    whose page is a folder's index.html (build_rsa.chapter_file)."""
+    cols = ["id", "TitleNo", "ChapterNo", "SectionNo", "Title", "Chapter", "Section", "SourceNote",
+            "rsa", "EntireRSA", "titleNumber", "url"]
+    return RSA.Table([dict(zip(cols, r)) for r in (
+        ["1", "I", "3-A", "3-A-1", "TITLE I THE STATE AND ITS GOVERNMENT", "CHAPTER 3-A POET LAUREATE",
+         "Section 3-A:1 Appointment.", "", "", "<codesect> The governor shall appoint.</codesect>", "1",
+         "I\\3-A\\3-A-1.htm"],
+        ["2", "XXXVII", "404", "404-1", "TITLE XXXVII INSURANCE",
+         "CHAPTER 404 SAFETY FUNDS OF FIRE INSURANCE COMPANIES", "Section 404:1 Definitions.", "", "",
+         "<codesect> In this chapter, see RSA 3-A:1.</codesect>", "37", "XXXVII\\404\\404-1.htm"])])
+
+
+@check("build", "every chapter's row on /laws carries a plain link to its page, beside the row's "
+       "summary, and RSA 404 is written everywhere at the address the host serves",
+       needs=("build_rsa", "rsa", "shell", "check_site", "build_bill_pages"))
+def _laws_rows_link_chapters(B, RSA, S, CS, BBP):
+    """THE SITEMAP AUDIT'S FIRST FINDING (16 October 2026): /laws linked no
+    chapter at all. The way to a chapter's page was written by LANDING_JS
+    only once a reader opened its row, which a crawler never does, and 315 of
+    the 1,786 chapter pages had no link from anywhere on the site. Each row
+    carries a plain <a href> now, beside its <summary> so the row still opens
+    on a click of the name; check_site.laws_linked refuses a site where a
+    chapter in the sitemap has none.
+
+    And /laws/404 (the fourth finding): the host answers it with a 308 to
+    /laws/404/, where chapter_file writes the page, so its address is written
+    with the slash wherever it is written -- the row's link, the sitemap, the
+    page's canonical, og:url and citation, a section's link to it, and a bill
+    page's link to the law (build_bill_pages.law_href)."""
+    import contextlib
+    import io
+    t = _rsa_fixture_table(RSA)
+    assert {"3-A", "404"} <= set(t.chapters), sorted(t.chapters)
+    assert B.chapter_path("404") == "/laws/404/" and B.chapter_path("3-A") == "/laws/3-a", (
+        f"chapter_path gives {B.chapter_path('404')!r} and {B.chapter_path('3-A')!r}, not the "
+        "addresses the host serves (/laws/404/ and /laws/3-a)")
+    assert B.href("404:1") == "/laws/404/#s1", f"a section of RSA 404 is linked at {B.href('404:1')}"
+    data = {"bills": {}, "statute": {"404:1": ["3-A:1"]}, "enacted": {}, "asof": {"laws_through": 2025}}
+    root = Path(tempfile.mkdtemp(prefix="gr-lawlinks-"))
+    try:
+        (root / "idx").mkdir()
+        bills = B.Bills(root, "2025-2026")
+        tmpl = S.template(Path("site"))
+        page = B.landing_page(tmpl, t, data, "https://graniterecord.org", {}, {})
+        ch404 = B.chapter_page(tmpl, t, data, bills, "404", "https://graniterecord.org")
+        ch3a = B.chapter_page(tmpl, t, data, bills, "3-A", "https://graniterecord.org")
+        plain = CS._SCRIPTS.sub(" ", page)
+        for c in ("3-A", "404"):
+            row = plain[plain.index(f'<li class="lw-ch" data-ch="{c}"'):]
+            row = row[:row.index("</li>")]
+            want = f'<a class="lw-go" href="{B.chapter_path(c)}">'
+            assert want in row, f"Chapter {c}'s row on /laws carries no plain link to its page: {row[:300]}"
+            summary = row[row.index("<summary>"):row.index("</summary>")]
+            assert "<a " not in summary, (
+                f"Chapter {c}'s link is inside its <summary>, so a click on its name leaves the "
+                "page instead of opening the row")
+        assert "> .lw-go" in B.LANDING_JS, (
+            "the landing's script builds a chapter's address itself, not from the row's link, "
+            "so RSA 404's loses its slash there")
+        base = "https://graniterecord.org"
+        for what, pat in (("canonical", r'<link rel="canonical" href="([^"]*)"'),
+                          ("og:url", r'<meta property="og:url" content="([^"]*)"')):
+            got = re.findall(pat, ch404)
+            assert got == [f"{base}/laws/404/"], f"RSA 404's {what} is {got}, not {base}/laws/404/"
+        cites = re.findall(re.escape(base) + r"/laws/404/?", ch404[ch404.index('class="citeforms"'):])
+        assert cites and all(u == f"{base}/laws/404/" for u in cites), (
+            f"RSA 404's citation names {sorted(set(cites))}")
+        assert 'href="/laws/404/#s1"' in ch3a, "RSA 3-A's Cited by does not link RSA 404:1 at /laws/404/"
+        assert 'href="/laws/404#' not in ch404 + ch3a + page, "an address of RSA 404 without its slash is left"
+
+        # check_site holds every chapter in the sitemap to a plain link on /laws.
+        site = root / "site"
+        site.mkdir()
+        locs = [f"{base}/laws", f"{base}/laws/3-a", f"{base}/laws/404/"]
+        (site / "laws.html").write_text(page, encoding="utf-8")
+        errors = []
+        with contextlib.redirect_stdout(io.StringIO()):
+            CS.laws_linked(site, locs, base + "/", errors)
+        assert not errors, f"check_site refuses a /laws that links every chapter: {errors}"
+        (site / "laws.html").write_text(re.sub(r'<a class="lw-go"[^>]*>[^<]*</a>', "", page),
+                                        encoding="utf-8")
+        with contextlib.redirect_stdout(io.StringIO()):
+            CS.laws_linked(site, locs, base + "/", errors)
+        assert errors and "no plain link on /laws" in errors[0] and "/laws/404/" in errors[0], (
+            f"check_site passes a /laws that links no chapter: {errors}")
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    saved = list(BBP._LAWS)
+    BBP._LAWS[:] = [{"404", "3-A"}]
+    try:
+        assert BBP.law_href("RSA 404:5") == "/laws/404/#s5" and BBP.law_href("RSA 404") == "/laws/404/" \
+            and BBP.law_href("RSA 3-A:1") == "/laws/3-a#s1", (
+            "a bill page links RSA 404 at " + repr(BBP.law_href("RSA 404")))
+    finally:
+        BBP._LAWS[:] = saved
+    css = Path("src/pages/app.css").read_text(encoding="utf-8")
+    assert re.search(r"\.lw-ch\{[^}]*position:relative", css) and \
+        re.search(r"\.lw-go\{[^}]*position:absolute", css), (
+            "app.css does not set the chapter's link at its row's right")
+    return "ok", ("each chapter's row links its page beside the summary, check_site refuses a /laws "
+                  "that does not, and RSA 404 is /laws/404/ in its link, canonical, og:url, citation "
+                  "and a bill's link to it")
+
+
+@check("build", "every chapter address is written by one rule, RSA 404's with its slash: the bill "
+       "records, the guides, the app and the not-found page, and no file of the built fixture "
+       "writes it without", needs=("build_rsa", "build_site_v2", "guides", "build_pages", "rsa"))
+def _chapter_addresses_one_rule(BR, BSV, G, BP, RSA):
+    """RSA 404 WITHOUT ITS SLASH, OUTSIDE build_rsa (the review of the sitemap
+    fixes, 16 October 2026). build_rsa wrote /laws/404/ and seven other
+    writers still built a chapter's address themselves: the bill record's
+    statute links (build_site_v2.rsa_url), the guides' (guides.law_href) and
+    the Laws section's on a guide's page, a law's follow address
+    (build_feeds), the app's two (rsaHref, changedLine), and the not-found
+    page's script that lower-cases a typed citation. The Python ones ask
+    build_rsa.chapter_path; the two scripts, which cannot, carry
+    FOLDER_CHAPTERS as a list held to it here. And every file of the
+    fixture site, whose statute table carries RSA 404, is read for an
+    address of it without the slash, so a writer added later is caught by
+    what it writes rather than by its name."""
+    for ch in BR.FOLDER_CHAPTERS:
+        assert BR.chapter_file(Path("laws"), ch).name == "index.html" \
+            and BR.chapter_path(ch).endswith("/"), f"RSA {ch}'s file and address disagree"
+    assert BR.chapter_path("91-A", "4") == "/laws/91-a#s4" and BR.chapter_path("404", "5") == "/laws/404/#s5"
+    t = _rsa_fixture_table(RSA)
+    keep = list(BSV._STATUTES)
+    try:
+        BSV._STATUTES[:] = [t]
+        got = (BSV.rsa_url("404", "1"), BSV.rsa_url("404"), BSV.rsa_url("404", "99"), BSV.rsa_url("3-A", "1"))
+    finally:
+        BSV._STATUTES[:] = keep
+    assert got == ("/laws/404/#s1", "/laws/404/", "/laws/404/", "/laws/3-a#s1"), (
+        f"a bill record links RSA 404 at {got}")
+    assert (G.law_href("RSA 404:1, I"), G.law_href("RSA 91-A:4")) == ("/laws/404/#s1", "/laws/91-a#s4"), (
+        f"a guide links RSA 404:1 at {G.law_href('RSA 404:1, I')}")
+    js = Path("src/pages/app.js").read_text(encoding="utf-8")
+    for where, text, pat in (("app.js", js, r"const LAW_FOLDERS=(\[[^\]]*\]);"),
+                             ("build_pages.NOT_FOUND", BP.NOT_FOUND, r"var FOLDERS=(\[[^\]]*\]);")):
+        m = re.search(pat, text)
+        assert m and tuple(json.loads(m.group(1))) == tuple(BR.FOLDER_CHAPTERS), (
+            f"{where}'s list of chapters in a folder is {m and m.group(1)}, not build_rsa.FOLDER_CHAPTERS "
+            f"{BR.FOLDER_CHAPTERS}")
+    said = []
+    app = _app_js('[scope.rsaHref("404:1"), scope.rsaHref("404"), scope.rsaHref("91-A:4"), '
+                  'scope.changedLine({changed:["404:2"]})]', names=("rsaHref", "changedLine"))
+    if app is None:
+        said.append("node not here for app.js")
+    else:
+        assert app[:3] == ["/laws/404/#s1", "/laws/404/", "/laws/91-a#s4"] and 'href="/laws/404/#s2"' in app[3], (
+            f"app.js links RSA 404 at {app}")
+    node = shutil.which("node")
+    if node:
+        script = re.search(r"<script>(.*?)</script>", BP.NOT_FOUND, re.S).group(1)
+        prog = ("function go(p){var res=null;var location={pathname:p,search:'',hash:'',"
+                "replace:function(u){res=u;}};var document={getElementById:function(){return null;}};"
+                "(function(location,document){" + script + "})(location,document);return res;}\n"
+                "process.stdout.write(JSON.stringify([go('/laws/404:5'),go('/laws/91-A:4'),go('/laws/91-A')]));\n")
+        r = _node_file(node, prog, capture_output=True, text=True, timeout=60)
+        assert r.returncode == 0, f"the not-found page's script did not run: {(r.stderr or '')[-300:]}"
+        nf = json.loads(r.stdout)
+        assert nf == ["/laws/404/#s5", "/laws/91-a#s4", "/laws/91-a"], (
+            f"the not-found page sends /laws/404:5, /laws/91-A:4 and /laws/91-A to {nf}")
+    else:
+        said.append("node not here for the not-found page")
+    absent = [x for x in CHAIN_NEEDS + ["build_rsa.py"] if not _paths.locate(x).exists()]
+    if absent:
+        return "ok", "the writers held; the fixture site was not built: not here, " + ", ".join(absent)
+    shared, base, _ran, _days = _fixture_site_shared()
+    site = shared / "site"
+    bad, good = [], Counter()
+    for p in site.rglob("*"):
+        if p.suffix not in (".html", ".json", ".xml", ".txt", ".js") or not p.is_file():
+            continue
+        b = p.read_bytes()
+        rel = p.relative_to(site).as_posix()
+        bad += [f"{rel}: ...{b[max(0, m.start() - 60):m.end() + 10].decode('utf-8', 'replace')}"
+                for m in re.finditer(rb"/laws/404(?![/\w-])", b)]
+        if b.count(b"/laws/404/"):
+            good[rel] += b.count(b"/laws/404/")
+    assert not bad, f"{len(bad)} address(es) of RSA 404 without its slash in the built fixture: {bad[:3]}"
+    for rel in ("laws.html", "laws/404/index.html", "laws/91-a.html", "sitemap.xml"):
+        assert good.get(rel), f"the fixture's {rel} does not link RSA 404 at all, so this held nothing there"
+    return "ok", (f"bill records, guides, app.js and the not-found page give /laws/404/; "
+                  f"{sum(good.values())} addresses of it across {len(good)} built files, none without "
+                  "its slash" + ("; " + "; ".join(said) if said else ""))
+
+
+@check("build", "check_site holds the sitemap to the site both ways: an address only a folder answers "
+       "needs its slash, one file's limits are an error past them, and an indexable page is listed",
+       needs=("check_site",))
+def _sitemap_both_ways(CS):
+    """The sitemap audit's eighth finding (16 October 2026): no check would
+    catch a future break. check_site went from the sitemap to the files and
+    never back, called a folder served at an address the host redirects
+    (/laws/404, its fourth finding), only warned past one file's limits and
+    of a site with no sitemap at all. Here, on a site of a few files: a
+    folder answers its address with the slash and not without (a page of its
+    own beside it, as bills.html beside bills/, answers either way); past
+    one file's limit of 50,000 addresses is an error; no sitemap.xml is an
+    error; and an indexable page naming itself as canonical must be
+    listed, the exceptions read off the pages themselves -- noindex, a
+    canonical naming another page, a calendar week with no meeting card."""
+    import contextlib
+    import io
+    base = "https://graniterecord.org"
+    root = Path(tempfile.mkdtemp(prefix="gr-smboth-"))
+
+    def page(path, head="", body=""):
+        f = site / path
+        f.parent.mkdir(parents=True, exist_ok=True)
+        f.write_text(f"<!doctype html><html><head><title>x</title>{head}</head><body>{body}</body></html>",
+                     encoding="utf-8")
+
+    def canon(addr):
+        return f'<link rel="canonical" href="{base}{addr}">'
+
+    def run(locs):
+        (site / "sitemap.xml").write_text(
+            '<?xml version="1.0" encoding="UTF-8"?>\n<urlset>\n'
+            + "".join(f"<url><loc>{base}{u}</loc></url>\n" for u in locs) + "</urlset>\n",
+            encoding="utf-8")
+        errors, warnings = [], []
+        with contextlib.redirect_stdout(io.StringIO()):
+            CS.sitemap_checks(site, base, errors, warnings)
+        return errors, warnings
+
+    try:
+        site = root / "site"
+        page("index.html", canon("/"))
+        page("bills.html", canon("/bills"))
+        (site / "bills").mkdir()
+        page("laws/404/index.html", canon("/laws/404/"))
+        page("laws.html", canon("/laws"), '<a class="lw-go" href="/laws/404/">RSA 404</a>')
+        page("a.html", canon("/a"))
+        page("404.html", '<meta name="robots" content="noindex">')
+        page("calendar.html", canon("/calendar"), '<div class="wkpage calapp"><details class="calmeet"></details></div>')
+        page("calendar/2026-W11.html", canon("/calendar"), '<div class="wkpage calapp"></div>')
+        page("calendar/2026-W13.html", canon("/calendar/2026-W13"),
+             '<div class="wkpage calapp"><p class="calempty">No meetings scheduled.</p></div>'
+             '<script>x=\'<details class="calmeet">\'</script>')
+        assert not CS.served(site / "laws/404", folder=False) and CS.served(site / "laws/404"), (
+            "a folder's index.html is not told apart from an address with no slash")
+        assert CS.served(site / "bills", folder=False), "bills.html beside bills/ does not answer /bills"
+        good = ["/", "/bills", "/laws", "/laws/404/", "/a", "/calendar"]
+        errors, warnings = run(good)
+        assert not errors and not warnings, f"check_site refuses a sound sitemap: {errors} {warnings}"
+        errors, _w = run(["/", "/bills", "/laws", "/laws/404", "/a", "/calendar"])
+        assert any("answered only by a folder" in e and f"{base}/laws/404" in e for e in errors), (
+            f"check_site passes /laws/404, which the host answers with a 308: {errors}")
+        errors, _w = run([u for u in good if u != "/a"])
+        assert any("not in the sitemap" in e and f"{base}/a" in e for e in errors), (
+            f"check_site passes an indexable page the sitemap leaves out: {errors}")
+        # A SITE KEPT BETWEEN BUILDS (16 October 2026): with a build.json to
+        # say when the build began, an unlisted page older than that is one
+        # no builder wrote this time, and is warned of by name; one written
+        # since is still refused.
+        import time as _time
+        from datetime import datetime as _dtm
+        began = _time.time() - 600
+        (site / "build.json").write_text(json.dumps(
+            {"finished": _dtm.fromtimestamp(began + 300).isoformat(timespec="seconds"),
+             "seconds": 300.0}), encoding="utf-8")
+        assert abs(CS.build_began(site) - (began - 2)) < 1.5, (
+            f"check_site reads the build's start as {CS.build_began(site)}, not {began - 2}")
+        page("b.html", canon("/b"))
+        os.utime(site / "a.html", (began - 3600, began - 3600))
+        errors, warnings = run([u for u in good if u != "/a"] + ["/b"])
+        assert not any("not in the sitemap" in e for e in errors) and any(
+            "left from an earlier build" in w and f"{base}/a" in w and f"{base}/b" not in w for w in warnings), (
+            f"a page an earlier build left, unlisted, was refused or not named: {errors} {warnings}")
+        os.utime(site / "a.html", None)
+        errors, warnings = run([u for u in good if u != "/a"] + ["/b"])
+        assert any("not in the sitemap" in e and f"{base}/a" in e for e in errors) and not any(
+            "earlier build" in w for w in warnings), (
+            f"a page this build wrote, unlisted, was only warned of: {errors} {warnings}")
+        (site / "b.html").unlink()
+        (site / "build.json").unlink()
+        assert not any("2026-W13" in e for e in errors), (
+            "a week with no meeting card (one drawn by its script does not count) was refused as "
+            f"left out: {errors}")
+        page("calendar/2026-W13.html", canon("/calendar/2026-W13"),
+             '<div class="wkpage calapp"><details class="calmeet"></details></div>')
+        errors, _w = run(good)
+        assert any("not in the sitemap" in e and "2026-W13" in e for e in errors), (
+            f"check_site passes a week holding a meeting that the sitemap leaves out: {errors}")
+        (site / "calendar/2026-W13.html").unlink()
+        # Past one file's limit, held with the limit made small so the check
+        # does not stat 50,000 files; the limit itself is the protocol's.
+        assert (CS.SITEMAP_MAX_URLS, CS.SITEMAP_MAX_BYTES) == (50_000, 50_000_000), (
+            f"check_site's limits are {CS.SITEMAP_MAX_URLS:,} URLs and {CS.SITEMAP_MAX_BYTES:,} bytes, "
+            "not the 50,000 and 50 MB one sitemap may hold")
+        saved = CS.SITEMAP_MAX_URLS
+        CS.SITEMAP_MAX_URLS = len(good)
+        try:
+            errors, _w = run(good)
+            assert not any("past the" in e for e in errors), f"a sitemap at the limit is refused: {errors}"
+            errors, _w = run(good + ["/a"])
+            assert any(f"past the {len(good)} URLs" in e for e in errors), (
+                f"check_site only warns of a sitemap past one file's limit: {errors[:3]}")
+        finally:
+            CS.SITEMAP_MAX_URLS = saved
+        (site / "sitemap.xml").unlink()
+        errors, warnings = [], []
+        with contextlib.redirect_stdout(io.StringIO()):
+            CS.sitemap_checks(site, base, errors, warnings)
+        assert any("no sitemap.xml" in e for e in errors), (
+            f"check_site only warns of a site with no sitemap: {errors} {warnings}")
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    return "ok", ("/laws/404 refused and /laws/404/ passed; an unlisted indexable page refused, and "
+                  "one an earlier build left warned of by name; a noindex page, a copy and a week "
+                  "with no meeting left out; past one file's limit an error; no sitemap an error")
+
+
+@check("build", "check_live asks for the sitemap and robots.txt, reads the sitemap whole, and holds "
+       "it to the file in site/", needs=("check_live",))
+def _check_live_sitemap(CL):
+    """The sitemap audit's eighth finding (16 October 2026): nothing asked the
+    live host for /sitemap.xml or /robots.txt, so a deploy that left either
+    behind passed. Against a site served from memory: a sitemap served as XML
+    with the build's count and first and last address passes; another count
+    or another first address is a deploy that did not land, and so is the
+    home page in its place; robots.txt must name it; and the request reads up
+    to SITEMAP_LIMIT, past which it is not checked rather than passed."""
+    import contextlib as _cl
+    import io as _io
+    base = "http://site.invalid"
+    root = Path(tempfile.mkdtemp(prefix="gr-livesm-"))
+
+    def sm(*paths):
+        return ('<?xml version="1.0" encoding="UTF-8"?>\n<urlset>\n'
+                + "".join(f"<url><loc>{base}{p}</loc></url>\n" for p in paths) + "</urlset>\n").encode()
+
+    built = sm("/", "/bills", "/laws/404/")
+    (root / "sitemap.xml").write_bytes(built)
+    (root / "robots.txt").write_text(f"User-agent: *\nSitemap: {base}/sitemap.xml\n", encoding="utf-8")
+    page = b"<!doctype html><html>home</html>"
+    good = {
+        "/": (200, "text/html", page),
+        "/bills": (200, "text/html", b"<!doctype html><html>bills</html>"),
+        "/style.css": (200, "text/css", b"body{}"),
+        "/meta.json": (200, "application/json", b'{"terms": ["2025-2026"]}'),
+        "/idx/2025-2026.json": (200, "application/json", b'[{"id":"HB1"}]'),
+        "/legislators": (200, "text/html", b"<!doctype html><html>members</html>"),
+        "/feed/all.xml": (200, "application/rss+xml", b'<?xml version="1.0"?><rss/>'),
+        "/sitemap.xml": (200, "application/xml", built),
+        "/robots.txt": (200, "text/plain", f"User-agent: *\nSitemap: {base}/sitemap.xml\n".encode()),
+    }
+    served, limits = dict(good), {}
+
+    def fake_get(url, limit=400_000):
+        path = url[len(base):]
+        limits[path] = limit
+        st, ct, body = served.get(path, (404, "text/html", b"not found"))
+        return st, ct, body[:limit], None
+
+    def gate(**change):
+        served.clear()
+        served.update(good)
+        served.update(change)
+        saved = (CL.get, sys.argv)
+        CL.get = fake_get
+        sys.argv = ["check_live.py", "--gate", "--base", base, "--site", str(root)]
+        try:
+            with _cl.redirect_stdout(_io.StringIO()) as out:
+                code = CL.main()
+        finally:
+            CL.get, sys.argv = saved
+        return code, out.getvalue()
+
+    try:
+        code, out = gate()
+        assert code == 0, f"check_live --gate fails a site serving the sitemap it built:\n{out[-600:]}"
+        assert limits.get("/sitemap.xml", 0) >= CL.SITEMAP_LIMIT >= 50_000_000 and "/robots.txt" in limits, (
+            f"the sitemap was not read to 50 MB, or robots.txt not asked for: {limits}")
+        for why, change in (
+                ("the sitemap lists another count", {"/sitemap.xml": (200, "application/xml",
+                                                                      sm("/", "/bills"))}),
+                ("the sitemap starts elsewhere", {"/sitemap.xml": (200, "application/xml",
+                                                                   sm("/a", "/bills", "/laws/404/"))}),
+                ("the sitemap is the home page", {"/sitemap.xml": (200, "text/html", page)}),
+                ("the sitemap is not there", {"/sitemap.xml": (404, "text/html", b"not found")}),
+                ("robots.txt names no sitemap", {"/robots.txt": (200, "text/plain", b"User-agent: *\n")})):
+            code, out = gate(**change)
+            assert code == 1 and "DID NOT LAND" in out, (
+                f"check_live --gate passes a deploy when {why} ({code}):\n{out[-600:]}")
+        # A PREVIEW OR A DRY RUN (16 October 2026): asked at its own address,
+        # here site.invalid, while the robots.txt built for it names the
+        # site's sitemap. The served line is held to the built one, not to
+        # --base, so that passes, and a served line naming another fails.
+        live = "Sitemap: https://graniterecord.org/sitemap.xml\n"
+        (root / "robots.txt").write_text("User-agent: *\n" + live, encoding="utf-8")
+        code, out = gate(**{"/robots.txt": (200, "text/plain", ("User-agent: *\n" + live).encode())})
+        assert code == 0 and "/robots.txt is" not in out and "/robots.txt names" not in out, (
+                f"check_live --gate fails a preview whose robots.txt is the one built:\n{out[-600:]}")
+        code, out = gate()
+        assert code == 1 and "DID NOT LAND" in out and "/robots.txt is not the file" in out, (
+            f"check_live --gate passes a robots.txt naming another sitemap than the built one ({code}):\n"
+            f"{out[-600:]}")
+        (root / "robots.txt").write_text(f"User-agent: *\nSitemap: {base}/sitemap.xml\n", encoding="utf-8")
+        code, out = gate(**{"/sitemap.xml": (200, "text/plain", built)})
+        assert "served as text/plain, not as XML" in out, f"a sitemap served as text/plain was not said:\n{out[-400:]}"
+        saved = CL.SITEMAP_LIMIT
+        CL.SITEMAP_LIMIT = 50
+        try:
+            code, out = gate()
+        finally:
+            CL.SITEMAP_LIMIT = saved
+        assert code == CL.NOT_CHECKED and "DID NOT LAND" not in out, (
+            f"a sitemap larger than check_live reads passed, or was called a deploy that did not land "
+            f"({code}):\n{out[-600:]}")
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    return "ok", ("the sitemap read to 50 MB and held to site/'s count, first and last address; the "
+                  "home page in its place, another count, no robots.txt line each a deploy that did "
+                  "not land; robots.txt held to site/'s, so a preview passes; too large to read, not "
+                  "checked")
+
+
+@check("build", "a calendar week with no meeting at all is written and left out of the sitemap, and "
+       "listed once it holds one", needs=("build_calendar", "check_site"))
+def _week_without_meeting_unlisted(BC, CS):
+    """The sitemap audit's third finding (16 October 2026): 2026-W45, W48 and
+    W51 were listed, each a page saying only "No meetings are scheduled yet
+    for this week". week_page writes every week as before and lists one only
+    when it holds a meeting -- a cancelled one included, since its card is on
+    the page -- with the current week listed as /calendar whatever it holds.
+    check_site reads such a week off its page and does not call it missing."""
+    import datetime as _dt
+    root = Path(tempfile.mkdtemp(prefix="gr-wkempty-"))
+    try:
+        site, weeks, order, urls, _m = _cal_fixture(root)
+        today = _dt.date(*CAL_TODAY)
+        here = BC.week_key(today)
+        empty = [k for k in order if not BC.week_facts(k, weeks, today)["meets"]]
+        assert empty and any(k != here for k in empty), (
+            f"the fixture has no week without a meeting to hold this to: {order}")
+        base = "https://graniterecord.org"
+        for k in order:
+            addr = base + ("/calendar" if k == here else f"/calendar/{k}")
+            page = site / "calendar" / f"{k}.html"
+            assert page.is_file(), f"calendar/{k}.html was not written"
+            if k == here:
+                assert addr in urls, "the current week, /calendar, is not listed"
+            elif k in empty:
+                assert addr not in urls, f"{k} holds no meeting and is listed"
+                assert "No meetings are" in page.read_text(encoding="utf-8"), (
+                    f"{k}'s page no longer says it holds no meeting")
+                assert CS._no_meeting(page), f"check_site does not read {k} as a week with no meeting"
+            else:
+                assert addr in urls, f"{k} holds a meeting and is not listed"
+                assert not CS._no_meeting(page), f"check_site reads {k}, which holds a meeting, as empty"
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    return "ok", (f"{len(order)} weeks written, {sum(1 for k in empty if k != here)} with no meeting "
+                  "left out of the sitemap, the rest and /calendar listed")
+
+
+@check("build", "a bill's sitemap date stays put from one night to the next: a meeting to come does "
+       "not date it, a bill with no date has none, and three standing pages carry none",
+       needs=("build_bill_pages",))
+def _bill_lastmod_stays_put(B):
+    """The sitemap audit's fifth finding (16 October 2026): about 27 dates
+    moved every night with nothing changed. 17 bills of the sitting term with
+    a meeting still to come took the build's day, as did the three whose
+    docket names no date, and /about, /bills and /officials took it as
+    standing pages. lastmod() now dates a bill with a meeting to come by the
+    latest day in its docket that has happened, gives none where there is no
+    such day, and leaves every bill whose last action is past as it was; and
+    the fixture site's sitemap carries no date for those three pages while
+    the home page and /data, which do change every night, keep the build's."""
+    built = "2026-10-16"
+    ev = {"events": [{"date": "2026-03-11"}, {"date": "2026-10-15"}, {"date": "2026-10-22"}]}
+    cases = [({"last_action": "2026-03-11"}, None, "2026-03-11"),
+             ({"last_action": "2003-05-08"}, ev, "2003-05-08"),
+             ({"last_action": "2026-10-16"}, ev, "2026-10-16"),
+             ({"last_action": "2026-10-22"}, ev, "2026-10-15"),
+             ({"last_action": "2026-10-22"}, {"events": [{"date": "2026-10-22"}]}, None),
+             ({"last_action": "2026-10-22"}, None, None),
+             ({"last_action": ""}, ev, None), ({}, None, None)]
+    for b, d, want in cases:
+        got = B.lastmod(b, built, d)
+        assert got == want, f"lastmod({b}, {built}, {d}) is {got!r}, not {want!r}"
+    absent = [x for x in CHAIN_NEEDS if not _paths.locate(x).exists()]
+    if absent:
+        return "ok", f"{len(cases)} cases; the fixture site was not built: not here, " + ", ".join(absent)
+    shared, base, _ran, days = _fixture_site_shared()
+    sm = (shared / "site" / "sitemap.xml").read_text(encoding="utf-8")
+    on = {m.group(1): m.group(2) for m in
+          re.finditer(r"<url><loc>([^<]*)</loc>(?:<lastmod>([^<]*)</lastmod>)?</url>", sm)}
+    for addr in ("/about", "/bills", "/officials"):
+        assert base + addr in on and on[base + addr] is None, (
+            f"{addr} is not listed, or carries a date that moves every night: {on.get(base + addr)}")
+    for addr in ("/", "/data"):
+        assert on.get(base + addr) in {d.isoformat() for d in days}, (
+            f"{addr} does not carry the build's day: {on.get(base + addr)}")
+    late = [u for u, m in on.items() if m and m > max(days).isoformat()]
+    assert not late, f"sitemap dates after the build's day: {late[:3]}"
+    return "ok", (f"{len(cases)} cases of lastmod(); on the fixture, /about, /bills and /officials "
+                  "undated and / and /data dated by the build")
+
+
+@check("build", "the legislator, committee, town and directory builders put their addresses in the "
+       "sitemap through shell.sitemap_merge, which takes out what they no longer write",
+       needs=("shell",))
+def _sitemap_writers_merge(S):
+    """The sitemap audit's eighth finding (16 October 2026): four builders
+    added their addresses by asking whether each appeared anywhere in the
+    file's text, which takes /town/chester as listed wherever
+    /town/chesterfield is, and none took out an address it had stopped
+    writing. All four go through shell.sitemap_merge now, each owning its
+    part of the site whole. Here each one's source is read for the call and
+    for the text test it replaced, and sitemap_merge is held to the two
+    cases: the shorter address added beside the longer, and a stale one of
+    the builder's own taken out while another builder's stays."""
+    owns = {"build_legislator_pages.py": '"/legislator"', "build_committees.py": '"/committee"',
+            "build_town_pages.py": '"/town"', "build_indexes.py": '"/directory"'}
+    for f, own in owns.items():
+        src = _paths.locate(f).read_text(encoding="utf-8")
+        assert re.search(r"S\.sitemap_merge\([^)]*" + re.escape(own) + r"\)", src), (
+            f"{f} does not put its addresses in the sitemap through S.sitemap_merge(..., {own})")
+        assert not re.search(r"not in text\b", src), (
+            f"{f} still tests whether an address is anywhere in the sitemap's text")
+    base = "https://graniterecord.org"
+    root = Path(tempfile.mkdtemp(prefix="gr-smmerge-"))
+    try:
+        sm = root / "sitemap.xml"
+        sm.write_text('<?xml version="1.0" encoding="UTF-8"?>\n<urlset>\n'
+                      f"<url><loc>{base}/town/chesterfield</loc></url>\n"
+                      f"<url><loc>{base}/town/gone</loc></url>\n"
+                      f"<url><loc>{base}/towns-elsewhere</loc></url>\n</urlset>\n", encoding="utf-8")
+        added, dropped = S.sitemap_merge(root, base, [f"{base}/town/chesterfield", f"{base}/town/chester"],
+                                         "/town")
+        locs = re.findall(r"<loc>([^<]*)</loc>", sm.read_text(encoding="utf-8"))
+        assert f"{base}/town/chester" in locs and locs.count(f"{base}/town/chesterfield") == 1, (
+            f"the shorter address was not added beside the longer, or one was doubled: {locs}")
+        assert f"{base}/town/gone" not in locs and f"{base}/towns-elsewhere" in locs \
+            and (added, dropped) == (1, 1), (
+            f"a town no longer written was kept, or another builder's address taken: {locs}")
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    return "ok", "four builders merge through sitemap_merge; chester added beside chesterfield, a stale town out"
 
 
 if __name__ == "__main__":

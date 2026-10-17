@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.277 */
+/* GRANITE_VERSION: 2026-09-07.278 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -6607,8 +6607,18 @@ body:has(.rs-page) .searchrow,.shell:has(.rs-page) .facets,.shell:has(.rs-page) 
 .lw-tname{font:600 var(--t-ui)/1.4 var(--sans);color:var(--ink)}
 .lw-tspan{font:500 var(--t-sm)/1.4 var(--sans);color:var(--ink-2)}
 .lw-chs{list-style:none;margin:0 0 .75rem;padding:0 0 0 1.25rem}
-.lw-ch{border-top:1px solid var(--rule)}
-.lw-chd > summary{cursor:pointer;list-style:none;position:relative;padding:.4375rem .25rem .4375rem 1.125rem;
+.lw-ch{border-top:1px solid var(--rule);position:relative}
+/* THE CHAPTER'S OWN PAGE, A PLAIN LINK IN THE ROW (the sitemap audit, 16
+   October 2026): "RSA 3-A" at the row's right, level with the chapter's
+   name, beside the summary rather than inside it, so a click on the name
+   still opens the row's sections. The summary keeps the room it takes, and
+   the sections listed under it when the row opens run the row's full width.
+   Its line box is the summary's, so the two read as one line. */
+.lw-go{position:absolute;top:.4375rem;right:.25rem;font:500 var(--t-sm)/calc(var(--t-ui) * 1.4) var(--sans);
+  color:var(--pine);text-decoration:none;white-space:nowrap}
+.lw-go:hover{text-decoration:underline}
+.lw-go::after{content:"\00a0\203A";content:"\00a0\203A" / ""}
+.lw-chd > summary{cursor:pointer;list-style:none;position:relative;padding:.4375rem 6rem .4375rem 1.125rem;
   font:400 var(--t-ui)/1.4 var(--sans);color:var(--ink)}
 .lw-chd > summary::-webkit-details-marker{display:none}
 .lw-chd > summary::before{top:.875rem;left:.125rem}
