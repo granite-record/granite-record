@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.53
+# GRANITE_VERSION: 2026-09-08.54
 """
 The civics section: a hub and one page per topic, in order.
 
@@ -31,6 +31,7 @@ sys.path += [str(p) for p in Path(__file__).resolve().parents if (p / "_paths.py
 import _paths  # noqa: E402,F401
 
 import argparse
+import datetime
 import html
 import json
 import re
@@ -231,6 +232,41 @@ def _cacr_hurdle(idx, every_narr, term):
                 f"{'CACR' if len(short) == 1 else 'CACRs'} won a majority of those "
                 "voting in the House and still fell short.")
     return out
+
+
+PROBATE_CACR = ("2025-2026", "CACR13")
+
+
+def probate_vote(rows, today):
+    """The register of probate paragraph's last sentence (civics.py,
+    [[probate_vote]]), in the tense the build's day gives it: CACR 13's
+    election ahead, past with its count not on the site yet, or past with the
+    count a person entered in ballot_results.json. `rows` is that file's rows.
+
+    WRITTEN BY THE DAY, NOT BY HAND (17 October 2026). The sentence said the
+    question went to the voters "at the November 2026 general election" and
+    would have gone on saying so after the vote; a reminder failing preflight
+    from 4 November was what was to catch it, on the eve of a release freeze.
+    Nothing here is a result the file does not hold."""
+    link = '<a href="bill/2026/cacr13.html">CACR 13 (2026)</a>'
+    lead = f"In 2026 the legislature sent the question to the voters again, as {link}"
+    row = next((r for r in rows or () if (r.get("term"), r.get("bill")) == PROBATE_CACR), None)
+    try:
+        day = datetime.date.fromisoformat((row or {}).get("election") or "")
+    except ValueError:
+        return lead + "."
+    on = S.date_words(day, "full")
+    y, n = row.get("yes"), row.get("no")
+    if y is None or n is None or y + n <= 0:
+        if today <= day:
+            return f"{lead}, at the general election of {on}."
+        return (f"{lead}. The vote was on {on}; the Secretary of State&rsquo;s count is not "
+                "on the site yet.")
+    share = f"{100 * y / (y + n):.1f}%"
+    if 3 * y >= 2 * (y + n):
+        return f"{lead}, and on {on} the voters ratified it: {share} voted yes, where two thirds was needed."
+    return (f"{lead}, and on {on} it did not reach the two thirds it needed: {share} of "
+            "those voting on it voted yes.")
 
 
 def _voters_verb(label, n):
@@ -511,6 +547,14 @@ def record_figures(site, root=Path(".")):
         # follows it", which is true and says nothing: it is 98%, and the 2%
         # is the interesting part.
         "follows_committee": _follows_committee(narr),
+        # Not a count: what Using This Site says of email, which changes the
+        # day email following goes live (civics.FOLLOW_EMAIL).
+        "follow_email": civics.FOLLOW_EMAIL[S.follow_live()],
+        # Nor this: the register of probate paragraph's last sentence, told
+        # in the tense the build's day gives CACR 13's vote (probate_vote).
+        "probate_vote": probate_vote(
+            _load(Path(root) / "corrections" / "ballot_results.json", {}).get("rows"),
+            build_date.today()),
         # Eight more the rewritten pages asked for, each counted from the file
         # named beside it rather than typed. A page may state a figure only if
         # the site can produce it, which is the rule that keeps this section

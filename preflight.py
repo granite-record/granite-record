@@ -81403,6 +81403,49 @@ def _learn_statutes_in_force():
                   f"{len(LEARN_STATUTE_CLAIMS)} anchored claims say what their sections say")
 
 
+@check("frontend", "the pages that tell CACR 13's vote read true the day after it: the county "
+       "page by the day, and Using This Site and the Data page by whether email is live",
+       needs=("build_civics", "civics", "build_exports", "officials_tabs"))
+def _ballot_words_by_the_day(BC, civics, build_exports, OT):
+    """The language sweep of 17 October 2026, out of date before 10 November:
+    county government's register of probate paragraph said CACR 13 went to
+    the voters "at the November 2026 general election" and would have said it
+    after; Using This Site said "There is no email option yet" and the Data
+    page "Following a bill takes no account and no email address", neither
+    switched by shell.follow_live() as About and the Data page's privacy are.
+    Fails if the sentence stops following the day, invents a result the file
+    does not hold, or either page stops following the switch."""
+    import datetime as _dt
+    row = {"term": "2025-2026", "bill": "CACR13", "election": "2026-11-03",
+           "yes": None, "no": None}
+    before = BC.probate_vote([row], _dt.date(2026, 11, 2))
+    assert "at the general election of November 3, 2026." in before, before
+    after = BC.probate_vote([row], _dt.date(2026, 11, 4))
+    assert ("The vote was on November 3, 2026; the Secretary of State&rsquo;s count is not on "
+            "the site yet.") in after and "ratif" not in after, after
+    fell = BC.probate_vote([dict(row, yes=500, no=400)], _dt.date(2026, 11, 20))
+    assert "did not reach the two thirds" in fell and "55.6%" in fell, fell
+    won = BC.probate_vote([dict(row, yes=700, no=300)], _dt.date(2026, 11, 20))
+    assert "ratified it: 70.0%" in won, won
+    assert BC.probate_vote([], _dt.date(2026, 11, 4)).endswith("CACR 13 (2026)</a>."), (
+        "with no ballot row the sentence claims a date or a result")
+    assert "[[probate_vote]]" in civics.BODY_COUNTY and "[[follow_email]]" in civics.BODY_SITE, (
+        "the county page or Using This Site no longer asks for its sentence")
+    assert "no email option" in civics.FOLLOW_EMAIL[False] and \
+        "no email option" not in civics.FOLLOW_EMAIL[True], civics.FOLLOW_EMAIL
+    import inspect
+    src = inspect.getsource(build_exports.feeds)
+    assert "follow_live()" in src, "the Data page's Feeds line no longer follows the switch"
+    # County Officials' "Most of these seats are on the November 2026 ballot".
+    assert OT.ballot_line(_dt.date(2026, 11, 3)) == (
+        "Most of these seats are on the ballot on November 3, 2026."), OT.ballot_line(_dt.date(2026, 11, 3))
+    assert OT.ballot_line(_dt.date(2026, 11, 4)).startswith(
+        "Most of these seats were on the ballot on November 3, 2026"), OT.ballot_line(_dt.date(2026, 11, 4))
+    return "ok", ("CACR 13's sentence is ahead on 2 November, past without a count on 4 "
+                  "November, and the count once entered; the county roster's ballot line the "
+                  "same; email's two sentences follow the switch")
+
+
 @check("data", "the register of probate paragraph is reread once the November 2026 vote is in")
 def _probate_after_the_vote():
     """A REMINDER, and a failing check is the one kind that gets read.
@@ -81419,12 +81462,23 @@ def _probate_after_the_vote():
 
     A note in a document is read by whoever goes looking for it. preflight is
     the first thing every session runs (CLAUDE.md, "Do this first"), so a
-    check that starts failing on 4 November is read by the first session after
-    the vote, and its message says what to change and on which line. It
-    passes again once civics.REGISTER_OF_PROBATE_REVIEWED holds the date of
-    that review: on or after 4 November, because a review before the result
-    is not the one this asks for, and not after today, because a date in the
-    future is a way to silence it early.
+    failing check is read by the first session after it fires, and its message
+    says what to change and on which line. It passes again once
+    civics.REGISTER_OF_PROBATE_REVIEWED holds the date of that review: on or
+    after the day it fired, because a review before the result is not the one
+    this asks for, and not after today, because a date in the future is a way
+    to silence it early.
+
+    IT FIRES ON THE RESULT, NOT ON THE DAY AFTER THE VOTE (17 October 2026).
+    The paragraph's last sentence is written by the day since then
+    (build_civics.probate_vote: "The vote was on November 3, 2026; the
+    Secretary of State's count is not on the site yet"), so on 4 November the
+    page is true and nothing needs a hand; failing every preflight and every
+    dry run from that morning, on the eve of the release freeze of 6-10
+    November, would have asked for a review with nothing yet to review. It
+    fires the day the count is entered in corrections/ballot_results.json (its
+    row's `read`), when "still elected" may have stopped being true, and on 2
+    December 2026, Organization Day, if no count has been entered by then.
 
     A data check and not a code one, on purpose, for the reason
     _learn_statutes_in_force gives above: nightly.py gates itself on
@@ -81441,7 +81495,7 @@ def _probate_after_the_vote():
     except Exception as e:                      # noqa: BLE001
         return "skip", f"civics.py did not import ({e})"
     vote = _dt.date(2026, 11, 3)
-    due = vote + _dt.timedelta(days=1)
+    backstop = _dt.date(2026, 12, 2)
     on = f"{vote.day} {vote:%B %Y}"
     src = _paths.locate("civics.py").read_text(encoding="utf-8").splitlines()
 
@@ -81449,8 +81503,20 @@ def _probate_after_the_vote():
         n = next((i for i, s in enumerate(src, 1) if text in s), None)
         return f" (civics.py line {n})" if n else ""
 
-    def rule(today, reviewed):
+    def due_on(row):
+        """The day the reminder fires: the day the count was entered, never
+        before the day after the vote; the backstop while there is none."""
+        if (row or {}).get("yes") is None:
+            return backstop
+        try:
+            read = _dt.date.fromisoformat(str(row.get("read")))
+        except ValueError:
+            read = vote
+        return max(read, vote + _dt.timedelta(days=1))
+
+    def rule(today, reviewed, row=None):
         """None while the paragraph needs nothing, or what to do about it."""
+        due = due_on(row)
         if reviewed:
             try:
                 when = _dt.date.fromisoformat(reviewed)
@@ -81465,28 +81531,43 @@ def _probate_after_the_vote():
                 return None
         if today < due:
             return None
+        said = (f"the count of the vote of {on} is in corrections/ballot_results.json: reread"
+                if (row or {}).get("yes") is not None else
+                f"the vote was on {on} and no count has been entered in "
+                "corrections/ballot_results.json: enter the Secretary of State's, then reread")
         return (
-            "the register of probate paragraph on learn/county-government still "
-            f"says CACR 13 (2026) goes to the voters, and the vote was on {on}. "
-            "In civics.py's BODY_COUNTY, rewrite the paragraph beginning "
-            f"\"Register of probate:\"{at('<p><b>Register of probate:</b>')} to say "
-            "what the voters decided -- an amendment needs two thirds of those "
-            "voting on it -- and, if it passed, the sentence \"Five county "
-            f"officers are elected\"{at('Five county officers are elected')}, which "
-            "counts the register among them. Then set REGISTER_OF_PROBATE_REVIEWED"
+            f"{said} the register of probate paragraph on "
+            "learn/county-government, beginning "
+            f"\"Register of probate:\"{at('<p><b>Register of probate:</b>')}, whose last "
+            "sentence the build now writes from that count -- an amendment needs two "
+            "thirds of those voting on it -- and, if it passed, its \"still elected\" and "
+            f"the sentence \"Five county officers are elected\"{at('Five county officers are elected')}, "
+            "which counts the register among them. Then set REGISTER_OF_PROBATE_REVIEWED"
             f"{at('REGISTER_OF_PROBATE_REVIEWED =')} to the date of the review."
-            + (f" It holds {reviewed!r}, which is before {due.day} November and "
-               "so before the result." if reviewed else ""))
+            + (f" It holds {reviewed!r}, which is before {due} and so before the result."
+               if reviewed else ""))
 
-    for day, reviewed, fires in ((vote, "", False), (due, "", True),
-                                 (due, due.isoformat(), False),
-                                 (due + _dt.timedelta(days=90), "2026-11-02", True),
-                                 (due, "2026-11-05", True), (due, "soon", True)):
-        got = rule(day, reviewed)
+    counted = {"yes": 300000, "no": 100000, "read": "2026-11-20"}
+    for day, reviewed, row, fires in (
+            # The day after the vote, and every day to the backstop: quiet.
+            (vote, "", None, False), (_dt.date(2026, 11, 4), "", None, False),
+            (_dt.date(2026, 12, 1), "", None, False),
+            # No count by Organization Day: it fires.
+            (backstop, "", None, True), (backstop, backstop.isoformat(), None, False),
+            # The count entered on 20 November: it fires that day, until a
+            # review on or after it.
+            (_dt.date(2026, 11, 19), "", counted, False), (_dt.date(2026, 11, 20), "", counted, True),
+            (_dt.date(2026, 11, 21), "2026-11-05", counted, True),
+            (_dt.date(2026, 11, 21), "2026-11-20", counted, False),
+            (_dt.date(2027, 2, 1), "2026-11-02", counted, True),
+            (_dt.date(2026, 11, 20), "2026-11-25", counted, True),
+            (_dt.date(2026, 11, 20), "soon", counted, True)):
+        got = rule(day, reviewed, row)
         assert (got is not None) == fires, (
-            f"on {day} with the review dated {reviewed!r}, the reminder "
+            f"on {day} with the review dated {reviewed!r} and "
+            f"{'a count' if row else 'no count'}, the reminder "
             + ("stays quiet, and should fire" if fires else f"fires ({got[:80]}), and should not"))
-    assert "Register of probate:" in (rule(due, "") or ""), (
+    assert "Register of probate:" in (rule(backstop, "") or ""), (
         "the reminder no longer names the paragraph it is for")
 
     reviewed = getattr(civics, "REGISTER_OF_PROBATE_REVIEWED", None)
@@ -81495,12 +81576,18 @@ def _probate_after_the_vote():
         "register of probate paragraph is marked as reread after the November "
         "2026 vote")
     today = _dt.date.today()
-    msg = rule(today, reviewed)
+    p = Path("corrections/ballot_results.json")
+    rows = (json.loads(p.read_text(encoding="utf-8")).get("rows") or []) if p.exists() else []
+    row = next((r for r in rows if (r.get("term"), r.get("bill")) == ("2025-2026", "CACR13")),
+               None)
+    msg = rule(today, reviewed, row)
     assert msg is None, msg
     if reviewed:
         return "ok", f"reread on {reviewed}, after the vote of {on}"
-    return "ok", (f"the vote is on {on}; this fails from {due.day} November until "
-                  f"the paragraph is reread, {(due - today).days} days from now")
+    due = due_on(row)
+    return "ok", (f"the vote is on {on}; this fails once its count is entered, or on {due} "
+                  f"if none is, until the paragraph is reread ({(due - today).days} days "
+                  "from now at the latest)")
 
 
 @check("data", "a committee's members are the ones on it today, not every seat the table still holds")

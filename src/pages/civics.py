@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.43
+# GRANITE_VERSION: 2026-09-08.44
 """
 The topics of the civics section: their order, their names, and their prose.
 
@@ -84,6 +84,19 @@ def topic(slug, title, group, blurb, body, sources, holds=""):
 # was a tinted box with a small heading, and is now In the Record in the
 # margin, so a page reads as one column of sections (C7).
 SHOWS = ('<h2>In the Record</h2>{}')
+
+# WHAT USING THIS SITE SAYS OF EMAIL, BEFORE AND AFTER IT GOES LIVE (17
+# October 2026). It said "There is no email option yet" in prose, and would
+# have gone on saying it beside the sign-up box from the day email following
+# opened; shell.follow_live() decides, as it does for the About and Data
+# pages. The first is the text it replaces, unchanged.
+FOLLOW_EMAIL = {
+    False: "There is no email option yet. No account, no email address, nothing to leak.",
+    True: ("A feed needs no account and no email address. Updates can also come by "
+           "email: sign up in the same <b>Follow</b> control, and the "
+           '<a href="data.html#privacy">Data page</a> says what is kept and for how '
+           "long."),
+}
 
 
 # ---------------------------------------------------------------------------
@@ -1653,14 +1666,21 @@ them assume you already know all of this."""
 # begins "Register of probate:" says so in the future tense, and the "Five
 # county officers" sentence above it counts the register among the offices on
 # the ballot. CACR 13's own page will say how the vote went once the docket
-# records it, as it recorded the referendums of 1992 and 1998; these two
-# sentences are written by hand, and no build will change them.
+# records it, as it recorded the referendums of 1992 and 1998.
 #
-# Once the result is in, rewrite the paragraph to say what the voters decided
-# -- an amendment needs two thirds of those voting on it -- and, if it passed,
-# the county officers sentence too; then set this to the date of that review,
-# as "2026-11-05". preflight's full run fails from 4 November 2026 until this
-# holds a date on or after that day, which is the reminder.
+# THE PARAGRAPH'S LAST SENTENCE TELLS THE VOTE BY THE DAY (17 October 2026):
+# [[probate_vote]], which build_civics.probate_vote writes from the build's
+# day and CACR 13's row of corrections/ballot_results.json -- the election
+# ahead, then "the vote was on November 3, 2026" with the count not yet on
+# the site, then the count once a person has entered it. So the page reads
+# true on 4 November without a hand on it, and the reminder below waits for
+# the result rather than the date.
+#
+# Once the count is in, reread the paragraph -- if two thirds said yes, its
+# "still elected" and the county officers sentence are no longer true -- and
+# set this to the date of that review, as "2026-11-20". preflight's reminder
+# (_probate_after_the_vote) fails from the day the count is entered, or from
+# 2 December 2026 if it never is, until this holds a date on or after it.
 REGISTER_OF_PROBATE_REVIEWED = ""
 
 BODY_COUNTY = """
@@ -1822,9 +1842,7 @@ in articles 71 and 81 of Part Second, so removing it takes an amendment and
 not a bill: <a href="bill/2022/cacr21.html">CACR 21 (2022)</a> would have
 struck it out, passed both chambers, and went to the voters, where it did not
 reach the <a href="learn/the-constitution.html">two thirds of those
-voting</a> an amendment needs. In 2026 the legislature sent the question to
-the voters again, as <a href="bill/2026/cacr13.html">CACR 13 (2026)</a>, at
-the November 2026 general election.</p>
+voting</a> an amendment needs. [[probate_vote]]</p>
 
 <p><b>Coroner:</b> New Hampshire elects none. Sudden, unexpected or unnatural
 deaths are investigated by medical examiners of the Office of the Chief
@@ -2364,8 +2382,7 @@ would cost</td></tr>
 does every sitting member, every current committee, and every topic. The
 <b>Follow</b> control on a record's page gives the address where there is one.
 There are also feeds for the record's newest actions and for hearings coming
-up. A bill's feed ends once the bill is settled. There is no email option yet.
-No account, no email address, nothing to leak.</p>
+up. A bill's feed ends once the bill is settled. [[follow_email]]</p>
 
 <h2>How to Report an Error</h2>
 <p>Every bill's, legislator's and committee's page carries a <b>Report a problem</b>

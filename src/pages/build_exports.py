@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-10.46
+# GRANITE_VERSION: 2026-09-10.47
 """
 The record as CSV, for anyone who wants to work with it rather than read it.
 
@@ -502,8 +502,12 @@ def feeds(site):
     total = len(list((site / "feed").rglob("*.xml")))
     # A part of For Developers since the polish pass of 9 October 2026, under
     # a heading of the section's own rank.
+    # Not "Following a bill takes no ... email address" once following by
+    # email is open (17 October 2026): a feed still takes neither.
+    lead = ("A feed takes no account and no email address" if shell.follow_live()
+            else "Following a bill takes no account and no email address")
     return f"""<h3 class="dph3">Feeds</h3>
-    <p>Following a bill takes no account and no email address:
+    <p>{lead}:
       every feed below is a fixed address, rebuilt whenever the site is.
       {total:,} of them are published.</p>
     <ul class="feeds">{"".join(rows)}</ul>"""
