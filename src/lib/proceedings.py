@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.13
+# GRANITE_VERSION: 2026-09-05.14
 """
 Read proceedings.csv. Every tool that needs to know what happened on which
 recording imports this and nothing else.
@@ -166,15 +166,42 @@ def vote_day(when):
         return None
 
 
-def vote_term(year, when=""):
-    """The term a roll call belongs to: its session year's, or the next
-    term's where it was taken on or after Organization Day of an even year
-    (ORGANIZATION DAY BELONGS TO THE NEXT TERM)."""
+def _vote_term(year, when=""):
+    """vote_term's reading, worked out afresh on every call: what the memo
+    below keeps."""
     day = vote_day(when)
     org = organization_day(day.year) if day else None
     if org and day >= org:
         return term_of(day.year + 1)
     return term_of(year)
+
+
+# ONE READING FOR EACH YEAR AND DAY (16 October 2026, private/SITE_DATA_PROFILE.md,
+# P1). The site data step asked vote_term 13,133,383 times, about six times for
+# each of 2,303,047 ballots, and the ballots hold only 718 different (year,
+# day) pairs between them; each call matched two patterns, built a date and
+# worked out Organization Day, about 65 seconds in all. The answer depends on
+# its two arguments and nothing else, so it is kept the first time and handed
+# back after. The types are part of the key because 1 and True, or 1 and 1.0,
+# are one key to a dict and print differently, and term_of reads the printed
+# form. An argument that cannot be a key (a list, say) is read afresh, as it
+# always was, rather than raising where it never raised before.
+_VOTE_TERMS = {}
+
+
+def vote_term(year, when=""):
+    """The term a roll call belongs to: its session year's, or the next
+    term's where it was taken on or after Organization Day of an even year
+    (ORGANIZATION DAY BELONGS TO THE NEXT TERM)."""
+    key = (year, when, type(year), type(when))
+    try:
+        return _VOTE_TERMS[key]
+    except KeyError:
+        pass
+    except TypeError:
+        return _vote_term(year, when)
+    term = _VOTE_TERMS[key] = _vote_term(year, when)
+    return term
 
 
 # A term as this project writes one. Several derived files are {term: {...}}

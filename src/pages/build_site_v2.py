@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.208
+# GRANITE_VERSION: 2026-09-05.211
 """
 Generate the faceted site from real General Court data.
 
@@ -49,6 +49,7 @@ import senate_hearing_reports as SHR
 import site_read
 import spellings
 import csv
+import functools
 import json
 import member_figures as MF
 import member_links as ML
@@ -4820,12 +4821,28 @@ def _j_motions(seg):
     return got
 
 
+# THE CLAUSE READERS KEEP WHAT THEY READ (16 October 2026,
+# private/SITE_DATA_PROFILE.md, P2). Over the site data step _j_segments was
+# asked 1.3 million times and _j_act 2.4 million, nearly always of a line or a
+# clause already read: _j_rows splits the row before each row again, and
+# journey splits every row once more. Each _j_act tried every J_ACTS pattern
+# over its clause, which made _j_motions the step's largest cost of its own.
+# So each of these keeps its answer by its argument, through
+# functools.lru_cache, whose __wrapped__ is the same reading done afresh.
+# THE MEMO IS RIGHT ONLY WHILE THEY READ THEIR STRING ARGUMENT ALONE. Today
+# they read nothing but it and this module's compiled patterns. An edit that
+# made one of them read a term, a bill, a date or anything a caller sets would
+# hand every later caller the first answer, with no error, so such a reader
+# must lose its lru_cache. preflight's _journey_clauses_kept holds the kept
+# answers to the fresh ones.
+@functools.lru_cache(maxsize=None)
 def _j_act(seg):
     """The first motion a clause names, or None."""
     got = _j_motions(seg)
     return got[0][0] if got else None
 
 
+@functools.lru_cache(maxsize=None)
 def _j_has_outcome(seg):
     return bool(J_YES_CODE.search(seg) or J_NO_CODE.search(seg)
                 or J_YES_WORD.search(seg) or J_NO_WORD.search(seg))
@@ -4842,10 +4859,18 @@ J_AMEND_LIST = re.compile(r"(?<=\d[hse]);(?=\s*(?:and\s+)?#?(?:\d{4}-)?\d{3,4}[h
 
 
 def _j_segments(raw):
-    """The clauses of one docket line. A motion whose outcome the clerk put in
-    the next clause is one clause: "Sen. Gray Moved Nonconcur with the House
-    Amendment; Requests C of C, MA, VV", "Conference Committee Report #
-    2026-2114c; RC 15Y-8N, Adopted".
+    """The clauses of one docket line (_j_clauses), as a list of the
+    caller's own: one a caller changes cannot change what the next caller
+    is given, because the kept answer is a tuple."""
+    return list(_j_clauses(raw))
+
+
+@functools.lru_cache(maxsize=None)
+def _j_clauses(raw):
+    """The clauses of one docket line, as a tuple. A motion whose outcome the
+    clerk put in the next clause is one clause: "Sen. Gray Moved Nonconcur
+    with the House Amendment; Requests C of C, MA, VV", "Conference Committee
+    Report # 2026-2114c; RC 15Y-8N, Adopted".
 
     A SEMICOLON IN A LIST OF AMENDMENTS IS NOT THE END OF A CLAUSE. "House
     Non-Concurs with Senate Amendment 1427s; 1851s; 1898s; and 1925s (Rep.
@@ -4891,7 +4916,7 @@ def _j_segments(raw):
             out[-2:] = [f"{out[-2]}; {out[-1]}; {p}"]
         else:
             out.append(p)
-    return out
+    return tuple(out)
 
 
 def _j_tally(seg, at=0):
@@ -5745,9 +5770,15 @@ def journey(narr, bid, rcs=(), chapter="", law_line="", term="", db_effective=""
     # so that a removal from the table, a reconsideration and the order to a
     # third reading that carries it later each find what they would have, and
     # is left out after, unless that order came.
+    # THE ROWS ARE READ ONCE (16 October 2026, private/SITE_DATA_PROFILE.md,
+    # P2). They were read twice, here and for the loop below, and nothing
+    # between the two readings changes `evs` or an event in it:
+    # passage_left_pending is handed tuples of strings. The second reading
+    # was a third of journey's time over the site data step.
+    rows = _j_rows(evs)
     unpassed = N.passage_left_pending(
-        [((e.get("body") or "").upper()[:1], _j_row_day(e, raw), raw) for e, raw in _j_rows(evs)])
-    for e, raw in _j_rows(evs):
+        [((e.get("body") or "").upper()[:1], _j_row_day(e, raw), raw) for e, raw in rows])
+    for e, raw in rows:
         body = (e.get("body") or "").upper()[:1]
         # THE JOURNAL A ROW CITES NAMES THE CHAMBER THAT ACTED. "PASSED VV;
         # SJ12,P305 + 318" is filed under the House on HB 1113 of 1994 and
@@ -7651,6 +7682,20 @@ def check_notes(notes, bills):
               "would exit zero having done it.")
 
 
+# ONE LABEL A NAME, CHAMBER AND PARTY (16 October 2026,
+# private/SITE_DATA_PROFILE.md, P3). bill_rollcalls asks vote_member for each
+# of 2.2 million ballots, and each asking ran member_labels -- person_name,
+# sort_name and three patterns -- for the same few thousand people. The pair
+# vote_member uses, the name drawn and the name sorted, depends only on the
+# name it settles on, the chamber and the party, so the pair is kept by those
+# three. The entry is built fresh around it on every call and the dict
+# member_labels returns is never kept, so no caller can change what the next
+# is given. The unnamed member is noted before the pair is looked up, so that
+# every ballot naming nobody is noted, kept pair or not. A key no dict can hold
+# is labelled afresh, as before.
+_VOTE_LABELS = {}
+
+
 def vote_member(m, body, legs, unnamed):
     """One member's entry in a roll call.
 
@@ -7676,11 +7721,17 @@ def vote_member(m, body, legs, unnamed):
     if not raw or raw.lower().startswith(("member #", "former member")):
         unnamed.add(str(m.get("member_id")))
         raw = f"Member #{m.get('member_id')}"
-    lab = member_labels(raw, chamber=(legs.get(m.get("member_id"), {})
-                                      .get("chamber") or body),
-                        party=m.get("party"))
-    return {"n": lab["display"], "s": lab["sort"] or sort_name(raw),
-            "p": m.get("party") or "X", "v": m.get("vote")}
+    chamber = legs.get(m.get("member_id"), {}).get("chamber") or body
+    key = (raw, chamber, m.get("party"))
+    try:
+        display, sort = _VOTE_LABELS[key]
+    except KeyError:
+        lab = member_labels(raw, chamber=chamber, party=m.get("party"))
+        display, sort = _VOTE_LABELS[key] = (lab["display"], lab["sort"] or sort_name(raw))
+    except TypeError:
+        lab = member_labels(raw, chamber=chamber, party=m.get("party"))
+        display, sort = lab["display"], lab["sort"] or sort_name(raw)
+    return {"n": display, "s": sort, "p": m.get("party") or "X", "v": m.get("vote")}
 
 
 MOVER_HONORIFIC = re.compile(r"^(?:Rep|Sen|Representative|Senator)s?\.?\s+", re.I)
@@ -10427,6 +10478,11 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
         if "keys" not in _jk:
             _jk["keys"] = journal_keys_from_queue()
         return _jk["keys"]
+    # ONE MKDIR A YEAR FOLDER (16 October 2026, private/SITE_DATA_PROFILE.md,
+    # section 5). Each bill made its year's folder, which already stood for
+    # every bill but the year's first: 33,717 calls and about 13 seconds on
+    # Windows. The folders made are kept here, and each is made once.
+    year_dirs = set()
     for bid, b in ((k, v) for byb in bills.values() for k, v in byb.items()):
         # New Hampshire sits in two-year terms beginning in odd years. Bill
         # numbers are unique across the whole term, so the term -- not the year
@@ -10848,7 +10904,9 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
         # as many words -- and both of them read THIS file, so the year they
         # were keeping the pages apart by was doing nothing for the data.
         _bd = out / "bills" / str(year)
-        _bd.mkdir(parents=True, exist_ok=True)
+        if _bd not in year_dirs:
+            _bd.mkdir(parents=True, exist_ok=True)
+            year_dirs.add(_bd)
         # The stages' text run together; of the stages as they are told,
         # where one of them is told without its enrolment (stages_told).
         _narrative = (" ".join(s_["text"] for s_ in stages_told(narr, kind, row["passage"]))

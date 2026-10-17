@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.595
+# GRANITE_VERSION: 2026-09-04.596
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -12709,6 +12709,124 @@ def _rail_reconsider_own_outcome(build_site_v2):
                   "its own ML; HB 278's note between reports quotes the whole line")
 
 
+@check("status", "the journey reads a bill's rows once, and its clause readers keep only what a "
+       "fresh reading gives, over every real docket row the checks hold",
+       needs=("narrative", "build_site_v2"))
+def _journey_clauses_kept(N, build_site_v2):
+    """journey reads a bill's rows once, and _j_act, _j_has_outcome and
+    _j_clauses (behind _j_segments) keep their answers by their argument (16
+    October 2026, private/SITE_DATA_PROFILE.md, P2): together a minute and a
+    half of the site data step. A memo is right only while what it keeps
+    depends on its argument alone, so this holds the kept answers to the
+    same readings done afresh (their __wrapped__) over every real docket row
+    the checks here hold (the _DOCKET_ fixtures, each bill told by
+    narrative.build): every line and clause read, and every bill's journey,
+    asked cold and again warm. A clause reader that came to read a term, a
+    bill or anything a caller sets would differ here before it differed on
+    a page. And _j_segments hands each caller a list of its own: one a
+    caller changes does not change the next caller's. Undone, the step is
+    slower and nothing else would say so."""
+    B = build_site_v2
+    kept = ("_j_act", "_j_has_outcome", "_j_clauses")
+    missing = [n for n in kept if not hasattr(getattr(B, n), "cache_info")]
+    assert not missing, (f"{', '.join(missing)} no longer keep what they read: the site data "
+                         "step reads the same clauses millions of times over")
+    # Every real docket row the checks hold, a bill at a time as each fixture
+    # gives them, told by narrative.build.
+    groups = []
+
+    def rows_in(v):
+        if isinstance(v, str):
+            if v.count("|") >= 6:
+                yield v
+        elif isinstance(v, dict):
+            for x in v.values():
+                yield from rows_in(x)
+        elif isinstance(v, (list, tuple)):
+            for x in v:
+                yield from rows_in(x)
+    for name, value in sorted(globals().items()):
+        if not name.startswith("_DOCKET_"):
+            continue
+        parts = value.values() if isinstance(value, dict) else [value]
+        for part in parts:
+            by = {}
+            for row in rows_in(part):
+                f = row.split("|")
+                by.setdefault((f[3], f[0]), []).append(row)
+            groups += [(name, bill, year, rows) for (bill, year), rows in by.items()]
+    told = []
+    for name, bill, year, rows in groups:
+        y = int(year) if year.isdigit() else 0
+        term = f"{y if y % 2 else y - 1}-{(y if y % 2 else y - 1) + 1}"
+        try:
+            told.append((bill, term, _narrated(N, term, bill, rows)))
+        except Exception:                                        # noqa: BLE001
+            continue
+    assert len(told) >= 100, (f"only {len(told)} of the {len(groups)} real dockets here were "
+                              "told: too few for this check to hold the clause readers to")
+    lines = sorted({B.docket_line(e) for _b, _t, rec in told
+                    for e in (rec or {}).get("events", [])} - {""})
+    clauses = sorted({c for line in lines for c in
+                      list(B._j_clauses.__wrapped__(line)) + [x.strip() for x in line.split(";")]})
+    clauses += [f"{a} {b}" for a, b in zip(clauses, clauses[1:])]
+
+    def read_all():
+        segs = {line: B._j_segments(line) for line in lines}
+        acts = {c: (B._j_act(c), B._j_has_outcome(c)) for c in clauses}
+        trips = {(i, bill, term): B.journey(rec, bill, [], "", "", term)
+                 for i, (bill, term, rec) in enumerate(told)}
+        return segs, acts, trips
+    real = {n: getattr(B, n) for n in kept}
+    try:
+        for n in kept:
+            setattr(B, n, real[n].__wrapped__)
+        fresh = read_all()
+    finally:
+        for n in kept:
+            setattr(B, n, real[n])
+    bad = []
+    for n in kept:
+        getattr(B, n).cache_clear()
+    for when in ("cold", "warm"):
+        got = read_all()
+        for what, a, b in zip(("clauses of a line", "a clause's act and outcome",
+                               "a journey"), got, fresh):
+            differ = [k for k in b if a.get(k) != b[k]]
+            if differ:
+                bad.append(f"{when}: {len(differ)} of {len(b)} differ from the fresh reading in "
+                           f"{what}, first {differ[0]!r}: {a.get(differ[0])!r}, "
+                           f"afresh {b[differ[0]]!r}"[:600])
+    hits = {n: getattr(B, n).cache_info().hits for n in kept}
+    if not all(hits.values()):
+        bad.append(f"a reader kept nothing that was asked again: {hits}")
+    for line in lines:
+        mine = B._j_segments(line)
+        mine.append("a clause the caller added")
+        mine[0] = "a clause the caller changed"
+        mine.reverse()
+        again = B._j_segments(line)
+        if again != fresh[0][line] or again is mine:
+            bad.append(f"a caller that changes _j_segments' list changes the next caller's: "
+                       f"{line!r} now reads {again!r}")
+            break
+    asked = []
+    rows = B._j_rows
+    B._j_rows = lambda evs: (asked.append(1), rows(evs))[1]
+    try:
+        for bill, term, rec in told:
+            B.journey(rec, bill, [], "", "", term)
+    finally:
+        B._j_rows = rows
+    if len(asked) != len(told):
+        bad.append(f"journey read the rows {len(asked)} times for {len(told)} bills, not once a "
+                   "bill")
+    assert not bad, "\n".join(bad[:6])
+    return "ok", (f"{len(told)} real dockets told: {len(lines)} lines, {len(clauses)} clauses and "
+                  f"{len(told)} journeys read cold and warm as they read afresh; a caller's "
+                  "change to its list stays its own; the rows read once a journey")
+
+
 # Real rows: Docket_db_1997-1998.txt lines 8360 and 8365-8383 (HB 723);
 # Docket_db_1989-1990.txt 17563-17584 (HB 1182).
 _DOCKET_NEW_CONFERENCE = {
@@ -13133,6 +13251,124 @@ def _placeholder(build_site_v2):
     lab = build_site_v2.member_labels("Member #377204", chamber="H", party="R")
     assert lab["display"] == "Member #377204", lab["display"]
     return "ok", "no honorific, no party letter"
+
+
+@check("naming", "a roll call's member is labelled once for each name, chamber and party: what "
+       "is kept is what labelling afresh gives, the unnamed are noted on every ballot, and a "
+       "caller's change to an entry stays its own", needs=("build_site_v2",))
+def _vote_member_kept(build_site_v2):
+    """vote_member keeps the label pair it draws -- the name shown and the
+    name sorted -- by the name it settles on, the chamber and the party (16
+    October 2026, private/SITE_DATA_PROFILE.md, P3): bill_rollcalls asks it
+    for 2.2 million ballots of a few thousand people. Held here against the
+    plain path, member_labels asked for every ballot as vote_member did
+    before, on the fixture's ballots and roster and on the shapes a ballot's
+    name comes in: the roster's name where the vote has none, a placeholder
+    noted as unnamed, the roster's chamber over the vote's, a member who
+    changed party, a party in lower case or missing. Each ballot is asked
+    cold and again warm. A member who names nobody is noted in whatever set
+    the caller passes, kept pair or not; a caller that changes the entry it
+    was given does not change the next caller's; a chamber no dict can hold
+    fails as member_labels fails; and a member asked three times is labelled
+    once. Undone, the step is slower and nothing else would say so."""
+    B = build_site_v2
+    tmp = Path(tempfile.mkdtemp(prefix="gr-vote-member-"))
+    try:
+        _site_fixture(tmp)
+        votes = json.loads((tmp / "data" / "member_votes.json").read_text(encoding="utf-8"))
+        roster = json.loads((tmp / "data" / "legislators.json").read_text(encoding="utf-8"))
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    legs = {str(r["id"]): r for r in roster}
+    legs["377299"] = {"name": "Barnes, Jr., John", "chamber": "S"}
+    ballots = [(v, v.get("body") or "H") for v in votes]
+    jodi = {"member_id": "377204", "name": "Nelson, Jodi", "vote": "Yea"}
+    ballots += [
+        ({**jodi, "party": "D"}, "H"),                       # the same member, another party
+        ({**jodi, "party": "r"}, "H"),
+        ({**jodi, "party": None}, "H"),
+        ({**jodi, "party": "R", "name": "  Rep. Jodi  Nelson (R) "}, "H"),
+        ({**jodi, "party": "R"}, "S"),                       # the roster's chamber over the vote's
+        ({"member_id": "377207", "name": "", "party": "D", "vote": "Nay"}, "H"),
+        ({"member_id": "377299", "name": None, "party": "R", "vote": "Nay"}, "H"),
+        ({"member_id": "377299", "name": "Former Member", "party": "R", "vote": "Yea"}, "S"),
+        ({"member_id": "990001", "name": "Member #990001", "party": "R", "vote": "Yea"}, "H"),
+        ({"member_id": "990002", "name": "", "party": "", "vote": "Excused"}, "S"),
+        ({"member_id": "990003", "name": "Smith, John, Jr.", "party": "I", "vote": "Yea"}, "S"),
+        ({"member_id": "990003", "name": "Smith, John, Jr.", "party": "I", "vote": "Yea"}, "H"),
+    ]
+
+    def plain(m, body, legs, unnamed):
+        # vote_member as it read before 16 October 2026: member_labels asked
+        # for every ballot.
+        raw = (m.get("name") or "").strip()
+        if not raw or raw.lower().startswith(("member #", "former member")):
+            raw = (legs.get(m.get("member_id"), {}).get("name") or raw or "").strip()
+        if not raw or raw.lower().startswith(("member #", "former member")):
+            unnamed.add(str(m.get("member_id")))
+            raw = f"Member #{m.get('member_id')}"
+        lab = B.member_labels(raw, chamber=(legs.get(m.get("member_id"), {})
+                                            .get("chamber") or body), party=m.get("party"))
+        return {"n": lab["display"], "s": lab["sort"] or B.sort_name(raw),
+                "p": m.get("party") or "X", "v": m.get("vote")}
+    want_unnamed = set()
+    want = [plain(m, body, legs, want_unnamed) for m, body in ballots]
+    bad = []
+    B._VOTE_LABELS.clear()
+    for when in ("cold", "warm"):
+        unnamed = set()
+        got = [B.vote_member(m, body, legs, unnamed) for m, body in ballots]
+        for (m, body), g, w in zip(ballots, got, want):
+            if g != w:
+                bad.append(f"{when}: {m.get('name')!r} ({m.get('party')!r}, {body}) is {g}, "
+                           f"labelled afresh {w}")
+        if unnamed != want_unnamed:
+            bad.append(f"{when}: the unnamed are {sorted(unnamed)}, labelled afresh "
+                       f"{sorted(want_unnamed)}")
+    # Noted in every set it is handed, the pair kept or not.
+    for m, body in ballots:
+        mine, theirs = set(), set()
+        B.vote_member(m, body, legs, mine)
+        plain(m, body, legs, theirs)
+        if mine != theirs:
+            bad.append(f"{m.get('name')!r} asked again notes {sorted(mine)} as unnamed, not "
+                       f"{sorted(theirs)}")
+    # A caller's change to its entry stays its own.
+    for (m, body), w in zip(ballots, want):
+        entry = B.vote_member(m, body, legs, set())
+        entry.update(n="a name the caller changed", s="zz", p="Q")
+        again = B.vote_member(m, body, legs, set())
+        if again != w or again is entry:
+            bad.append(f"a caller that changes its entry changes the next caller's: "
+                       f"{m.get('name')!r} now reads {again}")
+            break
+    # A chamber no dict can hold fails as member_labels fails, not as a key.
+    odd = {"x": {"name": "Odd, Pat", "chamber": ["H"]}}
+    for fn in (plain, B.vote_member):
+        try:
+            fn({"member_id": "x", "name": "", "party": "R", "vote": "Yea"}, "H", odd, set())
+            bad.append(f"{fn.__name__} labels a chamber of ['H'] without complaint")
+        except AttributeError:
+            pass
+        except TypeError as e:
+            bad.append(f"a chamber no dict can hold is refused as a key: {e}")
+    asked = []
+    labels = B.member_labels
+    B.member_labels = lambda *a, **k: (asked.append(a), labels(*a, **k))[1]
+    try:
+        B._VOTE_LABELS.clear()
+        for _ in range(3):
+            B.vote_member(dict(jodi, party="R"), "H", legs, set())
+    finally:
+        B.member_labels = labels
+    if len(asked) != 1:
+        bad.append(f"a member asked three times is labelled by member_labels {len(asked)} "
+                   "times, not once: vote_member keeps no pair, or labels some other way, and "
+                   "bill_rollcalls labels 2.2 million ballots")
+    assert not bad, "\n".join(bad[:6])
+    return "ok", (f"{len(ballots)} ballots labelled cold and warm as afresh, {len(want_unnamed)} "
+                  "unnamed noted in every set; a caller's change to its entry stays its own; "
+                  "a member asked three times labelled once")
 
 
 # ========================================================== code: roll calls ==
@@ -34674,6 +34910,69 @@ def _organization_day_votes(P, BD, SD, BSP):
                   "kept beside the frozen term's files and out of its record, keyed 2027-2028 "
                   "in rollcalls.json and careers.json, and drawn with a vote on no bill on the "
                   "day's sitting; a key naming two terms' votes stops careers.json")
+
+
+@check("session", "a roll call's term is read once for each year and day, and what is kept is "
+       "what a fresh reading gives, either side of Organization Day and for an argument no "
+       "dict can hold", needs=("proceedings",))
+def _vote_term_kept(P):
+    """proceedings.vote_term keeps its answer for each (year, day) it is asked
+    (16 October 2026, private/SITE_DATA_PROFILE.md, P1): the site data step
+    asked it 13 million times for 718 different pairs, about a minute of the
+    step. Held here against _vote_term, the same reading done afresh: the
+    days either side of Organization Day of 2024 and 2026, in both shapes a
+    roll call's day comes in, with the year as a number and as words, each
+    asked twice so that the second answer is the kept one; 1 and then True
+    and 1.0, which a dict takes for one key and term_of reads apart (1-2, and
+    nothing); an argument no dict can hold, read afresh rather than raising;
+    and a pair asked twice read once. Undone, the step is a minute slower
+    and nothing else would say so."""
+    import datetime as _dt
+    plain = P._vote_term
+    cases = []
+    for y in (2024, 2026):
+        org = P.organization_day(y)
+        for d in (org - _dt.timedelta(days=1), org, org + _dt.timedelta(days=1)):
+            for year in (y, str(y), y + 1, str(y + 1)):
+                for when in (d.isoformat(), f"{d.month}/{d.day}/{d.year} 10:31:07 AM"):
+                    cases.append((year, when))
+    # 1 before True and 1.0, so that a key blind to the type hands them 1's.
+    cases += [(1, ""), (True, ""), (1.0, ""), (2026, ""), (2026.0, ""), ("2026", None),
+              (2026.0, "2026-12-02"), ("", ""), (None, None)]
+    P._VOTE_TERMS.clear()
+    bad = []
+    for rnd in ("first", "kept"):
+        for year, when in cases:
+            got, want = P.vote_term(year, when), plain(year, when)
+            if got != want or type(got) is not type(want):
+                bad.append(f"{rnd} asking ({year!r}, {when!r}): {got!r}, read afresh {want!r}")
+    for year, when in ((["2026"], "2026-12-02"), (["2026"], ""), ("2026", ["2026-12-02"]),
+                       ({"y": 2026}, "12/2/2026 10:31:07 AM")):
+        try:
+            got = P.vote_term(year, when)
+        except TypeError as e:
+            bad.append(f"({year!r}, {when!r}), which no dict can hold, raises: {e}")
+            continue
+        if got != plain(year, when):
+            bad.append(f"({year!r}, {when!r}), which no dict can hold, is {got!r}, "
+                       f"read afresh {plain(year, when)!r}")
+    asked = []
+    P._VOTE_TERMS.clear()
+    P._vote_term = lambda year, when="": (asked.append((year, when)), plain(year, when))[1]
+    try:
+        for _ in range(3):
+            P.vote_term("2026", "2026-12-02")
+    finally:
+        P._vote_term = plain
+        P._VOTE_TERMS.clear()
+    if len(asked) != 1:
+        bad.append(f"a pair asked three times is read by _vote_term {len(asked)} times, not "
+                   "once: vote_term keeps nothing, or reads it some other way, and the site "
+                   "data step asks 718 pairs 13 million times")
+    assert not bad, "\n".join(bad[:8])
+    return "ok", (f"{len(cases)} (year, day) pairs kept as read afresh, around Organization "
+                  "Day of 2024 and 2026, 1 apart from True and 1.0; an argument no dict can "
+                  "hold read afresh; a pair asked three times read once")
 
 
 @check("session", "a veto override the other chamber carried too says the bill became law, on "
