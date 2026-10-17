@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.17
+# GRANITE_VERSION: 2026-09-05.18
 """
 The phrasings the marker patterns must match, and the ones they must not.
 
@@ -453,6 +453,32 @@ def run():
                 "on Representative", ["HB1241"])
     if not got or got["HB1241"].get("recessed"):
         fails.append(f"coming out of a recess (T5AtXiL_VVc 0:33:02) read as one: {got}")
+    # Narrowed after reading what it gave on every recording, spoken as here.
+    got = opens("turn to public hearings for two more bills HB 759 and HB 760 so we'll begin "
+                "the activity of the afternoon", ["HB759", "HB760"])
+    if "HB760" in got:
+        fails.append("the day described (tGTxrTv7BA4 4:11:25) was read as a block")
+    for text, cands, bill, want, where in (
+            ("open this hearing at one o'clock on recess till 1 30. open the hearing on "
+             "House Bill 49 FNA call on the prime sponsor", ["HB49"], "HB49", False,
+             "V6IY6c_XJwk 3:32:17"),
+            ("now open the reopen the public hearing on House Bill 567 FN and because we "
+             "recessed this public hearing last year or last week", ["HB567"], "HB567",
+             False, "xAFePV5Jckw 0:06:10"),
+            ("I'll open the committee on committee of conference on HB1 and HB2 and "
+             "announce that we are in a break.", ["HB1", "HB2"], "HB1", True,
+             "1SIDO6pM17w 0:04:55")):
+        got = opens(text, cands)
+        if bill not in got or bool(got[bill].get("recessed")) != want:
+            fails.append(f"recessed ({where}): {got.get(bill)}, wanted {want}")
+    t9 = {"HB1507": "requiring schools to provide a minimum amount of time for recess "
+                    "per day."}
+    w9 = [(i * 0.4, x) for i, x in enumerate(
+        "will open the executive session on HB1507 requiring schools to provide a minimum "
+        "amount of time for recess per day. And I recognize".split())]
+    got = [m for m in S.find_markers(w9, list(t9), t9) if m["kind"] == "open"]
+    if not got or got[0].get("recessed"):
+        fails.append(f"a title that speaks of recess (9FFIBlZjGXU 1:50:15) was read as one: {got}")
 
     # A bill named only as it was opened gives its end nothing to go on (17
     # October 2026). Last named 10 s after its opening, it ends at the first

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.51
+# GRANITE_VERSION: 2026-09-05.52
 """
 Segment a recording on what the chair says, not on where bill numbers cluster.
 
@@ -477,6 +477,16 @@ CLOSE_WORD = re.compile(r"\bclos(?:e|es|ing)\b|\bclosed\b(?!\s+(?:session|meetin
 BLOCK_RE = re.compile(
     r"\s*(?:,\s*(?:and\s+)?|and\s+|&\s*)"
     r"((?:(?:house|senate)\s*bill|hb|hp|sb|sp)?\s*#?\s*\d{1,4})\b", re.I)
+# NARROWED AFTER READING ALL 25 IT GAVE: only after an opening that names the
+# proceeding (TITLED), with the first bill straight after the noun. The rest
+# were the day being described, not two items opened: "turn to public
+# hearings for two more bills HB 759 and HB 760" (tGTxrTv7BA4 4:11:25, an
+# hour and a half before HB 760's own hearing), "the session today for the
+# subcommittee dealing with uh HB510 and HB 112", "we looked at uh HB 542 and
+# HP 744", "a couple of bills i think 112 and 102". What it keeps: "a work
+# session on HB 56 and HB 253", "the committee of conference on HB1 and HB2",
+# "the public hearing on House Bill 603 and House Bill 238".
+BLOCK_LEAD = re.compile(r"\s*(?:(?:on|for|of|the|uh|um)\s+)*", re.I)
 
 
 def block_partner(tail, candidates, bill):
@@ -497,7 +507,20 @@ def block_partner(tail, candidates, bill):
 # no close. Coming back from a recess is not one: "opening and coming out of
 # recess for House Bill 1241", "the public hearing on House Bill 1641 that was
 # recessed from January 14th".
-RECESS_WORD = re.compile(r"\brecess(?:ed|ing)?\b(?!\s+(?:from|on)\b)", re.I)
+#
+# NARROWED AFTER READING THE 265 IT FLAGGED. Before the bill only "and
+# recess" or "then recess" sets the item aside: "open this hearing at one
+# o'clock on recess till 1 30. open the hearing on House Bill 49" (V6IY6c_XJwk
+# 3:32:17) is the room coming back and then the opening, and flagging it cost
+# the chair's own close. After the bill, a recess now or to come ("recess",
+# "recessing", "is now recessed", "we are in a break", which 1SIDO6pM17w's
+# chair said of HB 1 and HB 2 at 0:04:55), not one past: "because we recessed
+# this public hearing last week" reopens it, and so does "the continuation of
+# the recess hearing".
+RECESS_HEAD = re.compile(r"\b(?:and|then)\s+(?:(?:immediately|now)\s+)?recess(?:ing|ed)?\b", re.I)
+RECESS_TAIL = re.compile(
+    r"\brecess(?:ing)?\b(?!\s+(?:from|on|hearing)\b)|\b(?:is|are|now)\s+recessed\b"
+    r"|\bin\s+a\s+break\b", re.I)
 RESUMING = re.compile(
     r"\b(?:out\s+of|from|back\s+from)\s+(?:the\s+|a\s+|our\s+)?recess\b"
     r"|\bthe\s+recessed\b|\brecessed\s+(?:hearing|session)\b", re.I)
@@ -506,8 +529,9 @@ RESUMING = re.compile(
 def recessed(head, tail):
     """True when the opening phrase (`head`, up to its bill) or the words
     straight after its bill (`tail`) set the item aside as it is opened."""
-    s = head + " " + tail
-    return not RESUMING.search(s) and bool(RECESS_WORD.search(s))
+    if RESUMING.search(head + " " + tail):
+        return False
+    return bool(RECESS_HEAD.search(head) or RECESS_TAIL.search(tail))
 
 
 def not_an_opening(text, start, upto):
@@ -859,11 +883,15 @@ def find_markers(words, candidates, titles, span=28, floor=False):
                     what = WS.sub(" ", m.group(g)).lower()
                     break
             said = WS.sub(" ", text[m.start():m.start() + 130])
-            held = kind == "open" and recessed(text[m.start():m.end() + b0],
-                                               after[b1:b1 + 80])
+            # Not a recess the bill's own title speaks of: "the executive
+            # session on HB1507 requiring schools to provide a minimum amount
+            # of time for recess per day" (9FFIBlZjGXU 1:50:15).
+            held = (kind == "open" and "recess" not in str(titles.get(bill) or "").lower()
+                    and recessed(text[m.start():m.end() + b0], after[b1:b1 + 80]))
             place(when(m.start()), kind, bill, what, how, said, weak, held)
             partner = (block_partner(after[b1:], candidates, bill)
-                       if kind == "open" and not weak else None)
+                       if kind == "open" and not weak and rx in TITLED
+                       and BLOCK_LEAD.fullmatch(after[:b0]) else None)
             if partner:
                 place(when(m.start()), kind, partner, what, "number (block)", said,
                       weak, held)
