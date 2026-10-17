@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-09.36
+# GRANITE_VERSION: 2026-09-09.37
 """
 A page per town and ward: everyone who represents the people who live there.
 
@@ -1637,17 +1637,18 @@ def main():
     print(f"  {named} of 10 other offices name who holds them; the rest link "
           "to the official directory")
 
-    # Appended rather than replaced: rewriting it here would drop every other
-    # URL on the site.
-    sm = site / "sitemap.xml"
-    if sm.exists():
-        text = sm.read_text(encoding="utf-8")
-        add = "".join(f"<url><loc>{E(u)}</loc></url>\n" for u in urls
-                      if E(u) not in text)
-        if add:
-            sm.write_text(text.replace("</urlset>", add + "</urlset>"),
-                          encoding="utf-8")
-            print(f"  {len(add.splitlines())} added to sitemap.xml")
+    # Added to the sitemap rather than replacing it, which would drop every
+    # other URL on the site. THROUGH shell.sitemap_merge, AS THE OTHER
+    # BUILDERS ADD THEIRS (the sitemap audit, 16 October 2026): the test here
+    # was whether an address appeared anywhere in the file's text, which
+    # takes /town/chester as listed wherever /town/chesterfield is -- eight
+    # such pairs, Hampton and Hampton Falls and Concord's Ward 1 and Ward 10
+    # among them -- and nothing ever took out a town this run no longer
+    # writes. Every town and ward is written on every run, so this run owns
+    # /town whole.
+    added, dropped = S.sitemap_merge(site, a.base, urls, "/town")
+    if added or dropped:
+        print(f"  sitemap.xml: {added} added, {dropped} no longer written taken out")
     return 0
 
 

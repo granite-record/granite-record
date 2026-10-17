@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-07.62
+# GRANITE_VERSION: 2026-09-07.63
 """
 A page's worth of data for every committee.
 
@@ -1400,18 +1400,17 @@ def main():
     assert written, ("no committee page was written. That means no committee "
                      "name in proceedings.csv matched data/committees.json, "
                      "which is a parse problem rather than an empty session.")
-    # sitemap.xml is written by build_bill_pages.py, which runs first.
-    # Appended rather than replaced: rewriting it here would drop every other
-    # URL on the site.
-    sm = site / "sitemap.xml"
-    if sm.exists():
-        text = sm.read_text(encoding="utf-8")
-        add = "".join(f"<url><loc>{S.E(u)}</loc></url>\n" for u in urls
-                      if S.E(u) not in text)
-        if add:
-            sm.write_text(text.replace("</urlset>", add + "</urlset>"),
-                          encoding="utf-8")
-            print(f"{len(add.splitlines())} added to sitemap.xml")
+    # sitemap.xml is written by build_bill_pages.py, which runs first, and
+    # this adds to it rather than replacing it. THROUGH shell.sitemap_merge,
+    # AS THE OTHER BUILDERS ADD THEIRS (the sitemap audit, 16 October 2026):
+    # the test here was whether an address appeared anywhere in the file's
+    # text, which takes /committee/S03 as listed wherever /committee/S03-1989
+    # is, and nothing ever took out a committee this run no longer writes.
+    # Every committee's page is written on every run, so this run owns
+    # /committee whole; committees.html is a standing page and is not under it.
+    added, dropped = S.sitemap_merge(site, a.base, urls, "/committee")
+    if added or dropped:
+        print(f"sitemap.xml: {added} added, {dropped} no longer written taken out")
 
     print(f"{written} committees -> {out}/")
     if skipped:

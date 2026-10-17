@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.51
+# GRANITE_VERSION: 2026-09-08.52
 """
 The civics section: a hub and one page per topic, in order.
 
@@ -1193,7 +1193,7 @@ def guide_record(g, data, bills, chapters):
                     if b and str(y).isdigit() and int(y) >= RECENT_FROM:
                         recent[b] = int(y)
         past = sorted(recent, key=lambda k: (-recent[k], BR.bill_order(k)))[:RECENT_SHOWN]
-        bits = [f'<h3 class="g-ch"><a href="/laws/{E(BR.chapter_slug(ch))}">{E(name)}</a></h3>']
+        bits = [f'<h3 class="g-ch"><a href="{E(BR.chapter_path(ch))}">{E(name)}</a></h3>']
         if now:
             bits.append('<p class="g-what">Bills now before the General Court that would change it:</p>'
                         + BR.folded([bills.chip(k) for k in now]))
