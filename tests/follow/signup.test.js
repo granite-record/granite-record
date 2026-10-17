@@ -1,7 +1,7 @@
 // functions/api/follow/signup.js: the answer never depends on the address,
-// in what it says or in what it asked first; the request is kept sealed; an
-// inbox gets at most three confirmations however it is spelled; and nothing
-// is followed until confirmed.
+// in what it says or in what it asked first; the request is kept sealed, with
+// how often the box asked for; an inbox gets at most three confirmations
+// however it is spelled; and nothing is followed until confirmed.
 
 import test from "node:test";
 import assert from "node:assert/strict";
@@ -36,8 +36,11 @@ test("sign-up says the same thing whether or not the address is already subscrib
     for (const r of [again, more, fourth, upper]) assert.equal(same(r), same(fresh));
     assert.equal(fresh.status, 202);
     assert.deepEqual(JSON.parse(fresh.body), { ok: true });
-    // Every one but the fourth was sent a confirmation, subscriber or not.
-    const sent = a => w.net.outbox.filter(m => m.to[0].toLowerCase() === a.toLowerCase()).length;
+    // Every one but the fourth was sent a confirmation, subscriber or not. The
+    // confirmations alone: the join's own confirming sent "You're following"
+    // besides (confirm.js, 16 October 2026).
+    const sent = a => w.net.outbox.filter(m => m.to[0].toLowerCase() === a.toLowerCase() &&
+                                               m.subject.startsWith("Confirm:")).length;
     assert.equal(sent(known), 4, "the join's own, then again, more and upper");
     assert.equal(sent(busy), 3);
     assert.deepEqual(leaks(w), []);
@@ -273,6 +276,41 @@ test("only the site's own names, the exact path, a JSON POST, and a bound databa
     assert.equal(r.status, 404, "with no database bound there is no endpoint");
     assert.equal(w.net.outbox.length, 0);
     assert.deepEqual(snapshot(w).pending, []);
+  } finally { w.close(); }
+});
+
+// THE BOX'S DAILY OR WEEKLY (16 October 2026): kept with the request for the
+// confirmation to give the subscriber; none at all is daily, as every sign-up
+// was before the box had the choice; anything else is refused.
+test("how often is kept with the request: the box's choice, and daily where none is named", async () => {
+  const w = makeWorld();
+  try {
+    await signUp(w, w.address("asks.weekly"), "bill", "2026/HB9901", { frequency: "weekly" });
+    await signUp(w, w.address("asks.daily"), "bill", "2026/HB9901", { frequency: "daily" });
+    await signUp(w, w.address("asks.nothing"));               // a page from before the choice
+    await signUp(w, w.address("asks.null"), "bill", "2026/HB9901", { frequency: null });
+    await signUp(w, w.address("asks.empty"), "bill", "2026/HB9901", { frequency: "" });
+    assert.deepEqual(w.d1.rows("pending").map(r => r.frequency),
+      ["weekly", "daily", "daily", "daily", "daily"]);
+    assert.equal(w.net.outbox.length, 5, "each was sent its confirmation");
+    assert.deepEqual(leaks(w), []);
+  } finally { w.close(); }
+});
+
+test("a frequency the box cannot send is refused before anything is asked, and nothing is kept", async () => {
+  const w = makeWorld();
+  try {
+    const a = w.address("asks.oddly");
+    for (const frequency of ["monthly", "Weekly", "WEEKLY", " weekly", "hourly", 7, true,
+                             ["weekly"], { weekly: 1 }]) {
+      const r = await signUp(w, a, "bill", "2026/HB9901", { frequency });
+      assert.equal(r.status, 400, JSON.stringify(frequency));
+      assert.deepEqual(JSON.parse(r.body), { ok: false, why: "invalid" }, JSON.stringify(frequency));
+    }
+    assert.equal(w.net.asked.length, 0, "not even Turnstile was asked");
+    assert.equal(w.d1.rows("pending").length, 0);
+    assert.equal(w.net.outbox.length, 0);
+    assert.deepEqual(leaks(w), []);
   } finally { w.close(); }
 });
 

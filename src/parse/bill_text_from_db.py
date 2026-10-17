@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-16.1
+# GRANITE_VERSION: 2026-10-16.3
 """
 The text of a bill the web fetch has not read yet, from the General Court's
 database: each bill's current printing, for the bills bill_text.json lacks.
@@ -8,7 +8,8 @@ database: each bill's current printing, for the bills bill_text.json lacks.
     python3 src/parse/bill_text_from_db.py           # add what bill_text.json lacks
 
 No network. Reads db/Legislation.psv, db/LegislationText.psv, db/_columns.json
-and data/bills.json; writes bill_text.json by merging.
+and data/bills.json (and db/_manifest.json, where LegislationText is empty);
+writes bill_text.json by merging.
 
 WHY
 
@@ -61,6 +62,25 @@ bill's page, its record takes the bill over.
 A web record older than the database's current printing is left as it is
 and counted by --check: whether the database should replace the web's text
 where it is newer is a person's decision, not this script's.
+
+A PRINTING NAMES ITS OWN BILL (16 October 2026, the release review)
+
+A printing is filed under its bill by LegislationID, and the database starts
+that id again every term, so a LegislationText of one term beside a
+Legislation of the next would file 2026's printings under 2027's bills. The
+night no longer installs such a pair (nightly.take_views, together), and this
+is the cheap guard behind it: the printing's own heading names its bill ("HB
+1442-FN - AS INTRODUCED", as bill_page.parse_text reads it), and a printing
+whose heading names another bill, by kind or by number, is skipped and
+counted, and the bill's record is left as it stood. Measured on the dump of 8
+September: 2,218 of the 2,234 current printings name their own bill and none
+another. The other 16 name no number -- the thirteen housekeeping
+resolutions, a memorial resolution and SB 400 print no such heading, and SB
+290's reads "SB - AS INTRODUCED" -- and say nothing either way, so they are
+read as before. With the dump's ids moved one bill along, as a Legislation of
+another term would file them, 2,218 were skipped; the 7 still written were
+printings whose heading names no number, which this cannot place, and the
+night's guard is the one that keeps such a pair out.
 """
 
 # The bootstrap: _paths.py, found above this file, puts every code folder on the import path.
@@ -77,6 +97,7 @@ from collections import Counter
 from datetime import datetime
 
 import bill_page
+import freeze_term as FT
 import proceedings as P
 
 LEGISLATION = Path("db/Legislation.psv")
@@ -90,6 +111,10 @@ SOURCE = "database"
 CHAPTERED = "CHAPTERED FINAL VERSION"
 BOTH_BODIES = "Version adopted by both bodies"
 OLS = "OLS Release"
+# The bill a heading names, at the start of the line bill_page.VERSION_RE
+# matches, and a bill number as the record files it ("HB1442").
+HEADING_BILL = re.compile(r"\s*(HB|SB|CACR|HR|SR|HCR|SCR|HJR)\s*0*(\d+)")
+BILL_NUMBER = re.compile(r"([A-Z]+)0*(\d+)")
 
 
 def rows(path, names):
@@ -133,7 +158,15 @@ def printings(root="."):
     cols = json.loads((root / COLUMNS).read_text(encoding="utf-8"))
     leg, odd_l = rows(root / LEGISLATION, cols["Legislation"])
     txt, odd_t = rows(root / TEXT, cols["LegislationText"])
-    if not leg or not txt:
+    # A NEW TERM'S PRINTINGS MAY BE NONE YET (16 October 2026). The night now
+    # takes a LegislationText that came back with no rows once the term has
+    # turned and before its first printing (nightly.TERM_VIEWS), and this step
+    # is not optional: a STOP here would have stopped the night's build. A
+    # view whose dump counts its query's rows as none (freeze_term.counted_none)
+    # has no printing to add, and nothing is; one with lines and none of them
+    # as wide as its columns is still a shape that moved.
+    none = not txt and FT.counted_none(root / TEXT)
+    if not leg or (not txt and not none):
         raise SystemExit(f"STOP: {LEGISLATION} gave {len(leg):,} rows and {TEXT} {len(txt):,} "
                          "as wide as db/_columns.json says. The dump's shape moved; nothing "
                          "written.")
@@ -154,7 +187,24 @@ def printings(root="."):
         if r:
             out.setdefault(P.term_of(year), {})[bill] = (year, r)
     return out, {"odd lines": odd_l + odd_t, "bills": len(by_id),
-                 "with a printing": sum(len(v) for v in out.values())}
+                 "with a printing": sum(len(v) for v in out.values()), "none yet": none}
+
+
+def heading_bill(html):
+    """The bill a printing's own heading names, as the record files a bill
+    ("HB 1442-FN - AS INTRODUCED" -> "HB1442"), or "" where it names none."""
+    m = bill_page.VERSION_RE.search(bill_page.strip_chrome(bill_page.text_of(html)))
+    h = HEADING_BILL.match(m.group(0)) if m else None
+    return f"{h.group(1)}{int(h.group(2))}" if h else ""
+
+
+def names_another(bill, row):
+    """What the printing's heading names, where that is a bill other than
+    `bill`, the one it is filed under; else ""."""
+    named = heading_bill(row.get("HTMLText", ""))
+    m = BILL_NUMBER.fullmatch(bill)
+    mine = f"{m.group(1)}{int(m.group(2))}" if m else bill
+    return named if named and named != mine else ""
 
 
 def record(bill, year, row):
@@ -182,6 +232,9 @@ def check(root="."):
                 tally["web records the database has no printing for"] += 1
                 continue
             year, row = bills[bill]
+            if names_another(bill, row):
+                tally["the printing's own heading names another bill"] += 1
+                continue
             rec = record(bill, year, row)
             n += 1
             tally["version the same" if rec.get("version") == w.get("version")
@@ -218,6 +271,7 @@ def fill(root=".", out=OUT):
     if have and not P.term_keyed(have):
         raise SystemExit(f"STOP: {out} is not keyed on the term; nothing written.")
     added = refreshed = removed = web = unknown = thin = 0
+    other = []
     for term, got in sorted(found.items()):
         known = bills.get(term) or {}
         now = dict(have.get(term) or {})
@@ -225,6 +279,12 @@ def fill(root=".", out=OUT):
             prior = now.get(bill)
             if prior and prior.get("source") != SOURCE:
                 web += 1
+                continue
+            named = names_another(bill, row) if bill in known else ""
+            if named:
+                # Not this bill's printing (the docstring's last section):
+                # skipped, and the bill's record left as it stood.
+                other.append(f"{bill}'s names {named}")
                 continue
             if bill not in known:
                 unknown += 1
@@ -253,11 +313,15 @@ def fill(root=".", out=OUT):
             have[term] = now
         else:
             have.pop(term, None)
-    said = (f"{notes['with a printing']:,} bills with a printing in the database; {web:,} have "
+    said = ((f"{TEXT} holds no printing, and its dump counted none: the term's view before its "
+             "first printing; " if notes["none yet"] else "")
+            + f"{notes['with a printing']:,} bills with a printing in the database; {web:,} have "
             f"the web's record, kept; {added:,} added from the database and {refreshed:,} "
             f"refreshed" + (f"; {removed:,} of its own taken back" if removed else "")
             + (f"; {unknown:,} not in {BILLS}, left out" if unknown else "")
             + (f"; {thin:,} printings with no bill on them, left out" if thin else "")
+            + (f"; {len(other):,} printings whose own heading names another bill, skipped "
+               f"({', '.join(other[:3])})" if other else "")
             + (f"; {notes['odd lines']:,} lines of another width, unread" if notes["odd lines"] else ""))
     changed = added or refreshed or removed
     if changed:

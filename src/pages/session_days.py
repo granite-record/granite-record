@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-19.30
+# GRANITE_VERSION: 2026-09-19.31
 """
 A sitting day of the House or Senate, assembled from what is already parsed.
 
@@ -59,6 +59,7 @@ from pathlib import Path
 sys.path += [str(p) for p in Path(__file__).resolve().parents if (p / "_paths.py").is_file()][:1]
 import _paths  # noqa: E402,F401
 
+import bisect
 import collections
 import json
 import re
@@ -2045,6 +2046,12 @@ JOURNAL_DIVISION = re.compile(
 JOURNAL_BILL = re.compile(r"\b(HB|SB|HR|SR|HCR|SCR|HJR|SJR|CACR)\s*(\d+)\b")
 SENATE_DIVISION = re.compile(r"division\s+(?:vote\s+)?was\s+requested|Division,\s*$", re.I)
 SENATE_NAMED = re.compile(r"Senators\s+voted\s+(?:Yes|No)", re.I)
+# A line break that ends no paragraph, which _journal_day makes a space before
+# it reads the questions decided by voice. Written to open on the break, so
+# that the engine looks for one: (?<!\n)\n(?!\n), the same breaks, opened on
+# a look back it tried at every character (16 October 2026,
+# private/BUILD_SPEED.md, item C).
+LINE_BREAK = re.compile(r"\n(?<!\n\n)(?!\n)")
 
 
 def _journal_day(body, date):
@@ -2092,7 +2099,17 @@ def _journal_day(body, date):
                 for d, block in blocks:
                     g = got.setdefault(d, {"rc": collections.Counter(),
                                            "div": collections.Counter(), "bills": set()})
-                    for m in rx.finditer(block):
+                    # EACH PATTERN READ ONCE A BLOCK, AND ONLY WHERE IT CAN
+                    # BEGIN (16 October 2026, private/BUILD_SPEED.md, item
+                    # C). The counts and divisions were each read three times
+                    # over the block, and every pattern here was tried at
+                    # every character of it; the lists below are read once
+                    # and used for all three, and journal_days.found() and
+                    # decisions() give finditer's own matches from the places
+                    # one can start. Both counts open on a Y, a division on a
+                    # D, a bill's number on H, S or C.
+                    tallies = list(J.found(rx, block, "[Yy]"))
+                    for m in tallies:
                         t = (int(m.group("yeas")), int(m.group("nays")))
                         # The Senate prints a division the way it prints a
                         # roll call, but after "A division vote was
@@ -2102,21 +2119,21 @@ def _journal_day(body, date):
                                     and not SENATE_NAMED.search(lead))
                         g["div" if division else "rc"][t] += 1
                     if body == "H":
+                        divisions = list(J.found(JOURNAL_DIVISION, block, "[Dd]"))
                         g["div"].update((int(m.group("yeas")), int(m.group("nays")))
-                                        for m in JOURNAL_DIVISION.finditer(block))
+                                        for m in divisions)
                         # Each count under the bill whose heading it follows
                         # (journal_days.bill_marks): _journal_checked holds a
                         # division the docket alone states to its own bill's.
+                        # The last mark at or before the count, found by
+                        # halving: the marks are in order of place.
                         marks = J.bill_marks(block)
+                        places = [at for at, _mb in marks]
                         under = g.setdefault("under", collections.defaultdict(
                             collections.Counter))
-                        for m in list(JOURNAL_DIVISION.finditer(block)) + \
-                                list(J.TALLY.finditer(block)):
-                            b = None
-                            for at, mb in marks:
-                                if at > m.start():
-                                    break
-                                b = mb
+                        for m in divisions + tallies:
+                            k = bisect.bisect_right(places, m.start())
+                            b = marks[k - 1][1] if k else None
                             if b:
                                 under[b.split("-")[0]][
                                     (int(m.group("yeas")), int(m.group("nays")))] += 1
@@ -2125,18 +2142,22 @@ def _journal_day(body, date):
                         # bill named only in a list (HB 1398 of 15 February
                         # 2006, among the consent calendar's removals, whose
                         # debate is in a continuation not on disk) is not one.
-                        joined = re.sub(r"(?<!\n)\n(?!\n)", " ", block)
+                        joined = LINE_BREAK.sub(" ", block)
                         points = sorted(
-                            [m.start() for m in JOURNAL_DIVISION.finditer(block)]
-                            + [m.start() for m in J.TALLY.finditer(block)]
-                            + [m.start("s") for m in J.DECIDED.finditer(joined)
+                            [m.start() for m in divisions]
+                            + [m.start() for m in tallies]
+                            + [m.start("s") for m in J.decisions(joined)
                                if not J.NOT_DECIDED.search(m.group("s"))])
                         decided = g.setdefault("decided", set())
                         for k, (at, mb) in enumerate(marks):
                             nxt = marks[k + 1][0] if k + 1 < len(marks) else len(block)
-                            if mb and any(at <= p < nxt for p in points):
+                            # The first decision at or after the mark, which
+                            # is the stretch's if it comes before the next.
+                            i = bisect.bisect_left(points, at)
+                            if mb and i < len(points) and points[i] < nxt:
                                 decided.add(mb.split("-")[0])
-                    g["bills"] |= {a + b for a, b in JOURNAL_BILL.findall(block)}
+                    g["bills"] |= {m.group(1) + m.group(2)
+                                   for m in J.found(JOURNAL_BILL, block, "[HSC]")}
             _SAT[key] = got
         g = _SAT[key].get(date)
         if g is not None:

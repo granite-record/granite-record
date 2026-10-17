@@ -64,6 +64,35 @@ term, so the counts are read from the file rather than from a document.
 /index.json, which held every bill of every term in one file, was retired on
 5 October 2026; the files under /idx/ are the same rows, a term at a time.
 
+One file is published for a few weeks every two years and is gone the rest
+of the time. /members_elect.json is who a general election sent to the New
+Hampshire House and Senate, for the weeks between the election and
+Organization Day, the first Wednesday of December, when they take office.
+src/parse/build_members_elect.py writes it only in those weeks, and only
+while the site's newest term is the one before theirs; it removes the file on
+Organization Day and outside them. It is drawn from the Secretary of State's
+results, read by a person into collected/election_<year>.json, and from the
+person's own settling of names and recounts in corrections/members_elect.json,
+of which only the outcome is published. It holds the election's day
+("election"), the day they take office ("takes_office"), the term they serve
+("term"), the address of the results it was read from ("sources"), and every
+State Representative and State Senator race on the district table under
+"races", keyed "H|<County>|<district>" and "S|<district>": its "seats"; the
+members-elect in "elected", each with their name first name first ("n"), their
+party's letters ("p", both of them where a candidate won two nominations,
+"R/D", and none where none was printed) and whether they sit now, sat before
+or are new ("k") -- with the id ("id") and page ("s", /legislator/<s>) of the
+sitting or former member they are only where that match is certain; how many
+seats are "not_final", which is every seat until the recount deadline has
+passed; "recount", where a recount was asked for; and how many are "held"
+back. It holds no vote counts, no contact details and no reason the person
+gave. Every page draws a member-elect from this file and from nothing else,
+never as a sitting member: /places.json carries the same races for a town's
+own districts under "elect" (each place naming its own in "e"), and
+/district_map.json under "elect", both only while the file is there. The
+Governor, the Executive Council and Congress are not in it. The results are
+the Secretary of State's; no claim is made over them.
+
 What the public sends is never published as an individual's. Testimony
 sign-ins appear as counts on a bill and its hearings, from the General
 Court's database: src/fetch/gc_db/fetch_testimony_db.py counts them in SQL,

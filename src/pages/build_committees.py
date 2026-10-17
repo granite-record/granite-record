@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-07.59
+# GRANITE_VERSION: 2026-09-07.63
 """
 A page's worth of data for every committee.
 
@@ -77,6 +77,7 @@ import build_date
 import committee_acts as CA
 import committee_details as CD
 import committee_names as CN
+import components as C
 import names
 import report_check as RC
 import shell as S
@@ -183,7 +184,9 @@ def narrate(name, chamber, date, items, reports):
     if not kinds:
         return ""
 
-    who = f"The Committee on {name}" if not name.lower().startswith("committee") \
+    # A name that says "Committee" itself is not "the Committee on" it
+    # (components.cmte_title, 16 October 2026).
+    who = f"The {C.cmte_title(name)}" if not name.lower().startswith("committee") \
         else name
     out = []
     first = kinds[0]
@@ -812,7 +815,7 @@ def static_record(code, name, chamber_word, rec, sessions):
     bills referred to it in its latest term and its latest meetings."""
     E = S.E
     out = ['<div class="static-rec" id="static-rec">', f"<h1>{E(name)}</h1>",
-           f"<p>The {chamber_word} Committee on {E(name)}"
+           f"<p>The {E(C.cmte_title(name, chamber_word))}"
            + (f", chaired by {E(rec['chair'])}" if rec.get("chair") else "") + ".</p>"]
     if rec.get("purpose"):
         out.append(f"<p>{E(rec['purpose']['text'])}</p>")
@@ -1211,7 +1214,7 @@ def main():
         # what tells the two apart before the page is open.
         when = (f" ({runs(span_of[code])})"
                 if code in retired and span_of[code] else "")
-        desc = (f"The {chamber_word} Committee on {name}{when}. "
+        desc = (f"The {C.cmte_title(name, chamber_word)}{when}. "
                 f"{towns}{sum(len(v) for v in rec['bills'].values()):,} bills "
                 f"referred and {met_days:,} meetings, each with what "
                 "was taken up and when. From the New Hampshire General Court's "
@@ -1356,17 +1359,13 @@ def main():
                 cols.append(f"<section><h2>{word}</h2><div class=\"ccards\">"
                             + "".join(_card(c, dated=True) for c in rows_)
                             + "</div></section>")
-        body.append('<h2 id="archived">Not on the General Court&rsquo;s list today</h2>'
-                    '<p class="src fill">Committees on this record that the General '
-                    "Court does not list among its committees now, with the "
-                    "years their bills and meetings cover. The records "
-                    "show when a committee stops appearing, not why&thinsp;&mdash;&thinsp;it may "
-                    "have been renamed, divided, merged or ended&thinsp;&mdash;&thinsp;and this "
-                    "page does not guess which. Where the General Court&rsquo;s "
-                    "own records file one committee&rsquo;s bills under two "
-                    "names, the card gives the earlier one. Each keeps its "
-                    "page, so the bills it handled still have somewhere to "
-                    "point.</p>"
+        # "Former committees", as the search groups them and as each one's own
+        # page says (the person, 16 October 2026). The paragraph this
+        # replaced explained what the records cannot say -- renamed, divided,
+        # merged or ended -- and readers found that confusing.
+        body.append('<h2 id="archived">Former committees</h2>'
+                    '<p class="src fill">Committees that no longer meet, with the '
+                    "years of their record.</p>"
                     '<div class="ctwo">' + "".join(cols) + "</div>")
 
     page_html = S.page(
@@ -1389,8 +1388,11 @@ def main():
     page_html = page_html.replace(
         '<div id="results"></div>',
         f'<div id="results"><div class="clist"><h1>Committees</h1>'
-        f'<p class="src">Bill-first search answers what happened to a bill. '
-        f'These answer what a committee did on a day.</p>'
+        # What the page holds, in a reader's words (the person, 16 October
+        # 2026). The line this replaced set committees against bill search
+        # ("These answer what a committee did on a day") and read as a riddle.
+        '<p class="src">Every committee of the House and the Senate: who sits '
+        'on it, what it does, and the bills and meetings on its record.</p>'
         + "".join(body) + "</div></div>", 1)
     (site / "committees.html").write_text(S.clean_links(page_html), encoding="utf-8")
     print("committees.html written")
@@ -1398,18 +1400,17 @@ def main():
     assert written, ("no committee page was written. That means no committee "
                      "name in proceedings.csv matched data/committees.json, "
                      "which is a parse problem rather than an empty session.")
-    # sitemap.xml is written by build_bill_pages.py, which runs first.
-    # Appended rather than replaced: rewriting it here would drop every other
-    # URL on the site.
-    sm = site / "sitemap.xml"
-    if sm.exists():
-        text = sm.read_text(encoding="utf-8")
-        add = "".join(f"<url><loc>{S.E(u)}</loc></url>\n" for u in urls
-                      if S.E(u) not in text)
-        if add:
-            sm.write_text(text.replace("</urlset>", add + "</urlset>"),
-                          encoding="utf-8")
-            print(f"{len(add.splitlines())} added to sitemap.xml")
+    # sitemap.xml is written by build_bill_pages.py, which runs first, and
+    # this adds to it rather than replacing it. THROUGH shell.sitemap_merge,
+    # AS THE OTHER BUILDERS ADD THEIRS (the sitemap audit, 16 October 2026):
+    # the test here was whether an address appeared anywhere in the file's
+    # text, which takes /committee/S03 as listed wherever /committee/S03-1989
+    # is, and nothing ever took out a committee this run no longer writes.
+    # Every committee's page is written on every run, so this run owns
+    # /committee whole; committees.html is a standing page and is not under it.
+    added, dropped = S.sitemap_merge(site, a.base, urls, "/committee")
+    if added or dropped:
+        print(f"sitemap.xml: {added} added, {dropped} no longer written taken out")
 
     print(f"{written} committees -> {out}/")
     if skipped:

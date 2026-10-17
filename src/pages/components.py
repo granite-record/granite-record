@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-09.7
+# GRANITE_VERSION: 2026-10-09.10
 """
 The site's components, in Python: what the builders draw a person, a
 committee, a chip, a date and a time with, and the words they say.
@@ -186,6 +186,21 @@ def cmte_link(name, term, codes):
     code = v if isinstance(v, str) else (
         (v[term] if term and term in v else v.get("")) if v else "")
     return f'<a href="committee/{esc(code)}.html">{esc(name)}</a>' if code else esc(name)
+
+
+def cmte_title(name, chamber=""):
+    """A committee's whole name for a sentence: components.js's cmteTitle.
+    "Housing" of the House is "House Committee on Housing"; a name that says
+    "Committee" itself takes only the chamber -- "House Special Committee on
+    Housing", where the page said "The House Committee on Special Committee
+    on Housing" (16 October 2026) -- and one that already names its chamber
+    is left as it is. Text, not markup: the caller escapes it."""
+    name, chamber = str(name or ""), str(chamber or "")
+    if chamber and name.lower().startswith(chamber.lower() + " "):
+        return name
+    if re.search(r"\bcommittee\b", name, re.I):
+        return f"{chamber} {name}".strip()
+    return f"{chamber} Committee on {name}".strip()
 
 
 # THE PARTY AND DISTRICT ARE ONE UNIT (the look of 7 October 2026). Where a
@@ -653,3 +668,117 @@ def section(heading, body, sid=""):
     i = f' id="{esc(sid)}"' if sid else ""
     return (f'<section class="w4"{i}><h2 class="w4h">{esc(heading)}</h2>'
             f'<div class="w4b">{body}</div></section>')
+
+
+# WHAT RETIRES ON A DAY (the members-elect, the person's decisions of 16
+# October 2026). A member-elect is drawn until Organization Day and not on
+# it, and a page built on the 1st may still be read on the 3rd: a night held,
+# a copy a browser kept. So whatever retires carries its last day in
+# data-until, and components.js's behaviour hides it by the reader's own
+# clock, as the home page's stale warning works its age out again. The build
+# also stops writing site/members_elect.json that day; this is the reader's
+# half of the same rule.
+UNTIL_DAY = re.compile(r"[0-9]{4}-[0-9]{2}-[0-9]{2}")
+
+
+def until_attrs(until, today):
+    """The attributes of an element that retires on `until` ("YYYY-MM-DD",
+    or a date), as drawn on `today` -- the build's day in Python, the
+    reader's in the browser:
+
+        until_attrs("2026-12-02", "2026-11-20")  -> ' data-until="2026-12-02"'
+        until_attrs("2026-12-02", "2026-12-02")  -> ' data-until="2026-12-02" hidden'
+
+    Hidden from its day on. An `until` that is no day is hidden at once: a
+    block that cannot say when it ends is not shown at all. A `today` that
+    is no day leaves the judging to the reader's clock."""
+    u = "" if until is None else str(until)[:10]
+    t = "" if today is None else str(today)[:10]
+    if not UNTIL_DAY.fullmatch(u):
+        return " hidden"
+    gone = bool(UNTIL_DAY.fullmatch(t)) and t >= u
+    return f' data-until="{esc(u)}"' + (" hidden" if gone else "")
+
+
+# MEMBERS-ELECT, DRAWN ONE WAY (the person's decisions of 16 October 2026,
+# private/MEMBERS_ELECT_PLAN.md). Who November's election sent is drawn on a
+# town page and in the district map's panel, on the Officials page's own
+# tab, in the My Town card and on a returning member's own page -- two of
+# those built here in Python and three drawn in the browser -- so the block,
+# its words and its chip are these helpers in both languages and nowhere
+# else. Every one of them is drawn from site/members_elect.json alone, never
+# from the roster; each element carries data-elect, which says what it is,
+# and until_attrs, which retires it on the day they take office. The words
+# are the person's: "Elected November 3, 2026", "Takes office December 2,
+# 2026.", "Result not final" with "a recount was requested" only where the
+# race says so, "No member-elect on file for 1 seat." and "Serving now". No
+# contact detail is drawn for a member-elect, and nothing about a sitting
+# member who is not on the list.
+ELECT_KEY = re.compile(r"H\|([^|]+)\|([0-9]+)|S\|([0-9]+)")
+
+
+def elect_now(takes_office, today):
+    """"Serving now", the label over the sitting members wherever a
+    members-elect block is drawn beside them, so that two lists of people
+    under one district say which is which. It names nobody, and retires
+    with the block."""
+    return f'<p class="elnow" data-elect{until_attrs(takes_office, today)}>Serving now</p>'
+
+
+def elect_race(race):
+    """One race of site/members_elect.json as the pages draw it, under
+    whatever heading the page gives it: each member-elect in the site's one
+    person chip, with their party's letters -- a cross-nomination ("R/D")
+    on the neutral chip, both letters kept, and no letter where none was
+    printed -- and linked to a page only where the file gives both an id
+    and a page, so a new person is never somebody else's record; then
+    "Result not final" where seats are, which is every race until the
+    recount deadline has passed and so the normal state of the first days;
+    then the seats with nobody on file, held ones among them. A race with
+    no seats to speak of draws nothing."""
+    r = race or {}
+    won = r.get("elected") or []
+    chips = []
+    for e in won:
+        p = str(e.get("p") or "")
+        chips.append("<li>" + pchip({
+            "party_code": p if len(p) == 1 else "X",
+            "display_full": f'{e.get("n") or ""} ({p})' if p else (e.get("n") or ""),
+            "slug": e.get("s") if e.get("id") and e.get("s") else ""}) + "</li>")
+    left = (r.get("seats") or 0) - len(won) - (r.get("not_final") or 0)
+    return (('<ul class="ellist">' + "".join(chips) + "</ul>" if chips else "")
+            + ('<p class="elnf"><b>Result not final</b>'
+               + (" &mdash; a recount was requested" if r.get("recount") else "") + "</p>"
+               if r.get("not_final") else "")
+            + (f'<p class="elnone">No member-elect on file for {left} seat'
+               + ("" if left == 1 else "s") + ".</p>" if left > 0 else ""))
+
+
+def elect_block(races, election, takes_office, today):
+    """The members-elect block: "Elected November 3, 2026" and "Takes office
+    December 2, 2026." over each race in `races` -- [[label, race], ...],
+    the label "" where the block sits under its district's own heading, as
+    on a town page, and the district's name where one block holds two, as
+    the My Town card's House seat can. The dates are the file's own
+    election and takes_office."""
+    body = "".join((f'<p class="elwhere">{esc(label)}</p>' if label else "") + elect_race(race)
+                   for label, race in races or [])
+    return (f'<div class="elect" data-elect{until_attrs(takes_office, today)}>'
+            f'<p class="elhead"><b>Elected {esc(date_words(election, "full"))}</b> '
+            f'<span>Takes office {esc(date_words(takes_office, "full"))}.</span></p>{body}</div>')
+
+
+def elect_line(key, election, takes_office, today):
+    """The one line on a returning or re-elected member's own page: "Elected
+    November 3, 2026, for Rockingham district 13. Takes office December 2,
+    2026." -- the race's own county and district, which may not be the seat
+    the page's heading names, or "Senate District 24". The heading above it
+    is left as it is until they take office ("Former Representative ..."
+    stays until the switch)."""
+    m = ELECT_KEY.fullmatch("" if key is None else str(key))
+    where = ("" if not m else f"Senate District {m.group(3)}" if m.group(3)
+             else f"{m.group(1)} district {m.group(2)}")
+    return (f'<p class="elline" data-elect{until_attrs(takes_office, today)}>'
+            f'Elected {esc(date_words(election, "full"))}'
+            + (f", for {esc(where)}" if where else "")
+            + f'. Takes office {esc(date_words(takes_office, "full"))}.</p>')

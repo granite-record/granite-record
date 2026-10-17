@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-09.33
+# GRANITE_VERSION: 2026-09-09.37
 """
 A page per town and ward: everyone who represents the people who live there.
 
@@ -41,6 +41,12 @@ writes town_boards.json), and otherwise from NHDOT's directory of September
 2025, which is dated on the page and shown without the chair it names. A page
 that lists fewer than the body's seats is shown, labelled with how many it
 lists. The town clerk comes from the Secretary of State's list.
+
+Between a general election and Organization Day the State House and Senate
+districts also say who the election sent, from site/members_elect.json alone
+(build_members_elect.for_pages), under the sitting members and with "Serving
+now" over them; places.json carries the same for the My Town card. Outside
+those weeks there is no file, and the pages are what they were.
 """
 
 # The bootstrap: _paths.py, found above this file, puts every code folder on the import path.
@@ -50,11 +56,16 @@ sys.path += [str(p) for p in Path(__file__).resolve().parents if (p / "_paths.py
 import _paths  # noqa: E402,F401
 
 import argparse
+import datetime
 import json
 import re
 
 import build_date
+import components as C
 import shell as S
+# Who November's election sent, for the weeks before they sit: the one
+# reader of site/members_elect.json, beside its one writer (16 October 2026).
+from build_members_elect import for_pages as members_elect, race_order
 # The parser's test for an e-mail address, so that what it accepts from a
 # threaded cell and what a page links are the same test.
 from parse_officials import EMAIL_OK
@@ -727,6 +738,61 @@ def _is_address(host):
     return bool(host) and "." in host and " " not in host and "@" not in host
 
 
+def election_day(raw):
+    """The day "11/03/2026-STATE GENERAL ELECTION" names, as a date, or None
+    where the list's cell names none (many of its rows are blank) or names
+    one that is no day. Where a cell names two elections, as Concord's and
+    Laconia's name a school election beside the state's, the first is the
+    one read; on the list the two fall on the same day."""
+    m = re.match(r"\s*(\d{1,2})/(\d{1,2})/(\d{4})\s*-\s*(.+)$", raw or "")
+    if not m:
+        return None
+    try:
+        return datetime.date(int(m.group(3)), int(m.group(1)), int(m.group(2)))
+    except ValueError:
+        return None
+
+
+def next_possible_election(day):
+    """The first day after `day` on which a New Hampshire town may vote again
+    in the ordinary course of the law: from it, an election the Secretary of
+    State's list names and that has passed can no longer be called the
+    town's last.
+
+    The days are the statutes', read in db/NH_RSA.psv on 16 October 2026:
+    the school district meetings that choose district officers, from 1 March
+    (RSA 197:1); town elections on the second Tuesday of March, April or May
+    (RSA 669:1 and 40:14, X); the state primary on the second Tuesday of
+    September (RSA 653:8); the general election on the first Tuesday after
+    the first Monday of November (RSA 653:7), which is also the day a charter
+    town may elect in an odd year (RSA 669:1, II); and the presidential
+    primary, whose day the Secretary of State sets (RSA 653:9).
+
+    EARLY WHERE THE LAW LEAVES ROOM, ON PURPOSE. The statutes hold the state
+    primary and the general election in even years; every year is taken
+    here, because the cities elect their own officers in the odd years under
+    charters this file has not read, and may hold primaries before them. The
+    presidential primary is taken as 1 January of a presidential year, which
+    is a guess: the statute lets it come as early as the year before. Ending
+    early costs a date in a heading; ending late states something untrue.
+    A special election can come sooner than any of these and nothing here
+    can know of one, which is a reason to read the list again rather than
+    something this function can answer.
+    """
+    def tuesday(y, m, nth):
+        first = datetime.date(y, m, 1)
+        return first + datetime.timedelta(days=(1 - first.weekday()) % 7 + 7 * (nth - 1))
+
+    days = []
+    for y in (day.year, day.year + 1):
+        nov = datetime.date(y, 11, 1)
+        days += [datetime.date(y, 3, 1), tuesday(y, 3, 2), tuesday(y, 4, 2), tuesday(y, 5, 2),
+                 tuesday(y, 9, 2), nov + datetime.timedelta(days=(0 - nov.weekday()) % 7 + 1)]
+        if y % 4 == 0:
+            days.append(datetime.date(y, 1, 1))
+    return min(d for d in days if d > day)
+
+
 def election_line(raw):
     """"11/03/2026-STATE GENERAL ELECTION" as a date in a heading.
 
@@ -735,23 +801,42 @@ def election_line(raw):
     (shell.date_words, 8 October 2026). It was "November 3rd", with the year
     only when it was not this one.
 
-    It says "Next Election" only while the date is ahead of the build. After
-    that it says "Election on file": a heading still promising "next" in
-    December would be wrong about the one thing the section is for.
+    It says "Next Election" only while the date is ahead of the build, and on
+    the day itself. After that it says "Last election": a heading still
+    promising "next" in December would be wrong about the one thing the
+    section is for.
+
+    "Last election", where it said "Election on file" (the person, 16 October
+    2026). The capitals are as approved: "Next Election" keeps its own, and
+    "Last election" is written as the approved wording writes it.
+
+    ONLY UNTIL THE TOWN COULD HAVE VOTED AGAIN, THEN NO DATE (16 October
+    2026, a review's finding). The date comes from the Secretary of State's
+    list as it was last read (collected/town_clerks.json), and nothing reads
+    that list on a schedule: a person does (src/towns/parse_clerks_csv.py).
+    So the date it names is the town's last election only until the town
+    could have held another, and "Last election: November 3, 2026" after the
+    town elections of March would be wrong in a way "Election on file" never
+    was. From next_possible_election() this returns "", and the card takes
+    the heading it has wherever the list names no date, "Where you vote";
+    places.json's row drops "when" with it. preflight's
+    _town_election_heading holds the three stretches on real rows, and
+    _town_clerks_reread is the reminder, from the day the third begins, that
+    the list wants reading again.
     """
-    m = re.match(r"\s*(\d{1,2})/(\d{1,2})/(\d{4})\s*-\s*(.+)$", raw or "")
-    if not m:
+    day = election_day(raw)
+    if day is None:
         return ""
-    mm, dd, yy = int(m.group(1)), int(m.group(2)), int(m.group(3))
-    if not 1 <= mm <= 12:
-        return ""
-    today = build_date.today()
     try:
-        when = S.date_words(f"{yy:04d}-{mm:02d}-{dd:02d}", "full")
+        when = S.date_words(day.isoformat(), "full")
     except ValueError:
         return ""
-    ahead = (yy, mm, dd) >= (today.year, today.month, today.day)
-    return f"{'Next Election' if ahead else 'Election on file'}: {when}"
+    today = build_date.today()
+    if day >= today:
+        return f"Next Election: {when}"
+    if today < next_possible_election(day):
+        return f"Last election: {when}"
+    return ""
 
 
 def ward_picker(town, ward, wards):
@@ -850,10 +935,37 @@ def office_block(title, holder, fallback_url, note=""):
     return card(E(title), inner) if title else inner
 
 
-def state_house(dist, legs):
+def elect_race_of(elect, key):
+    """The race `key` ("H|Rockingham|13", "S|24") of the members-elect file,
+    or None where there is no file or it does not hold the race."""
+    return ((elect or {}).get("races") or {}).get(key)
+
+
+def elect_parts(elect, key):
+    """(the "Serving now" label, the members-elect block) for one district's
+    race, or ("", "") where nothing is drawn.
+
+    WHO NOVEMBER'S ELECTION SENT, UNDER THE DISTRICT THEY WERE ELECTED FOR
+    (the person's decisions of 16 October 2026). The block is drawn from
+    site/members_elect.json alone, under the sitting members and never among
+    them, and the sitting members get "Serving now" over them wherever one
+    is drawn, which names nobody. Both carry data-elect and retire on the day
+    they take office (components.until_attrs); with no file neither is
+    drawn and the page is the page it was."""
+    race = elect_race_of(elect, key)
+    if race is None:
+        return "", ""
+    today = build_date.today().isoformat()
+    return (C.elect_now(elect["takes_office"], today),
+            C.elect_block([["", race]], elect["election"], elect["takes_office"], today))
+
+
+def state_house(dist, legs, elect=None):
     """The State House card: each district the town sits in, with its
     members. A floterial district is a second district over the first, so
-    the two are one card with a heading each, not two offices."""
+    the two are one card with a heading each, not two offices. Between the
+    election and Organization Day each district's members-elect follow its
+    sitting members (elect_parts)."""
     house = dist.get("house") or []
     if not house:
         return card("State House", '<p class="note">No House district is on '
@@ -878,8 +990,9 @@ def state_house(dist, legs):
                          'representative, and elects additional members across '
                          'the combined population. You are represented by '
                          'both.</p>')
-        parts.append(member_block(who, "No sitting member is matched to this "
-                                       "district."))
+        now, block = elect_parts(elect, f"H|{h.get('county')}|{h.get('district')}")
+        parts.append(now + member_block(who, "No sitting member is matched to this "
+                                             "district.") + block)
     return card("State House", "".join(parts))
 
 
@@ -921,19 +1034,24 @@ def answer_line(dist):
     return f'<p class="lead twnlede">{out.strip()}</p>' if out else ""
 
 
-def representatives_sections(dist, legs, off):
+def representatives_sections(dist, legs, off, elect=None):
     """The Representatives tab, nearest office first: the State House, the
     State Senate, the Executive Council, the Governor, the US House and the
     US Senate. The person's order, 24 September 2026 -- the seats a town
-    elects on its own ballot come before the ones the whole state does."""
-    out = [state_house(dist, legs)]
+    elects on its own ballot come before the ones the whole state does.
+    The State House and the Senate carry their members-elect while there
+    are any; the Governor, the Council and Congress never do (16 October
+    2026: those are corrections/officials.json's, and take office in
+    January)."""
+    out = [state_house(dist, legs, elect)]
     sd = dist.get("senate")
     if sd:
         who = [m for m in legs if m.get("chamber") == "S"
                and str(m.get("district") or "") == str(sd)]
+        now, block = elect_parts(elect, f"S|{sd}")
         out.append(card(f"State Senate &mdash; district {E(str(sd))}",
-                        member_block(who, "No sitting senator is matched to "
-                                          "this district.")))
+                        now + member_block(who, "No sitting senator is matched to "
+                                                "this district.") + block))
     cd = dist.get("council")
     if cd:
         c = off.get("council", {})
@@ -1042,13 +1160,14 @@ def vote_sections(town, loc, town_off):
         inner += ('<p class="note">The Secretary of State\'s list has no '
                   'polling place recorded for here. The town clerk above is '
                   'who to ask.</p>')
-    # The date is the card's heading: "Next Election: November 3rd" while it
-    # is ahead, "Election on file" after it -- see election_line.
+    # The date is the card's heading: "Next Election: November 3, 2026" while
+    # it is ahead, "Last election: November 3, 2026" after it, and "Where you
+    # vote" once the town could have voted again -- see election_line.
     when = election_line(loc.get("election", ""))
     return [card(E(when) if when else "Where you vote", inner, wide=True)]
 
 
-def build(town, ward, wards, dist, legs, off, base, tmpl):
+def build(town, ward, wards, dist, legs, off, base, tmpl, elect=None):
     """One town: the answer above, then a tab for each kind of thing.
 
     TABS, NOT ONE LONG PAGE (the person, 24 September 2026): the sections
@@ -1086,7 +1205,7 @@ def build(town, ward, wards, dist, legs, off, base, tmpl):
     # Title Case, as that drawing's are, so the new tab is not the one that
     # reads differently.
     panels = [("representatives", "Representatives",
-               representatives_sections(dist, legs, off)),
+               representatives_sections(dist, legs, off, elect)),
               ("map", "District Map", map_section(town, ward, dist)),
               ("officials", "City Officials" if slug(town, "0") in CITIES
                else "Town Officials", officials),
@@ -1123,14 +1242,21 @@ def build(town, ward, wards, dist, legs, off, base, tmpl):
                      + (MAP_JS if 'id="twnmap"' in "".join(body) else "") + "</div>", 1)
 
 
-def place_record(town, ward, wards, dist, legs, loc):
+def place_record(town, ward, wards, dist, legs, loc, elect=None):
     """One row of places.json: what "your town" carries round the site.
 
     THE SAME FACTS THE PAGE PRINTS, FROM THE SAME DATA, so the header picker
     cannot say a different district or polling place from the town's own
     page. The browser keeps only the slug ("concord-ward-4"); the rest is
     read from here when a page needs it. Members are the ones state_house
-    and the Senate card match, by the same test."""
+    and the Senate card match, by the same test.
+
+    "e" IS THE PLACE'S RACES IN THE MEMBERS-ELECT FILE (16 October 2026):
+    the keys its State House districts and its Senate district have there,
+    in the page's order, which the My Town card draws from places.json's
+    "elect" -- each race once, as "people" holds each member once. Never in
+    "m", which is who sits now; and absent, with "elect", whenever there is
+    no file, so the row is the row it was."""
     house = dist.get("house") or []
     m = [x.get("slug") for h in house for x in legs
          if x.get("chamber") == "H" and x.get("slug")
@@ -1146,6 +1272,10 @@ def place_record(town, ward, wards, dist, legs, loc):
            "co": next((h.get("county") for h in house if h.get("county")), None),
            "sd": sd, "ec": dist.get("council"), "cd": dist.get("congress"),
            "m": m}
+    e = [k for k in [f"H|{h.get('county')}|{h.get('district')}" for h in house]
+         + ([f"S|{sd}"] if sd else []) if elect_race_of(elect, k) is not None]
+    if e:
+        rec["e"] = e
     if slug(town, "0") in CITIES:
         rec["c"] = 1
     if len(wards) > 1:
@@ -1175,12 +1305,18 @@ def map_section(town, ward, dist):
     Executive Council and US House and the label toggle (town names by
     default). Drawn by the script the first time the tab is shown (MAP_JS);
     without it, the tabs are a page and the districts are in its first
-    line."""
+    line.
+
+    "ITS SITTING MEMBERS", NOT "THE MEMBERS IT ELECTED" (the person, 16
+    October 2026). The fill is the sitting members' party, as it always was;
+    from the day after an election the old words could be read as the
+    members it has just elected, who do not sit until Organization Day. The
+    Officials page's copy of this note says the same."""
     base = next((h for h in dist.get("house") or [] if not h.get("floterial")), None)
     pick = (MAP_COUNTY.get(base.get("county"), "") + str(base.get("district") or "")) \
         if base and MAP_COUNTY.get(base.get("county")) else ""
-    inner = ('<p class="note">Each district coloured by the party of the members it '
-             'elected. Choose a kind of district, then a district on the map.</p>'
+    inner = ('<p class="note">Each district coloured by the party of its sitting '
+             'members. Choose a kind of district, then a district on the map.</p>'
              f'<div class="twnmap" id="twnmap" data-town="{E(town)}"'
              + (f' data-ward="{E(ward)}"' if ward and ward != "0" else "")
              + (f' data-pick="{E(pick)}"' if pick else "")
@@ -1436,6 +1572,9 @@ def main():
           f"{len(clerk_caps)} rows of the Secretary of State's list, recased "
           "by parse_clerks.namecase")
     tmpl = S.template(site)
+    # The members-elect, while there are any: None outside the weeks between
+    # the election and Organization Day, and then nothing below draws them.
+    elect = members_elect(site)
 
     out = site / "town"
     out.mkdir(parents=True, exist_ok=True)
@@ -1444,13 +1583,13 @@ def main():
         wards = districts[town]
         for ward in sorted(wards, key=lambda w: int(w) if w.isdigit() else 0):
             page = build(town, ward, wards, wards[ward], legs, off,
-                         a.base, tmpl)
+                         a.base, tmpl, elect)
             (out / f"{slug(town, ward)}.html").write_text(S.clean_links(page),
                                                           encoding="utf-8")
             urls.append(a.base + town_path(town, ward))
             places.append(place_record(
                 town, ward, wards, wards[ward], legs,
-                (off.get("_local") or {}).get(slug(town, ward)) or {}))
+                (off.get("_local") or {}).get(slug(town, ward)) or {}, elect))
             n += 1
 
     # Silence is not success.
@@ -1481,9 +1620,16 @@ def main():
                    for d, v in (off.get(src, {}).get("districts") or {}).items()
                    if (v.get("name") or "").strip()}
                for k, src in (("ec", "council"), ("cd", "us_house"))}
+    doc = {"places": places, "people": people, "offices": offices}
+    # THE MEMBERS-ELECT OF THE RACES A PLACE NAMES IN "e", each race once,
+    # with the file's two days, for the My Town card (find.js). Only while
+    # there is a file: without one places.json is what it was.
+    if elect:
+        keys = sorted({k for p in places for k in p.get("e") or []}, key=race_order)
+        doc["elect"] = {"election": elect["election"], "takes_office": elect["takes_office"],
+                        "races": {k: elect["races"][k] for k in keys}}
     (site / "places.json").write_text(
-        json.dumps({"places": places, "people": people, "offices": offices},
-                   separators=(",", ":"), ensure_ascii=False),
+        json.dumps(doc, separators=(",", ":"), ensure_ascii=False),
         encoding="utf-8")
     print(f"  places.json: {len(places)} towns and wards, "
           f"{sum(1 for p in places if p.get('poll') or p.get('wards'))} "
@@ -1491,17 +1637,18 @@ def main():
     print(f"  {named} of 10 other offices name who holds them; the rest link "
           "to the official directory")
 
-    # Appended rather than replaced: rewriting it here would drop every other
-    # URL on the site.
-    sm = site / "sitemap.xml"
-    if sm.exists():
-        text = sm.read_text(encoding="utf-8")
-        add = "".join(f"<url><loc>{E(u)}</loc></url>\n" for u in urls
-                      if E(u) not in text)
-        if add:
-            sm.write_text(text.replace("</urlset>", add + "</urlset>"),
-                          encoding="utf-8")
-            print(f"  {len(add.splitlines())} added to sitemap.xml")
+    # Added to the sitemap rather than replacing it, which would drop every
+    # other URL on the site. THROUGH shell.sitemap_merge, AS THE OTHER
+    # BUILDERS ADD THEIRS (the sitemap audit, 16 October 2026): the test here
+    # was whether an address appeared anywhere in the file's text, which
+    # takes /town/chester as listed wherever /town/chesterfield is -- eight
+    # such pairs, Hampton and Hampton Falls and Concord's Ward 1 and Ward 10
+    # among them -- and nothing ever took out a town this run no longer
+    # writes. Every town and ward is written on every run, so this run owns
+    # /town whole.
+    added, dropped = S.sitemap_merge(site, a.base, urls, "/town")
+    if added or dropped:
+        print(f"  sitemap.xml: {added} added, {dropped} no longer written taken out")
     return 0
 
 

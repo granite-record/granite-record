@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-16.24
+// GRANITE_VERSION: 2026-09-16.30
 /* FIND ANYTHING, FROM THE HEADER (16 September, asked for in these words:
    "a search icon in the header that lets you search for anything including
    legislators, committees, towns, and bills ... searching Litchfield would
@@ -55,6 +55,60 @@ const FKIND={legislator:"Legislator",committee:"Committee",town:"Town",
   guide:"How-To Guide",learn:"Learn"};
 const _fesc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>(
   {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+/* A COMMITTEE IS NAMED WITH ITS CHAMBER (the person, 16 October 2026:
+   "Committees in the search should show as House Housing Committee or Senate
+   Judiciary Committee rather than just Housing so they aren't confused with a
+   topic"). find.json keeps the committee's own name, and the matcher reads
+   that -- so "house" does not bring every House committee to the top -- and
+   this is what a row shows: the chamber from the row's line, and "Committee"
+   where the name does not already say it. "Special Committee on Housing" is
+   "House Special Committee on Housing"; "Senate Special Committee on
+   Redistricting" already names both and stays as it is. */
+function findName(r){
+  if(!r||r[0]!=="committee")return r?r[1]:"";
+  const name=String(r[1]||""), ch=(/^(House|Senate)\b/.exec(String(r[2]||""))||[])[1]||"";
+  const named=/\bcommittee\b/i.test(name)?name:`${name} Committee`;
+  return !ch||name.startsWith(ch+" ")?named:`${ch} ${named}`;
+}
+/* A COMMITTEE THAT NO LONGER SITS (the person, 16 October 2026: "some
+   indicator of former committees that are no longer meeting like the special
+   committee on housing that turned into the standing committee ... so those
+   aren't prioritized in the search results"). find.json gives such a row the
+   year it last sat in r[5], as a former member's has, and its years in r[6].
+   It is a "Former Committee", in the words "Former Member" is, its line says
+   what its own page says -- not on the General Court's list today, and when
+   it sat -- and it falls in behind the committees that sit, as a member who
+   has left falls in behind those who have not, and never above the bills. */
+const _fgone=r=>!!r&&(r[0]==="former"||(r[0]==="committee"&&!!r[5]));
+function findKind(r){
+  return r&&r[0]==="committee"&&r[5]?"Former Committee":(FKIND[r&&r[0]]||(r&&r[0])||"");
+}
+/* FORMERLY, WHEN AN OLD NAME IS WHAT MATCHED (the person, 16 October 2026: "A
+   committee should say formerly if it's an old name"). A committee's earlier
+   names are search words, so "housing" finds Criminal Justice and Public
+   Safety, which was State Institutions and Housing; a row that then said only
+   its name looked like a wrong answer. r[7] is the list of earlier names
+   (find.json); the one every word typed is in is named, and only where the
+   committee's own name does not hold them all. */
+function _fwasNamed(r,s){
+  const old=Array.isArray(r&&r[7])?r[7]:[];
+  const words=s?_fwords(s):[];
+  if(!old.length||!words.length)return "";
+  if(words.every(w=>_fhas(String(r[1]||"").toLowerCase(),w)))return "";
+  return old.find(n=>words.every(w=>_fhas(String(n).toLowerCase(),w)))||"";
+}
+// The line under a row -- but not "House committee" under a name that now says
+// it. A committee that no longer sits says so in the person's own words for it
+// ("former committees that are no longer meeting"), with its years; one found
+// by an old name says which.
+function findWhat(r,s){
+  const w=r?String(r[2]||""):"";
+  if(!r||r[0]!=="committee")return w;
+  const was=_fwasNamed(r,s);
+  const bits=[was?`Formerly ${was}`:"",
+    r[5]?"No longer meets"+(r[6]?` · ${r[6]}`:""):""].filter(Boolean);
+  return bits.length?bits.join("; "):/^(House|Senate) committee$/i.test(w)?"":w;
+}
 /* HALF AN EMOJI IS NOT AN ADDRESS. encodeURIComponent throws "URI malformed"
    on a surrogate with no partner, which is what the box holds for a moment
    while some keyboards type an emoji and what a paste cut in the wrong place
@@ -246,7 +300,8 @@ function findMatch(q,limit){
     // ones" means with a list this long. A former member whose name begins
     // with the query still outranks a town that merely mentions it, which is
     // the answer a reader wants.
-    const gone=r[0]==="former"?1:0;
+    // And a committee that no longer sits falls in behind those that do.
+    const gone=_fgone(r)?1:0;
     // Among former members, the most recent first. r[5] is the year they last
     // sat; negated so one sort direction serves both this and name length.
     hit.push([_fpart(r,s),rank,gone,gone?-(r[5]||0):0,name.length,r]);
@@ -410,7 +465,9 @@ function _fbillApi(){
     return {queryGroups,groupWeight,billNumbers,billKey,looseness,indexAdd,
             readShort,whyListed,spelling,wordsAdd,
             knownWord:typeof knownWord==="function"?knownWord:null,
-            matchScore:typeof matchScore==="function"?matchScore:null};
+            matchScore:typeof matchScore==="function"?matchScore:null,
+            titleShare:typeof titleShare==="function"?titleShare:null,
+            statusCat:typeof statusCat==="function"?statusCat:null};
   return window.GR_BILLMATCH||null;
 }
 const _fdata=f=>new URL(f,location.origin+"/").href;
@@ -495,7 +552,13 @@ function findBillsLoadAll(){
    would with ?term=all. A bill number is unique only within a term, so
    there the ties between terms go to the newer term -- app.js's sortRows
    breaks them the same way -- which puts this term's answer ahead of
-   1995's. */
+   1995's.
+   Among bills that match equally well, a bill still moving whose title has
+   the search comes first, and after the newer term the most of the title
+   that is the search (16 October 2026): the matcher's own titleShare() and
+   statusCat(), in sortRows' order, so that "housing" opens here on the
+   bills /bills opens on. A matcher from before them, still in a reader's
+   cache, breaks the tie by number as it did. */
 function findBills(q,limit,allTerms){
   const s=(q||"").trim();
   if(!s)return null;
@@ -529,13 +592,17 @@ function findBills(q,limit,allTerms){
       if(gs.length>1&&b.hayT.includes(words))sc+=2;
       loose=A.looseness(b,gs);
     }
-    hit.push([sc,A.billKey(b),b,loose]);
+    // The title's share of the search, and 1 for a bill still moving whose
+    // title has it: sortRows' `sh` and `live`.
+    const share=gs&&A.titleShare?A.titleShare(b,gs):0;
+    const live=share>0&&A.statusCat&&A.statusCat(b)==="In Progress"?1:0;
+    hit.push([sc,A.billKey(b),b,loose,share,live]);
   }
   const newer=(x,y)=>{const a=String(x[2].term||""),b=String(y[2].term||"");
     return a<b?1:a>b?-1:0;};
   const num=(x,y)=>x[1][0]-y[1][0]||x[1][1]-y[1][1];
   hit.sort(ids?(x,y)=>num(x,y)||newer(x,y)
-    :(x,y)=>x[3]-y[3]||y[0]-x[0]||newer(x,y)||num(x,y));
+    :(x,y)=>x[3]-y[3]||y[0]-x[0]||y[5]-x[5]||newer(x,y)||y[4]-x[4]||num(x,y));
   const top=hit.slice(0,limit==null?3:limit).map(h=>h[2]);
   // Why each row shown is listed, where its title does not have the word.
   const why=new Map();
@@ -673,9 +740,9 @@ function findDraw(q,ids){
     <span class="fl1"><span class="fname">${_fesc(num)}</span></span>
     <span class="fwhat">open this bill number in the bill search</span></a>`:every;
   const row=r=>`<a href="${_fesc(_froot(r[3]))}">
-      <span class="fl1"><span class="fname">${_fmark(r[1],s)}</span>
-      ${chip(FKIND[r[0]]||r[0],"fkind")}</span>
-      ${r[2]?`<span class="fwhat">${_fesc(r[2])}</span>`:""}</a>`;
+      <span class="fl1"><span class="fname">${_fmark(findName(r),s)}</span>
+      ${chip(findKind(r),"fkind")}</span>
+      ${findWhat(r,s)?`<span class="fwhat">${_fesc(findWhat(r,s))}</span>`:""}</a>`;
   // The bills, for anything that is not a bill number: the count and the
   // first three. Hidden once counted at none, because "All 0 bills" is not an
   // answer; shown uncounted while they are fetched, and redrawn when they
@@ -699,7 +766,7 @@ function findDraw(q,ids){
   // leads with the bills and Gunski follows, and "bail" leads with the bail
   // bills and Rep. Bailey follows. Return takes the first row, so for a
   // subject word it opens the bill search on it.
-  const named=rows.filter(r=>r[0]!=="former"&&_fwhole(r,s));
+  const named=rows.filter(r=>!_fgone(r)&&_fwhole(r,s));
   const list=named.map(row).join("")+bills
     +rows.filter(r=>!named.includes(r)).map(row).join("");
   // "No matching results." -- the person's words -- only when nothing here
@@ -1066,6 +1133,24 @@ function ytChip(name,party,href,out){
   const a=href?`<a href="${_fesc(href)}"${out?' target="_blank" rel="noopener"':""}>${_fesc(name)}</a>`:_fesc(name);
   return `<li><span class="mchip p-${_fesc(party||"X")}">${a}</span></li>`;
 }
+/* WHO NOVEMBER'S ELECTION SENT, IN THE CARD (the person's decisions of 16
+   October 2026): between the election and Organization Day a place's "e"
+   names its races in places.json's "elect", and the State House and Senate
+   seats draw them under the sitting members, with "Serving now" over those,
+   in components.js's electBlock and electNow -- the town page's own block,
+   with untilAttrs, handed no day so that the behaviour judges it by the
+   reader's clock. The House seat can be two districts, a floterial over a
+   town's own, so where it is each race says which. Outside those weeks
+   there is no "e" and the card is what it was. */
+function ytElect(p,chamber){
+  const E=typeof electBlock==="function"&&YT.data&&YT.data.elect||null;
+  const keys=E?(p.e||[]).filter(k=>k.charAt(0)===chamber&&E.races&&E.races[k]):[];
+  if(!keys.length)return ["",""];
+  const say=k=>{const x=(p.h||[]).find(h=>"H|"+h[0]+"|"+h[1]===k);
+    return x?`${x[0]} ${x[1]}${x[2]?" (floterial)":""}`:k;};
+  return [electNow(E.takes_office,null),
+    electBlock(keys.map(k=>[keys.length>1?say(k):"",E.races[k]]),E.election,E.takes_office,null)];
+}
 function ytSeats(p){
   const ppl=(YT.data&&YT.data.people)||{},off=(YT.data&&YT.data.offices)||{};
   const reps=(p.m||[]).filter(s=>!/-sd-\d+$/.test(s)),sens=(p.m||[]).filter(s=>/-sd-\d+$/.test(s));
@@ -1074,10 +1159,12 @@ function ytSeats(p){
   const seat=(office,where,body)=>`<div class="ytseat"><p class="ytoff">${office}<span>${_fesc(where)}</span></p>${body}</div>`;
   const named=(k,d)=>{const o=(off[k]||{})[String(d)];
     return o&&o[0]?`<ul class="ytppl">${ytChip(o[0],o[1],o[2],true)}</ul>`:'<p class="ytnote">Not on file.</p>';};
+  const eh=ytElect(p,"H"),es=ytElect(p,"S");
   const seats=[];
   if(h.length)seats.push(seat("State House",h.length>1?h.slice(0,-1).join(", ")+" and "+h[h.length-1]:h[0],
-    reps.length?who(reps):'<p class="ytnote">No sitting member on file.</p>'));
-  if(p.sd)seats.push(seat("State Senate","District "+p.sd,sens.length?who(sens):'<p class="ytnote">No sitting senator on file.</p>'));
+    eh[0]+(reps.length?who(reps):'<p class="ytnote">No sitting member on file.</p>')+eh[1]));
+  if(p.sd)seats.push(seat("State Senate","District "+p.sd,
+    es[0]+(sens.length?who(sens):'<p class="ytnote">No sitting senator on file.</p>')+es[1]));
   if(p.ec)seats.push(seat("Executive Council","District "+p.ec,named("ec",p.ec)));
   if(p.cd)seats.push(seat("US House","District "+p.cd,named("cd",p.cd)));
   const sub=[p.co?`${p.co} County`:"",p.poll?`votes at ${p.poll.split(/\s+\d/)[0]}`:""].filter(Boolean).join(" \u00b7 ");

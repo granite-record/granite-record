@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.273 */
+/* GRANITE_VERSION: 2026-09-07.278 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -420,6 +420,15 @@ color-scheme:dark}
    and the nav is on every page. It sits last in the nav row and is pushed to
    the end, so it reads as a setting rather than as an eighth section of the
    site. Sized as a real tap target on a phone like every other nav item. */
+/* WHAT RETIRES ON A DAY STAYS GONE (the members-elect, 16 October 2026).
+   components.js hides an element carrying data-until from its day on by
+   setting hidden, and the browser's own [hidden] rule loses to any display
+   a page's own rule gives the element -- which is why this file says
+   .pane[hidden] and the rest one class at a time. A member-elect block
+   styled as a flex row would have stayed on the page after the day they
+   take office. So it is said once, here in the part both stylesheets take,
+   and with !important, so that no page's style can bring one back. */
+[data-until][hidden]{display:none!important}
 /* A TITLE ON A PHONE IS 28px (D3 of the polish plan): at 34px a member's or
    a committee's name took three lines of a 375px screen, and at the 19px it
    was before it read as smaller than the heading of a part. */
@@ -1408,7 +1417,8 @@ line-height:1.1}
      ground, and with no ground printed it is white on white. */
   nav.top,.skip,.calskip,.searchrow,.ftoggle,.backto,.pageacts,.findpanel,
   .findscrim,details.report,.pshare,.sharestate,.player iframe,.fbk,
-  .ytcard .ytgo,.ytpanel .ytaform button[type=submit],.followmail .followsend{display:none !important}
+  .ytcard .ytgo,.ytpanel .ytaform button[type=submit],.followmail .followsend,
+  .followmail .followfreq{display:none !important}
   /* A STATUTE ON PAPER IS THE STATUTE (the polish of 12 October 2026): a
      chapter page prints its sections in one column, without the sidebar
      that lists them; the Laws landing its directory, without the filters
@@ -1702,6 +1712,36 @@ color:var(--pine);margin:0 0 var(--sp-3)}
 @media print{.setbtn,.navset,.ytpanel,.yt{display:none !important}}
 /* ==== /YOUR TOWN, SHARED ================================================== */
 
+/* ==== MEMBERS-ELECT, SHARED (the person's decisions of 16 October 2026) =====
+   Who November's election sent, for the weeks before they sit: the block
+   components.elect_block and electBlock draw on a town page, in the My Town
+   card and in the district map's panel, "Serving now" over the sitting
+   members beside it, and a returning member's one line. Here, the part both
+   stylesheets take, because a town page reads app.css and the Officials
+   page style.css. The block is set apart from the sitting members it
+   follows -- a pine edge on the wash, under its own heading -- so the two
+   lists of people under one district never read as one; its chips are the
+   site's one chip, unchanged. Each element carries data-until, and the rule
+   at the head of this region keeps it gone from that day. */
+.elnow{font:600 var(--t-label)/1.3 var(--sans);letter-spacing:.06em;text-transform:uppercase;
+  color:var(--ink-2);margin:var(--sp-3) 0 var(--sp-2)}
+.elect{margin:var(--sp-4) 0 var(--sp-5);padding:var(--sp-3) var(--sp-4);background:var(--wash);
+  border-left:3px solid var(--pine);border-radius:0 var(--r-in) var(--r-in) 0;max-width:100%}
+.elect p{margin:0}
+.elect .elhead{font-size:var(--t-sm);line-height:1.45;color:var(--ink-2);margin:0 0 var(--sp-3)}
+.elect .elhead b{display:block;font-size:var(--t-ui);font-weight:600;color:var(--ink)}
+.elect .elwhere{font:600 var(--t-sm)/1.35 var(--sans);color:var(--ink);margin:var(--sp-4) 0 var(--sp-2)}
+.elect .elhead + .elwhere{margin-top:0}
+.ellist{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:var(--sp-2)}
+.ellist li{max-width:100%}
+.ellist .mchip{max-width:100%;white-space:normal}
+.elnf,.elnone{font-size:var(--t-sm);line-height:1.45;color:var(--ink-2)}
+.elect .ellist + p,.elect .elnf + .elnone{margin-top:var(--sp-2)}
+.elnf b{font-weight:600;color:var(--ink)}
+.elline{font-size:var(--t-ui);line-height:1.5;color:var(--ink);margin:var(--sp-4) 0 0;max-width:46rem;
+  padding-left:var(--sp-3);border-left:3px solid var(--pine)}
+/* ==== /MEMBERS-ELECT, SHARED ============================================== */
+
 /* THE HOME PAGE'S HOW-TO GUIDES, under its three cards (build_civics.home_guides). */
 .hguides{margin:var(--sp-6) 0 0;padding:var(--sp-5) 0 0;border-top:1px solid var(--rule)}
 .hguides h2{font:600 var(--t-label)/1.3 var(--sans);letter-spacing:.06em;text-transform:uppercase;
@@ -1731,9 +1771,9 @@ html.js .static-rec{display:none}
 .followmail .panh{font:600 var(--t-h3,1.125rem)/1.25 var(--serif);color:var(--ink);margin:0 0 var(--sp-2)}
 .followmail .pansay{margin:0 0 var(--sp-4);color:var(--ink-2)}
 .followmail .panfine,.ytpanel .ytpriv{font-size:var(--t-sm);color:var(--ink-2);margin:var(--sp-3) 0 0;line-height:1.45}
-.followmail .followaddr input,.ytpanel #ytq,.ytpanel #ytaddr{border:1px solid var(--edge);border-radius:var(--r-in);
+.followmail .followaddr input[type=email],.ytpanel #ytq,.ytpanel #ytaddr{border:1px solid var(--edge);border-radius:var(--r-in);
   background:var(--paper);min-height:44px}
-.followmail .followaddr input:focus-visible,.ytpanel #ytq:focus-visible,.ytpanel #ytaddr:focus-visible{
+.followmail .followaddr input[type=email]:focus-visible,.ytpanel #ytq:focus-visible,.ytpanel #ytaddr:focus-visible{
   outline:2px solid var(--pine);outline-offset:1px;border-color:var(--pine)}
 .followmail .followsend,.ytpanel .ytaform button[type=submit]{background:var(--pine);color:var(--on-pine);
   border:1px solid var(--pine);border-radius:var(--r-in);font-weight:600;min-height:44px;padding:0 var(--sp-5)}
@@ -3005,10 +3045,16 @@ border-bottom:1px solid var(--rule);font-size:var(--t-ui)}
 .docs-cal .doc .docacts,.docs-jour .doc .docacts,.docs-other .doc .docacts{grid-column:2}
 .doc .docplain{display:block;color:var(--ink);font-size:var(--t-ui)}
 .doc .docraw{display:block;font:500 var(--t-sm)/1.45 var(--mono);color:var(--ink-2);margin:2px 0 var(--sp-2)}
+/* EVERY PART IN THE ONE COLUMN (16 October 2026, the person: "on mobile,
+   the documents tab has overlapping text"). The citation and the plain
+   words kept the wide layout's grid-column:2, which made a second column
+   that took the whole width; the day's column shrank to nothing and the
+   date ran under the words. Day, citation, then what happened. */
 @media (max-width:45em){
   .docs-cal .doc,.docs-jour .doc,.docs-other .doc{grid-template-columns:minmax(0,1fr)}
-  .docs-cal .doc > a,.docs-jour .doc > a,.docs-other .doc > a{grid-row:2}
+  .docs-cal .doc > a,.docs-jour .doc > a,.docs-other .doc > a{grid-column:1;grid-row:2}
   .docs-cal .doc .docof,.docs-jour .doc .docof,.docs-other .doc .docof{grid-column:1;grid-row:1}
+  .docs-cal .doc .docacts,.docs-jour .doc .docacts,.docs-other .doc .docacts{grid-column:1;grid-row:3}
 }
 .ramd{font-weight:400;font-size:var(--t-ui);color:var(--ink-2);background:var(--wash);
 border-radius:var(--r-in);padding:1px var(--sp-3);font-variant-numeric:tabular-nums}
@@ -3584,10 +3630,46 @@ overflow-wrap:anywhere}
 /* A law has no feed: the email box is the pane's only thing, with no rule under it. */
 .followpane > .followmail:last-child{margin-bottom:0;padding-bottom:0;border-bottom:0}
 .followcheck:not(:empty){margin:var(--sp-3) 0}
-.followaddr{display:flex;flex-wrap:wrap;gap:var(--sp-3) var(--sp-5);align-items:flex-end}
-.followaddr label{flex:1 1 16rem;display:flex;flex-direction:column;gap:var(--sp-2);min-width:0}
-.followaddr input{font:inherit;padding:var(--sp-2) var(--sp-4);color:var(--ink);
+/* A div since 16 October 2026, so it takes the pane's paragraph margin
+   itself; its label is the address's alone, and 12rem rather than 16 lets
+   the address, Daily or weekly and the button share one line in the pane. */
+.followaddr{display:flex;flex-wrap:wrap;gap:var(--sp-3) var(--sp-5);align-items:flex-end;margin:0 0 var(--sp-4)}
+.followaddr > label{flex:1 1 12rem;display:flex;flex-direction:column;gap:var(--sp-2);min-width:0}
+.followaddr input[type=email]{font:inherit;padding:var(--sp-2) var(--sp-4);color:var(--ink);
   background:var(--paper);border:1px solid var(--edge);border-radius:var(--r-in)}
+/* DAILY OR WEEKLY (the person, 16 October 2026): the manage page's "How
+   often" control (page.js .seg) at the size of the row -- the two words in
+   one outlined box, the chosen one on the pine wash with the pine rule under
+   it, as tall as the field and the button beside it. The radios stay in the
+   page for the keyboard and a screen reader, out of sight. The height is
+   the labels': a fieldset lays out its children in a box of its own, which
+   does not take the fieldset's min-height, so the chosen one's wash stopped
+   short of the edge when the 44px was set on the fieldset. */
+.followfreq{display:inline-flex;margin:0;padding:0;min-width:0;
+  border:1px solid var(--edge);border-radius:var(--r-in);overflow:hidden}
+.followfreq label{display:flex;align-items:center;min-height:42px;padding:0 var(--sp-5);cursor:pointer;
+  border-left:1px solid var(--rule)}
+.followfreq label:first-of-type{border-left:0}
+.followfreq input{position:absolute;opacity:0;width:1px;height:1px;margin:0}
+.followfreq span{font-weight:600}
+.followfreq label:has(input:checked){background:var(--pine-soft);box-shadow:inset 0 -3px 0 var(--pine)}
+.followfreq label:has(input:checked) span{color:var(--pine)}
+.followfreq label:has(input:focus-visible){outline:2px solid var(--pine);outline-offset:-2px}
+/* IN FORCED COLOURS DAILY AND WEEKLY CAME OUT THE SAME (the review of 16
+   October 2026, in Edge with high contrast on): the system paints the wash
+   away and draws no box-shadow, so the rule under the chosen one goes too,
+   and the radios are out of sight. The chosen one takes the system's colours
+   for a selection, as a list's chosen item does, and its focus ring the
+   selection's text colour inside it, so that being chosen and having the
+   keyboard stay two things. Kept out of the system's hands to keep those
+   colours, it would keep the pine rule too, which is taken off. The manage
+   page's .seg does the same (page.js). */
+@media (forced-colors:active){
+  .followfreq label:has(input:checked){forced-color-adjust:none;background:Highlight;color:HighlightText;
+    box-shadow:none}
+  .followfreq label:has(input:checked) span{color:HighlightText}
+  .followfreq label:has(input:checked:focus-visible){outline-color:HighlightText;outline-offset:-4px}
+}
 .followstate{margin:var(--sp-4) 0 0;color:var(--ink-2)}
 .followsend{font:inherit;color:var(--ink);background:none;cursor:pointer;
   border:1px solid var(--rule-2);border-radius:var(--r-in);padding:var(--sp-2) var(--sp-5)}
@@ -6525,8 +6607,18 @@ body:has(.rs-page) .searchrow,.shell:has(.rs-page) .facets,.shell:has(.rs-page) 
 .lw-tname{font:600 var(--t-ui)/1.4 var(--sans);color:var(--ink)}
 .lw-tspan{font:500 var(--t-sm)/1.4 var(--sans);color:var(--ink-2)}
 .lw-chs{list-style:none;margin:0 0 .75rem;padding:0 0 0 1.25rem}
-.lw-ch{border-top:1px solid var(--rule)}
-.lw-chd > summary{cursor:pointer;list-style:none;position:relative;padding:.4375rem .25rem .4375rem 1.125rem;
+.lw-ch{border-top:1px solid var(--rule);position:relative}
+/* THE CHAPTER'S OWN PAGE, A PLAIN LINK IN THE ROW (the sitemap audit, 16
+   October 2026): "RSA 3-A" at the row's right, level with the chapter's
+   name, beside the summary rather than inside it, so a click on the name
+   still opens the row's sections. The summary keeps the room it takes, and
+   the sections listed under it when the row opens run the row's full width.
+   Its line box is the summary's, so the two read as one line. */
+.lw-go{position:absolute;top:.4375rem;right:.25rem;font:500 var(--t-sm)/calc(var(--t-ui) * 1.4) var(--sans);
+  color:var(--pine);text-decoration:none;white-space:nowrap}
+.lw-go:hover{text-decoration:underline}
+.lw-go::after{content:"\00a0\203A";content:"\00a0\203A" / ""}
+.lw-chd > summary{cursor:pointer;list-style:none;position:relative;padding:.4375rem 6rem .4375rem 1.125rem;
   font:400 var(--t-ui)/1.4 var(--sans);color:var(--ink)}
 .lw-chd > summary::-webkit-details-marker{display:none}
 .lw-chd > summary::before{top:.875rem;left:.125rem}
@@ -7514,6 +7606,25 @@ margin:var(--sp-6) 0 0;max-width:51rem}
 margin:var(--sp-9) 0 0;padding-top:var(--sp-5);border-top:1px solid var(--rule);max-width:51rem}
 :where(body.pg) .ofintro{margin:0 0 var(--sp-8);max-width:51rem}
 :where(body.pg) .ofintro .ofwhy{margin:0 0 var(--sp-4)}
+/* THE MEMBERS-ELECT TAB (16 October 2026; officials_tabs.members_elect): the
+   Senate, then the House under each county's name, a district a row -- its
+   number and seats beside who it elected on a desktop, over them on a
+   phone -- each race as a town page draws it (.elect's inner parts). */
+:where(body.pg) .elrows{list-style:none;margin:0 0 var(--sp-6);padding:0}
+:where(body.pg) .elrow{display:grid;grid-template-columns:minmax(7.5rem,10rem) minmax(0,1fr);
+gap:var(--sp-2) var(--sp-5);padding:var(--sp-3) 0;border-bottom:1px solid var(--rule)}
+:where(body.pg) .elseat{font-weight:600;color:var(--ink)}
+:where(body.pg) .elseat small{display:block;font-weight:400;font-size:var(--t-sm);color:var(--ink-2)}
+:where(body.pg) .elwho{min-width:0}
+:where(body.pg) .elwho .ellist + p,:where(body.pg) .elwho .elnf + .elnone{margin-top:var(--sp-2)}
+:where(body.pg) .elwho p{margin:0}
+:where(body.pg) .elcounty{font:600 var(--t-ui)/1.35 var(--sans);color:var(--ink);
+margin:var(--sp-6) 0 var(--sp-2)}
+:where(body.pg) .elcounty:first-child{margin-top:0}
+@media (max-width:30em){
+  :where(body.pg) .elrow{grid-template-columns:minmax(0,1fr)}
+  :where(body.pg) .elseat small{display:inline;margin-left:var(--sp-2)}
+}
 /* THE HOME PAGE'S ONE BOX (D13): find.js's rows in a dropdown under the
    box, over the cards, as the header's panel is a dropdown under the bar.
    The rows are the panel's own (.findout, in the shared region); this is

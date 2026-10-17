@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.68
+# GRANITE_VERSION: 2026-09-04.69
 """
 Write a real address for every bill, and the sitemap that points at them.
 
@@ -53,6 +53,7 @@ import json
 import re
 
 import build_date
+import build_rsa as BR
 import rsa
 import shell as S
 import site_read as SR
@@ -82,7 +83,9 @@ def law_href(cite):
     m = re.search(r"\bRSA\s+(\d{1,3}(?:-[A-Z]{1,2})?)(?::(\S+?))?(?=[\s,;.)]|$)", cite, re.I)
     if not m or m.group(1).upper() not in _LAWS[0]:
         return ""
-    return f"/laws/{m.group(1).lower()}" + (f"#s{m.group(2)}" if m.group(2) else "")
+    # The chapter's address as build_rsa writes it, which for RSA 404 ends in
+    # the slash the host serves it at (build_rsa.chapter_path, 16 October 2026).
+    return BR.chapter_path(m.group(1).upper()) + (f"#s{m.group(2)}" if m.group(2) else "")
 
 def clean_title(s):
     return NEW_TITLE.sub("", s or "").strip()
@@ -288,8 +291,9 @@ def shell(t, b, d, base, raw=None, data_url=None, current_term=""):
                   else f"{n}: {clean_title(title)}"))
 
 
-def lastmod(b, built):
-    """One bill's <lastmod>, which may not be later than the day of the build.
+def lastmod(b, built, d=None):
+    """One bill's <lastmod>, which may not be later than the day of the build,
+    or None where the record gives no day it can stand behind.
 
     last_action is the latest date in the bill's docket, and a docket holds
     meetings that have not happened yet. So 45 of the 33,690 entries were
@@ -306,17 +310,40 @@ def lastmod(b, built):
     is not a harmless one: it is the same failure as stamping every entry with
     the build date, which this field was changed to avoid -- a crawler that
     finds one lastmod it cannot believe has no reason to believe the rest.
-    Clamping rather than dropping the entry keeps the bill in the sitemap and
-    says only what is true, that the page is as new as this build. min() is
-    enough because an ISO date sorts in the order it runs.
 
-    The six bills carrying no date at all, and the standing pages, take the
-    build date the same way.
+    NOT THE BUILD'S DAY EITHER (the sitemap audit, 16 October 2026). The
+    clamp took the build date, so the 17 bills of the sitting term with a
+    meeting still to come were re-dated every night until the meeting had
+    passed, whether or not anything on the page had moved, and the three
+    bills whose docket carries no date at all (2026 HR 48, 2019 HR 1, 1999
+    SR 5) took it every night as well. Nobody can believe a date that moves
+    on its own. So a bill with a meeting to come is dated by the latest day
+    in its docket that has already happened (`d`, the bill's own record, the
+    docket the page shows), and a bill with no such day carries no lastmod at
+    all: the field is optional, and an entry without one is still listed and
+    crawled. Every bill whose last action is already past keeps exactly the
+    date it had. An ISO date sorts in the order it runs, so <= compares days.
     """
     moved = str(b.get("last_action") or "")[:10]
-    if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", moved):
-        return built
-    return min(moved, built)
+    if not ISO_DAY.fullmatch(moved):
+        return None
+    if moved <= built:
+        return moved
+    past = [str(e.get("date") or "")[:10] for e in (d or {}).get("events") or []]
+    past = [x for x in past if ISO_DAY.fullmatch(x) and x <= built]
+    return max(past) if past else None
+
+
+ISO_DAY = re.compile(r"\d{4}-\d{2}-\d{2}")
+
+# STANDING PAGES WITH NO DATE (the sitemap audit, 16 October 2026). Each
+# standing page was dated by the build, which is true of the home page and of
+# /data -- the day's activity and the downloads' own date are rebuilt every
+# night -- and not of About, the bill search's frame or the officials' list,
+# which read the same from one night to the next while their date moved. A
+# date nobody can believe teaches a crawler to believe none of them, so these
+# three carry none, as the sitemap's other undated pages do.
+UNDATED_STANDING = ("about.html", "bills.html", "officials.html")
 
 
 # The record as it was written into a page, for a run that happens after the
@@ -404,10 +431,10 @@ def main():
         # lastmod is the day the bill last moved, not the day of the build. Every
         # one of 34,000 entries carried the build date, which tells a search
         # engine every page changed every night -- and it learns to ignore the
-        # field, and to recrawl nothing sooner for it. Bounded above by the
-        # build date: see lastmod().
+        # field, and to recrawl nothing sooner for it. Never later than a day
+        # that has happened, and none where there is no such day: lastmod().
         urls.append((a.base + S.canon(f"/bill/{yr}/{b['id'].lower()}.html"),
-                     lastmod(b, generated)))
+                     lastmod(b, generated, d)))
         written += 1
         if written % 1000 == 0:
             print(f"  {written:,}...", flush=True)
@@ -428,12 +455,12 @@ def main():
         # every run, and check_site fails the publish if a sitemap address
         # has no file, so a page that stops being built is caught loudly
         # rather than left out quietly.
-        urls.append((a.base + S.canon("/" + p), generated))
+        urls.append((a.base + S.canon("/" + p), None if p in UNDATED_STANDING else generated))
 
     (site / "sitemap.xml").write_text(
         '<?xml version="1.0" encoding="UTF-8"?>\n'
         '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
-        + "".join(f"<url><loc>{E(u)}</loc><lastmod>{m}</lastmod></url>\n"
+        + "".join(f"<url><loc>{E(u)}</loc>" + (f"<lastmod>{m}</lastmod>" if m else "") + "</url>\n"
                   for u, m in urls)
         + "</urlset>\n", encoding="utf-8")
     # EVERY CRAWLER IS WELCOME, search engines and language models alike (the

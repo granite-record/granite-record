@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-19.12
+# GRANITE_VERSION: 2026-09-19.13
 """
 What the House journal adds that the record does not: who spoke, and what.
 
@@ -461,18 +461,109 @@ CONFERENCE_HEAD = re.compile(
 RESOLUTION_OFFERED = re.compile(r"\boffered\s+the\s+following\s*:?\s*RESOLVED\b", re.I)
 
 
+# A PATTERN IS TRIED WHERE IT CAN BEGIN, NOT AT EVERY CHARACTER (16 October
+# 2026, private/BUILD_SPEED.md, item C). One that opens on \b, on "the start
+# or a line break" or on an optional group gives the regular-expression
+# engine no character to look for first, so finditer runs all of it from
+# every character of a block: bill_marks' four patterns took more than a
+# quarter of session_days.load(), which five steps of the build run, nearly
+# all of it at characters where none of them can begin. found() has the
+# engine skip to a character of `first` and run the pattern from there, all
+# inside the engine (`first`, then a look back over that character at the
+# pattern looked ahead for from it), and takes each match as finditer takes
+# it: matched from that place, then on from its end. That is finditer's list
+# exactly, provided every match that begins after the text's first character
+# begins with a character of `first`; the first is always tried, for a
+# pattern that opens on \A. A case-blind pattern's class holds its letter in
+# both cases, which is all re.IGNORECASE takes for any letter but i, k and s
+# (every code point tried, Python 3.14), and none of the patterns asked here
+# begins with one of those. A pattern that can match an empty string is not
+# one to ask this of.
+_AT = {}
+
+
+def found(rx, text, first):
+    """rx.finditer(text): the same matches, in the same order, with rx tried
+    only at the text's start and where a character of `first` (a class, such
+    as "[Yy]") begins a match of it."""
+    at = _AT.get((rx, first))
+    if at is None:
+        assert not rx.flags & (re.X | re.A), f"found() reads no such pattern: {rx.pattern}"
+        flags = "".join(f for f, v in (("i", re.I), ("m", re.M), ("s", re.S)) if rx.flags & v)
+        at = _AT[(rx, first)] = re.compile(
+            first + "(?<=(?=(?" + flags + ":" + rx.pattern + r"))[\s\S])")
+    pos = 0
+    for q in [0] + [m.start() for m in at.finditer(text)]:
+        if q >= pos:
+            m = rx.match(text, q)
+            if m:
+                yield m
+                pos = m.end()
+
+
+# AND A QUESTION DECIDED BY VOICE IS LOOKED FOR WHERE A VERDICT IS (16 October
+# 2026, private/BUILD_SPEED.md, item C). DECIDED was tried at every character
+# and read through every sentence, and nearly all of its time went on places
+# that decide nothing. Each of its matches holds a verdict -- adopted,
+# failed, prevailed, carried, defeated or lost, in any case -- with no period
+# or semicolon between the match's start and it, and begins at the text's
+# start, after a line break, or two characters after the period or semicolon
+# before that verdict. decisions() finds the verdicts in the text lowered,
+# which leaves every character where it was, tries DECIDED at those places
+# alone and takes the matches as finditer takes them: finditer's list
+# exactly. Lowering is re.IGNORECASE for these words except where the text
+# holds one of UNLOWERED -- İ and ı, which the pattern reads as i, and ſ,
+# which it reads as s, and str.lower() does not (it makes two characters of
+# İ, the one character it does that to) -- and there finditer is asked.
+VERDICTS = ("adopted", "failed", "prevailed", "carried", "defeated", "lost")
+UNLOWERED = ("\N{LATIN CAPITAL LETTER I WITH DOT ABOVE}", "\N{LATIN SMALL LETTER DOTLESS I}",
+             "\N{LATIN SMALL LETTER LONG S}")
+
+
+def decisions(text):
+    """DECIDED.finditer(text): the same matches, in the same order."""
+    if any(c in text for c in UNLOWERED):
+        yield from DECIDED.finditer(text)
+        return
+    low = text.lower()
+    starts = set()
+    for word in VERDICTS:
+        v = low.find(word)
+        while v != -1:
+            # The period or semicolon before the verdict, and each line
+            # break between it and the verdict.
+            sep = text.rfind(".", 0, v)
+            sep = max(sep, text.rfind(";", sep + 1, v))
+            starts.add(sep + 2 if sep >= 0 else 0)
+            nl = text.find("\n", sep + 1, v)
+            while nl != -1:
+                starts.add(nl + 1)
+                nl = text.find("\n", nl + 1, v)
+            v = low.find(word, v + 1)
+    pos = 0
+    for q in sorted(starts):
+        if q >= pos:
+            m = DECIDED.match(text, q)
+            if m:
+                yield m
+                pos = m.end()
+
+
 def bill_marks(block):
     """[(position, bill or None)] in order: each bill heading or conference
     report's heading, and each reconsideration of a bill other than the one
     whose stretch it falls in, or resolution offered from the floor, which
-    starts a stretch that is no bill's."""
+    starts a stretch that is no bill's. Each pattern is found where it can
+    begin (found): a heading after a line break, a reconsideration at its
+    member's "Rep." or its "moved", a resolution at its "offered"."""
     marks = sorted([(m.start(), m.group("bill").replace(" ", "").upper())
-                    for m in BILL_HEAD.finditer(block)]
+                    for m in found(BILL_HEAD, block, r"[\r\n\f]")]
                    + [(m.start(), m.group("bill").replace(" ", "").upper())
-                      for m in CONFERENCE_HEAD.finditer(block)], key=lambda x: x[0])
+                      for m in found(CONFERENCE_HEAD, block, r"[\r\n\f]")],
+                   key=lambda x: x[0])
     base = lambda b: (b or "").split("-")[0]
     ends = []
-    for m in RECONSIDER.finditer(block):
+    for m in found(RECONSIDER, block, "[RrMm]"):
         cur = None
         for at, mb in marks:
             if at <= m.start():
@@ -481,7 +572,7 @@ def bill_marks(block):
                 break
         if cur and base(cur) != base(m.group("bill").replace(" ", "").upper()):
             ends.append((m.start(), None))
-    ends += [(m.start(), None) for m in RESOLUTION_OFFERED.finditer(block)]
+    ends += [(m.start(), None) for m in found(RESOLUTION_OFFERED, block, "[Oo]")]
     return sorted(marks + ends, key=lambda x: x[0])
 
 

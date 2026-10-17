@@ -168,7 +168,14 @@ the archived terms it holds stay). Until then these came from the laptop alone,
 as it last fetched them. Each is taken whole or not at all; one not taken is a
 warning the gate never holds a night for, and the site goes out with the copy
 it had. They are the night's files in the kit. Not on a New term run, whose
-term turns under them; the freeze keeps the finished term's. The texts reach
+term turns under them; the freeze keeps the finished term's. The three views
+go in together or not at all, each weighed against the installed copy's rows
+of its own term, and a set of a newer term waits for the New term run. After
+it, a view that comes back with no rows -- the new term's committee reports,
+of which there are none until January -- is taken as the empty view it is,
+where its query succeeded and the installed copy holds none of the term, and
+the run's page says so (`TAKEN_EMPTY`); an empty view of the term the
+installed copy holds is still refused, and holds the other two. The texts reach
 the bill pages too: `bill_text_from_db.py` fills `bill_text.json` from them for
 any bill the web fetch has not read (section 10).
 
@@ -190,10 +197,13 @@ there, though the build still goes out.
 **The term turnover.** The General Court's files describe the current term
 only, so before they turn over, the finished term's inputs are frozen:
 `src/lib/freeze_term.py --views` copies the database's views of the term into
-`db/term/<term>/`, and `--session` the day files as installed into
-`frozen/<term>/`, with the term's docket and manifest under the archived
-terms' names (`Docket_<term>.txt`, `verification_manifest_<term>.csv`) and
-its roll calls in `records/rollcalls/`. After the turn,
+`db/term/<term>/` -- the three the night takes (Legislation, LegislationText,
+CandH_Reports) of one dump its manifest dates, the laptop's insurance views
+of whichever dump they are, each view's dump time in the manifest -- and
+`--session` the day files as installed into `frozen/<term>/`, with the
+term's docket and manifest under the archived terms' names (`Docket_<term>.txt`,
+`verification_manifest_<term>.csv`) and its roll calls in
+`records/rollcalls/`. After the turn,
 `python3 src/parse/build_data.py --frozen-terms` builds that term
 from them every night, so a correction still reaches it. An ordinary night
 refuses files that name a newer term than the installed ones, whatever their
@@ -1700,6 +1710,57 @@ against the table on disk; agency claims against the pages
 `src/fetch/other/guide_sources.py` saves on the laptop, because the state's
 web host refuses data centres. `_guides_gate` holds it, and refuses a dollar
 or percentage figure in a guide.
+
+## Members-elect (16 October 2026)
+
+Between a general election and Organization Day the site can say who was
+elected, from one file: `site/members_elect.json`, which
+`src/parse/build_members_elect.py` writes straight after the site data and
+before every page. It never touches `legislators.json` or `former.json`,
+which a dozen builders and the night's census read as who sits now. It reads
+the newest `collected/election_<year>.json` -- the Secretary of State's State
+Representative and State Senate results in this project's shape, keyed as
+`site/districts.json` keys a race (`H|Rockingham|13`, `S|24`); its docstring
+gives the shape, and `tests/election_fixture.json` is a made-up one -- and the
+person's `corrections/members_elect.json`, which settles names, marks a race
+not final and holds a winner off the pages.
+
+Four rules, the person's. The file is written only while the build's day is
+after the election and before Organization Day (`proceedings.organization_day`)
+and `site/meta.json`'s newest term is the one before theirs; otherwise the
+step removes it and says why, so they retire on their own, and
+`src/checks/check_site.py` refuses a file still there on its `takes_office`. A winner is
+linked to a page only as the seat's sitting member (the same first name, or a
+short form `member_links.SHORT` lists) or as the one former member of the same
+name whose county is the race's; a first name that fits only as the start of
+another (Pat, Patricia) never links, and anything less than certain is drawn
+unlinked and printed for the person. A race is final once its results are
+posted and the recount deadline has passed -- the person enters the deadline
+in the hand file, and until the build's day is past it every race is drawn
+not final -- or once the results mark it recounted. And whatever the pages
+draw of them carries `data-until`, which `components.until_attrs` writes and
+the browser's behaviour in `components.js` hides by the reader's own clock
+from that day on, with a rule in `app.css`'s shared region that no page's own
+style can outrank.
+
+The pages read the file through one function beside its writer,
+`build_members_elect.for_pages`, which holds the same window -- so a file a
+build left behind is not drawn by a page builder run on its own on 2
+December -- and stops on a file that will not read. They draw with four
+components, `elect_now`, `elect_race`, `elect_block` and `elect_line`, in
+`components.py` and `components.js` alike, every element carrying
+`data-elect`: under each district's race on a town page's Representatives
+tab and its Senate card, with "Serving now" over the sitting members; in
+`places.json`, as `elect` (the races) and `e` on each place (its own race
+keys), which `find.js` draws in the My Town card; as the Officials page's
+sixth tab, Members-Elect, the Senate and then the House by county; as one
+line on the page of each member the file links, which `app.js` draws from
+`GR_ELECT` only for that member; and in the district map's panel, from
+`district_map.json`'s `elect`, the fill still the sitting members'. With no
+file every page is the page it was, byte for byte. preflight's
+`_elect_pages_never_sitting`, `_elect_pages_link_own` and `_elect_pages_retire`
+hold the person's three rules on the fixture's election built with the file
+and without.
 
 ## The bill index's sponsors
 

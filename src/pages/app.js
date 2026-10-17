@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.202
+// GRANITE_VERSION: 2026-09-07.212
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -111,6 +111,10 @@ const STATUSCATS=Object.keys(WORDBOOK.chips.category);
 const catsOffered=(have,chosen)=>STATUSCATS.filter(c=>have.has(c)||chosen.has(c));
 // Each in its chip's class, in the sidebar and in a record page's select.
 const CATCLASS=Object.assign(Object.create(null),WORDBOOK.chips.category);
+// BILLMATCH:BEGIN -- a bill's category, which best match reads to put a bill
+// still moving first (sortRows, 16 October 2026); see the note above SYN.
+// From here, and not from the filter's lines above it: statusCat needs
+// nothing they declare.
 // Each word a chip can say that is not a stage, and what it is. Not
 // introduced, and the one bill only proposed for the 2006 special session
 // (HB 3, whose record says nothing after the proposal), ended there; a
@@ -142,11 +146,20 @@ const CAT_OF_KIND=Object.assign(Object.create(null),{active:"In Progress",
 // the words above, any resolution adopted (Adopted by the House, by the
 // Senate, by both chambers) and an amendment still going to the voters,
 // whatever November its line names.
+//
+// AND ONE THAT WENT TO THEM, WHOSE ANSWER IS NOT IN (the release review of 16
+// October 2026). From the day after its election the same amendment says
+// "went to the voters" (build_site_v2.cacr_to_the_voters) until a person
+// types the count into ballot_results.json, and then Ratified or Not
+// Ratified. Its kind is adopted, so it fell to CAT_OF_KIND and read Passed:
+// CACR 13 would have been filed under Passed on 4 November 2026 whatever two
+// thirds of the voters said. Nothing has concluded that the record knows of,
+// so it stays where it was the day before.
 function catOfChip(c){
   const s=String(c||"");
   if(CAT_OF_CHIP[s])return CAT_OF_CHIP[s];
   if(/^Adopted by /.test(s))return "Passed";
-  if(/^Passed both chambers, goes to the voters/.test(s))return "In Progress";
+  if(/^Passed both chambers, (?:goes|went) to the voters/.test(s))return "In Progress";
   return "";
 }
 // "" for a row with no chip -- a request, which is not a bill yet.
@@ -155,6 +168,7 @@ function statusCat(b){
   if(!c)return "";
   return catOfChip(c)||CAT_OF_KIND[b.kind]||"In Progress";
 }
+// BILLMATCH:END
 const catCmp=(a,b)=>{const x=STATUSCATS.indexOf(a),y=STATUSCATS.indexOf(b);
   return (x<0?STATUSCATS.length:x)-(y<0?STATUSCATS.length:y);};
 // A category, or a word a chip says, in any case, as the category it is in:
@@ -1887,6 +1901,65 @@ function matchScore(b,gs){
      ||(typed.includes(" ")&&typed!==words&&b.hayT.includes(typed)))s+=2;
   return s;
 }
+/* HOW MUCH OF THE TITLE IS THE SEARCH: what best match breaks a tie by,
+   after looseness and matchScore (16 October 2026, approved by the person
+   that day). For a search of one word every bill whose title has it scores
+   the same, and the bill number decided: "housing" opened on HB 465, 530,
+   572 and 628 -- a revenue transfer, a program, a landlord's vouchers --
+   while "relative to manufactured housing" was eighth, and 42 of the
+   term's 138 housing bills shared that first place.
+   The share is the title's words that carry a subject (not the words a
+   search skips) that some part of the search has, over all of them: a word
+   counted as often as the title says it, a synonym counted as matchScore
+   counts it in a title, a phrase of the search covering each of its words.
+   "manufactured housing" is half the search; "increasing the amount of
+   revenue transfered from the real estate transfer tax to the affordable
+   housing fund" is one word in eleven.
+   A part counts as itself or with an ending (altRx), never as the start of
+   a longer word: looseness has already put those below, and read as starts,
+   "lang", typed for Sen. Lang, reordered the bills it found titled
+   "language", and "rep. watters" Sen. Watters' own two by "report" and
+   "reporting". Nor does "rep" or "senator" count at all, which the search
+   reads as the sponsor's title and not as anything a bill is about.
+   It reads the title and nothing else, so it cannot read an outcome: over
+   fourteen searches the Passed and the Died among the first ten stayed near
+   the share of each among everything listed. It was measured beside a
+   bill's topic, which names a subject for five of the fourteen searches and
+   is blind to the rest, and its latest action, which filled the first
+   places with Interim Study, whose study hearings come in the autumn -- one
+   outcome ranked above another, which the Status sort's own note forbids. */
+// altRx's pattern, to find every place a title says it.
+const RXSHARE=Object.create(null);
+const shareRx=alt=>RXSHARE[alt]||(RXSHARE[alt]=new RegExp(altRx(alt).source,"g"));
+// Worked out once for each bill and each reading of a search, as fit() is:
+// /bills sorts again for every hundred cards scrolled to and every card
+// opened, and on All terms "education" lists 4,042 bills.
+function titleShare(b,gs){
+  const of=gs._share||(gs._share=new Map());
+  let s=of.get(b);
+  if(s===undefined){s=shareNow(b,gs);of.set(b,s);}
+  return s;
+}
+function shareNow(b,gs){
+  const t=String(b.title||"").toLowerCase().replace(/-/g," ");
+  // Each word's start and end: "authority's" is one word, as it is read.
+  const at=[];
+  for(const m of t.matchAll(/[a-z0-9]+(?:['’][a-z]+)*/g))
+    if(!STOPSET.has(m[0]))at.push([m.index,m.index+m[0].length]);
+  if(!at.length)return 0;
+  const said=new Set();
+  for(const g of gs){
+    if(g.hon)continue;
+    // And two words typed that the title writes as one (WRITTEN AS ONE
+    // WORD, OR TWO, OR WITH A HYPHEN).
+    for(const a of g.joins?g.alts.concat(g.joins):g.alts)
+      if(altRx(a).test(t))for(const m of t.matchAll(shareRx(a))){
+        const end=m.index+m[0].length;
+        at.forEach((w,i)=>{if(w[0]<end&&m.index<w[1])said.add(i);});
+      }
+  }
+  return said.size/at.length;
+}
 /* WHY A BILL IS LISTED, where its title does not have the reader's word: in
    the bill's own words, never the reader's. "topic: Housing"; "in the bill's
    text" for the word typed; "text says: lavatory" for a word this file
@@ -2350,7 +2423,8 @@ const primeChosen=b=>sel.sponsor.has(b.sponsor);
 // NEWER TERM FIRST, which changes nothing in a list of one term and orders
 // the list on All terms: by number, two bills of one number (HB 1 is in
 // every term) run newest first; by best match, among bills that match
-// equally well, the newer term's come first and then by number. Without it
+// equally well, the newer term's come first (after a bill still moving) and
+// then by the share of the title and the number (sortRows). Without it
 // those came in whichever order the terms' indexes happened to arrive, and
 // /search's list of every term's bills (find.js's findBills, which orders
 // them this way) could not be the same list (24 September).
@@ -2380,15 +2454,27 @@ function sortRows(rows){
   }[sortBy]||(()=>0);
   // BEST MATCH: every word of the search as a word of the title or the
   // sponsor's name before the start of a longer one (looseness), then the
-  // most of the search in the title, then the sponsor, then the committee,
-  // and bill number within each.
+  // most of the search in the title, then the sponsor, then the committee
+  // (matchScore). Among bills that match equally well (16 October 2026): a
+  // bill still moving first, where its title has the search; then the newer
+  // term; then the most of the title that is the search (titleShare); and
+  // bill number last.
+  // "Still moving" is the one category put above another, for the reason
+  // the Status sort gives -- a reader can still do something about it -- and
+  // nothing else here reads a bill's status: Passed is not put above Died,
+  // nor Died above Interim Study. Only where the title has the search, so
+  // that a search by a sponsor's name keeps their bills in number order.
+  // The newer term before the share, so that All terms still runs newest
+  // term first; only the newest term holds a bill still moving.
   if(sortBy==="best"){
     const gs=groupsFor(query.trim());
     const lo=new Map(rows.map(b=>[b,looseness(b,gs)]));
     const sc=new Map(rows.map(b=>[b,scoreOf(b)]));
+    const sh=new Map(rows.map(b=>[b,titleShare(b,gs)]));
+    const live=b=>sh.get(b)>0&&statusCat(b)==="In Progress"?1:0;
     const num=(a,b)=>{const x=billKey(a),y=billKey(b);return x[0]-y[0]||x[1]-y[1];};
     return rows.slice().sort((a,b)=>lo.get(a)-lo.get(b)||sc.get(b)-sc.get(a)
-      ||newerTerm(a,b)||num(a,b));
+      ||live(b)-live(a)||newerTerm(a,b)||sh.get(b)-sh.get(a)||num(a,b));
   }
   return rows.slice().sort(by);
 }
@@ -2403,7 +2489,15 @@ let rsaText="";
 const RSA_SHAPE=/^\s*(?:rsa\s*)?(\d{1,3}(?:-[a-z]{1,2})?)(?:\s*:\s*([0-9]{1,4}(?:\.[0-9]{1,2})?(?:-[a-z0-9]{1,4})?))?\s*$/i;
 function rsaNorm(t){const m=RSA_SHAPE.exec(String(t||""));return m?m[1].toUpperCase()+(m[2]?":"+m[2].toLowerCase():""):"";}
 function rsaHas(b,want){return (b.rsa||[]).includes(want);}
-function rsaHref(a){const p=a.split(":");return "/laws/"+p[0].toLowerCase()+(p[1]?"#s"+p[1]:"");}
+// A CHAPTER'S ADDRESS, AS build_rsa.chapter_path WRITES IT (the sitemap
+// audit, 16 October 2026): RSA 404's page is a folder's index.html, which the
+// host serves at the address with a slash and redirects to from the one
+// without. LAW_FOLDERS is build_rsa.FOLDER_CHAPTERS, and preflight holds the
+// two to each other. Every chapter address this file draws comes from here.
+const LAW_FOLDERS=["404"];
+function lawPath(ch,sec){const s=String(ch).toLowerCase();
+  return "/laws/"+s+(LAW_FOLDERS.includes(s)?"/":"")+(sec?"#s"+sec:"");}
+function rsaHref(a){const p=a.split(":");return lawPath(p[0],p[1]);}
 let HAS_RSA=null;
 function hasRsa(){if(HAS_RSA===null&&IDX&&IDX.length)HAS_RSA=IDX.some(b=>b.rsa);return !!HAS_RSA;}
 // On a phone the filter column stacks ABOVE the results, and an open
@@ -3772,7 +3866,7 @@ const RSA_SHOWN=8;
 function changedLine(d){
   const a=d.changed||[];
   if(!a.length)return "";
-  const link=x=>{const p=x.split(":");return `<a class="rsa" href="/laws/${esc(p[0].toLowerCase())}#s${esc(p[1]||"")}">${esc(x)}</a>`;};
+  const link=x=>{const p=x.split(":");return `<a class="rsa" href="${esc(lawPath(p[0],p[1]||""))}">${esc(x)}</a>`;};
   const lead=a.length===1?"Changed RSA":"Changed these statutes:";
   if(a.length<=RSA_SHOWN+2)return `<p class="rsaline">${lead} ${a.map(link).join(", ")}</p>`;
   return `<div class="rsaline">${lead} <span class="rsaset">${a.slice(0,RSA_SHOWN).map(link).join(", ")}</span>`
@@ -5582,7 +5676,9 @@ const FOLLOW_SAID={invalid:"That does not look like an email address.",
   broken:"The check that you are a person could not run on this page",
   "not-followable":"This can no longer be followed by email.",
   busy:"Too many sign-ups today. Please try again tomorrow.",
-  unavailable:"Email updates are not working right now. The feed above still is."};
+  // Not "the feed above still is" (16 October 2026): the feed has sat below the
+  // email box since 12 October, and a law has no feed at all.
+  unavailable:"Email updates are not working right now. Please try again later."};
 function mountFollow(kind,feed,ref){
   const link=feed?null:document.querySelector('link[rel="alternate"][type="application/rss+xml"]');
   const res=$("#results");
@@ -5601,14 +5697,21 @@ function mountFollow(kind,feed,ref){
   // row, and Follow makes its own as it always did.
   const acts=document.getElementById("pageacts");
   if(acts)div.className="followin";
+  // THE ADDRESS TO COPY, AND NOTHING THAT OPENS THE FEED (the person,
+  // 16 October 2026). "Open the feed" sat beside Copy the address, and on a
+  // phone it showed the feed's raw XML, which reads as a broken page. A feed
+  // is for a feed reader, which wants its address, so the pane gives the
+  // address in its box and a button to copy it; a reader whose browser
+  // follows feeds finds this one named in the head of the record's own page.
+  // Only there: a bill focused in the search list has its feed from the page
+  // focusActions fetched, and the search page's head does not name it.
   div.innerHTML=`<details class="follow"><summary>${icon("follow")}Follow</summary>
     <div class="followpane"><div class="followmail" hidden></div>${href?`<p><b>By RSS</b>, in any feed reader: ${esc(FOLLOWS[kind]||"what is new here")}.
         The record is rebuilt once a night, so an update arrives the morning after
         it happens.</p>
       <p class="feedurl"><input type="text" readonly aria-label="The feed's address"
         value="${esc(new URL(href,location.origin).href)}">
-        <button type="button" class="link" data-copyfeed="1">Copy the address</button>
-        <a href="${esc(href)}">Open the feed</a></p>`:""}
+        <button type="button" class="link" data-copyfeed="1">Copy the address</button></p>`:""}
     </div></details>`;
   if(acts){const c=acts.querySelector(".pcite");acts.insertBefore(div,c?c.nextSibling:acts.firstChild);}
   else res.before(div);
@@ -5617,13 +5720,23 @@ function followMailForm(key){
   // ONE PANEL WITH CHOOSING YOUR TOWN (the person's choice A, 14 October
   // 2026): a heading, one sentence, one field and its button, and the
   // promises in the small print under them -- the same words as before.
+  // DAILY OR WEEKLY BESIDE THE ADDRESS (the person, 16 October 2026), Daily
+  // chosen, just before the button: the manage page's own control, in its
+  // words and its markup (manage.js, "How often"), so the sign-up and the
+  // page that changes it later ask the same question the same way. Before
+  // this a sign-up was always daily. A div, not a p, holds the row: a
+  // fieldset is not allowed inside a p, and the parser would close the p
+  // before it and leave the button outside the row.
   return `<form class="followform" novalidate>
     <p class="panh">Follow by email</p>
     <p class="pansay">Daily or weekly: ${esc(FOLLOWS[key.split(":")[0]]||"what is new here")}.</p>
-    <p class="followaddr"><label><span class="sr">Your email address</span>
+    <div class="followaddr"><label><span class="sr">Your email address</span>
       <input type="email" name="email" autocomplete="email" maxlength="254" required
         placeholder="you@example.com"></label>
-      <button type="submit" class="followsend">Email me updates</button></p>
+      <fieldset class="followfreq"><legend class="sr">Send me updates</legend>
+        <label><input type="radio" name="frequency" value="daily" checked><span>Daily</span></label>
+        <label><input type="radio" name="frequency" value="weekly"><span>Weekly</span></label></fieldset>
+      <button type="submit" class="followsend">Email me updates</button></div>
     <p class="panfine">Nothing is sent until you confirm from the first email, and every email has a link to
       change what you follow or to unsubscribe, which deletes your address from our database at once.</p>
     <p style="position:absolute;left:-9999px" aria-hidden="true"><label>Leave this empty
@@ -5735,10 +5848,15 @@ async function followSubmit(e,form){
     btn.disabled=false;return;
   }
   st.textContent="Sending…";
+  // The radio that is checked; daily where none is, which is what the
+  // sign-up makes of a request that names none.
+  const fq=form.querySelector('input[name="frequency"]:checked');
+  const freq=fq&&fq.value==="weekly"?"weekly":"daily";
   let said;
   try{
     const r=await fetch("/api/follow/signup",{method:"POST",headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({email,kind,ref:rest.join(":"),turnstile:pass,website:form.elements.website.value})});
+      body:JSON.stringify({email,kind,ref:rest.join(":"),frequency:freq,turnstile:pass,
+        website:form.elements.website.value})});
     const j=await r.json().catch(()=>({}));
     said=r.status===202?"If this address can take email, a confirmation is on its way. "+
       "Nothing is sent until you confirm from it.":(FOLLOW_SAID[j.why]||FOLLOW_SAID.unavailable);
@@ -6836,7 +6954,18 @@ function renderMemberHead(m){
   const note=former?`<p class="rnote">${!/^(Rep|Sen)\. /.test(plain)?`Former member${
     yrs?` &middot; on record ${esc(yrs)}`:""}. `:""}This page is their record in the
     General Court; it is not a current directory entry.</p>`:"";
-  return head+note;
+  // A MEMBER-ELECT'S ONE LINE (the person's decisions of 16 October 2026):
+  // "Elected November 3, 2026, for Rockingham district 13. Takes office
+  // December 2, 2026.", which build_legislator_pages hands this page in
+  // GR_ELECT from site/members_elect.json, and only on the page of the
+  // member it names -- so the id is held to the record being drawn, and a
+  // reader who goes on to another member here is shown nothing of it.
+  // components.js's electLine, handed no day, leaves the retiring to the
+  // reader's clock. The heading above is left as it is until they sit.
+  const G=window.GR_ELECT;
+  const elect=G&&typeof electLine==="function"&&String(G.id)===String(m.id)
+    ?electLine(G.key,G.election,G.takes_office,null):"";
+  return head+note+elect;
 }
 
 // THE TERM AT A GLANCE (the person's feedback of 9 October 2026, item 7:
@@ -7452,10 +7581,16 @@ function renderCommitteeHead(c){
   const next=UPCOMING===null?"":cmteUpcoming(c).length?""
     :`Nothing is scheduled in the next two weeks.${met?` Its last meeting was on <a href="#${
       esc(dayId(met))}">${esc(dateWords(met,"long"))}</a>.`:""}`;
-  const line=`The ${ch} Committee on ${esc(c.name||"")}${chair?`, chaired by ${chair}`:""}.`;
-  const notes=[c.archived?`Not on the General Court&rsquo;s list of committees today.
-      Its bills and meetings on this record run ${esc(c.archived.years||"")}; the
-      records do not say whether it was renamed, divided, merged or ended.`:"",
+  // "The House Special Committee on Housing", not "The House Committee on
+  // Special Committee on Housing" (components.js's cmteTitle, 16 October 2026).
+  const line=`The ${esc(cmteTitle(c.name||"",ch))}${chair?`, chaired by ${chair}`:""}.`;
+  // A FORMER COMMITTEE, SAID PLAINLY (the person, 16 October 2026). The note
+  // this replaced explained what the records cannot say -- renamed, divided,
+  // merged or ended -- and readers found it confusing. "No longer meets" is
+  // the search's own line for the same committees.
+  const ran=c.archived&&c.archived.years;
+  const notes=[c.archived?`A former committee. It no longer meets${ran
+      ?`; its bills and meetings here run from ${esc(ran)}`:""}.`:"",
     (c.names||[]).length?`Named ${c.names.map(n=>`<b>${esc(n.name)}</b> (${esc(n.years||"")})`)
       .join(" and ")} on this record&rsquo;s earlier bills and meetings, which the General
       Court&rsquo;s own records file under this committee.`:"",next].filter(Boolean);

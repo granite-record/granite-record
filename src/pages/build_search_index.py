@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-01.9
+# GRANITE_VERSION: 2026-10-01.10
 """
 What each bill is about, in its own words, as a file the search can ask.
 
@@ -576,6 +576,35 @@ def centrality(tf, length, usual):
     return tf / (tf + K1 * (1 - B + B * length / usual)) if tf else 0.0
 
 
+# THE BILLS THAT HAVE A PHRASE'S WORDS ARE FOUND ONCE, NOT ASKED ONE BY ONE
+# (16 October 2026, private/BUILD_SPEED.md, item H). build_term asked every
+# bill about every phrase whether it had each word of it but the last: 24.5
+# million questions over nineteen terms, 95 in 100 answered no, and 36
+# seconds of the step on a busy laptop where this takes 2. Now the bills that
+# have each such word are gathered first, counted as the question counted
+# them, and a phrase goes to the bills in all of its words' sets; one with no
+# such word goes to every bill, as the question let it. Each bill's list is
+# filled in the order of the plan, so every bill reads the same phrases in
+# the same order as before and nothing written can move.
+def phrase_asks(plan, counts):
+    """{bill: the entries of `plan` to read it for, in the plan's order}: the
+    phrases whose words but the last (an entry's third item) the bill has,
+    in its analysis or its text. `counts`: {bill: (the analysis's Counter,
+    the text's)}, as build_term counts them."""
+    holders = {k: set() for _p, _rx, need, _o, _s in plan for k in need}
+    for bid, both in counts.items():
+        for got in both:
+            for k in holders.keys() & got.keys():
+                if got[k]:
+                    holders[k].add(bid)
+    asks = {bid: [] for bid in counts}
+    for ask in plan:
+        need = ask[2]
+        for bid in (set.intersection(*(holders[k] for k in need)) if need else counts):
+            asks[bid].append(ask)
+    return asks
+
+
 def build_term(term, rows, texts, table):
     """The file for one term, and a tally of what went into it."""
     phrases, table_words, table_phrases = table[:3]
@@ -671,12 +700,10 @@ def build_term(term, rows, texts, table):
     for p in phrases:
         need = [k[0] for k in (words(x) for x in p.split(" ")[:-1]) if k]
         plan.append((p, phrase_rx(p), need, p in once_phrases, len(words(p))))
+    asks = phrase_asks(plan, {bid: tok[bid][:2] for bid in docs})
     for bid, (a, b, t) in docs.items():
-        ta, tb, _tt = tok[bid]
         keys, sent, _clause, at, heads = seq[bid][1]
-        for p, rx, need, once_ok, span in plan:
-            if any(not (ta[k] or tb[k]) for k in need):
-                continue
+        for p, rx, _need, once_ok, span in asks[bid]:
             # The phrase as written is in whatever the pattern finds, and
             # looking for it plainly first is what makes nineteen terms a
             # minute's work rather than seven.

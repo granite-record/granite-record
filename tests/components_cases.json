@@ -188,6 +188,8 @@
     {"args": ["Retained in committee", ""], "want": "Retained"},
     {"args": ["In committee"], "want": "In Committee"},
     {"args": ["Passed both chambers, goes to the voters in November 2026", ""], "want": "To the Voters"},
+    {"args": ["Passed both chambers, went to the voters in November 2026", "Hpp--"], "want": "To the Voters"},
+    {"args": ["Passed both chambers, went to the voters", ""], "want": "To the Voters"},
     {"args": ["Passed one chamber", "Hp---"], "want": "Passed House"},
     {"args": ["Passed one chamber", "Spp--"], "want": "Passed House"},
     {"args": ["In progress", "Hpp--"], "want": "Passed Senate"},
@@ -277,5 +279,79 @@
   "section": [
     {"args": ["Official Legislative Analysis", "<p>x</p>", "analysis"], "want": "<section class=\"w4\" id=\"analysis\"><h2 class=\"w4h\">Official Legislative Analysis</h2><div class=\"w4b\"><p>x</p></div></section>"},
     {"args": ["House Committee (Housing)", "<p>y</p>", ""]}
+  ],
+  "cmte_title": [
+    {"args": ["Housing", "House"], "want": "House Committee on Housing"},
+    {"args": ["Special Committee on Housing", "House"], "want": "House Special Committee on Housing"},
+    {"args": ["Senate Special Committee on Redistricting", "Senate"],
+     "want": "Senate Special Committee on Redistricting"},
+    {"args": ["Judiciary", "Senate"], "want": "Senate Committee on Judiciary"},
+    {"args": ["Housing", ""], "want": "Committee on Housing"},
+    {"args": ["Committee of Conference", ""], "want": "Committee of Conference"},
+    {"args": [null, "House"], "want": "House Committee on"},
+    {"args": ["Housing", null], "want": "Committee on Housing"}
+  ],
+  "until_attrs": [
+    {"args": ["2026-12-02", "2026-11-20"], "want": " data-until=\"2026-12-02\""},
+    {"args": ["2026-12-02", "2026-12-01T23:59:59"], "want": " data-until=\"2026-12-02\""},
+    {"args": ["2026-12-02", "2026-12-02"], "want": " data-until=\"2026-12-02\" hidden"},
+    {"args": ["2026-12-02", "2027-01-06"], "want": " data-until=\"2026-12-02\" hidden"},
+    {"args": [{"$date": "2026-12-02"}, {"$date": "2026-11-04"}], "want": " data-until=\"2026-12-02\""},
+    {"args": [{"$date": "2026-12-02"}, {"$datetime": "2026-12-02T08:00:00"}], "want": " data-until=\"2026-12-02\" hidden"},
+    {"args": [null, "2026-11-20"], "want": " hidden"},
+    {"args": ["after the recount", "2026-11-20"], "want": " hidden"},
+    {"args": ["2026-12-02", null], "want": " data-until=\"2026-12-02\""},
+    {"args": ["2026-12-02", "today"], "want": " data-until=\"2026-12-02\""}
+  ],
+  "elect_now": [
+    {"args": ["2026-12-02", "2026-11-20"],
+     "want": "<p class=\"elnow\" data-elect data-until=\"2026-12-02\">Serving now</p>"},
+    {"args": ["2026-12-02", "2026-12-02"],
+     "want": "<p class=\"elnow\" data-elect data-until=\"2026-12-02\" hidden>Serving now</p>"},
+    {"args": ["2026-12-02", null],
+     "want": "<p class=\"elnow\" data-elect data-until=\"2026-12-02\">Serving now</p>"}
+  ],
+  "elect_race": [
+    {"args": [{"seats": 2, "elected": [], "not_final": 2, "held": 0}],
+     "want": "<p class=\"elnf\"><b>Result not final</b></p>"},
+    {"args": [{"seats": 1, "elected": [], "not_final": 1, "held": 0, "recount": true}],
+     "want": "<p class=\"elnf\"><b>Result not final</b> &mdash; a recount was requested</p>"},
+    {"args": [{"seats": 2, "elected": [{"n": "Jodi Nelson", "p": "R", "k": "sitting", "id": "377001",
+                                        "s": "jodi-nelson-rock-13"}], "not_final": 0, "held": 0}],
+     "want": "<ul class=\"ellist\"><li><span class=\"mchip p-R\"><a href=\"legislator/jodi-nelson-rock-13.html\">Jodi Nelson <span class=\"mtag\">(R)</span></a></span></li></ul><p class=\"elnone\">No member-elect on file for 1 seat.</p>"},
+    {"args": [{"seats": 3, "elected": [{"n": "Pat Newell", "p": "R/D", "k": "new"}], "held": 0}],
+     "want": "<ul class=\"ellist\"><li><span class=\"mchip p-X\">Pat Newell <span class=\"mtag\">(R/D)</span></span></li></ul><p class=\"elnone\">No member-elect on file for 2 seats.</p>"},
+    {"args": [{"seats": 1, "elected": [{"n": "Sam Wright", "p": "", "k": "new"}], "not_final": 0, "held": 0}],
+     "want": "<ul class=\"ellist\"><li><span class=\"mchip p-X\">Sam Wright</span></li></ul>"},
+    {"args": [{"seats": 2, "elected": [{"n": "Dana Ricard", "p": "D", "k": "sitting", "id": "377002"}],
+               "not_final": 1, "held": 0}],
+     "want": "<ul class=\"ellist\"><li><span class=\"mchip p-D\">Dana Ricard <span class=\"mtag\">(D)</span></span></li></ul><p class=\"elnf\"><b>Result not final</b></p>"},
+    {"args": [{"seats": 1, "elected": [{"p": "R", "k": "new"}, {"k": "new"}], "not_final": 0}]},
+    {"args": [{"seats": 1, "elected": [], "not_final": 0, "held": 1}],
+     "want": "<p class=\"elnone\">No member-elect on file for 1 seat.</p>"},
+    {"args": [{"elected": []}], "want": ""},
+    {"args": [{}], "want": ""},
+    {"args": [null], "want": ""}
+  ],
+  "elect_block": [
+    {"args": [[["", {"seats": 1, "elected": [], "not_final": 1, "held": 0}]],
+              "2026-11-03", "2026-12-02", "2026-11-20"],
+     "want": "<div class=\"elect\" data-elect data-until=\"2026-12-02\"><p class=\"elhead\"><b>Elected November 3, 2026</b> <span>Takes office December 2, 2026.</span></p><p class=\"elnf\"><b>Result not final</b></p></div>"},
+    {"args": [[["Rockingham 6", {"seats": 1, "elected": [{"n": "Michael Vose", "p": "R", "k": "former",
+                                                         "id": "900001", "s": "michael-vose-rock-5"}],
+                                 "not_final": 0, "held": 0}],
+               ["Rockingham 32 (floterial)", {"seats": 1, "elected": [], "not_final": 1, "held": 0}]],
+              "2026-11-03", "2026-12-02", null]},
+    {"args": [null, "2026-11-03", "2026-12-02", "2026-12-02"],
+     "want": "<div class=\"elect\" data-elect data-until=\"2026-12-02\" hidden><p class=\"elhead\"><b>Elected November 3, 2026</b> <span>Takes office December 2, 2026.</span></p></div>"}
+  ],
+  "elect_line": [
+    {"args": ["H|Rockingham|13", "2026-11-03", "2026-12-02", "2026-11-20"],
+     "want": "<p class=\"elline\" data-elect data-until=\"2026-12-02\">Elected November 3, 2026, for Rockingham district 13. Takes office December 2, 2026.</p>"},
+    {"args": ["S|24", "2026-11-03", "2026-12-02", null],
+     "want": "<p class=\"elline\" data-elect data-until=\"2026-12-02\">Elected November 3, 2026, for Senate District 24. Takes office December 2, 2026.</p>"},
+    {"args": ["no race", "2026-11-03", "2026-12-02", "2026-12-02"],
+     "want": "<p class=\"elline\" data-elect data-until=\"2026-12-02\" hidden>Elected November 3, 2026. Takes office December 2, 2026.</p>"},
+    {"args": [null, "2026-11-03", "2026-12-02", "2026-11-20"]}
   ]
 }

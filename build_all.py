@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.71
+# GRANITE_VERSION: 2026-09-05.75
 """
 Run the whole pipeline in the right order.
 
@@ -773,6 +773,29 @@ def plan(a):
              needs=["data/bills.json"],
              produces=["site/meta.json", "site/idx"]),
 
+        # MEMBERS-ELECT, STRAIGHT AFTER THE SITE DATA AND BEFORE EVERY PAGE
+        # (the person's decisions of 16 October 2026). It reads what the site
+        # data has just written -- site/legislators.json and site/former.json,
+        # which it matches each winner against and never writes, and
+        # site/meta.json, whose newest term is half of whether they are shown
+        # -- and nothing any later step writes. And it writes the one file the
+        # pages draw a member-elect from: build_pages' Officials tab, the
+        # legislator pages, the town pages and places.json, and the district
+        # map all come after it, so none of them can draw last night's file.
+        # It runs every night, with or without results: outside the weeks
+        # between the election and Organization Day it removes the file and
+        # says why, so a file is never left to outlive its day.
+        Step("members-elect, until they take office",
+             ["build_members_elect.py", "--site", "site"],
+             needs=["site/meta.json", "site/legislators.json", "site/former.json",
+                    "site/districts.json"],
+             produces=["site/members_elect.json"],
+             note="who November's election sent to the General Court, from the "
+                  "Secretary of State's results in collected/election_<year>.json, "
+                  "each linked to a page only where the match is certain; written "
+                  "only after the election and before Organization Day, and "
+                  "removed otherwise"),
+
         # AFTER THE SITE DATA, because what it reads is the site's own word for
         # which bills were vetoed. It was the end of the step that writes the
         # messages, which must come before the site data that puts them on the
@@ -898,24 +921,26 @@ def plan(a):
         # only if site/legislators.json and site/former.json are on disk to
         # resolve it against, and BEFORE the calendar, whose floor cards link
         # to these pages.
-        Step("a page for every day the Senate sat",
+        #
+        # BOTH CHAMBERS IN ONE STEP, THE SENATE FIRST (16 October 2026,
+        # private/BUILD_SPEED.md, D). They were two steps, a chamber each, and
+        # each spent about a minute in session_days.load() reading the same
+        # sittings; one run loads them once and draws the Senate and then the
+        # House, each as its own run did, so days.json and the sitemap, which
+        # both write to, come out as the two runs left them, byte for byte.
+        Step("a page for every day the Senate and the House sat",
              ["build_session_pages.py", "--site", "site", "--base", a.base,
-              "--body", "S"],
+              "--body", "S,H"],
              needs=["narratives.json", "site/legislators.json"],
-             produces=["site/session/S"],
-             note="the record, and the senators the journal excused for the "
-                  "day. The Senate journal carries no unanimous consent, no "
-                  "remarks and no speaker attributions at all, so a Senate "
+             produces=["site/session/S", "site/session/H"],
+             note="the Senate's days and then the House's, from one load of "
+                  "the sittings. A House day in the order the journal prints "
+                  "it: every bill, the motions put to it, who spoke on which "
+                  "side, how it was voted and what that did to the bill. A "
+                  "Senate day is the record and the senators the journal "
+                  "excused: the Senate journal carries no unanimous consent, "
+                  "no remarks and no speaker attributions at all, so a Senate "
                   "page says so rather than showing an empty section"),
-
-        Step("a page for every day the House sat",
-             ["build_session_pages.py", "--site", "site", "--base", a.base],
-             needs=["narratives.json", "site/legislators.json"],
-             produces=["site/session/H"],
-             note="the day in the order the journal prints it: every bill, "
-                  "the motions put to it, who spoke on which side, how it was "
-                  "voted and what that did to the bill. House only -- the "
-                  "Senate journal records no speakers"),
 
         # THE HOUSE AND SENATE AS COMMITTEES OF THE WHOLE (the person, 9 and
         # 10 October 2026): a card at the top of each column of /committees
