@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.209
+# GRANITE_VERSION: 2026-09-05.210
 """
 Generate the faceted site from real General Court data.
 
@@ -2181,9 +2181,11 @@ def next_step(narr, bill, prefix=""):
     return "In progress"
 
 
-def station_for_proceeding(p, bid, segs, marks):
+def station_for_proceeding(p, bid, segs, marks, claimed=None):
     """One committee proceeding -- a hearing or an executive session -- as the
-    station the page draws.
+    station the page draws. `claimed` is the set of the bill's recordings
+    whose marker naming no proceeding a sitting has already taken, which
+    bill_stations shares across the bill's sittings in docket order.
 
     Split out of main() with station_for_floor below it. The two used to sit
     ninety lines apart inside one 955-line function, which is how a lookup
@@ -2291,8 +2293,29 @@ def station_for_proceeding(p, bid, segs, marks):
     usable = [c for c in (marks.get(p.get("video_id") or "") or {}).get(bid, [])
               if isinstance(c, dict) and c.get("start") is not None]
     said = next((c for c in usable if _matches(c) is True), None)
-    if said is None:
+    # AN AMBIGUOUS MARKER SERVES ONE PROCEEDING. (17 October 2026.) A marker
+    # that names no proceeding is a fallback for whichever sitting of the
+    # bill on this recording has none of its own, and the first such marker
+    # was handed to every one of them: 341 moments were published on two
+    # proceedings of one bill, 687 stations, chiefly an executive session and
+    # the hearing or full committee work session before it. bill_stations
+    # calls this in docket order with one `claimed` for the bill, so the
+    # first sitting with no marker of its own takes the first such marker
+    # spoken, and the later ones take none.
+    #
+    # Not the next one along, which was tried first and read: of the 39
+    # sittings it moved to a second marker that names no proceeding, about
+    # nine were their own openings ("open up executive uh session on HB
+    # 1256") and most of the rest were the same hearing a minute on -- the
+    # sponsor's "introduce house bill 10 40" 68 seconds after the chair's
+    # "begin house bill 1040" -- or a remark ("open to everyone for people to
+    # enjoy"). A later sitting falls back to the clustering, or to the
+    # recording with its start not identified.
+    vid = p.get("video_id") or ""
+    if said is None and (claimed is None or vid not in claimed):
         said = next((c for c in usable if _matches(c) is None), None)
+        if said is not None and claimed is not None:
+            claimed.add(vid)
 
     # The clustering's end, but only where it is describing the same span.
     #
@@ -9725,8 +9748,13 @@ def bill_stations(bid, term, procs, segs, marks):
     A leaf: one output, no other reader in the loop, nothing captured that is
     not passed. Keyed (term, bid) because a bill number names a different bill
     in each biennium.
+
+    In docket order, sharing one `claimed` between the sittings, so a marker
+    that names no proceeding goes to one of them and not to all
+    (station_for_proceeding, 17 October 2026).
     """
-    return [station_for_proceeding(p, bid, segs, marks)
+    claimed = set()
+    return [station_for_proceeding(p, bid, segs, marks, claimed)
             for p in sorted(procs.get((term, bid), []),
                             key=lambda x: (x["sched_date"],
                                            x["sched_time"] or ""))]

@@ -24731,6 +24731,42 @@ def _cluster_needs_a_mention(build_site_v2):
     return "ok", "no mention inside: no start, no end, no suggestion; two mentions: placed"
 
 
+@check("markers", "a marker naming no proceeding serves one sitting of the bill, the first "
+       "in docket order", needs=("build_site_v2",))
+def _ambiguous_marker_once(build_site_v2):
+    """341 moments were published on two proceedings of one bill on 15
+    October 2026 (687 stations): a marker that names no proceeding was the
+    fallback of every sitting of the bill on the recording that had none of
+    its own (17 October 2026). It goes to the first in docket order now, and
+    the later ones take no such marker -- not the next one along, which read
+    mostly as the same hearing a minute on."""
+    B = build_site_v2
+
+    def sitting(kind, time):
+        return {"bill": "HB1040", "body": "H", "committee": "Public Works",
+                "proceeding": kind, "sched_date": "2026-01-20", "sched_time": time,
+                "venue": "LOB 201", "video_id": "VIDX", "predicted_offset": 0,
+                "candidate_ids": ""}
+
+    def mk(start, what):
+        return {"start": start, "end": None, "how": "number", "what": what, "said": "x"}
+    procs = {("2025-2026", "HB1040"): [sitting("executive session", "13:00"),
+                                       sitting("public hearing", "09:30")]}
+    marks = {"VIDX": {"HB1040": [mk(93.0, ""), mk(161.0, "")]}}
+    sts = {s["what"]: s for s in B.bill_stations("HB1040", "2025-2026", procs, {}, marks)}
+    assert sts["public hearing"]["start"] == 93.0, (
+        f"the first sitting in docket order took {sts['public hearing']['start']}, not 93.0")
+    assert sts["executive session"]["start"] is None, (
+        f"a later sitting took a marker naming no proceeding: {sts['executive session']['start']}; "
+        "one such marker serves one sitting")
+    marks = {"VIDX": {"HB1040": [mk(93.0, ""), mk(4000.0, "executive session")]}}
+    sts = {s["what"]: s for s in B.bill_stations("HB1040", "2025-2026", procs, {}, marks)}
+    assert (sts["public hearing"]["start"], sts["executive session"]["start"]) == (93.0, 4000.0), (
+        "a sitting with a marker of its own lost it, or the other lost the fallback: "
+        f"{sts['public hearing']['start']}, {sts['executive session']['start']}")
+    return "ok", "the first sitting in docket order takes it, a later one none; own markers kept"
+
+
 @check("frontend", "a Senate hearing report draws closed under its hearing, "
        "speakers under their names", needs=("build_site_v2", "senate_hearing_reports"))
 def _hearing_report_drawn(build_site_v2, senate_hearing_reports):
