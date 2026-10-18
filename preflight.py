@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.625
+# GRANITE_VERSION: 2026-09-04.626
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -21822,7 +21822,12 @@ def _bill_shell():
              ("site/committee", "*.html", "GR_COMMITTEE", "/committee/")]
     found, sizes = [], []
     for folder, pat, glob_name, urlbit in kinds:
-        pages = sorted(Path(folder).glob(pat))
+        # A STUDY OR STATUTORY COMMITTEE'S PAGE (ss<id>.html, since 17 October
+        # 2026) is not this shell: build_study_committees writes its record in
+        # place under GR_STATIC. There are 153 of them, so the middle of the
+        # folder was one, and dry run 94 (18 October) failed here. They are
+        # checked below for what makes them findable.
+        pages = sorted(q for q in Path(folder).glob(pat) if not q.name.startswith("ss"))
         if not pages:
             continue
         f = pages[len(pages) // 2]
@@ -21866,6 +21871,19 @@ def _bill_shell():
         "only " + ", ".join(found) + " were built. All three page types come "
         "from shell.py and build_all runs all three, so a missing one is a "
         "step that did not run rather than a page type that does not exist.")
+    study = sorted(Path("site/committee").glob("ss*.html"))
+    if study:
+        f = study[len(study) // 2]
+        t = f.read_text(encoding="utf-8")
+        assert "window.GR_STATIC=" in t, (
+            f"{f} does not say it is a page written in place, so app.js would draw over it")
+        rec = t.find('<div id="results">')
+        assert -1 < rec and "</div>" not in t[rec:rec + len('<div id="results">') + 6], (
+            f"{f} has an empty results slot: the committee's record was not written into it")
+        assert "<title>" in t and "| Granite Record</title>" in t, f"{f}: no title"
+        assert 'name="description"' in t, f"{f}: no meta description"
+        assert 'rel="canonical"' in t, f"{f}: no canonical link"
+        found.append(f"{len(study):,} study and statutory committee")
     return "ok", (", ".join(found) + f"; {min(sizes)/1024:.1f}-"
                   f"{max(sizes)/1024:.1f} KB each")
 
