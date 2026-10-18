@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.613
+# GRANITE_VERSION: 2026-09-04.614
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -64881,7 +64881,10 @@ function form(choice) {
   const st = { textContent: "" }, btn = { disabled: false }, w = { dataset: {} };
   s.FOLLOW_TS.set(w, { token: "pass", err: "", wait: [] });
   const radio = { value: choice, checked: true };
+  // The form's busy flag and its place, which a sign-up taken asks for since
+  // 18 October 2026; the confirmation itself is _follow_panel_states's.
   return {
+    dataset: {}, setAttribute() {}, removeAttribute() {}, parentNode: { querySelector: () => null },
     closest: () => ({ dataset: { fkey: "bill:2026/HB1442" } }),
     querySelector: q => q === ".followstate" ? st : q === ".followsend" ? btn : q === ".followcheck" ? w
       : /frequency/.test(q) && /:checked/.test(q) ? radio : null,
@@ -65048,6 +65051,84 @@ def _follow_signup_frequency():
                   f"{legend.group(1)!r} and sends each, told apart in forced colours there and on "
                   f"the manage page; {len(cases)} cases pass; "
                   f"{len(migrations)} migrations, each told for both databases")
+
+
+@check("frontend", "the Follow panel says a sign-up was taken in a pane of its own, sends once, "
+                   "resets the check only for a new request, and folds RSS only under email")
+def _follow_panel_states():
+    """The person, 18 October 2026, after testing the panel: "once you click
+    submit for your email, the display doesn't look like much happened if
+    anything because only the text below it changes, and the Cloudflare
+    verification reloads when you click submit so it looks like your email
+    request didn't actually go through even when it did. By RSS should be
+    under a drop-down within the pop-up for following with email as the
+    default following method."
+
+    tests/test_follow_panel.js draws the panel from app.js on a small real
+    tree (dom_stub.js answers every question with an empty element, so
+    nothing asked of it can be wrong) and presses it, with the endpoints and
+    Turnstile stubbed. Held, each case failing if its part is undone:
+
+      email first, and the feed in a closed "Follow by RSS instead"
+      disclosure under it -- but where the sign-up does not answer or
+      tonight's list does not name the record, the feed is the pane, open,
+      with its address and Copy the address, never behind a disclosure with
+      nothing else beside it;
+      while sending, the button says Sending... and is disabled, the form is
+      busy, and three presses send one request;
+      a sign-up taken hides the form and shows Check your email, a heading
+      with the keyboard on it, the address, what to do with the email, and
+      Daily or Weekly in the manage page's words -- and it stays;
+      Turnstile is neither reset nor drawn again on a sign-up taken, and no
+      widget is in view beside the confirmation;
+      a refusal keeps what was typed, is drawn as a refusal, gives the
+      button back and resets the check once, and the retry goes with the new
+      token; Turnstile's own codes are named; an address that is not one
+      sends nothing and resets nothing;
+      Enter it again brings the form back with its address under the
+      keyboard and a fresh check;
+      the disclosure opens inside the pane without shutting it, a press
+      elsewhere in the pane does not fold it, and a press outside still shuts
+      Follow, as opening Cite does.
+
+    And the confirmation's words for how often are manage.js's own, so the
+    page that changes the choice later says it the same way."""
+    js, stub, harness = Path("src/pages/app.js"), Path("tests/dom_stub.js"), Path("tests/test_follow_panel.js")
+    absent = [str(p) for p in (js, stub, harness) if not p.exists()]
+    if absent:
+        return "skip", "not here: " + ", ".join(absent)
+    app = js.read_text(encoding="utf-8")
+    manage = Path("functions/api/follow/manage.js")
+    if manage.exists():
+        hints = dict(re.findall(r'radio\("frequency", "(daily|weekly)", freq, "[^"]+", "([^"]+)"\)',
+                                manage.read_text(encoding="utf-8")))
+        told = re.search(r"const FOLLOW_OFTEN=\{daily:\"([^\"]+)\",\s*weekly:\"([^\"]+)\"\}", app)
+        assert told and set(hints) == {"daily", "weekly"}, \
+            "app.js's FOLLOW_OFTEN or manage.js's How often hints are not where this check reads them"
+        assert (told.group(1), told.group(2)) == (hints["daily"], hints["weekly"]), (
+            f"the confirmation says how often as {told.groups()}, the manage page as "
+            f"{(hints['daily'], hints['weekly'])}")
+    node = shutil.which("node") or shutil.which("node.exe")
+    if not node:
+        return "skip", "node is not on PATH"
+    root = Path(tempfile.mkdtemp(prefix="gr-followpanel-"))
+    try:
+        (root / "page.js").write_text(_with_components(app), encoding="utf-8")
+        r = _run([node, str(harness.resolve()), str(root / "page.js"), str(stub.resolve())],
+                 cwd=root, capture_output=True, text=True, timeout=120)
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    said = (r.stdout or "").strip().splitlines()
+    try:
+        out = json.loads(said[-1]) if said else {}
+    except ValueError:
+        out = {}
+    assert "cases" in out, "the panel's states did not run: " + ((r.stderr or r.stdout or "").strip()[-400:])
+    assert r.returncode == 0 and not out["fail"], "the Follow panel:\n    " + "\n    ".join(out["fail"][:8])
+    assert len(out["cases"]) >= 9, f"only {len(out['cases'])} of the panel's cases ran"
+    return "ok", (f"{len(out['cases'])} cases: email first with RSS folded (open where email is not "
+                  "offered), Sending... and one request, Check your email with no reset, a refusal "
+                  "kept and reset once, Enter it again")
 
 
 @check("build", "the report endpoint accepts only what a page can name, and stores nothing about the reader")

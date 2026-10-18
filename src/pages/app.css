@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.285 */
+/* GRANITE_VERSION: 2026-09-07.286 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -3714,6 +3714,48 @@ overflow-wrap:anywhere}
 .followsend:hover,.followsend:focus-visible{border-color:var(--pine)}
 .followsend:disabled{color:var(--ink-2);cursor:default}
 .followstate:empty{margin:0}
+/* A REFUSAL READS AS ONE (the person, 18 October 2026): the line under the
+   button was the same grey whether it said "Sending" or "not working", so a
+   sign-up that failed looked like one still on its way. A brick rule and the
+   wash, in the ink, so the words keep the page's contrast in both themes. */
+.followstate.followerr{color:var(--ink);background:var(--wash);border-left:4px solid var(--brick);
+  padding:var(--sp-3) var(--sp-4);border-radius:0 var(--r-in) var(--r-in) 0}
+/* CHECK YOUR EMAIL, where the form was (app.js followDone): the heading at
+   the size of the email box's own, the address on its own line where a
+   long one wraps rather than running out of the pane, the two steps
+   numbered. The heading takes the keyboard to be read out, and shows the
+   focus ring only to a keyboard. */
+.followdone .panh{margin:0 0 var(--sp-3);position:relative;padding-left:2.25rem;min-height:1.5rem}
+/* A tick in a pine disc before it, drawn rather than written, so it is
+   seen and not read: the heading's words say it to a screen reader. Drawn
+   in the theme's own pine and on-pine, so it turns with the theme. */
+.followdone .panh::before,.followdone .panh::after{content:"";position:absolute;left:0;top:50%}
+.followdone .panh::before{width:1.5rem;height:1.5rem;margin-top:-.75rem;border-radius:50%;background:var(--pine)}
+.followdone .panh::after{left:.53rem;width:.42rem;height:.75rem;margin-top:-.47rem;
+  border:solid var(--on-pine);border-width:0 .15rem .15rem 0;transform:rotate(45deg)}
+.followdone .panh:focus{outline-offset:3px}
+.followdone .panh:focus:not(:focus-visible){outline:none}
+.followdone .followto{overflow-wrap:anywhere;color:var(--ink)}
+.followdone .pansay{color:var(--ink)}
+.followsteps{margin:0 0 var(--sp-4);padding-left:1.4rem;color:var(--ink)}
+.followsteps li{margin:0 0 var(--sp-2);line-height:1.45}
+.followdone .followoften{color:var(--ink-2)}
+.followdone .panfine{margin:0}
+/* FOLLOW BY RSS INSTEAD, folded under the email box (the person, 18 October
+   2026): a quiet line with a turning mark, as a reader who wants a feed is
+   the one who looks for it; open, the feed's sentence and address as
+   before. */
+.followalt > summary{cursor:pointer;list-style:none;display:inline-flex;align-items:center;gap:var(--sp-3);
+  min-height:2.75rem;font-weight:600;color:var(--ink)}
+.followalt > summary::-webkit-details-marker{display:none}
+.followalt > summary::before{content:"";width:.5em;height:.5em;border:solid var(--ink-2);
+  border-width:0 2px 2px 0;transform:rotate(-45deg);transition:transform .15s}
+.followalt[open] > summary::before{transform:rotate(45deg)}
+.followalt > summary:hover{color:var(--pine)}
+.followalt > summary:focus-visible{outline:2px solid var(--pine);outline-offset:2px;border-radius:var(--r-in)}
+.followaltbody{padding-top:var(--sp-3)}
+.followrss > .followalt{margin:calc(-1 * var(--sp-3)) 0}
+@media (prefers-reduced-motion:reduce){.followalt > summary::before{transition:none}}
 .feedurl input{flex:1 1 16rem;min-width:0;font:inherit;padding:var(--sp-2) var(--sp-4);color:var(--ink);
   background:var(--paper);border:1px solid var(--edge);border-radius:var(--r-in)}
 /* --edge, as every text box's is; it was --rule-2 (see the pages' input
