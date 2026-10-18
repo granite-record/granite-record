@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.619
+# GRANITE_VERSION: 2026-09-04.620
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -93529,6 +93529,34 @@ def _built_checks_night(NI):
                   f"{len(data) - len(NOT_ON_THE_NIGHT)} of the data half; {len(NOT_ON_THE_NIGHT)} "
                   f"left to the laptop, each with its reason); {len(warn)} warn, the rest hold; "
                   "nightly.py runs them after check_site and acts on each tier as decided")
+
+
+@check("files", "the turn's rehearsal runs the checks of the built site on its 2027-2028 builds, "
+       "and fails where one that holds a night fails")
+def _rehearsal_runs_built_checks():
+    """private/UNATTENDED_AUDIT_2026-10-18.md, section 4.3.4: preflight
+    --built came to the night on 15 October, after the turn was rehearsed on
+    5 and 6 October, and tests/rehearse_turn.py answered every preflight.py
+    the night started with exit 0 and no record -- so no check of the built
+    site had met a 2027-2028 build, and the November rehearsal would not have
+    run one either. Held here, by its source: a `preflight.py --built` the
+    night starts on a night built in full runs in the copy, and NT and A1
+    each hold that the checks ran and none of the hold tier failed."""
+    src = _paths.locate("tests/rehearse_turn.py").read_text(encoding="utf-8")
+    i = src.find('if name == "preflight.py":')
+    assert i != -1, "rehearse_turn no longer answers the night's preflight.py"
+    branch = src[i:src.find("elif name ==", i)]
+    assert 'sh(["preflight.py"]' in branch and '"--built" in args' in branch and \
+        'self.state["build"] == "real"' in branch, (
+            "rehearse_turn answers the night's preflight.py --built without running it on a full build")
+    for label in ("NT", "A1"):
+        assert f'built_checks_held(v, "{label}")' in src, (
+            f"the rehearsal's {label} does not hold that the checks of its built site passed")
+    fn = src[src.find("def built_checks_held"):]
+    assert 'b.get("ran") and not b.get("hold")' in fn[:fn.find("\ndef ", 10)], \
+        "built_checks_held no longer fails a hold-tier failure or checks that did not run"
+    return "ok", ("the night's preflight.py --built runs in the copy on a full build, and NT and A1 "
+                  "fail on a hold-tier failure or checks that did not run")
 
 
 @check("files", "the night takes the current term's data from the database, keeps the archived "

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-05.11
+# GRANITE_VERSION: 2026-10-05.12
 """
 The turn from one term to the next, rehearsed offline on a copy.
 
@@ -481,7 +481,18 @@ class Nights:
         self.calls.append([name] + list(args[1:]))
         NI.say(f"\n--- {label} ---")
         if name == "preflight.py":
-            rc = 0
+            # THE CHECKS OF A BUILT SITE RUN FOR REAL (18 October 2026,
+            # private/UNATTENDED_AUDIT_2026-10-18.md, section 4.3.4). The night
+            # runs `preflight.py --built` after check_site (nightly.built_checks)
+            # and the gate holds for a failed check of the site itself; no such
+            # check had met a 2027-2028 build before. On a night this builds in
+            # full they run in the copy, as the night would run them, and NT
+            # and A1 hold that none of the hold tier failed. --code, which the
+            # night runs before it fetches, stays answered here: it reads no
+            # data and the copy's commit is the repository's.
+            rc = (sh(["preflight.py"] + list(args[1:]), self.root,
+                     self.logs / f"preflight_built_{self.state['label']}.log")[0]
+                  if "--built" in args and self.state["build"] == "real" else 0)
         elif name == "snapshot_gencourt.py":
             rc = self.snapshot(args)
         elif name == "fetch_day_db.py":
@@ -1103,6 +1114,7 @@ def main():
     if not a.guards:
         note(v.get("built") and v.get("publishable"), "NT: built, and publishable behind approval",
              v.get("not_clean"))
+        built_checks_held(v, "NT")
         # The publish job deploys by the verdict that came down with the site
         # (cloud.py site-down writes it to nightly.RUN_VERDICT): NT's own.
         NI.write_json(NI.RUN_VERDICT, NI.load_json(NI.VERDICT))
@@ -1126,6 +1138,7 @@ def main():
     if not a.guards:
         note(v.get("clean") and v.get("publishable"), "A1: the night after the switch is clean",
              v.get("not_clean"))
+        built_checks_held(v, "A1")
         note(any("left out" in w and TERM in w for w in v.get("warnings") or []),
              "A1: the 2026 row entered after the switch is on the run's page, left out",
              v.get("warnings"))
@@ -1147,6 +1160,20 @@ def main():
     print(f"\n{n - bad} of {n} expectations held" + (f"; FAILED: {RESULTS['failed']}" if bad else ""))
     print(f"record: {root / 'rehearsal.json'}")
     return 1 if bad else 0
+
+
+def built_checks_held(v, label):
+    """That the checks of the night's built site ran on its 2027-2028 build
+    and none that holds a night failed: a hold-tier failure on the switch is
+    approved past by the person, but the same on an ordinary January night
+    holds every night after it. A check against the record that failed is
+    said, and is no failure here: it warns on the night."""
+    b = v.get("built_checks") if isinstance(v.get("built_checks"), dict) else {}
+    note(b.get("ran") and not b.get("hold"),
+         f"{label}: the checks of the built site ran on 2027-2028, and none that holds a night "
+         "failed", b)
+    if b.get("warn"):
+        print(f"    {label}: against the record, warned: {b['warn']}", flush=True)
 
 
 def docket_days_apart(a, b):
