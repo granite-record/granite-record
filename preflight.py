@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.614
+# GRANITE_VERSION: 2026-09-04.615
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -53519,12 +53519,71 @@ def _one_name_per_committee(committee_names):
              if CN.official(n, ch, "2025-2026") != n]
     assert not moved, "today's names are rewritten: " + "; ".join(moved[:4])
     again = [f"{ch} {lo}-{hi} {nm!r}" for ch, lo, hi, nm in CN.OFFICIAL
-             for y in range(lo, hi, 2)
+             for y in CN.span_terms(lo, hi)
              if CN.official(nm, ch, f"{y}-{y + 1}") != nm]
     assert not again, "an official name is rewritten: " + "; ".join(again[:4])
     return "ok", (f"{len(CN.ALIASES)} aliases onto {len(CN.OFFICIAL)} names at the "
                   "time, none taking another committee's name; "
                   f"{len(cases)} real spellings placed or left as written")
+
+
+@check("narrative", "a committee sitting today keeps its name, its aliases and its typing slips "
+       "into the next term, and a rename is one line in ENDED", needs=("committee_names",))
+def _committee_names_outlast_the_term(committee_names):
+    """THE TURN OF THE TERM NEEDS NOTHING DONE TO THE TABLE (18 October 2026,
+    private/UNATTENDED_AUDIT_2026-10-18.md, section 4.3.2). Every span in
+    committee_names' OFFICIAL and ALIASES ended at 2026, and _covers wants
+    both years of a term inside a span, so for 2027-2028 official() handed
+    every name back as the clerk wrote it: "Finance Division II" stayed
+    beside Finance in the Committee filter, "Exec Depts and Admin" kept its
+    hearings off Executive Departments and Administration's page, and
+    "Juduciary" stayed a committee of its own. No check failed for it. A name
+    still in use now ends in NOW, and a committee renamed or closed is one
+    line in ENDED.
+
+    Held here: no row or alias, as written, ends in the last year of the
+    newest term the tables know (such a row is a name closed before anyone
+    knew it ended -- the shape of the bug); the clerk's spellings of three
+    committees that sit today are placed in 2027-2028 and 2029-2030 as in
+    2025-2026; one ENDED line, close_ended() shows, closes the name's open row
+    and every alias that writes it and nothing else; ended_problems() is
+    empty for ENDED as it stands and refuses a line that closes nothing, a
+    year that ends no term and one before the name's first term."""
+    CN = committee_names
+    rows = ([("OFFICIAL", ch, lo, hi, nm) for ch, lo, hi, nm in CN.OFFICIAL_AS_WRITTEN]
+            + [("ALIASES", ch, lo, hi, full) for ch, lo, hi, _p, full in CN.ALIASES_AS_WRITTEN])
+    newest = max(lo for _t, _c, lo, _h, _n in rows)
+    newest_end = newest + 1 if newest % 2 else newest
+    shut = [f"{t} {ch} {lo}-{hi} {nm!r}" for t, ch, lo, hi, nm in rows
+            if hi is not CN.NOW and hi >= newest_end]
+    assert not shut, (f"{len(shut)} row(s) end in {newest_end}, the newest term's last year, so the "
+                      "name stops at the turn though nobody knows it ended (write NOW, and close a "
+                      "name that did end with a line in ENDED): " + "; ".join(shut[:4]))
+    assert any(hi is CN.NOW for _t, _c, _l, hi, _n in rows), "no name is still in use"
+    for term in ("2025-2026", "2027-2028", "2029-2030"):
+        for said, ch, want in (("Finance Division II", "H", "Finance"),
+                               ("Exec Depts and Admin", "H", "Executive Departments and Administration"),
+                               ("Juduciary", "S", "Judiciary"),
+                               ("Ways and Means", "S", "Ways and Means")):
+            got = CN.official(said, ch, term)
+            assert got == want, f"official({said!r}, {ch}, {term}) gave {got!r}, wanted {want!r}"
+    assert not CN.ended_problems(), "; ".join(CN.ended_problems())
+    line = ("H", "Finance", 2026)
+    o, a = CN.close_ended(CN.OFFICIAL_AS_WRITTEN, CN.ALIASES_AS_WRITTEN, [line])
+    changed = [(x, y) for x, y in zip(CN.OFFICIAL_AS_WRITTEN, o) if x != y]
+    assert changed == [(("H", 1995, CN.NOW, "Finance"), ("H", 1995, 2026, "Finance"))], (
+        f"one ENDED line closed {changed} in OFFICIAL")
+    moved = [(x, y) for x, y in zip(CN.ALIASES_AS_WRITTEN, a) if x != y]
+    assert moved and all(y[0] == "H" and y[2] == 2026 and y[4] == "Finance" for _x, y in moved)         and not [y for x, y in zip(CN.ALIASES_AS_WRITTEN, a)
+                 if y[0] == "H" and y[4] == "Finance" and y[2] is CN.NOW], (
+        f"one ENDED line left an alias writing House Finance open, or closed another: {moved}")
+    bad = CN.ended_problems(ended=[("H", "Nonesuch", 2026), ("S", "Judiciary", 2027),
+                                   ("H", "Housing", 2024)])
+    assert len(bad) == 3, f"ended_problems let a bad line through: {bad}"
+    return "ok", (f"{sum(1 for r in rows if r[3] is CN.NOW)} names and aliases still in use, none "
+                  f"ending at {newest_end}; the clerk's spellings placed through 2029-2030; one "
+                  f"ENDED line closes House Finance's row and its {len(moved)} aliases, nothing "
+                  "else; three bad lines refused")
 
 
 @check("narrative", "build_data writes each bill's committees under their names at the time",

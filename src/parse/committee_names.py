@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-24.7
+# GRANITE_VERSION: 2026-09-24.8
 """One name per committee: the name it had at the time.
 
     import committee_names as CN
@@ -126,54 +126,66 @@ import referrals
 # names in use today). A committee not listed here is not unknown to the site
 # -- its name simply passes through unchanged -- so this is the list of names
 # this file may WRITE, not of names that exist.
+#
+# A NAME STILL IN USE HAS NO LAST YEAR (18 October 2026). Every row and alias
+# of a committee that sat in 2025-2026 under that name ends in NOW, not in
+# 2026: the name holds for every term from its first, until ENDED below says
+# it stopped. Each span ended at 2026 until then, so from the first 2027 bill
+# official() would have handed every name back as the clerk wrote it -- no
+# alias, no Finance division folded into Finance, no typing slip mended --
+# and the Committee filter would have split again. The 2027-2028 names are
+# not known until that term's rules are adopted (a new Speaker can rename a
+# committee), and none is invented here: the turn needs nothing done to this
+# file, and a rename or a committee closed is one line in ENDED.
+NOW = None
 OFFICIAL = [
     # ---- House ----
     ("H", 1989, 1994, "Appropriations"),                           # TEXT
     ("H", 1989, 1994, "Children, Youth and Juvenile Justice"),     # TEXT
-    ("H", 1999, 2026, "Children and Family Law"),                  # TEXT, H37
+    ("H", 1999, NOW, "Children and Family Law"),                  # TEXT, H37
     ("H", 1989, 1994, "Commerce, Small Business and Consumer Affairs"),  # TEXT
     ("H", 1995, 1996,
      "Commerce, Small Business, Consumer Affairs and Economic Development"),  # RULES 1995
     ("H", 1997, 2010, "Commerce"),                                 # RULES 1997, TEXT
-    ("H", 2009, 2026, "Commerce and Consumer Affairs"),            # TEXT, H43
+    ("H", 2009, NOW, "Commerce and Consumer Affairs"),            # TEXT, H43
     ("H", 1989, 1996, "Constitutional and Statutory Revision"),    # TEXT, RULES 1995
     ("H", 2011, 2012, "Constitutional Review and Statutory Recodification"),  # TEXT
     ("H", 1993, 1996, "Corrections and Criminal Justice"),         # TEXT, RULES 1995
-    ("H", 1997, 2026, "Criminal Justice and Public Safety"),       # RULES 1997, H26
+    ("H", 1997, NOW, "Criminal Justice and Public Safety"),       # RULES 1997, H26
     ("H", 2017, 2018, "Criminal Justice and Public Safety Joint with Judiciary"),  # H53
     ("H", 1991, 1994, "Economic Development"),                     # TEXT
     ("H", 1989, 2024, "Education"),                                # H05
-    ("H", 2025, 2026, "Education Funding"),                        # H63
-    ("H", 2025, 2026, "Education Policy and Administration"),      # H62
-    ("H", 1997, 2026, "Election Law"),                             # RULES 1997, H36
-    ("H", 1989, 2026, "Environment and Agriculture"),              # H06
-    ("H", 1989, 2026, "Executive Departments and Administration"),  # H07
-    ("H", 1995, 2026, "Finance"),                                  # RULES 1995, H34
+    ("H", 2025, NOW, "Education Funding"),                        # H63
+    ("H", 2025, NOW, "Education Policy and Administration"),      # H62
+    ("H", 1997, NOW, "Election Law"),                             # RULES 1997, H36
+    ("H", 1989, NOW, "Environment and Agriculture"),              # H06
+    ("H", 1989, NOW, "Executive Departments and Administration"),  # H07
+    ("H", 1995, NOW, "Finance"),                                  # RULES 1995, H34
     ("H", 1989, 1992, "Fish and Game"),                            # TEXT
     ("H", 2001, 2010, "Fish and Game"),                            # TEXT
-    ("H", 2009, 2026, "Fish and Game and Marine Resources"),       # TEXT, H42
-    ("H", 1989, 2026, "Health, Human Services and Elderly Affairs"),  # H09
-    ("H", 2025, 2026, "Housing"),                                  # H64
+    ("H", 2009, NOW, "Fish and Game and Marine Resources"),       # TEXT, H42
+    ("H", 1989, NOW, "Health, Human Services and Elderly Affairs"),  # H09
+    ("H", 2025, NOW, "Housing"),                                  # H64
     ("H", 1999, 2008, "Joint Committee on Address"),               # TEXT
     ("H", 1989, 1994, "Judiciary"),                                # TEXT
-    ("H", 1999, 2026, "Judiciary"),                                # TEXT, H10
+    ("H", 1999, NOW, "Judiciary"),                                # TEXT, H10
     ("H", 1995, 1998, "Judiciary and Family Law"),                 # RULES 1995, 1997; KEY
-    ("H", 1989, 2026, "Labor, Industrial and Rehabilitative Services"),  # H11
-    ("H", 1989, 2026, "Legislative Administration"),               # H12
+    ("H", 1989, NOW, "Labor, Industrial and Rehabilitative Services"),  # H11
+    ("H", 1989, NOW, "Legislative Administration"),               # H12
     ("H", 1997, 1998, "Local and Regulated Revenues"),             # RULES 1997
     ("H", 2009, 2010, "Local and Regulated Revenues"),             # TEXT
-    ("H", 1989, 2026, "Municipal and County Government"),          # H18
+    ("H", 1989, NOW, "Municipal and County Government"),          # H18
     ("H", 1989, 1996, "Public Protection and Veterans Affairs"),   # TEXT, RULES 1995
     ("H", 1989, 1994, "Public Works"),                             # TEXT
-    ("H", 1995, 2026, "Public Works and Highways"),                # RULES 1995, TEXT, H20
+    ("H", 1995, NOW, "Public Works and Highways"),                # RULES 1995, TEXT, H20
     # The petitions' committee. No text of a petition is on this disk; LIST
     # names it for all 28 of 2011-2012's, in capitals, and so does STATUS
     # 2012 PET 1 (see CODES).
     ("H", 2011, 2012, "Redress of Grievances"),                    # LIST, H45
     ("H", 1989, 1996, "Regulated Revenues"),                       # TEXT, RULES 1995
-    ("H", 1989, 2026, "Resources, Recreation and Development"),    # H22
-    ("H", 1989, 2026, "Rules"),                                    # RULES, H23
-    ("H", 1989, 2026, "Science, Technology and Energy"),           # H24
+    ("H", 1989, NOW, "Resources, Recreation and Development"),    # H22
+    ("H", 1989, NOW, "Rules"),                                    # RULES, H23
+    ("H", 1989, NOW, "Science, Technology and Energy"),           # H24
     ("H", 2011, 2012, "Special Committee on Education Funding Reform"),  # TEXT
     ("H", 2011, 2012, "Special Committee on Public Employee Pensions Reform"),  # TEXT
     ("H", 2015, 2016, "Special Committee on Public Employee Pension Plans"),  # TEXT, H47
@@ -183,59 +195,59 @@ OFFICIAL = [
     ("H", 2023, 2024, "Special Committee on Housing"),             # TEXT, H58
     ("H", 1989, 1992, "State Institutions and Housing"),           # TEXT
     ("H", 1989, 1996, "State-Federal Relations"),                  # TEXT, RULES 1995
-    ("H", 1997, 2026, "State-Federal Relations and Veterans Affairs"),  # RULES 1997, H25
-    ("H", 1989, 2026, "Transportation"),                           # H27
+    ("H", 1997, NOW, "State-Federal Relations and Veterans Affairs"),  # RULES 1997, H25
+    ("H", 1989, NOW, "Transportation"),                           # H27
     ("H", 1989, 1994, "Ways and Means"),                           # TEXT
-    ("H", 2001, 2026, "Ways and Means"),                           # TEXT, H28
+    ("H", 2001, NOW, "Ways and Means"),                           # TEXT, H28
     ("H", 1993, 2000, "Wildlife and Marine Resources"),            # TEXT, RULES, KEY
     # ---- Senate ----
     ("S", 1993, 1994, "Appropriations"),                           # TEXT
     ("S", 1989, 2004, "Banks"),                                    # TEXT
     ("S", 2005, 2006, "Banks and Insurance"),                      # TEXT
-    ("S", 1989, 2026, "Capital Budget"),                           # TEXT, S02
-    ("S", 2025, 2026, "Children and Family Law"),                  # S41
-    ("S", 2011, 2026, "Commerce"),                                 # TEXT, S37
+    ("S", 1989, NOW, "Capital Budget"),                           # TEXT, S02
+    ("S", 2025, NOW, "Children and Family Law"),                  # S41
+    ("S", 2011, NOW, "Commerce"),                                 # TEXT, S37
     ("S", 2007, 2010, "Commerce, Labor and Consumer Protection"),  # TEXT
     ("S", 1989, 1990, "Development, Recreation and Environment"),  # TEXT
     ("S", 1991, 1998, "Economic Development"),                     # TEXT
     ("S", 1989, 2012, "Education"),                                # TEXT, S05
     ("S", 2015, 2018, "Education"),                                # TEXT, S05
-    ("S", 2021, 2026, "Education"),                                # TEXT, S05
+    ("S", 2021, NOW, "Education"),                                # TEXT, S05
     ("S", 2019, 2020, "Education and Workforce Development"),      # TEXT, S91
-    ("S", 2025, 2026, "Education Finance"),                        # s42
+    ("S", 2025, NOW, "Education Finance"),                        # s42
     ("S", 2007, 2008, "Election Law and Internal Affairs"),        # TEXT, S50
     ("S", 2017, 2018, "Election Law and Internal Affairs"),        # TEXT, S50
-    ("S", 2019, 2026, "Election Law and Municipal Affairs"),       # TEXT, S92
+    ("S", 2019, NOW, "Election Law and Municipal Affairs"),       # TEXT, S92
     ("S", 2009, 2010, "Election Law and Veterans' Affairs"),       # TEXT
     ("S", 1999, 2006, "Energy and Economic Development"),          # TEXT
-    ("S", 2011, 2026, "Energy and Natural Resources"),             # TEXT, S38
+    ("S", 2011, NOW, "Energy and Natural Resources"),             # TEXT, S38
     ("S", 2007, 2010, "Energy, Environment and Economic Development"),  # TEXT
     ("S", 1991, 2004, "Environment"),                              # TEXT
     ("S", 2005, 2006, "Environment and Wildlife"),                 # TEXT
     ("S", 1989, 1992, "Executive Departments"),                    # TEXT, DOCKET
-    ("S", 1993, 2026, "Executive Departments and Administration"),  # TEXT, S06
+    ("S", 1993, NOW, "Executive Departments and Administration"),  # TEXT, S06
     ("S", 1989, 1992, "Finance"),                                  # TEXT
-    ("S", 1995, 2026, "Finance"),                                  # TEXT, S07
+    ("S", 1995, NOW, "Finance"),                                  # TEXT, S07
     ("S", 1993, 1994, "Finance Executive Committee"),              # TEXT
     ("S", 1995, 1996, "Fish and Game/Recreation"),                 # TEXT
     ("S", 2005, 2012, "Health and Human Services"),                # TEXT, S26
-    ("S", 2015, 2026, "Health and Human Services"),                # TEXT, S26
+    ("S", 2015, NOW, "Health and Human Services"),                # TEXT, S26
     ("S", 2013, 2014, "Health, Education and Human Services"),     # TEXT
     ("S", 1989, 2004, "Insurance"),                                # TEXT
     ("S", 1989, 1992, "Internal Affairs"),                         # TEXT, KEY
     ("S", 1997, 2006, "Internal Affairs"),                         # TEXT
     ("S", 2011, 2012, "Internal Affairs"),                         # TEXT
     ("S", 1989, 2004, "Interstate Cooperation"),                   # TEXT, KEY
-    ("S", 1989, 2026, "Judiciary"),                                # TEXT, S10
+    ("S", 1989, NOW, "Judiciary"),                                # TEXT, S10
     ("S", 1989, 2004, "Public Affairs"),                           # TEXT, KEY
     ("S", 2005, 2018, "Public and Municipal Affairs"),             # TEXT, S27
     ("S", 1989, 2004, "Public Institutions, Health and Human Services"),  # TEXT, KEY
-    ("S", 2005, 2026, "Rules and Enrolled Bills"),                 # TEXT, S45
+    ("S", 2005, NOW, "Rules and Enrolled Bills"),                 # TEXT, S45
     ("S", 2013, 2016, "Rules, Enrolled Bills and Internal Affairs"),  # TEXT, S40
     ("S", 1989, 2004, "Transportation"),                           # TEXT
-    ("S", 2011, 2026, "Transportation"),                           # TEXT, S16
+    ("S", 2011, NOW, "Transportation"),                           # TEXT, S16
     ("S", 2005, 2010, "Transportation and Interstate Cooperation"),  # TEXT
-    ("S", 1989, 2026, "Ways and Means"),                           # TEXT, S17
+    ("S", 1989, NOW, "Ways and Means"),                           # TEXT, S17
     ("S", 1991, 1994, "Wildlife and Recreation"),                  # TEXT, KEY
     ("S", 1997, 2004, "Wildlife and Recreation"),                  # TEXT
     ("S", 2007, 2008, "Wildlife, Fish and Game"),                  # TEXT
@@ -293,7 +305,7 @@ ALIASES = [
     ("H", 1997, 1998, r"comm(?:erc)?", "Commerce"),
     # Typed, not abbreviated: "Commerce anad Consumer Affairs" and "Commerce
     # and Consume Affairs", 8 hearings of 2009-2014.
-    ("H", 2009, 2026, r"commerce an(?:a)?d consumer? affairs",
+    ("H", 2009, NOW, r"commerce an(?:a)?d consumer? affairs",
      "Commerce and Consumer Affairs"),
     # 16 cards of 1989, 37 hearings of 1989-1996: TEXT 14 of 15 (the 15th
     # prints "Revisions"), SAME 35 of 37.
@@ -306,14 +318,14 @@ ALIASES = [
     # "Criminal Justice", but for 2017's joint one with Judiciary. 2 cards,
     # TEXT 2 of 2; 948 hearings, "Crim Just and PSfty" 714 of them, SAME 933
     # of 948.
-    ("H", 1997, 2026,
+    ("H", 1997, NOW,
      r"crim(?:inal)? j(?:ust(?:ice|sice)?|s)"
      r"(?: and p(?:ub(?:lic|ic)?)? ?s(?:afety|fty))?",
      "Criminal Justice and Public Safety"),
     # 1 card, TEXT 1 of 1; 552 hearings ("Elec Law" 523), SAME 552 of 552.
-    ("H", 1997, 2026, r"elec(?: l(?:a)?w)?", "Election Law"),
+    ("H", 1997, NOW, r"elec(?: l(?:a)?w)?", "Election Law"),
     # 6 cards, TEXT 6 of 6; 634 hearings ("Env and Agric" 462), SAME 617 of 634.
-    ("H", 1989, 2026,
+    ("H", 1989, NOW,
      r"env(?:ir|iron|ironment)? and ag(?:r|ri|ric|irculture|riculture)?",
      "Environment and Agriculture"),
     # 7 cards, TEXT 4 of 5 (the fifth names Commerce); 1,414 hearings ("Exec
@@ -321,7 +333,7 @@ ALIASES = [
     # carried "and Administration" throughout -- 81 texts of 1989-1990 print
     # it -- so 1989's lone "Executive Departments" is a short form here, where
     # in the Senate it is the name (below).
-    ("H", 1989, 2026,
+    ("H", 1989, NOW,
      r"ex(?:ec(?:utive|tive)?)?(?: dep\w*)?(?: and| ans)? adm\w*"
      r"|executive departments",
      "Executive Departments and Administration"),
@@ -330,7 +342,7 @@ ALIASES = [
     # part of Finance -- build_committees already files a member of "Finance
     # - Division II" under Finance -- and 1997's "Fin Div I/II" and "Finance
     # Div III" hearings (41) go to it. 276 hearings in all.
-    ("H", 1995, 2026, r"(?:house )?fin(?:a|an|anc|ance)?(?: div(?:ision)? i{1,3})?",
+    ("H", 1995, NOW, r"(?:house )?fin(?:a|an|anc|ance)?(?: div(?:ision)? i{1,3})?",
      "Finance"),
     # 13 hearings; SAME 13 of 13.
     ("H", 1989, 1992, r"f(?:ish)? and g(?:ame)?", "Fish and Game"),
@@ -342,7 +354,7 @@ ALIASES = [
     ("H", 1989, 1998, r"health", "Health, Human Services and Elderly Affairs"),
     # 9 cards, TEXT 8 of 8; 547 hearings ("Health HS and EA" 406), SAME 537
     # of 547.
-    ("H", 1989, 2026,
+    ("H", 1989, NOW,
      r"(?:health|hlth|hth|h)(?: and)? (?:hs|hum ser|human svcs)"
      r"(?:(?: and)? (?:ea|eld|elderly affairs?))?"
      r"|health human services(?: and elderly affair)?",
@@ -354,13 +366,13 @@ ALIASES = [
      "Judiciary and Family Law"),
     ("H", 1989, 1994, r"juciciary", "Judiciary"),               # 1 card; TEXT 1 of 1
     # 1 card, TEXT 1 of 1; 345 hearings ("Labor" 244), SAME 335 of 345; KEY.
-    ("H", 1989, 2026,
+    ("H", 1989, NOW,
      r"lab(?:o|or)?(?: ind(?:ustrial)?)?(?: and)?(?: reh(?:ab(?:ilitative)?)?)?"
      r"(?: s(?:vcs|ervices|rvcs))?",
      "Labor, Industrial and Rehabilitative Services"),
     # 23 cards, TEXT 21 of 22 (the 22nd misspells it); 167 hearings, SAME
     # 150 of 167; KEY.
-    ("H", 1989, 2026,
+    ("H", 1989, NOW,
      r"leg(?:is(?:lative)?)?(?: adm(?:in(?:istrationn?)?)?)?",
      "Legislative Administration"),
     # 35 hearings of 1997-1998 (RULES 1997), SAME 35 of 35; 1 card and 16
@@ -374,7 +386,7 @@ ALIASES = [
     # "Muncipal": the clerk's shorthand for this committee is written out by
     # referrals.PHRASES (885 hearings), and this is the one misspelling it
     # does not read.
-    ("H", 1989, 2026, r"mun(?:i)?cipal and county government",
+    ("H", 1989, NOW, r"mun(?:i)?cipal and county government",
      "Municipal and County Government"),
     # 1 card, TEXT 1 of 1; 15 hearings, SAME 15 of 15.
     ("H", 1989, 1996,
@@ -387,17 +399,17 @@ ALIASES = [
     # of 212. 248 cards, 570 hearings (SAME 568). The search page's spelling
     # of the same bills, which build_data._same_committee already calls one
     # committee with this.
-    ("H", 1995, 2026,
+    ("H", 1995, NOW,
      r"(?:pw|p(?:u|up)b(?:lic)? w(?:o)?r?ks)(?: and h(?:ighways)?)?",
      "Public Works and Highways"),
     # 6 cards; 11 hearings, SAME 11 of 11; KEY.
     ("H", 1989, 1996, r"reg(?:ulated)? rev(?:enues?)?", "Regulated Revenues"),
     # 3 cards, TEXT 3 of 3; 559 hearings ("Res, Rec and Dev" 439), SAME 554.
-    ("H", 1989, 2026,
+    ("H", 1989, NOW,
      r"res(?:o?ources|ourses)?(?: rec(?:reation)?)?(?: and)? dev(?:elopment|leopment)?",
      "Resources, Recreation and Development"),
     # 5 cards, TEXT 4 of 4; 637 hearings ("Science, Tech and En" 510), SAME 636.
-    ("H", 1989, 2026,
+    ("H", 1989, NOW,
      r"sci(?:en|ence)?(?: (?:and )?tech(?:nology|noloby)?)?(?: and)?(?: en(?:er|ergy)?)?",
      "Science, Technology and Energy"),
     # TEXT 9 of 9: the bills of 2011-2012 whose card said "...Pension Plans"
@@ -415,17 +427,17 @@ ALIASES = [
      "State-Federal Relations"),
     # RULES 1997 names "State-Federal Relations and Veterans Affairs". 9
     # cards, TEXT 1 of 1; 219 hearings, SAME 217 of 219.
-    ("H", 1997, 2026,
+    ("H", 1997, NOW,
      r"s(?:t|tate|atte) fed(?:eral)?(?: r(?:el(?:s|ations)?|ed)?)?"
      r"(?:(?: and)? vet(?:s|erans?)?(?: aff(?:s|airs)?)?)?",
      "State-Federal Relations and Veterans Affairs"),
     # 2 cards, TEXT 1 of 1; 50 hearings, SAME 50 of 50; KEY.
-    ("H", 1989, 2026,
+    ("H", 1989, NOW,
      r"trans(?:p|po|por|port|porat|poration|portaion|portati|portation)?",
      "Transportation"),
     # 1 card, TEXT 1 of 1; 98 hearings.
     ("H", 1989, 1994, r"ways? and means|w and m", "Ways and Means"),
-    ("H", 2001, 2026, r"ways? and means|w and m", "Ways and Means"),
+    ("H", 2001, NOW, r"ways? and means|w and m", "Ways and Means"),
     # 168 cards, TEXT 147 of 149 (two print another committee); 287
     # hearings, SAME 287 of 287; RULES 1995 and 1997; KEY: WILDLIFE is
     # "Wildlife and Marine Resources".
@@ -434,12 +446,12 @@ ALIASES = [
     # 1 card, TEXT 1 of 1; 4 hearings; KEY.
     ("H", 1989, 1994, r"approp(?:s|riation)?", "Appropriations"),
     # 1 card, TEXT 1 of 1; 567 hearings ("Child and Fam Law" 471), SAME 567.
-    ("H", 1999, 2026, r"child(?:ren)? and f(?:a)?m(?:ily|ly)?(?: law)?",
+    ("H", 1999, NOW, r"child(?:ren)? and f(?:a)?m(?:ily|ly)?(?: law)?",
      "Children and Family Law"),
     # ---- Senate ----
     # 7 cards, TEXT 2 of 2; 21 hearings (most the second committee); KEY.
     ("S", 1993, 1994, r"(?:sen )?approps?", "Appropriations"),
-    ("S", 1989, 2026, r"cap(?:ital)? bud(?:get)?", "Capital Budget"),  # 1 card; TEXT 1 of 1
+    ("S", 1989, NOW, r"cap(?:ital)? bud(?:get)?", "Capital Budget"),  # 1 card; TEXT 1 of 1
     ("S", 2007, 2010, r"commerce labor and comsumer protection",
      "Commerce, Labor and Consumer Protection"),                # 2 cards; TEXT 2 of 2
     # NINE SPELLINGS ON 154 CARDS OF 1989-1990, and 158 hearings. TEXT 38 of
@@ -480,11 +492,11 @@ ALIASES = [
      r"exec(?:utive|tive)?(?: dep(?:t|ts|art|artment|artments)?)?(?: and adm\w*)?",
      "Executive Departments"),
     # 8 cards, TEXT 7 of 7; 84 hearings, SAME 84 of 84.
-    ("S", 1993, 2026, r"ex(?:ec(?:utive)?)? dep\w*(?: and| ans)? adm\w*",
+    ("S", 1993, NOW, r"ex(?:ec(?:utive)?)? dep\w*(?: and| ans)? adm\w*",
      "Executive Departments and Administration"),
     # 10 cards of 1991, TEXT 1 of 1; 7 hearings.
     ("S", 1989, 1992, r"(?:sen(?:ate)? )?fin(?:a|an|anc|ance)?", "Finance"),
-    ("S", 1995, 2026, r"(?:sen(?:ate)? )?fin(?:a|an|anc|ance)?", "Finance"),
+    ("S", 1995, NOW, r"(?:sen(?:ate)? )?fin(?:a|an|anc|ance)?", "Finance"),
     # 15 cards, TEXT 8 of 8 print "Finance Executive Committee" -- 1993's HB1,
     # the budget, went there -- and no Senate text of 1993-1994 prints plain
     # "Finance". 15 hearings, SAME 15 of 15. Whether it was the Senate's
@@ -508,7 +520,7 @@ ALIASES = [
     # 39 cards, TEXT 20 of 20; 42 hearings, SAME 42 of 42; KEY: INTERSTATE.
     ("S", 1989, 2004, r"int(?:er(?:st(?:ate)?)?)? coop(?:eration)?|interstate",
      "Interstate Cooperation"),
-    ("S", 1989, 2026, r"judicary|judiicary", "Judiciary"),     # 2 cards; TEXT 1 of 1
+    ("S", 1989, NOW, r"judicary|judiicary", "Judiciary"),     # 2 cards; TEXT 1 of 1
     # "Public" alone and a misspelling: 6 cards, TEXT 5 of 5; 10 hearings; KEY.
     ("S", 1989, 2004, r"public|pub(?:lic|ilc)? aff(?:s|air|airs)?",
      "Public Affairs"),
@@ -545,10 +557,69 @@ ALIASES = [
     ("S", 2007, 2008, r"wildlife fish a[mn]d game", "Wildlife, Fish and Game"),  # 3 cards
     # KEY: "W & M" is Ways and Means. The manifest writes the ampersand as
     # "and", which referrals.expand's "^W & M$" does not read. 1 hearing.
-    ("S", 1989, 2026, r"w and m", "Ways and Means"),
+    ("S", 1989, NOW, r"w and m", "Ways and Means"),
 ]
 
-_COMPILED = [(ch, lo, hi, re.compile(p), full) for ch, lo, hi, p, full in ALIASES]
+
+# ---------------------------------------------------------------------------
+# A NAME THAT STOPPED: (chamber, name, the last year it carried that name).
+#
+# ONE LINE PER COMMITTEE RENAMED OR CLOSED, and nothing else to edit. When a
+# term's rules rename a committee that sits under a NOW name above, or do away
+# with it, the line goes here with the last year of the term that had it --
+# ("H", "Education Funding", 2026), say, if 2027-2028's House has no Education
+# Funding -- and that closes the name's open row in OFFICIAL and every alias
+# that writes it, so no later term's spelling is ever turned into it. The new
+# name passes through official() as the General Court writes it with nothing
+# more done; a row of its own in OFFICIAL, from its first year and ending in
+# NOW, is what lets the aliases and the typing-slip rule write it too.
+# ended_problems() refuses a line that closes no open name, or closes one
+# before its first year; preflight holds the rest.
+ENDED = [
+]
+
+
+def close_ended(official, aliases, ended):
+    """(official, aliases) with each NOW span whose name `ended` closes ended
+    at the year it gives -- in official by the row's own name, in aliases by
+    the name the alias writes. A pure function, so that what a line in ENDED
+    does can be shown on a line that is not there."""
+    last = {(ch, _norm(nm)): y for ch, nm, y in ended}
+
+    def shut(ch, hi, nm):
+        return last.get((ch, _norm(nm)), hi) if hi is NOW else hi
+    return ([(ch, lo, shut(ch, hi, nm), nm) for ch, lo, hi, nm in official],
+            [(ch, lo, shut(ch, hi, full), p, full) for ch, lo, hi, p, full in aliases])
+
+
+def ended_problems(official=None, ended=None):
+    """[message] for every ENDED line that closes no name OFFICIAL writes as
+    still in use (a name spelt wrong, or one already closed), that is not the
+    last year of a term, or that ends a name before its first year."""
+    official = OFFICIAL_AS_WRITTEN if official is None else official
+    ended = ENDED if ended is None else ended
+    out = []
+    for ch, nm, y in ended:
+        rows = [lo for c, lo, hi, n in official if c == ch and _norm(n) == _norm(nm) and hi is NOW]
+        if not rows:
+            out.append(f"ENDED {ch} {nm!r} {y}: no row of OFFICIAL carries that name as still "
+                       "in use (NOW), so the line closes nothing")
+        elif not isinstance(y, int) or y % 2:
+            out.append(f"ENDED {ch} {nm!r} {y}: not the last year of a term, which is even")
+        elif y < min(rows) + 1:
+            out.append(f"ENDED {ch} {nm!r} {y}: ends the name before its first term, {min(rows)}")
+    return out
+
+
+def _last(hi):
+    """A span's last year for comparing two spans: an open one (NOW) runs on
+    past any year a table names."""
+    return 9999 if hi is NOW else hi
+
+
+def _said(lo, hi):
+    """A span as a message says it: "1999-2026", or "1999 on" for an open one."""
+    return f"{lo} on" if hi is NOW else f"{lo}-{hi}"
 
 
 def _norm(s):
@@ -559,6 +630,29 @@ def _norm(s):
     s = re.sub(r"[&+]", " and ", s)
     s = re.sub(r"[^a-z0-9]+", " ", s)
     return " ".join(s.split())
+
+
+# The tables as written, and as ENDED leaves them: everything below reads the
+# second.
+OFFICIAL_AS_WRITTEN, ALIASES_AS_WRITTEN = OFFICIAL, ALIASES
+OFFICIAL, ALIASES = close_ended(OFFICIAL_AS_WRITTEN, ALIASES_AS_WRITTEN, ENDED)
+
+# THE HORIZON: one term past the newest year any table names. An open span is
+# checked through it (span_terms), so every rule that holds the tables to
+# each other -- no alias takes another committee's name, none writes a name
+# before its year -- is held for the first term after the record as well.
+_HORIZON = max([y for r in OFFICIAL_AS_WRITTEN for y in (r[1], r[2]) if y is not NOW]
+               + [y for r in ALIASES_AS_WRITTEN for y in (r[1], r[2]) if y is not NOW]
+               + [r[2] for r in ENDED]) + 3
+
+
+def span_terms(lo, hi):
+    """The first years of the terms a span covers, lo, lo + 2, ...: for an
+    open span (NOW), through the term after the newest year the tables name."""
+    return range(lo, _HORIZON if hi is NOW else hi, 2)
+
+
+_COMPILED = [(ch, lo, hi, re.compile(p), full) for ch, lo, hi, p, full in ALIASES]
 
 
 _OFFICIAL_BY = {}
@@ -573,7 +667,9 @@ def _start(term):
 
 
 def _covers(lo, hi, y):
-    return y is not None and lo <= y and y + 1 <= hi
+    """Whether the term starting in `y` is inside the span: both its years,
+    and an open span (NOW) has no last."""
+    return y is not None and lo <= y and (hi is NOW or y + 1 <= hi)
 
 
 def known(name, chamber, term):
@@ -989,7 +1085,7 @@ def _gaps(runs):
     for i, (lo, hi, _nm) in enumerate(runs):
         if reach is not None and lo > reach + 1:
             out.append((reach, lo, i))
-        reach = hi if reach is None else max(reach, hi)
+        reach = _last(hi) if reach is None else max(reach, _last(hi))
     return out
 
 
@@ -1072,8 +1168,8 @@ def retired():
     Recreation and Environment's."""
     last = {}
     for ch, lo, hi, nm, code, page in placed():
-        if page and (page not in last or hi > last[page][0]):
-            last[page] = (hi, nm)
+        if page and (page not in last or _last(hi) > last[page][0]):
+            last[page] = (_last(hi), nm)
     return {p: nm for p, (hi, nm) in last.items()}
 
 
@@ -1128,13 +1224,13 @@ def codes_problems():
         out.append(f"GAPS {code} {before}-{after}: CODES has no such gap in "
                    f"{code}'s runs, so this decision is about nothing on record")
     for ch, lo, hi, nm, code in CODES:
-        for y in range(lo, hi, 2):
+        for y in span_terms(lo, hi):
             if not known(nm, ch, f"{y}-{y + 1}"):
-                out.append(f"{ch} {lo}-{hi} {nm!r}: not a {ch} committee of "
+                out.append(f"{ch} {_said(lo, hi)} {nm!r}: not a {ch} committee of "
                            f"{y}-{y + 1} in OFFICIAL")
                 break
         if code and code[:1].upper() != ch:
-            out.append(f"{ch} {lo}-{hi} {nm!r} -> {code}: the code is the "
+            out.append(f"{ch} {_said(lo, hi)} {nm!r} -> {code}: the code is the "
                        "other chamber's")
     by_name = {}
     for ch, lo, hi, nm, code in CODES:
@@ -1142,8 +1238,8 @@ def codes_problems():
     for (ch, nn), runs in by_name.items():
         runs = sorted(runs)
         for (lo, hi), (lo2, hi2) in zip(runs, runs[1:]):
-            if lo2 <= hi:
-                out.append(f"{ch} {nn!r}: {lo}-{hi} and {lo2}-{hi2} overlap")
+            if lo2 <= _last(hi):
+                out.append(f"{ch} {nn!r}: {_said(lo, hi)} and {_said(lo2, hi2)} overlap")
     return out
 
 
@@ -1156,9 +1252,9 @@ def conflicts():
         for och, olo, ohi, onm in OFFICIAL:
             if och != ch or onm == full:
                 continue
-            if max(lo, olo) + 1 <= min(hi, ohi) and rx.fullmatch(_norm(onm)):
-                out.append(f"{ch} {lo}-{hi} {rx.pattern!r} -> {full!r} would "
-                           f"also take {onm!r} ({olo}-{ohi})")
+            if max(lo, olo) + 1 <= min(_last(hi), _last(ohi)) and rx.fullmatch(_norm(onm)):
+                out.append(f"{ch} {_said(lo, hi)} {rx.pattern!r} -> {full!r} would "
+                           f"also take {onm!r} ({_said(olo, ohi)})")
     return out
 
 
@@ -1168,9 +1264,9 @@ def unplaced():
     name written onto a year before the committee carried it."""
     out = []
     for ch, lo, hi, _rx, full in _COMPILED:
-        for y in range(lo, hi, 2):
+        for y in span_terms(lo, hi):
             if not known(full, ch, f"{y}-{y + 1}"):
-                out.append(f"{ch} {lo}-{hi} -> {full!r}: not a {ch} committee "
+                out.append(f"{ch} {_said(lo, hi)} -> {full!r}: not a {ch} committee "
                            f"of {y}-{y + 1}")
                 break
     return out
@@ -1178,15 +1274,15 @@ def unplaced():
 
 def main():
     sys.stdout.reconfigure(encoding="utf-8")
-    bad = conflicts() + unplaced() + codes_problems()
+    bad = conflicts() + unplaced() + codes_problems() + ended_problems()
     for ch, word in (("H", "House"), ("S", "Senate")):
         print(word)
         for c, lo, hi, nm in sorted((r for r in OFFICIAL if r[0] == ch),
                                     key=lambda r: (r[3], r[1])):
             code, page = next(((cd, pg) for c2, lo2, hi2, nm2, cd, pg in placed()
-                               if c2 == ch and nm2 == nm and lo2 <= lo and hi <= hi2),
+                               if c2 == ch and nm2 == nm and lo2 <= lo and _last(hi) <= _last(hi2)),
                               ("", ""))
-            print(f"  {lo}-{hi}  {nm}" + (f"  [{code}]" if code else "")
+            print(f"  {_said(lo, hi)}  {nm}" + (f"  [{code}]" if code else "")
                   + (f"  page {page}" if page and page != code else ""))
     print(f"\n{len(OFFICIAL)} names, {len(ALIASES)} aliases, "
           f"{len(CODES)} names placed on a code, {len(GAPS)} gaps in a code decided")
