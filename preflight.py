@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.618
+# GRANITE_VERSION: 2026-09-04.619
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -66300,6 +66300,42 @@ def _triage_file_name(CR, NI):
     return "ok", (f"compile_reports.py writes reports/{name.replace(day, '<date>')}, and "
                   f"nightly.py{', TRIAGE.md' if rules else ''} and its own docstring all say so; "
                   "the failure marker agrees")
+
+
+@check("build", "a report on a bill of the current term is pointed at the current term's producers, "
+       "whichever term the day files are of", needs=("compile_reports",))
+def _report_current_term_read(CR):
+    """private/UNATTENDED_AUDIT_2026-10-18.md, section 4.3.2: compile_reports
+    named the current term's years in a literal, {"2025", "2026"}, so from
+    the turn a report on a 2027 bill would have been pointed at the archive's
+    producers in the triage file. current_years() reads the term of the day
+    files on disk (proceedings.session_term), or the term today falls in
+    where there are none. Held on a folder whose Docket.txt names 2027, and
+    one with no day file at all."""
+    import datetime as _dt
+    import proceedings as P
+    here = Path(".").resolve()
+    tmp = Path(tempfile.mkdtemp(prefix="gr-report-term-"))
+    saved = list(CR._CURRENT)
+    try:
+        os.chdir(tmp)
+        (tmp / "Docket.txt").write_text("2027|HB|1|x\n", encoding="utf-8")
+        CR._CURRENT.clear()
+        assert CR.current_years() == {"2027", "2028"}, CR.current_years()
+        cur, old = CR.PRODUCERS["status"]
+        assert CR.producer("bill:2027/HB1", "status") == cur, "a 2027 bill is given the archive's producers"
+        assert CR.producer("bill:2025/HB1", "status") == old, "a 2025 bill is given the current term's"
+        (tmp / "Docket.txt").unlink()
+        CR._CURRENT.clear()
+        want = set(P.term_on(_dt.date.today().isoformat()).split("-"))
+        assert CR.current_years() == want, (CR.current_years(), want)
+    finally:
+        os.chdir(here)
+        CR._CURRENT[:] = saved
+        shutil.rmtree(tmp, ignore_errors=True)
+    assert "CURRENT_YEARS" not in _paths.locate("compile_reports.py").read_text(encoding="utf-8"), \
+        "compile_reports names the current term's years again"
+    return "ok", "the current term's years read from the day files, or from the day where there are none"
 
 
 @check("build", "a report is deleted a week after it arrives, from the database and from reports/, and never before it is landed",

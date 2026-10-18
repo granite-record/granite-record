@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-12.11
+# GRANITE_VERSION: 2026-09-12.12
 """
 What readers reported, compiled for a person and for the session that triages.
 
@@ -116,7 +116,21 @@ OUT = Path("reports")
 LEDGER = OUT / "handled.jsonl"
 DB = {"production": "graniterecord-reports", "preview": "graniterecord-reports-preview"}
 BASE = "https://graniterecord.org"
-CURRENT_YEARS = {"2025", "2026"}
+# THE CURRENT TERM'S YEARS, read rather than written in (18 October 2026):
+# {"2025", "2026"} was a literal, which from the turn would have pointed every
+# report on a 2027 bill at the archive's producers. The term the day files on
+# this disk are of, which is the site's current term, or where none is here
+# the term today falls in. Read once, the first time a report asks.
+_CURRENT = []
+
+
+def current_years():
+    """{"2025", "2026"}: the two years of the site's current term."""
+    if not _CURRENT:
+        import proceedings as P
+        term = P.session_term(".") or P.term_on(dt.date.today().isoformat())
+        _CURRENT.append(set(term.split("-")) if term else set())
+    return _CURRENT[0]
 
 # The same shapes functions/api/report.js accepts. Checked again here: a row
 # that does not have the shape the Function enforces is a sign something other
@@ -709,7 +723,7 @@ def producer(record, field):
         return "build_site_v2.py (member_labels), build_legislator_pages.py"
     if kind == "committee":
         return "build_committees.py"
-    current = ref.split("/")[0] in CURRENT_YEARS
+    current = ref.split("/")[0] in current_years()
     return PRODUCERS[field][0 if current else 1]
 
 
