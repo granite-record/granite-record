@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.64
+# GRANITE_VERSION: 2026-09-08.65
 """
 The civics section: a hub and one page per topic, in order.
 
@@ -418,6 +418,30 @@ def _cacr_table(cacrs, narr, term):
             f"<tbody>{trs}</tbody></table></div>")
 
 
+def sitting_term(idx):
+    """The term still sitting: the newest term the bill index holds, which
+    the bill search opens on -- not site_read.figures_term, the term the
+    Learn pages describe, which is the one before it from the first bill of
+    a new term until most of that term's bills are decided."""
+    return max((r.get("term") for r in idx if SR.TERM_FILE.fullmatch(r.get("term") or "")),
+               default="")
+
+
+def filmed_from(per_term, filmed_term, sitting):
+    """The earliest term from which every later term has nine bills in ten
+    with a filmed hearing, the term still sitting passed over where it does
+    not yet clear the bar; "" where none does. per_term and filmed_term are
+    {term: bills} and {term: bills with a filmed hearing}."""
+    video_from = ""
+    for t in sorted(per_term, reverse=True):
+        if filmed_term.get(t, 0) < 0.9 * per_term[t]:
+            if t == sitting:
+                continue
+            break
+        video_from = t
+    return video_from
+
+
 def record_figures(site, root=Path(".")):
     """Every count the Learn pages state, from what the build has just written.
 
@@ -437,6 +461,18 @@ def record_figures(site, root=Path(".")):
     # decided has no story yet to tell (site_read.figures_term).
     term = SR.figures_term(idx)
     cur = [r for r in idx if r.get("term") == term]
+    # THE TERM STILL SITTING IS THE NEWEST, NOT THE ONE DESCRIBED (18 October
+    # 2026). Since figures_term the term the figures tell is the one before
+    # the newest from the first 2027 bill until most of 2027's are decided,
+    # and two rules below that mean the term still sitting -- the vetoes that
+    # can still be waiting, and the term the filmed-hearing run passes over --
+    # read `term` for it. Rehearsed on preflight's fixture with a few 2027
+    # bills, the second stopped the build: 2027-2028, a term with most of its
+    # hearings still to come, was held to nine bills in ten filmed as a
+    # finished term, and the build exits when no term clears the bar. So
+    # every night from the first 2027 bill to the summer would have built
+    # nothing.
+    still_sitting = sitting_term(idx) or term
     status = Counter(r.get("status") for r in cur)
     kind = Counter(r.get("kind") for r in cur)
     prefix = Counter(re.match(r"[A-Z]*", r.get("id") or "").group(0) for r in cur)
@@ -480,10 +516,11 @@ def record_figures(site, root=Path(".")):
     # ONLY THE CURRENT TERM CAN STILL BE WAITING. A veto from a finished term
     # with no override recorded was tabled or never taken up, and the veto
     # stood: 1992's HB 1407 was laid on the table 254-78 and died there, and
-    # this counted it as "still awaiting its override vote".
-    pending = sum(1 for r in idx if r.get("status") == "Vetoed" and r.get("term") == term)
+    # this counted it as "still awaiting its override vote". The term still
+    # sitting, not the one the figures describe (`still_sitting`, above).
+    pending = sum(1 for r in idx if r.get("status") == "Vetoed" and r.get("term") == still_sitting)
     stood = sum(1 for r in idx if r.get("status") == "Vetoed, override failed"
-                or (r.get("status") == "Vetoed" and r.get("term") != term))
+                or (r.get("status") == "Vetoed" and r.get("term") != still_sitting))
     # Constitutional amendments of the term, read from their statuses -- what
     # each page asserts -- and from the docket's own floor lines for the votes.
     cacrs = [r for r in cur if (r.get("id") or "").startswith("CACR")]
@@ -511,13 +548,7 @@ def record_figures(site, root=Path(".")):
               if r.get("kind") in ("public hearing", "hearing") and r.get("video_id")}
     per_term = Counter(r.get("term") for r in idx if r.get("term"))
     filmed_term = Counter(t for t, _ in filmed)
-    video_from = ""
-    for t in sorted(per_term, reverse=True):
-        if filmed_term[t] < 0.9 * per_term[t]:
-            if t == term:
-                continue
-            break
-        video_from = t
+    video_from = filmed_from(per_term, filmed_term, still_sitting)
     # SILENCE IS NOT SUCCESS. A record of finished terms that names no year
     # has lost its recordings rather than stopped making them, and the pages
     # would quietly drop the year they give; this stops the build instead. A

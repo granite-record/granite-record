@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.620
+# GRANITE_VERSION: 2026-09-04.621
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -23907,6 +23907,58 @@ def _learn_figures_term(SR, build_civics, learn_numbers):
         assert "figures_term(" in src, f"{mod.__name__}.{fn} no longer asks figures_term"
     return "ok", ("a 2027 term of six moving bills leaves the figures on 2025-2026; half "
                   "decided, they move to it")
+
+
+@check("frontend", "the Learn pages tell the term still sitting from the term they describe: a young "
+       "new term is passed over for filmed hearings, and only its vetoes can still be waiting",
+       needs=("site_read", "build_civics", "learn_numbers"))
+def _learn_sitting_term(SR, build_civics, learn_numbers):
+    """Found rehearsing the turn on preflight's fixture (18 October 2026):
+    since figures_term (17 October) build_civics.record_figures' `term` is
+    the term the pages describe, which is 2025-2026 from the first 2027 bill
+    until most of 2027's are decided, and two rules that mean the term still
+    sitting read it. The filmed-hearing run passes over the sitting term while
+    it is under nine bills in ten filmed; reading 2025-2026 for it, it held
+    2027-2028 to the bar as a finished term, found no year, and stopped the
+    build (SystemExit) -- the New term run and every night after it until the
+    summer. And a veto of 2025-2026 with no override recorded would have read
+    as still awaiting its vote after the term had ended.
+
+    Held here on the real shape of the turn -- 2025-2026's 2,193 of 2,243
+    filmed, 2023-2024's 1,961 of 1,996, a 2027-2028 of 400 with 10 filmed:
+    sitting_term is 2027-2028 though figures_term is 2025-2026, filmed_from
+    names 2023-2024, and 2027-2028 filmed past the bar would join the run;
+    and record_figures asks sitting_term and reads it for the run and the
+    vetoes. And learn_numbers' last era of passages runs to the newest term,
+    which it counts, rather than ending its label at the described term's
+    year."""
+    import inspect
+    BC = build_civics
+    idx = ([{"term": "2027-2028", "id": f"HB{i}", "kind": "active"} for i in range(400)]
+           + [{"term": "2025-2026", "id": f"HB{i}", "kind": "done"} for i in range(2243)]
+           + [{"term": "2023-2024", "id": f"HB{i}", "kind": "done"} for i in range(1996)])
+    assert SR.figures_term(idx) == "2025-2026", SR.figures_term(idx)
+    assert BC.sitting_term(idx) == "2027-2028", BC.sitting_term(idx)
+    assert BC.sitting_term([{"term": "2027-requests"}] + idx) == "2027-2028", \
+        "the requests' list is taken for a term"
+    per = {"2027-2028": 400, "2025-2026": 2243, "2023-2024": 1996, "2021-2022": 1753,
+           "2019-2020": 1983}
+    filmed = {"2027-2028": 10, "2025-2026": 2193, "2023-2024": 1961, "2021-2022": 1716,
+              "2019-2020": 34}
+    got = BC.filmed_from(per, filmed, BC.sitting_term(idx))
+    assert got == "2021-2022", f"the run from the sitting 2027-2028 names {got!r}, not 2021-2022"
+    assert BC.filmed_from(per, filmed, "2025-2026") == "", \
+        "filmed_from passes over a term that is not the one sitting"
+    assert BC.filmed_from(per, dict(filmed, **{"2027-2028": 390}), "2027-2028") == "2021-2022"
+    src = inspect.getsource(BC.record_figures)
+    for said in ("still_sitting = sitting_term(idx)", "filmed_from(per_term, filmed_term, still_sitting)",
+                 'r.get("status") == "Vetoed" and r.get("term") == still_sitting',
+                 'r.get("status") == "Vetoed" and r.get("term") != still_sitting'):
+        assert said in src, f"record_figures no longer reads the sitting term: {said!r}"
+    assert '("2007-" + (terms[-1][5:] if terms else "")' in inspect.getsource(learn_numbers.body), \
+        "learn_numbers labels its last era by the described term, not the newest it counts"
+    return "ok", ("2027-2028 sits while 2025-2026 is described; the filmed run passes over it and "
+                  "names 2021-2022; the vetoes waiting are the sitting term's")
 
 
 @check("frontend", "numbers: how each bill ended counts House and Senate bills by their card's word",

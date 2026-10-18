@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-14.19
+# GRANITE_VERSION: 2026-09-14.20
 """
 The record in numbers: a Learn page of statistics computed from the site's own data.
 
@@ -987,8 +987,11 @@ def body(site=Path("site"), root=Path("."), strict=True):
                "corrections after passage are not counted as amendments.</p>"
                + _table(["Term", "Passed both chambers", "Amended", "As introduced",
                          "To a committee of conference"], parows))
+    # The last era runs to the newest term, which it counts, and not to the
+    # term the figures describe, which is the one before it from the first
+    # 2027 bill to the summer (18 October 2026).
     eras = [("1989-1998", lambda t: t < "1999"), ("1999-2006", lambda t: "1999" <= t < "2007"),
-            ("2007-" + (current[5:] if current else ""), lambda t: t >= "2007")]
+            ("2007-" + (terms[-1][5:] if terms else ""), lambda t: t >= "2007")]
     drows = []
     for label_, inside in eras + [("All terms", lambda t: True)] + (
             [(current, lambda t: t == current)] if current else []):
