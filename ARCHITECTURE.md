@@ -240,16 +240,25 @@ when every night waited for approval in `production` and the gate decided
 nothing but its line on the page. `preflight` holds the workflow's setting and
 its environment line together, so going back to `shadow` is both at once.
 
-**What reaches the person.** With no one approving each night, two
-Healthchecks checks are how a problem is heard of, and neither is pinged by a
-dry run. The night's check is pinged at the end of every real night, as
-`/fail` when the night failed -- and also when `nightly.py --close` wrote
-anything to `logs/alert.txt` (`ALERT_FILE`, from `alerts_of()`): a refusal from
-the General Court on file, a hold on the SQL host, or a night that was not
-clean, one sentence each, sent as the ping's body so that Healthchecks puts it
-in its email. Healthchecks writes when a check goes down and again when it
-comes back, not every night between, so a refusal held for three nights is
-one email and its recovery is the sign it was cleared. The second check
+**What reaches the person.** With no one approving each night, Healthchecks
+checks are how a problem is heard of, and none is pinged by a dry run. The
+night's check is pinged at the end of every real night, as `/fail` when the
+night failed -- and also when `nightly.py --close` wrote anything to
+`logs/alert.txt` (`ALERT_FILE`, from `alerts_of()`): a refusal from the General
+Court on file, a hold on the SQL host, a night the gate holds for approval
+(with the gate's reasons, which GitHub otherwise tells only the reviewer), or
+a night that was not clean, one sentence each, sent as the ping's body so that
+Healthchecks puts it in its email. Healthchecks writes when a check goes down
+and again when it comes back, not every night between, so a refusal held for
+three nights is one email and its recovery is the sign it was cleared. That
+is also why a warning that stands is kept off this check (18 October 2026): a
+failed check of the built site against the record, and a reminder that fails
+on a date until a person acts, go to `logs/alert-warn.txt` (`WARN_FILE`, from
+`warns_of()`) and to a check of their own, `HEALTHCHECKS_WARN_URL` -- `/fail`
+with the file as the body while one stands, a plain ping when none does --
+and with no such secret they stay on the run's page and in the verdict.
+Before, a reminder firing on 2 December would have held the night's check
+down, and no failure after it would have sent a new email. The publish check
 (`HEALTHCHECKS_PUBLISH_URL`) is pinged only once production has been
 deployed, so it goes quiet -- and Healthchecks writes -- when the live site
 has stood still longer than its period allows: a held night nobody approved,
@@ -276,8 +285,11 @@ failed check of the site itself is a reason for the gate to wait for
 approval, while a failed check against the official record -- one that reads
 the journals, calendars, dockets or the database dump -- or a date reminder
 is a warning of a kind that never holds, because a slip or a change in the
-record must not stop the site. Either kind is a line in the Healthchecks
-alert. A run that left no list of what it checked holds the night.
+record must not stop the site. Each kind reaches the person on its own
+Healthchecks check: a failed check of the site holds the night, and the held
+night is a line in the night's alert; a failed check against the record is a
+line in the warnings'. A run that left no list of what it checked holds the
+night.
 
 **Which build is live.** After every deploy, preview or production,
 `src/checks/check_live.py --gate` asks the address deployed to for a handful

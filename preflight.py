@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.621
+# GRANITE_VERSION: 2026-09-04.622
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -77523,7 +77523,10 @@ WORKFLOW_DIR = Path(".github/workflows")
 # The secrets the workflows may name, and nothing else: CLOUD_MOVE.md's list.
 WORKFLOW_SECRETS = {"R2_ACCOUNT_ID", "R2_ACCESS_KEY_ID", "R2_SECRET_ACCESS_KEY", "R2_BUCKET",
                     "CLOUDFLARE_API_TOKEN", "CLOUDFLARE_ACCOUNT_ID", "YOUTUBE_API_KEY",
-                    "HEALTHCHECKS_URL", "HEALTHCHECKS_PUBLISH_URL"}
+                    "HEALTHCHECKS_URL", "HEALTHCHECKS_PUBLISH_URL",
+                    # The warnings' own check (18 October 2026, nightly.WARN_FILE):
+                    # optional, and the person's to create.
+                    "HEALTHCHECKS_WARN_URL"}
 
 
 def _workflows():
@@ -93531,7 +93534,8 @@ def _built_checks_night(NI):
     after check_site and before the gate, and reads the file it writes; and
     what a failure does -- on a dry run, not clean; a check of the site
     itself, a reason for the gate to wait; one against the record, a warning
-    of a kind that never holds; either, an alert."""
+    of a kind that never holds; each, an alert on its own check (the night's,
+    and since 18 October 2026 the warnings', _alarm_stays_able_to_ring)."""
     import inspect
     by_fn = {c["fn"].__name__: c for c in CHECKS}
     for name, group in ([(n, "code") for n in BUILT_CODE] + [(n, "data") for n in NOT_ON_THE_NIGHT]
@@ -93572,8 +93576,9 @@ def _built_checks_night(NI):
         and not NI.built_warned(hold) and "held for approval: x" in NI.built_alert(hold)
     w = NI.built_warned(warned_only)
     assert NI.built_problems(warned_only) and not NI.built_review(warned_only) and len(w) == 1 \
-        and w[0][0].startswith(NI.KIND_BUILT_WARN) and "published all the same: y" in \
-        NI.built_alert(warned_only), (w, NI.built_alert(warned_only))
+        and w[0][0].startswith(NI.KIND_BUILT_WARN) and not NI.built_alert(warned_only) \
+        and "published all the same: y" in NI.built_warn_alert(warned_only), (
+            w, NI.built_alert(warned_only), NI.built_warn_alert(warned_only))
     assert not NI.warning_reasons(w, served=[], recent=()), \
         "a failed check against the record holds the night as a new kind of warning"
     assert NI.built_problems(unrun) and NI.built_review(unrun) and NI.built_alert(unrun)
@@ -93581,6 +93586,104 @@ def _built_checks_night(NI):
                   f"{len(data) - len(NOT_ON_THE_NIGHT)} of the data half; {len(NOT_ON_THE_NIGHT)} "
                   f"left to the laptop, each with its reason); {len(warn)} warn, the rest hold; "
                   "nightly.py runs them after check_site and acts on each tier as decided")
+
+
+@check("files", "a standing warning never jams the alarm: a failed night, a refusal or a night held "
+       "for approval reaches the night's check whatever warns, and a warning goes to a check of its own",
+       needs=("nightly",))
+def _alarm_stays_able_to_ring(NI):
+    """private/UNATTENDED_AUDIT_2026-10-18.md, sections 4.3.5 and 4.1.
+    alerts_of() put every failed check of the built site into logs/alert.txt,
+    the warn tier too, and the workflow pings the night's Healthchecks check
+    /fail whenever that file says anything. The three reminders fail on a
+    date until a person acts -- the Register of Probate's from 2 December
+    2026 at the latest -- so from then the night's check would have stayed
+    down, and Healthchecks, which writes on the change, would have sent
+    nothing for a refusal, a failed night or a held one after it. And a night
+    the gate held for approval was told to nobody but GitHub's reviewer.
+
+    Held here, on verdicts made up for it in a folder with no refusal and no
+    hold on file: a clean night whose only failures are against the record
+    gives the night's check nothing and the warnings' check its line; the
+    same with a night not clean, or held, gives the night's check that and
+    still keeps the warning off it; a held night says it waits and why, once
+    even when a failed check of the site is the reason, and only where the
+    gate routes the publish job, the night is fit for production and it is
+    no New term run; --close writes both files; and the workflow's ending
+    step reads ALERT_FILE for the night's check and WARN_FILE for
+    HEALTHCHECKS_WARN_URL's, and pings that one /fail with nothing else."""
+    import inspect
+    here = Path(".").resolve()
+    tmp = Path(tempfile.mkdtemp(prefix="gr-alarm-"))
+    saved = os.environ.get(NI.GATE_ENV)
+    bad = []
+    try:
+        os.chdir(tmp)
+        os.environ[NI.GATE_ENV] = NI.GATE_ON
+        warned = {"ran": True, "hold": [], "warn": ["_probate_after_the_vote"]}
+        both = {"ran": True, "hold": ["_rail"], "warn": ["_probate_after_the_vote"]}
+        clean = {"clean": True, "publishable": True, "review": {"needed": False, "why": []},
+                 "asked": {"new_term": False}, "built_checks": warned}
+        if NI.alerts_of(clean):
+            bad.append(f"a clean night with a reminder alone alerts the night's check: {NI.alerts_of(clean)}")
+        if len(NI.warns_of(clean)) != 1 or "_probate_after_the_vote" not in NI.warns_of(clean)[0]:
+            bad.append(f"the reminder is not the warnings' line: {NI.warns_of(clean)}")
+        dirty = dict(clean, clean=False, not_clean=["the build: failed"])
+        got = NI.alerts_of(dirty)
+        if not any(x.startswith("The night was not clean") for x in got) or \
+                any("_probate_after_the_vote" in x for x in got):
+            bad.append(f"a night not clean, with a reminder standing, alerts as {got}")
+        held = dict(clean, review={"needed": True, "why": ["a new kind of warning: x"]})
+        got = NI.alerts_of(held)
+        if len(got) != 1 or "waits for approval" not in got[0] or "a new kind of warning: x" not in got[0]:
+            bad.append(f"a night the gate holds alerts as {got}")
+        held_check = dict(clean, built_checks=both,
+                          review={"needed": True, "why": NI.built_review(both)})
+        got = NI.alerts_of(held_check)
+        if len(got) != 1 or "_rail" not in got[0] or "_probate_after_the_vote" in got[0]:
+            bad.append(f"a night held for a failed check of the site alerts as {got}")
+        for what, v in (("the New term run", dict(held, asked={"new_term": True})),
+                        ("a night not fit for production", dict(held, publishable=False))):
+            if NI.held_for_approval(v):
+                bad.append(f"{what} is said to wait for approval")
+        os.environ[NI.GATE_ENV] = NI.GATE_SHADOW
+        if NI.held_for_approval(held):
+            bad.append("in shadow, where every night waits, a held night alerts")
+        unrun = dict(clean, built_checks={"ran": False}, review={"needed": True, "why": ["x"]})
+        os.environ[NI.GATE_ENV] = NI.GATE_ON
+        if len(NI.alerts_of(unrun)) != 1:
+            bad.append(f"checks that did not run alert as {NI.alerts_of(unrun)}")
+    finally:
+        os.chdir(here)
+        if saved is None:
+            os.environ.pop(NI.GATE_ENV, None)
+        else:
+            os.environ[NI.GATE_ENV] = saved
+        shutil.rmtree(tmp, ignore_errors=True)
+    src = inspect.getsource(NI.close_verdict)
+    if "(ALERT_FILE, v[\"alerts\"]), (WARN_FILE, v[\"warn_alerts\"])" not in src:
+        bad.append("--close does not write both ALERT_FILE and WARN_FILE")
+    wf = WORKFLOW_DIR / "nightly.yml"
+    if wf.is_file():
+        jobs = _wf_jobs(wf.read_text(encoding="utf-8"))
+        ends = [st for jl in jobs.values() for st in _wf_steps(_wf_code(jl))
+                if any("Tell Healthchecks how the night ended" in ln for ln in st[:1])]
+        body = "\n".join(ends[0]) if len(ends) == 1 else ""
+        alert, warn = f"'{NI.ALERT_FILE.as_posix()}'", f"'{NI.WARN_FILE.as_posix()}'"
+        if not body:
+            bad.append("nightly.yml has no one step telling Healthchecks how the night ended")
+        elif not ("secrets.HEALTHCHECKS_WARN_URL" in body and f"$warn = {warn}" in body
+                  and f"$alert = {alert}" in body and '"$env:HC_WARN_URL/fail"' in body
+                  and '--data-binary "@$warn" "$env:HC_WARN_URL/fail"' in body
+                  and '--data-binary "@$warn" "$env:HC_URL' not in body
+                  and '--data-binary "@$alert" "$env:HC_WARN_URL' not in body):
+            bad.append("the ending step does not send WARN_FILE to HEALTHCHECKS_WARN_URL alone and "
+                       "ALERT_FILE to the night's check alone")
+    assert not bad, "; ".join(bad)
+    return "ok", ("a reminder alone leaves the night's check up and goes to the warnings' check; a "
+                  "night not clean or held alerts the night's check beside it, once, with its "
+                  "reasons; shadow, a New term run and a night not for production say no hold; "
+                  "the workflow sends each file to its own check")
 
 
 @check("files", "the turn's rehearsal runs the checks of the built site on its 2027-2028 builds, "

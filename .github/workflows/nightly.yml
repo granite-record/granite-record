@@ -500,6 +500,7 @@ jobs:
         if: always() && env.DRY_RUN == 'false'
         env:
           HC_URL: ${{ secrets.HEALTHCHECKS_URL }}
+          HC_WARN_URL: ${{ secrets.HEALTHCHECKS_WARN_URL }}
           ENDED: ${{ job.status }}
         run: |
           # Main is refs/heads/main exactly (nightly.MAIN_REF): GitHub's if
@@ -513,8 +514,9 @@ jobs:
             exit 0
           }
           # An alert (nightly.py's ALERT_FILE: a refusal on file, a hold on
-          # the database, a night not clean) is a /fail whatever the job did,
-          # with the alert as the ping's body, which Healthchecks emails.
+          # the database, a night held for approval, a night not clean) is a
+          # /fail whatever the job did, with the alert as the ping's body,
+          # which Healthchecks emails.
           $alert = 'logs/alert.txt'
           $said = (Test-Path $alert) -and ((Get-Item $alert).Length -gt 0)
           $end = if ($env:ENDED -eq 'success' -and -not $said) { '' } else { '/fail' }
@@ -522,6 +524,24 @@ jobs:
             curl.exe -fsS -m 15 --retry 3 -o NUL --data-binary "@$alert" "$env:HC_URL$end"
           } else {
             curl.exe -fsS -m 15 --retry 3 -o NUL "$env:HC_URL$end"
+          }
+          # THE WARNINGS' OWN CHECK (18 October 2026; nightly.py, A STANDING
+          # WARNING NEVER JAMS THE ALARM). A failed check of the built site
+          # against the record, and a reminder that fails on a date until a
+          # person acts, are WARN_FILE's, not the night's: /fail with the
+          # file as the body while any stands, a plain ping when none does,
+          # and nothing where --close wrote no file. With no
+          # HEALTHCHECKS_WARN_URL they stay on the run's page and in the
+          # verdict, and the night's check is not told of them either.
+          $warn = 'logs/alert-warn.txt'
+          if (-not $env:HC_WARN_URL) {
+            Write-Output "No HEALTHCHECKS_WARN_URL secret: the warnings stay on the run's page and in the verdict."
+          } elseif (Test-Path $warn) {
+            if ((Get-Item $warn).Length -gt 0) {
+              curl.exe -fsS -m 15 --retry 3 -o NUL --data-binary "@$warn" "$env:HC_WARN_URL/fail"
+            } else {
+              curl.exe -fsS -m 15 --retry 3 -o NUL "$env:HC_WARN_URL"
+            }
           }
           exit 0
 

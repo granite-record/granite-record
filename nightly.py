@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.73
+# GRANITE_VERSION: 2026-09-04.74
 """
 The nightly run. Fetch the day's bulk files, rebuild, check, compile what
 readers reported and what changed -- and publish only if told to.
@@ -938,7 +938,8 @@ KINDS_FALLBACK = (KIND_FROM_DB, KIND_DB_FILES, KIND_DB_NOTHING, KIND_STUDY_NOT_A
 # so a release that breaks one is never proven; on a real night a failed
 # "hold" check is a reason for the gate to wait for a person, and a failed
 # "warn" check a warning of a kind that never holds -- a slip or a change in
-# the record never stops the site -- and both reach the person as an alert.
+# the record never stops the site. Both reach the person, each on its own
+# Healthchecks check (ALERTS THAT REACH THE PERSON, below).
 BUILT_CHECKS = Path("logs/built-checks.json")
 KIND_BUILT_WARN = "a check of the built site against the record: "
 #
@@ -4235,18 +4236,26 @@ def built_warned(b):
 
 
 def built_alert(b):
-    """The alert's sentence for the checks of tonight's build; "" for none."""
-    failed = built_failed(b)
-    if not failed:
+    """The night's alert for the checks of tonight's build: the failed checks
+    of the site itself, which hold the night, or checks that did not run; ""
+    for none. A failed check against the record is built_warn_alert's."""
+    if not isinstance(b, dict) or not built_failed(b):
         return ""
     if not b.get("ran"):
         return "The checks of tonight's build did not run, so the night waits for approval."
-    bits = []
     if b.get("hold"):
-        bits.append("held for approval: " + _names_said(b["hold"]))
-    if b.get("warn"):
-        bits.append("against the record, published all the same: " + _names_said(b["warn"]))
-    return "Checks of tonight's built site failed -- " + "; ".join(bits) + "."
+        return "Checks of tonight's built site failed -- held for approval: " + _names_said(b["hold"]) + "."
+    return ""
+
+
+def built_warn_alert(b):
+    """The warnings' alert for the checks of tonight's build against the
+    record, the reminders among them, which warn and never hold; "" for
+    none."""
+    if not isinstance(b, dict) or not b.get("ran") or not b.get("warn"):
+        return ""
+    return ("Checks of tonight's built site against the record failed -- published all the same: "
+            + _names_said(b["warn"]) + ".")
 
 
 def warning_reasons(warned, served, recent=()):
@@ -5102,14 +5111,55 @@ def upload_and_check(a, site, target, base):
 # none of a server's words. The captions backlog is not among them yet: it
 # stands every night while YouTube refuses GitHub's machines, and an alert
 # that never clears hides every other (Batch C item 4 adds it with the runner).
+#
+# A STANDING WARNING NEVER JAMS THE ALARM (18 October 2026,
+# private/UNATTENDED_AUDIT_2026-10-18.md, sections 4.3.5 and 4.1). A failed
+# check of the built site against the record, and the three reminders that
+# fail on a date until a person acts (preflight.REMINDERS), were lines here,
+# so from the day one fired -- the Register of Probate's on 2 December 2026 at
+# the latest -- the night's check would have stayed down every night, and a
+# refusal, a failed night or a held one after it would have sent no new
+# email: Healthchecks writes on the change. They are WARN_FILE's now
+# (warns_of), which the workflow sends to a check of their own,
+# HEALTHCHECKS_WARN_URL, and nowhere at all where that secret is not set:
+# they stay on the run's page and in the verdict, for the morning triage. So
+# the night's check goes down only for what stops or holds the site. And a
+# night the gate holds for approval, which only GitHub told, and only the
+# reviewer, is a line here too (held_for_approval).
 ALERT_FILE = Path("logs/alert.txt")
+WARN_FILE = Path("logs/alert-warn.txt")
+
+
+def held_for_approval(v):
+    """The alert's sentence for a night the gate holds: one fit for
+    production, on a workflow that routes by the gate (gate_on), whose
+    verdict says it waits for a person, and that is not a New term run, which
+    waits by design for the person who started it; "" otherwise."""
+    r = v.get("review") if isinstance(v.get("review"), dict) else None
+    asked = v.get("asked") if isinstance(v.get("asked"), dict) else {}
+    if not (v.get("publishable") and gate_on() and r and r.get("needed")) or asked.get("new_term"):
+        return ""
+    why = "; ".join(str(x) for x in r.get("why") or []) or "the gate gave no reason"
+    return (f"The night waits for approval, so the live site is not updated until a person "
+            f"approves it: {why}. Approve the newest night waiting in production-review; an "
+            "older one's site is kept only three days.")
+
+
+def warns_of(v):
+    """What warns and stands until a person acts, for the warnings' own check
+    (WARN_FILE): the checks of tonight's build against the record that
+    failed, the reminders among them. [] for none."""
+    said = built_warn_alert(v.get("built_checks"))
+    return [said] if said else []
 
 
 def alerts_of(v):
-    """What a person has to act on after tonight, whether or not the night
-    was clean: a refusal from the General Court on file, a hold on the SQL
-    host, a check of tonight's build that failed (BUILT_CHECKS), and a night
-    that was not clean, in that order. [] for none."""
+    """What stops or holds the site after tonight, for the night's own
+    check (ALERT_FILE), whether or not the night was clean: a refusal from
+    the General Court on file, a hold on the SQL host, a night the gate holds
+    for approval -- or, where the gate holds none, a check of tonight's build
+    that would (BUILT_CHECKS) -- and a night that was not clean, in that
+    order. [] for none. A failed check against the record is warns_of's."""
     out = []
     if refusal.MARK.exists():
         d = load_json(refusal.MARK)
@@ -5124,7 +5174,9 @@ def alerts_of(v):
         held = None
     if held:
         out.append("The General Court's database is on hold: " + probe_db.hold_sentence(held) + ".")
-    said = built_alert(v.get("built_checks"))
+    # The gate's line names a failed check of the site among its reasons, so
+    # the check's own line is said only where the gate holds nothing.
+    said = held_for_approval(v) or built_alert(v.get("built_checks"))
     if said:
         out.append(said)
     if not v.get("clean"):
@@ -5209,9 +5261,10 @@ def close_verdict(a):
             v[NEWEST_FIT] = carried if isinstance(carried, dict) else None
     v["closed"] = datetime.now().isoformat(timespec="seconds")
     if not a.weekly and not a.dry_run:
-        v["alerts"] = alerts_of(v)
-        ALERT_FILE.parent.mkdir(parents=True, exist_ok=True)
-        ALERT_FILE.write_text("".join(x + "\n" for x in v["alerts"]), encoding="utf-8")
+        v["alerts"], v["warn_alerts"] = alerts_of(v), warns_of(v)
+        for path, said in ((ALERT_FILE, v["alerts"]), (WARN_FILE, v["warn_alerts"])):
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text("".join(x + "\n" for x in said), encoding="utf-8")
     write_json(path, v)
     print(f"{path}: {'CLEAN' if v.get('clean') else 'NOT CLEAN'}"
           + ("" if v.get("clean") else " -- " + "; ".join(v.get("not_clean", [])[:4])))
