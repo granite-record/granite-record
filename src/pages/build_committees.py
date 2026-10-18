@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-07.65
+# GRANITE_VERSION: 2026-09-07.66
 """
 A page's worth of data for every committee.
 
@@ -552,8 +552,10 @@ def bills_in_order(by_term):
 UNMATCHED_CEILING = 150
 
 # The statutory and study committees' pages, build_study_committees.py's, in
-# the sitemap form shell.sitemap_merge reads (18 October 2026).
+# the sitemap form shell.sitemap_merge reads (18 October 2026); and the slot
+# on /committees that step fills with their folded section.
 STUDY_PAGES = ("/committee/ss*",)
+STUDY_SLOT = "<!-- statstud --><!-- /statstud -->"
 
 
 def unmatched_guard(unmatched, ceiling=UNMATCHED_CEILING):
@@ -1331,6 +1333,10 @@ def main():
                     + "</div></section>")
     if cols:
         body.append('<div class="ctwo">' + "".join(cols) + "</div>")
+    # THE STATUTORY AND STUDY COMMITTEES (18 October 2026), folded under the
+    # chambers' own: build_study_committees.py, a later step, fills this slot
+    # between its two marks, as build_full_sessions fills the chambers' cards.
+    body.append(STUDY_SLOT)
     if past:
         # NOT "no longer meeting". House Rules is here with the Speaker as
         # its chair and nine members; so is a special committee with a chair

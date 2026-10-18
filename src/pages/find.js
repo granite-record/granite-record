@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-16.32
+// GRANITE_VERSION: 2026-09-16.33
 /* FIND ANYTHING, FROM THE HEADER (16 September, asked for in these words:
    "a search icon in the header that lets you search for anything including
    legislators, committees, towns, and bills ... searching Litchfield would
@@ -79,10 +79,21 @@ function findName(r){
    what its own page says -- not on the General Court's list today, and when
    it sat -- and it falls in behind the committees that sit, as a member who
    has left falls in behind those who have not, and never above the bills. */
-const _fgone=r=>!!r&&(r[0]==="former"||(r[0]==="committee"&&!!r[5]));
+const _fgone=r=>!!r&&(r[0]==="former"||_fstudy(r)||(r[0]==="committee"&&!!r[5]));
 function findKind(r){
   return r&&r[0]==="committee"&&r[5]?"Former Committee":(FKIND[r&&r[0]]||(r&&r[0])||"");
 }
+/* STATUTORY AND STUDY COMMITTEES (18 October 2026: the person, 17 October,
+   "they should be included on the committee page and in search results, but
+   not as prominently as standing committees and other results"). find.json
+   gives each its own kind, the General Court's class -- "statutory" or
+   "study" -- and its line says what it is ("Commission, set up in 2019").
+   They wait their turn as a former committee does (_fgone): never above the
+   bills, and after the standing committees where the match is as good,
+   though before the members and committees that have gone (findMatch). */
+FKIND.statutory="Statutory Committee";
+FKIND.study="Study Committee";
+const _fstudy=r=>!!r&&(r[0]==="statutory"||r[0]==="study");
 /* FORMERLY, WHEN AN OLD NAME IS WHAT MATCHED (the person, 16 October 2026: "A
    committee should say formerly if it's an old name"). A committee's earlier
    names are search words, so "housing" finds Criminal Justice and Public
@@ -300,8 +311,9 @@ function findMatch(q,limit){
     // ones" means with a list this long. A former member whose name begins
     // with the query still outranks a town that merely mentions it, which is
     // the answer a reader wants.
-    // And a committee that no longer sits falls in behind those that do.
-    const gone=_fgone(r)?1:0;
+    // And a committee that no longer sits falls in behind those that do; a
+    // statutory or study committee falls in between (_fstudy).
+    const gone=_fgone(r)?(_fstudy(r)?1:2):0;
     // Among former members, the most recent first. r[5] is the year they last
     // sat; negated so one sort direction serves both this and name length.
     hit.push([_fpart(r,s),rank,gone,gone?-(r[5]||0):0,name.length,r]);

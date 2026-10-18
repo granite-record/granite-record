@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-09.2
+# GRANITE_VERSION: 2026-10-09.3
 """
 What the browser draws on a built site's pages, written down, so that two
 builds can be compared by what a reader is shown and not only by the HTML.
@@ -229,6 +229,11 @@ def jobs_for(site, today):
     for kind, pattern in (("bill", "bill/*/*.html"), ("legislator", "legislator/*.html"),
                           ("committee", "committee/*.html")):
         for f in sorted(site.glob(pattern)):
+            # A STATUTORY OR STUDY COMMITTEE'S PAGE IS WRITTEN WHOLE (18
+            # October 2026, build_study_committees.py): app.js draws no record
+            # on it and it has no tabs, as a session day's page has none.
+            if kind == "committee" and f.stem.startswith("ss"):
+                continue
             page = f.relative_to(site).as_posix()
             own = "/" + page[:-len(".html")]
             out.append({"key": page, "page": page, "path": own})

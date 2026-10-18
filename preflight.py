@@ -17891,8 +17891,11 @@ def _class_collisions():
         # A COMMITTEE'S MEETING, as a fold: app.js's meetingHtml for a
         # committee's Meetings tab, and build_full_sessions' day_section for
         # each day a chamber sat, drawn as a committee's meeting is (the
-        # person, 10 October 2026)
+        # person, 10 October 2026); and a statutory or study committee's
+        # meeting, with its time and its marks (build_study_committees, 18
+        # October 2026)
         "cmeets", "cmeet", "cmwhen", "cmcount", "cmcaret", "cmbody", "cmsaid", "cmplay",
+        "cmtime", "cmkinds",
         # a page heading block, and the bill-number/title pair
         "phead", "pmeta", "cbn", "cbt",
         # the feedback box
@@ -17921,8 +17924,9 @@ def _class_collisions():
         "psent",
         # the record head (record_head) and its note
         "rtrail", "rtop", "rh1", "ryear", "ry", "rline", "rfacts", "rrail", "racts", "rnote",
-        # the W4 sections (section) and the run of them
-        "w4", "w4h", "w4b", "w4s",
+        # the W4 sections (section) and the run of them; w4n, a count beside a
+        # heading, on a study committee's page as on a record's (18 October 2026)
+        "w4", "w4h", "w4b", "w4s", "w4n",
         # a document's row (doc_row)
         "docof",
         # a vote in the approved words: its amendment's number and the
@@ -20639,6 +20643,90 @@ def _find_committee_names(BP):
     return "ok", ("House Housing Committee, House Special Committee on Housing, Senate Judiciary "
                   "Committee, the Senate's own name kept; no repeated line; matched as before; a "
                   "committee that no longer sits called a Former Committee and found after")
+
+
+# The header's box over tests/search_cases.json's finder rows: each case's
+# panel as drawn, as the addresses in it in order.
+_FIND_STUDY_JS = r"""
+require("./stub.js");
+const fs = require("fs"), vm = require("vm");
+globalThis.fetch = async () => ({ ok: false, status: 404, json: async () => { throw new Error("404"); } });
+globalThis.chip = (t, cls) => `<span class="${cls}">${t}</span>`;
+vm.runInThisContext(fs.readFileSync("./find.js", "utf8"), { filename: "find.js" });
+const F = vm.runInThisContext("({FIND, findDraw, findKind})");
+const fx = JSON.parse(fs.readFileSync("./finder.json", "utf8"));
+F.FIND.rows = fx.rows;
+const panel = document.getElementById("findout");
+const out = {kinds: fx.rows.map(r => F.findKind(r)), cases: {}};
+for (const c of fx.cases) {
+  F.findDraw(c.q);
+  const html = panel.innerHTML;
+  out.cases[c.q] = (html.match(/<a class="fbills"|<a href="[^"]*"/g) || []).map(a =>
+    a.startsWith('<a class="fbills"') ? "BILLS" : a.slice(9, -1));
+}
+console.log(JSON.stringify(out));
+"""
+
+
+@check("frontend", "the search ranks a statutory or study committee after the standing committees and "
+       "below the bills, in its own group on /search, as tests/search_cases.json's finder cases say",
+       needs=("build_pages",))
+def _find_study_committees_rank(BP):
+    """The person, 17 October 2026: statutory and study committees "should be
+    included on the committee page and in search results, but not as
+    prominently as standing committees and other results". find.json gives
+    each its class as its kind (build_indexes); find.js waits them as it does
+    a former committee, below the bills and after a standing committee found
+    as well, though before a committee that no longer sits; /search lists
+    them in a group of their own after the bills. The cases are real names
+    (tests/search_cases.json, "finder"); "veterans" put the statutory State
+    Veterans Advisory Committee first while name length decided it."""
+    if shutil.which("node") is None:
+        return "skip", "node is not installed"
+    fx = json.loads(Path("tests/search_cases.json").read_text(encoding="utf-8"))["finder"]
+    root = Path(tempfile.mkdtemp(prefix="gr-findstudy-"))
+    try:
+        (root / "stub.js").write_text(Path("tests/dom_stub.js").read_text(encoding="utf-8"),
+                                      encoding="utf-8")
+        (root / "find.js").write_text(Path("src/pages/find.js").read_text(encoding="utf-8"),
+                                      encoding="utf-8")
+        (root / "finder.json").write_text(json.dumps(fx), encoding="utf-8")
+        (root / "go.js").write_text(_FIND_STUDY_JS, encoding="utf-8")
+        r = _run(["node", "go.js"], cwd=root, capture_output=True, text=True, timeout=60)
+        said = (r.stdout + r.stderr).strip()
+        last = (said.splitlines() or ["no output"])[-1]
+        assert r.returncode == 0 and last.startswith("{"), "node go.js: " + said[-300:]
+        got = json.loads(last)
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    href = {row[1]: "/" + row[3] for row in fx["rows"]}
+    kinds = dict(zip((row[1] for row in fx["rows"]), got["kinds"]))
+    assert kinds["State Veterans Advisory Committee"] == "Statutory Committee", kinds
+    for c in fx["cases"]:
+        order = got["cases"][c["q"]]
+        a, b = href[c["above"]], href[c["below"]]
+        assert a in order and b in order and order.index(a) < order.index(b), (
+            f"{c['q']!r}: {c['above']} does not come before {c['below']} in the panel: {order}")
+        study = [i for i, h in enumerate(order) if "/committee/ss" in h]
+        if "BILLS" in order:
+            assert all(i > order.index("BILLS") for i in study), (
+                f"{c['q']!r}: a statutory or study committee is drawn above the bills: {order}")
+    js = BP.SEARCH_JS
+    g = js.index('{t:"Statutory and study committees",k:r=>r[0]==="statutory"||r[0]==="study"}')
+    assert js.index('{t:"Subjects"') < g < js.index('{t:"Former senators"') and re.search(
+        r'const AFTER=new Set\(\["Statutory and study committees",', js), (
+        "/search does not list the statutory and study committees as their own group after the bills")
+    # And the built find.json carries the fixture's, each its class.
+    absent = [x for x in CHAIN_NEEDS if not _paths.locate(x).exists()]
+    if not absent:
+        shared, _base, _ran, _days = _fixture_site_shared()
+        rows = json.loads((shared / "site" / "find.json").read_text(encoding="utf-8"))
+        mine = sorted((r[0], r[3]) for r in rows if r[0] in ("statutory", "study"))
+        assert mine == [("statutory", "committee/ss1451"), ("statutory", "committee/ss69"),
+                        ("study", "committee/ss1740")], (
+            f"find.json's statutory and study committees are {mine}")
+    return "ok", (f"{len(fx['cases'])} cases: each standing committee before the statutory one, "
+                  "the statutory before the former, none above the bills; their own group on /search")
 
 
 _FIND_DETAILS_JS = r"""
@@ -55115,6 +55203,44 @@ def _study_committee_pages(SC, S):
     return "ok", (f"{len(STUDY_ACTIVE)} active committees, {len(STUDY_ACTIVE)} pages, listed and in the "
                   "sitemap; the archived one has none; build_committees spares them; no copy, or no "
                   "active committee, fails the run")
+
+
+@check("build", "/committees folds the statutory and study committees under the chambers' own, shut, "
+       "grouped by the General Court's two classes, each card its kind's chip, with a find box the "
+       "script shows", needs=("build_study_committees",))
+def _study_committees_listed(SC):
+    """The person, 17 October 2026: on the committee page "not as prominently
+    as standing committees ... Maybe ... under a drop-down menu of some
+    kind". So one fold, shut, after the House and Senate columns and before
+    the committees with no record and the former ones; statutory then
+    study; a card each, linking its page; and the find box hidden until its
+    script shows it, so a reader without script meets no box that does
+    nothing."""
+    absent = [x for x in CHAIN_NEEDS if not _paths.locate(x).exists()]
+    if absent:
+        return "skip", "not here: " + ", ".join(absent)
+    import components as C
+    shared, _base, _ran, _days = _fixture_site_shared()
+    t = (shared / "site" / "committees.html").read_text(encoding="utf-8")
+    assert t.count("<!-- statstud -->") == 1 and t.count("<!-- /statstud -->") == 1, (
+        "the statutory and study committees' slot is missing or doubled")
+    sec = t[t.index("<!-- statstud -->"):t.index("<!-- /statstud -->")]
+    assert sec.startswith('<!-- statstud --><details class="sfold ssfold" id="statstud"><summary>') \
+        and "<span class=\"sflab\">Statutory and study committees</span> <span class=\"w4n\">3</span>" in sec, (
+        "the section is not one shut fold that says how many: " + sec[:200])
+    assert t.index('<div class="ctwo">') < t.index("<!-- statstud -->") and (
+        "Former committees" not in t or t.index("<!-- statstud -->") < t.index("Former committees")), (
+        "the fold is not under the chambers' columns, above the former committees")
+    groups = re.findall(r'<section class="ssgrp" data-class="(\w+)">', sec)
+    assert groups == ["statutory", "study"], f"the classes are {groups}, not statutory then study"
+    cards = re.findall(r'<a class="ccard sscard" href="([^"]+)"', sec)
+    assert cards == ["committee/ss69", "committee/ss1451", "committee/ss1740"], (
+        f"the cards, by class and then name, lead to {cards}")
+    assert _clean_links(C.chip("Commission", "k-study")) in sec and C.chip("Board", "k-study") in sec, (
+        "a card does not carry its kind, from its name, as the chip")
+    assert '<div class="ssfind" hidden>' in sec and 'id="ssq"' in sec and "wrap.hidden=false" in sec, (
+        "the find box is not hidden until its script shows it")
+    return "ok", "one shut fold after the chambers, statutory then study, a card each with its kind; a find box the script shows"
 
 
 @check("build", "a statutory or study committee's page: every sitting legislator's seat is the site's "

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.212
+# GRANITE_VERSION: 2026-09-04.213
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -2217,6 +2217,8 @@ const GROUPS=[
   {t:"Committees",          k:r=>r[0]==="committee"&&!r[5]},
   {t:"Towns and wards",     k:r=>r[0]==="town"},
   {t:"Subjects",            k:r=>r[0]==="topic"},
+  // Their own group, after the bills (AFTER): find.js, _fstudy (18 October 2026).
+  {t:"Statutory and study committees",k:r=>r[0]==="statutory"||r[0]==="study"},
   {t:"Former senators",     k:r=>r[0]==="former"&&/^Senate/.test(r[2])},
   {t:"Former representatives",k:r=>r[0]==="former"&&/^House/.test(r[2])},
   {t:"Former members",      k:r=>r[0]==="former"},
@@ -2282,7 +2284,7 @@ const bills=(q,B,C,counting)=>{
 };
 // Groups a reader reaches for after the bills: members who have left, and
 // this site's own pages.
-const AFTER=new Set(["Former senators","Former representatives",
+const AFTER=new Set(["Statutory and study committees","Former senators","Former representatives",
   "Former members","Pages on this site"]);
 let waiting=false,waitingAll=false,waitingWords=false;
 

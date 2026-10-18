@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-18.1
+# GRANITE_VERSION: 2026-10-18.2
 """
 A page for every statutory and study committee the General Court lists as
 active, at /committee/ss<CommitteeID>.
@@ -784,6 +784,116 @@ def write_page(c, ctx, today):
     return ctx["base"] + S.canon(path)
 
 
+# ---- the Committees page's section ---------------------------------------------
+#
+# FOLDED, UNDER THE CHAMBERS' OWN (the person, 17 October 2026: "they should
+# be included on the committee page ... but not as prominently as standing
+# committees ... Maybe on the committee page they're under a drop-down menu
+# of some kind"). One fold, "Statutory and study committees" with how many,
+# that opens on the General Court's two classes, each committee a card as a
+# standing one is, its kind from its name the card's chip; and a box that
+# finds one by name, which the script shows -- without it the fold still
+# opens on every card. build_committees writes the slot (STUDY_SLOT) and this
+# fills it between its marks, so a second run redraws rather than doubles it.
+SLOT = re.compile(r"<!-- statstud -->.*?<!-- /statstud -->", re.S)
+GROUP_WORD = {"statutory": "Statutory Committees", "study": "Study Committees"}
+
+
+def card(r):
+    """One committee on /committees, as build_committees.committee_card draws
+    a standing one: its name, then its kind and what the record holds."""
+    bits = []
+    if r["legislators"]:
+        bits.append(plural(r["legislators"], "legislator"))
+    elif r["seats"]:
+        bits.append(plural(r["seats"], "member"))
+    if r["year"]:
+        bits.append(f"set up in {E(r['year'])}")
+    if r["last"]:
+        bits.append(f"last met {E(C.date_words(r['last']))}")
+    said = " &middot; ".join(bits)
+    find = " ".join([r["name"], r["kind"], CLASS_WORD[r["class"]]]).lower()
+    return (f'<a class="ccard sscard" href="{E(BC.study_page(r["cid"]))}" '
+            f'data-find="{E(re.sub(r"[^a-z0-9 ]+", " ", find))}">'
+            f'<span class="cc-n">{E(r["name"])}</span>'
+            f'<span class="cc-m">{C.chip(r["kind"], "k-study")} {said[:1].upper()}{said[1:]}'
+            "</span></a>")
+
+
+def section_html(rows):
+    """The folded section of /committees, its two classes in that order."""
+    groups = []
+    for cls in ("statutory", "study"):
+        mine = sorted((r for r in rows if r["class"] == cls), key=lambda r: r["name"].lower())
+        if mine:
+            groups.append(f'<section class="ssgrp" data-class="{cls}"><h3 class="ssgh">'
+                          f'{GROUP_WORD[cls]} <span class="w4n">{len(mine)}</span></h3>'
+                          '<div class="ccards sscards">' + "".join(card(r) for r in mine)
+                          + "</div></section>")
+    return ('<details class="sfold ssfold" id="statstud"><summary><h2 class="ssfh">'
+            '<span class="sflab">Statutory and study committees</span> '
+            f'<span class="w4n">{len(rows)}</span></h2>'
+            '<span class="cmcaret" aria-hidden="true"></span></summary>'
+            '<p class="src fill">Commissions, councils, boards and committees the law sets up, '
+            "many with legislators and members of the public on them. The General Court lists "
+            "each as statutory, set up in the statutes, or as a study committee, set up for a "
+            "time by a session law.</p>"
+            '<div class="ssfind" hidden><label for="ssq">Find one by name</label>'
+            '<input type="search" id="ssq" autocomplete="off" placeholder="Aging, or Fiscal">'
+            '<p class="ssfn" id="ssfn" role="status" aria-live="polite"></p></div>'
+            + "".join(groups)
+            + '<p class="note ssnone" id="ssnone" hidden>None of them has that in its name.</p>'
+            "</details>" + FIND_JS)
+
+
+# The find box: every card whose name, kind or class holds each word typed,
+# and a class with none of them out of the way. No page without it hides a
+# card, and the box is hidden until this shows it.
+FIND_JS = """<script>
+(function(){
+  var box=document.getElementById("statstud");
+  if(!box)return;
+  var wrap=box.querySelector(".ssfind"),q=document.getElementById("ssq"),
+      said=document.getElementById("ssfn"),none=document.getElementById("ssnone"),
+      cards=[].slice.call(box.querySelectorAll(".sscard")),
+      groups=[].slice.call(box.querySelectorAll(".ssgrp"));
+  wrap.hidden=false;
+  function words(s){return String(s||"").toLowerCase().replace(/[^a-z0-9 ]+/g," ").split(" ").filter(Boolean);}
+  function run(){
+    var w=words(q.value),n=0;
+    cards.forEach(function(c){
+      var hay=" "+c.getAttribute("data-find")+" ";
+      var ok=w.every(function(x){return hay.indexOf(" "+x)>=0;});
+      c.hidden=!ok;n+=ok?1:0;
+    });
+    groups.forEach(function(g){g.hidden=!g.querySelector(".sscard:not([hidden])");});
+    none.hidden=!!n;
+    said.textContent=w.length?(n===1?"1 committee matches.":n+" committees match."):"";
+  }
+  q.addEventListener("input",run);
+  // Opened by an address that names it, as a committee's page leads here.
+  function opened(){if(location.hash==="#statstud")box.open=true;}
+  opened();
+  window.addEventListener("hashchange",opened);
+})();
+</script>"""
+
+
+def fill_section(site, rows):
+    """Put the section in /committees' slot; False where the page or the slot
+    is not there, which the run says."""
+    page = Path(site) / "committees.html"
+    if not page.exists():
+        return False
+    text = page.read_text(encoding="utf-8")
+    if not SLOT.search(text):
+        return False
+    html = SLOT.sub(lambda _m: "<!-- statstud -->" + section_html(rows) + "<!-- /statstud -->",
+                    text, count=1)
+    page.write_text(S.clean_links(html), encoding="utf-8")
+    return True
+
+
 def load_json(p, default):
     try:
         return json.loads(Path(p).read_text(encoding="utf-8"))
@@ -848,6 +958,12 @@ def main():
     # Committees page's section and the search (build_indexes.find_index).
     (site / INDEX).write_text(json.dumps([c["row"] for c in comms], ensure_ascii=False,
                                          separators=(",", ":")), encoding="utf-8")
+    # SILENCE IS NOT SUCCESS: pages that nothing on /committees leads to are
+    # the "built, sitemapped and unreachable" build_committees once was.
+    if not fill_section(site, [c["row"] for c in comms]):
+        print(f"  FAILED: {site}/committees.html has no statutory and study committees slot "
+              "(build_committees writes it): their pages would be reachable from no list")
+        return 1
     # Writers merge: /committee/ss* is this step's, every other /committee
     # address build_committees'.
     added, dropped = S.sitemap_merge(site, base, urls, "/committee/ss*")

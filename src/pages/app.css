@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.282 */
+/* GRANITE_VERSION: 2026-09-07.283 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -6307,6 +6307,24 @@ padding:var(--sp-3) 0;border-top:1px solid var(--rule)}
 .ssseats > li:first-child{border-top:0}
 .ssdesc{display:block;color:var(--ink)}
 .ssmeta{display:inline-block;margin:var(--sp-1) var(--sp-3) 0 0;font-size:var(--t-sm);color:var(--ink-2)}
+/* /committees' fold of them, under the chambers' own columns: shut until a
+   reader opens it, the find box the script shows, the two classes each a
+   grid of the standing committees' cards. */
+.clist .ssfold{margin:var(--sp-8) 0 0}
+.clist .ssfold > summary .ssfh{margin:0;padding:0;border:0;font:600 var(--t-ui)/1.3 var(--sans);
+letter-spacing:0;text-transform:none;color:var(--ink)}
+.ssfold > summary .w4n{font-weight:400;color:var(--ink-2);margin-left:var(--sp-2)}
+.ssfind{margin:var(--sp-4) 0 0}
+.ssfind label{display:block;font-size:var(--t-sm);font-weight:600;color:var(--ink-2);margin:0 0 var(--sp-2)}
+.ssfind input{width:100%;max-width:28rem;min-height:44px;padding:var(--sp-3) var(--sp-4);font-size:var(--t-ui);
+color:var(--ink);background:var(--surface);border:1px solid var(--edge);border-radius:var(--r-in)}
+.ssfind input:focus-visible{outline:2px solid var(--pine);outline-offset:2px}
+.ssfn{margin:var(--sp-2) 0 0;font-size:var(--t-sm);color:var(--ink-2)}
+.ssfn:empty{display:none}
+.clist .ssgh{font:600 var(--t-part)/1.3 var(--serif);letter-spacing:.05em;text-transform:uppercase;
+color:var(--ink-2);margin:var(--sp-6) 0 var(--sp-3)}
+.sscards{grid-template-columns:repeat(auto-fill,minmax(min(100%,22rem),1fr))}
+.ssfind[hidden],.ssgrp[hidden],a.sscard[hidden],.ssnone[hidden]{display:none}
 .ssold{margin-top:var(--sp-5)}
 .ssold > .cmeets{margin:var(--sp-4) var(--sp-6) var(--sp-6)}
 @media (max-width:40em){.ssold > .cmeets{margin:var(--sp-4) var(--sp-3) var(--sp-4)}}
