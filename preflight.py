@@ -30281,7 +30281,7 @@ def _fixture_site_whole(root):
     return base, ran
 
 
-@check("frontend", "every published guide is on the home page, in the site search and in the sitemap by the day it was checked, with HowTo data and the state in its title")
+@check("frontend", "every published guide is reached from the home page, in the site search and in the sitemap by the day it was checked, with HowTo data and the state in its title")
 def _guides_reach():
     """The person, 12 October 2026: a link to the guides on the home page,
     the guides in the site-wide search, and the guides optimized for SEO."""
@@ -30308,8 +30308,10 @@ def _guides_reach():
     for p in pages:
         g, t = by_slug[p.stem], p.read_text(encoding="utf-8")
         addr = f"/guides/{p.stem}"
-        if f'href="{addr}"' not in home:
-            bad.append(f"{p.stem} is not on the home page")
+        # THE HOME PAGE OFFERS THE FEW MOST PEOPLE COME FOR (guides.HOME, 17
+        # October 2026) and All guides for the rest: a pick must be there.
+        if p.stem in {s for s, _w in G.HOME} and f'href="{addr}"' not in home:
+            bad.append(f"{p.stem} is one of the home page's picks and is not on it")
         if not any(r[0] == "guide" and r[3].lstrip("/") == addr.lstrip("/") for r in find):
             bad.append(f"{p.stem} is not in find.json")
         title = re.search(r"<title>([^<]*)</title>", t).group(1)
@@ -30319,12 +30321,12 @@ def _guides_reach():
             bad.append(f"{p.stem} carries no HowTo data")
         if not re.search(re.escape(f"<loc>{base}{addr}</loc>") + r"<lastmod>\d{4}-\d\d-\d\d</lastmod>", sm):
             bad.append(f"{p.stem}'s sitemap entry is not dated by its check")
-    if not pages and "hguides" in home:
-        bad.append("the home page lists guides while none is published")
+    if pages and 'href="/resources#guides"' not in home:
+        bad.append("the home page does not lead to every guide")
     assert not bad, "; ".join(bad)
-    return "ok", (f"{len(pages)} published guide{'s' if len(pages) != 1 else ''} on the home page, "
-                  "in the search and dated in the sitemap, each with HowTo data"
-                  if pages else "no guide published on the fixture; the home page's slot is empty")
+    return "ok", (f"{len(pages)} published guide{'s' if len(pages) != 1 else ''} reached from the home "
+                  "page, in the search and dated in the sitemap, each with HowTo data"
+                  if pages else "no guide published on the fixture")
 
 
 @check("build", "the how-to guides are listed by task: every guide and every Learn page that became one "
@@ -31010,87 +31012,67 @@ CLOCK_OF_THEIR_OWN = {
 }
 
 
-@check("build", "a build into an empty site counts the committees with a roster on the home page, "
-                "as build_committees then writes them")
-def _home_counts_rosters_cold():
-    """THE COMMITTEES CARD ON A BUILD THAT STARTS EMPTY (10 October 2026).
-    build_pages counted the committees with a roster out of
-    site/committees.json, which build_committees writes four steps later, so
-    a build into an empty site/ -- GitHub's nightly, whose machine starts
-    with none -- found nothing to count, and the home page said "Who sits on
-    a committee, and what it did on every day it met" where the laptop's
-    said "Who sits on each of the 38 committees with a roster". Found twice
-    on 9 October, on the builds where the kit's copy of last night's file
-    (cloud_kit.json's entry for site/committees.json) was not there to hide
-    it. The count is build_committees' own now (build_committees.with_roster),
-    made from what that step reads, none of which a later step writes.
-
-    So this takes the fixture's built project, gives its House Commerce and
-    its Senate Education a sitting member each, takes site/committees.json
-    and the home page away, and runs build_pages alone: the card must count
-    two. Then build_committees, whose committees.json must give a member to
-    the same two -- so the card says what the Committees page lists."""
+@check("frontend", "the home page's cards are Bills, Officials, Laws and Resources, its How do I...? row "
+                   "offers the guides most people come for, and its columns carry one of the drawn "
+                   "treatments, none of which tints a band or moves a column",
+       needs=("build_pages", "build_civics", "guides"))
+def _home_cards(BP, BC, G):
+    """The person, 17 October 2026: "Switch out the committees card on the
+    home page for the officials page"; "a card or some other way to link to
+    laws on the homepage other than the nav"; the how-to guides shown on the
+    home page in a way the public finds intuitive; and "It would be good if
+    the columns on the homepage could be a bit more differentiated". Read off
+    the fixture's built home page and the code: the four cards in order, no
+    Committees card; the How do I...? row with every pick the build published
+    and All guides; the columns' class one of HOME_COLUMN_OPTIONS, each of
+    which app.css styles, inside the three columns only -- no rule of theirs
+    reaches the header or the page's ground (the person's "no pale pine
+    band", 8 October), and none changes the grid's columns (the three-column
+    layout is settled)."""
     absent = [x for x in CHAIN_NEEDS if not _paths.locate(x).exists()]
     if absent:
         return "skip", "not here: " + ", ".join(absent)
-    root = Path(tempfile.mkdtemp(prefix="gr-cold-roster-"))
-    try:
-        _fixture_site_whole(root)
-        site = root / "site"
-        legs = {str(m.get("id")): m for m in json.loads(
-            (site / "legislators.json").read_text(encoding="utf-8"))}
-        house, senate = legs.get("377204"), legs.get("377207")
-        assert house and senate, ("the fixture's roster no longer has Jodi Nelson (377204) and "
-                                  "Debra Altschiller (377207), whom this seats")
-        # The committees as the three files build_committees reads them
-        # from name them: data/committees.json's codes, the weekly listing
-        # (committees.json at the root, with its chairs) and the seats.
-        codes = json.loads((root / "data" / "committees.json").read_text(encoding="utf-8"))
-        codes["S05"] = {"code": "S05", "name": "Education", "abbr": "EDUCATION"}
-        codes["H05"] = {"code": "H05", "name": "Education", "abbr": "EDUCATION"}
-        (root / "data" / "committees.json").write_text(json.dumps(codes), encoding="utf-8")
-        (root / "committees.json").write_text(json.dumps({
-            "H": [{"chamber": "H", "name": "Commerce", "code": "43", "chair": "Jodi Nelson"}],
-            "S": [{"chamber": "S", "name": "Education", "code": "05",
-                   "chair": "Debra Altschiller"}]}), encoding="utf-8")
-
-        def seat(m, sitting=True):
-            return {"id": str(m["id"]), "name": m["name"], "party_code": m.get("party_code"),
-                    "district": m.get("district"), "chamber": m.get("chamber"),
-                    "sitting": sitting}
-        (root / "data" / "committee_members.json").write_text(json.dumps({
-            "H43": [seat(house)], "S05": [seat(senate)],
-            # A seat the table still holds for someone no longer sitting, on a
-            # committee with a page: a page, and no roster to count.
-            "H05": [seat(house, sitting=False)]}), encoding="utf-8")
-        for f in ("committees.json", "index.html"):
-            (site / f).unlink(missing_ok=True)
-
-        def run(script, *args):
-            r = _run([sys.executable, _paths.script(script), *args], cwd=root,
-                     capture_output=True, text=True, timeout=180)
-            assert r.returncode == 0, f"{script} stopped: {(r.stderr or r.stdout).strip()[-300:]}"
-        run("build_pages.py", "--out", "site")
-        assert not (site / "committees.json").exists(), "build_pages wrote site/committees.json"
-        home = " ".join((site / "index.html").read_text(encoding="utf-8").split())
-        said = re.search(r"Who sits on (each of the (\d+) committees|the one committee|a committee)", home)
-        assert said and said.group(2), (
-            "built into a site with no committees.json yet, the home page's Committees card "
-            f"names no number: {said.group(0) if said else 'no card'!r} -- it is counting a "
-            "file a later step writes, as GitHub's nightly found")
-        run("build_committees.py", "--site", "site", "--data", "data",
-            "--base", "https://graniterecord.org")
-        rows = json.loads((site / "committees.json").read_text(encoding="utf-8"))
-        with_members = sorted(c["code"] for c in rows if (c.get("n_members") or 0) > 0)
-        assert int(said.group(2)) == len(with_members) == 2, (
-            f"the home page counts {said.group(2)} committees with a roster and "
-            f"build_committees gives a member to {len(with_members)} ({with_members}); "
-            "the fixture seats two")
-        return "ok", ("built into a site with no committees.json, the home page counts the "
-                      f"{said.group(2)} committees build_committees then gives a member "
-                      f"({', '.join(with_members)})")
-    finally:
-        shutil.rmtree(root, ignore_errors=True)
+    shared, _base, _ran, _days = _fixture_site_shared()
+    site = shared / "site"
+    home = (site / "index.html").read_text(encoding="utf-8")
+    entry = re.search(r'<div class="entry">(.*?)</div>', home, re.S)
+    assert entry, "the home page has no cards"
+    cards = re.findall(r'<a href="([^"]+)">.*?<b>([^<]+)</b>', entry.group(1), re.S)
+    names = [n for _h, n in cards]
+    assert names == ["Browse Bills", "Officials", "Laws", "Resources"], f"the home page's cards are {names}"
+    hrefs = [h for h, _n in cards]
+    assert not any("committees" in h for h in hrefs), "the Committees card is back on the home page"
+    assert any(h.rstrip("/").split("/")[-1] in ("laws", "laws.html") for h in hrefs), \
+        "the Laws card does not lead to /laws"
+    # How do I...?
+    row = re.search(r"<!-- guides -->(.*?)<!-- /guides -->", home, re.S).group(1)
+    assert "How do I&hellip;?" in row and 'href="/resources#guides"' in row, \
+        "the home page has no How do I...? row leading to every guide"
+    published = {p.stem for p in (site / "guides").glob("*.html")
+                 if 'class="g-draft"' not in p.read_text(encoding="utf-8")}
+    for slug, _words in G.HOME:
+        shown = re.search(rf'href="/guides/{re.escape(slug)}"', row) is not None
+        assert shown == (slug in published), \
+            f"{slug} is {'on' if shown else 'off'} the How do I...? row and {'not ' if shown else ''}published"
+    assert row.count("<li>") <= 8, "the How do I...? row lists more than the few guides most people come for"
+    assert "How to " not in re.sub(r"<[^>]+>", " ", row), "the row names guides by their titles, not the task"
+    # The columns: one treatment, drawn by app.css, inside the columns.
+    cls = BP.HOME_COLUMN_OPTIONS[BP.HOME_COLUMNS]
+    assert f'<div class="hcols {cls}">' in home, f"the home page's columns do not carry {cls}"
+    css = Path("src/pages/app.css").read_text(encoding="utf-8")
+    style = (site / "style.css").read_text(encoding="utf-8")
+    for opt, c in BP.HOME_COLUMN_OPTIONS.items():
+        rules = re.findall(r"([^{}]*\." + re.escape(c) + r"\b[^{}]*)\{([^{}]*)\}", css)
+        assert rules, f"app.css draws nothing for the {opt} treatment ({c})"
+        assert f".{c}" in style, f"style.css, which the home page loads, lacks the {opt} treatment"
+        for sel, body in rules:
+            assert not re.search(r"\b(?:nav|header|body)\b|\.top\b|\.wrap\b", sel.replace("body.pg", "")), \
+                f"the {opt} treatment reaches beyond the columns: {sel.strip()[:80]}"
+            assert "grid-template" not in body and not re.search(r"(?<![\w-])order\s*:", body), \
+                f"the {opt} treatment moves the columns: {sel.strip()[:80]}"
+    return "ok", (f"Bills, Officials, Laws, Resources; How do I...? with "
+                  f"{row.count('<li>')} guides; columns {BP.HOME_COLUMNS} ({cls}) of "
+                  f"{len(BP.HOME_COLUMN_OPTIONS)} drawn")
 
 
 @check("build", "a stated build date is the date every builder writes, and only build_date.py "

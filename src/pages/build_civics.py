@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.60
+# GRANITE_VERSION: 2026-09-08.61
 """
 The civics section: a hub and one page per topic, in order.
 
@@ -1465,12 +1465,31 @@ def guide_page(tmpl, g, base, record, draft_why=""):
 HOME_SLOT = re.compile(r"<!-- guides -->.*?<!-- /guides -->", re.S)
 
 
+def how_do_i(published):
+    """THE HOME PAGE'S "HOW DO I...?" ROW (the person, 17 October 2026: the
+    how-to guides on the home page "so it's more intuitive for the general
+    public"). Twenty guides by their full titles were a column longer than
+    the cards above them, and a reader scanning for their own errand read
+    "How to" twenty times. So the row asks the question once and answers it
+    with the few most people come for (guides.HOME, each the end of the
+    question: "Renew my driver's license"), then All guides, which opens the
+    hub on its How-To Guides tab. A pick whose guide is held back is left
+    off; the pages that became guides (civics.HOW_TO) are always there."""
+    open_ = {g["slug"] for g in published} | set(civics.HOW_TO)
+    picks = [(s, words) for s, words in G.HOME if s in open_]
+    if not picks:
+        return ""
+    return ('<nav class="hguides" aria-labelledby="hguides-h">'
+            '<h2 id="hguides-h">How do I&hellip;?</h2><ul>'
+            + "".join(f'<li><a href="{E(S.canon("/" + guide_href(s)))}">{words}</a></li>'
+                      for s, words in picks)
+            + '</ul><a class="hgall" href="/resources#guides">All guides</a></nav>')
+
+
 def home_guides(site, published):
-    """The home page's row of how-to guides, under its three cards: each
-    published guide by name, and the tab that lists them. The home page is
-    build_pages' and is written before this runs, so its slot is filled here,
-    and filled again rather than doubled on a second run. Nothing is drawn
-    while no guide has passed its checks."""
+    """The home page's "How do I...?" row (how_do_i), under its cards. The
+    home page is build_pages' and is written before this runs, so its slot is
+    filled here, and filled again rather than doubled on a second run."""
     home = site / "index.html"
     if not home.is_file():
         return
@@ -1478,16 +1497,11 @@ def home_guides(site, published):
     if not HOME_SLOT.search(text):
         print("  index.html has no guides slot: the home page lists no guides")
         return
-    row = ""
-    if published:
-        row = ('<nav class="hguides" aria-labelledby="hguides-h">'
-               '<h2 id="hguides-h">How-To Guides</h2><ul>'
-               + "".join(f'<li><a href="{E(S.canon("/" + guide_href(g["slug"])))}">'
-                         f'{E(g["title"])}</a></li>' for g in published)
-               + '</ul><a class="hgall" href="/resources#guides">All guides</a></nav>')
+    row = how_do_i(published)
     home.write_text(HOME_SLOT.sub(lambda _m: f"<!-- guides -->{row}<!-- /guides -->", text, count=1),
                     encoding="utf-8")
-    print(f"  index.html: {len(published)} guide{'s' if len(published) != 1 else ''} under the cards")
+    n = row.count("<li>")
+    print(f"  index.html: How do I...? with {n} guide{'s' if n != 1 else ''} under the cards")
 
 
 def unlinked(g, held):
