@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.221
+# GRANITE_VERSION: 2026-09-05.222
 """
 Generate the faceted site from real General Court data.
 
@@ -59,6 +59,7 @@ import names
 import re
 import archive_text as AT
 import ballot_source as BS
+import parse_constitution as PCON
 import bill_order as BO
 import past_sponsors as PSP
 import text_sponsors as TS
@@ -1191,6 +1192,18 @@ def bill_amends(body):
         lo = body.rfind(". ", max(0, m.start() - 300), m.start())
         take(body[(lo + 2 if lo != -1 else max(0, m.start() - 300)):m.start()])
     return out
+
+
+_CONSTITUTION = []
+
+
+def constitution_targets(body):
+    """The articles a CACR's text says it changes, as parse_constitution reads
+    them against collected/constitution.json, which is read once a build; []
+    on a disk without that file."""
+    if not _CONSTITUTION:
+        _CONSTITUTION.append(PCON.load() or {})
+    return PCON.cacr_targets(body, _CONSTITUTION[0])
 
 
 _OWN_SLUG = {}
@@ -11329,6 +11342,14 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
             # adopted. A bill with no text on disk gets no row rather than a
             # row inferred from either.
             "amends": bill_amends((btext or {}).get("body", "")),
+            # WHICH ARTICLES OF THE CONSTITUTION A CACR CHANGES (17 October
+            # 2026), from its own resolving clauses ("That article 78 of the
+            # second part of the constitution be amended ..."), each to its
+            # article on the Laws page's Constitution tab. Only a CACR, only
+            # a clause in a form that leaves no doubt, and only an article
+            # the Constitution as read holds (parse_constitution.cacr_targets).
+            **({"constitution": c} if bid.startswith("CACR")
+               and (c := constitution_targets((btext or {}).get("body", ""))) else {}),
             # WHAT IT CHANGED, AS THE LAW IT BECAME: the statute's own source
             # notes, not the bill's text (RSA_PAGE.md §3: the two agree on
             # about nine in ten of the text's claims). Only on a bill a note

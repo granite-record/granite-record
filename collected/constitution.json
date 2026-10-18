@@ -1,0 +1,2956 @@
+{
+ "_source": {
+  "index": "https://www.nh.gov/glance/state-constitution",
+  "read": [
+   "2026-10-17"
+  ],
+  "established": "Established October 31, 1783 to take effect June 2, 1784 as subsequently amended and in force.",
+  "files": [
+   "part-first-bill-of-rights.html",
+   "part-second-01-general-court.html",
+   "part-second-02-house-of-representatives.html",
+   "part-second-03-senate.html",
+   "part-second-04-executive-power-governor.html",
+   "part-second-05-council.html",
+   "part-second-06-secretary-treasurer.html",
+   "part-second-07-county-treasurer.html",
+   "part-second-08-judiciary-power.html",
+   "part-second-09-clerk-of-courts.html",
+   "part-second-10-encouragement-of-literature.html",
+   "part-second-11-oaths-and-subscriptions.html"
+  ]
+ },
+ "parts": [
+  {
+   "part": 1,
+   "name": "Part First",
+   "title": "Bill of Rights",
+   "divisions": [
+    {
+     "name": "Bill of Rights",
+     "url": "https://www.nh.gov/glance/state-constitution/bill-rights",
+     "slug": "part1-bill-of-rights",
+     "articles": [
+      {
+       "key": "1",
+       "num": "1",
+       "letter": "",
+       "anchor": "part1-art1",
+       "heading": "Article 1. [Equality of Men; Origin and Object of Government.].",
+       "title": "Equality of Men; Origin and Object of Government",
+       "text": [
+        "All men are born equally free and independent; Therefore, all government of right originates from the people, is founded in consent, and instituted for the general good."
+       ],
+       "notes": [
+        "June 2, 1784*",
+        "*The date on which each article was proclaimed as having been adopted is given after each article. This is followed by the year in which amendments were adopted and the subject matter of all the amendments."
+       ],
+       "repealed": false
+      },
+      {
+       "key": "2",
+       "num": "2",
+       "letter": "",
+       "anchor": "part1-art2",
+       "heading": "[Art.] 2. [Natural Rights.]",
+       "title": "Natural Rights",
+       "text": [
+        "All men have certain natural, essential, and inherent rights among which are, the enjoying and defending life and liberty; acquiring, possessing, and protecting, property; and, in a word, of seeking and obtaining happiness. Equality of rights under the law shall not be denied or abridged by this state on account of race, creed, color, sex or national origin."
+       ],
+       "notes": [
+        "June 2, 1784,",
+        "Amended 1974 adding sentence to prohibit discrimination"
+       ],
+       "repealed": false
+      },
+      {
+       "key": "2-a",
+       "num": "2",
+       "letter": "a",
+       "anchor": "part1-art2-a",
+       "heading": "[Art.] 2-a. [The Bearing of Arms.]",
+       "title": "The Bearing of Arms",
+       "text": [
+        "All persons have the right to keep and bear arms in defense of themselves, their families, their property and the state."
+       ],
+       "notes": [
+        "December 1, 1982"
+       ],
+       "repealed": false
+      },
+      {
+       "key": "2-b",
+       "num": "2",
+       "letter": "b",
+       "anchor": "part1-art2-b",
+       "heading": "[Art.] 2-b. [Right of Privacy.]",
+       "title": "Right of Privacy",
+       "text": [
+        "An individual's right to live free from governmental intrusion in private or personal information is natural, essential, and inherent."
+       ],
+       "notes": [
+        "December 5, 2018"
+       ],
+       "repealed": false
+      },
+      {
+       "key": "3",
+       "num": "3",
+       "letter": "",
+       "anchor": "part1-art3",
+       "heading": "[Art.] 3. [Society, its Organization and Purposes.]",
+       "title": "Society, its Organization and Purposes",
+       "text": [
+        "When men enter into a state of society, they surrender up some of their natural rights to that society, in order to ensure the protection of others; and, without such an equivalent, the surrender is void."
+       ],
+       "notes": [
+        "June 2, 1784"
+       ],
+       "repealed": false
+      },
+      {
+       "key": "4",
+       "num": "4",
+       "letter": "",
+       "anchor": "part1-art4",
+       "heading": "[Art.] 4. [Rights of Conscience Unalienable.]",
+       "title": "Rights of Conscience Unalienable",
+       "text": [
+        "Among the natural rights, some are, in their very nature unalienable, because no equivalent can be given or received for them. Of this kind are the Rights of Conscience."
+       ],
+       "notes": [
+        "June 2, 1784"
+       ],
+       "repealed": false
+      },
+      {
+       "key": "5",
+       "num": "5",
+       "letter": "",
+       "anchor": "part1-art5",
+       "heading": "[Art.] 5. [Religious Freedom Recognized.]",
+       "title": "Religious Freedom Recognized",
+       "text": [
+        "Every individual has a natural and unalienable right to worship God according to the dictates of his own conscience, and reason; and no subject shall be hurt, molested, or restrained, in his person, liberty, or estate, for worshipping God in the manner and season most agreeable to the dictates of his own conscience; or for his religious profession, sentiments, or persuasion; provided he doth not disturb the public peace or disturb others in their religious worship."
+       ],
+       "notes": [
+        "June 2, 1784"
+       ],
+       "repealed": false
+      },
+      {
+       "key": "6",
+       "num": "6",
+       "letter": "",
+       "anchor": "part1-art6",
+       "heading": "[Art.] 6. [Morality and Piety.]",
+       "title": "Morality and Piety",
+       "text": [
+        "As morality and piety, rightly grounded on high principles, will give the best and greatest security to government, and will lay, in the hearts of men, the strongest obligations to due subjection; and as the knowledge of these is most likely to be propagated through a society, therefore, the several parishes, bodies corporate, or religious societies shall at all times have the right of electing their own teachers, and of contracting with them for their support or maintenance, or both. But no person shall ever be compelled to pay towards the support of the schools of any sect or denomination. And every person, denomination or sect shall be equally under the protection of the law; and no subordination of any one sect, denomination or persuasion to another shall ever be established."
+       ],
+       "notes": [
+        "June 2, 1784",
+        "Amended 1968 to remove obsolete sectarian references."
+       ],
+       "repealed": false
+      },
+      {
+       "key": "7",
+       "num": "7",
+       "letter": "",
+       "anchor": "part1-art7",
+       "heading": "[Art.] 7. [State Sovereignty.]",
+       "title": "State Sovereignty",
+       "text": [
+        "The people of this State have the sole and exclusive right of governing themselves as a free, sovereign, and independent State; and do, and forever hereafter shall, exercise and enjoy every power, jurisdiction, and right, pertaining thereto, which is not, or may not hereafter be, by them expressly delegated to the United States of America in Congress assembled."
+       ],
+       "notes": [
+        "June 2, 1784"
+       ],
+       "repealed": false
+      },
+      {
+       "key": "8",
+       "num": "8",
+       "letter": "",
+       "anchor": "part1-art8",
+       "heading": "[Art.] 8. [Accountability of Magistrates and Officers; Public’s Right to Know.]",
+       "title": "Accountability of Magistrates and Officers; Public’s Right to Know",
+       "text": [
+        "All power residing originally in, and being derived from, the people, all the magistrates and officers of government are their substitutes and agents, and at all times accountable to them. Government, therefore, should be open, accessible, accountable and responsive. To that end, the public’s right of access to governmental proceedings and records shall not be unreasonably restricted. The public also has a right to an orderly, lawful, and accountable government. Therefore, any individual taxpayer eligible to vote in the State, shall have standing to petition the Superior Court to declare whether the State or political subdivision in which the taxpayer resides has spent, or has approved spending, public funds in violation of a law, ordinance, or constitutional provision. In such a case, the taxpayer shall not have to demonstrate that his or her personal rights were impaired or prejudiced beyond his or her status as a taxpayer. However, this right shall not apply when the challenged governmental action is the subject of a judicial or administrative decision from which there is a right of appeal by statute or otherwise by the parties to that proceeding."
+       ],
+       "notes": [
+        "June 2, 1784",
+        "Amended 1976 by providing right of access to governmental proceedings and records.",
+        "Amended 2018 by providing that taxpayers have standing to bring actions against the government"
+       ],
+       "repealed": false
+      },
+      {
+       "key": "9",
+       "num": "9",
+       "letter": "",
+       "anchor": "part1-art9",
+       "heading": "[Art.] 9. [No Hereditary Office or Place.]",
+       "title": "No Hereditary Office or Place",
+       "text": [
+        "No office or place, whatsoever, in government, shall be hereditary the abilities and integrity requisite in all, not being transmissible to posterity or relations."
+       ],
+       "notes": [
+        "June 2, 1784"
+       ],
+       "repealed": false
+      },
+      {
+       "key": "10",
+       "num": "10",
+       "letter": "",
+       "anchor": "part1-art10",
+       "heading": "[Art.] 10. [Right of Revolution.]",
+       "title": "Right of Revolution",
+       "text": [
+        "Government being instituted for the common benefit, protection, and security, of the whole community, and not for the private interest or emolument of any one man, family, or class of men; therefore, whenever the ends of government are perverted, and public liberty manifestly endangered, and all other means of redress are ineffectual, the people may, and of right ought to reform the old, or establish a new government. The doctrine of nonresistance against arbitrary power, and oppression, is absurd, slavish, and destructive of the good and happiness of mankind."
+       ],
+       "notes": [
+        "June 2, 1784"
+       ],
+       "repealed": false
+      },
+      {
+       "key": "11",
+       "num": "11",
+       "letter": "",
+       "anchor": "part1-art11",
+       "heading": "[Art.] 11. [Elections and Elective Franchises.]",
+       "title": "Elections and Elective Franchises",
+       "text": [
+        "All elections are to be free, and every inhabitant of the state of 18 years of age and upwards shall have an equal right to vote in any election. Every person shall be considered an inhabitant for the purposes of voting in the town, ward, or unincorporated place where he has his domicile. No person shall have the right to vote under the constitution of this state who has been convicted of treason, bribery or any willful violation of the election laws of this state or of the United States; but the supreme court may, on notice to the attorney general, restore the privilege to vote to any person who may have forfeited it by conviction of such offenses. The general court shall provide by law for voting by qualified voters who at the time of the biennial or state elections, or of the primary elections therefor, or of city elections, or of town elections by official ballot, are absent from the city or town of which they are inhabitants, or who by reason of physical disability are unable to vote in person, in the choice of any officer or officers to be elected or upon any question submitted at such election. Voting registration and polling places shall be easily accessible to all persons including disabled and elderly persons who are otherwise qualified to vote in the choice of any officer or officers to be elected or upon any question submitted at such election. The right to vote shall not be denied to any person because of the non payment of any tax. Every inhabitant of the state, having the proper qualifications, has equal right to be elected into office."
+       ],
+       "notes": [
+        "June 2, 1784",
+        "Amended 1903 to provide that in order to vote or be eligible for office a person must be able to read the English language and to write.",
+        "Amended 1912 to prohibit those convicted of treason, bribery or willfull violation of the election laws from voting or holding elective office.",
+        "Amended 1942 to provide for absentee voting in general elections.",
+        "Amended 1956 to provide for absentee voting in primary elections.",
+        "Amended 1968 to provide right to vote not denied because of nonpayment of taxes. Also amended in 1968 to delete an obsolete phrase.",
+        "Amended 1976 to reduce voting age to 18.",
+        "Amended 1984 to provide accessibility to all registration and polling places."
+       ],
+       "repealed": false
+      },
+      {
+       "key": "12",
+       "num": "12",
+       "letter": "",
+       "anchor": "part1-art12",
+       "heading": "[Art.] 12. [Protection and Taxation Reciprocal.]",
+       "title": "Protection and Taxation Reciprocal",
+       "text": [
+        "Every member of the community has a right to be protected by it, in the enjoyment of his life, liberty, and property; he is therefore bound to contribute his share in the expense of such protection, and to yield his personal service when necessary. But no part of a man’s property shall be taken from him, or applied to public uses, without his own consent, or that of the representative body of the people. Nor are the inhabitants of this State controllable by any other laws than those to which they, or their representative body, have given their consent."
+       ],
+       "notes": [
+        "June 2, 1784",
+        "Amended 1964 by striking out reference to buying one’s way out of military service."
+       ],
+       "repealed": false
+      },
+      {
+       "key": "12-a",
+       "num": "12",
+       "letter": "a",
+       "anchor": "part1-art12-a",
+       "heading": "[Art.] 12-a. [Power to Take Property Limited.]",
+       "title": "Power to Take Property Limited",
+       "text": [
+        "No part of a person's property shall be taken by eminent domain and transferred, directly or indirectly, to another person if the taking is for the purpose of private development or other private use of the property."
+       ],
+       "notes": [
+        "November 7, 2006"
+       ],
+       "repealed": false
+      },
+      {
+       "key": "13",
+       "num": "13",
+       "letter": "",
+       "anchor": "part1-art13",
+       "heading": "[Art.] 13. [Conscientious Objectors not Compelled to Bear Arms.]",
+       "title": "Conscientious Objectors not Compelled to Bear Arms",
+       "text": [
+        "No person, who is conscientiously scrupulous about the lawfulness of bearing arms, shall be compelled thereto."
+       ],
+       "notes": [
+        "June 2, 1784",
+        "Amended 1964 by striking out reference to buying one's way out of military service."
+       ],
+       "repealed": false
+      },
+      {
+       "key": "14",
+       "num": "14",
+       "letter": "",
+       "anchor": "part1-art14",
+       "heading": "[Art.] 14. [Legal Remedies to be Free, Complete, and Prompt.]",
+       "title": "Legal Remedies to be Free, Complete, and Prompt",
+       "text": [
+        "Every subject of this State is entitled to a certain remedy, by having recourse to the laws, for all injuries he may receive in his person, property, or character; to obtain right and justice freely, without being obliged to purchase it; completely, and without any denial; promptly, and without delay; conformably to the laws."
+       ],
+       "notes": [
+        "June 2, 1784"
+       ],
+       "repealed": false
+      },
+      {
+       "key": "15",
+       "num": "15",
+       "letter": "",
+       "anchor": "part1-art15",
+       "heading": "[Art.] 15. [Right of Accused.]",
+       "title": "Right of Accused",
+       "text": [
+        "No subject shall be held to answer for any crime, or offense, until the same is fully and plainly, substantially and formally, described to him; or be compelled to accuse or furnish evidence against himself. Every subject shall have a right to produce all proofs that may be favorable to himself; to meet the witnesses against him face to face, and to be fully heard in his defense, by himself, and counsel. No subject shall be arrested, imprisoned, despoiled, or deprived of his property, immunities, or privileges, put out of the protection of the law, exiled or deprived of his life, liberty, or estate, but by the judgment of his peers, or the law of the land; provided that, in any proceeding to commit a person acquitted of a criminal charge by reason of insanity, due process shall require that clear and convincing evidence that the person is potentially dangerous to himself or to others and that the person suffers from a mental disorder must be established. Every person held to answer in any crime or offense punishable by deprivation of liberty shall have the right to counsel at the expense of the state if need is shown; this right he is at liberty to waive, but only after the matter has been thoroughly explained by the court."
+       ],
+       "notes": [
+        "June 2, 1784",
+        "Amended 1966 to provide the right to counsel at state expense if the need is shown.",
+        "Amended 1984 reducing legal requirement proof beyond a reasonable doubt to clear and convincing evidence in insanity hearings."
+       ],
+       "repealed": false
+      },
+      {
+       "key": "16",
+       "num": "16",
+       "letter": "",
+       "anchor": "part1-art16",
+       "heading": "[Art.] 16. [Former Jeopardy; Jury Trial in Capital Cases.]",
+       "title": "Former Jeopardy; Jury Trial in Capital Cases",
+       "text": [
+        "No subject shall be liable to be tried, after an acquittal, for the same crime or offense. Nor shall the Legislature make any law that shall subject any person to a capital punishment, (excepting for the government of the army and navy, and the militia in actual service) without trial by jury."
+       ],
+       "notes": [
+        "June 2, 1784"
+       ],
+       "repealed": false
+      },
+      {
+       "key": "17",
+       "num": "17",
+       "letter": "",
+       "anchor": "part1-art17",
+       "heading": "[Art.] 17. [Venue of Criminal Prosecutions.]",
+       "title": "Venue of Criminal Prosecutions",
+       "text": [
+        "In criminal prosecutions, the trial of facts, in the vicinity where they happened, is so essential to the security of the life, liberty and estate of the citizen, that no crime or offense ought to be tried in any other county or judicial district than that in which it is committed; except in any case in any particular county or judicial district, upon motion by the defendant, and after a finding by the court that a fair and impartial trial cannot be had where the offense may be committed, the court shall direct the trial to a county or judicial district in which a fair and impartial trial can be obtained."
+       ],
+       "notes": [
+        "June 2, 1784",
+        "Amended 1792 to change \"assembly\" to: legislature.",
+        "Amended 1978 so that court at defendant’s request may change trial to another county or judicial district."
+       ],
+       "repealed": false
+      },
+      {
+       "key": "18",
+       "num": "18",
+       "letter": "",
+       "anchor": "part1-art18",
+       "heading": "[Art.] 18. [Penalties to be Proportioned to Offenses; True Design of Punishment.]",
+       "title": "Penalties to be Proportioned to Offenses; True Design of Punishment",
+       "text": [
+        "All penalties ought to be proportioned to the nature of the offense. No wise Legislature will affix the same punishment to the crimes of theft, forgery, and the like, which they do to those of murder and treason. Where the same undistinguishing severity is exerted against all offenses, the people are led to forget the real distinction in the crimes themselves, and to commit the most flagrant with as little compunction as they do the lightest offenses. For the same reason a multitude of sanguinary laws is both impolitic and unjust. The true design of all punishments being to reform, not to exterminate mankind."
+       ],
+       "notes": [
+        "June 2, 1784",
+        "Amended 1792 deleting \"those of\" after do in 3d sentence and changing \"dye\" to: offenses."
+       ],
+       "repealed": false
+      },
+      {
+       "key": "19",
+       "num": "19",
+       "letter": "",
+       "anchor": "part1-art19",
+       "heading": "[Art.] 19. [Searches and Seizures Regulated.]",
+       "title": "Searches and Seizures Regulated",
+       "text": [
+        "Every subject hath a right to be secure from all unreasonable searches and seizures of his person, his houses, his papers, and all his possessions. Therefore, all warrants to search suspected places, or arrest a person for examination or trial in prosecutions for criminal matters, are contrary to this right, if the cause or foundation of them be not previously supported by oath or affirmation; and if the order, in a warrant to a civil officer, to make search in suspected places, or to arrest one or more suspected persons or to seize their property, be not accompanied with a special designation of the persons or objects of search, arrest, or seizure; and no warrant ought to be issued; but in cases* and with the formalities, prescribed by law."
+       ],
+       "notes": [
+        "June 2, 1784",
+        "Amended 1792 to change order of words."
+       ],
+       "repealed": false
+      },
+      {
+       "key": "20",
+       "num": "20",
+       "letter": "",
+       "anchor": "part1-art20",
+       "heading": "[Art.] 20. [Jury Trial in Civil Causes.]",
+       "title": "Jury Trial in Civil Causes",
+       "text": [
+        "In all controversies concerning property, and in all suits between two or more persons except those in which another practice is and has been customary and except those in which the value in controversy does not exceed $1,500 and no title to real estate is involved, the parties have a right to a trial by jury. This method of procedure shall be held sacred, unless, in cases* arising on the high seas and in cases relating to mariners’ wages, the Legislature shall think it necessary hereafter to alter it."
+       ],
+       "notes": [
+        "June 2, 1784",
+        "*\"Cases\" appears in 1792 parchment copy of constitution. Original constitution had \"causes\"",
+        "Amended in 1877 to prohibit jury trials unless the amount in controversy exceeds $l00.",
+        "Amended in 1960 to increase the amount to $500 before a jury trial may be requested.",
+        "Amended in 1988 to change $500 to $1,500"
+       ],
+       "repealed": false
+      },
+      {
+       "key": "21",
+       "num": "21",
+       "letter": "",
+       "anchor": "part1-art21",
+       "heading": "[Art.] 21. [Jurors; Compensation.]",
+       "title": "Jurors; Compensation",
+       "text": [
+        "In order to reap the fullest advantage of the inestimable privilege of the trial by Jury, great care ought to be taken, that none but qualified persons should be appointed to serve; and such ought to be fully compensated for their travel, time and attendance."
+       ],
+       "notes": [
+        "June 2, 1784"
+       ],
+       "repealed": false
+      },
+      {
+       "key": "22",
+       "num": "22",
+       "letter": "",
+       "anchor": "part1-art22",
+       "heading": "[Art.] 22. [Free Speech; Liberty of the Press.]",
+       "title": "Free Speech; Liberty of the Press",
+       "text": [
+        "Free speech and Liberty of the press are essential to the security of Freedom in a State: They ought, therefore, to be inviolably preserved."
+       ],
+       "notes": [
+        "June 2, 1784",
+        "Amended 1968 to include free speech."
+       ],
+       "repealed": false
+      },
+      {
+       "key": "23",
+       "num": "23",
+       "letter": "",
+       "anchor": "part1-art23",
+       "heading": "[Art.] 23. [Retrospective Laws Prohibited.]",
+       "title": "Retrospective Laws Prohibited",
+       "text": [
+        "Retrospective laws are highly injurious, oppressive, and unjust. No such laws, therefore, should be made, either for the decision of civil causes, or the punishment of offenses."
+       ],
+       "notes": [
+        "June 2, 1784"
+       ],
+       "repealed": false
+      },
+      {
+       "key": "24",
+       "num": "24",
+       "letter": "",
+       "anchor": "part1-art24",
+       "heading": "[Art.] 24. [Militia.]",
+       "title": "Militia",
+       "text": [
+        "A well regulated militia is the proper, natural, and sure defense, of a State."
+       ],
+       "notes": [
+        "June 2, 1784"
+       ],
+       "repealed": false
+      },
+      {
+       "key": "25",
+       "num": "25",
+       "letter": "",
+       "anchor": "part1-art25",
+       "heading": "[Art.] 25. [Standing Armies.]",
+       "title": "Standing Armies",
+       "text": [
+        "Standing armies are dangerous to liberty, and ought not to be raised, or kept up, without the consent of the Legislature."
+       ],
+       "notes": [
+        "June 2, 1784"
+       ],
+       "repealed": false
+      },
+      {
+       "key": "26",
+       "num": "26",
+       "letter": "",
+       "anchor": "part1-art26",
+       "heading": "[Art.] 26. [Military Subject to Civil Power.]",
+       "title": "Military Subject to Civil Power",
+       "text": [
+        "In all cases, and at all times, the military ought to be under strict subordination to, and governed by, the civil power."
+       ],
+       "notes": [
+        "June 2, 1784"
+       ],
+       "repealed": false
+      },
+      {
+       "key": "27",
+       "num": "27",
+       "letter": "",
+       "anchor": "part1-art27",
+       "heading": "[Art.] 27. [Quartering of Soldiers.]",
+       "title": "Quartering of Soldiers",
+       "text": [
+        "No soldier in time of peace, shall be quartered in any house, without the consent of the owner; and in time of war, such quarters ought not to be made but by the civil authorities in a manner ordained by the Legislature."
+       ],
+       "notes": [
+        "June 2, 1784",
+        "Amended in 1980 substituting \"authorities\" for \"magistrate.\""
+       ],
+       "repealed": false
+      },
+      {
+       "key": "28",
+       "num": "28",
+       "letter": "",
+       "anchor": "part1-art28",
+       "heading": "[Art.] 28. [Taxes, by Whom Levied.]",
+       "title": "Taxes, by Whom Levied",
+       "text": [
+        "No subsidy, charge, tax, impost, or duty, shall be established, fixed, laid, or levied, under any pretext whatsoever, without the consent of the people, or their Representatives in the Legislature, or authority derived from that body."
+       ],
+       "notes": [
+        "June 2, 1784"
+       ],
+       "repealed": false
+      },
+      {
+       "key": "28-a",
+       "num": "28",
+       "letter": "a",
+       "anchor": "part1-art28-a",
+       "heading": "[Art.] 28-a. [Mandated Programs.]",
+       "title": "Mandated Programs",
+       "text": [
+        "The state shall not mandate or assign any new, expanded or modified programs or responsibilities to any political subdivision in such a way as to necessitate additional local expenditures by the political subdivision unless such programs or responsibilities are fully funded by the state or unless such programs or responsibilities are approved for funding by a vote of the local legislative body of the political subdivision."
+       ],
+       "notes": [
+        "November 28, 1984"
+       ],
+       "repealed": false
+      },
+      {
+       "key": "29",
+       "num": "29",
+       "letter": "",
+       "anchor": "part1-art29",
+       "heading": "[Art.] 29. [Suspension of Laws by Legislature Only.]",
+       "title": "Suspension of Laws by Legislature Only",
+       "text": [
+        "The power of suspending the laws, or the execution of them, ought never to be exercised but by the Legislature, or by authority derived therefrom, to be exercised in such particular cases only as the Legislature shall expressly provide for."
+       ],
+       "notes": [
+        "June 2, 1784"
+       ],
+       "repealed": false
+      },
+      {
+       "key": "30",
+       "num": "30",
+       "letter": "",
+       "anchor": "part1-art30",
+       "heading": "[Art.] 30. [Freedom of Speech.]",
+       "title": "Freedom of Speech",
+       "text": [
+        "The freedom of deliberation, speech, and debate, in either House of the Legislature, is so essential to the rights of the people, that it cannot be the foundation of any action, complaint, or prosecution, in any other Court or place whatsoever."
+       ],
+       "notes": [
+        "June 2, 1784"
+       ],
+       "repealed": false
+      },
+      {
+       "key": "31",
+       "num": "31",
+       "letter": "",
+       "anchor": "part1-art31",
+       "heading": "[Art.] 31. [Meetings of Legislature, for What Purposes.]",
+       "title": "Meetings of Legislature, for What Purposes",
+       "text": [
+        "The Legislature shall assemble for the redress of public grievances and for making such laws as the public good may require."
+       ],
+       "notes": [
+        "June 2, 1784",
+        "Amended 1792 generally rewording sentence and omitting \"for correcting, strengthening and confirming the laws.\""
+       ],
+       "repealed": false
+      },
+      {
+       "key": "32",
+       "num": "32",
+       "letter": "",
+       "anchor": "part1-art32",
+       "heading": "[Art.] 32. [Rights of Assembly, Instruction, and Petition.]",
+       "title": "Rights of Assembly, Instruction, and Petition",
+       "text": [
+        "The People have a right, in an orderly and peaceable manner, to assemble and consult upon the common good, give instructions to their Representatives, and to request of the legislative body, by way of petition or remonstrance, redress of the wrongs done them, and of the grievances they suffer."
+       ],
+       "notes": [
+        "June 2, 1784"
+       ],
+       "repealed": false
+      },
+      {
+       "key": "33",
+       "num": "33",
+       "letter": "",
+       "anchor": "part1-art33",
+       "heading": "[Art.] 33. [Excessive Bail, Fines, and Punishments Prohibited.]",
+       "title": "Excessive Bail, Fines, and Punishments Prohibited",
+       "text": [
+        "No Magistrate, or Court of Law, shall demand excessive bail or sureties, impose excessive fines, or inflict cruel or unusual punishments."
+       ],
+       "notes": [
+        "June 2, 1784"
+       ],
+       "repealed": false
+      },
+      {
+       "key": "34",
+       "num": "34",
+       "letter": "",
+       "anchor": "part1-art34",
+       "heading": "[Art.] 34. [Martial Law Limited.]",
+       "title": "Martial Law Limited",
+       "text": [
+        "No person can, in any case, be subjected to law martial, or to any pains or penalties by virtue of that law, except those employed in the army or navy, and except the militia in actual service, but by authority of the Legislature."
+       ],
+       "notes": [
+        "June 2, 1784"
+       ],
+       "repealed": false
+      },
+      {
+       "key": "35",
+       "num": "35",
+       "letter": "",
+       "anchor": "part1-art35",
+       "heading": "[Art.] 35. [The Judiciary; Tenure of Office, etc.]",
+       "title": "The Judiciary; Tenure of Office, etc.",
+       "text": [
+        "It is essential to the preservation of the rights of every individual, his life, liberty, property, and character, that there be an impartial interpretation of the laws, and administration of justice. It is the right of every citizen to be tried by judges as impartial as the lot of humanity will admit. It is therefore not only the best policy, but for the security of the rights of the people, that the Judges of the Supreme Judicial Court should hold their offices so long as they behave well; subject, however, to such limitations, on account of age, as may be provided by the Constitution of the State; and that they should have honorable salaries, ascertained and established by standing laws."
+       ],
+       "notes": [
+        "June 2, 1784",
+        "Amended 1792 to provide for age limitation as provided by the constitution."
+       ],
+       "repealed": false
+      },
+      {
+       "key": "36",
+       "num": "36",
+       "letter": "",
+       "anchor": "part1-art36",
+       "heading": "[Art.] 36. [Pensions.]",
+       "title": "Pensions",
+       "text": [
+        "Economy being a most essential virtue in all States, especially in a young one, no pension shall be granted, but in consideration of actual services; and such pensions ought to be granted with great caution, by the Legislature, and never for more than one year at a time."
+       ],
+       "notes": [
+        "June 2, 1784"
+       ],
+       "repealed": false
+      },
+      {
+       "key": "36-a",
+       "num": "36",
+       "letter": "a",
+       "anchor": "part1-art36-a",
+       "heading": "[Art.] 36-a [Use of Retirement Funds.]",
+       "title": "Use of Retirement Funds",
+       "text": [
+        "The employer contributions certified as payable to the New Hampshire retirement system or any successor system to fund the system’s liabilities, as shall be determined by sound actuarial valuation and practice, independent of the executive office, shall be appropriated each fiscal year to the same extent as is certified. All of the assets and proceeds, and income therefrom, of the New Hampshire retirement system and of any and all other retirement systems for public officers and employees operated by the state or by any of its political subdivisions, and of any successor system, and all contributions and payments made to any such system to provide for retirement and related benefits shall be held, invested or disbursed as in trust for the exclusive purpose of providing for such benefits and shall not be encumbered for, or diverted to, any other purposes."
+       ],
+       "notes": [
+        "November 28, 1984"
+       ],
+       "repealed": false
+      },
+      {
+       "key": "37",
+       "num": "37",
+       "letter": "",
+       "anchor": "part1-art37",
+       "heading": "[Art.] 37. [Separation of Powers.]",
+       "title": "Separation of Powers",
+       "text": [
+        "In the government of this State, the three essential powers thereof, to wit, the Legislative, Executive, and Judicial, ought to be kept as separate from, and independent of, each other, as the nature of a free government will admit, or as is consistent with that chain of connection that binds the whole fabric of the Constitution in one indissoluble bond of union and amity."
+       ],
+       "notes": [
+        "June 2, 1784"
+       ],
+       "repealed": false
+      },
+      {
+       "key": "38",
+       "num": "38",
+       "letter": "",
+       "anchor": "part1-art38",
+       "heading": "[Art.] 38. [Social Virtues Inculcated.]",
+       "title": "Social Virtues Inculcated",
+       "text": [
+        "A frequent recurrence to the fundamental principles of the constitution, and a constant adherence to justice, moderation, temperance, industry, frugality, and all the social virtues, are indispensably necessary to preserve the blessings of liberty and good government; the people ought, therefore, to have a particular regard to all those principles in the choice of their officers and representatives, and they have a right to require of their lawgivers and magistrates, an exact and constant observance of them, in the formation and execution of the laws necessary for the good administration of government."
+       ],
+       "notes": [
+        "June 2, 1784"
+       ],
+       "repealed": false
+      },
+      {
+       "key": "39",
+       "num": "39",
+       "letter": "",
+       "anchor": "part1-art39",
+       "heading": "[Art.] 39. [Changes in Town and City Charters, Referendum Required.]",
+       "title": "Changes in Town and City Charters, Referendum Required",
+       "text": [
+        "No law changing the charter or form of government of a particular city or town shall be enacted by the legislature except to become effective upon the approval of the voters of such city or town upon a referendum to be provided for in said law. The legislature may by general law authorize cities and towns to adopt or amend their charters or forms of government in any way which is not in conflict with general law, provided that such charters or amendments shall become effective only upon the approval of the voters of each such city or town on a referendum."
+       ],
+       "notes": [
+        "November 16, 1966"
+       ],
+       "repealed": false
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "part": 2,
+   "name": "Part Second",
+   "title": "Form of Government",
+   "divisions": [
+    {
+     "name": "General Court",
+     "url": "https://www.nh.gov/glance/state-constitution/general-court",
+     "slug": "part2-general-court",
+     "articles": [
+      {
+       "key": "1",
+       "num": "1",
+       "letter": "",
+       "anchor": "part2-art1",
+       "heading": "Article 1. [Name of Body Politic.]",
+       "title": "Name of Body Politic",
+       "text": [
+        "The people inhabiting the territory formerly called the province of New Hampshire, do hereby solemnly and mutually agree with each other, to form themselves into a free, sovereign and independent Body Politic, or State, by the name of THE STATE OF NEW HAMPSHIRE."
+       ],
+       "notes": [
+        "June 2, 1784"
+       ],
+       "repealed": false
+      },
+      {
+       "key": "2",
+       "num": "2",
+       "letter": "",
+       "anchor": "part2-art2",
+       "heading": "[Art.] 2. [Legislature, How Constituted.]",
+       "title": "Legislature, How Constituted",
+       "text": [
+        "The Supreme Legislative Power, within this State, shall be vested in the Senate and House of Representatives, each of which shall have a negative on the other."
+       ],
+       "notes": [
+        "June 2, 1784"
+       ],
+       "repealed": false
+      },
+      {
+       "key": "3",
+       "num": "3",
+       "letter": "",
+       "anchor": "part2-art3",
+       "heading": "[Art.] 3. [General Court, When to Meet and Dissolve.]",
+       "title": "General Court, When to Meet and Dissolve",
+       "text": [
+        "The senate and house shall assemble biennially on the first Wednesday of December for organizational purposes in even numbered years, and shall assemble annually on the first Wednesday following the first Tuesday in January, and at such other times as they may judge necessary; and shall dissolve and be dissolved at 12:01 A.M. on the first Wednesday of December in even numbered years and shall be styled THE GENERAL COURT OF NEW HAMPSHIRE."
+       ],
+       "notes": [
+        "June 2, 1784",
+        "Amended 1877 changing annual sessions to biennial sessions.",
+        "Amended 1889 calling for the legislature to meet in January instead of June.",
+        "1966 amendment permitting annual sessions was ruled invalid in Gerber v. King, 107 NH 495.",
+        "Amended 1974 to permit organizational meetings in December and the January meeting to be on the first Wednesday after the first Tuesday.",
+        "Amended 1984 changing biennial sessions to annual sessions."
+       ],
+       "repealed": false
+      },
+      {
+       "key": "4",
+       "num": "4",
+       "letter": "",
+       "anchor": "part2-art4",
+       "heading": "[Art.] 4. [Power of General Court to Establish Courts.]",
+       "title": "Power of General Court to Establish Courts",
+       "text": [
+        "The general court (except as otherwise provided by Article 72 a of Part 2) shall forever have full power and authority to erect and constitute judicatories and courts of record, or other courts, to beholden, in the name of the state, for the hearing, trying, and determining, all manner of crimes, offenses, pleas, processes, plaints, action, causes, matters and things whatsoever arising or happening within this state, or between or concerning persons inhabiting or residing, or brought, within the same, whether the same be criminal or civil, or whether the crimes be capital, or not capital, and whether the said pleas be real, personal or mixed, and for the awarding and issuing execution thereon. To which courts and judicatories, are hereby given and granted, full power and authority, from time to time, to administer oaths or affirmations, for the better discovery of truth in any matter in controversy, or depending before them."
+       ],
+       "notes": [
+        "June 2, 1784",
+        "Amended 1966 to add exception relating to Art. 72 a, Part 2."
+       ],
+       "repealed": false
+      },
+      {
+       "key": "5",
+       "num": "5",
+       "letter": "",
+       "anchor": "part2-art5",
+       "heading": "[Art.] 5. [Power to Make Laws, Elect Officers, Define Their Powers and Duties, Impose Fines and Assess Taxes; Prohibited from Authorizing Towns to Aid Certain Corporations.]",
+       "title": "Power to Make Laws, Elect Officers, Define Their Powers and Duties, Impose Fines and Assess Taxes; Prohibited from Authorizing Towns to Aid Certain Corporations",
+       "text": [
+        "And farther, full power and authority are hereby given and granted to the said general court, from time to time, to make, ordain, and establish, all manner of wholesome and reasonable orders, laws, statutes, ordinances, directions, and instructions, either with penalties, or without, so as the same be not repugnant or contrary to this constitution, as they may judge for the benefit and welfare of this state, and for the governing and ordering thereof, and of the subjects of the same, for the necessary support and defense of the government thereof, and to name and settle biennially, or provide by fixed laws for the naming and settling, all civil officers within this state, such officers excepted, the election and appointment of whom are hereafter in this form of government otherwise provided for; and to set forth the several duties, powers, and limits, of the several civil and military officers of this state, and the forms of such oaths or affirmations as shall be respectively administered unto them, for the execution of their several offices and places, so as the same be not repugnant or contrary to this constitution; and also to impose fines, mulcts, imprisonments, and other punishments, and to impose and levy proportional and reasonable assessments, rates, and taxes, upon all the inhabitants of, and residents within, the said state; and upon all estates within the same; to be issued and disposed of by warrant, under the hand of the governor of this state for the time being, with the advice and consent of the council, for the public service, in the necessary defense and support of the government of this state, and the protection and preservation of the subjects thereof, according to such acts as are, or shall be, in force within the same; provided that the general court shall not authorize any town to loan or give its money or credit directly or indirectly for the benefit of any corporation having for its object a dividend of profits or in any way aid the same by taking its stocks or bonds. For the purpose of encouraging conservation of the forest resources of the state, the general court may provide for special assessments, rates and taxes on growing wood and timber."
+       ],
+       "notes": [
+        "June 2, 1784",
+        "Amended 1792 changing \"president\" to \"governor.\"",
+        "Amended 1877 changing \"annually\" to \"biennially.\" Also amended to prohibit towns and cities from loaning money or credit to corporations.",
+        "Amended 1942 to permit a timber tax."
+       ],
+       "repealed": false
+      },
+      {
+       "key": "5-a",
+       "num": "5",
+       "letter": "a",
+       "anchor": "part2-art5-a",
+       "heading": "[Art.] 5-a. [Continuity of Government in Case of Enemy Attack.]",
+       "title": "Continuity of Government in Case of Enemy Attack",
+       "text": [
+        "Notwithstanding any general or special provision of this constitution, the general court, in order to insure continuity of state and local government operations in periods of emergency resulting from disasters caused by enemy attack, shall have the power and the immediate duty to provide for prompt and temporary succession to the powers and duties of public offices, of whatever nature and whether filled by election or appointment, the incumbents of which may become unavailable for carrying on the powers and duties of such offices, and to adopt such other measures as may be necessary and proper for insuring the continuity of governmental operations including but not limited to the financing thereof. In the exercise of the powers hereby conferred the general court shall in all respects conform to the requirements of this constitution except to the extent that in the judgment of the general court so to do would be impracticable or would admit of undue delay."
+       ],
+       "notes": [
+        "November 30, 1942"
+       ],
+       "repealed": false
+      },
+      {
+       "key": "5-b",
+       "num": "5",
+       "letter": "b",
+       "anchor": "part2-art5-b",
+       "heading": "[Art.] 5-b. [Power to Provide for Tax Valuations Based on Use.]",
+       "title": "Power to Provide for Tax Valuations Based on Use",
+       "text": [
+        "The general court may provide for the assessment of any class of real estate at valuations based upon the current use thereof."
+       ],
+       "notes": [
+        "November 15, 1968"
+       ],
+       "repealed": false
+      },
+      {
+       "key": "6",
+       "num": "6",
+       "letter": "",
+       "anchor": "part2-art6",
+       "heading": "[Art.] 6. [Valuation and Taxation.]",
+       "title": "Valuation and Taxation",
+       "text": [
+        "The public charges of government, or any part thereof, may be raised by taxation upon polls, estates, and other classes of property, including franchises and property when passing by will or inheritance; and there shall be a valuation of the estates within the state taken anew once in every five years, at least, and as much oftener as the general court shall order."
+       ],
+       "notes": [
+        "June 2, 1784",
+        "Amended 1903 to permit taxes on other classes of property including franchises and property passing by inheritances."
+       ],
+       "repealed": false
+      },
+      {
+       "key": "6-a",
+       "num": "6",
+       "letter": "a",
+       "anchor": "part2-art6-a",
+       "heading": "[Art.] 6-a. [Use of Certain Revenues Restricted to Highways.]",
+       "title": "Use of Certain Revenues Restricted to Highways",
+       "text": [
+        "All revenue in excess of the necessary cost of collection and administration accruing to the state from registration fees, operators' licenses, gasoline road tolls or any other special charges or taxes with respect to the operation of motor vehicles or the sale or consumption of motor vehicle fuels shall be appropriated and used exclusively for the construction, reconstruction and maintenance of public highways within this state, including the supervision of traffic thereon and payment of the interest and principal of obligations incurred for said purposes; and no part of such revenues shall, by transfer of funds or otherwise, be diverted to any other purpose whatsoever."
+       ],
+       "notes": [
+        "November 29, 1938"
+       ],
+       "repealed": false
+      },
+      {
+       "key": "6-b",
+       "num": "6",
+       "letter": "b",
+       "anchor": "part2-art6-b",
+       "heading": "[Art.] 6-b. [Use of Lottery Revenues Restricted to Educational Purposes.]",
+       "title": "Use of Lottery Revenues Restricted to Educational Purposes",
+       "text": [
+        "All moneys received from a state-run lottery and all the interest received on such moneys shall, after deducting the necessary costs of administration, be appropriated and used exclusively for the school districts of the state. Such moneys shall be used exclusively for the purpose of state aid to education and shall not be transferred or diverted to any other purpose."
+       ],
+       "notes": [
+        "November 6, 1990"
+       ],
+       "repealed": false
+      },
+      {
+       "key": "7",
+       "num": "7",
+       "letter": "",
+       "anchor": "part2-art7",
+       "heading": "[Art.] 7. [Members of Legislature Not to Take Fees or Act as Counsel.]",
+       "title": "Members of Legislature Not to Take Fees or Act as Counsel",
+       "text": [
+        "No member of the general court shall take fees, be of counsel, or act as advocate, in any cause before either branch of the Legislature; and upon due proof thereof, such member shall forfeit his seat in the Legislature."
+       ],
+       "notes": [
+        "September 5, 1792"
+       ],
+       "repealed": false
+      },
+      {
+       "key": "8",
+       "num": "8",
+       "letter": "",
+       "anchor": "part2-art8",
+       "heading": "[Art.] 8. [Open Sessions of Legislature.]",
+       "title": "Open Sessions of Legislature",
+       "text": [
+        "The doors of the galleries, of each House of the Legislature, shall be kept open to all persons who behave decently, except when the welfare of the state, in the opinion of either branch, shall require secrecy."
+       ],
+       "notes": [
+        "September 5, 1792"
+       ],
+       "repealed": false
+      }
+     ]
+    },
+    {
+     "name": "House of Representatives",
+     "url": "https://www.nh.gov/glance/state-constitution/house-representatives",
+     "slug": "part2-house-of-representatives",
+     "articles": [
+      {
+       "key": "9",
+       "num": "9",
+       "letter": "",
+       "anchor": "part2-art9",
+       "heading": "[Art.] 9. [Representatives Elected Every Second Year; Apportionment of Representatives.]",
+       "title": "Representatives Elected Every Second Year; Apportionment of Representatives",
+       "text": [
+        "There shall be in the legislature of this state a house of representatives, biennially elected and founded on principles of equality, and representation therein shall be as equal as circumstances will admit. The whole number of representatives to be chosen from the towns, wards, places, and representative districts thereof established hereunder, shall be not less than three hundred seventy-five or more than four hundred. As soon as possible after the convening of the next regular session of the legislature, and at the session in 1971, and every ten years thereafter, the legislature shall make an apportionment of representatives according to the last general census of the inhabitants of the state taken by authority of the United States or of this state. In making such apportionment, no town, ward or place shall be divided nor the boundaries thereof altered."
+       ],
+       "notes": [
+        "June 2, 1784",
+        "Amended 1877 three times providing for biennial elections; increasing representation from 150 rateable polls to 600; prohibiting towns and wards from being altered so as to increase representation.",
+        "Amended 1942 limiting size of House to between 375 and 400.",
+        "Amended 1964 providing for equal representation."
+       ],
+       "repealed": false
+      },
+      {
+       "key": "9-a",
+       "num": "9",
+       "letter": "a",
+       "anchor": "part2-art9-a",
+       "heading": "[Art.] 9-a. [Legislative Adjustments of Census with Reference to Non-Residents.]",
+       "title": "Legislative Adjustments of Census with Reference to Non-Residents",
+       "text": [
+        "The general court shall have the power to provide by statute for making suitable adjustments to the general census of the inhabitants of the state taken by the authority of the United States or of this state on account of non residents temporarily residing in this state."
+       ],
+       "notes": [
+        "November 30, 1960"
+       ],
+       "repealed": false
+      },
+      {
+       "key": "10",
+       "num": "10",
+       "letter": "",
+       "anchor": "part2-art10",
+       "heading": "[Art.] 10. [Representation of Small Towns.]",
+       "title": "Representation of Small Towns",
+       "text": [
+        "(Repealed)"
+       ],
+       "notes": [
+        "June 2, 1784. Small towns grouped together to provide one representative for 150 rateable polls.",
+        "The election meeting was to rotate annually between the towns.",
+        "Amended 1877 increasing districts to 600 inhabitants; rotation of meeting changed to biennially.",
+        "Repealed in 1889. Provisions incorporated into Art. 11."
+       ],
+       "repealed": true
+      },
+      {
+       "key": "11",
+       "num": "11",
+       "letter": "",
+       "anchor": "part2-art11",
+       "heading": "[Art.] 11. [Small Towns; Representation by Districts.]",
+       "title": "Small Towns; Representation by Districts",
+       "text": [
+        "When the population of any town or ward, according to the last federal census, is within a reasonable deviation from the ideal population for one or more representative seats, the town or ward shall have its own district of one or more representative seats. The apportionment shall not deny any other town or ward membership in one non-floterial representative district. When any town, ward, or unincorporated place has fewer than the number of inhabitants necessary to entitle it to one representative, the legislature shall form those towns, wards, or unincorporated places into representative districts which contain a sufficient number of inhabitants to entitle each district so formed to one or more representatives for the entire district. In forming the districts, the boundaries of towns, wards, and unincorporated places shall be preserved and contiguous. The excess number of inhabitants of district may be added to the excess number of inhabitants of other districts to form at-large or floterial districts conforming to acceptable deviations. The legislature shall form the representative districts at the regular session following every decennial federal census."
+       ],
+       "notes": [
+        "June 2, 1784",
+        "Amended 1792 changing General Assembly to General Court.",
+        "Amended 1877 changing 150 rateable polls to 600 inhabitants.",
+        "Amended 1889 providing that towns of less than 600 should be represented a proportional amount of time instead of being classed as formerly provided in Art. 10.",
+        "Amended 1942 deleting reference to 600 and providing that small towns should be represented at least once in every 10 years.",
+        "Amended 1964 to permit small towns to be districted for one or more representatives.",
+        "Amended November 7, 2006 to enable towns with sufficient population to have their own representative district and permits the use of floterial districts."
+       ],
+       "repealed": false
+      },
+      {
+       "key": "11-a",
+       "num": "11",
+       "letter": "a",
+       "anchor": "part2-art11-a",
+       "heading": "[Art.] 11-a. [Division of Town, Ward or Place; Representative Districts.]",
+       "title": "Division of Town, Ward or Place; Representative Districts",
+       "text": [
+        "Notwithstanding Articles 9 and 11, a law providing for an apportionment to form representative districts under Articles 9 and 11 of Part Second may divide a town, ward or unincorporated place into two or more representative districts if such town, ward or place, by referendum requests such division."
+       ],
+       "notes": [
+        "November 22, 1978 (Rejected in 1976 as proposed by convention, but adopted in 1978 as proposed by the general court and including both representative and senate districts.)"
+       ],
+       "repealed": false
+      },
+      {
+       "key": "12",
+       "num": "12",
+       "letter": "",
+       "anchor": "part2-art12",
+       "heading": "[Art.] 12. [Biennial Election of Representatives in November.]",
+       "title": "Biennial Election of Representatives in November",
+       "text": [
+        "The members of the House of Representatives shall be chosen biennially, in the month of November, and shall be the second branch of the Legislature."
+       ],
+       "notes": [
+        "June 2, 1784",
+        "Amended twice in 1877 substituting \"biennially\" for \"annually\" and \"November\" for \"March.\""
+       ],
+       "repealed": false
+      },
+      {
+       "key": "13",
+       "num": "13",
+       "letter": "",
+       "anchor": "part2-art13",
+       "heading": "[Art.] 13. [Qualifications of Electors.]",
+       "title": "Qualifications of Electors",
+       "text": [
+        "(Repealed)"
+       ],
+       "notes": [
+        "June 2, 1784. All persons qualified to vote in the election of senators shall be entitled to vote within the town, district, parish,or place where they dwell, in the choice of representatives. Note: The phrase \"town, district, parish, or place\"; was shortened to \"district\" in engrossed copy of 1792, apparently without authority.",
+        "Repealed in 1976."
+       ],
+       "repealed": true
+      },
+      {
+       "key": "14",
+       "num": "14",
+       "letter": "",
+       "anchor": "part2-art14",
+       "heading": "[Art.] 14. [Representatives, How Elected, Qualifications of.]",
+       "title": "Representatives, How Elected, Qualifications of",
+       "text": [
+        "Every member of the house of representatives shall be chosen by ballot; and, for two years, at least, next preceding his election shall have been an inhabitant of this state; shall be, at the time of his election, an inhabitant of the town, ward, place, or district he may be chosen to represent and shall cease to represent such town, ward, place, or district immediately on his ceasing to be qualified as aforesaid."
+       ],
+       "notes": [
+        "June 2, 1784",
+        "Amended 1852 deleting provision for representatives to have an estate of 100 pounds.",
+        "Amended 1877 deleting requirement that representatives be Protestants.",
+        "Amended 1956 substituting \"ward\" for \"parish.\"",
+        "Amended 1964 adding word \"district.\""
+       ],
+       "repealed": false
+      },
+      {
+       "key": "15",
+       "num": "15",
+       "letter": "",
+       "anchor": "part2-art15",
+       "heading": "[Art.] 15. [Compensation of the Legislature.]",
+       "title": "Compensation of the Legislature",
+       "text": [
+        "The presiding officers of both houses of the legislature, shall severally receive out of the state treasury as compensation in full for their services for the term elected the sum of $250, and all other members thereof, seasonably attending and not departing without license, the sum of $200 and each member shall receive mileage for actual daily attendance on legislative days, but not after the legislature shall have been in session for 45 legislative days or after the first day of July following the annual assembly of the legislature, whichever occurs first; provided, however, that, when a special session shall be called by the governor or by a 2/3 vote of the then qualified members of each branch of the general court, such officers and members shall receive for attendance an additional compensation of $3 per day for a period not exceeding 15 days and the usual mileage. Nothing herein shall prevent the payment of additional mileage to members attending committee meetings or on other legislative business on nonlegislative days."
+       ],
+       "notes": [
+        "June 2, 1784",
+        "Amended 1792 requiring state to pay wages instead of town.",
+        "Amended 1889 setting salary for members at $200 and for officers at $250 with $3 per day for special sessions.",
+        "Amended 1960 limiting mileage to 90 legislative days.",
+        "Amended 1984 limiting mileage to 45 legislative days in each annual session."
+       ],
+       "repealed": false
+      },
+      {
+       "key": "16",
+       "num": "16",
+       "letter": "",
+       "anchor": "part2-art16",
+       "heading": "[Art.] 16. [Vacancies in House, How Filled.]",
+       "title": "Vacancies in House, How Filled",
+       "text": [
+        "All intermediate vacancies, in the house of representatives may be filled up, from time to time, in the same manner as biennial elections are made."
+       ],
+       "notes": [
+        "June 2, 1784",
+        "Amended 1877 changing \"annual\" to \"biennial\" elections."
+       ],
+       "repealed": false
+      },
+      {
+       "key": "17",
+       "num": "17",
+       "letter": "",
+       "anchor": "part2-art17",
+       "heading": "[Art.] 17. [House to Impeach Before the Senate.]",
+       "title": "House to Impeach Before the Senate",
+       "text": [
+        "The House of Representatives shall be the Grand Inquest of the State; and all impeachments made by them, shall be heard and tried by the Senate."
+       ],
+       "notes": [
+        "June 2, 1784"
+       ],
+       "repealed": false
+      },
+      {
+       "key": "18",
+       "num": "18",
+       "letter": "",
+       "anchor": "part2-art18",
+       "heading": "[Art.] 18. [Money Bills to Originate in House.]",
+       "title": "Money Bills to Originate in House",
+       "text": [
+        "All money bills shall originate in the House of Representatives; but the Senate may propose, or concur with amendments, as on other bills."
+       ],
+       "notes": [
+        "June 2, 1784"
+       ],
+       "repealed": false
+      },
+      {
+       "key": "18-a",
+       "num": "18",
+       "letter": "a",
+       "anchor": "part2-art18-a",
+       "heading": "[Art.] 18-a [Budget Bills.]",
+       "title": "Budget Bills",
+       "text": [
+        "All sections of all budget bills before the general court shall contain only the operating and capital expenses for the executive, legislative and judicial branches of government. No section or footnote of any such budget bill shall contain any provision which establishes, amends or repeals statutory law, other than provisions establishing, amending or repealing operating and capital expenses for the executive, legislative and judicial branches of government."
+       ],
+       "notes": [
+        "November 28, 1984"
+       ],
+       "repealed": false
+      },
+      {
+       "key": "19",
+       "num": "19",
+       "letter": "",
+       "anchor": "part2-art19",
+       "heading": "[Art.] 19. [Adjournment.]",
+       "title": "Adjournment",
+       "text": [
+        "The house of representatives shall have the power to adjourn themselves."
+       ],
+       "notes": [
+        "June 2, 1784",
+        "Amended 1948 substituting \"five\" for \"two\" days as length of adjournment.",
+        "Amended 1966 removing limitation on adjournment."
+       ],
+       "repealed": false
+      },
+      {
+       "key": "20",
+       "num": "20",
+       "letter": "",
+       "anchor": "part2-art20",
+       "heading": "[Art.] 20. [Quorum, What Constitutes.]",
+       "title": "Quorum, What Constitutes",
+       "text": [
+        "A Majority of the members of the House of Representatives shall be a quorum for doing business: But when less than two thirds of the Representatives elected shall be present, the assent of two thirds of those members shall be necessary to render their acts and proceedings valid."
+       ],
+       "notes": [
+        "June 2, 1784"
+       ],
+       "repealed": false
+      },
+      {
+       "key": "21",
+       "num": "21",
+       "letter": "",
+       "anchor": "part2-art21",
+       "heading": "[Art.] 21. [Privileges of Members of Legislature.]",
+       "title": "Privileges of Members of Legislature",
+       "text": [
+        "No member of the House of Representatives, or Senate shall be arrested, or held to bail, on mesne process, during his going to, returning from, or attendance upon, the Court."
+       ],
+       "notes": [
+        "June 2, 1784"
+       ],
+       "repealed": false
+      },
+      {
+       "key": "22",
+       "num": "22",
+       "letter": "",
+       "anchor": "part2-art22",
+       "heading": "[Art.] 22. [House to Elect Speaker and Officers, Settle Rules of Proceedings, and Punish Misconduct.]",
+       "title": "House to Elect Speaker and Officers, Settle Rules of Proceedings, and Punish Misconduct",
+       "text": [
+        "The House of Representatives shall choose their own Speaker, appoint their own officers, and settle the rules of proceedings in their own House; and shall be judge of the returns, elections, and qualifications, of its members, as pointed out in this Constitution. They shall have authority to punish, by imprisonment, every person who shall be guilty of disrespect to the House, in its presence, by any disorderly and contemptuous behavior, or by threatening, or illtreating, any of its members; or by obstructing its deliberations; every person guilty of a breach of its privileges, in making arrests for debt, or by assaulting any member during his attendance at any session; in assaulting or disturbing any one of its officers in the execution of any order or procedure of the House; in assaulting any witness, or other person, ordered to attend, by and during his attendance of the House; or in rescuing any person arrested by order of the House, knowing them to be such."
+       ],
+       "notes": [
+        "June 2, 1784",
+        "Amended 1792 by adding that the House shall be judge of the returns, elections, and qualifications of its members."
+       ],
+       "repealed": false
+      },
+      {
+       "key": "23",
+       "num": "23",
+       "letter": "",
+       "anchor": "part2-art23",
+       "heading": "[Art.] 23. [Senate and Executive Have Like Powers; Imprisonment Limited.]",
+       "title": "Senate and Executive Have Like Powers; Imprisonment Limited",
+       "text": [
+        "The Senate, Governor and Council, shall have the same powers in like cases; provided, that no imprisonment by either, for any offense, exceeds ten days."
+       ],
+       "notes": [
+        "June 2, 1784",
+        "Amended 1792 substituting \"governor\" for \"president.\""
+       ],
+       "repealed": false
+      },
+      {
+       "key": "24",
+       "num": "24",
+       "letter": "",
+       "anchor": "part2-art24",
+       "heading": "[Art.] 24 [Journals and Laws to be Published; Yeas and Nayes; and Protests.]",
+       "title": "Journals and Laws to be Published; Yeas and Nayes; and Protests",
+       "text": [
+        "The journals of the proceedings, and all public acts of both houses, of the legislature, shall be printed and published immediately after every adjournment or prorogation; and upon motion made by any one member, duly seconded, the yeas and nays, upon any question, shall be entered, on the journal. And any member of the senate, or house of representatives, shall have a right, on motion made at the time for that purpose to have his protest, or dissent, with the reasons, against any vote, resolve, or bill passed, entered on the journal."
+       ],
+       "notes": [
+        "June 2, 1784",
+        "Amended 1792 permitting protest or dissent with reasons to be entered in the journals.",
+        "Amended 1966 requiring roll call requests to be seconded."
+       ],
+       "repealed": false
+      }
+     ]
+    },
+    {
+     "name": "Senate",
+     "url": "https://www.nh.gov/glance/state-constitution/senate",
+     "slug": "part2-senate",
+     "articles": [
+      {
+       "key": "25",
+       "num": "25",
+       "letter": "",
+       "anchor": "part2-art25",
+       "heading": "[Art.] 25. [Senate, How Constituted.]",
+       "title": "Senate, How Constituted",
+       "text": [
+        "The senate shall consist of twenty four members."
+       ],
+       "notes": [
+        "June 2, 1784. Provided for 12 senators.",
+        "Amended 1792. Generally rephrased specifying term as one year from the first Wednesday in June.",
+        "Amended 1877 increasing senators to 24 and providing for 2 year term.",
+        "Amended 1889 so that term started in January instead of June.",
+        "Amended 1974 deleting reference to term."
+       ],
+       "repealed": false
+      },
+      {
+       "key": "26",
+       "num": "26",
+       "letter": "",
+       "anchor": "part2-art26",
+       "heading": "[Art.] 26. [Senatorial Districts, How Constituted.]",
+       "title": "Senatorial Districts, How Constituted",
+       "text": [
+        "And that the state may be equally represented in the senate, the legislature shall divide the state into single member districts, as nearly equal as may be in population, each consisting of contiguous towns, city wards and unincorporated places, without dividing any town, city ward or unincorporated place. The legislature shall form the single member districts at its next session after approval of this article by the voters of the state and thereafter at the regular session following each decennial federal census."
+       ],
+       "notes": [
+        "June 2, 1784. Number of senators elected from each district (county) proportioned to taxes paid by each district.",
+        "Amended 1792 dividing the state into 12 senatorial districts still based on proportion of taxes paid by the district.",
+        "Amended 1877 increasing senate to 24 members from single member districts.",
+        "Amended 1964 providing for election of senators on basis of population."
+       ],
+       "repealed": false
+      },
+      {
+       "key": "26-a",
+       "num": "26",
+       "letter": "a",
+       "anchor": "part2-art26-a",
+       "heading": "[Art.] 26-a. [Division of Town, Ward or Place; Senatorial Districts.]",
+       "title": "Division of Town, Ward or Place; Senatorial Districts",
+       "text": [
+        "Notwithstanding Article 26 or any other article, a law providing for an apportionment to form senatorial districts under Article 26 of Part Second may divide a town, ward or unincorporated place into two or more senatorial districts if such town, ward or place by referendum requests such division."
+       ],
+       "notes": [
+        "November 22, 1978"
+       ],
+       "repealed": false
+      },
+      {
+       "key": "27",
+       "num": "27",
+       "letter": "",
+       "anchor": "part2-art27",
+       "heading": "[Art.] 27. [Election of Senators.]",
+       "title": "Election of Senators",
+       "text": [
+        "The freeholders and other inhabitants of each district, qualified as in this constitution is provided shall biennially give in their votes for a senator, at some meeting holden in the month of November."
+       ],
+       "notes": [
+        "June 2, 1784. Annual election of senators at annual meeting in March.",
+        "Amended 1792 rewording phrases but not changing the meaning.",
+        "Amended 1877 twice substituting biennial election and sessions for annual elections and sessions and providing for elections in November instead of March."
+       ],
+       "repealed": false
+      },
+      {
+       "key": "28",
+       "num": "28",
+       "letter": "",
+       "anchor": "part2-art28",
+       "heading": "[Art.] 28. [Senators, How and by Whom Chosen; Right of Suffrage.]",
+       "title": "Senators, How and by Whom Chosen; Right of Suffrage",
+       "text": [
+        "(Repealed)"
+       ],
+       "notes": [
+        "June 2, 1784. Senate, first branch of the legislature, elected by male inhabitants 21 years of age and older who pay their own poll tax.",
+        "Amended 1792 changing wording but not the meaning.",
+        "Amended 1877 twice, substituting \"biennially\" for \"annually\" and \"November\" for \"March.\"",
+        "Amended 1958 removing obsolete reference to \"male\" inhabitants as being the only ones allowed to vote.",
+        "Repealed 1976. Provisions covered by Article 11."
+       ],
+       "repealed": true
+      },
+      {
+       "key": "29",
+       "num": "29",
+       "letter": "",
+       "anchor": "part2-art29",
+       "heading": "[Art.] 29. [Qualifications of Senators.]",
+       "title": "Qualifications of Senators",
+       "text": [
+        "Provided nevertheless, that no person shall be capable of being elected a senator, who is not of the age of thirty years, and who shall not have been an inhabitant of this state for seven years immediately preceding his election, and at the time thereof he shall be an inhabitant of the district for which he shall be chosen. Should such person, after election, cease to be an inhabitant of the district for which he was chosen, he shall be disqualified to hold said position and a vacancy shall be declared therein."
+       ],
+       "notes": [
+        "June 2, 1784",
+        "Amended 1852 deleting property qualifications.",
+        "Amended 1877 deleting requirements that senators be Protestant.",
+        "Amended 1976 adding provision that a senator is disqualified if he moves from his district."
+       ],
+       "repealed": false
+      },
+      {
+       "key": "30",
+       "num": "30",
+       "letter": "",
+       "anchor": "part2-art30",
+       "heading": "[Art.] 30. [Inhabitant Defined.]",
+       "title": "Inhabitant Defined",
+       "text": [
+        "And every person, qualified as the constitution provides, shall be considered an inhabitant for the purpose of being elected into any office or place within this state, in the town, or ward, where he is domiciled."
+       ],
+       "notes": [
+        "June 2, 178",
+        "Amended 1958 substituting \"ward\" for \"parish, and plantation.\"",
+        "Amended 1976 twice deleting reference to electing and substituting \"is domiciled\" for \"dwelleth and hath his home.\""
+       ],
+       "repealed": false
+      },
+      {
+       "key": "31",
+       "num": "31",
+       "letter": "",
+       "anchor": "part2-art31",
+       "heading": "[Art.] 31. [Inhabitants of Unincorporated Places; Their Rights, etc.]",
+       "title": "Inhabitants of Unincorporated Places; Their Rights, etc.",
+       "text": [
+        "(Repealed)"
+       ],
+       "notes": [
+        "June 2, 1784. Procedure and qualifications for inhabitants of unincorporated places to vote.",
+        "Amended 1877 twice providing for biennial instead of annual elections in November instead of March.",
+        "Amended 1958 deleting reference to plantations and substituting \"wards\" for \"parishes.\"",
+        "Repealed 1976. Provisions covered by Part I, Art. 11."
+       ],
+       "repealed": true
+      },
+      {
+       "key": "32",
+       "num": "32",
+       "letter": "",
+       "anchor": "part2-art32",
+       "heading": "[Art.] 32. [Biennial Meetings, How Warned, Governed, and Conducted; Return of Votes, etc.]",
+       "title": "Biennial Meetings, How Warned, Governed, and Conducted; Return of Votes, etc.",
+       "text": [
+        "The meetings for the choice of governor, council and senators, shall be warned by warrant from the selectmen, and governed by a moderator, who shall, in the presence of the selectmen (whose duty it shall be to attend) in open meeting, receive the votes of all the inhabitants of such towns and wards present, and qualified to vote for senators; and shall, in said meetings, in presence of the said selectmen, and of the town or city clerk, in said meetings, sort and count the said votes, and make a public declaration thereof, with the name of every person voted for, and the number of votes for each person; and the town or city clerk shall make a fair record of the same at large, in the town book, and shall make out a fair attested copy thereof, to be by him sealed up and directed to the secretary of state, within five days following the election, with a superscription expressing the purport thereof."
+       ],
+       "notes": [
+        "June 2, 1784",
+        "Amended 1792 generally rewording section.",
+        "Amended 1889 substituting \"January\" for \"June\" regarding notification to secretary of state.",
+        "Amended 1958 substituting \"wards\" for \"parishes\" and added reference to city clerks.",
+        "Amended 1974 substituting \"December\" for \"January\" and \"twenty\" and \"thirty\" regarding notification to secretary of state.",
+        "Amended 1976 changing notification to 5 days after the election."
+       ],
+       "repealed": false
+      },
+      {
+       "key": "33",
+       "num": "33",
+       "letter": "",
+       "anchor": "part2-art33",
+       "heading": "[Art.] 33. [Secretary of State to Count Votes for Senators and Notify Persons Elected.]",
+       "title": "Secretary of State to Count Votes for Senators and Notify Persons Elected",
+       "text": [
+        "And that there may be a due meeting of senators and representatives on the first Wednesday of December, biennially, the secretary of state shall, as soon as may be, examine the returned copy of such records; and fourteen days before the first Wednesday of December, he shall issue his summons to such persons as appear to be chosen senators and representatives, by a plurality of votes, to attend and take their seats on that day."
+       ],
+       "notes": [
+        "June 2, 1784. President and 3 of the council to issue summons to senators to take their seats.",
+        "Amended 1792 changing president to governor and specific number of councilors to majority of councilors.",
+        "Amended 1877 changing annually to biennially.",
+        "Amended 1889 changing June to January for beginning of session.",
+        "Amended 1912 substituting \"plurality of votes\" for \"majority of votes.\"",
+        "Amended 1968 deleting proviso relating to the first year.",
+        "Amended 1974 changing meeting to first Wednesday of December.",
+        "Amended 1976 providing that the secretary of state should examine the returns and notify those elected instead of governor."
+       ],
+       "repealed": false
+      },
+      {
+       "key": "34",
+       "num": "34",
+       "letter": "",
+       "anchor": "part2-art34",
+       "heading": "[Art.] 34. [Vacancies in Senate, How Filled.]",
+       "title": "Vacancies in Senate, How Filled",
+       "text": [
+        "And in case there shall not appear to be a senator elected, by a plurality of votes, for any district, the deficiency shall be supplied in the following manner, viz. The members of the house of representatives, and such senators as shall be declared elected, shall take the names of the two persons having the highest number of votes in the district, and out of them shall elect, by joint ballot, the senator wanted for such district; and in this manner all such vacancies shall be filled up, in every district of the state and in case the person receiving a plurality of votes in any district is found by the Senate not to be qualified to be seated, a new election shall be held forthwith in said district. All vacancies in the senate arising by death, removal out of the state, or otherwise, except from failure to elect, shall be filled by a new election by the people of the district upon the requisition of the governor and council, as soon as may be after such vacancies shall happen."
+       ],
+       "notes": [
+        "June 2, 1784",
+        "Amended 1792 generally rewording section.",
+        "Amended 1889 adding provisions for new elections in case of vacancies.",
+        "Amended 1912 providing for plurality of votes instead of majority.",
+        "Amended 1968 providing for new election if person elected is not qualified."
+       ],
+       "repealed": false
+      },
+      {
+       "key": "35",
+       "num": "35",
+       "letter": "",
+       "anchor": "part2-art35",
+       "heading": "[Art.] 35. [Senate, Judges of Their Own Elections.]",
+       "title": "Senate, Judges of Their Own Elections",
+       "text": [
+        "The senate shall be final judges of the elections, returns, and qualifications, of their own members, as pointed out in this constitution."
+       ],
+       "notes": [
+        "June 2, 1784"
+       ],
+       "repealed": false
+      },
+      {
+       "key": "36",
+       "num": "36",
+       "letter": "",
+       "anchor": "part2-art36",
+       "heading": "[Art.] 36. [Adjournment.]",
+       "title": "Adjournment",
+       "text": [
+        "The senate shall have power to adjourn themselves, and whenever they shall sit on the trial of any impeachment, they may adjourn to such time and place as they may think proper although the legislature be not assembled on such day, or at such place."
+       ],
+       "notes": [
+        "June 2, 1784",
+        "Amended 1792 adding proviso relating to impeachment.",
+        "Amended 1948 increasing adjournment from 2 days to 5 days.",
+        "Amended 1966 deleting limitation on adjournment."
+       ],
+       "repealed": false
+      },
+      {
+       "key": "37",
+       "num": "37",
+       "letter": "",
+       "anchor": "part2-art37",
+       "heading": "[Art.] 37. [Senate to Elect Their Own Officers; Quorum.]",
+       "title": "Senate to Elect Their Own Officers; Quorum",
+       "text": [
+        "The senate shall appoint their president and other officers, and determine their own rules of proceedings: And not less than thirteen members of the senate shall make a quorum for doing business; and when less than sixteen senators shall be present, the assent of ten, at least, shall be necessary to render their acts and proceedings valid."
+       ],
+       "notes": [
+        "June 2, 1784",
+        "Amended 1792 adding \"president.\"",
+        "Amended 1877 increasing quorum from 7 to 13 and changing assent of 5 when less than 8 present to assent of 10 when less than 16 present."
+       ],
+       "repealed": false
+      },
+      {
+       "key": "38",
+       "num": "38",
+       "letter": "",
+       "anchor": "part2-art38",
+       "heading": "[Art.] 38. [Senate to Try Impeachments; Mode of Proceeding.]",
+       "title": "Senate to Try Impeachments; Mode of Proceeding",
+       "text": [
+        "The senate shall be a court, with full power and authority to hear, try, and determine, all impeachments made by the house of representatives against any officer or officers of the state, for bribery, corruption, malpractice or maladministration, in office; with full power to issue summons, or compulsory process, for convening witnesses before them: But previous to the trial of any such impeachment, the members of the senate shall respectively be sworn truly and impartially to try and determine the charge in question, according to evidence. And every officer, impeached for bribery, corruption, malpractice or maladministration in office, shall be served with an attested copy of the impeachment, and order of the senate thereon with such citation as the senate may direct, setting forth the time and place of their sitting to try the impeachment; which service shall be made by the sheriff, or such other sworn officer as the senate may appoint, at least fourteen days previous to the time of trial; and such citation being duly served and returned, the senate may proceed in the hearing of the impeachment, giving the person impeached, if he shall appear, full liberty of producing witnesses and proofs, and of making his defense, by himself and counsel, and may also, upon his refusing or neglecting to appear hear the proofs in support of the impeachment, and render judgment thereon, his nonappearance notwithstanding; and such judgment shall have the same force and effect as if the person impeached had appeared and pleaded in the trial."
+       ],
+       "notes": [
+        "June 2, 1784",
+        "Amended 1792 adding mode of proceeding."
+       ],
+       "repealed": false
+      },
+      {
+       "key": "39",
+       "num": "39",
+       "letter": "",
+       "anchor": "part2-art39",
+       "heading": "[Art.] 39. [Judgment on Impeachment Limited.]",
+       "title": "Judgment on Impeachment Limited",
+       "text": [
+        "Their judgment, however, shall not extend further than removal from office, disqualification to hold or enjoy any place of honor, trust, or profit, under this state, but the party so convicted, shall nevertheless be liable to indictment, trial, judgment, and punishment, according to the laws of the land."
+       ],
+       "notes": [
+        "June 2, 1784"
+       ],
+       "repealed": false
+      },
+      {
+       "key": "40",
+       "num": "40",
+       "letter": "",
+       "anchor": "part2-art40",
+       "heading": "[Art.] 40. [Chief Justice to Preside on Impeachment of Governor.]",
+       "title": "Chief Justice to Preside on Impeachment of Governor",
+       "text": [
+        "Whenever the Governor shall be impeached, the chief justice of the supreme judicial court, shall, during the trial, preside in the senate, but have no vote therein."
+       ],
+       "notes": [
+        "September 5, 1792"
+       ],
+       "repealed": false
+      }
+     ]
+    },
+    {
+     "name": "Executive Power – Governor",
+     "url": "https://www.nh.gov/glance/state-constitution/executive-power-governor",
+     "slug": "part2-executive-power-governor",
+     "articles": [
+      {
+       "key": "41",
+       "num": "41",
+       "letter": "",
+       "anchor": "part2-art41",
+       "heading": "[Art.] 41. [Governor, Supreme Executive Magistrate.]",
+       "title": "Governor, Supreme Executive Magistrate",
+       "text": [
+        "There shall be a supreme executive magistrate, who shall be styled the Governor of the State of New Hampshire, and whose title shall be His Excellency. The executive power of the state is vested in the governor. The governor shall be responsible for the faithful execution of the laws. He may, by appropriate court action or proceeding brought in the name of the state, enforce compliance with any constitutional or legislative mandate, or restrain violation of any constitutional or legislative power, duty, or right, by any officer, department or agency of the state. This authority shall not be construed to authorize any action or proceedings against the legislative or judicial branches."
+       ],
+       "notes": [
+        "June 2, 1784",
+        "Amended 1792 substituting \"Governor\" for \"President.\"",
+        "Amended 1966 clarifying and reinforcing executive powers of the governor."
+       ],
+       "repealed": false
+      },
+      {
+       "key": "42",
+       "num": "42",
+       "letter": "",
+       "anchor": "part2-art42",
+       "heading": "[Art.] 42. [Election of Governor, Return of Votes; Electors; If No Choice, Legislature to Elect One of Two Highest Candidates; Qualifications for Governor.]",
+       "title": "Election of Governor, Return of Votes; Electors; If No Choice, Legislature to Elect One of Two Highest Candidates; Qualifications for Governor",
+       "text": [
+        "The governor shall be chosen biennially in the month of November; and the votes for governor shall be received, sorted, counted, certified and returned, in the same manner as the votes for senators; and the secretary shall lay the same before the senate and house of representatives, on the first Wednesday following the first Tuesday of January to be by them examined, and in case of an election by a plurality of votes through the state, the choice shall be by them declared and published. And the qualifications of electors of the governor shall be the same as those for senators; and if no person shall have a plurality of votes, the senate and house of representatives shall, by joint ballot elect one of the two persons, having the highest number of votes, who shall be declared governor. And no person shall be eligible to this office, unless at the time of his election, he shall have been an inhabitant of this state for 7 years next preceding, and unless he shall be of the age of 30 years."
+       ],
+       "notes": [
+        "June 2, 1784",
+        "Amended 1792 deleting specifics of handling votes at town meeting.",
+        "Amended 1852 removing property qualification for holding office.",
+        "Amended 1877 three times: biennial elections replacing annual; elections in November instead of March; deleting provision that office holders be of protestant religion.",
+        "Amended 1889 changing June to January for the secretary of state to lay the votes before the house and senate.",
+        "Amended 19l2 requiring a plurality instead of majority for election of governor.",
+        "Amended 1982 changing first Wednesday of January to Wednesday after the first Tuesday."
+       ],
+       "repealed": false
+      },
+      {
+       "key": "43",
+       "num": "43",
+       "letter": "",
+       "anchor": "part2-art43",
+       "heading": "[Art.] 43. [In Cases of Disagreement Governor to Adjourn or Prorogue Legislature; If Causes Exist, May Convene Them Elsewhere.]",
+       "title": "In Cases of Disagreement Governor to Adjourn or Prorogue Legislature; If Causes Exist, May Convene Them Elsewhere",
+       "text": [
+        "In cases of disagreement between the two houses, with regard to the time or place of adjournment or prorogation, the governor, with advice of council, shall have a right to adjourn or prorogue the general court, not exceeding ninety days at any one time, as he may determine the public good may require, and he shall dissolve the same on the first Wednesday of December biennially. And, in cases whereby dangers may arise to the health or lives of the members from their attendance at the general court at any place, the governor may direct the session to be holden at some other the most convenient place within the state."
+       ],
+       "notes": [
+        "June 2, 1784",
+        "Amended 1792 twice changing president to governor and inserting \"place\" of adjournment.",
+        "Amended 1889 changing June to January for time of dissolving house and senate.",
+        "Amended 1974 providing for the legislature to be dissolved on the first Wednesday of December.",
+        "Amended 1980 removing \"infectious distemper\" as a reason for the governor to convene the legislature at a different place."
+       ],
+       "repealed": false
+      },
+      {
+       "key": "44",
+       "num": "44",
+       "letter": "",
+       "anchor": "part2-art44",
+       "heading": "[Art.] 44. [Veto to Bills.]",
+       "title": "Veto to Bills",
+       "text": [
+        "Every bill which shall have passed both houses of the general court, shall, before it becomes a law, be presented to the governor, if he approves, he shall sign it, but if not, he shall return it, with his objections, to that house in which it shall have originated, who shall enter the objections at large on their journal, and proceed to reconsider it; if after such reconsideration, two thirds of that house shall agree to pass the bill, it shall be sent, together with such objections, to the other house, by which it shall likewise be reconsidered, and, if approved by two thirds of that house, it shall become a law. But in all such cases the votes of both houses shall be determined by yeas and nays, and the names of persons, voting for or against the bill, shall be entered on the journal of each house respectively. If any bill shall not be returned by the governor within five days (Sundays excepted) after it shall have been presented to him, the same shall be a law in like manner as if he had signed it unless the legislature, by their adjournment, prevent its return, in which case it shall not be a law."
+       ],
+       "notes": [
+        "September 5, 1792"
+       ],
+       "repealed": false
+      },
+      {
+       "key": "45",
+       "num": "45",
+       "letter": "",
+       "anchor": "part2-art45",
+       "heading": "[Art.] 45. [Resolves to Be Treated Like Bills.]",
+       "title": "Resolves to Be Treated Like Bills",
+       "text": [
+        "Every resolve shall be presented to the governor, and before the same shall take effect, shall be approved by him, or being disapproved by him, shall be repassed by the senate and house of representatives, according to the rules and limitations prescribed in the case of a bill."
+       ],
+       "notes": [
+        "September 5, 1792"
+       ],
+       "repealed": false
+      },
+      {
+       "key": "46",
+       "num": "46",
+       "letter": "",
+       "anchor": "part2-art46",
+       "heading": "[Art.] 46. [Nomination and Appointment of Officers.]",
+       "title": "Nomination and Appointment of Officers",
+       "text": [
+        "All judicial officers, the attorney general, and all officers of the navy, and general and field officers of the militia, shall be nominated and appointed by the governor and council; and every such nomination shall be made at least three days prior to such appointment; and no appointment shall take place, unless a majority of the council agree thereto."
+       ],
+       "notes": [
+        "June 2, 1784",
+        "Amended 1792 making minor changes in wording.",
+        "Amended 1877 deleting solicitors and sheriffs from those appointed by governor and council.",
+        "Amended 1976 deleting appointment of coroners by governor and council."
+       ],
+       "repealed": false
+      },
+      {
+       "key": "47",
+       "num": "47",
+       "letter": "",
+       "anchor": "part2-art47",
+       "heading": "[Art.] 47. [Governor and Council Have Negative on Each Other.]",
+       "title": "Governor and Council Have Negative on Each Other",
+       "text": [
+        "The governor and council shall have a negative on each other, both in the nominations and appointments. Every nomination and appointment shall be signed by the governor and council, and every negative shall be also signed by the governor or council who made the same."
+       ],
+       "notes": [
+        "September 5, 1792"
+       ],
+       "repealed": false
+      },
+      {
+       "key": "48",
+       "num": "48",
+       "letter": "",
+       "anchor": "part2-art48",
+       "heading": "[Art.] 48. [Field Officers to Recommend, and Governor to Appoint, Company Officers.]",
+       "title": "Field Officers to Recommend, and Governor to Appoint, Company Officers",
+       "text": [
+        "(Repealed)"
+       ],
+       "notes": [
+        "June 2, 1784",
+        "Amended 1792 providing that field officers were to nominate and recommend to the governor the captains and subalterns instead of appointing them.",
+        "Amended 1903 added proviso that nominees had to be examined and qualified by an examining board.",
+        "Repealed 1976."
+       ],
+       "repealed": true
+      },
+      {
+       "key": "49",
+       "num": "49",
+       "letter": "",
+       "anchor": "part2-art49",
+       "heading": "[Art.] 49. [President of Senate, etc., To Act as Governor When Office Vacant; Speaker of House to Act When Office of President of Senate Is also Vacant.]",
+       "title": "President of Senate, etc., To Act as Governor When Office Vacant; Speaker of House to Act When Office of President of Senate Is also Vacant",
+       "text": [
+        "In the event of the death, resignation, removal from office, failure to qualify, physical or mental incapacity, absence from the state, or other incapacity of the governor, the president of the senate, for the time being, shall act as governor until the vacancy is filled or the incapacity is removed; and if the president of the senate, for any of the above named causes, shall become incapable of performing the duties of governor, the same shall devolve upon the speaker of the house of representatives, for the time being, or in the case of the like incapacity of the speaker, upon the secretary of state, or in case of his like incapacity, upon the state treasurer, each of whom, in that order, shall act as governor, as hereinabove provided, until the vacancy is filled or the incapacity removed. Whenever a vacancy for the duration or remainder of the governor´s term of office occurs before the commencement of the last year of such term, a special election for governor shall take place to fill the vacancy, as provided by law. Whenever the speaker of the house acts as governor, he shall act as such only until such time as the vacancy is filled or the incapacity removed in either the office of governor or of president of the senate, whichever occurs first. Whenever either the secretary of state or the treasurer acts as governor, he shall act as such only until such time as the vacancy is filled or the incapacity removed in the offices of governor, of president of the senate or of speaker of the house, whichever occurs first. While acting as governor under this article, the president of the senate, speaker of the house, secretary of state or state treasurer, as the case may be, shall be styled Acting Governor, shall not be required to take an additional oath of office, shall have and exercise all the powers, duties and authorities of, and receive compensation equal to that of the office of governor; and the capacity of each such officer to serve as president of the senate as well as senator, speaker of the house of representatives as well as representative, secretary of state, or state treasurer, as the case may be, or to receive the compensation of such office, shall be suspended only. While the governor or an acting governor is absent from the state on official business, he shall have the power and authority to transact such business."
+       ],
+       "notes": [
+        "June 2, 1784",
+        "Amended 1792 changing some wording and providing that the senate president acting as governor could not hold his office in the senate.",
+        "Amended 1889 providing for the speaker of the house to act as governor.",
+        "Amended 1956 providing that the governor while absent from the state has authority to transact such business.",
+        "Amended 1968 providing for succession through secretary of state and state treasurer, but only until a new senate president or house speaker is elected.",
+        "Amended 1984 rewording section generally to include incapacity, new election if vacancy occurs before last year of the term, compensation of acting governor to equal that of governor, and suspension of senate president acting as a senator or speaker to act as a representative while serving as acting governor."
+       ],
+       "repealed": false
+      },
+      {
+       "key": "49-a",
+       "num": "49",
+       "letter": "a",
+       "anchor": "part2-art49-a",
+       "heading": "[Art.] 49-a [Prolonged Failure to Qualify; Vacancy in Office of Governor Due to Physical or Mental Incapacity, etc.]",
+       "title": "Prolonged Failure to Qualify; Vacancy in Office of Governor Due to Physical or Mental Incapacity, etc.",
+       "text": [
+        "Whenever the governor transmits to the secretary of state and president of the senate his written declaration that he is unable to discharge the powers and duties of his office by reason of physical or mental incapacity and until he transmits to them a written declaration to the contrary, the president of the senate, for the time being, shall act as governor as provided in article 49, subject to the succession provisions therein set forth. Whenever it reasonably appears to the attorney general and a majority of the council that the governor is unable to discharge the powers and duties of his office by reason of physical or mental incapacity, but the governor is unwilling or unable to transmit his written declaration to such effect as above provided, the attorney general shall file a petition for declaratory judgment in the supreme court requesting a judicial determination of the ability of the governor to discharge the powers and duties of his office. After notice and hearing, the justices of the supreme court shall render such judgment as they find warranted by a preponderance of the evidence; and, if the court holds that the governor is unable to discharge the powers and duties of his office, the president of the senate, for the time being, shall act as governor as provided in article 49, subject to the succession provisions therein set forth, until such time as the disability of the governor is removed or a newly elected governor is inaugurated. Such disability, once determined by the supreme court, may be removed upon petition for declaratory judgment to the supreme court by the governor if the court finds, after notice and hearing, by a preponderance of the evidence that the governor is able to discharge the powers and duties of his office. Whenever such disability of the governor, as determined by his written declaration or by judgment of the supreme court, has continued for a period of 6 months, the general court may, by concurrent resolution adopted by both houses, declare the office of governor vacant. Whenever the governor elect fails to qualify by reason of physical or mental incapacity or any cause other than death or resignation, for a period of 6 months following the inauguration date established by this constitution, the general court may, by concurrent resolution adopted by both houses, declare the office of governor vacant. The provisions of article 49 shall govern the filling of such vacancy, either by special election or continued service of an acting governor. If the general court is not in session when any such 6-month period expires, the acting governor, upon written request of at least 1/4 of the members of each house, shall convene the general court in special session for the sole purpose of considering and acting on the question whether to declare a vacancy in the office of governor under this article."
+       ],
+       "notes": [
+        "November 28, 1984"
+       ],
+       "repealed": false
+      },
+      {
+       "key": "50",
+       "num": "50",
+       "letter": "",
+       "anchor": "part2-art50",
+       "heading": "[Art.] 50. [Governor to Prorogue or Adjourn Legislature, and Call Extra Sessions.]",
+       "title": "Governor to Prorogue or Adjourn Legislature, and Call Extra Sessions",
+       "text": [
+        "The governor, with advice of council, shall have full power and authority, in the recess of the general court, to prorogue the same from time to time, not exceeding ninety days, in any one recess of said court; and during the sessions of said court, to adjourn or prorogue it to any time the two houses may desire, and to call it together sooner than the time to which it may be adjourned, or prorogued, if the welfare of the state should require the same."
+       ],
+       "notes": [
+        "June 2, 1784",
+        "Amended 1792 changing president to governor."
+       ],
+       "repealed": false
+      },
+      {
+       "key": "51",
+       "num": "51",
+       "letter": "",
+       "anchor": "part2-art51",
+       "heading": "[Art.] 51. [Powers and Duties of Governor as Commander-in-Chief.]",
+       "title": "Powers and Duties of Governor as Commander-in-Chief",
+       "text": [
+        "The governor of this state for the time being, shall be commander-in-chief of all the military forces of the state; and shall have full power, by himself or by any chief commander, or other officer or officers, from time to time, to train, instruct, exercise and govern the militia; to call forth the militia and to put in warlike posture the inhabitants of the state; to execute the laws of the state and of the United States; to suppress insurrection and to repel invasion; and, in fine, the governor is hereby entrusted with all other powers incident to the office of commander in chief to be exercised agreeably to the rules and regulations of the constitution and the laws of the land."
+       ],
+       "notes": [
+        "June 2, 1784",
+        "Amended 1792 changing president to governor.",
+        "Amended 1968 condensing authority of the governor as commander-in-chief of military forces."
+       ],
+       "repealed": false
+      },
+      {
+       "key": "52",
+       "num": "52",
+       "letter": "",
+       "anchor": "part2-art52",
+       "heading": "[Art.] 52. [Pardoning Power.]",
+       "title": "Pardoning Power",
+       "text": [
+        "The power of pardoning offenses, except such as persons may be convicted of before the senate, by impeachment of the house, shall be in the Governor, by and with the advice of council: But no charter of pardon, granted by the Governor, with advice of the council, before conviction, shall avail the party pleading the same, notwithstanding any general or particular expressions contained therein, descriptive of the offense or offenses intended to be pardoned."
+       ],
+       "notes": [
+        "June 2, 1784",
+        "Amended 1792 changing president to governor."
+       ],
+       "repealed": false
+      },
+      {
+       "key": "53",
+       "num": "53",
+       "letter": "",
+       "anchor": "part2-art53",
+       "heading": "[Art.] 53. [Militia Officers, Removal of.]",
+       "title": "Militia Officers, Removal of",
+       "text": [
+        "(Repealed)"
+       ],
+       "notes": [
+        "June 2, 1784",
+        "Amended 1792 changing president to governor.",
+        "Repealed 1976."
+       ],
+       "repealed": true
+      },
+      {
+       "key": "54",
+       "num": "54",
+       "letter": "",
+       "anchor": "part2-art54",
+       "heading": "[Art.] 54. [Staff and Non-commissioned Officers, by Whom Appointed.",
+       "title": "Staff and Non-commissioned Officers, by Whom Appointed",
+       "text": [
+        "(Repealed)"
+       ],
+       "notes": [
+        "June 2, 1784",
+        "Repealed 1976."
+       ],
+       "repealed": true
+      },
+      {
+       "key": "55",
+       "num": "55",
+       "letter": "",
+       "anchor": "part2-art55",
+       "heading": "[Art.] 55. [Division of Militia into Brigades, Regiments, and companies.]",
+       "title": "Division of Militia into Brigades, Regiments, and companies",
+       "text": [
+        "(Repealed)"
+       ],
+       "notes": [
+        "June 2, 1784",
+        "Repealed 1976."
+       ],
+       "repealed": true
+      },
+      {
+       "key": "56",
+       "num": "56",
+       "letter": "",
+       "anchor": "part2-art56",
+       "heading": "[Art.] 56. [Disbursements from Treasury.]",
+       "title": "Disbursements from Treasury",
+       "text": [
+        "No moneys shall be issued out of the treasury of this state, and disposed of, (except such sums as may be appropriated for the redemption of bills of credit, or treasurer´s notes, or for the payment of interest arising thereon) but by warrant under the hand of the Governor for the time being, by and with the advice and consent of the council, for the necessary support and defense of this state, and for the necessary protection and preservation of the inhabitants thereof, agreeably to the acts and resolves of the General Court."
+       ],
+       "notes": [
+        "June 2, 1784",
+        "Amended 1792 changing president to governor."
+       ],
+       "repealed": false
+      },
+      {
+       "key": "57",
+       "num": "57",
+       "letter": "",
+       "anchor": "part2-art57",
+       "heading": "[Art.] 57. [Accounts of Military Stores.]",
+       "title": "Accounts of Military Stores",
+       "text": [
+        "(Repealed)"
+       ],
+       "notes": [
+        "June 2, 1784",
+        "Amended 1792 changing president to governor.",
+        "Repealed 1950."
+       ],
+       "repealed": true
+      },
+      {
+       "key": "58",
+       "num": "58",
+       "letter": "",
+       "anchor": "part2-art58",
+       "heading": "[Art.] 58. [Compensation of Governor and Council.]",
+       "title": "Compensation of Governor and Council",
+       "text": [
+        "The governor and council shall be compensated for their services, from time to time, by such grants as the general courts shall think reasonable."
+       ],
+       "notes": [
+        "June 2, 1784",
+        "Amended 1792 changing president to governor."
+       ],
+       "repealed": false
+      },
+      {
+       "key": "59",
+       "num": "59",
+       "letter": "",
+       "anchor": "part2-art59",
+       "heading": "[Art.] 59. [Salaries of Judges.]",
+       "title": "Salaries of Judges",
+       "text": [
+        "Permanent and honorable salaries shall be established by law, for the justices of the superior court."
+       ],
+       "notes": [
+        "June 2, 1784"
+       ],
+       "repealed": false
+      }
+     ]
+    },
+    {
+     "name": "Council",
+     "url": "https://www.nh.gov/glance/state-constitution/council",
+     "slug": "part2-council",
+     "articles": [
+      {
+       "key": "60",
+       "num": "60",
+       "letter": "",
+       "anchor": "part2-art60",
+       "heading": "[Art.] 60. [Councilors; Mode of Election, etc.]",
+       "title": "Councilors; Mode of Election, etc.",
+       "text": [
+        "There shall be biennially elected, by ballot, five councilors, for advising the governor in the executive part of government. The freeholders and other inhabitants in each county, qualified to vote for senators, shall some time in the month of November, give in their votes for one councilor; which votes shall be received, sorted, counted, certified, and returned to the secretary's office, in the same manner as the votes for senators, to be by the secretary laid before the senate and house of representatives on the first Wednesday following the first Tuesday of January."
+       ],
+       "notes": [
+        "June 2, 1784",
+        "Amended 1792 twice changing the council from members of the house and senate elected by the house and senate to individuals elected by voters - one in each county; and changing president to governor.",
+        "Amended 1877 twice substituting biennially for annually and November for March.",
+        "Amended 1889 substituting January for June.",
+        "Amended 1984 changing the first Wednesday to the first Wednesday following the first Tuesday."
+       ],
+       "repealed": false
+      },
+      {
+       "key": "61",
+       "num": "61",
+       "letter": "",
+       "anchor": "part2-art61",
+       "heading": "[Art.] 6l. [Vacancies, How Filled, if No Choice.]",
+       "title": "Vacancies, How Filled, if No Choice",
+       "text": [
+        "And the person having a plurality of votes in any county, shall be considered as duly elected a councilor: But if no person shall have a plurality of votes in any county, the senate and house of representatives shall take the names of the two persons who have the highest number of votes in each county, and not elected, and out of those two shall elect by joint ballot, the councilor wanted for such county, and the qualifications for councilors shall be the same as for senator."
+       ],
+       "notes": [
+        "September 5, 1792",
+        "Amended 1912 substituting plurality for majority."
+       ],
+       "repealed": false
+      },
+      {
+       "key": "62",
+       "num": "62",
+       "letter": "",
+       "anchor": "part2-art62",
+       "heading": "[Art.] 62. [Subsequent Vacancies; Governor to Convene; Duties.]",
+       "title": "Subsequent Vacancies; Governor to Convene; Duties",
+       "text": [
+        "If any person thus chosen a councilor, shall be elected governor or member of either branch of the legislature, and shall accept the trust; or if any person elected a councilor, shall refuse to accept the office, or in case of the death, resignation, or removal of any councilor out of the state, the governor may issue a precept for the election of a new councilor in that county where such vacancy shall happen and the choice shall be in the same manner as before directed. And the Governor shall have full power and authority to convene the council, from time to time, at his discretion; and, with them, or the majority of them, may and shall, from time to time hold a council, for ordering and directing the affairs of the state, according to the laws of the land."
+       ],
+       "notes": [
+        "September 5, 1792"
+       ],
+       "repealed": false
+      },
+      {
+       "key": "63",
+       "num": "63",
+       "letter": "",
+       "anchor": "part2-art63",
+       "heading": "[Art.] 63. [Impeachment of Councilors.]",
+       "title": "Impeachment of Councilors",
+       "text": [
+        "The members of the council may be impeached by the house, and tried by the senate for bribery, corruption, malpractice, or maladministration."
+       ],
+       "notes": [
+        "June 2, 1784",
+        "Amended 1792 changing wording generally and changing mal-conduct to bribery, corruption, malpractice, or maladministration."
+       ],
+       "repealed": false
+      },
+      {
+       "key": "64",
+       "num": "64",
+       "letter": "",
+       "anchor": "part2-art64",
+       "heading": "[Art.] 64. [Secretary to Record Proceedings of Council.]",
+       "title": "Secretary to Record Proceedings of Council",
+       "text": [
+        "The resolutions and advice of the council shall be recorded by the secretary, in a register, and signed by all members present agreeing thereto; and this record may be called for at any time, by either house of the legislature; and any member of the council may enter his opinion contrary to the resolutions of the majority, with the reasons for such opinion."
+       ],
+       "notes": [
+        "June 2, 1784",
+        "Amended 1792 adding phrases: \"by the secretary,\" \"agreeing thereto,\" and \"with the reasons for such opinion.\""
+       ],
+       "repealed": false
+      },
+      {
+       "key": "65",
+       "num": "65",
+       "letter": "",
+       "anchor": "part2-art65",
+       "heading": "[Art.] 65. [Councilor Districts Provided for.]",
+       "title": "Councilor Districts Provided for",
+       "text": [
+        "The legislature may, if the public good shall hereafter require it, divide the state into five districts, as nearly equal as may be, governing themselves by the number of population, each district to elect a councilor: And, in case of such division, the manner of the choice shall be conformable to the present mode of election in counties."
+       ],
+       "notes": [
+        "September 5, 1792",
+        "Amended 1912 substituting population for rateable polls."
+       ],
+       "repealed": false
+      },
+      {
+       "key": "66",
+       "num": "66",
+       "letter": "",
+       "anchor": "part2-art66",
+       "heading": "[Art.] 66. [Elections by Legislature May Be Adjourned From Day to Day; Order Thereof.]",
+       "title": "Elections by Legislature May Be Adjourned From Day to Day; Order Thereof",
+       "text": [
+        "And, whereas the elections, appointed to be made by this constitution on the first Wednesday of January biennially, by the two houses of the legislature, may not be completed on that day, the said elections may be adjourned from day to day, until the same be completed; and the order of the elections shall be as follows the vacancies in the senate, if any, shall be first filled up: The governor shall then be elected, provided there shall be no choice of him by the people: And afterwards, the two houses shall proceed to fill up the vacancy, if any, in the council."
+       ],
+       "notes": [
+        "June 2, 1784",
+        "Amended 1792 twice changing president to governor and election of the council only if there is a vacancy.",
+        "Amended 1877 substituting biennially for annually.",
+        "Amended 1889 substituting January for June."
+       ],
+       "repealed": false
+      }
+     ]
+    },
+    {
+     "name": "Secretary, Treasurer, Etc.",
+     "url": "https://www.nh.gov/glance/state-constitution/secretary-treasurer-etc",
+     "slug": "part2-secretary-treasurer",
+     "articles": [
+      {
+       "key": "67",
+       "num": "67",
+       "letter": "",
+       "anchor": "part2-art67",
+       "heading": "[Art.] 67. [Election of Secretary and Treasurer.]",
+       "title": "Election of Secretary and Treasurer",
+       "text": [
+        "The Secretary and Treasurer shall be chosen by joint ballot of the Senators and Representatives assembled in one room."
+       ],
+       "notes": [
+        "June 2, 1784",
+        "Amended 1950 deleting commissary general."
+       ],
+       "repealed": false
+      },
+      {
+       "key": "68",
+       "num": "68",
+       "letter": "",
+       "anchor": "part2-art68",
+       "heading": "[Art.] 68. [State Records, Where Kept; Duty of Secretary.]",
+       "title": "State Records, Where Kept; Duty of Secretary",
+       "text": [
+        "The records of the State shall be kept in the office of the Secretary, and he shall attend the Governor and Council, the Senate and Representatives, in person, or by Deputy, as they may require."
+       ],
+       "notes": [
+        "June 2, 1784",
+        "Amended 1792 twice transferring authority of the secretary to appoint his deputies to next article, and changing president to governor."
+       ],
+       "repealed": false
+      },
+      {
+       "key": "69",
+       "num": "69",
+       "letter": "",
+       "anchor": "part2-art69",
+       "heading": "[Art.] 69. [Deputy Secretary.]",
+       "title": "Deputy Secretary",
+       "text": [
+        "The Secretary of the State shall, at all times, have a Deputy, to be by him appointed; for whose conduct in office he shall be responsible: And, in case of the death, removal, or inability of the Secretary, his Deputy shall exercise all the duties of the office of Secretary of this State, until another shall be appointed."
+       ],
+       "notes": [
+        "June 2, 1784",
+        "Amended 1792 describing duties of the deputy secretary."
+       ],
+       "repealed": false
+      },
+      {
+       "key": "70",
+       "num": "70",
+       "letter": "",
+       "anchor": "part2-art70",
+       "heading": "[Art.] 70. [Secretary to Give Bond.]",
+       "title": "Secretary to Give Bond",
+       "text": [
+        "The Secretary, before he enters upon the business of his office, shall give bond, with sufficient sureties, in a reasonable sum, for the use of the State, for the punctual performance of his trust."
+       ],
+       "notes": [
+        "September 5, 1792"
+       ],
+       "repealed": false
+      }
+     ]
+    },
+    {
+     "name": "County Treasurer, Etc.",
+     "url": "https://www.nh.gov/glance/state-constitution/county-treasurer-etc",
+     "slug": "part2-county-treasurer",
+     "articles": [
+      {
+       "key": "71",
+       "num": "71",
+       "letter": "",
+       "anchor": "part2-art71",
+       "heading": "[Art.] 71. [County Treasurers, Registers of Probate, County Attorneys, Sheriffs, and Registers of Deeds Elected.]",
+       "title": "County Treasurers, Registers of Probate, County Attorneys, Sheriffs, and Registers of Deeds Elected",
+       "text": [
+        "The county treasurers, registers of probate, county attorneys, sheriffs and registers of deeds, shall be elected by the inhabitants of the several towns, in the several counties in the state, according to the method now practiced, and the laws of the state, Provided nevertheless the legislature shall have authority to alter the manner of certifying the votes, and the mode of electing those officers; but not so as to deprive the people of the right they now have of electing them."
+       ],
+       "notes": [
+        "June 2, 1784",
+        "Amended 1792 twice adding proviso that the legislature could alter the manner of certifying the votes and mode of electing the officers; deleting oath and bond of county treasurer and transferring oath and bond of register of deeds to next article.",
+        "Amended 1877 adding registers of probate, county solicitors, and sheriffs to those to be elected.",
+        "Amended 1958 changing county solicitor to county attorney."
+       ],
+       "repealed": false
+      },
+      {
+       "key": "72",
+       "num": "72",
+       "letter": "",
+       "anchor": "part2-art72",
+       "heading": "[Art.] 72. [Counties May Be Divided into Districts for Registering Deeds.]",
+       "title": "Counties May Be Divided into Districts for Registering Deeds",
+       "text": [
+        "And the Legislature, on the application of the major part of the inhabitants of any county, shall have authority to divide the same into two districts for registering deeds, if to them it shall appear necessary; each district to elect a Register of Deeds: And before they enter upon the business of their offices, shall be respectively sworn faithfully to discharge the duties thereof, and shall severally give bond, with sufficient sureties, in a reasonable sum, for the use of the county for the punctual performance of their respective trusts."
+       ],
+       "notes": [
+        "June 2, 1784",
+        "Amended 1792 providing for counties being divided into districts for registering deeds and electing registers."
+       ],
+       "repealed": false
+      }
+     ]
+    },
+    {
+     "name": "Judiciary Power",
+     "url": "https://www.nh.gov/glance/state-constitution/judiciary-power",
+     "slug": "part2-judiciary-power",
+     "articles": [
+      {
+       "key": "72-a",
+       "num": "72",
+       "letter": "a",
+       "anchor": "part2-art72-a",
+       "heading": "[Art.] 72-a. [Supreme and Superior Courts.]",
+       "title": "Supreme and Superior Courts",
+       "text": [
+        "The judicial power of the state shall be vested in the supreme court, a trial court of general jurisdiction known as the superior court, and such lower courts as the legislature may establish under Article 4th of Part 2."
+       ],
+       "notes": [
+        "November 16, 1966"
+       ],
+       "repealed": false
+      },
+      {
+       "key": "73",
+       "num": "73",
+       "letter": "",
+       "anchor": "part2-art73",
+       "heading": "[Art.] 73. [Tenure of Office To Be Expressed in Commissions; Judges to Hold Office During Good Behavior, etc.; Removal.]",
+       "title": "Tenure of Office To Be Expressed in Commissions; Judges to Hold Office During Good Behavior, etc.; Removal",
+       "text": [
+        "The tenure that all commissioned officers shall have by law in their offices shall be expressed in their respective commissions, and all judicial officers duly appointed, commissioned and sworn, shall hold their offices during good behavior except those for whom a different provision is made in this constitution. The governor with consent of the council may remove any commissioned officer for reasonable cause upon the address of both houses of the legislature, provided nevertheless that the cause for removal shall be stated fully and substantially in the address and shall not be a cause which is a sufficient ground for impeachment, and provided further that no officer shall be so removed unless he shall have had an opportunity to be heard in his defense by a joint committee of both houses of the legislature."
+       ],
+       "notes": [
+        "June 2, 1784",
+        "Amended 1792 changing president to governor.",
+        "Amended 1966 spelling out procedures for removal from office"
+       ],
+       "repealed": false
+      },
+      {
+       "key": "73-a",
+       "num": "73",
+       "letter": "a",
+       "anchor": "part2-art73-a",
+       "heading": "[Art.] 73-a. [Supreme Court, Administration.]",
+       "title": "Supreme Court, Administration",
+       "text": [
+        "The chief justice of the supreme court shall be the administrative head of all the courts. He shall, with the concurrence of a majority of the supreme court justices, make rules governing the administration of all courts in the state and the practice and procedure to be followed in all such courts. The rules so promulgated shall have the force and effect of law."
+       ],
+       "notes": [
+        "November 22, 1978"
+       ],
+       "repealed": false
+      },
+      {
+       "key": "74",
+       "num": "74",
+       "letter": "",
+       "anchor": "part2-art74",
+       "heading": "[Art.] 74. [Judges to Give Opinions, When.]",
+       "title": "Judges to Give Opinions, When",
+       "text": [
+        "Each branch of the legislature as well as the governor and council shall have authority to require the opinions of the justices of the supreme court upon important questions of law and upon solemn occasions."
+       ],
+       "notes": [
+        "June 2, 1784",
+        "Amended 1792 changing president to governor.",
+        "Amended 1958 substituting supreme court for superior court."
+       ],
+       "repealed": false
+      },
+      {
+       "key": "75",
+       "num": "75",
+       "letter": "",
+       "anchor": "part2-art75",
+       "heading": "[Art.] 75. [Justices of Peace Commissioned for Five Years.]",
+       "title": "Justices of Peace Commissioned for Five Years",
+       "text": [
+        "In order that the people may not suffer from the long continuance in place of any justice of the peace who shall fail in discharging the important duties of his office with ability and fidelity, all commissions of justice of the peace shall become void at the expiration of five years from their respective dates, and upon the expiration of any Commission, the same may if necessary be renewed or another person appointed as shall most conduce to the well being of the state."
+       ],
+       "notes": [
+        "June 2, 1784"
+       ],
+       "repealed": false
+      },
+      {
+       "key": "76",
+       "num": "76",
+       "letter": "",
+       "anchor": "part2-art76",
+       "heading": "[Art.] 76 [Divorce and Probate Appeals, Where Tried.]",
+       "title": "Divorce and Probate Appeals, Where Tried",
+       "text": [
+        "All causes of Marriage divorce and alimony; and all appeals from the respective judges of probate shall be heard and tried by the Superior Court until the Legislature shall by law make other provision."
+       ],
+       "notes": [
+        "June 2, 1784"
+       ],
+       "repealed": false
+      },
+      {
+       "key": "77",
+       "num": "77",
+       "letter": "",
+       "anchor": "part2-art77",
+       "heading": "[Art.] 77. [Jurisdiction of Justices in Civil Causes.]",
+       "title": "Jurisdiction of Justices in Civil Causes",
+       "text": [
+        "The general court are empowered to give to justices of the peace jurisdiction in civil causes, when the damages demanded shall not exceed one hundred dollars and title of real estate is not concerned; but with right of appeal, to either party, to some other court. And the general court are further empowered to give to police courts original jurisdiction to try and determine, subject to right of appeal and trial by jury, all criminal causes wherein the punishment is less than imprisonment in the state prison."
+       ],
+       "notes": [
+        "September 5, 1792",
+        "Amended 1877 substituting $100 for 4 pounds",
+        "Amended 1912 giving jurisdiction to police courts."
+       ],
+       "repealed": false
+      },
+      {
+       "key": "78",
+       "num": "78",
+       "letter": "",
+       "anchor": "part2-art78",
+       "heading": "[Art.] 78. [Judges and Sheriffs, When Disqualified by Age.]",
+       "title": "Judges and Sheriffs, When Disqualified by Age",
+       "text": [
+        "No person shall hold the office of Judge of any Court, or Judge of Probate, or Sheriff of any county, after he has attained the age of seventy years."
+       ],
+       "notes": [
+        "September 5, 1792"
+       ],
+       "repealed": false
+      },
+      {
+       "key": "79",
+       "num": "79",
+       "letter": "",
+       "anchor": "part2-art79",
+       "heading": "[Art.] 79. [Judges and Justices Not to Act as Counsel.]",
+       "title": "Judges and Justices Not to Act as Counsel",
+       "text": [
+        "No judge of any Court, or Justice of the Peace, shall act as Attorney, or be of counsel, to any party, or originate any civil suit, in matters which shall come or be brought before him as Judge, or justice of the peace."
+       ],
+       "notes": [
+        "September 5, 1792"
+       ],
+       "repealed": false
+      },
+      {
+       "key": "80",
+       "num": "80",
+       "letter": "",
+       "anchor": "part2-art80",
+       "heading": "[Art.] 80. [Jurisdiction and Term of Probate Courts.]",
+       "title": "Jurisdiction and Term of Probate Courts",
+       "text": [
+        "All matters relating to the probate of wills, and granting letters of administration, shall be exercised by the Judges of Probate, in such manner as the Legislature have directed, or may hereafter direct: And the Judges of Probate shall hold their Courts at such place or places, on such fixed days, as the conveniency of the people may require; and the Legislature from time to time appoint."
+       ],
+       "notes": [
+        "June 2, 1784",
+        "Amended 1792 rewording section generally."
+       ],
+       "repealed": false
+      },
+      {
+       "key": "81",
+       "num": "81",
+       "letter": "",
+       "anchor": "part2-art81",
+       "heading": "[Art.] 81. [Judges and Registers of Probate Not to Act as Counsel.]",
+       "title": "Judges and Registers of Probate Not to Act as Counsel",
+       "text": [
+        "No Judge, or Register of Probate, shall be of counsel, act as advocate, or receive any fees as advocate or counsel, in any probate business which is pending, or may be brought into any Court of Probate in the county of which he is Judge or Register."
+       ],
+       "notes": [
+        "September 5, 1792"
+       ],
+       "repealed": false
+      }
+     ]
+    },
+    {
+     "name": "Clerk of Courts",
+     "url": "https://www.nh.gov/glance/state-constitution/clerk-courts",
+     "slug": "part2-clerk-of-courts",
+     "articles": [
+      {
+       "key": "82",
+       "num": "82",
+       "letter": "",
+       "anchor": "part2-art82",
+       "heading": "[Art.] 82. [Clerks of Courts, by Whom Appointed.]",
+       "title": "Clerks of Courts, by Whom Appointed",
+       "text": [
+        "The Judges of the Courts (those of Probate excepted) shall appoint their respective Clerks to hold their office during pleasure: And no such Clerk shall act as an Attorney or be of counsel in any cause in the court of which he is Clerk, nor shall he draw any writ originating a civil action."
+       ],
+       "notes": [
+        "June 2, 1784",
+        "Amended 1792 rewording section generally."
+       ],
+       "repealed": false
+      }
+     ]
+    },
+    {
+     "name": "Encouragement of Literature, Trade, Etc.",
+     "url": "https://www.nh.gov/glance/state-constitution/encouragement-literature-trade-etc",
+     "slug": "part2-encouragement-of-literature-trade",
+     "articles": [
+      {
+       "key": "83",
+       "num": "83",
+       "letter": "",
+       "anchor": "part2-art83",
+       "heading": "[Art.] 83. [Encouragement of Literature, etc.; Control of Corporations, Monopolies, etc.]",
+       "title": "Encouragement of Literature, etc.; Control of Corporations, Monopolies, etc.",
+       "text": [
+        "Knowledge and learning, generally diffused through a community, being essential to the preservation of a free government; and spreading the opportunities and advantages of education through the various parts of the country, being highly conducive to promote this end; it shall be the duty of the legislators and magistrates, in all future periods of this government, to cherish the interest of literature and the sciences, and all seminaries and public schools, to encourage private and public institutions, rewards, and immunities for the promotion of agriculture, arts, sciences, commerce, trades, manufactures, and natural history of the country; to countenance and inculcate the principles of humanity and general benevolence, public and private charity, industry and economy, honesty and punctuality, sincerity, sobriety, and all social affections, and generous sentiments, among the people: Provided, nevertheless, that no money raised by taxation shall ever be granted or applied for the use of the schools or institutions of any religious sect or denomination. Free and fair competition in the trades and industries is an inherent and essential right of the people and should be protected against all monopolies and conspiracies which tend to hinder or destroy it. The size and functions of all corporations should be so limited and regulated as to prohibit fictitious capitalization and provision should be made for the supervision and government thereof. Therefore, all just power possessed by the state is hereby granted to the general court to enact laws to prevent the operations within the state of all persons and associations, and all trusts and corporations, foreign or domestic, and the officers thereof, who endeavor to raise the price of any article of commerce or to destroy free and fair competition in the trades and industries through combination, conspiracy, monopoly, or any other unfair means; to control and regulate the acts of all such persons, associations, corporations, trusts, and officials doing business within the state; to prevent fictitious capitalization; and to authorize civil and criminal proceedings in respect to all the wrongs herein declared against."
+       ],
+       "notes": [
+        "June 2, 1784",
+        "Amended 1877 prohibiting tax money from being applied to schools of religious denominations.",
+        "Amended 1903 permitting the general court to regulate trusts and monopolies restraining free trade."
+       ],
+       "repealed": false
+      }
+     ]
+    },
+    {
+     "name": "Oaths and Subscriptions Exclusion from Offices, Etc.",
+     "url": "https://www.nh.gov/glance/state-constitution/oaths-and-subscriptions-exclusion-offices-etc",
+     "slug": "part2-oaths-and-subscriptions-exclusion-from-offices",
+     "articles": [
+      {
+       "key": "84",
+       "num": "84",
+       "letter": "",
+       "anchor": "part2-art84",
+       "heading": "[Art.] 84. [Oath of Civil Officers.]",
+       "title": "Oath of Civil Officers",
+       "text": [
+        "Any person chosen governor, councilor, senator, or representative, military or civil officer, (town officers excepted) accepting the trust, shall, before he proceeds to execute the duties of his office, make and subscribe the following declaration, viz.",
+        "I, A.B. do solemnly swear, that I will bear faith and true allegiance to the United States of America and the state of New Hampshire, and will support the constitution thereof. So help me God.",
+        "I, A.B. do solemnly and sincerely swear and affirm that I will faithfully and impartially discharge and perform all duties incumbent on me as …, according to the best of my abilities, agreeably to the rules and regulations of this constitution and laws of the state of New Hampshire. So help me God.",
+        "Any person having taken and subscribed the oath of allegiance, and the same being filed in the secretary's office, he shall not be obliged to take said oath again.",
+        "Provided always, when any person chosen or appointed as aforesaid shall be of the denomination called Quakers, or shall be scrupulous of swearing, and shall decline taking the said oaths, such person shall take and subscribe them, omitting the word \"swear,\" and likewise the words \"So help me God,\" subjoining instead thereof, \"This I do under the pains and penalties of perjury.\""
+       ],
+       "notes": [
+        "June 2, 1784",
+        "Amended 1792 three times, changing president to governor; shortening oath of allegiance; and dispensing with need to take second oath.",
+        "Amended 1970 adding allegiance to the United States of America."
+       ],
+       "repealed": false
+      },
+      {
+       "key": "85",
+       "num": "85",
+       "letter": "",
+       "anchor": "part2-art85",
+       "heading": "[Art.] 85. [Before Whom Taken.]",
+       "title": "Before Whom Taken",
+       "text": [
+        "The oaths or affirmations shall be taken and subscribed by the governor before a justice of a New Hampshire court, in the presence of both houses of the legislature, by the senators and representatives before the governor and council for the time being, and by all other officers before such persons and in such manner as the general court shall from time to time appoint."
+       ],
+       "notes": [
+        "June 2, 1784",
+        "Amended 1792 three times changing president to governor, senior senator to president of the senate, assembly to legislature, and generally rewording section.",
+        "Amended 1968 deleting reference to those first elected.",
+        "Amended 1984 providing that the governor’s oath shall be taken before a justice of a New Hampshire court."
+       ],
+       "repealed": false
+      },
+      {
+       "key": "86",
+       "num": "86",
+       "letter": "",
+       "anchor": "part2-art86",
+       "heading": "[Art.] 86. [Form of Commissions.]",
+       "title": "Form of Commissions",
+       "text": [
+        "All commissions shall be in the name of the State of New Hampshire, signed by the Governor, and attested by the Secretary, or his Deputy, and shall have the great Seal of the State affixed thereto."
+       ],
+       "notes": [
+        "June 2, 1784",
+        "Amended 1792 changing president to governor."
+       ],
+       "repealed": false
+      },
+      {
+       "key": "87",
+       "num": "87",
+       "letter": "",
+       "anchor": "part2-art87",
+       "heading": "[Art.] 87. [Form of Writs.]",
+       "title": "Form of Writs",
+       "text": [
+        "All writs issuing out of the clerk's office in any of the Courts of Law, shall be in the name of the State of New Hampshire; shall be under the seal of the Court whence they issue, and bear test of the chief, first, or senior Justice of the Court; but when such justice shall be interested, then the writ shall bear test of some other justice of the court, to which the same shall be returnable; and be signed by the clerk of such court."
+       ],
+       "notes": [
+        "June 2, 1784"
+       ],
+       "repealed": false
+      },
+      {
+       "key": "88",
+       "num": "88",
+       "letter": "",
+       "anchor": "part2-art88",
+       "heading": "[Art.] 88. [Form of Indictments, etc.]",
+       "title": "Form of Indictments, etc.",
+       "text": [
+        "All indictments, presentments, and informations, shall conclude, \"against the peace and dignity of the state.\""
+       ],
+       "notes": [
+        "June 2, 1784"
+       ],
+       "repealed": false
+      },
+      {
+       "key": "89",
+       "num": "89",
+       "letter": "",
+       "anchor": "part2-art89",
+       "heading": "[Art.] 89. [Suicides and Deodands.]",
+       "title": "Suicides and Deodands",
+       "text": [
+        "The estates of such persons as may destroy their own lives, shall not for that offense be forfeited, but descend or ascend in the same manner, as if such persons had died in a natural way. Nor shall any article, which shall accidentally occasion the death of any person, be henceforth deemed a deodand, or in any wise forfeited on account of such misfortune."
+       ],
+       "notes": [
+        "June 2, 1784"
+       ],
+       "repealed": false
+      },
+      {
+       "key": "90",
+       "num": "90",
+       "letter": "",
+       "anchor": "part2-art90",
+       "heading": "[Art.] 90. [Existing Laws Continued if Not Repugnant.]",
+       "title": "Existing Laws Continued if Not Repugnant",
+       "text": [
+        "All the laws which have heretofore been adopted, used, and approved, in the Province, colony, or State of New Hampshire, and usually practiced on in the Courts of Law, shall remain and be in full force, until altered and repealed by the Legislature; such parts thereof only excepted, as are repugnant to the rights and liberties contained in this Constitution: Provided that nothing herein contained, when compared with the twenty-third article in the Bill of Rights, shall be construed to affect the laws already made respecting the persons, or estates of absentees."
+       ],
+       "notes": [
+        "June 2, 1784"
+       ],
+       "repealed": false
+      },
+      {
+       "key": "91",
+       "num": "91",
+       "letter": "",
+       "anchor": "part2-art91",
+       "heading": "[Art.] 91. [Habeas Corpus.]",
+       "title": "Habeas Corpus",
+       "text": [
+        "The privilege and benefit of the Habeas Corpus, shall be enjoyed in this State, in the most free, easy, cheap, expeditious, and ample manner, and shall not be suspended by the Legislature, except upon most urgent and pressing occasions, and for a time not exceeding three months."
+       ],
+       "notes": [
+        "June 2, 1784"
+       ],
+       "repealed": false
+      },
+      {
+       "key": "92",
+       "num": "92",
+       "letter": "",
+       "anchor": "part2-art92",
+       "heading": "[Art.] 92. [Enacting Style of Statutes.]",
+       "title": "Enacting Style of Statutes",
+       "text": [
+        "The enacting style in making and passing acts, statutes, and laws, shall be, Be it enacted by the Senate and House of Representatives in General Court convened."
+       ],
+       "notes": [
+        "June 2, 1784"
+       ],
+       "repealed": false
+      },
+      {
+       "key": "93",
+       "num": "93",
+       "letter": "",
+       "anchor": "part2-art93",
+       "heading": "[Art.] 93. [Governor and Judges Prohibited From Holding Other Offices.]",
+       "title": "Governor and Judges Prohibited From Holding Other Offices",
+       "text": [
+        "No Governor, or Judge of the Supreme Judicial Court, shall hold any office or place under the authority of this State, except such as by this Constitution they are admitted to hold, saving that the Judges of the said Court may hold the offices of Justice of the Peace throughout the State; nor shall they hold any place or office, or receive any pension or salary, from any other state, government, or power, whatever."
+       ],
+       "notes": [
+        "June 2, 1784",
+        "Amended 1792 changing president to governor. The engrossed copy of 1792, apparently without authority, changed superior court to supreme judicial court."
+       ],
+       "repealed": false
+      },
+      {
+       "key": "94",
+       "num": "94",
+       "letter": "",
+       "anchor": "part2-art94",
+       "heading": "[Art.] 94. [Incompatibility of Offices; Only Two Offices of Profit to Be Holden at Same Time.]",
+       "title": "Incompatibility of Offices; Only Two Offices of Profit to Be Holden at Same Time",
+       "text": [
+        "No person shall be capable of exercising, at the same time more than one of the following offices within this State, viz. Judge of Probate, Sheriff, Register of Deeds; and never more than two offices of profit, which may be held by appointment of the Governor, or Governor and Council, or Senate and House of Representatives, or Superior or Inferior Courts; military offices, and offices of Justice of the peace excepted."
+       ],
+       "notes": [
+        "June 2, 1784",
+        "Amended 1792 changing president to governor."
+       ],
+       "repealed": false
+      },
+      {
+       "key": "95",
+       "num": "95",
+       "letter": "",
+       "anchor": "part2-art95",
+       "heading": "[Art.] 95. [Incompatibility of Certain Offices.]",
+       "title": "Incompatibility of Certain Offices",
+       "text": [
+        "No person holding the office of judge of any court, (except special judges) secretary, treasurer of the state, attorney-general, register of deeds, sheriff, collectors of state and federal taxes, members of Congress or any person holding any office under the United States, including any person in active military service, shall at the same time hold the office of governor, or have a seat in the senate, or house of representatives, or council; but his being chosen and appointed to, and accepting the same, shall operate as a resignation of his seat in the chair, senate, or house of representatives, or council; and the place so vacated shall be filled up. No member of the council shall have a seat in the senate or house of representatives."
+       ],
+       "notes": [
+        "June 2, 1784",
+        "Amended 1792 generally rewording section.",
+        "Amended 1950 deleting commissary-general.",
+        "Amended 1958 changing obsolete words and phrases.",
+        "Amended 1980 prohibiting persons in active military service from holding state office."
+       ],
+       "repealed": false
+      },
+      {
+       "key": "96",
+       "num": "96",
+       "letter": "",
+       "anchor": "part2-art96",
+       "heading": "[Art.] 96. [Bribery and Corruption Disqualify for Office.]",
+       "title": "Bribery and Corruption Disqualify for Office",
+       "text": [
+        "No person shall ever be admitted to hold a seat in the Legislature or any office of Trust or importance under this government, who, in the due course of law, has been convicted of bribery or corruption, in obtaining an election or appointment."
+       ],
+       "notes": [
+        "June 2, 1784"
+       ],
+       "repealed": false
+      },
+      {
+       "key": "97",
+       "num": "97",
+       "letter": "",
+       "anchor": "part2-art97",
+       "heading": "[Art.] 97. [Value of Money, How Computed.]",
+       "title": "Value of Money, How Computed",
+       "text": [
+        "(Repealed)"
+       ],
+       "notes": [
+        "June 2, 1784. Money valued at 6 shillings 8 pence per ounce of silver.",
+        "Repealed 1950."
+       ],
+       "repealed": true
+      },
+      {
+       "key": "98",
+       "num": "98",
+       "letter": "",
+       "anchor": "part2-art98",
+       "heading": "[Art.] 98. [Constitution, When to Take Effect.]",
+       "title": "Constitution, When to Take Effect",
+       "text": [
+        "To the end that there may be no failure of justice, or danger to the State, by the alterations and amendments made in the Constitution, the General Court is hereby fully authorized and directed to fix the time when the alterations and amendments shall take effect, and make the necessary arrangements accordingly."
+       ],
+       "notes": [
+        "September 5, 1792"
+       ],
+       "repealed": false
+      },
+      {
+       "key": "99",
+       "num": "99",
+       "letter": "",
+       "anchor": "part2-art99",
+       "heading": "[Art.] 99. [Revision of Constitution Provided For.]",
+       "title": "Revision of Constitution Provided For",
+       "text": [
+        "(Repealed)"
+       ],
+       "notes": [
+        "June 2, 1784. Question of calling a convention to be submitted to the people after seven years.",
+        "Delegates to be elected in the same manner as representatives. Questions to be approved by two thirds of qualified voters present and voting there on.",
+        "Amended 1792 detailing procedure for calling a convention.",
+        "Repealed 1980."
+       ],
+       "repealed": true
+      },
+      {
+       "key": "100",
+       "num": "100",
+       "letter": "",
+       "anchor": "part2-art100",
+       "heading": "[Art.] 100. [Alternate Methods of Proposing Amendments.]",
+       "title": "Alternate Methods of Proposing Amendments",
+       "text": [
+        "Amendments to this constitution may be proposed by the general court or by a constitutional convention selected as herein provided.",
+        "(a) The senate and house of representatives, voting separately, may propose amendments by a three fifths vote of the entire membership of each house at any session.",
+        "(b) The general court, by an affirmative vote of a majority of all members of both houses voting separately, may at any time submit the question \"Shall there be a convention to amend or revise the constitution?\" to the qualified voters of the state. If the question of holding a convention is not submitted to the people at some time during any period of ten years, it shall be submitted by the secretary of state at the general election in the tenth year following the last submission. If a majority of the qualified voters voting on the question of holding a convention approves it, delegates shall be chosen at the next regular general election, or at such earlier time as the legislature may provide, in the same manner and proportion as the representatives to the general court are chosen. The delegates so chosen shall convene at such time as the legislature may direct and may recess from time to time and make such rules for the conduct of their convention as they may determine.",
+        "(c) The constitutional convention may propose amendments by a three fifths vote of the entire membership of the convention.",
+        "Each constitutional amendment proposed by the general court or by a constitutional convention shall be submitted to the voters by written ballot at the next biennial November election and shall become a part of the Constitution only after approval by two thirds of the qualified voters present and voting on the subject in the towns, wards, and unincorporated places."
+       ],
+       "notes": [
+        "September 5, 1792. Question of calling a convention to be submitted every 7 years.",
+        "Amended 1964 twice changing submission of question on calling a convention to every 10 years rather than 7 and providing that the general court could propose amendments.",
+        "Amended 1980 twice incorporating provisions of repealed Art. 99 and requiring all proposals be submitted at the next biennial November election."
+       ],
+       "repealed": false
+      },
+      {
+       "key": "101",
+       "num": "101",
+       "letter": "",
+       "anchor": "part2-art101",
+       "heading": "[Art.] 101. [Enrollment of Constitution.]",
+       "title": "Enrollment of Constitution",
+       "text": [
+        "This form of government shall be enrolled on parchment, and deposited in the Secretary's office, and be a part of the laws of the land; and printed copies thereof shall be prefixed to the books containing the laws of this State, in all future editions thereof."
+       ],
+       "notes": [
+        "June 2, 1784"
+       ],
+       "repealed": false
+      }
+     ]
+    }
+   ]
+  }
+ ],
+ "counts": {
+  "part1": 44,
+  "part2": 112
+ },
+ "toc": [
+  {
+   "part": 1,
+   "page": "Bill of Rights",
+   "url": "https://www.nh.gov/glance/state-constitution/bill-rights",
+   "file": "part-first-bill-of-rights.html",
+   "listed": [
+    "1",
+    "2",
+    "2-a",
+    "2-b",
+    "3",
+    "4",
+    "5",
+    "6",
+    "7",
+    "8",
+    "9",
+    "10",
+    "11",
+    "12",
+    "12-a",
+    "13",
+    "14",
+    "15",
+    "16",
+    "17",
+    "18",
+    "19",
+    "20",
+    "21",
+    "22",
+    "23",
+    "24",
+    "25",
+    "26",
+    "27",
+    "28",
+    "28-a",
+    "29",
+    "30",
+    "31",
+    "32",
+    "33",
+    "34",
+    "35",
+    "36",
+    "36-a",
+    "37",
+    "38",
+    "39"
+   ],
+   "not_listed": [],
+   "listed_not_found": []
+  },
+  {
+   "part": 2,
+   "page": "General Court",
+   "url": "https://www.nh.gov/glance/state-constitution/general-court",
+   "file": "part-second-01-general-court.html",
+   "listed": [
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "5-a",
+    "5-b",
+    "6",
+    "6-a",
+    "6-b",
+    "7",
+    "8"
+   ],
+   "not_listed": [],
+   "listed_not_found": []
+  },
+  {
+   "part": 2,
+   "page": "House of Representatives",
+   "url": "https://www.nh.gov/glance/state-constitution/house-representatives",
+   "file": "part-second-02-house-of-representatives.html",
+   "listed": [
+    "9",
+    "9-a",
+    "10",
+    "11",
+    "11-a",
+    "12",
+    "13",
+    "14",
+    "15",
+    "16",
+    "17",
+    "18",
+    "18-a",
+    "19",
+    "20",
+    "21",
+    "22",
+    "23",
+    "24"
+   ],
+   "not_listed": [],
+   "listed_not_found": []
+  },
+  {
+   "part": 2,
+   "page": "Senate",
+   "url": "https://www.nh.gov/glance/state-constitution/senate",
+   "file": "part-second-03-senate.html",
+   "listed": [
+    "25",
+    "26-a",
+    "27",
+    "28",
+    "29",
+    "30",
+    "31",
+    "32",
+    "33",
+    "34",
+    "35",
+    "36",
+    "37",
+    "38",
+    "39",
+    "40"
+   ],
+   "not_listed": [
+    "26"
+   ],
+   "listed_not_found": []
+  },
+  {
+   "part": 2,
+   "page": "Executive Power – Governor",
+   "url": "https://www.nh.gov/glance/state-constitution/executive-power-governor",
+   "file": "part-second-04-executive-power-governor.html",
+   "listed": [
+    "41",
+    "42",
+    "43",
+    "44",
+    "45",
+    "46",
+    "47",
+    "48",
+    "49",
+    "49-a",
+    "50",
+    "51",
+    "52",
+    "53",
+    "54",
+    "55",
+    "56",
+    "57",
+    "58",
+    "59"
+   ],
+   "not_listed": [],
+   "listed_not_found": []
+  },
+  {
+   "part": 2,
+   "page": "Council",
+   "url": "https://www.nh.gov/glance/state-constitution/council",
+   "file": "part-second-05-council.html",
+   "listed": [
+    "60",
+    "61",
+    "62",
+    "63",
+    "64",
+    "65",
+    "66"
+   ],
+   "not_listed": [],
+   "listed_not_found": []
+  },
+  {
+   "part": 2,
+   "page": "Secretary, Treasurer, Etc.",
+   "url": "https://www.nh.gov/glance/state-constitution/secretary-treasurer-etc",
+   "file": "part-second-06-secretary-treasurer.html",
+   "listed": [
+    "67",
+    "68",
+    "69",
+    "70"
+   ],
+   "not_listed": [],
+   "listed_not_found": []
+  },
+  {
+   "part": 2,
+   "page": "County Treasurer, Etc.",
+   "url": "https://www.nh.gov/glance/state-constitution/county-treasurer-etc",
+   "file": "part-second-07-county-treasurer.html",
+   "listed": [
+    "71",
+    "72"
+   ],
+   "not_listed": [],
+   "listed_not_found": []
+  },
+  {
+   "part": 2,
+   "page": "Judiciary Power",
+   "url": "https://www.nh.gov/glance/state-constitution/judiciary-power",
+   "file": "part-second-08-judiciary-power.html",
+   "listed": [
+    "72-a",
+    "73",
+    "73-a",
+    "74",
+    "75",
+    "76",
+    "77",
+    "78",
+    "79",
+    "80",
+    "81"
+   ],
+   "not_listed": [],
+   "listed_not_found": []
+  },
+  {
+   "part": 2,
+   "page": "Clerk of Courts",
+   "url": "https://www.nh.gov/glance/state-constitution/clerk-courts",
+   "file": "part-second-09-clerk-of-courts.html",
+   "listed": [
+    "82"
+   ],
+   "not_listed": [],
+   "listed_not_found": []
+  },
+  {
+   "part": 2,
+   "page": "Encouragement of Literature, Trade, Etc.",
+   "url": "https://www.nh.gov/glance/state-constitution/encouragement-literature-trade-etc",
+   "file": "part-second-10-encouragement-of-literature.html",
+   "listed": [
+    "83"
+   ],
+   "not_listed": [],
+   "listed_not_found": []
+  },
+  {
+   "part": 2,
+   "page": "Oaths and Subscriptions Exclusion from Offices, Etc.",
+   "url": "https://www.nh.gov/glance/state-constitution/oaths-and-subscriptions-exclusion-offices-etc",
+   "file": "part-second-11-oaths-and-subscriptions.html",
+   "listed": [
+    "84",
+    "85",
+    "86",
+    "87",
+    "88",
+    "89",
+    "90",
+    "91",
+    "92",
+    "93",
+    "94",
+    "95",
+    "96",
+    "97",
+    "98",
+    "99",
+    "100",
+    "101"
+   ],
+   "not_listed": [],
+   "listed_not_found": []
+  }
+ ],
+ "repairs": [
+  "part-second-04-executive-power-governor.html: in Part Second, Article 49-a, a note's span opened with no closing quote on its class, and is closed",
+  "part-second-04-executive-power-governor.html: Part Second, Article 50 was inside the row of Part Second, Article 49-a and is read as its own article",
+  "part-second-05-council.html: Part Second, Article 61 is printed “[Art.] 6l. [Vacancies, How Filled, if No Choice.]”; its number is read as 61"
+ ],
+ "oddities": [
+  "part-second-03-senate.html: Part Second, Article 26 is on the page but not in the page's own list",
+  "Part First, Article 20: a note printed “Amended in 1877 to prohibit jury trials unless the amount in controversy exceeds $l00.”",
+  "Part Second, Article 30: a note printed “June 2, 178”",
+  "Part Second, Article 42: a note printed “Amended 19l2 requiring a plurality instead of majority for election of governor.”"
+ ]
+}

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.59
+# GRANITE_VERSION: 2026-09-08.60
 """
 The civics section: a hub and one page per topic, in order.
 
@@ -41,7 +41,9 @@ from collections import Counter
 import build_date
 import civics
 import components as C
+import constitution_tab as CT
 import guides as G
+import parse_constitution as PCON
 import learn_numbers
 import legislative_year
 import proceedings as P
@@ -1585,15 +1587,20 @@ def main():
     urls = [a.base + HUB]
 
     # ---- one page a topic ----------------------------------------------
+    # AN ARTICLE A PAGE CITES OPENS ON THE LAWS PAGE (17 October 2026): "Part
+    # Second, Article 44" becomes a link to that article's text on the
+    # Constitution tab, wherever the Constitution as read holds it.
+    con = PCON.load()
     for i, t in enumerate(topics):
-        secs = split_sections(suffixed(fill(t["body"], figures), names),
+        secs = split_sections(CT.link_citations(suffixed(fill(t["body"], figures), names), con),
                               f"learn/{t['slug']}.html")
         # A LIMIT STATED PLAINLY closes the page's last section of prose --
         # In the Record where the page has one, which is where it says what
         # this site holds.
         if t.get("holds"):
             sid, h, c = secs[-1]
-            secs[-1] = (sid, h, c + f'<p class="l-note">{suffixed(fill(t["holds"], figures), names)}</p>')
+            secs[-1] = (sid, h, c + f'<p class="l-note">'
+                        f'{CT.link_citations(suffixed(fill(t["holds"], figures), names), con)}</p>')
         if t["sources"]:
             secs.append(("sources", "Where This Comes From", sources_list(t["sources"])))
         page = learn_page(tmpl, slug=t["slug"], title=t["title"],

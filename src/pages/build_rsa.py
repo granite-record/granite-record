@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-11.14
+# GRANITE_VERSION: 2026-10-11.15
 """
 The statutes (RSA) as pages: /laws, and one page a chapter at /laws/<chapter>.
 
@@ -63,6 +63,8 @@ import re
 
 import build_date
 import components as C
+import constitution_tab as CT
+import parse_constitution as PC
 import rsa
 import shell as S
 import structured as LD
@@ -791,14 +793,21 @@ def as_of(latest):
     return f"Includes changes through {E(y)}; {int(y) + 1} laws not yet included.{taken}"
 
 
-def landing_page(tmpl, table, data, base, topics, pending):
+def landing_page(tmpl, table, data, base, topics, pending, con=None):
     """THE LAWS AS THE BILL SEARCH IS LAID OUT (the person, 11 October 2026):
     filters at the side, the directory of titles and chapters in the middle
     -- each title saying which chapters it holds before it is opened, as the
     General Court's own table of contents does -- and a section's text on the
-    right when one is chosen, with the way to its own page."""
+    right when one is chosen, with the way to its own page.
+
+    AND THE CONSTITUTION ON A TAB OF ITS OWN (the person, 17 October 2026),
+    from collected/constitution.json, which `con` is when a check hands it
+    in. The statutes are the first tab and read as they did, their lead at
+    the top of their panel; a disk without the file builds the page as it
+    was, with no tabs."""
     path = "/laws"
     title = "New Hampshire laws"
+    con = PC.load() if con is None else con
     p = S.page(tmpl, path=path, base=base,
                title=S.title_of("New Hampshire Laws", "every chapter of the RSA"),
                jsonld=LD.listing("New Hampshire Revised Statutes Annotated",
@@ -807,13 +816,18 @@ def landing_page(tmpl, table, data, base, topics, pending):
                                  base, "/laws"),
                og_title=title, description="Every chapter of the New Hampshire Revised Statutes "
                "Annotated: browse by title or topic, search by number or words, with the bills that "
-               "changed each section and the bills that would.", og_image="og-learn.png", og_alt=OG_ALT,
+               "changed each section and the bills that would."
+               + (" And the state Constitution, article by article." if con else ""),
+               og_image="og-learn.png", og_alt=OG_ALT,
                globals={"GR_STATIC": True}, noscript="", skip_label="Skip to the laws",
                sr_title="", nav_current="laws.html", cite=False)
     latest = data.get("asof", {}).get("laws_through") or ""
-    head = (f'<header class="l-head"><h1>{E(title)}</h1><p class="l-lead">The Revised Statutes '
-            'Annotated (RSA), chapter by chapter, as the General Court\'s table holds them: '
-            f'each section with the bills that changed it and the bills that would. {as_of(latest)}</p>'
+    rsa_lead = ('The Revised Statutes '
+                'Annotated (RSA), chapter by chapter, as the General Court\'s table holds them: '
+                f'each section with the bills that changed it and the bills that would. {as_of(latest)}')
+    head_lead = ("The state Constitution, and the statutes the General Court passes under it, the "
+                 "Revised Statutes Annotated (RSA)." if con else rsa_lead)
+    head = (f'<header class="l-head"><h1>{E(title)}</h1><p class="l-lead">{head_lead}</p>'
             + S.cite_block(path, title, base, S.BUILT) + "</header>")
     groups = collections.OrderedDict()
     for ch in sorted(table.chapters, key=rsa.chap_key):
@@ -892,6 +906,10 @@ def landing_page(tmpl, table, data, base, topics, pending):
     reader = ('<aside class="lw-read" id="lwread" aria-label="The section chosen" aria-live="polite">'
               '<p class="lw-empty">Choose a chapter, then a section, to read it here.</p></aside>')
     art = f'<div class="lw" id="lw">{side}{middle}{reader}</div>'
+    if con:
+        # The constitution's sidebar is a chapter page's, so the chapter
+        # page's script marks the article being read in it.
+        art = CT.tabbed(art, rsa_lead, con) + CHAPTER_JS
     return p.replace('<div id="results"></div>',
                      f'<div id="results"><div class="l-page rs-page rs-landing">{head}{art}</div>{LANDING_JS}</div>', 1)
 
@@ -939,6 +957,11 @@ def main():
           f"{len(pending):,} with a bill pending")
     print(f"build_rsa: {len(chs):,} chapter pages and the landing page; search files "
           + ", ".join(f"{n} {s / 1e6:.1f} MB" for n, s in sizes.items()))
+    # SAID EITHER WAY: a landing page without its Constitution tab is a page
+    # that lost a part, and must not pass in silence.
+    con = PC.load()
+    print("build_rsa: " + (f"the Constitution tab, {sum(con['counts'].values())} articles"
+                           if con else f"NO Constitution tab: {PC.OUT.name} is not on this disk"))
     if not a.only:
         S.sitemap_merge(site, a.base, [a.base + "/laws"] + [a.base + chapter_path(c) for c in chs],
                         owns="/laws")
