@@ -3,8 +3,8 @@
     "about_figures.py": "2026-09-17.7",
     "adopted_amendments.py": "2026-10-07.2",
     "align_all.py": "2026-09-04.5",
-    "app.css": "2026-09-07.284",
-    "app.js": "2026-09-07.220",
+    "app.css": "2026-09-07.285",
+    "app.js": "2026-09-07.221",
     "apply_markers.py": "2026-09-04.10",
     "archive_status.py": "2026-09-08.5",
     "archive_text.py": "2026-09-16.9",
@@ -211,7 +211,8 @@
     "map.css": "2026-10-09.2",
     "map.js": "2026-10-09.6",
     "officials_tabs.py": "2026-10-10.5",
-    "tests/test_map_labels.js": "2026-10-09.1"
+    "tests/test_map_labels.js": "2026-10-09.1",
+    "tests/test_follow_panel.js": "2026-10-18.1"
   },
   "generated": "2026-09-04"
 }

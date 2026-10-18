@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.220
+// GRANITE_VERSION: 2026-09-07.221
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -5803,9 +5803,8 @@ document.addEventListener("click",e=>{
 // FOLLOW, WHERE THERE IS SOMETHING TO FOLLOW. A record's page names its feed
 // in its head exactly where the build writes one -- a bill still moving, a
 // member with a vote or a bill, a committee not archived (shell.py decides
-// all three) -- so the control reads that link and asks nothing else. RSS
-// only for now: following by email is designed (FOLLOW.md) and not built, and
-// is not offered until it works.
+// all three) -- so the control reads that link and asks nothing else. Email
+// is offered beside it only where it works (followMail, below).
 const FOLLOWS={bill:"each new action, hearing and vote on this bill",
   member:"this member's newest votes and the bills they put their name to",
   committee:"each day this committee sits, and what it does with each bill",
@@ -5826,6 +5825,11 @@ const FOLLOW_SAID={invalid:"That does not look like an email address.",
   // Not "the feed above still is" (16 October 2026): the feed has sat below the
   // email box since 12 October, and a law has no feed at all.
   unavailable:"Email updates are not working right now. Please try again later."};
+// How often, in the manage page's own words (manage.js, "How often"), so the
+// confirmation says what the reader chose the way the page that changes it
+// later will. preflight holds the two to the same words.
+const FOLLOW_OFTEN={daily:"About 8:00 a.m. New Hampshire time, only on days when something is new",
+  weekly:"Saturday about 8:00 a.m.: the week ahead, then the week's news"};
 function mountFollow(kind,feed,ref){
   const link=feed?null:document.querySelector('link[rel="alternate"][type="application/rss+xml"]');
   const res=$("#results");
@@ -5852,16 +5856,33 @@ function mountFollow(kind,feed,ref){
   // follows feeds finds this one named in the head of the record's own page.
   // Only there: a bill focused in the search list has its feed from the page
   // focusActions fetched, and the search page's head does not name it.
+  // RSS IS DRAWN OPEN, AND FOLDED ONLY ONCE EMAIL ARRIVES (the person,
+  // 18 October 2026). Email is the default way to follow, so where the
+  // email box is drawn the feed moves under "Follow by RSS instead"
+  // (followMail). Until then -- and for good on a deployment that cannot take
+  // email, which is production until go-live -- the feed is the pane's only
+  // content, and folding it would leave a pane with nothing in it but a
+  // disclosure to open.
+  if(href)div.dataset.feed=href;
   div.innerHTML=`<details class="follow"><summary>${icon("follow")}Follow</summary>
-    <div class="followpane"><div class="followmail" hidden></div>${href?`<p><b>By RSS</b>, in any feed reader: ${esc(FOLLOWS[kind]||"what is new here")}.
+    <div class="followpane"><div class="followmail" hidden></div>${href?`<div class="followrss">${followRss(kind,href,false)}</div>`:""}
+    </div></details>`;
+  if(acts){const c=acts.querySelector(".pcite");acts.insertBefore(div,c?c.nextSibling:acts.firstChild);}
+  else res.before(div);
+}
+// The feed's part of the pane: open, or folded under a disclosure of its own
+// beneath the email box. Folded, its summary already says "by RSS", so the
+// sentence starts at the feed reader rather than saying it twice.
+function followRss(kind,href,folded){
+  const what=esc(FOLLOWS[kind]||"what is new here");
+  const body=`<p>${folded?"In":"<b>By RSS</b>, in"} any feed reader: ${what}.
         The record is rebuilt once a night, so an update arrives the morning after
         it happens.</p>
       <p class="feedurl"><input type="text" readonly aria-label="The feed's address"
         value="${esc(new URL(href,location.origin).href)}">
-        <button type="button" class="link" data-copyfeed="1">Copy the address</button></p>`:""}
-    </div></details>`;
-  if(acts){const c=acts.querySelector(".pcite");acts.insertBefore(div,c?c.nextSibling:acts.firstChild);}
-  else res.before(div);
+        <button type="button" class="link" data-copyfeed="1">Copy the address</button></p>`;
+  return folded?`<details class="followalt"><summary>Follow by RSS instead</summary>
+    <div class="followaltbody">${body}</div></details>`:body;
 }
 function followMailForm(key){
   // ONE PANEL WITH CHOOSING YOUR TOWN (the person's choice A, 14 October
@@ -5890,7 +5911,8 @@ function followMailForm(key){
     <input name="website" tabindex="-1" autocomplete="off"></label></p>
     <div class="followcheck"></div>
     <p class="followstate" role="status" aria-live="polite"></p>
-  </form>`;
+  </form>
+  <div class="followdone" hidden></div>`;
 }
 let turnstileLoad=null;
 function turnstileReady(){
@@ -5915,6 +5937,9 @@ function followMail(box){
       slot.innerHTML=followMailForm(key);
       slot.hidden=false;
       box.dataset.mail="shown";
+      // Email drawn, the feed folds under it (mountFollow says why only now).
+      const rss=box.querySelector(".followrss");
+      if(rss&&box.dataset.feed)rss.innerHTML=followRss(key.split(":")[0],box.dataset.feed,true);
       // The email box arrives after the pane opened, and lengthens it.
       paneInView(box.querySelector(".followpane"));
       followCheck(slot.querySelector(".followcheck"));
@@ -5979,41 +6004,120 @@ document.addEventListener("toggle",e=>{
   }
   if(d.open&&d.classList&&(d.classList.contains("follow")||d.classList.contains("pcite")))
     paneInView(d.querySelector(".followpane,.citebody"));
+  // The feed opened under the email box lengthens the pane in the same way.
+  if(d.open&&d.classList&&d.classList.contains("followalt"))
+    paneInView(d.closest(".followpane"));
 },true);
+// The line under the button: a word of progress, or a refusal drawn as one.
+function followSay(st,words,bad){
+  if(!st)return;
+  st.textContent=words;
+  if(st.classList)st.classList.toggle("followerr",!!(bad&&words));
+}
+// SENDING… ON THE BUTTON, AND ONE REQUEST AT A TIME (the person, 18 October
+// 2026). The button is the thing just pressed, so it is where the press is
+// seen to have been taken; and a second press or Enter while the first is
+// out would ask for a second confirmation email with a token Turnstile has
+// already spent, which the sign-up can only refuse. The form's own flag
+// holds the line even where the disabled button would not -- Enter in the
+// address field submits on its own.
+function followBusy(form,btn,on){
+  if(on)form.dataset.busy="1";else delete form.dataset.busy;
+  if(on)form.setAttribute("aria-busy","true");else form.removeAttribute("aria-busy");
+  if(btn){btn.disabled=on;btn.textContent=on?"Sending…":"Email me updates";}
+}
+// CHECK YOUR EMAIL, IN PLACE OF THE FORM (the person, 18 October 2026: "once
+// you click submit for your email, the display doesn't look like much
+// happened if anything because only the text below it changes"). A sign-up
+// taken is a different pane: a heading that says what to do, the address
+// the link went to -- where a mistyped one is caught, since the answer is
+// the same for every address -- what to do with the email, and how often
+// the reader chose. It stays until they ask to enter an address again. The
+// keyboard is put on the heading, so a screen reader says it at once and
+// Tab carries on from there. The form is hidden rather than removed, and
+// with it the Turnstile widget, which is neither reset nor drawn again: the
+// widget starting over as the pane said "on its way" is what made a sign-up
+// that went through look as if it had failed.
+function followDone(form,email,freq){
+  const done=form.parentNode&&form.parentNode.querySelector(".followdone");
+  if(!done)return;
+  done.innerHTML=`<h2 class="panh" tabindex="-1">Check your email</h2>
+    <p class="pansay">A link to confirm is on its way to <b class="followto">${esc(email)}</b>.</p>
+    <ol class="followsteps">
+      <li>Open the email from Granite Record and use its link to confirm. Nothing is sent until you do.</li>
+      <li>It can take a minute or two to arrive. If it has not come, look in your spam or junk folder.</li>
+    </ol>
+    <p class="followoften">You chose <b>${freq==="weekly"?"Weekly":"Daily"}</b>
+      (${esc((FOLLOW_OFTEN[freq]||FOLLOW_OFTEN.daily).replace(/^About\b/,"about"))}).
+      Every email has a link to change it.</p>
+    <p class="panfine">Wrong address? <button type="button" class="link" data-followagain="1">Enter it again</button></p>`;
+  form.hidden=true;
+  done.hidden=false;
+  const h=done.querySelector(".panh");
+  if(h&&h.focus)h.focus();
+  paneInView(form.closest(".followpane"));
+}
 // Sent through the page's one submit listener, the report box's, below.
 async function followSubmit(e,form){
   e.preventDefault();
+  if(form.dataset.busy)return;
   const box=form.closest("#followbox"), st=form.querySelector(".followstate");
   const btn=form.querySelector(".followsend"), w=form.querySelector(".followcheck");
   const [kind,...rest]=(box&&box.dataset.fkey||"").split(":");
   const email=form.elements.email.value.trim();
-  if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){st.textContent=FOLLOW_SAID.invalid;return;}
-  btn.disabled=true;st.textContent=FOLLOW_SAID.waiting;
+  if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){followSay(st,FOLLOW_SAID.invalid,true);return;}
+  followBusy(form,btn,true);
+  followSay(st,FOLLOW_SAID.waiting,false);
   const {token:pass,err}=await followToken(w,20000);
   if(!pass){
-    st.textContent=err&&err!=="timeout"?`${FOLLOW_SAID.broken} (Turnstile ${err}).`:FOLLOW_SAID.check;
-    btn.disabled=false;return;
+    followSay(st,err&&err!=="timeout"?`${FOLLOW_SAID.broken} (Turnstile ${err}).`:FOLLOW_SAID.check,true);
+    followBusy(form,btn,false);return;
   }
-  st.textContent="Sending…";
+  followSay(st,"Sending…",false);
   // The radio that is checked; daily where none is, which is what the
   // sign-up makes of a request that names none.
   const fq=form.querySelector('input[name="frequency"]:checked');
   const freq=fq&&fq.value==="weekly"?"weekly":"daily";
-  let said;
+  let said="", took=false;
   try{
     const r=await fetch("/api/follow/signup",{method:"POST",headers:{"Content-Type":"application/json"},
       body:JSON.stringify({email,kind,ref:rest.join(":"),frequency:freq,turnstile:pass,
         website:form.elements.website.value})});
     const j=await r.json().catch(()=>({}));
-    said=r.status===202?"If this address can take email, a confirmation is on its way. "+
-      "Nothing is sent until you confirm from it.":(FOLLOW_SAID[j.why]||FOLLOW_SAID.unavailable);
-    if(j.why==="check"&&Array.isArray(j.codes)&&j.codes.length)
-      said=`${said.replace(/\.$/,"")} (Turnstile ${j.codes.map(String).join(", ")}).`;
-    if(r.status===202)form.elements.email.value="";
+    took=r.status===202;
+    if(!took){
+      said=FOLLOW_SAID[j.why]||FOLLOW_SAID.unavailable;
+      if(j.why==="check"&&Array.isArray(j.codes)&&j.codes.length)
+        said=`${said.replace(/\.$/,"")} (Turnstile ${j.codes.map(String).join(", ")}).`;
+    }
   }catch(_){said=FOLLOW_SAID.unavailable;}
-  st.textContent=said;btn.disabled=false;
+  followBusy(form,btn,false);
+  // The token went with the request either way and is not sent twice.
+  const ts=w&&FOLLOW_TS.get(w);
+  if(ts)ts.token="";
+  if(took){followSay(st,"",false);followDone(form,email,freq);return;}
+  // A REFUSAL KEEPS THE ADDRESS AND ASKS FOR A NEW CHECK (18 October 2026).
+  // What was typed stays in the box to send again, and only here is the
+  // widget reset: the next press needs a token of its own.
+  followSay(st,said,true);
   followUsed(w);
 }
+// ENTER IT AGAIN: the form back as it was, its address kept to correct, and
+// a fresh check for the new request -- the one place outside a refusal that
+// the widget is reset, since the last token went with the request taken.
+document.addEventListener("click",e=>{
+  const b=e.target.closest&&e.target.closest("[data-followagain]");
+  if(!b)return;
+  const slot=b.closest(".followmail"), form=slot&&slot.querySelector(".followform");
+  const done=slot&&slot.querySelector(".followdone");
+  if(!form||!done)return;
+  done.hidden=true;
+  form.hidden=false;
+  followSay(form.querySelector(".followstate"),"",false);
+  followUsed(form.querySelector(".followcheck"));
+  const input=form.elements.email;
+  if(input&&input.focus){input.focus();if(input.select)input.select();}
+});
 
 document.addEventListener("click",e=>{
   const b=e.target.closest&&e.target.closest("[data-copyfeed]");
@@ -8975,10 +9079,15 @@ document.addEventListener("click",e=>{
 // ONE PANE OPEN AT A TIME in the row above a heading. Follow's pane and the
 // citation's open over the page from the same corner, so opening one shuts
 // the other rather than stacking one on top of it.
+// A disclosure inside a pane -- Follow's "Follow by RSS instead" (18 October
+// 2026) -- is part of that pane: opening it must not shut the pane it is in,
+// and a press elsewhere in the pane must not fold it again.
+const paneInPane=d=>!!(d.parentNode&&d.parentNode.closest&&d.parentNode.closest("details"));
 document.addEventListener("toggle",e=>{
   const d=e.target;
   if(!d||!d.open||!d.closest||!d.closest("#pageacts"))return;
-  document.querySelectorAll("#pageacts details[open]").forEach(o=>{if(o!==d)o.open=false;});
+  document.querySelectorAll("#pageacts details[open]").forEach(o=>{
+    if(o!==d&&!o.contains(d)&&!paneInPane(o))o.open=false;});
 },true);
 // AND A PRESS ANYWHERE ELSE SHUTS IT (the person, 10 October 2026: the
 // buttons "should deselect when you click on the background since right now
@@ -8993,7 +9102,7 @@ const SHARE_PRESS="[data-share]";   // named here: Share's own listener is the o
 document.addEventListener("click",e=>{
   const at=e.target;
   if(!at||!at.closest)return;
-  document.querySelectorAll(ACT_PANES).forEach(d=>{if(!d.contains(at))d.open=false;});
+  document.querySelectorAll(ACT_PANES).forEach(d=>{if(!d.contains(at)&&!paneInPane(d))d.open=false;});
   if(!at.closest(SHARE_PRESS)&&!at.closest(".sharestate"))
     document.querySelectorAll(".sharestate").forEach(s=>{if(s.textContent)s.textContent="";});
 });
