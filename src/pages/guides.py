@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-11.17
+# GRANITE_VERSION: 2026-10-11.18
 """
 The how-to guides: their words, their sources, and what each was checked
 against. Read by build_civics.py, which draws them on the Resources hub's
@@ -2795,8 +2795,10 @@ TOUR = guide(
     [("Rules for Tours, required reading for a State House tour, undated (New Hampshire State "
       "House Visitor Center)", ""),
      civics.SRC_VISITOR_CENTER,
+     # The site's own pages it rests on; the guide to contacting legislators
+     # is under See Also and on the first step's button instead, which a
+     # build that holds that guide back takes off (build_civics.unlinked).
      ("Finding Your Representatives", "/guides/your-representatives.html"),
-     ("How to Contact Your Legislators", "/guides/contact-your-legislators.html"),
      ("The Calendar", "/calendar.html")],
     [],
     [tour("The Visitor Center schedules many groups each day; tours are generally one hour.",
