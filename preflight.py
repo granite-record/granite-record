@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.624
+# GRANITE_VERSION: 2026-09-04.625
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -61708,6 +61708,26 @@ def _phone_grid_strays(css):
                     if not any(x in _GRID_FIRST for x in back if x):
                         out.append((g, s, c, at[-1], line2))
     return out
+
+
+@check("frontend", "a bill card in a list draws the rail with more weight, as a bill's own "
+                   "page does")
+def _rail_weight_on_cards():
+    """"The rail visuals were updated on the full bill page but not on the
+    bill cards" (the person, 18 October 2026). The rail with more weight
+    (choice A, 14 October) was scoped to an opened card and a bill's own
+    page, so a list's cards kept thin grey lines and small dots. Each of
+    its rules must reach a card that is not opened."""
+    css = Path("src/pages/app.css").read_text(encoding="utf-8")
+    weighted = [sel for at, sel, body, _ in _css_rules(css)
+                if ".rail.dated .stop" in sel and not at
+                and any((k, v) in (("background", "var(--st-law)"), ("width", "1.25rem"))
+                        for k, v in _css_decls(body))]
+    assert len(weighted) >= 2, "the rail with more weight is not in app.css, so this reads nothing"
+    narrow = [sel for sel in weighted if ".card.focus" in sel or ".card" not in sel]
+    assert not narrow, ("the rail with more weight reaches only an opened card or a bill's "
+                        "own page: " + "; ".join(narrow))
+    return "ok", f"all {len(weighted)} rules of the rail with more weight reach a card in a list"
 
 
 @check("frontend", "a grid that drops to one column on a phone leaves none of its parts in a "

@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.286 */
+/* GRANITE_VERSION: 2026-09-07.287 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -2284,32 +2284,34 @@ padding-inline:var(--sp-2)}
    (option E's rule, measured there at 768px). */
 .rail.dated{container:rail / inline-size;flex-wrap:wrap}
 /* THE RAIL WITH MORE WEIGHT (the person's choice A, 14 October 2026), on a
-   bill's own page and an opened card -- a list's compact rail is as it was.
+   bill's own page and on every card, in a list too (the person, 18 October
+   2026: "The rail visuals were updated on the full bill page but not on the
+   bill cards"); a phone's list card keeps its compact type (--t-rail).
    The line between two stops takes the colour of the stop on its left
    (below). The dots are larger and solid, a reached stop's name is in ink,
    and the days stay quieter. No reason is written under a stop: the summary
    under the rail says it (the person: "visual clutter in an already tight
    space"). Each segment is its stop's :before. */
-:is(.card.focus,.rrail) .rail.dated .stop{padding-top:1.625rem}
-:is(.card.focus,.rrail) .rail.dated .stop b{width:1.25rem;height:1.25rem;margin-left:-.625rem;
+:is(.card,.rrail) .rail.dated .stop{padding-top:1.625rem}
+:is(.card,.rrail) .rail.dated .stop b{width:1.25rem;height:1.25rem;margin-left:-.625rem;
   line-height:1rem;border-width:2px}
-:is(.card.focus,.rrail) .rail.dated .stop:before{top:calc(.6875rem - 1.5px);height:3px;
+:is(.card,.rrail) .rail.dated .stop:before{top:calc(.6875rem - 1.5px);height:3px;
   background:var(--rule-2)}
 /* EACH LINE IS ITS LEFT STOP'S (the person, 14 October 2026): green after a
    stop the bill passed, the stopped colour after one it ended at, the
    study's and the table's after theirs, and the rule's grey after the stop
    it is at now or one it never reached. So a vetoed bill's line runs green
    into a red Governor and red on to the override. */
-:is(.card.focus,.rrail) .rail.dated .stop.s-p:before{background:var(--st-law)}
+:is(.card,.rrail) .rail.dated .stop.s-p:before{background:var(--st-law)}
 /* AND A BILL THAT STOPPED STOPS THERE (the person, later the same day): the
    line out of a stop it ended at -- killed, tabled, sent to interim study --
    is coloured only where it leads to another stop the record marks (a veto,
    then the override that failed); into a stop it never reached it stays
    grey, so the rail does not look as if the bill went on. */
-:is(.card.focus,.rrail) .rail.dated .stop.s-x:not(:has(+ .stop.s-o)):before{background:var(--st-done)}
-:is(.card.focus,.rrail) .rail.dated .stop.s-istudy:not(:has(+ .stop.s-o)):before{background:var(--st-study)}
-:is(.card.focus,.rrail) .rail.dated .stop.s-ontable:not(:has(+ .stop.s-o)):before{background:var(--st-table)}
-:is(.card.focus,.rrail) .rail.dated .stop:is(.s-p,.s-x,.s-h,.s-istudy,.s-ontable) i{color:var(--ink);font-weight:600}
+:is(.card,.rrail) .rail.dated .stop.s-x:not(:has(+ .stop.s-o)):before{background:var(--st-done)}
+:is(.card,.rrail) .rail.dated .stop.s-istudy:not(:has(+ .stop.s-o)):before{background:var(--st-study)}
+:is(.card,.rrail) .rail.dated .stop.s-ontable:not(:has(+ .stop.s-o)):before{background:var(--st-table)}
+:is(.card,.rrail) .rail.dated .stop:is(.s-p,.s-x,.s-h,.s-istudy,.s-ontable) i{color:var(--ink);font-weight:600}
 
 @container rail (max-width:34.5em){.rail.dated small .ry{display:block}}
 /* AND WHERE FIVE STOPS' NAMES DO NOT FIT ACROSS, THE RAIL STAYS ACROSS, ITS
