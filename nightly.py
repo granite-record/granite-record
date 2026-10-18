@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.74
+# GRANITE_VERSION: 2026-09-04.75
 """
 The nightly run. Fetch the day's bulk files, rebuild, check, compile what
 readers reported and what changed -- and publish only if told to.
@@ -5262,9 +5262,10 @@ def close_verdict(a):
     v["closed"] = datetime.now().isoformat(timespec="seconds")
     if not a.weekly and not a.dry_run:
         v["alerts"], v["warn_alerts"] = alerts_of(v), warns_of(v)
-        for path, said in ((ALERT_FILE, v["alerts"]), (WARN_FILE, v["warn_alerts"])):
-            path.parent.mkdir(parents=True, exist_ok=True)
-            path.write_text("".join(x + "\n" for x in said), encoding="utf-8")
+        # Not `path`, which is the verdict's own and is written below.
+        for alert, said in ((ALERT_FILE, v["alerts"]), (WARN_FILE, v["warn_alerts"])):
+            alert.parent.mkdir(parents=True, exist_ok=True)
+            alert.write_text("".join(x + "\n" for x in said), encoding="utf-8")
     write_json(path, v)
     print(f"{path}: {'CLEAN' if v.get('clean') else 'NOT CLEAN'}"
           + ("" if v.get("clean") else " -- " + "; ".join(v.get("not_clean", [])[:4])))

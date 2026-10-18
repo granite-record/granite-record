@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.622
+# GRANITE_VERSION: 2026-09-04.623
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -83291,8 +83291,8 @@ def _requests_year_their_own(build_lsrs):
         (tmp / "lsrs.json").write_text(_json.dumps([
             req("2027-0001", session=2027, withdrawn=True), req("2028-0001", session=2028),
             req("2028-0002")]), encoding="utf-8")
-        r = _run([sys.executable, _paths.script("build_lsrs.py"), "--site", "site"],
-                 cwd=str(tmp), capture_output=True, text=True, timeout=120)
+        r = _sealed_run([sys.executable, _paths.script("build_lsrs.py"), "--site", "site"],
+                        cwd=str(tmp), capture_output=True, text=True, timeout=120)
         assert r.returncode == 0, (r.stderr or r.stdout)[-300:]
         files = sorted(p.name for p in (tmp / "site" / "idx").glob("*-requests.json"))
         meta = _json.loads((tmp / "site" / "meta.json").read_text(encoding="utf-8"))["requests"]
@@ -93663,6 +93663,36 @@ def _alarm_stays_able_to_ring(NI):
     src = inspect.getsource(NI.close_verdict)
     if "(ALERT_FILE, v[\"alerts\"]), (WARN_FILE, v[\"warn_alerts\"])" not in src:
         bad.append("--close does not write both ALERT_FILE and WARN_FILE")
+    # And writes them, and the verdict where it belongs: --close, run on a
+    # night that never started, in a folder of its own.
+    tmp = Path(tempfile.mkdtemp(prefix="gr-alarm-close-"))
+    saved_argv, saved_rid = sys.argv, os.environ.get("GITHUB_RUN_ID")
+    try:
+        os.chdir(tmp)
+        os.environ["GITHUB_RUN_ID"] = "7001"
+        NI.write_json(NI.VERDICT, {"run_id": "7000", "clean": True})
+        sys.argv = ["nightly.py", "--runner", "--close", "--outcome", "kit-down=failure"]
+        import contextlib
+        import io
+        with contextlib.redirect_stdout(io.StringIO()):
+            try:
+                NI.main()
+            except SystemExit:
+                pass
+        v = NI.load_json(NI.VERDICT) or {}
+        if v.get("run_id") != "7001" or not v.get("alerts") or v.get("warn_alerts") != []:
+            bad.append(f"--close on a night that never started left the verdict {v}")
+        if not NI.ALERT_FILE.read_text(encoding="utf-8").strip() or \
+                NI.WARN_FILE.read_text(encoding="utf-8") != "":
+            bad.append("--close did not write the night's alert and an empty warnings' file")
+    finally:
+        os.chdir(here)
+        sys.argv = saved_argv
+        if saved_rid is None:
+            os.environ.pop("GITHUB_RUN_ID", None)
+        else:
+            os.environ["GITHUB_RUN_ID"] = saved_rid
+        shutil.rmtree(tmp, ignore_errors=True)
     wf = WORKFLOW_DIR / "nightly.yml"
     if wf.is_file():
         jobs = _wf_jobs(wf.read_text(encoding="utf-8"))
