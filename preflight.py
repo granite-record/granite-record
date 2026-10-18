@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.612
+# GRANITE_VERSION: 2026-09-04.613
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -17891,8 +17891,11 @@ def _class_collisions():
         # A COMMITTEE'S MEETING, as a fold: app.js's meetingHtml for a
         # committee's Meetings tab, and build_full_sessions' day_section for
         # each day a chamber sat, drawn as a committee's meeting is (the
-        # person, 10 October 2026)
+        # person, 10 October 2026); and a statutory or study committee's
+        # meeting, with its time and its marks (build_study_committees, 18
+        # October 2026)
         "cmeets", "cmeet", "cmwhen", "cmcount", "cmcaret", "cmbody", "cmsaid", "cmplay",
+        "cmtime", "cmkinds",
         # a page heading block, and the bill-number/title pair
         "phead", "pmeta", "cbn", "cbt",
         # the feedback box
@@ -17921,8 +17924,9 @@ def _class_collisions():
         "psent",
         # the record head (record_head) and its note
         "rtrail", "rtop", "rh1", "ryear", "ry", "rline", "rfacts", "rrail", "racts", "rnote",
-        # the W4 sections (section) and the run of them
-        "w4", "w4h", "w4b", "w4s",
+        # the W4 sections (section) and the run of them; w4n, a count beside a
+        # heading, on a study committee's page as on a record's (18 October 2026)
+        "w4", "w4h", "w4b", "w4s", "w4n",
         # a document's row (doc_row)
         "docof",
         # a vote in the approved words: its amendment's number and the
@@ -20753,6 +20757,90 @@ def _find_committee_names(BP):
     return "ok", ("House Housing Committee, House Special Committee on Housing, Senate Judiciary "
                   "Committee, the Senate's own name kept; no repeated line; matched as before; a "
                   "committee that no longer sits called a Former Committee and found after")
+
+
+# The header's box over tests/search_cases.json's finder rows: each case's
+# panel as drawn, as the addresses in it in order.
+_FIND_STUDY_JS = r"""
+require("./stub.js");
+const fs = require("fs"), vm = require("vm");
+globalThis.fetch = async () => ({ ok: false, status: 404, json: async () => { throw new Error("404"); } });
+globalThis.chip = (t, cls) => `<span class="${cls}">${t}</span>`;
+vm.runInThisContext(fs.readFileSync("./find.js", "utf8"), { filename: "find.js" });
+const F = vm.runInThisContext("({FIND, findDraw, findKind})");
+const fx = JSON.parse(fs.readFileSync("./finder.json", "utf8"));
+F.FIND.rows = fx.rows;
+const panel = document.getElementById("findout");
+const out = {kinds: fx.rows.map(r => F.findKind(r)), cases: {}};
+for (const c of fx.cases) {
+  F.findDraw(c.q);
+  const html = panel.innerHTML;
+  out.cases[c.q] = (html.match(/<a class="fbills"|<a href="[^"]*"/g) || []).map(a =>
+    a.startsWith('<a class="fbills"') ? "BILLS" : a.slice(9, -1));
+}
+console.log(JSON.stringify(out));
+"""
+
+
+@check("frontend", "the search ranks a statutory or study committee after the standing committees and "
+       "below the bills, in its own group on /search, as tests/search_cases.json's finder cases say",
+       needs=("build_pages",))
+def _find_study_committees_rank(BP):
+    """The person, 17 October 2026: statutory and study committees "should be
+    included on the committee page and in search results, but not as
+    prominently as standing committees and other results". find.json gives
+    each its class as its kind (build_indexes); find.js waits them as it does
+    a former committee, below the bills and after a standing committee found
+    as well, though before a committee that no longer sits; /search lists
+    them in a group of their own after the bills. The cases are real names
+    (tests/search_cases.json, "finder"); "veterans" put the statutory State
+    Veterans Advisory Committee first while name length decided it."""
+    if shutil.which("node") is None:
+        return "skip", "node is not installed"
+    fx = json.loads(Path("tests/search_cases.json").read_text(encoding="utf-8"))["finder"]
+    root = Path(tempfile.mkdtemp(prefix="gr-findstudy-"))
+    try:
+        (root / "stub.js").write_text(Path("tests/dom_stub.js").read_text(encoding="utf-8"),
+                                      encoding="utf-8")
+        (root / "find.js").write_text(Path("src/pages/find.js").read_text(encoding="utf-8"),
+                                      encoding="utf-8")
+        (root / "finder.json").write_text(json.dumps(fx), encoding="utf-8")
+        (root / "go.js").write_text(_FIND_STUDY_JS, encoding="utf-8")
+        r = _run(["node", "go.js"], cwd=root, capture_output=True, text=True, timeout=60)
+        said = (r.stdout + r.stderr).strip()
+        last = (said.splitlines() or ["no output"])[-1]
+        assert r.returncode == 0 and last.startswith("{"), "node go.js: " + said[-300:]
+        got = json.loads(last)
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    href = {row[1]: "/" + row[3] for row in fx["rows"]}
+    kinds = dict(zip((row[1] for row in fx["rows"]), got["kinds"]))
+    assert kinds["State Veterans Advisory Committee"] == "Statutory Committee", kinds
+    for c in fx["cases"]:
+        order = got["cases"][c["q"]]
+        a, b = href[c["above"]], href[c["below"]]
+        assert a in order and b in order and order.index(a) < order.index(b), (
+            f"{c['q']!r}: {c['above']} does not come before {c['below']} in the panel: {order}")
+        study = [i for i, h in enumerate(order) if "/committee/ss" in h]
+        if "BILLS" in order:
+            assert all(i > order.index("BILLS") for i in study), (
+                f"{c['q']!r}: a statutory or study committee is drawn above the bills: {order}")
+    js = BP.SEARCH_JS
+    g = js.index('{t:"Statutory and study committees",k:r=>r[0]==="statutory"||r[0]==="study"}')
+    assert js.index('{t:"Subjects"') < g < js.index('{t:"Former senators"') and re.search(
+        r'const AFTER=new Set\(\["Statutory and study committees",', js), (
+        "/search does not list the statutory and study committees as their own group after the bills")
+    # And the built find.json carries the fixture's, each its class.
+    absent = [x for x in CHAIN_NEEDS if not _paths.locate(x).exists()]
+    if not absent:
+        shared, _base, _ran, _days = _fixture_site_shared()
+        rows = json.loads((shared / "site" / "find.json").read_text(encoding="utf-8"))
+        mine = sorted((r[0], r[3]) for r in rows if r[0] in ("statutory", "study"))
+        assert mine == [("statutory", "committee/ss1451"), ("statutory", "committee/ss69"),
+                        ("study", "committee/ss1740")], (
+            f"find.json's statutory and study committees are {mine}")
+    return "ok", (f"{len(fx['cases'])} cases: each standing committee before the statutory one, "
+                  "the statutory before the former, none above the bills; their own group on /search")
 
 
 _FIND_DETAILS_JS = r"""
@@ -24505,6 +24593,14 @@ def _plan(build_all):
         "narratives are built before the roster they now need"
     assert at("adopt boundaries") < at("site data"), \
         "markers are applied after the site is built, so nothing would use them"
+    # THE STATUTORY AND STUDY COMMITTEES' PAGES (18 October 2026): after the
+    # committees, whose page takes their section, and the Laws pages, whose
+    # headings name their statutes; before the lists and the search, which
+    # read study_committees.json, and the Calendar, whose cards lead to them.
+    assert at("a page for every committee") < at("statutory and study committee") \
+        and at("the statutes: a page a chapter") < at("statutory and study committee") \
+        < min(at("the whole record, as lists"), at("every week of the General Court")), \
+        "the statutory and study committees' pages are built out of their order"
     scripts = [s.args[0] for s in build_all.plan(A())]
     # The sign-in counts are the database's alone since 5 October 2026: the
     # scraped page's step and its flat testimony.json are retired.
@@ -24547,6 +24643,14 @@ ic_SOURCES = {
     "db/Legislators.psv": "fetch_archive_db.py, which dumps the SQL views",
     "db/_columns.json": "fetch_archive_db.py, the column order of each view it dumps",
     "db/NH_RSA.psv": "fetch_archive_db.py --only NH_RSA, the statute table (a person's run)",
+    # The statutory and study committees' views (18 October 2026), which the
+    # night refreshes (nightly.STUDY_NIGHTLY and STUDY_WEEKLY) and the kit carries.
+    "db/StatStudDetails.psv": "fetch_archive_db.py, which dumps the SQL views; the night's "
+                              "study-committee refresh",
+    "db/StatStudMembers.psv": "fetch_archive_db.py, which dumps the SQL views; the week's "
+                              "study-committee refresh",
+    "db/StatStudMeetings.psv": "fetch_archive_db.py, which dumps the SQL views; the night's "
+                               "study-committee refresh",
     "db/past/PastSponsors.psv": "fetch_past_db.py, which dumps the six Past* views",
     "db/past/PastLegislation.psv": "fetch_past_db.py, which dumps the six Past* views",
     "db/past/_manifest.json": "fetch_past_db.py, the column order of each Past* view",
@@ -29959,7 +30063,7 @@ def _proceedings_term_shrink():
 CHAIN_NEEDS = ["build_site_v2.py", "build_search_index.py", "build_pages.py",
                "build_bill_pages.py",
                "build_session_pages.py", "session_days.py", "journal_days.py",
-               "build_legislator_pages.py", "build_committees.py",
+               "build_legislator_pages.py", "build_committees.py", "build_study_committees.py",
                "build_civics.py", "build_town_pages.py", "build_indexes.py",
                "build_exports.py", "build_feeds.py", "check_site.py",
                "app.css", "app.js", "bills.html",
@@ -30023,6 +30127,81 @@ def _fixture_brand(here, root, brand=True):
     (assets / "licensed").mkdir(exist_ok=True)
     (assets / "licensed" / "lockup.png").write_bytes(png + LICENSED_STAND_IN)
     (assets / "licensed" / BP.HEADER_MARK).write_bytes(png)
+
+
+def _study_fixture(root):
+    """The fixture's statutory and study committees (18 October 2026), as
+    the database copy holds them in db/: a commission set up by a fixture
+    bill under a fixture statute, with a sitting representative in its chair,
+    a senator, a seat whose member is on no roster, two public members' seats
+    described alike and one appointment that has lapsed; a study committee; a
+    board the list marks non-legislative; and an archived committee, which
+    has no page. Its meetings: one in the Calendar's fixture week, one
+    cancelled, one of 1993. Returns {name: CommitteeID} of the active ones."""
+    import build_study_committees as SC
+    db = Path(root) / "db"
+    db.mkdir(exist_ok=True)
+
+    def row(cols, **v):
+        return "|".join(str(v.get(c, "")) for c in cols)
+    det = [
+        dict(CommitteeID=1451, CommitteeYear=2026, CondensedBillNo="SB434",
+             CommitteeName="STATE COMMISSION ON AGING", RSAChapter="91-A:4", ChapterLaw="0152:2",
+             ReportDueDate="11/01/2026 00:00:00", ReportFiled="False",
+             EffectiveDate="07/01/2026 00:00:00", CommitteeStatus="Active Statutory Committee",
+             FirstMeeting="The first meeting shall be called by thehouse member.",
+             Quorum="5 members", Report="The commission shall report annually.",
+             AmendingBills="HB1442(2026)", CommitteeTypeID=7),
+        dict(CommitteeID=1740, CommitteeYear=2026, CondensedBillNo="HB1442",
+             CommitteeName="COMMITTEE TO STUDY SCHOOL BULLYING",
+             CommitteeStatus="Active Chaptered Study Committee", CommitteeTypeID=13),
+        dict(CommitteeID=69, CommitteeYear=1967,
+             CommitteeName="NH RETIREMENT SYSTEM BOARD OF TRUSTEES ==NON-LEGISLATIVE==",
+             RSAChapter="100-A:14", CommitteeStatus="Active Statutory Committee",
+             CommitteeTypeID=7),
+        dict(CommitteeID=44, CommitteeYear=2014, CondensedBillNo="HB1136",
+             CommitteeName="VETERANS HOME STUDY", CommitteeStatus="Archived Chaptered Study Committee",
+             CommitteeTypeID=6)]
+    (db / "StatStudDetails.psv").write_text(
+        "\n".join(row(SC.DETAILS, **d) for d in det) + "\n", encoding="utf-8")
+    seat = dict(Active="True", Alternate="False", Designee="False", NonVotingMember="False",
+                Chairperson="False")
+    mem = [dict(seat, CommitteeID=1451, memberno=377204, MemberType=0, Chairperson="True",
+                Organization="(a) Two members of the house, appointed by the speaker.",
+                Affiliation="House"),
+           dict(seat, CommitteeID=1451, memberno=377207, MemberType=1,
+                Organization="(b) One senator.", Affiliation="Senate"),
+           dict(seat, CommitteeID=1451, memberno=999999, MemberType=0,
+                Organization="(c) A hydrogeologist, appointed by the governor.",
+                Affiliation="Geological Survey"),
+           dict(seat, CommitteeID=1451, memberno=9001, MemberType=2,
+                Organization="(j) Fifteen members of the public, appointed by the governor.",
+                Affiliation="Appt. by Governor"),
+           dict(seat, CommitteeID=1451, memberno=9002, MemberType=2,
+                Organization="(j)  Fifteen members of the public, appointed by the governor. "
+                             "(Reappointed 12/12/24)", Affiliation="Appt. by Governor"),
+           dict(seat, CommitteeID=1451, memberno=377207, MemberType=1, Active="False",
+                Organization="(b) One senator.", Affiliation="Senate"),
+           dict(seat, CommitteeID=69, memberno=9003, MemberType=2,
+                Organization="2 TEACHERS, APPT BY GOV & COUNCIL", Affiliation="Teacher")]
+    (db / "StatStudMembers.psv").write_text(
+        "\n".join(row(SC.MEMBERS, **m) for m in mem) + "\n", encoding="utf-8")
+    meets = [dict(MeetingID=7001, CommitteeID=1451, MeetingDate="03/10/2026 10:00:00",
+                  MeetingLocation="LOB Room 101  Regular Meeting"),
+             dict(webtext="==CANCELLED==", MeetingID=7002, CommitteeID=1451,
+                  MeetingDate="03/12/2026 13:00:00",
+                  MeetingLocation="==CANCELLED==LOB Room 102  Regular Meeting"),
+             dict(MeetingID=12, CommitteeID=1451, MeetingDate="01/11/1993 10:00:00",
+                  MeetingLocation="RM103, ST"),
+             dict(MeetingID=7003, CommitteeID=44, MeetingDate="03/11/2026 10:00:00",
+                  MeetingLocation="LOB Room 103  Regular Meeting")]
+    (db / "StatStudMeetings.psv").write_text(
+        "\n".join(row(SC.MEETINGS, **m) for m in meets) + "\n", encoding="utf-8")
+    (db / "vStatStudTemp.psv").write_text(
+        "\n".join(row(SC.TEMP, **{k: d.get(k, "") for k in SC.TEMP}) for d in det) + "\n",
+        encoding="utf-8")
+    return {"State Commission on Aging": "1451", "Committee to Study School Bullying": "1740",
+            "NH Retirement System Board of Trustees": "69"}
 
 
 def _built_site(here, root, brand=True, env=None):
@@ -30122,6 +30301,7 @@ def _built_site(here, root, brand=True, env=None):
     (root / "rsa_citations.json").write_text(json.dumps(
         {"bills": {}, "enacted": {"91-A:4": [["1967", "251:1", ""]]}, "statute": {"404:1": ["91-A:4"]},
          "asof": {"laws_through": 2025}}), encoding="utf-8")
+    _study_fixture(root)
     base = "https://graniterecord.org"
     steps = [
         # meta.json and the term files it names are the bill index; the
@@ -30147,6 +30327,10 @@ def _built_site(here, root, brand=True, env=None):
                                  "--base", base], "site/committees.json"),
         ("build_civics.py", ["--site", "site", "--base", base], "site/resources.html"),
         ("build_rsa.py", ["--site", "site", "--base", base, "--db", "db"], "site/laws.html"),
+        # The statutory and study committees' pages, after the Laws pages
+        # whose headings name their statutes, as build_all runs it.
+        ("build_study_committees.py", ["--site", "site", "--base", base],
+         "site/study_committees.json"),
         ("build_town_pages.py", ["--site", "site", "--base", base], "site/town"),
         # The district map's data, after the town pages, as in build_all.
         ("build_district_map.py", ["--site", "site"], "site/district_map.json"),
@@ -55294,6 +55478,416 @@ process.stdout.write(C.countLine(C.tally(cards,on),"this week")+" | "
                   "committee's card; the box, off, no note of the copy, and a true description")
 
 
+@check("frontend", "the built week hides the study committees as the script does, says how many "
+       "once a week with the way to show them, and each card leads to its committee's page")
+def _calendar_study_hidden_once():
+    """The person, 17 October 2026: the calendar does not show study and
+    statutory committees by default, because of the clutter. Until 18
+    October the box started unticked but only the script hid the cards: the
+    week's own HTML carried every one, so a reader without script, and
+    everyone for the moment before it ran, saw them all; and with the script
+    nearly every weekday said "4 study committee meetings are hidden."
+
+    Here, over the database copy's shape: an active committee's meeting
+    carries its page (build_calendar.study_page) and its card leads into the
+    meeting there, an archived one's leads nowhere; the built week opens
+    with the checkbox and the one line, a day of study committees alone
+    says only that nothing is shown, and app.css hides the cards while the
+    box is unticked; the script's day says "No meetings shown." and its week
+    line keeps the count, with "Show them" beside it while there is one."""
+    import contextlib
+    import datetime as _dt
+    import io
+    import build_calendar as BC
+    here = Path(".").resolve()
+    if not (here / "src/pages/bills.html").exists():
+        return "skip", "bills.html is not here"
+
+    def det(cid, name, status):
+        f = [""] * 28
+        f[0], f[1], f[7], f[17] = cid, "2020", name, status
+        return "|".join(f)
+    tmp = Path(tempfile.mkdtemp(prefix="gr-statstud-once-"))
+    try:
+        db = tmp / "db"
+        db.mkdir()
+        (db / "StatStudDetails.psv").write_text("\n".join([
+            det("1451", "STATE COMMISSION ON AGING", "Active Statutory Committee"),
+            det("44", "VETERANS HOME STUDY", "Archived Chaptered Study Committee")]) + "\n",
+            encoding="utf-8")
+        (db / "StatStudMeetings.psv").write_text("\n".join([
+            "|5001|1451|10/12/2026 10:00:00|LOB Room 101  Regular Meeting||",
+            "|5002|44|10/14/2026 13:00:00|LOB Room 102  Regular Meeting||"]) + "\n",
+            encoding="utf-8")
+        with contextlib.redirect_stdout(io.StringIO()):
+            rows, names, _f = BC.statstud(tmp)
+        page = {r["committee"]: r.get("page") for r in rows}
+        assert page == {"State Commission on Aging": "committee/ss1451.html",
+                        "Veterans Home Study": ""}, (
+            f"the meetings' pages read as {page}: an active committee's is not its own, or an "
+            "archived one, which has no page, was given one")
+        bill = {"term": "2025-2026", "bill": "HB1", "body": "H", "kind": "hearing",
+                "date": "2026-10-13", "time": "10:00", "committee": "Finance", "venue": "LOB 210"}
+        weeks = BC.weeks_from([bill] + rows, names=names)
+        site = tmp / "site"
+        site.mkdir()
+        shutil.copy(here / "src/pages/bills.html", site / "bills.html")
+        order = sorted(weeks)
+        with contextlib.redirect_stdout(io.StringIO()):
+            for i, k in enumerate(order):
+                BC.week_page(site, "https://graniterecord.org", k, weeks, order, i,
+                             {}, {}, {}, [], _dt.date(2026, 10, 12), set(), study=True)
+        t = (site / "calendar.html").read_text(encoding="utf-8")
+        view = t[t.index('<div class="calview" id="calview">'):t.index('<nav class="wknav wkfoot"')]
+        cards = re.findall(r'<details class="calmeet"[^>]*>.*?</details>', view, re.S)
+        aging = [c for c in cards if "State Commission on Aging" in c]
+        vets = [c for c in cards if "Veterans Home Study" in c]
+        assert aging and 'href="committee/ss1451#day-2026-10-12"' in aging[0], (
+            "the commission's card does not lead into its meeting on its own page: "
+            + (aging[0][-300:] if aging else "no card"))
+        assert vets and "committee/ss" not in vets[0], (
+            "an archived committee's card links a page nobody writes")
+        # ONCE A WEEK: the box, then the one line, then the days.
+        assert view.startswith('<div class="calview" id="calview">'
+                               '<input type="checkbox" class="calst" id="calst">'
+                               '<p class="calstline"><span class="cs-off">2 study committee '
+                               'meetings are hidden.</span>'), (
+            "the built week does not open with the box and the one line counting its study "
+            "committee meetings: " + view[:240])
+        assert '<label for="calst"><span class="cs-off">Show them</span>' in view, (
+            "the built week's line has no way to show them")
+        days = re.findall(r'<div class="calday[^"]*" data-d="([^"]+)">(.*?)(?=<div class="calday|$)',
+                          view, re.S)
+        alone = {d for d, h in days if BC.STUDY_ONLY in h}
+        assert alone == {"2026-10-12", "2026-10-14"}, (
+            f"the days of study committees alone that say nothing is shown are {sorted(alone)}; "
+            "a day with a hearing on it must not say so")
+        rest = view[view.index("</p>") + len("</p>"):]
+        assert "is hidden." not in rest and "are hidden." not in rest, (
+            "a day of the built week still says how many study committee meetings it hides")
+        css = (here / "src/pages/app.css").read_text(encoding="utf-8")
+        assert re.search(r'\.calst:not\(:checked\) ~ \.calday \.calmeet\[data-who="study"\]', css) \
+            and re.search(r"\.calst:checked ~ \.calday \.calstonly", css), (
+                "app.css no longer hides the built week's study committee cards while its box is "
+                "unticked, or shows the day's 'No meetings shown.' while it is ticked")
+        assert '<button type="button" class="calshowst" id="calshowst" hidden>' in t, (
+            "the Calendar's bar has no Show them for the script to show")
+        js = BC.WEEK_JS
+        assert "showst.hidden=!(tl&&tl.study)" in js and 'value="study"]' in js, (
+            "the script does not show Show them while study committee meetings are hidden, "
+            "or it does not tick the box")
+        node = shutil.which("node") or shutil.which("node.exe")
+        if node:
+            go = tmp / "week.js"
+            go.write_text("globalThis.document={getElementById:function(){return null;}};\n"
+                          + _with_components(BC.WEEK_JS) + r"""
+const C=globalThis.GRCAL, t=require("fs").readFileSync(process.argv[2],"utf8");
+const view=t.slice(t.indexOf('<div class="calview"'),t.indexOf('<nav class="wknav wkfoot"'));
+const cards=(view.match(new RegExp('<details class="cal'+'meet"[\\s\\S]*?</details>','g'))||[]).map(C.parseCard);
+const st=cards.filter(c=>c.who==="study");
+process.stdout.write(JSON.stringify({day:C.emptyWords(st.slice(0,1),C.defaults()),
+  week:C.countLine(C.tally(cards,C.defaults()),"this week")}));
+""", encoding="utf-8")
+            r = _run([node, str(go), str(site / "calendar.html")], capture_output=True,
+                     text=True, encoding="utf-8", timeout=60)
+            assert r.returncode == 0, (r.stdout or r.stderr).strip()[-300:]
+            got = json.loads(r.stdout)
+            assert got["day"] == "No meetings shown.", (
+                f"the script's day of study committees alone says {got['day']!r}")
+            assert got["week"] == "1 of 3 meetings shown. 2 study committee meetings are hidden.", (
+                f"the script's week line says {got['week']!r}")
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    return "ok", ("an active committee's card leads into its meeting on its page; the built week "
+                  "hides the study cards behind one line and a box, a day of them alone says "
+                  "nothing is shown, and the script counts them once with Show them")
+
+
+# The fixture's statutory and study committees (_study_fixture): the active
+# ones by CommitteeID, and the archived one, which has no page.
+STUDY_ACTIVE, STUDY_ARCHIVED = ("1451", "1740", "69"), "44"
+
+
+@check("build", "every statutory and study committee the General Court lists as active has a page, "
+       "in the sitemap and in study_committees.json; an archived one has none; build_committees "
+       "leaves them in the sitemap; and a run that would write none fails",
+       needs=("build_study_committees", "shell"))
+def _study_committee_pages(SC, S):
+    """The person, 17 October 2026: statutory and study committees get pages
+    of their own, the active ones first (the plan's step 2). SILENCE IS NOT
+    SUCCESS: a copy with no active committee, or none on disk, must stop the
+    run, not publish a site with no page and a zero in the log."""
+    absent = [x for x in CHAIN_NEEDS if not _paths.locate(x).exists()]
+    if absent:
+        return "skip", "not here: " + ", ".join(absent)
+    shared, base, _ran, _days = _fixture_site_shared()
+    site = shared / "site"
+    pages = sorted(p.stem for p in (site / "committee").glob("ss*.html"))
+    assert pages == sorted(f"ss{c}" for c in STUDY_ACTIVE), (
+        f"the study committees' pages are {pages}; every active one wants one, the archived "
+        f"ss{STUDY_ARCHIVED} none")
+    rows = json.loads((site / SC.INDEX).read_text(encoding="utf-8"))
+    assert sorted(r["cid"] for r in rows) == sorted(STUDY_ACTIVE) and all(
+        r["page"] == f"/committee/ss{r['cid']}.html" for r in rows), (
+        f"study_committees.json does not list each page once: {rows}")
+    sm = (site / "sitemap.xml").read_text(encoding="utf-8")
+    for cid in STUDY_ACTIVE:
+        assert f"<loc>{base}/committee/ss{cid}</loc>" in sm, f"/committee/ss{cid} is not in the sitemap"
+    assert f"/committee/ss{STUDY_ARCHIVED}<" not in sm and f"<loc>{base}/committee/H43</loc>" in sm, (
+        "the sitemap lists the archived committee, or lost the chamber committee's page")
+    # build_committees owns /committee, and spares the study committees'.
+    tmp = Path(tempfile.mkdtemp(prefix="gr-study-none-"))
+    try:
+        (tmp / "sitemap.xml").write_text(
+            '<?xml version="1.0"?>\n<urlset>\n' + "".join(
+                f"<url><loc>{base}/committee/{c}</loc></url>\n" for c in ("H43", "H99", "ss1451"))
+            + "</urlset>\n", encoding="utf-8")
+        added, dropped = S.sitemap_merge(tmp, base, [f"{base}/committee/H43"], spare=("/committee/ss*",),
+                                         owns="/committee")
+        locs = re.findall(r"<loc>[^<]*/committee/([^<]+)</loc>",
+                          (tmp / "sitemap.xml").read_text(encoding="utf-8"))
+        assert locs == ["H43", "ss1451"] and (added, dropped) == (0, 1), (
+            f"build_committees' sitemap merge keeps {locs}: it must take out H99, which it no "
+            "longer writes, and leave the study committee's page it does not write")
+        src = _paths.locate("build_committees.py").read_text(encoding="utf-8")
+        assert re.search(r"spare=STUDY_PAGES", src) and '"/committee/ss*"' in src, (
+            "build_committees no longer spares the study committees' pages in the sitemap")
+        # A RUN THAT WOULD WRITE NONE FAILS, with the copy gone and with one
+        # that lists no active committee.
+        (tmp / "site").mkdir()
+        shutil.copy(Path("src/pages/bills.html"), tmp / "site" / "bills.html")
+        for why, text in (("no copy", None),
+                          ("no active committee", "|".join(
+                              ["44", "2014", "", "", "HB1136"] + [""] * 12
+                              + ["Archived Chaptered Study Committee"] + [""] * 10) + "\n")):
+            db = tmp / "db"
+            shutil.rmtree(db, ignore_errors=True)
+            if text is not None:
+                db.mkdir()
+                (db / "StatStudDetails.psv").write_text(text, encoding="utf-8")
+            r = _run([sys.executable, _paths.script("build_study_committees.py"), "--site", "site"],
+                     cwd=tmp, capture_output=True, text=True, timeout=120)
+            assert r.returncode == 1 and "FAILED" in r.stdout and not list(
+                (tmp / "site").glob("committee/ss*.html")), (
+                f"with {why}, build_study_committees exited {r.returncode} and said "
+                f"{(r.stdout + r.stderr).strip()[-200:]!r}: it must fail, saying so, and write nothing")
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    return "ok", (f"{len(STUDY_ACTIVE)} active committees, {len(STUDY_ACTIVE)} pages, listed and in the "
+                  "sitemap; the archived one has none; build_committees spares them; no copy, or no "
+                  "active committee, fails the run")
+
+
+@check("build", "/committees folds the statutory and study committees under the chambers' own, shut, "
+       "grouped by the General Court's two classes, each card its kind's chip, with a find box the "
+       "script shows", needs=("build_study_committees",))
+def _study_committees_listed(SC):
+    """The person, 17 October 2026: on the committee page "not as prominently
+    as standing committees ... Maybe ... under a drop-down menu of some
+    kind". So one fold, shut, after the House and Senate columns and before
+    the committees with no record and the former ones; statutory then
+    study; a card each, linking its page; and the find box hidden until its
+    script shows it, so a reader without script meets no box that does
+    nothing."""
+    absent = [x for x in CHAIN_NEEDS if not _paths.locate(x).exists()]
+    if absent:
+        return "skip", "not here: " + ", ".join(absent)
+    import components as C
+    shared, _base, _ran, _days = _fixture_site_shared()
+    t = (shared / "site" / "committees.html").read_text(encoding="utf-8")
+    assert t.count("<!-- statstud -->") == 1 and t.count("<!-- /statstud -->") == 1, (
+        "the statutory and study committees' slot is missing or doubled")
+    sec = t[t.index("<!-- statstud -->"):t.index("<!-- /statstud -->")]
+    assert sec.startswith('<!-- statstud --><details class="sfold ssfold" id="statstud"><summary>') \
+        and "<span class=\"sflab\">Statutory and study committees</span> <span class=\"w4n\">3</span>" in sec, (
+        "the section is not one shut fold that says how many: " + sec[:200])
+    assert t.index('<div class="ctwo">') < t.index("<!-- statstud -->") and (
+        "Former committees" not in t or t.index("<!-- statstud -->") < t.index("Former committees")), (
+        "the fold is not under the chambers' columns, above the former committees")
+    groups = re.findall(r'<section class="ssgrp" data-class="(\w+)">', sec)
+    assert groups == ["statutory", "study"], f"the classes are {groups}, not statutory then study"
+    cards = re.findall(r'<a class="ccard sscard" href="([^"]+)"', sec)
+    assert cards == ["committee/ss69", "committee/ss1451", "committee/ss1740"], (
+        f"the cards, by class and then name, lead to {cards}")
+    assert _clean_links(C.chip("Commission", "k-study")) in sec and C.chip("Board", "k-study") in sec, (
+        "a card does not carry its kind, from its name, as the chip")
+    assert '<div class="ssfind" hidden>' in sec and 'id="ssq"' in sec and "wrap.hidden=false" in sec, (
+        "the find box is not hidden until its script shows it")
+    return "ok", "one shut fold after the chambers, statutory then study, a card each with its kind; a find box the script shows"
+
+
+@check("build", "a statutory or study committee's page: every sitting legislator's seat is the site's "
+       "one chip with its role, every other seat as the record describes it, and the law, the "
+       "report and the meetings as the record has them", needs=("build_study_committees",))
+def _study_committee_page(SC):
+    """The plan's page (private/STUDY_COMMITTEES_PLAN.md, approved 17 October
+    2026), on the fixture's commission: a seat of type 0 or 1 is a
+    legislator's, found on the roster by the member's own number and drawn
+    with components.pchip, its role beside it; the seat of a lapsed
+    appointment is not drawn; a seat whose number is on no roster, and every
+    public member's, is the statute's own description of it, alike seats one
+    line, never a name. What It Does links the bill and the statute that made
+    it, Report says what is due, Meetings are newest first with the record's
+    marks, each a Calendar link from the Calendar's first week, the older
+    ones folded."""
+    absent = [x for x in CHAIN_NEEDS if not _paths.locate(x).exists()]
+    if absent:
+        return "skip", "not here: " + ", ".join(absent)
+    import components as C
+    shared, _base, _ran, _days = _fixture_site_shared()
+    site = shared / "site"
+    t = (site / "committee" / "ss1451.html").read_text(encoding="utf-8")
+    legs = {str(m["id"]): m for m in json.loads((site / "legislators.json").read_text(encoding="utf-8"))}
+    members = t[t.index('id="members"'):t.index('id="meetings"')]
+    seats = [ln.split("|") for ln in (shared / "db" / "StatStudMembers.psv").read_text(
+        encoding="utf-8").splitlines()]
+    sitting = {s[1] for s in seats if s[0] == "1451" and s[5] == "True" and s[3] in ("0", "1")
+               and s[1] in legs}
+    n = members.count('class="mchip ')
+    assert n == len(sitting) == 2, (
+        f"{n} chips for {len(sitting)} sitting legislators' seats: every one is a chip, once")
+    for no in sitting:
+        role = "Chair" if no == "377204" else "Member"
+        want = _clean_links(C.pchip(dict(legs[no], role=role)))
+        assert want in members, f"member {no}'s seat is not the site's chip, with its role: want {want}"
+    assert "A hydrogeologist, appointed by the governor." in members and "(c)" not in members, (
+        "a seat whose member is on no roster is not described as the record describes it")
+    assert members.count("Fifteen members of the public, appointed by the governor.") == 1 \
+        and "2 seats on record" in members and "Reappointed" not in members, (
+        "two alike public members' seats are not one line of the record's own words")
+    does = t[t.index('id="does"'):t.index('id="members"')]
+    assert 'href="bill/2026/sb434"' in does and 'href="/laws/91-a#s4"' in does \
+        and "Minutes and Records Available for Public Inspection" in does \
+        and "chapter 152:2 of the Laws of 2026" in does and 'href="bill/2026/hb1442"' in does, (
+        "What It Does does not link the bill and the statute that made it, with the session "
+        "law's chapter as the record has it: " + re.sub(r"<[^>]+>", " ", does)[:300])
+    assert "Report" in t and "November 1, 2026" in t and "No report is on file" in t, (
+        "the report's due date, or that none is on file, is not said")
+    meets = t[t.index('id="meetings"'):]
+    ids = re.findall(r'<details class="cmeet" id="([^"]+)"', meets)
+    assert ids == ["day-2026-03-12", "day-2026-03-10", "day-1993-01-11"], (
+        f"the meetings are not newest first, each at its day's address: {ids}")
+    first = meets[meets.index('id="day-2026-03-12"'):meets.index('id="day-2026-03-10"')]
+    assert C.chip("Cancelled", "calkind") in first and "LOB Room 102" in first, (
+        "the cancelled meeting does not carry the record's mark and its room")
+    assert 'href="calendar?week=2026-W11&amp;day=2026-03-10&amp;committee=State+Commission+on+Aging"' \
+        in meets, "a meeting since the Calendar's first week does not lead to it there"
+    fold = meets[meets.index('<details class="sfold ssold"'):]
+    assert 'id="day-1993-01-11"' in fold and "Earlier meetings, 1993" in fold, (
+        "the meetings before the last few years are not folded away")
+    # The board the list marks non-legislative: its name without the mark,
+    # said in words, and given no parent in the General Court.
+    b = (site / "committee" / "ss69.html").read_text(encoding="utf-8")
+    assert "NON-LEGISLATIVE" not in b.upper().replace("NON-LEGISLATIVE:", "") \
+        and "marks it non-legislative" in b and '"parentOrganization"' not in b, (
+        "the board the list marks non-legislative keeps the mark in its name, is not said to be "
+        "non-legislative, or is given the General Court as its parent")
+    assert '"parentOrganization"' in t, "the commission's structured data names no parent"
+    return "ok", ("two sitting legislators' seats, two chips with their roles; the lapsed seat "
+                  "left; the unrostered and public seats described, alike ones as one; the bill, "
+                  "law and statute linked; the meetings newest first, marked, the oldest folded")
+
+
+def _clean_links(html):
+    """A component as a built page carries it: shell.clean_links's addresses."""
+    import shell
+    return shell.clean_links(html)
+
+
+@check("build", "the study committees' record is read as it was written: a lost break parted only "
+       "where the record says so, an old room read as its room, a kind from its name, and the "
+       "statute and the session law put back where the record swapped them",
+       needs=("build_study_committees",))
+def _study_committee_reading(SC):
+    """The database copy lost the line breaks inside its text, as it did in a
+    venue: "chairpersons of thehouse and senate committees". A word is parted
+    only where the vocabulary says so, never a word the statutes' headings
+    use ("record" is not "re cord"); a small letter met by a capital is a
+    break, but not McAuliffe's. A room written "RM205,LOB -" is LOB Room 205.
+    "Business Finance Authority Board of Directors" is a board."""
+    w = SC.Words({"record", "indirect"})
+    w.counts.update({"the": 900, "house": 800, "thehouse": 40, "of": 900, "each": 300,
+                     "ofeach": 12, "re": 50, "cord": 50, "in": 900, "direct": 60, "for": 900,
+                     "th": 30, "forth": 2, "proposed": 368, "legislation": 434,
+                     "proposedlegislation": 37, "representatives": 300, "ofrepresentatives": 8,
+                     "thehouseofrepresentatives": 1})
+    got = {x: SC.parted(x, w) for x in ("thehouse", "ofeach", "record", "indirect", "forth",
+                                        "onNovember", "McAuliffe", "proposedlegislation",
+                                        "thehouseofrepresentatives", "eNorth")}
+    assert got == {"thehouse": "the house", "ofeach": "of each", "record": None, "indirect": None,
+                   "forth": None, "onNovember": "on November", "McAuliffe": None,
+                   "proposedlegislation": "proposed legislation",
+                   "thehouseofrepresentatives": "the house of representatives", "eNorth": None}, got
+    said = Counter()
+    assert SC.prose("report to thehouse,senate and the committee�s chair.The end", w, said) == (
+        "report to the house, senate and the committee's chair. The end"), "prose() misreads the copy"
+    assert said == Counter({"thehouse": 1}), said
+    assert SC.seat_words("(j)  Fifteen members of the public. (Reappointed 12/12/24)", w) == (
+        "Fifteen members of the public."), "a seat keeps its paragraph's letter or an appointment's note"
+    rooms = {"RM205,LOB -": ("LOB Room 205", ""),
+             "RMs306-308,LOB - Continued Meeting": ("LOB Rooms 306-308", "Continued Meeting"),
+             "RM105-A, St House -": ("State House Room 105-A", ""),
+             "RM101,LOB   (Org meeting)": ("LOB Room 101", "Org meeting"),
+             "GP Room 230": ("GP Room 230", "")}
+    for r, want in rooms.items():
+        assert SC.old_room(r) == want, f"{r!r} reads as {SC.old_room(r)}"
+    kinds = {"Business Finance Authority Board of Directors": "Board",
+             "Advisory Committee on the Human Rights Commission": "Committee",
+             "Commission to Study Stable Tokens": "Commission",
+             "Subcommittee on Alzheimer's Disease and Other Related Dementia": "Subcommittee",
+             "Youth Council Subgroup Within Governor's Workforce Opportunity Council": "Council",
+             "Working Group for the Study of Nursing Home Rate Medicaid Methodology": "Working Group",
+             "Administrative Rules": "Committee"}
+    for n, k in kinds.items():
+        assert SC.kind_of(n) == k, f"{n!r} is a {SC.kind_of(n)}, not a {k}"
+    assert SC.rsa_of("312", "106-L:17 ") == ("106-L:17", "312") and SC.rsa_of("19-P:1", "0152:2") == (
+        "19-P:1", "152:2"), "the statute and the session law are not put back where the record swapped them"
+    st = SC.statute("362-H;3", {"362-H:3": "Members"}, {"362-H": ["Hydrogen", "", 1]})
+    assert st == {"addr": "362-H:3", "href": "/laws/362-h#s3", "heading": "Members"}, st
+    assert SC.statute("9:3-a,IV", {}, {"9": ["Budget", "", 1]})["href"] == "/laws/9", (
+        "a section the Laws pages do not hold is not linked to its chapter")
+    import build_calendar as BC
+    assert BC.committee_name("OPLC OVERSIGHT COMMITTEE") == "OPLC Oversight Committee" and \
+        BC.committee_name("ADVISORY COMMITTEE ON THE EDUCATION OF CHILDREN/STUDENTS WITH "
+                          "DISABILITIES") == ("Advisory Committee on the Education of "
+                                              "Children/Students with Disabilities") and \
+        BC.committee_name("NH RETIREMENT SYSTEM BOARD OF TRUSTEES ==NON-LEGISLATIVE==") == (
+            "NH Retirement System Board of Trustees") and \
+        BC.committee_name("MCAULIFFE-SHEPARD DISCOVERY CENTER BOARD") == (
+            "McAuliffe-Shepard Discovery Center Board"), "a committee's name is cased wrong"
+    return "ok", ("lost breaks parted only where the record says; McAuliffe, record and indirect "
+                  "kept; old rooms read; kinds from names; the swapped statute put back")
+
+
+@check("data", "on the built site, every active statutory and study committee in db/ has its page, "
+       "and every seat of a sitting legislator on it is that member's chip",
+       needs=("build_study_committees",))
+def _study_committees_built(SC):
+    """The fixture's few committees prove the reading; this holds the whole
+    copy to it once a build has written the pages: on 17 October 2026, 153
+    active committees and the seats of the legislators who sit today on
+    them, each a chip linking the member's page."""
+    site, db = Path("site"), Path("db")
+    if not (site / SC.INDEX).exists() or not (db / "StatStudDetails.psv").exists():
+        return "skip", "no built study committees' pages, or no database copy, here"
+    comms = SC.read(db)
+    legs = {str(m.get("id")): m for m in json.loads((site / "legislators.json").read_text(
+        encoding="utf-8"))}
+    missing = [c["cid"] for c in comms if not (site / "committee" / f"ss{c['cid']}.html").exists()]
+    assert not missing, f"{len(missing)} active committees have no page: ss{', ss'.join(missing[:6])}"
+    bad, n = [], 0
+    for c in comms:
+        t = (site / "committee" / f"ss{c['cid']}.html").read_text(encoding="utf-8")
+        for s in c["seats"]:
+            m = legs.get(s["memberno"].strip()) if s["MemberType"].strip() in ("0", "1") else None
+            if m:
+                n += 1
+                if f'href="legislator/{m.get("slug")}"' not in t:
+                    bad.append(f"ss{c['cid']}: {m.get('display_full')}")
+    assert not bad, f"{len(bad)} sitting legislators' seats drawn as no chip: {bad[:5]}"
+    return "ok", f"{len(comms)} active committees, each with its page; {n:,} legislators' seats, each a chip"
+
+
 @check("frontend", "a calendar card links the calendar that first printed its notice, and a sitting its own journal")
 def _calendar_document_links():
     """No calendar card and none of 1,601 sitting pages linked a source PDF.
@@ -58539,9 +59133,10 @@ const linked=C.parseCard(jud.html.replace("</div></details>",'<p class="calmore 
   +'<p class="calmore"><a href="committee/H05.html#day-2026-03-10">This meeting on the House Judiciary page</a></p></div></details>'));
 ok(/<li class="wke"[^>]*><a class="wkgo" href="committee\/H05\.html#day-2026-03-10"><span class="wkbar"/.test(E(linked)),
    "an entry whose card leads to its committee's page at that day does not: "+E(linked));
-// What an empty column says.
-ok(C.emptyWords([],F({}))==="No meetings" && C.emptyWords([aging[0]],F({}))==="1 study committee meeting is hidden."
-   && C.emptyWords([aging[0],aging[0]],F({}))==="2 study committee meetings are hidden."
+// What an empty column says. A day of study committees alone says only that
+// nothing is shown: their count is the week's line's (18 October 2026).
+ok(C.emptyWords([],F({}))==="No meetings" && C.emptyWords([aging[0]],F({}))==="No meetings shown."
+   && C.emptyWords([aging[0],aging[0]],F({}))==="No meetings shown."
    && C.emptyWords([aging[0]],F({cats:[],q:"x"}))==="1 meeting is hidden by the filters."
    && C.emptyWords([jud,aging[0]],F({cats:[]}))==="2 meetings are hidden by the filters.",
    "an empty column's words: "+[C.emptyWords([],F({})),C.emptyWords([aging[0]],F({})),C.emptyWords([jud,aging[0]],F({cats:[]}))]);
@@ -58977,6 +59572,8 @@ const CLOCK=new RegExp("^\\d{1,2}:\\d\\d"+NB+"(AM|PM)(–\\d{1,2}:\\d\\d"+NB+"(A
   const plain=statik.filter(k=>!/Aging/.test(k));
   ok(plain.length===5 && W.keys().join()===plain.join(), "the list the script draws is not the page's own less the study committee: "+W.keys());
   ok($("wkcount").textContent==="5 of 6 meetings shown. 1 study committee meeting is hidden.", "the count reads "+$("wkcount").textContent);
+  // AND THE WAY TO SHOW THEM, beside that one line (18 October 2026).
+  ok(!$("calshowst").hidden, "Show them is not beside the line that says study committee meetings are hidden");
   ok($("calreset").hidden, "the reset control shows over a new reader's own filters");
   ok(QA(".caladd",$("calview")).length===5, "add-to-calendar on "+QA(".caladd",$("calview")).length+" cards, not the 5 shown that sat");
   ok($("cmprev").getAttribute("aria-disabled")==="true", "the month before the calendar's first is offered");
@@ -58985,9 +59582,10 @@ const CLOCK=new RegExp("^\\d{1,2}:\\d\\d"+NB+"(AM|PM)(–\\d{1,2}:\\d\\d"+NB+"(A
   ok(!QA(".cmdots i",c13).length, "a study committee's day has a dot while its box is unticked");
   ok(QA(".cdrel",$("calview")).map(r=>r.textContent).join()===",,today,tomorrow,in 2 days", "the days' relative words: "+QA(".cdrel",$("calview")).map(r=>r.textContent));
   // MONDAY TO FRIDAY IN THE LIST TOO: Friday, whose one meeting is a study
-  // committee's, stays and says so, as the Week view's column does.
+  // committee's, stays and says nothing is shown, as the Week view's column
+  // does; the week's line has the count (18 October 2026).
   const fri=Q('.calday[data-d="2026-03-13"]',$("calview"));
-  ok(fri && Q(".calempty",fri) && Q(".calempty",fri).textContent==="1 study committee meeting is hidden.",
+  ok(fri && Q(".calempty",fri) && Q(".calempty",fri).textContent==="No meetings shown.",
      "the list drops a weekday the filters emptied, or does not say why it is empty: "+(fri&&fri.textContent));
   ok(W.addr()==="/calendar" && W.G.history.length===1, "opening the tab wrote an address: "+W.addr());
   // EVERY TIME AS A READER SAYS IT, on the cards and on the items inside them.
@@ -59056,7 +59654,7 @@ const CLOCK=new RegExp("^\\d{1,2}:\\d\\d"+NB+"(AM|PM)(–\\d{1,2}:\\d\\d"+NB+"(A
   ok(!QA("table",$("calview")).length && !QA(".calmeet",$("calview")).length && QA(".wke",$("calview")).length===5,
      "the week is still whole cards in a table of hours, or not one entry a meeting shown");
   ok(W.keys().sort().join()===plain.slice().sort().join(), "the week at a glance does not hold the week's cards: "+W.keys());
-  ok(Q(".wkempty",wcols[0]).textContent==="No meetings" && Q(".wkempty",wcols[4]).textContent==="1 study committee meeting is hidden.",
+  ok(Q(".wkempty",wcols[0]).textContent==="No meetings" && Q(".wkempty",wcols[4]).textContent==="No meetings shown.",
      "an empty column does not say why: "+[Q(".wkempty",wcols[0]),Q(".wkempty",wcols[4])].map(x=>x&&x.textContent));
   ok(wcols[2].getAttribute("aria-current")==="date" && Q(".wkdd",wcols[2]).textContent==="Mar 11 · Today",
      "today is not marked in the week: "+Q(".wkdd",wcols[2]).textContent);
@@ -59084,6 +59682,12 @@ const CLOCK=new RegExp("^\\d{1,2}:\\d\\d"+NB+"(AM|PM)(–\\d{1,2}:\\d\\d"+NB+"(A
   ok(W.sel()==="2026-03-11" && W.addr()==="/calendar?week=2026-W11&view=day", "Previous Day: "+W.sel()+" "+W.addr());
   W.view("list").click(); await W.settle();
   // ---- the boxes ----
+  // SHOW THEM ticks Study Committee as a reader's tick does (18 October 2026).
+  $("calshowst").click(); await W.settle();
+  ok(W.box("study").checked && W.store.get("gr.calendar.showstudy")==="1" && $("calshowst").hidden
+     && W.keys().some(k=>/Commission on Aging/.test(k)) && D.activeElement===W.box("study"),
+     "Show them does not show the study committees, remember it, go, and leave the focus on the box: "+W.ticked());
+  await W.tick("study",false);
   const hb=W.G.history.length;
   await W.tick("study",true);
   ok(W.store.get("gr.calendar.showstudy")==="1", "ticking Study Committee is not remembered");

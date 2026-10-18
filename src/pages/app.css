@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.283 */
+/* GRANITE_VERSION: 2026-09-07.284 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -5295,6 +5295,24 @@ font-weight:600;color:var(--ink-2);background:var(--surface);border-left:1px sol
 .calreset{min-height:40px;padding:var(--sp-3) var(--sp-5);font-size:var(--t-ui);font-weight:600;
 color:var(--pine);background:var(--surface);border:1px solid var(--edge);border-radius:var(--r-in)}
 .calreset:hover{background:var(--wash)}
+/* STUDY AND STATUTORY COMMITTEES, HIDDEN ONCE A WEEK AND NOT ONCE A DAY (18
+   October 2026). The week's line says how many are hidden and this shows
+   them: the script's button beside its count, and in the week as built -- a
+   reader with no script, or the moment before it runs -- a checkbox whose
+   state hides the cards (build_calendar.study_hidden). Both are the line's
+   own words in the site's link colour, not a second button beside Reset. */
+.calshowst[hidden]{display:none}
+.calshowst,.calstline label{min-height:40px;padding:var(--sp-2) 0;font-size:var(--t-ui);font-weight:600;
+color:var(--pine);background:none;border:0;cursor:pointer;text-decoration:underline;
+text-decoration-thickness:1px;text-underline-offset:.2em}
+.calshowst:focus-visible{outline:2px solid var(--pine);outline-offset:2px}
+.calview > .calst{position:absolute;width:1px;height:1px;margin:0;opacity:0}
+.calview > .calst:focus-visible + .calstline label{outline:2px solid var(--pine);outline-offset:2px}
+.calstline{margin:0 0 var(--sp-5);font-size:var(--t-ui);color:var(--ink-2)}
+.calst:not(:checked) ~ .calday .calmeet[data-who="study"],
+.calst:not(:checked) ~ .calstline .cs-on,
+.calst:checked ~ .calstline .cs-off,
+.calst:checked ~ .calday .calstonly{display:none}
 
 /* THE KINDS OF MEETING, EACH A BOX IN ITS COLOUR (25 September 2026): the
    key to the bars and the filter at once, under the view switch, where the
@@ -6296,6 +6314,51 @@ transition:transform .15s}
 .cmplay .pwho{flex:1 1 100%;color:var(--ink-2)}
 .cmplay .pwho b{color:var(--ink);font-weight:600}
 .cmplay .tolnote{margin-left:0}
+/* A STATUTORY OR STUDY COMMITTEE'S PAGE (18 October 2026,
+   build_study_committees.py): the record head, then W4 sections -- What It
+   Does, Report, Members, Meetings -- each meeting folded as a committee's is.
+   The rules it meets by and its report's due date are a short list of label
+   and value, the legislators a row of chips by chamber, and every other seat
+   a line of the statute's own description with how many hold it. */
+.ssbody{margin-top:var(--sp-7)}
+.ssbody > .w4:first-child{border-top:1px solid var(--rule);padding-top:var(--sp-5)}
+.ssduty{font:400 var(--t-read)/1.65 var(--serif);color:var(--ink);max-width:51.1875rem;margin:0 0 var(--sp-4)}
+.ssrules{margin:var(--sp-4) 0 0;max-width:51.1875rem}
+.ssrules > div{display:grid;grid-template-columns:9rem minmax(0,1fr);gap:var(--sp-4);
+padding:var(--sp-3) 0;border-top:1px solid var(--rule)}
+.ssrules dt{font-size:var(--t-sm);font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--ink-2)}
+.ssrules dd{margin:0;font-size:var(--t-ui);line-height:1.55;color:var(--ink)}
+@media (max-width:40em){.ssrules > div{grid-template-columns:minmax(0,1fr);gap:var(--sp-1)}}
+.ssh{font:600 var(--t-ui)/1.3 var(--sans);margin:var(--sp-5) 0 var(--sp-3);color:var(--ink)}
+.w4b > .ssh:first-child{margin-top:0}
+.sschips{display:flex;flex-wrap:wrap;gap:var(--sp-3) var(--sp-4);list-style:none;margin:0;padding:0}
+.sschips > li{max-width:100%}
+.ssseats{list-style:none;margin:0;padding:0;max-width:51.1875rem}
+.ssseats > li{padding:var(--sp-3) 0;border-top:1px solid var(--rule);font-size:var(--t-ui);line-height:1.55}
+.ssseats > li:first-child{border-top:0}
+.ssdesc{display:block;color:var(--ink)}
+.ssmeta{display:inline-block;margin:var(--sp-1) var(--sp-3) 0 0;font-size:var(--t-sm);color:var(--ink-2)}
+/* /committees' fold of them, under the chambers' own columns: shut until a
+   reader opens it, the find box the script shows, the two classes each a
+   grid of the standing committees' cards. */
+.clist .ssfold{margin:var(--sp-8) 0 0}
+.clist .ssfold > summary .ssfh{margin:0;padding:0;border:0;font:600 var(--t-ui)/1.3 var(--sans);
+letter-spacing:0;text-transform:none;color:var(--ink)}
+.ssfold > summary .w4n{font-weight:400;color:var(--ink-2);margin-left:var(--sp-2)}
+.ssfind{margin:var(--sp-4) 0 0}
+.ssfind label{display:block;font-size:var(--t-sm);font-weight:600;color:var(--ink-2);margin:0 0 var(--sp-2)}
+.ssfind input{width:100%;max-width:28rem;min-height:44px;padding:var(--sp-3) var(--sp-4);font-size:var(--t-ui);
+color:var(--ink);background:var(--surface);border:1px solid var(--edge);border-radius:var(--r-in)}
+.ssfind input:focus-visible{outline:2px solid var(--pine);outline-offset:2px}
+.ssfn{margin:var(--sp-2) 0 0;font-size:var(--t-sm);color:var(--ink-2)}
+.ssfn:empty{display:none}
+.clist .ssgh{font:600 var(--t-part)/1.3 var(--serif);letter-spacing:.05em;text-transform:uppercase;
+color:var(--ink-2);margin:var(--sp-6) 0 var(--sp-3)}
+.sscards{grid-template-columns:repeat(auto-fill,minmax(min(100%,22rem),1fr))}
+.ssfind[hidden],.ssgrp[hidden],a.sscard[hidden],.ssnone[hidden]{display:none}
+.ssold{margin-top:var(--sp-5)}
+.ssold > .cmeets{margin:var(--sp-4) var(--sp-6) var(--sp-6)}
+@media (max-width:40em){.ssold > .cmeets{margin:var(--sp-4) var(--sp-3) var(--sp-4)}}
 /* THE LINE FOR THIS MEETING, inside the card's well (.cline): its kinds and
    time, the moment in the recording where each was taken up, and what
    happened, each act on a line of its own. A killing is said in the red of

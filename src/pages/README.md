@@ -29,6 +29,16 @@ after both chambers' session pages: it fills the slots `build_committees.py`
 writes at the top of the columns, because the term files it reads
 (`site/session/<H|S>/<term>.json`) are written after the committees.
 
+The statutory and study committees (18 October 2026) are
+`build_study_committees.py`'s: a page for each one the General Court lists as
+active, at `/committee/ss<CommitteeID>`, read from the database copy in `db/`
+(`StatStudDetails`, `StatStudMembers`, `StatStudMeetings`, `vStatStudTemp`),
+and `site/study_committees.json`, a line each, for the steps after it. It
+runs after the Laws pages, whose
+headings name each committee's statute, and shares the Calendar's reading of
+each meeting (`build_calendar.statstud` and `study_recordings`), so a card and
+the page play the same recording.
+
 The components are in two files with the same helpers under the same names
 (9 October 2026): `components.py`, which the builders draw a person, a
 committee, a chip, a date and a time with, and `components.js`, which every

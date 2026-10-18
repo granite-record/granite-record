@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-13.21
+# GRANITE_VERSION: 2026-09-13.22
 """
 The whole record as plain lists: every bill of every term, every sitting
 legislator, every town -- each a link a person or a crawler can follow.
@@ -418,6 +418,17 @@ def find_index(site, legs, towns):
         if c.get("formerly"):
             row += [None] * (7 - len(row)) + [list(c["formerly"])]
         rows.append(row)
+    # THE STATUTORY AND STUDY COMMITTEES (18 October 2026), each its own kind
+    # -- the General Court's class, "statutory" or "study" -- with its kind from
+    # its name and the year it was set up as its line, read off the list
+    # build_study_committees writes before this step. find.js ranks them after
+    # the standing committees (_fstudy), as the person asked on 17 October.
+    sc = site / "study_committees.json"
+    for c in (json.loads(sc.read_text(encoding="utf-8")) if sc.exists() else []):
+        rows.append([c["class"], c["name"],
+                     c["kind"] + (f", set up in {c['year']}" if c.get("year") else ""),
+                     S.canon(str(c["page"]).lstrip("/")),
+                     "statutory" if c["class"] == "statutory" else "study"])
     pages = {p.stem for p in (site / "town").glob("*.html")}
     for town, seats in sorted(towns.items()):
         county = (seats[0].get("county") if seats else "") or ""

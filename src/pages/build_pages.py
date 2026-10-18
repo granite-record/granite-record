@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.216
+# GRANITE_VERSION: 2026-09-04.217
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -1187,6 +1187,12 @@ def cal_days(days, meets, titles, years, code, when, esc, level=3,
             # chamber's committee takes its OWN chamber's page, which the
             # name alone does not say.
             cc = None if study else code.get((key.chamber, key.name.strip().lower()))
+            # A STUDY OR STATUTORY COMMITTEE HAS A PAGE OF ITS OWN (18 October
+            # 2026) where the General Court lists it as active: the row names
+            # it (build_calendar.study_page), and the card leads into the
+            # meeting there, as a standing committee's card leads into its day.
+            own = next((r.get("page") for r in rows
+                        if r.get("study") and r.get("page")), "") if study else ""
             if floor:
                 html.append('<p class="calmore">'
                             f'<a href="session/{floor}/{esc(_d)}.html">'
@@ -1195,6 +1201,10 @@ def cal_days(days, meets, titles, years, code, when, esc, level=3,
             elif cc:
                 html.append('<p class="calmore">'
                             f'<a href="committee/{esc(cc)}.html#day-{esc(_d)}">'
+                            f'This meeting on the {esc(cmte)} page</a></p>')
+            elif own:
+                html.append('<p class="calmore">'
+                            f'<a href="{esc(own)}#day-{esc(_d)}">'
                             f'This meeting on the {esc(cmte)} page</a></p>')
             html.append("</div></details>")
         html.append("</div>")
@@ -2222,6 +2232,8 @@ const GROUPS=[
   {t:"Committees",          k:r=>r[0]==="committee"&&!r[5]},
   {t:"Towns and wards",     k:r=>r[0]==="town"},
   {t:"Subjects",            k:r=>r[0]==="topic"},
+  // Their own group, after the bills (AFTER): find.js, _fstudy (18 October 2026).
+  {t:"Statutory and study committees",k:r=>r[0]==="statutory"||r[0]==="study"},
   {t:"Former senators",     k:r=>r[0]==="former"&&/^Senate/.test(r[2])},
   {t:"Former representatives",k:r=>r[0]==="former"&&/^House/.test(r[2])},
   {t:"Former members",      k:r=>r[0]==="former"},
@@ -2288,7 +2300,7 @@ const bills=(q,B,C,counting)=>{
 };
 // Groups a reader reaches for after the bills: members who have left, and
 // this site's own pages.
-const AFTER=new Set(["Former senators","Former representatives",
+const AFTER=new Set(["Statutory and study committees","Former senators","Former representatives",
   "Former members","Learn","Pages on this site"]);
 let waiting=false,waitingAll=false,waitingWords=false;
 

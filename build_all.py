@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.75
+# GRANITE_VERSION: 2026-09-05.76
 """
 Run the whole pipeline in the right order.
 
@@ -882,6 +882,22 @@ def plan(a):
              kit_required=True,
              note="1,786 chapter pages and /laws, about 105 MB; search files about 3.5 MB, "
                   "fetched only on a first search"),
+
+        # THE STATUTORY AND STUDY COMMITTEES, a page each (18 October 2026;
+        # build_study_committees.py says why). After the committees, whose
+        # page it adds its section to, and after the Laws pages, whose
+        # headings name each committee's statute; before the lists and the
+        # search, which read its study_committees.json, and the Calendar,
+        # whose cards lead to its pages. The database copy is the kit's, so
+        # the night may not skip it.
+        Step("a page for every statutory and study committee",
+             ["build_study_committees.py", "--site", "site", "--base", a.base],
+             needs=["db/StatStudDetails.psv", "db/StatStudMembers.psv",
+                    "db/StatStudMeetings.psv", "site/legislators.json", "site/committees.json"],
+             produces=["site/study_committees.json"], kit_required=True,
+             note="every one the General Court lists as active: what each does, its report, "
+                  "who sits on it and its meetings, each with its recording where one is "
+                  "matched; public members as the record describes their seats"),
 
         Step("a page per town and ward",
              ["build_town_pages.py", "--site", "site", "--base", a.base],

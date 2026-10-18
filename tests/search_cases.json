@@ -3973,5 +3973,38 @@
    "must": [["HB1287", 2026], ["HB587", 1989]],
    "why": "the third review, 2 October: 132 titles say 'number plate' and 61 'license plate'"
   }
- ]
+ ],
+ "finder": {
+  "_about": [
+   "The header's box (find.js) over find.json's rows, not the bill search: the person, 17 October 2026, asked for the",
+   "statutory and study committees in the search 'but not as prominently as standing committees'. The rows are",
+   "copied from find.json and site/study_committees.json as the build wrote them on 17 October 2026, nothing typed.",
+   "Each case: what is typed, and a row that must come before another in the panel as a reader sees it -- above, a",
+   "standing committee, or a statutory one before a former committee; below, the one that waits its turn.",
+   "preflight draws the panel in node (_find_study_committees_rank)."
+  ],
+  "rows": [
+   ["committee", "Children, Youth and Juvenile Justice", "House committee", "committee/H02", "", 1994, "1989 to 1994"],
+   ["committee", "Municipal and County Government", "House committee", "committee/H18", "Diane Pauer"],
+   ["committee", "Public Works and Highways", "House committee", "committee/H20", "David Milz Public Works", null, null, ["Public Works"]],
+   ["committee", "State-Federal Relations and Veterans Affairs", "House committee", "committee/H25", "Michael Moffett State-Federal Relations", null, null, ["State-Federal Relations"]],
+   ["committee", "Capital Budget", "Senate committee", "committee/S02", "Mark McConkey"],
+   ["committee", "Health and Human Services", "Senate committee", "committee/S26", "David Rochefort"],
+   ["statutory", "Capital Project Overview Committee", "Committee, set up in 1981", "committee/ss65", "statutory"],
+   ["statutory", "County-State Finance Commission", "Commission, set up in 2003", "committee/ss148", "statutory"],
+   ["statutory", "Health and Human Services Oversight Committee", "Committee, set up in 1961", "committee/ss72", "statutory"],
+   ["statutory", "Interbranch Criminal and Juvenile Justice Council", "Council, set up in 2008", "committee/ss137", "statutory"],
+   ["statutory", "State Veterans Advisory Committee", "Committee, set up in 1985", "committee/ss113", "statutory"]
+  ],
+  "cases": [
+   {"q": "veterans", "above": "State-Federal Relations and Veterans Affairs", "below": "State Veterans Advisory Committee",
+    "why": "the statutory committee's name is the shorter, which put it first when length decided"},
+   {"q": "county", "above": "Municipal and County Government", "below": "County-State Finance Commission",
+    "why": "the commission's name begins with the word and the standing committee's only holds it"},
+   {"q": "health and human services", "above": "Health and Human Services", "below": "Health and Human Services Oversight Committee"},
+   {"q": "capital", "above": "Capital Budget", "below": "Capital Project Overview Committee"},
+   {"q": "juvenile", "above": "Interbranch Criminal and Juvenile Justice Council", "below": "Children, Youth and Juvenile Justice",
+    "why": "a statutory committee that sits comes before a former committee as good a match"}
+  ]
+ }
 }

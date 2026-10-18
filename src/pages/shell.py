@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-07.30
+# GRANITE_VERSION: 2026-09-07.31
 """
 The page every record's own address is: bills.html, with one record open.
 
@@ -334,7 +334,15 @@ def address(base, path):
     return base + canon(path)
 
 
-def sitemap_merge(site, base, urls, owns, whole=True, lastmod=None):
+def _within(p, own):
+    """Whether the path `p` is in the part of the site `own` names
+    (sitemap_merge's `owns` and `spare`)."""
+    if own.endswith("*"):
+        return p.startswith(own[:-1])
+    return p == own or p.startswith(own + "/")
+
+
+def sitemap_merge(site, base, urls, owns, whole=True, lastmod=None, spare=()):
     """Put a builder's addresses in sitemap.xml, and take out its stale ones.
 
     build_bill_pages writes the file from scratch and the builders after it add
@@ -350,11 +358,21 @@ def sitemap_merge(site, base, urls, owns, whole=True, lastmod=None):
     (`whole`). A run limited to a few pages must not take the rest out, so it
     drops only the entries that were never a real address. Every other entry
     is left exactly as it was. Returns (added, dropped).
+
+    TWO BUILDERS IN ONE FOLDER (18 October 2026). The statutory and study
+    committees' pages are /committee/ss1451 and the rest, beside the chamber
+    committees' /committee/H05, and written by a step of their own
+    (build_study_committees.py). A path ending in "*" owns the addresses that
+    begin with it -- "/committee/ss*" -- and `spare` names, in either form, the
+    addresses under `owns` that another builder writes and this run leaves
+    alone, so that build_committees, owning /committee, does not take the
+    study committees' pages out when it runs after them.
     """
     sm = Path(site) / "sitemap.xml"
     if not sm.exists():
         return 0, 0
     own = "/" + owns.strip("/")
+    spared = ["/" + x.strip("/") for x in spare]
     want = list(dict.fromkeys(E(u) for u in urls))
     keep = set(want)
     kept, have, dropped = [], set(), 0
@@ -364,7 +382,8 @@ def sitemap_merge(site, base, urls, owns, whole=True, lastmod=None):
         rest = loc[len(base):] if loc.startswith(base) else None
         if rest is not None and loc not in keep:
             p = "/" + rest.lstrip("/")
-            if (p == own or p.startswith(own + "/")) and (whole or not rest.startswith("/")):
+            if (_within(p, own) and not any(_within(p, x) for x in spared)
+                    and (whole or not rest.startswith("/"))):
                 dropped += 1
                 continue
         have.add(loc)
