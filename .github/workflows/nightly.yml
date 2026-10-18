@@ -296,9 +296,12 @@ jobs:
       # night's state says waits (livestreams.py --to-inbox, from Task
       # Scheduler) and puts each caption file in the bucket's inbox. This
       # brings every entry down, whatever its bytes, and writes nothing in the
-      # bucket; the livestream step judges each one itself. A failure here
-      # leaves the step without an inbox, which it says, and the night goes on:
-      # continue-on-error, or an R2 hiccup here would skip the night itself.
+      # bucket; the livestream step judges each one itself. It brings the
+      # laptop's newest run record too (18 October 2026), which the verdict
+      # reads for the laptop's refusal and its hold (nightly.LAPTOP_RUN). A
+      # failure here leaves the step without an inbox, which it says, and
+      # the night goes on: continue-on-error, or an R2 hiccup here would skip
+      # the night itself; the verdict then warns that no record came down.
       # Its own short limit, since a hung transfer must not eat the night.
       - name: Bring the captions inbox down from R2
         id: inboxdown
@@ -534,8 +537,10 @@ jobs:
           }
           # THE WARNINGS' OWN CHECK (18 October 2026; nightly.py, A STANDING
           # WARNING NEVER JAMS THE ALARM). A failed check of the built site
-          # against the record, and a reminder that fails on a date until a
-          # person acts, are WARN_FILE's, not the night's: /fail with the
+          # against the record, a reminder that fails on a date until a
+          # person acts, and a part of the record that has stopped moving
+          # (nightly.py, WHEN THE RECORD STOPS MOVING, 18 October 2026) are
+          # WARN_FILE's, not the night's: /fail with the
           # file as the body while any stands, a plain ping when none does,
           # and nothing where --close wrote no file. With no
           # HEALTHCHECKS_WARN_URL they stay on the run's page and in the

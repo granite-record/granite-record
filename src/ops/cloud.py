@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-25.23
+# GRANITE_VERSION: 2026-09-25.24
 """
 The nightly's kit and the laptop's backup, in the project's private R2 bucket.
 
@@ -101,6 +101,8 @@ THE BUCKET
     inbox/captions/        the captions inbox: <video>.json, a manifest, and
                            <video>/<sha256>/<file>, the caption file it names
                            (THE CAPTIONS INBOX)
+    inbox/laptop/          a record of each of the laptop's runs that fill it,
+                           <YYYYMMDDTHHMMSSZ>.json (THE CAPTIONS INBOX)
 
 On a machine, small state lives under archive/ -- archive/refused.json,
 archive/census.json -- and only the bucket calls it state/. This machine's
@@ -352,7 +354,12 @@ YouTube refuses GitHub's machine and answers the laptop, so the laptop asks
 for the captions the night's state says wait (livestreams.py --to-inbox, from
 Task Scheduler) and puts each caption file under inbox/captions/ through
 inbox_add, which only ever adds: a key that is not there, under that prefix,
-read back against its sha256 before the manifest naming it is written. The
+read back against its sha256 before the manifest naming it is written. And
+since 18 October 2026, a record of each run under inbox/laptop/, named for
+when it ran (inbox_report), which adds the same way: when it ran, what it
+asked and sent, and the laptop's latest refusal by YouTube and its hold. A
+run YouTube refused exits 0 on the laptop, and the night, which knew only
+what arrived, said only that YouTube had refused GitHub's machine. The
 laptop writes nothing else in the bucket, no state and no kit.
 
 inbox-down is the night's, before its livestream step: every entry, its
@@ -362,13 +369,17 @@ brings an entry down whatever its bytes and says which do not match their
 manifest: the livestream step judges each one itself (livestreams.py, THE
 CAPTIONS INBOX), and a refusal it records is what clears the entry, so the
 laptop can send another. Leaving one in the bucket would keep the laptop from
-ever replacing it.
+ever replacing it. It brings the laptop's newest run record as well, to
+archive/captions-laptop.json, where the night's verdict reads it
+(nightly.LAPTOP_RUN), and removes any copy there when the bucket holds none
+that reads, so a night never judges the laptop by an older record.
 
 inbox-clear is the night's too, after its last state-up: it reads the state
 the bucket now holds (state/livestreams.json, never this machine's copy, so a
 night whose state did not go back clears nothing) and removes each entry that
 state no longer waits for, by livestreams.inbox_spent, copying it to
-replaced/ first. A dry run's never: what a dry run took went into its own
+replaced/ first; and every run record of the laptop's but the newest, the
+same way. A dry run's never: what a dry run took went into its own
 state, which does not go back, so the entry must still be there for the next
 real night. --dry-run says what it would clear.
 """
@@ -462,6 +473,15 @@ INBOX_STATE = "state/livestreams.json"
 _INBOX_MANIFEST = re.compile(r"^inbox/captions/([A-Za-z0-9_-]{1,64})\.json$")
 _INBOX_FILE = re.compile(r"^inbox/captions/([A-Za-z0-9_-]{1,64})/[0-9a-f]{64}/"
                          r"(captions\.[A-Za-z-]{1,20}\.json3)$")
+# THE LAPTOP'S RUN RECORDS (18 October 2026): one key a --to-inbox run, named
+# for when it ran (UTC), outside inbox/captions/ so that no listing of the
+# entries ever takes one for a recording's; where inbox-down puts the newest,
+# for the night's verdict (nightly.LAPTOP_RUN, which preflight holds to this);
+# and the most a record may weigh -- a few hundred bytes is what one is.
+INBOX_RUNS = "inbox/laptop/"
+INBOX_RUN_LOCAL = "archive/captions-laptop.json"
+_INBOX_RUN = re.compile(r"^inbox/laptop/(\d{8}T\d{6}Z)\.json$")
+INBOX_RUN_MOST = 1 << 16
 # What pull takes from logs/<day>/, and the folder each goes to. Anything
 # else there stays in the bucket: a name this does not know could be one the
 # laptop uses for a log of its own.
@@ -3844,6 +3864,33 @@ def inbox_add(bucket, video, src, doc):
     return manifest
 
 
+def inbox_report(bucket, doc):
+    """The laptop's other write to the bucket (livestreams.py --to-inbox):
+    the record of one run, under INBOX_RUNS, named for its "at" (THE LAPTOP'S
+    RUN RECORDS). Added like an entry, and never written over: the key, or
+    None where a record of that second is there already. A record naming no
+    time, or heavier than INBOX_RUN_MOST, is refused before anything is
+    sent."""
+    m = re.fullmatch(r"(\d{4})-(\d\d)-(\d\d)T(\d\d):(\d\d):(\d\d)Z", str(doc.get("at") or ""))
+    key = f"{INBOX_RUNS}{''.join(m.groups()[:3])}T{''.join(m.groups()[3:])}Z.json" if m else ""
+    if not _INBOX_RUN.match(key):
+        raise Failed(f"a run's record names no time it ran ({str(doc.get('at'))[:40]!r}), so it "
+                     "was not sent")
+    data = (json.dumps(doc, indent=1, sort_keys=True) + "\n").encode("utf-8")
+    if len(data) > INBOX_RUN_MOST:
+        raise Failed(f"a run's record of {len(data):,} bytes is not one, so it was not sent")
+    if bucket.head(key) is not None:
+        return None
+    bucket.put_bytes(key, data)
+    return key
+
+
+def inbox_runs(bucket):
+    """The laptop's run records in the bucket, oldest first: [key]. A key
+    under INBOX_RUNS of another shape is not one, and is left alone."""
+    return sorted(k for k in bucket.list(INBOX_RUNS) if _INBOX_RUN.match(k))
+
+
 def cmd_inbox_down(a, root):
     """The night's, before its livestream step: every entry of the captions
     inbox to INBOX_LOCAL, whatever its bytes (THE CAPTIONS INBOX). Writes
@@ -3890,9 +3937,31 @@ def cmd_inbox_down(a, root):
             whole += 1
     for s in short:
         say(f"  does not pass, and the livestream step will refuse it: {s}")
+    # The laptop's newest run record, for the night's verdict (THE LAPTOP'S RUN
+    # RECORDS), beside the inbox and not in it. One that will not read as a
+    # record is not brought: the verdict says there is none, which is the
+    # truth about the laptop's reports.
+    runs, run_dst, ran = inbox_runs(bucket), local(root, INBOX_RUN_LOCAL), None
+    if runs:
+        raw = bucket.get_bytes(runs[-1])
+        try:
+            if raw is not None and len(raw) <= INBOX_RUN_MOST and \
+                    isinstance(json.loads(raw.decode("utf-8")), dict):
+                ran = raw
+        except (ValueError, UnicodeDecodeError):
+            ran = None
+    if not a.dry_run:
+        if ran is not None:
+            write_whole(run_dst, ran)
+        else:
+            run_dst.unlink(missing_ok=True)
     say(f"inbox-down: {whole} entr{'y' if whole == 1 else 'ies'} whole, {len(short)} that "
         f"will not pass, {loose} loose file(s) with no manifest; {human(size)} "
-        + ("would come down (dry run)" if a.dry_run else f"to {INBOX_LOCAL}"))
+        + ("would come down (dry run)" if a.dry_run else f"to {INBOX_LOCAL}")
+        + "; " + (f"the laptop's newest run record, {runs[-1][len(INBOX_RUNS):-len('.json')]}"
+                  + ("" if ran is not None else ", will not read, so none")
+                  if runs else "no record of the laptop's runs")
+        + ("" if a.dry_run or ran is None else f", to {INBOX_RUN_LOCAL}"))
 
 
 def cmd_inbox_clear(a, root):
@@ -3936,16 +4005,20 @@ def cmd_inbox_clear(a, root):
             kept += 1
     for vid, (why, _) in spent.items():
         say(f"  {vid}: {'would be ' if a.dry_run else ''}cleared -- {why}")
-    if spent and not a.dry_run:
+    # The laptop's run records but the newest (THE LAPTOP'S RUN RECORDS): the
+    # night read the newest, and the older say nothing it needs.
+    older = inbox_runs(bucket)[:-1]
+    if (spent or older) and not a.dry_run:
         rep = Replacer(bucket, f"{datetime.now():%Y-%m-%d}")
-        for _, keys in spent.values():
-            for key in keys:
-                rep.keep(key)
-                bucket.delete(key)
+        for key in [k for _, keys in spent.values() for k in keys] + older:
+            rep.keep(key)
+            bucket.delete(key)
     say(f"inbox-clear: {len(spent)} entr{'y' if len(spent) == 1 else 'ies'} "
         + ("would be cleared (dry run)" if a.dry_run else "cleared, to replaced/")
         + f", {kept} kept for the night" + (f", {unknown} key(s) of no inbox shape left "
-                                              "alone" if unknown else ""))
+                                              "alone" if unknown else "")
+        + (f"; {len(older)} older record(s) of the laptop's runs "
+           + ("would be cleared" if a.dry_run else "cleared") if older else ""))
 
 
 COMMANDS = {"kit-list": cmd_kit_list, "seed-kit": cmd_seed_kit,

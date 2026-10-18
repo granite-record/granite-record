@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.628
+# GRANITE_VERSION: 2026-09-04.629
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -16421,7 +16421,7 @@ def _ls_ignored():
     and livestreams.py writes these there every night."""
     names = ["videos_house_livestreams.csv", "videos_senate_livestreams.csv",
              "archive/livestreams.json", "archive/livestreams.lock",
-             "archive/captions-inbox/PFX.json"]
+             "archive/captions-inbox/PFX.json", "archive/captions-laptop.json"]
     r = _run(["git", "check-ignore", *names], capture_output=True, text=True)
     if r.returncode not in (0, 1):
         return "skip", "git check-ignore would not run"
@@ -16482,9 +16482,14 @@ def _inbox_laptop(livestreams, cloud):
         it nothing is, and it is said -- sent, it would be refused by the
         night and sent again every evening;
       - run again, it asks and sends nothing;
+      - each run adds its own record beside the inbox, named for when it ran
+        and never over one there (18 October 2026, cloud.inbox_report):
+        what it sent, and the laptop's refusal and hold where one stands --
+        and a run with a refusal standing still exits 0;
       - inbox_add leaves an entry already there alone, and refuses a key
         outside the inbox or a file that is not a caption file before
-        sending anything.
+        sending anything; inbox_report refuses a record naming no time, or
+        one too heavy to be one.
     """
     import contextlib
     import hashlib
@@ -16521,11 +16526,11 @@ def _inbox_laptop(livestreams, cloud):
     bucket, laptop = root / "bucket", root / "laptop"
     now = "2026-10-17T23:30:00Z"
 
-    def run(*extra):
+    def run(*extra, at=now):
         out = io.StringIO()
         with contextlib.redirect_stdout(out):
             code = L.main(["--to-inbox", "--local-bucket", str(bucket), "--captions-from",
-                           "src", "--origin", "laptop", "--now", now, *extra])
+                           "src", "--origin", "laptop", "--now", at, *extra])
         return code, out.getvalue()
 
     try:
@@ -16584,11 +16589,19 @@ def _inbox_laptop(livestreams, cloud):
         changed = [k for k, v in before.items() if after.get(k) != v]
         assert not changed, f"--to-inbox changed what the bucket held: {changed}"
         added = sorted(set(after) - set(before))
-        assert added and all(k.startswith((CL.INBOX, ".meta/" + CL.INBOX)) for k in added) \
-            and all(w.startswith(CL.INBOX) for w in writes), \
-            f"--to-inbox wrote outside {CL.INBOX}: {added} {writes}"
+        assert added and all(k.startswith((CL.INBOX, ".meta/" + CL.INBOX, CL.INBOX_RUNS))
+                             for k in added) \
+            and all(w.startswith((CL.INBOX, CL.INBOX_RUNS)) for w in writes), \
+            f"--to-inbox wrote outside {CL.INBOX} and {CL.INBOX_RUNS}: {added} {writes}"
         assert not (laptop / "archive" / "livestreams.json").exists(), \
             "--to-inbox wrote a copy of the night's state on the laptop"
+        # THE RUN'S OWN RECORD (18 October 2026): one, named for when it ran,
+        # saying what it sent and that no refusal stands.
+        runs = CL.inbox_runs(real_folder(bucket, create=False))
+        assert runs == [f"{CL.INBOX_RUNS}20261017T233000Z.json"], f"the run records: {runs}"
+        rec = json.loads((bucket / runs[0]).read_text(encoding="utf-8"))
+        assert rec.get("at") == now and rec.get("sent") == 3 and rec.get("unsent") == 1 \
+            and rec.get("code") == 0 and rec.get("refusal") is None, rec
         entries = CL.inbox_listing(real_folder(bucket, create=False))
         assert sorted(entries) == ["PFDEFER01", "PFENTER1", "PFHERE01", "PFMUTE01"], entries
         for vid, e in entries.items():
@@ -16603,6 +16616,36 @@ def _inbox_laptop(livestreams, cloud):
         code, said = run()
         assert code == 0 and not asked and not writes \
             and "0 sent to the inbox" in said.strip().splitlines()[-1], (asked, writes, said[-300:])
+
+        # The next evening, with YouTube's refusal of the laptop on its record
+        # and its hold standing: the run still exits 0 -- Task Scheduler is not
+        # told a refusal is a failure -- and its record carries the refusal and
+        # the hold, the one key it writes.
+        ref = laptop / "archive" / "youtube.refused.json"
+        table = json.loads(ref.read_text(encoding="utf-8")) if ref.exists() else {}
+        table["laptop"] = {"at": "2026-10-18T19:52:53Z", "count": 2, "until": 4102444800.0,
+                           "until_iso": "2100-01-01T00:00:00Z",
+                           "why": "ERROR: Unable to download video subtitles for 'en': HTTP Error "
+                                  "429: Too Many Requests"}
+        ref.parent.mkdir(parents=True, exist_ok=True)
+        ref.write_text(json.dumps(table), encoding="utf-8")
+        code, said = run(at="2026-10-18T23:30:00Z")
+        key = f"{CL.INBOX_RUNS}20261018T233000Z.json"
+        assert code == 0 and not asked and writes == [key], (code, asked, writes, said[-300:])
+        rec = json.loads((bucket / key).read_text(encoding="utf-8"))
+        assert (rec.get("refusal") or {}).get("count") == 2 \
+            and rec["refusal"].get("until_iso") == "2100-01-01T00:00:00Z" \
+            and "429" in rec["refusal"].get("why", ""), rec
+        for bad in ({"at": "yesterday"}, {"at": "2026-10-18T23:30:00Z", "x": "y" * (1 << 17)}):
+            try:
+                CL.inbox_report(real_folder(bucket, create=False), bad)
+                raise AssertionError(f"inbox_report sent a record it should refuse: {str(bad)[:60]}")
+            except CL.Failed:
+                pass
+        assert CL.inbox_report(real_folder(bucket, create=False),
+                               {"at": "2026-10-18T23:30:00Z", "sent": 99}) is None
+        assert json.loads((bucket / key).read_text(encoding="utf-8")) == rec, \
+            "inbox_report wrote over a run's record already there"
 
         b = real_folder(bucket, create=False)
         held = (bucket / "inbox/captions/PFDEFER01.json").read_bytes()
@@ -16623,8 +16666,10 @@ def _inbox_laptop(livestreams, cloud):
         return "ok", ("a dry run asks, sends and writes nothing; the run asks for the one waiting "
                       "recording it lacks and none already entered, sends it and two already "
                       "here, never a file without words of its own, writes only under "
-                      "inbox/captions/ with true sizes and sha256s and no state; again, nothing; "
-                      "an entry already there and a key outside the inbox are refused")
+                      "inbox/captions/ with true sizes and sha256s, and its record under "
+                      "inbox/laptop/, and no state; again, nothing; a refused evening exits 0 and "
+                      "its record carries the refusal and the hold; an entry already there and a "
+                      "key outside the inbox are refused")
     finally:
         L.ask_track, CL.FolderBucket = real_ask, real_folder
         for k, v in saved.items():
@@ -16656,6 +16701,9 @@ def _inbox_night(livestreams):
       - a night that finds the reading lost takes the entry again, its try
         counted; a New term run takes nothing; and a night whose inbox did
         not come down says so on its last line;
+      - the state keeps when an entry for a waiting recording last arrived,
+        taken or refused ("inbox_arrived", 18 October 2026), and a night
+        that took nothing leaves it as it was;
       - inbox_spent keeps an entry taken and not yet read, and spends a
         refused one, a read one and one for a recording the state dropped;
         and prune keeps the state's entry for such a recording, and lets a
@@ -16753,6 +16801,10 @@ def _inbox_night(livestreams):
         assert caps.get("captioned") == 1 and caps.get("from the inbox") == 1 \
             and caps.get("refused from the inbox") == len(refused), caps
         assert "from the captions inbox:" in said.strip().splitlines()[-1], said[-300:]
+        # When something last arrived, for the night's verdict
+        # (nightly.inbox_silent): an entry taken or refused is the laptop's.
+        assert st.get("inbox_arrived") == {"at": t0, "taken": 1, "refused": len(refused)}, \
+            st.get("inbox_arrived")
 
         assert L.inbox_spent(st["videos"]["PFTAKE01"], manifests["PFTAKE01"]) == ""
         assert L.inbox_spent(st["videos"]["PFSIZE01"], manifests["PFSIZE01"])
@@ -16808,9 +16860,15 @@ def _inbox_night(livestreams):
         code, said = since(inbox="not-here", at="2026-10-21T08:30:00Z")
         assert code == 0 and "the captions inbox did not come down" in \
             said.strip().splitlines()[-1], said[-300:]
+        # The night of 19 October took the lost reading's entry again; the two
+        # after it took nothing, and leave when something last arrived as it was.
+        arrived = json.loads((root / "archive" / "livestreams.json").read_text(
+            encoding="utf-8")).get("inbox_arrived") or {}
+        assert arrived.get("at") == "2026-10-19T08:30:00Z", arrived
         return "ok", (f"one waiting recording taken and read under the guard, {len(refused)} "
                       "unsound entries refused and named, three not waiting left alone; a lost "
-                      "reading taken again, a New term run taking nothing, a missing inbox said")
+                      "reading taken again, a New term run taking nothing, a missing inbox said; "
+                      "when an entry last arrived kept in the state")
     finally:
         L.read_markers, L.summarize, L.guard = real
         for k, v in saved.items():
@@ -16831,7 +16889,11 @@ def _inbox_bucket(CL, livestreams):
     nor with no state in the bucket. On a real night it removes the entries
     the bucket's state no longer waits for (read, refused, dropped), each
     copied to replaced/ first, and keeps what still waits, what was taken
-    and not yet read, and a loose file a laptop has not finished sending."""
+    and not yet read, and a loose file a laptop has not finished sending.
+    And the laptop's run records (18 October 2026): inbox-down brings the
+    newest to where the verdict reads it, and takes away an earlier copy
+    when the newest will not read; inbox-clear clears all but the newest,
+    to replaced/ first, and none on a dry night."""
     import hashlib
     L = livestreams
     tmp = Path(tempfile.mkdtemp(prefix="gr-inbox-bucket-"))
@@ -16861,6 +16923,11 @@ def _inbox_bucket(CL, livestreams):
             "PFREFU01": dict(fin, inbox_refused={"entry": hashlib.sha256(
                 b.get_bytes(f"{CL.INBOX}PFREFU01.json")).hexdigest(), "why": "x"})}}
         b.put_bytes(CL.INBOX_STATE, json.dumps(state).encode("utf-8"))
+        # Two evenings' records of the laptop's runs (THE LAPTOP'S RUN RECORDS).
+        runs = {f"{CL.INBOX_RUNS}2026101{d}T233000Z.json": f"2026-10-1{d}T23:30:00Z" for d in (6, 7)}
+        for key, at in runs.items():
+            b.put_bytes(key, json.dumps({"at": at, "sent": 1}).encode("utf-8"))
+        older, newest = sorted(runs)
         before = _inbox_files(bucket)
 
         class ReadOnly(CL.FolderBucket):
@@ -16895,6 +16962,11 @@ def _inbox_bucket(CL, livestreams):
         assert L.inbox_problem("PFBAD01", (down / "PFBAD01.json").read_bytes(), down)
         assert not L.inbox_problem("PFWAIT01", (down / "PFWAIT01.json").read_bytes(), down)
         assert _inbox_files(bucket) == before
+        # ... and the newest of the laptop's run records, where the verdict
+        # reads it, beside the inbox and not in it.
+        ran = night / CL.INBOX_RUN_LOCAL
+        assert ran.is_file() and json.loads(ran.read_text(encoding="utf-8"))["at"] == runs[newest] \
+            and "20261017T233000Z" in said and not (down / "laptop").exists(), said
 
         for argv, env in ((["--dry-night"], {}), (["--dry-run"], {}),
                           ([], {"GITHUB_ACTIONS": "true", CL.DRY_ENV: "true",
@@ -16923,17 +16995,30 @@ def _inbox_bucket(CL, livestreams):
         assert all(after.get(f"replaced/{day}/{k}") == before[k] for k in gone), \
             "inbox-clear removed an entry without keeping a copy under replaced/"
         assert all(after.get(k) == v for k, v in before.items()
-                   if not k.startswith((CL.INBOX, ".meta/"))), "inbox-clear touched the rest"
+                   if not k.startswith((CL.INBOX, CL.INBOX_RUNS, ".meta/"))), \
+            "inbox-clear touched the rest"
+        # The laptop's run records but the newest go, to replaced/ first.
+        assert older not in after and after.get(f"replaced/{day}/{older}") == before[older] \
+            and after.get(newest) == before[newest], \
+            ("inbox-clear did not clear the older run record to replaced/ and keep the newest",
+             sorted(k for k in after if CL.INBOX_RUNS in k))
 
         b.delete(CL.INBOX_STATE)
         snap = _inbox_files(bucket)
         code, said = _cloud_call(CL, "inbox-clear", "--root", str(night),
                                  "--local-bucket", str(bucket))
         assert code == 0 and _inbox_files(bucket) == snap, said
+        # A newest run record that will not read is not brought, and the copy
+        # an earlier inbox-down left is taken away: no record, not an old one.
+        b.put_bytes(f"{CL.INBOX_RUNS}20261018T233000Z.json", b"not a record")
+        code, said = _cloud_call(CL, "inbox-down", "--root", str(night),
+                                 "--local-bucket", str(bucket))
+        assert code == 0 and not ran.exists() and "will not read" in said, said
         return "ok", ("inbox-down writes nothing in the bucket and names the corrupt entry, which "
-                      "the night refuses; a dry night, a run off main, --dry-run and a bucket "
-                      "with no state clear nothing; a real night clears the read, refused and "
-                      "dropped entries, to replaced/ first, and keeps the rest")
+                      "the night refuses, and brings the laptop's newest run record, or none where "
+                      "it will not read; a dry night, a run off main, --dry-run and a bucket with "
+                      "no state clear nothing; a real night clears the read, refused and dropped "
+                      "entries and the older run records, to replaced/ first, and keeps the rest")
     finally:
         CL.open_bucket = real_open
         for k, v in saved.items():
@@ -49543,7 +49628,10 @@ def _documents_night(NI, CA, CL):
             assert code == 0 and v["clean"] and v["built"] and v["publishable"], (
                 f"a {what} list of calendars and journals failed the night", code, v.get("not_clean"))
             assert v["documents"] == want, (what, v["documents"])
-            assert v["warnings"] == [
+            # What has stopped moving is its own (nightly.not_moving): a night
+            # here takes the day's data, and no laptop reports to this folder.
+            still = [s for _k, s in NI.not_moving_of(v)]
+            assert [w for w in v["warnings"] if w not in still] == [
                 "the General Court's list of calendars and journals: " + want], v["warnings"]
             assert NI.DOCS.read_bytes() == good and NI.DOCS_LISTED.read_bytes() == good_listing, \
                 f"a {what} list changed the list on file"
@@ -67824,8 +67912,8 @@ def _nightly_runner(NI):
         code, _ = night("--runner", "--no-fetch", run_id="116")
         v = verdict()
         assert code == 0 and v["clean"] and any(
-            w.startswith("1 recording finished more than 3 days ago has no start time")
-            for w in v["warnings"]), v.get("warnings")
+            w.startswith("1 recording finished over 3 days ago keeps the schedule's approximate "
+                         "start") for w in v["warnings"]), v.get("warnings")
         Path("archive/livestreams.json").unlink()
         assert slept.count(NI.EMPTY_WAIT * 60) == 1, f"the night waited {slept}"
 
@@ -68608,8 +68696,11 @@ def _nightly_review_warnings(NI):
         del v["served_kinds"], v["sendable_kinds"], v["published_kinds"]
         NI.VERDICT.write_text(json.dumps(v), encoding="utf-8")
         v = night(run_id="362")
-        assert v["served_kinds"] is None and len(news(v, known=False)) == \
-            len(v["warning_kinds"]) == 3, v.get("review")
+        # Every kind that can hold a night is news; what has stopped moving
+        # never holds one (nightly.KIND_NOT_MOVING).
+        held = [k for k in v["warning_kinds"] if not k.startswith(NI.KIND_NOT_MOVING)]
+        assert v["served_kinds"] is None and len(news(v, known=False)) == len(held) == 3, \
+            v.get("review")
         assert "- Would have waited for approval: " + \
             NI.REVIEW_WARNING_UNKNOWN.split("{")[0] in g.summary, g.summary
         g.publish("362")
@@ -68624,15 +68715,17 @@ def _nightly_review_warnings(NI):
         shutil.rmtree("prod")
         shutil.copytree("prod-352", "prod")
         v = night(run_id="364")
+        held = [k for k in v["warning_kinds"] if not k.startswith(NI.KIND_NOT_MOVING)]
         assert v["served_kinds"] is None and v["live_commit"] == GATE_SHA[0] and \
-            news(v, known=False) == [] and len(v["warning_kinds"]) == 3 and \
+            news(v, known=False) == [] and len(held) == 3 and \
             sorted(v["published_kinds"]) == v["warning_kinds"], \
             (v.get("review"), v.get("published_kinds"))
         del v["published_kinds"]
         NI.VERDICT.write_text(json.dumps(v), encoding="utf-8")
         v = night(run_id="365")
+        held = [k for k in v["warning_kinds"] if not k.startswith(NI.KIND_NOT_MOVING)]
         assert v["served_kinds"] is None and len(news(v, known=False)) == \
-            len(v["warning_kinds"]) == 3 and v["published_kinds"] == {}, v.get("review")
+            len(held) == 3 and v["published_kinds"] == {}, v.get("review")
         assert not g.stray, f"the nights asked something other than production: {g.stray}"
     return "ok", ("a kind of warning the build production serves did not carry holds the night, "
                   "quoting it, and holds it again until a build carrying it is published, a dry "
@@ -93567,7 +93660,10 @@ RECORD_CHECKS = {
     # A past election, against the Secretary of State's saved files and the
     # roll calls (17 October 2026): what they find is the record's, or the
     # rule's, and never last night's.
-    "_elect_2024_read_again", "_elect_2024_scored"}
+    "_elect_2024_read_again", "_elect_2024_scored",
+    # How long the night lets the record stand still, against the export's
+    # finished dockets (18 October 2026): the record's history, never the site.
+    "_still_days_from_history"}
 REMINDERS ={"_probate_after_the_vote", "_session_over_current", "_town_clerks_reread"}
 
 
@@ -93774,6 +93870,453 @@ def _alarm_stays_able_to_ring(NI):
                   "night not clean or held alerts the night's check beside it, once, with its "
                   "reasons; shadow, a New term run and a night not for production say no hold; "
                   "the workflow sends each file to its own check")
+
+
+# =================================================== code: the record stopping ==
+#
+# WHEN THE RECORD STOPS MOVING (18 October 2026; nightly.py's block of that
+# name, and private/UNATTENDED_AUDIT_2026-10-18.md, sections 4.4 to 4.6). A
+# night can build and publish every morning over a record that has stopped,
+# and none of it reached anyone. Each signal has a check here, on fixtures in
+# a folder of their own: the General Court's docket standing still, a
+# database piece not taken night after night, the laptop's share behind the
+# record, the captions inbox silent, the laptop's own record of its caption
+# runs missing or old and its refusal beside GitHub's -- and the wiring that
+# puts each in the verdict, on the run's page and in the warnings' alert, and
+# never in the gate or the night's own alert.
+
+def _docket_text(lines):
+    """Docket.txt as the export writes it: one line for each (session year,
+    day entered, day last changed), the days "YYYY-MM-DD"."""
+    def us(d):
+        y, m, dd = d.split("-")
+        return f"{int(m)}/{int(dd)}/{y} 10:00:00 AM"
+    return "".join(f"{y}|0001|{us(e)}|HB1|H|Public Hearing: 01/10/{y} 10:00 AM LOB 206|{us(c)}\n"
+                   for y, e, c in lines)
+
+
+@check("files", "the night warns when the General Court's record has stood still for longer than "
+       "any night of its season on record, and says since when and what starts it again",
+       needs=("nightly",))
+def _record_still_docket(NI):
+    """The docket (nightly.py, THE GENERAL COURT'S RECORD, BY ITS DOCKET, and
+    HOW LONG IT MAY STAND STILL). Held here, on made-up dockets:
+
+      - the newest line is the newest day a line was entered or changed on,
+        and a line dated after the night is not counted;
+      - in the session (10 January to 30 June) 7 days still says nothing and
+        8 warns; in the interim, 35 and 36; 9 January is the interim's and
+        10 January the session's;
+      - the warning names the newest line's day, the season and its
+        ceiling, and what starts it again -- the General Court's IT office
+        when tonight's files arrived whole, a night that installs them when
+        none did -- under a kind of its own;
+      - no docket, no warning;
+      - still_ceilings measures each season's longest stretch within each
+        term's own span, leaves out the nights of March and April 2020, and
+        is not fooled by a correction dated years later."""
+    from datetime import date
+    tmp = Path(tempfile.mkdtemp(prefix="gr-still-"))
+    try:
+        dk = tmp / "Docket.txt"
+        dk.write_text(_docket_text([(2027, "2027-01-05", "2027-01-05"),
+                                    (2027, "2027-01-12", "2027-01-14"),
+                                    (2027, "2062-01-15", "2062-01-15")]), encoding="utf-8")
+        assert NI.docket_newest(dk, date(2027, 1, 21)) == date(2027, 1, 14), \
+            NI.docket_newest(dk, date(2027, 1, 21))
+        came = {"files_from": "export"}
+        assert not NI.docket_still(came, date(2027, 1, 21), dk), "7 days still, in session, warned"
+        got = NI.docket_still(came, date(2027, 1, 22), dk)
+        assert len(got) == 1 and got[0][0] == NI.KIND_NOT_MOVING + "the General Court's docket", got
+        said = got[0][1]
+        for want in ("for 8 days", "tonight's Docket.txt is of 2027-01-14", "from 10 January to 30 June",
+                     "more than 7 days", "arrived whole from the General Court's export", "IT office"):
+            assert want in said, (want, said)
+        lost = NI.docket_still({"fetch": "deferred: a refusal from the General Court is on file"},
+                               date(2027, 1, 22), dk)
+        assert lost and "the installed Docket.txt" in lost[0][1] and \
+            "Nothing was installed tonight (deferred: a refusal" in lost[0][1], lost
+        dk.write_text(_docket_text([(2026, "2026-10-01", "2026-10-01")]), encoding="utf-8")
+        assert not NI.docket_still(came, date(2026, 11, 5), dk), "35 days still, in the interim, warned"
+        got = NI.docket_still(came, date(2026, 11, 6), dk)
+        assert got and "for 36 days" in got[0][1] and "from 1 July to 9 January" in got[0][1], got
+        dk.write_text(_docket_text([(2027, "2026-12-20", "2026-12-20")]), encoding="utf-8")
+        assert not NI.docket_still(came, date(2027, 1, 9), dk), "20 days still on 9 January warned"
+        assert NI.docket_still(came, date(2027, 1, 10), dk), "21 days still on 10 January did not warn"
+        assert not NI.docket_still(came, date(2027, 1, 22), tmp / "none.txt")
+        # still_ceilings, on four made-up terms.
+        terms = {"Docket_2017-2018.txt": [(2017, "2017-05-01", "2017-05-01"),
+                                          (2017, "2017-05-10", "2017-05-10")],
+                 "Docket_2019-2020.txt": [(2019, "2019-10-01", "2019-10-01"),
+                                          (2019, "2019-10-21", "2019-10-21")],
+                 "Docket_2019-2020b.txt": [(2020, "2020-03-01", "2020-03-01"),
+                                           (2020, "2020-04-20", "2020-04-20")],
+                 "Docket_2021-2022.txt": [(2021, "2021-06-01", "2021-06-01"),
+                                          (2021, "2027-01-01", "2027-01-01")]}
+        for name, lines in terms.items():
+            (tmp / name).write_text(_docket_text(lines), encoding="utf-8")
+        got = NI.still_ceilings([tmp / n for n in terms])
+        assert got["session"][0] == 9 and got["session"][2:] == ("2017-05-01", "2017-05-10") \
+            and got["interim"][0] == 20 and got["interim"][2:] == ("2019-10-01", "2019-10-21"), got
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    return "ok", ("8 days still in session and 36 in the interim warn, 7 and 35 do not, from 10 "
+                  "January; the warning says since when and what starts it again; a line dated "
+                  "after the night, a correction years later and the spring of 2020 fool nothing")
+
+
+# The terms of the General Court's export on disk that STILL_DAYS was measured
+# on, 18 October 2026: finished, so what they give never moves.
+STILL_TERMS = ("Docket_2015-2016.txt", "Docket_2017-2018.txt", "Docket_2019-2020.txt",
+               "Docket_2021-2022.txt", "Docket_2023-2024.txt")
+
+
+@check("data", "how long the night lets the General Court's record stand still is the longest "
+       "stretch of the export's finished terms on disk, by season", needs=("nightly",))
+def _still_days_from_history(NI):
+    """HOW LONG IT MAY STAND STILL (nightly.py): the ceilings are the
+    record's own, never a guess. Measured again here on the five finished
+    terms of the export on disk, with the nights of March and April 2020 left
+    out as the block says; a ceiling that differs from what they give fails,
+    naming the stretch. The current term's own stretches so far are said."""
+    have = [n for n in STILL_TERMS if Path(n).is_file()]
+    if len(have) < len(STILL_TERMS):
+        return "skip", ("the export's finished dockets are not all here: "
+                        + ", ".join(n for n in STILL_TERMS if n not in have))
+    got = NI.still_ceilings(have)
+    for season, (days, path, a, b) in got.items():
+        assert days == NI.STILL_DAYS[season], (
+            f"nightly.STILL_DAYS[{season!r}] is {NI.STILL_DAYS[season]}, and the finished terms on "
+            f"disk give {days}: {path}, {a} to {b}")
+    now = NI.still_ceilings(["Docket.txt"]) if Path("Docket.txt").is_file() else None
+    return "ok", (f"session {got['session'][0]} days ({got['session'][2]} to {got['session'][3]}), "
+                  f"interim {got['interim'][0]} ({got['interim'][2]} to {got['interim'][3]})"
+                  + (f"; the current term so far, {now['session'][0]} and {now['interim'][0]}"
+                     if now else ""))
+
+
+@check("files", "a database piece not taken on a second night running is a warning that says "
+       "since when, carried from night to night, and let go once it is taken",
+       needs=("nightly",))
+def _record_db_missed(NI):
+    """A DATABASE PIECE NOT TAKEN, NIGHT AFTER NIGHT (nightly.py). Held here:
+    one night not taken says nothing, a second run on the same day is not a
+    second night, the second night warns with the first night's day, a night
+    that asks nothing leaves the record as it was, a piece taken -- with
+    rows, or as an empty view of a new term -- is let go, and the study
+    committees' views have their own line; and the record is carried by the
+    next night (Night) and by --close on a night that never started."""
+    import contextlib
+    import io
+    import types
+    from datetime import datetime
+    no = "not taken: the file holds 3 lines and the query counted 4"
+    term = {v: no for v in NI.TERM_VIEWS}
+    term.update({p: "not taken: the fetch exited 1" for _l, _s, p in NI.TERM_FILES})
+    fine = {v: "installed, 10 rows (was 10)" for v in NI.STUDY_NIGHTLY}
+    r1 = NI.db_missed_of(None, {"term_data": term, "study_meetings": fine}, "2027-01-20")
+    assert set(r1) == set(term) and all(r["nights"] == 1 and r["since"] == "2027-01-20"
+                                        for r in r1.values()), r1
+    assert not NI.db_missed_said(r1), "one night not taken warned"
+    r1 = NI.db_missed_of(r1, {"term_data": term}, "2027-01-20")
+    assert all(r["nights"] == 1 for r in r1.values()), "a second run on one day counted a night"
+    r2 = NI.db_missed_of(r1, {"term_data": term}, "2027-01-21")
+    said = NI.db_missed_said(r2)
+    assert len(said) == 1 and said[0][0].startswith(NI.KIND_NOT_MOVING) \
+        and said[0][1].startswith("The current term's ") \
+        and "on 2 nights since 2027-01-20" in said[0][1] and "night's log" in said[0][1], said
+    assert NI.db_missed_of(r2, {}, "2027-01-22") == r2, "a night that asked nothing moved the record"
+    took = dict(term, Legislation="installed, 2,234 rows (was 2,234)",
+                LegislationText=NI.TAKEN_EMPTY + ": the empty view of a new term",
+                CandH_Reports="installed, 5,597 rows (was 5,597)")
+    left = NI.db_missed_of(r2, {"term_data": took}, "2027-01-23")
+    assert set(left) == {p for _l, _s, p in NI.TERM_FILES}, left
+    held = {v: NI.STUDY_HELD for v in NI.STUDY_NIGHTLY}
+    s = NI.db_missed_of(NI.db_missed_of(None, {"study_meetings": held}, "2027-01-20"),
+                        {"study_meetings": held}, "2027-01-21")
+    said = NI.db_missed_said(s)
+    assert len(said) == 1 and said[0][1].startswith(
+        "The study committees' StatStudDetails and StatStudMeetings have not been taken"), said
+    tmp = Path(tempfile.mkdtemp(prefix="gr-dbmissed-"))
+    here = Path(".").resolve()
+    saved_argv, saved_rid = sys.argv, os.environ.get("GITHUB_RUN_ID")
+    try:
+        os.chdir(tmp)
+        NI.write_json(NI.VERDICT, {"run_id": "7000", "clean": True, NI.DB_MISSED: r2})
+        night = NI.Night(types.SimpleNamespace(no_fetch=False, dry_run=False, new_term=False),
+                         datetime(2027, 1, 22, 4, 20))
+        assert night.v.get(NI.DB_MISSED) == r2, "the next night did not carry the pieces not taken"
+        os.environ["GITHUB_RUN_ID"] = "7001"
+        sys.argv = ["nightly.py", "--runner", "--close", "--outcome", "kit-down=failure"]
+        with contextlib.redirect_stdout(io.StringIO()):
+            try:
+                NI.main()
+            except SystemExit:
+                pass
+        v = NI.load_json(NI.VERDICT) or {}
+        assert v.get("run_id") == "7001" and v.get(NI.DB_MISSED) == r2, \
+            f"--close on a night that never started left {v.get(NI.DB_MISSED)}"
+    finally:
+        os.chdir(here)
+        sys.argv = saved_argv
+        if saved_rid is None:
+            os.environ.pop("GITHUB_RUN_ID", None)
+        else:
+            os.environ["GITHUB_RUN_ID"] = saved_rid
+        shutil.rmtree(tmp, ignore_errors=True)
+    return "ok", ("a piece not taken warns on its second night with its first night's day, one "
+                  "line for the term's and one for the study views'; a second run that day, a "
+                  "night that asks nothing and a night that never started carry it; taken, it goes")
+
+
+@check("files", "the night warns when the laptop's share of the record has stood still while the "
+       "record moved on, for longer than the record itself ever does", needs=("nightly", "cloud"))
+def _record_laptop_share(NI, CL):
+    """THE LAPTOP'S SHARE (nightly.py). Held here: every file of LAPTOP_SHARE
+    is the laptop's in cloud_kit.json, and kit-down's record is where the
+    night reads it; on a made-up record and docket, the share last moved on
+    10 January 2027 and the record 7 days after says nothing, 8 days warns
+    -- naming the file, both days, the season's ceiling, the calendars and
+    journals the General Court lists that are not read, and what starts it
+    again; in the interim, 35 and 36; a file outside the share, and no
+    record, are nothing to go by."""
+    from datetime import date, datetime
+    kit = CL.load_kit(Path("."))
+    for p in NI.LAPTOP_SHARE:
+        assert CL.owner_of(kit, p) == "laptop", f"{p} is not the laptop's in cloud_kit.json"
+    assert NI.KIT_DOWN.as_posix() == CL.KIT_RECORD, (NI.KIT_DOWN, CL.KIT_RECORD)
+    assert NI.DOCS.as_posix() == "archive/queue.csv", NI.DOCS
+
+    def ns(y, m, d):
+        return int(datetime(y, m, d, 12).timestamp()) * 10 ** 9
+
+    tmp = Path(tempfile.mkdtemp(prefix="gr-share-"))
+    try:
+        rec, dk, docs = tmp / "kit-down.json", tmp / "Docket.txt", tmp / "queue.csv"
+        rec.write_text(json.dumps({"files": {
+            "bill_text.json": [10, "x", ns(2027, 1, 5)], "calendars.json": [10, "x", ns(2027, 1, 10)],
+            "Docket.txt": [10, "x", ns(2027, 2, 1)]}}), encoding="utf-8")
+        docs.write_text("chamber,kind,year,name,url,path,state,attempts,error,bytes,fetched,label\n"
+                        "H,calendar,2027,HC 3.pdf,u,p,wanted,0,,,,No 3\n"
+                        "S,calendar,2027,SC 2.pdf,u,p,wanted,0,,,,No 2\n"
+                        "H,calendar,2027,HC 1.pdf,u,p,held,0,,1,2027-01-04T10:00:00,No 1\n",
+                        encoding="utf-8")
+        assert NI.laptop_share_moved(rec) == (date(2027, 1, 10), "calendars.json")
+        dk.write_text(_docket_text([(2027, "2027-01-17", "2027-01-17")]), encoding="utf-8")
+        assert not NI.laptop_share_behind(date(2027, 1, 25), rec, dk, docs), "7 days behind warned"
+        dk.write_text(_docket_text([(2027, "2027-01-18", "2027-01-18")]), encoding="utf-8")
+        got = NI.laptop_share_behind(date(2027, 1, 25), rec, dk, docs)
+        assert len(got) == 1 and got[0][0] == NI.KIND_NOT_MOVING + "the laptop's share", got
+        for want in ("last moved on 2027-01-10 (calendars.json)", "to 2027-01-18: 8 days",
+                     "from 10 January to 30 June (7 days)",
+                     "2 of the calendars and journals the General Court lists are not read yet",
+                     "seed-kit"):
+            assert want in got[0][1], (want, got[0][1])
+        rec.write_text(json.dumps({"files": {"meetings.json": [1, "x", ns(2026, 10, 16)]}}),
+                       encoding="utf-8")
+        dk.write_text(_docket_text([(2026, "2026-11-20", "2026-11-20")]), encoding="utf-8")
+        assert not NI.laptop_share_behind(date(2026, 11, 25), rec, dk, docs), "35 days, interim, warned"
+        dk.write_text(_docket_text([(2026, "2026-11-21", "2026-11-21")]), encoding="utf-8")
+        got = NI.laptop_share_behind(date(2026, 11, 25), rec, dk, docs)
+        assert got and "36 days" in got[0][1] and "from 1 July to 9 January (35 days)" in got[0][1], got
+        rec.write_text(json.dumps({"files": {"Docket.txt": [1, "x", ns(2026, 1, 1)]}}),
+                       encoding="utf-8")
+        assert not NI.laptop_share_behind(date(2026, 11, 25), rec, dk, docs)
+        assert not NI.laptop_share_behind(date(2026, 11, 25), tmp / "none.json", dk, docs)
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    return "ok", (f"{len(NI.LAPTOP_SHARE)} files of the laptop's share, each the laptop's in the kit; "
+                  "8 days behind the record in session and 36 in the interim warn, 7 and 35 do not, "
+                  "naming the file, the days and the documents not read")
+
+
+@check("files", "the night warns when nothing has arrived in the captions inbox for days while "
+       "recordings wait, and says what the laptop's last run did", needs=("nightly",))
+def _record_inbox_silent(NI):
+    """THE CAPTIONS INBOX, SILENT (nightly.py). Held here, on made-up states:
+    four days of nothing while two recordings finished five days ago wait
+    warns, naming the day something last arrived and the laptop's last run
+    -- refused and held, here -- and what starts it again; two days says
+    nothing; nothing late that the laptop asks for, nothing (one left for a
+    person after three failures it never asks for); before anything has
+    arrived the silence counts from the day the inbox began; and with no
+    record of the laptop's
+    runs, the warning says that."""
+    from datetime import datetime, timedelta, timezone
+    now = datetime(2026, 11, 2, 9, 0, tzinfo=timezone.utc)
+
+    def at(d):
+        return d.strftime("%Y-%m-%dT%H:%M:%SZ")
+
+    late = {"status": "finished", "captions": "deferred", "ended": at(now - timedelta(days=5))}
+    st = {"videos": {"PFA": dict(late), "PFB": dict(late)},
+          "inbox_arrived": {"at": at(now - timedelta(days=4)), "taken": 1, "refused": 0}}
+    laptop = {"at": at(now - timedelta(hours=13)), "sent": 0, "code": 0,
+              "refusal": {"at": "2026-11-01T23:31:00Z", "count": 1,
+                          "why": "ERROR: Unable to download video subtitles for 'en': HTTP Error "
+                                 "429: Too Many Requests",
+                          "until": (now + timedelta(hours=3)).timestamp(),
+                          "until_iso": at(now + timedelta(hours=3))}}
+    got = NI.inbox_silent(st, laptop, now)
+    assert len(got) == 1 and got[0][0] == NI.KIND_NOT_MOVING + "the captions inbox", got
+    for want in ("since 2026-10-29 (4 days)", "2 recordings finished more than 3 days ago wait",
+                 "refused by YouTube (HTTP 429, too many requests), and asks nothing until "
+                 "2026-11-02 12:00 UTC", "Task Scheduler"):
+        assert want in got[0][1], (want, got[0][1])
+    quiet = dict(st, inbox_arrived={"at": at(now - timedelta(days=2))})
+    assert not NI.inbox_silent(quiet, laptop, now), "two days of nothing warned"
+    fresh = {"videos": {"PFA": dict(late, ended=at(now - timedelta(days=1))),
+                        "PFB": dict(late, captions="for-laptop")},
+             "inbox_arrived": st["inbox_arrived"]}
+    assert not NI.inbox_silent(fresh, laptop, now), \
+        "nothing late that the laptop asks for, and it warned"
+    begun = {"videos": {"PFA": dict(late, ended="2026-10-15T15:00:00Z")}}
+    got = NI.inbox_silent(begun, None, datetime(2026, 10, 21, 9, 0, tzinfo=timezone.utc))
+    assert got and f"since it began on {NI.INBOX_BEGAN} (4 days)" in got[0][1] \
+        and "no record of the laptop's runs came down" in got[0][1], got
+    return "ok", ("four days of nothing with recordings waiting warns, with the last arrival and the "
+                  "laptop's last run; two days, or nothing late, does not; before any arrival it "
+                  "counts from the day the inbox began")
+
+
+@check("files", "the laptop's latest refusal and its hold are in the verdict beside GitHub's, and "
+       "a missing or old record of its caption runs is a warning", needs=("nightly", "cloud"))
+def _record_laptop_runs(NI, CL):
+    """THE LAPTOP'S OWN RECORD OF ITS CAPTION RUNS (nightly.py). Until 18
+    October 2026 the verdict said only that YouTube had refused GitHub's
+    machine, while the laptop's evening run was refused on 17 and 18 October
+    and Task Scheduler showed success. Held here: the night reads the record
+    where inbox-down puts it, and only a record of a run's size; the
+    verdict's why names the laptop's refusal and its hold beside GitHub's,
+    or that its next evening asks again, or on its own where GitHub's
+    machine is not refused, and nothing of the laptop where it was not
+    refused; the captions line says what its run sent; the waiting warning
+    carries it and still fits the run's page; and no record, or one more
+    than two evenings old, warns, while a fresh one does not."""
+    from datetime import datetime, timedelta, timezone
+    import types
+    assert NI.LAPTOP_RUN.as_posix() == CL.INBOX_RUN_LOCAL, (NI.LAPTOP_RUN, CL.INBOX_RUN_LOCAL)
+    now = datetime(2026, 10, 19, 8, 30, tzinfo=timezone.utc)
+    gh = {"at": "2026-10-12T08:44:42Z", "count": 5, "until": datetime(
+        2026, 10, 20, 6, 44, tzinfo=timezone.utc).timestamp(), "until_iso": "2026-10-20T06:44:42Z",
+        "why": "ERROR: [youtube] x: Sign in to confirm you're not a bot."}
+    wait = {"status": "finished", "captions": "deferred", "ended": "2026-10-09T15:00:00Z"}
+    st = {"refusals": {"runner": gh}, "last_run": {"at": "2026-10-19T08:20:00Z",
+                                                   "captions": {"deferred": 2}},
+          "videos": {f"PF{k}": dict(wait) for k in range(45)}}
+    laptop = {"at": "2026-10-18T23:30:01Z", "sent": 0, "code": 0, "refusal": {
+        "at": "2026-10-18T14:04:55Z", "count": 2, "until": datetime(
+            2026, 10, 19, 12, 4, tzinfo=timezone.utc).timestamp(),
+        "until_iso": "2026-10-19T12:04:55Z",
+        "why": "ERROR: Unable to download video subtitles for 'en': HTTP Error 429: Too Many Requests"}}
+    why = NI.captions_why(st, now, laptop)
+    assert "refused GitHub's machine on 2026-10-12 (its bot check)" in why and \
+        "the laptop on 2026-10-18 (HTTP 429, too many requests), held until 2026-10-19 12:04 UTC" in why, why
+    ended = dict(laptop, refusal=dict(laptop["refusal"], until=now.timestamp() - 1))
+    assert "the laptop on 2026-10-18 (HTTP 429, too many requests), and its next evening asks again" \
+        in NI.captions_why(st, now, ended), NI.captions_why(st, now, ended)
+    alone = dict(st, refusals={})
+    assert "YouTube refused the laptop on 2026-10-18" in NI.captions_why(alone, now, laptop), \
+        NI.captions_why(alone, now, laptop)
+    answered = dict(laptop, refusal=None, sent=3)
+    assert "laptop" not in NI.captions_why(st, now, answered), NI.captions_why(st, now, answered)
+    rec = NI.captions_record("2026-10-19T04:20:00", st, now, laptop)
+    assert rec["laptop"] == "the laptop's run of 2026-10-18 23:30 UTC sent 0 to the inbox " \
+        "(YouTube refused it)" and NI.captions_line(rec).endswith(rec["laptop"]), rec
+    assert NI.captions_record("2026-10-19T04:20:00", st, now, answered)["laptop"] == \
+        "the laptop's run of 2026-10-18 23:30 UTC sent 3 to the inbox"
+    # The record missing, fresh, and two evenings old.
+    none = NI.laptop_run_said(None, now)
+    assert len(none) == 1 and none[0][0].startswith(NI.KIND_NOT_MOVING) and \
+        "No record of the laptop's caption runs came down" in none[0][1], none
+    assert not NI.laptop_run_said(laptop, now), "a record of last evening warned"
+    old = NI.laptop_run_said(laptop, now + timedelta(hours=40))
+    assert old and "is of 2026-10-18 23:30 UTC, 49 hours ago" in old[0][1] \
+        and "two evenings" in old[0][1], old
+    # The waiting warning, with the record where inbox-down puts it.
+    tmp = Path(tempfile.mkdtemp(prefix="gr-laptoprun-"))
+    here = Path(".").resolve()
+    try:
+        os.chdir(tmp)
+        Path("archive").mkdir()
+        late = (datetime.now(timezone.utc) - timedelta(days=5)).strftime("%Y-%m-%dT%H:%M:%SZ")
+        for v in st["videos"].values():
+            v["ended"] = late
+        gh["until"] = laptop["refusal"]["until"] = 4102444800.0        # held, whatever the clock
+        Path("archive/livestreams.json").write_text(json.dumps(st), encoding="utf-8")
+        NI.write_json(NI.LAPTOP_RUN, laptop)
+        assert NI.laptop_run() == laptop
+        warned = dict(NI.Night.warned(types.SimpleNamespace(v={"started": "2026-10-19T04:20:00"})))
+        w = warned.get(NI.KIND_CAPTIONS_WAIT, "")
+        assert "refused GitHub's machine" in w and "the laptop on 2026-10-18" in w \
+            and "approximate start" in w, warned
+        assert len(w) <= 300, f"the run's page cuts a note at 300 characters: {len(w)}, {w}"
+        NI.LAPTOP_RUN.write_text("x" * (NI.LAPTOP_RUN_MOST + 1), encoding="utf-8")
+        assert NI.laptop_run() is None, "a file too big to be a run's record was read as one"
+    finally:
+        os.chdir(here)
+        shutil.rmtree(tmp, ignore_errors=True)
+    return "ok", ("the laptop's refusal and hold beside GitHub's, or its next evening, or alone; "
+                  "nothing of it when it was answered; its run's sending on the captions line; the "
+                  "waiting warning carries it in 300 characters; no record or a two-evening-old "
+                  "one warns, last evening's does not")
+
+
+@check("files", "what has stopped moving is in the verdict, on the run's page and in the warnings' "
+       "alert, never in the gate or the night's own alert, and one signal failing stops none",
+       needs=("nightly",))
+def _record_not_moving_wired(NI):
+    """WHEN THE RECORD STOPS MOVING, end to end. A night finished in a folder
+    of its own, whose docket is 97 days still and which found no record of
+    the laptop's runs: its verdict carries both in "not_moving", its
+    warnings and their kinds; warns_of gives both, alerts_of neither, and
+    the gate holds for neither. A night that did not fetch is not told the
+    laptop's record is missing. And a signal whose code raises is said in
+    the log, while the others still come."""
+    import contextlib
+    import io
+    import types
+    from datetime import datetime
+    tmp = Path(tempfile.mkdtemp(prefix="gr-notmoving-"))
+    here = Path(".").resolve()
+    saved = NI.docket_still
+    try:
+        os.chdir(tmp)
+        Path("Docket.txt").write_text(_docket_text([(2026, "2026-10-15", "2026-10-15")]),
+                                      encoding="utf-8")
+        a = types.SimpleNamespace(no_fetch=False, dry_run=True, new_term=False)
+        night = NI.Night(a, datetime(2027, 1, 20, 4, 20))
+        night.v.update(fetch="installed", files_from="export")
+        with contextlib.redirect_stdout(io.StringIO()):
+            night.finish(0)
+        v = NI.load_json(NI.DRY_VERDICT) or {}
+        kinds = [k for k, _s in NI.not_moving_of(v)]
+        assert kinds == [NI.KIND_NOT_MOVING + "the General Court's docket",
+                         NI.KIND_NOT_MOVING + "the laptop's caption runs not on record"], kinds
+        said = [s for _k, s in NI.not_moving_of(v)]
+        assert all(s in v.get("warnings", []) for s in said) and \
+            set(kinds) <= set(v.get("warning_kinds", [])), v.get("warnings")
+        assert NI.warns_of(v)[-2:] == said, NI.warns_of(v)
+        assert not any(s in x for x in NI.alerts_of(v) for s in said), NI.alerts_of(v)
+        assert not NI.warning_reasons(NI.not_moving_of(v), served=[], recent=()), \
+            "what stopped moving holds the night as a new kind of warning"
+        quiet = NI.not_moving(v, "2027-01-20", None, None, fetched=False)
+        assert [k for k, _s in quiet] == kinds[:1], quiet
+
+        def broken(*args, **kw):
+            raise RuntimeError("made up")
+        NI.docket_still = broken
+        mark = len(NI.LOG)
+        got = NI.not_moving(v, "2027-01-20", None, None)
+        assert [k for k, _s in got] == kinds[1:] and any(
+            "could not be worked out: RuntimeError: made up" in x for x in NI.LOG[mark:]), got
+    finally:
+        NI.docket_still = saved
+        os.chdir(here)
+        shutil.rmtree(tmp, ignore_errors=True)
+    return "ok", ("a still docket and a missing laptop record reach the verdict, the page and the "
+                  "warnings' alert, and neither the night's alert nor the gate; a night that did "
+                  "not fetch is not told of the record; a signal that raises stops no other")
 
 
 @check("files", "the turn's rehearsal runs the checks of the built site on its 2027-2028 builds, "

@@ -73,3 +73,12 @@ the log says so); 1 is the bucket, the state in it or a send failing; 3 is
 yt-dlp not installed; 9009 is `python3` not found. The next morning the
 night's verdict counts what it took: "captioned tonight", the inbox's share
 beside it.
+
+Task Scheduler cannot tell a refused evening from a good one, so the night
+does (18 October 2026). Each run adds a record of itself to the bucket,
+`inbox/laptop/<when it ran>.json`: what it asked and sent, and the laptop's
+latest refusal by YouTube and its hold. The night's verdict prints that
+refusal beside GitHub's machine's, says what the run sent, and warns -- on
+the run's page and to the warnings' Healthchecks check -- when there is no
+record, when the newest is two evenings old, or when nothing has arrived in
+the inbox for three days while recordings wait.

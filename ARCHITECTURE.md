@@ -270,6 +270,25 @@ one has built, which `nightly.py` says in `logs/publish-quiet.txt`
 (`PUBLISH_QUIET`) and the step reads. The captions backlog is not an alert yet: it stands every night while YouTube
 refuses GitHub's machines, and an alert that never clears hides every other.
 
+**When the record stops moving** (18 October 2026). A night can build and
+publish on time over a record that has stopped, and the footer's "Data
+rebuilt" date stays fresh over it. So the warnings' check also hears, one
+sentence each saying what stopped, since when and what usually starts it
+again, and the verdict keeps them as `not_moving` beside a warning of a kind
+the gate never holds for: the newest line of the installed `Docket.txt` older
+than any night of its season on record (7 days from 10 January to 30 June, 35
+from 1 July to 9 January, measured on the export's dockets of 2015 to 2026,
+the pandemic's suspension of March and April 2020 left out; `preflight` holds
+the figures to the finished terms on disk); a piece of the database's views
+not taken on a second night running; the laptop's share of the record --
+bill text, the calendars' and journals' text and what is read off them --
+standing still while the record moved on for longer than that season's
+figure; nothing arriving in the captions inbox for three days while
+recordings wait; and the laptop's own record of its caption runs, which each
+`--to-inbox` run adds to the bucket under `inbox/laptop/`, missing or two
+evenings old. That record also puts the laptop's latest refusal by YouTube,
+and its hold, in the verdict beside GitHub's machine's.
+
 **The checks of the night's own build.** `preflight.py --code` runs before the
 night fetches or builds, so a check that reads a built site skips there, and
 the data checks never ran on GitHub's machine at all -- which is how the

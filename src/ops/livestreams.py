@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-25.15
+# GRANITE_VERSION: 2026-09-25.16
 """
 New livestreams, every night: the recordings the House and Senate channels
 finished since the last run, indexed and captioned, and read into the start
@@ -221,8 +221,9 @@ WHAT IT WRITES, AND NOTHING ELSE
                                   their captions stop. The night's files in
                                   the kit since 10 October 2026.
   archive/livestreams.json        what it has seen, what it waits for, and any
-                                  refusal still in force; and what --markers
-                                  read, and how the guard judged it.
+                                  refusal still in force; when the captions
+                                  inbox last gave it something; and what
+                                  --markers read, and how the guard judged it.
   logs/youtube-<day>.log          yt-dlp's warnings, and what it said about an
                                   ask that brought no captions.
   archive/youtube.refused.json    on the laptop only, by --catch-up: YouTube's
@@ -341,6 +342,18 @@ inbox/captions/ with a manifest beside it saying its name, size and sha256
 for, and one whose captions are already on this disk is sent without asking.
 The laptop only ever adds a key that is not there: never kit/, never state/,
 never an entry the night has not cleared.
+
+Each run also adds a record of itself (18 October 2026), under inbox/laptop/
+and named for when it ran (cloud.inbox_report): what it asked and sent, and
+the laptop's latest refusal by YouTube and its hold. A run YouTube refused
+exits 0 -- Task Scheduler is told the run worked, which it did -- so until
+this the night knew nothing of the laptop's evening but what arrived, and
+said only that YouTube had refused GitHub's machine. inbox-down brings the
+newest record to the night, whose verdict prints the laptop's refusal beside
+GitHub's and warns when the record is missing or two evenings old
+(nightly.LAPTOP_RUN); inbox-clear removes the older ones. And the night's
+state records when an entry last arrived ("inbox_arrived"), so the verdict
+can say the inbox has gone silent while recordings wait (nightly.inbox_silent).
 
 The night brings the inbox down before this step (cloud.py inbox-down) and
 --since-state --inbox DIR takes a waiting recording's captions from it: only
@@ -2036,6 +2049,13 @@ def since_state(a):
                   "come down, so nothing is taken from it tonight")
         else:
             inbox = take_inbox(st, now, a.inbox)
+            # WHEN SOMETHING LAST ARRIVED (18 October 2026): the night's verdict
+            # warns when nothing has for days while recordings wait
+            # (nightly.inbox_silent). An entry for a waiting recording counts,
+            # taken or refused: either way the laptop sent one.
+            if inbox["taken"] or inbox["refused"]:
+                st["inbox_arrived"] = {"at": iso(now), "taken": inbox["taken"],
+                                       "refused": inbox["refused"]}
             save_state(st)
     first, again = caption_queue(st, now)
     kit = {}
@@ -2266,8 +2286,11 @@ def to_inbox(a):
     laptop's own refusal record), and sends each caption file it then holds,
     with those already on this disk, to the inbox (cloud.inbox_add, which
     adds and never replaces). Run again with nothing new, it asks and sends
-    nothing. --dry-run says what it would ask for and send, and asks, sends
-    and writes nothing."""
+    nothing. Each run then adds its own record beside the inbox
+    (cloud.inbox_report): when it ran, what it asked and sent, and the
+    laptop's latest refusal and its hold, for the night's verdict; a record
+    that does not send is a failed send, exit 1. --dry-run says what it
+    would ask for and send, and asks, sends and writes nothing."""
     if a.origin == "runner":
         raise Broken("--to-inbox is the laptop's: GitHub's machine is the one "
                      "YouTube refuses, and its night takes the inbox with --since-state")
@@ -2367,6 +2390,27 @@ def to_inbox(a):
         print(f"  {vid}: sent to the inbox ({m['file']}, {m['size']:,} bytes)")
     for u in unsent:
         print(f"  NOT sent: {u}")
+    # THE RUN'S OWN RECORD (18 October 2026). This run exits 0 when YouTube
+    # refused it, which is right for Task Scheduler and told the night
+    # nothing: the verdict said only that YouTube had refused GitHub's machine.
+    # So every run that got this far adds its record to the bucket
+    # (cloud.inbox_report): when it ran, what it asked and sent, and the
+    # laptop's latest refusal and its hold, which the night prints beside
+    # GitHub's (nightly.LAPTOP_RUN). A record not sent is a run that failed
+    # to report, and the night says so once it is two evenings old.
+    r = refusals.record()
+    record = {"at": iso(now), "by": "laptop", "code": code, "waiting": len(waiting),
+              "in_inbox": len(entered) + there, "asked": dict(+got), "sent": sent,
+              "unsent": len(unsent),
+              "refusal": ({"at": r.get("at"), "why": str(r.get("why") or "")[:200],
+                           "count": r.get("count"), "until": r.get("until"),
+                           "until_iso": r.get("until_iso")} if r.get("count") else None),
+              **({"setup": kit} if kit else {})}
+    try:
+        cloud.inbox_report(bucket, record)
+    except Exception as e:                                      # noqa: BLE001
+        print(cloud.scrub(f"  NOT sent: this run's record ({type(e).__name__}: {e})")[:240])
+        code = code or 1
     asked = ", ".join(f"{n} {k}" for k, n in (+got).items()) or "nothing"
     line = (f"LIVESTREAMS TO-INBOX: {len(waiting)} waiting in the night's state, "
             f"{len(entered) + there} already in the inbox; asked YouTube: {asked}; "

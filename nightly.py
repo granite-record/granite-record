@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.75
+# GRANITE_VERSION: 2026-09-04.76
 """
 The nightly run. Fetch the day's bulk files, rebuild, check, compile what
 readers reported and what changed -- and publish only if told to.
@@ -109,7 +109,15 @@ night itself does is here, and what differs on that machine is behind --runner:
                       the run's page; a recording waiting three days is a
                       warning, and keeps the schedule's approximate start.
                       YouTube refusing GitHub's machine is not a failure: the
-                      night publishes
+                      night publishes. The laptop's evening run, which fills
+                      the captions inbox, reports each run to the bucket, and
+                      its refusal and hold are said beside GitHub's
+  the record moving   whether it has stopped under a night that publishes:
+                      the docket standing still longer than its season ever
+                      has, a database piece not taken, the laptop's share or
+                      its caption runs behind, the inbox silent -- a warning
+                      each, and a line of the warnings' alert (WHEN THE
+                      RECORD STOPS MOVING)
   the gates           against archive/census.json, the last good build's
                       counts, which cloud.py carries in R2's state/, because
                       site/ starts empty. No census is no baseline, and that
@@ -3177,11 +3185,13 @@ def refusal_said(why):
     return (str(why or "")[:60] or "a refusal").strip()
 
 
-def captions_why(st, now=None):
+def captions_why(st, now=None, laptop=None):
     """Why the finished recordings with no reading wait, as one clause, most
     first: YouTube's refusal of GitHub's machine (with when it is next asked),
-    no captions published yet, failures, the ones left for a person, and the
-    ones not asked yet. "" for none."""
+    and beside it the laptop's latest refusal and its hold, from `laptop`, the
+    record of its caption runs (LAPTOP_RUN, laptop_refused); no captions
+    published yet, failures, the ones left for a person, and the ones not
+    asked yet. "" for none."""
     from datetime import timezone
     if not isinstance(st, dict):
         return ""
@@ -3209,6 +3219,16 @@ def captions_why(st, now=None):
                         if held else "the next night asks again"))
     elif by.get("waiting"):
         parts.append(f"{by['waiting']} not asked yet")
+    # THE LAPTOP'S REFUSAL, BESIDE GITHUB'S (18 October 2026). The laptop asks
+    # for what waits of an evening (the captions inbox), and YouTube refused it
+    # on 17 and 18 October while this said only that it had refused GitHub's
+    # machine: its own record of each run now reaches the night (LAPTOP_RUN).
+    lap = laptop_refused(laptop, now)
+    if lap:
+        who = "the laptop" if ref.get("count") and stopped else "YouTube refused the laptop"
+        parts.append(f"{who} on {lap[0]} ({lap[1]}), "
+                     + (f"held until {lap[2]} UTC" if lap[2]
+                        else "and its next evening asks again"))
     if by.get("none-yet"):
         parts.append(f"{by['none-yet']} with no captions published yet")
     if by.get("failed"):
@@ -3236,7 +3256,7 @@ def _utc_of(s):
     return d.astimezone(timezone.utc)
 
 
-def captions_record(started, st=None, now=None):
+def captions_record(started, st=None, now=None, laptop=None):
     """What the night's caption step did tonight and what still waits, for
     the verdict's "captions": None where there is no livestream state.
 
@@ -3245,9 +3265,12 @@ def captions_record(started, st=None, now=None):
     answers by outcome; "read" and "guard" are what --markers read into the
     start times and how the guard judged it (THE GUARD in livestreams.py);
     "waiting" every finished recording with no reading, "late" those
-    CAPTION_WAIT_DAYS to CAPTION_WAIT_MOST days old, and "why" why they wait."""
+    CAPTION_WAIT_DAYS to CAPTION_WAIT_MOST days old, and "why" why they wait;
+    "laptop", what the laptop's newest caption run did (laptop_said). The
+    state and the laptop's record are read from disk where `st` is not given."""
     from datetime import timedelta
-    st = load_json(LIVE_STATE) if st is None else st
+    if st is None:
+        st, laptop = load_json(LIVE_STATE), laptop_run()
     if not isinstance(st, dict):
         return None
     begun = _utc_of(started)
@@ -3263,11 +3286,13 @@ def captions_record(started, st=None, now=None):
            "read": int(mk.get("read") or 0) if read_tonight else 0,
            "guard": str(mk.get("guard") or "") if read_tonight else "did not run tonight",
            "waiting": waiting, "late": len(_captions_late(st, now)),
-           "why": captions_why(st, now)}
+           "why": captions_why(st, now, laptop)}
     if tonight and lr.get("setup"):
         rec["setup"] = lr["setup"]
     if read_tonight and mk.get("probe"):
         rec["probe"] = mk["probe"]
+    if laptop_said(laptop, now):
+        rec["laptop"] = laptop_said(laptop, now)
     return rec
 
 
@@ -3284,7 +3309,484 @@ def captions_line(rec):
                  f"(the guard: {rec.get('guard')})")
     tail = (f"; {rec['waiting']} wait: {rec['why']}" if rec.get("waiting") and rec.get("why")
             else f"; {rec['waiting']} wait" if rec.get("waiting") else "; none waits")
-    return "captions: " + head + tail
+    return "captions: " + head + tail + (f"; {rec['laptop']}" if rec.get("laptop") else "")
+
+
+# ---- when the record stops moving ---------------------------------------------
+#
+# WHEN THE RECORD STOPS MOVING (18 October 2026; the person, 17 October:
+# "reliable automation to ensure that the site would stay up to date even if I
+# wasn't actively developing it for several months";
+# private/UNATTENDED_AUDIT_2026-10-18.md, sections 4.4 to 4.6 and its fourth
+# fix). A night builds and publishes on time over a record that has stopped --
+# the General Court's export serving the same files, nothing installed night
+# after night, a database view refused, the laptop's share never sent, the
+# captions inbox silent -- and every page's "Data rebuilt" date stays fresh
+# over all of it. None of these stops or holds the site, so none reached
+# anyone. Each is a line now: in the verdict ("not_moving", [kind, sentence]
+# each), on the run's page as a warning of a kind that never holds the night
+# (KIND_NOT_MOVING), and in the warnings' own alert (warns_of, WARN_FILE, the
+# workflow's HEALTHCHECKS_WARN_URL), saying what stopped, since when, and what
+# usually starts it again. A signal that cannot be worked out is said in the
+# log and stops nothing (not_moving).
+KIND_NOT_MOVING = "the record not moving: "
+
+# THE GENERAL COURT'S RECORD, BY ITS DOCKET. Docket.txt drives the build: a
+# hearing scheduled, a status changed, a referral, a roll call and a new
+# sponsor all arrive through it, each line with the time it was entered and the
+# time it was last changed (its third and seventh fields). The newest of those
+# on or before the night's own day, against that day, is how long the record
+# the site is built from has stood still: whether the export kept serving the
+# same files, the database's copy did, or nothing was installed at all. A line
+# dated after the night is not counted, or one typed with a wrong year would
+# hide a stop for as long as it stood.
+DOCKET = Path("Docket.txt")
+DOCKET_DATE = re.compile(r"(\d{1,2})/(\d{1,2})/(\d{4})\b")
+# HOW LONG IT MAY STAND STILL, FROM ITS OWN HISTORY. Every night of the six
+# terms of the General Court's export on disk on 18 October 2026
+# (Docket_2015-2016.txt to Docket_2023-2024.txt, and Docket.txt of 2025-2026
+# to that day), the age of the newest line that night would have read, by
+# season (still_ceilings):
+#
+#   the session, 10 January to 30 June    7 days at the most: 7 to 14 May 2020;
+#                                         5 or 6 in four of the six terms, and
+#                                         5 in 2025-2026
+#   the interim, 1 July to 9 January      35 days at the most: 29 October to
+#                                         3 December 2020. 33 across the turn of
+#                                         2014 into 2015, 32 across that of 2020
+#                                         into 2021 and 30 in August and
+#                                         September 2022; 12, 14 and 15 in the
+#                                         other three terms, 2025-2026 among them
+#
+# The turn of a term, Organization Day in early December to the first lines of
+# January, is the interim's: it stood still for 33 days into 5 January 2015
+# and 32 into 4 January 2021, and in the database's older dockets for 28 to 35
+# into 8 January 2003 at the latest, so the session is measured from 10
+# January. Set aside (STILL_SET_ASIDE): the nights of March and April 2020,
+# when the pandemic suspended the session and the record stood still for 17
+# and then 24 days. A warning on nights like those is true, and to count them
+# would have let a session go three weeks unwatched. The database's past view
+# (Docket_db_*.txt) is another source -- its 2015-2016 copy has a hole of 198
+# days -- and is not used. preflight holds STILL_DAYS to the export's finished
+# terms on disk (_still_days_from_history).
+STILL_DAYS = {"session": 7, "interim": 35}
+STILL_SESSION = ((1, 10), (6, 30))                  # (month, day), from and to
+STILL_SAID = {"session": "from 10 January to 30 June", "interim": "from 1 July to 9 January"}
+STILL_SET_ASIDE = (("2020-03-01", "2020-04-30"),)
+
+# A DATABASE PIECE NOT TAKEN, NIGHT AFTER NIGHT. The study committees' views
+# and the current term's data (STUDY_NIGHTLY, TERM_VIEWS, TERM_FILES) are
+# taken whole or not at all, and a piece not taken is that night's warning,
+# or for a study view asked for and refused, a night not clean. The nights'
+# logs of 26 September to 17 October 2026 have each piece taken on every night
+# that asked for it, and the one piece ever refused, DocumentVersion on 16
+# October for its columns, would have been refused every night after: a piece
+# not taken is one night's accident, or it stays. So the second night running
+# is the line. The verdict carries, for each piece not taken, the night it
+# was first not taken and on how many nights since, one a day (DB_MISSED); a
+# night that takes it again lets it go, and a night that does not ask leaves
+# it as it was.
+DB_MISSED = "db_not_taken"
+DB_MISSED_NIGHTS = 2
+
+# THE LAPTOP'S SHARE. What the night reads that only the laptop refreshes --
+# the bills' text for the search, the calendars' and journals' text and what
+# is read off them: the House committees' reports, the meetings and their
+# rooms, amendments (AUTOMATION_ROADBLOCKS.md, section 2) -- comes down in the
+# kit as the laptop last sent it, and kit-down records each file with the time
+# the laptop last changed it (cloud.KIT_RECORD, its mtime). These are the files
+# of that share that move with the current term; the past terms' and the
+# rarely changing ones (member_party.json, committee_details.json) are not
+# among them. preflight holds each to a laptop-owned kit entry. They move only
+# when the record gives them something, so they are measured against the
+# record: the General Court's newest docket line more than STILL_DAYS past
+# the laptop's newest change, for the season that line is in, is a share that
+# stopped while the record went on -- for longer than the record itself ever
+# stands still.
+KIT_DOWN = Path("archive/cloud/kit-down.json")
+LAPTOP_SHARE = ("bill_text.json", "amendments.json", "committee_reports.json", "calendars.json",
+                "journals.json", "meetings.json", "schedule_pages/_events.json")
+
+# THE CAPTIONS INBOX, SILENT. The laptop's evening run asks YouTube for what
+# waits and puts each caption file in the inbox, and the livestream step
+# records the night something came of it (livestreams.py's "inbox_arrived").
+# Replayed against every recording of 2021 to 2026 at one run an evening and
+# up to twenty a run, no recording waited CAPTION_WAIT_DAYS (livestreams.py,
+# HOW MUCH A RUN ASKS FOR): a recording that has waited that long while
+# nothing at all arrived for as long is a route that has stopped, not one
+# that is slow. Before the first arrival is recorded, the silence counts from
+# the day the inbox began.
+INBOX_SILENT_DAYS = CAPTION_WAIT_DAYS
+INBOX_BEGAN = "2026-10-17"
+
+# THE LAPTOP'S OWN RECORD OF ITS CAPTION RUNS (18 October 2026). Its evening
+# run (livestreams.py --to-inbox, from Task Scheduler at 7:30 pm) exits 0 for
+# a run YouTube refused, so Task Scheduler showed success on 17 and 18 October
+# while nothing was delivered, and the night could say only that YouTube had
+# refused GitHub's machine. Each run now adds a small record to the bucket
+# (cloud.inbox_report): when it ran, what it asked and sent, and the laptop's
+# latest refusal by YouTube and its hold. The night's inbox-down brings the
+# newest here (cloud.INBOX_RUN_LOCAL), and the verdict prints the laptop's
+# refusal beside GitHub's (captions_why). A night that took the day's data
+# and found no record, or one more than LAPTOP_RUN_STALE_HOURS old, warns: the
+# run is once an evening, and the night reads it eight to sixteen hours after
+# it at most, so 48 hours is two evenings or more that did not report.
+LAPTOP_RUN = Path("archive/captions-laptop.json")
+LAPTOP_RUN_STALE_HOURS = 48
+LAPTOP_RUN_MOST = 1 << 16       # a run's record is a few hundred bytes
+
+
+def _and(names):
+    names = [str(n) for n in names]
+    return names[0] if len(names) == 1 else ", ".join(names[:-1]) + " and " + names[-1]
+
+
+def docket_dates(path):
+    """({day any line was entered or changed on}, {session year}) of a
+    Docket.txt: its third and seventh fields, and its first. (set(), set())
+    where there is no file."""
+    days, years = set(), set()
+    try:
+        fh = open(path, encoding="utf-8-sig", errors="replace")
+    except OSError:
+        return days, years
+    with fh:
+        for ln in fh:
+            f = ln.split("|")
+            if len(f) < 7:
+                continue
+            if f[0].strip().isdigit():
+                years.add(int(f[0].strip()))
+            for c in (f[2], f[6]):
+                m = DOCKET_DATE.match(c.strip())
+                if m:
+                    try:
+                        days.add(date(int(m.group(3)), int(m.group(1)), int(m.group(2))))
+                    except ValueError:
+                        pass
+    return days, years
+
+
+def docket_newest(path=DOCKET, until=None):
+    """The newest day a line of the docket at `path` was entered or changed
+    on, no later than `until` (a date); None where there is none."""
+    days, _years = docket_dates(path)
+    days = [d for d in days if until is None or d <= until]
+    return max(days) if days else None
+
+
+def still_season(d):
+    """"session" or "interim" for a day, by STILL_SESSION."""
+    lo, hi = STILL_SESSION
+    return "session" if lo <= (d.month, d.day) <= hi else "interim"
+
+
+def still_ceilings(paths):
+    """{season: (days, path, from, to)}: the longest the newest line of each
+    term's docket in `paths` stood still on any night of each season, the
+    nights STILL_SET_ASIDE leaves out not counted. A term's own span is from
+    15 November before its first session year to the end of its second: a
+    line dated years later, a correction to a finished term, does not end a
+    stretch it was never part of. HOW LONG IT MAY STAND STILL says what the
+    export's terms give."""
+    from datetime import timedelta
+    aside = [(date.fromisoformat(a), date.fromisoformat(b)) for a, b in STILL_SET_ASIDE]
+    best = {"session": (0, None, None, None), "interim": (0, None, None, None)}
+    for p in paths:
+        days, years = docket_dates(p)
+        if not years:
+            continue
+        lo, hi = date(min(years) - 1, 11, 15), date(max(years), 12, 31)
+        days = sorted(d for d in days if lo <= d <= hi)
+        for a, b in zip(days, days[1:]):
+            d = a + timedelta(days=1)
+            while d <= b:
+                if not any(x <= d <= y for x, y in aside):
+                    s, age = still_season(d), (d - a).days
+                    if age > best[s][0]:
+                        best[s] = (age, str(p), a.isoformat(), b.isoformat())
+                d += timedelta(days=1)
+    return best
+
+
+def docket_still(v, today, path=DOCKET):
+    """[(kind, sentence)]: the General Court's record standing still for
+    longer than the season's STILL_DAYS on the night of `today`, by the
+    newest line of the installed docket; [] where it has moved, or there is
+    no docket to read."""
+    newest = docket_newest(path, today)
+    if newest is None:
+        return []
+    age, season = (today - newest).days, still_season(today)
+    if age <= STILL_DAYS[season]:
+        return []
+    came = v.get("files_from") in ("export", DB_SOURCE)
+    whose = "tonight's" if came else "the installed"
+    said = (f"The General Court's record has not moved for {age} days: the newest line of "
+            f"{whose} Docket.txt is of {newest}, and "
+            f"{STILL_SAID[season]} no night on record since 2015 went more than "
+            f"{STILL_DAYS[season]} days without a newer one. ")
+    if came:
+        said += (f"Tonight's files arrived whole from the General Court's "
+                 f"{'database' if v.get('files_from') == DB_SOURCE else 'export'}, so it is the "
+                 "record itself that stands still: the next sitting or committee action moves "
+                 "it, and while the House or Senate is meeting, an export that has stopped "
+                 "refreshing is the General Court's IT office's to start again.")
+    else:
+        said += (f"Nothing was installed tonight ({str(v.get('fetch') or 'not asked')[:120]}), "
+                 "so the site stands still with it until a night installs the day's files again.")
+    return [(KIND_NOT_MOVING + "the General Court's docket", said)]
+
+
+def db_missed_of(prev, v, day):
+    """Tonight's DB_MISSED: `prev`, the night before's, with tonight's
+    pieces (`v`'s "study_meetings" and "term_data") folded in -- a piece
+    taken (installed, or installed with no rows) let go, one not taken
+    counted, once a day, from the night it was first not taken."""
+    out = {}
+    if isinstance(prev, dict):
+        out = {str(k): dict(r) for k, r in prev.items()
+               if isinstance(r, dict) and day_of(r.get("since"))}
+    for of, got in (("study", v.get("study_meetings")), ("term", v.get("term_data"))):
+        if not isinstance(got, dict):
+            continue
+        for piece, what in got.items():
+            what = str(what)
+            if what.startswith("installed"):
+                out.pop(str(piece), None)
+                continue
+            r = out.setdefault(str(piece), {"since": day, "nights": 0})
+            if r.get("last") != day:
+                r["nights"] = int(r.get("nights") or 0) + 1
+                r["last"] = day
+            r.update(of=of, why=what[:200])
+    return out
+
+
+def db_missed_said(rec):
+    """[(kind, sentence)] for the database pieces not taken on
+    DB_MISSED_NIGHTS nights or more (DB_MISSED), one for the current term's
+    and one for the study committees'."""
+    if not isinstance(rec, dict):
+        return []
+    out = []
+    for of, whose in (("term", "the current term's"), ("study", "the study committees'")):
+        late = {p: r for p, r in rec.items() if isinstance(r, dict) and r.get("of") == of
+                and int(r.get("nights") or 0) >= DB_MISSED_NIGHTS}
+        if not late:
+            continue
+        names = sorted(late)
+        since = min(str(r.get("since")) for r in late.values())
+        nights = max(int(r.get("nights") or 0) for r in late.values())
+        out.append((KIND_NOT_MOVING + f"{whose} data from the database",
+                    f"{whose[0].upper()}{whose[1:]} {_and(names)} "
+                    f"{'has' if len(names) == 1 else 'have'} not been taken from the General "
+                    f"Court's database on {nights} nights since {since}: "
+                    f"{str(late[names[0]].get('why') or '')[:150]}. Each night went out with the "
+                    "copy it had. A hold on the database, or a dropped connection, ends when the "
+                    "host answers again; the night's own checks refusing the same piece night "
+                    "after night is a change in it, for a person to read in the night's log."))
+    return out
+
+
+def laptop_share_moved(record=KIT_DOWN):
+    """(day, path): the newest change the laptop made to a file of
+    LAPTOP_SHARE, by kit-down's record of the time the laptop sent each with
+    (the machine's own clock's day); (None, None) where there is no record,
+    or none of them is in it."""
+    rec = load_json(record)
+    files = rec.get("files") if isinstance(rec, dict) else None
+    if not isinstance(files, dict):
+        return None, None
+    best = None
+    for p in LAPTOP_SHARE:
+        e = files.get(p)
+        ns = e[2] if isinstance(e, list) and len(e) >= 3 else None
+        if isinstance(ns, int) and ns > 0 and (best is None or ns > best[0]):
+            best = (ns, p)
+    if best is None:
+        return None, None
+    return datetime.fromtimestamp(best[0] / 1e9).date(), best[1]
+
+
+def documents_wanted(path=DOCS):
+    """How many of the calendars and journals the General Court lists
+    (archive/queue.csv, the night's) the laptop has not fetched yet: rows
+    whose state is "wanted". None where the list will not read."""
+    import csv
+    try:
+        with open(path, encoding="utf-8", newline="") as fh:
+            return sum(1 for r in csv.DictReader(fh) if (r.get("state") or "") == "wanted")
+    except (OSError, csv.Error, UnicodeDecodeError):
+        return None
+
+
+def laptop_share_behind(today, kit=KIT_DOWN, docket=DOCKET, docs=DOCS):
+    """[(kind, sentence)]: the laptop's share of the record standing still
+    while the General Court's record moved on, for longer than STILL_DAYS
+    of the season the record last moved in (THE LAPTOP'S SHARE): a record
+    that has itself stopped since is docket_still's to say. [] otherwise, or
+    where either is not known."""
+    moved, path = laptop_share_moved(kit)
+    newest = docket_newest(docket, today)
+    if moved is None or newest is None:
+        return []
+    gap, season = (newest - moved).days, still_season(newest)
+    if gap <= STILL_DAYS[season]:
+        return []
+    wanted = documents_wanted(docs)
+    return [(KIND_NOT_MOVING + "the laptop's share",
+             f"The laptop's share of the record last moved on {moved} ({path}), and the General "
+             f"Court's record has moved on since, to {newest}: {gap} days, longer than the record "
+             f"itself ever stands still {STILL_SAID[season]} ({STILL_DAYS[season]} days). The "
+             "night builds the bills' text for the search, and the calendars' and journals' text "
+             "and what is read off them, from that share as the laptop last sent it"
+             + (f"; {wanted} of the calendars and journals the General Court lists "
+                f"{'is' if wanted == 1 else 'are'} not read yet" if wanted else "")
+             + ". It moves again when the laptop's fetches run and seed-kit sends what they "
+             "made, both a person's to start.")]
+
+
+def laptop_run(path=LAPTOP_RUN):
+    """The laptop's newest caption-run record, as inbox-down brought it
+    (LAPTOP_RUN): a dict, or None where there is none, or it will not read."""
+    try:
+        if Path(path).stat().st_size > LAPTOP_RUN_MOST:
+            return None
+    except OSError:
+        return None
+    d = load_json(path)
+    return d if isinstance(d, dict) else None
+
+
+def laptop_refused(laptop, now=None):
+    """(day, said, until): the laptop's latest refusal by YouTube, as its
+    run's record carries it -- the day, refusal_said()'s few words, and when
+    its hold ends ("YYYY-MM-DD HH:MM", or "" where it has ended); None where
+    the last thing YouTube gave the laptop was not a refusal, or there is no
+    record."""
+    from datetime import timezone
+    r = laptop.get("refusal") if isinstance(laptop, dict) else None
+    if not isinstance(r, dict) or not r.get("count"):
+        return None
+    now = now or datetime.now(timezone.utc)
+    try:
+        held = float(r.get("until") or 0) > now.timestamp()
+    except (TypeError, ValueError):
+        held = False
+    return (str(r.get("at") or "")[:10], refusal_said(r.get("why")),
+            str(r.get("until_iso") or "")[:16].replace("T", " ") if held else "")
+
+
+def laptop_said(laptop, now=None):
+    """The laptop's newest caption run in a few words, for the verdict's
+    "captions" and the run's page: when it ran, what it sent to the inbox,
+    and whether YouTube's last word to it was a refusal; "" where there is
+    no record."""
+    at = _utc_of(laptop.get("at")) if isinstance(laptop, dict) else None
+    if at is None:
+        return ""
+    try:
+        sent = int(laptop.get("sent") or 0)
+    except (TypeError, ValueError):
+        sent = 0
+    return (f"the laptop's run of {at:%Y-%m-%d %H:%M} UTC sent {sent} to the inbox"
+            + (" (YouTube refused it)" if laptop_refused(laptop, now) else "")
+            + ("; yt-dlp is not installed there" if laptop.get("code") == 3 else ""))
+
+
+def inbox_silent(st, laptop, now):
+    """[(kind, sentence)]: nothing arriving in the captions inbox for
+    INBOX_SILENT_DAYS while recordings finished that long ago wait (THE
+    CAPTIONS INBOX, SILENT); [] otherwise."""
+    if not isinstance(st, dict):
+        return []
+    # Not one left for a person after three failures: the laptop asks for
+    # none of those (livestreams.inbox_wants), so its silence says nothing.
+    late = [v for v in _captions_late(st, now) if v.get("captions") != "for-laptop"]
+    if not late:
+        return []
+    arrived = st.get("inbox_arrived") if isinstance(st.get("inbox_arrived"), dict) else {}
+    since = _utc_of(arrived.get("at"))
+    began = since is None
+    since = since or _utc_of(INBOX_BEGAN + "T00:00:00Z")
+    days = (now - since).days
+    if days < INBOX_SILENT_DAYS:
+        return []
+    n, lap, at = len(late), laptop_refused(laptop, now), (
+        _utc_of(laptop.get("at")) if isinstance(laptop, dict) else None)
+    did = (f": the laptop's last run, of {at:%Y-%m-%d %H:%M} UTC, "
+           + (f"was refused by YouTube ({lap[1]}), and asks nothing until {lap[2]} UTC"
+              if lap and lap[2] else f"was refused by YouTube ({lap[1]})" if lap
+              else "found no yt-dlp there" if laptop.get("code") == 3
+              else f"sent {laptop.get('sent') or 0}")
+           if at else ": no record of the laptop's runs came down")
+    return [(KIND_NOT_MOVING + "the captions inbox",
+             f"Nothing has arrived in the captions inbox since "
+             + (f"it began on {INBOX_BEGAN}" if began else f"{since:%Y-%m-%d}")
+             + f" ({days} days), and {n} recording{'s' if n != 1 else ''} finished more than "
+             f"{CAPTION_WAIT_DAYS} days ago wait{'' if n != 1 else 's'} for "
+             f"{'their' if n != 1 else 'its'} start time{'s' if n != 1 else ''}{did}. The "
+             "laptop's evening run (livestreams.py --to-inbox, from Task Scheduler at 7:30 pm) "
+             "sends them, and they arrive again once that run is on, logged in and answered by "
+             "YouTube.")]
+
+
+def laptop_run_said(laptop, now):
+    """[(kind, sentence)]: no record of the laptop's caption runs, or one
+    more than LAPTOP_RUN_STALE_HOURS old; [] for a fresh one."""
+    at = _utc_of(laptop.get("at")) if isinstance(laptop, dict) else None
+    if at is None:
+        return [(KIND_NOT_MOVING + "the laptop's caption runs not on record",
+                 f"No record of the laptop's caption runs came down tonight "
+                 f"({LAPTOP_RUN.as_posix()}): the captions inbox did not come down, or the "
+                 "laptop's evening run (livestreams.py --to-inbox) has written none, so whether "
+                 "it runs is not known. logs/captions-inbox.log on the laptop says what it last "
+                 "did.")]
+    hours = (now - at).total_seconds() / 3600
+    if hours <= LAPTOP_RUN_STALE_HOURS:
+        return []
+    return [(KIND_NOT_MOVING + "the laptop's caption runs",
+             f"The laptop's last caption run on record is of {at:%Y-%m-%d %H:%M} UTC, "
+             f"{hours:.0f} hours ago: its evening run (livestreams.py --to-inbox, from Task "
+             "Scheduler at 7:30 pm) has not reported for two evenings or more. It runs again "
+             "when the laptop is on and logged in at 7:30 pm; logs/captions-inbox.log there "
+             "says what it last did.")]
+
+
+def not_moving(v, day, st, laptop, now=None, fetched=True):
+    """[(kind, sentence)] for tonight's verdict `v` on the night of `day`
+    ("YYYY-MM-DD"): each part of the record that has stood still for longer
+    than it does (WHEN THE RECORD STOPS MOVING). `st` is the livestream
+    state, `laptop` the laptop's caption-run record (laptop_run), and
+    `fetched` whether the night took the day's data, and so brought the
+    captions inbox down: only then is the laptop's record looked for. A
+    signal that cannot be worked out is said in the log and left out."""
+    from datetime import timezone
+    now = now or datetime.now(timezone.utc)
+    today = day_of(day)
+    if today is None:
+        return []
+    out = []
+    for name, said in (("the General Court's docket", lambda: docket_still(v, today)),
+                       ("the database's pieces", lambda: db_missed_said(v.get(DB_MISSED))),
+                       ("the laptop's share", lambda: laptop_share_behind(today)),
+                       ("the captions inbox", lambda: inbox_silent(st, laptop, now)),
+                       ("the laptop's caption runs",
+                        lambda: laptop_run_said(laptop, now) if fetched else [])):
+        try:
+            out += said()
+        except Exception as e:      # noqa: BLE001 -- a warning never stops the verdict
+            say(f"  whether {name} stopped moving could not be worked out: "
+                f"{type(e).__name__}: {e}", echo=False)
+    return out
+
+
+def not_moving_of(v):
+    """[(kind, sentence)] a verdict's "not_moving" carries; [] for none."""
+    got = v.get("not_moving") if isinstance(v, dict) else None
+    return [(str(x[0]), str(x[1])) for x in got or []
+            if isinstance(x, (list, tuple)) and len(x) == 2]
 
 
 def take_lsrs():
@@ -4271,10 +4773,12 @@ def warning_reasons(warned, served, recent=()):
     seen, out = set(served or []) | set(recent or ()), []
     for kind, said in warned:
         # Nor a failed check of the built site against the record (BUILT_CHECKS),
-        # nor a piece of the current term's data not taken (KIND_TERM_DATA):
+        # nor a piece of the current term's data not taken (KIND_TERM_DATA),
+        # nor a part of the record that has stopped moving (KIND_NOT_MOVING):
         # each warns and never holds.
         if kind in seen or fallback_kind(kind) or str(kind).startswith((KIND_BUILT_WARN,
-                                                                       KIND_TERM_DATA)):
+                                                                       KIND_TERM_DATA,
+                                                                       KIND_NOT_MOVING)):
             continue
         seen.add(kind)
         said = str(said)
@@ -4446,6 +4950,12 @@ class Night:
         short = prev.get("documents_short") if isinstance(prev, dict) else None
         if isinstance(short, dict):
             self.v["documents_short"] = short
+        # The database pieces not taken, and since when (DB_MISSED): carried,
+        # so that a night which does not ask leaves them where they were, and
+        # finish() folds tonight's in.
+        missed = prev.get(DB_MISSED) if isinstance(prev, dict) else None
+        if isinstance(missed, dict):
+            self.v[DB_MISSED] = missed
         if a.new_term:
             # What the New term run let through, filled in as it goes. Kept in
             # this night's verdict; what it accepted reaches a later night
@@ -4783,13 +5293,17 @@ class Night:
         live = load_json(LIVE_STATE)
         n = len(_captions_late(live))
         if n:
-            why = captions_why(live)
+            # GitHub's refusal, and the laptop's beside it (LAPTOP_RUN), which
+            # is why the words before them are fewer than they were: the run's
+            # page cuts a note at 300 characters, and the why says there is no
+            # reading yet.
+            why = captions_why(live, laptop=laptop_run())
             out.append((KIND_CAPTIONS_WAIT,
-                        f"{n} recording{'s' if n != 1 else ''} finished more than "
-                        f"{CAPTION_WAIT_DAYS} days ago {'have' if n != 1 else 'has'} no start "
-                        f"time from {'their' if n != 1 else 'its'} captions yet, and "
-                        f"keep{'' if n != 1 else 's'} the schedule's approximate start"
-                        + (f": {why}" if why else "")))
+                        f"{n} recording{'s' if n != 1 else ''} finished over {CAPTION_WAIT_DAYS} "
+                        f"days ago keep{'' if n != 1 else 's'} the schedule's approximate start"
+                        + (f": {why}" if why else
+                           f", with no start time from {'their' if n != 1 else 'its'} "
+                           "captions yet")))
         rec = captions_record(self.v.get("started"), live)
         if rec and str(rec.get("guard") or "").startswith("put back"):
             out.append((KIND_CAPTIONS_PUT_BACK,
@@ -4799,6 +5313,9 @@ class Night:
                         f"down: {rec['guard'][len('put back: '):]}"))
         out += built_warned(self.v.get("built_checks"))
         out += term_warned(self.v)
+        # What has stopped moving (WHEN THE RECORD STOPS MOVING), as finish()
+        # worked it out into the verdict: of kinds that never hold the night.
+        out += not_moving_of(self.v)
         return out
 
     def alarms(self):
@@ -4832,14 +5349,20 @@ class Night:
 
     def finish(self, code):
         v = self.v
-        why = self.problems()
-        alarms = self.alarms()
-        warned = self.warned()
         # What the caption step did tonight and what waits (captions_record):
         # in the verdict whatever else happened, and a line on the run's page.
         caps = captions_record(v.get("started"))
         if caps:
             v["captions"] = caps
+        # WHEN THE RECORD STOPS MOVING: tonight's database pieces folded into
+        # those carried (DB_MISSED), then whatever has stood still for longer
+        # than it does, before the warnings are counted, which carry it.
+        v[DB_MISSED] = db_missed_of(v.get(DB_MISSED), v, self.day)
+        v["not_moving"] = [list(x) for x in not_moving(
+            v, self.day, load_json(LIVE_STATE), laptop_run(), fetched=not self.a.no_fetch)]
+        why = self.problems()
+        alarms = self.alarms()
+        warned = self.warned()
         v.update(finished=datetime.now().isoformat(timespec="seconds"), exit=code,
                  clean=not why and not alarms and code == 0, not_clean=why + alarms,
                  alarms=alarms, warnings=[w for _kind, w in warned],
@@ -5126,6 +5649,12 @@ def upload_and_check(a, site, target, base):
 # the night's check goes down only for what stops or holds the site. And a
 # night the gate holds for approval, which only GitHub told, and only the
 # reviewer, is a line here too (held_for_approval).
+#
+# What has stopped moving under a night that publishes (WHEN THE RECORD STOPS
+# MOVING, 18 October 2026) is WARN_FILE's as well: the record standing still,
+# a database piece not taken, the laptop's share or its caption runs behind,
+# the captions inbox silent. Each stands until something moves, and none
+# stops or holds the site.
 ALERT_FILE = Path("logs/alert.txt")
 WARN_FILE = Path("logs/alert-warn.txt")
 
@@ -5148,9 +5677,11 @@ def held_for_approval(v):
 def warns_of(v):
     """What warns and stands until a person acts, for the warnings' own check
     (WARN_FILE): the checks of tonight's build against the record that
-    failed, the reminders among them. [] for none."""
+    failed, the reminders among them; and each part of the record that has
+    stopped moving (WHEN THE RECORD STOPS MOVING), the laptop's record of its
+    caption runs missing or old among them. [] for none."""
     said = built_warn_alert(v.get("built_checks"))
-    return [said] if said else []
+    return ([said] if said else []) + [s for _kind, s in not_moving_of(v)]
 
 
 def alerts_of(v):
@@ -5234,7 +5765,9 @@ def close_verdict(a):
             # ... and the newest real night fit for production (NEWEST_FIT):
             # one that never started is no newer night, and an older one
             # waiting for approval stays approvable.
-            for k in (KINDS_SERVED, KINDS_SENDABLE, KINDS_PUBLISHED, NEWEST_FIT):
+            # ... and the database pieces not taken, and since when (DB_MISSED):
+            # a night that never started asked nothing, and leaves them.
+            for k in (KINDS_SERVED, KINDS_SENDABLE, KINDS_PUBLISHED, NEWEST_FIT, DB_MISSED):
                 if isinstance(older, dict) and isinstance(older.get(k), dict):
                     v[k] = older[k]
         if a.dry_run:
