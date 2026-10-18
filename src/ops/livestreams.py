@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-25.13
+# GRANITE_VERSION: 2026-09-25.15
 """
 New livestreams, every night: the recordings the House and Senate channels
 finished since the last run, indexed and captioned, and read into the start
@@ -55,7 +55,9 @@ Two of YouTube's hosts, and nothing of the General Court's:
   between the requests inside one recording (--sleep-requests,
   --sleep-subtitles). On 30 September 2026 the laptop asked twenty seconds
   apart, two tracks a recording, and YouTube answered the second recording
-  with "HTTP Error 429: Too Many Requests".
+  with "HTTP Error 429: Too Many Requests". The wait before the caption file
+  itself is a minute since 18 October 2026 (YTDLP, below): under about sixty
+  seconds YouTube answers 429 however little else was asked.
 
   With a JavaScript runtime (10 October 2026). yt-dlp 2026.08.19 enables
   only deno by default, which neither machine has, and without a runtime it
@@ -107,11 +109,16 @@ again: 22 caption requests, or 24 if both of the two are at their last ask;
 yt-dlp's own requests for the page, a second and a half apart -- three or
 four, by a reading of its 2026.08.19 source: the watch page, the player script
 unless it has it, and its two default clients. Some 110 requests of
-youtube.com at most, over about forty minutes and under an hour. The 22 and
-the pauses are this file's own; the three or four, and the twenty seconds a
-recording is taken to need inside yt-dlp, are estimates and not measurements.
---budget, sixty minutes, ends a run that is taking longer, whatever the
-reason.
+youtube.com at most. Since 18 October 2026 each caption file also waits a
+minute after its page (YTDLP), so the longest run is some 78 minutes: 23
+pauses of two minutes at the most and 24 requests of eighty seconds each.
+The 22 and the pauses are this file's own; the three or four, and the twenty
+seconds a request is taken to need inside yt-dlp beyond that minute, are
+estimates and not measurements. --budget ends a run that is taking longer,
+whatever the reason: INBOX_BUDGET, 85 minutes, on the laptop (--to-inbox),
+whose evening nothing waits on, so a full run finishes; BUDGET, sixty, on
+GitHub's machine, whose step and the night after it are timed to it, so a
+full run there stops short and the rest wait for the next.
 
 That is the longest whatever is due, because what a run may ask is counted
 in caption requests and not in recordings. The recordings asked again take
@@ -445,13 +452,19 @@ COST = {"channels": 1, "playlistItems": 1, "videos": 1}
 # track: --sub-langs is added to each ask by ytdlp_args, one track and no
 # wildcard. The two pauses are yt-dlp's own, inside one recording: between
 # the requests it makes to read the page, and before it asks for the caption
-# file. Twice what its own "sleep" preset uses (0.75 and 5); a judgment, not
-# a measured threshold -- YouTube publishes none. A JavaScript runtime, node,
-# which yt-dlp does not use unless named (WHAT IT ASKS); and no --no-warnings:
+# file. The first is twice what its own "sleep" preset uses (0.75), a
+# judgment. THE SECOND IS A MINUTE, and that one was measured, by yt-dlp's
+# maintainers rather than here: YouTube answers 429 to an auto-caption
+# download asked less than about sixty seconds after the page was read, and
+# serves it at sixty or more (issue 13831, November 2025, repeated in its
+# pinned comment in January 2026). It was ten seconds until 18 October 2026,
+# when the laptop's first request after eighteen hours of asking nothing
+# was answered 429 -- a gap inside one recording, not how much was asked.
+# A JavaScript runtime, node, which yt-dlp does not use unless named (WHAT IT ASKS); and no --no-warnings:
 # the warnings are split off and logged (split_warnings), never read.
 YTDLP = ["-m", "yt_dlp", "--write-auto-subs", "--sub-format", "json3/vtt",
          "--skip-download", "--js-runtimes", "node",
-         "--sleep-requests", "1.5", "--sleep-subtitles", "10"]
+         "--sleep-requests", "1.5", "--sleep-subtitles", "60"]
 # The challenge solver that --js-runtimes needs, by its package's name: yt-dlp
 # names the version it wants in its own metadata, and the night pins it.
 SOLVER = "yt-dlp-ejs"
@@ -504,6 +517,8 @@ ALL_NONE = 3           # "no captions" this often in a run that captioned
 DELAY = 60.0           # seconds between two recordings, at least
 JITTER = 60.0          # and up to this many more, so the gaps are not a beat
 BUDGET = 60.0          # minutes of caption requests in one run, at most
+INBOX_BUDGET = 85.0    # ...and on the laptop's --to-inbox, which no night
+                       # window bounds: a full run at a minute a caption file
 TIMEOUT = 300.0        # seconds allowed for one track's ask
 LOCK_BEAT = 30         # seconds between two touches of a held lock
 LOCK_STALE = 300       # a lock untouched this long was left by a run that is
@@ -2780,9 +2795,9 @@ def main(argv=None):
     ap.add_argument("--jitter", type=float, default=JITTER,
                     help="and up to this many more, at random "
                          f"(default {JITTER:g})")
-    ap.add_argument("--budget", type=float, default=BUDGET,
+    ap.add_argument("--budget", type=float, default=None,
                     help="minutes of caption requests in one run, at most "
-                         f"(default {BUDGET:g})")
+                         f"(default {BUDGET:g}; {INBOX_BUDGET:g} with --to-inbox)")
     ap.add_argument("--timeout", type=float, default=TIMEOUT,
                     help="seconds allowed for one track's ask "
                          f"(default {TIMEOUT:g})")
@@ -2807,6 +2822,8 @@ def main(argv=None):
     ap.add_argument("--origin", choices=["runner", "laptop"],
                     help="which machine this is; GITHUB_ACTIONS decides by default")
     a = ap.parse_args(argv)
+    if a.budget is None:
+        a.budget = INBOX_BUDGET if a.to_inbox else BUDGET
     a.origin = a.origin or ("runner" if os.environ.get("GITHUB_ACTIONS") == "true"
                             else "laptop")
     if a.replay and a.record:

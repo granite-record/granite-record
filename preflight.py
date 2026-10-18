@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.626
+# GRANITE_VERSION: 2026-09-04.628
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -15082,6 +15082,11 @@ def _ls_gentle(livestreams, segment_markers):
     for flag in ("--sleep-requests", "--sleep-subtitles"):
         assert flag in L.YTDLP and float(L.YTDLP[L.YTDLP.index(flag) + 1]) >= 1, \
             f"yt-dlp is not told to pause between its own requests ({flag})"
+    # A caption file asked for under about a minute after its page is a 429
+    # (yt-dlp issue 13831; the laptop's refusal of 18 October 2026).
+    assert float(L.YTDLP[L.YTDLP.index("--sleep-subtitles") + 1]) >= 60, (
+        "yt-dlp waits less than a minute before the caption file, which YouTube "
+        "answers with 429")
     assert L.DELAY >= 60 and 0 < L.JITTER and L.DELAY + L.JITTER <= 120, (L.DELAY, L.JITTER)
     # A run is the size of what is waiting, up to a ceiling, and no smaller.
     assert [L.allowance(n) for n in (0, 1, 2, 6)] == [0, 1, 2, 6], "a quiet evening is not small"
@@ -15117,10 +15122,26 @@ def _ls_gentle(livestreams, segment_markers):
     most = L.MAX_CAPTIONS + L.AGAIN_MIN
     requests = L.MAX_CAPTIONS + dear * L.AGAIN_MIN
     # Every pause at its longest, one before each request but the first, and
-    # twenty seconds a request inside yt-dlp -- that last an estimate.
-    longest = (requests - 1) * (L.DELAY + L.JITTER) + requests * 20
-    assert longest <= L.BUDGET * 60, \
-        f"the longest run, {longest / 60:.0f} minutes, does not fit --budget {L.BUDGET:g}"
+    # inside yt-dlp the minute before each caption file plus twenty seconds
+    # -- that last an estimate. The laptop's run must finish whole; the
+    # night's stops at BUDGET, which its step and the night are timed to.
+    wait = float(L.YTDLP[L.YTDLP.index("--sleep-subtitles") + 1])
+    longest = (requests - 1) * (L.DELAY + L.JITTER) + requests * (wait + 20)
+    assert longest <= L.INBOX_BUDGET * 60, \
+        f"the longest run, {longest / 60:.0f} minutes, does not fit the laptop's --budget " \
+        f"{L.INBOX_BUDGET:g}"
+    assert L.BUDGET <= L.INBOX_BUDGET, (L.BUDGET, L.INBOX_BUDGET)
+    for argv, want in ((["--to-inbox"], L.INBOX_BUDGET), ([], L.BUDGET),
+                       (["--to-inbox", "--budget", "5"], 5.0)):
+        seen = {}
+        real = L.to_inbox
+        try:
+            L.to_inbox = lambda a: seen.setdefault("budget", a.budget) and 0
+            if argv and argv[0] == "--to-inbox":
+                L.main(argv + ["--dry-run", "--local-bucket", str(Path(tempfile.mkdtemp()))])
+                assert seen.get("budget") == want, (argv, seen, want)
+        finally:
+            L.to_inbox = real
 
     root = Path(tempfile.mkdtemp())
     here = os.getcwd()
@@ -15364,7 +15385,7 @@ def _ls_gentle(livestreams, segment_markers):
         return "ok", (f"`en` alone to an ask; {L.MAX_CAPTIONS} oldest of {len(vids)} asked and 3 "
                       f"of 3, {L.DELAY:g}-{L.DELAY + L.JITTER:g}s apart; the longest run of "
                       f"any mix, {most} recordings and {requests} requests, {longest / 60:.0f} "
-                      f"min of a {L.BUDGET:g} min budget; {len(many)} retries a week old are "
+                      f"min of the laptop's {L.INBOX_BUDGET:g} min budget; {len(many)} retries a week old are "
                       f"{L.MAX_CAPTIONS} requests, not {dear * L.MAX_CAPTIONS}; `en-orig` only at a "
                       "last ask, never a first, and never after a refusal; a recording with "
                       "none is closed only by a run that captioned something, and the laptop "
