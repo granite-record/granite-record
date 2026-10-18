@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-17.1
+# GRANITE_VERSION: 2026-10-17.2
 """
 The legislature's year: a two-year term as a timeline, with this term's dates
 where the chambers' own calendars print them, and the usual pattern where
@@ -50,11 +50,20 @@ document; and with --pdf, where pdfplumber and the PDFs are on this disk,
 the words must stand in the date's own block of rows, which catches a
 pairing. The night holds the text but not the PDFs, so it checks the first.
 
-WHEN THE TERM TURNS OVER. TERMS holds the 2025-2026 term. On 2 December 2026
-the next one begins, and its deadlines will be printed in calendars this
-disk does not hold yet. Until they are entered here, the page shows the last
-term's dates and says whose they are, and the build prints a line saying
-the current term has none. The usual pattern (PATTERN) does not change.
+WHEN THE TERM TURNS OVER (18 October 2026). TERMS holds the 2025-2026 term.
+On 2 December 2026 the next one begins, and its deadlines will be printed in
+calendars this disk does not hold yet. A term TERMS does not hold is drawn
+from skeleton(): the four days the constitution fixes -- the Organization
+Day that begins it, each session's opening day and the Organization Day
+that ends it -- computed by their rules and cited to the calendars that
+quote them, and every other landmark as it usually falls, undated, from
+PATTERN. So the page is always the term the day falls in, the turn and the
+turn of the year need nothing done to this file, and the build prints a line
+saying the current term's printed deadlines are not entered. Entering them in
+TERMS when the chambers' calendars print them makes the page fuller, not
+right. (Until 18 October the page went on showing 2025-2026's dates after
+the turn, saying whose they were, and from 15 January 2027 its Coming Next
+had nothing in it.)
 """
 
 # The bootstrap: _paths.py, found above this file, puts every code folder on the import path.
@@ -452,11 +461,117 @@ def term_of(today):
 
 def shown_term(today):
     """(the term whose dates the page shows, the term today falls in): the
-    newest term TERMS holds that has begun, else the oldest it holds."""
+    term today falls in -- from TERMS where it is entered, else from its
+    skeleton -- unless that is older than every term TERMS holds, and then
+    the oldest TERMS holds."""
     now = term_of(today)
     held = sorted(TERMS)
-    begun = [t for t in held if t <= now]
-    return (begun[-1] if begun else held[0]), now
+    return (now if now >= held[0] else held[0]), now
+
+
+# ---------------------------------------------------------------------------
+# A TERM NOBODY HAS ENTERED. The constitution fixes four of its days (Part
+# II, Article 3, which House Calendar 1 of 2025 and of 2026 quote): each
+# Organization Day, the first Wednesday of December of the even year, and
+# each session's opening day, the first Wednesday after the first Tuesday of
+# January. Those are dated, computed by their rule and cited to the calendar
+# that quotes it, as the entered term's rule rows are. Everything else a
+# term's calendars print is a step with no date, saying when it usually
+# falls, as PATTERN does. Its seasons begin only on those fixed days -- a
+# session's last day is the chambers' to set, so no season here claims a
+# session has ended -- and the first is the term's own first year: a
+# skeleton is drawn only for a term that has begun, so the election before
+# it is the term before's. The drawn timeline says no calendar of the term
+# has been read yet (SKELETON_CAPTION).
+# ---------------------------------------------------------------------------
+RULE_CITES = {"org": ("hc1-2025", "Organize on the first Wednesday in December"),
+              "open": ("hc1-2026", "opening day of the 2026 Session will be on the first Wednesday")}
+
+
+def skeleton(term):
+    """The seasons of a term TERMS does not hold, from the rules and the
+    usual pattern alone."""
+    a, b = (int(x) for x in term.split("-"))
+
+    def ruled(rule, day, who, name, what):
+        doc, words = RULE_CITES[rule]
+        return Step(day, "", who, name, what, ((doc, day, words),), True, rule=rule)
+
+    org0, org1 = organization_day(a - 1).isoformat(), organization_day(b).isoformat()
+    open_a, open_b, open_next = (opening_day(y).isoformat() for y in (a, b, b + 1))
+    crossover = Step("", "", "HS", "Crossover",
+                     "The last day for each chamber to act on its own bills. What passes goes to "
+                     "the other chamber.", when="late March or April")
+    conference = Step("", "", "HS", "Last day to act on committee of conference reports",
+                      "Both chambers vote on the conference versions. It is the session's last "
+                      "deadline.", when="June")
+    return [
+        Season("The First Year", f"December {a - 1} through {a}", org0,
+               "The {term} term has begun, and {y1} is its first year: a session from January "
+               "to about June, then the House's retained bills and veto day in the fall.", [
+            ruled("org", org0, "HS", "Organization Day",
+                  "The new members are sworn in, the House elects its Speaker and the Senate its "
+                  "President, and the term begins."),
+            ruled("open", open_a, "HS", "The session opens",
+                  "Convening day: the chambers begin taking up the new bills."),
+            crossover, conference,
+            Step("", "", "", "Bills go to the Governor", GOVERNOR, when="summer"),
+            Step("", "", "HS", "Veto day", "Each chamber meets to take up the Governor's vetoes.",
+                 when="in the fall"),
+        ]),
+        Season("The Second Year", f"{b}, until Organization Day", open_b,
+               "{y2} is the second year of the {term} term: a session from January to about "
+               "June, then veto day, interim study and the election.", [
+            ruled("open", open_b, "HS", "The session opens", "The second session's first day."),
+            crossover, conference,
+            Step("", "", "", "Bills go to the Governor", GOVERNOR, when="summer"),
+            Step("", "", "HS", "Veto day",
+                 "Both chambers meet to take up the Governor's vetoes. Overriding one takes two "
+                 "thirds of each chamber.", when="late summer or fall"),
+            Step("", "", "HS", "Interim study",
+                 "Committees study the subjects of the bills sent to interim study. The bills "
+                 "themselves go no further; a report may recommend a new bill next term.",
+                 when="summer and fall"),
+            Step("", "", "", "General election",
+                 "Voters choose all 400 representatives and 24 senators for the next term.",
+                 when="early November"),
+        ]),
+        Season("The Next Term Begins", f"December {b} to January {b + 1}", org1,
+               "The {next} term has begun: the legislature elected in November took office "
+               "on Organization Day.", [
+            ruled("org", org1, "HS", "Organization Day",
+                  "The members elected in November are sworn in, and the {next} term begins."),
+            ruled("open", open_next, "HS", f"The {b + 1} session opens",
+                  "The new term's first session begins."),
+        ]),
+    ]
+
+
+SKELETON_CAPTION = ("No calendar of the {term} term has been read for this page yet, so its "
+                    "dates are the ones the constitution fixes, each with the calendar that "
+                    "quotes the rule, and the rest of the term is described as it usually falls. "
+                    "A season that is over is folded shut: open it to read its dates.")
+
+
+def entered(term):
+    """Whether TERMS holds the term's own dates, read off its calendars."""
+    return term in TERMS
+
+
+def seasons_of(term):
+    """The term's seasons: TERMS's where it is entered, else its skeleton."""
+    return TERMS[term] if entered(term) else skeleton(term)
+
+
+def checked_terms(today=None):
+    """The terms verify() holds to their documents by default: every term
+    TERMS holds, the term after the newest of them, and the term `today`
+    falls in -- the skeletons the page draws next and now."""
+    held = sorted(TERMS)
+    out = held + [_next(held[-1])]
+    if today is not None:
+        out.append(term_of(today))
+    return sorted(set(out))
 
 
 # ---------------------------------------------------------------------------
@@ -489,12 +604,13 @@ def cite_key(term, step, day, sub=""):
     return f"{term} | {step.name}{': ' + sub if sub else ''} | {day}"
 
 
-def all_cites(term=None):
-    """Every (key, day, doc, words, rule) a term cites (every term's, by default)."""
+def all_cites(term=None, terms=None):
+    """Every (key, day, doc, words, rule) a term cites: `term`'s, or each of
+    `terms`', or by default every term checked_terms() names -- each from
+    TERMS where it is entered, else from its skeleton."""
     out = []
-    for t, seasons in TERMS.items():
-        if term and t != term:
-            continue
+    for t in ([term] if term else terms or checked_terms()):
+        seasons = seasons_of(t)
         for s in seasons:
             for st in s.steps:
                 for doc, day, words in st.cites:
@@ -513,14 +629,16 @@ def _rule_ok(step):
     return True
 
 
-def verify(root=Path("."), pdf=False):
-    """(problems, checked, absent): every cited date against the text beside
-    its document. problems is [(key, why)]; checked counts the cites whose
-    text was on disk, absent those whose text was not. With pdf, a table's
-    date and words are also held to one block of rows on the PDF's page."""
+def verify(root=Path("."), pdf=False, terms=None):
+    """(problems, checked, absent): every cited date of `terms` (by default
+    checked_terms()) against the text beside its document. problems is
+    [(key, why)]; checked counts the cites whose text was on disk, absent
+    those whose text was not. With pdf, a table's date and words are also
+    held to one block of rows on the PDF's page."""
     root = Path(root)
+    terms = terms or checked_terms()
     problems, checked, absent, texts = [], 0, 0, {}
-    for key, day, doc, words, rule in all_cites():
+    for key, day, doc, words, rule in all_cites(terms=terms):
         d = DOCS.get(doc)
         if d is None:
             problems.append((key, f"cites {doc}, which DOCS does not name"))
@@ -541,8 +659,8 @@ def verify(root=Path("."), pdf=False):
             why = paired(root / d.path.replace(".txt", ".pdf"), d.page, day, words)
             if why:
                 problems.append((key, why))
-    for t, seasons in TERMS.items():
-        for s in seasons:
+    for t in terms:
+        for s in seasons_of(t):
             for st in s.steps:
                 if st.day and not _rule_ok(st):
                     problems.append((cite_key(t, st, st.day), f"{st.day} is not the day its rule gives"))
@@ -702,7 +820,7 @@ def timeline(term, today, links, bad=None):
     """The term, season by season: an ordered list of seasons each holding an
     ordered list of steps, with You Are Here among them. A season wholly past
     is folded shut; the one the day falls in, and those to come, are open."""
-    seasons = TERMS[term]
+    seasons = seasons_of(term)
     bad = bad or {}
     here = _where(seasons, today)
     out = []
@@ -728,17 +846,21 @@ def timeline(term, today, links, bad=None):
             f'<li class="l-tlseason{" is-past" if past else ""}{" is-here" if i == here else ""}">'
             f'<details{"" if past else " open"}><summary>'
             f'<h3 class="l-tlh">{T(s.name)}</h3>'
-            f'<span class="l-tlwhen">{T(s.when)} &middot; {n} dates, {state}</span></summary>'
+            f'<span class="l-tlwhen">{T(s.when)} &middot; {n} date{"" if n == 1 else "s"}, '
+            f'{state}</span></summary>'
             f'<ol class="l-tlsteps">{"".join(rows)}</ol></details></li>')
     if here < 0:
         out.insert(0, f'<li class="l-tlseason is-here"><ol class="l-tlsteps">{_here_html(today)}</ol></li>')
+    caption = (T(SKELETON_CAPTION.format(term=term)).replace(term, _dash(term))
+               if not entered(term) else
+               f'The {_dash(term)} term&rsquo;s dates, and the next '
+               'term&rsquo;s first weeks after them, each from the document named under it. A step '
+               'marked <b>Usually</b> has no one date in those documents and is described as it '
+               'usually falls. A season that is over is folded shut: open it to read its '
+               'dates.')
     return (f'<figure class="l-fig l-tl" role="group" aria-label="The {_dash(term)} term, date by date">'
             f'<ol class="l-tlseasons">{"".join(out)}</ol>'
-            f'<figcaption class="l-cap">The {_dash(term)} term&rsquo;s dates, and the next '
-            'term&rsquo;s first weeks after them, each from the document named under it. A step '
-            'marked <b>Usually</b> has no one date in those documents and is described as it '
-            'usually falls. A season that is over is folded shut: open it to read its '
-            'dates.</figcaption></figure>')
+            f'<figcaption class="l-cap">{caption}</figcaption></figure>')
 
 
 def shape(today):
@@ -785,7 +907,7 @@ def now_html(term, today, here, bad=None):
     """Where Things Stand: the season the day falls in, the last landmark to
     have passed, and the next three dated steps. `here` is the page's own
     address, which an anchor needs under the template's <base href="/">."""
-    seasons = TERMS[term]
+    seasons = seasons_of(term)
     a, b = term.split("-")
     cur = term_of(today)
     words = {"term": _dash(term), "y1": a, "y2": b, "next": _dash(_next(term))}
@@ -827,13 +949,17 @@ def figures(today, root=Path(".")):
     import shell
     term, cur = shown_term(today)
     links = _addresses(root)
-    problems, _checked, _absent = verify(root)
+    problems, _checked, _absent = verify(root, terms=[term])
     bad = {key: why for key, why in problems if key.startswith(term + " |")}
     for key, why in bad.items():
         print(f"  learn/{SLUG}.html LEAVES OUT a date its document does not print: {key}: {why}")
     if cur != term:
         print(f"  learn/{SLUG}.html: no deadlines entered for the {cur} term; it shows "
               f"{term}'s (legislative_year.TERMS)")
+    elif not entered(term):
+        print(f"  learn/{SLUG}.html: the {term} term's printed deadlines are not entered "
+              "(legislative_year.TERMS); it shows the days the constitution fixes and the "
+              "usual pattern")
     here = shell.canon("/" + HREF)
     return {"year_now": now_html(term, today, here, bad),
             "year_shape": civics.wide(shape(today)),

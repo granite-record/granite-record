@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.616
+# GRANITE_VERSION: 2026-09-04.617
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -44207,8 +44207,10 @@ def _year_dates_sourced(legislative_year):
         if d.set != "status" and not (d.set in LY.ONE and d.day and d.number and d.path):
             bad.append(f"DOCS[{key!r}] lacks its set, date, number or text")
     n = 0
-    for term, seasons in LY.TERMS.items():
-        for s in seasons:
+    # Every term TERMS holds, and the skeleton the page draws for the term
+    # after them (legislative_year.skeleton), held to the same rules.
+    for term in LY.checked_terms():
+        for s in LY.seasons_of(term):
             for st in s.steps:
                 if not st.day:
                     if not st.when or st.cites or st.subs:
@@ -44230,7 +44232,7 @@ def _year_dates_sourced(legislative_year):
                         bad.append(f"{term} {st.name}: {name} ({day}) cites no document DOCS holds")
     assert not bad, "; ".join(bad[:5])
     rows = 0
-    for term in LY.TERMS:
+    for term in LY.checked_terms():
         a = int(term[:4])
         for day in (date(a, 3, 1), date(a + 1, 10, 1)):
             for cls, when, html_ in _year_steps(LY.timeline(term, day, {})):
@@ -44246,8 +44248,60 @@ def _year_dates_sourced(legislative_year):
                 if not when and "Usually" not in html_[:html_.find('<div class="l-tlb">')]:
                     bad.append(f"{term} on {day}: a row with no date does not say Usually")
     assert not bad, "; ".join(bad[:5])
-    return "ok", (f"{n} dated steps across {len(LY.TERMS)} term(s), each citing a document; "
-                  f"{rows} drawn rows, each dated over its source or marked Usually")
+    return "ok", (f"{n} dated steps across {len(LY.checked_terms())} term(s), each citing a "
+                  f"document; {rows} drawn rows, each dated over its source or marked Usually")
+
+
+@check("frontend", "the legislature's year is the term the day falls in, through the turn and "
+       "the years after it, with its fixed dates coming next, and nothing entered by hand",
+       needs=("legislative_year",))
+def _year_page_follows_the_turn(legislative_year):
+    """private/UNATTENDED_AUDIT_2026-10-18.md, section 2: TERMS held
+    2025-2026 alone, so from 2 December 2026 the page went on drawing that
+    term's dates under a note, and from 15 January 2027, its last step, Where
+    Things Stand had nothing coming next. A term TERMS does not hold is drawn
+    from legislative_year.skeleton: the four days the constitution fixes,
+    cited to the calendar that quotes the rule, and the rest as it usually
+    falls. Held on the first of every month from Organization Day 2026 to the
+    end of 2030: the page shows the term the day falls in; Where Things
+    Stand names something coming next, and the term's own words; the timeline
+    has one You Are Here; a skeleton's dated steps are all rule rows, on the
+    day their rule gives, citing a document DOCS holds, and its caption says
+    no calendar of the term has been read; and the term entered by hand still
+    draws its own dates."""
+    from datetime import date
+    LY = legislative_year
+    bad, days = [], [date(2026, 12, 2)] + [date(y, m, 1) for y in range(2027, 2031)
+                                           for m in range(1, 13)]
+    for day in days:
+        term, cur = LY.shown_term(day)
+        if term != cur or term != LY.term_of(day):
+            bad.append(f"{day}: the page shows {term}, and the day is in {cur}")
+            continue
+        now = LY.now_html(term, day, "/learn/x")
+        if "Coming next:" not in now:
+            bad.append(f"{day}: Where Things Stand names nothing coming next")
+        if f"has begun. Its deadlines are added here" in now:
+            bad.append(f"{day}: Where Things Stand says the dates below are another term's")
+        tl = LY.timeline(term, day, {})
+        if tl.count('l-tlnow"') != 1:
+            bad.append(f"{day}: {tl.count('l-tlnow')} You Are Here rows")
+        if not LY.entered(term):
+            if "No calendar of the" not in tl:
+                bad.append(f"{day}: the skeleton of {term} does not say no calendar has been read")
+            for s in LY.seasons_of(term):
+                for st in s.steps:
+                    if st.day and (st.rule not in ("org", "open") or not LY._rule_ok(st)
+                                   or any(doc not in LY.DOCS for doc, _d, _w in st.cites)):
+                        bad.append(f"{term} {st.name} ({st.day}): a skeleton's date that is "
+                                   "not a rule's, or not its rule's day, or cites no document")
+    held = sorted(LY.TERMS)[-1]
+    if not LY.entered(held) or LY.seasons_of(held) is not LY.TERMS[held]:
+        bad.append(f"{held}, entered by hand, is not drawn from TERMS")
+    assert not bad, "; ".join(bad[:5])
+    return "ok", (f"on {len(days)} days from 2 December 2026 to the end of 2030, the term the day "
+                  "falls in, something coming next and one You Are Here; a skeleton's dates are "
+                  f"its rules', and {held} still draws its own")
 
 
 @check("frontend", "the legislature's year puts You Are Here on the day the site was built",
@@ -44270,7 +44324,7 @@ def _year_here_follows_date(legislative_year, build_civics):
     import components
     days = [date(2024, 10, 1), date(2024, 12, 20), date(2025, 3, 27), date(2025, 9, 15),
             date(2026, 3, 26), date(2026, 8, 19), date(2026, 10, 17), date(2026, 12, 10),
-            date(2027, 2, 1)]
+            date(2027, 2, 1), date(2027, 9, 1), date(2028, 3, 1), date(2028, 12, 10)]
     bad = []
     for day in days:
         term, _cur = LY.shown_term(day)
