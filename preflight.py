@@ -30455,6 +30455,52 @@ def _how_to_moved():
                   f"{len(learn)} pages; {len(indep)} independent trackers after the General Court")
 
 
+@check("build", "the guide to touring the State House rests on the Visitor Center's Rules for Tours, "
+       "kept in git and read from the PDF, links the Visitor Center's page without asking it, and "
+       "names no member of its staff", needs=("guides", "civics"))
+def _tour_guide(G, civics):
+    """The person, 17 October 2026: a How-To guide to touring the State House
+    -- booking through the Visitor Center, as a school field trip, or as a
+    representative's guest -- from the Visitor Center's Rules for Tours, saved
+    in records/sources/. Every statement the guide takes from the rules is a
+    record claim on the PDF whose words pdfplumber finds in it; the PDF is
+    tracked, so the night and a fork read the same document; the Visitor
+    Center's page is one of guides.GENERAL_COURT_LINKS (linked, never asked);
+    visiting as a representative's guest, which the rules do not cover and
+    the person's notes do not describe, is only "contact them", with no claim
+    of practice; and the rules' director, named in them, is not."""
+    tour = next((g for g in G.GUIDES if g["slug"] == "tour-the-state-house"), None)
+    assert tour, "there is no guide to touring the State House"
+    pdf = "records/sources/state-house-visitor-center-rules-for-tours.pdf"
+    assert Path(pdf).is_file(), f"{pdf} is not here"
+    r = _run(["git", "ls-files", "--error-unmatch", pdf], capture_output=True, text=True, timeout=60)
+    assert r.returncode == 0, f"{pdf} is not tracked, so a fresh clone holds no document the guide rests on"
+    recs = [c for c in tour["claims"] if c.get("path")]
+    assert recs and all(c["path"] == pdf for c in recs), "a tour claim rests on another document"
+    assert pdf.startswith(G.RECORD_HOMES), "the Visitor Center's rules are not among the Court's documents"
+    faults, found, absent = G.claim_faults(tour)
+    assert not faults, "; ".join(faults[:3])
+    try:
+        import pdfplumber  # noqa: F401
+        assert found == len(recs) and not absent, f"{found} of {len(recs)} claims found in the PDF"
+    except ImportError:
+        pass
+    assert not any(c.get("observed") for c in tour["claims"]), \
+        "the tour guide states a practice the rules and the person's notes do not"
+    vc = civics.SRC_VISITOR_CENTER[1]
+    assert vc in G.GENERAL_COURT_LINKS and vc in G.outside(tour), \
+        "the Visitor Center's page is not linked, or not as one of the General Court's pages"
+    words = G.text(tour) + " ".join(label for label, _u in tour["sources"])
+    for who in ("Drew", "@leg.state.nh.us", "gencourt.state.nh.us"):
+        assert who not in words, f"the tour guide prints {who!r} from the rules"
+    assert "/guides/your-representatives.html" in words or any(
+        u == "/guides/your-representatives.html" for s in tour["steps"] for _l, u in s["actions"]), \
+        "the tour guide does not send a reader to their representative"
+    assert G.task_of("tour-the-state-house")[0] == "Visiting the State House", \
+        "the tour guide is not under Visiting the State House"
+    return "ok", f"{found} statements found in the Visitor Center's Rules for Tours; its page linked, not asked"
+
+
 @check("frontend", "a member's structured data names their party as the party names itself, and an independent none")
 def _ld_party():
     """The SEO review of 12 October 2026: 1,962 Person blocks said "D Party",

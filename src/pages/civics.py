@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.50
+# GRANITE_VERSION: 2026-09-08.51
 """
 The topics of the civics section: their order, their names, and their prose.
 
@@ -2692,6 +2692,10 @@ SRC_DOJ = ("New Hampshire Department of Justice", "https://www.doj.nh.gov")
 # of guides.GENERAL_COURT_LINKS, which check_civics_links.py asks after only
 # when a person starts it.
 SRC_GENERAL_COURT = ("The General Court", GC + "/")
+# The State House Visitor Center's own page, which the guide to touring the
+# State House links for arranging a tour (17 October 2026). Linked, never
+# fetched from here, for the same reason, and one of the same list.
+SRC_VISITOR_CENTER = ("State House Visitor Center", GC + "/nh_visitorcenter/")
 
 # THE RESOURCES HUB'S OFFICIAL SOURCES TAB: every outside source these pages
 # cite, grouped by who publishes it (the groups' names are the approved

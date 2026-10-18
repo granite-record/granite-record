@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-11.16
+# GRANITE_VERSION: 2026-10-11.17
 """
 The how-to guides: their words, their sources, and what each was checked
 against. Read by build_civics.py, which draws them on the Resources hub's
@@ -995,9 +995,13 @@ LMI = guide(
 # ---------------------------------------------------------------------------
 # The chambers' own guidance for the public, saved in records/sources/ under
 # the chamber's name, is the General Court's document as much as a calendar.
+# The State House Visitor Center is the General Court's too -- its page is on
+# gc.nh.gov -- and its Rules for Tours, saved as "state-house-..." on 17
+# October 2026, are the one document the guide to touring rests on.
 RECORD_HOMES = ("calendars/", "calendars_senate/", "journals/", "journals_senate/",
                 "legislation/", "bill_text/", "db/", "Members.txt",
-                "records/sources/senate-", "records/sources/house-")
+                "records/sources/senate-", "records/sources/house-",
+                "records/sources/state-house-")
 READ = "2026-10-17"   # the day these documents were read for the four guides below
 
 
@@ -1180,7 +1184,10 @@ SENATE_SIGNIN = civics.SRC_SENATE_TESTIFY[1]
 # 2026): a link to gc.nh.gov anywhere in the guides' part of the site is one
 # of these, so the one list says every address of the Court's this part
 # links and nothing here asks.
-GENERAL_COURT_LINKS = {HOUSE_SIGNIN, SENATE_SIGNIN, civics.SRC_GENERAL_COURT[1]}
+GENERAL_COURT_LINKS = {HOUSE_SIGNIN, SENATE_SIGNIN, civics.SRC_GENERAL_COURT[1],
+                       # The Visitor Center's page, for the guide to touring
+                       # the State House (17 October 2026).
+                       civics.SRC_VISITOR_CENTER[1]}
 
 # The rules both chambers work under in 2025-2026, which more than one guide
 # rests on. The Senate printed its rules whole on Organization Day 2022 and
@@ -2693,6 +2700,173 @@ GUIDES += [LICENSE, CAR, REAL_ID, NEW_RESIDENT, BENEFITS, UNEMPLOYMENT, RUN]
 
 
 # ---------------------------------------------------------------------------
+# TOURING THE STATE HOUSE (the person, 17 October 2026: a guide to touring
+# the State House -- booking through the Visitor Center, as a school field
+# trip, or as a representative's guest). It rests on one document, the State
+# House Visitor Center's Rules for Tours, which the person saved in
+# records/sources/ that day: its words are read from the PDF by pdfplumber at
+# every check, never from a copy typed out of it. The Visitor Center is the
+# General Court's -- its page is on gc.nh.gov and its director's address on
+# the legislature's mail -- so the PDF is one of the Court's own documents
+# (RECORD_HOMES). It is undated and written for school groups, so the guide
+# says the rules are the Visitor Center's as printed, and to check with it
+# when booking. Its page is linked, never fetched (GENERAL_COURT_LINKS). The
+# rules say nothing of visiting as a representative's guest, and the person's
+# notes say nothing of how that is done, so the guide says only to contact
+# your representative or senator, through the site's own guides to finding
+# and contacting them. The director's name and address, which the rules
+# print, are left out: the Visitor Center's number is the way in.
+# ---------------------------------------------------------------------------
+TOUR_RULES = "records/sources/state-house-visitor-center-rules-for-tours.pdf"
+TOUR_CITE = "State House Visitor Center, Rules for Tours (undated; saved October 17, 2026)"
+VISITOR_CENTER = civics.SRC_VISITOR_CENTER[1]
+
+
+def tour(says, words):
+    """A claim on the Visitor Center's Rules for Tours."""
+    return record(says, TOUR_CITE, TOUR_RULES, words, READ)
+
+
+TOUR = guide(
+    "tour-the-state-house", "How to Tour the New Hampshire State House",
+    "Arranging a tour of the State House in Concord through its Visitor Center, bringing a class "
+    "on a field trip, and what to expect on the day.",
+    "The State House Visitor Center in Concord schedules tours of the State House for groups, "
+    "school classes among them, and a tour is generally an hour. To arrange one, call the Visitor "
+    "Center at (603) 271-2154. Before a class visits, share the Visitor Center&rsquo;s rules for "
+    "tours with every adult coming: arrive on time, leave backpacks behind, and bring no food, "
+    "drink or gum. To visit with your own representative or senator, contact them directly.",
+    [box("Call the Visitor Center to arrange a tour for your group or class."),
+     ask("Bringing a class?",
+         [("Yes", "Share the rules for tours with every adult, and plan chaperones, lunches and "
+                  "your arrival."),
+          ("No", "Ask the Visitor Center what your group needs to know.")]),
+     box("On the day, arrive on time, and let the Visitor Center know you are there before the "
+         "group comes in."),
+     box("The tour takes about an hour, and may change around what is happening in the building "
+         "that day.")],
+    [step("Arrange the tour",
+          "<p>The State House Visitor Center schedules the tours, many groups each day. Call it at "
+          "(603) 271-2154 to ask for a date and with any question, or start from its page.</p>"
+          "<p>To visit with your own representative or senator, contact them directly. Finding "
+          "your representatives says who they are, and How to contact your legislators how to "
+          "reach them.</p>",
+          actions=[("State House Visitor Center", VISITOR_CENTER),
+                   ("Find your representatives", "/guides/your-representatives.html"),
+                   ("Contact your legislators", "/guides/contact-your-legislators.html")],
+          note="The rules in this guide are the Visitor Center&rsquo;s own, as its Rules for "
+               "Tours prints them. That document carries no date, so ask the Visitor Center "
+               "about anything that matters to your visit when you book."),
+     step("Before a class visits",
+          "<p>The Visitor Center asks you to print its rules for tours and share them with every "
+          "adult who will be touring. Among them:</p><ul>"
+          "<li><b>Keep to your times.</b> Plan to arrive and leave at your scheduled times; tours "
+          "are generally one hour. If you will be more than 10 minutes early or late, call the "
+          "Visitor Center at 271-2154.</li>"
+          "<li><b>Chaperones.</b> Bring no more than four per class, and tell them the class "
+          "tours as one large group rather than in smaller ones.</li>"
+          "<li><b>No backpacks.</b> If your group brings lunches, the Visitor Center will store "
+          "them.</li>"
+          "<li><b>Dress.</b> Students are encouraged to dress up for the visit, but it is not "
+          "required.</li>"
+          "<li><b>The gift shop.</b> To visit it with your group, arrange it in advance.</li></ul>"),
+     step("On the day",
+          "<ul><li><b>Check in first.</b> Do not bring the group into the building until someone "
+          "from the Visitor Center knows you have arrived: it is a security precaution.</li>"
+          "<li><b>The way in.</b> Groups enter by the front doors, into the Hall of Flags, a "
+          "memorial hall near committee hearing rooms where meetings may be under way.</li>"
+          "<li><b>No food, drink or gum</b> unless medically necessary, and hats off inside. "
+          "The rules apply to the adults too.</li>"
+          "<li><b>A working building.</b> State officials and staff are at work, so remind "
+          "students to whisper.</li>"
+          "<li><b>Cameras.</b> Only adults use cameras.</li>"
+          "<li><b>Restrooms</b> are available, and students must be supervised. If students need "
+          "the restroom before the tour begins, tell the Visitor Center right away.</li></ul>"),
+     step("What you may see",
+          "<p>Senators and representatives are told of your visit in the House and Senate "
+          "Calendars, and they often try to meet the students. The tour includes the "
+          "Governor&rsquo;s Office, and the Governor sometimes meets groups when the schedule "
+          "allows; the Visitor Center asks that students not be told they will.</p>"
+          "<p>Rallies, press conferences, bill signings, a session of the House or Senate and "
+          "other events can change the tour, and at times the legislative or executive chambers "
+          "are closed to the public. The Calendar here shows the week&rsquo;s hearings and "
+          "session days.</p>",
+          actions=[("This week's calendar", "/calendar.html")])],
+    [("Rules for Tours, required reading for a State House tour, undated (New Hampshire State "
+      "House Visitor Center)", ""),
+     civics.SRC_VISITOR_CENTER,
+     ("Finding Your Representatives", "/guides/your-representatives.html"),
+     ("How to Contact Your Legislators", "/guides/contact-your-legislators.html"),
+     ("The Calendar", "/calendar.html")],
+    [],
+    [tour("The Visitor Center schedules many groups each day; tours are generally one hour.",
+          ["We schedule many groups each day", "Tours are generally ONE HOUR"]),
+     tour("Questions go to the Visitor Center at (603) 271-2154.",
+          ["Any questions or concerns contact", "or call (603) 271-2154"]),
+     tour("Read and print the rules, and share them with every adult touring.",
+          ["REQUIRED READING FOR YOUR STATE HOUSE TOUR", "Please read and print out!",
+           "Share this information with ALL adults who will be touring the State House"]),
+     tour("Arrive and leave at the scheduled times; more than 10 minutes early or late, notify "
+          "the Visitor Center at 271-2154.",
+          ["plan to arrive and leave at your scheduled times",
+           "IF you are going to be more than 10 minutes early or late, NOTIFY the Visitor Center "
+           "@ 271-2154"]),
+     tour("At most four chaperones per class; the class travels as one large group.",
+          ["We ask you limit the number of chaperones to 4 per class",
+           "we travel as one large group"]),
+     tour("No backpacks; lunches are stored in the Visitor Center.",
+          ["No BACK PACKS Please!",
+           "If your group is bringing lunches we will store them in the Visitor Center"]),
+     tour("Students are encouraged to dress up, but it is not required.",
+          "Students should be encouraged to dress up for their special visit, but not required"),
+     tour("A visit to the gift shop needs prior arrangements.",
+          "if you wish to have your group visit the gift shop, you must make prior arrangements"),
+     tour("The group does not enter until the Visitor Center knows it has arrived, a security "
+          "precaution.",
+          ["Do not bring group into the building until someone from the Visitor Center has been "
+           "notified of your arrival", "This is a security precaution"]),
+     tour("Groups enter by the front doors into the Hall of Flags, a memorial hall near committee "
+          "hearing rooms where there may be meetings.",
+          ["Groups will enter the front doors which open into the historic Hall of Flags",
+           "This room is a memorial hall and is also located near committee hearing rooms",
+           "there may be meetings in these rooms"]),
+     tour("No food, drink or gum unless medically necessary; hats off; the rules apply to adults.",
+          ["No Food, Drink, or Gum unless medically necessary", "Remove hats inside the building",
+           "the rules regarding food, drink and hats apply to them too"]),
+     tour("A working building: officials and staff are working, so students whisper.",
+          ["The State House is a working building",
+           "remind students state officials and staff are working"]),
+     tour("Only adults use cameras.", "We ask that only adults use cameras"),
+     tour("Restrooms are available but supervised; a need before the tour is told right away.",
+          ["Bathrooms are available but must be supervised",
+           "If your students need the restroom before the tour begins, notify us right away"]),
+     tour("Legislators are notified of the visit in the House and Senate Calendars and often try "
+          "to meet the students.",
+          ["Senators & Representatives are notified of your visit in the House and Senate "
+           "Calendars", "legislators often try to meet the students"]),
+     tour("The Governor's Office is in the tour; the Governor may meet groups when the schedule "
+          "permits; students are not to be told they will.",
+          ["Office is included in the tour", "schedule permits, he often tries to meet groups",
+           "Please do NOT tell your students they will be seeing him"]),
+     tour("Rallies, events, sessions, press conferences and bill signings can change a tour; the "
+          "chambers are at times unavailable to the public.",
+          ["Rallies, political events, legislative session, press conferences, bill signings and "
+           "other activities may be scheduled on the date of your tour",
+           "there are times that the legislative or executive chambers may be unavailable to the "
+           "public"]),
+     ours("Finding Your Representatives names who represents a town.",
+          "/guides/your-representatives.html", READ),
+     ours("How to Contact Your Legislators says how to reach them.",
+          "/guides/contact-your-legislators.html", READ),
+     ours("The Calendar shows the week's hearings and session days.", "/calendar.html", READ)],
+    see=[("Finding your representatives", "/guides/your-representatives.html"),
+         ("How to contact your legislators", "/guides/contact-your-legislators.html"),
+         ("How to attend and speak at a public hearing", "/guides/attend-a-hearing.html")])
+
+GUIDES += [TOUR]
+
+
+# ---------------------------------------------------------------------------
 # THE GUIDES BY TASK (the person, 17 October 2026: "refine how the how to
 # guides are displayed on the main resources page and the homepage so it's
 # more intuitive for the general public"). A reader arrives with something to
@@ -2772,6 +2946,10 @@ TASKS = [
         task("vital-records", "Get a birth, death, marriage or divorce certificate",
              "From your town or city clerk or the state: who may ask and what to bring."),
     ]),
+    ("Visiting the State House", [
+        task("tour-the-state-house", "Tour the State House",
+             "Arrange a visit through the Visitor Center, bring a class, and know what to expect."),
+    ]),
 ]
 MORE = "More Guides"
 
@@ -2829,6 +3007,8 @@ WORDS = {
     "public-records": ("right to know", "91-a", "records request", "foia"),
     "vital-records": ("birth certificate", "death certificate", "marriage certificate",
                       "divorce certificate"),
+    "tour-the-state-house": ("tour", "visit the state house", "field trip", "school trip",
+                             "visitor center"),
 }
 
 
