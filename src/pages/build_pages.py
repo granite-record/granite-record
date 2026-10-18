@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.214
+# GRANITE_VERSION: 2026-09-04.215
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -2417,9 +2417,23 @@ window.addEventListener("popstate",()=>{
 # THE OLD PAGE'S TOWNS TAB IS MY TOWN. /legislators#towns arrives here as
 # /officials#towns through the 301, and the tab it named is #my-town now: the
 # address is rewritten before TABS_JS reads it, without a history entry.
+# AND STATEWIDE OFFICIALS IS EXECUTIVE BRANCH (17 October 2026). The tab was
+# renamed and its address with it, and a link already made to
+# /officials#statewide must still open it, so the old address is rewritten
+# the same way -- at load, and on a hashchange too, because this listener is
+# added before TABS_JS's and so runs first, and a link to #statewide from the
+# page itself then opens the tab rather than nothing.
 OFFICIALS_HASH_JS = """<script>
-if(location.hash==="#towns"&&history.replaceState)
-  history.replaceState(null,"",location.pathname+location.search+"#my-town");
+(function(){
+  var OLD={"#towns":"#my-town","#statewide":"#executive"};
+  function alias(){
+    var to=OLD[location.hash];
+    if(to&&history.replaceState)
+      history.replaceState(null,"",location.pathname+location.search+to);
+  }
+  alias();
+  addEventListener("hashchange",alias);
+})();
 </script>"""
 
 # THE DISTRICT MAP ON MY TOWN (map v1, src/pages/map.js, the person's label
@@ -2448,7 +2462,7 @@ OFFICIALS_MAP_JS = """<link rel="stylesheet" href="/map.css">
   });
 })();
 // THE CHOSEN TAB IN VIEW. Below 1024px the strip scrolls, so an address
-// naming the fourth or fifth tab (/officials#statewide) opened it with its
+// naming the fourth or fifth tab (/officials#executive) opened it with its
 // tab half past the strip's edge; the strip is moved to show it, at load and
 // whenever a tab is chosen, and the page itself does not move.
 (function(){
@@ -3683,13 +3697,16 @@ the House does.</p>
     # October 2026, item 4, and decision 127; the approved drawing is
     # private/design/polish/proto/officials.html): My Town (the town finder
     # and the district map), Legislators (the roster, as it was), Federal
-    # Delegation, Statewide Officials and County Officials (officials_tabs,
-    # from corrections/officials.json, read and never written). State
-    # Agencies and Courts come after the soft launch. The strip, the panels
-    # and the script are still the town pages' (build_town_pages.TABS_JS):
+    # Delegation, Executive Branch, Judicial Branch and County Officials
+    # (officials_tabs, from corrections/officials.json, read and never
+    # written). Executive Branch was Statewide Officials until 17 October
+    # 2026, when the person approved the rename, the department heads inside
+    # it and a thin Judicial Branch tab beside it. The strip, the panels and
+    # the script are still the town pages' (build_town_pages.TABS_JS):
     # without JavaScript every panel is on the page under its own heading;
     # with it, a panel's id is its address (/officials#federal), and the old
-    # page's #towns opens My Town.
+    # page's #towns opens My Town, as the old #statewide opens Executive
+    # Branch (OFFICIALS_HASH_JS).
     import officials_tabs as OT
     try:
         off = json.loads(Path("corrections/officials.json").read_text(encoding="utf-8"))
@@ -3699,8 +3716,23 @@ the House does.</p>
         officers = json.loads((out / "officers.json").read_text(encoding="utf-8")).get("officers")
     except (OSError, ValueError, AttributeError):
         officers = []
+    # A DEPARTMENT HEAD THE SITE ALREADY HAS (17 October 2026): the hand file
+    # names a former member's page under `member`, and the head is drawn as
+    # that member's chip only where the build has the page -- a sitting
+    # member's, or one in former.json, which build_legislator_pages writes a
+    # page for. A name it does not find is drawn plain, and said here, so a
+    # renamed page does not quietly lose its link.
+    try:
+        gone = json.loads((out / "former.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        gone = []
+    member_pages = {str(m.get("slug")) for m in [*legs, *gone] if m.get("slug")}
+    for r in (off.get("department_heads") or {}).get("departments") or []:
+        if r.get("member") and r["member"] not in member_pages:
+            print(f"  officials.html: {r.get('name')}'s member page {r['member']} is not in "
+                  "this build; drawn as a plain name")
     today = build_date.today().isoformat()
-    # THE SIXTH TAB, MEMBERS-ELECT (the person's decisions of 16 October
+    # THE LAST TAB, MEMBERS-ELECT (the person's decisions of 16 October
     # 2026): who November's election sent, from site/members_elect.json alone
     # (build_members_elect.for_pages), between the election and Organization
     # Day. With no file the tab and its panel are not drawn and the page is
@@ -3743,7 +3775,9 @@ ward</a>.</p></noscript>
          + (('<div class="comp-wrap"><h2>Who holds the seats</h2>' + static_bar("S")
              + static_bar("H") + vacancies + "</div>") if C else "")),
         ("federal", "Federal Delegation", OT.count(off, "federal"), OT.federal(off)),
-        ("statewide", "Statewide Officials", OT.count(off, "statewide"), OT.statewide(off)),
+        ("executive", "Executive Branch", OT.count(off, "executive"),
+         OT.executive(off, member_pages.__contains__)),
+        ("judicial", "Judicial Branch", OT.count(off, "judicial"), OT.judicial(off)),
         # #counties, not #county: the roster's By county button is tab-county.
         ("counties", "County Officials", OT.count(off, "county"), OT.county(off, legs)),
         # "Members-Elect (N)", N the winners the file names: a race not

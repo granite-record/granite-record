@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.71
+# GRANITE_VERSION: 2026-09-04.72
 """
 Write a real address for every bill, and the sitemap that points at them.
 
@@ -204,13 +204,25 @@ def static_record(b, d, data_url=None):
     # that chapter: a chapter the statute table does not hold, or a build
     # with no statute table at all.
     am = d.get("amends") or {}
-    if am:
+    # AND A CACR'S ARTICLES OF THE CONSTITUTION (17 October 2026), as the
+    # app's summary says them (app.js constLine), each to its article on the
+    # Laws page's Constitution tab.
+    con = [x for x in d.get("constitution") or [] if x.get("href") and x.get("label")]
+    if am or con:
         def law(r, u):
             h = law_href(r)
             return (f'<li><a href="{E(h)}">{E(r)}</a></li>' if h
                     else f'<li><a href="{E(u)}" rel="noopener">{E(r)}</a></li>')
+
+        def article(x):
+            a = f'<a href="{E(x["href"])}">{E(x["label"])}</a>'
+            if x.get("verb") == "insert_after":
+                return f"<li>A new article of the state Constitution, after {a}</li>"
+            if x.get("verb") == "reenact_part":
+                return f"<li>{a} of the state Constitution, rewritten</li>"
+            return f"<li>{a} of the state Constitution</li>"
         out.append("<h2>Laws It Would Change</h2><ul>" + "".join(
-            law(r, u) for r, u in am.items() if u) + "</ul>")
+            law(r, u) for r, u in am.items() if u) + "".join(article(x) for x in con) + "</ul>")
     rel = d.get("related") or []
     if rel:
         out.append("<h2>Related Bills</h2><ul>" + "".join(

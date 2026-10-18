@@ -1,0 +1,19 @@
+# Source: https://www.nh.gov/glance/state-constitution
+# Read: 2026-10-17, in the built-in browser; curl with the project's agent was answered 403 by the host.
+# Body: the page's own words, then its list of the Constitution's pages: each link's words and address, as read.
+State Constitution
+Established October 31, 1783 to take effect June 2, 1784 as subsequently amended and in force.
+Part First – Bill of Rights
+Bill of Rights | https://www.nh.gov/glance/state-constitution/bill-rights
+Part Second – Form of Government
+General Court | https://www.nh.gov/glance/state-constitution/general-court
+House of Representatives | https://www.nh.gov/glance/state-constitution/house-representatives
+Senate | https://www.nh.gov/glance/state-constitution/senate
+Executive Power – Governor | https://www.nh.gov/glance/state-constitution/executive-power-governor
+Council | https://www.nh.gov/glance/state-constitution/council
+Secretary, Treasurer, Etc. | https://www.nh.gov/glance/state-constitution/secretary-treasurer-etc
+County Treasurer, Etc. | https://www.nh.gov/glance/state-constitution/county-treasurer-etc
+Judiciary Power | https://www.nh.gov/glance/state-constitution/judiciary-power
+Clerk of Courts | https://www.nh.gov/glance/state-constitution/clerk-courts
+Encouragement of Literature, Trade, Etc. | https://www.nh.gov/glance/state-constitution/encouragement-literature-trade-etc
+Oaths and Subscriptions Exclusion from Offices, Etc. | https://www.nh.gov/glance/state-constitution/oaths-and-subscriptions-exclusion-offices-etc

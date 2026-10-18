@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-16.4
+# GRANITE_VERSION: 2026-10-16.5
 """
 Who November's election sent to the General Court, for the weeks before they sit.
 
@@ -39,9 +39,12 @@ reopen:
   3. A LINK ONLY ON A CERTAIN MATCH. A stranger's record under a
      member-elect's name is worse than a missing link (member_links.py says
      why, from the two Patrick Longs). A winner is linked to a page only as
-     a sitting member in the same seat, or as exactly one former member of
-     that name whose recorded county is the race's; anything less is drawn
-     unlinked and printed here for the person to settle in the hand file.
+     a sitting member in the same seat, as exactly one former member of
+     that name whose recorded county is the race's, or -- widened at the
+     person's word on 17 October 2026, after the 2024 test -- as the one
+     sitting member of exactly that name, who ran for another seat
+     (auto_link and moved() say on what); anything less is drawn unlinked
+     and printed here for the person to settle in the hand file.
   4. A RACE COUNTS AS FINAL once posted and past its recount deadline, or
      once its recount result is out. The deadline is the person's to enter
      in the hand file ("recount_deadline", the last day a recount may be
@@ -167,9 +170,15 @@ RESULTS_RE = re.compile(r"^election_(\d{4})\.json$")
 KEY_RE = re.compile(r"^(?:H\|([^\W\d_]+)\|([1-9]\d*)|S\|([1-9]\d*))$")
 DAY_RE = re.compile(r"^\d{4}-\d\d-\d\d$")
 
-# A SUFFIX ON ONE SIDE ONLY IS NOT A MATCH. member_links.surname strips Jr.,
-# Sr. and the numerals, so "John Smith Jr." and "Smith, John" read as one
-# name -- which they are not, where a father and a son have both sat.
+# A SUFFIX ON ONE SIDE ONLY IS PASSED OVER; TWO THAT DIFFER ARE NOT A MATCH.
+# Until 17 October 2026 a suffix on one side alone refused the link, and the
+# 2024 test showed what that cost: four members re-elected to their own seats
+# were printed with a suffix their record does not carry ("Dick H. Thackston
+# III", "James W. Tierney Jr.", "Charles R. Melvin Sr.", "Thomas L. Kaczynski
+# Jr."), and all four went to the person, who widened the rule. A father and a
+# son who have both sat still part: written each with his own suffix they
+# differ, and written without one both answer to the name, and two records
+# answering is never a link (suffixes_agree).
 SUFFIX = re.compile(r"\b(jr|sr|ii|iii|iv)\b\.?", re.I)
 # The words that begin a surname of more than one and never end a first name:
 # "Charlie St. Clair" is St. Clair, not Clair, and a record of a "Clair,
@@ -303,6 +312,38 @@ def known_first(a, b):
     name that fits only that way goes to the person."""
     xa, xb = first_names(a), first_names(b)
     return bool(xa & xb) or any(SHORT.get(x) == y or SHORT.get(y) == x for x in xa for y in xb)
+
+
+def seat_first(a, b):
+    """known_first, or a first name of four letters or more that the other
+    begins with and runs on from by two letters or more: the rule for the
+    seat's one sitting member of that surname, and for nobody else.
+
+    Widened at the person's word on 17 October 2026, after the 2024 test.
+    Three members re-elected to their own seats were printed under the start
+    of the first name their record gives ("Chris Herbert" for Christopher,
+    "Greg Hill" for Gregory, "Doug Thomas" for Douglas), which no list of
+    short forms will ever hold whole. Four letters and never three, because
+    three is Joe and Joelle, Pat and Patricia: the pages the review of 16
+    October found a bare prefix taking. And two letters more, not one,
+    because a name with one letter added is most often another person's name
+    -- Louis and Louise, Paul and Paula, Robert and Roberta -- and that
+    review held Louis Andrus off Rep. Louise Andrus's page."""
+    if known_first(a, b):
+        return True
+    for x in first_names(a):
+        for y in first_names(b):
+            short, full = sorted((x, y), key=len)
+            if len(short) >= 4 and len(full) >= len(short) + 2 and full.startswith(short):
+                return True
+    return False
+
+
+def suffixes_agree(a, b):
+    """No suffix on one side, or the same on both (the SUFFIX rule above):
+    "Dick H. Thackston III" and "Thackston, Dick" agree; "John Smith Jr."
+    and "Smith, Sr., John" do not."""
+    return not a or not b or a == b
 
 
 def reading_order(raw):
@@ -546,11 +587,21 @@ def seat_of(m):
 
 class People:
     """The sitting and former members, read for matching: by seat and by
-    surname, each row with its name's readings."""
+    surname, each row with its name's readings; and the election's ballot,
+    every candidate of every race, winning or not, by surname (ballot_of)."""
 
-    def __init__(self, sitting, former):
+    def __init__(self, sitting, former, ballot=()):
         self.by_id, self.by_seat = {}, defaultdict(list)
         self.by_sur = {"sitting": defaultdict(list), "former": defaultdict(list)}
+        # The ballot is read for one rule, moved(): a sitting member who ran
+        # for another seat links only where no other candidate answers to
+        # their name. Without it that rule cannot be certain, and refuses.
+        self.ballot, self.on_ballot = defaultdict(list), set()
+        for key, name in ballot or ():
+            self.on_ballot.add((key, name))
+            rd, _sfx = readings(name)
+            for sur in {s for s, _f in rd}:
+                self.ballot[sur].append((key, name, rd))
         for kind, rows in (("sitting", sitting), ("former", former)):
             for m in rows or []:
                 rd, sfx = readings(m.get("name"))
@@ -572,6 +623,23 @@ class People:
                 out.setdefault(p["id"], p)
         return list(out.values())
 
+    def rivals(self, p, but):
+        """The candidates on the ballot but `but` (race, name) who answer to
+        member `p`'s name even loosely (member_links.same_first), each once."""
+        out = {}
+        for s, _f in p["readings"]:
+            for key, name, rd in self.ballot.get(s, []):
+                if (key, name) != but and answers(p, rd):
+                    out.setdefault((key, name), None)
+        return list(out)
+
+
+def ballot_of(results):
+    """[(race, name), ...]: every candidate the results file names, in every
+    race, winning or not, for People's ballot."""
+    return [(key, str(c.get("name"))) for key, r in (results.get("races") or {}).items()
+            for c in (r or {}).get("candidates") or [] if str(c.get("name") or "").strip()]
+
 
 def who(p):
     return f"{p['label']} [{p['id']}]"
@@ -581,8 +649,9 @@ def auto_link(key, name, people, races):
     """(the member a winner is, "") on a certain match, or (None, why not).
 
     1. Sitting, same seat: the same surname and the same first name, or a
-       short form member_links.SHORT lists for it (known_first) -- and, where
-       two members of the seat share the surname (Hillsborough 1's two
+       short form member_links.SHORT lists for it, or a first name of four
+       letters or more the other begins with (seat_first) -- and, where two
+       members of the seat share the surname (Hillsborough 1's two
        Mannions), the same first name.
     2. Former, returning: no sitting member of that name anywhere, and
        exactly one former record that answers to the name even loosely, whose
@@ -591,39 +660,46 @@ def auto_link(key, name, people, races):
        county" is the person's rule (16 October 2026), and the plan's rule 2
        says the same first name: Bob is not certainly that Robert, and Don
        was Donna Sytek.
-    Never linked by rule: a first name that fits only as the start of the
-    other (Pat, Patricia); a sitting member of that name in another seat or
-    chamber; a Jr. or Sr. on one side only; a former member with no county;
-    and a changed surname, which reads as a new person. Where the rule
-    refuses, the test that refuses is the loose one, same_first: what might
-    be somebody else is enough to send a name to the person."""
+    3. Sitting, another seat: the one sitting member of exactly that name,
+       moved from the House, and no other candidate who answers to it
+       (moved(), widened at the person's word on 17 October 2026).
+    In each, a Jr., Sr. or numeral on one side only is passed over, and two
+    that differ are no match (suffixes_agree; 17 October 2026).
+    Never linked by rule: a first name that fits only by three letters, or
+    by one letter more (Pat, Patricia; Louis, Louise); a sitting member of
+    that name in another seat by a short form, or as a senator; a former
+    member with no county; and a changed surname, which reads as a new
+    person. Where the rule refuses, the test that refuses is the loose one,
+    same_first: what might be somebody else is enough to send a name to the
+    person."""
     rd, sfx = readings(name)
     if not rd:
         return None, "no surname could be read from the name"
     surs = {s for s, _f in rd}
     seat = [p for p in people.by_seat.get(key, [])
             if surs & {s for s, _f in p["readings"]}]
-    fits = [p for p in seat if answers(p, rd, first_equal if len(seat) > 1 else known_first)]
+    fits = [p for p in seat if answers(p, rd, first_equal if len(seat) > 1 else seat_first)]
     if len(fits) > 1:
         return None, (f"{len(fits)} sitting members of {race_words(key)} answer to that name: "
                       + ", ".join(who(p) for p in fits))
     if fits:
         p = fits[0]
-        if p["sfx"] != sfx:
-            return None, f"a Jr. or Sr. on one side only: {who(p)} sits for {race_words(key)}"
+        if not suffixes_agree(p["sfx"], sfx):
+            return None, (f"a Jr. or Sr. on each side, and not the same one: {who(p)} sits for "
+                          f"{race_words(key)}")
         return p, ""
     near = [p for p in seat if answers(p, rd)]
     if near and len(seat) > 1:
         return None, (f"{len(seat)} sitting members of {race_words(key)} share the surname, and "
                       "the name fits only by a short form: " + ", ".join(who(p) for p in near))
     if near:
-        return None, ("the first name fits only as the start of the sitting member's, which may "
-                      f"be somebody else's (Pat is Patrick or Patricia): {who(near[0])} sits for "
+        return None, ("the first name fits only as the start of the sitting member's, by three "
+                      "letters or one letter more, which may be somebody else's (Pat is Patrick "
+                      f"or Patricia, Louis is not Louise): {who(near[0])} sits for "
                       f"{race_words(key)}")
     elsewhere = [p for p in people.named("sitting", rd) if p["seat"] != key and answers(p, rd)]
     if elsewhere:
-        return None, ("a sitting member of that name holds another seat: "
-                      + ", ".join(who(p) for p in elsewhere))
+        return moved(key, name, rd, sfx, elsewhere, people)
     former = [p for p in people.named("former", rd) if answers(p, rd)]
     if not former:
         return None, NEW
@@ -642,8 +718,76 @@ def auto_link(key, name, people, races):
     if p["county"] not in races[key]["counties"]:
         return None, (f"the one former member of that name sat in {p['county']}, not in "
                       f"{race_words(key)}'s county: {who(p)}")
-    if p["sfx"] != sfx:
-        return None, f"a Jr. or Sr. on one side only: {who(p)}"
+    if not suffixes_agree(p["sfx"], sfx):
+        return None, f"a Jr. or Sr. on each side, and not the same one: {who(p)}"
+    return p, ""
+
+
+def moved(key, name, rd, sfx, elsewhere, people):
+    """(the sitting member, "") where a winner of race `key` is the one
+    sitting member of exactly their name, who ran for another seat; or
+    (None, why not). `elsewhere` is every sitting member of another seat who
+    answers to the name even loosely.
+
+    WIDENED AT THE PERSON'S WORD ON 17 OCTOBER 2026. Until then a sitting
+    member of the name in another seat sent the winner to the person every
+    time, and in 2024 that was eleven members who had moved. Ten link now --
+    three representatives elected to the Senate, and seven to another House
+    district of their own county -- on every one of these, and the eleventh,
+    "Pat Long" for Rep. Patrick Long, does not, by the second:
+
+      - exactly one sitting member, anywhere, answers to the name even
+        loosely, by a short form or the start of the first name, and no
+        former member does, as rule 2 asks of a former member that no
+        sitting one answer: a former namesake might be the winner, coming
+        back, while the sitting one retired;
+      - their first name and surname are the winner's letter for letter
+        (first_equal: "Richard R. Brown" is Richard, the initial no part of
+        it), and a suffix agrees (suffixes_agree);
+      - the move is from the House, either to another House district of the
+        member's own county, or to the Senate, whose districts may cross a
+        county line, so that there the name and its being the only one
+        decide. A senator elected to another seat is the person's to settle;
+      - and no other candidate on the ballot, in any race, winning or not,
+        answers to that member's name even loosely. In 2024 Rep. Patrick
+        Long ran for Senate 20 as "Pat Long" while a first-term Patrick N.
+        Long won Hillsborough 26, in the county Rep. Long sat for: the exact
+        name was the stranger's, and only the ballot shows there were two.
+        So where the ballot was not given, the rule cannot know, and does
+        not link."""
+    if len(elsewhere) > 1:
+        return None, ("two or more sitting members of that name hold other seats: "
+                      + ", ".join(who(p) for p in elsewhere))
+    p = elsewhere[0]
+    there = p["seat"] or ""
+    namesakes = [f for f in people.named("former", rd) if answers(f, rd)]
+    if namesakes:
+        return None, ("a sitting member of that name holds another seat, and a former member "
+                      f"answers to it too: {who(p)}; "
+                      + ", ".join(f"{who(f)} ({f['county'] or 'no county'})" for f in namesakes))
+    if not answers(p, rd, first_equal):
+        return None, ("a sitting member of that name holds another seat, and the first name is "
+                      f"theirs only by a short form or its start: {who(p)}")
+    if not suffixes_agree(p["sfx"], sfx):
+        return None, (f"a sitting member of that name holds another seat, with a Jr. or Sr. not "
+                      f"the winner's: {who(p)}")
+    if not there:
+        return None, f"a sitting member of that name has no seat on record: {who(p)}"
+    if not there.startswith("H|"):
+        return None, ("a sitting senator of that name, elected to another seat, which is the "
+                      f"person's to settle: {who(p)}")
+    county = KEY_RE.match(key).group(1)
+    if county and county != there.split("|")[1]:
+        return None, (f"a sitting member of that name sits for {race_words(there)}, in another "
+                      f"county than {race_words(key)}: {who(p)}")
+    if (key, name) not in people.on_ballot:
+        return None, ("a sitting member of that name holds another seat, and the ballot was not "
+                      f"read to show they are the one candidate of it: {who(p)}")
+    rivals = people.rivals(p, (key, name))
+    if rivals:
+        return None, ("another candidate on the ballot answers to the name of the sitting member "
+                      f"this might be, {who(p)}: "
+                      + ", ".join(f"{n} ({race_words(k)})" for k, n in rivals))
     return p, ""
 
 
@@ -667,7 +811,7 @@ def members_elect(results, sitting, former, districts, hand, today):
     what the person is to read, on the build's day `today`. Pure: nothing is
     read or written here."""
     on_file, clash = races_on_file(districts)
-    people = People(sitting, former)
+    people = People(sitting, former, ballot_of(results))
     pending = recount_open(today, hand.get("recount_deadline"), results.get("election"))
     report = {"unlinked": [], "new": [], "short": [], "notes": list(clash), "pending": pending}
     races_in = results.get("races") or {}

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.61
+# GRANITE_VERSION: 2026-09-08.62
 """
 The civics section: a hub and one page per topic, in order.
 
@@ -41,7 +41,9 @@ from collections import Counter
 import build_date
 import civics
 import components as C
+import constitution_tab as CT
 import guides as G
+import parse_constitution as PCON
 import learn_numbers
 import legislative_year
 import proceedings as P
@@ -1739,17 +1741,22 @@ def main():
     # Learn's own pages walk their order with Previous and Next; the three
     # that became guides (civics.HOW_TO) are written at /guides/<slug> with a
     # way back to every guide instead.
+    # AN ARTICLE A PAGE CITES OPENS ON THE LAWS PAGE (17 October 2026): "Part
+    # Second, Article 44" becomes a link to that article's text on the
+    # Constitution tab, wherever the Constitution as read holds it.
+    con = PCON.load()
     learn = learn_topics(topics)
     for t in topics:
         moved = t["slug"] in civics.HOW_TO
-        secs = split_sections(suffixed(fill(t["body"], figures), names),
+        secs = split_sections(CT.link_citations(suffixed(fill(t["body"], figures), names), con),
                               article_href(t["slug"]))
         # A LIMIT STATED PLAINLY closes the page's last section of prose --
         # In the Record where the page has one, which is where it says what
         # this site holds.
         if t.get("holds"):
             sid, h, c = secs[-1]
-            secs[-1] = (sid, h, c + f'<p class="l-note">{suffixed(fill(t["holds"], figures), names)}</p>')
+            secs[-1] = (sid, h, c + f'<p class="l-note">'
+                        f'{CT.link_citations(suffixed(fill(t["holds"], figures), names), con)}</p>')
         # THE GUIDES THAT DO WHAT THE PAGE EXPLAINS, before its sources.
         lis = "".join(
             f'<li><a href="{E(guide_href(s_))}">{G.task_of(s_)[1]["does"]}</a></li>'

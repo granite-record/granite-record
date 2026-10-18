@@ -27,6 +27,14 @@ edited by hand or rewritten by a build; a correction goes in `corrections/`.
   and are not tracked. Also the Senate's Public Guidance for Committee
   Meetings of September 7, 2021, which `src/pages/guides.py` cites for how
   the Senate takes sign-ins, written testimony and requests to speak.
+- `sources/constitution/` -- the state Constitution as nh.gov publishes it:
+  the portal's list of its pages (`index.txt`) and one file a page, Part First
+  and Part Second's eleven divisions. The host refuses a script, so each page was
+  read in a browser on 17 October 2026 and is saved as the page's own data
+  held it -- not byte for byte -- under a comment giving the address, the day
+  and the sha256 of what follows. Read by `src/parse/parse_constitution.py`
+  into `collected/constitution.json`; saved again by a person when an
+  amendment is ratified.
 - `docket_abbrev.json` -- the General Court's own key to its docket's
   abbreviations, copied verbatim; read by `src/parse/referrals.py`.
 

@@ -12,7 +12,7 @@ it is, what it is for and how an entry is added.
 | `place_corrections.json` | a polling place the Secretary of State's list states wrongly, and the second source | `src/towns/parse_clerks_csv.py` |
 | `bill_notes.json` | what a recurring bill number means: HB 1 has been the budget since 1993 | `src/pages/build_site_v2.py` |
 | `ballot_results.json` | the statewide vote on each constitutional amendment, from the source each row names | `src/pages/build_site_v2.py`, `learn_numbers.py`, `build_exports.py` |
-| `officials.json` | the Governor, the Executive Councillors and the members of Congress, from four official sources | `src/pages/build_town_pages.py` |
+| `officials.json` | the Governor, the Executive Councillors and the members of Congress, from four official sources; since October 2026 also the Secretary of State, the State Treasurer, the Attorney General, the county officers, the heads of the executive departments and the Supreme and Superior Courts' justices, each with the page it was read from | `src/pages/build_town_pages.py`, `src/pages/officials_tabs.py` |
 | `members_elect.json` | who a general election's winners are where the name alone cannot say, which races are not final, and a winner held off the pages | `src/parse/build_members_elect.py` |
 | `status/status.txt` | the state of the session -- session days, deadlines, sine die -- which no published file carries | `src/pages/build_site_v2.py` |
 | `status/officials.txt` | the Governor and the Executive Council, for the status box | `src/pages/build_site_v2.py` |

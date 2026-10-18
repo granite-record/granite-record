@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.51
+# GRANITE_VERSION: 2026-09-08.52
 """
 The topics of the civics section: their order, their names, and their prose.
 
@@ -1575,7 +1575,8 @@ BODY_CONSTITUTION = """
 still in force anywhere. It is in two parts. <b>Part First</b> is the Bill of
 Rights &mdash; thirty-odd articles on what the state may not do. <b>Part
 Second</b> is the Form of Government: the House, the Senate, the Governor, the
-Council, the courts, and how each is chosen.</p>
+Council, the courts, and how each is chosen. The whole text, article by
+article, is on <a href="/laws#constitution">the Laws page</a>.</p>
 
 <h2>It Is Not Amended the Way Statutes Are</h2>
 <p>A statute changes when a bill passes both chambers and the Governor signs

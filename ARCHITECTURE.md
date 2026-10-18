@@ -1746,11 +1746,17 @@ after the election and before Organization Day (`proceedings.organization_day`)
 and `site/meta.json`'s newest term is the one before theirs; otherwise the
 step removes it and says why, so they retire on their own, and
 `src/checks/check_site.py` refuses a file still there on its `takes_office`. A winner is
-linked to a page only as the seat's sitting member (the same first name, or a
-short form `member_links.SHORT` lists) or as the one former member of the same
-name whose county is the race's; a first name that fits only as the start of
-another (Pat, Patricia) never links, and anything less than certain is drawn
-unlinked and printed for the person. A race is final once its results are
+linked to a page only as the seat's sitting member (the same first name, a
+short form `member_links.SHORT` lists, or -- widened by the person on 17
+October 2026 -- a first name of four letters or more the other runs on from by
+two or more, Chris for Christopher), as the one former member of the same name
+whose county is the race's, or, widened the same day, as the one sitting member
+of exactly that name who moved from the House to another district of their
+county or to the Senate, where no other candidate on the ballot answers to
+them; a Jr. or Sr. on one side only is passed over. A first name that fits
+only by three letters or one more (Pat, Patricia; Louis, Louise) never links,
+and anything less than certain is drawn unlinked and printed for the person.
+A race is final once its results are
 posted and the recount deadline has passed -- the person enters the deadline
 in the hand file, and until the build's day is past it every race is drawn
 not final -- or once the results mark it recounted. And whatever the pages
@@ -1785,8 +1791,11 @@ and a Totals row, and the Senate file, a sheet for one to three districts.
 It refuses a header, place or seat count it does not recognise, holds every
 column to the file's own Totals and every race to the district table's
 seats and towns, and reads which districts float from the file's own towns,
-because the printed "FL" mark was wrong four times in 2024. The files mark
-no winner, so a race's top counts win and a tie for the last seat is null.
+because the printed "FL" mark was wrong four times in 2024, flagging the mark
+rather than refusing it. The files mark no winner, so a race's top counts win
+and a tie for the last seat is null; a write-in the file does not name who
+may have won is refused, and a county's file saved again under a higher
+upload number, as after a recount, is read in place of the earlier.
 `src/parse/score_members_elect.py` replays the rule on 2024 as of Election
 Day -- sitting and former members from the roll calls before it, each at the
 seat its term's bills printed -- and holds every link to the 2025-2026 roll

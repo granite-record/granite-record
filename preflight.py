@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.608
+# GRANITE_VERSION: 2026-09-04.611
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -35387,6 +35387,172 @@ def _rsa_landing(B, RSA, S):
                   "in 1973 and 373 moved to RSA 246, in words")
 
 
+@check("build", "the Constitution as nh.gov publishes it: every article of the saved pages read, numbered as the "
+       "Constitution numbers them, each page's own list accounted for, and collected/constitution.json what the "
+       "saved pages give", needs=("parse_constitution",))
+def _constitution_read(PC):
+    """The person, 17 October 2026: "Can you fetch the constitution at least
+    so we can present that on the laws page". Read that day in a browser,
+    since the host refuses a script, and saved in records/sources/constitution/
+    with each page's sha256; parse_constitution reads them.
+
+    WHAT IS HELD. The saved pages are what was read (parse refuses a page whose
+    body's sha256 differs from its header). The committed file is what they
+    give, so an edit to either alone fails here. Every entry of every page's
+    own list is an article read, and the one article read that no list names
+    is Part Second's 26, which the Senate page holds and does not list. No
+    number is missing from 1 to 39 or 1 to 101, and the lettered articles are
+    the Constitution's. The three repairs are each held to what they found:
+    Article 50 out of 49-a's row with 49-a's date, Article 61 read from "6l",
+    and Article 71's 1792 and 1877 notes apart."""
+    con = PC.parse()
+    assert PC.OUT.is_file(), ("collected/constitution.json is missing: python3 src/parse/parse_constitution.py "
+                              "writes it from records/sources/constitution/")
+    want = json.dumps(con, ensure_ascii=False, indent=1) + "\n"
+    assert PC.OUT.read_text(encoding="utf-8") == want, (
+        "collected/constitution.json is not what records/sources/constitution/ gives: run "
+        "python3 src/parse/parse_constitution.py and commit the file")
+    assert con["counts"] == {"part1": 44, "part2": 112}, f"the articles read per part: {con['counts']}"
+    lost = [(t["file"], t["listed_not_found"]) for t in con["toc"] if t["listed_not_found"]]
+    assert not lost, f"a page lists articles the reading did not find: {lost}"
+    unlisted = [(t["part"], k) for t in con["toc"] for k in t["not_listed"]]
+    assert unlisted == [(2, "26")], f"articles read that no page's own list names: {unlisted}"
+    listed = sum(len(t["listed"]) for t in con["toc"])
+    assert listed + len(unlisted) == 156, f"{listed} listed and {len(unlisted)} unlisted, against 156 read"
+    assert PC.gaps(con) == {1: [], 2: []}, f"article numbers missing: {PC.gaps(con)}"
+    arts = PC.articles(con)
+    top = {p: max(int(a["num"]) for q, a in arts if q == p) for p in (1, 2)}
+    assert top == {1: 39, 2: 101}, f"the last article of each part: {top}"
+    lettered = {p: [a["key"] for q, a in arts if q == p and a["letter"]] for p in (1, 2)}
+    assert lettered == {1: ["2-a", "2-b", "12-a", "28-a", "36-a"],
+                        2: ["5-a", "5-b", "6-a", "6-b", "9-a", "11-a", "18-a", "26-a", "49-a", "72-a", "73-a"]}, \
+        f"the lettered articles: {lettered}"
+    by = {a["anchor"]: a for _, a in arts}
+    assert len(by) == len(arts) == 156, "two articles share an anchor"
+    assert all(a["text"] for a in by.values()), "an article read with no text"
+    assert by["part2-art49-a"]["notes"] == ["November 28, 1984"], by["part2-art49-a"]["notes"]
+    assert by["part2-art50"]["text"][0].startswith("The governor, with advice of council"), \
+        "Article 50 is not read out of 49-a's row"
+    assert by["part2-art61"]["title"] == "Vacancies, How Filled, if No Choice", "Article 61 is not read from 6l"
+    assert len(by["part2-art71"]["notes"]) == 4, f"Article 71's notes run together: {by['part2-art71']['notes']}"
+    gone = sorted((p, a["key"]) for p, a in arts if a["repealed"])
+    assert len(gone) == 11 and (2, "10") in gone and (2, "99") in gone, f"the repealed articles: {gone}"
+    return "ok", (f"{con['counts']['part1']} articles in Part First and {con['counts']['part2']} in Part "
+                  f"Second from {len(con['toc'])} pages, {listed} on their own lists and Part Second 26 not; "
+                  f"{len(con['repairs'])} repairs said")
+
+
+@check("build", "the Laws page has a Constitution tab: every article under its own anchor with a link to itself, "
+       "a lead saying what it is and when nh.gov's text was read, and an address naming an article opens it",
+       needs=("build_rsa", "constitution_tab", "parse_constitution", "rsa", "shell"))
+def _constitution_tab(B, CT, PC, RSA, S):
+    """The person, 17 October 2026: the Constitution "on the laws page,
+    possibly on its own tab". The statutes stay the first tab and read as
+    they did; the Constitution is the second, laid out as a statute chapter
+    is, each article at /laws#part1-art2-a and each part at /laws#part1.
+    Without collected/constitution.json the page is built as it was, with no
+    tabs. And the site the fixture builds -- build_rsa's main(), not only
+    this function -- carries the tab with all 156 articles."""
+    con = PC.load()
+    assert con, "collected/constitution.json is not on this disk"
+    data = {"bills": {}, "statute": {}, "enacted": {}, "asof": {"laws_through": 2025}}
+    t = _rsa_fixture_table(RSA)
+    page = B.landing_page(S.template(Path("site")), t, data, "https://graniterecord.org", {}, {}, con=con)
+    assert 'role="tablist"' in page and page.index('id="tab-statutes"') < page.index('id="tab-constitution"'), \
+        "the Laws page has no tabs, or the Constitution is not the second"
+    assert 'id="constitution" role="tabpanel"' in page and 'id="statutes" role="tabpanel"' in page
+    panel = page[page.index('id="constitution" role="tabpanel"'):]
+    missing, unlinked = [], []
+    for p, a in PC.articles(con):
+        if panel.count(f'id="{a["anchor"]}"') != 1:
+            missing.append(a["anchor"])
+        if f'href="/laws#{a["anchor"]}"' not in panel:
+            unlinked.append(a["anchor"])
+    assert not missing, f"articles not on the tab once under their anchor: {missing[:8]}"
+    assert not unlinked, f"articles with no link to themselves: {unlinked[:8]}"
+    assert panel.count('class="rs-sec cn-art"') == 156, panel.count('class="rs-sec cn-art"')
+    assert 'id="part1"' in panel and 'id="part2"' in panel, "a part has no anchor"
+    assert "read on October 17, 2026" in panel and 'href="https://www.nh.gov/glance/state-constitution"' in panel, \
+        "the lead does not say when nh.gov's text was read, or does not link it"
+    assert "Includes changes through 2025" in page, "the statutes' own lead is gone from their tab"
+    # An address naming an article, not a panel, opens the panel that holds it.
+    assert 'closest(".twnpane")' in CT.TABS_JS and "scrollIntoView" in CT.TABS_JS, \
+        "an address naming an article does not open the Constitution tab"
+    bare = B.landing_page(S.template(Path("site")), t, data, "https://graniterecord.org", {}, {}, con={})
+    assert 'role="tablist"' not in bare and 'id="lw"' in bare, "without the file the page is not the one it was"
+    css = Path("src/pages/app.css").read_text(encoding="utf-8")
+    assert ".cn-notes{" in css and ".lw-tabs{" in css, "app.css has no rules for the Constitution tab"
+    absent = [x for x in CHAIN_NEEDS + ["build_rsa.py"] if not _paths.locate(x).exists()]
+    if absent:
+        return "ok", "the tab held; the fixture site was not built: not here, " + ", ".join(absent)
+    shared, _base, _ran, _days = _fixture_site_shared()
+    built = (shared / "site" / "laws.html").read_text(encoding="utf-8")
+    assert 'id="tab-constitution"' in built and built.count('class="rs-sec cn-art"') == 156, (
+        "the fixture's laws.html, as build_rsa's main() wrote it, has no Constitution tab of 156 articles")
+    return "ok", "156 articles on the second tab, each anchored and linked; the fixture's laws.html carries it"
+
+
+@check("build", "a CACR links the articles of the Constitution its own text says it changes, and a Learn page each "
+       "article it cites; nothing a clause does not say plainly",
+       needs=("parse_constitution", "constitution_tab", "build_site_v2", "build_bill_pages"))
+def _cacr_articles(PC, CT, BSV, BBP):
+    """The person, 17 October 2026: where the site shows a constitutional
+    amendment, link the article it would change when the CACR's text names
+    it, only where certain. Read from the resolving clauses, in the three
+    forms every CACR of 2025-2026 but one uses; that one (CACR 16, "That the
+    following new article of part I of the constitution after article 2-b:")
+    names nothing, and neither does the question put to the voters."""
+    con = PC.load()
+    assert con, "collected/constitution.json is not on this disk"
+
+    def got(s):
+        return [(x["verb"], x["part"], x["art"], x["href"]) for x in PC.cacr_targets(s, con)]
+
+    cases = (
+        ("I. That article 78 of the second part of the constitution be amended to read as follows:",
+         [("amend", 2, "78", "/laws#part2-art78")]),
+        ("I. That articles 41, 42, 49, and 49-a of the second part of the constitution be amended to read",
+         [("amend", 2, k, f"/laws#part2-art{k}") for k in ("41", "42", "49", "49-a")]),
+        ("II. That article 72-a of the second part of the constitution, relative to the supreme and superior "
+         "courts, be repealed.", [("repeal", 2, "72-a", "/laws#part2-art72-a")]),
+        ("I. That the first part of the constitution be amended by inserting after article 2-b the following new "
+         "article:", [("insert_after", 1, "2-b", "/laws#part1-art2-b")]),
+        ("I. That the first part of the constitution be repealed and reenacted to read as follows:",
+         [("reenact_part", 1, "", "/laws#part1")]),
+        ("I. That the following new article of part I of the constitution after article 2-b:", []),
+        ("I. That article 140 of the second part of the constitution be amended to read as follows:", []),
+        ("Are you in favor of amending article 78 of the second part of the constitution", []),
+    )
+    for text, want in cases:
+        assert got(text) == want, f"{text[:60]!r} read as {got(text)}"
+    src = Path("src/pages/build_site_v2.py").read_text(encoding="utf-8")
+    assert '{"constitution": c}' in src and 'bid.startswith("CACR")' in src, \
+        "a CACR's record does not carry the articles it changes"
+    assert BSV.constitution_targets("I. That article 78 of the second part of the constitution be amended")[0][
+        "label"] == "Part Second, Article 78"
+    rec = BBP.static_record({"id": "CACR9", "n": "CACR 9", "year": 2026},
+                            {"constitution": PC.cacr_targets(cases[0][0] + " " + cases[3][0], con)})
+    assert '<a href="/laws#part2-art78">Part Second, Article 78</a> of the state Constitution' in rec \
+        and "A new article of the state Constitution, after" in rec, "the page without scripts does not link them"
+    said = ""
+    app = _app_js('scope.constLine({constitution:[{verb:"amend",part:2,art:"78",href:"/laws#part2-art78",'
+                  'label:"Part Second, Article 78"},{verb:"insert_after",part:1,art:"2-b",href:"/laws#part1-art2-b",'
+                  'label:"Part First, Article 2-b"}]})', names=("constLine",))
+    if app is None:
+        said = "; node not here for app.js"
+    else:
+        assert ('Changes this article of the state Constitution: <a class="rsa" href="/laws#part2-art78">' in app
+                and "Adds a new article to the state Constitution, after" in app), f"app.js draws {app}"
+    learn = CT.link_citations('Part Second, Article 44 and Part II, Article 9; articles 71 and 81 of Part '
+                              'Second; Part Second, Article 140; <a href="x">Part First, Article 2</a>', con)
+    assert ('<a href="/laws#part2-art44">Part Second, Article 44</a>' in learn
+            and '<a href="/laws#part2-art9">Part II, Article 9</a>' in learn
+            and 'articles <a href="/laws#part2-art71">71</a> and <a href="/laws#part2-art81">81</a> of Part Second'
+            in learn and "Part Second, Article 140;" in learn and '<a href="x">Part First, Article 2</a>' in learn), \
+        f"the Learn pages' citations link as {learn}"
+    return "ok", f"{len(cases)} clauses read as they say, and no more; both bill pages and the Learn pages link{said}"
+
+
 @check("build", "a how-to guide is published only when every claim in it is checked, says when, "
        "and states no figure the plan forbids", needs=("build_civics", "guides", "guide_sources", "rsa", "shell"))
 def _guides_gate(BC, G, GS, RSA, S):
@@ -59976,14 +60142,17 @@ def _panes_into_view():
     return "ok", "both panes, on opening, and Follow's again when its email box arrives"
 
 
-@check("frontend", "the Officials page is five tabs, My Town, Legislators, Federal Delegation, "
-                   "Statewide Officials and County Officials, drawn as the town pages' tabs are")
+@check("frontend", "the Officials page is six tabs, My Town, Legislators, Federal Delegation, "
+                   "Executive Branch, Judicial Branch and County Officials, drawn as the town "
+                   "pages' tabs are")
 def _legislators_page_tabs():
     """The person's feedback of 9 October 2026, item 4, and decision 127: the
-    Legislators page is Officials, in five tabs -- My Town (the town finder and
-    the district map), Legislators (the roster), Federal Delegation, Statewide
-    Officials and County Officials -- the strip and the switching script the
-    town pages' (F5, 7 October 2026), as the page's two tabs were.
+    Legislators page is Officials, in tabs -- My Town (the town finder and
+    the district map), Legislators (the roster), Federal Delegation, Executive
+    Branch (Statewide Officials until the person's approval of 17 October
+    2026, which also added Judicial Branch beside it) and County Officials --
+    the strip and the switching script the town pages' (F5, 7 October 2026),
+    as the page's two tabs were.
 
     Read off the fixture's built page: one strip, written hidden for the
     script to show, with the five in that order, each panel under its own
@@ -60005,8 +60174,8 @@ def _legislators_page_tabs():
                      page), "the strip is not written hidden for the script to show"
     tabs = re.findall(r'role="tab" id="tab-([a-z-]+)" data-pane="([a-z-]+)"[^>]*>([^<]+)', strips[0])
     want = [("my-town", "My Town"), ("legislators", "Legislators"),
-            ("federal", "Federal Delegation"), ("statewide", "Statewide Officials"),
-            ("counties", "County Officials")]
+            ("federal", "Federal Delegation"), ("executive", "Executive Branch"),
+            ("judicial", "Judicial Branch"), ("counties", "County Officials")]
     assert [(t, n.strip()) for t, p, n in tabs if t == p] == want, f"the strip's tabs are {tabs}"
     panes = {}
     starts = [(page.index(f'<div class="twnpane" id="{pid}" role="tabpanel" '
@@ -60025,12 +60194,14 @@ def _legislators_page_tabs():
     assert 'id="roster"' in legs and 'id="lq"' not in legs, "the Legislators panel does not hold the roster"
     if 'class="comp-wrap"' in page:
         assert 'class="comp-wrap"' in legs, "who holds the seats is outside the Legislators panel"
-    # The other three are officials.json's people, each the one person chip.
+    # The other tabs' offices are officials.json's people, each the one
+    # person chip (the department heads and the judges are
+    # _officials_heads_and_judges's).
     import json as _json
     off = _json.loads(Path("corrections/officials.json").read_text(encoding="utf-8"))
     for pid, names in (("federal", [s["name"] for s in off["us_senate"]["seats"]]
                         + [r["name"] for r in off["us_house"]["districts"].values()]),
-                       ("statewide", [off["governor"]["name"]]
+                       ("executive", [off["governor"]["name"]]
                         + [r["name"] for r in off["council"]["districts"].values()]),
                        ("counties", [r["name"] for c in off["county"]["counties"].values()
                                    for r in c["commissioners"].values()])):
@@ -60108,10 +60279,167 @@ def _legislators_page_tabs():
     assert app.count(".twntabs{display:flex") == 1, "app.css draws the strip twice"
     assert app.index(".twntabs{display:flex") < app.index("/* SHARED:END"), (
         "the strip's rules are not in app.css's shared region")
-    return "ok", ("My Town, Legislators, Federal Delegation, Statewide Officials and County "
-                  "Officials, each a panel under its own heading, switched by the town pages' "
-                  "script and drawn by the same rules in both stylesheets; My Town the finder "
-                  "over its 260px window and the map under it; the officials as person chips")
+    return "ok", ("My Town, Legislators, Federal Delegation, Executive Branch, Judicial Branch "
+                  "and County Officials, each a panel under its own heading, switched by the "
+                  "town pages' script and drawn by the same rules in both stylesheets; My Town "
+                  "the finder over its 260px window and the map under it; the officials as "
+                  "person chips")
+
+
+@check("frontend", "the Statewide Officials tab is Executive Branch, /officials#statewide still "
+                   "opens it, and it says the legislature elects two of its officers")
+def _executive_branch_renamed():
+    """The person's approval of 17 October 2026: "rename the tab Executive
+    Branch with the note". Read off the fixture's built page: the tab and its
+    panel are #executive, labelled Executive Branch, and nothing on the page
+    still says Statewide Officials or carries the old id; the panel opens
+    with officials_tabs.CHOSEN_BY_LEGISLATURE, which cites the Constitution's
+    Part Second, Article 67 by its number. And the old address still opens
+    the tab: build_pages.OFFICIALS_HASH_JS, run in node against a stub
+    location, rewrites #statewide to #executive at load and on a hashchange
+    (and #towns to #my-town, as before), and leaves a live address alone.
+    Fails if the tab is named back, the line goes, or the alias does."""
+    import build_pages as BP
+    import officials_tabs as OT
+    import html as _html
+    shared, _base, _ran, _days = _fixture_site_shared()
+    page = (shared / "site" / "officials.html").read_text(encoding="utf-8")
+    assert "Statewide Officials" not in page and 'id="statewide"' not in page \
+        and 'data-pane="statewide"' not in page, "the page still names Statewide Officials"
+    assert re.search(r'role="tab" id="tab-executive" data-pane="executive"[^>]*>Executive Branch',
+                     page), "no Executive Branch tab at #executive"
+    start = page.index('<div class="twnpane" id="executive" role="tabpanel"')
+    pane = page[start:page.index('<div class="twnpane"', start + 1)]
+    line = OT.CHOSEN_BY_LEGISLATURE
+    assert "Secretary of State" in line and "Treasurer" in line and "legislature" in line \
+        and "Part Second, Article 67" in line, f"the note reads {line!r}"
+    assert re.match(r'<div class="twnpane" id="executive"[^>]*><h2 class="twnph">Executive Branch'
+                    r'</h2><div class="ofintro"><p class="ofwhy">' + re.escape(_html.escape(line))
+                    + r"</p></div>", pane), "the Executive Branch panel does not open with the note"
+    if not shutil.which("node"):
+        return "skip", "the tab and its note are in place; node is not installed to run the alias"
+    script = re.search(r"<script>(.*?)</script>", BP.OFFICIALS_HASH_JS, re.S)
+    assert script, "build_pages.OFFICIALS_HASH_JS carries no <script>"
+    probe = ("var L={},loc={pathname:'/officials',search:'',hash:'#statewide'};"
+             "global.location=loc;global.history={replaceState:function(s,t,u){"
+             "var i=u.indexOf('#');loc.hash=i<0?'':u.slice(i);}};"
+             "global.addEventListener=function(n,f){(L[n]=L[n]||[]).push(f);};"
+             + script.group(1) +
+             ";var out=[loc.hash];['#towns','#statewide','#federal'].forEach(function(h){"
+             "loc.hash=h;(L.hashchange||[]).forEach(function(f){f();});out.push(loc.hash);});"
+             "console.log(JSON.stringify(out));")
+    root = Path(tempfile.mkdtemp())
+    try:
+        (root / "probe.js").write_text(probe, encoding="utf-8")
+        r = _run(["node", "probe.js"], cwd=root, capture_output=True, text=True, timeout=60)
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    assert r.returncode == 0, f"the alias script does not run: {(r.stderr or r.stdout)[-200:]}"
+    got = json.loads(r.stdout.strip().splitlines()[-1])
+    assert got == ["#executive", "#my-town", "#executive", "#federal"], (
+        f"the old addresses go to {got}: #statewide at load, then #towns, #statewide and "
+        "#federal on a hashchange")
+    return "ok", ("#executive, labelled Executive Branch, under the note citing Part Second, "
+                  "Article 67; #statewide opens it at load and on a hashchange, #towns My Town")
+
+
+@check("frontend", "the Executive Branch's department heads and the Judicial Branch's justices "
+                   "are corrections/officials.json's, each with the page it was read from and "
+                   "the day it was read")
+def _officials_heads_and_judges():
+    """The person's approval of 17 October 2026: the commissioners compactly
+    inside Executive Branch, a thin Judicial Branch tab -- the Supreme and
+    Superior Courts listed, the Circuit Court by link -- both kept by hand.
+    In the hand file (corrections/officials.json, which no builder writes:
+    _record_untouched): every named department head and every justice carries
+    an https source and the ISO day it was read, a department head its
+    department's site, and a record with no name says why it has none; the
+    Supreme Court's note about its Chief Justice has its source too, and the
+    Circuit Court its own list of judges. On the fixture's built page: every
+    named head in the Executive Branch's table with its department linked to
+    its site, no row for a nameless one; every Supreme Court justice on the
+    neutral chip with their page; every Superior Court justice as a plain
+    name; the Circuit Court's line linking to its list; and each tab's count
+    the people it names. And a head the record ties to a member's page is
+    that member's chip, neutral, where the build has the page, and a plain
+    name where it has not."""
+    import officials_tabs as OT
+    import html as _html
+    off = json.loads(Path("corrections/officials.json").read_text(encoding="utf-8"))
+    dh = (off.get("department_heads") or {}).get("departments") or []
+    j = off.get("judicial") or {}
+    sup = (j.get("supreme_court") or {}).get("justices") or []
+    sop = (j.get("superior_court") or {}).get("justices") or []
+    cc = j.get("circuit_court") or {}
+    url = re.compile(r"https://\S+")
+    day = re.compile(r"\d{4}-\d{2}-\d{2}")
+    named = [r for r in dh if (r.get("name") or "").strip()]
+    assert len(named) >= 15, f"the hand file names {len(named)} department heads"
+    assert len(sup) >= 4 and len(sop) >= 15, (
+        f"the hand file names {len(sup)} Supreme Court and {len(sop)} Superior Court justices")
+    bad = []
+    for where, r in ([("department_heads", r) for r in named]
+                     + [("supreme_court", r) for r in sup] + [("superior_court", r) for r in sop]):
+        if not url.fullmatch(r.get("source") or ""):
+            bad.append(f"{where}: {r.get('name')} has no page it was read from")
+        if not day.fullmatch(r.get("read") or ""):
+            bad.append(f"{where}: {r.get('name')} has no day it was read")
+    for r in dh:
+        if not url.fullmatch(r.get("official_url") or ""):
+            bad.append(f"department_heads: {r.get('department')} has no site")
+        if r not in named and not (r.get("unread") or "").strip():
+            bad.append(f"department_heads: {r.get('department')} has no name and no reason why")
+    chief = (j.get("supreme_court") or {}).get("chief") or {}
+    if chief.get("text") and not (url.fullmatch(chief.get("source") or "")
+                                  and day.fullmatch(chief.get("read") or "")):
+        bad.append("the Supreme Court's note on its Chief Justice has no source or day")
+    if not (url.fullmatch(cc.get("judges_url") or "") and day.fullmatch(cc.get("read") or "")):
+        bad.append("the Circuit Court has no list of judges or no day it was read")
+    assert not bad, "; ".join(bad)
+    shared, _base, _ran, _days = _fixture_site_shared()
+    page = (shared / "site" / "officials.html").read_text(encoding="utf-8")
+
+    def pane(pid):
+        i = page.index(f'<div class="twnpane" id="{pid}" role="tabpanel"')
+        k = page.find('<div class="twnpane"', i + 1)
+        return page[i:k if k > 0 else len(page)]
+    exe, jud = pane("executive"), pane("judicial")
+    table = re.search(r'<table class="ofdepts">.*?</table>', exe, re.S)
+    assert table, "the Executive Branch draws no table of department heads"
+    rows = re.findall(r"<tr><td>(.*?)</td><td>(.*?)</td></tr>", table.group(0), re.S)
+    assert len(rows) == len(named), f"the table has {len(rows)} rows for {len(named)} named heads"
+    for (dept, who), r in zip(rows, named):
+        assert (f'href="{_html.escape(r["official_url"])}"' in dept
+                and _html.escape(r["department"]) in dept), (
+            f"{r['department']} is not linked to its site in its row")
+        assert _html.escape(r["name"]) in who and _html.escape(r["title"]) in who, (
+            f"{r['name']}, {r['title']}, is not in {r['department']}'s row")
+    for r in sup:
+        assert re.search(r'<span class="mchip p-X">' + re.escape(_html.escape(r["name"])) + "</span>",
+                         jud) and f'href="{_html.escape(r["official_url"])}"' in jud, (
+            f"Justice {r['name']} is not on the neutral chip with their page")
+    for r in sop:
+        assert f'<span class="ofname">{_html.escape(r["name"])}</span>' in jud, (
+            f"Justice {r['name']} of the Superior Court is not on the Judicial Branch tab")
+    assert f'href="{_html.escape(cc["judges_url"])}"' in jud, (
+        "the Circuit Court's line does not link to the court's own list of judges")
+    for pid, name in (("executive", "Executive Branch"), ("judicial", "Judicial Branch")):
+        n = OT.count(off, pid)
+        assert re.search(rf'id="tab-{pid}"[^>]*>{name} <span class="ofn">\({n:,}\)</span>', page), (
+            f"the {name} tab does not count its {n}")
+    assert n == len(sup) + len(sop), f"Judicial Branch counts {n} for {len(sup) + len(sop)} justices"
+    # A head the site has a page for is that member's chip, neutral; drawn
+    # plain where the build has no such page.
+    tied = [r for r in named if r.get("member")]
+    for r in tied:
+        chip = f'<span class="mchip p-X"><a href="legislator/{_html.escape(r["member"])}.html">'
+        assert chip in OT.executive(off, lambda s: True), f"{r['name']} is not their member chip"
+        assert chip not in OT.executive(off, lambda s: False), (
+            f"{r['name']} is linked to a member page the build does not have")
+    return "ok", (f"{len(named)} department heads and {len(sup) + len(sop)} justices, each with "
+                  f"its page and its day; {len(dh) - len(named)} nameless heads undrawn and "
+                  f"said why; the Circuit Court by its own list; {len(tied)} head drawn as "
+                  "the member the site has")
 
 
 @check("frontend", "the vacancy list says \"District\" and how a seat is filled, from RSA 661:8")
@@ -86089,18 +86417,21 @@ def _elect_links():
 def _elect_rule(BME):
     """The failure cases of the matching rule (private/MEMBERS_ELECT_PLAN.md),
     each sent to the report and never linked: a sitting member of that name in
-    another seat or chamber; a Jr. or Sr. on one side only, which
-    member_links.surname strips; a former member with no county, or of
-    another county; two of a surname in one seat, where the first names must
-    be equal and a short form does not do; a surname of two words read as
-    one ("St. Clair" is not "Clair"); a first name that fits only as the start
-    of the other's (Joelle for Joe, Pat for Patricia), in the seat or out of
-    it; a former member who fits only by a short form (Bob for Robert: the
-    person's rule says the same name, 16 October 2026); two former records
-    that answer to one name; and two winners taken to one member. And what
-    is certain links: the seat's member under a short form member_links.SHORT
-    lists, the name either way round, a suffix on both sides, a former
-    representative elected to a Senate district in the county he sat for."""
+    another seat where the ballot was not read; a Jr. and a Sr. on the two
+    sides; a former member with no county, or of another county; two of a
+    surname in one seat, where the first names must be equal and a short
+    form does not do; a surname of two words read as one ("St. Clair" is not
+    "Clair"); a first name that fits only as the start of the other's by
+    three letters or by one letter more (Joelle for Joe, Pat for Patricia,
+    Louis for Louise), in the seat or out of it; a former member who fits
+    only by a short form (Bob for Robert: the person's rule says the same
+    name, 16 October 2026); two former records that answer to one name; and
+    two winners taken to one member. And what is certain links: the seat's
+    member under a short form member_links.SHORT lists, the name either way
+    round, a suffix on both sides or -- since the person's widening of 17
+    October 2026 -- on one side only, a former representative elected to a
+    Senate district in the county he sat for. _elect_widened holds the
+    widenings on the 2024 names."""
     sitting = [
         {"id": "s1", "name": "Nelson, Jodi", "chamber": "H", "county": "Rockingham",
          "district": "13", "slug": "jodi-nelson-rock-13"},
@@ -86159,8 +86490,10 @@ def _elect_rule(BME):
     cases = [
         ("H|Rockingham|13", "Jodi Nelson", "s1", ""),
         ("H|Rockingham|13", "Nelson, Jodi", "s1", ""),
-        ("H|Rockingham|13", "Jodi Nelson Jr.", None, "Jr. or Sr."),
-        ("S|24", "Jodi Nelson", None, "holds another seat"),
+        # A suffix on one side only is passed over (17 October 2026), and a
+        # move to another seat links only where the ballot was read.
+        ("H|Rockingham|13", "Jodi Nelson Jr.", "s1", ""),
+        ("S|24", "Jodi Nelson", None, "the ballot was not read"),
         ("H|Hillsborough|1", "William Mannion", "s2", ""),
         ("H|Hillsborough|1", "Dennis Mannion", "s3", ""),
         ("H|Hillsborough|1", "Bill Mannion", None, "only by a short form"),
@@ -86178,8 +86511,9 @@ def _elect_rule(BME):
         ("S|24", "Robert Clegg", "f1", ""),
         ("H|Coos|1", "Robert Clegg", None, "sat in Rockingham"),
         ("S|9", "Sheila Roberge", None, "no county on record"),
-        ("H|Rockingham|13", "John Barnes", None, "Jr. or Sr."),
+        ("H|Rockingham|13", "John Barnes", "f3", ""),
         ("H|Rockingham|13", "John Barnes Jr.", "f3", ""),
+        ("H|Rockingham|13", "John Barnes Sr.", None, "Jr. or Sr. on each side"),
         ("H|Rockingham|13", "Charlie St. Clair", None, "sat in Belknap"),
         ("H|Belknap|5", "Charlie St. Clair", "f5", ""),
         ("S|24", "Rebecca Perkins Kwoka", "s4", ""),
@@ -86206,6 +86540,129 @@ def _elect_rule(BME):
     assert not bad, f"{len(bad)} of the rule's cases: " + "; ".join(bad)
     return "ok", (f"{len(cases)} names, each linked only where certain and otherwise put to the "
                   "person with why; two winners taken to one member, neither linked")
+
+
+def _elect_rep(mid, sur, first, county, n, chamber="H"):
+    """A sitting member's roster row, as much of it as the rule reads."""
+    return {"id": mid, "name": f"{sur}, {first}", "chamber": chamber, "county": county,
+            "district": str(n), "slug": f"{first}-{sur}-{n}".lower()}
+
+
+@check("build", "members-elect: the person's three widenings of 17 October 2026 link the 2024 "
+                "winners they were made for, and still not Joelle for Joe, Louis for Louise, Pat "
+                "Long, Patrick N. Long or a move the ballot does not settle",
+       needs=("build_members_elect",))
+def _elect_widened(BME):
+    """The 2024 test (score_members_elect) left 24 winners the record knew
+    for the person, and on 17 October 2026 the person widened the rule for
+    three kinds of them. Each case here is a real 2024 winner with the
+    sitting member's real id and seat as of that Election Day, so undoing a
+    widening fails on the names it was made for:
+
+      1. a Jr., Sr. or numeral on one side only is passed over: Thackston
+         III, Tierney Jr., Melvin Sr., Kaczynski Jr., each re-elected to
+         their own seat;
+      2. for the seat's own sitting member, a first name of four letters or
+         more that the other runs on from by two or more: Chris Herbert,
+         Greg Hill, Doug Thomas -- and never three letters (Joelle Alexander
+         is not Rep. Joe Alexander) or one letter more (Louis Andrus is not
+         Rep. Louise Andrus), and never for a member of another seat;
+      3. a sitting member who ran for another seat, on the exact name, the
+         one sitting member of it, from the House to another district of
+         their own county or to the Senate, with no other candidate on the
+         ballot answering to them: three senators-elect and seven
+         representatives-elect. Not Pat Long, elected senator, whose record
+         says Patrick; not the first-term Patrick N. Long, because "Pat Long"
+         was on the same ballot; not a move to another county, a senator's
+         move, or a name a former member answers to as well.
+
+    Joelle Alexander, Louis Andrus, the senator (a stand-in id), the former
+    namesake and the moves to another county or seat are made up; the rest
+    are the 2024 ballot's. Two different suffixes, one on each side, are
+    _elect_rule's John Barnes Sr."""
+    sitting = [
+        _elect_rep("6938", "Thackston", "Dick", "Cheshire", 12),
+        _elect_rep("8023", "Tierney", "James", "Coos", 1),
+        _elect_rep("8419", "Melvin", "Charles", "Rockingham", 20),
+        _elect_rep("915", "Kaczynski", "Thomas", "Strafford", 5),
+        _elect_rep("856", "Herbert", "Christopher", "Hillsborough", 24),
+        _elect_rep("943", "Hill", "Gregory", "Merrimack", 2),
+        _elect_rep("907", "Thomas", "Douglas", "Rockingham", 16),
+        _elect_rep("9165", "Alexander", "Joe", "Hillsborough", 29),
+        _elect_rep("9920", "Andrus", "Louise", "Merrimack", 5),
+        _elect_rep("10614", "Rochefort", "David", "Grafton", 1),
+        _elect_rep("488", "McConkey", "Mark", "Carroll", 8),
+        _elect_rep("5686", "McGough", "Tim", "Hillsborough", 12),
+        _elect_rep("10577", "Brown", "Richard", "Carroll", 3),
+        _elect_rep("10748", "Germana", "Nicholas", "Cheshire", 1),
+        _elect_rep("10620", "Sellers", "John", "Grafton", 18),
+        _elect_rep("9134", "Wilhelm", "Matthew", "Hillsborough", 40),
+        _elect_rep("10666", "Corcoran", "Travis", "Hillsborough", 44),
+        _elect_rep("502", "Boehm", "Ralph", "Hillsborough", 14),
+        _elect_rep("9919", "Berry", "Ross", "Hillsborough", 39),
+        _elect_rep("540", "Long", "Patrick", "Hillsborough", 23),
+        _elect_rep("s24", "Altschiller", "Debra", "Rockingham", 24, chamber="S")]
+    linked = [
+        # 1. A suffix on one side only.
+        ("H|Cheshire|12", "Dick H. Thackston III", "6938"),
+        ("H|Coos|1", "James W. Tierney Jr.", "8023"),
+        ("H|Rockingham|20", "Charles R. Melvin Sr.", "8419"),
+        ("H|Strafford|5", "Thomas L. Kaczynski Jr.", "915"),
+        # 2. The start of the first name, four letters or more, own seat.
+        ("H|Hillsborough|24", "Chris Herbert", "856"),
+        ("H|Merrimack|2", "Greg Hill", "943"),
+        ("H|Rockingham|16", "Doug Thomas", "907"),
+        ("H|Hillsborough|29", "Joe Alexander", "9165"),
+        ("H|Merrimack|5", "Louise Andrus", "9920"),
+        # 3. A move from the House, on the exact name.
+        ("S|1", "David Rochefort", "10614"),
+        ("S|3", "Mark McConkey", "488"),
+        ("S|11", "Tim McGough", "5686"),
+        ("H|Carroll|8", "Richard R. Brown", "10577"),
+        ("H|Cheshire|15", "Nicholas Germana", "10748"),
+        ("H|Grafton|10", "John Sellers", "10620"),
+        ("H|Hillsborough|21", "Matthew B. Wilhelm", "9134"),
+        ("H|Hillsborough|28", "Travis Corcoran", "10666"),
+        ("H|Hillsborough|38", "Ralph G. Boehm", "502"),
+        ("H|Hillsborough|44", "Ross Berry", "9919")]
+    # The ballot: those winners, the two Longs, and Dylan Germana, elected in
+    # Cheshire 1 the day Rep. Nicholas Germana moved out of it -- a surname
+    # on the ballot twice, which is not a rival where the first names part.
+    ballot = [(k, n) for k, n, _m in linked] + [
+        ("S|20", "Pat Long"), ("H|Hillsborough|26", "Patrick N. Long"),
+        ("H|Cheshire|1", "Dylan Germana")]
+    refused = [
+        ("H|Hillsborough|29", "Joelle Alexander", "only as the start"),
+        ("H|Merrimack|5", "Louis Andrus", "only as the start"),
+        ("H|Hillsborough|5", "Chris Herbert", "by a short form or its start"),
+        ("S|20", "Pat Long", "by a short form or its start"),
+        ("H|Hillsborough|26", "Patrick N. Long", "another candidate on the ballot answers"),
+        ("H|Rockingham|5", "Ross Berry", "in another county"),
+        ("H|Rockingham|20", "Debra Altschiller", "a sitting senator")]
+    keys = {k for k, *_x in linked + refused}
+    races = {k: {"counties": {k.split("|")[1]} if k.startswith("H|") else set()} for k in keys}
+    people = BME.People(sitting, [], ballot)
+    bad = []
+    for key, name, mid in linked:
+        p, why = BME.auto_link(key, name, people, races)
+        if (p or {}).get("id") != mid:
+            bad.append(f"{name} in {key} is not linked to {mid}: {why}")
+    for key, name, said in refused:
+        p, why = BME.auto_link(key, name, people, races)
+        if p or said not in why:
+            bad.append(f"{name} in {key}: {(p or {}).get('id')} ({why!r}), not refused for "
+                       f"{said!r}")
+    # A former member who answers to the name as well: the move is then the
+    # person's to settle, as a returning namesake might be the winner.
+    namesake = [{"id": "f1", "name": "Sellers, John", "chamber": "H", "county": "Grafton",
+                 "district": "9", "slug": "john-sellers-graf-9"}]
+    p, why = BME.auto_link("H|Grafton|10", "John Sellers",
+                           BME.People(sitting, namesake, ballot), races)
+    if p or "a former member answers to it too" not in why:
+        bad.append(f"John Sellers with a former namesake: {(p or {}).get('id')} ({why!r})")
+    assert not bad, f"{len(bad)} of the widened rule's cases: " + "; ".join(bad)
+    return "ok", (f"{len(linked)} real 2024 winners linked by the widened rule; {len(refused) + 1} "
+                  "kept for the person, Joelle Alexander, Louis Andrus and both Longs among them")
 
 
 @check("build", "members-elect: written only after the election and before Organization Day while "
@@ -86631,7 +87088,70 @@ def _elect_step_order(build_all):
 # collected/election_2024.json, and the rule, run as of that Election Day,
 # must link no winner to anyone but the person who took the seat. On 17
 # October 2026: 424 winners, 293 linked and every one right, none wrong, 131
-# left for the person -- 106 new, 24 the record knew, 1 who never sat.
+# left for the person -- 106 new, 24 the record knew, 1 who never sat. The
+# same day the person widened the rule for three kinds of the 24
+# (_elect_widened), and it links 310, still none wrong: 114 left, 7 of them
+# the record knew.
+
+@check("build", "members-elect: the results reader refuses a write-in winner the file does not "
+                "name, and reads a county's later upload in place of the earlier",
+       needs=("parse_sos_results",))
+def _elect_reader_decisions(PSR):
+    """The person's decisions of 17 October 2026 about parse_sos_results,
+    held without the saved files. A write-in winner the file does not name
+    is refused, not guessed: the scattered write-ins reaching the last
+    seat's votes is refused, one short of it is read, and a race whose file
+    counts none is read (and flagged by read_all, which _elect_2024_read_again
+    holds on Hillsborough 12). A recount's re-download replaces the county's
+    file: of a county's two uploads the later by the Secretary of State's
+    number is read and the earlier named, the unnumbered first of all; two
+    under one number are refused. (The third decision, that a printed
+    floterial mark the towns contradict is flagged and decides nothing, is
+    held on the four 2024 files that print one wrong, by
+    _elect_2024_read_again's comparison of _notes.)"""
+    cands = [{"name": "Ann Ames", "party": "r", "votes": 100, "write_in": False},
+             {"name": "Bo Bell", "party": "d", "votes": 90, "write_in": False}]
+    try:
+        PSR.elect(cands, 1, "a race", scatter=100)
+        raise AssertionError("scattered write-ins as many as the winner's 100 votes were read, "
+                             "where an unnamed write-in may have won")
+    except PSR.Refused as e:
+        assert "may have won" in str(e), f"refused, but not for the write-ins: {e}"
+    for scatter in (99, None):
+        got = PSR.elect(cands, 1, "a race", scatter=scatter)
+        assert [c["elected"] for c in got] == [True, False], (
+            f"with scatter {scatter} the count does not elect Ann Ames: {got}")
+    root = Path(tempfile.mkdtemp(prefix="gr-sos-files-"))
+    try:
+        d = root / PSR.SOURCES
+        d.mkdir(parents=True)
+        names = [f"2024-ge-house-{c}_0.xls" for c in PSR.COUNTIES if c not in ("belknap",
+                                                                                   "hillsborough")]
+        names += ["2024-ge-house-belknap.xls", "2024-ge-house-belknap_0.xlsx",
+                  "2024-ge-house-hillsborough_7.xls", "2024-ge-house-hillsborough_8.xls",
+                  "2024-ge-state-senate-district-1-24_4.xls"]
+        for n in names:
+            (d / n).write_bytes(b"")
+        got = PSR.source_files(root, 2024)
+        assert got["house"]["hillsborough"].name == "2024-ge-house-hillsborough_8.xls" and \
+            got["house"]["belknap"].name == "2024-ge-house-belknap_0.xlsx", (
+            f"the later uploads are not the ones read: {got['house']}")
+        pairs = sorted((a.name, b.name) for a, b in got["replaced"])
+        assert pairs == [("2024-ge-house-belknap.xls", "2024-ge-house-belknap_0.xlsx"),
+                         ("2024-ge-house-hillsborough_7.xls", "2024-ge-house-hillsborough_8.xls")], (
+            f"the files replaced are said as {pairs}")
+        (d / "2024-ge-house-hillsborough_8.xlsx").write_bytes(b"")
+        try:
+            PSR.source_files(root, 2024)
+            raise AssertionError("two Hillsborough files under one number, _8, were read")
+        except PSR.Refused as e:
+            assert "under one number" in str(e), f"refused, but not for the number: {e}"
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    return "ok", ("write-ins the file does not name, as many as the last seat's votes, refused; "
+                  "a county's later upload read in place of its earlier, two under one number "
+                  "refused")
+
 
 @check("data", "members-elect: the Secretary of State's 2024 results, read again, are "
                "collected/election_2024.json -- every column at the file's own Totals, every "
@@ -86675,9 +87195,12 @@ def _elect_2024_scored(SME):
     rule on the 2024 results, and holds every link to the 2025-2026 roll
     calls. A link to anyone but the person who took the seat fails: a
     stranger's record under a member-elect's name is worse than a missing
-    link (the person's rule, 16 October 2026). And so few links that the
-    rule has plainly stopped linking fails too -- silence is not success:
-    293 of 424 linked on 17 October 2026, and a floor well under that."""
+    link (the person's rule, 16 October 2026). And fewer links than the
+    widened rule made fails too -- silence is not success: 310 of 424 on
+    17 October 2026, 293 before the person's widening that day, and each of
+    the 17 it added by name, so that undoing one of the three fails on the
+    winners it was made for. Pat Long and Patrick N. Long, the two the
+    widening must not reach, must stay unlinked."""
     miss = SME.absent(".", 2024)
     if miss:
         return "skip", "not here: " + ", ".join(miss)
@@ -86691,9 +87214,29 @@ def _elect_2024_scored(SME):
     unread = [f"{r['race']} {r['name']} -> [{r['link']}]: {r['why_truth']}" for r in s["unverified"]]
     assert not unread, (f"{len(unread)} link(s) the next term's roll calls cannot confirm: "
                         + "; ".join(unread[:5]))
-    assert len(s["correct"]) >= 250, (
-        f"only {len(s['correct'])} of the 2024 winners link at all (293 on 17 October 2026): "
-        "the rule has stopped linking")
+    assert len(s["correct"]) >= 310, (
+        f"only {len(s['correct'])} of the 2024 winners link (310 on 17 October 2026, after the "
+        "person's widening): the rule links less than it did")
+    # THE WIDENING'S 17, BY NAME (17 October 2026): four by a suffix on one
+    # side, three by the start of the first name, ten moves from the House.
+    right = {(r["race"], r["name"]) for r in s["correct"]}
+    widened = [
+        ("H|Cheshire|12", "Dick H. Thackston III"), ("H|Coos|1", "James W. Tierney Jr."),
+        ("H|Rockingham|20", "Charles R. Melvin Sr."), ("H|Strafford|5", "Thomas L. Kaczynski Jr."),
+        ("H|Hillsborough|24", "Chris Herbert"), ("H|Merrimack|2", "Greg Hill"),
+        ("H|Rockingham|16", "Doug Thomas"),
+        ("S|1", "David Rochefort"), ("S|3", "Mark McConkey"), ("S|11", "Tim McGough"),
+        ("H|Carroll|8", "Richard R. Brown"), ("H|Cheshire|15", "Nicholas Germana"),
+        ("H|Grafton|10", "John Sellers"), ("H|Hillsborough|21", "Matthew B. Wilhelm"),
+        ("H|Hillsborough|28", "Travis Corcoran"), ("H|Hillsborough|38", "Ralph G. Boehm"),
+        ("H|Hillsborough|44", "Ross Berry")]
+    lost = [f"{n} ({k})" for k, n in widened if (k, n) not in right]
+    assert not lost, (f"{len(lost)} of the 17 winners the widening of 17 October 2026 linked are "
+                      "not linked rightly now: " + ", ".join(lost))
+    longs = [f"{r['name']} -> [{r['link']}]" for k in ("correct", "wrong", "unverified")
+             for r in s[k] if r["name"] in ("Pat Long", "Patrick N. Long")]
+    assert not longs, ("a Long is linked by the rule, which must leave both to the person (the "
+                       "two Patrick Longs of member_links.py): " + "; ".join(longs))
     left = sum(len(s[k]) for k in ("unlinked_known", "unlinked_new", "unlinked_unread"))
     return "ok", (f"{len(s['correct'])} linked, every one to the person who took the seat "
                   f"({s['kinds']['sitting']} sitting, {s['kinds']['former']} returning); "
