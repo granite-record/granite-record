@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.76
+# GRANITE_VERSION: 2026-09-04.77
 """
 The nightly run. Fetch the day's bulk files, rebuild, check, compile what
 readers reported and what changed -- and publish only if told to.
@@ -3351,25 +3351,38 @@ DOCKET_DATE = re.compile(r"(\d{1,2})/(\d{1,2})/(\d{4})\b")
 #   the session, 10 January to 30 June    7 days at the most: 7 to 14 May 2020;
 #                                         5 or 6 in four of the six terms, and
 #                                         5 in 2025-2026
-#   the interim, 1 July to 9 January      35 days at the most: 29 October to
-#                                         3 December 2020. 33 across the turn of
+#   the interim, 1 July to 9 January      42 days at the most: from 2015-2016's
+#                                         last line, of 28 October 2016, to
+#                                         2017-2018's first, Organization Day's
+#                                         of 9 December. 37 from 29 October to 5
+#                                         December 2018 and 36 from 1 November
+#                                         to 7 December 2022, the same way; and
+#                                         within a term 35, 29 October to 3
+#                                         December 2020, 33 across the turn of
 #                                         2014 into 2015, 32 across that of 2020
 #                                         into 2021 and 30 in August and
-#                                         September 2022; 12, 14 and 15 in the
-#                                         other three terms, 2025-2026 among them
+#                                         September 2022
 #
-# The turn of a term, Organization Day in early December to the first lines of
-# January, is the interim's: it stood still for 33 days into 5 January 2015
-# and 32 into 4 January 2021, and in the database's older dockets for 28 to 35
-# into 8 January 2003 at the latest, so the session is measured from 10
-# January. Set aside (STILL_SET_ASIDE): the nights of March and April 2020,
+# The turn of a term is the interim's, both halves of it. Until Organization
+# Day in early December the export's docket is the finished term's, whose last
+# line is of about 1 November, so a night of November reads a record that has
+# stood still for weeks and is ordinary: from one term's last line to the next
+# one's first it stood still for 42, 37, 36 and 34 days in the four elections
+# from 2016 to 2024 (still_ceilings measures that stretch where two terms on
+# disk follow one another). As first written, on 18 October 2026, each term
+# was measured alone, the figure was 35, and the turns of 2016, 2018 and 2022
+# would each have warned. And from Organization Day to the first lines of
+# January it stood still for 33 days into 5 January 2015 and 32 into 4 January
+# 2021, and in the database's older dockets for 28 to 35 into 8 January 2003
+# at the latest, so the session is measured from 10 January. Set aside
+# (STILL_SET_ASIDE): the nights of March and April 2020,
 # when the pandemic suspended the session and the record stood still for 17
 # and then 24 days. A warning on nights like those is true, and to count them
 # would have let a session go three weeks unwatched. The database's past view
 # (Docket_db_*.txt) is another source -- its 2015-2016 copy has a hole of 198
 # days -- and is not used. preflight holds STILL_DAYS to the export's finished
 # terms on disk (_still_days_from_history).
-STILL_DAYS = {"session": 7, "interim": 35}
+STILL_DAYS = {"session": 7, "interim": 42}
 STILL_SESSION = ((1, 10), (6, 30))                  # (month, day), from and to
 STILL_SAID = {"session": "from 10 January to 30 June", "interim": "from 1 July to 9 January"}
 STILL_SET_ASIDE = (("2020-03-01", "2020-04-30"),)
@@ -3487,18 +3500,31 @@ def still_ceilings(paths):
     nights STILL_SET_ASIDE leaves out not counted. A term's own span is from
     15 November before its first session year to the end of its second: a
     line dated years later, a correction to a finished term, does not end a
-    stretch it was never part of. HOW LONG IT MAY STAND STILL says what the
-    export's terms give."""
+    stretch it was never part of. And the turn of the term: where the next
+    term in `paths` follows on (its first session year the year after this
+    one's last), the stretch from this term's last line to that one's first
+    is the night's too, which read the finished term's docket until the new
+    one's first line (HOW LONG IT MAY STAND STILL says what the export's
+    terms give); a term with none on disk before it starts afresh."""
     from datetime import timedelta
     aside = [(date.fromisoformat(a), date.fromisoformat(b)) for a, b in STILL_SET_ASIDE]
     best = {"session": (0, None, None, None), "interim": (0, None, None, None)}
+    terms = []
     for p in paths:
         days, years = docket_dates(p)
         if not years:
             continue
         lo, hi = date(min(years) - 1, 11, 15), date(max(years), 12, 31)
         days = sorted(d for d in days if lo <= d <= hi)
-        for a, b in zip(days, days[1:]):
+        if days:
+            terms.append((min(years), max(years), str(p), days))
+    before = None                   # (last session year, last day) of the term before
+    for first, last, p, days in sorted(terms):
+        run = days
+        if before and before[0] + 1 == first and before[1] < days[0]:
+            run = [before[1]] + days
+        before = (last, days[-1])
+        for a, b in zip(run, run[1:]):
             d = a + timedelta(days=1)
             while d <= b:
                 if not any(x <= d <= y for x, y in aside):
@@ -3542,7 +3568,9 @@ def db_missed_of(prev, v, day):
     """Tonight's DB_MISSED: `prev`, the night before's, with tonight's
     pieces (`v`'s "study_meetings" and "term_data") folded in -- a piece
     taken (installed, or installed with no rows) let go, one not taken
-    counted, once a day, from the night it was first not taken."""
+    counted, once a day, from the night it was first not taken. It runs
+    outside not_moving's guard, in finish(), so a count carried that will not
+    read as a number is read as none rather than stopping the verdict."""
     out = {}
     if isinstance(prev, dict):
         out = {str(k): dict(r) for k, r in prev.items()
@@ -3557,10 +3585,18 @@ def db_missed_of(prev, v, day):
                 continue
             r = out.setdefault(str(piece), {"since": day, "nights": 0})
             if r.get("last") != day:
-                r["nights"] = int(r.get("nights") or 0) + 1
+                r["nights"] = _db_nights(r) + 1
                 r["last"] = day
             r.update(of=of, why=what[:200])
     return out
+
+
+def _db_nights(r):
+    """A DB_MISSED entry's count of nights; 0 where it will not read."""
+    try:
+        return max(0, int(r.get("nights") or 0))
+    except (TypeError, ValueError, OverflowError):
+        return 0
 
 
 def db_missed_said(rec):
@@ -3572,12 +3608,12 @@ def db_missed_said(rec):
     out = []
     for of, whose in (("term", "the current term's"), ("study", "the study committees'")):
         late = {p: r for p, r in rec.items() if isinstance(r, dict) and r.get("of") == of
-                and int(r.get("nights") or 0) >= DB_MISSED_NIGHTS}
+                and _db_nights(r) >= DB_MISSED_NIGHTS}
         if not late:
             continue
         names = sorted(late)
         since = min(str(r.get("since")) for r in late.values())
-        nights = max(int(r.get("nights") or 0) for r in late.values())
+        nights = max(_db_nights(r) for r in late.values())
         out.append((KIND_NOT_MOVING + f"{whose} data from the database",
                     f"{whose[0].upper()}{whose[1:]} {_and(names)} "
                     f"{'has' if len(names) == 1 else 'have'} not been taken from the General "

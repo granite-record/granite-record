@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.629
+# GRANITE_VERSION: 2026-09-04.630
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -93884,6 +93884,17 @@ def _alarm_stays_able_to_ring(NI):
 # runs missing or old and its refusal beside GitHub's -- and the wiring that
 # puts each in the verdict, on the run's page and in the warnings' alert, and
 # never in the gate or the night's own alert.
+#
+# NOT THE STEP'S OWN (18 October 2026, the review). On GitHub's machine the
+# night runs preflight with its own environment, GITHUB_OUTPUT and
+# GITHUB_STEP_SUMMARY among it, and a made-up night finished or closed here
+# wrote "built=false" and "day=2027-01-20" into the real step's outputs and a
+# "Nightly 2027-01-20: not clean" with its made-up warnings onto the real
+# night's public page. The checks below that finish or close a night take
+# these out first and put them back after (_record_ghenv_kept_out).
+GH_STEP_ENV = ("GITHUB_RUN_ID", "GITHUB_OUTPUT", "GITHUB_STEP_SUMMARY", "GITHUB_ACTIONS",
+               "GITHUB_SHA")
+
 
 def _docket_text(lines):
     """Docket.txt as the export writes it: one line for each (session year,
@@ -93905,7 +93916,7 @@ def _record_still_docket(NI):
       - the newest line is the newest day a line was entered or changed on,
         and a line dated after the night is not counted;
       - in the session (10 January to 30 June) 7 days still says nothing and
-        8 warns; in the interim, 35 and 36; 9 January is the interim's and
+        8 warns; in the interim, 42 and 43; 9 January is the interim's and
         10 January the session's;
       - the warning names the newest line's day, the season and its
         ceiling, and what starts it again -- the General Court's IT office
@@ -93913,9 +93924,13 @@ def _record_still_docket(NI):
         none did -- under a kind of its own;
       - no docket, no warning;
       - still_ceilings measures each season's longest stretch within each
-        term's own span, leaves out the nights of March and April 2020, and
-        is not fooled by a correction dated years later."""
-    from datetime import date
+        term's own span and across the turn from one term's last line to the
+        next one's first, where the two follow one another (18 October 2026:
+        measured within each term alone, the turns of 2016, 2018 and 2022
+        would each have warned), and not from a term with none before it on
+        disk; leaves out the nights of March and April 2020; and is not
+        fooled by a correction dated years later."""
+    from datetime import date, timedelta
     tmp = Path(tempfile.mkdtemp(prefix="gr-still-"))
     try:
         dk = tmp / "Docket.txt"
@@ -93937,32 +93952,55 @@ def _record_still_docket(NI):
         assert lost and "the installed Docket.txt" in lost[0][1] and \
             "Nothing was installed tonight (deferred: a refusal" in lost[0][1], lost
         dk.write_text(_docket_text([(2026, "2026-10-01", "2026-10-01")]), encoding="utf-8")
-        assert not NI.docket_still(came, date(2026, 11, 5), dk), "35 days still, in the interim, warned"
-        got = NI.docket_still(came, date(2026, 11, 6), dk)
-        assert got and "for 36 days" in got[0][1] and "from 1 July to 9 January" in got[0][1], got
+        assert not NI.docket_still(came, date(2026, 11, 12), dk), "42 days still, in the interim, warned"
+        got = NI.docket_still(came, date(2026, 11, 13), dk)
+        assert got and "for 43 days" in got[0][1] and "from 1 July to 9 January" in got[0][1], got
         dk.write_text(_docket_text([(2027, "2026-12-20", "2026-12-20")]), encoding="utf-8")
         assert not NI.docket_still(came, date(2027, 1, 9), dk), "20 days still on 9 January warned"
         assert NI.docket_still(came, date(2027, 1, 10), dk), "21 days still on 10 January did not warn"
         assert not NI.docket_still(came, date(2027, 1, 22), tmp / "none.txt")
-        # still_ceilings, on four made-up terms.
-        terms = {"Docket_2017-2018.txt": [(2017, "2017-05-01", "2017-05-01"),
-                                          (2017, "2017-05-10", "2017-05-10")],
-                 "Docket_2019-2020.txt": [(2019, "2019-10-01", "2019-10-01"),
-                                          (2019, "2019-10-21", "2019-10-21")],
-                 "Docket_2019-2020b.txt": [(2020, "2020-03-01", "2020-03-01"),
-                                           (2020, "2020-04-20", "2020-04-20")],
-                 "Docket_2021-2022.txt": [(2021, "2021-06-01", "2021-06-01"),
-                                          (2021, "2027-01-01", "2027-01-01")]}
+
+        # still_ceilings, on four made-up terms: a line every three days, but
+        # for the stretches meant.
+        def term(first, *spans, extra=()):
+            out = []
+            for a, b in spans:
+                d, b = date.fromisoformat(a), date.fromisoformat(b)
+                while d < b:
+                    out.append(d)
+                    d += timedelta(days=3)
+                out.append(b)
+            out += [date.fromisoformat(x) for x in extra]
+            return [(min(max(d.year, first), first + 1), d.isoformat(), d.isoformat()) for d in out]
+        terms = {
+            # 9 days in the session of 2017; its last line, 28 October 2018.
+            "Docket_2017-2018.txt": term(2017, ("2016-12-05", "2017-05-01"),
+                                         ("2017-05-10", "2018-10-28")),
+            # The turn from it, 28 October to 5 December 2018: 38 days, the
+            # interim's most. Then 20 days in October 2019, and 50 in the
+            # spring of 2020, which are set aside.
+            "Docket_2019-2020.txt": term(2019, ("2018-12-05", "2019-10-01"),
+                                         ("2019-10-21", "2020-03-01"), ("2020-04-20", "2020-10-31")),
+            # The turn, 31 October to 2 December 2020, 32; and a correction
+            # dated 2027.
+            "Docket_2021-2022.txt": term(2021, ("2020-12-02", "2022-10-30"), extra=("2027-01-01",)),
+            # A term with none before it on disk: no turn of 766 days.
+            "Docket_2025-2026.txt": term(2025, ("2024-12-04", "2025-02-01"))}
         for name, lines in terms.items():
             (tmp / name).write_text(_docket_text(lines), encoding="utf-8")
-        got = NI.still_ceilings([tmp / n for n in terms])
+        got = NI.still_ceilings([tmp / n for n in reversed(list(terms))])
         assert got["session"][0] == 9 and got["session"][2:] == ("2017-05-01", "2017-05-10") \
-            and got["interim"][0] == 20 and got["interim"][2:] == ("2019-10-01", "2019-10-21"), got
+            and got["interim"][0] == 38 and got["interim"][2:] == ("2018-10-28", "2018-12-05") \
+            and got["interim"][1].endswith("Docket_2019-2020.txt"), got
+        alone = NI.still_ceilings([tmp / "Docket_2019-2020.txt"])
+        assert alone["interim"][0] == 20 and alone["interim"][2:] == ("2019-10-01", "2019-10-21"), \
+            alone
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
-    return "ok", ("8 days still in session and 36 in the interim warn, 7 and 35 do not, from 10 "
-                  "January; the warning says since when and what starts it again; a line dated "
-                  "after the night, a correction years later and the spring of 2020 fool nothing")
+    return "ok", ("8 days still in session and 43 in the interim warn, 7 and 42 do not, from 10 "
+                  "January; the warning says since when and what starts it again; the turn of the "
+                  "term is measured, and a line dated after the night, a correction years later, "
+                  "a term with none before it and the spring of 2020 fool nothing")
 
 
 # The terms of the General Court's export on disk that STILL_DAYS was measured
@@ -93976,8 +94014,9 @@ STILL_TERMS = ("Docket_2015-2016.txt", "Docket_2017-2018.txt", "Docket_2019-2020
 def _still_days_from_history(NI):
     """HOW LONG IT MAY STAND STILL (nightly.py): the ceilings are the
     record's own, never a guess. Measured again here on the five finished
-    terms of the export on disk, with the nights of March and April 2020 left
-    out as the block says; a ceiling that differs from what they give fails,
+    terms of the export on disk, the turns between them included, with the
+    nights of March and April 2020 left out as the block says; a ceiling that
+    differs from what they give fails,
     naming the stretch. The current term's own stretches so far are said."""
     have = [n for n in STILL_TERMS if Path(n).is_file()]
     if len(have) < len(STILL_TERMS):
@@ -94026,6 +94065,11 @@ def _record_db_missed(NI):
         and said[0][1].startswith("The current term's ") \
         and "on 2 nights since 2027-01-20" in said[0][1] and "night's log" in said[0][1], said
     assert NI.db_missed_of(r2, {}, "2027-01-22") == r2, "a night that asked nothing moved the record"
+    # finish() folds tonight's in outside not_moving's guard: a count carried
+    # that will not read is none, and never stops the verdict.
+    odd = {"Legislation": dict(r2["Legislation"], nights="many", last="2027-01-21")}
+    got = NI.db_missed_of(odd, {"term_data": {"Legislation": no}}, "2027-01-22")
+    assert got["Legislation"]["nights"] == 1 and not NI.db_missed_said(odd), got
     took = dict(term, Legislation="installed, 2,234 rows (was 2,234)",
                 LegislationText=NI.TAKEN_EMPTY + ": the empty view of a new term",
                 CandH_Reports="installed, 5,597 rows (was 5,597)")
@@ -94039,8 +94083,14 @@ def _record_db_missed(NI):
         "The study committees' StatStudDetails and StatStudMeetings have not been taken"), said
     tmp = Path(tempfile.mkdtemp(prefix="gr-dbmissed-"))
     here = Path(".").resolve()
-    saved_argv, saved_rid = sys.argv, os.environ.get("GITHUB_RUN_ID")
+    # Not the step's own: on GitHub's machine preflight inherits the night's
+    # GITHUB_OUTPUT and GITHUB_STEP_SUMMARY, and --close on this made-up night
+    # would write its "Why" on the real night's page (_record_ghenv_kept_out).
+    saved_argv, saved_quiet = sys.argv, NI.QUIET
+    saved_env = {k: os.environ.get(k) for k in GH_STEP_ENV}
     try:
+        for k in GH_STEP_ENV:
+            os.environ.pop(k, None)
         os.chdir(tmp)
         NI.write_json(NI.VERDICT, {"run_id": "7000", "clean": True, NI.DB_MISSED: r2})
         night = NI.Night(types.SimpleNamespace(no_fetch=False, dry_run=False, new_term=False),
@@ -94058,11 +94108,12 @@ def _record_db_missed(NI):
             f"--close on a night that never started left {v.get(NI.DB_MISSED)}"
     finally:
         os.chdir(here)
-        sys.argv = saved_argv
-        if saved_rid is None:
-            os.environ.pop("GITHUB_RUN_ID", None)
-        else:
-            os.environ["GITHUB_RUN_ID"] = saved_rid
+        sys.argv, NI.QUIET = saved_argv, saved_quiet
+        for k, val in saved_env.items():
+            if val is None:
+                os.environ.pop(k, None)
+            else:
+                os.environ[k] = val
         shutil.rmtree(tmp, ignore_errors=True)
     return "ok", ("a piece not taken warns on its second night with its first night's day, one "
                   "line for the term's and one for the study views'; a second run that day, a "
@@ -94078,7 +94129,7 @@ def _record_laptop_share(NI, CL):
     10 January 2027 and the record 7 days after says nothing, 8 days warns
     -- naming the file, both days, the season's ceiling, the calendars and
     journals the General Court lists that are not read, and what starts it
-    again; in the interim, 35 and 36; a file outside the share, and no
+    again; in the interim, 42 and 43; a file outside the share, and no
     record, are nothing to go by."""
     from datetime import date, datetime
     kit = CL.load_kit(Path("."))
@@ -94114,19 +94165,19 @@ def _record_laptop_share(NI, CL):
             assert want in got[0][1], (want, got[0][1])
         rec.write_text(json.dumps({"files": {"meetings.json": [1, "x", ns(2026, 10, 16)]}}),
                        encoding="utf-8")
-        dk.write_text(_docket_text([(2026, "2026-11-20", "2026-11-20")]), encoding="utf-8")
-        assert not NI.laptop_share_behind(date(2026, 11, 25), rec, dk, docs), "35 days, interim, warned"
-        dk.write_text(_docket_text([(2026, "2026-11-21", "2026-11-21")]), encoding="utf-8")
-        got = NI.laptop_share_behind(date(2026, 11, 25), rec, dk, docs)
-        assert got and "36 days" in got[0][1] and "from 1 July to 9 January (35 days)" in got[0][1], got
+        dk.write_text(_docket_text([(2026, "2026-11-27", "2026-11-27")]), encoding="utf-8")
+        assert not NI.laptop_share_behind(date(2026, 11, 30), rec, dk, docs), "42 days, interim, warned"
+        dk.write_text(_docket_text([(2026, "2026-11-28", "2026-11-28")]), encoding="utf-8")
+        got = NI.laptop_share_behind(date(2026, 11, 30), rec, dk, docs)
+        assert got and "43 days" in got[0][1] and "from 1 July to 9 January (42 days)" in got[0][1], got
         rec.write_text(json.dumps({"files": {"Docket.txt": [1, "x", ns(2026, 1, 1)]}}),
                        encoding="utf-8")
-        assert not NI.laptop_share_behind(date(2026, 11, 25), rec, dk, docs)
-        assert not NI.laptop_share_behind(date(2026, 11, 25), tmp / "none.json", dk, docs)
+        assert not NI.laptop_share_behind(date(2026, 11, 30), rec, dk, docs)
+        assert not NI.laptop_share_behind(date(2026, 11, 30), tmp / "none.json", dk, docs)
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
     return "ok", (f"{len(NI.LAPTOP_SHARE)} files of the laptop's share, each the laptop's in the kit; "
-                  "8 days behind the record in session and 36 in the interim warn, 7 and 35 do not, "
+                  "8 days behind the record in session and 43 in the interim warn, 7 and 42 do not, "
                   "naming the file, the days and the documents not read")
 
 
@@ -94280,7 +94331,14 @@ def _record_not_moving_wired(NI):
     tmp = Path(tempfile.mkdtemp(prefix="gr-notmoving-"))
     here = Path(".").resolve()
     saved = NI.docket_still
+    # The made-up night's page and outputs go to files of its own, never to
+    # the step preflight runs in (GH_STEP_ENV).
+    saved_env = {k: os.environ.get(k) for k in GH_STEP_ENV}
     try:
+        for k in GH_STEP_ENV:
+            os.environ.pop(k, None)
+        os.environ.update(GITHUB_STEP_SUMMARY=str(tmp / "summary.md"),
+                          GITHUB_OUTPUT=str(tmp / "output.txt"))
         os.chdir(tmp)
         Path("Docket.txt").write_text(_docket_text([(2026, "2026-10-15", "2026-10-15")]),
                                       encoding="utf-8")
@@ -94296,6 +94354,8 @@ def _record_not_moving_wired(NI):
         said = [s for _k, s in NI.not_moving_of(v)]
         assert all(s in v.get("warnings", []) for s in said) and \
             set(kinds) <= set(v.get("warning_kinds", [])), v.get("warnings")
+        page = (tmp / "summary.md").read_text(encoding="utf-8")
+        assert all(f"- warning: {s}" in page for s in said), page[-600:]
         assert NI.warns_of(v)[-2:] == said, NI.warns_of(v)
         assert not any(s in x for x in NI.alerts_of(v) for s in said), NI.alerts_of(v)
         assert not NI.warning_reasons(NI.not_moving_of(v), served=[], recent=()), \
@@ -94307,16 +94367,57 @@ def _record_not_moving_wired(NI):
             raise RuntimeError("made up")
         NI.docket_still = broken
         mark = len(NI.LOG)
-        got = NI.not_moving(v, "2027-01-20", None, None)
+        with contextlib.redirect_stdout(io.StringIO()):
+            got = NI.not_moving(v, "2027-01-20", None, None)
         assert [k for k, _s in got] == kinds[1:] and any(
             "could not be worked out: RuntimeError: made up" in x for x in NI.LOG[mark:]), got
     finally:
         NI.docket_still = saved
         os.chdir(here)
+        for k, val in saved_env.items():
+            if val is None:
+                os.environ.pop(k, None)
+            else:
+                os.environ[k] = val
         shutil.rmtree(tmp, ignore_errors=True)
     return "ok", ("a still docket and a missing laptop record reach the verdict, the page and the "
                   "warnings' alert, and neither the night's alert nor the gate; a night that did "
                   "not fetch is not told of the record; a signal that raises stops no other")
+
+
+@check("files", "a made-up night finished or closed by a check writes nothing to the outputs or "
+       "the page of the step preflight runs in on GitHub's machine", needs=("nightly",))
+def _record_ghenv_kept_out(NI):
+    """NOT THE STEP'S OWN (the block above). The two checks here that finish
+    or close a night are run again as preflight runs on GitHub's machine,
+    with GITHUB_ACTIONS and the step's own GITHUB_OUTPUT and
+    GITHUB_STEP_SUMMARY set: both still pass, neither file is written, and
+    the environment is as it was after them."""
+    tmp = Path(tempfile.mkdtemp(prefix="gr-ghenv-"))
+    step = {"GITHUB_ACTIONS": "true", "GITHUB_OUTPUT": str(tmp / "output.txt"),
+            "GITHUB_STEP_SUMMARY": str(tmp / "summary.md"), "GITHUB_RUN_ID": "9999",
+            "GITHUB_SHA": "0" * 40}
+    saved_env = {k: os.environ.get(k) for k in GH_STEP_ENV}
+    try:
+        os.environ.update(step)
+        for fn in (_record_db_missed, _record_not_moving_wired):
+            got = fn(NI)
+            assert got[0] == "ok", (fn.__name__, got)
+            assert {k: os.environ.get(k) for k in step} == step, \
+                f"{fn.__name__} did not put the step's environment back"
+        wrote = [p.name for p in tmp.iterdir()]
+        assert not wrote, ("a made-up night wrote to the step's own "
+                           + " and ".join(wrote) + ": "
+                           + " | ".join((tmp / n).read_text(encoding="utf-8")[:200] for n in wrote))
+    finally:
+        for k, val in saved_env.items():
+            if val is None:
+                os.environ.pop(k, None)
+            else:
+                os.environ[k] = val
+        shutil.rmtree(tmp, ignore_errors=True)
+    return "ok", ("the database pieces' night and the wired night, run with GitHub's step "
+                  "environment, write nothing to its outputs or its page, and put it back")
 
 
 @check("files", "the turn's rehearsal runs the checks of the built site on its 2027-2028 builds, "
