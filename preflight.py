@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.623
+# GRANITE_VERSION: 2026-09-04.624
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -53755,7 +53755,8 @@ def _committee_names_outlast_the_term(committee_names):
     assert changed == [(("H", 1995, CN.NOW, "Finance"), ("H", 1995, 2026, "Finance"))], (
         f"one ENDED line closed {changed} in OFFICIAL")
     moved = [(x, y) for x, y in zip(CN.ALIASES_AS_WRITTEN, a) if x != y]
-    assert moved and all(y[0] == "H" and y[2] == 2026 and y[4] == "Finance" for _x, y in moved)         and not [y for x, y in zip(CN.ALIASES_AS_WRITTEN, a)
+    assert moved and all(y[0] == "H" and y[2] == 2026 and y[4] == "Finance" for _x, y in moved) \
+        and not [y for x, y in zip(CN.ALIASES_AS_WRITTEN, a)
                  if y[0] == "H" and y[4] == "Finance" and y[2] is CN.NOW], (
         f"one ENDED line left an alias writing House Finance open, or closed another: {moved}")
     bad = CN.ended_problems(ended=[("H", "Nonesuch", 2026), ("S", "Judiciary", 2027),
@@ -93726,8 +93727,31 @@ def _rehearsal_runs_built_checks():
     site had met a 2027-2028 build, and the November rehearsal would not have
     run one either. Held here, by its source: a `preflight.py --built` the
     night starts on a night built in full runs in the copy, and NT and A1
-    each hold that the checks ran and none of the hold tier failed."""
-    src = _paths.locate("tests/rehearse_turn.py").read_text(encoding="utf-8")
+    each hold that the checks ran and none of the hold tier failed. And
+    built_checks_held itself, run on four made-up verdicts (the review of
+    18 October 2026: a substring of its source was the whole guard, and
+    `note(True or ...)` kept it): a hold-tier failure, checks that did not
+    run and a verdict with none fail it, and warnings alone pass it."""
+    import contextlib
+    import importlib.util
+    import io
+    path = _paths.locate("tests/rehearse_turn.py")
+    spec = importlib.util.spec_from_file_location("_rehearse_turn_for_preflight", path)
+    RT = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(RT)
+    held = {}
+    for what, b in (("a hold-tier failure", {"ran": True, "hold": ["_x"], "warn": []}),
+                    ("checks that did not run", {"ran": False}),
+                    ("no record of the checks", None),
+                    ("warnings alone", {"ran": True, "hold": [], "warn": ["_y"]})):
+        del RT.RESULTS["failed"][:]
+        with contextlib.redirect_stdout(io.StringIO()):
+            RT.built_checks_held({"built_checks": b} if b is not None else {}, "NT")
+        held[what] = not RT.RESULTS["failed"]
+    assert held == {"a hold-tier failure": False, "checks that did not run": False,
+                    "no record of the checks": False, "warnings alone": True}, (
+        f"built_checks_held passes these, by kind of verdict: {held}")
+    src = path.read_text(encoding="utf-8")
     i = src.find('if name == "preflight.py":')
     assert i != -1, "rehearse_turn no longer answers the night's preflight.py"
     branch = src[i:src.find("elif name ==", i)]
@@ -93737,11 +93761,9 @@ def _rehearsal_runs_built_checks():
     for label in ("NT", "A1"):
         assert f'built_checks_held(v, "{label}")' in src, (
             f"the rehearsal's {label} does not hold that the checks of its built site passed")
-    fn = src[src.find("def built_checks_held"):]
-    assert 'b.get("ran") and not b.get("hold")' in fn[:fn.find("\ndef ", 10)], \
-        "built_checks_held no longer fails a hold-tier failure or checks that did not run"
     return "ok", ("the night's preflight.py --built runs in the copy on a full build, and NT and A1 "
-                  "fail on a hold-tier failure or checks that did not run")
+                  "fail on a hold-tier failure or checks that did not run, as built_checks_held "
+                  "does on made-up verdicts")
 
 
 @check("files", "the night takes the current term's data from the database, keeps the archived "
