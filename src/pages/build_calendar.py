@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-18.37
+# GRANITE_VERSION: 2026-09-18.38
 """
 The General Court's week, one page per week.
 
@@ -405,10 +405,25 @@ def study_recordings(rows, videos, on_bills, today):
     return linked, unmatched
 
 
+# A STUDY OR STATUTORY COMMITTEE'S OWN PAGE (18 October 2026). Every
+# committee the General Court lists as active has one, written by
+# build_study_committees.py at /committee/ss<CommitteeID>: the database's own
+# number for it, which stays put when a committee is renamed or its
+# establishing bill is amended, as the person chose. A meeting's card leads to
+# its committee's page where the committee is active; an archived one has no
+# page yet, and its card leads nowhere, as every study card did before.
+def study_page(cid):
+    """committee/ss1451.html, the page of the committee numbered 1451."""
+    return f"committee/ss{cid}.html"
+
+
 def statstud(root=Path(".")):
     """(rows, names, fetched): the study and statutory committee meetings
     from FROM on, shaped as weeks_from reads rows; {bill: [(year, name)]}
     for the committees a bill set up; and the date the copy was taken.
+
+    Each row carries its committee's number ("cid") and, where the committee
+    is active and so has a page, that page's address ("page").
 
     ([], {}, "") where the copy is not on disk -- the caller says so.
     """
@@ -426,7 +441,8 @@ def statstud(root=Path(".")):
                 else "study committee" if "study" in label.lower() else "")
         name = committee_name(f[7])
         bill = re.sub(r"\s+", "", f[4]).upper()
-        det[f[0].strip()] = (name, kind, bill, f[1].strip())
+        det[f[0].strip()] = (name, kind, bill, f[1].strip(),
+                             label.lower().startswith("active"))
         if bill:
             names[bill].append((f[1].strip(), name))
     rows, skipped = [], 0
@@ -449,7 +465,7 @@ def statstud(root=Path(".")):
             # study nor statutory ("Repealed"): not guessed at.
             skipped += 1
             continue
-        name, kind, bill, year = c
+        name, kind, bill, year, active = c
         room, mtype = _where(f[4])
         if room and not place(room):
             # The copy's own venue does not read as a place: the General
@@ -474,7 +490,8 @@ def statstud(root=Path(".")):
                      "bill": "", "committee": name,
                      "kind": "cancelled" if cancelled else kind,
                      "venue": room, "body": "", "term": "",
-                     "study": True, "note": note})
+                     "study": True, "note": note, "cid": f[2].strip(),
+                     "page": study_page(f[2].strip()) if active else ""})
     if skipped:
         print(f"  {skipped} study/statutory meetings left out: their committee "
               "is not named, or not labelled study or statutory, in StatStudDetails")
@@ -842,13 +859,18 @@ WEEK_JS = r"""
             +'<span class="sr">: open it in the Day view</span></button>')+'</li>';
   }
   // What a column says where it shows nothing: that nothing is on, or what
-  // the filters hid -- the study committees by name, since a new reader has
-  // that box unticked and would otherwise not know why a day is empty.
+  // the filters hid.
+  // ONE LINE A WEEK FOR THE STUDY COMMITTEES, NOT ONE A DAY (18 October
+  // 2026). A day the unticked Study Committee box emptied said "4 study
+  // committee meetings are hidden.", and in the interim nearly every weekday
+  // said it: the clutter the person asked to be rid of. The count is said
+  // once, in the week's line (countLine), with the control that shows them
+  // beside it; a day says only that nothing is shown.
   function emptyWords(cards,f){
     if(!cards.length) return "No meetings";
     var st=cards.filter(function(e){ return e.who==="study"; }).length;
     if(st===cards.length && f.cats.indexOf("study")<0 && !f.picks.length && !String(f.q||"").trim())
-      return (st===1?"1 study committee meeting is":st+" study committee meetings are")+" hidden.";
+      return "No meetings shown.";
     return (cards.length===1?"1 meeting is":cards.length+" meetings are")+" hidden by the filters.";
   }
   // THE DAY BEFORE AND AFTER A READER WANTS, for the Day view's Previous Day
@@ -1061,7 +1083,8 @@ WEEK_JS = r"""
   var side=$("calside"), bar=$("calbar"), view=$("calview"), grid=$("cmgrid"),
       mtitle=$("cmtitle"), count=$("wkcount"), form=$("wkfilter"), find=$("wkfind"),
       cats=$("calcats"), key=app.querySelector(".calkey"), peek=$("calpeek"),
-      reset=$("calreset"), cpfind=$("cpfind"), cplist=$("cplist"), cpchosen=$("cpchosen"),
+      reset=$("calreset"), showst=$("calshowst"),
+      cpfind=$("cpfind"), cplist=$("cplist"), cpchosen=$("cpchosen"),
       cpall=$("cpall"), cpstat=$("cpstat"), pickhint=$("pickhint"),
       mfold=$("cmfold"), ffold=$("cffold"),
       head=app.querySelector(".calhead"), h1=head.querySelector("h1"),
@@ -1337,11 +1360,16 @@ WEEK_JS = r"""
     // NOT A COUNT OF DAYS THAT ARE NOT HERE: "No sittings this week", said
     // aloud by the live region while the week loaded or after it failed, was
     // a count of nothing.
+    var tl=gone().length?null:tally(list,S);
     var t=broken()?"The meetings could not be loaded."
-      :gone().length?""
-      :countLine(tally(list,S), S.v==="day"?"on "+dayWords(SEL):"this week");
+      :!tl?""
+      :countLine(tl, S.v==="day"?"on "+dayWords(SEL):"this week");
     // Said once: a live region repeats whatever it is given.
     if(count.textContent!==t) count.textContent=t;
+    // THE WAY TO SHOW THEM, beside the one line that says how many study
+    // committee meetings are hidden (18 October 2026), and only while it
+    // says so. Outside the live region, so the count is said without it.
+    if(showst) showst.hidden=!(tl&&tl.study);
   }
   function listView(dates){
     return listDates(dates,DAYS,S).map(function(d){
@@ -1856,6 +1884,17 @@ WEEK_JS = r"""
     if(t.value==="study"){ try{ localStorage.setItem(SKEY,t.checked?"1":"0"); }catch(e2){} }
     apply();
   });
+  // "Show them": the Study Committee box ticked, as a reader's own tick is,
+  // remembered the same way, and the focus left on the box, which unticks it.
+  if(showst) showst.addEventListener("click",function(){
+    var box=cats.querySelector('input[name="cat"][value="study"]');
+    if(!box) return;
+    box.checked=true;
+    if(S.cats.indexOf("study")<0) S.cats.push("study");
+    try{ localStorage.setItem(SKEY,"1"); }catch(e2){}
+    apply();
+    box.focus();
+  });
   form.addEventListener("submit",function(e){ e.preventDefault(); });
   form.addEventListener("change",function(e){
     var t=e.target;
@@ -2035,6 +2074,9 @@ def weeks_from(rows, names=None):
             row["note"] = r.get("note") or ""
             if r.get("video_id"):
                 row["video_id"] = r["video_id"]
+            # The committee's own page, which its card leads to (study_page).
+            if r.get("page"):
+                row["page"] = r["page"]
         weeks[week_key(d)][date].setdefault(BP.meeting_key(row), []).append(row)
     # A BILL'S ROW AT A STUDY COMMITTEE'S MEETING TAKES THE MEETING'S TIME AND
     # ROOM. The docket gives neither; the database copy's row for the same
@@ -2448,6 +2490,10 @@ BAR_HTML = ('<div class="calbar" id="calbar" hidden>'
             '<button type="button" data-view="day" aria-pressed="false">Day</button>'
             '</div>'
             '<p class="wkcount" id="wkcount" role="status" aria-live="polite"></p>'
+            # The study committee meetings the count says are hidden, shown
+            # (18 October 2026): WEEK_JS's drawCount shows it while they are.
+            '<button type="button" class="calshowst" id="calshowst" hidden>Show them'
+            '<span class="sr"> (the study committee meetings)</span></button>'
             # "Show everything" while the defaults were everything; they are
             # everything but the study committees now, so it says what it does.
             '<button type="button" class="calreset" id="calreset" hidden>'
@@ -2506,6 +2552,55 @@ def week_labels(site, today=None):
 WEEK_ROBOTS = '<meta name="robots" content="noindex,follow">'
 
 
+# STUDY AND STATUTORY COMMITTEES ARE HIDDEN IN THE BUILT WEEK TOO (18 October
+# 2026). The Study Committee box has started unticked since 25 September, but
+# only the script hid the cards: the week's own HTML carried every one of
+# them, so a reader without script, and every reader for the moment before
+# the script ran, saw the week of 12 October 2026 as 24 cards of which 18
+# were study committees -- the clutter the person asked to be rid of.
+#
+# So the built week hides them as the script does, and says so once: the
+# week's one line counts them, with a box that shows them. The box is a real
+# checkbox whose state app.css reads (.calst), so it works with no script at
+# all; the script draws the schedule again from the cards, and its own line
+# and "Show them" take its place. A card counts as a study committee's by the
+# rule the script's filter uses (build_pages.meeting_who); a day holding
+# nothing else says that nothing is shown, while the box is unticked.
+STUDY_ONLY = '<p class="calempty calstonly">No meetings shown.</p>'
+
+
+def study_hidden(days, meets, draw):
+    """The week's schedule as its page carries it: each day `draw({date:
+    keys})` makes it, a day of study committees alone with STUDY_ONLY after
+    its cards, and the box and the line that shows them first, where the
+    week has any."""
+    parts, live, off = [], 0, 0
+    for date, keys in days.items():
+        html = draw({date: keys})
+        study = [k for k in keys if BP.meeting_who(k.name, meets[k]) == "study"]
+        live += sum(1 for k in study if not BP.is_cancelled(meets[k]))
+        off += sum(1 for k in study if BP.is_cancelled(meets[k]))
+        if keys and len(study) == len(keys):
+            assert html.endswith("</div>"), f"{date}: a day's block no longer ends its div"
+            html = html[:-len("</div>")] + STUDY_ONLY + "</div>"
+        parts.append(html)
+    if not (live or off):
+        return "".join(parts)
+    # Counted as the script's line counts them: a cancelled meeting is not
+    # a meeting, unless it is all the week holds.
+    n, what = (live, "") if live else (off, "cancelled ")
+    them = (f"1 {what}study committee meeting" if n == 1
+            else f"{n} {what}study committee meetings")
+    verb = "is" if n == 1 else "are"
+    line = ('<input type="checkbox" class="calst" id="calst">'
+            '<p class="calstline">'
+            f'<span class="cs-off">{them} {verb} hidden.</span>'
+            f'<span class="cs-on">{them} {verb} shown.</span> '
+            '<label for="calst"><span class="cs-off">Show them</span>'
+            '<span class="cs-on">Hide them</span></label></p>')
+    return line + "".join(parts)
+
+
 def week_page(site, base, key, weeks, order, at, titles, years, code, urls,
               today, sessions=frozenset(), study=False, docs=None, picker=""):
     """Write one week's page. `study` is whether the calendar holds the study
@@ -2528,9 +2623,9 @@ def week_page(site, base, key, weeks, order, at, titles, years, code, urls,
     # level=2: the h1 of this page is the week itself, so a day is the
     # section under it. On the home page the days sit under "Coming up"
     # and stay h3.
-    body, _missing = BP.cal_days(days, meets, titles, years, code,
-                                 lambda d: day_words(d, today), S.E,
-                                 level=2, sessions=sessions, docs=docs)
+    body = study_hidden(days, meets, lambda one: BP.cal_days(
+        one, meets, titles, years, code, lambda d: day_words(d, today), S.E,
+        level=2, sessions=sessions, docs=docs)[0])
 
     nav = pager_html(key, weeks, order, at, today)
     here = week_key(today)

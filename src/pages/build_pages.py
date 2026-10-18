@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.211
+# GRANITE_VERSION: 2026-09-04.212
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -1179,6 +1179,12 @@ def cal_days(days, meets, titles, years, code, when, esc, level=3,
             # chamber's committee takes its OWN chamber's page, which the
             # name alone does not say.
             cc = None if study else code.get((key.chamber, key.name.strip().lower()))
+            # A STUDY OR STATUTORY COMMITTEE HAS A PAGE OF ITS OWN (18 October
+            # 2026) where the General Court lists it as active: the row names
+            # it (build_calendar.study_page), and the card leads into the
+            # meeting there, as a standing committee's card leads into its day.
+            own = next((r.get("page") for r in rows
+                        if r.get("study") and r.get("page")), "") if study else ""
             if floor:
                 html.append('<p class="calmore">'
                             f'<a href="session/{floor}/{esc(_d)}.html">'
@@ -1187,6 +1193,10 @@ def cal_days(days, meets, titles, years, code, when, esc, level=3,
             elif cc:
                 html.append('<p class="calmore">'
                             f'<a href="committee/{esc(cc)}.html#day-{esc(_d)}">'
+                            f'This meeting on the {esc(cmte)} page</a></p>')
+            elif own:
+                html.append('<p class="calmore">'
+                            f'<a href="{esc(own)}#day-{esc(_d)}">'
                             f'This meeting on the {esc(cmte)} page</a></p>')
             html.append("</div></details>")
         html.append("</div>")

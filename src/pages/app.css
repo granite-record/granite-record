@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.280 */
+/* GRANITE_VERSION: 2026-09-07.281 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -5264,6 +5264,24 @@ font-weight:600;color:var(--ink-2);background:var(--surface);border-left:1px sol
 .calreset{min-height:40px;padding:var(--sp-3) var(--sp-5);font-size:var(--t-ui);font-weight:600;
 color:var(--pine);background:var(--surface);border:1px solid var(--edge);border-radius:var(--r-in)}
 .calreset:hover{background:var(--wash)}
+/* STUDY AND STATUTORY COMMITTEES, HIDDEN ONCE A WEEK AND NOT ONCE A DAY (18
+   October 2026). The week's line says how many are hidden and this shows
+   them: the script's button beside its count, and in the week as built -- a
+   reader with no script, or the moment before it runs -- a checkbox whose
+   state hides the cards (build_calendar.study_hidden). Both are the line's
+   own words in the site's link colour, not a second button beside Reset. */
+.calshowst[hidden]{display:none}
+.calshowst,.calstline label{min-height:40px;padding:var(--sp-2) 0;font-size:var(--t-ui);font-weight:600;
+color:var(--pine);background:none;border:0;cursor:pointer;text-decoration:underline;
+text-decoration-thickness:1px;text-underline-offset:.2em}
+.calshowst:focus-visible{outline:2px solid var(--pine);outline-offset:2px}
+.calview > .calst{position:absolute;width:1px;height:1px;margin:0;opacity:0}
+.calview > .calst:focus-visible + .calstline label{outline:2px solid var(--pine);outline-offset:2px}
+.calstline{margin:0 0 var(--sp-5);font-size:var(--t-ui);color:var(--ink-2)}
+.calst:not(:checked) ~ .calday .calmeet[data-who="study"],
+.calst:not(:checked) ~ .calstline .cs-on,
+.calst:checked ~ .calstline .cs-off,
+.calst:checked ~ .calday .calstonly{display:none}
 
 /* THE KINDS OF MEETING, EACH A BOX IN ITS COLOUR (25 September 2026): the
    key to the bars and the filter at once, under the view switch, where the
