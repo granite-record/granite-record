@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.282 */
+/* GRANITE_VERSION: 2026-09-07.283 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -1750,13 +1750,22 @@ color:var(--pine);margin:0 0 var(--sp-3)}
   padding-left:var(--sp-3);border-left:3px solid var(--pine)}
 /* ==== /MEMBERS-ELECT, SHARED ============================================== */
 
-/* THE HOME PAGE'S HOW-TO GUIDES, under its three cards (build_civics.home_guides). */
-.hguides{margin:var(--sp-6) 0 0;padding:var(--sp-5) 0 0;border-top:1px solid var(--rule)}
-.hguides h2{font:600 var(--t-label)/1.3 var(--sans);letter-spacing:.06em;text-transform:uppercase;
-color:var(--ink-2);margin:0 0 var(--sp-3)}
-.hguides ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:var(--sp-2)}
-.hguides li a{font:600 var(--t-ui)/1.4 var(--sans);color:var(--pine)}
-.hguides .hgall{display:inline-block;margin-top:var(--sp-3);font-size:var(--t-sm);color:var(--ink-2)}
+/* THE HOME PAGE'S "HOW DO I...?" ROW, under its cards (build_civics.how_do_i,
+   17 October 2026). The question once, in the serif a step above the links so
+   the heading outranks what it heads, and its answers as a row of links the
+   size of a finger that wraps, each the end of the question; All guides
+   last, the way to the rest. Outlined, not filled, so the row reads as
+   things to choose rather than as a second set of cards. */
+.hguides{margin:0}
+.hguides h2{font:600 var(--t-lead)/1.25 var(--serif);color:var(--ink);margin:0 0 var(--sp-4)}
+.hguides ul{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:var(--sp-4)}
+.hguides li a{display:inline-flex;align-items:center;min-height:2.75rem;box-sizing:border-box;
+  padding:var(--sp-3) var(--sp-6);border:1px solid var(--rule-2);border-radius:var(--r-in);
+  font:600 var(--t-ui)/1.3 var(--sans);color:var(--pine);text-decoration:none}
+.hguides li a:hover{border-color:var(--pine);color:var(--ink)}
+.hguides .hgall{display:inline-block;margin-top:var(--sp-5);font:600 var(--t-ui)/1.4 var(--sans);
+  color:var(--pine)}
+.hguides .hgall::after{content:" \2192"}
 
 /* THE RECORD AS PLAIN HTML (the SEO review of 12 October 2026): what a bill's,
    a member's and a committee's page say to a reader that runs no scripts --
@@ -4463,6 +4472,28 @@ a.l-pgm{font-weight:600;text-decoration:underline;text-decoration-thickness:1px;
 .r-srcs a:hover{color:var(--ink)}
 .r-srcs .l-dmeta{display:block;margin-top:.125rem}
 .r-close{font:400 var(--t-ui)/1.55 var(--sans);color:var(--ink-2);margin:1.25rem 0 0;max-width:46rem}
+/* THE HOW-TO GUIDES BY TASK (build_civics.hub_guides, 17 October 2026: the
+   person asked for the guides to read more intuitively to the public). Each
+   task is a row the size of a finger, its whole box the link: the task in the
+   serif at the reading size, which outranks the sans line under it, and the
+   rows two abreast where the sheet is wide enough, one on a phone. */
+.r-tasks{list-style:none;margin:0;padding:0;display:grid;gap:.625rem 1rem;
+  grid-template-columns:repeat(auto-fill,minmax(min(100%,19rem),1fr))}
+.r-tasks a{display:block;height:100%;box-sizing:border-box;border:1px solid var(--rule-2);
+  border-radius:var(--r-out);padding:.75rem 1rem .875rem;text-decoration:none;color:var(--ink)}
+.r-tasks a:hover{border-color:var(--pine)}
+.r-tasks b{display:block;font:600 var(--t-read)/1.3 var(--serif);color:var(--pine);
+  text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:3px}
+.r-tasks a:hover b{color:var(--ink)}
+.r-tasks span{display:block;margin-top:.3125rem;font:400 var(--t-ui)/1.5 var(--sans);color:var(--ink-2)}
+/* OTHER WAYS TO FOLLOW LEGISLATION (build_civics.follow_elsewhere): each
+   site's name as the link, the line on what it offers, then its host. */
+.r-follow{margin-bottom:1.25rem}
+.r-follow .r-fline{display:block;margin-top:.125rem;color:var(--ink)}
+/* A LEARN PAGE'S GUIDES (civics.GUIDES_FOR): the guides that do what the
+   page explains, as a plain list of links in the section's prose column. */
+.l-guides{margin:0;padding-left:1.25rem}
+.l-guides li{margin:.25rem 0}
 /* THE HOW-TO GUIDES (build_civics.guide_page; guides.py). When each was
    checked is said under its title and on the hub; a check past
    guides.STALE_DAYS, or a draft drawn for a person to read, says so in a box
@@ -6926,11 +6957,22 @@ border-radius:var(--r-out);padding:var(--sp-6) var(--sp-6);margin-bottom:var(--s
 /* Flex, for the reason .statgrid is: in a 482px column auto-fit makes two
    columns and the third card took half of row two, floating beside nothing.
    A flex item grows into the row it lands in. */:where(body.pg) .entry{display:flex;flex-wrap:wrap;gap:var(--sp-5);margin:var(--sp-7) 0 var(--sp-9)}
-:where(body.pg) .entry > a{flex:1 1 210px;min-width:0}
-:where(body.pg) .entry a{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:center;column-gap:var(--sp-4);
+:where(body.pg) .entry > a,:where(body.pg) .entry > .ecard{flex:1 1 210px;min-width:0}
+:where(body.pg) .entry > a,:where(body.pg) .entry > .ecard{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:center;column-gap:var(--sp-4);
 align-content:start;background:var(--surface);border:1px solid var(--rule);border-radius:var(--r-out);
 padding:var(--sp-6) var(--sp-6);text-decoration:none;color:inherit}
-:where(body.pg) .entry a:hover{border-color:var(--pine)}
+:where(body.pg) .entry > a:hover,:where(body.pg) .entry > .ecard:hover{border-color:var(--pine)}
+/* A CARD WITH TWO LINKS (the Laws card, 18 October 2026: build_pages.
+   home_cards). The card is a box, not a link, so its line can hold one: its
+   name's link covers the whole card, as every other card's does, and the
+   Constitution's link sits above that cover, so a click on it opens the
+   Constitution's tab and a click anywhere else opens /laws. */
+:where(body.pg) .entry > .ecard{position:relative}
+:where(body.pg) .entry .ecmain{grid-column:1 / -1;display:flex;align-items:center;column-gap:var(--sp-4);
+text-decoration:none;color:inherit}
+:where(body.pg) .entry .ecmain::after{content:"";position:absolute;inset:0;border-radius:inherit}
+:where(body.pg) .entry .ecalso{position:relative;z-index:1;font-weight:600;color:var(--pine)}
+:where(body.pg) .entry .ecalso:hover{color:var(--ink)}
 /* Each card's section drawing beside its name, in the name's pine (Polish 1,
    the prototype kit's home cards); the line under it keeps the card's width. */
 :where(body.pg) .entry .icon{width:1.375rem;height:1.375rem;color:var(--pine);margin-bottom:var(--sp-1)}
@@ -7258,6 +7300,74 @@ padding:var(--sp-7) max(0px,calc(50% - 590px))}
   :where(body.pg) .hcols #state,
   :where(body.pg) .hcols #upcoming,
   :where(body.pg) .hcols #session{margin-top:var(--sp-7)}
+}
+/* ---- THE COLUMNS, SET APART (17 October 2026) ---------------------------
+   The person: "It would be good if the columns on the homepage could be a bit
+   more differentiated because there's a lot of information to look at and it
+   doesn't feel very segmented." Three treatments, each a class on .hcols that
+   build_pages writes from HOME_COLUMNS, so another is a one-line change. None
+   moves a column (the three columns are settled), touches the hero's logo,
+   or tints a band across the page (the person's "no pale pine band", 8
+   October): each sets the parts apart with the site's own sheet, rule and
+   heading, the things every other page is built from.
+
+   hv-panels (in use): each side column is one sheet, the surface a card is
+   drawn on, with its sections' headings over a rule inside it; the middle
+   column, the site's own name, search and ways in, stays on the ground. So
+   the page reads as the hero between two panels. On one column each block
+   of the rails is a sheet of its own, under the hero and its cards.
+
+   hv-rules: no sheets; a rule down each side of the middle column, and each
+   section of the rails under a heavy rule with its heading in the serif at
+   the lead's size, as a printed record heads its parts.
+
+   hv-sections: each block of the side columns -- where the Court is, what is
+   coming up, the latest session days, the latest activity -- is a card of
+   its own, its heading over a rule inside it. */
+@media (min-width:73.75em){
+  :where(body.pg) .hv-panels .hside{background:var(--surface);border:1px solid var(--rule-2);
+    border-radius:var(--r-out);padding:var(--sp-7) var(--sp-7) var(--sp-8)}
+  :where(body.pg) .hv-panels .hside h2,
+  :where(body.pg) .hv-sections .hside h2{padding-bottom:var(--sp-4);border-bottom:1px solid var(--rule);
+    margin-bottom:var(--sp-5)}
+  :where(body.pg) .hv-panels #recent,
+  :where(body.pg) .hv-sections #recent{border-top:0;padding-top:0}
+  :where(body.pg) .hv-panels .hside > div + div:not(.fresh){margin-top:var(--sp-8)}
+  :where(body.pg) .hv-rules .hmid{position:relative;align-self:stretch}
+  :where(body.pg) .hv-rules .hmid::before,
+  :where(body.pg) .hv-rules .hmid::after{content:"";position:absolute;top:0;bottom:0;width:1px;
+    background:var(--rule-2)}
+  :where(body.pg) .hv-rules .hmid::before{left:calc(var(--sp-9) / -2)}
+  :where(body.pg) .hv-rules .hmid::after{right:calc(var(--sp-9) / -2)}
+  :where(body.pg) .hv-rules #recent{border-top:0;padding-top:0}
+}
+:where(body.pg) .hv-rules .hside h2,
+:where(body.pg) .hv-rules .hguides h2{font:600 var(--t-lead)/1.25 var(--serif);letter-spacing:0;
+  text-transform:none;color:var(--ink);border-top:3px solid var(--ink);padding-top:var(--sp-4);
+  margin:0 0 var(--sp-5)}
+/* The Court's status is a box of its own already (.statebox), in every
+   treatment. */
+:where(body.pg) .hv-sections #upcoming,
+:where(body.pg) .hv-sections #session,
+:where(body.pg) .hv-sections .hrecent{background:var(--surface);border:1px solid var(--rule-2);
+  border-radius:var(--r-out);padding:var(--sp-6) var(--sp-6) var(--sp-7);box-sizing:border-box}
+:where(body.pg) .hv-sections #session:empty{display:none}
+:where(body.pg) .hv-sections .hside > div + div:not(.fresh){margin-top:var(--sp-6)}
+@media (max-width:73.74875em){
+  :where(body.pg) .hv-panels #upcoming,
+  :where(body.pg) .hv-panels #session,
+  :where(body.pg) .hv-panels .hrecent{background:var(--surface);border:1px solid var(--rule-2);
+    border-radius:var(--r-out);padding:var(--sp-6) var(--sp-6) var(--sp-7)}
+  :where(body.pg) .hv-panels #session:empty{display:none}
+  :where(body.pg) .hv-panels #upcoming > .cal,
+  :where(body.pg) .hv-sections #upcoming > .cal{margin-top:0}
+  :where(body.pg) .hv-panels #upcoming h2,
+  :where(body.pg) .hv-panels #session h2,
+  :where(body.pg) .hv-panels .hrecent h2,
+  :where(body.pg) .hv-sections #upcoming h2,
+  :where(body.pg) .hv-sections #session h2,
+  :where(body.pg) .hv-sections .hrecent h2{margin-top:0;padding-bottom:var(--sp-4);
+    border-bottom:1px solid var(--rule)}
 }
 /* ---- COMING UP, THE WHOLE WEEK IN A BOX OF ITS OWN HEIGHT -------------
    A week in session is forty sittings, and drawn in full it ran the left

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.212
+# GRANITE_VERSION: 2026-09-04.216
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -30,6 +30,7 @@ import argparse
 import about_figures
 import bill_order as BO
 import build_date
+import civics as _civics
 import html as _html
 import shell as _shell
 from components import WORDBOOK, chip, clock, date_span, icon, pchip, until_attrs
@@ -321,7 +322,14 @@ COMMITTEE_TAB_SLUGS = ("sessions",)
 # and /legislators.html answer the same way. Only those two addresses: the
 # members' data under /legislators/<id>.json and their pages under
 # /legislator/ are where they were, and no rule here reaches them.
-MOVED = (("/learn", "/resources"), ("/learn.html", "/resources"),
+# AND THREE LEARN PAGES BECAME HOW-TO GUIDES (the person, 17 October 2026:
+# "Certain pages currently on learn can move to how to like using this site,
+# finding your representatives, how to testify or attend meetings"). Each is
+# at /guides/<slug> now (civics.HOW_TO), and its /learn/ address, which
+# search engines have indexed and bookmarks hold, answers with a 301 to it,
+# in both spellings for the reason above.
+MOVED =(("/learn", "/resources"), ("/learn.html", "/resources"),
+         *((f"/learn/{s}{x}", f"/guides/{s}") for s in _civics.HOW_TO for x in ("", ".html")),
          ("/legislators", "/officials"), ("/legislators.html", "/officials"),
          # Sen. John Barnes Jr.'s page, named from "Barnes, Jr., John" as
          # "Jr. Barnes John" until build_site_v2.person_name put the suffix
@@ -2200,6 +2208,13 @@ if(!box||!out)return;
 // which is where the chamber is; a row that says neither falls to the last
 // bucket rather than being dropped.
 const GROUPS=[
+  // THE GUIDES FIRST, AND LEARN WITH THIS SITE'S PAGES (17 October 2026: "the
+  // how to guides should be incorporated into the search in some fashion").
+  // A guide is found by its task and its plain words (find.js, _fnamed), so
+  // when it is found it is what the reader came to do; the Learn pages, which
+  // this page listed nowhere before, go with the site's other pages, after
+  // the bills.
+  {t:"How-To Guides",       k:r=>r[0]==="guide"},
   {t:"Senators",            k:r=>r[0]==="legislator"&&/^Senate/.test(r[2])},
   {t:"Representatives",     k:r=>r[0]==="legislator"},
   // A committee that no longer sits goes with the people who have left, below
@@ -2211,6 +2226,7 @@ const GROUPS=[
   {t:"Former representatives",k:r=>r[0]==="former"&&/^House/.test(r[2])},
   {t:"Former members",      k:r=>r[0]==="former"},
   {t:"Former committees",   k:r=>r[0]==="committee"},
+  {t:"Learn",               k:r=>r[0]==="learn"},
   {t:"Pages on this site",  k:r=>r[0]==="page"}
 ];
 
@@ -2273,7 +2289,7 @@ const bills=(q,B,C,counting)=>{
 // Groups a reader reaches for after the bills: members who have left, and
 // this site's own pages.
 const AFTER=new Set(["Former senators","Former representatives",
-  "Former members","Pages on this site"]);
+  "Former members","Learn","Pages on this site"]);
 let waiting=false,waitingAll=false,waitingWords=false;
 
 function draw(q){
@@ -2330,7 +2346,10 @@ function draw(q){
   // member, committee, town or subject has every word typed as a whole word
   // of its name (_fwhole), and then after those and ahead of the members who
   // have left. "bail" leads with the bail bills; "bailey" with Rep. Bailey.
-  const named=rows.some(r=>r[0]!=="former"&&_fwhole(r,s));
+  // A BILL NUMBER LEADS WITH THE BILLS, whatever else has its words (17
+  // October 2026): a guide found by its own words is never put above a bill
+  // whose number was typed.
+  const named=!findBill(s)&&rows.some(r=>r[0]!=="former"&&_fwhole(r,s));
   const left=rows.slice();
   let html=named?"":bills(s,B,C,counting),placed=!named;
   for(const g of GROUPS){
@@ -3039,35 +3058,74 @@ def sitting_days():
     return set(build_session_pages.sittings()[0])
 
 
-def committees_with_roster(out, data="data"):
-    """How many committees this site can say who sits on.
+# THE HOME PAGE'S CARDS (the person, 17 October 2026: "Switch out the
+# committees card on the home page for the officials page", and "a card or
+# some other way to link to laws on the homepage other than the nav"). Four,
+# in the nav's order: the bills, the laws they change, who represents you,
+# and the guides and explainers. The Committees card goes -- its count of
+# committees with a roster, counted for it since 10 October, goes with it,
+# and the Committees tab in the nav is the way there -- and Officials takes
+# its place, because "who represents my town" is what more readers arrive
+# asking. Two abreast in the middle column, one above the other on a phone.
+#
+# THE CONSTITUTION ON THE LAWS CARD (the person's request, carried out 18
+# October 2026, once the Laws page had its Constitution tab). The card names
+# it first and links its tab -- /laws#constitution, constitution_tab.TABS'
+# address -- beside the card's own way to the statutes: the whole card opens
+# /laws, as every card opens its page, and "The Constitution" in its line
+# opens the tab. Only while the Laws page carries that tab: a card says what
+# the page holds, not what it will.
+HOME_CARDS = (
+    ("/bills", "bill", "Browse Bills",
+     "Search by committee, topic, sponsor, status or the day it was voted on"),
+    ("officials.html", "person", "Officials",
+     "Who represents your town, and every legislator&rsquo;s bills and votes"),
+    ("laws.html", "law", "Laws",
+     "Every New Hampshire statute, by number or subject, with the bills that would change it"),
+    ("resources.html", "book", "Resources",
+     "How-to guides, how the legislature works, and official sources"),
+)
+CONSTITUTION_HREF = "/laws#constitution"
 
-    THE NUMBER WAS TYPED AND MATCHED NOTHING. The home page offered "who sits
-    on each of the 56 committees": site/committees.json holds 53, site/
-    committee/ holds 53 pages, data/committees.json holds 55 and the General
-    Court's own Committees.txt holds 55 -- no file on this disk produces 56.
-    Nor would 53 have made the sentence true, because 15 of the 53 carry no
-    roster at all (H05 Education among them, 1,532 bills and no members), and
-    "who sits on each" is false of every one of those. So the card states the
-    committees whose membership the record actually holds, counted at build
-    time -- the way the Learn pages compute every figure they print.
 
-    COUNTED BY THE STEP THAT KNOWS, NOT READ OFF ITS OUTPUT (10 October
-    2026). This read site/committees.json, which build_committees writes four
-    steps after this one, so a build into an empty site/ -- GitHub's nightly,
-    whose machine starts with none -- had nothing to count, and the card said
-    "Who sits on a committee" where the laptop's named 38; found twice on 9
-    October, on the builds the kit's copy of last night's file did not reach.
-    build_committees.with_roster counts what its committees.json will give a
-    member, from what that step reads for it -- the seat table, the listing
-    and the roster, none of which a later step writes -- so a cold build and
-    a warm one say the same. preflight's _home_counts_rosters_cold builds
-    into a site with no committees.json and holds the number to what
-    build_committees then writes. It is 0 only where no committee has a
-    sitting member on file, and then the card names no number.
-    """
-    import build_committees
-    return build_committees.with_roster(out, data)
+def _laws_has_constitution():
+    """Whether the Laws page carries its Constitution tab."""
+    import constitution_tab
+    return any(pid == "constitution" for pid, _name in constitution_tab.TABS)
+
+
+def home_cards():
+    """The .entry block of the home page: HOME_CARDS, each with its section's
+    drawing (the nav's own, Polish 1). The Laws card, while the Laws page
+    carries the Constitution, is a card with two links (.ecard): the card
+    itself to /laws and "The Constitution" to its tab, the inner link above
+    the card's, so each answers its own click."""
+    out = []
+    for href, ic, name, line in HOME_CARDS:
+        if href == "laws.html" and _laws_has_constitution():
+            out.append(f'  <div class="ecard"><a class="ecmain" href="{href}">{icon(ic)}<b>{name}</b></a>'
+                       f'<span><a class="ecalso" href="{CONSTITUTION_HREF}">The Constitution</a>, article '
+                       'by article, and every New Hampshire statute, by number or subject</span></div>\n')
+        else:
+            out.append(f'  <a href="{href}">{icon(ic)}<b>{name}</b><span>{line}</span></a>\n')
+    return '<div class="entry">\n' + "".join(out) + "</div>"
+
+
+# THE COLUMNS, SET APART (the person, 17 October 2026: "It would be good if
+# the columns on the homepage could be a bit more differentiated because
+# there's a lot of information to look at and it doesn't feel very
+# segmented"). Three treatments were drawn, each a class on .hcols whose
+# rules are in app.css beside the three-column grid, and the one in use is
+# HOME_COLUMNS: another is this one line. None moves a column (the layout is
+# settled, homepage-three-column-is-settled), touches the hero's logo, or
+# tints a band across the page (the person's "no pale pine band", 8 October).
+#   panels    each side column is a sheet of its own; the hero on the ground
+#   rules     rules between the columns, and each section under a heavy rule
+#   sections  each block of the side columns is its own card
+# "panels" is the one recommended: it sets the two rails apart from the hero
+# at a glance, in light and dark, and on a phone each block becomes a card.
+HOME_COLUMN_OPTIONS = {"panels": "hv-panels", "rules": "hv-rules", "sections": "hv-sections"}
+HOME_COLUMNS = "panels"
 
 
 # THE BROWSER'S FILES, as this step puts them in the site: copied from
@@ -3782,21 +3840,6 @@ Senate; and the state&rsquo;s other officials.</p>
 
     static_up = calendar_html(out)
 
-    # The Committees card's offer, counted rather than typed. See
-    # committees_with_roster: what the card promises is a roster, so the number
-    # it names is the committees that have one, counted by build_committees
-    # from what it reads -- not from its committees.json, which a build into
-    # an empty site has not written yet. With none, it names no number.
-    n_roster = committees_with_roster(out)
-    cmte_offer = (f"Who sits on each of the {n_roster} committees with a "
-                  "roster, and what it did on every day it met" if n_roster > 1
-                  else "Who sits on the one committee with a roster, and what "
-                       "it did on every day it met" if n_roster == 1
-                  else "Who sits on a committee, and what it did on every day "
-                       "it met")
-    print(f"  committees: {n_roster} with a member on the roster today, as "
-          "build_committees counts them, for the home page's Committees card")
-
     # WHICH OF THE DAYS "MOST RECENT FLOOR SESSIONS" NAMES HAVE A PAGE. The
     # block is drawn by the script from home.json, a chamber and a date each,
     # and the date leads to that sitting's page where one is built: asked of
@@ -3833,7 +3876,8 @@ Senate; and the state&rsquo;s other officials.</p>
     # it. A build that placed no lockup.png writes the name as text instead.
     home_h1 = ('<h1 class="lockup"><span>Granite Record</span></h1>' if has_lockup
                else '<h1 class="wordmark">Granite Record</h1>')
-    home_body = f"""<div class="hcols">
+    # The columns' treatment, HOME_COLUMN_OPTIONS[HOME_COLUMNS]: one class.
+    home_body = f"""<div class="hcols {HOME_COLUMN_OPTIONS[HOME_COLUMNS]}">
 <div class="hmid">
 {home_h1}
 <p class="slogan">Public Records, Made Findable.</p>
@@ -3858,23 +3902,14 @@ today.</p>
 committee. Your town shows who represents you.</p>
 <p class="sr" id="hqsay" role="status"></p>
 <!-- EACH CARD WITH ITS SECTION'S DRAWING, the nav's own (Polish 1, 9 October
-     2026): the prototype kit's home cards, their names in Title Case as the
-     approved drawing has them. -->
-<div class="entry">
-  <a href="/bills">{icon("bill")}<b>Browse Bills</b><span>Search by committee, topic, sponsor,
-    status or the day it was voted on</span></a>
-  <!-- COMMITTEES, NOT LEGISLATORS. Committees had no route from the home
-       page at all, and it is where a reader who knows the subject rather
-       than the bill number starts. -->
-  <a href="committees.html">{icon("committee")}<b>Committees</b><span>{cmte_offer}</span></a>
-  <!-- RESOURCES, NOT LEARN (decision 129, 8 October 2026): the card goes
-       where the tab does, and Learn is the hub's first tab. -->
-  <a href="resources.html">{icon("book")}<b>Resources</b><span>How a bill moves, what the shorthand
-    means, and how to testify</span></a>
-</div>
-<!-- THE HOW-TO GUIDES, under the cards (the person, 12 October 2026: "a link
-     to them on the homepage in some form"). Filled by build_civics, which
-     knows which guides passed their checks; empty until one has. -->
+     2026): Bills, Officials, Laws and Resources since 17 October 2026
+     (HOME_CARDS says why). -->
+{home_cards()}
+<!-- HOW DO I...?, under the cards (the person, 17 October 2026: the guides
+     shown in a way the public finds intuitive): the few guides most people
+     come for, as the end of the question, and All guides. Filled by
+     build_civics, which knows which guides passed their checks; empty while
+     build_civics.HOME_ROW is off (the person, 18 October 2026). -->
 <!-- guides --><!-- /guides -->
 </div>
 <section class="hside hleft" aria-label="Where the General Court is, and what is coming up">

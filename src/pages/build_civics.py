@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.60
+# GRANITE_VERSION: 2026-09-08.63
 """
 The civics section: a hub and one page per topic, in order.
 
@@ -761,8 +761,14 @@ def fill(text, figures):
 HUB_PAGE = "resources.html"
 HUB = S.canon("/" + HUB_PAGE)
 LEARN_DIR = "learn"
-# The hub's three tabs, in the person's order: (address, name).
-HUB_TABS = (("learn", "Learn"), ("guides", "How-To Guides"), ("sources", "Official Sources"))
+# The hub's three tabs, in the person's order: (address, name). HOW-TO GUIDES
+# FIRST (the person, 17 October 2026: "How to guides should be the default
+# tab when opening the resources page"). The first tab is the one the hub
+# opens on (build_town_pages.TABS_JS shows tabs[0] when the address names
+# none), and without JavaScript the panels are read in this order, so the
+# guides lead there too. An address naming a tab -- /resources#learn -- still
+# opens that one.
+HUB_TABS = (("guides", "How-To Guides"), ("learn", "Learn"), ("sources", "Official Sources"))
 OG_ALT = "Granite Record: how New Hampshire works"
 
 # THE RECORD IN NUMBERS, named once: its page's title and lead and its entry
@@ -827,6 +833,24 @@ def curly(text):
 
 def learn_href(slug):
     return f"{LEARN_DIR}/{slug}.html"
+
+
+def article_href(slug):
+    """Where a civics topic is written. THE THREE THAT BECAME GUIDES
+    (civics.HOW_TO, 17 October 2026) are at /guides/<slug>, beside the
+    step-by-step guides on the How-To Guides tab; the rest at /learn/<slug>."""
+    return guide_href(slug) if slug in civics.HOW_TO else learn_href(slug)
+
+
+def learn_topics(topics):
+    """The topics Learn lists and walks in order: all but civics.HOW_TO."""
+    return [t for t in topics if t["slug"] not in civics.HOW_TO]
+
+
+def how_to_topics(topics):
+    """The topics that are how-to guides now, in civics.HOW_TO's order."""
+    by = {t["slug"]: t for t in topics}
+    return [by[s] for s in civics.HOW_TO if s in by]
 
 
 # A small number in a sentence or a heading is spelled out ("Thirteen short
@@ -975,7 +999,9 @@ def head(path, slug, title, lead, secs, base):
     open at a time in that row covers both, and every href in it carries the
     page's own path (see HUB above).
     """
-    here = S.canon(learn_href(slug))
+    # The page's own address, as it is written: /learn/ or, for the pages
+    # that became guides, /guides/ (article_href).
+    here = S.canon(path.lstrip("/"))
     items = "".join(f'<li><a href="{E(here)}#{E(sid)}">{_plain(h)}</a></li>'
                     for sid, h, _ in secs)
     otp = ('<details class="l-otp"><summary>On this page</summary>'
@@ -1008,6 +1034,15 @@ def pager(i, topics):
             + side(None if i is None else i + 1, "l-pgn", "Next Topic") + "</nav>")
 
 
+def guides_foot():
+    """The foot of a page that became a guide (civics.HOW_TO): no Previous or
+    Next Topic, since it is no longer one of Learn's pages read in order, and
+    the way back to every guide where All Topics stood."""
+    return ('<nav class="l-pager" aria-label="Other guides"><span class="l-pgp"></span>'
+            f'<a class="l-pgm" href="{HUB}#guides">All How-To Guides</a>'
+            '<span class="l-pgn"></span></nav>')
+
+
 def all_topics(topics, here=None):
     """The thirteen pages at the foot of each, in the hub's two groups, with
     the one open marked: a reader inside the section needs a way across it,
@@ -1025,14 +1060,17 @@ def all_topics(topics, here=None):
             f'<nav class="l-all" aria-label="The pages of this section">{"".join(groups)}</nav>')
 
 
-def learn_page(tmpl, *, slug, title, lead, description, secs, foot, base, after=None):
+def learn_page(tmpl, *, slug, title, lead, description, secs, foot, base, after=None,
+               hub="learn"):
     """A Learn article: the Resources bar, the head, the sections, the pager
-    (foot) and, after it, The Thirteen Pages (after)."""
-    path = "/" + learn_href(slug)
+    (foot) and, after it, The Thirteen Pages (after). A page that became a
+    guide (civics.HOW_TO) is drawn the same way at its /guides/ address, with
+    How-To Guides marked on the bar (`hub`)."""
+    path = "/" + article_href(slug)
     p = S.page(tmpl, path=path, base=base,
                # THE SITE'S NAME LAST, on every page; the section is worth
                # naming, so it goes in front of the brand rather than instead.
-               title=S.title_of(title, "Learn"),
+               title=S.title_of(title, "Learn" if hub == "learn" else "How-To Guides"),
                og_title=title, description=description,
                og_image="og-learn.png", og_alt=OG_ALT,
                globals={"GR_STATIC": True}, noscript="",
@@ -1042,7 +1080,7 @@ def learn_page(tmpl, *, slug, title, lead, description, secs, foot, base, after=
     article = ("".join(section(*s) for s in secs) + foot
                + (section(*after) if after else ""))
     out = p.replace('<div id="results"></div>',
-                    '<div id="results"><div class="l-page">' + hub_bar()
+                    '<div id="results"><div class="l-page">' + hub_bar(hub)
                     + head(path, slug, title, lead, every, base)
                     + f'<div class="l-art">{article}</div></div>{OTP_JS}</div>', 1)
     if "[[" in out:
@@ -1080,12 +1118,18 @@ OTP_JS = """<script>
 # law is the spine everything else hangs off, the General Court answers "who
 # are they", and testifying is the one page that tells a reader they can do
 # something. Each is listed once: the lists below leave these out.
+#
+# THE LEGISLATURE'S YEAR, WHERE TESTIFYING STOOD (17 October 2026).
+# Testifying and Attending is a how-to guide now (civics.HOW_TO), so Learn's
+# third card is the page that lays the course of a bill on the calendar, and
+# the guides that tell a reader what they can do are named at the foot of
+# the tab, under Taking Part.
 START = [("how-a-bill-becomes-law",
           "The course a bill runs, and the stages it can die at."),
          ("general-court",
           "The 400 representatives and 24 senators, and how a two-year term is shaped."),
-         ("testifying",
-          "Anyone may speak on any bill. This is how.")]
+         (legislative_year.SLUG,
+          "When bills are filed, when the House and Senate sit, and the deadlines between.")]
 
 
 def official_sources(extra=()):
@@ -1160,6 +1204,22 @@ def hub_learn(topics):
         if lis:
             out.append(hub_section("s-" + _slug(group), E(group),
                                    f'<p class="r-intro">{E(note)}</p><ul class="r-topics">{lis}</ul>'))
+    # TAKING PART, ON THE HOW-TO GUIDES TAB NOW (17 October 2026: Learn
+    # "should focus more on educational content while still linking to those
+    # other guides when applicable"). The three pages that moved are named
+    # here by their task, with the tab that holds the rest.
+    moved = "".join(
+        f'<li><a href="{E(guide_href(t["slug"]))}">{G.task_of(t["slug"])[1]["does"]}</a>'
+        f'<p>{G.task_of(t["slug"])[1]["line"]}</p></li>'
+        for t in how_to_topics(civics.TOPICS) if G.task_of(t["slug"])[1])
+    if moved:
+        out.append(hub_section(
+            "taking-part", "Taking Part",
+            # No link to the tab in the line: the strip is above it, and the
+            # tab's count is of the pages its panel links.
+            '<p class="r-intro">Finding who represents you, speaking on a bill and following one '
+            'are How-To Guides now, step by step, with the rest of the guides.</p>'
+            f'<ul class="r-topics">{moved}</ul>'))
     # NOT ONE OF THE NUMBERED PAGES. The topics are short explanations meant
     # to be read in order; this is a long table of statistics counted from the
     # record, for a different reader, so it sits after them under its own
@@ -1182,22 +1242,44 @@ def hub_learn(topics):
     return "".join(out)
 
 
-def hub_guides(published=()):
-    """The guides that passed guides.py's checks, each with its line and the
-    date it was checked. WHILE THERE ARE NONE, THE TAB SAYS SO: the list of
-    guides coming stays hidden until the first one exists (8 October 2026),
-    and the tab is drawn anyway, because the person asked for a tab for each,
-    and points to the other two."""
-    if published:
-        lis = "".join(
-            f'<li><a href="{E(guide_href(g["slug"]))}">{E(g["title"])}</a>'
-            f'<p>{dashes(E(g["blurb"]))}</p>'
-            f'<p class="r-checked">Checked {E(C.date_words(_day(G.checked_on(g)), "full"))}</p></li>'
-            for g in published)
-        return ('<p class="r-intro">Short, step-by-step guides to things people ask the state for. '
-                'Each one says what it was checked against and when, and links to the official '
-                'page that has the final word.</p>'
-                f'<ul class="r-topics">{lis}</ul>')
+def hub_guides(published=(), articles=()):
+    """The guides that passed guides.py's checks, and the pages that became
+    guides (`articles`, civics.HOW_TO), listed BY TASK (the person, 17 October
+    2026: "refine how the how to guides are displayed ... so it's more
+    intuitive for the general public"): under each of guides.TASKS' groups,
+    each guide by the task it serves in a reader's words and one line, the
+    group's own heading in the margin as a Learn section's is. A guide's date
+    of checking is on its own page and the line above the groups says so,
+    rather than a date under every row, which a reader scanning for a task
+    reads past. A published guide no task names is listed under More Guides.
+
+    WHILE THERE ARE NONE, THE TAB SAYS SO: the list of guides coming stays
+    hidden until the first one exists (8 October 2026), and the tab is drawn
+    anyway, because the person asked for a tab for each, and points to the
+    other two."""
+    here = {g["slug"]: g for g in published}
+    here.update({t["slug"]: t for t in articles})
+    if here:
+        # The whole row is the link, the task over its line, so the target is
+        # the size of what a reader is choosing between.
+        def item(slug, does, line):
+            return (f'<li><a href="{E(guide_href(slug))}"><b>{does}</b>'
+                    f'<span>{dashes(line)}</span></a></li>')
+        secs, listed = [], set()
+        for group, tasks in G.TASKS:
+            lis = "".join(item(t["slug"], t["does"], t["line"]) for t in tasks if t["slug"] in here)
+            listed |= {t["slug"] for t in tasks}
+            if lis:
+                secs.append(hub_section("g-" + _slug(group), E(group), f'<ul class="r-tasks">{lis}</ul>'))
+        # A guide no task names, by its own title and line.
+        rest = "".join(item(g["slug"], E(g["title"]), E(g["blurb"]))
+                       for g in published if g["slug"] not in listed)
+        if rest:
+            secs.append(hub_section("g-more", G.MORE, f'<ul class="r-tasks">{rest}</ul>'))
+        return ('<p class="r-intro">Step-by-step help with things people do with the state, and '
+                'with taking part in the legislature. Each step-by-step guide links the official '
+                'page that has the final word, and says when it was last checked against it.</p>'
+                + "".join(secs))
     return ('<p class="r-none">There are no how-to guides yet.</p>'
             '<p class="r-sub">Each guide will be listed here once it is written and checked '
             'against the official sources it cites.</p>'
@@ -1385,12 +1467,42 @@ def guide_page(tmpl, g, base, record, draft_why=""):
 HOME_SLOT = re.compile(r"<!-- guides -->.*?<!-- /guides -->", re.S)
 
 
+# THE ROW IS OFF (the person, 18 October 2026: "Go ahead with panels, but I
+# don't like the way that the how to guides are presented in those homepage
+# prototype versions though"). home_guides writes the home page's slot empty
+# while this is False, and the Resources card -- which opens the hub on its
+# How-To Guides tab -- is the home page's way to the guides. how_do_i and
+# guides.HOME are kept as they are, so the row comes back as one line once
+# the person says how they want the guides shown there; preflight's
+# _home_cards fails if the row is drawn while this is off.
+HOME_ROW = False
+
+
+def how_do_i(published):
+    """THE HOME PAGE'S "HOW DO I...?" ROW (the person, 17 October 2026: the
+    how-to guides on the home page "so it's more intuitive for the general
+    public"). Twenty guides by their full titles were a column longer than
+    the cards above them, and a reader scanning for their own errand read
+    "How to" twenty times. So the row asks the question once and answers it
+    with the few most people come for (guides.HOME, each the end of the
+    question: "Renew my driver's license"), then All guides, which opens the
+    hub on its How-To Guides tab. A pick whose guide is held back is left
+    off; the pages that became guides (civics.HOW_TO) are always there."""
+    open_ = {g["slug"] for g in published} | set(civics.HOW_TO)
+    picks = [(s, words) for s, words in G.HOME if s in open_]
+    if not picks:
+        return ""
+    return ('<nav class="hguides" aria-labelledby="hguides-h">'
+            '<h2 id="hguides-h">How do I&hellip;?</h2><ul>'
+            + "".join(f'<li><a href="{E(S.canon("/" + guide_href(s)))}">{words}</a></li>'
+                      for s, words in picks)
+            + '</ul><a class="hgall" href="/resources#guides">All guides</a></nav>')
+
+
 def home_guides(site, published):
-    """The home page's row of how-to guides, under its three cards: each
-    published guide by name, and the tab that lists them. The home page is
-    build_pages' and is written before this runs, so its slot is filled here,
-    and filled again rather than doubled on a second run. Nothing is drawn
-    while no guide has passed its checks."""
+    """The home page's "How do I...?" row (how_do_i), under its cards. The
+    home page is build_pages' and is written before this runs, so its slot is
+    filled here, and filled again rather than doubled on a second run."""
     home = site / "index.html"
     if not home.is_file():
         return
@@ -1398,16 +1510,12 @@ def home_guides(site, published):
     if not HOME_SLOT.search(text):
         print("  index.html has no guides slot: the home page lists no guides")
         return
-    row = ""
-    if published:
-        row = ('<nav class="hguides" aria-labelledby="hguides-h">'
-               '<h2 id="hguides-h">How-To Guides</h2><ul>'
-               + "".join(f'<li><a href="{E(S.canon("/" + guide_href(g["slug"])))}">'
-                         f'{E(g["title"])}</a></li>' for g in published)
-               + '</ul><a class="hgall" href="/resources#guides">All guides</a></nav>')
+    row = how_do_i(published) if HOME_ROW else ""
     home.write_text(HOME_SLOT.sub(lambda _m: f"<!-- guides -->{row}<!-- /guides -->", text, count=1),
                     encoding="utf-8")
-    print(f"  index.html: {len(published)} guide{'s' if len(published) != 1 else ''} under the cards")
+    n = row.count("<li>")
+    print(f"  index.html: How do I...? with {n} guide{'s' if n != 1 else ''} under the cards"
+          if HOME_ROW else "  index.html: the How do I...? row is off (build_civics.HOME_ROW)")
 
 
 def unlinked(g, held):
@@ -1469,13 +1577,58 @@ def build_guides(site, tmpl, base, drafts=False):
                                                 + G.checked_on(g)))
     # A GUIDE HELD BACK LEAVES NO OLD COPY: a page written by an earlier build
     # whose claims have since been unset is not served in its place.
+    # The pages that became guides (civics.HOW_TO) are written into the same
+    # folder by main(), after this, and are not this function's to remove.
     if out.is_dir() and not drafts:
-        keep = {f"{g['slug']}.html" for g in published}
+        keep = {f"{g['slug']}.html" for g in published} | {f"{s}.html" for s in civics.HOW_TO}
         for f in out.glob("*.html"):
             if f.name not in keep:
                 f.unlink()
                 print(f"  guides/{f.name}: removed, no longer published")
     return published, urls
+
+
+FOLLOW_HEADING = "Other Ways to Follow New Hampshire Legislation"
+
+
+def follow_elsewhere():
+    """OTHER WAYS TO FOLLOW NEW HAMPSHIRE LEGISLATION (the person, 17 October
+    2026), at the foot of the Official Sources tab: the General Court's own
+    site first, then the independent trackers civics.FOLLOW_INDEPENDENT
+    lists, each with its line and its host, in alphabetical order, no logo,
+    and nothing said for or against any of them.
+
+    ON THIS TAB RATHER THAN A FOURTH ONE. The section begins with the
+    legislature's own site, which is what this tab holds, and it is short; a
+    fourth tab would put a fourth name in the strip a phone already lays out
+    in three columns, for six links. Its heading names it, and the line under
+    the trackers says they are independent, so a reader of an "Official
+    Sources" tab is never left to take them for the state's.
+
+    A GENERAL COURT ADDRESS IS ONE OF guides.GENERAL_COURT_LINKS, the list of
+    the Court's pages this part of the site links and never asks, or the build
+    stops: the same rule as the guides' sign-in links."""
+    def li(name, url, line):
+        host = re.sub(r"^https?://(?:www\.)?([^/]+).*$", r"\1", url)
+        return (f'<li><a href="{E(url)}" target="_blank" rel="noopener">{E(name)}</a>'
+                f'<span class="r-fline">{dashes(line)}</span><span class="l-dmeta">{E(host)}</span></li>')
+    court = [u for _n, u, _l in civics.FOLLOW_OFFICIAL + civics.FOLLOW_INDEPENDENT
+             if re.match(r"https?://(?:[^/]*\.)?gc\.nh\.gov(?:/|$)", u)]
+    loose = sorted(set(court) - G.GENERAL_COURT_LINKS)
+    if loose:
+        raise SystemExit("the Resources hub links a General Court page that is not one of "
+                         "guides.GENERAL_COURT_LINKS: " + ", ".join(loose))
+    names = [n for n, _u, _l in civics.FOLLOW_INDEPENDENT]
+    if names != sorted(names, key=str.casefold):
+        raise SystemExit("civics.FOLLOW_INDEPENDENT is not in alphabetical order, which is "
+                         "the only order that ranks none of them: " + ", ".join(names))
+    return hub_section(
+        "follow-elsewhere", FOLLOW_HEADING,
+        '<p class="r-intro">From the legislature itself:</p>'
+        '<ul class="r-srcs r-follow">' + "".join(li(*r) for r in civics.FOLLOW_OFFICIAL) + "</ul>"
+        '<p class="r-intro">And from independent sites, run apart from the General Court and from '
+        'Granite Record, in alphabetical order:</p>'
+        '<ul class="r-srcs r-follow">' + "".join(li(*r) for r in civics.FOLLOW_INDEPENDENT) + "</ul>")
 
 
 def hub_sources(groups):
@@ -1486,13 +1639,13 @@ def hub_sources(groups):
             f'<span class="l-dmeta">{meta}</span></li>' for name, u, meta in rows) + "</ul>")
         for group, rows in groups)
     return ('<p class="r-intro">The sites the Learn pages cite as their sources. Each opens in '
-            'a new tab.</p>' + secs
+            'a new tab.</p>' + secs + follow_elsewhere()
             + '<p class="r-close">Every page here ends with its sources. If something is wrong, '
             '<a href="mailto:contact@graniterecord.org">tell us</a> &mdash; that address exists '
             'for this.</p>')
 
 
-def hub_page(tmpl, base, topics, groups, published=()):
+def hub_page(tmpl, base, topics, groups, published=(), articles=()):
     """The Resources hub: a list head (its title and one line; no trail and no
     Cite this page, which a hub does not carry), then the three tabs.
 
@@ -1513,8 +1666,9 @@ def hub_page(tmpl, base, topics, groups, published=()):
     learn = hub_learn(topics)
     n_learn = len(set(re.findall(r'<a href="([^"]+)"', learn)))
     n_src = sum(len(rows) for _, rows in groups)
-    panels = [("learn", "Learn", n_learn, learn),
-              ("guides", "How-To Guides", len(published), hub_guides(published)),
+    panels = [("guides", "How-To Guides", len(published) + len(articles),
+               hub_guides(published, articles)),
+              ("learn", "Learn", n_learn, learn),
               ("sources", "Official Sources", n_src, hub_sources(groups))]
     assert [p[:2] for p in panels] == list(HUB_TABS), "the hub's panels and HUB_TABS disagree"
     strip = ('<div class="twntabs r-tabs" role="tablist" aria-label="Resources" hidden>'
@@ -1529,8 +1683,9 @@ def hub_page(tmpl, base, topics, groups, published=()):
     p = S.page(tmpl, path="/" + HUB_PAGE, base=base,
                title="Resources | Granite Record", og_title="Resources",
                og_type="website", og_image="og-learn.png", og_alt=OG_ALT,
-               description=("How New Hampshire's state and local government works, and the "
-                            "official sources it publishes."),
+               description=("Step-by-step guides to voting, licenses, benefits, records and "
+                            "taking part in the legislature in New Hampshire; how its state and "
+                            "local government works; and the official sources it publishes."),
                globals={"GR_STATIC": True}, noscript="",
                skip_label="Skip to the page", sr_title="",
                nav_current="resources.html", cite=False)
@@ -1538,8 +1693,8 @@ def hub_page(tmpl, base, topics, groups, published=()):
         '<div id="results"></div>',
         '<div id="results"><div class="l-page r-hub">'
         '<header class="l-head r-head"><h1>Resources</h1>'
-        '<p class="l-lead">How New Hampshire&rsquo;s state and local government works, and '
-        'where to find what it publishes itself.</p></header>'
+        '<p class="l-lead">How to get things done with New Hampshire&rsquo;s state and local '
+        'government, how it works, and where to find what it publishes itself.</p></header>'
         + strip + panes + "</div>" + build_town_pages.TABS_JS + LAND_JS + "</div>", 1)
 
 
@@ -1586,14 +1741,27 @@ def main():
           f"{figures['vetoed']} vetoed, {figures['bills']} in {figures['term'].replace('&ndash;', '-')}")
     urls = [a.base + HUB]
 
+    # ---- the how-to guides -------------------------------------------------
+    # FIRST, BEFORE THE TOPICS (17 October 2026): a Learn page ends with the
+    # guides that do what it explains (civics.GUIDES_FOR), and only the guides
+    # this build publishes may be named there.
+    published, gurls = build_guides(site, tmpl, a.base, a.drafts)
+    open_ = {g["slug"] for g in published} | set(civics.HOW_TO)
+    articles = how_to_topics(topics)
+
     # ---- one page a topic ----------------------------------------------
+    # Learn's own pages walk their order with Previous and Next; the three
+    # that became guides (civics.HOW_TO) are written at /guides/<slug> with a
+    # way back to every guide instead.
     # AN ARTICLE A PAGE CITES OPENS ON THE LAWS PAGE (17 October 2026): "Part
     # Second, Article 44" becomes a link to that article's text on the
     # Constitution tab, wherever the Constitution as read holds it.
     con = PCON.load()
-    for i, t in enumerate(topics):
+    learn = learn_topics(topics)
+    for t in topics:
+        moved = t["slug"] in civics.HOW_TO
         secs = split_sections(CT.link_citations(suffixed(fill(t["body"], figures), names), con),
-                              f"learn/{t['slug']}.html")
+                              article_href(t["slug"]))
         # A LIMIT STATED PLAINLY closes the page's last section of prose --
         # In the Record where the page has one, which is where it says what
         # this site holds.
@@ -1601,14 +1769,40 @@ def main():
             sid, h, c = secs[-1]
             secs[-1] = (sid, h, c + f'<p class="l-note">'
                         f'{CT.link_citations(suffixed(fill(t["holds"], figures), names), con)}</p>')
+        # THE GUIDES THAT DO WHAT THE PAGE EXPLAINS, before its sources.
+        lis = "".join(
+            f'<li><a href="{E(guide_href(s_))}">{G.task_of(s_)[1]["does"]}</a></li>'
+            for s_ in civics.GUIDES_FOR.get(t["slug"], ()) if s_ in open_ and G.task_of(s_)[1])
+        if lis and not moved:
+            secs.append(("how-to-guides", "How-To Guides",
+                         f'<ul class="l-guides">{lis}</ul>'))
         if t["sources"]:
             secs.append(("sources", "Where This Comes From", sources_list(t["sources"])))
+        if moved:
+            page = learn_page(tmpl, slug=t["slug"], title=t["title"],
+                              lead=dashes(E(t["blurb"])) if t["blurb"] else "",
+                              description=t["blurb"], secs=secs, foot=guides_foot(),
+                              base=a.base, hub="guides")
+            (site / GUIDE_DIR).mkdir(parents=True, exist_ok=True)
+            (site / GUIDE_DIR / f"{t['slug']}.html").write_text(S.clean_links(page), encoding="utf-8")
+            gurls.append(a.base + S.canon("/" + guide_href(t["slug"])))
+            # THE OLD ADDRESS IS A REDIRECT (build_pages.MOVED), and a copy an
+            # earlier build left at it would be served in the redirect's place.
+            old = out / f"{t['slug']}.html"
+            if old.exists():
+                old.unlink()
+                print(f"  learn/{t['slug']}.html: removed; /learn/{t['slug']} redirects to "
+                      f"/guides/{t['slug']}")
+            continue
+        i = learn.index(t)
         page = learn_page(tmpl, slug=t["slug"], title=t["title"],
                           lead=dashes(E(t["blurb"])) if t["blurb"] else "",
-                          description=t["blurb"], secs=secs, foot=pager(i, topics),
-                          base=a.base, after=all_topics(topics, t["slug"]))
+                          description=t["blurb"], secs=secs, foot=pager(i, learn),
+                          base=a.base, after=all_topics(learn, t["slug"]))
         (out / f"{t['slug']}.html").write_text(S.clean_links(page), encoding="utf-8")
         urls.append(a.base + S.canon("/" + learn_href(t["slug"])))
+    print(f"  {len(learn)} Learn pages; {len(articles)} pages that became guides, at /guides/: "
+          + ", ".join(t["slug"] for t in articles))
 
     # ---- the record in numbers ------------------------------------------
     # learn_numbers.py says what it is. It is NOT in civics.TOPICS: the topics
@@ -1641,14 +1835,13 @@ def main():
     urls.append(a.base + S.canon("/" + learn_href(GLOSSARY_SLUG)))
     print(f"  learn/{GLOSSARY_SLUG}.html: {len(C.WORDBOOK['glossary'])} terms")
 
-    # ---- the how-to guides -------------------------------------------------
-    published, gurls = build_guides(site, tmpl, a.base, a.drafts)
-
+    # ---- the home page's guides (the guides themselves are written above) --
     home_guides(site, published)
 
     # ---- the hub ----------------------------------------------------------
     groups = official_sources(numbers_results(Path(".")))
-    (site / HUB_PAGE).write_text(S.clean_links(hub_page(tmpl, a.base, topics, groups, published)), encoding="utf-8")
+    (site / HUB_PAGE).write_text(S.clean_links(hub_page(tmpl, a.base, learn, groups, published,
+                                                        articles)), encoding="utf-8")
     # THE OLD HUB'S FILE GOES. /learn redirects to the hub (_redirects), and a
     # learn.html left in the folder by an earlier build would be served in
     # the redirect's place by a host that prefers a file.

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.611
+# GRANITE_VERSION: 2026-09-04.612
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -20557,6 +20557,120 @@ console.log(JSON.stringify({
 """
 
 
+# The how-to guides in the header's search (17 October 2026): find.js over
+# rows made as build_indexes makes them, run against tests/search_cases.json's
+# "find" cases.
+_FIND_GUIDES_JS = r"""
+require("./stub.js");
+const fs = require("fs"), vm = require("vm");
+globalThis.fetch = async () => ({ ok: false, status: 404, json: async () => { throw new Error("404"); } });
+globalThis.chip = (t, cls) => `<span class="${cls}">${t}</span>`;
+vm.runInThisContext(fs.readFileSync("./find.js", "utf8"), { filename: "find.js" });
+const F = vm.runInThisContext("({FIND, FBILLS, findDraw, findMatch, findKind, _fwhole})");
+const go = JSON.parse(fs.readFileSync("./go.json", "utf8"));
+F.FIND.rows = go.rows;
+F.FBILLS.rows = go.bills; F.FBILLS.term = "2025-2026";
+const out = {}, kinds = {}, whole = {};
+for (const c of go.cases) out[c.q] = F.findMatch(c.q, Infinity).map(r => [r[0], r[3]]);
+// Whole words of the guide's name -- its title, task and words -- which is
+// what puts a row above the bills in the panel and on /search.
+for (const c of go.cases) if (c.first)
+  whole[c.q] = F._fwhole(go.rows.find(r => r[3] === "/guides/" + c.first), c.q);
+for (const r of go.rows) kinds[r[0]] = F.findKind(r);
+const panel = {};
+for (const c of go.cases) if (c.bill_first) {
+  F.findDraw(c.q);
+  panel[c.q] = document.getElementById("findout").innerHTML;
+}
+console.log(JSON.stringify({ out, kinds, panel, whole }));
+"""
+
+
+@check("frontend", "the header's search and /search find a how-to guide by its task and its plain "
+       "words, label it a Guide, list it above the Learn pages, and never above a bill whose "
+       "number was typed", needs=("guides", "civics", "build_pages"))
+def _find_guides(G, civics, BP):
+    """The person, 17 October 2026: "the how to guides should be incorporated
+    into the search in some fashion". build_indexes gives each guide's row in
+    find.json its task and the plain words guides.WORDS declares
+    (guides.search_words); find.js reads them as part of the guide's name
+    (_fnamed), so a reader typing "renew my license" or "testify" meets the
+    guide first, and /search lists the guides first among the groups. Here the
+    cases of tests/search_cases.json's "find" run through find.js over rows
+    made the same way, with a member, a town, a subject, the Learn pages and
+    a bill beside them, and a probe guide that declares a bill number's words,
+    which must still sit under that bill in the panel."""
+    if shutil.which("node") is None:
+        return "skip", "node is not installed"
+    import build_civics as BC
+    cases = json.loads(Path("tests/search_cases.json").read_text(encoding="utf-8"))["find"]["cases"]
+    assert cases, "tests/search_cases.json has no find cases"
+    rows = []
+    for g in G.GUIDES:
+        rows.append(["guide", g["title"].replace("&rsquo;", "'"), g["blurb"], f"/guides/{g['slug']}",
+                     G.search_words(g["slug"])])
+    for t in civics.TOPICS:
+        kind = "guide" if t["slug"] in civics.HOW_TO else "learn"
+        rows.append([kind, t["title"], t["blurb"], "/" + BC.article_href(t["slug"])[:-5],
+                     G.search_words(t["slug"]) if kind == "guide" else ""])
+    rows += [["legislator", "Rep. Alice Voter (D - Straf 15)", "House · Straf 15 · D", "/legislator/a", ""],
+             ["town", "Concord", "Merrimack County", "/town/concord", "Merrimack"],
+             ["topic", "Elections", "Bills on this subject", "/bills?topic=Elections", ""],
+             ["guide", "How to Read a Probe", "A probe.", "/guides/probe", "Read a probe · hb 1"]]
+    assert all(r[4] for r in rows if r[0] == "guide" and r[3] != "/guides/probe"), \
+        "a guide's row carries no task words"
+    bills = [{"id": "HB1", "n": "HB 1", "title": "making appropriations", "year": 2025}]
+    root = Path(tempfile.mkdtemp())
+    try:
+        (root / "stub.js").write_text(Path("tests/dom_stub.js").read_text(encoding="utf-8"), encoding="utf-8")
+        (root / "find.js").write_text(Path("src/pages/find.js").read_text(encoding="utf-8"), encoding="utf-8")
+        (root / "go.json").write_text(json.dumps({"rows": rows, "bills": bills, "cases": cases}),
+                                      encoding="utf-8")
+        (root / "go.js").write_text(_FIND_GUIDES_JS, encoding="utf-8")
+        r = _run(["node", "go.js"], cwd=root, capture_output=True, text=True, timeout=60)
+        said = (r.stdout + r.stderr).strip()
+        last = (said.splitlines() or ["no output"])[-1]
+        assert r.returncode == 0 and last.startswith("{"), "node go.js: " + " / ".join(said.splitlines()[-3:])[:300]
+        got = json.loads(last)
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    assert got["kinds"]["guide"] == "Guide", f"a guide is labelled {got['kinds']['guide']!r}"
+    bad = []
+    for c in cases:
+        found = got["out"].get(c["q"], [])
+        slugs = [u.rsplit("/", 1)[-1] for k, u in found if k == "guide"]
+        if c.get("first") and (not found or found[0] != ["guide", f"/guides/{c['first']}"]):
+            bad.append(f"{c['q']!r} leads with {found[:1]}, not the guide {c['first']}")
+        if c.get("first") and not got["whole"].get(c["q"]):
+            bad.append(f"{c['q']!r} is not read as the guide {c['first']}'s own words, so the "
+                       "bills go above it")
+        for s in c.get("listed") or []:
+            if s not in slugs:
+                bad.append(f"{c['q']!r} does not list the guide {s}")
+        if c.get("guides_first"):
+            ks = [k for k, _u in found if k in ("guide", "learn")]
+            if "guide" not in ks or ("learn" in ks and ks.index("learn") < len(ks) - ks[::-1].index("guide") - 1):
+                bad.append(f"{c['q']!r} lists a Learn page above a guide: {ks}")
+        for s in c.get("learn") or []:
+            if ["learn", f"/learn/{s}"] not in found:
+                bad.append(f"{c['q']!r} no longer lists the Learn page {s}")
+        if c.get("bill_first"):
+            html_ = got["panel"].get(c["q"], "")
+            at_bill = html_.find(f'/bill/2025/{c["bill_first"].lower()}"')
+            at_guide = html_.find('href="/guides/probe"')
+            if at_bill < 0 or (0 <= at_guide < at_bill):
+                bad.append(f"{c['q']!r}: the bill is not the panel's first answer above a guide with its words")
+    assert not bad, "; ".join(bad)
+    js = BP.SEARCH_JS
+    assert js.index('{t:"How-To Guides",') < js.index('{t:"Senators",'), "/search does not list the guides first"
+    assert '{t:"Learn",' in js and '"Learn","Pages on this site"]' in js, "/search does not list the Learn pages"
+    assert "const named=!findBill(s)&&rows.some(" in js, "/search can put a guide above a bill number's bills"
+    bi = Path("src/pages/build_indexes.py").read_text(encoding="utf-8")
+    assert 'G.search_words(p.stem) if kind == "guide"' in bi, "find.json no longer carries a guide's task words"
+    return "ok", (f"{len(cases)} searches: guides found by their task and plain words, labelled Guide, "
+                  "above the Learn pages, and under a bill whose number was typed")
+
+
 @check("frontend", "the search names a committee with its chamber, House Housing Committee, so "
        "it is not taken for the subject of the same name; it is still found by its own name",
        needs=("build_pages",))
@@ -30167,7 +30281,7 @@ def _fixture_site_whole(root):
     return base, ran
 
 
-@check("frontend", "every published guide is on the home page, in the site search and in the sitemap by the day it was checked, with HowTo data and the state in its title")
+@check("frontend", "every published guide is reached from the home page, in the site search and in the sitemap by the day it was checked, with HowTo data and the state in its title")
 def _guides_reach():
     """The person, 12 October 2026: a link to the guides on the home page,
     the guides in the site-wide search, and the guides optimized for SEO."""
@@ -30175,13 +30289,19 @@ def _guides_reach():
     if absent:
         return "skip", "not here: " + ", ".join(absent)
     import guides as G
+    import build_civics as BC_
     shared, base, _ran, _days = _fixture_site_shared()
     site = shared / "site"
     home = (site / "index.html").read_text(encoding="utf-8")
     assert home.count("<!-- guides -->") == 1 and home.count("<!-- /guides -->") == 1, \
         "the home page's guides slot is missing or doubled"
+    # The three Learn pages that became guides (civics.HOW_TO, 17 October
+    # 2026) share the folder and are held by _how_to_moved, below: they are
+    # explanations, with no HowTo steps and no date of checking.
+    import civics as _civ
     pages = sorted(p for p in (site / "guides").glob("*.html")
-                   if 'class="g-draft"' not in p.read_text(encoding="utf-8"))
+                   if 'class="g-draft"' not in p.read_text(encoding="utf-8")
+                   and p.stem not in _civ.HOW_TO)
     find = json.loads((site / "find.json").read_text(encoding="utf-8"))
     sm = (site / "sitemap.xml").read_text(encoding="utf-8")
     by_slug = {g["slug"]: g for g in G.GUIDES}
@@ -30189,8 +30309,10 @@ def _guides_reach():
     for p in pages:
         g, t = by_slug[p.stem], p.read_text(encoding="utf-8")
         addr = f"/guides/{p.stem}"
-        if f'href="{addr}"' not in home:
-            bad.append(f"{p.stem} is not on the home page")
+        # THE HOME PAGE OFFERS THE FEW MOST PEOPLE COME FOR (guides.HOME, 17
+        # October 2026) and All guides for the rest: a pick must be there.
+        if BC_.HOME_ROW and p.stem in {s for s, _w in G.HOME} and f'href="{addr}"' not in home:
+            bad.append(f"{p.stem} is one of the home page's picks and is not on it")
         if not any(r[0] == "guide" and r[3].lstrip("/") == addr.lstrip("/") for r in find):
             bad.append(f"{p.stem} is not in find.json")
         title = re.search(r"<title>([^<]*)</title>", t).group(1)
@@ -30200,12 +30322,190 @@ def _guides_reach():
             bad.append(f"{p.stem} carries no HowTo data")
         if not re.search(re.escape(f"<loc>{base}{addr}</loc>") + r"<lastmod>\d{4}-\d\d-\d\d</lastmod>", sm):
             bad.append(f"{p.stem}'s sitemap entry is not dated by its check")
-    if not pages and "hguides" in home:
-        bad.append("the home page lists guides while none is published")
+    # Every guide is reached from the home page: through the How do I...?
+    # row's All guides while it is on, and through the Resources card, which
+    # opens the hub on its How-To Guides tab, while it is off (18 October).
+    if pages and not re.search(r'href="/resources#guides"' if BC_.HOME_ROW
+                              else r'<a href="/?resources(?:\.html)?">', home):
+        bad.append("the home page does not lead to every guide")
     assert not bad, "; ".join(bad)
-    return "ok", (f"{len(pages)} published guide{'s' if len(pages) != 1 else ''} on the home page, "
-                  "in the search and dated in the sitemap, each with HowTo data"
-                  if pages else "no guide published on the fixture; the home page's slot is empty")
+    return "ok", (f"{len(pages)} published guide{'s' if len(pages) != 1 else ''} reached from the home "
+                  "page, in the search and dated in the sitemap, each with HowTo data"
+                  if pages else "no guide published on the fixture")
+
+
+@check("build", "the how-to guides are listed by task: every guide and every Learn page that became one "
+       "is under one task, the hub opens on How-To Guides, and no page links a moved page's old address",
+       needs=("guides", "civics", "build_civics", "build_pages"))
+def _how_to_tasks(G, civics, BC, BP):
+    """The person, 17 October 2026: "refine how the how to guides are
+    displayed on the main resources page and the homepage so it's more
+    intuitive for the general public"; "Certain pages currently on learn can
+    move to how to like using this site, finding your representatives, how to
+    testify or attend meetings"; "How to guides should be the default tab when
+    opening the resources page". guides.TASKS is the tab's list; civics.HOW_TO
+    the pages that moved; build_pages.MOVED their 301s. Here, from the code:
+    each guide and moved page under exactly one task, each task naming one of
+    them, no moved slug a guide's too, the tab order, the redirects, and no
+    builder or guide still writing a link to a moved page's /learn/ address."""
+    slugs = [t["slug"] for _g, ts in G.TASKS for t in ts]
+    want = [g["slug"] for g in G.GUIDES] + list(civics.HOW_TO)
+    twice = sorted({s for s in slugs if slugs.count(s) > 1})
+    assert not twice, f"a guide is under two tasks: {twice}"
+    assert not set(want) - set(slugs), f"no task lists {sorted(set(want) - set(slugs))}"
+    assert not set(slugs) - set(want), f"a task names no guide: {sorted(set(slugs) - set(want))}"
+    assert not set(civics.HOW_TO) & {g["slug"] for g in G.GUIDES}, \
+        "a page that moved to /guides/ has the slug of a guide"
+    for _g, ts in G.TASKS:
+        for t in ts:
+            assert t["does"] and t["line"] and "How to" not in t["does"], \
+                f"{t['slug']}: a task is named by the guide's title, not in a reader's words: {t['does']!r}"
+    assert {s for s, _w in G.HOME} <= set(want), "the home page's row names a guide that does not exist"
+    assert BC.HUB_TABS[0][0] == "guides", "the Resources hub no longer opens on How-To Guides"
+    red = BP.REDIRECTS
+    for s in civics.HOW_TO:
+        for x in ("", ".html"):
+            assert f"\n/learn/{s}{x} /guides/{s} 301\n" in red, f"/learn/{s}{x} does not 301 to /guides/{s}"
+    assert BC.article_href(civics.HOW_TO[0]).startswith("guides/") and \
+        BC.article_href("general-court").startswith("learn/"), "article_href puts a page in the wrong folder"
+    stale = []
+    for f in ("src/pages/civics.py", "src/pages/guides.py", "src/pages/build_civics.py",
+              "src/pages/build_pages.py", "src/pages/legislative_year.py"):
+        text = Path(f).read_text(encoding="utf-8")
+        stale += [f"{f}: learn/{s}" for s in civics.HOW_TO
+                  if re.search(rf'href="/?learn/{re.escape(s)}\b|"/learn/{re.escape(s)}\.html', text)]
+    assert not stale, "a link to a moved page's old address: " + "; ".join(stale)
+    return "ok", (f"{len(slugs)} guides under {len(G.TASKS)} tasks, {len(civics.HOW_TO)} of them moved from "
+                  "Learn and redirected; the hub opens on How-To Guides")
+
+
+@check("frontend", "the Resources hub opens on How-To Guides grouped by task; the three moved pages are "
+       "at /guides/ with How-To marked; Learn walks only its own pages and links the guides; other "
+       "ways to follow legislation are listed official first, then independent sites alphabetically")
+def _how_to_moved():
+    """Read off the fixture's built site (17 October 2026): the hub's first
+    tab and panel are the guides, under guides.TASKS' groups, the moved pages
+    among them; each moved page is at /guides/<slug>, its /learn/ copy gone,
+    its bar marking How-To Guides and its foot leading back to every guide;
+    Learn's pages walk Learn's own order and name the guides that do what
+    they explain; and the Official Sources tab ends with the other ways to
+    follow legislation, the General Court's own site first, the independent
+    ones in alphabetical order, with no image and no General Court page that
+    guides.GENERAL_COURT_LINKS does not hold."""
+    absent = [x for x in CHAIN_NEEDS if not _paths.locate(x).exists()]
+    if absent:
+        return "skip", "not here: " + ", ".join(absent)
+    import civics as _civ
+    import guides as G
+    import build_civics as BC
+    shared, _base, _ran, _days = _fixture_site_shared()
+    site = shared / "site"
+    hub = (site / "resources.html").read_text(encoding="utf-8")
+    tabs = re.findall(r'<button type="button" role="tab" id="tab-(\w+)"[^>]*aria-selected="(\w+)"', hub)
+    assert tabs and tabs[0] == ("guides", "true"), f"the hub does not open on How-To Guides: {tabs}"
+    panes = re.findall(r'<div class="twnpane r-sheet" id="(\w+)"', hub)
+    assert panes[0] == "guides", f"the How-To Guides panel is not first: {panes}"
+    at = hub.index('<div class="twnpane r-sheet" id="guides"')
+    guides_pane = hub[at:hub.index('<div class="twnpane r-sheet"', at + 1)]
+    at = hub.index('<div class="twnpane r-sheet" id="learn"')
+    learn_pane = hub[at:hub.index('<div class="twnpane r-sheet"', at + 1)]
+
+    def links_to(html_, slug):
+        """Whether the markup links /guides/<slug>, as written or as served
+        (shell.clean_links takes the .html off)."""
+        return re.search(rf'href="/?guides/{re.escape(slug)}(?:\.html)?(?:#[^"]*)?"', html_) is not None
+    for s in _civ.HOW_TO:
+        page = site / "guides" / f"{s}.html"
+        assert page.is_file() and not (site / "learn" / f"{s}.html").exists(), \
+            f"{s} is not at /guides/, or a copy is left at /learn/"
+        t = page.read_text(encoding="utf-8")
+        assert re.search(r'class="l-hubtab" href="[^"]*#guides" aria-current="true"', t), \
+            f"guides/{s} does not mark How-To Guides on its bar"
+        assert "All How-To Guides" in t and "Previous Topic" not in t and "Next Topic" not in t, \
+            f"guides/{s} still walks Learn's order"
+        assert links_to(guides_pane, s), f"the How-To Guides tab does not list {s}"
+        assert f'learn/{s}' not in learn_pane, f"the Learn tab still links {s} at its old address"
+    for group, _ts in G.TASKS:
+        if any(links_to(guides_pane, t["slug"]) for t in _ts):
+            assert f">{group}</h3>" in guides_pane, f"the How-To tab does not head the group {group!r}"
+    assert 'class="r-tasks"' in guides_pane and "How to " not in re.sub(r"<[^>]+>", " ", guides_pane), \
+        "the How-To tab lists guides by their titles rather than by task"
+    learn = BC.learn_topics(_civ.TOPICS)
+    for p in sorted((site / "learn").glob("*.html")):
+        t = p.read_text(encoding="utf-8")
+        for s in _civ.HOW_TO:
+            assert f'href="learn/{s}' not in t and f'href="/learn/{s}' not in t, \
+                f"learn/{p.name} links {s} at its old address"
+    gc = (site / "learn" / "general-court.html").read_text(encoding="utf-8")
+    word = BC.NUMBER_WORD.get(len(learn), str(len(learn)))
+    assert f"The {word} Pages" in gc, f"Learn's list at the foot is not of its {len(learn)} pages"
+    assert 'id="how-to-guides"' in gc and links_to(gc, "your-representatives"), \
+        "a Learn page does not name the guides that do what it explains"
+    # Other ways to follow legislation, at the foot of Official Sources.
+    at = hub.index('<div class="twnpane r-sheet" id="sources"')
+    src = hub[at:]
+    assert BC.FOLLOW_HEADING in src, "the Official Sources tab has no section on other ways to follow"
+    sec = src[src.index(BC.FOLLOW_HEADING):]
+    sec = sec[:sec.index("</section>")]
+    names = re.findall(r'<li><a href="([^"]+)" target="_blank" rel="noopener">([^<]+)</a>', sec)
+    want = [(u, n) for n, u, _l in _civ.FOLLOW_OFFICIAL + _civ.FOLLOW_INDEPENDENT]
+    assert [(u, n) for u, n in names[:len(want)]] == want, f"the sites are not listed as civics.py lists them: {names}"
+    indep = [n for n, _u, _l in _civ.FOLLOW_INDEPENDENT]
+    assert indep == sorted(indep, key=str.casefold), "the independent sites are ranked, not alphabetical"
+    assert "<img" not in sec, "a tracker is shown with a logo"
+    court = set(re.findall(r'href="(https?://(?:[^/"]*\.)?gc\.nh\.gov[^"]*)"', sec))
+    assert court and court <= G.GENERAL_COURT_LINKS, \
+        f"a General Court page linked that guides.GENERAL_COURT_LINKS does not hold: {court}"
+    for w in ("best", "recommend", "trusted", "excellent", "leading", "top "):
+        assert w not in re.sub(r"<[^>]+>", " ", sec).lower(), f"a tracker's line says {w!r}"
+    return "ok", (f"How-To Guides first, by task; {len(_civ.HOW_TO)} moved pages at /guides/; Learn's "
+                  f"{len(learn)} pages; {len(indep)} independent trackers after the General Court")
+
+
+@check("build", "the guide to touring the State House rests on the Visitor Center's Rules for Tours, "
+       "kept in git and read from the PDF, links the Visitor Center's page without asking it, and "
+       "names no member of its staff", needs=("guides", "civics"))
+def _tour_guide(G, civics):
+    """The person, 17 October 2026: a How-To guide to touring the State House
+    -- booking through the Visitor Center, as a school field trip, or as a
+    representative's guest -- from the Visitor Center's Rules for Tours, saved
+    in records/sources/. Every statement the guide takes from the rules is a
+    record claim on the PDF whose words pdfplumber finds in it; the PDF is
+    tracked, so the night and a fork read the same document; the Visitor
+    Center's page is one of guides.GENERAL_COURT_LINKS (linked, never asked);
+    visiting as a representative's guest, which the rules do not cover and
+    the person's notes do not describe, is only "contact them", with no claim
+    of practice; and the rules' director, named in them, is not."""
+    tour = next((g for g in G.GUIDES if g["slug"] == "tour-the-state-house"), None)
+    assert tour, "there is no guide to touring the State House"
+    pdf = "records/sources/state-house-visitor-center-rules-for-tours.pdf"
+    assert Path(pdf).is_file(), f"{pdf} is not here"
+    r = _run(["git", "ls-files", "--error-unmatch", pdf], capture_output=True, text=True, timeout=60)
+    assert r.returncode == 0, f"{pdf} is not tracked, so a fresh clone holds no document the guide rests on"
+    recs = [c for c in tour["claims"] if c.get("path")]
+    assert recs and all(c["path"] == pdf for c in recs), "a tour claim rests on another document"
+    assert pdf.startswith(G.RECORD_HOMES), "the Visitor Center's rules are not among the Court's documents"
+    faults, found, absent = G.claim_faults(tour)
+    assert not faults, "; ".join(faults[:3])
+    try:
+        import pdfplumber  # noqa: F401
+        assert found == len(recs) and not absent, f"{found} of {len(recs)} claims found in the PDF"
+    except ImportError:
+        pass
+    assert not any(c.get("observed") for c in tour["claims"]), \
+        "the tour guide states a practice the rules and the person's notes do not"
+    vc = civics.SRC_VISITOR_CENTER[1]
+    assert vc in G.GENERAL_COURT_LINKS and vc in G.outside(tour), \
+        "the Visitor Center's page is not linked, or not as one of the General Court's pages"
+    words = G.text(tour) + " ".join(label for label, _u in tour["sources"])
+    for who in ("Drew", "@leg.state.nh.us", "gencourt.state.nh.us"):
+        assert who not in words, f"the tour guide prints {who!r} from the rules"
+    assert "/guides/your-representatives.html" in words or any(
+        u == "/guides/your-representatives.html" for s in tour["steps"] for _l, u in s["actions"]), \
+        "the tour guide does not send a reader to their representative"
+    assert G.task_of("tour-the-state-house")[0] == "Visiting the State House", \
+        "the tour guide is not under Visiting the State House"
+    return "ok", f"{found} statements found in the Visitor Center's Rules for Tours; its page linked, not asked"
 
 
 @check("frontend", "a member's structured data names their party as the party names itself, and an independent none")
@@ -30290,9 +30590,12 @@ def _your_town():
         for m in p["m"]:
             assert m in people and (site / "legislator" / f"{m}.html").exists(), \
                 f"{p['s']} names {m}, who has no page"
+    # Finding Your Representatives is a how-to guide now, at /guides/ (civics.
+    # HOW_TO, 17 October 2026); held where it is, so the box is not let off
+    # by a page that moved.
     for page, kind in (("your-representatives", "reps"), ("county-government", "county"),
                        ("city-and-town-government", "town")):
-        f = site / "learn" / f"{page}.html"
+        f = site / ("guides" if page == "your-representatives" else "learn") / f"{page}.html"
         if f.exists():
             assert f'data-yt="{kind}"' in f.read_text(encoding="utf-8"), \
                 f"learn/{page} lost its Your town box"
@@ -30451,8 +30754,10 @@ def _chain():
         # "Learn (14)" over sixteen links when the glossary and Laws came in
         # after the count was typed as the topics plus one.
         said = re.search(r'id="tab-learn"[^>]*>Learn <span class="r-n">\((\d+)\)</span>', hub)
-        pane = hub[hub.index('<div class="twnpane r-sheet" id="learn"'):
-                   hub.index('<div class="twnpane r-sheet" id="guides"')]
+        # The Learn panel to the next one, whichever follows it: How-To Guides
+        # comes first since 17 October 2026.
+        at = hub.index('<div class="twnpane r-sheet" id="learn"')
+        pane = hub[at:hub.find('<div class="twnpane r-sheet"', at + 1)]
         linked = len(set(re.findall(r'<a href="([^"]+)"', pane)))
         assert said and int(said.group(1)) == linked, (
             f"the Learn tab says {said.group(1) if said else 'no count'} over a panel of "
@@ -30712,87 +31017,87 @@ CLOCK_OF_THEIR_OWN = {
 }
 
 
-@check("build", "a build into an empty site counts the committees with a roster on the home page, "
-                "as build_committees then writes them")
-def _home_counts_rosters_cold():
-    """THE COMMITTEES CARD ON A BUILD THAT STARTS EMPTY (10 October 2026).
-    build_pages counted the committees with a roster out of
-    site/committees.json, which build_committees writes four steps later, so
-    a build into an empty site/ -- GitHub's nightly, whose machine starts
-    with none -- found nothing to count, and the home page said "Who sits on
-    a committee, and what it did on every day it met" where the laptop's
-    said "Who sits on each of the 38 committees with a roster". Found twice
-    on 9 October, on the builds where the kit's copy of last night's file
-    (cloud_kit.json's entry for site/committees.json) was not there to hide
-    it. The count is build_committees' own now (build_committees.with_roster),
-    made from what that step reads, none of which a later step writes.
-
-    So this takes the fixture's built project, gives its House Commerce and
-    its Senate Education a sitting member each, takes site/committees.json
-    and the home page away, and runs build_pages alone: the card must count
-    two. Then build_committees, whose committees.json must give a member to
-    the same two -- so the card says what the Committees page lists."""
+@check("frontend", "the home page's cards are Bills, Officials, Laws and Resources, its How do I...? row "
+                   "offers the guides most people come for, and its columns carry one of the drawn "
+                   "treatments, none of which tints a band or moves a column",
+       needs=("build_pages", "build_civics", "guides"))
+def _home_cards(BP, BC, G):
+    """The person, 17 October 2026: "Switch out the committees card on the
+    home page for the officials page"; "a card or some other way to link to
+    laws on the homepage other than the nav"; the how-to guides shown on the
+    home page in a way the public finds intuitive; and "It would be good if
+    the columns on the homepage could be a bit more differentiated". Read off
+    the fixture's built home page and the code: the four cards in order, no
+    Committees card; the How do I...? row with every pick the build published
+    and All guides; the columns' class one of HOME_COLUMN_OPTIONS, each of
+    which app.css styles, inside the three columns only -- no rule of theirs
+    reaches the header or the page's ground (the person's "no pale pine
+    band", 8 October), and none changes the grid's columns (the three-column
+    layout is settled)."""
     absent = [x for x in CHAIN_NEEDS if not _paths.locate(x).exists()]
     if absent:
         return "skip", "not here: " + ", ".join(absent)
-    root = Path(tempfile.mkdtemp(prefix="gr-cold-roster-"))
-    try:
-        _fixture_site_whole(root)
-        site = root / "site"
-        legs = {str(m.get("id")): m for m in json.loads(
-            (site / "legislators.json").read_text(encoding="utf-8"))}
-        house, senate = legs.get("377204"), legs.get("377207")
-        assert house and senate, ("the fixture's roster no longer has Jodi Nelson (377204) and "
-                                  "Debra Altschiller (377207), whom this seats")
-        # The committees as the three files build_committees reads them
-        # from name them: data/committees.json's codes, the weekly listing
-        # (committees.json at the root, with its chairs) and the seats.
-        codes = json.loads((root / "data" / "committees.json").read_text(encoding="utf-8"))
-        codes["S05"] = {"code": "S05", "name": "Education", "abbr": "EDUCATION"}
-        codes["H05"] = {"code": "H05", "name": "Education", "abbr": "EDUCATION"}
-        (root / "data" / "committees.json").write_text(json.dumps(codes), encoding="utf-8")
-        (root / "committees.json").write_text(json.dumps({
-            "H": [{"chamber": "H", "name": "Commerce", "code": "43", "chair": "Jodi Nelson"}],
-            "S": [{"chamber": "S", "name": "Education", "code": "05",
-                   "chair": "Debra Altschiller"}]}), encoding="utf-8")
-
-        def seat(m, sitting=True):
-            return {"id": str(m["id"]), "name": m["name"], "party_code": m.get("party_code"),
-                    "district": m.get("district"), "chamber": m.get("chamber"),
-                    "sitting": sitting}
-        (root / "data" / "committee_members.json").write_text(json.dumps({
-            "H43": [seat(house)], "S05": [seat(senate)],
-            # A seat the table still holds for someone no longer sitting, on a
-            # committee with a page: a page, and no roster to count.
-            "H05": [seat(house, sitting=False)]}), encoding="utf-8")
-        for f in ("committees.json", "index.html"):
-            (site / f).unlink(missing_ok=True)
-
-        def run(script, *args):
-            r = _run([sys.executable, _paths.script(script), *args], cwd=root,
-                     capture_output=True, text=True, timeout=180)
-            assert r.returncode == 0, f"{script} stopped: {(r.stderr or r.stdout).strip()[-300:]}"
-        run("build_pages.py", "--out", "site")
-        assert not (site / "committees.json").exists(), "build_pages wrote site/committees.json"
-        home = " ".join((site / "index.html").read_text(encoding="utf-8").split())
-        said = re.search(r"Who sits on (each of the (\d+) committees|the one committee|a committee)", home)
-        assert said and said.group(2), (
-            "built into a site with no committees.json yet, the home page's Committees card "
-            f"names no number: {said.group(0) if said else 'no card'!r} -- it is counting a "
-            "file a later step writes, as GitHub's nightly found")
-        run("build_committees.py", "--site", "site", "--data", "data",
-            "--base", "https://graniterecord.org")
-        rows = json.loads((site / "committees.json").read_text(encoding="utf-8"))
-        with_members = sorted(c["code"] for c in rows if (c.get("n_members") or 0) > 0)
-        assert int(said.group(2)) == len(with_members) == 2, (
-            f"the home page counts {said.group(2)} committees with a roster and "
-            f"build_committees gives a member to {len(with_members)} ({with_members}); "
-            "the fixture seats two")
-        return "ok", ("built into a site with no committees.json, the home page counts the "
-                      f"{said.group(2)} committees build_committees then gives a member "
-                      f"({', '.join(with_members)})")
-    finally:
-        shutil.rmtree(root, ignore_errors=True)
+    shared, _base, _ran, _days = _fixture_site_shared()
+    site = shared / "site"
+    home = (site / "index.html").read_text(encoding="utf-8")
+    # To the guides' slot, which follows the cards: the Laws card is a box of
+    # its own (.ecard), so the block holds a </div> before its own.
+    entry = re.search(r'<div class="entry">(.*?)<!-- guides -->', home, re.S)
+    assert entry, "the home page has no cards"
+    cards = re.findall(r'<a (?:class="ecmain" )?href="([^"]+)">.*?<b>([^<]+)</b>', entry.group(1), re.S)
+    names = [n for _h, n in cards]
+    assert names == ["Browse Bills", "Officials", "Laws", "Resources"], f"the home page's cards are {names}"
+    hrefs = [h for h, _n in cards]
+    assert not any("committees" in h for h in hrefs), "the Committees card is back on the home page"
+    assert any(h.rstrip("/").split("/")[-1] in ("laws", "laws.html") for h in hrefs), \
+        "the Laws card does not lead to /laws"
+    # THE CONSTITUTION ON THE LAWS CARD while the Laws page carries its tab
+    # (18 October 2026), linked to that tab, the card itself to /laws.
+    import constitution_tab as _CT
+    if any(pid == "constitution" for pid, _n in _CT.TABS):
+        assert f'<a class="ecalso" href="{BP.CONSTITUTION_HREF}">The Constitution</a>' in entry.group(1) \
+            and BP.CONSTITUTION_HREF == "/laws#constitution", \
+            "the Laws card does not name the Constitution and link its tab"
+    # How do I...?, OFF UNTIL THE PERSON SAYS HOW (18 October 2026:
+    # build_civics.HOME_ROW): drawn only while the flag is on, and then with
+    # every pick the build published and All guides; while it is off, the
+    # slot is empty and the Resources card is the way to the guides.
+    row = re.search(r"<!-- guides -->(.*?)<!-- /guides -->", home, re.S).group(1)
+    if not BC.HOME_ROW:
+        assert not row.strip() and 'class="hguides"' not in home, \
+            "the How do I...? row is drawn while build_civics.HOME_ROW is off"
+        assert any(h.rstrip("/").split("/")[-1] in ("resources", "resources.html") for h in hrefs), \
+            "with the How do I...? row off, no card leads to the guides"
+        row = BC.how_do_i([{"slug": s} for s, _w in G.HOME])     # kept, to come back
+        assert row.count("<li>") == len(G.HOME), "how_do_i no longer draws the picks it is kept for"
+    else:
+        assert "How do I&hellip;?" in row and 'href="/resources#guides"' in row, \
+            "the home page has no How do I...? row leading to every guide"
+        published = {p.stem for p in (site / "guides").glob("*.html")
+                     if 'class="g-draft"' not in p.read_text(encoding="utf-8")}
+        for slug, _words in G.HOME:
+            shown = re.search(rf'href="/guides/{re.escape(slug)}"', row) is not None
+            assert shown == (slug in published), \
+                f"{slug} is {'on' if shown else 'off'} the How do I...? row and {'not ' if shown else ''}published"
+    assert row.count("<li>") <= 8, "the How do I...? row lists more than the few guides most people come for"
+    assert "How to " not in re.sub(r"<[^>]+>", " ", row), "the row names guides by their titles, not the task"
+    # The columns: one treatment, drawn by app.css, inside the columns.
+    cls = BP.HOME_COLUMN_OPTIONS[BP.HOME_COLUMNS]
+    assert f'<div class="hcols {cls}">' in home, f"the home page's columns do not carry {cls}"
+    css = Path("src/pages/app.css").read_text(encoding="utf-8")
+    style = (site / "style.css").read_text(encoding="utf-8")
+    for opt, c in BP.HOME_COLUMN_OPTIONS.items():
+        rules = re.findall(r"([^{}]*\." + re.escape(c) + r"\b[^{}]*)\{([^{}]*)\}", css)
+        assert rules, f"app.css draws nothing for the {opt} treatment ({c})"
+        assert f".{c}" in style, f"style.css, which the home page loads, lacks the {opt} treatment"
+        for sel, body in rules:
+            assert not re.search(r"\b(?:nav|header|body)\b|\.top\b|\.wrap\b", sel.replace("body.pg", "")), \
+                f"the {opt} treatment reaches beyond the columns: {sel.strip()[:80]}"
+            assert "grid-template" not in body and not re.search(r"(?<![\w-])order\s*:", body), \
+                f"the {opt} treatment moves the columns: {sel.strip()[:80]}"
+    return "ok", ("Bills, Officials, Laws (with the Constitution), Resources; How do I...? "
+                  + ("on" if BC.HOME_ROW else "off, its code kept")
+                  + f"; columns {BP.HOME_COLUMNS} ({cls}) of {len(BP.HOME_COLUMN_OPTIONS)} drawn")
 
 
 @check("build", "a stated build date is the date every builder writes, and only build_date.py "
@@ -35342,7 +35647,7 @@ def _guides_gate(BC, G, GS, RSA, S):
                         "hearing shall be held on each bill", "2099-01-01")
         fake = dict(said, words=["no hearing shall be held"])
         loose = dict(said, path="notes/HC001.txt")
-        unlinked = G.ours("y", "/learn/testifying.html", "2099-01-01")
+        unlinked = G.ours("y", "/guides/testifying.html", "2099-01-01")
         probe_g = {"claims": [said], "sources": [], "see": [], "steps": [], "glance": "", "more": "",
                    "flow": []}
         assert G.claim_faults(probe_g, probe) == ([], 1, 0), \
@@ -35437,17 +35742,19 @@ def _guides_gate(BC, G, GS, RSA, S):
         assert 'class="g-flow"' in page and page.count('class="g-step"') == 2 and 'class="g-btn"' in page \
             and '<a href="/laws/91-a#s4">RSA 91-A:4</a>' in page, "the guide is not drawn as steps with a diagram"
         hub = BC.hub_guides(pub)
-        assert "test-guide.html" in hub and "Checked " in hub and "no how-to guides yet" not in hub
+        # Listed by task since 17 October 2026, its date on its own page; a
+        # guide no task names, as this one, under More Guides.
+        assert "test-guide.html" in hub and G.MORE in hub and "no how-to guides yet" not in hub
         # A guide held back is not linked from one published (17 October
         # 2026): its button and its See Also line are left out, the rest kept.
         linker = one(today)
-        linker["see"] = [("The other guide", "/guides/held-guide.html"), ("Learn", "/learn/testifying.html")]
+        linker["see"] = [("The other guide", "/guides/held-guide.html"), ("Learn", "/learn/general-court.html")]
         linker["steps"][1]["actions"] = [("The other guide", "/guides/held-guide.html#steps")]
         G.GUIDES = [linker, dict(one(None), slug="held-guide")]
         with contextlib.redirect_stdout(io.StringIO()):
             BC.build_guides(tmp / "site", tmpl, "https://graniterecord.org")
         page = (tmp / "site" / "guides" / "test-guide.html").read_text(encoding="utf-8")
-        assert "held-guide" not in page and "/learn/testifying" in page \
+        assert "held-guide" not in page and "/learn/general-court" in page \
             and not (tmp / "site" / "guides" / "held-guide.html").exists(), \
             "a published guide links a guide held back, or lost a link it should keep"
         old = "2020-01-01"
@@ -62091,7 +62398,9 @@ def _every_fetcher_checks_refusal():
     ASKS = _re.compile(r"urlopen|urlretrieve|urllib\.request\.Request|requests\.(?:get|post)"
                        r"|http\.client")
     NAMED = ("fetch_committee_details.py",)
-    ADDRESSES = ("civics",)         # modules holding gc.nh.gov addresses scripts ask
+    # modules holding gc.nh.gov addresses scripts ask; guides holds
+    # GENERAL_COURT_LINKS, which check_civics_links asks after (17 October 2026)
+    ADDRESSES = ("civics", "guides")
 
     def read(name, src, tree=None):
         """(asks the General Court, calls refusal.check with refusal imported).

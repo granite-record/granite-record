@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-13.20
+# GRANITE_VERSION: 2026-09-13.21
 """
 The whole record as plain lists: every bill of every term, every sitting
 legislator, every town -- each a link a person or a crawler can follow.
@@ -48,6 +48,7 @@ from collections import defaultdict
 from urllib.parse import quote_plus
 
 import bill_order as BO
+import guides as G
 import shell as S
 import structured as LD
 
@@ -476,8 +477,14 @@ def find_index(site, legs, towns):
             if not t:
                 continue
             name = re.sub(r"\s*\|\s*Granite Record$", "", _h.unescape(t.group(1)))
+            # A GUIDE IS FOUND BY ITS TASK TOO (the person, 17 October 2026:
+            # "the how to guides should be incorporated into the search in
+            # some fashion"): its fifth field is the task in a reader's words
+            # and the plain words it declares (guides.search_words), which
+            # find.js reads as part of its name.
+            words = G.search_words(p.stem) if kind == "guide" else ""
             rows.append([kind, name, _h.unescape(dsc.group(1)) if dsc else "",
-                         S.canon(f"{folder}/{p.name}"), ""])
+                         S.canon(f"{folder}/{p.name}"), words])
     for name, path, what in (
             ("Bill search", "bills.html", "Every bill since 1989"),
             ("Officials", "officials.html", "Who represents your town, and the sitting roster"),

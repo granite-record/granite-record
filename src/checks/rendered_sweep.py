@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-08.7
+# GRANITE_VERSION: 2026-10-08.8
 """
 The rendered sweep: a built site measured as a reader's browser draws it.
 
@@ -169,7 +169,8 @@ PAGES = [
     {"name": "resources", "path": "resources.html"},
     {"name": "learn-constitution", "path": "learn/the-constitution.html"},
     {"name": "learn-general-court", "path": "learn/general-court.html"},
-    {"name": "learn-representatives", "path": "learn/your-representatives.html"},
+    # A HOW-TO GUIDE NOW, AT ITS NEW ADDRESS (17 October 2026: civics.HOW_TO).
+    {"name": "learn-representatives", "path": "guides/your-representatives.html"},
     {"name": "data", "path": "data.html"},
     {"name": "about", "path": "about.html"},
     {"name": "404", "path": "no-such-page-here.html", "missing": True,

@@ -28,6 +28,30 @@
   "seed, not the person's reference: the person's own judgments belong in the bench."
  ],
  "term": "2025-2026",
+ "find": {
+  "_about": [
+   "The header's search and /search over the how-to guides (17 October 2026: 'the how to guides should be",
+   "incorporated into the search in some fashion'). preflight's _find_guides runs find.js over rows made as",
+   "build_indexes makes them -- every guide and every page that became one, with guides.search_words, and every",
+   "Learn page by its title and line -- with a sitting member, a town and a subject beside them, and one bill.",
+   "first = the guide that must be the first row findMatch gives. guides_first = every guide it lists comes",
+   "before every Learn page it lists. learn = a Learn page it must still list. bill_first = the panel, drawn",
+   "for a bill number, leads with that bill above any guide that has the words."
+  ],
+  "cases": [
+   {"q": "renew my license", "first": "renew-drivers-license"},
+   {"q": "register my car", "first": "register-a-car", "guides_first": true},
+   {"q": "testify", "guides_first": true, "listed": ["attend-a-hearing", "submit-testimony", "testifying"]},
+   {"q": "food stamps", "first": "food-and-health-assistance"},
+   {"q": "right to know", "first": "public-records"},
+   {"q": "birth certificate", "first": "vital-records"},
+   {"q": "unemployment", "first": "file-for-unemployment"},
+   {"q": "who represents me", "first": "your-representatives"},
+   {"q": "vote", "first": "how-to-vote", "guides_first": true, "learn": ["the-constitution"]},
+   {"q": "property tax", "guides_first": true, "listed": ["property-tax-abatement", "property-tax-relief"]},
+   {"q": "hb 1", "bill_first": "HB1"}
+  ]
+ },
  "cases": [
   {
    "q": "lgbtq",
