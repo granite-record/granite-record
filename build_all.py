@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.76
+# GRANITE_VERSION: 2026-09-05.77
 """
 Run the whole pipeline in the right order.
 
@@ -812,13 +812,14 @@ def plan(a):
         # would have its key overwritten and the option would silently not be
         # there. build_lsrs asserts meta.json exists rather than trusting this
         # ordering to stay put.
-        Step("the 2027 bill requests",
+        Step("next session's bill requests",
              ["build_lsrs.py", "--site", "site"],
              # meta.json, which it reads and merges its key into. build_lsrs.py
              # asserts on it as well, which is the guard that matters -- a
              # missing key would otherwise show only as the picker quietly
-             # lacking an option.
-             needs=["site/meta.json"], produces=["site/idx/2027-requests.json"],
+             # lacking an option. It writes site/idx/<year>-requests.json, the
+             # year the requests' own (18 October 2026), so no one file is named.
+             needs=["site/meta.json"], produces=["site/idx"],
              note="what the next session will be about, months before a bill "
                   "of it exists: title and prime sponsor and nothing else, "
                   "which is all an LSR has"),

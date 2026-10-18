@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.617
+# GRANITE_VERSION: 2026-09-04.618
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -83172,9 +83172,57 @@ def _request_became_bill(build_lsrs):
     rows, _ = L.rows_from(lsrs[2:], {}, {})
     assert rows[0]["status"] == "Filed as a request" and "introduced" not in rows[0], rows[0]
     src = _paths.locate("build_lsrs.py").read_text(encoding="utf-8")
-    assert "rows_from(lsrs, roster(site), became)" in src, \
+    assert "rows_from(lsrs, roster(site), became, year)" in src, \
         "build_lsrs no longer gives rows_from the bills"
     return "ok", "a request a bill carries reads as that bill; one that only left the list is withdrawn"
+
+
+@check("build", "next session's bill requests are listed under the year they name, whichever year "
+       "that is", needs=("build_lsrs",))
+def _requests_year_their_own(build_lsrs):
+    """private/UNATTENDED_AUDIT_2026-10-18.md, section 4.3.2: build_lsrs named
+    the requests' term "2027-requests" and its label "2027 Bill Requests" in
+    two literals, build_all named its file, and app.js said "for 2027" and
+    "replaced by the 2027 bills", so the requests for 2028, filed from
+    September 2027, would have been listed as 2027's. The year is now the
+    newest session the requests name. Held here: build_lsrs run on a list of
+    2027's requests and 2028's writes idx/2028-requests.json alone, meta.json
+    naming its term, label and year, every row 2028's -- one with no session
+    field by its number -- and the earlier session's left out and counted;
+    and app.js and build_all name no requests' year of their own."""
+    import json as _json
+    tmp = Path(tempfile.mkdtemp(prefix="gr-requests-year-"))
+    try:
+        (tmp / "site" / "idx").mkdir(parents=True)
+        (tmp / "site" / "meta.json").write_text(_json.dumps({"terms": ["2027-2028"]}), encoding="utf-8")
+        (tmp / "site" / "idx" / "2027-requests.json").write_text("[]", encoding="utf-8")
+        req = lambda n, **k: {"lsr": n, "body": "HB", "title": "t", "sponsor": "", "withdrawn": False, **k}
+        (tmp / "lsrs.json").write_text(_json.dumps([
+            req("2027-0001", session=2027, withdrawn=True), req("2028-0001", session=2028),
+            req("2028-0002")]), encoding="utf-8")
+        r = _run([sys.executable, _paths.script("build_lsrs.py"), "--site", "site"],
+                 cwd=str(tmp), capture_output=True, text=True, timeout=120)
+        assert r.returncode == 0, (r.stderr or r.stdout)[-300:]
+        files = sorted(p.name for p in (tmp / "site" / "idx").glob("*-requests.json"))
+        meta = _json.loads((tmp / "site" / "meta.json").read_text(encoding="utf-8"))["requests"]
+        rows = _json.loads((tmp / "site" / "idx" / "2028-requests.json").read_text(encoding="utf-8"))
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    assert files == ["2028-requests.json"], f"build_lsrs left {files}"
+    assert (meta["term"], meta["label"], meta["year"], meta["n"]) == (
+        "2028-requests", "2028 Bill Requests", 2028, 2), meta
+    assert {(x["n"], x["year"], x["term"]) for x in rows} == {
+        ("LSR 2028-0001", 2028, "2028-requests"), ("LSR 2028-0002", 2028, "2028-requests")}, rows
+    assert "1 request(s) of an earlier session left out" in r.stdout, r.stdout
+    app = _paths.locate("app.js").read_text(encoding="utf-8")
+    plan = _paths.locate("build_all.py").read_text(encoding="utf-8")
+    stuck = [s for s in ('"for 2027"', "the 2027 bills", '"2027-requests"') if s in app] + \
+            [s for s in ("2027-requests.json", '"the 2027 bill requests"') if s in plan]
+    assert not stuck, f"a requests' year written in by hand: {stuck}"
+    assert "for ${reqYear()}" in app and "${esc(reqYear())} bills" in app, \
+        "app.js no longer takes the requests' year from meta.json"
+    return "ok", ("2028's requests listed as 2028's, alone, the 2027 file gone and its request "
+                  "counted; app.js and build_all name no year of their own")
 
 
 @check("naming", "a sponsorship is filed under the member its bill page links, and a name is that member only where they sat",

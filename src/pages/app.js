@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.221
+// GRANITE_VERSION: 2026-09-07.222
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -2426,9 +2426,13 @@ const inTermOf=b=>(term===ALL_TERMS&&!b.lsr)||!term||!b.term||b.term===term;
 // "in the 2027-requests term" is not English and not what that list is, so
 // the picker's own label speaks for it: "among the 2027 bill requests". The
 // word "bills" the count puts before this is wrong for them too, which is why
-// the count asks noun() rather than hard-coding it.
+// the count asks noun() rather than hard-coding it. THE YEAR IS THE
+// REQUESTS' OWN (18 October 2026): meta.json's requests.year, which
+// build_lsrs takes from the newest session the requests name; it said "for
+// 2027" in a literal, which 2028's requests would have carried.
+const reqYear=()=>META.requests?String(META.requests.year||String(META.requests.term||"").slice(0,4)):"";
 const termPhrase=()=>term===ALL_TERMS?"across all terms"
-  :(META.requests&&term===META.requests.term)?"for 2027"
+  :(META.requests&&term===META.requests.term)?`for ${reqYear()}`
   :`in the ${term} term`;
 const termNoun=()=>(META.requests&&term===META.requests.term)
   ?"bill requests":"bills";
@@ -8258,7 +8262,7 @@ function render(more){
       sponsor and nothing else &mdash; no text, no committee, no hearing &mdash;
       until it is drafted and filed, when it becomes a numbered bill and picks
       up the rest of its record. Some are withdrawn first and never become
-      anything. These will be replaced by the 2027 bills themselves as they are
+      anything. These will be replaced by the ${esc(reqYear())} bills themselves as they are
       filed.`;
   }else{
     $("#summary").textContent=fb?"":(ids&&ids.length>1

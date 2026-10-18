@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-18.4
+# GRANITE_VERSION: 2026-09-18.5
 """
-The 2027 bill requests, as a term the bill search can open.
+Next session's bill requests, as a term the bill search can open.
 
     python3 src/pages/build_lsrs.py --site site
 
@@ -31,11 +31,18 @@ already does, so nothing holds 2025-2026 first.
 
 WHAT THIS WRITES
 
-  site/idx/2027-requests.json   the rows, in the shape idx/<term>.json uses,
+  site/idx/<year>-requests.json the rows, in the shape idx/<term>.json uses,
                                 so the bill search reads them with the code it
                                 already has rather than a second path
   site/meta.json                one key merged in: "requests", which names the
-                                term, its label and how many there are
+                                term, its label, its year and how many there are
+
+THE YEAR IS THE REQUESTS' OWN (18 October 2026). It was two literals, "2027-
+requests" and "2027 Bill Requests", and app.js said "for 2027", so the requests
+for 2028, filed from September 2027, would have been listed as 2027's. The
+year is the newest session the requests name, and only that session's are
+listed: by the time the next session's are filed, the older ones are bills or
+withdrawn, and each bill is in its own term.
 
 MERGING INTO meta.json, WHICH ANOTHER BUILDER OWNS
 
@@ -61,8 +68,29 @@ import argparse
 import json
 import re
 
-TERM = "2027-requests"
-LABEL = "2027 Bill Requests"
+def requests_term(year):
+    """(the requests' term key, the term picker's label) for a session year:
+    ("2027-requests", "2027 Bill Requests")."""
+    return f"{year}-requests", f"{year} Bill Requests"
+
+
+def session_of(r):
+    """A request's session year as a number: its own, or its number's
+    (2027-0001 is 2027's); None where it gives neither."""
+    s = str(r.get("session") or "").strip()
+    if s.isdigit():
+        return int(s)
+    m = LSR_NO.match(str(r.get("lsr") or "").strip())
+    return int(m.group(1)) if m else None
+
+
+def newest_session(lsrs):
+    """(the newest session the requests name, that session's requests, how
+    many of an older session were left out)."""
+    years = [session_of(r) for r in lsrs]
+    year = max((y for y in years if y), default=None)
+    mine = [r for r, y in zip(lsrs, years) if y == year]
+    return year, mine, len(lsrs) - len(mine)
 
 # What the General Court's own search calls each body, spelled out. A reader
 # who has not met these two-letter forms should not have to learn them to read
@@ -147,7 +175,11 @@ def became_bills(bills, lsrs):
     return {f"{y}-{n:04d}": b for (y, n), b in have.items()}
 
 
-def rows_from(lsrs, who, became=None):
+def rows_from(lsrs, who, became=None, year=None):
+    """The rows of idx/<year>-requests.json and the sponsor names that matched
+    nobody. `year` is the session they are listed under (newest_session)."""
+    year = year or newest_session(lsrs)[0]
+    term, _label = requests_term(year)
     rows, unmatched = [], []
     for r in lsrs:
         num = str(r.get("lsr") or "").strip()
@@ -163,7 +195,7 @@ def rows_from(lsrs, who, became=None):
         rows.append({
             "id": "LSR" + num.replace("-", ""),
             "n": "LSR " + num,
-            "year": int(r.get("session") or 2027),
+            "year": session_of(r) or year,
             "title": (r.get("title") or "").strip(),
             "sponsor": name,
             "sponsor_label": hit[0] if hit else name,
@@ -179,7 +211,7 @@ def rows_from(lsrs, who, became=None):
                        "Withdrawn" if r.get("withdrawn") else "Filed as a request"),
             "status_stated": True,
             "withdrawn": bool(r.get("withdrawn")) and not bill,
-            "term": TERM, "carried": False, "passage": "",
+            "term": term, "carried": False, "passage": "",
             "last_action": "", "nrc": 0, "votedays": [],
             "lsr": True,
             **({"introduced": bill} if bill else {}),
@@ -205,22 +237,31 @@ def main():
     # otherwise write an empty term, and the option would appear in the picker
     # naming nothing.
     assert isinstance(lsrs, list) and lsrs, f"{src} holds no requests"
+    year, lsrs, older = newest_session(lsrs)
+    assert year and lsrs, f"{src} names no session a request can be listed under"
+    term, label = requests_term(year)
 
     bp = Path(a.bills)
     became = became_bills(json.loads(bp.read_text(encoding="utf-8")) if bp.exists() else {},
                           lsrs)
-    rows, unmatched = rows_from(lsrs, roster(site), became)
+    rows, unmatched = rows_from(lsrs, roster(site), became, year)
     assert rows, "no request survived shaping, though the source had some"
     idx = site / "idx"
     idx.mkdir(parents=True, exist_ok=True)
-    (idx / f"{TERM}.json").write_text(json.dumps(rows, separators=(",", ":")),
+    # The previous session's file, if this is the night a new session's
+    # requests replace it: meta.json names only the one written below, and a
+    # file it does not name is one nothing links.
+    for old in idx.glob("*-requests.json"):
+        if old.name != f"{term}.json":
+            old.unlink()
+    (idx / f"{term}.json").write_text(json.dumps(rows, separators=(",", ":")),
                                       encoding="utf-8")
 
     mj = site / "meta.json"
     assert mj.exists(), ("meta.json is not written yet -- this step runs after "
                          "build_site_v2.py, which writes it")
     meta = json.loads(mj.read_text(encoding="utf-8"))
-    meta["requests"] = {"term": TERM, "label": LABEL, "n": len(rows),
+    meta["requests"] = {"term": term, "label": label, "year": year, "n": len(rows),
                         "withdrawn": sum(1 for r in rows if r["withdrawn"])}
     mj.write_text(json.dumps(meta), encoding="utf-8")
 
@@ -228,7 +269,9 @@ def main():
     for r in rows:
         by[r["body"]] = by.get(r["body"], 0) + 1
     kinds = ", ".join(f"{k} {n}" for k, n in sorted(by.items(), key=lambda x: -x[1]))
-    print(f"  {len(rows)} bill requests for 2027 -> idx/{TERM}.json ({kinds})")
+    print(f"  {len(rows)} bill requests for {year} -> idx/{term}.json ({kinds})")
+    if older:
+        print(f"  {older} request(s) of an earlier session left out: bills or withdrawn by now")
     print(f"  {meta['requests']['withdrawn']} withdrawn; "
           f"{sum(1 for r in rows if r['sponsor_slug'])} sponsors matched to a member")
     if became:
