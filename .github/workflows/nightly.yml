@@ -253,13 +253,20 @@ jobs:
       # Node set up above (livestreams.py asks with --js-runtimes node), at
       # the version yt-dlp 2026.8.19 names in its own metadata; preflight
       # holds the two together (10 October 2026: the free fix tried first).
+      # curl_cffi lets yt-dlp ask for a caption file as a browser would: YouTube
+      # is thought to read the connection's fingerprint, and without it every
+      # ask logged "no impersonate target is available" (18 October 2026, at
+      # the person's word, on the laptop first). 0.16.0 is the version yt-dlp
+      # 2026.8.19's own pin-curl-cffi extra names; certifi is its need, at
+      # the laptop's version.
       - name: The Python packages, at the laptop's versions, with boto3 and yt-dlp
         run: |
           python -m pip install --disable-pip-version-check --no-input `
             numpy==2.5.2 openpyxl==3.1.5 et-xmlfile==2.0.0 pdfplumber==0.11.10 `
             pdfminer.six==20260107 pypdfium2==5.13.0 pillow==12.3.0 `
             charset-normalizer==3.5.1 cryptography==50.0.1 cffi==2.1.1 pycparser==3.0 `
-            PyYAML==6.0.3 boto3==1.43.103 yt-dlp==2026.8.19 yt-dlp-ejs==0.8.0
+            PyYAML==6.0.3 boto3==1.43.103 yt-dlp==2026.8.19 yt-dlp-ejs==0.8.0 `
+            curl_cffi==0.16.0 certifi==2026.7.22
           exit $LASTEXITCODE
 
       - name: Bring the state files down from R2 (the refusal record, last night's census)
