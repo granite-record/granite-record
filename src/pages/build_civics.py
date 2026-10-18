@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.62
+# GRANITE_VERSION: 2026-09-08.63
 """
 The civics section: a hub and one page per topic, in order.
 
@@ -1467,6 +1467,17 @@ def guide_page(tmpl, g, base, record, draft_why=""):
 HOME_SLOT = re.compile(r"<!-- guides -->.*?<!-- /guides -->", re.S)
 
 
+# THE ROW IS OFF (the person, 18 October 2026: "Go ahead with panels, but I
+# don't like the way that the how to guides are presented in those homepage
+# prototype versions though"). home_guides writes the home page's slot empty
+# while this is False, and the Resources card -- which opens the hub on its
+# How-To Guides tab -- is the home page's way to the guides. how_do_i and
+# guides.HOME are kept as they are, so the row comes back as one line once
+# the person says how they want the guides shown there; preflight's
+# _home_cards fails if the row is drawn while this is off.
+HOME_ROW = False
+
+
 def how_do_i(published):
     """THE HOME PAGE'S "HOW DO I...?" ROW (the person, 17 October 2026: the
     how-to guides on the home page "so it's more intuitive for the general
@@ -1499,11 +1510,12 @@ def home_guides(site, published):
     if not HOME_SLOT.search(text):
         print("  index.html has no guides slot: the home page lists no guides")
         return
-    row = how_do_i(published)
+    row = how_do_i(published) if HOME_ROW else ""
     home.write_text(HOME_SLOT.sub(lambda _m: f"<!-- guides -->{row}<!-- /guides -->", text, count=1),
                     encoding="utf-8")
     n = row.count("<li>")
-    print(f"  index.html: How do I...? with {n} guide{'s' if n != 1 else ''} under the cards")
+    print(f"  index.html: How do I...? with {n} guide{'s' if n != 1 else ''} under the cards"
+          if HOME_ROW else "  index.html: the How do I...? row is off (build_civics.HOME_ROW)")
 
 
 def unlinked(g, held):

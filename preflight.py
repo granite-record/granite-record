@@ -30289,6 +30289,7 @@ def _guides_reach():
     if absent:
         return "skip", "not here: " + ", ".join(absent)
     import guides as G
+    import build_civics as BC_
     shared, base, _ran, _days = _fixture_site_shared()
     site = shared / "site"
     home = (site / "index.html").read_text(encoding="utf-8")
@@ -30310,7 +30311,7 @@ def _guides_reach():
         addr = f"/guides/{p.stem}"
         # THE HOME PAGE OFFERS THE FEW MOST PEOPLE COME FOR (guides.HOME, 17
         # October 2026) and All guides for the rest: a pick must be there.
-        if p.stem in {s for s, _w in G.HOME} and f'href="{addr}"' not in home:
+        if BC_.HOME_ROW and p.stem in {s for s, _w in G.HOME} and f'href="{addr}"' not in home:
             bad.append(f"{p.stem} is one of the home page's picks and is not on it")
         if not any(r[0] == "guide" and r[3].lstrip("/") == addr.lstrip("/") for r in find):
             bad.append(f"{p.stem} is not in find.json")
@@ -30321,7 +30322,11 @@ def _guides_reach():
             bad.append(f"{p.stem} carries no HowTo data")
         if not re.search(re.escape(f"<loc>{base}{addr}</loc>") + r"<lastmod>\d{4}-\d\d-\d\d</lastmod>", sm):
             bad.append(f"{p.stem}'s sitemap entry is not dated by its check")
-    if pages and 'href="/resources#guides"' not in home:
+    # Every guide is reached from the home page: through the How do I...?
+    # row's All guides while it is on, and through the Resources card, which
+    # opens the hub on its How-To Guides tab, while it is off (18 October).
+    if pages and not re.search(r'href="/resources#guides"' if BC_.HOME_ROW
+                              else r'<a href="/?resources(?:\.html)?">', home):
         bad.append("the home page does not lead to every guide")
     assert not bad, "; ".join(bad)
     return "ok", (f"{len(pages)} published guide{'s' if len(pages) != 1 else ''} reached from the home "
@@ -31035,25 +31040,45 @@ def _home_cards(BP, BC, G):
     shared, _base, _ran, _days = _fixture_site_shared()
     site = shared / "site"
     home = (site / "index.html").read_text(encoding="utf-8")
-    entry = re.search(r'<div class="entry">(.*?)</div>', home, re.S)
+    # To the guides' slot, which follows the cards: the Laws card is a box of
+    # its own (.ecard), so the block holds a </div> before its own.
+    entry = re.search(r'<div class="entry">(.*?)<!-- guides -->', home, re.S)
     assert entry, "the home page has no cards"
-    cards = re.findall(r'<a href="([^"]+)">.*?<b>([^<]+)</b>', entry.group(1), re.S)
+    cards = re.findall(r'<a (?:class="ecmain" )?href="([^"]+)">.*?<b>([^<]+)</b>', entry.group(1), re.S)
     names = [n for _h, n in cards]
     assert names == ["Browse Bills", "Officials", "Laws", "Resources"], f"the home page's cards are {names}"
     hrefs = [h for h, _n in cards]
     assert not any("committees" in h for h in hrefs), "the Committees card is back on the home page"
     assert any(h.rstrip("/").split("/")[-1] in ("laws", "laws.html") for h in hrefs), \
         "the Laws card does not lead to /laws"
-    # How do I...?
+    # THE CONSTITUTION ON THE LAWS CARD while the Laws page carries its tab
+    # (18 October 2026), linked to that tab, the card itself to /laws.
+    import constitution_tab as _CT
+    if any(pid == "constitution" for pid, _n in _CT.TABS):
+        assert f'<a class="ecalso" href="{BP.CONSTITUTION_HREF}">The Constitution</a>' in entry.group(1) \
+            and BP.CONSTITUTION_HREF == "/laws#constitution", \
+            "the Laws card does not name the Constitution and link its tab"
+    # How do I...?, OFF UNTIL THE PERSON SAYS HOW (18 October 2026:
+    # build_civics.HOME_ROW): drawn only while the flag is on, and then with
+    # every pick the build published and All guides; while it is off, the
+    # slot is empty and the Resources card is the way to the guides.
     row = re.search(r"<!-- guides -->(.*?)<!-- /guides -->", home, re.S).group(1)
-    assert "How do I&hellip;?" in row and 'href="/resources#guides"' in row, \
-        "the home page has no How do I...? row leading to every guide"
-    published = {p.stem for p in (site / "guides").glob("*.html")
-                 if 'class="g-draft"' not in p.read_text(encoding="utf-8")}
-    for slug, _words in G.HOME:
-        shown = re.search(rf'href="/guides/{re.escape(slug)}"', row) is not None
-        assert shown == (slug in published), \
-            f"{slug} is {'on' if shown else 'off'} the How do I...? row and {'not ' if shown else ''}published"
+    if not BC.HOME_ROW:
+        assert not row.strip() and 'class="hguides"' not in home, \
+            "the How do I...? row is drawn while build_civics.HOME_ROW is off"
+        assert any(h.rstrip("/").split("/")[-1] in ("resources", "resources.html") for h in hrefs), \
+            "with the How do I...? row off, no card leads to the guides"
+        row = BC.how_do_i([{"slug": s} for s, _w in G.HOME])     # kept, to come back
+        assert row.count("<li>") == len(G.HOME), "how_do_i no longer draws the picks it is kept for"
+    else:
+        assert "How do I&hellip;?" in row and 'href="/resources#guides"' in row, \
+            "the home page has no How do I...? row leading to every guide"
+        published = {p.stem for p in (site / "guides").glob("*.html")
+                     if 'class="g-draft"' not in p.read_text(encoding="utf-8")}
+        for slug, _words in G.HOME:
+            shown = re.search(rf'href="/guides/{re.escape(slug)}"', row) is not None
+            assert shown == (slug in published), \
+                f"{slug} is {'on' if shown else 'off'} the How do I...? row and {'not ' if shown else ''}published"
     assert row.count("<li>") <= 8, "the How do I...? row lists more than the few guides most people come for"
     assert "How to " not in re.sub(r"<[^>]+>", " ", row), "the row names guides by their titles, not the task"
     # The columns: one treatment, drawn by app.css, inside the columns.
@@ -31070,9 +31095,9 @@ def _home_cards(BP, BC, G):
                 f"the {opt} treatment reaches beyond the columns: {sel.strip()[:80]}"
             assert "grid-template" not in body and not re.search(r"(?<![\w-])order\s*:", body), \
                 f"the {opt} treatment moves the columns: {sel.strip()[:80]}"
-    return "ok", (f"Bills, Officials, Laws, Resources; How do I...? with "
-                  f"{row.count('<li>')} guides; columns {BP.HOME_COLUMNS} ({cls}) of "
-                  f"{len(BP.HOME_COLUMN_OPTIONS)} drawn")
+    return "ok", ("Bills, Officials, Laws (with the Constitution), Resources; How do I...? "
+                  + ("on" if BC.HOME_ROW else "off, its code kept")
+                  + f"; columns {BP.HOME_COLUMNS} ({cls}) of {len(BP.HOME_COLUMN_OPTIONS)} drawn")
 
 
 @check("build", "a stated build date is the date every builder writes, and only build_date.py "

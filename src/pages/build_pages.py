@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.215
+# GRANITE_VERSION: 2026-09-04.216
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -3068,10 +3068,13 @@ def sitting_days():
 # its place, because "who represents my town" is what more readers arrive
 # asking. Two abreast in the middle column, one above the other on a phone.
 #
-# THE CONSTITUTION, WHEN ITS TAB EXISTS. The Laws card names the
-# Constitution only once the Laws page carries it: a Constitution tab is
-# being built on the Laws page beside this work, and this card says what the
-# page holds, not what it will.
+# THE CONSTITUTION ON THE LAWS CARD (the person's request, carried out 18
+# October 2026, once the Laws page had its Constitution tab). The card names
+# it first and links its tab -- /laws#constitution, constitution_tab.TABS'
+# address -- beside the card's own way to the statutes: the whole card opens
+# /laws, as every card opens its page, and "The Constitution" in its line
+# opens the tab. Only while the Laws page carries that tab: a card says what
+# the page holds, not what it will.
 HOME_CARDS = (
     ("/bills", "bill", "Browse Bills",
      "Search by committee, topic, sponsor, status or the day it was voted on"),
@@ -3082,15 +3085,30 @@ HOME_CARDS = (
     ("resources.html", "book", "Resources",
      "How-to guides, how the legislature works, and official sources"),
 )
+CONSTITUTION_HREF = "/laws#constitution"
+
+
+def _laws_has_constitution():
+    """Whether the Laws page carries its Constitution tab."""
+    import constitution_tab
+    return any(pid == "constitution" for pid, _name in constitution_tab.TABS)
 
 
 def home_cards():
     """The .entry block of the home page: HOME_CARDS, each with its section's
-    drawing (the nav's own, Polish 1)."""
-    return ('<div class="entry">\n'
-            + "".join(f'  <a href="{href}">{icon(ic)}<b>{name}</b><span>{line}</span></a>\n'
-                      for href, ic, name, line in HOME_CARDS)
-            + "</div>")
+    drawing (the nav's own, Polish 1). The Laws card, while the Laws page
+    carries the Constitution, is a card with two links (.ecard): the card
+    itself to /laws and "The Constitution" to its tab, the inner link above
+    the card's, so each answers its own click."""
+    out = []
+    for href, ic, name, line in HOME_CARDS:
+        if href == "laws.html" and _laws_has_constitution():
+            out.append(f'  <div class="ecard"><a class="ecmain" href="{href}">{icon(ic)}<b>{name}</b></a>'
+                       f'<span><a class="ecalso" href="{CONSTITUTION_HREF}">The Constitution</a>, article '
+                       'by article, and every New Hampshire statute, by number or subject</span></div>\n')
+        else:
+            out.append(f'  <a href="{href}">{icon(ic)}<b>{name}</b><span>{line}</span></a>\n')
+    return '<div class="entry">\n' + "".join(out) + "</div>"
 
 
 # THE COLUMNS, SET APART (the person, 17 October 2026: "It would be good if
@@ -3890,7 +3908,8 @@ committee. Your town shows who represents you.</p>
 <!-- HOW DO I...?, under the cards (the person, 17 October 2026: the guides
      shown in a way the public finds intuitive): the few guides most people
      come for, as the end of the question, and All guides. Filled by
-     build_civics, which knows which guides passed their checks. -->
+     build_civics, which knows which guides passed their checks; empty while
+     build_civics.HOME_ROW is off (the person, 18 October 2026). -->
 <!-- guides --><!-- /guides -->
 </div>
 <section class="hside hleft" aria-label="Where the General Court is, and what is coming up">

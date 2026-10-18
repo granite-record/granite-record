@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.282 */
+/* GRANITE_VERSION: 2026-09-07.283 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -6957,11 +6957,22 @@ border-radius:var(--r-out);padding:var(--sp-6) var(--sp-6);margin-bottom:var(--s
 /* Flex, for the reason .statgrid is: in a 482px column auto-fit makes two
    columns and the third card took half of row two, floating beside nothing.
    A flex item grows into the row it lands in. */:where(body.pg) .entry{display:flex;flex-wrap:wrap;gap:var(--sp-5);margin:var(--sp-7) 0 var(--sp-9)}
-:where(body.pg) .entry > a{flex:1 1 210px;min-width:0}
-:where(body.pg) .entry a{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:center;column-gap:var(--sp-4);
+:where(body.pg) .entry > a,:where(body.pg) .entry > .ecard{flex:1 1 210px;min-width:0}
+:where(body.pg) .entry > a,:where(body.pg) .entry > .ecard{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:center;column-gap:var(--sp-4);
 align-content:start;background:var(--surface);border:1px solid var(--rule);border-radius:var(--r-out);
 padding:var(--sp-6) var(--sp-6);text-decoration:none;color:inherit}
-:where(body.pg) .entry a:hover{border-color:var(--pine)}
+:where(body.pg) .entry > a:hover,:where(body.pg) .entry > .ecard:hover{border-color:var(--pine)}
+/* A CARD WITH TWO LINKS (the Laws card, 18 October 2026: build_pages.
+   home_cards). The card is a box, not a link, so its line can hold one: its
+   name's link covers the whole card, as every other card's does, and the
+   Constitution's link sits above that cover, so a click on it opens the
+   Constitution's tab and a click anywhere else opens /laws. */
+:where(body.pg) .entry > .ecard{position:relative}
+:where(body.pg) .entry .ecmain{grid-column:1 / -1;display:flex;align-items:center;column-gap:var(--sp-4);
+text-decoration:none;color:inherit}
+:where(body.pg) .entry .ecmain::after{content:"";position:absolute;inset:0;border-radius:inherit}
+:where(body.pg) .entry .ecalso{position:relative;z-index:1;font-weight:600;color:var(--pine)}
+:where(body.pg) .entry .ecalso:hover{color:var(--ink)}
 /* Each card's section drawing beside its name, in the name's pine (Polish 1,
    the prototype kit's home cards); the line under it keeps the card's width. */
 :where(body.pg) .entry .icon{width:1.375rem;height:1.375rem;color:var(--pine);margin-bottom:var(--sp-1)}
