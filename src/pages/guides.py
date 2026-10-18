@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-11.18
+# GRANITE_VERSION: 2026-10-11.19
 """
 The how-to guides: their words, their sources, and what each was checked
 against. Read by build_civics.py, which draws them on the Resources hub's
@@ -2875,7 +2875,8 @@ GUIDES += [TOUR]
 # do -- renew a license, find out who represents them, speak on a bill -- and
 # not with the name of a guide, so the How-To Guides tab lists them under the
 # task they serve, each by a plain task title and one line, and the home
-# page's "How do I...?" row offers the few most people come for. A guide's
+# page's Common Questions (HOME, below) offer the few most people come for
+# the same way. A guide's
 # own title ("How to Renew Your Driver's License") stays on its page and in
 # search results; these are the words of the list.
 #
@@ -2955,19 +2956,40 @@ TASKS = [
 ]
 MORE = "More Guides"
 
-# THE HOME PAGE'S "HOW DO I...?" ROW (17 October 2026): the few guides most
-# people come for, each as the end of the question. Chosen by judgment, not
-# counted -- the site keeps no count of which guides are read -- from what a
-# member of the public most often has to do with the state: vote, find who
-# represents them, speak on a bill, and the license, the car and the help
-# with food and health care that the DMV and DHHS guides answer. A pick whose
-# guide is held back is left off the row.
-HOME = [("how-to-vote", "Vote"),
-        ("your-representatives", "Find my representatives"),
-        ("attend-a-hearing", "Speak at a hearing"),
-        ("renew-drivers-license", "Renew my driver&rsquo;s license"),
-        ("register-a-car", "Register a car"),
-        ("food-and-health-assistance", "Get food or health help")]
+# THE HOME PAGE'S COMMON QUESTIONS, under its cards. The person, 18 October
+# 2026, of the "How do I...?" row of six buttons that stood here: "it feels
+# like the phrasing is too vague to understand what's useful about it. Maybe
+# we could have a sort of top 3-5 guides for the most common inquiries like
+# how to vote, how to run for office, and new to New Hampshire." So five
+# guides, each by a plain title and a line saying what a reader will learn
+# or be able to do there, which a one-word button ("Vote") could not say.
+#
+# The three the person named, and the two errands a member of the public
+# most often has with the state after them: who represents my town, and the
+# license. Chosen by judgment, not counted -- the site keeps no count of
+# which guides are read -- which is why the block is headed Common Questions
+# and not Popular. A title here may differ from the task's on the How-To
+# Guides tab ("How to vote" where the tab says "Vote"): the tab sets each
+# task under a group heading that gives it its context, and the home page
+# has no group heading to lean on. Each line is held to its guide's own
+# steps; change the guide and read the line again. A pick whose guide is
+# held back is left off the block.
+HOME = [
+    task("how-to-vote", "How to vote",
+         "Register, find your polling place and what to bring, or vote absentee if you qualify."),
+    task("run-for-office", "Run for office",
+         "Who can run, when and where to file, and the fee or petitions, from governor to town "
+         "offices."),
+    task("new-to-new-hampshire", "New to New Hampshire",
+         "Your New Hampshire license and vehicle registration within 60 days, and registering to "
+         "vote."),
+    task("your-representatives", "Find your representatives",
+         "Who represents your town in the House and the Senate, and what the district numbers "
+         "mean."),
+    task("renew-drivers-license", "Renew your driver&rsquo;s license",
+         "Online or at a DMV appointment: what to bring, what it costs, and what to do if it has "
+         "expired."),
+]
 
 
 # THE WORDS A READER TYPES FOR EACH TASK (the person, 17 October 2026: "the

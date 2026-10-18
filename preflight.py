@@ -30493,10 +30493,11 @@ def _guides_reach():
     for p in pages:
         g, t = by_slug[p.stem], p.read_text(encoding="utf-8")
         addr = f"/guides/{p.stem}"
-        # THE HOME PAGE OFFERS THE FEW MOST PEOPLE COME FOR (guides.HOME, 17
-        # October 2026) and All guides for the rest: a pick must be there.
-        if BC_.HOME_ROW and p.stem in {s for s, _w in G.HOME} and f'href="{addr}"' not in home:
-            bad.append(f"{p.stem} is one of the home page's picks and is not on it")
+        # THE HOME PAGE OFFERS THE FEW MOST PEOPLE COME FOR (guides.HOME, the
+        # Common Questions of 18 October 2026) and All guides for the rest: a
+        # pick that is published must be there.
+        if BC_.HOME_GUIDES and p.stem in {t["slug"] for t in G.HOME} and f'href="{addr}"' not in home:
+            bad.append(f"{p.stem} is one of the home page's common questions and is not on it")
         if not any(r[0] == "guide" and r[3].lstrip("/") == addr.lstrip("/") for r in find):
             bad.append(f"{p.stem} is not in find.json")
         title = re.search(r"<title>([^<]*)</title>", t).group(1)
@@ -30506,10 +30507,22 @@ def _guides_reach():
             bad.append(f"{p.stem} carries no HowTo data")
         if not re.search(re.escape(f"<loc>{base}{addr}</loc>") + r"<lastmod>\d{4}-\d\d-\d\d</lastmod>", sm):
             bad.append(f"{p.stem}'s sitemap entry is not dated by its check")
-    # Every guide is reached from the home page: through the How do I...?
-    # row's All guides while it is on, and through the Resources card, which
-    # opens the hub on its How-To Guides tab, while it is off (18 October).
-    if pages and not re.search(r'href="/resources#guides"' if BC_.HOME_ROW
+    # EVERY COMMON QUESTION LEADS TO A GUIDE THAT IS THERE. Each link the
+    # home page's block carries opens a page of the built site that is not a
+    # draft -- the pages that became guides (civics.HOW_TO) included, which
+    # the loop above leaves to _how_to_moved -- so a pick renamed in
+    # guides.HOME, or a guide held back, never leaves a reader on a 404.
+    block = re.search(r"<!-- guides -->(.*?)<!-- /guides -->", home, re.S).group(1)
+    for slug in re.findall(r'<li><a href="/guides/([^"#]+)"', block):
+        f = site / "guides" / f"{slug}.html"
+        if not f.is_file():
+            bad.append(f"the home page's common question /guides/{slug} leads to no page")
+        elif 'class="g-draft"' in f.read_text(encoding="utf-8"):
+            bad.append(f"the home page's common question /guides/{slug} leads to a draft")
+    # Every guide is reached from the home page: through Common Questions'
+    # All guides while they are on, and through the Resources card, which
+    # opens the hub on its How-To Guides tab, while they are off.
+    if pages and not re.search(r'href="/resources#guides"' if BC_.HOME_GUIDES
                               else r'<a href="/?resources(?:\.html)?">', home):
         bad.append("the home page does not lead to every guide")
     assert not bad, "; ".join(bad)
@@ -30544,7 +30557,8 @@ def _how_to_tasks(G, civics, BC, BP):
         for t in ts:
             assert t["does"] and t["line"] and "How to" not in t["does"], \
                 f"{t['slug']}: a task is named by the guide's title, not in a reader's words: {t['does']!r}"
-    assert {s for s, _w in G.HOME} <= set(want), "the home page's row names a guide that does not exist"
+    assert {t["slug"] for t in G.HOME} <= set(want), \
+        "the home page's common questions name a guide that does not exist"
     assert BC.HUB_TABS[0][0] == "guides", "the Resources hub no longer opens on How-To Guides"
     red = BP.REDIRECTS
     for s in civics.HOW_TO:
@@ -31201,8 +31215,9 @@ CLOCK_OF_THEIR_OWN = {
 }
 
 
-@check("frontend", "the home page's cards are Bills, Officials, Laws and Resources, its How do I...? row "
-                   "offers the guides most people come for, and its columns carry one of the drawn "
+@check("frontend", "the home page's cards are Bills, Officials, Laws and Resources, its Common Questions "
+                   "offer the guides most people come for, each with a line on what it teaches, and its "
+                   "columns carry one of the drawn "
                    "treatments, none of which tints a band or moves a column",
        needs=("build_pages", "build_civics", "guides"))
 def _home_cards(BP, BC, G):
@@ -31212,8 +31227,8 @@ def _home_cards(BP, BC, G):
     home page in a way the public finds intuitive; and "It would be good if
     the columns on the homepage could be a bit more differentiated". Read off
     the fixture's built home page and the code: the four cards in order, no
-    Committees card; the How do I...? row with every pick the build published
-    and All guides; the columns' class one of HOME_COLUMN_OPTIONS, each of
+    Committees card; Common Questions (18 October) with every pick the build
+    published, each its title over its line, and All guides; the columns' class one of HOME_COLUMN_OPTIONS, each of
     which app.css styles, inside the three columns only -- no rule of theirs
     reaches the header or the page's ground (the person's "no pale pine
     band", 8 October), and none changes the grid's columns (the three-column
@@ -31242,29 +31257,47 @@ def _home_cards(BP, BC, G):
         assert f'<a class="ecalso" href="{BP.CONSTITUTION_HREF}">The Constitution</a>' in entry.group(1) \
             and BP.CONSTITUTION_HREF == "/laws#constitution", \
             "the Laws card does not name the Constitution and link its tab"
-    # How do I...?, OFF UNTIL THE PERSON SAYS HOW (18 October 2026:
-    # build_civics.HOME_ROW): drawn only while the flag is on, and then with
-    # every pick the build published and All guides; while it is off, the
-    # slot is empty and the Resources card is the way to the guides.
+    # COMMON QUESTIONS, NOT ONE-WORD BUTTONS (the person, 18 October 2026, of
+    # the "How do I...?" row: "the phrasing is too vague to understand what's
+    # useful about it. Maybe we could have a sort of top 3-5 guides for the
+    # most common inquiries like how to vote, how to run for office, and new
+    # to New Hampshire"). The block is what the person asked for, so this
+    # fails while build_civics.HOME_GUIDES is off rather than accepting an
+    # empty slot. Then, from the code: three to five picks, the person's three
+    # among them, each with a title and a line long enough to say what a
+    # reader will learn -- a line of a word or two is the vague button come
+    # back. And from the fixture's built page: under its heading, each pick
+    # the build published drawn as its title over its line and linked to its
+    # guide, no pick it held back, and All guides to the How-To Guides tab.
+    assert BC.HOME_GUIDES, "the home page's Common Questions are off (build_civics.HOME_GUIDES)"
+    picks = G.HOME
+    assert 3 <= len(picks) <= 5, f"the home page offers {len(picks)} common questions, not three to five"
+    named = {"how-to-vote", "run-for-office", "new-to-new-hampshire"}
+    assert named <= {t["slug"] for t in picks}, \
+        f"the person's own picks are not all there: {sorted(named - {t['slug'] for t in picks})}"
+    for t in picks:
+        words = re.sub(r"<[^>]+>|&\w+;", " ", t["line"]).split()
+        assert t["does"] and len(words) >= 6, \
+            f"{t['slug']}: a common question needs a title and a line saying what the guide teaches"
     row = re.search(r"<!-- guides -->(.*?)<!-- /guides -->", home, re.S).group(1)
-    if not BC.HOME_ROW:
-        assert not row.strip() and 'class="hguides"' not in home, \
-            "the How do I...? row is drawn while build_civics.HOME_ROW is off"
-        assert any(h.rstrip("/").split("/")[-1] in ("resources", "resources.html") for h in hrefs), \
-            "with the How do I...? row off, no card leads to the guides"
-        row = BC.how_do_i([{"slug": s} for s, _w in G.HOME])     # kept, to come back
-        assert row.count("<li>") == len(G.HOME), "how_do_i no longer draws the picks it is kept for"
-    else:
-        assert "How do I&hellip;?" in row and 'href="/resources#guides"' in row, \
-            "the home page has no How do I...? row leading to every guide"
-        published = {p.stem for p in (site / "guides").glob("*.html")
-                     if 'class="g-draft"' not in p.read_text(encoding="utf-8")}
-        for slug, _words in G.HOME:
-            shown = re.search(rf'href="/guides/{re.escape(slug)}"', row) is not None
-            assert shown == (slug in published), \
-                f"{slug} is {'on' if shown else 'off'} the How do I...? row and {'not ' if shown else ''}published"
-    assert row.count("<li>") <= 8, "the How do I...? row lists more than the few guides most people come for"
-    assert "How to " not in re.sub(r"<[^>]+>", " ", row), "the row names guides by their titles, not the task"
+    assert '<h2 id="hguides-h">Common Questions</h2>' in row and "How do I" not in row, \
+        "the home page's guides block is not headed Common Questions"
+    assert re.search(r'<a class="hgall" href="/resources#guides">All guides</a>', row), \
+        "the home page's Common Questions do not end with All guides to the How-To Guides tab"
+    import civics as _civ
+    published = {p.stem for p in (site / "guides").glob("*.html")
+                 if 'class="g-draft"' not in p.read_text(encoding="utf-8")}
+    shown_n = 0
+    for t in picks:
+        drawn = (f'<li><a href="/guides/{t["slug"]}"><b>{t["does"]}</b>'
+                 f'<span>{BC.dashes(t["line"])}</span></a></li>')
+        shown = drawn in row
+        shown_n += shown
+        held = t["slug"] not in published and t["slug"] not in _civ.HOW_TO
+        assert shown != held, (f"{t['slug']} is {'on' if shown else 'off'} the home page's Common "
+                               f"Questions and {'held back' if held else 'published'}"
+                               + ("" if shown or held else ", or not drawn as its title over its line"))
+    assert row.count("<li>") == shown_n, "the home page's Common Questions list a guide guides.HOME does not"
     # The columns: one treatment, drawn by app.css, inside the columns.
     cls = BP.HOME_COLUMN_OPTIONS[BP.HOME_COLUMNS]
     assert f'<div class="hcols {cls}">' in home, f"the home page's columns do not carry {cls}"
@@ -31279,9 +31312,9 @@ def _home_cards(BP, BC, G):
                 f"the {opt} treatment reaches beyond the columns: {sel.strip()[:80]}"
             assert "grid-template" not in body and not re.search(r"(?<![\w-])order\s*:", body), \
                 f"the {opt} treatment moves the columns: {sel.strip()[:80]}"
-    return "ok", ("Bills, Officials, Laws (with the Constitution), Resources; How do I...? "
-                  + ("on" if BC.HOME_ROW else "off, its code kept")
-                  + f"; columns {BP.HOME_COLUMNS} ({cls}) of {len(BP.HOME_COLUMN_OPTIONS)} drawn")
+    return "ok", (f"Bills, Officials, Laws (with the Constitution), Resources; Common Questions with "
+                  f"{shown_n} of {len(picks)} guides and All guides"
+                  f"; columns {BP.HOME_COLUMNS} ({cls}) of {len(BP.HOME_COLUMN_OPTIONS)} drawn")
 
 
 @check("build", "a stated build date is the date every builder writes, and only build_date.py "

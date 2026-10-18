@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.217
+# GRANITE_VERSION: 2026-09-04.218
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -3917,11 +3917,11 @@ committee. Your town shows who represents you.</p>
      2026): Bills, Officials, Laws and Resources since 17 October 2026
      (HOME_CARDS says why). -->
 {home_cards()}
-<!-- HOW DO I...?, under the cards (the person, 17 October 2026: the guides
-     shown in a way the public finds intuitive): the few guides most people
-     come for, as the end of the question, and All guides. Filled by
-     build_civics, which knows which guides passed their checks; empty while
-     build_civics.HOME_ROW is off (the person, 18 October 2026). -->
+<!-- COMMON QUESTIONS, under the cards (the person, 18 October 2026: "a sort
+     of top 3-5 guides for the most common inquiries"): a few guides, each by
+     its title over a line saying what a reader will learn there, and All
+     guides. Filled by build_civics, which knows which guides passed their
+     checks; empty while build_civics.HOME_GUIDES is off. -->
 <!-- guides --><!-- /guides -->
 </div>
 <section class="hside hleft" aria-label="Where the General Court is, and what is coming up">

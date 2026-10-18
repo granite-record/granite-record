@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.284 */
+/* GRANITE_VERSION: 2026-09-07.285 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -1750,22 +1750,43 @@ color:var(--pine);margin:0 0 var(--sp-3)}
   padding-left:var(--sp-3);border-left:3px solid var(--pine)}
 /* ==== /MEMBERS-ELECT, SHARED ============================================== */
 
-/* THE HOME PAGE'S "HOW DO I...?" ROW, under its cards (build_civics.how_do_i,
-   17 October 2026). The question once, in the serif a step above the links so
-   the heading outranks what it heads, and its answers as a row of links the
-   size of a finger that wraps, each the end of the question; All guides
-   last, the way to the rest. Outlined, not filled, so the row reads as
-   things to choose rather than as a second set of cards. */
+/* THE HOME PAGE'S COMMON QUESTIONS, under its cards (build_civics.
+   common_questions, 18 October 2026). The person found the one-word buttons
+   that stood here too vague to say what was useful about them, so each guide
+   is a row that says it: the title in the serif at the reading size, as the
+   How-To Guides tab sets a task, over a line in the sans saying what a
+   reader will learn there. The whole row is the link, so the target is the
+   size of what a reader is choosing between.
+
+   Rows between hairlines, not boxes: four boxed cards sit directly above,
+   and a second set of boxes would read as more of the same ways in rather
+   than as a short list of answers. The title is pine and underlined, which
+   is what marks a link everywhere on the site, and no larger than the
+   cards' names read, so the block outranks nothing above it.
+
+   The heading takes the level its neighbours take. On one column the block
+   sits among the rails' blocks (the order rule further down puts it after
+   the cards and before the Court's status), whose headings are prose h2s
+   over a hairline, so it is one too. Above 1180px the rails' headings are
+   part labels, the serif capitals, and this one in the middle column is set
+   the same way, so the page's section headings are one size at each width
+   and the hero's name stays the only thing larger. */
 .hguides{margin:0}
-.hguides h2{font:600 var(--t-lead)/1.25 var(--serif);color:var(--ink);margin:0 0 var(--sp-4)}
-.hguides ul{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:var(--sp-4)}
-.hguides li a{display:inline-flex;align-items:center;min-height:2.75rem;box-sizing:border-box;
-  padding:var(--sp-3) var(--sp-6);border:1px solid var(--rule-2);border-radius:var(--r-in);
-  font:600 var(--t-ui)/1.3 var(--sans);color:var(--pine);text-decoration:none}
-.hguides li a:hover{border-color:var(--pine);color:var(--ink)}
-.hguides .hgall{display:inline-block;margin-top:var(--sp-5);font:600 var(--t-ui)/1.4 var(--sans);
+.hguides h2{font:600 var(--t-h2)/1.25 var(--serif);color:var(--ink);margin:0;
+  padding-bottom:var(--sp-4);border-bottom:1px solid var(--rule)}
+.hguides ul{list-style:none;margin:0;padding:0}
+.hguides li{border-bottom:1px solid var(--rule)}
+.hguides li a{display:block;padding:var(--sp-5) 0;text-decoration:none;color:var(--ink)}
+.hguides li b{display:block;font:600 var(--t-read)/1.3 var(--serif);color:var(--pine);
+  text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:3px}
+.hguides li a:hover b{color:var(--ink)}
+.hguides li span{display:block;margin-top:var(--sp-2);font:400 var(--t-ui)/1.5 var(--sans);color:var(--ink-2)}
+.hguides .hgall{display:inline-block;margin-top:var(--sp-6);font:600 var(--t-ui)/1.4 var(--sans);
   color:var(--pine)}
 .hguides .hgall::after{content:" \2192"}
+@media (min-width:73.75em){
+  .hguides h2{font-size:var(--t-part);letter-spacing:.05em;text-transform:uppercase;color:var(--ink-2)}
+}
 
 /* THE RECORD AS PLAIN HTML (the SEO review of 12 October 2026): what a bill's,
    a member's and a committee's page say to a reader that runs no scripts --
@@ -7347,7 +7368,7 @@ padding:var(--sp-7) max(0px,calc(50% - 590px))}
      exactly where they are. */
   :where(body.pg) .hcols .searchbig{order:4}
   :where(body.pg) .hcols .entry{order:5}
-  /* The how-to guides under the cards, as on a desktop (build_civics.home_guides). */
+  /* The common questions under the cards, as on a desktop (build_civics.home_guides). */
   :where(body.pg) .hcols .hguides{order:6}
   /* Then where the General Court is, and what it is about to do. */
   :where(body.pg) .hcols #state{order:7}
