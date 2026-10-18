@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.14
+# GRANITE_VERSION: 2026-09-08.15
 """
 Who is hearing what, when, and in which room -- out of the calendars on disk.
 
@@ -805,7 +805,7 @@ def check_term(term, docket=None, chambers=("H", "S")):
     for ch in chambers:
         cal, seen = [], set()
         for r in load(ch, years={y0 - 1, y0, y1, y1 + 1}):
-            if not (r["bill"] and r["date"]) or P.term_of(r["date"]) != term:
+            if not (r["bill"] and r["date"]) or P.term_on(r["date"]) != term:
                 continue
             key = (r["date"], r["committee"], r["time"], r["kind"], r["bill"],
                    r["room"], r["venue"])

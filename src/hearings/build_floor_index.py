@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.10
+# GRANITE_VERSION: 2026-09-04.11
 """
 Build a per-bill index of floor debates, keyed to the session recordings.
 
@@ -275,7 +275,7 @@ def main():
         for i, r in enumerate(runs):
             # Still a run: the window of the bill after it opens where it
             # closed.
-            if (P.term_of(date), r["bill"]) not in known:
+            if (P.term_on(date), r["bill"]) not in known:
                 not_bills[r["bill"]] += 1
                 continue
             entry = {"date": date, "body": body, "video_id": vid["video_id"],

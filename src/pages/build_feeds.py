@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.40
+# GRANITE_VERSION: 2026-09-04.41
 """
 Write RSS feeds so people can follow bills without a login.
 
@@ -411,7 +411,7 @@ def main():
         if not bill:
             return None
         if date:
-            hit = by_id.get((P.term_of(date), bill))
+            hit = by_id.get((P.term_on(date), bill))
             if hit:
                 return hit
         cands = by_number.get(bill, [])
@@ -733,7 +733,7 @@ def main():
                    if taken else ""),
                 d, f"committee:{code}:{d}"))
             it = FC.item(items[-1][4], d[:10], "sitting", items[-1][0], path_of(page),
-                         s.get("term") or P.term_of(d), plain=sitting_words(s))
+                         s.get("term") or P.term_on(d), plain=sitting_words(s))
             if it:
                 mine[it["guid"]] = it
         if not items:
@@ -913,7 +913,7 @@ def main():
                     # call's codes. The feed's own title is left as it was.
                     asked = rc.get("q") or q
                     it = FC.item(items[-1][4], day, "vote", items[-1][0], path_of(items[-1][1]),
-                                 (bb or {}).get("term") or P.term_of(day), milestone=True,
+                                 (bb or {}).get("term") or P.term_on(day), milestone=True,
                                  vote=FC.vote_detail(
                                      ballot_word(v.get("v")),
                                      motion=PA.motion_words(asked, (bb or {}).get("id") or "",

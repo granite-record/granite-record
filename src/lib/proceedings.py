@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.14
+# GRANITE_VERSION: 2026-09-05.15
 """
 Read proceedings.csv. Every tool that needs to know what happened on which
 recording imports this and nothing else.
@@ -202,6 +202,24 @@ def vote_term(year, when=""):
         return _vote_term(year, when)
     term = _VOTE_TERMS[key] = _vote_term(year, when)
     return term
+
+
+# A DAY'S TERM, FOR WHAT IS DATED AND FILED UNDER NO SESSION YEAR (18 October
+# 2026, private/UNATTENDED_AUDIT_2026-10-18.md, section 2). A floor debate, a
+# hearing or a recording carries a day and nothing else, and term_of(day)
+# files Organization Day's business under the term that day ends. It already
+# had: the House's and the Senate's resolutions of 4 December 2024 -- HR 1 to
+# 5 and SR 1 to 5 of 2025, the rules and the officers of 2025-2026 -- were 10
+# floor rows of proceedings.csv filed under 2023-2024, so 2023's HR 1, its
+# own rules resolution, showed the recording of the 2024 Organization Day as
+# its floor debate. On 2 December 2026 the same would have happened to
+# 2027-2028's. term_on is vote_term with the day for the year.
+
+def term_on(day):
+    """The term a day falls in: "2026-12-01" -> "2025-2026", "2026-12-02",
+    Organization Day, -> "2027-2028". "" for no day."""
+    s = str(day or "").strip()
+    return vote_term(s[:4], s) if re.match(r"\d{4}-\d\d-\d\d", s) else term_of(s)
 
 
 # A term as this project writes one. Several derived files are {term: {...}}

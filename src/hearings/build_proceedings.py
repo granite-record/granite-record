@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.14
+# GRANITE_VERSION: 2026-09-05.15
 """
 Build proceedings.csv: one row per (bill, date, kind, recording), whether it
 is a committee hearing or a floor debate.
@@ -138,7 +138,7 @@ def from_manifest(path):
                 continue
             date = (r.get("sched_date") or "")[:10]
             rows.append({
-                "term": P.term_of(date), "bill": bill,
+                "term": P.term_on(date), "bill": bill,
                 "body": (r.get("body") or "").strip(),
                 "kind": (r.get("proceeding") or "").strip().lower(),
                 "date": date, "time": (r.get("sched_time") or "").strip(),
@@ -216,7 +216,7 @@ def from_floor_index(path):
                 else:
                     kind = "floor debate"
             rows.append({
-                "term": P.term_of(date), "bill": b,
+                "term": P.term_on(date), "bill": b,
                 "body": str(e.get("body") or ""),
                 "kind": kind, "date": date, "time": "",
                 "committee": "", "venue": "",
@@ -286,8 +286,9 @@ def recover_terms(rows, days):
 
     Returns (from_stream, from_published, [rows that still have none]).
 
-    A term comes from the date and nothing else -- P.term_of reads the year
-    and rounds it down to the odd one -- so a row with no term is a row with
+    A term comes from the date and nothing else -- P.term_on reads the year,
+    rounds it down to the odd one, and gives Organization Day of an even year
+    and the days after it to the next term -- so a row with no term is a row with
     no date, and a row with no date but a video_id has its date sitting in
     the video index under that id. The site keys on (term, bill), so this is
     the difference between a proceeding having a page and having nowhere at
@@ -302,7 +303,7 @@ def recover_terms(rows, days):
         if r.get("term") or not r.get("video_id"):
             continue
         day, how = days.get(r["video_id"], ("", ""))
-        term = P.term_of(day)
+        term = P.term_on(day)
         if not term:
             continue
         r["term"] = term

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.615
+# GRANITE_VERSION: 2026-09-04.616
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -37177,6 +37177,81 @@ def _organization_day_votes(P, BD, SD, BSP):
                   "kept beside the frozen term's files and out of its record, keyed 2027-2028 "
                   "in rollcalls.json and careers.json, and drawn with a vote on no bill on the "
                   "day's sitting; a key naming two terms' votes stops careers.json")
+
+
+# WHAT IS DATED AND FILED UNDER NO SESSION YEAR TAKES ITS TERM FROM THE DAY,
+# Organization Day the next term's (proceedings.term_on): the files that read
+# one, and what each reads it for.
+TERM_ON_READERS = {
+    "build_proceedings.py": ('"term": P.term_on(date), "bill": bill,',
+                             '"term": P.term_on(date), "bill": b,', "term = P.term_on(day)"),
+    "build_floor_index.py": ('(P.term_on(date), r["bill"]) not in known',),
+    "build_feeds.py": ("by_id.get((P.term_on(date), bill))", 's.get("term") or P.term_on(d)',
+                       '(bb or {}).get("term") or P.term_on(day)'),
+    "calendar_meetings.py": ('P.term_on(r["date"]) != term',),
+}
+
+
+@check("session", "a floor debate, hearing or recording of Organization Day is the next term's "
+       "in proceedings.csv, as its roll calls are", needs=("proceedings", "build_proceedings"))
+def _organization_day_floor_rows(P, BP):
+    """private/UNATTENDED_AUDIT_2026-10-18.md, section 2, called it latent:
+    build_proceedings and build_floor_index gave a row its term with
+    proceedings.term_of(day), the calendar-year rule, where vote_term gives
+    Organization Day of an even year to the next term. It was not latent. The
+    built proceedings.csv of 17 October 2026 held 10 floor rows of 4 December
+    2024 -- HR 1 to 5 and SR 1 to 5 of 2025, the 2025-2026 rules and officers
+    the docket files under 2025 -- under 2023-2024, and site/bill/2023/hr1.html,
+    2023's own rules resolution, showed the 2024 Organization Day's recording
+    (G744U5Zw5Kk) as its floor debate. 2 December 2026 would have done the same
+    to 2027-2028's.
+
+    Held here: proceedings.term_on on either side of three Organization Days
+    and on nothing; build_proceedings' manifest, floor-index and term-recovery
+    readers filing a row of 2 December 2026 under 2027-2028 and one of
+    1 December under 2025-2026; and every reader in TERM_ON_READERS still
+    reading the day that way, by its source."""
+    bad = []
+    for day, want in (("2026-12-01", "2025-2026"), ("2026-12-02", "2027-2028"),
+                      ("2026-12-31", "2027-2028"), ("2027-01-06", "2027-2028"),
+                      ("2024-12-03", "2023-2024"), ("2024-12-04", "2025-2026"),
+                      ("2022-12-07", "2023-2024"), ("2025-12-17", "2025-2026"),
+                      ("", ""), (None, "")):
+        if P.term_on(day) != want:
+            bad.append(f"term_on({day!r}) is {P.term_on(day)!r}, not {want!r}")
+    tmp = Path(tempfile.mkdtemp(prefix="gr-orgday-floor-"))
+    try:
+        (tmp / "floor_index.json").write_text(json.dumps({
+            "HR1": [{"date": "2026-12-02", "body": "H", "video_id": "ORG", "kind": "floor debate",
+                     "motions": ["Ought to Pass"], "tallies": [], "precise": False}],
+            "HB1": [{"date": "2026-12-01", "body": "H", "video_id": "OLD", "kind": "floor debate",
+                     "motions": [], "tallies": [], "precise": False}]}), encoding="utf-8")
+        got = {(r["bill"], r["date"]): r["term"] for r in BP.from_floor_index(tmp / "floor_index.json")}
+        if got != {("HR1", "2026-12-02"): "2027-2028", ("HB1", "2026-12-01"): "2025-2026"}:
+            bad.append(f"build_proceedings files the floor index's rows as {got}")
+        with open(tmp / "m.csv", "w", newline="", encoding="utf-8") as fh:
+            w = csv.DictWriter(fh, fieldnames=["bill", "sched_date", "body", "proceeding"])
+            w.writeheader()
+            w.writerow({"bill": "HB2", "sched_date": "2024-12-04", "body": "H", "proceeding": "hearing"})
+            w.writerow({"bill": "HB3", "sched_date": "2024-11-20", "body": "H", "proceeding": "hearing"})
+        got = {r["bill"]: r["term"] for r in BP.from_manifest(tmp / "m.csv")}
+        if got != {"HB2": "2025-2026", "HB3": "2023-2024"}:
+            bad.append(f"build_proceedings files a manifest's rows as {got}")
+        rows = [{"term": "", "video_id": "V1", "date": ""}]
+        BP.recover_terms(rows, {"V1": ("2026-12-02", "stream")})
+        if rows[0]["term"] != "2027-2028":
+            bad.append(f"a recording of 2 December 2026 recovers the term {rows[0]['term']!r}")
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    for name, says in TERM_ON_READERS.items():
+        src = _paths.locate(name).read_text(encoding="utf-8")
+        for s in says:
+            if s not in src:
+                bad.append(f"{name} no longer reads a day's term as term_on: {s!r} is gone")
+    assert not bad, "; ".join(bad)
+    return "ok", (f"Organization Day and after are the next term's on {len(TERM_ON_READERS)} readers "
+                  "of a day; the floor index, a manifest and a recovered recording each file "
+                  "2 December 2026 under 2027-2028")
 
 
 @check("session", "a roll call's term is read once for each year and day, and what is kept is "
