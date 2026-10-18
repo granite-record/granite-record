@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-13.8
+# GRANITE_VERSION: 2026-09-13.9
 """
 What a search engine is told a page is about, in schema.org's vocabulary.
 
@@ -151,6 +151,22 @@ def committee(code, name, base, canon_path):
     obj = {"@type": "GovernmentOrganization", "@id": url, "url": url,
            "name": f"New Hampshire {word} Committee on {name}" if not name.lower().startswith(("committee", "special")) else f"New Hampshire {word} {name}",
            "parentOrganization": CHAMBER.get(chamber, LEGISLATURE)}
+    return [obj, _crumbs(base, [("Granite Record", "/"), ("Committees", "/committees"),
+                                (name, canon_path)])]
+
+
+def study_committee(name, base, canon_path, legislative=True):
+    """A statutory or study committee's page (build_study_committees.py, 18
+    October 2026). Named as the General Court's list names it, not as
+    committee() names a chamber's committee, since it is no chamber's: the
+    General Court's where its seats include legislators, and nobody's where
+    the list marks it non-legislative -- a board of the executive branch the
+    list carries, described as what it is rather than given a parent it does
+    not have."""
+    url = base + canon_path
+    obj = {"@type": "GovernmentOrganization", "@id": url, "url": url, "name": name}
+    if legislative:
+        obj["parentOrganization"] = LEGISLATURE
     return [obj, _crumbs(base, [("Granite Record", "/"), ("Committees", "/committees"),
                                 (name, canon_path)])]
 

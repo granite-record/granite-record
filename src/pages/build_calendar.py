@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-18.38
+# GRANITE_VERSION: 2026-09-18.39
 """
 The General Court's week, one page per week.
 
@@ -182,26 +182,41 @@ STATSTUD_DIR = Path("db")
 # the acronyms the names actually carry kept as the General Court writes them.
 _SMALL = {"a", "an", "and", "as", "at", "by", "for", "in", "of", "on", "or",
           "the", "to", "with"}
+# OPLC, OBD II, GIS and SNAP added on 18 October 2026, when every active
+# committee got a page of its own: "Oplc Oversight Committee" and "Obd Ii
+# Testing Advisory Committee" were each one's heading. McAuliffe is a name.
 _ACRONYM = {"NH": "NH", "RSA": "RSA", "OHRVS": "OHRVs", "SAUS": "SAUs",
-            "SIEC": "SIEC", "IDD": "IDD", "ABD": "ABD"}
+            "SIEC": "SIEC", "IDD": "IDD", "ABD": "ABD", "OPLC": "OPLC", "OBD": "OBD",
+            "II": "II", "GIS": "GIS", "SNAP": "SNAP", "MCAULIFFE": "McAuliffe"}
+# THE LIST'S OWN MARKS ARE NOT THE NAME: "NH RETIREMENT SYSTEM BOARD OF
+# TRUSTEES ==NON-LEGISLATIVE==", "=NON-LEGISLATIVE=", "(No Legislative
+# Members)". The committee's page says what the mark means
+# (build_study_committees reads it off the name by this same pattern).
+NAME_MARK = re.compile(r"=+\s*NON-LEGISLATIVE\s*=+|\(No Legislative Members\)", re.I)
 
 
 def committee_name(caps):
-    """COMMITTEE ON LEGISLATOR ORIENTATION -> Committee on Legislator Orientation."""
-    words = (caps or "").strip().rstrip(".").split()
+    """COMMITTEE ON LEGISLATOR ORIENTATION -> Committee on Legislator Orientation.
+
+    A word is cased on both sides of a hyphen or a slash, so the Advisory
+    Committee on the Education of Children/Students with Disabilities is not
+    "Children/students"."""
+    words = NAME_MARK.sub(" ", caps or "").strip().rstrip(".").split()
     out = []
     for i, w in enumerate(words):
         parts = []
-        for p in w.split("-"):
+        for p in re.split(r"([-/])", w):
             core = p.strip("(),")
-            if core.upper() in _ACRONYM:
+            if p in ("-", "/"):
+                parts.append(p)
+            elif core.upper() in _ACRONYM:
                 parts.append(p.replace(core, _ACRONYM[core.upper()]))
             elif i and p.lower() in _SMALL:
                 parts.append(p.lower())
             else:
                 parts.append(re.sub(r"[A-Za-z]", lambda m: m.group(0).upper(),
                                     p.lower(), count=1))
-        out.append("-".join(parts))
+        out.append("".join(parts))
     return " ".join(out)
 
 
@@ -422,8 +437,10 @@ def statstud(root=Path(".")):
     from FROM on, shaped as weeks_from reads rows; {bill: [(year, name)]}
     for the committees a bill set up; and the date the copy was taken.
 
-    Each row carries its committee's number ("cid") and, where the committee
-    is active and so has a page, that page's address ("page").
+    Each row carries its committee's number ("cid"), the meeting's own
+    ("mid"), and, where the committee is active and so has a page, that
+    page's address ("page"), which build_study_committees reads the venue
+    and the recording of each meeting back by.
 
     ([], {}, "") where the copy is not on disk -- the caller says so.
     """
@@ -490,7 +507,7 @@ def statstud(root=Path(".")):
                      "bill": "", "committee": name,
                      "kind": "cancelled" if cancelled else kind,
                      "venue": room, "body": "", "term": "",
-                     "study": True, "note": note, "cid": f[2].strip(),
+                     "study": True, "note": note, "cid": f[2].strip(), "mid": f[1].strip(),
                      "page": study_page(f[2].strip()) if active else ""})
     if skipped:
         print(f"  {skipped} study/statutory meetings left out: their committee "

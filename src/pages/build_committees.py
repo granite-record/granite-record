@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-07.64
+# GRANITE_VERSION: 2026-09-07.65
 """
 A page's worth of data for every committee.
 
@@ -550,6 +550,10 @@ def bills_in_order(by_term):
 # Recreation and Environment of 1989-1990, to 71. A ceiling above 112 lets a
 # new special committee or two through and stops the build on the next jump.
 UNMATCHED_CEILING = 150
+
+# The statutory and study committees' pages, build_study_committees.py's, in
+# the sitemap form shell.sitemap_merge reads (18 October 2026).
+STUDY_PAGES = ("/committee/ss*",)
 
 
 def unmatched_guard(unmatched, ceiling=UNMATCHED_CEILING):
@@ -1408,7 +1412,10 @@ def main():
     # is, and nothing ever took out a committee this run no longer writes.
     # Every committee's page is written on every run, so this run owns
     # /committee whole; committees.html is a standing page and is not under it.
-    added, dropped = S.sitemap_merge(site, a.base, urls, "/committee")
+    # EXCEPT THE STATUTORY AND STUDY COMMITTEES' PAGES (18 October 2026),
+    # /committee/ss<CommitteeID>, which build_study_committees.py writes after
+    # this step and owns: run alone, this would otherwise take them out.
+    added, dropped = S.sitemap_merge(site, a.base, urls, spare=STUDY_PAGES, owns="/committee")
     if added or dropped:
         print(f"sitemap.xml: {added} added, {dropped} no longer written taken out")
 
