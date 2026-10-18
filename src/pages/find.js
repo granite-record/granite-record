@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-16.32
+// GRANITE_VERSION: 2026-09-16.33
 /* FIND ANYTHING, FROM THE HEADER (16 September, asked for in these words:
    "a search icon in the header that lets you search for anything including
    legislators, committees, towns, and bills ... searching Litchfield would
@@ -52,7 +52,9 @@ const FIND_IDS={out:"findout",box:"findq",clear:"findclear",say:"findsay"};
 const FKIND={legislator:"Legislator",committee:"Committee",town:"Town",
   page:"Page",former:"Former Member",topic:"Subject",
   // The how-to guides and the Learn pages, from their own pages (12 October 2026).
-  guide:"How-To Guide",learn:"Learn"};
+  // A GUIDE IS A "Guide" (17 October 2026): the kind of thing it is in one
+  // word, as "Town" and "Subject" are; the hub's tab keeps its full name.
+  guide:"Guide",learn:"Learn"};
 const _fesc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>(
   {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 /* A COMMITTEE IS NAMED WITH ITS CHAMBER (the person, 16 October 2026:
@@ -225,8 +227,20 @@ const _fwords=s=>String(s||"").toLowerCase().split(/\s+/)
   .map(w=>w==="senator"?"sen":w==="representative"?"rep":w).filter(Boolean);
 const _fisword=(name,w)=>new RegExp("(^|[^\\p{L}\\p{N}])"
   +w.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")+"(?![\\p{L}\\p{N}])","u").test(name);
+/* A GUIDE'S NAME IS ITS TITLE AND ITS TASK (the person, 17 October 2026: "the
+   how to guides should be incorporated into the search in some fashion").
+   find.json gives a guide's row, after its title, the task in a reader's
+   words and the plain words it declares (guides.WORDS: "register my car",
+   "food stamps", "testify"), and these two tests read them as part of its
+   name: so "renew my license" and "testify" are whole words of a guide and
+   bring it above the bills and the Learn pages, which are found only by
+   their titles and lines, while a bill number typed still opens the bill
+   first (findDraw puts that bill above every row, and /search puts the
+   bills first for a number). Its title alone is what a row shows and what
+   _frank and the length order read. */
+const _fnamed=r=>r&&r[0]==="guide"?`${_fbare(r[1])} ${r[4]||""}`:_fbare(r&&r[1]);
 function _fwhole(r,s){
-  const name=_fbare(r[1]).toLowerCase();
+  const name=_fnamed(r).toLowerCase();
   const words=_fwords(s);
   return words.length>0&&words.every(w=>_fisword(name,w));
 }
@@ -244,7 +258,7 @@ function _fwhole(r,s){
    typed that are not a whole word of the name, and findMatch orders by it
    before anything else. */
 function _fpart(r,s){
-  let name=_fbare(r[1]).toLowerCase();
+  let name=_fnamed(r).toLowerCase();
   // THE SEAT COUNTS ONLY WHEN A NUMBER IS TYPED. "(R - Merr 5)" made "merr"
   // a whole word of every Merrimack County representative, and forty of them
   // pushed the town of Merrimack out of the header's eight rows while a
@@ -304,10 +318,15 @@ function findMatch(q,limit){
     const gone=_fgone(r)?1:0;
     // Among former members, the most recent first. r[5] is the year they last
     // sat; negated so one sort direction serves both this and name length.
-    hit.push([_fpart(r,s),rank,gone,gone?-(r[5]||0):0,name.length,r]);
+    // A LEARN PAGE AFTER A GUIDE AS GOOD (17 October 2026): of two rows that
+    // match as well, the one that says how to do the thing comes before the
+    // one that explains it, and a Learn page, a page about a subject, after
+    // the members, towns and subjects that match as well.
+    const learn=r[0]==="learn"?1:0;
+    hit.push([_fpart(r,s),learn,rank,gone,gone?-(r[5]||0):0,name.length,r]);
   }
-  hit.sort((a,b)=>a[0]-b[0]||a[1]-b[1]||a[2]-b[2]||a[3]-b[3]||a[4]-b[4]);
-  return hit.slice(0,limit||8).map(x=>x[5]);
+  hit.sort((a,b)=>a[0]-b[0]||a[1]-b[1]||a[2]-b[2]||a[3]-b[3]||a[4]-b[4]||a[5]-b[5]);
+  return hit.slice(0,limit||8).map(x=>x[6]);
 }
 
 /* DID YOU MEAN. Only when nothing at all was found, because that is the only

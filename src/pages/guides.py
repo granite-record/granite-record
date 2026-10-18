@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-11.15
+# GRANITE_VERSION: 2026-10-11.16
 """
 The how-to guides: their words, their sources, and what each was checked
 against. Read by build_civics.py, which draws them on the Resources hub's
@@ -2788,6 +2788,62 @@ HOME = [("how-to-vote", "Vote"),
         ("renew-drivers-license", "Renew my driver&rsquo;s license"),
         ("register-a-car", "Register a car"),
         ("food-and-health-assistance", "Get food or health help")]
+
+
+# THE WORDS A READER TYPES FOR EACH TASK (the person, 17 October 2026: "the
+# how to guides should be incorporated into the search in some fashion").
+# A guide is found in the header's search and on /search by its title and
+# its task, and by these: the plain words and phrases a member of the public
+# uses for the same thing ("register my car", "food stamps", "testify"),
+# which its title may never say. find.js reads every word typed against the
+# guide's title, its task and these as against a name, so a guide whose task
+# words were typed is listed above the bills and the Learn pages, and never
+# above a bill whose exact number was typed. A few each, and only words that
+# mean the guide: a word that would find it for a reader who wanted
+# something else costs that reader a wrong first answer.
+WORDS = {
+    "your-representatives": ("my representative", "my senator", "who represents me",
+                             "district", "legislator"),
+    "contact-your-legislators": ("email my representative", "call my senator",
+                                 "write my legislator", "contact"),
+    "attend-a-hearing": ("testify", "public hearing", "speak on a bill", "attend"),
+    "submit-testimony": ("testify", "written testimony", "sign in", "support or oppose a bill"),
+    "testifying": ("testify", "hearing", "attend"),
+    "read-a-bill": ("bill text", "amendment", "fiscal note"),
+    "using-this-site": ("help", "follow a bill", "email updates", "report an error"),
+    "how-to-vote": ("voting", "register to vote", "voter registration", "polling place",
+                    "absentee ballot"),
+    "run-for-office": ("candidate", "file for office", "declaration of candidacy"),
+    "renew-drivers-license": ("license", "drivers license", "renew my license", "dmv"),
+    "register-a-car": ("register my car", "car registration", "vehicle registration", "plates",
+                       "dmv"),
+    "real-id": ("real id", "license", "id"),
+    "new-to-new-hampshire": ("moving to new hampshire", "new resident", "license",
+                             "register my car", "register to vote"),
+    "food-and-health-assistance": ("snap", "food stamps", "medicaid", "health insurance",
+                                   "benefits", "nh easy"),
+    "file-for-unemployment": ("unemployment", "laid off", "lost my job", "benefits"),
+    "heating-and-electric-help": ("fuel assistance", "heating", "electric bill", "weatherization"),
+    "property-tax-abatement": ("property tax", "abatement", "assessment"),
+    "property-tax-relief": ("property tax", "tax relief", "low income"),
+    "public-records": ("right to know", "91-a", "records request", "foia"),
+    "vital-records": ("birth certificate", "death certificate", "marriage certificate",
+                      "divorce certificate"),
+}
+
+
+def search_words(slug):
+    """What find.json carries for the guide beyond its title and line (its
+    fifth field, build_indexes.find_index): the task in a reader's words and
+    the words above, "Renew your driver's license · license · dmv", with
+    any markup and entity read as the reader sees it. "" for a guide no task
+    names."""
+    import html as _html
+    _g, t = task_of(slug)
+    if not t:
+        return ""
+    does = _html.unescape(re.sub(r"<[^>]+>", "", t["does"])).replace("’", "'")
+    return " · ".join([does, *WORDS.get(slug, ())])
 
 
 def task_of(slug):

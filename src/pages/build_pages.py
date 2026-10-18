@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.212
+# GRANITE_VERSION: 2026-09-04.213
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -2208,6 +2208,13 @@ if(!box||!out)return;
 // which is where the chamber is; a row that says neither falls to the last
 // bucket rather than being dropped.
 const GROUPS=[
+  // THE GUIDES FIRST, AND LEARN WITH THIS SITE'S PAGES (17 October 2026: "the
+  // how to guides should be incorporated into the search in some fashion").
+  // A guide is found by its task and its plain words (find.js, _fnamed), so
+  // when it is found it is what the reader came to do; the Learn pages, which
+  // this page listed nowhere before, go with the site's other pages, after
+  // the bills.
+  {t:"How-To Guides",       k:r=>r[0]==="guide"},
   {t:"Senators",            k:r=>r[0]==="legislator"&&/^Senate/.test(r[2])},
   {t:"Representatives",     k:r=>r[0]==="legislator"},
   // A committee that no longer sits goes with the people who have left, below
@@ -2219,6 +2226,7 @@ const GROUPS=[
   {t:"Former representatives",k:r=>r[0]==="former"&&/^House/.test(r[2])},
   {t:"Former members",      k:r=>r[0]==="former"},
   {t:"Former committees",   k:r=>r[0]==="committee"},
+  {t:"Learn",               k:r=>r[0]==="learn"},
   {t:"Pages on this site",  k:r=>r[0]==="page"}
 ];
 
@@ -2281,7 +2289,7 @@ const bills=(q,B,C,counting)=>{
 // Groups a reader reaches for after the bills: members who have left, and
 // this site's own pages.
 const AFTER=new Set(["Former senators","Former representatives",
-  "Former members","Pages on this site"]);
+  "Former members","Learn","Pages on this site"]);
 let waiting=false,waitingAll=false,waitingWords=false;
 
 function draw(q){
@@ -2338,7 +2346,10 @@ function draw(q){
   // member, committee, town or subject has every word typed as a whole word
   // of its name (_fwhole), and then after those and ahead of the members who
   // have left. "bail" leads with the bail bills; "bailey" with Rep. Bailey.
-  const named=rows.some(r=>r[0]!=="former"&&_fwhole(r,s));
+  // A BILL NUMBER LEADS WITH THE BILLS, whatever else has its words (17
+  // October 2026): a guide found by its own words is never put above a bill
+  // whose number was typed.
+  const named=!findBill(s)&&rows.some(r=>r[0]!=="former"&&_fwhole(r,s));
   const left=rows.slice();
   let html=named?"":bills(s,B,C,counting),placed=!named;
   for(const g of GROUPS){

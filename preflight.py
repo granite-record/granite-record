@@ -20557,6 +20557,120 @@ console.log(JSON.stringify({
 """
 
 
+# The how-to guides in the header's search (17 October 2026): find.js over
+# rows made as build_indexes makes them, run against tests/search_cases.json's
+# "find" cases.
+_FIND_GUIDES_JS = r"""
+require("./stub.js");
+const fs = require("fs"), vm = require("vm");
+globalThis.fetch = async () => ({ ok: false, status: 404, json: async () => { throw new Error("404"); } });
+globalThis.chip = (t, cls) => `<span class="${cls}">${t}</span>`;
+vm.runInThisContext(fs.readFileSync("./find.js", "utf8"), { filename: "find.js" });
+const F = vm.runInThisContext("({FIND, FBILLS, findDraw, findMatch, findKind, _fwhole})");
+const go = JSON.parse(fs.readFileSync("./go.json", "utf8"));
+F.FIND.rows = go.rows;
+F.FBILLS.rows = go.bills; F.FBILLS.term = "2025-2026";
+const out = {}, kinds = {}, whole = {};
+for (const c of go.cases) out[c.q] = F.findMatch(c.q, Infinity).map(r => [r[0], r[3]]);
+// Whole words of the guide's name -- its title, task and words -- which is
+// what puts a row above the bills in the panel and on /search.
+for (const c of go.cases) if (c.first)
+  whole[c.q] = F._fwhole(go.rows.find(r => r[3] === "/guides/" + c.first), c.q);
+for (const r of go.rows) kinds[r[0]] = F.findKind(r);
+const panel = {};
+for (const c of go.cases) if (c.bill_first) {
+  F.findDraw(c.q);
+  panel[c.q] = document.getElementById("findout").innerHTML;
+}
+console.log(JSON.stringify({ out, kinds, panel, whole }));
+"""
+
+
+@check("frontend", "the header's search and /search find a how-to guide by its task and its plain "
+       "words, label it a Guide, list it above the Learn pages, and never above a bill whose "
+       "number was typed", needs=("guides", "civics", "build_pages"))
+def _find_guides(G, civics, BP):
+    """The person, 17 October 2026: "the how to guides should be incorporated
+    into the search in some fashion". build_indexes gives each guide's row in
+    find.json its task and the plain words guides.WORDS declares
+    (guides.search_words); find.js reads them as part of the guide's name
+    (_fnamed), so a reader typing "renew my license" or "testify" meets the
+    guide first, and /search lists the guides first among the groups. Here the
+    cases of tests/search_cases.json's "find" run through find.js over rows
+    made the same way, with a member, a town, a subject, the Learn pages and
+    a bill beside them, and a probe guide that declares a bill number's words,
+    which must still sit under that bill in the panel."""
+    if shutil.which("node") is None:
+        return "skip", "node is not installed"
+    import build_civics as BC
+    cases = json.loads(Path("tests/search_cases.json").read_text(encoding="utf-8"))["find"]["cases"]
+    assert cases, "tests/search_cases.json has no find cases"
+    rows = []
+    for g in G.GUIDES:
+        rows.append(["guide", g["title"].replace("&rsquo;", "'"), g["blurb"], f"/guides/{g['slug']}",
+                     G.search_words(g["slug"])])
+    for t in civics.TOPICS:
+        kind = "guide" if t["slug"] in civics.HOW_TO else "learn"
+        rows.append([kind, t["title"], t["blurb"], "/" + BC.article_href(t["slug"])[:-5],
+                     G.search_words(t["slug"]) if kind == "guide" else ""])
+    rows += [["legislator", "Rep. Alice Voter (D - Straf 15)", "House · Straf 15 · D", "/legislator/a", ""],
+             ["town", "Concord", "Merrimack County", "/town/concord", "Merrimack"],
+             ["topic", "Elections", "Bills on this subject", "/bills?topic=Elections", ""],
+             ["guide", "How to Read a Probe", "A probe.", "/guides/probe", "Read a probe · hb 1"]]
+    assert all(r[4] for r in rows if r[0] == "guide" and r[3] != "/guides/probe"), \
+        "a guide's row carries no task words"
+    bills = [{"id": "HB1", "n": "HB 1", "title": "making appropriations", "year": 2025}]
+    root = Path(tempfile.mkdtemp())
+    try:
+        (root / "stub.js").write_text(Path("tests/dom_stub.js").read_text(encoding="utf-8"), encoding="utf-8")
+        (root / "find.js").write_text(Path("src/pages/find.js").read_text(encoding="utf-8"), encoding="utf-8")
+        (root / "go.json").write_text(json.dumps({"rows": rows, "bills": bills, "cases": cases}),
+                                      encoding="utf-8")
+        (root / "go.js").write_text(_FIND_GUIDES_JS, encoding="utf-8")
+        r = _run(["node", "go.js"], cwd=root, capture_output=True, text=True, timeout=60)
+        said = (r.stdout + r.stderr).strip()
+        last = (said.splitlines() or ["no output"])[-1]
+        assert r.returncode == 0 and last.startswith("{"), "node go.js: " + " / ".join(said.splitlines()[-3:])[:300]
+        got = json.loads(last)
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    assert got["kinds"]["guide"] == "Guide", f"a guide is labelled {got['kinds']['guide']!r}"
+    bad = []
+    for c in cases:
+        found = got["out"].get(c["q"], [])
+        slugs = [u.rsplit("/", 1)[-1] for k, u in found if k == "guide"]
+        if c.get("first") and (not found or found[0] != ["guide", f"/guides/{c['first']}"]):
+            bad.append(f"{c['q']!r} leads with {found[:1]}, not the guide {c['first']}")
+        if c.get("first") and not got["whole"].get(c["q"]):
+            bad.append(f"{c['q']!r} is not read as the guide {c['first']}'s own words, so the "
+                       "bills go above it")
+        for s in c.get("listed") or []:
+            if s not in slugs:
+                bad.append(f"{c['q']!r} does not list the guide {s}")
+        if c.get("guides_first"):
+            ks = [k for k, _u in found if k in ("guide", "learn")]
+            if "guide" not in ks or ("learn" in ks and ks.index("learn") < len(ks) - ks[::-1].index("guide") - 1):
+                bad.append(f"{c['q']!r} lists a Learn page above a guide: {ks}")
+        for s in c.get("learn") or []:
+            if ["learn", f"/learn/{s}"] not in found:
+                bad.append(f"{c['q']!r} no longer lists the Learn page {s}")
+        if c.get("bill_first"):
+            html_ = got["panel"].get(c["q"], "")
+            at_bill = html_.find(f'/bill/2025/{c["bill_first"].lower()}"')
+            at_guide = html_.find('href="/guides/probe"')
+            if at_bill < 0 or (0 <= at_guide < at_bill):
+                bad.append(f"{c['q']!r}: the bill is not the panel's first answer above a guide with its words")
+    assert not bad, "; ".join(bad)
+    js = BP.SEARCH_JS
+    assert js.index('{t:"How-To Guides",') < js.index('{t:"Senators",'), "/search does not list the guides first"
+    assert '{t:"Learn",' in js and '"Learn","Pages on this site"]' in js, "/search does not list the Learn pages"
+    assert "const named=!findBill(s)&&rows.some(" in js, "/search can put a guide above a bill number's bills"
+    bi = Path("src/pages/build_indexes.py").read_text(encoding="utf-8")
+    assert 'G.search_words(p.stem) if kind == "guide"' in bi, "find.json no longer carries a guide's task words"
+    return "ok", (f"{len(cases)} searches: guides found by their task and plain words, labelled Guide, "
+                  "above the Learn pages, and under a bill whose number was typed")
+
+
 @check("frontend", "the search names a committee with its chamber, House Housing Committee, so "
        "it is not taken for the subject of the same name; it is still found by its own name",
        needs=("build_pages",))
