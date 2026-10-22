@@ -57,5 +57,7 @@
   "Indefinitely postponed": {"name": "Indefinitely postponed", "says": "a vote that ends the bill for the term and, under the rules, bars the same subject from being taken up again before the term is out", "from": "new, 17 October 2026: the person to check"},
   "Floterial district": {"name": "Floterial district", "says": "a House district laid over two or more neighboring districts, electing a representative of its own; its voters also elect their own district's", "from": "new, 17 October 2026: the person to check"},
   "Docket": {"name": "Docket", "says": "the General Court's running list of every action taken on a bill, in the order it was recorded", "from": "new, 17 October 2026: the person to check"},
-  "Organization Day": {"name": "Organization Day", "says": "the first Wednesday of December after an election, when the new legislature is sworn in and elects its presiding officers", "from": "new, 14 October 2026: the person to check"}
+  "Organization Day": {"name": "Organization Day", "says": "the first Wednesday of December after an election, when the new legislature is sworn in and elects its presiding officers", "from": "new, 14 October 2026: the person to check"},
+  "Second committee": {"name": "Second committee", "says": "a bill that spends or raises money, sent on after the committee that heard it: in the House to Finance or to Ways and Means, in the Senate to Finance; such bills meet earlier deadlines in their first committee", "from": "legislative-year"},
+  "Veto day": {"name": "Veto day", "says": "the day a chamber meets to take up the Governor's vetoes; overriding one takes two thirds of each chamber, by roll call", "from": "legislative-year"}
 }

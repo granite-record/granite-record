@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.53
+# GRANITE_VERSION: 2026-09-08.54
 """
 The topics of the civics section: their order, their names, and their prose.
 
@@ -1386,86 +1386,33 @@ signature, and [[overridden]] over a veto.</p>""")
 # The three figures are legislative_year.py's, which holds every date with the
 # calendar it was read from; this is the prose around them, and it states no
 # date of its own, so that every date on the page sits beside its source.
+# THE SCHEDULE, SIMPLIFIED (the person, 22 October 2026: "the page should be
+# significantly simplified and streamlined for easier readability"). Where
+# the legislature is and the next eight dates first; the usual year in two
+# bars; the full schedule folded by season. The table of what each deadline
+# means is the Glossary's now ("Second committee" and "Veto day" were added
+# to it from the table's words), and In the Record is three links.
 BODY_YEAR = """
-<h2>Where Things Stand</h2>
+<h2>Right Now</h2>
 [[year_now]]
 
-<h2>The Shape of a Term</h2>
-<p>The General Court is elected for two years at a time, and a term holds two
-sessions, one in each calendar year. A term begins on <b>Organization Day</b>,
-the first Wednesday of December after the November election, when the members
-are sworn in. Each session opens in January and runs through a fixed sequence
-of deadlines, which the House and the Senate each set for themselves and print
-in their calendars, until the last votes in late spring or June. The rest of
-the year is spent out of session: the Governor acts on the last bills, each
-chamber returns for a veto day, committees study bills over the fall, and
-members file their requests for the next year's bills.</p>
+<h2>The Term at a Glance</h2>
+<p>The legislature is elected for two years, and each year is one session:
+it opens in January, runs through the deadlines below and ends by June. A new
+term begins on <b>Organization Day</b>, the first Wednesday of December after
+the November election.</p>
 [[year_shape]]
 
-<h2 id="s-dates">The [[year_term]] Term, Date by Date</h2>
-<p>Each date below is printed in a House or Senate calendar or journal, named
-under it; where a rule fixes the day instead, the row says which rule. The
-House prints the deadlines still to come in its calendar, and the Senate in the
-schedule its calendar carries. Where the two chambers' deadlines fall on the
-same day, they share a row.</p>
+<h2 id="s-dates">The Full Schedule</h2>
 [[year_dates]]
-
-<h2>What the Deadlines Mean</h2>
-<table><tbody>
-<tr><th scope="row"><b>LSR</b></th><td><b>Legislative Service Request:</b> a
-member's request for a bill. It is filed with the Office of Legislative
-Services, whose attorneys draft the text, and the sponsor then signs off on
-the draft before the bill is introduced. Members running for re-election may
-file before the election; filing opens to every member the day after
-it.</td></tr>
-<tr><th scope="row"><b>Introduced</b></th><td>Read into the record and sent to
-a committee chosen by subject, which holds its public hearing.</td></tr>
-<tr><th scope="row"><b>Report and act</b></th><td>A committee <b>reports</b>
-when it files its recommendation on a bill; the chamber <b>acts</b> when it
-votes on that recommendation. The deadlines come in pairs a week apart, which
-leaves time for the report to be printed in the calendar before the
-vote.</td></tr>
-<tr><th scope="row"><b>Second committee</b></th><td>In the House, a bill that
-spends or raises money can be sent on to Finance or to Ways and Means after
-the committee that heard it. In the Senate, a bill with a fiscal impact goes on
-to the Finance Committee under Senate Rule 4-5. Those bills meet earlier
-deadlines in their first committee, which leaves the second one
-time.</td></tr>
-<tr><th scope="row"><b>Crossover</b></th><td>The last day for a chamber to act
-on its own bills. Those it passes cross to the other chamber, where the whole
-course runs again. The House's and the Senate's fall on the same day in some
-years and weeks apart in others; the timeline above has this term's.</td></tr>
-<tr><th scope="row"><b>Committee of conference</b></th><td>Where the second
-chamber changes a bill and the first will not agree, members of both try to
-write a version each will accept. Both chambers must then adopt the report
-unchanged, by the session's last deadline.</td></tr>
-<tr><th scope="row"><b>Veto day</b></th><td>The day a chamber meets to take up
-the Governor's vetoes. Overriding a veto takes two thirds of each chamber, by
-roll call. See <a href="learn/governor-and-council.html">The Governor and the
-Executive Council</a>.</td></tr>
-<tr><th scope="row"><b>Retained</b></th><td>A House bill its committee keeps
-over the fall of the first year. It is reported in the second year, voted on
-like any other bill, and keeps its number.</td></tr>
-<tr><th scope="row"><b>Interim study</b></th><td>A second-year bill sent back
-to its committee to study the subject after the session. The committee may
-report on it in the fall, but the bill itself goes no further: to come back it
-must be filed again in the next term. See
-<a href="learn/general-court.html">The General Court</a> for how the two
-differ.</td></tr>
-</tbody></table>
+<p>What the deadlines mean -- crossover, interim study, a committee of
+conference -- is in <a href="learn/glossary.html">the Glossary</a>.</p>
 """ + SHOWS.format("""
-<p><a href="calendar.html">The Calendar</a> has every hearing and session
-scheduled this week, and the House and Senate calendars and journals the dates
-above are read from.</p>
-<p>The days each chamber actually sat, term by term:
-<a href="session/house.html">the House's session days</a> and
-<a href="session/senate.html">the Senate's</a>. Each day's page retells what
-the chamber did, from its own journal. How a House session day runs, in order,
-is under <a href="learn/how-a-bill-becomes-law.html#s-a-house-session-day-in-order">How
-a Bill Becomes Law</a>.</p>
-<p><a href="/#state">The status box on the home page</a> says, in a line or
-two, whether the House and Senate are sitting and what comes next, and links
-back here.</p>""")
+<p><a href="calendar.html">The Calendar</a> for this week's hearings and
+sessions; the days each chamber sat, <a href="session/house.html">the
+House's</a> and <a href="session/senate.html">the Senate's</a>; and how a bill
+moves, in <a href="learn/how-a-bill-becomes-law.html">How a Bill Becomes
+Law</a>.</p>""")
 
 
 BODY_GOVERNOR = """
@@ -2747,9 +2694,7 @@ TOPICS = [
     # the same course laid on the calendar, and the home page's status box
     # links here (legislative_year.SLUG).
     topic(legislative_year.SLUG, legislative_year.TITLE, HOW,
-          "The two-year term in order: when bills are filed, when the House "
-          "and Senate sit, and the deadlines between, from crossover to veto "
-          "day.",
+          "When the House and Senate sit, and the deadlines a bill must meet.",
           BODY_YEAR,
           [SRC_CALENDARS, SRC_SENATE_CALENDARS, SRC_HOUSE_RULES,
            SRC_SENATE_RULES, SRC_CONSTITUTION]),

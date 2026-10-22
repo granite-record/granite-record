@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.635
+# GRANITE_VERSION: 2026-09-04.636
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -44483,8 +44483,8 @@ def _year_page_follows_the_turn(legislative_year):
             bad.append(f"{day}: the page shows {term}, and the day is in {cur}")
             continue
         now = LY.now_html(term, day, "/learn/x")
-        if "Coming next:" not in now:
-            bad.append(f"{day}: Where Things Stand names nothing coming next")
+        if "Coming up:" not in now:      # "Coming next:" until 22 October 2026
+            bad.append(f"{day}: Right Now names nothing coming up")
         if f"has begun. Its deadlines are added here" in now:
             bad.append(f"{day}: Where Things Stand says the dates below are another term's")
         tl = LY.timeline(term, day, {})

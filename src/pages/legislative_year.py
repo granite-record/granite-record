@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-17.3
+# GRANITE_VERSION: 2026-10-17.4
 """
 The legislature's year: a two-year term as a timeline, with this term's dates
 where the chambers' own calendars print them, and the usual pattern where
@@ -80,7 +80,7 @@ from datetime import date, timedelta
 # THE PAGE'S ADDRESS AND NAME, in one place: civics.TOPICS gives the topic
 # this slug, and build_pages' status box links to it.
 SLUG = "legislative-year"
-TITLE = "The Legislature's Year"
+TITLE = "NH Legislature Schedule"   # the person, 22 October 2026, as the home box says it
 HREF = f"learn/{SLUG}.html"
 # The words of the home status box's link, alone (the person, 22 October
 # 2026: "just say 'NH Legislature Schedule'").
@@ -844,20 +844,19 @@ def timeline(term, today, links, bad=None):
         state = "all past" if past else "you are here" if i == here else "to come"
         out.append(
             f'<li class="l-tlseason{" is-past" if past else ""}{" is-here" if i == here else ""}">'
-            f'<details{"" if past else " open"}><summary>'
+            f'<details{" open" if i == max(here, 0) else ""}><summary>'
             f'<h3 class="l-tlh">{T(s.name)}</h3>'
             f'<span class="l-tlwhen">{T(s.when)} &middot; {n} date{"" if n == 1 else "s"}, '
             f'{state}</span></summary>'
             f'<ol class="l-tlsteps">{"".join(rows)}</ol></details></li>')
     if here < 0:
         out.insert(0, f'<li class="l-tlseason is-here"><ol class="l-tlsteps">{_here_html(today)}</ol></li>')
+    # SHORTER (the person, 22 October 2026: "significantly simplified and
+    # streamlined"): only the season the day falls in is open.
     caption = (T(SKELETON_CAPTION.format(term=term)).replace(term, _dash(term))
                if not entered(term) else
-               f'The {_dash(term)} term&rsquo;s dates, and the next '
-               'term&rsquo;s first weeks after them, each from the document named under it. A step '
-               'marked <b>Usually</b> has no one date in those documents and is described as it '
-               'usually falls. A season that is over is folded shut: open it to read its '
-               'dates.')
+               'Each date is from the House or Senate calendar or journal named under it; '
+               '<b>Usually</b> marks a step with no one date. Open a season to read its dates.')
     return (f'<figure class="l-fig l-tl" role="group" aria-label="The {_dash(term)} term, date by date">'
             f'<ol class="l-tlseasons">{"".join(out)}</ol>'
             f'<figcaption class="l-cap">{caption}</figcaption></figure>')
@@ -882,7 +881,7 @@ def shape(today):
             pin = f'<span class="l-yrpin{side}" style="left:{pos:.2f}%"><span>You are here</span></span>'
         key = "".join(
             f'<li><span class="l-sw {cls}" aria-hidden="true"></span><span><b>{T(when)}:</b> '
-            f'{T(what)}. <span class="l-sub">{T(more)}</span></span></li>'
+            f'{T(what)}.</span></li>'
             for _a, _b, cls, when, what, more in segs)
         out.append(
             f'<div class="l-yrrow{" is-now" if pin else ""}"><p class="l-yrh"><b>{year}</b> '
@@ -898,9 +897,13 @@ def shape(today):
                  f"{_dash(term)} term")
     return (f'<figure class="l-fig l-yr" role="group" aria-label="The usual shape of a two-year term">'
             + "".join(out)
-            + f'<figcaption class="l-cap"><b>You are here: {T(_words(today))}</b>, {where}. The '
-            'months are the usual pattern rather than one term&rsquo;s dates, which are '
-            'below.</figcaption></figure>')
+            + f'<figcaption class="l-cap"><b>You are here: {T(_words(today))}</b>, {where}. '
+            'The usual pattern; this term&rsquo;s dates are below.</figcaption></figure>')
+
+
+# The dates Right Now lists (22 October 2026: the next eight, each with its
+# chamber; the documents they come from are in the full schedule below).
+SOON = 8
 
 
 def now_html(term, today, here, bad=None):
@@ -923,19 +926,14 @@ def now_html(term, today, here, bad=None):
     else:
         out.append(seasons[i].stands.format(**words).replace("'", "&rsquo;") + "</p>")
     steps = [st for s in seasons for st in s.steps if st.day and _cited_ok(term, st, bad)]
-    done = [st for st in steps if st.key and _day(st.until or st.day) < today]
-    soon = [st for st in steps if _day(st.until or st.day) >= today][:3]
-    if done:
-        st = done[-1]
-        out.append(f"<p>The last landmark to pass: <b>{T(st.name)}</b>, {T(_words(st.day))}.</p>")
+    soon = [st for st in steps if _day(st.until or st.day) >= today][:SOON]
     if soon:
-        out.append('<p class="l-yrnext">Coming next:</p><ol class="l-yrsoon">' + "".join(
+        out.append('<p class="l-yrnext">Coming up:</p><ol class="l-yrsoon">' + "".join(
             f'<li><time datetime="{st.day}">'
             f'{T(_span(st.day, st.until) if st.until else _words(st.day))}</time>'
             f'<span>{T(st.name)}{_who(st.who)}</span></li>' for st in soon) + "</ol>")
-    out.append(f'<p><a href="{here}#{HERE_ID}">Find today on the timeline</a>, or see '
-               '<a href="calendar.html">the Calendar</a> for this week&rsquo;s hearings and '
-               'sessions.</p>')
+    out.append('<p>This week&rsquo;s hearings and sessions are on '
+               '<a href="calendar.html">the Calendar</a>.</p>')
     return "".join(out)
 
 
