@@ -158,6 +158,12 @@ on its own:
    the events `email.bounced` and `email.complained`, whose signing secret is
    `RESEND_WEBHOOK_SECRET`. Set `MAIL_FROM` to the sending address, as
    `Granite Record <name@your-verified-domain>`, in both `wrangler.toml`s.
+   **Open and click tracking off** for the sending domain (22 October 2026):
+   the Data page promises the emails do not track opens or clicks, and click
+   tracking would send every manage and confirm link through Resend's own
+   redirect. And look up the team's API rate limit: `SEND_GAP_MS` in
+   `workers/follow/wrangler.toml` assumes Resend's default of two requests a
+   second, and may go lower only if the dashboard shows a higher limit.
 
 3. **Turnstile.** A widget for the site's names (and the preview's). Its site
    key is public and goes in the front end; its secret is `TURNSTILE_SECRET`.
@@ -174,6 +180,7 @@ on its own:
    | `FOLLOW_LOOKUP_KEY` (32 random bytes, base64) | yes | no |
    | `TURNSTILE_SECRET` | yes | no |
    | `RESEND_WEBHOOK_SECRET` | yes | no |
+   | `HEALTHCHECK_URL` (a Healthchecks check of its own, hourly period) | no | yes |
 
    On the Pages project: `npx wrangler pages secret put <NAME> --project-name
    graniterecord` (and the same for preview; check `--help` on the day for

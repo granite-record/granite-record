@@ -8,10 +8,13 @@
 # reads the follow database and the site's published /changes/ files, and
 # sends through Resend.
 #
-# NO SECRET IS IN THIS FILE. Two are set on Cloudflare by the person with
+# NO SECRET IS IN THIS FILE. Three are set on Cloudflare by the person with
 # `wrangler secret put` (README.md says how): RESEND_API_KEY, and
 # FOLLOW_ADDRESS_KEY, the same address key the Pages project holds. The
-# sender never looks an address up, so it is not given the lookup key.
+# sender never looks an address up, so it is not given the lookup key. And
+# HEALTHCHECK_URL, the ping address of a Healthchecks check of its own
+# (hourly period): each run pings it, /fail when it met a problem a person
+# must act on (sender.js, WHO IS TOLD WHEN IT BREAKS). Without it, no ping.
 #
 # THE DATABASE IDS are the person's, from the output of
 # `npx wrangler d1 create graniterecord-follow` (and -preview). An id is not a
@@ -31,6 +34,11 @@ workers_dev = false
 # requests older than 48 hours.
 [triggers]
 crons = ["0 * * * *"]
+
+# Workers Logs, so a run's codes and counts (common.note) can be read after
+# the fact in the dashboard rather than only live through `wrangler tail`.
+[observability]
+enabled = true
 
 [[d1_databases]]
 binding = "FOLLOW_DB"
@@ -61,19 +69,24 @@ SEND_LIMIT = "200"
 # batch's included (D1 allows a thousand an invocation on Paid, fifty on
 # Free). A reader costs at most five, so a run serves about 180 readers.
 # Resend is on Pro since 15 October 2026: 50,000 emails a month, no daily
-# cap. At about 128 readers a run (the budget less the room kept for the
-# next reader) and the twelve runs from 8:00 to 20:00, this serves about
-# 1,500 readers a day; past that, run the cron every quarter hour, or send
-# through Resend's batch endpoint and take a run's readers in fewer
-# statements.
+# cap. SEND_LIMIT (200) and the twelve runs from 8:00 to 20:00 serve about
+# 2,400 readers a day; the tighter ceiling is Pro's month, about 1,650 emails
+# a day with the confirmations, before the cron goes every quarter hour or
+# the sends go through Resend's batch endpoint.
 D1_QUERIES_PER_RUN = "900"
-# Milliseconds between emails, under Resend Pro's ten requests a second,
-# with room for the confirmations the site sends meanwhile.
-SEND_GAP_MS = "150"
+# Milliseconds between emails (22 October 2026): under two requests a
+# second, Resend's default limit for a team, with room for the confirmations
+# the site sends meanwhile. Set it lower only once the Resend dashboard shows
+# this team's limit is higher; a 429 is waited out once (mail.js) and then
+# stops the run.
+SEND_GAP_MS = "600"
 
 [env.preview]
 name = "graniterecord-follow-sender-preview"
 workers_dev = false
+
+[env.preview.observability]
+enabled = true
 
 [env.preview.triggers]
 crons = ["0 * * * *"]
@@ -90,4 +103,4 @@ MAIL_FROM = "Granite Record <noreply@mail.graniterecord.org>"
 FEEDBACK_URL = "https://forms.gle/PYw9c3xgpDDwvX7E9"
 SEND_LIMIT = "200"
 D1_QUERIES_PER_RUN = "900"
-SEND_GAP_MS = "150"
+SEND_GAP_MS = "600"

@@ -49,6 +49,14 @@ export class FakeNet {
     this.turnstileSecret = "";
     this.site = new Map();          // path -> JSON value
     this.asked = [];                // every address asked, origin and path
+    // The site's follow pages answer (the sender asks /api/follow/count
+    // before it mails anyone); false is a deploy that lost the database.
+    this.followLive = true;
+    // A 429 carries Resend's retry-after, short here so a test waits little;
+    // resendStatusOnce answers the next request alone with that status.
+    this.retryAfter = "0.01";
+    this.resendStatusOnce = 0;
+    this.pings = [];                // Healthchecks: { url, body }
   }
 
   install() {
@@ -71,13 +79,16 @@ export class FakeNet {
         return Response.json({ statusCode: 409, name: "invalid_idempotent_request" },
           { status: 409 });
       }
-      if (this.resendStatus !== 200) {
+      const status = this.resendStatusOnce || this.resendStatus;
+      this.resendStatusOnce = 0;
+      if (status !== 200) {
         this.refused = (this.refused || 0) + 1;
         // Resend's error names the address it refused, which is exactly why
         // no error body may reach a log.
-        return new Response(JSON.stringify({ statusCode: this.resendStatus,
+        return new Response(JSON.stringify({ statusCode: status,
           name: "validation_error", message: `Invalid \`to\` field: ${body.to?.[0]}` }),
-          { status: this.resendStatus, headers: { "Content-Type": "application/json" } });
+          { status, headers: { "Content-Type": "application/json",
+                               ...(status === 429 ? { "retry-after": this.retryAfter } : {}) } });
       }
       this.outbox.push(mail);
       if (key) this.keys.add(key);
@@ -102,6 +113,12 @@ export class FakeNet {
         : r === "quiet" ? [] : ["invalid-input-response", "a word of the reader's"];
       return Response.json({ success: false, "error-codes": codes }, { status: 400 });
     }
+    if (u.origin === "https://hc-ping.com") {
+      this.pings.push({ url: u.pathname, body: await req.text() });
+      return new Response("OK");
+    }
+    if (u.origin === SITE && u.pathname === "/api/follow/count")
+      return this.followLive ? Response.json(1) : new Response("Not found", { status: 404 });
     if (u.origin === SITE) return this.asset(u.pathname);
     throw new Error(`the tests ask no network, and this asked ${u.origin}`);
   }

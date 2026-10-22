@@ -402,18 +402,18 @@ test("under record-date, the same week reads the same, with no seen at all", asy
   } finally { w.close(); }
 });
 
-test("a refused send is given back and tried again next hour", async () => {
+test("a send Resend fails is given back and tried again next hour", async () => {
   const w = makeWorld();
   try {
     siteAsOf(w, "2026-10-05");
     const s = await subscribe(w, "reader.retry", ["bill:2026/HB9901"]);
-    w.net.resendStatus = 422;
+    w.net.resendStatus = 500;
     w.now = new Date("2026-10-05T12:00:00Z");
     const r = await run(w.env, w.now);
     assert.equal(r.failed, 1);
     assert.equal(w.d1.rows("subscribers")[0].last_sent_on, "2026-10-04", "the day is given back");
     assert.equal(w.d1.rows("subscribers")[0].sent_date, "2026-10-04", "and the cursor stays");
-    assert.ok(w.logs.lines.includes("follow sender.resend-refused.422 1"));
+    assert.ok(w.logs.lines.includes("follow sender.resend-refused.500 1"));
     w.net.resendStatus = 200;
     w.now = new Date("2026-10-05T13:00:00Z");
     await run(w.env, w.now);
@@ -456,8 +456,9 @@ test("Resend's rate limit stops the run, and the rest go next hour", async () =>
     const b = await subscribe(w, "second.in.line", ["bill:2026/HB9901"]);
     w.net.resendStatus = 429;
     w.now = new Date("2026-10-05T12:00:00Z");
-    await run(w.env, w.now);
-    assert.equal(w.net.refused, 1, "one refusal, and no second try in the same run");
+    const r = await run(w.env, w.now);
+    assert.equal(w.net.refused, 2, "one refusal waited out and asked once more, then no more");
+    assert.deepEqual(r.problems, ["resend-rate"]);
     w.net.resendStatus = 200;
     w.now = new Date("2026-10-05T13:00:00Z");
     await run(w.env, w.now);
@@ -662,7 +663,7 @@ test("the sender asks nothing but the site's changes files and Resend", async ()
     const hosts = new Set(w.net.asked.map(a => a.replace(/^(https:\/\/[^/]+).*$/, "$1")));
     assert.deepEqual([...hosts].sort(), ["https://api.resend.com", "https://graniterecord.org"]);
     assert.ok(w.net.asked.filter(a => a.startsWith("https://graniterecord.org"))
-      .every(a => /\/changes\/(current|\d{4}-\d{2}-\d{2})\.json$/.test(a)));
+      .every(a => /\/changes\/(current|\d{4}-\d{2}-\d{2})\.json$|\/api\/follow\/count$/.test(a)));
   } finally { w.close(); }
 });
 
@@ -730,4 +731,136 @@ test("a law can be followed by its chapter, and is named by it", async () => {
   assert.equal(parseKey("law:91-a"), null, "a chapter is in capitals, as its page names it");
   assert.equal(parseKey("law:91-A:4"), null, "a chapter, not a section");
   assert.equal(fallbackLabel("law", "91-A"), "RSA 91-A");
+});
+
+// ---- before go-live (the review of 22 October 2026) ------------------------------------
+test("a 429 is waited out once and the same email sent under the same key", async () => {
+  const w = makeWorld();
+  try {
+    siteAsOf(w, "2026-10-05");
+    const s = await subscribe(w, "reader.patient", ["bill:2026/HB9901"]);
+    w.net.resendStatusOnce = 429;
+    w.now = new Date("2026-10-05T12:00:00Z");
+    const r = await run(w.env, w.now);
+    assert.equal(w.net.refused, 1);
+    assert.equal(mailsTo(w, s.address).length, 1, "sent on the second ask");
+    assert.equal(r.sent, 1);
+    assert.deepEqual(r.problems, []);
+  } finally { w.close(); }
+});
+
+test("an address Resend calls bad keeps its day, waits for tomorrow, and is never deleted", async () => {
+  const w = makeWorld();
+  try {
+    siteAsOf(w, "2026-10-05");
+    const bad = await subscribe(w, "reader.bad", ["bill:2026/HB9901"]);
+    const good = await subscribe(w, "reader.good", ["bill:2026/HB9901"]);
+    w.net.resendStatusOnce = 422;
+    w.now = new Date("2026-10-05T12:00:00Z");
+    const r = await run(w.env, w.now);
+    assert.equal(r.failed, 1);
+    assert.equal(mailsTo(w, good.address).length, 1, "the next reader is not held up");
+    const row = w.d1.rows("subscribers").find(x => x.id === bad.id);
+    assert.equal(row.last_sent_on, "2026-10-05", "the day stays taken");
+    assert.equal(row.sent_date, "2026-10-04", "and the cursor stays, so tomorrow carries the news");
+    w.now = new Date("2026-10-05T13:00:00Z");
+    await run(w.env, w.now);
+    assert.equal(w.net.refused, 1, "not asked again the same day");
+    w.now = new Date("2026-10-06T12:00:00Z");
+    siteAsOf(w, "2026-10-06");
+    await run(w.env, w.now);
+    assert.equal(mailsTo(w, bad.address).length, 1, "tomorrow it goes");
+    assert.deepEqual(leaks(w), []);
+  } finally { w.close(); }
+});
+
+test("a key or domain Resend refuses stops the run and is a problem", async () => {
+  const w = makeWorld();
+  try {
+    siteAsOf(w, "2026-10-05");
+    await subscribe(w, "reader.one", ["bill:2026/HB9901"]);
+    await subscribe(w, "reader.two", ["bill:2026/HB9901"]);
+    w.net.resendStatus = 401;
+    w.now = new Date("2026-10-05T12:00:00Z");
+    const r = await run(w.env, w.now);
+    assert.equal(w.net.refused, 1, "one refusal, and the run stops");
+    assert.deepEqual(r.problems, ["resend-auth"]);
+    assert.ok(w.d1.rows("subscribers").every(x => x.last_sent_on === "2026-10-04"), "both given back");
+  } finally { w.close(); }
+});
+
+test("Resend failing three times in a row stops the run", async () => {
+  const w = makeWorld();
+  try {
+    siteAsOf(w, "2026-10-05");
+    for (const n of ["a", "b", "c", "d", "e"]) await subscribe(w, `reader.${n}`, ["bill:2026/HB9901"]);
+    w.net.resendStatus = 503;
+    w.now = new Date("2026-10-05T12:00:00Z");
+    const r = await run(w.env, w.now);
+    assert.equal(w.net.refused, 3);
+    assert.deepEqual(r.problems, ["resend-down"]);
+  } finally { w.close(); }
+});
+
+test("nothing is mailed while the site's follow pages do not answer", async () => {
+  const w = makeWorld();
+  try {
+    siteAsOf(w, "2026-10-05");
+    const s = await subscribe(w, "reader.nolinks", ["bill:2026/HB9901"]);
+    w.net.followLive = false;
+    w.now = new Date("2026-10-05T12:00:00Z");
+    const r = await run(w.env, w.now);
+    assert.equal(w.net.outbox.length, 0);
+    assert.deepEqual(r.problems, ["site-follow"]);
+    assert.ok(w.logs.lines.includes("follow sender.site-follow-missing.404 1"));
+    assert.equal(w.d1.rows("subscribers")[0].last_sent_on, "2026-10-04", "nothing taken");
+    w.net.followLive = true;
+    w.now = new Date("2026-10-05T13:00:00Z");
+    await run(w.env, w.now);
+    assert.equal(mailsTo(w, s.address).length, 1);
+  } finally { w.close(); }
+});
+
+test("a weekly whose Saturday did not go goes on a later day; a new weekly waits for Saturday", async () => {
+  const w = makeWorld();
+  try {
+    fortnight(w, "2026-10-03", "2026-10-12", ["bill:2026/HB9901"]);
+    const missed = await subscribe(w, "weekly.missed", ["bill:2026/HB9901"],
+      { frequency: "weekly", cursor: "2026-10-03" });
+    const fresh = await subscribe(w, "weekly.fresh", ["bill:2026/HB9901"],
+      { frequency: "weekly", cursor: "2026-10-03" });
+    w.d1.sql.prepare("UPDATE subscribers SET last_sent_on = NULL WHERE id = ?").run(fresh.id);
+    // Saturday the 10th went by unsent; Monday the 12th, 8:00 EDT.
+    w.now = new Date("2026-10-12T12:00:00Z");
+    await run(w.env, w.now);
+    const got = mailsTo(w, missed.address);
+    assert.equal(got.length, 1, "caught up on Monday");
+    for (const d of ["2026-10-04", "2026-10-10", "2026-10-12"])
+      assert.ok(got[0].text.includes(`Something new on ${d}`) || got[0].html.includes(`Something new on ${d}`),
+        `the week reaches back to ${d}`);
+    assert.equal(mailsTo(w, fresh.address).length, 0, "never yet sent: Saturday");
+    assert.ok(w.logs.lines.includes("follow sender.weekly-catch-up 1"));
+  } finally { w.close(); }
+});
+
+test("each run pings Healthchecks: plainly when well, /fail with codes and counts when not", async () => {
+  const { ping } = await import("../../workers/follow/sender.js");
+  const w = makeWorld();
+  try {
+    siteAsOf(w, "2026-10-05");
+    const s = await subscribe(w, "reader.ping", ["bill:2026/HB9901"]);
+    const env = { ...w.env, HEALTHCHECK_URL: "https://hc-ping.com/abc-123" };
+    w.now = new Date("2026-10-05T12:00:00Z");
+    await ping(env, await run(env, w.now));
+    assert.equal(w.net.pings.at(-1).url, "/abc-123");
+    assert.match(w.net.pings.at(-1).body, /sent 1/);
+    w.net.followLive = false;
+    w.now = new Date("2026-10-06T12:00:00Z");
+    siteAsOf(w, "2026-10-06");
+    await ping(env, await run(env, w.now));
+    assert.equal(w.net.pings.at(-1).url, "/abc-123/fail");
+    assert.match(w.net.pings.at(-1).body, /problem: site-follow/);
+    assert.ok(!w.net.pings.some(p => p.body.includes(s.address.split("@")[0])), "no address in a ping");
+    assert.equal(await ping(w.env, { problems: [] }), false, "no secret, no ping");
+  } finally { w.close(); }
 });

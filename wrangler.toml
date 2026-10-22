@@ -1,4 +1,4 @@
-# GRANITE_VERSION: 2026-09-12.3
+# GRANITE_VERSION: 2026-09-12.4
 #
 # The Pages project's configuration, which this file now owns. Until
 # 12 September there was none: the dashboard held a name and a compatibility
@@ -40,6 +40,12 @@ database_id = "1fb4afb6-62dc-455a-9357-0125bcf7577a"
 # <hash>.graniterecord.pages.dev address for good, and those are not the site.
 [env.production.vars]
 REPORT_ORIGINS = "graniterecord.org www.graniterecord.org"
+# Email following's, set ahead of the go-live (22 October 2026): with
+# FOLLOW_DB bound and no MAIL_FROM, every sign-up was told "on its way" and
+# sent nothing. Harmless until then: every follow endpoint answers 404
+# without the database. preflight holds both here.
+MAIL_FROM = "Granite Record <noreply@mail.graniterecord.org>"
+FEEDBACK_URL = "https://forms.gle/PYw9c3xgpDDwvX7E9"
 
 [env.preview]
 [[env.preview.d1_databases]]

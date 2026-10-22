@@ -9,7 +9,8 @@
  *     following nothing;
  *   - from 8:00 to 20:00 New Hampshire time, it sends the daily to each daily
  *     subscriber not yet sent that day, and on Saturdays the weekly to each
- *     weekly subscriber not yet sent that day.
+ *     weekly subscriber not yet sent that day -- and on any later day to a
+ *     weekly subscriber whose Saturday did not go (WEEKLY CATCH-UP, below).
  * A subscriber is taken once per New Hampshire day, by an update that marks
  * the row before the email goes, and is given back only if the email did not
  * go. So the email comes at the first run at or after 8:00 -- 12:00 UTC in
@@ -33,6 +34,14 @@
  *
  * WHAT IT KEEPS. Counts: the sends table, and log lines that are a code and a
  * number (common.note). No recipient, no record, no follow list.
+ *
+ * WHO IS TOLD WHEN IT BREAKS (22 October 2026, the review before go-live).
+ * Every run ends with a ping to HEALTHCHECK_URL, a secret, as the nightly
+ * pings its own: a plain ping for a run that did its work or had none, and
+ * /fail, with the run's codes and counts as the body, for one that met a
+ * problem a person must act on (PROBLEMS). An hourly ping is also the
+ * sender's heartbeat: Healthchecks writes when the pings stop. With no
+ * secret, no ping. The body carries counts and codes, never an address.
  */
 
 import { ConfigError, linksFor, openAddress, openFollow } from "./address.js";
@@ -45,7 +54,9 @@ export { nhClock };
 export const SEND_FROM_HOUR = 8;      // New Hampshire time
 export const SEND_UNTIL_HOUR = 20;    // a backlog past this waits for tomorrow
 export const WAIT_UNTIL_HOUR = 12;    // how long to wait for tonight's file
-export const NIGHTS_READ = 8;
+// Ten nights, so a weekly that went a day or two after its Saturday (WEEKLY
+// CATCH-UP) still reaches back to the night after the last one it carried.
+export const NIGHTS_READ = 10;
 const PER_RECORD = 20;
 // A followed legislator's roll calls are listed whole (the person, 11 October
 // 2026: "all roll call votes they made the previous week"), up to the sixty a
@@ -72,6 +83,29 @@ export function due(now) {
   const open = c.hour >= SEND_FROM_HOUR && c.hour < SEND_UNTIL_HOUR;
   return { ...c, daily: open, weekly: open && c.weekday === "Sat" };
 }
+
+// WEEKLY CATCH-UP (22 October 2026). A weekly reader's day is Saturday; one
+// whose Saturday did not go -- Resend refused it all day, the sender was down
+// -- was left until the next Saturday, and the week between was dropped when
+// the nights read no longer reached back to it. Now a weekly reader last sent
+// eight or more days ago is due on any day in the sending hours. A reader
+// never yet sent waits for a Saturday, as before.
+export const WEEKLY_CATCH_UP_DAYS = 8;
+
+// A run's problems a person must act on: each makes the Healthchecks ping a
+// /fail. Waiting for tonight's file before noon is no problem; still waiting
+// at noon is one.
+export const PROBLEMS = {
+  config: "the sender's configuration is missing",
+  "site-follow": "the site's follow pages do not answer, so nothing was sent",
+  current: "the site's current.json is missing or unreadable",
+  tonight: "tonight's changes file was still missing at noon",
+  "resend-auth": "Resend refused the key or the sending domain",
+  "resend-rate": "Resend's rate limit stopped the run",
+  "resend-down": "Resend failed three times in a row, so the run stopped",
+  "all-refused": "every email this run tried was refused",
+  "run-failed": "the run stopped on an error of its own",
+};
 
 // A D1 binding that counts every statement it runs, a batch's one by one.
 export function counting(db) {
@@ -179,6 +213,17 @@ export function resumeFrom(s) {
 // ---- one run ------------------------------------------------------------------------------
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
+// Resend's answers, by what the run does with them (22 October 2026). A key or
+// a domain refused is the configuration, not the reader: the run stops. A
+// request it calls bad (400, 422: an address it will not take) is the
+// reader's: the day stays taken, so the reader waits until tomorrow at the
+// back of the line rather than at the front of every hour, and is never
+// deleted for it -- a bug of ours could make every request bad. Anything else
+// (5xx, a lost answer) gives the day back, as before.
+const AUTH = new Set([401, 403]);
+const READERS_OWN = new Set([400, 422]);
+const DOWN_IN_A_ROW = 3;
+
 function siteOrigin(env) {
   const o = String(env.SITE_ORIGIN || "").replace(/\/+$/, "");
   return /^https:\/\/[A-Za-z0-9.-]+(:\d+)?$/.test(o) ||
@@ -203,9 +248,10 @@ async function followsOf(env, db, s) {
 }
 
 export async function run(env, now = new Date()) {
-  const out = { purged: 0, sent: 0, failed: 0, ended: 0, waiting: 0, skipped: 0, queries: 0 };
+  const out = { purged: 0, sent: 0, failed: 0, ended: 0, waiting: 0, skipped: 0, queries: 0,
+                problems: [] };
   const origin = siteOrigin(env);
-  if (!env.FOLLOW_DB || !origin) { note("sender.config"); return out; }
+  if (!env.FOLLOW_DB || !origin) { note("sender.config"); out.problems.push("config"); return out; }
   const db = counting(env.FOLLOW_DB);
   const budget = Math.max(PER_READER + RESERVE + 5,
     Number(env.D1_QUERIES_PER_RUN) || D1_QUERIES);
@@ -221,18 +267,37 @@ export async function run(env, now = new Date()) {
 
   const when = due(now);
   if (!when.daily) return done();
-  const freqs = when.weekly ? ["daily", "weekly"] : ["daily"];
   const limit = Math.max(1, Math.min(1000, Number(env.SEND_LIMIT) || 40));
   const subs = (await db.prepare(
     "SELECT id, email_hmac, email_enc, frequency, link_gen, last_sent_on, sent_date, sent_built, " +
     "paused_until, detail " +
-    `FROM subscribers WHERE frequency IN (${freqs.map((_, i) => `?${i + 3}`).join(", ")}) ` +
+    "FROM subscribers WHERE (frequency = 'daily' OR (frequency = 'weekly' AND " +
+    "(?3 = 1 OR (last_sent_on IS NOT NULL AND last_sent_on <= ?4)))) " +
     "AND (last_sent_on IS NULL OR last_sent_on < ?1) " +
     // PAUSED THROUGH A DAY: nothing goes until the day after it.
     "AND (paused_until IS NULL OR paused_until < ?1) " +
     "ORDER BY last_sent_on IS NOT NULL, last_sent_on, id LIMIT ?2")
-    .bind(when.date, limit, ...freqs).all()).results || [];
+    .bind(when.date, limit, when.weekly ? 1 : 0,
+          addDays(when.date, -WEEKLY_CATCH_UP_DAYS)).all()).results || [];
   if (!subs.length) return done();
+  if (!when.weekly && subs.some(s => s.frequency === "weekly"))
+    note("sender.weekly-catch-up", subs.filter(s => s.frequency === "weekly").length);
+
+  // THE WAY OUT FIRST. Every email links to the manage and unsubscribe pages,
+  // which are the site's Functions and answer 404 while the site has no follow
+  // database bound: a deploy that lost the binding would leave readers mailed
+  // with links that do nothing. The count is the cheapest of those pages.
+  let live = 0;
+  try {
+    live = (await fetch(`${origin}/api/follow/count?run=${now.getTime()}`,
+      { headers: { Accept: "application/json" } })).status;
+  } catch { /* 0 */ }
+  if (live !== 200) {
+    note(`sender.site-follow-missing.${live}`, subs.length);
+    out.problems.push("site-follow");
+    out.waiting = subs.length;
+    return done();
+  }
 
   // The site, asked afresh each run: a night's file is new each morning.
   const get = path => fetch(`${origin}${path}?run=${now.getTime()}`,
@@ -240,6 +305,7 @@ export async function run(env, now = new Date()) {
   const cur = await readCurrent(get);
   if (!cur.value) {
     note(cur.missing ? "sender.current-missing" : "sender.current-unreadable", subs.length);
+    out.problems.push("current");
     out.waiting = subs.length;
     return done();
   }
@@ -262,6 +328,7 @@ export async function run(env, now = new Date()) {
       return done();
     }
     note("sender.tonight-missing-sending-anyway", subs.length);
+    out.problems.push("tonight");
   }
   const floor = addDays(when.date, -(NIGHTS_READ - 1));
   const oldest = subs.reduce((m, s) => (s.sent_date && s.sent_date < m ? s.sent_date : m),
@@ -273,6 +340,10 @@ export async function run(env, now = new Date()) {
     else { missing++; if (r.bad) note("sender.night-unreadable", 1); }
   }
   if (missing) note("sender.nights-missing", missing);
+  // A reader whose cursor is older than the oldest night read is sent what
+  // the nights read hold, and the rest is not theirs to have: said, not hidden.
+  const beyond = subs.filter(s => s.sent_date && s.sent_date < floor).length;
+  if (beyond) note("sender.cursor-beyond-window", beyond);
   if (mended) note("sender.entries-dropped-or-mended", mended);
   const ordered = [...nights.values()].sort((a, b) => a.date.localeCompare(b.date));
   const newest = ordered[ordered.length - 1] || null;
@@ -281,6 +352,7 @@ export async function run(env, now = new Date()) {
                   weekly: { sent: 0, items: 0, failed: 0, ended: 0 } };
   const gap = Math.max(0, Number(env.SEND_GAP_MS ?? 600) || 0);
   let stop = false;
+  let downInARow = 0;
 
   for (const [i, s] of subs.entries()) {
     if (stop) break;
@@ -331,18 +403,30 @@ export async function run(env, now = new Date()) {
       } else if (!r.ok) {
         tally[s.frequency].failed++;
         out.failed++;
-        await giveBack();
         note(`sender.resend-refused.${r.status}`, 1);
-        // Resend's rate limit or daily cap: the rest wait for the next run.
-        if (r.status === 429) stop = true;
+        if (READERS_OWN.has(r.status)) continue;      // the day stays taken
+        await giveBack();
+        if (AUTH.has(r.status)) {
+          stop = true;
+          out.problems.push("resend-auth");
+        } else if (r.status === 429) {
+          // Resend's rate limit, after sendMail's one wait and retry: the
+          // rest wait for the next run.
+          stop = true;
+          out.problems.push("resend-rate");
+        } else if (++downInARow >= DOWN_IN_A_ROW) {
+          stop = true;
+          out.problems.push("resend-down");
+        }
         continue;
       }
+      downInARow = 0;
     } catch (e) {
       out.failed++;
       tally[s.frequency].failed++;
       note(`sender.error.${errName(e)}`, 1);
       try { await giveBack(); } catch { /* counted */ }
-      if (e instanceof ConfigError) stop = true;
+      if (e instanceof ConfigError) { stop = true; out.problems.push("config"); }
       continue;
     }
 
@@ -388,14 +472,39 @@ export async function run(env, now = new Date()) {
   }
   if (out.sent) note("sender.sent", out.sent);
   if (out.failed) note("sender.failed", out.failed);
+  if (out.failed && !out.sent && !out.problems.length) out.problems.push("all-refused");
   if (out.ended) note("sender.follows-ended", out.ended);
   return done();
+}
+
+// The run's ping (WHO IS TOLD WHEN IT BREAKS, above): codes and counts only.
+export async function ping(env, out) {
+  const url = String(env.HEALTHCHECK_URL || "").trim().replace(/\/+$/, "");
+  if (!/^https:\/\/[^\s]+$/.test(url)) return false;
+  const bad = out.problems.length > 0;
+  const body = [
+    ...out.problems.map(p => `problem: ${p}: ${PROBLEMS[p] || p}`),
+    ["sent", "failed", "waiting", "ended", "skipped", "purged", "queries"]
+      .map(k => `${k} ${out[k] || 0}`).join(", "),
+  ].join("\n");
+  try {
+    const r = await fetch(url + (bad ? "/fail" : ""), { method: "POST", body });
+    try { await r.body?.cancel(); } catch { /* nothing to read */ }
+    return r.ok;
+  } catch {
+    note("sender.healthcheck-unreachable");
+    return false;
+  }
 }
 
 export default {
   async scheduled(controller, env, ctx) {
     ctx.waitUntil(run(env, new Date(controller.scheduledTime))
-      .catch(e => note(`sender.run-failed.${errName(e)}`)));
+      .catch(e => {
+        note(`sender.run-failed.${errName(e)}`);
+        return { sent: 0, failed: 0, problems: ["run-failed"] };
+      })
+      .then(out => ping(env, out)));
   },
   // No address answers: the sender has no route, and a request gets nothing.
   async fetch() {

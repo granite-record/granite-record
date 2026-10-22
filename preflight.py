@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.630
+# GRANITE_VERSION: 2026-09-04.631
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -36342,7 +36342,11 @@ def _follow_privacy_gated(S, BP, BE):
     stands; after it, both say what is kept and how it is deleted."""
     tmp = Path(tempfile.mkdtemp(prefix="gr-live-"))
     try:
-        base = Path("wrangler.toml").read_text(encoding="utf-8")
+        # "Off" is today's file without production's binding, whether or not
+        # it carries one (22 October 2026): read as it stood, the go-live's
+        # own file was "off" and live at once, and this check failed it.
+        base = re.sub(r'\n\[\[env\.production\.d1_databases\]\]\s*\nbinding\s*=\s*"FOLLOW_DB"[^\[]*',
+                      "\n", Path("wrangler.toml").read_text(encoding="utf-8"))
         (tmp / "off.toml").write_text(base, encoding="utf-8")
         (tmp / "on.toml").write_text(base + '\n[[env.production.d1_databases]]\nbinding = "FOLLOW_DB"\n'
                                      'database_name = "graniterecord-follow"\ndatabase_id = "x"\n', encoding="utf-8")
@@ -65224,10 +65228,19 @@ def _follow_email():
     def binds(env):
         return any(d.get("binding") == "FOLLOW_DB" for d in envs.get(env, {}).get("d1_databases", []))
     assert binds("preview"), "previews do not bind FOLLOW_DB, so sign-ups cannot be tested"
+    # THE PAGES SAY IT ONCE THE BINDING IS THERE (22 October 2026). The file
+    # holds both texts, the one before go-live and the one after, chosen by
+    # whether production binds the database (_follow_privacy_gated checks
+    # each), so the test is that the after text exists: until then, read as
+    # "no email addresses" not in the file, it failed the go-live itself.
     about = Path("src/pages/build_exports.py").read_text(encoding="utf-8")
-    told = "Email updates." in about and "no email addresses" not in about
-    assert told or not binds("production"), \
-        "production binds FOLLOW_DB while the About page still says the site keeps no email addresses"
+    assert "Email updates." in about or not binds("production"), \
+        "production binds FOLLOW_DB while the Data page has no text for email updates"
+    # ... and the sender's address with it: with the database bound and no
+    # MAIL_FROM, every sign-up was told "on its way" and sent nothing.
+    pvars = envs.get("production", {}).get("vars", {})
+    assert "@" in str(pvars.get("MAIL_FROM", "")) and pvars.get("FEEDBACK_URL"), \
+        "production's vars have no MAIL_FROM or FEEDBACK_URL for email following"
     app = Path("src/pages/app.js").read_text(encoding="utf-8")
     assert '"/api/follow/count"' in app and '"/changes/current.json"' in app, \
         "the Follow pane offers email without asking whether this deployment can take it"
@@ -68603,9 +68616,14 @@ def _nightly_review_warnings(NI):
 
     def late(n):
         ago = (datetime.now(timezone.utc) - timedelta(days=5)).strftime("%Y-%m-%dT%H:%M:%SZ")
+        # The inbox heard from today, so the one kind here is the recordings
+        # waiting. Without it the captions inbox read as silent from
+        # INBOX_SILENT_DAYS after INBOX_BEGAN on (22 October 2026), and this
+        # check failed by the calendar alone.
+        now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
         Path("archive/livestreams.json").write_text(json.dumps({"videos": {
             f"v{i}": {"status": "finished", "captions": "deferred", "ended": ago}
-            for i in range(n)}}), encoding="utf-8")
+            for i in range(n)}, "inbox_arrived": {"at": now}}), encoding="utf-8")
 
     def news(v, known=True):
         said = (NI.REVIEW_WARNING if known else NI.REVIEW_WARNING_UNKNOWN).split("{")[0]
@@ -68740,9 +68758,11 @@ def _gate_late(n):
     goes. Written where the night reads the livestream state."""
     from datetime import datetime, timedelta, timezone
     ago = (datetime.now(timezone.utc) - timedelta(days=5)).strftime("%Y-%m-%dT%H:%M:%SZ")
+    # The inbox heard from today (as _nightly_review_warnings' late() does).
+    now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     Path("archive/livestreams.json").write_text(json.dumps({"videos": {
         f"v{i}": {"status": "finished", "captions": "deferred", "ended": ago}
-        for i in range(n)}}), encoding="utf-8")
+        for i in range(n)}, "inbox_arrived": {"at": now}}), encoding="utf-8")
 
 
 @check("build", "the gate never holds a night for the day's files coming from the General "

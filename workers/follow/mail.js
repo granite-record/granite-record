@@ -34,10 +34,24 @@ const RESEND = "https://api.resend.com/emails";
 // One email to one address. Answers { ok, status } and never anything Resend
 // said: its error messages name the address they refused, so the body of an
 // error is not read at all.
+// RESEND'S RATE LIMIT, MET ONCE AND WAITED OUT (22 October 2026). A 429 is
+// Resend saying "not this second": the sender and a sign-up's confirmation
+// share one team's limit, and a confirmation refused for it was lost while the
+// reader was told it was on its way. So a 429 is waited out -- Resend's own
+// retry-after, at most RETRY_WAIT_MOST seconds, or one second -- and the same
+// request sent once more, under the same Idempotency-Key, so a retry can never
+// send twice. A second 429 is the caller's to handle.
+export const RETRY_WAIT_MOST = 5;
+
+function retryWait(res) {
+  const s = Number(res.headers?.get?.("retry-after"));
+  return Math.min(RETRY_WAIT_MOST, Number.isFinite(s) && s > 0 ? s : 1) * 1000;
+}
+
 export async function sendMail(env, { to, subject, text, html, headers }, idempotencyKey) {
   const from = String(env.MAIL_FROM || "").trim();
   if (!env.RESEND_API_KEY || !from) throw new ConfigError();
-  const res = await fetch(RESEND, {
+  const ask = () => fetch(RESEND, {
     method: "POST",
     headers: {
       "Authorization": `Bearer ${env.RESEND_API_KEY}`,
@@ -47,6 +61,12 @@ export async function sendMail(env, { to, subject, text, html, headers }, idempo
     body: JSON.stringify({ from, to: [to], subject, text, html,
                            ...(headers ? { headers } : {}) }),
   });
+  let res = await ask();
+  if (res.status === 429) {
+    try { await res.body?.cancel(); } catch { /* nothing to read */ }
+    await new Promise(r => setTimeout(r, retryWait(res)));
+    res = await ask();
+  }
   try { await res.body?.cancel(); } catch { /* nothing to read */ }
   return { ok: res.ok, status: res.status };
 }
