@@ -162,8 +162,8 @@ export function andList(parts, most = 5) {
 // How current an email is, in a reader's words. This said "up to last night's
 // build", which is how the code sees the night and not how a reader does (the
 // language sweep, 17 October 2026).
-export const UPDATED = "Granite Record is updated once a day, overnight, so this email " +
-  "reports what had reached the record by early this morning, not what is happening now.";
+export const UPDATED = "Granite Record updates overnight, so this covers the record as of " +
+  "this morning.";
 
 // Where to report a mistake, naming only pages that have the button. The
 // footer sent every reader to "Report a problem with this page" on "the

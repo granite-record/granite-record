@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.224
+// GRANITE_VERSION: 2026-09-07.225
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -4514,10 +4514,9 @@ function renderHearings(b,d){
         `Play the recording from ${hms(from)} \u2014 scheduled for ${
           esc(s.time||"this day")}, start time not identified yet`,
         "start time not identified yet")
-        +`<p class="note" style="margin-top:8px">Matching proceedings to the
-        moment they begin is ongoing work, and this one is not done. The
-        recording is the whole meeting; hearings run behind, so the bill is
-        usually after the scheduled time rather than before it.${
+        +`<p class="note" style="margin-top:8px">Not yet matched to the moment
+        the bill came up. Hearings usually run late, so look after the
+        scheduled time.${
         s.candidate?` An automatic pass suggested ${hms(s.candidate)}, but not
         confidently enough to publish as fact.`:""}</p>`;
     }
@@ -4552,13 +4551,10 @@ function renderHearings(b,d){
       // adopts is the committee's report, whatever it recommends, and 605 of
       // the 2,067 stations drawn this way carried a report to kill the bill
       // or study it.
-      inner=`<p class="note">Decided on the consent calendar — the committee's
-        report was adopted with the rest of the block, without being debated
-        or voted on separately, so there is no moment in the recording to
-        point to.
+      inner=`<p class="note">Passed on the consent calendar, without separate
+        debate, so there is no moment in the recording for it.
         <a href="https://www.youtube.com/watch?v=${esc(s.video_id)}"
-           target="_blank" rel="noopener">The session is here</a> if you want
-        the day as a whole.</p>`;
+           target="_blank" rel="noopener">The whole session</a>.</p>`;
     }
     // A RECORDING OF THAT DAY EXISTS AND WHICH ONE THIS IS WAS NOT
     // ESTABLISHED. Not the claim "approximate" makes: that one knows the tape
@@ -4921,13 +4917,7 @@ function veto(d){
     ${v.text.map(p=>`<p>${esc(p)}</p>`).join("")}
     <p class="vsig">${esc(v.governor||"")}${
       v.date?` <span class="secsub">${esc(dateWords(v.date))}</span>`:""}</p>
-    ${v.date?`<p class="note" style="margin:6px 0 0">The message carries its own
-      date, which is the day the governor signed it. The docket records the day
-      the veto reached the House, and on three of these the two are days
-      apart.</p>`:""}
-    <p class="src">Read into the House and printed in ${cite}. The docket
-      records that a bill was vetoed and the day it happened; the reasons are
-      only in the message.</p>
+    <p class="src">Printed in ${cite}.</p>
   </section>`;
 }
 
@@ -5444,9 +5434,8 @@ function renderVersions(b,d){
   }
 
   const amdblock=amds.length?`<h2 class="amdsec">The amendments themselves</h2>
-    <p class="note">The General Court publishes the text of each amendment as
-    its own document, naming the statute it amends and what it replaces. These
-    are those, not versions of the bill.</p>
+    <p class="note">Each amendment as the General Court published it; these are
+    not versions of the bill.</p>
     <ul class="vamds">${amds.map((a,j)=>`<li><button class="link"
       data-vamd="${esc(key)}|${j}">Amendment of ${esc(recordDay(a.date))}</button>
       <span class="dim">${(a.chars||0).toLocaleString()} characters</span>${
@@ -5926,9 +5915,7 @@ function mountFollow(kind,feed,ref){
 // sentence starts at the feed reader rather than saying it twice.
 function followRss(kind,href,folded){
   const what=esc(FOLLOWS[kind]||"what is new here");
-  const body=`<p>${folded?"In":"<b>By RSS</b>, in"} any feed reader: ${what}.
-        The record is rebuilt once a night, so an update arrives the morning after
-        it happens.</p>
+  const body=`<p>${folded?"In":"<b>By RSS</b>, in"} any feed reader: ${what}.</p>
       <p class="feedurl"><input type="text" readonly aria-label="The feed's address"
         value="${esc(new URL(href,location.origin).href)}">
         <button type="button" class="link" data-copyfeed="1">Copy the address</button></p>`;
@@ -5956,8 +5943,8 @@ function followMailForm(key){
         <label><input type="radio" name="frequency" value="daily" checked><span>Daily</span></label>
         <label><input type="radio" name="frequency" value="weekly"><span>Weekly</span></label></fieldset>
       <button type="submit" class="followsend">Email me updates</button></div>
-    <p class="panfine">Nothing is sent until you confirm from the first email, and every email has a link to
-      change what you follow or to unsubscribe, which deletes your address from our database at once.</p>
+    <p class="panfine">Nothing is sent until you confirm. Every email lets you change what you follow or
+      unsubscribe.</p>
     <p style="position:absolute;left:-9999px" aria-hidden="true"><label>Leave this empty
     <input name="website" tabindex="-1" autocomplete="off"></label></p>
     <div class="followcheck"></div>
@@ -7264,8 +7251,7 @@ function renderMemberHead(m){
       .join(" &middot; ")]);
   if(m.seat)facts.push(["Seat",esc(plate(m.seat))]);
   if(!former&&m.email)facts.push(["Email",`<a href="mailto:${esc(m.email)}">${esc(m.email)}</a>`]);
-  if(!former&&m.phone)facts.push(["Phone",`<a href="tel:${esc(String(m.phone).replace(/[^\d+]/g,""))}">${
-    esc(m.phone)}</a>`]);
+  // No Phone: a legislator's number is not published (build_site_v2, 22 October 2026).
   if(svc.length)facts.push(["On Record",svc.join(" &middot; ")]);
   else if(yrs)facts.push(["On Record",esc(yrs)]);
   // OFFICIALS, where Legislators was (decision 127, 8 October 2026: the

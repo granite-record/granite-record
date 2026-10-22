@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.222
+# GRANITE_VERSION: 2026-09-05.223
 """
 Generate the faceted site from real General Court data.
 
@@ -3498,10 +3498,16 @@ def build_legislators(out, legs, votes_by_member, towns, unnamed,
         # empty for all 24 senators because only the House has a seating
         # chart. build_data says how the number decodes and why it is worth
         # carrying.
+        # NO TELEPHONE FOR A LEGISLATOR (the person, 22 October 2026: "some of
+        # them list their personal phone numbers which were retrieved from
+        # GenCourt"). A member's number is often their own cell, so none is
+        # published, on any page or in any download; an office's number -- a
+        # clerk's, the Secretary of State's, a committee's, the federal
+        # delegation's -- is not a member's and is kept where it is drawn.
         row = {**{k: m.get(k) for k in ("id", "name", "chamber", "party", "county",
                                         "county_abbr", "district", "label", "email",
                                         "url", "url_past", "towns",
-                                        "committees", "title", "phone", "seat")},
+                                        "committees", "title", "seat")},
                **lab, "n_votes": len(mv), "counts": dict(counts),
                "n_sponsored": len((sponsored or {}).get(mid, [])),
                "slug": member_slug(m, lab)}
@@ -3514,7 +3520,7 @@ def build_legislators(out, legs, votes_by_member, towns, unnamed,
             # member's would name a chair that is somebody else's, and the
             # only seat this disk holds is the current one anyway.
             row.update({"former": True, "served": m.get("served") or {},
-                        "email": "", "phone": "", "towns": [],
+                        "email": "", "towns": [],
                         "committees": [], "seat": ""})
             fm.append(row)
         else:

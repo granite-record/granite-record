@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-11.15
+# GRANITE_VERSION: 2026-10-11.16
 """
 The statutes (RSA) as pages: /laws, and one page a chapter at /laws/<chapter>.
 
@@ -226,7 +226,7 @@ def chapter_pending(data, bills):
         for bill, rec in bs.items():
             k = f"{term}/{bill}"
             chs = {str(c).split(":")[0] for c in rec.get("changes") or []}
-            if chs and bills.moving(k):
+            if chs and bills.pending(k):
                 for ch in chs:
                     out[ch].add(k)
     return {ch: sorted(ks, key=bill_order) for ch, ks in out.items()}
@@ -255,6 +255,14 @@ class Bills:
         return bool(r) and S.still_moving(dict(r, term=r.get("term") or key.split("/")[0]),
                                           self.current)
 
+    def pending(self, key):
+        """Pending, as the Laws page says it: still moving, and not sent to
+        interim study (the person, 22 October 2026: a bill studied "won't
+        become law this year regardless of whether [it is] recommended for
+        future legislation"). It is followable still (shell.still_moving),
+        and listed under Other bills that proposed changes."""
+        return self.moving(key) and self.row(key).get("kind") != "study"
+
     def label(self, key):
         r = self.row(key)
         term, _, bill = key.partition("/")
@@ -269,12 +277,15 @@ class Bills:
         year = r.get("year") or term[:4]
         return f"/bill/{year}/{bill.lower()}"
 
-    def chip(self, key, with_year=True):
+    def chip(self, key, with_year=True, always_year=False):
         """A bill as the site draws one in a list: its number linked, its
-        status after it, the term's years where it is not the sitting one."""
+        status after it, the term's years where it is not the sitting one --
+        or always, where a list mixes the sitting term with others (Other
+        bills that proposed changes, the person, 22 October 2026)."""
         r = self.row(key)
         term = key.split("/")[0]
-        when = "" if term == self.current or not with_year else f' <span class="rs-yr">{E(term)}</span>'
+        when = ("" if not with_year or (term == self.current and not always_year)
+                else f' <span class="rs-yr">{E(term)}</span>')
         st = r.get("chip") or ""
         title = r.get("title") or ""
         return (f'<li><a href="{E(self.url(key))}" title="{E(title)}">{E(self.label(key))}</a>{when}'
@@ -451,7 +462,7 @@ def chapter_page(tmpl, table, data, bills, ch, base):
         for t in targets:
             if t.startswith(ch + ":") or t == ch:
                 cited_by[t].append(src)
-    pending_ch = sorted({k for a, ks in proposed.items() for k in ks if bills.moving(k)},
+    pending_ch = sorted({k for a, ks in proposed.items() for k in ks if bills.pending(k)},
                         key=bill_order)
     latest = data.get("asof", {}).get("laws_through") or ""
     # THE PAGE'S OWN ADDRESS, AS THE HOST SERVES IT (16 October 2026): the
@@ -518,14 +529,14 @@ def chapter_page(tmpl, table, data, bills, ch, base):
                              f'<span>Repealed</span></li>')
             continue
         toc_items.append(f'<li><a href="{E(path)}#{E(anchor)}"><b>{E(a)}</b> {E(s.heading)}</a></li>')
-        pend_k = sorted((k for k in proposed.get(a, []) if bills.moving(k)), key=bill_order)
+        pend_k = sorted((k for k in proposed.get(a, []) if bills.pending(k)), key=bill_order)
         hist = list(reversed(data.get("enacted", {}).get(a, [])))
         # A BILL IN THE HISTORY IS NOT ALSO "PROPOSED" (the person, 11 October
         # 2026: the two "sometimes show the exact same bill numbers which is
         # redundant"): the other list is the bills that did not become this
         # section's law.
         in_hist = {b for _y, _law, b in hist if b}
-        other = [k for k in proposed.get(a, []) if not bills.moving(k) and k not in in_hist]
+        other = [k for k in proposed.get(a, []) if not bills.pending(k) and k not in in_hist]
         rows = []
         if hist:
             items = []
@@ -539,7 +550,7 @@ def chapter_page(tmpl, table, data, bills, ch, base):
             other.sort(key=lambda k: (k.split("/")[0], bill_order(k)[1], -bill_order(k)[2]), reverse=True)
             rows.append(("Other bills that proposed changes", "Bills whose own text says they "
                          "change this section, and that are not in its history above.",
-                         folded([bills.chip(k) for k in other])))
+                         folded([bills.chip(k, always_year=True) for k in other])))
         out_c = data.get("statute", {}).get(a, [])
         if out_c:
             rows.append(("Cites", "", folded([f'<li><a href="{E(href(t))}">RSA {E(t)}</a></li>'

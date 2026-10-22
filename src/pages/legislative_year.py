@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-17.4
+# GRANITE_VERSION: 2026-10-17.5
 """
 The legislature's year: a two-year term as a timeline, with this term's dates
 where the chambers' own calendars print them, and the usual pattern where
@@ -150,8 +150,7 @@ GOVERNOR = ("Each bill both chambers passed goes to the Governor, who signs it, 
 TERMS = {
     "2025-2026": [
         Season("The Election", "Fall 2024", "2024-09-01",
-               "The {term} term has not begun. Its members are being elected, and the "
-               "requests for its first session's bills are being filed.", [
+               "The {term} term has not begun: its members are being elected.", [
             Step("2024-09-03", "2024-09-13", "H", "House members running again may file bill requests",
                  "A request for a bill is a Legislative Service Request, or LSR. Members seeking "
                  "re-election may file theirs before the election.",
@@ -166,7 +165,7 @@ TERMS = {
                   ("hc41-2024", "2024-11-22", "Last day to file LSRs with complete information"))),
         ]),
         Season("The First Session", "December 2024 to June 2025", "2024-12-04",
-               "The {term} term has begun, and the first of its two sessions, {y1}'s, is under way.", [
+               "In session: the {y1} session.", [
             Step("2024-12-04", "", "HS", "Organization Day",
                  "The new members are sworn in, the House elects its Speaker and the Senate its "
                  "President, and the term begins.",
@@ -236,9 +235,7 @@ TERMS = {
                   ("sc1-2025", "2025-06-26", "Deadline to ACT on Committee of Conference Reports")), True),
         ]),
         Season("Between the Sessions", "Summer and fall 2025", "2025-06-27",
-               "The {y1} session is over. House committees are working on the bills they "
-               "retained, the Governor's vetoes wait for veto day, and members are filing "
-               "requests for {y2}'s bills.", [
+               "Between sessions. The {y2} session opens in January.", [
             Step("", "", "", "Bills go to the Governor", GOVERNOR, when="summer"),
             Step("2025-09-03", "2025-09-12", "S", "Senate bill requests for 2026",
                  "The window for senators' requests for the second session's bills.",
@@ -262,7 +259,7 @@ TERMS = {
                  (("hc40-2025", "2025-12-17", "Veto Day will be on Wednesday, December 17, 2025"),), True),
         ]),
         Season("The Second Session", "January to June 2026", "2026-01-07",
-               "The {y2} session, the second of the {term} term, is under way.", [
+               "In session: the {y2} session.", [
             Step("2026-01-07", "", "HS", "The session opens",
                  "The second session's first day.",
                  (("hc1-2026", "2026-01-07", "The House will meet on Wednesday, January 7, 2026"),),
@@ -319,9 +316,7 @@ TERMS = {
                   ("sc1-2026", "2026-06-04", "Deadline to ACT on Committee of Conference Reports")), True),
         ]),
         Season("After the Session", "Summer and fall 2026", "2026-06-05",
-               "The {y2} session's deadlines are past. What is left of the {term} term happens "
-               "out of session: veto day, the reports on bills sent to interim study, the "
-               "election, and the filing of the next term's bills.", [
+               "Out of session. A new legislature is elected in November and sits in January.", [
             Step("", "", "", "Bills go to the Governor", GOVERNOR, when="summer"),
             Step("2026-08-19", "", "HS", "Veto day",
                  "Both chambers meet to take up the Governor's vetoes. Overriding one takes two "
@@ -361,8 +356,7 @@ TERMS = {
                    "Last day for the Office Legislative Services to accept drafting"))),
         ]),
         Season("The Next Term Begins", "December 2026 to January 2027", "2026-12-02",
-               "The {next} term has begun: the legislature elected in November took office "
-               "on Organization Day.", [
+               "The {next} term has begun. Its first session opens in January.", [
             Step("2026-12-02", "", "HS", "Organization Day",
                  "The members elected in November are sworn in, and the {next} term begins.",
                  (("hc1-2025", "2026-12-02", "Organize on the first Wednesday in December"),),
@@ -507,8 +501,7 @@ def skeleton(term):
                       "deadline.", when="June")
     return [
         Season("The First Year", f"December {a - 1} through {a}", org0,
-               "The {term} term has begun, and {y1} is its first year: a session from January "
-               "to about June, then the House's retained bills and veto day in the fall.", [
+               "The {y1} session runs from January to about June.", [
             ruled("org", org0, "HS", "Organization Day",
                   "The new members are sworn in, the House elects its Speaker and the Senate its "
                   "President, and the term begins."),
@@ -520,8 +513,7 @@ def skeleton(term):
                  when="in the fall"),
         ]),
         Season("The Second Year", f"{b}, until Organization Day", open_b,
-               "{y2} is the second year of the {term} term: a session from January to about "
-               "June, then veto day, interim study and the election.", [
+               "The {y2} session runs from January to about June.", [
             ruled("open", open_b, "HS", "The session opens", "The second session's first day."),
             crossover, conference,
             Step("", "", "", "Bills go to the Governor", GOVERNOR, when="summer"),
@@ -537,8 +529,7 @@ def skeleton(term):
                  when="early November"),
         ]),
         Season("The Next Term Begins", f"December {b} to January {b + 1}", org1,
-               "The {next} term has begun: the legislature elected in November took office "
-               "on Organization Day.", [
+               "The {next} term has begun. Its first session opens in January.", [
             ruled("org", org1, "HS", "Organization Day",
                   "The members elected in November are sworn in, and the {next} term begins."),
             ruled("open", open_next, "HS", f"The {b + 1} session opens",
@@ -906,6 +897,9 @@ def shape(today):
 SOON = 8
 
 
+# SHORT (the person, 22 October 2026: "shorten the Right Now sentence"): each
+# season's line says only where the legislature is, and Coming up says what
+# is next.
 def now_html(term, today, here, bad=None):
     """Where Things Stand: the season the day falls in, the last landmark to
     have passed, and the next three dated steps. `here` is the page's own

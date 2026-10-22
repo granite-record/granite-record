@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-10-09.6
+// GRANITE_VERSION: 2026-10-09.7
 /* THE DISTRICT MAP (map v1), as a module a page mounts:
 
      <link rel="stylesheet" href="/map.css">
@@ -785,7 +785,11 @@ function mount(root,opts){
     if(lb)lb.addEventListener("click",e=>{const b=e.target.closest("button.gmpick");if(!b)return;
       select(b.dataset.l,b.dataset.f);if(opts.zoom)centreOn(fbox(M,b.dataset.l,b.dataset.f));});
     let dragged=false,from=null;
-    svg.addEventListener("click",e=>{if(dragged||!opts.panel)return;const p=e.target.closest(".f");if(p)select(layer,p.dataset.f);else clear();});
+    // A SECOND CLICK ON THE CHOSEN DISTRICT CLEARS IT (the person, 22 October
+    // 2026): zoomed in, a district can fill the view, with no background left
+    // to click off it.
+    svg.addEventListener("click",e=>{if(dragged||!opts.panel)return;const p=e.target.closest(".f");
+      if(p&&picked&&picked[0]===layer&&picked[1]===p.dataset.f)clear();else if(p)select(layer,p.dataset.f);else clear();});
     // the box around the drawing is background too, and Escape is the keyboard's way
     wrap.addEventListener("click",e=>{if(!dragged&&opts.panel&&e.target===wrap)clear();});
     root.addEventListener("keydown",e=>{if(e.key==="Escape"&&opts.panel&&(picked||townPicked)){clear();}});

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-10.48
+# GRANITE_VERSION: 2026-09-10.49
 """
 The record as CSV, for anyone who wants to work with it rather than read it.
 
@@ -156,12 +156,14 @@ def bills(out, site):
 
 def legislators(out, site):
     legs = load(site / "legislators.json", [])
+    # No phone column (22 October 2026): a legislator's number is often their
+    # own (build_site_v2, NO TELEPHONE FOR A LEGISLATOR).
     cols = ["id", "name", "chamber", "party", "district", "county", "email",
-            "phone", "committees", "bills_sponsored", "recorded_votes"]
+            "committees", "bills_sponsored", "recorded_votes"]
     rows = ([m.get("id", ""), m.get("display_full") or m.get("name", ""),
              "Senate" if m.get("chamber") == "S" else "House",
              m.get("party", ""), m.get("district", ""), m.get("county", ""),
-             m.get("email", ""), m.get("phone", ""),
+             m.get("email", ""),
              "; ".join(m.get("committees") or []),
              m.get("n_sponsored", 0), m.get("n_votes", 0)]
             for m in sorted(legs, key=lambda m: str(m.get("name"))))

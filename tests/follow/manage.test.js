@@ -53,7 +53,7 @@ test("the page shows what is followed and how often, and never the address", asy
     assert.match(r.body, /value="daily" checked/);
     // In a reader's words (the language sweep, 17 October 2026): not the
     // build's "rebuilt once a night", not "tonight", not "tick".
-    assert.match(r.body, /updated once a day, overnight, so even the daily email reports/);
+    assert.match(r.body, /updates overnight, so even the daily email covers/);
     assert.match(r.body, /This term's bills on a subject\. Check one to follow it\./);
     assert.doesNotMatch(r.body.replace(/<style>[\s\S]*?<\/style>|<script[\s\S]*?<\/script>/g, ""),
       /rebuilt|tonight|\b[Uu]n?tick|records/);

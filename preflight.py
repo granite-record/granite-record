@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.636
+# GRANITE_VERSION: 2026-09-04.637
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -11237,10 +11237,8 @@ def _rows_read_on_the_second_pass(N, B):
     off = {c: N.CONSENT_OFF_NOTE.format(chamber=c) for c in ("House", "Senate")}
     back = {c: N.CONSENT_BACK_NOTE.format(chamber=c) for c in ("House", "Senate")}
     agreed = {
-        "rule": ("A committee decides whether its report goes on the consent calendar, and "
-                 "can send it there even when its members divided on the recommendation "
-                 "itself. The chamber adopts all the reports on its consent calendar in "
-                 "one vote, without floor debate, unless a bill is taken off it first."),
+        # Trimmed at the person's word (22 October 2026).
+        "rule": "Reports on the consent calendar are adopted together in one vote, without debate.",
         "off": "The {chamber} took this bill off its consent calendar.",
         "back": "The {chamber} later put this bill back on its consent calendar."}
     for name, now in (("rule", rule), ("off", N.CONSENT_OFF_NOTE),
@@ -11248,8 +11246,6 @@ def _rows_read_on_the_second_pass(N, B):
         if now != agreed[name]:
             bad.append(f"the consent calendar's {name} note is {now!r}, not the agreed "
                        f"{agreed[name]!r}")
-    if not rule.endswith(N.CC_THEN):
-        bad.append(f"the consent calendar's note no longer ends with the rule: {rule!r}")
     banned = ("then adopts", "passes without", "Ten members", "petition", "nearly so",
               "which is what happened", "debated and voted on separately",
               "passing in a block", "taken up on its own")
@@ -26558,7 +26554,7 @@ def _station_not_named(build_site_v2, segment_markers):
             assert want in named, f"the not-named sitting does not say {want!r}"
         assert "ongoing work" not in named and "not identified" not in named, (
             "the not-named sitting still says the matching is unfinished")
-        assert "ongoing work" in other and "not named" not in other, (
+        assert "Not yet matched" in other and "not named" not in other, (   # trimmed 22 October 2026
             "a sitting whose bill is named lost the words for an opening not found")
     return "ok", "marked only where its recording never names it and no start is drawn; drawn with the new words"
 
@@ -65816,7 +65812,7 @@ if (!fed.includes('aria-label="The feed\'s address"') || !fed.includes('value="'
   fail.push("the feed's address is not in its box: " + fed.slice(0, 400));
 if (!fed.includes('data-copyfeed="1">Copy the address</button>'))
   fail.push("Follow lost Copy the address: " + fed.slice(0, 400));
-if (!fed.includes("<b>By RSS</b>, in any feed reader: ") || !fed.includes("The record is rebuilt once a night"))
+if (!fed.includes("<b>By RSS</b>, in any feed reader: "))   // its second sentence trimmed, 22 October 2026
   fail.push("Follow lost its RSS sentence: " + fed.slice(0, 400));
 // The href is read however it is quoted -- double, single or bare -- since
 // the template is a string and a link back written <a href='...'> is as much
@@ -89205,9 +89201,14 @@ def _elect_pages_words():
     for site in (ws, os_):
         for f in [site / "officials.html", *sorted((site / "town").glob("*.html"))]:
             t = text(f.read_text(encoding="utf-8"))
-            end = "," if f.name == "officials.html" else "."
-            if note + end not in t or "members it elected" in t:
-                bad.append(f"{f.relative_to(site.parent).as_posix()} does not say \"{note}{end}\" "
+            # The Officials map's note is "Choose a district to see who
+            # represents it" since the trims of 22 October 2026; a town's keeps
+            # the approved words.
+            said = ("Choose a district to see who represents it." if f.name == "officials.html"
+                    else note + ".")
+            end = ""
+            if said not in t or "members it elected" in t:
+                bad.append(f"{f.relative_to(site.parent).as_posix()} does not say \"{said}\" "
                            "in its map's note, or still says \"the members it elected\"")
     sec = re.compile(r'<section class="twnsec[^"]*"><h3 class="twnh">(State House|State Senate[^<]*)'
                      r"</h3>(.*?)</section>", re.S)

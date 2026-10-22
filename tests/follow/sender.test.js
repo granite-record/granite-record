@@ -168,7 +168,7 @@ test("a week of dailies from the fixtures: each night once, the ending told, the
     // again (the language sweep, 17 October 2026), and the meeting is said in
     // plain words (the person's approval of the same day).
     assert.match(m[0].text, /October 2, 2026 {2}HB 9901 — Full committee work session set for 10:00 a\.m\., Legislative Office Building 305\n/);
-    assert.match(m[0].text, /updated once a day, overnight/);
+    assert.match(m[0].text, /updates overnight/);
 
     m = await morning("2026-10-06");
     assert.match(m[0].text, /prime sponsor/);

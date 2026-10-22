@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.220
+# GRANITE_VERSION: 2026-09-04.221
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -3815,10 +3815,8 @@ party or committee to find a member.</p>
 </section>
 <section class="ofpart ofmap" aria-labelledby="of-map">
 <h3 id="of-map">The Map</h3>
-<p class="src fill">Each district colored by the party of its sitting
-members, each town by its name, and a city&rsquo;s wards once you zoom in.
-Choose a district to see who sits for it and the towns it holds, each with
-its own page.</p>
+<p class="src fill">Choose a district to see who represents it. Zoom in for
+a city&rsquo;s wards.</p>
 <div class="ofmapbox" id="ofmap"></div>
 <noscript><p class="note">The map needs JavaScript. Every town&rsquo;s districts
 are on its own page, listed in <a href="/directory/towns.html">every town and

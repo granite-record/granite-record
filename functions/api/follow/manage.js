@@ -68,8 +68,8 @@ const NOTICES = {
 // "records" (the database's noun), no "tonight" or "rebuilt" (the build's
 // clock), a date as the site writes one, and "check" where this said "tick",
 // which is British.
-const UPDATED_DAILY = "Granite Record is updated once a day, overnight, so even the daily " +
-  "email reports what had reached the record by early that morning, not what is happening now.";
+const UPDATED_DAILY = "Granite Record updates overnight, so even the daily email covers the " +
+  "record as of that morning.";
 
 // A pause is at most a year ahead; "until I turn it back on" is kept as the
 // last date there is (schema.sql), which the sender reads the same way.

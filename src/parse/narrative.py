@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.113
+# GRANITE_VERSION: 2026-09-04.114
 """
 Turn a bill's docket entries into a plain-language history.
 
@@ -210,10 +210,10 @@ CALENDAR = {
     # every year and both chambers are not on this disk, so the note says
     # only what the record shows of every one of them: the committee decides,
     # and a divided recommendation can still go there.
+    # Trimmed at the person's word (22 October 2026).
     "CC": ("the consent calendar",
-           "A committee decides whether its report goes on the consent "
-           "calendar, and can send it there even when its members divided on "
-           "the recommendation itself." + CC_THEN),
+           "Reports on the consent calendar are adopted together in one vote, "
+           "without debate."),
     "RC": ("the regular calendar", None),
 }
 
@@ -428,8 +428,7 @@ NUANCE = {
     "laid on table": "Laying a bill on the table sets it aside without voting it down. A tabled bill can be taken back up later, but dies at the "
                      "end of the session if it is not.",
     "retained in committee": "A retained bill stays with the committee into the "
-                             "second year of the term. Sometimes that means more work "
-                             "is planned, and sometimes it is a quiet ending.",
+                             "second year of the term.",
     "died on table": "The bill was set aside during the session and never taken back "
                      "up, so it died when the session ended.",
     "indefinitely postponed": "This kills the bill and blocks the same subject "
