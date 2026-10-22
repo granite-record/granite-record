@@ -122,6 +122,17 @@ export function shortDate(day, year = "") {
   return String(y) === String(year).slice(0, 4) ? s : `${s}, ${y}`;
 }
 
+// A BILL'S STATUS AS THE SITE'S CHIP (22 October 2026): its frame -- 3px
+// corners, a 1px edge and a 3px bar -- on the white ground and in the
+// palette's ink alone, which mail clients' dark modes leave readable (the
+// palette test holds every email to both), so the bar is pine for every
+// status rather than the site's colour for each.
+function statusChip(words) {
+  return `<span style="display:inline-block;padding:0 8px;border:1px solid ${RULE};` +
+    `border-left:3px solid ${PINE};border-radius:3px;color:${INK};` +
+    `font-size:13px;line-height:1.6;font-weight:600">${esc(words)}</span>`;
+}
+
 export function dayDate(day) {
   const [y, m, d] = String(day).split("-").map(Number);
   return `${DAYS[new Date(Date.UTC(y, m - 1, d)).getUTCDay()]}, ${MONTHS[m - 1]} ${d}`;
@@ -747,7 +758,7 @@ export function digestEmail({ origin, frequency, date, sections: given, manage, 
       if (s.title) html += `<p style="margin:0 0 6px;color:${INK2};font-size:14px">${esc(s.title)}</p>`;
       if (s.now) {
         text.push(`  Now: ${s.now}`);
-        html += `<p style="margin:0 0 6px;font-size:14px">Now: ${esc(s.now)}</p>`;
+        html += `<p style="margin:2px 0 6px;font-size:14px;color:${INK2}">Now ${statusChip(s.now)}</p>`;
       }
       if ((s.votes || []).length) {
         text.push(`  Roll calls (${s.votes.length}):`);
