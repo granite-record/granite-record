@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.218
+# GRANITE_VERSION: 2026-09-04.219
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -2708,6 +2708,30 @@ YEAR_LINK = (f'<p class="statenote stateyear"><a href="{_year.HREF}">'
              + '</a>: when it sits, and the deadlines a bill must meet.</p>')
 
 
+# THE WEBINAR, ON THE HOME PAGE UNTIL IT IS OVER (the person, 22 October
+# 2026: "put the registration on the homepage ... and remove it after the
+# webinar is over"). It retires the way a member-elect's box does
+# (until_attrs): from WEBINAR_UNTIL, the day after it, components.js hides it
+# by the reader's own date, so a page built before then does not keep it; and
+# a build on or after that day leaves it out.
+WEBINAR_UNTIL = "2026-11-11"
+WEBINAR_URL = "https://zoom.us/meeting/register/SoxLZ-b5TnWYcGPfmVaZDA#/registration"
+
+
+def home_webinar(today=None):
+    """The webinar's box for the home page, or "" once it is over."""
+    today = today or build_date.today().isoformat()
+    if str(today)[:10] >= WEBINAR_UNTIL:
+        return ""
+    return (f'<aside class="webinar" aria-label="Webinar"{until_attrs(WEBINAR_UNTIL, today)}>'
+            '<p class="wbwhen">Free webinar &middot; Tuesday, November 10, 6:30 p.m.</p>'
+            '<p class="wbwhat">How Granite Record works, and how to use it to keep up with '
+            'Concord this session. Hosted by Alice Wade. All are welcome to join, ask '
+            'questions and say which features they would like most.</p>'
+            f'<a class="wbgo" href="{_html.escape(WEBINAR_URL, quote=True)}" target="_blank" rel="noopener">'
+            'Register on Zoom</a></aside>')
+
+
 HOME_JS = """
 <script>
 // The day without its year where the year goes without saying ("Oct 7" in
@@ -3896,6 +3920,7 @@ Senate; and the state&rsquo;s other officials.</p>
 <p class="lead">Keep up with New Hampshire legislation, find bills on the issues you
 care about, learn how the legislature works, and explore the record from 1989 to
 today.</p>
+{home_webinar()}
 <!-- ONE BOX, THE HEADER'S FINDER (D13, the person, 8 October 2026: "one
      search box like the header search: bills, legislators, towns, committees
      and the rest from the same box, with a dropdown of the top results (no
