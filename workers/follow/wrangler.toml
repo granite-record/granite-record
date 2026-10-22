@@ -74,12 +74,12 @@ SEND_LIMIT = "200"
 # a day with the confirmations, before the cron goes every quarter hour or
 # the sends go through Resend's batch endpoint.
 D1_QUERIES_PER_RUN = "900"
-# Milliseconds between emails (22 October 2026): under two requests a
-# second, Resend's default limit for a team, with room for the confirmations
-# the site sends meanwhile. Set it lower only once the Resend dashboard shows
-# this team's limit is higher; a 429 is waited out once (mail.js) and then
-# stops the run.
-SEND_GAP_MS = "600"
+# Milliseconds between emails: at most five a second, half the team's
+# limit, which Resend's dashboard shows as 10 requests a second on Pro (the
+# person, 22 October 2026), so the confirmations the site sends meanwhile
+# have the other half. A 429 is waited out once (mail.js) and then stops
+# the run.
+SEND_GAP_MS = "200"
 
 [env.preview]
 name = "graniterecord-follow-sender-preview"
@@ -103,4 +103,4 @@ MAIL_FROM = "Granite Record <noreply@mail.graniterecord.org>"
 FEEDBACK_URL = "https://forms.gle/PYw9c3xgpDDwvX7E9"
 SEND_LIMIT = "200"
 D1_QUERIES_PER_RUN = "900"
-SEND_GAP_MS = "600"
+SEND_GAP_MS = "200"
