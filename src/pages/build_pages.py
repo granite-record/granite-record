@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.221
+# GRANITE_VERSION: 2026-09-04.222
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -3324,6 +3324,24 @@ def main():
                 dst.write_bytes(b)
                 moved += 1
         n_lic = len([p for p in licensed.iterdir() if p.is_file()]) if licensed.is_dir() else 0
+        # THE EMAILS' COPY OF THE MARK (build_brand.mail_mark): the same ink
+        # on a white tile, which a mail app's dark mode cannot hide. Made
+        # here, from the mark just placed, so the kit carries nothing new.
+        # Pillow is the one thing it needs that the rest of this file does
+        # not; where it is missing the file is not made, and check_site.py
+        # refuses a site with the mark and without its copy.
+        if HEADER_MARK in placed:
+            import build_brand
+            try:
+                b = build_brand.mail_mark(out / HEADER_MARK)
+            except ImportError:
+                b = None
+            dst = out / build_brand.MAIL_MARK
+            if b:
+                placed.add(build_brand.MAIL_MARK)
+                if not dst.exists() or dst.read_bytes() != b:
+                    dst.write_bytes(b)
+                    moved += 1
     # WHAT THIS BUILD HAS, read off what it just placed and not off site/,
     # which is never emptied and may hold a logo from an earlier build.
     missing = [f for f in BRAND_FILES if f not in placed]

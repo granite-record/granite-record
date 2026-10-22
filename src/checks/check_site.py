@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.25
+# GRANITE_VERSION: 2026-09-04.26
 """
 Check the site is fit to publish before uploading it.
 
@@ -619,6 +619,16 @@ def main():
             "project's own build takes them from its kit, and a fork brings "
             "its own -- a mark in brand/ and python3 src/pages/build_brand.py, or files "
             "of those names in assets/ -- and then builds again")
+    # THE EMAILS' MARK (22 October 2026). Every email's header shows
+    # mail-mark.png from this site (workers/follow/mail.js, MARK), and
+    # build_pages.py makes it from mark.png with Pillow; without it every
+    # email would open on a broken image.
+    if (site / "mark.png").is_file() and not (site / "mail-mark.png").is_file():
+        errors.append(
+            "mark.png is in the site and mail-mark.png, the emails' copy of it, "
+            "is not, so every email's header would show a broken image. "
+            "build_pages.py makes it with Pillow (build_brand.mail_mark): "
+            "install Pillow and build again")
 
     # ---- the bill index, and the search index beside it --------------------
     bill_index(site, errors)

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-12.19
+# GRANITE_VERSION: 2026-09-12.20
 """
 Turn the drawn logo and icon into the files a site needs, once.
 
@@ -387,6 +387,57 @@ def write_header_mark(drawing):
     im.save(LICENSED_OUT / HEADER_MARK, optimize=True)
     return (f"{HEADER_MARK} {a.width}x{a.height} (the drawing, {MARK_SCALE}x "
             f"the header's {MARK_BOX[0]}x{MARK_BOX[1]} box)")
+
+
+# THE MARK IN AN EMAIL (22 October 2026). The person asked for the email's
+# logo to be "more readable" and its accessibility checked. mark.png is a
+# mask: black ink on nothing, which the site's stylesheet colours. An email
+# has no stylesheet to colour it, and a mail app in dark mode darkens the
+# ground behind an image but never the image, so the black drawing vanished
+# on a dark screen. So the email gets its own copy: the same ink, in the
+# emails' ink colour, on a white tile with rounded corners. On a white email
+# the tile is invisible; on a dark one it is a small white card with the
+# drawing on it. It is drawn at the site header's 33x56 box (the email had
+# shrunk it to 26x44), plus MAIL_PAD on every side, at MARK_SCALE.
+#
+# build_pages.py makes it from mark.png wherever it places mark.png, so it
+# needs nothing in the kit; workers/follow/mail.js names it (MARK there).
+MAIL_MARK = "mail-mark.png"
+MAIL_INK = (0x1C, 0x21, 0x26)   # mail.js PALETTE.ink
+MAIL_PAD = 4                    # CSS pixels around the drawing
+MAIL_RADIUS = 8                 # CSS pixels, the tile's corners
+
+
+def mail_mark(path):
+    """The email's mark as PNG bytes, from the header's mark at `path`, or
+    None where that file has no ink."""
+    import io
+    from PIL import Image, ImageDraw
+    im = Image.open(path).convert("RGBA")
+    a = im.getchannel("A")
+    if a.getextrema()[0] == 255:       # opaque: the ink is what is dark
+        a = im.convert("L").point(lambda v: 255 - v)
+    box = a.getbbox()
+    if not box:
+        return None
+    a = a.crop(box)
+    s = MARK_SCALE
+    bw, bh = MARK_BOX[0] * s, MARK_BOX[1] * s
+    k = min(bw / a.width, bh / a.height)
+    a = a.resize((max(1, round(a.width * k)), max(1, round(a.height * k))), Image.LANCZOS)
+    W, H = bw + 2 * MAIL_PAD * s, bh + 2 * MAIL_PAD * s
+    # The tile's corners drawn four times over and brought down, so they are
+    # smooth rather than stepped.
+    big = Image.new("L", (W * 4, H * 4), 0)
+    ImageDraw.Draw(big).rounded_rectangle((0, 0, W * 4 - 1, H * 4 - 1),
+                                          radius=MAIL_RADIUS * s * 4, fill=255)
+    tile = Image.new("RGBA", (W, H), (255, 255, 255, 0))
+    tile.putalpha(big.resize((W, H), Image.LANCZOS))
+    ink = Image.new("RGBA", a.size, MAIL_INK + (255,))
+    tile.paste(ink, ((W - a.width) // 2, (H - a.height) // 2), a)
+    buf = io.BytesIO()
+    tile.save(buf, format="PNG", optimize=True)
+    return buf.getvalue()
 
 
 def write_licensed():

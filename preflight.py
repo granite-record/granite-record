@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.638
+# GRANITE_VERSION: 2026-09-04.640
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -31864,6 +31864,15 @@ def _links_resolve():
             "same name in the site")
         assert (site / BP.HEADER_MARK).is_file(), (
             f"assets/licensed/{BP.HEADER_MARK} was not put in the site")
+        # The emails' copy, made from it (build_brand.mail_mark, 22 October
+        # 2026): every email's header shows it, at the size mail.js gives it.
+        mm = (site / "mail-mark.png").read_bytes() if (site / "mail-mark.png").is_file() else b""
+        assert mm[:8] == b"\x89PNG\r\n\x1a\n", (
+            "with the header mark placed, the build made no mail-mark.png, the "
+            "emails' copy of it: every email would open on a broken image")
+        import struct as _st
+        assert _st.unpack(">II", mm[16:24]) == (123, 192), (
+            "mail-mark.png is not 41x64 at three times, the size mail.js draws it at")
         assert (site / "app.css").read_bytes() == (here / "src/pages/app.css").read_bytes(), (
             "with the header mark placed, site/app.css is not app.css as it is")
         for css in ("style.css", "app.css"):
@@ -36211,6 +36220,39 @@ def _follow_lsr_endings(FC):
     told = out["nights"]["2026-12-10"]["ended"]["lsr:2027-0001"]
     assert told["becomes"] == "bill:2027/HB45" and counts["ended"] == 1, told
     return "ok", "drafted names its bill, withdrawn ends, and the night's file carries becomes"
+
+
+@check("frontend", "an email sends a reader to the same testimony forms as a bill's page, and colours "
+       "a bill's status as the site does")
+def _follow_mail_matches_site():
+    """The person, 22 October 2026: bill emails should have "similar elements to
+    what's on the bill pages with ... color coded indicators", and testimony
+    "with a similar button ... just like it shows on the bill page version".
+    mail.js holds its own copies, since a Worker reads no site file: the two
+    chambers' forms (app.js TESTIFY_FORMS), the word each status chip is
+    coloured by (chips.json "chip") and the light theme's status inks (app.css
+    --st-*). A change to the site's that misses the email's fails here."""
+    mail = Path("workers/follow/mail.js").read_text(encoding="utf-8")
+    app = Path("src/pages/app.js").read_text(encoding="utf-8")
+    form = r'([HS]):\s*\["(House|Senate)",\s*"(https://[^"]+)"\]'
+    site = re.findall(form, app[app.index("const TESTIFY_FORMS="):][:300])
+    sent = re.findall(form, mail[mail.index("export const TESTIFY_FORMS"):][:300])
+    assert len(site) == 2 and sorted(site) == sorted(sent), (
+        f"the emails' testimony forms {sent} are not the bill page's {site}")
+    chips = json.loads(Path("src/pages/words/chips.json").read_text(encoding="utf-8"))["chip"]
+    m = re.search(r"export const STATUS_CLASS = \{([^}]*)\}", mail)
+    said = dict(re.findall(r'"?([A-Z][A-Za-z ]+?)"?: "(\w+)"', m.group(1))) if m else {}
+    assert said == {w: c.removeprefix("s-") for w, c in chips.items()}, (
+        f"mail.js STATUS_CLASS {said} is not chips.json's chip map {chips}")
+    css = Path("src/pages/app.css").read_text(encoding="utf-8")
+    light = dict(re.findall(r"--st-(\w+):(#[0-9A-Fa-f]{6});", css[:css.index("@media")]))
+    m = re.search(r"export const STATUS_INK = \{([^}]*)\}", mail)
+    inks = dict(re.findall(r'(\w+): "(#[0-9A-Fa-f]{6})"', m.group(1))) if m else {}
+    want = {k: v.upper() for k, v in light.items() if not k.endswith("-bg") and k in inks}
+    assert inks and {k: v.upper() for k, v in inks.items()} == want and \
+        set(inks) == {"active"} | set(said.values()), (
+        f"mail.js STATUS_INK {inks} is not app.css's light --st-* inks {light}")
+    return "ok", f"{len(site)} forms and {len(inks)} status inks, the site's"
 
 
 @check("build", "the changes files mark milestones, set a ballot beside its roll call, and let a "
@@ -43443,6 +43485,17 @@ def _header_mark():
     assert BB.HEADER_MARK == BP.HEADER_MARK and BB.MARK_SCALE >= 2, (
         "build_brand.py writes the mark under another name than build_pages.py "
         "places, or at less than twice its box")
+    # THE EMAILS' MARK (22 October 2026): mail.js names the file and its
+    # size, build_brand.py draws it; the two agree, or every email's header
+    # is a broken or stretched image.
+    mail = Path("workers/follow/mail.js").read_text(encoding="utf-8")
+    mk = re.search(r'export const MARK = \{ path: "/([^"]+)", width: (\d+), height: (\d+), alt: "" \}', mail)
+    side = (BB.MARK_BOX[0] + 2 * BB.MAIL_PAD, BB.MARK_BOX[1] + 2 * BB.MAIL_PAD)
+    assert mk and mk.group(1) == BB.MAIL_MARK and (int(mk.group(2)), int(mk.group(3))) == side, (
+        f"mail.js's MARK is not /{BB.MAIL_MARK} at {side[0]}x{side[1]} with an empty alt, "
+        "which is what build_brand.mail_mark draws")
+    assert "#%02X%02X%02X" % BB.MAIL_INK in mail, (
+        "the emails' mark is not drawn in mail.js's ink colour")
     strip = re.search(r"@media \(min-width:([\d.]+)em\)\{\s*nav\.top \.in\{position:relative\}",
                       css)
     assert strip, "app.css no longer takes the tab strip out of the flow at a min-width"

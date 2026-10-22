@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-11.19
+# GRANITE_VERSION: 2026-10-11.20
 """
 The how-to guides: their words, their sources, and what each was checked
 against. Read by build_civics.py, which draws them on the Resources hub's
@@ -1607,12 +1607,12 @@ CONTACT = guide(
     "and a call, and writing a message a legislator can act on.",
     "You have one state senator and one or more state representatives, set by the town or "
     "city ward you live in. Find them by your town here: each member&rsquo;s page gives the "
-    "email address and phone number they list with the General Court. Say where you live, "
+    "email address they list with the General Court. Say where you live, "
     "name the bill by its number, say how you want them to vote, and send it before the "
     "vote.",
     [box("Find who represents your town: one senator, and one or more representatives."),
-     box("Choose email or a call. Senators list an office in Concord; most representatives list "
-         "an email address."),
+     box("Choose email or a call. Nearly every member lists an email address; the General "
+         "Court&rsquo;s member list carries the phone numbers they give it."),
      box("Say where you live, name the bill, and say how you want them to vote, before the vote.")],
     [step("Find who represents you",
           "<p>Every town and city ward is in one of 24 Senate districts, each electing one "
@@ -1624,10 +1624,11 @@ CONTACT = guide(
           actions=[("Find your town", "/officials.html#my-town")],
           law=["RSA 662:3", "RSA 662:5"]),
      step("Find how to reach them",
-          "<p>A member&rsquo;s page here, and your town&rsquo;s page, give the email address and "
-          "phone number the member lists with the General Court. Senators list an office in "
-          "Concord with its phone number. Most representatives list an email address, and many "
-          "a phone number. To write to every member of a committee at once, use the button on "
+          "<p>A member&rsquo;s page here, and your town&rsquo;s page, give the email address the "
+          "member lists with the General Court, which nearly every member does. This site does "
+          "not repeat members&rsquo; phone numbers, because many are personal ones; the General "
+          "Court&rsquo;s own member list carries the numbers they give it, and senators list an "
+          "office in Concord. To write to every member of a committee at once, use the button on "
           "the committee&rsquo;s page.</p>",
           actions=[("Committees", "/committees.html")]),
      step("Choose email or a call",
@@ -1660,8 +1661,8 @@ CONTACT = guide(
      ours("A floterial district is laid over two or more House districts and elects additional "
           "members; a town's page and the town finder name its districts and members; committee "
           "pages have a button that emails all their members.", "/guides/your-representatives.html", READ),
-     ours("My Town shows who represents a town; a member's page and a town's page give the email and "
-          "phone the member lists.", "/officials.html", READ),
+     ours("My Town shows who represents a town; a member's page and a town's page give the email the "
+          "member lists.", "/officials.html", READ),
      record("The General Court's member list carries each member's address, phone and email. Read on "
             "October 17, 2026: every senator a State House or State House Annex office and phone; "
             "of the 366 sitting representatives (the 18 rows marked Former left out), 364 an email "

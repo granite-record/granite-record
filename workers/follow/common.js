@@ -34,6 +34,14 @@ export function refOk(kind, ref) {
 
 export const keyOf = (kind, ref) => `${kind}:${ref}`;
 
+// The chamber a committee sits in, from its label as current.json gives it
+// ("House Education Committee"): "H", "S", or "" for a joint committee or
+// none, which no one chamber's form serves.
+export const chamberOf = committee => {
+  const m = /^(House|Senate)\b/.exec(String(committee || ""));
+  return m ? m[1][0] : "";
+};
+
 export function parseKey(k) {
   const s = String(k ?? "");
   const i = s.indexOf(":");

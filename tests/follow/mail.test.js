@@ -11,9 +11,9 @@ import { readFileSync } from "node:fs";
 import vm from "node:vm";
 import { checkCurrent, checkNight } from "../../workers/follow/changes.js";
 import { parseKey } from "../../workers/follow/common.js";
-import { MARK, PALETTE, ballotWords, confirmationEmail, dateOnce, dayDate, digestEmail, longDate,
+import { MARK, PALETTE, STATUS_INK, TESTIFY_FORMS, ballotWords, confirmationEmail, dateOnce, dayDate, digestEmail, longDate,
          meetingWords, newLinkEmail, pageNames, shortDate, welcomeEmail } from "../../workers/follow/mail.js";
-import { collect } from "../../workers/follow/sender.js";
+import { collect, testifyFor } from "../../workers/follow/sender.js";
 import { SITE, loadFixtures } from "./fakes.js";
 
 const FX = loadFixtures();
@@ -50,25 +50,69 @@ function everyEmail() {
 function visible(html) {
   return html.replace(/<head>[\s\S]*?<\/head>/, "").replace(/<div style="display:none[\s\S]*?<\/div>/, "")
     .replace(/<!--[\s\S]*?-->/g, "")
-    .replace(/<(?:br|\/p|\/li|\/td|\/h2|\/h3|\/tr)\b[^>]*>/g, "\n").replace(/<[^>]+>/g, "")
+    .replace(/<(?:br|\/p|\/li|\/td|\/h1|\/h2|\/h3|\/tr)\b[^>]*>/g, "\n").replace(/<[^>]+>/g, "")
     .replace(/&#39;/g, "'").replace(/&quot;/g, '"').replace(/&lt;/g, "<").replace(/&gt;/g, ">")
     .replace(/&amp;/g, "&").replace(/[ \t]+/g, " ");
 }
 const unlinked = html => visible(html.replace(/<a\b[^>]*>[\s\S]*?<\/a>/g, " "));
 
 // ---- the header ---------------------------------------------------------------------------
-test("every email opens with the site's header: the mark beside the name, sized, with alt text", () => {
-  assert.deepEqual([MARK.width, MARK.height], [26, 44], "the site header's proportions, 99 by 168");
+test("every email opens with the site's header: the mark beside the name, at the site's size", () => {
+  // The drawing in the site header's 33x56 box, with 4px of white tile
+  // around it (build_brand.mail_mark), so dark mode cannot hide it.
+  assert.deepEqual([MARK.width, MARK.height], [41, 64], "the site header's 33 by 56, and the tile's 4px");
+  assert.equal(MARK.path, "/mail-mark.png", "the emails' own copy, on its white tile, not the site's mask");
   for (const [name, m] of Object.entries(everyEmail())) {
-    const head = new RegExp(`<img src="${SITE.replace(/\./g, "\\.")}/mark\\.png" width="26" height="44" ` +
-      `alt="Granite Record logo" style="[^"]*width:26px;height:44px;[^"]*"></a></td>` +
+    const head = new RegExp(`<td valign="middle" style="[^"]*"><img src="${SITE.replace(/\./g, "\\.")}/mail-mark\\.png" ` +
+      `width="41" height="64" alt="" style="[^"]*width:41px;height:64px[^"]*"></td>` +
       `<td valign="middle" style="[^"]*font-size:22px[^"]*"><a href="${SITE.replace(/\./g, "\\.")}/" ` +
       `[^>]*>Granite Record</a></td></tr></table>`);
     assert.match(m.html, head, `${name}: the mark and the name side by side, as the site's header`);
-    assert.ok(m.html.indexOf("mark.png") < m.html.indexOf("</td></tr><tr>"), `${name}: before anything else`);
+    assert.ok(m.html.indexOf("mail-mark.png") < m.html.indexOf("</td></tr><tr>"), `${name}: before anything else`);
     assert.doesNotMatch(m.html, /\.svg/, `${name}: Gmail shows no SVG`);
     assert.doesNotMatch(m.html, /letter-spacing:\.06em;text-transform:uppercase[^>]*>Granite Record</,
       `${name}: the old small-capitals line is gone`);
+  }
+});
+
+// ---- accessibility (22 October 2026) ----------------------------------------------------------
+// What a screen reader and a reader who enlarges nothing meet in every email.
+test("every email can be read without seeing it, and without small type", () => {
+  for (const [name, m] of Object.entries(everyEmail())) {
+    const h = m.html;
+    assert.match(h, /^<!doctype html><html lang="en">/, `${name}: says its language`);
+    assert.ok(h.includes(`<title>${m.subject.replace(/&/g, "&amp;").replace(/'/g, "&#39;")
+      .replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;")}</title>`),
+      `${name}: its title is its subject`);
+    for (const img of h.match(/<img\b[^>]*>/g) || []) {
+      assert.match(img, /\salt="[^"]*"/, `${name}: an image with no alt: ${img}`);
+    }
+    // A link a screen reader can name: words in it, or an image that has some.
+    for (const [, inner] of h.matchAll(/<a\b[^>]*>([\s\S]*?)<\/a>/g)) {
+      const words = inner.replace(/<img\b[^>]*\balt="([^"]*)"[^>]*>/g, " $1 ").replace(/<[^>]+>/g, "").trim();
+      assert.ok(words, `${name}: a link with nothing to read: ${inner.slice(0, 80)}`);
+    }
+    // Nothing a reader sees is set under 14px; the hidden preheader is not seen.
+    const seen = h.replace(/<div style="display:none[\s\S]*?<\/div>/, "");
+    for (const [, px] of seen.matchAll(/font-size:(\d+)px/g)) {
+      assert.ok(Number(px) >= 14, `${name}: ${px}px type`);
+    }
+    // Headings in order: at most one h1, and no level skipped below it.
+    const levels = [...h.matchAll(/<h([1-6])\b/g)].map(x => Number(x[1]));
+    assert.ok(levels.filter(l => l === 1).length <= 1, `${name}: more than one h1`);
+    levels.forEach((l, i) => assert.ok(l <= (i ? levels[i - 1] : 1) + 1,
+      `${name}: an h${l} after ${i ? `an h${levels[i - 1]}` : "nothing"}`));
+    // Every layout table says it is one, so a screen reader does not read it as data.
+    for (const t of h.match(/<table\b[^>]*>/g) || []) {
+      assert.match(t, /role="presentation"/, `${name}: a table without role="presentation"`);
+    }
+  }
+});
+
+test("a daily or weekly's day is its one heading of its own, above the sections", () => {
+  for (const [name, m] of Object.entries(everyEmail())) {
+    if (!["daily", "weekly"].includes(name)) continue;
+    assert.match(m.html, /<h1 style="[^"]*">(Daily|Weekly) update — [^<]+<\/h1>/, `${name}: the day is the h1`);
   }
 });
 
@@ -357,5 +401,87 @@ test("the plain text says what the HTML says", () => {
     }
     assert.ok(dated >= 3, "the dated entries were compared");
     assert.ok(v.includes(m.text.split("\n")[0]), "the dateline");
+  }
+});
+
+// ---- testifying (22 October 2026) -----------------------------------------------------------
+// The person: "emails include updates for when testimony has opened for a
+// certain bill and when it closes, with a similar button to click to go
+// straight to the testify page", and, asked when it closes, "both": the day
+// before the hearing and the morning of it.
+test("a bill's testimony is told when its hearing is set, the day before it and the day of it", () => {
+  const up = CURRENT.upcoming.get("bill:2026/HB9903");
+  const set = { meeting: { what: "public hearing", date: "2026-10-14" } };
+  const phase = (...a) => testifyFor(...a)?.phase ?? null;
+  assert.equal(phase("bill", up, [set], "daily", "2026-10-10"), "open", "the night it was set");
+  assert.equal(phase("bill", up, [], "daily", "2026-10-10"), null, "days away and nothing new: nothing");
+  assert.equal(phase("bill", up, [], "daily", "2026-10-13"), "eve");
+  assert.equal(phase("bill", up, [set], "daily", "2026-10-13"), "eve", "set the day before: one block, the closing one");
+  assert.equal(phase("bill", up, [], "daily", "2026-10-14"), "day");
+  assert.equal(phase("bill", up, [], "daily", "2026-10-15"), null, "after the hearing");
+  assert.equal(phase("bill", up, [], "weekly", "2026-10-13"), null, "a weekly has it in its week ahead");
+  assert.equal(phase("bill", up, [set], "weekly", "2026-10-10"), "open");
+  assert.equal(phase("topic", up, [set], "daily", "2026-10-10"), null, "a bill's own follower only");
+  assert.equal(phase("bill", up.map(u => ({ ...u, committee: "Joint Example Committee" })), [], "daily",
+    "2026-10-14"), null, "no one chamber's form serves a joint committee");
+  assert.equal(phase("bill", up, [{ meeting: { ...set.meeting, state: "cancelled" } }], "daily", "2026-10-10"),
+    null, "a cancelled hearing opens nothing");
+  assert.equal(phase("bill", up.map(u => ({ ...u, what: "executive session" })), [], "daily", "2026-10-14"),
+    null, "only a public hearing takes testimony");
+  assert.deepEqual(testifyFor("bill", up, [], "daily", "2026-10-14"), { phase: "day", chamber: "H",
+    date: "2026-10-14", time: "10:00", committee: "House Example Committee", venue: "Legislative Office Building 305" });
+});
+
+// A daily on the day before and the day of the hearing, with nothing else new.
+function onDay(today) {
+  const follows = [{ ...parseKey("bill:2026/HB9903"), fh: "x" }];
+  const sections = collect({ follows, nights: [], cursor: {}, current: CURRENT, frequency: "daily", today });
+  return digestEmail({ origin: SITE, frequency: "daily", date: today, sections, names: pageNames(CURRENT), ...LINKS });
+}
+
+test("the day before and the day of a hearing, the daily says how to testify and leads with it", () => {
+  const label = CURRENT.followable.get("bill:2026/HB9903").label;
+  const [house, url] = TESTIFY_FORMS.H;
+  const eve = onDay("2026-10-13"), day = onDay("2026-10-14");
+  assert.equal(eve.subject, `Online testimony on ${label} closes after tomorrow\u2019s hearing`);
+  assert.equal(day.subject, `Last day to testify online on ${label}`);
+  for (const [m, when, close] of [[eve, "tomorrow, Wednesday, October 14", "at the end of that day"],
+                                  [day, "today", "tonight"]]) {
+    const words = visible(m.html);
+    assert.ok(words.includes(`${label}\u2019s public hearing is ${when} at 10:00 a.m., before the House ` +
+      "Example Committee, Legislative Office Building 305."), words);
+    assert.ok(words.includes(`closes at midnight ${close}`), "when the sign-in closes");
+    assert.ok(words.includes("sign in for or against the bill and submit written testimony"), "what the House form takes");
+    // The button: the chamber's own form, as a pine button.
+    assert.match(m.html, new RegExp(`<td bgcolor="${PALETTE.pine}"[^>]*><a href="${url.replace(/[.?]/g, "\\$&")}"` +
+      `[^>]*>${house} online testimony</a>`));
+    // What to choose on it, since no form opens at a bill.
+    assert.ok(words.includes("On the form, choose the hearing\u2019s date, Wednesday, October 14; then the " +
+      `committee, House Example Committee; then the bill, ${label}.`), "the steps");
+    assert.ok(m.text.includes(`${house} online testimony: ${url}`), "the plain text carries the form too");
+  }
+});
+
+test("the night a hearing is set, the daily says testimony is open; the weekly puts the form in its week ahead", () => {
+  const daily = digest("daily", "2026-10-02");
+  assert.ok(visible(daily.html).includes("Online testimony is open"), "open, the night it was set");
+  assert.ok(visible(daily.html).includes("Until midnight that day, anyone may sign in"));
+  const weekly = digest("weekly");
+  assert.doesNotMatch(weekly.html, /Online testimony is open/, "the weekly says it once, in its week ahead");
+  const ahead = weekly.html.slice(weekly.html.indexOf(">Coming up<"));
+  assert.ok(ahead.includes(TESTIFY_FORMS.H[1]), "the House form beside the public hearing");
+  assert.match(visible(ahead), /On the form, choose Wednesday, October 14, then the House Example Committee, then HB 9903[^.]*\. Open until midnight that day\./);
+  assert.ok(!/Tuesday, October 13[^\n]*\n[^\n]*online testimony/.test(visible(ahead)), "not beside an executive session");
+});
+
+test("a bill's status chip is coloured as the site colours it, on a bar, its word dark", () => {
+  const ink = words => STATUS_INK[{ "Became Law": "law", Died: "done", "Interim Study": "study", Tabled: "table",
+    Vetoed: "veto", Withdrawn: "done" }[words] || "active"];
+  for (const now of ["Became Law", "Died", "Interim Study", "Tabled", "Vetoed", "Withdrawn", "In Committee"]) {
+    const m = digestEmail({ origin: SITE, frequency: "daily", date: TODAY, names: pageNames(CURRENT), ...LINKS,
+      sections: [{ key: "bill:2026/HB9901", kind: "bill", ref: "2026/HB9901", label: "HB 9901", title: "", now,
+        url: "/bill/2026/hb9901", more: 0, votes: [], study: null, ended: null, week: null, upcoming: [],
+        items: [{ guid: "g", date: TODAY, kind: "action", summary: "HB 9901 — Introduced" }] }] });
+    assert.match(m.html, new RegExp(`border-left:4px solid ${ink(now)};[^"]*color:${PALETTE.ink};[^"]*">${now}</span>`), now);
   }
 });

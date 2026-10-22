@@ -45,7 +45,7 @@
  */
 
 import { ConfigError, linksFor, openAddress, openFollow, sealFollow } from "./address.js";
-import { addDays, errName, fallbackLabel, keyOf, nhClock, note, parseKey } from "./common.js";
+import { addDays, chamberOf, errName, fallbackLabel, keyOf, nhClock, note, parseKey } from "./common.js";
 import { readCurrent, readNight } from "./changes.js";
 import { digestEmail, pageNames, sendMail } from "./mail.js";
 import { forget, purge } from "./store.js";
@@ -141,6 +141,35 @@ const STOPPED = {
   committee: "is no longer among the committees on the record.",
 };
 
+// TESTIFY ON A BILL (the person, 22 October 2026: "emails include updates for
+// when testimony has opened for a certain bill and when it closes, with a
+// similar button to click to go straight to the testify page"). Each
+// chamber's online sign-in opens for a bill when its public hearing is
+// scheduled and closes at midnight at the end of the hearing's day (the
+// Senate's guidance; the House's form in practice: guides.py, TESTIFY). So a
+// bill a reader follows says so three times, the person chose: when the
+// hearing is newly scheduled ("open", the night's own news), and, to a daily
+// reader, the morning before the hearing ("eve") and the morning of it
+// ("day"), whether or not anything else is new. A weekly reader has it in the
+// week ahead. The hearing is current.json's -- what is still scheduled as of
+// last night -- and a hearing whose committee names no chamber has no form to
+// send anyone to, so it is not said.
+const PUBLIC_HEARING = /^public hearing$/i;
+export function testifyFor(kind, upcoming, items, frequency, today) {
+  if (kind !== "bill") return null;
+  const next = (upcoming || [])
+    .filter(u => PUBLIC_HEARING.test(u.what || "") && u.date >= today && chamberOf(u.committee))
+    .sort((a, b) => (a.date + (a.time || "")).localeCompare(b.date + (b.time || "")))[0];
+  if (!next) return null;
+  const daily = frequency !== "weekly";
+  const phase = daily && next.date === today ? "day"
+    : daily && next.date === addDays(today, 1) ? "eve"
+    : items.some(it => it.meeting && PUBLIC_HEARING.test(it.meeting.what || "") &&
+        it.meeting.date === next.date && it.meeting.state !== "cancelled") ? "open" : "";
+  return phase ? { phase, chamber: chamberOf(next.committee), date: next.date,
+                   time: next.time || "", committee: next.committee, venue: next.venue || "" } : null;
+}
+
 // nights: the nights read, oldest first. cursor: { date, built } of the newest
 // night already sent to this subscriber. follows: [{ kind, ref, fh }]. detail:
 // "all", or "milestones" for the items CHANGES_FORMAT.md marks so. Returns one
@@ -196,10 +225,11 @@ export function collect({ follows, nights, cursor, current, frequency, today, de
       : null;
     const upcoming = frequency === "weekly"
       ? (current.upcoming.get(key) || []).filter(u => u.date >= today).slice(0, 5) : [];
-    if (!items.length && !study && !ended && !upcoming.length) continue;
+    const testify = testifyFor(f.kind, current.upcoming.get(key), items, frequency, today);
+    if (!items.length && !study && !ended && !upcoming.length && !testify) continue;
     sections.push({ key, kind: f.kind, ref: f.ref, fh: f.fh, label, title: meta?.title || "",
       now: meta?.now || "", url: meta?.url || "", items: shown, votes,
-      more: items.length - shown.length - votes.length, study, ended, week, upcoming });
+      more: items.length - shown.length - votes.length, study, ended, week, upcoming, testify });
   }
   return sections;
 }

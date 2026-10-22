@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.225
+// GRANITE_VERSION: 2026-09-07.226
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -4007,7 +4007,13 @@ function sittingTerm(now){
   const first=y%2?y:(m===12?y+1:y-1);
   return `${first}-${first+1}`;
 }
-function testifyBox(d){
+// WHAT TO CHOOSE ON THE FORM (the person, 22 October 2026, asking the emails
+// for "instructions on how to select the bill"): neither form opens at a
+// bill, so the box says what to pick, in the order the Senate's guidance
+// gives -- the hearing's day, then the committee, then the bill -- which the
+// House's form asks for too. workers/follow/mail.js testifyWords says it the
+// same way in the emails.
+function testifyBox(d,b){
   if(!d||!d.term)return "";
   const now=new Date();
   if(d.term!==sittingTerm(now))return "";
@@ -4024,7 +4030,12 @@ function testifyBox(d){
       in online to register support or opposition and submit written testimony, or come
       and ask to speak.</p>
       <p><a class="tgo" href="${esc(url)}" target="_blank" rel="noopener">${esc(house)} online
-      testimony</a></p></div>`,"testify");
+      testimony</a></p>
+      <p class="tsteps">On the form, choose the hearing&rsquo;s date, ${esc(dateWords(next.when,"long"))};
+      then the committee${next.committee?`, ${esc(next.committee)}`:""}; then the bill${
+        b&&b.n?`, ${esc(b.n)}`:""}. The online sign-in closes at midnight at the end of the
+      hearing&rsquo;s day.${next.body==="S"?" The page that confirms your sign-in says how to send"
+        +" written testimony.":""}</p></div>`,"testify");
   }
   const last=heard.sort((a,b)=>b.when.localeCompare(a.when))[0];
   const why=last
@@ -4045,7 +4056,7 @@ function renderSummary(b,d,rsa){
   if(an)S.push(section("Official Legislative Analysis",
     `<div class="anbox" data-an="1"><div class="antext">${rsa?rsa(esc(an)):esc(an)}</div></div>
      <p class="src">Source: ${gcSource(d)}</p>${rsaLine(d)}`,"analysis"));
-  const tb=testifyBox(d);
+  const tb=testifyBox(d,b);
   if(tb)S.push(tb);
   const jl=journeyList(b,d);
   if(jl)S.push(section("How It Got Here",jl+(an?"":`<p class="src">Source: ${gcSource(d)}</p>${rsaLine(d)}`),"journey"));

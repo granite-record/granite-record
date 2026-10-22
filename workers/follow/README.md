@@ -26,6 +26,20 @@ up to last night's build. Nothing here implies real time.
 
 A digest can be rendered without sending it: `node tests/follow/preview_digest.js [--weekly] [--follow kind:ref ...] [--site URL | --dir site]` reads a site's real `/changes/` files and writes the email's HTML and text, through the sender's own `collect()` and `digestEmail()`, to `preview-mail/`. No database, no Resend, no address. It sits beside the tests because it prints, and nothing in the Worker may.
 
+**Testifying on a bill** (22 October 2026). A bill a reader follows tells them
+when its public hearing is set, which is when online testimony opens, and, to
+a daily reader, the morning before the hearing and the morning of it, since
+the sign-in closes at midnight at the end of the hearing's day. Each says it
+with the chamber's form as a button and what to choose on it, the hearing's
+date, the committee and the bill (`sender.testifyFor`, `mail.testifyWords`); a
+weekly reader has the same beside the hearing in the week ahead.
+
+**The logo** at the top of every email is `/mail-mark.png`: the site
+header's drawing on a white tile, so a mail app's dark mode cannot hide it.
+The site build makes it from `mark.png` (`build_brand.mail_mark`), so it is
+on every deployment that has the mark, and `check_site.py` refuses one
+without it.
+
 And under `functions/api/follow/`, Pages Functions on the site's own origin:
 
 | Address | What it does |

@@ -27,7 +27,7 @@
  */
 
 import { ConfigError } from "./address.js";
-import { addDays, esc, oneLine, parseKey, siteUrl } from "./common.js";
+import { addDays, chamberOf, esc, oneLine, parseKey, siteUrl } from "./common.js";
 
 const RESEND = "https://api.resend.com/emails";
 
@@ -123,14 +123,27 @@ export function shortDate(day, year = "") {
 }
 
 // A BILL'S STATUS AS THE SITE'S CHIP (22 October 2026): its frame -- 3px
-// corners, a 1px edge and a 3px bar -- on the white ground and in the
-// palette's ink alone, which mail clients' dark modes leave readable (the
-// palette test holds every email to both), so the bar is pine for every
-// status rather than the site's colour for each.
+// corners, a 1px edge and a 3px bar -- on the white ground, the word in the
+// palette's ink, which mail clients' dark modes leave readable (the palette
+// test holds every email to both).
+//
+// THE BAR IN THE STATUS'S OWN COLOUR (the person, 22 October 2026: "similar
+// elements to what's on the bill pages with ... color coded indicators").
+// The site colours a chip by its word (chips.json "chip": Became Law green,
+// Died red, Interim Study orange, ...; anything else is a bill still moving,
+// blue); the email colours the bar alone, in the site's light-theme inks
+// (app.css --st-*), and keeps the word dark, so the colour adds to the word
+// and is never the only thing that says it. preflight holds both tables to
+// the site's.
+export const STATUS_CLASS = { "Became Law": "law", "Died": "done", "Interim Study": "study",
+  "Tabled": "table", "Vetoed": "veto", "Withdrawn": "done" };
+export const STATUS_INK = { active: "#566290", law: "#1E5B3C", done: "#9E2B25", study: "#B9420B",
+  table: "#7A5A00", veto: "#7C2D3A" };
+export const statusInk = words => STATUS_INK[STATUS_CLASS[String(words || "").trim()] || "active"];
 function statusChip(words) {
   return `<span style="display:inline-block;padding:0 8px;border:1px solid ${RULE};` +
-    `border-left:3px solid ${PINE};border-radius:3px;color:${INK};` +
-    `font-size:13px;line-height:1.6;font-weight:600">${esc(words)}</span>`;
+    `border-left:4px solid ${statusInk(words)};border-radius:3px;color:${INK};` +
+    `font-size:14px;line-height:1.6;font-weight:600">${esc(words)}</span>`;
 }
 
 export function dayDate(day) {
@@ -190,18 +203,31 @@ const BRAND = "'Source Serif 4',Georgia,'Times New Roman',serif";
 const P = "margin:0 0 12px";
 
 // The site's header in an email. The logo mark beside the name, as the site
-// header sets them (the person, 17 October 2026). The mark is the PNG the
-// site serves, since Gmail shows no SVG, at the site header's proportions;
-// its width and height are fixed, so with images blocked its box keeps its
-// size and the name beside it, which is text, still reads.
-export const MARK = { path: "/mark.png", width: 26, height: 44, alt: "Granite Record logo" };
+// header sets them (the person, 17 October 2026). The mark is a PNG, since
+// Gmail shows no SVG; its width and height are fixed, so with images blocked
+// its box keeps its size and the name beside it, which is text, still reads.
+//
+// READABLE, AND IN DARK MODE TOO (the person, 22 October 2026: "scale the
+// logo better ... so it's more readable and verify accessibility"). It was
+// the site's own mark.png at 26x44: smaller than the site's 33x56, and a
+// mask -- black ink on nothing -- which a mail app's dark mode darkens the
+// ground behind and so hides. mail-mark.png is the same drawing at the
+// site's size, in the emails' ink, on a white tile with rounded corners
+// (build_brand.mail_mark, 4px around the 33x56 drawing): unseen on a white
+// email, a small white card on a dark one.
+//
+// ONE LINK, ONE NAME. The drawing is decoration beside the name, so its alt
+// is empty and it is not a link: it used to be both, and a screen reader
+// read "Granite Record logo, link" and then "Granite Record, link", two
+// stops to the same page. The name is the link.
+export const MARK = { path: "/mail-mark.png", width: 41, height: 64, alt: "" };
 function masthead(origin) {
   const home = esc(siteUrl(origin, "/"));
   return `<table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>` +
-    `<td valign="middle" style="padding:0 10px 0 0"><a href="${home}" style="text-decoration:none">` +
+    `<td valign="middle" style="padding:0 8px 0 0">` +
     `<img src="${esc(siteUrl(origin, MARK.path))}" width="${MARK.width}" height="${MARK.height}" ` +
     `alt="${esc(MARK.alt)}" style="display:block;border:0;outline:none;width:${MARK.width}px;` +
-    `height:${MARK.height}px;font-family:${SERIF};font-size:10px;line-height:12px;color:${INK2}"></a></td>` +
+    `height:${MARK.height}px"></td>` +
     `<td valign="middle" style="font-family:${BRAND};font-size:22px;line-height:1.1;font-weight:600;` +
     `color:${INK}"><a href="${home}" style="color:${INK};text-decoration:none">Granite Record</a>` +
     `</td></tr></table>`;
@@ -210,11 +236,13 @@ function masthead(origin) {
 // One email's HTML: the header, then an optional dateline, then `inner`.
 // `preheader` is the line an inbox shows beside the subject, hidden in the
 // email itself; without it an inbox would show the header's own words.
-function frame(origin, inner, { dateline = "", preheader = "" } = {}) {
+// `title` is the email's subject: the page's title is what a screen reader
+// announces when the email opens in a browser or a web client's own window.
+function frame(origin, inner, { dateline = "", preheader = "", title = "" } = {}) {
   return "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\">" +
     "<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">" +
     "<meta name=\"color-scheme\" content=\"light\"><meta name=\"supported-color-schemes\" content=\"light\">" +
-    "<title>Granite Record</title></head>" +
+    `<title>${esc(title || "Granite Record")}</title></head>` +
     `<body style="margin:0;padding:0;background:${WHITE};color:${INK}" bgcolor="${WHITE}">` +
     (preheader ? `<div style="display:none;max-height:0;overflow:hidden;mso-hide:all;font-size:1px;` +
       `line-height:1px">${esc(oneLine(preheader, 140))}</div>` : "") +
@@ -229,7 +257,11 @@ function frame(origin, inner, { dateline = "", preheader = "" } = {}) {
     masthead(origin) + "</td></tr>" +
     `<tr><td bgcolor="${WHITE}" style="background:${WHITE};padding:20px 0 28px;font-family:${SERIF};` +
     `font-size:16px;line-height:1.5;color:${INK}">` +
-    (dateline ? `<p style="margin:0 0 16px;font-size:14px;color:${INK2}">${esc(dateline)}</p>` : "") +
+    // The day is the update's one heading of its own, so a screen reader's
+    // list of headings starts with it, above the sections' h2s; it looks as
+    // it did.
+    (dateline ? `<h1 style="margin:0 0 16px;font-family:${SERIF};font-size:14px;line-height:1.5;` +
+      `font-weight:400;color:${INK2}">${esc(dateline)}</h1>` : "") +
     inner + "</td></tr></table>" +
     "<!--[if mso]></td></tr></table><![endif]-->" +
     "</td></tr></table></body></html>";
@@ -346,8 +378,8 @@ function linkWhole(origin, name, find) {
 // An email's one action, as the site's pine button: a table cell, which
 // Outlook draws, around the link (the confirmation's Confirm, the new link's
 // own, 22 October 2026).
-function button(href, words) {
-  return `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:20px 0">` +
+function button(href, words, margin = "20px 0") {
+  return `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:${margin}">` +
     `<tr><td bgcolor="${PINE}" style="background:${PINE};border-radius:4px">` +
     `<a href="${esc(href)}" style="display:inline-block;padding:10px 18px;font-family:${SERIF};` +
     `font-size:16px;color:${WHITE};text-decoration:none;border-radius:4px">${esc(words)}</a></td></tr></table>`;
@@ -375,7 +407,7 @@ export function confirmationEmail({ origin, label, title, token }) {
     `request, and this address with it, is deleted within 48 hours without being used.</p>` +
     `<p style="${P};font-size:14px;color:${INK2}">Granite Record is a public record of the ` +
     `New Hampshire General Court. This address takes no replies.</p>`,
-    { preheader: "Nothing is sent unless you confirm." });
+    { preheader: "Nothing is sent unless you confirm.", title: subject });
   return { subject, text, html };
 }
 
@@ -452,7 +484,7 @@ export function welcomeEmail({ origin, kind, label, title, url, frequency, kept 
     (req ? `<p style="${P}">${esc(req)}</p>` : "") +
     `<p style="${P}">${esc(how)}</p>` +
     (paused ? `<p style="${P}">${esc(paused)}</p>` : "") +
-    `<p style="${P}">${esc(keep)}</p>` + f.html, { preheader: how });
+    `<p style="${P}">${esc(keep)}</p>` + f.html, { preheader: how, title: subject });
   return { subject, text, html, headers: listHeaders(origin, unsub) };
 }
 
@@ -468,8 +500,54 @@ export function newLinkEmail({ origin, manage, unsub, feedbackUrl }) {
       manageLink(origin, manage), "", "----", f.text].join("\n"),
     html: frame(origin, `<p style="${P}">${esc(head)}</p>` +
       `<p style="${P}">Your new link, to change what you follow or how often:</p>` +
-      button(manageLink(origin, manage), "Open your page") + f.html, { preheader: head }),
+      button(manageLink(origin, manage), "Open your page") + f.html, { preheader: head, title: subject }),
     headers: listHeaders(origin, unsub),
+  };
+}
+
+// ---- testifying on a bill -----------------------------------------------------------------
+// THE CHAMBERS' ONLINE SIGN-IN FORMS, app.js's TESTIFY_FORMS (preflight holds
+// the two alike). Neither form can be opened at a bill, so the email says
+// what to choose on it, in the order the Senate's guidance gives -- the
+// hearing's day, then the committee, then the bill -- which the House's form
+// asks for too (guides.py, TESTIFY).
+export const TESTIFY_FORMS = { H: ["House", "https://gc.nh.gov/house/committees/remotetestimony/"],
+  S: ["Senate", "https://gc.nh.gov/remotecommittee/senate.aspx"] };
+const TESTIFY_HEAD = { open: "Online testimony is open",
+  eve: "Online testimony closes after tomorrow\u2019s hearing",
+  day: "Last day to testify online" };
+
+// sender.testifyFor's { phase, chamber, date, time, committee, venue }, for
+// the bill labelled `label`: the block's heading, what and when, how it
+// closes, the form, and what to choose on it.
+export function testifyWords(t, label) {
+  const [house, url] = TESTIFY_FORMS[t.chamber];
+  const day = t.phase === "day" ? "today" : t.phase === "eve" ? `tomorrow, ${dayDate(t.date)}` : dayDate(t.date);
+  const when = `${label}\u2019s public hearing is ${day}` +
+    (clockTime(t.time) ? ` at ${clockTime(t.time)}` : "") +
+    (t.committee ? `, before the ${t.committee}` : "") + (t.venue ? `, ${t.venue}` : "") + ".";
+  const what = t.chamber === "H" ? "sign in for or against the bill and submit written testimony"
+    : "sign in for or against the bill, or as neutral";
+  const close = t.phase === "day" ? `The online sign-in closes at midnight tonight. Until then, anyone may ${what}.`
+    : t.phase === "eve" ? `The online sign-in closes at midnight at the end of that day. Until then, anyone may ${what}.`
+    : `Until midnight that day, anyone may ${what}.`;
+  const steps = `On the form, choose the hearing\u2019s date, ${dayDate(t.date)}; then the committee` +
+    (t.committee ? `, ${t.committee}` : "") + `; then the bill, ${label}.` +
+    (t.chamber === "S" ? " The page that confirms your sign-in says how to send written testimony." : "");
+  return { head: TESTIFY_HEAD[t.phase], when, close, url, button: `${house} online testimony`, steps };
+}
+
+function testifyBlock(t, label) {
+  const w = testifyWords(t, label);
+  return {
+    text: [`  ${w.head.toUpperCase()}`, `  ${w.when} ${w.close}`, `  ${w.button}: ${w.url}`, `  ${w.steps}`],
+    html: `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" ` +
+      `style="margin:6px 0 12px;border:1px solid ${RULE};border-left:4px solid ${PINE};border-radius:4px">` +
+      `<tr><td bgcolor="${WHITE}" style="background:${WHITE};padding:12px 14px;font-size:15px;line-height:1.45">` +
+      `<p style="margin:0 0 4px;font-weight:600;font-size:16px">${esc(w.head)}</p>` +
+      `<p style="margin:0">${esc(w.when)} ${esc(w.close)}</p>` +
+      button(w.url, w.button, "10px 0") +
+      `<p style="margin:0;font-size:14px;color:${INK2}">${esc(w.steps)}</p></td></tr></table>`,
   };
 }
 
@@ -604,7 +682,7 @@ export function onceEach(sections) {
       if (s.study?.guid) seen.add(s.study.guid);
       const dropped = s.items.length - items.length;
       if (!items.length && dropped && !(s.votes || []).length && !s.study && !s.ended &&
-          !(s.upcoming || []).length && !s.more) continue;
+          !(s.upcoming || []).length && !s.more && !s.testify) continue;
       out.push(dropped ? { ...s, items } : s);
     }
   }
@@ -629,6 +707,11 @@ export function headlines(sections, date = "", skipAhead = false) {
   for (const s of sections) {
     if (s.ended && !s.ended.fallback && s.ended.summary) out.push([0, s.ended.summary]);
     if (s.study) out.push([2, `${s.label} — ${studyWords(s.study)}`]);
+    // The day before a hearing and the day of it, the testimony leads: it
+    // is the one thing in the email with a deadline.
+    if (s.testify?.phase === "day") out.push([0.5, `Last day to testify online on ${s.label}`]);
+    if (s.testify?.phase === "eve")
+      out.push([1.5, `Online testimony on ${s.label} closes after tomorrow\u2019s hearing`]);
     for (const it of s.items) {
       if (!it.milestone || late(it)) continue;
       // What is still to come is the week ahead's in a weekly that has one.
@@ -746,13 +829,28 @@ export function digestEmail({ origin, frequency, date, sections: given, manage, 
       const others = r.labels.map((l, i) => [l, r.urls[i]]).filter(([l]) => !(r.committee && same(l, r.committee)));
       text.push(`  ${when}: ${what}${r.committee ? `, ${r.committee}` : ""}${r.venue ? `, ${r.venue}` : ""}.` +
         (others.length ? ` For ${andList(others.map(([l]) => l))}.` : ""));
+      // A public hearing a chamber's form serves: the form, and what to
+      // choose on it, as a daily's testimony block says it.
+      const form = /^public hearing$/i.test(r.what || "") && r.date >= date && TESTIFY_FORMS[chamberOf(r.committee)];
+      const bills = r.labels.map((l, i) => [l, r.urls[i]])
+        .filter(([l]) => /^(?:HB|SB|HCR|SCR|HJR|SJR|HR|SR|CACR)\b/.test(l));
+      const or = parts => andList(parts).replace(/ and ([^,]+)$/, " or $1");
+      const lead = `On the form, choose ${dayDate(r.date)}, then the ${r.committee}, then `;
+      const tail = ". Open until midnight that day.";
+      const steps = form && bills.length ? lead + or(bills.map(([l]) => l)) + tail : "";
+      const stepsHtml = steps ? esc(`On the form, choose ${dayDate(r.date)}, then the `) +
+        linkWhole(origin, r.committee, find) + ", then " + or(bills.map(([l, u]) => u ? a(siteUrl(origin, u), l)
+        : linkWhole(origin, l, find))) + esc(tail) : "";
+      if (steps) text.push(`    ${form[0]} online testimony: ${form[1]}`, `    ${steps}`);
       html += `<tr><td style="padding:8px 0;border-bottom:1px solid ${RULE};font-size:15px">` +
         `<span style="color:${INK2}">${esc(when)}</span><br><b>${esc(what)}</b>` +
         (r.committee ? `, ${linkWhole(origin, r.committee, find)}` : "") +
         (r.venue ? `, ${esc(r.venue)}` : "") +
         (others.length ? `<br><span style="font-size:14px;color:${INK2}">For ` +
           andList(others.map(([l, u]) => u ? a(siteUrl(origin, u), l) : linkWhole(origin, l, find))) +
-          "</span>" : "") + "</td></tr>";
+          "</span>" : "") +
+        (steps ? button(form[1], `${form[0]} online testimony`, "8px 0 4px") +
+          `<span style="font-size:14px;color:${INK2}">${stepsHtml}</span>` : "") + "</td></tr>";
     }
     html += "</table>";
     text.push("");
@@ -773,6 +871,12 @@ export function digestEmail({ origin, frequency, date, sections: given, manage, 
       if (s.now) {
         text.push(`  Now: ${s.now}`);
         html += `<p style="margin:2px 0 6px;font-size:14px;color:${INK2}">Now ${statusChip(s.now)}</p>`;
+      }
+      // The weekly's is in its week ahead, beside the hearing.
+      if (s.testify && TESTIFY_FORMS[s.testify.chamber] && !(weekly && ahead.length)) {
+        const b = testifyBlock(s.testify, s.label);
+        text.push(...b.text);
+        html += b.html;
       }
       if ((s.votes || []).length) {
         text.push(`  Roll calls (${s.votes.length}):`);
@@ -850,7 +954,8 @@ export function digestEmail({ origin, frequency, date, sections: given, manage, 
   return {
     subject,
     text: text.join("\n"),
-    html: frame(origin, html + f.html, { dateline, preheader: glance.slice(1).join("; ") || dateline }),
+    html: frame(origin, html + f.html, { dateline, preheader: glance.slice(1).join("; ") || dateline,
+                                   title: subject }),
     headers: gone ? undefined : listHeaders(origin, unsub),
   };
 }
