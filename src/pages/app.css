@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.287 */
+/* GRANITE_VERSION: 2026-09-07.288 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -1422,7 +1422,7 @@ line-height:1.1}
   nav.top,.skip,.calskip,.searchrow,.ftoggle,.backto,.pageacts,.findpanel,
   .findscrim,details.report,.pshare,.sharestate,.player iframe,.fbk,
   .ytcard .ytgo,.ytpanel .ytaform button[type=submit],.followmail .followsend,
-  .followmail .followfreq{display:none !important}
+  .followmail .followfreq,.webinar{display:none !important}
   /* A STATUTE ON PAPER IS THE STATUTE (the polish of 12 October 2026): a
      chapter page prints its sections in one column, without the sidebar
      that lists them; the Laws landing its directory, without the filters
@@ -8036,6 +8036,20 @@ margin:0;padding:var(--sp-2);background:var(--surface);border:1px solid var(--ed
 border-radius:var(--r-in);box-shadow:0 10px 26px var(--shadow);max-height:min(60vh,420px)}
 :where(body.pg) .hqdrop[hidden]{display:none}
 :where(body.pg) .hqhint{font-size:var(--t-sm);color:var(--ink-2);margin:var(--sp-3) 0 0;max-width:34rem}
+/* THE WEBINAR (build_pages.home_webinar, until 11 November 2026): one quiet
+   box between the lead and the search, in the pine of the site's own links,
+   with one button. In one column it keeps that place (order 3, after the
+   lead, which is written before it). */
+:where(body.pg) .webinar{background:var(--pine-soft);border:1px solid var(--rule);border-left:4px solid var(--pine);
+  border-radius:var(--r-in);padding:var(--sp-6) var(--sp-7);margin:var(--sp-6) 0 var(--sp-4);max-width:40rem}
+:where(body.pg) .webinar[hidden]{display:none}
+:where(body.pg) .webinar p{margin:0}
+:where(body.pg) .webinar .wbwhen{font-weight:700;color:var(--ink)}
+:where(body.pg) .webinar .wbwhat{color:var(--ink-2);margin:var(--sp-2) 0 var(--sp-3)}
+:where(body.pg) .webinar .wbgo{display:inline-block;background:var(--pine);color:var(--on-pine);font-weight:600;
+  text-decoration:none;border-radius:var(--r-in);padding:var(--sp-4) var(--sp-6)}
+:where(body.pg) .webinar .wbgo:hover,:where(body.pg) .webinar .wbgo:focus-visible{text-decoration:underline}
+@media (max-width:73.74875em){:where(body.pg) .hcols .webinar{order:3}}
 /* IN ONE COLUMN, UNDER ITS BOX. Below 1180px the columns dissolve and each
    block is placed by its own order (the hero 1-3, the search 4, the cards
    5); a block with none came first, so the hint stood over the logo on a
