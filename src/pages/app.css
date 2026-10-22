@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.288 */
+/* GRANITE_VERSION: 2026-09-07.289 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -1422,7 +1422,7 @@ line-height:1.1}
   nav.top,.skip,.calskip,.searchrow,.ftoggle,.backto,.pageacts,.findpanel,
   .findscrim,details.report,.pshare,.sharestate,.player iframe,.fbk,
   .ytcard .ytgo,.ytpanel .ytaform button[type=submit],.followmail .followsend,
-  .followmail .followfreq,.webinar{display:none !important}
+  .followmail .followfreq,.webinar,.tbox{display:none !important}
   /* A STATUTE ON PAPER IS THE STATUTE (the polish of 12 October 2026): a
      chapter page prints its sections in one column, without the sidebar
      that lists them; the Laws landing its directory, without the filters
@@ -2926,6 +2926,20 @@ align-items:baseline;flex-wrap:wrap}
 .stg .note{margin:var(--sp-4) 0 0}
 .story > .stg + .stg{margin-top:var(--sp-6)}
 .anbox{max-width:var(--measure);margin:0 0 var(--sp-7)}
+/* TESTIFY ON THIS BILL (app.js testifyBox, 22 October 2026): the chamber's
+   online sign-in as the one button, while a public hearing is ahead; the
+   same box greyed, with why, while none is. Not printed. */
+.tbox{max-width:var(--measure);margin:0 0 var(--sp-7);padding:var(--sp-5) var(--sp-6);
+border:1px solid var(--rule);border-left:3px solid var(--pine);border-radius:var(--r-in);
+background:var(--surface);font-size:var(--t-ui);line-height:1.55}
+.tbox p{margin:0 0 var(--sp-5)}
+.tbox p:last-child{margin:0}
+.tbox .tgo{display:inline-block;background:var(--pine);color:var(--on-pine);font-weight:600;
+text-decoration:none;border-radius:var(--r-in);padding:var(--sp-4) var(--sp-6)}
+.tbox .tgo:hover,.tbox .tgo:focus-visible{text-decoration:underline}
+.tbox.off{border-left-color:var(--rule-2);background:var(--paper)}
+.tbox.off p:first-child{color:var(--ink-2)}
+.tbox.off .tgo{background:var(--wash);color:var(--ink-2);cursor:not-allowed}
 /* The fiscal note. A table in the bill's PDF, a single column of lines by
    the time the text extraction is done with it, and a table again here.
    Figures right-aligned and tabular so the columns line up; a spanning row is

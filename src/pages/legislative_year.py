@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-17.2
+# GRANITE_VERSION: 2026-10-17.3
 """
 The legislature's year: a two-year term as a timeline, with this term's dates
 where the chambers' own calendars print them, and the usual pattern where
@@ -82,9 +82,9 @@ from datetime import date, timedelta
 SLUG = "legislative-year"
 TITLE = "The Legislature's Year"
 HREF = f"learn/{SLUG}.html"
-# The words of the home status box's link (the person, 17 October 2026: "How
-# the legislature's year works" or similar).
-HOME_LINK = "How the legislature's year works"
+# The words of the home status box's link, alone (the person, 22 October
+# 2026: "just say 'NH Legislature Schedule'").
+HOME_LINK = "NH Legislature Schedule"
 # The timeline's You Are Here, the anchor the page's own links go to.
 HERE_ID = "now"
 

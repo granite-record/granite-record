@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.219
+# GRANITE_VERSION: 2026-09-04.220
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -1234,8 +1234,10 @@ def cal_notes(up, missing, esc):
     # the same words, and preflight holds the two to them.
     # The executive session's sentence is off the home page (the person,
     # 10 October 2026); a committee's Upcoming sessions keep it (app.js).
-    html.append(f'<p class="note">{HEARING_NOTE}</p>'
-                "</section>")
+    # OFF THE HOME PAGE (the person, 22 October 2026: "Remove this section
+    # below the homepage calendar card"). A committee's Upcoming sessions
+    # keep the words (app.js calendarBlock), and the hearings feed too.
+    html.append("</section>")
     if missing:
         print(f"  calendar: {missing} of {len(up)} upcoming bills had no title "
               f"in site/idx (the number and the link are still printed)")
@@ -2705,7 +2707,7 @@ Promise.all([fetch(DATA("districts.json")).then(r=>r.json()).catch(()=>({})),
 # and the link's words are legislative_year's, the page's own.
 YEAR_LINK = (f'<p class="statenote stateyear"><a href="{_year.HREF}">'
              + _html.escape(_year.HOME_LINK).replace("&#x27;", "&rsquo;")
-             + '</a>: when it sits, and the deadlines a bill must meet.</p>')
+             + '</a></p>')    # the words alone (the person, 22 October 2026)
 
 
 # THE WEBINAR, ON THE HOME PAGE UNTIL IT IS OVER (the person, 22 October
@@ -3137,13 +3139,11 @@ def home_cards():
     itself to /laws and "The Constitution" to its tab, the inner link above
     the card's, so each answers its own click."""
     out = []
+    # THE LAWS CARD IS ONE LINK AGAIN (the person, 22 October 2026: "Remove
+    # the constitution hyperlink on the homepage laws card"); the Laws page
+    # keeps its Constitution tab.
     for href, ic, name, line in HOME_CARDS:
-        if href == "laws.html" and _laws_has_constitution():
-            out.append(f'  <div class="ecard"><a class="ecmain" href="{href}">{icon(ic)}<b>{name}</b></a>'
-                       f'<span><a class="ecalso" href="{CONSTITUTION_HREF}">The Constitution</a>, article '
-                       'by article, and every New Hampshire statute, by number or subject</span></div>\n')
-        else:
-            out.append(f'  <a href="{href}">{icon(ic)}<b>{name}</b><span>{line}</span></a>\n')
+        out.append(f'  <a href="{href}">{icon(ic)}<b>{name}</b><span>{line}</span></a>\n')
     return '<div class="entry">\n' + "".join(out) + "</div>"
 
 

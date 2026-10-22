@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.52
+# GRANITE_VERSION: 2026-09-08.53
 """
 The topics of the civics section: their order, their names, and their prose.
 
@@ -2149,7 +2149,7 @@ licenses and registrations, and runs the mechanics of elections. A town may
 vote to make the term 3 years (RSA 41:16-b).</td></tr>
 <tr><th scope="row"><b>Tax collector</b></th><td>Collects the taxes the selectmen commit,
 remits them to the treasurer at least weekly, and daily once receipts reach
-$1,500, keeps the account of what was collected
+$3,500, keeps the account of what was collected
 and abated, and reports at year end (RSA 41:35).</td></tr>
 <tr><th scope="row"><b>Clerk/tax collector</b></th><td>Many towns have combined the two
 into one office. It takes a petitioned article and a majority at the annual

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.633
+# GRANITE_VERSION: 2026-09-04.634
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -24578,7 +24578,7 @@ LEARN_STATUTE_CLAIMS = [
     ("city-and-town-government", "still elects its town clerk",
      "41:16", "regardless of the form of government"),
     ("city-and-town-government", "daily once receipts reach",
-     "41:35", "daily whenever tax receipts total $1,500"),
+     "41:35", "daily whenever tax receipts total $3,500"),  # $1,500 until amended; read 22 October 2026
     ("city-and-town-government", "on a board of three one trustee is elected each year",
      "31:22", "one trustee shall be elected by a ballot at each annual town meeting"),
     ("city-and-town-government", "sits on it ex officio",
@@ -31426,13 +31426,11 @@ def _home_cards(BP, BC, G):
     assert not any("committees" in h for h in hrefs), "the Committees card is back on the home page"
     assert any(h.rstrip("/").split("/")[-1] in ("laws", "laws.html") for h in hrefs), \
         "the Laws card does not lead to /laws"
-    # THE CONSTITUTION ON THE LAWS CARD while the Laws page carries its tab
-    # (18 October 2026), linked to that tab, the card itself to /laws.
-    import constitution_tab as _CT
-    if any(pid == "constitution" for pid, _n in _CT.TABS):
-        assert f'<a class="ecalso" href="{BP.CONSTITUTION_HREF}">The Constitution</a>' in entry.group(1) \
-            and BP.CONSTITUTION_HREF == "/laws#constitution", \
-            "the Laws card does not name the Constitution and link its tab"
+    # THE LAWS CARD IS ONE LINK (the person, 22 October 2026: "Remove the
+    # constitution hyperlink on the homepage laws card"); it named the
+    # Constitution and linked its tab from 18 October.
+    assert 'class="ecalso"' not in entry.group(1) and "The Constitution</a>" not in entry.group(1), \
+        "the Laws card still links the Constitution"
     # COMMON QUESTIONS, NOT ONE-WORD BUTTONS (the person, 18 October 2026, of
     # the "How do I...?" row: "the phrasing is too vague to understand what's
     # useful about it. Maybe we could have a sort of top 3-5 guides for the
@@ -60887,10 +60885,11 @@ def _coming_up_scrolls():
             f"of a week of 45 sittings on 5 days, the box holds {w.inside['calmeet']} "
             f"cards on {w.inside['calday']} days and {w.outside['calmeet']} cards sit "
             "outside it: the whole week belongs inside the box")
+    # The note on hearings is off the home page (the person, 22 October 2026).
     assert w.outside["calall"] == 1 and w.inside["calall"] == 0 \
-        and w.outside["note"] and not w.inside["note"], (
-            "the line to next week and the note on hearings belong under the box, "
-            "in view, not scrolled away inside it")
+        and not w.outside["note"] and not w.inside["note"], (
+            "the line to next week belongs under the box, in view, not scrolled away "
+            "inside it, and the home page carries no note on hearings")
     assert page.index("<h2>Coming up</h2>") < page.index('class="calscroll"'), (
         "the Coming up heading is not above the box")
 
@@ -61013,7 +61012,7 @@ def _coming_up_without_study_committees():
                   "and all three still on the Calendar's week")
 
 
-@check("frontend", "the note under Coming up and a committee's Upcoming session says what a reader may do at a hearing, in the person's words")
+@check("frontend", "a committee's Upcoming session says what a reader may do at a hearing, in the person's words, and the home page's Coming up no longer does")
 def _hearing_note_wording():
     """"Anyone may attend a public hearing and ask to speak. You can also sign
     in online to register a position and submit written testimony." -- the
@@ -61042,7 +61041,9 @@ def _hearing_note_wording():
             home = said(BP.calendar_html(tmp, today=today, rows=rows))
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
-    assert any(n.startswith(want) for n in home), f"Coming up's note reads {home}"
+    # OFF THE HOME PAGE (the person, 22 October 2026): Coming up carries no
+    # note; a committee's Upcoming session and the hearings feed keep it.
+    assert not home, f"Coming up still carries a note: {home}"
     up = [{"date": "2026-09-22", "time": "10:00", "bill": "HB1", "term": "2025-2026",
            "committee": "Judiciary", "what": "public hearing", "venue": "LOB 206"}]
     got = _app_js('scope.calendarBlock(' + json.dumps(up) + ', "Upcoming session")',
@@ -61061,7 +61062,7 @@ def _hearing_note_wording():
     flat = " ".join(re.sub(r'"\s*\n\s*"', "", feeds).split())
     assert want in flat, "the upcoming-hearings feed does not say the note word for word"
     assert "sign in for or against" not in flat, "the upcoming-hearings feed keeps the old sentence"
-    return "ok", f"Coming up and the hearings feed say it word for word, {drew}"
+    return "ok", f"the hearings feed says it word for word and Coming up no longer does, {drew}"
 
 
 @check("frontend", "each floor session on the home page is titled \"House Session (August 19th, 2026)\"")

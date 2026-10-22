@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.222
+// GRANITE_VERSION: 2026-09-07.223
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -3990,6 +3990,50 @@ function rsaLines(d){
 }
 const gcSource=d=>d.docket_url?`<a href="${esc(d.docket_url)}" target="_blank" rel="noopener">NH General Court</a>`
   :"NH General Court";
+// TESTIFY ON THIS BILL (the person, 22 October 2026: "Bills that are from
+// the current year should have the testimony box but greyed out when
+// testimony submission is not active, with a line saying that testimony
+// submission has either passed or not opened yet"). Each chamber's online
+// sign-in takes positions and written testimony only for a bill with a
+// public hearing scheduled, and only until it is held (the Senate's
+// guidance, civics.SRC_SENATE_TESTIFY), and neither form can be opened at a
+// bill, so the box links to the form of the chamber whose hearing is next.
+// A bill of an earlier term has no box. The term turns on 1 December of an
+// even year, the eve of Organization Day.
+const TESTIFY_FORMS={H:["House","https://gc.nh.gov/house/committees/remotetestimony/"],
+  S:["Senate","https://gc.nh.gov/remotecommittee/senate.aspx"]};
+function sittingTerm(now){
+  const y=now.getFullYear(), m=now.getMonth()+1;
+  const first=y%2?y:(m===12?y+1:y-1);
+  return `${first}-${first+1}`;
+}
+function testifyBox(d){
+  if(!d||!d.term)return "";
+  const now=new Date();
+  if(d.term!==sittingTerm(now))return "";
+  const today=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}-${String(now.getDate()).padStart(2,"0")}`;
+  const heard=(d.stations||[]).filter(s=>/^public hearing$/i.test(s.what||"")&&s.when);
+  const next=heard.filter(s=>s.when>=today).sort((a,b)=>a.when.localeCompare(b.when))[0];
+  const rail=((d.journey||{}).rail)||[];
+  const ended=!!rail.length&&/^[px]$/.test(rail[rail.length-1].mark||"");
+  if(next&&TESTIFY_FORMS[next.body]){
+    const [house,url]=TESTIFY_FORMS[next.body];
+    return section("Testify on This Bill",`<div class="tbox">
+      <p>The ${esc(house)} public hearing is <b>${esc(dateWords(next.when,"long"))}</b>${
+        next.committee?`, before ${esc(next.committee)}`:""}. Until then, anyone may sign
+      in online to register support or opposition and submit written testimony, or come
+      and ask to speak.</p>
+      <p><a class="tgo" href="${esc(url)}" target="_blank" rel="noopener">${esc(house)} online
+      testimony</a></p></div>`,"testify");
+  }
+  const last=heard.sort((a,b)=>b.when.localeCompare(a.when))[0];
+  const why=last
+    ?`Online testimony for this bill has passed: its public hearing was ${esc(dateWords(last.when))}.`
+      +(ended?"":" It opens again if the bill is scheduled for a hearing in the other chamber.")
+    :"Online testimony has not opened yet: it opens once a public hearing is scheduled.";
+  return section("Testify on This Bill",`<div class="tbox off" aria-disabled="true">
+    <p>${why}</p><p><span class="tgo">Online testimony</span></p></div>`,"testify");
+}
 function renderSummary(b,d,rsa){
   const S=[];
   const note=d&&d.bill_note;
@@ -4001,6 +4045,8 @@ function renderSummary(b,d,rsa){
   if(an)S.push(section("Official Legislative Analysis",
     `<div class="anbox" data-an="1"><div class="antext">${rsa?rsa(esc(an)):esc(an)}</div></div>
      <p class="src">Source: ${gcSource(d)}</p>${rsaLine(d)}`,"analysis"));
+  const tb=testifyBox(d);
+  if(tb)S.push(tb);
   const jl=journeyList(b,d);
   if(jl)S.push(section("How It Got Here",jl+(an?"":`<p class="src">Source: ${gcSource(d)}</p>${rsaLine(d)}`),"journey"));
   else if(!an&&(d.docket_url||rsaChapters(d).length||(d.constitution||[]).length))
