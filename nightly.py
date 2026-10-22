@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.78
+# GRANITE_VERSION: 2026-09-04.79
 """
 The nightly run. Fetch the day's bulk files, rebuild, check, compile what
 readers reported and what changed -- and publish only if told to.
@@ -719,6 +719,18 @@ STUDY_WEEKLY = ("StatStudMembers", "vStatStudTemp")
 # short.
 STATUTE_VIEWS = ("NH_RSA",)
 STATUTE_SHRINK = 0.05
+# ... AND ON THE NIGHTS A NEW LAW TAKES EFFECT (the person, 22 October 2026:
+# the Laws page nightly, if it costs a couple of minutes at most). A whole
+# download is 108 seconds and 112 MB sent on (the weekly of 19 October), and
+# the table carries no date a part of it could be asked by. Most laws take
+# effect on January 1 or July 1, so the night takes the table on the first
+# three nights of each, and the weekly keeps it current between.
+STATUTE_NIGHTS = ((1, 1), (1, 2), (1, 3), (7, 1), (7, 2), (7, 3))
+
+
+def statute_night(day):
+    """Whether tonight takes the statutes as well (STATUTE_NIGHTS)."""
+    return (day.month, day.day) in STATUTE_NIGHTS
 
 # A result this much smaller than the copy it would replace is not swapped in:
 # snapshot_gencourt's rule for the day's files, used for every other fetch.
@@ -1628,6 +1640,14 @@ def main():
                             EXITS.clear()
                             if not refusal.MARK.exists():
                                 night.v["lsrs"] = take_lsrs()
+                            # And the statutes, on the nights a new law takes
+                            # effect (STATUTE_NIGHTS), from the same host.
+                            if not a.new_term and not refusal.MARK.exists() \
+                                    and statute_night(datetime.now()):
+                                night.v["statutes"] = take_views(
+                                    STATUTE_VIEWS, "the statutes, from the database, on a night "
+                                    "a new law takes effect", shrink=STATUTE_SHRINK,
+                                    not_again=db_asked_in_vain(night.v))
                             # And the calendars and journals the General
                             # Court lists, from its two index pages.
                             if not refusal.MARK.exists():

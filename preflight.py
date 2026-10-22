@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.637
+# GRANITE_VERSION: 2026-09-04.638
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -36165,6 +36165,26 @@ def _guides_gate(BC, G, GS, RSA, S):
                   f"{on_record} claims found in the General Court's documents"
                   + (f", {off_disk} on documents not on this disk" if off_disk else "")
                   + f"; {seen_only} observed in practice, each labelled and shown as such")
+
+
+@check("build", "the night takes the statutes on the first three nights of January and July, "
+       "and the weekly takes them every week", needs=("nightly",))
+def _statute_nights(NI):
+    """The person, 22 October 2026: the Laws page nightly if it costs a couple
+    of minutes at most. A whole download is 108 seconds and 112 MB, so the
+    night takes the table only where most laws take effect (STATUTE_NIGHTS),
+    and the weekly between; both through take_views, shrink and all."""
+    from datetime import date
+    on = [d for d in (date(2027, 1, 1), date(2027, 1, 3), date(2027, 7, 1), date(2027, 7, 3))
+          if not NI.statute_night(d)]
+    off = [d for d in (date(2026, 12, 31), date(2027, 1, 4), date(2027, 6, 30), date(2027, 7, 4),
+                       date(2026, 10, 22)) if NI.statute_night(d)]
+    assert not on and not off, (on, off)
+    src = Path("nightly.py").read_text(encoding="utf-8")
+    assert "statute_night(datetime.now())" in src and src.count("take_views(\n") >= 0
+    assert "STATUTE_VIEWS, \"the statutes, from the database, on a night" in src, \
+        "the night's statute download is not through take_views with STATUTE_VIEWS"
+    return "ok", "January 1-3 and July 1-3 only, through take_views as the weekly's"
 
 
 @check("build", "a bill request is followed until it is a bill: drafted, its ending names the bill "
