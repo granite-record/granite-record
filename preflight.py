@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.632
+# GRANITE_VERSION: 2026-09-04.633
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -93764,8 +93764,9 @@ def _built_checks_night(NI):
                   "nightly.py runs them after check_site and acts on each tier as decided")
 
 
-@check("files", "a standing warning never jams the alarm: a failed night, a refusal or a night held "
-       "for approval reaches the night's check whatever warns, and a warning goes to a check of its own",
+@check("files", "a standing warning never jams the alarm: a failed night, a refusal or a failed check "
+       "of the built site reaches the night's check whatever warns, and a warning -- a night waiting for "
+       "approval among them -- goes to a check of its own",
        needs=("nightly",))
 def _alarm_stays_able_to_ring(NI):
     """private/UNATTENDED_AUDIT_2026-10-18.md, sections 4.3.5 and 4.1.
@@ -93893,8 +93894,8 @@ def _alarm_stays_able_to_ring(NI):
                        "ALERT_FILE to the night's check alone")
     assert not bad, "; ".join(bad)
     return "ok", ("a reminder alone leaves the night's check up and goes to the warnings' check; a "
-                  "night not clean or held alerts the night's check beside it, once, with its "
-                  "reasons; shadow, a New term run and a night not for production say no hold; "
+                  "night not clean alerts the night's check beside it, once, with its reasons, "
+                  "and a night held tells the warnings' check; shadow, a New term run and a night not for production say no hold; "
                   "the workflow sends each file to its own check")
 
 
