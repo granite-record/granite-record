@@ -34,8 +34,9 @@ Every record is named `<kind>:<ref>`, with the same ref its page and feed use:
 | `committee` | the committee code, as its page is keyed | `committee:H05` |
 | `topic` | the topic's slug, as its feed is named | `topic:housing` |
 | `law` | a chapter of the statutes, as its `/laws` page names it, in capitals | `law:91-A` |
+| `lsr` | a bill request's number, year and number (22 October 2026) | `lsr:2027-0001` |
 
-`common.js` holds the five patterns (`refOk`). A key that does not match is
+`common.js` holds the six patterns (`refOk`). A key that does not match is
 dropped by the sender and refused at sign-up.
 
 ## `current.json`
@@ -251,6 +252,14 @@ night. Each value may have:
   one the same way when it leaves -- a member who no longer sits, a committee
   that no longer sits, most of them at the turn of a term -- with `how` a word
   of the build's (`left`, `term-ended`) and a `summary` that names them.
+
+  **A bill request** (`lsr`) is followable while it is filed and not
+  withdrawn, and once introduced until its bill is followable itself. The
+  night it leaves, its `ended` has `how` `drafted` and **`becomes`**, the
+  bill's key (`bill:2027/HB45`): the sender tells the follower once and
+  **moves the follow onto that bill** rather than ending it. Withdrawn, its
+  `how` is `withdrawn` and the follow ends as any other's. `becomes` is
+  allowed on an `lsr`'s `ended` alone, and only as a bill's key.
 
   **A bill, member or committee key that `current.json` listed the night
   before and does not list tonight must carry an `ended` tonight.** The

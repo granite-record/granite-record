@@ -15,8 +15,11 @@
 // The five kinds, and the ref each page and feed is keyed by. The bill and
 // committee patterns are report.js's RECORD; a topic is its feed's slug; a
 // law is a chapter of the statutes as its /laws page names it (91-A, 674).
-export const KINDS = ["bill", "member", "committee", "topic", "law"];
+export const KINDS = ["bill", "member", "committee", "topic", "law", "lsr"];
 const REF = {
+  // A bill request by its number, 2027-0001, followed until it is a bill
+  // (22 October 2026; follow_changes.py's REF has the same pattern).
+  lsr: /^\d{4}-\d{4,5}$/,
   law: /^\d{1,3}(?:-[A-Z]{1,2})?$/,
   bill: /^\d{4}\/[A-Z]{2,6}\d{1,4}$/,
   member: /^\d{1,7}$/,
@@ -50,6 +53,7 @@ export function fallbackLabel(kind, ref) {
   if (kind === "member") return `Legislator no. ${ref}`;
   if (kind === "committee") return `Committee ${ref}`;
   if (kind === "law") return `RSA ${ref}`;
+  if (kind === "lsr") return `LSR ${ref}`;
   return ref.split("-").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
 }
 

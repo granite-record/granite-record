@@ -11,7 +11,7 @@
  * note at all, which is how the build is held to the contract.
  */
 
-import { parseKey, oneLine } from "./common.js";
+import { keyOf, parseKey, oneLine } from "./common.js";
 
 const DAY = /^\d{4}-\d{2}-\d{2}$/;
 const STAMP = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/;
@@ -214,6 +214,12 @@ export function checkNight(obj, expectDate) {
           date: DAY.test(e.date ?? "") ? e.date : obj.date,
           guid: typeof e.guid === "string" ? e.guid.slice(0, 300) : "",
         };
+        // A bill request drafted into a bill: the bill its follow moves to.
+        if (e.becomes !== undefined && e.becomes !== null) {
+          const b = parseKey(e.becomes);
+          if (key.kind === "lsr" && b && b.kind === "bill") out.ended.becomes = keyOf(b.kind, b.ref);
+          else notes.push(`${w}: becomes is not a bill's key`);
+        }
         if (!DAY.test(e.date ?? "")) notes.push(`${w}: date is not YYYY-MM-DD`);
       }
     }

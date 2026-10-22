@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.289 */
+/* GRANITE_VERSION: 2026-09-07.290 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -3608,6 +3608,9 @@ color:var(--ink-2);font-weight:600;margin-right:var(--sp-3)}
 /* Hidden while a bill's own page shows the list (app.js parkActions). */
 .pageacts[hidden]{display:none}
 .follow{position:relative}
+.lsrfollow{display:none;padding:0 var(--sp-6) var(--sp-5)}
+.followok .lsrfollow{display:block}
+.lsrfollow .followpane{position:static;margin-top:var(--sp-4);width:auto;max-width:none}
 .pageacts .follow{position:static}
 /* THE QUIET ACTION BUTTON (Polish 1, the person, 9 October 2026: "a visual
    polish of the report button so it matches the style of the print, testify,

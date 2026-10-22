@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-07.8
+# GRANITE_VERSION: 2026-10-07.9
 """
 The nightly "what changed" files the email sender reads, and the first-seen
 ledger that decides what is new in them.
@@ -114,7 +114,7 @@ FOLDER = "changes"                    # under site/
 FIRST_SEEN, RECORD_DATE = "first-seen", "record-date"
 ITEM_KINDS = ("action", "hearing", "scheduled", "exec", "vote", "report", "sponsor",
               "sitting", "study")
-ENDS = ("bill", "member", "committee")          # the kinds an ending is owed for
+ENDS = ("bill", "member", "committee", "lsr")   # the kinds an ending is owed for
 
 # The five kinds of key, as workers/follow/common.js's REF has them. A law is
 # a chapter of the statutes as its /laws page names it, in capitals: 91-A,
@@ -126,6 +126,9 @@ REF = {
     "member": re.compile(r"^\d{1,7}$"),
     "committee": re.compile(r"^[A-Za-z]\d{2,3}(?:-\d{4})?$"),
     "topic": re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$"),
+    # A bill request by its number, 2027-0001 (22 October 2026: build_feeds,
+    # BILL REQUESTS, FOLLOWED UNTIL THEY ARE BILLS).
+    "lsr": re.compile(r"^\d{4}-\d{4,5}$"),
 }
 DAY = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 STAMP = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$")
@@ -378,6 +381,17 @@ def ending(key, label, *, term_turned, old_term, hints):
     row, a committee's record."""
     kind, _, ref = key.partition(":")
     h = hints.get(key) or {}
+    if kind == "lsr":
+        # Drafted and introduced: the follow moves to the bill ("becomes",
+        # which the sender reads); withdrawn, or gone without a word, it ends.
+        if h.get("becomes") and key_ok(h["becomes"]):
+            return {"how": "drafted", "becomes": h["becomes"],
+                    "summary": f"{label} has been drafted and introduced as {h.get('bill') or 'a bill'}.",
+                    "guid": f"{key}:ended:drafted"}
+        how = "withdrawn" if h.get("withdrawn") else "left"
+        said = (f"{label} was withdrawn before it was drafted." if h.get("withdrawn")
+                else f"{label} is no longer among the bill requests on record.")
+        return {"how": how, "summary": said, "guid": f"{key}:ended:{how}"}
     if kind == "bill":
         if term_turned:
             return {"how": "term-ended", "summary": f"{label} ended with the {old_term} term.",
@@ -489,7 +503,8 @@ def decide(led, *, tonight, built, sitting_term, followable, lists, hints):
         for k in gone:
             e = ending(k, prev_follow[k], term_turned=turned, old_term=old_term, hints=hints)
             e.setdefault("date", tonight)
-            here["ended"][k] = {f: e[f] for f in ("how", "summary", "date", "guid") if e.get(f)}
+            here["ended"][k] = {f: e[f] for f in ("how", "summary", "date", "guid", "becomes")
+                                if e.get(f)}
             counts["ended"] += 1
         for n in nights.values():
             for k in [k for k in n["ended"] if k in followable]:
@@ -839,6 +854,10 @@ def check_files(files):
                                   required=False)
                             if not DAY.match(str(e.get("date") or "")):
                                 p.append(f"refs {k} ended: date is not YYYY-MM-DD")
+                            if e.get("becomes") is not None and not (
+                                    kind_of_key(k) == "lsr" and key_ok(e["becomes"])
+                                    and kind_of_key(e["becomes"]) == "bill"):
+                                p.append(f"refs {k} ended: becomes is not a bill's key")
                 nights.append(obj)
         else:
             p.append("not a changes file's name")

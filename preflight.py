@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.634
+# GRANITE_VERSION: 2026-09-04.635
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -36169,6 +36169,32 @@ def _guides_gate(BC, G, GS, RSA, S):
                   f"{on_record} claims found in the General Court's documents"
                   + (f", {off_disk} on documents not on this disk" if off_disk else "")
                   + f"; {seen_only} observed in practice, each labelled and shown as such")
+
+
+@check("build", "a bill request is followed until it is a bill: drafted, its ending names the bill "
+       "its follow moves to; withdrawn, it ends", needs=("follow_changes",))
+def _follow_lsr_endings(FC):
+    """The person, 22 October 2026: "email following for LSRs should ping when
+    the legislation has been drafted and then convert that into following the
+    bill version". build_feeds lists a request as lsr:<number> and, the night
+    it leaves, hints what became of it; FC.ending says so in the night's file,
+    and the sender (tests/follow/lsr.test.js) moves the follow."""
+    assert FC.key_ok("lsr:2027-0001") and not FC.key_ok("lsr:27-1") and "lsr" in FC.ENDS
+    e = FC.ending("lsr:2027-0001", "LSR 2027-0001", term_turned=False, old_term="2025-2026",
+                  hints={"lsr:2027-0001": {"becomes": "bill:2027/HB45", "bill": "HB 45"}})
+    assert e["how"] == "drafted" and e["becomes"] == "bill:2027/HB45" \
+        and "introduced as HB 45" in e["summary"], e
+    w = FC.ending("lsr:2027-0002", "LSR 2027-0002", term_turned=True, old_term="2025-2026",
+                  hints={"lsr:2027-0002": {"withdrawn": True}})
+    assert w["how"] == "withdrawn" and "becomes" not in w, w
+    led = {"followable": {"lsr:2027-0001": "LSR 2027-0001"}, "nights": {}, "carried": {}}
+    out, _new_by, counts = FC.decide(led, tonight="2026-12-10", built="2026-12-10T09:00:00Z",
+                                     sitting_term="2027-2028", followable={}, lists={},
+                                     hints={"lsr:2027-0001": {"becomes": "bill:2027/HB45",
+                                                              "bill": "HB 45"}})
+    told = out["nights"]["2026-12-10"]["ended"]["lsr:2027-0001"]
+    assert told["becomes"] == "bill:2027/HB45" and counts["ended"] == 1, told
+    return "ok", "drafted names its bill, withdrawn ends, and the night's file carries becomes"
 
 
 @check("build", "the changes files mark milestones, set a ballot beside its roll call, and let a "

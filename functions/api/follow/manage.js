@@ -84,8 +84,37 @@ const PAUSE_DAYS_MOST = 366;
 // listed and kept, every topic, and every legislator and committee there is
 // ticked at once, several times over.
 const MAX_FORM = 65536;
-const GROUPS = [["bill", "Bills"], ["law", "Laws"], ["member", "Legislators"],
-                ["committee", "Committees"], ["topic", "Topics"]];
+const GROUPS = [["bill", "Bills"], ["lsr", "Bill requests"], ["law", "Laws"],
+                ["member", "Legislators"], ["committee", "Committees"], ["topic", "Topics"]];
+
+// MENDING A MOVED FOLLOW (22 October 2026). The sender moves a bill
+// request's follow onto its bill in place, and cannot fingerprint the bill
+// (it is not given the lookup key), so the row keeps the request's
+// follow_hmac. Every visit to this page mends that: each row's fingerprint is
+// made again from what it holds, and a record held twice keeps one row.
+async function mend(env, db, sub) {
+  const rows = (await db.prepare("SELECT follow_hmac, follow_enc FROM follows WHERE subscriber_id = ?1")
+    .bind(sub.id).all()).results || [];
+  const want = new Map(), writes = [];
+  for (const r of rows) {
+    let k = "";
+    try { k = await openFollow(env, r.follow_enc, sub.email_hmac); } catch { continue; }
+    if (!parseKey(k)) continue;
+    const fh = await followHash(env, sub.email_hmac, k);
+    if (!want.has(k)) want.set(k, []);
+    want.get(k).push({ ...r, fh });
+  }
+  for (const list of want.values()) {
+    const keep = list.find(r => r.follow_hmac === r.fh) || list[0];
+    for (const r of list) if (r !== keep)
+      writes.push(db.prepare("DELETE FROM follows WHERE subscriber_id = ?1 AND follow_hmac = ?2")
+        .bind(sub.id, r.follow_hmac));
+    if (keep.follow_hmac !== keep.fh)
+      writes.push(db.prepare("UPDATE follows SET follow_hmac = ?1 WHERE subscriber_id = ?2 AND follow_hmac = ?3")
+        .bind(keep.fh, sub.id, keep.follow_hmac));
+  }
+  if (writes.length) { await db.batch(writes); note("manage.mended", writes.length); }
+}
 
 const SHELL = () => page(200, {
   title: "Your email updates",
@@ -435,6 +464,7 @@ export async function onRequest({ request, env }) {
     const db = env.FOLLOW_DB;
     const sub = await subscriberFor(db, t, "manage");
     if (!sub) return STALE();
+    await mend(env, db, sub);
     const origin = new URL(request.url).origin;
     const action = form.get("action") || "view";
     const back = n => redirect(`${PATH}#t=${t}&n=${n}`);

@@ -11,6 +11,7 @@ import "./confirm.test.js";
 import "./manage.test.js";
 import "./unsubscribe.test.js";
 import "./count.test.js";
+import "./lsr.test.js";
 import "./bounce.test.js";
 import "./html.test.js";
 import "./mail.test.js";

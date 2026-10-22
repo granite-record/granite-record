@@ -430,6 +430,9 @@ export function welcomeEmail({ origin, kind, label, title, url, frequency, kept 
     ? "Your updates are paused until you turn them back on."
     : `Your updates are paused through ${longDate(pausedUntil)}.`;
   const count = total > 1 ? `You now follow ${plural(total, "thing", "things")} in all.` : "";
+  // A bill request has no news of its own until it is drafted (22 October 2026).
+  const req = kind === "lsr" ? "A bill request has no news of its own until it is drafted. You will " +
+    "get one email when it becomes a bill, and from then on you will follow the bill itself." : "";
   const keep = newcomer
     ? "Keep this email until your first update arrives: the link below opens your " +
       "page for email updates, where you can change what you follow and how often, and " +
@@ -438,7 +441,7 @@ export function welcomeEmail({ origin, kind, label, title, url, frequency, kept 
       "follow and how often. Every update carries the same link.";
   const f = footer(origin, feedbackUrl, manage, unsub, false, false);
   const text = ["You are now following:", "", `  ${what}`, ...(page ? [`  ${page}`] : []), "",
-    ...(count ? [count, ""] : []), how, ...(paused ? ["", paused] : []), "", keep, "",
+    ...(count ? [count, ""] : []), ...(req ? [req, ""] : []), how, ...(paused ? ["", paused] : []), "", keep, "",
     "----", f.text].join("\n");
   const html = frame(origin,
     `<p style="${P}">You are now following:</p>` +
@@ -446,6 +449,7 @@ export function welcomeEmail({ origin, kind, label, title, url, frequency, kept 
     (page ? a(page, oneLine(label, 120)) : esc(oneLine(label, 120))) +
     (title ? ` — ${esc(oneLine(title, 160))}` : "") + "</p>" +
     (count ? `<p style="${P}">${esc(count)}</p>` : "") +
+    (req ? `<p style="${P}">${esc(req)}</p>` : "") +
     `<p style="${P}">${esc(how)}</p>` +
     (paused ? `<p style="${P}">${esc(paused)}</p>` : "") +
     `<p style="${P}">${esc(keep)}</p>` + f.html, { preheader: how });
@@ -498,6 +502,9 @@ export const studyWords = study => {
 // 2026: "record" is the database's word).
 const ENDED_TAIL = "There will be no more updates on it, so it has been taken off what you " +
   "follow. Its full history stays on its page.";
+// ... and a bill request drafted into a bill (22 October 2026), whose follow
+// moves onto the bill rather than ending.
+const MOVED_TAIL = "You now follow the bill in its place, and will hear of it as it moves.";
 
 function weekLine(w) {
   if (!w) return "";
@@ -607,7 +614,8 @@ export function onceEach(sections) {
 // PLAIN HEADINGS (the person, 17 October 2026: "This header is phrased a bit
 // confusing: 'Bills: the week that was'"). Each kind of record under what it
 // is, and the weekly's meetings still to come under "Coming up".
-const GROUPS = [["bill", "Bills you follow"], ["law", "Laws you follow"],
+const GROUPS = [["bill", "Bills you follow"], ["lsr", "Bill requests you follow"],
+                ["law", "Laws you follow"],
                 ["member", "Legislators you follow"], ["committee", "Committees you follow"],
                 ["topic", "Topics you follow"]];
 const AHEAD = "Coming up";
@@ -829,8 +837,10 @@ export function digestEmail({ origin, frequency, date, sections: given, manage, 
       }
       if (s.ended) {
         const how = s.ended.summary || `${s.label} has concluded.`;
-        text.push(`  ${how} ${ENDED_TAIL}`);
-        html += `<p style="margin:0 0 8px"><b>${link(how)}</b> ${esc(ENDED_TAIL)}</p>`;
+        // A request drafted into a bill: the follow has moved, not ended.
+        const tail = s.ended.becomes ? MOVED_TAIL : ENDED_TAIL;
+        text.push(`  ${how} ${tail}`);
+        html += `<p style="margin:0 0 8px"><b>${link(how)}</b> ${esc(tail)}</p>`;
       }
       text.push("");
     }

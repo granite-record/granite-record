@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.41
+# GRANITE_VERSION: 2026-09-04.42
 """
 Write RSS feeds so people can follow bills without a login.
 
@@ -977,6 +977,49 @@ def main():
         pruned += n
         if note:
             notes.append(note)
+
+    # BILL REQUESTS, FOLLOWED UNTIL THEY ARE BILLS (the person, 22 October
+    # 2026: "email following for LSRs should ping when the legislation has
+    # been drafted and then convert that into following the bill version").
+    # Next session's requests (build_lsrs.py, site/idx/<year>-requests.json)
+    # are followable as lsr:<number> while each is filed and not withdrawn --
+    # and, once introduced, until its bill is followable itself, so the
+    # follow always has somewhere to go. The night one leaves, its ending
+    # names the bill it became (hints "becomes"), and the sender moves the
+    # follow onto that bill; a withdrawn one ends as withdrawn.
+    reqs = {}
+    try:
+        meta = json.loads((site / "meta.json").read_text(encoding="utf-8"))
+        rterm = str(((meta.get("requests") or {}).get("term")) or "")
+        if rterm:
+            reqs = {"term": rterm, "rows": json.loads(
+                (site / "idx" / f"{rterm}.json").read_text(encoding="utf-8"))}
+    except (OSError, ValueError):
+        reqs = {}
+    nreq = 0
+    for r in reqs.get("rows") or []:
+        num = str(r.get("n") or "").replace("LSR", "").strip()
+        key = f"lsr:{num}"
+        if not FC.key_ok(key):
+            continue
+        intro = str(r.get("introduced") or "")
+        m = re.match(r"^([A-Z]+) (\d+)$", intro)
+        becomes = f"bill:{r.get('year') or num[:4]}/{m.group(1)}{m.group(2)}" if m else ""
+        if r.get("withdrawn"):
+            hints[key] = {"withdrawn": True}
+            continue
+        if becomes and becomes in followable:
+            hints[key] = {"becomes": becomes, "bill": intro}
+            continue
+        followable[key] = {"label": FC.line(f"LSR {num}", 120),
+                           "title": FC.line(r.get("title") or "", 300),
+                           "now": FC.line(r.get("status") or "Filed as a request", 120),
+                           "url": f"/bills?term={reqs['term']}&q=LSR%20{num}"}
+        if not followable[key]["title"]:
+            del followable[key]["title"]
+        nreq += 1
+    if reqs:
+        print(f"  {nreq:,} bill requests followable until they are bills")
 
     # The changes files, from the items every feed above was written with.
     # A key the sender would refuse is left out and named, not sent.

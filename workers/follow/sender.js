@@ -44,7 +44,7 @@
  * secret, no ping. The body carries counts and codes, never an address.
  */
 
-import { ConfigError, linksFor, openAddress, openFollow } from "./address.js";
+import { ConfigError, linksFor, openAddress, openFollow, sealFollow } from "./address.js";
 import { addDays, errName, fallbackLabel, keyOf, nhClock, note, parseKey } from "./common.js";
 import { readCurrent, readNight } from "./changes.js";
 import { digestEmail, pageNames, sendMail } from "./mail.js";
@@ -248,7 +248,11 @@ async function followsOf(env, db, s) {
   }
   if (out.length < rows.length) note("sender.unreadable-follow", rows.length - out.length);
   out.sort((a, b) => keyOf(a.kind, a.ref).localeCompare(keyOf(b.kind, b.ref)));
-  return { follows: out, held: rows.length };
+  // ONE SECTION A RECORD. A bill request moved onto its bill keeps the
+  // request's fingerprint until the manage page mends it, so a reader who
+  // then signs up for the same bill holds it twice for a while.
+  const once = out.filter((f, i) => i === 0 || keyOf(f.kind, f.ref) !== keyOf(out[i - 1].kind, out[i - 1].ref));
+  return { follows: once, held: rows.length };
 }
 
 export async function run(env, now = new Date()) {
@@ -377,7 +381,7 @@ export async function run(env, now = new Date()) {
       : null;
 
     // ---- before the email: anything that fails gives the day back --------------------
-    let sections, ending, gone;
+    let sections, ending, gone, moved = [];
     try {
       const { follows, held } = await followsOf(env, db, s);
       sections = collect({ follows, nights: ordered, cursor: resumeFrom(s),
@@ -386,7 +390,13 @@ export async function run(env, now = new Date()) {
         if (moveCursor) await moveCursor.run();
         continue;
       }
-      ending = sections.filter(x => x.ended);
+      // A BILL REQUEST DRAFTED INTO A BILL is not an ending: its follow moves
+      // onto the bill (build_feeds, BILL REQUESTS), so it neither ends the
+      // follow nor counts toward the address going.
+      ending = sections.filter(x => x.ended && !x.ended.becomes);
+      moved = sections.filter(x => x.ended && x.ended.becomes)
+        .map(x => ({ fh: x.fh, to: x.ended.becomes,
+                     had: follows.some(f => keyOf(f.kind, f.ref) === x.ended.becomes) }));
       // Every follow ends in this email: the address goes with them, and the
       // email says so rather than carrying links that will not work.
       gone = ending.length > 0 && ending.length === held;
@@ -455,6 +465,15 @@ export async function run(env, now = new Date()) {
             writes.push(db.prepare("DELETE FROM follows WHERE subscriber_id = ?1 AND follow_hmac IN (" +
               part.map((_, k) => `?${k + 2}`).join(", ") + ")").bind(s.id, ...part.map(x => x.fh)));
           }
+          // The request's row now holds its bill, sealed as any follow is;
+          // one already followed has the request's row dropped instead.
+          for (const m of moved) {
+            writes.push(m.had
+              ? db.prepare("DELETE FROM follows WHERE subscriber_id = ?1 AND follow_hmac = ?2").bind(s.id, m.fh)
+              : db.prepare("UPDATE follows SET follow_enc = ?1 WHERE subscriber_id = ?2 AND follow_hmac = ?3")
+                  .bind(await sealFollow(env, m.to, s.email_hmac), s.id, m.fh));
+          }
+          if (moved.length) note("sender.requests-moved-to-bills", moved.length);
           if (writes.length) await db.batch(writes);
         }
         break;

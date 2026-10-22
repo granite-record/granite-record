@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.223
+// GRANITE_VERSION: 2026-09-07.224
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -5856,6 +5856,7 @@ document.addEventListener("click",e=>{
 // all three) -- so the control reads that link and asks nothing else. Email
 // is offered beside it only where it works (followMail, below).
 const FOLLOWS={bill:"each new action, hearing and vote on this bill",
+  lsr:"one email when this request is drafted into a bill, and from then on the bill itself",
   member:"this member's newest votes and the bills they put their name to",
   committee:"each day this committee sits, and what it does with each bill",
   law:"each of this term's bills that would change this chapter, as it is filed, heard, voted on and decided"};
@@ -6049,7 +6050,7 @@ function paneInView(p){
 document.addEventListener("toggle",e=>{
   const d=e.target;
   if(d.classList&&d.classList.contains("follow")&&d.open){
-    const box=d.closest("#followbox");
+    const box=d.closest("#followbox,.followbox");
     if(box)followMail(box);
   }
   if(d.open&&d.classList&&(d.classList.contains("follow")||d.classList.contains("pcite")))
@@ -6111,7 +6112,7 @@ function followDone(form,email,freq){
 async function followSubmit(e,form){
   e.preventDefault();
   if(form.dataset.busy)return;
-  const box=form.closest("#followbox"), st=form.querySelector(".followstate");
+  const box=form.closest("#followbox,.followbox"), st=form.querySelector(".followstate");
   const btn=form.querySelector(".followsend"), w=form.querySelector(".followcheck");
   const [kind,...rest]=(box&&box.dataset.fkey||"").split(":");
   const email=form.elements.email.value.trim();
@@ -6395,8 +6396,25 @@ const termOfYear=y=>{
 
    The sponsor is a link wherever the name matched a sitting member, which on
    the 241 requests filed so far is all of them. */
+// A BILL REQUEST CAN BE FOLLOWED BY EMAIL (the person, 22 October 2026):
+// until it is drafted, when the follow moves onto its bill (build_feeds,
+// BILL REQUESTS). A request has no page, so its card carries its own Follow,
+// a .followbox like a record page's #followbox, its pane opening inside the
+// card. Drawn only where email can work: the sign-up is asked once, and the
+// boxes show from then on (.followok); followMail asks whether tonight's
+// current.json lists the request when a box is opened.
+let FOLLOW_OK=null;
+function followOk(){
+  if(FOLLOW_OK)return FOLLOW_OK;
+  FOLLOW_OK=fetch("/api/follow/count",{cache:"no-store"}).then(r=>{
+    if(r.ok)document.documentElement.classList.add("followok");return r.ok;}).catch(()=>false);
+  return FOLLOW_OK;
+}
 function lsrCardHtml(b){
   const who=b.sponsor_label||b.sponsor||"";
+  const num=String(b.n||"").replace(/^LSR\s*/,"");
+  const can=/^\d{4}-\d{4,5}$/.test(num)&&!b.withdrawn&&!b.introduced;
+  if(can)followOk();
   return `<article class="card lsr" data-id="${esc(b.id)}">
       <div class="chead">
         <div class="crow"><span class="cnum">${esc(b.n)}</span>
@@ -6405,7 +6423,10 @@ function lsrCardHtml(b){
         <div class="cmeta">${b.sponsor_slug
           ?`<a href="legislator/${esc(b.sponsor_slug)}.html">${esc(who)}</a>`
           :esc(who)}${b.body_label?` &middot; ${esc(b.body_label)}`:""}</div>
-      </div>
+      </div>${can?`
+      <div class="followbox lsrfollow" data-fkey="lsr:${esc(num)}"><details class="follow">
+        <summary>${icon("follow")}Follow</summary>
+        <div class="followpane"><div class="followmail" hidden></div></div></details></div>`:""}
     </article>`;
 }
 
