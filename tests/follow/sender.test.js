@@ -882,3 +882,18 @@ test("a study report under its bill is not said again under a law the bill chang
   assert.equal((m.text.match(/Interim study report/g) || []).length, 1, m.text);
   assert.match(m.text, /HB 9901 — Interim study report: recommends future legislation, 8–0/);
 });
+
+test("a weekly's \"this week\" counts the seven days to today, not an old session newly recorded", async () => {
+  const { collect } = await import("../../workers/follow/sender.js");
+  const cur = { followable: new Map([["bill:2026/HB9901", { label: "HB 9901", url: "/bill/2026/hb9901" }]]),
+                upcoming: new Map(), sitting_term: "2025-2026" };
+  const item = (date, kind) => ({ guid: `${kind}:${date}`, date, kind, term: "2025-2026",
+    summary: `${kind} on ${date}`, seen: "2026-10-20T09:00:00Z" });
+  const nights = [{ date: "2026-10-20", built: "2026-10-20T09:00:00Z", refs: new Map([["bill:2026/HB9901",
+    { items: [item("2026-09-29", "exec"), item("2026-10-19", "exec"), item("2026-10-27", "exec"),
+              item("2026-10-16", "vote")] }]]) }];
+  const [s] = collect({ follows: [{ kind: "bill", ref: "2026/HB9901", fh: "x" }], nights,
+    cursor: { date: "2026-10-13", built: "2026-10-13T09:00:00Z" }, current: cur,
+    frequency: "weekly", today: "2026-10-21" });
+  assert.deepEqual(s.week, { votes: 1, exec: 1 });
+});

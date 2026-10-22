@@ -343,6 +343,16 @@ function linkWhole(origin, name, find) {
 }
 
 // ---- the confirmation ------------------------------------------------------------------
+// An email's one action, as the site's pine button: a table cell, which
+// Outlook draws, around the link (the confirmation's Confirm, the new link's
+// own, 22 October 2026).
+function button(href, words) {
+  return `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:20px 0">` +
+    `<tr><td bgcolor="${PINE}" style="background:${PINE};border-radius:4px">` +
+    `<a href="${esc(href)}" style="display:inline-block;padding:10px 18px;font-family:${SERIF};` +
+    `font-size:16px;color:${WHITE};text-decoration:none;border-radius:4px">${esc(words)}</a></td></tr></table>`;
+}
+
 export function confirmationEmail({ origin, label, title, token }) {
   const what = oneLine(label, 120) + (title ? ` — ${oneLine(title, 160)}` : "");
   const link = confirmLink(origin, token);
@@ -360,11 +370,7 @@ export function confirmationEmail({ origin, label, title, token }) {
   const html = frame(origin,
     `<p style="${P}">Someone asked graniterecord.org to send this address email updates on:</p>` +
     `<p style="${P};padding-left:12px;border-left:3px solid ${RULE}">${esc(what)}</p>` +
-    `<p style="${P}">Nothing is sent unless you confirm.</p>` +
-    `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:20px 0">` +
-    `<tr><td bgcolor="${PINE}" style="background:${PINE};border-radius:4px">` +
-    `<a href="${esc(link)}" style="display:inline-block;padding:10px 18px;font-family:${SERIF};` +
-    `font-size:16px;color:${WHITE};text-decoration:none;border-radius:4px">Confirm</a></td></tr></table>` +
+    `<p style="${P}">Nothing is sent unless you confirm.</p>` + button(link, "Confirm") +
     `<p style="${P};font-size:14px;color:${INK2}">If it was not you, ignore this email. The ` +
     `request, and this address with it, is deleted within 48 hours without being used.</p>` +
     `<p style="${P};font-size:14px;color:${INK2}">Granite Record is a public record of the ` +
@@ -457,8 +463,8 @@ export function newLinkEmail({ origin, manage, unsub, feedbackUrl }) {
     text: [head, "", "Your new link, to change what you follow or how often:",
       manageLink(origin, manage), "", "----", f.text].join("\n"),
     html: frame(origin, `<p style="${P}">${esc(head)}</p>` +
-      `<p style="${P}">${a(manageLink(origin, manage), "Your new link")}, to change what ` +
-      `you follow or how often.</p>` + f.html, { preheader: head }),
+      `<p style="${P}">Your new link, to change what you follow or how often:</p>` +
+      button(manageLink(origin, manage), "Open your page") + f.html, { preheader: head }),
     headers: listHeaders(origin, unsub),
   };
 }

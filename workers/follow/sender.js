@@ -186,9 +186,13 @@ export function collect({ follows, nights, cursor, current, frequency, today, de
     room -= votes.length;
     const shown = rest.slice(0, Math.min(PER_RECORD, room));
     room -= shown.length;
+    // "This week" is the seven days to today (22 October 2026): an old
+    // executive session newly on the record, or one still to come, was
+    // counted as this week's.
+    const thisWeek = i => i.date <= today && i.date > addDays(today, -7);
     const week = frequency === "weekly" && f.kind === "bill"
-      ? { votes: items.filter(i => i.kind === "vote").length,
-          exec: items.filter(i => i.kind === "exec").length }
+      ? { votes: items.filter(i => i.kind === "vote" && thisWeek(i)).length,
+          exec: items.filter(i => i.kind === "exec" && thisWeek(i)).length }
       : null;
     const upcoming = frequency === "weekly"
       ? (current.upcoming.get(key) || []).filter(u => u.date >= today).slice(0, 5) : [];
