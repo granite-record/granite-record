@@ -524,7 +524,7 @@ jobs:
             exit 0
           }
           # An alert (nightly.py's ALERT_FILE: a refusal on file, a hold on
-          # the database, a night held for approval, a night not clean) is a
+          # the database, a failed check of the built site, a night not clean) is a
           # /fail whatever the job did, with the alert as the ping's body,
           # which Healthchecks emails.
           $alert = 'logs/alert.txt'
@@ -545,6 +545,7 @@ jobs:
           # and nothing where --close wrote no file. With no
           # HEALTHCHECKS_WARN_URL they stay on the run's page and in the
           # verdict, and the night's check is not told of them either.
+          # A night waiting for approval is among them (22 October 2026).
           $warn = 'logs/alert-warn.txt'
           if (-not $env:HC_WARN_URL) {
             Write-Output "No HEALTHCHECKS_WARN_URL secret: the warnings stay on the run's page and in the verdict."

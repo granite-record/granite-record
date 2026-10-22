@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.631
+# GRANITE_VERSION: 2026-09-04.632
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -93809,15 +93809,21 @@ def _alarm_stays_able_to_ring(NI):
         if not any(x.startswith("The night was not clean") for x in got) or \
                 any("_probate_after_the_vote" in x for x in got):
             bad.append(f"a night not clean, with a reminder standing, alerts as {got}")
+        # A night waiting for approval is the warnings' line, not the night's
+        # (the person, 22 October 2026): a release waits by design.
         held = dict(clean, review={"needed": True, "why": ["a new kind of warning: x"]})
-        got = NI.alerts_of(held)
-        if len(got) != 1 or "waits for approval" not in got[0] or "a new kind of warning: x" not in got[0]:
-            bad.append(f"a night the gate holds alerts as {got}")
+        got, warns = NI.alerts_of(held), NI.warns_of(held)
+        if got or not warns or "waits for approval" not in warns[0] or \
+                "a new kind of warning: x" not in warns[0]:
+            bad.append(f"a night the gate holds alerts as {got}, warns as {warns}")
+        # ... while a failed check of the built site, which holds it for a
+        # fault, stays the night's.
         held_check = dict(clean, built_checks=both,
                           review={"needed": True, "why": NI.built_review(both)})
-        got = NI.alerts_of(held_check)
-        if len(got) != 1 or "_rail" not in got[0] or "_probate_after_the_vote" in got[0]:
-            bad.append(f"a night held for a failed check of the site alerts as {got}")
+        got, warns = NI.alerts_of(held_check), NI.warns_of(held_check)
+        if len(got) != 1 or "_rail" not in got[0] or "_probate_after_the_vote" in got[0] or \
+                not any("waits for approval" in w for w in warns):
+            bad.append(f"a night held for a failed check of the site alerts as {got}, warns as {warns}")
         for what, v in (("the New term run", dict(held, asked={"new_term": True})),
                         ("a night not fit for production", dict(held, publishable=False))):
             if NI.held_for_approval(v):

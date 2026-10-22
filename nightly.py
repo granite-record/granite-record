@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.77
+# GRANITE_VERSION: 2026-09-04.78
 """
 The nightly run. Fetch the day's bulk files, rebuild, check, compile what
 readers reported and what changed -- and publish only if told to.
@@ -5682,9 +5682,15 @@ def upload_and_check(a, site, target, base):
 # (warns_of), which the workflow sends to a check of their own,
 # HEALTHCHECKS_WARN_URL, and nowhere at all where that secret is not set:
 # they stay on the run's page and in the verdict, for the morning triage. So
-# the night's check goes down only for what stops or holds the site. And a
-# night the gate holds for approval, which only GitHub told, and only the
-# reviewer, is a line here too (held_for_approval).
+# the night's check goes down only for what stops or holds the site.
+#
+# A NIGHT WAITING FOR APPROVAL IS THE WARNINGS' (the person, 22 October 2026:
+# "move the approval alerts to the warnings check"). Every release waits for
+# approval by design, and its /fail on the night's check read as a failure
+# at 11:02 that morning. So held_for_approval's line is warns_of's: the
+# person is still told, by the warnings' check, and a "down" from the
+# night's check always means something broke. A failed check of the built
+# site, which holds the night for a reason that is a fault, stays here.
 #
 # What has stopped moving under a night that publishes (WHEN THE RECORD STOPS
 # MOVING, 18 October 2026) is WARN_FILE's as well: the record standing still,
@@ -5717,16 +5723,17 @@ def warns_of(v):
     stopped moving (WHEN THE RECORD STOPS MOVING), the laptop's record of its
     caption runs missing or old among them. [] for none."""
     said = built_warn_alert(v.get("built_checks"))
-    return ([said] if said else []) + [s for _kind, s in not_moving_of(v)]
+    held = held_for_approval(v)
+    return ([held] if held else []) + ([said] if said else []) + [s for _kind, s in not_moving_of(v)]
 
 
 def alerts_of(v):
     """What stops or holds the site after tonight, for the night's own
     check (ALERT_FILE), whether or not the night was clean: a refusal from
-    the General Court on file, a hold on the SQL host, a night the gate holds
-    for approval -- or, where the gate holds none, a check of tonight's build
-    that would (BUILT_CHECKS) -- and a night that was not clean, in that
-    order. [] for none. A failed check against the record is warns_of's."""
+    the General Court on file, a hold on the SQL host, a check of tonight's
+    build that holds the night (BUILT_CHECKS), and a night that was not
+    clean, in that order. [] for none. A failed check against the record,
+    and a night waiting for approval, are warns_of's."""
     out = []
     if refusal.MARK.exists():
         d = load_json(refusal.MARK)
@@ -5741,9 +5748,7 @@ def alerts_of(v):
         held = None
     if held:
         out.append("The General Court's database is on hold: " + probe_db.hold_sentence(held) + ".")
-    # The gate's line names a failed check of the site among its reasons, so
-    # the check's own line is said only where the gate holds nothing.
-    said = held_for_approval(v) or built_alert(v.get("built_checks"))
+    said = built_alert(v.get("built_checks"))
     if said:
         out.append(said)
     if not v.get("clean"):
