@@ -12,7 +12,7 @@ import vm from "node:vm";
 import { checkCurrent, checkNight } from "../../workers/follow/changes.js";
 import { parseKey } from "../../workers/follow/common.js";
 import { MARK, PALETTE, ballotWords, confirmationEmail, dateOnce, dayDate, digestEmail, longDate,
-         meetingWords, newLinkEmail, pageNames, welcomeEmail } from "../../workers/follow/mail.js";
+         meetingWords, newLinkEmail, pageNames, shortDate, welcomeEmail } from "../../workers/follow/mail.js";
 import { collect } from "../../workers/follow/sender.js";
 import { SITE, loadFixtures } from "./fakes.js";
 
@@ -186,6 +186,8 @@ test("an email's dates are components.js's dateWords, in its full, long and day 
   for (const d of ["2026-10-17", "2026-01-01", "2024-02-29", "2026-12-31", "2027-03-14", "2026-11-03"]) {
     assert.equal(longDate(d), ctx.dateWords(d, "full"), d);
     assert.equal(longDate(d, true), ctx.dateWords(d, "long"), d);
+    assert.equal(shortDate(d, d), ctx.dateWords(d, "short"), d);
+    assert.equal(shortDate(d, "1999-01-01"), ctx.dateWords(d), d);
     assert.equal(dayDate(d), ctx.dateWords(d, "day"), d);
   }
 });
@@ -227,7 +229,7 @@ for (const c of MEETINGS) {
     }
     assert.ok(m.text.includes(`  ${longDate(c.date)}  HB 9903-FN — ${c.words}\n`),
       `the plain text lacks: ${c.words}\n${m.text}`);
-    assert.ok(visible(m.html).includes(`${longDate(c.date)} — HB 9903-FN — ${c.words}\n`),
+    assert.ok(visible(m.html).includes(`${shortDate(c.date, TODAY)}\nHB 9903-FN — ${c.words}\n`),
       `the HTML lacks: ${c.words}`);
     const clerk = c.line.slice(c.line.indexOf(":") + 1).trim();
     assert.ok(!(m.text + visible(m.html)).includes(clerk), `the clerk's line is still printed: ${clerk}`);
@@ -343,7 +345,12 @@ test("the plain text says what the HTML says", () => {
         assert.ok(v.includes(ballot[1]), `the HTML lacks: ${ballot[1]}`);
       } else if (e) {
         dated++;
-        assert.ok(v.includes(`${e[1]} — ${e[2]}`), `the HTML lacks: ${e[1]} — ${e[2]}`);
+        // The HTML sets the date short in a column of its own (22 October
+        // 2026): "Oct 7" beside the words, the year only when it differs.
+        const [mo, d, y] = e[1].replace(",", "").split(" ");
+        const short = `${mo.slice(0, 3)} ${d}`;
+        assert.ok(v.includes(`${short}\n${e[2]}\n`) || v.includes(`${short}, ${y}\n${e[2]}\n`),
+          `the HTML lacks: ${short} / ${e[2]}`);
       } else if (/^[A-Z][A-Z ]+$/.test(line)) {
         assert.ok(v.toUpperCase().includes(line), `the HTML lacks the heading ${line}`);
       }

@@ -113,6 +113,15 @@ export function longDate(day, weekday = false) {
   return weekday ? `${DAYS[new Date(Date.UTC(y, m - 1, d)).getUTCDay()]}, ${s}` : s;
 }
 
+// The short forms (22 October 2026), components.js's "short" and default:
+// "Oct 15" within the email's own year, "Sep 16, 2025" outside it. An
+// entry's date stands in a narrow column of its own, so it is said short.
+export function shortDate(day, year = "") {
+  const [y, m, d] = String(day).split("-").map(Number);
+  const s = `${MONTHS[m - 1].slice(0, 3)} ${d}`;
+  return String(y) === String(year).slice(0, 4) ? s : `${s}, ${y}`;
+}
+
 export function dayDate(day) {
   const [y, m, d] = String(day).split("-").map(Number);
   return `${DAYS[new Date(Date.UTC(y, m - 1, d)).getUTCDay()]}, ${MONTHS[m - 1]} ${d}`;
@@ -750,7 +759,7 @@ export function digestEmail({ origin, frequency, date, sections: given, manage, 
           text.push(`  ${longDate(it.date)}  ${v.bill || ""}${v.title ? ` (${oneLine(v.title, 90)})` : ""}` +
             ` — ${on}${ballotLine(v)}`);
           html += `<tr><td style="padding:6px 0;border-bottom:1px solid ${RULE}">` +
-            `<span style="color:${INK2}">${esc(longDate(it.date))}</span> — ` +
+            `<span style="color:${INK2}">${esc(shortDate(it.date, date))}</span> — ` +
             (v.bill ? (it.url ? a(siteUrl(origin, it.url), v.bill) : link(v.bill)) : "") +
             (v.title ? ` <span style="color:${INK2}">${esc(oneLine(v.title, 140))}</span>` : "") +
             `<br>${esc(on)}<b>${esc(ballotLine(v))}</b></td></tr>`;
@@ -767,15 +776,22 @@ export function digestEmail({ origin, frequency, date, sections: given, manage, 
       if (s.study) shown.unshift({ date: s.study.date || date, bold: true,
                                    words: `${s.label} — ${studyWords(s.study)}` });
       const earlier = old.length - Math.min(old.length, LATE_SHOWN);
+      // AN ENTRY IS A ROW (22 October 2026): its short date in a column of
+      // its own, so the words start at one edge on a phone rather than
+      // after "October 15, 2026 —" wrapped; and what matters most -- a
+      // decision, a meeting set -- marked by the site's pine rule beside it
+      // rather than set in bold, which made a topic's whole list bold.
       if (shown.length) {
-        html += `<ul style="margin:0 0 10px;padding-left:20px">`;
+        html += `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" ` +
+          `style="margin:2px 0 10px;font-size:15px;line-height:1.45">`;
         for (const row of shown) {
           text.push(`  ${longDate(row.date)}  ${row.words}`);
-          const line = link(row.words);
-          html += `<li style="margin:0 0 6px"><span style="color:${INK2}">${esc(longDate(row.date))}</span>` +
-            ` — ${row.bold ? `<b>${line}</b>` : line}</li>`;
+          html += `<tr><td valign="top" width="64" style="width:64px;padding:5px 8px 5px 0;` +
+            `color:${INK2};font-size:14px;white-space:nowrap">${esc(shortDate(row.date, date))}</td>` +
+            `<td valign="top" style="padding:5px 0 5px 10px;border-left:3px solid ` +
+            `${row.bold ? PINE : WHITE}">${link(row.words)}</td></tr>`;
         }
-        html += "</ul>";
+        html += "</table>";
       }
       const lines = [s.more ? `…and ${s.more} more on its page.` : "",
         earlier ? `…and ${plural(earlier, "earlier entry", "earlier entries")} newly on the record, on its page.` : "",
