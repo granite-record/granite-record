@@ -459,7 +459,13 @@ const STUDY = {
   false: "Interim study report: does not recommend future legislation",
   null: "Interim study report: makes no recommendation",
 };
-export const studyWords = study => STUDY[String(study?.recommends ?? null)] || STUDY.null;
+// ... with the committee's vote where the clerk's line gives one, as
+// plain_action.py says it (", 8–0"), so the bill's line and a law's or a
+// topic's line for the same report read alike (22 October 2026).
+export const studyWords = study => {
+  const v = /\bVote\s+(\d+)\s*-\s*(\d+)/i.exec(String(study?.summary || ""));
+  return (STUDY[String(study?.recommends ?? null)] || STUDY.null) + (v ? `, ${v[1]}\u2013${v[2]}` : "");
+};
 
 // What ending a follow means, said to the reader. It said "a record that
 // has finished has nothing more to report" (the language sweep, 17 October
@@ -560,6 +566,9 @@ export function onceEach(sections) {
     for (const s of sections.filter(x => x.kind === kind)) {
       const items = s.items.filter(it => !seen.has(it.guid));
       for (const it of s.items) seen.add(it.guid);
+      // A bill's study report is its own line, not an item: a law or topic
+      // the same bill reaches carried it again (22 October 2026).
+      if (s.study?.guid) seen.add(s.study.guid);
       const dropped = s.items.length - items.length;
       if (!items.length && dropped && !(s.votes || []).length && !s.study && !s.ended &&
           !(s.upcoming || []).length && !s.more) continue;

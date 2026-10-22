@@ -606,9 +606,9 @@ test("an interim study's report is said one way, in plain_action's words, naming
   for (const [recommends, said] of [[true, words.true], [false, words.false], [null, words.null]]) {
     const m = digestEmail({ ...base, sections: [section({ recommends, date: "2026-10-07",
       summary: "Interim Study Report: Recommended for Future Legislation 10/07/2026 (Vote 12-2; )" })] });
-    assert.equal(m.subject, `HB 9901 — Interim study report: ${said}`, "the subject names the bill");
+    assert.equal(m.subject, `HB 9901 — Interim study report: ${said}, 12–2`, "the subject names the bill");
     assert.equal((m.text.match(/Interim study report/g) || []).length, 1, "said once in the text");
-    assert.match(m.text, new RegExp(`October 7, 2026 {2}HB 9901 — Interim study report: ${said}\\n`));
+    assert.match(m.text, new RegExp(`October 7, 2026 {2}HB 9901 — Interim study report: ${said}, 12–2\\n`));
     assert.doesNotMatch(m.text + m.html, /Interim Study Report:|interim study committee|Vote 12-2/,
       "the clerk's line and the old sentence are gone");
   }
@@ -863,4 +863,22 @@ test("each run pings Healthchecks: plainly when well, /fail with codes and count
     assert.ok(!w.net.pings.some(p => p.body.includes(s.address.split("@")[0])), "no address in a ping");
     assert.equal(await ping(w.env, { problems: [] }), false, "no secret, no ping");
   } finally { w.close(); }
+});
+
+test("a study report under its bill is not said again under a law the bill changes", () => {
+  const base = { origin: "https://graniterecord.org", frequency: "daily", date: "2026-10-21",
+    manage: "M".repeat(43), unsub: "U".repeat(43) };
+  const guid = "2025-2026:HB9901:2026-10-20:interim-study-report";
+  const summary = "HB 9901 — Interim Study Report: Recommended for Future Legislation 10/20/2026 (Vote 8-0; )";
+  const m = digestEmail({ ...base, sections: [
+    { key: "bill:2026/HB9901", kind: "bill", ref: "2026/HB9901", label: "HB 9901", title: "",
+      url: "/bill/2026/hb9901", items: [], more: 0, ended: null, week: null, upcoming: [],
+      study: { guid, date: "2026-10-20", summary, recommends: true } },
+    { key: "law:259", kind: "law", ref: "259", label: "RSA 259", title: "", url: "/laws/259",
+      more: 0, ended: null, week: null, upcoming: [],
+      items: [{ guid, date: "2026-10-20", kind: "study", milestone: true, summary,
+                plain: "HB 9901 — Interim study report: recommends future legislation, 8–0",
+                url: "/bill/2026/hb9901", seen: "2026-10-21T09:00:00Z" }] }] });
+  assert.equal((m.text.match(/Interim study report/g) || []).length, 1, m.text);
+  assert.match(m.text, /HB 9901 — Interim study report: recommends future legislation, 8–0/);
 });
