@@ -742,11 +742,31 @@ def _parsed(path):
     """ast.parse of the script at `path`, from this run's earlier parse of
     the same bytes if there was one. Read as _parse_all always read it: as
     UTF-8, with a byte that is not UTF-8 replaced. SyntaxError is the caller's."""
+    return _parsed_warned(path)[0]
+
+
+def _parsed_warned(path):
+    """(_parsed's tree, [(line, message)] of the SyntaxWarnings its parse
+    gave). THE PARSE'S OWN WARNINGS ARE KEPT WITH IT (23 October 2026):
+    _no_invalid_escapes compiled every code file again for its warnings --
+    a second parse of this file among them, seven to nine seconds of the
+    code checks on GitHub's machine -- and an escape Python will refuse is
+    a warning of the parse, which a later parse of the same bytes from this
+    cache would never give again. So every parse records its own, and that
+    check compiles the tree it is handed for the compiler's."""
     p = Path(path)
     st = p.stat()
     key = (str(p.resolve()), st.st_size, st.st_mtime_ns)
     if key not in _PARSED:
-        _PARSED[key] = ast.parse(p.read_text(encoding="utf-8", errors="replace"))
+        import warnings
+        with warnings.catch_warnings(record=True) as seen:
+            warnings.simplefilter("always")
+            tree = ast.parse(p.read_text(encoding="utf-8", errors="replace"))
+        for w in seen:
+            if not issubclass(w.category, SyntaxWarning):
+                warnings.warn_explicit(w.message, w.category, w.filename, w.lineno)
+        _PARSED[key] = (tree, [(w.lineno, str(w.message)) for w in seen
+                               if issubclass(w.category, SyntaxWarning)])
     return _PARSED[key]
 
 
@@ -1812,15 +1832,24 @@ def _no_invalid_escapes():
     import warnings
     bad = []
     for f in _paths.code_files():
+        # Read as compile() was given it, so a file that is not UTF-8 still
+        # stops the check; the tree is the run's one parse of it (_parsed),
+        # with the warnings that parse gave, and the compiler's come from
+        # compiling that tree: the two together are what compiling the text
+        # gives.
+        f.read_text(encoding="utf-8")
         with warnings.catch_warnings(record=True) as seen:
             warnings.simplefilter("always")
             try:
-                compile(f.read_text(encoding="utf-8"), str(f), "exec")
+                tree, said = _parsed_warned(f)
+                compile(tree, str(f), "exec")
             except SyntaxError as e:
                 bad.append(f"{f.name}:{e.lineno}: {e.msg}")
                 continue
-        bad += [f"{f.name}:{w.lineno}: {w.message}" for w in seen
-                if issubclass(w.category, SyntaxWarning)]
+        said = list(said)
+        said += [x for x in ((w.lineno, str(w.message)) for w in seen
+                             if issubclass(w.category, SyntaxWarning)) if x not in said]
+        bad += [f"{f.name}:{line}: {msg}" for line, msg in said]
     assert not bad, "; ".join(bad[:6])
     return "ok", "every code file compiles without a SyntaxWarning"
 
@@ -12438,6 +12467,35 @@ def _said_date(s):
         return None
 
 
+# THE SITTING DAYS OF THE RECORD ON DISK, READ ONCE A RUN (23 October 2026).
+# Three checks of the built site -- this one, _no_phantom_sittings and
+# _every_rollcall_on_its_sitting -- each called session_days.load() on
+# narratives.json and the rollcalls.json beside it, and each paid the whole
+# read: 108 seconds of preflight --built together on GitHub's machine. They
+# ask it the same question of the same files and only read what it answers,
+# so it is answered once a run for those files as they stand (where each
+# is, its size and its time of writing), and a file that moves is read again.
+_SITTINGS = {}
+
+
+def _sittings_on_disk(SD, narr, rolls=None):
+    """session_days.load(narr, rolls), once a run for the same two files.
+    `rolls` None is the rollcalls.json beside narr, as load() reads it."""
+    narr = Path(narr)
+    beside = narr.parent / SD.ROLLCALLS if rolls is None else Path(rolls)
+
+    def stamp(p):
+        try:
+            st = p.stat()
+        except OSError:
+            return (str(p.resolve()), None, None)
+        return (str(p.resolve()), st.st_size, st.st_mtime_ns)
+    key = (stamp(narr), stamp(beside))
+    if key not in _SITTINGS:
+        _SITTINGS[key] = SD.load(narr) if rolls is None else SD.load(narr, rolls)
+    return _SITTINGS[key]
+
+
 @check("data", "no sitting lists a bill on its consent calendar on a day its chamber's docket "
                "records it taken off")
 def _sitting_consent_on_disk():
@@ -12476,7 +12534,7 @@ def _sitting_consent_on_disk():
                     f"{y}-{int(m):02d}-{int(d):02d}" for m, d, y in _WRITTEN_DAY.findall(raw)}
                 off |= {(e.get("body"), day, term, bill) for day in days}
     del narr
-    sittings = SD.load(fn)
+    sittings = _sittings_on_disk(SD, fn)
     listed = []
     for body, day, term, bill in sorted(off):
         sitting = sittings.get((body, day))
@@ -81562,7 +81620,7 @@ def _no_phantom_sittings():
         return "skip", "no narratives.json here"
     import session_days as SD
     today = datetime.date.today()
-    days = SD.load(narr)
+    days = _sittings_on_disk(SD, narr)
     rc = SD.read_rollcall_dates(
         [p for p in sorted(Path("records/rollcalls").glob("RollCallSummary_*.txt"))
          + [Path("RollCallSummary.txt")] if p.exists()])
@@ -81683,7 +81741,7 @@ def _every_rollcall_on_its_sitting():
     if not narr.exists() or not rolls_path.exists():
         return "skip", "no narratives.json or rollcalls.json here"
     import session_days as SD
-    days = SD.load(narr, rolls_path)
+    days = _sittings_on_disk(SD, narr, rolls_path)
     rolls = json.loads(rolls_path.read_text(encoding="utf-8"))
     where = SD.drawn(days)
     why = {SD.rollcall_key(r): w for r, w in days.left}
