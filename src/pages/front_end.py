@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-09.3
+# GRANITE_VERSION: 2026-10-09.4
 """
 A change to the browser's files, put into the site the last full build made.
 
@@ -24,15 +24,17 @@ that moved is one of these:
   src/pages/app.css   site/app.css, without its comments (build_pages.strip_css)
                       and without the mark's block where the build has no
                       mark; every page links it
-  src/pages/app.js    site/app.js and site/billmatch.js -- and site/sidx/, if
-                      the search's tables in it (SYN, CONCEPTS, STOP) moved,
-                      by running the search-index step as the build does
-                      (about two minutes)
-  src/pages/find.js   site/find.js
+  src/pages/app.js    site/app.js and site/billmatch.js, each without its
+                      comments (build_pages.published_js, strip_js.py) -- and
+                      site/sidx/, if the search's tables in it (SYN,
+                      CONCEPTS, STOP) moved, by running the search-index step
+                      as the build does (about two minutes)
+  src/pages/find.js   site/find.js, without its comments
   src/pages/          site/components.js, with the words of src/pages/words/
-    components.js     written between its markers (build_pages.with_words);
-                      a change to a words file is not one of these, since
-                      components.py draws the built pages with the same words
+    components.js     written between its markers (build_pages.with_words),
+                      without its comments; a change to a words file is not
+                      one of these, since components.py draws the built pages
+                      with the same words
   versions.json,     read by the build only for data.html's two counts
   preflight.py        (build_exports.repo_facts): where a count moved, the
                       bulk-downloads step runs again as the build runs it;

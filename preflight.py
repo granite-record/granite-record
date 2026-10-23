@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.657
+# GRANITE_VERSION: 2026-09-04.658
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -23604,6 +23604,145 @@ def _app_css_published():
     return "ok", "; ".join(said)
 
 
+# strip_js.strip on each of these returns the second, or refuses (None). Each
+# is a way a comment stripper for JavaScript goes wrong without an error: a
+# // or /* inside a string, a template literal or a regular expression; a
+# regular expression told from a division by what stands before it; a
+# comment that held a line end, which automatic semicolon insertion reads; a
+# comment between two names or two signs; and the places where only the
+# grammar knows whether a / divides, which it refuses rather than guesses.
+_STRIP_JS_CASES = [
+    ("a=1; // note\nb=2;\n", "a=1;\nb=2;\n"),
+    ("/* head */\nconst x=1;\n", "const x=1;\n"),
+    ("a/**/b", "a b\n"),
+    ("a+/**/+b", "a+ +b\n"),
+    ("return/*\n*/x", "return\nx\n"),
+    ("s='// not a comment'; t=\"/* nor this */\";", "s='// not a comment'; t=\"/* nor this */\";\n"),
+    ("r=/\\/\\/x/g; q=/[/]\"'/; // c", "r=/\\/\\/x/g; q=/[/]\"'/;\n"),
+    ("x=a/b/c; // c", "x=a/b/c;\n"),
+    ("if(a)/re/.test(s)&&f(); // c", "if(a)/re/.test(s)&&f();\n"),
+    ("x=f(a)/2;", "x=f(a)/2;\n"),
+    ("return /'//.test(s)", "return /'//.test(s)\n"),
+    ("t=`a // b ${c /* d */ + `e /* f */ ${g}`} h`;", "t=`a // b ${c  + `e /* f */ ${g}`} h`;\n"),
+    ("t=`\n  <!-- kept -->\n\n  x  \n`; // c\n", "t=`\n  <!-- kept -->\n\n  x  \n`;\n"),
+    ("  a();   \n\n\n    b(); // c\n  /* d */\n  c();", "a();\n    b();\n  c();\n"),
+    ("x=a\r\n// c\r\n  y\r\n", "x=a\r\n  y\r\n"),
+    ("o={a:1}.a/2", "o={a:1}.a/2\n"),
+    ("a.return/2", "a.return/2\n"),
+    ("x=y?.z/2", "x=y?.z/2\n"),
+    ("x=c?.5:1", "x=c?.5:1\n"),
+    ("x=[1]/2", "x=[1]/2\n"),
+    ("class A{#p=1;m(){return this.#p/2}}", "class A{#p=1;m(){return this.#p/2}}\n"),
+    ("// only a comment\n", ""),
+    ("o={a:1}/2", None),
+    ("{}\n/re/.test(s)", None),
+    ("i++/2", None),
+    ("for(const x of /a/.exec(s))f()", None),
+    ("a<!--b", None),
+    ("/* never closed", None),
+    ("s='never closed\n", None),
+    ("f(", None),
+    ("x=/[[a]--[b]]/v", None),
+    ("#!/usr/bin/env node\n", None),
+]
+
+
+def _published_script_sources():
+    """{name: the text build_pages.published_js, or strip_js.published for
+    map.js, is handed} for every script the site publishes without its
+    comments (strip_js.SCRIPTS), from src/pages/; None where it is not here."""
+    import build_pages as BP
+    import strip_js
+    out = {}
+    for name in strip_js.SCRIPTS:
+        src = Path("src/pages") / ("app.js" if name == "billmatch.js" else name)
+        if not src.exists():
+            return None
+        text = src.read_bytes().decode("utf-8")
+        if name == "billmatch.js":
+            text = BP.bill_matcher_js(src.read_text(encoding="utf-8"))
+        elif name == "components.js":
+            text = BP.with_words(text)
+        out[name] = text
+    return out
+
+
+@check("frontend", "every published script is its source without its comments, reads as "
+                   "the same tokens and compiles, and the site carries exactly that",
+       needs=("build_pages", "strip_js"))
+def _published_scripts_stripped(BP, SJ):
+    """THE SCRIPTS WENT OUT WITH THEIR COMMENTS until 23 October 2026: app.js
+    was 543 KB and 189 KB over the wire to a phone, of which the code was
+    255 KB and 82; find.js 31 KB over the wire and 15, components.js 19 and
+    14. Since then build_pages.front_end publishes each without them
+    (strip_js.py), and build_district_map.py map.js.
+
+    A JavaScript comment stripper that is wrong rarely errors: it takes a //
+    inside a regular expression for a comment and cuts the line, or joins two
+    signs into one. So strip_js.strip on _STRIP_JS_CASES, each a way to go
+    wrong, and the places it must refuse rather than guess; and on every
+    script the site publishes: none refused (a refused script is published
+    with its comments, which costs a phone the bytes this exists to save),
+    no comment left, its tokens the source's (strip() reads its own result
+    again), stripping twice the same as once, and node compiles each. And
+    the site the fixture's builders wrote, and site/ where it is built,
+    carries exactly that. That the published copy does what the source does
+    is _published_scripts_run_the_same's."""
+    wrong = []
+    for src, want in _STRIP_JS_CASES:
+        try:
+            got = SJ.strip(src)
+        except SJ.Refused:
+            got = None
+        if got != want:
+            wrong.append(f"{src!r} -> {got!r}, not {want!r}")
+    assert not wrong, "strip_js.strip: " + "; ".join(wrong)
+    sources = _published_script_sources()
+    if sources is None:
+        return "skip", "the browser's scripts are not all in src/pages/ here"
+    out, said = {}, []
+    for name, text in sources.items():
+        try:
+            out[name] = SJ.strip(text)
+        except SJ.Refused as e:
+            raise AssertionError(f"strip_js refuses {name} ({e}), so the site publishes it with "
+                                 "its comments: write that line so that it reads one way, or "
+                                 "teach strip_js.tokens what it is, with a case here")
+        left = [t for k, t in SJ.tokens(out[name]) if k == "com"]
+        assert not left, f"{name} published still carries a comment: {left[0][:60]!r}"
+        assert SJ.strip(out[name]) == out[name], f"strip_js changes {name} a second time"
+        said.append(f"{name} {len(text.encode()) // 1024} KB to {len(out[name].encode()) // 1024}")
+    node = shutil.which("node") or shutil.which("node.exe")
+    if node:
+        root = Path(tempfile.mkdtemp(prefix="gr-stripjs-"))
+        try:
+            for name, text in out.items():
+                (root / name).write_text(text, encoding="utf-8", newline="")
+            prog = ('const vm=require("vm"),fs=require("fs");for(const f of '
+                    + json.dumps(sorted(out)) + '){try{new vm.Script(fs.readFileSync(f,"utf8"),'
+                    '{filename:f});}catch(e){console.log(f+": "+e.message);}}')
+            (root / "go.js").write_text(prog, encoding="utf-8")
+            r = _run([node, "go.js"], cwd=root, capture_output=True, text=True, timeout=120)
+            assert r.returncode == 0 and not r.stdout.strip(), (
+                "node will not compile the published copy: " + (r.stdout + r.stderr)[:400])
+        finally:
+            shutil.rmtree(root, ignore_errors=True)
+    for what, site in _built_sites():
+        for name in SJ.SCRIPTS:
+            f = site / name
+            if not f.exists():
+                continue
+            built = f.read_bytes().decode("utf-8").replace("\r\n", "\n")
+            want = (BP.published_js(name, Path("src/pages/" + name).read_text(encoding="utf-8"))
+                    if name in BP.COPIED else out[name].replace("\r\n", "\n"))
+            assert built == want.replace("\r\n", "\n"), (
+                f"{what}'s {name} is not its source as published_js makes it, without its "
+                "comments: build_pages.front_end and build_district_map.py publish them, "
+                "and python3 build_all.py --front-end puts a change into a built site")
+        said.append(f"{what}'s are those")
+    return "ok", "; ".join(said) + ("" if node else "; node is not here to compile them")
+
+
 @check("frontend", "no source file carries a control character")
 def _no_control_bytes():
     """app.js was a binary file for two days and nothing said so.
@@ -25481,7 +25620,11 @@ def _inventory_bump(inventory):
         assert b"GRANITE_VERSION: 2026-01-02.4\r\n" in raw and b"\n" not in raw.replace(b"\r\n", b""), raw
         assert json.loads((d / "versions.json").read_text())["files"]["a.py"] == "2026-01-02.4"
         assert inventory.changed_since(d, "HEAD")[0] == [], "a bumped file was offered again"
-        return "ok", "2026-01-02.3 -> .4 in the file and versions.json, CRLF kept, once only"
+        # A file new since the base keeps its first stamp, however often it runs.
+        (d / "b.py").write_bytes(b"#!/usr/bin/env python3\n# GRANITE_VERSION: 2026-10-23.1\n")
+        assert inventory.changed_since(d, "HEAD")[0] == [], "a new file's first stamp was bumped"
+        return "ok", ("2026-01-02.3 -> .4 in the file and versions.json, CRLF kept, once only; "
+                      "a new file keeps its first stamp")
     finally:
         shutil.rmtree(d, ignore_errors=True)
 
@@ -31631,9 +31774,14 @@ def _chain():
         dm = json.loads((root / "site" / "district_map.json").read_text(encoding="utf-8"))
         assert dm["places"] and dm["fill"]["base"] and dm["arcs"], \
             "build_district_map wrote a district_map.json with nothing in it"
-        for name in ("map.js", "map.css"):
-            assert (root / "site" / name).read_bytes() == (here / "src/pages" / name).read_bytes(), \
-                f"site/{name} is not src/pages/{name}"
+        # map.js as the site publishes every script, without its comments
+        # (strip_js.py, 23 October 2026); map.css as it is.
+        import strip_js
+        src_js = (here / "src/pages/map.js").read_bytes().decode("utf-8")
+        assert (root / "site" / "map.js").read_bytes().decode("utf-8") == strip_js.strip(src_js), \
+            "site/map.js is not src/pages/map.js without its comments"
+        assert (root / "site" / "map.css").read_bytes() == (here / "src/pages/map.css").read_bytes(), \
+            "site/map.css is not src/pages/map.css"
         # llms.txt (24 September): it exists, says the one thing that must
         # never move -- this is not the General Court's official record --
         # and the example bill address it gives is a page that was built.
@@ -56586,9 +56734,11 @@ def _words_written_once(B):
     built = shared / "site" / "components.js"
     if not built.exists():
         bad.append("the fixture build wrote no site/components.js")
-    elif built.read_bytes().decode("utf-8").replace("\r\n", "\n") != BP.with_words(src):
+    elif built.read_bytes().decode("utf-8").replace("\r\n", "\n") != BP.published_js(
+            "components.js", src).replace("\r\n", "\n"):
         bad.append("the fixture build's site/components.js is not src/pages/components.js with "
-                   "the words written between its markers")
+                   "the words written between its markers, without its comments "
+                   "(build_pages.published_js)")
     assert not bad, " | ".join(bad)
     n = {k: len(v) for k, v in W.items()}
     return "ok", (f"{len(W)} files of words ({', '.join(f'{k} {v}' for k, v in n.items())} "
@@ -58534,6 +58684,18 @@ def _components_js(here="."):
     return BP.with_words(p.read_text(encoding="utf-8"))
 
 
+# THE HARNESSES RUN THE SOURCE, AND ONCE A RUN THE PUBLISHED COPY (23 October
+# 2026). The site publishes every script without its comments (strip_js.py);
+# while this is True, _with_components hands node that copy of components.js
+# and of the page's script instead of the source. Only
+# _published_scripts_run_the_same sets it, around a second run of every check
+# that runs a page's script through _with_components or _node_app, and holds
+# each result to the result on the source. _components_js stays the source:
+# the checks that read it alone read its lines and its marker comments
+# (_components_agree's coverage, _until_by_the_reader's BEHAVIOUR block).
+_PUBLISHED_SCRIPTS = False
+
+
 def _node_file(node, prog, **kw):
     """node run on `prog` from a file rather than with -e: components.js
     with its words is past 32,767 characters since 10 October 2026, which
@@ -58570,7 +58732,11 @@ def _no_components_on_a_command_line():
 
 def _with_components(js, here="."):
     """A page's script as node is to run it: components.js first, as every
-    page loads it, then the script."""
+    page loads it, then the script. Both without their comments, as the
+    site publishes them, while _PUBLISHED_SCRIPTS is set."""
+    if _PUBLISHED_SCRIPTS:
+        import strip_js
+        return strip_js.strip(_components_js(here)) + "\n" + strip_js.strip(js)
     return _components_js(here) + "\n" + js
 
 
@@ -60060,12 +60226,18 @@ def _print_sheet():
     if not got["open"]["ok"]:
         bad.append("GRPrint.open did not mount the sheet: " + got["open"].get("err", ""))
 
-    # Published as it is, with every script's freshness.
+    # Published as it is -- print.js without its comments, as every script
+    # since 23 October 2026 (build_pages.published_js) -- with every script's
+    # freshness.
+    import build_pages as BP
     shared, _base, _ran, _days = _fixture_site_shared()
     site = shared / "site"
     for f in ("print.js", "print.css"):
-        if not (site / f).exists() or (site / f).read_bytes() != Path("src/pages", f).read_bytes():
-            bad.append(f"the fixture build does not publish src/pages/{f} as it is")
+        src = Path("src/pages", f).read_bytes()
+        want = BP.published_js(f, src.decode("utf-8")).encode("utf-8") if f.endswith(".js") else src
+        if not (site / f).exists() or (site / f).read_bytes() != want:
+            bad.append(f"the fixture build does not publish src/pages/{f} as it is"
+                       + (", without its comments" if f.endswith(".js") else ""))
         if not re.search(rf"/{re.escape(f)}\s*\n\s*Cache-Control:[^\n]*max-age=0, must-revalidate",
                          (site / "_headers").read_text(encoding="utf-8") if (site / "_headers").exists() else ""):
             bad.append(f"_headers does not give /{f} the freshness every script has")
@@ -91865,10 +92037,15 @@ def _map_published():
             if d["fill"][lk].get(fid) != want:
                 wrong.append(f"{lk} {fid}: {d['fill'][lk].get(fid)!r}, the record {want!r}")
     assert not wrong, f"{len(wrong)} districts filled otherwise than the record: " + "; ".join(wrong[:6])
-    for name in ("map.js", "map.css"):
-        site, src = Path("site") / name, Path("src/pages") / name
-        assert site.exists() and site.read_bytes() == src.read_bytes(), \
-            f"site/{name} is not src/pages/{name}"
+    # map.js without its comments, as every script is published (strip_js.py,
+    # 23 October 2026); map.css as it is.
+    import strip_js
+    site_js, site_css = Path("site/map.js"), Path("site/map.css")
+    assert site_js.exists() and site_js.read_bytes().decode("utf-8") == strip_js.published(
+        "map.js", Path("src/pages/map.js").read_bytes().decode("utf-8")), \
+        "site/map.js is not src/pages/map.js without its comments"
+    assert site_css.exists() and site_css.read_bytes() == Path("src/pages/map.css").read_bytes(), \
+        "site/map.css is not src/pages/map.css"
     vac = sum(1 for v in d["fill"]["base"].values() if not v)
     return "ok", (f"{sum(len(v) for v in d['fill'].values())} districts filled as the roster "
                   f"and officials.json have them; {vac} base districts with every seat vacant")
@@ -97320,6 +97497,7 @@ def main():
                 status, msg = "ERROR", f"{type(e).__name__}: {e}"
                 if a.verbose:
                     traceback.print_exc()
+            _OUTCOMES[c["fn"].__name__] = (status, msg)
             status, msg = _settle(status, msg, c.get("expect_fail"))
         results.append((c["group"], c["name"], status, msg))
         if a.built:
@@ -97575,9 +97753,13 @@ def _fast_path_matches_the_build(BI, BP):
         # components.js too, since the polish's components (10 October 2026):
         # it goes into the site with the words written between its markers
         # (build_pages.with_words), so its copy is not the file as it stands.
-        edit = {"app.css": shared_rule, "app.js": lambda t: t + "\n// the fast path\n",
-                "find.js": lambda t: t + "\n// the fast path\n",
-                "components.js": lambda t: t + "\n// the fast path\n"}
+        # A statement, not a comment, since the scripts are published without
+        # their comments (strip_js.py, 23 October 2026): a comment added is a
+        # change the site does not carry, and the fast path rightly writes
+        # nothing for it.
+        line = '\nvoid "the fast path";\n'
+        edit = {"app.css": shared_rule, "app.js": lambda t: t + line,
+                "find.js": lambda t: t + line, "components.js": lambda t: t + line}
         _edit_browser_files(fast, edit)
         _edit_browser_files(step, edit)
         before = {p: p.read_bytes() for p in (fast / "site").rglob("*") if p.is_file()}
@@ -97651,6 +97833,9 @@ FAST_PATH_READERS = {
     "build_search_index.py": "app.js's search tables into site/sidx (front_end.facts; the "
                              "step runs again when they move)",
     "build_all.py": "app.js named as the search index step's input",
+    "strip_js.py": "the scripts it publishes without their comments (SCRIPTS), which "
+                   "build_pages.published_js applies in build_pages.front_end, the function "
+                   "the fast path calls",
 }
 # Who on the build's path names a folder build_inputs.NOT_INPUTS leaves out,
 # and why that is not a read of something the build is made from.
@@ -98410,6 +98595,118 @@ def _sitemap_writers_merge(S):
     finally:
         shutil.rmtree(root, ignore_errors=True)
     return "ok", "four builders merge through sitemap_merge; chester added beside chesterfield, a stale town out"
+
+
+# ---- the published scripts do what the source does (23 October 2026) -------
+#
+# LAST ON PURPOSE: it runs again every check that runs a page's script, on
+# the copy the site publishes, and holds each to how it came out on the
+# source in this same run (_OUTCOMES, which main() keeps), so it registers
+# after all of them.
+
+# What each check came out as in this run, by function name, before any
+# expect_fail mark is read: main() writes it, _published_scripts_run_the_same
+# reads it.
+_OUTCOMES = {}
+
+
+def _reaching(names, skip=()):
+    """The checks (CHECKS entries) whose code reaches one of `names` --
+    directly, or through any function of this file it calls, at any depth --
+    but those named in `skip`."""
+    import types
+    g = globals()
+
+    def codes(co):
+        yield co
+        for k in co.co_consts:
+            if isinstance(k, types.CodeType):
+                yield from codes(k)
+
+    def reaches(fn, seen):
+        if fn.__name__ in seen:
+            return False
+        seen.add(fn.__name__)
+        for co in codes(fn.__code__):
+            for nm in co.co_names:
+                if nm in names:
+                    return True
+                f = g.get(nm)
+                if isinstance(f, types.FunctionType) and f.__module__ == __name__ \
+                        and reaches(f, seen):
+                    return True
+        return False
+    return [c for c in CHECKS if c["fn"].__name__ not in skip and reaches(c["fn"], set())]
+
+
+def _check_outcome(c):
+    """(status, message) of one check, as main() reads it before the
+    expect_fail mark: "skip" where a module it needs will not import, "FAIL"
+    on an assertion, "ERROR" on any other exception."""
+    mods = []
+    for n in c["needs"]:
+        m = imp(n)
+        if m is None:
+            return "skip", f"{n}.py will not import"
+        mods.append(m)
+    try:
+        return tuple(c["fn"](*mods))
+    except AssertionError as e:
+        return "FAIL", str(e) or "assertion failed"
+    except Exception as e:                                      # noqa: BLE001
+        return "ERROR", f"{type(e).__name__}: {e}"
+
+
+@check("frontend", "every node harness that runs a page's script gets from the published "
+                   "copy, without its comments, what it gets from the source",
+       needs=("build_pages", "strip_js"))
+def _published_scripts_run_the_same(BP, SJ):
+    """The other half of _published_scripts_stripped: that the copy a reader
+    is sent DOES what the source does (23 October 2026, when the scripts
+    began to go out without their comments). Every check of the code that
+    runs a page's script in node through _node_app or _with_components --
+    directly or through a helper of this file, so a harness added later is
+    held too -- is run again with _PUBLISHED_SCRIPTS set, so that node is
+    handed components.js with app.js, find.js, print.js or map.js as the site
+    publishes them, and each must come out as it came out on the source in
+    this run: the same status, and the same words but for the numbers, of
+    which some are timings (_search_work draws in 39 ms one run and 41 the
+    next). Its numbers are its own to hold, and do; what this holds is that
+    taking the comments out changed none of its findings. Where this run did
+    not run a check on the source (a --changed run), it is run here on both.
+    The data checks are left to the source: they read the record."""
+    if not (shutil.which("node") or shutil.which("node.exe")):
+        return "skip", "node is not here, and every one of these harnesses needs it"
+    if _published_script_sources() is None:
+        return "skip", "the browser's scripts are not all in src/pages/ here"
+    global _PUBLISHED_SCRIPTS
+    chosen = [c for c in _reaching({"_node_app", "_with_components"},
+                                   skip=("_published_scripts_run_the_same",))
+              if c["group"] != "data"]
+    assert len(chosen) >= 20, (
+        f"only {len(chosen)} checks were found that run a page's script in node: _reaching "
+        "is not finding the harnesses")
+
+    def words(msg):
+        return re.sub(r"\d+", "#", str(msg))
+    differ, ran = [], Counter()
+    for c in chosen:
+        name = c["fn"].__name__
+        source = _OUTCOMES.get(name) or _check_outcome(c)
+        _PUBLISHED_SCRIPTS = True
+        try:
+            published = _check_outcome(c)
+        finally:
+            _PUBLISHED_SCRIPTS = False
+        ran[source[0]] += 1
+        if published[0] != source[0] or words(published[1]) != words(source[1]):
+            differ.append(f"{name}: on the source {source[0]} ({str(source[1])[:160]}); on the "
+                          f"published copy {published[0]} ({str(published[1])[:160]})")
+    assert not differ, (f"{len(differ)} of {len(chosen)} harnesses come out otherwise on the "
+                        "scripts as published, without their comments (strip_js.py): "
+                        + " | ".join(differ[:4]))
+    return "ok", (f"{len(chosen)} checks that run a page's script in node came out the same on "
+                  f"the published copy ({', '.join(f'{n} {k}' for k, n in sorted(ran.items()))})")
 
 
 if __name__ == "__main__":

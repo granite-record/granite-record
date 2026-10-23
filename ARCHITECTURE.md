@@ -40,6 +40,13 @@ the district map's `map.js` and `map.css`) is in
 stylesheet: every page links it, the record pages and the five
 `build_pages.py` writes alike, so where a rule sits in it decides only the
 cascade, and the copy published in `site/` is the file without its comments.
+So is every script's (since 23 October 2026: `src/pages/strip_js.py`, which
+reads the script rather than guessing at it, refuses what only the grammar
+could settle, and publishes a script it refuses as it is): the comments in
+`src/pages/` are the documentation, and a phone is sent only the code --
+`app.js` 82 KB over the wire rather than 189. `preflight` runs every node
+harness that loads a page's script on the published copy as well as on the
+source, and holds the two to the same result.
 The rules for those five pages alone are scoped to them with
 `:where(body.pg)`; a record page's rule that would redraw them is scoped
 away with `:where(body:not(.pg))` (the note at the top of `app.css`). The

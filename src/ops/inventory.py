@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.9
+# GRANITE_VERSION: 2026-09-04.10
 """
 Report what is actually on disk, and which scripts are out of date.
 
@@ -159,7 +159,10 @@ def changed_since(root, base):
             then = _stamp(git("show", f"{base}:{n}"))
         except subprocess.CalledProcessError:
             then = None
-        if then is None or then == now:
+        # A FILE NEW SINCE BASE KEEPS ITS FIRST STAMP: it has no earlier one
+        # to move past, and bumping it on every run took strip_js.py from .1
+        # to .3 in one afternoon (23 October 2026).
+        if then is not None and then == now:
             todo.append(n)
     return todo, bare
 

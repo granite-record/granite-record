@@ -11,10 +11,12 @@ every record page is built from, and the `components.js`, `app.js`, `app.css`
 and `find.js` it loads. `build_pages.py` copies all five into `site/`, and
 the builders read them here under the folder they run in, so a fixture lays
 out its own copies the same way. Edit them here; `site/` holds copies --
-`app.css` without its comments (`build_pages.strip_css`). It is the one
+`app.css` without its comments (`build_pages.strip_css`), and every script
+without its comments (`strip_js.py`, through `build_pages.published_js`),
+so the comments here are the documentation and cost a reader nothing. It is the one
 stylesheet, linked by every page: a new component's rules go anywhere in it
 and reach the record pages and the five pages `build_pages.py` writes alike. The district map is a module of its own: `map.js` and `map.css`,
-which `build_district_map.py` copies beside `/district_map.json`, the one
+which `build_district_map.py` copies (`map.js` without its comments) beside `/district_map.json`, the one
 file the map draws, and which a page mounts with `GRMap.mount()`: the
 Officials page's My Town tab and every town page's District Map tab.
 
