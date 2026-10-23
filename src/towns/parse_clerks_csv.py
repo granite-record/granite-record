@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-20.5
+# GRANITE_VERSION: 2026-09-20.6
 """
 The Secretary of State's clerks and polling places, out of the CSV export.
 
@@ -49,6 +49,19 @@ original beside the correction -- see that file for the evidence. A
 correction whose `source_says` no longer matches the export is reported and
 NOT applied, because that means the row has changed and the correction is
 the stale thing.
+
+THE DAY, ON EVERY ROW (23 October 2026). Each row carries `read_on`, the day
+of the export it was read from (READ_ON), so the file says how old it is
+without this parser beside it: src/towns/town_sources.py reads it, and
+preflight's _town_sources_fresh asks for the list again after the town
+meetings, before a general election and after a year. On every row and not
+once at the top, because every reader of this file takes each key as a town.
+
+AND A FLOOR. An export cut short, or a layout change that leaves columns
+blank, still parses, and this used to write whatever it got. It refuses to
+write under town_sources.FLOORS["sos_list"] -- 330 rows, nearly every one with
+a clerk and a phone, 200 with a polling place -- unless a person passes
+--allow-shrink, and says what fell.
 """
 # The bootstrap: _paths.py, found above this file, puts every code folder on the import path.
 import sys
@@ -64,6 +77,7 @@ import re
 
 import parse_clerks
 import parse_officials
+import town_sources
 
 # The repository root, wherever this file sits (_paths.py): the data it
 # reads is the root's.
@@ -182,6 +196,8 @@ def build(rows, towns, fixes):
             "election": clean(r[COL["elect"]]),
             "state_hours": clean(r[COL["shours"]]),
             "local_hours": clean(r[COL["lhours"]]),
+            # The day the list was exported, on every row (see THE DAY).
+            "read_on": READ_ON,
         }
 
         fix = fixes.get("polling_place", {}).get(key)
@@ -207,6 +223,9 @@ def main():
     ap.add_argument("--site", default="site")
     ap.add_argument("--out", default=str(OUT))
     ap.add_argument("--report", action="store_true")
+    ap.add_argument("--allow-shrink", action="store_true",
+                    help="write even under town_sources.FLOORS: a person's decision that "
+                         "the list really is smaller")
     a = ap.parse_args()
 
     src = pathlib.Path(a.csv)
@@ -246,10 +265,18 @@ def main():
                      ("phone", "a phone"), ("website", "a website")):
         print(f"    {sum(1 for v in data.values() if v.get(f))} of {n} carry "
               f"{label}")
+    # Silence is not success: a list that came back smaller says so, and is
+    # not written over the one the town pages read unless a person says so.
+    short = town_sources.short_of("sos_list", data)
+    for s in short:
+        print(f"  ! {s}")
 
     if a.report:
         print("  --report: nothing written")
         return 0
+    if short and not a.allow_shrink:
+        sys.exit(f"  nothing written: the list is under its floor (town_sources.FLOORS). "
+                 "Look at the export before trusting it; --allow-shrink writes it anyway")
     pathlib.Path(a.out).write_text(
         json.dumps(data, indent=1, sort_keys=True) + "\n", encoding="utf-8")
     print(f"  -> {a.out} ({n} towns and wards)")

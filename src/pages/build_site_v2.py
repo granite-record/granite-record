@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.229
+# GRANITE_VERSION: 2026-09-05.230
 """
 Generate the faceted site from real General Court data.
 
@@ -10246,7 +10246,11 @@ def unify_vocabulary(bills):
             s = (rec.get("subject") or "").strip()
             if not s:
                 continue
-            if s in TM.RETIRED:
+            # A retired name is blanked -- unless a proposal the owner has
+            # turned on (TM.ENABLED) claims the bill, as Legislative Rules and
+            # Organization would claim the General Court's "Regular Meeting"
+            # housekeeping resolutions. With none on, exactly as before.
+            if s in TM.RETIRED and not TM.proposal_for(rec, "first"):
                 rec["subject"], rec["subject_code"] = "", ""
                 moved["retired"] += 1
                 continue
