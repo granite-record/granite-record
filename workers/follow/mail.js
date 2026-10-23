@@ -28,6 +28,15 @@
 
 import { ConfigError } from "./address.js";
 import { addDays, chamberOf, esc, oneLine, parseKey, siteUrl } from "./common.js";
+// THE SITE'S COLOURS AND WORDS, FROM THE SITE'S OWN FILES (23 October 2026).
+// Every value an email shares with the site -- its inks, a status chip's
+// colour, the vote ring's, the testimony forms, a study report's words, the
+// mark's file and size -- is in site.gen.js, which src/pages/follow_site.py
+// writes from the file the site draws it from. Change it there and run that;
+// nothing here types one of them.
+import { MARK_FILE, SITE_PALETTE, STATUS_CLASS, STATUS_INK, STUDY_REPORT, TESTIFY_FORMS,
+         VOTE_INK } from "./site.gen.js";
+export { STATUS_CLASS, STATUS_INK, TESTIFY_FORMS, VOTE_INK };
 
 const RESEND = "https://api.resend.com/emails";
 
@@ -133,12 +142,8 @@ export function shortDate(day, year = "") {
 // Died red, Interim Study orange, ...; anything else is a bill still moving,
 // blue); the email colours the bar alone, in the site's light-theme inks
 // (app.css --st-*), and keeps the word dark, so the colour adds to the word
-// and is never the only thing that says it. preflight holds both tables to
-// the site's.
-export const STATUS_CLASS = { "Became Law": "law", "Died": "done", "Interim Study": "study",
-  "Tabled": "table", "Vetoed": "veto", "Withdrawn": "done" };
-export const STATUS_INK = { active: "#566290", law: "#1E5B3C", done: "#9E2B25", study: "#B9420B",
-  table: "#7A5A00", veto: "#7C2D3A" };
+// and is never the only thing that says it. Both tables, STATUS_CLASS and
+// STATUS_INK, are site.gen.js's, read from those two files.
 export const statusInk = words => STATUS_INK[STATUS_CLASS[String(words || "").trim()] || "active"];
 function statusChip(words) {
   return `<span style="display:inline-block;padding:0 8px;border:1px solid ${RULE};` +
@@ -189,14 +194,15 @@ const NO_REPLY = "This address takes no replies. If something here looks wrong, 
 // ---- the frame of every email --------------------------------------------------------
 // The site's palette, light, on a white ground that every block declares
 // for itself (17 October 2026). The colours are app.css's ink, ink-2, rule
-// and pine. The head declares the email light-only, which Apple Mail and
-// Outlook honour by drawing it as written; Gmail's apps and Outlook.com may
+// and pine (site.gen.js's SITE_PALETTE); the white is the email's own, since
+// the site's surfaces are tinted and an email's ground is white. The head
+// declares the email light-only, which Apple Mail and Outlook honour by
+// drawing it as written; Gmail's apps and Outlook.com may
 // invert it all the same, and because every colour here is dark ink on white
 // an inverted email is light ink on dark: no text is light, none sits on an
 // image, and no colour is the only thing that says something. mail.test.js
 // holds every text colour to 4.5:1 on white.
-export const PALETTE = { ink: "#1C2126", ink2: "#4A5259", rule: "#D3D6DA", pine: "#14514C",
-                         white: "#FFFFFF" };
+export const PALETTE = { ...SITE_PALETTE, white: "#FFFFFF" };
 const { ink: INK, ink2: INK2, rule: RULE, pine: PINE, white: WHITE } = PALETTE;
 const SERIF = "Georgia,'Times New Roman',serif";
 const BRAND = "'Source Serif 4',Georgia,'Times New Roman',serif";
@@ -220,7 +226,10 @@ const P = "margin:0 0 12px";
 // is empty and it is not a link: it used to be both, and a screen reader
 // read "Granite Record logo, link" and then "Granite Record, link", two
 // stops to the same page. The name is the link.
-export const MARK = { path: "/mail-mark.png", width: 41, height: 64, alt: "" };
+//
+// The file and its size are build_brand.py's, which draws it (site.gen.js's
+// MARK_FILE); the empty alt is the email's.
+export const MARK = { ...MARK_FILE, alt: "" };
 function masthead(origin) {
   const home = esc(siteUrl(origin, "/"));
   return `<table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>` +
@@ -510,12 +519,11 @@ export function newLinkEmail({ origin, manage, unsub, feedbackUrl }) {
 // emails should have "similar elements to what's on the bill pages with the
 // vote diagrams"). The page's ring is SVG, which Gmail does not show, so the
 // email draws the same two sides as a bar of table cells in the ring's own
-// inks (app.css --yes and --no, light theme; preflight holds them alike),
+// inks (app.css --yes and --no, light theme: site.gen.js's VOTE_INK),
 // with Yes and No and their counts under its ends as the ring labels its
 // own, and says the rest in words: whether it passed, what the yes side
 // needed, and each party's side. The bar is a picture of the words beside it,
 // so a screen reader is told the words and not the bar (aria-hidden).
-export const VOTE_INK = { yes: "#215C43", no: "#CE6A62" };
 const PARTY_WORDS = { R: ["Republican", "Republicans"], D: ["Democrat", "Democrats"],
   I: ["Independent", "Independents"], L: ["Libertarian", "Libertarians"],
   X: ["member whose party is not on file", "members whose party is not on file"] };
@@ -553,13 +561,11 @@ function voteBar(r) {
 }
 
 // ---- testifying on a bill -----------------------------------------------------------------
-// THE CHAMBERS' ONLINE SIGN-IN FORMS, app.js's TESTIFY_FORMS (preflight holds
-// the two alike). Neither form can be opened at a bill, so the email says
+// THE CHAMBERS' ONLINE SIGN-IN FORMS, app.js's TESTIFY_FORMS (site.gen.js's,
+// read from app.js). Neither form can be opened at a bill, so the email says
 // what to choose on it, in the order the Senate's guidance gives -- the
 // hearing's day, then the committee, then the bill -- which the House's form
 // asks for too (guides.py, TESTIFY).
-export const TESTIFY_FORMS = { H: ["House", "https://gc.nh.gov/house/committees/remotetestimony/"],
-  S: ["Senate", "https://gc.nh.gov/remotecommittee/senate.aspx"] };
 // THE CLOSING TIME IS PRACTICE, AND SAID AS PRACTICE (22 October 2026). The
 // Senate's guidance says its sign-in opens once a hearing is scheduled; no
 // calendar or guidance on record says when either chamber's closes. That
@@ -617,12 +623,11 @@ function testifyBlock(t, label) {
 // report, which every other line of an email already uses, with the bill's
 // name in front wherever it stands alone. Since 23 October 2026 those words
 // are src/pages/words/study_report.json's, which the site's pages draw from
-// too; a Worker reads no site file, so this is a copy, and preflight's
-// _study_report_said_once fails while it differs from the file.
+// too, and which reach the Worker as site.gen.js's STUDY_REPORT.
 const STUDY = {
-  true: "Interim study report: recommends future legislation",
-  false: "Interim study report: does not recommend future legislation",
-  null: "Interim study report: makes no recommendation",
+  true: `${STUDY_REPORT.head}: ${STUDY_REPORT.said.rec}`,
+  false: `${STUDY_REPORT.head}: ${STUDY_REPORT.said.not}`,
+  null: `${STUDY_REPORT.head}: ${STUDY_REPORT.said.without}`,
 };
 // ... with the committee's vote where the clerk's line gives one, as
 // plain_action.py says it (", 8–0"), so the bill's line and a law's or a

@@ -36791,42 +36791,72 @@ def _follow_lsr_endings(FC):
     return "ok", "drafted names its bill, withdrawn ends, and the night's file carries becomes"
 
 
-@check("frontend", "an email sends a reader to the same testimony forms as a bill's page, and colours "
-       "a bill's status as the site does")
-def _follow_mail_matches_site():
+def _site_gen(path="workers/follow/site.gen.js"):
+    """workers/follow/site.gen.js as it is committed: {export name: value},
+    each `export const NAME = <JSON>;` line read as JSON. What the Worker is
+    bundled with, whatever follow_site.py would write now."""
+    text = Path(path).read_text(encoding="utf-8")
+    return {n: json.loads(v) for n, v in re.findall(r"^export const (\w+) = (.*);$", text, re.M)}
+
+
+@check("frontend", "an email takes the site's colours, testimony forms, study words and mark from "
+       "site.gen.js, and site.gen.js is what follow_site.py writes from the site's files now",
+       needs=("follow_site",))
+def _follow_site_current(FS):
     """The person, 22 October 2026: bill emails should have "similar elements to
     what's on the bill pages with ... color coded indicators", and testimony
-    "with a similar button ... just like it shows on the bill page version".
-    mail.js holds its own copies, since a Worker reads no site file: the two
-    chambers' forms (app.js TESTIFY_FORMS), the word each status chip is
-    coloured by (chips.json "chip") and the light theme's status inks (app.css
-    --st-*). A change to the site's that misses the email's fails here."""
+    "with a similar button ... just like it shows on the bill page version";
+    and on 23 October, code "easily adjustable for future development so we
+    don't have to keep going back and redo work done in a previous session".
+
+    mail.js held its own copy of each value it shares with the site -- the
+    two chambers' forms (app.js TESTIFY_FORMS), the word each status chip is
+    coloured by (chips.json "chip"), the light theme's status, ring and text
+    inks (app.css), the study report's words, the mark's file and size -- and
+    a check for each held the copy to its source, so a change to the site
+    meant a second edit by hand. Now follow_site.py reads every one where the
+    site keeps it and writes workers/follow/site.gen.js, which mail.js
+    imports. This fails while the committed file is not what it would write,
+    naming the one command that makes it so; and where mail.js types a
+    colour of the site's or a form's address again, which would be a copy
+    nothing holds."""
+    # What it is written from, each by its path here as well as in
+    # follow_site.py, so that a change to any of them reaches this check
+    # under preflight --changed (check_select.py reads this file's strings).
+    sources = ("src/pages/app.css", "src/pages/app.js", "src/pages/words/chips.json",
+               "src/pages/words/study_report.json", "src/pages/build_brand.py")
+    assert sorted(sources) == sorted(p.as_posix() for p in FS.SOURCES), (
+        f"follow_site.py reads {sorted(p.as_posix() for p in FS.SOURCES)}, and this check names "
+        f"{sorted(sources)}: name each here, so preflight --changed runs this when one moves")
+    try:
+        want = FS.render()
+    except FS.SourceError as e:
+        raise AssertionError(f"follow_site.py cannot read the site's files: {e}") from None
+    ok, why = FS.current()
+    if not ok:
+        try:
+            got = _site_gen()
+        except (OSError, ValueError):
+            got = {}
+        fresh = {n: v for n, (_, v) in FS.values().items()}
+        moved = [n for n in fresh if got.get(n) != fresh[n]] + [n for n in got if n not in fresh]
+        raise AssertionError(f"{why} ({', '.join(moved) or 'its words around them'}): run "
+                             f"`{FS.COMMAND}` and commit {FS.OUT.as_posix()} with the change")
     mail = Path("workers/follow/mail.js").read_text(encoding="utf-8")
-    app = Path("src/pages/app.js").read_text(encoding="utf-8")
-    form = r'([HS]):\s*\["(House|Senate)",\s*"(https://[^"]+)"\]'
-    site = re.findall(form, app[app.index("const TESTIFY_FORMS="):][:300])
-    sent = re.findall(form, mail[mail.index("export const TESTIFY_FORMS"):][:300])
-    assert len(site) == 2 and sorted(site) == sorted(sent), (
-        f"the emails' testimony forms {sent} are not the bill page's {site}")
-    chips = json.loads(Path("src/pages/words/chips.json").read_text(encoding="utf-8"))["chip"]
-    m = re.search(r"export const STATUS_CLASS = \{([^}]*)\}", mail)
-    said = dict(re.findall(r'"?([A-Z][A-Za-z ]+?)"?: "(\w+)"', m.group(1))) if m else {}
-    assert said == {w: c.removeprefix("s-") for w, c in chips.items()}, (
-        f"mail.js STATUS_CLASS {said} is not chips.json's chip map {chips}")
-    css = Path("src/pages/app.css").read_text(encoding="utf-8")
-    light = dict(re.findall(r"--st-(\w+):(#[0-9A-Fa-f]{6});", css[:css.index("@media")]))
-    m = re.search(r"export const STATUS_INK = \{([^}]*)\}", mail)
-    inks = dict(re.findall(r'(\w+): "(#[0-9A-Fa-f]{6})"', m.group(1))) if m else {}
-    want = {k: v.upper() for k, v in light.items() if not k.endswith("-bg") and k in inks}
-    assert inks and {k: v.upper() for k, v in inks.items()} == want and \
-        set(inks) == {"active"} | set(said.values()), (
-        f"mail.js STATUS_INK {inks} is not app.css's light --st-* inks {light}")
-    m = re.search(r'export const VOTE_INK = \{ yes: "(#[0-9A-Fa-f]{6})", no: "(#[0-9A-Fa-f]{6})" \}', mail)
-    ring = re.search(r"--yes:(#[0-9A-Fa-f]{6});--no:(#[0-9A-Fa-f]{6});", css[:css.index("@media")])
-    assert m and ring and [x.upper() for x in m.groups()] == [x.upper() for x in ring.groups()], (
-        f"mail.js VOTE_INK {m.groups() if m else None} is not the vote ring's light --yes and --no "
-        f"{ring.groups() if ring else None}")
-    return "ok", f"{len(site)} forms, {len(inks)} status inks and the vote ring's two, the site's"
+    code = re.sub(r"/\*.*?\*/", "", mail, flags=re.S)
+    code = re.sub(r"(^|[^:])//.*$", r"\1", code, flags=re.M)
+    assert re.search(r'^import \{[^}]*\} from "\./site\.gen\.js";', code, re.M), \
+        "mail.js does not import from ./site.gen.js"
+    inks = sorted({h.upper() for h in re.findall(r"#[0-9A-Fa-f]{6}\b", code)} - {"#FFFFFF"})
+    assert not inks, (f"mail.js types the colours {inks} itself; every colour but the emails' "
+                      f"white is site.gen.js's, from app.css")
+    assert "gc.nh.gov" not in code, \
+        "mail.js types a General Court address; the testimony forms are site.gen.js's, from app.js"
+    names = {n: v for n, (_, v) in FS.values().items()}
+    return "ok", (f"{FS.OUT.as_posix()} is current: {len(names['STATUS_INK'])} status inks, "
+                  f"{len(names['SITE_PALETTE'])} text inks and the ring's two from app.css, "
+                  f"{len(names['STATUS_CLASS'])} chip words, {len(names['TESTIFY_FORMS'])} forms, "
+                  f"the study words and the mark; {len(want.splitlines())} lines")
 
 
 # What each of the old copies said of an interim study report, typed out in
@@ -36839,7 +36869,7 @@ _STUDY_WORDS_GONE = ("did not recommend the subject for future legislation",
 
 @check("frontend", "an interim study report is said in study_report.json's words wherever it is "
        "said: the docket's plain line, How it got here, a bill's closing note, a committee's "
-       "meeting card and the emails' copy", needs=("build_site_v2", "plain_action"))
+       "meeting card and the emails", needs=("build_site_v2", "plain_action"))
 def _study_report_said_once(B, PA):
     """The person, 23 October 2026: one source for each thing the site words
     several ways. What an interim study committee reported -- it recommends
@@ -36854,8 +36884,9 @@ def _study_report_said_once(B, PA):
     Now the words are src/pages/words/study_report.json, plain_action's of the
     sample the person reviewed on 14 October 2026, held here to those words;
     the build, the pages and How it got here draw them from it, each keeping
-    its own sentence around the phrase, and the Worker, which reads no site
-    file, keeps a copy that must equal it. Each place is drawn here on the
+    its own sentence around the phrase, and the Worker takes them from
+    site.gen.js, which follow_site.py writes from the file (23 October 2026;
+    _follow_site_current holds it current). Each place is drawn here on the
     three readings, and none of them types the words out again."""
     sr = json.loads(Path("src/pages/words/study_report.json").read_text(encoding="utf-8"))
     head, said = sr.get("head"), sr.get("said")
@@ -36898,13 +36929,18 @@ def _study_report_said_once(B, PA):
     app = Path("src/pages/app.js").read_text(encoding="utf-8")
     if "const STUDY_SAID=WORDBOOK.study_report.said;" not in app:
         bad.append("app.js does not take its study report words from WORDBOOK.study_report")
-    # The Worker's copy, which must equal the file.
+    # The Worker's: site.gen.js's STUDY_REPORT, as committed, and mail.js's
+    # three sentences made of it, the head before each reading.
     mail = Path("workers/follow/mail.js").read_text(encoding="utf-8")
+    sent = _site_gen().get("STUDY_REPORT")
+    if sent != {"head": head, "said": said}:
+        bad.append(f"site.gen.js's STUDY_REPORT {sent} is not study_report.json's words")
     m = re.search(r"\nconst STUDY = \{(.*?)\n\};", mail, re.S)
-    copy = dict(re.findall(r'(true|false|null): "([^"]*)"', m.group(1))) if m else {}
-    if copy != {"true": f"{head}: {said['rec']}", "false": f"{head}: {said['not']}",
-                "null": f"{head}: {said['without']}"}:
-        bad.append(f"mail.js's STUDY {copy} is not study_report.json's words")
+    made = dict(re.findall(r"(true|false|null): `\$\{STUDY_REPORT\.head\}: \$\{STUDY_REPORT\.said\.(\w+)\}`",
+                           m.group(1))) if m else {}
+    if made != {"true": "rec", "false": "not", "null": "without"}:
+        bad.append(f"mail.js's STUDY is not the head and rec, not and without of site.gen.js's "
+                   f"STUDY_REPORT: {made}")
     # Typed out again nowhere else, and the old copies gone.
     typed = [said["rec"], said["not"], f"{head}: {said['without']}"]
     for f in ("src/pages/app.js", "src/pages/components.js", "src/pages/build_site_v2.py",
@@ -36917,11 +36953,11 @@ def _study_report_said_once(B, PA):
             again = [w for w in again if w in _STUDY_WORDS_GONE]
         if again:
             bad.append(f"{f} types {again} out again")
-    if [mail.count(w) for w in typed] != [1, 1, 1]:
-        bad.append("mail.js types the study report's words outside its one copy")
+    if any(w in mail for w in typed):
+        bad.append("mail.js types the study report's words; they are site.gen.js's STUDY_REPORT")
     assert not bad, "; ".join(bad[:4])
     return "ok", (f"\"{head}: {said['rec']}\", \"{said['not']}\" and \"{said['without']}\" from the "
-                  f"one file in the plain line, How it got here and the emails' copy; {drew}")
+                  f"one file in the plain line, How it got here and the emails (site.gen.js); {drew}")
 
 
 @check("build", "a bill's floor roll call reaches the email as its count, found by its day and its "
@@ -44189,17 +44225,22 @@ def _header_mark():
     assert BB.HEADER_MARK == BP.HEADER_MARK and BB.MARK_SCALE >= 2, (
         "build_brand.py writes the mark under another name than build_pages.py "
         "places, or at less than twice its box")
-    # THE EMAILS' MARK (22 October 2026): mail.js names the file and its
+    # THE EMAILS' MARK (22 October 2026): the emails name the file and its
     # size, build_brand.py draws it; the two agree, or every email's header
-    # is a broken or stretched image.
+    # is a broken or stretched image. Since 23 October the emails' are
+    # site.gen.js's MARK_FILE, which follow_site.py writes from build_brand.py
+    # (_follow_site_current holds it current), with mail.js's empty alt.
     mail = Path("workers/follow/mail.js").read_text(encoding="utf-8")
-    mk = re.search(r'export const MARK = \{ path: "/([^"]+)", width: (\d+), height: (\d+), alt: "" \}', mail)
+    gen = _site_gen()
     side = (BB.MARK_BOX[0] + 2 * BB.MAIL_PAD, BB.MARK_BOX[1] + 2 * BB.MAIL_PAD)
-    assert mk and mk.group(1) == BB.MAIL_MARK and (int(mk.group(2)), int(mk.group(3))) == side, (
-        f"mail.js's MARK is not /{BB.MAIL_MARK} at {side[0]}x{side[1]} with an empty alt, "
-        "which is what build_brand.mail_mark draws")
-    assert "#%02X%02X%02X" % BB.MAIL_INK in mail, (
-        "the emails' mark is not drawn in mail.js's ink colour")
+    assert gen.get("MARK_FILE") == {"path": f"/{BB.MAIL_MARK}", "width": side[0], "height": side[1]} \
+        and 'export const MARK = { ...MARK_FILE, alt: "" };' in mail, (
+        f"the emails' MARK is not /{BB.MAIL_MARK} at {side[0]}x{side[1]} with an empty alt, "
+        f"which is what build_brand.mail_mark draws: site.gen.js has {gen.get('MARK_FILE')}")
+    drawn, ink = "#%02X%02X%02X" % BB.MAIL_INK, (gen.get("SITE_PALETTE") or {}).get("ink")
+    assert drawn == ink, (
+        f"the emails' mark is drawn in {drawn} (build_brand.py's MAIL_INK), not the emails' ink "
+        f"{ink}, app.css's --ink as site.gen.js has it")
     strip = re.search(r"@media \(min-width:([\d.]+)em\)\{\s*nav\.top \.in\{position:relative\}",
                       css)
     assert strip, "app.css no longer takes the tab strip out of the flow at a min-width"
@@ -66761,8 +66802,7 @@ process.exit(fail.length ? 1 : 0);
 """
 
 
-@check("build", "email following is on previews only until the About page says what it keeps, "
-       "and its 106 tests pass")
+@check("build", "email following is on previews only until the About page says what it keeps")
 def _follow_email():
     """workers/follow/ and functions/api/follow/ (the person's accounts of 11
     October 2026). Every follow endpoint answers 404 without FOLLOW_DB, so the
@@ -66772,7 +66812,8 @@ def _follow_email():
     addresses -- the About page and go-live go together, as
     EMAIL_FOLLOW_CHECKLIST.md asks. The Follow pane offers email only where
     the sign-up answers and the record is in tonight's current.json, so a
-    production page shows the RSS pane alone. tests/follow/ is run whole."""
+    production page shows the RSS pane alone. tests/follow/ is run whole by
+    _follow_tests, below."""
     if not Path("workers/follow").is_dir():
         return "skip", "no workers/follow here"
     import tomllib
@@ -66799,23 +66840,89 @@ def _follow_email():
     key = re.search(r'FOLLOW_SITEKEY="([^"]+)"', app)
     readme = Path("workers/follow/README.md").read_text(encoding="utf-8")
     assert key and key.group(1) in readme, "app.js's Turnstile site key is not the one README.md records"
-    node = shutil.which("node")
-    if not node:
-        return "skip", "node is not on PATH"
-    # index.js by name, which imports every test file into one process: the
-    # folder form passed on Node 22 here and failed on GitHub's Node 24 under
-    # Windows (the dry run of 51a6944). Node's one-time ExperimentalWarning for
-    # node:sqlite (the fake D1) is not a log line of the code under test.
-    # TAP by name too: the count below is read off "# pass N", and Node 24's
-    # default reporter prints "ℹ pass N" instead (the dry run of 5e2ef8f,
-    # whose 106 tests all passed and whose count this check could not find).
-    r = _run([node, "--disable-warning=ExperimentalWarning", "--test", "--test-reporter=tap",
-              "tests/follow/index.js"], capture_output=True, text=True)
-    out = r.stdout + r.stderr
-    passed = re.search(r"^# pass (\d+)", out, re.M)
-    assert r.returncode == 0 and passed and int(passed.group(1)) > 0, out.strip()[-600:]
     return "ok", (f"previews bind FOLLOW_DB, production {'does' if binds('production') else 'does not'}; "
-                  f"tests/follow: {passed.group(1)} passed")
+                  "the Follow pane asks before it offers email")
+
+
+def _tap_failures(out):
+    """[(test's name, the first line of what it said)] for every test that
+    failed in node's TAP output, at any depth: a test whose only failure is a
+    subtest's is left to the subtest, which names the failure."""
+    lines, fails = out.splitlines(), []
+    for i, line in enumerate(lines):
+        m = re.match(r"^\s*not ok \d+ - (.*?)(?: # (?:SKIP|TODO)\b.*)?$", line)
+        if not m:
+            continue
+        block = []
+        for nxt in lines[i + 1:]:
+            if nxt.strip() == "...":
+                break
+            block.append(nxt.strip())
+        if "failureType: 'subtestsFailed'" in block:
+            continue
+        said = ""
+        for j, b in enumerate(block):
+            if b.startswith("error:"):
+                said = b[len("error:"):].strip().strip("'")
+                if said in ("|-", "|", ">-", ">"):
+                    said = next((x for x in block[j + 1:] if x), "")
+                break
+        if said == "test failed":
+            # A file that did not load is "test failed" in its block; what
+            # failed is in node's own lines above it, as TAP comments.
+            said = next((x[2:] for x in lines[:i] if re.match(r"# \w*Error\b", x)), said)
+        fails.append((m.group(1).replace("\\#", "#"), said[:160]))
+    return fails
+
+
+@check("build", "the email sender's own tests pass, every one: node --test runs "
+       "tests/follow/index.js, which imports every test file in tests/follow/")
+def _follow_tests():
+    """tests/follow/ is the email sender's test suite (workers/follow/ and
+    functions/api/follow/), standard library only, a few seconds in node. It
+    is run here whole, so a change to the Worker, the Functions or the site's
+    files they draw on (site.gen.js) is tested before it merges, and on the
+    night by nightly.py's preflight --code.
+
+    index.js by name, which imports every test file into one process: the
+    folder form passed on Node 22 here and failed on GitHub's Node 24 under
+    Windows (the dry run of 51a6944). Node's one-time ExperimentalWarning for
+    node:sqlite (the fake D1) is not a log line of the code under test. TAP
+    by name too: the counts are read off "# pass N", and Node 24's default
+    reporter prints "ℹ pass N" instead (the dry run of 5e2ef8f, whose 106
+    tests all passed and whose count this check could not find).
+
+    AND EVERY TEST FILE IS IN index.js (23 October 2026). A file left out of
+    it is never run by node --test on the folder or by this, and passes in
+    silence; so the list is held to the folder's *.test.js."""
+    index = Path("tests/follow/index.js")
+    if not index.is_file():
+        return "skip", "tests/follow/index.js is not here"
+    imported = re.findall(r'^import\s+"\./([^"]+)";', index.read_text(encoding="utf-8"), re.M)
+    files = sorted(p.name for p in index.parent.glob("*.test.js"))
+    missing = [f for f in files if f not in imported]
+    assert not missing, (f"tests/follow/index.js does not import {', '.join(missing)}, so node --test "
+                         "never runs it: add an import line for each")
+    node = shutil.which("node") or shutil.which("node.exe")
+    if not node:
+        return "skip", f"node is not on PATH, so the {len(files)} test files in tests/follow/ did not run"
+    r = _run([node, "--disable-warning=ExperimentalWarning", "--test", "--test-reporter=tap",
+              index.as_posix()], capture_output=True, text=True, timeout=300)
+    out = (r.stdout or "") + (r.stderr or "")
+    count = {k: int(v) for k, v in re.findall(r"^# (tests|pass|fail|cancelled|skipped|todo) (\d+)$",
+                                               out, re.M)}
+    fails = _tap_failures(out)
+    assert not fails, (
+        f"tests/follow/ fails {len(fails)} of {count.get('tests', '?')}: "
+        + "; ".join(f"{n!r} ({s})" if s else repr(n) for n, s in fails[:6])
+        + (f" (+{len(fails) - 6} more)" if len(fails) > 6 else "")
+        + f". `node --test {index.as_posix()}` shows each in full")
+    assert r.returncode == 0 and count.get("pass", 0) > 0 and not count.get("fail") \
+        and not count.get("cancelled"), (
+        f"node --test {index.as_posix()} exited {r.returncode} with {count or 'no count'}: "
+        + out.strip()[-500:])
+    return "ok", (f"tests/follow: {count['pass']} passed of {count.get('tests')}, from "
+                  f"{len(files)} test files, every one imported by index.js")
 
 
 # The sign-up box's daily or weekly drawn and sent by app.js under node, with
