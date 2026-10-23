@@ -24472,7 +24472,7 @@ LEARN_STATUTE_CLAIMS = [
     ("city-and-town-government", "still elects its town clerk",
      "41:16", "regardless of the form of government"),
     ("city-and-town-government", "daily once receipts reach",
-     "41:35", "daily whenever tax receipts total $1,500"),
+     "41:35", "daily whenever tax receipts total $3,500"),  # $1,500 until amended; read 22 October 2026
     ("city-and-town-government", "on a board of three one trustee is elected each year",
      "31:22", "one trustee shall be elected by a ballot at each annual town meeting"),
     ("city-and-town-government", "sits on it ex officio",
@@ -24495,6 +24495,90 @@ LEARN_STATUTE_CLAIMS = [
      "49-B:12", "any town, through the petition procedure"),
     ("administrative-rules", "substantial fiscal harm",
      "541-A:18", "substantial fiscal harm to the state or its citizens"),
+    # THE NUMBERS, 23 October 2026 (approved by the person that day): every
+    # day count, term, petition and board size these pages state from a
+    # statute, read in the table that day. Most were right; the rules page's
+    # notice ("20 days", which is at least 20), its comment period (which a
+    # board's notice may shorten), its ten years (which bind neither a rule
+    # being readopted nor an agency's procedural rules) and the town meeting
+    # petition (which dropped 39:3's floor of 10) were not, and were
+    # rewritten to their sections. A re-dump that moves a number stops here.
+    ("county-government", "Before December 1 each year they deliver",
+     "24:21-a", "prior to december 1 annually"),
+    ("county-government", "does this before June 1 instead",
+     "24:21-a", "prior to june 1 annually"),
+    ("county-government", "not earlier than 5 nor later than 20 days after that statement is mailed",
+     "24:23", "not earlier than 5 nor later than 20 days after the mailing"),
+    ("county-government", "in a newspaper at least 3 days ahead",
+     "24:23", "at least 3 days prior to the date of said hearing"),
+    ("county-government", "until 28 days have passed since the recommendations were mailed",
+     "24:21-a", "until 28 days shall have elapsed from the mailing of such recommendations"),
+    ("county-government", "within 90 days after the fiscal year begins",
+     "24:14", "shall adopt the annual budget within 90 days after the beginning of the"),
+    ("city-and-town-government", "A town elects one selectman each year for a 3-year term",
+     "41:8", "one selectman to hold office for 3 years"),
+    ("city-and-town-government", "one elected each year for a 3-year term, a board of three",
+     "41:8", "one selectman to hold office for 3 years"),
+    ("city-and-town-government", "On the written application of 25 registered voters, or 2",
+     "41:8-b", "25 or more registered voters or 2 percent of the registered voters in town, whichever is less"),
+    ("city-and-town-government", "whichever is less and never fewer than 10, the question of increasing",
+     "41:8-b", "in no event shall fewer than 10 registered voters be sufficient"),
+    ("city-and-town-government", "increasing the board to 5 goes on the ballot",
+     "41:8-b", "increasing the board of selectmen to 5 members"),
+    ("city-and-town-government", "On the petition of 25 registered voters, or 2 percent of them, whichever "
+     "is less and never fewer than 10", "49-B:3", "25 or more registered voters or 2 percent of the "
+     "registered voters in the municipality, whichever is less, but in no event fewer than 10"),
+    ("city-and-town-government", "One is elected every even-numbered year for 6 years",
+     "41:46-a", "in every even numbered year, the voters of each town shall elect, by ballot, one "
+                "supervisor for a term of 6 years"),
+    ("city-and-town-government", "unless the town has adopted 3-year terms",
+     "41:46-a", "may adopt a 3-year term for supervisors of the checklist"),
+    ("city-and-town-government", "has 3, 5, 7 or 9 members as the district votes",
+     "671:4", "a school board of 3, 5, 7, or 9 members"),
+    ("city-and-town-government", "and 3 if it has not voted, elected for three years",
+     "671:4", "which does not otherwise vote shall have 3 members"),
+    ("city-and-town-government", "and 3 if it has not voted, elected for three years",
+     "671:4", "they shall serve for a term of 3 years"),
+    ("city-and-town-government", "has 5 or 7 members in most towns",
+     "673:2", "the planning board shall consist of 5 or 7 members"),
+    ("city-and-town-government", "7 or 9 in a town with a council",
+     "673:2", "the planning board shall consist of 7 or 9 members"),
+    ("city-and-town-government", "and 9 in a city",
+     "673:2", "in cities, the planning board shall consist of 9 members"),
+    ("city-and-town-government", "A zoning board of adjustment has 5 members",
+     "673:3", "the zoning board of adjustment shall consist of 5 members"),
+    ("local-government", "application of 25 registered voters, or of 2 percent",
+     "39:3", "25 or more registered voters or 2 percent of the registered voters in town, whichever is less"),
+    ("local-government", "whichever is fewer, and never fewer than 10",
+     "39:3", "in no event shall fewer than 10 registered voters be sufficient"),
+    ("local-government", "may not raise the total more than 10 percent above what the budget committee",
+     "32:18", "shall not exceed by more than 10 percent the total amount recommended by the budget committee"),
+    ("local-government", "adopts SB 2 by three fifths of those voting on the question",
+     "40:14", "a 3/5 majority of those voting on the question shall be required to adopt"),
+    ("local-government", "can return to a traditional meeting by the same three-fifths vote",
+     "40:14", "may consider rescinding its action in the manner described in paragraphs iii-vi"),
+    ("administrative-rules", "At least 20 days before the hearing",
+     "541-A:6", "not less than 20 days before the first agency public hearing"),
+    ("administrative-rules", "At least 5 business days",
+     "541-A:11", "a period of at least 5 business days after the hearing shall be provided"),
+    ("administrative-rules", "A board or commission may set a shorter one in its notice",
+     "541-A:11", "unless a shorter period is specified in the notice"),
+    ("administrative-rules", "21 to 180 days after the notice",
+     "541-A:12", "no earlier than 21 days and no later than 180 days after the date of publication of the notice"),
+    ("administrative-rules", "The committee has 60 days",
+     "541-A:13", "within 60 days of the filing of a final proposal"),
+    ("administrative-rules", "If the 60 days pass with no notice of approval",
+     "541-A:13", "at the end of the 60-day period under paragraph i shall be deemed approval"),
+    ("administrative-rules", "No rule is effective for longer than ten years",
+     "541-A:17", "no rule shall be effective for a period of longer than 10 years"),
+    ("administrative-rules", "rules of organization and procedure do not lapse",
+     "541-A:17", "shall not expire"),
+    ("administrative-rules", "the rule stays in force while it does",
+     "541-A:14-a", "shall continue in effect until the proposed rules are adopted and effective"),
+    ("administrative-rules", "Neither lasts more than 180 days",
+     "541-A:18", "shall not remain in effect for more than 180 days"),
+    ("administrative-rules", "Neither lasts more than 180 days",
+     "541-A:19", "interim rules shall be effective for a period not to exceed 180 days"),
 ]
 
 
@@ -24525,7 +24609,10 @@ def _learn_statute_claims(civics):
     RETRACTED = ["coroners chapter", "same footing", "by the same route",
                  "does not set policy on its own account",
                  "90 days of the start of the fiscal year",
-                 "provide security in the state courts"]
+                 "provide security in the state courts",
+                 # 23 October 2026: the numbers' sections said otherwise.
+                 "whichever is fewer (RSA 39:3)", "runs the whole course again.</span>",
+                 '"l-mt">20 days before the hearing']
     bad = []
     for slug, body in pages.items():
         flat = re.sub(r"\s+", " ", body)
@@ -24542,9 +24629,181 @@ def _learn_statute_claims(civics):
             bad.append(f"{slug} no longer says {phrase!r}")
         elif not any(_cites_section(b, sec) for b in hit):
             bad.append(f"{slug}: {phrase!r} has lost its citation to RSA {sec}")
+    # THE COUNTY BUDGET'S TAGS SAY WHAT THEIR PARAGRAPHS SAY (23 October
+    # 2026). Each amber time limit is drawn from civics.COUNTY_LIMITS beside a
+    # paragraph that cites its section, and the rows above hold the
+    # paragraph; every number of the tag must be one of the paragraph's, so a
+    # tag cannot keep a figure the prose has been corrected away from.
+    county = pages.get("county-government", "")
+    for step, tag in civics.COUNTY_LIMITS.items():
+        para = re.search(r"<p><b>" + re.escape(step) + r"</b>(.*?)</p>", county, re.S)
+        if not para:
+            bad.append(f"the county budget's step {step!r} has no paragraph")
+            continue
+        bad += [f"the county budget's tag {tag!r} says {n}, which its paragraph does not"
+                for n in re.findall(r"\d+", tag) if not re.search(r"\b" + n + r"\b", para.group(1))]
     assert not bad, "; ".join(bad[:4]) + (f" (and {len(bad) - 4} more)" if len(bad) > 4 else "")
-    return "ok", (f"{len(LEARN_STATUTE_CLAIMS)} corrected claims each beside the section "
-                  "that supports it; no retracted wording")
+    return "ok", (f"{len(LEARN_STATUTE_CLAIMS)} anchored claims each beside the section "
+                  f"that supports it; the county budget's tags their paragraphs' numbers; no "
+                  "retracted wording")
+
+
+# A LEARN SENTENCE AND THE ARTICLE OF THE CONSTITUTION IT RESTS ON (23 October
+# 2026, approved by the person that day). The statute claims above are held
+# to db/NH_RSA.psv, which a machine may not have; the Constitution is tracked
+# in git -- nh.gov's pages in records/sources/constitution/, read into
+# collected/constitution.json -- so this always runs and never skips. Each
+# row is a phrase as the page prints it (markup off), the article, and words
+# of that article: a sentence reworded or an article reread stops here.
+LEARN_CONSTITUTION_CLAIMS = [
+    # (page, phrase on the page, part, article, words of the article)
+    ("how-a-bill-becomes-law", "A bill left unsigned for five days, Sundays excepted, becomes law",
+     2, "44", "within five days (sundays excepted) after it shall have been presented to him, the same "
+              "shall be a law"),
+    ("how-a-bill-becomes-law", "unless the legislature's adjournment prevents its return",
+     2, "44", "unless the legislature, by their adjournment, prevent its return, in which case it shall "
+              "not be a law"),
+    ("how-a-bill-becomes-law", "A vote to override a veto is always a roll call, because the "
+     "constitution requires one", 2, "44", "the votes of both houses shall be determined by yeas and nays"),
+    ("how-a-bill-becomes-law", 'The article says two thirds "of that house"',
+     2, "44", "two thirds of that house shall agree to pass the bill"),
+    ("how-a-bill-becomes-law", "Amending the constitution takes three fifths of the members of each chamber",
+     2, "100", "a three fifths vote of the entire membership of each house"),
+    ("how-a-bill-becomes-law", "then two thirds of those voting on the question at the election",
+     2, "100", "approval by two thirds of the qualified voters present and voting on the subject"),
+    ("governor-and-council", "in which case it becomes law without a signature after five days, Sundays "
+     "excepted", 2, "44", "within five days (sundays excepted)"),
+    ("governor-and-council", "Five days pass Sundays excepted.", 2, "44", "within five days (sundays excepted)"),
+    ("governor-and-council", "unless the legislature's adjournment prevents the Governor from returning "
+     "it, and then it does not become law at all", 2, "44", "in which case it shall not be a law"),
+    ("governor-and-council", "The Governor is elected for two years",
+     2, "42", "the governor shall be chosen biennially"),
+    ("governor-and-council", "two thirds of each chamber, by roll call, starting with the chamber the "
+     "bill came from", 2, "44", "return it, with his objections, to that house in which it shall have "
+                                "originated"),
+    ("governor-and-council", "entered in the journal of the chamber the bill came from",
+     2, "44", "who shall enter the objections at large on their journal"),
+    ("governor-and-council", "Five councilors, each elected by district", 2, "60", "five councilors"),
+    ("governor-and-council", "Five councilors, each elected by district",
+     2, "65", "divide the state into five districts"),
+    ("governor-and-council", "five members, elected by district", 2, "60", "five councilors"),
+    ("governor-and-council", "the appointment of commissioners and judges, and pardons",
+     2, "52", "the power of pardoning offenses"),
+    ("the-courts", "The Governor nominates and the Executive Council confirms",
+     2, "46", "all judicial officers"),
+    ("the-courts", "The Governor nominates and the Executive Council confirms",
+     2, "46", "shall be nominated and appointed by the governor and council"),
+    ("the-courts", "No one may serve as a judge after the age of seventy",
+     2, "78", "after he has attained the age of seventy years"),
+    ("the-courts", "Until the age of seventy at most: Part Second, Article 78.",
+     2, "78", "the age of seventy years"),
+    ("general-court", "the name the state constitution gives it",
+     2, "3", "the general court of new hampshire"),
+    ("general-court", "Organization Day, the first Wednesday of December after the November election",
+     2, "3", "assemble biennially on the first wednesday of december for organizational purposes"),
+    ("general-court", "It is made up of [[house_seats]] representatives",
+     2, "9", "not less than three hundred seventy-five or more than four hundred"),
+    ("general-court", "[[senate_districts]] senators", 2, "25", "the senate shall consist of twenty four members"),
+    ("general-court", "Members are paid $200 for the two-year term plus mileage",
+     2, "15", "for the term elected the sum of $250, and all other members thereof"),
+    ("general-court", "Members are paid $200 for the two-year term plus mileage",
+     2, "15", "the sum of $200 and each member shall receive mileage"),
+    ("general-court", "400 representatives and 24 senators, paid $200 for the two-year term",
+     2, "9", "or more than four hundred"),
+    ("general-court", "400 representatives and 24 senators, paid $200 for the two-year term",
+     2, "25", "twenty four members"),
+    ("general-court", "400 representatives and 24 senators, paid $200 for the two-year term",
+     2, "15", "the sum of $200"),
+    ("legislative-year", "Organization Day, the first Wednesday of December after the November election",
+     2, "3", "first wednesday of december for organizational purposes"),
+    ("the-constitution", "a CACR needs three fifths of both chambers and then the voters",
+     2, "100", "a three fifths vote of the entire membership of each house"),
+    ("the-constitution", "two thirds of those voting on the question approve it",
+     2, "100", "two thirds of the qualified voters present and voting on the subject"),
+    ("the-constitution", "At the next general election",
+     2, "100", "at the next biennial november election"),
+    ("your-representatives", 'representation is to be "as equal as circumstances will admit" (Part II, '
+     "Article 9)", 2, "9", "as equal as circumstances will admit"),
+    ("your-representatives", "the constitution forbids the legislature to divide a town, ward or place",
+     2, "9", "no town, ward or place shall be divided"),
+]
+
+
+@check("frontend", "a Learn page's statements of the Constitution say what its articles say, and the "
+       "seats the pages count are the ones the articles allow",
+       needs=("civics", "parse_constitution", "parse_districts"))
+def _learn_constitution_claims(civics, PC, PD):
+    """Approved by the person on 23 October 2026. A survey of civics.py found
+    the Learn pages stating the Constitution -- five days, Sundays excepted;
+    a roll call on every override; Organization Day; five councilors; the age
+    of seventy; "as equal as circumstances will admit"; 400 representatives,
+    24 senators and $200 -- with nothing holding a sentence to its article.
+
+    Three halves. Each row of LEARN_CONSTITUTION_CLAIMS: the phrase on its
+    page, the article in force, its words in the article. The Constitution as
+    a whole: in effect since 1784, and Part First the forty-four articles
+    the page says, which it called "thirty-odd" until this check counted
+    them. And the seats: the General Court page's House and Senate are
+    [[house_seats]] and [[senate_districts]] since this check, which
+    build_civics counts from records/districts/, so the tracked lists must
+    give a House within Article 9's 375 to 400 and Article 25's twenty-four
+    senators, the Council Article 65's five districts, and the blurb, which
+    is not filled, the same numbers typed.
+    """
+    import html as _html
+    con = PC.load()
+    assert con, "collected/constitution.json is not on this disk, and it is tracked: run git status"
+    arts = {(p, a["key"]): a for p, a in PC.articles(con)}
+
+    def flat(s):
+        # Markup off as a reader sees it: "<b>Organization Day</b>, the" is
+        # "Organization Day, the", with no space before the comma.
+        s = re.sub(r"\s+", " ", _html.unescape(re.sub(r"<[^>]+>", " ", s)))
+        return re.sub(r" ([,.;:)])", r"\1", s).strip()
+
+    pages = {t["slug"]: flat(" ".join([t["blurb"], t["body"], t.get("holds") or ""]))
+             for t in civics.TOPICS}
+    bad = []
+    for slug, phrase, part, key, said in LEARN_CONSTITUTION_CLAIMS:
+        page = pages.get(slug)
+        if page is None:
+            bad.append(f"no Learn page {slug}")
+            continue
+        if phrase not in page:
+            bad.append(f"{slug} no longer says {phrase!r}")
+        art = arts.get((part, key))
+        name = f"Part {'First' if part == 1 else 'Second'}, Article {key}"
+        if not art or art["repealed"]:
+            bad.append(f"{name}, which {slug} rests on, is not in force")
+        elif said.lower() not in flat(" ".join(art["text"])).lower():
+            bad.append(f"{name} no longer says {said!r}, which {slug} relies on")
+    # The whole: when it took effect, and how many articles Part First has.
+    if "to take effect June 2, 1784" not in (con.get("_source") or {}).get("established", ""):
+        bad.append(f"nh.gov no longer says the Constitution took effect in 1784: {con.get('_source')}")
+    if "took effect in 1784" not in pages.get("the-constitution", ""):
+        bad.append("the-constitution no longer says it took effect in 1784")
+    first = sum(1 for (p, _k), a in arts.items() if p == 1 and not a["repealed"])
+    if first != 44 or "Bill of Rights — forty-four articles" not in pages.get("the-constitution", ""):
+        bad.append(f"Part First has {first} articles in force; the-constitution says forty-four")
+    # The seats, from the district lists build_civics counts them from.
+    house = PD.parse_house(Path("records/districts/house.txt"))
+    seats = sum(h["seats"] for h in house.values())
+    senate = len(PD.parse(Path("records/districts/senate.txt")))
+    council = len(PD.parse(Path("records/districts/council.txt")))
+    if not 375 <= seats <= 400:
+        bad.append(f"the House lists give {seats} seats, outside Article 9's 375 to 400")
+    if senate != 24:
+        bad.append(f"the Senate list gives {senate} districts, where Article 25 says twenty-four")
+    if council != 5:
+        bad.append(f"the Council list gives {council} districts, where Article 65 says five")
+    blurb = next((t["blurb"] for t in civics.TOPICS if t["slug"] == "general-court"), "")
+    if f"{seats} representatives and {senate} senators" not in blurb:
+        bad.append(f"the General Court's blurb types other numbers than the lists' {seats} and {senate}: "
+                   f"{blurb!r}")
+    assert not bad, "; ".join(bad[:4]) + (f" (and {len(bad) - 4} more)" if len(bad) > 4 else "")
+    return "ok", (f"{len(LEARN_CONSTITUTION_CLAIMS)} Learn statements in their articles' words; in effect "
+                  f"since 1784, Part First's {first} articles; {seats} House seats, {senate} Senate and "
+                  f"{council} Council districts, each as the articles allow")
 
 
 @check("frontend", "nowrap is never applied to a block by element name")
@@ -30354,7 +30613,13 @@ def _built_site(here, root, brand=True, env=None):
          "CHAPTER 91-A ACCESS TO GOVERNMENTAL RECORDS AND MEETINGS",
          "Section 91-A:4 Minutes and Records Available for Public Inspection.",
          "<p><b>Source.</b> 1967, 251:1. </p>", "",
-         "<codesect> I. Every citizen ... except as otherwise prohibited by RSA 91-A:5.</codesect>",
+         # The words the public-records guide's two counts rest on (guides.COUNT,
+         # 23 October 2026), as the section prints them, so the guide is
+         # published here as on the real table.
+         "<codesect> I. Every citizen ... except as otherwise prohibited by RSA 91-A:5. IV. ... (b) "
+         "... the public body or agency shall, within 5 business days of a request: (1) Make such "
+         "record available ... VIII. ... for requests for electronic communications in excess of "
+         "250 communications.</codesect>",
          "6", "VI\\91-A\\91-A-4.htm"],
         ["2", "VI", "91-A", "91-A-5", "TITLE VI PUBLIC OFFICERS AND EMPLOYEES",
          "CHAPTER 91-A ACCESS TO GOVERNMENTAL RECORDS AND MEETINGS", "Section 91-A:5 Exemptions.",
@@ -35865,6 +36130,96 @@ def _cacr_articles(PC, CT, BSV, BBP):
     return "ok", f"{len(cases)} clauses read as they say, and no more; both bill pages and the Learn pages link{said}"
 
 
+@check("build", "a guide's counts -- days, months, years, ages, districts -- are figures: each rests on "
+       "a statute, a General Court document or a checked claim that states it, and a date, a time or "
+       "a phone number is not one", needs=("build_civics", "guides", "rsa"))
+def _guide_counts(BC, G, RSA):
+    """Approved by the person on 23 October 2026: the guides' figure rule
+    caught dollars and percentages only, so "5 business days" (RSA 91-A:4),
+    "60 days" (RSA 263:35, 261:45) and "24 Senate districts" (RSA 662:3) were
+    printed with nothing holding them to the sections that set them.
+    guides.COUNT finds a number with a unit a law counts in; each must be a
+    fig(), and a fig() on a claim of the guide's own must be that claim's
+    words. Here the rule is run on a guide made for it: what it finds and
+    what it passes over, a count left undeclared, a statute that stops saying
+    it, an agency claim that never said it, a dollar amount on an agency's
+    page, and a count on the Constitution as nh.gov printed it, which is now
+    one of the documents a claim may rest on (guides.RECORD_HOMES)."""
+    found = lambda s: [G._flat(m.group(0)) for m in G.COUNT.finditer(s)]   # noqa: E731
+    for s, want in (("Within 5 business days, it must answer.", ["5 business days"]),
+                    ("closes 6 to 13 days before it", ["6 to 13 days"]),
+                    ("closes 6&nbsp;to&nbsp;13 days before it", ["6 to 13 days"]),
+                    ("You leave with a 60-day paper license", ["60-day"]),
+                    ("one of 24 Senate districts", ["24 Senate districts"]),
+                    ("adults aged 18 through 64", ["aged 18"]), ("at least 18 years old", ["18 years"]),
+                    ("4 days&rsquo; notice", ["4 days"]), ("more than 10 minutes early", ["10 minutes"]),
+                    ("14 calendar days from issue", ["14 calendar days"]),
+                    ("by March 1 after your final tax bill; July 1, 2026", []),
+                    ("by 5 p.m. on election day, weekdays 8:30 a.m. to 4:30 p.m.", []),
+                    ("call 603-271-3242 or (603) 271-2154, or 1-866-444-4211", []),
+                    ("form DSMV 450, Form 800V, Form DP-8, your DD 214", []),
+                    ("HB 1001 of 2024 prints 24-2288; since at least February 1997", []),
+                    ("RSA 76:16-d, II; Senate Rule 4-1; the $65 filing fee; 40 percent", [])):
+        assert found(s) == want, f"COUNT finds {found(s)} in {s!r}, not {want}"
+    cols = ["id", "TitleNo", "ChapterNo", "SectionNo", "Title", "Chapter", "Section", "SourceNote",
+            "rsa", "EntireRSA"]
+    table = RSA.Table([dict(zip(cols, ["1", "VI", "91-A", "91-A-4", "TITLE VI", "CHAPTER 91-A ACCESS TO "
+                                        "GOVERNMENTAL RECORDS AND MEETINGS", "Section 91-A:4 Minutes.", "", "",
+                                        "<codesect> IV. (b) the public body or agency shall, within 5 "
+                                        "business days of a request: (1) Make such record available"
+                                        "</codesect>"]))])
+    url = "https://www.example.nh.gov/agency-page"
+
+    def one(glance, figures=(), claims=()):
+        return G.guide("count-guide", "A Count Guide", "What it does.", glance, [G.box("Ask.")],
+                       [G.step("Ask", "<p>Ask.</p>", actions=[("The page", url)], law=["RSA 91-A:4"]),
+                        G.step("Wait", "<p>Wait.</p>")],
+                       [("RSA 91-A", "/laws/91-a"), ("The page", url)], ["91-A"],
+                       [G.claim("x", "RSA 91-A:4", "2099-01-01"),
+                        G.claim("The page: an appeal within 30 days of the notice.", url, "2099-01-01"),
+                        *claims], figures=list(figures))
+
+    def ready(g):
+        return BC.guide_ready(g, set(G.outside(g)), table.chapters, table.sections)
+
+    bare = one("It must answer within 5 business days.")
+    assert G.unbacked(bare) == ["5 business days"] and "prints a figure" in ready(bare), (
+        f"an undeclared count passed: {G.unbacked(bare)}, {ready(bare)!r}")
+    law = one(bare["glance"], [G.fig("5 business days", "RSA 91-A:4", "within 5 business days of a request")])
+    assert ready(law) == "", f"a count its statute states was held back: {ready(law)!r}"
+    gone = one(bare["glance"], [G.fig("5 business days", "RSA 91-A:4", "within 5 calendar days of a request")])
+    assert "no longer says" in ready(gone), "a count its statute does not state was let through"
+    page = one("Appeal within 30 days.", [G.fig("30 days", url, "within 30 days of the notice")])
+    assert G.fig_faults(page) == [] and ready(page) == "", (
+        f"a count its agency claim states was faulted: {G.fig_faults(page)}")
+    for bad, why in ((one("Appeal within 90 days.", [G.fig("90 days", url, "within 90 days of the notice")]),
+                      "no checked claim"),
+                     (one("Appeal within 30 days.", [G.fig("30 days", url, "within thirty days")]),
+                      "not a number its words state"),
+                     (one("The fee is $15.", [G.fig("$15", url, "a fee of $15")]),
+                      "rests on a statute")):
+        got = G.fig_faults(bad)
+        assert got and why in got[0] and ready(bad), f"a figure that should fail with {why!r} gave {got}"
+    # THE CONSTITUTION, AS A RECORD (guides.RECORD_HOMES): its saved page is
+    # read for the words, a count on it is held to them, and words it does
+    # not print are a fault.
+    governor = "records/sources/constitution/part-second-04-executive-power-governor.html"
+    art42 = G.record("Part Second, Article 42: seven years an inhabitant.",
+                     "N.H. Constitution, Part Second, Article 42", governor,
+                     "he shall have been an inhabitant of this state for 7 years next preceding", "2099-01-01")
+    con = one("A governor must have lived here 7 years.", [G.fig("7 years", art42["source"],
+                                                                "inhabitant of this state for 7 years")],
+              [art42])
+    assert G.fig_faults(con) == [] and G.claim_faults(con) == ([], 1, 0), (
+        f"a count on the Constitution was not read as it says: {G.fig_faults(con)}, {G.claim_faults(con)}")
+    wrong = dict(art42, words=["inhabitant of this state for 5 years"])
+    assert "does not say" in "".join(G.claim_faults(dict(con, claims=[wrong]))[0]), \
+        "words the Constitution does not print were found in it"
+    counted = sum(1 for g in G.GUIDES for f in g.get("figures") or [] if not G.FIGURE.search(f["text"]))
+    return "ok", (f"{counted} counts declared across the guides; COUNT finds what a law counts in and "
+                  "passes over dates, times, phone and form numbers; each kind of resting place holds")
+
+
 @check("build", "a how-to guide is published only when every claim in it is checked, says when, "
        "and states no figure the plan forbids", needs=("build_civics", "guides", "guide_sources", "rsa", "shell"))
 def _guides_gate(BC, G, GS, RSA, S):
@@ -35894,6 +36249,9 @@ def _guides_gate(BC, G, GS, RSA, S):
         # statute table at every build.
         assert not G.unbacked(g), \
             f"{g['slug']} prints {G.unbacked(g)}, which no statute it cites is checked for; link the source instead"
+        # A count may rest on a claim of the guide's own (guides.COUNT, 23
+        # October 2026), whose words must then be that claim's.
+        assert not G.fig_faults(g), f"{g['slug']}: " + "; ".join(G.fig_faults(g)[:2])
         cited = {c["source"] for c in g["claims"]}
         for f_ in g.get("figures") or []:
             assert f_["ref"] in cited and f_["text"] in words, \
@@ -35983,7 +36341,7 @@ def _guides_gate(BC, G, GS, RSA, S):
             "rsa", "EntireRSA"]
     table = RSA.Table([dict(zip(cols, ["1", "VI", "91-A", "91-A-4", "TITLE VI", "CHAPTER 91-A ACCESS TO "
                                         "GOVERNMENTAL RECORDS AND MEETINGS", "Section 91-A:4 Minutes.", "", "",
-                                        "<codesect> I. Every citizen</codesect>"]))])
+                                        "<codesect> I. Every citizen ... a fee of $15</codesect>"]))])
     url = next(iter(GS.SOURCES.values()))[0]
     today = build_date.today().isoformat()
 
@@ -36015,7 +36373,9 @@ def _guides_gate(BC, G, GS, RSA, S):
         stale["figures"] = [G.fig("$15", "RSA 91-A:4", "the sum of $15")]
         assert "no longer says" in BC.guide_ready(stale, GS.cited(), table.chapters, table.sections), \
             "a guide whose figure its statute no longer states was let through"
-        stale["figures"] = [G.fig("$15", "RSA 91-A:4", "Every citizen")]
+        # Words that state the figure (guides.fig_faults holds a figure's
+        # number to its words since 23 October 2026).
+        stale["figures"] = [G.fig("$15", "RSA 91-A:4", "a fee of $15")]
         assert BC.guide_ready(stale, GS.cited(), table.chapters, table.sections) == "", \
             "a guide whose figure its statute still states was held back"
         G.GUIDES = [one(today)]

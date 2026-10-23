@@ -1360,7 +1360,14 @@ def guide_ready(g, fetched, chapters, sections=None):
     loose = G.unbacked(g)
     if loose:
         return "prints a figure no statute it cites is checked for: " + ", ".join(loose)
+    # A COUNT ON A CLAIM OF THE GUIDE'S OWN (guides.COUNT, 23 October 2026):
+    # its words are the claim's, not a section's, and fig_faults holds them.
+    wrong = G.fig_faults(g)
+    if wrong:
+        return "a figure does not rest on what it cites: " + wrong[0]
     for f in g.get("figures") or []:
+        if not f["ref"].startswith("RSA "):
+            continue
         m = re.match(r"RSA ([0-9A-Z-]+):([0-9a-z-]+)", f["ref"])
         sec = (sections or {}).get(f"{m.group(1)}:{m.group(2)}") if m else None
         said = re.sub(r"\s+", " ", (sec.text if sec else "") or "")

@@ -102,18 +102,82 @@ def claim(says, source, checked=None):
 # checks, is still never printed: the guide links the page.
 FIGURE = re.compile(r"\$\s?\d+(?:,\d{3})*(?:\.\d+)?|\d+(?:\.\d+)?\s?%")
 
+# A COUNT IS A FIGURE TOO (23 October 2026, approved by the person that day).
+# FIGURE caught dollars and percentages only, so "5 business days", "60 days"
+# and "24 Senate districts" were printed with nothing holding them to the
+# sections that set them. COUNT is a number with a unit a law counts in --
+# days, weeks, months, years, hours, minutes, an age, districts, seats,
+# members -- and every one a guide prints is declared as a fig(), as a dollar
+# amount is. A date ("March 1"), a year ("since 1997"), a time ("5 p.m."), a
+# phone number, a form's number ("DSMV 450") or a bill's carries no such unit
+# and is not one.
+#
+# WHERE A COUNT MAY REST. On a statute, its words found in this build's table
+# (build_civics.guide_ready), as a dollar amount's are; on a record() claim of
+# the guide, its words among the words that claim_faults finds in the
+# General Court's own document; or on a checked claim of the guide on an
+# agency's page, its words in what that claim records the page as saying. The
+# last is the weakest: nothing on this disk reads an agency's page, so such a
+# count is as good as the claim's date, and goes stale with the guide. It is
+# allowed for a count and never for a dollar amount, because a deadline an
+# agency sets is one a reader needs ("no deadlines stated as fact without a
+# link to the source that sets them", the plan), and the page is linked.
+_N = r"\d{1,3}(?:,\d{3})*"
+_SP = r"(?:\s|&nbsp;)+"
+COUNT = re.compile(
+    r"(?<![\w$.,:/#-])" + _N + r"(?:" + _SP + r"(?:to|or|and)" + _SP + _N + r")?"
+    r"(?:" + _SP + r"|-)(?:(?:business|calendar|legislative)" + _SP + r")?"
+    r"(?:days?|weeks?|months?|years?|hours?|minutes?)(?![\w-])"
+    r"|(?<![\w$.,:/#-])" + _N + _SP + r"(?:(?:Senate|House|state|county)" + _SP + r")?"
+    r"(?:districts?|seats?|members?|senators|representatives|councilors)(?![\w-])"
+    r"|\baged?" + _SP + _N + r"(?![\w,-]*\d)", re.I)
+
 
 def fig(text, ref, says):
     """`text` as the guide prints it ("$15"), the section that sets it
-    ("RSA 5-C:10") and words of that section that state it ("the sum of $15")."""
+    ("RSA 5-C:10") and words of that section that state it ("the sum of $15").
+    A count may instead name a claim of the guide's own as `ref`: a record()
+    claim's citation, or an agency page's address (COUNT says which)."""
     return {"text": text, "ref": ref, "says": says}
 
 
+def _flat(s):
+    return re.sub(_SP, " ", s)
+
+
 def unbacked(g):
-    """The dollar and percentage figures the guide prints that no fig() of
-    it declares."""
-    declared = {f["text"] for f in g.get("figures") or []}
-    return sorted({m.group(0).replace(" ", "") for m in FIGURE.finditer(text(g))} - declared)
+    """The dollar, percentage and counted figures the guide prints that no
+    fig() of it declares."""
+    declared = {_flat(f["text"]) for f in g.get("figures") or []}
+    words = text(g)
+    found = {m.group(0).replace(" ", "") for m in FIGURE.finditer(words)}
+    found |= {_flat(m.group(0)) for m in COUNT.finditer(words)}
+    return sorted(found - declared)
+
+
+def fig_faults(g):
+    """What is wrong with the guide's figures that needs no statute table: a
+    figure whose number its words do not state, a dollar amount or
+    percentage resting on anything but a statute, and a count resting on a
+    claim of the guide that does not say it. The statute's own words are
+    build_civics.guide_ready's to find."""
+    faults = []
+    for f in g.get("figures") or []:
+        nums = re.findall(r"\d+(?:[,.]\d+)*", f["text"])
+        if not nums or not all(n in f["says"] for n in nums):
+            faults.append(f"the figure {f['text']} is not a number its words state: {f['says']!r}")
+        if f["ref"].startswith("RSA "):
+            continue
+        if FIGURE.search(f["text"]):
+            faults.append(f"{f['text']} rests on {f['ref']}: a dollar amount or percentage rests on a "
+                          "statute or is not printed")
+            continue
+        on = [c for c in g["claims"] if c["source"] == f["ref"] and c["checked"]
+              and not c.get("observed") and (c.get("path") or c["source"].startswith("https://"))]
+        if not any(_flat(f["says"]) in _flat(w) for c in on for w in (c.get("words") or [c["says"]])):
+            faults.append(f"{f['text']} rests on {f['ref']}, and no checked claim of the guide on it "
+                          f"says {f['says']!r}")
+    return faults
 
 
 def step(title, text, actions=(), law=(), note=""):
@@ -253,6 +317,9 @@ SOS_ABS_APP = ("https://www.sos.nh.gov/sites/g/files/ehbemt561/files/docs/"
 SOS_FREE_VITAL = ("https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/"
                   "application-for-a-free-certified-copy-of-a-new-hampshire-vital-record-for-voter-registration.pdf")
 CHECKED = "2026-10-12"   # the day the person read these pages and sent them
+# The day the statutes under the guides' counts were read in the table (COUNT),
+# for the claims added then to cite them.
+COUNTED = "2026-10-23"
 
 
 def table(caption, heads, rows):
@@ -313,7 +380,7 @@ VOTING = guide(
           "<li><b>By absentee registration</b>, if you qualify and cannot register in person.</li></ul>",
           actions=[("Find your town or city clerk", SOS_CLERKS),
                    ("Registration deadlines", SOS_DEADLINES)],
-          law=["RSA 654:8", "RSA 654:7-a"]),
+          law=["RSA 654:8", "RSA 654:27", "RSA 654:7-a"]),
      step("Bring proof of four things",
           "<p>When you register you must show proof of your identity, your age, your citizenship "
           "and your domicile. Examples the Secretary of State gives:</p><ul>"
@@ -395,6 +462,8 @@ VOTING = guide(
            SOS_REGISTER, CHECKED),
      claim("Register with the clerk in office hours, until the supervisors' last meeting before "
            "an election.", "RSA 654:8", "2026-10-11"),
+     claim("The supervisors' session for correcting the checklist, at which hearings close, is on "
+           "a day they designate 6 to 13 days before the election.", "RSA 654:27", COUNTED),
      claim("Register at the polling place on election day and vote at that election; someone "
            "waiting to register when the polls close may vote if qualified.", "RSA 654:7-a", "2026-10-11"),
      claim("The clerk finder is the Secretary of State's link for local clerk contact information.",
@@ -424,7 +493,9 @@ VOTING = guide(
          "local and state election officials voters&rsquo; trusted source of election "
          "information.</p>",
     see=[("Finding your representatives", "/guides/your-representatives.html"),
-         ("How to get a birth or other vital record", "/guides/vital-records.html")])
+         ("How to get a birth or other vital record", "/guides/vital-records.html")],
+    figures=[fig("18 years", "RSA 654:7", "At least 18 years of age on the day of the next election"),
+             fig("6 to 13 days", "RSA 654:27", "6 to 13 days prior to the election")])
 
 
 # ---------------------------------------------------------------------------
@@ -542,7 +613,9 @@ PUBLIC_RECORD = guide(
          f'<p class="g-acts"><a class="g-btn" href="{RTK_MEMO}" target="_blank" rel="noopener">'
          "The Attorney General&rsquo;s memorandum</a></p>"
          + helps("lawyer"),
-    see=[("Town meeting and local government", "/learn/local-government.html")])
+    see=[("Town meeting and local government", "/learn/local-government.html")],
+    figures=[fig("5 business days", "RSA 91-A:4", "within 5 business days of a request"),
+             fig("250", "RSA 91-A:4", "in excess of 250 communications")])
 
 
 # ---------------------------------------------------------------------------
@@ -853,7 +926,12 @@ ABATEMENT = guide(
          "property taxes:</p>"
          + helps("legal_aid", "lawyer"),
     see=[("Help paying property tax on a low or moderate income", "/guides/property-tax-relief.html")],
-    figures=[fig("$65", "RSA 76:16-a", "upon payment of a $65 filing fee")])
+    figures=[fig("$65", "RSA 76:16-a", "upon payment of a $65 filing fee"),
+             fig("2 months", "RSA 76:16-d", "within 2 months of the date of notice of tax"),
+             fig("6 months", "RSA 76:16-d", "within 6 months of the date of notice of tax"),
+             fig("8 months", "RSA 76:16-d", "within 8 months of the date of notice of tax"),
+             fig("60 days", "RSA 76:21", "within 60 days of the event described in paragraph I or by "
+                                         "March 1, whichever is later")])
 
 
 # ---------------------------------------------------------------------------
@@ -957,7 +1035,11 @@ LMI = guide(
              fig("$32,400", "RSA 198:57", "$27,800 but less than $32,400, 40 percent"),
              fig("$29,400", "RSA 198:57", "less than $29,400, 100 percent"),
              fig("$35,300", "RSA 198:57", "$29,400 but less than $35,300, 60 percent"),
-             fig("$41,100", "RSA 198:57", "$35,300 but less than $41,100, 40 percent")])
+             fig("$41,100", "RSA 198:57", "$35,300 but less than $41,100, 40 percent"),
+             fig("120 days", "RSA 198:61", "certify such amount to the state treasurer within 120 days"),
+             fig("90 days", "RSA 198:61", "within 90 days of the department's receipt of the claim"),
+             fig("30 days", "RSA 198:60", "may appeal in writing within 30 days of notice of such "
+                                          "refusal")])
 
 
 # ---------------------------------------------------------------------------
@@ -998,10 +1080,14 @@ LMI = guide(
 # The State House Visitor Center is the General Court's too -- its page is on
 # gc.nh.gov -- and its Rules for Tours, saved as "state-house-..." on 17
 # October 2026, are the one document the guide to touring rests on.
+# THE CONSTITUTION TOO (23 October 2026): nh.gov's pages of it, saved byte for
+# byte with their sha256 on 17 October and read by parse_constitution, are
+# tracked in git, so a claim on them is confirmed on every machine and never
+# counted absent. Read as any saved page is, markup off.
 RECORD_HOMES = ("calendars/", "calendars_senate/", "journals/", "journals_senate/",
                 "legislation/", "bill_text/", "db/", "Members.txt",
                 "records/sources/senate-", "records/sources/house-",
-                "records/sources/state-house-")
+                "records/sources/state-house-", "records/sources/constitution/")
 READ = "2026-10-17"   # the day these documents were read for the four guides below
 
 
@@ -1432,7 +1518,10 @@ HEARING = guide(
     see=[("Testifying and attending", "/guides/testifying.html"),
          ("How to submit testimony online or in writing", "/guides/submit-testimony.html"),
          ("How to contact your legislators", "/guides/contact-your-legislators.html"),
-         ("Using this site", "/guides/using-this-site.html")])
+         ("Using this site", "/guides/using-this-site.html")],
+    # Senate Rule 4-1's notice period, in the words of the journal that prints it.
+    figures=[fig("4 days", "Senate Journal No. 1, December 7, 2022, p. 21",
+                 "advertised at least 4 days before such hearing in the Senate Calendar")])
 
 
 # ---------------------------------------------------------------------------
@@ -1688,7 +1777,9 @@ CONTACT = guide(
      ours("The Calendar lists the week's committee meetings.", "/calendar.html", READ)],
     see=[("Finding your representatives", "/guides/your-representatives.html"),
          ("How to submit testimony online or in writing", "/guides/submit-testimony.html"),
-         ("How to attend and speak at a public hearing", "/guides/attend-a-hearing.html")])
+         ("How to attend and speak at a public hearing", "/guides/attend-a-hearing.html")],
+    figures=[fig("24 Senate districts", "RSA 662:3",
+                 "The state is divided into 24 districts for the choosing of state senators")])
 
 
 # ---------------------------------------------------------------------------
@@ -1949,7 +2040,10 @@ LICENSE = guide(
          [("Yes", "Renew online with the Renewal Identification Number on the notice."),
           ("No, or no notice", "Make an appointment at a DMV office and bring what it asks for.")]),
      box("Getting a REAL ID for the first time? That renewal is in person."),
-     box("You leave with a 60-day paper license, and the new card comes by mail within 60 days.")],
+     # No claim of this guide gives the paper license's 60 days, which the
+     # DMV's page for new residents does (NEW_RESIDENT), so it is not printed
+     # here (COUNT, 23 October 2026); the card's 60 days are DMV_ONLINE's.
+     box("You leave with a paper license, and the new card comes by mail within 60 days.")],
     [step("Watch for your renewal notice",
           "<p>About two months before your license expires, the DMV mails a renewal notice to the "
           "address it has for you. You will not get one if your mail is forwarded, if you moved and "
@@ -2035,7 +2129,9 @@ LICENSE = guide(
          ("New to New Hampshire: license, registration and voting", "/guides/new-to-new-hampshire.html")],
     figures=[fig("$60", "RSA 263:42", "$60 for a Real ID Act compliant license"),
              fig("$50", "RSA 263:42", "$50 for each other license"),
-             fig("$20", "RSA 260:21", "The fee for such card shall be $20")])
+             fig("$20", "RSA 260:21", "The fee for such card shall be $20"),
+             fig("60 days", DMV_ONLINE, "valid 60 days before and after the birthday"),
+             fig("60 days", DMV_ONLINE, "mailed within 60 days")])
 
 
 # ---------------------------------------------------------------------------
@@ -2136,7 +2232,8 @@ CAR = guide(
          "questions at 603-227-4000.</p>"
          f'<p class="g-acts"><a class="g-btn" href="{SOS_CLERKS}" target="_blank" rel="noopener">'
          "Find your town or city clerk</a></p>",
-    see=[("New to New Hampshire: license, registration and voting", "/guides/new-to-new-hampshire.html")])
+    see=[("New to New Hampshire: license, registration and voting", "/guides/new-to-new-hampshire.html")],
+    figures=[fig("60-day", DMV_REG, "the 60-day temporary plate page")])
 
 
 # ---------------------------------------------------------------------------
@@ -2281,7 +2378,7 @@ NEW_RESIDENT = guide(
           "days before an election, or at your polling place on election day. Bring proof of your "
           "identity, age, citizenship and domicile; How to Vote lists what counts.</p>"
           "<p>You do not need a New Hampshire driver&rsquo;s license to register or to vote.</p>",
-          actions=[("Register to vote", SOS_REGISTER)]),
+          actions=[("Register to vote", SOS_REGISTER)], law=["RSA 654:27"]),
      step("Keep your address up to date",
           "<p>Once you hold a New Hampshire license, tell the DMV within 30 days whenever you change "
           "your name, your home or your mailing address. An address change can go through the "
@@ -2314,7 +2411,9 @@ NEW_RESIDENT = guide(
      claim("No license until every other jurisdiction's license is surrendered.", "RSA 263:4", READ),
      claim("A new resident has 60 days from residency to register vehicles in NH.", "RSA 261:45", READ),
      claim("A licensed driver notifies the director within 30 days of a change of legal name, "
-           "permanent residence or mailing address.", "RSA 263:9", READ)],
+           "permanent residence or mailing address.", "RSA 263:9", READ),
+     claim("The supervisors' session for correcting the checklist, at which hearings close, is on "
+           "a day they designate 6 to 13 days before the election.", "RSA 654:27", COUNTED)],
     more="<h2>Who Can Help</h2>"
          "<p>Your town or city clerk handles both your vehicle registration and your voter "
          "registration. The Division of Motor Vehicles answers licensing questions at "
@@ -2323,7 +2422,14 @@ NEW_RESIDENT = guide(
          "Find your town or city clerk</a></p>",
     see=[("How to vote in New Hampshire", "/guides/how-to-vote.html"),
          ("How to register a car", "/guides/register-a-car.html"),
-         ("How to get a REAL ID", "/guides/real-id.html")])
+         ("How to get a REAL ID", "/guides/real-id.html")],
+    figures=[fig("60 days", "RSA 263:35", "a maximum of 60 days from the date his or her residency "
+                                          "was established"),
+             fig("60 days", "RSA 261:45", "a maximum of 60 days from the date of his or her residency "
+                                          "in which to register"),
+             fig("60-day", DMV_NEW, "a 60-day paper temporary"),
+             fig("6 to 13 days", "RSA 654:27", "6 to 13 days prior to the election"),
+             fig("30 days", "RSA 263:9", "notify the director in writing of such change within 30 days")])
 
 
 # ---------------------------------------------------------------------------
@@ -2450,7 +2556,15 @@ BENEFITS = guide(
          "<p>For help with an application, someone to talk your options through with, and free "
          "legal help if a benefit is denied or cut:</p>"
          + helps("nheasy", "adrc", "legal_aid"),
-    see=[("How to get help with heating and electric bills", "/guides/heating-and-electric-help.html")])
+    see=[("How to get help with heating and electric bills", "/guides/heating-and-electric-help.html")],
+    # Federal law and the Department's own appeal rules, which no statute
+    # table here holds: each count as the claim on the Department's page
+    # records it.
+    figures=[fig("aged 18", DHHS_SNAP, "ABAWDs 18 through 64"),
+             fig("80 hours", DHHS_SNAP, "need 80 hours a month"),
+             fig("30 days", DHHS_APPEALS, "generally 30 days from the Notice of Decision"),
+             fig("90 days", DHHS_APPEALS, "90 for SNAP"),
+             fig("15 days", DHHS_APPEALS, "within 15 days benefits may continue")])
 
 
 # ---------------------------------------------------------------------------
@@ -2519,9 +2633,13 @@ UNEMPLOYMENT = guide(
      ("Unemployment Appeals (New Hampshire Employment Security)", NHES_APPEALS),
      ("Unemployment Compensation, RSA 282-A", "/laws/282-a")],
     ["282-A"],
+    # "What to have ready" names its 18 months since 23 October 2026, so the
+    # count rests on the claim (COUNT): the words are the guide's own list,
+    # which this claim was checked against, not a second reading of the page.
     [claim("Register or log in to Workforce Connect, File for Benefits, Apply for Unemployment "
            "Insurance Benefits, answer accurately, review and certify, print the confirmation; what "
-           "to have ready; a weekly work search unless notified of an exemption, contacting "
+           "to have ready, employers and a DD 214 from the last 18 months among it; a weekly work "
+           "search unless notified of an exemption, contacting "
            "employers and reemployment activities; a monetary determination of wage requirements "
            "and amounts, with appeal rights; part-time may qualify, hours and earnings reported "
            "weekly, full-time does not; school workers case by case; file where you physically "
@@ -2543,7 +2661,10 @@ UNEMPLOYMENT = guide(
          "answers questions on weekdays from 8:00 a.m. to 4:30 p.m. Its NH Works offices help in "
          "person, with claims and with finding work.</p>"
          f'<p class="g-acts"><a class="g-btn" href="{NHES_OFFICES}" target="_blank" rel="noopener">'
-         "NH Works offices</a></p>")
+         "NH Works offices</a></p>",
+    figures=[fig("14 calendar days", "RSA 282-A:48",
+                 "within 14 calendar days after the determination was mailed"),
+             fig("18 months", NHES_FILE, "from the last 18 months")])
 
 
 # ---------------------------------------------------------------------------
@@ -2642,9 +2763,14 @@ RUN = guide(
      ("Nominations, RSA 655", "/laws/655"),
      ("Town Elections, RSA 669", "/laws/669")],
     ["655", "669"],
+    # "As tabled" spelled out on 23 October 2026, so the table's counts rest
+    # on the claim (COUNT): the numbers are the table's, which this claim was
+    # checked against, not a second reading of the page.
     [claim("The qualifications for president, governor, U.S. senator, U.S. representative, "
            "executive councilor, state senator, state representative and county officer, as "
-           "tabled.", SOS_QUAL, READ),
+           "tabled: domiciled in New Hampshire 7 years for governor, councilor and state senator "
+           "and 2 years for state representative; a U.S. citizen 9 years for U.S. senator and 7 "
+           "years for U.S. representative.", SOS_QUAL, READ),
      claim("To hold any elective office in the state, a person must have a domicile in the state.",
            "RSA 655:2", READ),
      claim("A primary candidate is a registered member of the party, meets the age and domicile "
@@ -2693,7 +2819,23 @@ RUN = guide(
              fig("$50", "RSA 655:19-c", "For representative to Congress, $50"),
              fig("$25", "RSA 655:19-c", "For executive councilor, $25"),
              fig("$10", "RSA 655:19-c", "For state senator, $10"),
-             fig("$2", "RSA 655:19-c", "For state representative, $2")])
+             fig("$2", "RSA 655:19-c", "For state representative, $2"),
+             # The petitions and the nomination papers: no unit makes them a
+             # COUNT, and the statute sets them, so they are held to it too.
+             fig("200", "RSA 655:19-c", "for governor and United States senator, 200"),
+             fig("100", "RSA 655:19-c", "for representative in Congress, 100"),
+             fig("50", "RSA 655:19-c", "for executive councilor and county officer, 50"),
+             fig("20", "RSA 655:19-c", "for state senator, 20"),
+             fig("5", "RSA 655:19-c", "for state representative, 5"),
+             fig("3,000", "RSA 655:42", "the names of 3,000 registered voters, 1,500 from each "
+                                        "United States congressional district"),
+             fig("1,500", "RSA 655:42", "the names of 1,500 voters registered in the district"),
+             fig("750", "RSA 655:42", "750 to nominate a candidate for councilor or state senator"),
+             fig("150", "RSA 655:42", "150 to nominate a candidate for state representative or "
+                                      "county officer"),
+             fig("7 years", SOS_QUAL, "domiciled in New Hampshire 7 years"),
+             fig("2 years", SOS_QUAL, "2 years for state representative"),
+             fig("9 years", SOS_QUAL, "a U.S. citizen 9 years")])
 
 
 GUIDES += [LICENSE, CAR, REAL_ID, NEW_RESIDENT, BENEFITS, UNEMPLOYMENT, RUN]
@@ -2863,7 +3005,8 @@ TOUR = guide(
      ours("The Calendar shows the week's hearings and session days.", "/calendar.html", READ)],
     see=[("Finding your representatives", "/guides/your-representatives.html"),
          ("How to contact your legislators", "/guides/contact-your-legislators.html"),
-         ("How to attend and speak at a public hearing", "/guides/attend-a-hearing.html")])
+         ("How to attend and speak at a public hearing", "/guides/attend-a-hearing.html")],
+    figures=[fig("10 minutes", TOUR_CITE, "more than 10 minutes early or late")])
 
 GUIDES += [TOUR]
 

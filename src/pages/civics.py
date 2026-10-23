@@ -968,6 +968,14 @@ FLOW_TESTIFY = [
 # are adoption, readoption, readoption with amendment, and repeal. And part I,
 # article 28-a protects political subdivisions generally -- counties, cities,
 # towns and school districts -- not towns alone.
+#
+# THREE MORE, 23 October 2026, when each number was held to its section
+# (preflight's LEARN_STATUTE_CLAIMS): notice is at least 20 days before the
+# hearing, not 20 (541-A:6); a board or commission may shorten the comment
+# period in its notice (541-A:11, I(b)); and a rule being readopted stays in
+# force past its ten years, which never bind an agency's rules of organization
+# and procedure (541-A:14-a, 541-A:17). Each step that states a number now
+# names its section.
 FLOW_RULES = [
     ("Before Anyone Can Comment", [
         ("The statute hands it over", "A bill says the agency \"shall adopt "
@@ -979,7 +987,7 @@ FLOW_RULES = [
          "rule, readopt one, readopt it with a change, or repeal it. The "
          "notice carries a fiscal impact statement and a statement that the "
          "rule lays no unfunded obligation on a county, city, town or school "
-         "district.", ("needs", "20 days before the hearing")),
+         "district. (RSA 541-A:6)", ("needs", "At least 20 days before the hearing")),
         ("The full text, not a summary", "At least one complete section of "
          "the rules as they would read, filed with the same office.", ""),
     ]),
@@ -988,21 +996,23 @@ FLOW_RULES = [
          "may speak, and anyone may send data, views or arguments in writing "
          "instead.", "say"),
         ("Comment stays open after it", "Written comment is taken for a "
-         "further period once the hearing is over.",
+         "further period once the hearing is over. A board or commission may "
+         "set a shorter one in its notice; an agency official may not. "
+         "(RSA 541-A:11, I(b))",
          ("needs", "At least 5 business days")),
     ]),
     ("The Legislature's Turn", [
         ("The final proposal", "The agency weighs the comment, settles the "
-         "text, and files it.",
+         "text, and files it. (RSA 541-A:12)",
          ("needs", "21 to 180 days after the notice")),
         ("The committee has 60 days", "The Joint Legislative Committee on "
          "Administrative Rules &mdash; JLCAR, legislators from both chambers "
          "&mdash; may approve the rule, approve it on a stated condition, or "
-         "object to it.", ""),
+         "object to it. (RSA 541-A:13)", ""),
         ("Silence is approval", "If the 60 days pass with no notice of "
          "approval, conditional approval or objection, the statute deems the "
          "rule approved. A rule can take effect without anyone having voted "
-         "for it.", ("needs", "No vote required")),
+         "for it. (RSA 541-A:13, II(e))", ("needs", "No vote required")),
         ("An objection is not a veto", "To actually stop a rule the "
          "committee has to sponsor a joint resolution, and that has to pass "
          "both chambers and go to the Governor like any other bill.", ""),
@@ -1011,7 +1021,10 @@ FLOW_RULES = [
         ("Effective the next day", "Once adopted and filed the rule binds "
          "whoever it covers, exactly as a statute would.", ""),
         ("Ten years, then it lapses", "No rule is effective for longer than "
-         "ten years. To keep it, the agency runs the whole course again.",
+         "ten years. To keep it, the agency runs the whole course again, and "
+         "the rule stays in force while it does; an agency's own rules of "
+         "organization and procedure do not lapse. (RSA 541-A:17, "
+         "541-A:14-a)",
          "stop"),
     ]),
 ]
@@ -1097,11 +1110,16 @@ def _motions():
 MOTIONS = _motions()
 
 
+# THE SEATS ARE THE DISTRICT MAP'S (23 October 2026): 400 and 24 were typed
+# here beside [[house_seats]] and [[senate_districts]] lower down, which
+# build_civics counts from records/districts/. preflight holds the count to
+# Part Second's Articles 9 and 25; the blurb in TOPICS, which is not filled,
+# keeps its typed numbers and is held to the same articles.
 BODY_GENERAL_COURT = """
 <h2>The Largest State Legislature</h2>
 <p>New Hampshire's legislature is called the <b>General Court</b>, the name the
-state constitution gives it. It is made up of 400 representatives and
-24 senators. It is the largest state legislature in the country: the last
+state constitution gives it. It is made up of [[house_seats]] representatives and
+[[senate_districts]] senators. It is the largest state legislature in the country: the last
 redistricting drew House districts to <b>3,444 residents a seat</b>.</p>
 
 <p>Members are paid <b>$200 for the two-year term</b> plus mileage &mdash; one
@@ -1110,7 +1128,7 @@ $100 a year, which is the same money divided by two. Almost none have staff.
 Most have other jobs, and the session is arranged around that: the House meets
 on a small number of full days, and committee work fills the rest.</p>
 
-<p>Four hundred is the number of seats, not the number of members. Seats fall
+<p>The House's [[house_seats]] is the number of seats, not the number of members. Seats fall
 vacant and are filled at special elections through the term, so the working size of
 the House moves.</p>
 [[fig_seats]]
@@ -1573,7 +1591,7 @@ BODY_CONSTITUTION = """
 <h2>In Two Parts</h2>
 <p>New Hampshire's constitution took effect in 1784 and is among the oldest
 still in force anywhere. It is in two parts. <b>Part First</b> is the Bill of
-Rights &mdash; thirty-odd articles on what the state may not do. <b>Part
+Rights &mdash; forty-four articles on what the state may not do. <b>Part
 Second</b> is the Form of Government: the House, the Senate, the Governor, the
 Council, the courts, and how each is chosen. The whole text, article by
 article, is on <a href="/laws#constitution">the Laws page</a>.</p>
@@ -1726,8 +1744,9 @@ decided at it. Nothing done at a town meeting except electing its officers is
 valid unless the subject was stated in the warrant (RSA 39:2). A <b>petitioned
 article</b> is one the selectmen must put on the warrant on the written
 application of 25 registered voters, or of 2 percent of the town's registered
-voters, whichever is fewer (RSA 39:3). The articles are debated and amended
-from the floor, and the budget is decided in the room: where an article asks
+voters, whichever is fewer, and never fewer than 10 (RSA 39:3). The articles
+are debated and amended from the floor, and the budget is decided in the
+room: where an article asks
 for a sum of money the meeting may vote more or less than it asks (RSA 39:2),
 though in a town under the municipal budget law the meeting may not raise the
 total more than 10 percent above what the budget committee recommends, with
@@ -2149,7 +2168,7 @@ licenses and registrations, and runs the mechanics of elections. A town may
 vote to make the term 3 years (RSA 41:16-b).</td></tr>
 <tr><th scope="row"><b>Tax collector</b></th><td>Collects the taxes the selectmen commit,
 remits them to the treasurer at least weekly, and daily once receipts reach
-$1,500, keeps the account of what was collected
+$3,500, keeps the account of what was collected
 and abated, and reports at year end (RSA 41:35).</td></tr>
 <tr><th scope="row"><b>Clerk/tax collector</b></th><td>Many towns have combined the two
 into one office. It takes a petitioned article and a majority at the annual
