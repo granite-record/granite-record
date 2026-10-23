@@ -372,6 +372,18 @@ must remember (`refused.json`, `census.json`, `first-seen.json`, the verdicts)
 lives under `state/`, so a refusal the night meets outlives its machine and
 stops the laptop's fetches too.
 
+**The build's cache (23 October 2026).** Two steps keep what they worked out
+in `.build_cache/` (`src/lib/build_cache.py`), and the kit carries it as the
+night's own: the bill versions' comparisons of one printing with the next,
+nearly all of which are the same night to night, and the presiding officers'
+mentions, read out of every journal by both the site data and the session
+pages. Each answer is kept under a sha256 of everything it was worked out
+from and of the code that worked it out -- the module and every module of
+this project it imports, tokenised with the comments out, as section 9 below
+learned -- so a change to either is a cache that no longer answers. A cache
+that is missing, unreadable or another code's is no cache, and the site
+built warm, cold and without it is the same byte for byte.
+
 ---
 
 ## What is sound

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-09.13
+# GRANITE_VERSION: 2026-09-09.14
 """
 Every version of a bill, in order, and what each amendment changed.
 
@@ -73,6 +73,7 @@ import os
 import re
 
 import bill_blocks
+import build_cache
 
 DB = Path("db")
 
@@ -221,14 +222,17 @@ def ordered(vs):
     return vs, amendments
 
 
-def compare_early(per):
+def compare_early(per, known=()):
     """{(bill, year, i): compare()} of the pairs whose words multiply past
     BIG_PAIR, computed in a pool; {} where there are fewer than two of them or
-    one processor, which the loop does as before."""
+    one processor, which the loop does as before. A pair in `known`, whose
+    answer was kept (KEPT), is not compared again."""
     big = []
     for key, vs in per.items():
         vs, _ = ordered(vs)
         for i in range(len(vs) - 1):
+            if (*key, i) in known:
+                continue
             a, b = vs[i]["text"], vs[i + 1]["text"]
             # Characters first: no pair has more words than characters, so a
             # pair short of the mark in characters is short of it in words.
@@ -245,6 +249,52 @@ def compare_early(per):
             max_workers=min(POOL_MOST, len(big), cpus)) as pool:
         futures = {(*key, i): pool.submit(compare, va, vb) for _, key, i, va, vb in big}
         return {k: f.result() for k, f in futures.items()}
+
+
+# THE PAIRS COMPARED BEFORE, KEPT (23 October 2026; build_cache.py says how).
+# Nearly every pair the loop compares is one an earlier night compared,
+# printings that have not changed since, and a word diff of the longest takes
+# minutes: on GitHub's machine the step was four. compare()'s answer depends
+# on the two versions' texts and blocks and on nothing else but the code, so
+# it is kept under a sha256 of those and of the code (build_cache.signature
+# of this file, which takes in bill_blocks and what else it imports), and a
+# pair whose key is kept is not compared again. The answer kept is the one
+# compare() gave, as JSON gives it back -- lists where it made lists, which
+# is all it makes -- and is written into the step files exactly as a fresh
+# one would be. A cache that is not there, will not read or is another
+# code's is no cache, and every pair is compared as before.
+KEPT = "bill_versions"
+
+
+def version_key(v):
+    """A sha256 of what compare() reads of one version: its text and its
+    blocks."""
+    return build_cache.digest(v["text"], json.dumps(v.get("blocks") or [],
+                                                     separators=(",", ":")))
+
+
+def kept_answer(x):
+    """A kept answer as compare() returns it, or None where it is not of
+    compare()'s shape."""
+    if (isinstance(x, list) and len(x) == 4 and isinstance(x[0], list)
+            and isinstance(x[1], list) and all(type(n) is int for n in x[2:])
+            and all(isinstance(r, list) and len(r) == 2 and all(isinstance(t, str) for t in r)
+                    for r in x[0])):
+        return tuple(x)
+    return None
+
+
+def pair_keys(per, sig):
+    """{(bill, year, i): the key compare(vs[i], vs[i + 1]) is kept under}."""
+    out = {}
+    for key, vs in per.items():
+        vs, _ = ordered(vs)
+        if len(vs) < 2:
+            continue
+        ks = [version_key(v) for v in vs]
+        for i in range(len(vs) - 1):
+            out[(*key, i)] = build_cache.digest(sig, ks[i], ks[i + 1])
+    return out
 
 
 def read_versions(folder, C, order, unknown):
@@ -338,8 +388,21 @@ def main():
     order = json.loads((DB / "document_versions.json").read_text(encoding="utf-8"))
     unknown = collections.Counter()
     per = all_versions(order, unknown)
+    # The pairs an earlier run compared (KEPT), and what each is kept under.
+    sig = build_cache.signature("build_bill_versions.py")
+    kept = build_cache.load(KEPT, sig)
+    keys = pair_keys(per, sig)
+    known = {}
+    for k, ck in keys.items():
+        got = kept_answer(kept.get(ck))
+        if got is not None:
+            known[k] = got
+    del kept
+    print(f"  {len(known):,} of {len(keys):,} pairs compared before and kept; "
+          f"{len(keys) - len(known):,} to compare")
+    used = {}
     # --limit stops the loop part way, so nothing is compared ahead of it.
-    early = {} if a.limit else compare_early(per)
+    early = {} if a.limit else compare_early(per, known)
 
     out = Path(a.site) / "versions"
     written = steps_total = texts = amds = lone = 0
@@ -382,8 +445,9 @@ def main():
             # the "+N -N words" line; recomputing them from a different stream
             # would change numbers the site already states on 1,149 bills for
             # no reader-visible gain.
-            got = early.pop((bill, year, i), None)
+            got = known.get((bill, year, i)) or early.pop((bill, year, i), None)
             r, mk, m_add, m_rem = got if got else compare(vs[i], vs[i + 1])
+            used[keys[(bill, year, i)]] = [r, mk, m_add, m_rem]
             steps.append({
                 "from": i, "to": i + 1,
                 "added": sum(len(t.split()) for op, t in r if op == "+"),
@@ -477,6 +541,13 @@ def main():
     if early:
         raise SystemExit(f"STOP: {len(early)} pair(s) compared ahead were not met by the "
                          f"loop, e.g. {next(iter(early))}; nothing more is written")
+    # Kept for the next run: the answers this one used, and no others, so the
+    # cache is the record as it stands. Only by a run over every bill: one
+    # stopped by --limit, or --check, which writes nothing, keeps nothing.
+    if not a.limit and not a.check:
+        if build_cache.save(KEPT, sig, used):
+            print(f"  {len(used):,} pairs' comparisons kept for the next run "
+                  f"({build_cache.path_of(KEPT)})")
 
     # A MANIFEST, SO THE PAGE KNOWS BEFORE IT ASKS. Only 1,149 of 2,234 bills
     # have a second version, so a Versions tab on every bill would be a tab

@@ -489,8 +489,11 @@ CHANGES = re.compile(r"^gc-changes-(?:weekly-)?\d{4}-\d\d-\d\d\.md$")
 PULL_LOGS = ((re.compile(r"^(?:nightly|weekly)-\d{4}-\d\d-\d\d\.log$"), "logs"),
              (re.compile(r"^site-\d{4}-\d\d-\d\d\.sha256$"), "logs"),
              (CHANGES, "reports"))
-# The night's files pull never takes: the laptop's built site is its own.
-PULL_NOT = ("site/",)
+# The night's files pull never takes: the laptop's built site is its own, and
+# so is its build cache (build_cache.py, 23 October 2026), which every build
+# here rewrites -- taken back, each morning's pull would find the laptop's
+# copy changed under the night's and stop on a clash nobody needs to settle.
+PULL_NOT = ("site/", ".build_cache/")
 # Set by preflight for itself and everything it runs: with it, nothing here
 # reaches the real bucket, whatever a check drives. A folder bucket still works.
 NO_BUCKET = "GRANITE_NO_BUCKET"
@@ -3624,8 +3627,8 @@ def cmd_send_night(a, root):
             raise Failed(f"{rel} is on {KIT_FILE}'s never list, which no command sends "
                          "anywhere. Nothing was sent.")
         if rel.startswith(PULL_NOT):
-            raise Failed(f"{rel} is the built site's, which is each build's own and never "
-                         "sent by hand. Nothing was sent.")
+            raise Failed(f"{rel} is the built site's or the build cache's, which are each "
+                         "build's own and never sent by hand. Nothing was sent.")
         owner = owner_of(kit, rel)
         if owner == "laptop":
             raise Failed(f"{rel} is the laptop's in {KIT_FILE}, and seed-kit sends the "

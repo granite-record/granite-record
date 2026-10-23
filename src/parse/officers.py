@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-09.3
+# GRANITE_VERSION: 2026-10-09.4
 """
 Who held the chair's offices, and on which days, from the record on disk.
 
@@ -62,7 +62,8 @@ tenure covers the day, and for an appointed office the member named in it
 latest in the day's term, so Rep. Kofalt is the Speaker Pro Tempore on the
 strength of the notice of 29 May 2026.
 
-Nothing here asks the network or writes anything.
+Nothing here asks the network, and nothing is written but the mentions it
+keeps for the next reader (KEPT, below).
 """
 
 # The bootstrap: _paths.py, found above this file, puts every code folder on the import path.
@@ -75,6 +76,7 @@ import argparse
 import datetime as _dt
 import re
 
+import build_cache
 import journal_days as JD
 import proceedings as P
 # The one reader of corrections/officials.json (23 October 2026): every page
@@ -495,10 +497,51 @@ def load(house=HOUSE, senate=SENATE, calendars=CALENDARS, hand=HAND):
     """(tenures, mentions, rejected hand entries), read once per process."""
     key = (str(house), str(senate), str(calendars), str(hand))
     if key not in _CACHE:
-        ms = house_mentions(house) + senate_mentions(senate) + calendar_mentions(calendars)
+        ms = mentions(house, senate, calendars)
         good, bad = hand_entries(hand)
         _CACHE[key] = (tenures(ms, good), ms, bad)
     return _CACHE[key]
+
+
+# THE MENTIONS, KEPT BETWEEN PROCESSES (23 October 2026; build_cache.py says
+# how). The site data and the session pages each read every journal and
+# calendar for them, about half a minute a time on GitHub's machine, and
+# they are the same mentions: a sha256 of every file the three readers read
+# (house_mentions, senate_mentions, calendar_mentions: the same globs, a file
+# they pass over included) and of this module's code keys them, so the second
+# reader of a build -- and a night whose journals have not moved -- takes
+# them as the first wrote them. Only the build's own folders are kept: a
+# check's fixture is read afresh and leaves nothing behind. The hand entries
+# and the tenures are worked out every time; they are quick, and the hand
+# entries are read as of the build's day.
+KEPT = "officers"
+
+
+def _kept_mentions(x):
+    """A kept list of mentions as _mention makes them, or None."""
+    if isinstance(x, list) and all(
+            isinstance(m, dict) and set(m) == {"body", "title", "name", "date", "kind",
+                                               "cite", "book", "quote"}
+            and all(isinstance(v, str) for v in m.values()) for m in x):
+        return x
+    return None
+
+
+def mentions(house=HOUSE, senate=SENATE, calendars=CALENDARS):
+    """house_mentions + senate_mentions + calendar_mentions, kept (KEPT)."""
+    if (str(house), str(senate), str(calendars)) != (str(HOUSE), str(SENATE), str(CALENDARS)):
+        return house_mentions(house) + senate_mentions(senate) + calendar_mentions(calendars)
+    files = (sorted(Path(house).glob("*/*.txt")) + sorted(Path(senate).glob("*/*.txt"))
+             + sorted(Path(calendars).glob("*/HC*.txt")))
+    sig = build_cache.signature("officers.py")
+    key = build_cache.digest(sig, str(house), str(senate), str(calendars),
+                             build_cache.files_digest(files))
+    got = _kept_mentions(build_cache.load(KEPT, sig).get(key))
+    if got is not None:
+        return got
+    ms = house_mentions(house) + senate_mentions(senate) + calendar_mentions(calendars)
+    build_cache.save(KEPT, sig, {key: ms})
+    return ms
 
 
 def on(tens, body, iso):

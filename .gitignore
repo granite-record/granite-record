@@ -110,6 +110,10 @@ _captions_manifest.csv
 
 # ---- caches, lists and logs ----------------------------------------------
 .segment_cache.json
+# The build's cache (src/lib/build_cache.py): answers some steps worked out on
+# an earlier run, each kept under a sha256 of its inputs and its code. The
+# kit carries it to the night and back (cloud_kit.json).
+/.build_cache/
 missing_captions.txt
 no_captions.txt
 logs/

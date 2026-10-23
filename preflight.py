@@ -84988,6 +84988,162 @@ def _versions_keep_terms(build_bill_versions):
                   "wins a bill-year it still holds")
 
 
+@check("build", "a kept comparison is the comparison: the bill versions built with no cache, "
+       "with the last run's, with a broken one and with another code's are the same files",
+       needs=("build_bill_versions", "build_cache"))
+def _versions_kept(build_bill_versions, build_cache):
+    """build_bill_versions keeps every pair it compares in .build_cache/ (KEPT,
+    build_cache.py, 23 October 2026), and the night takes that cache from the
+    kit, so nothing about it may change a file. Driven end to end on a small
+    tree: cold; warm; with the cache cut short; with a wrong answer planted
+    under another code's signature; and with one under this code's in a shape
+    compare() never gives -- the versions and the manifest come out the same
+    each time, and only the warm run takes a kept answer. A run stopped by
+    --limit leaves the cache as it was. And the signature reads code, not
+    comments: a note changed is the same signature, a statement changed is
+    not."""
+    import gzip
+    import hashlib
+    BBV, BC = build_bill_versions, build_cache
+    tmp = Path(tempfile.mkdtemp(prefix="gr-versions-kept-"))
+    try:
+        cols = {"LegislationText": ["LegislationID", "DocumentVersion", "Text",
+                                    "DateTimeStamp", "HTMLText"],
+                "Legislation": ["legislationID", "CondensedBillNo", "sessionyear"]}
+        db = tmp / "db"
+        db.mkdir()
+        (db / "_columns.json").write_text(json.dumps(cols), encoding="utf-8")
+        (db / "Legislation.psv").write_text("1|HB1|2025\n2|HB2|2025\n3|SB3|2026\n",
+                                            encoding="utf-8")
+        rows = []
+        for i, word in (("1", "fees"), ("2", "roads"), ("3", "schools")):
+            for lab, t in (("Introduced", f"An act relative to {word}. The fee is ten dollars."),
+                           ("As Amended by the House",
+                            f"An act relative to {word}. The fee is twelve dollars, paid yearly."),
+                           ("As Amended by the Senate",
+                            f"An act relative to {word} and towns. The fee is twelve dollars.")):
+                rows.append(f"{i}|{lab}|{t}|01/05/2026 10:00:00|<p>{t}</p>\n")
+        (db / "LegislationText.psv").write_text("".join(rows), encoding="utf-8")
+        (db / "document_versions.json").write_text(json.dumps(
+            {"Introduced": {"sort": 20}, "As Amended by the House": {"sort": 30},
+             "As Amended by the Senate": {"sort": 40}}), encoding="utf-8")
+        cache = tmp / ".build_cache" / f"{BBV.KEPT}.json.gz"
+
+        def run(*extra):
+            shutil.rmtree(tmp / "site", ignore_errors=True)
+            (tmp / "m.json").unlink(missing_ok=True)
+            r = _run([sys.executable, str(Path(BBV.__file__).resolve()), "--site", "site",
+                      "--manifest", "m.json", *extra], cwd=tmp, capture_output=True, text=True,
+                     timeout=180)
+            assert r.returncode == 0, (r.stdout or "")[-300:] + (r.stderr or "")[-600:]
+            got = {p.relative_to(tmp).as_posix(): hashlib.sha256(p.read_bytes()).hexdigest()
+                   for p in sorted((tmp / "site").rglob("*")) if p.is_file()}
+            if (tmp / "m.json").exists():
+                got["m.json"] = hashlib.sha256((tmp / "m.json").read_bytes()).hexdigest()
+            return got, r.stdout
+
+        def plant(sig, entries):
+            cache.write_bytes(gzip.compress(json.dumps(
+                {"format": BC.FORMAT, "sig": sig, "entries": entries}).encode("utf-8")))
+
+        cold, said = run()
+        assert "0 of 6 pairs compared before" in said and cache.exists(), said[-400:]
+        assert sum(k.endswith(".json") and "-" in k.rsplit("/", 1)[-1] for k in cold) == 6, \
+            f"the fixture wrote {sorted(cold)}, not six comparisons"
+        doc = json.loads(gzip.decompress(cache.read_bytes()))
+        assert len(doc["entries"]) == 6, f"{len(doc['entries'])} pairs kept of 6 compared"
+        warm, said = run()
+        assert "6 of 6 pairs compared before and kept" in said, said[-400:]
+        assert warm == cold, ("a kept comparison wrote another file: "
+                              + ", ".join(k for k in cold if warm.get(k) != cold[k]))
+        cache.write_bytes(cache.read_bytes()[:40])
+        broken, said = run()
+        assert broken == cold and "0 of 6" in said, "a cache cut short changed a file"
+        wrong = {k: [[["+", "planted"]], [], 99, 99] for k in doc["entries"]}
+        plant("0" * 64, wrong)
+        other, said = run()
+        assert other == cold and "0 of 6" in said, "another code's answer was taken"
+        plant(doc["sig"], {k: [["+", "planted"], [], 1] for k in doc["entries"]})
+        shaped, said = run()
+        assert shaped == cold and "0 of 6" in said, "an answer not of compare()'s shape was taken"
+        kept = cache.read_bytes()
+        run("--limit", "1")
+        assert cache.read_bytes() == kept, "a run stopped by --limit rewrote the cache"
+        a, b, c = tmp / "a.py", tmp / "b.py", tmp / "c.py"
+        a.write_text("x = 1  # one\n\n\ndef f():\n    return x\n", encoding="utf-8")
+        b.write_text("# a note\nx = 1  # one, said otherwise\n\ndef f():\n    return x\n",
+                     encoding="utf-8")
+        c.write_text("x = 2  # one\n\n\ndef f():\n    return x\n", encoding="utf-8")
+        assert BC._tokens(a) == BC._tokens(b) and BC._tokens(a) != BC._tokens(c), \
+            "the signature reads comments, or misses a statement"
+        assert BC.load("nothing-here", doc["sig"], folder=tmp) == {}
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    return "ok", ("six pairs of three bills: cold, warm, cut short, another code's and a wrong "
+                  "shape all write the same files, only the warm run takes a kept answer, and "
+                  "--limit keeps nothing; a comment is not code to the signature")
+
+
+@check("build", "the officers' mentions kept between processes are the mentions the journals give",
+       needs=("officers",))
+def _officers_kept(OF):
+    """officers.load() keeps the journals' mentions in .build_cache/ (KEPT, 23
+    October 2026): the site data reads them and the session pages, a process
+    later, take them as it left them, and so does the next night when its
+    journals have not moved. Laid out as a build has them, in journals/,
+    journals_senate/ and calendars/ of the working folder: a second process
+    reads no journal and gets what the first read; a journal that changes is
+    read again; and a fixture's own folders are read afresh and leave nothing
+    behind."""
+    root = Path(tempfile.mkdtemp(prefix="gr-officers-kept-"))
+    try:
+        for name, text in _OFFICERS_FILES.items():
+            (root / name).parent.mkdir(parents=True, exist_ok=True)
+            (root / name).write_text(text, encoding="utf-8")
+        here = str(_paths.ROOT)
+        code = "\n".join([
+            "import sys, json",
+            "sys.path.insert(0, sys.argv[1])",
+            "import _paths",
+            "import officers as OF",
+            "if sys.argv[2] == 'kept':",
+            "    def boom(*a, **k):",
+            "        raise SystemExit('the journals were read again')",
+            "    OF.house_mentions = OF.senate_mentions = OF.calendar_mentions = boom",
+            "if sys.argv[2] == 'elsewhere':",
+            "    got = OF.load(OF.Path('other/journals'), OF.Path('other/journals_senate'),",
+            "                  OF.Path('other/calendars'))",
+            "else:",
+            "    got = OF.load()",
+            "print(json.dumps(got, ensure_ascii=False))"])
+
+        def load(how):
+            return _run([sys.executable, "-c", code, here, how], cwd=root,
+                        capture_output=True, text=True, timeout=120)
+        first = load("read")
+        assert first.returncode == 0, (first.stderr or first.stdout)[-400:]
+        assert json.loads(first.stdout)[1], "the fixture's journals gave no mention"
+        cache = root / ".build_cache" / f"{OF.KEPT}.json.gz"
+        assert cache.exists(), "officers.load() kept nothing for the next process"
+        second = load("kept")
+        assert second.returncode == 0, (
+            "the second process read the journals again: " + (second.stderr or "")[-300:])
+        assert second.stdout == first.stdout, "the kept mentions are not the mentions read"
+        j = next(p for p in sorted((root / "journals").rglob("*.txt")))
+        j.write_text(j.read_text(encoding="utf-8") + "\n", encoding="utf-8")
+        moved = load("kept")
+        assert moved.returncode != 0 and "read again" in (moved.stderr or ""), \
+            "a journal changed and its kept mentions were used"
+        cache.unlink()
+        other = load("elsewhere")
+        assert other.returncode == 0 and not cache.exists(), \
+            "folders other than the build's own left a cache behind"
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    return "ok", ("a second process takes the first one's mentions and reads no journal; a "
+                  "journal changed is read again; other folders keep nothing")
+
+
 @check("build", "a bill request that became a bill reads as introduced, not withdrawn",
        needs=("build_lsrs",))
 def _request_became_bill(build_lsrs):

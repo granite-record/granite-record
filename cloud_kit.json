@@ -180,6 +180,12 @@
       "paths": ["site/committees.json"]
     },
     {
+      "what": "The build's cache (src/lib/build_cache.py, since 23 October 2026): answers two steps worked out on an earlier night -- the bill versions' comparisons of one printing with the next, and the presiding officers read out of the journals and calendars -- each kept under a sha256 of everything it was worked out from and of the code that worked it out, so a night works out only what changed. A cache that is not here, will not read or was written by other code is no cache: the step works everything out, and the site is the same byte for byte either way. Optional: none is here before the first night that writes one. Never sent by a dry run, which sends back only what it fetched, and never taken by the laptop's pull, whose own builds keep their own (cloud.PULL_NOT).",
+      "owner": "night",
+      "optional": true,
+      "globs": [".build_cache/*.json.gz"]
+    },
+    {
       "what": "The night's new livestreams: the index rows the committed collected/videos/videos_*.csv do not carry; they stay at the root, where the kit has always carried them. Their state is archive/livestreams.json, in the state list below. Optional: none exists before the first night that finds a livestream. Never held: the state that says a recording has been seen goes up whatever happens, and a row held back from a night that was never published would be a recording the site never shows.",
       "owner": "night",
       "optional": true,
@@ -226,7 +232,8 @@
        "why": "the repository itself, which GitHub holds, and the assistant's own state"},
       {"globs": ["archive/cloud/**", "**/*.lock", "**/.lock", "**/*.tmp", "**/*.part"],
        "why": "cloud.py's own record of this machine, locks, and files half written"},
-      {"globs": ["**/__pycache__/**", "**/*.pyc", ".wrangler/**", ".venv/**", "node_modules/**"],
+      {"globs": ["**/__pycache__/**", "**/*.pyc", ".wrangler/**", ".venv/**", "node_modules/**",
+                 ".build_cache/**"],
        "why": "caches any machine remakes"},
       {"globs": ["logs/**"],
        "why": "a night's log carries what the report pull printed, which can be a reader's own words; the About page promises those are gone within a week"},
