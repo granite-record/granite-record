@@ -376,6 +376,43 @@ pages built in Python and the build writes it into `components.js` for the
 browser, so an edit there reaches both. A word that is not there yet goes
 there, rather than into a page's own code.
 
+**Change how something looks.** There is one stylesheet,
+`src/pages/app.css`, and every page links it (since 23 October 2026).
+1. A colour or a size is a token in the palette at the top (`:root`, and
+   its dark twin below it); change the token rather than a rule that uses it.
+2. A new rule goes wherever it reads best and reaches every page. Two scopes
+   remain, written into the selector: `:where(body.pg)` for the five pages
+   `build_pages.py` writes (home, Officials, About, `/search`, 404), and
+   `:where(body:not(.pg))` for a record page's rule that must not reach them.
+   The note at the top of `app.css` says so.
+3. If the colour is one an email shares (an ink, a status chip, the vote
+   ring), run `python3 src/pages/follow_site.py` too (the email recipe below).
+4. `python3 build_all.py --front-end` puts it into the last full build in
+   seconds, to look at; `python3 src/checks/rendered_sweep.py`, before and
+   after with `--compare`, measures every page type's text, contrast and
+   overflow at three widths in both themes.
+
+**Change the header, the nav, the footer, the fonts or the icons.** One
+place: `src/pages/chrome.py`. Both kinds of page ask it -- record pages
+through the `<!-- CHROME:... -->` slots in `bills.html`, the five pages
+`build_pages.py` writes through the same four calls -- so an edit reaches
+every page at the next full build (`--front-end` refuses it, since every page
+is rewritten). A new section of the site is a row of `chrome.NAV_TABS`.
+Preflight fails if any page writes the frame by hand.
+
+**Add a kind of page.**
+1. A builder in `src/pages/`, with a name no other file has, that makes each
+   page with `shell.page(shell.template(), path=..., title=...,
+   description=..., base=...)`, so it gets the frame, the stylesheet, the
+   citation and the share card.
+2. Its addresses go in the sitemap through `shell.sitemap_merge(site, base,
+   urls, owns="/your-folder")`, so an address it stops writing is dropped.
+3. A `Step` in `build_all.plan()` after the steps it reads (the build step
+   recipe above), and a stamp and a `versions.json` entry for the new file.
+4. If it is a new section, a row of `chrome.NAV_TABS`.
+5. `python3 src/checks/check_site.py` on a build: the deploy allows 100,000
+   files and it warns at 90,000, so a page per record is a decision.
+
 **Change what an email says, or how it looks.** The email sender is the
 Worker in `workers/follow/` (its README has the whole of it), deployed on its
 own rather than by the nightly.

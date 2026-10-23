@@ -272,7 +272,8 @@ want:
 | how any record page looks | `src/pages/app.js` — one `render…` function per tab (`renderSummary`, `renderVotes`, `renderHearings`…); `BILL_TABS` maps slug → tab |
 | what data a bill page *has* | `src/pages/build_site_v2.py`, which assembles the payload |
 | how a person, a committee, a date or a time is drawn, on every page | `src/pages/components.py` for the pages built in Python and `src/pages/components.js` for the ones drawn in the browser: the same helpers under the same names, which `preflight` holds to one answer on `tests/components_cases.json` |
-| the frame every record page is built in | `src/pages/shell.py` — every page builder in `src/pages/` imports it |
+| the header, nav, footer, fonts and icons on every page | `src/pages/chrome.py`, the one place they are written |
+| the frame a record page is built in (title, citation, share card, sitemap) | `src/pages/shell.py` — every page builder in `src/pages/` imports it |
 | what the search does | `src/pages/bills.html` + `src/pages/app.js` (the lines between its `BILLMATCH` marks, which `src/pages/build_pages.py` cuts into `billmatch.js` for the header's `src/pages/find.js`); what each bill is about, `src/pages/build_search_index.py` |
 | the plain-English history under a bill | `src/parse/narrative.py` (sitting terms), `src/parse/narrate_archive.py` (archived) |
 | which subject a bill is filed under | `src/parse/topic_model.py`, and `src/parse/topics.py`, the baseline it imports |
