@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.649
+# GRANITE_VERSION: 2026-09-04.650
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -25188,6 +25188,38 @@ def _stale(inventory):
     assert "bill_titles.json" not in inventory.STALE, \
         "build_data.py still reads bill_titles.json"
     return "ok", f"STALE lists {len(inventory.STALE)}, none of them read"
+
+
+@check("files", "inventory --bump raises a file's stamp and its versions.json entry together, "
+                "keeps the date and the line endings, and --bump-changed bumps a file once",
+       needs=("inventory",))
+def _inventory_bump(inventory):
+    """The two edits every change to a stamped file needs, made by one command
+    (src/ops/inventory.py --bump, 23 October 2026). In a scratch git repository:
+    a CRLF file is bumped with its endings kept; the date stays; versions.json
+    moves with it; and --bump-changed, run twice on the same change, bumps once."""
+    import subprocess
+    d = Path(tempfile.mkdtemp())
+    try:
+        def git(*a):
+            subprocess.run(["git", "-C", str(d), *a], check=True, capture_output=True)
+        git("init", "-q")
+        (d / "versions.json").write_text('{\n  "files": {\n    "a.py": "2026-01-02.3"\n  }\n}\n',
+                                         encoding="utf-8")
+        (d / "a.py").write_bytes(b"#!/usr/bin/env python3\r\n# GRANITE_VERSION: 2026-01-02.3\r\nx = 1\r\n")
+        git("add", "-A")
+        git("-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qm", "t")
+        (d / "a.py").write_bytes((d / "a.py").read_bytes() + b"y = 2\r\n")
+        todo, _bare = inventory.changed_since(d, "HEAD")
+        assert todo == ["a.py"], todo
+        inventory.bump(todo, d)
+        raw = (d / "a.py").read_bytes()
+        assert b"GRANITE_VERSION: 2026-01-02.4\r\n" in raw and b"\n" not in raw.replace(b"\r\n", b""), raw
+        assert json.loads((d / "versions.json").read_text())["files"]["a.py"] == "2026-01-02.4"
+        assert inventory.changed_since(d, "HEAD")[0] == [], "a bumped file was offered again"
+        return "ok", "2026-01-02.3 -> .4 in the file and versions.json, CRLF kept, once only"
+    finally:
+        shutil.rmtree(d, ignore_errors=True)
 
 
 @check("pipeline", "feed titles cut at a word boundary", needs=("build_feeds",))

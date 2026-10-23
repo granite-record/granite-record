@@ -1,10 +1,13 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.8
+# GRANITE_VERSION: 2026-09-04.9
 """
 Report what is actually on disk, and which scripts are out of date.
 
     python3 src/ops/inventory.py              # tree, data files, script versions
     python3 src/ops/inventory.py --full       # every filename, not just counts
+    python3 src/ops/inventory.py --bump src/pages/app.js preflight.py
+    python3 src/ops/inventory.py --bump-changed          # every file changed since HEAD
+    python3 src/ops/inventory.py --bump-changed origin/dev
 
 Two questions this answers that are otherwise guesswork.
 
@@ -18,7 +21,17 @@ a fix, a renamed variable, a new argument. A script missing them is an older
 copy that was never replaced, which has already caused several confusing hours:
 a bug reported as unfixed because the fix was sitting in the downloads folder.
 
-Nothing here writes or changes anything.
+Nothing here writes or changes anything, except --bump and --bump-changed.
+
+BUMPING A STAMP. Every edit to a stamped file is two more edits: the stamp's
+.N in the file and its entry in versions.json (CLAUDE.md, "Version stamps"),
+and forgetting one is the most common way a change here fails preflight.
+--bump FILE... makes both for each file named. --bump-changed [BASE] makes
+them for every stamped file that differs from BASE (HEAD unless named) and
+still carries BASE's stamp -- so it is safe to run again before a commit, and
+on a branch of several commits `--bump-changed origin/dev` bumps each changed
+file once. The date stays: it is when the file was created. A changed file
+with no stamp is listed, not stamped.
 """
 
 # The bootstrap: _paths.py, found above this file, puts every code folder on the import path.
@@ -79,12 +92,102 @@ def age(p):
     return f"{h}h ago" if h else f"{d.seconds // 60}m ago"
 
 
+STAMP = re.compile(r"(GRANITE_VERSION:\s*)(\d{4}-\d{2}-\d{2})\.(\d+)")
+
+
+def _stamp(text):
+    """(date, n) of the stamp near the top of `text`, or None."""
+    m = STAMP.search(text[:800])
+    return (m.group(2), int(m.group(3))) if m else None
+
+
+def bump(paths, root):
+    """Raise each file's stamp by one and its versions.json entry with it.
+    Returns [(path, old, new)] and the paths that carry no stamp. Bytes are
+    kept as they are -- line endings included, on Windows too."""
+    vp = root / "versions.json"
+    vtext = vp.read_bytes().decode("utf-8")
+    listed = json.loads(vtext).get("files", {})
+    done, bare = [], []
+    for f in paths:
+        p = Path(f) if Path(f).is_absolute() else root / f
+        raw = p.read_bytes().decode("utf-8")
+        m = STAMP.search(raw[:800])
+        if not m:
+            bare.append(str(f))
+            continue
+        old = f"{m.group(2)}.{m.group(3)}"
+        new = f"{m.group(2)}.{int(m.group(3)) + 1}"
+        p.write_bytes((raw[:m.start()] + m.group(1) + new + raw[m.end():]).encode("utf-8"))
+        if p.name in listed:
+            want = f'"{p.name}": "{listed[p.name]}"'
+            if want in vtext:
+                vtext = vtext.replace(want, f'"{p.name}": "{new}"', 1)
+                listed[p.name] = new
+        done.append((str(f), old, new))
+    vp.write_bytes(vtext.encode("utf-8"))
+    return done, bare
+
+
+def changed_since(root, base):
+    """The stamped files that differ from `base` and still carry its stamp:
+    the ones a commit would otherwise leave behind. And the changed files
+    with no stamp at all, which are only listed."""
+    import subprocess
+
+    def git(*args):
+        return subprocess.run(["git", "-C", str(root), *args], capture_output=True,
+                              text=True, encoding="utf-8", check=True).stdout
+    names = set(git("diff", "--name-only", base).split("\n"))
+    names |= set(git("ls-files", "--others", "--exclude-standard").split("\n"))
+    todo, bare = [], []
+    for n in sorted(x for x in names if x and x != "versions.json"):
+        p = root / n
+        if not p.is_file():
+            continue
+        try:
+            now = _stamp(p.read_bytes().decode("utf-8"))
+        except UnicodeDecodeError:
+            continue
+        if now is None:
+            # Code with no stamp is worth saying; a document or a workflow
+            # is not stamped and needs none.
+            if p.suffix in (".py", ".js", ".css", ".html"):
+                bare.append(n)
+            continue
+        try:
+            then = _stamp(git("show", f"{base}:{n}"))
+        except subprocess.CalledProcessError:
+            then = None
+        if then is None or then == now:
+            todo.append(n)
+    return todo, bare
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--dir", default=".")
     ap.add_argument("--full", action="store_true")
+    ap.add_argument("--bump", nargs="+", metavar="FILE",
+                    help="raise each file's stamp and its versions.json entry by one")
+    ap.add_argument("--bump-changed", nargs="?", const="HEAD", metavar="BASE",
+                    help="--bump every stamped file changed since BASE (HEAD) that still "
+                         "carries BASE's stamp")
     a = ap.parse_args()
     root = Path(a.dir).resolve()
+    if a.bump or a.bump_changed:
+        bare = []
+        files = a.bump or []
+        if a.bump_changed:
+            files, bare = changed_since(root, a.bump_changed)
+        done, nostamp = bump(files, root)
+        for f, old, new in done:
+            print(f"  {f:<44} {old} -> {new}")
+        if not done:
+            print("  nothing to bump: every changed file's stamp has moved already")
+        for f in nostamp + bare:
+            print(f"  {f:<44} no stamp")
+        return
     print("=" * 68)
     print(root)
     print("=" * 68)

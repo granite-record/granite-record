@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-16.9
+# GRANITE_VERSION: 2026-09-16.10
 """
 The text of every archived bill, read off the pages already on this disk.
 
@@ -39,9 +39,9 @@ Twenty-three pages of 2018 print VERSION ADOPTED BY BOTH BODIES over an
 earlier printing. Those bills take the final version's text from the General
 Court's own copy of every printing, db/past/PastLegislationText.jsonl, which
 fetch_past_db.py dumps; FINAL_FROM_DB says which bills and how that was
-measured. The file is read where it is on this disk and not otherwise, and
-GitHub's nightly is not given it (cloud_kit.json), so a build there keeps the
-page's text for those bills and says so.
+measured. The file is read where it is on this disk, and GitHub's nightly is given it
+through the kit (cloud_kit.json); a build without it keeps the page's text
+for those bills and says so.
 """
 
 # The bootstrap: _paths.py, found above this file, puts every code folder on the import path.

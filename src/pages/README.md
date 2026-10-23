@@ -89,7 +89,8 @@ Run by: `build_all.py`'s `plan()`, after the record is built. A new page is
 `build_<page>.py` on `shell.py` plus one `Step()`.
 
 `front_end.py` is the fast path, `python3 build_all.py --front-end`: a change
-to `app.css`, `app.js` or `find.js` alone, put into the site the last full
+to `app.css`, `components.js` (and the words in `words/`), `app.js` or
+`find.js` alone, put into the site the last full
 build made in seconds, through `build_pages.front_end`, the function the
 build itself calls. It refuses, naming the file, when anything else the
 build reads has moved since that build (`src/lib/build_inputs.py` keeps the

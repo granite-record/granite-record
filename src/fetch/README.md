@@ -3,7 +3,8 @@
 Everything that asks another server, in one folder per whose server:
 `gc_web/` (gc.nh.gov's web server: `refusal.check()`, the person starts it,
 one at a time), `gc_db/` (the General Court's SQL host: ask first),
-`youtube/` (a refusal stops the evening caption job) and `other/`. A fetcher
+`youtube/` (a refusal stops the night's caption step; the evening job
+it once stopped was retired on 10 October 2026) and `other/`. A fetcher
 saves what it got; reading it is `parse/`'s job. `fetch_legislation --parse`
 and `fetch_committee_reports` still carry parsers that `parse/` imports.
 

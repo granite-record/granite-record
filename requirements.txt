@@ -1,0 +1,25 @@
+# The Python packages the nightly and the weekly install, at the laptop's
+# versions. One list, read by both workflows (.github/workflows/nightly.yml
+# and weekly.yml: pip install -r requirements.txt). A package one workflow
+# alone needs -- the night's yt-dlp and its solver -- stays pinned in that
+# workflow's own step, where preflight's livestream check reads it.
+#
+# Pinned so a night does not take whatever is newest. boto3 is cloud.py's,
+# for R2: any version from 1.36 fits the checksum setting it makes.
+#
+# Every one of these is imported lazily, inside the function that needs it
+# (CONTRIBUTING.md, "Optional dependencies"); a clone that installs none of
+# them still runs preflight --code.
+numpy==2.5.2
+openpyxl==3.1.5
+et-xmlfile==2.0.0
+pdfplumber==0.11.10
+pdfminer.six==20260107
+pypdfium2==5.13.0
+pillow==12.3.0
+charset-normalizer==3.5.1
+cryptography==50.0.1
+cffi==2.1.1
+pycparser==3.0
+PyYAML==6.0.3
+boto3==1.43.103
