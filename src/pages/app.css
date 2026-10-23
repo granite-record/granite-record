@@ -6278,8 +6278,15 @@ table.dpdl{border-collapse:collapse;width:100%;font-family:var(--sans);font-size
 /* width AND min-width. On its own the min-width let the table sit at
    420px inside a 900px box, which is the same empty-box complaint this file
    has been answering all week; the min-width is what makes it scroll rather
-   than crush on a phone. */
-table.cov{border-collapse:collapse;width:100%;min-width:30rem;font-family:var(--sans);
+   than crush on a phone.
+   display:table BECAUSE THE BOX IS WHAT SCROLLS (the webinar pass of 23
+   October 2026). On a phone every record page's table is made a block that
+   scrolls inside itself, and this one is in a box that already scrolls for
+   it: the table took 480px of its 606 and scrolled the rest inside the box's
+   scroll, two scrollers one in the other, and the inner one, holding nothing
+   a keyboard can reach, was no Tab stop -- the box's data-scrollstop counts
+   only what overflows the box (axe: scrollable-region-focusable). */
+table.cov{display:table;border-collapse:collapse;width:100%;min-width:30rem;font-family:var(--sans);
   font-size:var(--t-ui);line-height:1.5}
 .cov th,.cov td{text-align:left;padding:var(--sp-4) var(--sp-6);border-bottom:1px solid var(--rule);
   white-space:nowrap}

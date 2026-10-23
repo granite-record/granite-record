@@ -25243,6 +25243,51 @@ def _bfilt_controls():
         + ", ".join(sorted(want))
 
 
+@check("frontend", "a table in a box that scrolls for it is laid out as a table, so the box, the Tab stop, is what scrolls")
+def _scrollstop_tables():
+    """One scroller, not one inside another.
+
+    On a phone app.css makes every record page's table a block that scrolls
+    inside itself (`:where(body:not(.pg)) table{display:block;overflow-x:
+    auto}`). The Data page's coverage table already sits in a box that
+    scrolls for it, `.covwrap`, marked data-scrollstop so that app.js makes
+    it a Tab stop while its content is wider than it is. The phone rule
+    reached the table too: it took 480px of its 606 and scrolled the rest
+    inside the box's own scroll, and that inner scroller, holding nothing a
+    keyboard can reach, was no Tab stop -- axe's scrollable-region-focusable,
+    serious, on the live site and the dry run alike (the webinar pass of 23
+    October 2026).
+
+    So: every table that opens a box marked data-scrollstop, in a builder or
+    in app.js, has a rule in app.css that lays it out as a table again.
+    """
+    css_p = Path("src/pages/app.css")
+    if not css_p.exists():
+        return "skip", "app.css is not there"
+    sources = sorted(Path("src/pages").glob("*.py")) + [Path("src/pages/app.js")]
+    tables = {}
+    for p in sources:
+        if not p.exists():
+            continue
+        text = p.read_text(encoding="utf-8")
+        for m in re.finditer(r"<div\b[^>]*\bdata-scrollstop=[^>]*>\s*<table\b[^>]*\bclass=\"([^\"]+)\"", text):
+            for c in m.group(1).split():
+                tables.setdefault(c, p.name)
+    assert tables, "no table opens a box marked data-scrollstop: the Data page's coverage table did"
+    rules = _css_rules(css_p.read_text(encoding="utf-8"))
+    as_table = set()
+    for at, sel, body, line in rules:
+        if dict(_css_decls(body)).get("display") == "table":
+            as_table |= {" ".join(s.split()) for s in sel.split(",")}
+    bad = [f"table.{c} ({where}) is in a box that scrolls for it and has no rule laying it out "
+           "as a table: on a phone it scrolls inside the box's scroll, where no Tab stop reaches it"
+           for c, where in sorted(tables.items())
+           if not ({f"table.{c}", f".{c}"} & as_table)]
+    assert not bad, "; ".join(bad[:3])
+    return "ok", (f"{len(tables)} table(s) in a box that scrolls for it, each laid out as a "
+                  "table: " + ", ".join(f"table.{c}" for c in sorted(tables)))
+
+
 # ============================================================= code: pipeline ==
 
 @check("pipeline", "build_all runs the steps in the right order", needs=("build_all",))
