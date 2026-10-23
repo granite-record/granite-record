@@ -1,0 +1,11 @@
+{
+  "_about": "The one-line summary of a vote on a member's discipline -- a reprimand, a censure, an expulsion, a member's privileges -- that a person has read against the House or Senate Journal and approved. Edited by a person; no generator writes this file, and preflight fails if one tries. src/parse/journal_motions.py reads it: such a vote is shown with the Journal's own words and page always, and with a one-line summary only where an entry here names it. Created empty on 23 October 2026; the drafts to choose from were written for the person to review, outside the repository.",
+  "_how": "Key each entry by the roll call, as the site names it (\"2026-H-290\"), or for a vote only the Journal records (a division or a voice vote), by the key journal_motions.json gives it. Copy `file` and `page` from that vote's entry in journal_motions.json: an approval is of the passage on that page of that Journal, and is not used if either moves. `page` may be null for a Journal that prints no page numbers (the House before 2013).",
+  "_fields": {
+    "line": "The summary, in the site's words, as the reader will see it. Say only what the Journal's passage says.",
+    "file": "The Journal file the passage was read from, as journal_motions.json gives it.",
+    "page": "Its printed page, as journal_motions.json gives it.",
+    "approved": "The day a person read it against the Journal and approved it (YYYY-MM-DD)."
+  },
+  "lines": {}
+}

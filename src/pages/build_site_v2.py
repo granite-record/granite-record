@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.227
+# GRANITE_VERSION: 2026-09-05.228
 """
 Generate the faceted site from real General Court data.
 
@@ -46,6 +46,7 @@ import fiscal
 import proceedings as P
 import report_check as RC
 import rollcall_outcomes as RO
+import vote_passage as VP
 import senate_hearing_reports as SHR
 import site_read
 import spellings
@@ -2912,6 +2913,15 @@ def write_rollcall_index(out, rollcalls, cards=None, nobill=None):
                 if nb is not None:
                     ix[key]["c"] = nb
                     ix[key]["ct"] = term
+                # WHAT A VOTE ON NO BILL WAS ABOUT, in a few words (23 October
+                # 2026): the one-line summary journal_motions.py wrote from the
+                # Journal, or the kind of question, where its passage is shown
+                # on the session day (vote_passage). One field, because every
+                # visitor to a member page loads this file.
+                if bid == "_procedural":
+                    w = VP.short(VP.entry(key))
+                    if w:
+                        ix[key]["w"] = w
 
     f = out / "rollcalls_index.json"
     f.write_text(json.dumps(ix, separators=(",", ":"), sort_keys=True),

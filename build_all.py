@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.78
+# GRANITE_VERSION: 2026-09-05.80
 """
 Run the whole pipeline in the right order.
 
@@ -767,6 +767,25 @@ def plan(a):
                   "of their language, 2,829 amendment relations, 461 bills inside a "
                   "law; about two minutes and 1.5 GB"),
 
+        # WHAT A VOTE ON NO BILL WAS ABOUT, from the Journals (23 October
+        # 2026): the passage above each such roll call's tally, at the place
+        # rollcall_outcomes paired it with, and the divisions only the
+        # Journal records. BEFORE the site data, whose shared roll-call index
+        # carries each one's short description, and the session pages and
+        # the per-term list, which show the Journal's words; AFTER build_data,
+        # whose data/bills.json says which bill a passage names. Kit-required:
+        # the Journals are in the kit, and a night that skipped this would
+        # publish every such vote with the roll-call file's three words
+        # again, every step reporting success. It stops the build where a
+        # year whose Journals are here yields nothing (journal_motions.py).
+        Step("what the Journals say each vote on no bill was about",
+             ["journal_motions.py"],
+             needs=["rollcalls.json", "journals", "journals_senate"],
+             produces=["journal_motions.json"], kit_required=True,
+             note="verbatim, cited to the page, and held back wherever the "
+                  "Journal's tally, date, question or outcome does not agree with "
+                  "the roll call"),
+
         Step("site data",
              ["build_site_v2.py", "--data", "data", "--out", "site",
               "--segments", "work"],
@@ -958,6 +977,19 @@ def plan(a):
                   "excused: the Senate journal carries no unanimous consent, "
                   "no remarks and no speaker attributions at all, so a Senate "
                   "page says so rather than showing an empty section"),
+
+        # A PAGE A TERM OF THE VOTES NOT ON A BILL (23 October 2026): AFTER
+        # the session days, whose anchors each row links ("#rc-2026-H-290"),
+        # and BEFORE the chambers' pages, which link the latest term's list
+        # where it has been written. Reads journal_motions.json for what the
+        # Journal says each was about.
+        Step("a page a term of the votes not on a bill",
+             ["build_nobill_votes.py", "--site", "site", "--base", a.base],
+             needs=["rollcalls.json", "site/session/H"],
+             produces=["site/session/nobill"],
+             note="rules suspensions, appeals of the chair, members allowed to go on, "
+                  "reprimands and censures, each with the kind of question and a link to "
+                  "the Journal's words on its day"),
 
         # THE HOUSE AND SENATE AS COMMITTEES OF THE WHOLE (the person, 9 and
         # 10 October 2026): a card at the top of each column of /committees

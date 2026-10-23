@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-09.22
+# GRANITE_VERSION: 2026-09-09.23
 """
 The bench: one sample at a time, judged by a person, written down for good.
 
@@ -662,6 +662,82 @@ def show_reports(it):
             'to the right person?</p>')
 
 
+# ------------------------------------------------------ votes on no bill
+#
+# What the Journal says a vote on no bill was about (journal_motions.py,
+# 23 October 2026): the passage the site quotes for each, one at a time,
+# beside its roll call, to be read against the Journal's page. Every gate in
+# the parser is a guess about where a passage can go wrong; this is how the
+# guesses are measured, and the votes on a member's discipline come first,
+# since their one-line summary waits on a person anyway.
+
+NOBILL = Path("journal_motions.json")
+
+
+def sample_nobill():
+    if not NOBILL.exists():
+        return []
+    d = json.loads(NOBILL.read_text(encoding="utf-8"))
+    kinds = d.get("kinds") or {}
+    out = []
+
+    def item(key, e, how):
+        return {"key": key, "how": how, "body": e.get("body") or "", "date": e.get("date") or "",
+                "words": e.get("words") or "", "yeas": e.get("yeas"), "nays": e.get("nays"),
+                "passed": e.get("passed"), "kind": e.get("kind") or "",
+                "kind_words": kinds.get(e.get("kind") or "", ""), "line": e.get("line") or "",
+                "line_held": e.get("line_held") or "", "heading": e.get("heading") or "",
+                "said": e.get("said") or [], "after": e.get("after") or "",
+                "journal": e.get("journal") or "", "page": e.get("page"),
+                "pdf_page": e.get("pdf_page"), "file": e.get("file") or "",
+                "url": e.get("url") or "", "member": e.get("member") or "",
+                "bill": e.get("bill") or ""}
+    for k, e in (d.get("rollcalls") or {}).items():
+        if not e.get("held"):
+            out.append(item(f"rc/{k}", e, "roll call"))
+    for e in d.get("journal_only") or []:
+        out.append(item(f"jo/{e.get('key')}", e, e.get("how") or "division"))
+    out.sort(key=lambda x: (x["kind"] not in ("discipline", "privileges"), x["date"], x["key"]))
+    return out
+
+
+def show_nobill(it):
+    where = f'{it["journal"]}, page {it["page"]}' if it["page"] else (
+        f'{it["journal"]}, page {it["pdf_page"]} of the file')
+    if it["url"]:
+        at = f'{it["url"]}#page={it["pdf_page"]}' if it["pdf_page"] else it["url"]
+        where = f'<a href="{E(at)}" target="_blank" rel="noopener">{E(where)}</a>'
+    else:
+        where = f'{E(where)} <span class="dim">({E(it["file"])})</span>'
+    count = (f'{it["yeas"]}&ndash;{it["nays"]}' if it["yeas"] is not None else "no count")
+    did = "carried" if it["passed"] else "failed"
+    rows = [("Vote", f'{E(it["key"].split("/", 1)[1])} &middot; {E(it["date"])} &middot; '
+                     f'{E(it["how"])}'),
+            ("In the roll-call file", E(it["words"]) or "<i>none: the Journal alone</i>"),
+            ("On record", f"{count}, {did}"),
+            ("The site's kind", E(it["kind_words"])),
+            ("The site's summary", E(it["line"]) or f'<i>none</i> <span class="dim">'
+                                                    f'{E(it["line_held"])}</span>'),
+            ("Member / bill named", E(" / ".join(x for x in (it["member"], it["bill"]) if x))
+             or "<i>neither</i>"),
+            ("The Journal", where)]
+    body = "".join(f"<tr><th>{E(k)}</th><td>{v}</td></tr>" for k, v in rows)
+    said = "\n\n".join(
+        (f'{x["by"]}: … ' if x.get("by") else "") + x["t"]
+        + ("   [put again later]" if x.get("earlier") else "")
+        + ("   [after the tally]" if x["k"] == "outcome" else "")
+        for x in it["said"])
+    head = f'{it["heading"]}\n\n' if it["heading"] else ""
+    after = f'\n\n{it["after"]}' if it["after"] else ""
+    return (f'<table class="facts">{body}</table>'
+            f'<h3>The passage as the site quotes it</h3>'
+            f'<p class="prose">{E(head + said + after)}</p>'
+            '<p class="ask">Open the Journal at that page. Is this the passage for THIS '
+            'vote -- this count, at this place? Is every sentence the Journal&rsquo;s own '
+            'words, whole, with nothing another vote&rsquo;s inside it? Is the kind right, '
+            'and the summary, if there is one?</p>')
+
+
 # Each kind: where the samples come from, how to show one, and what to ask.
 # A field is (name, label, placeholder).
 # ------------------------------------------------- the archived roll calls
@@ -1064,6 +1140,27 @@ KINDS = {
         "fields": [],
         "verdicts": [("correct", "Right"), ("wrong_label", "Related, wrong label"),
                      ("wrong", "Not related"), ("unsure", "Cannot tell")],
+    },
+    "nobill": {
+        "label": "Votes on no bill: the Journal's words",
+        "blurb": "What the site quotes from the House or Senate Journal for a vote on no "
+                 "bill -- a rules suspension, an appeal of a ruling, a member allowed to go "
+                 "on speaking, a reprimand -- beside its roll call or division. The votes on "
+                 "a member's discipline come first: their one-line summary is shown only "
+                 "once a person has approved it in corrections/vote_lines.json.",
+        "sample": sample_nobill, "show": show_nobill,
+        "empty": "  -- no journal_motions.json here: run python3 src/parse/journal_motions.py",
+        "fields": [("wrong_sentence", "A sentence that is wrong, cut short or another vote's, "
+                                      "if one is", "paste it"),
+                   ("missing", "What the Journal says of this vote that the quote leaves out, "
+                               "if anything", "paste it"),
+                   ("better_line", "A one-line summary you would approve, if you would",
+                    "for a member's discipline, this is the line to copy into vote_lines.json")],
+        "verdicts": [("correct", "Right vote, right words"),
+                     ("wrong_vote", "Another vote's passage"),
+                     ("wrong_words", "Right vote, words wrong or cut"),
+                     ("wrong_kind", "Kind or summary wrong"),
+                     ("unsure", "Cannot tell")],
     },
     "report": {
         "label": "Committee report reasoning",
