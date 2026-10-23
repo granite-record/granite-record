@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.641
+# GRANITE_VERSION: 2026-09-04.642
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -44603,7 +44603,7 @@ def _year_page_follows_the_turn(legislative_year):
                 bad.append(f"{day}: the skeleton of {term} does not say no calendar has been read")
             for s in LY.seasons_of(term):
                 for st in s.steps:
-                    if st.day and (st.rule not in ("org", "open") or not LY._rule_ok(st)
+                    if st.day and (st.rule not in ("org", "open", "election") or not LY._rule_ok(st)
                                    or any(doc not in LY.DOCS for doc, _d, _w in st.cites)):
                         bad.append(f"{term} {st.name} ({st.day}): a skeleton's date that is "
                                    "not a rule's, or not its rule's day, or cites no document")

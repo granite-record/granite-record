@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-17.5
+# GRANITE_VERSION: 2026-10-17.6
 """
 The legislature's year: a two-year term as a timeline, with this term's dates
 where the chambers' own calendars print them, and the usual pattern where
@@ -316,7 +316,8 @@ TERMS = {
                   ("sc1-2026", "2026-06-04", "Deadline to ACT on Committee of Conference Reports")), True),
         ]),
         Season("After the Session", "Summer and fall 2026", "2026-06-05",
-               "Out of session. A new legislature is elected in November and sits in January.", [
+               "Out of session until the new legislature takes office on Organization Day, "
+               "December 2.", [
             Step("", "", "", "Bills go to the Governor", GOVERNOR, when="summer"),
             Step("2026-08-19", "", "HS", "Veto day",
                  "Both chambers meet to take up the Governor's vetoes. Overriding one takes two "
@@ -340,10 +341,17 @@ TERMS = {
                  "The last day for House committees to file their reports on the bills sent to "
                  "interim study.",
                  (("hc1-2026", "2026-10-23", "Last day to file 2026 Interim Study reports"),), True),
+            # BY LAW, NOT BY THE STATUS FILE (23 October 2026). This row cited a
+            # sentence of corrections/status/status.txt, and when the person
+            # had that sentence cut on 22 October the row failed its check and
+            # the election fell out of "Coming up". No calendar of the term
+            # prints the day -- the next term's first House calendar does, as
+            # HC 1 of 2025 did for 2024 -- so it is dated by its rule, RSA
+            # 653:7, as Organization Day is by Part II, Article 3.
             Step("2026-11-03", "", "", "General election",
                  "Voters choose all 400 representatives and 24 senators for the next term.",
-                 (("status", "2026-11-03", "November 3 election"),), True,
-                 when="early November"),
+                 (("hc1-2026", "2026-11-03", "Last day prior to the General Election for incumbents running"),),
+                 True, rule="election"),
             Step("2026-11-04", "", "HS", "Bill requests open to every member",
                  "Filing opens to all members the day after the election.",
                  (("hc1-2026", "2026-11-04", "First day for all Representatives to file LSRs"),
@@ -410,7 +418,8 @@ PATTERN = (
 MONTH_LETTERS = "JFMAMJJASOND"
 WHO = {"H": "House", "S": "Senate", "HS": "Both chambers", "": ""}
 RULE_WORDS = {"org": "By rule, the first Wednesday of December. ",
-              "open": "By rule, the first Wednesday after the first Tuesday of January. "}
+              "open": "By rule, the first Wednesday after the first Tuesday of January. ",
+              "election": "By law (RSA 653:7), the Tuesday after the first Monday of November. "}
 
 
 def T(s):
@@ -442,6 +451,14 @@ def opening_day(year):
     Article 3, as House Calendar 1 of 2026 quotes it)."""
     first = date(int(year), 1, 1)
     return first + timedelta(days=(1 - first.weekday()) % 7 + 1)
+
+
+def general_election(year):
+    """The state general election: the first Tuesday after the first Monday
+    of November (RSA 653:7, read in db/NH_RSA.psv on 16 October 2026; see
+    build_town_pages.next_possible_election)."""
+    first = date(int(year), 11, 1)
+    return first + timedelta(days=(0 - first.weekday()) % 7 + 1)
 
 
 def term_of(today):
@@ -479,7 +496,8 @@ def shown_term(today):
 # has been read yet (SKELETON_CAPTION).
 # ---------------------------------------------------------------------------
 RULE_CITES = {"org": ("hc1-2025", "Organize on the first Wednesday in December"),
-              "open": ("hc1-2026", "opening day of the 2026 Session will be on the first Wednesday")}
+              "open": ("hc1-2026", "opening day of the 2026 Session will be on the first Wednesday"),
+              "election": ("hc1-2026", "Last day prior to the General Election for incumbents running")}
 
 
 def skeleton(term):
@@ -524,9 +542,8 @@ def skeleton(term):
                  "Committees study the subjects of the bills sent to interim study. The bills "
                  "themselves go no further; a report may recommend a new bill next term.",
                  when="summer and fall"),
-            Step("", "", "", "General election",
-                 "Voters choose all 400 representatives and 24 senators for the next term.",
-                 when="early November"),
+            ruled("election", general_election(b).isoformat(), "", "General election",
+                  "Voters choose all 400 representatives and 24 senators for the next term."),
         ]),
         Season("The Next Term Begins", f"December {b} to January {b + 1}", org1,
                "The {next} term has begun. Its first session opens in January.", [
@@ -539,7 +556,7 @@ def skeleton(term):
 
 
 SKELETON_CAPTION = ("No calendar of the {term} term has been read for this page yet, so its "
-                    "dates are the ones the constitution fixes, each with the calendar that "
+                    "dates are the ones the constitution and the election law fix, each with the calendar that "
                     "quotes the rule, and the rest of the term is described as it usually falls. "
                     "A season that is over is folded shut: open it to read its dates.")
 
@@ -617,6 +634,8 @@ def _rule_ok(step):
         return step.day == organization_day(step.day[:4]).isoformat()
     if step.rule == "open":
         return step.day == opening_day(step.day[:4]).isoformat()
+    if step.rule == "election":
+        return step.day == general_election(step.day[:4]).isoformat()
     return True
 
 

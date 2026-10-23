@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.227
+// GRANITE_VERSION: 2026-09-07.228
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -4028,7 +4028,7 @@ function testifyBox(d,b){
       <p>The ${esc(house)} public hearing is <b>${esc(dateWords(next.when,"long"))}</b>${
         next.committee?`, before ${esc(next.committee)}`:""}. Until then, anyone may sign
       in online to ${next.body==="S"?"register support, opposition or a neutral position"
-        :"register support or opposition and submit written testimony"}, or come
+        :"register support, opposition or a neutral position and submit written testimony"}, or come
       and ask to speak.</p>
       <p><a class="tgo" href="${esc(url)}" target="_blank" rel="noopener">${esc(house)} online
       testimony</a></p>

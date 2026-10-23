@@ -580,7 +580,8 @@ export function testifyWords(t, label) {
   const when = `${label}\u2019s public hearing is ${day}` +
     (clockTime(t.time) ? ` at ${clockTime(t.time)}` : "") +
     (t.committee ? `, before the ${t.committee}` : "") + (t.venue ? `, ${t.venue}` : "") + ".";
-  const what = t.chamber === "H" ? "sign in online for or against the bill and submit written testimony"
+  const what = t.chamber === "H"
+    ? "sign in online for or against the bill, or as neutral, and submit written testimony"
     : "sign in online for or against the bill, or as neutral";
   const close = `Anyone may ${what}. In practice the sign-in stays open until midnight ` +
     (t.phase === "day" ? "tonight." : "at the end of that day.");

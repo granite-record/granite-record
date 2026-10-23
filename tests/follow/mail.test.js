@@ -475,7 +475,8 @@ test("the day before and the day of a hearing, the daily says how to testify and
     // The closing time is the editor's observed practice, and said as practice.
     assert.ok(words.includes(`In practice the sign-in stays open until midnight ${close}.`), "when it closes");
     assert.doesNotMatch(words, /closes at midnight/, "never stated as a rule");
-    assert.ok(words.includes("Anyone may sign in online for or against the bill and submit written testimony."),
+    assert.ok(words.includes("Anyone may sign in online for or against the bill, or as neutral, and submit " +
+      "written testimony."),
       "what the House form takes");
     // The button: the chamber's own form, as a pine button.
     assert.match(m.html, new RegExp(`<td bgcolor="${PALETTE.pine}"[^>]*><a href="${url.replace(/[.?]/g, "\\$&")}"` +
@@ -490,8 +491,8 @@ test("the day before and the day of a hearing, the daily says how to testify and
 test("the night a hearing is set, the daily says testimony is open; the weekly puts the form in its week ahead", () => {
   const daily = digest("daily", "2026-10-02");
   assert.ok(visible(daily.html).includes("Online testimony is open"), "open, the night it was set");
-  assert.ok(visible(daily.html).includes("Anyone may sign in online for or against the bill and submit written " +
-    "testimony. In practice the sign-in stays open until midnight at the end of that day."));
+  assert.ok(visible(daily.html).includes("Anyone may sign in online for or against the bill, or as neutral, " +
+    "and submit written testimony. In practice the sign-in stays open until midnight at the end of that day."));
   const weekly = digest("weekly");
   assert.doesNotMatch(weekly.html, /Online testimony is open/, "the weekly says it once, in its week ahead");
   const ahead = weekly.html.slice(weekly.html.indexOf(">Coming up<"));
