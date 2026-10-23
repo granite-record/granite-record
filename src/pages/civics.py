@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.55
+# GRANITE_VERSION: 2026-09-08.56
 """
 The topics of the civics section: their order, their names, and their prose.
 
@@ -2305,10 +2305,10 @@ its website offers as a lookup of its own.</p>
 
 <h2>Speaking at the Hearing</h2>
 <!-- guides:ask-to-speak -->
-<p>The sponsor speaks first, and is commonly given as long as they need; then
-the committee generally hears anyone who has asked to. <b>No rule sets a time
-limit.</b> In practice:</p>
+<p>The committee hears the sponsor and then anyone who has asked to speak. In
+practice:</p>
 <ul>
+<!-- guides:sponsor-first -->
 <!-- guides:chair-time -->
 <!-- guides:notes -->
 <!-- guides:props -->

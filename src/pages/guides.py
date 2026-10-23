@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-11.21
+# GRANITE_VERSION: 2026-10-11.22
 """
 The how-to guides: their words, their sources, and what each was checked
 against. Read by build_civics.py, which draws them on the Resources hub's
@@ -1352,10 +1352,18 @@ SAID = {
         "the hearing: the Senate&rsquo;s guidance says so, and its notices tell anyone who "
         "wishes to speak to sign up in person. In practice the sheet has a box to mark if you "
         "want to speak.</li></ul>"),
-    # The practice in the room, each an item of a list.
+    # The practice in the room, each an item of a list. The sponsor first, and
+    # no rule on time, the person, 23 October 2026: "The no rule sets a time
+    # limit is correct, but chairs have the discretion to apply or not apply
+    # one. Typically the prime sponsor speaks first to introduce the bill and
+    # is not time limited."
+    "sponsor-first": (
+        "<li><b>The sponsor goes first.</b> The prime sponsor usually speaks first to "
+        "introduce the bill, and is not held to a time limit.</li>"),
     "chair-time": (
-        "<li><b>The chair sets the time.</b> Whether to limit speakers, and when to stop one, "
-        "is the chair&rsquo;s call. With a few speakers there may be no limit. With many, "
+        "<li><b>The chair sets the time.</b> No rule sets a time limit: whether to set one, "
+        "and when to stop a speaker, is the chair&rsquo;s call. With a few speakers there may "
+        "be no limit. With many, "
         "more than about ten, chairs often give each person two or three minutes and ask "
         "speakers not to repeat points already made several times, so that each brings their "
         "own view.</li>"),
@@ -1489,7 +1497,7 @@ HEARING = guide(
           "for an organization, then whether you support or oppose the bill, and why. The most "
           "useful testimony is specific: what the bill would do to you, in your town.</p>"
           "<p>In practice:</p><ul>"
-          + SAID["chair-time"] + SAID["notes"] + SAID["props"]
+          + SAID["sponsor-first"] + SAID["chair-time"] + SAID["notes"] + SAID["props"]
           # Testifying and Attending says this under Written Testimony, in
           # the other guide's words (SAID["paper"]).
           + "<li><b>Paper copies are optional.</b> To hand the committee written testimony, bring "
@@ -1585,7 +1593,10 @@ HEARING = guide(
               "the room; anyone may sign the sheet with their name and position; to speak, a pink "
               "card handed to a staff member or a committee member, who passes it to the chair.", READ),
      observed("Senate: the sign-up sheet has a box to mark if you want to speak.", READ),
-     observed("Whether to limit speakers, and when to stop one, is the chair's call: with a few "
+     observed("The prime sponsor usually speaks first to introduce the bill, and is not held to a "
+              "time limit.", READ),
+     observed("No rule sets a time limit: whether to set one, and when to stop a speaker, is the "
+              "chair's call. With a few "
               "speakers often no limit; with many, more than about ten, two or three minutes each, "
               "and no repeating points already made several times.", READ),
      observed("Speakers may read from prepared notes or a phone; no props while testifying; signs in "
