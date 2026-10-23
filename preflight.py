@@ -45938,13 +45938,16 @@ def _bill_status_select_categories():
     node over a tab of eight bills with no bill tabled or vetoed. Held: Any
     and then In Progress, Passed, Interim Study, Died and Withdrawn, Tabled
     and Vetoed not offered; each option carrying its category's chip class
-    (CATCLASS, as the sidebar paints it) and Any none; Passed listing the law
+    (CATCLASS, as the sidebar paints it) and Any none; each reading its
+    category and how many of the tab's bills are in it, "Passed (2)", as the
+    sidebar gives each its number (23 October 2026: it read the category
+    alone), and Any no number, as the Votes tab's; Passed listing the law
     and the adopted resolution, each card keeping its own word; In Progress
     the bill in committee and the one awaiting the governor; Died the bill
     killed and the veto that stood; the select itself in the chosen
     category's class and in none on Any; and Tabled, chosen on another tab
     (PAGE.status is the page's), still offered in its place and selected,
-    with an empty list, so the select says why the list is empty. And in
+    at "(0)", with an empty list, so the select says why the list is empty. And in
     app.css: each class the select can carry painted with its chip's own
     ground and ink, and Any's option in the page's."""
     def row(bid, kind, chip, status=None):
@@ -45987,9 +45990,11 @@ def _bill_status_select_categories():
     if [o[0] for o in a["opts"]] != want:
         bad.append(f"Any offers {[o[0] for o in a['opts']]}, not {want}: not the search's "
                    "categories, in its order, hidden at zero")
+    n_of = {"In Progress": 2, "Passed": 2, "Interim Study": 1, "Died": 2, "Withdrawn": 1}
     for v, c, _s, text in a["opts"]:
-        if v and (c != cls_of.get(v) or text != v):
-            bad.append(f"the option {v!r} reads {text!r} in {c!r}, not in {cls_of.get(v)!r}")
+        if v and (c != cls_of.get(v) or text != f"{v} ({n_of.get(v)})"):
+            bad.append(f"the option {v!r} reads {text!r} in {c!r}, not {v} ({n_of.get(v)}) in "
+                       f"{cls_of.get(v)!r}")
         if not v and (c or text != "Any"):
             bad.append(f"the first option is {text!r} in {c!r}, not Any in the page's ink")
     if a["own"]:
@@ -46014,10 +46019,14 @@ def _bill_status_select_categories():
             bad.append(f"the select on {st} has {chosen} selected")
         if not r["note"] or r["note"].group(1) != str(len(ids)):
             bad.append(f"the note under {st} says {r['note'] and r['note'].group(0)!r}")
-    t = [o[0] for o in read(got["Tabled"])["opts"]]
+    tabled = read(got["Tabled"])["opts"]
+    t = [o[0] for o in tabled]
     if t != ["", "In Progress", "Passed", "Tabled", "Interim Study", "Died", "Withdrawn"]:
         bad.append(f"Tabled chosen on another tab, with no bill tabled here, offers {t}: not "
                    "in its place, so the select cannot say why the list is empty")
+    if [o[3] for o in tabled if o[0] == "Tabled"] != ["Tabled (0)"]:
+        bad.append(f"Tabled chosen elsewhere reads {[o[3] for o in tabled if o[0] == 'Tabled']}, "
+                   "not 'Tabled (0)'")
     css = re.sub(r"/\*.*?\*/", "", Path("src/pages/app.css").read_text(encoding="utf-8"),
                  flags=re.S)
     rules = {sel_.strip(): body for sel_, body in re.findall(r"([^{}]+)\{([^{}]*)\}", css)}
@@ -46032,8 +46041,8 @@ def _bill_status_select_categories():
         bad.append(f"Any's option is not in the page's ground and ink: {plain!r}")
     assert not bad, "; ".join(bad[:8])
     return "ok", ("the select offers the search's categories a bill of the tab is in, each in "
-                  "its chip's class, filters by them with each card keeping its word, is "
-                  "painted by its choice, and keeps a choice made elsewhere at none")
+                  "its chip's class with its count, filters by them with each card keeping its "
+                  "word, is painted by its choice, and keeps a choice made elsewhere at none")
 
 
 # A member's two bills tabs and a committee's, as renderMemberBills and
@@ -46139,6 +46148,212 @@ def _bill_status_note_counts_the_tab():
     assert not bad, "; ".join(bad[:8])
     return "ok", ("narrowed, the note says how many of the tab's bills it lists (1 of 3, 0 of 2, "
                   "1,000 of 1,001), and with Any the tab's own count, the cards as many")
+
+
+# A committee's page as renderPage draws it, after _HEARD_PRELUDE: its Bills
+# tab and its Meetings tab, Show more pressed on each, the Bill status select
+# set to each category it offers and changed through its own handler, and a
+# day named by the address. fx.json holds the index rows and the committee.
+_COMMITTEE_PAGED_HARNESS = r"""
+load("renderPage, IDX, focusKey, setPage: (p) => { PAGE = p; }, getPage: () => PAGE,"
+  + " setTab: (t) => { PAGE_TAB = t; }, setMeta: (m) => { META = m; }, setTerm: (t) => { term = t; }");
+const fx = JSON.parse(fs.readFileSync("./fx.json", "utf8"));
+s.setMeta({terms: ["2025-2026"], committee_codes: {}, topics: []});
+s.setTerm("2025-2026");
+s.IDX.length = 0; fx.rows.forEach(r => s.IDX.push(r));
+const results = document.querySelector("#results");
+const draw = () => { s.renderPage(); return results.innerHTML; };
+const fresh = (status) => s.setPage({kind: "committee", data: fx.committee, terms: ["2025-2026"],
+  term: "2025-2026", status: status || "", vfilter: "", vparty: "", vshow: 0, bshow: 0, mshow: 0});
+// The list the button names, as the browser would hand it back: what focus()
+// was called on, by the list's key and the item's place in it.
+let took = [];
+const list = (n, key) => ({children: Array.from({length: n}, (_, i) => ({tabIndex: 0,
+  querySelector: q => q === "summary,a[href],button" ? {focus() { took.push(key + "@" + i); }} : null,
+  focus() { took.push(key + "#" + i); }}))});
+const realGet = document.getElementById;
+const press = (key, from, ctl, n) => {
+  document.getElementById = id => id === ctl ? list(n, key) : realGet.call(document, id);
+  took = [];
+  click(q => q === "[data-pmore]" ? {dataset: {pmore: key, from: String(from)},
+    getAttribute: k => (k === "aria-controls" ? ctl : null)} : null);
+  document.getElementById = realGet;
+  return {html: results.innerHTML, took: took.slice(), count: s.getPage()[key]};
+};
+const out = {};
+try {
+  fresh(""); s.setTab(0);
+  out.first = draw();
+  out.more1 = press("bshow", 20, "pbills", 45);
+  out.more2 = press("bshow", 40, "pbills", 45);
+  out.filtered = {};
+  for (const st of fx.cats) { fresh(st); out.filtered[st] = draw(); }
+  fresh(""); draw(); s.getPage().bshow = 40;
+  heard.document.change.forEach(f => f({target: {dataset: {pf: "status"}, value: "Died",
+    closest: () => null}}));
+  out.changed = {bshow: s.getPage().bshow, html: results.innerHTML};
+  fresh(""); s.setTab(1);
+  out.meet = draw();
+  out.meetMore = press("mshow", 20, "pmeets", 30);
+  fresh(""); s.setTab(1); location.hash = "#" + fx.named;
+  out.named = draw();
+  location.hash = "";
+  out.key = s.focusKey({dataset: {pmore: "bshow", from: "20"}, tagName: "BUTTON", id: "",
+    closest: q => (q === "#results,#facets" ? {} : null), classList: [], getAttribute: () => null});
+} catch (e) { out.threw = e.constructor.name + ": " + e.message; }
+process.stdout.write("\n@@" + JSON.stringify(out));
+"""
+
+
+@check("frontend", "a committee's Bills and Meetings tabs show twenty at a time: Show more brings "
+                   "the next twenty and the keyboard to the first of them, the Bill status "
+                   "select's counts are its cards, a day the address names is shown, and printed "
+                   "or without script every one is there",
+       needs=("build_committees",))
+def _committee_lists_paged(BC):
+    """The person, 23 October 2026: committee pages were far too long on a
+    phone. House Executive Departments and Administration was 94,689px tall
+    at 375px wide, a full card for each of its 164 bills of 2025-2026, and
+    its Meetings tab, 46 days, 17,712px. app.js (A COMMITTEE'S LONG LISTS)
+    shows the first twenty of each and a button for the next twenty.
+
+    Run in node over a committee of 45 bills -- 30 died, 10 passed, 5 still
+    in committee -- and 30 meetings. Held: the Bills tab draws all 45 cards
+    in number order and marks every one past the twentieth .unshown; its
+    button says "Show 20 more -- 25 of 45 not yet shown", names the list
+    (aria-controls) and says where the next begins (data-from), and pressed
+    it shows forty, then all 45 with no button, putting focus each time on
+    the first focusable of the first card it brought; the select's options
+    read each category with its count, the counts add to the tab, and each
+    chosen lists that many cards, twenty of them shown and the button only
+    over twenty; choosing a status through the select's own handler starts
+    the list again at twenty; the Meetings tab the same, twenty days of
+    thirty and focus on the 21st day's summary; a day the address names,
+    the 27th, is shown and open, the list drawn as far as it; and Show more
+    is given no focus key, so the redraw does not pull focus back to it.
+    Read: .unshown is hidden by app.css on a screen and nowhere else, and
+    the button left off the sheet, so a printed page has every card; and
+    the plain page a reader without script gets (build_committees.
+    static_record) lists all 45 bills."""
+    def row(bid, kind, chip, status=None):
+        return {"id": bid, "n": re.sub(r"^([A-Z]+)", r"\1 ", bid), "title": "a bill",
+                "kind": kind, "status": status or chip, "chip": chip, "committees": [],
+                "committee": "", "topic": "", "sponsor": "", "term": "2025-2026",
+                "year": 2025, "passage": "", "votedays": [], "nrc": 0, "last_action": ""}
+    rows = ([row(f"HB{i}", "done", "Died", "Killed") for i in range(1, 31)]
+            + [row(f"HB{i}", "law", "Became Law", "Signed into law") for i in range(31, 41)]
+            + [row(f"HB{i}", "active", "In committee") for i in range(41, 46)])
+    import datetime as _dt
+    dates = [(_dt.date(2025, 1, 6) + _dt.timedelta(days=3 * i)).isoformat() for i in range(30)]
+    sessions = [{"date": d, "term": "2025-2026",
+                 "items": [{"bill": "HB1", "kind": "public hearing", "time": "10:00",
+                            "venue": "LOB 306", "term": "2025-2026", "year": 2025}],
+                 "outcomes": [{"bill": "HB1", "kinds": ["public hearing"], "outcome": "heard"}]}
+                for d in dates]
+    named = "day-" + sorted(dates, reverse=True)[26]
+    committee = {"code": "H07", "name": "Executive Departments and Administration",
+                 "chamber": "H", "members": [], "officers": [], "sessions": sessions,
+                 "bills": {"2025-2026": [{"id": r["id"], "n": r["n"], "term": "2025-2026",
+                                          "year": 2025, "title": r["title"], "status": r["status"]}
+                                         for r in reversed(rows)]}}
+    got = _node_app(_HEARD_PRELUDE + _COMMITTEE_PAGED_HARNESS,
+                    {"fx.json": json.dumps({"rows": rows, "committee": committee, "named": named,
+                                            "cats": ["In Progress", "Passed", "Died"]})})
+    if got is None:
+        return "skip", "app.js, dom_stub.js or node is not here"
+    assert "threw" not in got, f"a committee's page threw {got['threw']}"
+    bad = []
+    say = lambda h: re.sub(r"\s+", " ", re.sub(r"<[^>]+>", "", h.replace("&mdash;", "--"))).strip()
+
+    def read(html, item=r'<article class="card([^"]*)" data-id="([^"]*)"'):
+        items = re.findall(item, html)
+        btn = re.search(r'<button type="button" class="discl pgmore" data-pmore="(\w+)" '
+                        r'data-from="(\d+)"\s+aria-controls="(\w+)">(.*?)</button>', html, re.S)
+        return {"all": [i for _c, i in items], "shown": [i for c, i in items if "unshown" not in c],
+                "btn": btn and (btn.group(1), int(btn.group(2)), btn.group(3), say(btn.group(4)))}
+    ids = [f"HB{i}" for i in range(1, 46)]
+    a = read(got["first"])
+    if a["all"] != ids or a["shown"] != ids[:20]:
+        bad.append(f"the Bills tab draws {len(a['all'])} cards and shows {a['shown'][:3]}... "
+                   f"({len(a['shown'])}), not all 45 in number order with the first 20 shown")
+    if a["btn"] != ("bshow", 20, "pbills", "Show 20 more -- 25 of 45 not yet shown"):
+        bad.append(f"the Bills tab's button is {a['btn']}")
+    if '<div class="cards" id="pbills">' not in got["first"] \
+            or not re.search(r'<select data-pf="status" aria-controls="pbills"', got["first"]):
+        bad.append("the cards are not the list #pbills that the button and the select name")
+    for k, n, took, btn in (("more1", 40, "bshow@20", ("bshow", 40, "pbills",
+                                                        "Show 5 more -- 5 of 45 not yet shown")),
+                            ("more2", 45, "bshow@40", None)):
+        r = read(got[k]["html"])
+        if r["shown"] != ids[:n] or r["btn"] != btn or got[k]["count"] != int(took[6:]) + 20:
+            bad.append(f"Show more ({k}) shows {len(r['shown'])} with the button {r['btn']}, "
+                       f"not {n} with {btn}")
+        if got[k]["took"] != [took]:
+            bad.append(f"after Show more ({k}) focus went to {got[k]['took']}, not the first "
+                       f"focusable of the first card it brought ({took})")
+    opts = re.findall(r'<option value="([^"]+)"[^>]*>([^<]*)</option>',
+                      re.search(r'<select data-pf="status".*?</select>', got["first"], re.S).group(0))
+    counted = {}
+    for v, text in opts:
+        m = re.fullmatch(r"(.+) \((\d+)\)", text.strip())
+        if not m or m.group(1) != v:
+            bad.append(f"the option {v!r} reads {text.strip()!r}, not the category and its count")
+        else:
+            counted[v] = int(m.group(2))
+    if counted != {"In Progress": 5, "Passed": 10, "Died": 30}:
+        bad.append(f"the select counts {counted}, not In Progress 5, Passed 10 and Died 30")
+    for v, n in counted.items():
+        r = read(got["filtered"].get(v, ""))
+        want_btn = ("bshow", 20, "pbills", f"Show {min(20, n - 20)} more -- {n - 20} of {n} not "
+                    "yet shown") if n > 20 else None
+        if len(r["all"]) != n or len(r["shown"]) != min(n, 20) or r["btn"] != want_btn:
+            bad.append(f"{v} ({n}) draws {len(r['all'])} cards, shows {len(r['shown'])}, button "
+                       f"{r['btn']}")
+    r = read(got["changed"]["html"])
+    if got["changed"]["bshow"] != 0 or len(r["shown"]) != 20 or len(r["all"]) != 30:
+        bad.append(f"choosing Died after Show more keeps {got['changed']['bshow']} and shows "
+                   f"{len(r['shown'])} of {len(r['all'])}: the list does not start again at twenty")
+    day = r'<details class="cmeet([^"]*)" id="([^"]*)"'
+    m = read(got["meet"], day)
+    if len(m["all"]) != 30 or len(m["shown"]) != 20 \
+            or m["btn"] != ("mshow", 20, "pmeets", "Show 10 more -- 10 of 30 not yet shown") \
+            or '<div class="cmeets" id="pmeets">' not in got["meet"]:
+        bad.append(f"the Meetings tab draws {len(m['all'])} days, shows {len(m['shown'])}, "
+                   f"button {m['btn']}")
+    mm = read(got["meetMore"]["html"], day)
+    if len(mm["shown"]) != 30 or mm["btn"] or got["meetMore"]["took"] != ["mshow@20"]:
+        bad.append(f"Show more on the meetings shows {len(mm['shown'])}, button {mm['btn']}, "
+                   f"focus on {got['meetMore']['took']}, not all 30 and the 21st day's summary")
+    nm = read(got["named"], day)
+    opened = re.search(rf'<details class="cmeet([^"]*)" id="{named}" open>', got["named"])
+    if len(nm["shown"]) != 27 or named not in nm["shown"] or not opened \
+            or nm["btn"] != ("mshow", 27, "pmeets", "Show 3 more -- 3 of 30 not yet shown"):
+        bad.append(f"the address naming the 27th day shows {len(nm['shown'])} days, it "
+                   f"{'open' if opened else 'shut or hidden'}, button {nm['btn']}")
+    if got["key"] is not None:
+        bad.append(f"Show more is given a focus key, {got['key']}: the redraw would pull focus "
+                   "back to the button")
+    # On paper and without script.
+    css = Path("src/pages/app.css").read_text(encoding="utf-8")
+    hides = [(ctx, sel) for ctx, sel, body, _ln in _css_rules(css)
+             if ".unshown" in sel and "none" in dict(_css_decls(body)).get("display", "")]
+    if not hides or any(ctx != ("@media screen",) for ctx, _s in hides):
+        bad.append(f"what a list has not reached is hidden {hides}: on a screen and only there, "
+                   "or a printed page loses it")
+    off = [sel for ctx, sel, body, _ln in _css_rules(css)
+           if any(c.startswith("@media print") for c in ctx) and "none" in body
+           and ".pgmore" in _css_selectors(sel)]
+    if not off:
+        bad.append("the button and its count of what is not yet shown print")
+    plain = BC.static_record("H07", committee["name"], "House",
+                             {"bills": {"2025-2026": [dict(r, year=2025) for r in rows]}}, [])
+    listed = re.findall(r'<li><a href="bill/2025/(hb\d+)">', plain)
+    if sorted(listed) != sorted(i.lower() for i in ids):
+        bad.append(f"the page without script lists {len(listed)} of the 45 bills")
+    assert not bad, "; ".join(bad[:6])
+    return "ok", ("twenty of 45 bills and of 30 days shown, Show more twenty further with focus "
+                  "on the first it brought, the select's counts its cards, a named day shown "
+                  "and open, and every card printed and in the page without script")
 
 
 @check("frontend", "the bill search always says how many bills it lists -- the term's whole "

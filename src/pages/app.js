@@ -6313,7 +6313,7 @@ function focusKey(a){
   // Only what a redraw replaces: the list or the record, and the filters.
   if(!a.closest("#results,#facets"))return null;
   const d=a.dataset||{};
-  if(d.more!==undefined||d.vmore!==undefined)return null;
+  if(d.more!==undefined||d.vmore!==undefined||d.pmore!==undefined)return null;
   let sel;
   if(a.id)sel="#"+CSS.escape(a.id);
   else{
@@ -6409,12 +6409,13 @@ function followOk(){
     if(r.ok)document.documentElement.classList.add("followok");return r.ok;}).catch(()=>false);
   return FOLLOW_OK;
 }
-function lsrCardHtml(b){
+// `cls`: a class beside "card lsr" (a paged list's "unshown").
+function lsrCardHtml(b,cls){
   const who=b.sponsor_label||b.sponsor||"";
   const num=String(b.n||"").replace(/^LSR\s*/,"");
   const can=/^\d{4}-\d{4,5}$/.test(num)&&!b.withdrawn&&!b.introduced;
   if(can)followOk();
-  return `<article class="card lsr" data-id="${esc(b.id)}">
+  return `<article class="card lsr${cls?" "+esc(cls):""}" data-id="${esc(b.id)}">
       <div class="chead">
         <div class="crow"><span class="cnum">${esc(b.n)}</span>
         ${chip(chipOf(b),`cstat ${chipCls(b)}`,"m")}</div>
@@ -6598,7 +6599,8 @@ function cardSponsor(b){
   return {display_full:who,party,slug:b.sponsor_slug||""};
 }
 const cardTopic=b=>(b.topic==="Miscellaneous"&&b.topic_by==="granite record")?"":(b.topic||"");
-function cardHtml(b,focus,line){
+// `cls`: a class beside "card" (a paged list's "unshown").
+function cardHtml(b,focus,line,cls){
   const open=openCards.has(b.id);
   const y=b.year||(b.term?String(b.term).slice(0,4):"");
   const d=detail[dkey(b.id)];
@@ -6613,7 +6615,7 @@ function cardHtml(b,focus,line){
       META.committee_codes),
     notes:whyLine(b),line:line||"",
     rail:datedRail(b,!(b.rail||[]).length?d:undefined),
-    open,body,card:""});
+    open,body,card:cls||""});
 }
 
 // A BILL'S NUMBER, ITS SUFFIXES MARKED FOR THEIR POPOVERS (C9: "FN in a
@@ -6793,18 +6795,66 @@ function idxRow(b){
 // 2025-2026" under a Withdrawn kept from the Prime sponsored tab beside
 // "Co-sponsored (37)" (the review of 8 October 2026): a count of the member's
 // or the committee's record that was not true of it.
-function billPane(rows,note){
+// EACH CATEGORY WITH ITS COUNT (23 October 2026): "Passed (24)", the tab's
+// bills in it, as the search's sidebar gives each its number and the Votes
+// tab's select each vote its count; a category chosen elsewhere reads "(0)",
+// which says why the list is empty. Any carries none, as the Votes tab's.
+// `paged`: the list twenty at a time (PAGED_SHOWN), on a committee's page.
+function billPane(rows,note,paged){
   rows=rows.slice().sort((a,b)=>billCmp(a.id,b.id));
-  const cats=catsOffered(new Set(rows.map(statusCat).filter(Boolean)),
-    new Set(PAGE.status?[PAGE.status]:[]));
+  const n=Object.create(null);
+  rows.forEach(b=>{const c=statusCat(b);if(c)n[c]=(n[c]||0)+1;});
+  const cats=catsOffered(new Set(Object.keys(n)),new Set(PAGE.status?[PAGE.status]:[]));
   const shown=rows.filter(b=>!PAGE.status||statusCat(b)===PAGE.status);
   const on=CATCLASS[PAGE.status]||"";
+  const cap=paged?pagedCap("bshow"):shown.length;
   return `<div class="bfilt"><label>Bill status
-      <select data-pf="status"${on?` class="${on}"`:""}><option value="">Any</option>
+      <select data-pf="status" aria-controls="pbills"${on?` class="${on}"`:""}><option value="">Any</option>
       ${cats.map(x=>`<option value="${esc(x)}" class="${CATCLASS[x]||""}"${
-        x===PAGE.status?" selected":""}>${esc(x)}</option>`).join("")}</select></label></div>
+        x===PAGE.status?" selected":""}>${esc(x)} (${(n[x]||0).toLocaleString()})</option>`).join("")}</select></label></div>
     <p class="src">${note(shown.length,rows.length)}</p>
-    <div class="cards">${shown.map(b=>b.lsr?lsrCardHtml(b):cardHtml(b,false,b._line)).join("")}</div>`;
+    <div class="cards" id="pbills">${shown.map((b,i)=>{const out=i>=cap?"unshown":"";
+      return b.lsr?lsrCardHtml(b,out):cardHtml(b,false,b._line,out);}).join("")}</div>${
+      paged?pagedMore("bshow","pbills",Math.min(cap,shown.length),shown.length):""}`;
+}
+
+/* A COMMITTEE'S LONG LISTS, TWENTY AT A TIME (the person, 23 October 2026).
+   House Executive Departments and Administration's page was 94,689px tall
+   at 375px wide: a full card for each of the 164 bills referred to it in
+   2025-2026, the term it opens on, about 560px a card on a phone. Its
+   Meetings tab, 46 days folded, was 17,712px. Each now shows the first
+   twenty, in the order it already had -- the bills by number, as the search
+   lists them; the days newest or oldest first, as the reader chose -- and a
+   button under the list brings the next twenty.
+
+   EVERY ONE IS STILL IN THE PAGE, AND ON PAPER. The rest carry .unshown,
+   which app.css hides on a screen and nowhere else, so a committee's page
+   printed is every bill and every day, as it was; the button and its count
+   are left off the sheet. Without script the page is static_record's, which
+   lists every bill of the newest term.
+
+   THE KEYBOARD GOES TO THE FIRST ONE IT BROUGHT: the redraw replaces the
+   button, and focus on nothing sent the next Tab to the top of the page (the
+   Votes tab's Show more, the review of 2 October 2026). A card's first stop
+   is its number; a day's, its summary. The button names the list it adds to
+   (aria-controls) and carries how many are shown (data-from), which is where
+   that first one is.
+
+   A DAY THE ADDRESS NAMES IS ALWAYS SHOWN: the Calendar leads to
+   committee/<code>.html#day-<date>, and the list stretches as far
+   as that day, on arrival and when the address changes after
+   (renderCommitteeSessions, showDay). The status select, the order and the
+   term each start the list again at twenty. */
+const PAGED_SHOWN=20;
+const pagedCap=k=>Math.max(PAGED_SHOWN,(PAGE&&+PAGE[k])||0);
+// The button under a paged list: `key` is PAGE's count of it, `box` the id of
+// the list, `shown` how many are, `of` how many it has.
+function pagedMore(key,box,shown,of){
+  const left=of-shown;
+  if(left<=0)return "";
+  return `<button type="button" class="discl pgmore" data-pmore="${esc(key)}" data-from="${shown}"
+    aria-controls="${esc(box)}">Show ${Math.min(PAGED_SHOWN,left).toLocaleString()} more &mdash;
+    ${left.toLocaleString()} of ${of.toLocaleString()} not yet shown</button>`;
 }
 // "137 bills", or "24 of 137 bills" where fewer than all are listed.
 const billsOf=(n,of)=>`${n===of?"":`${n.toLocaleString()} of `}${
@@ -7414,7 +7464,7 @@ function renderCommitteeBills(c){
   if(!rows.length)return `<p class="src fill">No bills were referred to this
     committee in the ${esc(t)} term.</p>`;
   return billPane(rows,(n,of)=>`${billsOf(n,of)} referred to
-    this committee in ${esc(t)}.`);
+    this committee in ${esc(t)}.`,true);
 }
 
 // ============================================ POLISH 2: A COMMITTEE'S MEETINGS
@@ -7582,7 +7632,8 @@ function meetingSentence(s){
 }
 // How many of the day's bills the committee voted on, for the folded entry.
 const votedCount=s=>(s.outcomes||[]).filter(o=>o.outcome==="voted").length;
-function meetingHtml(s,open){
+// `out`: a day past the twenty shown (A COMMITTEE'S LONG LISTS).
+function meetingHtml(s,open,out){
   const items=s.items||[];
   const oc=s.outcomes&&s.outcomes.length?s.outcomes
     :[...new Set(items.map(i=>i.bill))].map(b=>({bill:b,kinds:[...new Set(items.filter(i=>i.bill===b).map(i=>i.kind))],outcome:s.ahead?"scheduled":""}));
@@ -7597,7 +7648,7 @@ function meetingHtml(s,open){
     const it=items.find(i=>String(i.bill)===String(o.bill))||{};
     const b=idxRow({id:o.bill,year:it.year,term:it.term||s.term,n:it.n,title:it.title});
     return cardHtml(b,false,meetingLine(s,o,items));}).join("");
-  return `<details class="cmeet${s.ahead?" ahead":""}" id="${esc(dayId(s.date))}"${open?" open":""}>
+  return `<details class="cmeet${s.ahead?" ahead":""}${out?" unshown":""}" id="${esc(dayId(s.date))}"${open?" open":""}>
     <summary><span class="calmix" aria-hidden="true">${bars.map(c=>`<i class="${c}"></i>`).join("")}</span>
       <span class="cmwhen"><b>${esc(dateWords(s.date,"long"))}</b>${span?` <span class="cmtime">${esc(span)}</span>`:""}</span>
       <span class="cmcount">${nBills(oc.length)}${s.ahead?" scheduled":v?` &middot; <b>${v} voted on</b>`:" &middot; no votes"}${
@@ -7630,14 +7681,20 @@ function renderCommitteeSessions(c){
   const newest=ss.filter(s=>!s.ahead).map(s=>s.date).sort().pop();
   const isOpen=s=>(pg.mopen&&CMP.own(pg.mopen,dayId(s.date)))?pg.mopen[dayId(s.date)]
     :(named?s===named:s.date===newest);
+  // Twenty, or as far as the day the address names (A COMMITTEE'S LONG LISTS),
+  // and kept that far: the next drawing, or a later address naming a day
+  // nearer the top, does not take the days back off.
+  const cap=Math.max(pagedCap("mshow"),named?order.indexOf(named)+1:0);
+  if(PAGE)PAGE.mshow=cap;
   return `<div class="bfilt msort"><label>Order
-      <select data-pf="msort"><option value="new"${old?"":" selected"}>Newest first</option>
+      <select data-pf="msort" aria-controls="pmeets"><option value="new"${old?"":" selected"}>Newest first</option>
       <option value="old"${old?" selected":""}>Oldest first</option></select></label></div>
     <p class="src"><b>${met.toLocaleString()} meeting${met===1?"":"s"}</b>${t?` in ${esc(termDash(t))}`:""}${
       ahead?`, and ${ahead.toLocaleString()} still to come`:""}, ${old?"the oldest":"the newest"} first.
       One entry a day, each kind of meeting in its color; opened, each bill&rsquo;s card says
       what happened to it at that meeting.</p>
-    <div class="cmeets">${order.map(s=>meetingHtml(s,isOpen(s))).join("")}</div>`;
+    <div class="cmeets" id="pmeets">${order.map((s,i)=>meetingHtml(s,isOpen(s),i>=cap)).join("")}</div>${
+      pagedMore("mshow","pmeets",Math.min(cap,order.length),order.length)}`;
 }
 
 // What the committee reported on a bill, for its card on the Bills tab: each
@@ -7994,6 +8051,17 @@ document.addEventListener("click",e=>{
     const row=$("#results").querySelectorAll("table.vfull tbody tr")[from];
     if(row&&row.focus){row.tabIndex=-1;row.focus({preventScroll:true});}
     return;}
+  // A committee's bills or days, twenty more (A COMMITTEE'S LONG LISTS), and
+  // the keyboard on the first of them: a card's number, a day's summary.
+  const pm=e.target.closest("[data-pmore]");
+  if(pm){
+    const from=+pm.dataset.from||0;
+    PAGE[pm.dataset.pmore]=from+PAGED_SHOWN;renderPage();
+    const box=document.getElementById(pm.getAttribute("aria-controls"));
+    const first=box&&box.children?box.children[from]:null;
+    const to=first&&((first.querySelector&&first.querySelector("summary,a[href],button"))||first);
+    if(to&&to.focus){if(to===first)first.tabIndex=-1;to.focus();}
+    return;}
   const ct=e.target.closest(".card .tab[data-t]");
   if(ct){openTab[ct.closest(".card").dataset.id]=ct.dataset.t;renderPage();return;}
   const head=e.target.closest(".card .ctitle")||cardBackground(e);
@@ -8025,6 +8093,9 @@ document.addEventListener("change",e=>{
   // A narrower filter over a list already expanded to 800 rows left the
   // reader at the bottom of a list of 40.
   if(f==="vfilter"||f==="vparty"||f==="term")PAGE.vshow=0;
+  // And a committee's lists start again at twenty, under the new choice.
+  if(f==="status"||f==="term")PAGE.bshow=0;
+  if(f==="msort"||f==="term")PAGE.mshow=0;
   renderPage();
 });
 
@@ -8126,10 +8197,10 @@ function dayId(date){ return "day-" + String(date || ""); }
    It is needed at all because openPage returns before the hash reader that
    serves bills, and nothing else on a committee page has ever read the
    address. */
-let dayLanded = "", dayTried = "";
+let dayLanded = "", dayTried = "", dayPaged = "";
 function showDay(){
   const want = decodeURIComponent(location.hash.slice(1) || "");
-  if(!/^day-\d{4}-\d{2}-\d{2}$/.test(want)){ dayLanded=""; dayTried=""; return; }
+  if(!/^day-\d{4}-\d{2}-\d{2}$/.test(want)){ dayLanded=""; dayTried=""; dayPaged=""; return; }
   document.querySelectorAll(".cmeet.at").forEach(e=>e.classList.remove("at"));
   let el = document.getElementById(want);
   // THE SITTINGS ARE ON THE OTHER TAB. A committee page opens on Bills, and
@@ -8146,6 +8217,13 @@ function showDay(){
     return;
   }
   if(!el) return;                      // no sitting of that date on this page
+  // PAST THE TWENTY SHOWN (A COMMITTEE'S LONG LISTS): the address changed
+  // while the Meetings tab was up, and the list is drawn again as far as the
+  // day, which renderCommitteeSessions reads from the address. Once a date.
+  if(el.classList.contains("unshown")){
+    if(dayPaged!==want){dayPaged=want;renderPage();}
+    return;
+  }
   el.classList.add("at");
   // A meeting is folded since 10 October 2026: the one named is opened.
   if(el.tagName==="DETAILS"&&!el.open){el.open=true;
@@ -8167,7 +8245,7 @@ document.addEventListener("toggle",e=>{
 
 function openPage(kind,ref){
   PAGE={kind,data:null,terms:[],term:"",status:"",vfilter:"",
-        vparty:"",vshow:0};
+        vparty:"",vshow:0,bshow:0,mshow:0};
   // A member's page has three tabs and a committee's two. Carried over, a
   // member's Votes tab (2) opened a committee on a tab it does not have, and
   // the page drew nothing under the strip.
