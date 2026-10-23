@@ -11,7 +11,7 @@ import { readFileSync } from "node:fs";
 import vm from "node:vm";
 import { checkCurrent, checkNight } from "../../workers/follow/changes.js";
 import { parseKey } from "../../workers/follow/common.js";
-import { MARK, PALETTE, STATUS_INK, TESTIFY_FORMS, ballotWords, confirmationEmail, dateOnce, dayDate, digestEmail, longDate,
+import { MARK, PALETTE, STATUS_INK, TESTIFY_FORMS, VOTE_INK, ballotWords, confirmationEmail, dateOnce, dayDate, digestEmail, longDate,
          meetingWords, newLinkEmail, pageNames, shortDate, welcomeEmail } from "../../workers/follow/mail.js";
 import { collect, testifyFor } from "../../workers/follow/sender.js";
 import { SITE, loadFixtures } from "./fakes.js";
@@ -42,7 +42,20 @@ function everyEmail() {
     newLink: newLinkEmail({ origin: SITE, ...LINKS }),
     daily: digest("daily", "2026-10-07"),
     weekly: digest("weekly"),
+    voted: voted(ROLLCALL),
   };
+}
+
+// A daily with one floor roll call on a bill, as build_feeds hands it over
+// (follow_changes.rollcall_detail): the vote bar's email.
+const ROLLCALL = { yeas: 201, nays: 163, passed: true, need: 183,
+  parties: [["R", 190, 13], ["D", 11, 150]] };
+function voted(rollcall) {
+  return digestEmail({ origin: SITE, frequency: "daily", date: TODAY, names: pageNames(CURRENT), ...LINKS,
+    sections: [{ key: "bill:2026/HB9901", kind: "bill", ref: "2026/HB9901", label: "HB 9901", title: "",
+      now: "In Committee", url: "/bill/2026/hb9901", more: 0, votes: [], study: null, ended: null, week: null,
+      upcoming: [], items: [{ guid: "rc", date: TODAY, kind: "vote", milestone: true, url: "/bill/2026/hb9901",
+        summary: "HB 9901 \u2014 Ought to Pass: MA RC 201-163 10/10/2026", rollcall }] }] });
 }
 
 // What a reader sees of an email's HTML: its words, without the head, the
@@ -129,7 +142,16 @@ test("the palette survives a client's dark mode: light declared, white ground ev
   for (const [name, m] of Object.entries(everyEmail())) {
     assert.match(m.html, /<meta name="color-scheme" content="light"><meta name="supported-color-schemes" content="light">/);
     assert.match(m.html, new RegExp(`<body style="[^"]*background:${white}[^"]*" bgcolor="${white}">`));
-    for (const [, bg] of m.html.matchAll(/background(?:-color)?:(#[0-9A-Fa-f]{6})/g))
+    // The vote bar (22 October 2026) is the one ground besides: the ring's two
+    // inks, in cells that hold no words and that a screen reader is not read.
+    const bars = m.html.match(/<table role="presentation" aria-hidden="true"[\s\S]*?<\/table>/g) || [];
+    for (const b of bars) {
+      assert.equal(b.replace(/<[^>]+>/g, "").replace(/&nbsp;/g, ""), "", `${name}: words in the vote bar`);
+      for (const [, bg] of b.matchAll(/background:(#[0-9A-Fa-f]{6})/g))
+        assert.ok(Object.values(VOTE_INK).includes(bg.toUpperCase()), `${name}: a bar of ${bg}`);
+    }
+    const unbarred = bars.reduce((h, b) => h.replace(b, ""), m.html);
+    for (const [, bg] of unbarred.matchAll(/background(?:-color)?:(#[0-9A-Fa-f]{6})/g))
       assert.ok([white, pine].includes(bg.toUpperCase()), `${name}: a ground of ${bg}`);
     let onPine = 0;
     for (const [, fg] of m.html.matchAll(/(?<![-\w])color:(#[0-9A-Fa-f]{6})/g)) {
@@ -484,4 +506,28 @@ test("a bill's status chip is coloured as the site colours it, on a bar, its wor
         items: [{ guid: "g", date: TODAY, kind: "action", summary: "HB 9901 — Introduced" }] }] });
     assert.match(m.html, new RegExp(`border-left:4px solid ${ink(now)};[^"]*color:${PALETTE.ink};[^"]*">${now}</span>`), now);
   }
+});
+
+// ---- a roll call, drawn (22 October 2026) ----------------------------------------------------
+// The person: bill emails should have "similar elements to what's on the bill
+// pages with the vote diagrams".
+test("a floor roll call is drawn as the bill page's two sides, and said in words", () => {
+  const m = voted(ROLLCALL);
+  const bar = m.html.match(/<table role="presentation" aria-hidden="true"[\s\S]*?<\/table>/)[0];
+  const cells = [...bar.matchAll(/<td width="(\d+)%" bgcolor="(#[0-9A-F]{6})"/g)].map(x => [Number(x[1]), x[2]]);
+  assert.deepEqual(cells, [[55, VOTE_INK.yes], [45, VOTE_INK.no]], "yes then no, as wide as their share");
+  const words = visible(m.html);
+  assert.ok(/Yes 201\s*\n?\s*No 163/.test(words), "each side's count under its end");
+  assert.ok(words.includes("Passed (183 needed). Yes: 190 Republicans, 11 Democrats. No: 150 Democrats, " +
+    "13 Republicans."), words);
+  assert.ok(m.text.includes("Yes 201, No 163. Passed (183 needed). Yes: 190 Republicans"), "the plain text says it too");
+  // One side only: one cell, and a party of one is one member.
+  const one = voted({ yeas: 1, nays: 0, passed: true, parties: [["L", 1, 0]] });
+  const onebar = one.html.match(/<table role="presentation" aria-hidden="true"[\s\S]*?<\/table>/)[0];
+  assert.equal((onebar.match(/<td /g) || []).length, 1, "no empty side");
+  assert.ok(visible(one.html).includes("Passed. Yes: 1 Libertarian."));
+  const failed = visible(voted({ ...ROLLCALL, passed: false, rule: "two thirds of those voting", need: 243 }).html);
+  assert.ok(failed.includes("Failed (243 needed, two thirds of those voting)."), failed);
+  // No roll call, no bar.
+  assert.doesNotMatch(voted(undefined).html, /aria-hidden/);
 });

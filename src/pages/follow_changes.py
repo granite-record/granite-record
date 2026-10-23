@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-07.9
+# GRANITE_VERSION: 2026-10-07.10
 """
 The nightly "what changed" files the email sender reads, and the first-seen
 ledger that decides what is new in them.
@@ -207,6 +207,9 @@ MEETING = re.compile(r"^(?:Public Hearing|Hearing|Executive Session|(?:Full Comm
 HEARING = re.compile(r"^(?:Public Hearing|Hearing)\b", re.I)
 EXEC = re.compile(r"^Executive Session\b", re.I)
 FLOOR_ROLL = re.compile(r"\bRC\s*\d")
+# A floor roll call's count on its docket line, "MA RC 201-163": the yeas and
+# the nays, which find the roll call the line records (build_feeds).
+FLOOR_COUNT = re.compile(r"\bRC\s*(\d+)\s*-\s*(\d+)")
 REPORT = re.compile(r"^(?:(?:Majority|Minority|Conference) )?Committee Report\b", re.I)
 STUDY_REPORT = re.compile(r"^Interim Study Report\b", re.I)
 
@@ -277,6 +280,65 @@ def vote_detail(ballot, *, result="", tally="", motion="", bill="", title=""):
     return out if out.get("ballot") else None
 
 
+# A FLOOR ROLL CALL, COUNTED, FOR THE EMAIL TO DRAW (the person, 22 October
+# 2026: bill emails should have "similar elements to what's on the bill pages
+# with the vote diagrams"). The bill page's ring is the roll call's record:
+# yeas and nays, whether it passed, what the yes side needed and by what
+# rule, and each party's yes and no. The email draws a bar of the two sides
+# and says the rest in words, so the build hands it those facts and no
+# member's name. Optional on a bill's vote item.
+ROLLCALL_PARTIES = 6
+PARTY_ORDER = {"R": 0, "D": 1}
+
+
+def rollcall_detail(rc):
+    """An item's "rollcall" from one of a bill record's rollcalls, or None
+    where it has no count to draw."""
+    if not isinstance(rc, dict):
+        return None
+    y, n, passed = rc.get("yeas"), rc.get("nays"), rc.get("passed")
+    if not (type(y) is int and type(n) is int and y >= 0 and n >= 0 and y + n > 0
+            and isinstance(passed, bool)):
+        return None
+    out = {"yeas": y, "nays": n, "passed": passed}
+    need = rc.get("threshold_needed")
+    if type(need) is int and need > 0 and not rc.get("threshold_unknown"):
+        out["need"] = need
+        rule = line(rc.get("threshold_rule") or "", 120)
+        if rule:
+            out["rule"] = rule
+    parties = []
+    for p, t in (rc.get("tally") or {}).items():
+        if not (isinstance(p, str) and re.fullmatch(r"[A-Z]{1,2}", p) and isinstance(t, dict)):
+            continue
+        a, b = t.get("Yea") or 0, t.get("Nay") or 0
+        if type(a) is int and type(b) is int and a >= 0 and b >= 0 and a + b:
+            parties.append([p, a, b])
+    parties.sort(key=lambda x: (PARTY_ORDER.get(x[0], 9), x[0]))
+    if parties:
+        out["parties"] = parties[:ROLLCALL_PARTIES]
+    return out
+
+
+def rollcall_ok(r):
+    """Whether an item's "rollcall" is the shape rollcall_detail writes."""
+    if not isinstance(r, dict) or set(r) - {"yeas", "nays", "passed", "need", "rule", "parties"}:
+        return False
+    if not all(type(r.get(k)) is int and r[k] >= 0 for k in ("yeas", "nays")) \
+            or r["yeas"] + r["nays"] == 0 or not isinstance(r.get("passed"), bool):
+        return False
+    if "need" in r and not (type(r["need"]) is int and r["need"] > 0):
+        return False
+    if "rule" in r and (not isinstance(r["rule"], str) or line(r["rule"], 120) != r["rule"]
+                        or "need" not in r):
+        return False
+    ps = r.get("parties", [])
+    return isinstance(ps, list) and len(ps) <= ROLLCALL_PARTIES and all(
+        isinstance(x, list) and len(x) == 3 and isinstance(x[0], str)
+        and re.fullmatch(r"[A-Z]{1,2}", x[0]) and all(type(v) is int and v >= 0 for v in x[1:])
+        for x in ps)
+
+
 # A MEETING THE LINE SETS, FOR THE EMAIL TO SAY IN ITS OWN WORDS (17 October
 # 2026). The person approved plain words for an email's hearing entries; the
 # build knows the clerk's rooms (plain_action.place) and the email knows how
@@ -304,7 +366,7 @@ def meeting_detail(m):
 
 
 def item(guid, day, kind, summary, url="", term="", study=False, recommends=None,
-         milestone=False, vote=None, plain="", meeting=None):
+         milestone=False, vote=None, plain="", meeting=None, rollcall=None):
     """One feed item as the changes files carry it, or None where it cannot
     be one (no guid, no date the contract reads). `study` marks a bill's
     interim study report, which its bill's night carries as "study".
@@ -312,7 +374,8 @@ def item(guid, day, kind, summary, url="", term="", study=False, recommends=None
     `vote` is a member's ballot with its roll call (vote_detail); `plain` the
     line in plain words (plain_action.py), which the email prints first;
     `meeting` the meeting the line sets (meeting_detail), which the email
-    words before either."""
+    words before either; `rollcall` a floor roll call's count
+    (rollcall_detail), which the email draws."""
     guid = str(guid or "")
     if not guid or len(guid) > 300 or not DAY.match(str(day or "")):
         return None
@@ -337,6 +400,8 @@ def item(guid, day, kind, summary, url="", term="", study=False, recommends=None
     meeting = meeting_detail(meeting)
     if meeting:
         out["meeting"] = meeting
+    if rollcall and rollcall_ok(rollcall):
+        out["rollcall"] = rollcall
     return out
 
 
@@ -555,7 +620,7 @@ def night_file(ledger, d, new_by, followable, lists):
                 continue
             had.add(it["guid"])
             out = {f: it[f] for f in ("guid", "date", "kind", "summary", "plain", "url", "term",
-                                      "milestone", "vote", "meeting") if f in it}
+                                      "milestone", "vote", "meeting", "rollcall") if f in it}
             if new_by == FIRST_SEEN:
                 out["seen"] = filed[(key, it["guid"])]
             if "_study" in it and kind_of_key(key) == "bill":
@@ -755,6 +820,9 @@ def _item(it, where, first_seen, topic, out):
                 _text(v.get(f), room, f"{where} vote {f}", out, required=f == "ballot")
             if v.get("result") not in (None, "") and v["result"] not in RESULTS:
                 out.append(f"{where}: vote result is neither passed nor failed")
+    if "rollcall" in it and not rollcall_ok(it["rollcall"]):
+        out.append(f"{where}: rollcall is not yeas, nays and passed, with an optional need, "
+                   "rule and parties")
     if "meeting" in it:
         m = it["meeting"]
         if meeting_detail(m) != m:

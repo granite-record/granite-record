@@ -230,6 +230,16 @@ night. Each value may have:
     Building 305" -- and the feed keeps the clerk's line (17 October 2026: the
     person approved plain words for an email's hearing entries). A line any
     part of which `plain_action.meeting` does not understand carries none.
+  - `rollcall` -- optional, on a bill's `vote` item whose docket line records a
+    floor roll call ("MA RC 201-163") the bill's record holds (22 October
+    2026): the count the email draws as a bar, beside the bill page's ring.
+    `yeas` and `nays` (counts, at least one of them above zero), `passed`
+    (true or false, the clerk's outcome), and optionally `need` (what the yes
+    side had to reach, where the record knows) with `rule` (at most 120, why,
+    "two thirds of those voting"), and `parties` (at most 6, each `[code,
+    yes, no]` with a code of one or two capitals, Republicans first, then
+    Democrats). No member is named. `follow_changes.rollcall_detail` makes
+    it; a line that matches no roll call, or two that differ, carries none.
 - A committee's `sitting` item carries `plain`: the kinds of meeting the day
   held and the bills each took up, "Executive session on HB 1767-FN and SB
   416" (17 October 2026), because the feed's title is only the committee and

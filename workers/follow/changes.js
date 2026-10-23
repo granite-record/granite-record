@@ -143,6 +143,34 @@ function checkMeeting(m, where, notes) {
            state: MEETING_STATES.has(m.state) ? m.state : "" };
 }
 
+// A FLOOR ROLL CALL, COUNTED (22 October 2026; CHANGES_FORMAT.md,
+// "rollcall"), or null: what the email's vote bar draws. Counts only.
+const PARTY = /^[A-Z]{1,2}$/;
+const count = v => Number.isInteger(v) && v >= 0;
+function checkRollcall(r, where, notes) {
+  if (r === undefined || r === null) return null;
+  if (!isObj(r) || !count(r.yeas) || !count(r.nays) || r.yeas + r.nays === 0 ||
+      typeof r.passed !== "boolean") {
+    notes.push(`${where}: rollcall has no yeas, nays and passed`);
+    return null;
+  }
+  const out = { yeas: r.yeas, nays: r.nays, passed: r.passed, need: 0, rule: "", parties: [] };
+  if (r.need !== undefined) {
+    if (Number.isInteger(r.need) && r.need > 0) out.need = r.need;
+    else notes.push(`${where}: rollcall need is not a count`);
+  }
+  if (out.need) out.rule = text(r.rule, 120, `${where} rollcall rule`, notes, false);
+  if (r.parties !== undefined) {
+    if (!Array.isArray(r.parties)) notes.push(`${where}: rollcall parties is not a list`);
+    else for (const p of r.parties.slice(0, 6)) {
+      if (Array.isArray(p) && p.length === 3 && PARTY.test(p[0] ?? "") && count(p[1]) && count(p[2]))
+        out.parties.push([p[0], p[1], p[2]]);
+      else notes.push(`${where}: a rollcall party is not a code and two counts`);
+    }
+  }
+  return out;
+}
+
 // ---- one night ---------------------------------------------------------------------
 function checkItem(it, where, firstSeen, topic, notes) {
   if (!isObj(it)) { notes.push(`${where}: not an object`); return null; }
@@ -172,7 +200,8 @@ function checkItem(it, where, firstSeen, topic, notes) {
   const plain = it.plain === undefined ? "" : text(it.plain, 300, `${where} plain`, notes, false);
   return { guid, date: it.date, kind, summary, plain, url: path(it.url, where, notes), term, seen,
            milestone: it.milestone === true, vote: checkVote(it.vote, where, notes),
-           meeting: checkMeeting(it.meeting, where, notes) };
+           meeting: checkMeeting(it.meeting, where, notes),
+           rollcall: checkRollcall(it.rollcall, where, notes) };
 }
 
 export function checkNight(obj, expectDate) {

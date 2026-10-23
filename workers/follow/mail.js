@@ -505,6 +505,53 @@ export function newLinkEmail({ origin, manage, unsub, feedbackUrl }) {
   };
 }
 
+// ---- a roll call, drawn ---------------------------------------------------------------------
+// THE VOTE AS THE BILL PAGE DRAWS IT (the person, 22 October 2026: bill
+// emails should have "similar elements to what's on the bill pages with the
+// vote diagrams"). The page's ring is SVG, which Gmail does not show, so the
+// email draws the same two sides as a bar of table cells in the ring's own
+// inks (app.css --yes and --no, light theme; preflight holds them alike),
+// with Yes and No and their counts under its ends as the ring labels its
+// own, and says the rest in words: whether it passed, what the yes side
+// needed, and each party's side. The bar is a picture of the words beside it,
+// so a screen reader is told the words and not the bar (aria-hidden).
+export const VOTE_INK = { yes: "#215C43", no: "#CE6A62" };
+const PARTY_WORDS = { R: ["Republican", "Republicans"], D: ["Democrat", "Democrats"],
+  I: ["Independent", "Independents"], L: ["Libertarian", "Libertarians"],
+  X: ["member whose party is not on file", "members whose party is not on file"] };
+export function voteWords(r) {
+  const head = `${r.passed ? "Passed" : "Failed"}` +
+    (r.need ? ` (${r.need} needed${r.rule ? `, ${r.rule}` : ""})` : "") + ".";
+  const side = (i, word) => {
+    const ps = (r.parties || []).filter(p => p[i]).sort((a, b) => b[i] - a[i]);
+    return ps.length ? `${word}: ${ps.map(p => `${p[i]} ${(PARTY_WORDS[p[0]] || [p[0], p[0]])[p[i] === 1 ? 0 : 1]}`)
+      .join(", ")}.` : "";
+  };
+  return { head, parties: [side(1, "Yes"), side(2, "No")].filter(Boolean).join(" ") };
+}
+function voteBar(r) {
+  const total = r.yeas + r.nays;
+  let y = Math.round(100 * r.yeas / total);
+  if (r.yeas && !y) y = 1;
+  if (r.nays && y === 100) y = 99;
+  const thin = "line-height:10px;mso-line-height-rule:exactly";
+  const cell = (w, ink) => `<td width="${w}%" bgcolor="${ink}" style="width:${w}%;height:10px;${thin};` +
+    `background:${ink}">&nbsp;</td>`;
+  const w = voteWords(r);
+  const html = `<table role="presentation" aria-hidden="true" width="100%" cellpadding="0" cellspacing="0" ` +
+      `border="0" style="width:100%;max-width:360px;margin:8px 0 2px"><tr>` +
+      (r.yeas ? cell(y, VOTE_INK.yes) : "") +
+      (r.yeas && r.nays ? `<td width="2" style="width:2px;${thin}">&nbsp;</td>` : "") +
+      (r.nays ? cell(100 - y, VOTE_INK.no) : "") + "</tr></table>" +
+    `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" ` +
+      `style="width:100%;max-width:360px;font-size:14px;color:${INK2}"><tr>` +
+      `<td align="left" style="padding:0">Yes ${r.yeas}</td>` +
+      `<td align="right" style="padding:0">No ${r.nays}</td></tr></table>` +
+    `<p style="margin:2px 0 0;font-size:14px;color:${INK2}"><b style="color:${INK}">${esc(w.head)}</b>` +
+      (w.parties ? ` ${esc(w.parties)}` : "") + "</p>";
+  return { html, text: `Yes ${r.yeas}, No ${r.nays}. ${w.head}${w.parties ? ` ${w.parties}` : ""}` };
+}
+
 // ---- testifying on a bill -----------------------------------------------------------------
 // THE CHAMBERS' ONLINE SIGN-IN FORMS, app.js's TESTIFY_FORMS (preflight holds
 // the two alike). Neither form can be opened at a bill, so the email says
@@ -901,7 +948,8 @@ export function digestEmail({ origin, frequency, date, sections: given, manage, 
       const fresh = s.items.filter(it => !late(it) && !(weekly && ahead.length && it.date > date));
       const old = s.items.filter(it => late(it));
       const shown = [...fresh, ...old.slice(0, LATE_SHOWN)]
-        .map(it => ({ date: it.date, words: itemWords(it, date), bold: it.milestone && !late(it) }));
+        .map(it => ({ date: it.date, words: itemWords(it, date), bold: it.milestone && !late(it),
+                      rc: it.rollcall || null }));
       if (s.study) shown.unshift({ date: s.study.date || date, bold: true,
                                    words: `${s.label} — ${studyWords(s.study)}` });
       const earlier = old.length - Math.min(old.length, LATE_SHOWN);
@@ -915,10 +963,12 @@ export function digestEmail({ origin, frequency, date, sections: given, manage, 
           `style="margin:2px 0 10px;font-size:15px;line-height:1.45">`;
         for (const row of shown) {
           text.push(`  ${longDate(row.date)}  ${row.words}`);
+          const bar = row.rc ? voteBar(row.rc) : null;
+          if (bar) text.push(`      ${bar.text}`);
           html += `<tr><td valign="top" width="64" style="width:64px;padding:5px 8px 5px 0;` +
             `color:${INK2};font-size:14px;white-space:nowrap">${esc(shortDate(row.date, date))}</td>` +
             `<td valign="top" style="padding:5px 0 5px 10px;border-left:3px solid ` +
-            `${row.bold ? PINE : WHITE}">${link(row.words)}</td></tr>`;
+            `${row.bold ? PINE : WHITE}">${link(row.words)}${bar ? bar.html : ""}</td></tr>`;
         }
         html += "</table>";
       }

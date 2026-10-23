@@ -144,3 +144,26 @@ test("ended, study and upcoming are read as written", () => {
   assert.deepEqual([v.milestone, v.vote.ballot, v.vote.result, v.vote.tally, v.vote.bill],
     [true, "yes", "passed", "11-9", "HB 9903-FN"], "a ballot keeps its roll call");
 });
+
+test("a floor roll call's count is kept as written, and one that is not a count is dropped and noted", () => {
+  const n = night("2026-10-08");
+  const items = n.refs["bill:2026/HB9903"].items;
+  const base = { date: "2026-10-07", kind: "vote", summary: "HB 9903-FN \u2014 MA RC 201-163",
+                 term: "2025-2026", seen: n.built };
+  items.push({ ...base, guid: "r1", rollcall: { yeas: 201, nays: 163, passed: true, need: 183,
+    rule: "a majority", parties: [["R", 190, 13], ["D", 11, 150]] } });
+  items.push({ ...base, guid: "r2", rollcall: { yeas: "201", nays: 163, passed: true } });
+  items.push({ ...base, guid: "r3", rollcall: { yeas: 0, nays: 0, passed: false } });
+  items.push({ ...base, guid: "r4", rollcall: { yeas: 5, nays: 4, passed: "yes" } });
+  items.push({ ...base, guid: "r5", rollcall: { yeas: 5, nays: 4, passed: false, rule: "no need given",
+    parties: [["R", 5, 4], ["democrat", 1, 1], ["D", -1, 2]] } });
+  const r = checkNight(n, "2026-10-08");
+  const got = Object.fromEntries(r.value.refs.get("bill:2026/HB9903").items.map(i => [i.guid, i.rollcall]));
+  assert.deepEqual(got.r1, { yeas: 201, nays: 163, passed: true, need: 183, rule: "a majority",
+    parties: [["R", 190, 13], ["D", 11, 150]] });
+  for (const g of ["r2", "r3", "r4"]) assert.equal(got[g], null, `${g}: not a count`);
+  assert.deepEqual(got.r5, { yeas: 5, nays: 4, passed: false, need: 0, rule: "", parties: [["R", 5, 4]] },
+    "a rule with no need is not kept, nor a party that is not a code and two counts");
+  assert.ok(r.notes.some(x => /rollcall has no yeas/.test(x)) && r.notes.some(x => /rollcall party/.test(x)));
+  assert.ok(Object.values(got).filter(Boolean).length === 2 && got.r1, "an item keeps its place without one");
+});

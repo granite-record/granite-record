@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.42
+# GRANITE_VERSION: 2026-09-04.43
 """
 Write RSS feeds so people can follow bills without a login.
 
@@ -478,6 +478,32 @@ def main():
     # own id is an employee number or nothing on most sponsor records, and a
     # sitting member's feed filed under it missed the sponsorships their page
     # lists -- build_site_v2.bill_sponsor_list files them the same way.
+    # THE SITTING TERM'S FLOOR ROLL CALLS, COUNTED (22 October 2026), for the
+    # email's vote bar: each bill's roll calls as follow_changes.rollcall_detail
+    # gives them -- counts, no names -- read from the term's own pages only,
+    # since the walk above keeps no ballots. A docket line finds its roll call
+    # by its day and its count (FC.FLOOR_COUNT), and a line that matches none,
+    # or two that disagree, carries none.
+    rc_of = {}
+    for year, bid, rec in (SR.records(site, years=current.split("-")) if current else ()):
+        got = [((r.get("date") or "")[:10], r.get("yeas"), r.get("nays"), FC.rollcall_detail(r))
+               for r in rec.get("rollcalls") or []
+               if isinstance(r, dict) and (r.get("vote_kind") or "RC") == "RC"]
+        got = [g for g in got if g[3]]
+        if got:
+            rc_of[(year, bid)] = got
+
+    def rollcall_for(year_bid, day, text):
+        m = FC.FLOOR_COUNT.search(str(text or ""))
+        if not m:
+            return None
+        hits = [x for dt, y, n, x in rc_of.get(year_bid, ())
+                if dt == day and (y, n) == (int(m.group(1)), int(m.group(2)))]
+        # Two roll calls of one day and one count (a reconsideration, a pair
+        # of amendments) draw the same bar where they agree in every count
+        # and outcome; where they do not, the line carries none.
+        return hits[0] if hits and all(h == hits[0] for h in hits) else None
+
     lp0 = site / "legislators.json"
     by_slug = ({m["slug"]: str(m.get("id")) for m in
                 json.loads(lp0.read_text(encoding="utf-8")) if m.get("slug")}
@@ -533,7 +559,10 @@ def main():
                              milestone=FC.milestone(ek, e.get("text")),
                              plain=(lambda w: f"{b['n']} \u2014 {w}" if w else "")(
                                  PA.plain(e.get("text") or "", b["id"], next_line=then.get(id(e), ""))),
-                             meeting=PA.meeting(e.get("text")))
+                             meeting=PA.meeting(e.get("text")),
+                             rollcall=(rollcall_for((str(b.get("year") or ""), b["id"].upper()),
+                                                    t[3][:10], e.get("text"))
+                                       if ek == "vote" else None))
                 if it:
                     fc_items[t[4]] = it
 

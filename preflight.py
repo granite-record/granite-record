@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.640
+# GRANITE_VERSION: 2026-09-04.641
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -36252,7 +36252,46 @@ def _follow_mail_matches_site():
     assert inks and {k: v.upper() for k, v in inks.items()} == want and \
         set(inks) == {"active"} | set(said.values()), (
         f"mail.js STATUS_INK {inks} is not app.css's light --st-* inks {light}")
-    return "ok", f"{len(site)} forms and {len(inks)} status inks, the site's"
+    m = re.search(r'export const VOTE_INK = \{ yes: "(#[0-9A-Fa-f]{6})", no: "(#[0-9A-Fa-f]{6})" \}', mail)
+    ring = re.search(r"--yes:(#[0-9A-Fa-f]{6});--no:(#[0-9A-Fa-f]{6});", css[:css.index("@media")])
+    assert m and ring and [x.upper() for x in m.groups()] == [x.upper() for x in ring.groups()], (
+        f"mail.js VOTE_INK {m.groups() if m else None} is not the vote ring's light --yes and --no "
+        f"{ring.groups() if ring else None}")
+    return "ok", f"{len(site)} forms, {len(inks)} status inks and the vote ring's two, the site's"
+
+
+@check("build", "a bill's floor roll call reaches the email as its count, found by its day and its "
+       "count, with no member named", needs=("follow_changes",))
+def _follow_rollcall_counts(FC):
+    """The person, 22 October 2026: bill emails should have "similar elements
+    to what's on the bill pages with the vote diagrams". build_feeds finds a
+    docket line's roll call in the bill's record by FC.FLOOR_COUNT and the
+    day, and FC.rollcall_detail keeps what the email's bar draws."""
+    m = FC.FLOOR_COUNT.search("Ought to Pass with Amendment 2026-0123h: MA RC 201-163 03/06/2026 HJ 7")
+    assert m and m.groups() == ("201", "163"), m
+    assert not FC.FLOOR_COUNT.search("Ought to Pass: MA VV 03/06/2026")
+    rc = {"date": "2026-03-06", "yeas": 201, "nays": 163, "passed": True, "threshold_needed": 183,
+          "threshold_rule": "", "tally": {"D": {"Yea": 11, "Nay": 150}, "R": {"Yea": 190, "Nay": 13},
+                                          "I": {"Yea": 0, "Nay": 0}},
+          "members": [{"n": "Rep. Someone", "p": "R", "v": "Yea"}]}
+    got = FC.rollcall_detail(rc)
+    assert got == {"yeas": 201, "nays": 163, "passed": True, "need": 183,
+                   "parties": [["R", 190, 13], ["D", 11, 150]]}, got
+    assert "Someone" not in json.dumps(got), "a member's name reached the changes file"
+    assert FC.rollcall_ok(got) and not FC.rollcall_ok({**got, "members": []})
+    assert FC.rollcall_detail({**rc, "threshold_unknown": True}).get("need") is None, (
+        "a threshold the record does not know is drawn as a need")
+    for bad in ({**rc, "yeas": None}, {**rc, "passed": None}, {**rc, "yeas": 0, "nays": 0}):
+        assert FC.rollcall_detail(bad) is None, bad
+    it = FC.item("g", "2026-03-06", "vote", "HB 1 \u2014 MA RC 201-163", rollcall=got)
+    assert it["rollcall"] == got
+    assert "rollcall" not in FC.item("g", "2026-03-06", "vote", "x", rollcall={"yeas": "201"})
+    src = Path("src/pages/build_feeds.py").read_text(encoding="utf-8")
+    assert "rollcall=(rollcall_for(" in src and "FC.FLOOR_COUNT.search" in src and \
+        "all(h == hits[0] for h in hits)" in src, (
+        "build_feeds no longer hands a bill's vote item its roll call's count, or draws one of two "
+        "roll calls that disagree")
+    return "ok", "found by day and count, counts only, a guess left out"
 
 
 @check("build", "the changes files mark milestones, set a ballot beside its roll call, and let a "
