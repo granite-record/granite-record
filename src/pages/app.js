@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.235
+// GRANITE_VERSION: 2026-09-07.236
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -9252,6 +9252,20 @@ function drawSessionVotes(){
     if(html&&slot.innerHTML!==html)slot.innerHTML=html;
   }
 }
+// VIEW THE REPORT (the owner's words, 23 October 2026): a term's list of
+// votes not on a bill links a session day's fold by its id, "#rep-2026-H-290"
+// (vote_passage.report_html), and a link to a shut fold should open it.
+(function(){
+  function openReport(){
+    var id="";
+    try{ id=decodeURIComponent((location.hash||"").slice(1)); }catch(e){ return; }
+    if(!/^rep-[\w-]+$/.test(id))return;
+    var el=document.getElementById(id);
+    if(el&&el.tagName==="DETAILS"&&!el.open){ el.open=true; el.scrollIntoView(); }
+  }
+  openReport();
+  window.addEventListener("hashchange",openReport);
+})();
 (function(){
   var tag=document.getElementById("sessvotes");
   if(!tag||typeof simpleDonut!=="function")return;

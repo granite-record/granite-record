@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.297 */
+/* GRANITE_VERSION: 2026-09-07.299 */
 /* ONE STYLESHEET FOR EVERY PAGE (23 October 2026). Every page of the site
    links this file, /app.css: the record pages shell.page() makes from
    bills.html, and the five build_pages.py writes -- the home page, Officials,
@@ -6048,6 +6048,7 @@ text-decoration-color:var(--rule-2);text-underline-offset:3px}
 .nbtab td.k{font-size:var(--t-sm);color:var(--ink-2)}
 .nbtab .nbrec{color:var(--ink-2)}
 .nbtab .nbwho{display:block;font-size:var(--t-sm);color:var(--ink-2);margin-top:var(--sp-1)}
+.nbtab .nbreplink{display:block;font-size:var(--t-sm);margin-top:var(--sp-1);color:var(--pine)}
 /* WHAT IT WAS IS THE ROW. The list borrows the member tab's fixed layout,
    whose second column is the wide one; here the second is the kind, a few
    words, and it took 47% while the description wrapped in 18% (the rendered
@@ -6811,6 +6812,31 @@ border-bottom:2px solid var(--ink-2);transform:rotate(-45deg);transition:transfo
 .nbj figcaption{font-size:var(--t-sm);color:var(--ink-2);margin:var(--sp-2) 0 0}
 .nbj figcaption a{color:var(--pine)}
 .nbonly .rcrec{font-style:italic}
+/* VIEW THE REPORT (the owner's words, 23 October 2026): the committee's report
+   a vote was on, whole, folded shut under the passage. Set as the passage is
+   -- the Journal's words in its serif, ruled at the left -- at a reading
+   measure, so eight thousand characters of an ethics report read on a phone
+   as paragraphs rather than as a column of fragments. */
+.nbrep{margin:var(--sp-3) 0 0;max-width:46rem}
+/* The fold says it opens: a caret before the words, turned down when open
+   (a flex summary loses the browser's own marker), and the words underlined
+   as the session day's other folds are (.sflab). */
+.nbrep>summary{cursor:pointer;font:600 var(--t-sm)/1.4 var(--sans);color:var(--pine);list-style:none;
+  padding:var(--sp-1) 0;min-height:2.75rem;display:flex;align-items:center;gap:var(--sp-3);
+  text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:.2em}
+.nbrep>summary::-webkit-details-marker{display:none}
+.nbrep>summary::before{content:"";flex:none;width:.45rem;height:.45rem;border-right:2px solid var(--pine);
+  border-bottom:2px solid var(--pine);transform:rotate(-45deg);transition:transform .15s}
+.nbrep[open]>summary::before{transform:rotate(45deg)}
+.nbrep>summary:hover,.nbrep>summary:focus-visible{text-decoration-thickness:2px}
+.nbrepb{margin:var(--sp-2) 0 0;padding:var(--sp-2) 0 var(--sp-2) var(--sp-4);
+  border-left:3px solid var(--rule-2);font:400 var(--t-ui)/1.6 var(--serif);color:var(--ink);
+  overflow-wrap:anywhere}
+.nbrepb p{margin:0 0 var(--sp-3)}
+.nbrepb p:last-child{margin-bottom:0}
+.nbrepb .nbjh{font:600 var(--t-sm)/1.4 var(--sans);letter-spacing:.04em;color:var(--ink-2)}
+.nbrepc{font-size:var(--t-sm);color:var(--ink-2);margin:var(--sp-2) 0 0}
+.nbrepc a{color:var(--pine)}
 .drec{margin:0 0 var(--sp-3)}
 .dremoved{margin:var(--sp-3) 0 0}
 .dconsent .dvr{margin-bottom:0}

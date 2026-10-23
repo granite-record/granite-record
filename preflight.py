@@ -14129,6 +14129,58 @@ _JM_HJ = {
         "The question is on the adoption of the Consent Calendar.\n\n"
         "A roll call is required.\n\n"
         "Roll Call, Yeas: 24 - Nays: 0. Adopted.\n"),
+    # MOTIONS ON A BILL'S OWN DEBATE (the owner's review, 23 October 2026).
+    # HB 1601's previous question, carried on a division after motions to
+    # table it and to postpone it, both on HB 1601 (12 March 2014); then a
+    # motion to limit debate under its own heading, naming no bill, which is
+    # the day's and no one bill's.
+    "journals/2014/HJ022.txt": (
+        "                                 HOUSE JOURNAL No. 22\n\n"
+        "                              Wednesday, March 12, 2014\n\n"
+        "\f1254                               12march2014HOUSERECORD\n\n"
+        "HB 1601, relative to mandatory headlamp use. MAJORITY: OUGHT TO PASS WITH AMENDMENT.\n"
+        "MINORITY: INEXPEDIENT TO LEGISLATE.\n\n"
+        "                                                 MOTION TO LAY ON THE TABLE\n\n"
+        "Rep. James Webb moved that HB 1601, relative to mandatory headlamp use, be laid on the "
+        "table.\nOn a division vote, 161 members having voted in the affirmative and 169 in the "
+        "negative, the motion failed.\n\n"
+        "The question now being adoption of the majority committee report of Ought to Pass with "
+        "Amendment.\nRep. Beaudoin spoke against.\n\n"
+        "                                            MOTION TO INDEFINITELY POSTPONE\n"
+        "Rep. Michael Garcia moved that HB 1601, relative to mandatory headlamp use, be "
+        "Indefinitely Postponed.\n\n"
+        "Rep. Gary Richardson moved the previous question.\n"
+        "On a division vote, 255 members having voted in the affirmative and 78 in the negative, "
+        "the motion was\nadopted.\n\n"
+        "                                              MOTION TO LIMIT DEBATE\n\n"
+        "Rep. Janvrin moved to limit debate to 3 minutes on each side.\n"
+        "On a division vote, with 166 members having voted in the affirmative, and 120 in the "
+        "negative, the motion\nwas adopted.\n"),
+    # A roll call the file files under no bill, "Divide 3rd Reading", that
+    # moved to divide HB 1570-FN out of a motion (20 March 2014): HB 1570's.
+    "journals/2014/HJ028.txt": (
+        "                                 HOUSE JOURNAL No. 28\n\n"
+        "                              Thursday, March 20, 2014\n\n"
+        "\f1422                               20march2014HOUSERECORD\n\n"
+        "                                      MOTION TO DIVIDE\n"
+        "Rep. Jasper moved to divide the question to remove HB 1570-FN, establishing a paint "
+        "stewardship\nprogram, from the Third Reading Motion.\n"
+        "Rep. Shurtleff requested a roll call; sufficiently seconded.\n\n"
+        "                                              YEAS 105 - NAYS 159\n\n"
+        "Burchell, Richard     Cormier, Jane\n\nand the motion failed.\n"),
+    # The Senate calls the question by voice in a bill's debate, and divides
+    # a question by the Chair's ruling, with no vote at all (3 May 2018).
+    "journals_senate/2018/SJ016.txt": (
+        "                       SENATE JOURNAL\n\nMay 3, 2018\n"
+        "The Senate met at 10:00 a.m.\n"
+        "\f1320  SENATEJOURNAL3MAY2018\n\n"
+        "HB 1458, relative to exempting certain rules governing marine species.\n"
+        "Ought to Pass with Amendment, Vote 4-1.\nSenator Avard for the committee.\n\n"
+        "SENATOR FELTES: Thank you, Mister President. Don't vote for this.\n\n"
+        "Senator Birdsell moved to call the question. Adopted.\n\n"
+        "The question is on the adoption of the Floor Amendment.\n\n"
+        "Senator Feltes moved to divide the question: Section 8 and Section 13.\n"
+        "The Chair ruled the question divisible.\n"),
 }
 
 
@@ -14149,12 +14201,15 @@ _JM_ROLLS = {"2025-2026": {"_procedural": [
     _jm_rc("2025", "H", 60, "2025-03-06", "Shall Member Continue", 171, 89, True)]},
     "2021-2022": {"_procedural": [
         _jm_rc("2021", "S", 11, "2021-01-06", "Introduction of Senate Bills", 24, 0, True),
-        _jm_rc("2021", "S", 12, "2021-01-06", "To Adjourn the Early Session", 24, 0, True)]}}
+        _jm_rc("2021", "S", 12, "2021-01-06", "To Adjourn the Early Session", 24, 0, True)]},
+    "2013-2014": {"_procedural": [
+        _jm_rc("2014", "H", 167, "2014-03-20", "Divide 3rd Reading", 105, 159, False)]}}
 
 
 @check("rollcalls", "a vote on no bill is shown in the Journal's own words only where its tally, "
-       "page date, question and outcome agree, a summary never names two bills, and a member's "
-       "discipline is summed up only by a person", needs=("journal_motions",))
+       "page date, question and outcome agree, a summary never names two bills, a vote that names "
+       "a member is summed up only by a person, a report is kept whole only where it is bounded, "
+       "and a motion on one bill's debate is that bill's", needs=("journal_motions",))
 def _journal_motions(JM):
     """The owner, 23 October 2026: "Those are often important votes that
     sometimes get reported on, but it's very hard to find that information
@@ -14187,9 +14242,9 @@ def _journal_motions(JM):
             "line": "Censure Rep. Travis Corcoran", "file": "journals/2026/HJ 14 May 21, 2026.txt",
             "page": 24, "approved": "2026-10-23"}}}), encoding="utf-8")
         JM.APPROVED = d / "nowhere.json"
-        entries, only, years, stats = JM.build(d / "rollcalls.json", d)
+        entries, only, years, stats, on_bills = JM.build(d / "rollcalls.json", d)
         JM.APPROVED = d / "lines.json"
-        approved, _o, _y, _s = JM.build(d / "rollcalls.json", d)
+        approved, _o, _y, _s, _b = JM.build(d / "rollcalls.json", d)
         bad = []
         uc = entries.get("2026-H-132") or {}
         said = [x["t"] for x in uc.get("said") or []]
@@ -14218,7 +14273,7 @@ def _journal_motions(JM):
             bad.append(f"2026-H-166, HB 1609-FN challenged as HB 1142, has a line "
                        f"{two.get('line')!r} or a bill {two.get('bill')!r}")
         cen = entries.get("2026-H-290") or {}
-        if cen.get("held") or cen.get("kind") != "discipline" or cen.get("line") or \
+        if cen.get("held") or cen.get("kind") != "reprimand" or cen.get("line") or \
                 cen.get("member") != "Travis Corcoran" or "informed Rep. Corcoran" not in (
                 cen.get("after") or "") or not any(
                 x["k"] == "report" and "formal censure of Representative Travis Corcoran" in x["t"]
@@ -14235,11 +14290,93 @@ def _journal_motions(JM):
                 bad.append(f"{key} is not held back for its {why}: {got}")
         if "2025-H-60" in entries:
             bad.append("2025-H-60's 171-89, printed nowhere, was placed at 190-156")
-        rep = [x for x in only if x.get("kind") == "discipline"]
+        rep = [x for x in only if x.get("kind") == "reprimand"]
         if len(rep) != 1 or (rep[0].get("yeas"), rep[0].get("nays"), rep[0].get("passed"),
                              rep[0].get("member"), rep[0].get("how")) != (
                 264, 89, True, "Paige Beauchemin", "division"):
             bad.append(f"the reprimand by division of 12 February 2026 reads {rep}")
+        # MISC VOTES (the owner, 23 October 2026): no kind a reader sees says
+        # "discipline", and a reprimand is filtered with every question that
+        # has no name of its own.
+        if any("discipl" in w.lower() for w in JM.KINDS.values()) or \
+                {JM.KINDS[k] for k in ("reprimand", "privileges", "motion", "other")} != {"Misc vote"} \
+                or {JM.GROUPS.get(k) for k in ("reprimand", "privileges", "motion", "other")} != {"misc"} \
+                or JM.GROUP_WORDS.get("misc") != "Misc votes":
+            bad.append("a kind a reader sees still frames a vote as discipline, or Misc votes is "
+                       "not the reprimand's group")
+        # VIEW THE REPORT: the Legislative Administration Committee's report,
+        # whole, from its heading to where the question is put, on its page.
+        r = cen.get("report") or {}
+        paras = r.get("paras") or []
+        if (r.get("heading"), r.get("page_from"), r.get("page_to")) != (
+                "REPORT OF THE COMMITTEE ON LEGISLATIVE ADMINISTRATION", 23, 23) or len(paras) != 1 \
+                or not paras[0].startswith("On March 5 and March 10, Representative Travis Corcoran") \
+                or not paras[0].endswith("Rep. Gregory Hill for the Committee. Vote: 10-2"):
+            bad.append(f"the censure's report reads {r}")
+        # A report not bounded for certain is not shown: another heading
+        # between it and its question, or a question naming another committee.
+        loose = ("\f9  1JANUARY2026HOUSERECORD\n\n      REPORT OF THE COMMITTEE ON RULES\n\n"
+                 + "The committee met and recommends the rule. " * 6
+                 + "\n\n        MOTION TO RECESS\n\nRep. Smith moved to recess.\n"
+                 "The question was to affirm the report of the committee on Rules.\n\n"
+                 "        YEAS 100 - NAYS 90\n")
+        got, why = JM.report_of(loose, loose.index("YEAS 100"))
+        other = loose.replace("        MOTION TO RECESS\n\nRep. Smith moved to recess.\n", "") \
+                     .replace("committee on Rules.", "committee on Legislative Ethics.")
+        got2, why2 = JM.report_of(other, other.index("YEAS 100"))
+        if got or "another heading" not in why or got2 or "not the report's" not in why2:
+            bad.append(f"a report not bounded for certain is kept: {why!r}, {why2!r}")
+        # Its paragraphs as the page reads them: a numbered section opens one
+        # only where the last ended, a page break is not a paragraph, a word
+        # the press broke is mended -- with its hyphen ("Mem-" "ber") or
+        # without ("com" "plaints", where "complaints" stands elsewhere), and
+        # a range keeps its hyphen ("2027-" "2036").
+        chunk = ("I. Introduction\n     The Committee received three complaints, regarding the conduct "
+                 "of\n\nRepresentative Spillane. The com\nplaints were made by a fellow Mem-\nber of "
+                 "the House about the 2027-\n2036 plan, under Paragraph\nIV. Principle of Conduct.\n"
+                 "\f64            19AUGUST2026HOUSERECORD\n\nand the conduct of individuals.\n"
+                 "II. Charges\n     The conduct alleged is as follows.\n")
+        got = JM._paragraphs(chunk, 0, len(chunk), JM._vocab(chunk + " complaints "))
+        want = ["I. Introduction",
+                "The Committee received three complaints, regarding the conduct of Representative "
+                "Spillane. The complaints were made by a fellow Member of the House about the "
+                "2027-2036 plan, under Paragraph IV. Principle of Conduct. and the conduct of "
+                "individuals.",
+                "II. Charges", "The conduct alleged is as follows."]
+        if got != want:
+            bad.append(f"a report's paragraphs read {got}")
+        # LIMITING DEBATE ON A BILL IS THE BILL'S: the roll call "Divide 3rd
+        # Reading" on HB 1570-FN; HB 1601's previous question by division; the
+        # Senate's call of the question by voice in HB 1458's debate; and not
+        # the day's limit on debate under its own heading, nor a division the
+        # Chair ruled, nor a roll call, nor a reconsideration or an amendment
+        # of a motion to limit debate.
+        div = entries.get("2014-H-167") or {}
+        if (div.get("on_bill"), div.get("bill_motion")) != ("HB1570", "divide"):
+            bad.append(f"2014-H-167, dividing HB 1570-FN, is not that bill's: {div.get('on_bill')!r}")
+        got = sorted((e["date"], e["body"], e["bill"], e["motion"], e["how"], e["yeas"], e["nays"],
+                      e["passed"], e["bill_from"]) for e in on_bills)
+        if got != [("2014-03-12", "H", "HB1601", "previous_question", "division", 255, 78, True,
+                    "debate"),
+                   ("2018-05-03", "S", "HB1458", "previous_question", "voice", None, None, True,
+                    "debate")]:
+            bad.append(f"the motions on a bill's debate read {got}")
+        for want_k in ("bill motions: held: a heading of its own (MOTION TO LIMIT DEBATE) stands "
+                       "between it and the bill's entry",
+                       "bill motions: held: the Chair ruled on it, and no vote was taken",
+                       "bill motions: a roll call: the roll-call file's"):
+            if not stats.get(want_k):
+                bad.append(f"no motion was held or left as {want_k[14:]!r}")
+        for s, want_k in (("Rep. Gary Richardson moved the previous question.", "previous_question"),
+                          ("Senator Birdsell moved to call the question.", "previous_question"),
+                          ("Rep. Weber moved that section two of HB 724-FN be divided from the "
+                           "bill.", "divide"),
+                          ("Rep. MacKay moved that the House reconsider its action whereby it "
+                           "adopted the motion to limit debate on HB 162.", ""),
+                          ("Rep. Vaillancourt moved to amend the motion to limit debate to 2 "
+                           "hours.", "")):
+            if JM.bill_motion_of(s) != want_k:
+                bad.append(f"{s!r} is read as {JM.bill_motion_of(s)!r}")
         # The hand-check of 23 October 2026: "Adjourn Late Session" paired
         # with a motion to adjourn from the Early Session (18 March 2021);
         # "Consent was withdrawn." as the objection it is (26 March 2025); a
@@ -14269,18 +14406,25 @@ def _journal_motions(JM):
         out = d / "jm.json"
         out.write_text(json.dumps({"rollcalls": {"2019-H-5": {"key": "2019-H-5", "body": "H"},
                                                  "2026-H-9": {"key": "2026-H-9", "body": "H"}},
-                                   "journal_only": [{"date": "2019-01-02", "body": "H"}]}),
+                                   "journal_only": [{"date": "2019-01-02", "body": "H"}],
+                                   "bill_votes": [{"date": "2019-01-03", "body": "H"},
+                                                  {"date": "2014-01-03", "body": "H"}]}),
                        encoding="utf-8")
-        doc = JM.write(entries, only, {("2026", "H"), ("2021", "S"), ("2025", "H")}, out)
+        doc = JM.write(entries, only, {("2026", "H"), ("2021", "S"), ("2025", "H"), ("2014", "H")},
+                       out, on_bills)
         if "2019-H-5" not in doc["rollcalls"] or "2026-H-9" in doc["rollcalls"] or \
-                not any(x.get("date") == "2019-01-02" for x in doc["journal_only"]):
+                not any(x.get("date") == "2019-01-02" for x in doc["journal_only"]) or \
+                not any(x.get("date") == "2019-01-03" for x in doc["bill_votes"]) or \
+                any(x.get("date") == "2014-01-03" for x in doc["bill_votes"]):
             bad.append("a run over some years took the others' entries, or kept a year it read")
         assert not bad, "; ".join(bad)
         shown = sum(1 for e in entries.values() if not e["held"])
         return "ok", (f"{shown} of {len(entries)} placed votes shown in the Journal's words, "
                       f"{len(entries) - shown} held back for their date, question or outcome; "
-                      "two bills, no summary; a censure summed up only by a person; the "
-                      "reprimand by division read; the silent year named; other years kept")
+                      "two bills, no summary; a censure summed up only by a person, its report "
+                      "kept whole; the reprimand by division read, a Misc vote; "
+                      f"{len(on_bills)} motions on a bill's debate found and the rest held; the "
+                      "silent year named; other years kept")
     finally:
         JM.APPROVED = keep
         shutil.rmtree(d, ignore_errors=True)
@@ -30628,9 +30772,28 @@ def _tdz():
 # 2026 in the fixture's rollcalls.json, as the parser writes it from House
 # Journal 6 of 5 March 2026 (the passage is that one's, the day the fixture's),
 # and a reprimand the Journal records by division alone.
+#
+# And the owner's review of that day: a committee's report whole under the
+# vote on it ("View the report"), the reprimand shown as a "Misc vote", and a
+# motion on HB 1442's own debate -- a roll call to divide it the roll-call
+# file files under no bill (2026-H-312), and the previous question moved on
+# it, carried on a division only the Journal records -- drawn under HB 1442.
 _NB_FIXTURE = {
-    "kinds": {"discipline": "Discipline of a member", "member_continue": "Shall the member continue",
-              "suspend_rules": "Suspending the rules"},
+    "kinds": {"reprimand": "Misc vote", "member_continue": "Shall the member continue",
+              "suspend_rules": "Suspending the rules", "motion": "Misc vote"},
+    "groups": {"reprimand": "misc", "privileges": "misc", "motion": "misc", "other": "misc"},
+    "group_words": {"misc": "Misc votes"},
+    "bill_votes": [{
+        "key": "2026-03-06-H-m140500", "body": "H", "date": "2026-03-06", "term": "2025-2026",
+        "bill": "HB1442", "bill_from": "debate", "motion": "previous_question",
+        "words": "Previous Question", "mover": "Sweeney", "how": "division",
+        "yeas": 201, "nays": 150, "passed": True,
+        "file": "journals/2026/HJ 06 March 5, 2026.txt", "journal": "House Journal 6",
+        "page": 141, "pdf_page": 141, "url": "",
+        "said": [{"k": "moved", "t": "Rep. Sweeney moved the previous question."},
+                 {"k": "outcome", "t": "On a division vote, with 201 members having voted in the "
+                                       "affirmative, and 150 in the negative, the motion was "
+                                       "adopted."}], "at": 140500}],
     "rollcalls": {"2026-H-311": {
         "key": "2026-H-311", "body": "H", "date": "2026-03-06", "term": "2025-2026",
         "file": "journals/2026/HJ 06 March 5, 2026.txt", "journal": "House Journal 6",
@@ -30648,12 +30811,32 @@ _NB_FIXTURE = {
                                        "vote."}],
         "member": "Nelson", "about": "the war in Iran", "member_id": "377204",
         "bill": "", "bills": [],
-        "line": "Whether Rep. Nelson could go on with remarks on the war in Iran"}},
+        "line": "Whether Rep. Nelson could go on with remarks on the war in Iran"},
+        "2026-H-312": {
+        "key": "2026-H-312", "body": "H", "date": "2026-03-06", "term": "2025-2026",
+        "file": "journals/2026/HJ 06 March 5, 2026.txt", "journal": "House Journal 6",
+        "page": 140, "pdf_page": 140, "page_date": "2026-03-06", "url": "",
+        "yeas": 150, "nays": 180, "passed": False, "words": "Divide",
+        "heading": "MOTION TO DIVIDE", "kind": "motion", "held": [],
+        "said": [{"k": "moved", "t": "Rep. Weber moved that section two of HB 1442 be divided from "
+                                     "the bill."},
+                 {"k": "outcome", "t": "and the motion failed."}],
+        "member": "", "member_id": "", "bill": "HB1442", "bills": ["HB1442"], "line": "",
+        "line_held": "no summary for this kind of passage",
+        "bill_motion": "divide", "on_bill": "HB1442"}},
     "journal_only": [{
         "key": "2026-03-06-H-d182020", "body": "H", "date": "2026-03-06", "term": "2025-2026",
         "file": "journals/2026/HJ 06 March 5, 2026.txt", "journal": "House Journal 6",
         "page": 32, "pdf_page": 32, "url": "", "how": "division", "yeas": 264, "nays": 89,
-        "passed": True, "heading": "MOTION TO REPRIMAND", "kind": "discipline",
+        "passed": True, "heading": "MOTION TO REPRIMAND", "kind": "reprimand",
+        "report": {"heading": "REPORT OF THE COMMITTEE ON LEGISLATIVE ADMINISTRATION",
+                   "paras": ["On March 5, Representative Jodi Nelson made two posts on a social "
+                             "media platform, and a complaint was filed with the Speaker, who "
+                             "referred the matter to this committee for review and report.",
+                             "The majority of the committee recommends that Representative Jodi "
+                             "Nelson be reprimanded by the House. Rep. Hill for the Committee. "
+                             "Vote: 10-2"],
+                   "page_from": 31, "page_to": 32, "pdf_from": 31, "pdf_to": 32},
         "said": [{"k": "question", "t": "The question being should Representative Jodi Nelson "
                                         "be reprimanded by the House of Representatives?"},
                  {"k": "outcome", "t": "On a division vote, with 264 members having voted in "
@@ -30737,6 +30920,12 @@ def _site_fixture(root):
         {"member_id": "377204", "name": "Nelson, Jodi", "party": "R",
          "label": "Nelson, Jodi(R) Rock 13", "year": "2026", "body": "H",
          "vote_number": "311", "bill": "", "question": "Shall Member Continue",
+         "date": "2026-03-06", "vote": "Nay"},
+        # A motion to divide HB 1442 the roll-call file files under no bill:
+        # the member Votes tab names the bill (vote_passage.move_on_bills).
+        {"member_id": "377204", "name": "Nelson, Jodi", "party": "R",
+         "label": "Nelson, Jodi(R) Rock 13", "year": "2026", "body": "H",
+         "vote_number": "312", "bill": "", "question": "Divide",
          "date": "2026-03-06", "vote": "Nay"}])
     w("data/towns.json", {"Raymond": [{"county": "Rockingham", "district": "13",
                                        "ward": "0", "seats": 2}]})
@@ -30871,6 +31060,13 @@ def _site_fixture(root):
          "question": "Shall Member Continue", "question_raw": "Shall Member Continue",
          "question_plain": "", "yeas": 91, "nays": 82, "voting": 173,
          "not_voting": 227, "seats": 400, "seated": 400, "vacancies": 0,
+         "threshold_needed": None, "threshold_rule": None, "passed": False,
+         "threshold_note": None, "title": "", "outcome_source": "journal"},
+        {"year": "2026", "body": "H", "number": "312", "date": "2026-03-06",
+         "time": "11:05", "bill": None, "procedural": True,
+         "question": "Divide", "question_raw": "Divide",
+         "question_plain": "", "yeas": 150, "nays": 180, "voting": 330,
+         "not_voting": 70, "seats": 400, "seated": 400, "vacancies": 0,
          "threshold_needed": None, "threshold_rule": None, "passed": False,
          "threshold_note": None, "title": "", "outcome_source": "journal"}]}})
     # What the Journal says the vote on no bill was about, as
@@ -47753,7 +47949,16 @@ def _nobill_votes_shown(VP):
     loses the one field the member tab reads or grows it on a vote on a bill;
     or if the member tab still says only "no bill" where the Journal says
     more, links to a day the site does not draw, or cannot be searched by
-    those words."""
+    those words.
+
+    And the owner's review of that day: it fails if a vote on a committee's
+    report loses the report, whole and shut under "View the report", or the
+    list's link to it; if a reprimand is headed or filtered as anything but a
+    Misc vote, or "discipline" is said; or if a motion on HB 1442's own
+    debate -- the roll call that divided it, filed under no bill, and the
+    previous question carried on a division the Journal alone records -- is
+    not drawn under HB 1442 on the session day and its Votes tab, or the
+    member's tab does not name the bill."""
     absent = [x for x in CHAIN_NEEDS if not _paths.locate(x).exists()]
     if absent:
         return "skip", "not here: " + ", ".join(absent)
@@ -47774,23 +47979,63 @@ def _nobill_votes_shown(VP):
                      "House Journal 6, March 6, 2026, page 142", "#page=142"):
             if want not in block:
                 bad.append(f"the vote on no bill lacks {want!r}")
-    jv = re.search(r'<div class="dvote nbvote nbonly" id="jv-2026-03-06-H-d182020".*?</figure></div>',
+    jv = re.search(r'<div class="dvote nbvote nbonly" id="jv-2026-03-06-H-d182020".*?</details></div>',
                    day, re.S)
     jv_html = jv.group(0) if jv else ""
     if VP.DIVISION_NOTE not in jv_html or "264–89" not in jv_html \
             or "The member it concerned:" not in jv_html:
         bad.append("the reprimand by division is not drawn, marked as a division, or named")
+    # MISC VOTE, NOT DISCIPLINE (the owner, 23 October 2026), wherever a
+    # reader sees the kind: the head, the filter, the rows.
+    if '<p class="dvh">Misc vote</p>' not in jv_html or re.search(r"(?i)discipline", day):
+        bad.append("the reprimand by division is not headed \"Misc vote\", or the day says "
+                   "\"discipline\"")
+    # VIEW THE REPORT: the committee's report, whole, folded shut under the
+    # passage, its heading and paragraphs and its own pages cited.
+    rep = re.search(r'<details class="nbrep" id="rep-2026-03-06-H-d182020"><summary>View the report'
+                    r'</summary><div class="nbrepb"><p class="nbjh">REPORT OF THE COMMITTEE ON '
+                    r'LEGISLATIVE ADMINISTRATION</p><p>On March 5, Representative Jodi Nelson.*?'
+                    r'Vote: 10-2</p></div><p class="nbrepc">The report as the House Journal prints '
+                    r'it, House Journal 6, March 6, 2026, pages 31–32\.</p></details>', jv_html, re.S)
+    if not rep or ' open' in jv_html.split('class="nbrep"', 1)[-1][:60]:
+        bad.append("the committee's report is not drawn whole, shut, under \"View the report\", "
+                   "with its pages")
     if 'href="session/nobill/2025-2026.html"' not in day and \
             'href="session/nobill/2025-2026"' not in day:
         bad.append("the session day's Votes on No Bill does not link its term's list")
     lst_p = site / "session" / "nobill" / "2025-2026.html"
     lst = lst_p.read_text(encoding="utf-8") if lst_p.exists() else ""
     rows = re.findall(r'<tr data-kind="([^"]+)"><td class="d" data-l="Day"><a href="([^"]+)"', lst)
-    if sorted(rows) != [("discipline", "session/H/2026-03-06#jv-2026-03-06-H-d182020"),
-                        ("member_continue", "session/H/2026-03-06#rc-2026-H-311")]:
+    if sorted(rows) != [("member_continue", "session/H/2026-03-06#rc-2026-H-311"),
+                        ("misc", "session/H/2026-03-06#jv-2026-03-06-H-d182020")]:
         bad.append(f"the term's list has rows {rows}")
-    if 'class="nbkind"' not in lst or "Shall the member continue (1)" not in lst:
-        bad.append("the term's list has no filter by kind")
+    if 'class="nbkind"' not in lst or "Shall the member continue (1)" not in lst \
+            or "Misc votes (1)" not in lst or re.search(r"(?i)discipline", lst):
+        bad.append("the term's list has no filter by kind, or no Misc votes, or says discipline")
+    if 'href="session/H/2026-03-06#rep-2026-03-06-H-d182020">View the report</a>' not in lst:
+        bad.append("the term's list does not link the report's fold on the session day")
+    # A MOTION ON HB 1442'S OWN DEBATE IS HB 1442'S (vote_passage): the roll
+    # call to divide it, filed under no bill, is drawn under its card and not
+    # listed; the previous question carried on a division only the Journal
+    # records is drawn under the card too, and on the bill's Votes tab.
+    card = re.search(r'id="HB1442".*?(?=<article|</section>)', day, re.S) or \
+        re.search(r'HB 1442.*?Votes on No Bill', day, re.S)
+    card_html = card.group(0) if card else ""
+    if "Divide the Question" not in card_html or "150–180" not in card_html \
+            or "Previous Question" not in card_html or "201–150" not in card_html:
+        bad.append("HB 1442's card does not draw the division of its question and its previous "
+                   "question")
+    if "2026-H-312" in lst or 'id="rc-2026-H-312"' in day:
+        bad.append("the roll call that divided HB 1442 is still listed as a vote on no bill")
+    bill_p = site / "bill" / "2026" / "hb1442.html"
+    bill_html = bill_p.read_text(encoding="utf-8") if bill_p.exists() else ""
+    if not re.search(r'"question": "Previous Question".{0,400}"vote_kind": "DV"', bill_html, re.S) \
+            or '"question": "Divide"' not in bill_html:
+        bad.append("HB 1442's Votes tab lacks its previous question by division or its division "
+                   "of the question")
+    mem = json.loads((site / "legislators" / "377204.json").read_text(encoding="utf-8"))
+    if [v.get("b") for v in mem.get("votes") or [] if v.get("k") == "2026-H-312"] != ["HB1442"]:
+        bad.append("the member's vote to divide HB 1442 does not name the bill")
     # A reprimand with no approved line is told apart by the member the
     # passage names; one with a line says it there, and not twice.
     if '<span class="nbwho">The member it concerned: Rep. Jodi Nelson</span>' not in lst \
@@ -47834,9 +48079,12 @@ def _nobill_votes_shown(VP):
         bad.append("the member tab's search does not find a vote by its description")
     assert not bad, "; ".join(bad)
     return "ok", ("the session day's vote headed by its kind, the record's words kept, the "
-                  "Journal quoted with its page and link, the division marked; the term's list "
-                  "filtered by kind and linked to each anchor, from the day and the chamber; one "
-                  "field in the index; the member tab's words, linked and searchable")
+                  "Journal quoted with its page and link, the division marked, the report shut "
+                  "under View the report; a reprimand a Misc vote; the term's list filtered by "
+                  "kind and linked to each anchor and report, from the day and the chamber; one "
+                  "field in the index; the member tab's words, linked and searchable; HB 1442's "
+                  "division of its question and its previous question under its card, on its "
+                  "Votes tab and named on the member's tab")
 
 
 # A member's two bills tabs and a committee's, as renderMemberBills and
@@ -48986,8 +49234,10 @@ def _rollcalls_by_term():
                         .read_text(encoding="utf-8"))
         # The votes tab also carries voice and division votes read off the
         # docket, which have no tally and no member grid. The roll call FILE's
-        # entries are the ones with a tally, and those are what is at issue.
-        rcs = [r for r in hb.get("rollcalls", []) if r.get("tally")]
+        # entries are the ones with a tally, and those are what is at issue --
+        # but not the fixture's motion to divide HB 1442, which the file files
+        # under no bill and vote_passage draws under it (23 October 2026).
+        rcs = [r for r in hb.get("rollcalls", []) if r.get("tally") and r.get("question") != "Divide"]
         assert len(rcs) == 1, (f"HB1442 shows {len(rcs)} recorded roll calls; "
                                "the 2023-2024 bill of the same number has "
                                "leaked in")
@@ -48998,6 +49248,8 @@ def _rollcalls_by_term():
         assert votes == {"Yea"}, (f"the member grid holds {sorted(votes)}; the "
                                   "previous term's Nay has been counted too")
         idx = {x["id"]: x for x in _site_bills(root / "site")}
+        # Its own roll call, and not 2024's (the motion to divide it is a
+        # procedural roll call, which nrc does not count).
         assert idx["HB1442"]["nrc"] == 1, idx["HB1442"]["nrc"]
         return "ok", "the same number in two terms stays two bills"
     finally:

@@ -15,7 +15,7 @@ it is, what it is for and how an entry is added.
 | `officials.json` | the Governor, the Executive Councillors and the members of Congress, from four official sources; since October 2026 also the Secretary of State, the State Treasurer, the Attorney General, the county officers, the heads of the executive departments and the Supreme and Superior Courts' justices, each with the page it was read from, and a seat's successor with the day they take office (below) | `src/parse/build_members_elect.py`'s `read_officials`, the one reader: the Officials page, the town pages, the district map and `src/parse/officers.py` |
 | `members_elect.json` | who a general election's winners are where the name alone cannot say, which races are not final, and a winner held off the pages | `src/parse/build_members_elect.py` |
 | `status/status.txt` | the state of the session -- session days, deadlines, sine die -- which no published file carries | `src/pages/build_site_v2.py` |
-| `vote_lines.json` | the one-line summary of a vote on a member's discipline (a reprimand, a censure, an expulsion, a member's privileges), approved against the Journal's page; such a vote shows only the Journal's words until a line is here. Empty when it was made, 23 October 2026 | `src/parse/journal_motions.py` |
+| `vote_lines.json` | the one-line summary of a vote that names a member (a reprimand, a censure, an expulsion, a member's privileges; shown as a "Misc vote"), approved against the Journal's page; such a vote shows only the Journal's words until a line is here. Empty when it was made, 23 October 2026 | `src/parse/journal_motions.py` |
 
 ## A successor in `officials.json`
 

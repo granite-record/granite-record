@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-23.3
+# GRANITE_VERSION: 2026-10-23.4
 """
 A page a term of the votes not on a bill: what each was about, how it went,
 and the session day it was taken on.
@@ -12,10 +12,13 @@ GenCourt since the vote is just labeled something like voting whether to
 approve the committee report with no other context." The session days now
 quote the Journal for each of them (vote_passage, from journal_motions.json);
 this lists a term's of them in one place, both chambers, newest first,
-filterable by the kind of question -- a reprimand, an appeal of a ruling, a
-member allowed to go on speaking, a rules suspension -- each row linked to
-the roll call's own anchor on its day's page, where the Journal's words and
-page are.
+filterable by the kind of question -- an appeal of a ruling, a member
+allowed to go on speaking, a rules suspension, and "Misc votes" for the
+rest (the owner's framing, 23 October 2026: not "discipline of a member") --
+each row linked to the roll call's own anchor on its day's page, where the
+Journal's words and page are, and to the committee's report where the vote
+was on one ("View the report"). A roll call on no bill that divided,
+limited or called the question of one bill is that bill's, and not listed.
 
 WHAT A ROW SAYS. The day, the chamber, the kind of question, a description,
 the count and the outcome. The description is the one-line summary the
@@ -137,6 +140,7 @@ def rows_of(rollcalls, site):
                 "line": (e or {}).get("line") or "",
                 "heading": (e or {}).get("heading") or "",
                 "words": words, "shown": bool(e), "member": (e or {}).get("member") or "",
+                "report": VP.report_anchor(e) if (e or {}).get("report") else "",
                 "yeas": r.get("yeas"), "nays": r.get("nays"), "passed": r.get("passed"),
                 "how": "roll call",
                 "link": anchor_page(site, r.get("body"), day, f"rc-{key}", near) if day else "",
@@ -147,6 +151,7 @@ def rows_of(rollcalls, site):
             "key": key, "body": e.get("body"), "date": e.get("date"), "kind": e.get("kind"),
             "line": e.get("line") or "", "heading": e.get("heading") or "", "words": "",
             "shown": True, "member": e.get("member") or "", "yeas": e.get("yeas"), "nays": e.get("nays"),
+            "report": VP.report_anchor(e) if e.get("report") else "",
             "passed": e.get("passed"), "how": e.get("how"),
             "link": anchor_page(Path(site), e.get("body"), e.get("date"), f"jv-{key}"),
             "n": 10 ** 6 + int(e.get("at") or 0)})
@@ -167,12 +172,12 @@ def _title(h):
 
 
 # The words build_session_pages.journal_extra_html puts before the member.
-WHO = {"discipline": "The member it concerned", "privileges": "The member it concerned",
+WHO = {"reprimand": "The member it concerned", "privileges": "The member it concerned",
        "member_continue": "The member speaking"}
 
 
 def row_html(x):
-    label = VP.load()["kinds"].get(x["kind"], "") or "Another question"
+    label = VP.load()["kinds"].get(x["kind"], "") or "Misc vote"
     if x["line"]:
         desc = E(x["line"])
     elif x["shown"] and x["heading"]:
@@ -193,6 +198,11 @@ def row_html(x):
     if role and x.get("member") and not x["line"]:
         title = "Rep." if x["body"] == "H" else "Sen."
         desc += f'<span class="nbwho">{role}: {E(title)} {E(x["member"])}</span>'
+    # VIEW THE REPORT (the owner, 23 October 2026): the committee's report the
+    # vote was on, in its fold on the session day, which the link opens.
+    if x.get("report") and x["link"]:
+        page = x["link"].split("#", 1)[0]
+        desc += (f'<a class="nbreplink" href="{E(page)}#{E(x["report"])}">View the report</a>')
     when = E(C.date_words(x["date"])) if x["date"] else ""
     when = f'<a href="{E(x["link"])}">{when}</a>' if x["link"] and when else when
     if x["how"] == "division":
@@ -203,7 +213,7 @@ def row_html(x):
         count, how = f'{x["yeas"]}–{x["nays"]}', ""
     chip = C.vote_chip(None, x["passed"], "", {}) if x["passed"] is not None else ""
     note = f'<small>{E(how)}</small>' if how else ""
-    return (f'<tr data-kind="{E(x["kind"])}"><td class="d" data-l="Day">{when}'
+    return (f'<tr data-kind="{E(VP.group_of(x["kind"]))}"><td class="d" data-l="Day">{when}'
             f'<span class="vch">{E(CHAMBER.get(x["body"], ""))}</span></td>'
             f'<td class="k" data-l="Kind">{E(label)}</td>'
             f'<td class="b" data-l="What it was">{desc}</td>'
@@ -230,9 +240,12 @@ SCRIPT = """<script>
 
 def page_body(term, rows, terms, path, base):
     kinds = VP.load()["kinds"]
-    n = Counter(x["kind"] for x in rows)
+    # The filter names a group once: "Misc votes" for a reprimand, a member's
+    # privileges and every question with no name of its own (VP.group_of).
+    n = Counter(VP.group_of(x["kind"]) for x in rows)
+    groups = list(dict.fromkeys(VP.group_of(k) for k in kinds))
     opts = '<option value="">Every kind</option>' + "".join(
-        f'<option value="{E(k)}">{E(w)} ({n[k]})</option>' for k, w in kinds.items() if n[k])
+        f'<option value="{E(g)}">{E(VP.group_words(g))} ({n[g]})</option>' for g in groups if n[g])
     others = " &middot; ".join(
         (f'<b>{E(t)}</b>' if t == term else f'<a href="{E(href(t))}">{E(t)}</a>')
         for t in sorted(terms, reverse=True))
@@ -243,7 +256,7 @@ def page_body(term, rows, terms, path, base):
         "title": f"Votes Not on a Bill, {E(term)}",
         "line": ("Every vote the House and the Senate took in the term on a question that was on "
                  "no bill: its own rules, a ruling of the chair, a member allowed to go on "
-                 "speaking, a member&rsquo;s discipline."),
+                 "speaking, and the rest."),
         "facts": [["Votes", f"{len(rows):,}"],
                   ["In the Journal\u2019s Words", f"{shown:,}",
                    "quoted on the session day, with the page"]],
@@ -268,8 +281,8 @@ def write(site, base, term, rows, terms):
     name = f"Votes Not on a Bill, {term}"
     desc = (f"Every roll call and division the New Hampshire House and Senate took in {term} on a "
             "question that was on no bill -- rules suspensions, appeals of the chair's ruling, "
-            "members allowed to continue, reprimands and censures -- with what the Journal says "
-            "each was about.")
+            "members allowed to continue, and the rest -- with what the Journal says each was "
+            "about.")
     html = S.page(S.template(site), path=path, base=base, title=f"{name} | Granite Record",
                   og_title=name, description=desc, globals={"GR_STATIC": True},
                   og_type="website", jsonld=LD.listing(name, desc, base, S.canon(path)),
@@ -295,6 +308,13 @@ def main():
         rollcalls = json.loads(Path(a.rollcalls).read_text(encoding="utf-8"))
     except (OSError, ValueError):
         rollcalls = {}
+    # A roll call on no bill that divided, limited or called the question of
+    # one bill is that bill's, on its Votes tab and under it on the session
+    # day (vote_passage.move_on_bills): it is not listed here.
+    rollcalls, moved = VP.move_on_bills(rollcalls)
+    if moved:
+        print(f"  {len(moved)} roll call(s) on one bill's debate left to their bill: "
+              + ", ".join(f"{k} ({b})" for k, b in sorted(moved.items())))
     by_term = rows_of(rollcalls, site)
     (site / FOLDER).mkdir(parents=True, exist_ok=True)
     urls = [write(site, base, t, rows, by_term) for t, rows in sorted(by_term.items())]
