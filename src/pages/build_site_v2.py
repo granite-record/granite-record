@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.225
+# GRANITE_VERSION: 2026-09-05.226
 """
 Generate the faceted site from real General Court data.
 
@@ -2836,14 +2836,27 @@ def vote_date(s):
         return (0, 0, 0)
 
 
-def write_rollcall_index(out, rollcalls, votes_by_member):
+def write_rollcall_index(out, rollcalls, cards=None):
     """One shared file describing all 1,504 roll calls.
 
     A legislator's page listed 1,081 rows of "HB2026 / Veto Override / Yea":
-    no plain English for the question, no outcome, and no way to see that a
-    member had broken with their own party. Everything needed to answer that
-    is already built -- rollcalls.json has the tallies and the plain-English
-    question, and the party split falls out of the member votes themselves.
+    no plain English for the question and no outcome. Everything needed to
+    answer that is already built: rollcalls.json has the tallies, the
+    plain-English question and the recorded outcome.
+
+    THE PREVAILING SIDE, NOT A PARTY'S (the person, 23 October 2026: "I'd
+    rather categorize votes by whether or not the member voted on the
+    prevailing side of the motion since I don't want to label either party as
+    taking a position on a bill"). The party split this file carried, from
+    which the Votes tab said "voted with Republicans" or "against Democrats",
+    is gone; what decides the side a member was on is `p`, the clerk's
+    recorded outcome. And for the tab to draw a vote as its bill page does
+    (option A of that day): `mk` and `mf`, the approved vote words' key and
+    fill (motions.classify, as the bill record has them); `nd`, what the yes
+    side had to reach; and `c`, where the roll call's card is on its bill's
+    Votes tab, the index into that bill record's `rollcalls` (`cards`, which
+    build_bills fills), so the ring and the members' names come from the bill
+    record itself, fetched when a reader opens them.
 
     It is one file rather than a copy inside each of the 406 member files
     because the same roll calls describe all of them: repeated, it would add
@@ -2853,8 +2866,10 @@ def write_rollcall_index(out, rollcalls, votes_by_member):
     the term's bill index loaded and can look the title up there.
     """
     ix = {}
-    for term_bills in rollcalls.values():
-        for rows in term_bills.values():
+    cards = cards or {}
+    motions = _WORDBOOK["votes"]["motions"]
+    for term, term_bills in rollcalls.items():
+        for bid, rows in term_bills.items():
             for r in rows:
                 # The same key main() builds votes_by_bill with. A vote
                 # sequence number restarts each session, so the year and the
@@ -2879,22 +2894,16 @@ def write_rollcall_index(out, rollcalls, votes_by_member):
                 # member's Votes row says so, as the bill's vote card does.
                 if r.get("outcome_conflict"):
                     ix[key]["oc"] = r["outcome_conflict"]
-
-    # HOW EACH PARTY VOTED, so a member's page can say when they broke with
-    # their own. Yea and Nay only: a member not voting has not taken a side,
-    # and counting an excused absence as agreement with anybody would be an
-    # invention.
-    split = defaultdict(lambda: defaultdict(lambda: [0, 0]))
-    for rows in votes_by_member.values():
-        for v in rows:
-            key = f'{v["year"]}-{v["body"]}-{v["vote_number"]}'
-            party = (v.get("party") or "").strip()[:1].upper()
-            side = (v.get("vote") or "").strip().lower()
-            if party and side in ("yea", "nay"):
-                split[key][party][0 if side == "yea" else 1] += 1
-    for key, parties in split.items():
-        if key in ix:
-            ix[key]["s"] = {p: c for p, c in sorted(parties.items()) if any(c)}
+                k = MO.classify(r.get("question"), bid, r.get("body") or "", motions)
+                if k.get("mk"):
+                    ix[key]["mk"] = k["mk"]
+                if k.get("mf"):
+                    ix[key]["mf"] = k["mf"]
+                if r.get("threshold_needed"):
+                    ix[key]["nd"] = r["threshold_needed"]
+                card = (cards.get(term) or {}).get(bid, {}).get(key)
+                if card is not None:
+                    ix[key]["c"] = card
 
     f = out / "rollcalls_index.json"
     f.write_text(json.dumps(ix, separators=(",", ":"), sort_keys=True),
@@ -11849,7 +11858,6 @@ def main():
         votes_by_member[v["member_id"]].append(v)
     print(f"{len(bills):,} bills, {len(legs):,} legislators, "
           f"{sum(len(x) for x in votes_by_member.values()):,} member votes")
-    write_rollcall_index(out, rollcalls, votes_by_member)
 
     # Sitting members who also voted under a number in the other chamber, joined
     # on the rules member_links.py sets out -- not on the name alone, which is
@@ -11992,6 +12000,9 @@ def main():
     # bills' Votes tabs say: who presided over each roll call, and where each
     # roll call's card is (write_floor_record, FLOOR_RECORD).
     write_floor_record(D, votes_by_member, rc_cards, floor_moments)
+    # The members' Votes tabs' shared file, once build_bills has said where
+    # each roll call's card is (write_rollcall_index).
+    write_rollcall_index(out, rollcalls, rc_cards)
     lg = build_legislators(out, legs, votes_by_member, towns, unnamed,
                            sponsored, bill_year, links, former, offices,
                            index_rows={(r.get("term"), r.get("id")): r for r in index})

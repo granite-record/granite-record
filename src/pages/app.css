@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.292 */
+/* GRANITE_VERSION: 2026-09-07.293 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -5997,13 +5997,21 @@ text-decoration-color:var(--rule-2);text-underline-offset:3px}
    7.43:1 on white and 5.71 on the wash. */
 .votes .v-nay{color:var(--st-done)}
 .votes .none{color:var(--ink-2);font-style:italic}
-/* WITH OR AGAINST THEIR OWN PARTY, in ink and not in colour. Green for
-   agreeing with your party and red for not would be this page rating a
-   member, which the site does not do anywhere else and will not start doing
-   here. Both are the same grey; the one worth noticing is the heavier. */
-.votes .pm{display:block;font-style:normal;font-size:var(--t-sm);color:var(--ink-2);
+/* THE PREVAILING SIDE (app.js prevailed, 23 October 2026), in ink and not
+   in colour: green for the winning side and red for the losing one would be
+   this page rating a member, which the site does not do. Both are the same
+   grey; the words say which. */
+.votes .pside{display:block;font-style:normal;font-size:var(--t-sm);color:var(--ink-2);
   margin-top:var(--sp-2)}
-.votes .pm.broke{color:var(--ink);font-weight:600}
+/* HOW EVERYONE VOTED, folded under each row (app.js voteRing): the bill
+   page's ring and party rows, opened in place. The row has no rule of its
+   own above it, so it reads as part of the vote over it. */
+.votes tr.vring td{padding-top:0;border-top:0}
+table.votes tr:has(+ tr.vring) td{border-bottom:0}
+.votes tr.vring summary{cursor:pointer;color:var(--pine);font-size:var(--t-sm);
+  font-weight:600;padding:var(--sp-1) 0;width:max-content}
+.votes tr.vring summary:hover,.votes tr.vring summary:focus-visible{text-decoration:underline}
+.votes tr.vring .vringbody{padding:var(--sp-4) 0 var(--sp-5)}
 /* The chamber a vote was cast in, under its date, on the rare term a member
    sat in both. */
 .votes .vch{display:block;font-size:var(--t-label);letter-spacing:.05em;text-transform:uppercase;
@@ -6037,6 +6045,8 @@ text-decoration-color:var(--rule-2);text-underline-offset:3px}
     overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
   .vfull tbody,.vfull tr,.vfull td{display:block;width:auto}
   .vfull tr{border-bottom:1px solid var(--rule);padding:var(--sp-5) 0}
+  .vfull tr:has(+ tr.vring){border-bottom:0;padding-bottom:0}
+  .vfull tr.vring{padding-top:0}
   /* table.vfull, not .vfull: the rule this is turning off is written
      table.votes td, and a single class does not outrank an element and a
      class. It lost, so every cell kept its own bottom rule and one vote read

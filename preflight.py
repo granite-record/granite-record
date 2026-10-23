@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.647
+# GRANITE_VERSION: 2026-09-04.648
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -46654,6 +46654,118 @@ def _bill_status_select_categories():
     return "ok", ("the select offers the search's categories a bill of the tab is in, each in "
                   "its chip's class with its count, filters by them with each card keeping its "
                   "word, is painted by its choice, and keeps a choice made elsewhere at none")
+
+
+# A member's Votes tab, as renderMemberVotes draws it (option A, 23 October
+# 2026), in node: the shared index set by hand, and each filter in turn.
+_MEMBER_VOTES_HARNESS = r"""
+require("./stub.js");
+const fs = require("fs");
+globalThis.fetch = async () => ({ok: false, status: 404, text: async () => "", json: async () => null});
+let s;
+try { s = (0, eval)(fs.readFileSync("./page.js", "utf8")
+  + "; ({renderMemberVotes, voteHead, voteChip, BILL_RECS, IDX,"
+  + "   setRCX: v => { RCX = v; }, setPage: p => { PAGE = p; },"
+  + "   setMeta: m => { META = Object.assign(META || {}, m); }})"); }
+catch (e) { console.log("LOAD " + e.constructor.name + ": " + e.message); process.exit(1); }
+const fx = JSON.parse(fs.readFileSync("./fx.json", "utf8"));
+s.IDX.length = 0; fx.rows.forEach(r => s.IDX.push(r));
+s.setRCX(fx.rcx);
+s.setMeta({terms: ["2025-2026"]});
+const out = {};
+const page = extra => s.setPage(Object.assign({kind: "member", terms: ["2025-2026"],
+  term: "2025-2026", data: fx.member, vfilter: "", vside: "", vq: "", vopen: {}, vshow: 0}, extra));
+try {
+  for (const [k, extra] of Object.entries(fx.cases)) { page(extra); out[k] = s.renderMemberVotes(fx.member); }
+  out.head = s.voteHead("otp", "", {});
+  out.chip = s.voteChip("override_first", false, "HB12", {Chamber: "House"});
+  Object.assign(s.BILL_RECS, fx.recs);
+  page({vopen: {"2026-H-1": true}}); out.ringed = s.renderMemberVotes(fx.member);
+  page({vopen: {"2026-H-3": true}}); out.counted = s.renderMemberVotes(fx.member);
+} catch (e) { out.threw = e.constructor.name + ": " + e.message + " " + (e.stack || "").split("\n")[1]; }
+process.stdout.write("\n@@" + JSON.stringify(out));
+"""
+
+
+@check("frontend", "a member's Votes tab says whether each vote was on the prevailing side, by "
+                   "the recorded outcome, names no party's side, and draws everyone's votes "
+                   "from the bill's record", needs=("build_site_v2",))
+def _member_votes_prevailing_side(V):
+    """The person, 23 October 2026: "I'd rather categorize votes by whether or
+    not the member voted on the prevailing side of the motion since I don't
+    want to label either party as taking a position on a bill", and option A:
+    the bill page's words for the motion and its result, and its ring under
+    each vote. The side is the clerk's outcome's, never the larger number's:
+    a failed veto override with more yeas than nays has its noes prevailing.
+    No side for an absence, nor where record and ballots disagree. The shared
+    index the tab reads carries the motion's key and the card's place, and no
+    party split."""
+    import tempfile as _tf
+    rc = lambda n, q, y, nn, p, **k: {"year": "2026", "body": "H", "number": n, "question": q,
+                                      "question_plain": q.lower(), "yeas": y, "nays": nn,
+                                      "passed": p, "procedural": False, **k}
+    rollcalls = {"2025-2026": {"HB12": [rc(1, "Ought to Pass", 200, 150, True),
+                                        rc(2, "Override Veto", 220, 160, False,
+                                           threshold_needed=254)],
+                               "": [rc(3, "Adjourn", 10, 300, False)]}}
+    with _tf.TemporaryDirectory() as td:
+        V.write_rollcall_index(Path(td), rollcalls, {"2025-2026": {"HB12": {"2026-H-1": 0,
+                                                                           "2026-H-2": 1}}})
+        ix = json.loads((Path(td) / "rollcalls_index.json").read_text(encoding="utf-8"))
+    assert ix["2026-H-1"].get("mk") == "otp" and ix["2026-H-1"].get("c") == 0, ix["2026-H-1"]
+    assert ix["2026-H-2"].get("mk") == "override_first" and ix["2026-H-2"].get("nd") == 254 \
+        and ix["2026-H-2"].get("c") == 1, ix["2026-H-2"]
+    assert "c" not in ix["2026-H-3"] and not any("s" in e for e in ix.values()), (
+        "the shared index carries a party split, or a card for a roll call on no bill")
+
+    vote = lambda n, v, b="HB12", q="": {"k": f"2026-H-{n}", "d": f"3/{n}/2026", "b": b,
+                                        "y": "2026" if b else "", "q": q, "v": v}
+    member = {"party_code": "D", "service": [{"b": "H"}],
+              "votes": [vote(1, "Yea"), vote(2, "Yea"), vote(3, "Nay", "", "Adjourn"),
+                        vote(4, "Nay", "HB40"), vote(5, "Excused", "HB40")]}
+    rcx = dict(ix)
+    rcx["2026-H-4"] = {"q": "itl", "y": 170, "n": 190, "p": 0, "mk": "itl",
+                       "oc": "The record and the ballots disagree."}
+    rcx["2026-H-5"] = {"q": "otp", "y": 300, "n": 10, "p": 1, "mk": "otp"}
+    rows = [{"id": b, "n": re.sub(r"^([A-Z]+)", r"\1 ", b), "title": t, "term": "2025-2026",
+             "year": 2026} for b, t in (("HB12", "relative to the twelfth thing"),
+                                       ("HB40", "relative to the fortieth thing"))]
+    card = {"yeas": 200, "nays": 150, "passed": True, "threshold_needed": 176, "body": "H",
+            "date": "2026-03-01", "tally": {"R": {"Yea": 150, "Nay": 30}, "D": {"Yea": 50, "Nay": 120}},
+            "members": [{"n": "Rep. A (R)", "p": "R", "v": "Yea", "s": "a"},
+                        {"n": "Rep. B (D)", "p": "D", "v": "Nay", "s": "b"}]}
+    cases = {"all": {}, "won": {"vside": "won"}, "lost": {"vside": "lost"},
+             "find": {"vq": "HB 12"}, "words": {"vq": "adjourn"}, "none": {"vq": "HB 999"}}
+    got = _node_app(_MEMBER_VOTES_HARNESS, {"fx.json": json.dumps(
+        {"member": member, "rcx": rcx, "rows": rows, "cases": cases,
+         "recs": {"2026/HB12": {"rollcalls": [card]}}})})
+    if got is None:
+        return "skip", "app.js, dom_stub.js or node is not here"
+    assert "threw" not in got, f"the Votes tab threw {got['threw']}"
+    rows_of = lambda h: len(re.findall(r'<td class="d"', h))
+    allh = got["all"]
+    assert allh.count("On the prevailing side") == 2 and allh.count("On the losing side") == 1, (
+        "the sides are not yes-carried, no-failed: the failed override's yea must lose, the failed "
+        "adjournment's nay prevail, and a disputed record and an absence carry no side")
+    assert "Prevailing side (2)" in allh and "Losing side (1)" in allh, "the Side select's counts"
+    party = re.search(r"\b(?:with|against) (?:Republicans|Democrats)\b|Their party", allh)
+    assert not party, f"the tab still names a party's side: {party.group(0)}"
+    assert got["head"] and got["head"] in allh, "the motion is not in the bill page's words"
+    assert got["chip"] and got["chip"] in allh, "the result is not the bill page's chip"
+    for k, n in (("won", 2), ("lost", 1), ("find", 2), ("words", 1), ("none", 0)):
+        assert rows_of(got[k]) == n, f"{k}: {rows_of(got[k])} rows, not {n}"
+    assert rows_of(allh) == 5 and allh.count("<details data-vring=") == 5 \
+        and " open>" not in allh, "every vote does not carry its ring, folded"
+    # The bill page's ring has its party rows to press (data-seg), which list
+    # the members; the ring of the counts alone has none.
+    assert 'class="donut"' in got["ringed"] and 'data-seg="HB12|0|' in got["ringed"] \
+        and "Rep. A" not in got["ringed"] \
+        and "Every vote on HB 12, on its Votes tab" in got["ringed"], (
+        "an opened ring is not the bill page's, drawn from the bill's record")
+    assert 'class="donut"' in got["counted"] and "data-seg=" not in got["counted"], (
+        "a roll call on no bill is not drawn from its counts")
+    return "ok", ("prevailing by the outcome, no party's side, the bill page's words, filters and "
+                  "search, and the bill's own ring under each vote")
 
 
 # A member's two bills tabs and a committee's, as renderMemberBills and
