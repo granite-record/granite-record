@@ -66770,8 +66770,7 @@ process.exit(fail.length ? 1 : 0);
 """
 
 
-@check("build", "email following is on previews only until the About page says what it keeps, "
-       "and its 106 tests pass")
+@check("build", "email following is on previews only until the About page says what it keeps")
 def _follow_email():
     """workers/follow/ and functions/api/follow/ (the person's accounts of 11
     October 2026). Every follow endpoint answers 404 without FOLLOW_DB, so the
@@ -66781,7 +66780,8 @@ def _follow_email():
     addresses -- the About page and go-live go together, as
     EMAIL_FOLLOW_CHECKLIST.md asks. The Follow pane offers email only where
     the sign-up answers and the record is in tonight's current.json, so a
-    production page shows the RSS pane alone. tests/follow/ is run whole."""
+    production page shows the RSS pane alone. tests/follow/ is run whole by
+    _follow_tests, below."""
     if not Path("workers/follow").is_dir():
         return "skip", "no workers/follow here"
     import tomllib
@@ -66808,23 +66808,89 @@ def _follow_email():
     key = re.search(r'FOLLOW_SITEKEY="([^"]+)"', app)
     readme = Path("workers/follow/README.md").read_text(encoding="utf-8")
     assert key and key.group(1) in readme, "app.js's Turnstile site key is not the one README.md records"
-    node = shutil.which("node")
-    if not node:
-        return "skip", "node is not on PATH"
-    # index.js by name, which imports every test file into one process: the
-    # folder form passed on Node 22 here and failed on GitHub's Node 24 under
-    # Windows (the dry run of 51a6944). Node's one-time ExperimentalWarning for
-    # node:sqlite (the fake D1) is not a log line of the code under test.
-    # TAP by name too: the count below is read off "# pass N", and Node 24's
-    # default reporter prints "ℹ pass N" instead (the dry run of 5e2ef8f,
-    # whose 106 tests all passed and whose count this check could not find).
-    r = _run([node, "--disable-warning=ExperimentalWarning", "--test", "--test-reporter=tap",
-              "tests/follow/index.js"], capture_output=True, text=True)
-    out = r.stdout + r.stderr
-    passed = re.search(r"^# pass (\d+)", out, re.M)
-    assert r.returncode == 0 and passed and int(passed.group(1)) > 0, out.strip()[-600:]
     return "ok", (f"previews bind FOLLOW_DB, production {'does' if binds('production') else 'does not'}; "
-                  f"tests/follow: {passed.group(1)} passed")
+                  "the Follow pane asks before it offers email")
+
+
+def _tap_failures(out):
+    """[(test's name, the first line of what it said)] for every test that
+    failed in node's TAP output, at any depth: a test whose only failure is a
+    subtest's is left to the subtest, which names the failure."""
+    lines, fails = out.splitlines(), []
+    for i, line in enumerate(lines):
+        m = re.match(r"^\s*not ok \d+ - (.*?)(?: # (?:SKIP|TODO)\b.*)?$", line)
+        if not m:
+            continue
+        block = []
+        for nxt in lines[i + 1:]:
+            if nxt.strip() == "...":
+                break
+            block.append(nxt.strip())
+        if "failureType: 'subtestsFailed'" in block:
+            continue
+        said = ""
+        for j, b in enumerate(block):
+            if b.startswith("error:"):
+                said = b[len("error:"):].strip().strip("'")
+                if said in ("|-", "|", ">-", ">"):
+                    said = next((x for x in block[j + 1:] if x), "")
+                break
+        if said == "test failed":
+            # A file that did not load is "test failed" in its block; what
+            # failed is in node's own lines above it, as TAP comments.
+            said = next((x[2:] for x in lines[:i] if re.match(r"# \w*Error\b", x)), said)
+        fails.append((m.group(1).replace("\\#", "#"), said[:160]))
+    return fails
+
+
+@check("build", "the email sender's own tests pass, every one: node --test runs "
+       "tests/follow/index.js, which imports every test file in tests/follow/")
+def _follow_tests():
+    """tests/follow/ is the email sender's test suite (workers/follow/ and
+    functions/api/follow/), standard library only, a few seconds in node. It
+    is run here whole, so a change to the Worker, the Functions or the site's
+    files they draw on (site.gen.js) is tested before it merges, and on the
+    night by nightly.py's preflight --code.
+
+    index.js by name, which imports every test file into one process: the
+    folder form passed on Node 22 here and failed on GitHub's Node 24 under
+    Windows (the dry run of 51a6944). Node's one-time ExperimentalWarning for
+    node:sqlite (the fake D1) is not a log line of the code under test. TAP
+    by name too: the counts are read off "# pass N", and Node 24's default
+    reporter prints "ℹ pass N" instead (the dry run of 5e2ef8f, whose 106
+    tests all passed and whose count this check could not find).
+
+    AND EVERY TEST FILE IS IN index.js (23 October 2026). A file left out of
+    it is never run by node --test on the folder or by this, and passes in
+    silence; so the list is held to the folder's *.test.js."""
+    index = Path("tests/follow/index.js")
+    if not index.is_file():
+        return "skip", "tests/follow/index.js is not here"
+    imported = re.findall(r'^import\s+"\./([^"]+)";', index.read_text(encoding="utf-8"), re.M)
+    files = sorted(p.name for p in index.parent.glob("*.test.js"))
+    missing = [f for f in files if f not in imported]
+    assert not missing, (f"tests/follow/index.js does not import {', '.join(missing)}, so node --test "
+                         "never runs it: add an import line for each")
+    node = shutil.which("node") or shutil.which("node.exe")
+    if not node:
+        return "skip", f"node is not on PATH, so the {len(files)} test files in tests/follow/ did not run"
+    r = _run([node, "--disable-warning=ExperimentalWarning", "--test", "--test-reporter=tap",
+              index.as_posix()], capture_output=True, text=True, timeout=300)
+    out = (r.stdout or "") + (r.stderr or "")
+    count = {k: int(v) for k, v in re.findall(r"^# (tests|pass|fail|cancelled|skipped|todo) (\d+)$",
+                                               out, re.M)}
+    fails = _tap_failures(out)
+    assert not fails, (
+        f"tests/follow/ fails {len(fails)} of {count.get('tests', '?')}: "
+        + "; ".join(f"{n!r} ({s})" if s else repr(n) for n, s in fails[:6])
+        + (f" (+{len(fails) - 6} more)" if len(fails) > 6 else "")
+        + f". `node --test {index.as_posix()}` shows each in full")
+    assert r.returncode == 0 and count.get("pass", 0) > 0 and not count.get("fail") \
+        and not count.get("cancelled"), (
+        f"node --test {index.as_posix()} exited {r.returncode} with {count or 'no count'}: "
+        + out.strip()[-500:])
+    return "ok", (f"tests/follow: {count['pass']} passed of {count.get('tests')}, from "
+                  f"{len(files)} test files, every one imported by index.js")
 
 
 # The sign-up box's daily or weekly drawn and sent by app.js under node, with

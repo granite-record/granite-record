@@ -1,6 +1,8 @@
-// `node --test tests/follow/` runs this file, which runs every test here.
-// Node takes a folder named on its command line as a module and loads its
-// index.js, so the folder is the command, as the task and preflight name it.
+// `node --test tests/follow/index.js` runs this file, which runs every test
+// here. Node takes a folder named on its command line as a module and loads
+// its index.js, so `node --test tests/follow/` does the same on Node 22; it
+// failed on GitHub's Node 24 under Windows, so preflight (_follow_tests)
+// names this file, and fails when a *.test.js is missing from the list below.
 
 import "./changes.test.js";
 import "./address.test.js";

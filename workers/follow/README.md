@@ -126,7 +126,11 @@ deployment, so a deployment without the database has no follow endpoints.
   or the feedback form.
 
 `tests/follow/` holds each of these as a test, and runs with
-`node --test tests/follow/`, standard library only.
+`node --test tests/follow/index.js`, standard library only; `index.js`
+imports every test file, and the folder form, `node --test tests/follow/`,
+which runs the same file, failed on Node 24 under Windows. `preflight`'s
+`_follow_tests` runs it whole and names any test that fails, and fails as
+well when a `*.test.js` is missing from `index.js`.
 
 ## Who deploys it
 
