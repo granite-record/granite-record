@@ -12,7 +12,7 @@ import vm from "node:vm";
 import { checkCurrent, checkNight } from "../../workers/follow/changes.js";
 import { parseKey } from "../../workers/follow/common.js";
 import { MARK, PALETTE, STATUS_INK, TESTIFY_FORMS, VOTE_INK, ballotWords, confirmationEmail, dateOnce, dayDate, digestEmail, longDate,
-         meetingWords, newLinkEmail, pageNames, shortDate, welcomeEmail } from "../../workers/follow/mail.js";
+         meetingWords, newLinkEmail, nothingNewEmail, pageNames, shortDate, welcomeEmail } from "../../workers/follow/mail.js";
 import { collect, testifyFor } from "../../workers/follow/sender.js";
 import { SITE, loadFixtures } from "./fakes.js";
 
@@ -43,6 +43,8 @@ function everyEmail() {
     daily: digest("daily", "2026-10-07"),
     weekly: digest("weekly"),
     voted: voted(ROLLCALL),
+    // The preview sender's test send, where nothing followed had news (sender.js, A TEST SEND).
+    nothingNew: nothingNewEmail({ origin: SITE, frequency: "daily", date: TODAY, nights: 7, ...LINKS }),
   };
 }
 

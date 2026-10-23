@@ -18,3 +18,4 @@ import "./bounce.test.js";
 import "./html.test.js";
 import "./mail.test.js";
 import "./privacy.test.js";
+import "./test_send.test.js";

@@ -1,7 +1,8 @@
 /*
  * The mail: one call to Resend, and the five emails this sends -- the
  * confirmation, the "you are following" a confirmation sends, a new link, the
- * daily and the weekly -- each in plain text and in simple HTML.
+ * daily and the weekly -- each in plain text and in simple HTML; and a sixth,
+ * which only the preview sender's test send sends: a test's "nothing new".
  *
  * NO REPLY ADDRESS. Nothing here sets Reply-To, and every email says where to
  * go instead: the report box on a bill's, legislator's or committee's page,
@@ -1021,5 +1022,33 @@ export function digestEmail({ origin, frequency, date, sections: given, manage, 
     html: frame(origin, html + f.html, { dateline, preheader: glance.slice(1).join("; ") || dateline,
                                    title: subject }),
     headers: gone ? undefined : listHeaders(origin, unsub),
+  };
+}
+
+// ---- a test with nothing to show ------------------------------------------------------------
+// THE PREVIEW SENDER'S TEST SEND (sender.js, A TEST SEND; the person, 23
+// October 2026) builds a daily or a weekly over the last nights on request.
+// Where nothing a reader follows had news in them, a real update would not go
+// at all; the test sends this rather than nothing, so that silence is never
+// taken for a test that did not run. The sender puts "[Test] " before the
+// subject, as before every test's.
+export function nothingNewEmail({ origin, frequency, date, nights, manage, unsub, feedbackUrl }) {
+  const weekly = frequency === "weekly";
+  const which = weekly ? "weekly" : "daily";
+  const n = Math.max(1, Number(nights) || 1);
+  const span = n === 1 ? longDate(date) : `${longDate(addDays(date, -(n - 1)))} to ${longDate(date)}`;
+  const subject = `Nothing new for your ${which} update ` +
+    (n === 1 ? `on ${longDate(date)}` : `in the last ${n} nights`);
+  const head = `Nothing you follow had news on the record ${n === 1 ? "on" : "from"} ${span}, ` +
+    `so a real ${which} update would not have been sent.`;
+  const tail = "This one was sent because a test was asked for. Nothing about your updates has changed.";
+  const dateline = `${weekly ? "Weekly" : "Daily"} update — ${longDate(date, true)}`;
+  const f = footer(origin, feedbackUrl, manage, unsub, false);
+  return {
+    subject,
+    text: [dateline, "", head, "", tail, "", "----", f.text].join("\n"),
+    html: frame(origin, `<p style="${P}">${esc(head)}</p><p style="${P}">${esc(tail)}</p>` + f.html,
+      { dateline, preheader: head, title: subject }),
+    headers: listHeaders(origin, unsub),
   };
 }

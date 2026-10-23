@@ -18,10 +18,10 @@ up to last night's build. Nothing here implies real time.
 | `common.js` | What a follow is, the log (`note`), the site's own names, headers, escaping, New Hampshire's clock. |
 | `store.js` | Database calls more than one endpoint makes: forgetting an address, finding the reader a link belongs to, the purge, the count, the day's ceiling. |
 | `changes.js` | Reading the site's `/changes/` files and holding them to `CHANGES_FORMAT.md`. |
-| `mail.js` | The one call to Resend, and the five emails: the confirmation, the "You're following" a confirmation sends, a new link, the daily and the weekly, in plain text and simple HTML. |
+| `mail.js` | The one call to Resend, and the five emails: the confirmation, the "You're following" a confirmation sends, a new link, the daily and the weekly, in plain text and simple HTML; and a test's "nothing new" note, which only the preview's test send sends. |
 | `site.gen.js` | Written, not edited: the site's colours and words the emails share, which `src/pages/follow_site.py` reads from the site's own files (below). |
 | `page.js` | The HTML of the confirm, manage and unsubscribe pages. |
-| `sender.js` | The scheduled Worker that sends the daily and weekly emails. |
+| `sender.js` | The scheduled Worker that sends the daily and weekly emails; on the preview only, a test send on request (below). |
 | `wrangler.toml` | The sender's own configuration: cron, the D1 binding, plain settings. No secret. |
 | `CHANGES_FORMAT.md` | The contract for the files the nightly build publishes under `/changes/`, which are all the sender reads. |
 
@@ -215,6 +215,7 @@ on its own:
    | `TURNSTILE_SECRET` | yes | no |
    | `RESEND_WEBHOOK_SECRET` | yes | no |
    | `HEALTHCHECK_URL` (a Healthchecks check of its own, hourly period) | no | yes |
+   | `TEST_SEND_TOKEN` (the test send's, below) | no | the preview's only |
 
    On the Pages project: `npx wrangler pages secret put <NAME> --project-name
    graniterecord` (and the same for preview; check `--help` on the day for
@@ -282,6 +283,99 @@ sender has them. The site's names come from `REPORT_ORIGINS`, which each
 environment already sets; `FOLLOW_ORIGINS` overrides it for following alone.
 `SIGNUP_DAILY_CEILING` (default 1,000, enough for a webinar's sign-ups;
 `signup.js` says why) caps confirmation emails a day.
+
+## Sending yourself a test email (preview only)
+
+So that the person can see an email at once rather than wait for the
+morning's run (23 October 2026), the preview sender answers one request.
+`POST /test-send` sends each confirmed subscriber in the preview's database
+-- at most five, the first by id; the answer says if more were left -- the
+daily, the weekly and the "You're following" email, built as the real ones
+are (`collect()`, `digestEmail()`, `welcomeEmail()`) over the last nights of
+the preview site's `/changes/` files, each with `[Test] ` before its subject
+and the reader's own manage and unsubscribe links. It records nothing: the
+next real email comes when it would have, with what it would have carried.
+A reader paused today is left out, as a run leaves them.
+
+What a test shows that a real email would not:
+
+- **A digest with nothing in those nights** is sent as a short note saying
+  so, where a real run sends nothing.
+- **A followed bill with a public hearing still ahead** shows its testimony
+  block on any day; a real daily shows it the morning the hearing is set and
+  the two mornings before it. Where no followed bill has one ahead, the
+  answer says so.
+- **A record that has ended** says, as the real email would, that it has
+  been taken off what you follow. A test takes nothing off.
+
+It answers only behind two guards, both or a 404: `TEST_SEND = "on"`, which
+only `[env.preview.vars]` in `wrangler.toml` sets, and the secret
+`TEST_SEND_TOKEN`, which the request's `Authorization: Bearer` must match.
+Production has neither, and no address at all (`workers_dev = false`);
+preflight's `_follow_test_send` holds that, and `sender.js`'s A TEST SEND
+says the rest.
+
+In PowerShell, in the repository folder:
+
+1. **A token**, made by a command and never printed, as the keys are made:
+
+       $b = New-Object byte[] 32; [Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($b); $t = [Convert]::ToBase64String($b); $b = $null
+
+2. **Set it on the preview sender**, with `--env preview`:
+
+       $t | npx.cmd wrangler secret put TEST_SEND_TOKEN --config workers/follow/wrangler.toml --env preview
+
+3. **Redeploy the preview sender**, from a checkout that has this section:
+
+       npx.cmd wrangler deploy --config workers/follow/wrangler.toml --env preview
+
+   Wrangler prints the Worker's address as it finishes,
+   `https://graniterecord-follow-sender-preview.<your-subdomain>.workers.dev`,
+   where `<your-subdomain>` is the account's own workers.dev name. The
+   dashboard shows it too: Workers & Pages, the Worker, Settings, Domains &
+   Routes. If wrangler asks to register a workers.dev subdomain, the account
+   has none yet, and the name chosen there is the one.
+
+4. **Send.** The address in a variable once, then:
+
+       $u = "https://graniterecord-follow-sender-preview.<your-subdomain>.workers.dev/test-send"
+       curl.exe -X POST $u -H "Authorization: Bearer $t"
+
+   With no body it sends all three emails over the last 7 nights, and needs
+   no quoting at all. To choose, send `{"kinds": [...], "nights": n}`:
+   kinds of `daily`, `weekly` and `welcome`, nights 1 to 10. In PowerShell
+   7.3 or later (`pwsh`), as typed:
+
+       curl.exe -X POST $u -H "Authorization: Bearer $t" -H "Content-Type: application/json" -d '{"kinds":["daily"],"nights":7}'
+
+   **Windows PowerShell 5.1** -- what typing `powershell` opens -- strips the
+   inner double quotes on the way to curl.exe: the Worker is sent
+   `{kinds:[daily],nights:7}`, answers `"why":"invalid"` and sends nothing.
+   There the quotes need backslashes,
+   `-d '{\"kinds\":[\"daily\"],\"nights\":7}'`, which 7.3 in turn sends with
+   the backslashes in, and is refused the same way. `$PSVersionTable.PSVersion`
+   says which is open. A file, outside the repository, works the same in
+   both:
+
+       Set-Content -Path "$env:TEMP\test-send.json" -Value '{"kinds":["daily"],"nights":7}' -Encoding ascii
+       curl.exe -X POST $u -H "Authorization: Bearer $t" -H "Content-Type: application/json" --data-binary "@$env:TEMP\test-send.json"
+
+   The `@...` stays in double quotes: bare, PowerShell reads the `@` as its
+   own. Not `-v`, which prints the request's headers, the token among them.
+
+   The answer is counts, never an address: `sent`, `emails` by kind,
+   `nothing_new` (the short notes), `testify` (testimony blocks sent),
+   `skipped` and `failed` each by reason, and `notes` in words -- that more
+   than five subscribers were left, that a night had no file, that the
+   preview site's newest night is older than today (the emails are as of
+   that night), or that no followed bill has a hearing ahead. A send takes a
+   few seconds: `SEND_GAP_MS` apart, as the run's are.
+
+`$t` lives only in that window. Closed, it is gone: make a new one and set
+it again (steps 1 and 2), which replaces the old. To turn the test send off,
+delete the secret, and `/test-send` is a 404 again:
+
+    npx.cmd wrangler secret delete TEST_SEND_TOKEN --config workers/follow/wrangler.toml --env preview
 
 ## What reads this database, and what must not
 
@@ -372,6 +466,8 @@ nothing a person could read a name in:
 | `follow sender.query-budget-reached 6` | The run's D1 statements are spent; these readers wait for the next hour. |
 | `follow sender.after-send-failed.Error 1` | An email went, and the cursor or ended follows could not be written twice over; tomorrow's email repeats its news. |
 | `follow sender.error.ConfigError 1` | A secret or `MAIL_FROM` is missing. |
+| `follow sender.test-sent 6` | A test send on the preview (above) sent 6 emails; one line each time it is asked. |
+| `follow sender.test-failed.resend-422 1` | A test email Resend refused, with its status; `error-<name>` for an error of the sender's own. |
 | `follow signup.sent 1`, `follow confirm.confirmed 1` | One confirmation emailed; one confirmed. |
 | `follow confirm.welcome-sent 1` | A confirmation that added a record sent its "You're following ..." email, which carries the manage link (16 October 2026). One a confirmation at most, so never more than the day's confirmations. |
 | `follow confirm.welcome-refused.429`, `follow confirm.welcome-error.Error` | That email was not sent. The confirmation stands and its page says nothing of it; the reader's way back is then the first update. |

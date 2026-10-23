@@ -4,9 +4,17 @@
 #   npx wrangler deploy --config workers/follow/wrangler.toml                  (production)
 #   npx wrangler deploy --config workers/follow/wrangler.toml --env preview    (previews)
 #
-# It has no address: it runs on the cron below and answers no request. It
-# reads the follow database and the site's published /changes/ files, and
-# sends through Resend.
+# Production has no address: it runs on the cron below and answers no
+# request. It reads the follow database and the site's published /changes/
+# files, and sends through Resend.
+#
+# THE PREVIEW HAS ONE (23 October 2026): its workers.dev address answers
+# POST /test-send, which sends the person test emails on request and records
+# nothing (sender.js, A TEST SEND; README.md, "Sending yourself a test
+# email"). Only behind both of its guards: TEST_SEND = "on", which
+# [env.preview.vars] alone sets, and the secret TEST_SEND_TOKEN, which only
+# the preview Worker is given. Production keeps workers_dev = false, no
+# route and no TEST_SEND; preflight's _follow_test_send holds all three.
 #
 # NO SECRET IS IN THIS FILE. Three are set on Cloudflare by the person with
 # `wrangler secret put` (README.md says how): RESEND_API_KEY, and
@@ -15,6 +23,8 @@
 # HEALTHCHECK_URL, the ping address of a Healthchecks check of its own
 # (hourly period): each run pings it, /fail when it met a problem a person
 # must act on (sender.js, WHO IS TOLD WHEN IT BREAKS). Without it, no ping.
+# On the preview Worker alone, a fourth: TEST_SEND_TOKEN, the test send's
+# second guard. Without it, /test-send is a 404 there too.
 #
 # THE DATABASE IDS are the person's, from the output of
 # `npx wrangler d1 create graniterecord-follow` (and -preview). An id is not a
@@ -83,7 +93,9 @@ SEND_GAP_MS = "200"
 
 [env.preview]
 name = "graniterecord-follow-sender-preview"
-workers_dev = false
+# The address the test send is asked at, which `wrangler deploy --env preview`
+# prints: https://graniterecord-follow-sender-preview.<subdomain>.workers.dev
+workers_dev = true
 
 [env.preview.observability]
 enabled = true
@@ -104,3 +116,6 @@ FEEDBACK_URL = "https://forms.gle/PYw9c3xgpDDwvX7E9"
 SEND_LIMIT = "200"
 D1_QUERIES_PER_RUN = "900"
 SEND_GAP_MS = "200"
+# The test send's first guard (sender.js, A TEST SEND). Here and nowhere
+# else: never in [vars] above, which is production's.
+TEST_SEND = "on"
