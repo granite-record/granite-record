@@ -49568,11 +49568,19 @@ def _fake_s3():
                             "ResponseMetadata": {"HTTPStatusCode": 404}}, op)
 
     class Body:
-        def __init__(self, b):
-            self.b = b
+        """botocore's StreamingBody as R2Bucket reads it: whole, or a piece
+        at a time until it gives b"", and closed."""
 
-        def read(self):
-            return self.b
+        def __init__(self, b):
+            self.b, self.at = b, 0
+
+        def read(self, amt=None):
+            end = len(self.b) if amt is None else min(len(self.b), self.at + amt)
+            out, self.at = self.b[self.at:end], end
+            return out
+
+        def close(self):
+            pass
 
     class Paginator:
         def __init__(self, name):
@@ -49605,6 +49613,7 @@ def _fake_s3():
 
         def download_file(self, Bucket, Key, Filename, ExtraArgs=None, Callback=None,
                           Config=None):
+            made["download_file"] = made.get("download_file", 0) + 1
             if (Bucket, Key) not in store:
                 raise gone("HeadObject")
             Path(Filename).write_bytes(store[(Bucket, Key)][0])
@@ -52159,6 +52168,11 @@ def _cloud_r2_adapter(CL):
         shutil.copy(root / "cloud_kit.json", night / "cloud_kit.json")
         code, out = _cloud_call(CL, "kit-down", "--root", str(night))
         assert code == 0 and (night / "Docket.txt").read_text() == "docket 1\n", out[-300:]
+        # ONE GET A SMALL FILE (23 October 2026): kit-down's files under a part
+        # come down by get_object, each read back against its sha256, and not
+        # by download_file's HEAD and GET.
+        assert not made.get("download_file"), \
+            f"kit-down took {made['download_file']} small file(s) by download_file"
         (night / "Docket.txt").write_text("docket 2\n", encoding="utf-8")
         code, out = _cloud_call(CL, "kit-up", "--root", str(night))
         assert code == 0, out[-300:]

@@ -978,8 +978,10 @@ class R2Bucket:
             region_name="auto", config=conf)
         self.bucket = self.name = cfg["bucket"]
         # R2 wants every part but the last the same size, which this gives.
-        self.tc = TransferConfig(multipart_threshold=64 * MB,
-                                 multipart_chunksize=64 * MB, max_concurrency=4)
+        # A file under one part comes down in one GET (get_file).
+        self.part = 64 * MB
+        self.tc = TransferConfig(multipart_threshold=self.part,
+                                 multipart_chunksize=self.part, max_concurrency=4)
         # The reads download_file asks again when they break part way, which
         # get_file's single GET asks again in the same way.
         try:
@@ -1034,7 +1036,7 @@ class R2Bucket:
         size the caller does not know, still goes through download_file,
         which takes it in parts at once. Either way the caller checks what
         arrived: kit-down reads its size and sha256 back off the disk."""
-        if size is None or size >= self.tc.multipart_threshold:
+        if size is None or size >= self.part:
             self.s3.download_file(self.bucket, key, str(dst), Config=self.tc)
             return
         for attempt in range(1, GET_TRIES + 1):
