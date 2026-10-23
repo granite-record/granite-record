@@ -1,4 +1,32 @@
-/* GRANITE_VERSION: 2026-09-07.293 */
+/* GRANITE_VERSION: 2026-09-07.294 */
+/* ONE STYLESHEET FOR EVERY PAGE (23 October 2026). Every page of the site
+   links this file, /app.css: the record pages shell.page() makes from
+   bills.html, and the five build_pages.py writes -- the home page, Officials,
+   About, /search and 404. Until that day those five loaded style.css, which
+   build_pages.py cut out of this file between SHARED and PAGES markers, so
+   WHERE a rule sat decided which pages got it: a component written beside
+   the bill cards and later drawn on the home page had to be cut and moved
+   into the shared region, and when it was not, the home page drew it
+   unstyled. That happened more than once. Older comments below that speak
+   of "the shared region", "both stylesheets" or style.css describe that
+   arrangement; the markers are gone and a rule's place in this file no
+   longer decides anything but the cascade.
+
+   SO A NEW RULE GOES WHERE IT READS BEST, and reaches every page. Two
+   scopes remain, both written into the selector rather than into the file's
+   layout, and both with :where() so a rule keeps the weight it had:
+     :where(body.pg)        the five pages build_pages.py writes, which carry
+                            body class="pg" (the block headed THE PAGES
+                            build_pages.py WRITES, near the end);
+     :where(body:not(.pg))  every other page: a record page's rule that would
+                            redraw something on those five, kept as it was
+                            drawn when the two stylesheets became one.
+
+   The comments are the documentation and stay here; build_pages.front_end
+   strips them from the copy it publishes (strip_css): half the bytes, and
+   under a third of them once compressed. The one block still cut by a marker is the header's mark,
+   MARK:START to MARK:END: a build without the licensed drawing leaves it
+   out (without_mark). */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -416,11 +444,9 @@ color-scheme:dark}
 --yes:#9ADBBC;--no:#CC665E;
 --brick:#E4877E;
 color-scheme:dark}
-/* PALETTE END -- build_pages.py reads everything above this line. */
+/* PALETTE END -- preflight's colour checks read everything above this line. */
 
-/* SHARED:START ------------------------------------------------------------
-
-   THE THEME CONTROL, which both stylesheets need because it is in the nav
+/* THE THEME CONTROL, which every page needs because it is in the nav
    and the nav is on every page. It sits last in the nav row and is pushed to
    the end, so it reads as a setting rather than as an eighth section of the
    site. Sized as a real tap target on a phone like every other nav item. */
@@ -501,9 +527,9 @@ align-items:center;gap:var(--sp-3) var(--sp-6);flex-wrap:wrap}
    The whole lockup as an image was the other option and is worse: 16px of
    serif drawn at 22px would be soft, it would not invert, and a reader could
    not select the site's name.
-   THE RULE THAT DRAWS IT IS NOT IN THIS REGION. Since 1 October it is the
+   THE RULE THAT DRAWS IT IS NOT HERE. Since 1 October it is the
    artist's drawing, which a fork does not have, so it sits between
-   MARK:START and MARK:END below SHARED:END and build_pages.py keeps it only
+   MARK:START and MARK:END below and build_pages.py keeps it only
    where the build has the file. Everything here is the wordmark, which is
    the whole brand where there is no mark. */
 /* 22px, not 16px. All five header arrangements set the wordmark at
@@ -1560,7 +1586,7 @@ align-items:baseline;padding:var(--sp-3) 0;border-top:1px solid var(--rule)}
 /* ==== HUBS, SHARED (Polish 3, ws/hubs, 10 October 2026) ====================
    The hubs' rules that both stylesheets need: the header, the map's mount on
    the Officials page and the town pages. The page-only rules are in the
-   HUBS, PAGES block inside PAGES:START. */
+   HUBS, PAGES block in THE PAGES build_pages.py WRITES. */
 /* SEARCH IS ITS DRAWING, AT EVERY WIDTH (decision 130, 8 October 2026:
    "Search shrinks to its icon everywhere, desktop included"). It had kept its
    word above 720px. The word stays for a screen reader: it is the button's
@@ -1819,7 +1845,6 @@ html.js .static-rec{display:none}
 .followmail .followsend:disabled{background:var(--wash);border-color:var(--rule-2);color:var(--ink-2);filter:none}
 .followmail{border-top:4px solid var(--pine);padding-top:var(--sp-4)}
 .ytpanel .ytbody,.ytpanel #ytbody{border-top:4px solid var(--pine);padding-top:var(--sp-4)}
-/* SHARED:END ------------------------------------------------------------ */
 
 /* MARK:START ---------------------------------------------------------------
    THE HEADER'S MARK IS THE ARTIST'S DRAWING (1 October 2026). Debra Caplan's
@@ -1837,13 +1862,13 @@ html.js .static-rec{display:none}
    never in the repository, and reaches a build only through
    assets/licensed/. A mask whose file is missing is drawn as nothing, but
    its box is still there: an empty 33x56 gap before the name and a bar 14px
-   taller for no reason, on every page. So build_pages.py reads from this
-   marker to MARK:END, gives the block to style.css and leaves it in the
-   app.css it copies into the site ONLY where the build placed /mark.png
-   (build_pages.HEADER_MARK), and cuts it where it did not. Without it the
-   brand is the wordmark alone, which is what the rules in the shared region
-   above already draw. It is outside SHARED so that the shared region stays
-   byte for byte what both stylesheets carry.
+   taller for no reason, on every page. So build_pages.py leaves this block,
+   from this marker to MARK:END, in the app.css it copies into the site ONLY
+   where the build placed /mark.png (build_pages.HEADER_MARK), and cuts it
+   where it did not (without_mark). Without it the brand is the wordmark
+   alone, which is what the rules above already draw. It is the one block a
+   marker still cuts, and the cut is about the build, not about which pages
+   take it: every page takes this file whole.
 
    Nothing outside this region may name the file; preflight holds that. */
 nav.top .brand::before{content:"";flex:0 0 auto;width:33px;height:56px;
@@ -2527,7 +2552,10 @@ a.cite{color:var(--pine)}
 text-align:left;border-bottom:1px solid var(--rule)}
 button.lrow{cursor:pointer}
 button.lrow:hover{background:var(--paper)}.lrow.sel{background:var(--pine-soft)}
-.sw{width:11px;height:11px;border-radius:var(--r-in);flex:0 0 auto}
+/* Not on the five build_pages pages: the district map's legend on
+   Officials draws square swatches, where a town page's has always taken
+   these 3px corners. */
+:where(body:not(.pg)) .sw{width:11px;height:11px;border-radius:var(--r-in);flex:0 0 auto}
 .sw-o{background:transparent;border:1.5px solid var(--rule-2)}
 .lrow .c{margin-left:auto;color:var(--ink-2)}
 /* THE VOTERS' CARD on a CACR (5 October 2026). Its counts run to six figures
@@ -3059,8 +3087,13 @@ font-size:var(--t-sm);white-space:pre-wrap;word-break:break-all}
 min-height:34px;display:flex;align-items:center;gap:var(--sp-3);list-style:none}
 .docket summary::-webkit-details-marker{display:none}
 /* A triangle that turns, so it reads as something that opens rather than as a
-   link to somewhere else. */
-.caret{width:0;height:0;border-left:6px solid currentColor;
+   link to somewhere else.
+   NOT ON THE FIVE build_pages PAGES, which never took it: the roster's
+   county groups draw their caret as a character (&#9656;, .cgrp .caret), and
+   this would draw a second triangle beside it; and the home page's calendar
+   carries the empty span with no triangle at all (ONE STYLESHEET, at the
+   top). */
+:where(body:not(.pg)) .caret{width:0;height:0;border-left:6px solid currentColor;
 border-top:4.5px solid transparent;border-bottom:4.5px solid transparent;
 transition:transform .12s;flex:none}
 .docket[open] .caret{transform:rotate(90deg)}
@@ -3250,7 +3283,9 @@ text-align:center;color:var(--ink-2);font-size:var(--t-ui)}
   .tl li{flex-direction:column;gap:var(--sp-1);padding:var(--sp-4) 0}
   .tl .d{flex:none;font-weight:600}
   .cite{white-space:normal}
-  table{display:block;overflow-x:auto;-webkit-overflow-scrolling:touch}
+  /* A record page's tables scroll inside themselves; the Officials
+     page's department tables never did (ONE STYLESHEET, at the top). */
+  :where(body:not(.pg)) table{display:block;overflow-x:auto;-webkit-overflow-scrolling:touch}
   .votes th,.votes td{padding:var(--sp-3) var(--sp-4);font-size:var(--t-ui)}
   .roll,.chosen{columns:1}
   .grid{grid-template-columns:1fr}
@@ -7000,20 +7035,19 @@ body:has(.rs-page) .searchrow,.shell:has(.rs-page) .facets,.shell:has(.rs-page) 
 .cn-art .rs-rbadge{margin-left:.25rem}
 /* ==== /THE STATUTES ====================================================== */
 
-/* PAGES:START ---------------------------------------------------------
-   THE PAGES build_pages.py WRITES -- the home page, the roster, About,
-   404 and the town pages -- used to have a stylesheet of their own, and
-   two stylesheets is how a site grows two dialects: 216 font sizes here
-   and 62 there, a rule fixed in one and not the other, the same
-   component drawn twice. It is one file now. build_pages.py reads this
-   region, the palette and the SHARED region above it, and writes
-   style.css out of the three -- so this is the only copy, and editing
-   it changes both kinds of page.
+/* THE PAGES build_pages.py WRITES ----------------------------------------
+   The home page, Officials, About, /search and 404 used to have a
+   stylesheet of their own, and two stylesheets is how a site grows two
+   dialects: 216 font sizes here and 62 there, a rule fixed in one and not
+   the other, the same component drawn twice. On 16 September their rules
+   moved into this file, and on 23 October 2026 the pages began loading it
+   whole (ONE STYLESHEET FOR EVERY PAGE, at the top).
 
-   Everything here is scoped to body.pg, which those pages carry and the
-   record pages do not: app.css is loaded by every bill, member and
-   committee page, and an unscoped h1 or p in this block would restyle
-   all 33,683 of them.
+   Everything in this block is scoped to :where(body.pg), which those pages
+   carry and the record pages do not: an unscoped h1 or p here would restyle
+   all 33,683 record pages. A rule for those five pages alone goes here,
+   scoped the same way; a component they share with the rest of the site
+   needs no scope and can go anywhere.
    ------------------------------------------------------------------ */
 
 :where(body.pg) 
@@ -8114,4 +8148,4 @@ text-wrap:balance}
 :where(body.pg) .hright .fresh{margin-top:var(--sp-5)}
 /* ==== /HUBS, PAGES ======================================================== */
 
-/* PAGES:END ------------------------------------------------------- */
+/* ---- /THE PAGES build_pages.py WRITES ---------------------------------- */

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.649
+# GRANITE_VERSION: 2026-09-04.650
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -21306,7 +21306,7 @@ def _check_live_reads_what_it_checks():
     served = {
         "/": (200, "text/html", b"<!doctype html><html>home</html>"),
         "/bills": (200, "text/html", page),
-        "/style.css": (200, "text/css", b"body{}"),
+        "/app.css": (200, "text/css", b"body{}"),
         "/meta.json": (200, "application/json",
                        json.dumps({"terms": ["2025-2026", "2023-2024"]}).encode()),
         "/idx/2025-2026.json": (200, "application/json", b'[{"id":"HB1"}]'),
@@ -21894,7 +21894,7 @@ def _asset_headers():
                           "to tell a browser they changed")
     text = hdr.read_text(encoding="utf-8")
     want = "max-age=0, must-revalidate"
-    missing = [a for a in ("/app.js", "/app.css", "/style.css", "/components.js")
+    missing = [a for a in ("/app.js", "/app.css", "/components.js")
                if not re.search(re.escape(a) + r"\s*\n\s*Cache-Control:[^\n]*"
                                 + re.escape(want), text)]
     assert not missing, (f"site/_headers does not give {', '.join(missing)} "
@@ -22021,9 +22021,10 @@ def _palette():
     coming back -- including the five that were the same bug, a secondary grey
     used on tinted status boxes it had never been checked against.
 
-    It also fails if the two stylesheets stop sharing one palette.
-    build_pages.py used to carry its own copy, which had drifted: --st-veto
-    was #7C2D3A in one file and #8C4A2F in the other.
+    ONE PALETTE: build_pages.py used to carry its own copy, which had
+    drifted -- --st-veto was #7C2D3A in one file and #8C4A2F in the other --
+    and then a style.css cut from this one. Every page loads app.css now
+    (23 October 2026), so there is no second copy to compare.
 
     BOTH SCHEMES, since 12 September. Dark mode shipped with its pairs
     measured by hand and nothing to stop them drifting, which is the same
@@ -22043,9 +22044,7 @@ def _palette():
         show.
     """
     def root_of(text, which="light"):
-        # Everything the palette owns stops at the marker; build_pages.py
-        # reads the same region, so the two cannot disagree about where the
-        # palette ends.
+        # Everything the palette owns stops at the marker.
         end = text.find("/* PALETTE END")
         head = text[:end] if end > 0 else text
         i = head.find(":root{")
@@ -22128,24 +22127,6 @@ def _palette():
         "the dark palette defines " + ", ".join("--" + s for s in spare)
         + ", which the light one does not. A token that exists in one scheme "
         "only will fall back to nothing in the other.")
-
-    built = Path("site/style.css")
-    if built.exists():
-        btext = built.read_text(encoding="utf-8")
-        for which in ("light", "dark"):
-            other = root_of(btext, which)
-            mine = tok if which == "light" else dark
-            drift = [k for k in set(mine) & set(other)
-                     if mine[k].lower() != other[k].lower()]
-            assert not drift, (
-                f"app.css and style.css disagree about {', '.join(sorted(drift))} "
-                f"in the {which} palette. The palette is meant to have one "
-                "definition; build_pages.py reads app.css's.")
-            assert other or which == "light", (
-                "site/style.css carries no dark palette. build_pages.py's "
-                "palette() reads app.css from :root to the /* PALETTE END */ "
-                "marker; if it stops earlier the pages built there stay light "
-                "while every record page goes dark.")
 
     TEXT = [("ink", "surface"), ("ink", "paper"),
             ("ink-2", "surface"), ("ink-2", "paper"), ("ink-2", "wash"),
@@ -23087,8 +23068,7 @@ def _rings_edges_opacity():
     header in the list or on Play, one line of it elsewhere. Each is drawn
     inside its control now. Play's is in the still's own ink, because the
     still is near-black in both themes and the light theme's pine on it is
-    2:1; that pair is measured here. Play's rule must sit in the shared
-    region, or the home page, which takes style.css, has none.
+    2:1; that pair is measured here.
 
     S10. Six text boxes were edged in --rule-2, a card's hairline: 1.68:1
     against the page in light, 2.52:1 in dark, where WCAG 1.4.11 asks 3:1.
@@ -23122,10 +23102,6 @@ def _rings_edges_opacity():
         if not off or int(off[-1]) >= 0:
             bad.append(f"{sel} is not drawn inside its control (outline-offset "
                        f"{off[-1] + 'px' if off else 'unset'}): the box around it clips the ring")
-    a, b = text.index("/* SHARED:START"), text.index("/* SHARED:END")
-    if ".pstub:focus-visible{" not in text[a:b]:
-        bad.append(".pstub:focus-visible is outside the shared region, so style.css "
-                   "and the home page's Play have no ring")
     stub = rules(".pstub:focus-visible")
     if not any("var(--film-stub-ink)" in x for x in stub):
         bad.append("Play's ring is not in the still's own ink")
@@ -23193,8 +23169,7 @@ def _print_is_light():
     palette's values again under the dark palette's two selectors. They are
     the light block's numbers written a second time, so this holds them to
     it: every colour the dark palette redefines is given back, at the light
-    value, and nothing else. And the block must be in the shared region, or
-    the pages that take style.css print as they did.
+    value, and nothing else.
 
     WHAT IS LEFT OFF IS THE CONTROL, NOT THE RECORD (the review of 2 October).
     The block hid .player whole, and that box holds each sitting's times:
@@ -23215,14 +23190,10 @@ def _print_is_light():
     if not css.exists():
         return "skip", "app.css is not there"
     text = css.read_text(encoding="utf-8")
-    a, b = text.index("/* SHARED:START"), text.index("/* SHARED:END")
     m = re.search(r"@media print\{\s*:root\[data-theme=\"dark\"\],"
                   r":root:not\(\[data-theme=\"light\"\]\)\{(.*?)\}(.*?)\n\}\n", text, re.S)
     assert m, ("app.css has no @media print block that undoes the dark palette under "
                "both of its selectors (the reader's choice, and the system's)")
-    assert a < m.start() < b, (
-        "the print block is outside the shared region, so the home page, the roster "
-        "and About, which take style.css, print in whatever theme is on")
     strip = lambda s: re.sub(r"/\*.*?\*/", "", s, flags=re.S)
     head = text[:text.index("/* PALETTE END")]
     light = dict(re.findall(r"(--[\w-]+)\s*:\s*([^;}]+)",
@@ -23278,7 +23249,7 @@ def _print_is_light():
             "a ticked kind of meeting prints as an empty box: its tick is the colour of the "
             "page on a ground that is not asked for on paper")
     return "ok", (f"{len(dark)} colours given back at their light values under both dark "
-                  f"selectors, in the shared region; {len(gone)} controls left off the sheet, "
+                  f"selectors; {len(gone)} controls left off the sheet, "
                   f"a recording's box not among them; {white} rules that set white type each "
                   f"left off or printed on their ground ({len(kept)} grounds asked for)")
 
@@ -23428,82 +23399,151 @@ def _audit_minor(BSP, seating, BP):
                   "one Tab stop")
 
 
-def _built_stylesheets():
-    """[(what to call it, the site folder it is in)] for each built style.css
-    the stylesheet checks read: the fixture's, which the builders write once
-    a run (_fixture_site_shared), wherever the builders are; and site/'s,
-    where a site has been built.
+def _built_sites():
+    """[(what to call it, the site folder)] for each built site the stylesheet
+    checks read: the fixture's, which the builders write once a run
+    (_fixture_site_shared), wherever the builders are; and site/, where a site
+    has been built.
 
-    THE FIXTURE'S, SO THAT THESE GUARD THE NIGHT (2 October 2026). The three
-    checks that read the built stylesheet -- _shared_region, _nothing_stranded
-    and the end of _one_stylesheet -- read site/style.css and nothing else,
-    and nightly.py runs the code checks BEFORE it builds: on GitHub's machine
-    there is no site/ yet, so two of them skipped and the third passed having
-    read no stylesheet, on the one run that stands between a change to
-    build_pages.py or app.css and the deploy. The laptop's built site is
-    still read where there is one: it is what a reader's browser was given.
+    THE FIXTURE'S, SO THAT THESE GUARD THE NIGHT (2 October 2026). nightly.py
+    runs the code checks BEFORE it builds: on GitHub's machine there is no
+    site/ yet, and a check that read only site/ skipped on the one run that
+    stands between a change to build_pages.py or app.css and the deploy. The
+    laptop's built site is still read where there is one: it is what a
+    reader's browser was given.
     """
-    here = Path(".").resolve()
-    sheets = []
+    sites = []
     if not [x for x in CHAIN_NEEDS if not _paths.locate(x).exists()]:
-        sheets.append(("the fixture's style.css", _fixture_site_shared()[0] / "site"))
-    if Path("site/style.css").exists():
-        sheets.append(("site/style.css", Path("site")))
-    return sheets
+        sites.append(("the fixture's site", _fixture_site_shared()[0] / "site"))
+    if Path("site/app.css").exists():
+        sites.append(("site/", Path("site")))
+    return sites
 
 
-@check("frontend", "the built stylesheet carries one copy of the shared region")
-def _shared_region():
-    """A comment that named a slot pasted the whole region into itself.
+# A stylesheet a page may take BESIDE app.css: the district map's, on the pages
+# that draw it. Anything else a page links is a second stylesheet.
+BESIDE_APP_CSS = ("/map.css",)
 
-    build_pages.py's CSS string has __PALETTE__ and __SHARED__ slots that are
-    filled from app.css, for the reason palette() and shared() both give: a
-    component copied into two files diverges on the first fix. On 12 September
-    the nav joined them, and the comment left behind in build_pages.py saying
-    where it had gone named the slot -- so the substitution filled it. The
-    whole shared region was pasted into the middle of a CSS comment, and
-    because a CSS comment does not nest, the first `*/` inside the pasted
-    region closed it and everything after that was parsed as live CSS.
 
-    Nothing errored. style.css was 8KB larger, had two copies of the calendar,
-    the theme control and the nav, and a line of prose being read as a
-    selector. What found it was grepping the built file for one distinctive
-    rule and getting two.
+@check("frontend", "every page links the one stylesheet, /app.css, and none links style.css")
+def _one_stylesheet_linked():
+    """One stylesheet for every page (23 October 2026).
 
-    So: exactly one copy, byte-identical to app.css's, and no slot left
-    unfilled -- which also catches a shared() that reads to the wrong marker
-    and hands over half a component.
+    Until that day the five pages build_pages.py writes -- the home page,
+    Officials, About, /search and 404 -- loaded style.css, a cut of app.css
+    between SHARED and PAGES markers, and every record page loaded app.css
+    whole. So where a rule sat in app.css decided which pages got it, and a
+    component first drawn on a record page had to be moved into the shared
+    region the day another page drew it. It was forgotten more than once:
+    .mchip on the roster, the whole footer on four pages, the line that says
+    why the header search lists a bill (.fwhy) on the home page and /search.
+    Each was found after it shipped, and each fix was a cut and a paste.
+
+    So every page links /app.css -- from the root, so the 404 page served at
+    any depth finds it -- exactly once, and no page links style.css, which
+    no build writes any more. Read off every page the fixture's builders
+    wrote, and site/'s where one is built, so a builder that writes its own
+    head is caught too. A page may take the district map's stylesheet beside
+    it (BESIDE_APP_CSS); nothing else.
     """
-    sheets = _built_stylesheets()
-    if not sheets:
-        return "skip", ("site/style.css not built, and the builders are not here to "
-                        "build the fixture's")
+    sites = _built_sites()
+    if not sites:
+        return "skip", "no built site here, and the builders are not here to build the fixture's"
+    said = []
+    for what, site in sites:
+        assert not (site / "style.css").exists(), (
+            f"{what} has a style.css. No page links it and no build writes it: an "
+            "old build's, which publish would ship unused")
+        bad, n = [], 0
+        pages = sorted(site.rglob("*.html"))
+        if what == "site/":
+            # The real site holds 34,000 pages, and they are built in two ways:
+            # every kind of page, a few of each, is the answer.
+            by_dir = {}
+            for p in pages:
+                by_dir.setdefault(p.parent, []).append(p)
+            pages = [p for ps in by_dir.values() for p in ps[:5]]
+        for p in pages:
+            t = p.read_text(encoding="utf-8", errors="replace")
+            if "<head" not in t:
+                continue
+            n += 1
+            links = re.findall(r'<link\b[^>]*\brel="stylesheet"[^>]*>', t)
+            ours = [re.search(r'href="([^"]*)"', x).group(1) for x in links
+                    if not re.search(r'href="https?:', x)]
+            rel = p.relative_to(site).as_posix()
+            if ours.count("/app.css") != 1:
+                bad.append(f"{rel} links /app.css {ours.count('/app.css')} times")
+            other = [h for h in ours if h != "/app.css" and h not in BESIDE_APP_CSS]
+            if other:
+                bad.append(f"{rel} links {', '.join(other)}")
+        assert n, f"{what} has no pages with a head"
+        assert not bad, (f"{len(bad)} pages of {what} do not link the one stylesheet "
+                         f"alone: " + "; ".join(bad[:5]))
+        said.append(f"{n:,} pages of {what}")
+    return "ok", "each links /app.css once and no other of ours but the map's: " + ", ".join(said)
+
+
+@check("frontend", "the published app.css is the source without its comments, and nothing else")
+def _app_css_published():
+    """app.css is the site's documentation of its own look -- 526 KB, most of
+    it comments saying why each rule is as it is -- and every page loads it
+    since 23 October 2026, the home page among them, which had loaded a 61 KB
+    cut. So build_pages.front_end publishes it without its comments
+    (strip_css): 266 KB, 46 KB over the wire.
+
+    A comment stripper that is wrong does not error. It eats a rule, or joins
+    two words into one, and a page somewhere is drawn wrong. So: strip_css on
+    cases that would catch each way it could go wrong -- a /* inside a string
+    or an unquoted url(), a comment between two halves of a word, an unclosed
+    one; and on app.css itself, the stripped file holds no comment, and with
+    every space taken out it is the source with every comment taken out by a
+    second, plainer reading -- so nothing but comments and blank lines went.
+    And the site the fixture's builders wrote, and site/ where it is built,
+    carries exactly that: with the header mark's block where the build has
+    the drawing, without it where it does not.
+    """
+    import build_pages as BP
+    strip = BP.strip_css
+    cases = {
+        "a{b:c}/* x */\nd{e:f}\n": "a{b:c}\nd{e:f}\n",
+        'a{content:"/* kept */"}\n': 'a{content:"/* kept */"}\n',
+        "a{content:'it''s /*'}/* gone */\n": "a{content:'it''s /*'}\n",
+        "a{background:url(x/*y*/z.png)}\n": "a{background:url(x/*y*/z.png)}\n",
+        'a{background:url("x/*y*/z.png")}/* gone */\n': 'a{background:url("x/*y*/z.png")}\n',
+        "a{margin:1px/**/2px}\n": "a{margin:1px 2px}\n",
+        ".a/**/.b{c:d}\n": ".a.b{c:d}\n",
+        "/* one\n   two */\n\n  a{b:c}  \n": "  a{b:c}\n",
+        'a{content:"\\"/*"}\n': 'a{content:"\\"/*"}\n',
+    }
+    wrong = {k: strip(k) for k, v in cases.items() if strip(k) != v}
+    assert not wrong, "strip_css: " + "; ".join(f"{k!r} -> {v!r}" for k, v in wrong.items())
+    try:
+        strip("a{b:c}/* never closed\n")
+        raise AssertionError("strip_css passed an unclosed comment, which ends a stylesheet")
+    except ValueError:
+        pass
     src = Path("src/pages/app.css").read_text(encoding="utf-8")
-    a, b = src.index("/* SHARED:START"), src.index("/* SHARED:END")
-    region = src[a:b].rstrip()
-    for what, site in sheets:
-        t = (site / "style.css").read_text(encoding="utf-8")
-
-        left = sorted(set(re.findall(r"__[A-Z][A-Z_]*__", t)))
-        assert not left, (
-            f"{what} still has " + ", ".join(left) + " in it: a slot in "
-            "build_pages.py's CSS string that nothing filled. The page will load "
-            "and most of it will look right.")
-
-        n = t.count("/* SHARED:START")
-        assert n == 1, (
-            f"{what} has {n} copies of the shared region, not one. A "
-            "comment that names __SHARED__ is how this happens; the substitution "
-            "does not know it is inside a comment, and a CSS comment does not "
-            "nest.")
-
-        assert region in t, (
-            f"the shared region in {what} is not app.css's. shared() reads "
-            "between the two markers and rstrips; if the built copy differs, one "
-            "of the markers has moved or something is rewriting the region on the "
-            "way through.")
-    return "ok", (f"{len(region):,} bytes, once, identical to app.css's, in "
-                  + " and in ".join(what for what, _site in sheets))
+    out = strip(src)
+    unquoted = re.sub(r'"(?:[^"\\\n]|\\.)*"|\'(?:[^\'\\\n]|\\.)*\'', "", out)
+    assert "/*" not in unquoted and "*/" not in unquoted, (
+        "the published app.css still carries a comment")
+    plain = re.sub(r"/\*.*?\*/", "", src, flags=re.S)
+    assert re.sub(r"\s+", "", out) == re.sub(r"\s+", "", plain), (
+        "strip_css took out more than comments and blank lines: with every space removed, "
+        "app.css stripped is not app.css with its comments taken out")
+    assert strip(out) == out, "strip_css changes a file that has no comments"
+    said = [f"{len(src.encode()) // 1024} KB of source publishes as {len(out.encode()) // 1024} KB"]
+    for what, site in _built_sites():
+        built = (site / "app.css").read_text(encoding="utf-8")
+        drawn = (site / BP.HEADER_MARK).is_file()
+        want = strip((src.encode() if drawn else BP.without_mark(src.encode())).decode("utf-8"))
+        assert built == want, (
+            f"{what}'s app.css is not app.css stripped of its comments"
+            + ("" if drawn else ", without the header mark's block") + ": "
+            "build_pages.front_end publishes it, and the fast path calls the same")
+        said.append(f"{what}'s is that" + ("" if drawn else ", less the mark"))
+    return "ok", "; ".join(said)
 
 
 @check("frontend", "no source file carries a control character")
@@ -23700,8 +23740,8 @@ def _placeholder_colour():
 
     A colour a browser picks is not covered by the palette check, which reads
     the tokens this file declares; the only way to catch it is to name the
-    rule that has to exist. It lives in app.css's shared region, so both
-    stylesheets get it from one definition.
+    rule that has to exist. Every page loads app.css, so one rule reaches
+    every box.
     """
     want = "::placeholder{color:var(--ink-2)"
     src = Path("src/pages/app.css").read_text(encoding="utf-8")
@@ -23709,12 +23749,12 @@ def _placeholder_colour():
         "app.css has no ::placeholder colour. The browser's default is "
         "#757575, which is 3.04:1 on --surface in dark -- below the 4.5 a "
         "palette pair would have to clear.")
-    built = Path("site/style.css")
+    built = Path("site/app.css")
     if not built.exists():
-        return "ok", "app.css only; site/style.css not built"
+        return "ok", "app.css only; site/app.css not built"
     assert want in built.read_text(encoding="utf-8"), (
-        "site/style.css has no ::placeholder colour, so the pages "
-        "build_pages.py writes lost it on the way through shared().")
+        "site/app.css has no ::placeholder colour: it was lost on the way "
+        "into the site (build_pages.strip_css).")
     return "ok", "--ink-2: 7.74:1 light, 6.32:1 dark"
 
 
@@ -31545,7 +31585,7 @@ def _chain():
         # drawn as nothing, silently, and the heading above the search box would
         # be an empty band. And that heading is still its words to anything that
         # cannot see it.
-        for css in ("style.css", "app.css"):
+        for css in ("app.css",):
             p = root / "site" / css
             if not p.exists():
                 continue
@@ -31778,11 +31818,11 @@ def _home_cards(BP, BC, G):
     cls = BP.HOME_COLUMN_OPTIONS[BP.HOME_COLUMNS]
     assert f'<div class="hcols {cls}">' in home, f"the home page's columns do not carry {cls}"
     css = Path("src/pages/app.css").read_text(encoding="utf-8")
-    style = (site / "style.css").read_text(encoding="utf-8")
+    style = (site / "app.css").read_text(encoding="utf-8")
     for opt, c in BP.HOME_COLUMN_OPTIONS.items():
         rules = re.findall(r"([^{}]*\." + re.escape(c) + r"\b[^{}]*)\{([^{}]*)\}", css)
         assert rules, f"app.css draws nothing for the {opt} treatment ({c})"
-        assert f".{c}" in style, f"style.css, which the home page loads, lacks the {opt} treatment"
+        assert f".{c}" in style, f"the published app.css, which the home page loads, lacks the {opt} treatment"
         for sel, body in rules:
             assert not re.search(r"\b(?:nav|header|body)\b|\.top\b|\.wrap\b", sel.replace("body.pg", "")), \
                 f"the {opt} treatment reaches beyond the columns: {sel.strip()[:80]}"
@@ -32112,10 +32152,10 @@ def _links_resolve():
             "site's name as text: a mask whose file is missing is drawn as "
             "nothing, so the heading would be an empty band")
         cut = BP.without_mark((here / "src/pages/app.css").read_bytes())
-        assert (site / "app.css").read_bytes() == cut, (
+        assert (site / "app.css").read_bytes() == BP.strip_css(cut.decode("utf-8")).encode("utf-8"), (
             "built with no header mark, site/app.css is not app.css less its "
-            "MARK region")
-        for css in ("style.css", "app.css"):
+            "MARK region and its comments")
+        for css in ("app.css",):
             text = (site / css).read_text(encoding="utf-8")
             assert BP.HEADER_MARK not in text and "/* MARK:START" not in text, (
                 f"built with no header mark, {css} still carries the rule that "
@@ -32179,9 +32219,10 @@ def _links_resolve():
         import struct as _st
         assert _st.unpack(">II", mm[16:24]) == (123, 192), (
             "mail-mark.png is not 41x64 at three times, the size mail.js draws it at")
-        assert (site / "app.css").read_bytes() == (here / "src/pages/app.css").read_bytes(), (
-            "with the header mark placed, site/app.css is not app.css as it is")
-        for css in ("style.css", "app.css"):
+        assert (site / "app.css").read_text(encoding="utf-8") == BP.strip_css(
+                (here / "src/pages/app.css").read_text(encoding="utf-8")), (
+            "with the header mark placed, site/app.css is not app.css less its comments")
+        for css in ("app.css",):
             assert f"url(/{BP.HEADER_MARK})" in (site / css).read_text(encoding="utf-8"), (
                 f"with the header mark placed, {css} does not draw it")
         r = _run([sys.executable, _paths.script("check_site.py"),
@@ -44099,9 +44140,8 @@ def _header_mark():
     MARK:START to MARK:END, and build_pages.py keeps that region only where
     the build placed the file. What has to hold for that to work:
 
-      - the region exists once, outside the palette, the shared region and
-        the page region, so cutting it changes nothing else -- the shared
-        region stays byte for byte what _shared_region demands
+      - the region exists once, outside the palette, so cutting it changes
+        nothing else
       - the rule is in it, names build_pages.HEADER_MARK, and nothing outside
         it names the file or draws .brand::before
       - the box it draws is the box build_brand.py cuts the mask for, and the
@@ -44110,9 +44150,9 @@ def _header_mark():
         up its side padding: the drawing is 18px wider than the clipart was,
         and without that the phone's row wraps on a 360px screen whenever the
         serif is late, which was measured with the fonts blocked
-      - stylesheet(True) carries the region and stylesheet(False) is the same
-        text without it, with no slot left unfilled; without_mark() takes the
-        region out of app.css's bytes and nothing else
+      - without_mark() takes the region out of app.css's bytes and nothing
+        else, and what the site publishes of either is without its comments
+        (build_pages.strip_css), the rule among the rules
 
     And the guard for the project's own builds, which a fixture cannot give:
     where assets/licensed/ is here, the mark is in it. A kit sent before
@@ -44132,14 +44172,8 @@ def _header_mark():
     a, b = css.index("/* MARK:START"), css.index("/* MARK:END")
     end = css.index("*/", b) + 2
     assert a < b, "app.css's MARK:END is above its MARK:START"
-    for lo, hi, what in (("/* SHARED:START", "/* SHARED:END", "shared"),
-                         ("/* PAGES:START", "/* PAGES:END", "page")):
-        assert not css.index(lo) < a < css.index(hi), (
-            f"the MARK region is inside the {what} region, which every build "
-            "must carry whole")
     assert a > css.index("/* PALETTE END"), "the MARK region is inside the palette"
     region = css[a:end]
-    assert BP.mark_region() == region, "build_pages.mark_region() does not return the region"
     rule = re.sub(r"/\*.*?\*/", "", region, flags=re.S)
     assert "nav.top .brand::before{" in rule and f"url(/{BP.HEADER_MARK})" in rule, (
         f"the MARK region does not draw nav.top .brand::before from /{BP.HEADER_MARK}")
@@ -44179,12 +44213,6 @@ def _header_mark():
         "wider than the row had, and a 360px phone wraps its menu button "
         "without them")
 
-    drawn, plain = BP.stylesheet(True), BP.stylesheet(False)
-    assert region in drawn and drawn.replace(region, "") == plain, (
-        "stylesheet(True) is not stylesheet(False) plus the MARK region")
-    assert BP.HEADER_MARK not in plain, "stylesheet(False) still names the mark"
-    left = sorted(set(re.findall(r"__[A-Z][A-Z_]*__", drawn + plain)))
-    assert not left, "the stylesheet has unfilled slots: " + ", ".join(left)
     raw = Path("src/pages/app.css").read_bytes()
     cut = BP.without_mark(raw)
     i = raw.find(b"/* MARK:START")
@@ -44193,6 +44221,11 @@ def _header_mark():
     assert b"/* MARK:" not in cut and BP.HEADER_MARK.encode() not in cut, (
         "without_mark() left part of the MARK region behind")
     assert BP.without_mark(cut) == cut, "without_mark() changes a file that has no region"
+    drawn = BP.strip_css(raw.decode("utf-8"))
+    plain = BP.strip_css(cut.decode("utf-8"))
+    assert BP.strip_css(rule) in drawn and BP.HEADER_MARK not in plain, (
+        "app.css as published does not carry the mark's rule where the build has the "
+        "drawing, or still names the file where it does not")
 
     said = f"one region of {len(region):,} bytes, cut cleanly; box {BB.MARK_BOX[0]}x{BB.MARK_BOX[1]}"
     licensed = Path("assets/licensed")
@@ -44215,8 +44248,8 @@ def _header_mark():
     else:
         said += "; no assets/licensed/ here, so this machine builds the wordmark alone"
     site = Path("site")
-    if (site / "style.css").exists() and (site / "app.css").exists():
-        for name in ("style.css", "app.css"):
+    if (site / "app.css").exists():
+        for name in ("app.css",):
             draws = f"url(/{BP.HEADER_MARK})" in (site / name).read_text(encoding="utf-8")
             assert not draws or (site / BP.HEADER_MARK).is_file(), (
                 f"site/{name} draws the header's mark and site/{BP.HEADER_MARK} "
@@ -44961,7 +44994,8 @@ def _calendar_documents_on_disk():
     return "ok", said
 
 
-@check("frontend", "there is one stylesheet, and style.css is a view of it")
+@check("frontend", "there is one stylesheet, and the rules for the five build_pages pages alone "
+                   "are scoped to them")
 def _one_stylesheet():
     """Two stylesheets is how a site grows two dialects.
 
@@ -44969,43 +45003,42 @@ def _one_stylesheet():
     for the home page, the roster, About, 404 and the town pages, so a rule was
     fixed in one of them at a time and each file went on looking internally
     consistent while they drifted. On 16 September that block moved into
-    app.css between PAGES:START and PAGES:END, scoped to :where(body.pg) --
-    :where so that every rule keeps the weight it had, which a plain body.pg
-    did not: it made the block's `button` reset beat `.themer` and the theme
-    control came out as bare text.
+    app.css, scoped to :where(body.pg) -- :where so that every rule keeps the
+    weight it had, which a plain body.pg did not: it made the block's `button`
+    reset beat `.themer` and the theme control came out as bare text. On 23
+    October 2026 those pages stopped loading style.css, a cut of app.css, and
+    load app.css itself (_one_stylesheet_linked).
 
-    style.css is now written from app.css's palette, its SHARED region and that
-    one, so this fails if build_pages.py grows rules of its own again.
+    So: build_pages.py keeps no CSS of its own and cuts none out of app.css;
+    app.css has no SHARED or PAGES markers for a cut to be made by again; and
+    every rule in its block for those pages alone, THE PAGES build_pages.py
+    WRITES, is scoped to them, or all 33,683 record pages would take it.
     """
     src = _paths.locate("build_pages.py").read_text(encoding="utf-8")
     app = Path("src/pages/app.css").read_text(encoding="utf-8")
-    i = src.find('CSS = """')
-    assert i > 0, "build_pages.py has no CSS template"
-    block = src[i:src.index('"""', i + 9)]
-    assert "__PAGES__" in block, "the page rules are not read from app.css any more"
-    bare = re.sub(r"__[A-Z]+__", "", block[block.index('"""') + 3:])
-    assert "{" not in bare, (
-        "build_pages.py is keeping CSS of its own again: "
-        + " ".join(bare.split())[:120])
+    for gone in ('CSS = """', "def stylesheet(", "def shared(", "def pages_region("):
+        assert gone not in src, (
+            f"build_pages.py has {gone!r} again: a stylesheet of its own, or a cut of "
+            "app.css, which is how the pages it writes came to be drawn by different rules")
     for mark in ("/* PAGES:START", "/* PAGES:END", "/* SHARED:START", "/* SHARED:END"):
-        assert mark in app, f"app.css has lost {mark}"
-    pages = app[app.index("/* PAGES:START"):app.index("/* PAGES:END")]
+        assert mark not in app, (
+            f"app.css has {mark} again. Nothing reads it, and a region that looks as if "
+            "it decides which pages take a rule is the arrangement this replaced")
+    head = "/* THE PAGES build_pages.py WRITES"
+    tail = "/* ---- /THE PAGES build_pages.py WRITES"
+    assert app.count(head) == 1 and app.count(tail) == 1, (
+        "app.css's block for the pages build_pages.py writes has lost its heading or its end")
+    pages = app[app.index(head):app.index(tail)]
     assert "﻿" not in app, (
         "app.css carries a zero-width mark, which silently kills the rule after "
         "it -- it cost the pages their box-sizing on 16 September")
     stray = [s for s in re.findall(r"(?m)^([.#a-zA-Z][^{\n]*)\{", pages)
              if ":where(body.pg)" not in s and not s.startswith(("body:where", "html", "*", "@"))]
     assert not stray, (
-        f"{len(stray)} rules in the PAGES region are not scoped to the pages "
-        f"that read it, so every record page takes them: {stray[:3]}")
-    sheets = _built_stylesheets()
-    for what, site in sheets:
-        text = (site / "style.css").read_text(encoding="utf-8")
-        assert "__PAGES__" not in text and ":where(body.pg)" in text, (
-            f"{what} was not written from app.css's regions")
-    return "ok", (f"{len(re.findall(r':where\(body.pg\)', pages)):,} page rules, one file"
-                  + ("; " + " and ".join(what for what, _site in sheets)
-                     + " written from it" if sheets else ""))
+        f"{len(stray)} rules in the block for the pages build_pages.py writes are not "
+        f"scoped to them, so every record page takes them: {stray[:3]}")
+    return "ok", (f"{len(re.findall(r':where\(body.pg\)', pages)):,} rules for those pages, "
+                  "scoped to them, in the one file")
 
 
 @check("frontend", "the status box without JavaScript says what the scripted one says")
@@ -58432,7 +58465,7 @@ def _components_agree():
 #
 # The hooks a page places a chip by. Each is written beside .chip, by
 # components.chip in either language, and none of them draws: the shape, the
-# two sizes and the colours are the one chip's, in app.css's SHARED region.
+# two sizes and the colours are the one chip's, in app.css.
 _CHIP_HOOKS = ("cstat", "rcres", "calkind", "fkind", "sgn", "btv")
 # What a chip's shape is made of. A rule that names a chip may move it, size
 # its room under a narrow head or colour its family; it may not give it a
@@ -58453,28 +58486,27 @@ def _chip_css_faults(css):
     """What in a stylesheet draws a chip other than the one chip: a list of
     sentences, empty where the one chip is all there is. Held: the frame,
     `.chip,.mchip`, and the two sizes, `.chip` at --t-sm and `.chip-m` at
-    --t-ui, inside the SHARED region, so the pages built from style.css draw
-    them too; and no other rule whose subject is a chip -- .chip, .mchip or
-    a hook -- sets any part of a chip's shape, nor a size but the two."""
+    --t-ui, outside any media query (every page loads the one stylesheet, so
+    where in it they sit is the cascade's business only); and no other rule
+    whose subject is a chip -- .chip, .mchip or a hook -- sets any part of a
+    chip's shape, nor a size but the two."""
     bad = []
-    try:
-        a, b = css.index("/* SHARED:START"), css.index("/* SHARED:END")
-    except ValueError:
-        return ["the stylesheet has no SHARED region"]
-    shared = {tuple(_css_selectors(sel)): dict(_css_decls(body))
-              for _at, sel, body, _ln in _css_rules(css[a:b]) if not _at}
+    shared = {}
+    for _at, sel, body, _ln in _css_rules(css):
+        if not _at:
+            shared.setdefault(tuple(_css_selectors(sel)), {}).update(dict(_css_decls(body)))
     frame = shared.get((".chip", ".mchip"))
     want = {"border": "1px solid var(--edge)", "border-left": "3px solid currentColor",
             "border-radius": "var(--r-in)"}
     if not frame:
-        bad.append("no `.chip,.mchip` rule in SHARED draws the one chip's frame")
+        bad.append("no `.chip,.mchip` rule draws the one chip's frame")
     else:
         bad += [f"the frame's {k} is {frame.get(k)!r}, not {v!r}" for k, v in want.items()
                 if frame.get(k) != v]
     for sel, size in (((".chip",), "var(--t-sm)"), ((".chip-m",), "var(--t-ui)")):
         got = (shared.get(sel) or {}).get("font-size")
         if got != size:
-            bad.append(f"`{sel[0]}` in SHARED is {got!r}, not {size}")
+            bad.append(f"`{sel[0]}` is {got!r}, not {size}")
     for at, sel, body, ln in _css_rules(css):
         sels = _css_selectors(sel)
         if sels == [".chip", ".mchip"] and not at:
@@ -58698,11 +58730,10 @@ def _term_popovers():
     missing = sorted(keys - glossary)
     assert not missing, f"terms marked with no glossary entry: {missing}"
     css = Path("src/pages/app.css").read_text(encoding="utf-8")
-    shared = css[css.index("/* SHARED:START"):css.index("/* SHARED:END")]
     for rule in (".termbtn{", ".termpop{", ".termpop[hidden]{display:none}"):
-        assert rule in shared, f"the shared stylesheet does not draw {rule}"
+        assert rule in css, f"app.css does not draw {rule}"
     return "ok", (f"the behaviour is one IIFE between its markers; {len(keys)} marked terms, "
-                  "each a glossary entry; the popover drawn in the shared region")
+                  "each a glossary entry; the popover drawn in app.css")
 
 
 # Every form of a vote's question the 2025-2026 record carries, and a sample of the older
@@ -59028,8 +59059,8 @@ def _chips_one_shape():
     written by its own line of markup in one of two languages. Held here:
 
     THE STYLESHEET (_chip_css_faults). The frame `.chip,.mchip` -- 3px
-    corners, a 1px --edge, a 3px bar in currentColor -- and the two sizes,
-    in the SHARED region; and no other rule naming a chip as its subject
+    corners, a 1px --edge, a 3px bar in currentColor -- and the two sizes;
+    and no other rule naming a chip as its subject
     sets a corner, an edge, a shadow, a case, a spacing, or a size but S's
     and M's. So a pill, a box or capitals cannot come back on one chip.
 
@@ -59047,10 +59078,10 @@ def _chips_one_shape():
     must find every one, and must pass the person chip and the Calendar's
     own controls, which are other names."""
     css = Path("src/pages/app.css").read_text(encoding="utf-8")
-    planted = css.replace("/* SHARED:END", ".calkind{border-radius:var(--r-pill)}\n"
-                          ".btv{text-transform:uppercase;letter-spacing:.04em}\n"
-                          ".chip.k-hearing{box-shadow:inset 0 0 0 1px var(--cal-hear)}\n"
-                          ".findout .fkind{font-size:var(--t-label)}\n/* SHARED:END", 1)
+    planted = css + (".calkind{border-radius:var(--r-pill)}\n"
+                     ".btv{text-transform:uppercase;letter-spacing:.04em}\n"
+                     ".chip.k-hearing{box-shadow:inset 0 0 0 1px var(--cal-hear)}\n"
+                     ".findout .fkind{font-size:var(--t-label)}\n")
     found = _chip_css_faults(planted)
     for what in ("`.calkind` sets border-radius", "`.btv` sets text-transform",
                  "`.btv` sets letter-spacing", "`.chip.k-hearing` sets box-shadow",
@@ -59086,7 +59117,7 @@ def _chips_one_shape():
             chips += "chip" in names
     assert not bad, f"{len(bad)} ways a chip is not the one chip: " + "; ".join(bad[:6])
     assert chips, "the fixture site carries no chip at all, so its pages held nothing here"
-    return "ok", (f"the one chip's frame and two sizes in SHARED and no rule drawing a chip of "
+    return "ok", (f"the one chip's frame and two sizes, and no rule drawing a chip of "
                   f"its own; no chip written by hand in src/pages/; {chips:,} chips on "
                   f"{pages:,} fixture pages, each with its hook beside .chip; every planted "
                   "break found")
@@ -60261,13 +60292,13 @@ def _nav_ladder():
     "Resources" 43px wider than "Learn", the strip centred on the bar from
     1100px wrapped "Resources" under the others at 1100 and stood 27px from
     the wordmark at 1200 and 1366 (measured in Chrome, 10 October 2026). Held
-    in app.css's shared region, which style.css takes too: from 63em the strip
+    in app.css, which every page loads: from 63em the strip
     is in the flow, one row, centred by its own auto margins with the theme
     button taking none; from 721 to 1007 it is a row of its own, five equal
     cells after the controls; Search shows its drawing alone, its word kept
     for a screen reader."""
     css = Path("src/pages/app.css").read_text(encoding="utf-8").replace("\r\n", "\n")
-    shared = css[css.index("/* SHARED:START"):css.index("/* SHARED:END")]
+    shared = css
     wide = _braced(shared, "@media (min-width:63em){")
     assert ".navtabs{position:static;transform:none;flex-wrap:nowrap;width:max-content;margin:0 auto}" \
         in wide and ".themer{margin-left:0}" in wide and "nav.top .in{position:static;flex-wrap:nowrap}" \
@@ -62079,9 +62110,6 @@ def _coming_up_scrolls():
         "box stops scrolling at some width; the cap is for desktop and phone alike")
     assert "max-height" in m.group(1) and "overflow-y:auto" in m.group(1), (
         f"the Coming up box has no height or no scrollbar: {m.group(1)}")
-    assert ".calscroll{" in BP.pages_region(), (
-        "the .calscroll rule is outside app.css's page region, so style.css, "
-        "which the home page loads, does not carry it")
     rules = re.findall(r"([^{}]*\.calscroll[^{}]*)\{([^}]*)\}", css)
     for sel, body in rules:
         assert "overscroll-behavior" not in body and "scroll-snap" not in body, (
@@ -62311,7 +62339,7 @@ def _home_finder_suggests_towns():
     separate legislator finder)." It replaces the finder of towns in the
     right-hand column (F4, 7 October 2026), whose datalist this used to hold.
 
-    Read off the fixture's built home page, HOME_JS, find.js and style.css:
+    Read off the fixture's built home page, HOME_JS, find.js and app.css:
     one box, tied to its dropdown and written before the cards; no finder of
     towns beside it; HOME_JS draws with find.js's own findDraw into the box's
     own ids, so one matcher and one set of rows serve the header and the
@@ -62348,10 +62376,10 @@ def _home_finder_suggests_towns():
     redraws = fj[fj.index("function findDraw(q,ids){"):fj.index("function findSay(")]
     assert "findDraw(box.value);" not in redraws and redraws.count("findDraw(box.value,ids);") == 2, (
         "a redraw find.js asks for draws into the header's panel whichever box asked")
-    css = (site / "style.css").read_text(encoding="utf-8")
+    css = (site / "app.css").read_text(encoding="utf-8")
     assert ":where(body.pg) .hqdrop{position:absolute;top:calc(100% + var(--sp-2))" in css \
         and ":where(body.pg) .searchbig{position:relative}" in css and ".hfind" not in css, (
-            "style.css does not put the dropdown under the box, or still styles the old finder")
+            "app.css does not put the dropdown under the box, or still styles the old finder")
     return "ok", ("one box, the header's finder, its top results in its own dropdown under it; "
                   "no finder of towns beside it")
 
@@ -62406,8 +62434,8 @@ def _legislators_page_tabs():
     the seats and the vacancies in Legislators; the people of the other three
     from corrections/officials.json; the old page's #towns sent to #my-town
     before the script reads the address; the town pages' switching script
-    after the panels; and the strip's rules in the region of app.css that
-    style.css takes, so this page draws it as a town page does."""
+    after the panels; and the strip's rules in app.css, once, so this page
+    draws it as a town page does."""
     import build_town_pages as BT
     import build_pages as BP
     import html as _html
@@ -62496,8 +62524,9 @@ def _legislators_page_tabs():
         "the finder holds something after its box and its list")
     assert '.classList.toggle("all"' not in page, (
         "the finder marks its list as the whole list of towns, for columns down the page")
-    css = (site / "style.css").read_text(encoding="utf-8")
-    for sheet, text in (("style.css", css), ("app.css", Path("src/pages/app.css").read_text(encoding="utf-8"))):
+    css = (site / "app.css").read_text(encoding="utf-8")
+    for sheet, text in (("the published app.css", css),
+                        ("app.css", Path("src/pages/app.css").read_text(encoding="utf-8"))):
         rules = [(sel.strip(), body) for sel, body in re.findall(
             r"([^{}]*)\{([^{}]*)\}", re.sub(r"/\*.*?\*/", "", text, flags=re.S))]
         win = [body for sel, body in rules if sel == ":where(body.pg) .lmatch"]
@@ -62518,15 +62547,12 @@ def _legislators_page_tabs():
     for rule in (".twntabs{display:flex", ".twntabs[hidden]{display:none}",
                  ".twnpane[hidden]{display:none}",
                  ".twntabs:not([hidden]) ~ .twnpane > .twnph{position:absolute"):
-        assert rule in css, (f"style.css has no {rule}: the strip's rules are not in the "
-                             "region both stylesheets take")
+        assert rule in css, f"the published app.css has no {rule}"
     app = Path("src/pages/app.css").read_text(encoding="utf-8")
     assert app.count(".twntabs{display:flex") == 1, "app.css draws the strip twice"
-    assert app.index(".twntabs{display:flex") < app.index("/* SHARED:END"), (
-        "the strip's rules are not in app.css's shared region")
     return "ok", ("My Town, Legislators, Federal Delegation, Executive Branch, Judicial Branch "
                   "and County Officials, each a panel under its own heading, switched by the "
-                  "town pages' script and drawn by the same rules in both stylesheets; My Town "
+                  "town pages' script and drawn by the same rules as a town's; My Town "
                   "the finder over its 260px window and the map under it; the officials as "
                   "person chips")
 
@@ -63314,10 +63340,8 @@ def _committee_notes_fill():
             f"the note under {head} is held to the measure")
     css = Path("src/pages/app.css").read_text(encoding="utf-8")
     assert ".src.fill{max-width:none}" in css and css.index(".src.fill{max-width:none}") \
-        < css.index("/* SHARED:END") and css.index(".src.fill{max-width:none}") \
         > css.index(".src,.lead{max-width:var(--measure)}"), (
-            "app.css does not let a .src.fill note take its width, after the measure, in the "
-            "shared region")
+            "app.css does not let a .src.fill note take its width, after the measure")
     # A COMMITTEE PAGE BY ITS HEAD, NOT ITS ROSTER (the look of 7 October
     # 2026): a retired committee has no roster, so :has(.croster) left its
     # "Nothing is scheduled" note and its count of bills at 560px.
@@ -86845,102 +86869,12 @@ def _formfeed_heading():
                   "does not")
 
 
-@check("frontend", "every class the header search draws is styled on the pages "
-                   "that load style.css", needs=("build_pages",))
-def _find_classes_shared(BP):
-    """The check below reads the pages as they are built. find.js draws its
-    panel when somebody opens it, so a class it writes is in no page's HTML,
-    and the check below cannot see it.
-
-    That is how the line that says why a bill is listed ("Listed for --
-    text says: lavatory") was unstyled on the home page, /search, the roster,
-    About and 404 for a day: `.findout .fwhy` sat beside the bill card's
-    `.cwhy`, below SHARED:END, where style.css does not read. On those pages
-    it was set at body size in full ink, larger and louder than the title
-    above it, and every check passed (1 October).
-
-    So this reads the scripts instead. Every class find.js or /search's own
-    script writes into a `class="..."`, if app.css styles it anywhere, must be
-    styled in what style.css takes -- the palette, the shared region, the
-    page region. A class nothing styles is left alone: it is a hook, not a
-    component.
-    """
-    need = [Path(f) for f in ("src/pages/find.js", "src/pages/app.css")]
-    if not all(f.exists() for f in need):
-        return "skip", "find.js or app.css not in this directory"
-    css = Path("src/pages/app.css").read_text(encoding="utf-8")
-    sheet = BP.stylesheet(False)
-    drawn = set()
-    for src in (Path("src/pages/find.js").read_text(encoding="utf-8"), BP.SEARCH_JS):
-        for m in re.finditer(r'class(?:Name)?\s*=\s*\\?"([^"$\\]+)\\?"', src):
-            drawn.update(c for c in m.group(1).split() if re.fullmatch(r"[a-z][\w-]*", c))
-    assert {"fdym", "fwhy", "fname", "fbills"} <= drawn, (
-        "find.js's classes are no longer read out of it: found only "
-        f"{sorted(drawn)[:8]}")
-
-    def styled(text, cls):
-        return re.search(r"\." + re.escape(cls) + r"(?![\w-])", text) is not None
-
-    lost = sorted(c for c in drawn if styled(css, c) and not styled(sheet, c))
-    assert not lost, (
-        f"find.js draws {lost} on every page, and app.css styles "
-        f"{'it' if len(lost) == 1 else 'them'} only outside the regions "
-        "style.css takes: on the home page, /search, the roster, About and "
-        "404 the browser's own defaults apply. Move the rule into the shared "
-        "region (SHARED:START to SHARED:END)")
-    return "ok", (f"{len(drawn)} classes drawn by find.js and /search's script; "
-                  f"each one app.css styles is styled in style.css too")
-
-
-@check("frontend", "no component is stranded in the region style.css skips")
-def _nothing_stranded():
-    """A class styled where half the site cannot see it.
-
-    app.css is one file in three marked regions and style.css is a VIEW of it:
-    palette, SHARED and PAGES, in that order. Every page built from bills.html
-    through shell.page loads app.css and sees the whole thing; the four pages
-    build_pages.py writes -- the home page, the roster, About and 404 -- load
-    style.css and see only those three regions. Anything styled between
-    SHARED:END and PAGES:START is invisible to them.
-
-    It has happened twice, and neither time did anything error.
-
-    `.mchip` carried a comment reading "the legislators page, the committee
-    roster and the sponsor list all draw" it while sitting in the region the
-    legislators page does not load, so the roster drew a hand-written row
-    instead and the same member read one way there and another on a bill.
-
-    The whole footer -- .fcols, .fcol, .flinks, .footdata, .lic, .attrib --
-    was there too. Measured on the live site before the fix: .fcols computed
-    display:block on the home page and display:grid with three columns on a
-    bill page, from identical markup. Four pages had been shipping a stacked,
-    unstyled footer.
-
-    audit_css.py is the tool; this runs it against the built site so the
-    answer is what a reader's browser would actually resolve.
-    """
-    sheets = _built_stylesheets()
-    if not sheets:
-        return "skip", ("no built site here, and the builders are not here to build "
-                        "the fixture's; run build_all.py --local first")
-    node = _paths.script("audit_css.py")
-    where = []
-    for what, site in sheets:
-        r = subprocess.run([sys.executable, node, "--site", str(site)],
-                           capture_output=True, timeout=300)
-        out = r.stdout.decode("utf-8", "replace")
-        assert "built pages" in out, (f"audit_css.py did not run on the pages of {what}: "
-                                      + r.stderr.decode("utf-8", "replace")[-300:])
-        if "STRANDED" in out:
-            tail = out[out.index("STRANDED"):][:600]
-            raise AssertionError(
-                "a component is styled only in the region style.css does not "
-                "take, so the home page, the roster, About and 404 do not get "
-                f"it (the pages of {what}):\n  " + tail.replace("\n", "\n  "))
-        m = re.search(r"(\d+) page shapes load style.css, using (\d+) classes", out)
-        where.append((f"{m.group(1)} pages, {m.group(2)} classes" if m else "checked")
-                     + f" loading {what}")
-    return "ok", f"nothing stranded ({'; '.join(where)})"
+# TWO CHECKS RETIRED ON 23 OCTOBER 2026, when every page began loading app.css
+# whole: _find_classes_shared (every class the header search draws is styled
+# in what style.css took) and _nothing_stranded (audit_css.py's STRANDED list).
+# Both guarded the cut of app.css the five build_pages pages loaded, and with
+# no cut there is nothing to strand; _one_stylesheet_linked holds every page
+# to the one file instead, and audit_css.py still lists dead rules.
 
 
 @check("files", "every place has exactly one district of its own, and every floterial is laid over them")
@@ -90037,18 +89971,17 @@ def _until_by_the_reader():
 
     And no page's own style can bring one back (the review of 16 October
     2026): hidden loses to any display a page's own rule gives an element, so
-    app.css's shared region, which style.css takes too, says that an element
-    with data-until and hidden is not drawn, with !important."""
+    app.css, which every page loads, says that an element with data-until
+    and hidden is not drawn, with !important."""
     js = _components_js()
     a, b = js.find("// BEHAVIOUR:START"), js.find("// BEHAVIOUR:END")
     assert 0 < a < b and "[data-until]" in js[a:b] and "untilAttrs(" in js[a:b], (
         "components.js's behaviour no longer judges [data-until] by untilAttrs")
     css = Path("src/pages/app.css").read_text(encoding="utf-8")
-    sa, sb = css.find("/* SHARED:START"), css.find("/* SHARED:END")
-    assert 0 <= sa < sb and re.search(
+    assert re.search(
         r"(?m)^\[data-until\]\[hidden\]\s*\{\s*display\s*:\s*none\s*!important\s*;?\s*\}",
-        css[sa:sb]), (
-        "app.css's shared region does not say [data-until][hidden]{display:none!important}: a "
+        css), (
+        "app.css does not say [data-until][hidden]{display:none!important}: a "
         "member-elect block a page styles as flex or grid would be drawn after the day they "
         "take office")
     node = shutil.which("node") or shutil.which("node.exe")
@@ -95167,7 +95100,8 @@ def _member_figures_on_the_site():
 # build's own output, the site, or the laptop alone. A data check added later
 # runs on the night unless it is put on the list here, with its reason.
 BUILT_OUT = Path("logs/built-checks.json")
-BUILT_CODE = {"_asset_headers", "_bill_shell", "_palette", "_shared_region", "_heading_levels",
+BUILT_CODE = {"_asset_headers", "_bill_shell", "_palette", "_one_stylesheet_linked",
+              "_app_css_published", "_heading_levels",
               "_placeholder_colour", "_civics_examples", "_header_mark", "_one_stylesheet",
               "_card_words_short", "_one_head"}
 NOT_ON_THE_NIGHT = {
@@ -96688,7 +96622,7 @@ def _changed_selects():
       every name in check_select.CORE is a check (a renamed guard would
       otherwise drop out of every --changed run without a word), and each
       is chosen for any change;
-      a change to app.css alone chooses _shared_region and _chain (each
+      a change to app.css alone chooses _app_css_published and _chain (each
       reads it, the second through the fixture's CHAIN_NEEDS) and not
       _rows_one_at_a_time, and fewer than half of the checks;
       a change to narrative.py chooses a check that needs it and _chain,
@@ -96714,8 +96648,8 @@ def _changed_selects():
     css = chosen(["src/pages/app.css"])
     assert set(CS.CORE) <= css, "a change to app.css left out the core: " + ", ".join(
         sorted(set(CS.CORE) - css))
-    assert {"_shared_region", "_chain"} <= css and "_rows_one_at_a_time" not in css, (
-        "a change to app.css chose " + ", ".join(sorted({"_shared_region", "_chain"} - css))
+    assert {"_app_css_published", "_chain"} <= css and "_rows_one_at_a_time" not in css, (
+        "a change to app.css chose " + ", ".join(sorted({"_app_css_published", "_chain"} - css))
         + " wrongly left out, or _rows_one_at_a_time, which reads no such file")
     assert len(css) < len(CHECKS) / 2, (f"a change to app.css alone chose {len(css)} of "
                                         f"{len(CHECKS)} checks")
@@ -96728,7 +96662,7 @@ def _changed_selects():
     index = CS._Index(_parsed(me))
     span = index.info["_rows_one_at_a_time"]["span"]
     own = chosen([rel], [(span[0] + 3, span[0] + 3)])
-    assert "_rows_one_at_a_time" in own and "_shared_region" not in own, (
+    assert "_rows_one_at_a_time" in own and "_app_css_published" not in own, (
         "a change inside _rows_one_at_a_time's own lines did not choose it alone among "
         "the two")
     assert len(chosen([rel], [index.info["main"]["span"]])) == len(CHECKS), (
@@ -96781,9 +96715,9 @@ def _fast_path_matches_the_build(BI, BP):
     writes as a build ends:
 
       with nothing moved it says so and writes nothing;
-      after a rule added to app.css's shared region and a line to
+      after a rule added to app.css and a line to
       components.js, app.js and find.js, --dry-run names them and writes
-      nothing, and a run writes style.css, app.css, components.js (with its
+      nothing, and a run writes app.css (without its comments), components.js (with its
       words, as the build writes it), app.js and find.js -- and every file
       of the site is then byte for byte what build_pages.py, the step that
       makes them, makes of the same change over the same site (the full
@@ -96819,7 +96753,7 @@ def _fast_path_matches_the_build(BI, BP):
         assert code == 0 and "is current" in out, f"with nothing moved: {out[-300:]}"
 
         def shared_rule(t):
-            at = t.index("\n", t.index("/* SHARED:START")) + 1
+            at = t.index("\n", t.index("/* PALETTE END")) + 1
             return t[:at] + ".gr-fast-path{outline:1px solid red}\n" + t[at:]
         # components.js too, since the polish's components (10 October 2026):
         # it goes into the site with the words written between its markers
@@ -96837,7 +96771,7 @@ def _fast_path_matches_the_build(BI, BP):
             "--dry-run wrote into the site"
         code, out = fe()
         assert code == 0, f"the fast path failed: {out[-400:]}"
-        for n in ("style.css", "app.css", "components.js", "app.js", "find.js"):
+        for n in ("app.css", "components.js", "app.js", "find.js"):
             assert n in out.split("wrote ", 1)[-1], f"the fast path did not write {n}: {out[-400:]}"
         # THE STEP SEES THE SITE AS THE BUILD'S OWN STEP SAW IT (10 October
         # 2026). build_pages runs before build_committees, so it found no
@@ -96867,8 +96801,8 @@ def _fast_path_matches_the_build(BI, BP):
         differ = sorted(p for p in set(a) | set(b) if a.get(p) != b.get(p))
         assert not differ, ("after the same change, the fast path's site and build_pages.py's "
                             f"differ in {len(differ)} file(s): " + ", ".join(differ[:8]))
-        assert b".gr-fast-path" in a["style.css"] and b".gr-fast-path" in a["app.css"], \
-            "the rule added to app.css's shared region is not in style.css and app.css"
+        assert b".gr-fast-path" in a["app.css"] and "style.css" not in a, \
+            "the rule added to app.css is not in the site's app.css, or a style.css was written"
         code, out = fe()
         assert code == 0 and "is current" in out, f"run again: {out[-300:]}"
         for path, change, want in (
@@ -96894,8 +96828,9 @@ def _fast_path_matches_the_build(BI, BP):
 # Who on the build's path names a file the fast path puts into a site, and
 # what of it each makes; front_end.py knows each of these, and nothing else.
 FAST_PATH_READERS = {
-    "build_pages.py": "palette, regions and mark into style.css; the copies and billmatch.js "
-                      "(build_pages.front_end, which the fast path calls)",
+    "build_pages.py": "app.css without its comments, and without the mark's block where the "
+                      "build has no mark; the copies and billmatch.js (build_pages.front_end, "
+                      "which the fast path calls)",
     "build_search_index.py": "app.js's search tables into site/sidx (front_end.facts; the "
                              "step runs again when they move)",
     "build_all.py": "app.js named as the search index step's input",
@@ -97429,7 +97364,7 @@ def _check_live_sitemap(CL):
     good = {
         "/": (200, "text/html", page),
         "/bills": (200, "text/html", b"<!doctype html><html>bills</html>"),
-        "/style.css": (200, "text/css", b"body{}"),
+        "/app.css": (200, "text/css", b"body{}"),
         "/meta.json": (200, "application/json", b'{"terms": ["2025-2026"]}'),
         "/idx/2025-2026.json": (200, "application/json", b'[{"id":"HB1"}]'),
         "/legislators": (200, "text/html", b"<!doctype html><html>members</html>"),

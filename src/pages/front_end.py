@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-09.2
+# GRANITE_VERSION: 2026-10-09.3
 """
 A change to the browser's files, put into the site the last full build made.
 
@@ -21,9 +21,9 @@ full build was built from as it ends (build_inputs.py, logs/last-build.json);
 this compares the folder with that record and goes on only where every file
 that moved is one of these:
 
-  src/pages/app.css   site/app.css (without the mark's block where the build
-                      has no mark) and site/style.css, which build_pages
-                      makes of app.css's palette and regions
+  src/pages/app.css   site/app.css, without its comments (build_pages.strip_css)
+                      and without the mark's block where the build has no
+                      mark; every page links it
   src/pages/app.js    site/app.js and site/billmatch.js -- and site/sidx/, if
                       the search's tables in it (SYN, CONCEPTS, STOP) moved,
                       by running the search-index step as the build does

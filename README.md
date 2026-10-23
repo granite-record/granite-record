@@ -286,7 +286,7 @@ want:
 | which rows exist at all | `src/parse/build_data.py` → `data/`, then `src/pages/build_site_v2.py` → `site/*.json` |
 | a fact the General Court's own record gets wrong | `corrections/` — its README says which file, and which step reads it |
 | towns, districts and their officials | `src/towns/` |
-| look and type | `src/pages/app.css`; `style.css` in `site/` is generated from it |
+| look and type | `src/pages/app.css`, the one stylesheet every page links; a new rule goes anywhere in it |
 | the pipeline, or its order | `build_all.py` — one `Step(...)` per entry in `plan()` |
 | the night on GitHub | `nightly.py`, and `.github/workflows/nightly.yml` that runs it |
 | what counts as correct | `preflight.py` — each check's docstring names the incident behind it |

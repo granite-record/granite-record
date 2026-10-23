@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.26
+# GRANITE_VERSION: 2026-09-04.27
 """
 Check the site is fit to publish before uploading it.
 
@@ -58,7 +58,7 @@ MAY_BE_EMPTY = {"former.json"}
 # checker noticing -- which calendar.html did, between being added to both nav
 # emitters and being added to this list.
 REQUIRED = ["index.html", "bills.html", "officials.html", "resources.html",
-            "about.html", "calendar.html", "style.css",
+            "about.html", "calendar.html", "app.css",
             "meta.json", "legislators.json", "home.json"]
 
 # Cloudflare Pages refuses a deployment holding a file over 25 MiB. Nothing

@@ -36,7 +36,13 @@ scores, the district map's geometry). Everything else is under `src/`, one
 folder per job: the front end (`bills.html`, `components.js`, `app.js`,
 `find.js`, `app.css`, a bill's print sheet, `print.js` and `print.css`, and
 the district map's `map.js` and `map.css`) is in
-`src/pages/` beside the builders that read it, and the `dom_stub.js` that
+`src/pages/` beside the builders that read it. `app.css` is the one
+stylesheet: every page links it, the record pages and the five
+`build_pages.py` writes alike, so where a rule sits in it decides only the
+cascade, and the copy published in `site/` is the file without its comments.
+The rules for those five pages alone are scoped to them with
+`:where(body.pg)`; a record page's rule that would redraw them is scoped
+away with `:where(body:not(.pg))` (the note at the top of `app.css`), and the `dom_stub.js` that
 `preflight` loads it against is in `tests/`. `src/README.md` has the tree and the rule
 for where a new file goes, and each folder's own README says what it holds:
 
@@ -1092,7 +1098,7 @@ header, Play, a filter group's head), and **a text box's edge is `--edge`**.
 **Every chip is one chip** (9 October 2026): a bill's status, a meeting's
 kind, a vote's result, a party's letter, the sign-ins, the finder's kind and
 a version of the text are `chip()` in `components.py` and `components.js`,
-drawn once in `app.css`'s SHARED region in the person chip's frame -- 3px
+drawn once in `app.css` in the person chip's frame -- 3px
 corners, a 1px `--edge`, a 3px bar in the chip's own ink -- at 14px, or 16px
 in a head, with a family's class to colour it. Its words are in Title Case,
 a record's capitals through `title_words`, which keeps the record's own
@@ -1796,7 +1802,7 @@ in the hand file, and until the build's day is past it every race is drawn
 not final -- or once the results mark it recounted. And whatever the pages
 draw of them carries `data-until`, which `components.until_attrs` writes and
 the browser's behaviour in `components.js` hides by the reader's own clock
-from that day on, with a rule in `app.css`'s shared region that no page's own
+from that day on, with a rule in `app.css` that no page's own
 style can outrank.
 
 The pages read the file through one function beside its writer,
