@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-11.23
+# GRANITE_VERSION: 2026-10-11.24
 """
 The how-to guides: their words, their sources, and what each was checked
 against. Read by build_civics.py, which draws them on the Resources hub's
@@ -321,6 +321,21 @@ CHECKED = "2026-10-12"   # the day the person read these pages and sent them
 # for the claims added then to cite them.
 COUNTED = "2026-10-23"
 
+# COURT ORDERS NO GUIDE MAY DESCRIBE AS IN FORCE (23 October 2026), each by
+# the date a guide would name it by, with what stayed it. The How to Vote note
+# said the District Court's order of October 2, 2026 "lets election officials
+# consider a student ID", and on 22 October 2026 the U.S. Supreme Court stayed
+# it and the order of October 5 (No. 26A512, Scanlan v. Coalition for Open
+# Democracy, pending the First Circuit's appeal and any petition for
+# certiorari). preflight's _vote_guide_stayed_orders reads every guide's
+# words and claims: a sentence naming one of these orders must say it is
+# stayed or on hold. Take a row out only when the stay has ended, and say
+# when and by what.
+STAYED_ORDERS = {
+    "October 2, 2026": "stayed by the U.S. Supreme Court on October 22, 2026 (No. 26A512)",
+    "October 5, 2026": "stayed by the U.S. Supreme Court on October 22, 2026 (No. 26A512)",
+}
+
 
 def table(caption, heads, rows):
     """A small table in a guide's prose, as a Learn page draws one: l-stack,
@@ -405,13 +420,23 @@ VOTING = guide(
           actions=[("What counts as proof", SOS_PROOF),
                    ("Free vital record for voter registration", SOS_FREE_VITAL)],
           law=["RSA 654:12"],
+          # THE STUDENT ID SENTENCE IS OUT (23 October 2026). It said "A further
+          # order of October 2, 2026 lets election officials consider a student
+          # ID, together with other evidence, as proof of identity when you
+          # register". On 22 October 2026 the U.S. Supreme Court stayed that
+          # order and the one of October 5 (No. 26A512, Scanlan v. Coalition
+          # for Open Democracy), so the sentence stopped being true. Saying so
+          # instead would cite supremecourt.gov, which guide_sources.SOURCES
+          # does not hold (its rule: a state agency's page, anything else the
+          # person's decision), and guide_ready would hold the whole guide off
+          # the site the week of the election. So the sentence is gone, and
+          # what replaces it is the person's: STAYED_ORDERS, below, and
+          # preflight's _vote_guide_stayed_orders keep it from coming back.
           note="<b>This changed in 2026, and the courts are still involved.</b> After a court order "
                "of May 28, 2026, if you lack the documents to prove your citizenship you may again "
                "sign a qualified voter affidavit instead. The affidavit covers citizenship and "
-               "nothing else: you still need proof of identity, age and domicile. A further "
-               "order of October 2, 2026 lets election officials consider a student ID, together "
-               "with other evidence, as proof of identity when you register. This is what the Secretary of State "
-               "said on October 12, 2026: check the page before you go."),
+               "nothing else: you still need proof of identity, age and domicile. This is what "
+               "the Secretary of State said on October 12, 2026: check the page before you go."),
      step("Vote",
           "<p>On election day, go to your polling place. Every voter must show proof of identity "
           "to get a ballot. If you have no approved photo ID, you can get one free, for voting "
@@ -477,8 +502,6 @@ VOTING = guide(
            "proof of identity to get a ballot.", SOS_PROOF, CHECKED),
      claim("May 28, 2026 order: the affidavit is back for citizenship only, not identity, age or "
            "domicile; proof of identity still needed for a ballot.", SOS_HB1569, CHECKED),
-     claim("October 2, 2026 order on student IDs: may be considered with other evidence of "
-           "identity at registration.", SOS_REGISTER, CHECKED),
      claim("A voter presents proof of identity to the ballot clerk to receive a ballot.",
            "RSA 659:13", CHECKED),
      claim("The absentee reasons, applying to the local clerk with proof of identity, six months "

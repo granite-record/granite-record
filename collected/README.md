@@ -37,8 +37,10 @@ and the diff is the review.
   State Senate results, as the Secretary of State posted them, by the race
   keys of `site/districts.json`; `src/parse/build_members_elect.py` reads the
   newest, and its docstring gives the shape. Written by
-  `src/parse/parse_sos_results.py --year <year>` from the spreadsheets saved
-  in `records/sources/`, and `--check` says whether the two still agree.
+  `src/parse/parse_sos_results.py --year <year> --url <results page>` from
+  the spreadsheets saved in `records/sources/`, the page they were saved from
+  becoming the address `/members_elect.json` names, and `--check` says
+  whether the two still agree.
   `election_2024.json` is the first, and the matching rule's test set
   (`src/parse/score_members_elect.py`).
 

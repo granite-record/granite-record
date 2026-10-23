@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.655
+# GRANITE_VERSION: 2026-09-04.656
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -31290,6 +31290,45 @@ def _tour_guide(G, civics):
     assert G.task_of("tour-the-state-house")[0] == "Visiting the State House", \
         "the tour guide is not under Visiting the State House"
     return "ok", f"{found} statements found in the Visitor Center's Rules for Tours; its page linked, not asked"
+
+
+@check("build", "no guide describes a court order that has been stayed as in force: a sentence "
+       "naming one of guides.STAYED_ORDERS says it is stayed or on hold",
+       needs=("guides",))
+def _vote_guide_stayed_orders(G):
+    """How to Vote's note said "A further order of October 2, 2026 lets
+    election officials consider a student ID, together with other evidence,
+    as proof of identity when you register". On 22 October 2026, twelve days
+    before the general election, the U.S. Supreme Court stayed that order and
+    the one of October 5 (No. 26A512, Scanlan v. Coalition for Open
+    Democracy), and the sentence went on saying it, on the guide the site
+    sends voters to, with nothing to notice: the note is typed, and no date
+    in it moves. The sentence came out on 23 October 2026, and this keeps
+    it, or one like it, from coming back while the stay stands: every
+    sentence of every guide's words and claims that names an order in
+    guides.STAYED_ORDERS must say "stayed" or "on hold". And the rows
+    themselves must each say what stayed them, so that one is never taken out
+    without the stay's end being stated in its place."""
+    assert G.STAYED_ORDERS, "guides.STAYED_ORDERS is empty: the check would hold nothing"
+    for day, why in G.STAYED_ORDERS.items():
+        assert re.fullmatch(r"[A-Z][a-z]+ \d{1,2}, \d{4}", day), (
+            f"guides.STAYED_ORDERS names {day!r}, which is not a date as a guide writes one")
+        assert "stayed" in why and re.search(r"\d{4}", why), (
+            f"guides.STAYED_ORDERS[{day!r}] does not say when and by what it was stayed: {why!r}")
+    bad, read = [], 0
+    for g in G.GUIDES:
+        words = [G.text(g)] + [c["says"] for c in g["claims"]]
+        for chunk in words:
+            plain = " ".join(re.sub(r"<[^>]+>", " ", chunk).split())
+            for sentence in re.split(r"(?<=[.;:])\s+", plain):
+                read += 1
+                named = [d for d in G.STAYED_ORDERS if d in sentence]
+                if named and not re.search(r"\bstay(?:ed)?\b|\bon hold\b", sentence, re.I):
+                    bad.append(f"{g['slug']}: {sentence[:160]!r} names the order of {named[0]}, "
+                               f"{G.STAYED_ORDERS[named[0]]}, and does not say so")
+    assert not bad, "; ".join(bad[:4])
+    return "ok", (f"{read:,} sentences of {len(G.GUIDES)} guides read; none names "
+                  f"{' or '.join(G.STAYED_ORDERS)} as in force")
 
 
 @check("frontend", "a member's structured data names their party as the party names itself, and an independent none")
@@ -90395,6 +90434,71 @@ def _elect_reader_decisions(PSR):
     return "ok", ("write-ins the file does not name, as many as the last seat's votes, refused; "
                   "a county's later upload read in place of its earlier, two under one number "
                   "refused")
+
+
+@check("build", "members-elect: the results page's address reaches /members_elect.json -- the "
+                "reader writes --url into each _source, refuses one that is not https, and the "
+                "step says so when the results name no address",
+       needs=("parse_sos_results",))
+def _elect_results_address(PSR):
+    """README's The data says /members_elect.json carries "the address of
+    the Secretary of State's results it was read from", and the Officials
+    tab links "the Secretary of State's count" to it. build_members_elect
+    takes it from each _source's url, and parse_sos_results wrote None there
+    every time: the rehearsal of election week on 23 October 2026, the 2024
+    count shifted to 2026, wrote a file whose "sources" was [], and the tab's
+    link could never be drawn. The reader takes --url now. Held here: the
+    _source entry carries the address given, and None without one; the
+    reader refuses an address that is not https before it reads a file; and
+    on the fixture's election the step writes the address into "sources",
+    and with none says under NOTES that the file names no address."""
+    absent = _elect_absent()
+    if absent:
+        return "skip", "not here: " + ", ".join(absent)
+    url = "https://www.sos.nh.gov/2026-general-election-results"
+    root = Path(tempfile.mkdtemp(prefix="gr-elect-url-"))
+    try:
+        f = root / "records" / "sources" / "2026-ge-house-belknap.xls"
+        f.parent.mkdir(parents=True)
+        f.write_bytes(b"stand-in")
+        got = PSR.described(f, root, "2026-11-05", url)
+        assert got["url"] == url and got["file"] == "records/sources/2026-ge-house-belknap.xls", (
+            f"the reader's _source entry, given --url, is {got}")
+        assert PSR.described(f, root, "2026-11-05")["url"] is None, (
+            "the reader's _source entry names an address it was not given")
+        r = _run([sys.executable, _paths.script("parse_sos_results.py"), "--year", "2026",
+                  "--url", "http://www.sos.nh.gov/", "--districts", str(root / "none.json")],
+                 cwd=root, capture_output=True, text=True, timeout=120)
+        said = (r.stderr or "").strip().splitlines()
+        assert r.returncode != 0 and said and "is not an https address" in said[-1], (
+            "the reader takes an http address for the results: " + " / ".join(said[-2:]))
+        assert not (root / "collected").exists(), "the reader wrote a file on a refused --url"
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    root = Path(tempfile.mkdtemp(prefix="gr-elect-url-step-"))
+    try:
+        _elect_fixture(root)
+        results = root / "collected" / "election_2026.json"
+        r = json.loads(results.read_text(encoding="utf-8"))
+        for s in r["_source"]:
+            s["url"] = url
+        results.write_text(json.dumps(r), encoding="utf-8")
+        code, out, doc = _elect_run(root, _ELECT_IN, hand=_ELECT_HAND)
+        assert code == 0 and doc and doc["sources"] == [url], (
+            f"with the address in _source the file's sources are {doc and doc['sources']}")
+        assert "names no address" not in out, "the step says no address is named when one is"
+        for s in r["_source"]:
+            s["url"] = None
+        results.write_text(json.dumps(r), encoding="utf-8")
+        code, out, doc = _elect_run(root, _ELECT_IN, hand=_ELECT_HAND)
+        assert code == 0 and doc and doc["sources"] == [], (
+            f"with no address the file's sources are {doc and doc['sources']}")
+        assert "names no address" in _elect_part(out, "NOTES"), (
+            "the step is silent about results that name no address: " + out[-300:])
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    return "ok", ("--url written into each _source, an http address refused before any file is "
+                  "read; the address in /members_elect.json's sources, and its absence said")
 
 
 @check("data", "members-elect: the Secretary of State's 2024 results, read again, are "
