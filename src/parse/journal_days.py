@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-19.13
+# GRANITE_VERSION: 2026-09-19.14
 """
 What the House journal adds that the record does not: who spoke, and what.
 
@@ -387,12 +387,20 @@ UC_HEAD = re.compile(r"^[ \t]*UNANIMOUS\s+CONSENT[ \t]*$", re.M)
 # the sentence is boilerplate. Capturing "[^.]{0,160}" after the boilerplate
 # returned "of the House regarding an apology and addressed the House", which
 # is the sentence with its own middle removed rather than its subject.
+#
+# A title's full stop is not the sentence's: "regarding Rep. Wendy Thomas"
+# (9 April 2026) was cut to "on Rep." while the subject stopped at the first
+# full stop. The abbreviations are read through, and the stop that ends the
+# sentence is one no abbreviation stands before.
+_TITLE = r"(?:Reps?|Sens?|Dr|Mrs?|Ms|St|Jr|Sr|Gov|Lt|Gen|Mt|No|U\.S)\."
 UC_LINE = re.compile(
     r"\bRep(?:s)?\.\s+(?P<name>" + _NAME + r")\s+"
     r"(?:requested\s+Unanimous\s+Consent\s+of\s+the\s+(?:House|Senate)|"
     r"addressed\s+the\s+(?:House|Senate))"
-    r"(?:\s+(?:regarding|concerning|on|about)\s+(?P<about>[^.]{2,140}?))?"
-    r"\s*(?:and\s+addressed\s+the\s+(?:House|Senate))?\s*\.",
+    r"(?:\s+(?:regarding|concerning|on|about)\s+(?P<about>(?:\b" + _TITLE + r"|[^.]){2,140}?))?"
+    r"\s*(?:and\s+addressed\s+the\s+(?:House|Senate))?\s*"
+    r"(?<!\bRep)(?<!\bReps)(?<!\bSen)(?<!\bSens)(?<!\bDr)(?<!\bMr)(?<!\bMrs)(?<!\bMs)"
+    r"(?<!\bSt)(?<!\bJr)(?<!\bSr)(?<!\bGov)(?<!\bLt)(?<!\bGen)(?<!\bMt)(?<!\bNo)(?<!\bU\.S)\.",
     re.I)
 
 # A centred all-capitals line: the next section. Used only to END a block, and

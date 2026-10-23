@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.648
+# GRANITE_VERSION: 2026-09-04.649
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -13445,6 +13445,29 @@ def _rule_vote_not_a_bill(rollcall_parser):
         assert not rows["HB56"]["procedural"], (
             "a real bill's vote was swept up as procedural")
         return "ok", "the rule vote is procedural and the bill's is not"
+    finally:
+        shutil.rmtree(d, ignore_errors=True)
+
+
+@check("rollcalls", "a roll call on no bill is not glossed as one on a bill",
+       needs=("rollcall_parser",))
+def _no_bill_no_bill_gloss(rollcall_parser):
+    """2026-H-271 tabled a motion to restore Rep. Read's privileges. The file
+    files it under no bill as "Laid on Table", and the glossary's "set the bill
+    aside without killing it" reached the member's Votes tab. On no bill the
+    gloss is empty (not None, which means a motion the glossary lacks); on a
+    bill it stands."""
+    d = Path(tempfile.mkdtemp())
+    try:
+        f = d / "RollCallSummary.txt"
+        f.write_text("\n".join([
+            "2026|H|271|5/14/2026 11:00:00 AM||163|147|20|10|||Laid on Table|",
+            "2026|H|272|5/14/2026 11:30:00 AM|HB56|200|150|20|10|||Laid on Table|relative to something",
+        ]) + "\n", encoding="utf-8")
+        rows = {r["number"]: r for r in rollcall_parser.parse(f)}
+        assert rows[271]["question_plain"] == "", rows[271]["question_plain"]
+        assert "bill" in (rows[272]["question_plain"] or ""), rows[272]["question_plain"]
+        return "ok", "no gloss about a bill on the vote filed under none; the bill's keeps it"
     finally:
         shutil.rmtree(d, ignore_errors=True)
 
@@ -58685,6 +58708,21 @@ def _term_popovers():
 # Every form of a vote's question the 2025-2026 record carries, and a sample of the older
 # clerks', with the key the approved words give it (10 October 2026, read off the built
 # site's bills: 216 forms).
+@check("session", "a unanimous-consent subject reads through a title's full stop",
+       needs=("journal_days",))
+def _uc_subject_titles(journal_days):
+    """9 April 2026: "Rep. Kat McGhee requested Unanimous Consent of the House
+    regarding Rep. Wendy Thomas and addressed the House." The subject stopped
+    at the first full stop and the session day said "on Rep."."""
+    got = [(m.group("name"), m.group("about")) for m in journal_days.UC_LINE.finditer(
+        "Rep. Kat McGhee requested Unanimous Consent of the House regarding Rep. Wendy "
+        "Thomas and addressed the House. Rep. Walz requested Unanimous Consent of the "
+        "House regarding an apology and addressed the House. Rep. Smith addressed the House.")]
+    assert got == [("Kat McGhee", "Rep. Wendy Thomas"), ("Walz", "an apology"),
+                   ("Smith", None)], got
+    return "ok", "a member named as the subject is named whole"
+
+
 MOTION_CASES = [
     ("Ought to Pass", "HB1", "H", "otp"), ("Inexpedient to Legislate", "HB1", "H", "itl"),
     ("Ought to Pass with Amendment 2026-0998h", "HB1", "H", "otpa"),
@@ -58715,6 +58753,22 @@ MOTION_CASES = [
     ("Divide Section 2 from 3 and 4", "HB724", "H", "divide"), ("RFS", "HB1186", "H", "is"),
     ("Vacated from Municipal and County Government", "HB1242", "H", "vacate_referral"),
     ("", "HB1", "H", "unnamed"), ("03/11/2026", "HB1", "H", "unnamed"),
+    # Votes on no bill (filed as "_procedural", or "" on a session day), as the
+    # roll-call file words them: the clerk's "Rules Suspension" and "Shall
+    # Member Continue" are the rows' motions; a motion tabled is a motion; a
+    # request for the justices' opinion is no referral; and a row whose words
+    # speak of the bill gives way to the record's own words.
+    ("Rules Suspension", "_procedural", "H", "suspend_rules"),
+    ("Rules Suspension", "HB1", "H", "suspend_rules"),
+    ("Shall Member Continue", "_procedural", "H", "member_continue"),
+    ("Shall Member Continue", "HB1", "H", "member_continue"),
+    ("Table Burns Reprimand", "_procedural", "H", "table_motion"),
+    ("Burns Reprimand", "_procedural", "H", "reprimand"),
+    ("Laid on Table", "_procedural", "H", ""), ("Remove From Table", "", "H", ""),
+    ("Refer to Justices 1", "_procedural", "H", ""), ("Refer to Justices", "HB1", "H", ""),
+    ("Adopt Floor Amendment", "HRULE64", "H", ""),
+    ("Uphold Ruling of Chair", "_procedural", "H", "uphold_ruling"),
+    ("Reconsider", "_procedural", "H", "reconsider"),
 ]
 
 

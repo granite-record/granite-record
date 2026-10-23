@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-10.1
+# GRANITE_VERSION: 2026-10-10.2
 """
 Which motion a vote was on, read once from the record's own words, so that
 both languages draw its head and its chip in the words the person approved
@@ -71,7 +71,7 @@ _PATTERNS = (
               r"(?P<c>finance|ways\s+and\s+means|[A-Z][\w ,&]+?)\b(?:\s+committee)?\s*$"),
     ("override", r"\boverride\b|\bveto\b"),
     ("special_order", r"\bspecial\s+order"),
-    ("suspend_rules", r"\bsuspen\w*\b.*\brules?\b"),
+    ("suspend_rules", r"\bsuspen\w*\b.*\brules?\b|\brules?\s+suspen"),
     ("previous_question", r"\bprevious\s+question\b"),
     ("limit_debate", r"\blimit\w*\s+(?:the\s+)?debate\b"),
     ("order_third_reading", r"\border\w*\s+(?:to\s+)?(?:a\s+)?third\s+reading\b"),
@@ -82,7 +82,8 @@ _PATTERNS = (
     ("uphold_ruling", r"\bruling\s+of\s+the\s+chair\b|\bupheld\b|\buphold\b"
                       r"|\brule\s+of\s+(?:the\s+)?chair\b"
                       r"|\bdecision\s+of\s+the\s+(?:chair|president|speaker)\b"),
-    ("member_continue", r"\bshall\s+the\s+member\s+continue\b"),
+    ("member_continue", r"\bshall\s+(?:the\s+)?member\s+(?:be\s+(?:allowed|permitted)\s+to\s+)?"
+                        r"continue\b"),
     ("print_debate", r"\bprint\w*\b.*\b(?:debate|remarks|journal)\b"),
     ("reprimand", r"\breprimand"),
     ("introduce_adopt", r"\bintroduc\w*\s+and\s+adopt"),
@@ -98,6 +99,20 @@ _UNNAMED = re.compile(r"^\s*(?:\d{1,2}/\d{1,2}/\d{2,4}|[\W\d_]*)\s*$")
 # a comparison of the record's words with it ignores.
 _AMD = re.compile(r"#?\s*\b\d{4}-\d{3,4}[a-z]?\b|\{\d{3,4}\}|#\s*\d{3,4}[a-z]?\b|\(\s*(?:Rep|Sen)s?\.[^)]*\)",
                   re.I)
+# A bill number as data/bills.json keys one: rollcall_parser.BILL_NO, copied
+# because this file imports nothing of the project's. A roll call on none --
+# the chamber's rules, a ruling of the chair, a member's discipline -- comes
+# here as "_procedural", "HRULE64" or "" (build_session_pages' "Votes on No
+# Bill").
+_BILL_NO = re.compile(r"^(?:(?:SS)?(?:HB|SB|CACR|HR|SR|HCR|SCR|HJR|SJR)|HA|HCO)\d+$", re.I)
+# Words no row names, whatever else they contain: "Refer to Justices 1" is a
+# request for the Supreme Court's opinion, not a referral to a committee
+# called "Justices 1". The head is then the record's own words.
+_NO_ROW = re.compile(r"\bjustices?\b", re.I)
+# What was tabled, or taken from the table, was a motion rather than the bill:
+# "Table Burns Reprimand" (20 February 2020), "Lay the motion to reconsider on
+# the table".
+_A_MOTION = re.compile(r"\breconsider|\bmotion\b|\breprimand|\bcensure", re.I)
 _RESOLUTION = re.compile(r"^(?:HR|SR|HCR|SCR|HJR|SJR|CACR|SSHR|SSHCR)\d", re.I)
 _SECOND_CMTE = {"finance": "Finance", "ways and means": "Ways and Means"}
 
@@ -119,14 +134,19 @@ def classify(text, bill="", body="", motion_words=None):
     if _UNNAMED.match(t):
         out["mk"] = "unnamed"
         return out
+    if _NO_ROW.search(t):
+        return out
+    on_bill = bool(_BILL_NO.match(re.sub(r"\s+", "", bill or "")))
     for key, rx in _COMPILED:
         m = rx.search(t)
         if not m:
             continue
         if key == "adopt" and not _RESOLUTION.match(bill or ""):
             continue
-        if key == "table" and re.search(r"\breconsider|\bmotion\b", t, re.I):
+        if key == "table" and _A_MOTION.search(t):
             key = "table_motion"
+        if key == "untable" and _A_MOTION.search(t):
+            break
         if key == "override":
             # The chamber the bill began in takes up a veto first, and its
             # vote does not make the bill law (votes.json rows 18).
@@ -149,6 +169,17 @@ def classify(text, bill="", body="", motion_words=None):
             out["mf"]["Chamber"] = "House" if (body or "").upper()[:1] == "H" else "Senate"
         out["mk"] = key
         break
+    # ON NO BILL, NO WORDS ABOUT ONE. A row whose words speak of the bill --
+    # "Remove from the Table (Take the bill back up)", "{Bill} Tabled" -- is
+    # not drawn on a vote that was on none: 2026-H-291, a motion to take Rep.
+    # Read's privileges from the table, said "Take the bill back up". The head
+    # is then the record's own words. Read from the words themselves, so a
+    # row added later is held to it without a list kept here.
+    if out["mk"] and not on_bill and motion_words is not None:
+        row = motion_words.get(out["mk"]) or {}
+        said = " ".join(str(row.get(f) or "") for f in ("motion", "gloss", "passed", "failed"))
+        if re.search(r"\bbill\b", said, re.I):
+            out = {"mk": "", "mf": {}}
     if out["mk"] and motion_words is not None:
         row = motion_words.get(out["mk"]) or {}
         head = row.get("motion") or ""

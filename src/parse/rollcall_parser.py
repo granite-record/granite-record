@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.17
+# GRANITE_VERSION: 2026-09-04.18
 """
 Parse RollCallSummary.txt into per-bill voting records.
 
@@ -214,6 +214,14 @@ def parse(path, want_bill=None):
             # nothing in the glossary, so the motion printed verbatim.
             base = re.split(r"\s+-\s+|\s*-?\s*sections?\b", key)[0].strip(" -\u2013,")
             std, plain = QUESTION.get(key) or QUESTION.get(base) or (raw_q, None)
+            # ON NO BILL, NO GLOSS ABOUT ONE. 2026-H-271 was a motion to table
+            # Rep. Wheeler's motion to restore Rep. Read's privileges, filed
+            # under no bill, and "Laid on Table" glossed it "set the bill aside
+            # without killing it" on the member's Votes tab. Empty rather than
+            # None, which means a motion the glossary lacks.
+            if (plain and re.search(r"\bbill\b", plain) and not bill_number(bill)
+                    and (year, body, num) not in OTHER_MEASURE):
+                plain = ""
 
             try:
                 when = datetime.strptime(p[3].strip(), "%m/%d/%Y %I:%M:%S %p")
