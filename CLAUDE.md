@@ -194,7 +194,10 @@ twice first, under different `PYTHONHASHSEED` values, to prove the output is
 deterministic rather than assume it. State the day with `GRANITE_BUILD_DATE`
 for every build being compared, or every page differs by its citation date;
 `src/checks/site_manifest.py record` and `compare` keep and compare the
-manifests.
+manifests. Two steps keep answers in `.build_cache/` (`src/lib/build_cache.py`),
+each under a sha256 of its inputs and of the code that works it out, so a
+cache can make a build faster and never different; delete the folder for a
+cold build, and prove a change to a cached step cold and warm.
 
 **Timestamps, in order of what they can claim.** A roll call's clock time from
 `RollCallSummary.txt` (no captions involved, hand-checked at 3–7 seconds, and
