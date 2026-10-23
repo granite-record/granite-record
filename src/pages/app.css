@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.294 */
+/* GRANITE_VERSION: 2026-09-07.295 */
 /* ONE STYLESHEET FOR EVERY PAGE (23 October 2026). Every page of the site
    links this file, /app.css: the record pages shell.page() makes from
    bills.html, and the five build_pages.py writes -- the home page, Officials,
@@ -3945,7 +3945,12 @@ color:var(--ink-2);font-weight:600;display:flex;flex-direction:column;gap:var(--
    Measured on /committee/H10 at 375px: the document was 512px wide and the
    body scrolled sideways, on 27 committee pages. */
 min-width:0}
-.bfilt select{font:inherit;font-size:var(--t-ui);text-transform:none;letter-spacing:0;
+/* AND THE FIND BOX BESIDE THEM (a member's Votes tab, 23 October 2026), in
+   the same frame. It had no rule: the browser's own 13px box, 21px tall,
+   lower than the two selects beside it, and on an iPhone a field under 16px
+   zooms the page when it is tapped. Its words are the reader's, at the
+   weight of the site's other search boxes (the rule after this one). */
+.bfilt select,.bfilt input[type=search]{font:inherit;font-size:var(--t-ui);text-transform:none;letter-spacing:0;
 color:var(--ink);padding:var(--sp-2) var(--sp-4);border:1px solid var(--edge);border-radius:var(--r-in);
 background:var(--paper);
 /* A select takes its width from its longest OPTION, and the longest status
@@ -3954,6 +3959,7 @@ background:var(--paper);
    committee pages. The control is what must fit; the option text is the
    browser's to shorten. */
 max-width:100%}
+.bfilt input[type=search]{font-weight:400}
 /* THE BILL STATUS SELECT IS PAINTED AS THE SEARCH'S STATUS FILTER IS (the
    person, 8 October 2026: the same categories as the search, on a member's
    and a committee's page). Each option carries its category's chip class
@@ -6052,8 +6058,16 @@ table.votes tr:has(+ tr.vring) td{border-bottom:0}
 .votes .vch{display:block;font-size:var(--t-label);letter-spacing:.05em;text-transform:uppercase;
   color:var(--ink-2);font-weight:600;margin-top:var(--sp-1)}
 /* The outcome is the one chip, .pass or .fail, as on the bill's own Votes
-   tab: it was a bare word in the yes green or the failed red. */
-.votes td.o .chip,.votes td.o i{white-space:nowrap}
+   tab: it was a bare word in the yes green or the failed red.
+   THE CHIP WRAPS (the webinar pass of 23 October 2026). Since the tab says
+   the result in the bill page's words it is a phrase, "Motion Passed:
+   Overridden in the House", and this rule held it on one line, outranking
+   the phone's .chip{white-space:normal}: the words ran out of the chip and
+   off the card, and Rep. Wade's Votes tab was 469px wide on a 390px phone,
+   1041px at 1024 and 847px at 768. At 1366 the chip stood 21px past its
+   column. The tally beside it is a number and stays on one line. */
+.votes td.o .chip{white-space:normal;max-width:100%}
+.votes td.o i{white-space:nowrap}
 .votes td.o i{font-style:normal;color:var(--ink-2)}
 /* THE ONE THING IN THAT CELL THAT IS A SENTENCE, AND SO THE ONE THING THAT
    MUST WRAP. The rule above holds the outcome words on one line -- "Adopted",
@@ -6264,8 +6278,15 @@ table.dpdl{border-collapse:collapse;width:100%;font-family:var(--sans);font-size
 /* width AND min-width. On its own the min-width let the table sit at
    420px inside a 900px box, which is the same empty-box complaint this file
    has been answering all week; the min-width is what makes it scroll rather
-   than crush on a phone. */
-table.cov{border-collapse:collapse;width:100%;min-width:30rem;font-family:var(--sans);
+   than crush on a phone.
+   display:table BECAUSE THE BOX IS WHAT SCROLLS (the webinar pass of 23
+   October 2026). On a phone every record page's table is made a block that
+   scrolls inside itself, and this one is in a box that already scrolls for
+   it: the table took 480px of its 606 and scrolled the rest inside the box's
+   scroll, two scrollers one in the other, and the inner one, holding nothing
+   a keyboard can reach, was no Tab stop -- the box's data-scrollstop counts
+   only what overflows the box (axe: scrollable-region-focusable). */
+table.cov{display:table;border-collapse:collapse;width:100%;min-width:30rem;font-family:var(--sans);
   font-size:var(--t-ui);line-height:1.5}
 .cov th,.cov td{text-align:left;padding:var(--sp-4) var(--sp-6);border-bottom:1px solid var(--rule);
   white-space:nowrap}
@@ -6337,7 +6358,7 @@ table.cov{border-collapse:collapse;width:100%;min-width:30rem;font-family:var(--
   .cmbtn{min-width:44px;min-height:44px}
   .calviews button,.calfold,.calcat{min-height:44px}
   #sort{height:44px}
-  .bfilt select{min-height:44px}
+  .bfilt select,.bfilt input[type=search]{min-height:44px}
   .docket summary{min-height:44px}
   /* The row centres on its links, or a number that is not a link sits at the
      top of the line beside an address in the middle of it. */

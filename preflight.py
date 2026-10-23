@@ -25122,6 +25122,172 @@ def _nowrap():
                   " of them by element name, none reaching a block")
 
 
+# The chips app.css lets stay on one line on a phone, each for its reason. A
+# chip whose words are a phrase has no business here.
+CHIP_NOWRAP_OK = {
+    ".l-numtab .cstat": "Ratified or Not Ratified, in a table in .l-tablewrap, a box that "
+                        "scrolls sideways for it",
+    ".l-speak .calkind": "a meeting's kind, in the testifying guide's table in .l-tablewrap, "
+                         "a box that scrolls sideways for it",
+}
+
+
+@check("frontend", "a chip is held on one line only where its words are short or its box scrolls: a vote's result wraps")
+def _chip_nowrap():
+    """A chip that says a vote's result in the bill page's words is a phrase,
+    and a phrase must be able to wrap.
+
+    `.votes td.o .chip,.votes td.o i{white-space:nowrap}` held the outcome on
+    a member's Votes tab to one line while it was "Adopted" or "Failed". On 23
+    October 2026 the tab took the bill page's words -- "Motion Passed:
+    Overridden in the House" -- and the rule, more specific than the phone's
+    `.chip{white-space:normal;max-width:100%}`, kept them on one line: the
+    words ran out of the chip and off the card, and Rep. Wade's Votes tab was
+    469px wide on a 390px phone, 1041px at 1024 and 847px at 768 (the webinar
+    pass, measured on the dry run in Chrome). Nothing failed, because nothing
+    here measures layout.
+
+    What is checkable is the rule itself: no rule holds a chip -- `.chip` or a
+    hook a chip is placed by (`.cstat`, `.rcres`, `.calkind`, `.fkind`,
+    `.sgn`) -- to one line, but the base `.chip` that the phone's rule
+    releases, and CHIP_NOWRAP_OK, each with its reason. And the result on a
+    member's Votes tab is released by name.
+    """
+    css = Path("src/pages/app.css")
+    if not css.exists():
+        return "skip", "app.css is not there"
+    rules = _css_rules(css.read_text(encoding="utf-8"))
+    hooks = ("chip", "cstat", "rcres", "calkind", "fkind", "sgn")
+    held, released, phone = [], set(), False
+    for at, sel, body, line in rules:
+        decls = dict(_css_decls(body))
+        ws = decls.get("white-space", "")
+        for one in (" ".join(s.split()) for s in sel.split(",")):
+            last = one.replace(" > ", " ").split()[-1] if one else ""
+            classes = set(re.findall(r"\.([\w-]+)", last))
+            if not classes & set(hooks):
+                continue
+            if ws == "nowrap":
+                held.append((one, line, at))
+            elif ws == "normal":
+                released.add(one)
+                if one == ".chip" and any("max-width:45em" in a.replace(" ", "") for a in at) \
+                        and decls.get("max-width") == "100%":
+                    phone = True
+    assert phone, ("the phone's rule that lets a chip wrap -- @media (max-width:45em)"
+                   "{.chip{white-space:normal;max-width:100%}} -- is gone")
+    bad = [f"{{{s}}} (line {n}) holds a chip to one line" for s, n, at in held
+           if not (s == ".chip" and not at) and s not in CHIP_NOWRAP_OK]
+    assert not bad, ("; ".join(bad[:3]) + ". A chip's words can be a phrase -- a vote's "
+                     "result is \"Motion Passed: Overridden in the House\" -- and held to one "
+                     "line they run out of the chip and push the page sideways on a phone. "
+                     "Let it wrap, or name it in CHIP_NOWRAP_OK with why its words are short "
+                     "or its box scrolls.")
+    stale = sorted(set(CHIP_NOWRAP_OK) - {s for s, _, _ in held})
+    assert not stale, f"CHIP_NOWRAP_OK names {stale}, which no rule holds to one line any more"
+    assert ".votes td.o .chip" in released, (
+        "the result on a member's Votes tab is not released to wrap by name: "
+        ".votes td.o .chip{white-space:normal;max-width:100%}")
+    return "ok", (f"{len(held)} rules hold a chip to one line: the base .chip, which a phone "
+                  f"releases, and {len(CHIP_NOWRAP_OK)} whose words are short or whose box "
+                  "scrolls; a vote's result wraps")
+
+
+@check("frontend", "every control a filter strip draws has the strip's frame and 16px words, and 44px on a phone")
+def _bfilt_controls():
+    """A control added to a filter strip is styled with the strip's selects.
+
+    The Find box on a member's Votes tab (e4a2c98, 23 October 2026) was the
+    first control in a `.bfilt` that was not a select, and app.css styled
+    only `.bfilt select`. It was drawn as the browser's own box: 13px words,
+    21px tall, a 2px grey edge, lower than the two selects beside it and
+    white in the dark theme -- and an iPhone zooms the page when a field
+    under 16px is tapped, which is what a webinar's audience, on their
+    phones, would have done with it (the webinar pass of 23 October 2026).
+
+    So: every <select>, <input> and <textarea> inside a `class="bfilt..."`
+    in app.js is named, by element and type, in the rule that gives the
+    strip's selects their frame and 16px words, and in the phone block's
+    44px rule.
+    """
+    css_p, js_p = Path("src/pages/app.css"), Path("src/pages/app.js")
+    if not (css_p.exists() and js_p.exists()):
+        return "skip", "app.css or app.js is not there"
+    js = js_p.read_text(encoding="utf-8")
+    want = set()
+    for m in re.finditer(r'class="bfilt[^"]*"', js):
+        span = js[m.start():js.index("</div>", m.start())]
+        for tag, attrs in re.findall(r"<(select|textarea|input)\b([^>]*)>", span):
+            t = re.search(r'type="(\w+)"', attrs)
+            want.add(f".bfilt {tag}[type={t.group(1)}]" if tag == "input" and t else f".bfilt {tag}")
+    assert want, "app.js draws no filter strip (class=\"bfilt\") with a control in it"
+    rules = _css_rules(css_p.read_text(encoding="utf-8"))
+    framed, tall = set(), set()
+    for at, sel, body, line in rules:
+        decls = dict(_css_decls(body))
+        sels = {" ".join(s.split()) for s in sel.split(",")}
+        if not at and decls.get("font-size") == "var(--t-ui)" and decls.get("border", "").startswith("1px solid"):
+            framed |= sels
+        if any("max-width:45em" in a.replace(" ", "") for a in at) and decls.get("min-height") == "44px":
+            tall |= sels
+    bad = []
+    for w in sorted(want):
+        if w not in framed:
+            bad.append(f"{w} is not in the rule that gives the strip's controls their frame "
+                       "and 16px words (with .bfilt select): the browser draws its own box, at "
+                       "13px, which an iPhone zooms the page to when it is tapped")
+        if w not in tall:
+            bad.append(f"{w} is not held to 44px on a phone with .bfilt select")
+    assert not bad, "; ".join(bad[:3])
+    return "ok", f"{len(want)} kinds of control in the filter strips, each framed, 16px and 44px on a phone: " \
+        + ", ".join(sorted(want))
+
+
+@check("frontend", "a table in a box that scrolls for it is laid out as a table, so the box, the Tab stop, is what scrolls")
+def _scrollstop_tables():
+    """One scroller, not one inside another.
+
+    On a phone app.css makes every record page's table a block that scrolls
+    inside itself (`:where(body:not(.pg)) table{display:block;overflow-x:
+    auto}`). The Data page's coverage table already sits in a box that
+    scrolls for it, `.covwrap`, marked data-scrollstop so that app.js makes
+    it a Tab stop while its content is wider than it is. The phone rule
+    reached the table too: it took 480px of its 606 and scrolled the rest
+    inside the box's own scroll, and that inner scroller, holding nothing a
+    keyboard can reach, was no Tab stop -- axe's scrollable-region-focusable,
+    serious, on the live site and the dry run alike (the webinar pass of 23
+    October 2026).
+
+    So: every table that opens a box marked data-scrollstop, in a builder or
+    in app.js, has a rule in app.css that lays it out as a table again.
+    """
+    css_p = Path("src/pages/app.css")
+    if not css_p.exists():
+        return "skip", "app.css is not there"
+    sources = sorted(Path("src/pages").glob("*.py")) + [Path("src/pages/app.js")]
+    tables = {}
+    for p in sources:
+        if not p.exists():
+            continue
+        text = p.read_text(encoding="utf-8")
+        for m in re.finditer(r"<div\b[^>]*\bdata-scrollstop=[^>]*>\s*<table\b[^>]*\bclass=\"([^\"]+)\"", text):
+            for c in m.group(1).split():
+                tables.setdefault(c, p.name)
+    assert tables, "no table opens a box marked data-scrollstop: the Data page's coverage table did"
+    rules = _css_rules(css_p.read_text(encoding="utf-8"))
+    as_table = set()
+    for at, sel, body, line in rules:
+        if dict(_css_decls(body)).get("display") == "table":
+            as_table |= {" ".join(s.split()) for s in sel.split(",")}
+    bad = [f"table.{c} ({where}) is in a box that scrolls for it and has no rule laying it out "
+           "as a table: on a phone it scrolls inside the box's scroll, where no Tab stop reaches it"
+           for c, where in sorted(tables.items())
+           if not ({f"table.{c}", f".{c}"} & as_table)]
+    assert not bad, "; ".join(bad[:3])
+    return "ok", (f"{len(tables)} table(s) in a box that scrolls for it, each laid out as a "
+                  "table: " + ", ".join(f"table.{c}" for c in sorted(tables)))
+
+
 # ============================================================= code: pipeline ==
 
 @check("pipeline", "build_all runs the steps in the right order", needs=("build_all",))
