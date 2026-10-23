@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-10-09.12
+// GRANITE_VERSION: 2026-10-09.13
 /* THE SITE'S COMPONENTS, IN THE BROWSER. Published as site/components.js and
    loaded by every page, in its head, before app.js, find.js and any page's
    own script, so each of them draws a person, a committee, a date or a time
@@ -141,9 +141,11 @@ const pchip=m=>{
   // is nothing at all to a screen reader. It reuses the mechanism that was
   // already there rather than adding a second one.
   const role=(m.role&&m.role!=="Member")?m.role:(m.prime?"Prime":"");
-  return `<span class="mchip p-${esc(code)}">${
+  // A NAME IS NOT TRANSLATED (23 October 2026): a browser's translation
+  // leaves the chip's name and seat alone and translates its role.
+  return `<span class="mchip p-${esc(code)}" translate="no">${
     m.slug?`<a href="legislator/${esc(m.slug)}.html">${who}</a>`:who}${
-    role?` <i>${esc(role)}</i>`:""}</span>`;};
+    role?` <i translate="yes">${esc(role)}</i>`:""}</span>`;};
 
 // ONE CHIP, IN TWO SIZES (the component plan's step 3, approved 9 October
 // 2026): components.chip. A bill's status, a meeting's kind, a vote's result,
@@ -253,7 +255,7 @@ function cardWord(word,passage){
 // A bill named in running words: components.bill_mention.
 function billMention(n,href,year){
   const y=year?` <span class="byr">(${esc(year)})</span>`:"";
-  return `<a class="bmention" href="${esc(href)}">${esc(n)}${y}</a>`;
+  return `<a class="bmention" href="${esc(href)}" translate="no">${esc(n)}${y}</a>`;
 }
 
 // A bill as one row: components.bill_row.
@@ -261,8 +263,8 @@ function billRow(r){
   const chp=r.word?chip(r.word,"cstat "+String(r.cls||"")):"";
   const year=r.year?`<span class="byr">(${esc(r.year)})</span>`:"";
   const line=r.line?`<span class="brline">${r.line}</span>`:"";
-  return `<div class="brow"><a class="brnum" href="${esc(r.href)}">`+
-    `${esc(r.n)}${year}</a><span class="brtitle">${esc(r.title)}</span>${chp}${line}</div>`;
+  return `<div class="brow"><a class="brnum" href="${esc(r.href)}" translate="no">`+
+    `${esc(r.n)}${year}</a><span class="brtitle" translate="no">${esc(r.title)}</span>${chp}${line}</div>`;
 }
 
 // A card's line of who and where: components.bill_byline.
@@ -277,15 +279,15 @@ function billCard(c){
   const opened=c.open==null?null:c.open;
   const year=c.year?`<span class="cyear"> (${esc(c.year)})</span>`:"";
   const chp=c.word?chip(c.word,"cstat "+String(c.cls||""),"m"):"";
-  const title=opened===null?`<div class="ctitle">${esc(c.title)}</div>`
-    :`<button type="button" class="ctitle" aria-expanded="${opened?"true":"false"}">`+
+  const title=opened===null?`<div class="ctitle" translate="no">${esc(c.title)}</div>`
+    :`<button type="button" class="ctitle" aria-expanded="${opened?"true":"false"}" translate="no">`+
      `${esc(c.title)}</button>`;
   const meta=c.byline?`<div class="cmeta">${c.byline}</div>`:"";
   const line=c.line?`<div class="cline">${c.line}</div>`:"";
   const body=c.body==null?"":`<div class="cbody"${opened?"":" hidden"}>${c.body}</div>`;
   const more=c.card?` ${c.card}`:"";
-  const num=c.href?`<a class="cnum" href="${esc(c.href)}">${esc(c.n)}${year}</a>`
-    :`<span class="cnum">${esc(c.n)}${year}</span>`;
+  const num=c.href?`<a class="cnum" href="${esc(c.href)}" translate="no">${esc(c.n)}${year}</a>`
+    :`<span class="cnum" translate="no">${esc(c.n)}${year}</span>`;
   return `<article class="card${opened?" open":""}${more}" data-id="${esc(c.id)}">`+
     `<div class="chead"><div class="crow">${num}${chp}</div>${title}${meta}`+
     `${c.notes||""}${line}${c.rail||""}</div>${body}</article>`;
@@ -342,7 +344,7 @@ function railHtml(stops,died){
 // A person in a running sentence: components.person_link.
 function personLink(m){
   const full=String(m.display_full||m.label||m.name||""), slug=m.slug||"";
-  return slug?`<a class="psent" href="legislator/${esc(slug)}.html">${esc(full)}</a>`:esc(full);
+  return slug?`<a class="psent" href="legislator/${esc(slug)}.html" translate="no">${esc(full)}</a>`:esc(full);
 }
 
 // A term marked for its popover: components.term_mark.

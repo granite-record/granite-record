@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.231
+// GRANITE_VERSION: 2026-09-07.232
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -3258,7 +3258,7 @@ function presidingOffice(rc,m){
 // broke after "Deputy" in a 250px column.
 function ballotCell(rc,m){
   const o=presidingOffice(rc,m);
-  return `<div class="m">${esc(m.n)}${o?`<span class="p mo">${esc(o)}</span>`:""}</div>`;
+  return `<div class="m" translate="no">${esc(m.n)}${o?`<span class="p mo" translate="yes">${esc(o)}</span>`:""}</div>`;
 }
 
 function donut(bid,i,rc){
@@ -4061,7 +4061,7 @@ function renderSummary(b,d,rsa){
      describes what this bill number is for, which its title does not say.</p>`,"about"));
   const an=((d.billtext||{}).analysis||"").trim();
   if(an)S.push(section("Official Legislative Analysis",
-    `<div class="anbox" data-an="1"><div class="antext">${rsa?rsa(esc(an)):esc(an)}</div></div>
+    `<div class="anbox" data-an="1"><div class="antext" translate="no">${rsa?rsa(esc(an)):esc(an)}</div></div>
      <p class="src">Source: ${gcSource(d)}</p>${rsaLine(d)}`,"analysis"));
   const tb=testifyBox(d,b);
   if(tb)S.push(tb);
@@ -4098,7 +4098,7 @@ function renderSummary(b,d,rsa){
         and in the order it recorded them.</p>
       <ul class="tl">${d.events.filter(e=>!e.cancelled).map(e=>`<li>
         <span class="d">${e.date?esc(dateWords(e.date)):""}</span>
-        <span class="w">${esc(e.text||"")}${e.cite?` <span class="cite">${
+        <span class="w"><span translate="no">${esc(e.text||"")}</span>${e.cite?` <span class="cite">${
           e.cite_url?`<a href="${esc(e.cite_url)}" target="_blank"
           rel="noopener">${esc(e.cite)}</a>`:esc(e.cite)}</span>`:""}${
           signins(e.testimony)}${
@@ -4185,7 +4185,7 @@ function renderVotes(b,d){
       <span class="rcd">${sittingLink(rc.body==="H"?"H":"S",rc.date,dateWords(rc.date))} · ${
         rc.body==="H"?"House":"Senate"}${AVK[vk]?` · ${termMark(vk,AVK[vk])}`:""}</span>
       ${voteChip(rc.mk||"",rc.passed,b.id,rc.mf)}</div>
-      ${rc.mrec?`<p class="rcrec">In the record: ${esc(rc.mrec)}</p>`:""}
+      ${rc.mrec?`<p class="rcrec">In the record: <span translate="no">${esc(rc.mrec)}</span></p>`:""}
       ${rc.mover?`<p class="rcby">Moved by ${rc.mover_m?personLink(rc.mover_m):esc(rc.mover)}</p>`:""}
       ${rc.threshold_note?`<p class="note" style="margin:6px 0 0">${esc(rc.threshold_note)}</p>`:""}
       ${rc.outcome_conflict?`<p class="note" style="margin:6px 0 0">${esc(rc.outcome_conflict)}</p>`:""}
@@ -5099,7 +5099,7 @@ function renderBillText(b,d,rsa){
         }, so where they change the same thing this one governs.</p>`:""}
       ${x.text
         ? `<details class="amdtext"><summary>Read the amendment</summary>
-             <p>${brackets(rsa(esc(x.text)))}</p>
+             <p translate="no">${brackets(rsa(esc(x.text)))}</p>
              <p class="src">Text in ${"["}brackets] is being removed. Text being
                added is underlined in the original, and underlining is lost when
                a PDF is read as text, so additions are not marked here.${
@@ -5152,7 +5152,7 @@ function renderBillText(b,d,rsa){
         Text being added is printed in bold italics in the original, and that
         formatting is lost when the page is read as text, so additions are not
         marked here.</p>
-      <div class="billbody">${billLines(bt.body||"")}</div></div>
+      <div class="billbody" translate="no">${billLines(bt.body||"")}</div></div>
     ${amds?`<div class="amdsteps"><h3 class="amdsec">How it got here</h3>
       <p class="note">Each amendment is a step from one version to the next, in
         the order the docket took them up. A committee amendment is considered
@@ -5210,7 +5210,7 @@ function renderDocuments(b,d){
     // them as the citation; the line alone where there are none.
     const what=acts.length
       ? `<span class="docacts">${acts.map(e=>e.plain
-          ? `<span class="docplain">${esc(e.plain)}</span><span class="docraw">${esc(e.text)}</span>`
+          ? `<span class="docplain">${esc(e.plain)}</span><span class="docraw" translate="no">${esc(e.text)}</span>`
           : `<span class="docplain">${esc(e.text)}</span>`).join("")}</span>`
       // NOT "the General Court's page saying where the bill stands" where it did
       // not: a bill the House Journal leaves out of those it introduced reads
@@ -6665,7 +6665,8 @@ function billHead(b,d){
   // will not use -- and the trail ended on the kind of measure.
   const head=recordHead({trail:[["Bills",`${BASE}bills`],[`${termDash(tm)} Term`,
       tm?`${BASE}bills?term=${encodeURIComponent(tm)}`:""],[b.n||b.id,""]],
-    title:billNumberTerms(b.n),year:y,chip:chip(chipOf(b),`cstat ${chipCls(b)}`,"m"),line:esc(b.title),
+    title:billNumberTerms(b.n),year:y,chip:chip(chipOf(b),`cstat ${chipCls(b)}`,"m"),
+    line:`<span translate="no">${esc(b.title)}</span>`,
     facts,rail:datedRail(b,d),actions:"",kind:"bill"});
   // "BACK TO SEARCH RESULTS" ABOVE THE TRAIL (backIsSearch and lastSearch,
   // above), where a list is behind the bill; the trail's Bills is the tab's

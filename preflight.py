@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.646
+# GRANITE_VERSION: 2026-09-04.647
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -17075,7 +17075,7 @@ def _bills_html():
         # wording is what the check is actually about.
         # Since 10 October 2026 the number is that link (C5), and the title
         # is the button; the corner arrow went with the button it sat beside.
-        "detail link outside the button": '<a class="cnum" href="${esc(c.href)}">',
+        "detail link outside the button": '<a class="cnum" href="${esc(c.href)}" translate="no">',
         "page heading": '<h1 class="sr">',
         # The player opens AT the boundary, not before it. The old lead was
         # five minutes for an estimate, which put the reader in the middle of
@@ -23373,7 +23373,7 @@ def _audit_minor(BSP, seating, BP):
         def slug(self, body, name):
             return "x" if name == "Hunt" else ""
     row = BSP.members_row("H", ["Hunt", "Roy", "Muns"], _M(), lambda s: s)
-    if row != ('<span class="swho1"><span class="mchip p-R"><a href="legislator/x.html">'
+    if row != ('<span class="swho1"><span class="mchip p-R" translate="no"><a href="legislator/x.html">'
                'Rep. Pat Hunt <span class="mtag">(R - Hills 1)</span></a></span></span> '
                '<span class="swho1"><span>Rep. Roy</span>,</span> '
                '<span class="swho1"><span>Rep. Muns</span></span>'):
@@ -25663,7 +25663,7 @@ if (/class="cnum" href=/.test(focusHtml)) {
   console.log("ARROW: the focused view still draws the card's number as a link. It "
               + "points at the standalone page for the same bill, which from a reader's "
               + "seat is the page they are already on"); process.exit(1); }
-if (!/<a class="cnum" href="bill[/]2026[/]hb1442[.]html">HB 1442/.test(listHtml)) {
+if (!/<a class="cnum" href="bill[/]2026[/]hb1442[.]html" translate="no">HB 1442/.test(listHtml)) {
   console.log("ARROW: the search list drew no link to a standalone page");
   process.exit(1); }
 // The tooltip promised "no JavaScript" until the standalone page became this
@@ -26971,7 +26971,7 @@ fs.writeFileSync("./out.json", JSON.stringify(out));
     assert ("Senate Election Law and Municipal Affairs Committee’s hearing "
             "report of") in re.sub(r"\s+", " ", one), (
         "the attribution to the committee's report is missing")
-    assert re.search(r'<h3><span class="mchip p-R"><a href="legislator/[^"]+">'
+    assert re.search(r'<h3><span class="mchip p-R" translate="no"><a href="legislator/[^"]+">'
                      r'Senator Gannon</a></span><span class="hrrole">Prime '
                      r'Sponsor</span>', one), (
         "Senator Gannon is not drawn with the member chip, in the report's "
@@ -29133,7 +29133,7 @@ def _rail_endings(N, B):
             bad.append(f"HB 561's report is not the \"~\"'s line: {got['HB561']['how'][-500:]!a}")
         if not line("HB1179", "ifuture", r'<svg class="arrow"[^>]*><path [^>]*/></svg>',
                     re.escape(reported["rec"]) + r' in 1997, <span class="tally">17–0</span>; filed again '
-                    r'as <a class="bmention" href="bill/1997/hb154.html">HB 154 of 1997</a>'):
+                    r'as <a class="bmention" href="bill/1997/hb154.html" translate="no">HB 154 of 1997</a>'):
             bad.append(f"HB 1179 of 1996's report does not link HB 154 of 1997: "
                        f"{got['HB1179']['how'][-500:]!a}")
         said = (re.search(r'aria-label="([^"]*)"', got["SB570"]["card"]) or [None, ""])[1]
@@ -32429,7 +32429,7 @@ def _session_bill_term(BSP, SD, shell):
         assert "/bills#" not in html and "hb9999" not in html, (
             "a bill its own term's index does not hold was linked anyway; "
             "it must be printed without a link")
-        assert '<span class="cnum">HB 9999</span>' in html, (
+        assert '<span class="cnum" translate="no">HB 9999</span>' in html, (
             "the unindexed bill's number is not printed as plain text")
 
         # One number from two terms on one day is two bills: the House
@@ -56268,7 +56268,7 @@ def _bill_lists_by_number(BO, BC, BS, SP, BP, BI):
             for b in mixed]
     page = SP.consent_html(cons, ["SB29", "SB285", "SB28"], {},
                            {("2025-2026", b): 2026 for b in mixed}, _h.escape)
-    got = [x.replace(" ", "") for x in re.findall(r'class="brnum" href="[^"]*">([^<]*)<', page)]
+    got = [x.replace(" ", "") for x in re.findall(r'class="brnum" href="[^"]*"[^>]*>([^<]*)<', page)]
     assert got == want, "a consent calendar lists " + ", ".join(got)
     assert "SB 28, SB 29, and SB 285 were removed from the consent calendar" in \
         re.sub(r"<[^>]+>", "", page), "the bills taken off a consent calendar are not named by number"
@@ -58714,7 +58714,7 @@ def _session_chips_seat_of_their_term(BSP):
     import proceedings
     today = build_date.today().isoformat()
     current = proceedings.vote_term(today[:4], today)
-    chip = re.compile(r'<span class="mchip p-\w"><a href="legislator/([^"]+)\.html">([^<]*?)'
+    chip = re.compile(r'<span class="mchip p-\w" translate="no"><a href="legislator/([^"]+)\.html">([^<]*?)'
                       r'(?: <span class="mtag">([^<]*)</span>)?</a>')
     bad, seen = [], 0
     for page in sorted(sess.glob("[HS]/*.html")):
@@ -58794,6 +58794,58 @@ def _session_day_folds():
                             "debate_end": 900.0, "window_start": 10.0})["from"] == 61
     return "ok", (f"{len(pages)} fixture session days: both folds closed; the counts in the "
                   "chips' colours; the presiding line; no moment for a consent bill")
+
+
+@check("frontend", "a browser's translation leaves the record's own words alone: bill text, "
+                   "statutes, the Constitution, the analysis, titles, docket lines and names")
+def _record_not_translated():
+    """The person, 23 October 2026, on Granite Record in other languages: "I
+    wouldn't want the bill text to be mistranslated". The first step is to
+    tell the translators already built into Chrome, Edge and Safari what not
+    to touch -- translate="no", which they honour -- so a reader can translate
+    the explanations around the record and still read the record as it was
+    written: the bill's text, its amendments and its official analysis, the
+    statutes and the Constitution, bill numbers and titles, the clerk's docket
+    lines and the record's own motion wording, and people's names (Hope,
+    Faith, Mark and June are names here, not words). A role or an office
+    inside a name's chip is translated (translate="yes"). Every place that
+    draws one of these is held here, and every chip drawn by hand."""
+    want = {
+        "src/pages/app.js": ['<div class="antext" translate="no">', '<div class="billbody" translate="no">',
+                             '<p translate="no">${brackets(rsa(esc(x.text)))}</p>',
+                             '<span class="w"><span translate="no">${esc(e.text||"")}</span>',
+                             'In the record: <span translate="no">${esc(rc.mrec)}</span>',
+                             '<div class="m" translate="no">${esc(m.n)}',
+                             'line:`<span translate="no">${esc(b.title)}</span>`',
+                             '<span class="docraw" translate="no">'],
+        "src/pages/components.js": ['class="cnum" href="${esc(c.href)}" translate="no">',
+                                    'class="ctitle" translate="no">', 'class="brtitle" translate="no">',
+                                    'class="bmention" href="${esc(href)}" translate="no">',
+                                    'class="psent" href="legislator/${esc(slug)}.html" translate="no">',
+                                    '<span class="mchip p-${esc(code)}" translate="no">',
+                                    '<i translate="yes">'],
+        "src/pages/components.py": ['class="ctitle" translate="no">', 'class="brtitle" translate="no">',
+                                    '<span class="mchip p-{esc(code)}" translate="no">',
+                                    '<i translate="yes">'],
+        "src/pages/build_rsa.py": ['<div class="rs-text" translate="no">'],
+        "src/pages/constitution_tab.py": ['<div class="rs-text" translate="no">'],
+        "src/pages/build_bill_pages.py": ['<p class="sx-title" translate="no">',
+                                          '<div class="sx-docket" translate="no">'],
+        "src/pages/build_pages.py": ['<a class="brand" href="index.html"{BRAND_CUR} translate="no">'],
+        "src/pages/bills.html": ['<a class="brand" href="index.html" translate="no">'],
+    }
+    missing = [f"{f}: {w}" for f, ws in want.items()
+               for w in ws if w not in Path(f).read_text(encoding="utf-8")]
+    assert not missing, "record text a translator may now rewrite: " + "; ".join(missing)
+    # A chip drawn by hand, anywhere a page is written, says it too.
+    loose = []
+    for f in sorted(Path("src").rglob("*.py")) + sorted(Path("src/pages").glob("*.js")):
+        for m in re.finditer(r'<span class="mchip[^"]*"(?:\s+[^>]*)?>', f.read_text(encoding="utf-8")):
+            if 'translate="no"' not in m.group(0):
+                loose.append(f"{f.name}: {m.group(0)[:60]}")
+    assert not loose, "a person's chip a translator may rewrite: " + "; ".join(loose[:6])
+    return "ok", (f"{sum(len(w) for w in want.values())} places and every hand-drawn chip "
+                  "carry translate=\"no\"")
 
 
 @check("frontend", "every chip is the one chip: drawn by chip() in both languages, in one "
@@ -59357,7 +59409,7 @@ def _print_sheet():
     # The components and the words.
     for name, c in got["cases"].items():
         glance = c["full"].split("At a Glance", 1)[-1].split("</table>", 1)[0]
-        chips = len(re.findall(r'<span class="mchip p-[A-Z]">', glance))
+        chips = len(re.findall(r'<span class="mchip p-[A-Z]" translate="no">', glance))
         if chips != c["sponsors"]:
             bad.append(f"{name} draws {chips} of its {c['sponsors']} sponsors as the person chip")
         mine = re.sub(r'<span class="ps-addr">.*?</span>|<div class="ps-text">.*?</div>|'
@@ -62233,7 +62285,7 @@ def _legislators_page_tabs():
                        ("counties", [r["name"] for c in off["county"]["counties"].values()
                                    for r in c["commissioners"].values()])):
         for nm in names:
-            assert re.search(r'<span class="mchip p-[A-Z]">' + re.escape(_html.escape(nm)), panes[pid]), (
+            assert re.search(r'<span class="mchip p-[A-Z]" translate="no">' + re.escape(_html.escape(nm)), panes[pid]), (
                 f"{nm} is not a person chip on the {pid} tab")
     # A commissioner of both nominations on the neutral chip with both
     # letters; the neutral offices with no party at all (the person, 9 Oct).
@@ -62244,12 +62296,12 @@ def _legislators_page_tabs():
     for c in off["county"]["counties"].values():
         for r in c["commissioners"].values():
             if "/" in (r.get("party") or ""):
-                assert (f'<span class="mchip p-X">{_html.escape(r["name"])} <span class="mtag">'
+                assert (f'<span class="mchip p-X" translate="no">{_html.escape(r["name"])} <span class="mtag">'
                         f'({r["party"]})</span>') in county, (
                     f"{r['name']} ({r['party']}) is not on the neutral chip with both letters")
         sheriff = (c.get("sheriff") or {}).get("name")
         if sheriff:
-            assert f'<span class="mchip p-X">{_html.escape(sheriff)}</span>' in county, (
+            assert f'<span class="mchip p-X" translate="no">{_html.escape(sheriff)}</span>' in county, (
                 f"the sheriff {sheriff} carries a party, or is not a chip")
     assert BP.OFFICIALS_HASH_JS in page and page.index(BP.OFFICIALS_HASH_JS) < page.index(
         BT.TABS_JS), "the old page's #towns is not sent to #my-town before the tabs read it"
@@ -62442,7 +62494,7 @@ def _officials_heads_and_judges():
         assert _html.escape(r["name"]) in who and _html.escape(r["title"]) in who, (
             f"{r['name']}, {r['title']}, is not in {r['department']}'s row")
     for r in sup:
-        assert re.search(r'<span class="mchip p-X">' + re.escape(_html.escape(r["name"])) + "</span>",
+        assert re.search(r'<span class="mchip p-X" translate="no">' + re.escape(_html.escape(r["name"])) + "</span>",
                          jud) and f'href="{_html.escape(r["official_url"])}"' in jud, (
             f"Justice {r['name']} is not on the neutral chip with their page")
     for r in sop:
@@ -62459,7 +62511,7 @@ def _officials_heads_and_judges():
     # plain where the build has no such page.
     tied = [r for r in named if r.get("member")]
     for r in tied:
-        chip = f'<span class="mchip p-X"><a href="legislator/{_html.escape(r["member"])}.html">'
+        chip = f'<span class="mchip p-X" translate="no"><a href="legislator/{_html.escape(r["member"])}.html">'
         assert chip in OT.executive(off, lambda s: True), f"{r['name']} is not their member chip"
         assert chip not in OT.executive(off, lambda s: False), (
             f"{r['name']} is linked to a member page the build does not have")
@@ -62634,7 +62686,7 @@ def _officials_successor(BME, OT, BT, BDM):
     assert line.format(n="Lu After (D)", d=_SUCCESSOR_DAY, w="January 7, 2027") in co_b and \
         line.format(n="Ned After", d=_SUCCESSOR_DAY, w="January 7, 2027") in co_b, (
             "the county's successors are not said, or a sheriff's carries a party")
-    assert '<span class="mchip p-X">Ned After</span>' in co_o and "Mo Before" not in co_o, (
+    assert '<span class="mchip p-X" translate="no">Ned After</span>' in co_o and "Mo Before" not in co_o, (
         "on the day the sheriff is not the successor, on the neutral chip")
 
     # A town page's Representatives tab, and the district map's seats.
@@ -63780,12 +63832,13 @@ def _officers_on_the_page(B, BLP, BSP, OF):
     assert '<h1 class="rh1">Representative James Spillane</h1>' in head_s, head_s[:300]
     assert '<p class="rline">Republican&nbsp;&middot; Rockingham District&nbsp;2' in head_s, head_s[:400]
     assert '<h1 class="rh1">Former Representative Michael Gunski</h1>' in head_g, head_g[:300]
-    assert cells == ['<div class="m">Rep. Steven Smith (R)<span class="p mo">Deputy '
+    # A member's name is not translated, the office beside it is (23 October 2026).
+    assert cells == ['<div class="m" translate="no">Rep. Steven Smith (R)<span class="p mo" translate="yes">Deputy '
                      'Speaker of the House</span></div>',
-                     '<div class="m">Rep. Steven Smith (R)</div>',
-                     '<div class="m">Rep. Jim Kofalt (R)</div>',
-                     '<div class="m">Rep. Steven Smith (R)</div>',
-                     '<div class="m">Sen. Steven Smith (R)</div>'], cells
+                     '<div class="m" translate="no">Rep. Steven Smith (R)</div>',
+                     '<div class="m" translate="no">Rep. Jim Kofalt (R)</div>',
+                     '<div class="m" translate="no">Rep. Steven Smith (R)</div>',
+                     '<div class="m" translate="no">Sen. Steven Smith (R)</div>'], cells
     return "ok", ("\"Senator Sharon Carson (R - SD14)\", President of the Senate; "
                   "\"Representative James Spillane (R - Rock 2)\"; the Deputy Speaker named "
                   "on his presiding ballot and in the chair")
@@ -63865,12 +63918,12 @@ def _official_party_letter(BT):
     shows no chip at all, and a party not given shows no letter."""
     gov = BT.office_block("Governor", {"name": "Kelly Ayotte", "party": "R",
                                        "official_url": "https://www.governor.nh.gov/"}, "")
-    assert ('<span class="mchip p-R"><a href="https://www.governor.nh.gov/" rel="noopener">'
+    assert ('<span class="mchip p-R" translate="no"><a href="https://www.governor.nh.gov/" rel="noopener">'
             'Kelly Ayotte <span class="mtag">(R)</span></a></span>') in gov, gov
     us = BT.office_block("", {"name": "Chris Pappas", "party": "D"}, "")
-    assert '<span class="mchip p-D">Chris Pappas <span class="mtag">(D)</span></span>' in us, us
+    assert '<span class="mchip p-D" translate="no">Chris Pappas <span class="mtag">(D)</span></span>' in us, us
     none = BT.office_block("", {"name": "A. Person"}, "")
-    assert '<span class="mchip p-X">A. Person</span>' in none, none
+    assert '<span class="mchip p-X" translate="no">A. Person</span>' in none, none
     return "ok", "\"Kelly Ayotte (R)\", \"Chris Pappas (D)\"; no letter where no party is given"
 
 
@@ -87484,11 +87537,11 @@ def _town_one_clerk(B):
         if len(vote) != 1 or other:
             bad.append(f"{town}: {len(vote)} How to Vote clerk rows, and "
                        f"{other} below")
-        if f'<span class="mchip">{clerk[key]}</span><span class="offseat">' \
+        if f'<span class="mchip" translate="no">{clerk[key]}</span><span class="offseat">' \
                 f'Town or city clerk' not in page:
             bad.append(f"{town}: the Secretary of State's clerk is not the one named")
     alton = B.build("Alton", "0", {"0": {}}, {}, [], off, "https://x.test", tmpl)
-    if '<span class="mchip">Ryan Heath</span><span class="offseat">Town Administrator</span>' not in alton:
+    if '<span class="mchip" translate="no">Ryan Heath</span><span class="offseat">Town Administrator</span>' not in alton:
         bad.append("Alton's administrator, confirmed by his own address, is not kept")
     albany = B.build("Albany", "0", {"0": {}}, {}, [], off, "https://x.test", tmpl)
     if "Kelly Collins" in albany:
@@ -90134,7 +90187,7 @@ def _elect_pages_link_own():
             bad.append(f"{rel} links Pat Newell, a new person")
     if set(want) - linked:
         bad.append(f"never linked: {sorted(set(want) - linked)}")
-    newell = ('<span class="mchip p-X">Pat Newell <span class="mtag">(R/D)</span></span>')
+    newell = ('<span class="mchip p-X" translate="no">Pat Newell <span class="mtag">(R/D)</span></span>')
     for rel in ("officials.html", "town/brentwood.html", "town/danville.html", "town/fremont.html"):
         if newell not in sources[rel]:
             bad.append(f"{rel} does not draw Pat Newell on the neutral chip with both letters")

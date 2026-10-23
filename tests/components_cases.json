@@ -101,21 +101,21 @@
   "pchip": [
     {"args": [{"name": "Vail, Suzanne", "display_full": "Rep. Suzanne Vail (D - Hills 6)",
                "party": "Democrat", "slug": "suzanne-vail-hills-6"}],
-     "want": "<span class=\"mchip p-D\"><a href=\"legislator/suzanne-vail-hills-6.html\">Rep. Suzanne Vail <span class=\"mtag\">(D - Hills 6)</span></a></span>"},
+     "want": "<span class=\"mchip p-D\" translate=\"no\"><a href=\"legislator/suzanne-vail-hills-6.html\">Rep. Suzanne Vail <span class=\"mtag\">(D - Hills 6)</span></a></span>"},
     {"args": [{"name": "Abbas, Daryl", "display_full": "Sen. Daryl Abbas (R - SD22)",
                "party_code": "R", "slug": "daryl-abbas-sd22"}]},
     {"args": [{"name": "A", "display_full": "Rep. A", "party": "R", "slug": "a"}]},
     {"args": [{"name": "A", "display_full": "Rep. A", "party": "Republican", "slug": "a"}]},
     {"args": [{"name": "B", "display_full": "Rep. B", "party": "D", "slug": "b", "role": "Chair"}]},
     {"args": [{"name": "C", "display_full": "Rep. C", "party": "D", "slug": "c", "prime": true}],
-     "want": "<span class=\"mchip p-D\"><a href=\"legislator/c.html\">Rep. C</a> <i>Prime</i></span>"},
+     "want": "<span class=\"mchip p-D\" translate=\"no\"><a href=\"legislator/c.html\">Rep. C</a> <i translate=\"yes\">Prime</i></span>"},
     {"args": [{"name": "D", "display_full": "Rep. D", "party": "D", "slug": "d", "role": "Member"}]},
     {"args": [{"name": "E", "display_full": "Rep. E"}],
-     "want": "<span class=\"mchip p-X\">Rep. E</span>"},
+     "want": "<span class=\"mchip p-X\" translate=\"no\">Rep. E</span>"},
     {"args": [{"name": "F", "display_full": "Rep. \"F\" & <G>", "party": "I", "slug": "f"}]},
     {"args": [{"label": "Sen. Sharon Carson (R - SD14)", "party_code": "R"}]},
     {"args": [{"name": "Wade, A.", "party": "L", "slug": "a-wade"}]},
-    {"args": [{}], "want": "<span class=\"mchip p-X\"></span>"}
+    {"args": [{}], "want": "<span class=\"mchip p-X\" translate=\"no\"></span>"}
   ],
   "chip": [
     {"args": ["Became Law", "cstat s-law", "m"],
@@ -202,8 +202,8 @@
     {"args": [null, null], "want": ""}
   ],
   "bill_mention": [
-    {"args": ["HB 652-FN", "bill/2026/hb652.html", ""], "want": "<a class=\"bmention\" href=\"bill/2026/hb652.html\">HB 652-FN</a>"},
-    {"args": ["HB 1681", "bill/2026/hb1681.html", 2026], "want": "<a class=\"bmention\" href=\"bill/2026/hb1681.html\">HB 1681 <span class=\"byr\">(2026)</span></a>"}
+    {"args": ["HB 652-FN", "bill/2026/hb652.html", ""], "want": "<a class=\"bmention\" href=\"bill/2026/hb652.html\" translate=\"no\">HB 652-FN</a>"},
+    {"args": ["HB 1681", "bill/2026/hb1681.html", 2026], "want": "<a class=\"bmention\" href=\"bill/2026/hb1681.html\" translate=\"no\">HB 1681 <span class=\"byr\">(2026)</span></a>"}
   ],
   "bill_row": [
     {"args": [{"n": "HB 1371", "year": 2026, "href": "bill/2026/hb1371.html", "title": "prohibiting application fees", "word": "Died", "cls": "s-done", "line": "Killed on the consent calendar"}]},
@@ -234,7 +234,7 @@
     {"args": [null, false], "want": ""}
   ],
   "person_link": [
-    {"args": [{"display_full": "Rep. Alice Wade (D - Straf 15)", "slug": "alice-wade-straf-15"}], "want": "<a class=\"psent\" href=\"legislator/alice-wade-straf-15.html\">Rep. Alice Wade (D - Straf 15)</a>"},
+    {"args": [{"display_full": "Rep. Alice Wade (D - Straf 15)", "slug": "alice-wade-straf-15"}], "want": "<a class=\"psent\" href=\"legislator/alice-wade-straf-15.html\" translate=\"no\">Rep. Alice Wade (D - Straf 15)</a>"},
     {"args": [{"label": "Rep. Alexander Jr."}], "want": "Rep. Alexander Jr."},
     {"args": [{"name": "Smith & Co"}], "want": "Smith &amp; Co"},
     {"args": [{}], "want": ""}
@@ -318,14 +318,14 @@
      "want": "<p class=\"elnf\"><b>Result not final</b> &mdash; a recount was requested</p>"},
     {"args": [{"seats": 2, "elected": [{"n": "Jodi Nelson", "p": "R", "k": "sitting", "id": "377001",
                                         "s": "jodi-nelson-rock-13"}], "not_final": 0, "held": 0}],
-     "want": "<ul class=\"ellist\"><li><span class=\"mchip p-R\"><a href=\"legislator/jodi-nelson-rock-13.html\">Jodi Nelson <span class=\"mtag\">(R)</span></a></span></li></ul><p class=\"elnone\">No member-elect on file for 1 seat.</p>"},
+     "want": "<ul class=\"ellist\"><li><span class=\"mchip p-R\" translate=\"no\"><a href=\"legislator/jodi-nelson-rock-13.html\">Jodi Nelson <span class=\"mtag\">(R)</span></a></span></li></ul><p class=\"elnone\">No member-elect on file for 1 seat.</p>"},
     {"args": [{"seats": 3, "elected": [{"n": "Pat Newell", "p": "R/D", "k": "new"}], "held": 0}],
-     "want": "<ul class=\"ellist\"><li><span class=\"mchip p-X\">Pat Newell <span class=\"mtag\">(R/D)</span></span></li></ul><p class=\"elnone\">No member-elect on file for 2 seats.</p>"},
+     "want": "<ul class=\"ellist\"><li><span class=\"mchip p-X\" translate=\"no\">Pat Newell <span class=\"mtag\">(R/D)</span></span></li></ul><p class=\"elnone\">No member-elect on file for 2 seats.</p>"},
     {"args": [{"seats": 1, "elected": [{"n": "Sam Wright", "p": "", "k": "new"}], "not_final": 0, "held": 0}],
-     "want": "<ul class=\"ellist\"><li><span class=\"mchip p-X\">Sam Wright</span></li></ul>"},
+     "want": "<ul class=\"ellist\"><li><span class=\"mchip p-X\" translate=\"no\">Sam Wright</span></li></ul>"},
     {"args": [{"seats": 2, "elected": [{"n": "Dana Ricard", "p": "D", "k": "sitting", "id": "377002"}],
                "not_final": 1, "held": 0}],
-     "want": "<ul class=\"ellist\"><li><span class=\"mchip p-D\">Dana Ricard <span class=\"mtag\">(D)</span></span></li></ul><p class=\"elnf\"><b>Result not final</b></p>"},
+     "want": "<ul class=\"ellist\"><li><span class=\"mchip p-D\" translate=\"no\">Dana Ricard <span class=\"mtag\">(D)</span></span></li></ul><p class=\"elnf\"><b>Result not final</b></p>"},
     {"args": [{"seats": 1, "elected": [{"p": "R", "k": "new"}, {"k": "new"}], "not_final": 0}]},
     {"args": [{"seats": 1, "elected": [], "not_final": 0, "held": 1}],
      "want": "<p class=\"elnone\">No member-elect on file for 1 seat.</p>"},

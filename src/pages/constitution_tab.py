@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-17.1
+# GRANITE_VERSION: 2026-10-17.2
 """
 The state Constitution as a tab on the Laws page, and the links to its articles
 from the rest of the site.
@@ -79,7 +79,7 @@ def _article(p, a, level):
     link = f'{PATH}#{a["anchor"]}'
     badge = ' <span class="rs-rbadge">Repealed</span>' if a["repealed"] else ""
     text = "" if a["repealed"] else (
-        '<div class="rs-text">' + "".join(f"<p>{E(t)}</p>" for t in a["text"]) + "</div>")
+        '<div class="rs-text" translate="no">' + "".join(f"<p>{E(t)}</p>" for t in a["text"]) + "</div>")
     notes = ""
     if a["notes"]:
         notes = ('<ul class="cn-notes" aria-label="Adopted and amended">'

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-09.10
+# GRANITE_VERSION: 2026-10-09.11
 """
 The site's components, in Python: what the builders draw a person, a
 committee, a chip, a date and a time with, and the words they say.
@@ -229,8 +229,10 @@ def pchip(m):
         "Prime" if m.get("prime") else "")
     slug = m.get("slug") or ""
     inner = (f'<a href="legislator/{esc(slug)}.html">{who}</a>' if slug else who)
-    return (f'<span class="mchip p-{esc(code)}">{inner}'
-            + (f" <i>{esc(role)}</i>" if role else "") + "</span>")
+    # A NAME IS NOT TRANSLATED (23 October 2026): a browser's translation
+    # leaves the chip's name and seat alone and translates its role.
+    return (f'<span class="mchip p-{esc(code)}" translate="no">{inner}'
+            + (f' <i translate="yes">{esc(role)}</i>' if role else "") + "</span>")
 
 
 # ONE CHIP, IN TWO SIZES (the component plan's step 3, approved 9 October
@@ -415,7 +417,7 @@ def bill_mention(n, href, year=""):
     an underlined link, no chip and no preview (D12), the year beside it
     where the page spans terms. "HB 652-FN", "HB 1681 (2026)"."""
     y = f' <span class="byr">({esc(year)})</span>' if year else ""
-    return f'<a class="bmention" href="{esc(href)}">{esc(n)}{y}</a>'
+    return f'<a class="bmention" href="{esc(href)}" translate="no">{esc(n)}{y}</a>'
 
 
 def bill_row(r):
@@ -426,8 +428,8 @@ def bill_row(r):
     chp = chip(r.get("word"), "cstat " + str(r.get("cls") or "")) if r.get("word") else ""
     year = f'<span class="byr">({esc(r.get("year"))})</span>' if r.get("year") else ""
     line = f'<span class="brline">{r.get("line")}</span>' if r.get("line") else ""
-    return (f'<div class="brow"><a class="brnum" href="{esc(r.get("href"))}">'
-            f'{esc(r.get("n"))}{year}</a><span class="brtitle">{esc(r.get("title"))}</span>'
+    return (f'<div class="brow"><a class="brnum" href="{esc(r.get("href"))}" translate="no">'
+            f'{esc(r.get("n"))}{year}</a><span class="brtitle" translate="no">{esc(r.get("title"))}</span>'
             f'{chp}{line}</div>')
 
 
@@ -459,9 +461,9 @@ def bill_card(c):
     opened = c.get("open")
     year = f'<span class="cyear"> ({esc(c.get("year"))})</span>' if c.get("year") else ""
     chp = chip(c.get("word"), "cstat " + str(c.get("cls") or ""), "m") if c.get("word") else ""
-    title = (f'<div class="ctitle">{esc(c.get("title"))}</div>' if opened is None else
-             f'<button type="button" class="ctitle" aria-expanded="{"true" if opened else "false"}">'
-             f'{esc(c.get("title"))}</button>')
+    title = (f'<div class="ctitle" translate="no">{esc(c.get("title"))}</div>' if opened is None else
+             f'<button type="button" class="ctitle" aria-expanded="{"true" if opened else "false"}"'
+             f' translate="no">{esc(c.get("title"))}</button>')
     meta = f'<div class="cmeta">{c.get("byline")}</div>' if c.get("byline") else ""
     line = f'<div class="cline">{c.get("line")}</div>' if c.get("line") else ""
     body = ("" if c.get("body") is None else
@@ -469,8 +471,8 @@ def bill_card(c):
     more = f' {c.get("card")}' if c.get("card") else ""
     # A bill with no page of its own to go to (no href) has its number as
     # text: a link to nowhere is a link that fails.
-    num = (f'<a class="cnum" href="{esc(c.get("href"))}">{esc(c.get("n"))}{year}</a>'
-           if c.get("href") else f'<span class="cnum">{esc(c.get("n"))}{year}</span>')
+    num = (f'<a class="cnum" href="{esc(c.get("href"))}" translate="no">{esc(c.get("n"))}{year}</a>'
+           if c.get("href") else f'<span class="cnum" translate="no">{esc(c.get("n"))}{year}</span>')
     return (f'<article class="card{" open" if opened else ""}{more}" data-id="{esc(c.get("id"))}">'
             f'<div class="chead"><div class="crow">{num}{chp}</div>{title}{meta}'
             f'{c.get("notes") or ""}{line}{c.get("rail") or ""}</div>{body}</article>')
@@ -548,8 +550,8 @@ def person_link(m):
     record gives. Text where there is no page to link to."""
     full = str(m.get("display_full") or m.get("label") or m.get("name") or "")
     slug = m.get("slug") or ""
-    return (f'<a class="psent" href="legislator/{esc(slug)}.html">{esc(full)}</a>' if slug
-            else esc(full))
+    return (f'<a class="psent" href="legislator/{esc(slug)}.html" translate="no">{esc(full)}</a>'
+            if slug else esc(full))
 
 
 def term_mark(key, text):

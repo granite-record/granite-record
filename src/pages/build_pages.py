@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.225
+# GRANITE_VERSION: 2026-09-04.226
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -1368,7 +1368,7 @@ def shell(title, current, body, wide=False, script="", desc="",
  href="/feed/all.xml">
 <link rel="alternate" type="application/rss+xml" title="Granite Record — upcoming hearings"
  href="/feed/hearings.xml"></head><body class="pg">
-<a class="skip" href="#main">Skip to the content</a>\n<nav class="top" aria-label="Sections"><div class="in"><a class="brand" href="index.html"{BRAND_CUR}>Granite Record</a>
+<a class="skip" href="#main">Skip to the content</a>\n<nav class="top" aria-label="Sections"><div class="in"><a class="brand" href="index.html"{BRAND_CUR} translate="no">Granite Record</a>
 {''.join(nav)}</div></nav>
 <main class="wrap{' wide' if wide else ''}" id="main">{body}</main>
 <footer><div class="in">
@@ -2522,7 +2522,7 @@ function roster(){
         // THE SAME CHIP AS THE OTHER TWO VIEWS (pchip in Python), which the
         // person asked for on 19 September; this view kept its own name, pill
         // and district until 24 September. display_full carries all three.
-        +ms.map(m=>`<div class="mem"><span class="mchip p-${esc(m.p)}">`
+        +ms.map(m=>`<div class="mem"><span class="mchip p-${esc(m.p)}" translate="no">`
           +`<a href="legislator/${esc(m.slug)}.html">${esc(m.full)}</a></span></div>`).join("")
         +`</div></details>`;
     }).join("");

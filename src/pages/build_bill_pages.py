@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.72
+# GRANITE_VERSION: 2026-09-04.73
 """
 Write a real address for every bill, and the sitemap that points at them.
 
@@ -145,7 +145,7 @@ def static_record(b, d, data_url=None):
            f'<p class="sx-name">{E(n)}{f" ({E(yr)})" if yr else ""}</p>']
     title = b.get("title") or d.get("title") or ""
     if title:
-        out.append(f'<p class="sx-title">{E(clean_title(title))}</p>')
+        out.append(f'<p class="sx-title" translate="no">{E(clean_title(title))}</p>')
     facts = []
     if b.get("status"):
         facts.append(f"<b>Status:</b> {E(b['status'])}")
@@ -195,7 +195,7 @@ def static_record(b, d, data_url=None):
     if ev:
         # In the docket's own words, dates and all, as the page app.js draws
         # gives them: class "sx-docket" is how the date check knows a quotation.
-        out.append('<h2>The Docket</h2><div class="sx-docket"><ul>' + "".join(
+        out.append('<h2>The Docket</h2><div class="sx-docket" translate="no"><ul>' + "".join(
             f"<li>{E(_day(e.get('date')))}: {E(e.get('text') or '')}</li>" for e in ev)
             + "</ul></div>")
     # The sections the bill amends, each to the site's own page for its

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-11.16
+# GRANITE_VERSION: 2026-10-11.17
 """
 The statutes (RSA) as pages: /laws, and one page a chapter at /laws/<chapter>.
 
@@ -571,7 +571,7 @@ def chapter_page(tmpl, table, data, bills, ch, base):
         body.append(
             f'<section class="rs-sec" id="{E(anchor)}"><h3 class="rs-h"><a href="{E(path)}#{E(anchor)}">'
             f'{E(a)}</a> {E(s.heading)}</h3>{tag}'
-            f'<div class="rs-text">{linked_text(table, s.text, a)}</div>'
+            f'<div class="rs-text" translate="no">{linked_text(table, s.text, a)}</div>'
             + (f'<p class="rs-source">Source. {E(s.note)}</p>' if s.note else "")
             + (f'<div class="rs-folds">{folds}</div>' if folds else "") + "</section>")
     # THE SECTIONS IN A SIDEBAR (the person, 11 October 2026: "when you're in

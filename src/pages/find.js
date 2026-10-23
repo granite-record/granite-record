@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-16.34
+// GRANITE_VERSION: 2026-09-16.35
 /* FIND ANYTHING, FROM THE HEADER (16 September, asked for in these words:
    "a search icon in the header that lets you search for anything including
    legislators, committees, towns, and bills ... searching Litchfield would
@@ -1117,7 +1117,7 @@ function ytPeople(p){
   const ppl=(YT.data&&YT.data.people)||{};
   return '<ul class="ytppl">'+(p.m||[]).map(s=>{
     const w=ppl[s]||[s,""];
-    return `<li><span class="mchip p-${_fesc(w[1]||"X")}"><a href="/legislator/${_fesc(s)}">${_fesc(w[0])}</a></span></li>`;
+    return `<li><span class="mchip p-${_fesc(w[1]||"X")}" translate="no"><a href="/legislator/${_fesc(s)}">${_fesc(w[0])}</a></span></li>`;
   }).join("")+"</ul>";
 }
 function ytVote(p){
@@ -1163,7 +1163,7 @@ function ytMark(p){
 // the card is not drawn and the tab is the search, as before.
 function ytChip(name,party,href,out){
   const a=href?`<a href="${_fesc(href)}"${out?' target="_blank" rel="noopener"':""}>${_fesc(name)}</a>`:_fesc(name);
-  return `<li><span class="mchip p-${_fesc(party||"X")}">${a}</span></li>`;
+  return `<li><span class="mchip p-${_fesc(party||"X")}" translate="no">${a}</span></li>`;
 }
 /* WHO NOVEMBER'S ELECTION SENT, IN THE CARD (the person's decisions of 16
    October 2026): between the election and Organization Day a place's "e"

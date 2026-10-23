@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-10-09.7
+// GRANITE_VERSION: 2026-10-09.8
 /* THE DISTRICT MAP (map v1), as a module a page mounts:
 
      <link rel="stylesheet" href="/map.css">
@@ -433,10 +433,10 @@ function countWords(ms){
    links to their own site, in a new tab (D20). */
 function chip(m){
   const p=esc(letterOf(m.p));
-  if(m.u)return `<span class="mchip p-${p}"><a class="gmout" href="${esc(m.u)}" target="_blank" rel="noopener">${esc(m.n)} <span class="mtag">(${p})</span><span class="gmvh"> (opens in a new tab)</span></a></span>`;
+  if(m.u)return `<span class="mchip p-${p}" translate="no"><a class="gmout" href="${esc(m.u)}" target="_blank" rel="noopener">${esc(m.n)} <span class="mtag">(${p})</span><span class="gmvh" translate="yes"> (opens in a new tab)</span></a></span>`;
   const full=String(m.n||""),tag=full.match(/^(.*\S)\s+(\([^()]*\))$/);
   const who=tag?`${esc(tag[1])} <span class="mtag">${esc(tag[2])}</span>`:esc(full);
-  return `<span class="mchip p-${p}">${m.s?`<a href="/legislator/${esc(m.s)}.html">${who}</a>`:who}</span>`;
+  return `<span class="mchip p-${p}" translate="no">${m.s?`<a href="/legislator/${esc(m.s)}.html">${who}</a>`:who}</span>`;
 }
 /* "Dover (Ward 1, Ward 2, Ward 3)" once, rather than the city ten times,
    each ward its own link with its capital (the person, 10 October 2026) */

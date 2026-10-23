@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-09.39
+# GRANITE_VERSION: 2026-09-09.40
 """
 A page per town and ward: everyone who represents the people who live there.
 
@@ -165,7 +165,7 @@ def person(name):
     """
     if VACANT.match(name or ""):
         return "Vacant"
-    return f'<span class="mchip">{E(display_name(name))}</span>'
+    return f'<span class="mchip" translate="no">{E(display_name(name))}</span>'
 
 
 # Ten digits, then an extension if there is one: "603-588-6785 ext 221",
@@ -909,7 +909,7 @@ def office_block(title, holder, fallback_url, note=""):
         said = f'{E(name)} <span class="mtag">({E(p)})</span>' if p != "X" else E(name)
         link = (f'<a href="{E(url)}" rel="noopener">{said}</a>'
                 if url else said)
-        who = f'<span class="mchip p-{E(p)}">{link}</span>'
+        who = f'<span class="mchip p-{E(p)}" translate="no">{link}</span>'
         how = []
         if holder.get("phone"):
             how.append(tel(holder["phone"]))
