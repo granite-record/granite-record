@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.643
+# GRANITE_VERSION: 2026-09-04.644
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -31091,6 +31091,28 @@ def _chain():
                     n_toc += 1
         assert n_toc, ("no learn page carries an On this page list, so nothing here "
                        "was actually checked")
+        # EVERY PAGE, NOT ONLY LEARN (23 October 2026). The Data page's On
+        # this page list was written href="#downloads", and every entry went
+        # to the home page; a committee page's meeting dates did the same from
+        # app.js. So every built page that carries <base href="/"> is swept for
+        # a bare fragment outside its scripts -- the skip link excepted, which
+        # find.js takes by its id -- and the scripts that draw pages may not
+        # write one either (app.js dayHref names the page, as skipHere does).
+        bare = []
+        for f in sorted((root / "site").rglob("*.html")):
+            page = f.read_text(encoding="utf-8", errors="replace")
+            if '<base href="/">' not in page:
+                continue
+            body = re.sub(r"<script\b.*?</script>", "", page, flags=re.S)
+            for m in re.finditer(r'<a\b[^>]*\bhref="#[^"]*"[^>]*>', body):
+                if 'class="skip"' not in m.group(0):
+                    bare.append(f"{f.relative_to(root / 'site')}: {m.group(0)[:80]}")
+        assert not bare, ("a page that carries <base href=\"/\"> links a bare fragment, "
+                          "which goes to the home page: " + "; ".join(bare[:5]))
+        for js in sorted(Path("src/pages").glob("*.js")):
+            hit = re.search(r'href=\\?"#\$\{', js.read_text(encoding="utf-8"))
+            assert not hit, (f"{js.name} writes a link to a bare fragment, href=\"#${{...}}: "
+                             "under <base href=\"/\"> it goes to the home page")
         # THE LEARN HUB'S OLD ADDRESS IS A REDIRECT NOW (decision 128): /learn and
         # /learn.html go to /resources, which _redirects says and no file
         # shadows, and the hub is where the redirect lands.

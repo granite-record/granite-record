@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-10.49
+# GRANITE_VERSION: 2026-09-10.50
 """
 The record as CSV, for anyone who wants to work with it rather than read it.
 
@@ -1078,7 +1078,11 @@ def data_page(site, out, tables, base, cov=()):
         <th scope="col" role="columnheader" class="n">Size</th>
         <th scope="col" role="columnheader"><span class="sr">Download</span></th></tr></thead>
       <tbody role="rowgroup">{"".join(dl_row(t) for t in others)}{vote_rows}</tbody></table></div>'''}
-    onp = "".join(f'<li><a href="#{sid}">{title}</a></li>' for sid, title in DATA_SECTIONS)
+    # THIS PAGE'S OWN ADDRESS, NOT A BARE "#" (23 October 2026). The page
+    # carries <base href="/">, so href="#downloads" resolved to the home page
+    # and every "On this page" link left the Data page. clean_links turns
+    # /data.html#downloads into the address the host serves, /data#downloads.
+    onp = "".join(f'<li><a href="/data.html#{sid}">{title}</a></li>' for sid, title in DATA_SECTIONS)
     secs = "".join(
         f'''
   <section class="dpsec" id="{sid}" aria-labelledby="{sid}-h">

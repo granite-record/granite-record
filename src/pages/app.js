@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.228
+// GRANITE_VERSION: 2026-09-07.229
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -7471,7 +7471,7 @@ function actSaid(a,who,tail){
 // link to that meeting where the docket dates the vote to one.
 function votedElsewhere(v,date){
   if(!v||!v.date)return "";
-  const day=v.meeting?`<a href="#${esc(dayId(v.meeting))}">${esc(dateWords(v.date))}</a>`
+  const day=v.meeting?`<a href="${esc(dayHref(v.meeting))}">${esc(dateWords(v.date))}</a>`
     :esc(dateWords(v.date));
   const before=v.date<date;
   if(!v.meeting&&v.act==="report")
@@ -7645,7 +7645,7 @@ function renderCommitteeSessions(c){
 function reportedLine(acts){
   if(!(acts||[]).length)return "";
   return acts.map(a=>{
-    const day=a.date?(a.meeting?`<a href="#${esc(dayId(a.meeting))}">${esc(dateWords(a.date))}</a>`
+    const day=a.date?(a.meeting?`<a href="${esc(dayHref(a.meeting))}">${esc(dateWords(a.date))}</a>`
       :esc(dateWords(a.date))):"";
     return actSaid(a,"The committee",day?`, ${a.meeting?"at its meeting of":"dated"} ${day}`:"");})
     .join("");
@@ -7899,8 +7899,8 @@ function renderCommitteeHead(c){
     ["Committee Aide",esc(c.aide||"")],["Researcher",esc(c.researcher||"")]];
   const met=(c.sessions||[]).filter(s=>!s.ahead).map(s=>s.date).sort().pop();
   const next=UPCOMING===null?"":cmteUpcoming(c).length?""
-    :`Nothing is scheduled in the next two weeks.${met?` Its last meeting was on <a href="#${
-      esc(dayId(met))}">${esc(dateWords(met,"long"))}</a>.`:""}`;
+    :`Nothing is scheduled in the next two weeks.${met?` Its last meeting was on <a href="${
+      esc(dayHref(met))}">${esc(dateWords(met,"long"))}</a>.`:""}`;
   // "The House Special Committee on Housing", not "The House Committee on
   // Special Committee on Housing" (components.js's cmteTitle, 16 October 2026).
   const line=`The ${esc(cmteTitle(c.name||"",ch))}${chair?`, chaired by ${chair}`:""}.`;
@@ -8115,6 +8115,15 @@ function recordTerms(kind,d){
 // alone, because that is the only thing about a sitting that a calendar
 // entry elsewhere on the site already knows.
 function dayId(date){ return "day-" + String(date || ""); }
+// A LINK TO A DAY ON THIS PAGE NAMES THIS PAGE (23 October 2026). Every page
+// carries <base href="/">, so a bare href="#day-2025-10-01" resolved to the
+// home page: a bill card's "at its meeting of" date, a meeting's "voted at
+// another meeting" date and the head's "Its last meeting was on" all left
+// the committee page for the front page. Written with this document's own
+// path and search, as skipHere writes the skip link, the link stays here;
+// hashchange then runs showDay, which turns to the meetings tab and opens
+// the day, and the link opened in a new tab lands on the same day.
+function dayHref(date){ return location.pathname + location.search + "#" + dayId(date); }
 
 /* LANDING ON A DAY. A committee page renders more than once -- the record
    arrives, then the term index, then home.json -- and each render replaces
