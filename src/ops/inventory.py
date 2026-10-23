@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.10
+# GRANITE_VERSION: 2026-09-04.11
 """
 Report what is actually on disk, and which scripts are out of date.
 
@@ -119,11 +119,20 @@ def bump(paths, root):
         old = f"{m.group(2)}.{m.group(3)}"
         new = f"{m.group(2)}.{int(m.group(3)) + 1}"
         p.write_bytes((raw[:m.start()] + m.group(1) + new + raw[m.end():]).encode("utf-8"))
-        if p.name in listed:
-            want = f'"{p.name}": "{listed[p.name]}"'
+        # versions.json names most files by their name and some by their path
+        # from the root ("tests/test_markers.py"): the path first, which is
+        # the one a name shared by two files cannot mistake (the timestamp
+        # study found tests/ entries left behind, 23 October 2026).
+        try:
+            rel = p.resolve().relative_to(Path(root).resolve()).as_posix()
+        except ValueError:
+            rel = ""
+        key = rel if rel in listed else p.name if p.name in listed else None
+        if key:
+            want = f'"{key}": "{listed[key]}"'
             if want in vtext:
-                vtext = vtext.replace(want, f'"{p.name}": "{new}"', 1)
-                listed[p.name] = new
+                vtext = vtext.replace(want, f'"{key}": "{new}"', 1)
+                listed[key] = new
         done.append((str(f), old, new))
     vp.write_bytes(vtext.encode("utf-8"))
     return done, bare

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.666
+# GRANITE_VERSION: 2026-09-04.667
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -26112,8 +26112,17 @@ def _inventory_bump(inventory):
         # A file new since the base keeps its first stamp, however often it runs.
         (d / "b.py").write_bytes(b"#!/usr/bin/env python3\n# GRANITE_VERSION: 2026-10-23.1\n")
         assert inventory.changed_since(d, "HEAD")[0] == [], "a new file's first stamp was bumped"
+        # An entry versions.json keys by its path, as it does tests/test_markers.py.
+        (d / "tests").mkdir()
+        (d / "tests" / "t.py").write_bytes(b"# GRANITE_VERSION: 2026-02-03.5\n")
+        (d / "versions.json").write_text(
+            '{\n  "files": {\n    "a.py": "2026-01-02.4",\n    "tests/t.py": "2026-02-03.5"\n  }\n}\n',
+            encoding="utf-8")
+        inventory.bump(["tests/t.py"], d)
+        assert json.loads((d / "versions.json").read_text())["files"]["tests/t.py"] == "2026-02-03.6", (
+            "an entry versions.json keys by its path was left behind")
         return "ok", ("2026-01-02.3 -> .4 in the file and versions.json, CRLF kept, once only; "
-                      "a new file keeps its first stamp")
+                      "a new file keeps its first stamp; an entry keyed by its path moves too")
     finally:
         shutil.rmtree(d, ignore_errors=True)
 
