@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-07.66
+# GRANITE_VERSION: 2026-09-07.67
 """
 A page's worth of data for every committee.
 
@@ -974,6 +974,12 @@ def main():
             # What the bill page says about how the start was arrived at, so
             # this page can say the same thing rather than imply certainty.
             "state": (st or {}).get("state") or "",
+            # And where that start is an inference -- a weak marker's
+            # (build_site_v2.weak_marker) -- that too, so the line here says
+            # "approximate" where the bill page does. Absent otherwise.
+            **({"inferred": True} if st and st.get("start") is not None
+               and st.get("start_stated") is False
+               and st.get("state") in ("stated", "floor_stated") else {}),
             "time": r.get("time") or "", "venue": r.get("venue") or "",
         })
     # Before a page is written: past the ceiling these are not the few

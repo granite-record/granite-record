@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.231
+# GRANITE_VERSION: 2026-09-05.232
 """
 Generate the faceted site from real General Court data.
 
@@ -2228,6 +2228,12 @@ def invented_end(said):
             and said["end"] - said["start"] < 90)
 
 
+def weak_marker(mark):
+    """Whether segment_markers found this boundary with a weak marker, which
+    it says in the marker's "how": an inference, drawn "approximate"."""
+    return "(weak marker)" in str((mark or {}).get("how") or "")
+
+
 def station_for_proceeding(p, bid, segs, marks, claimed=None):
     """One committee proceeding -- a hearing or an executive session -- as the
     station the page draws. `claimed` is the set of the bill's recordings
@@ -2521,8 +2527,15 @@ def station_for_proceeding(p, bid, segs, marks, claimed=None):
         # Seconds, not minutes: a boundary the chair said is good to
         # about a second, and calling that "+/- 1 min" would understate
         # it as badly as the old tolerances overstated theirs.
-        "start_stated": bool(said) or (bool(seg.get("start_stated"))
-                                       if seg else False),
+        # A WEAK MARKER IS AN INFERENCE (23 October 2026). segment_markers
+        # calls a phrase weak where it names no proceeding or is a reading
+        # the chair did not frame as an opening -- the bill's title read and
+        # then a motion, the sponsor welcomed -- and says so in its "how".
+        # Good to a few seconds on the bench, but not the chair saying "we
+        # will now open", so the page gives it the one word an inferred
+        # start carries, "approximate" (CLAUDE.md, Timestamps).
+        "start_stated": (not weak_marker(said)) if said else (
+            bool(seg.get("start_stated")) if seg else False),
         # The words are deliberately NOT published. Captions mangle
         # bill numbers constantly, and a garbled quote presented as the
         # chair's own words is a transcription error wearing the
@@ -2732,7 +2745,7 @@ def station_for_floor(f, bid, marks):
     if said_f:
         st["start"] = said_f["start"]
         st["debate_start"] = said_f["start"]
-        st["start_stated"] = True
+        st["start_stated"] = not weak_marker(said_f)
         st["said_how"] = said_f.get("how")
         if not precise and said_f.get("end") and not invented_end(said_f):
             st["debate_end"] = said_f["end"]

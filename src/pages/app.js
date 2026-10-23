@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.239
+// GRANITE_VERSION: 2026-09-07.240
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -4686,7 +4686,7 @@ function renderHearings(b,d){
       inner=`<div class="player" data-player="${pid}">
         <button type="button" class="pstub"${rec} data-embed="${esc(s.video_id)}|${from}|${pid}">
           <span>${icon("play")}</span><span>${s.debate_start!=null
-            ? `Play from ${hms(from)}, where the clerk takes it up`
+            ? `Play from ${hms(from)}, ${s.start_stated===false?"about ":""}where the clerk takes it up`
             : `Play the floor session from ${hms(from)}`} — debate on
           this bill ends at ${hms(s.debate_end)}</span></button>
         <div class="pbar">
@@ -4714,9 +4714,11 @@ function renderHearings(b,d){
     else if(s.state==="floor_dated"&&s.debate_start!=null){
       placed=true;
       const from=Math.max(Math.floor(s.debate_start),0);
+      // "about" where a weak marker found it (build_site_v2.weak_marker).
+      const near=s.start_stated===false?"about ":"";
       inner=player(from,
-        `Play from ${hms(from)}, where the clerk takes it up`,
-        "the clerk takes it up here; no roll call to time the end")
+        `Play from ${hms(from)}, ${near}where the clerk takes it up`,
+        `the clerk takes it up ${near}here; no roll call to time the end`)
         +`<p class="note" style="margin-top:8px">A voice or division vote leaves
         no timestamp for the end, so this points at the opening only.</p>`;
     }
@@ -7682,7 +7684,8 @@ function meetingLine(s,o,items){
   const at=mine.map(i=>i.time).filter(Boolean).sort()[0]||"";
   const jumps=mine.filter(i=>i.start!=null).map(i=>{
     const t=Math.max(0,Math.floor(i.start));
-    const said=/^(stated|floor_stated|floor_precise)$/.test(i.state||"");
+    // A weak marker's start is an inference, as the bill page says.
+    const said=/^(stated|floor_stated|floor_precise)$/.test(i.state||"")&&!i.inferred;
     const pid=meetingPid(s,i.video_id||s.video_id);
     const kind=mine.length>1?`${(MEET_KIND[String(i.kind||"").toLowerCase()]||[kindTitle(i.kind)])[0]} `:"";
     return `<button type="button" class="jump" data-seek="${esc(pid)}|${t}" aria-label="Play ${

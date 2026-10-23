@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.667
+# GRANITE_VERSION: 2026-09-04.668
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -61772,6 +61772,49 @@ def _spanish_dates(components):
     assert not bad, "Spanish dates differ: " + "; ".join(bad[:6])
     return "ok", (f"{len(py['words'])} dates, {len(spans)} spans and {len(times)} times, "
                   "the same in Python and in the browser")
+
+
+@check("build", "a start a weak marker found is drawn approximate, on the bill page, the floor "
+                "and the committee page, and one the chair stated is not", needs=("build_site_v2",))
+def _weak_marker_approximate(B):
+    """CLAUDE.md, Timestamps: "a stated boundary is shown plainly, and an
+    inferred one carries one word, approximate." segment_markers calls a
+    marker weak where the phrase names no proceeding or is not the chair
+    framing an opening -- the bill's title read and then a motion, the
+    sponsor welcomed (the timestamp study of 23 October 2026) -- and says so
+    in its "how". The station took any marker as stated, so a weak one was
+    drawn as the chair's own opening (found by that study: said_how was never
+    read). Held on both station builders with a stated and a weak marker, on
+    the committee page's line, and on app.js's words for each."""
+    p = {"bill": "HB1", "body": "H", "committee": "Judiciary", "proceeding": "public hearing",
+         "sched_date": "2026-02-03", "sched_time": "10:00", "venue": "LOB 206",
+         "video_id": "VIDW", "candidate_ids": ""}
+    f = {"date": "2026-02-12", "body": "H", "video_id": "VIDX", "motions": [], "tallies": [],
+         "kind": "floor debate", "debate_end": None, "window_start": 0.0, "precise": False,
+         "whole_video": False, "title": "", "time": "", "venue": ""}
+    for how, stated in (("open the hearing on", True),
+                        ("title read, then the sponsor welcomed (weak marker)", False)):
+        m = {"VIDW": {"HB1": [{"start": 600.0, "end": 900.0, "how": how,
+                                "what": "public hearing" if stated else ""}]}}
+        st = B.station_for_proceeding(p, "HB1", {}, m)
+        assert st["start"] == 600.0 and st["start_stated"] is stated, (
+            f"a committee start found by {how!r} is drawn start_stated={st.get('start_stated')}")
+        m = {"VIDX": {"HB1002": [{"start": 1200.0, "end": 1500.0, "what": "floor debate",
+                                  "how": how}]}}
+        st = B.station_for_floor(f, "HB1002", m)
+        assert st["start"] == 1200.0 and st["start_stated"] is stated, (
+            f"a floor start found by {how!r} is drawn start_stated={st.get('start_stated')}")
+    app = _paths.locate("src/pages/app.js").read_text(encoding="utf-8")
+    for need, why in (('s.start_stated ? "" : " approximate"', "the bill page's player"),
+                      ('s.start_stated===false?"about ":""', "the floor player"),
+                      ('&&!i.inferred', "the committee page's line")):
+        assert need in app, f"app.js: {why} no longer says an inferred start is one ({need})"
+    cm = _paths.locate("src/pages/build_committees.py").read_text(encoding="utf-8")
+    assert '{"inferred": True}' in cm and 'st.get("start_stated") is False' in cm, (
+        "build_committees no longer carries a weak marker's inference to the committee page")
+    return "ok", ("a stated opening drawn plainly and a weak marker's start drawn approximate, "
+                  "on a committee sitting and on the floor; the committee page and the floor "
+                  "player say so too")
 
 
 @check("frontend", "every link that leaves the site carries the outside-link mark, says it opens a "
