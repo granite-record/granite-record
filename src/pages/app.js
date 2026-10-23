@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.230
+// GRANITE_VERSION: 2026-09-07.231
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -3997,10 +3997,13 @@ const gcSource=d=>d.docket_url?`<a href="${esc(d.docket_url)}" target="_blank" r
 // the current year should have the testimony box but greyed out when
 // testimony submission is not active, with a line saying that testimony
 // submission has either passed or not opened yet"). Each chamber's online
-// sign-in takes positions and written testimony only for a bill with a
-// public hearing scheduled, and only until it is held (the Senate's
-// guidance, civics.SRC_SENATE_TESTIFY), and neither form can be opened at a
-// bill, so the box links to the form of the chamber whose hearing is next.
+// sign-in takes positions -- the House's written testimony too; the Senate's
+// confirmation page says where to send it -- only once a bill's public
+// hearing is scheduled (the Senate's guidance, civics.SRC_SENATE_TESTIFY),
+// and in practice until midnight at the end of the hearing's day (the
+// editor's account, an observed() claim in guides.py). Neither form can be
+// opened at a bill, so the box links to the form of the chamber whose
+// hearing is next.
 // A bill of an earlier term has no box. The term turns on 1 December of an
 // even year, the eve of Organization Day.
 const TESTIFY_FORMS={H:["House","https://gc.nh.gov/house/committees/remotetestimony/"],
