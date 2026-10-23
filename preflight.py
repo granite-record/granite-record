@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.664
+# GRANITE_VERSION: 2026-09-04.665
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -47928,8 +47928,11 @@ def _member_votes_prevailing_side(V):
     got = _node_app(_MEMBER_VOTES_HARNESS, {"fx.json": json.dumps(
         {"member": member, "rcx": rcx, "rows": rows, "cases": cases,
          "recs": {"2026/HB12": {"rollcalls": [card]},
-                  "nobill/2025-2026": {"rollcalls": [dict(card, yeas=10, nays=300,
-                                                          passed=False)]}}})})
+                  # Its ballots add up to its count, as every real card's
+                  # do, or the ring is the count's alone (ballotsAddUp).
+                  "nobill/2025-2026": {"rollcalls": [dict(
+                      card, yeas=10, nays=300, passed=False,
+                      tally={"R": {"Yea": 6, "Nay": 150}, "D": {"Yea": 4, "Nay": 150}})]}}})})
     if got is None:
         return "skip", "app.js, dom_stub.js or node is not here"
     assert "threw" not in got, f"the Votes tab threw {got['threw']}"

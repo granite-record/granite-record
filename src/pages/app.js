@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.238
+// GRANITE_VERSION: 2026-09-07.239
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -3273,6 +3273,8 @@ function ballotCell(rc,m){
 // ballots the headline and keeps the 14 summaries that disagree as "stated"
 // -- so the count's ring is drawn only for a record that is broken.
 const BALLOT_SLACK=0;
+const BALLOT_GAP_NOTE=`<p class="note ballotgap">The list of members’
+      votes does not add up to the recorded count, so the ring shows the count alone.</p>`;
 function ballotsAddUp(rc){
   let y=0,n=0;
   for(const tl of Object.values(rc.tally||{})){y+=tl.Yea||0;n+=tl.Nay||0;}
@@ -3280,8 +3282,7 @@ function ballotsAddUp(rc){
 }
 function donut(bid,i,rc){
   if(!ballotsAddUp(rc))
-    return simpleDonut(rc,bid,i,"Roll call")+`<p class="note ballotgap">The list of members’
-      votes does not add up to the recorded count, so the ring shows the count alone.</p>`;
+    return simpleDonut(rc,bid,i,"Roll call")+BALLOT_GAP_NOTE;
   // Yes on the LEFT in green, no on the RIGHT in red, growing up from a gap at
   // six o'clock. Green for yes and red for no is the chamber's own convention
   // -- the buttons on a member's desk -- so it describes the vote rather than
