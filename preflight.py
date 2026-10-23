@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.649
+# GRANITE_VERSION: 2026-09-04.650
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -52472,11 +52472,11 @@ def _cloud_pull(CL, R):
         assert call(night, "kit-up")[0] == 0
 
         class Busy(ReadOnly):
-            def get_file(self, key, dst):
+            def get_file(self, key, dst, size=None):
                 if key == "kit/Docket.txt":
                     (laptop / "Docket.txt").write_text("written while pull ran\n",
                                                        encoding="utf-8")
-                super().get_file(key, dst)
+                super().get_file(key, dst, size=size)
         code, out = pull(laptop, kind=Busy)
         assert code == 1 and "Docket.txt" in out and "while this pull ran" in out, out[-500:]
         assert text(laptop, "Docket.txt") == "written while pull ran\n", \
