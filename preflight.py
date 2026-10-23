@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.661
+# GRANITE_VERSION: 2026-09-04.662
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -82988,6 +82988,113 @@ def _topic_model(TP):
         assert t == TP.MISC or t in model["logprior"], t
     return "ok", ("placed on evidence, withheld above its margin, and "
                   "Miscellaneous where it has seen nothing")
+
+
+@check("build", "a title rule answers only where the General Court's own convention does",
+       needs=("topic_model",))
+def _topic_title_rules(TM):
+    """The title rules of 23 October 2026 (topic_model's rules section), and
+    the proposals beside them.
+
+    Each rule is a convention the General Court follows in the term it
+    labelled, and each is allowed exactly as far as that convention goes. A
+    constitutional amendment is CACR before the model asks anything; a
+    commemoration is Memorials ONLY where the model would have said
+    Miscellaneous -- never over an answer it gave. Three ways that goes wrong
+    quietly: a rule that fires over a confident answer and moves a bill the
+    model had right; a pattern that reads "designated caregivers", a "3-year
+    term" or a bill about "adopting rules" as a commemoration or as the
+    chamber's business; and "memorializing Congress", the older sense of
+    petitioning it, read as a memorial.
+
+    And the proposals are the owner's to turn on: each must name a topic that
+    either the General Court's list has or that carries its own code, and
+    while one is off it must change nothing -- a retired "Regular Meeting"
+    stays retired.
+    """
+    rows = [
+        ("HB1", {"bill": "HB1", "title": "relative to absentee ballots for voters",
+                 "house_committee": "Election Law"}, "", "Elections"),
+        ("HB2", {"bill": "HB2", "title": "relative to the registration of motor vehicles",
+                 "house_committee": "Transportation"}, "", "Motor Vehicles"),
+        ("CACR1", {"bill": "CACR1", "title": "relating to the governor"}, "", "CACR"),
+        ("HR1", {"bill": "HR1", "title": "honoring a retiring clerk"}, "", "Memorials"),
+        ("HR2", {"bill": "HR2", "title": "urging Congress to fund roads"}, "",
+         "State Government"),
+    ]
+    model = TM.Model(rows, {}, seed_names=0.0)
+    W = {f: 1.0 for f in TM.FAMILIES}
+    placed = {"m": {}, "P": {}, "floors": {"text": 0.0, "notext": 0.0},
+              "regimes": {r: {"W": W, "lp": 1.0, "temp": 1.0} for r in ("text", "notext")}}
+    declined = dict(placed, floors={"text": 1.01, "notext": 1.01})
+
+    # A CACR is CACR, whatever its words and however sure the model is.
+    cacr = {"bill": "CACR9", "title": "relating to absentee ballots for voters",
+            "house_committee": "Election Law"}
+    assert TM.answer(model, cacr, "", placed)[:3] == ("CACR", 1.0, "rule:cacr"), \
+        TM.answer(model, cacr, "", placed)
+    assert TM.answer(model, cacr, "", placed, rules=False)[0] != "CACR"
+
+    # Below the floor only. Placed, the model's answer stands.
+    hon = {"bill": "HR9", "title": "honoring the absentee ballot clerks of Concord",
+           "house_committee": "Election Law"}
+    got = TM.answer(model, hon, "", placed)
+    assert got[2] == "notext" and got[0] == TM.answer(model, hon, "", placed, rules=False)[0], got
+    assert TM.answer(model, hon, "", declined)[:3] == ("Memorials", 1.0, "rule:ceremony")
+    wash = {"bill": "HCR3", "title": "memorializing Congress to fund roads"}
+    assert not TM.is_ceremony(wash["title"]), "memorializing Congress is a petition"
+    assert TM.is_to_washington(wash["title"])
+    plain = {"bill": "HB7", "title": "relative to the registration of motor vehicles"}
+    assert TM.answer(model, plain, "", declined)[0] == TM.MISC, "no rule, no answer"
+    for t in ("naming a bridge in the city of Keene after Charles Redfern.",
+              "recognizing the second Thursday in October as children's environmental health day.",
+              "memorializing former Representative Ronald R. Laurion of Rochester."):
+        assert TM.is_ceremony(t), t
+    for t in ("permitting qualifying patients and designated caregivers to cultivate cannabis.",
+              "enabling towns to establish a 3-year term for town moderators.",
+              "allowing municipalities to designate sections of state highways for all terrain vehicles.",
+              "establishing a 4-year pilot program to improve rail trails."):
+        assert not TM.is_ceremony(t), t
+
+    assert TM.justices_bill("requesting an opinion of the justices concerning the "
+                            "constitutionality of HB 1135.") == "HB1135"
+    assert TM.justices_bill("requesting an opinion of the justices on HB 536, as amended.") == "HB536"
+    assert TM.justices_bill("requesting an opinion of the justices on the scope of part II") == ""
+
+    # THE PROPOSALS. Each a topic the site can file under, and each inert while
+    # off. A proposal with no code of its own must name one of the site's
+    # additions or a name of the General Court's list (SubjectCodes.txt: LEG,
+    # FED and STG), whose code apply() reads from data/subjects.json.
+    gc_names = {"Legislature", "Federal and International Relations", "State Government"}
+    assert set(TM.ENABLED) <= set(TM.PROPOSALS), set(TM.ENABLED) - set(TM.PROPOSALS)
+    for key, p in TM.PROPOSALS.items():
+        assert p["where"] in ("first", "decline"), (key, p["where"])
+        assert p.get("code") or p["topic"] in TM.ADDED_CODES or p["topic"] in gc_names, \
+            f"{key}: {p['topic']} would be filed under no code"
+    rm = {"bill": "HR1", "title": "Adopting the rules of the 2024 session for the 2025-2026 biennium."}
+    vet = {"bill": "HB291", "title": "removing veterinarians from the requirements of adopting "
+                                     "rules for prescribing opioids."}
+    saved = set(TM.ENABLED)
+    try:
+        TM.ENABLED.clear()
+        assert TM.remap_gold("Regular Meeting", rm) == "Regular Meeting", "off must be off"
+        assert TM.proposal_for(rm, "first") == ""
+        assert TM.answer(model, wash, "", declined)[0] == TM.MISC, "off must be off"
+        # A "decline" proposal answers below the floor, and only there.
+        TM.ENABLED.add("resolutions to Washington")
+        assert TM.answer(model, wash, "", declined)[:3] == (
+            "State Government", 1.0, "rule:resolutions to Washington")
+        assert TM.answer(model, hon, "", placed)[2] == "notext"
+        TM.ENABLED.clear()
+        TM.ENABLED.add("legislative organization")
+        assert TM.remap_gold("Regular Meeting", rm) == TM.LEGISLATIVE_ORGANIZATION
+        assert TM.LEGISLATIVE_ORGANIZATION in TM.new_vocabulary()
+        assert TM.proposal_for(vet, "first") == "", "a bill about rules is not the chamber's business"
+    finally:
+        TM.ENABLED.clear()
+        TM.ENABLED.update(saved)
+    return "ok", ("CACR first; a commemoration only below the floor; the proposals inert "
+                  "while off")
 
 
 @check("build", "every bench kind can be drawn and saved", needs=("review",))
