@@ -28778,6 +28778,10 @@ def _rail_endings(N, B):
             ("HB1179", "House", "s", "1996-02-01"), ("HB1179", "Law", "x", "1996-06-13")):
         expect(k, stop, mark, day)
     death = "Died on the table when the session ended"
+    # The report's words are study_report.json's (23 October 2026), which
+    # _study_report_said_once holds to the person's; read here, not retyped.
+    sr = json.loads(Path("src/pages/words/study_report.json").read_text(encoding="utf-8"))
+    reported = {k: f"{sr['head']}: {v}" for k, v in sr["said"].items()}
     for k, want in (
             ("HB96", [("H", "tabled", "t", "2025-03-26", "Laid on the table, 199–135"),
                       ("H", "died", "x", "2025-12-17", death)]),
@@ -28796,22 +28800,19 @@ def _rail_endings(N, B):
             ("SB570", [("H", "study", "s", "2026-05-14", "Sent to interim study on a voice vote"),
                        ("H", "died", "x", "2026-08-19", "In interim study: the committee studies the "
                                                         "subject in the fall of 2026; the bill goes no further"),
-                       ("H", "study_report", "f", "2026-09-28", "Interim study report: recommended "
-                                                                 "for future legislation, 9–0")]),
+                       ("H", "study_report", "f", "2026-09-28", f"{reported['rec']}, 9–0")]),
             ("HB561", [("H", "study", "s", "2026-01-07", "Sent to interim study on a voice vote"),
                        ("H", "died", "x", "2026-08-19", "In interim study: the committee studies the "
                                                         "subject in the fall of 2026; the bill goes no further"),
-                       ("H", "study_report", "s", "2026-09-29", "Interim study report: not "
-                                                                 "recommended for future legislation, 8–2")]),
+                       ("H", "study_report", "s", "2026-09-29", f"{reported['not']}, 8–2")]),
             ("HB741", [("S", "study", "s", "2026-01-07", "Sent to interim study on a voice vote"),
                        ("S", "died", "x", "2026-08-19", "In interim study: the committee studies the "
                                                         "subject in the fall of 2026; the bill goes no further")]),
             ("HB1179", [("H", "study", "s", "1996-02-01", "Sent to interim study on a voice vote"),
                         ("H", "died", "x", "1996-06-13", "In interim study: the committee studies the "
                                                          "subject in the fall of 1996; the bill goes no further"),
-                        ("H", "study_report", "f", "1996-10-29", "Interim study report: recommended "
-                                                                  "for legislation in 1997, 17–0; filed "
-                                                                  "again as HB 154 of 1997")])):
+                        ("H", "study_report", "f", "1996-10-29", f"{reported['rec']} in 1997, 17–0; "
+                                                                  "filed again as HB 154 of 1997")])):
         if tail[k][-len(want):] != want:
             bad.append(f"{k}'s last lines are {tail[k]!a}")
     if [s["act"] for s in c["HB561 live"]["steps"]][-1:] != ["study"]:
@@ -28866,16 +28867,13 @@ def _rail_endings(N, B):
             rf'<span class="jb">House</span><span class="jt">{words}</span>', got[k]["how"])
         # The tally held whole (tallyWhole, the foundation's, 9 October 2026).
         if not line("SB570", "ifuture", r'<svg class="arrow"[^>]*><path [^>]*/></svg>',
-                    'Interim study report: recommended for future legislation, '
-                    '<span class="tally">9–0</span>'):
+                    re.escape(reported["rec"]) + ', <span class="tally">9–0</span>'):
             bad.append(f"SB 570's report is not the orange arrow's line: {got['SB570']['how'][-500:]!a}")
         if not line("HB561", "istudy", r'<svg class="wave"[^>]*><path [^>]*/></svg>',
-                    'Interim study report: not recommended for future legislation, '
-                    '<span class="tally">8–2</span>'):
+                    re.escape(reported["not"]) + ', <span class="tally">8–2</span>'):
             bad.append(f"HB 561's report is not the \"~\"'s line: {got['HB561']['how'][-500:]!a}")
         if not line("HB1179", "ifuture", r'<svg class="arrow"[^>]*><path [^>]*/></svg>',
-                    r'Interim study report: recommended for legislation in 1997, '
-                    r'<span class="tally">17–0</span>; filed again '
+                    re.escape(reported["rec"]) + r' in 1997, <span class="tally">17–0</span>; filed again '
                     r'as <a class="bmention" href="bill/1997/hb154.html">HB 154 of 1997</a>'):
             bad.append(f"HB 1179 of 1996's report does not link HB 154 of 1997: "
                        f"{got['HB1179']['how'][-500:]!a}")
@@ -28883,7 +28881,7 @@ def _rail_endings(N, B):
         if "House: sent to interim study, May 14, 2026" not in said or \
                 "Law: stopped here, August 19, 2026" not in said:
             bad.append(f"SB 570's card is heard {said!a}")
-        if "the committee reported without a recommendation, 10–10." not in (got.get("note") or ""):
+        if f"the committee {sr['said']['without']}, 10–10." not in (got.get("note") or ""):
             bad.append(f"a report without a recommendation is noted {got.get('note')!a}")
         drew = "app.js draws the arrow, the \"~\", the link and the note"
     assert not bad, "; ".join(bad[:4])
@@ -35764,6 +35762,56 @@ def _glossary_page(B, C):
     return "ok", f"{len(C.WORDBOOK['glossary'])} terms under {len(secs)} letters, linked from both footers"
 
 
+@check("build", "Using This Site's Reading the Shorthand is drawn from glossary.json, row for row, "
+       "and the glossary's notes say what draws it", needs=("civics", "components"))
+def _shorthand_from_the_glossary(civics, C):
+    """The person, 23 October 2026: one source each for the things the site
+    words several ways. Learn's table of the record's shorthand was typed
+    beside glossary.json, which the glossary page and the term popovers are
+    drawn from, and had drifted from it on VV, DV, A, OT3rdg, Retain ("through
+    the fall" where the glossary says "through the fall of the first year")
+    and OTPA. Its rows are glossary entries now (civics._shorthand), as
+    _motions' are votes.json's, so here: every row is an entry, in its name
+    and words exactly; the page carries the drawn table and no row typed out
+    beside it; the old wordings are gone; and the glossary's own notes no
+    longer say that nothing draws it."""
+    g = C.WORDBOOK["glossary"]
+    bad = [f"{k} is no glossary entry" for k in civics.SHORTHAND if k not in g]
+    # The table's one note of its own, which the person approved with it on
+    # 17 October 2026; a second would be a definition typed beside the glossary.
+    if civics.SHORTHAND_NOTES != {"OTPA": "the docket also writes OTP/A or OTP/AM"}:
+        bad.append(f"the table adds notes of its own to the glossary's words: {civics.SHORTHAND_NOTES}")
+    assert not bad, "; ".join(bad)
+    table = civics.SHORTHAND_TABLE
+    rows = re.findall(r'<tr><th scope="row"><b>-?([^<]+)</b></th><td><b>([^<]*?):?</b>\s*([^<]*)</td></tr>',
+                      table)
+    if [r[0] for r in rows] != list(civics.SHORTHAND):
+        bad.append(f"the table's rows are {[r[0] for r in rows]}, not civics.SHORTHAND's")
+    for k, name, says in rows:
+        e = g.get(k) or {}
+        want = C.esc(e.get("says", "")) + (f" ({civics.SHORTHAND_NOTES[k]})" if k in civics.SHORTHAND_NOTES
+                                           else "")
+        if name != C.esc(e.get("name", "")) or says != want:
+            bad.append(f"{k} reads {name!r}: {says!r}, where the glossary says {e.get('name')!r}: "
+                       f"{e.get('says')!r}")
+    site = civics.BODY_SITE
+    at = site.find("<h2>Reading the Shorthand</h2>")
+    section = site[at:site.find("<h2>", at + 1)] if at >= 0 else ""
+    if table not in section or section.count("<tr>") != len(civics.SHORTHAND):
+        bad.append("Using This Site's Reading the Shorthand is not the drawn table alone")
+    for gone in ("no count and no names</td>", "counted, names not recorded",
+                 "through the fall and reports it in the second year", "the bill contains one</td>",
+                 "<b>Ordered to a third reading</b></td>", "<b>Motion Adopted / Motion Failed</b>"):
+        if gone in site:
+            bad.append(f"Using This Site still says {gone!r}")
+    notes = " ".join(json.loads(Path("src/pages/words/glossary.json").read_text(encoding="utf-8"))["_about"])
+    if "NOTHING DRAWS THESE YET" in notes or "civics._shorthand" not in notes:
+        bad.append("glossary.json's notes do not say what draws its entries")
+    assert not bad, "; ".join(bad[:4])
+    return "ok", (f"{len(rows)} rows, each a glossary entry in its own words, the docket's other "
+                  "spellings of OTPA the table's one note")
+
+
 @check("build", "the Laws landing: titles say which chapters they hold, chapters carry their name, "
        "status and topic, and a repealed or moved chapter says so in words", needs=("build_rsa", "rsa", "shell"))
 def _rsa_landing(B, RSA, S):
@@ -36196,6 +36244,92 @@ def _guides_gate(BC, G, GS, RSA, S):
                   + f"; {seen_only} observed in practice, each labelled and shown as such")
 
 
+# Sentences of Testifying and Attending's own copies, as they stood on 22
+# October 2026 beside the guides' words for the same things. None comes back.
+_TESTIFYING_OLD_COPIES = (
+    "It opens once the hearing is scheduled and published",
+    "The notice gives the committee, the bill, the day, the time and the room.",
+    "its guidance says to sign up on the sheets in the committee room",
+    "chairs often give each person two or three minutes, the sponsor as long as they need",
+    "Props are not allowed while you testify, and signs are allowed in the hallways but not in "
+    "the committee room.",
+    "In practice you may bring it on paper too",
+    "House calendars have printed the line since at least February 1997, and still do.")
+
+
+@check("build", "Testifying and Attending says what the hearing and testimony guides say in their "
+       "words, written once beside the claims that source them, and types none of it again",
+       needs=("civics", "guides"))
+def _testifying_reuses_the_guides(civics, G):
+    """The person, 23 October 2026: one source each for the things the site
+    words several ways. Testifying and Attending (/guides/testifying.html)
+    and the guides to attending a hearing and to submitting testimony told a
+    reader the same things in copied paragraphs -- the pink card, the
+    Senate's sheet, the chair's time, props and signs, the last call, paper
+    copies, a meeting that starts late, the sign-in window and forms, where
+    written testimony goes, the executive session -- and the copies had begun
+    to drift. Each is written once now, in guides.SAID, inside a guide whose
+    claims source it; the page marks where each goes and build_civics writes
+    it in (guides.reused). So here: every paragraph of SAID is in one of the
+    two guides' steps, the page marks every one of them, a mark SAID does not
+    hold stops the build, no page of civics.py types a sentence of one out
+    again or keeps its old copy, the page names the practice and the Senate's
+    guidance it now shows among its sources, and the built page carries
+    every paragraph, its marks gone."""
+    import html as _h
+
+    def plain(s):
+        return " ".join(_h.unescape(re.sub(r"<[^>]+>", " ", s or "")).split())
+    bad = []
+    by = {g["slug"]: g for g in G.GUIDES}
+    texts = [G.text(by[s]) for s in ("attend-a-hearing", "submit-testimony") if s in by]
+    assert len(texts) == 2, "guides.GUIDES lost the guide to attending a hearing or to submitting testimony"
+    for k, words in G.SAID.items():
+        if not any(words in t for t in texts):
+            bad.append(f"guides.SAID[{k!r}] is in neither guide's steps, so none of their claims sources it")
+    marked = G.REUSE.findall(civics.BODY_TESTIFYING)
+    if sorted(marked) != sorted(G.SAID):
+        bad.append(f"Testifying and Attending marks {sorted(marked)}, not each of guides.SAID once")
+    try:
+        G.reused("<p>x</p><!-- guides:no-such-paragraph -->")
+        bad.append("a mark guides.SAID does not hold was let through")
+    except ValueError:
+        pass
+    raw = {}
+    for t in civics.TOPICS:
+        try:
+            if G.REUSE.search(G.reused(t["body"])):
+                bad.append(f"{t['slug']} keeps a mark once its paragraphs are written in")
+        except ValueError as e:
+            bad.append(f"{t['slug']}: {e}")
+        raw[t["slug"]] = plain(t["body"])
+    # A clause of seven words or more, typed out again on any page of
+    # civics.py, is a copy (the whole sentence or part of one).
+    for k, words in G.SAID.items():
+        for s in re.split(r"\s*[.:;,]\s+|\s*[.:;,]$", plain(words)):
+            for slug, text in raw.items():
+                if len(s.split()) >= 7 and s in text:
+                    bad.append(f"{slug} types guides.SAID[{k!r}] out again: {s[:70]!r}")
+    bad += [f"Testifying and Attending keeps its old copy: {old[:60]!r}"
+            for old in _TESTIFYING_OLD_COPIES if old in raw.get("testifying", "")]
+    page = next(t for t in civics.TOPICS if t["slug"] == "testifying")
+    for src in (civics.SRC_OBSERVED, civics.SRC_SENATE_GUIDANCE):
+        if src not in page["sources"]:
+            bad.append(f"Testifying and Attending shows what {src[0]!r} says and does not name it")
+    drew = "no fixture build here to read the page from"
+    if not [x for x in CHAIN_NEEDS if not _paths.locate(x).exists()]:
+        shared, _base, _ran, _days = _fixture_site_shared()
+        f = shared / "site" / "guides" / "testifying.html"
+        built = f.read_text(encoding="utf-8") if f.is_file() else ""
+        miss = [k for k, w in G.SAID.items() if plain(w) not in plain(built)]
+        if not built or miss or "<!-- guides:" in built:
+            bad.append(f"the built Testifying and Attending lacks {miss or 'nothing'} or keeps a mark")
+        drew = "the built page carries every one"
+    assert not bad, "; ".join(bad[:4])
+    return "ok", (f"{len(G.SAID)} paragraphs written once in the guides that source them and drawn "
+                  f"into Testifying and Attending, none typed again; {drew}")
+
+
 @check("build", "the night takes the statutes on the first three nights of January and July, "
        "and the weekly takes them every week", needs=("nightly",))
 def _statute_nights(NI):
@@ -36278,6 +36412,101 @@ def _follow_mail_matches_site():
         f"mail.js VOTE_INK {m.groups() if m else None} is not the vote ring's light --yes and --no "
         f"{ring.groups() if ring else None}")
     return "ok", f"{len(site)} forms, {len(inks)} status inks and the vote ring's two, the site's"
+
+
+# What each of the old copies said of an interim study report, typed out in
+# a renderer, before study_report.json (23 October 2026). None comes back.
+_STUDY_WORDS_GONE = ("did not recommend the subject for future legislation",
+                     "made no recommendation for future legislation",
+                     "reported without a recommendation", '"without a recommendation"',
+                     '"not recommended for "', '"recommended for "')
+
+
+@check("frontend", "an interim study report is said in study_report.json's words wherever it is "
+       "said: the docket's plain line, How it got here, a bill's closing note, a committee's "
+       "meeting card and the emails' copy", needs=("build_site_v2", "plain_action"))
+def _study_report_said_once(B, PA):
+    """The person, 23 October 2026: one source for each thing the site words
+    several ways. What an interim study committee reported -- it recommends
+    future legislation, does not, or makes no recommendation -- was said in
+    five sets of words: plain_action.py's, build_site_v2's How it got here
+    line, app.js's closing note on a bill (STUDY_SAID) and a committee's
+    meeting card (STUDY_WORDS), and mail.js's copy, with a fifth copy in the
+    email tests. A report without a recommendation "made no recommendation
+    for future legislation" on a committee's page, which reads as one that did
+    not recommend it.
+
+    Now the words are src/pages/words/study_report.json, plain_action's of the
+    sample the person reviewed on 14 October 2026, held here to those words;
+    the build, the pages and How it got here draw them from it, each keeping
+    its own sentence around the phrase, and the Worker, which reads no site
+    file, keeps a copy that must equal it. Each place is drawn here on the
+    three readings, and none of them types the words out again."""
+    sr = json.loads(Path("src/pages/words/study_report.json").read_text(encoding="utf-8"))
+    head, said = sr.get("head"), sr.get("said")
+    assert (head, said) == ("Interim study report", {
+        "rec": "recommends future legislation", "not": "does not recommend future legislation",
+        "without": "makes no recommendation"}), f"study_report.json says {head!r}: {said}"
+    bad = []
+    # The docket's plain line: the emails' items and the Documents tab.
+    rows = {"rec": "Interim Study Report: Recommended for Future Legislation 09/28/2026 (Vote 9-0; RC)",
+            "not": "Interim Study Report: Not Recommended for Future Legislation 09/29/2026 (Vote 8-2; RC)",
+            "without": "Interim Study Report: Without Recommendation 10/31/2014 (Vote 10-10)"}
+    votes = {"rec": "9–0", "not": "8–2", "without": "10–10"}
+    for k, raw in rows.items():
+        if PA.plain(raw) != f"{head}: {said[k]}, {votes[k]}":
+            bad.append(f"plain_action says {PA.plain(raw)!r} for {raw!r}")
+    # How it got here: the report's own line, the next term's year after it.
+    for k, raw in list(rows.items()) + [("rec", "Interim Study Report: Recommended for Future "
+                                               "Legislation in 2027 (Vote 11-0)")]:
+        lines = B.study_ending({"events": [{"raw": raw, "date": "2026-09-28", "body": "H"}]},
+                               [{"body": "H", "act": "study", "date": "2026-05-14"}], "", "2025-2026",
+                               {("H", "2026"): ["2026-08-19"]})
+        text = (lines[-1] if lines else {}).get("text")
+        year = " in 2027" if "2027" in raw else ""
+        want = f"{head}: {said[k]}{year}, {'11–0' if year else votes[k]}"
+        if text != want:
+            bad.append(f"How it got here says {text!r}, not {want!r}")
+    # The bill's closing note and the committee's meeting card, in node.
+    drew = "node is not here to draw app.js"
+    got = _app_js("[" + ",".join(
+        f"scope.endNote({{study_report: {{date: '2026-09-28', rec: {json.dumps(k)}, vote: '9–0'}}}}),"
+        f"scope.actSaid({{act: 'study report', said: {json.dumps(k)}, yeas: 9, nays: 0}}, "
+        "'The committee', '')" for k in said) + "]", names=("endNote", "actSaid"))
+    if got is not None:
+        for (k, note, card) in zip(said, got[0::2], got[1::2]):
+            if f"the committee {said[k]}, 9–0." not in note:
+                bad.append(f"a bill's closing note for {k!r} reads {note!r}")
+            if f"interim study report{':' if k == 'rec' else ''} {said[k]}, 9–0." not in card:
+                bad.append(f"a committee's meeting card for {k!r} reads {card!r}")
+        drew = "app.js's closing note and meeting card draw them"
+    app = Path("src/pages/app.js").read_text(encoding="utf-8")
+    if "const STUDY_SAID=WORDBOOK.study_report.said;" not in app:
+        bad.append("app.js does not take its study report words from WORDBOOK.study_report")
+    # The Worker's copy, which must equal the file.
+    mail = Path("workers/follow/mail.js").read_text(encoding="utf-8")
+    m = re.search(r"\nconst STUDY = \{(.*?)\n\};", mail, re.S)
+    copy = dict(re.findall(r'(true|false|null): "([^"]*)"', m.group(1))) if m else {}
+    if copy != {"true": f"{head}: {said['rec']}", "false": f"{head}: {said['not']}",
+                "null": f"{head}: {said['without']}"}:
+        bad.append(f"mail.js's STUDY {copy} is not study_report.json's words")
+    # Typed out again nowhere else, and the old copies gone.
+    typed = [said["rec"], said["not"], f"{head}: {said['without']}"]
+    for f in ("src/pages/app.js", "src/pages/components.js", "src/pages/build_site_v2.py",
+              "src/pages/build_committees.py", "src/parse/plain_action.py", "tests/follow/sender.test.js"):
+        text = Path(f).read_text(encoding="utf-8")
+        again = [w for w in typed + list(_STUDY_WORDS_GONE) if w in text]
+        if f.endswith("sender.test.js"):
+            # The tests read the file for the test that holds the words, and
+            # name the words only where a line of an email is read whole.
+            again = [w for w in again if w in _STUDY_WORDS_GONE]
+        if again:
+            bad.append(f"{f} types {again} out again")
+    if [mail.count(w) for w in typed] != [1, 1, 1]:
+        bad.append("mail.js types the study report's words outside its one copy")
+    assert not bad, "; ".join(bad[:4])
+    return "ok", (f"\"{head}: {said['rec']}\", \"{said['not']}\" and \"{said['without']}\" from the "
+                  f"one file in the plain line, How it got here and the emails' copy; {drew}")
 
 
 @check("build", "a bill's floor roll call reaches the email as its count, found by its day and its "
@@ -61390,14 +61619,27 @@ def _hearing_note_wording():
     anyone may attend and speak, or sign in for or against without speaking.
     Two renderers print it, build_pages for the home page's Coming up and
     app.js's calendarBlock for a committee's Upcoming session, so both are
-    drawn here and both must carry the two sentences and not the old one."""
+    drawn here and both must carry the two sentences and not the old one.
+
+    THE SENATE'S FORM TAKES NO TESTIMONY (23 October 2026): its online
+    sign-in registers a position, and the page confirming it says how to send
+    written testimony (the Senate's guidance, guides.TESTIMONY's record). A
+    Senate committee's note, and a Senate hearing's item in the feed, say
+    so, in the words of the bill page's Testify box; and the feed takes the
+    note from build_pages rather than typing it."""
     import contextlib
     import datetime as _dt
     import io
     import build_pages as BP
     want = ("Anyone may attend a public hearing and ask to speak. You can also sign in "
             "online to register a position and submit written testimony.")
+    senate = ("Anyone may attend a public hearing and ask to speak. You can also sign in "
+              "online to register a position. The page that confirms your sign-in says how to "
+              "send written testimony.")
     assert BP.HEARING_NOTE == want, f"build_pages.HEARING_NOTE reads {BP.HEARING_NOTE!r}"
+    assert BP.HEARING_NOTE_SENATE == senate, f"build_pages.HEARING_NOTE_SENATE reads {BP.HEARING_NOTE_SENATE!r}"
+    assert [BP.hearing_note(b) for b in ("H", "S", "s ", None, "")] == [want, senate, senate, want, want], \
+        "build_pages.hearing_note does not give the Senate's note for the Senate alone"
 
     def said(html):
         notes = re.findall(r'<p class="note">(.*?)</p>', html, re.S)
@@ -61416,23 +61658,30 @@ def _hearing_note_wording():
     assert not home, f"Coming up still carries a note: {home}"
     up = [{"date": "2026-09-22", "time": "10:00", "bill": "HB1", "term": "2025-2026",
            "committee": "Judiciary", "what": "public hearing", "venue": "LOB 206"}]
-    got = _app_js('scope.calendarBlock(' + json.dumps(up) + ', "Upcoming session")',
+    sen = [dict(u, body="S", committee="Judiciary and Public Safety") for u in up]
+    got = _app_js('[scope.calendarBlock(' + json.dumps(up) + ', "Upcoming session"), '
+                  'scope.calendarBlock(' + json.dumps(sen) + ', "Upcoming session")]',
                   names=("calendarBlock",))
     drew = "node is not here to run app.js"
     if got is not None:
-        cmte = said(got)
+        cmte, scmte = said(got[0]), said(got[1])
         assert any(n.startswith(want) for n in cmte), (
             f"a committee's Upcoming session note reads {cmte}")
-        assert not any("for or against" in n for n in cmte), "app.js keeps the old sentence"
-        drew = "and app.js's calendarBlock prints it too"
+        assert any(n.startswith(senate) for n in scmte), (
+            f"a Senate committee's Upcoming session note reads {scmte}")
+        assert not any("for or against" in n for n in cmte + scmte), "app.js keeps the old sentence"
+        drew = "and app.js's calendarBlock prints it too, the Senate's for a Senate committee"
     assert not any("for or against" in n for n in home), "Coming up keeps the old sentence"
-    # The upcoming-hearings feed carries the same note in each item's text,
-    # written there as adjacent string literals: joined here before reading.
+    # The upcoming-hearings feed takes the note from build_pages, by the
+    # hearing's chamber, and types neither.
     feeds = _paths.locate("build_feeds.py").read_text(encoding="utf-8")
     flat = " ".join(re.sub(r'"\s*\n\s*"', "", feeds).split())
-    assert want in flat, "the upcoming-hearings feed does not say the note word for word"
+    assert 'BP.hearing_note(u.get("body"))' in flat, \
+        "the upcoming-hearings feed does not take its note from build_pages.hearing_note"
+    assert "ask to speak" not in flat, "the upcoming-hearings feed types the note out again"
     assert "sign in for or against" not in flat, "the upcoming-hearings feed keeps the old sentence"
-    return "ok", f"the hearings feed says it word for word and Coming up no longer does, {drew}"
+    return "ok", (f"the hearings feed takes it from build_pages by chamber and Coming up no longer "
+                  f"says it, {drew}")
 
 
 @check("frontend", "each floor session on the home page is titled \"House Session (August 19th, 2026)\"")

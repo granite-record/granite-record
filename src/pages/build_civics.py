@@ -1795,7 +1795,11 @@ def main():
     learn = learn_topics(topics)
     for t in topics:
         moved = t["slug"] in civics.HOW_TO
-        secs = split_sections(CT.link_citations(suffixed(fill(t["body"], figures), names), con),
+        # A PARAGRAPH A GUIDE ALSO SAYS IS THE GUIDE'S (23 October 2026):
+        # where a page marks one, guides.reused writes in guides.SAID's words,
+        # which the guide's own claims source, rather than a copy of them.
+        secs = split_sections(CT.link_citations(suffixed(fill(G.reused(t["body"]), figures), names),
+                                                con),
                               article_href(t["slug"]))
         # A LIMIT STATED PLAINLY closes the page's last section of prose --
         # In the Record where the page has one, which is where it says what

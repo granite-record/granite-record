@@ -1,0 +1,13 @@
+{
+  "_about": [
+    "AN INTERIM STUDY COMMITTEE'S REPORT, SAID ONE WAY (the person's approval of 23 October 2026: one source for each thing the site worded several ways). After the session, a committee that took a bill for interim study reports whether it recommends the subject for future legislation, does not, or makes no recommendation; committee_acts.study_said reads which from the docket's row, in every wording the clerks have used. Five places said it in words of their own -- the docket's plain line (plain_action.py), How it got here (build_site_v2.study_ending), the bill page's closing note and a committee's meeting card (app.js endNote and actSaid) and the emails -- and two of them could be read as different reports: a report without a recommendation 'made no recommendation for future legislation' on a committee's page, which reads as not recommending it.",
+    "'head' is what the line is, and 'said' the three things a report can say, keyed as committee_acts.study_said reads them: 'rec', 'not' and 'without'. The words are plain_action.py's, from the sample the person reviewed on 14 October 2026, which the emails already used. components.py reads this file and the build writes it into site/components.js, between the WORDBOOK markers, as WORDBOOK.study_report, which app.js draws with; plain_action.py and build_site_v2.py read it directly. A place keeps its own sentence around the phrase -- 'the committee' before it on a bill's closing note, the next term's year after it where the clerk wrote one -- and takes the phrase from here, so that no two places can disagree about what a report said. A report whose row states none of the three is said as filed, which claims nothing of what it said.",
+    "workers/follow/mail.js keeps a copy (STUDY), because the Worker reads no site file. preflight's _study_report_said_once holds that copy to this file, holds each place above to its words, and fails on any of them typed out again."
+  ],
+  "head": "Interim study report",
+  "said": {
+    "rec": "recommends future legislation",
+    "not": "does not recommend future legislation",
+    "without": "makes no recommendation"
+  }
+}

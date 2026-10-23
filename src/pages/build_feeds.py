@@ -42,6 +42,7 @@ import _paths  # noqa: E402,F401
 
 import argparse
 import build_date
+import build_pages as BP
 import build_rsa as BR
 import components as C
 import follow_changes as FC
@@ -820,11 +821,12 @@ def main():
                 f"{(b or {}).get('title','')}\n\n"
                 f"{u.get('committee','')} {u.get('what','')}"
                 + (f", {u['venue']}" if u.get("venue") else "")
-                # build_pages.HEARING_NOTE, word for word (the person, 7 October
-                # 2026, F2); preflight's _hearing_note_wording holds the two equal.
-                + "\n\nAnyone may attend a public hearing and ask to speak. You can "
-                  "also sign in online to register a position and submit written "
-                  "testimony.",
+                # build_pages' note, by the hearing's chamber (hearing_note): the
+                # person's words of 7 October 2026 (F2), and since 23 October
+                # 2026 the Senate's, whose online sign-in takes no testimony.
+                # Taken from there, not typed here, now that the home page
+                # prints neither.
+                + "\n\n" + BP.hearing_note(u.get("body")),
                 when, f"hearing:{u.get('bill')}:{when}:{u.get('time','')}"))
             # current.json's upcoming: the same row, filed under its bill and
             # under the committee that will sit, by chamber and name.

@@ -615,7 +615,10 @@ function testifyBlock(t, label) {
 // after it, and the sentence again at a glance and in the subject, where
 // neither named the bill. It is now plain_action.py's words for the same
 // report, which every other line of an email already uses, with the bill's
-// name in front wherever it stands alone.
+// name in front wherever it stands alone. Since 23 October 2026 those words
+// are src/pages/words/study_report.json's, which the site's pages draw from
+// too; a Worker reads no site file, so this is a copy, and preflight's
+// _study_report_said_once fails while it differs from the file.
 const STUDY = {
   true: "Interim study report: recommends future legislation",
   false: "Interim study report: does not recommend future legislation",

@@ -7383,7 +7383,7 @@ def study_ending(narr, steps, rail, term, sittings, lsrs=None):
     legislation, 9-0, on 28 September. Its line is an orange arrow where the
     committee recommended the subject come back as a new bill, and names
     that bill where the clerk wrote down its LSR; the "~" where it did not,
-    or reported without a recommendation. The Senate files none."""
+    or made no recommendation at all. The Senate files none."""
     hs = [s for s in steps if s.get("body") in ("H", "S")]
     study = next((s for s in reversed(hs) if s.get("act") == "study"), None)
     if study is not None:
@@ -7410,12 +7410,15 @@ def study_ending(narr, steps, rail, term, sittings, lsrs=None):
             "short": "died in interim study"}]
     rep = interim_report(narr, term)
     if rep:
-        words = {"rec": "recommended for " + (f"legislation in {rep['year']}" if rep["year"]
-                                               else "future legislation"),
-                 "not": "not recommended for " + (f"legislation in {rep['year']}" if rep["year"]
-                                                   else "future legislation"),
-                 "without": "without a recommendation"}.get(rep["rec"])
-        text = (f"Interim study report: {words}" if words else "Interim study report filed") + (
+        # SAID AS EVERY OTHER PLACE SAYS IT (23 October 2026): the phrase is
+        # study_report.json's, which the docket's plain line, the bill's
+        # closing note, a committee's meeting card and the emails take too;
+        # this line adds the next term's year where the clerk wrote one.
+        sr = _WORDBOOK["study_report"]
+        words = sr["said"].get(rep["rec"])
+        if words and rep["year"] and rep["rec"] != "without":
+            words += f" in {rep['year']}"
+        text = (f"{sr['head']}: {words}" if words else f"{sr['head']} filed") + (
             f", {rep['vote']}" if rep["vote"] else "")
         line = {"date": rep["date"], "body": rep["body"] if rep["body"] in ("H", "S") else body,
                 "act": "study_report", "mark": "f" if rep["rec"] == "rec" else "s",
