@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.13
+# GRANITE_VERSION: 2026-09-08.14
 """
 Thirty years of calendars and journals, a night at a time.
 
@@ -10,8 +10,9 @@ Thirty years of calendars and journals, a night at a time.
     python3 src/fetch/gc_web/fetch_calendar_archive.py --budget 400       # fetch that many
     python3 src/fetch/gc_web/fetch_calendar_archive.py --status           # what is held, no network
 
-ARCHIVE_PLAN.md step 4, built the way that page says: DISCOVERY AND FETCHING
-ARE SEPARATE PROGRAMS, there is one queue and it is a file, and one worker
+ARCHIVE_PLAN.md step 4 (the person's plan, in private/ and not in the
+repository), built the way that page says: DISCOVERY AND FETCHING ARE
+SEPARATE PROGRAMS, there is one queue and it is a file, and one worker
 drains it.
 
 WHY IT IS BUILT THAT WAY AND NOT AS A LOOP

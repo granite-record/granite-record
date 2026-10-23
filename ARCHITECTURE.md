@@ -353,7 +353,7 @@ recording's captions are read it is on its bill's page with a start taken
 from the schedule, marked approximate, and the night's verdict says how many
 wait and why -- since 26 September 2026, chiefly YouTube's bot check, which
 it answers GitHub's machines with. The laptop's evening job that captioned
-what the night could not (`laptop_evening.py`, now in `obsolete/`) was
+what the night could not (`laptop_evening.py`, since deleted) was
 switched off on 8 October 2026; `src/ops/livestreams.py --catch-up` remains
 for a person to ask YouTube from the laptop by hand, and sends nothing.
 
@@ -599,7 +599,7 @@ The contract has exceptions. `probe_archive_shape.py`, `probe_calendars.py`,
 `probe_schema.py`, `resolve_members.py`, `snapshot_gencourt.py` and
 `check_civics_links.py` ask the General Court too, and sit beside its
 fetchers in `src/fetch/gc_web/` (`probe_archive.py` and
-`probe_legacy.py` did, and are in `obsolete/` since 6 October 2026), and
+`probe_legacy.py` did, and were retired on 6 October 2026), and
 each calls `refusal.check()` before its first request;
 `preflight._every_fetcher_checks_refusal` finds every script that
 asks, whatever its name, and fails one that does not check; and
@@ -1299,7 +1299,7 @@ a freeze only while the installed files are in the last session of their term,
 so a term's second January passes as a new session year.
 
 **Fix, for what is left: `(term, bill)` everywhere.**
-`obsolete/probe_archive.py` and `obsolete/setup_archive.py` sketched this;
+`probe_archive.py` and `setup_archive.py`, both since deleted, sketched this;
 the per-term files took a different road, `{term: {bill: ...}}` inside each
 file. The year-keyed journal and calendar citations were part of the same
 job.
@@ -1853,7 +1853,7 @@ Each is described where it belongs; this is the list in one place.
   `align_all`, `apply_markers`, `probe_alignment`, `transcribe_and_align`,
   `verify_batch`. Each opens whatever `--manifest` names, so run with no
   flag they open that exact file: real coupling rather than a stale pointer
-  (`score_alignment` went to `obsolete/` on 6 October 2026, and
+  (`score_alignment` was retired on 6 October 2026, and
   `fetch_testimony`, which declared the flag and never read it, on
   7 October). `ground_truth.py` is another reader, falling
   back to the literal name when the flag is absent, and `preflight` opens it

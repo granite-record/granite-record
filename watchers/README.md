@@ -13,10 +13,11 @@ the next person finds out what is already running before starting a second
 copy of it.
 
 What is left here is the lane, `gc_lane.py`, its queue and the pause it can
-run as a step (`rest.py`). The other loops finished their work and moved to
-`obsolete/` -- `docket_chain.py` on 1 October 2026, and `captions_watch.py`,
-`extract_watch.py` and `narrative_watch.py` on 6 October -- where
-`obsolete/README.md` says what each was and why it is kept.
+run as a step (`rest.py`). The other loops finished their work and were
+retired -- `docket_chain.py` on 1 October 2026, and `captions_watch.py`,
+`extract_watch.py` and `narrative_watch.py` on 6 October -- to an
+`obsolete/` folder that was deleted on 23 October 2026. "Retired", below,
+says what each was; git history keeps the code.
 
 **Check before you start one.** Two of the same watcher is two fetchers.
 Pasted into `cmd` as it stands, this lists every watcher, the lane, a
@@ -134,19 +135,19 @@ Started 11 September with the person's leave for that absence: the
 2015-2016 docket, then bill text 2017-2024 in 800-request runs. What is
 queued is in `gc_lane.queue`, with the reasoning beside each line.
 
-## Moved to `obsolete/`
+## Retired
 
-- **`docket_chain.py`**, superseded by `gc_lane.py` and moved on 1 October
+- **`docket_chain.py`**, superseded by `gc_lane.py` and retired on 1 October
   2026, with `fetch_archive_text.py`, the two-request bill-text route its tail
   queued and `fetch_legislation.py` superseded on 10 September.
-- **`captions_watch.py`**, the politeness loop for YouTube's captions, moved
+- **`captions_watch.py`**, the politeness loop for YouTube's captions, retired
   on 6 October 2026. Captions come through `livestreams.py` now.
 - **`extract_watch.py`**, which wrote the text beside each calendar and
-  journal PDF behind the calendar drain, moved on 6 October 2026. The drain is
+  journal PDF behind the calendar drain, retired on 6 October 2026. The drain is
   finished; `extract_calendar_text.py` is run by hand after a fetch of PDFs.
 - **`narrative_watch.py`**, stood down on purpose after it narrated 2015-2016
-  from a half-complete database seed, moved on 6 October 2026. The archived
+  from a half-complete database seed, retired on 6 October 2026. The archived
   terms are narrated by `build_all.py` (`narrative.py`, `narrate_archive.py`).
 
-`obsolete/README.md` says what each was and why it is kept. Nothing here
-starts any of them.
+All four were deleted with `obsolete/` on 23 October 2026, and git history
+keeps them and that folder's README. Nothing here starts any of them.

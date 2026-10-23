@@ -34,7 +34,7 @@ counts into `STATE.md`, which is generated and is the copy to believe.
 | [`collected/`](collected/README.md) | what was gathered from outside sources and git keeps: the YouTube channels' video indexes, the towns' clerks and officials, the county officers |
 | [`generated/`](generated/README.md) | what is computed ahead of time and kept: careers, places, the topic model's settings, the timestamp scores |
 | `functions/`, `workers/` | the Cloudflare code: the report box's endpoint, and Workers deployed on their own |
-| `watchers/`, `tests/`, `obsolete/` | the General Court fetch lane, the tests and their fixtures, retired code kept for its reasoning |
+| `watchers/`, `tests/` | the General Court fetch lane, and the tests and their fixtures |
 | `assets/`, `reports/`, `data/unh/` | one file each that git keeps where the rest is not: the web app manifest, the report box's database schema, and a survey of the University of New Hampshire's scanned journals |
 
 The root holds what something outside the repository runs by name

@@ -30,10 +30,10 @@ rest, in `build_all.py`'s `plan()`), or a fetch from the General Court
 (`src/fetch/gc_web/`). `build_all.py`, `nightly.py`, `preflight.py`,
 `refusal.py` and `netcheck.py` stay at the root, where a person or a workflow
 names them. The laptop's evening job, `laptop_evening.py`, which Task
-Scheduler ran there, went to `obsolete/` on 10 October 2026, when the night
-took the captions over; YouTube then refused the night, and the captions
-inbox (17 October 2026) gave the laptop back an evening job that writes no
-state: `python3 src/ops/livestreams.py --to-inbox`.
+Scheduler ran there, was retired on 10 October 2026, when the night
+took the captions over (and deleted on 23 October); YouTube then refused the
+night, and the captions inbox (17 October 2026) gave the laptop back an
+evening job that writes no state: `python3 src/ops/livestreams.py --to-inbox`.
 
 ## The captions inbox's evening job (17 October 2026)
 

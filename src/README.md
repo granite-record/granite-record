@@ -31,7 +31,6 @@ functions/        Cloudflare Pages Functions (must stay at the root)
 workers/          Cloudflare Workers deployed on their own
 watchers/         the General Court fetch lane
 tests/            tests and their fixtures
-obsolete/         retired code, kept for its reasoning
 ```
 
 `fetch/` asks other servers (one folder per whose server, because that
@@ -48,7 +47,8 @@ is in it, what runs it, and what does not belong there.
 nothing. Stage 1 (7 October 2026) moved the 49 scripts nothing the night
 touches -- the by-hand fetchers and probes, the reference builders, the UNH
 work, the bench and the by-hand reports -- and retired `fetch_testimony.py`
-to `obsolete/`. Stage 2 (7 October 2026) moved the 41 modules the night
+to `obsolete/`, a folder of retired code deleted on 23 October 2026 (git
+history keeps it). Stage 2 (7 October 2026) moved the 41 modules the night
 imports but runs by no name: five of `lib/`'s six, the helpers of `parse/`,
 `towns/`, `hearings/` and `pages/`, and `fetch_legislation.py` and
 `fetch_rollcalls_db.py`, whose parsers night steps import. Stage 3 (7 October

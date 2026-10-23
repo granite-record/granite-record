@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-09.1
+# GRANITE_VERSION: 2026-10-09.2
 """
 What the last full build was built from, and what has moved since.
 
@@ -73,7 +73,6 @@ NOT_INPUTS = (
     "logs",          # every run's log, this record among them
     "private",       # the person's plans
     "reports",       # the triage's, and the assistant's reports
-    "obsolete",      # code nothing runs
     "tests",         # the checks' cases; preflight reads them, no build step
     ".github",       # the workflows, which start a build and are not read by one
     ".wrangler", ".venv", "node_modules",

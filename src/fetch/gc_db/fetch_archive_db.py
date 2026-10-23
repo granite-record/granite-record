@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.12
+# GRANITE_VERSION: 2026-09-08.13
 """
 Every view in the General Court's public database, onto this disk.
 
@@ -9,7 +9,8 @@ Every view in the General Court's public database, onto this disk.
 
 WHY THIS EXISTS
 
-ARCHIVE_PLAN.md step 1. The site has been reading this database a question at
+ARCHIVE_PLAN.md step 1 (the person's plan, in private/ and not in the
+repository). The site has been reading this database a question at
 a time -- roll calls for one year, Senate reports for one term, testimony for
 one session -- and each of those is a script that knows how to ask for its own
 slice and nothing else. That was right while the question was whether the
