@@ -1214,6 +1214,22 @@ def cal_days(days, meets, titles, years, code, when, esc, level=3,
 HEARING_NOTE = ("Anyone may attend a public hearing and ask to speak. You can "
                 "also sign in online to register a position and submit "
                 "written testimony.")
+# A SENATE HEARING'S NOTE (23 October 2026). The person's words above are the
+# House's form, which takes written testimony with a sign-in. The Senate's
+# takes a position and no testimony, and the page that confirms the sign-in
+# says how to send it (the Senate's Public Guidance for Committee Meetings,
+# which guides.TESTIMONY cites). So a Senate hearing's note says that, in the
+# words the bill page's Testify box and the emails use for the same form
+# (app.js testifyBox, mail.js testifyWords, 22 October 2026).
+HEARING_NOTE_SENATE = ("Anyone may attend a public hearing and ask to speak. You can "
+                       "also sign in online to register a position. The page that "
+                       "confirms your sign-in says how to send written testimony.")
+
+
+def hearing_note(body):
+    """What a reader may do at a hearing of the chamber `body` ("H", "S"):
+    the Senate's note for the Senate, and the person's words otherwise."""
+    return HEARING_NOTE_SENATE if str(body or "").strip().upper() == "S" else HEARING_NOTE
 
 
 def cal_notes(up, missing, esc):

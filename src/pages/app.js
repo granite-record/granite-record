@@ -3909,14 +3909,17 @@ function journeyList(b,d){
 // used (build_site_v2.interim_report), and says one of three things: the
 // committee recommended the subject, did not, or made no recommendation
 // ("Without Recomendation", 2024; "No Recommendation", HB 1592 of 2014).
-const STUDY_SAID={rec:"recommended the subject for future legislation",
-  not:"did not recommend the subject for future legislation",
-  without:"reported without a recommendation"};
+// IN THE WORDS EVERY OTHER PLACE SAYS IT IN (23 October 2026): the phrase is
+// WORDBOOK.study_report's (src/pages/words/study_report.json), which How it
+// got here, a committee's meeting card, the docket's plain line and the
+// emails take too, so that none of them can tell the report differently.
+const STUDY_SAID=WORDBOOK.study_report.said;
 function endNote(d){
   const s=d.study_report,out=[];
-  const said=s&&(STUDY_SAID[s.rec!==undefined?s.rec:s.recommended?"rec":"not"]
-    ||"filed its report");
-  if(s)out.push(`<p class="note"><b>Interim study report${s.date?`, ${
+  const k=s&&(s.rec!==undefined?s.rec:s.recommended?"rec":"not");
+  const said=s&&(k&&Object.prototype.hasOwnProperty.call(STUDY_SAID,k)?STUDY_SAID[k]
+    :"filed its report");
+  if(s)out.push(`<p class="note"><b>${esc(WORDBOOK.study_report.head)}${s.date?`, ${
     esc(dateWords(s.date))}`:""}:</b> the committee ${said}${
       s.vote?`, ${esc(s.vote)}`:""}.</p>`);
   // NOT "WHATEVER ITS LAST RECORDED STATUS SAYS" (17 October 2026): that
@@ -7444,10 +7447,9 @@ const tallyOf=a=>a&&a.yeas!=null&&a.nays!=null?`${a.yeas}\u2013${a.nays}`:"";
 // its tally and the minority's; an interim study report, which recommended
 // the subject for future legislation (the orange arrow of How it got here)
 // or killed the bill (v8: "listed as killed, explaining what the committee
-// voted"); a retention.
-const STUDY_WORDS={not:"did not recommend the subject for future legislation",
-  without:"made no recommendation for future legislation",
-  "":"reported on its study"};
+// voted"); a retention. What the report said is in STUDY_SAID's words (the
+// bill page's, endNote above), and one whose row states none of the three
+// is said to have reported on its study.
 // `tail` goes before the sentence's full stop: the day of a vote taken at
 // another meeting (reportedLine).
 function actSaid(a,who,tail){
@@ -7459,11 +7461,13 @@ function actSaid(a,who,tail){
   }
   if(a.act==="study report"){
     if(a.said==="rec")return `<p class="mact mrec"><span class="mmark" aria-hidden="true">${
-      ACTMARK.rec}</span>${who==="The committee"?"The committee's":esc(who)+"'s"} interim study report: recommended for future legislation${
-      t?`, ${t}`:""}${end}</p>`;
+      ACTMARK.rec}</span>${who==="The committee"?"The committee's":esc(who)+"'s"} interim study report: ${
+      STUDY_SAID.rec}${t?`, ${t}`:""}${end}</p>`;
+    const said=a.said&&Object.prototype.hasOwnProperty.call(STUDY_SAID,a.said)?STUDY_SAID[a.said]
+      :"reported on its study";
     return `<p class="mact mkill"><span class="mmark" aria-hidden="true">${ACTMARK.kill}</span><b>Killed:</b> ${
-      who==="The committee"?"the committee's":esc(who)+"'s"} interim study report ${
-      STUDY_WORDS[a.said||""]||STUDY_WORDS[""]}${t?`, ${t}`:""}${end}</p>`;
+      who==="The committee"?"the committee's":esc(who)+"'s"} interim study report ${said}${
+      t?`, ${t}`:""}${end}</p>`;
   }
   return `<p class="mact">${who} retained the bill: it stays in the committee into the next year${end}</p>`;
 }
@@ -7844,12 +7848,18 @@ function calendarBlock(rows,heading){
     });
     out.push(`</div>`);
   });
-  // The first two sentences are build_pages.HEARING_NOTE, word for word: the
-  // person's own (7 October 2026), and preflight holds the two copies to it.
-  out.push(`<p class="note">Anyone may attend a public hearing and ask to
-    speak. You can also sign in online to register a position and submit
-    written testimony. An executive session is where the committee votes on
-    what to recommend; it is open to watch but not to testify.</p></section>`);
+  // The sentences before the executive session's are build_pages.hearing_note,
+  // word for word, and preflight holds the copies to it: the person's own (7
+  // October 2026) for a House committee, and since 23 October 2026 the
+  // Senate's for a Senate committee, whose online sign-in takes no testimony.
+  const senate=rows.every(u=>String(u.body||"").trim().toUpperCase()==="S");
+  out.push(`<p class="note">${senate?`Anyone may attend a public hearing and ask to
+    speak. You can also sign in online to register a position. The page that
+    confirms your sign-in says how to send written testimony.`:`Anyone may attend
+    a public hearing and ask to speak. You can also sign in online to register a
+    position and submit written testimony.`} An executive session is where the
+    committee votes on what to recommend; it is open to watch but not to
+    testify.</p></section>`);
   return out.join("");
 }
 

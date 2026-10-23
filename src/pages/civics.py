@@ -2214,6 +2214,13 @@ because bills about towns and cities arrive in the record every week, written
 as though you already knew all of this."""
 
 
+# WHAT THE GUIDES ALSO SAY IS THEIRS (the person's approval of 23 October
+# 2026). This page and the guides to attending a hearing and to submitting
+# testimony said the same things in copied paragraphs, and the copies had
+# begun to drift. Each such paragraph is written once now, in guides.SAID,
+# beside the claims that source it, and a <!-- guides:NAME --> here marks
+# where it goes; build_civics writes it in (guides.reused). The rest of the
+# page is its own.
 BODY_TESTIFYING = """
 <h2>Open to the Public</h2>
 <p><b>Every legislative meeting and hearing is open to the public.</b> You may
@@ -2233,12 +2240,12 @@ a district, so anyone may speak on any bill, whoever they are and wherever
 they live.</p>
 
 <h2>How Hearings Are Announced</h2>
-<p>A hearing is announced in the chamber's calendar, which is published weekly,
-and on the meeting schedule the General Court keeps online. The notice gives
-the committee, the bill, the day, the time and the room. Across the
-[[notice_hearings]] hearings those calendars announced in the [[term]] term,
-the median notice is <b>[[notice_median]] days</b>. That is the gap between the
-day the calendar is published and the day of the hearing.</p>
+<!-- guides:announced -->
+<p>The calendars are published weekly, and the General Court keeps a meeting
+schedule online as well. Across the [[notice_hearings]] hearings those
+calendars announced in the [[term]] term, the median notice is
+<b>[[notice_median]] days</b>. That is the gap between the day the calendar is
+published and the day of the hearing.</p>
 <p>Notices name the room by building:</p>
 <table><caption class="sr">The buildings a notice names</caption><tbody>
 <tr><th scope="row"><b>SH</b></th><td><b>State House:</b> 107 North Main Street,
@@ -2260,19 +2267,13 @@ happens.</p>
 
 <h2>Signing In</h2>
 <p><b>Both chambers take sign-ins online</b>, each through its own form on the
-General Court's website, linked below. You choose the hearing's day, the
-committee and the bill, say whether you are a member of the public, an elected
-official, a lobbyist or agency staff, and whom you represent if anyone, and
-mark yourself supporting, opposing or neutral. On the House's form you may
-attach written testimony; the Senate's tells you on its confirmation page how
-to send yours. In the House the committee is given the counts, and the
-sign-ins are published after the hearing.</p>
-<p>The window is not open indefinitely. It opens once the hearing is scheduled
-and published &mdash; the Senate's guidance says you can sign in on a bill as
-soon as its hearing is scheduled, and not before, and encourages signing in
-well ahead &mdash; and in practice it closes at midnight at the end of the day
-of the hearing, in both chambers. If the bill passes one chamber and gets a
-hearing in the other, there is a second window on the same terms.</p>
+General Court's website, linked below.</p>
+<!-- guides:forms -->
+<p>In the House the committee is given the counts, and the sign-ins are
+published after the hearing.</p>
+<p>The window is not open indefinitely. <!-- guides:window --> If the bill
+passes one chamber and gets a hearing in the other, there is a second window
+on the same terms.</p>
 <p>The sign-ins are not part of the bill's docket, the General Court's list of
 every action on it, and no link on the docket leads to them. They are kept in the General Court's own sign-in records, which
 its website offers as a lookup of its own.</p>
@@ -2281,39 +2282,19 @@ its website offers as a lookup of its own.</p>
 """ + flow_diagram(FLOW_TESTIFY, "How to testify, in order") + """
 
 <h2>When a Hearing Starts</h2>
-<p>In practice a committee meeting <b>never starts before the time its
-notice gives, and often starts later</b>. An earlier hearing in the same room
-may have run long with more speakers than expected, or a lunch break or a
-caucus before the meeting may have run over. The time in the notice is the
-earliest it will begin, not a promise, so plan to wait.</p>
+<!-- guides:starts-late -->
 
 <h2>Speaking at the Hearing</h2>
-<p>Speaking is a separate act from signing in, and spoken testimony is given
-in person. The two chambers ask for it differently:</p>
+<!-- guides:ask-to-speak -->
+<p>The sponsor speaks first, and is commonly given as long as they need; then
+the committee generally hears anyone who has asked to. <b>No rule sets a time
+limit.</b> In practice:</p>
 <ul>
-<li>In the <b>House</b>, in practice there is a stack of pink cards on a table
-and a registration sheet near the front of the room. Anyone may sign the sheet
-with their name and whether they support or oppose the bill. To speak, fill
-out a pink card and hand it to a staff member or a committee member, who
-passes it to the chair.</li>
-<li>In the <b>Senate</b>, its guidance says to sign up on the sheets in the
-committee room on the day of the hearing, and its calendars tell those who
-wish to speak to sign up in person. In practice the sheet has a box to mark
-if you want to speak.</li>
+<!-- guides:chair-time -->
+<!-- guides:notes -->
+<!-- guides:props -->
+<!-- guides:last-call -->
 </ul>
-<p>The sponsor speaks first, then the committee generally hears anyone who has
-asked to. <b>No rule sets a time limit</b>: whether to set one, and when a
-speaker's time is up, is the chair's call. With a few speakers there may be no
-limit at all. With many, more than about ten, chairs often give each person
-two or three minutes, the sponsor as long as they need, and ask speakers not
-to repeat points already made several times, so that each brings their own
-view.</p>
-<p>You may read from prepared notes or from your phone. Props are not allowed
-while you testify, and signs are allowed in the hallways but not in the
-committee room. Before closing the hearing the chair usually asks whether
-anyone who has not yet spoken would like to speak on the bill &mdash; a last
-chance for anyone who did not sign up &mdash; and if no one does, the hearing
-is closed.</p>
 <p>You do not have to be an expert. The most useful testimony is the most
 concrete: what this bill would do to you, in your town, said in particulars
 rather than in general &mdash; the cost, the date it would take effect, the
@@ -2321,30 +2302,16 @@ number of people it would reach, whatever the specific is in your case.</p>
 
 <h2>Written Testimony</h2>
 <p>You can give a committee your testimony in writing, as well as or instead
-of speaking. The Senate's guidance says to send it by email through the
-&ldquo;Email All Committee Members&rdquo; link on the committee's page on the
-General Court's website, and <a href="committees.html">every committee's page
-here</a> has a button that does the same. On the House's online form you can
-also attach it to your sign-in. In practice you may bring it on paper too: one
-printed copy for each member of the committee, which they will take and pass
-around. Paper copies are optional.</p>
+of speaking, and on the House's online form you can attach it to your
+sign-in.</p>
+<!-- guides:email -->
+<!-- guides:paper -->
 
 <h2>What Happens After the Hearing</h2>
-<p>The committee votes on what to recommend at a separate meeting called an
-executive session. It may be days later, or straight after the hearing: Senate
-hearing notices often say an executive session may follow, and the House's
-rules let a committee hold one right after a noticed hearing without further
-notice. It is public and you may attend it, but no testimony is taken at it.</p>
-<p>An executive session can be hard to catch. Some notices set aside one block
-of time for it, and the chair then takes up the bills in it in any order. And
-many House committee notices carry this line: &ldquo;Executive session on
-pending legislation may be held throughout the day, time permitting, from the
-time the committee is initially convened.&rdquo; It means that once the
-committee has met that day, it may vote on any bill it has pending at any
-point before it adjourns, and the notice gives no time for any one vote. To
-see a particular vote you may have to watch the whole day, and you may learn
-when it happened only afterward. House calendars have printed the line since
-at least February 1997, and still do.</p>
+<!-- guides:exec-session -->
+<p>No testimony is taken at an executive session, and one can be hard to
+catch.</p>
+<!-- guides:throughout-the-day -->
 <p>The committee then reports its recommendation to the chamber, and
 where it was split the majority and the minority each write a report. Whether
 you spoke or only signed in, the counts and any written testimony stay in the
@@ -2434,6 +2401,37 @@ district, party and county, and every recorded vote they have cast.</p>
 has a button that opens an email to all of them at once.</p>""")
 
 
+# READING THE SHORTHAND, FROM THE GLOSSARY (the person's approval of 23
+# October 2026). Using This Site's table was typed beside
+# src/pages/words/glossary.json, which /learn/glossary and the term popovers
+# draw from, and the two had come to define VV, DV, A, OT3rdg, Retain and OTPA
+# differently. Its rows are the glossary's entries now, as _motions() takes
+# its rows from votes.json, so where the two disagreed the glossary's words
+# stand: the person reviewed them on 17 October 2026. The table keeps its own
+# choice of terms and their order, the hyphen that FN, A and LOCAL carry
+# after a bill's number, and one note of its own: the docket's other ways of
+# writing OTPA (OTP/AM in the General Court's own key, records/docket_abbrev.json).
+SHORTHAND = ("OTP", "OTPA", "ITL", "IS", "Retain", "MA", "MF", "VV", "DV", "RC", "CC", "OT3rdg",
+             "HJ", "SJ", "FN", "A", "LOCAL")
+SHORTHAND_SUFFIXES = ("FN", "A", "LOCAL")
+SHORTHAND_NOTES = {"OTPA": "the docket also writes OTP/A or OTP/AM"}
+
+
+def _shorthand():
+    import components
+    g, E = components.WORDBOOK["glossary"], components.esc
+
+    def row(k):
+        e = g[k]
+        says = E(e["says"]) + (f" ({SHORTHAND_NOTES[k]})" if k in SHORTHAND_NOTES else "")
+        return (f'<tr><th scope="row"><b>{"-" if k in SHORTHAND_SUFFIXES else ""}{E(k)}</b></th>'
+                f'<td><b>{E(e["name"])}{":" if says else ""}</b>{" " + says if says else ""}</td></tr>')
+    return "<table><tbody>\n" + "\n".join(row(k) for k in SHORTHAND) + "\n</tbody></table>"
+
+
+SHORTHAND_TABLE = _shorthand()
+
+
 BODY_SITE = """
 <h2>What This Site Is</h2>
 <p>Granite Record is an index of the New Hampshire General Court's own record:
@@ -2501,31 +2499,7 @@ wearing the clothes of a citation. The timestamp is the claim. The recording
 is the evidence.</p>
 
 <h2>Reading the Shorthand</h2>
-<table><tbody>
-<tr><th scope="row"><b>OTP</b></th><td><b>Ought to Pass:</b> a motion to pass the bill</td></tr>
-<tr><th scope="row"><b>OTPA</b></th><td><b>Ought to Pass with Amendment:</b> a motion to pass
-the bill with the committee's amendment (the docket also writes OTP/A or OTP/AM)</td></tr>
-<tr><th scope="row"><b>ITL</b></th><td><b>Inexpedient to Legislate:</b> a motion to kill the bill</td></tr>
-<tr><th scope="row"><b>IS</b></th><td><b>Interim Study:</b> a motion to have the committee study
-the subject after the session; the bill itself goes no further this term</td></tr>
-<tr><th scope="row"><b>Retain</b></th><td><b>Retained:</b> a House committee keeps the bill
-through the fall and reports it in the second year of the term</td></tr>
-<tr><th scope="row"><b>MA</b> / <b>MF</b></th><td><b>Motion Adopted / Motion Failed</b></td></tr>
-<tr><th scope="row"><b>VV</b></th><td><b>Voice vote:</b> no count and no names</td></tr>
-<tr><th scope="row"><b>DV</b></th><td><b>Division vote:</b> counted, names not recorded</td></tr>
-<tr><th scope="row"><b>RC</b></th><td><b>Roll call:</b> each member recorded by name</td></tr>
-<tr><th scope="row"><b>CC</b></th><td><b>Consent Calendar:</b> the committee's
-recommendation, to pass, to kill or to send to interim study, adopted with the
-whole calendar in one vote, without floor debate</td></tr>
-<tr><th scope="row"><b>OT3rdg</b></th><td><b>Ordered to a third reading</b></td></tr>
-<tr><th scope="row"><b>HJ</b> / <b>SJ</b></th><td><b>House or Senate Journal:</b> the
-chamber's own record of the day, cited by issue and sometimes page</td></tr>
-<tr><th scope="row"><b>-FN</b></th><td><b>Fiscal note:</b> an estimate of what the bill
-would cost</td></tr>
-<tr><th scope="row"><b>-A</b></th><td><b>Appropriation:</b> the bill contains one</td></tr>
-<tr><th scope="row"><b>-LOCAL</b></th><td><b>Local fiscal impact:</b> the bill may change
-what counties, cities, towns or school districts spend or collect</td></tr>
-</tbody></table>
+""" + SHORTHAND_TABLE + """
 
 <h2>Following a Bill</h2>
 <p>A bill still moving through the General Court carries an RSS feed, and so

@@ -601,21 +601,24 @@ test("an interim study's report is said one way, in plain_action's words, naming
   const section = study => ({ key: "bill:2026/HB9901", kind: "bill", ref: "2026/HB9901",
     label: "HB 9901", title: "", url: "/bill/2026/hb9901", items: [], more: 0, study, ended: null,
     week: null, upcoming: [] });
-  const words = { true: "recommends future legislation", false: "does not recommend future legislation",
-                  null: "makes no recommendation" };
+  // THE WORDS ARE THE SITE'S (23 October 2026): src/pages/words/study_report.json,
+  // read here rather than copied, so this test holds mail.js to the file the
+  // pages and plain_action.py draw from.
+  const sr = JSON.parse(readFileSync(new URL("../../src/pages/words/study_report.json", import.meta.url), "utf8"));
+  const words = { true: sr.said.rec, false: sr.said.not, null: sr.said.without };
   for (const [recommends, said] of [[true, words.true], [false, words.false], [null, words.null]]) {
     const m = digestEmail({ ...base, sections: [section({ recommends, date: "2026-10-07",
       summary: "Interim Study Report: Recommended for Future Legislation 10/07/2026 (Vote 12-2; )" })] });
-    assert.equal(m.subject, `HB 9901 — Interim study report: ${said}, 12–2`, "the subject names the bill");
+    assert.equal(m.subject, `HB 9901 — ${sr.head}: ${said}, 12–2`, "the subject names the bill");
     assert.equal((m.text.match(/Interim study report/g) || []).length, 1, "said once in the text");
-    assert.match(m.text, new RegExp(`October 7, 2026 {2}HB 9901 — Interim study report: ${said}, 12–2\\n`));
+    assert.match(m.text, new RegExp(`October 7, 2026 {2}HB 9901 — ${sr.head}: ${said}, 12–2\\n`));
     assert.doesNotMatch(m.text + m.html, /Interim Study Report:|interim study committee|Vote 12-2/,
       "the clerk's line and the old sentence are gone");
   }
-  // plain_action.py says the same report in the same words, so a law's or a
-  // topic's line for it reads as the bill's does.
+  // plain_action.py takes its words from the same file, so a law's or a
+  // topic's line for the report reads as the bill's does.
   const pa = readFileSync(new URL("../../src/parse/plain_action.py", import.meta.url), "utf8");
-  for (const said of Object.values(words)) assert.ok(pa.includes(`Interim study report: ${said}`), said);
+  assert.match(pa, /src\/pages\/words\/study_report\.json/, "plain_action.py reads the words file");
 });
 
 test("at most SEND_LIMIT emails a run; the next hour finishes the list", async () => {

@@ -49,6 +49,10 @@ import motions as M
 import narrative as N
 
 VOTES = json.loads((_paths.ROOT / "src/pages/words/votes.json").read_text(encoding="utf-8"))
+# What an interim study committee's report said, in the words every page and
+# email says it in (23 October 2026): they were written here first, and the
+# file is their one copy now.
+STUDY = json.loads((_paths.ROOT / "src/pages/words/study_report.json").read_text(encoding="utf-8"))
 
 # The buildings the clerk abbreviates, as the calendar and the site name them.
 BUILDINGS = {"LOB": "Legislative Office Building", "SH": "State House", "GP": "Granite Place"}
@@ -225,9 +229,8 @@ _SIMPLE = [
      lambda m, r: f"Conferee changed: {m.group('a')} replaces {m.group('b')}"),
     (re.compile(r"^Interim Study Report\s*:\s*(?:(?P<no>Not )?Recommended for Future Legislation|"
                 r"(?P<none>Without Recommendation))", re.I),
-     lambda m, r: ("Interim study report: makes no recommendation" if m.group("none") else
-                   "Interim study report: does not recommend future legislation" if m.group("no")
-                   else "Interim study report: recommends future legislation")
+     lambda m, r: f"{STUDY['head']}: "
+     + STUDY["said"]["without" if m.group("none") else "not" if m.group("no") else "rec"]
      + (lambda v: f", {v.group(1)}\u2013{v.group(2)}" if v else "")(_VOTE.search(r))),
     (re.compile(r"^(?P<who>(?:Sen|Rep)\.\s+[\w.' -]+?)\s+Moved\s+(?P<m>.+?)\s*;", re.I),
      lambda m, r: (lambda w: f"{m.group('who')} moved to {w[:1].lower() + w[1:]}" if w else "")(_rec(m.group("m")))),
