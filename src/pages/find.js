@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-16.35
+// GRANITE_VERSION: 2026-09-16.36
 /* FIND ANYTHING, FROM THE HEADER (16 September, asked for in these words:
    "a search icon in the header that lets you search for anything including
    legislators, committees, towns, and bills ... searching Litchfield would
@@ -44,17 +44,23 @@
    The control is built here rather than in the two files that write the
    header, so there is one of it. */
 const FIND={rows:null,loading:null,words:null};
+/* THE PAGE'S WORDS (i18n.py): components.js's tr(), which every page loads
+   before this file. Where it is not there -- a harness that runs this file
+   alone -- the English, with {name} filled. */
+if(typeof tr!=="function")var tr=function(k,en,v){return v?String(en).replace(/\{([a-z_][a-z0-9_]*)\}/g,
+  function(m,n){return Object.prototype.hasOwnProperty.call(v,n)?v[n]:m;}):en;};
 /* THE BOXES THE FINDER DRAWS INTO. The header's panel by default; the home
    page's own box passes its own (D13, 8 October 2026: "one search box like
    the header search ... with a dropdown of the top results"), so one matcher
    and one set of rows serve both. */
 const FIND_IDS={out:"findout",box:"findq",clear:"findclear",say:"findsay"};
-const FKIND={legislator:"Legislator",committee:"Committee",town:"Town",
-  page:"Page",former:"Former Member",topic:"Subject",
+const FKIND={legislator:tr("find.kind.legislator","Legislator"),committee:tr("find.kind.committee","Committee"),
+  town:tr("find.kind.town","Town"),page:tr("find.kind.page","Page"),
+  former:tr("find.kind.former","Former Member"),topic:tr("find.kind.topic","Subject"),
   // The how-to guides and the Learn pages, from their own pages (12 October 2026).
   // A GUIDE IS A "Guide" (17 October 2026): the kind of thing it is in one
   // word, as "Town" and "Subject" are; the hub's tab keeps its full name.
-  guide:"Guide",learn:"Learn"};
+  guide:tr("find.kind.guide","Guide"),learn:tr("find.kind.learn","Learn")};
 const _fesc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>(
   {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 /* A COMMITTEE IS NAMED WITH ITS CHAMBER (the person, 16 October 2026:
@@ -83,7 +89,8 @@ function findName(r){
    has left falls in behind those who have not, and never above the bills. */
 const _fgone=r=>!!r&&(r[0]==="former"||_fstudy(r)||(r[0]==="committee"&&!!r[5]));
 function findKind(r){
-  return r&&r[0]==="committee"&&r[5]?"Former Committee":(FKIND[r&&r[0]]||(r&&r[0])||"");
+  return r&&r[0]==="committee"&&r[5]?tr("find.kind.former_committee","Former Committee")
+    :(FKIND[r&&r[0]]||(r&&r[0])||"");
 }
 /* STATUTORY AND STUDY COMMITTEES (18 October 2026: the person, 17 October,
    "they should be included on the committee page and in search results, but
@@ -93,8 +100,8 @@ function findKind(r){
    They wait their turn as a former committee does (_fgone): never above the
    bills, and after the standing committees where the match is as good,
    though before the members and committees that have gone (findMatch). */
-FKIND.statutory="Statutory Committee";
-FKIND.study="Study Committee";
+FKIND.statutory=tr("find.kind.statutory","Statutory Committee");
+FKIND.study=tr("find.kind.study","Study Committee");
 const _fstudy=r=>!!r&&(r[0]==="statutory"||r[0]==="study");
 /* FORMERLY, WHEN AN OLD NAME IS WHAT MATCHED (the person, 16 October 2026: "A
    committee should say formerly if it's an old name"). A committee's earlier
@@ -118,8 +125,8 @@ function findWhat(r,s){
   const w=r?String(r[2]||""):"";
   if(!r||r[0]!=="committee")return w;
   const was=_fwasNamed(r,s);
-  const bits=[was?`Formerly ${was}`:"",
-    r[5]?"No longer meets"+(r[6]?` · ${r[6]}`:""):""].filter(Boolean);
+  const bits=[was?tr("find.formerly","Formerly {name}",{name:was}):"",
+    r[5]?tr("find.no_longer","No longer meets")+(r[6]?` · ${r[6]}`:""):""].filter(Boolean);
   return bits.length?bits.join("; "):/^(House|Senate) committee$/i.test(w)?"":w;
 }
 /* HALF AN EMOJI IS NOT AN ADDRESS. encodeURIComponent throws "URI malformed"
@@ -705,15 +712,15 @@ function findBillRow(b,q,dated,why){
   if(cut)t=t.slice(0,157).replace(/\s+\S*$/,"");
   return `<a href="/bill/${encodeURIComponent(y)}/${encodeURIComponent(String(b.id).toLowerCase())}">
     <span class="fl1"><span class="fname">${_fesc(b.n||b.id)}${dated&&y?` (${_fesc(y)})`:""}</span>
-    ${chip("Bill","fkind")}</span>
+    ${chip(tr("find.kind.bill","Bill"),"fkind")}</span>
     ${t?`<span class="fwhat">${_fmark(t,q)}${cut?"&hellip;":""}</span>`:""}
-    ${why?`<span class="fwhy">Listed for &mdash; ${_fesc(why)}</span>`:""}</a>`;
+    ${why?`<span class="fwhy">${tr("find.listed","Listed for &mdash; {why}",{why:_fesc(why)})}</span>`:""}</a>`;
 }
 
 // "1989 to 2026", from the terms newest first.
 function _fspan(terms){
   const a=String(terms[terms.length-1]||"").slice(0,4),b=String(terms[0]||"").slice(-4);
-  return a&&b?`${a} to ${b}`:"";
+  return a&&b?tr("find.span","{from} to {to}",{from:a,to:b}):"";
 }
 
 // The row that opens the bill search on what was typed: "All N bills found
@@ -727,14 +734,17 @@ function findBillsAll(B,q,what){
   const ready=B&&B.state==="ready";
   const every=ready&&B.every;
   // "HB 1, SB 5" is a list of numbers, not words a bill mentions.
-  const verb=B&&B.numbers?["numbered","numbered"]:["found for","found for"];
-  const name=ready?(B.n===1?`1 bill ${verb[0]} ${quoted}`
-      :`All ${B.n.toLocaleString()} bills ${verb[1]} ${quoted}`)
-    :`Search the bills for ${quoted}`;
-  const where=every?`In all ${B.terms.length} terms, ${_fspan(B.terms)}.`
-    :ready?`In the ${_fesc(B.term)} term.`
-    :B&&B.state==="loading"?"Counting this term&rsquo;s bills&hellip;":"";
-  const line=[where,what||(where?"":"In the bill search.")].filter(Boolean).join(" ");
+  const n=ready?B.n.toLocaleString(window.GR_LOCALE||"en-US"):"";
+  const name=ready?(B.numbers
+      ?(B.n===1?tr("find.one_numbered","1 bill numbered {q}",{q:quoted})
+        :tr("find.n_numbered","All {n} bills numbered {q}",{n,q:quoted}))
+      :(B.n===1?tr("find.one_found","1 bill found for {q}",{q:quoted})
+        :tr("find.n_found","All {n} bills found for {q}",{n,q:quoted})))
+    :tr("find.search_bills","Search the bills for {q}",{q:quoted});
+  const where=every?tr("find.all_terms","In all {n} terms, {span}.",{n:B.terms.length,span:_fspan(B.terms)})
+    :ready?tr("find.in_term","In the {term} term.",{term:_fesc(B.term)})
+    :B&&B.state==="loading"?tr("find.counting","Counting this term&rsquo;s bills&hellip;"):"";
+  const line=[where,what||(where?"":tr("find.in_search","In the bill search."))].filter(Boolean).join(" ");
   return `<a class="fbills" href="/bills?q=${_fenc(q)}${every?"&amp;term=all":""}">
     <span class="fl1"><span class="fname">${name}</span></span>
     <span class="fwhat">${line}</span></a>`;
@@ -747,8 +757,7 @@ function findDraw(q,ids){
   const s=(q||"").trim();
   const clr=ids.clear?document.getElementById(ids.clear):null;
   if(clr)clr.hidden=!s;
-  if(!s){out.innerHTML=`<p class="fnote">Type a legislator, a committee, a
-    town, a subject, a bill number or words from a bill&rsquo;s title.</p>`;
+  if(!s){out.innerHTML=`<p class="fnote">${tr("find.type","Type a legislator, a committee, a town, a subject, a bill number or words from a bill&rsquo;s title.")}</p>`;
     findSay("",ids);return;}
   const num=findBill(s);
   const rows=findMatch(s);
@@ -763,14 +772,14 @@ function findDraw(q,ids){
   // term, so "SB 412" led to this term's SB 412 and nowhere else, and the
   // 2000 bill a reader may have meant was a term picker away. /search lists
   // the number in every term, so it is offered under the number.
-  const every=`<a class="fall" href="/search?q=${_fenc(s)}">
-    <span class="fl1"><span class="fname">See all search results for ${_fesc(s)}</span></span>
-    <span class="fwhat">${num?"this number in every term since 1989"
-      :"every member, committee, town and subject that matches, and the bills of every term"
+  const every=`<a class="fall" data-every href="/search?q=${_fenc(s)}">
+    <span class="fl1"><span class="fname">${tr("find.see_all","See all search results for {q}",{q:_fesc(s)})}</span></span>
+    <span class="fwhat">${num?tr("find.every_term","this number in every term since 1989")
+      :tr("find.every_match","every member, committee, town and subject that matches, and the bills of every term")
       }</span></a>`;
   const all=num?`<a class="fall" href="/bills?q=${encodeURIComponent(num)}">
     <span class="fl1"><span class="fname">${_fesc(num)}</span></span>
-    <span class="fwhat">open this bill number in the bill search</span></a>`:every;
+    <span class="fwhat">${tr("find.open_number","open this bill number in the bill search")}</span></a>`:every;
   const row=r=>`<a href="${_fesc(_froot(r[3]))}">
       <span class="fl1"><span class="fname">${_fmark(findName(r),s)}</span>
       ${chip(findKind(r),"fkind")}</span>
@@ -809,7 +818,7 @@ function findDraw(q,ids){
   // counted, neither: it is not known.
   let tail="";
   if(!rows.length&&!num&&(!B||(counted&&!B.n)||B.state==="failed")){
-    const none=!B||counted?"No matching results.":"";
+    const none=!B||counted?tr("find.none","No matching results."):"";
     const offer=findOffers(s,false);
     if(offer.wait&&!FWORDS.redraw){
       FWORDS.redraw=true;
@@ -821,8 +830,8 @@ function findDraw(q,ids){
     // "run this search in the bill list" (see the panel's click, below).
     const did=offer.words.map(d=>
       `<button type="button" class="fdym" data-find="${_fesc(d)}">${_fesc(d)}</button>`);
-    if(none||did.length)tail=`<p class="fnote">${none}${did.length
-      ?`${none?" ":""}Did you mean ${did.join(" or ")}?`:""}</p>`;
+    if(none||did.length)tail=`<p class="fnote"${none?" data-none":""}>${none}${did.length
+      ?`${none?" ":""}${tr("find.did_you_mean","Did you mean {words}?",{words:did.join(" "+tr("find.or","or")+" ")})}`:""}</p>`;
   }
   const own=N&&N.state==="ready"?N.top.map(b=>findBillRow(b,s,false)).join(""):"";
   out.innerHTML=num?own+all+list+every+tail:list+all+tail;
@@ -842,9 +851,9 @@ function findSay(html,ids){
   const say=document.getElementById((ids||FIND_IDS).say);
   if(!say)return;
   html=String(html||"");
-  const n=(html.match(/<a\s/g)||[]).length-(/See all search results for/.test(html)?1:0);
-  const text=n>0?`${n} result${n===1?"":"s"}`
-    :/No matching results/.test(html)?"No matching results.":"";
+  const n=(html.match(/<a\s/g)||[]).length-(/data-every|See all search results for/.test(html)?1:0);
+  const text=n>0?(n===1?tr("find.one_result","1 result"):tr("find.n_results","{n} results",{n}))
+    :/data-none|No matching results/.test(html)?tr("find.none","No matching results."):"";
   if(say.textContent!==text)say.textContent=text;
 }
 
@@ -856,7 +865,7 @@ function findMount(){
   btn.setAttribute("aria-expanded","false");
   btn.setAttribute("aria-controls","findpanel");
   btn.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" '
-    +'cy="11" r="7"/><path d="M16.5 16.5 21 21"/></svg><span>Search</span>';
+    +'cy="11" r="7"/><path d="M16.5 16.5 21 21"/></svg><span>'+tr("search.go","Search")+'</span>';
   // BEFORE THE MENU BUTTON, NOT BEFORE THE THEMER. The theme control moved
   // inside .navdrop so that a phone can fold it behind the menu with the
   // sections; insertBefore requires its reference to be a CHILD of the node
@@ -880,16 +889,16 @@ function findMount(){
   // A search landmark with a name, the box tied to the list it fills, and
   // the one line that says what the list holds (findSay).
   panel.setAttribute("role","search");
-  panel.setAttribute("aria-label","Search the site");
+  panel.setAttribute("aria-label",tr("find.label","Search the site"));
   panel.innerHTML=`<div class="findin">
     <div class="findgrab" aria-hidden="true"></div>
     <div class="findtop">
     <div class="findbox">
-      <label class="sr" for="findq">Search for a legislator, committee, town, subject or bill</label>
-      <input id="findq" type="search" autocomplete="off" aria-controls="findout" placeholder="Name, town, committee or bill">
-      <button type="button" class="findclear" id="findclear" hidden aria-label="Clear the search box">&#10005;</button>
+      <label class="sr" for="findq">${tr("find.box","Search for a legislator, committee, town, subject or bill")}</label>
+      <input id="findq" type="search" autocomplete="off" aria-controls="findout" placeholder="${_fesc(tr("find.hint","Name, town, committee or bill"))}">
+      <button type="button" class="findclear" id="findclear" hidden aria-label="${_fesc(tr("find.clear","Clear the search box"))}">&#10005;</button>
     </div>
-    <button type="button" class="findcancel" id="findcancel">Cancel</button>
+    <button type="button" class="findcancel" id="findcancel">${tr("find.cancel","Cancel")}</button>
     </div>
     <p class="sr" id="findsay" role="status"></p>
     <div class="findout" id="findout"></div></div>`;
@@ -1106,11 +1115,11 @@ function ytDistricts(p){
   const h=p.h||[];
   const say=h.map(x=>`${x[0]} ${x[1]}${x[2]?" (floterial)":""}`);
   const bits=[];
-  if(say.length)bits.push("State House "+(say.length>1
-    ?say.slice(0,-1).join(", ")+" and "+say[say.length-1]:say[0]));
-  if(p.sd)bits.push("State Senate district "+p.sd);
-  if(p.ec)bits.push("Executive Council district "+p.ec);
-  if(p.cd)bits.push("US House district "+p.cd);
+  if(say.length)bits.push(tr("yt.state_house","State House {d}",{d:say.length>1
+    ?say.slice(0,-1).join(", ")+" "+tr("yt.and","and")+" "+say[say.length-1]:say[0]}));
+  if(p.sd)bits.push(tr("yt.senate_d","State Senate district {d}",{d:p.sd}));
+  if(p.ec)bits.push(tr("yt.council_d","Executive Council district {d}",{d:p.ec}));
+  if(p.cd)bits.push(tr("yt.us_house_d","US House district {d}",{d:p.cd}));
   return bits;
 }
 function ytPeople(p){
@@ -1122,11 +1131,11 @@ function ytPeople(p){
 }
 function ytVote(p){
   const out=[];
-  if(p.poll)out.push(`<p class="ytpoll"><span class="ytlbl">Where you vote</span>${_fesc(p.poll)}${p.hours?`<span class="ythrs">Polls open ${_fesc(p.hours)}</span>`:""}</p>`);
-  if(p.wards)out.push(`<p class="ytlbl">${_fesc(p.t)} votes in ${p.wards.length} places, by ward</p><ul class="ytwards">`
-    +p.wards.map(w=>`<li><b>Ward ${_fesc(w[0])}</b> ${_fesc(w[1])}${w[2]?` <span class="ythrs">${_fesc(w[2])}</span>`:""}</li>`).join("")+"</ul>");
-  if(!p.poll&&!p.wards)out.push(`<p class="ytnote">The Secretary of State&rsquo;s list has no polling place recorded for ${_fesc(p.n)}. The clerk is who to ask.</p>`);
-  if(p.clerk)out.push(`<p class="ytclerk"><span class="ytlbl">${p.c?"City":"Town"} clerk</span>${_fesc(p.clerk)}`
+  if(p.poll)out.push(`<p class="ytpoll"><span class="ytlbl">${tr("yt.where_vote","Where you vote")}</span>${_fesc(p.poll)}${p.hours?`<span class="ythrs">${tr("yt.polls_open","Polls open {hours}",{hours:_fesc(p.hours)})}</span>`:""}</p>`);
+  if(p.wards)out.push(`<p class="ytlbl">${tr("yt.by_ward","{town} votes in {n} places, by ward",{town:_fesc(p.t),n:p.wards.length})}</p><ul class="ytwards">`
+    +p.wards.map(w=>`<li><b>${tr("yt.ward","Ward {n}",{n:_fesc(w[0])})}</b> ${_fesc(w[1])}${w[2]?` <span class="ythrs">${_fesc(w[2])}</span>`:""}</li>`).join("")+"</ul>");
+  if(!p.poll&&!p.wards)out.push(`<p class="ytnote">${tr("yt.no_poll","The Secretary of State&rsquo;s list has no polling place recorded for {place}. The clerk is who to ask.",{place:_fesc(p.n)})}</p>`);
+  if(p.clerk)out.push(`<p class="ytclerk"><span class="ytlbl">${p.c?tr("yt.city_clerk","City clerk"):tr("yt.town_clerk","Town clerk")}</span>${_fesc(p.clerk)}`
     +(p.phone?` &middot; <a href="tel:${_fesc(p.phone.replace(/[^0-9+]/g,""))}">${_fesc(p.phone)}</a>`:"")
     +(p.email?` &middot; <a href="mailto:${_fesc(p.email)}">${_fesc(p.email)}</a>`:"")+"</p>");
   if(p.when)out.push(`<p class="ytwhen">${_fesc(p.when)}</p>`);
@@ -1141,8 +1150,8 @@ function ytMark(p){
   const sel=(s,after)=>`a[href*="legislator/${s}."]${after},a[href$="legislator/${s}"]${after}`;
   const rep=(p.m||[]).filter(s=>!/-sd-\d+$/.test(s)),sen=(p.m||[]).filter(s=>/-sd-\d+$/.test(s));
   let css="";
-  if(rep.length)css+=rep.map(s=>sel(s,"::after")).join(",")+'{content:"Your rep"}';
-  if(sen.length)css+=sen.map(s=>sel(s,"::after")).join(",")+'{content:"Your senator"}';
+  if(rep.length)css+=rep.map(s=>sel(s,"::after")).join(",")+'{content:'+JSON.stringify(tr("yt.your_rep","Your rep"))+'}';
+  if(sen.length)css+=sen.map(s=>sel(s,"::after")).join(",")+'{content:'+JSON.stringify(tr("yt.your_senator","Your senator"))+'}';
   if(css)css+=(p.m||[]).map(s=>sel(s,"::after")).join(",")
     +"{display:inline-block;margin-left:.375rem;padding:0 .375rem;border-radius:999px;"
     +"font:600 .75rem/1.5 var(--sans);letter-spacing:.02em;text-transform:none;"
@@ -1241,9 +1250,10 @@ function ytApply(){
     const p=ytPlace();
     if(btn){
       const w=btn.querySelector(".ytword");
-      if(w)w.textContent=p?`Your town: ${p.n}`:"Choose your town";
-      btn.setAttribute("aria-label",p?`Your town: ${p.n}`:"Choose your town");
-      btn.title=p?`Your town: ${p.n}`:"Choose your town";
+      const said=p?tr("yt.yours","Your town: {place}",{place:p.n}):tr("yt.choose","Choose your town");
+      if(w)w.textContent=said;
+      btn.setAttribute("aria-label",said);
+      btn.title=said;
       btn.classList.toggle("is-set",!!p);
     }
     ytMark(p);ytSlots(p);
@@ -1315,24 +1325,24 @@ function ytDraw(){
   if(p&&!panel.dataset.changing){
     h+=`<div class="ytnow"><p class="ytplace"><a href="${_fesc(p.u)}">${_fesc(p.n)}</a></p>`
       +`<p class="ytdist">${p.co?_fesc(p.co)+" County. ":""}${ytDistricts(p).map(_fesc).join(" &middot; ")}</p>`
-      +`<h3 class="ytsub">Your state legislators</h3>`+ytPeople(p)
-      +`<h3 class="ytsub">Voting</h3>`+ytVote(p)
-      +'<p class="ytacts"><button type="button" class="ytbtn2" id="ytchange">Change town</button>'
-      +'<button type="button" class="ytbtn2 ytquiet" id="ytforget">Forget it</button></p></div>';
+      +`<h3 class="ytsub">${tr("yt.legislators","Your state legislators")}</h3>`+ytPeople(p)
+      +`<h3 class="ytsub">${tr("yt.voting","Voting")}</h3>`+ytVote(p)
+      +'<p class="ytacts"><button type="button" class="ytbtn2" id="ytchange">'+tr("yt.change","Change town")+'</button>'
+      +'<button type="button" class="ytbtn2 ytquiet" id="ytforget">'+tr("yt.forget","Forget it")+'</button></p></div>';
   }else{
-    h+=(herep&&herep.s!==ytGet()?`<p class="ytthis"><button type="button" class="ytbtn2" data-pick="${_fesc(herep.s)}">Use ${_fesc(herep.n)}, this page&rsquo;s town</button></p>`:"")
-      +'<div class="findbox"><label for="ytq" class="ytlbl2">Your town, or your city and ward</label>'
-      +'<input id="ytq" type="search" autocomplete="off" placeholder="Town, or city and ward" aria-controls="ytout"></div>'
+    h+=(herep&&herep.s!==ytGet()?`<p class="ytthis"><button type="button" class="ytbtn2" data-pick="${_fesc(herep.s)}">${tr("yt.use_this","Use {place}, this page&rsquo;s town",{place:_fesc(herep.n)})}</button></p>`:"")
+      +'<div class="findbox"><label for="ytq" class="ytlbl2">'+tr("yt.box","Your town, or your city and ward")+'</label>'
+      +'<input id="ytq" type="search" autocomplete="off" placeholder="'+_fesc(tr("yt.box_hint","Town, or city and ward"))+'" aria-controls="ytout"></div>'
       +'<p class="sr" id="ytqsay" role="status"></p><div class="ytout" id="ytout"></div>'
-      +'<details class="ytaddr" id="ytaddrbox"><summary>Not sure what ward you&rsquo;re in? Enter your address to confirm.</summary>'
-      +'<form id="ytaform" class="ytaform"><label for="ytaddr" class="ytlbl2">Street address and town</label>'
+      +'<details class="ytaddr" id="ytaddrbox"><summary>'+tr("yt.ward_unsure","Not sure what ward you&rsquo;re in? Enter your address to confirm.")+'</summary>'
+      +'<form id="ytaform" class="ytaform"><label for="ytaddr" class="ytlbl2">'+tr("yt.addr","Street address and town")+'</label>'
       +'<div class="ytarow"><input id="ytaddr" type="text" autocomplete="street-address" placeholder="12 Main Street, Concord">'
-      +'<button type="submit" class="ytbtn2">Look up</button></div></form>'
+      +'<button type="submit" class="ytbtn2">'+tr("yt.look_up","Look up")+'</button></div></form>'
       +'<div class="ytares" id="ytares" role="status"></div>'
-      +'<p class="ytpriv">The address goes from your browser to the US Census Bureau&rsquo;s address lookup and is not kept anywhere. Only the town or ward it finds is saved.</p></details>'
-      +(p?'<p class="ytacts"><button type="button" class="ytbtn2 ytquiet" id="ytback">Keep '+_fesc(p.n)+"</button></p>":"");
+      +'<p class="ytpriv">'+tr("yt.addr_privacy","The address goes from your browser to the US Census Bureau&rsquo;s address lookup and is not kept anywhere. Only the town or ward it finds is saved.")+'</p></details>'
+      +(p?'<p class="ytacts"><button type="button" class="ytbtn2 ytquiet" id="ytback">'+tr("yt.keep","Keep {place}",{place:_fesc(p.n)})+"</button></p>":"");
   }
-  h+='<p class="ytpriv">Saved in this browser only. Nothing about it is sent to Granite Record.</p>';
+  h+='<p class="ytpriv">'+tr("yt.privacy","Saved in this browser only. Nothing about it is sent to Granite Record.")+'</p>';
   out.innerHTML=h;
   const q=out.querySelector("#ytq");
   if(q){
@@ -1340,8 +1350,9 @@ function ytDraw(){
       const rows=ytRows(q.value);
       out.querySelector("#ytout").innerHTML=rows.map(r=>
         `<button type="button" class="ytrow" data-pick="${_fesc(r.s)}">${_fesc(r.n)}</button>`).join("")
-        +(q.value.trim()&&!rows.length?'<p class="ytnote">No town or ward by that name.</p>':"");
-      out.querySelector("#ytqsay").textContent=q.value.trim()?`${rows.length} place${rows.length===1?"":"s"}`:"";
+        +(q.value.trim()&&!rows.length?'<p class="ytnote">'+tr("yt.no_place","No town or ward by that name.")+'</p>':"");
+      out.querySelector("#ytqsay").textContent=q.value.trim()
+        ?(rows.length===1?tr("yt.one_place","1 place"):tr("yt.n_places","{n} places",{n:rows.length})):"";
     };
     q.addEventListener("input",list);
     q.addEventListener("keydown",e=>{
@@ -1353,19 +1364,78 @@ function ytDraw(){
     e.preventDefault();
     const a=out.querySelector("#ytaddr").value.trim(),res=out.querySelector("#ytares");
     if(!a)return;
-    res.innerHTML='<p class="ytnote">Looking it up&hellip;</p>';
+    res.innerHTML='<p class="ytnote">'+tr("yt.looking","Looking it up&hellip;")+'</p>';
     ytGeocode(a).then(d=>{
       const r=ytFromCensus(d);
-      const said=r.addr?`<p class="ytnote">Matched: ${_fesc(r.addr)}</p>`:"";
-      if(r.pick){res.innerHTML=said+`<p>That address is in <b>${_fesc(r.pick.n)}</b>.</p>`
-        +`<button type="button" class="ytbtn2" data-pick="${_fesc(r.pick.s)}">Make ${_fesc(r.pick.n)} my town</button>`;}
-      else if(r.wards){res.innerHTML=said+`<p>That address is in ${_fesc(r.town)}, in a district that holds more than one ward, so the lookup cannot say which. Your ward is on your voter registration, or the clerk can tell you.</p>`
+      const said=r.addr?`<p class="ytnote">${tr("yt.matched","Matched: {addr}",{addr:_fesc(r.addr)})}</p>`:"";
+      if(r.pick){res.innerHTML=said+`<p>${tr("yt.addr_in","That address is in {place}.",{place:"<b>"+_fesc(r.pick.n)+"</b>"})}</p>`
+        +`<button type="button" class="ytbtn2" data-pick="${_fesc(r.pick.s)}">${tr("yt.make_mine","Make {place} my town",{place:_fesc(r.pick.n)})}</button>`;}
+      else if(r.wards){res.innerHTML=said+`<p>${tr("yt.addr_wards","That address is in {town}, in a district that holds more than one ward, so the lookup cannot say which. Your ward is on your voter registration, or the clerk can tell you.",{town:_fesc(r.town)})}</p>`
         +r.wards.map(w=>`<button type="button" class="ytrow" data-pick="${_fesc(w.s)}">${_fesc(w.n)}</button>`).join("");}
-      else if(r.why==="state")res.innerHTML=said+"<p>That address is not in New Hampshire.</p>";
-      else if(r.why==="town")res.innerHTML=said+`<p>The lookup placed it in ${_fesc(r.name||"a place")}, which this site has no page for. Choose your town from the list above.</p>`;
-      else res.innerHTML="<p>The Census lookup did not recognize that address. Try the street number, street and town, or choose your town from the list above.</p>";
-    },()=>{res.innerHTML="<p>The Census lookup did not answer. Choose your town from the list above, or try again in a minute.</p>";});
+      else if(r.why==="state")res.innerHTML=said+"<p>"+tr("yt.addr_state","That address is not in New Hampshire.")+"</p>";
+      else if(r.why==="town")res.innerHTML=said+`<p>${tr("yt.addr_town","The lookup placed it in {place}, which this site has no page for. Choose your town from the list above.",{place:_fesc(r.name||tr("yt.a_place","a place"))})}</p>`;
+      else res.innerHTML="<p>"+tr("yt.addr_none","The Census lookup did not recognize that address. Try the street number, street and town, or choose your town from the list above.")+"</p>";
+    },()=>{res.innerHTML="<p>"+tr("yt.addr_down","The Census lookup did not answer. Choose your town from the list above, or try again in a minute.")+"</p>";});
   });
+}
+/* THE LANGUAGE, A ROW OF SETTINGS (the person, 23 October 2026: "an option
+   to select the language manually in the settings section or to
+   automatically set it based on the browser"). i18n.py says how the site's
+   languages are kept; chrome.LANG_HEAD, in every page's head, has already
+   read the choice (gr-lang) and the browser's languages, gone to this page
+   in the language wanted where it has one, and marked html.langs where a
+   language is on offer to this reader. Without that mark there is no row.
+   The choice is the browser's language (nothing kept), or one language;
+   choosing reloads the page, and the head's script takes it from there. Its
+   label says "Language" in both languages, since a reader who cannot read
+   the page is the one looking for it. */
+const LANG_NAMES={en:"English",es:"Español"};
+function langPref(){return window.GR_PREF||{here:document.documentElement.lang||"en",want:"en",chosen:"",browser:""};}
+function langMount(set){
+  if(!set||!document.documentElement.classList.contains("langs")||document.getElementById("langsel"))return;
+  const P=langPref();
+  const row=document.createElement("label");
+  row.className="langrow";
+  // "Language" in this page's words, and in every other language's.
+  const N=window.GR_NOTICE||{},said=[tr("set.lang","Language")];
+  Object.keys(N).forEach(c=>{if(N[c].label&&said.indexOf(N[c].label)<0)said.push(N[c].label);});
+  if(P.here!=="en"&&said.indexOf("Language")<0)said.push("Language");
+  row.innerHTML=`<span class="langword">${_fesc(said.join(" · "))}</span><select id="langsel">`
+    +`<option value="">${_fesc(tr("set.lang_browser","Browser’s language"))}</option>`
+    +Object.keys(LANG_NAMES).map(c=>`<option value="${c}" lang="${c}">${LANG_NAMES[c]}</option>`).join("")
+    +"</select>";
+  const sel=row.querySelector("select");
+  sel.value=P.chosen||"";
+  sel.addEventListener("change",()=>{
+    try{sel.value?localStorage.setItem("gr-lang",sel.value):localStorage.removeItem("gr-lang");}catch(e){}
+    // The page in the language now wanted, where it has one; this page again
+    // otherwise, where its notice says so.
+    const want=sel.value||P.browser||"en";
+    const to=document.documentElement.getAttribute("data-alt-"+want);
+    if(to&&want!==P.here)location.href=to+location.search+location.hash;else location.reload();
+  });
+  set.insertBefore(row,set.firstChild);
+}
+/* A PAGE NOT YET IN THE LANGUAGE WANTED says so, once, at its top: the page
+   in English is what there is, and the home page is in the reader's
+   language. Closed, it stays closed for the visit (sessionStorage). The
+   notice is in the language the reader asked for, which is the one thing
+   on the page they can be sure to read: its words are that language's, from
+   the catalog, which every page's head carries for this (window.GR_NOTICE,
+   chrome.notice_words). */
+function langNotice(){
+  const P=langPref(),N=(window.GR_NOTICE||{})[P.want];
+  if(!N||P.want===P.here||!document.documentElement.classList.contains("langs"))return;
+  try{if(sessionStorage.getItem("gr-lang-notice")==="shut")return;}catch(e){}
+  const main=document.querySelector("main")||document.body;
+  if(!main||document.getElementById("langnote"))return;
+  const box=document.createElement("p");
+  box.id="langnote";box.className="langbar";box.lang=P.want;
+  box.innerHTML=`${_fesc(N.text)} <a href="/${P.want}/" data-setlang="${P.want}">${_fesc(N.home)}</a>`
+    +`<button type="button" class="langx" aria-label="${_fesc(N.close)}">&#10005;</button>`;
+  box.querySelector("button").addEventListener("click",()=>{
+    box.remove();try{sessionStorage.setItem("gr-lang-notice","shut");}catch(e){}});
+  main.insertBefore(box,main.firstChild);
 }
 function ytMount(){
   const bar=document.querySelector("nav.top .in");
@@ -1373,7 +1443,7 @@ function ytMount(){
   const btn=document.createElement("button");
   btn.id="ytbtn";btn.className="ytbtn";btn.type="button";
   btn.setAttribute("aria-expanded","false");btn.setAttribute("aria-controls","ytpanel");
-  btn.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-6.5-6.1-6.5-11a6.5 6.5 0 0 1 13 0c0 4.9-6.5 11-6.5 11z"/><circle cx="12" cy="10" r="2.4"/></svg><span class="ytword">Your town</span>';
+  btn.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-6.5-6.1-6.5-11a6.5 6.5 0 0 1 13 0c0 4.9-6.5 11-6.5 11z"/><circle cx="12" cy="10" r="2.4"/></svg><span class="ytword">'+tr("yt.title","Your town")+'</span>';
   // SITE-WIDE SETTINGS, IN ONE PLACE (the person, 12 October 2026: "under
   // the hamburger menu on mobile like the light and dark mode is, or on
   // desktop maybe there's a setting icon that drops down to allow you to
@@ -1386,16 +1456,17 @@ function ytMount(){
   const drop=document.getElementById("navdrop"),th=document.getElementById("themer");
   const set=document.createElement("div");
   set.id="navset";set.className="navset";
-  set.setAttribute("role","group");set.setAttribute("aria-label","Site settings");
+  set.setAttribute("role","group");set.setAttribute("aria-label",tr("set.label","Site settings"));
   if(drop){
     if(th&&th.parentNode===drop)drop.insertBefore(set,th);else drop.appendChild(set);
     if(th)set.appendChild(th);
     set.appendChild(btn);
   }else bar.appendChild(btn);
+  langMount(set);
   const gear=document.createElement("button");
   gear.id="setbtn";gear.className="setbtn";gear.type="button";
   gear.setAttribute("aria-expanded","false");gear.setAttribute("aria-controls","navset");
-  gear.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg><span>Settings</span>';
+  gear.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg><span>'+tr("set.title","Settings")+'</span>';
   const fb=document.getElementById("findbtn");
   if(fb&&fb.parentNode===bar)bar.insertBefore(gear,fb);else bar.appendChild(gear);
   const nav=document.querySelector("nav.top");
@@ -1427,11 +1498,11 @@ function ytMount(){
   scrim.className="findscrim";scrim.hidden=true;
   const panel=document.createElement("div");
   panel.id="ytpanel";panel.className="findpanel ytpanel";panel.hidden=true;
-  panel.setAttribute("role","region");panel.setAttribute("aria-label","Your town");
+  panel.setAttribute("role","region");panel.setAttribute("aria-label",tr("yt.title","Your town"));
   panel.innerHTML='<div class="findin"><div class="findgrab" aria-hidden="true"></div>'
-    +'<div class="yttop"><h2 class="ythead">Your town</h2>'
-    +'<button type="button" class="findcancel ytclose" id="ytclose">Close</button></div>'
-    +'<div id="ytbody"><p class="ytnote">Loading&hellip;</p></div></div>';
+    +'<div class="yttop"><h2 class="ythead">'+tr("yt.title","Your town")+'</h2>'
+    +'<button type="button" class="findcancel ytclose" id="ytclose">'+tr("yt.close","Close")+'</button></div>'
+    +'<div id="ytbody"><p class="ytnote">'+tr("yt.loading","Loading&hellip;")+'</p></div></div>';
   nav.parentNode.insertBefore(scrim,nav.nextSibling);
   nav.parentNode.insertBefore(panel,scrim.nextSibling);
   const shut=()=>{
@@ -1452,7 +1523,7 @@ function ytMount(){
     btn.setAttribute("aria-expanded","true");
     ytLoad().then(()=>{ytDraw();
       const f=panel.querySelector("#ytq")||panel.querySelector(".ytplace a");if(f)f.focus();
-    },()=>{panel.querySelector("#ytbody").innerHTML='<p class="ytnote">The list of towns did not load. Try again in a moment.</p>';});
+    },()=>{panel.querySelector("#ytbody").innerHTML='<p class="ytnote">'+tr("yt.no_list","The list of towns did not load. Try again in a moment.")+'</p>';});
   };
   btn.addEventListener("click",()=>{panel.hidden?open():shut();});
   panel.querySelector("#ytclose").addEventListener("click",()=>{shut();home().focus();});
@@ -1481,3 +1552,4 @@ function ytMount(){
   ytApply();
 }
 ytMount();
+langNotice();

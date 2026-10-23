@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.299 */
+/* GRANITE_VERSION: 2026-09-07.300 */
 /* ONE STYLESHEET FOR EVERY PAGE (23 October 2026). Every page of the site
    links this file, /app.css: the record pages shell.page() makes from
    bills.html, and the five build_pages.py writes -- the home page, Officials,
@@ -1617,6 +1617,20 @@ overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
   nav.top .navtabs a{padding:0 var(--sp-4)}
   .themer{margin-left:0}
 }
+/* IN SPANISH THE SIX WORDS ARE ABOUT A THIRD LONGER ("Proyectos de ley",
+   "Funcionarios"), and on one row between the wordmark and the controls
+   they ran under the Settings and Search buttons at 1280px (measured on the
+   fixture, 23 October 2026). So a Spanish page keeps the tablet's two rows
+   at every width from 721px: the wordmark and the controls, then the six
+   sections as equal cells beneath. */
+@media (min-width:45.0625em){
+  html[lang="es"] nav.top .in{flex-wrap:wrap;row-gap:var(--sp-2)}
+  html[lang="es"] .navtabs{position:static;transform:none;order:3;flex:1 0 100%;
+  flex-wrap:nowrap;width:auto;margin:0;gap:0}
+  html[lang="es"] nav.top .navtabs a{flex:1 1 0;justify-content:center;min-height:44px;
+  padding:0 var(--sp-2)}
+  html[lang="es"] .setbtn{margin-left:auto}
+}
 /* ==== /HUBS, SHARED ======================================================= */
 
 /* ==== YOUR TOWN, SHARED (the person, 12 October 2026) ======================
@@ -1666,6 +1680,30 @@ stroke-width:1.8;stroke-linejoin:round}
   nav.top.setopen .navset{display:flex}
   .navset .ytbtn{border-top:1px solid var(--rule)}
 }
+/* THE LANGUAGE (23 October 2026; i18n.py). A row of Settings where the
+   head's language script found a language on offer to this reader
+   (html.langs): "Language" in both languages over the browser's own select,
+   first in the group. In Spanish the theme row says "Tema oscuro" itself,
+   so the English " theme" is not added after it. */
+.navset .langrow{display:flex;flex-direction:column;align-items:stretch;gap:var(--sp-2);
+padding:var(--sp-3) var(--sp-5) var(--sp-4);font-size:var(--t-sm);color:var(--ink-2)}
+.navset .langrow + *{border-top:1px solid var(--rule)}
+.langrow select{font:inherit;font-size:var(--t-ui);color:var(--ink);background:var(--surface);
+border:1px solid var(--edge);border-radius:var(--r-in);padding:var(--sp-2) var(--sp-3);
+min-height:44px;width:100%}
+.navset .themer .thword:lang(es)::after{content:none}
+/* The footer's way to the other language, shown where the language is on
+   offer to the reader; the line on a page not yet in the reader's language
+   (find.js, langNotice); and the Spanish home page's word on what is in
+   Spanish so far. */
+footer .footlang{display:none;margin:var(--sp-5) 0 0;font-size:var(--t-sm)}
+html.langs footer .footlang{display:block}
+.langbar{display:flex;align-items:center;gap:var(--sp-4);flex-wrap:wrap;margin:0 0 var(--sp-6);
+padding:var(--sp-3) var(--sp-5);background:var(--wash);border:1px solid var(--rule);
+border-radius:var(--r-in);font-size:var(--t-sm);color:var(--ink)}
+.langbar .langx{margin-left:auto;background:none;border:0;color:var(--ink-2);cursor:pointer;
+min-width:44px;min-height:44px;font:inherit}
+.langnote{margin:var(--sp-3) 0 0;font-size:var(--t-sm);color:var(--ink-2)}
 .ytpanel .findin{max-width:40rem}
 .ytarow .ytbtn2{white-space:nowrap;flex:0 0 auto}
 .yttop{display:flex;align-items:baseline;justify-content:space-between;gap:var(--sp-4)}

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-09.11
+# GRANITE_VERSION: 2026-10-09.12
 """
 The site's components, in Python: what the builders draw a person, a
 committee, a chip, a date and a time with, and the words they say.
@@ -104,7 +104,7 @@ WEEKDAYS = ("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", 
 DATE_FORMS = ("long", "full", "medium", "short", "day", "wkd")
 
 
-def date_words(iso, form="medium"):
+def date_words(iso, form="medium", lang="en"):
     """A day as the site writes it. `iso` is a date, or a string that starts
     "YYYY-MM-DD" (what follows is ignored); anything else comes back as it
     came, as clock() gives back what is not a time.
@@ -128,6 +128,8 @@ def date_words(iso, form="medium"):
             d = None
         if d is None:
             return "" if iso is None else str(iso)
+    if lang == "es":
+        return _date_words_es(d, form)
     month, mon, wd = MONTHS[d.month - 1], MONTHS[d.month - 1][:3], WEEKDAYS[d.weekday()]
     return {"long": f"{wd}, {month} {d.day}, {d.year}",
             "full": f"{month} {d.day}, {d.year}",
@@ -136,7 +138,57 @@ def date_words(iso, form="medium"):
             "wkd": f"{wd[:3]}, {mon} {d.day}"}.get(form, f"{mon} {d.day}, {d.year}")
 
 
-def date_span(a, b, form="full"):
+# IN SPANISH, DAY FIRST, AS SPANISH WRITES A DATE (23 October 2026; i18n.py).
+# The person's month-first rule (D6) is the English page's; a Spanish page
+# says "19 de febrero de 2026", with the months and days in lower case and
+# the short forms the Real Academia's ("feb.", "jue."). components.js's
+# dateWords() says the same where the page is Spanish (window.GR_LANG).
+#     long    jueves, 19 de febrero de 2026
+#     full    19 de febrero de 2026
+#     medium  19 feb. 2026
+#     short   19 feb.
+#     day     jueves, 19 de febrero
+#     wkd     jue., 19 feb.
+MONTHS_ES = ("enero", "febrero", "marzo", "abril", "mayo", "junio", "julio",
+             "agosto", "septiembre", "octubre", "noviembre", "diciembre")
+MONS_ES = ("ene.", "feb.", "mar.", "abr.", "may.", "jun.", "jul.",
+           "ago.", "sept.", "oct.", "nov.", "dic.")
+WEEKDAYS_ES = ("lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo")
+WKDS_ES = ("lun.", "mar.", "mié.", "jue.", "vie.", "sáb.", "dom.")
+
+
+def _date_words_es(d, form):
+    """date_words' forms of the date `d`, in Spanish."""
+    month, mon = MONTHS_ES[d.month - 1], MONS_ES[d.month - 1]
+    wd, wk = WEEKDAYS_ES[d.weekday()], WKDS_ES[d.weekday()]
+    return {"long": f"{wd}, {d.day} de {month} de {d.year}",
+            "full": f"{d.day} de {month} de {d.year}",
+            "short": f"{d.day} {mon}",
+            "day": f"{wd}, {d.day} de {month}",
+            "wkd": f"{wk}, {d.day} {mon}"}.get(form, f"{d.day} {mon} {d.year}")
+
+
+def _date_span_es(a, b, form):
+    """date_span in Spanish: "5–11 de octubre de 2026", "28 de septiembre –
+    4 de octubre de 2026", "28 de diciembre de 2026 – 3 de enero de 2027";
+    with form "medium", "9–13 feb. 2026" and "28 sept. – 2 oct. 2026"."""
+    fa, fb = date_words(a, form, "es"), date_words(b, form, "es")
+    if fa == str(a) or fb == str(b):
+        return f"{fa} – {fb}"
+    ya, yb = str(a)[:4], str(b)[:4]
+    if ya != yb:
+        return f"{fa} – {fb}"
+    if form == "medium":
+        (da, ma, _y), (db, mb, _z) = fa.split(" "), fb.split(" ")
+        return f"{da}–{db} {mb} {yb}" if ma == mb else f"{da} {ma} – {db} {mb} {yb}"
+    ma, mb = str(a)[5:7], str(b)[5:7]
+    da, db = int(str(a)[8:10]), int(str(b)[8:10])
+    if ma == mb:
+        return f"{da}–{db} de {MONTHS_ES[int(mb) - 1]} de {yb}"
+    return f"{da} de {MONTHS_ES[int(ma) - 1]} – {db} de {MONTHS_ES[int(mb) - 1]} de {yb}"
+
+
+def date_span(a, b, form="full", lang="en"):
     """Two days as one span, month first: "October 5–11, 2026", "September 28
     – October 4, 2026", "December 28, 2026 – January 3, 2027"; one day where
     the two are the same. components.js's dateSpan() says the same.
@@ -145,7 +197,9 @@ def date_span(a, b, form="full"):
     or "Sep 28 – Oct 2, 2026": what the Calendar's pager says under Previous
     Week and Next Week, where the room is half a column (9 October 2026)."""
     if str(a)[:10] == str(b)[:10]:
-        return date_words(a, form)
+        return date_words(a, form, lang)
+    if lang == "es":
+        return _date_span_es(str(a)[:10], str(b)[:10], form if form in ("full", "medium") else "full")
     fa, fb = date_words(a, form), date_words(b, form)
     if fa == str(a) or fb == str(b):
         return f"{fa} – {fb}"
@@ -158,7 +212,7 @@ def date_span(a, b, form="full"):
 # DATEWORDS:END
 
 
-def clock(t):
+def clock(t, lang="en"):
     """"13:30" -> "1:30 PM": a time as a reader says it.
 
     Asked for on 25 September 2026: "I'd also prefer if times were listed
@@ -173,6 +227,10 @@ def clock(t):
     if not m or int(m.group(1)) > 23:
         return t or ""
     h = int(m.group(1))
+    # In Spanish, "1:30 p. m.", the Real Academia's abbreviation, held
+    # together by no-break spaces as AM and PM are.
+    if lang == "es":
+        return f"{h % 12 or 12}:{m.group(2)}\u00a0{'a.' if h < 12 else 'p.'}\u00a0m."
     return f"{h % 12 or 12}:{m.group(2)}\u00a0{'AM' if h < 12 else 'PM'}"
 
 

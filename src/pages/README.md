@@ -76,6 +76,19 @@ and `WORDBOOK:END` lines (`build_pages.with_words`), so the copy here holds
 none of them and nothing types a table of words twice. Change a word in its
 file; `preflight` holds the browser's `WORDBOOK` to Python's.
 
+The site in Spanish (23 October 2026) is `i18n.py` and `lang/es.json`. A
+piece of the site's own words is written `say(lang, "key", "English")` in a
+builder or `tr("key", "English")` in a script; the catalog keeps each key's
+Spanish beside the English it was translated from, and a page uses it only
+while that English is still the code's, so a translation can never outlive an
+edit to its English. The record's own words (titles, names, docket lines) are
+not translated. The home page is built at `/` and `/es/` from the same data;
+the header, footer and Settings speak the page's language; the language
+choice is a row of Settings (`find.js`, `langMount`) and the browser's
+language is read before the first paint (`chrome.LANG_HEAD`). Spanish stays
+unlisted until `"offered"` is set in the catalog. `docs/TRANSLATING.md` is the
+walk-through, and `src/ops/translations.py` the proofreader's sheet.
+
 A bill's print sheet is `print.js` and `print.css` (9 October 2026): a
 reference sheet of the bill's record for paper, composed in the reader's
 browser from the record the page already holds, beside a short menu of

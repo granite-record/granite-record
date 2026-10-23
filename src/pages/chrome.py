@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-23.1
+# GRANITE_VERSION: 2026-10-23.2
 """
 The frame every page shares, written once: the head's fonts, icons, share
 card, theme script and stylesheet; the header and its sections; the footer;
@@ -41,11 +41,22 @@ page, served at any depth, finds it too.
 A change to this file is a change to every page, so build_all.py's
 --front-end fast path refuses it (it is a script, not one of the browser's
 files): only the page steps of a full build rewrite the pages.
+
+IN EITHER LANGUAGE (23 October 2026). head(), nav(), footer() and
+scripts() take the page's language, "en" unless a page says otherwise; the
+words are i18n.say()'s, with the English written here as it always was.
+Every page's head also carries LANG_HEAD, which decides, before anything is
+drawn, whether this reader wants the page in another language and goes
+there (i18n says when a language is offered and how a translation stays
+current).
 """
 
 import html as _html
+import json as _json
 
+import i18n
 from components import icon
+from i18n import say
 
 # THE SECTIONS, in the header's order, with each one's drawing (Polish 1, 9
 # October 2026: the prototype kit's icon before the word, components.icon).
@@ -64,6 +75,18 @@ NAV_TABS = (("bills.html", "Bills", "bill"),
             ("calendar.html", "Calendar", "calendar"),
             ("committees.html", "Committees", "committee"),
             ("resources.html", "Resources", "book"))
+
+
+def tab_words(lang="en"):
+    """{href: label} of NAV_TABS in `lang`. The English is NAV_TABS's own,
+    written again here so the translation can be checked against it;
+    preflight holds the two to one word each (_translations)."""
+    return {"bills.html": say(lang, "nav.bills", "Bills"),
+            "laws.html": say(lang, "nav.laws", "Laws"),
+            "officials.html": say(lang, "nav.officials", "Officials"),
+            "calendar.html": say(lang, "nav.calendar", "Calendar"),
+            "committees.html": say(lang, "nav.committees", "Committees"),
+            "resources.html": say(lang, "nav.resources", "Resources")}
 
 # THE REPOSITORY, NAMED ONCE. The footer links it, and so do the Data page
 # and "How this is made" -- three places for three different readers, and one
@@ -97,6 +120,73 @@ _BRAND = """<link rel="icon" href="/icon.svg" type="image/svg+xml">
 <meta property="og:image:height" content="630">
 <meta property="og:image:alt" content="{alt}">
 <meta name="twitter:image" content="{img}">"""
+
+# THE PAGE'S LANGUAGE, BEFORE THE FIRST PAINT (23 October 2026; i18n.py says
+# how the languages are kept and when one is offered). First in the head, so
+# a reader who is going elsewhere is sent before anything is fetched or
+# drawn. OFFER is the languages offered to everyone; LANGS every language
+# the site is built in.
+#
+# WHICH LANGUAGE THIS READER WANTS, AND WHETHER THIS PAGE HAS IT. The
+# reader's choice (Settings, kept as gr-lang) wins; without one, the first
+# of the browser's languages the site has. A page in another language names
+# itself on <html> as data-alt-<code>, and a reader who wants that language
+# is sent there -- from a chosen language always, from the browser's only
+# off an English page, since a reader who opens a Spanish page they were
+# sent has asked for it. A language not yet offered to everyone moves nobody
+# until the reader has opened one of its pages (gr-lang-seen), which is how
+# the person and the proofreader try it. html.langs shows the language
+# control and the footer's link. A link marked data-setlang makes its
+# language the reader's choice as it is followed. The comments are here and
+# not in the script, which is on every one of 34,000 pages.
+LANG_HEAD = """<script>
+(function(){
+  var r=document.documentElement,K="gr-lang",here=r.lang||"en",OFFER=__OFFER__,LANGS=__LANGS__;
+  function get(k){try{return localStorage.getItem(k)||"";}catch(e){return "";}}
+  if(here!=="en")try{localStorage.setItem("gr-lang-seen","1");}catch(e){}
+  document.addEventListener("click",function(e){
+    var a=e.target&&e.target.closest&&e.target.closest("[data-setlang]");
+    if(a)try{localStorage.setItem(K,a.getAttribute("data-setlang"));}catch(x){}
+  },true);
+  if(OFFER.length<2&&here==="en"&&get("gr-lang-seen")!=="1")return;
+  window.GR_NOTICE=__NOTICE__;
+  var ls=navigator.languages&&navigator.languages.length?navigator.languages:[navigator.language||""];
+  var browser="",chosen=get(K);
+  for(var i=0;i<ls.length&&!browser;i++){var c=String(ls[i]||"").slice(0,2).toLowerCase();
+    if(LANGS.indexOf(c)>=0)browser=c;}
+  if(LANGS.indexOf(chosen)<0)chosen="";
+  var want=chosen||browser||"en";
+  window.GR_PREF={here:here,want:want,chosen:chosen,browser:browser};
+  r.classList.add("langs");
+  var to=r.getAttribute("data-alt-"+want);
+  if(want!==here&&to&&(chosen||here==="en")&&to!==location.pathname)
+    location.replace(to+location.search+location.hash);
+})();
+</script>"""
+
+
+def notice_words():
+    """{code: {label, text, home, close}}: what a page in English says to a
+    reader who wants another language -- the settings row's word for
+    "Language", and the notice that the page is not yet in theirs (find.js,
+    langNotice) -- each in that language, from its catalog, since the page's
+    own words are English."""
+    return {c: {"label": say(c, "set.lang", "Language"),
+                "text": say(c, "notice.text", "This page is not yet in Spanish."),
+                "home": say(c, "notice.home", "Go to the home page in Spanish"),
+                "close": say(c, "notice.close", "Close")}
+            for c in i18n.LANGS if c != i18n.DEFAULT}
+
+
+def lang_head():
+    """LANG_HEAD with the site's languages, the ones offered to everyone and
+    the words a reader of each is shown on an English page."""
+    offer = [c for c in i18n.LANGS if i18n.offered(c)]
+    notice = _json.dumps(notice_words(), ensure_ascii=False, separators=(",", ":"))
+    return (LANG_HEAD.replace("__OFFER__", _json.dumps(offer))
+            .replace("__LANGS__", _json.dumps(list(i18n.LANGS)))
+            .replace("__NOTICE__", notice.replace("</", "<\\/")))
+
 
 # THE THEME CONTROL, in three pieces: the script that runs before the first
 # paint, the button in the header, and the handler at the foot of the page.
@@ -154,10 +244,11 @@ THEMER_JS = """<script>
     // shown in the phone's Sections panel, where nothing else says "theme".
     var to=v==="dark"?"light":"dark";
     b.setAttribute("data-to",to);
-    var w=b.querySelector(".thword"); if(w) w.textContent=to==="light"?"Light":"Dark";
-    b.title=to==="light"?"Switch to the light theme":"Switch to the dark theme";
-    b.setAttribute("aria-label","Color theme: "+v+". Activate to switch to "
-      +(v==="dark"?"light":"dark")+".");
+    var w=b.querySelector(".thword"); if(w) w.textContent=to==="light"?tr("theme.light","Light"):tr("theme.dark","Dark");
+    b.title=to==="light"?tr("theme.to_light","Switch to the light theme"):tr("theme.to_dark","Switch to the dark theme");
+    b.setAttribute("aria-label",v==="dark"
+      ?tr("theme.now_dark","Color theme: dark. Activate to switch to light.")
+      :tr("theme.now_light","Color theme: light. Activate to switch to dark."));
   }
   b.hidden=false; draw();
   b.addEventListener("click",function(){
@@ -182,6 +273,12 @@ MENU_BTN = ('<button class="navmenu" id="navmenu" type="button" aria-expanded="f
             'stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true">'
             '<path d="M3.2 6h13.6M3.2 10h13.6M3.2 14h13.6"/></svg></button>')
 
+
+def menu_btn(lang="en"):
+    """MENU_BTN, named in `lang`."""
+    return MENU_BTN.replace('aria-label="Sections"',
+                            f'aria-label="{_html.escape(say(lang, "nav.sections", "Sections"))}"', 1)
+
 # WHAT A POWER USER NEEDS, IN THE FOOTER, WHERE THEY WILL LOOK FOR IT. The
 # line says when the data was last rebuilt: a reader deciding whether to trust
 # a status should not have to go to the home page to find out how old it is.
@@ -194,42 +291,61 @@ FOOT_JS = (
     '.then(r=>r.json()).then(B=>{'
     'var e=document.getElementById("built");'
     'if(!e||!B.finished)return;'
-    'e.textContent=" Data rebuilt "+new Date(B.finished)'
-    '.toLocaleDateString("en-US",{year:"numeric",month:"long",day:"numeric"})+".";'
+    'e.textContent=" "+tr("foot.rebuilt","Data rebuilt {date}.",{date:new Date(B.finished)'
+    '.toLocaleDateString(window.GR_LOCALE||"en-US",{year:"numeric",month:"long",day:"numeric"})});'
     '}).catch(function(){});</script>')
 
 # The footer. The line under the attribution is the person's own credit, asked
 # for on 7 October 2026: who makes the site, quietly, and the way to About.
-FOOTER = f"""<footer><div class="in">
+# In either language (footer_html), and FOOTER is the English, which every
+# English page carries.
+#
+# THE LANGUAGE LINE, under the columns: the other language, in its own
+# words, for a reader who does not read this one. It is hidden until
+# LANG_HEAD finds the language offered to this reader (html.langs), and on a
+# Spanish page it leads to the page's English and back.
+def footer_html(lang="en", alt=None):
+    """The footer in `lang`. `alt` is {code: address} of this page in the
+    other languages; a page that has no other is offered the other
+    language's home page."""
+    others = []
+    for code in i18n.LANGS:
+        if code == lang:
+            continue
+        to = (alt or {}).get(code) or i18n.href(code, "index.html")
+        others.append(f'<a href="{to}" hreflang="{code}" lang="{code}" '
+                      f'data-setlang="{code}">{i18n.NAMES[code]}</a>')
+    return f"""<footer><div class="in">
 <div class="fcols">
 <div class="fcol">
 <p class="fcolhead">Granite Record</p>
-<p class="attrib">Built from public records published by the <b>New Hampshire
-General Court</b>. Not affiliated with the General Court, and not a substitute
-for it &mdash; where this site and the Court&rsquo;s own record disagree, the
-Court is right and we want to know.</p>
-<p class="footby">An independent project by Alice Wade &middot; <a href="about.html">About</a></p>
-<p class="logocredit">Logo drawn by Debra Caplan, an artist in Peterborough, NH
+<p class="attrib">{say(lang, "foot.attrib", "Built from public records published by the <b>New Hampshire General Court</b>. Not affiliated with the General Court, and not a substitute for it &mdash; where this site and the Court&rsquo;s own record disagree, the Court is right and we want to know.")}</p>
+<p class="footby">{say(lang, "foot.by", "An independent project by Alice Wade")} &middot; <a href="about.html">{say(lang, "foot.about", "About")}</a></p>
+<p class="logocredit">{say(lang, "foot.logo", "Logo drawn by Debra Caplan, an artist in Peterborough, NH")}
 &middot; <a href="https://www.linescapesnh.com/" rel="noopener">linescapesnh.com</a></p>
 </div>
 <div class="fcol">
-<p class="fcolhead">The record</p>
+<p class="fcolhead">{say(lang, "foot.record", "The record")}</p>
 <ul class="flinks">
-<li><a href="data.html">Bulk data</a></li>
-<li><a href="learn/glossary.html">Glossary</a></li>
-<li><a class="out" href="{REPO}" target="_blank" rel="noopener">Source on GitHub</a></li>
+<li><a href="data.html">{say(lang, "foot.data", "Bulk data")}</a></li>
+<li><a href="learn/glossary.html">{say(lang, "foot.glossary", "Glossary")}</a></li>
+<li><a class="out" href="{REPO}" target="_blank" rel="noopener">{say(lang, "foot.source", "Source on GitHub")}</a></li>
 </ul>
 </div>
 <div class="fcol">
-<p class="fcolhead">Tell us</p>
+<p class="fcolhead">{say(lang, "foot.tell", "Tell us")}</p>
 <a class="fbk out" href="https://forms.gle/PYw9c3xgpDDwvX7E9" target="_blank"
- rel="noopener">What do you think?</a>
-<p class="fbknote">The site is new and being tested. Found an error?
+ rel="noopener">{say(lang, "foot.think", "What do you think?")}</a>
+<p class="fbknote">{say(lang, "foot.new", "The site is new and being tested. Found an error?")}
 <a href="mailto:contact@graniterecord.org">contact@graniterecord.org</a></p>
 </div>
 </div>
-<p class="footdata"><span id="built"></span><span class="lic">Open source (MIT License)</span></p>
+<p class="footlang">{" ".join(others)}</p>
+<p class="footdata"><span id="built"></span><span class="lic">{say(lang, "foot.licence", "Open source (MIT License)")}</span></p>
 </div></footer>"""
+
+
+FOOTER = footer_html("en")
 
 # The one stylesheet, from the root, and the components every page's scripts
 # use, loaded before any of them.
@@ -247,17 +363,26 @@ def card(page=""):
     return img, (f"Granite Record: {what}" if what else "Granite Record")
 
 
-def head(page=""):
-    """The head's shared lines: the fonts, the icons and theme colours, the
-    share card for `page`'s kind, the theme's pre-paint script, the one
-    stylesheet and components.js -- in that order, the stylesheet after the
-    pre-paint script so a chosen theme is set before anything is drawn."""
+def head(page="", lang="en", scripts=()):
+    """The head's shared lines: the language script, the fonts, the icons
+    and theme colours, the share card for `page`'s kind, the theme's
+    pre-paint script, the one stylesheet and components.js -- in that order,
+    the language first so a reader bound elsewhere goes before anything is
+    fetched, and the stylesheet after the theme so a chosen theme is set
+    before anything is drawn.
+
+    A page in another language also carries, before components.js, the
+    words its scripts ask tr() for (i18n.page_words): `scripts` is the text
+    of the page's own scripts, beside the frame's, which are added here; the
+    shared scripts' words are a file of their own (i18n.SHARED_SCRIPTS)."""
     img, alt = card(page)
     brand = _BRAND.format(img=f"https://graniterecord.org/{img}", alt=_html.escape(alt, quote=True))
-    return "\n".join((FONTS, brand, THEMER_HEAD, STYLESHEET, COMPONENTS_JS))
+    words = i18n.page_words(lang, THEMER_JS, FOOT_JS, *scripts)
+    return "\n".join(x for x in (lang_head(), words, FONTS, brand, THEMER_HEAD, STYLESHEET,
+                                 COMPONENTS_JS) if x)
 
 
-def nav(page="", home=False):
+def nav(page="", home=False, lang="en"):
     """The header: the wordmark, the five sections with `page` marked as the
     one a reader is on, the theme control and the phone's menu button.
 
@@ -267,27 +392,35 @@ def nav(page="", home=False):
 
     .navtabs exists so the strip wraps as one unit; .navdrop wraps the
     sections and the theme control so a phone can fold both behind one button
-    without the markup being written twice (app.css, THE HEADER TABS)."""
+    without the markup being written twice (app.css, THE HEADER TABS).
+
+    In another language the words are that language's and every link is to
+    the page in it where there is one (i18n.href), the English page where
+    there is not."""
     cur = ' aria-current="page"'
-    tabs = "\n".join(f'<a href="{href}"{cur if href == page else ""}>{icon(glyph)}{label}</a>'
-                     for href, label, glyph in NAV_TABS)
+    words = tab_words(lang)
+    to = (lambda h: h) if lang == i18n.DEFAULT else (lambda h: i18n.href(lang, h))
+    tabs = "\n".join(f'<a href="{to(href)}"{cur if href == page else ""}>{icon(glyph)}{words[href]}</a>'
+                     for href, _label, glyph in NAV_TABS)
     brand_cur = cur if home else ""
-    return ('<nav class="top" aria-label="Sections"><div class="in">\n'
-            f'<a class="brand" href="index.html"{brand_cur} translate="no">Granite Record</a>\n'
+    sections = _html.escape(say(lang, "nav.sections", "Sections"))
+    return (f'<nav class="top" aria-label="{sections}"><div class="in">\n'
+            f'<a class="brand" href="{to("index.html")}"{brand_cur} translate="no">Granite Record</a>\n'
             f'<div class="navdrop" id="navdrop"><div class="navtabs">{tabs}</div>\n'
             f'{THEMER_BTN}</div>\n'
-            f'{MENU_BTN}\n'
+            f'{menu_btn(lang)}\n'
             '</div></nav>')
 
 
-def footer():
+def footer(lang="en", alt=None):
     """The footer, and the script that puts the data's date in it."""
-    return f"{FOOTER}\n{FOOT_JS}"
+    return f"{FOOTER if lang == i18n.DEFAULT and not alt else footer_html(lang, alt)}\n{FOOT_JS}"
 
 
-def scripts():
+def scripts(lang="en"):
     """The scripts every page ends with: the header search and the theme
-    control's handler. A page's own scripts go after them."""
+    control's handler. A page's own scripts go after them. The same in
+    every language: what they say comes from the page's words."""
     return f"{FIND_JS}\n{THEMER_JS}"
 
 
