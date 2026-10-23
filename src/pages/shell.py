@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-07.31
+# GRANITE_VERSION: 2026-09-07.32
 """
 The page every record's own address is: bills.html, with one record open.
 
@@ -21,6 +21,11 @@ drift, silently, across thousands of files.
 So the template IS bills.html, read at build time from src/pages/ (beside this
 file) under the folder the build runs in, and the substitutions assert that
 what they are replacing was actually there.
+
+AND THE FRAME IS chrome.py's. bills.html carries slots where the header, the
+nav, the footer and the head's shared lines go, and template() fills them
+(chrome.fill) before anything else reads the template, so every record page
+is framed by the same code as the five pages build_pages.py writes.
 """
 
 import html
@@ -29,6 +34,7 @@ import re
 from pathlib import Path
 
 import build_date
+import chrome
 from components import date_span, date_words  # noqa: F401 (the builders ask for them here)
 from components import icon
 
@@ -69,11 +75,12 @@ BINDS = ('id="q"', 'id="qgo"', 'id="year"', 'id="sort"',
 
 
 def template(site=Path("site")):
-    """bills.html, checked for everything the substitutions rely on: the
-    one in src/pages/, or failing that the copy in the site folder."""
+    """bills.html with its frame filled in (chrome.fill), checked for
+    everything the substitutions rely on: the one in src/pages/, or failing
+    that the copy in the site folder."""
     for p in (Path("src/pages/bills.html"), Path(site) / "bills.html"):
         if p.exists():
-            t = p.read_text(encoding="utf-8")
+            t = chrome.fill(p.read_text(encoding="utf-8"), "bills.html")
             break
     else:
         raise SystemExit(

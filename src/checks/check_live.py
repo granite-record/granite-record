@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.19
+# GRANITE_VERSION: 2026-09-04.20
 """
 What is the live site actually serving?
 
@@ -33,7 +33,8 @@ WHAT IT CHECKS
   /                     served, and is HTML
   /bills                served, HTML, and carries the GRANITE_VERSION that
                         site/bills.html carries
-  /style.css            served as CSS and not as HTML
+  /app.css              served as CSS and not as HTML: the one stylesheet every
+                        page links
   /meta.json            served as JSON, and parses, and names the terms --
                         the same terms as the site/meta.json that was built
   /idx/<newest>.json    the newest term's bills, which every visitor's list and
@@ -501,7 +502,7 @@ def main():
 
     row("/", "html")
     row("/bills", "html")
-    row("/style.css", "css")
+    row("/app.css", "css")
     # meta.json, and the term index it names first: what the bills list, the
     # header's search and every record page fetch before anything else. The
     # term is the one the served meta.json names, so this asks for the file a

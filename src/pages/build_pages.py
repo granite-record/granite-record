@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.226
+# GRANITE_VERSION: 2026-09-04.227
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -10,14 +10,16 @@ Reads site/legislators.json and site/towns.json, already written by
 build_site_v2.py. Kept separate from that script so a change here cannot break
 the bill search, which is the part that works.
 
-Writes a shared style.css these pages link to. index.html keeps its own inline
-styles and is untouched.
+Every page here links /app.css, the one stylesheet, as every record page
+does (app.css, ONE STYLESHEET FOR EVERY PAGE).
 
 The browser's files -- bills.html, app.css, components.js, app.js and find.js,
 and print.js and print.css, a bill's print sheet -- are read from src/pages/
 under the folder the build runs in, where they sit beside this file, and
-copied into the site as they are, components.js with the words of
-src/pages/words/ written between its markers (with_words).
+copied into the site as they are, but for three: components.js with the words
+of src/pages/words/ written between its markers (with_words), app.css without
+its comments (strip_css), and bills.html, the bill search, as the host serves
+it (bills_page).
 """
 
 # The bootstrap: _paths.py, found above this file, puts every code folder on the import path.
@@ -28,6 +30,7 @@ import _paths  # noqa: E402,F401
 
 import argparse
 import about_figures
+import chrome
 import bill_order as BO
 import build_date
 import civics as _civics
@@ -40,85 +43,6 @@ import legislative_year as _year
 import re
 import shutil
 from collections import OrderedDict, defaultdict, namedtuple
-
-# The palette is app.css's, read at build time rather than copied. The copy
-# that used to live here had already drifted: --st-veto was #7C2D3A in one
-# file and #8C4A2F in the other, the same token name naming a plum and a rust,
-# and nothing could see it because each file was internally consistent.
-def palette(src="src/pages/app.css"):
-    """The palette: the light block and the dark block that follows it.
-
-    This used to stop at the first `}` after --sans, which was the whole
-    palette for as long as there was only one. With a
-    @media(prefers-color-scheme:dark) block under it that slice carries half
-    a scheme -- style.css would define --surface:#fff and never redefine it,
-    so the four pages built here (the home page, the legislator index, About
-    and 404) would have stayed white while every record page went dark, and
-    the drift check in preflight would have passed, because the tokens it
-    compares would still have agreed.
-
-    The end is a marker rather than a brace count, so that adding a token or
-    a second media query cannot silently truncate it; a missing marker raises
-    here instead of shipping a half-built stylesheet.
-    """
-    text = Path(src).read_text(encoding="utf-8")
-    i = text.index(":root{")
-    return text[i:text.index("/* PALETTE END")].rstrip()
-
-
-
-def themer(part, src="src/pages/bills.html"):
-    """One piece of the theme control, read out of bills.html.
-
-    READ, NOT COPIED, for the same reason palette() reads app.css. bills.html
-    is the template every record page is built from, so the control has to
-    live there; these four pages are built here instead and need the same
-    three pieces. A second copy would be two controls that drift, and the
-    drift would show as the toggle working on a bill and not on the home page.
-
-    part is "HEAD" (the pre-paint script), "BTN" (the nav button) or "JS"
-    (the handler). A missing marker raises rather than quietly emitting a page
-    with no control on it.
-    """
-    text = Path(src).read_text(encoding="utf-8")
-    a = text.index(f"<!-- THEMER:{part} -->")
-    b = text.index(f"<!-- /THEMER:{part} -->")
-    return text[a:b].split("-->", 1)[1].strip()
-
-
-def shared(src="src/pages/app.css"):
-    """The rules both stylesheets need, read rather than copied.
-
-    Same reason as palette(): a component pasted into two files diverges on
-    the first fix, and each file goes on looking internally consistent while
-    it happens. The hearing calendar is on the home page, which is built here
-    and loads style.css, and is going on the committee pages, which app.js
-    renders against app.css. One definition, between the markers.
-    """
-    text = Path(src).read_text(encoding="utf-8")
-    a = text.index("/* SHARED:START")
-    b = text.index("/* SHARED:END")
-    return text[a:b].rstrip()
-
-
-def pages_region(src="src/pages/app.css"):
-    """The rules only the pages this file writes need, read out of app.css.
-
-    THERE IS NO SECOND STYLESHEET. These pages once had 24 KB of CSS of their
-    own here, against app.css's 119 KB for the record pages, and a fix landed
-    in one of them at a time: eleven font sizes in one file and more in the
-    other, a component drawn twice, DESIGN.md's rules kept by hand in two
-    places. The block lives in app.css between PAGES:START and PAGES:END,
-    scoped to body.pg, and this reads it -- the same trick palette() and
-    shared() already used, applied to the rest of the file.
-
-    So style.css is a view of app.css: palette, the shared region, and the
-    page region, in that order. There is one stylesheet to edit.
-    """
-    text = Path(src).read_text(encoding="utf-8")
-    a = text.index("/* PAGES:START")
-    b = text.index("/* PAGES:END")
-    return text[a:b].rstrip()
 
 
 # THE LOGO AND THE ICONS: THE FILES A COMPLETE SITE CARRIES BESIDE ITS PAGES.
@@ -158,26 +82,11 @@ BRAND_FILES = ("favicon.ico", "icon.svg", "icon-32.png", "icon-180.png",
 HEADER_MARK = "mark.png"
 
 
-def mark_region(src="src/pages/app.css"):
-    """The header mark's rule, read out of app.css like the regions above.
-
-    From the MARK:START marker to the end of the MARK:END line. It is outside
-    the shared region on purpose: the shared region is byte for byte the same
-    in both stylesheets on every machine, and this block is there only where
-    the build has the drawing.
-    """
-    text = Path(src).read_text(encoding="utf-8")
-    a = text.index("/* MARK:START")
-    b = text.index("/* MARK:END")
-    return text[a:text.index("*/", b) + 2]
-
-
 def without_mark(css):
     """app.css's bytes with the header mark's block cut out.
 
     For a build that has no mark.png: the rule would otherwise draw an empty
-    33x56 box before the site's name on every record page. Bytes in, bytes
-    out, so the copy keeps the line endings of the file it was read from; a
+    33x56 box before the site's name on every page. Bytes in, bytes out; a
     file with no such block is returned as it came.
     """
     a = css.find(b"/* MARK:START")
@@ -188,40 +97,61 @@ def without_mark(css):
     return css[:a] + (css[end + 1:] if end >= 0 else b"")
 
 
-def stylesheet(mark):
-    """style.css: the palette, the shared region, the page region, and the
-    header mark's block where the build placed the mark."""
-    return (CSS.replace("__PALETTE__", palette()).replace("__SHARED__", shared())
-               .replace("__PAGES__", pages_region())
-               .replace("__MARK__", mark_region() if mark else ""))
+# THE PUBLISHED app.css CARRIES NO COMMENTS (23 October 2026). They are this
+# file's documentation and stay in src/pages/app.css -- 526 KB of it, 153 KB
+# over the wire, of which the rules are 266 KB and 46. Every page loads it now,
+# the home page among them, which until that day loaded a 61 KB cut of it.
+_CSS_WORD = re.compile(r"[A-Za-z0-9_\-\\\u0080-\U0010ffff]")
 
 
-CSS = """
-__PALETTE__
-__SHARED__
-__PAGES__
-__MARK__
-"""
-
-
-FONTS = ('<link rel="preconnect" href="https://fonts.googleapis.com">'
-         '<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>'
-         '<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600'
-         '&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&family=Playfair+Display:wght@600&family=IBM+Plex+Mono:wght@500'
-         '&display=swap" rel="stylesheet">')
-
-
-# The menu button a phone header carries. Written here and in bills.html,
-# which is the same duplication the nav itself has always had and for the
-# same reason: one of them is the template every record page inherits.
-# The SEARCH button is not here -- find.js mounts its own, and a second one
-# would be two controls doing one job.
-MENU_BTN = ('<button class="navmenu" id="navmenu" type="button" aria-expanded="false" aria-controls="navdrop" aria-label="Sections"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><path d="M3.2 6h13.6M3.2 10h13.6M3.2 14h13.6"/></svg></button>')
+def strip_css(css):
+    """app.css's text without its comments, and without the lines they leave
+    blank. Nothing else is touched: a comment is found only outside a string
+    and outside an unquoted url(...), where a /* is part of the value, and
+    a comment that stood between two parts of one word (a/**/b) leaves a
+    space, so the two are not joined into one. An unclosed comment raises,
+    as it would end the stylesheet in a browser."""
+    out, i, n = [], 0, len(css)
+    while i < n:
+        c = css[i]
+        if c in "\"'":
+            j = i + 1
+            while j < n and css[j] != c and css[j] != "\n":
+                j += 2 if css[j] == "\\" else 1
+            out.append(css[i:j + 1])
+            i = j + 1
+        elif css.startswith("/*", i):
+            j = css.find("*/", i + 2)
+            if j < 0:
+                raise ValueError(f"app.css has an unclosed comment at character {i}")
+            j += 2
+            before = out[-1][-1:] if out else ""
+            if before and _CSS_WORD.match(before) and _CSS_WORD.match(css[j:j + 1]):
+                out.append(" ")
+            i = j
+        elif css[i:i + 4].lower() == "url(":
+            k = i + 4
+            while k < n and css[k] in " \t\n":
+                k += 1
+            if k < n and css[k] in "\"'":
+                out.append(css[i:k])
+                i = k
+            else:
+                j = k
+                while j < n and css[j] != ")":
+                    j += 2 if css[j] == "\\" else 1
+                out.append(css[i:j + 1])
+                i = j + 1
+        else:
+            out.append(c)
+            i += 1
+    return "\n".join(ln.rstrip() for ln in "".join(out).split("\n") if ln.strip()) + "\n"
 
 
 # THE HEADER THAT REPLACED THE VERSION QUERY.
 #
-# style.css, app.css and app.js used to carry "?v=<content hash>" in every
+# app.css and app.js (and style.css, while there was one) used to carry
+# "?v=<content hash>" in every
 # page that named them, so that a deploy could not serve yesterday's script
 # with today's page. Measured on the live site, that guard was needed:
 # Cloudflare Pages hands out app.css as `public, max-age=14400,
@@ -244,8 +174,6 @@ HEADERS = """# Written by build_pages.py. Not an asset; Pages reads it.
 /app.js
   Cache-Control: public, max-age=0, must-revalidate
 /app.css
-  Cache-Control: public, max-age=0, must-revalidate
-/style.css
   Cache-Control: public, max-age=0, must-revalidate
 /find.js
   Cache-Control: public, max-age=0, must-revalidate
@@ -342,41 +270,14 @@ REDIRECTS = ("# Written by build_pages.py. Not an asset; Pages reads it.\n"
              + "".join(f"{old} {new} 301\n" for old, new in MOVED))
 
 
-# WHAT A POWER USER NEEDS, IN THE FOOTER, WHERE THEY WILL LOOK FOR IT.
-# data.html and manifest.json describe every table, and nothing linked them
-# from the bottom of a page, so the only way to find the bulk downloads was to
-# already know they existed. The same line says when the data was last
-# rebuilt: a reader deciding whether to trust a status should not have to go
-# to the home page to find out how old it is.
-#
-# The date is read from build.json rather than baked in, because this function
-# runs at step 15 of 22 and build.json is written after step 22 -- a baked
-# stamp would always be a few minutes early and would differ page to page.
-# It is one small cached request, and the line simply does not appear if the
-# fetch fails.
-FOOT_JS = (
-    '<script>fetch(new URL("build.json",location.origin+"/").href)'
-    '.then(r=>r.json()).then(B=>{'
-    'var e=document.getElementById("built");'
-    'if(!e||!B.finished)return;'
-    'e.textContent=" Data rebuilt "+new Date(B.finished)'
-    '.toLocaleDateString("en-US",{year:"numeric",month:"long",day:"numeric"})+".";'
-    '}).catch(function(){});</script>')
-
-# The one sentence that explains the bulk data, used in both footers so they
-# cannot drift. "Every table" is literal: data.html builds from the same
-# manifest the tables are written from.
-# THE REPOSITORY, NAMED ONCE. The footer links it, and so do the Data page
-# and "How this is made" -- three places for three different readers, and one
-# constant so a move cannot leave two of them pointing at nothing.
-REPO = "https://github.com/granite-record/granite-record"
+# THE REPOSITORY, NAMED ONCE: chrome.REPO, which the footer links too.
+REPO = chrome.REPO
 
 # The directory link that used to sit in the footer has moved to the Data
 # page: in a grey band it was one link among four and could not say what it
 # was for, and on that page it gets a heading and the sentence that matters --
 # every record as a plain link, no JavaScript, which is also what a crawler
-# follows. The footer's own links are written inline in the two footers now,
-# so there is no constant here to drift out of step with bills.html.
+# follows. The footer's own links are chrome.FOOTER's.
 
 
 # ===================================================== the hearing calendar ==
@@ -890,8 +791,8 @@ def calendar_html(out, today=None, rows=None):
 # two things here, with the standing instruction that a new component gets its
 # own prefix.
 #
-# It was not academic. style.css concatenates the page region after the shared
-# one, and both `.mchip{background:var(--surface)}` and
+# It was not academic. style.css, as it was then, put the page region after
+# the shared one, and both `.mchip{background:var(--surface)}` and
 # `:where(body.pg) .p-R{background:var(--rep-soft)}` carried a single class, so
 # the pill's tint won wherever a member chip appeared on a page built here: the
 # roster's chips arrived tinted and unpadded. That was patched by specificity
@@ -1260,63 +1161,17 @@ def cal_notes(up, missing, esc):
     return "".join(html)
 
 
-# THE SECTIONS, in the header's order, with each one's drawing.
-NAV_TABS = (("bills.html", "Bills", "bill"),
-            # LAWS, BESIDE BILLS (the person, 11 October 2026: "The top level
-            # nav and page urls should say Laws since that's the easiest thing
-            # to understand for newcomers"). A bill proposes to change a law;
-            # the two are read together. build_rsa.py writes /laws.
-            ("laws.html", "Laws", "law"),
-            # OFFICIALS, NOT LEGISLATORS, AND RESOURCES, NOT LEARN (the
-            # person, 8 October 2026, late evening: "the polish release's five
-            # tabs are Bills, Officials, Calendar, Committees, Resources"). The
-            # page moved with its tab: /legislators and /learn answer with a
-            # 301 to the new addresses (MOVED, below).
-            ("officials.html", "Officials", "person"),
-            # A second nav emitter. bills.html carries the nav every
-            # shell.page() page inherits; this tuple is what officials.html,
-            # index.html and about.html get, and when Data was added to the
-            # first it was not added here, so three pages lacked the link the
-            # other 34,000 had. preflight holds the two to the same five.
-            ("calendar.html", "Calendar", "calendar"),
-            ("committees.html", "Committees", "committee"),
-            ("resources.html", "Resources", "book"))
+# THE SECTIONS, in the header's order: chrome.NAV_TABS, which draws them.
+NAV_TABS = chrome.NAV_TABS
 
 
 def shell(title, current, body, wide=False, script="", desc="",
           base="https://graniterecord.org"):
-    tabs = []
-    # FOUR TABS. Data and About came off: both are pages for somebody who
-    # already knows what they want, both have carried a footer link since the
-    # footer was written, and seven similar words is what made the row hard to
-    # read in the first place. Home came off because the mark beside the
-    # wordmark is the way home on every site a reader uses -- it only needed
-    # to be a link.
-    # EACH WITH ITS DRAWING (Polish 1, 9 October 2026): the prototype kit's
-    # icon before the word, from components.icon, as bills.html's nav carries
-    # it; preflight holds the two emitters to the same five.
-    for href, label, glyph in NAV_TABS:
-        cur = ' aria-current="page"' if href == current else ""
-        tabs.append(f'<a href="{href}"{cur}>{icon(glyph)}{label}</a>')
-    # ONE WRAPPER, WRITTEN TWICE BECAUSE THE NAV IS. bills.html carries the
-    # same <div class="navtabs"> around the same four links and app.css
-    # styles it once; without it the links wrap through the middle of the row
-    # and the theme control is stranded on a line of its own.
-    # ONE DROPPABLE GROUP. .navdrop wraps the sections and the theme control
-    # so that a phone can fold both behind one button without the markup
-    # being written twice. On a desktop it is display:contents and the grid
-    # sees straight through it, so the layout is brand / sections / control
-    # exactly as before.
-    nav = [f'<div class="navdrop" id="navdrop"><div class="navtabs">{"".join(tabs)}</div>',
-           # The same control bills.html carries, read from there rather than
-           # written again here.
-           themer("BTN"),
-           "</div>",
-           MENU_BTN]
-    # The home page has no tab any more, so the brand is what carries the
-    # "you are here" for it -- said to a screen reader, not drawn, because the
-    # chip that marks a tab is scoped to .navtabs and the brand is not one.
-    BRAND_CUR = ' aria-current="page"' if current == "index.html" else ""
+    """A page of the five this file writes -- the home page, Officials, About,
+    /search and 404 -- in the frame every page shares (chrome.py): the head's
+    shared lines, the header with `current` marked as the section a reader is
+    on, the footer and the closing scripts, around `body`. shell.page() puts
+    the record pages in the same frame, from bills.html's CHROME slots."""
     # THE PAGES A SEARCH ENGINE REACHES FIRST HAD THE LEAST IN THEIR HEAD.
     # Every one of the 33,683 bill pages carries a description, a canonical
     # address and an unfurl card because shell.py writes them. The home page,
@@ -1327,28 +1182,6 @@ def shell(title, current, body, wide=False, script="", desc="",
     # The host serves /legislators, not /legislators.html, and redirects
     # the second to the first. shell.canon is where that is written down.
     _canon = (base + _shell.canon("/" + current)) if current else (base + "/")
-    # The same block bills.html carries, for the same reasons -- written
-    # twice because the two emitters are, and kept next to each other in both
-    # files so a change to one is obvious in the other.
-    # The card a shared link unfurls into, by kind of page (build_brand.py
-    # draws them); the plain logo card for the home page and About.
-    _card = {"officials.html": ("og-legislator.png", "legislators and their voting records"),
-             "bills.html": ("og-bill.png", "bills, votes and hearings")}.get(current)
-    _img = f"https://graniterecord.org/{_card[0] if _card else 'og.png'}"
-    _alt = f"Granite Record: {_card[1]}" if _card else "Granite Record"
-    BRAND_HEAD = f"""<link rel="icon" href="/icon.svg" type="image/svg+xml">
-<link rel="icon" href="/icon-32.png" sizes="32x32" type="image/png">
-<link rel="icon" href="/favicon.ico" sizes="any">
-<link rel="apple-touch-icon" href="/icon-180.png">
-<link rel="manifest" href="/site.webmanifest">
-<meta name="theme-color" content="#E9EAEC" media="(prefers-color-scheme: light)">
-<meta name="theme-color" content="#171B1C" media="(prefers-color-scheme: dark)">
-<meta property="og:image" content="{_img}">
-<meta property="og:image:width" content="1200">
-<meta property="og:image:height" content="630">
-<meta property="og:image:alt" content="{_alt}">
-<meta name="twitter:image" content="{_img}">
-"""
     HEAD_SEO = (f'<meta name="description" content="{_e(desc)}">'
                 f'<link rel="canonical" href="{_canon}">'
                 f'<meta property="og:type" content="website">'
@@ -1357,54 +1190,24 @@ def shell(title, current, body, wide=False, script="", desc="",
                 f'<meta property="og:url" content="{_canon}">'
                 f'<meta property="og:site_name" content="Granite Record">'
                 f'<meta name="twitter:card" content="summary_large_image">') if desc else ""
+    # The home page has no tab, so the brand carries its "you are here"
+    # (chrome.nav's home).
     # Every link at the address the host serves (shell.clean_links).
     return _shell.clean_links(f"""<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>{title}</title>{HEAD_SEO}{FONTS}{BRAND_HEAD}{themer("HEAD")}<link rel="stylesheet" href="style.css">
-<script src="/components.js"></script>
-<!-- body.pg is what the page half of app.css is scoped to: the record pages
-     load app.css and must not take these rules. -->
+<title>{title}</title>{HEAD_SEO}
+{chrome.head(current)}
+<!-- body.pg is what the rules for these pages alone are scoped to in app.css
+     (:where(body.pg)): every page loads the one stylesheet. -->
 <link rel="alternate" type="application/rss+xml" title="Granite Record — all activity"
  href="/feed/all.xml">
 <link rel="alternate" type="application/rss+xml" title="Granite Record — upcoming hearings"
  href="/feed/hearings.xml"></head><body class="pg">
-<a class="skip" href="#main">Skip to the content</a>\n<nav class="top" aria-label="Sections"><div class="in"><a class="brand" href="index.html"{BRAND_CUR} translate="no">Granite Record</a>
-{''.join(nav)}</div></nav>
+<a class="skip" href="#main">Skip to the content</a>
+{chrome.nav(current, home=current == "index.html")}
 <main class="wrap{' wide' if wide else ''}" id="main">{body}</main>
-<footer><div class="in">
-<div class="fcols">
-<div class="fcol">
-<p class="fcolhead">Granite Record</p>
-<p class="attrib">Built from public records published by the <b>New Hampshire
-General Court</b>. Not affiliated with the General Court, and not a substitute
-for it &mdash; where this site and the Court&rsquo;s own record disagree, the
-Court is right and we want to know.</p>
-<p class="footby">An independent project by Alice Wade &middot; <a href="about.html">About</a></p>
-<p class="logocredit">Logo drawn by Debra Caplan, an artist in Peterborough, NH
-&middot; <a href="https://www.linescapesnh.com/" rel="noopener">linescapesnh.com</a></p>
-</div>
-<div class="fcol">
-<p class="fcolhead">The record</p>
-<ul class="flinks">
-<li><a href="data.html">Bulk data</a></li>
-<li><a href="learn/glossary.html">Glossary</a></li>
-<li><a class="out" href="{REPO}" target="_blank" rel="noopener">Source on GitHub</a></li>
-</ul>
-</div>
-<div class="fcol">
-<p class="fcolhead">Tell us</p>
-<a class="fbk out" href="https://forms.gle/PYw9c3xgpDDwvX7E9" target="_blank"
- rel="noopener">What do you think?</a>
-<p class="fbknote">The site is new and being tested. Found an error?
-<a href="mailto:contact@graniterecord.org">contact@graniterecord.org</a></p>
-</div>
-</div>
-<p class="footdata"><span id="built"></span><span class="lic">Open source (MIT License)</span></p>
-</div></footer>{FOOT_JS}
-{themer("JS")}
-<!-- The header's search, on every page this file writes. Its own file rather
-     than app.js, which these pages do not load: 6 KB against 200. -->
-<script src="/find.js" defer></script>
+{chrome.footer()}
+{chrome.scripts()}
 {script}</body></html>""")
 
 
@@ -3030,7 +2833,7 @@ def bills_page(t):
     what the page is, every address is the one the host serves, and the page
     carries a plain paragraph and the way to every bill as a plain list,
     hidden under html.js as a record page's static record is."""
-    t = _shell.clean_links(t).replace(
+    t = _shell.clean_links(chrome.fill(t, "bills.html")).replace(
         'content="https://graniterecord.org/bills.html"', 'content="https://graniterecord.org/bills"')
     t = t.replace(_shell.NEEDS["title"],
                   "<title>New Hampshire Bills \u2014 search every bill since 1989 | Granite Record</title>", 1)
@@ -3060,8 +2863,8 @@ def header_mark_placed(brand=Path("assets")):
 
 def front_end(out, has_mark):
     """Everything this step makes of the browser's files and of nothing else:
-    style.css, the files it copies (COPIED) and billmatch.js. Returns the
-    names it wrote whose bytes changed (style.css when it did).
+    the files it copies (COPIED) and billmatch.js. Returns the names it wrote
+    whose bytes changed, and style.css where it took an old build's away.
 
     ONE FUNCTION FOR THE BUILD AND THE FAST PATH (9 October 2026). main()
     calls it, and so does `build_all.py --front-end` (front_end.py), which
@@ -3073,11 +2876,13 @@ def front_end(out, has_mark):
     """
     out = Path(out)
     wrote = []
-    css = out / "style.css"
-    before = css.read_bytes() if css.exists() else None
-    css.write_text(stylesheet(has_mark), encoding="utf-8")
-    if css.read_bytes() != before:
+    # THERE IS NO style.css (23 October 2026): every page links app.css. A
+    # site folder an earlier build wrote one into would publish it unused.
+    stale = out / "style.css"
+    if stale.exists():
+        stale.unlink()
         wrote.append("style.css")
+        print("took the old style.css out of the site folder: no page links it")
 
     # bills.html and the files it loads are written by hand rather than
     # generated, and nothing in the pipeline copied them into the output
@@ -3088,20 +2893,20 @@ def front_end(out, has_mark):
     # second page loads the SAME renderer and a reader who opens six bills
     # downloads 110 KB once instead of six times.
     #
-    # Copied as they are. Nothing is rewritten on the way through any more:
-    # the version query these three used to gain is a header now, written
-    # below. TWO EXCEPTIONS. Where the build has no header mark, app.css goes
-    # into the site without the block that draws it (without_mark), for the
-    # same reason style.css does. And components.js gains the words between
-    # its markers (with_words), so they are written once, in src/pages/words/.
+    # Copied as they are, but for these. The version query they used to gain
+    # is a header now (HEADERS). app.css goes into the site without its
+    # comments (strip_css), and where the build has no header mark, without
+    # the block that draws it (without_mark). components.js gains the words
+    # between its markers (with_words), so they are written once, in
+    # src/pages/words/.
     for name in COPIED:
         src = Path("src/pages") / name
         if not src.exists():
             continue
         dst = out / name
         body = src.read_bytes()
-        if name == "app.css" and not has_mark:
-            body = without_mark(body)
+        if name == "app.css":
+            body = strip_css((body if has_mark else without_mark(body)).decode("utf-8")).encode("utf-8")
         if name == "components.js":
             body = with_words(body.decode("utf-8")).encode("utf-8")
         # THE PAGE IS CLEANED, THE TEMPLATE IS NOT. src/pages/bills.html is
@@ -3774,7 +3579,7 @@ Senate; and the state&rsquo;s other officials.</p>
 
     # THREE COLUMNS, AND THE MIDDLE ONE IS WRITTEN FIRST. The order here is
     # the order a screen reader hears and the order the Tab key takes; the
-    # grid in style.css puts .hleft to the left of it. See the comment on
+    # grid in app.css puts .hleft to the left of it. See the comment on
     # .hcols for why that way round.
     # THE HEADING IS THE LOCKUP WHERE THERE IS ONE. h1.lockup is a mask over
     # the text colour, and a mask whose file is missing is drawn as nothing:
@@ -3916,8 +3721,8 @@ the <a href="/committees">committee list</a> are all plain pages.</p></noscript>
     # search engine would index the home page under every one of them.
     #
     # It is served AT the address that was asked for, so every link in it
-    # must be absolute: from /bill/2026/hb99999 a relative "style.css" is
-    # /bill/2026/style.css. And it is not a page to index, so it carries no
+    # must be absolute: from /bill/2026/hb99999 a relative "about.html" is
+    # /bill/2026/about.html. And it is not a page to index, so it carries no
     # canonical address and asks not to be.
     page404 = shell("No page at this address | Granite Record", "", NOT_FOUND,
                     desc="There is no page at this address.")
@@ -3928,7 +3733,7 @@ the <a href="/committees">committee list</a> are all plain pages.</p></noscript>
     (out / "404.html").write_text(_shell.clean_links(page404), encoding="utf-8")
 
     print(f"wrote officials.html ({len(legs)} members), "
-          f"about.html, search.html, 404.html, style.css -> {out}/  (learn.html: build_civics.py)")
+          f"about.html, search.html, 404.html -> {out}/  (learn.html: build_civics.py)")
     if not legs:
         print("  legislators.json missing — run build_site_v2.py first")
     if no_brand:

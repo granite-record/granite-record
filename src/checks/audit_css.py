@@ -1,33 +1,24 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-19.6
+# GRANITE_VERSION: 2026-09-19.7
 """
-Which components are stranded, and which rules are dead.
+Which pages load which stylesheet, and which rules are dead.
 
     python3 src/checks/audit_css.py --site site
 
 WHY THIS EXISTS
 
-app.css is one file with three regions, and style.css is a VIEW of it:
+It was written to find STRANDED components. Until 23 October 2026 app.css
+had three marked regions and the five pages build_pages.py writes loaded
+style.css, a view of two of them, so a component styled outside those
+regions was invisible to those pages -- `.mchip` sat there for weeks with a
+comment saying the roster drew it, and the whole footer was there too. Since
+that day every page loads app.css whole (app.css, ONE STYLESHEET FOR EVERY
+PAGE), and nothing can be stranded by where it sits in the file.
 
-    PALETTE  + SHARED + PAGES        -> style.css
-    the whole file                   -> app.css
-
-Every page built from bills.html through shell.page loads app.css and sees
-everything. Every page build_pages.py writes -- the home page, the roster,
-about, 404 -- loads style.css and sees only those three regions. A component
-styled in the middle region, between SHARED:END and PAGES:START, is invisible
-to half the site.
-
-That is not hypothetical. `.mchip` sat there for weeks with a comment on it
-reading "the legislators page, the committee roster and the sponsor list all
-draw" it, and the legislators page could not have been getting it: the rule was
-in the region style.css does not take. The roster drew its own hand-written
-row instead, and the same member read one way there and another on a bill.
-
-So this reads what each built page actually uses and what its own stylesheet
-actually carries, and reports the gap. It also reports the reverse -- rules
-nothing uses -- because a stylesheet nobody prunes is how a class name comes to
-mean two things.
+What is left to report: that every built page does load app.css, which is
+the one way a component could be stranded again -- a page that links some
+other stylesheet -- and the reverse, rules nothing uses, because a stylesheet
+nobody prunes is how a class name comes to mean two things.
 
 WHAT IT CANNOT SEE. Classes a script adds after load. app.js builds the
 committee roster, the bill detail and the vote rings in the browser, so their
@@ -60,21 +51,6 @@ SEL_CLASS = re.compile(r"\.(-?[_a-zA-Z][\w-]*)")
 IGNORE = {"js", "no-js", "sr-only"}
 
 
-def regions(css):
-    """{name: text} for the three marked regions of app.css."""
-    out = {}
-    for name, start, end in (("palette", "/* PALETTE:START", "/* PALETTE:END"),
-                             ("shared", "/* SHARED:START", "/* SHARED:END"),
-                             ("pages", "/* PAGES:START", "/* PAGES:END")):
-        try:
-            a = css.index(start)
-            b = css.index(end)
-        except ValueError:
-            continue
-        out[name] = css[a:b]
-    return out
-
-
 def classes_in(text):
     out = set()
     for m in CLASS_ATTR.finditer(text):
@@ -97,62 +73,36 @@ def main():
     site = Path(a.site)
 
     app_css = Path("src/pages/app.css").read_text(encoding="utf-8")
-    reg = regions(app_css)
-    # SILENCE IS NOT SUCCESS: without the markers every class looks stranded,
-    # and the report would be one long false alarm.
-    assert "shared" in reg and "pages" in reg, (
-        "app.css has no SHARED/PAGES markers; this audit reads the regions by "
-        "them and cannot say anything without them")
-
-    style_css = (site / "style.css").read_text(encoding="utf-8")
-    styled_style = styled_in(style_css)
     styled_app = styled_in(app_css)
-    middle = styled_app - styled_in(reg["shared"]) - styled_in(reg["pages"]) \
-        - styled_in(reg.get("palette", ""))
 
     # Which pages load which stylesheet, read off the built page rather than
-    # assumed: the answer is what a reader's browser actually fetches.
+    # assumed: the answer is what a reader's browser actually fetches. map.css
+    # and print.css are additions a page takes beside app.css, not instead.
     by_sheet = collections.defaultdict(list)
     for f in sorted(site.rglob("*.html")):
         try:
             t = f.read_text(encoding="utf-8", errors="replace")
         except OSError:
             continue
-        # 404.html links "/style.css" with a leading slash, because a 404 is
-        # served from whatever path the reader asked for and a relative href
-        # would resolve against it. Matching only the relative form filed the
-        # 404 under "neither" and left it out of the audit entirely.
-        sheet = ("style.css" if re.search(r'href="/?style\.css"', t)
-                 else "app.css" if re.search(r'href="/?app\.css"', t)
-                 else "?")
-        by_sheet[sheet].append(f)
+        sheets = [h.lstrip("/") for h in re.findall(
+            r'<link rel="stylesheet" href="([^"]+)"', t)
+            if not h.startswith(("http:", "https:"))]
+        mine = [h for h in sheets if h not in ("map.css", "print.css")]
+        by_sheet[" + ".join(mine) if mine else "no stylesheet"].append(f)
 
     print(f"{sum(len(v) for v in by_sheet.values()):,} built pages")
     for k, v in sorted(by_sheet.items()):
         print(f"  {len(v):6,} load {k}")
-
-    # EVERY style.css page, not a sample. There are four of them -- the home
-    # page, the roster, About and 404 -- and sampling one per directory read
-    # one of the four, because all four sit in the site root. An audit that
-    # looks at a quarter of what it claims to is worse than none.
-    seen = {f.relative_to(site).as_posix(): f
-            for f in by_sheet.get("style.css", [])}
-    used = set()
-    for key, f in sorted(seen.items()):
-        used |= classes_in(f.read_text(encoding="utf-8", errors="replace"))
-    used -= IGNORE
-
-    stranded = sorted(c for c in used
-                      if c in middle and c not in styled_style)
-    print(f"\n{len(seen)} page shapes load style.css, using {len(used)} classes")
-    if stranded:
-        print(f"\n  STRANDED -- used by a style.css page, styled only in the\n"
-              f"  region style.css does not take ({len(stranded)}):")
-        for c in stranded:
-            print(f"    .{c}")
+    astray = sorted(f.relative_to(site).as_posix()
+                    for k, v in by_sheet.items() if k != "app.css" for f in v)
+    if astray:
+        print(f"\n  ASTRAY -- {len(astray)} pages do not load app.css alone, so a "
+              f"component\n  styled there may not reach them:")
+        for x in astray[:20]:
+            print(f"    {x}")
     else:
-        print("\n  nothing stranded: every class those pages use is styled "
-              "in a region their stylesheet carries")
+        print("\n  every page loads app.css, the one stylesheet: no component "
+              "can be stranded")
 
     # And the other direction, over the whole site.
     everything = set()
@@ -177,7 +127,7 @@ def main():
         print("    (--verbose to list them; a class built from a variable in "
               "a script will show up here and is not necessarily dead)")
 
-    return 1 if stranded else 0
+    return 1 if astray else 0
 
 
 if __name__ == "__main__":

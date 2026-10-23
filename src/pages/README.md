@@ -1,15 +1,19 @@
 # src/pages/
 
 Reads the record (`data/`, the root JSON, `proceedings.csv`) and writes
-`site/`: each bill's payload (`build_site_v2`), every page and the frame
-around it (`shell.py`), the feeds and the changes files the email sender reads
+`site/`: each bill's payload (`build_site_v2`), every page (`shell.py`) and
+the frame around it -- the header, the nav, the footer and the head's shared
+lines, written once in `chrome.py` for the record pages and the five pages
+`build_pages.py` writes alike -- the feeds and the changes files the email sender reads
 beside them (`follow_changes.py`), the CSV downloads and the search index.
 The browser's files are here too, since stage 5: `bills.html`, the template
 every record page is built from, and the `components.js`, `app.js`, `app.css`
-and `find.js` it loads. `build_pages.py` copies all five into `site/` as they
-are, and the builders read them here under the folder they run in, so a
-fixture lays out its own copies the same way. Edit them here; `site/` holds
-copies. The district map is a module of its own: `map.js` and `map.css`,
+and `find.js` it loads. `build_pages.py` copies all five into `site/`, and
+the builders read them here under the folder they run in, so a fixture lays
+out its own copies the same way. Edit them here; `site/` holds copies --
+`app.css` without its comments (`build_pages.strip_css`). It is the one
+stylesheet, linked by every page: a new component's rules go anywhere in it
+and reach the record pages and the five pages `build_pages.py` writes alike. The district map is a module of its own: `map.js` and `map.css`,
 which `build_district_map.py` copies beside `/district_map.json`, the one
 file the map draws, and which a page mounts with `GRMap.mount()`: the
 Officials page's My Town tab and every town page's District Map tab.
@@ -52,7 +56,7 @@ Every chip but a person's is `chip(word, classes, size)`: a bill's status, a
 meeting's kind, a vote's result, a party's letter, the sign-ins, the finder's
 kind and a version of the text, in the person chip's frame (3px corners, a
 1px edge, a 3px bar in the chip's ink) at 14px, or 16px in a head (`"m"`).
-`app.css` draws it once, in its SHARED region; the classes beside `chip` are
+`app.css` draws it once; the classes beside `chip` are
 the family that colours it and the hook a page places it by. Its words are in
 Title Case, written so where they are made, and a record's own capitals go
 through `title_words`, which keeps the record's own abbreviations in capitals
