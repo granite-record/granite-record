@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-19.44
+# GRANITE_VERSION: 2026-09-19.45
 """
 A page for every day the House sat.
 
@@ -545,6 +545,8 @@ def journal_only_html(e, body, members, esc, payloads, term="", years=None):
     if e.get("how") == "division":
         tally = f' <b>{e["yeas"]}–{e["nays"]}</b> on a division'
         note = VP.DIVISION_NOTE
+    elif e.get("how") == "without objection":
+        tally, note = " without objection", VP.WO_NOTE
     else:
         tally, note = " on a voice vote", VP.VOICE_NOTE
     ring = ""
@@ -1405,6 +1407,10 @@ def vote_html(it, bill, body, year, cards, members, esc, payloads, journal=None)
     chp = C.vote_chip(k["mk"], it.carried, bill, k["mf"]) if words_ else ""
     tally = f" <b>{it.yeas}\u2013{it.nays}</b>" if it.counted else ""
     how = f" on a {esc(it.kind_words)}" if it.kind_words else ""
+    # BY THE JOURNAL'S OWN WORDS (the owner, 23 October 2026): a motion the
+    # Journal says was carried "without objection" says so, not "voice vote".
+    if getattr(it, "wo", False):
+        how = " without objection"
     moved = ""
     if it.mover:
         nm = it.mover.replace("Rep. ", "").replace("Sen. ", "")

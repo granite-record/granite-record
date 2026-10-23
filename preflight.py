@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.661
+# GRANITE_VERSION: 2026-09-04.662
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -14081,7 +14081,15 @@ _JM_HJ = {
         "Rep. Weber moved that the remarks made by Rep. Altschiller be printed in the Permanent "
         "Journal.\n\n"
         "                                              YEAS 120 - NAYS 130\n\n"
-        "and the motion failed.\n"),
+        "and the motion failed.\n\n"
+        # A suspension of the rules for one bill, decided on a division: the
+        # bill's (the owner's second review), as Rep. Phillips's for HB
+        # 1000-FN-A's non-germane amendments was on 16 June 2016.
+        "                           MOTION TO SUSPEND HOUSE RULES\n\n"
+        "Rep. Phillips moved that House Rules be so far suspended as to allow consideration of "
+        "floor amendments\nto HB 1000-FN-A that are non-germane.\n"
+        "On a division vote, with 190 members having voted in the affirmative, and 110 in the "
+        "negative, the motion\nfailed lacking the necessary two-thirds vote.\n"),
     "journals/2026/HJ 14 May 21, 2026.txt": (
         "                                 HOUSE JOURNAL No. 14\n\n"
         "                              Thursday, May 21, 2026\n\n"
@@ -14180,7 +14188,14 @@ _JM_HJ = {
         "Senator Birdsell moved to call the question. Adopted.\n\n"
         "The question is on the adoption of the Floor Amendment.\n\n"
         "Senator Feltes moved to divide the question: Section 8 and Section 13.\n"
-        "The Chair ruled the question divisible.\n"),
+        "The Chair ruled the question divisible.\n\n"
+        # BY THE JOURNAL'S OWN WORDS (the owner's second review): the same
+        # motion "without objection" is no voice vote.
+        "HB 1476, permitting qualifying patients and designated caregivers to cultivate cannabis.\n"
+        "Ought to Pass, Vote 3-2.\nSenator Avard for the committee.\n\n"
+        "SENATOR AVARD: Yes, it is. Unless you have a permit.\n\n"
+        "Without objection, Senator Birdsell moved to call the question. Adopted.\n\n"
+        "The question is on the adoption of the motion of Interim Study.\n"),
 }
 
 
@@ -14359,8 +14374,46 @@ def _journal_motions(JM):
         if got != [("2014-03-12", "H", "HB1601", "previous_question", "division", 255, 78, True,
                     "debate"),
                    ("2018-05-03", "S", "HB1458", "previous_question", "voice", None, None, True,
-                    "debate")]:
+                    "debate"),
+                   # By the Journal's own words: "Without objection, ...".
+                   ("2018-05-03", "S", "HB1476", "previous_question", "without objection", None,
+                    None, True, "debate"),
+                   # A suspension of the rules for one bill, on a division.
+                   ("2026-03-11", "H", "HB1000", "suspend_rules", "division", 190, 110, False,
+                    "named")]:
             bad.append(f"the motions on a bill's debate read {got}")
+        # THE OWNER'S SECOND REVIEW: a ruling on a motion about one bill is
+        # that bill's (HB 1142's special order, 11 March 2026); the slip that
+        # names HB 1609-FN and HB 1142 ties to neither and stays a misc vote;
+        # a rules suspension, an appeal left on no bill and a member going on
+        # under unanimous consent are misc votes, each keeping its own kind.
+        if (ok.get("on_bill"), ok.get("bill_motion"), ok.get("on_bill_from")) != (
+                "HB1142", "appeal", "named"):
+            bad.append(f"the ruling on HB 1142's special order is not HB 1142's: {ok.get('on_bill')!r}")
+        if two.get("on_bill") or two.get("group") != "misc" or \
+                two.get("on_bill_held") != "the passage names more than one bill":
+            bad.append(f"the HB 1609-FN/HB 1142 slip is tied to a bill or not a misc vote: "
+                       f"{two.get('on_bill')!r}, {two.get('group')!r}")
+        if (uc.get("group"), uc.get("kind")) != ("misc", "member_continue") or uc.get("on_bill"):
+            bad.append(f"a member going on under unanimous consent is not a misc vote: {uc.get('group')}")
+        if JM.KINDS["suspend_rules"] != "Rules suspension" or \
+                {JM.group_of(k) for k in ("suspend_rules", "appeal")} != {"misc"} or \
+                JM.group_of("member_continue", [{"k": "question", "t": "The question now being shall "
+                                                 "the member be allowed to continue speaking."}]) \
+                != "member_continue" or JM.group_of("member_continue", [
+                    {"k": "question", "t": "The question being shall the member be permitted to "
+                                           "continue speaking with the consent of the House?"}]) != "misc":
+            bad.append("a rules suspension or an appeal is not a misc vote, or a member going on is "
+                       "grouped by anything but the consent they spoke by")
+        if [x["t"] for x in JM.tied_subject("suspend_rules", [
+                {"k": "moved", "t": "Rep. Horn moved that the debate on HB 1640-FN be printed."},
+                {"k": "moved", "t": "Rep. Leishman moved that House Rules be so far suspended as to "
+                                    "allow the remaining bills to be taken up later."}])] != [
+                "Rep. Leishman moved that House Rules be so far suspended as to allow the remaining "
+                "bills to be taken up later."]:
+            bad.append("a suspension is tied by a bill another motion of its passage named")
+        if JM.bills_in([{"t": "to permit introduction and consideration of Senate Bill 9"}]) != ["SB9"]:
+            bad.append("\"Senate Bill 9\" is not read as SB 9")
         for want_k in ("bill motions: held: a heading of its own (MOTION TO LIMIT DEBATE) stands "
                        "between it and the bill's entry",
                        "bill motions: held: the Chair ruled on it, and no vote was taken",
@@ -14422,9 +14475,11 @@ def _journal_motions(JM):
         return "ok", (f"{shown} of {len(entries)} placed votes shown in the Journal's words, "
                       f"{len(entries) - shown} held back for their date, question or outcome; "
                       "two bills, no summary; a censure summed up only by a person, its report "
-                      "kept whole; the reprimand by division read, a Misc vote; "
-                      f"{len(on_bills)} motions on a bill's debate found and the rest held; the "
-                      "silent year named; other years kept")
+                      "kept whole; the reprimand by division read, a Misc vote, as a rules "
+                      "suspension, an appeal and a member going on by consent are; "
+                      f"{len(on_bills)} votes on a bill's debate or arising on it found, the "
+                      "ruling on HB 1142 tied to it and the two-bill slip to neither, without "
+                      "objection by the Journal's words; the silent year named; other years kept")
     finally:
         JM.APPROVED = keep
         shutil.rmtree(d, ignore_errors=True)
@@ -30780,8 +30835,9 @@ def _tdz():
 # it, carried on a division only the Journal records -- drawn under HB 1442.
 _NB_FIXTURE = {
     "kinds": {"reprimand": "Misc vote", "member_continue": "Shall the member continue",
-              "suspend_rules": "Suspending the rules", "motion": "Misc vote"},
-    "groups": {"reprimand": "misc", "privileges": "misc", "motion": "misc", "other": "misc"},
+              "suspend_rules": "Rules suspension", "motion": "Misc vote"},
+    "groups": {"reprimand": "misc", "privileges": "misc", "motion": "misc", "other": "misc",
+               "suspend_rules": "misc", "appeal": "misc"},
     "group_words": {"misc": "Misc votes"},
     "bill_votes": [{
         "key": "2026-03-06-H-m140500", "body": "H", "date": "2026-03-06", "term": "2025-2026",
@@ -30793,7 +30849,17 @@ _NB_FIXTURE = {
         "said": [{"k": "moved", "t": "Rep. Sweeney moved the previous question."},
                  {"k": "outcome", "t": "On a division vote, with 201 members having voted in the "
                                        "affirmative, and 150 in the negative, the motion was "
-                                       "adopted."}], "at": 140500}],
+                                       "adopted."}], "at": 140500},
+        # By the Journal's own words: carried "without objection".
+        {"key": "2026-03-06-H-m140100", "body": "H", "date": "2026-03-06", "term": "2025-2026",
+         "bill": "HB1442", "bill_from": "named", "motion": "limit_debate",
+         "words": "Limit Debate", "mover": "Osborne", "how": "without objection",
+         "yeas": None, "nays": None, "passed": True,
+         "file": "journals/2026/HJ 06 March 5, 2026.txt", "journal": "House Journal 6",
+         "page": 140, "pdf_page": 140, "url": "",
+         "said": [{"k": "moved", "t": "Without objection, Rep. Osborne moved that debate on HB 1442 "
+                                      "be limited to 20 minutes on each side."},
+                  {"k": "outcome", "t": "Adopted."}], "at": 140100}],
     "rollcalls": {"2026-H-311": {
         "key": "2026-H-311", "body": "H", "date": "2026-03-06", "term": "2025-2026",
         "file": "journals/2026/HJ 06 March 5, 2026.txt", "journal": "House Journal 6",
@@ -30811,7 +30877,8 @@ _NB_FIXTURE = {
                                        "vote."}],
         "member": "Nelson", "about": "the war in Iran", "member_id": "377204",
         "bill": "", "bills": [],
-        "line": "Whether Rep. Nelson could go on with remarks on the war in Iran"},
+        "line": "Whether Rep. Nelson could go on with remarks on the war in Iran",
+        "group": "misc"},
         "2026-H-312": {
         "key": "2026-H-312", "body": "H", "date": "2026-03-06", "term": "2025-2026",
         "file": "journals/2026/HJ 06 March 5, 2026.txt", "journal": "House Journal 6",
@@ -30828,7 +30895,7 @@ _NB_FIXTURE = {
         "key": "2026-03-06-H-d182020", "body": "H", "date": "2026-03-06", "term": "2025-2026",
         "file": "journals/2026/HJ 06 March 5, 2026.txt", "journal": "House Journal 6",
         "page": 32, "pdf_page": 32, "url": "", "how": "division", "yeas": 264, "nays": 89,
-        "passed": True, "heading": "MOTION TO REPRIMAND", "kind": "reprimand",
+        "passed": True, "heading": "MOTION TO REPRIMAND", "kind": "reprimand", "group": "misc",
         "report": {"heading": "REPORT OF THE COMMITTEE ON LEGISLATIVE ADMINISTRATION",
                    "paras": ["On March 5, Representative Jodi Nelson made two posts on a social "
                              "media platform, and a complaint was filed with the Speaker, who "
@@ -47909,7 +47976,7 @@ const fs = require("fs");
 globalThis.fetch = async () => ({ok: false, status: 404, text: async () => "", json: async () => null});
 let s;
 try { s = (0, eval)(fs.readFileSync("./page.js", "utf8")
-  + "; ({renderMemberVotes, setRCX: v => { RCX = v; }, setPage: p => { PAGE = p; },"
+  + "; ({renderMemberVotes, donut, setRCX: v => { RCX = v; }, setPage: p => { PAGE = p; },"
   + "   setSit: v => { SITDAYS = v; }, setMeta: m => { META = Object.assign(META || {}, m); }})"); }
 catch (e) { console.log("LOAD " + e.constructor.name + ": " + e.message); process.exit(1); }
 const fx = JSON.parse(fs.readFileSync("./fx.json", "utf8"));
@@ -47919,6 +47986,12 @@ const out = {};
 const page = extra => s.setPage(Object.assign({kind: "member", terms: ["2025-2026"],
   term: "2025-2026", data: fx.member, vfilter: "", vside: "", vq: "", vopen: {}, vshow: 0}, extra));
 try {
+  // THE RING AGAINST THE COUNT: ballots that add up, and one that does not.
+  const m = (p, v) => ({n: "x", s: "x", p, v});
+  out.ringOk = s.donut("HB1", 0, {yeas: 2, nays: 1, passed: true,
+    tally: {R: {Yea: 2}, D: {Nay: 1}}, members: [m("R", "Yea"), m("R", "Yea"), m("D", "Nay")]});
+  out.ringShort = s.donut("HB1", 1, {yeas: 214, nays: 119, passed: true,
+    tally: {R: {Yea: 1}}, members: [m("R", "Yea")]});
   s.setSit({H: new Set(["2026-03-05"]), S: new Set()});
   page({}); out.all = s.renderMemberVotes(fx.member);
   page({vq: "the war in Iran"}); out.found = s.renderMemberVotes(fx.member);
@@ -48006,12 +48079,16 @@ def _nobill_votes_shown(VP):
     lst_p = site / "session" / "nobill" / "2025-2026.html"
     lst = lst_p.read_text(encoding="utf-8") if lst_p.exists() else ""
     rows = re.findall(r'<tr data-kind="([^"]+)"><td class="d" data-l="Day"><a href="([^"]+)"', lst)
-    if sorted(rows) != [("member_continue", "session/H/2026-03-06#rc-2026-H-311"),
-                        ("misc", "session/H/2026-03-06#jv-2026-03-06-H-d182020")]:
+    # A member going on under unanimous consent is a misc vote too (the
+    # owner's second review), and its row still says what it was.
+    if sorted(rows) != [("misc", "session/H/2026-03-06#jv-2026-03-06-H-d182020"),
+                        ("misc", "session/H/2026-03-06#rc-2026-H-311")]:
         bad.append(f"the term's list has rows {rows}")
-    if 'class="nbkind"' not in lst or "Shall the member continue (1)" not in lst \
-            or "Misc votes (1)" not in lst or re.search(r"(?i)discipline", lst):
-        bad.append("the term's list has no filter by kind, or no Misc votes, or says discipline")
+    if 'class="nbkind"' not in lst or "Misc votes (2)" not in lst \
+            or 'data-l="Kind">Shall the member continue</td>' not in lst \
+            or re.search(r"(?i)discipline", lst):
+        bad.append("the term's list has no filter by kind, or no Misc votes, or loses a row's own "
+                   "kind, or says discipline")
     if 'href="session/H/2026-03-06#rep-2026-03-06-H-d182020">View the report</a>' not in lst:
         bad.append("the term's list does not link the report's fold on the session day")
     # A MOTION ON HB 1442'S OWN DEBATE IS HB 1442'S (vote_passage): the roll
@@ -48077,6 +48154,23 @@ def _nobill_votes_shown(VP):
         bad.append("the member tab links a day the site does not draw")
     if len(re.findall(r'<td class="d"', got["found"])) != 1:
         bad.append("the member tab's search does not find a vote by its description")
+    # THE RING AGAINST THE COUNT (the owner's second review): ballots that add
+    # up to the count are drawn by party; one Republican ballot under 214-119
+    # is drawn as the count alone, and says why.
+    if "Republican" not in got.get("ringOk", "") or "does not add up" in got.get("ringOk", ""):
+        bad.append("ballots that add up to the count are not drawn by party")
+    short = got.get("ringShort", "")
+    if "does not add up to the recorded count" not in short or "Republican" in short \
+            or "214–119" not in short:
+        bad.append("ballots that do not add up to the count are drawn as a party ring")
+    # BY THE JOURNAL'S OWN WORDS: a motion carried "without objection" says
+    # so on the session day and the Votes tab, and is not called a voice vote.
+    if "Limit Debate" not in card_html or " without objection</p>" not in card_html:
+        bad.append("HB 1442's limit on debate carried without objection does not say so on its "
+                   "session day")
+    if not re.search(r'"vote_kind_label": "adopted without objection".{0,200}"wo": true', bill_html,
+                     re.S):
+        bad.append("HB 1442's Votes tab does not mark the limit on debate carried without objection")
     assert not bad, "; ".join(bad)
     return "ok", ("the session day's vote headed by its kind, the record's words kept, the "
                   "Journal quoted with its page and link, the division marked, the report shut "
@@ -48084,7 +48178,8 @@ def _nobill_votes_shown(VP):
                   "kind and linked to each anchor and report, from the day and the chamber; one "
                   "field in the index; the member tab's words, linked and searchable; HB 1442's "
                   "division of its question and its previous question under its card, on its "
-                  "Votes tab and named on the member's tab")
+                  "Votes tab and named on the member's tab; its limit on debate carried without "
+                  "objection said so; a party ring only where the ballots add up to the count")
 
 
 # A member's two bills tabs and a committee's, as renderMemberBills and

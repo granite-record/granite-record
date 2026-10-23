@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.229
+# GRANITE_VERSION: 2026-09-05.231
 """
 Generate the faceted site from real General Court data.
 
@@ -10138,7 +10138,11 @@ def bill_rollcalls(bid, term, rcs, narr, votes_by_bill, legs, unnamed,
         rc_out.append({
             "date": e["date"], "body": e["body"], "question": e["action"],
             "mover": e.get("mover") or "", "yeas": e.get("yeas"), "nays": e.get("nays"),
-            "passed": e["motion"] == "MA", "vote_kind": e["vote_kind"], "vote_kind_label": label,
+            "passed": e["motion"] == "MA", "vote_kind": e["vote_kind"],
+            # By the Journal's own words (the owner, 23 October 2026): carried
+            # "without objection" is said so, and is no voice vote.
+            "vote_kind_label": "adopted without objection" if e.get("wo") else label,
+            **({"wo": True} if e.get("wo") else {}),
             "threshold_note": None, "tally": {}, "members": [], "amendment": None,
             "_ord": (e["date"], e["_at"] - 0.5),
         })

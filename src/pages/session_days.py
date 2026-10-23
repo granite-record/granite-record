@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-19.34
+# GRANITE_VERSION: 2026-09-19.35
 """
 A sitting day of the House or Senate, assembled from what is already parsed.
 
@@ -541,12 +541,16 @@ class Item:
                  "yeas", "nays", "cite", "page", "raw", "seq", "need", "veto",
                  "consent", "fifths", "entered", "recess", "joined",
                  "rc", "said", "added", "plain", "shared", "stated_kind", "law",
-                 "overturned")
+                 "overturned", "wo")
 
     def __init__(self, bill, term, e, seq):
         # The roll call on record this motion is (rollcalls.json's row), or
         # None; tie() sets it, and with it the ballots' count and outcome.
         self.rc = None
+        # Carried "without objection", in the Journal's own words: a motion on
+        # a bill's debate the Journal alone records (vote_passage), drawn as
+        # that and not as a voice vote.
+        self.wo = bool(e.get("wo"))
         # The kind of vote the docket line stated, where tie() drew it as a
         # roll call: a "DV" the House Journal confirms is kept (_divisions).
         self.stated_kind = ""
@@ -689,6 +693,8 @@ class Item:
             return ""
         verb = "was adopted" if self.carried else "failed"
         how = f" on a {self.kind_words}" if self.kind_words else ""
+        if self.wo:
+            how = " without objection"
         tail = None if self.plain else _consequence(self.action, self.carried, self.law,
                                                     self.overturned)
         return (f"The motion {verb}{how}"
