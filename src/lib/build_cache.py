@@ -185,9 +185,12 @@ def save(name, sig, entries, folder=None):
         raw = json.dumps({"format": FORMAT, "sig": sig, "entries": entries},
                          ensure_ascii=False, separators=(",", ":"))
         with open(tmp, "wb") as fh:
-            # mtime=0: the same answers make the same bytes, so a night whose
-            # answers did not change sends the kit nothing new.
-            with gzip.GzipFile(fileobj=fh, mode="wb", compresslevel=6, mtime=0) as gz:
+            # mtime=0, and no name in the header (it would be the temporary
+            # file's, which carries the process id): the same answers make
+            # the same bytes, so a night whose answers did not change sends
+            # the kit nothing new.
+            with gzip.GzipFile(filename="", fileobj=fh, mode="wb", compresslevel=6,
+                               mtime=0) as gz:
                 gz.write(raw.encode("utf-8"))
         os.replace(tmp, p)
         return True

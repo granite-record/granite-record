@@ -85066,10 +85066,15 @@ def _versions_kept(build_bill_versions, build_cache):
             f"the fixture wrote {sorted(cold)}, not six comparisons"
         doc = json.loads(gzip.decompress(cache.read_bytes()))
         assert len(doc["entries"]) == 6, f"{len(doc['entries'])} pairs kept of 6 compared"
+        first = cache.read_bytes()
         warm, said = run()
         assert "6 of 6 pairs compared before and kept" in said, said[-400:]
         assert warm == cold, ("a kept comparison wrote another file: "
                               + ", ".join(k for k in cold if warm.get(k) != cold[k]))
+        # The same answers, the same bytes: a night whose answers did not
+        # change sends the kit nothing (the temporary file's name, with its
+        # process id, once went into the gzip header).
+        assert cache.read_bytes() == first, "the same answers were kept as other bytes"
         cache.write_bytes(cache.read_bytes()[:40])
         broken, said = run()
         assert broken == cold and "0 of 6" in said, "a cache cut short changed a file"
