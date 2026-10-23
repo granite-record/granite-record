@@ -14,7 +14,11 @@ Shared by every stage:
 - `build_inputs`: what the last full build was built from, recorded by
   `build_all.py` in `logs/last-build.json` as a build ends well, and what
   has moved since -- read by the fast path (`src/pages/front_end.py`) and by
-  `src/checks/site_manifest.py`.
+  `src/checks/site_manifest.py`;
+- `build_cache`: answers a build step worked out on an earlier run, kept in
+  `.build_cache/` under a sha256 of their inputs and their code, and carried
+  to the night by the kit -- used by `parse/build_bill_versions.py` and
+  `parse/officers.py` (which `pages/` reads twice a build).
 
 A module comes here only when scripts in several folders import it and it
 belongs to no single stage. A helper used by one folder lives in that

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-01.11
+# GRANITE_VERSION: 2026-10-01.12
 """
 What each bill is about, in its own words, as a file the search can ask.
 
@@ -247,9 +247,11 @@ import _paths  # noqa: E402,F401
 
 import argparse
 import bisect
+import concurrent.futures
 import gzip
 import json
 import math
+import os
 import re
 from collections import Counter
 
@@ -1083,6 +1085,32 @@ def words_file(words):
     return {"v": VERSION, "n": len(ws), "words": " ".join(ws)}
 
 
+# THE TERMS AT ONCE (23 October 2026, the person's "speed up the scripts and
+# nightly updates"). build_term made the twenty terms' files one after
+# another, most of the step's 134 seconds on GitHub's machine on night 99,
+# and each is the same function of its term's rows and texts and the page's
+# tables, touching nothing it does not return. So the terms are handed to a
+# pool of processes, POOL_MOST at once, and taken back in the order they
+# were always built: each file is what build_term makes of the same
+# arguments, and is written, counted and said in the same place as before.
+# One processor, or one term, and they are built here as they were.
+POOL_MOST = 4
+
+
+def term_pool(n):
+    """A pool of processes for `n` terms, or None where one would not help."""
+    cpus = os.cpu_count() or 1
+    if n < 2 or cpus < 2:
+        return None
+    return concurrent.futures.ProcessPoolExecutor(max_workers=min(POOL_MOST, cpus, n))
+
+
+def text_size(mine):
+    """How much text a term's bills carry: the measure its turn is given by."""
+    return sum(len((v or {}).get("text") or "") for v in (mine or {}).values()
+               if isinstance(v, dict))
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("--idx", default="site/idx",
@@ -1154,35 +1182,51 @@ def main():
     made = {}
     # How many bills use each word: a word one bill uses may be a slip.
     seen = Counter()
+    terms = []
     for f in files:
         term = f.stem
         rows = json.loads(f.read_text(encoding="utf-8"))
         rows = [r for r in rows if isinstance(r, dict)
                 and (not r.get("term") or r["term"] == term)]
-        if not a.terms:
-            mine = texts.get(term) or {}
-            for r in rows:
-                seen.update(known_words(" ".join(
-                    [str(r.get("title") or ""), str(r.get("sponsor") or ""),
-                     str(r.get("topic") or ""), *map(str, r.get("committees") or []),
-                     (mine.get(r.get("id")) or {}).get("text") or ""])))
-            listed = {r.get("id") for r in rows}
-            for bid, rec in mine.items():
-                if bid not in listed:
-                    seen.update(known_words(rec.get("text") or ""))
-        data, tally = build_term(term, rows, texts.get(term) or {}, table)
-        raw = dumps(data).encode("utf-8")
-        made[f"{term}.json"] = raw
-        tally.update(bytes=len(raw), gzip=len(gzip.compress(raw, 9, mtime=0)))
-        manifest["terms"][term] = tally
-        total_text += tally["with_text"]
-        note = "" if tally["with_text"] else \
-            "  -- NO TEXT for this term: its bills are found by title and topic only"
-        print(f"  {term}: {tally['bills']:,} bills, {tally['with_text']:,} with "
-              f"text, {tally.get('words', 0):,} words, "
-              f"{tally.get('postings', 0):,} entries, "
-              f"{tally.get('pairs', 0):,} pairs, {len(raw):,} bytes "
-              f"({tally['gzip']:,} gzipped){note}")
+        terms.append((term, rows))
+    pool = term_pool(len(terms))
+    try:
+        ahead = {}
+        if pool:
+            # Every term handed out at once, the ones with the most text first so
+            # that no long one is left to run alone at the end; each is taken
+            # back below in the order it was always built and written in.
+            for term, rows in sorted(terms, key=lambda x: (-text_size(texts.get(x[0])), x[0])):
+                ahead[term] = pool.submit(build_term, term, rows, texts.get(term) or {}, table)
+        for term, rows in terms:
+            if not a.terms:
+                mine = texts.get(term) or {}
+                for r in rows:
+                    seen.update(known_words(" ".join(
+                        [str(r.get("title") or ""), str(r.get("sponsor") or ""),
+                         str(r.get("topic") or ""), *map(str, r.get("committees") or []),
+                         (mine.get(r.get("id")) or {}).get("text") or ""])))
+                listed = {r.get("id") for r in rows}
+                for bid, rec in mine.items():
+                    if bid not in listed:
+                        seen.update(known_words(rec.get("text") or ""))
+            data, tally = (ahead.pop(term).result() if term in ahead
+                           else build_term(term, rows, texts.get(term) or {}, table))
+            raw = dumps(data).encode("utf-8")
+            made[f"{term}.json"] = raw
+            tally.update(bytes=len(raw), gzip=len(gzip.compress(raw, 9, mtime=0)))
+            manifest["terms"][term] = tally
+            total_text += tally["with_text"]
+            note = "" if tally["with_text"] else \
+                "  -- NO TEXT for this term: its bills are found by title and topic only"
+            print(f"  {term}: {tally['bills']:,} bills, {tally['with_text']:,} with "
+                  f"text, {tally.get('words', 0):,} words, "
+                  f"{tally.get('postings', 0):,} entries, "
+                  f"{tally.get('pairs', 0):,} pairs, {len(raw):,} bytes "
+                  f"({tally['gzip']:,} gzipped){note}")
+    finally:
+        if pool:
+            pool.shutdown(cancel_futures=True)
     # A TERM AT A TIME: which of the terms this run read have lost their text.
     real = sorted(t for t in manifest["terms"] if TERM_NAME.fullmatch(t))
     newest = real[-1] if real else None

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-09.2
+# GRANITE_VERSION: 2026-10-09.3
 """
 What the last full build was built from, and what has moved since.
 
@@ -77,6 +77,9 @@ NOT_INPUTS = (
     ".github",       # the workflows, which start a build and are not read by one
     ".wrangler", ".venv", "node_modules",
     "archive/cloud", # the bucket's state, rewritten by every pull
+    ".build_cache",  # answers kept under their inputs' and code's sha256
+                     # (build_cache.py): what one gives is what working it
+                     # out gives, so it is never what a page is made of
 )
 NOT_INPUT_NAMES = ("__pycache__",)          # at any depth
 NOT_INPUT_FILES = (".build.lock",           # a build's own lock

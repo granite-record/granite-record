@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-25.24
+# GRANITE_VERSION: 2026-09-25.25
 """
 The nightly's kit and the laptop's backup, in the project's private R2 bucket.
 
@@ -43,7 +43,7 @@ The nightly's kit and the laptop's backup, in the project's private R2 bucket.
 
     --local-bucket FOLDER   a folder stands in for the bucket, for testing
     --root FOLDER           the working folder (default: the current one)
-    --workers N             transfers at once (default 8)
+    --workers N             transfers at once (default 8; kit-down 64)
 
 Run from the repository root. Credentials come from keys.r2(): the
 environment on GitHub's machine, secrets.json on the laptop. Nothing here asks
@@ -489,8 +489,11 @@ CHANGES = re.compile(r"^gc-changes-(?:weekly-)?\d{4}-\d\d-\d\d\.md$")
 PULL_LOGS = ((re.compile(r"^(?:nightly|weekly)-\d{4}-\d\d-\d\d\.log$"), "logs"),
              (re.compile(r"^site-\d{4}-\d\d-\d\d\.sha256$"), "logs"),
              (CHANGES, "reports"))
-# The night's files pull never takes: the laptop's built site is its own.
-PULL_NOT = ("site/",)
+# The night's files pull never takes: the laptop's built site is its own, and
+# so is its build cache (build_cache.py, 23 October 2026), which every build
+# here rewrites -- taken back, each morning's pull would find the laptop's
+# copy changed under the night's and stop on a clash nobody needs to settle.
+PULL_NOT = ("site/", ".build_cache/")
 # Set by preflight for itself and everything it runs: with it, nothing here
 # reaches the real bucket, whatever a check drives. A folder bucket still works.
 NO_BUCKET = "GRANITE_NO_BUCKET"
@@ -504,6 +507,24 @@ REMOVE_SHARE, REMOVE_MAX = 0.02, 1000
 # Long transfers record their progress this often, so an interrupted first
 # backup resumes rather than starting again.
 CHECKPOINT = 300
+
+# TRANSFERS AT ONCE (23 October 2026). Every command takes WORKERS unless
+# --workers says otherwise, and kit-down takes DOWN_WORKERS. The kit is about
+# 35,600 files and 30,400 of them are the saved bill pages, a few KB each, so
+# its time on GitHub's machine was waiting, not bandwidth: on night 99 the
+# first 2.9 GB arrived in two minutes and the rest at about 45 files a second
+# for twelve and a half, 881 seconds in all, at 8 at once with a HEAD and a
+# GET for every file (boto3's download_file). Measured on 23 October 2026 on
+# one machine, the whole kit, 35,666 files and 3.64 GB, every one checked as
+# before: 772 seconds the old way; 180 with one GET each (R2Bucket.get_file
+# below) and 32 at once; 155 with 64 at once. The others stay at 8, because
+# they read the laptop's disk or send, where more at once is not what they
+# wait on.
+WORKERS = 8
+DOWN_WORKERS = 64
+# How often get_file asks again for a small file whose read broke part way:
+# download_file's own number (s3transfer's num_download_attempts).
+GET_TRIES = 5
 
 
 class Failed(Exception):
@@ -866,7 +887,7 @@ class FolderBucket:
         m.parent.mkdir(parents=True, exist_ok=True)
         m.write_text(json.dumps(meta), encoding="utf-8")
 
-    def get_file(self, key, dst):
+    def get_file(self, key, dst, size=None):
         shutil.copyfile(self._p(key), dst)
 
     def copy(self, src, dst):
@@ -957,8 +978,20 @@ class R2Bucket:
             region_name="auto", config=conf)
         self.bucket = self.name = cfg["bucket"]
         # R2 wants every part but the last the same size, which this gives.
-        self.tc = TransferConfig(multipart_threshold=64 * MB,
-                                 multipart_chunksize=64 * MB, max_concurrency=4)
+        # A file under one part comes down in one GET (get_file).
+        self.part = 64 * MB
+        self.tc = TransferConfig(multipart_threshold=self.part,
+                                 multipart_chunksize=self.part, max_concurrency=4)
+        # The reads download_file asks again when they break part way, which
+        # get_file's single GET asks again in the same way.
+        try:
+            from s3transfer.utils import S3_RETRYABLE_DOWNLOAD_ERRORS as again
+        except ImportError:
+            import botocore.exceptions as be
+            again = tuple(getattr(be, n) for n in ("ReadTimeoutError", "IncompleteReadError",
+                                                   "ResponseStreamingError") if hasattr(be, n))
+            again += (TimeoutError, ConnectionError)
+        self.again = tuple(again)
 
     def describe(self):
         return f"the R2 bucket {self.bucket}"
@@ -990,8 +1023,36 @@ class R2Bucket:
         self.s3.upload_file(str(src), self.bucket, key,
                             ExtraArgs={"Metadata": meta}, Config=self.tc)
 
-    def get_file(self, key, dst):
-        self.s3.download_file(self.bucket, key, str(dst), Config=self.tc)
+    def get_file(self, key, dst, size=None):
+        """The object at key, written to dst.
+
+        ONE GET FOR A SMALL FILE (23 October 2026). download_file asks for an
+        object's size (a HEAD) before it asks for the object, which for the
+        kit's thousands of small files was half the requests and most of the
+        wait. Where the caller knows the size from a manifest and it is under
+        the part size, the object comes from a single GET, streamed to dst,
+        and a read that breaks part way is asked again from the start, up to
+        GET_TRIES times, as download_file does. A large file, or one whose
+        size the caller does not know, still goes through download_file,
+        which takes it in parts at once. Either way the caller checks what
+        arrived: kit-down reads its size and sha256 back off the disk."""
+        if size is None or size >= self.part:
+            self.s3.download_file(self.bucket, key, str(dst), Config=self.tc)
+            return
+        for attempt in range(1, GET_TRIES + 1):
+            body = None
+            try:
+                body = self.s3.get_object(Bucket=self.bucket, Key=key)["Body"]
+                with open(dst, "wb") as fh:
+                    for chunk in iter(lambda: body.read(MB), b""):
+                        fh.write(chunk)
+                return
+            except self.again:
+                if attempt == GET_TRIES:
+                    raise
+            finally:
+                if body is not None:
+                    body.close()
 
     def copy(self, src, dst):
         self.s3.copy({"Bucket": self.bucket, "Key": src}, self.bucket, dst,
@@ -1455,7 +1516,7 @@ def cmd_kit_down(a, root):
         tmp = dst.with_name(dst.name + ".part")
         try:
             dst.parent.mkdir(parents=True, exist_ok=True)
-            bucket.get_file(f"kit/{rel}", tmp)
+            bucket.get_file(f"kit/{rel}", tmp, size=ent["size"])
             size, sha = tmp.stat().st_size, sha256_of(tmp)
             if size != ent["size"] or sha != ent["sha256"]:
                 raise OSError(f"arrived as {size:,} bytes, sha256 {sha[:12]}; the "
@@ -1472,8 +1533,10 @@ def cmd_kit_down(a, root):
         with lock:
             got.add(rel)
         prog.tick(size)
+    # The largest first, so that the few big files are under way while the
+    # many small ones come down beside them, rather than last and alone.
     with ThreadPoolExecutor(max_workers=a.workers) as ex:
-        list(ex.map(one, sorted(todo.items())))
+        list(ex.map(one, sorted(todo.items(), key=lambda kv: (-kv[1]["size"], kv[0]))))
     # THE RECORD: what arrived, which kit-up compares the night's files with,
     # and which build_all.py reads as "this folder is built from the kit".
     now = datetime.now()
@@ -3013,7 +3076,7 @@ def pull_kit(a, bucket, root, kit, known, take, day, today):
         tmp = dst.with_name(dst.name + ".part")
         try:
             dst.parent.mkdir(parents=True, exist_ok=True)
-            bucket.get_file(f"kit/{rel}", tmp)
+            bucket.get_file(f"kit/{rel}", tmp, size=ent["size"])
             size, sha = tmp.stat().st_size, sha256_of(tmp)
             if size != ent["size"] or sha != ent["sha256"]:
                 raise OSError(f"arrived as {size:,} bytes, sha256 {sha[:12]}; the "
@@ -3566,8 +3629,8 @@ def cmd_send_night(a, root):
             raise Failed(f"{rel} is on {KIT_FILE}'s never list, which no command sends "
                          "anywhere. Nothing was sent.")
         if rel.startswith(PULL_NOT):
-            raise Failed(f"{rel} is the built site's, which is each build's own and never "
-                         "sent by hand. Nothing was sent.")
+            raise Failed(f"{rel} is the built site's or the build cache's, which are each "
+                         "build's own and never sent by hand. Nothing was sent.")
         owner = owner_of(kit, rel)
         if owner == "laptop":
             raise Failed(f"{rel} is the laptop's in {KIT_FILE}, and seed-kit sends the "
@@ -4055,7 +4118,8 @@ def main(argv=None):
     ap.add_argument("--local-bucket", metavar="FOLDER",
                     help="use a folder as the bucket (testing; no credentials)")
     ap.add_argument("--root", default=".", help="the working folder")
-    ap.add_argument("--workers", type=int, default=8)
+    ap.add_argument("--workers", type=int, default=None,
+                    help=f"transfers at once (default {WORKERS}; kit-down {DOWN_WORKERS})")
     ap.add_argument("--run", help="site-up, site-down, kit-release: the night's run id "
                                   "(GitHub's run id), which names nights/<run>/")
     ap.add_argument("--dry-night", action="store_true",
@@ -4089,6 +4153,8 @@ def main(argv=None):
     if a.paths and a.command != "send-night":
         ap.error(f"{a.command} takes no PATH; only send-night does (pull names its paths "
                  "with --take)")
+    if a.workers is None:
+        a.workers = DOWN_WORKERS if a.command == "kit-down" else WORKERS
     root = Path(a.root).resolve()
     t0 = time.time()
     try:
