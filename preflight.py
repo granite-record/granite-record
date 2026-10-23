@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.644
+# GRANITE_VERSION: 2026-09-04.645
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -25018,8 +25018,8 @@ def _record_untouched():
       corrections/docket_corrections.json  a date the docket states wrongly,
                                      and the journal and roll call that settle it
       corrections/ballot_results.json      the voters' answer on each amendment
-      corrections/status/            the session's state and the Executive
-                                     Council, which no published file gives
+      corrections/status/            the session's state, which no published
+                                     file gives
 
     Naming only the first one meant the check grew stale as quietly as the
     thing it guards against: most of these had no guard at all. So since the
@@ -61547,6 +61547,20 @@ def _panes_into_view():
     return "ok", "both panes, on opening, and Follow's again when its email box arrives"
 
 
+def _officials_now(path=None, today=None):
+    """corrections/officials.json as the pages draw it on `today` (the
+    build's day by default): through build_members_elect.read_officials, the
+    file's one reader, so a check holds a page to the holder the page was
+    built with, a successor in office from their day (23 October 2026). A
+    successor that will not read stops a builder with SystemExit; here it is
+    the check's failure, in the reader's words, and not the end of the run."""
+    import build_members_elect as BME
+    try:
+        return BME.read_officials(path, today)
+    except SystemExit as e:
+        raise AssertionError(str(e)) from None
+
+
 @check("frontend", "the Officials page is six tabs, My Town, Legislators, Federal Delegation, "
                    "Executive Branch, Judicial Branch and County Officials, drawn as the town "
                    "pages' tabs are")
@@ -61602,8 +61616,7 @@ def _legislators_page_tabs():
     # The other tabs' offices are officials.json's people, each the one
     # person chip (the department heads and the judges are
     # _officials_heads_and_judges's).
-    import json as _json
-    off = _json.loads(Path("corrections/officials.json").read_text(encoding="utf-8"))
+    off = _officials_now()
     for pid, names in (("federal", [s["name"] for s in off["us_senate"]["seats"]]
                         + [r["name"] for r in off["us_house"]["districts"].values()]),
                        ("executive", [off["governor"]["name"]]
@@ -61770,7 +61783,7 @@ def _officials_heads_and_judges():
     name where it has not."""
     import officials_tabs as OT
     import html as _html
-    off = json.loads(Path("corrections/officials.json").read_text(encoding="utf-8"))
+    off = _officials_now()
     dh = (off.get("department_heads") or {}).get("departments") or []
     j = off.get("judicial") or {}
     sup = (j.get("supreme_court") or {}).get("justices") or []
@@ -61845,6 +61858,397 @@ def _officials_heads_and_judges():
                   f"its page and its day; {len(dh) - len(named)} nameless heads undrawn and "
                   f"said why; the Circuit Court by its own list; {len(tied)} head drawn as "
                   "the member the site has")
+
+
+# A made-up hand file for _officials_successor: every holder and successor
+# here is invented. The Governor and a councillor change hands on 7 January,
+# a House seat and a Senate seat on 3 January, another councillor is
+# re-elected, and a county commissioner and a sheriff change hands too.
+_SUCCESSOR_DAY = "2027-01-07"
+_SUCCESSOR_FILE = {
+    "_checked": "2026-11-20",
+    "governor": {"office": "Governor of New Hampshire", "scope": "statewide",
+                 "about": ["Signs or vetoes legislation."], "name": "Ann Before", "party": "R",
+                 "phone": "(603) 555-0101", "email": "ann@gov.example.org",
+                 "official_url": "https://gov.example.org/",
+                 "contact_url": "https://gov.example.org/contact-ann",
+                 "source": "https://gov.example.org/",
+                 "elect": {"name": "Bea After", "party": "D", "official_url": "https://gov.example.org/",
+                           "source": "https://sos.example.org/results", "read": "2026-11-20",
+                           "takes_office": _SUCCESSOR_DAY}},
+    "council": {"office": "Executive Council", "scope": "district", "about": ["Five councilors."],
+                "official_url": "https://council.example.org/",
+                "source": "https://council.example.org/",
+                "districts": {
+                    "1": {"name": "Cal Before", "party": "R", "phone": "(603) 555-0104",
+                          "official_url": "https://council.example.org/district-1",
+                          "elect": {"name": "Dee After", "party": "D",
+                                    "official_url": "https://council.example.org/district-1",
+                                    "source": "https://sos.example.org/results",
+                                    "takes_office": _SUCCESSOR_DAY}},
+                    "2": {"name": "Eve Again", "party": "D", "phone": "",
+                          "official_url": "https://council.example.org/district-2",
+                          "elect": {"name": "Eve Again", "party": "D",
+                                    "official_url": "https://council.example.org/district-2",
+                                    "source": "https://sos.example.org/results",
+                                    "takes_office": _SUCCESSOR_DAY}}}},
+    "us_house": {"office": "United States House of Representatives", "scope": "district",
+                 "about": ["Two members."], "official_url": "https://house.example.org/",
+                 "source": "https://house.example.org/",
+                 "districts": {"1": {"name": "Fay Before", "party": "D", "phone": "(603) 555-0102",
+                                     "phone_dc": "(202) 555-0102",
+                                     "official_url": "https://fay.house.example.org",
+                                     "elect": {"name": "Gus After", "party": "R",
+                                               "official_url": "https://gus.house.example.org",
+                                               "source": "https://sos.example.org/results",
+                                               "takes_office": "2027-01-03"}}}},
+    "us_senate": {"office": "United States Senate", "scope": "statewide",
+                  "about": ["Two senators."], "official_url": "https://senate.example.org/",
+                  "source": "https://senate.example.org/",
+                  "seats": [{"name": "Hal Stays", "party": "D", "phone": "(603) 555-0105"},
+                            {"name": "Ida Before", "party": "D", "phone": "(603) 555-0103",
+                             "official_url": "https://ida.senate.example.org",
+                             "elect": {"name": "Jo After", "party": "R",
+                                       "source": "https://sos.example.org/results",
+                                       "takes_office": "2027-01-03"}}]},
+    "county": {"office": "County Officers", "scope": "county", "about": ["Ten counties."],
+               "counties": {"Belknap": {
+                   "name": "Belknap County", "official_url": "",
+                   "commissioners": {"1": {
+                       "name": "Kit Before", "office": "County Commissioner, District 1",
+                       "district": "1", "party": "R", "phone": "(603) 555-0106", "source": "a roster",
+                       "elect": {"name": "Lu After", "party": "D", "source": "the next roster",
+                                 "takes_office": _SUCCESSOR_DAY}}},
+                   "sheriff": {"name": "Mo Before", "office": "Sheriff", "phone": "",
+                               "source": "a roster",
+                               "elect": {"name": "Ned After", "party": "R",
+                                         "source": "the next roster",
+                                         "takes_office": _SUCCESSOR_DAY}}}}},
+}
+
+
+@check("frontend", "a successor in corrections/officials.json is the holder from the day they take "
+                   "office and not before, on every page that draws the office",
+       needs=("build_members_elect", "officials_tabs", "build_town_pages", "build_district_map"))
+def _officials_successor(BME, OT, BT, BDM):
+    """The person's approval of 23 October 2026: a record of the hand file
+    may name its successor under "elect", with the day they take office, and
+    from that day, by the build's own day, every page draws them as the
+    holder, so nobody has to edit the file on the day.
+
+    On a made-up file (_SUCCESSOR_FILE) in a folder of its own, read as the
+    pages read it (build_members_elect.read_officials): the day before, each
+    record is the file's, its successor beside it, and the Officials page's
+    tabs say under the holder who takes the office and when -- the party
+    only where the holder's is drawn, nothing beside a holder re-elected,
+    and data-until, for a page read on the day; each record by its own day,
+    so Congress turns on 3 January and the Governor later; from the day,
+    the successor is the holder on the Executive Branch, Federal Delegation
+    and County Officials tabs, on a town page's Representatives tab and in
+    the district map's seats, with nothing of the predecessor's carried over
+    and what the record says of the office kept; and the file is not
+    written. A successor with no name, no day, or a successor of its own
+    stops the reader, before its day too. And the real file's successors
+    still to take office, where it names any, each name the page they were
+    read from, and an official_url where their record has one."""
+    import datetime as _dt
+    import html as _html
+    import build_date
+    root = Path(tempfile.mkdtemp(prefix="gr-officials-"))
+    try:
+        f = root / "officials.json"
+        f.write_text(json.dumps(_SUCCESSOR_FILE), encoding="utf-8")
+        raw = f.read_bytes()
+        # The day before Congress turns, the day before the Governor does,
+        # the Governor's day, and long after.
+        before, mid = _officials_now(f, "2027-01-02"), _officials_now(f, "2027-01-06")
+        on, after = _officials_now(f, _SUCCESSOR_DAY), _officials_now(f, _dt.date(2027, 6, 1))
+        assert f.read_bytes() == raw, "reading the hand file changed it"
+        assert _officials_now(f) == _officials_now(f, build_date.today()), (
+            "the reader's day is not the build's")
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    snap = json.dumps(_SUCCESSOR_FILE, sort_keys=True)
+    BME.officials_on(_SUCCESSOR_FILE, _SUCCESSOR_DAY)
+    assert json.dumps(_SUCCESSOR_FILE, sort_keys=True) == snap, "officials_on changed the file it read"
+
+    # The records, by the day.
+    g = before["governor"]
+    assert g["name"] == "Ann Before" and g["elect"]["name"] == "Bea After", (
+        f"the day before, the Governor is {g.get('name')!r}")
+    assert mid["us_house"]["districts"]["1"]["name"] == "Gus After" and \
+        mid["us_senate"]["seats"][1]["name"] == "Jo After" and mid["governor"]["name"] == "Ann Before", (
+            "each record does not turn on its own day: Congress on 3 January, the Governor on 7")
+    assert before["us_house"]["districts"]["1"]["name"] == "Fay Before", (
+        "the day before Congress turns, its successor is already the holder")
+    want = {"office": "Governor of New Hampshire", "scope": "statewide",
+            "about": ["Signs or vetoes legislation."], "name": "Bea After", "party": "D",
+            "official_url": "https://gov.example.org/", "source": "https://sos.example.org/results",
+            "read": "2026-11-20"}
+    assert on["governor"] == want, (
+        f"on the day the Governor's record is {on['governor']}, not the successor's own fields "
+        "over the office's")
+    assert after == on, "a successor whose day has passed is not simply the holder"
+    c1, c2 = on["council"]["districts"]["1"], on["council"]["districts"]["2"]
+    assert c1["name"] == "Dee After" and "phone" not in c1 and "elect" not in c1, c1
+    assert c2["name"] == "Eve Again" and "elect" not in c2, c2
+    h = on["us_house"]["districts"]["1"]
+    assert (h["name"], h["official_url"]) == ("Gus After", "https://gus.house.example.org") \
+        and "phone" not in h and "phone_dc" not in h, f"the predecessor's ways to reach them carried over: {h}"
+    s = on["us_senate"]["seats"]
+    assert s[0]["name"] == "Hal Stays" and s[1] == {"name": "Jo After", "party": "R",
+                                                    "source": "https://sos.example.org/results"}, s
+    k = on["county"]["counties"]["Belknap"]
+    assert (k["commissioners"]["1"]["name"], k["commissioners"]["1"]["office"],
+            k["commissioners"]["1"]["district"]) == ("Lu After", "County Commissioner, District 1", "1"), (
+        "a commissioner's successor did not keep the office's own fields")
+
+    # The Officials page's tabs.
+    line = '<span class="ofseat" data-until="{d}">{n} takes office {w}.</span>'
+    ex_b, ex_o = OT.executive(mid), OT.executive(on)
+    assert "Gus After (R) takes office" not in OT.federal(mid), (
+        "a successor already in office is still said to take it")
+    for n, d, w in (("Bea After (D)", _SUCCESSOR_DAY, "January 7, 2027"),
+                    ("Dee After (D)", _SUCCESSOR_DAY, "January 7, 2027")):
+        assert line.format(n=n, d=d, w=w) in ex_b, f"the day before, Executive Branch does not say {n} takes office"
+    assert "Ann Before" in ex_b and "Eve Again (D) takes office" not in ex_b, (
+        "the holder is not drawn, or a holder re-elected is said to take office again")
+    assert "Bea After" in ex_o and "Ann Before" not in ex_o and "takes office" not in ex_o and \
+        "Cal Before" not in ex_o, "on the day, Executive Branch still draws a predecessor or a successor's line"
+    fed_b, fed_o = OT.federal(before), OT.federal(on)
+    assert line.format(n="Gus After (R)", d="2027-01-03", w="January 3, 2027") in fed_b and \
+        line.format(n="Jo After (R)", d="2027-01-03", w="January 3, 2027") in fed_b, (
+            "the day before, Federal Delegation does not say who takes the seats")
+    assert "Gus After" in fed_o and "Fay Before" not in fed_o and "555-0102" not in fed_o and \
+        "Ida Before" not in fed_o, "on the day, Federal Delegation still draws a predecessor"
+    co_b, co_o = OT.county(before, [], "2027-01-02"), OT.county(on, [], _SUCCESSOR_DAY)
+    assert line.format(n="Lu After (D)", d=_SUCCESSOR_DAY, w="January 7, 2027") in co_b and \
+        line.format(n="Ned After", d=_SUCCESSOR_DAY, w="January 7, 2027") in co_b, (
+            "the county's successors are not said, or a sheriff's carries a party")
+    assert '<span class="mchip p-X">Ned After</span>' in co_o and "Mo Before" not in co_o, (
+        "on the day the sheriff is not the successor, on the neutral chip")
+
+    # A town page's Representatives tab, and the district map's seats.
+    dist = {"council": 1, "congress": 1, "house": []}
+    tp_b, tp_o = ("".join(BT.representatives_sections(dist, [], d)) for d in (before, on))
+    for old, new in (("Ann Before", "Bea After"), ("Cal Before", "Dee After"),
+                     ("Fay Before", "Gus After"), ("Ida Before", "Jo After")):
+        assert _html.escape(old) in tp_b and new not in tp_b, f"the day before, a town page lacks {old}"
+        assert _html.escape(new) in tp_o and old not in tp_o, f"on the day, a town page lacks {new}"
+    for d, ec, cd in ((before, ("Cal Before", "R"), ("Fay Before", "D")),
+                      (on, ("Dee After", "D"), ("Gus After", "R"))):
+        w = BDM.who_sits([], d, {})
+        got = ((w["exec|1"][0]["n"], w["exec|1"][0]["p"]), (w["cong|1"][0]["n"], w["cong|1"][0]["p"]))
+        assert got == (ec, cd), f"the map's seats are {got}, not {(ec, cd)}"
+
+    # A successor that will not read stops the reader, before its day too.
+    for bad, said in (({"party": "D", "takes_office": _SUCCESSOR_DAY}, "names nobody"),
+                      ("Bea After", "names nobody"),
+                      ({"name": "X"}, "no day"), ({"name": "X", "takes_office": "2027-1-7"}, "YYYY-MM-DD"),
+                      ({"name": "X", "takes_office": "2027-02-30"}, "YYYY-MM-DD"),
+                      ({"name": "X", "takes_office": _SUCCESSOR_DAY,
+                        "elect": {"name": "Y", "takes_office": "2029-01-04"}}, "of its own")):
+        try:
+            BME.officials_on({"governor": {"name": "Ann Before", "elect": bad}}, "2026-12-01")
+        except SystemExit as e:
+            assert said in str(e) and "governor" in str(e), f"{bad!r} stops the reader saying {e}"
+        else:
+            raise AssertionError(f"a successor {bad!r} does not stop the reader")
+
+    # The real file's successors still to come each name their page, and
+    # an address where their record has one: nothing of the holder's is
+    # carried over, so one left out would be missing from the day they
+    # take office, and this says so before it.
+    pending = []
+
+    def walk(x, where):
+        if isinstance(x, dict):
+            if isinstance(x.get("elect"), dict):
+                pending.append((where, x, x["elect"]))
+            for key, v in x.items():
+                walk(v, f"{where}.{key}" if where else key)
+        elif isinstance(x, list):
+            for i, v in enumerate(x):
+                walk(v, f"{where}[{i}]")
+    walk(_officials_now(), "")
+    unsourced = [w for w, _r, e in pending if not str(e.get("source") or "").strip()]
+    assert not unsourced, ("corrections/officials.json names a successor without the page it was "
+                           "read from: " + ", ".join(unsourced))
+    unaddressed = [w for w, r, e in pending if str(r.get("official_url") or "").strip()
+                   and not str(e.get("official_url") or "").strip()]
+    assert not unaddressed, ("corrections/officials.json names a successor with no official_url "
+                             "where the holder's record has one, and none is carried over: "
+                             + ", ".join(unaddressed))
+    return "ok", ("on a made-up file, each successor the holder from their own day and not the "
+                  "day before, on the Officials tabs, a town page and the map, with nothing of the "
+                  "predecessor's carried over; one line before the day; a successor with no name or "
+                  f"day refused; the real file names {len(pending)} successor(s) to come, each "
+                  "with its source and address")
+
+
+@check("files", "corrections/officials.json has one reader, build_members_elect.read_officials, "
+                "and nothing reads the retired corrections/status/officials.txt",
+       needs=("build_members_elect", "build_pages", "build_site_v2"))
+def _officials_one_reader(BME, BP, B):
+    """The person's approval of 23 October 2026. Every page that names who
+    holds an office of the hand file reads the file through one function,
+    build_members_elect.read_officials, which puts a successor in office on
+    their day -- so no page can show a holder another page has replaced.
+    Read off the code of every code folder, preflight aside (it lays the
+    file out in its fixtures, and reads it through _officials_now): no
+    string but read_officials' own module's names the file as a path, and
+    none takes that module's OFFICIALS or officials_on to read it another
+    way; and the Officials page, the town pages, the district map and the
+    officers' hand entries each call read_officials.
+
+    AND THE SECOND COPY IS GONE. corrections/status/officials.txt held the
+    Governor and the Council a second time, for a home page block that never
+    drew because the file was never filled in; the person retired it the same
+    day. It is not there, no code or kit list names it, build_site_v2 takes
+    no --officials and writes no Council or Governor into home.json's
+    composition, and the home page's script draws neither."""
+    import ast
+    import inspect
+    import types
+    path_name = re.compile(r"^(?:corrections[/\\])?officials\.json$")
+    retired = "officials" + ".txt"
+    named, other_way, txt = [], [], []
+    calls, imported = {}, set()
+    for f in _paths.code_files("*.py"):
+        if f.name == "preflight.py":
+            continue
+        tree = _parsed(f)
+        docs = {id(n.body[0].value) for n in ast.walk(tree)
+                if isinstance(n, (ast.Module, ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef))
+                and n.body and isinstance(n.body[0], ast.Expr)
+                and isinstance(n.body[0].value, ast.Constant) and isinstance(n.body[0].value.value, str)}
+        mine = f.name == "build_members_elect.py"
+        for n in ast.walk(tree):
+            if isinstance(n, ast.Constant) and isinstance(n.value, str) and id(n) not in docs:
+                if path_name.match(n.value.strip()) and not mine:
+                    named.append(f"{f.name}:{n.lineno}")
+                if retired in n.value:
+                    txt.append(f"{f.name}:{n.lineno}")
+            elif not mine and isinstance(n, ast.ImportFrom) and n.module == "build_members_elect":
+                if any(a.name in ("OFFICIALS", "officials_on") for a in n.names):
+                    other_way.append(f"{f.name}:{n.lineno}")
+                if any(a.name == "read_officials" for a in n.names):
+                    imported.add(f.name)
+            elif not mine and isinstance(n, ast.Attribute) and n.attr in ("OFFICIALS", "officials_on"):
+                other_way.append(f"{f.name}:{n.lineno}")
+            elif isinstance(n, ast.Call) and (getattr(n.func, "id", None) == "read_officials"
+                                              or getattr(n.func, "attr", None) == "read_officials"):
+                calls[f.name] = calls.get(f.name, 0) + 1
+    assert not named, ("corrections/officials.json is named as a path outside its one reader, "
+                       "build_members_elect.read_officials: " + ", ".join(named))
+    assert not other_way, ("the hand file is read around read_officials, through its module's "
+                           "OFFICIALS or officials_on: " + ", ".join(other_way))
+    readers = ("build_pages.py", "build_town_pages.py", "build_district_map.py", "officers.py")
+    # Called, and the module's own: src/towns/build_places.py has a
+    # read_officials of its own, for the towns' officials.
+    missing = [r for r in readers if not calls.get(r) or r not in imported]
+    assert not missing, f"these no longer read the hand file through read_officials: {missing}"
+    own = Path(__file__).read_text(encoding="utf-8")
+    assert ('Path("corrections/' + 'officials.json").read_text') not in own, (
+        "preflight reads the hand file itself, where a page reads it through read_officials")
+    # The retired file.
+    assert not Path("corrections/status/" + retired).exists(), (
+        f"corrections/status/{retired} is back: the person retired it on 23 October 2026")
+    assert not txt, f"code names the retired corrections/status/{retired}: " + ", ".join(txt)
+    for f in ("cloud_kit.json", "build_all.py", "nightly.py"):
+        if Path(f).exists():
+            assert retired not in Path(f).read_text(encoding="utf-8"), f"{f} names {retired}"
+    assert '"--officials"' not in inspect.getsource(B.parse_args), (
+        "build_site_v2 still takes --officials")
+    comp, _vac = B.build_composition(types.SimpleNamespace(districts=str(Path(
+        tempfile.gettempdir()) / "gr-no-such-districts.json")), {})
+    assert set(comp) == {"H", "S", "vacancies"}, (
+        f"home.json's composition carries {sorted(set(comp) - {'H', 'S', 'vacancies'})} besides the chambers")
+    for gone in ("C.council", "C.governor", 'getElementById("composition")', "Who holds office</h2>"):
+        assert gone not in BP.HOME_JS, f"the home page's script still draws {gone!r}"
+    assert 'id="composition"' not in Path(BP.__file__).read_text(encoding="utf-8"), (
+        "the home page still writes the composition block's empty box")
+    return "ok", (f"{len(readers)} readers of the hand file, each through read_officials, and no "
+                  f"other path to it; corrections/status/{retired} gone, named nowhere, and the "
+                  "home page's Council and Governor with it")
+
+
+@check("files", "the officials are due a reading a week after each general election, and the "
+                "reminder says so on those days and on no others",
+       needs=("build_members_elect", "legislative_year"))
+def _officials_recheck_rule(BME, LY):
+    """The person's approval of 23 October 2026: after a general election
+    the hand file's names may be a term out of date and nothing else says
+    so. build_members_elect.recheck_due is the rule _officials_rechecked
+    holds the real file to, as one of the REMINDERS that warn on the night
+    and never hold it: quiet until a week after the vote (RECHECK_AFTER);
+    from then, due while _checked is dated before that week was out, is no
+    day, or is after today -- a date to come is a way to silence it early.
+    Run on fixed days here, the code half, so a rule that could never fire
+    fails now rather than passing quietly through the day it was written
+    for; the general election by its rule, the Tuesday after the first
+    Monday of November in an even year."""
+    import datetime as _dt
+    D = _dt.date
+    assert BME.last_general_election(D(2026, 11, 4)) == D(2026, 11, 3) and \
+        BME.last_general_election(D(2026, 11, 3)) == D(2024, 11, 5), (
+            "the last general election before 4 November 2026 is not the 3rd, or before the 3rd "
+            "not 5 November 2024")
+    # One rule in two modules, which must not part: the schedule page's
+    # (legislative_year, a page builder) and this one's, in src/parse/,
+    # which a page builder may import and not the other way round.
+    parted = [y for y in range(2024, 2052, 2) if BME.general_election(y) != LY.general_election(y)]
+    assert not parted, f"build_members_elect and legislative_year date the general election of {parted} apart"
+    e28 = BME.general_election(2028)
+    for day, checked, due in (
+            (D(2026, 10, 23), "2026-09-09", False),       # the 2024 vote's week long past
+            (D(2026, 10, 23), "2024-11-11", True),        # read in 2024's week of the count
+            (D(2026, 11, 3), "2026-09-09", False),        # election day
+            (D(2026, 11, 9), "2026-09-09", False),        # the count's week: nothing asked
+            (D(2026, 11, 10), "2026-09-09", True),        # a week on: due
+            (D(2026, 11, 10), "2026-11-10", False),       # read that day
+            (D(2026, 11, 12), "2026-11-05", True),        # read in the count's week
+            (D(2026, 11, 12), "2026-11-11", False),
+            (D(2027, 6, 1), "2026-11-10", False),
+            (D(2027, 6, 1), "2026-09-09", True),
+            (D(2026, 11, 12), "2026-11-20", True),        # a date to come
+            (D(2026, 11, 12), "soon", True), (D(2026, 11, 12), "", True),
+            (D(2026, 11, 12), None, True),
+            (e28 + _dt.timedelta(days=6), "2026-11-10", False),
+            (e28 + _dt.timedelta(days=7), "2026-11-10", True)):
+        said = BME.recheck_due(checked, day)
+        assert bool(said) == due, (f"on {day} with _checked {checked!r} the reminder "
+                                   + (f"fires ({said[:90]})" if said else "stays quiet")
+                                   + (", and should not" if said else ", and should fire"))
+    said = BME.recheck_due("2026-09-09", D(2026, 11, 10))
+    assert "November 3, 2026" in said and "November 10, 2026" in said and '"elect"' in said, said
+    assert "after today" in BME.recheck_due("2026-11-20", D(2026, 11, 12))
+    assert "_officials_rechecked" in REMINDERS, (
+        "_officials_rechecked is not among the REMINDERS, which warn on the night and never hold it")
+    return "ok", ("quiet until a week after each general election, then due until _checked is "
+                  "on or after that day; a date to come or no date is due too")
+
+
+@check("data", "the officials in corrections/officials.json are read again once a general "
+               "election has had a week", needs=("build_members_elect",))
+def _officials_rechecked(BME):
+    """A REMINDER, the register of probate paragraph's kind
+    (_probate_after_the_vote), on the rule _officials_recheck_rule holds:
+    from a week after a general election, the hand file's _checked must be a
+    day on or after that week's end. A data check and one of the REMINDERS:
+    on the night it warns, on its own Healthchecks check, and never holds
+    the site, because a list to read again is no reason to stop it; and on
+    the laptop it is read by the first session after it fires."""
+    import build_date
+    checked = _officials_now().get("_checked")
+    today = build_date.today()
+    said = BME.recheck_due(checked, today)
+    assert not said, said
+    year = today.year - today.year % 2
+    nxt = next(BME.general_election(y) + BME.RECHECK_AFTER for y in (year, year + 2)
+               if BME.general_election(y) + BME.RECHECK_AFTER > today)
+    return "ok", (f"_checked is {checked}; this fails from {nxt}, a week after the next general "
+                  "election, until the offices are read again")
 
 
 @check("frontend", "the vacancy list says \"District\" and how a seat is filled, from RSA 661:8")
@@ -89560,8 +89964,7 @@ def _map_data(roster=()):
     if not (geom.exists() and off.exists() and Path("records/districts/house.txt").exists()):
         return None
     districts = PD.combine("records/districts", say=lambda *a, **k: None)
-    return BDM.build(geom.read_bytes(), districts, list(roster),
-                     json.loads(off.read_text(encoding="utf-8")))
+    return BDM.build(geom.read_bytes(), districts, list(roster), _officials_now(off))
 
 
 # map.js mounted on dom_stub.js's element, its data never arriving: what is
@@ -89758,7 +90161,7 @@ def _map_fills_from_the_record(BDM):
               for p in ps]
     assert sorted(placed) == sorted(m["display_full"] for m in roster), (
         f"the roster's members are not each in one district: {placed}")
-    off = json.loads(Path("corrections/officials.json").read_text(encoding="utf-8"))
+    off = _officials_now()
     for lk, office in (("exec", "council"), ("cong", "us_house")):
         for num, o in off[office]["districts"].items():
             assert f[lk][str(int(num))] == o["party"][:1].upper(), (
@@ -89871,7 +90274,7 @@ def _map_published():
         else:
             k = ("senate", str(int(m["district"])))
         seen.setdefault(k, set()).add(str(m.get("party") or "X")[:1].upper())
-    off = json.loads(Path("corrections/officials.json").read_text(encoding="utf-8"))
+    off = _officials_now()
     for lk, office in (("exec", "council"), ("cong", "us_house")):
         for num, o in off[office]["districts"].items():
             if o.get("name"):
@@ -93977,7 +94380,8 @@ RECORD_CHECKS = {
     # How long the night lets the record stand still, against the export's
     # finished dockets (18 October 2026): the record's history, never the site.
     "_still_days_from_history"}
-REMINDERS ={"_probate_after_the_vote", "_session_over_current", "_town_clerks_reread"}
+REMINDERS ={"_probate_after_the_vote", "_session_over_current", "_town_clerks_reread",
+            "_officials_rechecked"}
 
 
 def built_selected(c):
@@ -94065,7 +94469,7 @@ def _alarm_stays_able_to_ring(NI):
     """private/UNATTENDED_AUDIT_2026-10-18.md, sections 4.3.5 and 4.1.
     alerts_of() put every failed check of the built site into logs/alert.txt,
     the warn tier too, and the workflow pings the night's Healthchecks check
-    /fail whenever that file says anything. The three reminders fail on a
+    /fail whenever that file says anything. The reminders fail on a
     date until a person acts -- the Register of Probate's from 2 December
     2026 at the latest -- so from then the night's check would have stayed
     down, and Healthchecks, which writes on the change, would have sent

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-09.2
+# GRANITE_VERSION: 2026-10-09.3
 """
 Who held the chair's offices, and on which days, from the record on disk.
 
@@ -73,16 +73,19 @@ import _paths  # noqa: E402,F401
 
 import argparse
 import datetime as _dt
-import json
 import re
 
 import journal_days as JD
 import proceedings as P
+# The one reader of corrections/officials.json (23 October 2026): every page
+# reads the file through it, and so does this, for its legislative_officers.
+from build_members_elect import read_officials
 
 HOUSE = Path("journals")
 SENATE = Path("journals_senate")
 CALENDARS = Path("calendars")
-HAND = Path("corrections/officials.json")
+# None is corrections/officials.json, as read_officials names it.
+HAND = None
 
 # The offices, the title a person is given in the chair, and how the page
 # names the office. The House's Speaker Pro Tempore is written "Speaker Pro
@@ -397,7 +400,7 @@ def hand_entries(path=HAND):
     never written. An entry that does not hold together is reported and
     left out rather than half applied."""
     try:
-        doc = json.loads(Path(path).read_text(encoding="utf-8"))
+        doc = read_officials(path)
     except (OSError, ValueError):
         return [], []
     block = doc.get("legislative_officers") or {}

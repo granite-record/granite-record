@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-16.5
+# GRANITE_VERSION: 2026-10-16.6
 """
 Who November's election sent to the General Court, for the weeks before they sit.
 
@@ -56,7 +56,11 @@ reopen:
      last seat is not final by itself.
   5. STATE REPRESENTATIVE AND STATE SENATOR ONLY. The Governor, the Council
      and Congress are the person's corrections/officials.json, and take
-     office in January.
+     office in January. Since 23 October 2026 their successors are that
+     file's too, each record's "elect", and this module holds the file's one
+     reader, read_officials(), which puts a successor in office on its day
+     (THE OFFICES THE HAND FILE KEEPS, below); nothing of it reaches
+     site/members_elect.json.
 
 THE RESULTS FILE, collected/election_<year>.json -- written by
 src/parse/parse_sos_results.py, the reader of the Secretary of State's own
@@ -972,6 +976,178 @@ def for_pages(site):
     print(f"  members-elect: drawn from {p.as_posix()}, {len(races)} races, {n} elected, "
           f"until {doc['takes_office']}")
     return doc
+
+
+# ---- the offices the hand file keeps ---------------------------------------
+#
+# THE OFFICES THE HAND FILE KEEPS, AND WHO HOLDS EACH ON THE BUILD'S DAY (the
+# person's approval of 23 October 2026). corrections/officials.json is the
+# person's file of the offices no General Court file names: the Governor and
+# the Council, Congress, the Secretary of State, the Treasurer, the Attorney
+# General, the department heads, the judges and the county officers. Their
+# holders change at an election, or when the legislature chooses in
+# December, and take office weeks later: Congress on 3 January (the
+# Twentieth Amendment); the Governor and the Council in January, though the
+# Constitution on this disk (Part Second, Articles 42 and 60) fixes only the
+# day their votes are laid before the House and Senate, the first Wednesday
+# after the first Tuesday, and no day for the oath. So the day is never
+# worked out here: a record carries its successor under "elect" with the day
+# they take office, the person's to enter, and from that day every page
+# draws the successor as the holder. The file is edited once, when the
+# result is certified, and nobody has to touch it on the day.
+#
+# ONE READER. The Officials page's tabs (build_pages), the town pages and
+# places.json (build_town_pages), the district map (build_district_map) and
+# the officers' hand entries (officers) all read the file through
+# read_officials() and through nothing else, so no two pages can differ
+# about who holds an office; preflight reads the code for it.
+
+OFFICIALS = Path("corrections") / "officials.json"
+# What a record says of the office, and keeps when a successor takes it. Its
+# other plain fields -- the name, the party, the ways to reach them, where and
+# when they were read -- are the holder's, and leave with them.
+OFFICE_FIELDS = frozenset({"office", "scope", "about", "district", "title", "department"})
+
+
+def _day(today):
+    """`today` as a date: the build's day where it is None."""
+    if today is None:
+        return build_date.today()
+    if isinstance(today, datetime.datetime):
+        return today.date()
+    if isinstance(today, datetime.date):
+        return today
+    return datetime.date.fromisoformat(str(today)[:10])
+
+
+def _takes_office(e, where, what):
+    """The day successor `e`, at `where` in the file `what`, takes office;
+    SystemExit where it names nobody or no day."""
+    if not isinstance(e, dict) or not str(e.get("name") or "").strip():
+        raise SystemExit(f"{what}: the successor at {where} (\"elect\") names nobody. A "
+                         "successor is an object with a holder's fields, a name first, and "
+                         "takes_office (corrections/README.md)")
+    if "elect" in e:
+        raise SystemExit(f"{what}: the successor at {where}, {e['name']}, has a successor of "
+                         "its own; give the record one at a time")
+    raw = str(e.get("takes_office") or "")
+    try:
+        if DAY_RE.match(raw):
+            return datetime.date.fromisoformat(raw)
+    except ValueError:
+        pass
+    raise SystemExit(f"{what}: the successor at {where}, {e['name']}, takes office on "
+                     + (repr(raw) if raw else "no day") + ": write takes_office as YYYY-MM-DD, "
+                     "the day they take the office. No page is built on a guess at it")
+
+
+def officials_on(doc, today=None, what=OFFICIALS.as_posix()):
+    """The hand file's `doc` as it stands on `today` (the build's day by
+    default): each record whose successor's day has come is the successor's.
+
+    A RECORD'S SUCCESSOR is an object under its "elect": the fields a holder
+    of that record has -- name, party, phone, phone_dc, email, official_url,
+    contact_url, source, read, as the record uses them -- and takes_office,
+    the day they take the office, "YYYY-MM-DD":
+
+        "2": {"name": "A. Holder", "party": "R", "official_url": "https://...",
+              "elect": {"name": "B. Successor", "party": "D",
+                        "official_url": "https://...", "source": "https://...",
+                        "read": "2026-11-20", "takes_office": "2027-01-07"}}
+
+    Before that day the record is the file's, "elect" and all, and the
+    Officials page's tabs say under the holder who takes the office and when
+    (officials_tabs.successor). From it the record is the successor's own
+    fields over what the record says of the office (OFFICE_FIELDS) and
+    whatever it holds inside it; nothing of the predecessor's is carried
+    over, not a phone and not an address, so a successor names every way to
+    reach them, the office's own address included where the record gives
+    one. A successor whose day has passed is simply the holder. Any record
+    in the file may carry one.
+
+    A successor with no name, a successor of its own, or a takes_office that
+    is no day stops the builder that reads it (SystemExit): the file would
+    say somebody takes an office and not who or when, and a page that
+    guessed would put a name against an office on the wrong day. `doc` is
+    not changed."""
+    day = _day(today)
+
+    def walk(x, where):
+        if isinstance(x, list):
+            return [walk(v, f"{where}[{i}]") for i, v in enumerate(x)]
+        if not isinstance(x, dict):
+            return x
+        out = {k: walk(v, f"{where}.{k}" if where else str(k)) for k, v in x.items()
+               if k != "elect"}
+        if "elect" not in x:
+            return out
+        e = x["elect"]
+        if day < _takes_office(e, where or "the top", what):
+            return {**out, "elect": dict(e)}
+        kept = {k: v for k, v in out.items() if k in OFFICE_FIELDS or isinstance(v, (dict, list))}
+        return {**kept, **{k: v for k, v in e.items() if k != "takes_office"}}
+    return walk(doc, "")
+
+
+def read_officials(path=None, today=None):
+    """corrections/officials.json (or `path`), as every page draws it on
+    `today`: read, and officials_on() applied. THE ONE READER (above). A
+    file that is not there or will not parse raises as reading it always
+    did (OSError, ValueError), for the caller to decide; a successor that
+    will not read stops it (officials_on)."""
+    p = Path(path) if path else OFFICIALS
+    return officials_on(json.loads(p.read_text(encoding="utf-8")), today, p.as_posix())
+
+
+# THE FILE READ AGAIN AFTER AN ELECTION (the person's approval of 23 October
+# 2026). "_checked" is the day a person last read the Governor, the Council
+# and Congress against their own pages. After a general election the names
+# may be stale and nothing else says so, so from a week after the vote a
+# _checked dated before that week was out is a reminder -- preflight's
+# _officials_rechecked, one of its REMINDERS, which on the night warns and
+# never holds the site. The week is the approval's: nothing is asked of the
+# person while the count is coming in, and a reading in it is not the one
+# asked for.
+RECHECK_AFTER = datetime.timedelta(days=7)
+
+
+def last_general_election(today):
+    """The latest general election before `today`, a date."""
+    year = today.year - today.year % 2
+    held = general_election(year)
+    return held if held < today else general_election(year - 2)
+
+
+def recheck_due(checked, today=None):
+    """What the person is to do about the hand file's _checked (`checked`),
+    or "" while nothing is due: from a week after the latest general
+    election, a _checked dated before that week was out (RECHECK_AFTER), or
+    none, or no day, is due a reading of the offices again; one after today
+    is no reading at all."""
+    day = _day(today)
+    held = last_general_election(day)
+    due = held + RECHECK_AFTER
+    if day < due:
+        return ""
+    raw = str(checked or "").strip()
+    try:
+        when = datetime.date.fromisoformat(raw) if DAY_RE.match(raw) else None
+    except ValueError:
+        when = None
+    if when is not None and when > day:
+        return (f"{OFFICIALS.as_posix()}'s _checked is {raw}, after today: it records a "
+                "reading that happened, not one planned")
+    if when is not None and when >= due:
+        return ""
+    words = lambda d: f"{d:%B} {d.day}, {d.year}"      # noqa: E731
+    return (f"the officials in {OFFICIALS.as_posix()} have not been rechecked since the general "
+            f"election of {words(held)}: "
+            + (f"_checked is {raw!r}" if raw else "it has no _checked")
+            + f", and a reading counts from {words(due)}, a week after the vote. Read each "
+            "office's page again, give "
+            "each seat that changes hands its successor under \"elect\" with the day they take "
+            "office (corrections/README.md says how), and set _checked to the day of that "
+            "reading")
 
 
 # ---- the step --------------------------------------------------------------

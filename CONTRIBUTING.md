@@ -324,7 +324,7 @@ folder. Among them:
 | `corrections/docket_corrections.json` | dates the docket states wrongly and rows it files under the wrong bill, with the evidence |
 | `corrections/place_corrections.json` | values the Secretary of State's clerk-and-polling list states wrongly, with the second source |
 | `corrections/ballot_results.json` | the statewide vote on each constitutional amendment, copied by hand from the source each row names |
-| `corrections/status/` | the state of the session and the Executive Council, which no published file carries |
+| `corrections/status/` | the state of the session, which no published file carries |
 
 The folders are the authoritative list: `preflight.py`'s `HANDMADE` reads
 them as they stand, so a file put in either is guarded the day it is put
