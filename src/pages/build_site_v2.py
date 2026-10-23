@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.228
+# GRANITE_VERSION: 2026-09-05.229
 """
 Generate the faceted site from real General Court data.
 
@@ -10125,6 +10125,23 @@ def bill_rollcalls(bid, term, rcs, narr, votes_by_bill, legs, unnamed,
             "amendment": number, "_ord": (e["date"], _i),
             **need,
         })
+    # THE MOTIONS ON THE BILL'S OWN DEBATE (the owner, 23 October 2026):
+    # moving the previous question, limiting debate, dividing the question --
+    # by division or by voice, from the bill's docket rows narrative.py reads
+    # as no floor action ("Sen. Sanborn moved to call the question, MA, VV")
+    # and from the Journal where the docket gives none (HB 1601's previous
+    # question, 255-78 on a division, 12 March 2014). vote_passage decides
+    # which, once for this tab and the session day; each is drawn before the
+    # bill's own rows of that day, where the motion was made.
+    for e in VP.motion_events(term, bid, (narr or {}).get("events", []), rcs):
+        label, _ = VK[e["vote_kind"]]
+        rc_out.append({
+            "date": e["date"], "body": e["body"], "question": e["action"],
+            "mover": e.get("mover") or "", "yeas": e.get("yeas"), "nays": e.get("nays"),
+            "passed": e["motion"] == "MA", "vote_kind": e["vote_kind"], "vote_kind_label": label,
+            "threshold_note": None, "tally": {}, "members": [], "amendment": None,
+            "_ord": (e["date"], e["_at"] - 0.5),
+        })
     # By the docket's own sequence, not by the wording of the motion.
     rc_out.sort(key=lambda r: r["_ord"])
     return rc_out
@@ -11740,6 +11757,17 @@ def main():
     if rollcalls and not all(isinstance(v, dict) for v in rollcalls.values()):
         sys.exit(f"{a.rollcalls} is keyed on bill number, not on term. Rebuild "
                  "it: python3 src/parse/rollcall_parser.py --all --out rollcalls.json")
+    # A MOTION ON ONE BILL'S DEBATE IS THE BILL'S (the owner, 23 October 2026):
+    # a roll call the roll-call file files under no bill whose Journal passage
+    # moves to divide, limit or call the question of one bill of the term --
+    # HB 1570's division of 20 March 2014 -- is drawn under that bill, and
+    # its ballots go with it (below). vote_passage says which; session_days
+    # and build_nobill_votes move the same ones.
+    rollcalls, MOVED_TO_BILL = VP.move_on_bills(rollcalls)
+    if MOVED_TO_BILL:
+        print(f"  {len(MOVED_TO_BILL)} roll call(s) on no bill drawn under the bill whose debate "
+              "they divided, limited or called the question of: "
+              + ", ".join(f"{k} -> {b}" for k, b in sorted(MOVED_TO_BILL.items())))
     reports = load(a.reports, {})
     # The Senate's committee reports, with their reasoning, from the General
     # Court's database -- the half the House Calendar PDFs cannot cover. Kept
@@ -11931,6 +11959,10 @@ def main():
         # The bill is keyed by term for the same reason every other per-bill
         # map now is: HB396 exists in every biennium.
         key = f"{v['year']}-{v['body']}-{v['vote_number']}"
+        # A roll call drawn under the bill whose debate it was on (above):
+        # its ballots are that bill's, and a member's Votes tab names it.
+        if key in MOVED_TO_BILL:
+            v["bill"] = MOVED_TO_BILL[key]
         # A ballot of Organization Day is on the next term's measure
         # (proceedings.vote_term): HR 1 of 2027, not of 2025.
         votes_by_bill[(P.vote_term(v["year"], v.get("date")), v["bill"])][key].append(v)

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-19.33
+# GRANITE_VERSION: 2026-09-19.34
 """
 A sitting day of the House or Senate, assembled from what is already parsed.
 
@@ -69,6 +69,7 @@ import build_date
 import shell
 import narrative
 import rollcall_outcomes as RO
+import vote_passage as VP
 
 NARRATIVES = "narratives.json"
 
@@ -3477,6 +3478,30 @@ def load(path=NARRATIVES, rollcalls=None, sat=None, journals=None):
 
     rolls = _read_rollcalls(Path(path).parent / ROLLCALLS if rollcalls is None
                             else rollcalls)
+    # A MOTION ON ONE BILL'S DEBATE IS THE BILL'S (the owner, 23 October 2026;
+    # vote_passage): the roll calls on no bill that divided, limited or
+    # called the question of one bill are drawn under it, as the bill's own
+    # Votes tab draws them; and the divisions and voice votes on those
+    # motions that no docket row the day reads as floor action draws are
+    # drawn under the bill too, before its own rows of that day. Only for the
+    # site's own record, beside the narratives read: a record cut for a check
+    # is held to what it was given.
+    if rollcalls is None:
+        jm = Path(path).parent / VP.SOURCE
+        rolls, _moved = VP.move_on_bills(rolls, jm)
+        rc_by = collections.defaultdict(list)
+        for term, bills in (rolls or {}).items():
+            for key, rs in (bills or {}).items():
+                for r in rs or ():
+                    rc_by[(term, "" if key == "_procedural" else _bill_of(key))].append(r)
+        for term, bills in sorted(data.items()):
+            for bill, rec in sorted(bills.items()):
+                for e in VP.motion_events(term, bill, rec.get("events") or [],
+                                          rc_by.get((term, bill), ()), jm):
+                    if (e["body"], e["date"]) not in grouped:
+                        continue
+                    grouped[(e["body"], e["date"])].append(
+                        Item(bill, term, e, base[(term, bill)] + e["_at"] - 0.5))
     need = _fifths_from_rollcalls(rolls)
     # A DIVISION BY THE ROLL CALL'S RULE (17 October 2026), as the bill page
     # reads it (rollcall_outcomes.division_threshold): three fifths to pass a

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.80
+# GRANITE_VERSION: 2026-09-05.81
 """
 Run the whole pipeline in the right order.
 
@@ -778,6 +778,10 @@ def plan(a):
         # publish every such vote with the roll-call file's three words
         # again, every step reporting success. It stops the build where a
         # year whose Journals are here yields nothing (journal_motions.py).
+        # And since the owner's review of that day: the committee's report a
+        # vote was on, whole, and the motions on one bill's own debate --
+        # the previous question, limiting debate, dividing the question --
+        # which the site data and the session days draw under that bill.
         Step("what the Journals say each vote on no bill was about",
              ["journal_motions.py"],
              needs=["rollcalls.json", "journals", "journals_senate"],
@@ -988,8 +992,9 @@ def plan(a):
              needs=["rollcalls.json", "site/session/H"],
              produces=["site/session/nobill"],
              note="rules suspensions, appeals of the chair, members allowed to go on, "
-                  "reprimands and censures, each with the kind of question and a link to "
-                  "the Journal's words on its day"),
+                  "and misc votes, each with the kind of question and a link to the "
+                  "Journal's words on its day, and to the committee's report where the "
+                  "vote was on one"),
 
         # THE HOUSE AND SENATE AS COMMITTEES OF THE WHOLE (the person, 9 and
         # 10 October 2026): a card at the top of each column of /committees

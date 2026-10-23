@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-23.4
+# GRANITE_VERSION: 2026-10-23.5
 """
 What the Journals say a vote on no bill was about.
 
@@ -68,13 +68,14 @@ And two more on what is SAID about a shown passage:
      1609-FN a special order, challenged as "the motion to Special Order HB
      1142" (11 March 2026) -- the quote is shown alone: no bill is named and
      no one-line summary is written.
-  7. A MEMBER'S DISCIPLINE (a reprimand, a censure, an expulsion, a
+  7. A VOTE THAT NAMES A MEMBER (a reprimand, a censure, an expulsion, a
      member's privileges) has its quote and its page, and a one-line summary
      only where a person has approved that line in corrections/vote_lines.json
      for that roll call and that page. Its subject is named only where the
      motion or report and the Journal's line after the vote ("The Speaker
      informed Rep. Corcoran of the censure by the House") name the same
-     member.
+     member. The site shows these as "Misc vote", as it does every question
+     with no name of its own (KINDS): the owner's framing, not the parser's.
 
 A one-line summary is a few words of the site's for the kind of question
 and words lifted from the passage: every word of a slot is checked to stand
@@ -83,10 +84,35 @@ in the excerpt, in order, or the line is not written (gate 8).
 VOTES ONLY THE JOURNAL HAS. A division prints a count and no names, and a
 voice vote not even a count, so neither is in the roll-call file: the House
 reprimanded Rep. Paige Beauchemin on 12 February 2026 on a division, 264-89.
-Those taken under the same headings -- discipline, an appeal of a ruling, a
+Those taken under the same headings -- a reprimand, an appeal of a ruling, a
 member continuing, a rules suspension, the rules -- are read here too, and
 marked as what they are: a division gives the count and not each member's
 vote.
+
+THE OWNER'S REVIEW OF 23 OCTOBER 2026 added three things.
+
+  View the report. Where the question is to affirm or adopt a committee's
+  report printed above it, the report is kept whole, verbatim, its pages
+  cited (report_of) -- only where it is bounded for certain: the report's
+  heading nearest above the question, nothing else between, and the
+  committee the question names. In 1997-2026 that is the censure of Rep.
+  Corcoran and the Legislative Ethics Committee's report on complaint 2026-3.
+
+  Misc votes. A reprimand, a censure, a member's privileges and every
+  question with no name of its own are shown as a "Misc vote" (KINDS,
+  GROUPS); the parser still tells them apart, for gate 7.
+
+  A motion on one bill's debate is the bill's. A roll call on no bill whose
+  passage moves the previous question on, limits debate on or divides the
+  question of exactly one bill of the term carries `on_bill`; and the
+  divisions and voice votes on those motions, which no roll-call file holds,
+  are read from both chambers' Journals (bill_motion_votes): the bill the
+  motion names, or the one whose debate it was moved in -- the last bill's
+  entry above it that sitting, with no other business's heading between --
+  and the Journal's decision of THAT motion before anything else is moved
+  or put. vote_passage.py draws them on the bill's Votes tab and the
+  session day, where the bill's docket shows it before the chamber that day
+  and states no such vote itself.
 
 A WRITER RUN ON A SUBSET DESTROYS THE REST (CLAUDE.md). This reads every
 year whose Journals are on disk and keeps, from the file it is replacing,
@@ -123,9 +149,18 @@ CAREERS = _paths.ROOT / "generated" / "careers.json"
 # A CLOSED LIST. Each kind is a heading a reader understands without the
 # House Rules to hand; the site's own words, kept here once so the parser,
 # the session pages, the member tab and the per-term list say the same.
+#
+# MISC VOTES, NOT A MEMBER'S DISCIPLINE (the owner, 23 October 2026: "I'd
+# rather frame it as Misc votes than discipline of a member in terms of
+# grouping them since there are other votes that are not about disciplining
+# a member like whether to revoke unanimous consent"). A reprimand, a censure
+# and a member's privileges are told apart from the rest inside the parser,
+# where gate 7 needs them (PERSONAL), and are shown under one neutral name
+# with every other question that has no name of its own: "Misc vote" over
+# one, "Misc votes" in the per-term list's filter (GROUPS).
 KINDS = {
-    "discipline": "Discipline of a member",
-    "privileges": "A member's privileges",
+    "reprimand": "Misc vote",
+    "privileges": "Misc vote",
     "member_continue": "Shall the member continue",
     "disorderly": "Disorderly speech",
     "appeal": "Appeal of the chair's ruling",
@@ -138,18 +173,42 @@ KINDS = {
     "justices": "Asking the justices for an opinion",
     "report": "A committee's report on no bill",
     "housekeeping": "The Senate's remote-session business",
-    "motion": "A motion on other business",
-    "other": "Another question",
+    "motion": "Misc vote",
+    "other": "Misc vote",
 }
-# Kinds about a person, whose one-line summary only a person may write.
-PERSONAL = {"discipline", "privileges"}
+# The per-term list's filter: the kinds it names as one, and that name.
+GROUPS = {"reprimand": "misc", "privileges": "misc", "motion": "misc", "other": "misc"}
+GROUP_WORDS = {"misc": "Misc votes"}
+# What each kind is, in the parser's own reasons for holding a passage back
+# and on the bench: never shown on a page.
+NAMES = {
+    "reprimand": "a reprimand, a censure or an expulsion",
+    "privileges": "a member's privileges",
+    "member_continue": "a member continuing",
+    "disorderly": "disorderly speech",
+    "appeal": "an appeal of the chair's ruling",
+    "suspend_rules": "suspending the rules",
+    "rules": "the chamber's own rules",
+    "print": "printing in the journal",
+    "limit_debate": "limiting debate",
+    "adjourn": "adjourning or recessing",
+    "petition": "a petition or remonstrance",
+    "justices": "asking the justices for an opinion",
+    "report": "a committee's report on no bill",
+    "housekeeping": "the senate's remote-session business",
+    "motion": "a motion on other business",
+    "other": "another question",
+}
+# The kinds that name a member -- a reprimand, a censure, an expulsion, a
+# member's privileges -- whose one-line summary only a person may write.
+PERSONAL = {"reprimand", "privileges"}
 
 # The words that name each kind, in the order they are tried. Read off the
 # roll-call file's words and the passage alike; the passage's last question
 # decides first (classify).
 KIND_WORDS = [
     # "\bcensur", or licensure is a censure (SB 125-FN, 3 June 2015).
-    ("discipline", r"reprimand|\bcensur|\bexpel|expulsion"),
+    ("reprimand", r"reprimand|\bcensur|\bexpel|expulsion"),
     # Not the anterooms of House Rule 63 on weapons (2 January 2019): the
     # privileges a member was barred from, by the Speaker's directive.
     # Not the Senate's "personal privileges", which are its members' speeches.
@@ -734,6 +793,179 @@ def after_line(text, end):
     return m.group(0) if m else ""
 
 
+# ------------------------------------------------------------- the report
+#
+# VIEW THE REPORT (the owner, 23 October 2026: "Where possible where a report
+# is included relative to a motion like reprimand from legislative
+# administration or the ethics committee, it would be good to have that
+# available, possibly as part of the session day page under a drop-down like
+# 'View the report'"). Where the question a vote decided is to affirm or
+# adopt a committee's report and the Journal prints the report just above
+# it, the report's whole text is kept, verbatim, from its heading to where
+# the question is put: the censure of Rep. Corcoran (21 May 2026, page 23)
+# and the Legislative Ethics Committee's report on complaint 2026-3 (19
+# August 2026, pages 63-64).
+#
+# ONLY A REPORT BOUNDED FOR CERTAIN, and only on a vote whose passage is
+# shown (the same tally, date, question and outcome gates): the question
+# put last before the tally names the report; the nearest heading above it
+# is a report's; between the two stand no other heading, no count, no
+# decision and no other question; and the committee the question names is
+# the one the report is from. Anything less and no report is shown -- the
+# reason is kept, and counted in the log.
+REPORT_Q = re.compile(
+    r"The\s+question\s+(?:now\s+)?(?:was|being|is)\s+(?:on\s+)?(?:to\s+)?(?:the\s+)?"
+    r"(?:affirm(?:ing)?|adopt(?:ing|ion\s+of)?|accept(?:ing|ance\s+of)?)\s+(?:of\s+)?the\s+"
+    r"(?:majority\s+|minority\s+)?report\s+(?:of|from|by)\s+the\s+(?:special\s+|select\s+)?"
+    r"committee(?:\s+on\s+(?P<c>[A-Za-z][A-Za-z ,&'’\n-]{2,80}?))?\s*[.?]", re.I)
+REPORT_HEAD = re.compile(r"\bREPORT\b")
+ANY_QUESTION = re.compile(r"The\s+question\s+(?:now\s+)?(?:being|is|was)\b")
+# "II. Charges", "V. Conclusion": a report's own section, a paragraph of its own.
+SECTION_LABEL = re.compile(r"^[ \t]*[IVX]{1,4}\.[ \t]+[A-Z][a-z]")
+REPORT_MAX = 60000
+
+
+def _head_end(text, at, h):
+    """Where the heading `h` found at `at` ends: the end of the line its
+    last word is on (a heading may be set on two lines)."""
+    last = h.split()[-1] if h.split() else ""
+    k = text.find(last, at) if last else at
+    k = at if k < 0 else k + len(last)
+    nl = text.find("\n", k)
+    return len(text) if nl < 0 else nl
+
+
+def _vocab(text):
+    """(every word of the text, lowercased, with how often it stands, and how
+    often it stands at a line's end): what says whether a line's last few
+    letters are a word of their own or the front of one the press broke."""
+    words, ends = Counter(), Counter()
+    for line in text.split("\n"):
+        # Not a piece of an address: "gmail.com" is no word "com" (19 August
+        # 2026, where "The com" "plaints" is one).
+        toks = re.findall(r"(?<![.@/\w])[A-Za-z]+(?![\w@/]|\.[A-Za-z])", line)
+        for t in toks:
+            words[t.lower()] += 1
+        # A line's last letters, whether the press kept the hyphen or not.
+        if toks and re.search(r"[A-Za-z]-?\s*$", line):
+            ends[toks[-1].lower()] += 1
+    joined = {w.lower() for w in re.findall(r"[A-Za-z]+-[A-Za-z]+", text)}
+    return words, ends, joined
+
+
+def _mend(a, b, vocab):
+    """Line `b` set after line `a`, the way the page reads: a word broken at
+    a hyphen put back together ("Mem-" "ber"), a number range kept whole
+    ("2027-" "2036"), and a word the extraction broke without its hyphen
+    ("The com" "plaints") put back only where the whole word stands
+    elsewhere in the Journal and its front never stands alone."""
+    if not a:
+        return b
+    words, ends, joined = vocab
+    if a.endswith("-"):
+        f, n = re.search(r"([A-Za-z]+)-$", a), re.match(r"([a-z]+)", b)
+        # "self-" "government" is a word the Journal hyphenates elsewhere
+        # and never prints whole: the hyphen is the word's, not the press's.
+        if f and n and f.group(1)[-1].islower():
+            whole = (f.group(1) + n.group(1)).lower()
+            if f"{f.group(1)}-{n.group(1)}".lower() in joined and not words.get(whole):
+                return a + b
+            return a[:-1] + b
+        return a + b
+    m, n = re.search(r"(?:^|[\s(“\"])([a-z]+)$", a), re.match(r"([a-z]+)", b)
+    if m and n:
+        front, back = m.group(1), n.group(1)
+        whole = front + back
+        # The whole word, or the same word with or without its plural's s
+        # ("ex" "changes": the Journal prints "exchange").
+        known = (words.get(whole) or words.get(whole + "s")
+                 or (whole.endswith("s") and len(whole) > 5 and words.get(whole[:-1])))
+        if known and words.get(front, 0) <= ends.get(front, 0):
+            return a + b
+    return a + " " + b
+
+
+def _paragraphs(text, lo, hi, vocab):
+    """The report between lo and hi as its paragraphs, verbatim: the running
+    heads and the page breaks out (a paragraph runs on over a page), a new
+    paragraph where the Journal indents a line, leaves a line blank, or
+    opens one of the report's numbered sections."""
+    paras, cur = [], ""
+    blank = page = False
+    for raw in text[lo:hi].replace("\r", "").split("\n"):
+        line = raw.replace("\f", "")
+        if "\f" in raw or RUNNING.match(line):
+            page = True
+            if RUNNING.match(line) or not line.strip():
+                continue
+        if not line.strip():
+            blank = True
+            continue
+        indent = len(line) - len(line.lstrip(" \t"))
+        # A section's number opens a paragraph only where the last one ended:
+        # "... Paragraph" "IV. Principle of Conduct." runs on (19 August 2026).
+        ended = not cur.strip() or re.search(r"[.:;”\"]$", cur.strip())
+        new = (indent >= 3 or (SECTION_LABEL.match(line) and ended)
+               or (blank and not page and ended))
+        blank = page = False
+        s = re.sub(r"[ \t]+", " ", line.strip())
+        if new and cur:
+            paras.append(cur)
+            cur = s
+        else:
+            cur = _mend(cur, s, vocab)
+    if cur:
+        paras.append(cur)
+    return [p.strip() for p in paras if p.strip()]
+
+
+def report_of(text, at, vocab=None):
+    """({"heading", "paras", "page_from", "page_to", "pdf_from", "pdf_to"},
+    "") for the report the question before the tally at `at` is on; (None,
+    why) where a report is the question and cannot be bounded for certain;
+    (None, "") where the question is not a report's."""
+    prev = None
+    for m in TALLY_ANY.finditer(text, max(0, at - REPORT_MAX), at):
+        prev = m
+    lo = prev.end() if prev else max(0, at - REPORT_MAX)
+    qs = list(REPORT_Q.finditer(text, lo, at))
+    if not qs:
+        return None, ""
+    q = qs[-1]
+    if ANY_QUESTION.search(text, q.end(), at):
+        return None, "another question was put after the report's"
+    if DIV_SENT.search(text, q.end(), at):
+        return None, "a division stands between the report's question and this count"
+    hs = [(a, h) for a, h in _heads(text, lo, q.start()) if REPORT_HEAD.search(h)]
+    if not hs:
+        return None, "no report's heading above its question"
+    h_at, h = hs[-1]
+    body_lo = _head_end(text, h_at, h)
+    others = _heads(text, body_lo, q.start())
+    if others:
+        return None, f"another heading ({others[0][1][:40]}) between the report's and its question"
+    seg = text[body_lo:q.start()]
+    if TALLY_ANY.search(seg) or DIV_SENT.search(seg) or ANY_QUESTION.search(seg):
+        return None, "a count, a division or a question inside the report"
+    committee = re.sub(r"\s+", " ", q.group("c") or "").strip()
+    words = re.findall(r"[a-z]{4,}", committee.lower())
+    hay = re.sub(r"\s+", " ", (h + " " + seg)).lower()
+    if committee and (not words or not all(w in hay for w in words)):
+        return None, "the committee the question names is not the report's"
+    paras = _paragraphs(text, body_lo, q.start(), vocab or _vocab(text))
+    if sum(len(p) for p in paras) < 200:
+        return None, "too little of the report could be read"
+    # The last line of the report's own text, not a running head after it.
+    end = body_lo
+    for ln in re.finditer(r"[^\n]*\S[^\n]*", seg):
+        if not RUNNING.match(ln.group(0).replace("\f", "")):
+            end = body_lo + ln.end()
+    p0, pdf0, _d = page_at(text, h_at)
+    p1, pdf1, _d = page_at(text, max(body_lo, end - 1))
+    return {"heading": re.sub(r"\s+", " ", h).strip(), "paras": paras,
+            "page_from": p0, "page_to": p1, "pdf_from": pdf0, "pdf_to": pdf1}, ""
+
+
 # ----------------------------------------------------------------- reading
 
 
@@ -785,17 +1017,17 @@ def classify(heading, said, words):
     """The kind of question: the last question or motion of the passage
     decides, then the heading, then the passage as a whole, then the
     roll-call file's own words. A motion on a reprimand -- to table it, to
-    refer it -- is discipline."""
+    refer it -- is a reprimand's."""
     # The rule's or the report's own text is what is proposed, not the
     # question: a rule on weapons in the anterooms is a rule.
     every = " ".join([heading or ""] + [x["t"] for x in said if x["k"] != "text"])
     found = kinds_in(every)
-    if "discipline" in found:
+    if "reprimand" in found:
         # An appeal of a ruling made during a reprimand is still an appeal.
         last = [x for x in said if x["k"] in ("question", "challenge") and not x.get("earlier")]
-        if last and "appeal" in kinds_in(last[-1]["t"]) and "discipline" not in kinds_in(last[-1]["t"]):
+        if last and "appeal" in kinds_in(last[-1]["t"]) and "reprimand" not in kinds_in(last[-1]["t"]):
             return "appeal"
-        return "discipline"
+        return "reprimand"
     if "privileges" in found:
         return "privileges"
     finals = [x for x in said if x["k"] in ("question", "challenge", "objection", "moved")]
@@ -905,7 +1137,7 @@ def _trim(s, n=16):
 def one_line(kind, said, uc):
     """(line, slots) -- a few of the site's words for the kind and a few of
     the Journal's for what it was on, or ("", []) where the passage does not
-    give them plainly. Never for a member's discipline (gate 7)."""
+    give them plainly. Never for a vote that names a member (gate 7)."""
     if kind in PERSONAL:
         return "", []
     # THE LAST QUESTION PUT IS THE VOTE'S. A motion on a motion -- to table
@@ -1157,7 +1389,7 @@ def read_vote(r, j, root, cache, careers, bills, urls, approved):
     fk = file_kind(e["words"])
     every = " ".join([p["heading"] or ""] + [x["t"] for x in said])
     if fk and fk not in kinds_in(every) and not (fk == "rules" and kind == "suspend_rules"):
-        held.append(f"question: the roll-call file names {KINDS[fk].lower()}, and the passage "
+        held.append(f"question: the roll-call file names {NAMES[fk]}, and the passage "
                     f"at this tally does not")
     # 3b. A count the Journal prints more than once in the file -- the
     # Senate's 24-0 of a remote session, twenty times a day -- can be paired
@@ -1191,6 +1423,21 @@ def read_vote(r, j, root, cache, careers, bills, urls, approved):
     e["bills"] = bs
     term_bills = bills.get(r["_term"]) or set()
     e["bill"] = bs[0] if len(bs) == 1 and (not bills or bs[0] in term_bills) else ""
+    # A motion on one bill's debate -- to divide it, limit it or call its
+    # question -- that the roll-call file files under no bill: the bill's
+    # own, where its passage is shown and names that one bill (BILL_MOTIONS).
+    # The pages move it under the bill only where the bill is a record of
+    # the term (vote_passage.on_bill).
+    put = [x for x in said if x["k"] in ("question", "moved", "challenge")]
+    bm = bill_motion_of(put[-1]["t"]) if put else ""
+    if bm and e["bill"] and not held:
+        e["bill_motion"], e["on_bill"] = bm, e["bill"]
+    # The committee's report the question is on, whole (report_of).
+    rep, rwhy = report_of(text, j["at"])
+    if rep:
+        e["report"] = rep
+    elif rwhy:
+        e["report_held"] = rwhy
     # The member it is about.
     every_said = " ".join(x["t"] for x in said)
     uc = uc_of(said)
@@ -1198,7 +1445,7 @@ def read_vote(r, j, root, cache, careers, bills, urls, approved):
     if kind in PERSONAL:
         name = subject_of(every_said, kind)
         # 7. Named both in the motion or report and in the line after.
-        if kind == "discipline" and name:
+        if kind == "reprimand" and name:
             a = AFTER.search(e["after"] or "")
             after_name = (a.group("a") or a.group("b") or "") if a else ""
             if not after_name or after_name.split()[-1] != name.split()[-1]:
@@ -1223,7 +1470,7 @@ def read_vote(r, j, root, cache, careers, bills, urls, approved):
             line, why = ok["line"], ""
             e["line_by"] = "person"
         else:
-            why = "a member's discipline: only a line a person approved"
+            why = "a vote that names a member: only a line a person approved"
     elif not line:
         why = "no summary for this kind of passage"
     e["line"] = line
@@ -1238,12 +1485,12 @@ DIV_SENT = re.compile(
     r"On\s+a\s+division\s+vote,?\s*(?:with\s+)?(?P<y>\d+)\s+members?\s+having\s+(?:voted|spoken)\s+in"
     r"\s+the\s+affirmative,?\s*(?:and\s+)?(?P<n>\d+)\s+in\s+the\s+negative,?\s*(?P<rest>[^.]{0,240}\.)",
     re.I | re.S)
-JOURNAL_ONLY = {"discipline", "privileges", "member_continue", "appeal", "suspend_rules", "rules"}
+JOURNAL_ONLY = {"reprimand", "privileges", "member_continue", "appeal", "suspend_rules", "rules"}
 
 
 def journal_only(f, body, root, cache, careers, urls, term_of, approved=None):
     """[entry] -- the divisions under a heading of a no-bill kind in one House
-    Journal, and the voice votes on a member's discipline."""
+    Journal, and the voice votes on a reprimand, a censure or an expulsion."""
     if body != "H":
         return []
     text = _read(f, cache)
@@ -1259,7 +1506,7 @@ def journal_only(f, body, root, cache, careers, urls, term_of, approved=None):
             continue
         bs = bills_in(said)
         # A division on a bill's own motion is the bill's: its page has it.
-        if bs and kind not in ("appeal", "discipline", "privileges", "member_continue"):
+        if bs and kind not in ("appeal", "reprimand", "privileges", "member_continue"):
             continue
         # Nor a motion on a bill at all: the question last put names a bill
         # and is not a ruling or a member's consent -- tabling SB 162-FN is
@@ -1295,7 +1542,7 @@ def journal_only(f, body, root, cache, careers, urls, term_of, approved=None):
             e["after"] = after_line(text, m.end())
             a = AFTER.search(e["after"] or "")
             after_name = (a.group("a") or a.group("b") or "") if a else ""
-            if kind == "discipline" and (not after_name or not name
+            if kind == "reprimand" and (not after_name or not name
                                          or after_name.split()[-1] != name.split()[-1]):
                 name = ""
             e["member"] = name
@@ -1308,8 +1555,13 @@ def journal_only(f, body, root, cache, careers, urls, term_of, approved=None):
         if len(bs) > 1 or (line and not all(_in_order(s, every) for s in slots)):
             line = ""
         e["line"] = line
+        rep, rwhy = report_of(text, m.start())
+        if rep:
+            e["report"] = rep
+        elif rwhy:
+            e["report_held"] = rwhy
         out.append(e)
-    # Voice votes on a member's discipline: "MOTION TO REPRIMAND ... Motion
+    # Voice votes on a reprimand, a censure or an expulsion: "MOTION TO REPRIMAND ... Motion
     # adopted." with no count -- read only for the kinds about a person.
     for h_at, h in _heads(text, 0, len(text)):
         if not re.search(r"REPRIMAND|CENSURE|EXPUL|EXPEL", h):
@@ -1333,7 +1585,7 @@ def journal_only(f, body, root, cache, careers, urls, term_of, approved=None):
         page, pdf, _d = page_at(text, h_at)
         term = term_of(str(when.year), when.isoformat())
         every = " ".join(x["t"] for x in said)
-        name = subject_of(every, "discipline")
+        name = subject_of(every, "reprimand")
         aft = after_line(text, h_at + v.end())
         a = AFTER.search(aft or "")
         after_name = (a.group("a") or a.group("b") or "") if a else ""
@@ -1345,10 +1597,10 @@ def journal_only(f, body, root, cache, careers, urls, term_of, approved=None):
                     "url": urls.get(rel, ""), "how": "voice", "yeas": None, "nays": None,
                     "passed": v.group("v").lower() == "adopted", "heading": h,
                     "said": said + [{"k": "outcome", "t": v.group(0).strip()}],
-                    "kind": "discipline", "bills": [], "bill": "", "after": aft,
+                    "kind": "reprimand", "bills": [], "bill": "", "after": aft,
                     "member": name, "member_id": resolve_member(name, body, term, careers),
                     "line": "", "at": h_at})
-    # A member's discipline is summed up only by a person (gate 7), here as
+    # A vote that names a member is summed up only by a person (gate 7), here as
     # for a roll call.
     for e in out:
         if e["kind"] in PERSONAL:
@@ -1360,11 +1612,250 @@ def journal_only(f, body, root, cache, careers, urls, term_of, approved=None):
     return out
 
 
+# ------------------------------------------- motions on a bill's own debate
+#
+# LIMITING DEBATE ON A BILL IS THE BILL'S BUSINESS (the owner, 23 October
+# 2026: "Motions to limit debate on a bill by calling the question or
+# splitting the question should be included on that bill's vote page and
+# the session day it happened"). Three motions: the previous question (the
+# Senate says "call the question"), limiting debate, and dividing the
+# question. Most of their roll calls are already filed under their bill; two
+# the roll-call file files under no bill name exactly one (`on_bill`, read
+# in read_vote); and the divisions and voice votes on them are in the
+# Journal and no roll-call file at all (bill_motion_votes).
+BILL_MOTIONS = [
+    ("previous_question", re.compile(r"\bprevious\s+question\b|\b(?:call|move)\w*\s+(?:for\s+)?the\s+"
+                                     r"question\b|\bquestion\s+be\s+(?:now\s+)?put\b", re.I)),
+    ("limit_debate", re.compile(r"\blimit\w*\s+(?:the\s+)?debate\b|\bdebate\s+[^.]{0,160}?\bbe\s+"
+                                r"limited\b", re.I)),
+    ("divide", re.compile(r"\bdivid(?:e|ed)\b|\bdivision\s+of\s+the\s+question\b", re.I)),
+]
+# The card's question, in the words the site's vote words name it by
+# (words/votes.json): the Senate's "moved the question" is the previous
+# question, and its card says so.
+BILL_MOTION_WORDS = {"previous_question": {"H": "Previous Question", "S": "Previous Question"},
+                     "limit_debate": {"H": "Limit Debate", "S": "Limit Debate"},
+                     "divide": {"H": "Divide the Question", "S": "Divide the Question"}}
+# A motion on a motion is not one on the bill: "moved to divide the motion
+# to lay on the table for each individual bill" (25 April 2012), "moved to
+# amend the motion to limit debate" (5 June 2013).
+# And a reconsideration is its own question, whatever it reconsiders: "moved
+# that the House reconsider its action whereby it adopted the motion to
+# limit debate on HB 162" (1 February 2006).
+ON_ANOTHER = re.compile(r"\b(?:amend|table|reconsider|refer|postpone)\w*\s+(?:the|a)\s+motion\b|"
+                        r"\bmotion\s+to\s+(?:lay|table|amend|reconsider|refer|indefinitely)\b|"
+                        r"\breconsider", re.I)
+
+
+def bill_motion_of(s):
+    """The kind of motion on a bill's debate `s` moves or puts, or ""."""
+    if not s or ON_ANOTHER.search(s):
+        return ""
+    return next((k for k, rx in BILL_MOTIONS if rx.search(s)), "")
+
+
+MOVED_BY = re.compile(r"(?:\b(?:Reps?\.|Representatives?|Sens?\.|Senators?)\s+(?P<n>[A-Z][\w.'’ -]{1,40}?)"
+                      r"|\bThe\s+(?:Speaker|Chair|President))\s+(?:then\s+)?moved\b")
+BILL_ENTRY = re.compile(r"^[ \t]*(?:SS\s*)?(?:HB|SB|CACR|HCR|SCR|HJR|SJR|HR|SR)\s?\d{1,4}(?:-[A-Z]+)*,"
+                        r"[ \t]", re.M)
+# The capitals of a bill's own entry: "MAJORITY: OUGHT TO PASS WITH
+# AMENDMENT. MINORITY: INEXPEDIENT TO LEGISLATE.", a line of them broken
+# anywhere; and the headings of its amendment's text ("CHAPTER 132-B
+# PUTATIVE FATHERS' REGISTRY", "AMENDED ANALYSIS").
+ENTRY_CAPS = re.compile(r"^(?:(?:MAJORITY|MINORITY|OUGHT|NOT|TO|PASS|WITH|AMENDMENTS?|AMENDED|AMEND-|"
+                        r"MENT|INEXPEDIENT|LEGISLATE|RE-?REFER|REFER|FOR|INTERIM|STUDY|"
+                        r"RECOMMENDATION|ANALYSIS|AS|AND|THE|COMMITTEE|CONCUR|NONCONCUR|IN|"
+                        r"PART|SECTIONS?|\d+)[:.,;-]?\s*)+$")
+BILL_TEXT_HEAD = re.compile(r"^(?:CHAPTER|SUBDIVISION|FISCAL\s+YEAR|PART\s+[IVX\d]|SECTION|TITLE|RSA)\b")
+# The words that can open one of these motions, read before anything else.
+BILL_MOTION_HINT = re.compile(r"previous\s+question|the\s+question|limit|divid|division", re.I)
+DIVISION_ASKED = re.compile(r"\bdivision\s+(?:vote\s+)?(?:was|is)\s+requested\b|\brequested\s+a\s+"
+                            r"division\b", re.I)
+VOICE_VERDICT = re.compile(
+    r"^(?:The\s+)?(?:motion(?:\s+to\s+(?:limit\s+debate|divide(?:\s+the\s+question)?|move\s+the\s+"
+    r"previous\s+question|call\s+the\s+question))?\s+(?:was\s+)?)?(?P<v>adopted|failed|carried|lost|"
+    r"prevailed|defeated)\b(?:\s+and\s+debate\s+was\s+limited)?\s*\.?$", re.I)
+# What a decision may name: this motion, or "the motion". Anything else
+# decided -- an amendment, the committee's report, a motion to table -- is
+# another question's.
+DECIDES_THIS = re.compile(r"motion\s+to\s+(?:limit|divide|call|move\s+the\s+previous)|debate\s+was\s+"
+                          r"limited|previous\s+question|question\s+(?:shall\s+be|was)\s+divided", re.I)
+DECIDES_OTHER = re.compile(r"motion\s+to\s+\w+|committee\s+report|\breport\b|amendment|\bbill\b|"
+                           r"resolution|ruling", re.I)
+CHAIR_RULED = re.compile(r"\bruled\b|\bnot\s+divisible\b|\bdivisible\b|\baccepted\s+by\s+the\s+Chair\b",
+                         re.I)
+
+
+def _decided(text, s_end, kind, body):
+    """How the Journal says the motion moved at `s_end` was decided:
+    ("division", yeas, nays, carried, sentence), ("voice", None, None,
+    carried, sentence), ("roll call", ...), or (None, why)."""
+    window = min(len(text), s_end + 6000)
+    tally = TALLY_ANY.search(text, s_end, window)
+    upto = tally.start() if tally else window
+    asked = False
+    for i, s in enumerate(sentences(_joined(text[s_end:upto]))):
+        if i >= 8:
+            break
+        d = DIV_SENT.search(s)
+        if d:
+            rest = d.group("rest")
+            if DECIDES_OTHER.search(rest) and not DECIDES_THIS.search(rest):
+                return None, "the division that follows decided another question"
+            carried, _km = RO._first_word(re.sub(r"\s+", " ", rest).lower())
+            if carried is None:
+                return None, "the division's outcome could not be read"
+            return "division", int(d.group("y")), int(d.group("n")), bool(carried), s
+        if DIVISION_ASKED.search(s):
+            asked = True
+            continue
+        if NOISE.search(s) and not re.search(r"\bmoved\b", s, re.I):
+            continue
+        v = VOICE_VERDICT.match(s)
+        if v:
+            return "voice", None, None, v.group("v").lower() in ("adopted", "carried", "prevailed"), s
+        if CHAIR_RULED.search(s):
+            return None, "the Chair ruled on it, and no vote was taken"
+        if ANY_QUESTION.search(s):
+            # "moved the previous question" and then "The question being
+            # shall debate be limited?" -- the House's previous question is
+            # its motion to limit debate, put in those words.
+            if bill_motion_of(s) == kind or {bill_motion_of(s), kind} == {"previous_question",
+                                                                         "limit_debate"}:
+                continue
+            return None, "another question was put before this one was decided"
+        if re.search(r"\bmoved\b|\boffered\b", s):
+            return None, "another motion was made before this one was decided"
+        if re.search(r"\bwithdr[ae]w", s, re.I):
+            return None, "the motion was withdrawn"
+        return None, "the Journal says something else before any decision"
+    if tally:
+        if asked and body == "S":
+            after = _joined(text[tally.end():tally.end() + 300])
+            v = VOICE_VERDICT.match(sentences(after)[0] if sentences(after) else "")
+            if not v:
+                return None, "the division's outcome could not be read"
+            y, n = [int(x) for x in re.findall(r"\d+", tally.group(0))[:2]]
+            return "division", y, n, v.group("v").lower() in ("adopted", "carried", "prevailed"), \
+                re.sub(r"\s+", " ", tally.group(0))
+        return "roll call", None, None, None, ""
+    return None, "no decision is printed after it"
+
+
+def stretch_bill(text, at, body):
+    """(bill, "") -- the bill whose stretch of the day's business `at` falls
+    in: the last bill's entry above it that sitting, with nothing between
+    them but that bill's own debate. ("", why) where there is none, or a
+    heading of other business stands between."""
+    rx = DAY_HEADER if body == "H" else S_START
+    starts = [m.start() for m in rx.finditer(text, max(0, at - 200000), at)]
+    lo = max(starts[-1] if starts else 0, at - 60000)
+    entries = list(BILL_ENTRY.finditer(text, lo, at))
+    if not entries:
+        return "", "no bill's entry above it that day"
+    e = entries[-1]
+    got = bills_in([{"t": text[e.start():e.end()]}])
+    if len(got) != 1:
+        return "", "the bill's entry could not be read"
+    bill = got[0]
+    # Each line of capitals on its own: a bill's recommendation over a
+    # motion's heading is two headings, not the one _heads would join them in.
+    hs = []
+    for m in HEAD.finditer(text, e.end(), at):
+        h = re.sub(r"\s+", " ", m.group("h")).strip()
+        if COUNTIES.match(h) or NOT_A_HEAD.search(h) or RUNNING.match(m.group(0)) \
+                or sum(c.isalpha() for c in h) < 5:
+            continue
+        hs.append((m.start(), h))
+    for i, (h_at, h) in enumerate(hs):
+        # The bill's own entry prints its committee's recommendation in
+        # capitals, and its amendment's text and analysis.
+        if ENTRY_CAPS.match(h) or BILL_TEXT_HEAD.match(h):
+            continue
+        # A motion made on the same bill in its debate -- to table it, to
+        # postpone it (HB 1601, 12 March 2014) -- is still its stretch; a
+        # motion on anything else, or on nothing named, is not.
+        if re.match(r"^MOTI?ON\s+(?:TO|OF)\b", h):
+            stop = hs[i + 1][0] if i + 1 < len(hs) else at
+            named = bills_in([{"t": _joined(text[h_at:stop])}])
+            if named == [bill]:
+                continue
+        return "", f"a heading of its own ({h[:40]}) stands between it and the bill's entry"
+    return bill, ""
+
+
+def bill_motion_votes(f, body, root, cache, urls, term_of):
+    """([entry], Counter of what became of each motion) -- every motion to
+    move the previous question, limit debate or divide the question in one
+    Journal that the Journal records decided by a division or by voice, on
+    one bill: the bill its sentence names, or the one whose debate it was
+    made in. A roll call is the roll-call file's and is left to it."""
+    text = _read(f, cache)
+    rel = _rel(f, root)
+    out, why = [], Counter()
+    seen = set()
+    for m in MOVED_BY.finditer(text):
+        if m.start() in seen or not BILL_MOTION_HINT.search(text, m.end(), m.end() + 500):
+            continue
+        piece = _joined(text[m.start():m.start() + 1500])
+        ss = sentences(piece)
+        s = ss[0] if ss else ""
+        kind = bill_motion_of(s)
+        if not kind:
+            continue
+        # Where the sentence ends in the text, so the decision is read after it.
+        tail = re.escape(s.split()[-1]) if s.split() else ""
+        k = re.search(tail, text[m.start():m.start() + 3000]) if tail else None
+        s_end = m.start() + (k.end() if k else len(s))
+        seen.add(m.start())
+        got = _decided(text, s_end, kind, body)
+        if got[0] is None:
+            why[f"held: {got[1]}"] += 1
+            continue
+        how, y, n, carried, said = got
+        if how == "roll call":
+            why["a roll call: the roll-call file's"] += 1
+            continue
+        named = bills_in([{"t": s}])
+        if len(named) > 1:
+            why["held: the motion names more than one bill"] += 1
+            continue
+        if named:
+            bill, src = named[0], "named"
+        else:
+            bill, w = stretch_bill(text, m.start(), body)
+            if not bill:
+                why[f"held: {w}"] += 1
+                continue
+            src = "debate"
+        when = sitting_date(text, m.start(), body)
+        if when is None:
+            why["held: the page's date could not be read"] += 1
+            continue
+        page, pdf, _d = page_at(text, m.start())
+        mover = (m.group("n") or "").strip()
+        out.append({
+            "key": f"{when.isoformat()}-{body}-m{m.start()}", "body": body,
+            "date": when.isoformat(), "term": term_of(str(when.year), when.isoformat()),
+            "bill": bill, "bill_from": src, "motion": kind,
+            "words": BILL_MOTION_WORDS[kind][body], "mover": mover, "how": how,
+            "yeas": y, "nays": n, "passed": carried, "file": rel,
+            "journal": journal_name(f, body), "page": page, "pdf_page": pdf,
+            "url": urls.get(rel, ""),
+            "said": [{"k": "moved", "t": s}, {"k": "outcome", "t": said}], "at": m.start()})
+        why[f"a {how} on {bill_from_words(src)}"] += 1
+    return out, why
+
+
+def bill_from_words(src):
+    return "the bill it names" if src == "named" else "the bill being debated"
+
+
 # ------------------------------------------------------------------- build
 
 def load_approved(path=APPROVED):
     """{roll call key: {"line", "file", "page"}} -- the one-line summaries a
-    person approved for a member's discipline. Read, never written."""
+    person approved for a vote that names a member. Read, never written."""
     try:
         d = json.loads(Path(path).read_text(encoding="utf-8"))
     except (OSError, ValueError):
@@ -1414,7 +1905,23 @@ def build(rollcalls_path, root="."):
             for yd in d.iterdir():
                 if yd.is_dir() and RO.journal_files(root, b, yd.name):
                     years_read.add((yd.name, b))
-    return entries, only, years_read, stats
+    # The divisions and voice votes on a bill's own debate (BILL_MOTIONS), in
+    # both chambers' Journals, each once: the same motion printed in two
+    # files of a day is one vote. Two in one file are two: Senator Clegg
+    # moved the question on HB 606 twice on 22 May 2003, pages 456 and 457.
+    on_bills, motions_seen = [], {}
+    for (y, b) in sorted(years_read):
+        for f in RO.journal_files(root, b, y):
+            got, why = bill_motion_votes(f, b, root, cache, urls, P.vote_term)
+            stats.update({f"bill motions: {k}": v for k, v in why.items()})
+            for e in got:
+                one = (e["date"], e["body"], e["bill"], e["motion"], e["how"], e["yeas"], e["nays"])
+                if motions_seen.get(one, e["file"]) != e["file"]:
+                    stats["bill motions: printed twice, kept once"] += 1
+                    continue
+                motions_seen[one] = e["file"]
+                on_bills.append(e)
+    return entries, only, years_read, stats, on_bills
 
 
 def summarize(entries, only):
@@ -1433,13 +1940,23 @@ def summarize(entries, only):
                 why["line: " + e["line_held"]] += 1
     s["journal-only divisions"] = sum(1 for x in only if x["how"] == "division")
     s["journal-only voice votes"] = sum(1 for x in only if x["how"] == "voice")
+    # The reports, on the votes shown: kept whole, or not bounded and why.
+    for e in list(entries.values()) + list(only):
+        if e.get("held"):
+            continue
+        if e.get("report"):
+            s["reports kept whole"] += 1
+        elif e.get("report_held"):
+            why["report not shown: " + e["report_held"]] += 1
+    s["on a bill, filed under none"] = sum(1 for e in entries.values()
+                                           if e.get("on_bill") and not e.get("held"))
     return s, why
 
 
-def write(entries, only, years_read, out=OUT):
+def write(entries, only, years_read, out=OUT, on_bills=()):
     """Merge with the file this replaces: a year read now is replaced whole,
     a year whose Journals are not on this disk is kept as it was."""
-    keep_rc, keep_only = {}, []
+    keep_rc, keep_only, keep_bm = {}, [], []
     if out.exists():
         try:
             old = json.loads(out.read_text(encoding="utf-8"))
@@ -1451,18 +1968,29 @@ def write(entries, only, years_read, out=OUT):
         for e in old.get("journal_only") or []:
             if ((e.get("date") or "")[:4], e.get("body")) not in years_read:
                 keep_only.append(e)
+        for e in old.get("bill_votes") or []:
+            if ((e.get("date") or "")[:4], e.get("body")) not in years_read:
+                keep_bm.append(e)
     rc = dict(keep_rc)
     rc.update(entries)
     jo = keep_only + only
     jo.sort(key=lambda e: (e["date"], e["body"], e.get("at") or 0))
+    bm = keep_bm + list(on_bills)
+    bm.sort(key=lambda e: (e["date"], e["body"], e.get("at") or 0))
     doc = {"_about": ("What the House and Senate Journals print above each roll call on no bill: "
                       "the heading, the sentences that say what was put (verbatim), the page, the "
-                      "kind of question, and a one-line summary where the gates allow one. Written "
-                      "by src/parse/journal_motions.py; a roll call with `held` reasons is not shown. "
-                      "`journal_only` are divisions and voice votes the roll-call file does not hold."),
+                      "kind of question, a one-line summary where the gates allow one, and the "
+                      "committee's report where the question is on one. Written by "
+                      "src/parse/journal_motions.py; a roll call with `held` reasons is not shown. "
+                      "`journal_only` are divisions and voice votes the roll-call file does not "
+                      "hold; `bill_votes` the divisions and voice votes on a motion to move the "
+                      "previous question, limit debate or divide the question on one bill."),
            "kinds": KINDS,
+           "groups": GROUPS,
+           "group_words": GROUP_WORDS,
            "rollcalls": dict(sorted(rc.items())),
-           "journal_only": jo}
+           "journal_only": jo,
+           "bill_votes": bm}
     out.write_text(json.dumps(doc, ensure_ascii=False, indent=1, sort_keys=False) + "\n",
                    encoding="utf-8")
     return doc
@@ -1491,7 +2019,7 @@ def main():
     a = ap.parse_args()
     if not Path(a.rollcalls).exists():
         sys.exit(f"No {a.rollcalls} here: run src/parse/rollcall_parser.py first.")
-    entries, only, years_read, stats = build(a.rollcalls, a.root)
+    entries, only, years_read, stats, on_bills = build(a.rollcalls, a.root)
     if a.show is not None:
         for k in a.show or sorted(entries):
             e = entries.get(k)
@@ -1507,6 +2035,14 @@ def main():
         print(f"    {v:4,}  {k}")
     print(f"  {s['journal-only divisions']:,} divisions and {s['journal-only voice votes']:,} "
           "voice votes only the Journal has, under a heading of a vote on no bill")
+    print(f"  {s['reports kept whole']:,} committee reports kept whole, for 'View the report'")
+    print(f"  {s['on a bill, filed under none']:,} roll calls filed under no bill are a motion on "
+          "one bill's debate")
+    print(f"  {len(on_bills):,} divisions and voice votes on a bill's own debate (previous question, "
+          "limiting debate, dividing the question):")
+    for k, v in sorted(stats.items(), key=lambda kv: (-kv[1], kv[0])):
+        if k.startswith("bill motions: "):
+            print(f"    {v:4,}  {k[len('bill motions: '):]}")
     quiet = silence(entries, years_read)
     if quiet:
         sys.exit("SILENCE: no passage was read for the no-bill roll calls of "
@@ -1515,7 +2051,7 @@ def main():
                  "Nothing was written.")
     if a.check:
         return
-    write(entries, only, years_read, Path(a.out))
+    write(entries, only, years_read, Path(a.out), on_bills)
     print(f"  -> {a.out}")
 
 

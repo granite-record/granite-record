@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-10.10
+# GRANITE_VERSION: 2026-10-10.11
 """
 The House and the Senate as committees of the whole: a card at the top of
 each column of /committees, and a page for each chamber's session days.
@@ -248,7 +248,7 @@ def page_head(c, path, base):
             "as its journal records it. A committee&rsquo;s days are on its own page, from "
             '<a href="committees.html">Committees</a>.'
             + (f' The votes on no bill &mdash; rules suspensions, appeals of the chair, '
-               f'a member&rsquo;s discipline &mdash; are listed with what the journal says '
+               f'a member allowed to go on speaking &mdash; are listed with what the journal says '
                f'each was about: <a href="session/nobill/{E(c["latest"])}.html">Votes Not on a '
                f'Bill, {E(c["latest"])}</a>.' if c.get("nobill") else "")
             + "</p>")

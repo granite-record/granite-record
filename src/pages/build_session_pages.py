@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-19.43
+# GRANITE_VERSION: 2026-09-19.44
 """
 A page for every day the House sat.
 
@@ -519,7 +519,7 @@ def journal_extra_html(e, body, members, esc, term="", years=None):
     who = e.get("member") or ""
     if who:
         named = member_html(body, who, members, esc)
-        if e.get("kind") in ("discipline", "privileges"):
+        if e.get("kind") in ("reprimand", "privileges"):
             out.append(f'<p class="dvby">The member it concerned: {named}.</p>')
         elif e.get("kind") == "member_continue":
             out.append(f'<p class="dvby">The member speaking: {named}.</p>')
@@ -529,6 +529,8 @@ def journal_extra_html(e, body, members, esc, term="", years=None):
         named = f'<a href="{esc(href)}">{esc(num)}</a>' if href else esc(num)
         out.append(f'<p class="dvby">The bill it named: {named}.</p>')
     out.append(VP.passage_html(e, esc))
+    # The committee's report the vote was on, whole, folded ("View the report").
+    out.append(VP.report_html(e, esc))
     return "".join(out)
 
 

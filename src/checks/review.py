@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-09.23
+# GRANITE_VERSION: 2026-09-09.24
 """
 The bench: one sample at a time, judged by a person, written down for good.
 
@@ -668,8 +668,9 @@ def show_reports(it):
 # 23 October 2026): the passage the site quotes for each, one at a time,
 # beside its roll call, to be read against the Journal's page. Every gate in
 # the parser is a guess about where a passage can go wrong; this is how the
-# guesses are measured, and the votes on a member's discipline come first,
-# since their one-line summary waits on a person anyway.
+# guesses are measured, and the votes that name a member -- a reprimand, a
+# censure, a member's privileges -- come first, since their one-line summary
+# waits on a person anyway.
 
 NOBILL = Path("journal_motions.json")
 
@@ -697,7 +698,7 @@ def sample_nobill():
             out.append(item(f"rc/{k}", e, "roll call"))
     for e in d.get("journal_only") or []:
         out.append(item(f"jo/{e.get('key')}", e, e.get("how") or "division"))
-    out.sort(key=lambda x: (x["kind"] not in ("discipline", "privileges"), x["date"], x["key"]))
+    out.sort(key=lambda x: (x["kind"] not in ("reprimand", "privileges"), x["date"], x["key"]))
     return out
 
 
@@ -1145,9 +1146,9 @@ KINDS = {
         "label": "Votes on no bill: the Journal's words",
         "blurb": "What the site quotes from the House or Senate Journal for a vote on no "
                  "bill -- a rules suspension, an appeal of a ruling, a member allowed to go "
-                 "on speaking, a reprimand -- beside its roll call or division. The votes on "
-                 "a member's discipline come first: their one-line summary is shown only "
-                 "once a person has approved it in corrections/vote_lines.json.",
+                 "on speaking, a misc vote -- beside its roll call or division. The votes "
+                 "that name a member come first: their one-line summary is shown only once "
+                 "a person has approved it in corrections/vote_lines.json.",
         "sample": sample_nobill, "show": show_nobill,
         "empty": "  -- no journal_motions.json here: run python3 src/parse/journal_motions.py",
         "fields": [("wrong_sentence", "A sentence that is wrong, cut short or another vote's, "
@@ -1155,7 +1156,8 @@ KINDS = {
                    ("missing", "What the Journal says of this vote that the quote leaves out, "
                                "if anything", "paste it"),
                    ("better_line", "A one-line summary you would approve, if you would",
-                    "for a member's discipline, this is the line to copy into vote_lines.json")],
+                    "for a vote that names a member, this is the line to copy into "
+                    "vote_lines.json")],
         "verdicts": [("correct", "Right vote, right words"),
                      ("wrong_vote", "Another vote's passage"),
                      ("wrong_words", "Right vote, words wrong or cut"),
