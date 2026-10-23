@@ -3945,7 +3945,12 @@ color:var(--ink-2);font-weight:600;display:flex;flex-direction:column;gap:var(--
    Measured on /committee/H10 at 375px: the document was 512px wide and the
    body scrolled sideways, on 27 committee pages. */
 min-width:0}
-.bfilt select{font:inherit;font-size:var(--t-ui);text-transform:none;letter-spacing:0;
+/* AND THE FIND BOX BESIDE THEM (a member's Votes tab, 23 October 2026), in
+   the same frame. It had no rule: the browser's own 13px box, 21px tall,
+   lower than the two selects beside it, and on an iPhone a field under 16px
+   zooms the page when it is tapped. Its words are the reader's, at the
+   weight of the site's other search boxes (the rule after this one). */
+.bfilt select,.bfilt input[type=search]{font:inherit;font-size:var(--t-ui);text-transform:none;letter-spacing:0;
 color:var(--ink);padding:var(--sp-2) var(--sp-4);border:1px solid var(--edge);border-radius:var(--r-in);
 background:var(--paper);
 /* A select takes its width from its longest OPTION, and the longest status
@@ -3954,6 +3959,7 @@ background:var(--paper);
    committee pages. The control is what must fit; the option text is the
    browser's to shorten. */
 max-width:100%}
+.bfilt input[type=search]{font-weight:400}
 /* THE BILL STATUS SELECT IS PAINTED AS THE SEARCH'S STATUS FILTER IS (the
    person, 8 October 2026: the same categories as the search, on a member's
    and a committee's page). Each option carries its category's chip class
@@ -6345,7 +6351,7 @@ table.cov{border-collapse:collapse;width:100%;min-width:30rem;font-family:var(--
   .cmbtn{min-width:44px;min-height:44px}
   .calviews button,.calfold,.calcat{min-height:44px}
   #sort{height:44px}
-  .bfilt select{min-height:44px}
+  .bfilt select,.bfilt input[type=search]{min-height:44px}
   .docket summary{min-height:44px}
   /* The row centres on its links, or a number that is not a link sits at the
      top of the line beside an address in the middle of it. */

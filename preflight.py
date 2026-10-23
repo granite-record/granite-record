@@ -25193,6 +25193,56 @@ def _chip_nowrap():
                   "scrolls; a vote's result wraps")
 
 
+@check("frontend", "every control a filter strip draws has the strip's frame and 16px words, and 44px on a phone")
+def _bfilt_controls():
+    """A control added to a filter strip is styled with the strip's selects.
+
+    The Find box on a member's Votes tab (e4a2c98, 23 October 2026) was the
+    first control in a `.bfilt` that was not a select, and app.css styled
+    only `.bfilt select`. It was drawn as the browser's own box: 13px words,
+    21px tall, a 2px grey edge, lower than the two selects beside it and
+    white in the dark theme -- and an iPhone zooms the page when a field
+    under 16px is tapped, which is what a webinar's audience, on their
+    phones, would have done with it (the webinar pass of 23 October 2026).
+
+    So: every <select>, <input> and <textarea> inside a `class="bfilt..."`
+    in app.js is named, by element and type, in the rule that gives the
+    strip's selects their frame and 16px words, and in the phone block's
+    44px rule.
+    """
+    css_p, js_p = Path("src/pages/app.css"), Path("src/pages/app.js")
+    if not (css_p.exists() and js_p.exists()):
+        return "skip", "app.css or app.js is not there"
+    js = js_p.read_text(encoding="utf-8")
+    want = set()
+    for m in re.finditer(r'class="bfilt[^"]*"', js):
+        span = js[m.start():js.index("</div>", m.start())]
+        for tag, attrs in re.findall(r"<(select|textarea|input)\b([^>]*)>", span):
+            t = re.search(r'type="(\w+)"', attrs)
+            want.add(f".bfilt {tag}[type={t.group(1)}]" if tag == "input" and t else f".bfilt {tag}")
+    assert want, "app.js draws no filter strip (class=\"bfilt\") with a control in it"
+    rules = _css_rules(css_p.read_text(encoding="utf-8"))
+    framed, tall = set(), set()
+    for at, sel, body, line in rules:
+        decls = dict(_css_decls(body))
+        sels = {" ".join(s.split()) for s in sel.split(",")}
+        if not at and decls.get("font-size") == "var(--t-ui)" and decls.get("border", "").startswith("1px solid"):
+            framed |= sels
+        if any("max-width:45em" in a.replace(" ", "") for a in at) and decls.get("min-height") == "44px":
+            tall |= sels
+    bad = []
+    for w in sorted(want):
+        if w not in framed:
+            bad.append(f"{w} is not in the rule that gives the strip's controls their frame "
+                       "and 16px words (with .bfilt select): the browser draws its own box, at "
+                       "13px, which an iPhone zooms the page to when it is tapped")
+        if w not in tall:
+            bad.append(f"{w} is not held to 44px on a phone with .bfilt select")
+    assert not bad, "; ".join(bad[:3])
+    return "ok", f"{len(want)} kinds of control in the filter strips, each framed, 16px and 44px on a phone: " \
+        + ", ".join(sorted(want))
+
+
 # ============================================================= code: pipeline ==
 
 @check("pipeline", "build_all runs the steps in the right order", needs=("build_all",))
