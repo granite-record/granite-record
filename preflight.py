@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.655
+# GRANITE_VERSION: 2026-09-04.656
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -25120,6 +25120,77 @@ def _nowrap():
     return "ok", (f"{len(nowrap)} nowrap selectors, "
                   f"{sum(1 for s in nowrap if re.fullmatch(r'[a-z]+', split_last(s)[1]))}"
                   " of them by element name, none reaching a block")
+
+
+# The chips app.css lets stay on one line on a phone, each for its reason. A
+# chip whose words are a phrase has no business here.
+CHIP_NOWRAP_OK = {
+    ".l-numtab .cstat": "Ratified or Not Ratified, in a table in .l-tablewrap, a box that "
+                        "scrolls sideways for it",
+    ".l-speak .calkind": "a meeting's kind, in the testifying guide's table in .l-tablewrap, "
+                         "a box that scrolls sideways for it",
+}
+
+
+@check("frontend", "a chip is held on one line only where its words are short or its box scrolls: a vote's result wraps")
+def _chip_nowrap():
+    """A chip that says a vote's result in the bill page's words is a phrase,
+    and a phrase must be able to wrap.
+
+    `.votes td.o .chip,.votes td.o i{white-space:nowrap}` held the outcome on
+    a member's Votes tab to one line while it was "Adopted" or "Failed". On 23
+    October 2026 the tab took the bill page's words -- "Motion Passed:
+    Overridden in the House" -- and the rule, more specific than the phone's
+    `.chip{white-space:normal;max-width:100%}`, kept them on one line: the
+    words ran out of the chip and off the card, and Rep. Wade's Votes tab was
+    469px wide on a 390px phone, 1041px at 1024 and 847px at 768 (the webinar
+    pass, measured on the dry run in Chrome). Nothing failed, because nothing
+    here measures layout.
+
+    What is checkable is the rule itself: no rule holds a chip -- `.chip` or a
+    hook a chip is placed by (`.cstat`, `.rcres`, `.calkind`, `.fkind`,
+    `.sgn`) -- to one line, but the base `.chip` that the phone's rule
+    releases, and CHIP_NOWRAP_OK, each with its reason. And the result on a
+    member's Votes tab is released by name.
+    """
+    css = Path("src/pages/app.css")
+    if not css.exists():
+        return "skip", "app.css is not there"
+    rules = _css_rules(css.read_text(encoding="utf-8"))
+    hooks = ("chip", "cstat", "rcres", "calkind", "fkind", "sgn")
+    held, released, phone = [], set(), False
+    for at, sel, body, line in rules:
+        decls = dict(_css_decls(body))
+        ws = decls.get("white-space", "")
+        for one in (" ".join(s.split()) for s in sel.split(",")):
+            last = one.replace(" > ", " ").split()[-1] if one else ""
+            classes = set(re.findall(r"\.([\w-]+)", last))
+            if not classes & set(hooks):
+                continue
+            if ws == "nowrap":
+                held.append((one, line, at))
+            elif ws == "normal":
+                released.add(one)
+                if one == ".chip" and any("max-width:45em" in a.replace(" ", "") for a in at) \
+                        and decls.get("max-width") == "100%":
+                    phone = True
+    assert phone, ("the phone's rule that lets a chip wrap -- @media (max-width:45em)"
+                   "{.chip{white-space:normal;max-width:100%}} -- is gone")
+    bad = [f"{{{s}}} (line {n}) holds a chip to one line" for s, n, at in held
+           if not (s == ".chip" and not at) and s not in CHIP_NOWRAP_OK]
+    assert not bad, ("; ".join(bad[:3]) + ". A chip's words can be a phrase -- a vote's "
+                     "result is \"Motion Passed: Overridden in the House\" -- and held to one "
+                     "line they run out of the chip and push the page sideways on a phone. "
+                     "Let it wrap, or name it in CHIP_NOWRAP_OK with why its words are short "
+                     "or its box scrolls.")
+    stale = sorted(set(CHIP_NOWRAP_OK) - {s for s, _, _ in held})
+    assert not stale, f"CHIP_NOWRAP_OK names {stale}, which no rule holds to one line any more"
+    assert ".votes td.o .chip" in released, (
+        "the result on a member's Votes tab is not released to wrap by name: "
+        ".votes td.o .chip{white-space:normal;max-width:100%}")
+    return "ok", (f"{len(held)} rules hold a chip to one line: the base .chip, which a phone "
+                  f"releases, and {len(CHIP_NOWRAP_OK)} whose words are short or whose box "
+                  "scrolls; a vote's result wraps")
 
 
 # ============================================================= code: pipeline ==
