@@ -29,7 +29,8 @@ A digest can be rendered without sending it: `node tests/follow/preview_digest.j
 **Testifying on a bill** (22 October 2026). A bill a reader follows tells them
 when its public hearing is set, which is when online testimony opens, and, to
 a daily reader, the morning before the hearing and the morning of it, since
-the sign-in closes at midnight at the end of the hearing's day. Each says it
+in practice the sign-in stays open until midnight at the end of the hearing's
+day (the editor's account; no document on record states it). Each says it
 with the chamber's form as a button and what to choose on it, the hearing's
 date, the committee and the bill (`sender.testifyFor`, `mail.testifyWords`); a
 weekly reader has the same beside the hearing in the week ahead.

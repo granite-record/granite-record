@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.226
+// GRANITE_VERSION: 2026-09-07.227
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -4027,14 +4027,15 @@ function testifyBox(d,b){
     return section("Testify on This Bill",`<div class="tbox">
       <p>The ${esc(house)} public hearing is <b>${esc(dateWords(next.when,"long"))}</b>${
         next.committee?`, before ${esc(next.committee)}`:""}. Until then, anyone may sign
-      in online to register support or opposition and submit written testimony, or come
+      in online to ${next.body==="S"?"register support, opposition or a neutral position"
+        :"register support or opposition and submit written testimony"}, or come
       and ask to speak.</p>
       <p><a class="tgo" href="${esc(url)}" target="_blank" rel="noopener">${esc(house)} online
       testimony</a></p>
       <p class="tsteps">On the form, choose the hearing&rsquo;s date, ${esc(dateWords(next.when,"long"))};
       then the committee${next.committee?`, ${esc(next.committee)}`:""}; then the bill${
-        b&&b.n?`, ${esc(b.n)}`:""}. The online sign-in closes at midnight at the end of the
-      hearing&rsquo;s day.${next.body==="S"?" The page that confirms your sign-in says how to send"
+        b&&b.n?`, ${esc(b.n)}`:""}. In practice the online sign-in stays open until midnight
+      at the end of the hearing&rsquo;s day.${next.body==="S"?" The page that confirms your sign-in says how to send"
         +" written testimony.":""}</p></div>`,"testify");
   }
   const last=heard.sort((a,b)=>b.when.localeCompare(a.when))[0];

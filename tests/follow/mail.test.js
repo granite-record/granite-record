@@ -465,15 +465,18 @@ test("the day before and the day of a hearing, the daily says how to testify and
   const label = CURRENT.followable.get("bill:2026/HB9903").label;
   const [house, url] = TESTIFY_FORMS.H;
   const eve = onDay("2026-10-13"), day = onDay("2026-10-14");
-  assert.equal(eve.subject, `Online testimony on ${label} closes after tomorrow\u2019s hearing`);
-  assert.equal(day.subject, `Last day to testify online on ${label}`);
+  assert.equal(eve.subject, `Public hearing tomorrow on ${label}: testify online`);
+  assert.equal(day.subject, `Public hearing today on ${label}: testify online`);
   for (const [m, when, close] of [[eve, "tomorrow, Wednesday, October 14", "at the end of that day"],
                                   [day, "today", "tonight"]]) {
     const words = visible(m.html);
     assert.ok(words.includes(`${label}\u2019s public hearing is ${when} at 10:00 a.m., before the House ` +
       "Example Committee, Legislative Office Building 305."), words);
-    assert.ok(words.includes(`closes at midnight ${close}`), "when the sign-in closes");
-    assert.ok(words.includes("sign in for or against the bill and submit written testimony"), "what the House form takes");
+    // The closing time is the editor's observed practice, and said as practice.
+    assert.ok(words.includes(`In practice the sign-in stays open until midnight ${close}.`), "when it closes");
+    assert.doesNotMatch(words, /closes at midnight/, "never stated as a rule");
+    assert.ok(words.includes("Anyone may sign in online for or against the bill and submit written testimony."),
+      "what the House form takes");
     // The button: the chamber's own form, as a pine button.
     assert.match(m.html, new RegExp(`<td bgcolor="${PALETTE.pine}"[^>]*><a href="${url.replace(/[.?]/g, "\\$&")}"` +
       `[^>]*>${house} online testimony</a>`));
@@ -487,12 +490,13 @@ test("the day before and the day of a hearing, the daily says how to testify and
 test("the night a hearing is set, the daily says testimony is open; the weekly puts the form in its week ahead", () => {
   const daily = digest("daily", "2026-10-02");
   assert.ok(visible(daily.html).includes("Online testimony is open"), "open, the night it was set");
-  assert.ok(visible(daily.html).includes("Until midnight that day, anyone may sign in"));
+  assert.ok(visible(daily.html).includes("Anyone may sign in online for or against the bill and submit written " +
+    "testimony. In practice the sign-in stays open until midnight at the end of that day."));
   const weekly = digest("weekly");
   assert.doesNotMatch(weekly.html, /Online testimony is open/, "the weekly says it once, in its week ahead");
   const ahead = weekly.html.slice(weekly.html.indexOf(">Coming up<"));
   assert.ok(ahead.includes(TESTIFY_FORMS.H[1]), "the House form beside the public hearing");
-  assert.match(visible(ahead), /On the form, choose Wednesday, October 14, then the House Example Committee, then HB 9903[^.]*\. Open until midnight that day\./);
+  assert.match(visible(ahead), /On the form, choose Wednesday, October 14, then the House Example Committee, then HB 9903[^.]*\. In practice it stays open until midnight that day\./);
   assert.ok(!/Tuesday, October 13[^\n]*\n[^\n]*online testimony/.test(visible(ahead)), "not beside an executive session");
 });
 

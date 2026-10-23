@@ -144,9 +144,10 @@ const STOPPED = {
 // TESTIFY ON A BILL (the person, 22 October 2026: "emails include updates for
 // when testimony has opened for a certain bill and when it closes, with a
 // similar button to click to go straight to the testify page"). Each
-// chamber's online sign-in opens for a bill when its public hearing is
-// scheduled and closes at midnight at the end of the hearing's day (the
-// Senate's guidance; the House's form in practice: guides.py, TESTIFY). So a
+// chamber's online sign-in opens for a bill once its public hearing is
+// scheduled (the Senate's guidance of 2021) and, in practice, stays open
+// until midnight at the end of the hearing's day (the editor's account, an
+// observed() claim in guides.py: no document on record states it). So a
 // bill a reader follows says so three times, the person chose: when the
 // hearing is newly scheduled ("open", the night's own news), and, to a daily
 // reader, the morning before the hearing ("eve") and the morning of it

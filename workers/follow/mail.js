@@ -560,9 +560,16 @@ function voteBar(r) {
 // asks for too (guides.py, TESTIFY).
 export const TESTIFY_FORMS = { H: ["House", "https://gc.nh.gov/house/committees/remotetestimony/"],
   S: ["Senate", "https://gc.nh.gov/remotecommittee/senate.aspx"] };
+// THE CLOSING TIME IS PRACTICE, AND SAID AS PRACTICE (22 October 2026). The
+// Senate's guidance says its sign-in opens once a hearing is scheduled; no
+// calendar or guidance on record says when either chamber's closes. That
+// both stay open until midnight at the end of the hearing's day is the
+// editor's own account (guides.py, an observed() claim), so the email says
+// "in practice", and its headings and subjects name the hearing -- a fact of
+// the record -- rather than a deadline.
 const TESTIFY_HEAD = { open: "Online testimony is open",
-  eve: "Online testimony closes after tomorrow\u2019s hearing",
-  day: "Last day to testify online" };
+  eve: "Public hearing tomorrow: testify online",
+  day: "Public hearing today: testify online" };
 
 // sender.testifyFor's { phase, chamber, date, time, committee, venue }, for
 // the bill labelled `label`: the block's heading, what and when, how it
@@ -573,11 +580,10 @@ export function testifyWords(t, label) {
   const when = `${label}\u2019s public hearing is ${day}` +
     (clockTime(t.time) ? ` at ${clockTime(t.time)}` : "") +
     (t.committee ? `, before the ${t.committee}` : "") + (t.venue ? `, ${t.venue}` : "") + ".";
-  const what = t.chamber === "H" ? "sign in for or against the bill and submit written testimony"
-    : "sign in for or against the bill, or as neutral";
-  const close = t.phase === "day" ? `The online sign-in closes at midnight tonight. Until then, anyone may ${what}.`
-    : t.phase === "eve" ? `The online sign-in closes at midnight at the end of that day. Until then, anyone may ${what}.`
-    : `Until midnight that day, anyone may ${what}.`;
+  const what = t.chamber === "H" ? "sign in online for or against the bill and submit written testimony"
+    : "sign in online for or against the bill, or as neutral";
+  const close = `Anyone may ${what}. In practice the sign-in stays open until midnight ` +
+    (t.phase === "day" ? "tonight." : "at the end of that day.");
   const steps = `On the form, choose the hearing\u2019s date, ${dayDate(t.date)}; then the committee` +
     (t.committee ? `, ${t.committee}` : "") + `; then the bill, ${label}.` +
     (t.chamber === "S" ? " The page that confirms your sign-in says how to send written testimony." : "");
@@ -756,9 +762,8 @@ export function headlines(sections, date = "", skipAhead = false) {
     if (s.study) out.push([2, `${s.label} — ${studyWords(s.study)}`]);
     // The day before a hearing and the day of it, the testimony leads: it
     // is the one thing in the email with a deadline.
-    if (s.testify?.phase === "day") out.push([0.5, `Last day to testify online on ${s.label}`]);
-    if (s.testify?.phase === "eve")
-      out.push([1.5, `Online testimony on ${s.label} closes after tomorrow\u2019s hearing`]);
+    if (s.testify?.phase === "day") out.push([0.5, `Public hearing today on ${s.label}: testify online`]);
+    if (s.testify?.phase === "eve") out.push([1.5, `Public hearing tomorrow on ${s.label}: testify online`]);
     for (const it of s.items) {
       if (!it.milestone || late(it)) continue;
       // What is still to come is the week ahead's in a weekly that has one.
@@ -883,7 +888,7 @@ export function digestEmail({ origin, frequency, date, sections: given, manage, 
         .filter(([l]) => /^(?:HB|SB|HCR|SCR|HJR|SJR|HR|SR|CACR)\b/.test(l));
       const or = parts => andList(parts).replace(/ and ([^,]+)$/, " or $1");
       const lead = `On the form, choose ${dayDate(r.date)}, then the ${r.committee}, then `;
-      const tail = ". Open until midnight that day.";
+      const tail = ". In practice it stays open until midnight that day.";
       const steps = form && bills.length ? lead + or(bills.map(([l]) => l)) + tail : "";
       const stepsHtml = steps ? esc(`On the form, choose ${dayDate(r.date)}, then the `) +
         linkWhole(origin, r.committee, find) + ", then " + or(bills.map(([l, u]) => u ? a(siteUrl(origin, u), l)
