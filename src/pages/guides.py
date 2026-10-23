@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-11.24
+# GRANITE_VERSION: 2026-10-11.25
 """
 The how-to guides: their words, their sources, and what each was checked
 against. Read by build_civics.py, which draws them on the Resources hub's
@@ -432,11 +432,19 @@ VOTING = guide(
           # the site the week of the election. So the sentence is gone, and
           # what replaces it is the person's: STAYED_ORDERS, below, and
           # preflight's _vote_guide_stayed_orders keep it from coming back.
-          note="<b>This changed in 2026, and the courts are still involved.</b> After a court order "
-               "of May 28, 2026, if you lack the documents to prove your citizenship you may again "
-               "sign a qualified voter affidavit instead. The affidavit covers citizenship and "
-               "nothing else: you still need proof of identity, age and domicile. This is what "
-               "the Secretary of State said on October 12, 2026: check the page before you go."),
+          # THE SECRETARY OF STATE IS THE WORD ON WHAT IS ACCEPTED (the person,
+          # 23 October 2026: "defer to the official sources where possible").
+          # The rules on proof changed more than once this year and the courts
+          # are still deciding them, so the note sends the reader to the
+          # Secretary of State's page first, and gives what that page said on
+          # the day it was read as that, and dated.
+          note="<b>This changed in 2026, and the courts are still involved.</b> What you may "
+               "use as proof has changed more than once this year and may change again before "
+               "the election. The Secretary of State's page is the official word: check it "
+               "before you go. On October 12, 2026 it said that after a court order of May 28, "
+               "2026, if you lack the documents to prove your citizenship you may again sign a "
+               "qualified voter affidavit instead. The affidavit covers citizenship and nothing "
+               "else: you still need proof of identity, age and domicile."),
      step("Vote",
           "<p>On election day, go to your polling place. Every voter must show proof of identity "
           "to get a ballot. If you have no approved photo ID, you can get one free, for voting "
