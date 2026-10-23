@@ -18,9 +18,14 @@ and the diff is the review.
   (`src/parse/parse_constitution.py`). The Laws page's Constitution tab is
   drawn from it, and a CACR's page links the articles it would change.
 - `town_clerks.json` -- each town's clerk and polling place, from the
-  Secretary of State's list (`src/towns/parse_clerks_csv.py`).
+  Secretary of State's list (`src/towns/parse_clerks_csv.py`); each row's
+  `read_on` is the day of the export it was read from.
 - `town_officials.json` -- NHDOT's directory of municipal officials
-  (`src/towns/parse_officials.py`).
+  (`src/towns/parse_officials.py`); each municipality's `as_of` is the
+  directory's own date.
+
+How old each of the town files is, and when each is due to be read again, is
+`src/towns/town_sources.py`'s to say: `python3 src/towns/town_sources.py`.
 - `town_officials_web.json` and `town_boards.json` -- what the towns' own
   websites say of their officials and boards (`src/towns/parse_town_sites.py`
   and `src/towns/town_boards.py`, from the pages

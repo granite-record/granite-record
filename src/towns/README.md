@@ -12,6 +12,7 @@ folder the places it is elected from.
 | Districts | `parse_districts` (`site/districts.json`), `parse_sos_districts` (the Secretary of State's own table, held against ours), `parse_granit` (NH GRANIT's geometry), `build_district_geometry` (that geometry made small for the district map, `generated/district_geometry.json`) |
 | Clerks and polling places | `parse_clerks_csv` (`collected/town_clerks.json`), and `parse_clerks`, the PDF reader it supersedes |
 | Officials | `parse_officials` (NHDOT's directory, `collected/town_officials.json`), `parse_town_sites` and `town_boards` (the towns' own websites), `parse_county_roster` (`collected/county_officials.json`) |
+| How old each of those is | `town_sources`: which source gives each official a town page shows, the date its copy carries in its own file, the floors its file must not fall under, and when it is due to be read again -- after the town meetings, the cities' elections, before a general election, or after a year. `python3 src/towns/town_sources.py` prints the map; preflight's `_town_sources_fresh` is the reminder |
 
 Nothing here asks the network. What these read was put on disk under
 `records/sources/` and `records/districts/`, or saved under `town_sites/` by `town_sites`,
