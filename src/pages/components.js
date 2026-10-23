@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-10-09.13
+// GRANITE_VERSION: 2026-10-09.14
 /* THE SITE'S COMPONENTS, IN THE BROWSER. Published as site/components.js and
    loaded by every page, in its head, before app.js, find.js and any page's
    own script, so each of them draws a person, a committee, a date or a time
@@ -52,11 +52,32 @@ const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;',
 var DW_MONTHS=["January","February","March","April","May","June","July",
   "August","September","October","November","December"];
 var DW_DAYS=["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];
-function dateWords(iso,form){
+// IN SPANISH, DAY FIRST, where a caller names the language "es": the forms
+// of components.py's _date_words_es and _date_span_es ("19 de febrero de
+// 2026", "19 feb. 2026", "5–11 de octubre de 2026"). A page in Spanish
+// passes window.GR_LANG; nothing here reads it, so a case can ask for either.
+var DW_ES={months:["enero","febrero","marzo","abril","mayo","junio","julio","agosto",
+  "septiembre","octubre","noviembre","diciembre"],
+  mons:["ene.","feb.","mar.","abr.","may.","jun.","jul.","ago.","sept.","oct.","nov.","dic."],
+  days:["lunes","martes","miércoles","jueves","viernes","sábado","domingo"],
+  dys:["lun.","mar.","mié.","jue.","vie.","sáb.","dom."]};
+function dateWords(iso,form,lang){
   var s=iso==null?"":String(iso), m=/^(\d{4})-(\d\d)-(\d\d)/.exec(s);
   if(!m)return s;
   var y=+m[1], mo=+m[2], d=+m[3], t=new Date(Date.UTC(y,mo-1,d));
   if(t.getUTCFullYear()!==y||t.getUTCMonth()!==mo-1||t.getUTCDate()!==d)return s;
+  if(lang==="es"){
+    var mes=DW_ES.months[mo-1], ms=DW_ES.mons[mo-1], dia=DW_ES.days[(t.getUTCDay()+6)%7],
+      di=DW_ES.dys[(t.getUTCDay()+6)%7];
+    switch(form){
+      case "long": return dia+", "+d+" de "+mes+" de "+y;
+      case "full": return d+" de "+mes+" de "+y;
+      case "short": return d+" "+ms;
+      case "day": return dia+", "+d+" de "+mes;
+      case "wkd": return di+", "+d+" "+ms;
+      default: return d+" "+ms+" "+y;
+    }
+  }
   var M=DW_MONTHS[mo-1], Mo=M.slice(0,3), W=DW_DAYS[(t.getUTCDay()+6)%7];
   switch(form){
     case "long": return W+", "+M+" "+d+", "+y;
@@ -70,9 +91,23 @@ function dateWords(iso,form){
 // Two days as one span: "October 5–11, 2026", "September 28 – October
 // 4, 2026", "December 28, 2026 – January 3, 2027" -- components.date_span.
 // The form "medium" says the months short: "Feb 9–13, 2026", the pager's.
-function dateSpan(a,b,form){
+function dateSpan(a,b,form,lang){
   form=form||"full";
-  if(String(a).slice(0,10)===String(b).slice(0,10))return dateWords(a,form);
+  if(String(a).slice(0,10)===String(b).slice(0,10))return dateWords(a,form,lang);
+  if(lang==="es"){
+    var f=form==="medium"?"medium":"full", sa=String(a).slice(0,10), sb=String(b).slice(0,10);
+    var ea=dateWords(sa,f,"es"), eb=dateWords(sb,f,"es");
+    if(ea===sa||eb===sb)return ea+" – "+eb;
+    if(sa.slice(0,4)!==sb.slice(0,4))return ea+" – "+eb;
+    if(f==="medium"){
+      var p=ea.split(" "), q=eb.split(" ");
+      if(p[1]===q[1])return p[0]+"–"+q[0]+" "+q[1]+" "+q[2];
+      return p[0]+" "+p[1]+" – "+q[0]+" "+q[1]+" "+q[2];
+    }
+    var ma=+sa.slice(5,7), mb=+sb.slice(5,7), da=+sa.slice(8,10), db=+sb.slice(8,10);
+    if(ma===mb)return da+"–"+db+" de "+DW_ES.months[mb-1]+" de "+sb.slice(0,4);
+    return da+" de "+DW_ES.months[ma-1]+" – "+db+" de "+DW_ES.months[mb-1]+" de "+sb.slice(0,4);
+  }
   var fa=dateWords(a,form), fb=dateWords(b,form);
   if(fa===String(a)||fb===String(b))return fa+" – "+fb;
   var x=fa.replace(",","").split(" "), z=fb.replace(",","").split(" ");
@@ -82,13 +117,15 @@ function dateSpan(a,b,form){
 }
 // DATEWORDS:END
 
+
 // "13:30" -> "1:30 PM", as a reader says a time: components.clock. A
 // no-break space keeps AM or PM with its time; anything that is not a time
 // comes back as it was.
-function clock(t){
+function clock(t,lang){
   const m=/^(\d{1,2}):(\d\d)/.exec(String(t||""));
   if(!m||+m[1]>23)return String(t||"");
   const h=+m[1];
+  if(lang==="es")return (h%12||12)+":"+m[2]+"\u00a0"+(h<12?"a.":"p.")+"\u00a0m.";
   return (h%12||12)+":"+m[2]+"\u00a0"+(h<12?"AM":"PM");
 }
 
@@ -589,4 +626,19 @@ function electLine(key,election,takesOffice,today){
   if(typeof MutationObserver!=="undefined")
     new MutationObserver(judge).observe(document.documentElement,{childList:true,subtree:true});
 })();
+// THE PAGE'S WORDS (23 October 2026; i18n.py says how they are kept).
+// tr(key, English, vals) is the English, or the words of the page's
+// language for it where the page carries them (window.GR_WORDS, which
+// i18n.page_words writes into the head of a page in another language);
+// {name} in either is filled from vals. The key and the English are written
+// in each call as double-quoted strings, so the build and preflight can read
+// every one. Here, among the behaviour, because it reads what the page
+// carries rather than answering a case: a global set on the window, which
+// declares no name of its own (_spanish_dates runs it).
+(typeof window!=="undefined"?window:globalThis).tr=function(key,en,vals){
+  var w=typeof window!=="undefined"&&window.GR_WORDS,
+    s=w&&Object.prototype.hasOwnProperty.call(w,key)?w[key]:en;
+  return vals?String(s).replace(/\{([a-z_][a-z0-9_]*)\}/g,function(m,k){
+    return Object.prototype.hasOwnProperty.call(vals,k)?vals[k]:m;}):s;
+};
 // BEHAVIOUR:END

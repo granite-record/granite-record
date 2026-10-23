@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.661
+# GRANITE_VERSION: 2026-09-04.664
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -32284,8 +32284,11 @@ def _your_town():
                 f"learn/{page} lost its Your town box"
     js = _paths.locate("src/pages/find.js").read_text(encoding="utf-8")
     keeps = re.findall(r"localStorage\.setItem\(([^,]+),([^)]+)\)", js)
-    assert keeps == [("YT.key", "s")], \
-        f"find.js keeps something other than the place's slug: {keeps}"
+    # The town's slug, and the reader's language from Settings (i18n.py, 23
+    # October 2026), which is a code ("en", "es") and says nothing of where
+    # they live.
+    assert keeps == [("YT.key", "s"), ('"gr-lang"', "sel.value")], \
+        f"find.js keeps something other than the place's slug and the language: {keeps}"
     return "ok", (f"{len(places)} places, each a built town page, naming "
             f"{len(people)} members who each have a page; find.js keeps only the slug")
 
@@ -60327,7 +60330,7 @@ def _record_not_translated():
         "src/pages/constitution_tab.py": ['<div class="rs-text" translate="no">'],
         "src/pages/build_bill_pages.py": ['<p class="sx-title" translate="no">',
                                           '<div class="sx-docket" translate="no">'],
-        "src/pages/chrome.py": ['<a class="brand" href="index.html"{brand_cur} translate="no">'],
+        "src/pages/chrome.py": ['<a class="brand" href="{to("index.html")}"{brand_cur} translate="no">'],
     }
     missing = [f"{f}: {w}" for f, ws in want.items()
                for w in ws if w not in Path(f).read_text(encoding="utf-8")]
@@ -60593,7 +60596,15 @@ def _icons_named():
     seen, bad, n_icons, navs = Counter(), [], 0, 0
     import chrome as CH
     want_nav = [(href, drawings[g], label) for href, label, g in CH.NAV_TABS]
+    # A page in another language gives them in its words, each to the page in
+    # that language where there is one (i18n.py).
+    import i18n
+    nav_in = {lang: [(i18n.href(lang, href).lstrip("/"), drawings[g], CH.tab_words(lang)[href])
+                     for href, _label, g in CH.NAV_TABS]
+              for lang in i18n.LANGS if lang != i18n.DEFAULT}
     for where, html in sources.items():
+        lang_m = re.match(r'<!DOCTYPE html><html lang="([a-z]+)"', html)
+        lang = lang_m.group(1) if lang_m else i18n.DEFAULT
         if 'class="icon"' not in html:
             continue
         found = _icons_in(html)
@@ -60620,8 +60631,9 @@ def _icons_named():
             # 404.html names them from the root, since it answers at any depth
             # and every page names them at the address the host serves
             # (shell.clean_links, 12 October 2026): "bills", not "bills.html".
-            if [(h.lstrip("/"), s, w.strip()) for h, s, w in got] != \
-                    [(_shell_canon(h), s, w) for h, s, w in want_nav]:
+            if [(h.lstrip("/"), s, w.strip()) for h, s, w in got] != (
+                    [(_shell_canon(h), s, w) for h, s, w in want_nav] if lang == i18n.DEFAULT
+                    else [(_shell_canon(h), s, w) for h, s, w in nav_in[lang]]):
                 bad.append(f"{where}: the header's sections are not NAV_TABS's, each with its "
                            f"drawing: {[(h, w.strip()) for h, _s, w in got]}")
     # Follow, Report a problem and Share are mounted outside anything the
@@ -61238,7 +61250,8 @@ _DATE_EXEMPT = {
     # which only the browser has: month first, as dateWords writes a day. And
     # the home page's floor-session titles, "August 19th, 2026" (F3), the
     # person's own exception.
-    "chrome.py": ('.toLocaleDateString("en-US",{year:"numeric",month:"long",day:"numeric"})',),
+    # In the page's locale since 23 October 2026 (window.GR_LOCALE, i18n.py).
+    "chrome.py": ('.toLocaleDateString(window.GR_LOCALE||"en-US",{year:"numeric",month:"long",day:"numeric"})',),
     "build_pages.py": ('return DW_MONTHS[m-1]+" "+ordinal(dd)',),
     # A month and its year ("October 2026") over the month's grid: not a day.
     "build_calendar.py": ('monthWords(m){ return MONTH[',),
@@ -61371,6 +61384,287 @@ def _one_date_formatter():
                   "stories' strftime agrees with date_words; no other formatter in "
                   f"{len(_front_sources())} builders and scripts; no day written first "
                   f"on {seen} fixture pages")
+
+
+# ---- THE SITE IN SPANISH (23 October 2026) ----------------------------------
+#
+# The person, 23 October 2026: "begin work on the Spanish language version of
+# the site with the homepage, navigation, and implementation of an option to
+# select the language manually in the settings section or to automatically
+# set it based on the browser ... the translation should not go out of date
+# when page information is updated." i18n.py says how; these hold it.
+
+
+@check("frontend", "every word the code asks to be translated has its Spanish, translated from "
+                   "the English the code says now, and the catalog holds nothing else",
+       needs=("i18n",))
+def _translations(i18n):
+    """A translation that outlives an edit to its English goes on saying what
+    the English page no longer says, and nothing on either page shows it.
+    So every say() and tr() is read from the source (i18n.code_words), and
+    each must have an entry in lang/<code>.json translated from the English
+    the code says now, with the same {placeholders}; an entry no code asks
+    for is a leftover. And say() itself is held to the rule on a catalog
+    made for the purpose: current words answer, words translated from other
+    English do not, and the miss is kept for the build to say."""
+    import chrome
+    import build_pages as BP
+    words, problems = i18n.code_words()
+    assert not problems, "the code's words cannot all be read: " + "; ".join(problems[:6])
+    assert len(words) > 150, f"only {len(words)} words found to translate: the scan is broken"
+    said = []
+    for lang in i18n.LANGS:
+        if lang == i18n.DEFAULT:
+            continue
+        bad = i18n.check(lang)
+        assert not bad, (f"lang/{lang}.json against the code, {len(bad)} problems (python3 "
+                         "src/ops/translations.py says the same; --set brings one up to date): "
+                         + "; ".join(bad[:5]) + (f" (+{len(bad) - 5} more)" if len(bad) > 5 else ""))
+        cat = i18n.catalog(lang)
+        assert isinstance(cat.get("offered"), bool), f"lang/{lang}.json: offered is not true or false"
+        st = [e.get("state") for e in cat["strings"].values()]
+        said.append(f"{lang}: {st.count('proofread')} proofread, {st.count('draft')} drafts, "
+                    + ("offered" if cat["offered"] else "unlisted"))
+    # The tables the English is also written in, held to the words here.
+    assert chrome.tab_words("en") == {h: w for h, w, _g in chrome.NAV_TABS}, (
+        "chrome.tab_words and NAV_TABS say the sections differently")
+    assert BP.card_words("en") == {h: (n, line) for h, _i, n, line in BP.HOME_CARDS}, (
+        "build_pages.card_words and HOME_CARDS say the cards differently")
+    # The rule itself, on a catalog of its own.
+    i18n._CATALOGS["zz"] = {"offered": False, "strings": {
+        "t.a": {"en": "Old words", "zz": "Palabras viejas", "state": "draft"},
+        "t.b": {"en": "In {n} days", "zz": "En {n} días", "state": "proofread"}}}
+    try:
+        assert i18n.say("zz", "t.a", "Old words") == "Palabras viejas"
+        assert i18n.say("zz", "t.a", "New words") == "New words", (
+            "say() gave words translated from English the code no longer says")
+        assert ("zz", "t.a", "stale") in i18n.MISSES
+        assert i18n.say("zz", "t.c", "Never translated") == "Never translated"
+        assert ("zz", "t.c", "missing") in i18n.MISSES
+        assert i18n.say("zz", "t.b", "In {n} days", n=3) == "En 3 días"
+        assert i18n.say("en", "t.b", "In {n} days", n=3) == "In 3 days"
+        js = 'tr("t.a","Old words"); tr("t.b","In {n} days",{n}); tr("t.a","Other")'
+        w = i18n.page_words("zz", js)
+        assert '"t.b":"En {n} días"' in w and '"t.a":"Palabras viejas"' in w, w
+        assert i18n.page_words("en", js) == ""
+    finally:
+        i18n._CATALOGS.pop("zz", None)
+        for m in [m for m in i18n.MISSES if m[0] == "zz"]:
+            i18n.MISSES.discard(m)
+        for m in [m for m in i18n.SAID if m[0] == "zz"]:
+            i18n.SAID.discard(m)
+    return "ok", f"{len(words)} words in the code, every one current; " + "; ".join(said)
+
+
+@check("build", "the home page is built in Spanish at /es/ from the same data as the English, "
+                "unlisted until offered, and each names the other",
+       needs=("i18n",))
+def _spanish_home(i18n):
+    """The Spanish home page is the English one's twin, not a copy kept
+    beside it: built in the same run from the same home.json and the same
+    week, so the latest activity and Coming up hold the same bills and
+    meetings, in the record's own words; only the site's words differ. While
+    Spanish is unlisted (lang/es.json's "offered") the page asks not to be
+    indexed and neither page names the other to a search engine; once
+    offered, both do, and the sitemap lists it. Read off the fixture."""
+    shared, _base, _ran, _days = _fixture_site_shared()
+    site = shared / "site"
+    f = site / "es" / "index.html"
+    assert f.is_file(), "the build wrote no es/index.html"
+    es, en = f.read_text(encoding="utf-8"), (site / "index.html").read_text(encoding="utf-8")
+    assert '<html lang="es" data-alt-en="/"' in es, "the Spanish page does not name the English"
+    assert 'data-alt-es="/es/"' in en, "the English home page does not name the Spanish"
+    assert '<base href="/">' in es, "the Spanish page, one folder down, has no <base href=\"/\">"
+    assert 'window.GR_LANG="es"' in es and "window.GR_WORDS=Object.assign(" in es \
+        and '<script src="/lang/es.js"></script>' in es, (
+        "the Spanish page carries no words for its scripts, or does not load the shared ones")
+    shared_words = site / "lang" / "es.js"
+    assert shared_words.is_file() and '"find.none":' in shared_words.read_text(encoding="utf-8"), (
+        "lang/es.js, the shared scripts' words in Spanish, is missing or holds no word of find.js")
+    assert "GR_WORDS" not in en, "the English page carries a translation's words"
+    nav = es[es.index('<nav class="top"'):es.index("</nav>")]
+    for href, label in __import__("chrome").tab_words("es").items():
+        assert f">{label}</a>" in nav, f"the Spanish header does not say {label!r}"
+    assert ">Bills</a>" not in nav and ">Officials</a>" not in nav, "the Spanish header is English"
+    # The same data in both: the bills of Latest Activity and the meetings
+    # of Coming up, in the same order.
+    def bills(t):
+        i = t.find('<div id="recent"')
+        return re.findall(r'<a href="([^"]+)">', t[i:t.find("</section>", i)]) if i >= 0 else []
+    def meets(t):
+        return re.findall(r'<details class="calmeet"[^>]*data-cmte="([^"]*)"[^>]*data-date="([^"]*)"', t)
+    assert bills(es)[:5] == bills(en)[:5], ("Latest Activity holds different bills in Spanish: "
+                                            f"{bills(es)[:5]} and {bills(en)[:5]}")
+    assert meets(es) == meets(en), "Coming up holds different meetings in Spanish"
+    # And a week that has meetings in it (the fixture's own week may have
+    # none): Coming up drawn in both languages for 10 March 2026 out of the
+    # calendar checks' rows -- the same cards, bills and times, in Spanish
+    # words, with the committees' names as the record has them.
+    import build_pages as BP
+    import contextlib
+    import datetime as _dt
+    import io
+    with contextlib.redirect_stdout(io.StringIO()):
+        up = {lang: BP.calendar_html(site, today=_dt.date(2026, 3, 10), rows=_cal_rows(), lang=lang)
+              for lang in ("en", "es")}
+    assert meets(up["en"]) and meets(up["es"]) == meets(up["en"]), (
+        "Coming up for 10 March 2026 holds different meetings in Spanish")
+    cbn = lambda t: re.findall(r'class="cbn" href="([^"]+)"', t)
+    times = lambda t: re.findall(r'data-time="([^"]*)"', t)
+    assert cbn(up["es"]) == cbn(up["en"]) and times(up["es"]) == times(up["en"]), (
+        "Coming up for 10 March 2026 lists different bills or times in Spanish")
+    assert i18n.say("es", "cal.coming", "Coming up") in up["es"] and "Coming up" not in up["es"], (
+        "Coming up's heading is not the Spanish one")
+    offered = i18n.offered("es")
+    assert ('<meta name="robots" content="noindex">' in es) == (not offered), (
+        "the Spanish page's robots line does not follow lang/es.json's offered")
+    alt = '<link rel="alternate" hreflang="es"'
+    assert (alt in en) == offered and (alt in es) == offered, (
+        "hreflang names the Spanish page " + ("while it is unlisted" if not offered else "nowhere"))
+    sm = (site / "sitemap.xml").read_text(encoding="utf-8")
+    assert ("graniterecord.org/es/</loc>" in sm) == offered, (
+        "the sitemap " + ("lists /es/ while it is unlisted" if not offered else "leaves /es/ out"))
+    return "ok", ("es/index.html beside index.html, the same bills, and in a week with "
+                  f"{len(meets(up['es']))} meetings the same cards, bills and times; Spanish header; "
+                  + ("offered, in the sitemap" if offered else "unlisted: noindex, no hreflang, "
+                     "not in the sitemap"))
+
+
+_LANG_HEAD_RUN = r"""
+const script = require("fs").readFileSync(process.argv[2], "utf8");
+function run(c) {
+  const store = Object.assign({}, c.stored || {}); let to = null; const cls = new Set();
+  const alt = c.alt || {};
+  global.window = {};
+  global.document = {documentElement: {lang: c.lang, classList: {add: x => cls.add(x)},
+                     getAttribute: k => ({"data-alt-es": alt.es, "data-alt-en": alt.en})[k] || null},
+                     addEventListener() {}};
+  global.localStorage = {getItem: k => (k in store ? store[k] : null),
+                         setItem: (k, v) => { store[k] = String(v); }};
+  // node has a navigator of its own, which an assignment does not replace.
+  Object.defineProperty(globalThis, "navigator", {value: {languages: c.browser, language: c.browser[0]},
+                                                  configurable: true, writable: true});
+  global.location = {pathname: c.path || "/", search: "", hash: "", replace: u => { to = u; }};
+  eval(c.offer ? script.replace(/OFFER=\[[^\]]*\]/, 'OFFER=["en","es"]') : script);
+  return {to, langs: cls.has("langs"), seen: store["gr-lang-seen"] || ""};
+}
+const home = {es: "/es/"}, es = {en: "/"};
+const out = {
+  first_es_browser: run({lang: "en", alt: home, browser: ["es-MX", "en"]}),
+  opens_es: run({lang: "es", alt: es, path: "/es/", browser: ["en-US"]}),
+  seen_es_browser: run({lang: "en", alt: home, browser: ["es-MX"], stored: {"gr-lang-seen": "1"}}),
+  seen_chose_es: run({lang: "en", alt: home, browser: ["en-US"], stored: {"gr-lang-seen": "1", "gr-lang": "es"}}),
+  chose_en_on_es: run({lang: "es", alt: es, path: "/es/", browser: ["es-MX"], stored: {"gr-lang": "en"}}),
+  auto_on_es: run({lang: "es", alt: es, path: "/es/", browser: ["en-US"], stored: {"gr-lang-seen": "1"}}),
+  no_twin: run({lang: "en", browser: ["en"], stored: {"gr-lang-seen": "1", "gr-lang": "es"}, path: "/about"}),
+  offered_es_browser: run({lang: "en", alt: home, browser: ["es-US", "en"], offer: 1}),
+  offered_en_browser: run({lang: "en", alt: home, browser: ["en-GB", "es"], offer: 1}),
+  offered_fr_es: run({lang: "en", alt: home, browser: ["fr-FR", "es-ES"], offer: 1}),
+};
+process.stdout.write("\n@@" + JSON.stringify(out));
+"""
+
+
+@check("frontend", "the language a reader wants is found before the first paint: their choice, "
+                   "else their browser's, and only a choice moves a reader off a Spanish page",
+       needs=("chrome",))
+def _language_choice(chrome):
+    """chrome.LANG_HEAD, run in node against a stub of the page for each case
+    the person's request names -- chosen in Settings, or the browser's -- and
+    the rule that keeps an unoffered language to the people trying it. Fails
+    on a redirect that should not happen (an English reader sent to Spanish
+    while it is unlisted; a reader who opened a Spanish link sent away from
+    it by their browser) and on one that should (a choice not honoured, a
+    Spanish browser left on English once Spanish is offered)."""
+    node = shutil.which("node") or shutil.which("node.exe")
+    if not node:
+        return "skip", "node is not here"
+    head = chrome.lang_head()
+    body = head[head.index("<script>") + 8:head.rindex("</script>")]
+    root = Path(tempfile.mkdtemp())
+    try:
+        (root / "head.js").write_text(body, encoding="utf-8")
+        (root / "go.js").write_text(_LANG_HEAD_RUN, encoding="utf-8")
+        r = _run([node, "go.js", "head.js"], cwd=root, capture_output=True, text=True, timeout=60)
+        assert r.returncode == 0 and "@@" in (r.stdout or ""), (
+            "the language script would not run: " + (r.stderr or r.stdout or "")[-300:])
+        got = json.loads(r.stdout.rsplit("@@", 1)[1])
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    if "es" not in json.loads(re.search(r"OFFER=(\[[^\]]*\])", body).group(1)):
+        want = {"first_es_browser": {"to": None, "langs": False, "seen": ""},
+                "opens_es": {"to": None, "langs": True, "seen": "1"},
+                "seen_es_browser": {"to": "/es/", "langs": True, "seen": "1"},
+                "seen_chose_es": {"to": "/es/", "langs": True, "seen": "1"},
+                "chose_en_on_es": {"to": "/", "langs": True, "seen": "1"}}
+    else:
+        want = {"first_es_browser": {"to": "/es/", "langs": True, "seen": ""}}
+    want.update({"auto_on_es": {"to": None, "langs": True, "seen": "1"},
+                 "no_twin": {"to": None, "langs": True, "seen": "1"},
+                 "offered_es_browser": {"to": "/es/", "langs": True, "seen": ""},
+                 "offered_en_browser": {"to": None, "langs": True, "seen": ""},
+                 "offered_fr_es": {"to": "/es/", "langs": True, "seen": ""}})
+    bad = {k: (got.get(k), v) for k, v in want.items() if got.get(k) != v}
+    assert not bad, "the language script decided: " + "; ".join(
+        f"{k}: {g} where it should be {v}" for k, (g, v) in bad.items())
+    return "ok", (f"{len(want)} cases: a choice honoured both ways, the browser's language moving a "
+                  "reader only off English, nobody moved to an unoffered language they have not opened")
+
+
+@check("frontend", "a Spanish page's dates and times are the Spanish forms, the same from Python "
+                   "and from the browser, and the browser's tr() gives the page's words",
+       needs=("components",))
+def _spanish_dates(components):
+    """components.date_words and date_span, and clock, in Spanish: "19 de
+    febrero de 2026", "28 de septiembre – 4 de octubre de 2026", "1:30 p. m."
+    -- and components.js's dateWords, dateSpan and clock with the page's
+    language set (window.GR_LANG) say the same, form for form, run in node."""
+    C = components
+    cases = {("2026-02-19", "long"): "jueves, 19 de febrero de 2026",
+             ("2026-02-19", "full"): "19 de febrero de 2026",
+             ("2026-02-19", "medium"): "19 feb. 2026",
+             ("2026-02-19", "short"): "19 feb.",
+             ("2026-02-19", "day"): "jueves, 19 de febrero",
+             ("2026-02-19", "wkd"): "jue., 19 feb."}
+    for (d, form), want in cases.items():
+        assert C.date_words(d, form, "es") == want, (d, form, C.date_words(d, form, "es"))
+    spans = [("2026-10-05", "2026-10-11", "full"), ("2026-09-28", "2026-10-04", "full"),
+             ("2026-12-28", "2027-01-03", "full"), ("2026-02-09", "2026-02-13", "medium"),
+             ("2026-09-28", "2026-10-02", "medium"), ("2026-05-21", "2026-05-21", "full")]
+    days = ["2026-02-19", "2024-02-29", "2026-01-01", "2025-12-31", "2026-05-21", "1989-01-04"]
+    times = ["00:05", "09:30", "12:00", "13:30", "23:59", "soon"]
+    py = {"words": [C.date_words(d, f, "es") for d in days for f in C.DATE_FORMS],
+          "spans": [C.date_span(a, b, f, "es") for a, b, f in spans],
+          "clock": [C.clock(t, "es") for t in times]}
+    assert py["spans"][:3] == ["5–11 de octubre de 2026", "28 de septiembre – 4 de octubre de 2026",
+                               "28 de diciembre de 2026 – 3 de enero de 2027"], py["spans"]
+    assert py["clock"][3] == "1:30 p. m.", py["clock"]
+    node = shutil.which("node") or shutil.which("node.exe")
+    if not node:
+        return "ok", "Python's Spanish forms hold; node is not here to compare the browser's"
+    # The language is the caller's to pass (a Spanish page passes
+    # window.GR_LANG); and the page's words come through tr(), which reads
+    # window.GR_WORDS and fills {names}, the English where the page has none.
+    prog = ("globalThis.window=globalThis;window.GR_LANG='es';"
+            "window.GR_WORDS={'t.a':'hoy','t.b':'en {n} días'};\n"
+            + _components_js() + "\n"
+            + f"const days={json.dumps(days)},forms={json.dumps(list(C.DATE_FORMS))},"
+            + f"spans={json.dumps(spans)},times={json.dumps(times)};\n"
+            + "process.stdout.write(JSON.stringify({words:days.flatMap(d=>forms.map(f=>dateWords(d,f,'es'))),"
+            + "spans:spans.map(s=>dateSpan(s[0],s[1],s[2],'es')),clock:times.map(t=>clock(t,'es')),"
+            + "tr:[tr('t.a','today'),tr('t.b','in {n} days',{n:3}),tr('t.c','in {n} days',{n:2}),"
+            + "tr('t.b','in {n} days',{m:1})]}));")
+    r = _node_file(node, prog, capture_output=True, text=True, timeout=60)
+    assert r.returncode == 0, "components.js would not run: " + (r.stderr or "")[-300:]
+    js = json.loads(r.stdout)
+    assert js.pop("tr") == ["hoy", "en 3 días", "in 2 days", "en {n} días"], (
+        "components.js's tr() does not give the page's words, the English where it has none, "
+        "and {names} filled where given")
+    bad = [f"{k}[{i}]: Python {a!r}, browser {b!r}" for k in py
+           for i, (a, b) in enumerate(zip(py[k], js[k])) if a != b]
+    assert not bad, "Spanish dates differ: " + "; ".join(bad[:6])
+    return "ok", (f"{len(py['words'])} dates, {len(spans)} spans and {len(times)} times, "
+                  "the same in Python and in the browser")
 
 
 @check("frontend", "every link that leaves the site carries the outside-link mark, says it opens a "
@@ -63607,7 +63901,10 @@ def _floor_session_titles():
     o = re.search(r"const ordinal=.*?;\n", js)
     f = re.search(r"const fdo=.*?;};\n", js, re.S)
     assert o and f, "HOME_JS has no ordinal() or fdo() for the floor sessions' titles"
-    assert '${esc(v.chamber||"")} Session</b>' in js and "(${dayLink(v)})" in js \
+    # The chamber's title is sessName's (23 October 2026), which keeps the
+    # English pattern and gives a page in another language its own words.
+    assert '`${esc(v.chamber||"")} Session`' in js and "<b>${sessName(v)}</b>" in js \
+        and 'tr("sess.house","House Session")' in js and "(${dayLink(v)})" in js \
         and "fdo(v.date)" in js, (
             "the floor session's title is not \"<chamber> Session (<day>)\" with the day "
             "the link to the sitting")
@@ -65352,8 +65649,8 @@ def _latest_activity_links_the_bill(BP, B):
         "bill/2025/sb256.html", BP.recent_href({"bill": "SB256", "year": 2025})
     assert BP.recent_href({"bill": "SB256"}) == "bills.html#SB256"
     src = inspect.getsource(BP)
-    static = src[src.index("static_recent = ('<h2>Latest Activity</h2>"):]
-    static = static[:static.index("RECENT_MORE")]
+    static = src[src.index("static_recent = (f'<h2>{say(lang, \"home.recent\", \"Latest Activity\")}</h2>'"):]
+    static = static[:static.index("recent_more(lang)")]
     assert "recent_href(r)" in static and "bills.html#" not in static, (
         "the static Latest activity still links the search list")
     js = BP.HOME_JS[BP.HOME_JS.index('getElementById("recent")'):]
@@ -66122,13 +66419,20 @@ def _frame_written_once():
             continue
         rel = f.relative_to(site).as_posix()
         n += 1
+        # A page in another language has chrome's frame in that language,
+        # its footer leading to the versions the page names (i18n.py).
+        lm = re.match(r'<!DOCTYPE html><html lang="([a-z]+)"((?: data-alt-[a-z]+="[^"]*")*)', page)
+        lang = lm.group(1) if lm else "en"
+        alts = dict(re.findall(r'data-alt-([a-z]+)="([^"]*)"', lm.group(2))) if lm else {}
+        want_nav = nav if lang == "en" else plain(CH.nav(lang=lang))
+        want_foot = foot if lang == "en" else plain(CH.footer_html(lang, alts or None))
         got = re.findall(r'<nav class="top".*?</nav>', page, re.S)
-        if len(got) != 1 or plain(got[0]) != nav:
+        if len(got) != 1 or plain(got[0]) != want_nav:
             bad.append(f"{rel}: its header is not chrome's")
         elif got[0].count(' aria-current="page"') > 1:
             bad.append(f"{rel}: its header marks more than one section as the one it is on")
         got = re.findall(r"<footer>.*?</footer>", page, re.S)
-        if len(got) != 1 or plain(got[0]) != foot:
+        if len(got) != 1 or plain(got[0]) != want_foot:
             bad.append(f"{rel}: its footer is not chrome's")
         for piece, what in ((CH.THEMER_HEAD, "the theme's pre-paint script"),
                             (CH.THEMER_JS, "the theme control's handler"),
@@ -66171,8 +66475,21 @@ def _footer_credit():
     # the address the host serves (shell.clean_links, 12 October 2026).
     said = re.compile(re.escape(line).replace(re.escape('href="about.html"'),
                                               r'href="/?about"'))
+    # A page in another language says it in that language (i18n.py), with
+    # the same link.
+    import i18n
+    said_in = {lang: re.compile(re.escape(
+        f'<p class="footby">{i18n.say(lang, "foot.by", "An independent project by Alice Wade")} '
+        f'&middot; <a href="about.html">{i18n.say(lang, "foot.about", "About")}</a></p>'
+    ).replace(re.escape('href="about.html"'), r'href="/?about"'))
+        for lang in i18n.LANGS if lang != i18n.DEFAULT}
+
+    def credit(text):
+        m = re.match(r'<!DOCTYPE html><html lang="([a-z]+)"', text)
+        return said_in.get(m.group(1) if m else "en", said)
     lacking = [p.relative_to(shared / "site").as_posix() for p in with_footer
-               if len(said.findall(p.read_text(encoding="utf-8", errors="replace"))) != 1]
+               for text in [p.read_text(encoding="utf-8", errors="replace")]
+               if len(credit(text).findall(text)) != 1]
     assert with_footer and not lacking, (
         f"{len(lacking)} of {len(with_footer)} pages carry the credit line other than once: "
         f"{lacking[:5]}")
@@ -82990,6 +83307,113 @@ def _topic_model(TP):
                   "Miscellaneous where it has seen nothing")
 
 
+@check("build", "a title rule answers only where the General Court's own convention does",
+       needs=("topic_model",))
+def _topic_title_rules(TM):
+    """The title rules of 23 October 2026 (topic_model's rules section), and
+    the proposals beside them.
+
+    Each rule is a convention the General Court follows in the term it
+    labelled, and each is allowed exactly as far as that convention goes. A
+    constitutional amendment is CACR before the model asks anything; a
+    commemoration is Memorials ONLY where the model would have said
+    Miscellaneous -- never over an answer it gave. Three ways that goes wrong
+    quietly: a rule that fires over a confident answer and moves a bill the
+    model had right; a pattern that reads "designated caregivers", a "3-year
+    term" or a bill about "adopting rules" as a commemoration or as the
+    chamber's business; and "memorializing Congress", the older sense of
+    petitioning it, read as a memorial.
+
+    And the proposals are the owner's to turn on: each must name a topic that
+    either the General Court's list has or that carries its own code, and
+    while one is off it must change nothing -- a retired "Regular Meeting"
+    stays retired.
+    """
+    rows = [
+        ("HB1", {"bill": "HB1", "title": "relative to absentee ballots for voters",
+                 "house_committee": "Election Law"}, "", "Elections"),
+        ("HB2", {"bill": "HB2", "title": "relative to the registration of motor vehicles",
+                 "house_committee": "Transportation"}, "", "Motor Vehicles"),
+        ("CACR1", {"bill": "CACR1", "title": "relating to the governor"}, "", "CACR"),
+        ("HR1", {"bill": "HR1", "title": "honoring a retiring clerk"}, "", "Memorials"),
+        ("HR2", {"bill": "HR2", "title": "urging Congress to fund roads"}, "",
+         "State Government"),
+    ]
+    model = TM.Model(rows, {}, seed_names=0.0)
+    W = {f: 1.0 for f in TM.FAMILIES}
+    placed = {"m": {}, "P": {}, "floors": {"text": 0.0, "notext": 0.0},
+              "regimes": {r: {"W": W, "lp": 1.0, "temp": 1.0} for r in ("text", "notext")}}
+    declined = dict(placed, floors={"text": 1.01, "notext": 1.01})
+
+    # A CACR is CACR, whatever its words and however sure the model is.
+    cacr = {"bill": "CACR9", "title": "relating to absentee ballots for voters",
+            "house_committee": "Election Law"}
+    assert TM.answer(model, cacr, "", placed)[:3] == ("CACR", 1.0, "rule:cacr"), \
+        TM.answer(model, cacr, "", placed)
+    assert TM.answer(model, cacr, "", placed, rules=False)[0] != "CACR"
+
+    # Below the floor only. Placed, the model's answer stands.
+    hon = {"bill": "HR9", "title": "honoring the absentee ballot clerks of Concord",
+           "house_committee": "Election Law"}
+    got = TM.answer(model, hon, "", placed)
+    assert got[2] == "notext" and got[0] == TM.answer(model, hon, "", placed, rules=False)[0], got
+    assert TM.answer(model, hon, "", declined)[:3] == ("Memorials", 1.0, "rule:ceremony")
+    wash = {"bill": "HCR3", "title": "memorializing Congress to fund roads"}
+    assert not TM.is_ceremony(wash["title"]), "memorializing Congress is a petition"
+    assert TM.is_to_washington(wash["title"])
+    plain = {"bill": "HB7", "title": "relative to the registration of motor vehicles"}
+    assert TM.answer(model, plain, "", declined)[0] == TM.MISC, "no rule, no answer"
+    for t in ("naming a bridge in the city of Keene after Charles Redfern.",
+              "recognizing the second Thursday in October as children's environmental health day.",
+              "memorializing former Representative Ronald R. Laurion of Rochester."):
+        assert TM.is_ceremony(t), t
+    for t in ("permitting qualifying patients and designated caregivers to cultivate cannabis.",
+              "enabling towns to establish a 3-year term for town moderators.",
+              "allowing municipalities to designate sections of state highways for all terrain vehicles.",
+              "establishing a 4-year pilot program to improve rail trails."):
+        assert not TM.is_ceremony(t), t
+
+    assert TM.justices_bill("requesting an opinion of the justices concerning the "
+                            "constitutionality of HB 1135.") == "HB1135"
+    assert TM.justices_bill("requesting an opinion of the justices on HB 536, as amended.") == "HB536"
+    assert TM.justices_bill("requesting an opinion of the justices on the scope of part II") == ""
+
+    # THE PROPOSALS. Each a topic the site can file under, and each inert while
+    # off. A proposal with no code of its own must name one of the site's
+    # additions or a name of the General Court's list (SubjectCodes.txt: LEG,
+    # FED and STG), whose code apply() reads from data/subjects.json.
+    gc_names = {"Legislature", "Federal and International Relations", "State Government"}
+    assert set(TM.ENABLED) <= set(TM.PROPOSALS), set(TM.ENABLED) - set(TM.PROPOSALS)
+    for key, p in TM.PROPOSALS.items():
+        assert p["where"] in ("first", "decline"), (key, p["where"])
+        assert p.get("code") or p["topic"] in TM.ADDED_CODES or p["topic"] in gc_names, \
+            f"{key}: {p['topic']} would be filed under no code"
+    rm = {"bill": "HR1", "title": "Adopting the rules of the 2024 session for the 2025-2026 biennium."}
+    vet = {"bill": "HB291", "title": "removing veterinarians from the requirements of adopting "
+                                     "rules for prescribing opioids."}
+    saved = set(TM.ENABLED)
+    try:
+        TM.ENABLED.clear()
+        assert TM.remap_gold("Regular Meeting", rm) == "Regular Meeting", "off must be off"
+        assert TM.proposal_for(rm, "first") == ""
+        assert TM.answer(model, wash, "", declined)[0] == TM.MISC, "off must be off"
+        # A "decline" proposal answers below the floor, and only there.
+        TM.ENABLED.add("resolutions to Washington")
+        assert TM.answer(model, wash, "", declined)[:3] == (
+            "State Government", 1.0, "rule:resolutions to Washington")
+        assert TM.answer(model, hon, "", placed)[2] == "notext"
+        TM.ENABLED.clear()
+        TM.ENABLED.add("legislative organization")
+        assert TM.remap_gold("Regular Meeting", rm) == TM.LEGISLATIVE_ORGANIZATION
+        assert TM.LEGISLATIVE_ORGANIZATION in TM.new_vocabulary()
+        assert TM.proposal_for(vet, "first") == "", "a bill about rules is not the chamber's business"
+    finally:
+        TM.ENABLED.clear()
+        TM.ENABLED.update(saved)
+    return "ok", ("CACR first; a commemoration only below the floor; the proposals inert "
+                  "while off")
+
+
 @check("build", "every bench kind can be drawn and saved", needs=("review",))
 def _bench_fields(RV):
     """A judgment the bench loses is worse than one it never asked for.
@@ -89379,6 +89803,234 @@ def _town_clerks_reread(B, PC):
     return "ok", (f"the list read {read_on} names {', '.join(map(str, dated)) or 'no election'}, "
                   "and no date of it has stopped heading the town pages since it was read; the "
                   "rule fires on 1 March 2027 for a list read in September 2026")
+
+
+@check("files", "no file a town page's officials are drawn from holds less than its floor, and the "
+       "clerk list carries every correction made to it", needs=("town_sources",))
+def _town_sources_floors(TS):
+    """SILENCE IS NOT SUCCESS, for the three files the town pages' officials
+    come from (the freshness review, 23 October 2026).
+
+    `python3 src/towns/parse_officials.py`, run as its docstring says on a
+    machine with no built site, matched none of the directory's 234
+    municipalities against a site/districts.json that was not there, wrote
+    `{}` in collected/town_officials.json's place and exited 0 (found before
+    it ever reached git): every town's select board, town offices and three
+    cities' councils would have gone from the pages at the next build with
+    nothing to say why. Its writer and
+    parse_clerks_csv.py's now refuse to write under town_sources.FLOORS; this
+    holds the files in git to the same floors, whatever wrote them.
+
+    AND THE CORRECTIONS. src/fetch/other/fetch_town_clerks.py writes the
+    same file from the same list in a shape of its own, without
+    corrections/place_corrections.json -- run, it would put Errol Town Hall
+    back at Colebrook's address on three rows, and pass every floor. So
+    every polling place the corrections file corrects must be in the file
+    with what the list says beside it.
+
+    The floors are run on an empty file first, so a floor that nothing can
+    fall under fails here."""
+    for key in TS.SOURCES:
+        empty = {"boards": {}, "councils": {}} if key == "town_sites" else {}
+        assert TS.short_of(key, empty), f"an empty {TS.SOURCES[key]['file']} is under no floor"
+    bad, held = [], []
+    for key in TS.SOURCES:
+        data = TS.load(key)
+        if data is None:
+            bad.append(f"{TS.SOURCES[key]['file']} is not there")
+            continue
+        bad += TS.short_of(key, data)
+        have = TS.counts(key, data)
+        held.append(f"{TS.SOURCES[key]['file']} " + ", ".join(
+            f"{have[f]} {f}" for f in TS.FLOORS[key]))
+    fixes = Path("corrections/place_corrections.json")
+    fixed = json.loads(fixes.read_text(encoding="utf-8")).get("polling_place") or {} \
+        if fixes.exists() else {}
+    clerks = TS.load("sos_list") or {}
+    for k in sorted(fixed):
+        if not (clerks.get(k) or {}).get("polling_place_source_says"):
+            bad.append(f"collected/town_clerks.json does not carry the correction of {k}'s "
+                       "polling place: write it with src/towns/parse_clerks_csv.py, which "
+                       "applies corrections/place_corrections.json")
+    assert not bad, "\n  ".join(bad)
+    return "ok", "; ".join(held) + f"; all {len(fixed)} polling place corrections applied"
+
+
+@check("files", "each source of a town page's officials carries its copy's date in its own file, "
+       "and the dates the pages and the board rule are written with agree with it",
+       needs=("town_sources", "build_town_pages", "town_boards"))
+def _town_sources_dated(TS, B, T):
+    """WHAT A COPY IS AS OLD AS, KEPT WITH THE COPY (the freshness review,
+    23 October 2026). town_boards.json and town_officials_web.json carried
+    the day each page was read; the clerk list and NHDOT's directory carried
+    none, so the day they were true as of lived in a constant in their
+    parser and in the words of the page builder. Now every row carries it:
+    the list's `read_on`, the export's own day, and the directory's `as_of`,
+    its PDF's CreationDate. town_sources reads them, and the reminder
+    (_town_sources_fresh) is only as good as they are.
+
+    AND THE WORDS AND RULES WRITTEN AROUND ONE EDITION. The town pages say
+    NHDOT's directory is "dated September 2025" and that its boards are from
+    "before the 2026 town elections", and town_boards.py takes a town's own
+    page as current only if it postdates MEETING (the March 2026 meeting)
+    and a city's only after CITY_ELECTION (November 2025). Each is right for
+    the copies on disk today, and each would stay as it is when a new copy
+    is read: a September 2026 directory called "dated September 2025", or
+    pages read in April 2027 held to the meetings of 2026. So each is held
+    here to the date in the file it describes."""
+    bad, said = [], []
+    dates = {}
+    for key in TS.SOURCES:
+        data = TS.load(key)
+        name, field = TS.SOURCES[key]["file"], TS.DATE_FIELD[key]
+        if data is None:
+            bad.append(f"{name} is not there")
+            continue
+        when, missing = TS.copy_date(key, data)
+        if when is None:
+            bad.append(f"no row of {name} carries {field}: run {TS.SOURCES[key]['writer']} again")
+        elif missing:
+            bad.append(f"{missing} rows of {name} carry no {field}")
+        dates[key] = when
+        said.append(f"{key} {when}")
+
+    def meeting_after(d):
+        m = TS.town_meeting(d.year)
+        return m if m > d else TS.town_meeting(d.year + 1)
+
+    def meeting_before(d):
+        m = TS.town_meeting(d.year)
+        return m if m <= d else TS.town_meeting(d.year - 1)
+
+    def city_before(d):
+        y = d.year if d.year % 2 else d.year - 1
+        e = TS.general_election(y)
+        return e if e <= d else TS.general_election(y - 2)
+
+    d = dates.get("nhdot")
+    if d:
+        want = f"dated {d:%B %Y}"
+        if not B.NHDOT.endswith(want):
+            bad.append(f"build_town_pages.NHDOT reads {B.NHDOT!r}, and the directory in "
+                       f"collected/town_officials.json is {want}")
+        src = Path(B.__file__).read_text(encoding="utf-8")
+        years = set(re.findall(r"before the (\d{4}) town elections", src, re.I))
+        first = meeting_after(d).year
+        if years != {str(first)}:
+            bad.append(f"build_town_pages.py says the directory's boards are from before the "
+                       f"{' and '.join(sorted(years)) or 'no'} town elections, and the first "
+                       f"after its date ({d}) are {first}'s")
+    b = dates.get("town_sites")
+    if b:
+        m, c = meeting_before(b), city_before(b)
+        if tuple(T.MEETING) != (m.year, m.month) or T.TERM_FLOOR != m.year:
+            bad.append(f"town_boards.MEETING is {T.MEETING} and TERM_FLOOR {T.TERM_FLOOR}, and "
+                       f"the last town meeting before the pages were read ({b}) was {m}")
+        if tuple(T.CITY_ELECTION) != (c.year, c.month):
+            bad.append(f"town_boards.CITY_ELECTION is {T.CITY_ELECTION}, and the last city "
+                       f"election before the pages were read ({b}) was {c}")
+    assert not bad, "\n  ".join(bad)
+    return "ok", ("copies of " + ", ".join(said) + "; the pages' \"dated "
+                  f"{dates['nhdot']:%B %Y}\" and town_boards' meeting of "
+                  f"{T.MEETING[0]} agree with them")
+
+
+@check("files", "the municipal officials' sources are due a reading after the town meetings, the "
+       "cities' elections and a year, and before a general election, and on no other days",
+       needs=("town_sources", "build_members_elect"))
+def _town_sources_rule(TS, BME):
+    """The rule _town_sources_fresh holds the real files to on the clock
+    (town_sources.due), run here on fixed days, so a reminder that could
+    never fire fails now rather than passing quietly through the day it was
+    written for (_officials_recheck_rule's reason). The general election is
+    BME's rule, the one the officials' reminder uses: two copies of one
+    date must not part."""
+    import datetime as _dt
+    D = _dt.date
+    assert TS.town_meeting(2026) == D(2026, 3, 10) and TS.town_meeting(2027) == D(2027, 3, 9), (
+        "the town meetings of 2026 and 2027 are not March 10 and March 9")
+    parted = [y for y in range(2024, 2034) if TS.general_election(y) != BME.general_election(y)]
+    assert not parted, f"town_sources and build_members_elect date the November election of {parted} apart"
+    sept20, cases = D(2026, 9, 20), []
+    for key, as_of, day, looked, want in (
+            # The copies of September 2026: nothing until the 2027 town meetings have had
+            # their five weeks.
+            ("sos_list", sept20, D(2026, 10, 23), None, False),
+            ("sos_list", sept20, D(2027, 4, 12), None, False),
+            ("sos_list", sept20, D(2027, 4, 13), None, True),
+            ("town_sites", sept20, D(2027, 4, 12), None, False),
+            ("town_sites", sept20, D(2027, 4, 13), None, True),
+            ("town_sites", D(2027, 4, 20), D(2027, 4, 21), None, False),
+            # A city's council read in May 2027: due after November 2027's elections and
+            # their inaugurations.
+            ("town_sites", D(2027, 5, 1), D(2028, 1, 10), None, False),
+            ("town_sites", D(2027, 5, 1), D(2028, 1, 11), None, True),
+            # The list's polling places, before a general election: a list read in July is
+            # due sixty days before November 3, 2026, and not after the day.
+            ("sos_list", D(2026, 7, 1), D(2026, 9, 3), None, False),
+            ("sos_list", D(2026, 7, 1), D(2026, 9, 4), None, True),
+            ("sos_list", D(2026, 7, 1), D(2026, 11, 3), None, True),
+            ("sos_list", D(2026, 7, 1), D(2026, 11, 4), None, False),
+            # The directory of September 2025: due since the 2026 town meetings; quiet for a
+            # look that found nothing newer, until the next; a look to come is no look.
+            ("nhdot", D(2025, 9, 2), D(2026, 10, 23), None, True),
+            ("nhdot", D(2025, 9, 2), D(2026, 10, 23), D(2026, 10, 23), False),
+            ("nhdot", D(2025, 9, 2), D(2027, 4, 13), D(2026, 10, 23), True),
+            ("nhdot", D(2025, 9, 2), D(2026, 10, 23), D(2026, 11, 1), True),
+            # A year whatever the calendar -- a list read on April 13, 2027 is 366 days
+            # old five days before the 2028 meetings' date comes -- and a date that is none.
+            ("sos_list", D(2027, 4, 13), D(2028, 4, 12), None, False),
+            ("sos_list", D(2027, 4, 13), D(2028, 4, 13), None, True),
+            ("sos_list", None, D(2026, 10, 23), None, True),
+            ("sos_list", D(2026, 11, 1), D(2026, 10, 23), None, True)):
+        said = TS.due(key, as_of, day, looked)
+        if bool(said) != want:
+            cases.append(f"{key} read {as_of}, on {day}" + (f", looked {looked}" if looked else "")
+                         + (f": due ({said[:80]})" if said else ": not due"))
+    assert not cases, "the rule is wrong on: " + "; ".join(cases)
+    said = TS.due("nhdot", D(2025, 9, 2), D(2026, 10, 23))
+    assert "March 10, 2026" in said and "416 days" in said, said
+    said = TS.due("sos_list", D(2027, 4, 13), D(2028, 4, 13))
+    assert said.startswith("the copy is 366 days old"), said
+    assert TS.next_due("town_sites", sept20, D(2026, 10, 23)) == D(2027, 4, 13), (
+        TS.next_due("town_sites", sept20, D(2026, 10, 23)))
+    assert "_town_sources_fresh" in REMINDERS, (
+        "_town_sources_fresh is not among the REMINDERS, which warn on the night and never hold it")
+    return "ok", ("due five weeks after the town meetings, ten weeks after the cities' elections, "
+                  "sixty days before a general election for the polling places, and after a year; "
+                  "a look that found nothing newer counts as a reading")
+
+
+@check("data", "the sources of the town pages' municipal officials are read again when the town "
+       "meetings, the cities' elections or a year have passed since", needs=("town_sources",))
+def _town_sources_fresh(TS):
+    """A REMINDER, the register of probate paragraph's kind
+    (_probate_after_the_vote), on the rule _town_sources_rule holds
+    (town_sources.due): the Secretary of State's clerk list, NHDOT's
+    directory and the towns' own websites are each read by a person, on no
+    schedule, and the officials they name change at the town meetings in
+    March, at the cities' elections in November of an odd year, and on any
+    day an appointment is made. Nothing said when a copy had gone stale (the
+    freshness review, 23 October 2026, found the directory of September
+    2025 giving 154 towns' select boards seven months after the meetings
+    that changed them). A data check and one of the REMINDERS: on the night
+    it warns, on its own Healthchecks check, and never holds the site; on
+    the laptop it fails until the copy is read again, or, for a copy no one
+    can read again, until town_sources.LOOKED_ON records the day a person
+    looked for a newer one and found none."""
+    import build_date
+    today = build_date.today()
+    late, fine = [], []
+    for key, r in TS.report(today):
+        s = TS.SOURCES[key]
+        if r["due"]:
+            late.append(f"{key}, {s['file']} (its copy of {r['date']}): {r['due']}. To read it again, "
+                        + s["again"].format(url=s["url"]))
+        else:
+            fine.append(f"{key} of {r['date']}, next due {r['next']}")
+    assert not late, "\n  ".join(late) + ("\n  python3 src/towns/town_sources.py prints the "
+                                          "whole map")
+    return "ok", "; ".join(fine)
 
 
 @check("build", "a town page names one clerk, the Secretary of State's",
@@ -97002,7 +97654,7 @@ RECORD_CHECKS = {
     # finished dockets (18 October 2026): the record's history, never the site.
     "_still_days_from_history"}
 REMINDERS ={"_probate_after_the_vote", "_session_over_current", "_town_clerks_reread",
-            "_officials_rechecked"}
+            "_officials_rechecked", "_town_sources_fresh"}
 
 
 def built_selected(c):
@@ -98693,8 +99345,12 @@ def _fast_path_matches_the_build(BI, BP):
 # what of it each makes; front_end.py knows each of these, and nothing else.
 FAST_PATH_READERS = {
     "build_pages.py": "app.css without its comments, and without the mark's block where the "
-                      "build has no mark; the copies and billmatch.js (build_pages.front_end, "
+                      "build has no mark; the copies, billmatch.js and the shared scripts' "
+                      "words in each language, site/lang/<code>.js (build_pages.front_end, "
                       "which the fast path calls)",
+    "i18n.py": "the names of the shared scripts (SHARED_SCRIPTS) whose tr() words "
+               "build_pages.front_end writes to site/lang/<code>.js, in the function the "
+               "fast path calls",
     "build_search_index.py": "app.js's search tables into site/sidx (front_end.facts; the "
                              "step runs again when they move)",
     "build_all.py": "app.js named as the search index step's input",

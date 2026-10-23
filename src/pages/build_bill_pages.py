@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.74
+# GRANITE_VERSION: 2026-09-04.75
 """
 Write a real address for every bill, and the sitemap that points at them.
 
@@ -472,6 +472,15 @@ def main():
         # has no file, so a page that stops being built is caught loudly
         # rather than left out quietly.
         urls.append((a.base + S.canon("/" + p), None if p in UNDATED_STANDING else generated))
+    # A PAGE IN ANOTHER LANGUAGE (i18n.py), once that language is offered to
+    # everyone: until then it is unlisted, linked from nowhere and asking not
+    # to be indexed, and a sitemap naming it would say otherwise.
+    import i18n
+    for lang in i18n.LANGS:
+        if lang != i18n.DEFAULT and i18n.offered(lang):
+            for p in i18n.PAGES.get(lang, ()):
+                urls.append((a.base + S.canon(i18n.href(lang, p)),
+                             None if p in UNDATED_STANDING else generated))
 
     (site / "sitemap.xml").write_text(
         '<?xml version="1.0" encoding="UTF-8"?>\n'

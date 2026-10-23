@@ -392,6 +392,16 @@ there, rather than into a page's own code.
    after with `--compare`, measures every page type's text, contrast and
    overflow at three widths in both themes.
 
+**Change or add words the site says in its own voice, on a page that is
+also in Spanish** (the home page, the header, the footer, Settings, the
+search box). Write the English as it always was, inside `say(lang, "key",
+"English")` in Python or `tr("key", "English")` in a script, the key and the
+English written out. Then `python3 src/ops/translations.py --set key
+"Spanish"` adds or brings up the Spanish, as a draft for the proofreader.
+Preflight fails until every key the code says has Spanish translated from
+the English it says now. A title, a name or a docket line is the record's
+and is not translated. `docs/TRANSLATING.md` has the rest.
+
 **Change the header, the nav, the footer, the fonts or the icons.** One
 place: `src/pages/chrome.py`. Both kinds of page ask it -- record pages
 through the `<!-- CHROME:... -->` slots in `bills.html`, the five pages

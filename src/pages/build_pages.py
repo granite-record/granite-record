@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.228
+# GRANITE_VERSION: 2026-09-04.229
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -36,7 +36,9 @@ import bill_order as BO
 import build_date
 import civics as _civics
 import html as _html
+import i18n
 import shell as _shell
+from i18n import say
 from components import WORDBOOK, chip, clock, date_span, icon, pchip, until_attrs
 import seating
 import strip_js
@@ -187,6 +189,8 @@ HEADERS = """# Written by build_pages.py. Not an asset; Pages reads it.
   Cache-Control: public, max-age=0, must-revalidate
 /billmatch.js
   Cache-Control: public, max-age=0, must-revalidate
+/lang/*
+  Cache-Control: public, max-age=0, must-revalidate
 # The two files a page reads to say what is true today: the home page's own
 # summary, and the header search's index of members, committees and towns. A
 # cached copy of either is a page contradicting itself -- the home page's
@@ -307,6 +311,14 @@ RECENT_MORE = ('<p class="actmore"><a class="morebtn" href="/bills?sort=recent">
                'See all recent activity &rarr;</a></p>')
 
 
+def recent_more(lang="en"):
+    """RECENT_MORE in `lang`."""
+    if lang == i18n.DEFAULT:
+        return RECENT_MORE
+    return ('<p class="actmore"><a class="morebtn" href="/bills?sort=recent">'
+            + say(lang, "home.recent_more", "See all recent activity &rarr;") + '</a></p>')
+
+
 def recent_href(r):
     """Where a Latest activity row's bill number leads: the bill's own page,
     under the year it is filed in. It led to the search list, bills.html#SB256
@@ -351,11 +363,24 @@ def kind_title(k):
 MEET_LEGEND = tuple(tuple(kc) for kc in WORDBOOK["meeting_kinds"]["legend"])
 
 
-def clock_span(a, b):
+# The record's own words on a page in another language are marked as
+# English (i18n.py, the first kind).
+EN_ATTR = ' lang="en"'
+
+
+def kind_word(k, lang="en"):
+    """(the words a chip says for the schedule's kind `k`, its colour's
+    class): MEET_KIND's, in `lang` (i18n.say_word, keyed by the English, so
+    words/meeting_kinds.json changing a word asks for its translation)."""
+    word, kcls = MEET_KIND.get((k or "").strip().lower(), (kind_title(k), ""))
+    return i18n.say_word(lang, "kind", word), kcls
+
+
+def clock_span(a, b, lang="en"):
     """"10:00 AM–12:15 PM" -- a sitting from its first item to its last,
     which is how the General Court prints one -- or one time where the two
     are the same."""
-    return clock(a) if a == b else f"{clock(a)}–{clock(b)}"
+    return clock(a, lang) if a == b else f"{clock(a, lang)}–{clock(b, lang)}"
 
 
 # What a calendar card is keyed on; see meeting_key. A named tuple so the
@@ -464,7 +489,7 @@ def is_conference(key):
 FLOOR_CARD = {"house floor": "House Session Day", "senate floor": "Senate Session Day"}
 
 
-def card_name(key):
+def card_name(key, lang="en"):
     """What a card calls its committee: "House Judiciary", "Senate Finance",
     "Committee of conference on HB 2", "Commission on Aging", "House Session
     Day".
@@ -484,8 +509,15 @@ def card_name(key):
     """
     if is_conference(key):
         num = re.sub(r"^([A-Z]+)(\d)", r"\1 \2", key.bill)
+        if lang != i18n.DEFAULT:
+            return (say(lang, "cal.conference_on", "Committee of conference on {bill}", bill=num)
+                    if num else say(lang, "cal.conference", "Committee of conference"))
         return f"{CONFERENCE} on {num}" if num else CONFERENCE
     if key.name.strip().lower() in FLOOR_CARD:
+        if lang != i18n.DEFAULT:
+            return (say(lang, "cal.house_day", "House Session Day")
+                    if key.name.strip().lower() == "house floor"
+                    else say(lang, "cal.senate_day", "Senate Session Day"))
         return FLOOR_CARD[key.name.strip().lower()]
     word = CHAMBER_WORD.get(key.chamber)
     first = (key.name.split() or [""])[0]
@@ -638,7 +670,7 @@ def home_week(week):
             for d, day in (week or {}).items()}
 
 
-def calendar_html(out, today=None, rows=None):
+def calendar_html(out, today=None, rows=None, lang="en"):
     """What is left of this week, by day and then by meeting.
 
     `today` and `rows` are preflight's: it draws the rail for a fixed date out
@@ -686,9 +718,11 @@ def calendar_html(out, today=None, rows=None):
     n_next = sum(len(v) for v in home_week(weeks.get(nxt)).values())
     # The week's name and its weekdays, as the Calendar's pager says them
     # ("This Week", "Next Week": the person, 9 October 2026, item 17).
-    label = ('<p class="calwk">' + chip("Next Week" if ahead else "This Week")
-             + f' <span>{esc(date_span(monday, monday + _dt.timedelta(days=4), "medium"))}'
+    label = ('<p class="calwk">' + chip(say(lang, "cal.next_week", "Next Week") if ahead
+                                        else say(lang, "cal.this_week", "This Week"))
+             + f' <span>{esc(date_span(monday, monday + _dt.timedelta(days=4), "medium", lang))}'
              + "</span></p>")
+    coming = say(lang, "cal.coming", "Coming up")
 
     # WHERE THE REST IS: next week's own page, which build_calendar writes
     # for every week in its range, empty ones included -- linked here only
@@ -701,7 +735,8 @@ def calendar_html(out, today=None, rows=None):
     # plain 'See the full calendar' link instead of the count of next week's
     # meetings"). It said how many meetings next week held and linked that
     # week's page; from Saturday next week is the rail itself.
-    more = '<p class="calmore calall"><a href="calendar.html">See the full calendar</a></p>'
+    more = ('<p class="calmore calall"><a href="calendar.html">'
+            + say(lang, "cal.full", "See the full calendar") + '</a></p>')
 
     if not dates:
         # THE REST OF THE WEEK IS EMPTY every weekend in session and every
@@ -709,15 +744,15 @@ def calendar_html(out, today=None, rows=None):
         # business resumes rather than just "nothing", because the General
         # Court is a part-time legislature and this is what the page says for
         # half the year.
-        note = ("Nothing is scheduled next week yet." if ahead
-                else "Nothing is scheduled for the rest of this week.")
+        note = (say(lang, "cal.none_next", "Nothing is scheduled next week yet.") if ahead
+                else say(lang, "cal.none_left", "Nothing is scheduled for the rest of this week."))
         if not n_next:
             # MOSTLY (the survey of 7 October 2026): both chambers sat until veto
             # day, 19 August, in 2026, and into the autumn in most years.
-            note += (" The General Court sits mostly from January to June, and "
-                     "committees meet on bills from the fall filing period "
-                     "onwards.")
-        return (f'<section class="cal" data-mon="{monday.isoformat()}"><h2>Coming up</h2>'
+            note += " " + say(lang, "cal.season", "The General Court sits mostly from "
+                              "January to June, and committees meet on bills from the fall "
+                              "filing period onwards.")
+        return (f'<section class="cal" data-mon="{monday.isoformat()}"><h2>{coming}</h2>'
                 f'{label}<p class="note">{esc(note)}</p>{more}</section>')
 
     meets = {k: rs for d in dates for k, rs in week[d].items()}
@@ -746,9 +781,10 @@ def calendar_html(out, today=None, rows=None):
         except ValueError:
             return d, ""
         off = (dd - today).days
-        rel = ("today" if off == 0 else "tomorrow" if off == 1
-               else f"in {off} days" if 0 < off <= 14 else "")
-        return _shell.date_words(dd, "wkd"), rel
+        rel = (say(lang, "cal.today", "today") if off == 0
+               else say(lang, "cal.tomorrow", "tomorrow") if off == 1
+               else say(lang, "cal.in_days", "in {n} days", n=off) if 0 < off <= 14 else "")
+        return _shell.date_words(dd, "wkd", lang), rel
 
     # A day's committees in the order they start, by the week page's own
     # ordering, so the two list them the same way round.
@@ -758,8 +794,8 @@ def calendar_html(out, today=None, rows=None):
     # days of committee cards down a 300px column, and it was asked on 19
     # September to be "a bit more consolidated ... so it isn't as long". A
     # week is the Calendar tab's own unit, and the rail is now that week.
-    html = [f'<section class="cal" data-mon="{monday.isoformat()}"><h2>Coming up</h2>{label}']
-    body, missing = cal_days(days, meets, titles, years, code, when, esc)
+    html = [f'<section class="cal" data-mon="{monday.isoformat()}"><h2>{coming}</h2>{label}']
+    body, missing = cal_days(days, meets, titles, years, code, when, esc, lang=lang)
     # THE WHOLE WEEK, IN A BOX OF ITS OWN HEIGHT. A week in session is forty
     # sittings -- the week of 26 January 2026 held 43 -- and drawn in full it
     # ran the left rail to about four times the height of the middle column. It
@@ -773,7 +809,7 @@ def calendar_html(out, today=None, rows=None):
     # without a pointer. Focusable and nameless, it would be announced as
     # nothing, so it is a region and its name says what it holds.
     html.append('<div class="calscroll" role="region" tabindex="0" '
-                'aria-label="Meetings from today to Sunday">'
+                f'aria-label="{esc(say(lang, "cal.scroll", "Meetings from today to Sunday"))}">'
                 + body + "</div>")
     html.append(more)
     return "".join(html) + cal_notes(up, missing, esc)
@@ -835,7 +871,7 @@ def meeting_who(cmte, rows):
 
 
 def cal_days(days, meets, titles, years, code, when, esc, level=3,
-             sessions=None, docs=None):
+             sessions=None, docs=None, lang="en"):
     """The day blocks and their meeting cards, for any set of days.
 
     Split out of calendar_html on 18 September so the calendar PAGE draws the
@@ -873,7 +909,7 @@ def cal_days(days, meets, titles, years, code, when, esc, level=3,
                     f'<span class="cdrel">{esc(rel)}</span>'
                     + f"</{h}>")
         if not keys:
-            html.append('<p class="calempty">No meetings scheduled.</p></div>')
+            html.append(f'<p class="calempty">{say(lang, "cal.empty", "No meetings scheduled.")}</p></div>')
             continue
         for key in keys:
             # THE NAME THE CARD PRINTS, with its chamber: two committees of
@@ -881,6 +917,11 @@ def cal_days(days, meets, titles, years, code, when, esc, level=3,
             # which it is. The key's own name is the committee's, for the
             # links and the questions asked about it below.
             _d, cmte = key.date, card_name(key)
+            # In another language the card's name is the page's words for a
+            # session day or a conference, and the committee's own name
+            # otherwise, which is the record's and stays English.
+            shown = card_name(key, lang)
+            own_name = lang != i18n.DEFAULT and shown == cmte
             rows = meets[key]
             # THE DAY'S ITEMS, IN ORDER. One entry can hold a hearing, a work
             # session and an executive session, so the body is a little
@@ -911,7 +952,7 @@ def cal_days(days, meets, titles, years, code, when, esc, level=3,
             # twelve-hour clock a reader uses (clock); the record's own
             # "10:00" stays in data-time and data-last below.
             slots = sorted(x for x in (r.get("time") or "" for r in rows) if x)
-            time = clock_span(slots[0], slots[-1]) if slots else ""
+            time = clock_span(slots[0], slots[-1], lang) if slots else ""
             # BILLS, NOT ROWS. A study or statutory committee's meeting is a
             # row with no bill, and counting rows called it "(1 bill)".
             # AND EACH BILL ONCE. A bill heard and then voted on the same day
@@ -980,7 +1021,7 @@ def cal_days(days, meets, titles, years, code, when, esc, level=3,
             # first line on four digits. The time follows, beside the bill
             # count, so the two read as one phrase about that sitting:
             # "Ways and Means / 09:30-10:30 (11 bills)".
-            html.append(f'<span class="calcmte">{esc(cmte)}</span>')
+            html.append(f'<span class="calcmte"{EN_ATTR if own_name else ""}>{esc(shown)}</span>')
             if time:
                 html.append(f'<span class="caltime">{esc(time)}</span>')
             # THE COUNT DIRECTLY AFTER THE TIME, not after the kind. The
@@ -989,7 +1030,8 @@ def cal_days(days, meets, titles, years, code, when, esc, level=3,
             # work session (5 bills)", a bracket around nothing in
             # particular. On its own where there is no time, for the same
             # reason.
-            _bills = f'{n} bill{"" if n == 1 else "s"}'
+            _bills = (say(lang, "cal.one_bill", "1 bill") if n == 1
+                      else say(lang, "cal.n_bills", "{n} bills", n=n))
             if n:
                 html.append(f'<span class="calcount">'
                             + (f"({_bills})" if time else _bills) + "</span>")
@@ -997,8 +1039,7 @@ def cal_days(days, meets, titles, years, code, when, esc, level=3,
             # no chip says "Session Day" again under it, as the approved
             # Calendar has it (9 October 2026); its bar keeps the colour.
             for k in ([] if key.name.strip().lower() in FLOOR_CARD else kinds):
-                word, kcls = MEET_KIND.get(k.strip().lower(),
-                                           (kind_title(k), ""))
+                word, kcls = kind_word(k, lang)
                 html.append(chip(word, f"calkind {kcls}"))
             if venue:
                 html.append(f'<span class="calwhere">{esc(venue)}</span>')
@@ -1006,11 +1047,10 @@ def cal_days(days, meets, titles, years, code, when, esc, level=3,
                         '<div class="calbody">')
             one = len(slotted) == 1
             for (tm, wk, vn), items in slotted.items():
-                word, kcls = MEET_KIND.get(wk.strip().lower(),
-                                           (kind_title(wk), ""))
+                word, kcls = kind_word(wk, lang)
                 if not one:
                     html.append('<p class="calslot">'
-                                + (f'<span class="caltime">{esc(clock(tm))}</span>' if tm else "")
+                                + (f'<span class="caltime">{esc(clock(tm, lang))}</span>' if tm else "")
                                 + chip(word, f"calkind {kcls}")
                                 + (f'<span class="calwhere">{esc(vn)}</span>'
                                    if vn and not venue else "") + "</p>")
@@ -1024,7 +1064,8 @@ def cal_days(days, meets, titles, years, code, when, esc, level=3,
                 for note in OrderedDict.fromkeys(
                         r["note"] for r in items
                         if not (r.get("bill") or "").strip() and r.get("note")):
-                    html.append(f'<p class="calnote">{esc(note)}</p>')
+                    html.append(f'<p class="calnote"{EN_ATTR if lang != i18n.DEFAULT else ""}>'
+                                f'{esc(note)}</p>')
                 items = [r for r in items if (r.get("bill") or "").strip()]
                 if not items:
                     continue
@@ -1038,7 +1079,8 @@ def cal_days(days, meets, titles, years, code, when, esc, level=3,
                             else f'/bills#{esc(bid)}')
                     num = re.sub(r"^([A-Z]+)(\d)", r"\1 \2", bid)
                     html.append(f'<li><a class="cbn" href="{esc(href)}">{esc(num)}</a>'
-                                + (f'<span class="cbt">{esc(ti)}</span>' if ti else "")
+                                + (f'<span class="cbt"{EN_ATTR if lang != i18n.DEFAULT else ""}>'
+                                   f'{esc(ti)}</span>' if ti else "")
                                 + "</li>")
                 html.append("</ul>")
             # INTO THE SITTING, NOT JUST THE COMMITTEE. A day has an address
@@ -1084,7 +1126,7 @@ def cal_days(days, meets, titles, years, code, when, esc, level=3,
             if study and rec:
                 html.append('<p class="calmore"><a class="out" href="https://www.youtube.com/'
                             f'watch?v={esc(rec)}" target="_blank" rel="noopener">'
-                            "The recording, on YouTube</a></p>")
+                            + say(lang, "cal.recording", "The recording, on YouTube") + "</a></p>")
             # A study committee that shares a name with a standing one is not
             # that committee, so its card does not borrow the page; and a
             # chamber's committee takes its OWN chamber's page, which the
@@ -1097,18 +1139,22 @@ def cal_days(days, meets, titles, years, code, when, esc, level=3,
             own = next((r.get("page") for r in rows
                         if r.get("study") and r.get("page")), "") if study else ""
             if floor:
+                did = (f'What the {esc(key.name[:-6].strip())} did that day'
+                       if lang == i18n.DEFAULT
+                       else say(lang, "cal.house_did", "What the House did that day")
+                       if floor == "H" else say(lang, "cal.senate_did", "What the Senate did that day"))
                 html.append('<p class="calmore">'
-                            f'<a href="session/{floor}/{esc(_d)}.html">'
-                            f'What the {esc(key.name[:-6].strip())} did that day'
-                            "</a></p>")
+                            f'<a href="session/{floor}/{esc(_d)}.html">{did}</a></p>')
             elif cc:
                 html.append('<p class="calmore">'
                             f'<a href="committee/{esc(cc)}.html#day-{esc(_d)}">'
-                            f'This meeting on the {esc(cmte)} page</a></p>')
+                            + say(lang, "cal.on_page", "This meeting on the {name} page",
+                                  name=esc(cmte)) + '</a></p>')
             elif own:
                 html.append('<p class="calmore">'
                             f'<a href="{esc(own)}#day-{esc(_d)}">'
-                            f'This meeting on the {esc(cmte)} page</a></p>')
+                            + say(lang, "cal.on_page", "This meeting on the {name} page",
+                                  name=esc(cmte)) + '</a></p>')
             html.append("</div></details>")
         html.append("</div>")
     return "".join(html), missing
@@ -1168,12 +1214,23 @@ NAV_TABS = chrome.NAV_TABS
 
 
 def shell(title, current, body, wide=False, script="", desc="",
-          base="https://graniterecord.org"):
+          base="https://graniterecord.org", lang="en", scripts=()):
     """A page of the five this file writes -- the home page, Officials, About,
     /search and 404 -- in the frame every page shares (chrome.py): the head's
     shared lines, the header with `current` marked as the section a reader is
     on, the footer and the closing scripts, around `body`. shell.page() puts
-    the record pages in the same frame, from bills.html's CHROME slots."""
+    the record pages in the same frame, from bills.html's CHROME slots.
+
+    IN ANOTHER LANGUAGE (i18n.py): `lang` is the page's, and `current` is
+    still the English page it is a version of ("index.html"). The page is
+    written at i18n.href's address, one folder down (/es/), so it carries
+    <base href="/"> as every record page does: the links it and its scripts
+    write from the root lead there, and its skip link is written whole. Each
+    version names the others on <html> (data-alt-<code>), which chrome's
+    language script reads. While a language is not offered to everyone, its
+    page asks not to be indexed and neither version names the other to a
+    search engine (hreflang). `scripts` is the text of any script the page
+    carries beside `script`, whose tr() words its head must carry."""
     # THE PAGES A SEARCH ENGINE REACHES FIRST HAD THE LEAST IN THEIR HEAD.
     # Every one of the 33,683 bill pages carries a description, a canonical
     # address and an unfurl card because shell.py writes them. The home page,
@@ -1183,7 +1240,20 @@ def shell(title, current, body, wide=False, script="", desc="",
     _e = lambda s: _html.escape(str(s or ""), quote=True)
     # The host serves /legislators, not /legislators.html, and redirects
     # the second to the first. shell.canon is where that is written down.
-    _canon = (base + _shell.canon("/" + current)) if current else (base + "/")
+    here = i18n.href(lang, current) if current else "/"
+    _canon = (base + _shell.canon(here)) if current else (base + "/")
+    # This page's versions, {code: address}, itself among them.
+    versions = {c: _shell.canon(i18n.href(c, current)) for c in i18n.LANGS
+                if current and i18n.has(c, current)}
+    others = {c: h for c, h in versions.items() if c != lang}
+    alt_attrs = "".join(f' data-alt-{c}="{_e(h)}"' for c, h in others.items())
+    listed = len(versions) > 1 and all(i18n.offered(c) for c in versions)
+    seo_alt = ("".join(f'<link rel="alternate" hreflang="{c}" href="{base}{h}">'
+                       for c, h in versions.items())
+               + f'<link rel="alternate" hreflang="x-default" href="{base}{versions[i18n.DEFAULT]}">'
+               ) if listed else ""
+    robots = ('<meta name="robots" content="noindex">'
+              if lang != i18n.DEFAULT and not i18n.offered(lang) else "")
     HEAD_SEO = (f'<meta name="description" content="{_e(desc)}">'
                 f'<link rel="canonical" href="{_canon}">'
                 f'<meta property="og:type" content="website">'
@@ -1191,25 +1261,31 @@ def shell(title, current, body, wide=False, script="", desc="",
                 f'<meta property="og:description" content="{_e(desc)}">'
                 f'<meta property="og:url" content="{_canon}">'
                 f'<meta property="og:site_name" content="Granite Record">'
-                f'<meta name="twitter:card" content="summary_large_image">') if desc else ""
+                + (f'<meta property="og:locale" content="{i18n.LOCALE[lang].replace("-", "_")}">'
+                   if lang != i18n.DEFAULT else "")
+                + f'<meta name="twitter:card" content="summary_large_image">') if desc else ""
+    HEAD_SEO += seo_alt + robots
+    # One folder down, the root is reached as a record page reaches it.
+    base_tag = '\n<base href="/">' if lang != i18n.DEFAULT else ""
+    skip = (_shell.canon(here) if lang != i18n.DEFAULT else "") + "#main"
     # The home page has no tab, so the brand carries its "you are here"
     # (chrome.nav's home).
     # Every link at the address the host serves (shell.clean_links).
-    return _shell.clean_links(f"""<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+    return _shell.clean_links(f"""<!DOCTYPE html><html lang="{lang}"{alt_attrs}><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">{base_tag}
 <title>{title}</title>{HEAD_SEO}
-{chrome.head(current)}
+{chrome.head(current, lang, (script, *scripts))}
 <!-- body.pg is what the rules for these pages alone are scoped to in app.css
      (:where(body.pg)): every page loads the one stylesheet. -->
 <link rel="alternate" type="application/rss+xml" title="Granite Record — all activity"
  href="/feed/all.xml">
 <link rel="alternate" type="application/rss+xml" title="Granite Record — upcoming hearings"
  href="/feed/hearings.xml"></head><body class="pg">
-<a class="skip" href="#main">Skip to the content</a>
-{chrome.nav(current, home=current == "index.html")}
+<a class="skip" href="{skip}">{say(lang, "page.skip", "Skip to the content")}</a>
+{chrome.nav(current, home=current == "index.html", lang=lang)}
 <main class="wrap{' wide' if wide else ''}" id="main">{body}</main>
-{chrome.footer()}
-{chrome.scripts()}
+{chrome.footer(lang, others)}
+{chrome.scripts(lang)}
 {script}</body></html>""")
 
 
@@ -2408,18 +2484,208 @@ WEBINAR_UNTIL = "2026-11-11"
 WEBINAR_URL = "https://zoom.us/meeting/register/SoxLZ-b5TnWYcGPfmVaZDA#/registration"
 
 
-def home_webinar(today=None):
-    """The webinar's box for the home page, or "" once it is over."""
+def home_webinar(today=None, lang="en"):
+    """The webinar's box for the home page, or "" once it is over. In
+    another language it says the webinar is held in English."""
     today = today or build_date.today().isoformat()
     if str(today)[:10] >= WEBINAR_UNTIL:
         return ""
-    return (f'<aside class="webinar" aria-label="Webinar"{until_attrs(WEBINAR_UNTIL, today)}>'
-            '<p class="wbwhen">Free webinar &middot; Tuesday, November 10, 6:30 p.m.</p>'
-            '<p class="wbwhat">How Granite Record works, and how to use it to keep up with '
-            'Concord this session. Hosted by Alice Wade. All are welcome to join, ask '
-            'questions and say which features they would like most.</p>'
+    return (f'<aside class="webinar" aria-label="{_html.escape(say(lang, "web.label", "Webinar"))}"'
+            f'{until_attrs(WEBINAR_UNTIL, today)}>'
+            f'<p class="wbwhen">{say(lang, "web.when", "Free webinar &middot; Tuesday, November 10, 6:30 p.m.")}</p>'
+            f'<p class="wbwhat">{say(lang, "web.what", "How Granite Record works, and how to use it to keep up with Concord this session. Hosted by Alice Wade. All are welcome to join, ask questions and say which features they would like most.")}</p>'
             f'<a class="wbgo" href="{_html.escape(WEBINAR_URL, quote=True)}" target="_blank" rel="noopener">'
-            'Register on Zoom</a></aside>')
+            f'{say(lang, "web.go", "Register on Zoom")}</a></aside>')
+
+
+def _home_esc(x):
+    """The home page's escape: components.js's esc, the ampersand, the angles
+    and the double quote."""
+    return (str(x or "").replace("&", "&amp;").replace("<", "&lt;")
+            .replace(">", "&gt;").replace('"', "&quot;"))
+
+
+def _record(x, lang):
+    """The record's own words (a bill's title, the hand-kept status note), as
+    the record has them: in English, marked so on a page in another language,
+    so a screen reader says them in English (i18n.py, the first kind)."""
+    x = _home_esc(x)
+    return x if lang == i18n.DEFAULT or not x else f'<span lang="en">{x}</span>'
+
+
+def year_link(lang="en"):
+    """YEAR_LINK in `lang`: the way to the legislature's year, which is an
+    English page."""
+    if lang == i18n.DEFAULT:
+        return YEAR_LINK
+    return (f'<p class="statenote stateyear"><a href="{_year.HREF}">'
+            + say(lang, "home.year_link", "NH Legislature Schedule") + '</a></p>')
+
+
+def state_box(S, lang="en"):
+    """The status box as the server draws it, from home.json's status, in
+    `lang`: the phase, the last session day, the hand-kept headline and note
+    (the person's own words, so in English on every page), the next
+    milestone, and the summary's date or the warning that it is stale."""
+    esc = _home_esc
+
+    def fd(d):
+        """"Aug 19", the form HOME_JS's fd() writes: shell.date_words."""
+        return esc(_shell.date_words(d or "", "short", lang))
+
+    static_state = ""
+    if S.get("headline") or S.get("phase"):
+        ph = {"in session": ("live", say(lang, "state.in", "In Session")),
+              "veto day pending": ("wait", say(lang, "state.veto", "Awaiting Veto Day")),
+              "between sessions": ("wait", say(lang, "state.between", "Between Sessions")),
+              "out of session": ("off", say(lang, "state.out", "Out of Session"))}.get(
+                  (S.get("phase") or "").lower(), ("off", S.get("phase") or ""))
+        ms = (S.get("milestones") or [{}])[0]
+
+        def fdy(d):
+            """"Aug 19, 2026", the form HOME_JS's fdy() writes."""
+            return esc(_shell.date_words(d or "", "medium", lang))
+        stale = (S.get("stale_days") or 0) > 45
+        # THE SAME BOX THE SCRIPT DRAWS, line for line. This copy is what a
+        # reader without JavaScript and every crawler get. It once had no last
+        # floor session, no count of hearings and no date -- so it could not
+        # say it was stale, which is the one thing a hand-kept summary most
+        # needs to be able to say. The livestream links are in neither copy,
+        # as redundant.
+        static_state = (
+            f'<div class="statebox {ph[0]}"><div class="stateline">'
+            f'<span class="dot"></span><b>{esc(ph[1])}</b>'
+            + (f'<span class="statemeta">{say(lang, "state.last", "Last Session Day:")} '
+               f'{fdy(S["last_session"])}</span>'
+               if S.get("last_session") else "")
+            + "</div>"
+            + (f'<p class="statehead">{_record(S["headline"], lang)}</p>'
+               if S.get("headline") else "")
+            + (f'<p class="statenote">{_record(S["note"], lang)}</p>' if S.get("note") else "")
+            + (f'<p class="statenote"><b>{say(lang, "state.next", "Next:")} '
+               f'{_record(ms.get("label"), lang)}</b>, '
+               f'{fd(ms.get("date"))}. {_record(ms.get("note"), lang)}</p>'
+               if ms.get("label") else "")
+            # THE STALE WARNING CARRIES ITS OWN DATE, so the page can work it
+            # out again in the reader's clock: it was written when the site was
+            # built and read for as long as the build stood.
+            + (f'<p class="statenote stalewarn" style="color:var(--st-veto)" '
+               f'data-updated="{esc(S.get("updated") or "")}">'
+               + say(lang, "state.stale", "This summary was last updated {n} days ago and "
+                     "may be out of date.", n=S["stale_days"]) + '</p>' if stale
+               else (f'<p class="statemeta upd" style="margin-top:8px" '
+                     f'data-updated="{esc(S.get("updated") or "")}">'
+                     f'{say(lang, "state.updated", "Summary Updated:")} '
+                     f'{fdy(S["updated"])}</p>' if S.get("updated") else ""))
+            + year_link(lang) + "</div>")
+    return static_state
+
+
+def recent_box(H, lang="en"):
+    """Latest Activity as the server draws it: five rows of home.json's
+    recent, each a day, a bill and what happened -- the bill's title and the
+    history's line in the record's words -- and the way to the rest."""
+    esc = _home_esc
+    static_recent = ""
+    if H.get("recent"):
+        # A LIST, NOT A TABLE. It was a two-column table with no header cell
+        # in it, which a screen reader announces as a table of five rows and
+        # two columns and then reads as a grid with nothing to say what a
+        # column is (the audit of 2 October 2026, M7). It is five things in a
+        # row: the day, and what happened. HOME_JS draws the same markup.
+        static_recent = (f'<h2>{say(lang, "home.recent", "Latest Activity")}</h2>'
+                         '<ul class="actlist">' + "".join(
+            f'<li><span class="actd">{esc(_shell.date_words(r.get("date") or "", "short", lang))}'
+            f'</span><span class="actb">'
+            f'<a href="{esc(recent_href(r))}">{esc(r.get("n"))}</a> '
+            f'{_record(r.get("title"), lang)}<br><span class="actw">'
+            f'{_record(r.get("what"), lang)}</span></span></li>'
+            for r in H["recent"][:RECENT_SHOWN]) + "</ul>"
+                         + recent_more(lang))
+    return static_recent
+
+
+def home_body(lang, has_lockup, static_state, static_up, static_recent, latest_days):
+    """The home page's <main>, in `lang`: the hero, the search box, the cards
+    and the guides' slot in the middle; the status and Coming up on the
+    left; the session days, the rebuild line and Latest Activity on the
+    right. The parts drawn from data are passed in, drawn in `lang`."""
+    esc = _home_esc
+    # THREE COLUMNS, AND THE MIDDLE ONE IS WRITTEN FIRST. The order here is
+    # the order a screen reader hears and the order the Tab key takes; the
+    # grid in app.css puts .hleft to the left of it. See the comment on
+    # .hcols for why that way round.
+    # THE HEADING IS THE LOCKUP WHERE THERE IS ONE. h1.lockup is a mask over
+    # the text colour, and a mask whose file is missing is drawn as nothing:
+    # an empty band above the search box, with the site's name hidden inside
+    # it. A build that placed no lockup.png writes the name as text instead.
+    home_h1 = ('<h1 class="lockup"><span>Granite Record</span></h1>' if has_lockup
+               else '<h1 class="wordmark">Granite Record</h1>')
+    # WHAT IS IN THE PAGE'S LANGUAGE, SAID ONCE (i18n.py): this page, and not
+    # yet the pages it leads to, nor the record's own words.
+    only = ("" if lang == i18n.DEFAULT else
+            f'<p class="langnote">{say(lang, "home.lang_note", "This page is in Spanish. The rest of the site is in English for now, and so is what the record itself says: bill titles, committee names, each bill&rsquo;s history and the subjects the search knows.")}</p>\n')
+    # THE GUIDES' SLOT is the English page's: build_civics fills it with
+    # guides, and the guides are in English.
+    guides = "<!-- guides --><!-- /guides -->" if lang == i18n.DEFAULT else ""
+    # The columns' treatment, HOME_COLUMN_OPTIONS[HOME_COLUMNS]: one class.
+    return f"""<div class="hcols {HOME_COLUMN_OPTIONS[HOME_COLUMNS]}">
+<div class="hmid">
+{home_h1}
+<p class="slogan">{say(lang, "home.slogan", "Public Records, Made Findable.")}</p>
+<p class="lead">{say(lang, "home.lead", "Keep up with New Hampshire legislation, find bills on the issues you care about, learn how the legislature works, and explore the record from 1989 to today.")}</p>
+{only}{home_webinar(lang=lang)}
+<!-- ONE BOX, THE HEADER'S FINDER (D13, the person, 8 October 2026: "one
+     search box like the header search: bills, legislators, towns, committees
+     and the rest from the same box, with a dropdown of the top results (no
+     separate legislator finder)"). find.js draws the top results into the
+     box's own dropdown, the header panel's rows; Return takes the first, as
+     in the header, and Search opens every result. Without script, Search
+     opens the bill search, as it did. -->
+<div class="searchbig" role="search">
+  <label for="hq" style="position:absolute;left:-9999px">{say(lang, "home.search_label", "Search bills, officials, towns and committees")}</label>
+  <input id="hq" type="search" autocomplete="off" aria-controls="hqout"
+    aria-describedby="hqhint" placeholder="{esc(say(lang, "home.search_hint", "Name, town, subject or bill"))}">
+  <button id="hgo">{icon("search")}{say(lang, "search.go", "Search")}</button>
+  <div class="findout hqdrop" id="hqout" role="region" aria-label="{esc(say(lang, "search.top", "Top results"))}" hidden></div>
+</div>
+<p class="hqhint" id="hqhint">{say(lang, "home.try", "Try a bill number, a subject, a legislator or a committee. Your town shows who represents you.")}</p>
+<p class="sr" id="hqsay" role="status"></p>
+<!-- EACH CARD WITH ITS SECTION'S DRAWING, the nav's own (Polish 1, 9 October
+     2026): Bills, Officials, Laws and Resources since 17 October 2026
+     (HOME_CARDS says why). -->
+{home_cards(lang)}
+<!-- COMMON QUESTIONS, under the cards (the person, 18 October 2026: "a sort
+     of top 3-5 guides for the most common inquiries"): a few guides, each by
+     its title over a line saying what a reader will learn there, and All
+     guides. Filled by build_civics, which knows which guides passed their
+     checks; empty while build_civics.HOME_GUIDES is off. -->
+{guides}
+</div>
+<section class="hside hleft" aria-label="{esc(say(lang, "home.left", "Where the General Court is, and what is coming up"))}">
+<div id="state">{static_state}</div>
+<div id="upcoming">{static_up}</div>
+</section>
+<section class="hside hright" aria-label="{esc(say(lang, "home.right", "The latest session days, and what has just happened"))}">
+<div id="session" data-days="{esc(" ".join(latest_days))}"></div>
+<div id="fresh" class="fresh"></div>
+<!-- LATEST ACTIVITY UNDER THE RIGHT COLUMN (the person, 9 October 2026, item
+     3), under the latest session days and the rebuild line, so the middle
+     column ends with the three cards. The finder that held the top of this
+     column is the search box's now (D13). Below 1180px the order is as it
+     was: the hero, the search and the cards, the status, Coming Up, the
+     recordings, then the rebuild line and Latest Activity. -->
+<div id="recent" class="hrecent">{static_recent}</div>
+</section>
+</div>
+<div id="notable" hidden></div>"""
+
+
+def home_js(lang="en"):
+    """HOME_JS for the home page in `lang`. Its words are tr()'s, which the
+    page's head carries; the status box's way to the legislature's year,
+    which the script carries as HTML, is put in `lang` here."""
+    return HOME_JS if lang == i18n.DEFAULT else HOME_JS.replace(YEAR_LINK, year_link(lang), 1)
 
 
 HOME_JS = """
@@ -2429,15 +2695,22 @@ HOME_JS = """
 // floor day and the summary's date can be months back, and across a new year
 // "Aug 19" is ambiguous. components.js's dateWords() writes both, and the
 // server-rendered copy below writes the same with shell.date_words().
-const fd=d=>dateWords(d||"","short");
-const fdy=d=>dateWords(d||"");
+// In the page's language: window.GR_LANG on a Spanish page, English
+// where it is not set.
+const fd=d=>dateWords(d||"","short",window.GR_LANG);
+const fdy=d=>dateWords(d||"","medium",window.GR_LANG);
 // THE FLOOR SESSION'S OWN TITLE, "House Session (August 19th, 2026)": the
 // person's pattern (7 October 2026, F3), the month in full and the day as an
 // ordinal, the one date on the site that is not dateWords()'s. 11th, 12th and
 // 13th are the exceptions to 1st, 2nd and 3rd.
 const ordinal=n=>n+((n%100>=11&&n%100<=13)?"th":({1:"st",2:"nd",3:"rd"}[n%10]||"th"));
-const fdo=d=>{if(!d)return"";const[y,m,dd]=d.split("-").map(Number);
+const fdo=d=>{if(!d)return"";const L=typeof window!=="undefined"&&window.GR_LANG;
+  if(L&&L!=="en")return dateWords(d,"full",L);
+  const[y,m,dd]=d.split("-").map(Number);
   return DW_MONTHS[m-1]+" "+ordinal(dd)+", "+y;};
+// THE RECORD'S OWN WORDS on a page in another language are marked English
+// (i18n.py): a bill's title and the line of its history.
+const REC=window.GR_LANG&&window.GR_LANG!=="en"?' lang="en"':"";
 // If the nightly build stops running, nobody should be reading month-old data
 // believing it is current. The banner degrades into saying so.
 // Anchored to the site root, not to the page. legislators.html is served at
@@ -2450,13 +2723,14 @@ fetch(DATA("build.json")).then(r=>r.json()).then(B=>{
   const el=document.getElementById("fresh"); if(!el||!B.finished)return;
   const days=Math.floor((Date.now()-new Date(B.finished))/86400000);
   const failed=(B.steps||[]).filter(s=>s.status==="failed").map(s=>s.step);
-  const when=new Date(B.finished).toLocaleString("en-US",
+  const when=new Date(B.finished).toLocaleString(window.GR_LOCALE||"en-US",
     {month:"short",day:"numeric",hour:"numeric",minute:"2-digit"});
-  let cls="ok", msg=`Data rebuilt ${when}`;
-  if(days>=3){cls="stale";msg=`Data last rebuilt ${when} — ${days} days ago`;}
+  let cls="ok", msg=tr("fresh.rebuilt","Data rebuilt {when}",{when});
+  if(days>=3){cls="stale";msg=tr("fresh.stale","Data last rebuilt {when} — {days} days ago",{when,days});}
   if(failed.length){cls="stale";
-    msg+=`. ${failed.length} build step${failed.length>1?"s":""} failed, so some `
-       +`sections may be incomplete.`;}
+    msg+=". "+(failed.length>1
+      ?tr("fresh.failed_n","{n} build steps failed, so some sections may be incomplete.",{n:failed.length})
+      :tr("fresh.failed_1","1 build step failed, so some sections may be incomplete."));}
   el.className="fresh "+cls;
   el.innerHTML=`<span class="fdot"></span>${esc(msg)}`;
 }).catch(()=>{});
@@ -2472,11 +2746,11 @@ fetch(DATA("home.json")).then(r=>r.json()).then(H=>{
 
   // Title case, and a colon after each label. The Python copy below says the
   // same.
-  const PHASE={"in session":["live","In Session"],
-               "veto day pending":["wait","Awaiting Veto Day"],
-               "between sessions":["wait","Between Sessions"],
-               "out of session":["off","Out of Session"]};
-  const ph=PHASE[(S.phase||"").toLowerCase()]||["off",S.phase||"Status unknown"];
+  const PHASE={"in session":["live",tr("state.in","In Session")],
+               "veto day pending":["wait",tr("state.veto","Awaiting Veto Day")],
+               "between sessions":["wait",tr("state.between","Between Sessions")],
+               "out of session":["off",tr("state.out","Out of Session")]};
+  const ph=PHASE[(S.phase||"").toLowerCase()]||["off",S.phase||tr("state.unknown","Status unknown")];
   const ms=(S.milestones||[])[0];
   const stale=S.stale_days>45;
   // ONE RENDERER WINS, AND IT IS THE SERVER'S. The same box is written into the
@@ -2491,17 +2765,16 @@ fetch(DATA("home.json")).then(r=>r.json()).then(H=>{
   else if(_state)_state.innerHTML=`
     <div class="statebox ${ph[0]}">
       <div class="stateline"><span class="dot"></span><b>${esc(ph[1])}</b>
-        ${S.last_session?`<span class="statemeta">Last Session Day:
+        ${S.last_session?`<span class="statemeta">${tr("state.last","Last Session Day:")}
           ${fdy(S.last_session)}</span>`:""}</div>
-      ${S.headline?`<p class="statehead">${esc(S.headline)}</p>`:""}
-      ${S.note?`<p class="statenote">${esc(S.note)}</p>`:""}
-      ${ms?`<p class="statenote"><b>Next: ${esc(ms.label)}</b>, ${fd(ms.date)}.
+      ${S.headline?`<p class="statehead"${REC}>${esc(S.headline)}</p>`:""}
+      ${S.note?`<p class="statenote"${REC}>${esc(S.note)}</p>`:""}
+      ${ms?`<p class="statenote"><b>${tr("state.next","Next:")} ${esc(ms.label)}</b>, ${fd(ms.date)}.
         ${esc(ms.note||"")}</p>`:""}
       ${stale?`<p class="statenote stalewarn" style="color:var(--st-veto)"
-        data-updated="${esc(S.updated||"")}">This summary was
-        last updated ${S.stale_days} days ago and may be out of date.</p>`
+        data-updated="${esc(S.updated||"")}">${tr("state.stale","This summary was last updated {n} days ago and may be out of date.",{n:S.stale_days})}</p>`
         :(S.updated?`<p class="statemeta upd" style="margin-top:8px"
-          data-updated="${esc(S.updated)}">Summary Updated:
+          data-updated="${esc(S.updated)}">${tr("state.updated","Summary Updated:")}
           ${fdy(S.updated)}</p>`:"")}
     """ + YEAR_LINK + """</div>`;
   // NO "WHO HOLDS OFFICE" HERE (23 October 2026). The Governor and the
@@ -2558,8 +2831,8 @@ fetch(DATA("home.json")).then(r=>r.json()).then(H=>{
       // `off<=14`, as the built labels have it: a week's days never reach
       // it, and a bound that matched them was the point -- `off<14` once left
       // the last day of a fortnight with no label at all.
-      if(rel)rel.textContent=off===0?"today":off===1?"tomorrow"
-        :off<=14?`in ${off} days`:"";
+      if(rel)rel.textContent=off===0?tr("cal.today","today"):off===1?tr("cal.tomorrow","tomorrow")
+        :off<=14?tr("cal.in_days","in {n} days",{n:off}):"";
     });
     const cal=document.querySelector(".cal");
     const name=cal&&cal.querySelector&&cal.querySelector(".calwk .chip");
@@ -2568,15 +2841,15 @@ fetch(DATA("home.json")).then(r=>r.json()).then(H=>{
       const off=Math.round((new Date(p[0],p[1]-1,p[2])-now)/86400000);
       // The rail's Monday against the reader's: this week's is 0 to 6 days
       // back, next week's 1 to 7 days on.
-      if(off<=0&&off>-7)name.textContent="This Week";
-      else if(off>0&&off<=7)name.textContent="Next Week";
+      if(off<=0&&off>-7)name.textContent=tr("cal.this_week","This Week");
+      else if(off>0&&off<=7)name.textContent=tr("cal.next_week","Next Week");
     }
     if(cal&&days.length&&!left){
       // The line under the rail stays: it is the way to the full calendar,
       // which is the useful thing to offer under an empty week.
       const more=cal.querySelector(".calall");
-      cal.innerHTML=`<h2>Coming up</h2><p class="note">Nothing else is
-        scheduled this week.</p>`+(more?more.outerHTML:"");
+      cal.innerHTML=`<h2>${tr("cal.coming","Coming up")}</h2><p class="note">${tr("cal.none_else","Nothing else is scheduled this week.")}</p>`
+        +(more?more.outerHTML:"");
     }
     // "Last updated N days ago" is the one line whose whole job is to say the
     // summary may be stale; it cannot be a number frozen at build time.
@@ -2584,16 +2857,16 @@ fetch(DATA("home.json")).then(r=>r.json()).then(H=>{
     if(up&&up.dataset.updated){
       const p=up.dataset.updated.split("-").map(Number);
       const age=Math.round((now-new Date(p[0],p[1]-1,p[2]))/86400000);
-      const nice=dateWords(up.dataset.updated);
+      const nice=dateWords(up.dataset.updated,"medium",window.GR_LANG);
       if(age>45){
         up.className="statenote stalewarn";
         up.style.color="var(--st-veto)";
-        up.textContent=`This summary was last updated ${age} days ago and may be out of date.`;
+        up.textContent=tr("state.stale","This summary was last updated {n} days ago and may be out of date.",{n:age});
       }else{
         up.className="statemeta upd";
         up.style.color="";
         up.style.marginTop="8px";
-        up.textContent=`Summary Updated: ${nice}`;
+        up.textContent=tr("state.updated","Summary Updated:")+" "+nice;
       }
     }
   })();
@@ -2604,16 +2877,15 @@ fetch(DATA("home.json")).then(r=>r.json()).then(H=>{
   // its address. Kept in step with build_pages' static copy of this block --
   // there are two renderers for it and the footer has already shown what
   // happens when only one of them is changed.
-  document.getElementById("recent").innerHTML=`<h2>Latest Activity</h2>
+  document.getElementById("recent").innerHTML=`<h2>${tr("home.recent","Latest Activity")}</h2>
     <ul class="actlist">${(H.recent||[]).slice(0,5).map(r=>
       `<li><span class="actd">${fd(r.date)}</span>
        <span class="actb"><a href="${esc(r.year?`bill/${r.year}/${String(r.bill).toLowerCase()}.html`
          :`bills.html#${r.bill}`)}">${esc(r.n)}</a>
-       <span style="color:var(--ink-2)">${esc(r.title)}</span><br>
-       <span class="actw">${esc(r.what)}</span></span></li>`).join("")}
+       <span style="color:var(--ink-2)"${REC}>${esc(r.title)}</span><br>
+       <span class="actw"${REC}>${esc(r.what)}</span></span></li>`).join("")}
     </ul>
-    <p class="actmore"><a class="morebtn" href="/bills?sort=recent">See all
-    recent activity &rarr;</a></p>`;
+    <p class="actmore"><a class="morebtn" href="/bills?sort=recent">${tr("home.recent_more","See all recent activity &rarr;")}</a></p>`;
 
   // Closest votes and most contested are computed and stored, but not shown.
   // Both invite a reading the site does not want to make, and the page is
@@ -2655,15 +2927,24 @@ fetch(DATA("home.json")).then(r=>r.json()).then(H=>{
     return built.includes(key)?`<a href="/session/${esc(key)}">${fdo(v.date)}</a>`:fdo(v.date);
   };
   // "House Session (August 19th, 2026)", with the date the way to that
-  // sitting's page where one is built.
+  // sitting's page where one is built. In another language each chamber's
+  // words are tr()'s; a chamber the record names otherwise keeps its name.
+  const sessName=v=>v.chamber==="House"?tr("sess.house","House Session")
+    :v.chamber==="Senate"?tr("sess.senate","Senate Session"):`${esc(v.chamber||"")} Session`;
+  const sessRec=v=>v.chamber==="Senate"
+    ?tr("sess.rec_senate","Recording of the Senate floor session, {date}",{date:fdy(v.date)})
+    :tr("sess.rec_house","Recording of the House floor session, {date}",{date:fdy(v.date)});
+  const sessPlay=v=>v.chamber==="Senate"
+    ?tr("sess.play_senate","Play the Senate floor session of {date}",{date:fd(v.date)})
+    :tr("sess.play_house","Play the House floor session of {date}",{date:fd(v.date)});
   sess.innerHTML=ls.length
-    ?`<h2>Recent Session Days</h2><div class="twoup">${ls.map(v=>
-      `<div><p class="sesstitle"><b>${esc(v.chamber||"")} Session</b>
+    ?`<h2>${tr("sess.recent","Recent Session Days")}</h2><div class="twoup">${ls.map(v=>
+      `<div><p class="sesstitle"><b>${sessName(v)}</b>
         (${dayLink(v)})</p>
         <div class="player"><button type="button" class="pstub" data-embed="${esc(v.video_id)}"
-          data-title="Recording of the ${esc(v.chamber||"")} floor session, ${fdy(v.date)}"
-          aria-label="Play the ${esc(v.chamber||"")} floor session of ${fd(v.date)}">
-          <span>${icon("play")}</span><span>Play</span></button></div></div>`).join("")}</div>`
+          data-title="${esc(sessRec(v))}"
+          aria-label="${esc(sessPlay(v))}">
+          <span>${icon("play")}</span><span>${tr("sess.play","Play")}</span></button></div></div>`).join("")}</div>`
     :"";
 });
 document.addEventListener("click",e=>{
@@ -2677,7 +2958,7 @@ document.addEventListener("click",e=>{
   // not both "Floor session" to a screen reader (M18).
   st.outerHTML=`<iframe allow="autoplay" allowfullscreen
     src="https://www.youtube-nocookie.com/embed/${st.dataset.embed}?autoplay=1"
-    title="${esc(st.dataset.title||"Floor session")}"></iframe>`;
+    title="${esc(st.dataset.title||tr("sess.floor","Floor session"))}"></iframe>`;
   const frame=had&&box&&box.querySelector("iframe");
   if(frame)frame.focus({preventScroll:true});
 });
@@ -2782,24 +3063,45 @@ HOME_CARDS = (
 CONSTITUTION_HREF = "/laws#constitution"
 
 
+def card_words(lang="en"):
+    """{href: (name, line)} of HOME_CARDS in `lang`. The English is written
+    again here so its translation can be checked against it; preflight holds
+    it to HOME_CARDS's, word for word (_translations)."""
+    return {"/bills": (say(lang, "card.bills", "Browse Bills"),
+                       say(lang, "card.bills_line", "Search by committee, topic, sponsor, "
+                           "status or the day it was voted on")),
+            "officials.html": (say(lang, "card.officials", "Officials"),
+                               say(lang, "card.officials_line", "Who represents your town, "
+                                   "and every legislator&rsquo;s bills and votes")),
+            "laws.html": (say(lang, "card.laws", "Laws"),
+                          say(lang, "card.laws_line", "Every New Hampshire statute, by number "
+                              "or subject, with the bills that would change it")),
+            "resources.html": (say(lang, "card.resources", "Resources"),
+                               say(lang, "card.resources_line", "How-to guides, how the "
+                                   "legislature works, and official sources"))}
+
+
 def _laws_has_constitution():
     """Whether the Laws page carries its Constitution tab."""
     import constitution_tab
     return any(pid == "constitution" for pid, _name in constitution_tab.TABS)
 
 
-def home_cards():
+def home_cards(lang="en"):
     """The .entry block of the home page: HOME_CARDS, each with its section's
-    drawing (the nav's own, Polish 1). The Laws card, while the Laws page
-    carries the Constitution, is a card with two links (.ecard): the card
-    itself to /laws and "The Constitution" to its tab, the inner link above
-    the card's, so each answers its own click."""
+    drawing (the nav's own, Polish 1), in `lang`. The Laws card, while the
+    Laws page carries the Constitution, is a card with two links (.ecard):
+    the card itself to /laws and "The Constitution" to its tab, the inner
+    link above the card's, so each answers its own click."""
     out = []
+    words = card_words(lang)
     # THE LAWS CARD IS ONE LINK AGAIN (the person, 22 October 2026: "Remove
     # the constitution hyperlink on the homepage laws card"); the Laws page
     # keeps its Constitution tab.
-    for href, ic, name, line in HOME_CARDS:
-        out.append(f'  <a href="{href}">{icon(ic)}<b>{name}</b><span>{line}</span></a>\n')
+    for href, ic, _name, _line in HOME_CARDS:
+        name, line = words[href]
+        to = href if lang == i18n.DEFAULT else i18n.href(lang, href)
+        out.append(f'  <a href="{to}">{icon(ic)}<b>{name}</b><span>{line}</span></a>\n')
     return '<div class="entry">\n' + "".join(out) + "</div>"
 
 
@@ -2948,6 +3250,22 @@ def front_end(out, has_mark):
             wrote.append("billmatch.js")
             print("  billmatch.js: app.js's bill matcher, for the header "
                   "search")
+    # THE SHARED SCRIPTS' WORDS, for each language the site is built in
+    # (i18n.SHARED_SCRIPTS): what components.js and find.js ask tr() for, in
+    # that language, which a page in it loads in its head. Here, beside the
+    # files themselves, so the fast path writes them when either moves.
+    shared = [(Path("src/pages") / n).read_text(encoding="utf-8")
+              for n in i18n.SHARED_SCRIPTS if (Path("src/pages") / n).exists()]
+    for lang in i18n.LANGS:
+        if lang == i18n.DEFAULT:
+            continue
+        body = (i18n.words_js(lang, *shared) + "\n").encode("utf-8")
+        dst = out / i18n.shared_words_path(lang).lstrip("/")
+        dst.parent.mkdir(parents=True, exist_ok=True)
+        if not dst.exists() or dst.read_bytes() != body:
+            dst.write_bytes(body)
+            wrote.append(dst.relative_to(out).as_posix())
+            print(f"  {dst.relative_to(out).as_posix()}: the shared scripts' words in {lang}")
     return wrote
 
 
@@ -3101,47 +3419,6 @@ def main():
     def fd(d):
         """"Aug 19", the form HOME_JS's fd() writes: shell.date_words."""
         return esc(_shell.date_words(d or "", "short"))
-
-    static_state = ""
-    if S.get("headline") or S.get("phase"):
-        ph = {"in session": ("live", "In Session"),
-              "veto day pending": ("wait", "Awaiting Veto Day"),
-              "between sessions": ("wait", "Between Sessions"),
-              "out of session": ("off", "Out of Session")}.get(
-                  (S.get("phase") or "").lower(), ("off", S.get("phase") or ""))
-        ms = (S.get("milestones") or [{}])[0]
-
-        def fdy(d):
-            """"Aug 19, 2026", the form HOME_JS's fdy() writes."""
-            return esc(_shell.date_words(d or ""))
-        stale = (S.get("stale_days") or 0) > 45
-        # THE SAME BOX THE SCRIPT DRAWS, line for line. This copy is what a
-        # reader without JavaScript and every crawler get. It once had no last
-        # floor session, no count of hearings and no date -- so it could not
-        # say it was stale, which is the one thing a hand-kept summary most
-        # needs to be able to say. The livestream links are in neither copy,
-        # as redundant.
-        static_state = (
-            f'<div class="statebox {ph[0]}"><div class="stateline">'
-            f'<span class="dot"></span><b>{esc(ph[1])}</b>'
-            + (f'<span class="statemeta">Last Session Day: {fdy(S["last_session"])}</span>'
-               if S.get("last_session") else "")
-            + "</div>"
-            + (f'<p class="statehead">{esc(S["headline"])}</p>'
-               if S.get("headline") else "")
-            + (f'<p class="statenote">{esc(S["note"])}</p>' if S.get("note") else "")
-            + (f'<p class="statenote"><b>Next: {esc(ms.get("label"))}</b>, '
-               f'{fd(ms.get("date"))}. {esc(ms.get("note"))}</p>' if ms.get("label") else "")
-            # THE STALE WARNING CARRIES ITS OWN DATE, so the page can work it
-            # out again in the reader's clock: it was written when the site was
-            # built and read for as long as the build stood.
-            + (f'<p class="statenote stalewarn" style="color:var(--st-veto)" '
-               f'data-updated="{esc(S.get("updated") or "")}">This summary was last '
-               f'updated {S["stale_days"]} days ago and may be out of date.</p>' if stale
-               else (f'<p class="statemeta upd" style="margin-top:8px" '
-                     f'data-updated="{esc(S.get("updated") or "")}">Summary Updated: '
-                     f'{fdy(S["updated"])}</p>' if S.get("updated") else ""))
-            + YEAR_LINK + "</div>")
 
     # The five counts the home page drew here are gone, for the reason the
     # script's copy above gives. The data page still counts, which is where
@@ -3578,85 +3855,6 @@ Senate; and the state&rsquo;s other officials.</p>
                    if (b, v.get("date")) in sits]
 
 
-    static_recent = ""
-    if H.get("recent"):
-        # A LIST, NOT A TABLE. It was a two-column table with no header cell
-        # in it, which a screen reader announces as a table of five rows and
-        # two columns and then reads as a grid with nothing to say what a
-        # column is (the audit of 2 October 2026, M7). It is five things in a
-        # row: the day, and what happened. HOME_JS draws the same markup.
-        static_recent = ('<h2>Latest Activity</h2><ul class="actlist">' + "".join(
-            f'<li><span class="actd">{fd(r.get("date"))}</span><span class="actb">'
-            f'<a href="{esc(recent_href(r))}">{esc(r.get("n"))}</a> '
-            f'{esc(r.get("title"))}<br><span class="actw">'
-            f'{esc(r.get("what"))}</span></span></li>'
-            for r in H["recent"][:RECENT_SHOWN]) + "</ul>"
-                         + RECENT_MORE)
-
-    # THREE COLUMNS, AND THE MIDDLE ONE IS WRITTEN FIRST. The order here is
-    # the order a screen reader hears and the order the Tab key takes; the
-    # grid in app.css puts .hleft to the left of it. See the comment on
-    # .hcols for why that way round.
-    # THE HEADING IS THE LOCKUP WHERE THERE IS ONE. h1.lockup is a mask over
-    # the text colour, and a mask whose file is missing is drawn as nothing:
-    # an empty band above the search box, with the site's name hidden inside
-    # it. A build that placed no lockup.png writes the name as text instead.
-    home_h1 = ('<h1 class="lockup"><span>Granite Record</span></h1>' if has_lockup
-               else '<h1 class="wordmark">Granite Record</h1>')
-    # The columns' treatment, HOME_COLUMN_OPTIONS[HOME_COLUMNS]: one class.
-    home_body = f"""<div class="hcols {HOME_COLUMN_OPTIONS[HOME_COLUMNS]}">
-<div class="hmid">
-{home_h1}
-<p class="slogan">Public Records, Made Findable.</p>
-<p class="lead">Keep up with New Hampshire legislation, find bills on the issues you
-care about, learn how the legislature works, and explore the record from 1989 to
-today.</p>
-{home_webinar()}
-<!-- ONE BOX, THE HEADER'S FINDER (D13, the person, 8 October 2026: "one
-     search box like the header search: bills, legislators, towns, committees
-     and the rest from the same box, with a dropdown of the top results (no
-     separate legislator finder)"). find.js draws the top results into the
-     box's own dropdown, the header panel's rows; Return takes the first, as
-     in the header, and Search opens every result. Without script, Search
-     opens the bill search, as it did. -->
-<div class="searchbig" role="search">
-  <label for="hq" style="position:absolute;left:-9999px">Search bills, officials, towns and committees</label>
-  <input id="hq" type="search" autocomplete="off" aria-controls="hqout"
-    aria-describedby="hqhint" placeholder="Name, town, subject or bill">
-  <button id="hgo">{icon("search")}Search</button>
-  <div class="findout hqdrop" id="hqout" role="region" aria-label="Top results" hidden></div>
-</div>
-<p class="hqhint" id="hqhint">Try a bill number, a subject, a legislator or a
-committee. Your town shows who represents you.</p>
-<p class="sr" id="hqsay" role="status"></p>
-<!-- EACH CARD WITH ITS SECTION'S DRAWING, the nav's own (Polish 1, 9 October
-     2026): Bills, Officials, Laws and Resources since 17 October 2026
-     (HOME_CARDS says why). -->
-{home_cards()}
-<!-- COMMON QUESTIONS, under the cards (the person, 18 October 2026: "a sort
-     of top 3-5 guides for the most common inquiries"): a few guides, each by
-     its title over a line saying what a reader will learn there, and All
-     guides. Filled by build_civics, which knows which guides passed their
-     checks; empty while build_civics.HOME_GUIDES is off. -->
-<!-- guides --><!-- /guides -->
-</div>
-<section class="hside hleft" aria-label="Where the General Court is, and what is coming up">
-<div id="state">{static_state}</div>
-<div id="upcoming">{static_up}</div>
-</section>
-<section class="hside hright" aria-label="The latest session days, and what has just happened">
-<div id="session" data-days="{esc(" ".join(latest_days))}"></div>
-<div id="fresh" class="fresh"></div>
-<!-- LATEST ACTIVITY UNDER THE RIGHT COLUMN (the person, 9 October 2026, item
-     3), under the latest session days and the rebuild line, so the middle
-     column ends with the three cards. The finder that held the top of this
-     column is the search box's now (D13). Below 1180px the order is as it
-     was: the hero, the search and the cards, the status, Coming Up, the
-     recordings, then the rebuild line and Latest Activity. -->
-<div id="recent" class="hrecent">{static_recent}</div>
-</section>
-</div>
-<div id="notable" hidden></div>"""
     # THE GUIDES' ROW IS KEPT. build_civics fills the home page's guides slot
     # after this writes it (home_guides); a run of this step alone -- the
     # front end's fast path, or build_pages by hand -- keeps the row the last
@@ -3664,22 +3862,36 @@ committee. Your town shows who represents you.</p>
     prev = out / "index.html"
     kept = re.search(r"<!-- guides -->.*?<!-- /guides -->",
                      prev.read_text(encoding="utf-8"), re.S) if prev.is_file() else None
-    if kept:
-        home_body = home_body.replace("<!-- guides --><!-- /guides -->", kept.group(0), 1)
-    (out / "index.html").write_text(
-        shell("Granite Record \u2014 the New Hampshire legislative record",
-              # THE FULL PAGE WIDTH, which is what "offset to the left"
-              # was. .wrap is 820px aligned to the nav's own gutter, so on a
-              # 1440px screen the home page was an 820px column with 360px of
-              # empty ground to the right of it -- aligned, and unbalanced.
-              # wide=True makes it the 1180px the nav and every record page
-              # already use, so the stat grid and the three entry cards fill
-              # the width instead of stopping two thirds across.
-              "index.html", home_body, script=HOME_JS, wide=True,
-              desc="Every bill, vote, hearing and floor debate of the New "
-                   "Hampshire General Court, linked to the moment in the "
-                   "recording where it happened."),
-        encoding="utf-8")
+    # THE HOME PAGE IN EACH LANGUAGE IT HAS (i18n.PAGES; 23 October 2026),
+    # from the same home.json and the same week's rows: the English at /,
+    # the Spanish at /es/. What the record says is the record's words in
+    # both; what the site says is in the page's language.
+    for lang in i18n.LANGS:
+        if not i18n.has(lang, "index.html"):
+            continue
+        home = home_body(lang, has_lockup, state_box(S, lang),
+                         static_up if lang == i18n.DEFAULT else calendar_html(out, lang=lang),
+                         recent_box(H, lang), latest_days)
+        if lang == i18n.DEFAULT and kept:
+            home = home.replace("<!-- guides --><!-- /guides -->", kept.group(0), 1)
+        dest = (out / "index.html" if lang == i18n.DEFAULT
+                else out / i18n.href(lang, "index.html").strip("/") / "index.html")
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        dest.write_text(
+            shell(say(lang, "home.title", "Granite Record — the New Hampshire legislative record"),
+                  # THE FULL PAGE WIDTH, which is what "offset to the left"
+                  # was. .wrap is 820px aligned to the nav's own gutter, so on a
+                  # 1440px screen the home page was an 820px column with 360px of
+                  # empty ground to the right of it -- aligned, and unbalanced.
+                  # wide=True makes it the 1180px the nav and every record page
+                  # already use, so the stat grid and the three entry cards fill
+                  # the width instead of stopping two thirds across.
+                  "index.html", home, script=home_js(lang), wide=True, lang=lang,
+                  desc=say(lang, "home.desc", "Every bill, vote, hearing and floor debate of "
+                           "the New Hampshire General Court, linked to the moment in the "
+                           "recording where it happened.")),
+            encoding="utf-8")
+    i18n.report()
 
     # learn.html belongs to build_civics.py now: it is the way into eleven
     # topic pages rather than one page of its own, and two builders writing

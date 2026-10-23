@@ -1,0 +1,1025 @@
+{
+ "_about": [
+  "THE SITE'S SPANISH (23 October 2026). src/pages/i18n.py says how this file is used and how a translation stays current; src/ops/translations.py is how a person works on it, and docs/TRANSLATING.md walks through it.",
+  "Each entry is a key the code asks for, the English it was translated from, the Spanish, and its state: 'draft' until the proofreader passes it, then 'proofread'. A page uses the Spanish only while 'en' is the English the code says now; when the English changes, the page says the new English and preflight names the entry until its Spanish is brought up to it (translations.py --set, which puts it back to draft).",
+  "'offered' is the person's switch. While it is false the Spanish pages are built and published at /es/ but unlisted: not linked, not indexed, and no browser is sent there by its language. A reader who opens /es/ is shown the language control from then on, in that browser, so the person and the proofreader can try all of it first."
+ ],
+ "offered": false,
+ "strings": {
+  "cal.coming": {
+   "en": "Coming up",
+   "es": "Próximamente",
+   "state": "draft"
+  },
+  "cal.conference": {
+   "en": "Committee of conference",
+   "es": "Comité de conferencia",
+   "state": "draft"
+  },
+  "cal.conference_on": {
+   "en": "Committee of conference on {bill}",
+   "es": "Comité de conferencia sobre {bill}",
+   "state": "draft"
+  },
+  "cal.empty": {
+   "en": "No meetings scheduled.",
+   "es": "No hay reuniones programadas.",
+   "state": "draft"
+  },
+  "cal.full": {
+   "en": "See the full calendar",
+   "es": "Ver el calendario completo",
+   "state": "draft"
+  },
+  "cal.house_day": {
+   "en": "House Session Day",
+   "es": "Día de sesión de la Cámara",
+   "state": "draft"
+  },
+  "cal.house_did": {
+   "en": "What the House did that day",
+   "es": "Lo que hizo la Cámara ese día",
+   "state": "draft"
+  },
+  "cal.in_days": {
+   "en": "in {n} days",
+   "es": "en {n} días",
+   "state": "draft"
+  },
+  "cal.n_bills": {
+   "en": "{n} bills",
+   "es": "{n} proyectos de ley",
+   "state": "draft"
+  },
+  "cal.next_week": {
+   "en": "Next Week",
+   "es": "La próxima semana",
+   "state": "draft"
+  },
+  "cal.none_else": {
+   "en": "Nothing else is scheduled this week.",
+   "es": "No hay nada más programado para esta semana.",
+   "state": "draft"
+  },
+  "cal.none_left": {
+   "en": "Nothing is scheduled for the rest of this week.",
+   "es": "No hay nada programado para el resto de esta semana.",
+   "state": "draft"
+  },
+  "cal.none_next": {
+   "en": "Nothing is scheduled next week yet.",
+   "es": "Todavía no hay nada programado para la próxima semana.",
+   "state": "draft"
+  },
+  "cal.on_page": {
+   "en": "This meeting on the {name} page",
+   "es": "Esta reunión en la página de {name}",
+   "state": "draft"
+  },
+  "cal.one_bill": {
+   "en": "1 bill",
+   "es": "1 proyecto de ley",
+   "state": "draft"
+  },
+  "cal.recording": {
+   "en": "The recording, on YouTube",
+   "es": "La grabación, en YouTube",
+   "state": "draft"
+  },
+  "cal.scroll": {
+   "en": "Meetings from today to Sunday",
+   "es": "Reuniones de hoy al domingo",
+   "state": "draft"
+  },
+  "cal.season": {
+   "en": "The General Court sits mostly from January to June, and committees meet on bills from the fall filing period onwards.",
+   "es": "La Legislatura se reúne sobre todo de enero a junio, y los comités estudian proyectos de ley desde el período de presentación del otoño en adelante.",
+   "state": "draft",
+   "note": "\"la Legislatura\" for \"the General Court\" (see foot.attrib)."
+  },
+  "cal.senate_day": {
+   "en": "Senate Session Day",
+   "es": "Día de sesión del Senado",
+   "state": "draft"
+  },
+  "cal.senate_did": {
+   "en": "What the Senate did that day",
+   "es": "Lo que hizo el Senado ese día",
+   "state": "draft"
+  },
+  "cal.this_week": {
+   "en": "This Week",
+   "es": "Esta semana",
+   "state": "draft"
+  },
+  "cal.today": {
+   "en": "today",
+   "es": "hoy",
+   "state": "draft"
+  },
+  "cal.tomorrow": {
+   "en": "tomorrow",
+   "es": "mañana",
+   "state": "draft"
+  },
+  "card.bills": {
+   "en": "Browse Bills",
+   "es": "Ver proyectos de ley",
+   "state": "draft",
+   "note": "Usted forms throughout."
+  },
+  "card.bills_line": {
+   "en": "Search by committee, topic, sponsor, status or the day it was voted on",
+   "es": "Busque por comité, tema, patrocinador, estado o el día en que se votó",
+   "state": "draft"
+  },
+  "card.laws": {
+   "en": "Laws",
+   "es": "Leyes",
+   "state": "draft"
+  },
+  "card.laws_line": {
+   "en": "Every New Hampshire statute, by number or subject, with the bills that would change it",
+   "es": "Todas las leyes de New Hampshire, por número o por tema, con los proyectos de ley que las cambiarían",
+   "state": "draft"
+  },
+  "card.officials": {
+   "en": "Officials",
+   "es": "Funcionarios",
+   "state": "draft"
+  },
+  "card.officials_line": {
+   "en": "Who represents your town, and every legislator&rsquo;s bills and votes",
+   "es": "Quién representa a su municipio, y los proyectos de ley y los votos de cada legislador",
+   "state": "draft"
+  },
+  "card.resources": {
+   "en": "Resources",
+   "es": "Recursos",
+   "state": "draft"
+  },
+  "card.resources_line": {
+   "en": "How-to guides, how the legislature works, and official sources",
+   "es": "Guías prácticas, cómo funciona la Legislatura y fuentes oficiales",
+   "state": "draft"
+  },
+  "find.all_terms": {
+   "en": "In all {n} terms, {span}.",
+   "es": "En los {n} períodos legislativos, {span}.",
+   "state": "draft"
+  },
+  "find.box": {
+   "en": "Search for a legislator, committee, town, subject or bill",
+   "es": "Busque un legislador, un comité, un municipio, un tema o un proyecto de ley",
+   "state": "draft"
+  },
+  "find.cancel": {
+   "en": "Cancel",
+   "es": "Cancelar",
+   "state": "draft"
+  },
+  "find.clear": {
+   "en": "Clear the search box",
+   "es": "Borrar la búsqueda",
+   "state": "draft"
+  },
+  "find.counting": {
+   "en": "Counting this term&rsquo;s bills&hellip;",
+   "es": "Contando los proyectos de ley de este período…",
+   "state": "draft"
+  },
+  "find.did_you_mean": {
+   "en": "Did you mean {words}?",
+   "es": "¿Quiso decir {words}?",
+   "state": "draft"
+  },
+  "find.every_match": {
+   "en": "every member, committee, town and subject that matches, and the bills of every term",
+   "es": "cada miembro, comité, municipio y tema que coincida, y los proyectos de ley de todos los períodos",
+   "state": "draft"
+  },
+  "find.every_term": {
+   "en": "this number in every term since 1989",
+   "es": "este número en todos los períodos desde 1989",
+   "state": "draft"
+  },
+  "find.formerly": {
+   "en": "Formerly {name}",
+   "es": "Antes {name}",
+   "state": "draft"
+  },
+  "find.hint": {
+   "en": "Name, town, committee or bill",
+   "es": "Nombre, municipio, comité o proyecto de ley",
+   "state": "draft"
+  },
+  "find.in_search": {
+   "en": "In the bill search.",
+   "es": "En la búsqueda de proyectos de ley.",
+   "state": "draft"
+  },
+  "find.in_term": {
+   "en": "In the {term} term.",
+   "es": "En el período {term}.",
+   "state": "draft"
+  },
+  "find.kind.bill": {
+   "en": "Bill",
+   "es": "Proyecto de ley",
+   "state": "draft"
+  },
+  "find.kind.committee": {
+   "en": "Committee",
+   "es": "Comité",
+   "state": "draft"
+  },
+  "find.kind.former": {
+   "en": "Former Member",
+   "es": "Exmiembro",
+   "state": "draft"
+  },
+  "find.kind.former_committee": {
+   "en": "Former Committee",
+   "es": "Antiguo comité",
+   "state": "draft"
+  },
+  "find.kind.guide": {
+   "en": "Guide",
+   "es": "Guía",
+   "state": "draft"
+  },
+  "find.kind.learn": {
+   "en": "Learn",
+   "es": "Aprenda",
+   "state": "draft",
+   "note": "The Learn pages' kind, as a one-word chip."
+  },
+  "find.kind.legislator": {
+   "en": "Legislator",
+   "es": "Legislador",
+   "state": "draft"
+  },
+  "find.kind.page": {
+   "en": "Page",
+   "es": "Página",
+   "state": "draft"
+  },
+  "find.kind.statutory": {
+   "en": "Statutory Committee",
+   "es": "Comité estatutario",
+   "state": "draft"
+  },
+  "find.kind.study": {
+   "en": "Study Committee",
+   "es": "Comité de estudio",
+   "state": "draft"
+  },
+  "find.kind.topic": {
+   "en": "Subject",
+   "es": "Tema",
+   "state": "draft"
+  },
+  "find.kind.town": {
+   "en": "Town",
+   "es": "Municipio",
+   "state": "draft"
+  },
+  "find.label": {
+   "en": "Search the site",
+   "es": "Buscar en el sitio",
+   "state": "draft"
+  },
+  "find.listed": {
+   "en": "Listed for &mdash; {why}",
+   "es": "Clasificado por: {why}",
+   "state": "draft"
+  },
+  "find.n_found": {
+   "en": "All {n} bills found for {q}",
+   "es": "Los {n} proyectos de ley encontrados para {q}",
+   "state": "draft"
+  },
+  "find.n_numbered": {
+   "en": "All {n} bills numbered {q}",
+   "es": "Los {n} proyectos de ley con el número {q}",
+   "state": "draft"
+  },
+  "find.n_results": {
+   "en": "{n} results",
+   "es": "{n} resultados",
+   "state": "draft"
+  },
+  "find.no_longer": {
+   "en": "No longer meets",
+   "es": "Ya no se reúne",
+   "state": "draft"
+  },
+  "find.none": {
+   "en": "No matching results.",
+   "es": "No hay resultados.",
+   "state": "draft"
+  },
+  "find.one_found": {
+   "en": "1 bill found for {q}",
+   "es": "1 proyecto de ley encontrado para {q}",
+   "state": "draft"
+  },
+  "find.one_numbered": {
+   "en": "1 bill numbered {q}",
+   "es": "1 proyecto de ley con el número {q}",
+   "state": "draft"
+  },
+  "find.one_result": {
+   "en": "1 result",
+   "es": "1 resultado",
+   "state": "draft"
+  },
+  "find.open_number": {
+   "en": "open this bill number in the bill search",
+   "es": "abrir este número en la búsqueda de proyectos de ley",
+   "state": "draft"
+  },
+  "find.or": {
+   "en": "or",
+   "es": "o",
+   "state": "draft"
+  },
+  "find.search_bills": {
+   "en": "Search the bills for {q}",
+   "es": "Buscar {q} en los proyectos de ley",
+   "state": "draft"
+  },
+  "find.see_all": {
+   "en": "See all search results for {q}",
+   "es": "Ver todos los resultados para {q}",
+   "state": "draft"
+  },
+  "find.span": {
+   "en": "{from} to {to}",
+   "es": "de {from} a {to}",
+   "state": "draft"
+  },
+  "find.type": {
+   "en": "Type a legislator, a committee, a town, a subject, a bill number or words from a bill&rsquo;s title.",
+   "es": "Escriba un legislador, un comité, un municipio, un tema, un número de proyecto de ley o palabras del título de un proyecto.",
+   "state": "draft"
+  },
+  "foot.about": {
+   "en": "About",
+   "es": "Acerca del sitio",
+   "state": "draft"
+  },
+  "foot.attrib": {
+   "en": "Built from public records published by the <b>New Hampshire General Court</b>. Not affiliated with the General Court, and not a substitute for it &mdash; where this site and the Court&rsquo;s own record disagree, the Court is right and we want to know.",
+   "es": "Hecho a partir de los registros públicos que publica la <b>Legislatura de New Hampshire</b> (el General Court). No está afiliado con la Legislatura ni la sustituye: donde este sitio y el registro oficial no coincidan, el registro oficial es el correcto, y queremos saberlo.",
+   "state": "draft",
+   "note": "The General Court is called \"la Legislatura de New Hampshire\" across the drafts, naming \"el General Court\" once here. \"Corte General\" is the literal translation but reads as a court of law."
+  },
+  "foot.by": {
+   "en": "An independent project by Alice Wade",
+   "es": "Un proyecto independiente de Alice Wade",
+   "state": "draft"
+  },
+  "foot.data": {
+   "en": "Bulk data",
+   "es": "Datos completos",
+   "state": "draft"
+  },
+  "foot.glossary": {
+   "en": "Glossary",
+   "es": "Glosario",
+   "state": "draft"
+  },
+  "foot.licence": {
+   "en": "Open source (MIT License)",
+   "es": "Código abierto (licencia MIT)",
+   "state": "draft"
+  },
+  "foot.logo": {
+   "en": "Logo drawn by Debra Caplan, an artist in Peterborough, NH",
+   "es": "Logotipo dibujado por Debra Caplan, artista de Peterborough, NH",
+   "state": "draft"
+  },
+  "foot.new": {
+   "en": "The site is new and being tested. Found an error?",
+   "es": "El sitio es nuevo y está en pruebas. ¿Encontró un error?",
+   "state": "draft"
+  },
+  "foot.rebuilt": {
+   "en": "Data rebuilt {date}.",
+   "es": "Datos actualizados el {date}.",
+   "state": "draft"
+  },
+  "foot.record": {
+   "en": "The record",
+   "es": "El registro",
+   "state": "draft"
+  },
+  "foot.source": {
+   "en": "Source on GitHub",
+   "es": "Código fuente en GitHub",
+   "state": "draft"
+  },
+  "foot.tell": {
+   "en": "Tell us",
+   "es": "Díganos",
+   "state": "draft"
+  },
+  "foot.think": {
+   "en": "What do you think?",
+   "es": "¿Qué le parece?",
+   "state": "draft"
+  },
+  "fresh.failed_1": {
+   "en": "1 build step failed, so some sections may be incomplete.",
+   "es": "1 paso de la actualización falló, así que algunas secciones pueden estar incompletas.",
+   "state": "draft"
+  },
+  "fresh.failed_n": {
+   "en": "{n} build steps failed, so some sections may be incomplete.",
+   "es": "{n} pasos de la actualización fallaron, así que algunas secciones pueden estar incompletas.",
+   "state": "draft"
+  },
+  "fresh.rebuilt": {
+   "en": "Data rebuilt {when}",
+   "es": "Datos actualizados: {when}",
+   "state": "draft"
+  },
+  "fresh.stale": {
+   "en": "Data last rebuilt {when} — {days} days ago",
+   "es": "Datos actualizados por última vez: {when}, hace {days} días",
+   "state": "draft"
+  },
+  "home.desc": {
+   "en": "Every bill, vote, hearing and floor debate of the New Hampshire General Court, linked to the moment in the recording where it happened.",
+   "es": "Cada proyecto de ley, votación, audiencia y debate de la Legislatura de New Hampshire, enlazado al momento de la grabación en que ocurrió.",
+   "state": "draft"
+  },
+  "home.lang_note": {
+   "en": "This page is in Spanish. The rest of the site is in English for now, and so is what the record itself says: bill titles, committee names, each bill&rsquo;s history and the subjects the search knows.",
+   "es": "Esta página está en español. El resto del sitio está en inglés por ahora, igual que lo que dice el propio registro: los títulos de los proyectos de ley, los nombres de los comités, el historial de cada proyecto y los temas que reconoce la búsqueda.",
+   "state": "draft",
+   "note": "Shown only on the Spanish page, under the lead."
+  },
+  "home.lead": {
+   "en": "Keep up with New Hampshire legislation, find bills on the issues you care about, learn how the legislature works, and explore the record from 1989 to today.",
+   "es": "Siga la legislación de New Hampshire, encuentre proyectos de ley sobre los temas que le importan, aprenda cómo funciona la Legislatura y explore el registro desde 1989 hasta hoy.",
+   "state": "draft"
+  },
+  "home.left": {
+   "en": "Where the General Court is, and what is coming up",
+   "es": "Dónde está la Legislatura y qué viene",
+   "state": "draft"
+  },
+  "home.recent": {
+   "en": "Latest Activity",
+   "es": "Actividad reciente",
+   "state": "draft"
+  },
+  "home.recent_more": {
+   "en": "See all recent activity &rarr;",
+   "es": "Ver toda la actividad reciente &rarr;",
+   "state": "draft"
+  },
+  "home.right": {
+   "en": "The latest session days, and what has just happened",
+   "es": "Los últimos días de sesión y lo que acaba de pasar",
+   "state": "draft"
+  },
+  "home.search_hint": {
+   "en": "Name, town, subject or bill",
+   "es": "Nombre, municipio, tema o proyecto de ley",
+   "state": "draft"
+  },
+  "home.search_label": {
+   "en": "Search bills, officials, towns and committees",
+   "es": "Buscar proyectos de ley, funcionarios, municipios y comités",
+   "state": "draft"
+  },
+  "home.slogan": {
+   "en": "Public Records, Made Findable.",
+   "es": "Registros públicos, fáciles de encontrar.",
+   "state": "draft",
+   "note": "The English is \"Public Records, Made Findable.\""
+  },
+  "home.title": {
+   "en": "Granite Record — the New Hampshire legislative record",
+   "es": "Granite Record: el registro legislativo de New Hampshire",
+   "state": "draft"
+  },
+  "home.try": {
+   "en": "Try a bill number, a subject, a legislator or a committee. Your town shows who represents you.",
+   "es": "Pruebe con un número de proyecto de ley, un tema, un legislador o un comité. Su municipio le muestra quién lo representa.",
+   "state": "draft"
+  },
+  "home.year_link": {
+   "en": "NH Legislature Schedule",
+   "es": "Calendario de la Legislatura de NH",
+   "state": "draft"
+  },
+  "kind.committee_of_conference": {
+   "en": "Committee of Conference",
+   "es": "Comité de conferencia",
+   "state": "draft"
+  },
+  "kind.executive_session": {
+   "en": "Executive Session",
+   "es": "Sesión ejecutiva",
+   "state": "draft"
+  },
+  "kind.full_committee_work_session": {
+   "en": "Full Committee Work Session",
+   "es": "Sesión de trabajo del comité pleno",
+   "state": "draft"
+  },
+  "kind.public_hearing": {
+   "en": "Public Hearing",
+   "es": "Audiencia pública",
+   "state": "draft"
+  },
+  "kind.session_day": {
+   "en": "Session Day",
+   "es": "Día de sesión",
+   "state": "draft"
+  },
+  "kind.statutory_committee": {
+   "en": "Statutory Committee",
+   "es": "Comité estatutario",
+   "state": "draft"
+  },
+  "kind.study_committee": {
+   "en": "Study Committee",
+   "es": "Comité de estudio",
+   "state": "draft"
+  },
+  "kind.subcommittee_work_session": {
+   "en": "Subcommittee Work Session",
+   "es": "Sesión de trabajo del subcomité",
+   "state": "draft"
+  },
+  "kind.work_session": {
+   "en": "Work Session",
+   "es": "Sesión de trabajo",
+   "state": "draft"
+  },
+  "nav.bills": {
+   "en": "Bills",
+   "es": "Proyectos de ley",
+   "state": "draft",
+   "note": "\"Proyectos de ley\" is long for the header; \"Proyectos\" alone would fit better if the header crowds."
+  },
+  "nav.calendar": {
+   "en": "Calendar",
+   "es": "Calendario",
+   "state": "draft"
+  },
+  "nav.committees": {
+   "en": "Committees",
+   "es": "Comités",
+   "state": "draft"
+  },
+  "nav.laws": {
+   "en": "Laws",
+   "es": "Leyes",
+   "state": "draft"
+  },
+  "nav.officials": {
+   "en": "Officials",
+   "es": "Funcionarios",
+   "state": "draft"
+  },
+  "nav.resources": {
+   "en": "Resources",
+   "es": "Recursos",
+   "state": "draft"
+  },
+  "nav.sections": {
+   "en": "Sections",
+   "es": "Secciones",
+   "state": "draft"
+  },
+  "notice.close": {
+   "en": "Close",
+   "es": "Cerrar",
+   "state": "draft"
+  },
+  "notice.home": {
+   "en": "Go to the home page in Spanish",
+   "es": "Ir a la página principal en español",
+   "state": "draft"
+  },
+  "notice.text": {
+   "en": "This page is not yet in Spanish.",
+   "es": "Esta página todavía no está en español.",
+   "state": "draft"
+  },
+  "page.skip": {
+   "en": "Skip to the content",
+   "es": "Saltar al contenido",
+   "state": "draft"
+  },
+  "search.go": {
+   "en": "Search",
+   "es": "Buscar",
+   "state": "draft"
+  },
+  "search.top": {
+   "en": "Top results",
+   "es": "Mejores resultados",
+   "state": "draft"
+  },
+  "sess.floor": {
+   "en": "Floor session",
+   "es": "Sesión plenaria",
+   "state": "draft"
+  },
+  "sess.house": {
+   "en": "House Session",
+   "es": "Sesión de la Cámara",
+   "state": "draft"
+  },
+  "sess.play": {
+   "en": "Play",
+   "es": "Reproducir",
+   "state": "draft"
+  },
+  "sess.play_house": {
+   "en": "Play the House floor session of {date}",
+   "es": "Reproducir la sesión plenaria de la Cámara del {date}",
+   "state": "draft"
+  },
+  "sess.play_senate": {
+   "en": "Play the Senate floor session of {date}",
+   "es": "Reproducir la sesión plenaria del Senado del {date}",
+   "state": "draft"
+  },
+  "sess.rec_house": {
+   "en": "Recording of the House floor session, {date}",
+   "es": "Grabación de la sesión plenaria de la Cámara, {date}",
+   "state": "draft"
+  },
+  "sess.rec_senate": {
+   "en": "Recording of the Senate floor session, {date}",
+   "es": "Grabación de la sesión plenaria del Senado, {date}",
+   "state": "draft"
+  },
+  "sess.recent": {
+   "en": "Recent Session Days",
+   "es": "Días de sesión recientes",
+   "state": "draft"
+  },
+  "sess.senate": {
+   "en": "Senate Session",
+   "es": "Sesión del Senado",
+   "state": "draft"
+  },
+  "set.label": {
+   "en": "Site settings",
+   "es": "Ajustes del sitio",
+   "state": "draft"
+  },
+  "set.lang": {
+   "en": "Language",
+   "es": "Idioma",
+   "state": "draft"
+  },
+  "set.lang_browser": {
+   "en": "Browser’s language",
+   "es": "Idioma del navegador",
+   "state": "draft"
+  },
+  "set.title": {
+   "en": "Settings",
+   "es": "Ajustes",
+   "state": "draft"
+  },
+  "state.between": {
+   "en": "Between Sessions",
+   "es": "Entre sesiones",
+   "state": "draft"
+  },
+  "state.in": {
+   "en": "In Session",
+   "es": "En sesión",
+   "state": "draft"
+  },
+  "state.last": {
+   "en": "Last Session Day:",
+   "es": "Último día de sesión:",
+   "state": "draft"
+  },
+  "state.next": {
+   "en": "Next:",
+   "es": "Próximo:",
+   "state": "draft"
+  },
+  "state.out": {
+   "en": "Out of Session",
+   "es": "Fuera de sesión",
+   "state": "draft"
+  },
+  "state.stale": {
+   "en": "This summary was last updated {n} days ago and may be out of date.",
+   "es": "Este resumen se actualizó por última vez hace {n} días y puede no estar al día.",
+   "state": "draft"
+  },
+  "state.unknown": {
+   "en": "Status unknown",
+   "es": "Estado desconocido",
+   "state": "draft"
+  },
+  "state.updated": {
+   "en": "Summary Updated:",
+   "es": "Resumen actualizado:",
+   "state": "draft"
+  },
+  "state.veto": {
+   "en": "Awaiting Veto Day",
+   "es": "En espera del día de vetos",
+   "state": "draft"
+  },
+  "theme.dark": {
+   "en": "Dark",
+   "es": "Tema oscuro",
+   "state": "draft"
+  },
+  "theme.light": {
+   "en": "Light",
+   "es": "Tema claro",
+   "state": "draft"
+  },
+  "theme.now_dark": {
+   "en": "Color theme: dark. Activate to switch to light.",
+   "es": "Tema de color: oscuro. Actívelo para cambiar al claro.",
+   "state": "draft"
+  },
+  "theme.now_light": {
+   "en": "Color theme: light. Activate to switch to dark.",
+   "es": "Tema de color: claro. Actívelo para cambiar al oscuro.",
+   "state": "draft"
+  },
+  "theme.to_dark": {
+   "en": "Switch to the dark theme",
+   "es": "Cambiar al tema oscuro",
+   "state": "draft"
+  },
+  "theme.to_light": {
+   "en": "Switch to the light theme",
+   "es": "Cambiar al tema claro",
+   "state": "draft"
+  },
+  "web.go": {
+   "en": "Register on Zoom",
+   "es": "Inscribirse en Zoom",
+   "state": "draft"
+  },
+  "web.label": {
+   "en": "Webinar",
+   "es": "Seminario web",
+   "state": "draft"
+  },
+  "web.what": {
+   "en": "How Granite Record works, and how to use it to keep up with Concord this session. Hosted by Alice Wade. All are welcome to join, ask questions and say which features they would like most.",
+   "es": "Cómo funciona Granite Record y cómo usarlo para seguir lo que pasa en Concord esta sesión. Lo presenta Alice Wade, en inglés. Todos son bienvenidos a participar, hacer preguntas y decir qué funciones les gustaría más.",
+   "state": "draft",
+   "note": "Adds \"en inglés\": the webinar is held in English."
+  },
+  "web.when": {
+   "en": "Free webinar &middot; Tuesday, November 10, 6:30 p.m.",
+   "es": "Seminario web gratuito &middot; martes 10 de noviembre, 6:30 p. m.",
+   "state": "draft"
+  },
+  "yt.a_place": {
+   "en": "a place",
+   "es": "un lugar",
+   "state": "draft"
+  },
+  "yt.addr": {
+   "en": "Street address and town",
+   "es": "Dirección y municipio",
+   "state": "draft"
+  },
+  "yt.addr_down": {
+   "en": "The Census lookup did not answer. Choose your town from the list above, or try again in a minute.",
+   "es": "El servicio de direcciones del Censo no respondió. Elija su municipio de la lista de arriba o vuelva a intentarlo en un minuto.",
+   "state": "draft"
+  },
+  "yt.addr_in": {
+   "en": "That address is in {place}.",
+   "es": "Esa dirección está en {place}.",
+   "state": "draft"
+  },
+  "yt.addr_none": {
+   "en": "The Census lookup did not recognize that address. Try the street number, street and town, or choose your town from the list above.",
+   "es": "El servicio de direcciones del Censo no reconoció esa dirección. Pruebe con el número, la calle y el municipio, o elija su municipio de la lista de arriba.",
+   "state": "draft"
+  },
+  "yt.addr_privacy": {
+   "en": "The address goes from your browser to the US Census Bureau&rsquo;s address lookup and is not kept anywhere. Only the town or ward it finds is saved.",
+   "es": "La dirección va de su navegador al servicio de búsqueda de direcciones de la Oficina del Censo de EE. UU. y no se guarda en ningún lugar. Solo se guarda el municipio o el barrio electoral que encuentre.",
+   "state": "draft"
+  },
+  "yt.addr_state": {
+   "en": "That address is not in New Hampshire.",
+   "es": "Esa dirección no está en New Hampshire.",
+   "state": "draft"
+  },
+  "yt.addr_town": {
+   "en": "The lookup placed it in {place}, which this site has no page for. Choose your town from the list above.",
+   "es": "El servicio la ubicó en {place}, que no tiene página en este sitio. Elija su municipio de la lista de arriba.",
+   "state": "draft"
+  },
+  "yt.addr_wards": {
+   "en": "That address is in {town}, in a district that holds more than one ward, so the lookup cannot say which. Your ward is on your voter registration, or the clerk can tell you.",
+   "es": "Esa dirección está en {town}, en un distrito que incluye más de un barrio electoral, así que el servicio no puede decir cuál. Su barrio electoral aparece en su inscripción de votante, o el secretario municipal se lo puede decir.",
+   "state": "draft"
+  },
+  "yt.and": {
+   "en": "and",
+   "es": "y",
+   "state": "draft"
+  },
+  "yt.box": {
+   "en": "Your town, or your city and ward",
+   "es": "Su municipio, o su ciudad y barrio electoral",
+   "state": "draft",
+   "note": "\"barrio electoral\" for a city's ward throughout."
+  },
+  "yt.box_hint": {
+   "en": "Town, or city and ward",
+   "es": "Municipio, o ciudad y barrio electoral",
+   "state": "draft"
+  },
+  "yt.by_ward": {
+   "en": "{town} votes in {n} places, by ward",
+   "es": "{town} vota en {n} lugares, por barrio electoral",
+   "state": "draft"
+  },
+  "yt.change": {
+   "en": "Change town",
+   "es": "Cambiar de municipio",
+   "state": "draft"
+  },
+  "yt.choose": {
+   "en": "Choose your town",
+   "es": "Elija su municipio",
+   "state": "draft"
+  },
+  "yt.city_clerk": {
+   "en": "City clerk",
+   "es": "Secretario de la ciudad",
+   "state": "draft"
+  },
+  "yt.close": {
+   "en": "Close",
+   "es": "Cerrar",
+   "state": "draft"
+  },
+  "yt.council_d": {
+   "en": "Executive Council district {d}",
+   "es": "Consejo Ejecutivo, distrito {d}",
+   "state": "draft"
+  },
+  "yt.forget": {
+   "en": "Forget it",
+   "es": "Olvidarlo",
+   "state": "draft"
+  },
+  "yt.keep": {
+   "en": "Keep {place}",
+   "es": "Mantener {place}",
+   "state": "draft"
+  },
+  "yt.legislators": {
+   "en": "Your state legislators",
+   "es": "Sus legisladores estatales",
+   "state": "draft"
+  },
+  "yt.loading": {
+   "en": "Loading&hellip;",
+   "es": "Cargando…",
+   "state": "draft"
+  },
+  "yt.look_up": {
+   "en": "Look up",
+   "es": "Buscar",
+   "state": "draft"
+  },
+  "yt.looking": {
+   "en": "Looking it up&hellip;",
+   "es": "Buscando…",
+   "state": "draft"
+  },
+  "yt.make_mine": {
+   "en": "Make {place} my town",
+   "es": "Hacer de {place} mi municipio",
+   "state": "draft"
+  },
+  "yt.matched": {
+   "en": "Matched: {addr}",
+   "es": "Dirección encontrada: {addr}",
+   "state": "draft"
+  },
+  "yt.n_places": {
+   "en": "{n} places",
+   "es": "{n} lugares",
+   "state": "draft"
+  },
+  "yt.no_list": {
+   "en": "The list of towns did not load. Try again in a moment.",
+   "es": "La lista de municipios no se cargó. Vuelva a intentarlo en un momento.",
+   "state": "draft"
+  },
+  "yt.no_place": {
+   "en": "No town or ward by that name.",
+   "es": "No hay ningún municipio ni barrio electoral con ese nombre.",
+   "state": "draft"
+  },
+  "yt.no_poll": {
+   "en": "The Secretary of State&rsquo;s list has no polling place recorded for {place}. The clerk is who to ask.",
+   "es": "La lista de la Secretaría de Estado no tiene un lugar de votación registrado para {place}. El secretario municipal se lo puede decir.",
+   "state": "draft"
+  },
+  "yt.one_place": {
+   "en": "1 place",
+   "es": "1 lugar",
+   "state": "draft"
+  },
+  "yt.polls_open": {
+   "en": "Polls open {hours}",
+   "es": "Horario de votación: {hours}",
+   "state": "draft"
+  },
+  "yt.privacy": {
+   "en": "Saved in this browser only. Nothing about it is sent to Granite Record.",
+   "es": "Se guarda solo en este navegador. No se envía nada de esto a Granite Record.",
+   "state": "draft"
+  },
+  "yt.senate_d": {
+   "en": "State Senate district {d}",
+   "es": "Senado estatal, distrito {d}",
+   "state": "draft"
+  },
+  "yt.state_house": {
+   "en": "State House {d}",
+   "es": "Cámara de Representantes estatal: {d}",
+   "state": "draft"
+  },
+  "yt.title": {
+   "en": "Your town",
+   "es": "Su municipio",
+   "state": "draft",
+   "note": "\"municipio\" for town throughout (towns and cities alike)."
+  },
+  "yt.town_clerk": {
+   "en": "Town clerk",
+   "es": "Secretario municipal",
+   "state": "draft"
+  },
+  "yt.us_house_d": {
+   "en": "US House district {d}",
+   "es": "Cámara de Representantes de EE. UU., distrito {d}",
+   "state": "draft"
+  },
+  "yt.use_this": {
+   "en": "Use {place}, this page&rsquo;s town",
+   "es": "Usar {place}, el municipio de esta página",
+   "state": "draft"
+  },
+  "yt.voting": {
+   "en": "Voting",
+   "es": "Votación",
+   "state": "draft"
+  },
+  "yt.ward": {
+   "en": "Ward {n}",
+   "es": "Barrio electoral {n}",
+   "state": "draft"
+  },
+  "yt.ward_unsure": {
+   "en": "Not sure what ward you&rsquo;re in? Enter your address to confirm.",
+   "es": "¿No sabe en qué barrio electoral está? Escriba su dirección para confirmarlo.",
+   "state": "draft"
+  },
+  "yt.where_vote": {
+   "en": "Where you vote",
+   "es": "Dónde vota",
+   "state": "draft"
+  },
+  "yt.your_rep": {
+   "en": "Your rep",
+   "es": "Su representante",
+   "state": "draft"
+  },
+  "yt.your_senator": {
+   "en": "Your senator",
+   "es": "Su senador",
+   "state": "draft"
+  },
+  "yt.yours": {
+   "en": "Your town: {place}",
+   "es": "Su municipio: {place}",
+   "state": "draft"
+  }
+ }
+}
