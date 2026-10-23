@@ -34,7 +34,7 @@
     "build_lsrs.py": "2026-09-18.5",
     "build_members_elect.py": "2026-10-16.6",
     "build_manifest.py": "2026-09-05.19",
-    "build_pages.py": "2026-09-04.227",
+    "build_pages.py": "2026-09-04.228",
     "build_places.py": "2026-09-20.5",
     "build_proceedings.py": "2026-09-05.15",
     "build_search_index.py": "2026-10-01.12",
@@ -111,7 +111,7 @@
     "follow_changes.py": "2026-10-07.10",
     "follow_site.py": "2026-10-23.1",
     "freeze_term.py": "2026-10-05.11",
-    "front_end.py": "2026-10-09.3",
+    "front_end.py": "2026-10-09.4",
     "functions/api/report.js": "2026-09-12.11",
     "gc_changes.py": "2026-09-12.9",
     "ground_truth.py": "2026-09-05.4",
@@ -144,7 +144,7 @@
     "past_members.py": "2026-09-10.3",
     "past_sponsors.py": "2026-09-26.6",
     "plain_action.py": "2026-10-14.11",
-    "preflight.py": "2026-09-04.655",
+    "preflight.py": "2026-09-04.656",
     "print.css": "2026-10-09.3",
     "print.js": "2026-10-09.7",
     "probe_alignment.py": "2026-09-05.65",
@@ -208,13 +208,14 @@
     "member_figures.py": "2026-10-09.2",
     "motions.py": "2026-10-10.2",
     "build_district_geometry.py": "2026-10-09.1",
-    "build_district_map.py": "2026-10-09.3",
+    "build_district_map.py": "2026-10-09.4",
     "build_full_sessions.py": "2026-10-10.9",
     "map.css": "2026-10-09.2",
     "map.js": "2026-10-09.8",
     "officials_tabs.py": "2026-10-10.6",
     "tests/test_map_labels.js": "2026-10-09.1",
-    "tests/test_follow_panel.js": "2026-10-18.1"
+    "tests/test_follow_panel.js": "2026-10-18.1",
+    "strip_js.py": "2026-10-23.1"
   },
   "generated": "2026-09-04"
 }

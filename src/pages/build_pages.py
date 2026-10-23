@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.227
+# GRANITE_VERSION: 2026-09-04.228
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -16,10 +16,11 @@ does (app.css, ONE STYLESHEET FOR EVERY PAGE).
 The browser's files -- bills.html, app.css, components.js, app.js and find.js,
 and print.js and print.css, a bill's print sheet -- are read from src/pages/
 under the folder the build runs in, where they sit beside this file, and
-copied into the site as they are, but for three: components.js with the words
+copied into the site as they are, but for these: components.js with the words
 of src/pages/words/ written between its markers (with_words), app.css without
-its comments (strip_css), and bills.html, the bill search, as the host serves
-it (bills_page).
+its comments (strip_css), every script without its comments (published_js,
+strip_js.py), and bills.html, the bill search, as the host serves it
+(bills_page).
 """
 
 # The bootstrap: _paths.py, found above this file, puts every code folder on the import path.
@@ -38,6 +39,7 @@ import html as _html
 import shell as _shell
 from components import WORDBOOK, chip, clock, date_span, icon, pchip, until_attrs
 import seating
+import strip_js
 import json
 import legislative_year as _year
 import re
@@ -2852,6 +2854,19 @@ COPIED = ("bills.html", "app.css", "components.js", "app.js", "find.js",
           "print.js", "print.css")
 
 
+def published_js(name, text):
+    """A browser script's text as the site publishes it: components.js with
+    the words written between its markers (with_words), and every script
+    without its comments (strip_js.published, which publishes one as it is,
+    and says so, where its reader refuses it). What front_end() writes, and
+    what preflight holds the site's copy to (_published_scripts_stripped);
+    build_district_map.py writes map.js through strip_js.published itself,
+    since it has no words."""
+    if name == "components.js":
+        text = with_words(text)
+    return strip_js.published(name, text)
+
+
 def header_mark_placed(brand=Path("assets")):
     """Whether main() places HEADER_MARK: it is a file in assets/ or in
     assets/licensed/, which main() lays over it. What front_end.py asks,
@@ -2898,7 +2913,8 @@ def front_end(out, has_mark):
     # comments (strip_css), and where the build has no header mark, without
     # the block that draws it (without_mark). components.js gains the words
     # between its markers (with_words), so they are written once, in
-    # src/pages/words/.
+    # src/pages/words/. And every script goes without its comments
+    # (published_js, strip_js.py), as app.css does.
     for name in COPIED:
         src = Path("src/pages") / name
         if not src.exists():
@@ -2907,8 +2923,8 @@ def front_end(out, has_mark):
         body = src.read_bytes()
         if name == "app.css":
             body = strip_css((body if has_mark else without_mark(body)).decode("utf-8")).encode("utf-8")
-        if name == "components.js":
-            body = with_words(body.decode("utf-8")).encode("utf-8")
+        if name.endswith(".js"):
+            body = published_js(name, body.decode("utf-8")).encode("utf-8")
         # THE PAGE IS CLEANED, THE TEMPLATE IS NOT. src/pages/bills.html is
         # also the template every record's page is made from, and shell.page
         # finds its tabs by their written addresses ("officials.html"), so
@@ -2924,8 +2940,8 @@ def front_end(out, has_mark):
     # The bill matcher, cut out of app.js for the header search on the pages
     # that do not load app.js. See bill_matcher_js.
     if Path("src/pages/app.js").exists():
-        body = bill_matcher_js(
-            Path("src/pages/app.js").read_text(encoding="utf-8")).encode("utf-8")
+        body = published_js("billmatch.js", bill_matcher_js(
+            Path("src/pages/app.js").read_text(encoding="utf-8"))).encode("utf-8")
         dst = out / "billmatch.js"
         if not dst.exists() or dst.read_bytes() != body:
             dst.write_bytes(body)

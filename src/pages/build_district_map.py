@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-09.3
+# GRANITE_VERSION: 2026-10-09.4
 """
 The district map's data, and its script and stylesheet, into the site.
 
     python3 src/pages/build_district_map.py --site site
 
 Writes site/district_map.json, the one file the map draws (map.js), and copies
-src/pages/map.js and src/pages/map.css beside it. No page mounts the map yet:
+src/pages/map.js, without its comments (strip_js.py), and src/pages/map.css
+beside it. No page mounts the map yet:
 Polish 3 places it on the Officials page's My Town tab and on the town pages,
 each of which then loads /map.css and /map.js and calls GRMap.mount().
 
@@ -61,6 +62,7 @@ import math
 import re
 import shutil
 
+import strip_js
 import town_boards
 # Who November's election sent, while there are any: the one reader of
 # site/members_elect.json, beside its one writer (16 October 2026). And the
@@ -354,14 +356,17 @@ def main():
     out = site / "district_map.json"
     out.write_text(json.dumps(data, separators=(",", ":"), sort_keys=True) + "\n",
                    encoding="utf-8")
-    for src in (SCRIPT, STYLE):
-        shutil.copyfile(src, site / Path(src).name)
+    # map.js without its comments, as every script the site publishes
+    # (strip_js.py, 23 October 2026); map.css as it is.
+    (site / Path(SCRIPT).name).write_bytes(strip_js.published(
+        "map.js", Path(SCRIPT).read_bytes().decode("utf-8")).encode("utf-8"))
+    shutil.copyfile(STYLE, site / Path(STYLE).name)
     vac = {lk: sum(1 for v in data["fill"][lk].values() if not v) for lk in FILLED}
     print(f"  {out}: {out.stat().st_size:,} bytes; "
           f"{len(data['places'])} places, {sum(len(g) for g in data['wards'].values())} "
           f"ward groups in {len(data['wards'])} cities; every seat vacant in "
           + ", ".join(f"{n} {lk}" for lk, n in vac.items()))
-    print(f"  copied {SCRIPT} and {STYLE} into {site}")
+    print(f"  copied {SCRIPT}, without its comments, and {STYLE} into {site}")
     return 0
 
 
