@@ -30,14 +30,17 @@ python3 preflight.py           # the checks; builds the whole site on a fixture
 python3 src/ops/handoff.py     # writes STATE.md with current counts
 ```
 
-A couple of minutes, no network -- `preflight` is nearly all of it, and its
-`--code` half alone is about a minute of that. **Trust their output
+Several minutes, no network -- `preflight` is nearly all of it, and its
+`--code` half alone takes three to four (measured 23 October 2026; it grows
+with every check). **Trust their output
 over anything written in prose, including this file.** If `preflight` is not
 green, fix that before anything else.
 
 `STATE.md` is generated. Never edit it. `README.md` is the front door,
-`ARCHITECTURE.md` explains how the code and the data work, `DATA.md` what each
-published file holds, and `CONTRIBUTING.md` how a change is made and checked.
+`ARCHITECTURE.md` explains how the code and the data work, `DATA.md` what the
+licence covers (README's *The data* lists what each published file holds), and
+`CONTRIBUTING.md` how a change is made and checked, with step-by-step recipes
+for the common ones.
 
 ---
 
@@ -188,7 +191,10 @@ could have caught — that is how most of the current ones got there.
 **Verifying a refactor.** Build the site into a scratch tree and compare a
 sha256 manifest of every file against a baseline -- and build the baseline
 twice first, under different `PYTHONHASHSEED` values, to prove the output is
-deterministic rather than assume it.
+deterministic rather than assume it. State the day with `GRANITE_BUILD_DATE`
+for every build being compared, or every page differs by its citation date;
+`src/checks/site_manifest.py record` and `compare` keep and compare the
+manifests.
 
 **Timestamps, in order of what they can claim.** A roll call's clock time from
 `RollCallSummary.txt` (no captions involved, hand-checked at 3–7 seconds, and
@@ -271,9 +277,11 @@ caught three silently half-applied edits.
 **When you change a file, bump its stamp and update `versions.json` in the same
 edit.** The date is when the file was *created*, not last modified:
 `preflight.py` at `2026-09-04.190` had been edited a hundred and ninety times
-since 4 September. Increment the `.N`; leave the date alone. `python3
-src/ops/inventory.py` prints the current stamp of every file; take one from there and
-do not copy one into prose. A stamp quoted in a document goes stale, and then
+since 4 September. Increment the `.N`; leave the date alone.
+`python3 src/ops/inventory.py --bump-changed` does both edits for every file
+changed since the last commit, and is safe to run again; `--bump FILE...`
+names them. `python3 src/ops/inventory.py` prints the current stamp of every
+file; take one from there and do not copy one into prose. A stamp quoted in a document goes stale, and then
 points at whichever other file has since grown into that number.
 
 ---
@@ -287,3 +295,8 @@ it. The working folder is the repository root; `work/` holds the caption files,
 about 34 GB of them, and `site/` is the built output.
 
 `publish` is a local command that builds, checks and deploys with wrangler.
+
+A cloud session is different: Linux, on a bare clone. No kit, captions or
+calendars are on disk, so the data checks skip and say so, and `publish` is
+not there. The work leaves through git: commit to `dev`, and `main` changes
+only when the person says.

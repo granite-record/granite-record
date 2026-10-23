@@ -124,7 +124,10 @@ prose, including this file.
 `# GRANITE_VERSION: YYYY-MM-DD.N` and `versions.json` lists what each should
 be; `preflight` fails when they disagree. Increment the `.N` and leave the date
 alone — it is when the file was created, not last modified. This is the single
-most common way a change here fails its own checks.
+most common way a change here fails its own checks, so one command makes both
+edits: `python3 src/ops/inventory.py --bump-changed` bumps every stamped file
+changed since the last commit (or since a base you name, such as `origin/dev`,
+for a branch of several commits), once, and is safe to run again.
 
 **Add a check when you fix something a check could have caught.** That is how
 most of the current ones arrived, and each one's docstring says what went wrong
@@ -311,6 +314,67 @@ from the root would answer "can't open file". It also holds each
 SQL host outside `gc_db/`, yt-dlp outside `youtube/`, or a request from any
 folder under `src/` outside `fetch/` (but `checks/` asking graniterecord.org)
 fails it.
+
+## Recipes for the common changes
+
+Each is the whole list of places one kind of change touches, in order, so
+that nothing is found missing a session later. Every one ends the same way:
+`python3 src/ops/inventory.py --bump-changed`, then `python3 preflight.py
+--code`, which must end `0 failed`.
+
+**Add a check to preflight.**
+1. Write a function under `@check(group, "what it holds, as a sentence",
+   needs=("module", ...))` beside the checks of the same subject; `needs`
+   names the project modules it imports, and the check is skipped, saying
+   so, where one will not import.
+2. Its docstring says what went wrong that it exists for, with the date and
+   the real case. That is the useful part.
+3. Return `("ok", "what it found")`, or `("skip", "why")` where its input is
+   not on this machine; fail with `assert`.
+4. A check that reads a built site uses `_fixture_site_shared()` (read only)
+   or `_fixture_site_whole(root)` (a copy it may write), rather than building
+   its own.
+5. A data check runs on the night after the build unless it is named in
+   `NOT_ON_THE_NIGHT` with its reason; one that compares against the
+   official record goes in `RECORD_CHECKS`, so it warns rather than holds
+   the night.
+6. A check written ahead of the change that makes it pass carries
+   `expect_fail="the change"`.
+
+**Add a build step, or give one a new input.**
+1. A `Step("what it does", ["script.py", ...], needs=[...], produces=[...])`
+   in `build_all.plan()`, after the steps that make its inputs. The script
+   is named by its bare name and starts with the bootstrap (*Where new code
+   goes*).
+2. An input git does not track and no step produces is named in preflight's
+   `ic_SOURCES`, with what writes it -- and in `cloud_kit.json`, so the
+   nightly's empty machine is given it. A file the step reads and then
+   rewrites goes in `build_all.CARRIED` and the kit.
+3. A step that can finish having made nothing gets a guard that says so.
+4. `python3 build_all.py --dry-run` shows the plan with it in place.
+
+**Show a new fact on a bill's page.**
+1. `src/pages/build_site_v2.py` puts it in the bill's record; if it comes
+   from a new file, declare that file in the step's `needs`.
+2. `src/pages/app.js` draws it, in the tab's `render…` function (`BILL_TABS`
+   maps each tab's address to its function). A person, a committee, a date
+   or a time is drawn with `components.js`'s helper for it, never by hand.
+3. If the bills list or the search needs it too, the index row (the
+   function near `idx/<term>.json` in build_site_v2) -- every visitor loads
+   that file, so keep it small and run `src/checks/check_site.py`.
+4. If it belongs in the downloads, `src/pages/build_exports.py`;
+   `/data/manifest.json` lists the columns by itself.
+5. If a published file's shape changed, README's *The data*.
+6. A check: preflight loads `app.js` in node against `tests/dom_stub.js` and
+   calls `render()` and `renderDetail()` on the fixture, so a check can hold
+   what the tab draws.
+
+**Change a word the site says in many places.** The approved wording lives
+once, in `src/pages/words/` (`votes.json`, `chips.json`, `glossary.json`,
+`meeting_kinds.json`, `study_report.json`). `components.py` reads it for the
+pages built in Python and the build writes it into `components.js` for the
+browser, so an edit there reaches both. A word that is not there yet goes
+there, rather than into a page's own code.
 
 ## Files no generator may write
 
