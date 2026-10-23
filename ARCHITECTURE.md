@@ -1835,6 +1835,24 @@ seat its term's bills printed -- and holds every link to the 2025-2026 roll
 calls; preflight's `_elect_2024_read_again` and `_elect_2024_scored` run them
 where the files are on disk.
 
+## The other offices' successors (23 October 2026)
+
+The Governor, the Council, Congress and the rest of `corrections/officials.json`
+are the person's, and their successors are too: any record may carry one
+under `elect`, with the day they take office, and from that day, by the
+build's own day, every page draws the successor as the holder, so nobody edits
+the file on the day (`corrections/README.md` gives the shape). Every reader of
+the file -- the Officials page, the town pages and `places.json`, the district
+map and `officers.py` -- reads it through one function,
+`build_members_elect.read_officials`, so no two pages can differ about who
+holds an office; preflight's `_officials_one_reader` reads the code for it,
+and `_officials_successor` holds the switch on a made-up file. The day is never
+worked out: nothing on this disk states it for every office. From a week after
+a general election, a `_checked` dated before that week was out is one of
+preflight's reminders, `_officials_rechecked`. The home page's old "Who holds
+office" block, from `corrections/status/officials.txt`, a second copy of the
+Governor and the Council that was never filled in, was retired the same day.
+
 ## The bill index's sponsors
 
 A row's `sponsor` is the prime sponsor and `cosp` the co-sponsors, by the

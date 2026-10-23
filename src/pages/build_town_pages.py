@@ -33,7 +33,9 @@ the two senators come from officials.json, which is edited by hand and which
 no generator writes -- a name against an office is a claim about a real
 person, and it should come from somebody who checked. Where a name is blank
 the page names the office, gives the reader their district and links to the
-official directory, which is correct and does not go stale.
+official directory, which is correct and does not go stale. A successor the
+file names under a seat is its holder from the day the file says they take
+office (build_members_elect.read_officials, 23 October 2026).
 
 A town's select board, and a city's mayor and council, come from its own
 website where that page was current when read (town_boards.py decides, and
@@ -65,7 +67,9 @@ import components as C
 import shell as S
 # Who November's election sent, for the weeks before they sit: the one
 # reader of site/members_elect.json, beside its one writer (16 October 2026).
-from build_members_elect import for_pages as members_elect, race_order
+# And the one reader of corrections/officials.json, which puts each office's
+# successor in office on the day the file gives (23 October 2026).
+from build_members_elect import for_pages as members_elect, race_order, read_officials
 # The parser's test for an e-mail address, so that what it accepts from a
 # threaded cell and what a page links are the same test.
 from parse_officials import EMAIL_OK
@@ -1455,7 +1459,9 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--site", default="site")
     ap.add_argument("--base", default="https://graniterecord.org")
-    ap.add_argument("--officials", default="corrections/officials.json")
+    ap.add_argument("--officials", default=None,
+                    help="the hand file of the other offices; corrections/officials.json "
+                         "where none is given (build_members_elect.read_officials)")
     ap.add_argument("--local", default="collected/town_clerks.json",
                     help="clerks and polling places, if parsed")
     ap.add_argument("--offices", default="collected/town_officials.json",
@@ -1470,7 +1476,7 @@ def main():
     legs = json.loads((site / "legislators.json").read_text(encoding="utf-8"))
     if isinstance(legs, dict):
         legs = list(legs.values())
-    off = json.loads(Path(a.officials).read_text(encoding="utf-8"))
+    off = read_officials(a.officials)
     # The clerk and the polling place, if they have been fetched. One file for
     # all 331 towns and wards, keyed by the same slug the pages are named
     # after. Absent is the normal state until somebody runs the fetch, and

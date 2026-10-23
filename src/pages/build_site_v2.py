@@ -3618,7 +3618,7 @@ def build_legislators(out, legs, votes_by_member, towns, unnamed,
 
 
 def build_composition(a, legs):
-    """Party composition, vacancies, the Executive Council and the governor.
+    """Party composition and vacancies, the two chambers' alone.
 
     Returns (comp, vac). Split out of main(); this block already carried a
     dead duplicate of itself once -- two versions of the same work eighteen
@@ -3676,60 +3676,13 @@ def build_composition(a, legs):
                             "vacant": gap})
     comp["vacancies"] = vac
 
-    # Executive branch: hand-maintained, because the Council and the governor
-    # are not the General Court and appear in none of its files. An unedited
-    # file yields nothing, so the section is absent rather than wrong.
-    op = Path(a.officials)
-    if op.exists():
-        council, gov, onote, oupd = [], None, "", ""
-        last = None
-        for raw in op.read_text(encoding="utf-8").splitlines():
-            if raw.strip().startswith("#"):
-                continue
-            line = raw.split("#")[0].rstrip()
-            if not line.strip():
-                last = None
-                continue
-            if raw[:1] in " \t" and last == "note":
-                onote = (onote + " " + line.strip()).strip()
-                continue
-            if ":" not in line:
-                continue
-            k, v = line.split(":", 1)
-            k, v = k.strip().lower(), v.strip()
-            last = k
-            if k == "councilor":
-                parts = [x.strip() for x in v.split("|")]
-                if parts and parts[0]:
-                    council.append({"district": parts[0],
-                                    "name": parts[1] if len(parts) > 1 else "",
-                                    "party": (parts[2] if len(parts) > 2 else "").upper()})
-            elif k == "governor" and v:
-                parts = [x.strip() for x in v.split("|")]
-                gov = {"name": parts[0],
-                       "party": (parts[1] if len(parts) > 1 else "").upper()}
-            elif k == "note":
-                onote = v
-            elif k == "updated":
-                oupd = v
-        named = [c for c in council if c["name"]]
-        if named or gov:
-            cc = Counter(c["party"] or "?" for c in named)
-            comp["council"] = {
-                "chamber": "Executive Council", "seats": len(council) or 5,
-                "sitting": len(named), "vacant": len(council) - len(named),
-                "members": council,
-                "parties": [{"code": k, "name": PARTY_FULL.get(k, k), "n": v}
-                            for k, v in sorted(cc.items(), key=lambda x: -x[1])],
-                "majority": (len(council) or 5) // 2 + 1,
-                "note": onote, "updated": oupd}
-            print(f"  Executive Council: {len(named)} of {len(council)} seats named")
-        if gov:
-            comp["governor"] = gov
-        if not named and not gov:
-            print("  corrections/status/officials.txt is unedited \u2014 the Executive Council "
-                  "and governor are omitted from the page")
-
+    # THE EXECUTIVE BRANCH IS NOT HERE (23 October 2026). The Council and the
+    # Governor were read from corrections/status/officials.txt for a "Who
+    # holds office" block on the home page; the file was never filled in, so
+    # the block never drew, and corrections/officials.json had come to hold
+    # the same offices with their sources. Two copies of one fact drift, so
+    # the person retired this one: who holds an office is
+    # build_members_elect.read_officials's, and the Officials page's.
     return comp, vac
 
 
@@ -11500,7 +11453,6 @@ def parse_args():
 
     ap.add_argument("--status", default="corrections/status/status.txt")
     ap.add_argument("--districts", default="site/districts.json")
-    ap.add_argument("--officials", default="corrections/status/officials.txt")
     ap.add_argument("--out", default="site")
     return ap.parse_args()
 

@@ -2816,44 +2816,12 @@ fetch(DATA("home.json")).then(r=>r.json()).then(H=>{
           data-updated="${esc(S.updated)}">Summary Updated:
           ${fdy(S.updated)}</p>`:"")}
     """ + YEAR_LINK + """</div>`;
-  const C=H.composition||{};
-  // Five seats do not want a proportional bar; list them. The Council is also
-  // executive branch, so it is set apart from the two chambers rather than
-  // stacked with them as though it were a third one.
-  const council=()=>{
-    const c=C.council; if(!c)return "";
-    const rows=(c.members||[]).map(m=>
-      `<tr><td style="width:96px">District ${esc(m.district)}</td>
-       <td>${m.name?`${esc(m.name)} ${chip(m.party||"?","pt-"+(m.party||"V"))}`
-        :`<span style="color:var(--ink-2)">vacant</span>`}</td></tr>`).join("");
-    return `<div class="comp">
-      <div class="compline"><b>Executive Council</b>
-        <span class="statemeta">${c.sitting} of ${c.seats} seats filled${
-          c.vacant?`, ${c.vacant} vacant`:""} \u00b7 ${
-          (c.parties||[]).map(p=>`${p.n} ${esc(p.code)}`).join(", ")}</span></div>
-      <table><tbody>${rows}</tbody></table>
-      ${c.note?`<p class="statemeta" style="margin:8px 0 0">${esc(c.note)}</p>`:""}
-      ${c.updated?`<p class="statemeta">Council and governor entered by hand,
-        updated ${fd(c.updated)}.</p>`:""}</div>`;};
-  const gov=()=>{
-    const g=C.governor; if(!g)return "";
-    return `<div class="comp"><div class="compline"><b>Governor</b>
-      <span class="statemeta">${esc(g.name)}
-      ${chip(g.party||"?","pt-"+(g.party||"V"))}</span>
-      </div>
-      <p class="statemeta" style="margin:4px 0 0">Signs or vetoes every bill that
-      passes both chambers. A veto stands unless two thirds of those voting in
-      each chamber vote to override.</p></div>`;};
-
-  // Highest office first. Reading down from governor to the 400-seat House
-  // matches how people picture the structure.
-  // The chambers and the vacant seats moved to the legislators page, which is
-  // where somebody looking for who holds a seat already is. What is left here
-  // is the executive branch, which is not a legislature and was only ever
-  // stacked with them for want of somewhere else to put it.
-  const exec=gov()+council();
-  const comp=document.getElementById("composition");
-  if(comp)comp.innerHTML=exec?`<h2>Who holds office</h2>${exec}`:"";
+  // NO "WHO HOLDS OFFICE" HERE (23 October 2026). The Governor and the
+  // Council were drawn under the calendar from home.json's composition,
+  // read from a second hand file beside status.txt that was never filled
+  // in, so the block never drew; the person retired that file, and who holds an
+  // office is the Officials page's, from corrections/officials.json. The
+  // chambers and the vacant seats are the legislators page's.
 
   // THE FIVE COUNTS ARE GONE: they sat between the search box and the three
   // cards that are the actual way in, and nobody arrives to be told how many
@@ -3780,8 +3748,11 @@ the House does.</p>
     # page's #towns opens My Town, as the old #statewide opens Executive
     # Branch (OFFICIALS_HASH_JS).
     import officials_tabs as OT
+    # Through the file's one reader, which puts a successor in office on the
+    # day the file gives (build_members_elect.read_officials, 23 October 2026).
+    from build_members_elect import read_officials
     try:
-        off = json.loads(Path("corrections/officials.json").read_text(encoding="utf-8"))
+        off = read_officials()
     except (OSError, ValueError):
         off = {}
     try:
@@ -3981,7 +3952,6 @@ committee. Your town shows who represents you.</p>
 <div id="recent" class="hrecent">{static_recent}</div>
 </section>
 </div>
-<div id="composition"></div>
 <div id="notable" hidden></div>"""
     # THE GUIDES' ROW IS KEPT. build_civics fills the home page's guides slot
     # after this writes it (home_guides); a run of this step alone -- the

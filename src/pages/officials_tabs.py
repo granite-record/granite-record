@@ -26,7 +26,9 @@ Each returns the panel's inner markup, or "" where the file holds nothing to
 draw, and build_pages.officials_page() puts them into the page beside My
 Town and Legislators, which are build_pages' own. Nothing here is fetched
 and nothing is written: every name is corrections/officials.json's, the
-person's hand-kept file (read, never written), or the build's own
+person's hand-kept file (read, never written, and read only through
+build_members_elect.read_officials, which puts a successor in office on the
+day the file gives -- 23 October 2026), or the build's own
 legislators.json and officers.json -- or, on the Members-Elect tab, the
 build's site/members_elect.json, as build_members_elect.for_pages reads it.
 
@@ -115,13 +117,39 @@ def how(rec, dc_word="in Washington"):
 
 
 def who(rec, seat=""):
-    """One official: the chip, the seat under it, then how to reach them."""
+    """One official: the chip, the seat under it, then how to reach them,
+    and who takes the office next where the record names a successor."""
     name = (rec.get("name") or "").strip()
     if not name:
         return ""
     return (f'<li class="ofwho">{person(name, rec.get("party"))}'
             + (f'<span class="ofseat">{E(seat)}</span>' if seat else "")
-            + how(rec) + "</li>")
+            + how(rec) + successor(rec) + "</li>")
+
+
+def successor(rec):
+    """ONE LINE UNDER A HOLDER WHOSE SUCCESSOR IS NOT IN OFFICE YET (the
+    person's approval of 23 October 2026): "B. Successor (D) takes office
+    January 7, 2027." -- in words true of an office won at the polls and of
+    one filled by appointment alike. The party only where the holder's is
+    drawn, so a sheriff's successor carries none, as the sheriff does not;
+    and data-until, so a page built the night before and read on the day
+    says nothing of a day that has come. "" where the record names no
+    successor, or names the holder again: a holder re-elected is still the
+    holder, and nothing on the page changes. On the day,
+    build_members_elect.officials_on has made the successor the holder, and
+    there is no "elect" left to draw."""
+    e = rec.get("elect")
+    if not isinstance(e, dict):
+        return ""
+    name = (e.get("name") or "").strip()
+    if not name or name == (rec.get("name") or "").strip():
+        return ""
+    party = str(e.get("party") or "").strip().upper() if rec.get("party") else ""
+    said = f"{name} ({party})" if ONE_PARTY.match(party) or BOTH.match(party) else name
+    takes = e.get("takes_office")
+    return (f'<span class="ofseat"{until_attrs(takes, None)}>{E(said)} takes office '
+            f'{E(date_words(takes, "full"))}.</span>')
 
 
 def section(sid, title, people, why="", source=""):

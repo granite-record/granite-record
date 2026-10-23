@@ -63,8 +63,10 @@ import shutil
 
 import town_boards
 # Who November's election sent, while there are any: the one reader of
-# site/members_elect.json, beside its one writer (16 October 2026).
-from build_members_elect import for_pages as members_elect
+# site/members_elect.json, beside its one writer (16 October 2026). And the
+# one reader of corrections/officials.json, which puts a councillor's or a
+# representative's successor in office on the file's day (23 October 2026).
+from build_members_elect import for_pages as members_elect, read_officials
 
 GEOMETRY = "generated/district_geometry.json"
 SCRIPT, STYLE = "src/pages/map.js", "src/pages/map.css"
@@ -330,7 +332,9 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__.strip().splitlines()[0])
     ap.add_argument("--site", default="site")
     ap.add_argument("--geometry", default=GEOMETRY)
-    ap.add_argument("--officials", default="corrections/officials.json")
+    ap.add_argument("--officials", default=None,
+                    help="the hand file of the other offices; corrections/officials.json "
+                         "where none is given (build_members_elect.read_officials)")
     a = ap.parse_args()
     site = Path(a.site)
 
@@ -338,7 +342,8 @@ def main():
         return json.loads(Path(p).read_text(encoding="utf-8"))
     geom_bytes = Path(a.geometry).read_bytes()
     data = build(geom_bytes, read(site / "districts.json"),
-                 read(site / "legislators.json"), read(a.officials), members_elect(site))
+                 read(site / "legislators.json"), read_officials(a.officials),
+                 members_elect(site))
     # A district every seat of which is vacant is drawn hatched, and a site
     # whose every district were so would be a roster that failed to load:
     # silence is not success.
