@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.669
+# GRANITE_VERSION: 2026-09-04.671
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -38031,8 +38031,8 @@ def _site_gen(path="workers/follow/site.gen.js"):
 
 
 @check("frontend", "an email takes the site's colours, testimony forms, study words and mark from "
-       "site.gen.js, and site.gen.js is what follow_site.py writes from the site's files now",
-       needs=("follow_site",))
+       "site.gen.js, and so does the manage page its colours; and site.gen.js is what "
+       "follow_site.py writes from the site's files now", needs=("follow_site",))
 def _follow_site_current(FS):
     """The person, 22 October 2026: bill emails should have "similar elements to
     what's on the bill pages with ... color coded indicators", and testimony
@@ -38050,7 +38050,13 @@ def _follow_site_current(FS):
     imports. This fails while the committed file is not what it would write,
     naming the one command that makes it so; and where mail.js types a
     colour of the site's or a form's address again, which would be a copy
-    nothing holds."""
+    nothing holds.
+
+    The manage, confirm and unsubscribe pages (workers/follow/page.js) were
+    drawn from a palette typed by hand with no check, and it drifted: its dark
+    brick was #F0938C where app.css's is #E4877E. Since 23 October 2026 they
+    take site.gen.js's PAGE_PALETTE, and this fails where page.js types a
+    colour again."""
     # What it is written from, each by its path here as well as in
     # follow_site.py, so that a change to any of them reaches this check
     # under preflight --changed (check_select.py reads this file's strings).
@@ -38083,11 +38089,21 @@ def _follow_site_current(FS):
                       f"white is site.gen.js's, from app.css")
     assert "gc.nh.gov" not in code, \
         "mail.js types a General Court address; the testimony forms are site.gen.js's, from app.js"
+    page = Path("workers/follow/page.js").read_text(encoding="utf-8")
+    code = re.sub(r"/\*.*?\*/", "", page, flags=re.S)
+    code = re.sub(r"(^|[^:])//.*$", r"\1", code, flags=re.M)
+    assert re.search(r'^import \{[^}]*\bPAGE_PALETTE\b[^}]*\} from "\./site\.gen\.js";', code, re.M), \
+        "page.js does not import PAGE_PALETTE from ./site.gen.js"
+    typed = sorted({h.upper() for h in re.findall(r"#[0-9A-Fa-f]{3}(?:[0-9A-Fa-f]{3})?\b", code)})
+    assert not typed, (f"page.js types the colours {typed} itself; the manage page's colours are "
+                       f"site.gen.js's PAGE_PALETTE, from app.css (run `{FS.COMMAND}`)")
     names = {n: v for n, (_, v) in FS.values().items()}
     return "ok", (f"{FS.OUT.as_posix()} is current: {len(names['STATUS_INK'])} status inks, "
                   f"{len(names['SITE_PALETTE'])} text inks and the ring's two from app.css, "
                   f"{len(names['STATUS_CLASS'])} chip words, {len(names['TESTIFY_FORMS'])} forms, "
-                  f"the study words and the mark; {len(want.splitlines())} lines")
+                  f"the study words and the mark, and the manage page's "
+                  f"{len(names['PAGE_PALETTE']['light'])} colours a theme; "
+                  f"{len(want.splitlines())} lines")
 
 
 # What each of the old copies said of an interim study report, typed out in

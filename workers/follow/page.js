@@ -15,6 +15,7 @@
 
 import { b64urlEncode } from "./address.js";
 import { esc, htmlResponse } from "./common.js";
+import { PAGE_PALETTE } from "./site.gen.js";
 
 // THE SITE'S OWN LOOK (the person's manage-page redesign, 14 October 2026):
 // the site's palette and spacing, its serif for headings and its sans for the
@@ -22,14 +23,17 @@ import { esc, htmlResponse } from "./common.js";
 // font from anywhere (common.js, default-src 'none'), and the system's own
 // otherwise. Each part of the page is a card; a choice of two is a segmented
 // switch; following is a switch beside each record; Save stays in reach.
+//
+// THE COLOURS ARE THE SITE'S, read from app.css by src/pages/follow_site.py
+// into site.gen.js's PAGE_PALETTE (23 October 2026): a copy typed here had
+// drifted from the stylesheet. Change a colour in app.css and run that
+// script. The font stacks are the page's own.
+const tokens = (theme) => Object.entries(PAGE_PALETTE[theme]).map(([k, v]) => `--${k}:${v};`).join("");
 const STYLE = `
-:root{--paper:#E9EAEC;--surface:#FBFBFC;--wash:#DFE1E4;--ink:#1C2126;--ink-2:#4A5259;--rule:#D3D6DA;
---edge:#767E86;--pine:#14514C;--pine-soft:#DFEBEA;--on-pine:#fff;--brick:#9E2B25;--brick-soft:#FAE7E5;
+:root{${tokens("light")}
 --sans:"Public Sans",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
 --serif:"Source Serif 4",Georgia,"Times New Roman",serif}
-@media (prefers-color-scheme: dark){:root{--paper:#171B1C;--surface:#21282A;--wash:#2C3436;--ink:#E6E9E8;
---ink-2:#A7B0B0;--rule:#3D4547;--edge:#7C8687;--pine:#7FB9B1;--pine-soft:#1B302E;--on-pine:#0F1414;
---brick:#F0938C;--brick-soft:#43211F}}
+@media (prefers-color-scheme: dark){:root{${tokens("dark")}}}
 *{box-sizing:border-box}
 body{margin:0;background:var(--paper);color:var(--ink);font:16px/1.55 var(--sans)}
 main{max-width:720px;margin:0 auto;padding:20px 16px 72px}

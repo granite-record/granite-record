@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-23.1
+# GRANITE_VERSION: 2026-10-23.2
 """
 The site's colours and words the email sender draws with, written into
 workers/follow/site.gen.js from the files the site itself draws them from.
@@ -25,9 +25,15 @@ that mail.js imports:
     STUDY_REPORT    study_report.json, an interim study report's words
     MARK_FILE       build_brand.py: mail-mark.png, at MARK_BOX plus MAIL_PAD
                     on every side
+    PAGE_PALETTE    app.css, light and dark: the colours the manage, confirm
+                    and unsubscribe pages (page.js) are drawn in. The brick's
+                    soft ground is --st-done-bg, the one the site draws its
+                    own brick-red chip on; app.css has no --brick-soft.
 
 What is the email's own and not the site's stays in mail.js: the white
-ground, the mark's empty alt, every sentence.
+ground, the mark's empty alt, every sentence. What is the manage page's own
+stays in page.js: its font stacks, which name the site's fonts and then the
+system's, since the page loads no font from anywhere.
 
 WHAT A CHANGE TAKES. Change the value where the site keeps it, run this, and
 commit workers/follow/site.gen.js with the change. preflight fails while the
@@ -83,11 +89,28 @@ def _base(root):
     return Path(root) if root is not None else _paths.ROOT
 
 
+DARK = ':root[data-theme="dark"]'
+
+
 def light_tokens(css):
     """{name: value} of every custom property app.css declares in a rule whose
     selector is :root alone, at the top level: the light theme. A dark block
     is under a media query or a [data-theme] selector, so it is not read; a
     later :root rule overrides an earlier one, as in the browser."""
+    return root_tokens(css, ":root")
+
+
+def dark_tokens(css):
+    """The dark theme's: the light theme's, with what app.css's top-level
+    :root[data-theme="dark"] rule declares over them. Its twin under
+    prefers-color-scheme says the same (preflight holds the two together),
+    so the one without a media query is the one read."""
+    return {**light_tokens(css), **root_tokens(css, DARK)}
+
+
+def root_tokens(css, selector):
+    """{name: value} of every custom property declared in a top-level rule
+    whose selector is `selector` alone, a later rule over an earlier one."""
     css = re.sub(r"/\*.*?\*/", "", css, flags=re.S)
     out, depth, start, sel, quote = {}, 0, 0, None, ""
     for i, ch in enumerate(css):
@@ -102,7 +125,7 @@ def light_tokens(css):
         elif ch == "}":
             depth -= 1
             if depth == 0:
-                if sel == ":root":
+                if sel == selector:
                     for name, value in re.findall(r"--([\w-]+)\s*:\s*([^;]+)", css[start:i]):
                         out[name] = value.strip()
                 start = i + 1
@@ -113,13 +136,30 @@ def light_tokens(css):
     return out
 
 
-def _ink(tokens, name):
+def _ink(tokens, name, theme="light :root"):
     value = tokens.get(name)
     if value is None:
-        raise SourceError(f"app.css's light :root declares no --{name}, which the emails draw with")
+        raise SourceError(f"app.css's {theme} declares no --{name}, which the emails draw with")
     if not HEX.fullmatch(value):
         raise SourceError(f"app.css's --{name} is {value!r}; the emails need it as six-digit hex")
     return value.upper()
+
+
+# THE MANAGE PAGE'S COLOURS (page.js), each {its name on the page: app.css's}.
+# The page was drawn from a copy of these typed by hand, and the copy had
+# drifted: its dark brick was #F0938C where the site's is #E4877E.
+PAGE_TOKENS = {"paper": "paper", "surface": "surface", "wash": "wash", "ink": "ink",
+               "ink-2": "ink-2", "rule": "rule", "edge": "edge", "pine": "pine",
+               "pine-soft": "pine-soft", "on-pine": "on-pine", "brick": "brick",
+               "brick-soft": "st-done-bg"}
+
+
+def _page_ink(tokens, name, theme):
+    """A page colour: six-digit hex, or #fff, which app.css says --on-pine is."""
+    value = tokens.get(name)
+    if value is not None and re.fullmatch(r"#[0-9A-Fa-f]{3}", value):
+        value = "#" + "".join(c * 2 for c in value[1:])
+    return _ink({name: value} if value is not None else {}, name, theme)
 
 
 def testify_forms(js):
@@ -139,7 +179,8 @@ def testify_forms(js):
 def values(root=None):
     """{export name: (where it comes from, value)}, in the file's order."""
     base = _base(root)
-    tokens = light_tokens((base / APP_CSS).read_text(encoding="utf-8"))
+    css = (base / APP_CSS).read_text(encoding="utf-8")
+    tokens, dark = light_tokens(css), dark_tokens(css)
     chip = json.loads((base / CHIPS).read_text(encoding="utf-8")).get("chip")
     if not isinstance(chip, dict) or not chip:
         raise SourceError('chips.json has no "chip" map of a status\'s words to its colour')
@@ -170,6 +211,11 @@ def values(root=None):
         "STUDY_REPORT": ("src/pages/words/study_report.json",
                          {"head": study["head"], "said": {k: said[k] for k in ("rec", "not", "without")}}),
         "MARK_FILE": ("src/pages/build_brand.py: MAIL_MARK, at MARK_BOX plus MAIL_PAD on every side", mark),
+        "PAGE_PALETTE": ("src/pages/app.css, light :root and dark :root[data-theme=\"dark\"]: the manage "
+                         "page's colours, --brick-soft from --st-done-bg",
+                         {theme: {page: _page_ink(toks, css, label) for page, css in PAGE_TOKENS.items()}
+                          for theme, toks, label in (("light", tokens, "light :root"),
+                                                     ("dark", dark, DARK))}),
     }
 
 
