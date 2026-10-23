@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-13.9
+# GRANITE_VERSION: 2026-09-13.10
 """
 What a search engine is told a page is about, in schema.org's vocabulary.
 
@@ -71,8 +71,18 @@ def _crumbs(base, trail):
 PARTY_NAME = {"D": "Democratic Party", "R": "Republican Party", "L": "Libertarian Party"}
 
 
-def bill(b, d, base, canon_path):
-    """A bill's page. b is its index row, d its record."""
+def bill(b, d, base, canon_path, modified=None):
+    """A bill's page. b is its index row, d its record, `modified` the day it
+    last moved as the sitemap gives it (build_bill_pages.lastmod).
+
+    THE BILL'S OWN DAYS, NOT THE SITE'S (23 October 2026). A page with no date
+    of its own is dated by whatever a search engine finds on it, and the one
+    date every page shows is the footer's "Data rebuilt" -- yesterday, on a
+    bill of 1998. So the page says when the bill was introduced
+    (datePublished, its docket's introduction) and when it last moved
+    (dateModified, the sitemap's day): dates of the record, which a rebuild
+    does not move. Either is left out where the record gives no day it can
+    stand behind."""
     import re
     bid = b["id"]
     m = re.match(r"[A-Z]+", bid)
@@ -96,6 +106,13 @@ def bill(b, d, base, canon_path):
     page = {"@type": "WebPage", "@id": url, "url": url, "name": obj["name"],
             "about": {"@id": url + "#legislation"},
             "isPartOf": _site(base), "publisher": _publisher(base)}
+    intro = sorted(str(e.get("date") or "")[:10] for e in (d.get("events") or [])
+                   if e.get("type") == "introduced"
+                   and re.fullmatch(r"\d{4}-\d{2}-\d{2}", str(e.get("date") or "")[:10]))
+    if intro and (not modified or intro[0] <= modified):
+        page["datePublished"] = intro[0]
+    if modified:
+        page["dateModified"] = modified
     return [page, obj, _crumbs(base, [("Granite Record", "/"), ("Bills", "/bills"),
                                 (f"{b.get('term')}", f"/bills?term={b.get('term')}"),
                                 (b.get("n") or bid, canon_path)])]

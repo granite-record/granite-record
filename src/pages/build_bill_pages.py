@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.73
+# GRANITE_VERSION: 2026-09-04.74
 """
 Write a real address for every bill, and the sitemap that points at them.
 
@@ -255,8 +255,9 @@ def static_record(b, d, data_url=None):
 INLINE_CAP = 100 * 1024
 
 
-def shell(t, b, d, base, raw=None, data_url=None, current_term=""):
-    """One bill's page: bills.html, told which bill it is."""
+def shell(t, b, d, base, raw=None, data_url=None, current_term="", modified=None):
+    """One bill's page: bills.html, told which bill it is. `modified` is the
+    day it last moved (lastmod), for its structured data."""
     bid = b["id"]
     yr = str(b.get("year") or "")
     n = b.get("n") or bid
@@ -273,7 +274,7 @@ def shell(t, b, d, base, raw=None, data_url=None, current_term=""):
             if d.get("events") and S.still_moving(b, current_term) else "")
     return S.page(
         t, path=path, base=base,
-        jsonld=LD.bill(b, d, base, S.canon(path)),
+        jsonld=LD.bill(b, d, base, S.canon(path), modified=modified),
         # THE YEAR IS PART OF THE NAME. Bill numbers repeat every two
         # years, so 192 pages shared a title with another term's bill --
         # fourteen of them "HB 25 — making appropriations for capital
@@ -430,10 +431,11 @@ def main():
         d = json.loads(raw)
         small = len(raw.encode("utf-8")) <= INLINE_CAP
         (out / yr).mkdir(parents=True, exist_ok=True)
+        moved = lastmod(b, generated, d)
         html = shell(t, b, d, a.base,
                      raw=raw if small else None,
                      data_url=None if small else f"/bills/{yr}/{b['id']}.json",
-                     current_term=current_term)
+                     current_term=current_term, modified=moved)
         page.write_text(S.clean_links(html), encoding="utf-8")
         # THE PAGE IS WRITTEN BEFORE THE FILE IS REMOVED, and only the one
         # file whose contents are now inside it. A run that stops half way
@@ -448,8 +450,7 @@ def main():
         # engine every page changed every night -- and it learns to ignore the
         # field, and to recrawl nothing sooner for it. Never later than a day
         # that has happened, and none where there is no such day: lastmod().
-        urls.append((a.base + S.canon(f"/bill/{yr}/{b['id'].lower()}.html"),
-                     lastmod(b, generated, d)))
+        urls.append((a.base + S.canon(f"/bill/{yr}/{b['id'].lower()}.html"), moved))
         written += 1
         if written % 1000 == 0:
             print(f"  {written:,}...", flush=True)

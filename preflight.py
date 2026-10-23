@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.654
+# GRANITE_VERSION: 2026-09-04.655
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -42379,6 +42379,17 @@ def _structured_data(LD, S):
     assert g["@graph"][0]["publisher"]["name"] == "Granite Record", g["@graph"][0]
     assert g["@graph"][1]["@id"] != g["@graph"][0]["@id"], (
         "the bill and the page about it share an @id")
+    # THE BILL'S OWN DAYS (23 October 2026): introduced and last moved, the
+    # sitemap's day, never the build's; none where the record gives none.
+    assert "dateModified" not in g["@graph"][0] and "datePublished" not in g["@graph"][0], (
+        "a bill with no dated record carries a date")
+    dated = LD.bill(b, {"events": [{"type": "introduced", "date": "2025-01-08"},
+                                   {"type": "floor", "date": "2025-03-06"}]},
+                    "https://x.test", "/bill/2026/hb100", modified="2025-06-12")[0]
+    assert (dated.get("datePublished"), dated.get("dateModified")) == ("2025-01-08", "2025-06-12"), dated
+    late = LD.bill(b, {"events": [{"type": "introduced", "date": "2025-07-01"}]},
+                   "https://x.test", "/bill/2026/hb100", modified="2025-06-12")[0]
+    assert "datePublished" not in late, "a bill is said introduced after it last moved"
     m = {"name": "Doe, Jane", "display_plain": "Rep. Jane Doe", "chamber": "H",
          "county": "Hillsborough", "district": "12", "party": "Democratic",
          "email": "jane.doe@leg.state.nh.us", "phone": "603-555-0100", "address": "1 Main St"}
@@ -67145,6 +67156,34 @@ def _follow_tests():
                   f"{len(files)} test files, every one imported by index.js")
 
 
+@check("workflows", "the night's timer starts nightly.yml on main with a scheduled night's boxes at "
+                    "the workflow's own cron time, never a second night, and GitHub's cron stands "
+                    "down for it")
+def _night_timer():
+    """workers/night-timer/ (the person, 23 October 2026: "I approve the outside
+    timer"): GitHub had begun starting the scheduled night five to seven hours
+    late, so a Cloudflare cron starts it at 08:17 UTC, and GitHub's cron is the
+    fallback, which stands down when the timer has started tonight's night.
+    tests/night-timer.test.js holds the Worker to a GitHub that is a function --
+    the boxes it sends, nothing sent when tonight's night has started, a refusal
+    not asked again -- and its cron to the workflow's; run here in node."""
+    t = Path("tests/night-timer.test.js")
+    if not t.is_file():
+        return "skip", "tests/night-timer.test.js is not here"
+    node = shutil.which("node") or shutil.which("node.exe")
+    if not node:
+        return "skip", "node is not on PATH"
+    r = _run([node, "--test", "--test-reporter=tap", t.as_posix()],
+             capture_output=True, text=True, timeout=120)
+    out = (r.stdout or "") + (r.stderr or "")
+    count = {k: int(v) for k, v in re.findall(r"^# (tests|pass|fail) (\d+)$", out, re.M)}
+    fails = _tap_failures(out)
+    assert not fails and r.returncode == 0 and count.get("pass", 0) >= 7, (
+        f"the night's timer fails {len(fails)}: " + "; ".join(repr(n) for n, _s in fails[:5])
+        + f" ({count or out.strip()[-300:]}). `node --test {t.as_posix()}` shows each")
+    return "ok", f"{count['pass']} tests of the timer, its cron the workflow's"
+
+
 # The sign-up box's daily or weekly drawn and sent by app.js under node, with
 # a form of the box's own parts: the Turnstile token already in hand, the
 # answer a 202, and every request the box makes kept for the check to read.
@@ -79772,7 +79811,9 @@ def _workflows_permissions():
     workflow that names none gets the repository's default. So each workflow
     says `contents: read` at the top and nothing more; a job asks for more only
     to re-enable its own schedule (`actions: write`, and then it checks out
-    nothing and runs nothing else). And no workflow is started by a pull
+    nothing and runs nothing else), or to list the night's own runs
+    (`actions: read`, whether the night's timer has started tonight's night).
+    And no workflow is started by a pull
     request, a comment or another workflow: a fork's code must never run with
     these keys in reach."""
     files = _workflows()
@@ -79805,15 +79846,25 @@ def _workflows_permissions():
                         asks.append(nxt.strip())
                     elif nxt.strip() and not nxt.startswith("      "):
                         break
-                bad = [x for x in asks if x not in ("contents: read", "actions: write")]
+                bad = [x for x in asks if x not in ("contents: read", "actions: write", "actions: read")]
                 assert not bad, f"{f.name}: job {j} asks for {', '.join(bad)}"
+                # actions: read ONLY TO SEE WHETHER THE TIMER STARTED TONIGHT'S
+                # NIGHT (23 October 2026, nightly.yml's job "started"): it lists
+                # this workflow's own runs, checks out nothing and runs nothing.
+                if "actions: read" in asks:
+                    body = "\n".join(_wf_code(jl))
+                    assert "uses:" not in body and "gh api -X GET" in body \
+                        and "actions/workflows/nightly.yml/runs" in body \
+                        and not re.search(r"--method|-X (?:POST|PUT|PATCH|DELETE)", body), \
+                        f"{f.name}: job {j} holds actions: read and does more than list the night's runs"
                 if "actions: write" in asks:
                     body = "\n".join(_wf_code(jl))
                     assert "uses:" not in body and "gh api" in body and "/enable" in body \
                         and "--method PUT" in body, \
                         f"{f.name}: job {j} holds actions: write and does more than re-enable its schedule"
     return "ok", (f"{len(files)} workflow(s): contents: read, actions: write only to re-enable a "
-                  "schedule, started only by hand or by the clock")
+                  "schedule and actions: read only to list the night's runs, started only by "
+                  "hand or by the clock")
 
 
 @check("workflows", "production is deployed only by the job behind the production environment, "

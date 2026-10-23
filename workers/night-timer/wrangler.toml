@@ -1,0 +1,14 @@
+# The night's timer: starts nightly.yml on main at GitHub's own cron time,
+# because GitHub's scheduler had begun starting it hours late (index.js says
+# why, and README.md how to deploy it). preflight holds the cron below to the
+# workflow's cron line.
+name = "graniterecord-night-timer"
+main = "index.js"
+compatibility_date = "2026-09-04"
+workers_dev = false
+
+[triggers]
+crons = ["17 8 * * *"]
+
+[observability]
+enabled = true

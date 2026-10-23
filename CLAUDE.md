@@ -17,8 +17,11 @@ write-only POST endpoint behind the "report a problem" box, which falls back
 to an email link when it is down; and email following -- the endpoints under
 `functions/api/follow/` and the sender Worker in `workers/follow/`, on one D1
 database -- which only a reader who asks for updates ever reaches. That is why
-they are acceptable on a site that is static on purpose, and why a third needs
-asking first.
+they are acceptable on a site that is static on purpose, and why another needs
+asking first. One more runs and no reader reaches at all: `workers/night-timer/`,
+which starts the nightly at 08:17 UTC because GitHub's scheduler had begun
+starting it hours late (the person's approval, 23 October 2026); GitHub's own
+cron stays as its fallback.
 
 ---
 

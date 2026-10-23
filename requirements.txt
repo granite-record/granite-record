@@ -4,6 +4,10 @@
 # alone needs -- the night's yt-dlp and its solver -- stays pinned in that
 # workflow's own step, where preflight's livestream check reads it.
 #
+# xlrd reads the Secretary of State's older .xls election results
+# (parse_sos_results.py), so the night's 2024 results check runs rather than
+# skipping (the person, 23 October 2026); a failure there only warns.
+#
 # Pinned so a night does not take whatever is newest. boto3 is cloud.py's,
 # for R2: any version from 1.36 fits the checksum setting it makes.
 #
@@ -22,4 +26,5 @@ cryptography==50.0.1
 cffi==2.1.1
 pycparser==3.0
 PyYAML==6.0.3
+xlrd==2.0.2
 boto3==1.43.103

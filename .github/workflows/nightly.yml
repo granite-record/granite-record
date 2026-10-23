@@ -44,6 +44,7 @@
 name: nightly
 run-name: >-
   nightly ${{ github.event_name == 'schedule' && '(scheduled)'
+  || (inputs.timer && !inputs.dry_run && github.ref == 'refs/heads/main' && '(scheduled, by the timer)')
   || (inputs.new_term && (github.ref != 'refs/heads/main'
   && '(by hand, new term: refused, not main)'
   || ((inputs.dry_run || !inputs.fetch)
@@ -105,6 +106,16 @@ on:
       # preflight fails if this box is here without this note.
       new_term:
         description: "New term: accept the General Court's smaller files once"
+        type: boolean
+        default: false
+      # THE NIGHT'S TIMER (23 October 2026, workers/night-timer/): the Worker
+      # that starts the night at 08:17 UTC ticks this, with the scheduled
+      # night's other boxes, because GitHub's own cron had begun starting it
+      # hours late. It names the run and nothing else: what the run does is
+      # the boxes'. GitHub's cron below stays as the fallback, and stands
+      # down when this has started tonight's night (job "started").
+      timer:
+        description: "Started by the night's timer (workers/night-timer), not by hand"
         type: boolean
         default: false
   schedule:
@@ -169,8 +180,48 @@ defaults:
     shell: pwsh
 
 jobs:
+  # HAS THE TIMER STARTED TONIGHT'S NIGHT (23 October 2026)? Asked only by a
+  # scheduled run, which since workers/night-timer/ is the fallback: GitHub
+  # started it five to seven hours late from 19 October. A run of this
+  # workflow on main that the timer started today ("(scheduled, by the
+  # timer)") means tonight's night is that one, and this one stands down
+  # before it pings Healthchecks or asks anything of anyone. A list that
+  # cannot be read stands nothing down: two nights one after the other is
+  # better than none.
+  started:
+    name: has the timer started tonight's night
+    if: github.event_name == 'schedule'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      actions: read
+    outputs:
+      by_timer: ${{ steps.look.outputs.by_timer }}
+    steps:
+      - name: Look for tonight's run by the timer
+        id: look
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          day=$(date -u +%F)
+          n=$(gh api -X GET "repos/$REPO/actions/workflows/nightly.yml/runs" \
+                -f branch=main -f event=workflow_dispatch -f created=">=$day" -f per_page=30 \
+                --jq '[.workflow_runs[] | select(.display_title | contains("(scheduled, by the timer)"))] | length') || n=0
+          echo "by_timer=${n:-0}" >> "$GITHUB_OUTPUT"
+          if [ "${n:-0}" != "0" ]; then
+            echo "the timer started tonight's night; this scheduled run stands down"
+          else
+            echo "no run by the timer today; this scheduled run is tonight's night"
+          fi
+
   night:
     name: the night
+    needs: started
+    # Every run but a scheduled one the timer has already answered for. The
+    # status function keeps a run by hand going when "started" is skipped.
+    if: ${{ !cancelled() && (github.event_name != 'schedule' || needs.started.outputs.by_timer == '0') }}
     runs-on: windows-2022
     timeout-minutes: 300
     # The preview's Pages token can live in this environment rather than in the
