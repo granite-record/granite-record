@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.236
+// GRANITE_VERSION: 2026-09-07.238
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -2961,7 +2961,7 @@ need("meta.json")
      // The tab this bill's own address names.
      if(window.GR_BILL){
        const t=BILL_TABS[tabFromPath()];
-       if(t){openTab[id]=t;if(t==="6"&&row)needVersions(row);}
+       if(t){openTab[id]=t;if(t==="6"&&row)needVersions(row);TAB_JUMP=id;}
      }
      openBill(id);
    }
@@ -5350,7 +5350,7 @@ function vmarked(bs,ms){
     out.push(`<p class="${vblkClass(bl,t)}">${html}</p>`);
   });
   gap();
-  return `<div class="vdoc">${out.join("")}</div>`;
+  return `<div class="vdoc" tabindex="0" role="region" aria-label="Bill text">${out.join("")}</div>`;
 }
 
 // A VERSION'S DAY AS THE RECORD STAMPS IT, "12/11/2025 16:02:08", said the
@@ -5464,7 +5464,7 @@ function renderVersions(b,d){
     const got=u?VTEXT[u]:null;
     const isBlocks=Array.isArray(got)&&got.length&&got[0]&&got[0].runs;
     body=got===undefined?`<p class="spin">Loading the text…</p>`
-      :isBlocks?`<div class="vdoc">${got.map(bl=>
+      :isBlocks?`<div class="vdoc" tabindex="0" role="region" aria-label="Bill text">${got.map(bl=>
           `<p class="${vblkClass(bl,(bl.runs||[]).map(r=>r[1]).join(""))}">${(bl.runs||[]).map(
             ([role,t])=>role==="add"?`<ins class="vins">${esc(t)}</ins>`
               :role==="cut"?`<del class="vdel">${esc(t)}</del>`
@@ -6314,7 +6314,25 @@ const repaint=()=>{
   // drawSessionVotes): a party row pressed there redraws them, never the
   // bill list over the day.
   if(PAGE)renderPage();else if(SESSV)drawSessionVotes();else render();
+  jumpToTab();
 };
+
+// A BILL'S ADDRESS THAT NAMES A TAB OPENS AT IT (the webinar pass of 23
+// October 2026). /bill/2025/hb282/hearings drew the Hearings tab, chosen,
+// 886px down a phone's page, under the summary: the reader saw the summary
+// and nothing of what the link was for. Once, when the record has come, the
+// tab strip is brought into view if it starts below the top six tenths of the
+// window; a reader already scrolling is never moved again.
+let TAB_JUMP=null;
+function jumpToTab(){
+  if(!TAB_JUMP||!detail[dkey(TAB_JUMP)])return;
+  const card=[...document.querySelectorAll(".card[data-id]")].find(c=>c.dataset.id===TAB_JUMP);
+  const strip=card&&card.querySelector(".tabs");
+  if(!strip)return;
+  TAB_JUMP=null;
+  const top=strip.getBoundingClientRect().top;
+  if(top>window.innerHeight*0.6&&strip.scrollIntoView)strip.scrollIntoView({block:"start"});
+}
 
 // FOCUS SURVIVES EVERY REDRAW. A redraw replaces the element that held focus
 // with a copy, and focus fell to <body>. repaint() used to put it back for
@@ -9084,7 +9102,18 @@ document.addEventListener("click",e=>{
   sel.sponsor.clear();sel.sponsor.add(sp.dataset.sponsor);render();
   if(e.detail===0)$("#q").focus();
 });
+// THE VOTES TAB'S FIND, AS YOU TYPE (the webinar pass of 23 October 2026: it
+// filtered only on Return or on leaving the box, and after Return the focus
+// fell to the page). A pause in typing draws the list; the box keeps the
+// focus and the caret, as the statute search above does.
+let VQDRAW=null;
 document.addEventListener("input",e=>{
+  if(PAGE&&e.target.dataset&&e.target.dataset.pf==="vq"){
+    const v=e.target.value;clearTimeout(VQDRAW);
+    VQDRAW=setTimeout(()=>{if(!PAGE||PAGE.vq===v)return;PAGE.vq=v;PAGE.vshow=0;renderPage();
+      const b=document.querySelector('input[data-pf="vq"]');
+      if(b){b.focus({preventScroll:true});const n=b.value.length;b.setSelectionRange(n,n);}},250);
+    return;}
   if(e.target.id==="rsabox"){rsaText=e.target.value;clearTimeout(RSADRAW);
     RSADRAW=setTimeout(()=>{const a=rsaNorm(rsaText);sel.rsa.clear();if(a)sel.rsa.add(a);render();
       const b=document.getElementById("rsabox");if(b){b.focus();b.setSelectionRange(b.value.length,b.value.length);}},250);
