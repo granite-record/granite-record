@@ -5,9 +5,11 @@ Which hearings and floor debates each bill had (`build_manifest`,
 `proceedings.csv`), which recording each one is in, the moment the chair
 took the bill up (`segment_markers`), and the scorer and hand-timed truth
 that check those moments (`probe_alignment`, `ground_truth`,
-`verify_batch`). `calendar_meetings` reads the calendars: it is the
-independent check, and the only source for a hearing the docket never
-recorded.
+`verify_batch`). `gap_excerpts` writes the caption text around each
+proceeding no boundary was found for into `logs/`, for reading; it quotes
+captions, so it is never published. `calendar_meetings` reads the
+calendars: it is the independent check, and the only source for a hearing
+the docket never recorded.
 
 **Nothing about timestamps goes on the site until
 `python3 src/hearings/probe_alignment.py --truth --candidate candidate_segments.json`

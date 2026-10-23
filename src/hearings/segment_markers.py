@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.59
+# GRANITE_VERSION: 2026-09-05.60
 """
 Segment a recording on what the chair says, not on where bill numbers cluster.
 
@@ -172,8 +172,13 @@ FILLER = r"(?:(?:um|uh|er|ah|okay|alright|all\s+right)[\s,]+)*"
 # that begin a two-word SUBJECT. Nothing is lost by that: wherever the
 # lookahead stops QUAL, SUBJECT matches at that very word, and both paths end
 # at the same character -- so no marker's start moves and no marker is lost.
-QUAL = (r"(?:(?!(?:executive|exec|exact|work)\s+session\b|"
-        r"public\s+hearing\b)[A-Za-z]+\s+){0,4}")
+#
+# AND NOT ITS PLURAL. (23 October 2026.) "going to open up our exec sessions
+# this afternoon ... we will start with HB 424" (-h65KB-w-4E 2:51:20) slipped
+# past a lookahead that wanted "session" to end the word, so QUAL ate "exec"
+# and the opening was labelled the bare, ambiguous "session" again.
+QUAL = (r"(?:(?!(?:executive|exec|exact|work)\s+sessions?\b|"
+        r"public\s+hearings?\b)[A-Za-z]+\s+){0,4}")
 ART = r"(?:the\s+|a\s+|an\s+)?"
 
 # "open", in every form seen. The chair may be the subject ("the chair will
@@ -251,12 +256,23 @@ CONF_OPEN_RE = re.compile(
 #
 # The bill still has to be named right after, and the agenda-readout guard
 # still applies, so these cannot fire on a chair listing the day's business.
+#
+# "INTRODUCE", NOT "INTRODUCED". (23 October 2026.) With nothing after it the
+# verb also matched its past tense, which is somebody's history, not the
+# chair taking a bill up: "she introduced me to Representative Keith Ammon so
+# um he told me about Bill 302" (9ccqlbN4A1E 1:32:25, a witness), "I have
+# introduced legislation to prohibit sanctuary cities ... By agreeing to House
+# amendment on SB62" (9OkjR4DvQto 1:07:15). Read across the committee
+# recordings against the chair's other stated openings of the same bill,
+# "introduced" before a scheduled bill was within a minute of one 44 times in
+# 177, median six minutes off; "introduce" 1,899 in 2,462 and "introducing"
+# 332 in 478. It had placed 265 openings, 90 of them a bill's only one.
 OPEN_DIRECT_RE = re.compile(
     r"(?:going\s+to\s+turn\s+to|now\s+turn\s+to|turn(?:ing)?\s+to|"
     r"take\s+testimony\s+on|taking\s+testimony\s+on|"
     r"(?:i'?ll\s+|we'?ll\s+|will\s+|going\s+to\s+|now\s+)?open(?:\s+up)?|"
     r"going\s+to\s+start|we'?re\s+going\s+to\s+start|"
-    r"introduc(?:e|ing)|"
+    r"introduc(?:e|ing)\b|"
     r"next\s+bill\s+up(?:\s+on\s+the\s+docket)?\s+is|"
     r"first\s+up\s+we\s+have|"
     r"mov(?:e|ing)\s+now\s+(?:to|on\s+to)|"
@@ -302,6 +318,35 @@ FLOOR_OPEN_RE = re.compile(
     r"(?P<cmte>[\w ,\-]{4,70}?)\s*,?\s*"
     r"(?:to\s+)?which\s+(?:was|is|has\s+been|has|had)?\s*"
     r"(?:referr?ed|referr?al)", re.I)
+
+# THE OTHER CHAMBER'S MESSAGE IS THE OTHER FIXED FORM. (23 October 2026.)
+# The concurrence calendar does not open with a committee report. The clerk
+# reads the Senate's message, and the bill straight after it is the item:
+#
+#   "The chair recognizes the clerk. Mr. Speaker, the Senate concurs with the
+#    House in the passage of the following entitled bill with amendment, the
+#    passage of which amendment the Senate asks concurrence of the House.
+#    House Bill 1269, relative to qualifications to practice acupuncture.
+#    Representative Leon moves that we concur"        (6oCT6ls3uDk 1:28:40)
+#   "Chair recognizes the clerk for a message. Mr. Speaker, the Senate
+#    refuses to concur with the House in the adoption of the amendment to the
+#    following title bill sent from the House, Senate Bill 625"
+#                                                      (6oCT6ls3uDk 0:38:26)
+#
+# No pattern read it, so a day of concurrences drew no time at all: 63 of the
+# 65 floor items of 21 May 2026 on that recording. Across the floor
+# recordings it names a scheduled bill 143 times, 135 of them placed by
+# nothing else; the 15 with a roll call's clock end inside half an hour after
+# it, every one; of the 8 already placed, 6 are within a minute, and the
+# other 2 were placed by words said later in the debate -- a member's "Bob
+# Lynn's floor amendment to HB10 in 2003" -- 54 and 5 minutes after the
+# message that opened them. As FLOOR_OPEN_RE is, it is not weak, so it comes
+# first where it was read.
+FLOOR_MESSAGE_RE = re.compile(
+    r"\b(?:senate|house(?:\s+of\s+representatives)?)\s+(?:concurs?|has\s+concurred|"
+    r"refuses?\s+to\s+concur|non-?concurs?)\s+with\s+the\s+(?:house|senate)"
+    r"(?:\s+of\s+representatives)?\s+in\s+the\s+(?:pass\s+in\s+the\s+)?"
+    r"(?:passage|adoption)\s+of\b", re.I)
 
 # TRIED AND REJECTED: the chair putting the question.
 #
@@ -397,7 +442,10 @@ NEXT_HEARING_RE = re.compile(
 CONF_CALL_RE = re.compile(
     r"\b(?:call|convene|reconvene|order)\w*\s+(?:\w+\s+){0,4}?committee\s+(?:of|a|on)\s+"
     r"conference\b", re.I)
-ATTENTIVE_RE = re.compile(r"\battentive\s+to\s+the\s+clerk\b", re.I)
+# "Attended" is how the captions hear it on 0LydHiwxZX0, three items of 7 May
+# 2026 placed by nothing else and five within a minute of their stated
+# openings (23 October 2026).
+ATTENTIVE_RE = re.compile(r"\batten(?:tive|ded)\s+to\s+the\s+clerk\b", re.I)
 # No number before "referred": read in what it gained, the first version also
 # took the clerk's list of second referrals, "the committee on criminal
 # justice and public safety, SP 145 FN is referred to the committee on
@@ -419,6 +467,83 @@ FOR_A_MOTION_RE = re.compile(
 BEFORE_PATS = (WELCOME_PRIME_RE, RECOGNIZE_PRIME_RE, FOR_A_MOTION_RE)
 # On a floor recording only, after every other pattern.
 FLOOR_WEAK_PATS = ((GARBLED_READING_RE, "open", True), (ATTENTIVE_RE, "open", True))
+
+# THE BILL READ WITH ITS TITLE, AND THEN MOVED. (23 October 2026.) An
+# executive session is taken up as a reading, not as a sentence about opening
+# anything. The previous vote is counted, and the chair reads the next bill's
+# number and title and asks for a motion:
+#
+#   "yes 20 years consent thank you okay the next bill we have is SB 215 this
+#    bill is relative to nursing certification requirements I Look to
+#    represent McDonald to make a motion"            (H_oSDFVHpgw 1:49:50)
+#   "the next one hb1 174 increasing the maximum weight of a utility terrain
+#    vehicle to 3500 lb unladen dry weight representative Davis do you have a
+#    motion"                          (C6YkO_S7nmg 0:15:54, timed by hand at 15:57)
+#
+# Reading every committee recording for the bill's number followed, inside
+# fifteen words, by three of the first eight words of its title, and measured
+# as the seven phrases above were -- against the chair's stated opening of
+# the same bill, where the recording holds one sitting of it: on its own the
+# reading agreed within a minute 74% of the time (5,222), the 82% above by
+# another count. Where a motion follows inside a minute of the title, and the
+# words just before the number are not a motion, a vote, a close or a
+# witness's -- "I am moving ought to pass on HB 1362 relative to", "the motion
+# before us on house bill 1619 fn relative to", "speak in opposition to house
+# bill 1077 repealing" -- it agreed 95% of the time on 843 executive sessions,
+# median 3 seconds. ("Moving on", the chair's own transition, is not a
+# motion: "okay moving on uh HB 334 FN HB 334 FN relative to the
+# comprehensive State development plan believe I have a motion", C6YkO_S7nmg
+# 0:34:35, timed by hand at 34:45.) On 88 hearings it agreed 42%: a hearing
+# takes no motion, and those were the committee's executive session on the
+# same bill later that day, which the docket had not noticed. So the marker names the
+# executive session, and build_site_v2 gives it to no other sitting; it is
+# weak, so it places only a bill nothing else placed.
+READ_PRE = re.compile(
+    r"\b(?:mov(?:e|ed|es|ing)(?!\s+(?:on|right\s+along)\b)|motion|vot(?:e|ed|es|ing)|"
+    r"clos(?:e|ed|es|ing)|support\w*|oppos(?:e|ed|es|ing|ition)|favor|against|testif\w*|"
+    r"testimony|speak(?:ing)?|amend\w*)\b", re.I)
+READ_VOTING = re.compile(
+    r"\b(?:voting|vote|voted)\s+(?:on|for)\s+(?:the\s+)?"
+    r"(?:(?:house|senate)\s+bill|hb|hp|sb|sp)?\s*$", re.I)
+READ_MOTION = re.compile(
+    r"\b(?:i(?:'d|\s+would)?\s+(?:like\s+to\s+)?(?:make\s+(?:a|the)\s+motion|move)\b"
+    r"|(?:have|for|entertain|is\s+there)\s+a\s+motion\b|\bmotion\s+(?:to|of|for|is)\b"
+    r"|\bmoves?\s+(?:to\s+)?(?:ought|otp|itl|inexpedient|interim|retain|refer)"
+    r"|\bis\s+there\s+a\s+second\b|\bi'?ll\s+second\b)", re.I)
+READ_WITHIN = 60
+# AND THE SAME READING, THEN THE SPONSOR. (23 October 2026.) A hearing is
+# taken up the same way, with the prime sponsor welcomed where an executive
+# session takes a motion: "commence the hearing on uh HB 88 uh FN uh relative
+# to establishing community property trusts and I will recognize uh the prime
+# sponsor" (delPtmOeKmc 3:05:51), "we're going to go into our next bill which
+# is 1153 FN this is an act rela to mandatory and elected Public School
+# curriculum and I'd like to welcome representative" (nIN3Lh8_4uU 4:33:21).
+# Read the same way, with one of these words inside a minute of the title in
+# place of a motion, it agreed with the chair's stated opening within a
+# minute 92% of the time on 1,614 hearings and 96% on 586 executive sessions,
+# median 3 seconds. It names no proceeding, since both kinds are read so, and
+# comes after the motion's reading, so an executive session keeps that label.
+READ_SPONSOR = re.compile(
+    r"\b(?:prime\s+sponsor|sponsor\s+of\s+(?:the|this)\s+bill|welcome|recogni[sz]e\w*|"
+    r"introduce)\b", re.I)
+
+
+def title_reads(text, bill, title):
+    """[char] where `bill`'s number is read and, inside fifteen words of it,
+    at least three of the first eight words of its title (THE BILL READ WITH
+    ITS TITLE, AND THEN MOVED, above)."""
+    d = re.sub(r"[^0-9]", "", bill)
+    # "(New Title)" is the record's, not a word anyone says.
+    first = [w for w in norm(re.sub(r"^\s*\([^)]*title\)", "", title or "",
+                                    flags=re.I)).split()
+             if w not in STOP and len(w) > 3][:8]
+    if not d or len(first) < 3:
+        return []
+    out = []
+    for m in re.finditer(r"(?<![\d$,.])" + r"[\s,]*".join(d) + r"(?![\d,.]\d|\d)", text):
+        if len(set(first) & set(norm(text[m.end():m.end() + 140]).split()[:15])) >= 3:
+            out.append(m.start())
+    return out
 
 COMMITTEE_PATS = (
     (OPEN_RE, "open", False),
@@ -679,6 +804,7 @@ def pattern_signature():
         pats = [OPEN_RE, CLOSE_RE, OPEN_DIRECT_RE, CONF_OPEN_RE, NEXT_RE,
                 NEXT2_RE, FLOOR_OPEN_RE, FLOOR_CLOSE_RE, BILL_SPOKEN, BARE_NUM,
                 NEXT_HEARING_RE, CONF_CALL_RE, ATTENTIVE_RE, GARBLED_READING_RE,
+                FLOOR_MESSAGE_RE, READ_PRE, READ_VOTING, READ_MOTION, READ_SPONSOR,
                 WELCOME_PRIME_RE, RECOGNIZE_PRIME_RE, FOR_A_MOTION_RE]
         blob = "|".join(r.pattern for r in pats) + "|".join(sorted(STOP))
     return hashlib.sha1(blob.encode()).hexdigest()[:12]
@@ -804,6 +930,19 @@ def bill_at(text, candidates, titles):
         kind = LETTER_FIX.get(kind, kind)
         digits = re.sub(r"[^0-9]", "", m.group(3))
         same = bydigits.get(digits, [])
+        # "HB1 1474" AND "HB 1116" ARE HB 1474 AND HB 116. (23 October
+        # 2026.) The captions hear "H B" as "HB1" -- 1,603 times across the
+        # recordings, a spoken bill whose digits are not scheduled and whose
+        # digits after a leading 1 are: "close out the hearing for HB1 1282
+        # and open up the hearing for HB1275" (IuZ30vZcQlc 5:20:29), "our
+        # next hearing which is on HB 1116 relative to reporting
+        # requirements" for HB 116 (EyOi37y9mNU 5:14:46). The bare-number
+        # pass below read the first kind only when no other bill followed
+        # in the window, and gave the close of HB 1282 to HB 1275 when one
+        # did; the second it could not read at all. Three digits must be
+        # left, and only where the whole number is not scheduled itself.
+        if not same and len(digits) >= 4 and digits[0] == "1":
+            same = bydigits.get(digits[1:], [])
         pick = next((c for c in same if c.startswith(kind)), None) \
             or (same[0] if same else None)
         if pick:
@@ -863,10 +1002,11 @@ def find_markers(words, candidates, titles, span=28, floor=False):
 
     out, seen = [], set()
 
-    def place(t, kind, bill, what, how, said, weak, held=False):
+    def place(t, kind, bill, what, how, said, weak, held=False, named=False):
         """Keep one marker unless it repeats one already found or, being
         weak, something else already placed the bill. `held`: opened and
-        recessed in one breath (recessed)."""
+        recessed in one breath (recessed). `named`: a weak marker that still
+        names its proceeding (READ_MOTION's executive session)."""
         # Within a minute of one already found for the same bill and the
         # same kind is the same moment. Bucketing by round(t/30) let
         # 1:11:44 and 1:11:48 fall either side of a boundary and both be
@@ -882,11 +1022,12 @@ def find_markers(words, candidates, titles, span=28, floor=False):
             return          # something stronger already placed it
         seen.add(key)
         out.append({"t": round(t, 1), "kind": kind, "bill": bill,
-                    "what": "" if weak else what,
+                    "what": "" if weak and not named else what,
                     "how": how + (" (weak marker)" if weak else ""),
                     "said": said, **({"recessed": True} if held else {})})
 
     pats = ([(FLOOR_OPEN_RE, "open", False),
+             (FLOOR_MESSAGE_RE, "open", False),
              (FLOOR_CLOSE_RE, "close", False)] if floor else [])
     for rx, kind, weak in (pats + list(COMMITTEE_PATS)
                            + (list(FLOOR_WEAK_PATS) if floor else [])):
@@ -938,7 +1079,8 @@ def find_markers(words, candidates, titles, span=28, floor=False):
             # HB 123" is a real opening and is exactly this shape.
             if HEDGE.search(text[max(0, m.start() - 40):m.start()]):
                 continue
-            what = "floor debate" if rx in (FLOOR_OPEN_RE, FLOOR_CLOSE_RE) else ""
+            what = ("floor debate" if rx in (FLOOR_OPEN_RE, FLOOR_MESSAGE_RE, FLOOR_CLOSE_RE)
+                    else "")
             for g in ("what", "what2"):
                 if g in (rx.groupindex or {}) and m.group(g):
                     what = WS.sub(" ", m.group(g)).lower()
@@ -979,6 +1121,26 @@ def find_markers(words, candidates, titles, span=28, floor=False):
             if last:
                 place(when(last[1]), "open", last[0], "", "number",
                       WS.sub(" ", text[last[1]:m.end()])[:160], True)
+    # A bill read with its title and then, inside READ_WITHIN seconds, moved
+    # (READ_MOTION) or its sponsor welcomed (READ_SPONSOR): weak, after
+    # everything else, and the first an executive session. Not on the floor,
+    # whose clerk reads every bill with its title and whose motions are the
+    # committee's report.
+    for then, what, how, named in (
+            (READ_MOTION, "executive session", "number (read with its title, then moved)", True),
+            (READ_SPONSOR, "", "number (read with its title, then the sponsor)", False)):
+        for b in ([] if floor else candidates):
+            for c0 in title_reads(text, b, titles.get(b)):
+                if (READ_PRE.search(text, max(0, c0 - 60), c0)
+                        or READ_VOTING.search(text[max(0, c0 - 30):c0])):
+                    continue
+                t, stop = when(c0), c0
+                while stop < len(text) and when(stop) - t <= READ_WITHIN:
+                    stop += 200
+                if then.search(text, c0 + 60, min(stop, len(text))):
+                    place(t, "open", b, what, how, WS.sub(" ", text[c0:c0 + 130]), True,
+                          named=named)
+                    break
     out.sort(key=lambda x: x["t"])
     return out
 
