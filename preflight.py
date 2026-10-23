@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.661
+# GRANITE_VERSION: 2026-09-04.662
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -89381,6 +89381,234 @@ def _town_clerks_reread(B, PC):
                   "rule fires on 1 March 2027 for a list read in September 2026")
 
 
+@check("files", "no file a town page's officials are drawn from holds less than its floor, and the "
+       "clerk list carries every correction made to it", needs=("town_sources",))
+def _town_sources_floors(TS):
+    """SILENCE IS NOT SUCCESS, for the three files the town pages' officials
+    come from (the freshness review, 23 October 2026).
+
+    `python3 src/towns/parse_officials.py`, run as its docstring says on a
+    machine with no built site, matched none of the directory's 234
+    municipalities against a site/districts.json that was not there, wrote
+    `{}` in collected/town_officials.json's place and exited 0 (found before
+    it ever reached git): every town's select board, town offices and three
+    cities' councils would have gone from the pages at the next build with
+    nothing to say why. Its writer and
+    parse_clerks_csv.py's now refuse to write under town_sources.FLOORS; this
+    holds the files in git to the same floors, whatever wrote them.
+
+    AND THE CORRECTIONS. src/fetch/other/fetch_town_clerks.py writes the
+    same file from the same list in a shape of its own, without
+    corrections/place_corrections.json -- run, it would put Errol Town Hall
+    back at Colebrook's address on three rows, and pass every floor. So
+    every polling place the corrections file corrects must be in the file
+    with what the list says beside it.
+
+    The floors are run on an empty file first, so a floor that nothing can
+    fall under fails here."""
+    for key in TS.SOURCES:
+        empty = {"boards": {}, "councils": {}} if key == "town_sites" else {}
+        assert TS.short_of(key, empty), f"an empty {TS.SOURCES[key]['file']} is under no floor"
+    bad, held = [], []
+    for key in TS.SOURCES:
+        data = TS.load(key)
+        if data is None:
+            bad.append(f"{TS.SOURCES[key]['file']} is not there")
+            continue
+        bad += TS.short_of(key, data)
+        have = TS.counts(key, data)
+        held.append(f"{TS.SOURCES[key]['file']} " + ", ".join(
+            f"{have[f]} {f}" for f in TS.FLOORS[key]))
+    fixes = Path("corrections/place_corrections.json")
+    fixed = json.loads(fixes.read_text(encoding="utf-8")).get("polling_place") or {} \
+        if fixes.exists() else {}
+    clerks = TS.load("sos_list") or {}
+    for k in sorted(fixed):
+        if not (clerks.get(k) or {}).get("polling_place_source_says"):
+            bad.append(f"collected/town_clerks.json does not carry the correction of {k}'s "
+                       "polling place: write it with src/towns/parse_clerks_csv.py, which "
+                       "applies corrections/place_corrections.json")
+    assert not bad, "\n  ".join(bad)
+    return "ok", "; ".join(held) + f"; all {len(fixed)} polling place corrections applied"
+
+
+@check("files", "each source of a town page's officials carries its copy's date in its own file, "
+       "and the dates the pages and the board rule are written with agree with it",
+       needs=("town_sources", "build_town_pages", "town_boards"))
+def _town_sources_dated(TS, B, T):
+    """WHAT A COPY IS AS OLD AS, KEPT WITH THE COPY (the freshness review,
+    23 October 2026). town_boards.json and town_officials_web.json carried
+    the day each page was read; the clerk list and NHDOT's directory carried
+    none, so the day they were true as of lived in a constant in their
+    parser and in the words of the page builder. Now every row carries it:
+    the list's `read_on`, the export's own day, and the directory's `as_of`,
+    its PDF's CreationDate. town_sources reads them, and the reminder
+    (_town_sources_fresh) is only as good as they are.
+
+    AND THE WORDS AND RULES WRITTEN AROUND ONE EDITION. The town pages say
+    NHDOT's directory is "dated September 2025" and that its boards are from
+    "before the 2026 town elections", and town_boards.py takes a town's own
+    page as current only if it postdates MEETING (the March 2026 meeting)
+    and a city's only after CITY_ELECTION (November 2025). Each is right for
+    the copies on disk today, and each would stay as it is when a new copy
+    is read: a September 2026 directory called "dated September 2025", or
+    pages read in April 2027 held to the meetings of 2026. So each is held
+    here to the date in the file it describes."""
+    bad, said = [], []
+    dates = {}
+    for key in TS.SOURCES:
+        data = TS.load(key)
+        name, field = TS.SOURCES[key]["file"], TS.DATE_FIELD[key]
+        if data is None:
+            bad.append(f"{name} is not there")
+            continue
+        when, missing = TS.copy_date(key, data)
+        if when is None:
+            bad.append(f"no row of {name} carries {field}: run {TS.SOURCES[key]['writer']} again")
+        elif missing:
+            bad.append(f"{missing} rows of {name} carry no {field}")
+        dates[key] = when
+        said.append(f"{key} {when}")
+
+    def meeting_after(d):
+        m = TS.town_meeting(d.year)
+        return m if m > d else TS.town_meeting(d.year + 1)
+
+    def meeting_before(d):
+        m = TS.town_meeting(d.year)
+        return m if m <= d else TS.town_meeting(d.year - 1)
+
+    def city_before(d):
+        y = d.year if d.year % 2 else d.year - 1
+        e = TS.general_election(y)
+        return e if e <= d else TS.general_election(y - 2)
+
+    d = dates.get("nhdot")
+    if d:
+        want = f"dated {d:%B %Y}"
+        if not B.NHDOT.endswith(want):
+            bad.append(f"build_town_pages.NHDOT reads {B.NHDOT!r}, and the directory in "
+                       f"collected/town_officials.json is {want}")
+        src = Path(B.__file__).read_text(encoding="utf-8")
+        years = set(re.findall(r"before the (\d{4}) town elections", src, re.I))
+        first = meeting_after(d).year
+        if years != {str(first)}:
+            bad.append(f"build_town_pages.py says the directory's boards are from before the "
+                       f"{' and '.join(sorted(years)) or 'no'} town elections, and the first "
+                       f"after its date ({d}) are {first}'s")
+    b = dates.get("town_sites")
+    if b:
+        m, c = meeting_before(b), city_before(b)
+        if tuple(T.MEETING) != (m.year, m.month) or T.TERM_FLOOR != m.year:
+            bad.append(f"town_boards.MEETING is {T.MEETING} and TERM_FLOOR {T.TERM_FLOOR}, and "
+                       f"the last town meeting before the pages were read ({b}) was {m}")
+        if tuple(T.CITY_ELECTION) != (c.year, c.month):
+            bad.append(f"town_boards.CITY_ELECTION is {T.CITY_ELECTION}, and the last city "
+                       f"election before the pages were read ({b}) was {c}")
+    assert not bad, "\n  ".join(bad)
+    return "ok", ("copies of " + ", ".join(said) + "; the pages' \"dated "
+                  f"{dates['nhdot']:%B %Y}\" and town_boards' meeting of "
+                  f"{T.MEETING[0]} agree with them")
+
+
+@check("files", "the municipal officials' sources are due a reading after the town meetings, the "
+       "cities' elections and a year, and before a general election, and on no other days",
+       needs=("town_sources", "build_members_elect"))
+def _town_sources_rule(TS, BME):
+    """The rule _town_sources_fresh holds the real files to on the clock
+    (town_sources.due), run here on fixed days, so a reminder that could
+    never fire fails now rather than passing quietly through the day it was
+    written for (_officials_recheck_rule's reason). The general election is
+    BME's rule, the one the officials' reminder uses: two copies of one
+    date must not part."""
+    import datetime as _dt
+    D = _dt.date
+    assert TS.town_meeting(2026) == D(2026, 3, 10) and TS.town_meeting(2027) == D(2027, 3, 9), (
+        "the town meetings of 2026 and 2027 are not March 10 and March 9")
+    parted = [y for y in range(2024, 2034) if TS.general_election(y) != BME.general_election(y)]
+    assert not parted, f"town_sources and build_members_elect date the November election of {parted} apart"
+    sept20, cases = D(2026, 9, 20), []
+    for key, as_of, day, looked, want in (
+            # The copies of September 2026: nothing until the 2027 town meetings have had
+            # their five weeks.
+            ("sos_list", sept20, D(2026, 10, 23), None, False),
+            ("sos_list", sept20, D(2027, 4, 12), None, False),
+            ("sos_list", sept20, D(2027, 4, 13), None, True),
+            ("town_sites", sept20, D(2027, 4, 12), None, False),
+            ("town_sites", sept20, D(2027, 4, 13), None, True),
+            ("town_sites", D(2027, 4, 20), D(2027, 4, 21), None, False),
+            # A city's council read in May 2027: due after November 2027's elections and
+            # their inaugurations.
+            ("town_sites", D(2027, 5, 1), D(2028, 1, 10), None, False),
+            ("town_sites", D(2027, 5, 1), D(2028, 1, 11), None, True),
+            # The list's polling places, before a general election: a list read in July is
+            # due sixty days before November 3, 2026, and not after the day.
+            ("sos_list", D(2026, 7, 1), D(2026, 9, 3), None, False),
+            ("sos_list", D(2026, 7, 1), D(2026, 9, 4), None, True),
+            ("sos_list", D(2026, 7, 1), D(2026, 11, 3), None, True),
+            ("sos_list", D(2026, 7, 1), D(2026, 11, 4), None, False),
+            # The directory of September 2025: due since the 2026 town meetings; quiet for a
+            # look that found nothing newer, until the next; a look to come is no look.
+            ("nhdot", D(2025, 9, 2), D(2026, 10, 23), None, True),
+            ("nhdot", D(2025, 9, 2), D(2026, 10, 23), D(2026, 10, 23), False),
+            ("nhdot", D(2025, 9, 2), D(2027, 4, 13), D(2026, 10, 23), True),
+            ("nhdot", D(2025, 9, 2), D(2026, 10, 23), D(2026, 11, 1), True),
+            # A year whatever the calendar -- a list read on April 13, 2027 is 366 days
+            # old five days before the 2028 meetings' date comes -- and a date that is none.
+            ("sos_list", D(2027, 4, 13), D(2028, 4, 12), None, False),
+            ("sos_list", D(2027, 4, 13), D(2028, 4, 13), None, True),
+            ("sos_list", None, D(2026, 10, 23), None, True),
+            ("sos_list", D(2026, 11, 1), D(2026, 10, 23), None, True)):
+        said = TS.due(key, as_of, day, looked)
+        if bool(said) != want:
+            cases.append(f"{key} read {as_of}, on {day}" + (f", looked {looked}" if looked else "")
+                         + (f": due ({said[:80]})" if said else ": not due"))
+    assert not cases, "the rule is wrong on: " + "; ".join(cases)
+    said = TS.due("nhdot", D(2025, 9, 2), D(2026, 10, 23))
+    assert "March 10, 2026" in said and "416 days" in said, said
+    said = TS.due("sos_list", D(2027, 4, 13), D(2028, 4, 13))
+    assert said.startswith("the copy is 366 days old"), said
+    assert TS.next_due("town_sites", sept20, D(2026, 10, 23)) == D(2027, 4, 13), (
+        TS.next_due("town_sites", sept20, D(2026, 10, 23)))
+    assert "_town_sources_fresh" in REMINDERS, (
+        "_town_sources_fresh is not among the REMINDERS, which warn on the night and never hold it")
+    return "ok", ("due five weeks after the town meetings, ten weeks after the cities' elections, "
+                  "sixty days before a general election for the polling places, and after a year; "
+                  "a look that found nothing newer counts as a reading")
+
+
+@check("data", "the sources of the town pages' municipal officials are read again when the town "
+       "meetings, the cities' elections or a year have passed since", needs=("town_sources",))
+def _town_sources_fresh(TS):
+    """A REMINDER, the register of probate paragraph's kind
+    (_probate_after_the_vote), on the rule _town_sources_rule holds
+    (town_sources.due): the Secretary of State's clerk list, NHDOT's
+    directory and the towns' own websites are each read by a person, on no
+    schedule, and the officials they name change at the town meetings in
+    March, at the cities' elections in November of an odd year, and on any
+    day an appointment is made. Nothing said when a copy had gone stale (the
+    freshness review, 23 October 2026, found the directory of September
+    2025 giving 154 towns' select boards seven months after the meetings
+    that changed them). A data check and one of the REMINDERS: on the night
+    it warns, on its own Healthchecks check, and never holds the site; on
+    the laptop it fails until the copy is read again, or, for a copy no one
+    can read again, until town_sources.LOOKED_ON records the day a person
+    looked for a newer one and found none."""
+    import build_date
+    today = build_date.today()
+    late, fine = [], []
+    for key, r in TS.report(today):
+        s = TS.SOURCES[key]
+        if r["due"]:
+            late.append(f"{key}, {s['file']} (its copy of {r['date']}): {r['due']}. To read it again, "
+                        + s["again"].format(url=s["url"]))
+        else:
+            fine.append(f"{key} of {r['date']}, next due {r['next']}")
+    assert not late, "\n  ".join(late) + ("\n  python3 src/towns/town_sources.py prints the "
+                                          "whole map")
+    return "ok", "; ".join(fine)
+
+
 @check("build", "a town page names one clerk, the Secretary of State's",
        needs=("build_town_pages",))
 def _town_one_clerk(B):
@@ -97002,7 +97230,7 @@ RECORD_CHECKS = {
     # finished dockets (18 October 2026): the record's history, never the site.
     "_still_days_from_history"}
 REMINDERS ={"_probate_after_the_vote", "_session_over_current", "_town_clerks_reread",
-            "_officials_rechecked"}
+            "_officials_rechecked", "_town_sources_fresh"}
 
 
 def built_selected(c):

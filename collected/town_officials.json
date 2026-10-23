@@ -1,5 +1,6 @@
 {
  "acworth": {
+  "as_of": "2025-09-02",
   "email": "townoff@sover.net",
   "fax": "",
   "mailing": "PO Box 37, Acworth, NH 03601",
@@ -40,6 +41,7 @@
   "website": "https://www.acworthnh.net/"
  },
  "albany": {
+  "as_of": "2025-09-02",
   "email": "contact@albanynh.org",
   "fax": "603-452-5633",
   "mailing": "1972-A NH Route 16, Albany, NH 03818",
@@ -80,6 +82,7 @@
   "website": "https://albanynh.org/"
  },
  "alexandria": {
+  "as_of": "2025-09-02",
   "email": "info@alexandrainh.com",
   "fax": "603-744-9461",
   "mailing": "47 Washburn Rd A, Alexandria, NH 03222",
@@ -120,6 +123,7 @@
   "website": "https://alexandrianh.com/"
  },
  "allenstown": {
+  "as_of": "2025-09-02",
   "email": "ta@allenstownnh.gov",
   "fax": "",
   "mailing": "16 School St, Allenstown, NH 03275",
@@ -172,6 +176,7 @@
   "website": "https://www.allenstownnh.gov/"
  },
  "alstead": {
+  "as_of": "2025-09-02",
   "email": "charlottecomeau@alsteadnh.gov",
   "fax": "603-835-2178",
   "mailing": "15 Mechanic St, Alstead, NH 03602",
@@ -206,6 +211,7 @@
   "website": "https://www.alsteadnh.org/"
  },
  "alton": {
+  "as_of": "2025-09-02",
   "email": "administrator@alton.nh.gov",
   "fax": "603-651-0732",
   "mailing": "PO Box 659, 1 Monument Sq, Alton ,NH 03809",
@@ -258,6 +264,7 @@
   "website": "https://www.alton.nh.gov/"
  },
  "amherst": {
+  "as_of": "2025-09-02",
   "email": "",
   "fax": "603-673-6794",
   "mailing": "2 Main St, Amherst, NH 03031",
@@ -292,6 +299,7 @@
   "website": "https://www.amherstnh.gov/"
  },
  "andover": {
+  "as_of": "2025-09-02",
   "email": "tadmin@andover-nh.gov",
   "fax": "603-735-6975",
   "mailing": "PO Box 61, Andover, NH 03216",
@@ -344,6 +352,7 @@
   "website": "https://www.andover-nh.gov/"
  },
  "antrim": {
+  "as_of": "2025-09-02",
   "email": "scott.lester@antrimnh.gov",
   "fax": "603-588-2969",
   "mailing": "PO Box 517, 66 Main St, Antrim, NH 03440",
@@ -384,6 +393,7 @@
   "website": "https://www.antrimnh.org/"
  },
  "ashland": {
+  "as_of": "2025-09-02",
   "email": "townoffice@ashland.nh.gov",
   "fax": "603-968-3776",
   "mailing": "20 Highland St, PO Box 517, Ashland,NH 03217",
@@ -430,6 +440,7 @@
   "website": "https://ashlandnh.org/"
  },
  "atkinson": {
+  "as_of": "2025-09-02",
   "email": "townadmin@atkinson-nh.gov",
   "fax": "603-362-5305",
   "mailing": "19 Academy Ave, Atkinson, NH 03811",
@@ -482,6 +493,7 @@
   "website": "https://www.town-atkinsonnh.com/"
  },
  "auburn": {
+  "as_of": "2025-09-02",
   "email": "townadmin@townofauburnnh.com",
   "fax": "603-483-0518",
   "mailing": "47 Chester Rd, PO Box 309, Auburn, NH 03032",
@@ -522,6 +534,7 @@
   "website": "https://www.auburnnh.us/"
  },
  "barnstead": {
+  "as_of": "2025-09-02",
   "email": "townclerk@barnstead.org",
   "fax": "",
   "mailing": "108 S Barnstead Rd,",
@@ -568,6 +581,7 @@
   "website": "https://www.barnstead.org/"
  },
  "barrington": {
+  "as_of": "2025-09-02",
   "email": "administration@barrington.hnh.gov",
   "fax": "603-664-5179",
   "mailing": "4 Signature Dr (off Rte 125), Barrington, NH",
@@ -620,6 +634,7 @@
   "website": "https://www.barrington.nh.gov/"
  },
  "bartlett": {
+  "as_of": "2025-09-02",
   "email": "townofbartlett@gmail.com",
   "fax": "603-356-2950",
   "mailing": "56 Town Hall Rd, Bartlett, NH 03812",
@@ -660,6 +675,7 @@
   "website": "https://www.townofbartlettnh.org/"
  },
  "bath": {
+  "as_of": "2025-09-02",
   "email": "bathnh@myfairpoint.net",
   "fax": "603-747-0497",
   "mailing": "PO Box 88, Bath, NH 03740",
@@ -700,6 +716,7 @@
   "website": "http://www.bath-nh.org/"
  },
  "bedford": {
+  "as_of": "2025-09-02",
   "email": "",
   "fax": "",
   "mailing": "24 N Amherst Rd, Bedford, NH 03110",
@@ -764,6 +781,7 @@
   "website": "https://www.bedfordnh.org/"
  },
  "belmont": {
+  "as_of": "2025-09-02",
   "email": "administration@belmontnh.gov",
   "fax": "603-267-8327",
   "mailing": "143 Main St, PO Box 310,",
@@ -810,6 +828,7 @@
   "website": "https://www.belmontnh.org/"
  },
  "bennington": {
+  "as_of": "2025-09-02",
   "email": "ddavidson@townofbennington.com",
   "fax": "603-588-8005",
   "mailing": "7 School St Unit 101, Bennington, NH 03442",
@@ -850,6 +869,7 @@
   "website": "https://townofbennington.com/"
  },
  "benton": {
+  "as_of": "2025-09-02",
   "email": "bentonnh@gmail.com",
   "fax": "",
   "mailing": "221 Coventry Rd Rte 116, Benton, NH",
@@ -878,6 +898,7 @@
   "website": "https://www.tobentonnh.org/"
  },
  "berlin": {
+  "as_of": "2025-09-02",
   "email": "info@berlinnh.gov",
   "fax": "603-752-8550",
   "mailing": "168 Main St, Berlin, NH 03570",
@@ -948,6 +969,7 @@
   "website": "https://www.berlinnh.gov/"
  },
  "bethlehem": {
+  "as_of": "2025-09-02",
   "email": "admin@bethlehemnh.org",
   "fax": "",
   "mailing": "2155 Main St, PO Box",
@@ -994,6 +1016,7 @@
   "website": "https://bethlehemnh.org/"
  },
  "boscawen": {
+  "as_of": "2025-09-02",
   "email": "kphelps@boscawennh.gov",
   "fax": "",
   "mailing": "116 N Main St, Boscawen, NH 03303",
@@ -1028,6 +1051,7 @@
   "website": "https://www.boscawennh.gov/"
  },
  "bow": {
+  "as_of": "2025-09-02",
   "email": "tlindquist@bownh.org",
   "fax": "",
   "mailing": "10 Grandview Rd, Bow, NH 03304",
@@ -1080,6 +1104,7 @@
   "website": "https://bownh.gov/"
  },
  "bradford": {
+  "as_of": "2025-09-02",
   "email": "administrator@bradfordnh.org",
   "fax": "603-938-5694",
   "mailing": "134 E Main St, PO Box",
@@ -1120,6 +1145,7 @@
   "website": "https://www.bradfordnh.org/"
  },
  "brentwood": {
+  "as_of": "2025-09-02",
   "email": "selectmen@brentwoodnh.gov",
   "fax": "603-642-6310",
   "mailing": "1 Dalton Rd, Brentwood, NH 03833",
@@ -1172,6 +1198,7 @@
   "website": "https://www.brentwoodnh.gov/"
  },
  "bridgewater": {
+  "as_of": "2025-09-02",
   "email": "townofbridgewaternh@gmail.com",
   "fax": "",
   "mailing": "297 Mayhew Turnpike,",
@@ -1212,6 +1239,7 @@
   "website": "https://bridgewater-nh.com/"
  },
  "bristol": {
+  "as_of": "2025-09-02",
   "email": "townadmin@bristolnh.gov",
   "fax": "603-744-2521",
   "mailing": "5 School St, Bristol, NH 03222",
@@ -1258,6 +1286,7 @@
   "website": "https://www.bristolnh.gov/"
  },
  "brookfield": {
+  "as_of": "2025-09-02",
   "email": "selectmen@brookfieldnh.org",
   "fax": "",
   "mailing": "267 Wentworth Rd, Brookfield, NH 03872",
@@ -1298,6 +1327,7 @@
   "website": "https://www.brookfieldnh.org/"
  },
  "brookline": {
+  "as_of": "2025-09-02",
   "email": "selectboard@brooklinenh.us",
   "fax": "603-673-8136",
   "mailing": "1 Main St, PO Box 360,",
@@ -1344,6 +1374,7 @@
   "website": "https://www.brooklinenh.gov/"
  },
  "campton": {
+  "as_of": "2025-09-02",
   "email": "toc.cd@camptonnh.org",
   "fax": "",
   "mailing": "12 Gearty Way, Campton, NH 03223",
@@ -1390,6 +1421,7 @@
   "website": "https://camptonnh.org/nh/"
  },
  "canaan": {
+  "as_of": "2025-09-02",
   "email": "townadmin@canaannh.org",
   "fax": "",
   "mailing": "1169 US Route 4, PO Box",
@@ -1424,6 +1456,7 @@
   "website": "https://www.canaannh.org/"
  },
  "candia": {
+  "as_of": "2025-09-02",
   "email": "info@candianh.org",
   "fax": "",
   "mailing": "74 High St, Candia, NH 03034",
@@ -1476,6 +1509,7 @@
   "website": "https://www.candianh.org/"
  },
  "canterbury": {
+  "as_of": "2025-09-02",
   "email": "selectmen@canterburynh.gov",
   "fax": "603-783-0501",
   "mailing": "10 Hackleboro Rd, PO Box 500, Canterbury, NH",
@@ -1516,6 +1550,7 @@
   "website": "https://www.canterbury-nh.org/"
  },
  "carroll": {
+  "as_of": "2025-09-02",
   "email": "selectmen@townofcarroll.org",
   "fax": "603-846-5713",
   "mailing": "PO Box 146, Twin Mountin, NH 03595",
@@ -1544,6 +1579,7 @@
   "website": "https://carrollnh.org/"
  },
  "center-harbor": {
+  "as_of": "2025-09-02",
   "email": "selectmen@centerharbornh.gov",
   "fax": "603-253-8420",
   "mailing": "36 Main St, PO Box 140, Center Harbor, NH 03226",
@@ -1584,6 +1620,7 @@
   "website": "https://www.centerharbornh.gov/"
  },
  "charlestown": {
+  "as_of": "2025-09-02",
   "email": "planning@charlestown-nh.gov",
   "fax": "603-826-3709",
   "mailing": "233 Main St, PO Box 385,",
@@ -1624,6 +1661,7 @@
   "website": "www.charlestown-nh.gov"
  },
  "chatham": {
+  "as_of": "2025-09-02",
   "email": "townclerk@chathamnh.org",
   "fax": "603-694-2043",
   "mailing": "1071 Main Rd, Chatham, NH 03813",
@@ -1664,6 +1702,7 @@
   "website": ""
  },
  "chester": {
+  "as_of": "2025-09-02",
   "email": "chesterbos@chesternh.org",
   "fax": "603-887-8811",
   "mailing": "84 Chester St, Chester, NH 03036",
@@ -1716,6 +1755,7 @@
   "website": "www.chesternh.org"
  },
  "chesterfield": {
+  "as_of": "2025-09-02",
   "email": "townadmin@nhchesterfield.com",
   "fax": "603-887-8811",
   "mailing": "490 Route 63, Chesterfield, NH 03443",
@@ -1762,6 +1802,7 @@
   "website": "www.chesterfield.nh.gov"
  },
  "chichester": {
+  "as_of": "2025-09-02",
   "email": "selectmen@chichesternh.org",
   "fax": "603-798-3170",
   "mailing": "54 Main St, Chicester, NH 03258",
@@ -1802,6 +1843,7 @@
   "website": "www.chichesternh.org"
  },
  "claremont": {
+  "as_of": "2025-09-02",
   "email": "citymanager@claremontnh.com",
   "fax": "603-542-7014",
   "mailing": "58 Opera House Sq,",
@@ -1866,6 +1908,7 @@
   "website": "www.claremontnh.com"
  },
  "clarksville": {
+  "as_of": "2025-09-02",
   "email": "twnclark@yahoo.com",
   "fax": "603-246-3480",
   "mailing": "408 NH Route 145, Clarksville, NH 03592",
@@ -1900,6 +1943,7 @@
   "website": ""
  },
  "colebrook": {
+  "as_of": "2025-09-02",
   "email": "info@colebrooknh.org",
   "fax": "603-237-5069",
   "mailing": "17 Bridge St, Colebrook, NH 03576",
@@ -1940,6 +1984,7 @@
   "website": "https://colebrooknh.org/"
  },
  "columbia": {
+  "as_of": "2025-09-02",
   "email": "towncolumbia@myfairpoint.net",
   "fax": "603-237-8270",
   "mailing": "PO Box 157, Colebrook, NH 03576",
@@ -1974,6 +2019,7 @@
   "website": "www.columbianh.org"
  },
  "concord": {
+  "as_of": "2025-09-02",
   "email": "citymanager@concordnh.gov",
   "fax": "603-225-8558",
   "mailing": "41 Green St, Concord, NH 03301",
@@ -2086,6 +2132,7 @@
   "website": "www.concordnh.gov"
  },
  "conway": {
+  "as_of": "2025-09-02",
   "email": "conway@conwaynh.org",
   "fax": "603-447-1348",
   "mailing": "23 Main St, PO Box 2680,",
@@ -2138,6 +2185,7 @@
   "website": "www.conwaynh.gov"
  },
  "cornish": {
+  "as_of": "2025-09-02",
   "email": "townbos@comcast.net",
   "fax": "603-675-5605",
   "mailing": "488 Town House Rd, Cornish, NH 03745",
@@ -2178,6 +2226,7 @@
   "website": "www.cornishnh.net"
  },
  "croydon": {
+  "as_of": "2025-09-02",
   "email": "townclerk@croydon-nh.com",
   "fax": "603-863-2601",
   "mailing": "879 NH Route 10, Croydon, NH 03773",
@@ -2230,6 +2279,7 @@
   "website": "www.croydon-nh.com"
  },
  "dalton": {
+  "as_of": "2025-09-02",
   "email": "townadmin@townofdaltonnh.gov",
   "fax": "603-837-9642",
   "mailing": "756 Dalton Rd, Dalton, NH 03598",
@@ -2270,6 +2320,7 @@
   "website": "www.townofdaltonnh.gov"
  },
  "danbury": {
+  "as_of": "2025-09-02",
   "email": "danburyselectmen@comcast.net",
   "fax": "",
   "mailing": "23 High St, Danbury, NH 03230",
@@ -2310,6 +2361,7 @@
   "website": "www.townofdanburynh.com"
  },
  "danville": {
+  "as_of": "2025-09-02",
   "email": "townadmin@townofdanville.org",
   "fax": "603-382-3363",
   "mailing": "210 Main St, Danville, NH 03819",
@@ -2362,6 +2414,7 @@
   "website": "https://www.townofdanville.org/"
  },
  "deerfield": {
+  "as_of": "2025-09-02",
   "email": "bos@townofdeerfieldnh.com",
   "fax": "603-463-2820",
   "mailing": "8 Raymond Rd, PO Box",
@@ -2408,6 +2461,7 @@
   "website": "www.townofdeerfieldnh.com"
  },
  "deering": {
+  "as_of": "2025-09-02",
   "email": "administrator@deeringnh.gov",
   "fax": "603-464-3804",
   "mailing": "762 Deering Center Rd,",
@@ -2448,6 +2502,7 @@
   "website": "https://www.deering.nh.us/"
  },
  "derry": {
+  "as_of": "2025-09-02",
   "email": "dcaron@derrynh.org",
   "fax": "603-432-6131",
   "mailing": "14 Manning St, Derry, NH 03038",
@@ -2512,6 +2567,7 @@
   "website": "https://www.derrynh.org/"
  },
  "dorchester": {
+  "as_of": "2025-09-02",
   "email": "selectboard@townofdorchester.org",
   "fax": "603-786-9476",
   "mailing": "1021 NH 118, Dorchester, NH 03266",
@@ -2552,6 +2608,7 @@
   "website": "https://www.townofdorchester.org/"
  },
  "dover": {
+  "as_of": "2025-09-02",
   "email": "m.joyal@dover.nh.gov",
   "fax": "603-516-6666",
   "mailing": "288 Central Ave, Dover, NH 03820",
@@ -2628,6 +2685,7 @@
   "website": "https://www.dover.nh.gov/"
  },
  "dublin": {
+  "as_of": "2025-09-02",
   "email": "townadministrator@townofdublin.org",
   "fax": "603-563-9221",
   "mailing": "1120 Main St, PO Box 277, Dublin, NH 03444",
@@ -2668,6 +2726,7 @@
   "website": "https://www.townofdublin.org/"
  },
  "dummer": {
+  "as_of": "2025-09-02",
   "email": "townofdummer@gmail.com",
   "fax": "603-449-2315",
   "mailing": "75 Hill Rd, Dummer, NH 03588",
@@ -2708,6 +2767,7 @@
   "website": "https://dummernh.com/"
  },
  "dunbarton": {
+  "as_of": "2025-09-02",
   "email": "townadministrator@dunbartonnh.org",
   "fax": "603-744-5541",
   "mailing": "1011 School St, Dunbarton, NH 03046",
@@ -2748,6 +2808,7 @@
   "website": "https://www.dunbartonnh.org/"
  },
  "durham": {
+  "as_of": "2025-09-02",
   "email": "tselig@ci.durham.nh.us",
   "fax": "603-868-1858",
   "mailing": "8 Newmarket Rd, Durham, NH 03824",
@@ -2818,6 +2879,7 @@
   "website": "https://www.ci.durham.nh.us/"
  },
  "east-kingston": {
+  "as_of": "2025-09-02",
   "email": "gruelle@eastkingstonnh.gov",
   "fax": "603-642-4918",
   "mailing": "24 Depot Rd, East Kingston, NH 03827",
@@ -2858,6 +2920,7 @@
   "website": "https://www.eknh.org/"
  },
  "easton": {
+  "as_of": "2025-09-02",
   "email": "eastonnhselectboard@gmail.com",
   "fax": "603-823-7780",
   "mailing": "1060 Easton Valley Rd, Easton, NH 03580",
@@ -2898,6 +2961,7 @@
   "website": "https://easton-nh.org/"
  },
  "eaton": {
+  "as_of": "2025-09-02",
   "email": "info@eatonnh.org",
   "fax": "603-447-2560",
   "mailing": "83 Brownfield Rd, PO Box",
@@ -2938,6 +3002,7 @@
   "website": "https://www.eatonnh.org/"
  },
  "effingham": {
+  "as_of": "2025-09-02",
   "email": "townofeffingham@effinghamnh.net",
   "fax": "603-539-7799",
   "mailing": "68 School St, Effingham, NH 03882",
@@ -2972,6 +3037,7 @@
   "website": "https://www.effinghamnh.net/"
  },
  "ellsworth": {
+  "as_of": "2025-09-02",
   "email": "dobellsworth@gmail.com",
   "fax": "",
   "mailing": "3 Ellsworth Pond Rd, Ellsworth, NH 03223",
@@ -3012,6 +3078,7 @@
   "website": ""
  },
  "enfield": {
+  "as_of": "2025-09-02",
   "email": "townhall@enfield.nh.us",
   "fax": "603-632-5182",
   "mailing": "23 Main St, Enfield, NH 03748",
@@ -3064,6 +3131,7 @@
   "website": "https://www.enfield.nh.us/"
  },
  "epping": {
+  "as_of": "2025-09-02",
   "email": "administrator@townofepping.com",
   "fax": "603-679-3002",
   "mailing": "157 Main St, Epping, NH 03042",
@@ -3116,6 +3184,7 @@
   "website": "https://www.townofepping.com/"
  },
  "epsom": {
+  "as_of": "2025-09-02",
   "email": "epsomtown@metrocast.net",
   "fax": "603-736-8539",
   "mailing": "1598 Dover Rd, Epsom, NH 03234",
@@ -3156,6 +3225,7 @@
   "website": "https://www.epsomnh.org/"
  },
  "errol": {
+  "as_of": "2025-09-02",
   "email": "errolnhselectmen@gmail.com",
   "fax": "603-482-3804",
   "mailing": "33 Main St, Errol, NH 03579",
@@ -3190,6 +3260,7 @@
   "website": "www.errolnh.org"
  },
  "exeter": {
+  "as_of": "2025-09-02",
   "email": "sbailey@exeternh.gov",
   "fax": "603-772-4709",
   "mailing": "10 Front St, Exeter, NH 03833",
@@ -3242,6 +3313,7 @@
   "website": "https://www.exeternh.gov/"
  },
  "farmington": {
+  "as_of": "2025-09-02",
   "email": "townadmin@farmington.nh.us",
   "fax": "603-755-9934",
   "mailing": "356 Main St, Farmington, NH 03835",
@@ -3294,6 +3366,7 @@
   "website": "https://www.farmington.nh.us/"
  },
  "fitzwilliam": {
+  "as_of": "2025-09-02",
   "email": "fitzwilliamnh@fitzwilliam.nh.gov",
   "fax": "603-585-7744",
   "mailing": "PO Box 725, Fitzwilliam, NH 03447",
@@ -3334,6 +3407,7 @@
   "website": "https://fitzwilliam-nh.gov/#"
  },
  "francestown": {
+  "as_of": "2025-09-02",
   "email": "townoffices@francestownnh.org",
   "fax": "603-547-2622",
   "mailing": "27 Main St, PO Box 5, Francestown, NH 03043",
@@ -3374,6 +3448,7 @@
   "website": "https://www.francestownnh.org"
  },
  "franconia": {
+  "as_of": "2025-09-02",
   "email": "townadmin@franconianh.org",
   "fax": "603-823-5581",
   "mailing": "421 Main St, PO Box 900,",
@@ -3414,6 +3489,7 @@
   "website": "http://www.franconianh.org/"
  },
  "franklin": {
+  "as_of": "2025-09-02",
   "email": "",
   "fax": "603-934-7413",
   "mailing": "316 Central St, Franklin, NH 03235",
@@ -3496,6 +3572,7 @@
   "website": "https://www.franklinnh.org/"
  },
  "freedom": {
+  "as_of": "2025-09-02",
   "email": "office@townoffreedomnh.gov",
   "fax": "603-539-8270",
   "mailing": "33 Old Portland Rd, PO",
@@ -3536,6 +3613,7 @@
   "website": "https://townoffreedom.net/"
  },
  "fremont": {
+  "as_of": "2025-09-02",
   "email": "hcarlson@fremont.nh.gov",
   "fax": "603-895-3149",
   "mailing": "295 Main St, PO Box 120,",
@@ -3576,6 +3654,7 @@
   "website": "https://www.fremont.nh.gov/"
  },
  "gilford": {
+  "as_of": "2025-09-02",
   "email": "selectmen@gilfordnh.org",
   "fax": "603-527-4711",
   "mailing": "47 Cherry Valley Rd, Gilford, NH 03249",
@@ -3616,6 +3695,7 @@
   "website": "https://www.gilfordnh.org/"
  },
  "gilmanton": {
+  "as_of": "2025-09-02",
   "email": "ddaigneault@gilmantonnh.org",
   "fax": "603-267-6701",
   "mailing": "503 Province Rd, PO Box 550, Gilmanton, NH",
@@ -3656,6 +3736,7 @@
   "website": "https://www.gilmantonnh.org/"
  },
  "gilsum": {
+  "as_of": "2025-09-02",
   "email": "gilsum@gilsum-nh.gov",
   "fax": "",
   "mailing": "650 Route 10, PO Box 36,",
@@ -3696,6 +3777,7 @@
   "website": "www.gilsum-nh.gov"
  },
  "goffstown": {
+  "as_of": "2025-09-02",
   "email": "derek.home@goffstownnh.gov",
   "fax": "603-497-8993",
   "mailing": "16 Main St, Goffstown, NH 03045",
@@ -3748,6 +3830,7 @@
   "website": "https://www.goffstownnh.gov/"
  },
  "gorham": {
+  "as_of": "2025-09-02",
   "email": "pgagnon@gorhamnh.org",
   "fax": "603-466-2463",
   "mailing": "20 Park St, Gorham, NH 03581",
@@ -3788,6 +3871,7 @@
   "website": "https://www.gorhamnh.gov/"
  },
  "goshen": {
+  "as_of": "2025-09-02",
   "email": "selectmen@goshennh.org",
   "fax": "603-863-6139",
   "mailing": "54 Mill Village Rd N, Goshen, NH 03752",
@@ -3828,6 +3912,7 @@
   "website": "https://www.goshennh.org/"
  },
  "grafton": {
+  "as_of": "2025-09-02",
   "email": "selectmen@townofgraftonnh.com",
   "fax": "603-523-4026",
   "mailing": "PO Box 299, Grafton, NH 03240",
@@ -3868,6 +3953,7 @@
   "website": "https://www.townofgraftonnh.com/"
  },
  "grantham": {
+  "as_of": "2025-09-02",
   "email": "info@granthamnh.gov",
   "fax": "603-863-4499",
   "mailing": "300 Route 10 South Grantham, NH 03753",
@@ -3908,6 +3994,7 @@
   "website": "https://granthamnh.gov/"
  },
  "greenfield": {
+  "as_of": "2025-09-02",
   "email": "townadministrator@greenfield-nh.gov",
   "fax": "603-547-3004",
   "mailing": "7 Sawmill Rd, Greenfield, NH 03047",
@@ -3948,6 +4035,7 @@
   "website": "https://www.greenfield-nh.gov/"
  },
  "greenland": {
+  "as_of": "2025-09-02",
   "email": "mscruton@greenland-nh.com",
   "fax": "603-430-3761",
   "mailing": "11 Town Square, PO Box",
@@ -4000,6 +4088,7 @@
   "website": "https://www.greenlandnh.gov"
  },
  "greenville": {
+  "as_of": "2025-09-02",
   "email": "administrator@greenvillenh.org",
   "fax": "603-878-5038",
   "mailing": "46 Main St, PO Box 343,",
@@ -4040,6 +4129,7 @@
   "website": "https://www.greenvillenh.org/"
  },
  "groton": {
+  "as_of": "2025-09-02",
   "email": "selectmen@grotonnh.org",
   "fax": "603-744-3382",
   "mailing": "754 North Groton Rd, Groton, NH 03241",
@@ -4080,6 +4170,7 @@
   "website": "http://grotonnh.org/"
  },
  "hampstead": {
+  "as_of": "2025-09-02",
   "email": "sally.theriault@comcast.net",
   "fax": "603-329-6628",
   "mailing": "11 Main St, Hampstead, NH 03841",
@@ -4132,6 +4223,7 @@
   "website": "https://www.hampsteadnh.us/"
  },
  "hampton": {
+  "as_of": "2025-09-02",
   "email": "inquiries@hamptonnh.gov",
   "fax": "603-926-6853",
   "mailing": "100 Winnacunnet Rd,",
@@ -4184,6 +4276,7 @@
   "website": "https://www.hamptonnh.gov/"
  },
  "hampton-falls": {
+  "as_of": "2025-09-02",
   "email": "townadministrator@hamptonfalls.org",
   "fax": "603-926-1848",
   "mailing": "1 Drinkwater Rd, Hampton Falls, NH",
@@ -4224,6 +4317,7 @@
   "website": "https://www.hamptonfalls.org/"
  },
  "hancock": {
+  "as_of": "2025-09-02",
   "email": "select@hancocknh.org",
   "fax": "",
   "mailing": "50 Main St, Hancock, NH 03449",
@@ -4264,6 +4358,7 @@
   "website": "https://www.hancocknh.org/"
  },
  "hanover": {
+  "as_of": "2025-09-02",
   "email": "info@hanovernh.org",
   "fax": "603-643-1720",
   "mailing": "41 South Main St, PO Box",
@@ -4316,6 +4411,7 @@
   "website": "https://hanovernh.org/"
  },
  "harrisville": {
+  "as_of": "2025-09-02",
   "email": "selectboard@harrisvillenh.org",
   "fax": "603-827-2917",
   "mailing": "705 Chesham Rd,",
@@ -4356,6 +4452,7 @@
   "website": "https://harrisvillenh.org/"
  },
  "hart-s-location": {
+  "as_of": "2025-09-02",
   "email": "smallesttown@gmail.com",
   "fax": "",
   "mailing": "PO Box 540, Hart's Location, NH 03812",
@@ -4396,6 +4493,7 @@
   "website": "https://hartslocation.com/"
  },
  "haverhill": {
+  "as_of": "2025-09-02",
   "email": "townmanager@haverhill-nh.com",
   "fax": "603-787-2226",
   "mailing": "2975 Dartmouth College Hwy, N Haverhill, NH",
@@ -4442,6 +4540,7 @@
   "website": "https://www.haverhill-nh.com/"
  },
  "hebron": {
+  "as_of": "2025-09-02",
   "email": "execassist@hebronnh.org",
   "fax": "603-744-5330",
   "mailing": "7 School St, PO Box 188, Hebron, NH 03241",
@@ -4482,6 +4581,7 @@
   "website": "https://www.hebronnh.gov/"
  },
  "henniker": {
+  "as_of": "2025-09-02",
   "email": "secretary@hennikernh.gov",
   "fax": "603-428-4366",
   "mailing": "18 Depot Hill Rd, Henniker, NH 03242",
@@ -4534,6 +4634,7 @@
   "website": "https://www.henniker.org/"
  },
  "hill": {
+  "as_of": "2025-09-02",
   "email": "hillselectmen@comcast.net",
   "fax": "603-934-2011",
   "mailing": "30 Cresent St, Suite 1, Hill, NH 03243",
@@ -4574,6 +4675,7 @@
   "website": "https://townofhillnh.org/"
  },
  "hillsborough": {
+  "as_of": "2025-09-02",
   "email": "landusesec@hillsboroughnh.net",
   "fax": "603-464-4270",
   "mailing": "27 School St, PO Box 7, Hillsborough, NH 03244",
@@ -4614,6 +4716,7 @@
   "website": "https://www.town.hillsborough.nh.us/"
  },
  "hinsdale": {
+  "as_of": "2025-09-02",
   "email": "hinsdale.nh@myfairpoint.net",
   "fax": "603-336-5711",
   "mailing": "11 Main St, PO Box 31, Hinsdale, NH 03451",
@@ -4666,6 +4769,7 @@
   "website": "https://www.town.hinsdale.nh.us/index.asp?SEC=31C24082-A0EE-"
  },
  "holderness": {
+  "as_of": "2025-09-02",
   "email": "administrator@holderness-nh.gov",
   "fax": "603-968-9954",
   "mailing": "1089 US Rt 3, PO Box 203, Holderness, NH",
@@ -4718,6 +4822,7 @@
   "website": "https://www.holderness-nh.gov/"
  },
  "hollis": {
+  "as_of": "2025-09-02",
   "email": "administration@hollisnh.org",
   "fax": "603-465-3701",
   "mailing": "7 Monument Squ, Hollis, NH 03049",
@@ -4770,6 +4875,7 @@
   "website": "https://www.hollisnh.org/"
  },
  "hooksett": {
+  "as_of": "2025-09-02",
   "email": "",
   "fax": "603-485-4423",
   "mailing": "35 Main St, Hooksett, NH 03106",
@@ -4846,6 +4952,7 @@
   "website": "https://www.hooksett.org/#section1-anchor"
  },
  "hopkinton": {
+  "as_of": "2025-09-02",
   "email": "assessing@hopkinton-nh.gov",
   "fax": "603-746-3049",
   "mailing": "330 Main St, Hopkinton, NH 03229",
@@ -4898,6 +5005,7 @@
   "website": "https://www.hopkinton-nh.gov/"
  },
  "hudson": {
+  "as_of": "2025-09-02",
   "email": "smalizia@hudsonnh.gov",
   "fax": "603-598-6481",
   "mailing": "12 School St, Hudson, NH 03051",
@@ -4950,6 +5058,7 @@
   "website": "https://www.hudsonnh.gov/"
  },
  "jackson": {
+  "as_of": "2025-09-02",
   "email": "townadmin@jackson-nh.org",
   "fax": "603-383-6980",
   "mailing": "54 Main St, PO Box 268,",
@@ -4990,6 +5099,7 @@
   "website": "https://www.jackson-nh.org/"
  },
  "jaffrey": {
+  "as_of": "2025-09-02",
   "email": "jzola@townofjaffrey.com",
   "fax": "603-532-7862",
   "mailing": "10 Goodnow St, Jaffrey, NH 03452",
@@ -5030,6 +5140,7 @@
   "website": "https://www.townofjaffrey.com/"
  },
  "jefferson": {
+  "as_of": "2025-09-02",
   "email": "officeassistant@jeffersonnh.org",
   "fax": "",
   "mailing": "178 Meadows Rd, PO Box",
@@ -5070,6 +5181,7 @@
   "website": "https://jeffersonnh.org/"
  },
  "keene": {
+  "as_of": "2025-09-02",
   "email": "",
   "fax": "603-283-5650",
   "mailing": "3 Washington St, Keene, NH 03431",
@@ -5188,6 +5300,7 @@
   "website": "https://keenenh.gov/"
  },
  "kensington": {
+  "as_of": "2025-09-02",
   "email": "kensington@kensingtontown.com",
   "fax": "603-772-6841",
   "mailing": "95 Amesbury Rd, Kensington, NH 03833",
@@ -5228,6 +5341,7 @@
   "website": "https://www.town.kensington.nh.us/"
  },
  "kingston": {
+  "as_of": "2025-09-02",
   "email": "admin@kingstonnh.org",
   "fax": "603-642-4108",
   "mailing": "163 Main St, Kingston, NH 03848",
@@ -5280,6 +5394,7 @@
   "website": "https://www.kingstonnh.org/"
  },
  "laconia": {
+  "as_of": "2025-09-02",
   "email": "citymanager@laconianh.gov",
   "fax": "603-527-1292",
   "mailing": "45 Beacon St E, Laconia, NH 03246",
@@ -5344,6 +5459,7 @@
   "website": "https://www.laconianh.gov/"
  },
  "lancaster": {
+  "as_of": "2025-09-02",
   "email": "townmanager@lancasternh.org",
   "fax": "603-788-2114",
   "mailing": "25 Main St, Laconia, NH 03584",
@@ -5384,6 +5500,7 @@
   "website": "https://lancasternh.org/"
  },
  "landaff": {
+  "as_of": "2025-09-02",
   "email": "selectmen@landaffnh.org",
   "fax": "603-838-5225",
   "mailing": "12 Center Hill Rd, Landaff, NH 03585",
@@ -5424,6 +5541,7 @@
   "website": "https://landaffnh.org/"
  },
  "langdon": {
+  "as_of": "2025-09-02",
   "email": "langdon@langdonnh.org",
   "fax": "603-835-6055",
   "mailing": "122 Rte 12 A, Langdon, NH 03602",
@@ -5464,6 +5582,7 @@
   "website": "https://www.langdonnh.org/"
  },
  "lebanon": {
+  "as_of": "2025-09-02",
   "email": "manager@lebanonnh.gov",
   "fax": "",
   "mailing": "51 N Park St, Lebanon, NH 03766",
@@ -5540,6 +5659,7 @@
   "website": "https://lebanonnh.gov/"
  },
  "lee": {
+  "as_of": "2025-09-02",
   "email": "townadministrator@leenh.org",
   "fax": "603-659-7202",
   "mailing": "249 Calef Hwy, Lee, NH 03861",
@@ -5580,6 +5700,7 @@
   "website": "https://www.leenh.org/"
  },
  "lempster": {
+  "as_of": "2025-09-02",
   "email": "bos_admin@lempsternh.org",
   "fax": "603-863-8105",
   "mailing": "856 NH Route 10, Lempster, NH 03605",
@@ -5620,6 +5741,7 @@
   "website": "https://lempsternh.org/"
  },
  "lincoln": {
+  "as_of": "2025-09-02",
   "email": "townhall@lincolnnh.org",
   "fax": "603-745-6743",
   "mailing": "148 Main St, PO Box 25, Lincoln, NH 03251",
@@ -5660,6 +5782,7 @@
   "website": "https://www.lincolnnh.org/"
  },
  "lisbon": {
+  "as_of": "2025-09-02",
   "email": "adminassistant@lisbonnh.org",
   "fax": "603-838-6790",
   "mailing": "153 S. Main St, Lisbon, NH 03585",
@@ -5700,6 +5823,7 @@
   "website": "https://www.lisbonnh.org/"
  },
  "litchfield": {
+  "as_of": "2025-09-02",
   "email": "",
   "fax": "603-424-3014",
   "mailing": "2 Liberty Way, Ste 1, Litchfield, NH 03052",
@@ -5752,6 +5876,7 @@
   "website": "https://litchfieldnh.gov/"
  },
  "littleton": {
+  "as_of": "2025-09-02",
   "email": "jgleason@townoflittleton.org",
   "fax": "603-444-1703",
   "mailing": "125 Main St, Ste 200, Littleton, NH 03561",
@@ -5792,6 +5917,7 @@
   "website": "https://www.townoflittleton.org/"
  },
  "londonderry": {
+  "as_of": "2025-09-02",
   "email": "",
   "fax": "603-432-1128",
   "mailing": "268B Mammoth Rd, Londonderry, NH 03053",
@@ -5844,6 +5970,7 @@
   "website": "https://www.londonderrynh.gov/"
  },
  "loudon": {
+  "as_of": "2025-09-02",
   "email": "selectmensoffice@loudonnh.org",
   "fax": "603-798-4546",
   "mailing": "55 South Village Rd, Loudon, NH 03307",
@@ -5884,6 +6011,7 @@
   "website": "https://www.loudonnh.org/"
  },
  "lyman": {
+  "as_of": "2025-09-02",
   "email": "lymanta@myfairpoint.net",
   "fax": "603-838-6818",
   "mailing": "65 Parker Hill Rd, Lyman, NH 03585",
@@ -5924,6 +6052,7 @@
   "website": "https://www.lymannh.org/"
  },
  "lyme": {
+  "as_of": "2025-09-02",
   "email": "dina@lymenh.gov",
   "fax": "603-795-4637",
   "mailing": "1 High St, PO Box 126, Lyme, NH 03768",
@@ -5964,6 +6093,7 @@
   "website": "https://www.lymenh.gov/"
  },
  "lyndeborough": {
+  "as_of": "2025-09-02",
   "email": "",
   "fax": "603-654-5777",
   "mailing": "9 Citizens' Hall Rd, Lyndeborough, NH 03082",
@@ -6004,6 +6134,7 @@
   "website": "https://www.town.lyndeborough.nh.us/"
  },
  "madbury": {
+  "as_of": "2025-09-02",
   "email": "adminmadbury@comcast.net",
   "fax": "603-742-2505",
   "mailing": "13 Town Hall Rd, Madbury, NH 03823",
@@ -6044,6 +6175,7 @@
   "website": "http://www.townofmadbury.com/"
  },
  "madison": {
+  "as_of": "2025-09-02",
   "email": "office@madison-nh.org",
   "fax": "603-367-4547",
   "mailing": "1923 Village Rd, PO Box",
@@ -6084,6 +6216,7 @@
   "website": "https://www.madison-nh.org/"
  },
  "manchester": {
+  "as_of": "2025-09-02",
   "email": "",
   "fax": "603-624-6576",
   "mailing": "1 City Hall Plaza, Manchester, NH 03101",
@@ -6196,6 +6329,7 @@
   "website": "https://www.manchesternh.gov/"
  },
  "marlborough": {
+  "as_of": "2025-09-02",
   "email": "selectmen@marlboroughnh.org",
   "fax": "603-876-3313",
   "mailing": "236 Main St, PO Box 487, Marlborough, NH 03455",
@@ -6236,6 +6370,7 @@
   "website": "https://www.marlboroughnh.org/"
  },
  "marlow": {
+  "as_of": "2025-09-02",
   "email": "marlowtownoffice@marlownh.gov",
   "fax": "603-446-3806",
   "mailing": "167 NH Route 123, Marlow, NH 03456",
@@ -6276,6 +6411,7 @@
   "website": "https://www.marlownh.gov/"
  },
  "mason": {
+  "as_of": "2025-09-02",
   "email": "administration@masonnh.us",
   "fax": "603-878-4892",
   "mailing": "16 Darling Hill Rd, Mason, NH 03048",
@@ -6316,6 +6452,7 @@
   "website": "https://www.masonnh.us/"
  },
  "meredith": {
+  "as_of": "2025-09-02",
   "email": "",
   "fax": "",
   "mailing": "41 Main St, Meredith, NH 03253",
@@ -6368,6 +6505,7 @@
   "website": "https://www.meredithnh.org/"
  },
  "merrimack": {
+  "as_of": "2025-09-02",
   "email": "",
   "fax": "603-424-0461",
   "mailing": "6 Baboosic Lake Rd, Merrimack, NH 03054",
@@ -6432,6 +6570,7 @@
   "website": "https://www.merrimacknh.gov/"
  },
  "middleton": {
+  "as_of": "2025-09-02",
   "email": "ssbk@middletonnh.gov",
   "fax": "603-473-2450",
   "mailing": "182 Kings Hwy, Middleton, NH 03887",
@@ -6484,6 +6623,7 @@
   "website": "https://middletonnh.gov/"
  },
  "milan": {
+  "as_of": "2025-09-02",
   "email": "townofmilan@gmail.com",
   "fax": "603-449-2142",
   "mailing": "20 Bridge St, Milan, NH 03588",
@@ -6524,6 +6664,7 @@
   "website": "https://www.townofmilan.com/"
  },
  "milford": {
+  "as_of": "2025-09-02",
   "email": "",
   "fax": "603-673-2273",
   "mailing": "1 Union Squ, Milford, NH 02055",
@@ -6576,6 +6717,7 @@
   "website": "https://www.milford.nh.gov/"
  },
  "milton": {
+  "as_of": "2025-09-02",
   "email": "miltonta@miltonnh-us.com",
   "fax": "603-652-4120",
   "mailing": "55 Industrial Way, Milton, NH 03851",
@@ -6616,6 +6758,7 @@
   "website": "https://www.miltonnh-us.com/"
  },
  "monroe": {
+  "as_of": "2025-09-02",
   "email": "monroeselectmen@monroenh.org",
   "fax": "603-638-2021",
   "mailing": "PO Box 63, Monroe, NH 03771",
@@ -6656,6 +6799,7 @@
   "website": "https://monroenh.org/"
  },
  "mont-vernon": {
+  "as_of": "2025-09-02",
   "email": "townofmontvernon@montvernonnh.us",
   "fax": "603-673-5995",
   "mailing": "PO Box 444, Mont Vernon, NH 03057",
@@ -6696,6 +6840,7 @@
   "website": "https://www.montvernonnh.us/"
  },
  "moultonborough": {
+  "as_of": "2025-09-02",
   "email": "csmith@moultonboroughnh.gov",
   "fax": "603-476-5835",
   "mailing": "6 Holland St, PO Box 139, Moultonborough, NH",
@@ -6748,6 +6893,7 @@
   "website": "https://www.moultonboroughnh.gov/"
  },
  "nashua": {
+  "as_of": "2025-09-02",
   "email": "",
   "fax": "603-594-3450",
   "mailing": "229 Main St, Nashua, NH 03060",
@@ -6860,6 +7006,7 @@
   "website": "https://www.nashuanh.gov/"
  },
  "nelson": {
+  "as_of": "2025-09-02",
   "email": "execadmin@nelsonnh.us",
   "fax": "603-847-3197",
   "mailing": "7 Nelson Common Rd, Nelson, NH 03457",
@@ -6900,6 +7047,7 @@
   "website": "https://www.townofnelson.org/"
  },
  "new-boston": {
+  "as_of": "2025-09-02",
   "email": "m.segien@newbostonnh.gov",
   "fax": "603-487-2975",
   "mailing": "Meetinghouse Hill Rd, New Boston, NH 03070",
@@ -6940,6 +7088,7 @@
   "website": "https://www.newbostonnh.gov/"
  },
  "new-castle": {
+  "as_of": "2025-09-02",
   "email": "",
   "fax": "603-433-6198",
   "mailing": "49 Main St, PO Box 367,",
@@ -6980,6 +7129,7 @@
   "website": "https://www.newcastlenh.org/"
  },
  "new-durham": {
+  "as_of": "2025-09-02",
   "email": "ndadmin@newdurhamnh.us",
   "fax": "603-859-6644",
   "mailing": "4 Main St, PO Box 207, New Durham, NH 03855",
@@ -7020,6 +7170,7 @@
   "website": "https://www.newdurhamnh.us/"
  },
  "new-hampton": {
+  "as_of": "2025-09-02",
   "email": "selectmen@new-hampton.nh.us",
   "fax": "603-744-5106",
   "mailing": "6 Pinnacle Hill Rd, New Hapmton, NH 03256",
@@ -7060,6 +7211,7 @@
   "website": "https://www.new-hampton.nh.us/"
  },
  "new-ipswich": {
+  "as_of": "2025-09-02",
   "email": "administrator@townofnewipswich.org",
   "fax": "603-878-3855",
   "mailing": "661 Turnpike Rd, New Ipswich, NH 03071",
@@ -7100,6 +7252,7 @@
   "website": "https://www.newipswichnh.gov/"
  },
  "new-london": {
+  "as_of": "2025-09-02",
   "email": "office@newlondon.nh.gov",
   "fax": "603-526-9494",
   "mailing": "375 Main St, New London, NH 03257",
@@ -7140,6 +7293,7 @@
   "website": "https://newlondon.nh.gov/"
  },
  "newbury": {
+  "as_of": "2025-09-02",
   "email": "townadmin@newburynh.org",
   "fax": "603-763-5298",
   "mailing": "US Rte 103, PO Box 296,",
@@ -7180,6 +7334,7 @@
   "website": "https://www.newburynh.org/"
  },
  "newfields": {
+  "as_of": "2025-09-02",
   "email": "",
   "fax": "603-772-9004",
   "mailing": "65 Main St, Newfilds, NH 03856",
@@ -7220,6 +7375,7 @@
   "website": "https://www.newfieldsnh.gov/"
  },
  "newington": {
+  "as_of": "2025-09-02",
   "email": "mroy@NewingtonNH.gov",
   "fax": "",
   "mailing": "205 Nimble Hill Rd, Newington, NH 03801",
@@ -7260,6 +7416,7 @@
   "website": "https://www.newington.nh.us/"
  },
  "newmarket": {
+  "as_of": "2025-09-02",
   "email": "wchase@newmarketnh.gov",
   "fax": "603-659-8508",
   "mailing": "186 Main St, Newmarket, NH 03857",
@@ -7330,6 +7487,7 @@
   "website": "https://www.newmarketnh.gov/"
  },
  "newport": {
+  "as_of": "2025-09-02",
   "email": "manager@newportnh.gov",
   "fax": "603-863-8008",
   "mailing": "15 Sunapee St, Newport, NH 03773",
@@ -7382,6 +7540,7 @@
   "website": "https://www.newportnh.gov/town-clerk"
  },
  "newton": {
+  "as_of": "2025-09-02",
   "email": "selectmen@newtonnh.net",
   "fax": "603-382-9140",
   "mailing": "2 Town Hall Rd, Newton, NH 03858",
@@ -7434,6 +7593,7 @@
   "website": "https://www.newton-nh.gov/"
  },
  "north-hampton": {
+  "as_of": "2025-09-02",
   "email": "mtully@northhampton-nh.gov",
   "fax": "603-964-1514",
   "mailing": "237A Atlantic Ave, North Hampton, NH 03862",
@@ -7474,6 +7634,7 @@
   "website": "https://www.northhampton-nh.gov/"
  },
  "northfield": {
+  "as_of": "2025-09-02",
   "email": "",
   "fax": "603-286-3328",
   "mailing": "21 Summer St, Northfield, NH 03276",
@@ -7514,6 +7675,7 @@
   "website": "https://www.northfieldnh.org/"
  },
  "northumberland": {
+  "as_of": "2025-09-02",
   "email": "tletson@northumberlandnh.org",
   "fax": "603-636-6098",
   "mailing": "19 Main St, Groveton, NH 03582",
@@ -7554,6 +7716,7 @@
   "website": "https://www.northumberlandnh.org/"
  },
  "northwood": {
+  "as_of": "2025-09-02",
   "email": "wjohnson@northwoodnh.org",
   "fax": "603-942-9107",
   "mailing": "818 1st NH Turnpike, Northwood, NH 03261",
@@ -7606,6 +7769,7 @@
   "website": "https://www.northwoodnh.org/"
  },
  "nottingham": {
+  "as_of": "2025-09-02",
   "email": "csterndale@nottingham-nh.gov",
   "fax": "603-679-1013",
   "mailing": "139 Stage Rd, Nottingham, NH 03290",
@@ -7658,6 +7822,7 @@
   "website": "https://www.nottingham-nh.gov/"
  },
  "orange": {
+  "as_of": "2025-09-02",
   "email": "townoforangenh@gmail.com",
   "fax": "",
   "mailing": "8 Town House Rd, PO Box",
@@ -7698,6 +7863,7 @@
   "website": "https://www.orangenh.us/"
  },
  "orford": {
+  "as_of": "2025-09-02",
   "email": "orfordselectmen@orfordnh.us",
   "fax": "603-353-4489",
   "mailing": "2529 Rte 25A, Orford, NH 03777",
@@ -7738,6 +7904,7 @@
   "website": "https://orfordnh.us/"
  },
  "ossipee": {
+  "as_of": "2025-09-02",
   "email": "msawyer@ossipee.org",
   "fax": "603-539-4183",
   "mailing": "55 Main St, PO Box 67,",
@@ -7778,6 +7945,7 @@
   "website": "https://www.ossipee.org/"
  },
  "pelham": {
+  "as_of": "2025-09-02",
   "email": "selectmen@pelhamweb.com",
   "fax": "603-635-8274",
   "mailing": "6 Village Green, Pelham, NH 03076",
@@ -7830,6 +7998,7 @@
   "website": "https://www.pelhamweb.com/"
  },
  "pembroke": {
+  "as_of": "2025-09-02",
   "email": "townhall@pembroke-nh.com",
   "fax": "603-485-3967",
   "mailing": "311 Pembroke St, Pembroke, NH 03275",
@@ -7882,6 +8051,7 @@
   "website": "https://www.pembroke-nh.com/"
  },
  "peterborough": {
+  "as_of": "2025-09-02",
   "email": "administration@peterboroughnh.gov",
   "fax": "603-924-8001",
   "mailing": "1 Grove St, Peterborough, NH 03458",
@@ -7922,6 +8092,7 @@
   "website": "https://www.peterboroughnh.gov"
  },
  "piermont": {
+  "as_of": "2025-09-02",
   "email": "info@townofpiermontnh.org",
   "fax": "603-272-9182",
   "mailing": "130 Rte 10, Piermont, NH 03779",
@@ -7962,6 +8133,7 @@
   "website": "https://townofpiermontnh.org/"
  },
  "pittsburg": {
+  "as_of": "2025-09-02",
   "email": "townoffice@pittsburg-nh.com",
   "fax": "",
   "mailing": "1526 Main St, Pittsburg, NH 03592",
@@ -8002,6 +8174,7 @@
   "website": "https://pittsburg-nh.com/"
  },
  "pittsfield": {
+  "as_of": "2025-09-02",
   "email": "admin@pittsfieldnh.gov",
   "fax": "603-435-7922",
   "mailing": "85 Main St, Pittsfield, NH 03263",
@@ -8054,6 +8227,7 @@
   "website": "https://www.pittsfieldnh.gov/"
  },
  "plainfield": {
+  "as_of": "2025-09-02",
   "email": "plainfield.ta@plainfieldnh.org",
   "fax": "603-469-3642",
   "mailing": "110 Main St, Plainfield, NH 03781",
@@ -8094,6 +8268,7 @@
   "website": "https://www.plainfieldnh.org/pview.aspx?id=55881&catid=0"
  },
  "plaistow": {
+  "as_of": "2025-09-02",
   "email": "gcolby@plaistow.com",
   "fax": "603-382-7183",
   "mailing": "145 Main St, Plaistow, NH 03865",
@@ -8146,6 +8321,7 @@
   "website": "https://www.plaistow.com/"
  },
  "plymouth": {
+  "as_of": "2025-09-02",
   "email": "townmanager@plymouthnh.gov",
   "fax": "603-536-0036",
   "mailing": "6 Post Office Squ, Plymouth, NH 03264",
@@ -8198,6 +8374,7 @@
   "website": "www.plymouthnh.gov"
  },
  "portsmouth": {
+  "as_of": "2025-09-02",
   "email": "",
   "fax": "603-427-1526",
   "mailing": "1 Junkins Ave, Portsmouth, NH 03801",
@@ -8268,6 +8445,7 @@
   "website": "https://www.cityofportsmouth.com/"
  },
  "randolph": {
+  "as_of": "2025-09-02",
   "email": "selectmen@randolph.nh.gov",
   "fax": "603-466-9856",
   "mailing": "130 Durand Rd, Randolph, NH 03593",
@@ -8308,6 +8486,7 @@
   "website": "https://randolph.nh.gov/"
  },
  "raymond": {
+  "as_of": "2025-09-02",
   "email": "jisley@raymondnh.gov",
   "fax": "603-895-7064",
   "mailing": "4 Epping St, Raymond, NH 03077",
@@ -8360,6 +8539,7 @@
   "website": "https://www.raymondnh.gov/"
  },
  "richmond": {
+  "as_of": "2025-09-02",
   "email": "",
   "fax": "",
   "mailing": "105 Old Homestead Highway, Richmond, NH",
@@ -8400,6 +8580,7 @@
   "website": "https://www.richmond.nh.gov/"
  },
  "rindge": {
+  "as_of": "2025-09-02",
   "email": "executivesecretary@rindgenh.gov",
   "fax": "603-899-2101",
   "mailing": "30 Payson Hill Rd, Rindge, NH 03461",
@@ -8440,6 +8621,7 @@
   "website": "www.rindgenh.gov"
  },
  "rochester": {
+  "as_of": "2025-09-02",
   "email": "katie.ambrose@rochesternh.gov",
   "fax": "603-335-7565",
   "mailing": "31 Wakefield St, Rochester, NH 03867",
@@ -8540,6 +8722,7 @@
   "website": "https://www.rochesternh.gov/"
  },
  "rollinsford": {
+  "as_of": "2025-09-02",
   "email": "selectboard@rollinsford.nh.us",
   "fax": "603-740-0254",
   "mailing": "667 Main St, PO Box 309,",
@@ -8580,6 +8763,7 @@
   "website": "https://rollinsford.nh.us/"
  },
  "roxbury": {
+  "as_of": "2025-09-02",
   "email": "townofroxburynh@myfairpoint.net",
   "fax": "603-352-4903",
   "mailing": "3 Middletown Rd, Roxbury, NH 03431",
@@ -8620,6 +8804,7 @@
   "website": "https://roxburynh.org/"
  },
  "rumney": {
+  "as_of": "2025-09-02",
   "email": "selectmen@rumneynh.org",
   "fax": "603-786-9511",
   "mailing": "79 Depot St, PO Box 220,",
@@ -8660,6 +8845,7 @@
   "website": "https://www.rumneynh.org/"
  },
  "rye": {
+  "as_of": "2025-09-02",
   "email": "jireland2@town.rye.nh.us",
   "fax": "603-964-1516",
   "mailing": "10 Central Rd, Rye, NH 03870",
@@ -8700,6 +8886,7 @@
   "website": "https://www.town.rye.nh.us/"
  },
  "salem": {
+  "as_of": "2025-09-02",
   "email": "townmanager@salemnh.gov",
   "fax": "603-898-1223",
   "mailing": "33 Geremonty Dr, Salem, NH 03079",
@@ -8776,6 +8963,7 @@
   "website": "https://www.salemnh.gov/"
  },
  "salisbury": {
+  "as_of": "2025-09-02",
   "email": "salisburyadmin@tds.net",
   "fax": "603-648-6658",
   "mailing": "9 Old Coach Rd, PO Box",
@@ -8816,6 +9004,7 @@
   "website": "https://www.salisburynh.org/"
  },
  "sanbornton": {
+  "as_of": "2025-09-02",
   "email": "townadministrator@sanborntonnh.org",
   "fax": "603-286-9544",
   "mailing": "17 Meetinghouse Hill Rd, Sanbornton, NH 03269",
@@ -8856,6 +9045,7 @@
   "website": "https://www.sanborntonnh.org/"
  },
  "sandown": {
+  "as_of": "2025-09-02",
   "email": "townofsandown@sandown.us",
   "fax": "603-887-5163",
   "mailing": "320 Main St, PO Box",
@@ -8908,6 +9098,7 @@
   "website": "https://www.sandown.us/"
  },
  "sandwich": {
+  "as_of": "2025-09-02",
   "email": "townadmin@sandwichnh.org",
   "fax": "603-887-5163",
   "mailing": "8 Maple St, PO Box 194,",
@@ -8948,6 +9139,7 @@
   "website": "https://sandwichnh.org/"
  },
  "seabrook": {
+  "as_of": "2025-09-02",
   "email": "cbowen@seabrooknh.org",
   "fax": "603-410-5932",
   "mailing": "99 Lafayette Rd, Seabrook, NH 03874",
@@ -8988,6 +9180,7 @@
   "website": "https://seabrooknh.info/"
  },
  "sharon": {
+  "as_of": "2025-09-02",
   "email": "sharon03458@gmail.com",
   "fax": "603-924-3103",
   "mailing": "432 NH Rte 123, Sharon, NH 03458",
@@ -9028,6 +9221,7 @@
   "website": "https://sharonnh.org/"
  },
  "shelburne": {
+  "as_of": "2025-09-02",
   "email": "townofshelburnenh@gmail.com",
   "fax": "603-466-5271",
   "mailing": "74 Village Rd, Shelburne, NH 03581",
@@ -9068,6 +9262,7 @@
   "website": "https://www.townofshelburnenh.com/"
  },
  "somersworth": {
+  "as_of": "2025-09-02",
   "email": "bbelmore@somersworhtnh.gov",
   "fax": "603-692-9571",
   "mailing": "1 Government Way, Somersworth, NH 03878",
@@ -9150,6 +9345,7 @@
   "website": "https://www.somersworthnh.gov/"
  },
  "south-hampton": {
+  "as_of": "2025-09-02",
   "email": "info@southhamptonnh.org",
   "fax": "603-394-2134",
   "mailing": "3 Hilldale Ave, South Hampton, NH 03827",
@@ -9190,6 +9386,7 @@
   "website": "https://www.southhamptonnh.org/"
  },
  "springfield": {
+  "as_of": "2025-09-02",
   "email": "admin@springfieldnh.org",
   "fax": "603-763-3336",
   "mailing": "2750 Main St, PO Box 22,",
@@ -9230,6 +9427,7 @@
   "website": "https://springfieldnh.org/"
  },
  "stark": {
+  "as_of": "2025-09-02",
   "email": "patty@townofstark.org",
   "fax": "603-636-6199",
   "mailing": "1189 Stark Hwy, Stark, NH 03582",
@@ -9270,6 +9468,7 @@
   "website": "https://starknh.gov/"
  },
  "stewartstown": {
+  "as_of": "2025-09-02",
   "email": "townofstewartstown@hotmail.com",
   "fax": "603-246-3329",
   "mailing": "PO Box 119, West",
@@ -9304,6 +9503,7 @@
   "website": ""
  },
  "stoddard": {
+  "as_of": "2025-09-02",
   "email": "townadministrator@stoddardnh.org",
   "fax": "603-446-2278",
   "mailing": "1450 Rte 123 North, Stoddard, NH 03464",
@@ -9344,6 +9544,7 @@
   "website": "https://www.stoddardnh.org/"
  },
  "strafford": {
+  "as_of": "2025-09-02",
   "email": "",
   "fax": "603-664-7276",
   "mailing": "12 Mountain View Dr, Strafford, NH 03884",
@@ -9384,6 +9585,7 @@
   "website": "https://strafford.nh.gov/"
  },
  "stratford": {
+  "as_of": "2025-09-02",
   "email": "stratfordnh@gmail.com",
   "fax": "603-922-3317",
   "mailing": "1956 US Rte 3, Stratford, NH 03590",
@@ -9424,6 +9626,7 @@
   "website": "https://stratfordnh.gov/"
  },
  "stratham": {
+  "as_of": "2025-09-02",
   "email": "dmoore@strathmnh.gov",
   "fax": "603-775-0517",
   "mailing": "10 Bunker Hill Ave, Stratham, NH 03885",
@@ -9464,6 +9667,7 @@
   "website": "https://www.strathamnh.gov/"
  },
  "sugar-hill": {
+  "as_of": "2025-09-02",
   "email": "selectmen@sugarhillnh.org",
   "fax": "603-823-8446",
   "mailing": "PO Box 574, Sugar Hill, NH 03586",
@@ -9504,6 +9708,7 @@
   "website": "https://www.sugarhillnh.org/"
  },
  "sullivan": {
+  "as_of": "2025-09-02",
   "email": "townofsullivan@myfairpoint.net",
   "fax": "603-847-9154",
   "mailing": "452 Centre St, PO Box 110, Sullivan, NH 03445",
@@ -9544,6 +9749,7 @@
   "website": "https://townofsullivannh.com/"
  },
  "sunapee": {
+  "as_of": "2025-09-02",
   "email": "manager@town.sunapee.nh.us",
   "fax": "603-763-4925",
   "mailing": "23 Edgemont Rd, Sunapee, NH 03782",
@@ -9596,6 +9802,7 @@
   "website": "https://www.town.sunapee.nh.us/"
  },
  "surry": {
+  "as_of": "2025-09-02",
   "email": "selectmen@surry.nh.gov",
   "fax": "603-357-4890",
   "mailing": "1 Village Rd, Surry, NH 03431",
@@ -9630,6 +9837,7 @@
   "website": "https://surry.nh.gov/"
  },
  "sutton": {
+  "as_of": "2025-09-02",
   "email": "townadmin@sutton-nh.org",
   "fax": "",
   "mailing": "93 Main St, Sutton Mills, NH 03321",
@@ -9670,6 +9878,7 @@
   "website": "https://www.sutton-nh.org/"
  },
  "swanzey": {
+  "as_of": "2025-09-02",
   "email": "mbranley@swanzeynh.gov",
   "fax": "603-352-6250",
   "mailing": "620 Old Homestead Hwy,",
@@ -9710,6 +9919,7 @@
   "website": "https://www.swanzeynh.gov/"
  },
  "tamworth": {
+  "as_of": "2025-09-02",
   "email": "admin@tamworthnh.gov",
   "fax": "603-323-2347",
   "mailing": "84 Main St, Tamworth, NH 03886",
@@ -9762,6 +9972,7 @@
   "website": "https://www.tamworthnh.org/"
  },
  "temple": {
+  "as_of": "2025-09-02",
   "email": "selectboard@templenh.org",
   "fax": "603-878-5067",
   "mailing": "423 Rte 45, PO Box 191,",
@@ -9802,6 +10013,7 @@
   "website": "https://www.templenh.gov/"
  },
  "thornton": {
+  "as_of": "2025-09-02",
   "email": "townadmin@thorntonnh.gov",
   "fax": "603-726-2078",
   "mailing": "16 Merrill Access Rd, Thornton, NH 03285",
@@ -9854,6 +10066,7 @@
   "website": "https://www.townofthornton.org/"
  },
  "tilton": {
+  "as_of": "2025-09-02",
   "email": "jforrester@tiltonnh.org",
   "fax": "603-286-3519",
   "mailing": "257 Main St, Tilton, NH 03276",
@@ -9906,6 +10119,7 @@
   "website": "http://www.tiltonnh.org/"
  },
  "troy": {
+  "as_of": "2025-09-02",
   "email": "selectmen@troy-nh.us",
   "fax": "603-242-3430",
   "mailing": "16 Central Squ, Troy, NH 03465",
@@ -9946,6 +10160,7 @@
   "website": "https://www.troy-nh.us/"
  },
  "tuftonboro": {
+  "as_of": "2025-09-02",
   "email": "selectmen@tuftonboronh.gov",
   "fax": "603-569-4328",
   "mailing": "240 Middle Rd, PO Box 98, Center Tuftonboro,",
@@ -9986,6 +10201,7 @@
   "website": "https://www.tuftonboronh.gov/"
  },
  "unity": {
+  "as_of": "2025-09-02",
   "email": "selectmen@townofunitynh.org",
   "fax": "603-542-5922",
   "mailing": "13 Center Rd #3, Unity, NH 03603",
@@ -10020,6 +10236,7 @@
   "website": "https://townofunitynh.org/"
  },
  "wakefield": {
+  "as_of": "2025-09-02",
   "email": "townadmin@wakefieldnh.com",
   "fax": "603-522-6794",
   "mailing": "2 High St, Sanbornville, NH 03872",
@@ -10060,6 +10277,7 @@
   "website": "https://www.wakefieldnh.com/"
  },
  "walpole": {
+  "as_of": "2025-09-02",
   "email": "sdowning@walpolenh.us",
   "fax": "603-756-9209",
   "mailing": "34 Elm St, PO Box 756,",
@@ -10100,6 +10318,7 @@
   "website": "https://www.walpolenh.us/"
  },
  "warner": {
+  "as_of": "2025-09-02",
   "email": "selectboard@warnernh.gov",
   "fax": "603-456-2297",
   "mailing": "5 Main St, PO Box 265,",
@@ -10140,6 +10359,7 @@
   "website": "https://warnernh.gov/"
  },
  "warren": {
+  "as_of": "2025-09-02",
   "email": "administrator@warren-nh.com",
   "fax": "603-764-9296",
   "mailing": "8 Water St, PO Box 40, Warren, NH 03279",
@@ -10180,6 +10400,7 @@
   "website": "https://www.warren-nh.com/"
  },
  "washington": {
+  "as_of": "2025-09-02",
   "email": "ddefosse@washingtonnh.org",
   "fax": "603-495-1739",
   "mailing": "7 Halfmoon Pond Rd, Washington, NH 03280",
@@ -10220,6 +10441,7 @@
   "website": "https://www.washingtonnh.org/"
  },
  "waterville-valley": {
+  "as_of": "2025-09-02",
   "email": "townofwv@watervalley.org",
   "fax": "603-236-2056",
   "mailing": "PO Box 500, Waterville, NH 03215",
@@ -10260,6 +10482,7 @@
   "website": "https://www.watervillevalleynh.gov/"
  },
  "weare": {
+  "as_of": "2025-09-02",
   "email": "office@weare.nh.gov",
   "fax": "603-529-4554",
   "mailing": "15 Flanders Memorial Rd,",
@@ -10312,6 +10535,7 @@
   "website": "https://www.weare.nh.gov/"
  },
  "webster": {
+  "as_of": "2025-09-02",
   "email": "dhadley@webster-nh.gov",
   "fax": "603-648-6055",
   "mailing": "945 Battle St, Webster, NH 03303",
@@ -10352,6 +10576,7 @@
   "website": "https://www.webster-nh.gov/"
  },
  "wentworth": {
+  "as_of": "2025-09-02",
   "email": "townofwentworth@wentworth-nh.org",
   "fax": "603-764-9362",
   "mailing": "7 Atwell Hill Rd, PO Box 2, Wentworth, NH 03282",
@@ -10398,6 +10623,7 @@
   "website": "https://www.wentworth-nh.org/"
  },
  "westmoreland": {
+  "as_of": "2025-09-02",
   "email": "admin@westmorelandnh.com",
   "fax": "603-399-4386",
   "mailing": "780 Rte 63, PO Box 55,",
@@ -10438,6 +10664,7 @@
   "website": "https://westmorelandnh.com/"
  },
  "whitefield": {
+  "as_of": "2025-09-02",
   "email": "administrativeassistant@whitefieldnh.org",
   "fax": "603-837-3148",
   "mailing": "56 Littleton Rd, Whitefield, NH 03598",
@@ -10478,6 +10705,7 @@
   "website": "https://www.whitefieldnh.org/"
  },
  "wilmot": {
+  "as_of": "2025-09-02",
   "email": "admin@wilmotnh.org",
   "fax": "603-526-2523",
   "mailing": "9 Kearsage Valley Rd, Wilmot, NH 03287",
@@ -10518,6 +10746,7 @@
   "website": "https://www.wilmotnh.org/"
  },
  "wilton": {
+  "as_of": "2025-09-02",
   "email": "wiltonta@wiltonnh.gov",
   "fax": "603-654-6663",
   "mailing": "42 Main St, Wilton, NH 03086",
@@ -10558,6 +10787,7 @@
   "website": "https://www.wiltonnh.gov/"
  },
  "winchester": {
+  "as_of": "2025-09-02",
   "email": "kminer@winchester.nh.gov",
   "fax": "603-239-4710",
   "mailing": "1 Richmond Rd, Winchester, NH 03470",
@@ -10610,6 +10840,7 @@
   "website": "https://www.winchester-nh.gov/"
  },
  "windham": {
+  "as_of": "2025-09-02",
   "email": "townadmin@windhamnh.gov",
   "fax": "603-965-1234",
   "mailing": "3 North Lowell Rd, Windham, NH 03087",
@@ -10656,6 +10887,7 @@
   "website": "https://windhamnh.gov/"
  },
  "windsor": {
+  "as_of": "2025-09-02",
   "email": "windsor.nh@gsinet.net",
   "fax": "603-478-3293",
   "mailing": "14 White Pond Rd, Windsor, NH 03244",
@@ -10690,6 +10922,7 @@
   "website": "https://www.windsornh.org/"
  },
  "wolfeboro": {
+  "as_of": "2025-09-02",
   "email": "tmsecretary@wolfeboronh.us",
   "fax": "603-478-3293",
   "mailing": "84 South Main St, PO Box",
@@ -10742,6 +10975,7 @@
   "website": "https://www.wolfeboronh.us/"
  },
  "woodstock": {
+  "as_of": "2025-09-02",
   "email": "admin@woodstocknh.org",
   "fax": "603-745-2393",
   "mailing": "165 Lost River Rd, PO Box 156, Woodstock, NH",

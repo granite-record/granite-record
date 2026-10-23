@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-12.7
+# GRANITE_VERSION: 2026-09-12.8
 """
 Municipal officials, out of the Department of Transportation's directory.
 
@@ -66,6 +66,25 @@ longer than its cell, and the overflow was threaded into the next column a
 character at a time -- Sutton's administrator's address came out "t.t
 o4wnadmin@sutton-nh.org". `restream` reads such a row again in the PDF's own
 order, and `--report` prints every row it changed.
+
+THE DIRECTORY'S DATE, ON EVERY MUNICIPALITY (23 October 2026). Each record
+carries `as_of`, the day the directory is true as of: its PDF's own
+CreationDate (2025-09-02 for this edition, a day after the date in its file
+name), or --as-of where a new edition carries none. src/towns/town_sources.py
+reads it, and preflight's _town_sources_dated holds the page's "dated
+September 2025" to it, so a new edition cannot be published under the old
+one's month.
+
+THE TOWNS IT MATCHES, WITH OR WITHOUT A BUILT SITE, AND A FLOOR. A
+municipality is kept only where it matches a town the site has, and those
+were read from site/districts.json alone: on a machine with no built site --
+a fresh clone, a cloud session -- every one of the 234 failed to match, and
+this wrote `{}` in collected/town_officials.json's place and exited 0 (found
+by the freshness review, 23 October 2026, before it reached git).
+generated/places.json, which git keeps
+and which names the same towns, is read where the site is not there, as
+parse_clerks_csv.py already did; and nothing is written under
+town_sources.FLOORS["nhdot"] unless a person passes --allow-shrink.
 """
 # The bootstrap: _paths.py, found above this file, puts every code folder on the import path.
 import sys
@@ -78,6 +97,8 @@ import collections
 import json
 import pathlib
 import re
+
+import town_sources
 
 # The repository root, wherever this file sits (_paths.py): the data it
 # reads is the root's.
@@ -352,6 +373,37 @@ def read(pdf_path):
             restreamed)
 
 
+def document_date(pdf_path):
+    """The directory's own date, "YYYY-MM-DD", from its PDF's CreationDate
+    ("D:20250902153549-04'00'"); "" where it carries none."""
+    import pdfplumber
+    with pdfplumber.open(pdf_path) as pdf:
+        raw = str((pdf.metadata or {}).get("CreationDate") or "")
+    m = re.match(r"^(?:D:)?(\d{4})(\d\d)(\d\d)", raw)
+    return f"{m.group(1)}-{m.group(2)}-{m.group(3)}" if m else ""
+
+
+def site_towns(site):
+    """{NAME IN CAPITALS: the name as the site writes it} for every town the
+    site builds a page for, and the same without apostrophes -- the directory
+    writes "Harts Location" where the district files write "Hart's Location".
+    From site/districts.json where a site is built, and from
+    generated/places.json, which names the same towns and is in git, where
+    it is not (the docstring's THE TOWNS IT MATCHES)."""
+    dj = pathlib.Path(site) / "districts.json"
+    if dj.exists():
+        names = list(json.loads(dj.read_text(encoding="utf-8")))
+    else:
+        pj = ROOT / "generated" / "places.json"
+        if not pj.exists():
+            return {}
+        names = [v["name"] for v in
+                 json.loads(pj.read_text(encoding="utf-8"))["places"].values()]
+    known = {t.upper(): t for t in names}
+    known.update({t.upper().replace("'", ""): t for t in names})
+    return known
+
+
 def tidy(towns):
     """Drop the empty offices, order them, and fold the obvious duplicates."""
     for t in towns.values():
@@ -375,21 +427,24 @@ def main():
     ap.add_argument("--site", default="site")
     ap.add_argument("--out", default=str(OUT))
     ap.add_argument("--report", action="store_true")
+    ap.add_argument("--as-of", default=None,
+                    help="the directory's date, YYYY-MM-DD, where its PDF carries no "
+                         "CreationDate")
+    ap.add_argument("--allow-shrink", action="store_true",
+                    help="write even under town_sources.FLOORS: a person's decision that "
+                         "the directory really is smaller")
     a = ap.parse_args()
     pdf = pathlib.Path(a.pdf)
     if not pdf.exists():
         sys.exit(f"{pdf} is not there; the directory lives in records/sources/")
+    as_of = a.as_of or document_date(pdf)
+    if not re.fullmatch(r"\d{4}-\d\d-\d\d", as_of or ""):
+        sys.exit(f"{pdf} carries no CreationDate to date it by: give the directory's own "
+                 "date with --as-of YYYY-MM-DD")
     towns, notes, raw_site, restreamed = read(pdf)
     towns = tidy(towns)
 
-    dj = pathlib.Path(a.site) / "districts.json"
-    known = {}
-    if dj.exists():
-        d = json.loads(dj.read_text(encoding="utf-8"))
-        # Apostrophes: the directory writes "Harts Location" and the district
-        # file "Hart's Location".
-        known = {t.upper(): t for t in d}
-        known.update({t.upper().replace("'", ""): t for t in d})
+    known = site_towns(a.site)
     out, unmatched = {}, []
     for name, rec in towns.items():
         key = name.upper()
@@ -398,10 +453,10 @@ def main():
             unmatched.append(name)
             continue
         s = re.sub(r"[^a-z0-9]+", "-", real.lower()).strip("-")
-        out[s] = rec
+        out[s] = dict(rec, as_of=as_of)
     counts = collections.Counter(
         o["position"] for r in out.values() for o in r["officials"])
-    print(f"  {len(towns)} municipalities in the directory, "
+    print(f"  {len(towns)} municipalities in the directory dated {as_of}, "
           f"{len(out)} matched to a town this site has")
     print(f"  {sum(len(r['officials']) for r in out.values())} named offices")
     for pos, n in counts.most_common(12):
@@ -445,9 +500,17 @@ def main():
             print(f"      {k}: {name}: {e!r}")
     for n in notes[:6]:
         print(f"    {n}")
+    # Silence is not success: see THE TOWNS IT MATCHES, AND A FLOOR.
+    short = town_sources.short_of("nhdot", out)
+    for s in short:
+        print(f"  ! {s}")
     if a.report:
         print("  --report: nothing written")
         return
+    if short and not a.allow_shrink:
+        sys.exit("  nothing written: the directory read under its floor "
+                 "(town_sources.FLOORS). Look at what it matched before trusting it; "
+                 "--allow-shrink writes it anyway")
     pathlib.Path(a.out).write_text(
         json.dumps(out, indent=1, sort_keys=True) + "\n", encoding="utf-8")
     print(f"  -> {a.out} ({len(out)} municipalities)")
