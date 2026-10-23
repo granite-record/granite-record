@@ -19,10 +19,25 @@ up to last night's build. Nothing here implies real time.
 | `store.js` | Database calls more than one endpoint makes: forgetting an address, finding the reader a link belongs to, the purge, the count, the day's ceiling. |
 | `changes.js` | Reading the site's `/changes/` files and holding them to `CHANGES_FORMAT.md`. |
 | `mail.js` | The one call to Resend, and the five emails: the confirmation, the "You're following" a confirmation sends, a new link, the daily and the weekly, in plain text and simple HTML. |
+| `site.gen.js` | Written, not edited: the site's colours and words the emails share, which `src/pages/follow_site.py` reads from the site's own files (below). |
 | `page.js` | The HTML of the confirm, manage and unsubscribe pages. |
 | `sender.js` | The scheduled Worker that sends the daily and weekly emails. |
 | `wrangler.toml` | The sender's own configuration: cron, the D1 binding, plain settings. No secret. |
 | `CHANGES_FORMAT.md` | The contract for the files the nightly build publishes under `/changes/`, which are all the sender reads. |
+
+**The site's colours and words** (23 October 2026). What an email shares
+with the site is never typed in this folder: `site.gen.js` holds it, written
+by `python3 src/pages/follow_site.py` from where the site keeps each one, and
+`mail.js` imports it. The inks (`--ink`, `--ink-2`, `--rule`, `--pine`), a
+bill status's colour (`--st-*`) and the vote ring's two (`--yes`, `--no`) are
+`src/pages/app.css`'s light theme; the word each status chip is coloured by
+is `src/pages/words/chips.json`'s `chip`; the testimony forms are
+`src/pages/app.js`'s `TESTIFY_FORMS`; a study report's words are
+`src/pages/words/study_report.json`'s; the mark's file and size are
+`src/pages/build_brand.py`'s. To change one, change it there, run that
+command and commit `site.gen.js` with the change; `preflight` fails until
+the two agree, and names the command. The emails' own choices -- the white
+ground, the mark's empty alt, every sentence -- stay in `mail.js`.
 
 A digest can be rendered without sending it: `node tests/follow/preview_digest.js [--weekly] [--follow kind:ref ...] [--site URL | --dir site]` reads a site's real `/changes/` files and writes the email's HTML and text, through the sender's own `collect()` and `digestEmail()`, to `preview-mail/`. No database, no Resend, no address. It sits beside the tests because it prints, and nothing in the Worker may.
 
