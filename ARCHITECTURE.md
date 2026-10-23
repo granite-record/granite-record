@@ -42,8 +42,13 @@ stylesheet: every page links it, the record pages and the five
 cascade, and the copy published in `site/` is the file without its comments.
 The rules for those five pages alone are scoped to them with
 `:where(body.pg)`; a record page's rule that would redraw them is scoped
-away with `:where(body:not(.pg))` (the note at the top of `app.css`), and the `dom_stub.js` that
-`preflight` loads it against is in `tests/`. `src/README.md` has the tree and the rule
+away with `:where(body:not(.pg))` (the note at the top of `app.css`). The
+frame of every page -- the header and its nav, the footer, the head's icons,
+fonts and theme script -- is `chrome.py`'s: `bills.html` carries a
+`<!-- CHROME:... -->` slot for each part, which `shell.template()` fills,
+and `build_pages.shell()` asks for the same four, so the nav is edited in
+one place. The `dom_stub.js` that `preflight` loads the front end against
+is in `tests/`. `src/README.md` has the tree and the rule
 for where a new file goes, and each folder's own README says what it holds:
 
     src/fetch/gc_web/    asks gc.nh.gov's web server

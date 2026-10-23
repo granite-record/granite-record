@@ -30,6 +30,7 @@ import _paths  # noqa: E402,F401
 
 import argparse
 import about_figures
+import chrome
 import bill_order as BO
 import build_date
 import civics as _civics
@@ -42,26 +43,6 @@ import legislative_year as _year
 import re
 import shutil
 from collections import OrderedDict, defaultdict, namedtuple
-
-
-def themer(part, src="src/pages/bills.html"):
-    """One piece of the theme control, read out of bills.html.
-
-    READ, NOT COPIED: a component pasted into two files diverges on the
-    first fix. bills.html
-    is the template every record page is built from, so the control has to
-    live there; these four pages are built here instead and need the same
-    three pieces. A second copy would be two controls that drift, and the
-    drift would show as the toggle working on a bill and not on the home page.
-
-    part is "HEAD" (the pre-paint script), "BTN" (the nav button) or "JS"
-    (the handler). A missing marker raises rather than quietly emitting a page
-    with no control on it.
-    """
-    text = Path(src).read_text(encoding="utf-8")
-    a = text.index(f"<!-- THEMER:{part} -->")
-    b = text.index(f"<!-- /THEMER:{part} -->")
-    return text[a:b].split("-->", 1)[1].strip()
 
 
 # THE LOGO AND THE ICONS: THE FILES A COMPLETE SITE CARRIES BESIDE ITS PAGES.
@@ -165,21 +146,6 @@ def strip_css(css):
             out.append(c)
             i += 1
     return "\n".join(ln.rstrip() for ln in "".join(out).split("\n") if ln.strip()) + "\n"
-
-
-FONTS = ('<link rel="preconnect" href="https://fonts.googleapis.com">'
-         '<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>'
-         '<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600'
-         '&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&family=Playfair+Display:wght@600&family=IBM+Plex+Mono:wght@500'
-         '&display=swap" rel="stylesheet">')
-
-
-# The menu button a phone header carries. Written here and in bills.html,
-# which is the same duplication the nav itself has always had and for the
-# same reason: one of them is the template every record page inherits.
-# The SEARCH button is not here -- find.js mounts its own, and a second one
-# would be two controls doing one job.
-MENU_BTN = ('<button class="navmenu" id="navmenu" type="button" aria-expanded="false" aria-controls="navdrop" aria-label="Sections"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><path d="M3.2 6h13.6M3.2 10h13.6M3.2 14h13.6"/></svg></button>')
 
 
 # THE HEADER THAT REPLACED THE VERSION QUERY.
@@ -304,41 +270,14 @@ REDIRECTS = ("# Written by build_pages.py. Not an asset; Pages reads it.\n"
              + "".join(f"{old} {new} 301\n" for old, new in MOVED))
 
 
-# WHAT A POWER USER NEEDS, IN THE FOOTER, WHERE THEY WILL LOOK FOR IT.
-# data.html and manifest.json describe every table, and nothing linked them
-# from the bottom of a page, so the only way to find the bulk downloads was to
-# already know they existed. The same line says when the data was last
-# rebuilt: a reader deciding whether to trust a status should not have to go
-# to the home page to find out how old it is.
-#
-# The date is read from build.json rather than baked in, because this function
-# runs at step 15 of 22 and build.json is written after step 22 -- a baked
-# stamp would always be a few minutes early and would differ page to page.
-# It is one small cached request, and the line simply does not appear if the
-# fetch fails.
-FOOT_JS = (
-    '<script>fetch(new URL("build.json",location.origin+"/").href)'
-    '.then(r=>r.json()).then(B=>{'
-    'var e=document.getElementById("built");'
-    'if(!e||!B.finished)return;'
-    'e.textContent=" Data rebuilt "+new Date(B.finished)'
-    '.toLocaleDateString("en-US",{year:"numeric",month:"long",day:"numeric"})+".";'
-    '}).catch(function(){});</script>')
-
-# The one sentence that explains the bulk data, used in both footers so they
-# cannot drift. "Every table" is literal: data.html builds from the same
-# manifest the tables are written from.
-# THE REPOSITORY, NAMED ONCE. The footer links it, and so do the Data page
-# and "How this is made" -- three places for three different readers, and one
-# constant so a move cannot leave two of them pointing at nothing.
-REPO = "https://github.com/granite-record/granite-record"
+# THE REPOSITORY, NAMED ONCE: chrome.REPO, which the footer links too.
+REPO = chrome.REPO
 
 # The directory link that used to sit in the footer has moved to the Data
 # page: in a grey band it was one link among four and could not say what it
 # was for, and on that page it gets a heading and the sentence that matters --
 # every record as a plain link, no JavaScript, which is also what a crawler
-# follows. The footer's own links are written inline in the two footers now,
-# so there is no constant here to drift out of step with bills.html.
+# follows. The footer's own links are chrome.FOOTER's.
 
 
 # ===================================================== the hearing calendar ==
@@ -1222,63 +1161,17 @@ def cal_notes(up, missing, esc):
     return "".join(html)
 
 
-# THE SECTIONS, in the header's order, with each one's drawing.
-NAV_TABS = (("bills.html", "Bills", "bill"),
-            # LAWS, BESIDE BILLS (the person, 11 October 2026: "The top level
-            # nav and page urls should say Laws since that's the easiest thing
-            # to understand for newcomers"). A bill proposes to change a law;
-            # the two are read together. build_rsa.py writes /laws.
-            ("laws.html", "Laws", "law"),
-            # OFFICIALS, NOT LEGISLATORS, AND RESOURCES, NOT LEARN (the
-            # person, 8 October 2026, late evening: "the polish release's five
-            # tabs are Bills, Officials, Calendar, Committees, Resources"). The
-            # page moved with its tab: /legislators and /learn answer with a
-            # 301 to the new addresses (MOVED, below).
-            ("officials.html", "Officials", "person"),
-            # A second nav emitter. bills.html carries the nav every
-            # shell.page() page inherits; this tuple is what officials.html,
-            # index.html and about.html get, and when Data was added to the
-            # first it was not added here, so three pages lacked the link the
-            # other 34,000 had. preflight holds the two to the same five.
-            ("calendar.html", "Calendar", "calendar"),
-            ("committees.html", "Committees", "committee"),
-            ("resources.html", "Resources", "book"))
+# THE SECTIONS, in the header's order: chrome.NAV_TABS, which draws them.
+NAV_TABS = chrome.NAV_TABS
 
 
 def shell(title, current, body, wide=False, script="", desc="",
           base="https://graniterecord.org"):
-    tabs = []
-    # FOUR TABS. Data and About came off: both are pages for somebody who
-    # already knows what they want, both have carried a footer link since the
-    # footer was written, and seven similar words is what made the row hard to
-    # read in the first place. Home came off because the mark beside the
-    # wordmark is the way home on every site a reader uses -- it only needed
-    # to be a link.
-    # EACH WITH ITS DRAWING (Polish 1, 9 October 2026): the prototype kit's
-    # icon before the word, from components.icon, as bills.html's nav carries
-    # it; preflight holds the two emitters to the same five.
-    for href, label, glyph in NAV_TABS:
-        cur = ' aria-current="page"' if href == current else ""
-        tabs.append(f'<a href="{href}"{cur}>{icon(glyph)}{label}</a>')
-    # ONE WRAPPER, WRITTEN TWICE BECAUSE THE NAV IS. bills.html carries the
-    # same <div class="navtabs"> around the same four links and app.css
-    # styles it once; without it the links wrap through the middle of the row
-    # and the theme control is stranded on a line of its own.
-    # ONE DROPPABLE GROUP. .navdrop wraps the sections and the theme control
-    # so that a phone can fold both behind one button without the markup
-    # being written twice. On a desktop it is display:contents and the grid
-    # sees straight through it, so the layout is brand / sections / control
-    # exactly as before.
-    nav = [f'<div class="navdrop" id="navdrop"><div class="navtabs">{"".join(tabs)}</div>',
-           # The same control bills.html carries, read from there rather than
-           # written again here.
-           themer("BTN"),
-           "</div>",
-           MENU_BTN]
-    # The home page has no tab any more, so the brand is what carries the
-    # "you are here" for it -- said to a screen reader, not drawn, because the
-    # chip that marks a tab is scoped to .navtabs and the brand is not one.
-    BRAND_CUR = ' aria-current="page"' if current == "index.html" else ""
+    """A page of the five this file writes -- the home page, Officials, About,
+    /search and 404 -- in the frame every page shares (chrome.py): the head's
+    shared lines, the header with `current` marked as the section a reader is
+    on, the footer and the closing scripts, around `body`. shell.page() puts
+    the record pages in the same frame, from bills.html's CHROME slots."""
     # THE PAGES A SEARCH ENGINE REACHES FIRST HAD THE LEAST IN THEIR HEAD.
     # Every one of the 33,683 bill pages carries a description, a canonical
     # address and an unfurl card because shell.py writes them. The home page,
@@ -1289,28 +1182,6 @@ def shell(title, current, body, wide=False, script="", desc="",
     # The host serves /legislators, not /legislators.html, and redirects
     # the second to the first. shell.canon is where that is written down.
     _canon = (base + _shell.canon("/" + current)) if current else (base + "/")
-    # The same block bills.html carries, for the same reasons -- written
-    # twice because the two emitters are, and kept next to each other in both
-    # files so a change to one is obvious in the other.
-    # The card a shared link unfurls into, by kind of page (build_brand.py
-    # draws them); the plain logo card for the home page and About.
-    _card = {"officials.html": ("og-legislator.png", "legislators and their voting records"),
-             "bills.html": ("og-bill.png", "bills, votes and hearings")}.get(current)
-    _img = f"https://graniterecord.org/{_card[0] if _card else 'og.png'}"
-    _alt = f"Granite Record: {_card[1]}" if _card else "Granite Record"
-    BRAND_HEAD = f"""<link rel="icon" href="/icon.svg" type="image/svg+xml">
-<link rel="icon" href="/icon-32.png" sizes="32x32" type="image/png">
-<link rel="icon" href="/favicon.ico" sizes="any">
-<link rel="apple-touch-icon" href="/icon-180.png">
-<link rel="manifest" href="/site.webmanifest">
-<meta name="theme-color" content="#E9EAEC" media="(prefers-color-scheme: light)">
-<meta name="theme-color" content="#171B1C" media="(prefers-color-scheme: dark)">
-<meta property="og:image" content="{_img}">
-<meta property="og:image:width" content="1200">
-<meta property="og:image:height" content="630">
-<meta property="og:image:alt" content="{_alt}">
-<meta name="twitter:image" content="{_img}">
-"""
     HEAD_SEO = (f'<meta name="description" content="{_e(desc)}">'
                 f'<link rel="canonical" href="{_canon}">'
                 f'<meta property="og:type" content="website">'
@@ -1319,54 +1190,24 @@ def shell(title, current, body, wide=False, script="", desc="",
                 f'<meta property="og:url" content="{_canon}">'
                 f'<meta property="og:site_name" content="Granite Record">'
                 f'<meta name="twitter:card" content="summary_large_image">') if desc else ""
+    # The home page has no tab, so the brand carries its "you are here"
+    # (chrome.nav's home).
     # Every link at the address the host serves (shell.clean_links).
     return _shell.clean_links(f"""<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>{title}</title>{HEAD_SEO}{FONTS}{BRAND_HEAD}{themer("HEAD")}<link rel="stylesheet" href="/app.css">
-<script src="/components.js"></script>
+<title>{title}</title>{HEAD_SEO}
+{chrome.head(current)}
 <!-- body.pg is what the rules for these pages alone are scoped to in app.css
      (:where(body.pg)): every page loads the one stylesheet. -->
 <link rel="alternate" type="application/rss+xml" title="Granite Record — all activity"
  href="/feed/all.xml">
 <link rel="alternate" type="application/rss+xml" title="Granite Record — upcoming hearings"
  href="/feed/hearings.xml"></head><body class="pg">
-<a class="skip" href="#main">Skip to the content</a>\n<nav class="top" aria-label="Sections"><div class="in"><a class="brand" href="index.html"{BRAND_CUR} translate="no">Granite Record</a>
-{''.join(nav)}</div></nav>
+<a class="skip" href="#main">Skip to the content</a>
+{chrome.nav(current, home=current == "index.html")}
 <main class="wrap{' wide' if wide else ''}" id="main">{body}</main>
-<footer><div class="in">
-<div class="fcols">
-<div class="fcol">
-<p class="fcolhead">Granite Record</p>
-<p class="attrib">Built from public records published by the <b>New Hampshire
-General Court</b>. Not affiliated with the General Court, and not a substitute
-for it &mdash; where this site and the Court&rsquo;s own record disagree, the
-Court is right and we want to know.</p>
-<p class="footby">An independent project by Alice Wade &middot; <a href="about.html">About</a></p>
-<p class="logocredit">Logo drawn by Debra Caplan, an artist in Peterborough, NH
-&middot; <a href="https://www.linescapesnh.com/" rel="noopener">linescapesnh.com</a></p>
-</div>
-<div class="fcol">
-<p class="fcolhead">The record</p>
-<ul class="flinks">
-<li><a href="data.html">Bulk data</a></li>
-<li><a href="learn/glossary.html">Glossary</a></li>
-<li><a class="out" href="{REPO}" target="_blank" rel="noopener">Source on GitHub</a></li>
-</ul>
-</div>
-<div class="fcol">
-<p class="fcolhead">Tell us</p>
-<a class="fbk out" href="https://forms.gle/PYw9c3xgpDDwvX7E9" target="_blank"
- rel="noopener">What do you think?</a>
-<p class="fbknote">The site is new and being tested. Found an error?
-<a href="mailto:contact@graniterecord.org">contact@graniterecord.org</a></p>
-</div>
-</div>
-<p class="footdata"><span id="built"></span><span class="lic">Open source (MIT License)</span></p>
-</div></footer>{FOOT_JS}
-{themer("JS")}
-<!-- The header's search, on every page this file writes. Its own file rather
-     than app.js, which these pages do not load: 6 KB against 200. -->
-<script src="/find.js" defer></script>
+{chrome.footer()}
+{chrome.scripts()}
 {script}</body></html>""")
 
 
@@ -2992,7 +2833,7 @@ def bills_page(t):
     what the page is, every address is the one the host serves, and the page
     carries a plain paragraph and the way to every bill as a plain list,
     hidden under html.js as a record page's static record is."""
-    t = _shell.clean_links(t).replace(
+    t = _shell.clean_links(chrome.fill(t, "bills.html")).replace(
         'content="https://graniterecord.org/bills.html"', 'content="https://graniterecord.org/bills"')
     t = t.replace(_shell.NEEDS["title"],
                   "<title>New Hampshire Bills \u2014 search every bill since 1989 | Granite Record</title>", 1)

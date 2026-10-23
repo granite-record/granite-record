@@ -36074,7 +36074,7 @@ def _plain_action(PA, B, BF):
 
 
 @check("build", "the glossary page lists every glossary.json entry once, by its name in full, "
-       "and both footers lead to it", needs=("build_civics", "components"))
+       "and the footer leads to it", needs=("build_civics", "components"))
 def _glossary_page(B, C):
     """The person, 14 October 2026: a glossary "linked somewhere directly on
     the homepage without being too intrusive", the footer chosen. The page is
@@ -36085,10 +36085,10 @@ def _glossary_page(B, C):
         assert body.count(f'id="t-{B._slug(key)}"') == 1, f"{key} is not on the glossary page exactly once"
         assert f"<b>{B.E(e['name'])}</b>" in body, f"{key}'s name in full is missing"
     assert [h for _, h, _ in secs] == sorted(h for _, h, _ in secs), "the letters are out of order"
-    for f in ("src/pages/build_pages.py", "src/pages/bills.html"):
-        assert '<a href="learn/glossary.html">Glossary</a>' in Path(f).read_text(encoding="utf-8"), \
-            f"{f}'s footer does not lead to the glossary"
-    return "ok", f"{len(C.WORDBOOK['glossary'])} terms under {len(secs)} letters, linked from both footers"
+    import chrome as CH
+    assert '<a href="learn/glossary.html">Glossary</a>' in CH.FOOTER, \
+        "the footer (chrome.FOOTER, on every page) does not lead to the glossary"
+    return "ok", f"{len(C.WORDBOOK['glossary'])} terms under {len(secs)} letters, linked from the footer"
 
 
 @check("build", "Using This Site's Reading the Shorthand is drawn from glossary.json, row for row, "
@@ -42353,7 +42353,7 @@ def _directory_pages():
         # footer must link the Data page, and the Data page must link the
         # directory. Asserting the old shape would have made a deliberate
         # change look like a regression.
-        foot = (here / "src/pages/bills.html").read_text(encoding="utf-8")
+        foot = (here / "src/pages/chrome.py").read_text(encoding="utf-8")
         assert 'href="data.html"' in foot, (
             "the footer does not link the Data page, which is now the route "
             "to the directory and so to every record")
@@ -43966,9 +43966,10 @@ def _logo_licence():
     and a link to linescapesnh.com in the site footer and on the About page,
     and the person asked that her files never be in this public repository.
 
-    The footer is written twice -- bills.html for the record pages,
+    The footer was written twice -- bills.html for the record pages,
     build_pages.shell() for the rest -- so a credit dropped from one copy would
-    leave thousands of pages without it and every check of the other passing.
+    have left thousands of pages without it. It is chrome.FOOTER's alone since
+    23 October 2026 (_frame_written_once), and held here.
     And brand/licensed/ and assets/licensed/ are gitignored, which stops a
     `git add .` but not a `git add -f`, so this asks git what it tracks.
 
@@ -43982,8 +43983,8 @@ def _logo_licence():
     names, and the one answer allowed is assets/site.webmanifest, which is
     text and MIT like the code."""
     import subprocess
-    for f in ("bills.html", "build_pages.py"):
-        src = _paths.locate(f).read_text(encoding="utf-8")
+    import chrome as CH
+    for f, src in (("chrome.FOOTER", CH.FOOTER),):
         assert src.count('class="logocredit"') == 1, f"{f}: the footer's logo credit is missing or doubled"
         assert "Debra Caplan" in src and "https://www.linescapesnh.com/" in src, \
             f"{f}: the footer credit no longer names Debra Caplan and links linescapesnh.com"
@@ -44012,7 +44013,7 @@ def _logo_licence():
     assert not tracked, ("logo or icon files are tracked by git and would be published "
                          "with the code, which they are not licensed for: "
                          + ", ".join(tracked[:5]))
-    return "ok", ("credit in both footers and on About; nothing of brand/ or assets/ "
+    return "ok", ("credit in the footer (chrome.FOOTER) and on About; nothing of brand/ or assets/ "
                   "is tracked but the manifest, and .gitignore keeps it so")
 
 
@@ -44026,8 +44027,8 @@ def _brand_files():
     build_pages.BRAND_FILES, and it is only worth having if it is true -- so
     it is held to the four places a page can ask for one of them:
 
-      - the icon and manifest <link>s in the two head-writers, bills.html and
-        build_pages.shell(), which must agree with each other
+      - the icon and manifest <link>s in every page's head, which
+        chrome.head writes for both kinds of page
       - the link card every builder names (og.png and og-<kind>.png)
       - the stylesheet's url(/...)
       - the icons site.webmanifest lists
@@ -44064,16 +44065,14 @@ def _brand_files():
         return text
 
     head = re.compile(r'<link rel="(?:icon|apple-touch-icon|manifest)" href="/([^"]+)"')
-    heads = {f: set(head.findall(code(f))) for f in ("bills.html", "build_pages.py")}
+    # ONE HEAD-WRITER SINCE 23 OCTOBER 2026: chrome.head, for every page.
+    heads = {f: set(head.findall(code(f))) for f in ("chrome.py",)}
     for f, got in heads.items():
         assert got, f"{f} links no icon in its head; has the markup changed?"
         for g in got:
             named.setdefault(g, f)
-    assert heads["bills.html"] == heads["build_pages.py"], (
-        "the two head-writers link different icons: bills.html "
-        f"{sorted(heads['bills.html'])}, build_pages.py {sorted(heads['build_pages.py'])}")
     card = re.compile(r"\bog(?:-[a-z]+)?\.png")
-    for f in [x.name for x in _paths.code_files("build_*.py")] + ["shell.py", "bills.html"]:
+    for f in [x.name for x in _paths.code_files("build_*.py")] + ["shell.py", "bills.html", "chrome.py"]:
         if f == "build_brand.py" or not _paths.locate(f).exists():
             continue        # it draws them; it does not ask for them
         for g in set(card.findall(code(f))):
@@ -59028,8 +59027,7 @@ def _record_not_translated():
         "src/pages/constitution_tab.py": ['<div class="rs-text" translate="no">'],
         "src/pages/build_bill_pages.py": ['<p class="sx-title" translate="no">',
                                           '<div class="sx-docket" translate="no">'],
-        "src/pages/build_pages.py": ['<a class="brand" href="index.html"{BRAND_CUR} translate="no">'],
-        "src/pages/bills.html": ['<a class="brand" href="index.html" translate="no">'],
+        "src/pages/chrome.py": ['<a class="brand" href="index.html"{brand_cur} translate="no">'],
     }
     missing = [f"{f}: {w}" for f, ws in want.items()
                for w in ws if w not in Path(f).read_text(encoding="utf-8")]
@@ -59272,8 +59270,8 @@ def _icons_named():
     aria-hidden="true" and focusable="false" and holds no text, so a screen
     reader reads the control and never "image"; each sits in a link, a button
     or a summary whose own words -- or, where the drawing stands alone, whose
-    aria-label -- name it; every header on the site, bills.html's and
-    build_pages.shell's alike, gives the five sections in NAV_TABS's order,
+    aria-label -- name it; every header on the site, the record pages' and
+    build_pages.shell's alike, gives the five sections in chrome.NAV_TABS's order,
     each with its drawing before its word; and the drawings the person asked
     for are on the fixture's pages: the five sections, the home page's cards
     and Search, and Cite this page. Follow, Report a problem and Share are
@@ -59293,7 +59291,8 @@ def _icons_named():
         sources[f"drawn {key}"] = "\n".join(h for _k, h, *_ in d["elements"] if h)
     drawings = {n: C.icon(n) for n in C.ICONS}
     seen, bad, n_icons, navs = Counter(), [], 0, 0
-    want_nav = [(href, drawings[g], label) for href, label, g in BP.NAV_TABS]
+    import chrome as CH
+    want_nav = [(href, drawings[g], label) for href, label, g in CH.NAV_TABS]
     for where, html in sources.items():
         if 'class="icon"' not in html:
             continue
@@ -59933,11 +59932,10 @@ _DATE_EXEMPT = {
     # which only the browser has: month first, as dateWords writes a day. And
     # the home page's floor-session titles, "August 19th, 2026" (F3), the
     # person's own exception.
-    "build_pages.py": ('.toLocaleDateString("en-US",{year:"numeric",month:"long",day:"numeric"})',
-                       'return DW_MONTHS[m-1]+" "+ordinal(dd)'),
+    "chrome.py": ('.toLocaleDateString("en-US",{year:"numeric",month:"long",day:"numeric"})',),
+    "build_pages.py": ('return DW_MONTHS[m-1]+" "+ordinal(dd)',),
     # A month and its year ("October 2026") over the month's grid: not a day.
     "build_calendar.py": ('monthWords(m){ return MONTH[',),
-    "bills.html": ('.toLocaleDateString("en-US",{year:"numeric",month:"long",day:"numeric"})',),
 }
 _DATE_IDIOMS = (
     (r"strftime\(\s*[\"'][^\"']*%[aAbB]", "a strftime that writes a month or a weekday"),
@@ -64744,15 +64742,110 @@ def _docket_cancel_mark_kept(N, B):
                   "it and nowhere a pattern reads; the cancelled report and introduction listed")
 
 
+@check("frontend", "the header, the nav, the footer and the head's shared lines are written once, in "
+                   "chrome.py, and every page carries them")
+def _frame_written_once():
+    """ONE WRAPPER, WRITTEN TWICE BECAUSE THE NAV IS -- the comment that stood
+    in build_pages.shell() until 23 October 2026. The frame of every page was
+    written by hand in two places: bills.html, the template of the 34,000
+    record pages, and build_pages.shell(), which writes the home page,
+    Officials, About, /search and 404. When Data was added to one nav and not
+    the other, three pages lacked the link the rest had, and the checks that
+    held the two copies to each other found such drift only after the second
+    edit had been forgotten. Now chrome.py writes the head's shared lines,
+    the header, the footer and the closing scripts once, bills.html carries a
+    slot for each, and build_pages.shell() asks for the same four.
+
+    So: bills.html has each of chrome.SLOTS once and none of the frame
+    written out; no builder in src/pages/ writes a header, a footer, the menu
+    button, the theme control, the icons or the fonts of its own -- chrome.py
+    is the only file that names them; chrome.fill fills every slot and is
+    harmless twice; and every page the fixture's builders wrote carries
+    chrome's header, with only the section it is on marked, and chrome's
+    footer, at the addresses the host serves -- whichever of the two
+    emitters wrote it.
+    """
+    import chrome as CH
+    import shell as S
+    t = Path("src/pages/bills.html").read_text(encoding="utf-8")
+    for slot in CH.SLOTS:
+        assert t.count(f"<!-- CHROME:{slot} -->") == 1, (
+            f"bills.html has {t.count(f'<!-- CHROME:{slot} -->')} of the {slot} slot, not one")
+    # What only the frame writes. A builder that writes one of these has its
+    # own copy of the frame again.
+    own = {'<nav class="top"': "a header", "<footer>": "a footer", 'class="navmenu"': "the menu button",
+           'class="themer"': "the theme control", 'rel="icon"': "the icons",
+           "fonts.googleapis.com/css2": "the fonts", 'id="built"': "the footer's date",
+           'localStorage.getItem("gr-theme")': "the theme's pre-paint script"}
+    bad = []
+    for f in sorted(Path("src/pages").iterdir()):
+        if f.suffix not in (".py", ".html", ".js") or f.name == "chrome.py":
+            continue
+        code = f.read_text(encoding="utf-8", errors="replace")
+        if f.suffix == ".py":
+            code = re.sub(r"(?m)^\s*#.*$", "", code)
+        bad += [f"{f.name} writes {what}" for k, what in own.items() if k in code]
+    assert not bad, ("the frame is written outside chrome.py: " + "; ".join(bad[:6])
+                     + ". Write it in chrome.py, or ask chrome for it")
+    filled = CH.fill(t, "bills.html")
+    assert "<!-- CHROME:" not in filled and CH.fill(filled, "bills.html") == filled, (
+        "chrome.fill leaves a slot, or changes a template it has filled")
+    try:
+        CH.fill(t.replace("<!-- CHROME:nav -->", ""), "bills.html")
+        raise AssertionError("chrome.fill filled a template that has lost its nav slot")
+    except AssertionError as e:
+        if "lost its nav slot" in str(e):
+            raise
+    assert S.template(Path("site")) == filled, "shell.template() is not bills.html with its frame filled"
+
+    def plain(html):
+        """The frame as a reader is given it, whichever emitter wrote it: the
+        addresses as the host serves them, from the root, without the marks
+        of the section a reader is on, and with no space between tags."""
+        html = S.clean_links(html).replace(' aria-current="page"', "")
+        html = re.sub(r'(href|src)="/?', r'\1="/', html)
+        html = re.sub(r'href="/index"', 'href="/"', html)
+        return re.sub(r">\s+<", "><", re.sub(r"\s+", " ", html)).strip()
+    nav, foot = plain(CH.nav()), plain(CH.FOOTER)
+    shared, _base, _ran, _days = _fixture_site_shared()
+    site = shared / "site"
+    n = 0
+    for f in sorted(site.rglob("*.html")):
+        page = f.read_text(encoding="utf-8", errors="replace")
+        if "<head" not in page:
+            continue
+        rel = f.relative_to(site).as_posix()
+        n += 1
+        got = re.findall(r'<nav class="top".*?</nav>', page, re.S)
+        if len(got) != 1 or plain(got[0]) != nav:
+            bad.append(f"{rel}: its header is not chrome's")
+        elif got[0].count(' aria-current="page"') > 1:
+            bad.append(f"{rel}: its header marks more than one section as the one it is on")
+        got = re.findall(r"<footer>.*?</footer>", page, re.S)
+        if len(got) != 1 or plain(got[0]) != foot:
+            bad.append(f"{rel}: its footer is not chrome's")
+        for piece, what in ((CH.THEMER_HEAD, "the theme's pre-paint script"),
+                            (CH.THEMER_JS, "the theme control's handler"),
+                            (CH.FOOT_JS, "the footer's date"),
+                            (CH.STYLESHEET, "the one stylesheet")):
+            if page.count(piece) != 1:
+                bad.append(f"{rel}: {what} is there {page.count(piece)} times")
+    assert n > 20, f"only {n} fixture pages with a head"
+    assert not bad, f"{len(bad)} faults on the fixture's pages: " + "; ".join(bad[:6])
+    return "ok", (f"bills.html has the {len(CH.SLOTS)} slots and no frame of its own, no builder "
+                  f"writes one, and all {n} pages the fixture's builders wrote carry chrome's "
+                  "header, footer, theme control and stylesheet once")
+
+
 @check("frontend", "every page's footer says who makes the site and leads to About, which says it once")
 def _footer_credit():
     """"An independent project by Alice Wade" and a link to About: one quiet
     line in the footer of every page, and on the About page one plain
     sentence that Granite Record is built and maintained by Alice Wade,
     independently, with a place left for the person's own fuller description
-    (7 October 2026). Both footers carry it -- bills.html's, which every
-    record page is built from, and build_pages.shell's -- and every page the
-    fixture's builders wrote carries it once.
+    (7 October 2026). The footer is chrome.py's, the one both emitters use
+    (_frame_written_once), and every page the fixture's builders wrote
+    carries the line once.
 
     THE DESCRIPTION IS WRITTEN (9 October 2026). The person's own account
     took the place left for it, under "Who Makes Granite Record" in the About
@@ -64760,11 +64853,10 @@ def _footer_credit():
     says that once, under that heading, and the placeholder is gone."""
     line = ('<p class="footby">An independent project by Alice Wade &middot; '
             '<a href="about.html">About</a></p>')
-    for f in ("bills.html", "build_pages.py"):
-        src = _paths.locate(f).read_text(encoding="utf-8")
-        assert src.count(line) == 1, f"{f}: the footer's credit line is missing or doubled"
-        assert src.index(line) < src.index('class="logocredit"'), (
-            f"{f}: the credit line is not above the logo's")
+    import chrome as CH
+    assert CH.FOOTER.count(line) == 1, "chrome.FOOTER: the footer's credit line is missing or doubled"
+    assert CH.FOOTER.index(line) < CH.FOOTER.index('class="logocredit"'), (
+        "chrome.FOOTER: the credit line is not above the logo's")
     shared, _base, _ran, _days = _fixture_site_shared()
     pages = sorted((shared / "site").rglob("*.html"))
     with_footer = [p for p in pages if "<footer>" in p.read_text(encoding="utf-8", errors="replace")]
@@ -86273,7 +86365,7 @@ def _language_sweep_words(civics, C):
             ("app.js", app, "the times on the cards move this player",
              "Choose a time on a card to jump the recording there."),
             ("app.js", app, 's.venue?" · "+esc(s.venue)', "roomWords(s.venue)"),
-            ("build_pages.py", pages, "MIT Open Source Licensed", "Open source (MIT License)"),
+            ("chrome.py", src("chrome.py"), "MIT Open Source Licensed", "Open source (MIT License)"),
             ("build_pages.py", pages, "/bill/&lt;year&gt;/&lt;number&gt;", "<code>/bill/2026/hb1</code>"),
             ("build_rsa.py", src("build_rsa.py"), "the bills now proposing to",
              "laws not yet included."),

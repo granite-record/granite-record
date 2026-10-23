@@ -40,9 +40,10 @@ that moved is one of these:
 
 and whatever else build_pages.COPIED names, but bills.html. A CHANGE TO
 bills.html IS REFUSED: it is the template every record page is built from
-(shell.template), and the theme control on every page build_pages writes
-(build_pages.themer), so it reaches every page of the site with the data in
-it, and only the page steps of a full build can rebuild those.
+(shell.template), so it reaches every page of the site with the data in it,
+and only the page steps of a full build can rebuild those. So is a change to
+chrome.py, the header, nav and footer of every page, which is a script and
+refused as any script is.
 
 What it writes is said, file by file, and that everything else is the full
 build's. The record is brought up to date, so a second change builds on the
@@ -72,8 +73,7 @@ import child
 
 SITE = Path("site")
 TEMPLATE = "src/pages/bills.html"
-TEMPLATE_WHY = ("the template every record page is built from (shell.template) and the "
-                "theme control on every page build_pages writes (build_pages.themer): a "
+TEMPLATE_WHY = ("the template every record page is built from (shell.template): a "
                 "change to it reaches every page of the site, which only the page steps "
                 "of a full build rebuild")
 # The files the build reads only in part, for data.html's two counts.

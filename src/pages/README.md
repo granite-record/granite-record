@@ -1,8 +1,10 @@
 # src/pages/
 
 Reads the record (`data/`, the root JSON, `proceedings.csv`) and writes
-`site/`: each bill's payload (`build_site_v2`), every page and the frame
-around it (`shell.py`), the feeds and the changes files the email sender reads
+`site/`: each bill's payload (`build_site_v2`), every page (`shell.py`) and
+the frame around it -- the header, the nav, the footer and the head's shared
+lines, written once in `chrome.py` for the record pages and the five pages
+`build_pages.py` writes alike -- the feeds and the changes files the email sender reads
 beside them (`follow_changes.py`), the CSV downloads and the search index.
 The browser's files are here too, since stage 5: `bills.html`, the template
 every record page is built from, and the `components.js`, `app.js`, `app.css`
