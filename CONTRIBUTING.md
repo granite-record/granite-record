@@ -376,6 +376,25 @@ pages built in Python and the build writes it into `components.js` for the
 browser, so an edit there reaches both. A word that is not there yet goes
 there, rather than into a page's own code.
 
+**Change what an email says, or how it looks.** The email sender is the
+Worker in `workers/follow/` (its README has the whole of it), deployed on its
+own rather than by the nightly.
+1. A colour, a status chip's word, a study report's words, a testimony form
+   or the mark -- anything an email shares with the site -- is changed where
+   the site keeps it (`app.css`, `src/pages/words/`, `app.js`,
+   `build_brand.py`). Then `python3 src/pages/follow_site.py` rewrites
+   `workers/follow/site.gen.js`, which is committed with the change; preflight
+   fails until it is, and names what moved.
+2. An email's own sentences are in `workers/follow/mail.js`.
+3. The tests: `node --test tests/follow/index.js` (preflight runs them too). A
+   new `*.test.js` is listed in `tests/follow/index.js`, or preflight fails.
+4. To see one without sending it: `node tests/follow/preview_digest.js`
+   writes a digest's HTML and text to `preview-mail/`.
+5. It reaches readers only when the person deploys the Worker, after the
+   change is on `main`: `npx wrangler deploy --config
+   workers/follow/wrangler.toml` (with `--env preview` for the preview
+   sender), as `workers/follow/README.md` says.
+
 ## Files no generator may write
 
 These are a person's work, and they are in two folders: `corrections/`, what
