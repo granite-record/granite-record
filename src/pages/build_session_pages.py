@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-19.42
+# GRANITE_VERSION: 2026-09-19.43
 """
 A page for every day the House sat.
 
@@ -77,6 +77,7 @@ import officers
 import proceedings
 import shell as S
 import structured as LD
+import vote_passage as VP
 
 
 CHAMBER = {"H": "House", "S": "Senate"}
@@ -449,20 +450,112 @@ def _ballots_here(it):
     return bool(rc.get("bill")) and session_days._bill_of(rc["bill"]) == it.bill.upper()
 
 
-def others_html(others, body, members, esc, payloads):
-    """The day's roll calls on no bill -- the chamber's own rules, a ruling
-    of the chair, printing a debate, adjourning -- in the roll-call file's
-    order, worded as that file words them. The page says no more of them
-    than the file does: no debate, no speaker, nothing done to a bill."""
-    if not others:
+def others_html(others, body, members, esc, payloads, day="", term="", years=None):
+    """The day's votes on no bill -- the chamber's own rules, a ruling of the
+    chair, printing a debate, a member allowed to go on speaking, a
+    reprimand -- each as the roll-call file words it, and, where the Journal
+    prints it and every gate of journal_motions.py holds, the Journal's own
+    words for what was put, cited to its page (the owner, 23 October 2026:
+    "it's very hard to find that information on GenCourt since the vote is
+    just labeled something like voting whether to approve the committee
+    report with no other context"). Then the divisions taken under the same
+    headings, which the Journal records and the roll-call file does not.
+    No speaker and no debate: who spoke is the record's, on a bill's card."""
+    jo = VP.journal_only(body, day) if day else []
+    if not others and not jo:
         return ""
-    H = ['<p class="note">Roll calls the '
+    H = ['<p class="note">Votes the '
          f"{CHAMBER[body]} took that day on questions that were on no bill, such "
-         "as its own rules, a ruling of the chair or printing a debate. The "
-         "question is as the General Court&rsquo;s roll-call file words it.</p>"]
+         "as its own rules, a ruling of the chair or a member&rsquo;s conduct. "
+         "Each is headed by the kind of question; &ldquo;In the record&rdquo; is "
+         "how the General Court&rsquo;s roll-call file words it, and the quotation "
+         "is the Journal&rsquo;s own account, with its page."
+         + (f' <a href="session/nobill/{esc(term)}.html">Every vote on no bill in '
+            f"{esc(term)}</a>." if term else "") + "</p>"]
     for it in others:
-        H.append(vote_html(it, "", body, "", {}, members, esc, payloads) + "</div>")
+        e = VP.entry(rollcall_id(it.rc)) if it.rc is not None else None
+        block = vote_html(it, "", body, "", {}, members, esc, payloads, journal=e)
+        if e:
+            block += journal_extra_html(e, body, members, esc, term, years)
+        H.append(block + "</div>")
+    for e in jo:
+        H.append(journal_only_html(e, body, members, esc, payloads, term, years))
     return "".join(H)
+
+
+def continue_votes(others, body, day):
+    """{(member's surname, subject): (anchor, "failed, 91-82")} -- the day's
+    votes on whether a member could go on speaking, each by the unanimous
+    consent the Journal's passage ties it to, roll call or division."""
+    out = {}
+    pairs = [(f"rc-{rollcall_id(it.rc)}", VP.entry(rollcall_id(it.rc)))
+             for it in others if it.rc is not None]
+    pairs += [(f"jv-{re.sub(r'[^\w-]', '', e.get('key') or '')}", e)
+              for e in VP.journal_only(body, day)]
+    for anchor, e in pairs:
+        if not e or e.get("kind") != "member_continue" or not e.get("member"):
+            continue
+        did = "carried" if e.get("passed") else "failed"
+        count = (f", {e['yeas']}–{e['nays']}" if e.get("yeas") is not None else "")
+        out.setdefault(e["member"].split()[-1].lower(), []).append(
+            ((e.get("about") or "").lower(), anchor, f"the motion {did}{count}"))
+    return out
+
+
+def continue_vote_for(cont, name, about):
+    """(anchor, words) of the vote on this member's consent: the one whose
+    subject is this one, or the member's only such vote that day."""
+    cands = cont.get((name or "").split()[-1].lower() if name else "", [])
+    hit = [c for c in cands if c[0] and c[0] == (about or "").lower()]
+    if len(hit) == 1:
+        return hit[0][1:]
+    return cands[0][1:] if len(cands) == 1 else None
+
+
+def journal_extra_html(e, body, members, esc, term="", years=None):
+    """Under a vote on no bill: the member or the bill the Journal's passage
+    is about, each only where it is one record, and the passage itself."""
+    out = []
+    who = e.get("member") or ""
+    if who:
+        named = member_html(body, who, members, esc)
+        if e.get("kind") in ("discipline", "privileges"):
+            out.append(f'<p class="dvby">The member it concerned: {named}.</p>')
+        elif e.get("kind") == "member_continue":
+            out.append(f'<p class="dvby">The member speaking: {named}.</p>')
+    if e.get("bill") and len(e.get("bills") or []) == 1:
+        href = bill_href(term or e.get("term") or "", e["bill"], years or {})
+        num = re.sub(r"^([A-Z]+)(\d)", r"\1 \2", e["bill"])
+        named = f'<a href="{esc(href)}">{esc(num)}</a>' if href else esc(num)
+        out.append(f'<p class="dvby">The bill it named: {named}.</p>')
+    out.append(VP.passage_html(e, esc))
+    return "".join(out)
+
+
+def journal_only_html(e, body, members, esc, payloads, term="", years=None):
+    """A vote the Journal records and the roll-call file does not: a division,
+    with the count and no member's vote, or a voice vote, with neither."""
+    head = esc(VP.kind_label(e))
+    if e.get("line"):
+        head += f'<span class="nbl">{esc(e["line"])}</span>'
+    carried = e.get("passed")
+    chip = C.vote_chip(None, carried, "", {}) if carried is not None else ""
+    if e.get("how") == "division":
+        tally = f' <b>{e["yeas"]}–{e["nays"]}</b> on a division'
+        note = VP.DIVISION_NOTE
+    else:
+        tally, note = " on a voice vote", VP.VOICE_NOTE
+    ring = ""
+    if e.get("how") == "division" and e.get("yeas") is not None:
+        i = len(payloads)
+        payloads.append({"yeas": e["yeas"], "nays": e["nays"], "passed": bool(carried),
+                         "threshold_needed": None, "kind": "DV"})
+        ring = f'<div class="svote" data-vote="{i}"></div>'
+    key = re.sub(r"[^\w-]", "", e.get("key") or "")
+    return (f'<div class="dvote nbvote nbonly" id="jv-{esc(key)}">'
+            f'<p class="dvh">{head}</p><p class="dvr">{chip}{tally}</p>'
+            f'<p class="rcrec">{esc(note)}</p>{ring}'
+            + journal_extra_html(e, body, members, esc, term, years) + "</div>")
 
 
 def runs(items):
@@ -1281,7 +1374,7 @@ def moment_html(m, date, esc):
     return f'<span class="mjumps">{out}</span>'
 
 
-def vote_html(it, bill, body, year, cards, members, esc, payloads):
+def vote_html(it, bill, body, year, cards, members, esc, payloads, journal=None):
     """One motion of the day on a bill, in the approved vote words (the
     person, 8 October 2026): the motion's own name with only OTP, OTPA, ITL
     and IS abbreviated and a plain gloss; the chip saying what the vote did,
@@ -1290,11 +1383,21 @@ def vote_html(it, bill, body, year, cards, members, esc, payloads):
     A counted vote leaves its slot for the ring, which app.js draws -- for a
     roll call with its card on the bill's Votes tab, the Votes tab's own
     display, whose party rows show the members (v2: no new link) -- and the
-    count stands in the HTML without it."""
+    count stands in the HTML without it.
+
+    `journal` is a vote on no bill's entry in journal_motions.json, where the
+    Journal's words for it are shown (vote_passage): its head is then the
+    kind of question in the site's words, with the one-line summary under it
+    where there is one, and the roll-call file's own words stay, always, as
+    "In the record"."""
     words_ = (it.action or "").strip()
     k = MO.classify(words_, bill, body, C.WORDBOOK["votes"]["motions"])
     head = (C.vote_head(k["mk"], words_, k["mf"]) if words_
             else "On a question the record does not name")
+    if journal:
+        head = esc(VP.kind_label(journal) or "") or head
+        if journal.get("line"):
+            head += f'<span class="nbl">{esc(journal["line"])}</span>'
     amds = amendment_numbers(words_)
     amd = f' <span class="ramd">{esc(", ".join(amds))}</span>' if amds else ""
     chp = C.vote_chip(k["mk"], it.carried, bill, k["mf"]) if words_ else ""
@@ -1306,6 +1409,8 @@ def vote_html(it, bill, body, year, cards, members, esc, payloads):
         moved = f'<p class="dvby">Moved by {member_html(body, nm, members, esc)}.</p>'
     rec = (f'<p class="rcrec">In the record: {esc(k["mrec"])}</p>'
            if k.get("mrec") and words_ else "")
+    if journal and words_ and not rec:
+        rec = f'<p class="rcrec">In the record: {esc(words_)}</p>'
     ring = ""
     pl = vote_payload(it, k["mk"] if words_ else "")
     if pl:
@@ -1318,7 +1423,12 @@ def vote_html(it, bill, body, year, cards, members, esc, payloads):
         ring = f'<div class="svote" data-vote="{i}"{full}></div>'
     # data-motion: the record's own words for the motion, which the head
     # says in the approved words, kept for whatever reads the page by them.
-    return (f'<div class="dvote" data-motion="{esc(words_)}"><p class="dvh">{head}{amd}</p>'
+    # A roll call's own anchor, "#rc-2026-H-290", for a vote on no bill: the
+    # member Votes tab and the per-term list link straight to it.
+    rid = rollcall_id(it.rc) if not bill else None
+    anchor = f' id="rc-{esc(rid)}"' if rid else ""
+    return (f'<div class="dvote{" nbvote" if journal else ""}"{anchor} data-motion="{esc(words_)}">'
+            f'<p class="dvh">{head}{amd}</p>'
             f'<p class="dvr">{chp}{tally}{how}</p>{moved}{rec}{ring}')
 
 
@@ -1467,7 +1577,8 @@ def render(day, narrative, titles, years, members, esc, chair=None, rec=None, ct
                   + (f'<div class="w4m">{play}</div>' if play else "")
                   + f'<div class="w4b">{note}<div class="cards">{"".join(cards)}</div></div></section>')
 
-    oth = others_html(getattr(day, "others", ()), body, members, esc, payloads)
+    oth = others_html(getattr(day, "others", ()), body, members, esc, payloads,
+                      day=day.date, term=term, years=years)
     if oth:
         S_.append(C.section("Votes on No Bill", oth, "nobill"))
     # Debates whose bill is not among the day's actions, or is there only for
@@ -1484,11 +1595,19 @@ def render(day, narrative, titles, years, members, esc, chair=None, rec=None, ct
         H = ['<p class="note">These belong to no bill. The House gives a member leave to '
              "address it, and what they said is part of the permanent record.</p>"
              '<ul class="suc">']
+        # A MEMBER'S CONSENT AND THE VOTE ON IT, JOINED (23 October 2026):
+        # where an objection ended a member's unanimous consent, the House
+        # voted on whether they could go on, and the Journal ties the two.
+        cont = continue_votes(getattr(day, "others", ()), body, day.date)
         for x in uc:
             about = x["about"]
+            vote = continue_vote_for(cont, x["name"], about)
             H.append("<li>" + member_html(body, x["name"], members, esc)
                      + (f", on {esc(about)}." if about and
                         about != "addressed the House" else " addressed the House.")
+                     + (f' An objection was made, and the House voted on whether the member '
+                        f'could go on: <a href="#{esc(vote[0])}">{esc(vote[1])}</a>.'
+                        if vote else "")
                      + "</li>")
         H.append("</ul>")
         S_.append(C.section("Under Unanimous Consent", "".join(H), "consent-uc"))

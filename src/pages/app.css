@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.294 */
+/* GRANITE_VERSION: 2026-09-07.295 */
 /* ONE STYLESHEET FOR EVERY PAGE (23 October 2026). Every page of the site
    links this file, /app.css: the record pages shell.page() makes from
    bills.html, and the five build_pages.py writes -- the home page, Officials,
@@ -6032,6 +6032,16 @@ text-decoration-color:var(--rule-2);text-underline-offset:3px}
    7.43:1 on white and 5.71 on the wash. */
 .votes .v-nay{color:var(--st-done)}
 .votes .none{color:var(--ink-2);font-style:italic}
+/* What a vote on no bill was about, in the Journal's terms, where it said
+   only "no bill" (app.js nobillWords, 23 October 2026). */
+.votes .nbw{color:var(--ink);font-size:var(--t-ui);line-height:1.35}
+.votes a.nbwa,.votes a.nbwa .nbw{color:var(--pine)}
+/* The term's list of votes not on a bill (build_nobill_votes): the kind in
+   the votes table's meta size, and the roll-call file's own words marked as
+   theirs where the Journal's passage is not shown. */
+.nbtab td.k{font-size:var(--t-sm);color:var(--ink-2)}
+.nbtab .nbrec{color:var(--ink-2)}
+.nbtab td.o small{display:block;color:var(--ink-2);font-size:var(--t-sm)}
 /* THE PREVAILING SIDE (app.js prevailed, 23 October 2026), in ink and not
    in colour: green for the winning side and red for the losing one would be
    this page rating a member, which the site does not do. Both are the same
@@ -6752,6 +6762,24 @@ border-bottom:2px solid var(--ink-2);transform:rotate(-45deg);transition:transfo
 .dvr > .chip{margin-left:0}
 .dvr b{font-variant-numeric:tabular-nums}
 .dvby,.rcrec{font-size:var(--t-sm);color:var(--ink-2);margin:0 0 var(--sp-2)}
+/* A VOTE ON NO BILL IN THE JOURNAL'S WORDS (23 October 2026): its head is the
+   kind of question, the one-line summary under it where there is one, and
+   the Journal's own sentences in a quotation cited to the page. The heading
+   the Journal printed stands in its capitals, small; what the parser left out
+   between two sentences is an ellipsis, as in any quotation. */
+.dvh .nbl{display:block;font:400 var(--t-ui)/1.45 var(--sans);color:var(--ink-2);margin-top:var(--sp-1)}
+.nbj{margin:var(--sp-3) 0 0;max-width:46rem}
+.nbj blockquote{margin:0;padding:var(--sp-2) 0 var(--sp-2) var(--sp-4);border-left:3px solid var(--rule-2);
+  font:400 var(--t-ui)/1.6 var(--serif);color:var(--ink)}
+.nbj blockquote p{margin:0 0 var(--sp-2)}
+.nbj blockquote p:last-child{margin-bottom:0}
+.nbj .nbjh{font:600 var(--t-sm)/1.4 var(--sans);letter-spacing:.04em;color:var(--ink-2)}
+.nbj .nbgap{color:var(--ink-2)}
+.nbj .nbby{font-family:var(--sans);font-size:var(--t-sm);color:var(--ink-2)}
+.nbj .nbt{font-family:var(--sans);font-size:var(--t-sm);color:var(--ink-2);font-variant-numeric:tabular-nums}
+.nbj figcaption{font-size:var(--t-sm);color:var(--ink-2);margin:var(--sp-2) 0 0}
+.nbj figcaption a{color:var(--pine)}
+.nbonly .rcrec{font-style:italic}
 .drec{margin:0 0 var(--sp-3)}
 .dremoved{margin:var(--sp-3) 0 0}
 .dconsent .dvr{margin-bottom:0}

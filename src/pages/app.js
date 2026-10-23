@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.234
+// GRANITE_VERSION: 2026-09-07.235
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -7242,7 +7242,7 @@ function renderMemberVotes(m){
   const q=(PAGE.vfilter||"").toLowerCase(), sd=PAGE.vside||"";
   const find=String(PAGE.vq||"").trim(), fold=billFold(find), low=find.toLowerCase();
   const hit=r=>!find||(fold&&billFold(r.x.b)===fold)
-    ||[r.b&&r.b.title,r.x.q,r.rc&&r.rc.q].some(s=>String(s||"").toLowerCase().includes(low));
+    ||[r.b&&r.b.title,r.x.q,r.rc&&r.rc.q,r.rc&&r.rc.w].some(s=>String(s||"").toLowerCase().includes(low));
   const rows=all.filter(r=>(!q||String(r.x.v||"").toLowerCase()===q)
     &&(!sd||(r.side!==null&&(sd==="won")===r.side))&&hit(r));
   const tally={};
@@ -7284,6 +7284,16 @@ function renderMemberVotes(m){
       shown.</p>`:""}`;
 }
 
+// A vote on no bill in a few words (rc.w, build_site_v2.write_rollcall_index
+// from journal_motions.json), linked to the roll call's own anchor on its
+// sitting's page, "#rc-2026-H-290", where the day is one the site draws.
+function nobillWords(x,rc){
+  const b=voteChamber(x), iso=voteIso(x);
+  const has=SITDAYS&&SITDAYS[b]&&SITDAYS[b].has(String(iso||""));
+  const w=`<span class="nbw">${esc(rc.w)}</span>`;
+  return has?`<a class="nbwa" href="session/${esc(b)}/${esc(iso)}.html#rc-${esc(String(x.k||""))}">${w}</a>`:w;
+}
+
 // One row. data-l carries the column's name so the same markup can stack into
 // labelled blocks on a phone instead of scrolling sideways, which on a civic
 // site reads as "this page was not meant for you".
@@ -7318,7 +7328,11 @@ function voteRow(r){
       : x.b ? esc(x.b)
       // A procedural vote -- a call of the roll, a rules suspension -- is
       // recorded against no bill. It used to render an empty cell wrapped in
-      // a link to /bill//.html.
+      // a link to /bill//.html. WHAT IT WAS ABOUT, where the Journal says
+      // (rc.w, 23 October 2026): the session day's own summary or kind of
+      // question, linked to the roll call on that day's page, where the
+      // Journal's words are quoted with their page.
+      : rc&&rc.w ? nobillWords(x,rc)
       : `<span class="none">no bill</span>`}${
       b&&b.title?`<span class="vt" translate="no">${esc(b.title)}</span>`:""}
       <span class="vq">${question}</span></td>

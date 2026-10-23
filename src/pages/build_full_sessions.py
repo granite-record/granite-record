@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-10.9
+# GRANITE_VERSION: 2026-10-10.10
 """
 The House and the Senate as committees of the whole: a card at the top of
 each column of /committees, and a page for each chamber's session days.
@@ -131,8 +131,12 @@ def chamber(site, body, today):
         m = by_id.get(str(o.get("id"))) if o else None
         if m and m.get("chamber") == body:
             chair.append((role, m))
+    # The latest term's list of votes not on a bill, where build_nobill_votes
+    # has written it (it runs before this step): linked from the head.
+    nobill = (site / "session" / "nobill" / f"{terms[0]}.html").exists()
     return {"body": body, "terms": terms, "latest": terms[0], "days": days, "dates": dates,
-            "members": sum(1 for m in legs if m.get("chamber") == body), "chair": chair}
+            "members": sum(1 for m in legs if m.get("chamber") == body), "chair": chair,
+            "nobill": nobill}
 
 
 def bare_name(m):
@@ -242,7 +246,12 @@ def page_head(c, path, base):
                            "kind": "committee cmtehead chamberhead"})
             + f'<p class="src fill rnote">Every day the whole {CHAMBER[body]} sat, term by term, '
             "as its journal records it. A committee&rsquo;s days are on its own page, from "
-            '<a href="committees.html">Committees</a>.</p>')
+            '<a href="committees.html">Committees</a>.'
+            + (f' The votes on no bill &mdash; rules suspensions, appeals of the chair, '
+               f'a member&rsquo;s discipline &mdash; are listed with what the journal says '
+               f'each was about: <a href="session/nobill/{E(c["latest"])}.html">Votes Not on a '
+               f'Bill, {E(c["latest"])}</a>.' if c.get("nobill") else "")
+            + "</p>")
 
 
 def page_body(c, path="", base=""):
