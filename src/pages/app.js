@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.233
+// GRANITE_VERSION: 2026-09-07.234
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -7162,26 +7162,41 @@ function billRecord(key,then){
     }).catch(()=>{});
 }
 
+// A TERM'S ROLL CALLS ON NO BILL, FETCHED ONCE: nobill/<term>.json, the cards
+// build_site_v2 makes for them with a bill's own code (write_nobill_cards),
+// kept in BILL_RECS under "nobill/<term>" beside the bills' records, in the
+// same shape ({rollcalls: [card, ...]}).
+function nobillRecord(key,then){
+  if(CMP.own(BILL_RECS,key))return;
+  BILL_RECS[key]=null;
+  fetch(DATA(`${key}.json`)).then(r=>r.ok?r.json():null)
+    .then(d=>{if(d){BILL_RECS[key]=d;then();}}).catch(()=>{});
+}
+
 // HOW EVERYONE VOTED, under a member's vote (option A, 23 October 2026: "so
 // that someone could view how other members voted on those bills"). Folded,
 // one a row; opened, it is the bill page's own ring and party rows (donut),
-// which list the members when pressed, drawn from the bill's record at the
-// card the shared index names (rc.c). Until the record comes, and for a roll
-// call with no card, it is the ring of the counts alone (simpleDonut), which
-// is everything the page holds without asking for more.
+// which list the members when pressed, drawn from the card the shared index
+// names (rc.c): in the bill's record, or for a roll call on no bill in its
+// term's nobill/ file (rc.ct). ONE DISPLAY (the person, 23 October 2026:
+// "The two displays should not be structured differently from each other"):
+// every vote here is a roll call, so every one has its card. Only while the
+// card is on its way, or where an older build gave none, is it the ring of
+// the counts alone (simpleDonut).
 function voteRing(r,i){
   const x=r.x, rc=r.rc;
   if(!rc||rc.y==null||rc.n==null)return "";
   const key=x.k, open=!!(PAGE.vopen&&PAGE.vopen[key]);
-  const bkey=x.b&&x.y?`${x.y}/${String(x.b).toUpperCase()}`:"";
+  const nb=!x.b&&rc.c!=null&&rc.ct?String(rc.ct):"";
+  const bkey=x.b&&x.y?`${x.y}/${String(x.b).toUpperCase()}`:nb?`nobill/${nb}`:"";
   let body="";
   if(open){
     const d=bkey&&rc.c!=null?BILL_RECS[bkey]:null, card=d&&(d.rollcalls||[])[rc.c];
-    if(bkey&&rc.c!=null&&!CMP.own(BILL_RECS,bkey))billRecord(bkey,renderPage);
+    if(bkey&&rc.c!=null&&!CMP.own(BILL_RECS,bkey))(nb?nobillRecord:billRecord)(bkey,renderPage);
     body=card&&(card.members||[]).length
-      ? donut(String(x.b).toUpperCase(),rc.c,card)
+      ? donut(nb?`NB-${nb}`:String(x.b).toUpperCase(),rc.c,card)
       : simpleDonut({yeas:rc.y,nays:rc.n,passed:!!rc.p,threshold_needed:rc.nd||null},"mv",i);
-    if(bkey)body+=`<p class="src"><a href="bill/${esc(String(x.y))}/${
+    if(x.b&&x.y)body+=`<p class="src"><a href="bill/${esc(String(x.y))}/${
       esc(String(x.b).toLowerCase())}/votes">Every vote on ${esc((r.b&&r.b.n)||x.b)}, on its Votes tab</a></p>`;
   }
   return `<tr class="vring"><td colspan="4"><details data-vring="${esc(key)}"${open?" open":""}>

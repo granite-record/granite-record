@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.226
+# GRANITE_VERSION: 2026-09-05.227
 """
 Generate the faceted site from real General Court data.
 
@@ -2836,7 +2836,7 @@ def vote_date(s):
         return (0, 0, 0)
 
 
-def write_rollcall_index(out, rollcalls, cards=None):
+def write_rollcall_index(out, rollcalls, cards=None, nobill=None):
     """One shared file describing all 1,504 roll calls.
 
     A legislator's page listed 1,081 rows of "HB2026 / Veto Override / Yea":
@@ -2904,12 +2904,81 @@ def write_rollcall_index(out, rollcalls, cards=None):
                 card = (cards.get(term) or {}).get(bid, {}).get(key)
                 if card is not None:
                     ix[key]["c"] = card
+                # A vote on no bill has its card in nobill/<term>.json
+                # (write_nobill_cards): `c` is the index there and `ct` the
+                # term, which a vote of Organization Day does not share with
+                # its year.
+                nb = ((nobill or {}).get(term) or {}).get(key) if bid == "_procedural" else None
+                if nb is not None:
+                    ix[key]["c"] = nb
+                    ix[key]["ct"] = term
 
     f = out / "rollcalls_index.json"
     f.write_text(json.dumps(ix, separators=(",", ":"), sort_keys=True),
                  encoding="utf-8")
     print(f"{len(ix):,} roll calls -> {f.name} "
           f"({f.stat().st_size / 1024:,.0f} KB, read once per reader)")
+
+
+# EVERY ROLL CALL HAS ITS CARD, A VOTE ON NO BILL TOO (the person, 23 October
+# 2026: "every vote on a rep's page should be a roll call in order to know how
+# they voted ... The two displays should not be structured differently from
+# each other"). A bill's roll calls are cards in its record, which its Votes
+# tab draws as a ring with a row for each party's yes and no, and a member's
+# Votes tab opens the same ring from that card. A roll call on no bill -- a
+# rules suspension, a ruling of the chair, a reprimand -- had no record and so
+# no card, and could be drawn only as its two counts. Its card is made here by
+# the bill's own code (bill_rollcalls), from the same ballots, and kept a term
+# to a file, nobill/<term>.json, {"rollcalls": [card, ...]}, so a member's
+# Votes tab draws it with the bill page's own ring. A few hundred roll calls
+# across every term; the files are small and fetched only when one is opened.
+NOBILL = "nobill"
+
+
+def write_nobill_cards(out, rollcalls, votes_by_bill, legs, unnamed):
+    """Write nobill/<term>.json for every term with a roll call on no bill,
+    and return {term: {roll call: index into that file's rollcalls}}."""
+    folder = out / NOBILL
+    folder.mkdir(parents=True, exist_ok=True)
+    found, written = {}, set()
+    for term, term_bills in sorted(rollcalls.items()):
+        rows = term_bills.get("_procedural") or []
+        if not rows:
+            continue
+        keys = {f"{r.get('year')}-{r.get('body')}-{r.get('number')}" for r in rows}
+        # The ballots of these roll calls, wherever build_data filed them: a
+        # vote on no bill is filed under its bill column as typed ("", or
+        # "HRULE64"), never under "_procedural".
+        ballots = defaultdict(list)
+        for (t, _b), by_key in votes_by_bill.items():
+            if t != term:
+                continue
+            for k, members in by_key.items():
+                if k in keys:
+                    ballots[k].extend(members)
+        cards = bill_rollcalls("_procedural", term, rows, None,
+                               {(term, "_procedural"): ballots}, legs, unnamed)
+        at = {}
+        for i, c in enumerate(cards):
+            c.pop("_ord", None)
+            k = c.pop("_rc", None)
+            if k:
+                at[k] = i
+        f = folder / f"{term}.json"
+        f.write_text(json.dumps({"term": term, "rollcalls": cards},
+                                separators=(",", ":"), sort_keys=True), encoding="utf-8")
+        written.add(f.name)
+        found[term] = at
+    # A term an earlier build wrote and this one has no such vote for.
+    for stale in folder.glob("*.json"):
+        if stale.name not in written:
+            stale.unlink()
+    n = sum(len(v) for v in found.values())
+    print(f"{NOBILL}/: {n:,} roll calls on no bill, each with its card, in {len(found)} terms")
+    # SILENCE IS NOT SUCCESS: the roll calls are there and none found a card.
+    if any(t.get("_procedural") for t in rollcalls.values()) and not n:
+        print(f"  WARNING: roll calls on no bill exist and {NOBILL}/ holds none of them")
+    return found
 
 
 # WHAT THE SESSION-DAY STEP NEEDS OF THE FLOOR THAT ONLY THIS STEP KNOWS:
@@ -12002,7 +12071,8 @@ def main():
     write_floor_record(D, votes_by_member, rc_cards, floor_moments)
     # The members' Votes tabs' shared file, once build_bills has said where
     # each roll call's card is (write_rollcall_index).
-    write_rollcall_index(out, rollcalls, rc_cards)
+    nobill = write_nobill_cards(out, rollcalls, votes_by_bill, legs, unnamed)
+    write_rollcall_index(out, rollcalls, rc_cards, nobill)
     lg = build_legislators(out, legs, votes_by_member, towns, unnamed,
                            sponsored, bill_year, links, former, offices,
                            index_rows={(r.get("term"), r.get("id")): r for r in index})

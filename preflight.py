@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.653
+# GRANITE_VERSION: 2026-09-04.654
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -46867,7 +46867,9 @@ try {
   out.chip = s.voteChip("override_first", false, "HB12", {Chamber: "House"});
   Object.assign(s.BILL_RECS, fx.recs);
   page({vopen: {"2026-H-1": true}}); out.ringed = s.renderMemberVotes(fx.member);
-  page({vopen: {"2026-H-3": true}}); out.counted = s.renderMemberVotes(fx.member);
+  page({vopen: {"2026-H-3": true}}); out.nobill = s.renderMemberVotes(fx.member);
+  delete fx.member.rcx; s.setRCX(Object.assign({}, fx.rcx, {"2026-H-3": {"q": "adjourn", "y": 10,
+    "n": 300, "p": 0}})); out.counted = s.renderMemberVotes(fx.member);
 } catch (e) { out.threw = e.constructor.name + ": " + e.message + " " + (e.stack || "").split("\n")[1]; }
 process.stdout.write("\n@@" + JSON.stringify(out));
 """
@@ -46893,16 +46895,35 @@ def _member_votes_prevailing_side(V):
     rollcalls = {"2025-2026": {"HB12": [rc(1, "Ought to Pass", 200, 150, True),
                                         rc(2, "Override Veto", 220, 160, False,
                                            threshold_needed=254)],
-                               "": [rc(3, "Adjourn", 10, 300, False)]}}
+                               "_procedural": [rc(3, "Adjourn", 10, 300, False)]}}
+    # A roll call on no bill has its card too, made by the bill's own code from
+    # its ballots, wherever build_data filed them ("" here), into
+    # nobill/<term>.json (write_nobill_cards).
+    ballot = lambda i, p_, v: {"member_id": str(i), "name": f"Pat Member{i}", "party": p_,
+                               "vote": v, "body": "H"}
+    votes_by_bill = {("2025-2026", ""): {"2026-H-3": [ballot(1, "R", "Yea"), ballot(2, "D", "Nay"),
+                                                      ballot(3, "D", "Nay")]}}
     with _tf.TemporaryDirectory() as td:
+        (Path(td) / "nobill").mkdir()
+        (Path(td) / "nobill" / "1999-2000.json").write_text("{}", encoding="utf-8")
+        nobill = V.write_nobill_cards(Path(td), rollcalls, votes_by_bill, {}, set())
+        nb_file = json.loads((Path(td) / "nobill" / "2025-2026.json").read_text(encoding="utf-8"))
+        stale_left = (Path(td) / "nobill" / "1999-2000.json").exists()
         V.write_rollcall_index(Path(td), rollcalls, {"2025-2026": {"HB12": {"2026-H-1": 0,
-                                                                           "2026-H-2": 1}}})
+                                                                           "2026-H-2": 1}}},
+                               nobill)
         ix = json.loads((Path(td) / "rollcalls_index.json").read_text(encoding="utf-8"))
+    assert nobill == {"2025-2026": {"2026-H-3": 0}}, nobill
+    nbc = nb_file["rollcalls"][0]
+    assert nbc["tally"] == {"R": {"Yea": 1}, "D": {"Nay": 2}} and len(nbc["members"]) == 3 \
+        and nbc["yeas"] == 10 and "_rc" not in nbc and "_ord" not in nbc, nbc
+    assert not stale_left, "a term's nobill/ file an earlier build wrote outlived its votes"
     assert ix["2026-H-1"].get("mk") == "otp" and ix["2026-H-1"].get("c") == 0, ix["2026-H-1"]
     assert ix["2026-H-2"].get("mk") == "override_first" and ix["2026-H-2"].get("nd") == 254 \
         and ix["2026-H-2"].get("c") == 1, ix["2026-H-2"]
-    assert "c" not in ix["2026-H-3"] and not any("s" in e for e in ix.values()), (
-        "the shared index carries a party split, or a card for a roll call on no bill")
+    assert ix["2026-H-3"].get("c") == 0 and ix["2026-H-3"].get("ct") == "2025-2026", (
+        f"a roll call on no bill does not name its card in nobill/: {ix['2026-H-3']}")
+    assert not any("s" in e for e in ix.values()), "the shared index carries a party split"
 
     vote = lambda n, v, b="HB12", q="": {"k": f"2026-H-{n}", "d": f"3/{n}/2026", "b": b,
                                         "y": "2026" if b else "", "q": q, "v": v}
@@ -46924,7 +46945,9 @@ def _member_votes_prevailing_side(V):
              "find": {"vq": "HB 12"}, "words": {"vq": "adjourn"}, "none": {"vq": "HB 999"}}
     got = _node_app(_MEMBER_VOTES_HARNESS, {"fx.json": json.dumps(
         {"member": member, "rcx": rcx, "rows": rows, "cases": cases,
-         "recs": {"2026/HB12": {"rollcalls": [card]}}})})
+         "recs": {"2026/HB12": {"rollcalls": [card]},
+                  "nobill/2025-2026": {"rollcalls": [dict(card, yeas=10, nays=300,
+                                                          passed=False)]}}})})
     if got is None:
         return "skip", "app.js, dom_stub.js or node is not here"
     assert "threw" not in got, f"the Votes tab threw {got['threw']}"
@@ -46948,10 +46971,19 @@ def _member_votes_prevailing_side(V):
         and "Rep. A" not in got["ringed"] \
         and "Every vote on HB 12, on its Votes tab" in got["ringed"], (
         "an opened ring is not the bill page's, drawn from the bill's record")
+    # ONE DISPLAY (the person, 23 October 2026: "every vote on a rep's page
+    # should be a roll call ... The two displays should not be structured
+    # differently"): a roll call on no bill opens the same ring with party
+    # rows, from its term's nobill/ file, and links no bill.
+    assert 'data-seg="NB-2025-2026|0|' in got["nobill"] \
+        and "Every vote on" not in got["nobill"].split('data-vring="2026-H-3"')[1][:4000], (
+        "a roll call on no bill does not open the bill page's ring from nobill/")
+    # Only an older build's index, with no card named, falls back to the counts.
     assert 'class="donut"' in got["counted"] and "data-seg=" not in got["counted"], (
-        "a roll call on no bill is not drawn from its counts")
+        "a roll call with no card named is not drawn from its counts")
     return "ok", ("prevailing by the outcome, no party's side, the bill page's words, filters and "
-                  "search, and the bill's own ring under each vote")
+                  "search, and the bill page's ring, party rows and all, under every roll call, "
+                  "on a bill or on none")
 
 
 # A member's two bills tabs and a committee's, as renderMemberBills and
