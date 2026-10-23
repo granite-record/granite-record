@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-23.3
+# GRANITE_VERSION: 2026-10-23.4
 """
 What the Journals say a vote on no bill was about.
 
@@ -127,6 +127,7 @@ KINDS = {
     "discipline": "Discipline of a member",
     "privileges": "A member's privileges",
     "member_continue": "Shall the member continue",
+    "disorderly": "Disorderly speech",
     "appeal": "Appeal of the chair's ruling",
     "suspend_rules": "Suspending the rules",
     "rules": "The chamber's own rules",
@@ -155,8 +156,11 @@ KIND_WORDS = [
     ("privileges", r"(?<!personal\s)(?<!personal\s\s)privileges?\b|allow\w*\s+(?:rep\.?\s+\w+\s+)?back into|"
                    r"return\w*\s+to\s+the\s+chamber|back into the (?:house|chamber)|"
                    r"sanctions\s+on\b|speaker's\s+directive"),
+    # A finding that a member's debate was disorderly (27 February 2019) is
+    # its own question, not whether they may go on.
+    ("disorderly", r"disorderly"),
     ("member_continue", r"member\s+(?:be\s+allowed\s+to\s+)?continue|continue\s+speaking|"
-                        r"disorderly|unanimous\s+consent\s+given|shall\s+member\s+continue|"
+                        r"unanimous\s+consent\s+given|shall\s+member\s+continue|"
                         r"member\s+continue"),
     # Before a suspension or an appeal: "moved that the debate on the motion
     # to suspend House Rules, be printed" (12 March 2020) is printing. Not "as
@@ -250,7 +254,10 @@ BUSINESS = re.compile(
 # member's unanimous consent, a challenge to a ruling, a motion on a motion.
 CONTINUES = re.compile(
     r"^(?:OBJECTION|CHALLENGE|APPEAL|MOTION TO (?:APPEAL|LAY ON THE TABLE|TABLE|INDEFINITELY|"
-    r"POSTPONE|REFER|DIVIDE|AMEND|LIMIT)|MOTON TO (?:LAY|TABLE|INDEFINITELY|POSTPONE|REFER))")
+    r"POSTPONE|REFER|DIVIDE|AMEND|LIMIT)|MOTON TO (?:LAY|TABLE|INDEFINITELY|POSTPONE|REFER)|"
+    # The amendment a member just moved the adoption of: "Senator Feltes
+    # moved to amend Senate Rule 7-1 ..." over AMENDMENT TO SENATE RULE 7-1.
+    r"(?:FLOOR\s+)?AMENDMENT TO\b)")
 UC_HEAD = re.compile(r"^UNANIMOUS CONSENT$")
 # The words a question's heading has; the other capitals of a page do not.
 QUESTION_HEAD = re.compile(
@@ -272,7 +279,10 @@ SAY = [
     ("uc", re.compile(r"requested\s+unanimous\s+consent", re.I)),
     # Anchored: "Having not objected, and having served notice ..., Rep.
     # Colcombe moved that the House reconsider" (5 March 2026) is a motion.
-    ("objection", re.compile(r"^(?:An\s+)?objection\s+was\s+(?:raised|made)|^Objection\b", re.I)),
+    # "Consent was withdrawn." is the House's other way of saying it
+    # (26 March 2025, 17 February 2022).
+    ("objection", re.compile(r"^(?:An\s+)?objection\s+was\s+(?:raised|made)|^Objection\b|"
+                             r"^Consent\s+was\s+withdrawn\b", re.I)),
     ("challenge", re.compile(r"\b(?:challenged|appealed)\b[^.]{0,80}\b(?:ruling|decision)\b|"
                              r"moved\s+to\s+appeal\s+the\s+ruling", re.I)),
     ("ruled", re.compile(r"\bruled\b", re.I)),
@@ -833,6 +843,21 @@ def shares_words(words, said):
     return bool(mine & toks(put[-1]))
 
 
+OPPOSED = (("early", "late"),)
+
+
+def contradicts(words, said):
+    """Do the roll-call file's words and the last question put name the two
+    sides of one of OPPOSED -- one says early and the other late?"""
+    put = [x["t"] for x in said if x["k"] in ("question", "moved", "uc", "objection", "challenge",
+                                             "report")]
+    if not put:
+        return False
+    mine, theirs = (set(re.findall(r"[a-z]+", s.lower())) for s in (words or "", put[-1]))
+    return any((a in mine and b in theirs and b not in mine) or
+               (b in mine and a in theirs and a not in mine) for a, b in OPPOSED)
+
+
 def bills_in(said):
     """The bill numbers the passage names, as data/bills.json keys them."""
     got = []
@@ -916,6 +941,10 @@ def one_line(kind, said, uc):
             m = re.search(r"ruling\s+of\s+the\s+Chair\s+on\s+(?P<o>[^.]{8,300})", s)
             if m:
                 o = m.group("o").strip()
+                # "on the ruling that introduction of a new bill does not
+                # violate ..." (16 September 2015) is the ruling itself.
+                if o.lower().startswith("the ruling that "):
+                    return f"Uphold the chair's ruling that {_trim(o[16:], 14)}", [o[16:]]
                 return f"Uphold the chair's ruling on {_trim(o, 14)}", [o]
         return "", []
     if kind == "suspend_rules":
@@ -964,7 +993,11 @@ def one_line(kind, said, uc):
                 continue
             m = re.search(r"\b(?:moved\s+(?:that\s+the\s+(?:House|Senate)\s+(?:now\s+)?|to\s+)|"
                           r"motion\s+to\s+)(?P<x>(?:adjourn|recess|stand\s+in\s+recess)\w*"
-                          r"(?:\s+(?:from|to|until)\s+[^,.]{3,60})?)", s, re.I)
+                          r"(?:\s+(?:from|to|until)\s+[^,.]{3,60}?)?)"
+                          # "moved that the House recess until noon and spoke in
+                          # favor" (27 June 2002): the motion ends at its mover's
+                          # next act.
+                          r"(?=\s+and\s+(?:spoke|requested|yielded)\b|\s*[,.;]|\s*$)", s, re.I)
             if m:
                 x = m.group("x").strip()
                 return f"To {x}", [x]
@@ -1134,7 +1167,12 @@ def read_vote(r, j, root, cache, careers, bills, urls, approved):
     # adoption of the Resolution." (6 January 2021).
     same = sum(1 for m in RO.J_TALLY[body].finditer(text)
                if (int(m.group(1)), int(m.group(2))) == (j["y"], j["n"]))
-    if same > 1 and not shares_words(e["words"], said):
+    # The same with words that contradict it: "Adjourn Late Session" is not
+    # a motion "to adjourn from the Early Session" (18 March 2021).
+    if same > 1 and contradicts(e["words"], said):
+        held.append(f"question: this count is printed {same} times in the Journal, and the "
+                    "question put above this one contradicts the roll-call file's words")
+    elif same > 1 and not shares_words(e["words"], said):
         held.append(f"question: this count is printed {same} times in the Journal, and the "
                     "question put above this one does not share a word with the roll-call "
                     "file's")
@@ -1203,7 +1241,7 @@ DIV_SENT = re.compile(
 JOURNAL_ONLY = {"discipline", "privileges", "member_continue", "appeal", "suspend_rules", "rules"}
 
 
-def journal_only(f, body, root, cache, careers, urls, term_of):
+def journal_only(f, body, root, cache, careers, urls, term_of, approved=None):
     """[entry] -- the divisions under a heading of a no-bill kind in one House
     Journal, and the voice votes on a member's discipline."""
     if body != "H":
@@ -1310,6 +1348,15 @@ def journal_only(f, body, root, cache, careers, urls, term_of):
                     "kind": "discipline", "bills": [], "bill": "", "after": aft,
                     "member": name, "member_id": resolve_member(name, body, term, careers),
                     "line": "", "at": h_at})
+    # A member's discipline is summed up only by a person (gate 7), here as
+    # for a roll call.
+    for e in out:
+        if e["kind"] in PERSONAL:
+            ok = (approved or {}).get(e["key"]) or {}
+            if ok.get("line") and ok.get("file") == e["file"] and ok.get("page") in (e["page"], None):
+                e["line"], e["line_by"] = ok["line"], "person"
+            else:
+                e["line"] = ""
     return out
 
 
@@ -1360,7 +1407,7 @@ def build(rollcalls_path, root="."):
                 continue
             seen_files.add(f)
             years_read.add((y, b))
-            only += journal_only(f, b, root, cache, careers, urls, P.vote_term)
+            only += journal_only(f, b, root, cache, careers, urls, P.vote_term, approved)
     for b in ("H", "S"):
         d = root / RO.JOURNAL_DIRS[b]
         if d.is_dir():

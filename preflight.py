@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.656
+# GRANITE_VERSION: 2026-09-04.657
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -14240,6 +14240,26 @@ def _journal_motions(JM):
                              rep[0].get("member"), rep[0].get("how")) != (
                 264, 89, True, "Paige Beauchemin", "division"):
             bad.append(f"the reprimand by division of 12 February 2026 reads {rep}")
+        # The hand-check of 23 October 2026: "Adjourn Late Session" paired
+        # with a motion to adjourn from the Early Session (18 March 2021);
+        # "Consent was withdrawn." as the objection it is (26 March 2025); a
+        # finding of disorderly speech as its own kind (27 February 2019); a
+        # recess "until noon and spoke in favor" (27 June 2002).
+        if not JM.contradicts("Adjourn Late Session", [
+                {"k": "question", "t": "The question is on the adoption of the motion to adjourn "
+                                       "from the Early Session."}]):
+            bad.append("an early session's adjournment is shown for the late session's")
+        if not dict(JM.SAY)["objection"].search("Consent was withdrawn."):
+            bad.append("\"Consent was withdrawn.\" is not read as the objection")
+        if JM.classify("DISORDERLY SPEECH MOTION", [
+                {"k": "moved", "t": "Rep. DiLorenzo moved that the debate by Rep. Burt was "
+                                    "disorderly speech."}], "Disorderly Speech") != "disorderly":
+            bad.append("a finding of disorderly speech is not its own kind")
+        recess = JM.one_line("adjourn", [{"k": "moved", "t": "Rep. Clemons moved that the House "
+                                                            "recess until noon and spoke in favor."}],
+                             ("", ""))[0]
+        if recess != "To recess until noon":
+            bad.append(f"a recess motion's summary reads {recess!r}")
         # SILENCE: a year whose Journals are here and whose roll calls were
         # placed, with not one sentence read.
         quiet = {"2026-H-1": {"key": "2026-H-1", "body": "H", "said": [{"k": "outcome", "t": "x"}]}}
@@ -18345,7 +18365,7 @@ def _class_collisions():
         # (app.js voteRow) and a term's votes not on a bill
         # (build_nobill_votes, 23 October 2026) are the same table, stacked
         # into labelled blocks on a phone by the same rules
-        "b", "d",
+        "votes", "vfull", "b", "d", "o", "vch",
         # the feedback box
         "fbk", "fbknote",
         # a person chip's "(R - Rock 2)", which pchip writes in components.js
