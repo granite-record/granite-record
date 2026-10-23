@@ -29,7 +29,7 @@ Three things follow, and they are not negotiable:
    `python3 refusal.py --clear`, or `python3 src/ops/cloud.py clear-refusal` for the
    copy the nightly keeps in its bucket -- is the maintainer's decision, after
    `python3 netcheck.py` has said what kind of refusal it was.
-3. **Every fetcher that asks the General Court consults it.** All 17
+3. **Every fetcher that asks the General Court consults it.** All 16
    `fetch_*.py` scripts carrying a literal `gc.nh.gov` URL -- they live in
    `src/fetch/gc_web/` -- call `refusal.check()` straight after parsing their
    arguments, and so does every other script that asks it, the probes among

@@ -61,7 +61,7 @@ probe_alignment.py run against it -- without the live table being touched.
 build_site_v2, build_committees, build_exports, probe_alignment,
 segment_markers and site_read follow it because they read through load() and
 PATH. A tool that opens proceedings.csv by name does not: handoff.py reads the
-live table, and caption_gaps.py whatever its --proceedings says.
+live table.
 """
 
 import csv

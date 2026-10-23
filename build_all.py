@@ -695,7 +695,7 @@ def plan(a):
              superseded=True,
              note="the older clustering path; segment_markers.py above does "
                   "this better and build_site_v2 reads it directly. Pass "
-                  "--with-apply-markers to run it anyway"),
+                  "--with-superseded to run it anyway"),
 
         Step("the bill-version vocabulary, out of the dump already on disk",
              ["document_versions_from_db.py"],

@@ -12,8 +12,9 @@ WHY
 
 The goal is every document eventually. That only means something if "how far
 along" is a number somebody can print, rather than a feeling about how many
-fetches have been run. ARCHIVE_PLAN.md put it plainly: complete has to be a
-figure this prints.
+fetches have been run. ARCHIVE_PLAN.md (the person's plan, in private/ and
+not in the repository) put it plainly: complete has to be a figure this
+prints.
 
 So this reads what is actually on disk -- not a log of what was attempted --
 and reports each source as held over wanted. A source whose denominator is

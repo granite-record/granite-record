@@ -1390,139 +1390,6 @@ Court is right and we want to know.</p>
 {script}</body></html>""")
 
 
-# SUPERSEDED, AND KEPT ON PURPOSE. This was the whole of "How it works"
-# until the civics section replaced it. Every paragraph here was redistributed
-# into civics.py rather than rewritten -- the bill path, the shorthand tables,
-# the five things that surprise people -- because this prose had been read and
-# corrected and the new pages should inherit that rather than start again.
-# Nothing writes it out any more. Delete it once civics.py has been reviewed
-# by somebody who knows the building.
-LEARN = """
-<h1>How the New Hampshire legislature works</h1>
-<p class="lead">New Hampshire has 400 representatives and 24 senators — the largest
-state legislature in the country and, per resident, by far the smallest districts.
-Legislators are paid $100 a year plus mileage. Almost none have staff.</p>
-
-<h2>Every bill gets a public hearing</h2>
-<p>This is unusual. In most states a committee chair can decline to hear a bill and
-it dies without anyone speaking on it. In New Hampshire every bill introduced is
-referred to a committee and given a public hearing that anyone may attend and speak
-at. That is why hearing recordings matter here more than they would elsewhere: the
-hearing is where the substantive argument actually happens.</p>
-
-<h2>A term is two years, and bills can cross between them</h2>
-<p>The General Court sits in two-year terms beginning in odd years. Bill numbers are
-unique across the whole term, so there is only ever one HB 84 in 2025–2026 — but
-there will be another in the next term.</p>
-<p>Most bills are settled in the year they are filed. Two things happen to the rest,
-and they are not the same. <b>Retaining</b> is a first-year move: the committee keeps
-the bill, works on it over the fall and reports it in the second year, so it
-survives and keeps its number. Those show as <b>carried over</b> here, and they are
-the ones people most often fail to find, because they search the current year for a
-bill filed in the previous one. <b>Interim study</b> is a second-year move and it
-ends the bill: the committee studies it that fall, but the bill dies with the term
-and has to be filed again, with a new number, to come back.</p>
-
-<h2>The path a bill takes</h2>
-<ol class="reading">
-<li><b>Filed as an LSR.</b> Before a bill exists it is a Legislative Service Request
-— a title and an idea. Office of Legislative Services attorneys draft the text.</li>
-<li><b>Introduced and referred.</b> The bill gets a number and goes to a committee
-chosen by subject.</li>
-<li><b>Public hearing.</b> The sponsor introduces it, then members of the public
-speak for and against. You can sign in supporting or opposing whether or not you
-speak.</li>
-<li><b>Executive session.</b> The committee votes on what to recommend. A separate
-meeting from the hearing, often days later, usually covering several bills at once.</li>
-<li><b>Floor vote.</b> The full chamber votes, and is not bound by the committee's
-recommendation.</li>
-<li><b>The other chamber.</b> The whole process repeats. This is called crossover.</li>
-<li><b>Resolving differences.</b> If the second chamber changed the bill, the first
-must concur. If it will not, a committee of conference tries to write a compromise.</li>
-<li><b>The governor.</b> Sign, veto, or allow it to become law unsigned.</li>
-</ol>
-
-<h2>Five things that surprise people</h2>
-
-<p><b>Most votes leave no record.</b> Unless someone requests a roll call, chambers
-vote by voice or by division. A voice vote records only which side sounded louder; a
-division records the count but not who voted which way. For a great many bills there
-is simply no answer to "how did my representative vote" — not because it is hidden,
-but because it was never recorded.</p>
-
-<p><b>A majority is not always enough.</b> Overriding a veto takes two thirds of
-those voting. A constitutional amendment takes three fifths of the members in office
-— 240 when all 400 House seats are filled — whether or not everyone shows up.
-Amendments regularly win a clear majority and fail anyway.</p>
-
-<p><b>The consent calendar is a signal about the committee.</b> A bill goes there
-when the committee vote was unanimous or nearly so and no dissenting member objected
-to the placement. It then passes without floor debate. Ten members may petition to
-pull a bill off and have it taken up separately.</p>
-
-<p><b>Someone has to run the room.</b> Whoever is in the chair for a roll call —
-the Speaker, or a member the Speaker has asked to preside — is usually recorded as
-presiding rather than as voting. A Speaker will appear as not having voted on
-hundreds of roll calls, and that is the job rather than absence.</p>
-
-<p><b>Not voting comes in two kinds.</b> A member recorded as excused was excused
-from that vote; an excuse can cover a whole day, part of a day or a single vote, so
-an excused member may have cast other votes the same day. A member recorded
-as not excused did not vote, and the roll call does not say why.</p>
-
-<h2>Bills and resolutions are not the same thing</h2>
-<p>Which chamber a measure starts in follows from its prime sponsor: a
-representative's bill begins in the House, a senator's in the Senate.</p>
-<table><tbody>
-<tr><td><b>HB</b></td><td>House Bill — begins in the House, must pass both chambers,
-goes to the governor</td></tr>
-<tr><td><b>SB</b></td><td>Senate Bill — begins in the Senate, otherwise the same</td></tr>
-<tr><td><b>HR</b></td><td>House Resolution — voted on by the House only. It does not
-go to the Senate or the governor and does not change any law.</td></tr>
-<tr><td><b>SR</b></td><td>Senate Resolution — the Senate's equivalent, voted on only
-by the Senate</td></tr>
-<tr><td><b>HCR</b></td><td>House Concurrent Resolution — introduced in the House but
-voted on by both chambers</td></tr>
-<tr><td><b>SCR</b></td><td>Senate Concurrent Resolution — introduced in the Senate,
-voted on by both</td></tr>
-<tr><td><b>CACR</b></td><td>Constitutional Amendment Concurrent Resolution — a
-proposed change to the state constitution. Needs three fifths of the members in
-office in each chamber, then a two-thirds vote of the people at the next
-general election. The governor has no role.</td></tr>
-</tbody></table>
-
-<h2>What the suffixes on a bill number mean</h2>
-<table><tbody>
-<tr><td><b>-FN</b></td><td>Carries a fiscal note — an estimate of what it costs or
-raises. First-year bills carry these more often, since the first year of a term is
-the budget year.</td></tr>
-<tr><td><b>-A</b></td><td>Contains an appropriation</td></tr>
-<tr><td><b>-LOCAL</b></td><td>Has a local fiscal impact, on towns, cities, counties
-or school districts</td></tr>
-</tbody></table>
-<p>These stack in that order, so a bill can be HB 1442-FN or HB 660-FN-LOCAL.</p>
-
-<h2>Reading the shorthand</h2>
-<table><tbody>
-<tr><td><b>OTP</b></td><td>Ought to Pass — a motion to pass the bill</td></tr>
-<tr><td><b>OTP/A</b></td><td>Ought to Pass with Amendment</td></tr>
-<tr><td><b>ITL</b></td><td>Inexpedient to Legislate — a motion to kill the bill</td></tr>
-<tr><td><b>MA / MF</b></td><td>Motion Adopted / Motion Failed</td></tr>
-<tr><td><b>VV</b></td><td>Voice vote — no record of individual votes</td></tr>
-<tr><td><b>DV</b></td><td>Division vote — counted, but names not recorded</td></tr>
-<tr><td><b>RC</b></td><td>Roll call — each member's vote recorded by name</td></tr>
-<tr><td><b>RC</b> (in a report)</td><td>Regular Calendar, not Roll Call</td></tr>
-<tr><td><b>CC</b></td><td>Consent Calendar</td></tr>
-<tr><td><b>OT3rdg</b></td><td>Ordered to a third reading</td></tr>
-<tr><td><b>HJ / SJ</b></td><td>House or Senate Journal, and the page number</td></tr>
-</tbody></table>
-
-<h2>How to testify</h2>
-<p>You do not need to be invited, and you do not need to speak. You can sign in for
-or against a bill online before the hearing, submit written testimony, or come and
-say your piece in person. Committees generally hear anyone who signs up.</p>
-"""
-
 NOT_FOUND = """
 <p class="note">NO PAGE AT THIS ADDRESS</p>
 <h1>Nothing is published here</h1>
@@ -3993,10 +3860,10 @@ committee. Your town shows who represents you.</p>
 
     # learn.html belongs to build_civics.py now: it is the way into eleven
     # topic pages rather than one page of its own, and two builders writing
-    # the same address means whichever runs last wins. LEARN below is kept
-    # because its prose was redistributed into civics.py rather than
-    # rewritten, and it is the thing to diff against if a passage there
-    # looks wrong.
+    # the same address means whichever runs last wins. The old Learn prose,
+    # LEARN, was redistributed into civics.py rather than rewritten, and was
+    # deleted from here on 23 October 2026; git history keeps it, to diff
+    # against if a passage there looks wrong.
     # THE FIGURES ARE COUNTED, NOT TYPED. about_figures.py says why at length:
     # the eight numbers this page used to state about its own accuracy were
     # written when the site held one term, and seven of them were wrong by the

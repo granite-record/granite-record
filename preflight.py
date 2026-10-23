@@ -801,8 +801,8 @@ def _import_all():
     morning. So the list is read off the runners as well (_scripts_run):
     each script one of them names is imported, and one that build_all.py,
     nightly.py or the lane names and that is not here fails by name. (The
-    laptop's evening job was one of them until it was retired to obsolete/
-    on 10 October 2026.)
+    laptop's evening job was one of them until it was retired on 10 October
+    2026.)
     """
     ALSO = ("floor_markers", "apply_markers")
     mods = sorted({n for c in CHECKS for n in c["needs"]} | set(ALSO))
@@ -838,7 +838,7 @@ def _import_all():
 # missing is a failure; the last two are text, where a name may only be
 # mentioned, so there only what is here is imported. The laptop's evening job
 # was among them until 10 October 2026, when the night took its captions over
-# and it went to obsolete/.
+# and it was retired.
 _RUNNERS = ("build_all.py", "nightly.py", "watchers/gc_lane.py",
             "watchers/gc_lane.queue", ".github/workflows/nightly.yml")
 
@@ -1507,7 +1507,7 @@ def _bare_command_problems(root=None):
     in a document a backticked `x.py --flag`, where x.py is no longer at the
     root. None without git.
 
-    Tracked files only, outside obsolete/: the laptop's root also holds
+    Tracked files only: the laptop's root also holds
     STATE.md, CLAUDE.local.md and other files git does not carry, and a
     command in one of those is not the repository's. CLAUDE.md is the
     person's file and is left out too: its lines are drafted for the person
@@ -1523,7 +1523,7 @@ def _bare_command_problems(root=None):
     if r.returncode != 0:
         return None
     rels = sorted(p for p in (r.stdout or "").split("\0")
-                  if p and not p.startswith("obsolete/") and p != "CLAUDE.md"
+                  if p and p != "CLAUDE.md"
                   and (p.endswith((".py", ".md", ".bat") + _BARE_ALSO)
                        or (p.startswith(".github/workflows/") and p.endswith((".yml", ".yaml")))))
     bad, seen, n = [], set(), 0
@@ -1601,7 +1601,7 @@ def _dash_c_imports_paths():
     said = f"{n} files read; every -c program that imports a module of ours imports _paths first"
 
     # A script named without its folder, in a tree git tracks: six commands
-    # that would answer "can't open file" from the root, and eight that would
+    # that would answer "can't open file" from the root, and seven that would
     # not or are not read: the repository's, a data table's, the lane's.
     mover = "planted_mover.py"
     tmp = Path(tempfile.mkdtemp(prefix="gr-bare-"))
@@ -1623,8 +1623,7 @@ def _dash_c_imports_paths():
                 "tests/cases.json": f'{{"_about": ["python3 {mover} --fixture tests/cases.json"]}}\n',
                 "Docket.txt": f"python3 {mover}\n",
                 "watchers/gc_lane.queue": f"# python3 {mover} --all\n{mover} --all\n",
-                "CLAUDE.md": f"python3 {mover}\n",
-                "obsolete/README.md": f"python3 {mover}\n"}
+                "CLAUDE.md": f"python3 {mover}\n"}
             _plant(tmp, dict(tree, **{"notes.md": f"python3 {mover}\n"}))
             _run(["git", "-C", str(tmp), "add", "--", *tree], capture_output=True, timeout=60)
             got = _bare_command_problems(tmp)
@@ -23434,7 +23433,7 @@ def _no_control_bytes():
     # definition, so asking git what it ignores would end this class of
     # failure rather than adding to it; that is a change to make deliberately
     # and not while two sessions are in the same tree.
-    skip = ("site/", "work/", "archive/", "obsolete/", "logs/", "data/", "db/",
+    skip = ("site/", "work/", "archive/", "logs/", "data/", "db/",
             "docket_pages/", "bill_text/", "legislation/", "captions/",
             "review/", ".git/", "records/sources/", "brand/", "assets/",
             "town_sites/")
@@ -24873,8 +24872,7 @@ def _stamps():
     # AND EVERY STAMPED FILE IS LISTED. bill_order.py was written on 24
     # September with its own stamp and no line here, so this check -- which
     # reads the manifest's list -- never looked at it, and its first edit went
-    # out unbumped. obsolete/ keeps its old stamps and is deliberately not
-    # listed.
+    # out unbumped.
     r = _run(["git", "ls-files", "*.py", "*.js", "*.css", "*.html", "*.bat"],
              capture_output=True, text=True)
     # versions.json lists a script by its bare name wherever it sits, and git
@@ -24882,7 +24880,7 @@ def _stamps():
     listed = {_paths.locate(n).resolve() for n in want}
     unlisted = []
     for name in (r.stdout or "").split():
-        if name.startswith("obsolete/") or name in want or Path(name).resolve() in listed:
+        if name in want or Path(name).resolve() in listed:
             continue
         head = Path(name).read_text(encoding="utf-8", errors="replace")[:3000] \
             if Path(name).exists() else ""
@@ -25041,11 +25039,11 @@ def _record_untouched():
     # A FLOOR: the build_ and fetch_ scripts this read on 6 October 2026,
     # before any file moved. Read from the root alone after a move, it would
     # read none and pass. A script retired on purpose lowers it, in the same
-    # commit: 57 then, 56 since fetch_testimony.py went to obsolete/ on
-    # 7 October.
-    if len(scanned) < 56:
-        said.append(f"only {len(scanned)} build_ and fetch_ scripts were read, and 56 were "
-                    "on 7 October: the code folders are not being read (_paths.code_files)")
+    # commit: 57 then, 56 since fetch_testimony.py was retired on 7 October,
+    # 55 since fetch_leadership.py was deleted on 23 October.
+    if len(scanned) < 55:
+        said.append(f"only {len(scanned)} build_ and fetch_ scripts were read, and 55 were "
+                    "on 23 October: the code folders are not being read (_paths.code_files)")
     assert not said, "; and ".join(said)
     present = [n for n in HANDMADE if (_paths.ROOT / n).exists()]
     return "ok", (f"{len(present)} hand-made file(s) here, in corrections/ and review/, and "
@@ -29898,7 +29896,7 @@ def _child_encoding():
         return "skip", "not a git repository"
     bad, n = [], 0
     for f in out.stdout.split():
-        if f.startswith("obsolete/") or not Path(f).exists():
+        if not Path(f).exists():
             continue
         try:
             tree = _parsed(f)
@@ -42391,10 +42389,11 @@ def _committee_details_one_writer():
                      f"fetch_committee_details.py's alone: {', '.join(bad)}")
     # A floor, as the hand-made files' guard has: 57 build_ and fetch_ scripts
     # and the night were read on 6 October, before any file moved, and one
-    # fewer since fetch_testimony.py went to obsolete/ on 7 October.
-    assert len(scanned) >= 57, (
+    # fewer since fetch_testimony.py was retired on 7 October; one fewer again
+    # since fetch_leadership.py was deleted on 23 October.
+    assert len(scanned) >= 56, (
         f"only {len(scanned)} scripts were read for writers of committee_details.json, "
-        "and 57 were on 7 October: the code folders are not being read")
+        "and 56 were on 23 October: the code folders are not being read")
     src = mine.read_text(encoding="utf-8")
     assert re.search(r"\bCD\.write_details\s*\(", src), (
         "fetch_committee_details.py no longer writes committee_details.json "
@@ -50473,8 +50472,8 @@ def _ls_markers_guard(livestreams, nightly, probe_alignment, caption_span):
     """CLAUDE.md: nothing about timestamps goes on the site before
     `probe_alignment.py --truth --candidate candidate_segments.json` has been
     run and the median has not regressed. The laptop's evening job held the
-    caption results to that before it sent them, and was retired to
-    obsolete/ on 10 October 2026, when the night took the captions over and
+    caption results to that before it sent them, and was retired on
+    10 October 2026, when the night took the captions over and
     candidate_segments.json and caption_spans.json became the night's files
     in the kit. So the night's --markers step holds itself to it: copies of
     both files before it reads, and both put back, byte for byte, when
@@ -50633,18 +50632,18 @@ def _ls_evening_retired(CL, livestreams):
     into the kit. The person switched it off on 8 October and decided on the
     same day that the night owns the captions. So:
 
-      - it is in obsolete/, without a stamp, and no runner names it;
+      - it is gone -- kept in obsolete/ from 10 October, and deleted with that
+        folder on 23 October 2026 (git history keeps it) -- and no runner
+        names it;
       - the two caption results are the night's in the kit, and the
         clustering model's segments, which only a person reruns, the
         laptop's;
       - a dry run sends neither back (the dry night sends only the store);
       - the livestream step's three small files are what it carries itself.
     """
-    assert not Path("laptop_evening.py").exists(), \
-        "laptop_evening.py is back at the root: the night takes the captions now"
-    retired = Path("obsolete/laptop_evening.py")
-    assert retired.exists() and "GRANITE_VERSION" not in retired.read_text(encoding="utf-8"), \
-        "obsolete/laptop_evening.py is missing, or still carries a stamp somebody must keep true"
+    back = _paths.find("laptop_evening.py")
+    assert not Path("laptop_evening.py").exists() and back is None, \
+        f"laptop_evening.py is back ({back or 'at the root'}): the night takes the captions now"
     assert "laptop_evening.py" not in _RUNNERS and "laptop_evening.py" not in _RUNNER_FLOORS
     named = [r for r, ns in _runner_names().items() if any("laptop_evening" in n for n, _ in ns)]
     assert not named, f"{named} still start laptop_evening.py"
@@ -50656,7 +50655,7 @@ def _ls_evening_retired(CL, livestreams):
         "the clustering model's segments are not the laptop's"
     assert livestreams.carry_list() == ["archive/livestreams.json", "videos_house_livestreams.csv",
                                         "videos_senate_livestreams.csv"]
-    return "ok", ("laptop_evening.py in obsolete/, named by no runner; the caption results the "
+    return "ok", ("laptop_evening.py gone, named by no runner; the caption results the "
                   "night's, sent back by no dry run; the clustering segments the laptop's")
 
 
@@ -63256,8 +63255,9 @@ def _video_starts_on_the_right_clock(fetch_channel_index):
 
 
 # How many scripts asked gc.nh.gov on 6 October 2026, before any file moved
-# (25), less fetch_testimony.py, which went to obsolete/ on 7 October.
-_ASKS_GC_FLOOR = 24
+# (25), less fetch_testimony.py, retired on 7 October, and fetch_leadership.py,
+# deleted on 23 October.
+_ASKS_GC_FLOOR = 23
 
 
 @check("build", "every fetcher that asks gc.nh.gov consults refusal.py first")
@@ -63376,10 +63376,11 @@ def _every_fetcher_checks_refusal():
     # and the ones that asked gc.nh.gov. Read from the root alone after a
     # move, it would find no fetcher left there and pass. A script retired on
     # purpose lowers them, in the same commit: 161 and 25 then, 160 and 24
-    # since fetch_testimony.py went to obsolete/ on 7 October.
-    assert len(scanned) >= 160 and len(asks) >= _ASKS_GC_FLOOR, (
-        f"{len(scanned)} scripts were read and {len(asks)} ask gc.nh.gov; on 7 October "
-        f"160 were read and {_ASKS_GC_FLOOR} asked: the code folders are not being read")
+    # since fetch_testimony.py was retired on 7 October, 159 and 23 since
+    # fetch_leadership.py was deleted on 23 October.
+    assert len(scanned) >= 159 and len(asks) >= _ASKS_GC_FLOOR, (
+        f"{len(scanned)} scripts were read and {len(asks)} ask gc.nh.gov; on 23 October "
+        f"159 were read and {_ASKS_GC_FLOOR} asked: the code folders are not being read")
     assert all(n in asks for n in NAMED if _paths.locate(n).exists()), "a named fetcher was not read"
     assert not _paths.locate("check_civics_links.py").exists() or "check_civics_links.py" in asks, \
         "check_civics_links.py, which asks the addresses civics.py holds, was not read"
@@ -63390,7 +63391,7 @@ def _every_fetcher_checks_refusal():
           "after the arguments are parsed (after an offline branch that asks nobody).")
     # CONTRIBUTING.md'S COUNT (7 October 2026). It tells a contributor how
     # many fetch_*.py scripts carry a literal gc.nh.gov URL and call check(),
-    # and it still said 18 after fetch_testimony.py went to obsolete/ and
+    # and it still said 18 after fetch_testimony.py was retired and
     # seventeen were left. The number is the one this reads, so it is held to
     # it: a script retired or added changes the sentence in the same commit.
     contrib = _paths.ROOT / "CONTRIBUTING.md"
@@ -63432,8 +63433,8 @@ def _every_fetcher_notes_refusal():
     above reads refusal.check() -- so a new fetcher is held by it the day it is
     written. A note in a comment or a string is not one.
 
-    AND WHAT IT DOES, for the fifteen (fourteen since fetch_testimony went to
-    obsolete/ on 7 October): each is driven through its main() in a
+    AND WHAT IT DOES, for the fifteen (fourteen since fetch_testimony was
+    retired on 7 October): each is driven through its main() in a
     temp folder on fake answers -- a 403, the block page served as a 200, and
     two dropped connections where one does not end the run -- and must stop
     with status 2, the refusal on file, after the one request that met it.
@@ -63517,7 +63518,7 @@ def _every_fetcher_notes_refusal():
     # The floor is the check above's: every script that asks gc.nh.gov calls
     # refusal.check(), so as many call it as ask. Fewer is a code folder not read.
     assert len(checkers) >= _ASKS_GC_FLOOR, (
-        f"{len(checkers)} scripts call refusal.check(); on 7 October {_ASKS_GC_FLOOR} did: "
+        f"{len(checkers)} scripts call refusal.check(); on 23 October {_ASKS_GC_FLOOR} did: "
         "the code folders are not being read")
     assert not missing, (
         "these call refusal.check() and never refusal.note(), so a refusal they meet "
@@ -64435,91 +64436,6 @@ def _senate_calendars(SC):
         shutil.rmtree(root, ignore_errors=True)
 
 
-@check("build", "the leadership fetch asks once, stops on a refusal, and asks only linked pages",
-       needs=("fetch_leadership",))
-def _leadership_fetch(FL):
-    """fetch_leadership.py had no refusal import, retried five times with a
-    back-off -- so one 403 became five -- and asked three House addresses whose
-    pages had never been read. Driven on fake answers: nothing asks the network
-    and archive/ is never opened."""
-    import contextlib
-    import http.client
-    import io
-    import types
-    import urllib.error
-    import refusal
-
-    saved = (refusal.MARK, refusal.LOCK, FL.ROOT, FL._get, FL.time)
-    PAGE = "<html><title>Leadership</title>President: Senator A B of C</html>"
-    BLOCK = "<html><title>Web Page Blocked</title>Attack ID: 1</html>"
-    tmps = []
-    # The saved navigation pages are not in git, so a clean checkout has none
-    # and every address would read as unlinked. The fetch is driven against a
-    # navigation page of its own; the real pages are checked separately, and
-    # only where they exist.
-    nav_dir = Path(tempfile.mkdtemp())
-    tmps.append(nav_dir)
-    nav = nav_dir / "nav.html"
-    nav.write_text("".join(f'<a href="{__import__("urllib.parse").parse.urlsplit(p[2]).path}">x</a>'
-                           for p in FL.PAGES), encoding="utf-8")
-    fixture = [(k, ch, url, str(nav)) for k, ch, url, _where in FL.PAGES]
-
-    def run(answers, lock=None, pages=None):
-        pages = pages or fixture
-        tmp = Path(tempfile.mkdtemp())
-        tmps.append(tmp)
-        FL.ROOT = tmp / "leadership"
-        refusal.MARK, refusal.LOCK = tmp / "refused.json", tmp / ".lock"
-        if lock is not None:
-            refusal.LOCK.write_text(str(lock), encoding="utf-8")
-        answers, asked = iter(answers), []
-
-        def fake(url, timeout=60):
-            asked.append(url)
-            a = next(answers)
-            if isinstance(a, BaseException):
-                raise a
-            return a
-        FL._get = fake
-        with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
-            try:
-                refusal.check("test")
-                with refusal.hold("test") as held:
-                    rc = FL.fetch(held, delay=0, pages=pages)
-            except SystemExit as e:
-                rc = e.code if isinstance(e.code, int) else 1
-        return rc, asked, sorted(p.name for p in FL.ROOT.glob("*.html")) if FL.ROOT.exists() else []
-
-    try:
-        FL.time = types.SimpleNamespace(sleep=lambda s: None)
-        assert all(FL.linked(p) for p in FL.PAGES) or not Path("committees_house.html").exists(), \
-            "an address in PAGES is linked from no saved General Court page"
-        rc, asked, got = run([PAGE] * 5)
-        assert rc == 0 and len(asked) == 5 and len(got) == 5, (rc, len(asked), got)
-        err403 = urllib.error.HTTPError("u", 403, "Forbidden", {}, io.BytesIO(b""))
-        rc, asked, got = run([err403])
-        assert rc == 2 and len(asked) == 1 and refusal.MARK.exists() and not got, \
-            "a 403 was asked about again, or not recorded"
-        rc, asked, got = run([BLOCK])
-        assert rc == 2 and not got, "the block page served with a 200 was saved as a page"
-        drop = urllib.error.URLError(http.client.RemoteDisconnected("closed"))
-        rc, asked, got = run([drop, drop])
-        assert rc == 2 and len(asked) == 2, "two dropped connections did not end the run"
-        err404 = urllib.error.HTTPError("u", 404, "Not Found", {}, io.BytesIO(b""))
-        rc, asked, got = run([err404, PAGE])
-        assert rc == 1 and len(asked) == 1, "a missing linked page did not stop the run"
-        rc, asked, got = run([PAGE], pages=[("x", "H", "https://gc.nh.gov/house/guessed.aspx",
-                                             str(nav))])
-        assert rc == 1 and not asked, "an address linked from nowhere was asked"
-        rc, asked, got = run([PAGE], lock=99999999)
-        assert rc == 3 and not asked, "a second fetch ran beside a held lock"
-    finally:
-        refusal.MARK, refusal.LOCK, FL.ROOT, FL._get, FL.time = saved
-        for t in tmps:
-            shutil.rmtree(t, ignore_errors=True)
-    return "ok", "one 403 or block page or two drops stop it; 404 stops; unlinked and locked ask nothing"
-
-
 @check("build", "the lane runs a daily step once a day between its other steps, and stops at a boundary when asked")
 def _lane_daily():
     """watchers/gc_lane.py, driven for real in a temp folder on stub steps.
@@ -64801,7 +64717,7 @@ def _running_oneliner():
     for want in (r"python3 watchers\gc_lane.py", "python3 nightly.py --no-fetch",
                  "python3 src/fetch/gc_web/fetch_legislation.py --all", "python3 src/fetch/gc_web/snapshot_gencourt.py",
                  r"cmd /c publish.bat", "python3 src/ops/cloud.py pull",
-                 r"python3 watchers\captions_watch.py", "python3 probe_archive.py",
+                 r"python3 watchers\captions_watch.py", "python3 src/fetch/gc_web/probe_calendars.py",
                  "python3 src/fetch/gc_db/probe_db.py --sample", "python3 src/fetch/gc_web/resolve_members.py"):
         assert pattern.search(want), f"the one-liner would not list: {want}"
     assert not pattern.search("msedgewebview2.exe --gpu-watchdog-timeout-seconds=60 "
@@ -79824,11 +79740,11 @@ def _writers_merge():
                 bad.append(f"{f.name} writes {name} and never reads it")
     assert not bad, "; ".join(bad)
     # A floor: the scripts of the root and src/ read on 6 October 2026, before
-    # any file moved (161), less fetch_testimony.py, which went to obsolete/
-    # on 7 October.
-    assert len(scanned) >= 160, (
-        f"only {len(scanned)} scripts were read for writers of the shared files, and 160 "
-        "were on 7 October: the code folders are not being read")
+    # any file moved (161), less fetch_testimony.py, retired on 7 October, and
+    # fetch_leadership.py, deleted on 23 October.
+    assert len(scanned) >= 159, (
+        f"only {len(scanned)} scripts were read for writers of the shared files, and 159 "
+        "were on 23 October: the code folders are not being read")
     return "ok", f"{len(shared)} shared files, every writer of one reads it first"
 
 
