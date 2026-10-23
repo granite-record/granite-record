@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.241
+// GRANITE_VERSION: 2026-09-07.242
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -4212,6 +4212,7 @@ function renderVotes(b,d){
         rc.body==="H"?"House":"Senate"}${rc.wo?" · Without Objection":
           AVK[vk]?` · ${termMark(vk,AVK[vk])}`:""}</span>
       ${voteChip(rc.mk||"",rc.passed,b.id,rc.mf)}</div>
+      ${rc.ruling?`<p class="rcrul">${esc(rc.ruling)}</p>`:""}
       ${rc.mrec?`<p class="rcrec">In the record: <span translate="no">${esc(rc.mrec)}</span></p>`:""}
       ${rc.mover?`<p class="rcby">Moved by ${rc.mover_m?personLink(rc.mover_m):esc(rc.mover)}</p>`:""}
       ${rc.threshold_note?`<p class="note" style="margin:6px 0 0">${esc(rc.threshold_note)}</p>`:""}

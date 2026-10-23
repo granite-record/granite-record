@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.671
+# GRANITE_VERSION: 2026-09-04.672
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -14550,6 +14550,272 @@ def _journal_motions(JM):
     finally:
         JM.APPROVED = keep
         shutil.rmtree(d, ignore_errors=True)
+
+# THE MOTION BY NAME AND THE RULING (the owner, 23 October 2026), each case
+# a passage the House or Senate Journal printed, as journal_motions.py read
+# it that day: (roll call, kind, chamber, member gate 7 named, the Journal's
+# line after the vote, the bills named, [(what, sentence)], what it is headed).
+_NAMED_VOTES = [
+    ("2026-H-290", "reprimand", "H", "Travis Corcoran",
+     "The Speaker informed Rep. Corcoran of the censure by the House.", [],
+     [("moved", "Following the letter, Rep. Simpson moved to reprimand the member and the Speaker "
+                "referred the matter to this committee for review and report."),
+      ("question", "The question was to affirm the report of the committee on Legislative "
+                   "Administration.")],
+     "Affirm the Committee Report (Censure Rep. Corcoran)"),
+    # The same passage where gate 7 named no member: the member goes unnamed.
+    ("2026-H-290", "reprimand", "H", "", "", [],
+     [("question", "The question was to affirm the report of the committee on Legislative "
+                   "Administration.")],
+     "Affirm the Committee Report"),
+    ("2020-H-56", "reprimand", "H", "", "", [],
+     [("moved", "Therefore, I move that Representative Charlie Burns be reprimanded by the House "
+                "of Representatives."),
+      ("question", "The question being should Representative Charlie Burns be reprimanded by the "
+                   "House of Representatives?"),
+      ("moved", "Rep. Sylvia moved that the motion to reprimand Representative Charlie Burns, be "
+                "laid on the table.")],
+     "Lay the Motion on the Table (Motion to Reprimand)"),
+    ("2020-H-57", "reprimand", "H", "Charlie Burns",
+     "Representative Charlie Burns was reprimanded by the House of Representatives.", [],
+     [("moved", "Therefore, I move that Representative Charlie Burns be reprimanded by the House "
+                "of Representatives."),
+      ("question", "The question now being should Representative Charlie Burns be reprimanded by "
+                   "the House of Representatives?")],
+     "Reprimand the Member (Rep. Charlie Burns)"),
+    ("2020-H-59", "reprimand", "H", "", "", [],
+     [("question", "The question now being should Representative Andrew Prout be reprimanded by "
+                   "the House of Representatives?")],
+     "Reprimand the Member"),
+    ("2026-H-291", "privileges", "H", "Read", "", [],
+     [("moved", "Rep. McGhee moved that the motion to remove the sanctions on Rep. Read be removed "
+                "from the table.")],
+     "Remove from the Table (Motion to Remove the Sanctions on Rep. Read)"),
+    ("2017-H-117", "motion", "H", "", "", [],
+     [("question", "The question being adoption of the motion to send to Committee.")],
+     "Refer to Committee"),
+    ("2022-H-9", "motion", "H", "", "", ["HB50"],
+     [("moved", "Having voted with the prevailing side, Rep. Steven Smith moved that the House "
+                "reconsider its action whereby, on a roll call vote of 186-168, the House adopted "
+                "the majority committee report of Ought to Pass with Amendment on HB 50, "
+                "apportioning state representative districts.")],
+     "Reconsider (Majority Committee Report)"),
+    ("2010-S-70", "motion", "S", "", "", ["SSSB2"],
+     [("moved", "Sen. Janeway moved to table SS SB 2-FN Draft, LSR 2977."),
+      ("question", "The question is on motion to table SS SB 2-FN Draft, LSR 2977.")],
+     "Lay on the Table"),
+    ("2006-H-213", "motion", "H", "", "", [],
+     [("moved", "Rep. Pepino offered floor amendment (2410h)."),
+      ("ruled", "The Speaker ruled the amendment was germane."),
+      ("question", "The question being adoption of floor amendment (2410h)")],
+     "Adopt the Floor Amendment (2410h)"),
+    ("2021-S-328", "motion", "S", "", "", [],
+     [("moved", "Senator Bradley moved that the following Bills be special ordered to Thursday, "
+                "May 6, 2021.")],
+     "Special Order (to Thursday, May 6, 2021)"),
+    ("2024-05-23-H-d541865", "reprimand", "H", "", "", [],
+     [("moved", "Rep. Yokela moved to reprimand Rep. Aures."),
+      ("moved", "Rep. Hoell moved that the motion to reprimand Rep. Aures, be laid on the table.")],
+     "Lay the Motion on the Table (Motion to Reprimand)"),
+    # No motion here fits a member's continuing put as a "motion": no head.
+    ("2026-H-132", "motion", "H", "", "", [],
+     [("question", "The question being shall the member continue.")], ""),
+]
+# (roll call, bills named, [(what, sentence)], what the chair ruled).
+_RULINGS = [
+    ("2026-H-147", ["HB1142"],
+     [("ruled", "The Speaker ruled the motion dilatory."),
+      ("challenge", "Rep. Heath Howard challenged the ruling of the Chair whereby the Chair ruled "
+                    "the motion to Special Order HB 1142, dilatory.")],
+     "The chair ruled the motion to Special Order HB 1142 dilatory."),
+    # HB 1609-FN challenged as "HB 1142": two bills, no ruling (gate 6).
+    ("2026-H-166", ["HB1609", "HB1142"],
+     [("ruled", "Speaker Kofalt ruled the motion dilatory."),
+      ("challenge", "Rep. Heath Howard challenged the ruling of the Chair whereby the Chair ruled "
+                    "the motion to Special Order HB 1142, dilatory.")], ""),
+    ("2015-H-188", ["SB9"],
+     [("challenge", "Rep. William O'Brien appealed the ruling of the Chair on the ruling that "
+                    "introduction of a new bill does not violate any constitutional provision or "
+                    "statute regarding appropriation of money bills originating in the House.")],
+     "The chair ruled that introduction of a new bill does not violate any constitutional "
+     "provision or statute regarding appropriation of money bills originating in the House."),
+    ("2013-H-7", [],
+     [("moved", "Rep. Lambert moved to refer a Petition to a House Committee."),
+      ("ruled", "The Speaker ruled the motion out of order."),
+      ("challenge", "Rep. Lambert appealed the ruling of the Chair whereby the Chair, pursuant to "
+                    "House Rule 18, ruled the motion out of order.")],
+     "The chair ruled the motion to refer a Petition to a House Committee out of order."),
+    ("2020-H-172", [],
+     [("challenge", "Rep. Marsh challenged the ruling of the Chair on House Rule 65, the Speaker "
+                    "has the authority to set meetings of the House.")],
+     "The ruling was on House Rule 65, the Speaker has the authority to set meetings of the "
+     "House."),
+    ("2011-02-16-H-t84566", [],
+     [("challenge", "Rep. Gary Richardson appealed the ruling of the Chair for declaring that a "
+                    "motion to Lay on the Table was in order on HB 37-FN-A, reestablishing the "
+                    "initial monthly gross charge exemption to the communications services tax.")],
+     "The chair declared that a motion to Lay on the Table was in order on HB 37-FN-A, "
+     "reestablishing the initial monthly gross charge exemption to the communications "
+     "services tax."),
+    ("2014-01-22-H-d36132", [],
+     [("moved", "Rep. Carol McGuire moved that the House stand in recess."),
+      ("ruled", "Speaker ruled the motion out of order."),
+      ("challenge", "Rep. Carol McGuire appealed the ruling of the Chair on the motion to recess "
+                    "being out of order.")],
+     "The chair ruled the motion to recess out of order."),
+    # The Journal says only that the ruling was appealed: nothing to say.
+    ("2008-05-15-H-d136009", [],
+     [("challenge", "Rep. Vaillancourt appealed the ruling of the Chair.")], ""),
+]
+
+_RULING_VOTES_JS = r"""
+require("./stub.js");
+const fs = require("fs");
+globalThis.fetch = async u => ({ok: true, status: 200, json: async () => ({H: [], S: []}),
+  text: async () => "{}"});
+let s;
+try { s = (0, eval)(fs.readFileSync("./page.js", "utf8") + "; ({renderVotes})"); }
+catch (e) { console.log("LOAD " + e.constructor.name + ": " + e.message); process.exit(1); }
+const rc = JSON.parse(fs.readFileSync("./rc.json", "utf8"));
+const out = {with: s.renderVotes({id: "SB9"}, {rollcalls: [rc]}),
+             without: s.renderVotes({id: "SB9"}, {rollcalls: [Object.assign({}, rc, {ruling: ""})]})};
+process.stdout.write("\n@@" + JSON.stringify(out));
+"""
+
+
+@check("rollcalls", "a Misc vote is headed by the motion the Journal says was put, a member named "
+       "only where gate 7 names them; an appeal is \"Uphold the Ruling of the Chair\" with no gloss, "
+       "and what the chair ruled where the Journal says, on the session day and the bill's Votes tab",
+       needs=("journal_motions", "vote_passage", "build_session_pages", "session_days",
+              "build_nobill_votes", "components"))
+def _motion_named_and_ruling_said(JM, VP, BSP, SD, NB, C):
+    """The owner, 23 October 2026: "Could the actual vote on the Travis
+    Corcoran censure for example be something along the lines of 'Affirm the
+    Committee Report (Censure Rep. Corcoran)' rather than Misc Vote? It's
+    fine for that to be the general category, but I'd like it to be more
+    specific on the actual display showing the specific motion. Also listing
+    Back the presiding officer is honestly more confusing than just listing
+    uphold the ruling of the chair by itself. An alternative might be if it's
+    possible to include what the ruling of the chair was for context, but if
+    that isn't available, just leave it as 'Uphold the Ruling of the Chair'."
+
+    It fails if a passage the Journal printed is headed otherwise than the
+    table above says -- a member named where gate 7 did not name them, a
+    motion on a motion headed as the motion it is on, a head guessed where no
+    motion fits -- or a ruling is said otherwise, or said where the passage
+    names two bills or only "the motion"; if a word of either is not in the
+    passage; if "Back the presiding officer" or any gloss is back on the
+    head; if the session day, the term's list or the member tab's few words
+    head a named vote "Misc vote", or the session day or the bill's Votes tab
+    leaves the ruling out from under an appeal on a bill, or draws one where
+    there is none."""
+    import html
+    bad = []
+
+    def entry(key, kind, body, member, after, bills, said):
+        return {"key": key, "kind": kind, "body": body, "member": member, "after": after,
+                "bills": list(bills), "held": [],
+                "said": [{"k": k, "t": t} for k, t in said] + [{"k": "outcome", "t": "Adopted."}]}
+
+    for key, kind, body, member, after, bills, said, want in _NAMED_VOTES:
+        e = JM.name_entry(entry(key, kind, body, member, after, bills, said))
+        if (e.get("title") or "") != want:
+            bad.append(f"{key} ({member or 'no member'}) is headed {e.get('title')!r}, not {want!r}")
+    for key, bills, said, want in _RULINGS:
+        e = JM.name_entry(entry(key, "appeal", "H", "", "", bills, said))
+        if (e.get("ruling") or "") != want:
+            bad.append(f"{key}'s ruling reads {e.get('ruling')!r}, not {want!r}")
+        if e.get("title"):
+            bad.append(f"{key}, an appeal, carries a head of its own: {e['title']!r}")
+    held = JM.name_entry(dict(entry(*_NAMED_VOTES[0][:7]), held=["outcome: not the record's"]))
+    if held.get("title"):
+        bad.append("a vote held back is named")
+    # THE GLOSS: none on Uphold the Ruling of the Chair, wherever it is drawn.
+    m = C.WORDBOOK["votes"]["motions"]["uphold_ruling"]
+    head = C.vote_head("uphold_ruling", "Uphold Ruling of the Chair", {})
+    if m.get("gloss") or "presiding officer" in head or "(" in head:
+        bad.append(f"Uphold the Ruling of the Chair is glossed: {head!r}")
+    # THE PAGES. The session day, the term's list and the member tab's few
+    # words, from vote_passage as journal_motions.json says.
+    named = JM.name_entry(entry(*_NAMED_VOTES[0][:7]))
+    named.update(passed=True, yeas=288, nays=54, how="division", date="2026-05-21",
+                 journal="House Journal 14", page=24)
+    plain = dict(named, title="")
+    if VP.title(named) != "Affirm the Committee Report (Censure Rep. Corcoran)" \
+            or VP.title(plain) != VP.kind_label(plain):
+        bad.append(f"vote_passage heads the censure {VP.title(named)!r}, or one the parser did "
+                   f"not name {VP.title(plain)!r} rather than by its kind")
+    if not VP.short(named).startswith("Affirm the Committee Report"):
+        bad.append(f"the member tab's few words for the censure are {VP.short(named)!r}")
+    # (no member index here: the head is what is read)
+    jo = BSP.journal_only_html(dict(named, member=""), "H", None, html.escape, [])
+    if '<p class="dvh">Affirm the Committee Report (Censure Rep. Corcoran)' not in jo:
+        bad.append("the session day does not head the censure by its motion")
+    row = NB.row_html({"kind": "reprimand", "title": named["title"], "line": "", "heading": "",
+                       "words": "", "shown": True, "member": "", "body": "H", "date": "2026-05-21",
+                       "link": "", "how": "division", "yeas": 288, "nays": 54, "passed": True})
+    if "Affirm the Committee Report (Censure Rep. Corcoran)" not in row or "Misc vote" in row:
+        bad.append("the term's list does not head the censure by its motion")
+    # An appeal on a bill: the session day, from journal_motions.json.
+    src = str(VP.SOURCE)
+    kept = VP._CACHE.pop(src, None)
+    rul = _RULINGS[2][3]
+    VP._CACHE[src] = {"rollcalls": {"2015-H-188": {"key": "2015-H-188", "held": [], "ruling": rul}},
+                      "journal_only": [], "kinds": {}, "groups": {}, "group_words": {},
+                      "bill_votes": []}
+    try:
+        it = SD.Item("SB9", "2015-2016", {"date": "2015-09-16", "body": "H", "type": "floor",
+                                          "action": "Uphold Ruling of the Chair", "motion": "MA",
+                                          "vote_kind": "RC", "yeas": 286, "nays": 89}, 0)
+        it.rc = {"year": "2015", "body": "H", "number": 188}
+        day = BSP.vote_html(it, "SB9", "H", "2015", {}, None, html.escape, [])
+        it2 = SD.Item("SB9", "2015-2016", {"date": "2015-09-16", "body": "H", "type": "floor",
+                                           "action": "Uphold Ruling of the Chair", "motion": "MA",
+                                           "vote_kind": "RC", "yeas": 286, "nays": 89}, 0)
+        it2.rc = {"year": "2015", "body": "H", "number": 999}
+        none = BSP.vote_html(it2, "SB9", "H", "2015", {}, None, html.escape, [])
+    finally:
+        VP._CACHE.pop(src, None)
+        if kept is not None:
+            VP._CACHE[src] = kept
+    if f'<p class="dvh">Uphold the Ruling of the Chair<span class="nbl">{html.escape(rul)}</span>' \
+            not in day:
+        bad.append(f"the session day does not say the ruling under the appeal: {day[:300]!r}")
+    if "nbl" in none or "presiding officer" in none:
+        bad.append(f"the session day draws a ruling or a gloss where there is none: {none[:200]!r}")
+    # The bill's Votes tab (app.js renderVotes), under node.
+    js, stub = Path("src/pages/app.js"), Path("tests/dom_stub.js")
+    node = shutil.which("node") or shutil.which("node.exe")
+    if not (js.exists() and stub.exists() and node):
+        if bad:
+            raise AssertionError("; ".join(bad))
+        return "skip", "app.js, dom_stub.js or node is not here; the parser and the session day held"
+    root = Path(tempfile.mkdtemp())
+    try:
+        (root / "page.js").write_text(_with_components(js.read_text(encoding="utf-8")), encoding="utf-8")
+        (root / "stub.js").write_text(stub.read_text(encoding="utf-8"), encoding="utf-8")
+        (root / "rc.json").write_text(json.dumps({
+            "question": "Uphold Ruling of the Chair", "mk": "uphold_ruling", "mf": {},
+            "date": "2015-09-16", "body": "H", "vote_kind": "DV", "yeas": 286, "nays": 89,
+            "passed": True, "ruling": rul}), encoding="utf-8")
+        (root / "go.js").write_text(_RULING_VOTES_JS, encoding="utf-8")
+        r = _run([node, "go.js"], cwd=root, capture_output=True, text=True, timeout=60)
+        assert r.returncode == 0 and "@@" in (r.stdout or ""), (
+            "app.js did not draw the Votes tab under node: " + (r.stderr or r.stdout or "")[-300:])
+        got = json.loads(r.stdout.rsplit("@@", 1)[1])
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    if '<h2 class="rcq">Uphold the Ruling of the Chair</h2>' not in got["with"] \
+            or f'<p class="rcrul">{html.escape(rul, quote=True)}</p>' not in got["with"]:
+        bad.append("the bill's Votes tab does not head the appeal plainly with the ruling under it: "
+                   + re.sub(r"\s+", " ", got["with"])[:300])
+    if "rcrul" in got["without"] or "presiding officer" in got["without"]:
+        bad.append("the bill's Votes tab draws a ruling or a gloss where there is none")
+    assert not bad, "; ".join(bad)
+    return "ok", (f"{len(_NAMED_VOTES)} Journal passages headed by their motion, a member named "
+                  f"only where gate 7 named them; {len(_RULINGS)} appeals' rulings said or, where "
+                  "the Journal does not say, not; no gloss; the session day, the term's list, the "
+                  "member tab and the bill's Votes tab agree")
 
 
 @check("rollcalls", "floor_markers matches a spoken tally to the record")
@@ -30965,7 +31231,7 @@ _NB_FIXTURE = {
                                      "the bill."},
                  {"k": "outcome", "t": "and the motion failed."}],
         "member": "", "member_id": "", "bill": "HB1442", "bills": ["HB1442"], "line": "",
-        "line_held": "no summary for this kind of passage",
+        "line_held": "no summary for this kind of passage", "title": "Divide the Question",
         "bill_motion": "divide", "on_bill": "HB1442"}},
     "journal_only": [{
         "key": "2026-03-06-H-d182020", "body": "H", "date": "2026-03-06", "term": "2025-2026",
@@ -30987,6 +31253,8 @@ _NB_FIXTURE = {
                                        "adopted."}],
         "member": "Jodi Nelson", "member_id": "377204", "bill": "", "bills": [], "line": "",
         "after": "Representative Jodi Nelson was reprimanded by the House of Representatives.",
+        # The motion by name (the owner's third review, 23 October 2026).
+        "title": "Reprimand the Member (Rep. Jodi Nelson)",
         "at": 182020}]}
 
 
@@ -48206,8 +48474,9 @@ def _nobill_votes_shown(VP):
 
     And the owner's review of that day: it fails if a vote on a committee's
     report loses the report, whole and shut under "View the report", or the
-    list's link to it; if a reprimand is headed or filtered as anything but a
-    Misc vote, or "discipline" is said; or if a motion on HB 1442's own
+    list's link to it; if a reprimand is filtered as anything but a Misc
+    vote, or headed otherwise than by its motion (the owner's third review),
+    or "discipline" is said; or if a motion on HB 1442's own
     debate -- the roll call that divided it, filed under no bill, and the
     previous question carried on a division the Journal alone records -- is
     not drawn under HB 1442 on the session day and its Votes tab, or the
@@ -48239,10 +48508,12 @@ def _nobill_votes_shown(VP):
             or "The member it concerned:" not in jv_html:
         bad.append("the reprimand by division is not drawn, marked as a division, or named")
     # MISC VOTE, NOT DISCIPLINE (the owner, 23 October 2026), wherever a
-    # reader sees the kind: the head, the filter, the rows.
-    if '<p class="dvh">Misc vote</p>' not in jv_html or re.search(r"(?i)discipline", day):
-        bad.append("the reprimand by division is not headed \"Misc vote\", or the day says "
-                   "\"discipline\"")
+    # reader sees the kind: the filter and the rows; and the head is the
+    # motion by name, where the parser named it (the owner's third review).
+    if '<p class="dvh">Reprimand the Member (Rep. Jodi Nelson)</p>' not in jv_html \
+            or re.search(r"(?i)discipline", day):
+        bad.append("the reprimand by division is not headed by its motion, \"Reprimand the "
+                   "Member (Rep. Jodi Nelson)\", or the day says \"discipline\"")
     # VIEW THE REPORT: the committee's report, whole, folded shut under the
     # passage, its heading and paragraphs and its own pages cited.
     rep = re.search(r'<details class="nbrep" id="rep-2026-03-06-H-d182020"><summary>View the report'

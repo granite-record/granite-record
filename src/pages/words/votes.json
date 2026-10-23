@@ -61,7 +61,7 @@
     "part": {"row": "27", "when": "a part of a divided question, headed by its own motion naming the part", "motion": null, "abbr": "", "gloss": null, "passed": "Part Adopted", "failed": ""},
     "ought_not_to_pass": {"row": "28", "motion": "Ought Not to Pass", "abbr": "", "gloss": "Reject it", "passed": "Rejected", "failed": ""},
     "withdraw": {"row": "29", "when": "only where the bill is withdrawn", "motion": "Withdraw", "abbr": "", "gloss": "The sponsor takes the bill back", "passed": "{Bill} Withdrawn", "failed": ""},
-    "uphold_ruling": {"row": "30", "motion": "Uphold the Ruling of the Chair", "abbr": "", "gloss": "Back the presiding officer", "passed": "", "failed": ""},
+    "uphold_ruling": {"row": "30", "motion": "Uphold the Ruling of the Chair", "abbr": "", "gloss": "", "passed": "", "failed": ""},
     "member_continue": {"row": "30", "motion": "Shall the Member Continue", "abbr": "", "gloss": "Let the member keep speaking", "passed": "", "failed": ""},
     "print_debate": {"row": "30", "motion": "Print the Debate", "abbr": "", "gloss": "Keep the speeches in the journal", "passed": "", "failed": ""},
     "reprimand": {"row": "30", "motion": "Reprimand the Member", "abbr": "", "gloss": "Formally rebuke a member", "passed": "", "failed": ""},

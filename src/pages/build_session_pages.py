@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-19.46
+# GRANITE_VERSION: 2026-09-19.47
 """
 A page for every day the House sat.
 
@@ -543,7 +543,7 @@ def journal_extra_html(e, body, members, esc, term="", years=None):
 def journal_only_html(e, body, members, esc, payloads, term="", years=None):
     """A vote the Journal records and the roll-call file does not: a division,
     with the count and no member's vote, or a voice vote, with neither."""
-    head = esc(VP.kind_label(e))
+    head = esc(VP.title(e))
     if e.get("line"):
         head += f'<span class="nbl">{esc(e["line"])}</span>'
     carried = e.get("passed")
@@ -1397,17 +1397,25 @@ def vote_html(it, bill, body, year, cards, members, esc, payloads, journal=None,
 
     `journal` is a vote on no bill's entry in journal_motions.json, where the
     Journal's words for it are shown (vote_passage): its head is then the
-    kind of question in the site's words, with the one-line summary under it
-    where there is one, and the roll-call file's own words stay, always, as
-    "In the record"."""
+    motion the parser named, or the kind of question in the site's words
+    (vote_passage.title), with the one-line summary under it where there is
+    one, and the roll-call file's own words stay, always, as "In the record".
+
+    An appeal of a ruling on a bill is headed "Uphold the Ruling of the
+    Chair", with what the chair ruled under it where the Journal says (the
+    owner, 23 October 2026: no "Back the presiding officer")."""
     words_ = (it.action or "").strip()
     k = MO.classify(words_, bill, body, C.WORDBOOK["votes"]["motions"])
     head = (C.vote_head(k["mk"], words_, k["mf"]) if words_
             else "On a question the record does not name")
     if journal:
-        head = esc(VP.kind_label(journal) or "") or head
+        head = esc(VP.title(journal) or "") or head
         if journal.get("line"):
             head += f'<span class="nbl">{esc(journal["line"])}</span>'
+    elif k.get("mk") == "uphold_ruling":
+        rul = getattr(it, "ruling", "") or (VP.ruling(rollcall_id(it.rc)) if it.rc else "")
+        if rul:
+            head += f'<span class="nbl">{esc(rul)}</span>'
     amds = amendment_numbers(words_)
     amd = f' <span class="ramd">{esc(", ".join(amds))}</span>' if amds else ""
     chp = C.vote_chip(k["mk"], it.carried, bill, k["mf"]) if words_ else ""

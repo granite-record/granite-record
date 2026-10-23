@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-19.36
+# GRANITE_VERSION: 2026-09-19.37
 """
 A sitting day of the House or Senate, assembled from what is already parsed.
 
@@ -541,7 +541,7 @@ class Item:
                  "yeas", "nays", "cite", "page", "raw", "seq", "need", "veto",
                  "consent", "fifths", "entered", "recess", "joined",
                  "rc", "said", "added", "plain", "shared", "stated_kind", "law",
-                 "overturned", "wo")
+                 "overturned", "wo", "ruling")
 
     def __init__(self, bill, term, e, seq):
         # The roll call on record this motion is (rollcalls.json's row), or
@@ -551,6 +551,9 @@ class Item:
         # a bill's debate the Journal alone records (vote_passage), drawn as
         # that and not as a voice vote.
         self.wo = bool(e.get("wo"))
+        # What the chair ruled, on an appeal the Journal states it for
+        # (vote_passage.motion_events): drawn under the motion's head.
+        self.ruling = e.get("ruling") or ""
         # The kind of vote the docket line stated, where tie() drew it as a
         # roll call: a "DV" the House Journal confirms is kept (_divisions).
         self.stated_kind = ""

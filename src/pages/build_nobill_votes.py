@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-23.5
+# GRANITE_VERSION: 2026-10-23.6
 """
 A page a term of the votes not on a bill: what each was about, how it went,
 and the session day it was taken on.
@@ -138,7 +138,7 @@ def rows_of(rollcalls, site):
             out[term].append({
                 "key": key, "body": r.get("body"), "date": day, "kind": kind,
                 "group": VP.group_of(e) if e else VP.group_of(kind),
-                "line": (e or {}).get("line") or "",
+                "line": (e or {}).get("line") or "", "title": (e or {}).get("title") or "",
                 "heading": (e or {}).get("heading") or "",
                 "words": words, "shown": bool(e), "member": (e or {}).get("member") or "",
                 "report": VP.report_anchor(e) if (e or {}).get("report") else "",
@@ -151,7 +151,8 @@ def rows_of(rollcalls, site):
         out[e.get("term") or P.vote_term(e["date"][:4], e["date"])].append({
             "key": key, "body": e.get("body"), "date": e.get("date"), "kind": e.get("kind"),
             "group": VP.group_of(e),
-            "line": e.get("line") or "", "heading": e.get("heading") or "", "words": "",
+            "line": e.get("line") or "", "title": e.get("title") or "",
+            "heading": e.get("heading") or "", "words": "",
             "shown": True, "member": e.get("member") or "", "yeas": e.get("yeas"), "nays": e.get("nays"),
             "report": VP.report_anchor(e) if e.get("report") else "",
             "passed": e.get("passed"), "how": e.get("how"),
@@ -179,7 +180,10 @@ WHO = {"reprimand": "The member it concerned", "privileges": "The member it conc
 
 
 def row_html(x):
-    label = VP.load()["kinds"].get(x["kind"], "") or "Misc vote"
+    # The motion by name where the parser named it (the owner, 23 October
+    # 2026: "Affirm the Committee Report (Censure Rep. Corcoran)" rather than
+    # "Misc vote"); the filter still says Misc votes.
+    label = x.get("title") or VP.load()["kinds"].get(x["kind"], "") or "Misc vote"
     if x["line"]:
         desc = E(x["line"])
     elif x["shown"] and x["heading"]:

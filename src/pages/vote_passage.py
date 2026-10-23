@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-23.4
+# GRANITE_VERSION: 2026-10-23.5
 """
 The Journal's words for a vote on no bill, as every page shows them.
 
@@ -33,6 +33,13 @@ report"); a reprimand, a censure, a member's privileges and the questions
 with no name of their own are shown as "Misc vote" and filtered as "Misc
 votes"; and a motion to move the previous question, limit debate or divide
 the question of one bill is that bill's (on_bills, motion_events).
+
+AND TWO MORE, the owner's third review of the day: a Misc vote is headed by
+its motion where the parser named it (title: "Affirm the Committee Report
+(Censure Rep. Corcoran)"), "Misc vote" where it did not; and an appeal
+carries what the chair ruled where the Journal says (ruling), which the
+bill's Votes tab and the session day draw under "Uphold the Ruling of the
+Chair".
 """
 
 # The bootstrap: _paths.py, found above this file, puts every code folder on the import path.
@@ -91,13 +98,26 @@ def kind_label(e, path=SOURCE):
     return kinds.get((e or {}).get("kind") or "", "") or ""
 
 
+def title(e, path=SOURCE):
+    """A vote's head: the motion the parser named (journal_motions.
+    motion_title) where it named one, else the kind of question in the
+    site's words -- "Misc vote" for a question with no name of its own."""
+    return (e or {}).get("title") or kind_label(e, path)
+
+
+def ruling(key, path=SOURCE):
+    """What the chair ruled, for the appeal roll call `key`, where the
+    Journal says ("The chair ruled the motion ... dilatory."); else ""."""
+    return (entry(key, path) or {}).get("ruling") or ""
+
+
 def short(e, path=SOURCE, limit=110):
     """A few words for a row that says only "no bill" now: the one-line
-    summary where there is one, else the kind of question, never more than
-    `limit` characters."""
+    summary where there is one, else the vote's head (title), never more
+    than `limit` characters."""
     if not e:
         return ""
-    s = e.get("line") or kind_label(e, path)
+    s = e.get("line") or title(e, path)
     if len(s) > limit:
         s = s[:limit - 1].rsplit(" ", 1)[0] + "…"
     return s
@@ -418,5 +438,7 @@ def motion_events(term, bill, events, rcs=(), path=SOURCE):
                     "yeas": j.get("yeas"), "nays": j.get("nays"), "date": d, "body": b,
                     "raw": " ".join(x.get("t") or "" for x in j.get("said") or []),
                     "cite": j.get("journal") or "", "cite_page": j.get("page"),
-                    "source": "journal", "journal_key": j.get("key"), "_at": days[(b, d)]})
+                    "source": "journal", "journal_key": j.get("key"), "_at": days[(b, d)],
+                    # What the chair ruled, on an appeal the Journal states it for.
+                    **({"ruling": j["ruling"]} if j.get("ruling") else {})})
     return out

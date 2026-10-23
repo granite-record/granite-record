@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.233
+# GRANITE_VERSION: 2026-09-05.234
 """
 Generate the faceted site from real General Court data.
 
@@ -10159,6 +10159,7 @@ def bill_rollcalls(bid, term, rcs, narr, votes_by_bill, legs, unnamed,
             # "without objection" is said so, and is no voice vote.
             "vote_kind_label": "adopted without objection" if e.get("wo") else label,
             **({"wo": True} if e.get("wo") else {}),
+            **({"ruling": e["ruling"]} if e.get("ruling") else {}),
             "threshold_note": None, "tally": {}, "members": [], "amendment": None,
             "_ord": (e["date"], e["_at"] - 0.5),
         })
@@ -11068,6 +11069,13 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
             # where they differ (mrec).
             r.update(MO.classify(r.get("question"), bid, r.get("body") or "",
                                  _WORDBOOK["votes"]["motions"]))
+            # WHAT THE CHAIR RULED (the owner, 23 October 2026: "Uphold the
+            # Ruling of the Chair" with the ruling for context, where the
+            # Journal states it, and no gloss): journal_motions.ruling_of.
+            if r.get("mk") == "uphold_ruling" and not r.get("ruling") and r.get("_rc"):
+                rul = VP.ruling(r["_rc"])
+                if rul:
+                    r["ruling"] = rul
             # THE MOVER AS THE PERSON IN A SENTENCE (D14): "Moved by Rep. Joe
             # Alexander (R - Hills 29)", linked, where the docket's "Rep.
             # Alexander Jr." can mean one member of the chamber. The sitting

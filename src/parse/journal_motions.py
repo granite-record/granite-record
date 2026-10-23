@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-23.7
+# GRANITE_VERSION: 2026-10-23.8
 """
 What the Journals say a vote on no bill was about.
 
@@ -128,6 +128,21 @@ THE OWNER'S SECOND REVIEW, the same day, added three more.
 
   How a vote was decided is the Journal's own word for it: "without
   objection" where the Journal says so, and never read off the chamber.
+
+THE OWNER'S THIRD REVIEW, the same day, added two more.
+
+  The motion by name. A vote shown as a "Misc vote" is headed by the motion
+  the Journal says was put, in the site's words, with what it was on in the
+  Journal's: "Affirm the Committee Report (Censure Rep. Corcoran)", "Lay the
+  Motion on the Table (Motion to Reprimand)" (motion_title, `title`). A
+  member is named only where gate 7 names them; where no motion fits, the
+  head stays "Misc vote". The filter still groups them as Misc votes.
+
+  What the chair ruled. An appeal is headed "Uphold the Ruling of the Chair"
+  with no gloss, and with the ruling where the Journal states it: "The chair
+  ruled the motion to Special Order HB 1142 dilatory." (ruling_of,
+  `ruling`). Not where the passage names two bills (gate 6) or says only
+  "the motion".
 
 A WRITER RUN ON A SUBSET DESTROYS THE REST (CLAUDE.md). This reads every
 year whose Journals are on disk and keeps, from the file it is replacing,
@@ -1347,6 +1362,254 @@ def one_line(kind, said, uc):
     return "", []
 
 
+# ----------------------------------------------------- the motion by name
+#
+# THE MOTION, NOT "MISC VOTE" (the owner, 23 October 2026: "Could the actual
+# vote on the Travis Corcoran censure for example be something along the
+# lines of 'Affirm the Committee Report (Censure Rep. Corcoran)' rather than
+# Misc Vote? It's fine for that to be the general category, but I'd like it
+# to be more specific on the actual display showing the specific motion.")
+#
+# A vote KINDS shows as a "Misc vote" is headed by the motion the Journal
+# says was put: the last question or motion of its passage, as classify()
+# reads the kind. The motion's name is the site's own, from votes.json's
+# vocabulary ("Lay the Motion on the Table", "Reprimand the Member"), and
+# what it was on is the Journal's own words, each checked to stand in the
+# passage in order (gate 8). A member is named only where `member` is: the
+# gate that names a member at all (gate 7). Where no motion below fits, the
+# head stays "Misc vote" -- nothing is guessed. The filter's group is
+# unchanged: these stay Misc votes.
+
+TITLED = {k for k, v in KINDS.items() if v == "Misc vote"}
+
+_PUT_PREFIX = re.compile(
+    r"^.*?\b(?:The\s+question\s+(?:now\s+)?(?:being|is|was)\s*,?\s*(?:on\s+)?|"
+    r"(?:moved|moves)\s+(?=to\b|that\b|the\s+motion\b))", re.I)
+_LEAD = re.compile(r"^(?:that\s+|the\s+|(?:the\s+)?adoption\s+of\s+(?:the\s+)?(?:motion\s+to\s+)?|"
+                   r"(?:the\s+)?motion\s+to\s+|to\s+)", re.I)
+
+# (the site's name for the motion, what begins the clause the Journal puts).
+# Tried in order on the clause's predicate: the words after its last "be"
+# for "that X be laid on the table", else the clause itself.
+MOTION_NAMES = [
+    ("Lay on the Table", r"(?:be\s+)?laid\s+on\s+the\s+table|lay\s+on\s+the\s+table|table\b"),
+    ("Remove from the Table", r"(?:be\s+)?(?:removed|taken)\s+from\s+the\s+table|"
+                              r"(?:remove|take)\s+\S.{0,80}?\bfrom\s+the\s+table"),
+    ("Indefinitely Postpone", r"(?:be\s+)?indefinitely\s+postponed?"),
+    ("Reconsider", r"(?:(?:the\s+)?(?:House|Senate)\s+)?reconsider\b"),
+    ("Divide the Question", r"(?:be\s+)?divided?\b"),
+    ("Amend the Motion", r"amend\s+the\s+motion\b"),
+    ("Affirm the Committee Report", r"affirm\s+the\s+report\s+of\s+the\s+committee\b"),
+    ("Reprimand the Member", r"(?:be\s+)?reprimand(?:ed)?\b"),
+    ("Refer to Committee", r"(?:be\s+)?(?:referred|refer|send)\b.{0,60}?\bcommittee\b"),
+    ("Special Order", r"(?:be\s+)?special\s+order(?:ed)?\b"),
+    ("Adopt the Floor Amendment", r"floor\s+amendment\b"),
+    ("Adopt the Third Reading Motion", r"third\s+reading\s+motion\b"),
+    ("Third Reading and Final Passage", r"third\s+reading\s+and\s+final\s+passage\b"),
+    ("Adopt the Resolution", r"resolution\b"),
+    ("Adopt the Proclamation", r"proclamation\b"),
+    ("Motion to Vacate", r"vacate\b"),
+    ("Allow the Member Back into the Chamber", r"(?:be\s+)?allow(?:ed)?\b.{0,60}?\b(?:back|return)\b"),
+    ("Appoint Committee Members", r"appoint\b.{0,30}?\bmembers\s+to\s+the\s+committee\b"),
+]
+_MOTION_RX = [(n, re.compile(p, re.I)) for n, p in MOTION_NAMES]
+# A motion on a motion: the one it is on, in the Journal's words.
+ON_MOTION = re.compile(
+    r"\bthe\s+(?P<o>motion\s+(?:to|of)\s+(?:reprimand|refer\s+to\s+(?:a\s+)?committee|"
+    r"send\s+to\s+committee|lay\s+on\s+the\s+table|special\s+order|remove\s+the\s+sanctions\s+on\s+"
+    r"(?:Rep\.|Representative)\s+[A-Z][\w'’-]+))", re.I)
+# What a reconsideration took back: the decision it names.
+RECONSIDERED = re.compile(
+    r"\bthe\s+(?:House|Senate)\s+adopted\s+the\s+(?P<o>(?:majority\s+|minority\s+)?committee\s+report|"
+    r"Third\s+Reading\s+Motion|motion\s+to\s+Special\s+Order)\b", re.I)
+SPECIAL_TO = re.compile(r"special\s+order(?:ed)?\s+(?P<o>to\s+[A-Z][a-z]+day,\s+[A-Z][a-z]+\s+\d{1,2},\s+\d{4})")
+AMENDMENT_NO = re.compile(r"floor\s+amendment\s+\((?P<o>(?:\d{4}-)?\d{3,5}[hs])\)", re.I)
+COMMITTEE_ON = re.compile(r"\bto\s+the\s+(?P<o>Committee\s+on\s+[A-Z][\w’']*(?:\s+(?:and\s+)?[A-Z][\w’']*){0,4})")
+# A motion, and not a bill, is what is laid on the table.
+TABLES_A_MOTION = re.compile(r"\bmotion\b.{0,300}?\bbe\s+laid\s+on\s+the\s+table|\btable\s+the\s+motion\b",
+                             re.I)
+# What the House did to a member, from the Journal's line after the vote
+# (AFTER): "informed Rep. Corcoran of the censure", "was reprimanded".
+DID = {"censure": "Censure", "censured": "Censure", "reprimand": "Reprimand",
+       "reprimanded": "Reprimand", "expelled": "Expel"}
+_SMALL = {"of", "the", "to", "on", "a", "an", "and", "or", "for", "in", "by", "at", "into"}
+
+
+def _titled(s):
+    """The Journal's words in the site's Title Case, its capitals kept."""
+    out = []
+    for i, w in enumerate(s.split()):
+        low = w.lower()
+        out.append(low if i and low in _SMALL else (w[:1].upper() + w[1:]))
+    return " ".join(out)
+
+
+def decided(said):
+    """The clause the vote decided: the last question or motion put, from
+    after "The question being" or "moved", with "that", "the motion to" and
+    "adoption of" taken off; and the sentence it is in."""
+    put = [x["t"] for x in said if x.get("k") in ("question", "moved")]
+    if not put:
+        return "", ""
+    s = put[-1]
+    m = _PUT_PREFIX.search(s)
+    clause = s[m.end():] if m else s
+    for _ in range(3):
+        clause = _LEAD.sub("", clause.strip(), count=1)
+    return clause.strip().rstrip(".?"), s
+
+
+def motion_title(e):
+    """(title, slots): the vote's head in the site's words, with what it was
+    on in the Journal's; ("", []) where no motion here fits."""
+    clause, sent = decided(e.get("said") or [])
+    if not clause:
+        return "", []
+    # "that the motion to reprimand X, be laid on the table": the motion is
+    # what follows its last "be"; "should X be reprimanded" the same.
+    be = list(re.finditer(r"(?:^|[\s,])be\s+", clause))
+    pred = clause[be[-1].end():] if be else clause
+    name = next((n for n, rx in _MOTION_RX if rx.match(pred)), "")
+    if not name and pred is not clause:
+        name = next((n for n, rx in _MOTION_RX if rx.match(clause)), "")
+    if not name:
+        return "", []
+    rep = "Sen." if e.get("body") == "S" else "Rep."
+    what, slots = "", []
+    member = (e.get("member") or "").strip()
+    if name == "Lay on the Table" and TABLES_A_MOTION.search(sent):
+        name = "Lay the Motion on the Table"
+    if name in ("Lay the Motion on the Table", "Remove from the Table", "Indefinitely Postpone",
+                "Refer to Committee", "Divide the Question"):
+        m = ON_MOTION.search(sent)
+        # "the motion to send to Committee" is a referral's own name, not a
+        # motion it is on.
+        if m and next((n for n, rx in _MOTION_RX if rx.match(m.group("o")[10:])), "") == name:
+            m = None
+        if m:
+            o = m.group("o")
+            # A member is named in the motion it is on only where gate 7 named them.
+            if re.search(r"(?:Rep\.|Representative)\s+([A-Z][\w'’-]+)$", o):
+                last = o.split()[-1]
+                if not member or member.split()[-1] != last:
+                    o = re.sub(r"\s+on\s+(?:Rep\.|Representative)\s+[A-Z][\w'’-]+$", "", o)
+                else:
+                    o = re.sub(r"(?:Rep\.|Representative)\s+(?=[A-Z])", f"{rep} ", o)
+            what, slots = _titled(o), [re.sub(r"(?:Rep\.|Representative)\s+", "", o)]
+    elif name == "Reconsider":
+        m = RECONSIDERED.search(sent)
+        if m:
+            what, slots = _titled(m.group("o")), [m.group("o")]
+    elif name == "Special Order":
+        m = SPECIAL_TO.search(sent)
+        if m:
+            what, slots = m.group("o"), [m.group("o")]
+    elif name == "Adopt the Floor Amendment":
+        m = AMENDMENT_NO.search(sent)
+        if m:
+            what, slots = m.group("o"), [m.group("o")]
+    elif name == "Affirm the Committee Report":
+        a = AFTER.search(e.get("after") or "")
+        did = re.search(r"\b(censure|reprimand|censured|reprimanded|expelled)\b", a.group(0)) if a else None
+        who = (a.group("a") or a.group("b") or "").strip() if a else ""
+        if did and who and member and member.split()[-1] == who.split()[-1]:
+            what, slots = f"{DID[did.group(1)]} {rep} {who}", [who]
+    elif name == "Appoint Committee Members":
+        m = COMMITTEE_ON.search(sent)
+        if m:
+            what, slots = m.group("o"), [m.group("o")]
+    elif name in ("Reprimand the Member", "Allow the Member Back into the Chamber"):
+        if member:
+            what, slots = f"{rep} {member}", [member]
+    title = f"{name} ({what})" if what else name
+    return title, slots
+
+
+# ------------------------------------------------------------ the ruling
+#
+# WHAT THE CHAIR RULED (the owner, 23 October 2026: "listing Back the
+# presiding officer is honestly more confusing than just listing uphold the
+# ruling of the chair by itself. An alternative might be if it's possible to
+# include what the ruling of the chair was for context, but if that isn't
+# available, just leave it as 'Uphold the Ruling of the Chair'"). A
+# sentence in the site's words around the Journal's own, each checked to
+# stand in the passage (gate 8): "The chair ruled the motion to Special
+# Order HB 1142 dilatory." Where the Journal names more than one bill (gate
+# 6), or says only "the motion" or "it", none.
+
+_VERDICT = r"(?P<r>dilatory|out\s+of\s+order|non-?germane|not\s+germane|in\s+order)"
+_RULED = re.compile(r"\b(?:ruled|ruling)\s+(?P<o>(?:the\s+)?(?:motion|amendment|appeal|sections?)\b"
+                    r"[^,.]{0,90}?),?\s+" + _VERDICT + r"\b")
+_BEING = re.compile(r"\bon\s+(?P<o>the\s+motion\s+to\s+[^,.]{2,80}?)\s+being\s+" + _VERDICT + r"\b")
+_THAT = re.compile(r"\b(?:on\s+the\s+ruling|whereby\s+the\s+Chair\s+ruled|for\s+(?P<d>declaring|"
+                   r"ruling))\s+that\s+(?P<o>[^.]{8,300})")
+_WHEREBY = re.compile(r"\bwhereby\s+the\s+Chair\s+(?P<v>ordered|declared|refused|allowed|accepted)\s+"
+                      r"(?P<o>[^.]{4,200})")
+_ON = re.compile(r"\bruling\s+of\s+the\s+Chair\s+on\s+(?P<o>[^.]{8,300})")
+_MOVED_TO = re.compile(r"\bmoved\s+to\s+(?P<o>[^.]{4,120}?)(?=\s+and\s+(?:spoke|requested)\b|[.]|$)")
+
+
+def ruling_of(e):
+    """(sentence, slots): what the chair ruled, where the passage says."""
+    if len(e.get("bills") or []) > 1:
+        return "", []
+    said = [x for x in e.get("said") or [] if x.get("k") != "outcome"]
+    for i, x in enumerate(said):
+        if x.get("k") not in ("challenge", "ruled"):
+            continue
+        t = x["t"]
+        m = _RULED.search(t) or _BEING.search(t)
+        if m:
+            o, r = m.group("o").strip(), re.sub(r"\s+", " ", m.group("r"))
+            if o.lower() in ("the motion", "motion", "the amendment", "the appeal"):
+                # "ruled the motion out of order": the motion is the one moved
+                # just before, where it was moved "to" something.
+                mv = [_MOVED_TO.search(y["t"]) for y in said[:i] if y.get("k") == "moved"]
+                mv = [y for y in mv if y]
+                if not mv:
+                    continue
+                o = f"the motion to {mv[-1].group('o').strip()}"
+                return f"The chair ruled {o} {r}.", [mv[-1].group("o").strip(), r]
+            return f"The chair ruled {o} {r}.", [o, r]
+        m = _THAT.search(t)
+        if m:
+            o = m.group("o").strip()
+            v = "declared" if m.group("d") == "declaring" else "ruled"
+            return f"The chair {v} that {o}.", [o]
+        m = _WHEREBY.search(t)
+        if m:
+            return f"The chair {m.group('v')} {m.group('o').strip()}.", [m.group("v"), m.group("o")]
+        m = _ON.search(t)
+        if m:
+            o = m.group("o").strip()
+            return f"The ruling was on {o}.", [o]
+    return "", []
+
+
+def name_entry(e):
+    """Write a shown vote's head (`title`, for a vote KINDS shows as a "Misc
+    vote") and, for an appeal of a ruling, what the chair ruled (`ruling`),
+    each only where every word of the Journal's it uses stands in the passage
+    (gate 8). Run on every entry as the file is written, those kept from an
+    earlier run too, so no entry carries a head an older rule wrote."""
+    e.pop("title", None)
+    e.pop("ruling", None)
+    if e.get("held"):
+        return e
+    kind = e.get("kind") or e.get("motion") or ""
+    every = " ".join(x.get("t") or "" for x in e.get("said") or []) + " " + (e.get("after") or "")
+    if kind in TITLED:
+        t, slots = motion_title(e)
+        if t and all(_in_order(x, every) for x in slots):
+            e["title"] = t
+    if kind == "appeal":
+        r, slots = ruling_of(e)
+        if r and all(_in_order(x, every) for x in slots):
+            e["ruling"] = r
+    return e
+
+
+
 # ----------------------------------------------------------------- members
 
 def load_careers(path=CAREERS):
@@ -2207,6 +2470,8 @@ def build(rollcalls_path, root="."):
             kept.append(e)
     stats["journal-only votes printed twice, kept once"] = len(only) - len(kept)
     only = kept
+    for e in list(entries.values()) + only + on_bills:
+        name_entry(e)
     return entries, only, years_read, stats, on_bills
 
 
@@ -2268,6 +2533,9 @@ def write(entries, only, years_read, out=OUT, on_bills=()):
                 keep_bm.append(e)
     rc = dict(keep_rc)
     rc.update(entries)
+    # Every entry named by the rules as they stand now, a kept one too.
+    for e in list(rc.values()) + keep_only + keep_bm:
+        name_entry(e)
     jo = keep_only + only
     jo.sort(key=lambda e: (e["date"], e["body"], e.get("at") or 0))
     bm = keep_bm + list(on_bills)

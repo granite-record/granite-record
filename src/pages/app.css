@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.301 */
+/* GRANITE_VERSION: 2026-09-07.302 */
 /* ONE STYLESHEET FOR EVERY PAGE (23 October 2026). Every page of the site
    links this file, /app.css: the record pages shell.page() makes from
    bills.html, and the five build_pages.py writes -- the home page, Officials,
@@ -6393,6 +6393,9 @@ table.cov{display:table;border-collapse:collapse;width:100%;min-width:30rem;font
 
 /* Who moved it, under a voice vote's heading rather than inside it. */
 .rcby{font-size:var(--t-ui);color:var(--ink-2);margin:var(--sp-2) 0 0}
+/* What the chair ruled, under "Uphold the Ruling of the Chair" (the owner,
+   23 October 2026), in the session day's sub-line voice (.dvh .nbl). */
+.rcrul{font:400 var(--t-ui)/1.45 var(--sans);color:var(--ink-2);margin:var(--sp-2) 0 0;max-width:46rem}
 
 /* ON A PHONE, A CONTROL IS A 44px TARGET. The narrow-screens block far above
    says so for every button and summary, and the controls whose own rules
