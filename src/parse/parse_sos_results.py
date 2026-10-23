@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-17.2
+# GRANITE_VERSION: 2026-10-17.3
 """
 The Secretary of State's count of one general election's State Representative
 and State Senate races, read into collected/election_<year>.json.
 
     python3 src/parse/parse_sos_results.py --year 2024          # collected/election_2024.json
     python3 src/parse/parse_sos_results.py --year 2024 --check  # compare again; write nothing
+    python3 src/parse/parse_sos_results.py --year 2026 --url https://www.sos.nh.gov/...
+                                         # and name the results page the files came from
 
 WHAT IT READS. The spreadsheets the Secretary of State publishes after a
 general election, saved by a person in a browser, byte for byte and under the
@@ -117,6 +119,7 @@ CANDIDATE = re.compile(r"^(?P<name>\S.*?)\s*,\s*(?P<party>[a-z]{1,3}(?:\s*&\s*[a
 WRITE_IN = re.compile(r"^write[- ]?in\s+(?P<name>\S.*)$", re.I)
 META = {"undervotes": "under", "overvotes": "over", "write-ins": "scatter"}
 TOTALS = "totals"
+URL = re.compile(r"https://\S+")
 
 # THE UNINCORPORATED PLACES, WHICH EACH FILE ABBREVIATES ITS OWN WAY (17
 # October 2026): "At. & Gilm. Ac. Grant", "Atkinson and Gilmanton Ac. Gt." and
@@ -600,20 +603,23 @@ def source_files(root, year):
             "replaced": replaced}
 
 
-def described(p, root, saved=None):
-    """A _source entry: the file, as a path from the project's root, its
-    sha256, and the day it was saved -- its modification day, unless stated."""
+def described(p, root, saved=None, url=None):
+    """A _source entry: the file, as a path from the project's root, the
+    address of the Secretary of State's results page it was saved from
+    (--url; None where not given), its sha256, and the day it was saved --
+    its modification day, unless stated."""
     data = p.read_bytes()
     day = saved or datetime.date.fromtimestamp(p.stat().st_mtime).isoformat()
-    return {"file": p.relative_to(root).as_posix(), "url": None, "saved": day,
+    return {"file": p.relative_to(root).as_posix(), "url": url, "saved": day,
             "sha256": hashlib.sha256(data).hexdigest()}
 
 
 # ---- the whole election -------------------------------------------------------
 
-def read_all(root, year, districts, saved=None):
+def read_all(root, year, districts, saved=None, url=None):
     """The results document for `year`, from the saved files under `root`
-    and the district table `districts` (site/districts.json's contents).
+    and the district table `districts` (site/districts.json's contents),
+    each file's _source naming `url`, the results page it was saved from.
     Refused on anything it does not recognise."""
     root = Path(root).resolve()
     election = BME.general_election(year)
@@ -711,7 +717,7 @@ def read_all(root, year, districts, saved=None):
     if missing:
         raise Refused("the district table names races no file holds: " + ", ".join(missing[:8])
                       + (" ..." if len(missing) > 8 else ""))
-    sources = [described(p, root, saved) for p in
+    sources = [described(p, root, saved, url) for p in
                [*(files["house"][c] for c in COUNTIES), files["senate"]]]
     doc = {"_about": [
                 "What the Secretary of State's results files say of the State Representative and "
@@ -809,17 +815,28 @@ def main():
                                                   "default each file's modification day")
     ap.add_argument("--check", action="store_true", help="compare with the committed file; "
                                                          "write nothing")
+    # THE RESULTS PAGE'S ADDRESS (23 October 2026). README promises that
+    # /members_elect.json carries "the address of the Secretary of State's
+    # results it was read from", and the Officials tab links "the Secretary of
+    # State's count" to it -- but build_members_elect takes it from each
+    # _source's url, and this wrote None there every time, so the 2024
+    # rehearsal's file named no address and the tab's link was never drawn.
+    ap.add_argument("--url", default=None,
+                    help="the Secretary of State's results page the files were saved from, "
+                         "https://..., written as each _source's url")
     a = ap.parse_args()
     out = Path(a.out or f"collected/election_{a.year}.json")
     try:
         if a.year % 2:
             raise Refused(f"{a.year} has no state general election")
+        if a.url is not None and not URL.fullmatch(a.url):
+            raise Refused(f"--url {a.url!r} is not an https address")
         try:
             districts = json.loads(Path(a.districts).read_text(encoding="utf-8"))
         except (OSError, ValueError) as e:
             raise Refused(f"the district table ({a.districts}) will not read, and every race is "
                           f"held to it: {e}")
-        doc = read_all(".", a.year, districts, a.saved)
+        doc = read_all(".", a.year, districts, a.saved, a.url)
     except Refused as e:
         print(f"REFUSED: {e}", file=sys.stderr)
         return 1
@@ -845,6 +862,12 @@ def main():
     print(f"wrote {out.as_posix()}: " + summary(doc))
     print("  The files mark no winner: each race's winners are its top counts, as many as its "
           "seats.")
+    if not a.url:
+        # Silence is not success: a file with no address is a page that
+        # cites the count and cannot link it.
+        print("  NO --url: no _source names the results page, so members_elect.json will name "
+              "no address for them and the Officials tab cites the count unlinked. Run it "
+              "again with --url https://... (the page the files were saved from).")
     return 0
 
 

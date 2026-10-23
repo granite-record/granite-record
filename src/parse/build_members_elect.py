@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-16.6
+# GRANITE_VERSION: 2026-10-16.7
 """
 Who November's election sent to the General Court, for the weeks before they sit.
 
@@ -1224,6 +1224,15 @@ def decide(a, site, hand_path):
            "term": results["term"],
            "sources": [s.get("url") for s in results.get("_source") or [] if s.get("url")],
            "races": races}
+    # NO ADDRESS IS SAID (23 October 2026): parse_sos_results wrote no url
+    # until it took --url, and a file with none publishes no address for the
+    # results and an Officials tab citing the count unlinked, with nothing
+    # to say so.
+    if not doc["sources"]:
+        report["notes"].append(f"{path.as_posix()} names no address for the results (each "
+                               "_source's url): the file names none, and the Officials tab cites "
+                               "the Secretary of State's count unlinked. Run "
+                               "src/parse/parse_sos_results.py again with --url")
     return path, results, doc, report
 
 
