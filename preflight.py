@@ -14176,6 +14176,42 @@ _JM_HJ = {
         "Rep. Shurtleff requested a roll call; sufficiently seconded.\n\n"
         "                                              YEAS 105 - NAYS 159\n\n"
         "Burchell, Richard     Cormier, Jane\n\nand the motion failed.\n"),
+    # A MOTION AND ITS DECISION WITH AN APPEAL BETWEEN (16 September 2015):
+    # the 286-89 upheld the Chair on Rep. William O'Brien's appeal, and the
+    # 285-93 after it adopted the motion to suspend House Rules for SB 9,
+    # which its own sentence names only as "the motion to suspend House
+    # Rules". Both are SB 9's; the ten speakers are the 285-93's.
+    "journals/2015/HJ057.txt": (
+        "                Concord,N.H.  Wednesday,September16,2015  No.57X\n\n"
+        "        HOUSE JOURNAL No. 18 (Cont.)\n\n"
+        "\f                             16september2015HOUSERECORD                       2179\n\n"
+        "                                             SENATE MESSAGE\n\n"
+        "The Senate has passed a Bill with the following title, in the passage of which it asks "
+        "the concurrence of the\nHouse of Representatives:\n"
+        "SB 9-FN-A-L, relative to salary increases for state employees and making appropriations "
+        "therefor.\n\n"
+        "                                             MOTION TO SUSPEND HOUSE RULES\n\n"
+        "Reps. Flanagan and Shurtleff moved that all necessary House Rules be so far suspended as "
+        "to permit\nintroduction and consideration of Senate Bill 9, without the required referral "
+        "to committee, public hearing or\nreport from committee, and if passed, allow for immediate "
+        "third reading.\n\n"
+        "                                          APPEAL OF THE RULING OF THE CHAIR\n"
+        "Rep. William O'Brien appealed the ruling of the Chair on the ruling that introduction of "
+        "a new bill does not\nviolate any constitutional provision or statute regarding "
+        "appropriation of money bills originating in the House.\n\n"
+        "The question being shall the ruling of the Chair be upheld?\n"
+        "Rep. Hinch requested a roll call; sufficiently seconded.\n\n"
+        "                                           YEAS 286 - NAYS 89\n\n"
+        "Dumais, Russell      Fields, Dennis\n\n"
+        "\f2180                    16september2015HOUSERECORD\n\n"
+        "and the ruling of the Chair was upheld.\n\n"
+        "The question now being adoption of the motion to suspend House Rules.\n"
+        "Reps. Burt, Stepanek, Hoell and William O'Brien spoke against.\n"
+        "Reps. Shurtleff and Hinch spoke in favor.\n"
+        "Rep. Hinch requested a roll call; sufficiently seconded.\n\n"
+        "                                              YEAS 285 - NAYS 93\n\n"
+        "Dumais, Russell         Fields, Dennis\n\n"
+        "and the motion was adopted by the necessary two-thirds vote.\n"),
     # The Senate calls the question by voice in a bill's debate, and divides
     # a question by the Chair's ruling, with no vote at all (3 May 2018).
     "journals_senate/2018/SJ016.txt": (
@@ -14218,7 +14254,10 @@ _JM_ROLLS = {"2025-2026": {"_procedural": [
         _jm_rc("2021", "S", 11, "2021-01-06", "Introduction of Senate Bills", 24, 0, True),
         _jm_rc("2021", "S", 12, "2021-01-06", "To Adjourn the Early Session", 24, 0, True)]},
     "2013-2014": {"_procedural": [
-        _jm_rc("2014", "H", 167, "2014-03-20", "Divide 3rd Reading", 105, 159, False)]}}
+        _jm_rc("2014", "H", 167, "2014-03-20", "Divide 3rd Reading", 105, 159, False)]},
+    "2015-2016": {"_procedural": [
+        _jm_rc("2015", "H", 188, "2015-09-16", "Uphold Ruling of the Chair", 286, 89, True),
+        _jm_rc("2015", "H", 189, "2015-09-16", "Rules Suspension", 285, 93, True)]}}
 
 
 @check("rollcalls", "a vote on no bill is shown in the Journal's own words only where its tally, "
@@ -14414,6 +14453,34 @@ def _journal_motions(JM):
             bad.append("a suspension is tied by a bill another motion of its passage named")
         if JM.bills_in([{"t": "to permit introduction and consideration of Senate Bill 9"}]) != ["SB9"]:
             bad.append("\"Senate Bill 9\" is not read as SB 9")
+        # THE MOTION A QUESTION PUTS AGAIN BY ITS KIND (16 September 2015):
+        # the appeal between SB 9's suspension and its decision is SB 9's, and
+        # so is the decision, "the motion to suspend House Rules", read as
+        # the motion Reps. Flanagan and Shurtleff moved above the appeal --
+        # and never as a motion on that motion, nor across another heading.
+        ap, su = entries.get("2015-H-188") or {}, entries.get("2015-H-189") or {}
+        if (ap.get("kind"), ap.get("on_bill"), su.get("kind"), su.get("on_bill"),
+                su.get("on_bill_from")) != ("appeal", "SB9", "suspend_rules", "SB9", "named") \
+                or not (su.get("said") or [{}])[0].get("t", "").startswith(
+                    "Reps. Flanagan and Shurtleff moved that all necessary House Rules") \
+                or su.get("held"):
+            bad.append(f"SB 9's appeal and suspension of 16 September 2015 are not SB 9's: "
+                       f"{ap.get('kind')} {ap.get('on_bill')!r}, {su.get('kind')} "
+                       f"{su.get('on_bill')!r} {[x['t'][:40] for x in su.get('said') or []]}")
+        motion = ("            MOTION TO PRINT IN HOUSE CALENDAR\n\nRep. Verville moved that the "
+                  "remonstrances be printed in the House Calendar.\n\n")
+        on_it = ("            MOTION TO LIMIT DEBATE\n\nRep. Callum moved to limit debate on the "
+                 "motion to print remonstrances in the House Calendar.\nOn a division vote, with "
+                 "173 members having voted in the affirmative, and 171 in the negative, the motion "
+                 "was adopted.\n\n")
+        q = "The question now being adoption of the motion to print the remonstrances."
+        for text, want_t in ((motion + on_it, "Rep. Verville moved"),
+                             (motion + "            INTRODUCTION OF GUESTS\n\nRep. Ames moved to "
+                                       "welcome the guests.\n\n", None)):
+            got = JM.put_again(text + q, len(text), q)
+            if (got[0]["t"][:19] if got else None) != want_t:
+                bad.append(f"the motion put again by its kind reads {got and got[0]['t']!r}, "
+                           f"not {want_t!r}")
         for want_k in ("bill motions: held: a heading of its own (MOTION TO LIMIT DEBATE) stands "
                        "between it and the bill's entry",
                        "bill motions: held: the Chair ruled on it, and no vote was taken",
@@ -33585,6 +33652,88 @@ def _session_bill_term(BSP, SD, shell):
                       "linked; one number from two terms is two cards")
     finally:
         shutil.rmtree(root, ignore_errors=True)
+
+
+@check("session", "a roll call the Journal put under a bill is the docket row's vote only where "
+       "the row states its count and kind of question, and is drawn before the decision it "
+       "preceded", needs=("session_days",))
+def _journal_pairing_wins(SD):
+    """THE JOURNAL'S PAIRING WINS (16 September 2015; the dry run of
+    ebcea38). Reps. Flanagan and Shurtleff moved to suspend the House Rules
+    for SB 9; Rep. William O'Brien appealed a ruling of the Chair on it, and
+    the Chair was upheld 286-89 (2015-H-188); the House then suspended the
+    rules 285-93 (2015-H-189), the count SB 9's docket gives the motion,
+    after ten members spoke on it. Once the Journal's reading put the appeal
+    under SB 9, the day held as many roll calls of SB 9 as docket tallies,
+    and _pair matched them by place: the page drew "Rules Suspended 286-89"
+    with the ten speakers under it, and the 285-93 among the votes on no
+    bill. A roll call the Journal put under a bill is now a row's vote only
+    on the row's own count and kind of question, and is drawn before the
+    bill's next roll call by number, the decision it preceded. Both ways the
+    Journal may read the day are held: the appeal alone under SB 9, and the
+    appeal and the suspension both."""
+    def rc(n, bill, q, y, nn, passed=True):
+        return {"year": "2015", "body": "H", "number": n, "date": "2015-09-16", "bill": bill,
+                "procedural": not bill, "question": q, "question_raw": q, "yeas": y,
+                "nays": nn, "passed": passed}
+
+    def row(kind, raw, y, nn, **kw):
+        e = {"date": "2015-09-16", "type": kind, "body": "H", "cancelled": False, "raw": raw,
+             "cite": "HJ 57", "cite_page": "", "vote_kind": "RC", "yeas": str(y),
+             "nays": str(nn), "mover": ""}
+        e.update(kw)
+        return e
+
+    events = [row("floor", "Suspend House Rules to Allow Present Action After Deadline (Reps "
+                  "Flanagan and Shurtleff): MA RC 285-93 By Required Two-Thirds Vote", 285, 93,
+                  action="Suspend House Rules to Allow Present Action After Deadline (Reps "
+                         "Flanagan and Shurtleff)", motion="MA"),
+              row("amendment", "Floor Amendment #2015-2391h (Rep Itse): AF RC 94-264", 94, 264,
+                  amendment="2015-2391h", amend_kind="Floor Amendment", motion="AF"),
+              row("floor", "Ought to Pass: MA RC 291-73", 291, 73, action="Ought to Pass",
+                  motion="MA")]
+    rolls = {"2015-2016": {
+        "_procedural": [rc(188, None, "Uphold Ruling of the Chair", 286, 89),
+                        rc(189, None, "Rules Suspension", 285, 93)],
+        "SB9": [rc(190, "SB9", "Adopt Amendment", 94, 264, False),
+                rc(194, "SB9", "Ought to Pass", 291, 73)]}}
+    journals = {("H", "2015-09-16"): {"rc": [(286, 89), (285, 93), (94, 264), (291, 73)],
+                                      "div": [], "bills": ["SB9"]}}
+    root = Path(tempfile.mkdtemp())
+    try:
+        for n_, tied in enumerate((("2015-H-188",), ("2015-H-188", "2015-H-189"))):
+            # a folder each: vote_passage keeps what it read by the path
+            here = root / str(n_)
+            here.mkdir()
+            path = here / "narratives.json"
+            path.write_text(json.dumps({"2015-2016": {"SB9": {"events": events}}}),
+                            encoding="utf-8")
+            (here / "rollcalls.json").write_text(json.dumps(rolls), encoding="utf-8")
+            (here / "journal_motions.json").write_text(json.dumps({"rollcalls": {
+                k: {"on_bill": "SB9", "on_bill_from": "named", "held": []} for k in tied}}),
+                encoding="utf-8")
+            days = SD.load(path, journals=journals)
+            d = days.get(("H", "2015-09-16"))
+            assert d, "the fixture's sitting of 16 September 2015 was not built"
+            sb9 = [i for i in d.items if i.bill == "SB9"]
+            told = [(i.action[:22], i.yeas, i.nays, i.rc and i.rc["number"]) for i in sb9]
+            sus = [i for i in sb9 if i.action.startswith("Suspend House Rules")]
+            assert len(sus) == 1 and (sus[0].yeas, sus[0].nays) == (285, 93) \
+                and (sus[0].rc or {}).get("number") == 189, (
+                f"with {', '.join(tied)} under SB 9 by the Journal, SB 9's suspension is not "
+                f"drawn as 2015-H-189's 285-93: {told}")
+            up = [n for n, i in enumerate(sb9) if (i.yeas, i.nays) == (286, 89)]
+            assert len(up) == 1 and not sb9[up[0]].action.startswith("Suspend") \
+                and up[0] < sb9.index(sus[0]), (
+                f"the appeal's 286-89 is not drawn as its own question, before the suspension "
+                f"it arose on: {told}")
+            on_none = [(i.yeas, i.nays) for i in d.others]
+            assert not on_none, f"SB 9's votes are drawn among the votes on no bill: {on_none}"
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    return "ok", ("SB 9's suspension keeps its own 285-93 and the appeal's 286-89 is drawn "
+                  "before it as its own question, whether the Journal puts the appeal alone or "
+                  "both under SB 9")
 
 
 @check("session", "the consent list holds only what the calendar disposed of",

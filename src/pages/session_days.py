@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-19.35
+# GRANITE_VERSION: 2026-09-19.36
 """
 A sitting day of the House or Senate, assembled from what is already parsed.
 
@@ -1553,7 +1553,8 @@ def _pair(rs, occ):
                               + abs(i - j) + (0 if o["kind"] == "RC" else 0.5))
         for i, j in RO._assign(cost):
             if (i < len(rr) and j < len(ks) and ks[j] not in used
-                    and (cost[i][j] < 1000 or len(rr) == len(ks))):
+                    and (cost[i][j] < 1000 or (len(rr) == len(ks) and not _journal_tied(rr[i])))
+                    and _journal_agrees(rr[i], occ[ks[j]])):
                 got[id(rr[i])] = occ[ks[j]]
                 used.add(ks[j])
     for r in sorted(rs, key=lambda x: (x["date"], x["number"])):
@@ -1576,6 +1577,35 @@ def _pair(rs, occ):
             got[id(r)] = occ[best[2]]
             used.add(best[2])
     return got
+
+
+def _journal_tied(r):
+    """A roll call the roll-call file holds under no bill and the Journal's
+    reading put under this one (vote_passage.move_on_bills): an appeal of a
+    ruling on the bill's business, a suspension of the rules for it, a
+    motion on its debate."""
+    return r.get("filed_under") == "_procedural"
+
+
+def _journal_agrees(r, o):
+    """May roll call `r` be the vote docket tally `o` states?
+
+    THE JOURNAL'S PAIRING WINS (16 September 2015). A roll call the Journal
+    put under a bill is the vote on the question the Journal says it
+    decided, so it is a docket row's vote only where the row states its
+    count and is about that kind of question -- never one paired by place
+    alone, as the day's other roll calls may be where the counts fall out
+    one for one (_pair). SB 9's docket states "Suspend House Rules ...: MA RC
+    285-93"; the Journal's 286-89 above it upheld the Chair's ruling on an
+    appeal from that motion, and paired by place it was drawn as the
+    suspension, under the ten members who spoke on the 285-93."""
+    if not _journal_tied(r):
+        return True
+    if (o["y"], o["nn"]) not in _tally_set(r):
+        return False
+    q = r.get("question_raw") or r.get("question") or ""
+    t = _segment(o) or (o["e"].get("raw") or "")
+    return bool(SUSPEND_Q.search(q)) == bool(SUSPEND_Q.search(t))
 
 
 def _owns(it, o):
@@ -3381,6 +3411,17 @@ def _anchor(it, day, b0, r):
             it.page, it.seq = a.page, a.seq + 0.0001 * (1 + rollcall_key(r)[2] % 1000)
             it.entered = a.entered
             return
+    # A QUESTION THAT AROSE ON THE BILL'S BUSINESS BEFORE IT WAS DECIDED is
+    # drawn before that decision (_journal_tied): the appeal of 16 September
+    # 2015, 286-89, under SB 9's suspension of the rules, 285-93, which it
+    # preceded by one number, and not after the bill's last motion of the day.
+    nxt = [i for i in mine if i.rc is not None and _journal_tied(r)
+           and rollcall_key(i.rc)[0] == rollcall_key(r)[0]
+           and rollcall_key(i.rc)[2] > rollcall_key(r)[2]]
+    if nxt:
+        a = min(nxt, key=lambda i: rollcall_key(i.rc)[2])
+        it.page, it.seq, it.entered = a.page, a.seq - 0.0001, a.entered
+        return
     if mine:
         a = max(mine, key=lambda i: i.seq)
         it.page, it.seq, it.entered = a.page, a.seq + 0.0001, a.entered
