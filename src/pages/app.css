@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.300 */
+/* GRANITE_VERSION: 2026-09-07.301 */
 /* ONE STYLESHEET FOR EVERY PAGE (23 October 2026). Every page of the site
    links this file, /app.css: the record pages shell.page() makes from
    bills.html, and the five build_pages.py writes -- the home page, Officials,
@@ -8250,6 +8250,9 @@ border-radius:var(--r-in);box-shadow:0 10px 26px var(--shadow);max-height:min(60
    phone. It takes the search's place, after it in the page. */
 @media (max-width:73.74875em){
   :where(body.pg) .hcols .hqhint,:where(body.pg) .hcols #hqsay{order:4}
+  /* The Spanish page's word on what is in Spanish, under its lead, for the
+     same reason: with no order of its own it stood over the logo. */
+  :where(body.pg) .hcols .langnote{order:3}
 }
 /* LATEST ACTIVITY UNDER THE RIGHT COLUMN (item 3): in a 290px column the
    day goes over its row rather than beside it, so the title has the width. */
