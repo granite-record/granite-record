@@ -89,8 +89,12 @@ test("without its secret it says so and starts nothing", async () => {
 });
 
 test("its cron is the workflow's, and it carries no token", () => {
-  const toml = readFileSync(new URL("../workers/night-timer/wrangler.toml", import.meta.url), "utf8");
-  const wf = readFileSync(new URL("../.github/workflows/nightly.yml", import.meta.url), "utf8");
+  // Line endings as a checkout has them: Windows' runner gives CRLF, and a
+  // pattern anchored at $ or spanning \n would find nothing there (the dry run
+  // of 99b2891, 23 October 2026).
+  const read = rel => readFileSync(new URL(rel, import.meta.url), "utf8").replace(/\r\n/g, "\n");
+  const toml = read("../workers/night-timer/wrangler.toml");
+  const wf = read("../.github/workflows/nightly.yml");
   const mine = toml.match(/^crons = \["([^"]+)"\]$/m)[1];
   const theirs = wf.match(/^\s+- cron: "([^"]+)"$/m)[1];
   assert.equal(mine, theirs, "the timer and the workflow's fallback keep different times");
