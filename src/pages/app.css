@@ -6463,6 +6463,15 @@ color:var(--ink-2);margin:var(--sp-6) 0 var(--sp-3)}
 .mwhen{color:var(--ink-2)}
 /* POLISH 2 -- MEETINGS: END --------------------------------------------- */
 
+/* A COMMITTEE'S LONG LISTS, TWENTY AT A TIME (the person, 23 October 2026;
+   app.js says why). What the list has not reached yet is hidden on a screen
+   and only there: printed, a committee's page is every bill and every day,
+   as it was, and the button that brings the next twenty, with its count of
+   what is not yet shown, is left off the sheet. The button is .discl, the
+   width of the list under its last card. */
+@media screen{.cards > .card.unshown,.cmeets > .cmeet.unshown{display:none}}
+@media print{.pgmore{display:none}}
+
 /* POLISH 2 -- THE RECORD HEAD AND W4 SECTIONS (ws/records, 10 October 2026)
    The component plan's page head for records (option E; C6) and its
    sections (C7), as the approved prototype kit draws them
