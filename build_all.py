@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.78
+# GRANITE_VERSION: 2026-09-05.79
 """
 Run the whole pipeline in the right order.
 
@@ -766,6 +766,25 @@ def plan(a):
              note="on 8 September 2026's table: 5,194 pairs of bills sharing most "
                   "of their language, 2,829 amendment relations, 461 bills inside a "
                   "law; about two minutes and 1.5 GB"),
+
+        # WHAT A VOTE ON NO BILL WAS ABOUT, from the Journals (23 October
+        # 2026): the passage above each such roll call's tally, at the place
+        # rollcall_outcomes paired it with, and the divisions only the
+        # Journal records. BEFORE the site data, whose shared roll-call index
+        # carries each one's short description, and the session pages and
+        # the per-term list, which show the Journal's words; AFTER build_data,
+        # whose data/bills.json says which bill a passage names. Kit-required:
+        # the Journals are in the kit, and a night that skipped this would
+        # publish every such vote with the roll-call file's three words
+        # again, every step reporting success. It stops the build where a
+        # year whose Journals are here yields nothing (journal_motions.py).
+        Step("what the Journals say each vote on no bill was about",
+             ["journal_motions.py"],
+             needs=["rollcalls.json", "journals", "journals_senate"],
+             produces=["journal_motions.json"], kit_required=True,
+             note="verbatim, cited to the page, and held back wherever the "
+                  "Journal's tally, date, question or outcome does not agree with "
+                  "the roll call"),
 
         Step("site data",
              ["build_site_v2.py", "--data", "data", "--out", "site",

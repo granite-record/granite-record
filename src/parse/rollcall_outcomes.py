@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-23.6
+# GRANITE_VERSION: 2026-09-23.7
 """
 What each roll call decided, from the General Court's own record, and what it
 needed to carry.
@@ -681,8 +681,12 @@ def _first_word(low):
 
 
 def journal_tallies(root, body, year):
-    """[{"y", "n", "carried", "said"}] in the order the Journal prints them;
-    `said` is the sentence the outcome was read from."""
+    """[{"y", "n", "carried", "said", "file", "at", "end"}] in the order the
+    Journal prints them; `said` is the sentence the outcome was read from,
+    `file` the journal it is printed in and `at`/`end` where in that file's
+    text the tally stands -- which journal_motions.py reads the passage
+    before, so that the words it shows sit at the tally this pairing chose
+    and are never matched again on their own."""
     out = []
     rx = J_TALLY[body]
     for f in journal_files(root, body, year):
@@ -712,7 +716,8 @@ def journal_tallies(root, body, year):
                         val, said = v, ln
                         break
             out.append({"y": int(m.group(1)), "n": int(m.group(2)),
-                        "carried": val, "said": said[:240]})
+                        "carried": val, "said": said[:240],
+                        "file": f, "at": m.start(), "end": m.end()})
     return out
 
 

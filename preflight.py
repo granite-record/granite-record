@@ -25185,6 +25185,10 @@ ic_SOURCES = {
     "journals": "fetch_calendar_archive.py, the House Journals' PDFs, and "
                 "extract_calendar_text.py, the .txt beside each -- a directory "
                 "of year folders; the kit carries the text (journals/*/*.txt)",
+    "journals_senate": "fetch_calendar_archive.py, the Senate Journals' PDFs, and "
+                       "extract_calendar_text.py, the .txt beside each -- a directory "
+                       "of year folders; the kit carries the text "
+                       "(journals_senate/*/*.txt)",
     "legislation": "fetch_legislation.py -- a directory of saved bill pages",
     "db/DocumentVersion.psv": "fetch_archive_db.py, which dumps the SQL views",
     "db/LegislationText.psv": "fetch_archive_db.py, which dumps the SQL views",
