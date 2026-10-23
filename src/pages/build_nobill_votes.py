@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-23.2
+# GRANITE_VERSION: 2026-10-23.3
 """
 A page a term of the votes not on a bill: what each was about, how it went,
 and the session day it was taken on.
@@ -136,7 +136,7 @@ def rows_of(rollcalls, site):
                 "key": key, "body": r.get("body"), "date": day, "kind": kind,
                 "line": (e or {}).get("line") or "",
                 "heading": (e or {}).get("heading") or "",
-                "words": words, "shown": bool(e),
+                "words": words, "shown": bool(e), "member": (e or {}).get("member") or "",
                 "yeas": r.get("yeas"), "nays": r.get("nays"), "passed": r.get("passed"),
                 "how": "roll call",
                 "link": anchor_page(site, r.get("body"), day, f"rc-{key}", near) if day else "",
@@ -146,7 +146,7 @@ def rows_of(rollcalls, site):
         out[e.get("term") or P.vote_term(e["date"][:4], e["date"])].append({
             "key": key, "body": e.get("body"), "date": e.get("date"), "kind": e.get("kind"),
             "line": e.get("line") or "", "heading": e.get("heading") or "", "words": "",
-            "shown": True, "yeas": e.get("yeas"), "nays": e.get("nays"),
+            "shown": True, "member": e.get("member") or "", "yeas": e.get("yeas"), "nays": e.get("nays"),
             "passed": e.get("passed"), "how": e.get("how"),
             "link": anchor_page(Path(site), e.get("body"), e.get("date"), f"jv-{key}"),
             "n": 10 ** 6 + int(e.get("at") or 0)})
@@ -166,6 +166,11 @@ def _title(h):
     return " ".join(out)
 
 
+# The words build_session_pages.journal_extra_html puts before the member.
+WHO = {"discipline": "The member it concerned", "privileges": "The member it concerned",
+       "member_continue": "The member speaking"}
+
+
 def row_html(x):
     label = VP.load()["kinds"].get(x["kind"], "") or "Another question"
     if x["line"]:
@@ -175,7 +180,19 @@ def row_html(x):
     elif x["words"]:
         desc = f'<span class="nbrec">In the record:</span> {E(x["words"])}'
     else:
-        desc = ""
+        # 2013-H-196, 314-1 on 7 November 2013: the file has the count and
+        # no words, and the pairing placed it in no Journal. A blank cell
+        # reads as a page that failed to draw.
+        desc = '<span class="nbrec">The roll-call file gives it no words.</span>'
+    # WHO IT WAS ABOUT, where the line does not say. A reprimand's row read
+    # "Under the Journal's heading “Motion of Reprimand”" twelve times over
+    # for 20 February 2020 (the rendered list, 23 October 2026): the member
+    # the passage names, in the Journal's own words as the session day gives
+    # them, tells the rows apart without writing a summary no person approved.
+    role = WHO.get(x["kind"])
+    if role and x.get("member") and not x["line"]:
+        title = "Rep." if x["body"] == "H" else "Sen."
+        desc += f'<span class="nbwho">{role}: {E(title)} {E(x["member"])}</span>'
     when = E(C.date_words(x["date"])) if x["date"] else ""
     when = f'<a href="{E(x["link"])}">{when}</a>' if x["link"] and when else when
     if x["how"] == "division":

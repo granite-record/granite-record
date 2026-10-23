@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.657
+# GRANITE_VERSION: 2026-09-04.658
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -47427,6 +47427,11 @@ def _nobill_votes_shown(VP):
         bad.append(f"the term's list has rows {rows}")
     if 'class="nbkind"' not in lst or "Shall the member continue (1)" not in lst:
         bad.append("the term's list has no filter by kind")
+    # A reprimand with no approved line is told apart by the member the
+    # passage names; one with a line says it there, and not twice.
+    if '<span class="nbwho">The member it concerned: Rep. Jodi Nelson</span>' not in lst \
+            or lst.count('class="nbwho"') != 1:
+        bad.append("the term's list does not name the member a reprimand concerned, once")
     if 'session/nobill/2025-2026' not in (site / "session" / "house.html").read_text(encoding="utf-8"):
         bad.append("the House's page does not link the term's list")
     sm = (site / "sitemap.xml").read_text(encoding="utf-8")

@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.295 */
+/* GRANITE_VERSION: 2026-09-07.296 */
 /* ONE STYLESHEET FOR EVERY PAGE (23 October 2026). Every page of the site
    links this file, /app.css: the record pages shell.page() makes from
    bills.html, and the five build_pages.py writes -- the home page, Officials,
@@ -6041,6 +6041,16 @@ text-decoration-color:var(--rule-2);text-underline-offset:3px}
    theirs where the Journal's passage is not shown. */
 .nbtab td.k{font-size:var(--t-sm);color:var(--ink-2)}
 .nbtab .nbrec{color:var(--ink-2)}
+.nbtab .nbwho{display:block;font-size:var(--t-sm);color:var(--ink-2);margin-top:var(--sp-1)}
+/* WHAT IT WAS IS THE ROW. The list borrows the member tab's fixed layout,
+   whose second column is the wide one; here the second is the kind, a few
+   words, and it took 47% while the description wrapped in 18% (the rendered
+   list, 23 October 2026). The widths swap, and each breakpoint still sums to
+   100 with the date's own share. */
+.vfull.nbtab th:nth-child(2){width:17%}
+.vfull.nbtab th:nth-child(3){width:48%}
+@media (max-width:68.75em){.vfull.nbtab th:nth-child(3){width:43%}}
+@media (max-width:60em){.vfull.nbtab th:nth-child(3){width:41%}}
 .nbtab td.o small{display:block;color:var(--ink-2);font-size:var(--t-sm)}
 /* THE PREVAILING SIDE (app.js prevailed, 23 October 2026), in ink and not
    in colour: green for the winning side and red for the losing one would be
