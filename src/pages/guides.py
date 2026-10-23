@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-11.22
+# GRANITE_VERSION: 2026-10-11.23
 """
 The how-to guides: their words, their sources, and what each was checked
 against. Read by build_civics.py, which draws them on the Resources hub's
@@ -2795,7 +2795,7 @@ RUN = guide(
                    ["State representative", "18", "Registered voter; domiciled in New Hampshire 2 "
                     "years; living in the town or ward"],
                    ["County officer", "18", "Registered voter in the county where you live"]]),
-          actions=[("Qualifications for office", SOS_QUAL)], law=["RSA 655:2"]),
+          actions=[("Qualifications for office", SOS_QUAL)], law=["RSA 655:2", "RSA 655:29"]),
      step("File in the June filing period",
           "<p>To run in a party&rsquo;s primary you must be a registered member of that party. File "
           "a declaration of candidacy, with a statement of financial interests, between the first "
@@ -2854,6 +2854,13 @@ RUN = guide(
            "years for U.S. representative.", SOS_QUAL, READ),
      claim("To hold any elective office in the state, a person must have a domicile in the state.",
            "RSA 655:2", READ),
+     # THE STATE'S DOMICILE YEARS IN ITS OWN STATUTE (23 October 2026): the
+     # candidate's affidavit, which uses the guide's own word, domiciled. The
+     # federal offices' citizenship years stay on the Secretary of State's
+     # page, the federal constitution not being on this disk.
+     claim("A candidate swears to have been domiciled in New Hampshire for at least 7 years "
+           "before the election for governor, executive councilor and state senator, and for at "
+           "least 2 years for state representative.", "RSA 655:29", READ),
      claim("A primary candidate is a registered member of the party, meets the age and domicile "
            "qualifications by the general election, and files a declaration of candidacy between "
            "the first Wednesday in June and the Friday of the following week.", "RSA 655:14", READ),
@@ -2914,8 +2921,10 @@ RUN = guide(
              fig("750", "RSA 655:42", "750 to nominate a candidate for councilor or state senator"),
              fig("150", "RSA 655:42", "150 to nominate a candidate for state representative or "
                                       "county officer"),
-             fig("7 years", SOS_QUAL, "domiciled in New Hampshire 7 years"),
-             fig("2 years", SOS_QUAL, "2 years for state representative"),
+             fig("7 years", "RSA 655:29", "domiciled in the state of New Hampshire for at least "
+                                          "7 years immediately preceding the election"),
+             fig("2 years", "RSA 655:29", "domiciled in the state of New Hampshire for at least "
+                                          "2 years immediately preceding the election"),
              fig("9 years", SOS_QUAL, "a U.S. citizen 9 years")])
 
 
