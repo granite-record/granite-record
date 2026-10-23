@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.659
+# GRANITE_VERSION: 2026-09-04.660
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -68020,6 +68020,130 @@ def _follow_tests():
         + out.strip()[-500:])
     return "ok", (f"tests/follow: {count['pass']} passed of {count.get('tests')}, from "
                   f"{len(files)} test files, every one imported by index.js")
+
+
+def _js_block(text, opening, closing):
+    """The source from `opening` to the first `closing` after it, or "" when
+    `opening` is not in the text: one function of a JS file, read as text."""
+    at = text.find(opening)
+    if at < 0:
+        return ""
+    end = text.find(closing, at)
+    return text[at:end if end >= 0 else len(text)]
+
+
+@check("build", "the email sender's test send answers on the preview alone, behind its var and "
+       "its token; production has neither and no address, and run() is the same with or without it")
+def _follow_test_send():
+    """The person, 23 October 2026: "Is there a way you can manually trigger
+    sending me test emails since my account is already signed up for updates
+    on a number of bills and topics?" The preview sender answers POST
+    /test-send (sender.js, A TEST SEND), which sends the subscribers in the
+    preview's database test emails and records nothing. It is the one request
+    the sender answers, so it is held here from four sides:
+
+    PRODUCTION CANNOT REACH IT. workers/follow/wrangler.toml's top level is
+    the production sender: workers_dev = false, no route, and no TEST_SEND in
+    its [vars]. Only [env.preview.vars] sets TEST_SEND = "on", and only
+    [env.preview] has workers_dev = true. No section of the file sets the
+    TEST_SEND_TOKEN secret, which is set with wrangler on the preview Worker.
+
+    NOT WITHOUT BOTH GUARDS. tests/follow/test_send.test.js's cases, run by
+    name: a 404 without the var, with a wrong or missing token, and on
+    production's own vars with the right token; and sender.js asks the var,
+    and compares the token with address.js's sameText, before anything else.
+
+    run() IS THE SAME. The test send's case that runs the 8:00 run after a
+    test send and without one, and holds every email, log line and table to
+    be the same; run() names nothing of the test path (testifyAhead, which
+    makes a bill with a hearing ahead say "open" on any day, is the test's
+    alone); and the test path's SQL is SELECTs only.
+
+    NO ADDRESS OUT. The test path logs through note() with fixed codes only,
+    and the privacy case reads every log line and answer of a test send for
+    an address, a link's token, a followed record and the bearer token."""
+    toml_path, js_path = Path("workers/follow/wrangler.toml"), Path("workers/follow/sender.js")
+    if not (toml_path.is_file() and js_path.is_file()):
+        return "skip", "no workers/follow here"
+    import tomllib
+    conf = tomllib.loads(toml_path.read_text(encoding="utf-8"))
+    envs = conf.get("env", {})
+    assert conf.get("workers_dev") is False, (
+        "workers/follow/wrangler.toml: the production sender must keep workers_dev = false, so that "
+        "it has no address to be asked at")
+    assert not ({"route", "routes"} & set(conf)), "workers/follow/wrangler.toml gives the production sender a route"
+    assert "TEST_SEND" not in conf.get("vars", {}), (
+        "workers/follow/wrangler.toml sets TEST_SEND in [vars], which is production's: it belongs in "
+        "[env.preview.vars] alone")
+    others = sorted(n for n, e in envs.items() if n != "preview" and "TEST_SEND" in e.get("vars", {}))
+    assert not others, f"workers/follow/wrangler.toml sets TEST_SEND for {others}, not the preview alone"
+    preview = envs.get("preview", {})
+    assert preview.get("vars", {}).get("TEST_SEND") == "on" and preview.get("workers_dev") is True, (
+        "the preview sender has no test send: [env.preview] wants workers_dev = true and "
+        '[env.preview.vars] TEST_SEND = "on"')
+
+    def keys(d):
+        for k, v in d.items():
+            yield k
+            if isinstance(v, dict):
+                yield from keys(v)
+            elif isinstance(v, list):
+                for x in v:
+                    if isinstance(x, dict):
+                        yield from keys(x)
+    assert "TEST_SEND_TOKEN" not in set(keys(conf)), \
+        "workers/follow/wrangler.toml sets TEST_SEND_TOKEN: a secret goes in with wrangler secret put"
+
+    js = js_path.read_text(encoding="utf-8")
+    run_src = _js_block(js, "export async function run(", "\n}\n")
+    path_src = (_js_block(js, "export function testSendAllowed(", "\n}\n")
+                + _js_block(js, "export function testAsk(", "\n}\n")
+                + _js_block(js, "export async function testSend(", "\n}\n")
+                + _js_block(js, "  async fetch(request, env) {", "\n  },\n"))
+    assert run_src and "testSend(" in path_src and "testSendAllowed(request, env)" in path_src, \
+        "sender.js's run(), testSend() or its fetch handler is not where this check reads them"
+    named = sorted(set(re.findall(r"\b(testifyAhead|testSend\w*|testAsk|TEST_\w+)\b", run_src)))
+    assert not named, f"sender.js's run() names the test send's {named}: a real run must not"
+    allowed = _js_block(js, "export function testSendAllowed(", "\n}\n")
+    first = allowed.find('env?.TEST_SEND !== "on"')
+    assert 0 <= first < allowed.find("sameText(") and "TEST_SEND_TOKEN" in allowed, \
+        "sender.js's testSendAllowed no longer asks the TEST_SEND var first and the token by sameText"
+    fetch_src = _js_block(js, "  async fetch(request, env) {", "\n  },\n")
+    assert re.search(r"if \(!testSendAllowed\(request, env\)\) return notFound\(\);", fetch_src.split("\n")[1]), \
+        "sender.js's fetch handler does not answer the 404 before anything else when a guard fails"
+    writes = sorted(set(re.findall(r"\b(UPDATE|INSERT|DELETE|forget\(|purge\(|giveBack|moveCursor|sealFollow)",
+                                   path_src)))
+    assert not writes, f"sender.js's test send writes ({writes}): it must record nothing"
+    # Its own codes, and into them only a refusal's key (resend-<status>,
+    # error-<name>) or an error's name: never a value of a reader's.
+    codes = [c.strip() for c in re.findall(r"\bnote\(\s*((?:[^,()]|\([^()]*\))+)", path_src)]
+    loose = [c for c in codes if not re.match(r"""^["`]sender\.test-""", c)
+             or set(re.findall(r"\$\{[^}]*\}", c)) - {"${k}", "${errName(e)}"}]
+    assert codes and not loose, f"the test send logs something other than its own fixed codes: {loose}"
+
+    node = shutil.which("node") or shutil.which("node.exe")
+    if not (node and Path("tests/follow/index.js").is_file()):
+        return "skip", "node or tests/follow/ is not here; wrangler.toml and sender.js hold"
+    cases = ("test send: 404 without the TEST_SEND var",
+             "test send: 404 with a wrong or missing token",
+             "test send: 404 on the production configuration",
+             "test send: only confirmed subscribers are sent, each subject prefixed Test",
+             "test send: changes no subscriber row, cursor, follow, sends or signup_days",
+             "test send: a run after a test send does exactly what a run without one does",
+             "test send: an empty digest is a short note",
+             "test send: at most five subscribers",
+             "a test send leaves no address, token or follow list in a log line or its answer")
+    r = _run([node, "--disable-warning=ExperimentalWarning", "--test", "--test-reporter=tap",
+              "--test-name-pattern=" + "|".join(cases), "tests/follow/index.js"],
+             capture_output=True, text=True, timeout=300)
+    out = r.stdout + r.stderr
+    passed = [c for c in cases
+              if re.search(rf"^ok \d+ - [^\n]*{re.escape(c)}(?![^\n]*# SKIP)", out, re.M)]
+    assert r.returncode == 0 and len(passed) == len(cases), (
+        "tests/follow/ no longer passes the test send's cases "
+        + ", ".join(repr(c) for c in cases if c not in passed) + ": " + out.strip()[-400:])
+    return "ok", ("production's sender has no address and no TEST_SEND; the preview's has both and "
+                  f"no token in the file; run() names nothing of the test path; {len(cases)} cases pass")
 
 
 @check("workflows", "the night's timer starts nightly.yml on main with a scheduled night's boxes at "

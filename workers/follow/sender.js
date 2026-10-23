@@ -42,13 +42,19 @@
  * problem a person must act on (PROBLEMS). An hourly ping is also the
  * sender's heartbeat: Healthchecks writes when the pings stop. With no
  * secret, no ping. The body carries counts and codes, never an address.
+ *
+ * ONE ADDRESS, ON THE PREVIEW ONLY: POST /test-send (A TEST SEND, below),
+ * which sends the person test emails on request and records nothing. Every
+ * other request, and every request at all to the production sender, is the
+ * 404 it has always been.
  */
 
-import { ConfigError, linksFor, openAddress, openFollow, sealFollow } from "./address.js";
-import { addDays, chamberOf, errName, fallbackLabel, keyOf, nhClock, note, parseKey } from "./common.js";
+import { ConfigError, linksFor, openAddress, openFollow, sameText, sealFollow } from "./address.js";
+import { addDays, chamberOf, clock, errName, fallbackLabel, json, keyOf, nhClock, note, parseKey,
+         readCapped } from "./common.js";
 import { readCurrent, readNight } from "./changes.js";
-import { digestEmail, pageNames, sendMail } from "./mail.js";
-import { forget, purge } from "./store.js";
+import { digestEmail, nothingNewEmail, pageNames, sendMail, welcomeEmail } from "./mail.js";
+import { countConfirmed, forget, purge } from "./store.js";
 
 export { nhClock };
 export const SEND_FROM_HOUR = 8;      // New Hampshire time
@@ -155,8 +161,13 @@ const STOPPED = {
 // week ahead. The hearing is current.json's -- what is still scheduled as of
 // last night -- and a hearing whose committee names no chamber has no form to
 // send anyone to, so it is not said.
+//
+// ahead: a test send's (A TEST SEND, below), never a run's. A bill with a
+// public hearing still to come says "open" on any day, so that a test shows
+// the block wherever a followed bill has one ahead, not only on the three
+// mornings a real email says it.
 const PUBLIC_HEARING = /^public hearing$/i;
-export function testifyFor(kind, upcoming, items, frequency, today) {
+export function testifyFor(kind, upcoming, items, frequency, today, ahead = false) {
   if (kind !== "bill") return null;
   const next = (upcoming || [])
     .filter(u => PUBLIC_HEARING.test(u.what || "") && u.date >= today && chamberOf(u.committee))
@@ -166,7 +177,8 @@ export function testifyFor(kind, upcoming, items, frequency, today) {
   const phase = daily && next.date === today ? "day"
     : daily && next.date === addDays(today, 1) ? "eve"
     : items.some(it => it.meeting && PUBLIC_HEARING.test(it.meeting.what || "") &&
-        it.meeting.date === next.date && it.meeting.state !== "cancelled") ? "open" : "";
+        it.meeting.date === next.date && it.meeting.state !== "cancelled") ? "open"
+    : ahead ? "open" : "";
   return phase ? { phase, chamber: chamberOf(next.committee), date: next.date,
                    time: next.time || "", committee: next.committee, venue: next.venue || "" } : null;
 }
@@ -176,7 +188,10 @@ export function testifyFor(kind, upcoming, items, frequency, today) {
 // "all", or "milestones" for the items CHANGES_FORMAT.md marks so. Returns one
 // section per followed record with something to say (mail.digestEmail's
 // input); a member's ballots come apart from its other items, as `votes`.
-export function collect({ follows, nights, cursor, current, frequency, today, detail = "all" }) {
+// testifyAhead: a test send's alone (testifyFor's `ahead`); run() never
+// passes it.
+export function collect({ follows, nights, cursor, current, frequency, today, detail = "all",
+                          testifyAhead = false }) {
   const sections = [];
   const listed = new Set([...current.followable.keys()].map(k => k.slice(0, k.indexOf(":"))));
   const after = t => !!t && !!cursor.built && Date.parse(t) > Date.parse(cursor.built);
@@ -226,7 +241,8 @@ export function collect({ follows, nights, cursor, current, frequency, today, de
       : null;
     const upcoming = frequency === "weekly"
       ? (current.upcoming.get(key) || []).filter(u => u.date >= today).slice(0, 5) : [];
-    const testify = testifyFor(f.kind, current.upcoming.get(key), items, frequency, today);
+    const testify = testifyFor(f.kind, current.upcoming.get(key), items, frequency, today,
+      testifyAhead);
     if (!items.length && !study && !ended && !upcoming.length && !testify) continue;
     sections.push({ key, kind: f.kind, ref: f.ref, fh: f.fh, label, title: meta?.title || "",
       now: meta?.now || "", url: meta?.url || "", items: shown, votes,
@@ -264,6 +280,19 @@ function siteOrigin(env) {
   return /^https:\/\/[A-Za-z0-9.-]+(:\d+)?$/.test(o) ||
     /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(o) ? o : "";
 }
+
+// THE WAY OUT FIRST (run(), below): the status the site's count page answers,
+// 0 for none at all.
+async function followPagesLive(origin, now) {
+  try {
+    return (await fetch(`${origin}/api/follow/count?run=${now.getTime()}`,
+      { headers: { Accept: "application/json" } })).status;
+  } catch { return 0; }
+}
+
+// The site, asked afresh each run: a night's file is new each morning.
+const siteGet = (origin, now) => path => fetch(`${origin}${path}?run=${now.getTime()}`,
+  { headers: { Accept: "application/json" } });
 
 // A reader's follows, opened. One that will not open is left out and counted.
 async function followsOf(env, db, s) {
@@ -326,11 +355,7 @@ export async function run(env, now = new Date()) {
   // which are the site's Functions and answer 404 while the site has no follow
   // database bound: a deploy that lost the binding would leave readers mailed
   // with links that do nothing. The count is the cheapest of those pages.
-  let live = 0;
-  try {
-    live = (await fetch(`${origin}/api/follow/count?run=${now.getTime()}`,
-      { headers: { Accept: "application/json" } })).status;
-  } catch { /* 0 */ }
+  const live = await followPagesLive(origin, now);
   if (live !== 200) {
     note(`sender.site-follow-missing.${live}`, subs.length);
     out.problems.push("site-follow");
@@ -338,9 +363,7 @@ export async function run(env, now = new Date()) {
     return done();
   }
 
-  // The site, asked afresh each run: a night's file is new each morning.
-  const get = path => fetch(`${origin}${path}?run=${now.getTime()}`,
-    { headers: { Accept: "application/json" } });
+  const get = siteGet(origin, now);
   const cur = await readCurrent(get);
   if (!cur.value) {
     note(cur.missing ? "sender.current-missing" : "sender.current-unreadable", subs.length);
@@ -551,6 +574,187 @@ export async function ping(env, out) {
   }
 }
 
+// ---- A TEST SEND, ON THE PREVIEW ONLY ---------------------------------------------------
+// The person, 23 October 2026: "Is there a way you can manually trigger
+// sending me test emails since my account is already signed up for updates
+// on a number of bills and topics? That way I can give quicker feedback
+// rather than needing updates to occur nightly."
+//
+// POST /test-send. For each confirmed subscriber in this Worker's database --
+// the first TEST_SEND_MOST by id; the answer says how many more were left --
+// it builds the daily, the weekly and the "You're following" email with the
+// sender's own collect(), digestEmail() and welcomeEmail(), over the last
+// nights of the site's /changes/ files, and sends each through sendMail with
+// "[Test] " before its subject and an Idempotency-Key of its own. A digest
+// with nothing in those nights is sent as a short note saying so
+// (mail.nothingNewEmail), where a real run would send nothing.
+//
+// IT RECORDS NOTHING. It reads the subscribers and their follows and writes
+// no row: not last_sent_on, not the cursor (sent_date, sent_built), not the
+// sends table, not signup_days, and no follow ends. A reader paused today is
+// left out, as run() leaves them. Its answer is counts and its log is codes
+// and counts, as every other; neither carries an address.
+//
+// TWO GUARDS, BOTH OR NOTHING. TEST_SEND = "on", a plain var that only
+// [env.preview.vars] in wrangler.toml sets; and TEST_SEND_TOKEN, a secret the
+// person sets on the preview Worker alone, which the request's
+// "Authorization: Bearer" must match (address.js sameText, in constant time).
+// Without both, /test-send is the 404 every address has always been. The
+// production sender has neither, and no address to be asked at
+// (workers_dev = false, no route); preflight's _follow_test_send holds the
+// configuration to that, and tests/follow/test_send.test.js the rest.
+export const TEST_PATH = "/test-send";
+export const TEST_SEND_MOST = 5;
+export const TEST_KINDS = ["daily", "weekly", "welcome"];
+export const TEST_NIGHTS = 7;
+export const TEST_NIGHTS_MOST = 10;
+export const TEST_PREFIX = "[Test] ";
+// A token shorter than this is no token: the README's is 44 characters.
+const TEST_TOKEN_LEAST = 32;
+const TEST_BODY_MOST = 256;
+const TEST_EXPECTS = 'no body, or {"kinds": ["daily", "weekly", "welcome"], "nights": 1 to 10}';
+
+const notFound = () => new Response("Not found\n", { status: 404 });
+
+// Both guards, the path and the method, or false.
+export function testSendAllowed(request, env) {
+  if (env?.TEST_SEND !== "on") return false;
+  const want = String(env.TEST_SEND_TOKEN ?? "").trim();
+  if (want.length < TEST_TOKEN_LEAST) return false;
+  let path;
+  try { path = new URL(request.url).pathname; } catch { return false; }
+  if (request.method !== "POST" || path !== TEST_PATH) return false;
+  const m = /^Bearer[ \t]+(\S+)[ \t]*$/i.exec(request.headers.get("Authorization") || "");
+  return !!m && sameText(m[1], want);
+}
+
+// What was asked: nothing (every kind, TEST_NIGHTS nights), or
+// {"kinds": [...], "nights": n}. null for anything else, a body over
+// TEST_BODY_MOST bytes included.
+export function testAsk(raw) {
+  if (raw === null || raw === undefined) return null;
+  if (!String(raw).trim()) return { kinds: [...TEST_KINDS], nights: TEST_NIGHTS };
+  let o;
+  try { o = JSON.parse(raw); } catch { return null; }
+  if (!o || typeof o !== "object" || Array.isArray(o) ||
+      Object.keys(o).some(k => k !== "kinds" && k !== "nights")) return null;
+  const kinds = o.kinds ?? TEST_KINDS, nights = o.nights ?? TEST_NIGHTS;
+  if (!Array.isArray(kinds) || !kinds.length || kinds.length > 10 ||
+      kinds.some(k => !TEST_KINDS.includes(k))) return null;
+  if (!Number.isInteger(nights) || nights < 1 || nights > TEST_NIGHTS_MOST) return null;
+  return { kinds: TEST_KINDS.filter(k => kinds.includes(k)), nights };
+}
+
+// The send: [status, answer]. The answer is counts, dates and fixed words.
+export async function testSend(env, now, { kinds, nights }) {
+  const out = { ok: false, date: "", nights, nights_read: 0, kinds, subscribers: 0, taken: 0,
+    sent: 0, emails: Object.fromEntries(kinds.map(k => [k, 0])), nothing_new: 0, testify: 0,
+    skipped: {}, failed: {}, notes: [] };
+  const add = (o, k) => { o[k] = (o[k] || 0) + 1; };
+  const origin = siteOrigin(env);
+  if (!env.FOLLOW_DB || !origin) return [503, { ...out, why: "config" }];
+  if (await followPagesLive(origin, now) !== 200) return [503, { ...out, why: "site-follow" }];
+  const get = siteGet(origin, now);
+  const cur = await readCurrent(get);
+  if (!cur.value) return [503, { ...out, why: "current" }];
+  // The site's newest night, which the emails are as of: a preview that has
+  // not been deployed for some days still has its nights to show.
+  const today = cur.value.date;
+  out.date = today;
+  const read = [];
+  for (let d = addDays(today, -(nights - 1)); d <= today; d = addDays(d, 1)) {
+    const r = await readNight(get, d);
+    if (r.value) read.push(r.value);
+  }
+  out.nights_read = read.length;
+  const names = pageNames(cur.value);
+  const db = env.FOLLOW_DB;
+  out.subscribers = await countConfirmed(db);
+  const subs = (await db.prepare(
+    "SELECT id, email_hmac, email_enc, frequency, link_gen, paused_until, detail " +
+    "FROM subscribers ORDER BY id LIMIT ?1").bind(TEST_SEND_MOST).all()).results || [];
+  out.taken = subs.length;
+  const nhToday = nhClock(now).date;
+  const batch = crypto.randomUUID();
+  const gap = Math.max(0, Number(env.SEND_GAP_MS ?? 600) || 0);
+  let stop = false, first = true, digests = 0;
+
+  for (const s of subs) {
+    if (stop) break;
+    if (s.paused_until && s.paused_until >= nhToday) { add(out.skipped, "paused"); continue; }
+    let follows, links, to;
+    try {
+      ({ follows } = await followsOf(env, db, s));
+      if (!follows.length) { add(out.skipped, "follows-nothing"); continue; }
+      links = await linksFor(env, s.email_hmac, s.link_gen);
+      to = await openAddress(env, s.email_enc, s.email_hmac);
+    } catch (e) {
+      add(out.failed, `error-${errName(e)}`);
+      if (e instanceof ConfigError) stop = true;
+      continue;
+    }
+    const own = { manage: links.manage, unsub: links.unsub, feedbackUrl: env.FEEDBACK_URL };
+    for (const kind of kinds) {
+      if (stop) break;
+      let mail, testify = 0, empty = false;
+      if (kind === "welcome") {
+        // The first record followed that tonight's list still names, as a
+        // confirmation would have sent it to a reader new to the list.
+        const f = follows.find(x => cur.value.followable.has(keyOf(x.kind, x.ref)));
+        if (!f) { add(out.skipped, "welcome-nothing-listed"); continue; }
+        const meta = cur.value.followable.get(keyOf(f.kind, f.ref));
+        mail = welcomeEmail({ origin, kind: f.kind, label: meta.label, title: meta.title, url: meta.url,
+          frequency: s.frequency, total: follows.length, newcomer: true, ...own });
+      } else {
+        const sections = collect({ follows, nights: read, cursor: { date: "", built: "" },
+          current: cur.value, frequency: kind, today, detail: s.detail, testifyAhead: true });
+        empty = !sections.length;
+        testify = sections.filter(x => x.testify).length;
+        mail = empty ? nothingNewEmail({ origin, frequency: kind, date: today, nights, ...own })
+          : digestEmail({ origin, frequency: kind, date: today, sections, names, ...own });
+      }
+      if (!first && gap) await sleep(gap);
+      first = false;
+      let r;
+      try {
+        r = await sendMail(env, { to, ...mail, subject: TEST_PREFIX + mail.subject },
+          `test/${batch}/${kind}/${s.id}`);
+      } catch (e) {
+        add(out.failed, `error-${errName(e)}`);
+        if (e instanceof ConfigError) stop = true;
+        continue;
+      }
+      if (!r.ok) {
+        add(out.failed, `resend-${r.status}`);
+        if (AUTH.has(r.status) || r.status === 429) stop = true;
+        continue;
+      }
+      out.sent++;
+      out.emails[kind]++;
+      if (kind !== "welcome") digests++;
+      if (empty) out.nothing_new++;
+      out.testify += testify;
+    }
+  }
+
+  if (!out.subscribers) out.notes.push("no confirmed subscriber in this database, so nothing was sent");
+  if (out.subscribers > subs.length)
+    out.notes.push(`${out.subscribers} confirmed subscribers: test emails went to the first ` +
+      `${subs.length} by id, and the other ${out.subscribers - subs.length} were sent nothing`);
+  if (read.length < nights)
+    out.notes.push(`${nights - read.length} of the ${nights} nights to ${today} have no changes file on the site`);
+  if (today < nhToday)
+    out.notes.push(`the site's newest night is ${today}, before today in New Hampshire (${nhToday}); ` +
+      "the emails are as of that night");
+  if (digests && !out.testify)
+    out.notes.push("no followed bill has a public hearing ahead, so no email has a testify block");
+  if (stop) out.notes.push("stopped early: see failed");
+  note("sender.test-sent", out.sent);
+  for (const [k, n] of Object.entries(out.failed)) note(`sender.test-failed.${k}`, n);
+  out.ok = !Object.keys(out.failed).length;
+  return [200, out];
+}
+
 export default {
   async scheduled(controller, env, ctx) {
     ctx.waitUntil(run(env, new Date(controller.scheduledTime))
@@ -560,8 +764,19 @@ export default {
       })
       .then(out => ping(env, out)));
   },
-  // No address answers: the sender has no route, and a request gets nothing.
-  async fetch() {
-    return new Response("Not found\n", { status: 404 });
+  // One address answers, on the preview alone and only to the person's token
+  // (A TEST SEND, above). Everything else, and everything on production, gets
+  // nothing.
+  async fetch(request, env) {
+    if (!testSendAllowed(request, env)) return notFound();
+    try {
+      const ask = testAsk(await readCapped(request, TEST_BODY_MOST));
+      if (!ask) return json(400, { ok: false, why: "invalid", expects: TEST_EXPECTS });
+      const [status, answer] = await testSend(env, clock(env), ask);
+      return json(status, answer);
+    } catch (e) {
+      note(`sender.test-failed.error-${errName(e)}`, 1);
+      return json(500, { ok: false, why: "error" });
+    }
   },
 };

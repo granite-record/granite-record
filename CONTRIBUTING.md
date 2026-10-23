@@ -427,7 +427,9 @@ own rather than by the nightly.
    new `*.test.js` is listed in `tests/follow/index.js`, or preflight fails.
 4. To see one without sending it: `node tests/follow/preview_digest.js`
    writes a digest's HTML and text to `preview-mail/`.
-5. It reaches readers only when the person deploys the Worker, after the
+5. To have one in your own inbox at once, the preview sender's test send:
+   `workers/follow/README.md`, "Sending yourself a test email (preview only)".
+6. It reaches readers only when the person deploys the Worker, after the
    change is on `main`: `npx wrangler deploy --config
    workers/follow/wrangler.toml` (with `--env preview` for the preview
    sender), as `workers/follow/README.md` says.

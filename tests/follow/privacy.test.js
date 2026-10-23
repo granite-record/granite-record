@@ -10,7 +10,7 @@ import { readFileSync, readdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { join as joinPath } from "node:path";
 import { createHmac } from "node:crypto";
-import { run } from "../../workers/follow/sender.js";
+import sender, { run } from "../../workers/follow/sender.js";
 import { everyToken, get, lastMailTo, leaks, makeWorld, postForm, SITE, tokensIn } from "./fakes.js";
 import { act, confirmLatest, handlers, join, signUp, view } from "./flows.js";
 
@@ -129,6 +129,53 @@ test("an address goes only to Resend, as the recipient, and to nobody else", asy
   } finally { w.close(); }
 });
 
+test("a test send leaves no address, token or follow list in a log line or its answer", async () => {
+  // The preview sender's test send (sender.js, A TEST SEND, 23 October 2026)
+  // logs codes and counts and answers counts, dates and fixed words: no
+  // address, no link's token, no record followed, and not the person's
+  // bearer token -- whether Resend takes the emails or refuses them, since
+  // its refusal names the address it refused.
+  const w = makeWorld({ now: "2026-10-04T15:00:00Z" });
+  try {
+    const a = await join(w, "tested.reader");
+    await signUp(w, a.address, "topic", "housing");
+    await confirmLatest(w, a.address);
+    await join(w, "second.tested", "committee", "H90");
+    w.at("2026-10-10T15:00:00Z");
+    w.env.TEST_SEND = "on";
+    const bearer = Buffer.from(crypto.getRandomValues(new Uint8Array(32))).toString("base64");
+    w.env.TEST_SEND_TOKEN = bearer;
+    const ask = async () => {
+      const req = new Request("https://graniterecord-follow-sender-preview.example.workers.dev/test-send",
+        { method: "POST", headers: { Authorization: `Bearer ${bearer}` } });
+      const res = await sender.fetch(req, w.env, { waitUntil() {} });
+      const body = await res.text();
+      w.responses.push({ url: req.url, method: "POST", status: res.status,
+                         headers: Object.fromEntries(res.headers), body });
+      return res.status;
+    };
+    const before = w.net.outbox.length;
+    assert.equal(await ask(), 200);
+    assert.ok(w.net.outbox.length >= before + 6, "both readers were sent all three");
+    w.net.resendStatus = 422;
+    assert.equal(await ask(), 200);
+
+    assert.deepEqual(leaks(w), []);
+    assert.ok(w.logs.lines.includes(`follow sender.test-sent ${w.net.outbox.length - before}`));
+    assert.ok(w.logs.lines.some(l => l.startsWith("follow sender.test-failed.resend-422 ")));
+    const tokens = [...everyToken(w)];
+    for (const r of w.responses.filter(r => r.url.endsWith("/test-send"))) {
+      const all = r.body + JSON.stringify(r.headers);
+      assert.ok(!all.includes(bearer), "the answer carries the bearer token");
+      assert.doesNotMatch(all, /@/, "the answer carries an address");
+      for (const t of tokens) assert.ok(!all.includes(t), "the answer carries a link's token");
+      for (const ref of ["HB9901", "H90", "housing"])
+        assert.ok(!all.toLowerCase().includes(ref.toLowerCase()), `the answer names ${ref}`);
+    }
+    for (const line of w.logs.lines) assert.ok(!line.includes(bearer), "a log line carries the bearer token");
+  } finally { w.close(); }
+});
+
 test("the code writes to the console in one place, logs no message, and reads no Resend error", () => {
   for (const f of SOURCES) {
     const text = source(f);
@@ -146,11 +193,16 @@ test("the code writes to the console in one place, logs no message, and reads no
 test("the follow code reads no header, and nothing of the request, that could identify a reader", () => {
   const allowed = new Set(["origin", "content-type", "content-length", "sec-fetch-site",
                            "svix-id", "svix-timestamp", "svix-signature"]);
+  // The preview sender's test send (sender.js, A TEST SEND, 23 October 2026)
+  // reads Authorization for the person's own bearer token: a secret of the
+  // person's, nothing of a reader's, and read by that file alone.
+  const onlyIn = { authorization: "workers/follow/sender.js" };
   for (const f of SOURCES) {
     // The code, not its comments, which say "no cookie" and must.
     const code = source(f).replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|\s)\/\/.*$/gm, "$1");
     for (const m of code.matchAll(/headers\.get\(\s*["']([^"']+)["']/gi))
-      assert.ok(allowed.has(m[1].toLowerCase()), `${f} reads the ${m[1]} header`);
+      assert.ok(allowed.has(m[1].toLowerCase()) || onlyIn[m[1].toLowerCase()] === f,
+        `${f} reads the ${m[1]} header`);
     for (const leak of ["request.cf", "cookie", "cf-connecting-ip", "x-forwarded-for",
                         "x-real-ip", "user-agent", "referer", "remoteip"])
       assert.ok(!code.toLowerCase().includes(leak), `${f} reads ${leak}`);
@@ -172,7 +224,7 @@ test("no secret and no address is written in any file of the follow code", () =>
       `${f} names an address`);
   }
   const toml = source("workers/follow/wrangler.toml");
-  assert.doesNotMatch(toml, /^\s*(RESEND_API_KEY|FOLLOW_ADDRESS_KEY|FOLLOW_LOOKUP_KEY|TURNSTILE_SECRET|RESEND_WEBHOOK_SECRET)\s*=/m,
+  assert.doesNotMatch(toml, /^\s*(RESEND_API_KEY|FOLLOW_ADDRESS_KEY|FOLLOW_LOOKUP_KEY|TURNSTILE_SECRET|RESEND_WEBHOOK_SECRET|TEST_SEND_TOKEN)\s*=/m,
     "a secret is set with wrangler secret put, never in the file");
   // The ids name the person's two databases (11 October 2026); an id is not
   // a secret, and neither may go back to the zeros or be taken for the other.
